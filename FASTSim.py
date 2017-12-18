@@ -6,15 +6,13 @@
 Pythonic copy of NREL's FASTSim
 (Future Automotive Systems Technology Simulator)
 
-Matches FASTSim for Excel repository revision #452.
-
 Input Arguments
 
 1) cyc: dictionary defining drive cycle to be simulated
         cyc['cycSecs']: drive cycle time in seconds (begins at zero)
         cyc['cycMps']: desired vehicle speed in meters per second
         cyc['cycGrade']: road grade 
-        cyc['cycRoadType']: Functional Class of GPS data (1-5 & 0=NA)
+        cyc['cycRoadType']: Functional Class of GPS data
 
 2) veh: dictionary defining vehicle parameters for simulation
 
@@ -90,7 +88,7 @@ def get_standard_cycle(cycle_name):
         data[dkeys[ii]] = np.array(data[dkeys[ii]])
     return data
 
-def get_veh_s(vnum):
+def get_veh(vnum):
     with open('FASTSim_py_veh_db.csv','r') as csvfile:
         
         reader = csv.reader(csvfile)
@@ -108,7 +106,7 @@ def get_veh_s(vnum):
     
         ### selects specified vnum from vd
         veh = dict()
-        variables = ['selection','name', 'vehPtType', 'dragCoef', 'frontalAreaM2', 'gliderKg', 'vehCgM', 'driveAxleWeightFrac', 'wheelBaseM', 'cargoKg', 'vehOverrideKg', 'maxFuelStorKw', 'fuelStorSecsToPeakPwr', 'fuelStorKwh', 'fuelStorKwhPerKg', 'maxFuelConvKw', 'fcEffType', 'fcRelEffImpr', 'fuelConvSecsToPeakPwr', 'fuelConvBaseKg', 'fuelConvKwPerKg', 'maxMotorKw', 'motorPeakEff', 'motorSecsToPeakPwr', 'mcPeKgPerKw', 'mcPeBaseKg', 'maxEssKw', 'maxEssKwh', 'essKgPerKwh', 'essBaseKg', 'essRountTripEff', 'essLifeCoefA', 'essLifeCoefB', 'wheelInteriaKgM2', 'numWheels', 'wheelRrCoef', 'wheelRadiusM', 'wheelCoefOfFric', 'minSoc', 'maxSoc', 'essDischgToFcMaxEffPerc', 'essChgToFcMaxEffPerc', 'maxAccelBufferMph', 'maxAccelBufferPercOfUseableSoc', 'percHighAccBuf', 'mphFcOn', 'kwDemandFcOn', 'altEff', 'chgEff', 'auxKw', 'forceAuxOnFC', 'transKg', 'transEff', 'compMassMultiplier', 'essToFuelOkError', 'maxRegen', 'valUddsMpgge', 'valHwyMpgge', 'valCombMpgge', 'valUddsKwhPerMile', 'valHwyKwhPerMile', 'valCombKwhPerMile', 'valCdRangeMi', 'valConst65MphKwhPerMile', 'valConst60MphKwhPerMile', 'valConst55MphKwhPerMile', 'valConst45MphKwhPerMile', 'valUnadjUddsKwhPerMile', 'valUnadjHwyKwhPerMile', 'val0To60Mph', 'valEssLifeMiles', 'valRangeMiles', 'valVehBaseCost', 'valMsrp']
+        variables = ['selection','name', 'vehPtType', 'dragCoef', 'frontalAreaM2', 'gliderKg', 'vehCgM', 'driveAxleWeightFrac', 'wheelBaseM', 'cargoKg', 'vehOverrideKg', 'maxFuelStorKw', 'fuelStorSecsToPeakPwr', 'fuelStorKwh', 'fuelStorKwhPerKg', 'maxFuelConvKw', 'fcEffType', 'fcRelEffImpr', 'fuelConvSecsToPeakPwr', 'fuelConvBaseKg', 'fuelConvKwPerKg', 'maxMotorKw', 'motorPeakEff', 'motorSecsToPeakPwr', 'mcPeKgPerKw', 'mcPeBaseKg', 'maxEssKw', 'maxEssKwh', 'essKgPerKwh', 'essBaseKg', 'essRoundTripEff', 'essLifeCoefA', 'essLifeCoefB', 'wheelInertiaKgM2', 'numWheels', 'wheelRrCoef', 'wheelRadiusM', 'wheelCoefOfFric', 'minSoc', 'maxSoc', 'essDischgToFcMaxEffPerc', 'essChgToFcMaxEffPerc', 'maxAccelBufferMph', 'maxAccelBufferPercOfUseableSoc', 'percHighAccBuf', 'mphFcOn', 'kwDemandFcOn', 'altEff', 'chgEff', 'auxKw', 'forceAuxOnFC', 'transKg', 'transEff', 'compMassMultiplier', 'essToFuelOkError', 'maxRegen', 'valUddsMpgge', 'valHwyMpgge', 'valCombMpgge', 'valUddsKwhPerMile', 'valHwyKwhPerMile', 'valCombKwhPerMile', 'valCdRangeMi', 'valConst65MphKwhPerMile', 'valConst60MphKwhPerMile', 'valConst55MphKwhPerMile', 'valConst45MphKwhPerMile', 'valUnadjUddsKwhPerMile', 'valUnadjHwyKwhPerMile', 'val0To60Mph', 'valEssLifeMiles', 'valRangeMiles', 'valVehBaseCost', 'valMsrp']
         if vnum in vd:    
             for i in range(len(variables)):
                 vd[vnum][i]=str(vd[vnum][i])
@@ -136,41 +134,38 @@ def get_veh_s(vnum):
     veh['MaxRoadwayChgKw_Roadway'] = range(6)
     veh['MaxRoadwayChgKw'] = [0]*len(veh['MaxRoadwayChgKw_Roadway'])
     veh['chargingOn'] = 0
-            
-            
+
+     # Checking if a vehicle has any hybrid components        
     if veh['maxEssKwh']==0 or veh['maxEssKw']==0 or veh['maxMotorKw']==0:
         veh['noElecSys'] = 'TRUE'
+   
     else:
         veh['noElecSys'] = 'FALSE'
+    
+    # Checking if aux loads go through an alternator
     if veh['noElecSys']=='TRUE' or veh['maxMotorKw']<=veh['auxKw'] or veh['forceAuxOnFC']=='TRUE':
         veh['noElecAux'] = 'TRUE'
+    
     else:
         veh['noElecAux'] = 'FALSE'
-            
 
-    veh['vehTypeSelection'] = np.copy( veh['vehPtType'] )
+    veh['vehTypeSelection'] = np.copy( veh['vehPtType'] ) # Copying vehPtType to additional key
 
-    ### Define FC efficiency curve as 4th order polynomial
+    ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
     ### see "FC Model" tab in FASTSim for Excel
     
     if veh['maxFuelConvKw']>0:
         
+        
+        # Discrete power out percentages for assigning FC efficiencies
+        fcPwrOutPerc = np.array([0, 0.02, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1])
+        
+        # Efficiencies at different power out percentages by FC type
         eff_si = np.array([0, 0.06, 0.2, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3])
         eff_atk = np.array([0, 0.12, 0.2, 0.27, 0.34, 0.35, 0.36, 0.35, 0.34, 0.335, 0.33])
         eff_diesel = np.array([0, 0.06, 0.2, 0.3, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
         eff_fuel_cell = np.array([0, 0.25, 0.4, 0.5, 0.56, 0.58, 0.59, 0.59, 0.57, 0.55, 0.53])
         eff_hd_diesel = np.array([0, 0.06, 0.2, 0.3, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
-#        eff_hd_hybrid_diesel = [0.2,0.31,0.39,0.37]
-#        eff_cng_engine = [0.12,0.17,0.2,0.305]
-#        eff_lh_caterpillar = [0.12,0.23,0.38,0.35]
-#        eff_md_si = [0.03,0.27,0.31,0.28]
-#        eff_ms_ci = [0.04,0.29,0.36,0.36]
-
-#        fcPercPwrAtPeakEff_hd_hybrid_diesel = 0.40Narcan
-#        fcPercPwrAtPeakEff_cng_engine = 0.31
-#        fcPercPwrAtPeakEff_lh_caterpillar = 0.40
-#        fcPercPwrAtPeakEff_md_si = 0.50
-#        fcPercPwrAtPeakEff_md_ci = 0.30
 
         if veh['fcEffType']==1:
             eff = np.copy( eff_si ) + veh['fcRelEffImpr']
@@ -187,27 +182,8 @@ def get_veh_s(vnum):
         elif veh['fcEffType']==5:
             eff = np.copy( eff_hd_diesel ) + veh['fcRelEffImpr']
             
-#        elif veh['fcEffType']==6:
-#            percent_pwr_out_v02 = np.r_[ percent_pwr_out_v01[0:2], fcPercPwrAtPeakEff_hd_hybrid_diesel, percent_pwr_out_v01[-1] ]
-#            eff = np.copy( eff_hd_hybrid_diesel )
-#        elif veh['fcEffType']==7:
-#            percent_pwr_out_v02 = np.r_[ percent_pwr_out_v01[0:2], fcPercPwrAtPeakEff_cng_engine, percent_pwr_out_v01[-1] ]
-#            eff = np.copy( eff_cng_engine )
-#        elif veh['fcEffType']==8:
-#            percent_pwr_out_v02 = np.r_[ percent_pwr_out_v01[0:2], fcPercPwrAtPeakEff_lh_caterpillar, percent_pwr_out_v01[-1] ]
-#            eff = np.copy( eff_lh_caterpillar )
-#        elif veh['fcEffType']==9:
-#            percent_pwr_out_v02 = np.r_[ percent_pwr_out_v01[0:2], fcPercPwrAtPeakEff_md_si, percent_pwr_out_v01[-1] ]
-#            eff = np.copy( eff_md_si )
-#        elif veh['fcEffType']==10:
-#            percent_pwr_out_v02 = np.r_[ percent_pwr_out_v01[0:2], fcPercPwrAtPeakEff_md_ci, percent_pwr_out_v01[-1] ]
-#            eff = np.copy( eff_ms_ci )
-            
-        fcPwrOutPerc = np.array([0, 0.02, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1])
         inputKwOutArray = fcPwrOutPerc * veh['maxFuelConvKw']
         inputKwInArray = np.r_[0.0,inputKwOutArray[1:len(eff)] / eff[1:len(eff)]]
-        veh['test'] = inputKwInArray
-        veh['eff'] = eff
         fcPercOutArray = np.linspace(0,1,101)
         fcKwOutArray = veh['maxFuelConvKw'] * fcPercOutArray
         fcKwInArray = np.array([0.0]*len(fcPercOutArray))
@@ -225,14 +201,14 @@ def get_veh_s(vnum):
         veh['fcKwInArray'] = np.copy(fcKwInArray)
         veh['fcKwOutArray'] = np.copy(fcKwOutArray)
         eff_array = np.divide(veh['fcKwOutArray'][1:] , veh['fcKwInArray'][1:])
-        veh['maxFcEffKw'] = veh['fcKwOutArray'][np.argmax(eff_array)+1]
+        veh['maxFcEffKw'] = np.copy(veh['fcKwOutArray'][np.argmax(eff_array)+1])
     
     else:
         veh['fcKwInArray'] = np.array([0]*101)
         veh['fcKwOutArray'] = np.array([0]*101)
         veh['maxFcEffKw'] = 0
     
-    ### Define MC efficiency curve as 4th order polynomial
+    ### Defining MC efficiency curve as lookup table for %power_in vs power_out
     ### see "Motor" tab in FASTSim for Excel
     if veh['maxMotorKw']>0:
         
@@ -253,7 +229,6 @@ def get_veh_s(vnum):
         for k in range(0,len(mcPwrOutPerc)):
             size_adjusted_eff[k] = mcKwAdjPerc*large_baseline_eff_adj[k] + (1-mcKwAdjPerc)*(small_baseline_eff[k])
             
-        veh['test'] = size_adjusted_eff
         mcInputKwOutArray = mcPwrOutPerc * maxMotorKw
         mcInputKwInArray = np.r_[0,mcInputKwOutArray[1:len(size_adjusted_eff)] / size_adjusted_eff[1:len(size_adjusted_eff)]]
         
@@ -282,10 +257,7 @@ def get_veh_s(vnum):
         veh['mcMaxElecInKw'] = 0
         
     veh['mcMaxElecInKw'] = max(veh['mcKwInArray'])
-    ### Correct typos in SavedVehicles file
-    veh['essRoundTripEff'] = np.copy( veh['essRountTripEff'] )
-    veh['wheelInertiaKgM2'] = np.copy( veh['wheelInteriaKgM2'] )
-
+    
     ### Specify shape of mc regen efficiency curve
     ### see "Regen" tab in FASTSim for Excel
     veh['regenA'] = 500.0
@@ -318,14 +290,21 @@ def get_veh_s(vnum):
 def sim_drive( cyc , veh ):
 
     if veh['vehPtType']==1:
+        
+        # If no EV / Hybrid components, no SOC considerations.
+        
         initSoc = 0.0
         output = sim_drive_sub( cyc , veh , initSoc )
     
-    #####################################
-    ### Charge Balancing Vehicle SOC ###
-    #####################################
-    
     elif veh['vehPtType']==2:
+        
+        #####################################
+        ### Charge Balancing Vehicle SOC ###
+        #####################################
+        
+        # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+        # Iterating until tolerance met or 30 attempts made.        
+        
         initSoc = (veh['maxSoc']+veh['minSoc'])/2.0
         print "Iteration 1", initSoc
         ess2fuelKwh = 1.0
@@ -340,6 +319,9 @@ def sim_drive( cyc , veh ):
         output = sim_drive_sub( cyc , veh , initSoc )
 
     elif veh['vehPtType']==3 or veh['vehPtType']==4:
+        
+        # If EV, initializing initial SOC to maximum SOC.
+        
         initSoc = np.copy( veh['maxSoc'] )
         output = sim_drive_sub( cyc , veh , initSoc )
         
@@ -351,23 +333,19 @@ def sim_drive_sub( cyc , veh , initSoc):
     ###   Define Constants   ###
     ############################
 
-    airDensityKgPerM3 = 1.2
+    airDensityKgPerM3 = 1.2 # Sea level air density at approximately 20C
     gravityMPerSec2 = 9.81
     mphPerMps = 2.2369
     kWhPerGGE = 33.7
     metersPerMile = 1609.00
     maxTracMps2 = ((((veh['wheelCoefOfFric']*veh['driveAxleWeightFrac']*veh['vehKg']*gravityMPerSec2)/(1+((veh['vehCgM']*veh['wheelCoefOfFric'])/veh['wheelBaseM']))))/(veh['vehKg']*gravityMPerSec2))*gravityMPerSec2
-    #if veh['maxEssKwh']>0:
-    #    regenSocBuffer = min(((0.5*veh['vehKg']*((60.0*(1/mphPerMps))**2))*(1/3600.0)*(1/1000.0)*veh['maxRegen']*veh['motorPeakEff'])/veh['maxEssKwh'],(veh['maxSoc']-veh['minSoc'])/2.0)
-    #else:
-    #    regenSocBuffer = 0.0
     maxRegenKwh = 0.5*veh['vehKg']*(27**2)/(3600*1000) 
     
     #############################
     ### Initialize Variables  ###  
     #############################
     
-      ### Drive Cycle
+    ### Drive Cycle
     cycSecs = np.copy( cyc['cycSecs'] )
     cycMps = np.copy( cyc['cycMps'] )
     cycGrade = np.copy( cyc['cycGrade'] )
@@ -495,8 +473,7 @@ def sim_drive_sub( cyc , veh , initSoc):
             auxInKw[i] = veh['auxKw']/veh['altEff']
         else:
             auxInKw[i] = veh['auxKw']
-            
-        ###Yuche Check            
+                       
         if soc[i-1]<(veh['minSoc']+veh['percHighAccBuf']):
             reachedBuff[i] = 0
         else:
@@ -506,7 +483,6 @@ def sim_drive_sub( cyc , veh , initSoc):
         else:
             highAccFcOnTag[i] = 0
         maxTracMps[i] = mpsAch[i-1]+(maxTracMps2*secs[i])
-
 
         ### Component Limits
         curMaxFsKwOut[i] = min( veh['maxFuelStorKw'] , fsKwOutAch[i-1] + ((veh['maxFuelStorKw']/veh['fuelStorSecsToPeakPwr'])*(secs[i])))
@@ -650,12 +626,7 @@ def sim_drive_sub( cyc , veh , initSoc):
             transKwInAch[i] = transKwOutAch[i]/veh['transEff']
         else:
             transKwInAch[i] = transKwOutAch[i]*veh['transEff']
-  
-    
-        #############################   
-        ###      Yuche Added      ###
-        ############################# 
-        
+     
         if cycMet[i]==1:
             
             if veh['fcEffType']==4:
@@ -779,8 +750,7 @@ def sim_drive_sub( cyc , veh , initSoc):
         
         else:
             mcKwIfFcIsReq[i] = -(veh['mcKwOutArray'][np.argmax(veh['mcKwInArray']>mcElecKwInIfFcIsReq[i]*-1)-1])      
-            
-###############################            
+                   
         if veh['maxMotorKw']==0:        
             mcMechKwOutAch[i] = 0
         
@@ -840,21 +810,23 @@ def sim_drive_sub( cyc , veh , initSoc):
       
         else:
             essKwOutAch[i] = mcElecKwInAch[i]+auxInKw[i]-roadwayChgKwOutAch[i]  
-            
-            
-#IF(INDEX(fcEffOpts,fcEffType)="fuel cell",IF(+transKwOutAch>=0,MIN(MAX(+minEssKw2HelpFc,+essDesiredKw4FcEff,+essAccelRegenDischgKw),+curMaxEssKwOut,+mcElecKwInAch+auxInKw-roadwayChgKwOutAch),+mcElecKwInAch+auxInKw-roadwayChgKwOutAch),+mcElecKwInAch+IF(OR(highAccFcOnTag=1,noElecAux),0,auxInKw)-roadwayChgKwOutAch)
-        
+                  
         if veh['maxFuelConvKw']==0:
             fcKwOutAch[i] = 0 
+            
         elif veh['fcEffType']==4:
             fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, mcElecKwInAch[i]+auxInKw[i]-essKwOutAch[i]-roadwayChgKwOutAch[i]))
+            
         elif veh['noElecSys']=='TRUE' or veh['noElecAux']=='TRUE' or highAccFcOnTag[i]==1:
             fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, transKwInAch[i]-mcMechKwOutAch[i]+auxInKw[i]))
+            
         else:
             fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, transKwInAch[i]-mcMechKwOutAch[i]))            
+            
         if fcKwOutAch[i]==0:
             fcKwInAch[i] = 0.0
             fcKwOutAch_pct[i] = 0
+            
         else:
             fcKwOutAch_pct[i] = fcKwOutAch[i] / veh['maxFuelConvKw']
             fcKwInAch[i] = veh['fcKwInArray'][np.argmax(veh['fcKwOutArray']>fcKwOutAch[i])-1]
@@ -875,7 +847,6 @@ def sim_drive_sub( cyc , veh , initSoc):
         else:        
             soc[i] = essCurKwh[i]/veh['maxEssKwh']
             
-        
         ### Battery wear calcs 
             if essCurKwh[i]>essCurKwh[i-1]:
                 addKwh[i] = (essCurKwh[i]-essCurKwh[i-1]) + addKwh[i-1]
@@ -909,11 +880,12 @@ def sim_drive_sub( cyc , veh , initSoc):
     ############################################
 
     output = dict()
-    try:
-        output['mpgge'] = sum(distMiles)/(sum(fsKwhOutAch)*(1/kWhPerGGE))
     
-    except ZeroDivisionError as e:
-        output['mpgge'] = 0    
+    if sum(fsKwhOutAch) == 0:
+        output['mpgge'] = 0
+   
+    else: 
+        output['mpgge'] = sum(distMiles)/(sum(fsKwhOutAch)*(1/kWhPerGGE))     
         
     roadwayChgKj = sum(roadwayChgKwOutAch*secs)
     essDischKj = -(soc[-1]-initSoc)*veh['maxEssKwh']*3600.0
@@ -933,11 +905,13 @@ def sim_drive_sub( cyc , veh , initSoc):
     output['initial_soc'] = soc[0]
     output['final_soc'] = soc[-1]
     
-    try:    
-        Gallons_gas_equivalent_per_mile = 1/output['mpgge'] + output['electric_kWh_per_mi']/33.7
     
-    except ZeroDivisionError as e:
+    if output['mpgge'] == 0:
         Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi']/33.7
+        
+    else:
+         Gallons_gas_equivalent_per_mile = 1/output['mpgge'] + output['electric_kWh_per_mi']/33.7     
+    
     output['mpgge_elec'] = 1/Gallons_gas_equivalent_per_mile
     output['soc'] = np.asarray(soc)
     output['distance_mi'] = sum(distMiles)
@@ -948,75 +922,80 @@ def sim_drive_sub( cyc , veh , initSoc):
     
     if max(mphAch)>60:
         output['ZeroToSixtyTime_secs'] = np.interp(60,mphAch,cycSecs)
+        
     else:
         output['ZeroToSixtyTime_secs'] = 0.0
         
-    output['audit_dragKj'] = sum(np.asarray(dragKw)*np.asarray(secs))
-    output['audit_ascentKj'] = sum(np.asarray(ascentKw)*np.asarray(secs))
-    output['audit_rrKj'] = sum(np.asarray(rrKw)*np.asarray(secs))
-    output['audit_brakeKj'] = sum(np.asarray(cycFricBrakeKw)*np.asarray(secs))
-    output['audit_transKj'] = (sum((np.asarray(transKwInAch)-np.asarray(transKwOutAch))*np.asarray(secs)))
-    output['audit_mcKj'] = (sum((np.asarray(mcElecKwInAch)-np.asarray(mcMechKwOutAch))*np.asarray(secs)))
-    output['audit_essEffKj'] = sum(np.asarray(essLossKw)*np.asarray(secs))
-    output['audit_auxKj'] = sum(np.asarray(auxInKw)*np.asarray(secs))
-    output['audit_fcKj'] = sum((np.asarray(fcKwInAch)-np.asarray(fcKwOutAch))*np.asarray(secs))
-    output['audit_fc_out'] = sum((np.asarray(fcKwOutAch))*np.asarray(secs))
-    output['audit_mc_out'] =  sum((np.asarray(mcMechKwOutAch))*np.asarray(secs))
-    output['mcMechKwOutAch'] = np.asarray(mcMechKwOutAch)
-    output['motor_index_debug'] = np.asarray(motor_index_debug)
-    output['mcElecKwInAch'] = np.asarray(mcElecKwInAch)
-    output['regen_debug'] = np.asarray(regenBufferSoc)
-    output['soc'] = np.asarray(soc)
-    output['accelbufferspc'] = np.asarray(accelBufferSoc)
+    #######################################################################
+    ####  Time series information for additional analysis / debugging. ####
+    ####         Uncomment parameters of interest as needed.           ####
+    #######################################################################
     
-    output['essAccelBufferChgKw'] = np.asarray(essAccelBufferChgKw)
-    output['maxEssAccelBufferDischgKw'] = np.asarray(maxEssAccelBufferDischgKw)
-    output['essAccelRegenDischgKw'] = np.asarray(essAccelRegenDischgKw)
-    output['fcKwGapFrEff'] = np.asarray(fcKwGapFrEff)
-    output['mcElectInKwForMaxFcEff'] = np.asarray(mcElectInKwForMaxFcEff)
-    output['electKwReq4AE'] = np.asarray(electKwReq4AE)
-    output['canPowerAllElectrically'] = np.asarray(canPowerAllElectrically)
-    output['desiredEssKwOutForAE'] = np.asarray(desiredEssKwOutForAE)
-    output['essAEKwOut'] = np.asarray(essAEKwOut)
-    output['erAEKwOut'] = np.asarray(erAEKwOut)
-    output['essDesiredKw4FcEff'] = np.asarray(essDesiredKw4FcEff)
-    output['essKwIfFcIsReq'] = np.asarray(essKwIfFcIsReq)
-    output['erKwIfFcIsReq'] = np.asarray(erKwIfFcIsReq)
-    output['mcElecKwInIfFcIsReq'] = np.asarray(mcElecKwInIfFcIsReq)
-    output['mcKwIfFcIsReq'] = np.asarray(mcKwIfFcIsReq)
-    output['transKwOutAch'] = np.asarray(transKwOutAch)
-    output['essCapLimDischgKw'] = np.asarray(essCapLimDischgKw)
-    output['curMaxEssChgKw'] = np.asarray(curMaxEssChgKw)
-    output['mcElecInLimKw'] = np.asarray(mcElecInLimKw)
-    output['curMaxMechMcKwIn'] = np.asarray(curMaxMechMcKwIn)
-    output['essLimMcRegenKw'] = np.asarray(essLimMcRegenKw)     
-    output['fcKwInAch'] = np.asarray(fcKwInAch)
-    output['fcKwOutAch'] = np.asarray(fcKwOutAch)
-    output['essKwOutAch'] = np.asarray(essKwOutAch)
-    output['minEssKw2HelpFc'] = np.asarray(minEssKw2HelpFc)
-    output['minMcKw2HelpFc'] = np.asarray(minMcKw2HelpFc)
-    output['regenBufferSoc'] = np.asarray(regenBufferSoc)
-    output['debug_flag'] = np.asarray(debug_flag)
-    output['fcKwInAch'] = np.asarray(fcKwInAch)
-    output['fsKwhOutAch'] = np.asarray(fsKwhOutAch)
-    output['curMaxMcKwOut'] = np.asarray(curMaxMcKwOut)
-    output['cycMet'] = np.asarray(cycMet)
-    output['transKwInAch'] = np.asarray(transKwInAch)
-    output['cycTransKwOutReq'] = np.asarray(cycTransKwOutReq)
-    output['cycFricBrakeKw'] = np.asarray(cycFricBrakeKw)
-    output['cycRegenBrakeKw'] = np.asarray(cycRegenBrakeKw)
-    output['cycWheelKwReq'] = np.asarray(cycWheelKwReq)
-    output['cycTracKwReq'] = np.asarray(cycTracKwReq)
-    output['cycRrKw'] = np.asarray(cycRrKw)
-    output['cycTireInertiaKw'] = np.asarray(cycTireInertiaKw)
-    output['cycWheelRadPerSec'] = np.asarray(cycWheelRadPerSec)
-    output['essCapLimChgKw'] = np.asarray(essCapLimChgKw)
-    output['cycDragKw'] = np.asarray(cycDragKw)
-    output['mpsAch'] = np.asarray(mpsAch)
-    output['curMaxElecKw'] = np.asarray(curMaxElecKw)
-    output['curMaxFcKwOut'] = np.asarray(curMaxFcKwOut)
-    output['fcTransLimKw'] = np.asarray(fcTransLimKw)
-    output['curMaxTransKwOut'] = np.asarray(curMaxTransKwOut)
-    output['curMaxTracKw'] = np.asarray(curMaxTracKw)
+#    output['audit_dragKj'] = sum(np.asarray(dragKw)*np.asarray(secs))
+#    output['audit_ascentKj'] = sum(np.asarray(ascentKw)*np.asarray(secs))
+#    output['audit_rrKj'] = sum(np.asarray(rrKw)*np.asarray(secs))
+#    output['audit_brakeKj'] = sum(np.asarray(cycFricBrakeKw)*np.asarray(secs))
+#    output['audit_transKj'] = (sum((np.asarray(transKwInAch)-np.asarray(transKwOutAch))*np.asarray(secs)))
+#    output['audit_mcKj'] = (sum((np.asarray(mcElecKwInAch)-np.asarray(mcMechKwOutAch))*np.asarray(secs)))
+#    output['audit_essEffKj'] = sum(np.asarray(essLossKw)*np.asarray(secs))
+#    output['audit_auxKj'] = sum(np.asarray(auxInKw)*np.asarray(secs))
+#    output['audit_fcKj'] = sum((np.asarray(fcKwInAch)-np.asarray(fcKwOutAch))*np.asarray(secs))
+#    output['audit_fc_out'] = sum((np.asarray(fcKwOutAch))*np.asarray(secs))
+#    output['audit_mc_out'] =  sum((np.asarray(mcMechKwOutAch))*np.asarray(secs))
+#    output['mcMechKwOutAch'] = np.asarray(mcMechKwOutAch)
+#    output['motor_index_debug'] = np.asarray(motor_index_debug)
+#    output['mcElecKwInAch'] = np.asarray(mcElecKwInAch)
+#    output['regen_debug'] = np.asarray(regenBufferSoc)
+#    output['soc'] = np.asarray(soc)
+#    output['accelbufferspc'] = np.asarray(accelBufferSoc)
+#    output['essAccelBufferChgKw'] = np.asarray(essAccelBufferChgKw)
+#    output['maxEssAccelBufferDischgKw'] = np.asarray(maxEssAccelBufferDischgKw)
+#    output['essAccelRegenDischgKw'] = np.asarray(essAccelRegenDischgKw)
+#    output['fcKwGapFrEff'] = np.asarray(fcKwGapFrEff)
+#    output['mcElectInKwForMaxFcEff'] = np.asarray(mcElectInKwForMaxFcEff)
+#    output['electKwReq4AE'] = np.asarray(electKwReq4AE)
+#    output['canPowerAllElectrically'] = np.asarray(canPowerAllElectrically)
+#    output['desiredEssKwOutForAE'] = np.asarray(desiredEssKwOutForAE)
+#    output['essAEKwOut'] = np.asarray(essAEKwOut)
+#    output['erAEKwOut'] = np.asarray(erAEKwOut)
+#    output['essDesiredKw4FcEff'] = np.asarray(essDesiredKw4FcEff)
+#    output['essKwIfFcIsReq'] = np.asarray(essKwIfFcIsReq)
+#    output['erKwIfFcIsReq'] = np.asarray(erKwIfFcIsReq)
+#    output['mcElecKwInIfFcIsReq'] = np.asarray(mcElecKwInIfFcIsReq)
+#    output['mcKwIfFcIsReq'] = np.asarray(mcKwIfFcIsReq)
+#    output['transKwOutAch'] = np.asarray(transKwOutAch)
+#    output['essCapLimDischgKw'] = np.asarray(essCapLimDischgKw)
+#    output['curMaxEssChgKw'] = np.asarray(curMaxEssChgKw)
+#    output['mcElecInLimKw'] = np.asarray(mcElecInLimKw)
+#    output['curMaxMechMcKwIn'] = np.asarray(curMaxMechMcKwIn)
+#    output['essLimMcRegenKw'] = np.asarray(essLimMcRegenKw)     
+#    output['fcKwInAch'] = np.asarray(fcKwInAch)
+#    output['fcKwOutAch'] = np.asarray(fcKwOutAch)
+#    output['essKwOutAch'] = np.asarray(essKwOutAch)
+#    output['minEssKw2HelpFc'] = np.asarray(minEssKw2HelpFc)
+#    output['minMcKw2HelpFc'] = np.asarray(minMcKw2HelpFc)
+#    output['regenBufferSoc'] = np.asarray(regenBufferSoc)
+#    output['debug_flag'] = np.asarray(debug_flag)
+#    output['fcKwInAch'] = np.asarray(fcKwInAch)
+#    output['fsKwhOutAch'] = np.asarray(fsKwhOutAch)
+#    output['curMaxMcKwOut'] = np.asarray(curMaxMcKwOut)
+#    output['cycMet'] = np.asarray(cycMet)
+#    output['transKwInAch'] = np.asarray(transKwInAch)
+#    output['cycTransKwOutReq'] = np.asarray(cycTransKwOutReq)
+#    output['cycFricBrakeKw'] = np.asarray(cycFricBrakeKw)
+#    output['cycRegenBrakeKw'] = np.asarray(cycRegenBrakeKw)
+#    output['cycWheelKwReq'] = np.asarray(cycWheelKwReq)
+#    output['cycTracKwReq'] = np.asarray(cycTracKwReq)
+#    output['cycRrKw'] = np.asarray(cycRrKw)
+#    output['cycTireInertiaKw'] = np.asarray(cycTireInertiaKw)
+#    output['cycWheelRadPerSec'] = np.asarray(cycWheelRadPerSec)
+#    output['essCapLimChgKw'] = np.asarray(essCapLimChgKw)
+#    output['cycDragKw'] = np.asarray(cycDragKw)
+#    output['mpsAch'] = np.asarray(mpsAch)
+#    output['curMaxElecKw'] = np.asarray(curMaxElecKw)
+#    output['curMaxFcKwOut'] = np.asarray(curMaxFcKwOut)
+#    output['fcTransLimKw'] = np.asarray(fcTransLimKw)
+#    output['curMaxTransKwOut'] = np.asarray(curMaxTransKwOut)
+#    output['curMaxTracKw'] = np.asarray(curMaxTracKw)
     
     return output
