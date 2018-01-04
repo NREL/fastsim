@@ -158,14 +158,14 @@ def get_veh(vnum):
         
         
         # Discrete power out percentages for assigning FC efficiencies
-        fcPwrOutPerc = np.array([0, 0.02, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1])
+        fcPwrOutPerc = np.array([0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00])
         
         # Efficiencies at different power out percentages by FC type
-        eff_si = np.array([0, 0.06, 0.2, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3])
-        eff_atk = np.array([0, 0.12, 0.2, 0.27, 0.34, 0.35, 0.36, 0.35, 0.34, 0.335, 0.33])
-        eff_diesel = np.array([0, 0.06, 0.2, 0.3, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
-        eff_fuel_cell = np.array([0, 0.25, 0.4, 0.5, 0.56, 0.58, 0.59, 0.59, 0.57, 0.55, 0.53])
-        eff_hd_diesel = np.array([0, 0.06, 0.2, 0.3, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
+        eff_si = np.array([0.00, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30])
+        eff_atk = np.array([0.00, 0.12, 0.19, 0.24, 0.28, 0.34, 0.35, 0.36, 0.36, 0.35, 0.35, 0.34])
+        eff_diesel = np.array([0.00, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
+        eff_fuel_cell = np.array([0.00, 0.25, 0.33, 0.42, 0.52, 0.57, 0.59, 0.61, 0.61, 0.58, 0.57, 0.56])
+        eff_hd_diesel = np.array([0.00, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
 
         if veh['fcEffType']==1:
             eff = np.copy( eff_si ) + veh['fcRelEffImpr']
@@ -182,31 +182,33 @@ def get_veh(vnum):
         elif veh['fcEffType']==5:
             eff = np.copy( eff_hd_diesel ) + veh['fcRelEffImpr']
             
+        print eff    
+        
         inputKwOutArray = fcPwrOutPerc * veh['maxFuelConvKw']
-        inputKwInArray = np.r_[0.0,inputKwOutArray[1:len(eff)] / eff[1:len(eff)]]
-        fcPercOutArray = np.linspace(0,1,101)
+        fcPercOutArray = np.r_[np.arange(0,3.0,0.1),np.arange(3.0,7.0,0.5),np.arange(7.0,60.0,1.0),np.arange(60.0,105.0,5.0)] / 100
         fcKwOutArray = veh['maxFuelConvKw'] * fcPercOutArray
-        fcKwInArray = np.array([0.0]*len(fcPercOutArray))
+        fcEffArray = np.array([0.0]*len(fcPercOutArray))
         
         for j in range(0,len(fcPercOutArray)-1):
         
             low_index = np.argmax(inputKwOutArray>=fcKwOutArray[j])
             fcinterp_x_1 = inputKwOutArray[low_index-1]
             fcinterp_x_2 = inputKwOutArray[low_index]
-            fcinterp_y_1 = inputKwInArray[low_index-1]
-            fcinterp_y_2 = inputKwInArray[low_index]
-            fcKwInArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 - fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
+            fcinterp_y_1 = eff[low_index-1]
+            fcinterp_y_2 = eff[low_index]
+            fcEffArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 - fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
     
-        fcKwInArray[-1] = inputKwInArray[-1]
-        veh['fcKwInArray'] = np.copy(fcKwInArray)
+        fcEffArray[-1] = eff[-1]
+        veh['fcEffArray'] = np.copy(fcEffArray)
         veh['fcKwOutArray'] = np.copy(fcKwOutArray)
-        eff_array = np.divide(veh['fcKwOutArray'][1:] , veh['fcKwInArray'][1:])
-        veh['maxFcEffKw'] = np.copy(veh['fcKwOutArray'][np.argmax(eff_array)+1])
+        veh['maxFcEffKw'] = np.copy(veh['fcKwOutArray'][np.argmax(fcEffArray)])
+        veh['fcMaxOutkW'] = np.copy(max(inputKwOutArray))
     
     else:
-        veh['fcKwInArray'] = np.array([0]*101)
         veh['fcKwOutArray'] = np.array([0]*101)
         veh['maxFcEffKw'] = 0
+        veh['fcMaxOutkW'] = 0
+        
     
     ### Defining MC efficiency curve as lookup table for %power_in vs power_out
     ### see "Motor" tab in FASTSim for Excel
@@ -247,9 +249,10 @@ def get_veh(vnum):
             mcKwInArray[m] = (mcKwOutArray[m] - fcinterp_x_1)/(fcinterp_x_2 - fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
             
         mcKwInArray[-1] = mcInputKwInArray[-1]
-        veh['mcKwInArray'] = mcKwInArray
-        veh['mcKwOutArray'] = mcKwOutArray
-        veh['mcMaxElecInKw'] = max(mcKwInArray)
+        veh['mcKwInArray'] = np.copy(mcKwInArray)
+        veh['mcKwOutArray'] = np.copy(mcKwOutArray)
+        veh['mcMaxElecInKw'] = np.copy(max(mcKwInArray))
+        veh['mcFullEffArray'] = np.copy(np.divide(mcKwOutArray,mcKwInArray))
         
     else:
         veh['mcKwInArray'] = np.array([0.0] * 101)
@@ -489,7 +492,7 @@ def sim_drive_sub( cyc , veh , initSoc):
         fcTransLimKw[i] = fcKwOutAch[i-1] + ((veh['maxFuelConvKw']/veh['fuelConvSecsToPeakPwr'])*(secs[i]))
         
         fcMaxKwIn[i] = min(curMaxFsKwOut[i], veh['maxFuelStorKw'])
-        fcFsLimKw[i] = veh['fcKwOutArray'][np.argmax(veh['fcKwInArray']>fcMaxKwIn[i])-1]
+        fcFsLimKw[i] = veh['fcMaxOutkW']
         curMaxFcKwOut[i] = min(veh['maxFuelConvKw'],fcFsLimKw[i],fcTransLimKw[i])
         
         if veh['maxEssKwh']==0 or soc[i-1]<veh['minSoc']:
@@ -773,12 +776,21 @@ def sim_drive_sub( cyc , veh , initSoc):
             motor_index_debug[i] = 0
         
         elif mcMechKwOutAch[i]<0:
-            mcElecKwInAch[i] = -veh['mcKwOutArray'][max(0,np.argmax(veh['mcKwInArray']>mcMechKwOutAch[i]*-1)-1,0)]
-            motor_index_debug[i] = max(0,np.argmax(veh['mcKwOutArray']>mcMechKwOutAch[i]*-1)-1,0)
-       
+            if np.argmax(veh['mcKwInArray']>mcMechKwOutAch[i]*-1) == 1:
+                mcElecKwInAch[i] = mcMechKwOutAch[i]*veh['mcFullEffArray'][1]
+                motor_index_debug[i] = max(0,np.argmax(veh['mcKwOutArray']>mcMechKwOutAch[i]*-1)-1,0)
+            
+            else: 
+                mcElecKwInAch[i] = -veh['mcKwOutArray'][max(0,np.argmax(veh['mcKwInArray']>mcMechKwOutAch[i]*-1)-1,0)]
+                motor_index_debug[i] = max(0,np.argmax(veh['mcKwOutArray']>mcMechKwOutAch[i]*-1)-1,0)
+
         else:
-            mcElecKwInAch[i] = veh['mcKwInArray'][np.argmax(veh['mcKwOutArray']>mcMechKwOutAch[i])-1]
-            motor_index_debug[i] = np.argmax(veh['mcKwOutArray']>mcMechKwOutAch[i])-1
+            if np.argmax(veh['mcKwOutArray']>mcMechKwOutAch[i]) == 1:
+               mcElecKwInAch[i] = mcMechKwOutAch[i]/veh['mcFullEffArray'][1]
+            
+            else:
+                mcElecKwInAch[i] = veh['mcKwInArray'][np.argmax(veh['mcKwOutArray']>mcMechKwOutAch[i])-1]
+                motor_index_debug[i] = np.argmax(veh['mcKwOutArray']>mcMechKwOutAch[i])-1
              
         if curMaxRoadwayChgKw[i] == 0:
             roadwayChgKwOutAch[i] = 0
@@ -826,10 +838,14 @@ def sim_drive_sub( cyc , veh , initSoc):
         if fcKwOutAch[i]==0:
             fcKwInAch[i] = 0.0
             fcKwOutAch_pct[i] = 0
+        
+        elif np.argmax(veh['fcKwOutArray']>fcKwOutAch[i]) ==1:
+            fcKwOutAch_pct[i] = fcKwOutAch[i] / veh['maxFuelConvKw']
+            fcKwInAch[i] = fcKwOutAch[i]/veh['fcEffArray'][1]
             
         else:
             fcKwOutAch_pct[i] = fcKwOutAch[i] / veh['maxFuelConvKw']
-            fcKwInAch[i] = veh['fcKwInArray'][np.argmax(veh['fcKwOutArray']>fcKwOutAch[i])-1]
+            fcKwInAch[i] = fcKwOutAch[i]/(veh['fcEffArray'][np.argmax(veh['fcKwOutArray']>fcKwOutAch[i])-1])
             
         fsKwOutAch[i] = np.copy( fcKwInAch[i] )
        
