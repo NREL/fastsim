@@ -1041,6 +1041,12 @@ def sim_drive_sub( cyc , veh , initSoc):
     ####         Uncomment parameters of interest as needed.           ####
     #######################################################################
     
+    output['fcForcedState'] = np.asarray(fcForcedState)
+    output['transKwInAch'] = np.asarray(transKwInAch)
+    output['fcKwOutAch'] = np.asarray(fcKwOutAch)
+    output['fsKwhOutAch'] = np.asarray(fsKwhOutAch)
+    
+    
 #    output['fcKwInAch'] = np.asarray(fcKwInAch)
 #    output['fcKwOutAch'] = np.asarray(fcKwOutAch)
 #    output['mphAch'] = np.asarray(mphAch)
