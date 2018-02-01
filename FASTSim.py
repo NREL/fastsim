@@ -557,7 +557,7 @@ def sim_drive_sub( cyc , veh , initSoc):
         
         else:
             if veh['maxMotorKw'] == curMaxEssChgKw[i]-curMaxRoadwayChgKw[i]:
-                essLimMcRegenKw[i] = min(veh['maxMotorKw'],curMaxEssChgKw[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray']-1)])
+                essLimMcRegenKw[i] = min(veh['maxMotorKw'],curMaxEssChgKw[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1])
             else:
                 essLimMcRegenKw[i] = min(veh['maxMotorKw'],curMaxEssChgKw[i]/veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,curMaxEssChgKw[i]-curMaxRoadwayChgKw[i]))-1)])
         
@@ -710,7 +710,7 @@ def sim_drive_sub( cyc , veh , initSoc):
         else:
             
             if fcKwGapFrEff[i] == veh['maxMotorKw']:
-                mcElectInKwForMaxFcEff[i] = veh['mcKwInArray'][len(veh['mcKwInArray']-1)]
+                mcElectInKwForMaxFcEff[i] = veh['mcKwInArray'][len(veh['mcKwInArray'])-1]
             else:   
                 mcElectInKwForMaxFcEff[i] = veh['mcKwInArray'][np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,fcKwGapFrEff[i]))-1]
         
@@ -771,7 +771,7 @@ def sim_drive_sub( cyc , veh , initSoc):
             fcForcedState[i] = 1
             mcMechKw4ForcedFc[i] = 0
             
-        elif transKwInAch[i]<=0:
+        elif transKwInAch[i]<0:
             fcForcedState[i] = 2
             mcMechKw4ForcedFc[i] = transKwInAch[i]
         
@@ -779,12 +779,16 @@ def sim_drive_sub( cyc , veh , initSoc):
             fcForcedState[i] = 3
             mcMechKw4ForcedFc[i] = 0
             
-        elif veh['maxFcEffKw']>transKwInAch[i]:
+        elif veh['fcMaxOutkW']/50 > transKwInAch[i] and cycAccelKw[i] >=0:
             fcForcedState[i] = 4
+            mcMechKw4ForcedFc[i] = transKwInAch[i] - veh['fcMaxOutkW']/50
+            
+        elif veh['maxFcEffKw']>transKwInAch[i]:
+            fcForcedState[i] = 5
             mcMechKw4ForcedFc[i] = 0
             
         else:
-            fcForcedState[i] = 5
+            fcForcedState[i] = 6
             mcMechKw4ForcedFc[i] = transKwInAch[i] - veh['maxFcEffKw']
         
         if (-mcElectInKwForMaxFcEff[i]-curMaxRoadwayChgKw[i])>0:
