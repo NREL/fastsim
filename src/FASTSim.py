@@ -53,7 +53,7 @@ import csv
 warnings.simplefilter('ignore')
 
 def get_standard_cycle(cycle_name):
-    csv_path = 'cycles//'+cycle_name+'.csv'
+    csv_path = '..//cycles//'+cycle_name+'.csv'
     data = dict()
     dkeys=[]
     with open(csv_path) as csvfile:
@@ -96,7 +96,6 @@ def get_veh(vnum):
             for i in range(len(variables)):
                 vd[vnum][i]=str(vd[vnum][i])
                 if vd[vnum][i].find('%') != -1:
-                    print i
                     vd[vnum][i]=vd[vnum][i].replace('%','')
                     vd[vnum][i]=float(vd[vnum][i])
                     vd[vnum][i]=vd[vnum][i]/100.0
@@ -299,7 +298,6 @@ def sim_drive( cyc , veh ):
         # Iterating until tolerance met or 30 attempts made.
 
         initSoc = (veh['maxSoc']+veh['minSoc'])/2.0
-        print "Iteration 1", initSoc
         ess2fuelKwh = 1.0
         sim_count = 0
         while ess2fuelKwh>veh['essToFuelOkError'] and sim_count<30:
@@ -307,7 +305,6 @@ def sim_drive( cyc , veh ):
             output = sim_drive_sub( cyc , veh , initSoc )
             ess2fuelKwh = abs( output['ess2fuelKwh'] )
             initSoc = min(1.0,max(0.0,output['final_soc']))
-            print "Iteration:", sim_count, "SOC:", initSoc
         np.copy( veh['maxSoc'] )
         output = sim_drive_sub( cyc , veh , initSoc )
 
@@ -515,7 +512,7 @@ def sim_drive_sub( cyc , veh , initSoc):
 
         if curMaxElecKw[i]>0:
             if curMaxAvailElecKw[i] == max(veh['mcKwInArray']):
-                mcElecInLimKw[i] = min(veh['mcKwOutArray'][len(veh['mcKwOutArray']-1)],veh['maxMotorKw'])
+                mcElecInLimKw[i] = min(veh['mcKwOutArray'][len(veh['mcKwOutArray'])-1],veh['maxMotorKw'])
             else:
                 mcElecInLimKw[i] = min(veh['mcKwOutArray'][np.argmax(veh['mcKwInArray']>min(max(veh['mcKwInArray'])-0.01,curMaxAvailElecKw[i]))-1],veh['maxMotorKw'])
         else:
@@ -528,7 +525,7 @@ def sim_drive_sub( cyc , veh , initSoc):
             curMaxMcElecKwIn[i] = 0
         else:
             if curMaxMcKwOut[i] == veh['maxMotorKw']:
-                curMaxMcElecKwIn[i] = curMaxMcKwOut[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray']-1)]
+                curMaxMcElecKwIn[i] = curMaxMcKwOut[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]
             else:
                 curMaxMcElecKwIn[i] = curMaxMcKwOut[i]/veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,curMaxMcKwOut[i]))-1)]
 
@@ -1036,7 +1033,7 @@ def sim_drive_sub( cyc , veh , initSoc):
     output['fsKwhOutAch'] = np.asarray(fsKwhOutAch)
 
 
-#    output['fcKwInAch'] = np.asarray(fcKwInAch)
+    output['fcKwInAch'] = np.asarray(fcKwInAch)
 #    output['fcKwOutAch'] = np.asarray(fcKwOutAch)
 #    output['mphAch'] = np.asarray(mphAch)
 #    output['mcMechKw4ForcedFc'] = np.asarray(mcMechKw4ForcedFc)
