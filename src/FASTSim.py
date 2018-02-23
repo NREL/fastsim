@@ -146,10 +146,11 @@ def get_veh(vnum):
 
         # Efficiencies at different power out percentages by FC type
         eff_si = np.array([0.00, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30])
-        eff_atk = np.array([0.00, 0.12, 0.19, 0.24, 0.28, 0.34, 0.35, 0.36, 0.36, 0.35, 0.35, 0.34])
+        eff_atk = np.array([0.00, 0.12, 0.28, 0.35, 0.38, 0.39, 0.40, 0.40, 0.38, 0.37, 0.36, 0.35])
         eff_diesel = np.array([0.00, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
         eff_fuel_cell = np.array([0.00, 0.20, 0.28, 0.38, 0.45, 0.51, 0.53, 0.54, 0.56, 0.54, 0.52, 0.49])
         eff_hd_diesel = np.array([0.00, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
+
 
         if veh['fcEffType']==1:
             eff = np.copy( eff_si ) + veh['fcRelEffImpr']
@@ -821,7 +822,7 @@ def sim_drive_sub( cyc , veh , initSoc):
         if veh['maxMotorKw']==0:
             mcMechKwOutAch[i] = 0
 
-        elif fcForcedOn[i]==True and canPowerAllElectrically[i]==True and (veh['vehPtType']==2.0 or veh['vehPtType']==3.0):
+        elif fcForcedOn[i]==True and canPowerAllElectrically[i]==True and (veh['vehPtType']==2.0 or veh['vehPtType']==3.0) and veh['fcEffType']!=4:
            mcMechKwOutAch[i] =  mcMechKw4ForcedFc[i]
 
         elif transKwInAch[i]<=0:
