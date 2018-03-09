@@ -11788,14 +11788,14 @@ div#notebook {
 <li>How much fuel savings does an HEV provide for a given drive cycle?</li>
 <li>How do lifetime costs and petroleum use compare for conventional vehicles, HEVs, PHEVs, and EVs?</li>
 </ul>
-<p>FASTSim was originally implemented in Microsoft Excel. The pythonic implementation of FASTSim, demonstrated here, is the drive cycle energy consumption simulation component of the software. The python version of FASTSim is preferable to the Excel version when computational speed increase is needed and for simulating a large batch of drive cycles.</p>
+<p>FASTSim was originally implemented in Microsoft Excel. The pythonic implementation of FASTSim, demonstrated here, captures the drive cycle energy consumption simulation component of the software. The python version of FASTSim is more convenient that the Excel version when very high computational speed is desired, such as for simulating a large batch of drive cycles.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[24]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
@@ -11838,7 +11838,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[25]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">cyc</span> <span class="o">=</span> <span class="n">FASTSim</span><span class="o">.</span><span class="n">get_standard_cycle</span><span class="p">(</span><span class="s2">&quot;UDDS&quot;</span><span class="p">)</span>
@@ -11854,14 +11854,14 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Load-Powertrain-Model">Load Powertrain Model<a class="anchor-link" href="#Load-Powertrain-Model">&#182;</a></h3><p>A vehicle database in CSV format is required to be in the working directory where FASTSim is running (i.e. the same directory as this notebook). The "get_veh" function selects the appropriate vehicle attributes from the database and contructs the powertrain model (engine efficiency map, etc.). An integer values corresponds to each vehicle in the database. To add a new vehicle, simply populate a new row to the vehicle database CSV.</p>
+<h3 id="Load-Powertrain-Model">Load Powertrain Model<a class="anchor-link" href="#Load-Powertrain-Model">&#182;</a></h3><p>A vehicle database in CSV format is required to be in the working directory where FASTSim is running (i.e. the same directory as this notebook). The "get_veh" function selects the appropriate vehicle attributes from the database and contructs the powertrain model (engine efficiency map, etc.). An integer value corresponds to each vehicle in the database. To add a new vehicle, simply populate a new row to the vehicle database CSV.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[26]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">veh</span> <span class="o">=</span> <span class="n">FASTSim</span><span class="o">.</span><span class="n">get_veh</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
@@ -11877,7 +11877,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Run-FASTSim">Run FASTSim<a class="anchor-link" href="#Run-FASTSim">&#182;</a></h3><p>The "sim_drive" function takes the drive cycle and vehicle models defined above as inputs. The output is a dictionary of time series and scalar values described the simulation results. Typically of interest is the "gge" key, which is an array of time series energy consumption data at each time step in the drive cycle. Additionally, to add a result from the simulator to the output dictionary, a use can modify the sim_drive_sub function source code to include the desired field.</p>
+<h3 id="Run-FASTSim">Run FASTSim<a class="anchor-link" href="#Run-FASTSim">&#182;</a></h3><p>The "sim_drive" function takes the drive cycle and vehicle models defined above as inputs. The output is a dictionary of time series and scalar values described the simulation results. Typically of interest is the "gge" key, which is an array of time series energy consumption data at each time step in the drive cycle. Additionally, to add a result from the simulator to the output dictionary, a user can modify the sim_drive_sub function source code to include the desired field.</p>
 <p>If running FASTSim in batch over many drive cycles, the output from "sim_drive" can be written to files or database for batch post-processing.</p>
 
 </div>
@@ -11885,7 +11885,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[27]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="n">FASTSim</span><span class="o">.</span><span class="n">sim_drive</span><span class="p">(</span><span class="n">cyc</span><span class="p">,</span> <span class="n">veh</span><span class="p">)</span>
@@ -11907,7 +11907,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[28]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">output</span><span class="p">)[[</span><span class="s1">&#39;soc&#39;</span><span class="p">,</span><span class="s1">&#39;fcKwInAch&#39;</span><span class="p">]]</span>
@@ -11921,7 +11921,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[29]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
@@ -11953,10 +11953,10 @@ div#notebook {
 
 
 
-<div id="5ca825a5-0d04-4cf9-a99d-403f496f4004"></div>
+<div id="959d5870-4f6d-41f3-90e4-395468e30836"></div>
 <div class="output_subarea output_javascript ">
 <script type="text/javascript">
-var element = $('#5ca825a5-0d04-4cf9-a99d-403f496f4004');
+var element = $('#959d5870-4f6d-41f3-90e4-395468e30836');
 /* Put everything inside the global mpl namespace */
 window.mpl = {};
 
@@ -12749,7 +12749,7 @@ if (IPython.notebook.kernel != null) {
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Batch-Drive-Cycles---TSDC-Drive-Cycles">Batch Drive Cycles - TSDC Drive Cycles<a class="anchor-link" href="#Batch-Drive-Cycles---TSDC-Drive-Cycles">&#182;</a></h2><p>FASTSim's most significant advantage over other powertrain simulation tools comes from the ability to simulate many drive cycles quickly. The same three steps described above (load cycle, load model, run FASTSim) will be used here, however, the demonstration highlights how quickly FASTSim runs over <strong>2,225 miles of driving</strong> data for 22 vehicles.  Running on a single core, the 241 drive cycles take roughly 25 seconds to run. Each drive cycle requires a fraction of a second of computational time.</p>
-<p>The drive cycles simulated are from a subset of Chicago Regional Household Travel Inventory housed in the the Transportation Secure Data Center (<a href="https://www.nrel.gov/transportation/secure-transportation-data/tsdc-cleansed-data.html">TSDC</a>). Cycles within the TSDC are publicly available for download and easily integrate with FASTSim. For inquiries related to TSDC-partnerships, please contact <a href="venu.garikapati@nrel.gov">Venu Garikapati</a>.</p>
+<p>The drive cycles simulated are from a subset of Chicago Regional Household Travel Inventory housed in the the Transportation Secure Data Center (<a href="https://www.nrel.gov/transportation/secure-transportation-data/tsdc-cleansed-data.html">TSDC</a>). Cycles within the TSDC are publicly available for download and easily integrate with FASTSim. You may contact the TSDC<a href="mailto:tsdc@nrel.gov">tsdc@nrel.gov</a> for general questions on the data center, or Venu Garikapati<a href="mailto:venu.garikapati@nrel.gov">venu.garikapati@nrel.gov</a> for partnership-related inquiries.</p>
 <h3 id="Load-Cycles">Load Cycles<a class="anchor-link" href="#Load-Cycles">&#182;</a></h3><p>Iterate through the drive cycles directory structure and load the cycles into one pandas dataframe. If memory is an issue, this processing can be broken into smaller chunks. The points table must have trip identifiers appended to run FASTSim on individual trips. The trips are identified and labeled using the start and end timestamps in the "trips.csv" summary tables in each of the vehicle directories downloadable from the TSDC.</p>
 
 </div>
@@ -12757,7 +12757,7 @@ if (IPython.notebook.kernel != null) {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[30]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">data_path</span> <span class="o">=</span> <span class="s1">&#39;../cycles/cmap_subset/&#39;</span>  <span class="c1"># path to drive cycles</span>
@@ -12813,7 +12813,7 @@ if (IPython.notebook.kernel != null) {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[31]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">veh</span> <span class="o">=</span> <span class="n">FASTSim</span><span class="o">.</span><span class="n">get_veh</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># load vehicle model</span>
@@ -12863,8 +12863,8 @@ if (IPython.notebook.kernel != null) {
 <div class="prompt"></div>
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>Run Complete. Total runtime = 25.78s
-     Average time per cycle = 0.11s
+<pre>Run Complete. Total runtime = 31.16s
+     Average time per cycle = 0.13s
 </pre>
 </div>
 </div>
@@ -12886,7 +12886,7 @@ if (IPython.notebook.kernel != null) {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[32]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">df_fltr</span> <span class="o">=</span> <span class="n">results_df</span><span class="p">[(</span><span class="n">results_df</span><span class="p">[</span><span class="s1">&#39;distance_mi&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">)</span>
@@ -12901,7 +12901,7 @@ if (IPython.notebook.kernel != null) {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[33]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
@@ -12925,10 +12925,10 @@ if (IPython.notebook.kernel != null) {
 
 
 
-<div id="94597f61-b773-4fe8-8c90-49b3f6cb38bd"></div>
+<div id="0f4eb2af-cac2-4078-a4f9-0e8b5c10854c"></div>
 <div class="output_subarea output_javascript ">
 <script type="text/javascript">
-var element = $('#94597f61-b773-4fe8-8c90-49b3f6cb38bd');
+var element = $('#0f4eb2af-cac2-4078-a4f9-0e8b5c10854c');
 /* Put everything inside the global mpl namespace */
 window.mpl = {};
 
@@ -13717,7 +13717,7 @@ if (IPython.notebook.kernel != null) {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[34]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span><span class="n">df_fltr</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
@@ -13760,10 +13760,10 @@ if (IPython.notebook.kernel != null) {
 
 
 
-<div id="e6053a4f-4118-49a9-a8b8-1e2660b73062"></div>
+<div id="891674fa-ab1c-4389-9439-e0731319fd32"></div>
 <div class="output_subarea output_javascript ">
 <script type="text/javascript">
-var element = $('#e6053a4f-4118-49a9-a8b8-1e2660b73062');
+var element = $('#891674fa-ab1c-4389-9439-e0731319fd32');
 /* Put everything inside the global mpl namespace */
 window.mpl = {};
 
