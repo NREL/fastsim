@@ -320,6 +320,13 @@ def sim_drive( cyc , veh ):
 
 def sim_drive_sub( cyc , veh , initSoc):
 
+    # sim_drive_sub receives second-by-second cycle information,
+    # vehicle properties, and an initial state of charge and performs
+    # a backward facing powertrain simulation. The function returns an 
+    # output dictionary starting at approximately line 1030. Powertrain
+    # variables of interest (summary or time-series) can be added to the 
+    # output dictionary for reference.
+    
     ############################
     ###   Define Constants   ###
     ############################
@@ -1025,30 +1032,11 @@ def sim_drive_sub( cyc , veh , initSoc):
 
     #######################################################################
     ####  Time series information for additional analysis / debugging. ####
-    ####         Uncomment parameters of interest as needed.           ####
+    ####             Add parameters of interest as needed.             ####
     #######################################################################
 
     output['fcKwOutAch'] = np.asarray(fcKwOutAch)
     output['fsKwhOutAch'] = np.asarray(fsKwhOutAch)
     output['fcKwInAch'] = np.asarray(fcKwInAch)
-
-#    output['fcKwOutAch'] = np.asarray(fcKwOutAch)
-#    output['mphAch'] = np.asarray(mphAch)
-#    output['mcMechKw4ForcedFc'] = np.asarray(mcMechKw4ForcedFc)
-
-#    output['audit_dragKj'] = sum(np.asarray(dragKw)*np.asarray(secs))
-#    output['curMaxElecKw'] = np.asarray(curMaxElecKw)
-#    output['curMaxEssKwOut'] = np.asarray(curMaxEssKwOut)
-#
-##    output['audit_ascentKj'] = sum(np.asarray(ascentKw)*np.asarray(secs))
-##    output['audit_rrKj'] = sum(np.asarray(rrKw)*np.asarray(secs))
-##    output['audit_brakeKj'] = sum(np.asarray(cycFricBrakeKw)*np.asarray(secs))
-##    output['audit_transKj'] = (sum((np.asarray(transKwInAch)-np.asarray(transKwOutAch))*np.asarray(secs)))
-##    output['audit_mcKj'] = (sum((np.asarray(mcElecKwInAch)-np.asarray(mcMechKwOutAch))*np.asarray(secs)))
-##    output['audit_essEffKj'] = sum(np.asarray(essLossKw)*np.asarray(secs))
-##    output['audit_auxKj'] = sum(np.asarray(auxInKw)*np.asarray(secs))
-##    output['audit_fcKj'] = sum((np.asarray(fcKwInAch)-np.asarray(fcKwOutAch))*np.asarray(secs))
-##    output['audit_fc_out'] = sum((np.asarray(fcKwOutAch))*np.asarray(secs))
-##    output['audit_mc_out'] =  sum((np.asarray(mcMechKwOutAch))*np.asarray(secs))
 
     return output
