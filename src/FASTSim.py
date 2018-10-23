@@ -709,6 +709,7 @@ def sim_drive_sub( cyc , veh , initSoc):
 
         elif transKwInAch[i] > 0:
             if transKwInAch[i] == veh['maxMotorKw']:
+        
                 electKwReq4AE[i] = transKwInAch[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]+auxInKw[i]
             else:
                 electKwReq4AE[i] = transKwInAch[i]/veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,transKwInAch[i]))-1)]+auxInKw[i]
@@ -835,8 +836,10 @@ def sim_drive_sub( cyc , veh , initSoc):
         elif transKwInAch[i]<=0:
 
             if veh['fcEffType']!=4 and veh['maxFuelConvKw']> 0:
-                mcMechKwOutAch[i] = min(-min(curMaxMechMcKwIn[i],-transKwInAch[i]), max(-curMaxFcKwOut[i], mcKwIfFcIsReq[i]))
-
+                if canPowerAllElectrically[i] == 1:
+                    mcMechKwOutAch[i] = -min(curMaxMechMcKwIn[i],-transKwInAch[i])
+                else:
+                    mcMechKwOutAch[i] = min(-min(curMaxMechMcKwIn[i], -transKwInAch[i]),max(-curMaxFcKwOut[i], mcKwIfFcIsReq[i]))
             else:
                 mcMechKwOutAch[i] = min(-min(curMaxMechMcKwIn[i],-transKwInAch[i]),-transKwInAch[i])
 
