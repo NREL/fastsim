@@ -953,7 +953,7 @@ def sim_drive_sub( cyc , veh , initSoc):
 
         ### Battery wear calcs
 
-        if veh['noElecSys']<>'TRUE':
+        if veh['noElecSys']!='TRUE':
 
             if essCurKwh[i]>essCurKwh[i-1]:
                 addKwh[i] = (essCurKwh[i]-essCurKwh[i-1]) + addKwh[i-1]
@@ -965,7 +965,7 @@ def sim_drive_sub( cyc , veh , initSoc):
             else:
                 dodCycs[i] = 0
 
-            if dodCycs[i]<>0:
+            if dodCycs[i]!=0:
                 essPercDeadArray[i] = np.power(veh['essLifeCoefA'],1.0/veh['essLifeCoefB']) / np.power(dodCycs[i],1.0/veh['essLifeCoefB'])
             else:
                 essPercDeadArray[i] = 0
