@@ -1041,5 +1041,6 @@ def sim_drive_sub( cyc , veh , initSoc):
     output['fcKwOutAch'] = np.asarray(fcKwOutAch)
     output['fsKwhOutAch'] = np.asarray(fsKwhOutAch)
     output['fcKwInAch'] = np.asarray(fcKwInAch)
+    output['time'] = np.asarray(cycSecs)
 
     return output
