@@ -280,8 +280,14 @@ def get_veh(vnum):
 
     return veh
 
-def sim_drive( cyc , veh ):
+def sim_drive( cyc , veh , initSoc=None):
 
+    if initSoc>1.0 or initSoc<0.0:
+        print('Must enter a valid initial SOC between 0.0 and 1.0')
+        print('Running standard initial SOC controls')
+        initSoc=None
+    
+    
     if veh['vehPtType']==1:
 
         # If no EV / Hybrid components, no SOC considerations.
@@ -289,7 +295,7 @@ def sim_drive( cyc , veh ):
         initSoc = 0.0
         output = sim_drive_sub( cyc , veh , initSoc )
 
-    elif veh['vehPtType']==2:
+    elif veh['vehPtType']==2 & initSoc==None:
 
         #####################################
         ### Charge Balancing Vehicle SOC ###
@@ -309,12 +315,16 @@ def sim_drive( cyc , veh ):
         np.copy( veh['maxSoc'] )
         output = sim_drive_sub( cyc , veh , initSoc )
 
-    elif veh['vehPtType']==3 or veh['vehPtType']==4:
+    elif (veh['vehPtType']==3 & initSoc==None) or (veh['vehPtType']==4 & initSoc==None):
 
         # If EV, initializing initial SOC to maximum SOC.
 
         initSoc = np.copy( veh['maxSoc'] )
         output = sim_drive_sub( cyc , veh , initSoc )
+        
+    else:
+        output = sim_drive_sub( cyc , veh , initSoc )
+        
 
     return output
 
