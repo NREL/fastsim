@@ -282,7 +282,7 @@ def get_veh(vnum):
 
 def sim_drive( cyc , veh , initSoc=None):
 
-    if initSoc>1.0 or initSoc<0.0:
+    if initSoc>1.0 or initSoc<0.0 and initSoc != None:
         print('Must enter a valid initial SOC between 0.0 and 1.0')
         print('Running standard initial SOC controls')
         initSoc=None
