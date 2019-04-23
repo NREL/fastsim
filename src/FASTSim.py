@@ -295,7 +295,7 @@ def sim_drive( cyc , veh , initSoc=None):
         initSoc = 0.0
         output = sim_drive_sub( cyc , veh , initSoc )
 
-    elif veh['vehPtType']==2 & initSoc==None:
+    elif veh['vehPtType']==2 and initSoc==None:
 
         #####################################
         ### Charge Balancing Vehicle SOC ###
@@ -315,7 +315,7 @@ def sim_drive( cyc , veh , initSoc=None):
         np.copy( veh['maxSoc'] )
         output = sim_drive_sub( cyc , veh , initSoc )
 
-    elif (veh['vehPtType']==3 & initSoc==None) or (veh['vehPtType']==4 & initSoc==None):
+    elif (veh['vehPtType']==3 and initSoc==None) or (veh['vehPtType']==4 and initSoc==None):
 
         # If EV, initializing initial SOC to maximum SOC.
 
