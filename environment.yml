@@ -1,0 +1,12 @@
+name: fastsim_py27
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ipykernel=4.10
+  - pandas=0.23
+  - psycopg2=2.6
+  - python=2.7
+  - sqlalchemy=1.2
+  - matplotlib
+prefix: /opt/anaconda3/envs/fastsim_py27
