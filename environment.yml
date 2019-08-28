@@ -10,5 +10,3 @@ dependencies:
   - numpy-base=1.16
   - pandas=0.25
   - python=3.7
-prefix: C:\Users\cbaker2\.conda\envs\fastsim_py37
-
