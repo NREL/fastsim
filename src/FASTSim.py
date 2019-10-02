@@ -290,14 +290,14 @@ def sim_drive( cyc , veh , initSoc=None):
             initSoc=None
         
     
-    if veh['vehPtType']==1:
+    if veh['vehPtType']==1: # Conventional
 
         # If no EV / Hybrid components, no SOC considerations.
 
         initSoc = 0.0
         output = sim_drive_sub( cyc , veh , initSoc )
 
-    elif veh['vehPtType']==2 and initSoc==None:
+    elif veh['vehPtType']==2 and initSoc==None:  # HEV 
 
         #####################################
         ### Charge Balancing Vehicle SOC ###
@@ -317,7 +317,7 @@ def sim_drive( cyc , veh , initSoc=None):
         np.copy( veh['maxSoc'] )
         output = sim_drive_sub( cyc , veh , initSoc )
 
-    elif (veh['vehPtType']==3 and initSoc==None) or (veh['vehPtType']==4 and initSoc==None):
+    elif (veh['vehPtType']==3 and initSoc==None) or (veh['vehPtType']==4 and initSoc==None): # PHEV and BEV
 
         # If EV, initializing initial SOC to maximum SOC.
 
