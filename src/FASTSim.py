@@ -133,6 +133,7 @@ def get_veh(vnum):
         veh['noElecAux'] = 'FALSE'
 
     veh['vehTypeSelection'] = np.copy( veh['vehPtType'] ) # Copying vehPtType to additional key
+    # to be consistent with Excel version but not used in Python version
 
     ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
     ### see "FC Model" tab in FASTSim for Excel
