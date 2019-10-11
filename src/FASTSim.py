@@ -186,13 +186,13 @@ def get_veh(vnum):
         veh['fcKwOutArray'] = np.copy(fcKwOutArray)
         veh['maxFcEffKw'] = np.copy(veh['fcKwOutArray'][np.argmax(fcEffArray)])
         veh['fcMaxOutkW'] = np.copy(max(inputKwOutArray))
-        veh['minFcTimeOn'] = 30
+        veh['minFcTimeOn'] = 30 # hardcoded
 
     else:
         veh['fcKwOutArray'] = np.array([0]*101)
         veh['maxFcEffKw'] = 0
         veh['fcMaxOutkW'] = 0
-        veh['minFcTimeOn'] = 30
+        veh['minFcTimeOn'] = 30 # hardcoded
 
     ### Defining MC efficiency curve as lookup table for %power_in vs power_out
     ### see "Motor" tab in FASTSim for Excel
@@ -253,8 +253,8 @@ def get_veh(vnum):
 
     ### Specify shape of mc regen efficiency curve
     ### see "Regen" tab in FASTSim for Excel
-    veh['regenA'] = 500.0
-    veh['regenB'] = 0.99
+    veh['regenA'] = 500.0 # hardcoded
+    veh['regenB'] = 0.99 # hardcoded
 
     ### Calculate total vehicle mass
     if veh['vehOverrideKg']==0 or veh['vehOverrideKg']=="":
