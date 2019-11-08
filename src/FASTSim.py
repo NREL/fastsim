@@ -53,6 +53,7 @@ import csv
 warnings.simplefilter('ignore')
 
 def get_standard_cycle(cycle_name):
+    """Load time trace of speed, grade, and road type."""
     csv_path = '..//cycles//'+cycle_name+'.csv'
     data = dict()
     dkeys=[]
@@ -74,6 +75,7 @@ def get_standard_cycle(cycle_name):
     return data
 
 def get_veh(vnum):
+    """Load vehicle attributes and assign to dict 'veh'."""
     with open('..//docs//FASTSim_py_veh_db.csv','r') as csvfile:
 
         reader = csv.reader(csvfile)
@@ -281,15 +283,13 @@ def get_veh(vnum):
     return veh
 
 def sim_drive( cyc , veh , initSoc=None):
-
-    
+    """Initialize and iterate sim_drive_sub as appropriate for vehicle attribute vehPtType."""    
     if initSoc != None:
         if initSoc>1.0 or initSoc<0.0:
             print('Must enter a valid initial SOC between 0.0 and 1.0')
             print('Running standard initial SOC controls')
             initSoc=None
-        
-    
+   
     if veh['vehPtType']==1: # Conventional
 
         # If no EV / Hybrid components, no SOC considerations.
@@ -331,13 +331,12 @@ def sim_drive( cyc , veh , initSoc=None):
     return output
 
 def sim_drive_sub( cyc , veh , initSoc):
-
-    # sim_drive_sub receives second-by-second cycle information,
-    # vehicle properties, and an initial state of charge and performs
-    # a backward facing powertrain simulation. The function returns an 
-    # output dictionary starting at approximately line 1030. Powertrain
-    # variables of interest (summary or time-series) can be added to the 
-    # output dictionary for reference.
+    """Function sim_drive_sub receives second-by-second cycle information,
+    vehicle properties, and an initial state of charge and performs
+    a backward facing powertrain simulation. The function returns an 
+    output dictionary starting at approximately line 1030. Powertrain
+    variables of interest (summary or time-series) can be added to the 
+    output dictionary for reference."""
     
     ############################
     ###   Define Constants   ###
