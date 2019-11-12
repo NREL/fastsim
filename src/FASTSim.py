@@ -142,7 +142,6 @@ def get_veh(vnum):
 
     if veh['maxFuelConvKw']>0:
 
-
         # Discrete power out percentages for assigning FC efficiencies
         fcPwrOutPerc = np.array([0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00])
 
@@ -154,28 +153,31 @@ def get_veh(vnum):
         eff_hd_diesel = np.array([0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
 
 
-        if veh['fcEffType']==1:
+        if veh['fcEffType']==1: # SI engine
             eff = np.copy( eff_si ) + veh['fcAbsEffImpr']
 
-        elif veh['fcEffType']==2:
+        elif veh['fcEffType']==2: # Atkinson cycle SI engine -- greater expansion
             eff = np.copy( eff_atk ) + veh['fcAbsEffImpr']
 
-        elif veh['fcEffType']==3:
+        elif veh['fcEffType']==3: # Diesel (compression ignition) engine
             eff = np.copy( eff_diesel ) + veh['fcAbsEffImpr']
 
-        elif veh['fcEffType']==4:
+        elif veh['fcEffType']==4: # H2 fuel cell
             eff = np.copy( eff_fuel_cell ) + veh['fcAbsEffImpr']
 
-        elif veh['fcEffType']==5:
+        elif veh['fcEffType']==5: # heavy duty Diesel engine
             eff = np.copy( eff_hd_diesel ) + veh['fcAbsEffImpr']
 
-        inputKwOutArray = fcPwrOutPerc * veh['maxFuelConvKw']
+        inputKwOutArray = fcPwrOutPerc * veh['maxFuelConvKw']  # discrete array of possible engine power outputs
+        # Relatively continuous power out percentages for assigning FC efficiencies
         fcPercOutArray = np.r_[np.arange(0,3.0,0.1),np.arange(3.0,7.0,0.5),np.arange(7.0,60.0,1.0),np.arange(60.0,105.0,5.0)] / 100
-        fcKwOutArray = veh['maxFuelConvKw'] * fcPercOutArray
-        fcEffArray = np.array([0.0]*len(fcPercOutArray))
+        fcKwOutArray = veh['maxFuelConvKw'] * fcPercOutArray # Relatively continuous array of possible engine power outputs
+        fcEffArray = np.array([0.0]*len(fcPercOutArray)) # Initializes relatively continuous array for fcEFF 
 
+        # the following for loop populates fcEffArray 
+        # *** may be worth revisiting to make list comprehension or use numpy.interp, but this simple version may be good for 
+        # being traceable to Excel version
         for j in range(0,len(fcPercOutArray)-1):
-
             low_index = np.argmax(inputKwOutArray>=fcKwOutArray[j])
             fcinterp_x_1 = inputKwOutArray[low_index-1]
             fcinterp_x_2 = inputKwOutArray[low_index]
@@ -183,7 +185,10 @@ def get_veh(vnum):
             fcinterp_y_2 = eff[low_index]
             fcEffArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 - fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
 
+        # populate firnal value 
         fcEffArray[-1] = eff[-1]
+
+        # assign corresponding values in veh dict
         veh['fcEffArray'] = np.copy(fcEffArray)
         veh['fcKwOutArray'] = np.copy(fcKwOutArray)
         veh['maxFcEffKw'] = np.copy(veh['fcKwOutArray'][np.argmax(fcEffArray)])
@@ -191,6 +196,9 @@ def get_veh(vnum):
         veh['minFcTimeOn'] = 30 # hardcoded
 
     else:
+        # these things are all zero for BEV powertrains
+        # not sure why `veh['fcEffArray']` is not being assigned.  
+        # Maybe it's not used anywhere in this condition.  *** delete this comment before public release
         veh['fcKwOutArray'] = np.array([0]*101)
         veh['maxFcEffKw'] = 0
         veh['fcMaxOutkW'] = 0
@@ -362,7 +370,7 @@ def sim_drive_sub( cyc , veh , initSoc):
     cycMph = [x * mphPerMps for x in cyc['cycMps']]
     secs = np.insert(np.diff(cycSecs),0,0)
 
-    ### Component Limits
+    ### Component Limits -- calculated dynamically
     curMaxFsKwOut = [0]*len(cycSecs)
     fcTransLimKw = [0]*len(cycSecs)
     fcFsLimKw = [0]*len(cycSecs)
@@ -407,7 +415,7 @@ def sim_drive_sub( cyc , veh , initSoc):
     mcElecKwInAch = [0]*len(cycSecs)
     auxInKw = [0]*len(cycSecs)
 
-    #roadwayMaxEssChg = [0]*len(cycSecs)
+    #roadwayMaxEssChg = [0]*len(cycSecs)  # *** CB is not sure why this is here
     roadwayChgKwOutAch = [0]*len(cycSecs)
     minEssKw2HelpFc = [0]*len(cycSecs)
     essKwOutAch = [0]*len(cycSecs)
@@ -483,15 +491,22 @@ def sim_drive_sub( cyc , veh , initSoc):
     for i in range(1,len(cycSecs)):
 
         ### Misc calcs
+        # If noElecAux, then the HV electrical system is not used to power aux loads 
+        # and it must all come from the alternator.  This apparently assumes no belt-driven aux 
+        # loads
+        # *** 
         if veh['noElecAux']=='TRUE':
             auxInKw[i] = veh['auxKw']/veh['altEff']
         else:
             auxInKw[i] = veh['auxKw']
 
+        # Is SOC below min threshold?
         if soc[i-1]<(veh['minSoc']+veh['percHighAccBuf']):
             reachedBuff[i] = 0
         else:
             reachedBuff[i] = 1
+
+        # Does the engine need to be on for low SOC or high acceleration
         if soc[i-1]<veh['minSoc'] or (highAccFcOnTag[i-1]==1 and reachedBuff[i]==0):
             highAccFcOnTag[i] = 1
         else:
@@ -499,13 +514,17 @@ def sim_drive_sub( cyc , veh , initSoc):
         maxTracMps[i] = mpsAch[i-1]+(maxTracMps2*secs[i])
 
         ### Component Limits
+        # max fuel storage power output
         curMaxFsKwOut[i] = min( veh['maxFuelStorKw'] , fsKwOutAch[i-1] + ((veh['maxFuelStorKw']/veh['fuelStorSecsToPeakPwr'])*(secs[i])))
+        # maximum fuel storage power output rate of change
         fcTransLimKw[i] = fcKwOutAch[i-1] + ((veh['maxFuelConvKw']/veh['fuelConvSecsToPeakPwr'])*(secs[i]))
 
-        fcMaxKwIn[i] = min(curMaxFsKwOut[i], veh['maxFuelStorKw'])
+        fcMaxKwIn[i] = min(curMaxFsKwOut[i], veh['maxFuelStorKw']) # *** this min seems redundant with line 518
         fcFsLimKw[i] = veh['fcMaxOutkW']
         curMaxFcKwOut[i] = min(veh['maxFuelConvKw'],fcFsLimKw[i],fcTransLimKw[i])
 
+        # Does ESS discharge need to be limited? *** I think veh['maxEssKw'] should also be in the following
+        # boolean condition
         if veh['maxEssKwh']==0 or soc[i-1]<veh['minSoc']:
             essCapLimDischgKw[i] = 0.0
 
@@ -521,23 +540,28 @@ def sim_drive_sub( cyc , veh , initSoc):
 
         curMaxEssChgKw[i] = min(essCapLimChgKw[i],veh['maxEssKw'])
 
+        # Current maximum electrical power that can go toward propulsion, not including motor limitations
         if veh['fcEffType']==4:
             curMaxElecKw[i] = curMaxFcKwOut[i]+curMaxRoadwayChgKw[i]+curMaxEssKwOut[i]-auxInKw[i]
 
         else:
             curMaxElecKw[i] = curMaxRoadwayChgKw[i]+curMaxEssKwOut[i]-auxInKw[i]
 
+        # Current maximum electrical power that can go toward propulsion, including motor limitations
         curMaxAvailElecKw[i] = min(curMaxElecKw[i], veh['mcMaxElecInKw'])
 
         if curMaxElecKw[i]>0:
+            # limit power going into e-machine controller to 
             if curMaxAvailElecKw[i] == max(veh['mcKwInArray']):
                 mcElecInLimKw[i] = min(veh['mcKwOutArray'][len(veh['mcKwOutArray'])-1],veh['maxMotorKw'])
             else:
                 mcElecInLimKw[i] = min(veh['mcKwOutArray'][np.argmax(veh['mcKwInArray']>min(max(veh['mcKwInArray'])-0.01,curMaxAvailElecKw[i]))-1],veh['maxMotorKw'])
         else:
             mcElecInLimKw[i] = 0.0
-
+        
+        # Motor transient power limit
         mcTransiLimKw[i] = abs(mcMechKwOutAch[i-1])+((veh['maxMotorKw']/veh['motorSecsToPeakPwr'])*(secs[i]))
+        
         curMaxMcKwOut[i] = max(min(mcElecInLimKw[i],mcTransiLimKw[i],veh['maxMotorKw']),-veh['maxMotorKw'])
 
         if curMaxMcKwOut[i] == 0:
