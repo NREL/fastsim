@@ -48,30 +48,15 @@ power and efficiency. Currently these values are user clarified in the code by a
 
 ### Import necessary python modules
 import numpy as np
-import warnings
+import pandas as pd
 import csv
+import warnings
 warnings.simplefilter('ignore')
 
 def get_standard_cycle(cycle_name):
     """Load time trace of speed, grade, and road type."""
     csv_path = '..//cycles//'+cycle_name+'.csv'
-    data = dict()
-    dkeys=[]
-    with open(csv_path) as csvfile:
-        csv_reader = csv.reader(csvfile)
-        for row in csv_reader:
-            if len(data)==0: # initialize all elements in dictionary based on header
-                for ii in range(len(row)):
-                    data[row[ii]] = []
-                    dkeys.append( row[ii] )
-            else: # append values
-                for ii in range(len(row)):
-                    try:
-                        data[dkeys[ii]].append( float(row[ii]) )
-                    except:
-                        data[dkeys[ii]].append( np.nan )
-    for ii in range(len(dkeys)):
-        data[dkeys[ii]] = np.array(data[dkeys[ii]])
+    data = pd.read_csv(csv_path)
     return data
 
 def get_veh(vnum):
