@@ -49,7 +49,7 @@ power and efficiency. Currently these values are user clarified in the code by a
 ### Import necessary python modules
 import numpy as np
 import pandas as pd
-import csv
+from collections import namedtuple
 import warnings
 warnings.simplefilter('ignore')
 
@@ -61,40 +61,31 @@ def get_standard_cycle(cycle_name):
 
 def get_veh(vnum):
     """Load vehicle attributes and assign to dict 'veh'."""
-    with open('..//docs//FASTSim_py_veh_db.csv','r') as csvfile:
+ 
+    vehdf = pd.read_csv('..//docs//FASTSim_py_veh_db.csv')
 
-        reader = csv.reader(csvfile)
-        vd = dict()
-        data = dict()
-        z=0
-
-        for i in reader:
-           data[z]=i
-           z=z+1
-
-        variables = data[0]
-        del data[0] # deletes the first list, which corresponds to the header w/ variable names
-        vd=data
-
-        ### selects specified vnum from vd
-        veh = dict()
-        if vnum in vd:
-            for i in range(len(variables)):
-                vd[vnum][i]=str(vd[vnum][i])
-                if vd[vnum][i].find('%') != -1:
-                    vd[vnum][i]=vd[vnum][i].replace('%','')
-                    vd[vnum][i]=float(vd[vnum][i])
-                    vd[vnum][i]=vd[vnum][i]/100.0
-                elif vd[vnum][i].find('TRUE') != -1 or vd[vnum][i].find('True') != -1 or vd[vnum][i].find('true') != -1:
-                    vd[vnum][i]=1
-                elif vd[vnum][i].find('FALSE') != -1 or vd[vnum][i].find('False') != -1 or vd[vnum][i].find('false') != -1:
-                    vd[vnum][i]=0
-                else:
-                    try:
-                        vd[vnum][i]=float(vd[vnum][i])
-                    except:
-                        pass
-                veh[variables[i]]=vd[vnum][i]
+    ### selects specified vnum from vehdf
+    veh = dict()
+    for col in vehdf.columns:
+        # convert all data to string types
+        vehdf.loc[vnum, col]=str(vehdf.loc[vnum, col])
+        # remove percent signs if any are found
+        if vehdf.loc[vnum, col].find('%') != -1:
+            vehdf.loc[vnum, col] = vehdf.loc[vnum, col].replace('%','')
+            vehdf.loc[vnum, col] = float(vehdf.loc[vnum, col])
+            vehdf.loc[vnum, col] = vehdf.loc[vnum, col]/100.0
+        # replace string for TRUE with int 1
+        elif vehdf.loc[vnum, col].find('TRUE') != -1 or vehdf.loc[vnum, col].find('True') != -1 or vehdf.loc[vnum, col].find('true') != -1:
+            vehdf.loc[vnum, col] = 1
+        # replace string for FALSE with int 0
+        elif vehdf.loc[vnum, col].find('FALSE') != -1 or vehdf.loc[vnum, col].find('False') != -1 or vehdf.loc[vnum, col].find('false') != -1:
+            vehdf.loc[vnum, col] = 0
+        else:
+            try:
+                vehdf.loc[vnum, col] = float(vehdf.loc[vnum, col])
+            except:
+                pass
+        veh[col] = vehdf.loc[vnum, col]
 
     ######################################################################
     ### Append additional parameters to veh structure from calculation ###
@@ -273,6 +264,10 @@ def get_veh(vnum):
     else:
         veh['vehKg'] = np.copy( veh['vehOverrideKg'] )
 
+    # replace any spaces with underscores
+    veh = dict(list(zip([key.replace(' ', '_') for key in veh.keys()], veh.values())))
+    Veh = namedtuple('Veh', list(veh.keys()))
+    veh = Veh(**veh)
     return veh
 
 def sim_drive( cyc , veh , initSoc=None):
