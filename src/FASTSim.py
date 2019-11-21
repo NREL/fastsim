@@ -51,6 +51,7 @@ import numpy as np
 import pandas as pd
 from collections import namedtuple
 import warnings
+import re
 warnings.simplefilter('ignore')
 
 def get_standard_cycle(cycle_name):
@@ -74,12 +75,12 @@ def get_veh(vnum):
             vehdf.loc[vnum, col] = vehdf.loc[vnum, col].replace('%','')
             vehdf.loc[vnum, col] = float(vehdf.loc[vnum, col])
             vehdf.loc[vnum, col] = vehdf.loc[vnum, col]/100.0
-        # replace string for TRUE with int 1
-        elif vehdf.loc[vnum, col].find('TRUE') != -1 or vehdf.loc[vnum, col].find('True') != -1 or vehdf.loc[vnum, col].find('true') != -1:
-            vehdf.loc[vnum, col] = 1
-        # replace string for FALSE with int 0
-        elif vehdf.loc[vnum, col].find('FALSE') != -1 or vehdf.loc[vnum, col].find('False') != -1 or vehdf.loc[vnum, col].find('false') != -1:
-            vehdf.loc[vnum, col] = 0
+        # replace string for TRUE with Boolean True
+        elif re.search('(?i)true', vehdf.loc[vnum, col]) != None:
+            vehdf.loc[vnum, col] = True
+        # replace string for FALSE with Boolean False
+        elif re.search('(?i)false', vehdf.loc[vnum, col]) != None:
+            vehdf.loc[vnum, col] = False
         else:
             try:
                 vehdf.loc[vnum, col] = float(vehdf.loc[vnum, col])
@@ -151,8 +152,6 @@ def get_veh(vnum):
         fcEffArray = np.array([0.0]*len(fcPercOutArray)) # Initializes relatively continuous array for fcEFF 
 
         # the following for loop populates fcEffArray 
-        # *** may be worth revisiting to make list comprehension or use numpy.interp, but this simple version may be good for 
-        # being traceable to Excel version
         for j in range(0,len(fcPercOutArray)-1):
             low_index = np.argmax(inputKwOutArray>=fcKwOutArray[j])
             fcinterp_x_1 = inputKwOutArray[low_index-1]
@@ -161,7 +160,7 @@ def get_veh(vnum):
             fcinterp_y_2 = eff[low_index]
             fcEffArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 - fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
 
-        # populate firnal value 
+        # populate final value 
         fcEffArray[-1] = eff[-1]
 
         # assign corresponding values in veh dict
