@@ -242,7 +242,7 @@ def get_veh(vnum):
     veh['regenB'] = 0.99 # hardcoded
 
     ### Calculate total vehicle mass
-    if veh['vehOverrideKg'] == 0 or veh['vehOverrideKg'] == "":
+    if not(veh['vehOverrideKg']):
         if veh['maxEssKwh'] == 0 or veh['maxEssKw'] == 0:
             ess_mass_kg = 0.0
         else:
