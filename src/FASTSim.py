@@ -69,12 +69,12 @@ def get_veh(vnum):
     veh = dict()
     for col in vehdf.columns:
         # convert all data to string types
-        vehdf.loc[vnum, col]=str(vehdf.loc[vnum, col])
+        vehdf.loc[vnum, col] = str(vehdf.loc[vnum, col])
         # remove percent signs if any are found
         if vehdf.loc[vnum, col].find('%') != -1:
             vehdf.loc[vnum, col] = vehdf.loc[vnum, col].replace('%','')
             vehdf.loc[vnum, col] = float(vehdf.loc[vnum, col])
-            vehdf.loc[vnum, col] = vehdf.loc[vnum, col]/100.0
+            vehdf.loc[vnum, col] = vehdf.loc[vnum, col] / 100.0
         # replace string for TRUE with Boolean True
         elif re.search('(?i)true', vehdf.loc[vnum, col]) != None:
             vehdf.loc[vnum, col] = True
@@ -94,7 +94,7 @@ def get_veh(vnum):
 
     ### Build roadway power lookup table
     veh['MaxRoadwayChgKw_Roadway'] = range(6)
-    veh['MaxRoadwayChgKw'] = [0]*len(veh['MaxRoadwayChgKw_Roadway'])
+    veh['MaxRoadwayChgKw'] = [0] * len(veh['MaxRoadwayChgKw_Roadway'])
     veh['chargingOn'] = 0
 
      # Checking if a vehicle has any hybrid components
@@ -111,7 +111,7 @@ def get_veh(vnum):
     else:
         veh['noElecAux'] = 'FALSE'
 
-    veh['vehTypeSelection'] = np.copy( veh['vehPtType'] ) # Copying vehPtType to additional key
+    veh['vehTypeSelection'] = np.copy(veh['vehPtType']) # Copying vehPtType to additional key
     # to be consistent with Excel version but not used in Python version
 
     ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
@@ -131,28 +131,28 @@ def get_veh(vnum):
 
 
         if veh['fcEffType']==1: # SI engine
-            eff = np.copy( eff_si ) + veh['fcAbsEffImpr']
+            eff = np.copy(eff_si) + veh['fcAbsEffImpr']
 
         elif veh['fcEffType']==2: # Atkinson cycle SI engine -- greater expansion
-            eff = np.copy( eff_atk ) + veh['fcAbsEffImpr']
+            eff = np.copy(eff_atk) + veh['fcAbsEffImpr']
 
         elif veh['fcEffType']==3: # Diesel (compression ignition) engine
-            eff = np.copy( eff_diesel ) + veh['fcAbsEffImpr']
+            eff = np.copy(eff_diesel) + veh['fcAbsEffImpr']
 
         elif veh['fcEffType']==4: # H2 fuel cell
-            eff = np.copy( eff_fuel_cell ) + veh['fcAbsEffImpr']
+            eff = np.copy(eff_fuel_cell) + veh['fcAbsEffImpr']
 
         elif veh['fcEffType']==5: # heavy duty Diesel engine
-            eff = np.copy( eff_hd_diesel ) + veh['fcAbsEffImpr']
+            eff = np.copy(eff_hd_diesel) + veh['fcAbsEffImpr']
 
         inputKwOutArray = fcPwrOutPerc * veh['maxFuelConvKw']  # discrete array of possible engine power outputs
         # Relatively continuous power out percentages for assigning FC efficiencies
         fcPercOutArray = np.r_[np.arange(0,3.0,0.1),np.arange(3.0,7.0,0.5),np.arange(7.0,60.0,1.0),np.arange(60.0,105.0,5.0)] / 100
         fcKwOutArray = veh['maxFuelConvKw'] * fcPercOutArray # Relatively continuous array of possible engine power outputs
-        fcEffArray = np.array([0.0]*len(fcPercOutArray)) # Initializes relatively continuous array for fcEFF 
+        fcEffArray = np.array([0.0] * len(fcPercOutArray)) # Initializes relatively continuous array for fcEFF 
 
         # the following for loop populates fcEffArray 
-        for j in range(0,len(fcPercOutArray)-1):
+        for j in range(0, len(fcPercOutArray) - 1):
             low_index = np.argmax(inputKwOutArray>=fcKwOutArray[j])
             fcinterp_x_1 = inputKwOutArray[low_index-1]
             fcinterp_x_2 = inputKwOutArray[low_index]
@@ -174,7 +174,7 @@ def get_veh(vnum):
         # these things are all zero for BEV powertrains
         # not sure why `veh['fcEffArray']` is not being assigned.  
         # Maybe it's not used anywhere in this condition.  *** delete this comment before public release
-        veh['fcKwOutArray'] = np.array([0]*101)
+        veh['fcKwOutArray'] = np.array([0] * 101)
         veh['maxFcEffKw'] = 0
         veh['fcMaxOutkW'] = 0
         veh['minFcTimeOn'] = 30 # hardcoded
@@ -194,20 +194,20 @@ def get_veh(vnum):
 
         large_baseline_eff_adj = large_baseline_eff + modern_diff
 
-        mcKwAdjPerc = max(0.0,min((maxMotorKw - 7.5)/(75.0-7.5),1.0))
-        mcEffArray = np.array([0.0]*len(mcPwrOutPerc))
+        mcKwAdjPerc = max(0.0,min((maxMotorKw - 7.5)/(75.0 - 7.5),1.0))
+        mcEffArray = np.array([0.0] * len(mcPwrOutPerc))
 
         for k in range(0,len(mcPwrOutPerc)):
-            mcEffArray[k] = mcKwAdjPerc*large_baseline_eff_adj[k] + (1-mcKwAdjPerc)*(small_baseline_eff[k])
+            mcEffArray[k] = mcKwAdjPerc * large_baseline_eff_adj[k] + (1 - mcKwAdjPerc)*(small_baseline_eff[k])
 
         mcInputKwOutArray = mcPwrOutPerc * maxMotorKw
 
         mcPercOutArray = np.linspace(0,1,101)
         mcKwOutArray = np.linspace(0,1,101) * maxMotorKw
 
-        mcFullEffArray = np.array([0.0]*len(mcPercOutArray))
+        mcFullEffArray = np.array([0.0] * len(mcPercOutArray))
 
-        for m in range(1,len(mcPercOutArray)-1):
+        for m in range(1, len(mcPercOutArray) - 1):
             low_index = np.argmax(mcInputKwOutArray>=mcKwOutArray[m])
 
             fcinterp_x_1 = mcInputKwOutArray[low_index-1]
@@ -246,22 +246,22 @@ def get_veh(vnum):
         if veh['maxEssKwh']==0 or veh['maxEssKw']==0:
             ess_mass_kg = 0.0
         else:
-            ess_mass_kg = ((veh['maxEssKwh']*veh['essKgPerKwh'])+veh['essBaseKg'])*veh['compMassMultiplier']
+            ess_mass_kg = ((veh['maxEssKwh'] * veh['essKgPerKwh']) + veh['essBaseKg']) * veh['compMassMultiplier']
         if veh['maxMotorKw']==0:
             mc_mass_kg = 0.0
         else:
-            mc_mass_kg = (veh['mcPeBaseKg']+(veh['mcPeKgPerKw']*veh['maxMotorKw']))*veh['compMassMultiplier']
+            mc_mass_kg = (veh['mcPeBaseKg']+(veh['mcPeKgPerKw'] * veh['maxMotorKw'])) * veh['compMassMultiplier']
         if veh['maxFuelConvKw']==0:
             fc_mass_kg = 0.0
         else:
-            fc_mass_kg = (((1/veh['fuelConvKwPerKg'])*veh['maxFuelConvKw']+veh['fuelConvBaseKg']))*veh['compMassMultiplier']
+            fc_mass_kg = (((1 / veh['fuelConvKwPerKg']) * veh['maxFuelConvKw'] + veh['fuelConvBaseKg'])) * veh['compMassMultiplier']
         if veh['maxFuelStorKw']==0:
             fs_mass_kg = 0.0
         else:
-            fs_mass_kg = ((1/veh['fuelStorKwhPerKg'])*veh['fuelStorKwh'])*veh['compMassMultiplier']
-        veh['vehKg'] = veh['cargoKg'] + veh['gliderKg'] + veh['transKg']*veh['compMassMultiplier'] + ess_mass_kg + mc_mass_kg + fc_mass_kg + fs_mass_kg
+            fs_mass_kg = ((1 / veh['fuelStorKwhPerKg']) * veh['fuelStorKwh']) * veh['compMassMultiplier']
+        veh['vehKg'] = veh['cargoKg'] + veh['gliderKg'] + veh['transKg'] * veh['compMassMultiplier'] + ess_mass_kg + mc_mass_kg + fc_mass_kg + fs_mass_kg
     else:
-        veh['vehKg'] = np.copy( veh['vehOverrideKg'] )
+        veh['vehKg'] = np.copy(veh['vehOverrideKg'])
 
     # replace any spaces with underscores
     veh = dict(list(zip([key.replace(' ', '_') for key in veh.keys()], veh.values())))
@@ -275,16 +275,16 @@ def sim_drive( cyc , veh , initSoc=None):
         if initSoc>1.0 or initSoc<0.0:
             print('Must enter a valid initial SOC between 0.0 and 1.0')
             print('Running standard initial SOC controls')
-            initSoc=None
+            initSoc = None
    
-    if veh['vehPtType']==1: # Conventional
+    if veh['vehPtType'] == 1: # Conventional
 
         # If no EV / Hybrid components, no SOC considerations.
 
         initSoc = 0.0
         output = sim_drive_sub( cyc , veh , initSoc )
 
-    elif veh['vehPtType']==2 and initSoc==None:  # HEV 
+    elif veh['vehPtType'] == 2 and initSoc == None:  # HEV 
 
         #####################################
         ### Charge Balancing Vehicle SOC ###
@@ -293,26 +293,26 @@ def sim_drive( cyc , veh , initSoc=None):
         # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
         # Iterating until tolerance met or 30 attempts made.
 
-        initSoc = (veh['maxSoc']+veh['minSoc'])/2.0
+        initSoc = (veh['maxSoc'] + veh['minSoc']) / 2.0
         ess2fuelKwh = 1.0
         sim_count = 0
-        while ess2fuelKwh>veh['essToFuelOkError'] and sim_count<30:
+        while ess2fuelKwh > veh['essToFuelOkError'] and sim_count<30:
             sim_count += 1
-            output = sim_drive_sub( cyc , veh , initSoc )
+            output = sim_drive_sub(cyc , veh , initSoc )
             ess2fuelKwh = abs( output['ess2fuelKwh'] )
             initSoc = min(1.0,max(0.0,output['final_soc']))
-        np.copy( veh['maxSoc'] )
+        np.copy(veh['maxSoc'])
         output = sim_drive_sub( cyc , veh , initSoc )
 
     elif (veh['vehPtType']==3 and initSoc==None) or (veh['vehPtType']==4 and initSoc==None): # PHEV and BEV
 
         # If EV, initializing initial SOC to maximum SOC.
 
-        initSoc = np.copy( veh['maxSoc'] )
-        output = sim_drive_sub( cyc , veh , initSoc )
+        initSoc = np.copy(veh['maxSoc'])
+        output = sim_drive_sub(cyc , veh , initSoc)
         
     else:
-        output = sim_drive_sub( cyc , veh , initSoc )
+        output = sim_drive_sub(cyc , veh , initSoc)
         
 
     return output
@@ -334,123 +334,124 @@ def sim_drive_sub( cyc , veh , initSoc):
     mphPerMps = 2.2369
     kWhPerGGE = 33.7
     metersPerMile = 1609.00
-    maxTracMps2 = ((((veh['wheelCoefOfFric']*veh['driveAxleWeightFrac']*veh['vehKg']*gravityMPerSec2)/(1+((veh['vehCgM']*veh['wheelCoefOfFric'])/veh['wheelBaseM']))))/(veh['vehKg']*gravityMPerSec2))*gravityMPerSec2
-    maxRegenKwh = 0.5*veh['vehKg']*(27**2)/(3600*1000)
+    maxTracMps2 = ((((veh['wheelCoefOfFric'] * veh['driveAxleWeightFrac'] * veh['vehKg'] * gravityMPerSec2)/\
+        (1+((veh['vehCgM'] * veh['wheelCoefOfFric']) / veh['wheelBaseM']))))/(veh['vehKg'] * gravityMPerSec2)) * gravityMPerSec2
+    maxRegenKwh = 0.5 * veh['vehKg']*(27**2)/(3600 * 1000)
 
     #############################
     ### Initialize Variables  ###
     #############################
 
     ### Drive Cycle
-    cycSecs = np.copy( cyc['cycSecs'] )
-    cycMps = np.copy( cyc['cycMps'] )
-    cycGrade = np.copy( cyc['cycGrade'] )
-    cycRoadType = np.copy( cyc['cycRoadType'] )
+    cycSecs = np.copy(cyc['cycSecs'])
+    cycMps = np.copy(cyc['cycMps'])
+    cycGrade = np.copy(cyc['cycGrade'])
+    cycRoadType = np.copy(cyc['cycRoadType'])
     cycMph = [x * mphPerMps for x in cyc['cycMps']]
     secs = np.insert(np.diff(cycSecs),0,0)
 
     ### Component Limits -- calculated dynamically
-    curMaxFsKwOut = [0]*len(cycSecs)
-    fcTransLimKw = [0]*len(cycSecs)
-    fcFsLimKw = [0]*len(cycSecs)
-    fcMaxKwIn = [0]*len(cycSecs)
-    curMaxFcKwOut = [0]*len(cycSecs)
-    essCapLimDischgKw = [0]*len(cycSecs)
-    curMaxEssKwOut = [0]*len(cycSecs)
-    curMaxAvailElecKw = [0]*len(cycSecs)
-    essCapLimChgKw = [0]*len(cycSecs)
-    curMaxEssChgKw = [0]*len(cycSecs)
+    curMaxFsKwOut = [0] * len(cycSecs)
+    fcTransLimKw = [0] * len(cycSecs)
+    fcFsLimKw = [0] * len(cycSecs)
+    fcMaxKwIn = [0] * len(cycSecs)
+    curMaxFcKwOut = [0] * len(cycSecs)
+    essCapLimDischgKw = [0] * len(cycSecs)
+    curMaxEssKwOut = [0] * len(cycSecs)
+    curMaxAvailElecKw = [0] * len(cycSecs)
+    essCapLimChgKw = [0] * len(cycSecs)
+    curMaxEssChgKw = [0] * len(cycSecs)
     curMaxRoadwayChgKw = np.interp( cycRoadType, veh['MaxRoadwayChgKw_Roadway'], veh['MaxRoadwayChgKw'] )
-    curMaxElecKw = [0]*len(cycSecs)
-    mcElecInLimKw = [0]*len(cycSecs)
-    mcTransiLimKw = [0]*len(cycSecs)
-    curMaxMcKwOut = [0]*len(cycSecs)
-    essLimMcRegenPercKw = [0]*len(cycSecs)
-    essLimMcRegenKw = [0]*len(cycSecs)
-    curMaxMechMcKwIn = [0]*len(cycSecs)
-    curMaxTransKwOut = [0]*len(cycSecs)
+    curMaxElecKw = [0] * len(cycSecs)
+    mcElecInLimKw = [0] * len(cycSecs)
+    mcTransiLimKw = [0] * len(cycSecs)
+    curMaxMcKwOut = [0] * len(cycSecs)
+    essLimMcRegenPercKw = [0] * len(cycSecs)
+    essLimMcRegenKw = [0] * len(cycSecs)
+    curMaxMechMcKwIn = [0] * len(cycSecs)
+    curMaxTransKwOut = [0] * len(cycSecs)
 
     ### Drive Train
-    cycDragKw = [0]*len(cycSecs)
-    cycAccelKw = [0]*len(cycSecs)
-    cycAscentKw = [0]*len(cycSecs)
-    cycTracKwReq = [0]*len(cycSecs)
-    curMaxTracKw = [0]*len(cycSecs)
-    spareTracKw = [0]*len(cycSecs)
-    cycRrKw = [0]*len(cycSecs)
-    cycWheelRadPerSec = [0]*len(cycSecs)
-    cycTireInertiaKw = [0]*len(cycSecs)
-    cycWheelKwReq = [0]*len(cycSecs)
-    regenContrLimKwPerc = [0]*len(cycSecs)
-    cycRegenBrakeKw = [0]*len(cycSecs)
-    cycFricBrakeKw = [0]*len(cycSecs)
-    cycTransKwOutReq = [0]*len(cycSecs)
-    cycMet = [0]*len(cycSecs)
-    transKwOutAch = [0]*len(cycSecs)
-    transKwInAch = [0]*len(cycSecs)
-    curSocTarget = [0]*len(cycSecs)
-    minMcKw2HelpFc = [0]*len(cycSecs)
-    mcMechKwOutAch = [0]*len(cycSecs)
-    mcElecKwInAch = [0]*len(cycSecs)
-    auxInKw = [0]*len(cycSecs)
+    cycDragKw = [0] * len(cycSecs)
+    cycAccelKw = [0] * len(cycSecs)
+    cycAscentKw = [0] * len(cycSecs)
+    cycTracKwReq = [0] * len(cycSecs)
+    curMaxTracKw = [0] * len(cycSecs)
+    spareTracKw = [0] * len(cycSecs)
+    cycRrKw = [0] * len(cycSecs)
+    cycWheelRadPerSec = [0] * len(cycSecs)
+    cycTireInertiaKw = [0] * len(cycSecs)
+    cycWheelKwReq = [0] * len(cycSecs)
+    regenContrLimKwPerc = [0] * len(cycSecs)
+    cycRegenBrakeKw = [0] * len(cycSecs)
+    cycFricBrakeKw = [0] * len(cycSecs)
+    cycTransKwOutReq = [0] * len(cycSecs)
+    cycMet = [0] * len(cycSecs)
+    transKwOutAch = [0] * len(cycSecs)
+    transKwInAch = [0] * len(cycSecs)
+    curSocTarget = [0] * len(cycSecs)
+    minMcKw2HelpFc = [0] * len(cycSecs)
+    mcMechKwOutAch = [0] * len(cycSecs)
+    mcElecKwInAch = [0] * len(cycSecs)
+    auxInKw = [0] * len(cycSecs)
 
-    #roadwayMaxEssChg = [0]*len(cycSecs)  # *** CB is not sure why this is here
-    roadwayChgKwOutAch = [0]*len(cycSecs)
-    minEssKw2HelpFc = [0]*len(cycSecs)
-    essKwOutAch = [0]*len(cycSecs)
-    fcKwOutAch = [0]*len(cycSecs)
-    fcKwOutAch_pct = [0]*len(cycSecs)
-    fcKwInAch = [0]*len(cycSecs)
-    fsKwOutAch = [0]*len(cycSecs)
-    fsKwhOutAch = [0]*len(cycSecs)
-    essCurKwh = [0]*len(cycSecs)
-    soc = [0]*len(cycSecs)
+    #roadwayMaxEssChg = [0] * len(cycSecs)  # *** CB is not sure why this is here
+    roadwayChgKwOutAch = [0] * len(cycSecs)
+    minEssKw2HelpFc = [0] * len(cycSecs)
+    essKwOutAch = [0] * len(cycSecs)
+    fcKwOutAch = [0] * len(cycSecs)
+    fcKwOutAch_pct = [0] * len(cycSecs)
+    fcKwInAch = [0] * len(cycSecs)
+    fsKwOutAch = [0] * len(cycSecs)
+    fsKwhOutAch = [0] * len(cycSecs)
+    essCurKwh = [0] * len(cycSecs)
+    soc = [0] * len(cycSecs)
 
     # Vehicle Attributes, Control Variables
-    regenBufferSoc = [0]*len(cycSecs)
-    essRegenBufferDischgKw = [0]*len(cycSecs)
-    maxEssRegenBufferChgKw = [0]*len(cycSecs)
-    essAccelBufferChgKw = [0]*len(cycSecs)
-    accelBufferSoc = [0]*len(cycSecs)
-    maxEssAccelBufferDischgKw = [0]*len(cycSecs)
-    essAccelRegenDischgKw = [0]*len(cycSecs)
-    mcElectInKwForMaxFcEff = [0]*len(cycSecs)
-    electKwReq4AE = [0]*len(cycSecs)
-    canPowerAllElectrically = [0]*len(cycSecs)
-    desiredEssKwOutForAE = [0]*len(cycSecs)
-    essAEKwOut = [0]*len(cycSecs)
-    erAEKwOut = [0]*len(cycSecs)
-    essDesiredKw4FcEff = [0]*len(cycSecs)
-    essKwIfFcIsReq = [0]*len(cycSecs)
-    curMaxMcElecKwIn = [0]*len(cycSecs)
-    fcKwGapFrEff = [0]*len(cycSecs)
-    erKwIfFcIsReq = [0]*len(cycSecs)
-    mcElecKwInIfFcIsReq = [0]*len(cycSecs)
-    mcKwIfFcIsReq = [0]*len(cycSecs)
+    regenBufferSoc = [0] * len(cycSecs)
+    essRegenBufferDischgKw = [0] * len(cycSecs)
+    maxEssRegenBufferChgKw = [0] * len(cycSecs)
+    essAccelBufferChgKw = [0] * len(cycSecs)
+    accelBufferSoc = [0] * len(cycSecs)
+    maxEssAccelBufferDischgKw = [0] * len(cycSecs)
+    essAccelRegenDischgKw = [0] * len(cycSecs)
+    mcElectInKwForMaxFcEff = [0] * len(cycSecs)
+    electKwReq4AE = [0] * len(cycSecs)
+    canPowerAllElectrically = [0] * len(cycSecs)
+    desiredEssKwOutForAE = [0] * len(cycSecs)
+    essAEKwOut = [0] * len(cycSecs)
+    erAEKwOut = [0] * len(cycSecs)
+    essDesiredKw4FcEff = [0] * len(cycSecs)
+    essKwIfFcIsReq = [0] * len(cycSecs)
+    curMaxMcElecKwIn = [0] * len(cycSecs)
+    fcKwGapFrEff = [0] * len(cycSecs)
+    erKwIfFcIsReq = [0] * len(cycSecs)
+    mcElecKwInIfFcIsReq = [0] * len(cycSecs)
+    mcKwIfFcIsReq = [0] * len(cycSecs)
     fcForcedOn = np.full(len(cycSecs),False)
-    fcForcedState = [0]*len(cycSecs)
-    mcMechKw4ForcedFc = [0]*len(cycSecs)
-    fcTimeOn = [0]*len(cycSecs)
-    prevfcTimeOn = [0]*len(cycSecs)
+    fcForcedState = [0] * len(cycSecs)
+    mcMechKw4ForcedFc = [0] * len(cycSecs)
+    fcTimeOn = [0] * len(cycSecs)
+    prevfcTimeOn = [0] * len(cycSecs)
 
     ### Additional Variables
-    mpsAch = [0]*len(cycSecs)
-    mphAch = [0]*len(cycSecs)
-    distMeters = [0]*len(cycSecs)
-    distMiles = [0]*len(cycSecs)
-    highAccFcOnTag = [0]*len(cycSecs)
-    reachedBuff = [0]*len(cycSecs)
-    maxTracMps = [0]*len(cycSecs)
-    addKwh = [0]*len(cycSecs)
-    dodCycs = [0]*len(cycSecs)
-    essPercDeadArray = [0]*len(cycSecs)
-    dragKw = [0]*len(cycSecs)
-    essLossKw = [0]*len(cycSecs)
-    accelKw = [0]*len(cycSecs)
-    ascentKw = [0]*len(cycSecs)
-    rrKw = [0]*len(cycSecs)
-    motor_index_debug = [0]*len(cycSecs)
-    debug_flag = [0]*len(cycSecs)
+    mpsAch = [0] * len(cycSecs)
+    mphAch = [0] * len(cycSecs)
+    distMeters = [0] * len(cycSecs)
+    distMiles = [0] * len(cycSecs)
+    highAccFcOnTag = [0] * len(cycSecs)
+    reachedBuff = [0] * len(cycSecs)
+    maxTracMps = [0] * len(cycSecs)
+    addKwh = [0] * len(cycSecs)
+    dodCycs = [0] * len(cycSecs)
+    essPercDeadArray = [0] * len(cycSecs)
+    dragKw = [0] * len(cycSecs)
+    essLossKw = [0] * len(cycSecs)
+    accelKw = [0] * len(cycSecs)
+    ascentKw = [0] * len(cycSecs)
+    rrKw = [0] * len(cycSecs)
+    motor_index_debug = [0] * len(cycSecs)
+    debug_flag = [0] * len(cycSecs)
 
 
     ############################
@@ -460,7 +461,7 @@ def sim_drive_sub( cyc , veh , initSoc):
     ### Drive Train
     cycMet[0] = 1
     curSocTarget[0] = veh['maxSoc']
-    essCurKwh[0] = initSoc*veh['maxEssKwh']
+    essCurKwh[0] = initSoc * veh['maxEssKwh']
     soc[0] = initSoc
 
     ############################
@@ -475,28 +476,28 @@ def sim_drive_sub( cyc , veh , initSoc):
         # loads
         # *** 
         if veh['noElecAux']=='TRUE':
-            auxInKw[i] = veh['auxKw']/veh['altEff']
+            auxInKw[i] = veh['auxKw'] / veh['altEff']
         else:
             auxInKw[i] = veh['auxKw']
 
         # Is SOC below min threshold?
-        if soc[i-1]<(veh['minSoc']+veh['percHighAccBuf']):
+        if soc[i-1] < (veh['minSoc'] + veh['percHighAccBuf']):
             reachedBuff[i] = 0
         else:
             reachedBuff[i] = 1
 
         # Does the engine need to be on for low SOC or high acceleration
-        if soc[i-1]<veh['minSoc'] or (highAccFcOnTag[i-1]==1 and reachedBuff[i]==0):
+        if soc[i-1] < veh['minSoc'] or (highAccFcOnTag[i-1]==1 and reachedBuff[i]==0):
             highAccFcOnTag[i] = 1
         else:
             highAccFcOnTag[i] = 0
-        maxTracMps[i] = mpsAch[i-1]+(maxTracMps2*secs[i])
+        maxTracMps[i] = mpsAch[i-1] + (maxTracMps2 * secs[i])
 
         ### Component Limits
         # max fuel storage power output
-        curMaxFsKwOut[i] = min( veh['maxFuelStorKw'] , fsKwOutAch[i-1] + ((veh['maxFuelStorKw']/veh['fuelStorSecsToPeakPwr'])*(secs[i])))
+        curMaxFsKwOut[i] = min( veh['maxFuelStorKw'] , fsKwOutAch[i-1] + ((veh['maxFuelStorKw']/veh['fuelStorSecsToPeakPwr']) * (secs[i])))
         # maximum fuel storage power output rate of change
-        fcTransLimKw[i] = fcKwOutAch[i-1] + ((veh['maxFuelConvKw']/veh['fuelConvSecsToPeakPwr'])*(secs[i]))
+        fcTransLimKw[i] = fcKwOutAch[i-1] + ((veh['maxFuelConvKw'] / veh['fuelConvSecsToPeakPwr']) * (secs[i]))
 
         fcMaxKwIn[i] = min(curMaxFsKwOut[i], veh['maxFuelStorKw']) # *** this min seems redundant with line 518
         fcFsLimKw[i] = veh['fcMaxOutkW']
@@ -504,42 +505,42 @@ def sim_drive_sub( cyc , veh , initSoc):
 
         # Does ESS discharge need to be limited? *** I think veh['maxEssKw'] should also be in the following
         # boolean condition
-        if veh['maxEssKwh']==0 or soc[i-1]<veh['minSoc']:
+        if veh['maxEssKwh']==0 or soc[i-1] < veh['minSoc']:
             essCapLimDischgKw[i] = 0.0
 
         else:
-            essCapLimDischgKw[i] = (veh['maxEssKwh']*np.sqrt(veh['essRoundTripEff']))*3600.0*(soc[i-1]-veh['minSoc'])/(secs[i])
+            essCapLimDischgKw[i] = (veh['maxEssKwh'] * np.sqrt(veh['essRoundTripEff'])) * 3600.0 * (soc[i-1] - veh['minSoc']) / (secs[i])
         curMaxEssKwOut[i] = min(veh['maxEssKw'],essCapLimDischgKw[i])
 
         if  veh['maxEssKwh'] == 0 or veh['maxEssKw'] == 0:
             essCapLimChgKw[i] = 0
 
         else:
-            essCapLimChgKw[i] = max(((veh['maxSoc']-soc[i-1])*veh['maxEssKwh']*(1/np.sqrt(veh['essRoundTripEff'])))/((secs[i])*(1/3600.0)),0)
+            essCapLimChgKw[i] = max(((veh['maxSoc'] - soc[i-1]) * veh['maxEssKwh'] * (1 / np.sqrt(veh['essRoundTripEff']))) / ((secs[i]) * (1 / 3600.0)), 0)
 
         curMaxEssChgKw[i] = min(essCapLimChgKw[i],veh['maxEssKw'])
 
         # Current maximum electrical power that can go toward propulsion, not including motor limitations
         if veh['fcEffType']==4:
-            curMaxElecKw[i] = curMaxFcKwOut[i]+curMaxRoadwayChgKw[i]+curMaxEssKwOut[i]-auxInKw[i]
+            curMaxElecKw[i] = curMaxFcKwOut[i] + curMaxRoadwayChgKw[i] + curMaxEssKwOut[i] - auxInKw[i]
 
         else:
-            curMaxElecKw[i] = curMaxRoadwayChgKw[i]+curMaxEssKwOut[i]-auxInKw[i]
+            curMaxElecKw[i] = curMaxRoadwayChgKw[i] + curMaxEssKwOut[i] - auxInKw[i]
 
         # Current maximum electrical power that can go toward propulsion, including motor limitations
         curMaxAvailElecKw[i] = min(curMaxElecKw[i], veh['mcMaxElecInKw'])
 
-        if curMaxElecKw[i]>0:
+        if curMaxElecKw[i] > 0:
             # limit power going into e-machine controller to 
             if curMaxAvailElecKw[i] == max(veh['mcKwInArray']):
-                mcElecInLimKw[i] = min(veh['mcKwOutArray'][len(veh['mcKwOutArray'])-1],veh['maxMotorKw'])
+                mcElecInLimKw[i] = min(veh['mcKwOutArray'][len(veh['mcKwOutArray']) - 1],veh['maxMotorKw'])
             else:
-                mcElecInLimKw[i] = min(veh['mcKwOutArray'][np.argmax(veh['mcKwInArray']>min(max(veh['mcKwInArray'])-0.01,curMaxAvailElecKw[i]))-1],veh['maxMotorKw'])
+                mcElecInLimKw[i] = min(veh['mcKwOutArray'][np.argmax(veh['mcKwInArray'] > min(max(veh['mcKwInArray']) - 0.01, curMaxAvailElecKw[i])) - 1],veh['maxMotorKw'])
         else:
             mcElecInLimKw[i] = 0.0
         
         # Motor transient power limit
-        mcTransiLimKw[i] = abs(mcMechKwOutAch[i-1])+((veh['maxMotorKw']/veh['motorSecsToPeakPwr'])*(secs[i]))
+        mcTransiLimKw[i] = abs(mcMechKwOutAch[i-1]) + ((veh['maxMotorKw'] / veh['motorSecsToPeakPwr']) * (secs[i]))
         
         curMaxMcKwOut[i] = max(min(mcElecInLimKw[i],mcTransiLimKw[i],veh['maxMotorKw']),-veh['maxMotorKw'])
 
@@ -547,61 +548,65 @@ def sim_drive_sub( cyc , veh , initSoc):
             curMaxMcElecKwIn[i] = 0
         else:
             if curMaxMcKwOut[i] == veh['maxMotorKw']:
-                curMaxMcElecKwIn[i] = curMaxMcKwOut[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]
+                curMaxMcElecKwIn[i] = curMaxMcKwOut[i] / veh['mcFullEffArray'][len(veh['mcFullEffArray']) - 1]
             else:
-                curMaxMcElecKwIn[i] = curMaxMcKwOut[i]/veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,curMaxMcKwOut[i]))-1)]
+                curMaxMcElecKwIn[i] = curMaxMcKwOut[i] / veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray'] > min(veh['maxMotorKw'] - 0.01,curMaxMcKwOut[i])) - 1)]
 
         if veh['maxMotorKw']==0:
             essLimMcRegenPercKw[i] = 0.0
 
         else:
-            essLimMcRegenPercKw[i] = min((curMaxEssChgKw[i]+auxInKw[i])/veh['maxMotorKw'],1)
+            essLimMcRegenPercKw[i] = min((curMaxEssChgKw[i] + auxInKw[i]) / veh['maxMotorKw'],1)
         if curMaxEssChgKw[i]==0:
             essLimMcRegenKw[i] = 0.0
 
         else:
-            if veh['maxMotorKw'] == curMaxEssChgKw[i]-curMaxRoadwayChgKw[i]:
-                essLimMcRegenKw[i] = min(veh['maxMotorKw'],curMaxEssChgKw[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1])
+            if veh['maxMotorKw'] == curMaxEssChgKw[i] - curMaxRoadwayChgKw[i]:
+                essLimMcRegenKw[i] = min(veh['maxMotorKw'],curMaxEssChgKw[i] / veh['mcFullEffArray'][len(veh['mcFullEffArray']) - 1])
             else:
-                essLimMcRegenKw[i] = min(veh['maxMotorKw'],curMaxEssChgKw[i]/veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,curMaxEssChgKw[i]-curMaxRoadwayChgKw[i]))-1)])
+                essLimMcRegenKw[i] = min(veh['maxMotorKw'],curMaxEssChgKw[i] / veh['mcFullEffArray']\
+                    [max(1,np.argmax(veh['mcKwOutArray'] > min(veh['maxMotorKw'] - 0.01,curMaxEssChgKw[i] - curMaxRoadwayChgKw[i])) - 1)])
 
         curMaxMechMcKwIn[i] = min(essLimMcRegenKw[i],veh['maxMotorKw'])
-        curMaxTracKw[i] = (((veh['wheelCoefOfFric']*veh['driveAxleWeightFrac']*veh['vehKg']*gravityMPerSec2)/(1+((veh['vehCgM']*veh['wheelCoefOfFric'])/veh['wheelBaseM'])))/1000.0)*(maxTracMps[i])
+        curMaxTracKw[i] = (((veh['wheelCoefOfFric'] * veh['driveAxleWeightFrac'] * veh['vehKg'] * gravityMPerSec2)\
+            / (1 + ((veh['vehCgM'] * veh['wheelCoefOfFric']) / veh['wheelBaseM']))) / 1000.0) * (maxTracMps[i])
 
         if veh['fcEffType']==4:
 
             if veh['noElecSys']=='TRUE' or veh['noElecAux']=='TRUE' or highAccFcOnTag[i]==1:
-                curMaxTransKwOut[i] = min((curMaxMcKwOut[i]-auxInKw[i])*veh['transEff'],curMaxTracKw[i]/veh['transEff'])
+                curMaxTransKwOut[i] = min((curMaxMcKwOut[i] - auxInKw[i]) * veh['transEff'],curMaxTracKw[i] / veh['transEff'])
                 debug_flag[i] = 1
 
             else:
-                curMaxTransKwOut[i] = min((curMaxMcKwOut[i]-min(curMaxElecKw[i],0))*veh['transEff'],curMaxTracKw[i]/veh['transEff'])
+                curMaxTransKwOut[i] = min((curMaxMcKwOut[i] - min(curMaxElecKw[i], 0)) * veh['transEff'],curMaxTracKw[i] / veh['transEff'])
                 debug_flag[i] = 2
 
         else:
 
             if veh['noElecSys']=='TRUE' or veh['noElecAux']=='TRUE' or highAccFcOnTag[i]==1:
-                curMaxTransKwOut[i] = min((curMaxMcKwOut[i]+curMaxFcKwOut[i]-auxInKw[i])*veh['transEff'],curMaxTracKw[i]/veh['transEff'])
+                curMaxTransKwOut[i] = min((curMaxMcKwOut[i] + curMaxFcKwOut[i] - auxInKw[i]) * veh['transEff'],curMaxTracKw[i] / veh['transEff'])
                 debug_flag[i] = 3
 
             else:
-                curMaxTransKwOut[i] = min((curMaxMcKwOut[i]+curMaxFcKwOut[i]-min(curMaxElecKw[i],0))*veh['transEff'],curMaxTracKw[i]/veh['transEff'])
+                curMaxTransKwOut[i] = min((curMaxMcKwOut[i] + curMaxFcKwOut[i] - min(curMaxElecKw[i],0)) * veh['transEff'], 
+                    curMaxTracKw[i] / veh['transEff'])
                 debug_flag[i] = 4
 
         ### Cycle Power
-        cycDragKw[i] = 0.5*airDensityKgPerM3*veh['dragCoef']*veh['frontalAreaM2']*(((mpsAch[i-1]+cycMps[i])/2.0)**3)/1000.0
-        cycAccelKw[i] = (veh['vehKg']/(2.0*(secs[i])))*((cycMps[i]**2)-(mpsAch[i-1]**2))/1000.0
-        cycAscentKw[i] = gravityMPerSec2*np.sin(np.arctan(cycGrade[i]))*veh['vehKg']*((mpsAch[i-1]+cycMps[i])/2.0)/1000.0
+        cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh['dragCoef'] * veh['frontalAreaM2'] * (((mpsAch[i-1] + cycMps[i]) / 2.0)**3) / 1000.0
+        cycAccelKw[i] = (veh['vehKg'] / (2.0 * (secs[i]))) * ((cycMps[i]**2) - (mpsAch[i-1]**2)) / 1000.0
+        cycAscentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh['vehKg'] * ((mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
         cycTracKwReq[i] = cycDragKw[i] + cycAccelKw[i] + cycAscentKw[i]
-        spareTracKw[i] = curMaxTracKw[i]-cycTracKwReq[i]
-        cycRrKw[i] = gravityMPerSec2*veh['wheelRrCoef']*veh['vehKg']*((mpsAch[i-1]+cycMps[i])/2.0)/1000.0
-        cycWheelRadPerSec[i] = cycMps[i]/veh['wheelRadiusM']
-        cycTireInertiaKw[i] = (((0.5)*veh['wheelInertiaKgM2']*(veh['numWheels']*(cycWheelRadPerSec[i]**2.0))/secs[i])-((0.5)*veh['wheelInertiaKgM2']*(veh['numWheels']*((mpsAch[i-1]/veh['wheelRadiusM'])**2.0))/secs[i]))/1000.0
+        spareTracKw[i] = curMaxTracKw[i] - cycTracKwReq[i]
+        cycRrKw[i] = gravityMPerSec2 * veh['wheelRrCoef'] * veh['vehKg'] * ((mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
+        cycWheelRadPerSec[i] = cycMps[i] / veh['wheelRadiusM']
+        cycTireInertiaKw[i] = (((0.5) * veh['wheelInertiaKgM2'] * (veh['numWheels'] * (cycWheelRadPerSec[i]**2.0)) / secs[i]) - \
+            ((0.5) * veh['wheelInertiaKgM2'] * (veh['numWheels'] * ((mpsAch[i-1] / veh['wheelRadiusM'])**2.0)) / secs[i])) / 1000.0
 
         cycWheelKwReq[i] = cycTracKwReq[i] + cycRrKw[i] + cycTireInertiaKw[i]
-        regenContrLimKwPerc[i] = veh['maxRegen']/(1+veh['regenA']*np.exp(-veh['regenB']*((cycMph[i]+mpsAch[i-1]*mphPerMps)/2.0+1-0)))
-        cycRegenBrakeKw[i] = max(min(curMaxMechMcKwIn[i]*veh['transEff'],regenContrLimKwPerc[i]*-cycWheelKwReq[i]),0)
-        cycFricBrakeKw[i] = -min(cycRegenBrakeKw[i]+cycWheelKwReq[i],0)
+        regenContrLimKwPerc[i] = veh['maxRegen'] / (1 + veh['regenA'] * np.exp(-veh['regenB'] * ((cycMph[i] + mpsAch[i-1] * mphPerMps) / 2.0 + 1 - 0)))
+        cycRegenBrakeKw[i] = max(min(curMaxMechMcKwIn[i] * veh['transEff'],regenContrLimKwPerc[i]*-cycWheelKwReq[i]),0)
+        cycFricBrakeKw[i] = -min(cycRegenBrakeKw[i] + cycWheelKwReq[i],0)
         cycTransKwOutReq[i] = cycWheelKwReq[i] + cycFricBrakeKw[i]
 
         if cycTransKwOutReq[i]<=curMaxTransKwOut[i]:
@@ -622,38 +627,38 @@ def sim_drive_sub( cyc , veh , initSoc):
 
         #Cycle is not met
         else:
-            Drag3 = (1.0/16.0)*airDensityKgPerM3*veh['dragCoef']*veh['frontalAreaM2']
-            Accel2 = veh['vehKg']/(2.0*(secs[i]))
-            Drag2 = (3.0/16.0)*airDensityKgPerM3*veh['dragCoef']*veh['frontalAreaM2']*mpsAch[i-1]
-            Wheel2 = 0.5*veh['wheelInertiaKgM2']*veh['numWheels']/(secs[i]*(veh['wheelRadiusM']**2))
-            Drag1 = (3.0/16.0)*airDensityKgPerM3*veh['dragCoef']*veh['frontalAreaM2']*((mpsAch[i-1])**2)
-            Roll1 = (gravityMPerSec2*veh['wheelRrCoef']*veh['vehKg']/2.0)
-            Ascent1 = (gravityMPerSec2*np.sin(np.arctan(cycGrade[i]))*veh['vehKg']/2.0)
-            Accel0 = -(veh['vehKg']*((mpsAch[i-1])**2))/(2.0*(secs[i]))
-            Drag0 = (1.0/16.0)*airDensityKgPerM3*veh['dragCoef']*veh['frontalAreaM2']*((mpsAch[i-1])**3)
-            Roll0 = (gravityMPerSec2*veh['wheelRrCoef']*veh['vehKg']*mpsAch[i-1]/2.0)
-            Ascent0 = (gravityMPerSec2*np.sin(np.arctan(cycGrade[i]))*veh['vehKg']*mpsAch[i-1]/2.0)
-            Wheel0 = -((0.5*veh['wheelInertiaKgM2']*veh['numWheels']*(mpsAch[i-1]**2))/(secs[i]*(veh['wheelRadiusM']**2)))
+            Drag3 = (1.0 / 16.0) * airDensityKgPerM3 * veh['dragCoef'] * veh['frontalAreaM2']
+            Accel2 = veh['vehKg'] / (2.0 * (secs[i]))
+            Drag2 = (3.0 / 16.0) * airDensityKgPerM3 * veh['dragCoef'] * veh['frontalAreaM2'] * mpsAch[i-1]
+            Wheel2 = 0.5 * veh['wheelInertiaKgM2'] * veh['numWheels'] / (secs[i] * (veh['wheelRadiusM']**2))
+            Drag1 = (3.0 / 16.0) * airDensityKgPerM3 * veh['dragCoef'] * veh['frontalAreaM2'] * ((mpsAch[i-1])**2)
+            Roll1 = (gravityMPerSec2 * veh['wheelRrCoef'] * veh['vehKg'] / 2.0)
+            Ascent1 = (gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh['vehKg'] / 2.0)
+            Accel0 = -(veh['vehKg'] * ((mpsAch[i-1])**2)) / (2.0 * (secs[i]))
+            Drag0 = (1.0 / 16.0) * airDensityKgPerM3 * veh['dragCoef'] * veh['frontalAreaM2'] * ((mpsAch[i-1])**3)
+            Roll0 = (gravityMPerSec2 * veh['wheelRrCoef'] * veh['vehKg'] * mpsAch[i-1] / 2.0)
+            Ascent0 = (gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh['vehKg'] * mpsAch[i-1] / 2.0)
+            Wheel0 = -((0.5 * veh['wheelInertiaKgM2'] * veh['numWheels'] * (mpsAch[i-1]**2)) / (secs[i] * (veh['wheelRadiusM']**2)))
 
-            Total3 = Drag3/1e3
-            Total2 = (Accel2+Drag2+Wheel2)/1e3
-            Total1 = (Drag1+Roll1+Ascent1)/1e3
-            Total0 = (Accel0+Drag0+Roll0+Ascent0+Wheel0)/1e3 - curMaxTransKwOut[i]
+            Total3 = Drag3 / 1e3
+            Total2 = (Accel2 + Drag2 + Wheel2) / 1e3
+            Total1 = (Drag1 + Roll1 + Ascent1) / 1e3
+            Total0 = (Accel0 + Drag0 + Roll0 + Ascent0 + Wheel0) / 1e3 - curMaxTransKwOut[i]
 
             Total = [Total3,Total2,Total1,Total0]
             Total_roots = np.roots(Total)
             ind = np.argmin( abs(cycMps[i] - Total_roots) )
             mpsAch[i] = Total_roots[ind]
 
-        mphAch[i] = mpsAch[i]*mphPerMps
-        distMeters[i] = mpsAch[i]*secs[i]
-        distMiles[i] = distMeters[i]*(1.0/metersPerMile)
+        mphAch[i] = mpsAch[i] * mphPerMps
+        distMeters[i] = mpsAch[i] * secs[i]
+        distMiles[i] = distMeters[i] * (1.0 / metersPerMile)
 
         ### Drive Train
-        if transKwOutAch[i]>0:
-            transKwInAch[i] = transKwOutAch[i]/veh['transEff']
+        if transKwOutAch[i] > 0:
+            transKwInAch[i] = transKwOutAch[i] / veh['transEff']
         else:
-            transKwInAch[i] = transKwOutAch[i]*veh['transEff']
+            transKwInAch[i] = transKwOutAch[i] * veh['transEff']
 
         if cycMet[i]==1:
 
@@ -669,54 +674,59 @@ def sim_drive_sub( cyc , veh , initSoc):
            regenBufferSoc[i] = 0
 
         elif veh['chargingOn']:
-           regenBufferSoc[i] = max(veh['maxSoc'] - (maxRegenKwh/veh['maxEssKwh']), (veh['maxSoc']+veh['minSoc'])/2)
+           regenBufferSoc[i] = max(veh['maxSoc'] - (maxRegenKwh / veh['maxEssKwh']), (veh['maxSoc'] + veh['minSoc']) / 2)
 
         else:
-           regenBufferSoc[i] = max(((veh['maxEssKwh']*veh['maxSoc'])-(0.5*veh['vehKg']*(cycMps[i]**2)*(1.0/1000)*(1.0/3600)*veh['motorPeakEff']*veh['maxRegen']))/veh['maxEssKwh'],veh['minSoc'])
+           regenBufferSoc[i] = max(((veh['maxEssKwh'] * veh['maxSoc']) - (0.5 * veh['vehKg'] * (cycMps[i]**2) * (1.0 / 1000) \
+               * (1.0 / 3600) * veh['motorPeakEff'] * veh['maxRegen'])) / veh['maxEssKwh'],veh['minSoc'])
 
-        essRegenBufferDischgKw[i] = min(curMaxEssKwOut[i], max(0,(soc[i-1]-regenBufferSoc[i])*veh['maxEssKwh']*3600/secs[i]))
+        essRegenBufferDischgKw[i] = min(curMaxEssKwOut[i], max(0,(soc[i-1] - regenBufferSoc[i]) * veh['maxEssKwh'] * 3600 / secs[i]))
 
-        maxEssRegenBufferChgKw[i] = min(max(0,(regenBufferSoc[i]-soc[i-1])*veh['maxEssKwh']*3600.0/secs[i]),curMaxEssChgKw[i])
+        maxEssRegenBufferChgKw[i] = min(max(0,(regenBufferSoc[i] - soc[i-1]) * veh['maxEssKwh'] * 3600.0 / secs[i]),curMaxEssChgKw[i])
 
         if veh['noElecSys']=='TRUE':
            accelBufferSoc[i] = 0
 
         else:
-           accelBufferSoc[i] = min(max((((((((veh['maxAccelBufferMph']*(1/mphPerMps))**2))-((cycMps[i]**2)))/(((veh['maxAccelBufferMph']*(1/mphPerMps))**2)))*(min(veh['maxAccelBufferPercOfUseableSoc']*(veh['maxSoc']-veh['minSoc']),maxRegenKwh/veh['maxEssKwh'])*veh['maxEssKwh']))/veh['maxEssKwh'])+veh['minSoc'],veh['minSoc']), veh['maxSoc'])
+           accelBufferSoc[i] = min(max((((((((veh['maxAccelBufferMph'] * (1 / mphPerMps))**2)) - ((cycMps[i]**2))) / \
+               (((veh['maxAccelBufferMph'] * (1 / mphPerMps))**2))) * (min(veh['maxAccelBufferPercOfUseableSoc'] * \
+                   (veh['maxSoc'] - veh['minSoc']),maxRegenKwh / veh['maxEssKwh']) * veh['maxEssKwh'])) / veh['maxEssKwh']) + \
+                       veh['minSoc'],veh['minSoc']), veh['maxSoc'])
 
-        essAccelBufferChgKw[i] = max(0,(accelBufferSoc[i] - soc[i-1])*veh['maxEssKwh']*3600.0/secs[i])
-        maxEssAccelBufferDischgKw[i] = min(max(0, (soc[i-1]-accelBufferSoc[i])*veh['maxEssKwh']*3600/secs[i]),curMaxEssKwOut[i])
+        essAccelBufferChgKw[i] = max(0,(accelBufferSoc[i] - soc[i-1]) * veh['maxEssKwh'] * 3600.0 / secs[i])
+        maxEssAccelBufferDischgKw[i] = min(max(0, (soc[i-1] - accelBufferSoc[i]) * veh['maxEssKwh'] * 3600 / secs[i]),curMaxEssKwOut[i])
 
         if regenBufferSoc[i] < accelBufferSoc[i]:
-            essAccelRegenDischgKw[i] = max(min(((soc[i-1]-(regenBufferSoc[i]+accelBufferSoc[i])/2)*veh['maxEssKwh']*3600.0)/secs[i],curMaxEssKwOut[i]),-curMaxEssChgKw[i])
+            essAccelRegenDischgKw[i] = max(min(((soc[i-1] - (regenBufferSoc[i] + accelBufferSoc[i]) / 2) * veh['maxEssKwh'] * 3600.0) /\
+                 secs[i],curMaxEssKwOut[i]),-curMaxEssChgKw[i])
 
-        elif soc[i-1]>regenBufferSoc[i]:
+        elif soc[i-1] > regenBufferSoc[i]:
             essAccelRegenDischgKw[i] = max(min(essRegenBufferDischgKw[i],curMaxEssKwOut[i]),-curMaxEssChgKw[i])
 
-        elif soc[i-1]<accelBufferSoc[i]:
-            essAccelRegenDischgKw[i] = max(min(-1.0*essAccelBufferChgKw[i],curMaxEssKwOut[i]),-curMaxEssChgKw[i])
+        elif soc[i-1] < accelBufferSoc[i]:
+            essAccelRegenDischgKw[i] = max(min(-1.0 * essAccelBufferChgKw[i],curMaxEssKwOut[i]),-curMaxEssChgKw[i])
 
         else:
             essAccelRegenDischgKw[i] = max(min(0,curMaxEssKwOut[i]),-curMaxEssChgKw[i])
 
-        fcKwGapFrEff[i] = abs(transKwOutAch[i]-veh['maxFcEffKw'])
+        fcKwGapFrEff[i] = abs(transKwOutAch[i] - veh['maxFcEffKw'])
 
         if veh['noElecSys']=='TRUE':
             mcElectInKwForMaxFcEff[i] = 0
 
-        elif transKwOutAch[i]<veh['maxFcEffKw']:
+        elif transKwOutAch[i] < veh['maxFcEffKw']:
 
             if fcKwGapFrEff[i] == veh['maxMotorKw']:
-                mcElectInKwForMaxFcEff[i] = fcKwGapFrEff[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]*-1
+                mcElectInKwForMaxFcEff[i] = fcKwGapFrEff[i] / veh['mcFullEffArray'][len(veh['mcFullEffArray']) - 1]*-1
             else:
-                mcElectInKwForMaxFcEff[i] = fcKwGapFrEff[i]/veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,fcKwGapFrEff[i]))-1)]*-1
+                mcElectInKwForMaxFcEff[i] = fcKwGapFrEff[i] / veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray'] > min(veh['maxMotorKw'] - 0.01,fcKwGapFrEff[i])) - 1)]*-1
 
         else:
 
             if fcKwGapFrEff[i] == veh['maxMotorKw']:
-                mcElectInKwForMaxFcEff[i] = veh['mcKwInArray'][len(veh['mcKwInArray'])-1]
+                mcElectInKwForMaxFcEff[i] = veh['mcKwInArray'][len(veh['mcKwInArray']) - 1]
             else:
-                mcElectInKwForMaxFcEff[i] = veh['mcKwInArray'][np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,fcKwGapFrEff[i]))-1]
+                mcElectInKwForMaxFcEff[i] = veh['mcKwInArray'][np.argmax(veh['mcKwOutArray'] > min(veh['maxMotorKw'] - 0.01,fcKwGapFrEff[i])) - 1]
 
         if veh['noElecSys']=='TRUE':
             electKwReq4AE[i] = 0
@@ -724,9 +734,9 @@ def sim_drive_sub( cyc , veh , initSoc):
         elif transKwInAch[i] > 0:
             if transKwInAch[i] == veh['maxMotorKw']:
         
-                electKwReq4AE[i] = transKwInAch[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]+auxInKw[i]
+                electKwReq4AE[i] = transKwInAch[i] / veh['mcFullEffArray'][len(veh['mcFullEffArray']) - 1] + auxInKw[i]
             else:
-                electKwReq4AE[i] = transKwInAch[i]/veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,transKwInAch[i]))-1)]+auxInKw[i]
+                electKwReq4AE[i] = transKwInAch[i] / veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray'] > min(veh['maxMotorKw'] - 0.01,transKwInAch[i])) - 1)] + auxInKw[i]
 
         else:
            electKwReq4AE[i] = 0
@@ -734,40 +744,41 @@ def sim_drive_sub( cyc , veh , initSoc):
         prevfcTimeOn[i] = fcTimeOn[i-1]
 
         if veh['maxFuelConvKw']==0:
-            canPowerAllElectrically[i] = accelBufferSoc[i]<soc[i-1] and transKwInAch[i]<=curMaxMcKwOut[i] and (electKwReq4AE[i]<curMaxElecKw[i] or veh['maxFuelConvKw']==0)
+            canPowerAllElectrically[i] = accelBufferSoc[i] < soc[i-1] and transKwInAch[i]<=curMaxMcKwOut[i] and (electKwReq4AE[i] < curMaxElecKw[i] or veh['maxFuelConvKw']==0)
 
         else:
-            canPowerAllElectrically[i] = accelBufferSoc[i]<soc[i-1] and transKwInAch[i]<=curMaxMcKwOut[i] and (electKwReq4AE[i]<curMaxElecKw[i] or veh['maxFuelConvKw']==0) and (cycMph[i]-0.00001<=veh['mphFcOn'] or veh['chargingOn']) and electKwReq4AE[i]<=veh['kwDemandFcOn']
+            canPowerAllElectrically[i] = accelBufferSoc[i] < soc[i-1] and transKwInAch[i]<=curMaxMcKwOut[i] and (electKwReq4AE[i] < curMaxElecKw[i] \
+                or veh['maxFuelConvKw']==0) and (cycMph[i] - 0.00001<=veh['mphFcOn'] or veh['chargingOn']) and electKwReq4AE[i]<=veh['kwDemandFcOn']
 
         if canPowerAllElectrically[i]:
 
             if transKwInAch[i]<+auxInKw[i]:
-                desiredEssKwOutForAE[i] = auxInKw[i]+transKwInAch[i]
+                desiredEssKwOutForAE[i] = auxInKw[i] + transKwInAch[i]
 
-            elif regenBufferSoc[i]<accelBufferSoc[i]:
+            elif regenBufferSoc[i] < accelBufferSoc[i]:
                 desiredEssKwOutForAE[i] = essAccelRegenDischgKw[i]
 
-            elif soc[i-1]>regenBufferSoc[i]:
+            elif soc[i-1] > regenBufferSoc[i]:
                 desiredEssKwOutForAE[i] = essRegenBufferDischgKw[i]
 
-            elif soc[i-1]<accelBufferSoc[i]:
+            elif soc[i-1] < accelBufferSoc[i]:
                 desiredEssKwOutForAE[i] = -essAccelBufferChgKw[i]
 
             else:
-                desiredEssKwOutForAE[i] = transKwInAch[i]+auxInKw[i]-curMaxRoadwayChgKw[i]
+                desiredEssKwOutForAE[i] = transKwInAch[i] + auxInKw[i] - curMaxRoadwayChgKw[i]
 
         else:
             desiredEssKwOutForAE[i] = 0
 
         if canPowerAllElectrically[i]:
-            essAEKwOut[i] = max(-curMaxEssChgKw[i],-maxEssRegenBufferChgKw[i],min(0,curMaxRoadwayChgKw[i]-(transKwInAch[i]+auxInKw[i])),min(curMaxEssKwOut[i],desiredEssKwOutForAE[i]))
+            essAEKwOut[i] = max(-curMaxEssChgKw[i],-maxEssRegenBufferChgKw[i],min(0,curMaxRoadwayChgKw[i] - (transKwInAch[i] + auxInKw[i])),min(curMaxEssKwOut[i],desiredEssKwOutForAE[i]))
 
         else:
             essAEKwOut[i] = 0
 
-        erAEKwOut[i] = min(max(0,transKwInAch[i]+auxInKw[i]-essAEKwOut[i]),curMaxRoadwayChgKw[i])
+        erAEKwOut[i] = min(max(0,transKwInAch[i] + auxInKw[i] - essAEKwOut[i]),curMaxRoadwayChgKw[i])
 
-        if prevfcTimeOn[i]>0 and prevfcTimeOn[i]<veh['minFcTimeOn']-secs[i]:
+        if prevfcTimeOn[i] > 0 and prevfcTimeOn[i] < veh['minFcTimeOn'] - secs[i]:
             fcForcedOn[i] = True
         else:
             fcForcedOn[i] = False
@@ -776,7 +787,7 @@ def sim_drive_sub( cyc , veh , initSoc):
             fcForcedState[i] = 1
             mcMechKw4ForcedFc[i] = 0
 
-        elif transKwInAch[i]<0:
+        elif transKwInAch[i] < 0:
             fcForcedState[i] = 2
             mcMechKw4ForcedFc[i] = transKwInAch[i]
 
@@ -788,7 +799,7 @@ def sim_drive_sub( cyc , veh , initSoc):
             fcForcedState[i] = 4
             mcMechKw4ForcedFc[i] = transKwInAch[i] - veh['idleFcKw']
 
-        elif veh['maxFcEffKw']>transKwInAch[i]:
+        elif veh['maxFcEffKw'] > transKwInAch[i]:
             fcForcedState[i] = 5
             mcMechKw4ForcedFc[i] = 0
 
@@ -796,31 +807,36 @@ def sim_drive_sub( cyc , veh , initSoc):
             fcForcedState[i] = 6
             mcMechKw4ForcedFc[i] = transKwInAch[i] - veh['maxFcEffKw']
 
-        if (-mcElectInKwForMaxFcEff[i]-curMaxRoadwayChgKw[i])>0:
-            essDesiredKw4FcEff[i] = (-mcElectInKwForMaxFcEff[i]-curMaxRoadwayChgKw[i]) * veh['essDischgToFcMaxEffPerc']
+        if (-mcElectInKwForMaxFcEff[i] - curMaxRoadwayChgKw[i]) > 0:
+            essDesiredKw4FcEff[i] = (-mcElectInKwForMaxFcEff[i] - curMaxRoadwayChgKw[i]) * veh['essDischgToFcMaxEffPerc']
 
         else:
-            essDesiredKw4FcEff[i] = (-mcElectInKwForMaxFcEff[i]-curMaxRoadwayChgKw[i]) * veh['essChgToFcMaxEffPerc']
+            essDesiredKw4FcEff[i] = (-mcElectInKwForMaxFcEff[i] - curMaxRoadwayChgKw[i]) * veh['essChgToFcMaxEffPerc']
 
-        if accelBufferSoc[i]>regenBufferSoc[i]:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw']+auxInKw[i],curMaxMcElecKwIn[i]+auxInKw[i], max(-curMaxEssChgKw[i], essAccelRegenDischgKw[i]))
+        if accelBufferSoc[i] > regenBufferSoc[i]:
+            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw'] + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
+                max(-curMaxEssChgKw[i], essAccelRegenDischgKw[i]))
 
-        elif essRegenBufferDischgKw[i]>0:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw']+auxInKw[i],curMaxMcElecKwIn[i]+auxInKw[i], max(-curMaxEssChgKw[i], min(essAccelRegenDischgKw[i],mcElecInLimKw[i]+auxInKw[i], max(essRegenBufferDischgKw[i],essDesiredKw4FcEff[i]))))
+        elif essRegenBufferDischgKw[i] > 0:
+            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw'] + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
+                max(-curMaxEssChgKw[i], min(essAccelRegenDischgKw[i],mcElecInLimKw[i] + auxInKw[i], max(essRegenBufferDischgKw[i],essDesiredKw4FcEff[i]))))
 
-        elif essAccelBufferChgKw[i]>0:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw']+auxInKw[i],curMaxMcElecKwIn[i]+auxInKw[i], max(-curMaxEssChgKw[i], max(-1*maxEssRegenBufferChgKw[i], min(-essAccelBufferChgKw[i],essDesiredKw4FcEff[i]))))
+        elif essAccelBufferChgKw[i] > 0:
+            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw'] + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
+                max(-curMaxEssChgKw[i], max(-1 * maxEssRegenBufferChgKw[i], min(-essAccelBufferChgKw[i],essDesiredKw4FcEff[i]))))
 
 
-        elif essDesiredKw4FcEff[i]>0:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw']+auxInKw[i],curMaxMcElecKwIn[i]+auxInKw[i], max(-curMaxEssChgKw[i], min(essDesiredKw4FcEff[i],maxEssAccelBufferDischgKw[i])))
+        elif essDesiredKw4FcEff[i] > 0:
+            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw'] + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
+                max(-curMaxEssChgKw[i], min(essDesiredKw4FcEff[i],maxEssAccelBufferDischgKw[i])))
 
         else:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw']+auxInKw[i],curMaxMcElecKwIn[i]+auxInKw[i], max(-curMaxEssChgKw[i], max(essDesiredKw4FcEff[i],-maxEssRegenBufferChgKw[i])))
+            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh['mcMaxElecInKw'] + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
+                max(-curMaxEssChgKw[i], max(essDesiredKw4FcEff[i],-maxEssRegenBufferChgKw[i])))
 
-        erKwIfFcIsReq[i] = max(0,min(curMaxRoadwayChgKw[i],curMaxMechMcKwIn[i],essKwIfFcIsReq[i]-mcElecInLimKw[i]+auxInKw[i]))
+        erKwIfFcIsReq[i] = max(0,min(curMaxRoadwayChgKw[i],curMaxMechMcKwIn[i],essKwIfFcIsReq[i] - mcElecInLimKw[i] + auxInKw[i]))
 
-        mcElecKwInIfFcIsReq[i] = essKwIfFcIsReq[i]+erKwIfFcIsReq[i]-auxInKw[i]
+        mcElecKwInIfFcIsReq[i] = essKwIfFcIsReq[i] + erKwIfFcIsReq[i] - auxInKw[i]
 
         if veh['noElecSys']=='TRUE':
             mcKwIfFcIsReq[i] = 0
@@ -831,15 +847,15 @@ def sim_drive_sub( cyc , veh , initSoc):
         elif mcElecKwInIfFcIsReq[i] > 0:
 
             if mcElecKwInIfFcIsReq[i] == max(veh['mcKwInArray']):
-                 mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i]*veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]
+                 mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i] * veh['mcFullEffArray'][len(veh['mcFullEffArray']) - 1]
             else:
-                 mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i]*veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwInArray']>min(max(veh['mcKwInArray'])-0.01,mcElecKwInIfFcIsReq[i]))-1)]
+                 mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i] * veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwInArray'] > min(max(veh['mcKwInArray']) - 0.01,mcElecKwInIfFcIsReq[i])) - 1)]
 
         else:
             if mcElecKwInIfFcIsReq[i]*-1 == max(veh['mcKwInArray']):
-                mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]
+                mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i] / veh['mcFullEffArray'][len(veh['mcFullEffArray']) - 1]
             else:
-                mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i]/(veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwInArray']>min(max(veh['mcKwInArray'])-0.01,mcElecKwInIfFcIsReq[i]*-1))-1)])
+                mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i] / (veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwInArray'] > min(max(veh['mcKwInArray']) - 0.01,mcElecKwInIfFcIsReq[i]*-1)) - 1)])
 
         if veh['maxMotorKw']==0:
             mcMechKwOutAch[i] = 0
@@ -867,18 +883,18 @@ def sim_drive_sub( cyc , veh , initSoc):
             mcElecKwInAch[i] = 0.0
             motor_index_debug[i] = 0
 
-        elif mcMechKwOutAch[i]<0:
+        elif mcMechKwOutAch[i] < 0:
 
             if mcMechKwOutAch[i]*-1 == max(veh['mcKwInArray']):
-                mcElecKwInAch[i] = mcMechKwOutAch[i]*veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]
+                mcElecKwInAch[i] = mcMechKwOutAch[i] * veh['mcFullEffArray'][len(veh['mcFullEffArray']) - 1]
             else:
-                mcElecKwInAch[i] = mcMechKwOutAch[i]*veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwInArray']>min(max(veh['mcKwInArray'])-0.01,mcMechKwOutAch[i]*-1))-1)]
+                mcElecKwInAch[i] = mcMechKwOutAch[i] * veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwInArray'] > min(max(veh['mcKwInArray']) - 0.01,mcMechKwOutAch[i]*-1)) - 1)]
 
         else:
             if veh['maxMotorKw'] == mcMechKwOutAch[i]:
-                mcElecKwInAch[i] = mcMechKwOutAch[i]/veh['mcFullEffArray'][len(veh['mcFullEffArray'])-1]
+                mcElecKwInAch[i] = mcMechKwOutAch[i] / veh['mcFullEffArray'][len(veh['mcFullEffArray']) - 1]
             else:
-                mcElecKwInAch[i] = mcMechKwOutAch[i]/veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray']>min(veh['maxMotorKw']-0.01,mcMechKwOutAch[i]))-1)]
+                mcElecKwInAch[i] = mcMechKwOutAch[i] / veh['mcFullEffArray'][max(1,np.argmax(veh['mcKwOutArray'] > min(veh['maxMotorKw'] - 0.01,mcMechKwOutAch[i])) - 1)]
 
         if curMaxRoadwayChgKw[i] == 0:
             roadwayChgKwOutAch[i] = 0
@@ -900,28 +916,28 @@ def sim_drive_sub( cyc , veh , initSoc):
         elif veh['fcEffType']==4:
 
             if transKwOutAch[i]>=0:
-                essKwOutAch[i] = min(max(minEssKw2HelpFc[i],essDesiredKw4FcEff[i],essAccelRegenDischgKw[i]),curMaxEssKwOut[i],mcElecKwInAch[i]+auxInKw[i]-roadwayChgKwOutAch[i])
+                essKwOutAch[i] = min(max(minEssKw2HelpFc[i],essDesiredKw4FcEff[i],essAccelRegenDischgKw[i]),curMaxEssKwOut[i],mcElecKwInAch[i] + auxInKw[i] - roadwayChgKwOutAch[i])
 
             else:
-                essKwOutAch[i] = mcElecKwInAch[i]+auxInKw[i]-roadwayChgKwOutAch[i]
+                essKwOutAch[i] = mcElecKwInAch[i] + auxInKw[i] - roadwayChgKwOutAch[i]
 
         elif highAccFcOnTag[i]==1 or veh['noElecAux']=='TRUE':
-            essKwOutAch[i] = mcElecKwInAch[i]-roadwayChgKwOutAch[i]
+            essKwOutAch[i] = mcElecKwInAch[i] - roadwayChgKwOutAch[i]
 
         else:
-            essKwOutAch[i] = mcElecKwInAch[i]+auxInKw[i]-roadwayChgKwOutAch[i]
+            essKwOutAch[i] = mcElecKwInAch[i] + auxInKw[i] - roadwayChgKwOutAch[i]
 
         if veh['maxFuelConvKw']==0:
             fcKwOutAch[i] = 0
 
         elif veh['fcEffType']==4:
-            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, mcElecKwInAch[i]+auxInKw[i]-essKwOutAch[i]-roadwayChgKwOutAch[i]))
+            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, mcElecKwInAch[i] + auxInKw[i] - essKwOutAch[i] - roadwayChgKwOutAch[i]))
 
         elif veh['noElecSys']=='TRUE' or veh['noElecAux']=='TRUE' or highAccFcOnTag[i]==1:
-            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, transKwInAch[i]-mcMechKwOutAch[i]+auxInKw[i]))
+            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, transKwInAch[i] - mcMechKwOutAch[i] + auxInKw[i]))
 
         else:
-            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, transKwInAch[i]-mcMechKwOutAch[i]))
+            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, transKwInAch[i] - mcMechKwOutAch[i]))
 
         if fcKwOutAch[i]==0:
             fcKwInAch[i] = 0.0
@@ -936,29 +952,29 @@ def sim_drive_sub( cyc , veh , initSoc):
             fcKwInAch[i] = 0
         else:
             if fcKwOutAch[i] == veh['fcMaxOutkW']:
-                fcKwInAch[i] = fcKwOutAch[i]/veh['fcEffArray'][len(veh['fcEffArray'])-1]
+                fcKwInAch[i] = fcKwOutAch[i] / veh['fcEffArray'][len(veh['fcEffArray']) - 1]
             else:
-                fcKwInAch[i] = fcKwOutAch[i]/(veh['fcEffArray'][max(1,np.argmax(veh['fcKwOutArray']>min(fcKwOutAch[i],veh['fcMaxOutkW']-0.001))-1)])
+                fcKwInAch[i] = fcKwOutAch[i] / (veh['fcEffArray'][max(1,np.argmax(veh['fcKwOutArray'] > min(fcKwOutAch[i],veh['fcMaxOutkW'] - 0.001)) - 1)])
 
-        fsKwOutAch[i] = np.copy( fcKwInAch[i] )
+        fsKwOutAch[i] = np.copy(fcKwInAch[i])
 
-        fsKwhOutAch[i] = fsKwOutAch[i]*secs[i]*(1/3600.0)
+        fsKwhOutAch[i] = fsKwOutAch[i] * secs[i] * (1 / 3600.0)
 
 
         if veh['noElecSys']=='TRUE':
             essCurKwh[i] = 0
 
-        elif essKwOutAch[i]<0:
-            essCurKwh[i] = essCurKwh[i-1]-essKwOutAch[i]*(secs[i]/3600.0)*np.sqrt(veh['essRoundTripEff'])
+        elif essKwOutAch[i] < 0:
+            essCurKwh[i] = essCurKwh[i-1] - essKwOutAch[i] * (secs[i] / 3600.0) * np.sqrt(veh['essRoundTripEff'])
 
         else:
-            essCurKwh[i] = essCurKwh[i-1]-essKwOutAch[i]*(secs[i]/3600.0)*(1/np.sqrt(veh['essRoundTripEff']))
+            essCurKwh[i] = essCurKwh[i-1] - essKwOutAch[i] * (secs[i] / 3600.0) * (1 / np.sqrt(veh['essRoundTripEff']))
 
         if veh['maxEssKwh']==0:
             soc[i] = 0.0
 
         else:
-            soc[i] = essCurKwh[i]/veh['maxEssKwh']
+            soc[i] = essCurKwh[i] / veh['maxEssKwh']
 
         if canPowerAllElectrically[i]==True and fcForcedOn[i]==False and fcKwOutAch[i]==0:
             fcTimeOn[i] = 0
@@ -969,32 +985,32 @@ def sim_drive_sub( cyc , veh , initSoc):
 
         if veh['noElecSys']!='TRUE':
 
-            if essCurKwh[i]>essCurKwh[i-1]:
-                addKwh[i] = (essCurKwh[i]-essCurKwh[i-1]) + addKwh[i-1]
+            if essCurKwh[i] > essCurKwh[i-1]:
+                addKwh[i] = (essCurKwh[i] - essCurKwh[i-1]) + addKwh[i-1]
             else:
                 addKwh[i] = 0
 
             if addKwh[i]==0:
-                dodCycs[i] = addKwh[i-1]/veh['maxEssKwh']
+                dodCycs[i] = addKwh[i-1] / veh['maxEssKwh']
             else:
                 dodCycs[i] = 0
 
             if dodCycs[i]!=0:
-                essPercDeadArray[i] = np.power(veh['essLifeCoefA'],1.0/veh['essLifeCoefB']) / np.power(dodCycs[i],1.0/veh['essLifeCoefB'])
+                essPercDeadArray[i] = np.power(veh['essLifeCoefA'],1.0 / veh['essLifeCoefB']) / np.power(dodCycs[i],1.0 / veh['essLifeCoefB'])
             else:
                 essPercDeadArray[i] = 0
 
         ### Energy Audit Calculations
-        dragKw[i] = 0.5*airDensityKgPerM3*veh['dragCoef']*veh['frontalAreaM2']*(((mpsAch[i-1]+mpsAch[i])/2.0)**3)/1000.0
+        dragKw[i] = 0.5 * airDensityKgPerM3 * veh['dragCoef'] * veh['frontalAreaM2'] * (((mpsAch[i-1] + mpsAch[i]) / 2.0)**3) / 1000.0
         if veh['maxEssKw'] == 0 or veh['maxEssKwh']==0:
             essLossKw[i] = 0
-        elif essKwOutAch[i]<0:
-            essLossKw[i] = -essKwOutAch[i] - (-essKwOutAch[i]*np.sqrt(veh['essRoundTripEff']))
+        elif essKwOutAch[i] < 0:
+            essLossKw[i] = -essKwOutAch[i] - (-essKwOutAch[i] * np.sqrt(veh['essRoundTripEff']))
         else:
-            essLossKw[i] = essKwOutAch[i]*(1.0/np.sqrt(veh['essRoundTripEff']))-essKwOutAch[i]
-        accelKw[i] = (veh['vehKg']/(2.0*(secs[i])))*((mpsAch[i]**2)-(mpsAch[i-1]**2))/1000.0
-        ascentKw[i] = gravityMPerSec2*np.sin(np.arctan(cycGrade[i]))*veh['vehKg']*((mpsAch[i-1]+mpsAch[i])/2.0)/1000.0
-        rrKw[i] = gravityMPerSec2*veh['wheelRrCoef']*veh['vehKg']*((mpsAch[i-1]+mpsAch[i])/2.0)/1000.0
+            essLossKw[i] = essKwOutAch[i] * (1.0 / np.sqrt(veh['essRoundTripEff'])) - essKwOutAch[i]
+        accelKw[i] = (veh['vehKg'] / (2.0 * (secs[i]))) * ((mpsAch[i]**2) - (mpsAch[i-1]**2)) / 1000.0
+        ascentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh['vehKg'] * ((mpsAch[i-1] + mpsAch[i]) / 2.0) / 1000.0
+        rrKw[i] = gravityMPerSec2 * veh['wheelRrCoef'] * veh['vehKg'] * ((mpsAch[i-1] + mpsAch[i]) / 2.0) / 1000.0
 
     ############################################
     ### Calculate Results and Assign Outputs ###
@@ -1006,42 +1022,42 @@ def sim_drive_sub( cyc , veh , initSoc):
         output['mpgge'] = 0
 
     else:
-        output['mpgge'] = sum(distMiles)/(sum(fsKwhOutAch)*(1/kWhPerGGE))
+        output['mpgge'] = sum(distMiles) / (sum(fsKwhOutAch) * (1 / kWhPerGGE))
 
-    roadwayChgKj = sum(roadwayChgKwOutAch*secs)
-    essDischKj = -(soc[-1]-initSoc)*veh['maxEssKwh']*3600.0
-    output['battery_kWh_per_mi'] = (essDischKj/3600.0) / sum(distMiles)
-    output['electric_kWh_per_mi'] = ((roadwayChgKj+essDischKj)/3600.0) / sum(distMiles)
-    output['maxTraceMissMph'] = mphPerMps*max(abs(cycMps-mpsAch))
-    fuelKj = sum(np.asarray(fsKwOutAch)*np.asarray(secs))
-    roadwayChgKj = sum(np.asarray(roadwayChgKwOutAch)*np.asarray(secs))
-    essDischgKj = -(soc[-1]-initSoc)*veh['maxEssKwh']*3600.0
+    roadwayChgKj = sum(roadwayChgKwOutAch * secs)
+    essDischKj = -(soc[-1] - initSoc) * veh['maxEssKwh'] * 3600.0
+    output['battery_kWh_per_mi'] = (essDischKj / 3600.0) / sum(distMiles)
+    output['electric_kWh_per_mi'] = ((roadwayChgKj + essDischKj) / 3600.0) / sum(distMiles)
+    output['maxTraceMissMph'] = mphPerMps * max(abs(cycMps - mpsAch))
+    fuelKj = sum(np.asarray(fsKwOutAch) * np.asarray(secs))
+    roadwayChgKj = sum(np.asarray(roadwayChgKwOutAch) * np.asarray(secs))
+    essDischgKj = -(soc[-1] - initSoc) * veh['maxEssKwh'] * 3600.0
 
-    if (fuelKj+roadwayChgKj)==0:
+    if (fuelKj + roadwayChgKj)==0:
         output['ess2fuelKwh'] = 1.0
 
     else:
-        output['ess2fuelKwh'] = essDischgKj/(fuelKj+roadwayChgKj)
+        output['ess2fuelKwh'] = essDischgKj / (fuelKj + roadwayChgKj)
 
     output['initial_soc'] = soc[0]
     output['final_soc'] = soc[-1]
 
 
     if output['mpgge'] == 0:
-        Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi']/33.7
+        Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi'] / 33.7
 
     else:
-         Gallons_gas_equivalent_per_mile = 1/output['mpgge'] + output['electric_kWh_per_mi']/33.7
+         Gallons_gas_equivalent_per_mile = 1 / output['mpgge'] + output['electric_kWh_per_mi'] / 33.7
 
-    output['mpgge_elec'] = 1/Gallons_gas_equivalent_per_mile
+    output['mpgge_elec'] = 1 / Gallons_gas_equivalent_per_mile
     output['soc'] = np.asarray(soc)
     output['distance_mi'] = sum(distMiles)
-    duration_sec = cycSecs[-1]-cycSecs[0]
-    output['avg_speed_mph'] = sum(distMiles) / (duration_sec/3600.0)
+    duration_sec = cycSecs[-1] - cycSecs[0]
+    output['avg_speed_mph'] = sum(distMiles) / (duration_sec / 3600.0)
     accel = np.diff(mphAch) / np.diff(cycSecs)
-    output['avg_accel_mphps'] = np.mean(accel[accel>0])
+    output['avg_accel_mphps'] = np.mean(accel[accel > 0])
 
-    if max(mphAch)>60:
+    if max(mphAch) > 60:
         output['ZeroToSixtyTime_secs'] = np.interp(60,mphAch,cycSecs)
 
     else:
