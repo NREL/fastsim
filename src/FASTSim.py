@@ -88,7 +88,7 @@ def get_veh(vnum):
                 elif vd[vnum][i].find('TRUE') != -1 or vd[vnum][i].find('True') != -1 or vd[vnum][i].find('true') != -1:
                     vd[vnum][i]=1
                 elif vd[vnum][i].find('FALSE') != -1 or vd[vnum][i].find('False') != -1 or vd[vnum][i].find('false') != -1:
-                    vd[vnum][i]=1
+                    vd[vnum][i]=0
                 else:
                     try:
                         vd[vnum][i]=float(vd[vnum][i])
