@@ -64,6 +64,7 @@ def get_veh(vnum):
     """Load vehicle attributes and assign to dict 'veh'."""
  
     vehdf = pd.read_csv('..//docs//FASTSim_py_veh_db.csv')
+    vehdf.set_index('Selection', inplace=True, drop=False)
 
     ### selects specified vnum from vehdf
     veh = dict()
@@ -242,7 +243,8 @@ def get_veh(vnum):
     veh['regenB'] = 0.99 # hardcoded
 
     ### Calculate total vehicle mass
-    if not(veh['vehOverrideKg']):
+    # sum up component masses if positive real number is not specified for vehOverrideKg
+    if not(veh['vehOverrideKg'] > 0):
         if veh['maxEssKwh'] == 0 or veh['maxEssKw'] == 0:
             ess_mass_kg = 0.0
         else:
@@ -260,11 +262,14 @@ def get_veh(vnum):
         else:
             fs_mass_kg = ((1 / veh['fuelStorKwhPerKg']) * veh['fuelStorKwh']) * veh['compMassMultiplier']
         veh['vehKg'] = veh['cargoKg'] + veh['gliderKg'] + veh['transKg'] * veh['compMassMultiplier'] + ess_mass_kg + mc_mass_kg + fc_mass_kg + fs_mass_kg
+    # if positive real number is specified for vehOverrideKg, use that
     else:
         veh['vehKg'] = np.copy(veh['vehOverrideKg'])
 
     # replace any spaces with underscores
     veh = dict(list(zip([key.replace(' ', '_') for key in veh.keys()], veh.values())))
+
+    # convert veh dict to namedtuple 
     Veh = namedtuple('Veh', list(veh.keys()))
     veh = Veh(**veh)
     return veh
