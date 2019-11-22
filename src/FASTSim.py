@@ -352,127 +352,70 @@ def sim_drive_sub(cyc , veh , initSoc):
     cycGrade = np.copy(cyc['cycGrade'])
     cycRoadType = np.copy(cyc['cycRoadType'])
     cycMph = [x * mphPerMps for x in cyc['cycMps']]
-    secs = np.insert(np.diff(cycSecs),0,0)
+    secs = np.insert(np.diff(cycSecs), 0, 0)
 
-    ### Component Limits -- calculated dynamically
-    curMaxFsKwOut = [0] * len(cycSecs)
-    fcTransLimKw = [0] * len(cycSecs)
-    fcFsLimKw = [0] * len(cycSecs)
-    fcMaxKwIn = [0] * len(cycSecs)
-    curMaxFcKwOut = [0] * len(cycSecs)
-    essCapLimDischgKw = [0] * len(cycSecs)
-    curMaxEssKwOut = [0] * len(cycSecs)
-    curMaxAvailElecKw = [0] * len(cycSecs)
-    essCapLimChgKw = [0] * len(cycSecs)
-    curMaxEssChgKw = [0] * len(cycSecs)
-    curMaxRoadwayChgKw = np.interp( cycRoadType, veh.MaxRoadwayChgKw_Roadway, veh.MaxRoadwayChgKw )
-    curMaxElecKw = [0] * len(cycSecs)
-    mcElecInLimKw = [0] * len(cycSecs)
-    mcTransiLimKw = [0] * len(cycSecs)
-    curMaxMcKwOut = [0] * len(cycSecs)
-    essLimMcRegenPercKw = [0] * len(cycSecs)
-    essLimMcRegenKw = [0] * len(cycSecs)
-    curMaxMechMcKwIn = [0] * len(cycSecs)
-    curMaxTransKwOut = [0] * len(cycSecs)
+    def get_time_df():
+        """Initializes arrays of time dependent variables as pandas dataframe columns.  
+        Returns Pandas DataFrame called dft"""
+    
+        # Component Limits -- calculated dynamically"
+        comp_lim_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 
+        'essCapLimDischgKw', 'curMaxEssKwOut', 'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 
+        'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 'essLimMcRegenPercKw', 
+        'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut']
 
-    ### Drive Train
-    cycDragKw = [0] * len(cycSecs)
-    cycAccelKw = [0] * len(cycSecs)
-    cycAscentKw = [0] * len(cycSecs)
-    cycTracKwReq = [0] * len(cycSecs)
-    curMaxTracKw = [0] * len(cycSecs)
-    spareTracKw = [0] * len(cycSecs)
-    cycRrKw = [0] * len(cycSecs)
-    cycWheelRadPerSec = [0] * len(cycSecs)
-    cycTireInertiaKw = [0] * len(cycSecs)
-    cycWheelKwReq = [0] * len(cycSecs)
-    regenContrLimKwPerc = [0] * len(cycSecs)
-    cycRegenBrakeKw = [0] * len(cycSecs)
-    cycFricBrakeKw = [0] * len(cycSecs)
-    cycTransKwOutReq = [0] * len(cycSecs)
-    cycMet = [0] * len(cycSecs)
-    transKwOutAch = [0] * len(cycSecs)
-    transKwInAch = [0] * len(cycSecs)
-    curSocTarget = [0] * len(cycSecs)
-    minMcKw2HelpFc = [0] * len(cycSecs)
-    mcMechKwOutAch = [0] * len(cycSecs)
-    mcElecKwInAch = [0] * len(cycSecs)
-    auxInKw = [0] * len(cycSecs)
+        ### Drive Train
+        drivetrain_list = ['cycDragKw', 'cycAccelKw', 'cycAscentKw', 'cycTracKwReq', 'curMaxTracKw', 
+        'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
+        'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 
+        'transKwOutAch', 'transKwInAch', 'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 
+        'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 'essKwOutAch', 'fcKwOutAch', 
+        'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc']
 
-    #roadwayMaxEssChg = [0] * len(cycSecs)  # *** CB is not sure why this is here
-    roadwayChgKwOutAch = [0] * len(cycSecs)
-    minEssKw2HelpFc = [0] * len(cycSecs)
-    essKwOutAch = [0] * len(cycSecs)
-    fcKwOutAch = [0] * len(cycSecs)
-    fcKwOutAch_pct = [0] * len(cycSecs)
-    fcKwInAch = [0] * len(cycSecs)
-    fsKwOutAch = [0] * len(cycSecs)
-    fsKwhOutAch = [0] * len(cycSecs)
-    essCurKwh = [0] * len(cycSecs)
-    soc = [0] * len(cycSecs)
+        #roadwayMaxEssChg  # *** CB is not sure why this is here
+        
+        # Vehicle Attributes, Control Variables
+        control_list = ['regenBufferSoc' , 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 
+        'essAccelBufferChgKw', 'accelBufferSoc', 'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 
+        'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 'desiredEssKwOutForAE', 
+        'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 
+        'fcKwGapFrEff', 'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'fcForcedOn', 
+        'fcForcedState', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn']
 
-    # Vehicle Attributes, Control Variables
-    regenBufferSoc = [0] * len(cycSecs)
-    essRegenBufferDischgKw = [0] * len(cycSecs)
-    maxEssRegenBufferChgKw = [0] * len(cycSecs)
-    essAccelBufferChgKw = [0] * len(cycSecs)
-    accelBufferSoc = [0] * len(cycSecs)
-    maxEssAccelBufferDischgKw = [0] * len(cycSecs)
-    essAccelRegenDischgKw = [0] * len(cycSecs)
-    mcElectInKwForMaxFcEff = [0] * len(cycSecs)
-    electKwReq4AE = [0] * len(cycSecs)
-    canPowerAllElectrically = [0] * len(cycSecs)
-    desiredEssKwOutForAE = [0] * len(cycSecs)
-    essAEKwOut = [0] * len(cycSecs)
-    erAEKwOut = [0] * len(cycSecs)
-    essDesiredKw4FcEff = [0] * len(cycSecs)
-    essKwIfFcIsReq = [0] * len(cycSecs)
-    curMaxMcElecKwIn = [0] * len(cycSecs)
-    fcKwGapFrEff = [0] * len(cycSecs)
-    erKwIfFcIsReq = [0] * len(cycSecs)
-    mcElecKwInIfFcIsReq = [0] * len(cycSecs)
-    mcKwIfFcIsReq = [0] * len(cycSecs)
-    fcForcedOn = np.full(len(cycSecs),False)
-    fcForcedState = [0] * len(cycSecs)
-    mcMechKw4ForcedFc = [0] * len(cycSecs)
-    fcTimeOn = [0] * len(cycSecs)
-    prevfcTimeOn = [0] * len(cycSecs)
+        ### Additional Variables
+        misc_list = ['mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff', 
+        'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw', 
+        'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag']
 
-    ### Additional Variables
-    mpsAch = [0] * len(cycSecs)
-    mphAch = [0] * len(cycSecs)
-    distMeters = [0] * len(cycSecs)
-    distMiles = [0] * len(cycSecs)
-    highAccFcOnTag = [0] * len(cycSecs)
-    reachedBuff = [0] * len(cycSecs)
-    maxTracMps = [0] * len(cycSecs)
-    addKwh = [0] * len(cycSecs)
-    dodCycs = [0] * len(cycSecs)
-    essPercDeadArray = [0] * len(cycSecs)
-    dragKw = [0] * len(cycSecs)
-    essLossKw = [0] * len(cycSecs)
-    accelKw = [0] * len(cycSecs)
-    ascentKw = [0] * len(cycSecs)
-    rrKw = [0] * len(cycSecs)
-    motor_index_debug = [0] * len(cycSecs)
-    debug_flag = [0] * len(cycSecs)
+        # create and initialize time array dataframe
+        columns = ['cycSecs'] + comp_lim_list + \
+            drivetrain_list + control_list + misc_list
+        dft = pd.DataFrame(
+            np.zeros((len(cycSecs), len(columns))), columns=columns)
+        dft['cycSecs'] = cycSecs
+        dft.set_index('cycSecs', inplace=True, drop=False)
+        dft['fcForcedOn'] = False
+        dft['curMaxRoadwayChgKw'] = np.interp(
+            cycRoadType, veh.MaxRoadwayChgKw_Roadway, veh.MaxRoadwayChgKw)  
+            # *** this is just zeros, and I need to verify that it was zeros before and also 
+            # verify that this is the correct behavior.  CB
 
+        ###  Assign First Value  ###
+        ### Drive Train
+        dft.loc[0, 'cycMet'] = 1
+        dft.loc[0, 'curSocTarget'] = veh.maxSoc
+        dft.loc[0, 'essCurKwh'] = initSoc * veh.maxEssKwh
+        dft.loc[0, 'soc'] = initSoc
 
-    ############################
-    ###  Assign First Value  ###
-    ############################
+        return dft
 
-    ### Drive Train
-    cycMet[0] = 1
-    curSocTarget[0] = veh.maxSoc
-    essCurKwh[0] = initSoc * veh.maxEssKwh
-    soc[0] = initSoc
+    dft = get_time_df()
 
     ############################
     ###   Loop Through Time  ###
     ############################
 
-    for i in range(1,len(cycSecs)):
+    for i in range(1, len(cycSecs)):
 
         ### Misc calcs
         # If noElecAux, then the HV electrical system is not used to power aux loads 
@@ -480,542 +423,547 @@ def sim_drive_sub(cyc , veh , initSoc):
         # loads
         # *** 
         if veh.noElecAux == 'TRUE':
-            auxInKw[i] = veh.auxKw / veh.altEff
+            dft.loc[i, 'auxInKw'] = veh.auxKw / veh.altEff
         else:
-            auxInKw[i] = veh.auxKw
+            dft.loc[i, 'auxInKw'] = veh.auxKw
 
         # Is SOC below min threshold?
-        if soc[i-1] < (veh.minSoc + veh.percHighAccBuf):
-            reachedBuff[i] = 0
+        if dft.loc[i-1, 'soc'] < (veh.minSoc + veh.percHighAccBuf):
+            dft.loc[i, 'reachedBuff'] = 0
         else:
-            reachedBuff[i] = 1
+            dft.loc[i, 'reachedBuff'] = 1
 
         # Does the engine need to be on for low SOC or high acceleration
-        if soc[i-1] < veh.minSoc or (highAccFcOnTag[i-1] == 1 and reachedBuff[i] == 0):
-            highAccFcOnTag[i] = 1
+        if dft.loc[i-1, 'soc'] < veh.minSoc or (dft.loc[i-1, 'highAccFcOnTag'] == 1 and dft.loc[i, 'reachedBuff'] == 0):
+            dft.loc[i, 'highAccFcOnTag'] = 1
         else:
-            highAccFcOnTag[i] = 0
-        maxTracMps[i] = mpsAch[i-1] + (maxTracMps2 * secs[i])
+            dft.loc[i, 'highAccFcOnTag'] = 0
+        dft.loc[i, 'maxTracMps'] = dft.loc[i-1, 'mpsAch'] + (maxTracMps2 * secs[i])
 
         ### Component Limits
         # max fuel storage power output
-        curMaxFsKwOut[i] = min( veh.maxFuelStorKw , fsKwOutAch[i-1] + ((veh.maxFuelStorKw/veh.fuelStorSecsToPeakPwr) * (secs[i])))
+        dft.loc[i, 'curMaxFsKwOut'] = min( veh.maxFuelStorKw , dft.loc[i-1, 'fsKwOutAch'] + ((veh.maxFuelStorKw/veh.fuelStorSecsToPeakPwr) * (secs[i])))
         # maximum fuel storage power output rate of change
-        fcTransLimKw[i] = fcKwOutAch[i-1] + ((veh.maxFuelConvKw / veh.fuelConvSecsToPeakPwr) * (secs[i]))
+        dft.loc[i, 'fcTransLimKw'] = dft.loc[i-1, 'fcKwOutAch'] + ((veh.maxFuelConvKw / veh.fuelConvSecsToPeakPwr) * (secs[i]))
 
-        fcMaxKwIn[i] = min(curMaxFsKwOut[i], veh.maxFuelStorKw) # *** this min seems redundant with line 518
-        fcFsLimKw[i] = veh.fcMaxOutkW
-        curMaxFcKwOut[i] = min(veh.maxFuelConvKw,fcFsLimKw[i],fcTransLimKw[i])
+        dft.loc[i, 'fcMaxKwIn'] = min(dft.loc[i, 'curMaxFsKwOut'], veh.maxFuelStorKw) # *** this min seems redundant with line 518
+        dft.loc[i, 'fcFsLimKw'] = veh.fcMaxOutkW
+        dft.loc[i, 'curMaxFcKwOut'] = min(veh.maxFuelConvKw,dft.loc[i, 'fcFsLimKw'],dft.loc[i, 'fcTransLimKw'])
 
         # Does ESS discharge need to be limited? *** I think veh.maxEssKw should also be in the following
         # boolean condition
-        if veh.maxEssKwh == 0 or soc[i-1] < veh.minSoc:
-            essCapLimDischgKw[i] = 0.0
+        if veh.maxEssKwh == 0 or dft.loc[i-1, 'soc'] < veh.minSoc:
+            dft.loc[i, 'essCapLimDischgKw'] = 0.0
 
         else:
-            essCapLimDischgKw[i] = (veh.maxEssKwh * np.sqrt(veh.essRoundTripEff)) * 3600.0 * (soc[i-1] - veh.minSoc) / (secs[i])
-        curMaxEssKwOut[i] = min(veh.maxEssKw,essCapLimDischgKw[i])
+            dft.loc[i, 'essCapLimDischgKw'] = (veh.maxEssKwh * np.sqrt(veh.essRoundTripEff)) * 3600.0 * (dft.loc[i-1, 'soc'] - veh.minSoc) / (secs[i])
+        dft.loc[i, 'curMaxEssKwOut'] = min(veh.maxEssKw,dft.loc[i, 'essCapLimDischgKw'])
 
         if  veh.maxEssKwh == 0 or veh.maxEssKw == 0:
-            essCapLimChgKw[i] = 0
+            dft.loc[i, 'essCapLimChgKw'] = 0
 
         else:
-            essCapLimChgKw[i] = max(((veh.maxSoc - soc[i-1]) * veh.maxEssKwh * (1 / np.sqrt(veh.essRoundTripEff))) / ((secs[i]) * (1 / 3600.0)), 0)
+            dft.loc[i, 'essCapLimChgKw'] = max(((veh.maxSoc - dft.loc[i-1, 'soc']) * veh.maxEssKwh * (1 / 
+            np.sqrt(veh.essRoundTripEff))) / ((secs[i]) * (1 / 3600.0)), 0)
 
-        curMaxEssChgKw[i] = min(essCapLimChgKw[i],veh.maxEssKw)
+        dft.loc[i, 'curMaxEssChgKw'] = min(dft.loc[i, 'essCapLimChgKw'],veh.maxEssKw)
 
         # Current maximum electrical power that can go toward propulsion, not including motor limitations
         if veh.fcEffType == 4:
-            curMaxElecKw[i] = curMaxFcKwOut[i] + curMaxRoadwayChgKw[i] + curMaxEssKwOut[i] - auxInKw[i]
+            dft.loc[i, 'curMaxElecKw'] = dft.loc[i, 'curMaxFcKwOut'] + dft.loc[i, 'curMaxRoadwayChgKw'] + \
+                dft.loc[i, 'curMaxEssKwOut'] - dft.loc[i, 'auxInKw']
 
         else:
-            curMaxElecKw[i] = curMaxRoadwayChgKw[i] + curMaxEssKwOut[i] - auxInKw[i]
+            dft.loc[i, 'curMaxElecKw'] = dft.loc[i, 'curMaxRoadwayChgKw'] + dft.loc[i, 'curMaxEssKwOut'] - dft.loc[i, 'auxInKw']
 
         # Current maximum electrical power that can go toward propulsion, including motor limitations
-        curMaxAvailElecKw[i] = min(curMaxElecKw[i], veh.mcMaxElecInKw)
+        dft.loc[i, 'curMaxAvailElecKw'] = min(dft.loc[i, 'curMaxElecKw'], veh.mcMaxElecInKw)
 
-        if curMaxElecKw[i] > 0:
+        if dft.loc[i, 'curMaxElecKw'] > 0:
             # limit power going into e-machine controller to 
-            if curMaxAvailElecKw[i] == max(veh.mcKwInArray):
-                mcElecInLimKw[i] = min(veh.mcKwOutArray[len(veh.mcKwOutArray) - 1],veh.maxMotorKw)
+            if dft.loc[i, 'curMaxAvailElecKw'] == max(veh.mcKwInArray):
+                dft.loc[i, 'mcElecInLimKw'] = min(veh.mcKwOutArray[len(veh.mcKwOutArray) - 1],veh.maxMotorKw)
             else:
-                mcElecInLimKw[i] = min(veh.mcKwOutArray[np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01, curMaxAvailElecKw[i])) - 1],veh.maxMotorKw)
+                dft.loc[i, 'mcElecInLimKw'] = min(veh.mcKwOutArray[np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 
+                0.01, dft.loc[i, 'curMaxAvailElecKw'])) - 1],veh.maxMotorKw)
         else:
-            mcElecInLimKw[i] = 0.0
+            dft.loc[i, 'mcElecInLimKw'] = 0.0
         
         # Motor transient power limit
-        mcTransiLimKw[i] = abs(mcMechKwOutAch[i-1]) + ((veh.maxMotorKw / veh.motorSecsToPeakPwr) * (secs[i]))
+        dft.loc[i, 'mcTransiLimKw'] = abs(dft.loc[i-1, 'mcMechKwOutAch']) + ((veh.maxMotorKw / veh.motorSecsToPeakPwr) * (secs[i]))
         
-        curMaxMcKwOut[i] = max(min(mcElecInLimKw[i],mcTransiLimKw[i],veh.maxMotorKw),-veh.maxMotorKw)
+        dft.loc[i, 'curMaxMcKwOut'] = max(min(dft.loc[i, 'mcElecInLimKw'],dft.loc[i, 'mcTransiLimKw'],veh.maxMotorKw),-veh.maxMotorKw)
 
-        if curMaxMcKwOut[i] == 0:
-            curMaxMcElecKwIn[i] = 0
+        if dft.loc[i, 'curMaxMcKwOut'] == 0:
+            dft.loc[i, 'curMaxMcElecKwIn'] = 0
         else:
-            if curMaxMcKwOut[i] == veh.maxMotorKw:
-                curMaxMcElecKwIn[i] = curMaxMcKwOut[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            if dft.loc[i, 'curMaxMcKwOut'] == veh.maxMotorKw:
+                dft.loc[i, 'curMaxMcElecKwIn'] = dft.loc[i, 'curMaxMcKwOut'] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
             else:
-                curMaxMcElecKwIn[i] = curMaxMcKwOut[i] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,curMaxMcKwOut[i])) - 1)]
+                dft.loc[i, 'curMaxMcElecKwIn'] = dft.loc[i, 'curMaxMcKwOut'] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray 
+                > min(veh.maxMotorKw - 0.01,dft.loc[i, 'curMaxMcKwOut'])) - 1)]
 
         if veh.maxMotorKw == 0:
-            essLimMcRegenPercKw[i] = 0.0
+            dft.loc[i, 'essLimMcRegenPercKw'] = 0.0
 
         else:
-            essLimMcRegenPercKw[i] = min((curMaxEssChgKw[i] + auxInKw[i]) / veh.maxMotorKw,1)
-        if curMaxEssChgKw[i] == 0:
-            essLimMcRegenKw[i] = 0.0
+            dft.loc[i, 'essLimMcRegenPercKw'] = min((dft.loc[i, 'curMaxEssChgKw'] + dft.loc[i, 'auxInKw']) / veh.maxMotorKw,1)
+        if dft.loc[i, 'curMaxEssChgKw'] == 0:
+            dft.loc[i, 'essLimMcRegenKw'] = 0.0
 
         else:
-            if veh.maxMotorKw == curMaxEssChgKw[i] - curMaxRoadwayChgKw[i]:
-                essLimMcRegenKw[i] = min(veh.maxMotorKw,curMaxEssChgKw[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1])
+            if veh.maxMotorKw == dft.loc[i, 'curMaxEssChgKw'] - dft.loc[i, 'curMaxRoadwayChgKw']:
+                dft.loc[i, 'essLimMcRegenKw'] = min(veh.maxMotorKw,dft.loc[i, 'curMaxEssChgKw'] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1])
             else:
-                essLimMcRegenKw[i] = min(veh.maxMotorKw,curMaxEssChgKw[i] / veh.mcFullEffArray\
-                    [max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,curMaxEssChgKw[i] - curMaxRoadwayChgKw[i])) - 1)])
+                dft.loc[i, 'essLimMcRegenKw'] = min(veh.maxMotorKw,dft.loc[i, 'curMaxEssChgKw'] / veh.mcFullEffArray\
+                    [max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,dft.loc[i, 'curMaxEssChgKw'] - dft.loc[i, 'curMaxRoadwayChgKw'])) - 1)])
 
-        curMaxMechMcKwIn[i] = min(essLimMcRegenKw[i],veh.maxMotorKw)
-        curMaxTracKw[i] = (((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2)\
-            / (1 + ((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))) / 1000.0) * (maxTracMps[i])
+        dft.loc[i, 'curMaxMechMcKwIn'] = min(dft.loc[i, 'essLimMcRegenKw'],veh.maxMotorKw)
+        dft.loc[i, 'curMaxTracKw'] = (((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2)\
+            / (1 + ((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))) / 1000.0) * (dft.loc[i, 'maxTracMps'])
 
         if veh.fcEffType == 4:
 
-            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or highAccFcOnTag[i] == 1:
-                curMaxTransKwOut[i] = min((curMaxMcKwOut[i] - auxInKw[i]) * veh.transEff,curMaxTracKw[i] / veh.transEff)
-                debug_flag[i] = 1
+            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or dft.loc[i, 'highAccFcOnTag'] == 1:
+                dft.loc[i, 'curMaxTransKwOut'] = min((dft.loc[i, 'curMaxMcKwOut'] - dft.loc[i, 'auxInKw']) * veh.transEff,dft.loc[i, 'curMaxTracKw'] / veh.transEff)
+                dft.loc[i, 'debug_flag'] = 1
 
             else:
-                curMaxTransKwOut[i] = min((curMaxMcKwOut[i] - min(curMaxElecKw[i], 0)) * veh.transEff,curMaxTracKw[i] / veh.transEff)
-                debug_flag[i] = 2
+                dft.loc[i, 'curMaxTransKwOut'] = min((dft.loc[i, 'curMaxMcKwOut'] - min(dft.loc[i, 'curMaxElecKw'], 0)) * veh.transEff,dft.loc[i, 'curMaxTracKw'] / veh.transEff)
+                dft.loc[i, 'debug_flag'] = 2
 
         else:
 
-            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or highAccFcOnTag[i] == 1:
-                curMaxTransKwOut[i] = min((curMaxMcKwOut[i] + curMaxFcKwOut[i] - auxInKw[i]) * veh.transEff,curMaxTracKw[i] / veh.transEff)
-                debug_flag[i] = 3
+            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or dft.loc[i, 'highAccFcOnTag'] == 1:
+                dft.loc[i, 'curMaxTransKwOut'] = min((dft.loc[i, 'curMaxMcKwOut'] + dft.loc[i, 'curMaxFcKwOut'] - \
+                     dft.loc[i, 'auxInKw']) * veh.transEff,dft.loc[i, 'curMaxTracKw'] / veh.transEff)
+                dft.loc[i, 'debug_flag'] = 3
 
             else:
-                curMaxTransKwOut[i] = min((curMaxMcKwOut[i] + curMaxFcKwOut[i] - min(curMaxElecKw[i],0)) * veh.transEff, 
-                    curMaxTracKw[i] / veh.transEff)
-                debug_flag[i] = 4
+                dft.loc[i, 'curMaxTransKwOut'] = min((dft.loc[i, 'curMaxMcKwOut'] + dft.loc[i, 'curMaxFcKwOut'] - \
+                    min(dft.loc[i, 'curMaxElecKw'],0)) * veh.transEff, dft.loc[i, 'curMaxTracKw'] / veh.transEff)
+                dft.loc[i, 'debug_flag'] = 4
 
         ### Cycle Power
-        cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((mpsAch[i-1] + cycMps[i]) / 2.0)**3) / 1000.0
-        cycAccelKw[i] = (veh.vehKg / (2.0 * (secs[i]))) * ((cycMps[i]**2) - (mpsAch[i-1]**2)) / 1000.0
-        cycAscentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
-        cycTracKwReq[i] = cycDragKw[i] + cycAccelKw[i] + cycAscentKw[i]
-        spareTracKw[i] = curMaxTracKw[i] - cycTracKwReq[i]
-        cycRrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
-        cycWheelRadPerSec[i] = cycMps[i] / veh.wheelRadiusM
-        cycTireInertiaKw[i] = (((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * (cycWheelRadPerSec[i]**2.0)) / secs[i]) - \
-            ((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * ((mpsAch[i-1] / veh.wheelRadiusM)**2.0)) / secs[i])) / 1000.0
+        dft.loc[i, 'cycDragKw'] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((dft.loc[i-1, 'mpsAch'] + cycMps[i]) / 2.0)**3) / 1000.0
+        dft.loc[i, 'cycAccelKw'] = (veh.vehKg / (2.0 * (secs[i]))) * ((cycMps[i]**2) - (dft.loc[i-1, 'mpsAch']**2)) / 1000.0
+        dft.loc[i, 'cycAscentKw'] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((dft.loc[i-1, 'mpsAch'] + cycMps[i]) / 2.0) / 1000.0
+        dft.loc[i, 'cycTracKwReq'] = dft.loc[i, 'cycDragKw'] + dft.loc[i, 'cycAccelKw'] + dft.loc[i, 'cycAscentKw']
+        dft.loc[i, 'spareTracKw'] = dft.loc[i, 'curMaxTracKw'] - dft.loc[i, 'cycTracKwReq']
+        dft.loc[i, 'cycRrKw'] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((dft.loc[i-1, 'mpsAch'] + cycMps[i]) / 2.0) / 1000.0
+        dft.loc[i, 'cycWheelRadPerSec'] = cycMps[i] / veh.wheelRadiusM
+        dft.loc[i, 'cycTireInertiaKw'] = (((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * (dft.loc[i, 'cycWheelRadPerSec']**2.0)) / secs[i]) - \
+            ((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * ((dft.loc[i-1, 'mpsAch'] / veh.wheelRadiusM)**2.0)) / secs[i])) / 1000.0
 
-        cycWheelKwReq[i] = cycTracKwReq[i] + cycRrKw[i] + cycTireInertiaKw[i]
-        regenContrLimKwPerc[i] = veh.maxRegen / (1 + veh.regenA * np.exp(-veh.regenB * ((cycMph[i] + mpsAch[i-1] * mphPerMps) / 2.0 + 1 - 0)))
-        cycRegenBrakeKw[i] = max(min(curMaxMechMcKwIn[i] * veh.transEff,regenContrLimKwPerc[i]*-cycWheelKwReq[i]),0)
-        cycFricBrakeKw[i] = -min(cycRegenBrakeKw[i] + cycWheelKwReq[i],0)
-        cycTransKwOutReq[i] = cycWheelKwReq[i] + cycFricBrakeKw[i]
+        dft.loc[i, 'cycWheelKwReq'] = dft.loc[i, 'cycTracKwReq'] + dft.loc[i, 'cycRrKw'] + dft.loc[i, 'cycTireInertiaKw']
+        dft.loc[i, 'regenContrLimKwPerc'] = veh.maxRegen / (1 + veh.regenA * np.exp(-veh.regenB * ((cycMph[i] + dft.loc[i-1, 'mpsAch'] * mphPerMps) / 2.0 + 1 - 0)))
+        dft.loc[i, 'cycRegenBrakeKw'] = max(min(dft.loc[i, 'curMaxMechMcKwIn'] * veh.transEff,dft.loc[i, 'regenContrLimKwPerc']*-dft.loc[i, 'cycWheelKwReq']),0)
+        dft.loc[i, 'cycFricBrakeKw'] = -min(dft.loc[i, 'cycRegenBrakeKw'] + dft.loc[i, 'cycWheelKwReq'],0)
+        dft.loc[i, 'cycTransKwOutReq'] = dft.loc[i, 'cycWheelKwReq'] + dft.loc[i, 'cycFricBrakeKw']
 
-        if cycTransKwOutReq[i]<=curMaxTransKwOut[i]:
-            cycMet[i] = 1
-            transKwOutAch[i] = cycTransKwOutReq[i]
+        if dft.loc[i, 'cycTransKwOutReq']<=dft.loc[i, 'curMaxTransKwOut']:
+            dft.loc[i, 'cycMet'] = 1
+            dft.loc[i, 'transKwOutAch'] = dft.loc[i, 'cycTransKwOutReq']
 
         else:
-            cycMet[i] = -1
-            transKwOutAch[i] = curMaxTransKwOut[i]
+            dft.loc[i, 'cycMet'] = -1
+            dft.loc[i, 'transKwOutAch'] = dft.loc[i, 'curMaxTransKwOut']
 
         ################################
         ###   Speed/Distance Calcs   ###
         ################################
 
         #Cycle is met
-        if cycMet[i] == 1:
-            mpsAch[i] = cycMps[i]
+        if dft.loc[i, 'cycMet'] == 1:
+            dft.loc[i, 'mpsAch'] = cycMps[i]
 
         #Cycle is not met
         else:
             Drag3 = (1.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2
             Accel2 = veh.vehKg / (2.0 * (secs[i]))
-            Drag2 = (3.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * mpsAch[i-1]
+            Drag2 = (3.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * dft.loc[i-1, 'mpsAch']
             Wheel2 = 0.5 * veh.wheelInertiaKgM2 * veh.numWheels / (secs[i] * (veh.wheelRadiusM**2))
-            Drag1 = (3.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * ((mpsAch[i-1])**2)
+            Drag1 = (3.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * ((dft.loc[i-1, 'mpsAch'])**2)
             Roll1 = (gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg / 2.0)
             Ascent1 = (gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg / 2.0)
-            Accel0 = -(veh.vehKg * ((mpsAch[i-1])**2)) / (2.0 * (secs[i]))
-            Drag0 = (1.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * ((mpsAch[i-1])**3)
-            Roll0 = (gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * mpsAch[i-1] / 2.0)
-            Ascent0 = (gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * mpsAch[i-1] / 2.0)
-            Wheel0 = -((0.5 * veh.wheelInertiaKgM2 * veh.numWheels * (mpsAch[i-1]**2)) / (secs[i] * (veh.wheelRadiusM**2)))
+            Accel0 = -(veh.vehKg * ((dft.loc[i-1, 'mpsAch'])**2)) / (2.0 * (secs[i]))
+            Drag0 = (1.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * ((dft.loc[i-1, 'mpsAch'])**3)
+            Roll0 = (gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * dft.loc[i-1, 'mpsAch'] / 2.0)
+            Ascent0 = (gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * dft.loc[i-1, 'mpsAch'] / 2.0)
+            Wheel0 = -((0.5 * veh.wheelInertiaKgM2 * veh.numWheels * (dft.loc[i-1, 'mpsAch']**2)) / (secs[i] * (veh.wheelRadiusM**2)))
 
             Total3 = Drag3 / 1e3
             print(Accel2, Drag2, Wheel2)
             Total2 = (Accel2 + Drag2 + Wheel2) / 1e3
             Total1 = (Drag1 + Roll1 + Ascent1) / 1e3
-            Total0 = (Accel0 + Drag0 + Roll0 + Ascent0 + Wheel0) / 1e3 - curMaxTransKwOut[i]
+            Total0 = (Accel0 + Drag0 + Roll0 + Ascent0 + Wheel0) / 1e3 - dft.loc[i, 'curMaxTransKwOut']
 
             Total = [Total3, Total2, Total1, Total0]
             Total_roots = np.roots(Total)
             ind = np.argmin( abs(cycMps[i] - Total_roots) )
-            mpsAch[i] = Total_roots[ind]
+            dft.loc[i, 'mpsAch'] = Total_roots[ind]
 
-        mphAch[i] = mpsAch[i] * mphPerMps
-        distMeters[i] = mpsAch[i] * secs[i]
-        distMiles[i] = distMeters[i] * (1.0 / metersPerMile)
+        dft.loc[i, 'mphAch'] = dft.loc[i, 'mpsAch'] * mphPerMps
+        dft.loc[i, 'distMeters'] = dft.loc[i, 'mpsAch'] * secs[i]
+        dft.loc[i, 'distMiles'] = dft.loc[i, 'distMeters'] * (1.0 / metersPerMile)
 
         ### Drive Train
-        if transKwOutAch[i] > 0:
-            transKwInAch[i] = transKwOutAch[i] / veh.transEff
+        if dft.loc[i, 'transKwOutAch'] > 0:
+            dft.loc[i, 'transKwInAch'] = dft.loc[i, 'transKwOutAch'] / veh.transEff
         else:
-            transKwInAch[i] = transKwOutAch[i] * veh.transEff
+            dft.loc[i, 'transKwInAch'] = dft.loc[i, 'transKwOutAch'] * veh.transEff
 
-        if cycMet[i] == 1:
+        if dft.loc[i, 'cycMet'] == 1:
 
             if veh.fcEffType == 4:
-                minMcKw2HelpFc[i] = max(transKwInAch[i], -curMaxMechMcKwIn[i])
+                dft.loc[i, 'minMcKw2HelpFc'] = max(dft.loc[i, 'transKwInAch'], -dft.loc[i, 'curMaxMechMcKwIn'])
 
             else:
-                minMcKw2HelpFc[i] = max(transKwInAch[i] - curMaxFcKwOut[i], -curMaxMechMcKwIn[i])
+                dft.loc[i, 'minMcKw2HelpFc'] = max(dft.loc[i, 'transKwInAch'] - dft.loc[i, 'curMaxFcKwOut'], -dft.loc[i, 'curMaxMechMcKwIn'])
         else:
-            minMcKw2HelpFc[i] = max(curMaxMcKwOut[i], -curMaxMechMcKwIn[i])
+            dft.loc[i, 'minMcKw2HelpFc'] = max(dft.loc[i, 'curMaxMcKwOut'], -dft.loc[i, 'curMaxMechMcKwIn'])
 
         if veh.noElecSys == 'TRUE':
-           regenBufferSoc[i] = 0
+           dft.loc[i, 'regenBufferSoc'] = 0
 
         elif veh.chargingOn:
-           regenBufferSoc[i] = max(veh.maxSoc - (maxRegenKwh / veh.maxEssKwh), (veh.maxSoc + veh.minSoc) / 2)
+           dft.loc[i, 'regenBufferSoc'] = max(veh.maxSoc - (maxRegenKwh / veh.maxEssKwh), (veh.maxSoc + veh.minSoc) / 2)
 
         else:
-           regenBufferSoc[i] = max(((veh.maxEssKwh * veh.maxSoc) - (0.5 * veh.vehKg * (cycMps[i]**2) * (1.0 / 1000) \
+           dft.loc[i, 'regenBufferSoc'] = max(((veh.maxEssKwh * veh.maxSoc) - (0.5 * veh.vehKg * (cycMps[i]**2) * (1.0 / 1000) \
                * (1.0 / 3600) * veh.motorPeakEff * veh.maxRegen)) / veh.maxEssKwh,veh.minSoc)
 
-        essRegenBufferDischgKw[i] = min(curMaxEssKwOut[i], max(0,(soc[i-1] - regenBufferSoc[i]) * veh.maxEssKwh * 3600 / secs[i]))
+        dft.loc[i, 'essRegenBufferDischgKw'] = min(dft.loc[i, 'curMaxEssKwOut'], max(0,(dft.loc[i-1, 'soc'] - dft.loc[i, 'regenBufferSoc']) * veh.maxEssKwh * 3600 / secs[i]))
 
-        maxEssRegenBufferChgKw[i] = min(max(0,(regenBufferSoc[i] - soc[i-1]) * veh.maxEssKwh * 3600.0 / secs[i]),curMaxEssChgKw[i])
+        dft.loc[i, 'maxEssRegenBufferChgKw'] = min(max(0,(dft.loc[i, 'regenBufferSoc'] - dft.loc[i-1, 'soc']) * veh.maxEssKwh * 3600.0 / secs[i]),dft.loc[i, 'curMaxEssChgKw'])
 
         if veh.noElecSys == 'TRUE':
-           accelBufferSoc[i] = 0
+           dft.loc[i, 'accelBufferSoc'] = 0
 
         else:
-           accelBufferSoc[i] = min(max((((((((veh.maxAccelBufferMph * (1 / mphPerMps))**2)) - ((cycMps[i]**2))) / \
+           dft.loc[i, 'accelBufferSoc'] = min(max((((((((veh.maxAccelBufferMph * (1 / mphPerMps))**2)) - ((cycMps[i]**2))) / \
                (((veh.maxAccelBufferMph * (1 / mphPerMps))**2))) * (min(veh.maxAccelBufferPercOfUseableSoc * \
                    (veh.maxSoc - veh.minSoc),maxRegenKwh / veh.maxEssKwh) * veh.maxEssKwh)) / veh.maxEssKwh) + \
                        veh.minSoc,veh.minSoc), veh.maxSoc)
 
-        essAccelBufferChgKw[i] = max(0,(accelBufferSoc[i] - soc[i-1]) * veh.maxEssKwh * 3600.0 / secs[i])
-        maxEssAccelBufferDischgKw[i] = min(max(0, (soc[i-1] - accelBufferSoc[i]) * veh.maxEssKwh * 3600 / secs[i]),curMaxEssKwOut[i])
+        dft.loc[i, 'essAccelBufferChgKw'] = max(0,(dft.loc[i, 'accelBufferSoc'] - dft.loc[i-1, 'soc']) * veh.maxEssKwh * 3600.0 / secs[i])
+        dft.loc[i, 'maxEssAccelBufferDischgKw'] = min(max(0, (dft.loc[i-1, 'soc'] - dft.loc[i, 'accelBufferSoc']) * veh.maxEssKwh * 3600 / secs[i]),dft.loc[i, 'curMaxEssKwOut'])
 
-        if regenBufferSoc[i] < accelBufferSoc[i]:
-            essAccelRegenDischgKw[i] = max(min(((soc[i-1] - (regenBufferSoc[i] + accelBufferSoc[i]) / 2) * veh.maxEssKwh * 3600.0) /\
-                 secs[i],curMaxEssKwOut[i]),-curMaxEssChgKw[i])
+        if dft.loc[i, 'regenBufferSoc'] < dft.loc[i, 'accelBufferSoc']:
+            dft.loc[i, 'essAccelRegenDischgKw'] = max(min(((dft.loc[i-1, 'soc'] - (dft.loc[i, 'regenBufferSoc'] + dft.loc[i, 'accelBufferSoc']) / 2) * veh.maxEssKwh * 3600.0) /\
+                 secs[i],dft.loc[i, 'curMaxEssKwOut']),-dft.loc[i, 'curMaxEssChgKw'])
 
-        elif soc[i-1] > regenBufferSoc[i]:
-            essAccelRegenDischgKw[i] = max(min(essRegenBufferDischgKw[i],curMaxEssKwOut[i]),-curMaxEssChgKw[i])
+        elif dft.loc[i-1, 'soc'] > dft.loc[i, 'regenBufferSoc']:
+            dft.loc[i, 'essAccelRegenDischgKw'] = max(min(dft.loc[i, 'essRegenBufferDischgKw'],dft.loc[i, 'curMaxEssKwOut']),-dft.loc[i, 'curMaxEssChgKw'])
 
-        elif soc[i-1] < accelBufferSoc[i]:
-            essAccelRegenDischgKw[i] = max(min(-1.0 * essAccelBufferChgKw[i],curMaxEssKwOut[i]),-curMaxEssChgKw[i])
-
-        else:
-            essAccelRegenDischgKw[i] = max(min(0,curMaxEssKwOut[i]),-curMaxEssChgKw[i])
-
-        fcKwGapFrEff[i] = abs(transKwOutAch[i] - veh.maxFcEffKw)
-
-        if veh.noElecSys == 'TRUE':
-            mcElectInKwForMaxFcEff[i] = 0
-
-        elif transKwOutAch[i] < veh.maxFcEffKw:
-
-            if fcKwGapFrEff[i] == veh.maxMotorKw:
-                mcElectInKwForMaxFcEff[i] = fcKwGapFrEff[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]*-1
-            else:
-                mcElectInKwForMaxFcEff[i] = fcKwGapFrEff[i] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,fcKwGapFrEff[i])) - 1)]*-1
+        elif dft.loc[i-1, 'soc'] < dft.loc[i, 'accelBufferSoc']:
+            dft.loc[i, 'essAccelRegenDischgKw'] = max(min(-1.0 * dft.loc[i, 'essAccelBufferChgKw'],dft.loc[i, 'curMaxEssKwOut']),-dft.loc[i, 'curMaxEssChgKw'])
 
         else:
+            dft.loc[i, 'essAccelRegenDischgKw'] = max(min(0,dft.loc[i, 'curMaxEssKwOut']),-dft.loc[i, 'curMaxEssChgKw'])
 
-            if fcKwGapFrEff[i] == veh.maxMotorKw:
-                mcElectInKwForMaxFcEff[i] = veh.mcKwInArray[len(veh.mcKwInArray) - 1]
-            else:
-                mcElectInKwForMaxFcEff[i] = veh.mcKwInArray[np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,fcKwGapFrEff[i])) - 1]
+        dft.loc[i, 'fcKwGapFrEff'] = abs(dft.loc[i, 'transKwOutAch'] - veh.maxFcEffKw)
 
         if veh.noElecSys == 'TRUE':
-            electKwReq4AE[i] = 0
+            dft.loc[i, 'mcElectInKwForMaxFcEff'] = 0
 
-        elif transKwInAch[i] > 0:
-            if transKwInAch[i] == veh.maxMotorKw:
+        elif dft.loc[i, 'transKwOutAch'] < veh.maxFcEffKw:
+
+            if dft.loc[i, 'fcKwGapFrEff'] == veh.maxMotorKw:
+                dft.loc[i, 'mcElectInKwForMaxFcEff'] = dft.loc[i, 'fcKwGapFrEff'] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]*-1
+            else:
+                dft.loc[i, 'mcElectInKwForMaxFcEff'] = dft.loc[i, 'fcKwGapFrEff'] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,dft.loc[i, 'fcKwGapFrEff'])) - 1)]*-1
+
+        else:
+
+            if dft.loc[i, 'fcKwGapFrEff'] == veh.maxMotorKw:
+                dft.loc[i, 'mcElectInKwForMaxFcEff'] = veh.mcKwInArray[len(veh.mcKwInArray) - 1]
+            else:
+                dft.loc[i, 'mcElectInKwForMaxFcEff'] = veh.mcKwInArray[np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,dft.loc[i, 'fcKwGapFrEff'])) - 1]
+
+        if veh.noElecSys == 'TRUE':
+            dft.loc[i, 'electKwReq4AE'] = 0
+
+        elif dft.loc[i, 'transKwInAch'] > 0:
+            if dft.loc[i, 'transKwInAch'] == veh.maxMotorKw:
         
-                electKwReq4AE[i] = transKwInAch[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1] + auxInKw[i]
+                dft.loc[i, 'electKwReq4AE'] = dft.loc[i, 'transKwInAch'] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1] + dft.loc[i, 'auxInKw']
             else:
-                electKwReq4AE[i] = transKwInAch[i] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,transKwInAch[i])) - 1)] + auxInKw[i]
+                dft.loc[i, 'electKwReq4AE'] = dft.loc[i, 'transKwInAch'] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,dft.loc[i, 'transKwInAch'])) - 1)] + dft.loc[i, 'auxInKw']
 
         else:
-           electKwReq4AE[i] = 0
+           dft.loc[i, 'electKwReq4AE'] = 0
 
-        prevfcTimeOn[i] = fcTimeOn[i-1]
+        dft.loc[i, 'prevfcTimeOn'] = dft.loc[i-1, 'fcTimeOn']
 
         if veh.maxFuelConvKw == 0:
-            canPowerAllElectrically[i] = accelBufferSoc[i] < soc[i-1] and transKwInAch[i]<=curMaxMcKwOut[i] and (electKwReq4AE[i] < curMaxElecKw[i] or veh.maxFuelConvKw == 0)
+            dft.loc[i, 'canPowerAllElectrically'] = dft.loc[i, 'accelBufferSoc'] < dft.loc[i-1, 'soc'] and dft.loc[i, 'transKwInAch']<=dft.loc[i, 'curMaxMcKwOut'] and (dft.loc[i, 'electKwReq4AE'] < dft.loc[i, 'curMaxElecKw'] or veh.maxFuelConvKw == 0)
 
         else:
-            canPowerAllElectrically[i] = accelBufferSoc[i] < soc[i-1] and transKwInAch[i]<=curMaxMcKwOut[i] and (electKwReq4AE[i] < curMaxElecKw[i] \
-                or veh.maxFuelConvKw == 0) and (cycMph[i] - 0.00001<=veh.mphFcOn or veh.chargingOn) and electKwReq4AE[i]<=veh.kwDemandFcOn
+            dft.loc[i, 'canPowerAllElectrically'] = dft.loc[i, 'accelBufferSoc'] < dft.loc[i-1, 'soc'] and dft.loc[i, 'transKwInAch']<=dft.loc[i, 'curMaxMcKwOut'] and (dft.loc[i, 'electKwReq4AE'] < dft.loc[i, 'curMaxElecKw'] \
+                or veh.maxFuelConvKw == 0) and (cycMph[i] - 0.00001<=veh.mphFcOn or veh.chargingOn) and dft.loc[i, 'electKwReq4AE']<=veh.kwDemandFcOn
 
-        if canPowerAllElectrically[i]:
+        if dft.loc[i, 'canPowerAllElectrically']:
 
-            if transKwInAch[i]<+auxInKw[i]:
-                desiredEssKwOutForAE[i] = auxInKw[i] + transKwInAch[i]
+            if dft.loc[i, 'transKwInAch']<+dft.loc[i, 'auxInKw']:
+                dft.loc[i, 'desiredEssKwOutForAE'] = dft.loc[i, 'auxInKw'] + dft.loc[i, 'transKwInAch']
 
-            elif regenBufferSoc[i] < accelBufferSoc[i]:
-                desiredEssKwOutForAE[i] = essAccelRegenDischgKw[i]
+            elif dft.loc[i, 'regenBufferSoc'] < dft.loc[i, 'accelBufferSoc']:
+                dft.loc[i, 'desiredEssKwOutForAE'] = dft.loc[i, 'essAccelRegenDischgKw']
 
-            elif soc[i-1] > regenBufferSoc[i]:
-                desiredEssKwOutForAE[i] = essRegenBufferDischgKw[i]
+            elif dft.loc[i-1, 'soc'] > dft.loc[i, 'regenBufferSoc']:
+                dft.loc[i, 'desiredEssKwOutForAE'] = dft.loc[i, 'essRegenBufferDischgKw']
 
-            elif soc[i-1] < accelBufferSoc[i]:
-                desiredEssKwOutForAE[i] = -essAccelBufferChgKw[i]
+            elif dft.loc[i-1, 'soc'] < dft.loc[i, 'accelBufferSoc']:
+                dft.loc[i, 'desiredEssKwOutForAE'] = -dft.loc[i, 'essAccelBufferChgKw']
 
             else:
-                desiredEssKwOutForAE[i] = transKwInAch[i] + auxInKw[i] - curMaxRoadwayChgKw[i]
+                dft.loc[i, 'desiredEssKwOutForAE'] = dft.loc[i, 'transKwInAch'] + dft.loc[i, 'auxInKw'] - dft.loc[i, 'curMaxRoadwayChgKw']
 
         else:
-            desiredEssKwOutForAE[i] = 0
+            dft.loc[i, 'desiredEssKwOutForAE'] = 0
 
-        if canPowerAllElectrically[i]:
-            essAEKwOut[i] = max(-curMaxEssChgKw[i],-maxEssRegenBufferChgKw[i],min(0,curMaxRoadwayChgKw[i] - (transKwInAch[i] + auxInKw[i])),min(curMaxEssKwOut[i],desiredEssKwOutForAE[i]))
-
-        else:
-            essAEKwOut[i] = 0
-
-        erAEKwOut[i] = min(max(0,transKwInAch[i] + auxInKw[i] - essAEKwOut[i]),curMaxRoadwayChgKw[i])
-
-        if prevfcTimeOn[i] > 0 and prevfcTimeOn[i] < veh.minFcTimeOn - secs[i]:
-            fcForcedOn[i] = True
-        else:
-            fcForcedOn[i] = False
-
-        if fcForcedOn[i] == False or canPowerAllElectrically[i] == False:
-            fcForcedState[i] = 1
-            mcMechKw4ForcedFc[i] = 0
-
-        elif transKwInAch[i] < 0:
-            fcForcedState[i] = 2
-            mcMechKw4ForcedFc[i] = transKwInAch[i]
-
-        elif veh.maxFcEffKw == transKwInAch[i]:
-            fcForcedState[i] = 3
-            mcMechKw4ForcedFc[i] = 0
-
-        elif veh.idleFcKw > transKwInAch[i] and cycAccelKw[i] >=0:
-            fcForcedState[i] = 4
-            mcMechKw4ForcedFc[i] = transKwInAch[i] - veh.idleFcKw
-
-        elif veh.maxFcEffKw > transKwInAch[i]:
-            fcForcedState[i] = 5
-            mcMechKw4ForcedFc[i] = 0
+        if dft.loc[i, 'canPowerAllElectrically']:
+            dft.loc[i, 'essAEKwOut'] = max(-dft.loc[i, 'curMaxEssChgKw'],-dft.loc[i, 'maxEssRegenBufferChgKw'],min(0,dft.loc[i, 'curMaxRoadwayChgKw'] - (dft.loc[i, 'transKwInAch'] + dft.loc[i, 'auxInKw'])),min(dft.loc[i, 'curMaxEssKwOut'],dft.loc[i, 'desiredEssKwOutForAE']))
 
         else:
-            fcForcedState[i] = 6
-            mcMechKw4ForcedFc[i] = transKwInAch[i] - veh.maxFcEffKw
+            dft.loc[i, 'essAEKwOut'] = 0
 
-        if (-mcElectInKwForMaxFcEff[i] - curMaxRoadwayChgKw[i]) > 0:
-            essDesiredKw4FcEff[i] = (-mcElectInKwForMaxFcEff[i] - curMaxRoadwayChgKw[i]) * veh.essDischgToFcMaxEffPerc
+        dft.loc[i, 'erAEKwOut'] = min(max(0,dft.loc[i, 'transKwInAch'] + dft.loc[i, 'auxInKw'] - dft.loc[i, 'essAEKwOut']),dft.loc[i, 'curMaxRoadwayChgKw'])
+
+        if dft.loc[i, 'prevfcTimeOn'] > 0 and dft.loc[i, 'prevfcTimeOn'] < veh.minFcTimeOn - secs[i]:
+            dft.loc[i, 'fcForcedOn'] = True
+        else:
+            dft.loc[i, 'fcForcedOn'] = False
+
+        if dft.loc[i, 'fcForcedOn'] == False or dft.loc[i, 'canPowerAllElectrically'] == False:
+            dft.loc[i, 'fcForcedState'] = 1
+            dft.loc[i, 'mcMechKw4ForcedFc'] = 0
+
+        elif dft.loc[i, 'transKwInAch'] < 0:
+            dft.loc[i, 'fcForcedState'] = 2
+            dft.loc[i, 'mcMechKw4ForcedFc'] = dft.loc[i, 'transKwInAch']
+
+        elif veh.maxFcEffKw == dft.loc[i, 'transKwInAch']:
+            dft.loc[i, 'fcForcedState'] = 3
+            dft.loc[i, 'mcMechKw4ForcedFc'] = 0
+
+        elif veh.idleFcKw > dft.loc[i, 'transKwInAch'] and dft.loc[i, 'cycAccelKw'] >=0:
+            dft.loc[i, 'fcForcedState'] = 4
+            dft.loc[i, 'mcMechKw4ForcedFc'] = dft.loc[i, 'transKwInAch'] - veh.idleFcKw
+
+        elif veh.maxFcEffKw > dft.loc[i, 'transKwInAch']:
+            dft.loc[i, 'fcForcedState'] = 5
+            dft.loc[i, 'mcMechKw4ForcedFc'] = 0
 
         else:
-            essDesiredKw4FcEff[i] = (-mcElectInKwForMaxFcEff[i] - curMaxRoadwayChgKw[i]) * veh.essChgToFcMaxEffPerc
+            dft.loc[i, 'fcForcedState'] = 6
+            dft.loc[i, 'mcMechKw4ForcedFc'] = dft.loc[i, 'transKwInAch'] - veh.maxFcEffKw
 
-        if accelBufferSoc[i] > regenBufferSoc[i]:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh.mcMaxElecInKw + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
-                max(-curMaxEssChgKw[i], essAccelRegenDischgKw[i]))
-
-        elif essRegenBufferDischgKw[i] > 0:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh.mcMaxElecInKw + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
-                max(-curMaxEssChgKw[i], min(essAccelRegenDischgKw[i],mcElecInLimKw[i] + auxInKw[i], max(essRegenBufferDischgKw[i],essDesiredKw4FcEff[i]))))
-
-        elif essAccelBufferChgKw[i] > 0:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh.mcMaxElecInKw + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
-                max(-curMaxEssChgKw[i], max(-1 * maxEssRegenBufferChgKw[i], min(-essAccelBufferChgKw[i],essDesiredKw4FcEff[i]))))
-
-
-        elif essDesiredKw4FcEff[i] > 0:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh.mcMaxElecInKw + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
-                max(-curMaxEssChgKw[i], min(essDesiredKw4FcEff[i],maxEssAccelBufferDischgKw[i])))
+        if (-dft.loc[i, 'mcElectInKwForMaxFcEff'] - dft.loc[i, 'curMaxRoadwayChgKw']) > 0:
+            dft.loc[i, 'essDesiredKw4FcEff'] = (-dft.loc[i, 'mcElectInKwForMaxFcEff'] - dft.loc[i, 'curMaxRoadwayChgKw']) * veh.essDischgToFcMaxEffPerc
 
         else:
-            essKwIfFcIsReq[i] = min(curMaxEssKwOut[i],veh.mcMaxElecInKw + auxInKw[i],curMaxMcElecKwIn[i] + auxInKw[i], \
-                max(-curMaxEssChgKw[i], max(essDesiredKw4FcEff[i],-maxEssRegenBufferChgKw[i])))
+            dft.loc[i, 'essDesiredKw4FcEff'] = (-dft.loc[i, 'mcElectInKwForMaxFcEff'] - dft.loc[i, 'curMaxRoadwayChgKw']) * veh.essChgToFcMaxEffPerc
 
-        erKwIfFcIsReq[i] = max(0,min(curMaxRoadwayChgKw[i],curMaxMechMcKwIn[i],essKwIfFcIsReq[i] - mcElecInLimKw[i] + auxInKw[i]))
+        if dft.loc[i, 'accelBufferSoc'] > dft.loc[i, 'regenBufferSoc']:
+            dft.loc[i, 'essKwIfFcIsReq'] = min(dft.loc[i, 'curMaxEssKwOut'],veh.mcMaxElecInKw + dft.loc[i, 'auxInKw'],dft.loc[i, 'curMaxMcElecKwIn'] + dft.loc[i, 'auxInKw'], \
+                max(-dft.loc[i, 'curMaxEssChgKw'], dft.loc[i, 'essAccelRegenDischgKw']))
 
-        mcElecKwInIfFcIsReq[i] = essKwIfFcIsReq[i] + erKwIfFcIsReq[i] - auxInKw[i]
+        elif dft.loc[i, 'essRegenBufferDischgKw'] > 0:
+            dft.loc[i, 'essKwIfFcIsReq'] = min(dft.loc[i, 'curMaxEssKwOut'],veh.mcMaxElecInKw + dft.loc[i, 'auxInKw'],dft.loc[i, 'curMaxMcElecKwIn'] + dft.loc[i, 'auxInKw'], \
+                max(-dft.loc[i, 'curMaxEssChgKw'], min(dft.loc[i, 'essAccelRegenDischgKw'],dft.loc[i, 'mcElecInLimKw'] + dft.loc[i, 'auxInKw'], max(dft.loc[i, 'essRegenBufferDischgKw'],dft.loc[i, 'essDesiredKw4FcEff']))))
+
+        elif dft.loc[i, 'essAccelBufferChgKw'] > 0:
+            dft.loc[i, 'essKwIfFcIsReq'] = min(dft.loc[i, 'curMaxEssKwOut'],veh.mcMaxElecInKw + dft.loc[i, 'auxInKw'],dft.loc[i, 'curMaxMcElecKwIn'] + dft.loc[i, 'auxInKw'], \
+                max(-dft.loc[i, 'curMaxEssChgKw'], max(-1 * dft.loc[i, 'maxEssRegenBufferChgKw'], min(-dft.loc[i, 'essAccelBufferChgKw'],dft.loc[i, 'essDesiredKw4FcEff']))))
+
+
+        elif dft.loc[i, 'essDesiredKw4FcEff'] > 0:
+            dft.loc[i, 'essKwIfFcIsReq'] = min(dft.loc[i, 'curMaxEssKwOut'],veh.mcMaxElecInKw + dft.loc[i, 'auxInKw'],dft.loc[i, 'curMaxMcElecKwIn'] + dft.loc[i, 'auxInKw'], \
+                max(-dft.loc[i, 'curMaxEssChgKw'], min(dft.loc[i, 'essDesiredKw4FcEff'],dft.loc[i, 'maxEssAccelBufferDischgKw'])))
+
+        else:
+            dft.loc[i, 'essKwIfFcIsReq'] = min(dft.loc[i, 'curMaxEssKwOut'],veh.mcMaxElecInKw + dft.loc[i, 'auxInKw'],dft.loc[i, 'curMaxMcElecKwIn'] + dft.loc[i, 'auxInKw'], \
+                max(-dft.loc[i, 'curMaxEssChgKw'], max(dft.loc[i, 'essDesiredKw4FcEff'],-dft.loc[i, 'maxEssRegenBufferChgKw'])))
+
+        dft.loc[i, 'erKwIfFcIsReq'] = max(0,min(dft.loc[i, 'curMaxRoadwayChgKw'],dft.loc[i, 'curMaxMechMcKwIn'],dft.loc[i, 'essKwIfFcIsReq'] - dft.loc[i, 'mcElecInLimKw'] + dft.loc[i, 'auxInKw']))
+
+        dft.loc[i, 'mcElecKwInIfFcIsReq'] = dft.loc[i, 'essKwIfFcIsReq'] + dft.loc[i, 'erKwIfFcIsReq'] - dft.loc[i, 'auxInKw']
 
         if veh.noElecSys == 'TRUE':
-            mcKwIfFcIsReq[i] = 0
+            dft.loc[i, 'mcKwIfFcIsReq'] = 0
 
-        elif  mcElecKwInIfFcIsReq[i] == 0:
-            mcKwIfFcIsReq[i] = 0
+        elif  dft.loc[i, 'mcElecKwInIfFcIsReq'] == 0:
+            dft.loc[i, 'mcKwIfFcIsReq'] = 0
 
-        elif mcElecKwInIfFcIsReq[i] > 0:
+        elif dft.loc[i, 'mcElecKwInIfFcIsReq'] > 0:
 
-            if mcElecKwInIfFcIsReq[i] == max(veh.mcKwInArray):
-                 mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i] * veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            if dft.loc[i, 'mcElecKwInIfFcIsReq'] == max(veh.mcKwInArray):
+                 dft.loc[i, 'mcKwIfFcIsReq'] = dft.loc[i, 'mcElecKwInIfFcIsReq'] * veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
             else:
-                 mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i] * veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,mcElecKwInIfFcIsReq[i])) - 1)]
+                 dft.loc[i, 'mcKwIfFcIsReq'] = dft.loc[i, 'mcElecKwInIfFcIsReq'] * veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,dft.loc[i, 'mcElecKwInIfFcIsReq'])) - 1)]
 
         else:
-            if mcElecKwInIfFcIsReq[i]*-1 == max(veh.mcKwInArray):
-                mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            if dft.loc[i, 'mcElecKwInIfFcIsReq']*-1 == max(veh.mcKwInArray):
+                dft.loc[i, 'mcKwIfFcIsReq'] = dft.loc[i, 'mcElecKwInIfFcIsReq'] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
             else:
-                mcKwIfFcIsReq[i] = mcElecKwInIfFcIsReq[i] / (veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,mcElecKwInIfFcIsReq[i]*-1)) - 1)])
+                dft.loc[i, 'mcKwIfFcIsReq'] = dft.loc[i, 'mcElecKwInIfFcIsReq'] / (veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,dft.loc[i, 'mcElecKwInIfFcIsReq']*-1)) - 1)])
 
         if veh.maxMotorKw == 0:
-            mcMechKwOutAch[i] = 0
+            dft.loc[i, 'mcMechKwOutAch'] = 0
 
-        elif fcForcedOn[i] == True and canPowerAllElectrically[i] == True and (veh.vehPtType == 2.0 or veh.vehPtType == 3.0) and veh.fcEffType!=4:
-           mcMechKwOutAch[i] =  mcMechKw4ForcedFc[i]
+        elif dft.loc[i, 'fcForcedOn'] == True and dft.loc[i, 'canPowerAllElectrically'] == True and (veh.vehPtType == 2.0 or veh.vehPtType == 3.0) and veh.fcEffType!=4:
+           dft.loc[i, 'mcMechKwOutAch'] =  dft.loc[i, 'mcMechKw4ForcedFc']
 
-        elif transKwInAch[i]<=0:
+        elif dft.loc[i, 'transKwInAch']<=0:
 
             if veh.fcEffType!=4 and veh.maxFuelConvKw> 0:
-                if canPowerAllElectrically[i] == 1:
-                    mcMechKwOutAch[i] = -min(curMaxMechMcKwIn[i],-transKwInAch[i])
+                if dft.loc[i, 'canPowerAllElectrically'] == 1:
+                    dft.loc[i, 'mcMechKwOutAch'] = -min(dft.loc[i, 'curMaxMechMcKwIn'],-dft.loc[i, 'transKwInAch'])
                 else:
-                    mcMechKwOutAch[i] = min(-min(curMaxMechMcKwIn[i], -transKwInAch[i]),max(-curMaxFcKwOut[i], mcKwIfFcIsReq[i]))
+                    dft.loc[i, 'mcMechKwOutAch'] = min(-min(dft.loc[i, 'curMaxMechMcKwIn'], -dft.loc[i, 'transKwInAch']),max(-dft.loc[i, 'curMaxFcKwOut'], dft.loc[i, 'mcKwIfFcIsReq']))
             else:
-                mcMechKwOutAch[i] = min(-min(curMaxMechMcKwIn[i],-transKwInAch[i]),-transKwInAch[i])
+                dft.loc[i, 'mcMechKwOutAch'] = min(-min(dft.loc[i, 'curMaxMechMcKwIn'],-dft.loc[i, 'transKwInAch']),-dft.loc[i, 'transKwInAch'])
 
-        elif canPowerAllElectrically[i] == 1:
-            mcMechKwOutAch[i] = transKwInAch[i]
+        elif dft.loc[i, 'canPowerAllElectrically'] == 1:
+            dft.loc[i, 'mcMechKwOutAch'] = dft.loc[i, 'transKwInAch']
 
         else:
-            mcMechKwOutAch[i] = max(minMcKw2HelpFc[i],mcKwIfFcIsReq[i])
+            dft.loc[i, 'mcMechKwOutAch'] = max(dft.loc[i, 'minMcKw2HelpFc'],dft.loc[i, 'mcKwIfFcIsReq'])
 
-        if mcMechKwOutAch[i] == 0:
-            mcElecKwInAch[i] = 0.0
-            motor_index_debug[i] = 0
+        if dft.loc[i, 'mcMechKwOutAch'] == 0:
+            dft.loc[i, 'mcElecKwInAch'] = 0.0
+            dft.loc[i, 'motor_index_debug'] = 0
 
-        elif mcMechKwOutAch[i] < 0:
+        elif dft.loc[i, 'mcMechKwOutAch'] < 0:
 
-            if mcMechKwOutAch[i]*-1 == max(veh.mcKwInArray):
-                mcElecKwInAch[i] = mcMechKwOutAch[i] * veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            if dft.loc[i, 'mcMechKwOutAch']*-1 == max(veh.mcKwInArray):
+                dft.loc[i, 'mcElecKwInAch'] = dft.loc[i, 'mcMechKwOutAch'] * veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
             else:
-                mcElecKwInAch[i] = mcMechKwOutAch[i] * veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,mcMechKwOutAch[i]*-1)) - 1)]
+                dft.loc[i, 'mcElecKwInAch'] = dft.loc[i, 'mcMechKwOutAch'] * veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,dft.loc[i, 'mcMechKwOutAch']*-1)) - 1)]
 
         else:
-            if veh.maxMotorKw == mcMechKwOutAch[i]:
-                mcElecKwInAch[i] = mcMechKwOutAch[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            if veh.maxMotorKw == dft.loc[i, 'mcMechKwOutAch']:
+                dft.loc[i, 'mcElecKwInAch'] = dft.loc[i, 'mcMechKwOutAch'] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
             else:
-                mcElecKwInAch[i] = mcMechKwOutAch[i] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,mcMechKwOutAch[i])) - 1)]
+                dft.loc[i, 'mcElecKwInAch'] = dft.loc[i, 'mcMechKwOutAch'] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,dft.loc[i, 'mcMechKwOutAch'])) - 1)]
 
-        if curMaxRoadwayChgKw[i] == 0:
-            roadwayChgKwOutAch[i] = 0
+        if dft.loc[i, 'curMaxRoadwayChgKw'] == 0:
+            dft.loc[i, 'roadwayChgKwOutAch'] = 0
 
         elif veh.fcEffType == 4:
-            roadwayChgKwOutAch[i] = max(0, mcElecKwInAch[i], maxEssRegenBufferChgKw[i], essRegenBufferDischgKw[i], curMaxRoadwayChgKw[i])
+            dft.loc[i, 'roadwayChgKwOutAch'] = max(0, dft.loc[i, 'mcElecKwInAch'], dft.loc[i, 'maxEssRegenBufferChgKw'], dft.loc[i, 'essRegenBufferDischgKw'], dft.loc[i, 'curMaxRoadwayChgKw'])
 
-        elif canPowerAllElectrically[i] == 1:
-            roadwayChgKwOutAch[i] = erAEKwOut[i]
+        elif dft.loc[i, 'canPowerAllElectrically'] == 1:
+            dft.loc[i, 'roadwayChgKwOutAch'] = dft.loc[i, 'erAEKwOut']
 
         else:
-            roadwayChgKwOutAch[i] = erKwIfFcIsReq[i]
+            dft.loc[i, 'roadwayChgKwOutAch'] = dft.loc[i, 'erKwIfFcIsReq']
 
-        minEssKw2HelpFc[i] = mcElecKwInAch[i] + auxInKw[i] - curMaxFcKwOut[i] - roadwayChgKwOutAch[i]
+        dft.loc[i, 'minEssKw2HelpFc'] = dft.loc[i, 'mcElecKwInAch'] + dft.loc[i, 'auxInKw'] - dft.loc[i, 'curMaxFcKwOut'] - dft.loc[i, 'roadwayChgKwOutAch']
 
         if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
-            essKwOutAch[i]  = 0
+            dft.loc[i, 'essKwOutAch']  = 0
 
         elif veh.fcEffType == 4:
 
-            if transKwOutAch[i]>=0:
-                essKwOutAch[i] = min(max(minEssKw2HelpFc[i],essDesiredKw4FcEff[i],essAccelRegenDischgKw[i]),curMaxEssKwOut[i],mcElecKwInAch[i] + auxInKw[i] - roadwayChgKwOutAch[i])
+            if dft.loc[i, 'transKwOutAch']>=0:
+                dft.loc[i, 'essKwOutAch'] = min(max(dft.loc[i, 'minEssKw2HelpFc'],dft.loc[i, 'essDesiredKw4FcEff'],dft.loc[i, 'essAccelRegenDischgKw']),dft.loc[i, 'curMaxEssKwOut'],dft.loc[i, 'mcElecKwInAch'] + dft.loc[i, 'auxInKw'] - dft.loc[i, 'roadwayChgKwOutAch'])
 
             else:
-                essKwOutAch[i] = mcElecKwInAch[i] + auxInKw[i] - roadwayChgKwOutAch[i]
+                dft.loc[i, 'essKwOutAch'] = dft.loc[i, 'mcElecKwInAch'] + dft.loc[i, 'auxInKw'] - dft.loc[i, 'roadwayChgKwOutAch']
 
-        elif highAccFcOnTag[i] == 1 or veh.noElecAux == 'TRUE':
-            essKwOutAch[i] = mcElecKwInAch[i] - roadwayChgKwOutAch[i]
+        elif dft.loc[i, 'highAccFcOnTag'] == 1 or veh.noElecAux == 'TRUE':
+            dft.loc[i, 'essKwOutAch'] = dft.loc[i, 'mcElecKwInAch'] - dft.loc[i, 'roadwayChgKwOutAch']
 
         else:
-            essKwOutAch[i] = mcElecKwInAch[i] + auxInKw[i] - roadwayChgKwOutAch[i]
+            dft.loc[i, 'essKwOutAch'] = dft.loc[i, 'mcElecKwInAch'] + dft.loc[i, 'auxInKw'] - dft.loc[i, 'roadwayChgKwOutAch']
 
         if veh.maxFuelConvKw == 0:
-            fcKwOutAch[i] = 0
+            dft.loc[i, 'fcKwOutAch'] = 0
 
         elif veh.fcEffType == 4:
-            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, mcElecKwInAch[i] + auxInKw[i] - essKwOutAch[i] - roadwayChgKwOutAch[i]))
+            dft.loc[i, 'fcKwOutAch'] = min(dft.loc[i, 'curMaxFcKwOut'], max(0, dft.loc[i, 'mcElecKwInAch'] + dft.loc[i, 'auxInKw'] - dft.loc[i, 'essKwOutAch'] - dft.loc[i, 'roadwayChgKwOutAch']))
 
-        elif veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or highAccFcOnTag[i] == 1:
-            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, transKwInAch[i] - mcMechKwOutAch[i] + auxInKw[i]))
+        elif veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or dft.loc[i, 'highAccFcOnTag'] == 1:
+            dft.loc[i, 'fcKwOutAch'] = min(dft.loc[i, 'curMaxFcKwOut'], max(0, dft.loc[i, 'transKwInAch'] - dft.loc[i, 'mcMechKwOutAch'] + dft.loc[i, 'auxInKw']))
 
         else:
-            fcKwOutAch[i] = min(curMaxFcKwOut[i], max(0, transKwInAch[i] - mcMechKwOutAch[i]))
+            dft.loc[i, 'fcKwOutAch'] = min(dft.loc[i, 'curMaxFcKwOut'], max(0, dft.loc[i, 'transKwInAch'] - dft.loc[i, 'mcMechKwOutAch']))
 
-        if fcKwOutAch[i] == 0:
-            fcKwInAch[i] = 0.0
-            fcKwOutAch_pct[i] = 0
+        if dft.loc[i, 'fcKwOutAch'] == 0:
+            dft.loc[i, 'fcKwInAch'] = 0.0
+            dft.loc[i, 'fcKwOutAch_pct'] = 0
 
         if veh.maxFuelConvKw == 0:
-            fcKwOutAch_pct[i] = 0
+            dft.loc[i, 'fcKwOutAch_pct'] = 0
         else:
-            fcKwOutAch_pct[i] = fcKwOutAch[i] / veh.maxFuelConvKw
+            dft.loc[i, 'fcKwOutAch_pct'] = dft.loc[i, 'fcKwOutAch'] / veh.maxFuelConvKw
 
-        if fcKwOutAch[i] == 0:
-            fcKwInAch[i] = 0
+        if dft.loc[i, 'fcKwOutAch'] == 0:
+            dft.loc[i, 'fcKwInAch'] = 0
         else:
-            if fcKwOutAch[i] == veh.fcMaxOutkW:
-                fcKwInAch[i] = fcKwOutAch[i] / veh.fcEffArray[len(veh.fcEffArray) - 1]
+            if dft.loc[i, 'fcKwOutAch'] == veh.fcMaxOutkW:
+                dft.loc[i, 'fcKwInAch'] = dft.loc[i, 'fcKwOutAch'] / veh.fcEffArray[len(veh.fcEffArray) - 1]
             else:
-                fcKwInAch[i] = fcKwOutAch[i] / (veh.fcEffArray[max(1,np.argmax(veh.fcKwOutArray > min(fcKwOutAch[i],veh.fcMaxOutkW - 0.001)) - 1)])
+                dft.loc[i, 'fcKwInAch'] = dft.loc[i, 'fcKwOutAch'] / (veh.fcEffArray[max(1,np.argmax(veh.fcKwOutArray > min(dft.loc[i, 'fcKwOutAch'],veh.fcMaxOutkW - 0.001)) - 1)])
 
-        fsKwOutAch[i] = np.copy(fcKwInAch[i])
+        dft.loc[i, 'fsKwOutAch'] = np.copy(dft.loc[i, 'fcKwInAch'])
 
-        fsKwhOutAch[i] = fsKwOutAch[i] * secs[i] * (1 / 3600.0)
+        dft.loc[i, 'fsKwhOutAch'] = dft.loc[i, 'fsKwOutAch'] * secs[i] * (1 / 3600.0)
 
 
         if veh.noElecSys == 'TRUE':
-            essCurKwh[i] = 0
+            dft.loc[i, 'essCurKwh'] = 0
 
-        elif essKwOutAch[i] < 0:
-            essCurKwh[i] = essCurKwh[i-1] - essKwOutAch[i] * (secs[i] / 3600.0) * np.sqrt(veh.essRoundTripEff)
+        elif dft.loc[i, 'essKwOutAch'] < 0:
+            dft.loc[i, 'essCurKwh'] = dft.loc[i-1, 'essCurKwh'] - dft.loc[i, 'essKwOutAch'] * (secs[i] / 3600.0) * np.sqrt(veh.essRoundTripEff)
 
         else:
-            essCurKwh[i] = essCurKwh[i-1] - essKwOutAch[i] * (secs[i] / 3600.0) * (1 / np.sqrt(veh.essRoundTripEff))
+            dft.loc[i, 'essCurKwh'] = dft.loc[i-1, 'essCurKwh'] - dft.loc[i, 'essKwOutAch'] * (secs[i] / 3600.0) * (1 / np.sqrt(veh.essRoundTripEff))
 
         if veh.maxEssKwh == 0:
-            soc[i] = 0.0
+            dft.loc[i, 'soc'] = 0.0
 
         else:
-            soc[i] = essCurKwh[i] / veh.maxEssKwh
+            dft.loc[i, 'soc'] = dft.loc[i, 'essCurKwh'] / veh.maxEssKwh
 
-        if canPowerAllElectrically[i] == True and fcForcedOn[i] == False and fcKwOutAch[i] == 0:
-            fcTimeOn[i] = 0
+        if dft.loc[i, 'canPowerAllElectrically'] == True and dft.loc[i, 'fcForcedOn'] == False and dft.loc[i, 'fcKwOutAch'] == 0:
+            dft.loc[i, 'fcTimeOn'] = 0
         else:
-            fcTimeOn[i] = fcTimeOn[i-1] + secs[i]
+            dft.loc[i, 'fcTimeOn'] = dft.loc[i-1, 'fcTimeOn'] + secs[i]
 
         ### Battery wear calcs
 
         if veh.noElecSys!='TRUE':
 
-            if essCurKwh[i] > essCurKwh[i-1]:
-                addKwh[i] = (essCurKwh[i] - essCurKwh[i-1]) + addKwh[i-1]
+            if dft.loc[i, 'essCurKwh'] > dft.loc[i-1, 'essCurKwh']:
+                dft.loc[i, 'addKwh'] = (dft.loc[i, 'essCurKwh'] - dft.loc[i-1, 'essCurKwh']) + dft.loc[i-1, 'addKwh']
             else:
-                addKwh[i] = 0
+                dft.loc[i, 'addKwh'] = 0
 
-            if addKwh[i] == 0:
-                dodCycs[i] = addKwh[i-1] / veh.maxEssKwh
+            if dft.loc[i, 'addKwh'] == 0:
+                dft.loc[i, 'dodCycs'] = dft.loc[i-1, 'addKwh'] / veh.maxEssKwh
             else:
-                dodCycs[i] = 0
+                dft.loc[i, 'dodCycs'] = 0
 
-            if dodCycs[i]!=0:
-                essPercDeadArray[i] = np.power(veh.essLifeCoefA,1.0 / veh.essLifeCoefB) / np.power(dodCycs[i],1.0 / veh.essLifeCoefB)
+            if dft.loc[i, 'dodCycs']!=0:
+                dft.loc[i, 'essPercDeadArray'] = np.power(veh.essLifeCoefA,1.0 / veh.essLifeCoefB) / np.power(dft.loc[i, 'dodCycs'],1.0 / veh.essLifeCoefB)
             else:
-                essPercDeadArray[i] = 0
+                dft.loc[i, 'essPercDeadArray'] = 0
 
         ### Energy Audit Calculations
-        dragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((mpsAch[i-1] + mpsAch[i]) / 2.0)**3) / 1000.0
+        dft.loc[i, 'dragKw'] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((dft.loc[i-1, 'mpsAch'] + dft.loc[i, 'mpsAch']) / 2.0)**3) / 1000.0
         if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
-            essLossKw[i] = 0
-        elif essKwOutAch[i] < 0:
-            essLossKw[i] = -essKwOutAch[i] - (-essKwOutAch[i] * np.sqrt(veh.essRoundTripEff))
+            dft.loc[i, 'essLossKw'] = 0
+        elif dft.loc[i, 'essKwOutAch'] < 0:
+            dft.loc[i, 'essLossKw'] = -dft.loc[i, 'essKwOutAch'] - (-dft.loc[i, 'essKwOutAch'] * np.sqrt(veh.essRoundTripEff))
         else:
-            essLossKw[i] = essKwOutAch[i] * (1.0 / np.sqrt(veh.essRoundTripEff)) - essKwOutAch[i]
-        accelKw[i] = (veh.vehKg / (2.0 * (secs[i]))) * ((mpsAch[i]**2) - (mpsAch[i-1]**2)) / 1000.0
-        ascentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((mpsAch[i-1] + mpsAch[i]) / 2.0) / 1000.0
-        rrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((mpsAch[i-1] + mpsAch[i]) / 2.0) / 1000.0
+            dft.loc[i, 'essLossKw'] = dft.loc[i, 'essKwOutAch'] * (1.0 / np.sqrt(veh.essRoundTripEff)) - dft.loc[i, 'essKwOutAch']
+        dft.loc[i, 'accelKw'] = (veh.vehKg / (2.0 * (secs[i]))) * ((dft.loc[i, 'mpsAch']**2) - (dft.loc[i-1, 'mpsAch']**2)) / 1000.0
+        dft.loc[i, 'ascentKw'] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((dft.loc[i-1, 'mpsAch'] + dft.loc[i, 'mpsAch']) / 2.0) / 1000.0
+        dft.loc[i, 'rrKw'] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((dft.loc[i-1, 'mpsAch'] + dft.loc[i, 'mpsAch']) / 2.0) / 1000.0
 
     ############################################
     ### Calculate Results and Assign Outputs ###
@@ -1023,20 +971,20 @@ def sim_drive_sub(cyc , veh , initSoc):
 
     output = dict()
 
-    if sum(fsKwhOutAch) == 0:
+    if sum(dft['fsKwhOutAch']) == 0:
         output['mpgge'] = 0
 
     else:
-        output['mpgge'] = sum(distMiles) / (sum(fsKwhOutAch) * (1 / kWhPerGGE))
+        output['mpgge'] = sum(dft['distMiles']) / (sum(dft['fsKwhOutAch']) * (1 / kWhPerGGE))
 
-    roadwayChgKj = sum(roadwayChgKwOutAch * secs)
-    essDischKj = -(soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
-    output['battery_kWh_per_mi'] = (essDischKj / 3600.0) / sum(distMiles)
-    output['electric_kWh_per_mi'] = ((roadwayChgKj + essDischKj) / 3600.0) / sum(distMiles)
-    output['maxTraceMissMph'] = mphPerMps * max(abs(cycMps - mpsAch))
-    fuelKj = sum(np.asarray(fsKwOutAch) * np.asarray(secs))
-    roadwayChgKj = sum(np.asarray(roadwayChgKwOutAch) * np.asarray(secs))
-    essDischgKj = -(soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
+    roadwayChgKj = sum(dft['roadwayChgKwOutAch'] * secs)
+    essDischKj = -(dft['soc'][-1] - initSoc) * veh.maxEssKwh * 3600.0
+    output['battery_kWh_per_mi'] = (essDischKj / 3600.0) / sum(dft['distMiles'])
+    output['electric_kWh_per_mi'] = ((roadwayChgKj + essDischKj) / 3600.0) / sum(dft['distMiles'])
+    output['maxTraceMissMph'] = mphPerMps * max(abs(cycMps - dft['mpsAch']))
+    fuelKj = sum(np.asarray(dft['fsKwOutAch']) * np.asarray(secs))
+    roadwayChgKj = sum(np.asarray(dft['roadwayChgKwOutAch']) * np.asarray(secs))
+    essDischgKj = -(dft['soc'][-1] - initSoc) * veh.maxEssKwh * 3600.0
 
     if (fuelKj + roadwayChgKj) == 0:
         output['ess2fuelKwh'] = 1.0
@@ -1044,8 +992,8 @@ def sim_drive_sub(cyc , veh , initSoc):
     else:
         output['ess2fuelKwh'] = essDischgKj / (fuelKj + roadwayChgKj)
 
-    output['initial_soc'] = soc[0]
-    output['final_soc'] = soc[-1]
+    output['initial_soc'] = dft['soc'][0]
+    output['final_soc'] = dft['soc'][-1]
 
 
     if output['mpgge'] == 0:
@@ -1055,15 +1003,15 @@ def sim_drive_sub(cyc , veh , initSoc):
          Gallons_gas_equivalent_per_mile = 1 / output['mpgge'] + output['electric_kWh_per_mi'] / 33.7
 
     output['mpgge_elec'] = 1 / Gallons_gas_equivalent_per_mile
-    output['soc'] = np.asarray(soc)
-    output['distance_mi'] = sum(distMiles)
+    output['soc'] = np.asarray(dft['soc'])
+    output['distance_mi'] = sum(dft['distMiles'])
     duration_sec = cycSecs[-1] - cycSecs[0]
-    output['avg_speed_mph'] = sum(distMiles) / (duration_sec / 3600.0)
-    accel = np.diff(mphAch) / np.diff(cycSecs)
+    output['avg_speed_mph'] = sum(dft['distMiles']) / (duration_sec / 3600.0)
+    accel = np.diff(dft['mphAch']) / np.diff(cycSecs)
     output['avg_accel_mphps'] = np.mean(accel[accel > 0])
 
-    if max(mphAch) > 60:
-        output['ZeroToSixtyTime_secs'] = np.interp(60,mphAch,cycSecs)
+    if max(dft['mphAch']) > 60:
+        output['ZeroToSixtyTime_secs'] = np.interp(60, dft['mphAch'], cycSecs)
 
     else:
         output['ZeroToSixtyTime_secs'] = 0.0
@@ -1073,9 +1021,11 @@ def sim_drive_sub(cyc , veh , initSoc):
     ####             Add parameters of interest as needed.             ####
     #######################################################################
 
-    output['fcKwOutAch'] = np.asarray(fcKwOutAch)
-    output['fsKwhOutAch'] = np.asarray(fsKwhOutAch)
-    output['fcKwInAch'] = np.asarray(fcKwInAch)
-    output['time'] = np.asarray(cycSecs)
+    output['fcKwOutAch'] = np.asarray(dft['fcKwOutAch'])
+    output['fsKwhOutAch'] = np.asarray(dft['fsKwhOutAch'])
+    output['fcKwInAch'] = np.asarray(dft['fcKwInAch'])
+    output['time'] = np.asarray(dft['cycSecs'])
+
+    output['localvars'] = locals()
 
     return output
