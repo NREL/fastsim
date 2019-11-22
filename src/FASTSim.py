@@ -391,6 +391,7 @@ def sim_drive_sub(cyc , veh , initSoc):
         columns = ['cycSecs'] + comp_lim_list + \
             drivetrain_list + control_list + misc_list
         TNT = namedtuple('TNT', columns, defaults=[np.zeros(len(cycSecs))] * len(columns))
+        nonlocal tnt
         tnt = TNT()
 
         tnt._replace(cycSecs=cycSecs)
@@ -407,9 +408,8 @@ def sim_drive_sub(cyc , veh , initSoc):
         tnt.essCurKwh[0] = initSoc * veh.maxEssKwh
         tnt.soc[0] = initSoc
 
-        return tnt
-
-    tnt = get_time_namedtuple()
+    tnt = None
+    get_time_namedtuple()
 
     ############################
     ###   Loop Through Time  ###
