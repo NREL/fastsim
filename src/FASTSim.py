@@ -303,26 +303,25 @@ def sim_drive(cyc , veh , initSoc=None):
         sim_count = 0
         while ess2fuelKwh > veh.essToFuelOkError and sim_count<30:
             sim_count += 1
-            output = sim_drive_sub(cyc , veh , initSoc )
-            ess2fuelKwh = abs( output['ess2fuelKwh'] )
+            output = sim_drive_sub(cyc, veh, initSoc)
+            ess2fuelKwh = abs(output['ess2fuelKwh'])
             initSoc = min(1.0,max(0.0,output['final_soc']))
         np.copy(veh.maxSoc)
-        output = sim_drive_sub( cyc , veh , initSoc )
+        output = sim_drive_sub(cyc, veh, initSoc)
 
     elif (veh.vehPtType == 3 and initSoc == None) or (veh.vehPtType == 4 and initSoc == None): # PHEV and BEV
 
         # If EV, initializing initial SOC to maximum SOC.
 
         initSoc = np.copy(veh.maxSoc)
-        output = sim_drive_sub(cyc , veh , initSoc)
+        output = sim_drive_sub(cyc, veh, initSoc)
         
     else:
-        output = sim_drive_sub(cyc , veh , initSoc)
+        output = sim_drive_sub(cyc, veh, initSoc)
         
-
     return output
 
-def sim_drive_sub( cyc , veh , initSoc):
+def sim_drive_sub(cyc , veh , initSoc):
     """Function sim_drive_sub receives second-by-second cycle information,
     vehicle properties, and an initial state of charge and performs
     a backward facing powertrain simulation. The function returns an 
