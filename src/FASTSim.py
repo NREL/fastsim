@@ -354,62 +354,62 @@ def sim_drive_sub(cyc , veh , initSoc):
     cycMph = [x * mphPerMps for x in cyc['cycMps']]
     secs = np.insert(np.diff(cycSecs), 0, 0)
 
-    # def get_time_df():
-    """Initializes arrays of time dependent variables as pandas dataframe columns.  
-    Returns Pandas DataFrame called dft"""
+    def get_time_df():
+        """Initializes arrays of time dependent variables as pandas dataframe columns.  
+        Returns Pandas DataFrame called dft"""
 
-    # Component Limits -- calculated dynamically"
-    comp_lim_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 
-    'essCapLimDischgKw', 'curMaxEssKwOut', 'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 
-    'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 'essLimMcRegenPercKw', 
-    'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut']
+        # Component Limits -- calculated dynamically"
+        comp_lim_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 
+        'essCapLimDischgKw', 'curMaxEssKwOut', 'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 
+        'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 'essLimMcRegenPercKw', 
+        'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut']
 
-    ### Drive Train
-    drivetrain_list = ['cycDragKw', 'cycAccelKw', 'cycAscentKw', 'cycTracKwReq', 'curMaxTracKw', 
-    'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
-    'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 
-    'transKwOutAch', 'transKwInAch', 'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 
-    'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 'essKwOutAch', 'fcKwOutAch', 
-    'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc']
+        ### Drive Train
+        drivetrain_list = ['cycDragKw', 'cycAccelKw', 'cycAscentKw', 'cycTracKwReq', 'curMaxTracKw', 
+        'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
+        'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 
+        'transKwOutAch', 'transKwInAch', 'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 
+        'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 'essKwOutAch', 'fcKwOutAch', 
+        'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc']
 
-    #roadwayMaxEssChg  # *** CB is not sure why this is here
-    
-    # Vehicle Attributes, Control Variables
-    control_list = ['regenBufferSoc' , 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 
-    'essAccelBufferChgKw', 'accelBufferSoc', 'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 
-    'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 'desiredEssKwOutForAE', 
-    'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 
-    'fcKwGapFrEff', 'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'fcForcedOn', 
-    'fcForcedState', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn']
+        #roadwayMaxEssChg  # *** CB is not sure why this is here
+        
+        # Vehicle Attributes, Control Variables
+        control_list = ['regenBufferSoc' , 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 
+        'essAccelBufferChgKw', 'accelBufferSoc', 'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 
+        'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 'desiredEssKwOutForAE', 
+        'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 
+        'fcKwGapFrEff', 'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'fcForcedOn', 
+        'fcForcedState', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn']
 
-    ### Additional Variables
-    misc_list = ['mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff', 
-    'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw', 
-    'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag']
+        ### Additional Variables
+        misc_list = ['mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff', 
+        'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw', 
+        'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag']
 
-    # create and initialize time array dataframe
-    columns = ['cycSecs'] + comp_lim_list + \
-        drivetrain_list + control_list + misc_list
-    dft = pd.DataFrame(
-        np.zeros((len(cycSecs), len(columns))), columns=columns)
-    dft['cycSecs'] = cycSecs
-    dft.set_index('cycSecs', inplace=True, drop=False)
-    dft['fcForcedOn'] = False
-    dft['curMaxRoadwayChgKw'] = np.interp(
-        cycRoadType, veh.MaxRoadwayChgKw_Roadway, veh.MaxRoadwayChgKw)  
-        # *** this is just zeros, and I need to verify that it was zeros before and also 
-        # verify that this is the correct behavior.  CB
+        # create and initialize time array dataframe
+        columns = ['cycSecs'] + comp_lim_list + \
+            drivetrain_list + control_list + misc_list
+        dft = pd.DataFrame(
+            np.zeros((len(cycSecs), len(columns))), columns=columns)
+        dft['cycSecs'] = cycSecs
+        dft.set_index('cycSecs', inplace=True, drop=False)
+        dft['fcForcedOn'] = False
+        dft['curMaxRoadwayChgKw'] = np.interp(
+            cycRoadType, veh.MaxRoadwayChgKw_Roadway, veh.MaxRoadwayChgKw)  
+            # *** this is just zeros, and I need to verify that it was zeros before and also 
+            # verify that this is the correct behavior.  CB
 
-    ###  Assign First Value  ###
-    ### Drive Train
-    dft.loc[0, 'cycMet'] = 1
-    dft.loc[0, 'curSocTarget'] = veh.maxSoc
-    dft.loc[0, 'essCurKwh'] = initSoc * veh.maxEssKwh
-    dft.loc[0, 'soc'] = initSoc
+        ###  Assign First Value  ###
+        ### Drive Train
+        dft.loc[0, 'cycMet'] = 1
+        dft.loc[0, 'curSocTarget'] = veh.maxSoc
+        dft.loc[0, 'essCurKwh'] = initSoc * veh.maxEssKwh
+        dft.loc[0, 'soc'] = initSoc
 
-        # return dft
+        return dft
 
-    # dft = get_time_df()
+    dft = get_time_df()
 
     ############################
     ###   Loop Through Time  ###
