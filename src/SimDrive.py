@@ -173,19 +173,19 @@ def sim_drive_sub(cyc , veh , initSoc):
     mphPerMps = 2.2369
     kWhPerGGE = 33.7
     metersPerMile = 1609.00
-    maxTracMps2 = ((((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2)/\
+    maxTracMps2 = ((((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2) /\
         (1+((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))))/(veh.vehKg * gravityMPerSec2)) * gravityMPerSec2
-    maxRegenKwh = 0.5 * veh.vehKg*(27**2)/(3600 * 1000)
+    maxRegenKwh = 0.5 * veh.vehKg * (27**2) / (3600 * 1000)
 
     #############################
     ### Initialize Variables  ###
     #############################
 
     ### Drive Cycle
-    cycSecs = np.copy(cyc['cycSecs'])
-    cycMps = np.copy(cyc['cycMps'])
-    cycGrade = np.copy(cyc['cycGrade'])
-    cycRoadType = np.copy(cyc['cycRoadType'])
+    cycSecs = cyc['cycSecs'].copy().to_numpy()
+    cycMps = cyc['cycMps'].copy().to_numpy()
+    cycGrade = cyc['cycGrade'].copy().to_numpy()
+    cycRoadType = cyc['cycRoadType'].copy().to_numpy()
     cycMph = np.copy(cycMps * mphPerMps)
     secs = np.insert(np.diff(cycSecs), 0, 0)
 
