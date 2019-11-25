@@ -122,7 +122,7 @@ def sim_drive(cyc , veh , initSoc=None):
         # If no EV / Hybrid components, no SOC considerations.
 
         initSoc = 0.0
-        output = sim_drive_sub( cyc , veh , initSoc )
+        output, tarr = sim_drive_sub( cyc , veh , initSoc )
 
     elif veh.vehPtType == 2 and initSoc == None:  # HEV 
 
@@ -138,21 +138,21 @@ def sim_drive(cyc , veh , initSoc=None):
         sim_count = 0
         while ess2fuelKwh > veh.essToFuelOkError and sim_count<30:
             sim_count += 1
-            output = sim_drive_sub(cyc, veh, initSoc)
+            output, tarr = sim_drive_sub(cyc, veh, initSoc)
             ess2fuelKwh = abs(output['ess2fuelKwh'])
             initSoc = min(1.0,max(0.0,output['final_soc']))
         np.copy(veh.maxSoc)
-        output = sim_drive_sub(cyc, veh, initSoc)
+        output, tarr = sim_drive_sub(cyc, veh, initSoc)
 
     elif (veh.vehPtType == 3 and initSoc == None) or (veh.vehPtType == 4 and initSoc == None): # PHEV and BEV
 
         # If EV, initializing initial SOC to maximum SOC.
 
         initSoc = np.copy(veh.maxSoc)
-        output = sim_drive_sub(cyc, veh, initSoc)
+        output, tarr = sim_drive_sub(cyc, veh, initSoc)
         
     else:
-        output = sim_drive_sub(cyc, veh, initSoc)
+        output, tarr = sim_drive_sub(cyc, veh, initSoc)
         
     return output
 
@@ -186,7 +186,7 @@ def sim_drive_sub(cyc , veh , initSoc):
     cycMps = np.copy(cyc['cycMps'])
     cycGrade = np.copy(cyc['cycGrade'])
     cycRoadType = np.copy(cyc['cycRoadType'])
-    cycMph = np.copy([x * mphPerMps for x in cyc['cycMps']])
+    cycMph = np.copy(cycMps * mphPerMps)
     secs = np.insert(np.diff(cycSecs), 0, 0)
 
     tarr = TimeArrays(cycSecs, veh, initSoc)
@@ -757,38 +757,46 @@ def sim_drive_sub(cyc , veh , initSoc):
     else:
         output['mpgge'] = sum(tarr.distMiles) / (sum(tarr.fsKwhOutAch) * (1 / kWhPerGGE))
 
-    roadwayChgKj = sum(tarr.roadwayChgKwOutAch * secs)
-    essDischKj = -(tarr.soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
-    output['battery_kWh_per_mi'] = (essDischKj / 3600.0) / sum(tarr.distMiles)
-    output['electric_kWh_per_mi'] = ((roadwayChgKj + essDischKj) / 3600.0) / sum(tarr.distMiles)
+    tarr.roadwayChgKj = sum(tarr.roadwayChgKwOutAch * secs)
+    tarr.essDischKj = -(tarr.soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
+    output['battery_kWh_per_mi'] = (tarr.essDischKj / 3600.0) / sum(tarr.distMiles)
+    tarr.battery_kWh_per_mi = output['battery_kWh_per_mi']
+    output['electric_kWh_per_mi'] = ((tarr.roadwayChgKj + tarr.essDischKj) / 3600.0) / sum(tarr.distMiles)
+    tarr.electric_kWh_per_mi = output['electric_kWh_per_mi']
     output['maxTraceMissMph'] = mphPerMps * max(abs(cycMps - tarr.mpsAch))
-    fuelKj = sum(np.asarray(tarr.fsKwOutAch) * np.asarray(secs))
-    roadwayChgKj = sum(np.asarray(tarr.roadwayChgKwOutAch) * np.asarray(secs))
+    tarr.maxTraceMissMph = output['maxTraceMissMph']
+    tarr.fuelKj = sum(np.asarray(tarr.fsKwOutAch) * np.asarray(secs))
+    tarr.roadwayChgKj = sum(np.asarray(tarr.roadwayChgKwOutAch) * np.asarray(secs))
     essDischgKj = -(tarr.soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
 
-    if (fuelKj + roadwayChgKj) == 0:
+    if (tarr.fuelKj + tarr.roadwayChgKj) == 0:
         output['ess2fuelKwh'] = 1.0
 
     else:
-        output['ess2fuelKwh'] = essDischgKj / (fuelKj + roadwayChgKj)
+        output['ess2fuelKwh'] = essDischgKj / (tarr.fuelKj + tarr.roadwayChgKj)
+
+    tarr.ess2fuelKwh = output['ess2fuelKwh']
 
     output['initial_soc'] = tarr.soc[0]
     output['final_soc'] = tarr.soc[-1]
-
 
     if output['mpgge'] == 0:
         Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi'] / 33.7 # hardcoded conversion
 
     else:
          Gallons_gas_equivalent_per_mile = 1 / output['mpgge'] + output['electric_kWh_per_mi'] / 33.7 # hardcoded conversion
+    
+    tarr.Gallons_gas_equivalent_per_mile = Gallons_gas_equivalent_per_mile
 
     output['mpgge_elec'] = 1 / Gallons_gas_equivalent_per_mile
     output['soc'] = np.asarray(tarr.soc)
     output['distance_mi'] = sum(tarr.distMiles)
     duration_sec = cycSecs[-1] - cycSecs[0]
     output['avg_speed_mph'] = sum(tarr.distMiles) / (duration_sec / 3600.0)
-    accel = np.diff(tarr.mphAch) / np.diff(cycSecs)
-    output['avg_accel_mphps'] = np.mean(accel[accel > 0])
+    tarr.avg_speed_mph = output['avg_speed_mph']
+    tarr.accel = np.diff(tarr.mphAch) / np.diff(cycSecs)
+    output['avg_accel_mphps'] = np.mean(tarr.accel[tarr.accel > 0])
+    tarr.avg_accel_mphps = output['avg_accel_mphps']
 
     if max(tarr.mphAch) > 60:
         output['ZeroToSixtyTime_secs'] = np.interp(60, tarr.mphAch, cycSecs)
@@ -806,6 +814,4 @@ def sim_drive_sub(cyc , veh , initSoc):
     output['fcKwInAch'] = np.asarray(tarr.fcKwInAch)
     output['time'] = np.asarray(tarr.cycSecs)
 
-    output['localvars'] = locals()
-
-    return output
+    return output, tarr
