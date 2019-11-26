@@ -14,9 +14,9 @@ class Vehicle(object):
     def __init__(self, vnum=None):
         super().__init__()
         if vnum:
-            self.load(vnum)
-
-    def load(self, vnum):
+            self.load_vnum(vnum)
+        
+    def load_vnum(self, vnum):
         """Load vehicle parameters and assign to self."""
 
         vehdf = pd.read_csv('..//docs//FASTSim_py_veh_db.csv')
@@ -47,11 +47,12 @@ class Vehicle(object):
             
             # assign dataframe columns 
             self.__setattr__(col1, vehdf.loc[vnum, col])
+        
+        self.set_init_calcs()
+        self.set_veh_mass()
 
-        ######################################################################
-        ### Append additional parameters to veh structure from calculation ###
-        ######################################################################
-
+    def set_init_calcs(self):
+        """Set parameters that can be calculated after loading vehicle data"""
         ### Build roadway power lookup table
         self.MaxRoadwayChgKw_Roadway = range(6)
         self.MaxRoadwayChgKw = [0] * len(self.MaxRoadwayChgKw_Roadway)
@@ -217,8 +218,9 @@ class Vehicle(object):
         self.regenA = 500.0  # hardcoded
         self.regenB = 0.99  # hardcoded
 
-        ### Calculate total vehicle mass
-        # sum up component masses if positive real number is not specified for vehOverrideKg
+    def set_veh_mass(self):
+        """Calculate total vehicle mass.  Sum up component masses if 
+        positive real number is not specified for vehOverrideKg"""
         if not(self.vehOverrideKg > 0):
             if self.maxEssKwh == 0 or self.maxEssKw == 0:
                 ess_mass_kg = 0.0
