@@ -4,26 +4,28 @@ import numpy as np
 import re
 
 def get_standard_cycle(cycle_name):
-    """Load time trace of speed, grade, and road type."""
+    """Load time trace of speed, grade, and road type in a pandas dataframe."""
     csv_path = '..//cycles//'+cycle_name+'.csv'
-    data = pd.read_csv(csv_path)
-    return data
+    cyc = pd.read_csv(csv_path)
+    return cyc
 
 class Vehicle(object):
-    """Class for loading and contaning vehicle """
+    """Class for loading and contaning vehicle attributes"""
     def __init__(self, vnum=None):
         super().__init__()
         if vnum:
             self.load_vnum(vnum)
         
     def load_vnum(self, vnum):
-        """Load vehicle parameters and assign to self."""
+        """Load vehicle parameters based on vnum and assign to self.
+        Argument:
+        ---------
+        vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'"""
 
         vehdf = pd.read_csv('..//docs//FASTSim_py_veh_db.csv')
         vehdf.set_index('Selection', inplace=True, drop=False)
 
         ### selects specified vnum from vehdf
-        veh = dict()
         for col in vehdf.columns:
             # convert all data to string types
             vehdf.loc[vnum, col] = str(vehdf.loc[vnum, col])
