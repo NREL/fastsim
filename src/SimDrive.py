@@ -284,6 +284,75 @@ def sim_drive_sub(cyc , veh , initSoc):
         
         return tarr
 
+    def get_power_calcs(tarr, i):
+        """Calculate and return power variables.
+        Arguments
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step"""
+        tarr.cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((tarr.mpsAch[i-1] + cycMps[i]) / 2.0)**3) / 1000.0
+        tarr.cycAccelKw[i] = (veh.vehKg / (2.0 * (secs[i]))) * ((cycMps[i]**2) - (tarr.mpsAch[i-1]**2)) / 1000.0
+        tarr.cycAscentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((tarr.mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
+        tarr.cycTracKwReq[i] = tarr.cycDragKw[i] + tarr.cycAccelKw[i] + tarr.cycAscentKw[i]
+        tarr.spareTracKw[i] = tarr.curMaxTracKw[i] - tarr.cycTracKwReq[i]
+        tarr.cycRrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((tarr.mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
+        tarr.cycWheelRadPerSec[i] = cycMps[i] / veh.wheelRadiusM
+        tarr.cycTireInertiaKw[i] = (((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * (tarr.cycWheelRadPerSec[i]**2.0)) / secs[i]) - \
+            ((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * ((tarr.mpsAch[i-1] / veh.wheelRadiusM)**2.0)) / secs[i])) / 1000.0
+
+        tarr.cycWheelKwReq[i] = tarr.cycTracKwReq[i] + tarr.cycRrKw[i] + tarr.cycTireInertiaKw[i]
+        tarr.regenContrLimKwPerc[i] = veh.maxRegen / (1 + veh.regenA * np.exp(-veh.regenB * ((cycMph[i] + tarr.mpsAch[i-1] * mphPerMps) / 2.0 + 1 - 0)))
+        tarr.cycRegenBrakeKw[i] = max(min(tarr.curMaxMechMcKwIn[i] * veh.transEff,tarr.regenContrLimKwPerc[i]*-tarr.cycWheelKwReq[i]),0)
+        tarr.cycFricBrakeKw[i] = -min(tarr.cycRegenBrakeKw[i] + tarr.cycWheelKwReq[i],0)
+        tarr.cycTransKwOutReq[i] = tarr.cycWheelKwReq[i] + tarr.cycFricBrakeKw[i]
+
+        if tarr.cycTransKwOutReq[i]<=tarr.curMaxTransKwOut[i]:
+            tarr.cycMet[i] = 1
+            tarr.transKwOutAch[i] = tarr.cycTransKwOutReq[i]
+
+        else:
+            tarr.cycMet[i] = -1
+            tarr.transKwOutAch[i] = tarr.curMaxTransKwOut[i]
+        
+        return tarr
+
+    def get_battery_wear(tarr, i):
+        """Battery wear calcs"""
+
+        if veh.noElecSys!='TRUE':
+
+            if tarr.essCurKwh[i] > tarr.essCurKwh[i-1]:
+                tarr.addKwh[i] = (tarr.essCurKwh[i] - tarr.essCurKwh[i-1]) + tarr.addKwh[i-1]
+            else:
+                tarr.addKwh[i] = 0
+
+            if tarr.addKwh[i] == 0:
+                tarr.dodCycs[i] = tarr.addKwh[i-1] / veh.maxEssKwh
+            else:
+                tarr.dodCycs[i] = 0
+
+            if tarr.dodCycs[i]!=0:
+                tarr.essPercDeadArray[i] = np.power(veh.essLifeCoefA,1.0 / veh.essLifeCoefB) / np.power(tarr.dodCycs[i],1.0 / veh.essLifeCoefB)
+            else:
+                tarr.essPercDeadArray[i] = 0
+
+        return tarr
+
+    def get_energy_audit(tarr, i):
+        """Energy Audit Calculations"""
+        tarr.dragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0)**3) / 1000.0
+        if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
+            tarr.essLossKw[i] = 0
+        elif tarr.essKwOutAch[i] < 0:
+            tarr.essLossKw[i] = -tarr.essKwOutAch[i] - (-tarr.essKwOutAch[i] * np.sqrt(veh.essRoundTripEff))
+        else:
+            tarr.essLossKw[i] = tarr.essKwOutAch[i] * (1.0 / np.sqrt(veh.essRoundTripEff)) - tarr.essKwOutAch[i]
+        tarr.accelKw[i] = (veh.vehKg / (2.0 * (secs[i]))) * ((tarr.mpsAch[i]**2) - (tarr.mpsAch[i-1]**2)) / 1000.0
+        tarr.ascentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0) / 1000.0
+        tarr.rrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0) / 1000.0
+
+        return tarr
+
     ############################
     ###   Loop Through Time  ###
     ############################
@@ -314,31 +383,7 @@ def sim_drive_sub(cyc , veh , initSoc):
         tarr.maxTracMps[i] = tarr.mpsAch[i-1] + (maxTracMps2 * secs[i])
 
         tarr = get_comp_lims(tarr, i)
-
-        ### Cycle Power
-        tarr.cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((tarr.mpsAch[i-1] + cycMps[i]) / 2.0)**3) / 1000.0
-        tarr.cycAccelKw[i] = (veh.vehKg / (2.0 * (secs[i]))) * ((cycMps[i]**2) - (tarr.mpsAch[i-1]**2)) / 1000.0
-        tarr.cycAscentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((tarr.mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
-        tarr.cycTracKwReq[i] = tarr.cycDragKw[i] + tarr.cycAccelKw[i] + tarr.cycAscentKw[i]
-        tarr.spareTracKw[i] = tarr.curMaxTracKw[i] - tarr.cycTracKwReq[i]
-        tarr.cycRrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((tarr.mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
-        tarr.cycWheelRadPerSec[i] = cycMps[i] / veh.wheelRadiusM
-        tarr.cycTireInertiaKw[i] = (((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * (tarr.cycWheelRadPerSec[i]**2.0)) / secs[i]) - \
-            ((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * ((tarr.mpsAch[i-1] / veh.wheelRadiusM)**2.0)) / secs[i])) / 1000.0
-
-        tarr.cycWheelKwReq[i] = tarr.cycTracKwReq[i] + tarr.cycRrKw[i] + tarr.cycTireInertiaKw[i]
-        tarr.regenContrLimKwPerc[i] = veh.maxRegen / (1 + veh.regenA * np.exp(-veh.regenB * ((cycMph[i] + tarr.mpsAch[i-1] * mphPerMps) / 2.0 + 1 - 0)))
-        tarr.cycRegenBrakeKw[i] = max(min(tarr.curMaxMechMcKwIn[i] * veh.transEff,tarr.regenContrLimKwPerc[i]*-tarr.cycWheelKwReq[i]),0)
-        tarr.cycFricBrakeKw[i] = -min(tarr.cycRegenBrakeKw[i] + tarr.cycWheelKwReq[i],0)
-        tarr.cycTransKwOutReq[i] = tarr.cycWheelKwReq[i] + tarr.cycFricBrakeKw[i]
-
-        if tarr.cycTransKwOutReq[i]<=tarr.curMaxTransKwOut[i]:
-            tarr.cycMet[i] = 1
-            tarr.transKwOutAch[i] = tarr.cycTransKwOutReq[i]
-
-        else:
-            tarr.cycMet[i] = -1
-            tarr.transKwOutAch[i] = tarr.curMaxTransKwOut[i]
+        tarr = get_power_calcs(tarr, i)
 
         ################################
         ###   Speed/Distance Calcs   ###
@@ -705,42 +750,10 @@ def sim_drive_sub(cyc , veh , initSoc):
         else:
             tarr.fcTimeOn[i] = tarr.fcTimeOn[i-1] + secs[i]
 
-    def get_battery_wear(tarr):
-        """Battery wear calcs"""
+        tarr = get_battery_wear(tarr, i)
+        tarr = get_energy_audit(tarr, i)
 
-        if veh.noElecSys!='TRUE':
-
-            if tarr.essCurKwh[i] > tarr.essCurKwh[i-1]:
-                tarr.addKwh[i] = (tarr.essCurKwh[i] - tarr.essCurKwh[i-1]) + tarr.addKwh[i-1]
-            else:
-                tarr.addKwh[i] = 0
-
-            if tarr.addKwh[i] == 0:
-                tarr.dodCycs[i] = tarr.addKwh[i-1] / veh.maxEssKwh
-            else:
-                tarr.dodCycs[i] = 0
-
-            if tarr.dodCycs[i]!=0:
-                tarr.essPercDeadArray[i] = np.power(veh.essLifeCoefA,1.0 / veh.essLifeCoefB) / np.power(tarr.dodCycs[i],1.0 / veh.essLifeCoefB)
-            else:
-                tarr.essPercDeadArray[i] = 0
-
-        return tarr
-
-    def get_energy_audit(tarr):
-        """Energy Audit Calculations"""
-        tarr.dragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0)**3) / 1000.0
-        if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
-            tarr.essLossKw[i] = 0
-        elif tarr.essKwOutAch[i] < 0:
-            tarr.essLossKw[i] = -tarr.essKwOutAch[i] - (-tarr.essKwOutAch[i] * np.sqrt(veh.essRoundTripEff))
-        else:
-            tarr.essLossKw[i] = tarr.essKwOutAch[i] * (1.0 / np.sqrt(veh.essRoundTripEff)) - tarr.essKwOutAch[i]
-        tarr.accelKw[i] = (veh.vehKg / (2.0 * (secs[i]))) * ((tarr.mpsAch[i]**2) - (tarr.mpsAch[i-1]**2)) / 1000.0
-        tarr.ascentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0) / 1000.0
-        tarr.rrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0) / 1000.0
-
-        return tarr
+    # post-processing functions
 
     def get_output(tarr):
         "Calculate Results and Assign Outputs"
@@ -812,8 +825,6 @@ def sim_drive_sub(cyc , veh , initSoc):
 
         return output, tarr
     
-    tarr = get_battery_wear(tarr)
-    tarr = get_energy_audit(tarr)
     output, tarr = get_output(tarr)
 
     return output, tarr
