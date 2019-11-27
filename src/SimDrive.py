@@ -1,51 +1,3 @@
-"""
-##############################################################################
-##############################################################################
-Pythonic copy of NREL's FASTSim
-(Future Automotive Systems Technology Simulator)
-Input Arguments
-1) cyc: dictionary defining drive cycle to be simulated
-        cyc['cycSecs']: drive cycle time in seconds (begins at zero)
-        cyc['cycMps']: desired vehicle speed in meters per second
-        cyc['cycGrade']: road grade
-        cyc['cycRoadType']: Functional Class of GPS data
-2) veh: dictionary defining vehicle parameters for simulation
-Output Arguments
-A dictionary containing scalar values summarizing simulation
-(mpg, Wh/mi, avg engine power, etc) and/or time-series results for component
-power and efficiency. Currently these values are user clarified in the code by assigning values to the 'output' dictionary.
-    List of Abbreviations
-    cur = current time step
-    prev = previous time step
-
-    cyc = drive cycle
-    secs = seconds
-    mps = meters per second
-    mph = miles per hour
-    kw = kilowatts, unit of power
-    kwh = kilowatt-hour, unit of energy
-    kg = kilograms, unit of mass
-    max = maximum
-    min = minimum
-    avg = average
-    fs = fuel storage (eg. gasoline/diesel tank, pressurized hydrogen tank)
-    fc = fuel converter (eg. internal combustion engine, fuel cell)
-    mc = electric motor/generator and controller
-    ess = energy storage system (eg. high voltage traction battery)
-
-    chg = charging of a component
-    dis = discharging of a component
-    lim = limit of a component
-    regen = associated with regenerative braking
-    des = desired value
-    ach = achieved value
-    in = component input
-    out = component output
-
-##############################################################################
-##############################################################################
-"""
-
 ### Import necessary python modules
 import numpy as np
 import pandas as pd
@@ -56,7 +8,13 @@ warnings.simplefilter('ignore')
 class TimeArrays(object):
     """Class for contaning time series data used by sim_drive_sub"""
     def __init__(self, cycSecs, veh, initSoc):
-        """Initializes arrays of time dependent variables as attributes of self."""
+        """Initializes arrays of time dependent variables as attributes of self.
+        Arguments
+        ------------
+        cycSecs: numpy array of cycle time points
+        veh: instance of LoadData.Vehicle() class
+        initSoc: initial SOC for electrified vehicles
+        """
         super().__init__()
 
         # Component Limits -- calculated dynamically"
@@ -110,7 +68,13 @@ class TimeArrays(object):
         self.soc[0] = initSoc
   
 def sim_drive(cyc , veh , initSoc=None):
-    """Initialize and iterate sim_drive_sub as appropriate for vehicle attribute vehPtType."""    
+    """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
+        Arguments
+        ------------
+        cyc: pandas dataframe of time traces of cycle data from LoadData.get_standard_cycle()
+        veh: instance of LoadData.Vehicle() class
+        initSoc: initial SOC for electrified vehicles
+        """
     if initSoc != None:
         if initSoc>1.0 or initSoc<0.0:
             print('Must enter a valid initial SOC between 0.0 and 1.0')
@@ -122,7 +86,7 @@ def sim_drive(cyc , veh , initSoc=None):
         # If no EV / Hybrid components, no SOC considerations.
 
         initSoc = 0.0
-        output, tarr = sim_drive_sub( cyc , veh , initSoc )
+        output, tarr = sim_drive_sub(cyc, veh, initSoc)
 
     elif veh.vehPtType == 2 and initSoc == None:  # HEV 
 
@@ -154,7 +118,7 @@ def sim_drive(cyc , veh , initSoc=None):
     else:
         output, tarr = sim_drive_sub(cyc, veh, initSoc)
         
-    return output
+    return output, tarr
 
 def sim_drive_sub(cyc , veh , initSoc):
     """Function sim_drive_sub receives second-by-second cycle information,
@@ -181,7 +145,7 @@ def sim_drive_sub(cyc , veh , initSoc):
     ### Initialize Variables  ###
     #############################
 
-    ### Drive Cycle
+    ### Drive Cycle copied as numpy array for computational speed
     cycSecs = cyc['cycSecs'].copy().to_numpy()
     cycMps = cyc['cycMps'].copy().to_numpy()
     cycGrade = cyc['cycGrade'].copy().to_numpy()
@@ -190,6 +154,135 @@ def sim_drive_sub(cyc , veh , initSoc):
     secs = np.insert(np.diff(cycSecs), 0, 0)
 
     tarr = TimeArrays(cycSecs, veh, initSoc)
+
+    # Function definitions for functions to be run at each time step
+    def get_comp_lims(tarr, i):
+        """Return time array (tarr) with component limits set for time step 'i'
+        Arguments
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step
+        """
+        ### Component Limits
+        # max fuel storage power output
+        tarr.curMaxFsKwOut[i] = min(veh.maxFuelStorKw, tarr.fsKwOutAch[i-1] + (
+            (veh.maxFuelStorKw/veh.fuelStorSecsToPeakPwr) * (secs[i])))
+        # maximum fuel storage power output rate of change
+        tarr.fcTransLimKw[i] = tarr.fcKwOutAch[i-1] + \
+            ((veh.maxFuelConvKw / veh.fuelConvSecsToPeakPwr) * (secs[i]))
+
+        # *** this min seems redundant with line 518
+        tarr.fcMaxKwIn[i] = min(tarr.curMaxFsKwOut[i], veh.maxFuelStorKw)
+        tarr.fcFsLimKw[i] = veh.fcMaxOutkW
+        tarr.curMaxFcKwOut[i] = min(
+            veh.maxFuelConvKw, tarr.fcFsLimKw[i], tarr.fcTransLimKw[i])
+
+        # Does ESS discharge need to be limited? *** I think veh.maxEssKw should also be in the following
+        # boolean condition
+        if veh.maxEssKwh == 0 or tarr.soc[i-1] < veh.minSoc:
+            tarr.essCapLimDischgKw[i] = 0.0
+
+        else:
+            tarr.essCapLimDischgKw[i] = (
+                veh.maxEssKwh * np.sqrt(veh.essRoundTripEff)) * 3600.0 * (tarr.soc[i-1] - veh.minSoc) / (secs[i])
+        tarr.curMaxEssKwOut[i] = min(veh.maxEssKw, tarr.essCapLimDischgKw[i])
+
+        if veh.maxEssKwh == 0 or veh.maxEssKw == 0:
+            tarr.essCapLimChgKw[i] = 0
+
+        else:
+            tarr.essCapLimChgKw[i] = max(((veh.maxSoc - tarr.soc[i-1]) * veh.maxEssKwh * (1 /
+                                                                                          np.sqrt(veh.essRoundTripEff))) / ((secs[i]) * (1 / 3600.0)), 0)
+
+        tarr.curMaxEssChgKw[i] = min(tarr.essCapLimChgKw[i], veh.maxEssKw)
+
+        # Current maximum electrical power that can go toward propulsion, not including motor limitations
+        if veh.fcEffType == 4:
+            tarr.curMaxElecKw[i] = tarr.curMaxFcKwOut[i] + tarr.curMaxRoadwayChgKw[i] + \
+                tarr.curMaxEssKwOut[i] - tarr.auxInKw[i]
+
+        else:
+            tarr.curMaxElecKw[i] = tarr.curMaxRoadwayChgKw[i] + \
+                tarr.curMaxEssKwOut[i] - tarr.auxInKw[i]
+
+        # Current maximum electrical power that can go toward propulsion, including motor limitations
+        tarr.curMaxAvailElecKw[i] = min(
+            tarr.curMaxElecKw[i], veh.mcMaxElecInKw)
+
+        if tarr.curMaxElecKw[i] > 0:
+            # limit power going into e-machine controller to
+            if tarr.curMaxAvailElecKw[i] == max(veh.mcKwInArray):
+                tarr.mcElecInLimKw[i] = min(
+                    veh.mcKwOutArray[len(veh.mcKwOutArray) - 1], veh.maxMotorKw)
+            else:
+                tarr.mcElecInLimKw[i] = min(veh.mcKwOutArray[np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) -
+                                                                                             0.01, tarr.curMaxAvailElecKw[i])) - 1], veh.maxMotorKw)
+        else:
+            tarr.mcElecInLimKw[i] = 0.0
+
+        # Motor transient power limit
+        tarr.mcTransiLimKw[i] = abs(
+            tarr.mcMechKwOutAch[i-1]) + ((veh.maxMotorKw / veh.motorSecsToPeakPwr) * (secs[i]))
+
+        tarr.curMaxMcKwOut[i] = max(min(
+            tarr.mcElecInLimKw[i], tarr.mcTransiLimKw[i], veh.maxMotorKw), -veh.maxMotorKw)
+
+        if tarr.curMaxMcKwOut[i] == 0:
+            tarr.curMaxMcElecKwIn[i] = 0
+        else:
+            if tarr.curMaxMcKwOut[i] == veh.maxMotorKw:
+                tarr.curMaxMcElecKwIn[i] = tarr.curMaxMcKwOut[i] / \
+                    veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            else:
+                tarr.curMaxMcElecKwIn[i] = tarr.curMaxMcKwOut[i] / veh.mcFullEffArray[max(1, np.argmax(veh.mcKwOutArray
+                                                                                                       > min(veh.maxMotorKw - 0.01, tarr.curMaxMcKwOut[i])) - 1)]
+
+        if veh.maxMotorKw == 0:
+            tarr.essLimMcRegenPercKw[i] = 0.0
+
+        else:
+            tarr.essLimMcRegenPercKw[i] = min(
+                (tarr.curMaxEssChgKw[i] + tarr.auxInKw[i]) / veh.maxMotorKw, 1)
+        if tarr.curMaxEssChgKw[i] == 0:
+            tarr.essLimMcRegenKw[i] = 0.0
+
+        else:
+            if veh.maxMotorKw == tarr.curMaxEssChgKw[i] - tarr.curMaxRoadwayChgKw[i]:
+                tarr.essLimMcRegenKw[i] = min(
+                    veh.maxMotorKw, tarr.curMaxEssChgKw[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1])
+            else:
+                tarr.essLimMcRegenKw[i] = min(veh.maxMotorKw, tarr.curMaxEssChgKw[i] / veh.mcFullEffArray
+                                              [max(1, np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, tarr.curMaxEssChgKw[i] - tarr.curMaxRoadwayChgKw[i])) - 1)])
+
+        tarr.curMaxMechMcKwIn[i] = min(tarr.essLimMcRegenKw[i], veh.maxMotorKw)
+        tarr.curMaxTracKw[i] = (((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2)
+                                 / (1 + ((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))) / 1000.0) * (tarr.maxTracMps[i])
+
+        if veh.fcEffType == 4:
+
+            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or tarr.highAccFcOnTag[i] == 1:
+                tarr.curMaxTransKwOut[i] = min(
+                    (tarr.curMaxMcKwOut[i] - tarr.auxInKw[i]) * veh.transEff, tarr.curMaxTracKw[i] / veh.transEff)
+                tarr.debug_flag[i] = 1
+
+            else:
+                tarr.curMaxTransKwOut[i] = min((tarr.curMaxMcKwOut[i] - min(
+                    tarr.curMaxElecKw[i], 0)) * veh.transEff, tarr.curMaxTracKw[i] / veh.transEff)
+                tarr.debug_flag[i] = 2
+
+        else:
+
+            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or tarr.highAccFcOnTag[i] == 1:
+                tarr.curMaxTransKwOut[i] = min((tarr.curMaxMcKwOut[i] + tarr.curMaxFcKwOut[i] -
+                                                tarr.auxInKw[i]) * veh.transEff, tarr.curMaxTracKw[i] / veh.transEff)
+                tarr.debug_flag[i] = 3
+
+            else:
+                tarr.curMaxTransKwOut[i] = min((tarr.curMaxMcKwOut[i] + tarr.curMaxFcKwOut[i] -
+                                                min(tarr.curMaxElecKw[i], 0)) * veh.transEff, tarr.curMaxTracKw[i] / veh.transEff)
+                tarr.debug_flag[i] = 4
+        
+        return tarr
 
     ############################
     ###   Loop Through Time  ###
@@ -220,109 +313,7 @@ def sim_drive_sub(cyc , veh , initSoc):
             tarr.highAccFcOnTag[i] = 0
         tarr.maxTracMps[i] = tarr.mpsAch[i-1] + (maxTracMps2 * secs[i])
 
-        ### Component Limits
-        # max fuel storage power output
-        tarr.curMaxFsKwOut[i] = min( veh.maxFuelStorKw , tarr.fsKwOutAch[i-1] + ((veh.maxFuelStorKw/veh.fuelStorSecsToPeakPwr) * (secs[i])))
-        # maximum fuel storage power output rate of change
-        tarr.fcTransLimKw[i] = tarr.fcKwOutAch[i-1] + ((veh.maxFuelConvKw / veh.fuelConvSecsToPeakPwr) * (secs[i]))
-
-        tarr.fcMaxKwIn[i] = min(tarr.curMaxFsKwOut[i], veh.maxFuelStorKw) # *** this min seems redundant with line 518
-        tarr.fcFsLimKw[i] = veh.fcMaxOutkW
-        tarr.curMaxFcKwOut[i] = min(veh.maxFuelConvKw,tarr.fcFsLimKw[i],tarr.fcTransLimKw[i])
-
-        # Does ESS discharge need to be limited? *** I think veh.maxEssKw should also be in the following
-        # boolean condition
-        if veh.maxEssKwh == 0 or tarr.soc[i-1] < veh.minSoc:
-            tarr.essCapLimDischgKw[i] = 0.0
-
-        else:
-            tarr.essCapLimDischgKw[i] = (veh.maxEssKwh * np.sqrt(veh.essRoundTripEff)) * 3600.0 * (tarr.soc[i-1] - veh.minSoc) / (secs[i])
-        tarr.curMaxEssKwOut[i] = min(veh.maxEssKw,tarr.essCapLimDischgKw[i])
-
-        if  veh.maxEssKwh == 0 or veh.maxEssKw == 0:
-            tarr.essCapLimChgKw[i] = 0
-
-        else:
-            tarr.essCapLimChgKw[i] = max(((veh.maxSoc - tarr.soc[i-1]) * veh.maxEssKwh * (1 / 
-            np.sqrt(veh.essRoundTripEff))) / ((secs[i]) * (1 / 3600.0)), 0)
-
-        tarr.curMaxEssChgKw[i] = min(tarr.essCapLimChgKw[i],veh.maxEssKw)
-
-        # Current maximum electrical power that can go toward propulsion, not including motor limitations
-        if veh.fcEffType == 4:
-            tarr.curMaxElecKw[i] = tarr.curMaxFcKwOut[i] + tarr.curMaxRoadwayChgKw[i] + \
-                tarr.curMaxEssKwOut[i] - tarr.auxInKw[i]
-
-        else:
-            tarr.curMaxElecKw[i] = tarr.curMaxRoadwayChgKw[i] + tarr.curMaxEssKwOut[i] - tarr.auxInKw[i]
-
-        # Current maximum electrical power that can go toward propulsion, including motor limitations
-        tarr.curMaxAvailElecKw[i] = min(tarr.curMaxElecKw[i], veh.mcMaxElecInKw)
-
-        if tarr.curMaxElecKw[i] > 0:
-            # limit power going into e-machine controller to 
-            if tarr.curMaxAvailElecKw[i] == max(veh.mcKwInArray):
-                tarr.mcElecInLimKw[i] = min(veh.mcKwOutArray[len(veh.mcKwOutArray) - 1],veh.maxMotorKw)
-            else:
-                tarr.mcElecInLimKw[i] = min(veh.mcKwOutArray[np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 
-                0.01, tarr.curMaxAvailElecKw[i])) - 1],veh.maxMotorKw)
-        else:
-            tarr.mcElecInLimKw[i] = 0.0
-        
-        # Motor transient power limit
-        tarr.mcTransiLimKw[i] = abs(tarr.mcMechKwOutAch[i-1]) + ((veh.maxMotorKw / veh.motorSecsToPeakPwr) * (secs[i]))
-        
-        tarr.curMaxMcKwOut[i] = max(min(tarr.mcElecInLimKw[i],tarr.mcTransiLimKw[i],veh.maxMotorKw),-veh.maxMotorKw)
-
-        if tarr.curMaxMcKwOut[i] == 0:
-            tarr.curMaxMcElecKwIn[i] = 0
-        else:
-            if tarr.curMaxMcKwOut[i] == veh.maxMotorKw:
-                tarr.curMaxMcElecKwIn[i] = tarr.curMaxMcKwOut[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
-            else:
-                tarr.curMaxMcElecKwIn[i] = tarr.curMaxMcKwOut[i] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray 
-                > min(veh.maxMotorKw - 0.01,tarr.curMaxMcKwOut[i])) - 1)]
-
-        if veh.maxMotorKw == 0:
-            tarr.essLimMcRegenPercKw[i] = 0.0
-
-        else:
-            tarr.essLimMcRegenPercKw[i] = min((tarr.curMaxEssChgKw[i] + tarr.auxInKw[i]) / veh.maxMotorKw,1)
-        if tarr.curMaxEssChgKw[i] == 0:
-            tarr.essLimMcRegenKw[i] = 0.0
-
-        else:
-            if veh.maxMotorKw == tarr.curMaxEssChgKw[i] - tarr.curMaxRoadwayChgKw[i]:
-                tarr.essLimMcRegenKw[i] = min(veh.maxMotorKw,tarr.curMaxEssChgKw[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1])
-            else:
-                tarr.essLimMcRegenKw[i] = min(veh.maxMotorKw,tarr.curMaxEssChgKw[i] / veh.mcFullEffArray\
-                    [max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,tarr.curMaxEssChgKw[i] - tarr.curMaxRoadwayChgKw[i])) - 1)])
-
-        tarr.curMaxMechMcKwIn[i] = min(tarr.essLimMcRegenKw[i],veh.maxMotorKw)
-        tarr.curMaxTracKw[i] = (((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2)\
-            / (1 + ((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))) / 1000.0) * (tarr.maxTracMps[i])
-
-        if veh.fcEffType == 4:
-
-            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or tarr.highAccFcOnTag[i] == 1:
-                tarr.curMaxTransKwOut[i] = min((tarr.curMaxMcKwOut[i] - tarr.auxInKw[i]) * veh.transEff,tarr.curMaxTracKw[i] / veh.transEff)
-                tarr.debug_flag[i] = 1
-
-            else:
-                tarr.curMaxTransKwOut[i] = min((tarr.curMaxMcKwOut[i] - min(tarr.curMaxElecKw[i], 0)) * veh.transEff,tarr.curMaxTracKw[i] / veh.transEff)
-                tarr.debug_flag[i] = 2
-
-        else:
-
-            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or tarr.highAccFcOnTag[i] == 1:
-                tarr.curMaxTransKwOut[i] = min((tarr.curMaxMcKwOut[i] + tarr.curMaxFcKwOut[i] - \
-                     tarr.auxInKw[i]) * veh.transEff,tarr.curMaxTracKw[i] / veh.transEff)
-                tarr.debug_flag[i] = 3
-
-            else:
-                tarr.curMaxTransKwOut[i] = min((tarr.curMaxMcKwOut[i] + tarr.curMaxFcKwOut[i] - \
-                    min(tarr.curMaxElecKw[i],0)) * veh.transEff, tarr.curMaxTracKw[i] / veh.transEff)
-                tarr.debug_flag[i] = 4
+        tarr = get_comp_lims(tarr, i)
 
         ### Cycle Power
         tarr.cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((tarr.mpsAch[i-1] + cycMps[i]) / 2.0)**3) / 1000.0
@@ -714,7 +705,8 @@ def sim_drive_sub(cyc , veh , initSoc):
         else:
             tarr.fcTimeOn[i] = tarr.fcTimeOn[i-1] + secs[i]
 
-        ### Battery wear calcs
+    def get_battery_wear(tarr):
+        """Battery wear calcs"""
 
         if veh.noElecSys!='TRUE':
 
@@ -733,7 +725,10 @@ def sim_drive_sub(cyc , veh , initSoc):
             else:
                 tarr.essPercDeadArray[i] = 0
 
-        ### Energy Audit Calculations
+        return tarr
+
+    def get_energy_audit(tarr):
+        """Energy Audit Calculations"""
         tarr.dragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0)**3) / 1000.0
         if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
             tarr.essLossKw[i] = 0
@@ -745,73 +740,80 @@ def sim_drive_sub(cyc , veh , initSoc):
         tarr.ascentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0) / 1000.0
         tarr.rrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * ((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0) / 1000.0
 
-    ############################################
-    ### Calculate Results and Assign Outputs ###
-    ############################################
+        return tarr
 
-    output = dict()
+    def get_output(tarr):
+        "Calculate Results and Assign Outputs"
+        
+        output = {}
 
-    if sum(tarr.fsKwhOutAch) == 0:
-        output['mpgge'] = 0
+        if sum(tarr.fsKwhOutAch) == 0:
+            output['mpgge'] = 0
 
-    else:
-        output['mpgge'] = sum(tarr.distMiles) / (sum(tarr.fsKwhOutAch) * (1 / kWhPerGGE))
+        else:
+            output['mpgge'] = sum(tarr.distMiles) / (sum(tarr.fsKwhOutAch) * (1 / kWhPerGGE))
 
-    tarr.roadwayChgKj = sum(tarr.roadwayChgKwOutAch * secs)
-    tarr.essDischKj = -(tarr.soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
-    output['battery_kWh_per_mi'] = (tarr.essDischKj / 3600.0) / sum(tarr.distMiles)
-    tarr.battery_kWh_per_mi = output['battery_kWh_per_mi']
-    output['electric_kWh_per_mi'] = ((tarr.roadwayChgKj + tarr.essDischKj) / 3600.0) / sum(tarr.distMiles)
-    tarr.electric_kWh_per_mi = output['electric_kWh_per_mi']
-    output['maxTraceMissMph'] = mphPerMps * max(abs(cycMps - tarr.mpsAch))
-    tarr.maxTraceMissMph = output['maxTraceMissMph']
-    tarr.fuelKj = sum(np.asarray(tarr.fsKwOutAch) * np.asarray(secs))
-    tarr.roadwayChgKj = sum(np.asarray(tarr.roadwayChgKwOutAch) * np.asarray(secs))
-    essDischgKj = -(tarr.soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
+        tarr.roadwayChgKj = sum(tarr.roadwayChgKwOutAch * secs)
+        tarr.essDischKj = -(tarr.soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
+        output['battery_kWh_per_mi'] = (tarr.essDischKj / 3600.0) / sum(tarr.distMiles)
+        tarr.battery_kWh_per_mi = output['battery_kWh_per_mi']
+        output['electric_kWh_per_mi'] = ((tarr.roadwayChgKj + tarr.essDischKj) / 3600.0) / sum(tarr.distMiles)
+        tarr.electric_kWh_per_mi = output['electric_kWh_per_mi']
+        output['maxTraceMissMph'] = mphPerMps * max(abs(cycMps - tarr.mpsAch))
+        tarr.maxTraceMissMph = output['maxTraceMissMph']
+        tarr.fuelKj = sum(np.asarray(tarr.fsKwOutAch) * np.asarray(secs))
+        tarr.roadwayChgKj = sum(np.asarray(tarr.roadwayChgKwOutAch) * np.asarray(secs))
+        essDischgKj = -(tarr.soc[-1] - initSoc) * veh.maxEssKwh * 3600.0
 
-    if (tarr.fuelKj + tarr.roadwayChgKj) == 0:
-        output['ess2fuelKwh'] = 1.0
+        if (tarr.fuelKj + tarr.roadwayChgKj) == 0:
+            output['ess2fuelKwh'] = 1.0
 
-    else:
-        output['ess2fuelKwh'] = essDischgKj / (tarr.fuelKj + tarr.roadwayChgKj)
+        else:
+            output['ess2fuelKwh'] = essDischgKj / (tarr.fuelKj + tarr.roadwayChgKj)
 
-    tarr.ess2fuelKwh = output['ess2fuelKwh']
+        tarr.ess2fuelKwh = output['ess2fuelKwh']
 
-    output['initial_soc'] = tarr.soc[0]
-    output['final_soc'] = tarr.soc[-1]
+        output['initial_soc'] = tarr.soc[0]
+        output['final_soc'] = tarr.soc[-1]
 
-    if output['mpgge'] == 0:
-        Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi'] / 33.7 # hardcoded conversion
+        if output['mpgge'] == 0:
+            Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi'] / 33.7 # hardcoded conversion
 
-    else:
-         Gallons_gas_equivalent_per_mile = 1 / output['mpgge'] + output['electric_kWh_per_mi'] / 33.7 # hardcoded conversion
+        else:
+            Gallons_gas_equivalent_per_mile = 1 / output['mpgge'] + output['electric_kWh_per_mi'] / 33.7 # hardcoded conversion
+        
+        tarr.Gallons_gas_equivalent_per_mile = Gallons_gas_equivalent_per_mile
+
+        output['mpgge_elec'] = 1 / Gallons_gas_equivalent_per_mile
+        output['soc'] = np.asarray(tarr.soc)
+        output['distance_mi'] = sum(tarr.distMiles)
+        duration_sec = cycSecs[-1] - cycSecs[0]
+        output['avg_speed_mph'] = sum(tarr.distMiles) / (duration_sec / 3600.0)
+        tarr.avg_speed_mph = output['avg_speed_mph']
+        tarr.accel = np.diff(tarr.mphAch) / np.diff(cycSecs)
+        output['avg_accel_mphps'] = np.mean(tarr.accel[tarr.accel > 0])
+        tarr.avg_accel_mphps = output['avg_accel_mphps']
+
+        if max(tarr.mphAch) > 60:
+            output['ZeroToSixtyTime_secs'] = np.interp(60, tarr.mphAch, cycSecs)
+
+        else:
+            output['ZeroToSixtyTime_secs'] = 0.0
+
+        #######################################################################
+        ####  Time series information for additional analysis / debugging. ####
+        ####             Add parameters of interest as needed.             ####
+        #######################################################################
+
+        output['fcKwOutAch'] = np.asarray(tarr.fcKwOutAch)
+        output['fsKwhOutAch'] = np.asarray(tarr.fsKwhOutAch)
+        output['fcKwInAch'] = np.asarray(tarr.fcKwInAch)
+        output['time'] = np.asarray(tarr.cycSecs)
+
+        return output, tarr
     
-    tarr.Gallons_gas_equivalent_per_mile = Gallons_gas_equivalent_per_mile
-
-    output['mpgge_elec'] = 1 / Gallons_gas_equivalent_per_mile
-    output['soc'] = np.asarray(tarr.soc)
-    output['distance_mi'] = sum(tarr.distMiles)
-    duration_sec = cycSecs[-1] - cycSecs[0]
-    output['avg_speed_mph'] = sum(tarr.distMiles) / (duration_sec / 3600.0)
-    tarr.avg_speed_mph = output['avg_speed_mph']
-    tarr.accel = np.diff(tarr.mphAch) / np.diff(cycSecs)
-    output['avg_accel_mphps'] = np.mean(tarr.accel[tarr.accel > 0])
-    tarr.avg_accel_mphps = output['avg_accel_mphps']
-
-    if max(tarr.mphAch) > 60:
-        output['ZeroToSixtyTime_secs'] = np.interp(60, tarr.mphAch, cycSecs)
-
-    else:
-        output['ZeroToSixtyTime_secs'] = 0.0
-
-    #######################################################################
-    ####  Time series information for additional analysis / debugging. ####
-    ####             Add parameters of interest as needed.             ####
-    #######################################################################
-
-    output['fcKwOutAch'] = np.asarray(tarr.fcKwOutAch)
-    output['fsKwhOutAch'] = np.asarray(tarr.fsKwhOutAch)
-    output['fcKwInAch'] = np.asarray(tarr.fcKwInAch)
-    output['time'] = np.asarray(tarr.cycSecs)
+    tarr = get_battery_wear(tarr)
+    tarr = get_energy_audit(tarr)
+    output, tarr = get_output(tarr)
 
     return output, tarr
