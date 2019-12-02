@@ -1,16 +1,26 @@
+"""Module containing function for loading drive cycle data (e.g. speed trace)
+and class (Vehicle) for loading and storing vehicle attribute data."""
+
 import pandas as pd
 from collections import namedtuple
 import numpy as np
 import re
 
 def get_standard_cycle(cycle_name):
-    """Load time trace of speed, grade, and road type in a pandas dataframe."""
+    """Load time trace of speed, grade, and road type in a pandas dataframe.
+    Argument:
+    ---------
+    cycle_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
     csv_path = '..//cycles//'+cycle_name+'.csv'
     cyc = pd.read_csv(csv_path)
     return cyc
 
 class Vehicle(object):
-    """Class for loading and contaning vehicle attributes"""
+    """Class for loading and contaning vehicle attributes
+    Optional Argument:
+    ---------
+    vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'"""
+
     def __init__(self, vnum=None):
         super().__init__()
         if vnum:

@@ -1,3 +1,5 @@
+"""Module containing class and functions for simulating vehicle drive cycle."""
+
 ### Import necessary python modules
 import numpy as np
 import pandas as pd
@@ -69,12 +71,25 @@ class TimeArrays(object):
   
 def sim_drive(cyc , veh , initSoc=None):
     """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
-        Arguments
-        ------------
-        cyc: pandas dataframe of time traces of cycle data from LoadData.get_standard_cycle()
-        veh: instance of LoadData.Vehicle() class
-        initSoc: initial SOC for electrified vehicles
-        """
+    Arguments
+    ------------
+    cyc: pandas dataframe of time traces of cycle data from LoadData.get_standard_cycle()
+    veh: instance of LoadData.Vehicle() class
+    initSoc: initial SOC for electrified vehicles
+
+    Outputs
+    -----------
+    output: dict of key output variables
+    tarr: object contaning arrays of all temporally dynamic variables
+
+    Example Usage (from within ../docs/):
+    >>> # local modules
+    >>> import SimDrive
+    >>> import LoadData
+    >>> cyc = LoadData.get_standard_cycle("UDDS")
+    >>> output, tarr = SimDrive.sim_drive(cyc, veh)
+    """
+
     if initSoc != None:
         if initSoc>1.0 or initSoc<0.0:
             print('Must enter a valid initial SOC between 0.0 and 1.0')
@@ -121,12 +136,25 @@ def sim_drive(cyc , veh , initSoc=None):
     return output, tarr
 
 def sim_drive_sub(cyc , veh , initSoc):
-    """Function sim_drive_sub receives second-by-second cycle information,
-    vehicle properties, and an initial state of charge and performs
-    a backward facing powertrain simulation. The function returns an 
-    output dictionary starting at approximately line 1030. Powertrain
-    variables of interest (summary or time-series) can be added to the 
-    output dictionary for reference."""
+    """  
+    Receives second-by-second cycle information, vehicle properties, 
+    and an initial state of charge and performs a backward facing 
+    powertrain simulation. The function returns an output dictionary 
+    starting at approximately line 1030. Powertrain variables of 
+    interest (summary or time-series) can be added to the output 
+    dictionary for reference. Function 'sim_drive' runs this to 
+    iterate through the time steps of 'cyc'.
+
+    Arguments
+    ------------
+    cyc: pandas dataframe of time traces of cycle data from LoadData.get_standard_cycle()
+    veh: instance of LoadData.Vehicle() class
+    initSoc: initial battery state-of-charge (SOC) for electrified vehicles
+    
+    Outputs
+    -----------
+    output: dict of key output variables
+    tarr: object contaning arrays of all temporally dynamic variables"""
     
     ############################
     ###   Define Constants   ###
