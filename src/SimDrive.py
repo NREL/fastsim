@@ -184,14 +184,44 @@ def sim_drive_sub(cyc , veh , initSoc):
     tarr = TimeArrays(cycSecs, veh, initSoc)
 
     # Function definitions for functions to be run at each time step
+    def get_misc_calcs(tarr, i):
+        """Performs misc. calculations.
+        Arguments
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step
+        
+        Output: tarr"""
+
+        if veh.noElecAux == 'TRUE':
+            tarr.auxInKw[i] = veh.auxKw / veh.altEff
+        else:
+            tarr.auxInKw[i] = veh.auxKw
+
+        # Is SOC below min threshold?
+        if tarr.soc[i-1] < (veh.minSoc + veh.percHighAccBuf):
+            tarr.reachedBuff[i] = 0
+        else:
+            tarr.reachedBuff[i] = 1
+
+        # Does the engine need to be on for low SOC or high acceleration
+        if tarr.soc[i-1] < veh.minSoc or (tarr.highAccFcOnTag[i-1] == 1 and tarr.reachedBuff[i] == 0):
+            tarr.highAccFcOnTag[i] = 1
+        else:
+            tarr.highAccFcOnTag[i] = 0
+        tarr.maxTracMps[i] = tarr.mpsAch[i-1] + (maxTracMps2 * secs[i])
+
+        return tarr
+
     def get_comp_lims(tarr, i):
         """Return time array (tarr) with component limits set for time step 'i'
         Arguments
         ------------
         tarr: instance of SimDrive.TimeArrays()
         i: integer representing index of current time step
-        """
-        ### Component Limits
+
+        Output: tarr"""
+
         # max fuel storage power output
         tarr.curMaxFsKwOut[i] = min(veh.maxFuelStorKw, tarr.fsKwOutAch[i-1] + (
             (veh.maxFuelStorKw/veh.fuelStorSecsToPeakPwr) * (secs[i])))
@@ -317,7 +347,10 @@ def sim_drive_sub(cyc , veh , initSoc):
         Arguments
         ------------
         tarr: instance of SimDrive.TimeArrays()
-        i: integer representing index of current time step"""
+        i: integer representing index of current time step
+        
+        Output: tarr"""
+        
         tarr.cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((tarr.mpsAch[i-1] + cycMps[i]) / 2.0)**3) / 1000.0
         tarr.cycAccelKw[i] = (veh.vehKg / (2.0 * (secs[i]))) * ((cycMps[i]**2) - (tarr.mpsAch[i-1]**2)) / 1000.0
         tarr.cycAscentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * ((tarr.mpsAch[i-1] + cycMps[i]) / 2.0) / 1000.0
@@ -344,8 +377,69 @@ def sim_drive_sub(cyc , veh , initSoc):
         
         return tarr
 
+    def get_speed_dist_calcs(tarr, i):
+        """Calculate variables dependent on speed
+        Arguments
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step
+
+        Output: tarr"""  
+        
+        # Cycle is met
+        if tarr.cycMet[i] == 1:
+            tarr.mpsAch[i] = cycMps[i]
+
+        #Cycle is not met
+        else:
+            Drag3 = (1.0 / 16.0) * airDensityKgPerM3 * \
+                veh.dragCoef * veh.frontalAreaM2
+            Accel2 = veh.vehKg / (2.0 * (secs[i]))
+            Drag2 = (3.0 / 16.0) * airDensityKgPerM3 * \
+                veh.dragCoef * veh.frontalAreaM2 * tarr.mpsAch[i-1]
+            Wheel2 = 0.5 * veh.wheelInertiaKgM2 * \
+                veh.numWheels / (secs[i] * (veh.wheelRadiusM**2))
+            Drag1 = (3.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * \
+                veh.frontalAreaM2 * ((tarr.mpsAch[i-1])**2)
+            Roll1 = (gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg / 2.0)
+            Ascent1 = (gravityMPerSec2 *
+                       np.sin(np.arctan(cycGrade[i])) * veh.vehKg / 2.0)
+            Accel0 = -(veh.vehKg * ((tarr.mpsAch[i-1])**2)) / (2.0 * (secs[i]))
+            Drag0 = (1.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * \
+                veh.frontalAreaM2 * ((tarr.mpsAch[i-1])**3)
+            Roll0 = (gravityMPerSec2 * veh.wheelRrCoef *
+                     veh.vehKg * tarr.mpsAch[i-1] / 2.0)
+            Ascent0 = (
+                gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * tarr.mpsAch[i-1] / 2.0)
+            Wheel0 = -((0.5 * veh.wheelInertiaKgM2 * veh.numWheels *
+                        (tarr.mpsAch[i-1]**2)) / (secs[i] * (veh.wheelRadiusM**2)))
+
+            Total3 = Drag3 / 1e3
+            print(Accel2, Drag2, Wheel2)
+            Total2 = (Accel2 + Drag2 + Wheel2) / 1e3
+            Total1 = (Drag1 + Roll1 + Ascent1) / 1e3
+            Total0 = (Accel0 + Drag0 + Roll0 + Ascent0 + Wheel0) / \
+                1e3 - tarr.curMaxTransKwOut[i]
+
+            Total = [Total3, Total2, Total1, Total0]
+            Total_roots = np.roots(Total)
+            ind = np.argmin(abs(cycMps[i] - Total_roots))
+            tarr.mpsAch[i] = Total_roots[ind]
+
+        tarr.mphAch[i] = tarr.mpsAch[i] * mphPerMps
+        tarr.distMeters[i] = tarr.mpsAch[i] * secs[i]
+        tarr.distMiles[i] = tarr.distMeters[i] * (1.0 / metersPerMile)
+
+        return tarr
+
     def get_battery_wear(tarr, i):
-        """Battery wear calcs"""
+        """Battery wear calcs
+        Arguments:
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step
+        
+        Output: tarr"""
 
         if veh.noElecSys!='TRUE':
 
@@ -367,7 +461,14 @@ def sim_drive_sub(cyc , veh , initSoc):
         return tarr
 
     def get_energy_audit(tarr, i):
-        """Energy Audit Calculations"""
+        """Energy Audit Calculations
+        Arguments
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step
+        
+        Output: tarr"""
+
         tarr.dragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * (((tarr.mpsAch[i-1] + tarr.mpsAch[i]) / 2.0)**3) / 1000.0
         if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
             tarr.essLossKw[i] = 0
@@ -386,70 +487,16 @@ def sim_drive_sub(cyc , veh , initSoc):
     ############################
 
     for i in range(1, len(cycSecs)):
-
         ### Misc calcs
         # If noElecAux, then the HV electrical system is not used to power aux loads 
         # and it must all come from the alternator.  This apparently assumes no belt-driven aux 
         # loads
         # *** 
-        if veh.noElecAux == 'TRUE':
-            tarr.auxInKw[i] = veh.auxKw / veh.altEff
-        else:
-            tarr.auxInKw[i] = veh.auxKw
 
-        # Is SOC below min threshold?
-        if tarr.soc[i-1] < (veh.minSoc + veh.percHighAccBuf):
-            tarr.reachedBuff[i] = 0
-        else:
-            tarr.reachedBuff[i] = 1
-
-        # Does the engine need to be on for low SOC or high acceleration
-        if tarr.soc[i-1] < veh.minSoc or (tarr.highAccFcOnTag[i-1] == 1 and tarr.reachedBuff[i] == 0):
-            tarr.highAccFcOnTag[i] = 1
-        else:
-            tarr.highAccFcOnTag[i] = 0
-        tarr.maxTracMps[i] = tarr.mpsAch[i-1] + (maxTracMps2 * secs[i])
-
+        tarr = get_misc_calcs(tarr, i)
         tarr = get_comp_lims(tarr, i)
         tarr = get_power_calcs(tarr, i)
-
-        ################################
-        ###   Speed/Distance Calcs   ###
-        ################################
-
-        #Cycle is met
-        if tarr.cycMet[i] == 1:
-            tarr.mpsAch[i] = cycMps[i]
-
-        #Cycle is not met
-        else:
-            Drag3 = (1.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2
-            Accel2 = veh.vehKg / (2.0 * (secs[i]))
-            Drag2 = (3.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * tarr.mpsAch[i-1]
-            Wheel2 = 0.5 * veh.wheelInertiaKgM2 * veh.numWheels / (secs[i] * (veh.wheelRadiusM**2))
-            Drag1 = (3.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * ((tarr.mpsAch[i-1])**2)
-            Roll1 = (gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg / 2.0)
-            Ascent1 = (gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg / 2.0)
-            Accel0 = -(veh.vehKg * ((tarr.mpsAch[i-1])**2)) / (2.0 * (secs[i]))
-            Drag0 = (1.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * veh.frontalAreaM2 * ((tarr.mpsAch[i-1])**3)
-            Roll0 = (gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * tarr.mpsAch[i-1] / 2.0)
-            Ascent0 = (gravityMPerSec2 * np.sin(np.arctan(cycGrade[i])) * veh.vehKg * tarr.mpsAch[i-1] / 2.0)
-            Wheel0 = -((0.5 * veh.wheelInertiaKgM2 * veh.numWheels * (tarr.mpsAch[i-1]**2)) / (secs[i] * (veh.wheelRadiusM**2)))
-
-            Total3 = Drag3 / 1e3
-            print(Accel2, Drag2, Wheel2)
-            Total2 = (Accel2 + Drag2 + Wheel2) / 1e3
-            Total1 = (Drag1 + Roll1 + Ascent1) / 1e3
-            Total0 = (Accel0 + Drag0 + Roll0 + Ascent0 + Wheel0) / 1e3 - tarr.curMaxTransKwOut[i]
-
-            Total = [Total3, Total2, Total1, Total0]
-            Total_roots = np.roots(Total)
-            ind = np.argmin( abs(cycMps[i] - Total_roots) )
-            tarr.mpsAch[i] = Total_roots[ind]
-
-        tarr.mphAch[i] = tarr.mpsAch[i] * mphPerMps
-        tarr.distMeters[i] = tarr.mpsAch[i] * secs[i]
-        tarr.distMiles[i] = tarr.distMeters[i] * (1.0 / metersPerMile)
+        tarr = get_speed_dist_calcs(tarr, i)
 
         ### Drive Train
         if tarr.transKwOutAch[i] > 0:
