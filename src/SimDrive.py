@@ -363,7 +363,7 @@ def sim_drive_sub(cyc , veh , initSoc):
 
         tarr.cycWheelKwReq[i] = tarr.cycTracKwReq[i] + tarr.cycRrKw[i] + tarr.cycTireInertiaKw[i]
         tarr.regenContrLimKwPerc[i] = veh.maxRegen / (1 + veh.regenA * np.exp(-veh.regenB * ((cycMph[i] + tarr.mpsAch[i-1] * mphPerMps) / 2.0 + 1 - 0)))
-        tarr.cycRegenBrakeKw[i] = max(min(tarr.curMaxMechMcKwIn[i] * veh.transEff,tarr.regenContrLimKwPerc[i]*-tarr.cycWheelKwReq[i]),0)
+        tarr.cycRegenBrakeKw[i] = max(min(tarr.curMaxMechMcKwIn[i] * veh.transEff,tarr.regenContrLimKwPerc[i] * -tarr.cycWheelKwReq[i]),0)
         tarr.cycFricBrakeKw[i] = -min(tarr.cycRegenBrakeKw[i] + tarr.cycWheelKwReq[i],0)
         tarr.cycTransKwOutReq[i] = tarr.cycWheelKwReq[i] + tarr.cycFricBrakeKw[i]
 
@@ -561,9 +561,9 @@ def sim_drive_sub(cyc , veh , initSoc):
         elif tarr.transKwOutAch[i] < veh.maxFcEffKw:
 
             if tarr.fcKwGapFrEff[i] == veh.maxMotorKw:
-                tarr.mcElectInKwForMaxFcEff[i] = tarr.fcKwGapFrEff[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]*-1
+                tarr.mcElectInKwForMaxFcEff[i] = tarr.fcKwGapFrEff[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1] * -1
             else:
-                tarr.mcElectInKwForMaxFcEff[i] = tarr.fcKwGapFrEff[i] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,tarr.fcKwGapFrEff[i])) - 1)]*-1
+                tarr.mcElectInKwForMaxFcEff[i] = tarr.fcKwGapFrEff[i] / veh.mcFullEffArray[max(1,np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01,tarr.fcKwGapFrEff[i])) - 1)] * -1
 
         else:
 
@@ -696,10 +696,10 @@ def sim_drive_sub(cyc , veh , initSoc):
                  tarr.mcKwIfFcIsReq[i] = tarr.mcElecKwInIfFcIsReq[i] * veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,tarr.mcElecKwInIfFcIsReq[i])) - 1)]
 
         else:
-            if tarr.mcElecKwInIfFcIsReq[i]*-1 == max(veh.mcKwInArray):
+            if tarr.mcElecKwInIfFcIsReq[i] * -1 == max(veh.mcKwInArray):
                 tarr.mcKwIfFcIsReq[i] = tarr.mcElecKwInIfFcIsReq[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
             else:
-                tarr.mcKwIfFcIsReq[i] = tarr.mcElecKwInIfFcIsReq[i] / (veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,tarr.mcElecKwInIfFcIsReq[i]*-1)) - 1)])
+                tarr.mcKwIfFcIsReq[i] = tarr.mcElecKwInIfFcIsReq[i] / (veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,tarr.mcElecKwInIfFcIsReq[i] * -1)) - 1)])
 
         if veh.maxMotorKw == 0:
             tarr.mcMechKwOutAch[i] = 0
@@ -729,10 +729,10 @@ def sim_drive_sub(cyc , veh , initSoc):
 
         elif tarr.mcMechKwOutAch[i] < 0:
 
-            if tarr.mcMechKwOutAch[i]*-1 == max(veh.mcKwInArray):
+            if tarr.mcMechKwOutAch[i] * -1 == max(veh.mcKwInArray):
                 tarr.mcElecKwInAch[i] = tarr.mcMechKwOutAch[i] * veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
             else:
-                tarr.mcElecKwInAch[i] = tarr.mcMechKwOutAch[i] * veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,tarr.mcMechKwOutAch[i]*-1)) - 1)]
+                tarr.mcElecKwInAch[i] = tarr.mcMechKwOutAch[i] * veh.mcFullEffArray[max(1,np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01,tarr.mcMechKwOutAch[i] * -1)) - 1)]
 
         else:
             if veh.maxMotorKw == tarr.mcMechKwOutAch[i]:
