@@ -69,7 +69,7 @@ class TimeArrays(object):
         self.essCurKwh[0] = initSoc * veh.maxEssKwh
         self.soc[0] = initSoc
   
-def sim_drive(cyc , veh , initSoc=None):
+def sim_drive(cyc , veh , initSoc=None, debug=False):
     """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
     Arguments
     ------------
@@ -101,7 +101,10 @@ def sim_drive(cyc , veh , initSoc=None):
         # If no EV / Hybrid components, no SOC considerations.
 
         initSoc = 0.0
-        output, tarr = sim_drive_sub(cyc, veh, initSoc)
+        if debug:
+            output, tarr = sim_drive_sub(cyc, veh, initSoc, debug)
+        else:
+            output = sim_drive_sub(cyc, veh, initSoc, debug)
 
     elif veh.vehPtType == 2 and initSoc == None:  # HEV 
 
@@ -117,25 +120,41 @@ def sim_drive(cyc , veh , initSoc=None):
         sim_count = 0
         while ess2fuelKwh > veh.essToFuelOkError and sim_count<30:
             sim_count += 1
-            output, tarr = sim_drive_sub(cyc, veh, initSoc)
+            if debug:
+                output, tarr = sim_drive_sub(cyc, veh, initSoc, debug)
+            else:
+                output = sim_drive_sub(cyc, veh, initSoc, debug)
+
             ess2fuelKwh = abs(output['ess2fuelKwh'])
             initSoc = min(1.0,max(0.0,output['final_soc']))
         np.copy(veh.maxSoc)
-        output, tarr = sim_drive_sub(cyc, veh, initSoc)
+        if debug:
+            output, tarr = sim_drive_sub(cyc, veh, initSoc, debug)
+        else:
+            output = sim_drive_sub(cyc, veh, initSoc, debug)
 
     elif (veh.vehPtType == 3 and initSoc == None) or (veh.vehPtType == 4 and initSoc == None): # PHEV and BEV
 
         # If EV, initializing initial SOC to maximum SOC.
 
         initSoc = np.copy(veh.maxSoc)
-        output, tarr = sim_drive_sub(cyc, veh, initSoc)
+        if debug:
+            output, tarr = sim_drive_sub(cyc, veh, initSoc, debug)
+        else:
+            output = sim_drive_sub(cyc, veh, initSoc, debug)
         
     else:
-        output, tarr = sim_drive_sub(cyc, veh, initSoc)
+        if debug:
+            output, tarr = sim_drive_sub(cyc, veh, initSoc, debug)
+        else:
+            output = sim_drive_sub(cyc, veh, initSoc, debug)
         
-    return output, tarr
+    if debug:
+        return output, tarr
+    else: 
+        return output
 
-def sim_drive_sub(cyc , veh , initSoc):
+def sim_drive_sub(cyc , veh , initSoc, debug):
     """  
     Receives second-by-second cycle information, vehicle properties, 
     and an initial state of charge and performs a backward facing 
@@ -432,6 +451,49 @@ def sim_drive_sub(cyc , veh , initSoc):
 
         return tarr
 
+    def get_fc_forced_state(tarr, i):
+        """Calculate variables dependent on speed
+        Arguments
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step
+
+        Output: tarr, with fcForcedOn and fcForcedState set for timestep i"""
+        
+        # force fuel converter on if it was on in the previous time step, but only if fc
+        # has not been on longer than minFcTimeOn
+        if tarr.prevfcTimeOn[i] > 0 and tarr.prevfcTimeOn[i] < veh.minFcTimeOn - secs[i]:
+            tarr.fcForcedOn[i] = True
+        else:
+            tarr.fcForcedOn[i] = False
+
+        # 
+        if tarr.fcForcedOn[i] == False or tarr.canPowerAllElectrically[i] == False:
+            tarr.fcForcedState[i] = 1
+            tarr.mcMechKw4ForcedFc[i] = 0
+
+        elif tarr.transKwInAch[i] < 0:
+            tarr.fcForcedState[i] = 2
+            tarr.mcMechKw4ForcedFc[i] = tarr.transKwInAch[i]
+
+        elif veh.maxFcEffKw == tarr.transKwInAch[i]:
+            tarr.fcForcedState[i] = 3
+            tarr.mcMechKw4ForcedFc[i] = 0
+
+        elif veh.idleFcKw > tarr.transKwInAch[i] and tarr.cycAccelKw[i] >= 0:
+            tarr.fcForcedState[i] = 4
+            tarr.mcMechKw4ForcedFc[i] = tarr.transKwInAch[i] - veh.idleFcKw
+
+        elif veh.maxFcEffKw > tarr.transKwInAch[i]:
+            tarr.fcForcedState[i] = 5
+            tarr.mcMechKw4ForcedFc[i] = 0
+
+        else:
+            tarr.fcForcedState[i] = 6
+            tarr.mcMechKw4ForcedFc[i] = tarr.transKwInAch[i] - veh.maxFcEffKw
+        
+        return tarr
+    
     def get_battery_wear(tarr, i):
         """Battery wear calcs
         Arguments:
@@ -498,7 +560,6 @@ def sim_drive_sub(cyc , veh , initSoc):
         tarr = get_power_calcs(tarr, i)
         tarr = get_speed_dist_calcs(tarr, i)
 
-        ### Drive Train
         if tarr.transKwOutAch[i] > 0:
             tarr.transKwInAch[i] = tarr.transKwOutAch[i] / veh.transEff
         else:
@@ -622,34 +683,7 @@ def sim_drive_sub(cyc , veh , initSoc):
 
         tarr.erAEKwOut[i] = min(max(0,tarr.transKwInAch[i] + tarr.auxInKw[i] - tarr.essAEKwOut[i]),tarr.curMaxRoadwayChgKw[i])
 
-        if tarr.prevfcTimeOn[i] > 0 and tarr.prevfcTimeOn[i] < veh.minFcTimeOn - secs[i]:
-            tarr.fcForcedOn[i] = True
-        else:
-            tarr.fcForcedOn[i] = False
-
-        if tarr.fcForcedOn[i] == False or tarr.canPowerAllElectrically[i] == False:
-            tarr.fcForcedState[i] = 1
-            tarr.mcMechKw4ForcedFc[i] = 0
-
-        elif tarr.transKwInAch[i] < 0:
-            tarr.fcForcedState[i] = 2
-            tarr.mcMechKw4ForcedFc[i] = tarr.transKwInAch[i]
-
-        elif veh.maxFcEffKw == tarr.transKwInAch[i]:
-            tarr.fcForcedState[i] = 3
-            tarr.mcMechKw4ForcedFc[i] = 0
-
-        elif veh.idleFcKw > tarr.transKwInAch[i] and tarr.cycAccelKw[i] >=0:
-            tarr.fcForcedState[i] = 4
-            tarr.mcMechKw4ForcedFc[i] = tarr.transKwInAch[i] - veh.idleFcKw
-
-        elif veh.maxFcEffKw > tarr.transKwInAch[i]:
-            tarr.fcForcedState[i] = 5
-            tarr.mcMechKw4ForcedFc[i] = 0
-
-        else:
-            tarr.fcForcedState[i] = 6
-            tarr.mcMechKw4ForcedFc[i] = tarr.transKwInAch[i] - veh.maxFcEffKw
+        tarr = get_fc_forced_state(tarr, i)
 
         if (-tarr.mcElectInKwForMaxFcEff[i] - tarr.curMaxRoadwayChgKw[i]) > 0:
             tarr.essDesiredKw4FcEff[i] = (-tarr.mcElectInKwForMaxFcEff[i] - tarr.curMaxRoadwayChgKw[i]) * veh.essDischgToFcMaxEffPerc
@@ -902,4 +936,7 @@ def sim_drive_sub(cyc , veh , initSoc):
     
     output, tarr = get_output(tarr)
 
-    return output, tarr
+    if debug:
+        return output, tarr
+    else:
+        return output
