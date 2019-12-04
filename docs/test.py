@@ -20,8 +20,13 @@ import numpy as np
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+import importlib
 
-import FASTSim
+# local modules
+import SimDrive
+importlib.reload(SimDrive)
+import LoadData
+importlib.reload(LoadData)
 
 # ## Individual Drive Cycle
 # ### Load Drive Cycle
@@ -36,13 +41,13 @@ import FASTSim
 # 
 # There is no limit to the length of a drive cycle that can be provided as an input to FASTSim.
 
-cyc = FASTSim.get_standard_cycle("UDDS")
+cyc = LoadData.get_standard_cycle("UDDS")
 
 # ### Load Powertrain Model
 # 
 # A vehicle database in CSV format is required to be in the working directory where FASTSim is running (i.e. the same directory as this notebook). The "get_veh" function selects the appropriate vehicle attributes from the database and contructs the powertrain model (engine efficiency map, etc.). An integer value corresponds to each vehicle in the database. To add a new vehicle, simply populate a new row to the vehicle database CSV.
 
-veh = FASTSim.get_veh(10)
+veh = LoadData.Vehicle(10)
 
 # ### Run FASTSim
 # 
@@ -52,7 +57,7 @@ veh = FASTSim.get_veh(10)
 
 print("Running FASTSim once.")
 t0 = time.time()
-output = FASTSim.sim_drive(cyc, veh)
+output = SimDrive.sim_drive(cyc, veh)
 print(time.time() - t0)
 print()
 
@@ -75,7 +80,7 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
-# plt.show()
+plt.show()
 
 # ## Batch Drive Cycles - TSDC Drive Cycles
 # 
@@ -149,7 +154,7 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
              pnts['time_local'].shift()).fillna(0).astype('timedelta64[s]')))
     cyc['cycRoadType'] = np.zeros(len(pnts))
 
-    output = FASTSim.sim_drive(cyc, veh)
+    output = SimDrive.sim_drive(cyc, veh)
     del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],    output['fsKwhOutAch']
 
     output['nrel_trip_id'] = trp
@@ -179,7 +184,7 @@ plt.figure()
 df_fltr.mpgge.hist(bins=20, rwidth=.9)
 plt.xlabel('Miles per Gallon')
 plt.ylabel('Number of Cycles')
-# plt.show()
+plt.show()
 
 df_fltr.plot(
     x='avg_speed_mph',
@@ -204,4 +209,4 @@ leg = plt.legend(
     scatterpoints=1)
 plt.xlabel('Average Cycle Speed [MPH]')
 plt.ylabel('Fuel Economy [MPG]')
-# plt.show()
+plt.show()
