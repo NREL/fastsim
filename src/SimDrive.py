@@ -434,7 +434,6 @@ def sim_drive_sub(cyc , veh , initSoc, debug):
                         (tarr.mpsAch[i-1]**2)) / (secs[i] * (veh.wheelRadiusM**2)))
 
             Total3 = Drag3 / 1e3
-            print(Accel2, Drag2, Wheel2)
             Total2 = (Accel2 + Drag2 + Wheel2) / 1e3
             Total1 = (Drag1 + Roll1 + Ascent1) / 1e3
             Total0 = (Accel0 + Drag0 + Roll0 + Ascent0 + Wheel0) / \
