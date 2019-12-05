@@ -13,7 +13,8 @@
 # 
 # FASTSim was originally implemented in Microsoft Excel. The pythonic implementation of FASTSim, demonstrated here, captures the drive cycle energy consumption simulation component of the software. The python version of FASTSim is more convenient than the Excel version when very high computational speed is desired, such as for simulating a large batch of drive cycles.
 import sys
-sys.path.append('../src')
+if '../src' not in sys.path:
+    sys.path.append('../src')
 import os
 import numpy as np
 import time
