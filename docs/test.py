@@ -42,7 +42,7 @@ print('Load Drive Cycle')
 # - cycRoadType = Indicator as to whether or not there is a wireless charging capability from the road to vehicle
 # 
 # There is no limit to the length of a drive cycle that can be provided as an input to FASTSim.
-cyc = LoadData.get_standard_cycle("UDDS")
+cyc = LoadData.get_standard_cycle("udds")
 
 print('Load Powertrain Model')
 # 
