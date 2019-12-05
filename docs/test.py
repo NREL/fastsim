@@ -53,14 +53,10 @@ print('Run FASTSim once')
 # The "sim_drive" function takes the drive cycle and vehicle models defined above as inputs. The output is a dictionary of time series and scalar values described the simulation results. Typically of interest is the "gge" key, which is an array of time series energy consumption data at each time step in the drive cycle. Additionally, to add a result from the simulator to the output dictionary, a user can modify the sim_drive_sub function source code to include the desired field.
 # 
 # If running FASTSim in batch over many drive cycles, the output from "sim_drive" can be written to files or database for batch post-processing. 
-print('With output only:')
+sim_drive = SimDrive.SimDrive()
 t0 = time.time()
-output = SimDrive.sim_drive(cyc, veh)
-print(time.time() - t0)
-
-print('With output and tarr')
-t0 = time.time()
-output, tarr = SimDrive.sim_drive(cyc, veh, debug=True)
+sim_drive.sim_drive(cyc, veh)
+output = sim_drive.get_output(veh)
 print(time.time() - t0)
 
 print('Single Run Results')
@@ -131,6 +127,7 @@ print('Elapsed time = ' + str(round(t1 - t0, 3)))
 print('Load Model, Run FASTSim batch')
 veh = LoadData.Vehicle(1)  # load vehicle model
 output_dict = {}
+sim_drive = SimDrive.SimDrive()
 
 results_df = pd.DataFrame()
 t_start = time.time()
@@ -148,13 +145,16 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
              pnts['time_local'].shift()).fillna(0).astype('timedelta64[s]')))
     cyc['cycRoadType'] = np.zeros(len(pnts))
     cyc = pd.DataFrame.from_dict(cyc)
-    
-    output = SimDrive.sim_drive(cyc, veh)
-    del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],    output['fsKwhOutAch']
+
+    sim_drive.sim_drive(cyc, veh)
+    output = sim_drive.get_output(veh)
+
+    del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],\
+        output['fsKwhOutAch']
 
     output['nrel_trip_id'] = trp
     results_df = results_df.append(output, ignore_index=True)
-    
+
 t_end = time.time()
 
 # results_df = results_df.astype(float)
