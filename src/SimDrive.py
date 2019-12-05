@@ -45,6 +45,26 @@ class SimDrive(object):
                 print('Running standard initial SOC controls')
                 initSoc = None
     
+        ############################
+        ###   Define Constants   ###
+        ############################
+
+        veh.maxTracMps2 = ((((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2) /
+                             (1+((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))))/(veh.vehKg * gravityMPerSec2)) * gravityMPerSec2
+        veh.maxRegenKwh = 0.5 * veh.vehKg * (27**2) / (3600 * 1000)
+
+        #############################
+        ### Initialize Variables  ###
+        #############################
+
+        ### Drive Cycle copied as numpy array for computational speed
+        self.cycSecs = cyc['cycSecs'].copy().to_numpy()
+        self.cycMps = cyc['cycMps'].copy().to_numpy()
+        self.cycGrade = cyc['cycGrade'].copy().to_numpy()
+        self.cycRoadType = cyc['cycRoadType'].copy().to_numpy()
+        self.cycMph = np.copy(self.cycMps * mphPerMps)
+        self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
+
         if veh.vehPtType == 1: # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
@@ -87,8 +107,7 @@ class SimDrive(object):
             self.sim_drive_sub(cyc, veh, initSoc)
 
     def sim_drive_sub(self, cyc, veh, initSoc):
-        """  
-        Receives second-by-second cycle information, vehicle properties, 
+        """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and performs a backward facing 
         powertrain simulation. The function returns an output dictionary 
         starting at approximately line 1030. Powertrain variables of 
@@ -107,26 +126,6 @@ class SimDrive(object):
         output: dict of key output variables
         tarr: object contaning arrays of all temporally dynamic variables"""
         
-        ############################
-        ###   Define Constants   ###
-        ############################
-
-        veh.maxTracMps2 = ((((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2) /\
-            (1+((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))))/(veh.vehKg * gravityMPerSec2)) * gravityMPerSec2
-        veh.maxRegenKwh = 0.5 * veh.vehKg * (27**2) / (3600 * 1000)
-
-        #############################
-        ### Initialize Variables  ###
-        #############################
-
-        ### Drive Cycle copied as numpy array for computational speed
-        self.cycSecs = cyc['cycSecs'].copy().to_numpy()
-        self.cycMps = cyc['cycMps'].copy().to_numpy()
-        self.cycGrade = cyc['cycGrade'].copy().to_numpy()
-        self.cycRoadType = cyc['cycRoadType'].copy().to_numpy()
-        self.cycMph = np.copy(self.cycMps * mphPerMps)
-        self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
-
         ############################
         ###   Loop Through Time  ###
         ############################
