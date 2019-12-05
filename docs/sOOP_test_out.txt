@@ -1,0 +1,15 @@
+Load Drive Cycle
+Load Drive Cycle
+Load Powertrain Model
+Run FASTSim once
+With output only:
+0.8825943470001221
+With output and tarr
+0.8920245170593262
+Single Run Results
+Load Cycles for batch
+Elapsed time = 3.401
+Load Model, Run FASTSim batch
+Run Complete. Total runtime = 22.19s
+     Average time per cycle = 0.09s
+Batch Results
