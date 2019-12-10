@@ -145,304 +145,11 @@ class SimDrive(object):
             self.get_power_calcs(i, veh)
             self.get_speed_dist_calcs(i, veh)
 
-            if self.transKwOutAch[i] > 0:
-                self.transKwInAch[i] = self.transKwOutAch[i] / veh.transEff
-            else:
-                self.transKwInAch[i] = self.transKwOutAch[i] * veh.transEff
-
-            if self.cycMet[i] == 1:
-
-                if veh.fcEffType == 4:
-                    self.minMcKw2HelpFc[i] = max(self.transKwInAch[i], -self.curMaxMechMcKwIn[i])
-
-                else:
-                    self.minMcKw2HelpFc[i] = max(self.transKwInAch[i] - self.curMaxFcKwOut[i], -self.curMaxMechMcKwIn[i])
-            else:
-                self.minMcKw2HelpFc[i] = max(self.curMaxMcKwOut[i], -self.curMaxMechMcKwIn[i])
-
-            if veh.noElecSys == 'TRUE':
-                self.regenBufferSoc[i] = 0
-
-            elif veh.chargingOn:
-                self.regenBufferSoc[i] = max(veh.maxSoc - (veh.maxRegenKwh / veh.maxEssKwh), (veh.maxSoc + veh.minSoc) / 2)
-
-            else:
-                self.regenBufferSoc[i] = max(((veh.maxEssKwh * veh.maxSoc) - (0.5 * veh.vehKg * (self.cycMps[i]**2) * (1.0 / 1000) \
-                    * (1.0 / 3600) * veh.motorPeakEff * veh.maxRegen)) / veh.maxEssKwh, veh.minSoc)
-
-                self.essRegenBufferDischgKw[i] = min(self.curMaxEssKwOut[i], max(0, (self.soc[i-1] - self.regenBufferSoc[i]) * veh.maxEssKwh * 3600 / self.secs[i]))
-
-                self.maxEssRegenBufferChgKw[i] = min(max(0, (self.regenBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / self.secs[i]), self.curMaxEssChgKw[i])
-
-            if veh.noElecSys == 'TRUE':
-                self.accelBufferSoc[i] = 0
-
-            else:
-                self.accelBufferSoc[i] = min(max((((((((veh.maxAccelBufferMph * (1 / mphPerMps))**2)) - ((self.cycMps[i]**2))) / \
-                    (((veh.maxAccelBufferMph * (1 / mphPerMps))**2))) * (min(veh.maxAccelBufferPercOfUseableSoc * \
-                        (veh.maxSoc - veh.minSoc), veh.maxRegenKwh / veh.maxEssKwh) * veh.maxEssKwh)) / veh.maxEssKwh) + \
-                            veh.minSoc, veh.minSoc), veh.maxSoc)
-
-                self.essAccelBufferChgKw[i] = max(0, (self.accelBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / self.secs[i])
-                self.maxEssAccelBufferDischgKw[i] = min(max(0, (self.soc[i-1] - self.accelBufferSoc[i]) * veh.maxEssKwh * 3600 / self.secs[i]), self.curMaxEssKwOut[i])
-
-            if self.regenBufferSoc[i] < self.accelBufferSoc[i]:
-                self.essAccelRegenDischgKw[i] = max(min(((self.soc[i-1] - (self.regenBufferSoc[i] + self.accelBufferSoc[i]) / 2) * veh.maxEssKwh * 3600.0) /\
-                    self.secs[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
-
-            elif self.soc[i-1] > self.regenBufferSoc[i]:
-                self.essAccelRegenDischgKw[i] = max(min(self.essRegenBufferDischgKw[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
-
-            elif self.soc[i-1] < self.accelBufferSoc[i]:
-                self.essAccelRegenDischgKw[i] = max(min(-1.0 * self.essAccelBufferChgKw[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
-
-            else:
-                self.essAccelRegenDischgKw[i] = max(min(0, self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
-
-            self.fcKwGapFrEff[i] = abs(self.transKwOutAch[i] - veh.maxFcEffKw)
-
-            if veh.noElecSys == 'TRUE':
-                self.mcElectInKwForMaxFcEff[i] = 0
-
-            elif self.transKwOutAch[i] < veh.maxFcEffKw:
-
-                if self.fcKwGapFrEff[i] == veh.maxMotorKw:
-                    self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1] * -1
-                else:
-                    self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / veh.mcFullEffArray[max(1, np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1)] * -1
-
-            else:
-
-                if self.fcKwGapFrEff[i] == veh.maxMotorKw:
-                    self.mcElectInKwForMaxFcEff[i] = veh.mcKwInArray[len(veh.mcKwInArray) - 1]
-                else:
-                    self.mcElectInKwForMaxFcEff[i] = veh.mcKwInArray[np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1]
-
-            if veh.noElecSys == 'TRUE':
-                self.electKwReq4AE[i] = 0
-
-            elif self.transKwInAch[i] > 0:
-                if self.transKwInAch[i] == veh.maxMotorKw:
-            
-                    self.electKwReq4AE[i] = self.transKwInAch[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1] + self.auxInKw[i]
-                else:
-                    self.electKwReq4AE[i] = self.transKwInAch[i] / veh.mcFullEffArray[max(1, np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.transKwInAch[i])) - 1)] + self.auxInKw[i]
-
-            else:
-                self.electKwReq4AE[i] = 0
-
-            self.prevfcTimeOn[i] = self.fcTimeOn[i-1]
-
-            if veh.maxFuelConvKw == 0:
-                self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and self.transKwInAch[i]<=self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0)
-
-            else:
-                self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and self.transKwInAch[i]<=self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] \
-                    or veh.maxFuelConvKw == 0) and (self.cycMph[i] - 0.00001<=veh.mphFcOn or veh.chargingOn) and self.electKwReq4AE[i]<=veh.kwDemandFcOn
-
-            if self.canPowerAllElectrically[i]:
-
-                if self.transKwInAch[i]<+self.auxInKw[i]:
-                    self.desiredEssKwOutForAE[i] = self.auxInKw[i] + self.transKwInAch[i]
-
-                elif self.regenBufferSoc[i] < self.accelBufferSoc[i]:
-                    self.desiredEssKwOutForAE[i] = self.essAccelRegenDischgKw[i]
-
-                elif self.soc[i-1] > self.regenBufferSoc[i]:
-                    self.desiredEssKwOutForAE[i] = self.essRegenBufferDischgKw[i]
-
-                elif self.soc[i-1] < self.accelBufferSoc[i]:
-                    self.desiredEssKwOutForAE[i] = -self.essAccelBufferChgKw[i]
-
-                else:
-                    self.desiredEssKwOutForAE[i] = self.transKwInAch[i] + self.auxInKw[i] - self.curMaxRoadwayChgKw[i]
-
-            else:
-                self.desiredEssKwOutForAE[i] = 0
-
-            if self.canPowerAllElectrically[i]:
-                self.essAEKwOut[i] = max(-self.curMaxEssChgKw[i], -self.maxEssRegenBufferChgKw[i], min(0, self.curMaxRoadwayChgKw[i] - (self.transKwInAch[i] + self.auxInKw[i])), min(self.curMaxEssKwOut[i], self.desiredEssKwOutForAE[i]))
-
-            else:
-                self.essAEKwOut[i] = 0
-
-            self.erAEKwOut[i] = min(max(0, self.transKwInAch[i] + self.auxInKw[i] - self.essAEKwOut[i]), self.curMaxRoadwayChgKw[i])
+            self.split_me(i, veh)
 
             self.get_fc_forced_state(i, veh)
 
-            if (-self.mcElectInKwForMaxFcEff[i] - self.curMaxRoadwayChgKw[i]) > 0:
-                self.essDesiredKw4FcEff[i] = (-self.mcElectInKwForMaxFcEff[i] - self.curMaxRoadwayChgKw[i]) * veh.essDischgToFcMaxEffPerc
-
-            else:
-                self.essDesiredKw4FcEff[i] = (-self.mcElectInKwForMaxFcEff[i] - self.curMaxRoadwayChgKw[i]) * veh.essChgToFcMaxEffPerc
-
-            if self.accelBufferSoc[i] > self.regenBufferSoc[i]:
-                self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i], \
-                    max(-self.curMaxEssChgKw[i], self.essAccelRegenDischgKw[i]))
-
-            elif self.essRegenBufferDischgKw[i] > 0:
-                self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i], \
-                    max(-self.curMaxEssChgKw[i], min(self.essAccelRegenDischgKw[i], self.mcElecInLimKw[i] + self.auxInKw[i], max(self.essRegenBufferDischgKw[i], self.essDesiredKw4FcEff[i]))))
-
-            elif self.essAccelBufferChgKw[i] > 0:
-                self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i], \
-                    max(-self.curMaxEssChgKw[i], max(-1 * self.maxEssRegenBufferChgKw[i], min(-self.essAccelBufferChgKw[i], self.essDesiredKw4FcEff[i]))))
-
-
-            elif self.essDesiredKw4FcEff[i] > 0:
-                self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i], \
-                    max(-self.curMaxEssChgKw[i], min(self.essDesiredKw4FcEff[i], self.maxEssAccelBufferDischgKw[i])))
-
-            else:
-                self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i], \
-                    max(-self.curMaxEssChgKw[i], max(self.essDesiredKw4FcEff[i], -self.maxEssRegenBufferChgKw[i])))
-
-            self.erKwIfFcIsReq[i] = max(0, min(self.curMaxRoadwayChgKw[i], self.curMaxMechMcKwIn[i], self.essKwIfFcIsReq[i] - self.mcElecInLimKw[i] + self.auxInKw[i]))
-
-            self.mcElecKwInIfFcIsReq[i] = self.essKwIfFcIsReq[i] + self.erKwIfFcIsReq[i] - self.auxInKw[i]
-
-            if veh.noElecSys == 'TRUE':
-                self.mcKwIfFcIsReq[i] = 0
-
-            elif  self.mcElecKwInIfFcIsReq[i] == 0:
-                self.mcKwIfFcIsReq[i] = 0
-
-            elif self.mcElecKwInIfFcIsReq[i] > 0:
-
-                if self.mcElecKwInIfFcIsReq[i] == max(veh.mcKwInArray):
-                    self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
-                else:
-                    self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * veh.mcFullEffArray[max(1, np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01, self.mcElecKwInIfFcIsReq[i])) - 1)]
-
-            else:
-                if self.mcElecKwInIfFcIsReq[i] * -1 == max(veh.mcKwInArray):
-                    self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
-                else:
-                    self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / (veh.mcFullEffArray[max(1, np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01, self.mcElecKwInIfFcIsReq[i] * -1)) - 1)])
-
-            if veh.maxMotorKw == 0:
-                self.mcMechKwOutAch[i] = 0
-
-            elif self.fcForcedOn[i] == True and self.canPowerAllElectrically[i] == True and (veh.vehPtType == 2.0 or veh.vehPtType == 3.0) and veh.fcEffType!=4:
-                self.mcMechKwOutAch[i] =  self.mcMechKw4ForcedFc[i]
-
-            elif self.transKwInAch[i]<=0:
-
-                if veh.fcEffType!=4 and veh.maxFuelConvKw> 0:
-                    if self.canPowerAllElectrically[i] == 1:
-                        self.mcMechKwOutAch[i] = -min(self.curMaxMechMcKwIn[i], -self.transKwInAch[i])
-                    else:
-                        self.mcMechKwOutAch[i] = min(-min(self.curMaxMechMcKwIn[i], -self.transKwInAch[i]), max(-self.curMaxFcKwOut[i], self.mcKwIfFcIsReq[i]))
-                else:
-                    self.mcMechKwOutAch[i] = min(-min(self.curMaxMechMcKwIn[i], -self.transKwInAch[i]), -self.transKwInAch[i])
-
-            elif self.canPowerAllElectrically[i] == 1:
-                self.mcMechKwOutAch[i] = self.transKwInAch[i]
-
-            else:
-                self.mcMechKwOutAch[i] = max(self.minMcKw2HelpFc[i], self.mcKwIfFcIsReq[i])
-
-            if self.mcMechKwOutAch[i] == 0:
-                self.mcElecKwInAch[i] = 0.0
-                self.motor_index_debug[i] = 0
-
-            elif self.mcMechKwOutAch[i] < 0:
-
-                if self.mcMechKwOutAch[i] * -1 == max(veh.mcKwInArray):
-                    self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
-                else:
-                    self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * veh.mcFullEffArray[max(1, np.argmax(veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01, self.mcMechKwOutAch[i] * -1)) - 1)]
-
-            else:
-                if veh.maxMotorKw == self.mcMechKwOutAch[i]:
-                    self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
-                else:
-                    self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / veh.mcFullEffArray[max(1, np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.mcMechKwOutAch[i])) - 1)]
-
-            if self.curMaxRoadwayChgKw[i] == 0:
-                self.roadwayChgKwOutAch[i] = 0
-
-            elif veh.fcEffType == 4:
-                self.roadwayChgKwOutAch[i] = max(0, self.mcElecKwInAch[i], self.maxEssRegenBufferChgKw[i], self.essRegenBufferDischgKw[i], self.curMaxRoadwayChgKw[i])
-
-            elif self.canPowerAllElectrically[i] == 1:
-                self.roadwayChgKwOutAch[i] = self.erAEKwOut[i]
-
-            else:
-                self.roadwayChgKwOutAch[i] = self.erKwIfFcIsReq[i]
-
-            self.minEssKw2HelpFc[i] = self.mcElecKwInAch[i] + self.auxInKw[i] - self.curMaxFcKwOut[i] - self.roadwayChgKwOutAch[i]
-
-            if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
-                self.essKwOutAch[i]  = 0
-
-            elif veh.fcEffType == 4:
-
-                if self.transKwOutAch[i]>=0:
-                    self.essKwOutAch[i] = min(max(self.minEssKw2HelpFc[i], self.essDesiredKw4FcEff[i], self.essAccelRegenDischgKw[i]), self.curMaxEssKwOut[i], self.mcElecKwInAch[i] + self.auxInKw[i] - self.roadwayChgKwOutAch[i])
-
-                else:
-                    self.essKwOutAch[i] = self.mcElecKwInAch[i] + self.auxInKw[i] - self.roadwayChgKwOutAch[i]
-
-            elif self.highAccFcOnTag[i] == 1 or veh.noElecAux == 'TRUE':
-                self.essKwOutAch[i] = self.mcElecKwInAch[i] - self.roadwayChgKwOutAch[i]
-
-            else:
-                self.essKwOutAch[i] = self.mcElecKwInAch[i] + self.auxInKw[i] - self.roadwayChgKwOutAch[i]
-
-            if veh.maxFuelConvKw == 0:
-                self.fcKwOutAch[i] = 0
-
-            elif veh.fcEffType == 4:
-                self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(0, self.mcElecKwInAch[i] + self.auxInKw[i] - self.essKwOutAch[i] - self.roadwayChgKwOutAch[i]))
-
-            elif veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or self.highAccFcOnTag[i] == 1:
-                self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(0, self.transKwInAch[i] - self.mcMechKwOutAch[i] + self.auxInKw[i]))
-
-            else:
-                self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(0, self.transKwInAch[i] - self.mcMechKwOutAch[i]))
-
-            if self.fcKwOutAch[i] == 0:
-                self.fcKwInAch[i] = 0.0
-                self.fcKwOutAch_pct[i] = 0
-
-            if veh.maxFuelConvKw == 0:
-                self.fcKwOutAch_pct[i] = 0
-            else:
-                self.fcKwOutAch_pct[i] = self.fcKwOutAch[i] / veh.maxFuelConvKw
-
-            if self.fcKwOutAch[i] == 0:
-                self.fcKwInAch[i] = 0
-            else:
-                if self.fcKwOutAch[i] == veh.fcMaxOutkW:
-                    self.fcKwInAch[i] = self.fcKwOutAch[i] / veh.fcEffArray[len(veh.fcEffArray) - 1]
-                else:
-                    self.fcKwInAch[i] = self.fcKwOutAch[i] / (veh.fcEffArray[max(1, np.argmax(veh.fcKwOutArray > min(self.fcKwOutAch[i], veh.fcMaxOutkW - 0.001)) - 1)])
-
-            self.fsKwOutAch[i] = np.copy(self.fcKwInAch[i])
-
-            self.fsKwhOutAch[i] = self.fsKwOutAch[i] * self.secs[i] * (1 / 3600.0)
-
-
-            if veh.noElecSys == 'TRUE':
-                self.essCurKwh[i] = 0
-
-            elif self.essKwOutAch[i] < 0:
-                self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * (self.secs[i] / 3600.0) * np.sqrt(veh.essRoundTripEff)
-
-            else:
-                self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * (self.secs[i] / 3600.0) * (1 / np.sqrt(veh.essRoundTripEff))
-
-            if veh.maxEssKwh == 0:
-                self.soc[i] = 0.0
-
-            else:
-                self.soc[i] = self.essCurKwh[i] / veh.maxEssKwh
-
-            if self.canPowerAllElectrically[i] == True and self.fcForcedOn[i] == False and self.fcKwOutAch[i] == 0:
-                self.fcTimeOn[i] = 0
-            else:
-                self.fcTimeOn[i] = self.fcTimeOn[i-1] + self.secs[i]
+            self.split_me2(i, veh)
 
             self.get_battery_wear(i, veh)
             self.get_energy_audit(i, veh)
@@ -758,6 +465,355 @@ class SimDrive(object):
         self.distMeters[i] = self.mpsAch[i] * self.secs[i]
         self.distMiles[i] = self.distMeters[i] * (1.0 / metersPerMile)
         
+    def split_me(self, i, veh):
+        """This function needs to be split up into smaller coherent units"""
+        if self.transKwOutAch[i] > 0:
+            self.transKwInAch[i] = self.transKwOutAch[i] / veh.transEff
+        else:
+            self.transKwInAch[i] = self.transKwOutAch[i] * veh.transEff
+
+        if self.cycMet[i] == 1:
+
+            if veh.fcEffType == 4:
+                self.minMcKw2HelpFc[i] = max(
+                    self.transKwInAch[i], -self.curMaxMechMcKwIn[i])
+
+            else:
+                self.minMcKw2HelpFc[i] = max(
+                    self.transKwInAch[i] - self.curMaxFcKwOut[i], -self.curMaxMechMcKwIn[i])
+        else:
+            self.minMcKw2HelpFc[i] = max(
+                self.curMaxMcKwOut[i], -self.curMaxMechMcKwIn[i])
+
+        if veh.noElecSys == 'TRUE':
+            self.regenBufferSoc[i] = 0
+
+        elif veh.chargingOn:
+            self.regenBufferSoc[i] = max(
+                veh.maxSoc - (veh.maxRegenKwh / veh.maxEssKwh), (veh.maxSoc + veh.minSoc) / 2)
+
+        else:
+            self.regenBufferSoc[i] = max(((veh.maxEssKwh * veh.maxSoc) - (0.5 * veh.vehKg * (self.cycMps[i]**2) * (1.0 / 1000)
+                                                                            * (1.0 / 3600) * veh.motorPeakEff * veh.maxRegen)) / veh.maxEssKwh, veh.minSoc)
+
+            self.essRegenBufferDischgKw[i] = min(self.curMaxEssKwOut[i], max(
+                0, (self.soc[i-1] - self.regenBufferSoc[i]) * veh.maxEssKwh * 3600 / self.secs[i]))
+
+            self.maxEssRegenBufferChgKw[i] = min(max(
+                0, (self.regenBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / self.secs[i]), self.curMaxEssChgKw[i])
+
+        if veh.noElecSys == 'TRUE':
+            self.accelBufferSoc[i] = 0
+
+        else:
+            self.accelBufferSoc[i] = min(max((((((((veh.maxAccelBufferMph * (1 / mphPerMps))**2)) - ((self.cycMps[i]**2))) /
+                                                (((veh.maxAccelBufferMph * (1 / mphPerMps))**2))) * (min(veh.maxAccelBufferPercOfUseableSoc * \
+                                                                            (veh.maxSoc - veh.minSoc), veh.maxRegenKwh / veh.maxEssKwh) * veh.maxEssKwh)) / veh.maxEssKwh) + \
+                veh.minSoc, veh.minSoc), veh.maxSoc)
+
+            self.essAccelBufferChgKw[i] = max(
+                0, (self.accelBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / self.secs[i])
+            self.maxEssAccelBufferDischgKw[i] = min(max(
+                0, (self.soc[i-1] - self.accelBufferSoc[i]) * veh.maxEssKwh * 3600 / self.secs[i]), self.curMaxEssKwOut[i])
+
+        if self.regenBufferSoc[i] < self.accelBufferSoc[i]:
+            self.essAccelRegenDischgKw[i] = max(min(((self.soc[i-1] - (self.regenBufferSoc[i] + self.accelBufferSoc[i]) / 2) * veh.maxEssKwh * 3600.0) /
+                                                    self.secs[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+
+        elif self.soc[i-1] > self.regenBufferSoc[i]:
+            self.essAccelRegenDischgKw[i] = max(min(
+                self.essRegenBufferDischgKw[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+
+        elif self.soc[i-1] < self.accelBufferSoc[i]:
+            self.essAccelRegenDischgKw[i] = max(
+                min(-1.0 * self.essAccelBufferChgKw[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+
+        else:
+            self.essAccelRegenDischgKw[i] = max(
+                min(0, self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+
+        self.fcKwGapFrEff[i] = abs(self.transKwOutAch[i] - veh.maxFcEffKw)
+
+        if veh.noElecSys == 'TRUE':
+            self.mcElectInKwForMaxFcEff[i] = 0
+
+        elif self.transKwOutAch[i] < veh.maxFcEffKw:
+
+            if self.fcKwGapFrEff[i] == veh.maxMotorKw:
+                self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / \
+                    veh.mcFullEffArray[len(veh.mcFullEffArray) - 1] * -1
+            else:
+                self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / veh.mcFullEffArray[max(
+                    1, np.argmax(veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1)] * -1
+
+        else:
+
+            if self.fcKwGapFrEff[i] == veh.maxMotorKw:
+                self.mcElectInKwForMaxFcEff[i] = veh.mcKwInArray[len(
+                    veh.mcKwInArray) - 1]
+            else:
+                self.mcElectInKwForMaxFcEff[i] = veh.mcKwInArray[np.argmax(
+                    veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1]
+
+        if veh.noElecSys == 'TRUE':
+            self.electKwReq4AE[i] = 0
+
+        elif self.transKwInAch[i] > 0:
+            if self.transKwInAch[i] == veh.maxMotorKw:
+
+                self.electKwReq4AE[i] = self.transKwInAch[i] / \
+                    veh.mcFullEffArray[len(veh.mcFullEffArray) - 1] + self.auxInKw[i]
+            else:
+                self.electKwReq4AE[i] = self.transKwInAch[i] / veh.mcFullEffArray[max(1, np.argmax(
+                    veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.transKwInAch[i])) - 1)] + self.auxInKw[i]
+
+        else:
+            self.electKwReq4AE[i] = 0
+
+        self.prevfcTimeOn[i] = self.fcTimeOn[i-1]
+
+        if veh.maxFuelConvKw == 0:
+            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and self.transKwInAch[i] <= self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0)
+
+        else:
+            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and self.transKwInAch[i] <=self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] \
+                or veh.maxFuelConvKw == 0) and (self.cycMph[i] - 0.00001 <=veh.mphFcOn or veh.chargingOn) and self.electKwReq4AE[i]<=veh.kwDemandFcOn
+
+        if self.canPowerAllElectrically[i]:
+
+            if self.transKwInAch[i] <+self.auxInKw[i]:
+                self.desiredEssKwOutForAE[i] = self.auxInKw[i] + \
+                    self.transKwInAch[i]
+
+            elif self.regenBufferSoc[i] < self.accelBufferSoc[i]:
+                self.desiredEssKwOutForAE[i] = self.essAccelRegenDischgKw[i]
+
+            elif self.soc[i-1] > self.regenBufferSoc[i]:
+                self.desiredEssKwOutForAE[i] = self.essRegenBufferDischgKw[i]
+
+            elif self.soc[i-1] < self.accelBufferSoc[i]:
+                self.desiredEssKwOutForAE[i] = -self.essAccelBufferChgKw[i]
+
+            else:
+                self.desiredEssKwOutForAE[i] = self.transKwInAch[i] + \
+                    self.auxInKw[i] - self.curMaxRoadwayChgKw[i]
+
+        else:
+            self.desiredEssKwOutForAE[i] = 0
+
+        if self.canPowerAllElectrically[i]:
+            self.essAEKwOut[i] = max(-self.curMaxEssChgKw[i], -self.maxEssRegenBufferChgKw[i], min(0, self.curMaxRoadwayChgKw[i] - (
+                self.transKwInAch[i] + self.auxInKw[i])), min(self.curMaxEssKwOut[i], self.desiredEssKwOutForAE[i]))
+
+        else:
+            self.essAEKwOut[i] = 0
+
+        self.erAEKwOut[i] = min(max(0, self.transKwInAch[i] + self.auxInKw[i] - self.essAEKwOut[i]), self.curMaxRoadwayChgKw[i])
+    
+    def split_me2(self, i, veh):
+        """Another function that need to be split up into smaller cohesive units"""
+        if (-self.mcElectInKwForMaxFcEff[i] - self.curMaxRoadwayChgKw[i]) > 0:
+            self.essDesiredKw4FcEff[i] = (-self.mcElectInKwForMaxFcEff[i] -
+                                            self.curMaxRoadwayChgKw[i]) * veh.essDischgToFcMaxEffPerc
+
+        else:
+            self.essDesiredKw4FcEff[i] = (-self.mcElectInKwForMaxFcEff[i] - \
+                                            self.curMaxRoadwayChgKw[i]) * veh.essChgToFcMaxEffPerc
+
+        if self.accelBufferSoc[i] > self.regenBufferSoc[i]:
+            self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i],
+                                            max(-self.curMaxEssChgKw[i], self.essAccelRegenDischgKw[i]))
+
+        elif self.essRegenBufferDischgKw[i] > 0:
+            self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i],
+                                            max(-self.curMaxEssChgKw[i], min(self.essAccelRegenDischgKw[i], self.mcElecInLimKw[i] + self.auxInKw[i], max(self.essRegenBufferDischgKw[i], self.essDesiredKw4FcEff[i]))))
+
+        elif self.essAccelBufferChgKw[i] > 0:
+            self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i],
+                                            max(-self.curMaxEssChgKw[i], max(-1 * self.maxEssRegenBufferChgKw[i], min(-self.essAccelBufferChgKw[i], self.essDesiredKw4FcEff[i]))))
+
+        elif self.essDesiredKw4FcEff[i] > 0:
+            self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i],
+                                            max(-self.curMaxEssChgKw[i], min(self.essDesiredKw4FcEff[i], self.maxEssAccelBufferDischgKw[i])))
+
+        else:
+            self.essKwIfFcIsReq[i] = min(self.curMaxEssKwOut[i], veh.mcMaxElecInKw + self.auxInKw[i], self.curMaxMcElecKwIn[i] + self.auxInKw[i],
+                                            max(-self.curMaxEssChgKw[i], max(self.essDesiredKw4FcEff[i], -self.maxEssRegenBufferChgKw[i])))
+
+        self.erKwIfFcIsReq[i] = max(0, min(self.curMaxRoadwayChgKw[i], self.curMaxMechMcKwIn[i],
+                                    self.essKwIfFcIsReq[i] - self.mcElecInLimKw[i] + self.auxInKw[i]))
+
+        self.mcElecKwInIfFcIsReq[i] = self.essKwIfFcIsReq[i] + \
+            self.erKwIfFcIsReq[i] - self.auxInKw[i]
+
+        if veh.noElecSys == 'TRUE':
+            self.mcKwIfFcIsReq[i] = 0
+
+        elif self.mcElecKwInIfFcIsReq[i] == 0:
+            self.mcKwIfFcIsReq[i] = 0
+
+        elif self.mcElecKwInIfFcIsReq[i] > 0:
+
+            if self.mcElecKwInIfFcIsReq[i] == max(veh.mcKwInArray):
+                self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * \
+                    veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            else:
+                self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * veh.mcFullEffArray[max(1, np.argmax(
+                    veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01, self.mcElecKwInIfFcIsReq[i])) - 1)]
+
+        else:
+            if self.mcElecKwInIfFcIsReq[i] * -1 == max(veh.mcKwInArray):
+                self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / \
+                    veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            else:
+                self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / (veh.mcFullEffArray[max(1, np.argmax(
+                    veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01, self.mcElecKwInIfFcIsReq[i] * -1)) - 1)])
+
+        if veh.maxMotorKw == 0:
+            self.mcMechKwOutAch[i] = 0
+
+        elif self.fcForcedOn[i] == True and self.canPowerAllElectrically[i] == True and (veh.vehPtType == 2.0 or veh.vehPtType == 3.0) and veh.fcEffType !=4:
+            self.mcMechKwOutAch[i] = self.mcMechKw4ForcedFc[i]
+
+        elif self.transKwInAch[i] <=0:
+
+            if veh.fcEffType !=4 and veh.maxFuelConvKw> 0:
+                if self.canPowerAllElectrically[i] == 1:
+                    self.mcMechKwOutAch[i] = - \
+                        min(self.curMaxMechMcKwIn[i], -self.transKwInAch[i])
+                else:
+                    self.mcMechKwOutAch[i] = min(-min(self.curMaxMechMcKwIn[i], -self.transKwInAch[i]),
+                                                    max(-self.curMaxFcKwOut[i], self.mcKwIfFcIsReq[i]))
+            else:
+                self.mcMechKwOutAch[i] = min(
+                    -min(self.curMaxMechMcKwIn[i], -self.transKwInAch[i]), -self.transKwInAch[i])
+
+        elif self.canPowerAllElectrically[i] == 1:
+            self.mcMechKwOutAch[i] = self.transKwInAch[i]
+
+        else:
+            self.mcMechKwOutAch[i] = max(
+                self.minMcKw2HelpFc[i], self.mcKwIfFcIsReq[i])
+
+        if self.mcMechKwOutAch[i] == 0:
+            self.mcElecKwInAch[i] = 0.0
+            self.motor_index_debug[i] = 0
+
+        elif self.mcMechKwOutAch[i] < 0:
+
+            if self.mcMechKwOutAch[i] * -1 == max(veh.mcKwInArray):
+                self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * \
+                    veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            else:
+                self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * veh.mcFullEffArray[max(1, np.argmax(
+                    veh.mcKwInArray > min(max(veh.mcKwInArray) - 0.01, self.mcMechKwOutAch[i] * -1)) - 1)]
+
+        else:
+            if veh.maxMotorKw == self.mcMechKwOutAch[i]:
+                self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / \
+                    veh.mcFullEffArray[len(veh.mcFullEffArray) - 1]
+            else:
+                self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / veh.mcFullEffArray[max(1, np.argmax(
+                    veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.mcMechKwOutAch[i])) - 1)]
+
+        if self.curMaxRoadwayChgKw[i] == 0:
+            self.roadwayChgKwOutAch[i] = 0
+
+        elif veh.fcEffType == 4:
+            self.roadwayChgKwOutAch[i] = max(
+                0, self.mcElecKwInAch[i], self.maxEssRegenBufferChgKw[i], self.essRegenBufferDischgKw[i], self.curMaxRoadwayChgKw[i])
+
+        elif self.canPowerAllElectrically[i] == 1:
+            self.roadwayChgKwOutAch[i] = self.erAEKwOut[i]
+
+        else:
+            self.roadwayChgKwOutAch[i] = self.erKwIfFcIsReq[i]
+
+        self.minEssKw2HelpFc[i] = self.mcElecKwInAch[i] + self.auxInKw[i] - \
+            self.curMaxFcKwOut[i] - self.roadwayChgKwOutAch[i]
+
+        if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
+            self.essKwOutAch[i] = 0
+
+        elif veh.fcEffType == 4:
+
+            if self.transKwOutAch[i] >=0:
+                self.essKwOutAch[i] = min(max(self.minEssKw2HelpFc[i], self.essDesiredKw4FcEff[i], self.essAccelRegenDischgKw[i]),
+                                            self.curMaxEssKwOut[i], self.mcElecKwInAch[i] + self.auxInKw[i] - self.roadwayChgKwOutAch[i])
+
+            else:
+                self.essKwOutAch[i] = self.mcElecKwInAch[i] + \
+                    self.auxInKw[i] - self.roadwayChgKwOutAch[i]
+
+        elif self.highAccFcOnTag[i] == 1 or veh.noElecAux == 'TRUE':
+            self.essKwOutAch[i] = self.mcElecKwInAch[i] - \
+                self.roadwayChgKwOutAch[i]
+
+        else:
+            self.essKwOutAch[i] = self.mcElecKwInAch[i] + \
+                self.auxInKw[i] - self.roadwayChgKwOutAch[i]
+
+        if veh.maxFuelConvKw == 0:
+            self.fcKwOutAch[i] = 0
+
+        elif veh.fcEffType == 4:
+            self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
+                0, self.mcElecKwInAch[i] + self.auxInKw[i] - self.essKwOutAch[i] - self.roadwayChgKwOutAch[i]))
+
+        elif veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or self.highAccFcOnTag[i] == 1:
+            self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
+                0, self.transKwInAch[i] - self.mcMechKwOutAch[i] + self.auxInKw[i]))
+
+        else:
+            self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
+                0, self.transKwInAch[i] - self.mcMechKwOutAch[i]))
+
+        if self.fcKwOutAch[i] == 0:
+            self.fcKwInAch[i] = 0.0
+            self.fcKwOutAch_pct[i] = 0
+
+        if veh.maxFuelConvKw == 0:
+            self.fcKwOutAch_pct[i] = 0
+        else:
+            self.fcKwOutAch_pct[i] = self.fcKwOutAch[i] / veh.maxFuelConvKw
+
+        if self.fcKwOutAch[i] == 0:
+            self.fcKwInAch[i] = 0
+        else:
+            if self.fcKwOutAch[i] == veh.fcMaxOutkW:
+                self.fcKwInAch[i] = self.fcKwOutAch[i] / \
+                    veh.fcEffArray[len(veh.fcEffArray) - 1]
+            else:
+                self.fcKwInAch[i] = self.fcKwOutAch[i] / (veh.fcEffArray[max(1, np.argmax(
+                    veh.fcKwOutArray > min(self.fcKwOutAch[i], veh.fcMaxOutkW - 0.001)) - 1)])
+
+        self.fsKwOutAch[i] = np.copy(self.fcKwInAch[i])
+
+        self.fsKwhOutAch[i] = self.fsKwOutAch[i] * \
+            self.secs[i] * (1 / 3600.0)
+
+        if veh.noElecSys == 'TRUE':
+            self.essCurKwh[i] = 0
+
+        elif self.essKwOutAch[i] < 0:
+            self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * \
+                (self.secs[i] / 3600.0) * np.sqrt(veh.essRoundTripEff)
+
+        else:
+            self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * \
+                (self.secs[i] / 3600.0) * (1 / np.sqrt(veh.essRoundTripEff))
+
+        if veh.maxEssKwh == 0:
+            self.soc[i] = 0.0
+
+        else:
+            self.soc[i] = self.essCurKwh[i] / veh.maxEssKwh
+
+        if self.canPowerAllElectrically[i] == True and self.fcForcedOn[i] == False and self.fcKwOutAch[i] == 0:
+            self.fcTimeOn[i] = 0
+        else:
+            self.fcTimeOn[i] = self.fcTimeOn[i-1] + self.secs[i]
+
     def get_fc_forced_state(self, i, veh):
         """Calculate variables dependent on speed
         Arguments
