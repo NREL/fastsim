@@ -116,7 +116,7 @@ for i in veh_dirs:
     for k in range(len(df_i)):
         start_ts = df_i.start_ts.iloc[k]
         end_ts = df_i.end_ts.iloc[k]
-        tripK_df = veh_pnts_df.loc[(veh_pnts_df['timestamp']>=start_ts) &                         (veh_pnts_df['timestamp']<=end_ts)]
+        tripK_df = veh_pnts_df.loc[(veh_pnts_df['timestamp']>=start_ts) & (veh_pnts_df['timestamp']<=end_ts)]
         tripK_df['nrel_trip_id'] = [unique_tripno]*len(tripK_df)
         unique_tripno += 1
         tripK_df['sampno'] = [sampno]*len(tripK_df)
