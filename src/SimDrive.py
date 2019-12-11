@@ -1,20 +1,15 @@
-"""Module containing class and functions for simulating vehicle drive cycle."""
+"""Module containing class and methods for simulating vehicle drive cycle.
+For example usage, see ../README.md"""
 
 ### Import necessary python modules
 import numpy as np
 import pandas as pd
-from collections import namedtuple
+from Globals import *
 import warnings
 warnings.simplefilter('ignore')
 
-airDensityKgPerM3 = 1.2 # Sea level air density at approximately 20C
-gravityMPerSec2 = 9.81
-mphPerMps = 2.2369
-kWhPerGGE = 33.7
-metersPerMile = 1609.00
-
 class SimDrive(object):
-    """Class for contaning time series data used by sim_drive_sub"""
+    """Class containing methods for running FASTSim vehicle fuel economy simulations."""
     def __init__(self):
         super().__init__()
     
@@ -22,22 +17,9 @@ class SimDrive(object):
         """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
-        cyc: pandas dataframe of time traces of cycle data from LoadData.get_standard_cycle()
-        veh: instance of LoadData.Vehicle() class
-        initSoc: initial SOC for electrified vehicles
-
-        Outputs
-        -----------
-        output: dict of key output variables
-        tarr: object contaning arrays of all temporally dynamic variables
-
-        Example Usage (from within ../docs/):
-        >>> # local modules
-        >>> import SimDrive
-        >>> import LoadData
-        >>> cyc = LoadData.get_standard_cycle("UDDS")
-        >>> output, tarr = SimDrive.sim_drive(cyc, veh)
-        """
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc(optional): initial SOC for electrified vehicles"""
 
         if initSoc != None:
             if initSoc > 1.0 or initSoc < 0.0:
@@ -87,25 +69,16 @@ class SimDrive(object):
             self.sim_drive_sub(cyc, veh, initSoc)
 
     def sim_drive_sub(self, cyc, veh, initSoc):
-        """  
-        Receives second-by-second cycle information, vehicle properties, 
+        """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and performs a backward facing 
-        powertrain simulation. The function returns an output dictionary 
-        starting at approximately line 1030. Powertrain variables of 
-        interest (summary or time-series) can be added to the output 
-        dictionary for reference. Function 'sim_drive' runs this to 
+        powertrain simulation. Method 'sim_drive' runs this to 
         iterate through the time steps of 'cyc'.
 
         Arguments
         ------------
-        cyc: pandas dataframe of time traces of cycle data from LoadData.get_standard_cycle()
-        veh: instance of LoadData.Vehicle() class
-        initSoc: initial battery state-of-charge (SOC) for electrified vehicles
-        
-        Outputs
-        -----------
-        output: dict of key output variables
-        tarr: object contaning arrays of all temporally dynamic variables"""
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial battery state-of-charge (SOC) for electrified vehicles"""
         
         ############################
         ###   Define Constants   ###
@@ -115,19 +88,11 @@ class SimDrive(object):
             (1+((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))))/(veh.vehKg * gravityMPerSec2)) * gravityMPerSec2
         veh.maxRegenKwh = 0.5 * veh.vehKg * (27**2) / (3600 * 1000)
 
-        #############################
-        ### Initialize Variables  ###
-        #############################
-
-              
-        self.cycMph = np.copy(cyc.cycMps * mphPerMps)
-        self.secs = np.insert(np.diff(cyc.cycSecs), 0, 0)
-
         ############################
         ###   Loop Through Time  ###
         ############################
 
-        self.init_arrays(cyc, veh, initSoc)
+        self.set_init_arrays(cyc, veh, initSoc)
 
         for i in range(1, len(cyc.cycSecs)):
             ### Misc calcs
@@ -136,27 +101,27 @@ class SimDrive(object):
             # loads
             # *** 
 
-            self.get_misc_calcs(i, veh)
-            self.get_comp_lims(i, veh)
-            self.get_power_calcs(i, cyc, veh)
-            self.get_speed_dist_calcs(i, cyc, veh)
+            self.set_misc_calcs(i, cyc, veh)
+            self.set_comp_lims(i, cyc, veh)
+            self.set_power_calcs(i, cyc, veh)
+            self.set_speed_dist_calcs(i, cyc, veh)
 
             self.split_me(i, cyc, veh)
 
-            self.get_fc_forced_state(i, veh)
+            self.set_fc_forced_state(i, cyc, veh)
 
-            self.split_me2(i, veh)
+            self.split_me2(i, cyc, veh)
 
-            self.get_battery_wear(i, veh)
-            self.get_energy_audit(i, cyc, veh)
+            self.set_battery_wear(i, veh)
+            self.set_energy_audit(i, cyc, veh)
 
-    def init_arrays(self, cyc, veh, initSoc):
+    def set_init_arrays(self, cyc, veh, initSoc):
         """Initializes arrays of time dependent variables as attributes of self.
         Arguments
         ------------
-        veh: instance of LoadData.Vehicle() class
-        initSoc: initial SOC for electrified vehicles
-        """
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
 
         # Component Limits -- calculated dynamically"
         comp_lim_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut',
@@ -208,14 +173,14 @@ class SimDrive(object):
         self.soc[0] = initSoc
 
     # Function definitions for functions to be run at each time step
-    def get_misc_calcs(self, i, veh):
-        """Performs misc. calculations.
+    def set_misc_calcs(self, i, cyc, veh):
+        """Sets misc. calculations at time step 'i'
         Arguments
         ------------
-        tarr: instance of SimDrive.TimeArrays()
-        i: integer representing index of current time step
-        
-        Output: tarr"""
+        i: index of time step
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
 
         if veh.noElecAux == 'TRUE':
             self.auxInKw[i] = veh.auxKw / veh.altEff
@@ -233,23 +198,23 @@ class SimDrive(object):
             self.highAccFcOnTag[i] = 1
         else:
             self.highAccFcOnTag[i] = 0
-        self.maxTracMps[i] = self.mpsAch[i-1] + (veh.maxTracMps2 * self.secs[i])
+        self.maxTracMps[i] = self.mpsAch[i-1] + (veh.maxTracMps2 * cyc.secs[i])
 
-    def get_comp_lims(self, i, veh):
-        """Return time array (tarr) with component limits set for time step 'i'
+    def set_comp_lims(self, i, cyc, veh):
+        """Sets component limits for time step 'i'
         Arguments
         ------------
-        tarr: instance of SimDrive.TimeArrays()
-        i: integer representing index of current time step
-
-        Output: tarr"""
+        i: index of time step
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
 
         # max fuel storage power output
         self.curMaxFsKwOut[i] = min(veh.maxFuelStorKw, self.fsKwOutAch[i-1] + (
-            (veh.maxFuelStorKw/veh.fuelStorSecsToPeakPwr) * (self.secs[i])))
+            (veh.maxFuelStorKw/veh.fuelStorSecsToPeakPwr) * (cyc.secs[i])))
         # maximum fuel storage power output rate of change
         self.fcTransLimKw[i] = self.fcKwOutAch[i-1] + \
-            ((veh.maxFuelConvKw / veh.fuelConvSecsToPeakPwr) * (self.secs[i]))
+            ((veh.maxFuelConvKw / veh.fuelConvSecsToPeakPwr) * (cyc.secs[i]))
 
         # *** this min seems redundant with line 518
         self.fcMaxKwIn[i] = min(self.curMaxFsKwOut[i], veh.maxFuelStorKw)
@@ -264,7 +229,7 @@ class SimDrive(object):
 
         else:
             self.essCapLimDischgKw[i] = (
-                veh.maxEssKwh * np.sqrt(veh.essRoundTripEff)) * 3600.0 * (self.soc[i-1] - veh.minSoc) / (self.secs[i])
+                veh.maxEssKwh * np.sqrt(veh.essRoundTripEff)) * 3600.0 * (self.soc[i-1] - veh.minSoc) / (cyc.secs[i])
         self.curMaxEssKwOut[i] = min(
             veh.maxEssKw, self.essCapLimDischgKw[i])
 
@@ -273,7 +238,7 @@ class SimDrive(object):
 
         else:
             self.essCapLimChgKw[i] = max(((veh.maxSoc - self.soc[i-1]) * veh.maxEssKwh * (1 /
-                                                                                            np.sqrt(veh.essRoundTripEff))) / ((self.secs[i]) * (1 / 3600.0)), 0)
+                                                                                            np.sqrt(veh.essRoundTripEff))) / ((cyc.secs[i]) * (1 / 3600.0)), 0)
 
         self.curMaxEssChgKw[i] = min(self.essCapLimChgKw[i], veh.maxEssKw)
 
@@ -303,7 +268,7 @@ class SimDrive(object):
 
         # Motor transient power limit
         self.mcTransiLimKw[i] = abs(
-            self.mcMechKwOutAch[i-1]) + ((veh.maxMotorKw / veh.motorSecsToPeakPwr) * (self.secs[i]))
+            self.mcMechKwOutAch[i-1]) + ((veh.maxMotorKw / veh.motorSecsToPeakPwr) * (cyc.secs[i]))
 
         self.curMaxMcKwOut[i] = max(min(
             self.mcElecInLimKw[i], self.mcTransiLimKw[i], veh.maxMotorKw), -veh.maxMotorKw)
@@ -364,19 +329,19 @@ class SimDrive(object):
                                                 min(self.curMaxElecKw[i], 0)) * veh.transEff, self.curMaxTracKw[i] / veh.transEff)
                 self.debug_flag[i] = 4
         
-    def get_power_calcs(self, i, cyc, veh):
-        """Calculate and return power variables.
+    def set_power_calcs(self, i, cyc, veh):
+        """Calculate and set power variables at time step 'i'.
         Arguments
         ------------
-        tarr: instance of SimDrive.TimeArrays()
-        i: integer representing index of current time step
-        
-        Output: tarr"""
+        i: index of time step
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
 
         self.cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * \
             veh.frontalAreaM2 * \
             (((self.mpsAch[i-1] + cyc.cycMps[i]) / 2.0)**3) / 1000.0
-        self.cycAccelKw[i] = (veh.vehKg / (2.0 * (self.secs[i]))) * \
+        self.cycAccelKw[i] = (veh.vehKg / (2.0 * (cyc.secs[i]))) * \
             ((cyc.cycMps[i]**2) - (self.mpsAch[i-1]**2)) / 1000.0
         self.cycAscentKw[i] = gravityMPerSec2 * np.sin(np.arctan(
             cyc.cycGrade[i])) * veh.vehKg * ((self.mpsAch[i-1] + cyc.cycMps[i]) / 2.0) / 1000.0
@@ -386,13 +351,13 @@ class SimDrive(object):
         self.cycRrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * \
             veh.vehKg * ((self.mpsAch[i-1] + cyc.cycMps[i]) / 2.0) / 1000.0
         self.cycWheelRadPerSec[i] = cyc.cycMps[i] / veh.wheelRadiusM
-        self.cycTireInertiaKw[i] = (((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * (self.cycWheelRadPerSec[i]**2.0)) / self.secs[i]) -
-                                    ((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * ((self.mpsAch[i-1] / veh.wheelRadiusM)**2.0)) / self.secs[i])) / 1000.0
+        self.cycTireInertiaKw[i] = (((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * (self.cycWheelRadPerSec[i]**2.0)) / cyc.secs[i]) -
+                                    ((0.5) * veh.wheelInertiaKgM2 * (veh.numWheels * ((self.mpsAch[i-1] / veh.wheelRadiusM)**2.0)) / cyc.secs[i])) / 1000.0
 
         self.cycWheelKwReq[i] = self.cycTracKwReq[i] + \
             self.cycRrKw[i] + self.cycTireInertiaKw[i]
         self.regenContrLimKwPerc[i] = veh.maxRegen / (1 + veh.regenA * np.exp(-veh.regenB * (
-            (self.cycMph[i] + self.mpsAch[i-1] * mphPerMps) / 2.0 + 1 - 0)))
+            (cyc.cycMph[i] + self.mpsAch[i-1] * mphPerMps) / 2.0 + 1 - 0)))
         self.cycRegenBrakeKw[i] = max(min(
             self.curMaxMechMcKwIn[i] * veh.transEff, self.regenContrLimKwPerc[i] * -self.cycWheelKwReq[i]), 0)
         self.cycFricBrakeKw[i] = - \
@@ -408,14 +373,14 @@ class SimDrive(object):
             self.cycMet[i] = -1
             self.transKwOutAch[i] = self.curMaxTransKwOut[i]
         
-    def get_speed_dist_calcs(self, i, cyc, veh):
-        """Calculate variables dependent on speed
+    def set_speed_dist_calcs(self, i, cyc, veh):
+        """Calculate and set variables dependent on speed
         Arguments
         ------------
-        tarr: instance of SimDrive.TimeArrays()
-        i: integer representing index of current time step
-
-        Output: tarr"""
+        i: index of time step
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
 
         # Cycle is met
         if self.cycMet[i] == 1:
@@ -425,18 +390,18 @@ class SimDrive(object):
         else:
             Drag3 = (1.0 / 16.0) * airDensityKgPerM3 * \
                 veh.dragCoef * veh.frontalAreaM2
-            Accel2 = veh.vehKg / (2.0 * (self.secs[i]))
+            Accel2 = veh.vehKg / (2.0 * (cyc.secs[i]))
             Drag2 = (3.0 / 16.0) * airDensityKgPerM3 * \
                 veh.dragCoef * veh.frontalAreaM2 * self.mpsAch[i-1]
             Wheel2 = 0.5 * veh.wheelInertiaKgM2 * \
-                veh.numWheels / (self.secs[i] * (veh.wheelRadiusM**2))
+                veh.numWheels / (cyc.secs[i] * (veh.wheelRadiusM**2))
             Drag1 = (3.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * \
                 veh.frontalAreaM2 * ((self.mpsAch[i-1])**2)
             Roll1 = (gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg / 2.0)
             Ascent1 = (gravityMPerSec2 *
                         np.sin(np.arctan(cyc.cycGrade[i])) * veh.vehKg / 2.0)
             Accel0 = - \
-                (veh.vehKg * ((self.mpsAch[i-1])**2)) / (2.0 * (self.secs[i]))
+                (veh.vehKg * ((self.mpsAch[i-1])**2)) / (2.0 * (cyc.secs[i]))
             Drag0 = (1.0 / 16.0) * airDensityKgPerM3 * veh.dragCoef * \
                 veh.frontalAreaM2 * ((self.mpsAch[i-1])**3)
             Roll0 = (gravityMPerSec2 * veh.wheelRrCoef *
@@ -444,7 +409,7 @@ class SimDrive(object):
             Ascent0 = (
                 gravityMPerSec2 * np.sin(np.arctan(cyc.cycGrade[i])) * veh.vehKg * self.mpsAch[i-1] / 2.0)
             Wheel0 = -((0.5 * veh.wheelInertiaKgM2 * veh.numWheels *
-                        (self.mpsAch[i-1]**2)) / (self.secs[i] * (veh.wheelRadiusM**2)))
+                        (self.mpsAch[i-1]**2)) / (cyc.secs[i] * (veh.wheelRadiusM**2)))
 
             Total3 = Drag3 / 1e3
             Total2 = (Accel2 + Drag2 + Wheel2) / 1e3
@@ -458,11 +423,18 @@ class SimDrive(object):
             self.mpsAch[i] = Total_roots[ind]
 
         self.mphAch[i] = self.mpsAch[i] * mphPerMps
-        self.distMeters[i] = self.mpsAch[i] * self.secs[i]
+        self.distMeters[i] = self.mpsAch[i] * cyc.secs[i]
         self.distMiles[i] = self.distMeters[i] * (1.0 / metersPerMile)
         
     def split_me(self, i, cyc, veh):
-        """This function needs to be split up into smaller coherent units"""
+        """This function needs to be split up into smaller coherent units.  
+        Arguments
+        ------------
+        i: index of time step
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
+
         if self.transKwOutAch[i] > 0:
             self.transKwInAch[i] = self.transKwOutAch[i] / veh.transEff
         else:
@@ -493,10 +465,10 @@ class SimDrive(object):
                                                                             * (1.0 / 3600) * veh.motorPeakEff * veh.maxRegen)) / veh.maxEssKwh, veh.minSoc)
 
             self.essRegenBufferDischgKw[i] = min(self.curMaxEssKwOut[i], max(
-                0, (self.soc[i-1] - self.regenBufferSoc[i]) * veh.maxEssKwh * 3600 / self.secs[i]))
+                0, (self.soc[i-1] - self.regenBufferSoc[i]) * veh.maxEssKwh * 3600 / cyc.secs[i]))
 
             self.maxEssRegenBufferChgKw[i] = min(max(
-                0, (self.regenBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / self.secs[i]), self.curMaxEssChgKw[i])
+                0, (self.regenBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / cyc.secs[i]), self.curMaxEssChgKw[i])
 
         if veh.noElecSys == 'TRUE':
             self.accelBufferSoc[i] = 0
@@ -508,13 +480,13 @@ class SimDrive(object):
                 veh.minSoc, veh.minSoc), veh.maxSoc)
 
             self.essAccelBufferChgKw[i] = max(
-                0, (self.accelBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / self.secs[i])
+                0, (self.accelBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / cyc.secs[i])
             self.maxEssAccelBufferDischgKw[i] = min(max(
-                0, (self.soc[i-1] - self.accelBufferSoc[i]) * veh.maxEssKwh * 3600 / self.secs[i]), self.curMaxEssKwOut[i])
+                0, (self.soc[i-1] - self.accelBufferSoc[i]) * veh.maxEssKwh * 3600 / cyc.secs[i]), self.curMaxEssKwOut[i])
 
         if self.regenBufferSoc[i] < self.accelBufferSoc[i]:
             self.essAccelRegenDischgKw[i] = max(min(((self.soc[i-1] - (self.regenBufferSoc[i] + self.accelBufferSoc[i]) / 2) * veh.maxEssKwh * 3600.0) /
-                                                    self.secs[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+                                                    cyc.secs[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
 
         elif self.soc[i-1] > self.regenBufferSoc[i]:
             self.essAccelRegenDischgKw[i] = max(min(
@@ -573,7 +545,7 @@ class SimDrive(object):
 
         else:
             self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and self.transKwInAch[i] <=self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] \
-                or veh.maxFuelConvKw == 0) and (self.cycMph[i] - 0.00001 <=veh.mphFcOn or veh.chargingOn) and self.electKwReq4AE[i]<=veh.kwDemandFcOn
+                or veh.maxFuelConvKw == 0) and (cyc.cycMph[i] - 0.00001 <=veh.mphFcOn or veh.chargingOn) and self.electKwReq4AE[i]<=veh.kwDemandFcOn
 
         if self.canPowerAllElectrically[i]:
 
@@ -606,18 +578,18 @@ class SimDrive(object):
 
         self.erAEKwOut[i] = min(max(0, self.transKwInAch[i] + self.auxInKw[i] - self.essAEKwOut[i]), self.curMaxRoadwayChgKw[i])
     
-    def get_fc_forced_state(self, i, veh):
-        """Calculate variables dependent on speed
-        Arguments
+    def set_fc_forced_state(self, i, cyc, veh):
+        """Calculate control variables related to engine on/off state
+        Arguments       
         ------------
-        tarr: instance of SimDrive.TimeArrays()
-        i: integer representing index of current time step
-
-        Output: tarr, with fcForcedOn and fcForcedState set for timestep i"""
+        i: index of time step
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
 
         # force fuel converter on if it was on in the previous time step, but only if fc
         # has not been on longer than minFcTimeOn
-        if self.prevfcTimeOn[i] > 0 and self.prevfcTimeOn[i] < veh.minFcTimeOn - self.secs[i]:
+        if self.prevfcTimeOn[i] > 0 and self.prevfcTimeOn[i] < veh.minFcTimeOn - cyc.secs[i]:
             self.fcForcedOn[i] = True
         else:
             self.fcForcedOn[i] = False
@@ -648,8 +620,15 @@ class SimDrive(object):
             self.mcMechKw4ForcedFc[i] = self.transKwInAch[i] - \
                 veh.maxFcEffKw
 
-    def split_me2(self, i, veh):
-        """Another function that need to be split up into smaller cohesive units"""
+    def split_me2(self, i, cyc, veh):
+        """Another function that needs to be split up into smaller cohesive units.
+        Arguments
+        ------------
+        i: index of time step
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
+
         if (-self.mcElectInKwForMaxFcEff[i] - self.curMaxRoadwayChgKw[i]) > 0:
             self.essDesiredKw4FcEff[i] = (-self.mcElectInKwForMaxFcEff[i] -
                                             self.curMaxRoadwayChgKw[i]) * veh.essDischgToFcMaxEffPerc
@@ -828,18 +807,18 @@ class SimDrive(object):
         self.fsKwOutAch[i] = np.copy(self.fcKwInAch[i])
 
         self.fsKwhOutAch[i] = self.fsKwOutAch[i] * \
-            self.secs[i] * (1 / 3600.0)
+            cyc.secs[i] * (1 / 3600.0)
 
         if veh.noElecSys == 'TRUE':
             self.essCurKwh[i] = 0
 
         elif self.essKwOutAch[i] < 0:
             self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * \
-                (self.secs[i] / 3600.0) * np.sqrt(veh.essRoundTripEff)
+                (cyc.secs[i] / 3600.0) * np.sqrt(veh.essRoundTripEff)
 
         else:
             self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * \
-                (self.secs[i] / 3600.0) * (1 / np.sqrt(veh.essRoundTripEff))
+                (cyc.secs[i] / 3600.0) * (1 / np.sqrt(veh.essRoundTripEff))
 
         if veh.maxEssKwh == 0:
             self.soc[i] = 0.0
@@ -850,9 +829,9 @@ class SimDrive(object):
         if self.canPowerAllElectrically[i] == True and self.fcForcedOn[i] == False and self.fcKwOutAch[i] == 0:
             self.fcTimeOn[i] = 0
         else:
-            self.fcTimeOn[i] = self.fcTimeOn[i-1] + self.secs[i]
+            self.fcTimeOn[i] = self.fcTimeOn[i-1] + cyc.secs[i]
 
-    def get_battery_wear(self, i, veh):
+    def set_battery_wear(self, i, veh):
         """Battery wear calcs
         Arguments:
         ------------
@@ -880,14 +859,14 @@ class SimDrive(object):
             else:
                 self.essPercDeadArray[i] = 0
         
-    def get_energy_audit(self, i, cyc, veh):
+    def set_energy_audit(self, i, cyc, veh):
         """Energy Audit Calculations
         Arguments
         ------------
-        tarr: instance of SimDrive.TimeArrays()
-        i: integer representing index of current time step
-        
-        Output: tarr"""
+        i: index of time step
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
 
         self.dragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * \
             veh.frontalAreaM2 * \
@@ -900,7 +879,7 @@ class SimDrive(object):
         else:
             self.essLossKw[i] = self.essKwOutAch[i] * \
                 (1.0 / np.sqrt(veh.essRoundTripEff)) - self.essKwOutAch[i]
-        self.accelKw[i] = (veh.vehKg / (2.0 * (self.secs[i]))) * \
+        self.accelKw[i] = (veh.vehKg / (2.0 * (cyc.secs[i]))) * \
             ((self.mpsAch[i]**2) - (self.mpsAch[i-1]**2)) / 1000.0
         self.ascentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cyc.cycGrade[i])) * veh.vehKg * (
             (self.mpsAch[i-1] + self.mpsAch[i]) / 2.0) / 1000.0
@@ -909,7 +888,16 @@ class SimDrive(object):
 
     # post-processing
     def get_output(self, cyc, veh):
-        "Calculate Results and Assign Outputs after running"
+        """Calculate finalized results
+        Arguments
+        ------------
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles
+        
+        Returns
+        ------------
+        output: dict of summary output variables"""
 
         output = {}
 
@@ -920,7 +908,7 @@ class SimDrive(object):
             output['mpgge'] = sum(self.distMiles) / \
                 (sum(self.fsKwhOutAch) * (1 / kWhPerGGE))
 
-        self.roadwayChgKj = sum(self.roadwayChgKwOutAch * self.secs)
+        self.roadwayChgKj = sum(self.roadwayChgKwOutAch * cyc.secs)
         self.essDischKj = - \
             (self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
         output['battery_kWh_per_mi'] = (
@@ -932,9 +920,9 @@ class SimDrive(object):
         output['maxTraceMissMph'] = mphPerMps * \
             max(abs(cyc.cycMps - self.mpsAch))
         self.maxTraceMissMph = output['maxTraceMissMph']
-        self.fuelKj = sum(np.asarray(self.fsKwOutAch) * np.asarray(self.secs))
+        self.fuelKj = sum(np.asarray(self.fsKwOutAch) * np.asarray(cyc.secs))
         self.roadwayChgKj = sum(np.asarray(
-            self.roadwayChgKwOutAch) * np.asarray(self.secs))
+            self.roadwayChgKwOutAch) * np.asarray(cyc.secs))
         essDischgKj = -(self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
 
         if (self.fuelKj + self.roadwayChgKj) == 0:

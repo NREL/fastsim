@@ -1,8 +1,9 @@
 """Module containing function for loading drive cycle data (e.g. speed trace)
-and class (Vehicle) for loading and storing vehicle attribute data."""
+and class (Vehicle) for loading and storing vehicle attribute data.  For example usage, 
+see ../README.md"""
 
 import pandas as pd
-from collections import namedtuple
+from Globals import *
 import numpy as np
 import re
 
@@ -12,7 +13,8 @@ class Cycle(object):
     def __init__(self, std_cyc_name=None, cyc_dict=None):
         """Runs other methods, depending on provided keyword argument. Only one keyword
         argument should be provided.  Keyword arguments are identical to 
-        arguments required by corresponding methods."""
+        arguments required by corresponding methods.  The argument 'std_cyc_name' can be
+        optionally passed as a positional argument."""
 
         super().__init__()
         if std_cyc_name:
@@ -29,6 +31,7 @@ class Cycle(object):
         cyc = pd.read_csv(csv_path)
         for column in cyc.columns:
             self.__setattr__(column, cyc[column].copy().to_numpy())
+        self.set_dependents()
 
     def set_from_dict(self, cyc_dict):
         """Set cycle attributes from dict with keys 'cycGrade', 'cycMps', 'cycSecs', 'cycRoadType'
@@ -40,6 +43,13 @@ class Cycle(object):
 
         for key in cyc_dict.keys():
             self.__setattr__(key, cyc_dict[key])
+        self.set_dependents()
+    
+    def set_dependents(self):
+        """Sets values dependent on cycle info loaded from file."""
+        self.cycMph = np.copy(self.cycMps * mphPerMps)
+        self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
+
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes
