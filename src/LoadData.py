@@ -6,14 +6,40 @@ from collections import namedtuple
 import numpy as np
 import re
 
-def get_standard_cycle(cycle_name):
-    """Load time trace of speed, grade, and road type in a pandas dataframe.
-    Argument:
-    ---------
-    cycle_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
-    csv_path = '..//cycles//'+cycle_name+'.csv'
-    cyc = pd.read_csv(csv_path)
-    return cyc
+class Cycle(object):
+    """Object for containing time, speed, road grade, and road charging vectors 
+    for drive cycle."""
+    def __init__(self, std_cyc_name=None, cyc_dict=None):
+        """Runs other methods, depending on provided keyword argument. Only one keyword
+        argument should be provided.  Keyword arguments are identical to 
+        arguments required by corresponding methods."""
+
+        super().__init__()
+        if std_cyc_name:
+            self.set_standard_cycle(std_cyc_name)
+        if cyc_dict:
+            self.set_from_dict(cyc_dict)
+
+    def set_standard_cycle(self, std_cyc_name):
+        """Load time trace of speed, grade, and road type in a pandas dataframe.
+        Argument:
+        ---------
+        std_cyc_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
+        csv_path = '..//cycles//' + std_cyc_name + '.csv'
+        cyc = pd.read_csv(csv_path)
+        for column in cyc.columns:
+            self.__setattr__(column, cyc[column].copy().to_numpy())
+
+    def set_from_dict(self, cyc_dict):
+        """Set cycle attributes from dict with keys 'cycGrade', 'cycMps', 'cycSecs', 'cycRoadType'
+        and numpy arrays of equal length for values.
+        Arguments
+        ---------
+        cyc_dict: dict containing cycle data
+        """
+
+        for key in cyc_dict.keys():
+            self.__setattr__(key, cyc_dict[key])
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes
@@ -93,11 +119,11 @@ class Vehicle(object):
 
         if self.maxFuelConvKw > 0:
 
-            # Discrete power out percentages for assigning FC efficiencies
+            # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
             fcPwrOutPerc = np.array(
                 [0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00])
 
-            # Efficiencies at different power out percentages by FC type
+            # Efficiencies at different power out percentages by FC type -- all
             eff_si = np.array([0.10, 0.12, 0.16, 0.22, 0.28, 0.33,
                             0.35, 0.36, 0.35, 0.34, 0.32, 0.30])
             eff_atk = np.array([0.10, 0.12, 0.28, 0.35, 0.375,
@@ -128,7 +154,7 @@ class Vehicle(object):
             inputKwOutArray = fcPwrOutPerc * self.maxFuelConvKw
             # Relatively continuous power out percentages for assigning FC efficiencies
             fcPercOutArray = np.r_[np.arange(0, 3.0, 0.1), np.arange(
-                3.0, 7.0, 0.5), np.arange(7.0, 60.0, 1.0), np.arange(60.0, 105.0, 5.0)] / 100
+                3.0, 7.0, 0.5), np.arange(7.0, 60.0, 1.0), np.arange(60.0, 105.0, 5.0)] / 100 # hardcoded ***
             # Relatively continuous array of possible engine power outputs
             fcKwOutArray = self.maxFuelConvKw * fcPercOutArray
             # Initializes relatively continuous array for fcEFF

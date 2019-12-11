@@ -42,7 +42,7 @@ print('Load Drive Cycle')
 # - cycRoadType = Indicator as to whether or not there is a wireless charging capability from the road to vehicle
 # 
 # There is no limit to the length of a drive cycle that can be provided as an input to FASTSim.
-cyc = LoadData.get_standard_cycle("udds")
+cyc = LoadData.Cycle("udds")
 
 print('Load Powertrain Model')
 # 
@@ -57,13 +57,13 @@ print('Run FASTSim once')
 sim_drive = SimDrive.SimDrive()
 t0 = time.time()
 sim_drive.sim_drive(cyc, veh)
-output = sim_drive.get_output(veh)
+output = sim_drive.get_output(cyc, veh)
 print(time.time() - t0)
 
 print('Single Run Results')
 
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc['cycMps'] * 2.23694  # Convert mps to mph
+df['speed'] = cyc.cycMps * 2.23694  # Convert mps to mph
 fig, ax = plt.subplots(figsize=(9, 5))
 kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
 
@@ -145,10 +145,10 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
             (pnts['time_local'] -
              pnts['time_local'].shift()).fillna(0).astype('timedelta64[s]')))
     cyc['cycRoadType'] = np.zeros(len(pnts))
-    cyc = pd.DataFrame.from_dict(cyc)
+    cyc = LoadData.Cycle(cyc_dict=cyc)
 
     sim_drive.sim_drive(cyc, veh)
-    output = sim_drive.get_output(veh)
+    output = sim_drive.get_output(cyc, veh)
 
     del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],\
         output['fsKwhOutAch']
