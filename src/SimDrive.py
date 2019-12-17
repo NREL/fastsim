@@ -106,11 +106,11 @@ class SimDrive(object):
             self.set_power_calcs(i, cyc, veh)
             self.set_speed_dist_calcs(i, cyc, veh)
 
-            self.split_me(i, cyc, veh)
+            self.set_hybrid_cont_calcs(i, cyc, veh)
 
             self.set_fc_forced_state(i, cyc, veh)
 
-            self.split_me2(i, cyc, veh)
+            self.set_hybrid_cont_decisions(i, cyc, veh)
 
             self.set_battery_wear(i, veh)
             self.set_energy_audit(i, cyc, veh)
@@ -426,8 +426,8 @@ class SimDrive(object):
         self.distMeters[i] = self.mpsAch[i] * cyc.secs[i]
         self.distMiles[i] = self.distMeters[i] * (1.0 / metersPerMile)
         
-    def split_me(self, i, cyc, veh):
-        """This function needs to be split up into smaller coherent units.  
+    def set_hybrid_cont_calcs(self, i, cyc, veh):
+        """Hybrid control calculations.  
         Arguments
         ------------
         i: index of time step
@@ -620,8 +620,8 @@ class SimDrive(object):
             self.mcMechKw4ForcedFc[i] = self.transKwInAch[i] - \
                 veh.maxFcEffKw
 
-    def split_me2(self, i, cyc, veh):
-        """Another function that needs to be split up into smaller cohesive units.
+    def set_hybrid_cont_decisions(self, i, cyc, veh):
+        """Hybrid control decisions.
         Arguments
         ------------
         i: index of time step
