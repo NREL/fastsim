@@ -594,27 +594,32 @@ class SimDrive(object):
         else:
             self.fcForcedOn[i] = False
 
-        #
+        # Engine only mode
         if self.fcForcedOn[i] == False or self.canPowerAllElectrically[i] == False:
             self.fcForcedState[i] = 1
             self.mcMechKw4ForcedFc[i] = 0
 
+        # Engine maximum efficiency mode
         elif self.transKwInAch[i] < 0:
             self.fcForcedState[i] = 2
             self.mcMechKw4ForcedFc[i] = self.transKwInAch[i]
 
+        # All electric mode
         elif veh.maxFcEffKw == self.transKwInAch[i]:
             self.fcForcedState[i] = 3
             self.mcMechKw4ForcedFc[i] = 0
 
+        # Engine forced on mode
         elif veh.idleFcKw > self.transKwInAch[i] and self.cycAccelKw[i] >= 0:
             self.fcForcedState[i] = 4
             self.mcMechKw4ForcedFc[i] = self.transKwInAch[i] - veh.idleFcKw
 
+        # Engine + motor mode
         elif veh.maxFcEffKw > self.transKwInAch[i]:
             self.fcForcedState[i] = 5
             self.mcMechKw4ForcedFc[i] = 0
 
+        # Fuel cell mode
         else:
             self.fcForcedState[i] = 6
             self.mcMechKw4ForcedFc[i] = self.transKwInAch[i] - \
