@@ -8,6 +8,13 @@ To run the code:
 1. Install environment.yml per https://github.nrel.gov/MBAP/arnaud/wiki/Conda-Environments and activate the new environment
 2. Using a Jupyter Notebook or Jupyter lab, run docs/demo.ipynb or from docs/, run `python test.py`.  These both contain identical examples of usage.
 
+# Testing
+
+## Against Previous Python Version
+Run the file src/test26veh3cyc.py to compare FASTSim back to the master branch version from 17 December 2019
+
+## Against Excel FASTSim
+
 # List of Abbreviations
 cur = current time step
 prev = previous time step

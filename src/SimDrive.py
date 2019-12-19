@@ -998,23 +998,22 @@ class SimDrive(object):
 
         # create positive and negative versions of all time series with units of kW
         # then integrate to find cycle end pos and negative energies
+        tempvars = {} # dict for contaning intermediate variables
         output = {}
         for var in pw_var_list:
-            self.__setattr__(var + 'Pos', 
-                [x if x >= 0 
-                else 0 
-                for x in self.__getattribute__(var)
-                ])
-    
-            self.__setattr__(var + 'Neg', 
-                [x if x < 0 
-                else 0 
-                for x in self.__getattribute__(var)
-                ])
-            
+            tempvars[var + 'Pos'] = [x if x >= 0 
+                                        else 0 
+                                        for x in self.__getattribute__(var)]
+            tempvars[var + 'Neg'] = [x if x < 0 
+                                        else 0 
+                                        for x in self.__getattribute__(var)]    
+                        
             # Assign values to output dict for positive and negative energy variable names
             search = prog.search(var)
-            output[search[1] + 'Kj' + search[2] + 'Pos'] = np.trapz(self.__getattribute__(var + 'Pos'), cyc.cycSecs)
-            output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(self.__getattribute__(var + 'Neg'), cyc.cycSecs)
-
+            output[search[1] + 'Kj' + search[2] + 'Pos'] = np.trapz(tempvars[var + 'Pos'], cyc.cycSecs)
+            output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], cyc.cycSecs)
+        
+        output['distMilesFinal'] = sum(self.distMiles)
+        output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * kWhPerGGE
+    
         return output
