@@ -4,6 +4,7 @@ For example usage, see ../README.md"""
 ### Import necessary python modules
 import numpy as np
 import pandas as pd
+import re
 from Globals import *
 import warnings
 warnings.simplefilter('ignore')
@@ -105,15 +106,11 @@ class SimDrive(object):
             self.set_comp_lims(i, cyc, veh)
             self.set_power_calcs(i, cyc, veh)
             self.set_speed_dist_calcs(i, cyc, veh)
-
             self.set_hybrid_cont_calcs(i, cyc, veh)
-
-            self.set_fc_forced_state(i, cyc, veh)
-
+            self.set_fc_forced_state(i, cyc, veh) # can probably be *mostly* done with list comprehension in post processing
             self.set_hybrid_cont_decisions(i, cyc, veh)
-
-            self.set_battery_wear(i, veh)
-            self.set_energy_audit(i, cyc, veh)
+            self.set_battery_wear(i, veh) # can probably be done with list comprehension in post processing
+            self.set_energy_audit(i, cyc, veh) # # can probably be done with list comprehension in post processing
 
     def set_init_arrays(self, cyc, veh, initSoc):
         """Initializes arrays of time dependent variables as attributes of self.
@@ -979,5 +976,45 @@ class SimDrive(object):
         output['fsKwhOutAch'] = np.asarray(self.fsKwhOutAch)
         output['fcKwInAch'] = np.asarray(self.fcKwInAch)
         output['time'] = np.asarray(cyc.cycSecs)
+
+        return output
+
+    def get_diagnostics(self, cyc):
+        """This method is to be run after runing sim_drive, if diagnostic variables 
+        are needed.  Diagnostic variables are returned in a dict.  Diagnostic variables include:
+        - final integrated value of all positive powers
+        - final integrated value of all negative powers
+        - total distance traveled
+        - miles per gallon gasoline equivalent (mpgge)"""
+        
+        base_var_list = list(self.__dict__.keys())
+        pw_var_list = [var for var in base_var_list if re.search(
+            '\w*Kw(?!h)\w*', var)] 
+            # find all vars containing 'Kw' but not 'Kwh'
+        
+        prog = re.compile('(\w*)Kw(?!h)(\w*)') 
+        # find all vars containing 'Kw' but not Kwh and capture parts before and after 'Kw'
+        # using compile speeds up iteration
+
+        # create positive and negative versions of all time series with units of kW
+        # then integrate to find cycle end pos and negative energies
+        output = {}
+        for var in pw_var_list:
+            self.__setattr__(var + 'Pos', 
+                [x if x >= 0 
+                else 0 
+                for x in self.__getattribute__(var)
+                ])
+    
+            self.__setattr__(var + 'Neg', 
+                [x if x < 0 
+                else 0 
+                for x in self.__getattribute__(var)
+                ])
+            
+            # Assign values to output dict for positive and negative energy variable names
+            search = prog.search(var)
+            output[search[1] + 'Kj' + search[2] + 'Pos'] = np.trapz(self.__getattribute__(var + 'Pos'), cyc.cycSecs)
+            output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(self.__getattribute__(var + 'Neg'), cyc.cycSecs)
 
         return output
