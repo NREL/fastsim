@@ -7,6 +7,8 @@ import os
 import sys
 import importlib
 
+sys.path.append('../src')
+
 # local modules
 import SimDrive
 importlib.reload(SimDrive)
@@ -58,7 +60,7 @@ print('Elapsed time: ', round(t1 - t0, 2), 's')
 
 df0 = pd.read_csv('../docs/master_benchmark_vars.csv')
 
-# make suer both data
+# make sure both dataframes have the same columns
 new_cols = {col for col in df.columns} - {col for col in df0.columns}
 df.drop(columns=new_cols, inplace=True)
 old_cols = {col for col in df0.columns} - {col for col in df.columns}
