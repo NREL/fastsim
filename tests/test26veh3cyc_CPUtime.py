@@ -1,4 +1,5 @@
-"""Test script that times runs 26 vehicles currently in master branch of FASTSim as of 17 December 2019 for 3 standard cycles."""
+"""Test script that times runs 26 vehicles currently in master branch of FASTSim as of 17 December 2019 for 3 standard cycles.
+This is to be compared to the same script from tag:baseline (244758fac88e22e4565ed369ec422...)"""
 
 import pandas as pd
 import time
