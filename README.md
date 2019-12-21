@@ -11,7 +11,7 @@ To run the code:
 # Testing
 
 ## Against Previous Python Version
-Run the file src/test26veh3cyc.py to compare FASTSim back to the master branch version from 17 December 2019
+Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master branch version from 17 December 2019.  For timing comparisons, run 'tests/test26veh3cyc_CPUtime.py'.  
 
 ## Against Excel FASTSim
 
