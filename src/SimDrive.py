@@ -286,6 +286,7 @@ class SimDrive(object):
         else:
             self.essLimMcRegenPercKw[i] = min(
                 (self.curMaxEssChgKw[i] + self.auxInKw[i]) / veh.maxMotorKw, 1)
+
         if self.curMaxEssChgKw[i] == 0:
             self.essLimMcRegenKw[i] = 0.0
 
@@ -499,7 +500,7 @@ class SimDrive(object):
 
         self.fcKwGapFrEff[i] = abs(self.transKwOutAch[i] - veh.maxFcEffKw)
 
-        if veh.noElecSys == True:
+        if veh.noElecSys == True or veh.motorAccelAssist == False:
             self.mcElectInKwForMaxFcEff[i] = 0
 
         elif self.transKwOutAch[i] < veh.maxFcEffKw:
@@ -525,7 +526,6 @@ class SimDrive(object):
 
         elif self.transKwInAch[i] > 0:
             if self.transKwInAch[i] == veh.maxMotorKw:
-
                 self.electKwReq4AE[i] = self.transKwInAch[i] / \
                     veh.mcFullEffArray[len(veh.mcFullEffArray) - 1] + self.auxInKw[i]
             else:
