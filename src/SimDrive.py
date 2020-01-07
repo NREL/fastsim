@@ -179,7 +179,7 @@ class SimDrive(object):
         veh: instance of LoadData.Vehicle class
         initSoc: initial SOC for electrified vehicles"""
 
-        if veh.noElecAux == 'TRUE':
+        if veh.noElecAux == True:
             self.auxInKw[i] = veh.auxKw / veh.altEff
         else:
             self.auxInKw[i] = veh.auxKw
@@ -304,7 +304,7 @@ class SimDrive(object):
 
         if veh.fcEffType == 4:
 
-            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or self.highAccFcOnTag[i] == 1:
+            if veh.noElecSys == True or veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
                 self.curMaxTransKwOut[i] = min(
                     (self.curMaxMcKwOut[i] - self.auxInKw[i]) * veh.transEff, self.curMaxTracKw[i] / veh.transEff)
                 self.debug_flag[i] = 1
@@ -316,7 +316,7 @@ class SimDrive(object):
 
         else:
 
-            if veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or self.highAccFcOnTag[i] == 1:
+            if veh.noElecSys == True or veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
                 self.curMaxTransKwOut[i] = min((self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] -
                                                 self.auxInKw[i]) * veh.transEff, self.curMaxTracKw[i] / veh.transEff)
                 self.debug_flag[i] = 3
@@ -450,7 +450,7 @@ class SimDrive(object):
             self.minMcKw2HelpFc[i] = max(
                 self.curMaxMcKwOut[i], -self.curMaxMechMcKwIn[i])
 
-        if veh.noElecSys == 'TRUE':
+        if veh.noElecSys == True:
             self.regenBufferSoc[i] = 0
 
         elif veh.chargingOn:
@@ -467,7 +467,7 @@ class SimDrive(object):
             self.maxEssRegenBufferChgKw[i] = min(max(
                 0, (self.regenBufferSoc[i] - self.soc[i-1]) * veh.maxEssKwh * 3600.0 / cyc.secs[i]), self.curMaxEssChgKw[i])
 
-        if veh.noElecSys == 'TRUE':
+        if veh.noElecSys == True:
             self.accelBufferSoc[i] = 0
 
         else:
@@ -499,7 +499,7 @@ class SimDrive(object):
 
         self.fcKwGapFrEff[i] = abs(self.transKwOutAch[i] - veh.maxFcEffKw)
 
-        if veh.noElecSys == 'TRUE':
+        if veh.noElecSys == True:
             self.mcElectInKwForMaxFcEff[i] = 0
 
         elif self.transKwOutAch[i] < veh.maxFcEffKw:
@@ -520,7 +520,7 @@ class SimDrive(object):
                 self.mcElectInKwForMaxFcEff[i] = veh.mcKwInArray[np.argmax(
                     veh.mcKwOutArray > min(veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1]
 
-        if veh.noElecSys == 'TRUE':
+        if veh.noElecSys == True:
             self.electKwReq4AE[i] = 0
 
         elif self.transKwInAch[i] > 0:
@@ -665,7 +665,7 @@ class SimDrive(object):
         self.mcElecKwInIfFcIsReq[i] = self.essKwIfFcIsReq[i] + \
             self.erKwIfFcIsReq[i] - self.auxInKw[i]
 
-        if veh.noElecSys == 'TRUE':
+        if veh.noElecSys == True:
             self.mcKwIfFcIsReq[i] = 0
 
         elif self.mcElecKwInIfFcIsReq[i] == 0:
@@ -764,7 +764,7 @@ class SimDrive(object):
                 self.essKwOutAch[i] = self.mcElecKwInAch[i] + \
                     self.auxInKw[i] - self.roadwayChgKwOutAch[i]
 
-        elif self.highAccFcOnTag[i] == 1 or veh.noElecAux == 'TRUE':
+        elif self.highAccFcOnTag[i] == 1 or veh.noElecAux == True:
             self.essKwOutAch[i] = self.mcElecKwInAch[i] - \
                 self.roadwayChgKwOutAch[i]
 
@@ -779,7 +779,7 @@ class SimDrive(object):
             self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
                 0, self.mcElecKwInAch[i] + self.auxInKw[i] - self.essKwOutAch[i] - self.roadwayChgKwOutAch[i]))
 
-        elif veh.noElecSys == 'TRUE' or veh.noElecAux == 'TRUE' or self.highAccFcOnTag[i] == 1:
+        elif veh.noElecSys == True or veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
             self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
                 0, self.transKwInAch[i] - self.mcMechKwOutAch[i] + self.auxInKw[i]))
 
@@ -811,7 +811,7 @@ class SimDrive(object):
         self.fsKwhOutAch[i] = self.fsKwOutAch[i] * \
             cyc.secs[i] * (1 / 3600.0)
 
-        if veh.noElecSys == 'TRUE':
+        if veh.noElecSys == True:
             self.essCurKwh[i] = 0
 
         elif self.essKwOutAch[i] < 0:
@@ -842,7 +842,7 @@ class SimDrive(object):
         
         Output: tarr"""
 
-        if veh.noElecSys != 'TRUE':
+        if veh.noElecSys != True:
 
             if self.essCurKwh[i] > self.essCurKwh[i-1]:
                 self.addKwh[i] = (self.essCurKwh[i] -

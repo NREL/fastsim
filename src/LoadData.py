@@ -70,27 +70,42 @@ class Vehicle(object):
 
         vehdf = pd.read_csv('..//docs//FASTSim_py_veh_db.csv')
         vehdf.set_index('Selection', inplace=True, drop=False)
+        # vehdf = vehdf.loc[[vnum], :]
+
+        def clean_data(raw_data):
+            """Cleans up data formatting.
+            Argument:
+            ------------
+            raw_data: cell of vehicle dataframe
+            
+            Output:
+            clean_data: cleaned up data"""
+            
+            # convert data to string types
+            data = str(raw_data)
+            # remove percent signs if any are found
+            if '%' in data:
+                data = data.replace('%', '')
+                data = float(data)
+                data = data / 100.0
+            # replace string for TRUE with Boolean True
+            elif re.search('(?i)true', data) != None:
+                data = True
+            # replace string for FALSE with Boolean False
+            elif re.search('(?i)false', data) != None:
+                data = False
+            else:
+                try:
+                    data = float(data)
+                except:
+                    pass
+            
+            return data
+        
+        vehdf.loc[vnum].apply(clean_data)
 
         ### selects specified vnum from vehdf
         for col in vehdf.columns:
-            # convert all data to string types
-            vehdf.loc[vnum, col] = str(vehdf.loc[vnum, col])
-            # remove percent signs if any are found
-            if vehdf.loc[vnum, col].find('%') != -1:
-                vehdf.loc[vnum, col] = vehdf.loc[vnum, col].replace('%', '')
-                vehdf.loc[vnum, col] = float(vehdf.loc[vnum, col])
-                vehdf.loc[vnum, col] = vehdf.loc[vnum, col] / 100.0
-            # replace string for TRUE with Boolean True
-            elif re.search('(?i)true', vehdf.loc[vnum, col]) != None:
-                vehdf.loc[vnum, col] = True
-            # replace string for FALSE with Boolean False
-            elif re.search('(?i)false', vehdf.loc[vnum, col]) != None:
-                vehdf.loc[vnum, col] = False
-            else:
-                try:
-                    vehdf.loc[vnum, col] = float(vehdf.loc[vnum, col])
-                except:
-                    pass
             col1 = col.replace(' ', '_')
             
             # assign dataframe columns 
@@ -108,17 +123,17 @@ class Vehicle(object):
 
         # Checking if a vehicle has any hybrid components
         if self.maxEssKwh == 0 or self.maxEssKw == 0 or self.maxMotorKw == 0:
-            self.noElecSys = 'TRUE'
+            self.noElecSys = True
 
         else:
-            self.noElecSys = 'FALSE'
+            self.noElecSys = False
 
         # Checking if aux loads go through an alternator
-        if self.noElecSys == 'TRUE' or self.maxMotorKw <= self.auxKw or self.forceAuxOnFC == 'TRUE':
-            self.noElecAux = 'TRUE'
+        if self.noElecSys == True or self.maxMotorKw <= self.auxKw or self.forceAuxOnFC == True:
+            self.noElecAux = True
 
         else:
-            self.noElecAux = 'FALSE'
+            self.noElecAux = False
 
         # Copying vehPtType to additional key
         self.vehTypeSelection = np.copy(self.vehPtType)
@@ -253,6 +268,9 @@ class Vehicle(object):
             self.mcMaxElecInKw = np.copy(max(mcKwInArray))
             self.mcFullEffArray = np.copy(mcFullEffArray)
             self.mcEffArray = np.copy(mcEffArray)
+
+            if 'motorAccelAssist' in self.__dir__() and np.isnan(self.__getattribute__('motorAccelAssist')):
+                self.motorAccelAssist = True
 
         else:
             self.mcKwInArray = np.array([0.0] * 101)
