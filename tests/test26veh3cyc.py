@@ -72,14 +72,17 @@ df_err = df.copy()
 abs_err = []
 for idx in df.index:
     for col in df.columns[2:]:
-        df_err.loc[idx, col] = (df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
-        if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=1e-6)):
+        if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=1e-6, abs_tol=1e-9)):
+            df_err.loc[idx, col] = (df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
             abs_err.append(np.abs(df_err.loc[idx, col]))
             print(str(round(df_err.loc[idx, col] * 100, 5)) + '% for')
+            print('New Value: ' + str(round(df.loc[idx, col], 15)))
             print('vnum = ' + str(df.loc[idx, 'vnum']))            
             print('cycle = ' + str(df.loc[idx, 'cycle']))            
             print('idx =', idx, ', col =', col)
             print()
+        else:
+            df_err.loc[idx, col] = 0
 
 abs_err = np.array(abs_err)
 print('\nmax error =', str(round(abs_err.max() * 100, 4)) + '%')
