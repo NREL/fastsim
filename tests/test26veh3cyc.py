@@ -7,7 +7,8 @@ import os
 import sys
 import importlib
 
-sys.path.append('../src')
+if '../src' not in sys.path:
+    sys.path.append('../src')
 
 # local modules
 import SimDrive
