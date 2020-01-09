@@ -267,8 +267,9 @@ class SimDrive(object):
         self.mcTransiLimKw[i] = abs(
             self.mcMechKwOutAch[i-1]) + ((veh.maxMotorKw / veh.motorSecsToPeakPwr) * (cyc.secs[i]))
 
+        # max motor power (can be negative (regen) or positive (tractive force))
         self.curMaxMcKwOut[i] = max(min(
-            self.mcElecInLimKw[i], self.mcTransiLimKw[i], veh.maxMotorKw), -veh.maxMotorKw)
+            self.mcElecInLimKw[i], self.mcTransiLimKw[i], not(veh.motorRegenOnly) * veh.maxMotorKw), -veh.maxMotorKw)
 
         if self.curMaxMcKwOut[i] == 0:
             self.curMaxMcElecKwIn[i] = 0
@@ -500,7 +501,7 @@ class SimDrive(object):
 
         self.fcKwGapFrEff[i] = abs(self.transKwOutAch[i] - veh.maxFcEffKw)
 
-        if veh.noElecSys == True or veh.motorAccelAssist == False:
+        if veh.noElecSys == True:
             self.mcElectInKwForMaxFcEff[i] = 0
 
         elif self.transKwOutAch[i] < veh.maxFcEffKw:
