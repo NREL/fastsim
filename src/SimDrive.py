@@ -109,8 +109,6 @@ class SimDrive(object):
             self.set_hybrid_cont_calcs(i, cyc, veh)
             self.set_fc_forced_state(i, cyc, veh) # can probably be *mostly* done with list comprehension in post processing
             self.set_hybrid_cont_decisions(i, cyc, veh)
-            self.set_battery_wear(i, veh) # can probably be done with list comprehension in post processing
-            self.set_energy_audit(i, cyc, veh) # # can probably be done with list comprehension in post processing
 
     def set_init_arrays(self, cyc, veh, initSoc):
         """Initializes arrays of time dependent variables as attributes of self.
@@ -833,61 +831,6 @@ class SimDrive(object):
         else:
             self.fcTimeOn[i] = self.fcTimeOn[i-1] + cyc.secs[i]
 
-    def set_battery_wear(self, i, veh):
-        """Battery wear calcs
-        Arguments:
-        ------------
-        tarr: instance of SimDrive.TimeArrays()
-        i: integer representing index of current time step
-        
-        Output: tarr"""
-
-        if veh.noElecSys != True:
-
-            if self.essCurKwh[i] > self.essCurKwh[i-1]:
-                self.addKwh[i] = (self.essCurKwh[i] -
-                                    self.essCurKwh[i-1]) + self.addKwh[i-1]
-            else:
-                self.addKwh[i] = 0
-
-            if self.addKwh[i] == 0:
-                self.dodCycs[i] = self.addKwh[i-1] / veh.maxEssKwh
-            else:
-                self.dodCycs[i] = 0
-
-            if self.dodCycs[i] != 0:
-                self.essPercDeadArray[i] = np.power(
-                    veh.essLifeCoefA, 1.0 / veh.essLifeCoefB) / np.power(self.dodCycs[i], 1.0 / veh.essLifeCoefB)
-            else:
-                self.essPercDeadArray[i] = 0
-        
-    def set_energy_audit(self, i, cyc, veh):
-        """Energy Audit Calculations
-        Arguments
-        ------------
-        i: index of time step
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
-        initSoc: initial SOC for electrified vehicles"""
-
-        self.dragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * \
-            veh.frontalAreaM2 * \
-            (((self.mpsAch[i-1] + self.mpsAch[i]) / 2.0)**3) / 1000.0
-        if veh.maxEssKw == 0 or veh.maxEssKwh == 0:
-            self.essLossKw[i] = 0
-        elif self.essKwOutAch[i] < 0:
-            self.essLossKw[i] = -self.essKwOutAch[i] - \
-                (-self.essKwOutAch[i] * np.sqrt(veh.essRoundTripEff))
-        else:
-            self.essLossKw[i] = self.essKwOutAch[i] * \
-                (1.0 / np.sqrt(veh.essRoundTripEff)) - self.essKwOutAch[i]
-        self.accelKw[i] = (veh.vehKg / (2.0 * (cyc.secs[i]))) * \
-            ((self.mpsAch[i]**2) - (self.mpsAch[i-1]**2)) / 1000.0
-        self.ascentKw[i] = gravityMPerSec2 * np.sin(np.arctan(cyc.cycGrade[i])) * veh.vehKg * (
-            (self.mpsAch[i-1] + self.mpsAch[i]) / 2.0) / 1000.0
-        self.rrKw[i] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * \
-            ((self.mpsAch[i-1] + self.mpsAch[i]) / 2.0) / 1000.0
-
     # post-processing
     def get_output(self, cyc, veh):
         """Calculate finalized results
@@ -979,6 +922,7 @@ class SimDrive(object):
 
         return output
 
+    # optional post-processing methods
     def get_diagnostics(self, cyc):
         """This method is to be run after runing sim_drive, if diagnostic variables 
         are needed.  Diagnostic variables are returned in a dict.  Diagnostic variables include:
@@ -1017,3 +961,56 @@ class SimDrive(object):
         output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * kWhPerGGE
     
         return output
+
+    def set_battery_wear(self, veh):
+        """Battery wear calcs
+        Arguments:
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step
+        
+        Output: tarr"""
+
+        self.addKwh[1:] = np.array([
+            (self.essCurKwh[i] - self.essCurKwh[i-1]) + self.addKwh[i-1]
+            if self.essCurKwh[i] > self.essCurKwh[i-1]
+            else 0 
+            for i in range(1, len(self.essCurKwh))])
+        
+        self.dodCycs[1:] = np.array([
+            self.addKwh[i-1] / veh.maxEssKwh if self.addKwh[i] == 0
+            else 0 
+            for i in range(1, len(self.essCurKwh))])
+        
+        self.essPercDeadArray = np.array([
+            np.power(veh.essLifeCoefA, 1.0 / veh.essLifeCoefB) / np.power(self.dodCycs[i], 
+            1.0 / veh.essLifeCoefB)
+            if self.dodCycs[i] != 0
+            else 0
+            for i in range(0, len(self.essCurKwh))])
+
+    def set_energy_audit(self, cyc, veh):
+        """Energy Audit Calculations
+        Arguments
+        ------------
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
+
+        self.dragKw[1:] = 0.5 * airDensityKgPerM3 * veh.dragCoef * \
+            veh.frontalAreaM2 * \
+            (((self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0)**3) / 1000.0
+        
+        self.essLossKw[1:] = np.array(
+            [0 if (veh.maxEssKw == 0 or veh.maxEssKwh == 0) 
+            else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(veh.essRoundTripEff)) 
+                if self.essKwOutAch[i] < 0 
+            else self.essKwOutAch[i] * (1.0 / np.sqrt(veh.essRoundTripEff)) - self.essKwOutAch[i] 
+            for i in range(1, len(cyc.cycSecs))])
+
+        self.accelKw[1:] = (veh.vehKg / (2.0 * (cyc.secs[1:]))) * \
+            ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0
+        self.ascentKw[1:] = gravityMPerSec2 * np.sin(np.arctan(cyc.cycGrade[1:])) * veh.vehKg * (
+            (self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0) / 1000.0
+        self.rrKw[1:] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * \
+            ((self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0) / 1000.0
