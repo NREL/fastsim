@@ -36,6 +36,8 @@ for vehno in vehicles:
             veh.load_vnum(vehno)
 
         sim_drive.sim_drive(cyc, veh)
+        sim_drive.set_battery_wear(veh)
+        sim_drive.set_energy_audit(cyc, veh)
         diagno = sim_drive.get_diagnostics(cyc)
         
         if iter > 0:
