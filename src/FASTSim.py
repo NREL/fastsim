@@ -50,6 +50,7 @@ power and efficiency. Currently these values are user clarified in the code by a
 import numpy as np
 import warnings
 import csv
+import re
 warnings.simplefilter('ignore')
 
 def get_standard_cycle(cycle_name):
@@ -295,7 +296,7 @@ def sim_drive( cyc , veh , initSoc=None):
         # If no EV / Hybrid components, no SOC considerations.
 
         initSoc = 0.0
-        output = sim_drive_sub( cyc , veh , initSoc )
+        output, diagno = sim_drive_sub( cyc , veh , initSoc )
 
     elif veh['vehPtType']==2 and initSoc==None:
 
@@ -311,24 +312,24 @@ def sim_drive( cyc , veh , initSoc=None):
         sim_count = 0
         while ess2fuelKwh>veh['essToFuelOkError'] and sim_count<30:
             sim_count += 1
-            output = sim_drive_sub( cyc , veh , initSoc )
+            output, diagno = sim_drive_sub( cyc , veh , initSoc )
             ess2fuelKwh = abs( output['ess2fuelKwh'] )
             initSoc = min(1.0,max(0.0,output['final_soc']))
         np.copy( veh['maxSoc'] )
-        output = sim_drive_sub( cyc , veh , initSoc )
+        output, diagno = sim_drive_sub( cyc , veh , initSoc )
 
     elif (veh['vehPtType']==3 and initSoc==None) or (veh['vehPtType']==4 and initSoc==None):
 
         # If EV, initializing initial SOC to maximum SOC.
 
         initSoc = np.copy( veh['maxSoc'] )
-        output = sim_drive_sub( cyc , veh , initSoc )
+        output, diagno = sim_drive_sub( cyc , veh , initSoc )
         
     else:
-        output = sim_drive_sub( cyc , veh , initSoc )
+        output, diagno = sim_drive_sub( cyc , veh , initSoc )
         
 
-    return output
+    return output, diagno
 
 def sim_drive_sub( cyc , veh , initSoc):
 
@@ -1055,4 +1056,40 @@ def sim_drive_sub( cyc , veh , initSoc):
     output['fcKwInAch'] = np.asarray(fcKwInAch)
     output['time'] = np.asarray(cycSecs)
 
-    return output
+    #   Diagnostic variables are added to a dict, 'diagno'.  Diagnostic variables include:
+    # - final integrated value of all positive powers
+    # - final integrated value of all negative powers
+    # - total distance traveled
+    # - miles per gallon gasoline equivalent (mpgge)"""
+
+    diagno = dict()
+
+    base_var_list = list(locals().keys())
+    pw_var_list = [var for var in base_var_list if re.search(
+        '\w*Kw(?!h)\w*', var)] 
+        # find all vars containing 'Kw' but not 'Kwh'
+    
+    prog = re.compile('(\w*)Kw(?!h)(\w*)') 
+    # find all vars containing 'Kw' but not Kwh and capture parts before and after 'Kw'
+    # using compile speeds up iteration
+
+    # create positive and negative versions of all time series with units of kW
+    # then integrate to find cycle end pos and negative energies
+    tempvars = {} # dict for contaning intermediate variables
+    for var in pw_var_list:
+        tempvars[var + 'Pos'] = [x if x >= 0 
+                                    else 0 
+                                    for x in locals()[var]]
+        tempvars[var + 'Neg'] = [x if x < 0 
+                                    else 0 
+                                    for x in locals()[var]]    
+                    
+        # Assign values to diagno dict for positive and negative energy variable names
+        search = prog.search(var)
+        diagno[search[1] + 'Kj' + search[2] + 'Pos'] = np.trapz(tempvars[var + 'Pos'], cyc['cycSecs'])
+        diagno[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], cyc['cycSecs'])
+    
+    diagno['distMilesFinal'] = sum(distMiles)
+    diagno['mpgge'] = sum(distMiles) / sum(fsKwhOutAch) * kWhPerGGE
+
+    return output, diagno
