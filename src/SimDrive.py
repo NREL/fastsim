@@ -211,13 +211,12 @@ class SimDrive(object):
         self.fcTransLimKw[i] = self.fcKwOutAch[i-1] + \
             ((veh.maxFuelConvKw / veh.fuelConvSecsToPeakPwr) * (cyc.secs[i]))
 
-        # *** this min seems redundant with line 518
         self.fcMaxKwIn[i] = min(self.curMaxFsKwOut[i], veh.maxFuelStorKw)
         self.fcFsLimKw[i] = veh.fcMaxOutkW
         self.curMaxFcKwOut[i] = min(
             veh.maxFuelConvKw, self.fcFsLimKw[i], self.fcTransLimKw[i])
 
-        # Does ESS discharge need to be limited? *** I think veh.maxEssKw should also be in the following
+        # *** I think veh.maxEssKw should also be in the following
         # boolean condition
         if veh.maxEssKwh == 0 or self.soc[i-1] < veh.minSoc:
             self.essCapLimDischgKw[i] = 0.0
