@@ -144,22 +144,8 @@ class Vehicle(object):
 
         if self.maxFuelConvKw > 0:
 
-            # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
-            fcPwrOutPerc = np.array(
-                [0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00])
-
-            # Efficiencies at different power out percentages by FC type -- all
-            eff_si = np.array([0.10, 0.12, 0.16, 0.22, 0.28, 0.33,
-                            0.35, 0.36, 0.35, 0.34, 0.32, 0.30])
-            eff_atk = np.array([0.10, 0.12, 0.28, 0.35, 0.375,
-                                0.39, 0.40, 0.40, 0.38, 0.37, 0.36, 0.35])
-            eff_diesel = np.array(
-                [0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
-            eff_fuel_cell = np.array(
-                [0.10, 0.30, 0.36, 0.45, 0.50, 0.56, 0.58, 0.60, 0.58, 0.57, 0.55, 0.54])
-            eff_hd_diesel = np.array(
-                [0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
-
+            # Power and efficiency arrays are defined in Globals.py
+            
             if self.fcEffType == 1:  # SI engine
                 eff = np.copy(eff_si) + self.fcAbsEffImpr
 
@@ -177,9 +163,6 @@ class Vehicle(object):
 
             # discrete array of possible engine power outputs
             inputKwOutArray = fcPwrOutPerc * self.maxFuelConvKw
-            # Relatively continuous power out percentages for assigning FC efficiencies
-            fcPercOutArray = np.r_[np.arange(0, 3.0, 0.1), np.arange(
-                3.0, 7.0, 0.5), np.arange(7.0, 60.0, 1.0), np.arange(60.0, 105.0, 5.0)] / 100 # hardcoded ***
             # Relatively continuous array of possible engine power outputs
             fcKwOutArray = self.maxFuelConvKw * fcPercOutArray
             # Initializes relatively continuous array for fcEFF
@@ -193,7 +176,7 @@ class Vehicle(object):
                 fcinterp_y_1 = eff[low_index-1]
                 fcinterp_y_2 = eff[low_index]
                 fcEffArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 -
-                                                                fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
+                                    fcinterp_x_1) * (fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
 
             # populate final value
             fcEffArray[-1] = eff[-1]
@@ -203,8 +186,7 @@ class Vehicle(object):
             self.fcKwOutArray = np.copy(fcKwOutArray)
             self.maxFcEffKw = np.copy(self.fcKwOutArray[np.argmax(fcEffArray)])
             self.fcMaxOutkW = np.copy(max(inputKwOutArray))
-            self.minFcTimeOn = 30  # hardcoded
-
+            
         else:
             # these things are all zero for BEV powertrains
             # not sure why `self.fcEffArray` is not being assigned.
@@ -212,22 +194,15 @@ class Vehicle(object):
             self.fcKwOutArray = np.array([0] * 101)
             self.maxFcEffKw = 0
             self.fcMaxOutkW = 0
-            self.minFcTimeOn = 30  # hardcoded
-
+            
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
         if self.maxMotorKw > 0:
 
             maxMotorKw = self.maxMotorKw
+            
+            # Power and efficiency arrays are defined in Globals.py
 
-            mcPwrOutPerc = np.array(
-                [0.00, 0.02, 0.04, 0.06, 0.08,	0.10,	0.20,	0.40,	0.60,	0.80,	1.00])
-            large_baseline_eff = np.array(
-                [0.83, 0.85,	0.87,	0.89,	0.90,	0.91,	0.93,	0.94,	0.94,	0.93,	0.92])
-            small_baseline_eff = np.array(
-                [0.12,	0.16,	 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93,	0.93,	0.92])
-
-            modern_max = 0.95
             modern_diff = modern_max - max(large_baseline_eff)
 
             large_baseline_eff_adj = large_baseline_eff + modern_diff
@@ -240,11 +215,8 @@ class Vehicle(object):
                     (1 - mcKwAdjPerc)*(small_baseline_eff[k])
 
             mcInputKwOutArray = mcPwrOutPerc * maxMotorKw
-
-            mcPercOutArray = np.linspace(0, 1, 101)
-            mcKwOutArray = np.linspace(0, 1, 101) * maxMotorKw
-
             mcFullEffArray = np.array([0.0] * len(mcPercOutArray))
+            mcKwOutArray = np.linspace(0, 1, len(mcPercOutArray)) * maxMotorKw
 
             for m in range(1, len(mcPercOutArray) - 1):
                 low_index = np.argmax(mcInputKwOutArray >= mcKwOutArray[m])
@@ -273,8 +245,8 @@ class Vehicle(object):
                 self.motorAccelAssist = True
 
         else:
-            self.mcKwInArray = np.array([0.0] * 101)
-            self.mcKwOutArray = np.array([0.0] * 101)
+            self.mcKwInArray = np.array([0.0] * len(mcPercOutArray))
+            self.mcKwOutArray = np.array([0.0] * len(mcPercOutArray))
             self.mcMaxElecInKw = 0
 
         self.mcMaxElecInKw = max(self.mcKwInArray)
