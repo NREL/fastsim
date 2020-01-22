@@ -6,13 +6,141 @@ import numpy as np
 import pandas as pd
 import re
 from Globals import *
+from numba import jitclass, types, typed         # import the decorator
+from numba import float32, int32    # import the types
 import warnings
 warnings.simplefilter('ignore')
 
+# list of array attributes in SimDrive class
+attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
+            'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
+            'essLimMcRegenPercKw', 'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut', 'cycDragKw', 'cycAccelKw', 'cycAscentKw', 
+            'cycTracKwReq', 'curMaxTracKw', 'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
+            'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 'transKwOutAch', 'transKwInAch', 
+            'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
+            'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
+            'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
+            'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 
+            'desiredEssKwOutForAE', 'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 
+            'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'fcForcedOn', 'fcForcedState', 'mcMechKw4ForcedFc', 'fcTimeOn', 
+            'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 
+            'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 
+             'curMaxRoadwayChgKw', 'fcForcedOn']
+
+spec = [(attr, float32) for attr in attr_list]
+spec.append(('len_cyc', int32))
+spec.append(('cyc', types.ClassDataType))
+
+@jitclass(spec)
 class SimDrive(object):
     """Class containing methods for running FASTSim vehicle fuel economy simulations."""
-    def __init__(self):
-        super().__init__()
+    def __init__(self, len_cyc):
+        """Initializes arrays for specific cycle
+        Arguments:
+        -----------
+        len_cyc: instance of LoadData.Cycle class
+        """
+        # Component Limits -- calculated dynamically"
+        self.curMaxFsKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.fcTransLimKw = np.zeros(len_cyc, dtype=np.float32)
+        self.fcFsLimKw = np.zeros(len_cyc, dtype=np.float32)
+        self.fcMaxKwIn = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxFcKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.essCapLimDischgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxEssKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxAvailElecKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essCapLimChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxEssChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxElecKw = np.zeros(len_cyc, dtype=np.float32)
+        self.mcElecInLimKw = np.zeros(len_cyc, dtype=np.float32)
+        self.mcTransiLimKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxMcKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.essLimMcRegenPercKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essLimMcRegenKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxMechMcKwIn = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxTransKwOut = np.zeros(len_cyc, dtype=np.float32)
+
+        ### Drive Train
+        self.cycDragKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycAccelKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycAscentKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycTracKwReq = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxTracKw = np.zeros(len_cyc, dtype=np.float32)
+        self.spareTracKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycRrKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycWheelRadPerSec = np.zeros(len_cyc, dtype=np.float32)
+        self.cycTireInertiaKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycWheelKwReq = np.zeros(len_cyc, dtype=np.float32)
+        self.regenContrLimKwPerc = np.zeros(len_cyc, dtype=np.float32)
+        self.cycRegenBrakeKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycFricBrakeKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycTransKwOutReq = np.zeros(len_cyc, dtype=np.float32)
+        self.cycMet = np.zeros(len_cyc, dtype=np.float32)
+        self.transKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.transKwInAch = np.zeros(len_cyc, dtype=np.float32)
+        self.curSocTarget = np.zeros(len_cyc, dtype=np.float32)
+        self.minMcKw2HelpFc = np.zeros(len_cyc, dtype=np.float32)
+        self.mcMechKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.mcElecKwInAch = np.zeros(len_cyc, dtype=np.float32)
+        self.auxInKw = np.zeros(len_cyc, dtype=np.float32)
+        self.roadwayChgKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.minEssKw2HelpFc = np.zeros(len_cyc, dtype=np.float32)
+        self.essKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.fcKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.fcKwOutAch_pct = np.zeros(len_cyc, dtype=np.float32)
+        self.fcKwInAch = np.zeros(len_cyc, dtype=np.float32)
+        self.fsKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.fsKwhOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.essCurKwh = np.zeros(len_cyc, dtype=np.float32)
+        self.soc = np.zeros(len_cyc, dtype=np.float32)
+
+        # Vehicle Attributes, Control Variables
+        self.regenBufferSoc = np.zeros(len_cyc, dtype=np.float32)
+        self.essRegenBufferDischgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.maxEssRegenBufferChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essAccelBufferChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.accelBufferSoc = np.zeros(len_cyc, dtype=np.float32)
+        self.maxEssAccelBufferDischgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essAccelRegenDischgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.mcElectInKwForMaxFcEff = np.zeros(len_cyc, dtype=np.float32)
+        self.electKwReq4AE = np.zeros(len_cyc, dtype=np.float32)
+        self.canPowerAllElectrically = np.zeros(len_cyc, dtype=np.float32)
+        self.desiredEssKwOutForAE = np.zeros(len_cyc, dtype=np.float32)
+        self.essAEKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.erAEKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.essDesiredKw4FcEff = np.zeros(len_cyc, dtype=np.float32)
+        self.essKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxMcElecKwIn = np.zeros(len_cyc, dtype=np.float32)
+        self.fcKwGapFrEff = np.zeros(len_cyc, dtype=np.float32)
+        self.erKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
+        self.mcElecKwInIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
+        self.mcKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
+        self.fcForcedOn = np.zeros(len_cyc, dtype=np.float32)
+        self.fcForcedState = np.zeros(len_cyc, dtype=np.float32)
+        self.mcMechKw4ForcedFc = np.zeros(len_cyc, dtype=np.float32)
+        self.fcTimeOn = np.zeros(len_cyc, dtype=np.float32)
+        self.prevfcTimeOn = np.zeros(len_cyc, dtype=np.float32)
+        
+        ### Additional Variables
+        self.mpsAch = np.zeros(len_cyc, dtype=np.float32)
+        self.mphAch = np.zeros(len_cyc, dtype=np.float32)
+        self.distMeters = np.zeros(len_cyc, dtype=np.float32)
+        self.distMiles = np.zeros(len_cyc, dtype=np.float32)
+        self.highAccFcOnTag = np.zeros(len_cyc, dtype=np.float32)
+        self.reachedBuff = np.zeros(len_cyc, dtype=np.float32)
+        self.maxTracMps = np.zeros(len_cyc, dtype=np.float32)
+        self.addKwh = np.zeros(len_cyc, dtype=np.float32)
+        self.dodCycs = np.zeros(len_cyc, dtype=np.float32)
+        self.essPercDeadArray = np.zeros(len_cyc, dtype=np.float32)
+        self.dragKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essLossKw = np.zeros(len_cyc, dtype=np.float32)
+        self.accelKw = np.zeros(len_cyc, dtype=np.float32)
+        self.ascentKw = np.zeros(len_cyc, dtype=np.float32)
+        self.rrKw = np.zeros(len_cyc, dtype=np.float32)
+        self.motor_index_debug = np.zeros(len_cyc, dtype=np.float32)
+        self.debug_flag = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.fcForcedOn = np.array([False] * len(cyc.cycSecs))
     
     def sim_drive(self, cyc, veh, initSoc=None):
         """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
@@ -93,7 +221,13 @@ class SimDrive(object):
         ###   Loop Through Time  ###
         ############################
 
-        self.set_init_arrays(cyc, veh, initSoc)
+        ###  Assign First ValueS  ###
+        ### Drive Train
+        self.cycMet[0] = 1
+        self.curSocTarget[0] = veh.maxSoc
+        self.essCurKwh[0] = initSoc * veh.maxEssKwh
+        self.soc[0] = initSoc
+
 
         for i in range(1, len(cyc.cycSecs)):
             ### Misc calcs
@@ -110,64 +244,6 @@ class SimDrive(object):
             self.set_fc_forced_state(i, cyc, veh) # can probably be *mostly* done with list comprehension in post processing
             self.set_hybrid_cont_decisions(i, cyc, veh)
 
-    def set_init_arrays(self, cyc, veh, initSoc):
-        """Initializes arrays of time dependent variables as attributes of self.
-        Arguments
-        ------------
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
-        initSoc: initial SOC for electrified vehicles"""
-
-        # Component Limits -- calculated dynamically"
-        comp_lim_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut',
-                         'essCapLimDischgKw', 'curMaxEssKwOut', 'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw',
-                         'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 'essLimMcRegenPercKw',
-                         'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut']
-
-        ### Drive Train
-        drivetrain_list = ['cycDragKw', 'cycAccelKw', 'cycAscentKw', 'cycTracKwReq', 'curMaxTracKw',
-                           'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq',
-                           'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet',
-                           'transKwOutAch', 'transKwInAch', 'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch',
-                           'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 'essKwOutAch', 'fcKwOutAch',
-                           'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc']
-
-        #roadwayMaxEssChg  # *** CB is not sure why this is here
-
-        # Vehicle Attributes, Control Variables
-        control_list = ['regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw',
-                        'essAccelBufferChgKw', 'accelBufferSoc', 'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw',
-                        'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 'desiredEssKwOutForAE',
-                        'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn',
-                        'fcKwGapFrEff', 'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'fcForcedOn',
-                        'fcForcedState', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn']
-
-        ### Additional Variables
-        misc_list = ['mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff',
-                     'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw',
-                     'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw']
-
-        # create and initialize time array dataframe
-        attributes = comp_lim_list + drivetrain_list + control_list + misc_list
-
-        # assign numpy.zeros of the same length as cycSecs to self attributes
-        for attribute in attributes:
-            self.__setattr__(attribute, np.zeros(len(cyc.cycSecs)))
-
-        self.fcForcedOn = np.array([False] * len(cyc.cycSecs))
-        # self.curMaxRoadwayChgKw = np.interp(
-        #     cycRoadType, veh.MaxRoadwayChgKw_Roadway, veh.MaxRoadwayChgKw)
-        # *** this is just zeros, and I need to verify that it was zeros before and also
-        # verify that this is the correct behavior.  CB
-
-        ###  Assign First Value  ###
-        ### Drive Train
-        self.cycMet[0] = 1
-        self.curSocTarget[0] = veh.maxSoc
-        self.essCurKwh[0] = initSoc * veh.maxEssKwh
-        self.soc[0] = initSoc
-
-    # Function definitions for functions to be run at each time step
     def set_misc_calcs(self, i, cyc, veh):
         """Sets misc. calculations at time step 'i'
         Arguments
