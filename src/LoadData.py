@@ -59,8 +59,7 @@ class Cycle(object):
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
 
 # kv_ty = (types.unicode_type, types.float32)
-cyc_spec = [('len_cyc', int32),
-            ('cycSecs', float32[:]),
+cyc_spec = [('cycSecs', float32[:]),
             ('cycMps', float32[:]),
             ('cycGrade', float32[:]),
             ('cycRoadType', float32[:]),
@@ -163,7 +162,7 @@ class Vehicle(object):
         """Set parameters that can be calculated after loading vehicle data"""
         ### Build roadway power lookup table
         self.MaxRoadwayChgKw = np.zeros(6)
-        self.chargingOn = 0
+        self.chargingOn = False
 
         # Checking if a vehicle has any hybrid components
         if self.maxEssKwh == 0 or self.maxEssKw == 0 or self.maxMotorKw == 0:
@@ -331,6 +330,10 @@ class Vehicle(object):
         else:
             self.vehKg = np.copy(self.vehOverrideKg)
 
+        self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * gravityMPerSec2) /
+                              (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * gravityMPerSec2)) * gravityMPerSec2
+        self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
+
 veh_spec = [('Selection', int32),
     ('Scenario_name', types.unicode_type),
     ('vehPtType', int32),
@@ -340,49 +343,49 @@ veh_spec = [('Selection', int32),
     ('vehCgM', float32),
     ('driveAxleWeightFrac', float32),
     ('wheelBaseM', float32),
-    ('cargoKg', int32),
+    ('cargoKg', float32),
     ('vehOverrideKg', float32),
-    ('maxFuelStorKw', int32),
-    ('fuelStorSecsToPeakPwr', int32),
+    ('maxFuelStorKw', float32),
+    ('fuelStorSecsToPeakPwr', float32),
     ('fuelStorKwh', float32),
     ('fuelStorKwhPerKg', float32),
-    ('maxFuelConvKw', int32),
+    ('maxFuelConvKw', float32),
     ('fcEffType', int32),
-    ('fcAbsEffImpr', int32),
-    ('fuelConvSecsToPeakPwr', int32),
-    ('fuelConvBaseKg', int32),
+    ('fcAbsEffImpr', float32),
+    ('fuelConvSecsToPeakPwr', float32),
+    ('fuelConvBaseKg', float32),
     ('fuelConvKwPerKg', float32),
-    ('maxMotorKw', int32),
+    ('maxMotorKw', float32),
     ('motorPeakEff', float32),
-    ('motorSecsToPeakPwr', int32),
+    ('motorSecsToPeakPwr', float32),
     ('mcPeKgPerKw', float32),
     ('mcPeBaseKg', float32),
-    ('maxEssKw', int32),
+    ('maxEssKw', float32),
     ('maxEssKwh', float32),
     ('essKgPerKwh', float32),
-    ('essBaseKg', int32),
+    ('essBaseKg', float32),
     ('essRoundTripEff', float32),
-    ('essLifeCoefA', int32),
+    ('essLifeCoefA', float32),
     ('essLifeCoefB', float32),
     ('wheelInertiaKgM2', float32),
-    ('numWheels', int32),
+    ('numWheels', float32),
     ('wheelRrCoef', float32),
     ('wheelRadiusM', float32),
     ('wheelCoefOfFric', float32),
     ('minSoc', float32),
     ('maxSoc', float32),
-    ('essDischgToFcMaxEffPerc', int32),
+    ('essDischgToFcMaxEffPerc', float32),
     ('essChgToFcMaxEffPerc', float32),
-    ('maxAccelBufferMph', int32),
+    ('maxAccelBufferMph', float32),
     ('maxAccelBufferPercOfUseableSoc', float32),
-    ('percHighAccBuf', int32),
-    ('mphFcOn', int32),
-    ('kwDemandFcOn', int32),
-    ('altEff', int32),
+    ('percHighAccBuf', float32),
+    ('mphFcOn', float32),
+    ('kwDemandFcOn', float32),
+    ('altEff', float32),
     ('chgEff', float32),
     ('auxKw', float32),
     ('forceAuxOnFC', bool_),
-    ('transKg', int32),
+    ('transKg', float32),
     ('transEff', float32),
     ('compMassMultiplier', float32),
     ('essToFuelOkError', float32),
@@ -405,10 +408,10 @@ veh_spec = [('Selection', int32),
     ('valRangeMiles', float32),
     ('valVehBaseCost', float32),
     ('valMsrp', float32),
-    ('minFcTimeOn', int32),
+    ('minFcTimeOn', float32),
     ('idleFcKw', float32),
     ('MaxRoadwayChgKw', float32[:]),
-    ('chargingOn', int32),
+    ('chargingOn', bool_),
     ('noElecSys', bool_),
     ('noElecAux', bool_),
     ('vehTypeSelection', int32),
@@ -423,7 +426,9 @@ veh_spec = [('Selection', int32),
     ('mcEffArray', float32[:]),
     ('regenA', float32),
     ('regenB', float32),
-    ('vehKg', float32)
+    ('vehKg', float32),
+    ('maxTracMps2', float32),
+    ('maxRegenKwh', float32)
 ]
 
 @jitclass(veh_spec)
@@ -508,7 +513,7 @@ class TypedVehicle(object):
        self.minFcTimeOn = 0
        self.idleFcKw = 0
        self.MaxRoadwayChgKw = np.zeros(6, dtype=np.float32)
-       self.chargingOn = 0
+       self.chargingOn = False
        self.noElecSys = False
        self.noElecAux = False
        self.vehTypeSelection = 0
@@ -524,3 +529,5 @@ class TypedVehicle(object):
        self.regenA = 0
        self.regenB = 0
        self.vehKg = 0
+       self.maxTracMps2 = 0
+       self.maxRegenKwh = 0

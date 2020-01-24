@@ -154,7 +154,7 @@ class SimDrive(object):
         self.debug_flag = np.zeros(len_cyc, dtype=np.float32)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float32)
     
-    def sim_drive(self, cyc, veh, initSoc=None):
+    def sim_drive(self, cyc, veh, initSoc=np.nan):
         """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
@@ -162,11 +162,11 @@ class SimDrive(object):
         veh: instance of LoadData.Vehicle class
         initSoc(optional): initial SOC for electrified vehicles"""
 
-        if initSoc != None:
+        if initSoc != np.nan:
             if initSoc > 1.0 or initSoc < 0.0:
                 print('Must enter a valid initial SOC between 0.0 and 1.0')
                 print('Running standard initial SOC controls')
-                initSoc = None
+                initSoc = np.nan
     
         if veh.vehPtType == 1: # Conventional
 
@@ -176,7 +176,7 @@ class SimDrive(object):
             
             self.sim_drive_sub(cyc, veh, initSoc)
 
-        elif veh.vehPtType == 2 and initSoc == None:  # HEV 
+        elif veh.vehPtType == 2 and initSoc == np.nan:  # HEV 
 
             #####################################
             ### Charge Balancing Vehicle SOC ###
@@ -197,7 +197,7 @@ class SimDrive(object):
                         
             self.sim_drive_sub(cyc, veh, initSoc)
 
-        elif (veh.vehPtType == 3 and initSoc == None) or (veh.vehPtType == 4 and initSoc == None): # PHEV and BEV
+        elif (veh.vehPtType == 3 and initSoc == np.nan) or (veh.vehPtType == 4 and initSoc == np.nan): # PHEV and BEV
 
             # If EV, initializing initial SOC to maximum SOC.
 
@@ -221,14 +221,6 @@ class SimDrive(object):
         veh: instance of LoadData.Vehicle class
         initSoc: initial battery state-of-charge (SOC) for electrified vehicles"""
         
-        ############################
-        ###   Define Constants   ###
-        ############################
-
-        veh.maxTracMps2 = ((((veh.wheelCoefOfFric * veh.driveAxleWeightFrac * veh.vehKg * gravityMPerSec2) /\
-            (1+((veh.vehCgM * veh.wheelCoefOfFric) / veh.wheelBaseM))))/(veh.vehKg * gravityMPerSec2)) * gravityMPerSec2
-        veh.maxRegenKwh = 0.5 * veh.vehKg * (27**2) / (3600 * 1000)
-
         ############################
         ###   Loop Through Time  ###
         ############################
@@ -294,7 +286,7 @@ class SimDrive(object):
 
         # max fuel storage power output
         self.curMaxFsKwOut[i] = np.min([veh.maxFuelStorKw, self.fsKwOutAch[i-1] + (
-            (veh.maxFuelStorKw/veh.fuelStorSecsToPeakPwr) * (cyc.secs[i]))])
+            (veh.maxFuelStorKw / veh.fuelStorSecsToPeakPwr) * (cyc.secs[i]))])
         # maximum fuel storage power output rate of change
         self.fcTransLimKw[i] = self.fcKwOutAch[i-1] + \
             ((veh.maxFuelConvKw / veh.fuelConvSecsToPeakPwr) * (cyc.secs[i]))
