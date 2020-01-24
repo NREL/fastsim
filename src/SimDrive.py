@@ -6,10 +6,16 @@ import numpy as np
 import pandas as pd
 import re
 from Globals import *
-from numba import jitclass, types, typed         # import the decorator
-from numba import float32, int32    # import the types
+from numba import jitclass                 # import the decorator
+from numba import float32, int32, bool_    # import the types
+from numba import types, typed, deferred_type
+import numba
 import warnings
 warnings.simplefilter('ignore')
+
+import LoadData
+import importlib
+importlib.reload(LoadData)
 
 # list of array attributes in SimDrive class
 attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
@@ -22,14 +28,21 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
             'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
             'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 
             'desiredEssKwOutForAE', 'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 
-            'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'fcForcedOn', 'fcForcedState', 'mcMechKw4ForcedFc', 'fcTimeOn', 
+            'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 
             'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 
             'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 
-             'curMaxRoadwayChgKw', 'fcForcedOn']
+             'curMaxRoadwayChgKw']
 
-spec = [(attr, float32) for attr in attr_list]
-spec.append(('len_cyc', int32))
-spec.append(('cyc', types.ClassDataType))
+spec = [(attr, float32[:]) for attr in attr_list]
+spec.append(('fcForcedOn', bool_[:]))
+spec.append(('fcForcedState', int32[:]))
+# spec.append(('len_cyc', int32))
+# cyc_type = deferred_type()
+# cyc_type.define(LoadData.TypedCycle.class_type.instance_type)
+# spec.append(('cyc', cyc_type))
+# veh_type = deferred_type()
+# veh_type.define(LoadData.TypedVehicle.class_type.instance_type)
+# spec.append(('veh', veh_type))
 
 @jitclass(spec)
 class SimDrive(object):
@@ -115,8 +128,8 @@ class SimDrive(object):
         self.erKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
         self.mcElecKwInIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
         self.mcKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
-        self.fcForcedOn = np.zeros(len_cyc, dtype=np.float32)
-        self.fcForcedState = np.zeros(len_cyc, dtype=np.float32)
+        self.fcForcedOn = np.array([False] * len_cyc, dtype=np.bool_)
+        self.fcForcedState = np.zeros(len_cyc, dtype=np.int32)
         self.mcMechKw4ForcedFc = np.zeros(len_cyc, dtype=np.float32)
         self.fcTimeOn = np.zeros(len_cyc, dtype=np.float32)
         self.prevfcTimeOn = np.zeros(len_cyc, dtype=np.float32)
@@ -140,7 +153,6 @@ class SimDrive(object):
         self.motor_index_debug = np.zeros(len_cyc, dtype=np.float32)
         self.debug_flag = np.zeros(len_cyc, dtype=np.float32)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.fcForcedOn = np.array([False] * len(cyc.cycSecs))
     
     def sim_drive(self, cyc, veh, initSoc=None):
         """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
