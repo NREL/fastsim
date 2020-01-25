@@ -1,6 +1,6 @@
 # # FASTSim Demonstration
 # 
-# ![fastsim icon](../docs/icon_fastsim.jpg)
+# ![fastsim icon](icon_fastsim.jpg)
 # 
 # Developed by NREL, the Future Automotive Systems Technology Simulator (FASTSim) evaluates the impact of technology improvements on efficiency, performance, cost, and battery life in conventional vehicles, hybrid electric vehicles (HEVs), plug-in hybrid electric vehicles (PHEVs), and all-electric vehicles (EVs).
 # 
@@ -12,6 +12,8 @@
 # - How do lifetime costs and petroleum use compare for conventional vehicles, HEVs, PHEVs, and EVs?
 # 
 # FASTSim was originally implemented in Microsoft Excel. The pythonic implementation of FASTSim, demonstrated here, captures the drive cycle energy consumption simulation component of the software. The python version of FASTSim is more convenient than the Excel version when very high computational speed is desired, such as for simulating a large batch of drive cycles.
+
+
 import sys
 if '../src' not in sys.path:
     sys.path.append('../src')
@@ -27,11 +29,13 @@ import importlib
 # local modules
 import SimDrive
 importlib.reload(SimDrive)
+
 import LoadData
 importlib.reload(LoadData)
 
+
 # ## Individual Drive Cycle
-print('Load Drive Cycle')
+# ### Load Drive Cycle
 # 
 # Default (UDDS, US06, HWFET) cycles can be loaded from the ```../cycles``` directory, or custom cycles can be specified in the same format. The expected format is a dictionary with the following keys: 
 # 
@@ -42,28 +46,45 @@ print('Load Drive Cycle')
 # - cycRoadType = Indicator as to whether or not there is a wireless charging capability from the road to vehicle
 # 
 # There is no limit to the length of a drive cycle that can be provided as an input to FASTSim.
-cyc = LoadData.Cycle("udds")
 
-print('Load Powertrain Model')
+
+t0 = time.time()
+cyc = LoadData.Cycle("udds").get_numba_cyc()
+print(time.time() - t0)
+
+
+# ### Load Powertrain Model
 # 
 # A vehicle database in CSV format is required to be in the working directory where FASTSim is running (i.e. the same directory as this notebook). The "get_veh" function selects the appropriate vehicle attributes from the database and contructs the powertrain model (engine efficiency map, etc.). An integer value corresponds to each vehicle in the database. To add a new vehicle, simply populate a new row to the vehicle database CSV.
-veh = LoadData.Vehicle(10)
 
-print('Run FASTSim once')
+
+t0 = time.time()
+veh = LoadData.Vehicle(11).get_numba_veh()
+print(time.time() - t0)
+
+
+# ### Run FASTSim
 # 
 # The "sim_drive" function takes the drive cycle and vehicle models defined above as inputs. The output is a dictionary of time series and scalar values described the simulation results. Typically of interest is the "gge" key, which is an array of time series energy consumption data at each time step in the drive cycle. Additionally, to add a result from the simulator to the output dictionary, a user can modify the sim_drive_sub function source code to include the desired field.
 # 
 # If running FASTSim in batch over many drive cycles, the output from "sim_drive" can be written to files or database for batch post-processing. 
-sim_drive = SimDrive.SimDrive()
+
+
+sim_drive = SimDrive.SimDrive(len(cyc.cycSecs))
 t0 = time.time()
 sim_drive.sim_drive(cyc, veh)
 output = sim_drive.get_output(cyc, veh)
 print(time.time() - t0)
 
-print('Single Run Results')
+
+# ### Results
+
 
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
 df['speed'] = cyc.cycMps * 2.23694  # Convert mps to mph
+
+
+
 fig, ax = plt.subplots(figsize=(9, 5))
 kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
 
@@ -77,7 +98,7 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
-# plt.show()
+
 
 # ## Batch Drive Cycles - TSDC Drive Cycles
 # 
@@ -85,8 +106,10 @@ ax2.tick_params('y', colors='xkcd:pale red')
 # 
 # The drive cycles simulated are from a subset of Chicago Regional Household Travel Inventory housed in the the Transportation Secure Data Center ([TSDC](https://www.nrel.gov/transportation/secure-transportation-data/tsdc-cleansed-data.html)). Cycles within the TSDC are publicly available for download and easily integrate with FASTSim. You may contact the [TSDC](tsdc@nrel.gov) for general questions on the data center, or [Venu Garikapati](venu.garikapati@nrel.gov) for partnership-related inquiries. 
 # 
-print('Load Cycles for batch')
+# ### Load Cycles
 # Iterate through the drive cycles directory structure and load the cycles into one pandas dataframe. If memory is an issue, this processing can be broken into smaller chunks. The points table must have trip identifiers appended to run FASTSim on individual trips. The trips are identified and labeled using the start and end timestamps in the "trips.csv" summary tables in each of the vehicle directories downloadable from the TSDC.
+
+
 t0 = time.time()
 data_path = '../cycles/cmap_subset/'  # path to drive cycles
 
@@ -116,7 +139,7 @@ for i in veh_dirs:
     for k in range(len(df_i)):
         start_ts = df_i.start_ts.iloc[k]
         end_ts = df_i.end_ts.iloc[k]
-        tripK_df = veh_pnts_df.loc[(veh_pnts_df['timestamp']>=start_ts) & (veh_pnts_df['timestamp']<=end_ts)]
+        tripK_df = veh_pnts_df.loc[(veh_pnts_df['timestamp']>=start_ts) &                         (veh_pnts_df['timestamp']<=end_ts)]
         tripK_df['nrel_trip_id'] = [unique_tripno]*len(tripK_df)
         unique_tripno += 1
         tripK_df['sampno'] = [sampno]*len(tripK_df)
@@ -125,7 +148,10 @@ for i in veh_dirs:
 t1 = time.time()
 print('Elapsed time = ' + str(round(t1 - t0, 3)))
 
-print('Load Model, Run FASTSim batch')
+
+# ### Load Model, Run FASTSim
+
+
 veh = LoadData.Vehicle(1)  # load vehicle model
 output_dict = {}
 sim_drive = SimDrive.SimDrive()
@@ -146,16 +172,15 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
              pnts['time_local'].shift()).fillna(0).astype('timedelta64[s]')))
     cyc['cycRoadType'] = np.zeros(len(pnts))
     cyc = LoadData.Cycle(cyc_dict=cyc)
-
+    
     sim_drive.sim_drive(cyc, veh)
     output = sim_drive.get_output(cyc, veh)
-
-    del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],\
-        output['fsKwhOutAch']
+    
+    del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],    output['fsKwhOutAch']
 
     output['nrel_trip_id'] = trp
     results_df = results_df.append(output, ignore_index=True)
-
+    
 t_end = time.time()
 
 # results_df = results_df.astype(float)
@@ -164,19 +189,28 @@ print('Run Complete. Total runtime = %1.2fs' % (t_end - t_start))
 print('     Average time per cycle = %1.2fs' % ((
     t_end - t_start) / len(drive_cycs_df.nrel_trip_id.unique())))
 
-print('Batch Results')
+
+# ### Results
 # 
 # In this demo, the batch results from all 494 drive cycles were output to a Pandas Dataframe to simplify post-processing. Any python data structure or output file format can be used to save batch results. For simplicity, time series data was not stored, but it could certainly be included in batch processing.
 # 
 # In order to plot the data, a handful of results are filtered out either because they are much longer than we are interested in, or there was some GPS issue in data acquisition that led to an unrealistically high cycle average speed.
+
+
 df_fltr = results_df[(results_df['distance_mi'] < 1000)
                      & (results_df['distance_mi'] > 0) &
                      (results_df['avg_speed_mph'] < 100)]
+
+
+
 plt.figure()
 df_fltr.mpgge.hist(bins=20, rwidth=.9)
 plt.xlabel('Miles per Gallon')
 plt.ylabel('Number of Cycles')
-# plt.show()
+plt.show()
+
+
+
 df_fltr.plot(
     x='avg_speed_mph',
     y='mpgge',
@@ -200,4 +234,10 @@ leg = plt.legend(
     scatterpoints=1)
 plt.xlabel('Average Cycle Speed [MPH]')
 plt.ylabel('Fuel Economy [MPG]')
-# plt.show()
+plt.show()
+
+
+
+
+
+

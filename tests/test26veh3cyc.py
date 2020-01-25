@@ -23,8 +23,8 @@ vehicles = np.arange(1, 27)
 
 print('Instantiating classes.')
 print()
-veh = LoadData.Vehicle(1)
-cyc = LoadData.Cycle('udds')
+veh = LoadData.Vehicle(1).get_numba_veh()
+cyc = LoadData.Cycle('udds').get_numba_cyc()
 sim_drive = SimDrive.SimDrive()
 
 iter = 0
