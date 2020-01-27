@@ -912,186 +912,196 @@ class SimDrive(object):
         else:
             self.fcTimeOn[i] = self.fcTimeOn[i-1] + cyc.secs[i]
 
-    # # post-processing
-    # def get_output(self, cyc, veh):
-    #     """Calculate finalized results
-    #     Arguments
-    #     ------------
-    #     cyc: instance of LoadData.Cycle class
-    #     veh: instance of LoadData.Vehicle class
-    #     initSoc: initial SOC for electrified vehicles
+class SimDrivePost(object):
+    "Class for post-processing of SimDrive instance"
+    def __init__(self, sim_drive):
+        """Arguments:
+        ---------------
+        sim_drive: solved sim_drive object"""
+        super().__init__()
+
+        for item in spec:
+            self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))
+
+    def get_output(self, cyc, veh):
+        """Calculate finalized results
+        Arguments
+        ------------
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles
         
-    #     Returns
-    #     ------------
-    #     output: dict of summary output variables"""
+        Returns
+        ------------
+        output: dict of summary output variables"""
 
-    #     output = {}
+        output = {}
 
-    #     if sum(self.fsKwhOutAch) == 0:
-    #         output['mpgge'] = 0
+        if sum(self.fsKwhOutAch) == 0:
+            output['mpgge'] = 0
 
-    #     else:
-    #         output['mpgge'] = sum(self.distMiles) / \
-    #             (sum(self.fsKwhOutAch) * (1 / kWhPerGGE))
+        else:
+            output['mpgge'] = sum(self.distMiles) / \
+                (sum(self.fsKwhOutAch) * (1 / kWhPerGGE))
 
-    #     self.roadwayChgKj = sum(self.roadwayChgKwOutAch * cyc.secs)
-    #     self.essDischKj = - \
-    #         (self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
-    #     output['battery_kWh_per_mi'] = (
-    #         self.essDischKj / 3600.0) / sum(self.distMiles)
-    #     self.battery_kWh_per_mi = output['battery_kWh_per_mi']
-    #     output['electric_kWh_per_mi'] = (
-    #         (self.roadwayChgKj + self.essDischKj) / 3600.0) / sum(self.distMiles)
-    #     self.electric_kWh_per_mi = output['electric_kWh_per_mi']
-    #     output['maxTraceMissMph'] = mphPerMps * \
-    #         max(abs(cyc.cycMps - self.mpsAch))
-    #     self.maxTraceMissMph = output['maxTraceMissMph']
-    #     self.fuelKj = sum(np.asarray(self.fsKwOutAch) * np.asarray(cyc.secs))
-    #     self.roadwayChgKj = sum(np.asarray(
-    #         self.roadwayChgKwOutAch) * np.asarray(cyc.secs))
-    #     essDischgKj = -(self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
+        self.roadwayChgKj = sum(self.roadwayChgKwOutAch * cyc.secs)
+        self.essDischKj = - \
+            (self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
+        output['battery_kWh_per_mi'] = (
+            self.essDischKj / 3600.0) / sum(self.distMiles)
+        self.battery_kWh_per_mi = output['battery_kWh_per_mi']
+        output['electric_kWh_per_mi'] = (
+            (self.roadwayChgKj + self.essDischKj) / 3600.0) / sum(self.distMiles)
+        self.electric_kWh_per_mi = output['electric_kWh_per_mi']
+        output['maxTraceMissMph'] = mphPerMps * \
+            max(abs(cyc.cycMps - self.mpsAch))
+        self.maxTraceMissMph = output['maxTraceMissMph']
+        self.fuelKj = sum(np.asarray(self.fsKwOutAch) * np.asarray(cyc.secs))
+        self.roadwayChgKj = sum(np.asarray(
+            self.roadwayChgKwOutAch) * np.asarray(cyc.secs))
+        essDischgKj = -(self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
 
-    #     if (self.fuelKj + self.roadwayChgKj) == 0:
-    #         output['ess2fuelKwh'] = 1.0
+        if (self.fuelKj + self.roadwayChgKj) == 0:
+            output['ess2fuelKwh'] = 1.0
 
-    #     else:
-    #         output['ess2fuelKwh'] = essDischgKj / \
-    #             (self.fuelKj + self.roadwayChgKj)
+        else:
+            output['ess2fuelKwh'] = essDischgKj / \
+                (self.fuelKj + self.roadwayChgKj)
 
-    #     self.ess2fuelKwh = output['ess2fuelKwh']
+        self.ess2fuelKwh = output['ess2fuelKwh']
 
-    #     output['initial_soc'] = self.soc[0]
-    #     output['final_soc'] = self.soc[-1]
+        output['initial_soc'] = self.soc[0]
+        output['final_soc'] = self.soc[-1]
 
-    #     if output['mpgge'] == 0:
-    #         # hardcoded conversion
-    #         Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi'] / 33.7
+        if output['mpgge'] == 0:
+            # hardcoded conversion
+            Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi'] / 33.7
 
-    #     else:
-    #         Gallons_gas_equivalent_per_mile = 1 / \
-    #             output['mpgge'] + output['electric_kWh_per_mi'] / \
-    #             33.7  # hardcoded conversion
+        else:
+            Gallons_gas_equivalent_per_mile = 1 / \
+                output['mpgge'] + output['electric_kWh_per_mi'] / \
+                33.7  # hardcoded conversion
 
-    #     self.Gallons_gas_equivalent_per_mile = Gallons_gas_equivalent_per_mile
+        self.Gallons_gas_equivalent_per_mile = Gallons_gas_equivalent_per_mile
 
-    #     output['mpgge_elec'] = 1 / Gallons_gas_equivalent_per_mile
-    #     output['soc'] = np.asarray(self.soc)
-    #     output['distance_mi'] = sum(self.distMiles)
-    #     duration_sec = cyc.cycSecs[-1] - cyc.cycSecs[0]
-    #     output['avg_speed_mph'] = sum(
-    #         self.distMiles) / (duration_sec / 3600.0)
-    #     self.avg_speed_mph = output['avg_speed_mph']
-    #     self.accel = np.diff(self.mphAch) / np.diff(cyc.cycSecs)
-    #     output['avg_accel_mphps'] = np.mean(self.accel[self.accel > 0])
-    #     self.avg_accel_mphps = output['avg_accel_mphps']
+        output['mpgge_elec'] = 1 / Gallons_gas_equivalent_per_mile
+        output['soc'] = np.asarray(self.soc)
+        output['distance_mi'] = sum(self.distMiles)
+        duration_sec = cyc.cycSecs[-1] - cyc.cycSecs[0]
+        output['avg_speed_mph'] = sum(
+            self.distMiles) / (duration_sec / 3600.0)
+        self.avg_speed_mph = output['avg_speed_mph']
+        self.accel = np.diff(self.mphAch) / np.diff(cyc.cycSecs)
+        output['avg_accel_mphps'] = np.mean(self.accel[self.accel > 0])
+        self.avg_accel_mphps = output['avg_accel_mphps']
 
-    #     if max(self.mphAch) > 60:
-    #         output['ZeroToSixtyTime_secs'] = np.interp(60, self.mphAch, cyc.cycSecs)
+        if max(self.mphAch) > 60:
+            output['ZeroToSixtyTime_secs'] = np.interp(60, self.mphAch, cyc.cycSecs)
 
-    #     else:
-    #         output['ZeroToSixtyTime_secs'] = 0.0
+        else:
+            output['ZeroToSixtyTime_secs'] = 0.0
 
-    #     #######################################################################
-    #     ####  Time series information for additional analysis / debugging. ####
-    #     ####             Add parameters of interest as needed.             ####
-    #     #######################################################################
+        #######################################################################
+        ####  Time series information for additional analysis / debugging. ####
+        ####             Add parameters of interest as needed.             ####
+        #######################################################################
 
-    #     output['fcKwOutAch'] = np.asarray(self.fcKwOutAch)
-    #     output['fsKwhOutAch'] = np.asarray(self.fsKwhOutAch)
-    #     output['fcKwInAch'] = np.asarray(self.fcKwInAch)
-    #     output['time'] = np.asarray(cyc.cycSecs)
+        output['fcKwOutAch'] = np.asarray(self.fcKwOutAch)
+        output['fsKwhOutAch'] = np.asarray(self.fsKwhOutAch)
+        output['fcKwInAch'] = np.asarray(self.fcKwInAch)
+        output['time'] = np.asarray(cyc.cycSecs)
 
-    #     return output
+        return output
 
-    # # optional post-processing methods
-    # def get_diagnostics(self, cyc):
-    #     """This method is to be run after runing sim_drive, if diagnostic variables 
-    #     are needed.  Diagnostic variables are returned in a dict.  Diagnostic variables include:
-    #     - final integrated value of all positive powers
-    #     - final integrated value of all negative powers
-    #     - total distance traveled
-    #     - miles per gallon gasoline equivalent (mpgge)"""
+    # optional post-processing methods
+    def get_diagnostics(self, cyc):
+        """This method is to be run after runing sim_drive, if diagnostic variables 
+        are needed.  Diagnostic variables are returned in a dict.  Diagnostic variables include:
+        - final integrated value of all positive powers
+        - final integrated value of all negative powers
+        - total distance traveled
+        - miles per gallon gasoline equivalent (mpgge)"""
         
-    #     base_var_list = list(self.__dict__.keys())
-    #     pw_var_list = [var for var in base_var_list if re.search(
-    #         '\w*Kw(?!h)\w*', var)] 
-    #         # find all vars containing 'Kw' but not 'Kwh'
+        base_var_list = list(self.__dict__.keys())
+        pw_var_list = [var for var in base_var_list if re.search(
+            '\w*Kw(?!h)\w*', var)] 
+            # find all vars containing 'Kw' but not 'Kwh'
         
-    #     prog = re.compile('(\w*)Kw(?!h)(\w*)') 
-    #     # find all vars containing 'Kw' but not Kwh and capture parts before and after 'Kw'
-    #     # using compile speeds up iteration
+        prog = re.compile('(\w*)Kw(?!h)(\w*)') 
+        # find all vars containing 'Kw' but not Kwh and capture parts before and after 'Kw'
+        # using compile speeds up iteration
 
-    #     # create positive and negative versions of all time series with units of kW
-    #     # then integrate to find cycle end pos and negative energies
-    #     tempvars = {} # dict for contaning intermediate variables
-    #     output = {}
-    #     for var in pw_var_list:
-    #         tempvars[var + 'Pos'] = [x if x >= 0 
-    #                                     else 0 
-    #                                     for x in self.__getattribute__(var)]
-    #         tempvars[var + 'Neg'] = [x if x < 0 
-    #                                     else 0 
-    #                                     for x in self.__getattribute__(var)]    
+        # create positive and negative versions of all time series with units of kW
+        # then integrate to find cycle end pos and negative energies
+        tempvars = {} # dict for contaning intermediate variables
+        output = {}
+        for var in pw_var_list:
+            tempvars[var + 'Pos'] = [x if x >= 0 
+                                        else 0 
+                                        for x in self.__getattribute__(var)]
+            tempvars[var + 'Neg'] = [x if x < 0 
+                                        else 0 
+                                        for x in self.__getattribute__(var)]    
                         
-    #         # Assign values to output dict for positive and negative energy variable names
-    #         search = prog.search(var)
-    #         output[search[1] + 'Kj' + search[2] + 'Pos'] = np.trapz(tempvars[var + 'Pos'], cyc.cycSecs)
-    #         output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], cyc.cycSecs)
+            # Assign values to output dict for positive and negative energy variable names
+            search = prog.search(var)
+            output[search[1] + 'Kj' + search[2] + 'Pos'] = np.trapz(tempvars[var + 'Pos'], cyc.cycSecs)
+            output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], cyc.cycSecs)
         
-    #     output['distMilesFinal'] = sum(self.distMiles)
-    #     output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * kWhPerGGE
+        output['distMilesFinal'] = sum(self.distMiles)
+        output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * kWhPerGGE
     
-    #     return output
+        return output
 
-    # def set_battery_wear(self, veh):
-    #     """Battery wear calcs
-    #     Arguments:
-    #     ------------
-    #     tarr: instance of SimDrive.TimeArrays()
-    #     i: integer representing index of current time step
+    def set_battery_wear(self, veh):
+        """Battery wear calcs
+        Arguments:
+        ------------
+        tarr: instance of SimDrive.TimeArrays()
+        i: integer representing index of current time step
         
-    #     Output: tarr"""
+        Output: tarr"""
 
-    #     self.addKwh[1:] = np.array([
-    #         (self.essCurKwh[i] - self.essCurKwh[i-1]) + self.addKwh[i-1]
-    #         if self.essCurKwh[i] > self.essCurKwh[i-1]
-    #         else 0 
-    #         for i in range(1, len(self.essCurKwh))])
+        self.addKwh[1:] = np.array([
+            (self.essCurKwh[i] - self.essCurKwh[i-1]) + self.addKwh[i-1]
+            if self.essCurKwh[i] > self.essCurKwh[i-1]
+            else 0 
+            for i in range(1, len(self.essCurKwh))])
         
-    #     self.dodCycs[1:] = np.array([
-    #         self.addKwh[i-1] / veh.maxEssKwh if self.addKwh[i] == 0
-    #         else 0 
-    #         for i in range(1, len(self.essCurKwh))])
+        self.dodCycs[1:] = np.array([
+            self.addKwh[i-1] / veh.maxEssKwh if self.addKwh[i] == 0
+            else 0 
+            for i in range(1, len(self.essCurKwh))])
         
-    #     self.essPercDeadArray = np.array([
-    #         np.power(veh.essLifeCoefA, 1.0 / veh.essLifeCoefB) / np.power(self.dodCycs[i], 
-    #         1.0 / veh.essLifeCoefB)
-    #         if self.dodCycs[i] != 0
-    #         else 0
-    #         for i in range(0, len(self.essCurKwh))])
+        self.essPercDeadArray = np.array([
+            np.power(veh.essLifeCoefA, 1.0 / veh.essLifeCoefB) / np.power(self.dodCycs[i], 
+            1.0 / veh.essLifeCoefB)
+            if self.dodCycs[i] != 0
+            else 0
+            for i in range(0, len(self.essCurKwh))])
 
-    # def set_energy_audit(self, cyc, veh):
-    #     """Energy Audit Calculations
-    #     Arguments
-    #     ------------
-    #     cyc: instance of LoadData.Cycle class
-    #     veh: instance of LoadData.Vehicle class
-    #     initSoc: initial SOC for electrified vehicles"""
+    def set_energy_audit(self, cyc, veh):
+        """Energy Audit Calculations
+        Arguments
+        ------------
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles"""
 
-    #     self.dragKw[1:] = 0.5 * airDensityKgPerM3 * veh.dragCoef * \
-    #         veh.frontalAreaM2 * \
-    #         (((self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0)**3) / 1000.0
+        self.dragKw[1:] = 0.5 * airDensityKgPerM3 * veh.dragCoef * \
+            veh.frontalAreaM2 * \
+            (((self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0)**3) / 1000.0
         
-    #     self.essLossKw[1:] = np.array(
-    #         [0 if (veh.maxEssKw == 0 or veh.maxEssKwh == 0) 
-    #         else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(veh.essRoundTripEff)) 
-    #             if self.essKwOutAch[i] < 0 
-    #         else self.essKwOutAch[i] * (1.0 / np.sqrt(veh.essRoundTripEff)) - self.essKwOutAch[i] 
-    #         for i in range(1, len(cyc.cycSecs))])
+        self.essLossKw[1:] = np.array(
+            [0 if (veh.maxEssKw == 0 or veh.maxEssKwh == 0) 
+            else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(veh.essRoundTripEff)) 
+                if self.essKwOutAch[i] < 0 
+            else self.essKwOutAch[i] * (1.0 / np.sqrt(veh.essRoundTripEff)) - self.essKwOutAch[i] 
+            for i in range(1, len(cyc.cycSecs))])
 
-    #     self.accelKw[1:] = (veh.vehKg / (2.0 * (cyc.secs[1:]))) * \
-    #         ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0
-    #     self.ascentKw[1:] = gravityMPerSec2 * np.sin(np.arctan(cyc.cycGrade[1:])) * veh.vehKg * (
-    #         (self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0) / 1000.0
-    #     self.rrKw[1:] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * \
-    #         ((self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0) / 1000.0
+        self.accelKw[1:] = (veh.vehKg / (2.0 * (cyc.secs[1:]))) * \
+            ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0
+        self.ascentKw[1:] = gravityMPerSec2 * np.sin(np.arctan(cyc.cycGrade[1:])) * veh.vehKg * (
+            (self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0) / 1000.0
+        self.rrKw[1:] = gravityMPerSec2 * veh.wheelRrCoef * veh.vehKg * \
+            ((self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0) / 1000.0

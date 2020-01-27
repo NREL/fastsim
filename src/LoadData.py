@@ -38,7 +38,7 @@ class Cycle(object):
         csv_path = '..//cycles//' + std_cyc_name + '.csv'
         cyc = pd.read_csv(csv_path)
         for column in cyc.columns:
-            self.__setattr__(column, cyc[column].copy().to_numpy())
+            self.__setattr__(column, cyc[column].to_numpy())
         self.set_dependents()
 
     def set_from_dict(self, cyc_dict):
@@ -55,7 +55,7 @@ class Cycle(object):
     
     def set_dependents(self):
         """Sets values dependent on cycle info loaded from file."""
-        self.cycMph = np.copy(self.cycMps * mphPerMps)
+        self.cycMph = self.cycMps * mphPerMps
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
 
 # kv_ty = (types.unicode_type, types.float32)
@@ -94,17 +94,18 @@ class Vehicle(object):
             self.load_vnum(vnum)
 
     def get_numba_veh(self):
-        numba_veh = TypedVehicle()
+        if 'numba_veh' not in self.__dict__:
+            self.numba_veh = TypedVehicle()
         for item in veh_spec:
             if (type(self.__getattribute__(item[0])) == np.ndarray) | (type(self.__getattribute__(item[0])) == np.float64):
-                numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float32))
+                self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float32))
             elif type(self.__getattribute__(item[0])) == np.int64:
-                numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.int32))
+                self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.int32))
             else:
-                numba_veh.__setattr__(
+                self.numba_veh.__setattr__(
                     item[0], self.__getattribute__(item[0]))
             
-        return numba_veh
+        return self.numba_veh
     
     def load_vnum(self, vnum):
         """Load vehicle parameters based on vnum and assign to self.
@@ -185,112 +186,113 @@ class Vehicle(object):
         ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
         ### see "FC Model" tab in FASTSim for Excel
 
-        if self.maxFuelConvKw > 0:
+        # if self.maxFuelConvKw > 0:
 
-            # Power and efficiency arrays are defined in Globals.py
+        # Power and efficiency arrays are defined in Globals.py
+        
+        if self.fcEffType == 1:  # SI engine
+            eff = eff_si + self.fcAbsEffImpr
+
+        elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
+            eff = eff_atk + self.fcAbsEffImpr
+
+        elif self.fcEffType == 3:  # Diesel (compression ignition) engine
+            eff = eff_diesel + self.fcAbsEffImpr
+
+        elif self.fcEffType == 4:  # H2 fuel cell
+            eff = eff_fuel_cell + self.fcAbsEffImpr
+
+        elif self.fcEffType == 5:  # heavy duty Diesel engine
+            eff = eff_hd_diesel + self.fcAbsEffImpr
+
+        # discrete array of possible engine power outputs
+        inputKwOutArray = fcPwrOutPerc * self.maxFuelConvKw
+        # Relatively continuous array of possible engine power outputs
+        fcKwOutArray = self.maxFuelConvKw * fcPercOutArray
+        # Initializes relatively continuous array for fcEFF
+        fcEffArray = np.zeros(len(fcPercOutArray))
+
+        # the following for loop populates fcEffArray
+        for j in range(0, len(fcPercOutArray) - 1):
+            low_index = np.argmax(inputKwOutArray >= fcKwOutArray[j])
+            fcinterp_x_1 = inputKwOutArray[low_index-1]
+            fcinterp_x_2 = inputKwOutArray[low_index]
+            fcinterp_y_1 = eff[low_index-1]
+            fcinterp_y_2 = eff[low_index]
+            fcEffArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 -
+                                fcinterp_x_1) * (fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
+
+        # populate final value
+        fcEffArray[-1] = eff[-1]
+
+        # assign corresponding values in veh dict
+        self.fcEffArray = fcEffArray
+        self.fcKwOutArray = fcKwOutArray
+        self.maxFcEffKw = self.fcKwOutArray[np.argmax(fcEffArray)]
+        self.fcMaxOutkW = np.max(inputKwOutArray)
             
-            if self.fcEffType == 1:  # SI engine
-                eff = np.copy(eff_si) + self.fcAbsEffImpr
+        # else:
+        #     # these things are all zero for BEV powertrains
+        #     # not sure why `self.fcEffArray` is not being assigned.
+        #     # Maybe it's not used anywhere in this condition.  *** delete this comment before public release
+        #     self.fcKwOutArray = np.array([0] * 101)
+        #     self.maxFcEffKw = 0
+        #     self.fcMaxOutkW = 0
+        #     self.fcEffArray = np.zeros(len(fcPercOutArray))
 
-            elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
-                eff = np.copy(eff_atk) + self.fcAbsEffImpr
-
-            elif self.fcEffType == 3:  # Diesel (compression ignition) engine
-                eff = np.copy(eff_diesel) + self.fcAbsEffImpr
-
-            elif self.fcEffType == 4:  # H2 fuel cell
-                eff = np.copy(eff_fuel_cell) + self.fcAbsEffImpr
-
-            elif self.fcEffType == 5:  # heavy duty Diesel engine
-                eff = np.copy(eff_hd_diesel) + self.fcAbsEffImpr
-
-            # discrete array of possible engine power outputs
-            inputKwOutArray = fcPwrOutPerc * self.maxFuelConvKw
-            # Relatively continuous array of possible engine power outputs
-            fcKwOutArray = self.maxFuelConvKw * fcPercOutArray
-            # Initializes relatively continuous array for fcEFF
-            fcEffArray = np.array([0.0] * len(fcPercOutArray))
-
-            # the following for loop populates fcEffArray
-            for j in range(0, len(fcPercOutArray) - 1):
-                low_index = np.argmax(inputKwOutArray >= fcKwOutArray[j])
-                fcinterp_x_1 = inputKwOutArray[low_index-1]
-                fcinterp_x_2 = inputKwOutArray[low_index]
-                fcinterp_y_1 = eff[low_index-1]
-                fcinterp_y_2 = eff[low_index]
-                fcEffArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 -
-                                    fcinterp_x_1) * (fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
-
-            # populate final value
-            fcEffArray[-1] = eff[-1]
-
-            # assign corresponding values in veh dict
-            self.fcEffArray = np.copy(fcEffArray)
-            self.fcKwOutArray = np.copy(fcKwOutArray)
-            self.maxFcEffKw = self.fcKwOutArray[np.argmax(fcEffArray)]
-            self.fcMaxOutkW = np.max(inputKwOutArray)
-            
-        else:
-            # these things are all zero for BEV powertrains
-            # not sure why `self.fcEffArray` is not being assigned.
-            # Maybe it's not used anywhere in this condition.  *** delete this comment before public release
-            self.fcKwOutArray = np.array([0] * 101)
-            self.maxFcEffKw = 0
-            self.fcMaxOutkW = 0
-            
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
-        if self.maxMotorKw > 0:
+        # if self.maxMotorKw > 0:
 
-            maxMotorKw = self.maxMotorKw
-            
-            # Power and efficiency arrays are defined in Globals.py
+        maxMotorKw = self.maxMotorKw
+        
+        # Power and efficiency arrays are defined in Globals.py
 
-            modern_diff = modern_max - max(large_baseline_eff)
+        modern_diff = modern_max - max(large_baseline_eff)
 
-            large_baseline_eff_adj = large_baseline_eff + modern_diff
+        large_baseline_eff_adj = large_baseline_eff + modern_diff
 
-            mcKwAdjPerc = max(0.0, min((maxMotorKw - 7.5)/(75.0 - 7.5), 1.0))
-            mcEffArray = np.array([0.0] * len(mcPwrOutPerc))
+        mcKwAdjPerc = max(0.0, min((maxMotorKw - 7.5)/(75.0 - 7.5), 1.0))
+        mcEffArray = np.zeros(len(mcPwrOutPerc))
 
-            for k in range(0, len(mcPwrOutPerc)):
-                mcEffArray[k] = mcKwAdjPerc * large_baseline_eff_adj[k] + \
-                    (1 - mcKwAdjPerc)*(small_baseline_eff[k])
+        for k in range(0, len(mcPwrOutPerc)):
+            mcEffArray[k] = mcKwAdjPerc * large_baseline_eff_adj[k] + \
+                (1 - mcKwAdjPerc)*(small_baseline_eff[k])
 
-            mcInputKwOutArray = mcPwrOutPerc * maxMotorKw
-            mcFullEffArray = np.array([0.0] * len(mcPercOutArray))
-            mcKwOutArray = np.linspace(0, 1, len(mcPercOutArray)) * maxMotorKw
+        mcInputKwOutArray = mcPwrOutPerc * maxMotorKw
+        mcFullEffArray = np.zeros(len(mcPercOutArray))
+        mcKwOutArray = np.linspace(0, 1, len(mcPercOutArray)) * maxMotorKw
 
-            for m in range(1, len(mcPercOutArray) - 1):
-                low_index = np.argmax(mcInputKwOutArray >= mcKwOutArray[m])
+        for m in range(1, len(mcPercOutArray) - 1):
+            low_index = np.argmax(mcInputKwOutArray >= mcKwOutArray[m])
 
-                fcinterp_x_1 = mcInputKwOutArray[low_index-1]
-                fcinterp_x_2 = mcInputKwOutArray[low_index]
-                fcinterp_y_1 = mcEffArray[low_index-1]
-                fcinterp_y_2 = mcEffArray[low_index]
+            fcinterp_x_1 = mcInputKwOutArray[low_index-1]
+            fcinterp_x_2 = mcInputKwOutArray[low_index]
+            fcinterp_y_1 = mcEffArray[low_index-1]
+            fcinterp_y_2 = mcEffArray[low_index]
 
-                mcFullEffArray[m] = (mcKwOutArray[m] - fcinterp_x_1)/(
-                    fcinterp_x_2 - fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
+            mcFullEffArray[m] = (mcKwOutArray[m] - fcinterp_x_1)/(
+                fcinterp_x_2 - fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
 
-            mcFullEffArray[0] = 0
-            mcFullEffArray[-1] = mcEffArray[-1]
+        mcFullEffArray[0] = 0
+        mcFullEffArray[-1] = mcEffArray[-1]
 
-            mcKwInArray = mcKwOutArray / mcFullEffArray
-            mcKwInArray[0] = 0
+        mcKwInArray = mcKwOutArray / mcFullEffArray
+        mcKwInArray[0] = 0
 
-            self.mcKwInArray = np.copy(mcKwInArray)
-            self.mcKwOutArray = np.copy(mcKwOutArray)
-            self.mcMaxElecInKw = np.copy(max(mcKwInArray))
-            self.mcFullEffArray = np.copy(mcFullEffArray)
-            self.mcEffArray = np.copy(mcEffArray)
+        self.mcKwInArray = mcKwInArray
+        self.mcKwOutArray = mcKwOutArray
+        self.mcMaxElecInKw = max(mcKwInArray)
+        self.mcFullEffArray = mcFullEffArray
+        self.mcEffArray = mcEffArray
 
-            if 'motorAccelAssist' in self.__dir__() and np.isnan(self.__getattribute__('motorAccelAssist')):
-                self.motorAccelAssist = True
+        if 'motorAccelAssist' in self.__dir__() and np.isnan(self.__getattribute__('motorAccelAssist')):
+            self.motorAccelAssist = True
 
-        else:
-            self.mcKwInArray = np.array([0.0] * len(mcPercOutArray))
-            self.mcKwOutArray = np.array([0.0] * len(mcPercOutArray))
-            self.mcMaxElecInKw = 0
+        # else:
+        #     self.mcKwInArray = np.zeros(mcPercOutArray)
+        #     self.mcKwOutArray = np.zeros(mcPercOutArray)
+        #     self.mcMaxElecInKw = 0
 
         self.mcMaxElecInKw = max(self.mcKwInArray)
 
@@ -328,7 +330,7 @@ class Vehicle(object):
                 mc_mass_kg + fc_mass_kg + fs_mass_kg
         # if positive real number is specified for vehOverrideKg, use that
         else:
-            self.vehKg = np.copy(self.vehOverrideKg)
+            self.vehKg = self.vehOverrideKg
 
         self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * gravityMPerSec2) /
                               (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * gravityMPerSec2)) * gravityMPerSec2

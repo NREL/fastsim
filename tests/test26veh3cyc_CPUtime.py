@@ -23,8 +23,9 @@ vehicles = np.arange(1, 27)
 print('Instantiating classes.')
 print()
 veh = LoadData.Vehicle(1)
+veh_jit = veh.get_numba_veh()
 cyc = LoadData.Cycle('udds')
-sim_drive = SimDrive.SimDrive()
+cyc_jit = cyc.get_numba_cyc()
 
 iter = 0
 for vehno in vehicles:
@@ -32,10 +33,12 @@ for vehno in vehicles:
     for cycname in cycles:
         if not((vehno == 1) and (cycname == 'udds')):
             cyc.set_standard_cycle(cycname)
+            cyc_jit = cyc.get_numba_cyc()
             veh.load_vnum(vehno)
-
-        sim_drive.sim_drive(cyc, veh)
-        sim_drive.get_diagnostics(cyc)
+            veh_jit = veh.get_numba_veh()
+        sim_drive = SimDrive.SimDrive(len(cyc.cycSecs))
+        sim_drive.sim_drive(cyc_jit, veh_jit)
+        # sim_drive.get_diagnostics(cyc)
 
 t1 = time.time()
 print()
