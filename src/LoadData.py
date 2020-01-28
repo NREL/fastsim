@@ -1,5 +1,5 @@
-"""Module containing function for loading drive cycle data (e.g. speed trace)
-and class (Vehicle) for loading and storing vehicle attribute data.  For example usage, 
+"""Module containing classes for loading drive cycle data (e.g. speed trace)
+and vehicle attribute data.  For example usage, 
 see ../README.md"""
 
 import pandas as pd
@@ -8,7 +8,7 @@ import numpy as np
 import re
 from numba import jitclass                 # import the decorator
 from numba import float32, int32, bool_    # import the types
-from numba import types, typed
+from numba import types
 
 class Cycle(object):
     """Object for containing time, speed, road grade, and road charging vectors 
@@ -25,6 +25,7 @@ class Cycle(object):
             self.set_from_dict(cyc_dict)
         
     def get_numba_cyc(self):
+        """Returns numba jitclass version of Cycle object."""
         numba_cyc = TypedCycle(len(self.cycSecs))
         for key in self.__dict__.keys():
             numba_cyc.__setattr__(key, self.__getattribute__(key).astype(np.float32))
@@ -58,7 +59,7 @@ class Cycle(object):
         self.cycMph = self.cycMps * mphPerMps
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
 
-# kv_ty = (types.unicode_type, types.float32)
+# type specifications for attributes of Cycle class
 cyc_spec = [('cycSecs', float32[:]),
             ('cycMps', float32[:]),
             ('cycGrade', float32[:]),
@@ -66,21 +67,19 @@ cyc_spec = [('cycSecs', float32[:]),
             ('cycMph', float32[:]),
             ('secs', float32[:])
 ]
-            # ('cycdict', types.DictType(*kv_ty))]
-            # ('std_cyc_name', types.unicode_type)]
 
 @jitclass(cyc_spec)
 class TypedCycle(object):
-    """Object for containing time, speed, road grade, and road charging vectors 
-    for drive cycle."""
+    """Just-in-time compiled version of Cycle using numba."""
     def __init__(self, len_cyc):
+        """This method initialized type numpy arrays as required by 
+        numba jitclass."""
         self.cycSecs = np.zeros(len_cyc, dtype=np.float32)
         self.cycMps = np.zeros(len_cyc, dtype=np.float32)
         self.cycGrade = np.zeros(len_cyc, dtype=np.float32)
         self.cycRoadType = np.zeros(len_cyc, dtype=np.float32)
         self.cycMph = np.zeros(len_cyc, dtype=np.float32)
         self.secs = np.zeros(len_cyc, dtype=np.float32)
-        # self.cycdict = typed.Dict.empty(*kv_ty)
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes
@@ -115,7 +114,6 @@ class Vehicle(object):
 
         vehdf = pd.read_csv('..//docs//FASTSim_py_veh_db.csv')
         vehdf.set_index('Selection', inplace=True, drop=False)
-        # vehdf = vehdf.loc[[vnum], :]
 
         def clean_data(raw_data):
             """Cleans up data formatting.
@@ -186,8 +184,6 @@ class Vehicle(object):
         ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
         ### see "FC Model" tab in FASTSim for Excel
 
-        # if self.maxFuelConvKw > 0:
-
         # Power and efficiency arrays are defined in Globals.py
         
         if self.fcEffType == 1:  # SI engine
@@ -231,18 +227,8 @@ class Vehicle(object):
         self.maxFcEffKw = self.fcKwOutArray[np.argmax(fcEffArray)]
         self.fcMaxOutkW = np.max(inputKwOutArray)
             
-        # else:
-        #     # these things are all zero for BEV powertrains
-        #     # not sure why `self.fcEffArray` is not being assigned.
-        #     # Maybe it's not used anywhere in this condition.  *** delete this comment before public release
-        #     self.fcKwOutArray = np.array([0] * 101)
-        #     self.maxFcEffKw = 0
-        #     self.fcMaxOutkW = 0
-        #     self.fcEffArray = np.zeros(len(fcPercOutArray))
-
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
-        # if self.maxMotorKw > 0:
 
         maxMotorKw = self.maxMotorKw
         
@@ -289,11 +275,6 @@ class Vehicle(object):
         if 'motorAccelAssist' in self.__dir__() and np.isnan(self.__getattribute__('motorAccelAssist')):
             self.motorAccelAssist = True
 
-        # else:
-        #     self.mcKwInArray = np.zeros(mcPercOutArray)
-        #     self.mcKwOutArray = np.zeros(mcPercOutArray)
-        #     self.mcMaxElecInKw = 0
-
         self.mcMaxElecInKw = max(self.mcKwInArray)
 
         ### Specify shape of mc regen efficiency curve
@@ -336,6 +317,7 @@ class Vehicle(object):
                               (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * gravityMPerSec2)) * gravityMPerSec2
         self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
+# type specifications for attributions of Vehcile class
 veh_spec = [('Selection', int32),
     ('Scenario_name', types.unicode_type),
     ('vehPtType', int32),
@@ -435,101 +417,103 @@ veh_spec = [('Selection', int32),
 
 @jitclass(veh_spec)
 class TypedVehicle(object):
-    """fancy numba vehicle"""
+    """Just-in-time compiled version of Vehicle using numba."""
     
     def __init__(self):
-       self.Selection = 0
-       self.Scenario_name = 'n/a'
-       self.vehPtType = 0
-       self.dragCoef = 0
-       self.frontalAreaM2 = 0
-       self.gliderKg = 0
-       self.vehCgM = 0
-       self.driveAxleWeightFrac = 0
-       self.wheelBaseM = 0
-       self.cargoKg = 0
-       self.vehOverrideKg = 0
-       self.maxFuelStorKw = 0
-       self.fuelStorSecsToPeakPwr = 0
-       self.fuelStorKwh = 0
-       self.fuelStorKwhPerKg = 0
-       self.maxFuelConvKw = 0
-       self.fcEffType = 0
-       self.fcAbsEffImpr = 0
-       self.fuelConvSecsToPeakPwr = 0
-       self.fuelConvBaseKg = 0
-       self.fuelConvKwPerKg = 0
-       self.maxMotorKw = 0
-       self.motorPeakEff = 0
-       self.motorSecsToPeakPwr = 0
-       self.mcPeKgPerKw = 0
-       self.mcPeBaseKg = 0
-       self.maxEssKw = 0
-       self.maxEssKwh = 0
-       self.essKgPerKwh = 0
-       self.essBaseKg = 0
-       self.essRoundTripEff = 0
-       self.essLifeCoefA = 0
-       self.essLifeCoefB = 0
-       self.wheelInertiaKgM2 = 0
-       self.numWheels = 0
-       self.wheelRrCoef = 0
-       self.wheelRadiusM = 0
-       self.wheelCoefOfFric = 0
-       self.minSoc = 0
-       self.maxSoc = 0
-       self.essDischgToFcMaxEffPerc = 0
-       self.essChgToFcMaxEffPerc = 0
-       self.maxAccelBufferMph = 0
-       self.maxAccelBufferPercOfUseableSoc = 0
-       self.percHighAccBuf = 0
-       self.mphFcOn = 0
-       self.kwDemandFcOn = 0
-       self.altEff = 0
-       self.chgEff = 0
-       self.auxKw = 0
-       self.forceAuxOnFC = False
-       self.transKg = 0
-       self.transEff = 0
-       self.compMassMultiplier = 0
-       self.essToFuelOkError = 0
-       self.maxRegen = 0
-       self.valUddsMpgge = 0
-       self.valHwyMpgge = 0
-       self.valCombMpgge = 0
-       self.valUddsKwhPerMile = 0
-       self.valHwyKwhPerMile = 0
-       self.valCombKwhPerMile = 0
-       self.valCdRangeMi = 0
-       self.valConst65MphKwhPerMile = 0
-       self.valConst60MphKwhPerMile = 0
-       self.valConst55MphKwhPerMile = 0
-       self.valConst45MphKwhPerMile = 0
-       self.valUnadjUddsKwhPerMile = 0
-       self.valUnadjHwyKwhPerMile = 0
-       self.val0To60Mph = 0
-       self.valEssLifeMiles = 0
-       self.valRangeMiles = 0
-       self.valVehBaseCost = 0
-       self.valMsrp = 0
-       self.minFcTimeOn = 0
-       self.idleFcKw = 0
-       self.MaxRoadwayChgKw = np.zeros(6, dtype=np.float32)
-       self.chargingOn = False
-       self.noElecSys = False
-       self.noElecAux = False
-       self.vehTypeSelection = 0
-       self.fcEffArray = np.zeros(100, dtype=np.float32)
-       self.fcKwOutArray = np.zeros(100, dtype=np.float32)
-       self.maxFcEffKw = 0
-       self.fcMaxOutkW = 0
-       self.mcKwInArray = np.zeros(101, dtype=np.float32)
-       self.mcKwOutArray = np.zeros(101, dtype=np.float32)
-       self.mcMaxElecInKw = 0
-       self.mcFullEffArray = np.zeros(101, dtype=np.float32)
-       self.mcEffArray = np.zeros(11, dtype=np.float32)
-       self.regenA = 0
-       self.regenB = 0
-       self.vehKg = 0
-       self.maxTracMps2 = 0
-       self.maxRegenKwh = 0
+        """This method initialized type numpy arrays as required by
+        numba jitclass."""
+        self.Selection = 0
+        self.Scenario_name = 'n/a'
+        self.vehPtType = 0
+        self.dragCoef = 0
+        self.frontalAreaM2 = 0
+        self.gliderKg = 0
+        self.vehCgM = 0
+        self.driveAxleWeightFrac = 0
+        self.wheelBaseM = 0
+        self.cargoKg = 0
+        self.vehOverrideKg = 0
+        self.maxFuelStorKw = 0
+        self.fuelStorSecsToPeakPwr = 0
+        self.fuelStorKwh = 0
+        self.fuelStorKwhPerKg = 0
+        self.maxFuelConvKw = 0
+        self.fcEffType = 0
+        self.fcAbsEffImpr = 0
+        self.fuelConvSecsToPeakPwr = 0
+        self.fuelConvBaseKg = 0
+        self.fuelConvKwPerKg = 0
+        self.maxMotorKw = 0
+        self.motorPeakEff = 0
+        self.motorSecsToPeakPwr = 0
+        self.mcPeKgPerKw = 0
+        self.mcPeBaseKg = 0
+        self.maxEssKw = 0
+        self.maxEssKwh = 0
+        self.essKgPerKwh = 0
+        self.essBaseKg = 0
+        self.essRoundTripEff = 0
+        self.essLifeCoefA = 0
+        self.essLifeCoefB = 0
+        self.wheelInertiaKgM2 = 0
+        self.numWheels = 0
+        self.wheelRrCoef = 0
+        self.wheelRadiusM = 0
+        self.wheelCoefOfFric = 0
+        self.minSoc = 0
+        self.maxSoc = 0
+        self.essDischgToFcMaxEffPerc = 0
+        self.essChgToFcMaxEffPerc = 0
+        self.maxAccelBufferMph = 0
+        self.maxAccelBufferPercOfUseableSoc = 0
+        self.percHighAccBuf = 0
+        self.mphFcOn = 0
+        self.kwDemandFcOn = 0
+        self.altEff = 0
+        self.chgEff = 0
+        self.auxKw = 0
+        self.forceAuxOnFC = False
+        self.transKg = 0
+        self.transEff = 0
+        self.compMassMultiplier = 0
+        self.essToFuelOkError = 0
+        self.maxRegen = 0
+        self.valUddsMpgge = 0
+        self.valHwyMpgge = 0
+        self.valCombMpgge = 0
+        self.valUddsKwhPerMile = 0
+        self.valHwyKwhPerMile = 0
+        self.valCombKwhPerMile = 0
+        self.valCdRangeMi = 0
+        self.valConst65MphKwhPerMile = 0
+        self.valConst60MphKwhPerMile = 0
+        self.valConst55MphKwhPerMile = 0
+        self.valConst45MphKwhPerMile = 0
+        self.valUnadjUddsKwhPerMile = 0
+        self.valUnadjHwyKwhPerMile = 0
+        self.val0To60Mph = 0
+        self.valEssLifeMiles = 0
+        self.valRangeMiles = 0
+        self.valVehBaseCost = 0
+        self.valMsrp = 0
+        self.minFcTimeOn = 0
+        self.idleFcKw = 0
+        self.MaxRoadwayChgKw = np.zeros(6, dtype=np.float32)
+        self.chargingOn = False
+        self.noElecSys = False
+        self.noElecAux = False
+        self.vehTypeSelection = 0
+        self.fcEffArray = np.zeros(100, dtype=np.float32)
+        self.fcKwOutArray = np.zeros(100, dtype=np.float32)
+        self.maxFcEffKw = 0
+        self.fcMaxOutkW = 0
+        self.mcKwInArray = np.zeros(101, dtype=np.float32)
+        self.mcKwOutArray = np.zeros(101, dtype=np.float32)
+        self.mcMaxElecInKw = 0
+        self.mcFullEffArray = np.zeros(101, dtype=np.float32)
+        self.mcEffArray = np.zeros(11, dtype=np.float32)
+        self.regenA = 0
+        self.regenB = 0
+        self.vehKg = 0
+        self.maxTracMps2 = 0
+        self.maxRegenKwh = 0

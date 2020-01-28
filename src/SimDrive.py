@@ -17,201 +17,11 @@ import LoadData
 import importlib
 importlib.reload(LoadData)
 
-# list of array attributes in SimDrive class
-attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
-            'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
-            'essLimMcRegenPercKw', 'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut', 'cycDragKw', 'cycAccelKw', 'cycAscentKw', 
-            'cycTracKwReq', 'curMaxTracKw', 'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
-            'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 'transKwOutAch', 'transKwInAch', 
-            'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
-            'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
-            'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
-            'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 
-            'desiredEssKwOutForAE', 'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 
-            'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 
-            'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 
-            'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 
-             'curMaxRoadwayChgKw']
+class SimDriveCore(object):
+    """Class containing methods for running FASTSim iteration.  This class needs to be extended 
+    by a class with an init method before being runnable."""
 
-spec = [(attr, float32[:]) for attr in attr_list]
-spec.append(('fcForcedOn', bool_[:]))
-spec.append(('fcForcedState', int32[:]))
-# spec.append(('len_cyc', int32))
-# cyc_type = deferred_type()
-# cyc_type.define(LoadData.TypedCycle.class_type.instance_type)
-# spec.append(('cyc', cyc_type))
-# veh_type = deferred_type()
-# veh_type.define(LoadData.TypedVehicle.class_type.instance_type)
-# spec.append(('veh', veh_type))
-
-@jitclass(spec)
-class SimDrive(object):
-    """Class containing methods for running FASTSim vehicle fuel economy simulations."""
-    def __init__(self, len_cyc):
-        """Initializes arrays for specific cycle
-        Arguments:
-        -----------
-        len_cyc: instance of LoadData.Cycle class
-        """
-        # Component Limits -- calculated dynamically"
-        self.curMaxFsKwOut = np.zeros(len_cyc, dtype=np.float32)
-        self.fcTransLimKw = np.zeros(len_cyc, dtype=np.float32)
-        self.fcFsLimKw = np.zeros(len_cyc, dtype=np.float32)
-        self.fcMaxKwIn = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxFcKwOut = np.zeros(len_cyc, dtype=np.float32)
-        self.essCapLimDischgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxEssKwOut = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxAvailElecKw = np.zeros(len_cyc, dtype=np.float32)
-        self.essCapLimChgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxEssChgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxElecKw = np.zeros(len_cyc, dtype=np.float32)
-        self.mcElecInLimKw = np.zeros(len_cyc, dtype=np.float32)
-        self.mcTransiLimKw = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxMcKwOut = np.zeros(len_cyc, dtype=np.float32)
-        self.essLimMcRegenPercKw = np.zeros(len_cyc, dtype=np.float32)
-        self.essLimMcRegenKw = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxMechMcKwIn = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxTransKwOut = np.zeros(len_cyc, dtype=np.float32)
-
-        ### Drive Train
-        self.cycDragKw = np.zeros(len_cyc, dtype=np.float32)
-        self.cycAccelKw = np.zeros(len_cyc, dtype=np.float32)
-        self.cycAscentKw = np.zeros(len_cyc, dtype=np.float32)
-        self.cycTracKwReq = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxTracKw = np.zeros(len_cyc, dtype=np.float32)
-        self.spareTracKw = np.zeros(len_cyc, dtype=np.float32)
-        self.cycRrKw = np.zeros(len_cyc, dtype=np.float32)
-        self.cycWheelRadPerSec = np.zeros(len_cyc, dtype=np.float32)
-        self.cycTireInertiaKw = np.zeros(len_cyc, dtype=np.float32)
-        self.cycWheelKwReq = np.zeros(len_cyc, dtype=np.float32)
-        self.regenContrLimKwPerc = np.zeros(len_cyc, dtype=np.float32)
-        self.cycRegenBrakeKw = np.zeros(len_cyc, dtype=np.float32)
-        self.cycFricBrakeKw = np.zeros(len_cyc, dtype=np.float32)
-        self.cycTransKwOutReq = np.zeros(len_cyc, dtype=np.float32)
-        self.cycMet = np.zeros(len_cyc, dtype=np.float32)
-        self.transKwOutAch = np.zeros(len_cyc, dtype=np.float32)
-        self.transKwInAch = np.zeros(len_cyc, dtype=np.float32)
-        self.curSocTarget = np.zeros(len_cyc, dtype=np.float32)
-        self.minMcKw2HelpFc = np.zeros(len_cyc, dtype=np.float32)
-        self.mcMechKwOutAch = np.zeros(len_cyc, dtype=np.float32)
-        self.mcElecKwInAch = np.zeros(len_cyc, dtype=np.float32)
-        self.auxInKw = np.zeros(len_cyc, dtype=np.float32)
-        self.roadwayChgKwOutAch = np.zeros(len_cyc, dtype=np.float32)
-        self.minEssKw2HelpFc = np.zeros(len_cyc, dtype=np.float32)
-        self.essKwOutAch = np.zeros(len_cyc, dtype=np.float32)
-        self.fcKwOutAch = np.zeros(len_cyc, dtype=np.float32)
-        self.fcKwOutAch_pct = np.zeros(len_cyc, dtype=np.float32)
-        self.fcKwInAch = np.zeros(len_cyc, dtype=np.float32)
-        self.fsKwOutAch = np.zeros(len_cyc, dtype=np.float32)
-        self.fsKwhOutAch = np.zeros(len_cyc, dtype=np.float32)
-        self.essCurKwh = np.zeros(len_cyc, dtype=np.float32)
-        self.soc = np.zeros(len_cyc, dtype=np.float32)
-
-        # Vehicle Attributes, Control Variables
-        self.regenBufferSoc = np.zeros(len_cyc, dtype=np.float32)
-        self.essRegenBufferDischgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.maxEssRegenBufferChgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.essAccelBufferChgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.accelBufferSoc = np.zeros(len_cyc, dtype=np.float32)
-        self.maxEssAccelBufferDischgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.essAccelRegenDischgKw = np.zeros(len_cyc, dtype=np.float32)
-        self.mcElectInKwForMaxFcEff = np.zeros(len_cyc, dtype=np.float32)
-        self.electKwReq4AE = np.zeros(len_cyc, dtype=np.float32)
-        self.canPowerAllElectrically = np.zeros(len_cyc, dtype=np.float32)
-        self.desiredEssKwOutForAE = np.zeros(len_cyc, dtype=np.float32)
-        self.essAEKwOut = np.zeros(len_cyc, dtype=np.float32)
-        self.erAEKwOut = np.zeros(len_cyc, dtype=np.float32)
-        self.essDesiredKw4FcEff = np.zeros(len_cyc, dtype=np.float32)
-        self.essKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxMcElecKwIn = np.zeros(len_cyc, dtype=np.float32)
-        self.fcKwGapFrEff = np.zeros(len_cyc, dtype=np.float32)
-        self.erKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
-        self.mcElecKwInIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
-        self.mcKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
-        self.fcForcedOn = np.array([False] * len_cyc, dtype=np.bool_)
-        self.fcForcedState = np.zeros(len_cyc, dtype=np.int32)
-        self.mcMechKw4ForcedFc = np.zeros(len_cyc, dtype=np.float32)
-        self.fcTimeOn = np.zeros(len_cyc, dtype=np.float32)
-        self.prevfcTimeOn = np.zeros(len_cyc, dtype=np.float32)
-        
-        ### Additional Variables
-        self.mpsAch = np.zeros(len_cyc, dtype=np.float32)
-        self.mphAch = np.zeros(len_cyc, dtype=np.float32)
-        self.distMeters = np.zeros(len_cyc, dtype=np.float32)
-        self.distMiles = np.zeros(len_cyc, dtype=np.float32)
-        self.highAccFcOnTag = np.zeros(len_cyc, dtype=np.float32)
-        self.reachedBuff = np.zeros(len_cyc, dtype=np.float32)
-        self.maxTracMps = np.zeros(len_cyc, dtype=np.float32)
-        self.addKwh = np.zeros(len_cyc, dtype=np.float32)
-        self.dodCycs = np.zeros(len_cyc, dtype=np.float32)
-        self.essPercDeadArray = np.zeros(len_cyc, dtype=np.float32)
-        self.dragKw = np.zeros(len_cyc, dtype=np.float32)
-        self.essLossKw = np.zeros(len_cyc, dtype=np.float32)
-        self.accelKw = np.zeros(len_cyc, dtype=np.float32)
-        self.ascentKw = np.zeros(len_cyc, dtype=np.float32)
-        self.rrKw = np.zeros(len_cyc, dtype=np.float32)
-        self.motor_index_debug = np.zeros(len_cyc, dtype=np.float32)
-        self.debug_flag = np.zeros(len_cyc, dtype=np.float32)
-        self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float32)
-
-    def sim_drive(self, cyc, veh, initSoc=np.nan):
-        """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
-        Arguments
-        ------------
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
-        initSoc(optional): initial SOC for electrified vehicles"""
-
-        if initSoc != np.nan:
-            if initSoc > 1.0 or initSoc < 0.0:
-                print('Must enter a valid initial SOC between 0.0 and 1.0')
-                print('Running standard initial SOC controls')
-                initSoc = np.nan
-    
-        if veh.vehPtType == 1: # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = 0.0
-            
-            self.sim_drive_sub(cyc, veh, initSoc)
-
-        elif veh.vehPtType == 2 and initSoc == np.nan:  # HEV 
-
-            #####################################
-            ### Charge Balancing Vehicle SOC ###
-            #####################################
-
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
-            # Iterating until tolerance met or 30 attempts made.
-
-            initSoc = (veh.maxSoc + veh.minSoc) / 2.0
-            ess2fuelKwh = 1.0
-            sim_count = 0
-            while ess2fuelKwh > veh.essToFuelOkError and sim_count < 30:
-                sim_count += 1
-                self.sim_drive_sub(cyc, veh, initSoc)
-                fuelKj = np.sum(self.fsKwOutAch * cyc.secs)
-                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * cyc.secs)
-                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) * 
-                    veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
-                initSoc = min(1.0, max(0.0, self.soc[-1]))
-                        
-            self.sim_drive_sub(cyc, veh, initSoc)
-
-        elif (veh.vehPtType == 3 and initSoc == np.nan) or (veh.vehPtType == 4 and initSoc == np.nan): # PHEV and BEV
-
-            # If EV, initializing initial SOC to maximum SOC.
-
-            initSoc = veh.maxSoc
-            
-            self.sim_drive_sub(cyc, veh, initSoc)
-
-        else:
-            
-            self.sim_drive_sub(cyc, veh, initSoc)
-
-    def sim_drive_sub(self, cyc, veh, initSoc):
+    def sim_drive_sub(self, cyc, veh, initSoc=None):
         """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and performs a backward facing 
         powertrain simulation. Method 'sim_drive' runs this to 
@@ -912,8 +722,370 @@ class SimDrive(object):
         else:
             self.fcTimeOn[i] = self.fcTimeOn[i-1] + cyc.secs[i]
 
+class SimDriveClassic(SimDriveCore):
+    """Class containing methods for running FASTSim vehicle 
+    fuel economy simulations. This class is not compiled and will 
+    run slower for large batch runs."""
+
+    def __init__(self, len_cyc):
+        """Initializes numpy arrays for specific cycle
+        Arguments:
+        -----------
+        len_cyc: instance of LoadData.Cycle class
+        """
+        # Component Limits -- calculated dynamically"
+        self.curMaxFsKwOut = np.zeros(len_cyc)
+        self.fcTransLimKw = np.zeros(len_cyc)
+        self.fcFsLimKw = np.zeros(len_cyc)
+        self.fcMaxKwIn = np.zeros(len_cyc)
+        self.curMaxFcKwOut = np.zeros(len_cyc)
+        self.essCapLimDischgKw = np.zeros(len_cyc)
+        self.curMaxEssKwOut = np.zeros(len_cyc)
+        self.curMaxAvailElecKw = np.zeros(len_cyc)
+        self.essCapLimChgKw = np.zeros(len_cyc)
+        self.curMaxEssChgKw = np.zeros(len_cyc)
+        self.curMaxElecKw = np.zeros(len_cyc)
+        self.mcElecInLimKw = np.zeros(len_cyc)
+        self.mcTransiLimKw = np.zeros(len_cyc)
+        self.curMaxMcKwOut = np.zeros(len_cyc)
+        self.essLimMcRegenPercKw = np.zeros(len_cyc)
+        self.essLimMcRegenKw = np.zeros(len_cyc)
+        self.curMaxMechMcKwIn = np.zeros(len_cyc)
+        self.curMaxTransKwOut = np.zeros(len_cyc)
+
+        ### Drive Train
+        self.cycDragKw = np.zeros(len_cyc)
+        self.cycAccelKw = np.zeros(len_cyc)
+        self.cycAscentKw = np.zeros(len_cyc)
+        self.cycTracKwReq = np.zeros(len_cyc)
+        self.curMaxTracKw = np.zeros(len_cyc)
+        self.spareTracKw = np.zeros(len_cyc)
+        self.cycRrKw = np.zeros(len_cyc)
+        self.cycWheelRadPerSec = np.zeros(len_cyc)
+        self.cycTireInertiaKw = np.zeros(len_cyc)
+        self.cycWheelKwReq = np.zeros(len_cyc)
+        self.regenContrLimKwPerc = np.zeros(len_cyc)
+        self.cycRegenBrakeKw = np.zeros(len_cyc)
+        self.cycFricBrakeKw = np.zeros(len_cyc)
+        self.cycTransKwOutReq = np.zeros(len_cyc)
+        self.cycMet = np.zeros(len_cyc)
+        self.transKwOutAch = np.zeros(len_cyc)
+        self.transKwInAch = np.zeros(len_cyc)
+        self.curSocTarget = np.zeros(len_cyc)
+        self.minMcKw2HelpFc = np.zeros(len_cyc)
+        self.mcMechKwOutAch = np.zeros(len_cyc)
+        self.mcElecKwInAch = np.zeros(len_cyc)
+        self.auxInKw = np.zeros(len_cyc)
+        self.roadwayChgKwOutAch = np.zeros(len_cyc)
+        self.minEssKw2HelpFc = np.zeros(len_cyc)
+        self.essKwOutAch = np.zeros(len_cyc)
+        self.fcKwOutAch = np.zeros(len_cyc)
+        self.fcKwOutAch_pct = np.zeros(len_cyc)
+        self.fcKwInAch = np.zeros(len_cyc)
+        self.fsKwOutAch = np.zeros(len_cyc)
+        self.fsKwhOutAch = np.zeros(len_cyc)
+        self.essCurKwh = np.zeros(len_cyc)
+        self.soc = np.zeros(len_cyc)
+
+        # Vehicle Attributes, Control Variables
+        self.regenBufferSoc = np.zeros(len_cyc)
+        self.essRegenBufferDischgKw = np.zeros(len_cyc)
+        self.maxEssRegenBufferChgKw = np.zeros(len_cyc)
+        self.essAccelBufferChgKw = np.zeros(len_cyc)
+        self.accelBufferSoc = np.zeros(len_cyc)
+        self.maxEssAccelBufferDischgKw = np.zeros(len_cyc)
+        self.essAccelRegenDischgKw = np.zeros(len_cyc)
+        self.mcElectInKwForMaxFcEff = np.zeros(len_cyc)
+        self.electKwReq4AE = np.zeros(len_cyc)
+        self.canPowerAllElectrically = np.zeros(len_cyc)
+        self.desiredEssKwOutForAE = np.zeros(len_cyc)
+        self.essAEKwOut = np.zeros(len_cyc)
+        self.erAEKwOut = np.zeros(len_cyc)
+        self.essDesiredKw4FcEff = np.zeros(len_cyc)
+        self.essKwIfFcIsReq = np.zeros(len_cyc)
+        self.curMaxMcElecKwIn = np.zeros(len_cyc)
+        self.fcKwGapFrEff = np.zeros(len_cyc)
+        self.erKwIfFcIsReq = np.zeros(len_cyc)
+        self.mcElecKwInIfFcIsReq = np.zeros(len_cyc)
+        self.mcKwIfFcIsReq = np.zeros(len_cyc)
+        self.fcForcedOn = np.array([False] * len_cyc)
+        self.fcForcedState = np.zeros(len_cyc)
+        self.mcMechKw4ForcedFc = np.zeros(len_cyc)
+        self.fcTimeOn = np.zeros(len_cyc)
+        self.prevfcTimeOn = np.zeros(len_cyc)
+
+        ### Additional Variables
+        self.mpsAch = np.zeros(len_cyc)
+        self.mphAch = np.zeros(len_cyc)
+        self.distMeters = np.zeros(len_cyc)
+        self.distMiles = np.zeros(len_cyc)
+        self.highAccFcOnTag = np.zeros(len_cyc)
+        self.reachedBuff = np.zeros(len_cyc)
+        self.maxTracMps = np.zeros(len_cyc)
+        self.addKwh = np.zeros(len_cyc)
+        self.dodCycs = np.zeros(len_cyc)
+        self.essPercDeadArray = np.zeros(len_cyc)
+        self.dragKw = np.zeros(len_cyc)
+        self.essLossKw = np.zeros(len_cyc)
+        self.accelKw = np.zeros(len_cyc)
+        self.ascentKw = np.zeros(len_cyc)
+        self.rrKw = np.zeros(len_cyc)
+        self.motor_index_debug = np.zeros(len_cyc)
+        self.debug_flag = np.zeros(len_cyc)
+        self.curMaxRoadwayChgKw = np.zeros(len_cyc)
+
+    def sim_drive(self, cyc, veh, initSoc=None):
+        """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
+        Arguments
+        ------------
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: (optional) initial SOC for electrified vehicles.  
+            Must be between 0 and 1."""
+
+        if initSoc != None:
+            if initSoc > 1.0 or initSoc < 0.0:
+                print('Must enter a valid initial SOC between 0.0 and 1.0')
+                print('Running standard initial SOC controls')
+                initSoc = None
+
+        if veh.vehPtType == 1:  # Conventional
+
+            # If no EV / Hybrid components, no SOC considerations.
+
+            initSoc = 0.0
+
+            self.sim_drive_sub(cyc, veh, initSoc)
+
+        elif veh.vehPtType == 2 and initSoc == None:  # HEV
+
+            #####################################
+            ### Charge Balancing Vehicle SOC ###
+            #####################################
+
+            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Iterating until tolerance met or 30 attempts made.
+
+            initSoc = (veh.maxSoc + veh.minSoc) / 2.0
+            ess2fuelKwh = 1.0
+            sim_count = 0
+            while ess2fuelKwh > veh.essToFuelOkError and sim_count < 30:
+                sim_count += 1
+                self.sim_drive_sub(cyc, veh, initSoc)
+                fuelKj = np.sum(self.fsKwOutAch * cyc.secs)
+                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * cyc.secs)
+                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
+                                     veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
+                initSoc = min(1.0, max(0.0, self.soc[-1]))
+
+            self.sim_drive_sub(cyc, veh, initSoc)
+
+        elif (veh.vehPtType == 3 and initSoc == None) or (veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
+
+            # If EV, initializing initial SOC to maximum SOC.
+
+            initSoc = veh.maxSoc
+
+            self.sim_drive_sub(cyc, veh, initSoc)
+
+        else:
+
+            self.sim_drive_sub(cyc, veh, initSoc)
+
+# list of array attributes in SimDrive class for generating list of type specification tuples
+attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
+            'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
+            'essLimMcRegenPercKw', 'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut', 'cycDragKw', 'cycAccelKw', 'cycAscentKw', 
+            'cycTracKwReq', 'curMaxTracKw', 'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
+            'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 'transKwOutAch', 'transKwInAch', 
+            'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
+            'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
+            'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
+            'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 
+            'desiredEssKwOutForAE', 'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 
+            'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 
+            'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 
+            'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 
+             'curMaxRoadwayChgKw']
+
+spec = [(attr, float32[:]) for attr in attr_list]
+spec.append(('fcForcedOn', bool_[:]))
+spec.append(('fcForcedState', int32[:]))
+
+@jitclass(spec)
+class SimDriveJit(SimDriveCore):
+    """Class compiled using numba just-in-time compilation containing methods 
+    for running FASTSim vehicle fuel economy simulations. This class will be 
+    faster for large batch runs."""
+    def __init__(self, len_cyc):
+        """Initializes typed numpy arrays for specific cycle
+        Arguments:
+        -----------
+        len_cyc: instance of LoadData.TypedCycle class generated from the 
+        LoadData.Cycle.get_numba_cyc method.  
+        """
+        # Component Limits -- calculated dynamically"
+        self.curMaxFsKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.fcTransLimKw = np.zeros(len_cyc, dtype=np.float32)
+        self.fcFsLimKw = np.zeros(len_cyc, dtype=np.float32)
+        self.fcMaxKwIn = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxFcKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.essCapLimDischgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxEssKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxAvailElecKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essCapLimChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxEssChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxElecKw = np.zeros(len_cyc, dtype=np.float32)
+        self.mcElecInLimKw = np.zeros(len_cyc, dtype=np.float32)
+        self.mcTransiLimKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxMcKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.essLimMcRegenPercKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essLimMcRegenKw = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxMechMcKwIn = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxTransKwOut = np.zeros(len_cyc, dtype=np.float32)
+
+        ### Drive Train
+        self.cycDragKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycAccelKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycAscentKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycTracKwReq = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxTracKw = np.zeros(len_cyc, dtype=np.float32)
+        self.spareTracKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycRrKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycWheelRadPerSec = np.zeros(len_cyc, dtype=np.float32)
+        self.cycTireInertiaKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycWheelKwReq = np.zeros(len_cyc, dtype=np.float32)
+        self.regenContrLimKwPerc = np.zeros(len_cyc, dtype=np.float32)
+        self.cycRegenBrakeKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycFricBrakeKw = np.zeros(len_cyc, dtype=np.float32)
+        self.cycTransKwOutReq = np.zeros(len_cyc, dtype=np.float32)
+        self.cycMet = np.zeros(len_cyc, dtype=np.float32)
+        self.transKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.transKwInAch = np.zeros(len_cyc, dtype=np.float32)
+        self.curSocTarget = np.zeros(len_cyc, dtype=np.float32)
+        self.minMcKw2HelpFc = np.zeros(len_cyc, dtype=np.float32)
+        self.mcMechKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.mcElecKwInAch = np.zeros(len_cyc, dtype=np.float32)
+        self.auxInKw = np.zeros(len_cyc, dtype=np.float32)
+        self.roadwayChgKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.minEssKw2HelpFc = np.zeros(len_cyc, dtype=np.float32)
+        self.essKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.fcKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.fcKwOutAch_pct = np.zeros(len_cyc, dtype=np.float32)
+        self.fcKwInAch = np.zeros(len_cyc, dtype=np.float32)
+        self.fsKwOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.fsKwhOutAch = np.zeros(len_cyc, dtype=np.float32)
+        self.essCurKwh = np.zeros(len_cyc, dtype=np.float32)
+        self.soc = np.zeros(len_cyc, dtype=np.float32)
+
+        # Vehicle Attributes, Control Variables
+        self.regenBufferSoc = np.zeros(len_cyc, dtype=np.float32)
+        self.essRegenBufferDischgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.maxEssRegenBufferChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essAccelBufferChgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.accelBufferSoc = np.zeros(len_cyc, dtype=np.float32)
+        self.maxEssAccelBufferDischgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essAccelRegenDischgKw = np.zeros(len_cyc, dtype=np.float32)
+        self.mcElectInKwForMaxFcEff = np.zeros(len_cyc, dtype=np.float32)
+        self.electKwReq4AE = np.zeros(len_cyc, dtype=np.float32)
+        self.canPowerAllElectrically = np.zeros(len_cyc, dtype=np.float32)
+        self.desiredEssKwOutForAE = np.zeros(len_cyc, dtype=np.float32)
+        self.essAEKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.erAEKwOut = np.zeros(len_cyc, dtype=np.float32)
+        self.essDesiredKw4FcEff = np.zeros(len_cyc, dtype=np.float32)
+        self.essKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxMcElecKwIn = np.zeros(len_cyc, dtype=np.float32)
+        self.fcKwGapFrEff = np.zeros(len_cyc, dtype=np.float32)
+        self.erKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
+        self.mcElecKwInIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
+        self.mcKwIfFcIsReq = np.zeros(len_cyc, dtype=np.float32)
+        self.fcForcedOn = np.array([False] * len_cyc, dtype=np.bool_)
+        self.fcForcedState = np.zeros(len_cyc, dtype=np.int32)
+        self.mcMechKw4ForcedFc = np.zeros(len_cyc, dtype=np.float32)
+        self.fcTimeOn = np.zeros(len_cyc, dtype=np.float32)
+        self.prevfcTimeOn = np.zeros(len_cyc, dtype=np.float32)
+        
+        ### Additional Variables
+        self.mpsAch = np.zeros(len_cyc, dtype=np.float32)
+        self.mphAch = np.zeros(len_cyc, dtype=np.float32)
+        self.distMeters = np.zeros(len_cyc, dtype=np.float32)
+        self.distMiles = np.zeros(len_cyc, dtype=np.float32)
+        self.highAccFcOnTag = np.zeros(len_cyc, dtype=np.float32)
+        self.reachedBuff = np.zeros(len_cyc, dtype=np.float32)
+        self.maxTracMps = np.zeros(len_cyc, dtype=np.float32)
+        self.addKwh = np.zeros(len_cyc, dtype=np.float32)
+        self.dodCycs = np.zeros(len_cyc, dtype=np.float32)
+        self.essPercDeadArray = np.zeros(len_cyc, dtype=np.float32)
+        self.dragKw = np.zeros(len_cyc, dtype=np.float32)
+        self.essLossKw = np.zeros(len_cyc, dtype=np.float32)
+        self.accelKw = np.zeros(len_cyc, dtype=np.float32)
+        self.ascentKw = np.zeros(len_cyc, dtype=np.float32)
+        self.rrKw = np.zeros(len_cyc, dtype=np.float32)
+        self.motor_index_debug = np.zeros(len_cyc, dtype=np.float32)
+        self.debug_flag = np.zeros(len_cyc, dtype=np.float32)
+        self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float32)
+
+    def sim_drive(self, cyc, veh, initSoc):
+        """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
+        Arguments
+        ------------
+        cyc: instance of LoadData.Cycle class
+        veh: instance of LoadData.Vehicle class
+        initSoc: initial SOC for electrified vehicles.  
+            Use -1 for default value.  Otherwise, must be between 0 and 1."""
+
+        if initSoc != -1:
+            if initSoc > 1.0 or initSoc < 0.0:
+                print('Must enter a valid initial SOC between 0.0 and 1.0')
+                print('Running standard initial SOC controls')
+                initSoc = -1
+    
+        if veh.vehPtType == 1: # Conventional
+
+            # If no EV / Hybrid components, no SOC considerations.
+
+            initSoc = 0.0
+            
+            self.sim_drive_sub(cyc, veh, initSoc)
+
+        elif veh.vehPtType == 2 and initSoc == -1:  # HEV 
+
+            #####################################
+            ### Charge Balancing Vehicle SOC ###
+            #####################################
+
+            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Iterating until tolerance met or 30 attempts made.
+
+            initSoc = (veh.maxSoc + veh.minSoc) / 2.0
+            ess2fuelKwh = 1.0
+            sim_count = 0
+            while ess2fuelKwh > veh.essToFuelOkError and sim_count < 30:
+                sim_count += 1
+                self.sim_drive_sub(cyc, veh, initSoc)
+                fuelKj = np.sum(self.fsKwOutAch * cyc.secs)
+                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * cyc.secs)
+                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) * 
+                    veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
+                initSoc = min(1.0, max(0.0, self.soc[-1]))
+                        
+            self.sim_drive_sub(cyc, veh, initSoc)
+
+        elif (veh.vehPtType == 3 and initSoc == -1) or (veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
+
+            # If EV, initializing initial SOC to maximum SOC.
+
+            initSoc = veh.maxSoc
+            
+            self.sim_drive_sub(cyc, veh, initSoc)
+
+        else:
+            
+            self.sim_drive_sub(cyc, veh, initSoc)
+
 class SimDrivePost(object):
-    "Class for post-processing of SimDrive instance"
+    """Class for post-processing of SimDrive instance.  Requires already-run 
+    SimDriveJit or SimDriveClassic instance."""
     def __init__(self, sim_drive):
         """Arguments:
         ---------------
