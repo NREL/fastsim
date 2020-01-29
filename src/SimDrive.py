@@ -426,12 +426,13 @@ class SimDriveCore(object):
 
         self.prevfcTimeOn[i] = self.fcTimeOn[i-1]
 
+        # some conditions in the following if statement have a buffer of 1e-6 to prevent false positives/negatives because these have been encountered in practice.   
         if veh.maxFuelConvKw == 0:
-            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and self.transKwInAch[i] <= self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0)
+            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0)
 
         else:
-            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and self.transKwInAch[i] <=self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] \
-                or veh.maxFuelConvKw == 0) and (cyc.cycMph[i] - 0.00001 <=veh.mphFcOn or veh.chargingOn) and self.electKwReq4AE[i]<=veh.kwDemandFcOn
+            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i]
+                or veh.maxFuelConvKw == 0) and ((cyc.cycMph[i] - 1e-6) <=veh.mphFcOn or veh.chargingOn) and self.electKwReq4AE[i]<=veh.kwDemandFcOn
 
         if self.canPowerAllElectrically[i]:
 
@@ -452,7 +453,7 @@ class SimDriveCore(object):
                 self.desiredEssKwOutForAE[i] = self.transKwInAch[i] + \
                     self.auxInKw[i] - self.curMaxRoadwayChgKw[i]
 
-        else:
+        else:   
             self.desiredEssKwOutForAE[i] = 0
 
         if self.canPowerAllElectrically[i]:
@@ -797,7 +798,7 @@ class SimDriveClassic(SimDriveCore):
         self.essAccelRegenDischgKw = np.zeros(len_cyc)
         self.mcElectInKwForMaxFcEff = np.zeros(len_cyc)
         self.electKwReq4AE = np.zeros(len_cyc)
-        self.canPowerAllElectrically = np.zeros(len_cyc)
+        self.canPowerAllElectrically = np.array([False] * len_cyc)
         self.desiredEssKwOutForAE = np.zeros(len_cyc)
         self.essAEKwOut = np.zeros(len_cyc)
         self.erAEKwOut = np.zeros(len_cyc)
@@ -901,16 +902,17 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
             'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
             'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
             'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
-            'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'canPowerAllElectrically', 
-            'desiredEssKwOutForAE', 'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 
-            'erKwIfFcIsReq', 'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 
-            'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters', 'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 
-            'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw', 'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 
-             'curMaxRoadwayChgKw']
+            'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'desiredEssKwOutForAE', 
+            'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
+            'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
+            'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
+            'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw']
 
 spec = [(attr, float32[:]) for attr in attr_list]
-spec.append(('fcForcedOn', bool_[:]))
-spec.append(('fcForcedState', int32[:]))
+spec.extend([('fcForcedOn', bool_[:]),
+             ('fcForcedState', int32[:]),
+             ('canPowerAllElectrically', bool_[:])
+])
 
 @jitclass(spec)
 class SimDriveJit(SimDriveCore):
@@ -988,7 +990,8 @@ class SimDriveJit(SimDriveCore):
         self.essAccelRegenDischgKw = np.zeros(len_cyc, dtype=np.float32)
         self.mcElectInKwForMaxFcEff = np.zeros(len_cyc, dtype=np.float32)
         self.electKwReq4AE = np.zeros(len_cyc, dtype=np.float32)
-        self.canPowerAllElectrically = np.zeros(len_cyc, dtype=np.float32)
+        self.canPowerAllElectrically = np.array(
+            [False] * len_cyc, dtype=np.bool_)
         self.desiredEssKwOutForAE = np.zeros(len_cyc, dtype=np.float32)
         self.essAEKwOut = np.zeros(len_cyc, dtype=np.float32)
         self.erAEKwOut = np.zeros(len_cyc, dtype=np.float32)
