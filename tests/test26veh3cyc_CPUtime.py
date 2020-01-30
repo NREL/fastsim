@@ -30,16 +30,18 @@ cyc_jit = cyc.get_numba_cyc()
 iter = 0
 for vehno in vehicles:
     print('vehno =', vehno)
+    if vehno == 2:
+        t0a = time.time()
     for cycname in cycles:
         if not((vehno == 1) and (cycname == 'udds')):
             cyc.set_standard_cycle(cycname)
             cyc_jit = cyc.get_numba_cyc()
             veh.load_vnum(vehno)
             veh_jit = veh.get_numba_veh()
-        sim_drive = SimDrive.SimDrive(len(cyc.cycSecs))
-        sim_drive.sim_drive(cyc_jit, veh_jit)
-        # sim_drive.get_diagnostics(cyc)
+        sim_drive = SimDrive.SimDriveJit(len(cyc.cycSecs))
+        sim_drive.sim_drive(cyc_jit, veh_jit, -1)
 
 t1 = time.time()
 print()
 print('Elapsed time: ', round(t1 - t0, 2), 's')
+print('Elapsed time since first vehicle: ', round(t1 - t0a, 2), 's')

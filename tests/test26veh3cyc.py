@@ -15,6 +15,7 @@ importlib.reload(SimDrive)
 import LoadData
 importlib.reload(LoadData)
 
+use_jitclass = False
 
 t0 = time.time()
 
@@ -38,10 +39,15 @@ for vehno in vehicles:
             veh.load_vnum(vehno)
             veh_jit = veh.get_numba_veh()
 
-        sim_drive = SimDrive.SimDrive(len(cyc.cycSecs))
-        sim_drive.sim_drive(cyc_jit, veh_jit)
+        if use_jitclass:
+            sim_drive = SimDrive.SimDriveJit(len(cyc.cycSecs))
+            sim_drive.sim_drive(cyc_jit, veh_jit, -1)
+        else:
+            sim_drive = SimDrive.SimDriveClassic(len(cyc.cycSecs))
+            sim_drive.sim_drive(cyc_jit, veh_jit)
+            
         sim_drive_post = SimDrive.SimDrivePost(sim_drive)
-        sim_drive_post.set_battery_wear(veh)
+        # sim_drive_post.set_battery_wear(veh)
         sim_drive_post.set_energy_audit(cyc, veh)
         diagno = sim_drive_post.get_diagnostics(cyc)
         
@@ -79,7 +85,7 @@ df_err = df.copy()
 abs_err = []
 for idx in df.index:
     for col in df.columns[2:]:
-        if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=1e-6, abs_tol=1e-9)):
+        if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=1e-6, abs_tol=1e-6)):
             df_err.loc[idx, col] = (df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
             abs_err.append(np.abs(df_err.loc[idx, col]))
             print(str(round(df_err.loc[idx, col] * 100, 5)) + '% for')
@@ -92,4 +98,7 @@ for idx in df.index:
             df_err.loc[idx, col] = 0
 
 abs_err = np.array(abs_err)
-print('\nmax error =', str(round(abs_err.max() * 100, 4)) + '%')
+if len(abs_err) > 0:
+    print('\nmax error =', str(round(abs_err.max() * 100, 4)) + '%')
+else: 
+    print('No errors exceed the 1e-6 tolerance threshold.')

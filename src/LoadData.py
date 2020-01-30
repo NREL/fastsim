@@ -7,7 +7,7 @@ from Globals import *
 import numpy as np
 import re
 from numba import jitclass                 # import the decorator
-from numba import float32, int32, bool_    # import the types
+from numba import float64, int32, bool_    # import the types
 from numba import types
 
 class Cycle(object):
@@ -28,7 +28,7 @@ class Cycle(object):
         """Returns numba jitclass version of Cycle object."""
         numba_cyc = TypedCycle(len(self.cycSecs))
         for key in self.__dict__.keys():
-            numba_cyc.__setattr__(key, self.__getattribute__(key).astype(np.float32))
+            numba_cyc.__setattr__(key, self.__getattribute__(key).astype(np.float64))
         return numba_cyc
 
     def set_standard_cycle(self, std_cyc_name):
@@ -60,12 +60,12 @@ class Cycle(object):
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
 
 # type specifications for attributes of Cycle class
-cyc_spec = [('cycSecs', float32[:]),
-            ('cycMps', float32[:]),
-            ('cycGrade', float32[:]),
-            ('cycRoadType', float32[:]),
-            ('cycMph', float32[:]),
-            ('secs', float32[:])
+cyc_spec = [('cycSecs', float64[:]),
+            ('cycMps', float64[:]),
+            ('cycGrade', float64[:]),
+            ('cycRoadType', float64[:]),
+            ('cycMph', float64[:]),
+            ('secs', float64[:])
 ]
 
 @jitclass(cyc_spec)
@@ -74,12 +74,12 @@ class TypedCycle(object):
     def __init__(self, len_cyc):
         """This method initialized type numpy arrays as required by 
         numba jitclass."""
-        self.cycSecs = np.zeros(len_cyc, dtype=np.float32)
-        self.cycMps = np.zeros(len_cyc, dtype=np.float32)
-        self.cycGrade = np.zeros(len_cyc, dtype=np.float32)
-        self.cycRoadType = np.zeros(len_cyc, dtype=np.float32)
-        self.cycMph = np.zeros(len_cyc, dtype=np.float32)
-        self.secs = np.zeros(len_cyc, dtype=np.float32)
+        self.cycSecs = np.zeros(len_cyc, dtype=np.float64)
+        self.cycMps = np.zeros(len_cyc, dtype=np.float64)
+        self.cycGrade = np.zeros(len_cyc, dtype=np.float64)
+        self.cycRoadType = np.zeros(len_cyc, dtype=np.float64)
+        self.cycMph = np.zeros(len_cyc, dtype=np.float64)
+        self.secs = np.zeros(len_cyc, dtype=np.float64)
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes
@@ -97,7 +97,7 @@ class Vehicle(object):
             self.numba_veh = TypedVehicle()
         for item in veh_spec:
             if (type(self.__getattribute__(item[0])) == np.ndarray) | (type(self.__getattribute__(item[0])) == np.float64):
-                self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float32))
+                self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float64))
             elif type(self.__getattribute__(item[0])) == np.int64:
                 self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.int32))
             else:
@@ -321,98 +321,98 @@ class Vehicle(object):
 veh_spec = [('Selection', int32),
     ('Scenario_name', types.unicode_type),
     ('vehPtType', int32),
-    ('dragCoef', float32),
-    ('frontalAreaM2', float32),
-    ('gliderKg', float32),
-    ('vehCgM', float32),
-    ('driveAxleWeightFrac', float32),
-    ('wheelBaseM', float32),
-    ('cargoKg', float32),
-    ('vehOverrideKg', float32),
-    ('maxFuelStorKw', float32),
-    ('fuelStorSecsToPeakPwr', float32),
-    ('fuelStorKwh', float32),
-    ('fuelStorKwhPerKg', float32),
-    ('maxFuelConvKw', float32),
+    ('dragCoef', float64),
+    ('frontalAreaM2', float64),
+    ('gliderKg', float64),
+    ('vehCgM', float64),
+    ('driveAxleWeightFrac', float64),
+    ('wheelBaseM', float64),
+    ('cargoKg', float64),
+    ('vehOverrideKg', float64),
+    ('maxFuelStorKw', float64),
+    ('fuelStorSecsToPeakPwr', float64),
+    ('fuelStorKwh', float64),
+    ('fuelStorKwhPerKg', float64),
+    ('maxFuelConvKw', float64),
     ('fcEffType', int32),
-    ('fcAbsEffImpr', float32),
-    ('fuelConvSecsToPeakPwr', float32),
-    ('fuelConvBaseKg', float32),
-    ('fuelConvKwPerKg', float32),
-    ('maxMotorKw', float32),
-    ('motorPeakEff', float32),
-    ('motorSecsToPeakPwr', float32),
-    ('mcPeKgPerKw', float32),
-    ('mcPeBaseKg', float32),
-    ('maxEssKw', float32),
-    ('maxEssKwh', float32),
-    ('essKgPerKwh', float32),
-    ('essBaseKg', float32),
-    ('essRoundTripEff', float32),
-    ('essLifeCoefA', float32),
-    ('essLifeCoefB', float32),
-    ('wheelInertiaKgM2', float32),
-    ('numWheels', float32),
-    ('wheelRrCoef', float32),
-    ('wheelRadiusM', float32),
-    ('wheelCoefOfFric', float32),
-    ('minSoc', float32),
-    ('maxSoc', float32),
-    ('essDischgToFcMaxEffPerc', float32),
-    ('essChgToFcMaxEffPerc', float32),
-    ('maxAccelBufferMph', float32),
-    ('maxAccelBufferPercOfUseableSoc', float32),
-    ('percHighAccBuf', float32),
-    ('mphFcOn', float32),
-    ('kwDemandFcOn', float32),
-    ('altEff', float32),
-    ('chgEff', float32),
-    ('auxKw', float32),
+    ('fcAbsEffImpr', float64),
+    ('fuelConvSecsToPeakPwr', float64),
+    ('fuelConvBaseKg', float64),
+    ('fuelConvKwPerKg', float64),
+    ('maxMotorKw', float64),
+    ('motorPeakEff', float64),
+    ('motorSecsToPeakPwr', float64),
+    ('mcPeKgPerKw', float64),
+    ('mcPeBaseKg', float64),
+    ('maxEssKw', float64),
+    ('maxEssKwh', float64),
+    ('essKgPerKwh', float64),
+    ('essBaseKg', float64),
+    ('essRoundTripEff', float64),
+    ('essLifeCoefA', float64),
+    ('essLifeCoefB', float64),
+    ('wheelInertiaKgM2', float64),
+    ('numWheels', float64),
+    ('wheelRrCoef', float64),
+    ('wheelRadiusM', float64),
+    ('wheelCoefOfFric', float64),
+    ('minSoc', float64),
+    ('maxSoc', float64),
+    ('essDischgToFcMaxEffPerc', float64),
+    ('essChgToFcMaxEffPerc', float64),
+    ('maxAccelBufferMph', float64),
+    ('maxAccelBufferPercOfUseableSoc', float64),
+    ('percHighAccBuf', float64),
+    ('mphFcOn', float64),
+    ('kwDemandFcOn', float64),
+    ('altEff', float64),
+    ('chgEff', float64),
+    ('auxKw', float64),
     ('forceAuxOnFC', bool_),
-    ('transKg', float32),
-    ('transEff', float32),
-    ('compMassMultiplier', float32),
-    ('essToFuelOkError', float32),
-    ('maxRegen', float32),
-    ('valUddsMpgge', float32),
-    ('valHwyMpgge', float32),
-    ('valCombMpgge', float32),
-    ('valUddsKwhPerMile', float32),
-    ('valHwyKwhPerMile', float32),
-    ('valCombKwhPerMile', float32),
-    ('valCdRangeMi', float32),
-    ('valConst65MphKwhPerMile', float32),
-    ('valConst60MphKwhPerMile', float32),
-    ('valConst55MphKwhPerMile', float32),
-    ('valConst45MphKwhPerMile', float32),
-    ('valUnadjUddsKwhPerMile', float32),
-    ('valUnadjHwyKwhPerMile', float32),
-    ('val0To60Mph', float32),
-    ('valEssLifeMiles', float32),
-    ('valRangeMiles', float32),
-    ('valVehBaseCost', float32),
-    ('valMsrp', float32),
-    ('minFcTimeOn', float32),
-    ('idleFcKw', float32),
-    ('MaxRoadwayChgKw', float32[:]),
+    ('transKg', float64),
+    ('transEff', float64),
+    ('compMassMultiplier', float64),
+    ('essToFuelOkError', float64),
+    ('maxRegen', float64),
+    ('valUddsMpgge', float64),
+    ('valHwyMpgge', float64),
+    ('valCombMpgge', float64),
+    ('valUddsKwhPerMile', float64),
+    ('valHwyKwhPerMile', float64),
+    ('valCombKwhPerMile', float64),
+    ('valCdRangeMi', float64),
+    ('valConst65MphKwhPerMile', float64),
+    ('valConst60MphKwhPerMile', float64),
+    ('valConst55MphKwhPerMile', float64),
+    ('valConst45MphKwhPerMile', float64),
+    ('valUnadjUddsKwhPerMile', float64),
+    ('valUnadjHwyKwhPerMile', float64),
+    ('val0To60Mph', float64),
+    ('valEssLifeMiles', float64),
+    ('valRangeMiles', float64),
+    ('valVehBaseCost', float64),
+    ('valMsrp', float64),
+    ('minFcTimeOn', float64),
+    ('idleFcKw', float64),
+    ('MaxRoadwayChgKw', float64[:]),
     ('chargingOn', bool_),
     ('noElecSys', bool_),
     ('noElecAux', bool_),
     ('vehTypeSelection', int32),
-    ('fcEffArray', float32[:]),
-    ('fcKwOutArray', float32[:]),
-    ('maxFcEffKw', float32),
-    ('fcMaxOutkW', float32),
-    ('mcKwInArray', float32[:]),
-    ('mcKwOutArray', float32[:]),
-    ('mcMaxElecInKw', float32),
-    ('mcFullEffArray', float32[:]),
-    ('mcEffArray', float32[:]),
-    ('regenA', float32),
-    ('regenB', float32),
-    ('vehKg', float32),
-    ('maxTracMps2', float32),
-    ('maxRegenKwh', float32)
+    ('fcEffArray', float64[:]),
+    ('fcKwOutArray', float64[:]),
+    ('maxFcEffKw', float64),
+    ('fcMaxOutkW', float64),
+    ('mcKwInArray', float64[:]),
+    ('mcKwOutArray', float64[:]),
+    ('mcMaxElecInKw', float64),
+    ('mcFullEffArray', float64[:]),
+    ('mcEffArray', float64[:]),
+    ('regenA', float64),
+    ('regenB', float64),
+    ('vehKg', float64),
+    ('maxTracMps2', float64),
+    ('maxRegenKwh', float64)
 ]
 
 @jitclass(veh_spec)
@@ -498,20 +498,20 @@ class TypedVehicle(object):
         self.valMsrp = 0
         self.minFcTimeOn = 0
         self.idleFcKw = 0
-        self.MaxRoadwayChgKw = np.zeros(6, dtype=np.float32)
+        self.MaxRoadwayChgKw = np.zeros(6, dtype=np.float64)
         self.chargingOn = False
         self.noElecSys = False
         self.noElecAux = False
         self.vehTypeSelection = 0
-        self.fcEffArray = np.zeros(100, dtype=np.float32)
-        self.fcKwOutArray = np.zeros(100, dtype=np.float32)
+        self.fcEffArray = np.zeros(100, dtype=np.float64)
+        self.fcKwOutArray = np.zeros(100, dtype=np.float64)
         self.maxFcEffKw = 0
         self.fcMaxOutkW = 0
-        self.mcKwInArray = np.zeros(101, dtype=np.float32)
-        self.mcKwOutArray = np.zeros(101, dtype=np.float32)
+        self.mcKwInArray = np.zeros(101, dtype=np.float64)
+        self.mcKwOutArray = np.zeros(101, dtype=np.float64)
         self.mcMaxElecInKw = 0
-        self.mcFullEffArray = np.zeros(101, dtype=np.float32)
-        self.mcEffArray = np.zeros(11, dtype=np.float32)
+        self.mcFullEffArray = np.zeros(101, dtype=np.float64)
+        self.mcEffArray = np.zeros(11, dtype=np.float64)
         self.regenA = 0
         self.regenB = 0
         self.vehKg = 0
