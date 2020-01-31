@@ -11,3 +11,4 @@ dependencies:
   - pandas=0.25
   - python=3.7
   - numba=0.44
+  - scipy=1.2
