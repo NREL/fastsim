@@ -15,7 +15,7 @@ importlib.reload(SimDrive)
 import LoadData
 importlib.reload(LoadData)
 
-use_jitclass = False
+use_jitclass = True
 
 t0 = time.time()
 
