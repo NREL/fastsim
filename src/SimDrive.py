@@ -156,8 +156,10 @@ class SimDriveCore(object):
         self.mcTransiLimKw[i] = abs(
             self.mcMechKwOutAch[i-1]) + ((veh.maxMotorKw / veh.motorSecsToPeakPwr) * (cyc.secs[i]))
 
-        self.curMaxMcKwOut[i] = max(min(
-            self.mcElecInLimKw[i], self.mcTransiLimKw[i], veh.maxMotorKw), -veh.maxMotorKw)
+        self.curMaxMcKwOut[i] = max(
+            min(self.mcElecInLimKw[i], self.mcTransiLimKw[i], 
+            np.float64(0 if veh.stopStart else 1) * veh.maxMotorKw),
+            -veh.maxMotorKw)
 
         if self.curMaxMcKwOut[i] == 0:
             self.curMaxMcElecKwIn[i] = 0
