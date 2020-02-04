@@ -1046,7 +1046,7 @@ class SimDriveJit(SimDriveCore):
 
             # If no EV / Hybrid components, no SOC considerations.
 
-            initSoc = 0.0
+            initSoc = (veh.maxSoc + veh.minSoc) / 2.0
             
             self.sim_drive_sub(cyc, veh, initSoc)
 
