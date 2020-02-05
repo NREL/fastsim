@@ -64,9 +64,9 @@ class SimDriveCore(object):
         ------------
         i: index of time step
         cyc: instance of cycle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         veh: instance of vehicle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         if veh.noElecAux == True:
@@ -93,9 +93,9 @@ class SimDriveCore(object):
         ------------
         i: index of time step
         cyc: instance of cycle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         veh: instance of vehicle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         # max fuel storage power output
@@ -225,9 +225,9 @@ class SimDriveCore(object):
         ------------
         i: index of time step
         cyc: instance of cycle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         veh: instance of vehicle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         self.cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * \
@@ -271,9 +271,9 @@ class SimDriveCore(object):
         ------------
         i: index of time step
         cyc: instance of cycle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         veh: instance of vehicle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         # Cycle is met
@@ -326,9 +326,9 @@ class SimDriveCore(object):
         ------------
         i: index of time step
         cyc: instance of cycle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         veh: instance of vehicle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         if self.transKwOutAch[i] > 0:
@@ -481,9 +481,9 @@ class SimDriveCore(object):
         ------------
         i: index of time step
         cyc: instance of cycle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         veh: instance of vehicle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         # force fuel converter on if it was on in the previous time step, but only if fc
@@ -530,9 +530,9 @@ class SimDriveCore(object):
         ------------
         i: index of time step
         cyc: instance of cycle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         veh: instance of vehicle from LoadData module, type determined by 
-            child class calling sim_drive method
+            derived class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         if (-self.mcElectInKwForMaxFcEff[i] - self.curMaxRoadwayChgKw[i]) > 0:
