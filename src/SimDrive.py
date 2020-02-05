@@ -8,8 +8,6 @@ import re
 from Globals import *
 from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_    # import the types
-from numba import types, typed, deferred_type
-import numba
 import warnings
 warnings.simplefilter('ignore')
 
@@ -65,8 +63,10 @@ class SimDriveCore(object):
         Arguments
         ------------
         i: index of time step
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
+        cyc: instance of cycle from LoadData module, type determined by 
+            child class calling sim_drive method
+        veh: instance of vehicle from LoadData module, type determined by 
+            child class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         if veh.noElecAux == True:
@@ -92,8 +92,10 @@ class SimDriveCore(object):
         Arguments
         ------------
         i: index of time step
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
+        cyc: instance of cycle from LoadData module, type determined by 
+            child class calling sim_drive method
+        veh: instance of vehicle from LoadData module, type determined by 
+            child class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         # max fuel storage power output
@@ -222,8 +224,10 @@ class SimDriveCore(object):
         Arguments
         ------------
         i: index of time step
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
+        cyc: instance of cycle from LoadData module, type determined by 
+            child class calling sim_drive method
+        veh: instance of vehicle from LoadData module, type determined by 
+            child class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         self.cycDragKw[i] = 0.5 * airDensityKgPerM3 * veh.dragCoef * \
@@ -266,8 +270,10 @@ class SimDriveCore(object):
         Arguments
         ------------
         i: index of time step
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
+        cyc: instance of cycle from LoadData module, type determined by 
+            child class calling sim_drive method
+        veh: instance of vehicle from LoadData module, type determined by 
+            child class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         # Cycle is met
@@ -319,8 +325,10 @@ class SimDriveCore(object):
         Arguments
         ------------
         i: index of time step
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
+        cyc: instance of cycle from LoadData module, type determined by 
+            child class calling sim_drive method
+        veh: instance of vehicle from LoadData module, type determined by 
+            child class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         if self.transKwOutAch[i] > 0:
@@ -472,8 +480,10 @@ class SimDriveCore(object):
         Arguments       
         ------------
         i: index of time step
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
+        cyc: instance of cycle from LoadData module, type determined by 
+            child class calling sim_drive method
+        veh: instance of vehicle from LoadData module, type determined by 
+            child class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         # force fuel converter on if it was on in the previous time step, but only if fc
@@ -519,8 +529,10 @@ class SimDriveCore(object):
         Arguments
         ------------
         i: index of time step
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
+        cyc: instance of cycle from LoadData module, type determined by 
+            child class calling sim_drive method
+        veh: instance of vehicle from LoadData module, type determined by 
+            child class calling sim_drive method
         initSoc: initial SOC for electrified vehicles"""
 
         if (-self.mcElectInKwForMaxFcEff[i] - self.curMaxRoadwayChgKw[i]) > 0:
@@ -733,7 +745,7 @@ class SimDriveClassic(SimDriveCore):
         """Initializes numpy arrays for specific cycle
         Arguments:
         -----------
-        len_cyc: instance of LoadData.Cycle class
+        len_cyc: len of cycSecs attribute of instance of LoadData.Cycle class 
         """
         # Component Limits -- calculated dynamically"
         self.curMaxFsKwOut = np.zeros(len_cyc)
@@ -924,8 +936,8 @@ class SimDriveJit(SimDriveCore):
         """Initializes typed numpy arrays for specific cycle
         Arguments:
         -----------
-        len_cyc: instance of LoadData.TypedCycle class generated from the 
-        LoadData.Cycle.get_numba_cyc method.  
+        len_cyc: len of cycSecs attribute of instance of LoadData.TypedCycle class 
+        generated from the LoadData.Cycle.get_numba_cyc method.  
         """
         # Component Limits -- calculated dynamically"
         self.curMaxFsKwOut = np.zeros(len_cyc, dtype=np.float64)
@@ -1033,8 +1045,10 @@ class SimDriveJit(SimDriveCore):
         """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
-        cyc: instance of LoadData.Cycle class
-        veh: instance of LoadData.Vehicle class
+        cyc: instance of LoadData.TypedCycle class generated from the 
+            LoadData.Cycle.get_numba_cyc method
+        veh: instance of LoadData.TypedVehicle class generated from the 
+            LoadData.Vehicle.get_numba_veh method
         initSoc: initial SOC for electrified vehicles.  
             Use -1 for default value.  Otherwise, must be between 0 and 1."""
 
