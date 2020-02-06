@@ -284,7 +284,7 @@ class Vehicle(object):
 
     def set_veh_mass(self):
         """Calculate total vehicle mass.  Sum up component masses if 
-        positive real number is not specified for vehOverrideKg"""
+        positive real number is not specified for self.vehOverrideKg"""
         if not(self.vehOverrideKg > 0):
             if self.maxEssKwh == 0 or self.maxEssKw == 0:
                 ess_mass_kg = 0.0

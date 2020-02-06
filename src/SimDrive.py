@@ -438,15 +438,20 @@ class SimDriveCore(object):
 
         # some conditions in the following if statement have a buffer of 1e-6 to prevent false positives/negatives because these have been encountered in practice.   
         if veh.maxFuelConvKw == 0:
-            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0)
+            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and 
+                (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and 
+                (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0)
 
         else:
-            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and (self.electKwReq4AE[i] < self.curMaxElecKw[i]
-                or veh.maxFuelConvKw == 0) and ((cyc.cycMph[i] - 1e-6) <=veh.mphFcOn or veh.chargingOn) and self.electKwReq4AE[i]<=veh.kwDemandFcOn
+            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and 
+                (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and 
+                (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0) 
+                and ((cyc.cycMph[i] - 1e-6) <= veh.mphFcOn or veh.chargingOn) and 
+                self.electKwReq4AE[i] <= veh.kwDemandFcOn
 
         if self.canPowerAllElectrically[i]:
 
-            if self.transKwInAch[i] <+self.auxInKw[i]:
+            if self.transKwInAch[i] < self.auxInKw[i]:
                 self.desiredEssKwOutForAE[i] = self.auxInKw[i] + \
                     self.transKwInAch[i]
 
@@ -597,9 +602,9 @@ class SimDriveCore(object):
         elif self.fcForcedOn[i] == True and self.canPowerAllElectrically[i] == True and (veh.vehPtType == 2.0 or veh.vehPtType == 3.0) and veh.fcEffType !=4:
             self.mcMechKwOutAch[i] = self.mcMechKw4ForcedFc[i]
 
-        elif self.transKwInAch[i] <=0:
+        elif self.transKwInAch[i] <= 0:
 
-            if veh.fcEffType !=4 and veh.maxFuelConvKw> 0:
+            if veh.fcEffType !=4 and veh.maxFuelConvKw > 0:
                 if self.canPowerAllElectrically[i] == 1:
                     self.mcMechKwOutAch[i] = - \
                         min(self.curMaxMechMcKwIn[i], -self.transKwInAch[i])
