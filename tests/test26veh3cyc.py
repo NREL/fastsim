@@ -46,7 +46,7 @@ for vehno in vehicles:
             sim_drive = SimDrive.SimDriveClassic(len(cyc.cycSecs))
             sim_drive.sim_drive(cyc_jit, veh_jit)
             
-        sim_drive_post = SimDrive.SimDrivePost(sim_drive)
+        sim_drive_post = SimDrive.SimDrivePost(sim_drive, cyc_jit, veh_jit)
         # sim_drive_post.set_battery_wear(veh)
         sim_drive_post.set_energy_audit(cyc, veh)
         diagno = sim_drive_post.get_diagnostics(cyc)

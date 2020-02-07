@@ -12,8 +12,8 @@ import warnings
 warnings.simplefilter('ignore')
 
 import LoadData
-import importlib
-importlib.reload(LoadData)
+# import importlib
+# importlib.reload(LoadData)
 
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
@@ -438,15 +438,15 @@ class SimDriveCore(object):
 
         # some conditions in the following if statement have a buffer of 1e-6 to prevent false positives/negatives because these have been encountered in practice.   
         if veh.maxFuelConvKw == 0:
-            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and 
-                (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and 
+            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and  \
+                (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and \
                 (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0)
 
         else:
-            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and 
-                (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and 
-                (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0) 
-                and ((cyc.cycMph[i] - 1e-6) <= veh.mphFcOn or veh.chargingOn) and 
+            self.canPowerAllElectrically[i] = self.accelBufferSoc[i] < self.soc[i-1] and \
+                (self.transKwInAch[i] - 1e-6) <= self.curMaxMcKwOut[i] and \
+                (self.electKwReq4AE[i] < self.curMaxElecKw[i] or veh.maxFuelConvKw == 0) \
+                and ((cyc.cycMph[i] - 1e-6) <= veh.mphFcOn or veh.chargingOn) and \
                 self.electKwReq4AE[i] <= veh.kwDemandFcOn
 
         if self.canPowerAllElectrically[i]:
@@ -740,6 +740,47 @@ class SimDriveCore(object):
             self.fcTimeOn[i] = 0
         else:
             self.fcTimeOn[i] = self.fcTimeOn[i-1] + cyc.secs[i]
+    
+    def set_post_scalars(self, cyc, veh):
+        """Sets scalar variables that can be calculated after a cycle is run.
+        Arguments:
+        ----------
+        cyc: instance of LoadData.TypedCycle class generated from the 
+            LoadData.Cycle.get_numba_cyc method
+        veh: instance of LoadData.TypedVehicle class generated from the 
+            LoadData.Vehicle.get_numba_veh method
+        """
+        if self.fsKwhOutAch.sum() == 0:
+            self.mpgge = 0
+
+        else:
+            self.mpgge = self.distMiles.sum() / \
+                (self.fsKwhOutAch.sum() * (1 / kWhPerGGE))
+
+        self.roadwayChgKj = (self.roadwayChgKwOutAch * cyc.secs).sum()
+        self.essDischgKj = - \
+            (self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
+        self.battery_kWh_per_mi  = (
+            self.essDischgKj / 3600.0) / self.distMiles.sum()
+        self.electric_kWh_per_mi  = (
+            (self.roadwayChgKj + self.essDischgKj) / 3600.0) / self.distMiles.sum()
+        self.fuelKj = (self.fsKwOutAch * cyc.secs).sum()
+
+        if (self.fuelKj + self.roadwayChgKj) == 0:
+            self.ess2fuelKwh  = 1.0
+
+        else:
+            self.ess2fuelKwh  = self.essDischgKj / (self.fuelKj + self.roadwayChgKj)
+
+        if self.mpgge == 0:
+            # hardcoded conversion
+            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / kWhPerGGE
+
+        else:
+            self.Gallons_gas_equivalent_per_mile = 1 / \
+                self.mpgge + self.electric_kWh_per_mi  / kWhPerGGE
+
+        self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
 
 class SimDriveClassic(SimDriveCore):
     """Class containing methods for running FASTSim vehicle 
@@ -929,7 +970,16 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
 spec = [(attr, float64[:]) for attr in attr_list]
 spec.extend([('fcForcedOn', bool_[:]),
              ('fcForcedState', int32[:]),
-             ('canPowerAllElectrically', bool_[:])
+             ('canPowerAllElectrically', bool_[:]),
+             ('mpgge', float64),
+             ('roadwayChgKj', float64),
+             ('essDischgKj', float64),
+             ('battery_kWh_per_mi', float64),
+             ('electric_kWh_per_mi', float64),
+             ('fuelKj', float64),
+             ('ess2fuelKwh', float64),
+             ('Gallons_gas_equivalent_per_mile', float64),
+             ('mpgge_elec', float64)
 ])
 
 @jitclass(spec)
@@ -1105,15 +1155,17 @@ class SimDriveJit(SimDriveCore):
         else:
             
             self.sim_drive_sub(cyc, veh, initSoc)
-
+        
 class SimDrivePost(object):
     """Class for post-processing of SimDrive instance.  Requires already-run 
     SimDriveJit or SimDriveClassic instance."""
-    def __init__(self, sim_drive):
+    def __init__(self, sim_drive, cyc, veh):
         """Arguments:
         ---------------
         sim_drive: solved sim_drive object"""
         super().__init__()
+
+        sim_drive.set_post_scalars(cyc, veh)
 
         for item in spec:
             self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))
@@ -1132,55 +1184,20 @@ class SimDrivePost(object):
 
         output = {}
 
-        if sum(self.fsKwhOutAch) == 0:
-            output['mpgge'] = 0
-
-        else:
-            output['mpgge'] = sum(self.distMiles) / \
-                (sum(self.fsKwhOutAch) * (1 / kWhPerGGE))
-
-        self.roadwayChgKj = sum(self.roadwayChgKwOutAch * cyc.secs)
-        self.essDischKj = - \
-            (self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
-        output['battery_kWh_per_mi'] = (
-            self.essDischKj / 3600.0) / sum(self.distMiles)
-        self.battery_kWh_per_mi = output['battery_kWh_per_mi']
-        output['electric_kWh_per_mi'] = (
-            (self.roadwayChgKj + self.essDischKj) / 3600.0) / sum(self.distMiles)
-        self.electric_kWh_per_mi = output['electric_kWh_per_mi']
+        output['mpgge'] = self.mpgge
+        output['battery_kWh_per_mi'] = self.battery_kWh_per_mi
+        output['electric_kWh_per_mi'] = self.electric_kWh_per_mi
         output['maxTraceMissMph'] = mphPerMps * \
             max(abs(cyc.cycMps - self.mpsAch))
         self.maxTraceMissMph = output['maxTraceMissMph']
-        self.fuelKj = sum(np.asarray(self.fsKwOutAch) * np.asarray(cyc.secs))
-        self.roadwayChgKj = sum(np.asarray(
-            self.roadwayChgKwOutAch) * np.asarray(cyc.secs))
-        essDischgKj = -(self.soc[-1] - self.soc[0]) * veh.maxEssKwh * 3600.0
 
-        if (self.fuelKj + self.roadwayChgKj) == 0:
-            output['ess2fuelKwh'] = 1.0
-
-        else:
-            output['ess2fuelKwh'] = essDischgKj / \
-                (self.fuelKj + self.roadwayChgKj)
-
-        self.ess2fuelKwh = output['ess2fuelKwh']
+        output['ess2fuelKwh'] = self.ess2fuelKwh
 
         output['initial_soc'] = self.soc[0]
         output['final_soc'] = self.soc[-1]
 
-        if output['mpgge'] == 0:
-            # hardcoded conversion
-            Gallons_gas_equivalent_per_mile = output['electric_kWh_per_mi'] / 33.7
-
-        else:
-            Gallons_gas_equivalent_per_mile = 1 / \
-                output['mpgge'] + output['electric_kWh_per_mi'] / \
-                33.7  # hardcoded conversion
-
-        self.Gallons_gas_equivalent_per_mile = Gallons_gas_equivalent_per_mile
-
-        output['mpgge_elec'] = 1 / Gallons_gas_equivalent_per_mile
-        output['soc'] = np.asarray(self.soc)
+        output['mpgge_elec'] = self.mpgge_elec
+        output['soc'] = self.soc
         output['distance_mi'] = sum(self.distMiles)
         duration_sec = cyc.cycSecs[-1] - cyc.cycSecs[0]
         output['avg_speed_mph'] = sum(
