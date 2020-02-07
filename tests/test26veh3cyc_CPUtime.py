@@ -12,8 +12,6 @@ sys.path.append('../src')
 # local modules
 import SimDrive
 importlib.reload(SimDrive)
-import LoadData
-importlib.reload(LoadData)
 
 t0 = time.time()
 
@@ -22,9 +20,9 @@ vehicles = np.arange(1, 27)
 
 print('Instantiating classes.')
 print()
-veh = LoadData.Vehicle(1)
+veh = SimDrive.Vehicle(1)
 veh_jit = veh.get_numba_veh()
-cyc = LoadData.Cycle('udds')
+cyc = SimDrive.Cycle('udds')
 cyc_jit = cyc.get_numba_cyc()
 
 iter = 0
@@ -38,8 +36,8 @@ for vehno in vehicles:
             cyc_jit = cyc.get_numba_cyc()
             veh.load_vnum(vehno)
             veh_jit = veh.get_numba_veh()
-        sim_drive = SimDrive.SimDriveJit(len(cyc.cycSecs))
-        sim_drive.sim_drive(cyc_jit, veh_jit, -1)
+        sim_drive = SimDrive.SimDriveJit(cyc_jit, veh_jit)
+        sim_drive.sim_drive(-1)
 
 t1 = time.time()
 print()
