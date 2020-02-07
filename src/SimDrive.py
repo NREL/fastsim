@@ -801,8 +801,7 @@ class SimDriveClassic(SimDriveCore):
         Arguments:
         -----------
         len_cyc: len of cycSecs attribute of instance of LoadData.Cycle class 
-        veh: instance of LoadData.TypedVehicle class generated from the 
-            LoadData.Vehicle.get_numba_veh method
+        veh: instance of LoadData.TypedVehicle or LoadData.Vehicle class
         """
         self.set_veh(veh)
 
@@ -980,6 +979,12 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
             'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw']
 
+# create types for instances of TypedVehicle and TypedCycle
+veh_type = deferred_type()
+veh_type.define(LoadData.TypedVehicle.class_type.instance_type)
+cyc_type = deferred_type()
+cyc_type.define(LoadData.TypedCycle.class_type.instance_type)
+
 spec = [(attr, float64[:]) for attr in attr_list]
 spec.extend([('fcForcedOn', bool_[:]),
              ('fcForcedState', int32[:]),
@@ -992,7 +997,9 @@ spec.extend([('fcForcedOn', bool_[:]),
              ('fuelKj', float64),
              ('ess2fuelKwh', float64),
              ('Gallons_gas_equivalent_per_mile', float64),
-             ('mpgge_elec', float64)
+             ('mpgge_elec', float64),
+             ('veh', veh_type),
+             ('cyc', cyc_type)
 ])
 
 @jitclass(spec)
@@ -1000,13 +1007,18 @@ class SimDriveJit(SimDriveCore):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle fuel economy simulations. This class will be 
     faster for large batch runs."""
-    def __init__(self, len_cyc):
+
+    def __init__(self, len_cyc, veh_jit):
         """Initializes typed numpy arrays for specific cycle
         Arguments:
         -----------
         len_cyc: len of cycSecs attribute of instance of LoadData.TypedCycle class 
         generated from the LoadData.Cycle.get_numba_cyc method.  
+        veh: instance of LoadData.TypedVehicle or LoadData.Vehicle class generated from the 
+            LoadData.Vehicle.get_numba_veh method
         """
+        self.veh = veh_jit
+
         # Component Limits -- calculated dynamically"
         self.curMaxFsKwOut = np.zeros(len_cyc, dtype=np.float64)
         self.fcTransLimKw = np.zeros(len_cyc, dtype=np.float64)
