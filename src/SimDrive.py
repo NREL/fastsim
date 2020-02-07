@@ -7,7 +7,7 @@ import pandas as pd
 import re
 from Globals import *
 from numba import jitclass                 # import the decorator
-from numba import float64, int32, bool_    # import the types
+from numba import float64, int32, bool_, deferred_type    # import the types
 import warnings
 warnings.simplefilter('ignore')
 
@@ -19,6 +19,15 @@ class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
     by a class with an init method before being runnable."""
 
+    def set_veh(self, veh):
+        """Sets vehicle 
+        Arguments:
+        ----------
+        veh: instance of vehicle from LoadData module, type determined by 
+            derived class calling sim_drive method"""
+        
+        self.veh = veh
+    
     def sim_drive_sub(self, cyc, veh, initSoc=None):
         """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and performs a backward facing 
@@ -787,12 +796,16 @@ class SimDriveClassic(SimDriveCore):
     fuel economy simulations. This class is not compiled and will 
     run slower for large batch runs."""
 
-    def __init__(self, len_cyc):
+    def __init__(self, len_cyc, veh):
         """Initializes numpy arrays for specific cycle
         Arguments:
         -----------
         len_cyc: len of cycSecs attribute of instance of LoadData.Cycle class 
+        veh: instance of LoadData.TypedVehicle class generated from the 
+            LoadData.Vehicle.get_numba_veh method
         """
+        self.set_veh(veh)
+
         # Component Limits -- calculated dynamically"
         self.curMaxFsKwOut = np.zeros(len_cyc)
         self.fcTransLimKw = np.zeros(len_cyc)
