@@ -273,7 +273,7 @@ class Vehicle(object):
         self.mcFullEffArray = mcFullEffArray
         self.mcEffArray = mcEffArray
 
-        if 'motorAccelAssist' in self.__dir__() and np.isnan(self.__getattribute__('motorAccelAssist')):
+        if 'stopStart' in self.__dir__() and np.isnan(self.__getattribute__('stopStart')):
             self.motorAccelAssist = True
 
         self.mcMaxElecInKw = max(self.mcKwInArray)
