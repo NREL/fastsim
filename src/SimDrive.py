@@ -1491,10 +1491,6 @@ class SimDriveJit(SimDriveCore):
         """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
-        cyc: instance of TypedCycle class generated from the 
-            Cycle.get_numba_cyc method
-        veh: instance of TypedVehicle class generated from the 
-            Vehicle.get_numba_veh method
         initSoc: initial SOC for electrified vehicles.  
             Use -1 for default value.  Otherwise, must be between 0 and 1."""
 
