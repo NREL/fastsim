@@ -1542,8 +1542,7 @@ class SimDriveJit(SimDriveCore):
         else:
             
             self.sim_drive_sub(initSoc)
-
-
+        
 @jitclass(spec)
 class SimAccelTestJit(SimDriveCore):
     """Class compiled using numba just-in-time compilation containing methods 
@@ -1958,10 +1957,29 @@ class SimDrivePost(object):
         '=(SUM(roadwayChgKj,essDischgKj,fuelKj,keKj)-netKj)/SUM(fuelKj,essDischgKj,roadwayChgKj,keKj)'
         """
 
-        self.dragKw[1:] = 0.5 * airDensityKgPerM3 * self.veh.dragCoef * \
-            self.veh.frontalAreaM2 * \
-            (((self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0)**3) / 1000.0
+        self.dragKw = self.cycDragKw
+        self.dragKj = (self.dragKw * self.cyc.secs).sum()
+        self.ascentKw = self.cycAscentKw
+        self.ascentKj = (self.ascentKw * self.cyc.secs).sum()
+        self.rrKw = self.cycRrKw
+        self.rrKj = (self.rrKw * self.cyc.secs).sum()
         
+        self.brakeKj = (self.cycFricBrakeKw * self.cyc.secs).sum()
+        self.transKj = ((self.transKwInAch - self.transKwOutAch) * self.cyc.secs).sum()
+        self.mcKj = ((self.mcElecKwInAch - self.mcMechKwOutAch) * self.cyc.secs).sum()
+        self.essEffKj = (self.essLossKw * self.cyc.secs).sum()
+        self.auxKj = (self.auxInKw * self.cyc.secs).sum()
+        self.fcKj = ((self.fcKwInAch - self.fcKwOutAch) * self.cyc.secs).sum()
+        
+        self.netKj = self.dragKj + self.ascentKj + self.rrKj + self.brakeKj + self.transKj \
+            + self.mcKj + self.essEffKj + self.auxKj + self.fcKj
+
+        self.keKj = 0.5 * self.veh.vehKg * \
+            (self.cyc.cycMps[0]**2 - self.cyc.cycMps[-1]**2) / 1000
+        
+        self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
+            (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
+
         self.essLossKw[1:] = np.array(
             [0 if (self.veh.maxEssKw == 0 or self.veh.maxEssKwh == 0) 
             else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(self.veh.essRoundTripEff)) 
@@ -1971,7 +1989,4 @@ class SimDrivePost(object):
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0
-        self.ascentKw[1:] = gravityMPerSec2 * np.sin(np.arctan(self.cyc.cycGrade[1:])) * self.veh.vehKg * (
-            (self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0) / 1000.0
-        self.rrKw[1:] = gravityMPerSec2 * self.veh.wheelRrCoef * self.veh.vehKg * \
-            ((self.mpsAch[:-1] + self.mpsAch[1:]) / 2.0) / 1000.0
+
