@@ -1123,7 +1123,8 @@ class SimDriveCore(object):
             self.fcTimeOn[i] = self.fcTimeOn[i-1] + self.cyc.secs[i]
     
     def set_post_scalars(self):
-        """Sets scalar variables that can be calculated after a cycle is run."""
+        """Sets scalar variables that can be calculated after a cycle is run. 
+        This includes mpgge, various energy metrics, and others"""
 
         if self.fsKwhOutAch.sum() == 0:
             self.mpgge = 0
@@ -1156,6 +1157,44 @@ class SimDriveCore(object):
                 self.mpgge + self.electric_kWh_per_mi  / kWhPerGGE
 
         self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
+
+        # energy audit calcs
+        self.dragKw = self.cycDragKw
+        self.dragKj = (self.dragKw * self.cyc.secs).sum()
+        self.ascentKw = self.cycAscentKw
+        self.ascentKj = (self.ascentKw * self.cyc.secs).sum()
+        self.rrKw = self.cycRrKw
+        self.rrKj = (self.rrKw * self.cyc.secs).sum()
+        
+        self.brakeKj = (self.cycFricBrakeKw * self.cyc.secs).sum()
+        self.transKj = ((self.transKwInAch - self.transKwOutAch) * self.cyc.secs).sum()
+        self.mcKj = ((self.mcElecKwInAch - self.mcMechKwOutAch) * self.cyc.secs).sum()
+        self.essEffKj = (self.essLossKw * self.cyc.secs).sum()
+        self.auxKj = (self.auxInKw * self.cyc.secs).sum()
+        self.fcKj = ((self.fcKwInAch - self.fcKwOutAch) * self.cyc.secs).sum()
+        
+        self.netKj = self.dragKj + self.ascentKj + self.rrKj + self.brakeKj + self.transKj \
+            + self.mcKj + self.essEffKj + self.auxKj + self.fcKj
+
+        self.keKj = 0.5 * self.veh.vehKg * \
+            (self.cyc.cycMps[0]**2 - self.cyc.cycMps[-1]**2) / 1000
+        
+        self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
+            (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
+
+        if np.abs(self.energyAuditError) > 0.1:
+            print('Warning: There is a problem with conservation of energy.')
+
+        self.essLossKw[1:] = np.array(
+            [0 if (self.veh.maxEssKw == 0 or self.veh.maxEssKwh == 0) 
+            else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(self.veh.essRoundTripEff)) 
+                if self.essKwOutAch[i] < 0 
+            else self.essKwOutAch[i] * (1.0 / np.sqrt(self.veh.essRoundTripEff)) - self.essKwOutAch[i] 
+            for i in range(1, len(self.cyc.cycSecs))])
+
+        self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
+            ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0
+
 
 class SimDriveClassic(SimDriveCore):
     """Class containing methods for running FASTSim vehicle 
@@ -1330,6 +1369,8 @@ class SimDriveClassic(SimDriveCore):
 
             self.sim_drive_sub(initSoc)
 
+        self.set_post_scalars()
+
 # list of array attributes in SimDrive class for generating list of type specification tuples
 attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
             'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
@@ -1363,7 +1404,19 @@ spec.extend([('fcForcedOn', bool_[:]),
              ('Gallons_gas_equivalent_per_mile', float64),
              ('mpgge_elec', float64),
              ('veh', veh_type),
-             ('cyc', cyc_type)
+             ('cyc', cyc_type),
+             ('dragKj', float64), 
+             ('ascentKj', float64),
+             ('rrKj', float64),
+             ('brakeKj', float64),
+             ('transKj', float64),
+             ('mcKj', float64),
+             ('essEffKj', float64),
+             ('auxKj', float64),
+             ('fcKj', float64),
+             ('netKj', float64),
+             ('keKj', float64),
+             ('energyAuditError', float64)
 ])
 
 @jitclass(spec)
@@ -1542,6 +1595,8 @@ class SimDriveJit(SimDriveCore):
         else:
             
             self.sim_drive_sub(initSoc)
+        
+        self.set_post_scalars()
         
 @jitclass(spec)
 class SimAccelTestJit(SimDriveCore):
@@ -1832,8 +1887,6 @@ class SimDrivePost(object):
 
         super().__init__()
 
-        sim_drive.set_post_scalars()
-
         for item in spec:
             self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))
 
@@ -1950,43 +2003,4 @@ class SimDrivePost(object):
             if self.dodCycs[i] != 0
             else 0
             for i in range(0, len(self.essCurKwh))])
-
-    def set_energy_audit(self):
-        """Energy Audit Calculations
-        Adapted from Excel:
-        '=(SUM(roadwayChgKj,essDischgKj,fuelKj,keKj)-netKj)/SUM(fuelKj,essDischgKj,roadwayChgKj,keKj)'
-        """
-
-        self.dragKw = self.cycDragKw
-        self.dragKj = (self.dragKw * self.cyc.secs).sum()
-        self.ascentKw = self.cycAscentKw
-        self.ascentKj = (self.ascentKw * self.cyc.secs).sum()
-        self.rrKw = self.cycRrKw
-        self.rrKj = (self.rrKw * self.cyc.secs).sum()
-        
-        self.brakeKj = (self.cycFricBrakeKw * self.cyc.secs).sum()
-        self.transKj = ((self.transKwInAch - self.transKwOutAch) * self.cyc.secs).sum()
-        self.mcKj = ((self.mcElecKwInAch - self.mcMechKwOutAch) * self.cyc.secs).sum()
-        self.essEffKj = (self.essLossKw * self.cyc.secs).sum()
-        self.auxKj = (self.auxInKw * self.cyc.secs).sum()
-        self.fcKj = ((self.fcKwInAch - self.fcKwOutAch) * self.cyc.secs).sum()
-        
-        self.netKj = self.dragKj + self.ascentKj + self.rrKj + self.brakeKj + self.transKj \
-            + self.mcKj + self.essEffKj + self.auxKj + self.fcKj
-
-        self.keKj = 0.5 * self.veh.vehKg * \
-            (self.cyc.cycMps[0]**2 - self.cyc.cycMps[-1]**2) / 1000
-        
-        self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
-            (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
-
-        self.essLossKw[1:] = np.array(
-            [0 if (self.veh.maxEssKw == 0 or self.veh.maxEssKwh == 0) 
-            else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(self.veh.essRoundTripEff)) 
-                if self.essKwOutAch[i] < 0 
-            else self.essKwOutAch[i] * (1.0 / np.sqrt(self.veh.essRoundTripEff)) - self.essKwOutAch[i] 
-            for i in range(1, len(self.cyc.cycSecs))])
-
-        self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
-            ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0
 
