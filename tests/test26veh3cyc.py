@@ -27,6 +27,11 @@ veh_jit = veh.get_numba_veh()
 cyc = SimDrive.Cycle('udds')
 cyc_jit = cyc.get_numba_cyc()
 
+newvars = ['rrKjPos', 'rrKjNeg', 'dragKjPos', 'dragKjNeg'] 
+# variables that have been added since the original benchmark was created, which should not be compared
+
+energyAuditErrors = []
+
 iter = 0
 for vehno in vehicles:
     print('vehno =', vehno)
@@ -46,21 +51,23 @@ for vehno in vehicles:
             
         sim_drive_post = SimDrive.SimDrivePost(sim_drive)
         # sim_drive_post.set_battery_wear()
-        sim_drive_post.set_energy_audit()
         diagno = sim_drive_post.get_diagnostics()
-        
+        energyAuditErrors.append(sim_drive.energyAuditError)
+
         if iter > 0:
             dict_diag['vnum'].append(vehno)
             dict_diag['cycle'].append(cycname)
             for key in diagno.keys():
-                dict_diag[key].append(diagno[key])
+                if key not in newvars:
+                    dict_diag[key].append(diagno[key])
             
         else:
             dict_diag = {}
             dict_diag['vnum'] = [vehno]
             dict_diag['cycle'] = [cycname]
             for key in diagno.keys():
-                dict_diag[key] = [diagno[key]]
+                if key not in newvars:
+                    dict_diag[key] = [diagno[key]]
             iter += 1
         
 df = pd.DataFrame.from_dict(dict_diag)
