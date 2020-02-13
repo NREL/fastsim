@@ -1,6 +1,6 @@
 # # FASTSim Demonstration
 # 
-# <img src="icon_fastsim.jpg" | style="width: 300px"> 
+# ![fastsim icon](icon_fastsim.jpg)
 # 
 # Developed by NREL, the Future Automotive Systems Technology Simulator (FASTSim) evaluates the impact of technology improvements on efficiency, performance, cost, and battery life in conventional vehicles, hybrid electric vehicles (HEVs), plug-in hybrid electric vehicles (PHEVs), and all-electric vehicles (EVs).
 # 
@@ -13,15 +13,26 @@
 # 
 # FASTSim was originally implemented in Microsoft Excel. The pythonic implementation of FASTSim, demonstrated here, captures the drive cycle energy consumption simulation component of the software. The python version of FASTSim is more convenient than the Excel version when very high computational speed is desired, such as for simulating a large batch of drive cycles.
 
+
 import sys
-sys.path.append('../src')
+if '../src' not in sys.path:
+    sys.path.append('../src')
 import os
 import numpy as np
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+import importlib
+# import seaborn as sns
+# sns.set(font_scale=2, style='whitegrid')
 
-import FASTSim
+# local modules
+import SimDrive
+importlib.reload(SimDrive)
+
+import LoadData
+importlib.reload(LoadData)
+
 
 # ## Individual Drive Cycle
 # ### Load Drive Cycle
@@ -36,13 +47,21 @@ import FASTSim
 # 
 # There is no limit to the length of a drive cycle that can be provided as an input to FASTSim.
 
-cyc = FASTSim.get_standard_cycle("UDDS")
+
+t0 = time.time()
+cyc = LoadData.Cycle("udds").get_numba_cyc()
+print(time.time() - t0)
+
 
 # ### Load Powertrain Model
 # 
 # A vehicle database in CSV format is required to be in the working directory where FASTSim is running (i.e. the same directory as this notebook). The "get_veh" function selects the appropriate vehicle attributes from the database and contructs the powertrain model (engine efficiency map, etc.). An integer value corresponds to each vehicle in the database. To add a new vehicle, simply populate a new row to the vehicle database CSV.
 
-veh = FASTSim.get_veh(10)
+
+t0 = time.time()
+veh = LoadData.Vehicle(11).get_numba_veh()
+print(time.time() - t0)
+
 
 # ### Run FASTSim
 # 
@@ -50,16 +69,20 @@ veh = FASTSim.get_veh(10)
 # 
 # If running FASTSim in batch over many drive cycles, the output from "sim_drive" can be written to files or database for batch post-processing. 
 
-print("Running FASTSim once.")
+
+sim_drive = SimDrive.SimDrive(len(cyc.cycSecs))
 t0 = time.time()
-output = FASTSim.sim_drive(cyc, veh)
+sim_drive.sim_drive(cyc, veh)
+output = sim_drive.get_output(cyc, veh)
 print(time.time() - t0)
-print()
+
 
 # ### Results
 
+
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc['cycMps'] * 2.23694  # Convert mps to mph
+df['speed'] = cyc.cycMps * 2.23694  # Convert mps to mph
+
 
 
 fig, ax = plt.subplots(figsize=(9, 5))
@@ -75,7 +98,7 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
-# plt.show()
+
 
 # ## Batch Drive Cycles - TSDC Drive Cycles
 # 
@@ -86,7 +109,7 @@ ax2.tick_params('y', colors='xkcd:pale red')
 # ### Load Cycles
 # Iterate through the drive cycles directory structure and load the cycles into one pandas dataframe. If memory is an issue, this processing can be broken into smaller chunks. The points table must have trip identifiers appended to run FASTSim on individual trips. The trips are identified and labeled using the start and end timestamps in the "trips.csv" summary tables in each of the vehicle directories downloadable from the TSDC.
 
-print("Loading cycle data for batch runs.")
+
 t0 = time.time()
 data_path = '../cycles/cmap_subset/'  # path to drive cycles
 
@@ -124,16 +147,16 @@ for i in veh_dirs:
         drive_cycs_df = drive_cycs_df.append(tripK_df, ignore_index=True)
 t1 = time.time()
 print('Elapsed time = ' + str(round(t1 - t0, 3)))
-print()
+
 
 # ### Load Model, Run FASTSim
 
-# %%
-veh = FASTSim.get_veh(1)  # load vehicle model
+
+veh = LoadData.Vehicle(1)  # load vehicle model
 output_dict = {}
+sim_drive = SimDrive.SimDrive()
 
 results_df = pd.DataFrame()
-print("Starting batch runs.")
 t_start = time.time()
 for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     pnts = drive_cycs_df[drive_cycs_df['nrel_trip_id'] == trp]
@@ -148,8 +171,11 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
             (pnts['time_local'] -
              pnts['time_local'].shift()).fillna(0).astype('timedelta64[s]')))
     cyc['cycRoadType'] = np.zeros(len(pnts))
-
-    output = FASTSim.sim_drive(cyc, veh)
+    cyc = LoadData.Cycle(cyc_dict=cyc)
+    
+    sim_drive.sim_drive(cyc, veh)
+    output = sim_drive.get_output(cyc, veh)
+    
     del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],    output['fsKwhOutAch']
 
     output['nrel_trip_id'] = trp
@@ -163,11 +189,13 @@ print('Run Complete. Total runtime = %1.2fs' % (t_end - t_start))
 print('     Average time per cycle = %1.2fs' % ((
     t_end - t_start) / len(drive_cycs_df.nrel_trip_id.unique())))
 
+
 # ### Results
 # 
 # In this demo, the batch results from all 494 drive cycles were output to a Pandas Dataframe to simplify post-processing. Any python data structure or output file format can be used to save batch results. For simplicity, time series data was not stored, but it could certainly be included in batch processing.
 # 
 # In order to plot the data, a handful of results are filtered out either because they are much longer than we are interested in, or there was some GPS issue in data acquisition that led to an unrealistically high cycle average speed.
+
 
 df_fltr = results_df[(results_df['distance_mi'] < 1000)
                      & (results_df['distance_mi'] > 0) &
@@ -179,7 +207,9 @@ plt.figure()
 df_fltr.mpgge.hist(bins=20, rwidth=.9)
 plt.xlabel('Miles per Gallon')
 plt.ylabel('Number of Cycles')
-# plt.show()
+plt.show()
+
+
 
 df_fltr.plot(
     x='avg_speed_mph',
@@ -204,4 +234,10 @@ leg = plt.legend(
     scatterpoints=1)
 plt.xlabel('Average Cycle Speed [MPH]')
 plt.ylabel('Fuel Economy [MPG]')
-# plt.show()
+plt.show()
+
+
+
+
+
+
