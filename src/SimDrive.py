@@ -6,11 +6,12 @@ import os
 import numpy as np
 import pandas as pd
 import re
-from Globals import *
+from src.Globals import *
 from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types    # import the types
 import warnings
 warnings.simplefilter('ignore')
+from pathlib import Path
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
@@ -116,24 +117,29 @@ class Vehicle(object):
             
         return self.numba_veh
     
-    def load_vnum(self, vnum):
+    def load_vnum(self, vnum, input_file=None):
         """Load vehicle parameters based on vnum and assign to self.
         Argument:
         ---------
-        vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'"""
+        vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
+        input_file: string or filelike obj, alternative to default FASTSim_py_veh_db"""
 
-        vehdf = pd.read_csv(DEFAULT_VEH_DB)
-        vehdf.set_index('Selection', inplace=True, drop=False)
+        if input_file:
+            vehdf = pd.read_csv(Path(input_file))
+            vehdf.set_index('Selection', inplace=True, drop=False)
+        else:
+            vehdf = pd.read_csv(DEFAULT_VEH_DB)
+            vehdf.set_index('Selection', inplace=True, drop=False)
 
         def clean_data(raw_data):
             """Cleans up data formatting.
             Argument:
             ------------
             raw_data: cell of vehicle dataframe
-            
+
             Output:
             clean_data: cleaned up data"""
-            
+
             # convert data to string types
             data = str(raw_data)
             # remove percent signs if any are found
@@ -152,7 +158,7 @@ class Vehicle(object):
                     data = float(data)
                 except:
                     pass
-            
+
             return data
         
         vehdf.loc[vnum].apply(clean_data)
