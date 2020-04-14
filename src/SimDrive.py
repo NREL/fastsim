@@ -2,6 +2,7 @@
 For example usage, see ../README.md"""
 
 ### Import necessary python modules
+import os
 import numpy as np
 import pandas as pd
 import re
@@ -10,6 +11,14 @@ from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types    # import the types
 import warnings
 warnings.simplefilter('ignore')
+
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_VEH_DB = os.path.abspath(
+        os.path.join(
+            THIS_DIR, '..', 'docs', 'FASTSim_py_veh_db.csv'))
+CYCLES_DIR = os.path.abspath(
+        os.path.join(
+            THIS_DIR, '..', 'cycles'))
 
 class Cycle(object):
     """Object for containing time, speed, road grade, and road charging vectors 
@@ -37,7 +46,7 @@ class Cycle(object):
         Argument:
         ---------
         std_cyc_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
-        csv_path = '..//cycles//' + std_cyc_name + '.csv'
+        csv_path = os.path.join(CYCLES_DIR, std_cyc_name + '.csv')
         cyc = pd.read_csv(csv_path)
         for column in cyc.columns:
             self.__setattr__(column, cyc[column].to_numpy())
@@ -113,7 +122,7 @@ class Vehicle(object):
         ---------
         vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'"""
 
-        vehdf = pd.read_csv('..//docs//FASTSim_py_veh_db.csv')
+        vehdf = pd.read_csv(DEFAULT_VEH_DB)
         vehdf.set_index('Selection', inplace=True, drop=False)
 
         def clean_data(raw_data):
