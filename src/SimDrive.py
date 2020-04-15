@@ -6,7 +6,7 @@ import os
 import numpy as np
 import pandas as pd
 import re
-from src.Globals import *
+from Globals import *
 from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types    # import the types
 import warnings
