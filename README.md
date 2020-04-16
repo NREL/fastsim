@@ -16,31 +16,42 @@ Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master bran
 ## Against Excel FASTSim
 This has not been implemented yet
 
+# numba
+To significantly speed up the simulations `numba` has been used extensively to augment every class in `src/SimDrive`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
+
+*notes on numba*
+- `numba` caches compiled classes for you in `__pycache__`
+- should usually automatically register source code changes and recompile, even if `__pycache__` isn't deleted first
+
+## numba pitfalls
+- `numba` does not always work well with `numpy`, although this happens in rare occassions and has completely been resolved in this code base, as far as we know.
+- Some users have reported Python __zombie__ processes that crop up when using the `numba` extended code. This has been a difficult to reproduce bug and may have been user platform specific, it also involved heavy use of `xlwings` calling the code via Excel. These zombies can be seen in the Task Manager as latent Pythonw processes, they will prevent `numba` from recompiling, even if you delete the `__pycache__` folder
+
 # List of Abbreviations
-cur = current time step
-prev = previous time step
+- cur = current time step
+- prev = previous time step
 
-cyc = drive cycle
-secs = seconds
-mps = meters per second
-mph = miles per hour
-kw = kilowatts, unit of power
-kwh = kilowatt-hour, unit of energy
-kg = kilograms, unit of mass
-max = maximum
-min = minimum
-avg = average
-fs = fuel storage (eg. gasoline/diesel tank, pressurized hydrogen tank)
-fc = fuel converter (eg. internal combustion engine, fuel cell)
-mc = electric motor/generator and controller
-ess = energy storage system (eg. high voltage traction battery)
+- cyc = drive cycle
+- secs = seconds
+- mps = meters per second
+- mph = miles per hour
+- kw = kilowatts, unit of power
+- kwh = kilowatt-hour, unit of energy
+- kg = kilograms, unit of mass
+- max = maximum
+- min = minimum
+- avg = average
+- fs = fuel storage (eg. gasoline/diesel tank, pressurized hydrogen tank)
+- fc = fuel converter (eg. internal combustion engine, fuel cell)
+- mc = electric motor/generator and controller
+- ess = energy storage system (eg. high voltage traction battery)
 
-chg = charging of a component
-dis = discharging of a component
-lim = limit of a component
-regen = associated with regenerative braking
-des = desired value
-ach = achieved value
-in = component input
-out = component output
+- chg = charging of a component
+- dis = discharging of a component
+- lim = limit of a component
+- regen = associated with regenerative braking
+- des = desired value
+- ach = achieved value
+- in = component input
+- out = component output
 
