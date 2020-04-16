@@ -7,11 +7,12 @@ import os
 import sys
 import importlib
 
-sys.path.append('../src')
-
-# local modules
-import SimDrive
-importlib.reload(SimDrive)
+from pathlib import Path
+fsimpath=str(Path(os.getcwd()).parents[0]/Path('src'))
+if fsimpath not in sys.path:
+    sys.path.append(fsimpath)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import SimDrive as SimDrive
 
 use_jitclass = True
 

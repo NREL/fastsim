@@ -19,12 +19,15 @@ import numpy as np
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
-
 from pathlib import Path
+# allow it to find SimDrive module
 fsimpath=str(Path(os.getcwd()).parents[0]/Path('src'))
 if fsimpath not in sys.path:
     sys.path.append(fsimpath)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# allow SimDrive to find Global module
+# cannot import using "from . import Global" because there is no parent level package
+# when calling from this code
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import SimDrive as SimDrive
 
 
