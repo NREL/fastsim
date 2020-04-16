@@ -1,6 +1,5 @@
 # # FASTSim Demonstration
-# 
-# ![fastsim icon](icon_fastsim.jpg)
+#
 # 
 # Developed by NREL, the Future Automotive Systems Technology Simulator (FASTSim) evaluates the impact of technology improvements on efficiency, performance, cost, and battery life in conventional vehicles, hybrid electric vehicles (HEVs), plug-in hybrid electric vehicles (PHEVs), and all-electric vehicles (EVs).
 # 
