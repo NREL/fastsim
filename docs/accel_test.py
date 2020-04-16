@@ -1,18 +1,12 @@
 import sys
-if '../src' not in sys.path:
-    sys.path.append('../src')
 import os
 import numpy as np
-import time
-import pandas as pd
-import matplotlib.pyplot as plt
-import importlib
-# import seaborn as sns
-# sns.set(font_scale=2, style='whitegrid')
-
-# local modules
-import SimDrive
-importlib.reload(SimDrive)
+from pathlib import Path
+fsimpath=str(Path(os.getcwd()).parents[0]/Path('src'))
+if fsimpath not in sys.path:
+    sys.path.append(fsimpath)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import SimDrive as SimDrive
 
 def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     """
@@ -33,3 +27,8 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     cyc = {'cycMps': cycMps, 'cycSecs': cycSecs, 'cycGrade': cycGrade, 'cycRoadType':cycRoadType}
     return cyc
 
+def main():
+    pass
+
+if __name__=='__main__':
+    main()

@@ -16,20 +16,17 @@
 
 import sys
 import os
-from pathlib import Path
-fsimpath=str(Path(os.getcwd()).parents[0]/Path('src'))
-if fsimpath not in sys.path:
-    sys.path.append(fsimpath)
-
-import importlib
-import SimDrive
-importlib.reload(SimDrive)
-
-
 import numpy as np
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+
+from pathlib import Path
+fsimpath=str(Path(os.getcwd()).parents[0]/Path('src'))
+if fsimpath not in sys.path:
+    sys.path.append(fsimpath)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import SimDrive as SimDrive
 
 
 # import seaborn as sns
