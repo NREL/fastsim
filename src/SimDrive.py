@@ -1758,6 +1758,8 @@ class SimAccelTestJit(SimDriveCore):
             initSoc = self.veh.maxSoc
             self.sim_drive_sub(initSoc)
 
+        self.set_post_scalars()
+
 class SimAccelTest(SimDriveCore):
     """Class for running FASTSim vehicle acceleration simulation."""
 
@@ -1894,6 +1896,8 @@ class SimAccelTest(SimDriveCore):
             # If EV, initializing initial SOC to maximum SOC.
             initSoc = self.veh.maxSoc
             self.sim_drive_sub(initSoc)
+
+        self.set_post_scalars()
 
 class SimDrivePost(object):
     """Class for post-processing of SimDrive instance.  Requires already-run 
