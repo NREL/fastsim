@@ -8,12 +8,12 @@ import pandas as pd
 import re
 from src.Globals import *
 import sys
-print(__name__)
 from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types    # import the types
 import warnings
 warnings.simplefilter('ignore')
 from pathlib import Path
+import ast
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
@@ -144,11 +144,18 @@ class Vehicle(object):
 
             # convert data to string types
             data = str(raw_data)
-            # remove percent signs if any are found
+            # remove percent signs if any are found,
+            # but sometimes they exist in names / scenario names, so allow for that
             if '%' in data:
-                data = data.replace('%', '')
-                data = float(data)
-                data = data / 100.0
+                _data = data.replace('%', '')
+                try:
+                    data = float(_data)
+                    data = data / 100.0
+                    return data
+                except:
+                    # not supposed to be numeric, quit
+                    pass
+
             # replace string for TRUE with Boolean True
             elif re.search('(?i)true', data) != None:
                 data = True
@@ -203,21 +210,27 @@ class Vehicle(object):
         ### see "FC Model" tab in FASTSim for Excel
 
         # Power and efficiency arrays are defined in Globals.py
-        
-        if self.fcEffType == 1:  # SI engine
-            eff = eff_si + self.fcAbsEffImpr
+        # Can also be input in CSV as array under column fcEffMap of form
+        # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
+        # no quotes necessary
+        if hasattr(self, 'fcEffMap'):
+            eff = ast.literal_eval(self.fcEffMap)
+        else:
+            if self.fcEffType == 1:  # SI engine
+                eff = eff_si + self.fcAbsEffImpr
 
-        elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
-            eff = eff_atk + self.fcAbsEffImpr
+            elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
+                eff = eff_atk + self.fcAbsEffImpr
 
-        elif self.fcEffType == 3:  # Diesel (compression ignition) engine
-            eff = eff_diesel + self.fcAbsEffImpr
+            elif self.fcEffType == 3:  # Diesel (compression ignition) engine
+                eff = eff_diesel + self.fcAbsEffImpr
 
-        elif self.fcEffType == 4:  # H2 fuel cell
-            eff = eff_fuel_cell + self.fcAbsEffImpr
+            elif self.fcEffType == 4:  # H2 fuel cell
+                eff = eff_fuel_cell + self.fcAbsEffImpr
 
-        elif self.fcEffType == 5:  # heavy duty Diesel engine
-            eff = eff_hd_diesel + self.fcAbsEffImpr
+            elif self.fcEffType == 5:  # heavy duty Diesel engine
+                eff = eff_hd_diesel + self.fcAbsEffImpr
+
 
         # discrete array of possible engine power outputs
         inputKwOutArray = fcPwrOutPerc * self.maxFuelConvKw
@@ -303,6 +316,11 @@ class Vehicle(object):
     def set_veh_mass(self):
         """Calculate total vehicle mass.  Sum up component masses if 
         positive real number is not specified for self.vehOverrideKg"""
+        ess_mass_kg = 0
+        mc_mass_kg = 0
+        fc_mass_kg = 0
+        fs_mass_kg = 0
+
         if not(self.vehOverrideKg > 0):
             if self.maxEssKwh == 0 or self.maxEssKw == 0:
                 ess_mass_kg = 0.0
@@ -334,6 +352,12 @@ class Vehicle(object):
         self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * gravityMPerSec2) /
                               (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * gravityMPerSec2)) * gravityMPerSec2
         self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
+
+        # for stats and interest
+        self.essMassKg = ess_mass_kg
+        self.mcMassKg =  mc_mass_kg
+        self.fcMassKg =  fc_mass_kg
+        self.fsMassKg =  fs_mass_kg
 
 # type specifications for attributions of Vehcile class
 veh_spec = [('Selection', int32),
@@ -801,6 +825,43 @@ class SimDriveCore(object):
 
         #Cycle is not met
         else:
+
+            def newton_mps_estimate(Totals):
+                t3=Totals[0]
+                t2=Totals[1]
+                t1=Totals[2]
+                t0=Totals[3]
+                xs=[]
+                ys=[]
+                ms=[]
+                bs=[]
+                # initial guess
+                xi=1.0
+                max_iter=100
+                # solver gain
+                g=0.8
+                yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
+                mi = 3 * t3 * xi ** 2 + 2 * t2 * xi + t1
+                bi = yi - xi * mi
+                xs.append(xi)
+                ys.append(yi)
+                ms.append(mi)
+                bs.append(bi)
+                iterate=1
+                while iterate < max_iter:
+                    xi=xs[-1]*(1-g)-g*bs[-1]/ms[-1]
+                    yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
+                    mi = 3 * t3 * xi ** 2 + 2 * t2 * xi + t1
+                    bi = yi - xi * mi
+                    xs.append(xi)
+                    ys.append(yi)
+                    ms.append(mi)
+                    bs.append(bi)
+                    iterate+=1
+
+                _ys = [abs(y) for y in ys]
+                return xs[_ys.index(min(_ys))]
+
             Drag3 = (1.0 / 16.0) * airDensityKgPerM3 * \
                 self.veh.dragCoef * self.veh.frontalAreaM2
             Accel2 = self.veh.vehKg / (2.0 * (self.cyc.secs[i]))
@@ -831,9 +892,10 @@ class SimDriveCore(object):
                 1e3 - self.curMaxTransKwOut[i]
 
             Total = np.array([Total3, Total2, Total1, Total0])
-            Total_roots = np.roots(Total).astype(np.float64)
-            ind = np.int32(np.argmin(np.abs(np.array([self.cyc.cycMps[i] - tot_root for tot_root in Total_roots]))))
-            self.mpsAch[i] = Total_roots[ind]
+            # Total_roots = np.roots(Total).astype(np.float64)
+            # ind = np.int32(np.argmin(np.abs(np.array([self.cyc.cycMps[i] - tot_root for tot_root in Total_roots]))))
+            # self.mpsAch[i] = Total_roots[ind]
+            self.mpsAch[i] = newton_mps_estimate(Total)
 
         self.mphAch[i] = self.mpsAch[i] * mphPerMps
         self.distMeters[i] = self.mpsAch[i] * self.cyc.secs[i]
@@ -1274,11 +1336,14 @@ class SimDriveCore(object):
         if self.mpgge == 0:
             # hardcoded conversion
             self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / kWhPerGGE
+            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / 33.7 / self.veh.chgEff
 
         else:
             self.Gallons_gas_equivalent_per_mile = 1 / \
                 self.mpgge + self.electric_kWh_per_mi  / kWhPerGGE
+            grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + self.electric_kWh_per_mi / 33.7 / self.veh.chgEff
 
+        self.grid_mpgge_elec = 1 / grid_Gallons_gas_equivalent_per_mile
         self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
 
         # energy audit calcs
@@ -1414,6 +1479,7 @@ spec.extend([('fcForcedOn', bool_[:]),
              ('ess2fuelKwh', float64),
              ('Gallons_gas_equivalent_per_mile', float64),
              ('mpgge_elec', float64),
+             ('grid_mpgge_elec', float64),
              ('veh', veh_type),
              ('cyc', cyc_type),
              ('dragKj', float64), 

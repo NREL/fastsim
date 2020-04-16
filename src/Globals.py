@@ -4,6 +4,18 @@ that can be modified by advanced users."""
 
 import numpy as np
 
+# vehicle types
+CONV = 1
+HEV  = 2
+PHEV = 3
+BEV  = 4
+
+# vehicle types to string rep
+PT_TYPES = {CONV: "Conv", HEV: "HEV", PHEV: "PHEV", BEV: "EV"}
+
+FC_EFF_TYPES = {1: "SI", 2: "Diesel - ISB280", 3: "Diesel", 4: "Fuel Cell", 5: "Hybrid Diesel", 6: "Diesel - HD",
+                7: "Diesel - HDISM Scaled", 8: "Diesel - HDISM Scaled", 9: "CNG"}
+
 ### Unit conversions that should NEVER change
 mphPerMps = 2.2369
 kWhPerGGE = 33.7
@@ -20,16 +32,12 @@ fcPwrOutPerc = np.array(
 
 # fc arrays and parameters
 # Efficiencies at different power out percentages by FC type -- all
-eff_si = np.array([0.10, 0.12, 0.16, 0.22, 0.28, 0.33,
-                   0.35, 0.36, 0.35, 0.34, 0.32, 0.30])
-eff_atk = np.array([0.10, 0.12, 0.28, 0.35, 0.375,
-                    0.39, 0.40, 0.40, 0.38, 0.37, 0.36, 0.35])
-eff_diesel = np.array(
-    [0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
-eff_fuel_cell = np.array(
-    [0.10, 0.30, 0.36, 0.45, 0.50, 0.56, 0.58, 0.60, 0.58, 0.57, 0.55, 0.54])
-eff_hd_diesel = np.array(
-    [0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
+eff_si = np.array([0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30])
+eff_atk = np.array([0.10, 0.12, 0.28, 0.35, 0.375, 0.39, 0.40, 0.40, 0.38, 0.37, 0.36, 0.35])
+eff_diesel = np.array([0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
+eff_fuel_cell = np.array([0.10, 0.30, 0.36, 0.45, 0.50, 0.56, 0.58, 0.60, 0.58, 0.57, 0.55, 0.54])
+eff_hd_diesel = np.array([0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
+
 
 # Relatively continuous power out percentages for assigning FC efficiencies
 fcPercOutArray = np.r_[np.arange(0, 3.0, 0.1), np.arange(
