@@ -4,10 +4,14 @@ This is to be compared to the same script from tag:baseline (244758fac88e22e4565
 import pandas as pd
 import time
 import numpy as np
+import os
 import sys
 import importlib
 
-sys.path.append('../src')
+from pathlib import Path
+fsimpath = str(Path(os.getcwd()).parents[0]/Path('src'))
+if fsimpath not in sys.path:
+    sys.path.append(fsimpath)
 
 # local modules
 import SimDrive
@@ -34,7 +38,7 @@ for vehno in vehicles:
         if not((vehno == 1) and (cycname == 'udds')):
             cyc.set_standard_cycle(cycname)
             cyc_jit = cyc.get_numba_cyc()
-            veh.load_vnum(vehno)
+            veh.load_veh(vehno)
             veh_jit = veh.get_numba_veh()
         sim_drive = SimDrive.SimDriveJit(cyc_jit, veh_jit)
         sim_drive.sim_drive(-1)

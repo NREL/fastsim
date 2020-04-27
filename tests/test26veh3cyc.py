@@ -40,7 +40,7 @@ for vehno in vehicles:
         if not((vehno == 1) and (cycname == 'udds')):
             cyc.set_standard_cycle(cycname)
             cyc_jit = cyc.get_numba_cyc()
-            veh.load_vnum(vehno)
+            veh.load_veh(vehno)
             veh_jit = veh.get_numba_veh()
 
         if use_jitclass:

@@ -6,7 +6,7 @@ import os
 import numpy as np
 import pandas as pd
 import re
-from src.Globals import *
+from Globals import *
 import sys
 from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types    # import the types
@@ -26,7 +26,7 @@ CYCLES_DIR = os.path.abspath(
 class Cycle(object):
     """Object for containing time, speed, road grade, and road charging vectors 
     for drive cycle."""
-    def __init__(self, std_cyc_name=None, cyc_dict=None):
+    def __init__(self, std_cyc_name=None, cyc_dict=None, cyc_file_path=None):
         """Runs other methods, depending on provided keyword argument. Only one keyword
         argument should be provided.  Keyword arguments are identical to 
         arguments required by corresponding methods.  The argument 'std_cyc_name' can be
@@ -36,6 +36,8 @@ class Cycle(object):
             self.set_standard_cycle(std_cyc_name)
         if cyc_dict:
             self.set_from_dict(cyc_dict)
+        if cyc_file_path:
+            self.set_from_file(cyc_file_path)
         
     def get_numba_cyc(self):
         """Returns numba jitclass version of Cycle object."""
@@ -55,6 +57,17 @@ class Cycle(object):
             self.__setattr__(column, cyc[column].to_numpy())
         self.set_dependents()
 
+    def set_from_file(self, cyc_file_path):
+        """Load time trace of speed, grade, and road type from 
+        user-provided csv file in a pandas dataframe.
+        Argument:
+        ---------
+        cyc_file_path: path to file containing cycle data"""
+        cyc = pd.read_csv(cyc_file_path)
+        for column in cyc.columns:
+            self.__setattr__(column, cyc[column].to_numpy())
+        self.set_dependents()
+
     def set_from_dict(self, cyc_dict):
         """Set cycle attributes from dict with keys 'cycGrade', 'cycMps', 'cycSecs', 'cycRoadType'
         and numpy arrays of equal length for values.
@@ -62,7 +75,6 @@ class Cycle(object):
         ---------
         cyc_dict: dict containing cycle data
         """
-
         for key in cyc_dict.keys():
             self.__setattr__(key, cyc_dict[key])
         self.set_dependents()
@@ -96,16 +108,20 @@ class TypedCycle(object):
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes
-    Optional Argument:
+    Optional Arguments:
     ---------
-    vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'"""
+    vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
+    veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db"""
 
-    def __init__(self, vnum=None):
+    def __init__(self, vnum=None, veh_file=None):
         super().__init__()
-        if vnum:
-            self.load_vnum(vnum)
+        if veh_file:
+            self.load_veh(vnum, veh_file=veh_file)
+        elif vnum:
+            self.load_veh(vnum)
 
     def get_numba_veh(self):
+        """Load numba JIT-compiled vehicle."""
         if 'numba_veh' not in self.__dict__:
             self.numba_veh = TypedVehicle()
         for item in veh_spec:
@@ -119,15 +135,17 @@ class Vehicle(object):
             
         return self.numba_veh
     
-    def load_vnum(self, vnum, input_file=None):
-        """Load vehicle parameters based on vnum and assign to self.
-        Argument:
+    def load_veh(self, vnum, veh_file=None):
+        """Load vehicle parameters from string or filelike obj, 
+        alternative to default FASTSim_py_veh_db
+        Arguments:
         ---------
         vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-        input_file: string or filelike obj, alternative to default FASTSim_py_veh_db"""
+        veh_file (optional override): string or filelike obj, alternative 
+        to default FASTSim_py_veh_db"""
 
-        if input_file:
-            vehdf = pd.read_csv(Path(input_file))
+        if veh_file:
+            vehdf = pd.read_csv(Path(veh_file))
             vehdf.set_index('Selection', inplace=True, drop=False)
         else:
             vehdf = pd.read_csv(DEFAULT_VEH_DB)
