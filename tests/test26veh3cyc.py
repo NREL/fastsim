@@ -8,7 +8,7 @@ import sys
 import importlib
 
 from pathlib import Path
-fsimpath=str(Path(os.getcwd()).parents[0]/Path('src'))
+fsimpath=str(Path(os.getcwd()).parents[0]/Path('fastsim'))
 if fsimpath not in sys.path:
     sys.path.append(fsimpath)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

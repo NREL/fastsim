@@ -5,7 +5,7 @@ import os
 import numpy as np
 from pathlib import Path
 # allow it to find SimDrive module
-fsimpath=str(Path(os.getcwd()).parents[0]/Path('src'))
+fsimpath=str(Path(os.getcwd()).parents[0]/Path('fastsim'))
 if fsimpath not in sys.path:
     sys.path.append(fsimpath)
 # allow SimDrive to find Global module
