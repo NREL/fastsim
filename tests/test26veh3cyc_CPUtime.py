@@ -14,7 +14,7 @@ if fsimpath not in sys.path:
     sys.path.append(fsimpath)
 
 # local modules
-from fastsim import SimDrive
+from fastsim import SimDrive, LoadData
 importlib.reload(SimDrive)
 
 t0 = time.time()
@@ -24,9 +24,9 @@ vehicles = np.arange(1, 27)
 
 print('Instantiating classes.')
 print()
-veh = SimDrive.Vehicle(1)
+veh = LoadData.Vehicle(1)
 veh_jit = veh.get_numba_veh()
-cyc = SimDrive.Cycle('udds')
+cyc = LoadData.Cycle('udds')
 cyc_jit = cyc.get_numba_cyc()
 
 iter = 0

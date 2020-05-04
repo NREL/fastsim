@@ -20,7 +20,7 @@ Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master bran
 This has not been implemented yet.
 
 # numba
-To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim/SimDrive`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
+To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim/SimDrive` and `fastsim/LoadData`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
 
 *notes on numba*
 - `numba` caches compiled classes for you in `__pycache__`

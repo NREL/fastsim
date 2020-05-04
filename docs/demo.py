@@ -34,7 +34,7 @@ import importlib
 # sns.set(font_scale=2, style='whitegrid')
 
 # local modules
-from fastsim import SimDrive
+from fastsim import SimDrive, LoadData
 # importlib.reload(SimDrive)
 
 
@@ -53,7 +53,7 @@ from fastsim import SimDrive
 
 
 t0 = time.time()
-cyc = SimDrive.Cycle("udds")
+cyc = LoadData.Cycle("udds")
 cyc_jit = cyc.get_numba_cyc()
 print(time.time() - t0)
 
@@ -64,7 +64,7 @@ print(time.time() - t0)
 
 
 t0 = time.time()
-veh = SimDrive.Vehicle(1)
+veh = LoadData.Vehicle(1)
 veh_jit = veh.get_numba_veh()
 print(time.time() - t0)
 

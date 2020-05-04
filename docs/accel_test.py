@@ -5,12 +5,12 @@ import os
 import numpy as np
 from pathlib import Path
 # allow it to find SimDrive module
-fsimpath=str(Path(os.getcwd()).parents[0]/Path('fastsim'))
+fsimpath=str(Path(os.getcwd()).parents[0])
 if fsimpath not in sys.path:
     sys.path.append(fsimpath)
 # allow SimDrive to find Global module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import SimDrive as SimDrive
+from fastsim import SimDrive, LoadData
 
 def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     """
@@ -33,8 +33,8 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
 
 def main():
     # just use first vehicle in default database
-    vehicle = SimDrive.Vehicle(1)
-    accel_cyc = SimDrive.Cycle(std_cyc_name=None,
+    vehicle = LoadData.Vehicle(1)
+    accel_cyc = LoadData.Cycle(std_cyc_name=None,
                                cyc_dict=create_accel_cyc())
     accel_out = SimDrive.SimAccelTest(cyc=accel_cyc, veh=vehicle)
     accel_out.sim_drive()
