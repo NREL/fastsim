@@ -1,2 +1,2 @@
-"""Package contaning FASTSim modules LoadData and SimDrive.  
+"""Package contaning FASTSim modules Globals and SimDrive.  
 For example usage, see ../README.md"""

@@ -22,7 +22,7 @@ import sys
 import os
 from pathlib import Path
 # allow it to find SimDrive module
-fsimpath=str(Path(os.getcwd()).parents[0]/Path('fastsim'))
+fsimpath=str(Path(os.getcwd()).parents[0])
 if fsimpath not in sys.path:
     sys.path.append(fsimpath)
 import numpy as np
@@ -34,7 +34,7 @@ import importlib
 # sns.set(font_scale=2, style='whitegrid')
 
 # local modules
-import SimDrive
+from fastsim import SimDrive
 # importlib.reload(SimDrive)
 
 

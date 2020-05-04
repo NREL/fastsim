@@ -9,12 +9,12 @@ import sys
 import importlib
 
 from pathlib import Path
-fsimpath = str(Path(os.getcwd()).parents[0]/Path('fastsim'))
+fsimpath = str(Path(os.getcwd()).parents[0])
 if fsimpath not in sys.path:
     sys.path.append(fsimpath)
 
 # local modules
-import SimDrive
+from fastsim import SimDrive
 importlib.reload(SimDrive)
 
 t0 = time.time()

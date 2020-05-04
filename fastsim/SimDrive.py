@@ -6,7 +6,6 @@ import os
 import numpy as np
 import pandas as pd
 import re
-from Globals import *
 import sys
 from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types    # import the types
@@ -14,6 +13,9 @@ import warnings
 warnings.simplefilter('ignore')
 from pathlib import Path
 import ast
+
+# local modules
+from .Globals import * 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
