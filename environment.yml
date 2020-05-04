@@ -1,14 +1,15 @@
-name: fastsim_py37
+name: fastsim_py
 channels:
   - defaults
 dependencies:
   - ipykernel=5.1
   - jupyter_client=5.3
   - jupyter_core=4.5
+  - jupyterlab=1.2
   - matplotlib=3.1
   - numpy=1.16
   - numpy-base=1.16
-  - pandas=0.25
+  - pandas=1.0.3
   - python=3.7
   - numba=0.44
   - scipy=1.2

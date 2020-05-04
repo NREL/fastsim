@@ -4,9 +4,12 @@ This repo houses the pythonic flavor of FASTSim which is based on the original E
 All classes and methods are self-documented.  
 
 # Usage
-To run the code:
-1. Install environment.yml per https://github.nrel.gov/MBAP/arnaud/wiki/Conda-Environments and activate the new environment
-2. Using a Jupyter Notebook or Jupyter lab, run docs/demo.ipynb.
+To run an example:
+1. Assuming you have the latest version of [Anaconda Python Distribution](https://www.anaconda.com/products/individual), open the anaconda prompt, navigate to the top level fastsim directory, and run `conda env create -f environment.yml`.
+2. Activate the environment with `$ conda activate fastsim_py`.
+3. Navigate to .../fastsim/docs and run `jupter lab demo.ipynb` to see a demo of fastsim use cases. 
+
+To use FASTSim as an external library, make sure the fastsim package is on your path and then import FASTSim.SimDrive.  
 
 # Testing
 
@@ -14,10 +17,10 @@ To run the code:
 Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master branch version from 17 December 2019.  For timing comparisons, run 'tests/test26veh3cyc_CPUtime.py'.  
 
 ## Against Excel FASTSim
-This has not been implemented yet
+This has not been implemented yet.
 
 # numba
-To significantly speed up the simulations `numba` has been used extensively to augment every class in `src/SimDrive`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
+To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim/SimDrive`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
 
 *notes on numba*
 - `numba` caches compiled classes for you in `__pycache__`
@@ -28,30 +31,28 @@ To significantly speed up the simulations `numba` has been used extensively to a
 - Some users have reported Python __zombie__ processes that crop up when using the `numba` extended code. This has been a difficult to reproduce bug and may have been user platform specific, it also involved heavy use of `xlwings` calling the code via Excel. These zombies can be seen in the Task Manager as latent Pythonw processes, they will prevent `numba` from recompiling, even if you delete the `__pycache__` folder
 
 # List of Abbreviations
-- cur = current time step
-- prev = previous time step
-
-- cyc = drive cycle
-- secs = seconds
-- mps = meters per second
-- mph = miles per hour
-- kw = kilowatts, unit of power
-- kwh = kilowatt-hour, unit of energy
-- kg = kilograms, unit of mass
-- max = maximum
-- min = minimum
-- avg = average
-- fs = fuel storage (eg. gasoline/diesel tank, pressurized hydrogen tank)
-- fc = fuel converter (eg. internal combustion engine, fuel cell)
-- mc = electric motor/generator and controller
-- ess = energy storage system (eg. high voltage traction battery)
-
-- chg = charging of a component
-- dis = discharging of a component
-- lim = limit of a component
-- regen = associated with regenerative braking
-- des = desired value
-- ach = achieved value
-- in = component input
-- out = component output
+cur = current time step  
+prev = previous time step  
+cyc = drive cycle  
+secs = seconds  
+mps = meters per second  
+mph = miles per hour  
+kw = kilowatts, unit of power  
+kwh = kilowatt-hour, unit of energy  
+kg = kilograms, unit of mass  
+max = maximum  
+min = minimum  
+avg = average  
+fs = fuel storage (eg. gasoline/diesel tank, pressurized hydrogen tank)  
+fc = fuel converter (eg. internal combustion engine, fuel cell)  
+mc = electric motor/generator and controller  
+ess = energy storage system (eg. high voltage traction battery)  
+chg = charging of a component  
+dis = discharging of a component  
+lim = limit of a component  
+regen = associated with regenerative braking  
+des = desired value  
+ach = achieved value  
+in = component input  
+out = component output  
 
