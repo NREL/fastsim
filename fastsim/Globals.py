@@ -52,3 +52,5 @@ small_baseline_eff = np.array(
     [0.12,	0.16,	 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93,	0.93,	0.92])
 modern_max = 0.95
 mcPercOutArray = np.linspace(0, 1, 101)
+
+ENERGY_AUDIT_ERROR_TOLERANCE = 0.01 # i.e., 1%

@@ -896,6 +896,13 @@ class SimDriveCore(object):
         self.ascentKj = (self.ascentKw * self.cyc.secs).sum()
         self.rrKw = self.cycRrKw
         self.rrKj = (self.rrKw * self.cyc.secs).sum()
+
+        self.essLossKw[1:] = np.array(
+            [0 if (self.veh.maxEssKw == 0 or self.veh.maxEssKwh == 0)
+            else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(self.veh.essRoundTripEff))
+                if self.essKwOutAch[i] < 0
+            else self.essKwOutAch[i] * (1.0 / np.sqrt(self.veh.essRoundTripEff)) - self.essKwOutAch[i]
+            for i in range(1, len(self.cyc.cycSecs))])
         
         self.brakeKj = (self.cycFricBrakeKw * self.cyc.secs).sum()
         self.transKj = ((self.transKwInAch - self.transKwOutAch) * self.cyc.secs).sum()
@@ -913,15 +920,8 @@ class SimDriveCore(object):
         self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
             (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
 
-        if np.abs(self.energyAuditError) > 0.1:
+        if np.abs(self.energyAuditError) > ENERGY_AUDIT_ERROR_TOLERANCE:
             print('Warning: There is a problem with conservation of energy.')
-
-        self.essLossKw[1:] = np.array(
-            [0 if (self.veh.maxEssKw == 0 or self.veh.maxEssKwh == 0) 
-            else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(self.veh.essRoundTripEff)) 
-                if self.essKwOutAch[i] < 0 
-            else self.essKwOutAch[i] * (1.0 / np.sqrt(self.veh.essRoundTripEff)) - self.essKwOutAch[i] 
-            for i in range(1, len(self.cyc.cycSecs))])
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0
