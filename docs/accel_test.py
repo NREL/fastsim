@@ -33,13 +33,14 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
 
 def main():
     # just use first vehicle in default database
-    vehicle = LoadData.Vehicle(1)
-    accel_cyc = LoadData.Cycle(std_cyc_name=None,
-                               cyc_dict=create_accel_cyc())
-    accel_out = SimDrive.SimAccelTest(cyc=accel_cyc, veh=vehicle)
-    accel_out.sim_drive()
-    acvhd_0_to_acc_speed_secs = SimDrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']
-    print('acceleration [s] of vehicle: {}'.format(acvhd_0_to_acc_speed_secs))
+    for i in range(1,29):
+        vehicle = LoadData.Vehicle(i)
+        accel_cyc = LoadData.Cycle(std_cyc_name=None,
+                                   cyc_dict=create_accel_cyc())
+        accel_out = SimDrive.SimAccelTest(cyc=accel_cyc, veh=vehicle)
+        accel_out.sim_drive()
+        acvhd_0_to_acc_speed_secs = SimDrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']
+        print('vehicle {}: acceleration [s] {}'.format(i, acvhd_0_to_acc_speed_secs))
 
 if __name__=='__main__':
     main()

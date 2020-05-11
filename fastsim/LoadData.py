@@ -15,7 +15,8 @@ from pathlib import Path
 import ast
 
 # local modules
-from .Globals import * 
+from . import Globals as gl
+
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
         os.path.join(
@@ -82,7 +83,7 @@ class Cycle(object):
     
     def set_dependents(self):
         """Sets values dependent on cycle info loaded from file."""
-        self.cycMph = self.cycMps * mphPerMps
+        self.cycMph = self.cycMps * gl.mphPerMps
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
 
 # type specifications for attributes of Cycle class
@@ -188,7 +189,8 @@ class Vehicle(object):
                     pass
 
             return data
-        
+
+        # empty strings for cells that had no values easier to deal with
         vehdf.loc[vnum].apply(clean_data)
 
         ### selects specified vnum from vehdf
@@ -236,30 +238,30 @@ class Vehicle(object):
             eff = ast.literal_eval(self.fcEffMap)
         else:
             if self.fcEffType == 1:  # SI engine
-                eff = eff_si + self.fcAbsEffImpr
+                eff = gl.eff_si + self.fcAbsEffImpr
 
             elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
-                eff = eff_atk + self.fcAbsEffImpr
+                eff = gl.eff_atk + self.fcAbsEffImpr
 
             elif self.fcEffType == 3:  # Diesel (compression ignition) engine
-                eff = eff_diesel + self.fcAbsEffImpr
+                eff = gl.eff_diesel + self.fcAbsEffImpr
 
             elif self.fcEffType == 4:  # H2 fuel cell
-                eff = eff_fuel_cell + self.fcAbsEffImpr
+                eff = gl.eff_fuel_cell + self.fcAbsEffImpr
 
             elif self.fcEffType == 5:  # heavy duty Diesel engine
-                eff = eff_hd_diesel + self.fcAbsEffImpr
+                eff = gl.eff_hd_diesel + self.fcAbsEffImpr
 
 
         # discrete array of possible engine power outputs
-        inputKwOutArray = fcPwrOutPerc * self.maxFuelConvKw
+        inputKwOutArray = gl.fcPwrOutPerc * self.maxFuelConvKw
         # Relatively continuous array of possible engine power outputs
-        fcKwOutArray = self.maxFuelConvKw * fcPercOutArray
+        fcKwOutArray = self.maxFuelConvKw * gl.fcPercOutArray
         # Initializes relatively continuous array for fcEFF
-        fcEffArray = np.zeros(len(fcPercOutArray))
+        fcEffArray = np.zeros(len(gl.fcPercOutArray))
 
         # the following for loop populates fcEffArray
-        for j in range(0, len(fcPercOutArray) - 1):
+        for j in range(0, len(gl.fcPercOutArray) - 1):
             low_index = np.argmax(inputKwOutArray >= fcKwOutArray[j])
             fcinterp_x_1 = inputKwOutArray[low_index-1]
             fcinterp_x_2 = inputKwOutArray[low_index]
@@ -281,8 +283,25 @@ class Vehicle(object):
         ### see "Motor" tab in FASTSim for Excel
 
         maxMotorKw = self.maxMotorKw
-        
+
+        mcPwrOutPerc = gl.mcPwrOutPerc
+        modern_max = gl.modern_max
+        large_baseline_eff = gl.large_baseline_eff
+        small_baseline_eff = gl.small_baseline_eff
         # Power and efficiency arrays are defined in Globals.py
+        # can also be overridden by motor power and efficiency columns in the input file
+        # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
+        if 'mcPwrOutPerc' in self.__dir__() and self.mcPwrOutPerc:
+            if type(self.mcPwrOutPerc) != float:
+                mcPwrOutPerc = np.array(ast.literal_eval(self.mcPwrOutPerc))
+        if 'largeBaselineEff' in self.__dir__() and self.largeBaselineEff:
+            if type(self.largeBaselineEff) != float:
+                large_baseline_eff = np.array(ast.literal_eval(self.largeBaselineEff))
+        if 'smallBaselineEff' in self.__dir__() and self.smallBaselineEff:
+            if type(self.smallBaselineEff) != float:
+                small_baseline_eff = np.array(ast.literal_eval(self.smallBaselineEff))
+        if 'modernMax' in self.__dir__() and not np.isnan(self.modernMax):
+            modern_max = float(self.modernMax)
 
         modern_diff = modern_max - max(large_baseline_eff)
 
@@ -296,10 +315,10 @@ class Vehicle(object):
                 (1 - mcKwAdjPerc)*(small_baseline_eff[k])
 
         mcInputKwOutArray = mcPwrOutPerc * maxMotorKw
-        mcFullEffArray = np.zeros(len(mcPercOutArray))
-        mcKwOutArray = np.linspace(0, 1, len(mcPercOutArray)) * maxMotorKw
+        mcFullEffArray = np.zeros(len(gl.mcPercOutArray))
+        mcKwOutArray = np.linspace(0, 1, len(gl.mcPercOutArray)) * maxMotorKw
 
-        for m in range(1, len(mcPercOutArray) - 1):
+        for m in range(1, len(gl.mcPercOutArray) - 1):
             low_index = np.argmax(mcInputKwOutArray >= mcKwOutArray[m])
 
             fcinterp_x_1 = mcInputKwOutArray[low_index-1]
@@ -368,8 +387,8 @@ class Vehicle(object):
         else:
             self.vehKg = self.vehOverrideKg
 
-        self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * gravityMPerSec2) /
-                              (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * gravityMPerSec2)) * gravityMPerSec2
+        self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * gl.gravityMPerSec2) /
+                              (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * gl.gravityMPerSec2)) * gl.gravityMPerSec2
         self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
         # for stats and interest
