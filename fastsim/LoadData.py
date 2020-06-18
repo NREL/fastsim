@@ -79,6 +79,11 @@ class Cycle(object):
         """
         for key in cyc_dict.keys():
             self.__setattr__(key, cyc_dict[key])
+        # fill in unspecified optional values with zeros
+        if 'cycGrade' not in cyc_dict.keys():
+            self.__setattr__('cycGrade', np.zeros(len(self.cycMps)))
+        if 'cycRoadType' not in cyc_dict.keys():
+            self.__setattr__('cycRoadType', np.zeros(len(self.cycMps)))
         self.set_dependents()
     
     def set_dependents(self):
