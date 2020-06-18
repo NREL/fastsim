@@ -13,8 +13,8 @@ if fsimpath not in sys.path:
     sys.path.append(fsimpath)
 
 # local modules
-from fastsim import SimDrive, LoadData
-importlib.reload(SimDrive)
+from fastsim import simdrive, vehicle, cycle
+importlib.reload(simdrive)
 
 use_jitclass = True
 
@@ -25,9 +25,9 @@ vehicles = np.arange(1, 27)
 
 print('Instantiating classes.')
 print()
-veh = LoadData.Vehicle(1)
+veh = vehicle.Vehicle(1)
 veh_jit = veh.get_numba_veh()
-cyc = LoadData.Cycle('udds')
+cyc = cycle.Cycle('udds')
 cyc_jit = cyc.get_numba_cyc()
 
 newvars = ['rrKjPos', 'rrKjNeg', 'dragKjPos', 'dragKjNeg'] 
@@ -46,13 +46,13 @@ for vehno in vehicles:
             veh_jit = veh.get_numba_veh()
 
         if use_jitclass:
-            sim_drive = SimDrive.SimDriveJit(cyc_jit, veh_jit)
+            sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
             sim_drive.sim_drive(-1)
         else:
-            sim_drive = SimDrive.SimDriveClassic(cyc_jit, veh_jit)
+            sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit)
             sim_drive.sim_drive()
             
-        sim_drive_post = SimDrive.SimDrivePost(sim_drive)
+        sim_drive_post = simdrive.SimDrivePost(sim_drive)
         # sim_drive_post.set_battery_wear()
         diagno = sim_drive_post.get_diagnostics()
         energyAuditErrors.append(sim_drive.energyAuditError)

@@ -21,7 +21,7 @@
 import sys
 import os
 from pathlib import Path
-# allow it to find SimDrive module
+# allow it to find simdrive module
 fsimpath=str(Path(os.getcwd()).parents[0])
 if fsimpath not in sys.path:
     sys.path.append(fsimpath)
@@ -34,8 +34,8 @@ import importlib
 # sns.set(font_scale=2, style='whitegrid')
 
 # local modules
-from fastsim import SimDrive, LoadData
-# importlib.reload(SimDrive)
+from fastsim import simdrive, vehicle, cycle
+# importlib.reload(simdrive)
 
 
 # ## Individual Drive Cycle
@@ -53,7 +53,7 @@ from fastsim import SimDrive, LoadData
 
 
 t0 = time.time()
-cyc = LoadData.Cycle("udds")
+cyc = cycle.Cycle("udds")
 cyc_jit = cyc.get_numba_cyc()
 print(time.time() - t0)
 
@@ -64,7 +64,7 @@ print(time.time() - t0)
 
 
 t0 = time.time()
-veh = LoadData.Vehicle(1)
+veh = vehicle.Vehicle(1)
 veh_jit = veh.get_numba_veh()
 print(time.time() - t0)
 
@@ -77,9 +77,9 @@ print(time.time() - t0)
 
 
 t0 = time.time()
-sim_drive = SimDrive.SimDriveJit(cyc_jit, veh_jit)
+sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
 sim_drive.sim_drive(-1)
-# sim_drive = SimDrive.SimDriveClassic(cyc_jit, veh_jit)
+# sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit)
 # sim_drive.sim_drive()
 sim_drive.set_post_scalars()
 print(time.time() - t0)
@@ -87,7 +87,7 @@ print(time.time() - t0)
 
 
 t0 = time.time()
-sim_drive_post = SimDrive.SimDrivePost(sim_drive)
+sim_drive_post = simdrive.SimDrivePost(sim_drive)
 output = sim_drive_post.get_output()
 sim_drive_post.set_battery_wear()
 diag = sim_drive_post.get_diagnostics()
@@ -169,7 +169,7 @@ print('Elapsed time = ' + str(round(t1 - t0, 3)))
 # ### Load Model, Run FASTSim
 
 
-veh = SimDrive.Vehicle(1).get_numba_veh()  # load vehicle model
+veh = vehicle.Vehicle(1).get_numba_veh()  # load vehicle model
 output_dict = {}
 
 results_df = pd.DataFrame()
@@ -187,11 +187,11 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
             (pnts['time_local'] -
              pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')))
     cyc['cycRoadType'] = np.zeros(len(pnts))
-    cyc = SimDrive.Cycle(cyc_dict=cyc).get_numba_cyc()
+    cyc = cycle.Cycle(cyc_dict=cyc).get_numba_cyc()
     
-    sim_drive = SimDrive.SimDriveJit(cyc, veh)
+    sim_drive = simdrive.SimDriveJit(cyc, veh)
     sim_drive.sim_drive(-1)
-    sim_drive_post = SimDrive.SimDrivePost(sim_drive)
+    sim_drive_post = simdrive.SimDrivePost(sim_drive)
     output = sim_drive_post.get_output()
     
     del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],    output['fsKwhOutAch']
@@ -251,10 +251,3 @@ leg = plt.legend(
 plt.xlabel('Average Cycle Speed [MPH]')
 plt.ylabel('Fuel Economy [MPG]')
 plt.show()
-
-
-# In[ ]:
-
-
-
-

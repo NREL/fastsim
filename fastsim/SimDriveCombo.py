@@ -1,7 +1,7 @@
 """Module containing classes for simulating 2 Cycle fuel economy and provided label fuel economy"""
 
 import LoadData
-import SimDrive 
+import simdrive 
 from numba import jitclass, deferred_type
 
 class SimTwoCycle(object):
@@ -9,10 +9,10 @@ class SimTwoCycle(object):
 
     def __init__(self):
         """Initializes numba jit udds and hwfet cycles and SimDrive objects"""
-        self.udds = LoadData.Cycle('udds').get_numba_cyc()
-        self.hwfet = LoadData.Cycle('hwfet').get_numba_cyc()
-        self.sim_drv_udds = SimDrive.SimDriveJit(len(self.udds.cycSecs))
-        self.sim_drv_hwfet = SimDrive.SimDriveJit(len(self.hwfet.cycSecs))
+        self.udds = cycle.Cycle('udds').get_numba_cyc()
+        self.hwfet = cycle.Cycle('hwfet').get_numba_cyc()
+        self.sim_drv_udds = simdrive.SimDriveJit(len(self.udds.cycSecs))
+        self.sim_drv_hwfet = simdrive.SimDriveJit(len(self.hwfet.cycSecs))
 
     def set_2cyc_label_fe(self, veh):
         self.sim_drv_udds.sim_drive(self.udds, veh, -1)
