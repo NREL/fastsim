@@ -119,3 +119,71 @@ class TypedCycle(object):
         self.cycRoadType = np.zeros(len_cyc, dtype=np.float64)
         self.cycMph = np.zeros(len_cyc, dtype=np.float64)
         self.secs = np.zeros(len_cyc, dtype=np.float64)
+
+
+def to_microtrips(cycle, stop_speed_m__s=1e-6):
+    """
+    Split a cycle into an array of microtrips with one microtrip being a start
+    to subsequent stop plus any idle (stopped time).
+
+    Arguments:
+    ----------
+    cycle: drive cycle converted to dictionary by cycle.get_cyc_dict()
+    stop_speed_m__s: speed at which vehicle is considered stopped for 
+        trip separation
+    """
+    microtrips = []
+    ts = np.array(cycle['cycSecs'])
+    vs = np.array(cycle['cycMps'])
+    gs = np.array(cycle['cycGrade'])
+    rs = np.array(cycle['cycRoadType'])
+    mt = make_cycle([], [])
+    moving = False
+    for idx, (t, v, g, r) in enumerate(zip(ts, vs, gs, rs)):
+        if v > stop_speed_m__s and not moving:
+            if len(mt['cycSecs']) > 1:
+                temp = make_cycle(
+                    [mt['cycSecs'][-1]],
+                    [mt['cycMps'][-1]],
+                    [mt['cycGrade'][-1]],
+                    [mt['cycRoadType'][-1]])
+                mt['cycSecs'] = mt['cycSecs'] - mt['cycSecs'][0]
+                for k in mt:
+                    mt[k] = np.array(mt[k])
+                microtrips.append(mt)
+                mt = temp
+        mt['cycSecs'] = np.append(mt['cycSecs'], [t])
+        mt['cycMps'] = np.append(mt['cycMps'], [v])
+        mt['cycGrade'] = np.append(mt['cycGrade'], [g])
+        mt['cycRoadType'] = np.append(mt['cycRoadType'], [r])
+        moving = v > stop_speed_m__s
+    if len(mt['cycSecs']) > 0:
+        mt['cycSecs'] = mt['cycSecs'] - mt['cycSecs'][0]
+        microtrips.append(mt)
+    return microtrips
+
+def make_cycle(ts, vs, gs=None, rs=None):
+    """
+    (Array Num) (Array Num) (Array Num)? -> Dict
+    Create a cycle from times, speeds, and grades. If grades is not specified,
+    it is set to zero.
+    Arguments:
+    ----------
+    ts: array of times [s]
+    vs: array of vehicle speeds [mps]
+    gs: array of grades
+    rs: array of road types (charging or not)
+    """
+    assert len(ts) == len(vs)
+    if gs is None:
+        gs = np.zeros(len(ts))
+    else:
+        assert len(ts) == len(gs)
+    if rs is None:
+        rs = np.zeros(len(ts))
+    else:
+        assert len(ts) == len(rs)
+    return {'cycSecs': np.array(ts),
+            'cycMps': np.array(vs),
+            'cycGrade': np.array(gs),
+            'cycRoadType': np.array(rs)}
