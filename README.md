@@ -9,7 +9,7 @@ To run an example:
 2. Activate the environment with `$ conda activate fastsim_py`.
 3. Navigate to .../fastsim/docs and run `jupter lab demo.ipynb` to see a demo of fastsim use cases. 
 
-To use FASTSim as an external library, make sure the fastsim package is on your path and then import FASTSim.SimDrive.  
+To use FASTSim as an external library, make sure the fastsim package is on your path and then import `fastsim.simdrive`.  
 
 # Testing
 
@@ -20,7 +20,7 @@ Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master bran
 This has not been implemented yet.
 
 # numba
-To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim/SimDrive` and `fastsim/LoadData`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
+To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim.simdrive`, `fastsim.cycle`, and `fastsim/vehicle`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
 
 *notes on numba*
 - `numba` caches compiled classes for you in `__pycache__`

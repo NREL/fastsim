@@ -4,13 +4,13 @@ import sys
 import os
 import numpy as np
 from pathlib import Path
-# allow it to find SimDrive module
+# allow it to find simdrive module
 fsimpath=str(Path(os.getcwd()).parents[0])
 if fsimpath not in sys.path:
     sys.path.append(fsimpath)
-# allow SimDrive to find Global module
+# allow simdrive to find Global module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from fastsim import SimDrive, LoadData
+from fastsim import simdrive, vehicle, cycle
 
 def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     """
@@ -34,12 +34,12 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
 def main():
     # just use first vehicle in default database
     for i in range(1,29):
-        vehicle = LoadData.Vehicle(i)
-        accel_cyc = LoadData.Cycle(std_cyc_name=None,
+        veh = vehicle.Vehicle(i)
+        accel_cyc = cycle.Cycle(std_cyc_name=None,
                                    cyc_dict=create_accel_cyc())
-        accel_out = SimDrive.SimAccelTest(cyc=accel_cyc, veh=vehicle)
+        accel_out = simdrive.SimAccelTest(cyc=accel_cyc, veh=veh)
         accel_out.sim_drive()
-        acvhd_0_to_acc_speed_secs = SimDrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']
+        acvhd_0_to_acc_speed_secs = simdrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']
         print('vehicle {}: acceleration [s] {}'.format(i, acvhd_0_to_acc_speed_secs))
 
 if __name__=='__main__':
