@@ -90,6 +90,16 @@ class Cycle(object):
         """Sets values dependent on cycle info loaded from file."""
         self.cycMph = self.cycMps * gl.mphPerMps
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
+    
+    def get_cyc_dict(self):
+        """Returns cycle as dict rather than class instance."""
+        keys = ['cycSecs', 'cycMps', 'cycGrade', 'cycRoadType']
+        
+        cyc = {}
+        for key in keys:
+            cyc[key] = self.__getattribute__(key)
+        
+        return cyc
 
 # type specifications for attributes of Cycle class
 cyc_spec = [('cycSecs', float64[:]),
