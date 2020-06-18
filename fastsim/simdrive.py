@@ -13,8 +13,9 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from .Globals import * 
-from .LoadData import *
+from .globalvars import * 
+from .cycle import *
+from .vehicle import *
 
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
