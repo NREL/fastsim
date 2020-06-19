@@ -65,7 +65,7 @@ print(time.time() - t0)
 
 # ### Run FASTSim
 # 
-# The "sim_drive" function takes the drive cycle and vehicle models defined above as inputs. The output is a dictionary of time series and scalar values described the simulation results. Typically of interest is the "gge" key, which is an array of time series energy consumption data at each time step in the drive cycle. Additionally, to add a result from the simulator to the output dictionary, a user can modify the sim_drive_sub function source code to include the desired field.
+# The "sim_drive" function takes the drive cycle and vehicle models defined above as inputs. The output is a dictionary of time series and scalar values described the simulation results. Typically of interest is the "gge" key, which is an array of time series energy consumption data at each time step in the drive cycle.
 # 
 # If running FASTSim in batch over many drive cycles, the output from "sim_drive" can be written to files or database for batch post-processing. 
 
