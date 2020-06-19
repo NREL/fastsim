@@ -12,7 +12,7 @@ from numba import float64, int32, bool_, types    # import the types
 import warnings
 warnings.simplefilter('ignore')
 from pathlib import Path
-import ast
+import copy
 
 # local modules
 from . import globalvars as gl
@@ -206,7 +206,6 @@ def equals(c1, c2):
             return False
     return True
 
-
 def concat(cycles):
     """
     (Array Dict) -> Dict
@@ -240,5 +239,50 @@ def concat(cycles):
             np.array(cycle['cycGrade'][1:])])
     return final_cycle
 
+def resample(cycle, new_dt=None, start_time=None, end_time=None,
+             hold_keys=None):
+    """
+    Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
+    Resample a cycle with a new delta time from start time to end time.
+
+    - cycle: Dict with keys
+        'cycSecs': numpy.array Real giving the elapsed time
+    - new_dt: Real, optional
+        the new delta time of the sampling. Defaults to the
+        difference between the first two times of the cycle passed in
+    - start_time: Real, optional
+        the start time of the sample. Defaults to 0.0 seconds
+    - end_time: Real, optional
+        the end time of the cycle. Defaults to the last time of the passed in
+        cycle.
+    - hold_keys: None or (Set String), if specified, yields values that
+                 should be interpolated step-wise, holding their value
+                 until an explicit change (i.e., NOT interpolated)
+    Resamples all non-time metrics by the new sample time.
+    """
+    if new_dt is None:
+        new_dt = cycle['cycSecs'][1] - cycle['cycSecs'][0]
+    if start_time is None:
+        start_time = 0.0
+    if end_time is None:
+        end_time = cycle['cycSecs'][-1]
+    new_cycle = {}
+    eps = new_dt / 10.0
+    new_cycle['cycSecs'] = np.arange(start_time, end_time + eps, step=new_dt)
+    for k in cycle:
+        if k == 'cycSecs':
+            continue
+        elif hold_keys is not None and k in hold_keys:
+            f = interp1d(cycle['cycSecs'], cycle[k], 0)
+            new_cycle[k] = f(new_cycle['cycSecs'])
+            continue
+        try:
+            new_cycle[k] = np.interp(
+                new_cycle['cycSecs'], cycle['cycSecs'], cycle[k])
+        except:
+            # if the value can't be interpolated, it must not be a numerical
+            # array. Just add it back in as is.
+            new_cycle[k] = copy.deepcopy(cycle[k])
+    return new_cycle
 # resample(), probably pt2d.make_course(), and clip_by_times()
 # this one needs a test/demo
