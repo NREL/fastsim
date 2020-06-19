@@ -127,15 +127,15 @@ class SimDriveCore(object):
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
 
-    def sim_drive_sub(self, initSoc=None):
+    def sim_drive_walk(self, initSoc=None):
         """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and performs a backward facing 
-        powertrain simulation. Method 'sim_drive' runs this to 
-        iterate through the time steps of 'cyc'.
+        powertrain simulation. Method 'sim_drive' runs this iteratively to 
+        achieve correct SOC initial and final conditions, as needed.
 
         Arguments
         ------------
-        initSoc: initial battery state-of-charge (SOC) for electrified vehicles"""
+        initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles"""
         
         ############################
         ###   Loop Through Time  ###
@@ -934,7 +934,7 @@ class SimDriveClassic(SimDriveCore):
     run slower for large batch runs."""
 
     def sim_drive(self, initSoc=None):
-        """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
+        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
         initSoc: (optional) initial SOC for electrified vehicles.  
@@ -952,7 +952,7 @@ class SimDriveClassic(SimDriveCore):
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
 
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
 
@@ -968,14 +968,14 @@ class SimDriveClassic(SimDriveCore):
             sim_count = 0
             while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
                 sim_count += 1
-                self.sim_drive_sub(initSoc)
+                self.sim_drive_walk(initSoc)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
                 ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
                                      self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
 
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
 
@@ -983,11 +983,11 @@ class SimDriveClassic(SimDriveCore):
 
             initSoc = self.veh.maxSoc
 
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         else:
 
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         self.set_post_scalars()
 
@@ -1047,7 +1047,7 @@ class SimDriveJit(SimDriveCore):
     faster for large batch runs."""
 
     def sim_drive(self, initSoc):
-        """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType.
+        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
         initSoc: initial SOC for electrified vehicles.  
@@ -1065,7 +1065,7 @@ class SimDriveJit(SimDriveCore):
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV 
 
@@ -1081,14 +1081,14 @@ class SimDriveJit(SimDriveCore):
             sim_count = 0
             while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
                 sim_count += 1
-                self.sim_drive_sub(initSoc)
+                self.sim_drive_walk(initSoc)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
                 ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) * 
                     self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
                         
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
 
@@ -1096,11 +1096,11 @@ class SimDriveJit(SimDriveCore):
 
             initSoc = self.veh.maxSoc
             
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         else:
             
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
         
         self.set_post_scalars()
         
@@ -1111,25 +1111,25 @@ class SimAccelTestJit(SimDriveCore):
     faster for large batch runs."""
 
     def sim_drive(self):
-        """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType."""
+        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
 
         if self.veh.vehPtType == 1:  # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         elif self.veh.vehPtType == 2:  # HEV
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         else:
 
             # If EV, initializing initial SOC to maximum SOC.
             initSoc = self.veh.maxSoc
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         self.set_post_scalars()
 
@@ -1137,25 +1137,25 @@ class SimAccelTest(SimDriveCore):
     """Class for running FASTSim vehicle acceleration simulation."""
 
     def sim_drive(self):
-        """Initialize and run sim_drive_sub as appropriate for vehicle attribute vehPtType."""
+        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
 
         if self.veh.vehPtType == 1:  # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         elif self.veh.vehPtType == 2:  # HEV
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         else:
 
             # If EV, initializing initial SOC to maximum SOC.
             initSoc = self.veh.maxSoc
-            self.sim_drive_sub(initSoc)
+            self.sim_drive_walk(initSoc)
 
         self.set_post_scalars()
 
