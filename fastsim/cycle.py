@@ -284,5 +284,24 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
             # array. Just add it back in as is.
             new_cycle[k] = copy.deepcopy(cycle[k])
     return new_cycle
-# resample(), probably pt2d.make_course(), and clip_by_times()
-# this one needs a test/demo
+
+def clip_by_times(cycle, t_end, t_start=0):
+    """
+    Cycle Number Number -> Cycle
+    INPUT:
+    - cycle: Dict, a legitimate driving cycle
+    - t_start: Number, time to start
+    - t_end: Number, time to end
+    RETURNS: Dict, the cycle with fields snipped
+        to times >= t_start and <= t_end
+    Clip the cycle to the given times and return
+    """
+    idx = np.logical_and(cycle['cycSecs'] >= t_start,
+                         cycle['cycSecs'] <= t_end)
+    new_cycle = {}
+    for k in cycle:
+        try:
+            new_cycle[k] = np.array(cycle[k])[idx]
+        except:
+            new_cycle[k] = cycle[k]
+    return new_cycle
