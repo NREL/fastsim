@@ -13,9 +13,10 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from .Globals import * 
-from .LoadData import *
-from .SimDrive import *
+from .globalvars import * 
+from .cycle import *
+from .vehicle import *
+from .simdrive import *
 
 class SimDriveHot(SimDriveClassic):
     """Class containing methods for running FASTSim vehicle 
