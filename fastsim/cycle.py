@@ -187,3 +187,58 @@ def make_cycle(ts, vs, gs=None, rs=None):
             'cycMps': np.array(vs),
             'cycGrade': np.array(gs),
             'cycRoadType': np.array(rs)}
+
+def equals(c1, c2):
+    """
+    Dict Dict -> Bool
+    Returns true if the two cycles are equal, false otherwise
+    Arguments:
+    ----------
+    c1: cycle as dictionary from get_cyc_dict()
+    c2: cycle as dictionary from get_cyc_dict()
+    """
+    if c1.keys() != c2.keys():
+        return False
+    for k in c1.keys():
+        if len(c1[k]) != len(c2[k]):
+            return False
+        if np.any(np.abs(np.array(c1[k]) - np.array(c2[k])) > 1e-6):
+            return False
+    return True
+
+
+def concat(cycles):
+    """
+    (Array Dict) -> Dict
+    Concatenates cycles together one after another
+    """
+    final_cycle = {'cycSecs': np.array([]),
+                   'cycMps': np.array([]),
+                   'cycGrade': np.array([]),
+                   'cycRoadType': np.array([])}
+    first = True
+    for cycle in cycles:
+        if first:
+            final_cycle['cycSecs'] = np.array(cycle['cycSecs'])
+            final_cycle['cycMps'] = np.array(cycle['cycMps'])
+            final_cycle['cycGrade'] = np.array(cycle['cycGrade'])
+            final_cycle['cycRoadType'] = np.array(cycle['cycRoadType'])
+            first = False
+        # if len(final_cycle['cycSecs']) == 0: # ???
+        #     t0 = 0.0
+        # else:
+        t0 = final_cycle['cycSecs'][-1]
+        N_pre = len(final_cycle['cycSecs'])
+        final_cycle['cycSecs'] = np.concatenate([
+            final_cycle['cycSecs'],
+            np.array(cycle['cycSecs'][1:]) + t0])
+        final_cycle['cycMps'] = np.concatenate([
+            final_cycle['cycMps'],
+            np.array(cycle['cycMps'][1:])])
+        final_cycle['cycGrade'] = np.concatenate([
+            final_cycle['cycGrade'],
+            np.array(cycle['cycGrade'][1:])])
+    return final_cycle
+
+# resample(), probably pt2d.make_course(), and clip_by_times()
+# this one needs a test/demo
