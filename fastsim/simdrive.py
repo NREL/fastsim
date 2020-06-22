@@ -13,9 +13,9 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from .globalvars import * 
-from .cycle import *
-from .vehicle import *
+from . import globalvars as gl
+from .cycle import TypedCycle
+from .vehicle import TypedVehicle
 
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
@@ -289,7 +289,7 @@ class SimDriveCore(object):
 
         self.curMaxMechMcKwIn[i] = min(
             self.essLimMcRegenKw[i], self.veh.maxMotorKw)
-        self.curMaxTracKw[i] = (((self.veh.wheelCoefOfFric * self.veh.driveAxleWeightFrac * self.veh.vehKg * gravityMPerSec2)
+        self.curMaxTracKw[i] = (((self.veh.wheelCoefOfFric * self.veh.driveAxleWeightFrac * self.veh.vehKg * gl.gravityMPerSec2)
                                     / (1 + ((self.veh.vehCgM * self.veh.wheelCoefOfFric) / self.veh.wheelBaseM))) / 1000.0) * (self.maxTracMps[i])
 
         if self.veh.fcEffType == 4:
@@ -322,17 +322,17 @@ class SimDriveCore(object):
         ------------
         i: index of time step"""
 
-        self.cycDragKw[i] = 0.5 * airDensityKgPerM3 * self.veh.dragCoef * \
+        self.cycDragKw[i] = 0.5 * gl.airDensityKgPerM3 * self.veh.dragCoef * \
             self.veh.frontalAreaM2 * \
             (((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0)**3) / 1000.0
         self.cycAccelKw[i] = (self.veh.vehKg / (2.0 * (self.cyc.secs[i]))) * \
             ((self.cyc.cycMps[i]**2) - (self.mpsAch[i-1]**2)) / 1000.0
-        self.cycAscentKw[i] = gravityMPerSec2 * np.sin(np.arctan(
+        self.cycAscentKw[i] = gl.gravityMPerSec2 * np.sin(np.arctan(
             self.cyc.cycGrade[i])) * self.veh.vehKg * ((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0) / 1000.0
         self.cycTracKwReq[i] = self.cycDragKw[i] + \
             self.cycAccelKw[i] + self.cycAscentKw[i]
         self.spareTracKw[i] = self.curMaxTracKw[i] - self.cycTracKwReq[i]
-        self.cycRrKw[i] = gravityMPerSec2 * self.veh.wheelRrCoef * \
+        self.cycRrKw[i] = gl.gravityMPerSec2 * self.veh.wheelRrCoef * \
             self.veh.vehKg * ((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0) / 1000.0
         self.cycWheelRadPerSec[i] = self.cyc.cycMps[i] / self.veh.wheelRadiusM
         self.cycTireInertiaKw[i] = (((0.5) * self.veh.wheelInertiaKgM2 * (self.veh.numWheels * (self.cycWheelRadPerSec[i]**2.0)) / self.cyc.secs[i]) -
@@ -341,7 +341,7 @@ class SimDriveCore(object):
         self.cycWheelKwReq[i] = self.cycTracKwReq[i] + \
             self.cycRrKw[i] + self.cycTireInertiaKw[i]
         self.regenContrLimKwPerc[i] = self.veh.maxRegen / (1 + self.veh.regenA * np.exp(-self.veh.regenB * (
-            (self.cyc.cycMph[i] + self.mpsAch[i-1] * mphPerMps) / 2.0 + 1 - 0)))
+            (self.cyc.cycMph[i] + self.mpsAch[i-1] * gl.mphPerMps) / 2.0 + 1 - 0)))
         self.cycRegenBrakeKw[i] = max(min(
             self.curMaxMechMcKwIn[i] * self.veh.transEff, self.regenContrLimKwPerc[i] * -self.cycWheelKwReq[i]), 0)
         self.cycFricBrakeKw[i] = - \
@@ -406,26 +406,26 @@ class SimDriveCore(object):
                 _ys = [abs(y) for y in ys]
                 return xs[_ys.index(min(_ys))]
 
-            Drag3 = (1.0 / 16.0) * airDensityKgPerM3 * \
+            Drag3 = (1.0 / 16.0) * gl.airDensityKgPerM3 * \
                 self.veh.dragCoef * self.veh.frontalAreaM2
             Accel2 = self.veh.vehKg / (2.0 * (self.cyc.secs[i]))
-            Drag2 = (3.0 / 16.0) * airDensityKgPerM3 * \
+            Drag2 = (3.0 / 16.0) * gl.airDensityKgPerM3 * \
                 self.veh.dragCoef * self.veh.frontalAreaM2 * self.mpsAch[i-1]
             Wheel2 = 0.5 * self.veh.wheelInertiaKgM2 * \
                 self.veh.numWheels / (self.cyc.secs[i] * (self.veh.wheelRadiusM**2))
-            Drag1 = (3.0 / 16.0) * airDensityKgPerM3 * self.veh.dragCoef * \
+            Drag1 = (3.0 / 16.0) * gl.airDensityKgPerM3 * self.veh.dragCoef * \
                 self.veh.frontalAreaM2 * ((self.mpsAch[i-1])**2)
-            Roll1 = (gravityMPerSec2 * self.veh.wheelRrCoef * self.veh.vehKg / 2.0)
-            Ascent1 = (gravityMPerSec2 *
+            Roll1 = (gl.gravityMPerSec2 * self.veh.wheelRrCoef * self.veh.vehKg / 2.0)
+            Ascent1 = (gl.gravityMPerSec2 *
                         np.sin(np.arctan(self.cyc.cycGrade[i])) * self.veh.vehKg / 2.0)
             Accel0 = - \
                 (self.veh.vehKg * ((self.mpsAch[i-1])**2)) / (2.0 * (self.cyc.secs[i]))
-            Drag0 = (1.0 / 16.0) * airDensityKgPerM3 * self.veh.dragCoef * \
+            Drag0 = (1.0 / 16.0) * gl.airDensityKgPerM3 * self.veh.dragCoef * \
                 self.veh.frontalAreaM2 * ((self.mpsAch[i-1])**3)
-            Roll0 = (gravityMPerSec2 * self.veh.wheelRrCoef *
+            Roll0 = (gl.gravityMPerSec2 * self.veh.wheelRrCoef *
                         self.veh.vehKg * self.mpsAch[i-1] / 2.0)
             Ascent0 = (
-                gravityMPerSec2 * np.sin(np.arctan(self.cyc.cycGrade[i])) * self.veh.vehKg * self.mpsAch[i-1] / 2.0)
+                gl.gravityMPerSec2 * np.sin(np.arctan(self.cyc.cycGrade[i])) * self.veh.vehKg * self.mpsAch[i-1] / 2.0)
             Wheel0 = -((0.5 * self.veh.wheelInertiaKgM2 * self.veh.numWheels *
                         (self.mpsAch[i-1]**2)) / (self.cyc.secs[i] * (self.veh.wheelRadiusM**2)))
 
@@ -441,9 +441,9 @@ class SimDriveCore(object):
             # self.mpsAch[i] = Total_roots[ind]
             self.mpsAch[i] = newton_mps_estimate(Total)
 
-        self.mphAch[i] = self.mpsAch[i] * mphPerMps
+        self.mphAch[i] = self.mpsAch[i] * gl.mphPerMps
         self.distMeters[i] = self.mpsAch[i] * self.cyc.secs[i]
-        self.distMiles[i] = self.distMeters[i] * (1.0 / metersPerMile)
+        self.distMiles[i] = self.distMeters[i] * (1.0 / gl.metersPerMile)
         
     def set_hybrid_cont_calcs(self, i):
         """Hybrid control calculations.  
@@ -490,8 +490,8 @@ class SimDriveCore(object):
             self.accelBufferSoc[i] = 0
 
         else:
-            self.accelBufferSoc[i] = min(max((((((((self.veh.maxAccelBufferMph * (1 / mphPerMps))**2)) - ((self.cyc.cycMps[i]**2))) /
-                                                (((self.veh.maxAccelBufferMph * (1 / mphPerMps))**2))) * (min(self.veh.maxAccelBufferPercOfUseableSoc * \
+            self.accelBufferSoc[i] = min(max((((((((self.veh.maxAccelBufferMph * (1 / gl.mphPerMps))**2)) - ((self.cyc.cycMps[i]**2))) /
+                                                (((self.veh.maxAccelBufferMph * (1 / gl.mphPerMps))**2))) * (min(self.veh.maxAccelBufferPercOfUseableSoc * \
                                                                             (self.veh.maxSoc - self.veh.minSoc), self.veh.maxRegenKwh / self.veh.maxEssKwh) * self.veh.maxEssKwh)) / self.veh.maxEssKwh) + \
                 self.veh.minSoc, self.veh.minSoc), self.veh.maxSoc)
 
@@ -860,7 +860,7 @@ class SimDriveCore(object):
 
         else:
             self.mpgge = self.distMiles.sum() / \
-                (self.fsKwhOutAch.sum() * (1 / kWhPerGGE))
+                (self.fsKwhOutAch.sum() * (1 / gl.kWhPerGGE))
 
         self.roadwayChgKj = (self.roadwayChgKwOutAch * self.cyc.secs).sum()
         self.essDischgKj = - \
@@ -879,12 +879,12 @@ class SimDriveCore(object):
 
         if self.mpgge == 0:
             # hardcoded conversion
-            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / kWhPerGGE
+            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / gl.kWhPerGGE
             grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / 33.7 / self.veh.chgEff
 
         else:
             self.Gallons_gas_equivalent_per_mile = 1 / \
-                self.mpgge + self.electric_kWh_per_mi  / kWhPerGGE
+                self.mpgge + self.electric_kWh_per_mi  / gl.kWhPerGGE
             grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + self.electric_kWh_per_mi / 33.7 / self.veh.chgEff
 
         self.grid_mpgge_elec = 1 / grid_Gallons_gas_equivalent_per_mile
@@ -921,7 +921,7 @@ class SimDriveCore(object):
         self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
             (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
 
-        if np.abs(self.energyAuditError) > ENERGY_AUDIT_ERROR_TOLERANCE:
+        if np.abs(self.energyAuditError) > gl.ENERGY_AUDIT_ERROR_TOLERANCE:
             print('Warning: There is a problem with conservation of energy.')
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
@@ -954,13 +954,13 @@ class SimDriveClassic(SimDriveCore):
 
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
+        elif self.veh.vehPtType == 2 and initSoc == None:  # gl.HEV
 
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
 
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for gl.PHEV vehicle types. Iterating initsoc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
@@ -977,7 +977,7 @@ class SimDriveClassic(SimDriveCore):
 
             self.sim_drive_walk(initSoc)
 
-        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
+        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # gl.PHEV and gl.BEV
 
             # If EV, initializing initial SOC to maximum SOC.
 
@@ -1067,13 +1067,13 @@ class SimDriveJit(SimDriveCore):
             
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV 
+        elif self.veh.vehPtType == 2 and initSoc == -1:  # gl.HEV 
 
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
 
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for gl.PHEV vehicle types. Iterating initsoc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
@@ -1090,7 +1090,7 @@ class SimDriveJit(SimDriveCore):
                         
             self.sim_drive_walk(initSoc)
 
-        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
+        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # gl.PHEV and gl.BEV
 
             # If EV, initializing initial SOC to maximum SOC.
 
@@ -1120,7 +1120,7 @@ class SimAccelTestJit(SimDriveCore):
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2:  # HEV
+        elif self.veh.vehPtType == 2:  # gl.HEV
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
@@ -1146,7 +1146,7 @@ class SimAccelTest(SimDriveCore):
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2:  # HEV
+        elif self.veh.vehPtType == 2:  # gl.HEV
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
@@ -1187,7 +1187,7 @@ class SimDrivePost(object):
         output['mpgge'] = self.mpgge
         output['battery_kWh_per_mi'] = self.battery_kWh_per_mi
         output['electric_kWh_per_mi'] = self.electric_kWh_per_mi
-        output['maxTraceMissMph'] = mphPerMps * \
+        output['maxTraceMissMph'] = gl.mphPerMps * \
             max(abs(self.cyc.cycMps - self.mpsAch))
         self.maxTraceMissMph = output['maxTraceMissMph']
 
@@ -1261,7 +1261,7 @@ class SimDrivePost(object):
             output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], self.cyc.cycSecs)
         
         output['distMilesFinal'] = sum(self.distMiles)
-        output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * kWhPerGGE
+        output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * gl.kWhPerGGE
     
         return output
 
