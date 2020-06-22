@@ -13,10 +13,8 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from .globalvars import * 
-from .cycle import *
-from .vehicle import *
-from .simdrive import *
+from . import globalvars as gl
+from .simdrive import SimDriveClassic, SimDriveJit, SimDrivePost
 
 class SimDriveHot(SimDriveClassic):
     """Class containing methods for running FASTSim vehicle 
@@ -27,6 +25,8 @@ class SimDriveHot(SimDriveClassic):
     def __init__(self, cyc, veh):
         """Initialize time array variables that are not used in base SimDrive."""
         super().__init__(cyc, veh)
+        
+        len_cyc = len(self.cyc.cycSecs)
 
         # variables that require more thought
         # epsAC = 3.0
