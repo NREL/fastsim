@@ -22,6 +22,7 @@ DEFAULT_VEH_DB = os.path.abspath(
         os.path.join(
             THIS_DIR, '..', 'docs', 'FASTSim_py_veh_db.csv'))
 
+
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes
     Optional Arguments:
@@ -409,6 +410,7 @@ veh_spec = [('Selection', int32),
     ('maxTracMps2', float64),
     ('maxRegenKwh', float64)
 ]
+
 
 @jitclass(veh_spec)
 class TypedVehicle(object):
