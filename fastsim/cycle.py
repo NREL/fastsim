@@ -22,9 +22,11 @@ CYCLES_DIR = os.path.abspath(
         os.path.join(
             THIS_DIR, '..', 'cycles'))
 
+
 class Cycle(object):
     """Object for containing time, speed, road grade, and road charging vectors 
     for drive cycle."""
+
     def __init__(self, std_cyc_name=None, cyc_dict=None, cyc_file_path=None):
         """Runs other methods, depending on provided keyword argument. Only one keyword
         argument should be provided.  Keyword arguments are identical to 
@@ -107,9 +109,11 @@ cyc_spec = [('cycSecs', float64[:]),
             ('secs', float64[:])
 ]
 
+
 @jitclass(cyc_spec)
 class TypedCycle(object):
     """Just-in-time compiled version of Cycle using numba."""
+    
     def __init__(self, len_cyc):
         """This method initialized type numpy arrays as required by 
         numba jitclass."""

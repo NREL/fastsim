@@ -17,9 +17,11 @@ from . import globalvars as gl
 from .cycle import TypedCycle
 from .vehicle import TypedVehicle
 
+
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
     by a class with an init method before being runnable."""
+
     def __init__(self, cyc, veh):
         self.veh = veh
         self.cyc = cyc
@@ -1040,6 +1042,7 @@ spec.extend([('fcForcedOn', bool_[:]),
              ('energyAuditError', float64)
 ])
 
+
 @jitclass(spec)
 class SimDriveJit(SimDriveCore):
     """Class compiled using numba just-in-time compilation containing methods 
@@ -1104,6 +1107,7 @@ class SimDriveJit(SimDriveCore):
         
         self.set_post_scalars()
         
+
 @jitclass(spec)
 class SimAccelTestJit(SimDriveCore):
     """Class compiled using numba just-in-time compilation containing methods 
@@ -1133,6 +1137,7 @@ class SimAccelTestJit(SimDriveCore):
 
         self.set_post_scalars()
 
+
 class SimAccelTest(SimDriveCore):
     """Class for running FASTSim vehicle acceleration simulation."""
 
@@ -1159,9 +1164,11 @@ class SimAccelTest(SimDriveCore):
 
         self.set_post_scalars()
 
+
 class SimDrivePost(object):
     """Class for post-processing of SimDrive instance.  Requires already-run 
     SimDriveJit or SimDriveClassic instance."""
+    
     def __init__(self, sim_drive):
         """Arguments:
         ---------------
