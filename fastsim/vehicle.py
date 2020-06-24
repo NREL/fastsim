@@ -312,6 +312,7 @@ class Vehicle(object):
         self.fcMassKg =  fc_mass_kg
         self.fsMassKg =  fs_mass_kg
 
+
 # type specifications for attributions of Vehicle class
 veh_spec = [('Selection', int32),
     ('Scenario_name', types.unicode_type),
