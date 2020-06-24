@@ -21,6 +21,8 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 CYCLES_DIR = os.path.abspath(
         os.path.join(
             THIS_DIR, '..', 'cycles'))
+STANDARD_CYCLE_KEYS = ['cycSecs', 'cycMps',
+                       'cycGrade', 'cycRoadType', 'cycMph', 'secs']
 
 
 class Cycle(object):
@@ -43,7 +45,7 @@ class Cycle(object):
     def get_numba_cyc(self):
         """Returns numba jitclass version of Cycle object."""
         numba_cyc = TypedCycle(len(self.cycSecs))
-        for key in self.__dict__.keys():
+        for key in STANDARD_CYCLE_KEYS:
             numba_cyc.__setattr__(key, self.__getattribute__(key).astype(np.float64))
         return numba_cyc
 
@@ -99,6 +101,7 @@ class Cycle(object):
             cyc[key] = self.__getattribute__(key)
         
         return cyc
+
 
 # type specifications for attributes of Cycle class
 cyc_spec = [('cycSecs', float64[:]),
@@ -166,6 +169,7 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6):
         microtrips.append(mt)
     return microtrips
 
+
 def make_cycle(ts, vs, gs=None, rs=None):
     """
     (Array Num) (Array Num) (Array Num)? -> Dict
@@ -192,6 +196,7 @@ def make_cycle(ts, vs, gs=None, rs=None):
             'cycGrade': np.array(gs),
             'cycRoadType': np.array(rs)}
 
+
 def equals(c1, c2):
     """
     Dict Dict -> Bool
@@ -209,6 +214,7 @@ def equals(c1, c2):
         if np.any(np.abs(np.array(c1[k]) - np.array(c2[k])) > 1e-6):
             return False
     return True
+
 
 def concat(cycles):
     """
@@ -242,6 +248,7 @@ def concat(cycles):
             final_cycle['cycGrade'],
             np.array(cycle['cycGrade'][1:])])
     return final_cycle
+
 
 def resample(cycle, new_dt=None, start_time=None, end_time=None,
              hold_keys=None):
@@ -289,6 +296,7 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
             new_cycle[k] = copy.deepcopy(cycle[k])
     return new_cycle
 
+
 def clip_by_times(cycle, t_end, t_start=0):
     """
     Cycle Number Number -> Cycle
@@ -309,3 +317,38 @@ def clip_by_times(cycle, t_end, t_start=0):
         except:
             new_cycle[k] = cycle[k]
     return new_cycle
+
+
+def accelerations(cycle):
+    """
+    Cycle -> Real
+    Return the acceleration of the given cycle
+    INPUTS:
+    - cycle: Dict, a legitimate driving cycle
+    OUTPUTS: Real, the maximum acceleration
+    """
+    accels = (np.diff(np.array(cycle['cycMps']))
+              / np.diff(np.array(cycle['cycSecs'])))
+    return accels
+
+
+def peak_acceleration(cycle):
+    """
+    Cycle -> Real
+    Return the maximum acceleration of the given cycle
+    INPUTS:
+    - cycle: Dict, a legitimate driving cycle
+    OUTPUTS: Real, the maximum acceleration
+    """
+    return np.max(accelerations(cycle))
+
+
+def peak_deceleration(cycle):
+    """
+    Cycle -> Real
+    Return the minimum acceleration (maximum deceleration) of the given cycle
+    INPUTS:
+    - cycle: Dict, a legitimate driving cycle
+    OUTPUTS: Real, the maximum acceleration
+    """
+    return np.min(accelerations(cycle))
