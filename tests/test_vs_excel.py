@@ -52,7 +52,8 @@ def run_python_fastsim():
             sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
             sim_drive.sim_drive(-1)
 
-            res_dict['fe_' + cycname] = sim_drive.mpgge_elec
+            res_dict['fe_' + cycname] = sim_drive.mpgge
+            res_dict['kW_hr__mi_' + cycname] = sim_drive.electric_kWh_per_mi
         res_python[veh.Scenario_name] = res_dict
                                    
     t1 = time.time()
@@ -88,8 +89,12 @@ def run_excel_fastsim():
         sht_veh.range('C6').value = vehno
         load_veh_macro()
         run_macro()
-        res_dict['fe_udds'] = sht_udds.range('C118').value
-        res_dict['fe_hwy'] = sht_hwy.range('C118').value
+        res_dict['fe_udds'] = sht_udds.range(
+            'C118').value if sht_udds.range('C118').value != None else 0
+        res_dict['fe_hwfet'] = sht_hwy.range(
+            'C118').value if sht_hwy.range('C118').value != None else 0
+        res_dict['kW_hr__mi_udds'] = sht_udds.range('C120').value
+        res_dict['kW_hr__mi_hwfet'] = sht_hwy.range('C120').value
 
         res_excel[sht_vehnames.range('B' + str(vehno + 2)).value] = res_dict
 
@@ -98,6 +103,7 @@ def run_excel_fastsim():
     print('Elapsed time: ', round(t1 - t0, 2), 's')
 
     return res_excel
+
 
 def compare(res_python, res_excel):
     """Finds common vehicle names in both excel and python 
@@ -111,31 +117,42 @@ def compare(res_python, res_excel):
     res_comps = {}
     for vehname in common_names:
         res_comp = {}
-        try:
-            if not(isclose(res_python[vehname]['fe_udds'], res_excel[vehname]['fe_udds'], rel_tol=1e-6, abs_tol=1e-6)):
-                res_comp['udds_perc_err'] = (
-                    res_python[vehname]['fe_udds'] - res_excel[vehname]['fe_udds']) / res_excel[vehname]['fe_udds'] * 100
-            else: 
-                res_comp['udds_perc_err'] = 0
+        if not(isclose(res_python[vehname]['kW_hr__mi_udds'], res_excel[vehname]['kW_hr__mi_udds'], rel_tol=1e-6, abs_tol=1e-6)):
+            res_comp['udds_elec_per_err'] = (
+                res_python[vehname]['kW_hr__mi_udds'] -
+                res_excel[vehname]['kW_hr__mi_udds']) / res_excel[vehname]['kW_hr__mi_udds'] * 100
+        else:
+            res_comp['udds_elec_per_err'] = 0.0
 
-            if not(isclose(res_python[vehname]['fe_hwfet'], res_excel[vehname]['fe_hwy'], rel_tol=1e-6, abs_tol=1e-6)):
-                res_comp['hwy_perc_err'] = (
-                    res_python[vehname]['fe_hwfet'] - res_excel[vehname]['fe_hwy']) / res_excel[vehname]['fe_hwy'] * 100
-            else:
-                res_comp['hwy_perc_err'] = 0
-        except:
-            res_comp['udds_perc_err'] = 'error -- probably divide by zero in excel'
-            res_comp['hwy_perc_err'] = 'error -- probably divide by zero in excel'
+        if not(isclose(res_python[vehname]['kW_hr__mi_hwfet'], res_excel[vehname]['kW_hr__mi_hwfet'], rel_tol=1e-6, abs_tol=1e-6)):
+            res_comp['hwfet_elec_per_err'] = (
+                res_python[vehname]['kW_hr__mi_hwfet'] -
+                res_excel[vehname]['kW_hr__mi_hwfet']) / res_excel[vehname]['kW_hr__mi_hwfet'] * 100
+        else:
+            res_comp['hwfet_elec_per_err'] = 0.0
+
+        if not(isclose(res_python[vehname]['fe_udds'], res_excel[vehname]['fe_udds'], rel_tol=1e-6, abs_tol=1e-6)):
+            res_comp['udds_perc_err'] = (
+                res_python[vehname]['fe_udds'] - res_excel[vehname]['fe_udds']) / res_excel[vehname]['fe_udds'] * 100
+        else: 
+            res_comp['udds_perc_err'] = 0.0
+
+        if not(isclose(res_python[vehname]['fe_hwfet'], res_excel[vehname]['fe_hwfet'], rel_tol=1e-6, abs_tol=1e-6)):
+            res_comp['hwy_perc_err'] = (
+                res_python[vehname]['fe_hwfet'] - res_excel[vehname]['fe_hwfet']) / res_excel[vehname]['fe_hwfet'] * 100
+        else:
+            res_comp['hwy_perc_err'] = 0.0
 
         res_comps[vehname] = res_comp
         print('')
         print(vehname)
-        print(res_comps[vehname]['udds_perc_err'])
-        print(res_comps[vehname]['hwy_perc_err'])
+        
+        print('FE % Error, UDDS: {:.2f}'.format(res_comps[vehname]['udds_perc_err']))
+        print('FE % Error, HWY: {:.2f}'.format(res_comps[vehname]['hwy_perc_err']))
+        print('kW-hr/mi % Error, UDDS: {:.4}'.format(res_comps[vehname]['udds_elec_per_err']))
+        print('wK-hr/mi % Error, HWY: {:.4}'.format(res_comps[vehname]['hwfet_elec_per_err']))
     return res_comps
 
 if __name__ == "__main__":
-    res_python = run_python_fastsim()
-    res_excel = run_excel_fastsim()
-    compare(res_python, res_excel)
+    compare(run_python_fastsim(), run_excel_fastsim())
 
