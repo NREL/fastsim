@@ -1,0 +1,141 @@
+"""Test script that runs all the vehicles in both Excel and Python FASTSim for both UDDS and HWFET cycles."""
+
+import xlwings as xw
+import pandas as pd
+import time
+import numpy as np
+import os
+import sys
+import importlib
+import xlwings as xw
+from math import isclose
+
+from pathlib import Path
+fsimpath = str(Path(os.getcwd()).parents[0])
+if fsimpath not in sys.path:
+    sys.path.append(fsimpath)
+
+# local modules
+from fastsim import simdrive, vehicle, cycle
+
+
+def run_python_fastsim():
+    """Runs python fastsim through 26 vehicles and returns list of dictionaries 
+    containing scenario descriptions."""
+
+    t0 = time.time()
+
+    cycles = ['udds', 'hwfet']
+    vehicles = np.arange(1, 27)
+
+    print('Instantiating classes.')
+    print()
+    veh = vehicle.Vehicle(1)
+    veh_jit = veh.get_numba_veh()
+    cyc = cycle.Cycle('udds')
+    cyc_jit = cyc.get_numba_cyc()
+
+    newvars = ['rrKjPos', 'rrKjNeg', 'dragKjPos', 'dragKjNeg'] 
+    # variables that have been added since the original benchmark was created, which should not be compared
+
+    res_python = {}
+
+    for vehno in vehicles:
+        print('vehno =', vehno)
+        res_dict = {}
+        for cycname in cycles:
+            if not((vehno == 1) and (cycname == 'udds')):
+                cyc.set_standard_cycle(cycname)
+                cyc_jit = cyc.get_numba_cyc()
+                veh.load_veh(vehno)
+                veh_jit = veh.get_numba_veh()
+            sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
+            sim_drive.sim_drive(-1)
+
+            res_dict['fe_' + cycname] = sim_drive.mpgge_elec
+        res_python[veh.Scenario_name] = res_dict
+                                   
+    t1 = time.time()
+    print()
+    print('Elapsed time: ', round(t1 - t0, 2), 's')
+
+    return res_python
+
+
+def run_excel_fastsim():
+    """Runs excel fastsim through 26 vehicles and returns list of dictionaries 
+    containing scenario descriptions."""
+
+    t0 = time.time()
+
+    # initial setup
+    wb = xw.Book('FASTSim.xlsm')  # FASTSim.xlsm must be open
+    sht_veh = wb.sheets('VehicleIO')
+    sht_udds = wb.sheets('UDDS')
+    sht_hwy = wb.sheets('HWY')
+    sht_vehnames = wb.sheets('SavedVehs')
+    app = wb.app
+    load_veh_macro = app.macro("FASTSim.xlsm!reloadVehInfo")
+    run_macro = app.macro("FASTSim.xlsm!run.run")
+
+    vehicles = np.arange(1, 27)
+    res_excel = {}
+    
+    for vehno in vehicles:
+        print('vehno =', vehno)
+        # running a particular vehicle and getting the result
+        res_dict = {}
+        sht_veh.range('C6').value = vehno
+        load_veh_macro()
+        run_macro()
+        res_dict['fe_udds'] = sht_udds.range('C118').value
+        res_dict['fe_hwy'] = sht_hwy.range('C118').value
+
+        res_excel[sht_vehnames.range('B' + str(vehno + 2)).value] = res_dict
+
+    t1 = time.time()
+    print()
+    print('Elapsed time: ', round(t1 - t0, 2), 's')
+
+    return res_excel
+
+def compare(res_python, res_excel):
+    """Finds common vehicle names in both excel and python 
+    (hypothetically all of them, but there may be discrepancies) and then compares
+    fuel economy results.  
+    Arguments: results from run_python_fastsim and run_excel_fastsim
+    Returns dict of comparsion results."""
+
+    common_names = set(res_python.keys()) & set(res_excel.keys())
+    
+    res_comps = {}
+    for vehname in common_names:
+        res_comp = {}
+        try:
+            if not(isclose(res_python[vehname]['fe_udds'], res_excel[vehname]['fe_udds'], rel_tol=1e-6, abs_tol=1e-6)):
+                res_comp['udds_perc_err'] = (
+                    res_python[vehname]['fe_udds'] - res_excel[vehname]['fe_udds']) / res_excel[vehname]['fe_udds'] * 100
+            else: 
+                res_comp['udds_perc_err'] = 0
+
+            if not(isclose(res_python[vehname]['fe_hwfet'], res_excel[vehname]['fe_hwy'], rel_tol=1e-6, abs_tol=1e-6)):
+                res_comp['hwy_perc_err'] = (
+                    res_python[vehname]['fe_hwfet'] - res_excel[vehname]['fe_hwy']) / res_excel[vehname]['fe_hwy'] * 100
+            else:
+                res_comp['hwy_perc_err'] = 0
+        except:
+            res_comp['udds_perc_err'] = 'error -- probably divide by zero in excel'
+            res_comp['hwy_perc_err'] = 'error -- probably divide by zero in excel'
+
+        res_comps[vehname] = res_comp
+        print('')
+        print(vehname)
+        print(res_comps[vehname]['udds_perc_err'])
+        print(res_comps[vehname]['hwy_perc_err'])
+    return res_comps
+
+if __name__ == "__main__":
+    res_python = run_python_fastsim()
+    res_excel = run_excel_fastsim()
+    compare(res_python, res_excel)
+
