@@ -956,13 +956,13 @@ class SimDriveClassic(SimDriveCore):
 
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2 and initSoc == None:  # gl.HEV
+        elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
 
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
 
-            # Charge balancing SOC for gl.PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
@@ -979,7 +979,7 @@ class SimDriveClassic(SimDriveCore):
 
             self.sim_drive_walk(initSoc)
 
-        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # gl.PHEV and gl.BEV
+        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
 
             # If EV, initializing initial SOC to maximum SOC.
 
@@ -1070,13 +1070,13 @@ class SimDriveJit(SimDriveCore):
             
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2 and initSoc == -1:  # gl.HEV 
+        elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV 
 
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
 
-            # Charge balancing SOC for gl.PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
@@ -1093,7 +1093,7 @@ class SimDriveJit(SimDriveCore):
                         
             self.sim_drive_walk(initSoc)
 
-        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # gl.PHEV and gl.BEV
+        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
 
             # If EV, initializing initial SOC to maximum SOC.
 
@@ -1124,7 +1124,7 @@ class SimAccelTestJit(SimDriveCore):
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2:  # gl.HEV
+        elif self.veh.vehPtType == 2:  # HEV
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
@@ -1151,7 +1151,7 @@ class SimAccelTest(SimDriveCore):
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2:  # gl.HEV
+        elif self.veh.vehPtType == 2:  # HEV
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
