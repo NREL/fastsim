@@ -22,38 +22,37 @@ importlib.reload(simdrive)
 def run_test26veh3cyc_CPUtime(use_jitclass=True):
     t0 = time.time()
 
-    cycles = ['udds', 'hwfet', 'us06']
+    cyc_names = ['udds', 'hwfet', 'us06']
     vehicles = np.arange(1, 27)
 
     print('Instantiating classes.')
     print()
     veh = vehicle.Vehicle(1)
     veh_jit = veh.get_numba_veh()
-    cyc = cycle.Cycle('udds')
-    cyc_jit = cyc.get_numba_cyc()
+    
+    cycs_jit = {cyc_name:cycle.Cycle(cyc_name).get_numba_cyc() for cyc_name in cyc_names}
 
     iter = 0
     for vehno in vehicles:
         print('vehno =', vehno)
         if vehno == 2:
             t0a = time.time()
-        for cycname in cycles:
-            if not((vehno == 1) and (cycname == 'udds')):
-                cyc.set_standard_cycle(cycname)
-                cyc_jit = cyc.get_numba_cyc()
-                veh.load_veh(vehno)
-                veh_jit = veh.get_numba_veh()
-                if use_jitclass:
-                    sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
-                    sim_drive.sim_drive(-1)
-                else:
-                    sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit)
-                    sim_drive.sim_drive()
+            veh.load_veh(vehno)
+            veh_jit = veh.get_numba_veh()
+        print(veh.Scenario_name, '\n')
+
+        for cyc_name in cyc_names:
+            if use_jitclass:
+                sim_drive = simdrive.SimDriveJit(cycs_jit[cyc_name], veh_jit)
+                sim_drive.sim_drive(-1)
+            else:
+                sim_drive = simdrive.SimDriveClassic(cycs_jit[cyc_name], veh_jit)
+                sim_drive.sim_drive()
 
     t1 = time.time()
     print()
-    print('Elapsed time: ', round(t1 - t0, 2), 's')
-    print('Elapsed time since first vehicle: ', round(t1 - t0a, 2), 's')
+    print('Elapsed time: {:.2f} s'.format(t1 - t0))
+    print('Elapsed time since first vehicle: {:.2f} s'.format(t1 - t0a, 2))
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
