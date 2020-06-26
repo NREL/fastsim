@@ -35,9 +35,6 @@ def run_python_fastsim():
     cyc = cycle.Cycle('udds')
     cyc_jit = cyc.get_numba_cyc()
 
-    newvars = ['rrKjPos', 'rrKjNeg', 'dragKjPos', 'dragKjNeg'] 
-    # variables that have been added since the original benchmark was created, which should not be compared
-
     res_python = {}
 
     for vehno in vehicles:
