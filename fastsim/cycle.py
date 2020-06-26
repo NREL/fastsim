@@ -55,7 +55,7 @@ class Cycle(object):
         ---------
         std_cyc_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
         csv_path = os.path.join(CYCLES_DIR, std_cyc_name + '.csv')
-        cyc = pd.read_csv(csv_path)
+        cyc = pd.read_csv(Path(csv_path))
         for column in cyc.columns:
             self.__setattr__(column, cyc[column].to_numpy())
         self.set_dependents()
