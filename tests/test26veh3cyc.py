@@ -1,8 +1,10 @@
-"""Test script that saves results from 26 vehicles currently in master branch of FASTSim as of 17 December 2019 for 3 standard cycles."""
+"""Test script that saves results from 26 vehicles currently in master branch of FASTSim as of 17 December 2019 for 3 standard cycles. 
+From command line, pass True (default if left blank) or False argument to use JIT compilation or not, respectively."""
 
 import pandas as pd
 import time
 import numpy as np
+import re
 import os
 import sys
 import importlib
@@ -112,4 +114,15 @@ def run_test26veh3cyc(use_jitclass=True):
         print('No errors exceed the 1e-6 tolerance threshold.')
 
 if __name__ == "__main__":
-    run_test26veh3cyc()
+    if len(sys.argv) > 1:
+        if re.match('(?i)true', sys.argv[1]):
+            use_jitclass = True
+            print('Using numba JIT compilation.')
+        else:
+            use_jitclass = False
+            print('Skipping numba JIT compilation.')
+
+        run_test26veh3cyc(use_jitclass=use_jitclass)
+    else:
+        print('Using numba JIT compilation.')
+        run_test26veh3cyc()
