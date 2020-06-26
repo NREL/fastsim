@@ -146,10 +146,9 @@ def compare(res_python, res_excel):
         
         print('FE % Error, UDDS: {:.2f}'.format(res_comps[vehname]['udds_perc_err']))
         print('FE % Error, HWY: {:.2f}'.format(res_comps[vehname]['hwy_perc_err']))
-        print('kW-hr/mi % Error, UDDS: {:.4}'.format(res_comps[vehname]['udds_elec_per_err']))
-        print('wK-hr/mi % Error, HWY: {:.4}'.format(res_comps[vehname]['hwfet_elec_per_err']))
+        print('kW-hr/mi % Error, UDDS: {:.4f}'.format(res_comps[vehname]['udds_elec_per_err']))
+        print('wK-hr/mi % Error, HWY: {:.4f}'.format(res_comps[vehname]['hwfet_elec_per_err']))
     return res_comps
 
 if __name__ == "__main__":
-    compare(run_python_fastsim(), run_excel_fastsim())
-
+    _ = compare(run_python_fastsim(), run_excel_fastsim())
