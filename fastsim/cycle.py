@@ -54,7 +54,7 @@ class Cycle(object):
         Argument:
         ---------
         std_cyc_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
-        csv_path = os.path.join(CYCLES_DIR, std_cyc_name + '.csv')
+        csv_path = os.path.join(CYCLES_DIR, std_cyc_name.lower() + '.csv')
         cyc = pd.read_csv(Path(csv_path))
         for column in cyc.columns:
             self.__setattr__(column, cyc[column].to_numpy())
@@ -90,7 +90,7 @@ class Cycle(object):
     def set_dependents(self):
         """Sets values dependent on cycle info loaded from file."""
         self.cycMph = self.cycMps * gl.mphPerMps
-        self.secs = np.insert(np.diff(self.cycSecs), 0, 0)
+        self.secs = np.insert(np.diff(self.cycSecs), 0, 0) # time step deltas 
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
@@ -207,6 +207,12 @@ def equals(c1, c2):
     c2: cycle as dictionary from get_cyc_dict()
     """
     if c1.keys() != c2.keys():
+        c2missing = set(c1.keys()) - set(c2.keys())
+        c1missing = set(c2.keys()) - set(c1.keys())
+        if len(c1missing) > 0:
+            print('c2 keys not contained in c1: {}'.format(c1missing))
+        if len(c2missing) > 0:
+            print('c1 keys not contained in c2: {}'.format(c2missing))
         return False
     for k in c1.keys():
         if len(c1[k]) != len(c2[k]):
