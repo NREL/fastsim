@@ -933,7 +933,11 @@ class SimDriveCore(object):
 class SimDriveClassic(SimDriveCore):
     """Class containing methods for running FASTSim vehicle 
     fuel economy simulations. This class is not compiled and will 
-    run slower for large batch runs."""
+    run slower for large batch runs.
+    Arguments:
+    ----------
+    cyc: cycle.Cycle instance
+    veh: vehicle.Vehicle instance"""
 
     def sim_drive(self, initSoc=None):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -1047,7 +1051,11 @@ spec.extend([('fcForcedOn', bool_[:]),
 class SimDriveJit(SimDriveCore):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle fuel economy simulations. This class will be 
-    faster for large batch runs."""
+    faster for large batch runs.
+    Arguments:
+    ----------
+    cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
+    veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
     def sim_drive(self, initSoc):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
