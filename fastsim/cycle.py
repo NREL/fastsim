@@ -216,8 +216,10 @@ def equals(c1, c2):
         return False
     for k in c1.keys():
         if len(c1[k]) != len(c2[k]):
+            print(k + ' has a length discrepancy.')
             return False
         if np.any(np.abs(np.array(c1[k]) - np.array(c2[k])) > 1e-6):
+            print(k + ' has a value discrepancy.')
             return False
     return True
 
