@@ -8,7 +8,8 @@ import pandas as pd
 import re
 import sys
 from numba import jitclass                 # import the decorator
-from numba import float64, int32, bool_, types    # import the types
+from numba import float64, int32, bool_    # import the types
+import types
 import warnings
 warnings.simplefilter('ignore')
 
@@ -1115,7 +1116,39 @@ class SimDriveJit(SimDriveCore):
         
         self.set_post_scalars()
         
+class SimDriveJitWrapper(object):
+    """Wrapper class for SimDriveJit class to enable keyword arguments in identical 
+    format to SimDriveClassic. SimDriveJit is compiled using numba just-in-time 
+    compilation containing methods for running FASTSim vehicle fuel economy 
+    simulations. This class will be faster than SimDriveClassic but slightly 
+    slower than SimDriveJit for large batch runs.
+    Arguments:
+    ----------
+    cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
+    veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
+    def __init__(self, cyc, veh):
+        self.sim_drive_jit = SimDriveJit(cyc, veh)
+
+    def sim_drive(self, initSoc=None):
+        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+        Arguments
+        ------------
+        initSoc: (optional keyword argument) initial SOC for electrified vehicles.  
+            Must be between 0 and 1."""
+        
+        if initSoc: # if initSoc is provided, pass it to jitclass
+            self.sim_drive_jit.sim_drive(initSoc)
+        else:
+            self.sim_drive_jit.sim_drive(-1) # if initSoc is not passed, pass -1 to tell jitclass to use default behavior
+        
+        reprog = re.compile('_') # identify strings with leading _
+        for var_name in self.sim_drive_jit.__dir__():
+            # collect all variables that are not methods and not private
+            if not reprog.match(var_name) and not(isinstance(self.sim_drive_jit.__getattribute__(var_name), types.MethodType)):
+                self.__setattr__(var_name, self.sim_drive_jit.__getattribute__(var_name))
+            
+            
 @jitclass(spec)
 class SimAccelTestJit(SimDriveCore):
     """Class compiled using numba just-in-time compilation containing methods 
