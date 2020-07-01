@@ -132,9 +132,10 @@ class SimDriveCore(object):
 
     def sim_drive_walk(self, initSoc=None):
         """Receives second-by-second cycle information, vehicle properties, 
-        and an initial state of charge and performs a backward facing 
-        powertrain simulation. Method 'sim_drive' runs this iteratively to 
-        achieve correct SOC initial and final conditions, as needed.
+        and an initial state of charge and runs sim_drive_step to perform a 
+        backward facing powertrain simulation. Method 'sim_drive' runs this
+        iteratively to achieve correct SOC initial and final conditions, as 
+        needed.
 
         Arguments
         ------------
@@ -151,21 +152,22 @@ class SimDriveCore(object):
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
         self.soc[0] = initSoc
 
+        self.i = 1 # time step counter
+        while self.i < len(self.cyc.cycSecs):
+            self.sim_drive_step()
 
-        for i in range(1, len(self.cyc.cycSecs)):
-            ### Misc calcs
-            # If noElecAux, then the HV electrical system is not used to power aux loads 
-            # and it must all come from the alternator.  This apparently assumes no belt-driven aux 
-            # loads
-            # *** 
+    def sim_drive_step(self):
+        """Step through 1 time step"""
 
-            self.set_misc_calcs(i)
-            self.set_comp_lims(i)
-            self.set_power_calcs(i)
-            self.set_speed_dist_calcs(i)
-            self.set_hybrid_cont_calcs(i)
-            self.set_fc_forced_state(i) # can probably be *mostly* done with list comprehension in post processing
-            self.set_hybrid_cont_decisions(i)
+        self.set_misc_calcs(self.i)
+        self.set_comp_lims(self.i)
+        self.set_power_calcs(self.i)
+        self.set_speed_dist_calcs(self.i)
+        self.set_hybrid_cont_calcs(self.i)
+        self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
+        self.set_hybrid_cont_decisions(self.i)
+
+        self.i += 1 # increment time step conuter
 
     def set_misc_calcs(self, i):
         """Sets misc. calculations at time step 'i'
@@ -1019,7 +1021,8 @@ veh_type = TypedVehicle.class_type.instance_type
 cyc_type = TypedCycle.class_type.instance_type
 
 spec = [(attr, float64[:]) for attr in attr_list]
-spec.extend([('fcForcedOn', bool_[:]),
+spec.extend([('i', int32),
+             ('fcForcedOn', bool_[:]),
              ('fcForcedState', int32[:]),
              ('canPowerAllElectrically', bool_[:]),
              ('mpgge', float64),
