@@ -251,7 +251,7 @@ class SimDriveCore(object):
             # limit power going into e-machine controller to
             if self.curMaxAvailElecKw[i] == max(self.veh.mcKwInArray):
                 self.mcElecInLimKw[i] = min(
-                    self.veh.mcKwOutArray[len(self.veh.mcKwOutArray) - 1], self.veh.maxMotorKw)
+                    self.veh.mcKwOutArray[-1], self.veh.maxMotorKw)
             else:
                 self.mcElecInLimKw[i] = min(self.veh.mcKwOutArray[np.argmax(self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) -
                                                                                                 0.01, self.curMaxAvailElecKw[i])) - 1], self.veh.maxMotorKw)
@@ -272,7 +272,7 @@ class SimDriveCore(object):
         else:
             if self.curMaxMcKwOut[i] == self.veh.maxMotorKw:
                 self.curMaxMcElecKwIn[i] = self.curMaxMcKwOut[i] / \
-                    self.veh.mcFullEffArray[len(self.veh.mcFullEffArray) - 1]
+                    self.veh.mcFullEffArray[-1]
             else:
                 self.curMaxMcElecKwIn[i] = self.curMaxMcKwOut[i] / self.veh.mcFullEffArray[max(1, np.argmax(self.veh.mcKwOutArray
                                             > min(self.veh.maxMotorKw - 0.01, self.curMaxMcKwOut[i])) - 1)]
@@ -289,7 +289,7 @@ class SimDriveCore(object):
         else:
             if self.veh.maxMotorKw == self.curMaxEssChgKw[i] - self.curMaxRoadwayChgKw[i]:
                 self.essLimMcRegenKw[i] = min(
-                    self.veh.maxMotorKw, self.curMaxEssChgKw[i] / self.veh.mcFullEffArray[len(self.veh.mcFullEffArray) - 1])
+                    self.veh.maxMotorKw, self.curMaxEssChgKw[i] / self.veh.mcFullEffArray[-1])
             else:
                 self.essLimMcRegenKw[i] = min(self.veh.maxMotorKw, self.curMaxEssChgKw[i] / self.veh.mcFullEffArray
                                                 [max(1, np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.curMaxEssChgKw[i] - self.curMaxRoadwayChgKw[i])) - 1)])
@@ -532,7 +532,7 @@ class SimDriveCore(object):
 
             if self.fcKwGapFrEff[i] == self.veh.maxMotorKw:
                 self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / \
-                    self.veh.mcFullEffArray[len(self.veh.mcFullEffArray) - 1] * -1
+                    self.veh.mcFullEffArray[-1] * -1
             else:
                 self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / self.veh.mcFullEffArray[max(
                     1, np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1)] * -1
@@ -553,7 +553,7 @@ class SimDriveCore(object):
             if self.transKwInAch[i] == self.veh.maxMotorKw:
 
                 self.electKwReq4AE[i] = self.transKwInAch[i] / \
-                    self.veh.mcFullEffArray[len(self.veh.mcFullEffArray) - 1] + self.auxInKw[i]
+                    self.veh.mcFullEffArray[-1] + self.auxInKw[i]
             else:
                 self.electKwReq4AE[i] = self.transKwInAch[i] / self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.transKwInAch[i])) - 1)] + self.auxInKw[i]
@@ -700,7 +700,7 @@ class SimDriveCore(object):
 
             if self.mcElecKwInIfFcIsReq[i] == max(self.veh.mcKwInArray):
                 self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * \
-                    self.veh.mcFullEffArray[len(self.veh.mcFullEffArray) - 1]
+                    self.veh.mcFullEffArray[-1]
             else:
                 self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) - 0.01, self.mcElecKwInIfFcIsReq[i])) - 1)]
@@ -708,7 +708,7 @@ class SimDriveCore(object):
         else:
             if self.mcElecKwInIfFcIsReq[i] * -1 == max(self.veh.mcKwInArray):
                 self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / \
-                    self.veh.mcFullEffArray[len(self.veh.mcFullEffArray) - 1]
+                    self.veh.mcFullEffArray[-1]
             else:
                 self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / (self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) - 0.01, self.mcElecKwInIfFcIsReq[i] * -1)) - 1)])
@@ -747,7 +747,7 @@ class SimDriveCore(object):
 
             if self.mcMechKwOutAch[i] * -1 == max(self.veh.mcKwInArray):
                 self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * \
-                    self.veh.mcFullEffArray[len(self.veh.mcFullEffArray) - 1]
+                    self.veh.mcFullEffArray[-1]
             else:
                 self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) - 0.01, self.mcMechKwOutAch[i] * -1)) - 1)]
@@ -755,7 +755,7 @@ class SimDriveCore(object):
         else:
             if self.veh.maxMotorKw == self.mcMechKwOutAch[i]:
                 self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / \
-                    self.veh.mcFullEffArray[len(self.veh.mcFullEffArray) - 1]
+                    self.veh.mcFullEffArray[-1]
             else:
                 self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.mcMechKwOutAch[i])) - 1)]
@@ -826,7 +826,7 @@ class SimDriveCore(object):
         else:
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / \
-                    self.veh.fcEffArray[len(self.veh.fcEffArray) - 1]
+                    self.veh.fcEffArray[-1]
             else:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[max(1, np.argmax(
                     self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)])
