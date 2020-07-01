@@ -37,6 +37,7 @@ def run_test26veh3cyc_CPUtime(use_jitclass=True):
         print('vehno =', vehno)
         if vehno == 2:
             t0a = time.time()
+        if not(vehno == 1):
             veh.load_veh(vehno)
             veh_jit = veh.get_numba_veh()
         print(veh.Scenario_name, '\n')
