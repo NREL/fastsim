@@ -28,6 +28,8 @@ class SimDriveCore(object):
         self.cyc = cyc
 
         len_cyc = len(self.cyc.cycSecs)
+        self.i = 1 # initialize step counter for possible use outside sim_drive_walk()
+
         # Component Limits -- calculated dynamically"
         self.curMaxFsKwOut = np.zeros(len_cyc, dtype=np.float64)
         self.fcTransLimKw = np.zeros(len_cyc, dtype=np.float64)
