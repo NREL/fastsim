@@ -169,7 +169,7 @@ class SimDriveCore(object):
         self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
         self.set_hybrid_cont_decisions(self.i)
 
-        self.i += 1 # increment time step conuter
+        self.i += 1 # increment time step counter
 
     def set_misc_calcs(self, i):
         """Sets misc. calculations at time step 'i'
