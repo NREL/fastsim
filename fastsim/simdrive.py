@@ -928,7 +928,8 @@ class SimDriveCore(object):
             print('Warning: There is a problem with conservation of energy.')
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
-            ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0
+            ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
+        # accelKw is redundant with cycAccelKw and can probably be removed
 
 
 class SimDriveClassic(SimDriveCore):
@@ -1214,8 +1215,6 @@ class SimDrivePost(object):
         """Arguments:
         ---------------
         sim_drive: solved sim_drive object"""
-
-        super().__init__()
 
         for item in spec:
             self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))
