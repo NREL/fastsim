@@ -158,10 +158,13 @@ class SimDriveCore(object):
         while self.i < len(self.cyc.cycSecs):
             self.sim_drive_step()
 
-    def sim_drive_step(self):
-        """Step through 1 time step"""
+    def sim_drive_step(self, *args):
+        """Step through 1 time step.
+        Arguments:
+        ----------
+        *args: variables to be overridden outside of sim_drive_step (experimental)"""
 
-        self.set_misc_calcs(self.i)
+        self.set_misc_calcs(self.i, *args)
         self.set_comp_lims(self.i)
         self.set_power_calcs(self.i)
         self.set_speed_dist_calcs(self.i)
@@ -171,16 +174,20 @@ class SimDriveCore(object):
 
         self.i += 1 # increment time step counter
 
-    def set_misc_calcs(self, i):
+    def set_misc_calcs(self, i, *args):
         """Sets misc. calculations at time step 'i'
-        Arguments
-        ------------
-        i: index of time step"""
+        Arguments:
+        ----------
+        i: index of time step
+        *args: variables to be overridden outside of sim_drive_step (experimental)"""
 
-        if self.veh.noElecAux == True:
-            self.set_elem_if_zero(i, 'auxInKw', self.veh.auxKw / self.veh.altEff)
-        else:
-            self.set_elem_if_zero(i, 'auxInKw', self.veh.auxKw)
+        if len(args) == 0:
+            if self.veh.noElecAux == True:
+                self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
+            else:
+                self.auxInKw[i] = self.veh.auxKw            
+        elif 'auxInKw' in args:
+            pass
 
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
@@ -933,16 +940,8 @@ class SimDriveCore(object):
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
-        # accelKw is redundant with cycAccelKw and can probably be removed
+        # accelKw is redundant with cycAccelKw and can probably be removed        
 
-    def set_elem_if_zero(self, i, attribute, default):
-        """Sets attribute at time step i if not already set to something other than zero.
-        This will not work if an external assignment of zero is made."""
-        attr_val = getattr(self, attribute)
-        if attr_val[i] == 0:
-            attr_val[i] = default
-            self.__setattr__(attribute, attr_val)
-        
 
 class SimDriveClassic(SimDriveCore):
     """Class containing methods for running FASTSim vehicle 
@@ -1025,7 +1024,7 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
              'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
-             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'attr_val']
+             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw']
 
 # create types for instances of TypedVehicle and TypedCycle
 veh_type = TypedVehicle.class_type.instance_type
