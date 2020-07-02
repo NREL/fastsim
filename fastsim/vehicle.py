@@ -197,8 +197,6 @@ class Vehicle(object):
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
 
-        maxMotorKw = self.maxMotorKw
-
         mcPwrOutPerc = gl.mcPwrOutPerc
         modern_max = gl.modern_max
         large_baseline_eff = gl.large_baseline_eff
@@ -222,16 +220,16 @@ class Vehicle(object):
 
         large_baseline_eff_adj = large_baseline_eff + modern_diff
 
-        mcKwAdjPerc = max(0.0, min((maxMotorKw - 7.5)/(75.0 - 7.5), 1.0))
+        mcKwAdjPerc = max(0.0, min((self.maxMotorKw - 7.5)/(75.0 - 7.5), 1.0))
         mcEffArray = np.zeros(len(mcPwrOutPerc))
 
         for k in range(0, len(mcPwrOutPerc)):
             mcEffArray[k] = mcKwAdjPerc * large_baseline_eff_adj[k] + \
                 (1 - mcKwAdjPerc)*(small_baseline_eff[k])
 
-        mcInputKwOutArray = mcPwrOutPerc * maxMotorKw
+        mcInputKwOutArray = mcPwrOutPerc * self.maxMotorKw
         mcFullEffArray = np.zeros(len(gl.mcPercOutArray))
-        mcKwOutArray = np.linspace(0, 1, len(gl.mcPercOutArray)) * maxMotorKw
+        mcKwOutArray = np.linspace(0, 1, len(gl.mcPercOutArray)) * self.maxMotorKw
 
         for m in range(1, len(gl.mcPercOutArray) - 1):
             low_index = np.argmax(mcInputKwOutArray >= mcKwOutArray[m])
