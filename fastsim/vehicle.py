@@ -199,37 +199,48 @@ class Vehicle(object):
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
 
-        mcPwrOutPerc = gl.mcPwrOutPerc
-        modern_max = gl.modern_max
-        large_baseline_eff = gl.large_baseline_eff
-        small_baseline_eff = gl.small_baseline_eff
         # Power and efficiency arrays are defined in globalvars.py
         # can also be overridden by motor power and efficiency columns in the input file
         # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
-        if 'mcPwrOutPerc' in self.__dir__() and self.mcPwrOutPerc:
-            if type(self.mcPwrOutPerc) != float:
-                mcPwrOutPerc = np.array(ast.literal_eval(self.mcPwrOutPerc))
-        if 'largeBaselineEff' in self.__dir__() and self.largeBaselineEff:
-            if type(self.largeBaselineEff) != float:
-                large_baseline_eff = np.array(ast.literal_eval(self.largeBaselineEff))
-        if 'smallBaselineEff' in self.__dir__() and self.smallBaselineEff:
-            if type(self.smallBaselineEff) != float:
-                small_baseline_eff = np.array(ast.literal_eval(self.smallBaselineEff))
-        if 'modernMax' in self.__dir__() and not np.isnan(self.modernMax):
-            modern_max = float(self.modernMax)
+        try:
+            self.mcPwrOutPerc = np.array(ast.literal_eval(self.mcPwrOutPerc))
+        except ValueError:
+            self.mcPwrOutPerc = gl.mcPwrOutPerc
+        if len(self.mcPwrOutPerc) != 11:
+            raise ValueError('mcPwrOutPerc has length of {}, but should have length of 11'.
+                             format(len(self.mcPwrOutPerc)))
 
-        modern_diff = modern_max - max(large_baseline_eff)
+        try:
+            self.largeBaselineEff = np.array(ast.literal_eval(self.largeBaselineEff))
+        except ValueError:
+            self.largeBaselineEff = gl.large_baseline_eff
+        if len(self.largeBaselineEff) != 11:
+            raise ValueError('largeBaselineEff has length of {}, but should have length of 11'.
+                             format(len(self.largeBaselineEff)))
+        
+        try:
+            self.smallBaselineEff = np.array(ast.literal_eval(self.smallBaselineEff))
+        except ValueError:
+            self.smallBaselineEff = gl.small_baseline_eff
+        if len(self.smallBaselineEff) != 11:
+            raise ValueError('smallBaselineEff has length of {}, but should have length of 11'.
+                             format(len(self.smallBaselineEff)))
 
-        large_baseline_eff_adj = large_baseline_eff + modern_diff
+        if np.isnan(self.modernMax):
+            self.modernMax = gl.modern_max            
+        
+        modern_diff = self.modernMax - max(self.largeBaselineEff)
+
+        large_baseline_eff_adj = self.largeBaselineEff + modern_diff
 
         mcKwAdjPerc = max(0.0, min((self.maxMotorKw - 7.5)/(75.0 - 7.5), 1.0))
-        mcEffArray = np.zeros(len(mcPwrOutPerc))
+        mcEffArray = np.zeros(len(self.mcPwrOutPerc))
 
-        for k in range(0, len(mcPwrOutPerc)):
+        for k in range(0, len(self.mcPwrOutPerc)):
             mcEffArray[k] = mcKwAdjPerc * large_baseline_eff_adj[k] + \
-                (1 - mcKwAdjPerc)*(small_baseline_eff[k])
+                (1 - mcKwAdjPerc)*(self.smallBaselineEff[k])
 
-        mcInputKwOutArray = mcPwrOutPerc * self.maxMotorKw
+        mcInputKwOutArray = self.mcPwrOutPerc * self.maxMotorKw
         mcFullEffArray = np.zeros(len(gl.mcPercOutArray))
         mcKwOutArray = np.linspace(0, 1, len(gl.mcPercOutArray)) * self.maxMotorKw
 
