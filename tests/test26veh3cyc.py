@@ -27,7 +27,7 @@ def run_test26veh3cyc(use_jitclass=True):
 
     print('Instantiating classes.')
     print()
-    veh = vehicle.Vehicle(1)
+    veh = vehicle.Vehicle(1, veh_file='test_veh_db.csv')
     if use_jitclass:
         veh_jit = veh.get_numba_veh()
     cyc = cycle.Cycle('udds')
@@ -47,7 +47,7 @@ def run_test26veh3cyc(use_jitclass=True):
                 cyc.set_standard_cycle(cycname)
                 if use_jitclass:
                     cyc_jit = cyc.get_numba_cyc()
-                veh.load_veh(vehno)
+                veh.load_veh(vehno, veh_file='test_veh_db.csv')
                 if use_jitclass:
                     veh_jit = veh.get_numba_veh()
 
