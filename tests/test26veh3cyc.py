@@ -45,9 +45,11 @@ def run_test26veh3cyc(use_jitclass=True):
         for cycname in cycles:
             if not((vehno == 1) and (cycname == 'udds')):
                 cyc.set_standard_cycle(cycname)
-                cyc_jit = cyc.get_numba_cyc()
+                if use_jitclass:
+                    cyc_jit = cyc.get_numba_cyc()
                 veh.load_veh(vehno)
-                veh_jit = veh.get_numba_veh()
+                if use_jitclass:
+                    veh_jit = veh.get_numba_veh()
 
             if use_jitclass:
                 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
