@@ -4,6 +4,7 @@ For example usage, see ../README.md"""
 ### Import necessary python modules
 import os
 import numpy as np
+from scipy.interpolate import interp1d
 import pandas as pd
 import re
 import sys
