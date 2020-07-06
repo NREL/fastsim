@@ -149,24 +149,26 @@ class Vehicle(object):
         # Can also be input in CSV as array under column fcEffMap of form
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
-        if hasattr(self, 'fcEffMap'):
-            eff = ast.literal_eval(self.fcEffMap)
-        else:
+        try:
+            self.fcEffMap = np.array(ast.literal_eval(self.fcEffMap))
+        except ValueError:
             if self.fcEffType == 1:  # SI engine
-                eff = gl.eff_si + self.fcAbsEffImpr
+                self.fcEffMap = gl.eff_si + self.fcAbsEffImpr
 
             elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
-                eff = gl.eff_atk + self.fcAbsEffImpr
+                self.fcEffMap = gl.eff_atk + self.fcAbsEffImpr
 
             elif self.fcEffType == 3:  # Diesel (compression ignition) engine
-                eff = gl.eff_diesel + self.fcAbsEffImpr
+                self.fcEffMap = gl.eff_diesel + self.fcAbsEffImpr
 
             elif self.fcEffType == 4:  # H2 fuel cell
-                eff = gl.eff_fuel_cell + self.fcAbsEffImpr
+                self.fcEffMap = gl.eff_fuel_cell + self.fcAbsEffImpr
 
             elif self.fcEffType == 5:  # heavy duty Diesel engine
-                eff = gl.eff_hd_diesel + self.fcAbsEffImpr
-
+                self.fcEffMap = gl.eff_hd_diesel + self.fcAbsEffImpr
+        if len(self.fcEffMap) != 12:
+            raise ValueError('fcEffMap has length of {}, but should have length of 12'.
+                format(len(self.fcEffMap)))
 
         # discrete array of possible engine power outputs
         inputKwOutArray = gl.fcPwrOutPerc * self.maxFuelConvKw
@@ -180,13 +182,13 @@ class Vehicle(object):
             low_index = np.argmax(inputKwOutArray >= fcKwOutArray[j])
             fcinterp_x_1 = inputKwOutArray[low_index-1]
             fcinterp_x_2 = inputKwOutArray[low_index]
-            fcinterp_y_1 = eff[low_index-1]
-            fcinterp_y_2 = eff[low_index]
+            fcinterp_y_1 = self.fcEffMap[low_index-1]
+            fcinterp_y_2 = self.fcEffMap[low_index]
             fcEffArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 -
                                 fcinterp_x_1) * (fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
 
         # populate final value
-        fcEffArray[-1] = eff[-1]
+        fcEffArray[-1] = self.fcEffMap[-1]
 
         # assign corresponding values in veh dict
         self.fcEffArray = fcEffArray
