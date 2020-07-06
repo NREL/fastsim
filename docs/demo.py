@@ -74,7 +74,7 @@ print(time.time() - t0)
 
 
 t0 = time.time()
-veh = vehicle.Vehicle(12)
+veh = vehicle.Vehicle(1)
 veh_jit = veh.get_numba_veh()
 print(time.time() - t0)
 
