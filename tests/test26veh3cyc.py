@@ -28,9 +28,11 @@ def run_test26veh3cyc(use_jitclass=True):
     print('Instantiating classes.')
     print()
     veh = vehicle.Vehicle(1)
-    veh_jit = veh.get_numba_veh()
+    if use_jitclass:
+        veh_jit = veh.get_numba_veh()
     cyc = cycle.Cycle('udds')
-    cyc_jit = cyc.get_numba_cyc()
+    if use_jitclass:
+        cyc_jit = cyc.get_numba_cyc()
 
     newvars = ['rrKjPos', 'rrKjNeg', 'dragKjPos', 'dragKjNeg'] 
     # variables that have been added since the original benchmark was created, which should not be compared
@@ -51,7 +53,7 @@ def run_test26veh3cyc(use_jitclass=True):
                 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
                 sim_drive.sim_drive(-1)
             else:
-                sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit)
+                sim_drive = simdrive.SimDriveClassic(cyc, veh)
                 sim_drive.sim_drive()
                 
             sim_drive_post = simdrive.SimDrivePost(sim_drive)
@@ -59,14 +61,7 @@ def run_test26veh3cyc(use_jitclass=True):
             diagno = sim_drive_post.get_diagnostics()
             energyAuditErrors.append(sim_drive.energyAuditError)
 
-            if iter > 0:
-                dict_diag['vnum'].append(vehno)
-                dict_diag['cycle'].append(cycname)
-                for key in diagno.keys():
-                    if key not in newvars:
-                        dict_diag[key].append(diagno[key])
-                
-            else:
+            if iter == 0:
                 dict_diag = {}
                 dict_diag['vnum'] = [vehno]
                 dict_diag['cycle'] = [cycname]
@@ -74,7 +69,14 @@ def run_test26veh3cyc(use_jitclass=True):
                     if key not in newvars:
                         dict_diag[key] = [diagno[key]]
                 iter += 1
-            
+
+            else:
+                dict_diag['vnum'].append(vehno)
+                dict_diag['cycle'].append(cycname)
+                for key in diagno.keys():
+                    if key not in newvars:
+                        dict_diag[key].append(diagno[key])
+
     df = pd.DataFrame.from_dict(dict_diag)
 
     t1 = time.time()
