@@ -3,18 +3,42 @@ For example usage, see ../README.md"""
 
 ### Import necessary python modules
 import os
+from scipy.interpolate import interp1d
 import numpy as np
 import pandas as pd
 import re
 import sys
 from numba import jitclass                 # import the decorator
-from numba import float64, int32, bool_, types    # import the types
+from numba import float64, int32, bool_, types   # import the types
 import warnings
 warnings.simplefilter('ignore')
 
 # local modules
 from fastsim import globalvars as gl
 from fastsim.simdrive import SimDriveCore, spec
+
+# Fluid Properties
+teAirForPropsDegC = np.arange(-20, 140, 20) # deg C
+rhoAirArray = np.array([1.38990154, 1.28813317, 1.20025098, 1.12359437, 
+                        1.05614161, 0.99632897, 0.94292798, 0.89496013]) 
+                        # density of air [kg / m ** 3]
+kAirArray = np.array([0.02262832, 0.02416948, 0.02567436, 0.02714545, 0.02858511,
+                      0.02999558, 0.03137898, 0.03273731]) 
+                      # thermal conductivity of air [W / (m * K)]
+cpAirArray = np.array([1003.15536494, 1003.71709112, 1004.49073603, 1005.51659149,
+                       1006.82540109, 1008.43752504, 1010.36365822, 1012.60611422]) / 1e3 
+                       # specific heat of air [kJ / (kg * K)]
+hAirArray = np.array([253436.58748754, 273504.99629716, 293586.68523714, 313686.30935277,
+                      333809.23760193, 353961.34965289, 374148.83386308, 394378.00634841]) / 1e3
+                      # specific enthalpy of air [kJ / kg]
+PrAirArray = np.array([0.71884378, 0.7159169, 0.71334768, 0.71112444, 0.70923784,
+                       0.7076777, 0.70643177, 0.70548553])
+                        # Prandtl number of air
+muAirArray = np.array([1.62150624e-05, 1.72392601e-05, 1.82328655e-05, 1.91978833e-05,
+                       2.01362020e-05, 2.10495969e-05, 2.19397343e-05, 2.28081749e-05])
+                       # Dynamic viscosity of air [Pa * s]
+
+re_array = np.array([0, 4, 40, 4e3, 40e3])
 
 # things to model:
 # cabin temperature
@@ -38,11 +62,14 @@ hotspec = spec + [('teAmbDegC', float64), # ambient temperature
                     ('cabSolarKw', float64[:]), # cabin solar load
                     ('cabConvToAmbKw', float64[:]), # cabin convection to ambient
                     ('cabFromHtrKw', float64[:]), # cabin heat from heater 
-                    ('cabThrmMass', float64)  # cabin thermal mass (kJ/(kg*K))
+                    ('cabThrmMass', float64),  # cabin thermal mass (kJ/(kg*K))
+                    ('fcDiam', float64), # engine characteristic length for heat transfer calcs 
+                    ('fcSurfArea', float64), # engine surface area for heat transfer calcs
+                    ('hFcToAmbStop', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
+                    ('hFcToAmbRad', float64) # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient if radiator is active
                     ]
 
-@jitclass(hotspec)
-class SimDriveHotJit(SimDriveCore):
+class SimDriveHot(SimDriveCore):
     """Class containing methods for running FASTSim vehicle 
     fuel economy simulations with thermal behavior. 
     
@@ -57,7 +84,8 @@ class SimDriveHotJit(SimDriveCore):
 
     __init_core = SimDriveCore.__init__ # workaround for initializing super class within jitclass
     
-    def __init__(self, cyc, veh, teAmbDegC=22, teFcInitDegC=90, fcThrmMass=100, teCabInitDegC=22, cabThmMass=5):
+    def __init__(self, cyc, veh, hFcToAmbStop=50, hFcToAmbRad=1000, fcDiam=1, 
+        teAmbDegC=22, teFcInitDegC=90, fcThrmMass=100, teCabInitDegC=22, cabThmMass=5):
         """Initialize time array variables that are not used in base SimDrive."""
         self.__init_core(cyc, veh)
         
@@ -75,6 +103,11 @@ class SimDriveHotJit(SimDriveCore):
         # scalars
         self.teFcDegC[0] = teFcInitDegC
         self.fcThrmMass = fcThrmMass
+        self.fcDiam = fcDiam
+        self.fcSurfArea = np.pi * fcDiam ** 2 / 4
+        self.teAmbDegC = teAmbDegC
+        self.hFcToAmbStop = hFcToAmbStop
+        self.hFcToAmbRad = hFcToAmbRad
 
     def sim_drive(self, *args):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -169,10 +202,66 @@ class SimDriveHotJit(SimDriveCore):
 
         # Constitutive equations for fuel converter
         self.fcHeatGenKw[i-1] = self.fcKwInAch[i-1] - self.fcKwOutAch[i-1]
-        self.fcConvToAmbKw[i-1] = 666e-3 # placeholder
-        self.fcToHtrKw[i-1] = 666e-3  # placeholder
+        teFcFilmDegC = 0.5 * (self.teFcDegC[i] + self.teAmbDegC)
+        Re_fc = np.interp(teFcFilmDegC, teAirForPropsDegC, rhoAirArray) \
+            * self.mpsAch[i] * self.fcDiam / \
+            np.interp(teFcFilmDegC, teAirForPropsDegC, muAirArray) 
+        # density * speed * diameter / dynamic viscosity
+
+        def get_conv_params(Re):
+            """Given Reynolds number, return C and m.
+            Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44"""
+            if Re < 4:
+                C = 0.989
+                m = 0.330
+            elif Re < 40:
+                C = 0.911
+                m = 0.385
+            elif Re < 4e3:
+                C = 0.683
+                m = 0.466
+            elif Re < 40e3:
+                C = 0.193
+                m = 0.618
+            else:
+                C = 0.027
+                m = 0.805
+            return [C, m]
+
+        # calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
+        if (self.mpsAch[i] < 1) and (self.teFcDegC[i] < 90):
+            # vehicle is stopped AND radiator is NOT needed
+            hFcToAmb = self.hFcToAmbStop
+        elif (self.teFcDegC[i] >= 90):
+            # vehicle is moving OR stopped AND radiator is needed
+            hFcToAmb = self.hFcToAmbRad 
+        else:
+            # vehicle is moving AND radiator is NOT needed
+            # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
+            hFcToAmb = (get_conv_params(Re_fc)[0] * Re_fc ** get_conv_params(Re_fc)[1]) * \
+                np.interp(teFcFilmDegC, teAirForPropsDegC, PrAirArray) ** (1 / 3) * \
+                np.interp(teFcFilmDegC, teAirForPropsDegC, kAirArray) / self.fcDiam
+        self.fcConvToAmbKw[i-1] = hFcToAmb * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC)
+        self.fcToHtrKw[i-1] = 0  # placeholder
         # Energy balance for fuel converter
         self.teFcDegC[i] = self.teFcDegC[i-1] + (
             self.fcHeatGenKw[i-1] - self.fcConvToAmbKw[i-1] - self.fcToHtrKw[i-1]
         ) / self.fcThrmMass * self.cyc.secs[i-1]
         
+@jitclass(hotspec)
+class SimDriveHotJit(SimDriveHot):
+    """JTI-compiled class containing methods for running FASTSim vehicle 
+    fuel economy simulations with thermal behavior. 
+
+    Inherits everything from SimDriveHot
+    
+    This class is not compiled and will run slower for large batch runs."""
+    """Class compiled using numba just-in-time compilation containing methods 
+    for running FASTSim vehicle fuel economy simulations with thermal behavior. 
+    This class will be faster for large batch runs. 
+    Arguments:
+    ----------
+    cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
+    veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
+
+    
