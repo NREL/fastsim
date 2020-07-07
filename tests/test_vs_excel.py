@@ -47,7 +47,7 @@ def run_python_fastsim():
                 veh.load_veh(vehno)
                 veh_jit = veh.get_numba_veh()
             sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
-            sim_drive.sim_drive(-1)
+            sim_drive.sim_drive()
 
             res_dict['fe_' + cycname] = sim_drive.mpgge
             res_dict['kW_hr__mi_' + cycname] = sim_drive.electric_kWh_per_mi

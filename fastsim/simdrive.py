@@ -1072,24 +1072,31 @@ class SimDriveJit(SimDriveCore):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    def sim_drive(self, initSoc):
+    def sim_drive(self, *args):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
-        initSoc: initial SOC for electrified vehicles.  
-            Use -1 for default value.  Otherwise, must be between 0 and 1."""
+        args[0]: first argument in *args is initial SOC for electrified vehicles.  
+            Leave empty for default value.  Otherwise, must be between 0 and 1.
+            Numba's jitclass does not support keyword args so this is allows for optionally
+            passing initSoc."""
 
-        if initSoc != -1:
-            if initSoc > 1.0 or initSoc < 0.0:
-                print('Must enter a valid initial SOC between 0.0 and 1.0')
-                print('Running standard initial SOC controls')
-                initSoc = -1
+        if len(args) > 0:
+            initSoc = args[0] # set initSoc
+            if (initSoc != -1) and (initSoc > 1.0 or initSoc < 0.0):
+                    print('Must enter a valid initial SOC between 0.0 and 1.0')
+                    print('Running standard initial SOC controls')
+                    initSoc = -1 # override initSoc if invalid value is used
+            elif initSoc == -1:
+                print('initSoc = -1 passed to drive default SOC behavior.')
+        else:
+            initSoc = -1 # -1 enforces the default SOC behavior
     
         if self.veh.vehPtType == 1: # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
 
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
+            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0 # this initSoc has no impact on results
             
             self.sim_drive_walk(initSoc)
 
@@ -1099,7 +1106,7 @@ class SimDriveJit(SimDriveCore):
             ### Charge Balancing Vehicle SOC ###
             #####################################
 
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
@@ -1154,7 +1161,7 @@ class SimDriveJitWrapper(object):
         if initSoc: # if initSoc is provided, pass it to jitclass
             self.sim_drive_jit.sim_drive(initSoc)
         else:
-            self.sim_drive_jit.sim_drive(-1) # if initSoc is not passed, pass -1 to tell jitclass to use default behavior
+            self.sim_drive_jit.sim_drive() # if not provided, initSoc is handled via default behavior
         
         reprog = re.compile('_') # identify strings with leading _
         for var_name in self.sim_drive_jit.__dir__():

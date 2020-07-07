@@ -53,7 +53,7 @@ def run_test26veh3cyc(use_jitclass=True):
 
             if use_jitclass:
                 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
-                sim_drive.sim_drive(-1)
+                sim_drive.sim_drive()
             else:
                 sim_drive = simdrive.SimDriveClassic(cyc, veh)
                 sim_drive.sim_drive()
