@@ -167,10 +167,11 @@ class SimDriveCore(object):
         self.set_misc_calcs(self.i, *args)
         self.set_comp_lims(self.i)
         self.set_power_calcs(self.i)
-        self.set_speed_dist_calcs(self.i)
+        self.set_ach_speed(self.i)
         self.set_hybrid_cont_calcs(self.i)
         self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
         self.set_hybrid_cont_decisions(self.i)
+        self.set_fc_power(self.i)
 
         self.i += 1 # increment time step counter
 
@@ -371,7 +372,7 @@ class SimDriveCore(object):
             self.cycMet[i] = -1
             self.transKwOutAch[i] = self.curMaxTransKwOut[i]
         
-    def set_speed_dist_calcs(self, i):
+    def set_ach_speed(self, i):
         """Calculate and set variables dependent on speed
         Arguments
         ------------
@@ -804,6 +805,34 @@ class SimDriveCore(object):
             self.essKwOutAch[i] = self.mcElecKwInAch[i] + \
                 self.auxInKw[i] - self.roadwayChgKwOutAch[i]
 
+        if self.veh.noElecSys == True:
+            self.essCurKwh[i] = 0
+
+        elif self.essKwOutAch[i] < 0:
+            self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * \
+                (self.cyc.secs[i] / 3600.0) * np.sqrt(self.veh.essRoundTripEff)
+
+        else:
+            self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * \
+                (self.cyc.secs[i] / 3600.0) * (1 / np.sqrt(self.veh.essRoundTripEff))
+
+        if self.veh.maxEssKwh == 0:
+            self.soc[i] = 0.0
+
+        else:
+            self.soc[i] = self.essCurKwh[i] / self.veh.maxEssKwh
+
+        if self.canPowerAllElectrically[i] == True and self.fcForcedOn[i] == False and self.fcKwOutAch[i] == 0:
+            self.fcTimeOn[i] = 0
+        else:
+            self.fcTimeOn[i] = self.fcTimeOn[i-1] + self.cyc.secs[i]
+    
+    def set_fc_power(self, i):
+        """Sets fcKwOutAch and fcKwInAch.
+        Arguments
+        ------------
+        i: index of time step"""
+
         if self.veh.maxFuelConvKw == 0:
             self.fcKwOutAch[i] = 0
 
@@ -832,8 +861,7 @@ class SimDriveCore(object):
             self.fcKwInAch[i] = 0
         else:
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
-                self.fcKwInAch[i] = self.fcKwOutAch[i] / \
-                    self.veh.fcEffArray[-1]
+                self.fcKwInAch[i] = self.fcKwOutAch[i] / self.veh.fcEffArray[-1]
             else:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[max(1, np.argmax(
                     self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)])
@@ -843,28 +871,6 @@ class SimDriveCore(object):
         self.fsKwhOutAch[i] = self.fsKwOutAch[i] * \
             self.cyc.secs[i] * (1 / 3600.0)
 
-        if self.veh.noElecSys == True:
-            self.essCurKwh[i] = 0
-
-        elif self.essKwOutAch[i] < 0:
-            self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * \
-                (self.cyc.secs[i] / 3600.0) * np.sqrt(self.veh.essRoundTripEff)
-
-        else:
-            self.essCurKwh[i] = self.essCurKwh[i-1] - self.essKwOutAch[i] * \
-                (self.cyc.secs[i] / 3600.0) * (1 / np.sqrt(self.veh.essRoundTripEff))
-
-        if self.veh.maxEssKwh == 0:
-            self.soc[i] = 0.0
-
-        else:
-            self.soc[i] = self.essCurKwh[i] / self.veh.maxEssKwh
-
-        if self.canPowerAllElectrically[i] == True and self.fcForcedOn[i] == False and self.fcKwOutAch[i] == 0:
-            self.fcTimeOn[i] = 0
-        else:
-            self.fcTimeOn[i] = self.fcTimeOn[i-1] + self.cyc.secs[i]
-    
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
         This includes mpgge, various energy metrics, and others"""
