@@ -385,19 +385,19 @@ class SimDriveCore(object):
         else:
 
             def newton_mps_estimate(Totals):
-                t3=Totals[0]
-                t2=Totals[1]
-                t1=Totals[2]
-                t0=Totals[3]
-                xs=[]
-                ys=[]
-                ms=[]
-                bs=[]
+                t3 = Totals[0]
+                t2 = Totals[1]
+                t1 = Totals[2]
+                t0 = Totals[3]
+                xs = []
+                ys = []
+                ms = []
+                bs = []
                 # initial guess
-                xi=1.0
-                max_iter=100
+                xi = 1.0
+                max_iter = 100
                 # solver gain
-                g=0.8
+                g = 0.8
                 yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
                 mi = 3 * t3 * xi ** 2 + 2 * t2 * xi + t1
                 bi = yi - xi * mi
@@ -405,9 +405,9 @@ class SimDriveCore(object):
                 ys.append(yi)
                 ms.append(mi)
                 bs.append(bi)
-                iterate=1
+                iterate = 1
                 while iterate < max_iter:
-                    xi=xs[-1]*(1-g)-g*bs[-1]/ms[-1]
+                    xi = xs[-1] * (1 - g) - g * bs[-1] / ms[-1]
                     yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
                     mi = 3 * t3 * xi ** 2 + 2 * t2 * xi + t1
                     bi = yi - xi * mi
@@ -415,7 +415,7 @@ class SimDriveCore(object):
                     ys.append(yi)
                     ms.append(mi)
                     bs.append(bi)
-                    iterate+=1
+                    iterate += 1
 
                 _ys = [abs(y) for y in ys]
                 return xs[_ys.index(min(_ys))]
