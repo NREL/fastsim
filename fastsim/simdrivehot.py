@@ -14,7 +14,7 @@ warnings.simplefilter('ignore')
 
 # local modules
 from fastsim import globalvars as gl
-from fastsim.simdrive import simdrivecore, spec
+from fastsim.simdrive import SimDriveCore, spec
 
 # things to model:
 # cabin temperature
@@ -27,7 +27,8 @@ from fastsim.simdrive import simdrivecore, spec
 # radiator aux load -- maybe constant times heat loss via radiator (e.g. 0.1?)
 # impact of engine temperature on engine efficiency
 
-spec = spec.extend([('teFcDegC', float64[:]), # fuel converter temperature
+hotspec = spec + [('teAmbDegC', float64), # ambient temperature
+                    ('teFcDegC', float64[:]), # fuel converter temperature
                     ('fcEffAdj', float64[:]), # fuel converter temperature efficiency correction
                     ('fcHeatGenKw', float64[:]), # fuel converter heat generation
                     ('fcConvToAmbKw', float64[:]), # fuel converter convection to ambient
@@ -38,8 +39,9 @@ spec = spec.extend([('teFcDegC', float64[:]), # fuel converter temperature
                     ('cabConvToAmbKw', float64[:]), # cabin convection to ambient
                     ('cabFromHtrKw', float64[:]), # cabin heat from heater 
                     ('cabThrmMass', float64)  # cabin thermal mass (kJ/(kg*K))
-                    ]) 
+                    ]
 
+@jitclass(hotspec)
 class SimDriveHotJit(SimDriveCore):
     """Class containing methods for running FASTSim vehicle 
     fuel economy simulations with thermal behavior. 
@@ -53,10 +55,11 @@ class SimDriveHotJit(SimDriveCore):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-
-    def __init__(self, cyc, veh):
+    __init_core = SimDriveCore.__init__ # workaround for initializing super class within jitclass
+    
+    def __init__(self, cyc, veh, teAmbDegC=22, teFcInitDegC=90, fcThrmMass=100, teCabInitDegC=22, cabThmMass=5):
         """Initialize time array variables that are not used in base SimDrive."""
-        super().__init__(cyc, veh)
+        self.__init_core(cyc, veh)
         
         len_cyc = len(self.cyc.cycSecs)
         self.teFcDegC = np.zeros(len_cyc, dtype=np.float64)
@@ -64,13 +67,14 @@ class SimDriveHotJit(SimDriveCore):
         self.fcHeatGenKw = np.zeros(len_cyc, dtype=np.float64)
         self.fcConvToAmbKw = np.zeros(len_cyc, dtype=np.float64)
         self.fcToHtrKw = np.zeros(len_cyc, dtype=np.float64)
-        self.fcThrmMass = np.zeros(len_cyc, dtype=np.float64)
         self.teCabDegC = np.zeros(len_cyc, dtype=np.float64)
         self.cabSolarKw = np.zeros(len_cyc, dtype=np.float64)
         self.cabConvToAmbKw = np.zeros(len_cyc, dtype=np.float64)
         self.cabFromHtrKw = np.zeros(len_cyc, dtype=np.float64)
-        self.cabThrmMass = np.zeros(len_cyc, dtype=np.float64)
-
+        
+        # scalars
+        self.teFcDegC[0] = teFcInitDegC
+        self.fcThrmMass = fcThrmMass
 
     def sim_drive(self, *args):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -145,14 +149,15 @@ class SimDriveHotJit(SimDriveCore):
         ----------
         *args: variables to be overridden outside of sim_drive_step (experimental)"""
 
-        self.set_thermal_calcs(self, i)
+        self.set_thermal_calcs(self.i)
         self.set_misc_calcs(self.i, *args)
         self.set_comp_lims(self.i)
         self.set_power_calcs(self.i)
-        self.set_speed_dist_calcs(self.i)
+        self.set_ach_speed(self.i)
         self.set_hybrid_cont_calcs(self.i)
         self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
         self.set_hybrid_cont_decisions(self.i)
+        self.set_fc_power(self.i)
 
         self.i += 1 # increment time step counter
 
@@ -163,7 +168,7 @@ class SimDriveHotJit(SimDriveCore):
         i: index of time step"""
 
         # Constitutive equations for fuel converter
-        self.fcHeatGenKw[i-1] = sim_drive.fcKwInAch[i-1] - sim_drive.fcKwOutAch[i-1]
+        self.fcHeatGenKw[i-1] = self.fcKwInAch[i-1] - self.fcKwOutAch[i-1]
         self.fcConvToAmbKw[i-1] = 666e-3 # placeholder
         self.fcToHtrKw[i-1] = 666e-3  # placeholder
         # Energy balance for fuel converter
