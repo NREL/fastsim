@@ -14,7 +14,7 @@ warnings.simplefilter('ignore')
 
 # local modules
 from . import globalvars as gl
-from .simdrive import SimDriveClassic, SimDriveJit, SimDrivePost
+from .simdrive import simdrivecore
 
 class SimDriveHot(SimDriveClassic):
     """Class containing methods for running FASTSim vehicle 
