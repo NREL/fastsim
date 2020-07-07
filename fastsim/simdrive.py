@@ -1135,40 +1135,7 @@ class SimDriveJit(SimDriveCore):
             
             self.sim_drive_walk(initSoc)
         
-        self.set_post_scalars()
-        
-class SimDriveJitWrapper(object):
-    """Wrapper class for SimDriveJit class to enable keyword arguments in identical 
-    format to SimDriveClassic. SimDriveJit is compiled using numba just-in-time 
-    compilation containing methods for running FASTSim vehicle fuel economy 
-    simulations. This class will be faster than SimDriveClassic but slightly 
-    slower than SimDriveJit for large batch runs.
-    Arguments:
-    ----------
-    cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
-    veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
-
-    def __init__(self, cyc, veh):
-        self.sim_drive_jit = SimDriveJit(cyc, veh)
-
-    def sim_drive(self, initSoc=None):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        Arguments
-        ------------
-        initSoc: (optional keyword argument) initial SOC for electrified vehicles.  
-            Must be between 0 and 1."""
-        
-        if initSoc: # if initSoc is provided, pass it to jitclass
-            self.sim_drive_jit.sim_drive(initSoc)
-        else:
-            self.sim_drive_jit.sim_drive() # if not provided, initSoc is handled via default behavior
-        
-        reprog = re.compile('_') # identify strings with leading _
-        for var_name in self.sim_drive_jit.__dir__():
-            # collect all variables that are not methods and not private
-            if not reprog.match(var_name) and not(isinstance(self.sim_drive_jit.__getattribute__(var_name), types.MethodType)):
-                self.__setattr__(var_name, self.sim_drive_jit.__getattribute__(var_name))
-            
+        self.set_post_scalars()            
             
 @jitclass(spec)
 class SimAccelTestJit(SimDriveCore):
