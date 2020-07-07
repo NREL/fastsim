@@ -45,7 +45,7 @@ def run_test26veh3cyc_CPUtime(use_jitclass=True):
         for cyc_name in cyc_names:
             if use_jitclass:
                 sim_drive = simdrive.SimDriveJit(cycs_jit[cyc_name], veh_jit)
-                sim_drive.sim_drive(-1)
+                sim_drive.sim_drive()
             else:
                 sim_drive = simdrive.SimDriveClassic(cycs_jit[cyc_name], veh_jit)
                 sim_drive.sim_drive()
