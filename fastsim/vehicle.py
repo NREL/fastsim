@@ -105,7 +105,7 @@ class Vehicle(object):
             return data
 
         # empty strings for cells that had no values easier to deal with
-        vehdf.loc[vnum].apply(clean_data)
+        vehdf.loc[vnum] = vehdf.loc[vnum].apply(clean_data)
 
         ### selects specified vnum from vehdf
         for col in vehdf.columns:
