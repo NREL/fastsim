@@ -66,7 +66,8 @@ hotspec = spec + [('teAmbDegC', float64), # ambient temperature
                     ('fcDiam', float64), # engine characteristic length for heat transfer calcs 
                     ('fcSurfArea', float64), # engine surface area for heat transfer calcs
                     ('hFcToAmbStop', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
-                    ('hFcToAmbRad', float64) # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient if radiator is active
+                    ('hFcToAmbRad', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient if radiator is active
+                    ('hFcToAmb', float64[:]) # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
                     ]
 
 class SimDriveHot(SimDriveCore):
@@ -84,7 +85,7 @@ class SimDriveHot(SimDriveCore):
 
     __init_core = SimDriveCore.__init__ # workaround for initializing super class within jitclass
     
-    def __init__(self, cyc, veh, hFcToAmbStop=50, hFcToAmbRad=1000, fcDiam=1, 
+    def __init__(self, cyc, veh, hFcToAmbStop=50, hFcToAmbRad=500, fcDiam=1, 
         teAmbDegC=22, teFcInitDegC=90, fcThrmMass=100, teCabInitDegC=22, cabThmMass=5):
         """Initialize time array variables that are not used in base SimDrive."""
         self.__init_core(cyc, veh)
@@ -99,6 +100,7 @@ class SimDriveHot(SimDriveCore):
         self.cabSolarKw = np.zeros(len_cyc, dtype=np.float64)
         self.cabConvToAmbKw = np.zeros(len_cyc, dtype=np.float64)
         self.cabFromHtrKw = np.zeros(len_cyc, dtype=np.float64)
+        self.hFcToAmb = np.zeros(len_cyc, dtype=np.float64)
         
         # scalars
         self.teFcDegC[0] = teFcInitDegC
@@ -204,7 +206,7 @@ class SimDriveHot(SimDriveCore):
         self.fcHeatGenKw[i-1] = self.fcKwInAch[i-1] - self.fcKwOutAch[i-1]
         teFcFilmDegC = 0.5 * (self.teFcDegC[i] + self.teAmbDegC)
         Re_fc = np.interp(teFcFilmDegC, teAirForPropsDegC, rhoAirArray) \
-            * self.mpsAch[i] * self.fcDiam / \
+            * self.mpsAch[i-1] * self.fcDiam / \
             np.interp(teFcFilmDegC, teAirForPropsDegC, muAirArray) 
         # density * speed * diameter / dynamic viscosity
 
@@ -229,19 +231,19 @@ class SimDriveHot(SimDriveCore):
             return [C, m]
 
         # calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
-        if (self.mpsAch[i] < 1) and (self.teFcDegC[i] < 90):
-            # vehicle is stopped AND radiator is NOT needed
-            hFcToAmb = self.hFcToAmbStop
-        elif (self.teFcDegC[i] >= 90):
+        if (self.teFcDegC[i-1] >= 90):
             # vehicle is moving OR stopped AND radiator is needed
-            hFcToAmb = self.hFcToAmbRad 
+            self.hFcToAmb[i-1] = self.hFcToAmbRad
+        elif (self.mpsAch[i-1] < 1):
+            # vehicle is stopped AND radiator is NOT needed
+            self.hFcToAmb[i-1] = self.hFcToAmbStop
         else:
             # vehicle is moving AND radiator is NOT needed
             # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-            hFcToAmb = (get_conv_params(Re_fc)[0] * Re_fc ** get_conv_params(Re_fc)[1]) * \
+            self.hFcToAmb[i-1] = (get_conv_params(Re_fc)[0] * Re_fc ** get_conv_params(Re_fc)[1]) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, PrAirArray) ** (1 / 3) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, kAirArray) / self.fcDiam
-        self.fcConvToAmbKw[i-1] = hFcToAmb * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC)
+        self.fcConvToAmbKw[i-1] = self.hFcToAmb[i-1] * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC)
         self.fcToHtrKw[i-1] = 0  # placeholder
         # Energy balance for fuel converter
         self.teFcDegC[i] = self.teFcDegC[i-1] + (
