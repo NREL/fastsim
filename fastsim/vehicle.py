@@ -63,10 +63,9 @@ class Vehicle(object):
 
         if veh_file:
             vehdf = pd.read_csv(Path(veh_file))
-            vehdf.set_index('Selection', inplace=True, drop=False)
         else:
             vehdf = pd.read_csv(DEFAULT_VEH_DB)
-            vehdf.set_index('Selection', inplace=True, drop=False)
+        vehdf.set_index('Selection', inplace=True, drop=False)
 
         def clean_data(raw_data):
             """Cleans up data formatting.
