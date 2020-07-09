@@ -67,7 +67,9 @@ hotspec = spec + [('teAmbDegC', float64), # ambient temperature
                     ('fcSurfArea', float64), # engine surface area for heat transfer calcs
                     ('hFcToAmbStop', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
                     ('hFcToAmbRad', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient if radiator is active
-                    ('hFcToAmb', float64[:]) # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
+                    ('hFcToAmb', float64[:]), # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
+                    ('fcCombToThrmlMassKw', float64), # fraction of combustion heat that goes to FC thermal mass
+                    # remainder goes to environment (e.g. via tailpipe)
                     ]
 
 class SimDriveHot(SimDriveCore):
@@ -85,8 +87,7 @@ class SimDriveHot(SimDriveCore):
 
     __init_core = SimDriveCore.__init__ # workaround for initializing super class within jitclass
     
-    def __init__(self, cyc, veh, hFcToAmbStop=50, hFcToAmbRad=500, fcDiam=1, 
-        teAmbDegC=22, teFcInitDegC=90, fcThrmMass=100, teCabInitDegC=22, cabThmMass=5):
+    def __init__(self, cyc, veh, teAmbDegC=22, teFcInitDegC=90, teCabInitDegC=22):
         """Initialize time array variables that are not used in base SimDrive."""
         self.__init_core(cyc, veh)
         
@@ -104,12 +105,14 @@ class SimDriveHot(SimDriveCore):
         
         # scalars
         self.teFcDegC[0] = teFcInitDegC
-        self.fcThrmMass = fcThrmMass
-        self.fcDiam = fcDiam
-        self.fcSurfArea = np.pi * fcDiam ** 2 / 4
+        self.fcThrmMass = 100
+        self.fcDiam = 1
+        self.fcSurfArea = np.pi * self.fcDiam ** 2 / 4
+        self.cabThrmMass = 5
         self.teAmbDegC = teAmbDegC
-        self.hFcToAmbStop = hFcToAmbStop
-        self.hFcToAmbRad = hFcToAmbRad
+        self.hFcToAmbStop = 50
+        self.hFcToAmbRad = 500
+        self.fcCombToThrmlMassKw = 0.5 
 
     def sim_drive(self, *args):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -203,7 +206,7 @@ class SimDriveHot(SimDriveCore):
         i: index of time step"""
 
         # Constitutive equations for fuel converter
-        self.fcHeatGenKw[i-1] = self.fcKwInAch[i-1] - self.fcKwOutAch[i-1]
+        self.fcHeatGenKw[i-1] = self.fcCombToThrmlMassKw * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
         teFcFilmDegC = 0.5 * (self.teFcDegC[i] + self.teAmbDegC)
         Re_fc = np.interp(teFcFilmDegC, teAirForPropsDegC, rhoAirArray) \
             * self.mpsAch[i-1] * self.fcDiam / \
@@ -250,6 +253,56 @@ class SimDriveHot(SimDriveCore):
             self.fcHeatGenKw[i-1] - self.fcConvToAmbKw[i-1] - self.fcToHtrKw[i-1]
         ) / self.fcThrmMass * self.cyc.secs[i-1]
         
+    def set_fc_power(self, i):
+        """Sets fcKwOutAch and fcKwInAch.
+        Arguments
+        ------------
+        i: index of time step"""
+
+        if self.veh.maxFuelConvKw == 0:
+            self.fcKwOutAch[i] = 0
+
+        elif self.veh.fcEffType == 4:
+            self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
+                0, self.mcElecKwInAch[i] + self.auxInKw[i] - self.essKwOutAch[i] - self.roadwayChgKwOutAch[i]))
+
+        elif self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
+            self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
+                0, self.transKwInAch[i] - self.mcMechKwOutAch[i] + self.auxInKw[i]))
+
+        else:
+            self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
+                0, self.transKwInAch[i] - self.mcMechKwOutAch[i]))
+
+        if self.fcKwOutAch[i] == 0:
+            self.fcKwInAch[i] = 0.0
+            self.fcKwOutAch_pct[i] = 0
+
+        if self.veh.maxFuelConvKw == 0:
+            self.fcKwOutAch_pct[i] = 0
+        else:
+            self.fcKwOutAch_pct[i] = self.fcKwOutAch[i] / \
+                self.veh.maxFuelConvKw
+
+        if self.fcKwOutAch[i] == 0:
+            self.fcKwInAch[i] = 0
+        else:
+            tempFitPolyCoeffs = np.array([1.018e-01, 1.637e-03, -3.000e-06])
+            self.fcEffAdj[i] = max(min((tempFitPolyCoeffs[0] + self.teFcDegC[i] * tempFitPolyCoeffs[1] + self.teFcDegC[i] ** 2 * tempFitPolyCoeffs[2]) \
+                / 0.2248, 1), 0.3019)
+            if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
+                self.fcKwInAch[i] = self.fcKwOutAch[i] / self.veh.fcEffArray[-1] / self.fcEffAdj[i]
+            else:
+                self.fcKwInAch[i] = self.fcKwOutAch[i] / \
+                    (self.veh.fcEffArray[max(1, np.argmax(self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)]) \
+                        / self.fcEffAdj[i]
+
+        self.fsKwOutAch[i] = self.fcKwInAch[i]
+
+        self.fsKwhOutAch[i] = self.fsKwOutAch[i] * \
+            self.cyc.secs[i] * (1 / 3600.0)
+
+
 @jitclass(hotspec)
 class SimDriveHotJit(SimDriveHot):
     """JTI-compiled class containing methods for running FASTSim vehicle 
