@@ -9,7 +9,6 @@ import re
 import sys
 from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_    # import the types
-import types
 import warnings
 warnings.simplefilter('ignore')
 
@@ -17,6 +16,7 @@ warnings.simplefilter('ignore')
 from . import globalvars as gl
 from .cycle import TypedCycle
 from .vehicle import TypedVehicle
+
 
 
 class SimDriveCore(object):

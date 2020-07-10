@@ -244,18 +244,18 @@ def concat(cycles):
             first = False
         # if len(final_cycle['cycSecs']) == 0: # ???
         #     t0 = 0.0
-        # else:
-        t0 = final_cycle['cycSecs'][-1]
-        N_pre = len(final_cycle['cycSecs'])
-        final_cycle['cycSecs'] = np.concatenate([
-            final_cycle['cycSecs'],
-            np.array(cycle['cycSecs'][1:]) + t0])
-        final_cycle['cycMps'] = np.concatenate([
-            final_cycle['cycMps'],
-            np.array(cycle['cycMps'][1:])])
-        final_cycle['cycGrade'] = np.concatenate([
-            final_cycle['cycGrade'],
-            np.array(cycle['cycGrade'][1:])])
+        else:
+            t0 = final_cycle['cycSecs'][-1]
+            N_pre = len(final_cycle['cycSecs'])
+            final_cycle['cycSecs'] = np.concatenate([
+                final_cycle['cycSecs'],
+                np.array(cycle['cycSecs'][1:]) + t0])
+            final_cycle['cycMps'] = np.concatenate([
+                final_cycle['cycMps'],
+                np.array(cycle['cycMps'][1:])])
+            final_cycle['cycGrade'] = np.concatenate([
+                final_cycle['cycGrade'],
+                np.array(cycle['cycGrade'][1:])])
     return final_cycle
 
 
