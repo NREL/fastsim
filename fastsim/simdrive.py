@@ -17,15 +17,28 @@ from . import globalvars as gl
 from .cycle import TypedCycle
 from .vehicle import TypedVehicle
 
+# Object for containing model parameters (e.g. solver variants, 
+# thermal boundary conditions, missed trace behavior, etc.). 
 
+param_spec = [('missed_trace_correction', bool_) # if True, missed trace correction is active, default = False
+            ]
+@jitclass(param_spec)
+class SimDriveParams(object):
+    """Class containing attributes used for configuring sim_drive.  Usually the defaults are ok, 
+    and there will be no need to use this."""
+    def __init__(self, missed_trace_correction=False):
+        self.missed_trace_correction = False # by default, do not fix missed trace time steps
 
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
     by a class with an init method before being runnable."""
 
-    def __init__(self, cyc, veh):
+    def __init__(self, cyc, veh, sim_params=SimDriveParams()):
+        """Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
+        sim_params is needed only if non-default behavior is desired."""
         self.veh = veh
         self.cyc = cyc
+        self.sim_params = sim_params
 
         len_cyc = len(self.cyc.cycSecs)
         self.i = 1 # initialize step counter for possible use outside sim_drive_walk()
@@ -131,6 +144,7 @@ class SimDriveCore(object):
         self.motor_index_debug = np.zeros(len_cyc, dtype=np.float64)
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
+        self.traceMissDistMiles = np.zeros(len_cyc, dtype=np.float64)
 
     def sim_drive_walk(self, initSoc=None):
         """Receives second-by-second cycle information, vehicle properties, 
@@ -1025,11 +1039,12 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
              'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
-             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw']
+             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'traceMissDistMiles']
 
 # create types for instances of TypedVehicle and TypedCycle
 veh_type = TypedVehicle.class_type.instance_type
 cyc_type = TypedCycle.class_type.instance_type
+param_type = SimDriveParams.class_type.instance_type
 
 spec = [(attr, float64[:]) for attr in attr_list]
 spec.extend([('i', int32),
@@ -1048,6 +1063,7 @@ spec.extend([('i', int32),
              ('grid_mpgge_elec', float64),
              ('veh', veh_type),
              ('cyc', cyc_type),
+             ('sim_params', param_type),
              ('dragKj', float64), 
              ('ascentKj', float64),
              ('rrKj', float64),
