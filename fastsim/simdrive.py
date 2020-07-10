@@ -20,7 +20,8 @@ from .vehicle import TypedVehicle
 # Object for containing model parameters (e.g. solver variants, 
 # thermal boundary conditions, missed trace behavior, etc.). 
 
-param_spec = [('missed_trace_correction', bool_) # if True, missed trace correction is active, default = False
+param_spec = [('missed_trace_correction', bool_), # if True, missed trace correction is active, default = False
+            ('traceMissDistMetersTol', float64) # allowable trace miss distance
             ]
 @jitclass(param_spec)
 class SimDriveParams(object):
@@ -28,6 +29,7 @@ class SimDriveParams(object):
     and there will be no need to use this."""
     def __init__(self, missed_trace_correction=False):
         self.missed_trace_correction = False # by default, do not fix missed trace time steps
+        self.traceMissDistMetersTol = 1 # can be overridden after instantiation
 
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
@@ -144,7 +146,7 @@ class SimDriveCore(object):
         self.motor_index_debug = np.zeros(len_cyc, dtype=np.float64)
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
-        self.traceMissDistMiles = np.zeros(len_cyc, dtype=np.float64)
+        self.traceMissDistMeters = np.zeros(len_cyc, dtype=np.float64)
 
     def sim_drive_walk(self, initSoc=None):
         """Receives second-by-second cycle information, vehicle properties, 
@@ -184,9 +186,28 @@ class SimDriveCore(object):
         self.set_hybrid_cont_decisions(self.i)
         self.set_fc_power(self.i)
 
+        if self.sim_params.miss_trace_correction:
+            while self.tracMissDistMiles[i-1] > self.sim_params.traceMissDistMetersTol:
+                self.set_time_dilation(self.i)
+        self.set_misc_calcs(self.i)
+        self.set_comp_lims(self.i)
+        self.set_power_calcs(self.i)
+        self.set_ach_speed(self.i)
+        self.set_hybrid_cont_calcs(self.i)
+        self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
+        self.set_hybrid_cont_decisions(self.i)
+        self.set_fc_power(self.i)
+
         self.i += 1 # increment time step counter
 
+<<<<<<< HEAD
     def set_misc_calcs(self, i):
+=======
+    def set_time_dilation(self, i):
+
+    
+    def set_misc_calcs(self, i, *args):
+>>>>>>> partway through implementing trace miss correction
         """Sets misc. calculations at time step 'i'
         Arguments:
         ----------
@@ -470,6 +491,9 @@ class SimDriveCore(object):
         self.mphAch[i] = self.mpsAch[i] * gl.mphPerMps
         self.distMeters[i] = self.mpsAch[i] * self.cyc.secs[i]
         self.distMiles[i] = self.distMeters[i] * (1.0 / gl.metersPerMile)
+        # cumulative trace miss distance
+        self.traceMissDistMeters[i] = self.traceMissDistMeters[i-1] + \
+            self.cyc.cycMps[i] * self.cyc.secs[i] - self.distMeters[i]
         
     def set_hybrid_cont_calcs(self, i):
         """Hybrid control calculations.  
@@ -1039,7 +1063,7 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
              'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
-             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'traceMissDistMiles']
+             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'traceMissDistMeters']
 
 # create types for instances of TypedVehicle and TypedCycle
 veh_type = TypedVehicle.class_type.instance_type
