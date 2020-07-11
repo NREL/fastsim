@@ -28,7 +28,7 @@ class SimDriveParams(object):
     """Class containing attributes used for configuring sim_drive.  Usually the defaults are ok, 
     and there will be no need to use this."""
     def __init__(self, missed_trace_correction=False):
-        self.missed_trace_correction = False # by default, do not fix missed trace time steps
+        self.missed_trace_correction = missed_trace_correction # by default, do not fix missed trace time steps
         self.traceMissDistMetersTol = 1 # can be overridden after instantiation
 
 class SimDriveCore(object):
@@ -39,7 +39,8 @@ class SimDriveCore(object):
         """Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
         sim_params is needed only if non-default behavior is desired."""
         self.veh = veh
-        self.cyc = cyc
+        self.cyc = cyc # this cycle may be manipulated
+        self.cyc0 = cyc.copy() # this cycle is not to be manipulated
         self.sim_params = sim_params
 
         len_cyc = len(self.cyc.cycSecs)
@@ -146,7 +147,6 @@ class SimDriveCore(object):
         self.motor_index_debug = np.zeros(len_cyc, dtype=np.float64)
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
-        self.traceMissDistMeters = np.zeros(len_cyc, dtype=np.float64)
 
     def sim_drive_walk(self, initSoc=None):
         """Receives second-by-second cycle information, vehicle properties, 
@@ -170,9 +170,15 @@ class SimDriveCore(object):
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
         self.soc[0] = initSoc
 
+        if self.sim_params.missed_trace_correction:
+            self.cyc = self.cyc0 # reset the cycle in case it has been manipulated
+
         self.i = 1 # time step counter
         while self.i < len(self.cyc.cycSecs):
             self.sim_drive_step()
+        
+        if self.sim_params.missed_trace_correction: 
+            self.cyc.cycSecs = self.cyc.secs.cumsum() # correct cycSecs based on actual trace
 
     def sim_drive_step(self):
         """Step through 1 time step."""
@@ -186,28 +192,33 @@ class SimDriveCore(object):
         self.set_hybrid_cont_decisions(self.i)
         self.set_fc_power(self.i)
 
-        if self.sim_params.miss_trace_correction:
-            while self.tracMissDistMiles[i-1] > self.sim_params.traceMissDistMetersTol:
-                self.set_time_dilation(self.i)
-        self.set_misc_calcs(self.i)
-        self.set_comp_lims(self.i)
-        self.set_power_calcs(self.i)
-        self.set_ach_speed(self.i)
-        self.set_hybrid_cont_calcs(self.i)
-        self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
-        self.set_hybrid_cont_decisions(self.i)
-        self.set_fc_power(self.i)
+        if self.sim_params.missed_trace_correction:
+            if self.i > 2:
+                iter = 1
+                not_converged = (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()) > self.sim_params.traceMissDistMetersTol                
+                while not_converged:
+                    self.set_time_dilation(self.i)
+                    self.set_misc_calcs(self.i)
+                    self.set_comp_lims(self.i)
+                    self.set_power_calcs(self.i)
+                    self.set_ach_speed(self.i)
+                    self.set_hybrid_cont_calcs(self.i)
+                    self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
+                    self.set_hybrid_cont_decisions(self.i)
+                    self.set_fc_power(self.i)
+                    not_converged = (self.cyc0.cycDistMeters[:self.i].sum() - \
+                        self.distMeters[:self.i].sum()) > self.sim_params.traceMissDistMetersTol
 
         self.i += 1 # increment time step counter
 
-<<<<<<< HEAD
-    def set_misc_calcs(self, i):
-=======
     def set_time_dilation(self, i):
+        """If SimDrive*() is initialized with SimDriveParams(missed_trace_correction=True),
+        time steps will be expanded to enable distance trace matching."""
 
+        time_dilation_factor = min(max(self.cyc.cycDistMeters[i] / self.distMeters[i], 1), 5)
+        self.cyc.secs[i] = self.cyc0.secs[i] * time_dilation_factor
     
-    def set_misc_calcs(self, i, *args):
->>>>>>> partway through implementing trace miss correction
+    def set_misc_calcs(self, i):
         """Sets misc. calculations at time step 'i'
         Arguments:
         ----------
@@ -491,9 +502,6 @@ class SimDriveCore(object):
         self.mphAch[i] = self.mpsAch[i] * gl.mphPerMps
         self.distMeters[i] = self.mpsAch[i] * self.cyc.secs[i]
         self.distMiles[i] = self.distMeters[i] * (1.0 / gl.metersPerMile)
-        # cumulative trace miss distance
-        self.traceMissDistMeters[i] = self.traceMissDistMeters[i-1] + \
-            self.cyc.cycMps[i] * self.cyc.secs[i] - self.distMeters[i]
         
     def set_hybrid_cont_calcs(self, i):
         """Hybrid control calculations.  
@@ -1063,7 +1071,7 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
              'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
-             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'traceMissDistMeters']
+             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw']
 
 # create types for instances of TypedVehicle and TypedCycle
 veh_type = TypedVehicle.class_type.instance_type
@@ -1087,6 +1095,7 @@ spec.extend([('i', int32),
              ('grid_mpgge_elec', float64),
              ('veh', veh_type),
              ('cyc', cyc_type),
+             ('cyc0', cyc_type),
              ('sim_params', param_type),
              ('dragKj', float64), 
              ('ascentKj', float64),
