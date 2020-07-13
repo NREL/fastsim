@@ -103,13 +103,17 @@ class Cycle(object):
             cyc[key] = self.__getattribute__(key)
         
         return cyc
-
+    
     def copy(self):
-        """Returns a copy of Cycle instance."""
-        cyc = Cycle()
-        for key in self.__dict__:
-            cyc.__setattr__(key, np.copy(self.__getattribute__(key)))
+        """Return copy of Cycle instance."""
+        cyc_dict = {'cycSecs': self.cycSecs,
+                    'cycMps': self.cycMps,
+                    'cycGrade': self.cycGrade,
+                    'cycRoadType': self.cycRoadType
+                    }
+        cyc = Cycle(cyc_dict=cyc_dict)
         return cyc
+
 
 
 # type specifications for attributes of Cycle class
@@ -140,15 +144,15 @@ class TypedCycle(object):
 
     def copy(self):
         """Return copy of TypedCycle instance."""
-        cyc_jit = TypedCycle(len(self.cycSecs))
-        cyc_jit.cycSecs = np.copy(self.cycSecs)
-        cyc_jit.cycMps = np.copy(self.cycMps)
-        cyc_jit.cycGrade = np.copy(self.cycGrade)
-        cyc_jit.cycRoadType = np.copy(self.cycRoadType)
-        cyc_jit.cycMph = np.copy(self.cycMph)
-        cyc_jit.secs = np.copy(self.secs)
-        cyc_jit.cycDistMeters = np.copy(self.cycDistMeters)
-        return cyc_jit
+        cyc = TypedCycle(len(self.cycSecs))
+        cyc.cycSecs = np.copy(self.cycSecs)
+        cyc.cycMps = np.copy(self.cycMps)
+        cyc.cycGrade = np.copy(self.cycGrade)
+        cyc.cycRoadType = np.copy(self.cycRoadType)
+        cyc.cycMph = np.copy(self.cycMph)
+        cyc.secs = np.copy(self.secs)
+        cyc.cycDistMeters = np.copy(self.cycDistMeters)
+        return cyc
 
     
 

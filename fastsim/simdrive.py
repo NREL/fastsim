@@ -39,7 +39,7 @@ class SimDriveCore(object):
         """Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
         sim_params is needed only if non-default behavior is desired."""
         self.veh = veh
-        self.cyc = cyc # this cycle may be manipulated
+        self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
         self.sim_params = sim_params
 
@@ -171,7 +171,7 @@ class SimDriveCore(object):
         self.soc[0] = initSoc
 
         if self.sim_params.missed_trace_correction:
-            self.cyc = self.cyc0 # reset the cycle in case it has been manipulated
+            self.cyc = self.cyc0.copy() # reset the cycle in case it has been manipulated
 
         self.i = 1 # time step counter
         while self.i < len(self.cyc.cycSecs):
@@ -193,31 +193,32 @@ class SimDriveCore(object):
         self.set_fc_power(self.i)
 
         if self.sim_params.missed_trace_correction:
-            if self.i > 2:
-                iter = 1
-                not_converged = (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()) > self.sim_params.traceMissDistMetersTol                
-                while not_converged:
-                    self.set_time_dilation(self.i)
-                    self.set_misc_calcs(self.i)
-                    self.set_comp_lims(self.i)
-                    self.set_power_calcs(self.i)
-                    self.set_ach_speed(self.i)
-                    self.set_hybrid_cont_calcs(self.i)
-                    self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
-                    self.set_hybrid_cont_decisions(self.i)
-                    self.set_fc_power(self.i)
-                    not_converged = (self.cyc0.cycDistMeters[:self.i].sum() - \
-                        self.distMeters[:self.i].sum()) > self.sim_params.traceMissDistMetersTol
+            missed_trace_iter = 0
+            time_dilation_factor = min(max(
+                (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
+                 ) / self.distMeters[self.i] + 1,
+                1),
+                5)
+            debug = 37
+            while time_dilation_factor > 1 and missed_trace_iter < 10:
+                self.set_misc_calcs(self.i)
+                self.set_comp_lims(self.i)
+                self.set_power_calcs(self.i)
+                self.set_ach_speed(self.i)
+                self.set_hybrid_cont_calcs(self.i)
+                self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
+                self.set_hybrid_cont_decisions(self.i)
+                self.set_fc_power(self.i)
+                time_dilation_factor = min(max(
+                    (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
+                     ) / self.distMeters[self.i] + 1,
+                    1),
+                    5)
+                self.cyc.secs[self.i] = self.cyc0.secs[self.i] * time_dilation_factor
+                missed_trace_iter += 1
 
         self.i += 1 # increment time step counter
 
-    def set_time_dilation(self, i):
-        """If SimDrive*() is initialized with SimDriveParams(missed_trace_correction=True),
-        time steps will be expanded to enable distance trace matching."""
-
-        time_dilation_factor = min(max(self.cyc.cycDistMeters[i] / self.distMeters[i], 1), 5)
-        self.cyc.secs[i] = self.cyc0.secs[i] * time_dilation_factor
-    
     def set_misc_calcs(self, i):
         """Sets misc. calculations at time step 'i'
         Arguments:
