@@ -396,7 +396,9 @@ class SimDriveCore(object):
                 bs = []
                 # initial guess
                 xi = max(1.0, self.mpsAch[i-1])
+                # stop criteria
                 max_iter = 100
+                xtol = 1e-18
                 # solver gain
                 g = 0.8
                 yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
@@ -407,7 +409,8 @@ class SimDriveCore(object):
                 ms.append(mi)
                 bs.append(bi)
                 iterate = 1
-                while iterate < max_iter:
+                converged = False
+                while iterate < max_iter and not(converged):
                     xi = xs[-1] * (1 - g) - g * bs[-1] / ms[-1]
                     yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
                     mi = 3 * t3 * xi ** 2 + 2 * t2 * xi + t1
@@ -416,6 +419,7 @@ class SimDriveCore(object):
                     ys.append(yi)
                     ms.append(mi)
                     bs.append(bi)
+                    converged = abs((xs[-1] - xs[-2]) / xs[-2]) < xtol 
                     iterate += 1
 
                 _ys = [abs(y) for y in ys]
