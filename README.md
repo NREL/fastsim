@@ -56,3 +56,7 @@ ach = achieved value
 in = component input  
 out = component output  
 
+# Known Bugs
+
+When using `sim_drive_params = simdrive.SimDriveParams(missed_trace_correction=True)`, an instance of `cycle.TypedCycle()` (obtainable by using `cycle.Cycle().get_numba_cyc()`) must be used to get the right behavior. For some reason, when using an instance of `cycle.Cycle()` the `secs` array elements are not being overwritten as they should be.  
+
