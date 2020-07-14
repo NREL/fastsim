@@ -158,13 +158,10 @@ class SimDriveCore(object):
         while self.i < len(self.cyc.cycSecs):
             self.sim_drive_step()
 
-    def sim_drive_step(self, *args):
-        """Step through 1 time step.
-        Arguments:
-        ----------
-        *args: variables to be overridden outside of sim_drive_step (experimental)"""
+    def sim_drive_step(self):
+        """Step through 1 time step."""
 
-        self.set_misc_calcs(self.i, *args)
+        self.set_misc_calcs(self.i)
         self.set_comp_lims(self.i)
         self.set_power_calcs(self.i)
         self.set_ach_speed(self.i)
@@ -175,20 +172,16 @@ class SimDriveCore(object):
 
         self.i += 1 # increment time step counter
 
-    def set_misc_calcs(self, i, *args):
+    def set_misc_calcs(self, i):
         """Sets misc. calculations at time step 'i'
         Arguments:
         ----------
-        i: index of time step
-        *args: variables to be overridden outside of sim_drive_step (experimental)"""
+        i: index of time step"""
 
-        if len(args) == 0:
-            if self.veh.noElecAux == True:
-                self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
-            else:
-                self.auxInKw[i] = self.veh.auxKw            
-        elif 'auxInKw' in args:
-            pass
+        if self.veh.noElecAux == True:
+            self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
+        else:
+            self.auxInKw[i] = self.veh.auxKw            
 
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
@@ -1087,25 +1080,19 @@ class SimDriveJit(SimDriveCore):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    def sim_drive(self, *args):
+    def sim_drive(self, initSoc=-1):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
-        args[0]: first argument in *args is initial SOC for electrified vehicles.  
+        initSoc: initial SOC for electrified vehicles.  
             Leave empty for default value.  Otherwise, must be between 0 and 1.
-            Numba's jitclass does not support keyword args so this is allows for optionally
-            passing initSoc."""
+            Numba's jitclass does not support keyword args so this allows for optionally
+            passing initSoc as positional argument."""
 
-        if len(args) > 0:
-            initSoc = args[0] # set initSoc
-            if (initSoc != -1) and (initSoc > 1.0 or initSoc < 0.0):
-                    print('Must enter a valid initial SOC between 0.0 and 1.0')
-                    print('Running standard initial SOC controls')
-                    initSoc = -1 # override initSoc if invalid value is used
-            elif initSoc == -1:
-                print('initSoc = -1 passed to drive default SOC behavior.')
-        else:
-            initSoc = -1 # -1 enforces the default SOC behavior
+        if (initSoc != -1) and (initSoc > 1.0 or initSoc < 0.0):
+                print('Must enter a valid initial SOC between 0.0 and 1.0')
+                print('Running standard initial SOC controls')
+                initSoc = -1 # override initSoc if invalid value is used
     
         if self.veh.vehPtType == 1: # Conventional
 
