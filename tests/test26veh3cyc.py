@@ -34,9 +34,6 @@ def run_test26veh3cyc(use_jitclass=True):
     if use_jitclass:
         cyc_jit = cyc.get_numba_cyc()
 
-    newvars = ['rrKjPos', 'rrKjNeg', 'dragKjPos', 'dragKjNeg'] 
-    # variables that have been added since the original benchmark was created, which should not be compared
-
     energyAuditErrors = []
 
     iter = 0
@@ -68,16 +65,14 @@ def run_test26veh3cyc(use_jitclass=True):
                 dict_diag['vnum'] = [vehno]
                 dict_diag['cycle'] = [cycname]
                 for key in diagno.keys():
-                    if key not in newvars:
-                        dict_diag[key] = [diagno[key]]
+                    dict_diag[key] = [diagno[key]]
                 iter += 1
 
             else:
                 dict_diag['vnum'].append(vehno)
                 dict_diag['cycle'].append(cycname)
                 for key in diagno.keys():
-                    if key not in newvars:
-                        dict_diag[key].append(diagno[key])
+                    dict_diag[key].append(diagno[key])
 
     df = pd.DataFrame.from_dict(dict_diag)
 
