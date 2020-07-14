@@ -395,7 +395,7 @@ class SimDriveCore(object):
                 ms = []
                 bs = []
                 # initial guess
-                xi = 1.0
+                xi = max(1.0, self.mpsAch[i-1])
                 max_iter = 100
                 # solver gain
                 g = 0.8
@@ -868,11 +868,8 @@ class SimDriveCore(object):
         if self.fcKwOutAch[i] == 0:
             self.fcKwInAch[i] = 0
         else:
-            if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
-                self.fcKwInAch[i] = self.fcKwOutAch[i] / self.veh.fcEffArray[-1]
-            else:
-                self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[max(1, np.argmax(
-                    self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)])
+            self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[np.argmax(
+                self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW)) - 1])
 
         self.fsKwOutAch[i] = self.fcKwInAch[i]
 
