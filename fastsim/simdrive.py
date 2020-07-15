@@ -197,7 +197,6 @@ class SimDriveCore(object):
         self.set_fc_power(self.i)
 
         if self.sim_params.missed_trace_correction:
-            missed_trace_iter = 0
             if self.distMeters[self.i] > 0:
                 time_dilation_factor = min(max(
                     (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
@@ -206,7 +205,12 @@ class SimDriveCore(object):
                     10)
             else:
                 time_dilation_factor = 1
-            while time_dilation_factor > 1 and missed_trace_iter < 10:
+
+            if time_dilation_factor > 1:
+                self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
+                    time_dilation_factor
+                self.cyc.cycGrade[self.i] = np.interp(
+                    self.cyc.secs[:self.i].sum(), self.cyc0.cycSecs, self.cyc0.cycGrade)
                 self.set_misc_calcs(self.i)
                 self.set_comp_lims(self.i)
                 self.set_power_calcs(self.i)
@@ -214,18 +218,6 @@ class SimDriveCore(object):
                 self.set_hybrid_cont_calcs(self.i)
                 self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
                 self.set_hybrid_cont_decisions(self.i)
-                self.set_fc_power(self.i)
-                if self.distMeters[self.i] > 0:
-                    time_dilation_factor = min(max(
-                        (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
-                        ) / self.distMeters[self.i] + 1,
-                        1),
-                        10)
-                else:
-                    time_dilation_factor = 1
-                self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
-                    time_dilation_factor
-                missed_trace_iter += 1
 
         self.i += 1 # increment time step counter
 
