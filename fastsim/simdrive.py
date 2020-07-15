@@ -21,7 +21,7 @@ from .vehicle import TypedVehicle
 # thermal boundary conditions, missed trace behavior, etc.). 
 
 param_spec = [('missed_trace_correction', bool_), # if True, missed trace correction is active, default = False
-            ('traceMissDistMetersTol', float64) # allowable trace miss distance
+            ('max_time_dilation', float64) # allowable trace miss distance
             ]
 @jitclass(param_spec)
 class SimDriveParams(object):
@@ -29,7 +29,7 @@ class SimDriveParams(object):
     and there will be no need to use this."""
     def __init__(self, missed_trace_correction=False):
         self.missed_trace_correction = missed_trace_correction # by default, do not fix missed trace time steps
-        self.traceMissDistMetersTol = 1 # can be overridden after instantiation
+        self.max_time_dilation = 10 # can be overridden after instantiation
 
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
@@ -202,15 +202,17 @@ class SimDriveCore(object):
                     (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
                     ) / self.distMeters[self.i] + 1,
                     1),
-                    10)
+                    self.sim_params.max_time_dilation)
             else:
                 time_dilation_factor = 1
-
+            
             if time_dilation_factor > 1:
                 self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
                     time_dilation_factor
+                self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
                 self.cyc.cycGrade[self.i] = np.interp(
-                    self.cyc.secs[:self.i].sum(), self.cyc0.cycSecs, self.cyc0.cycGrade)
+                    self.cyc.cycDistMeters[:self.i].sum(), 
+                    self.cyc0.cycDistMeters.cumsum(), self.cyc0.cycGrade)
                 self.set_misc_calcs(self.i)
                 self.set_comp_lims(self.i)
                 self.set_power_calcs(self.i)
