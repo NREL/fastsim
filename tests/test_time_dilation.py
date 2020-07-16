@@ -59,6 +59,8 @@ delta_elev_achieved = (sim_drive.cyc.cycGrade *
 
 # PLOTS
 
+# speed
+
 plt.plot(cyc.cycSecs, cyc.cycMps, label='base')
 plt.plot(sim_drive.cyc.cycSecs, sim_drive.mpsAch,
          label='dilated', linestyle='--')
@@ -81,6 +83,7 @@ plt.savefig(
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v index.png')
 
+# distance
 
 plt.figure()
 plt.plot(cyc.cycSecs, (cyc.cycMps * cyc.secs).cumsum() / 1e3, label='base')
@@ -95,7 +98,6 @@ plt.savefig(
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v time.png')
 
-
 plt.figure()
 plt.plot((cyc.cycMps * cyc.secs).cumsum() / 1e3, label='base')
 plt.plot((sim_drive.mpsAch * sim_drive.cyc.secs).cumsum() / 1e3,
@@ -109,6 +111,35 @@ plt.savefig(
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v index.png')
 
+plt.figure()
+plt.plot(sim_drive.cyc.cycSecs,
+    (np.interp(
+    sim_drive.cyc.cycSecs, 
+    cyc.cycSecs, 
+    (cyc.cycMps * cyc.secs).cumsum()) - (sim_drive.mpsAch * sim_drive.cyc.secs).cumsum())
+         / 1e3, label='base')
+plt.grid()
+plt.legend(loc='upper left')
+plt.xlabel('Time [s]')
+plt.ylabel('Distance (trace - achieved) [km]')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v time.svg')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v time.png')
+
+plt.figure()
+plt.plot((cyc.cycDistMeters.cumsum() -
+         sim_drive.distMeters.cumsum()) / 1e3, label='base')
+plt.grid()
+plt.legend(loc='upper left')
+plt.xlabel('Index')
+plt.ylabel('Distance (trace - achieved) [km]')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v index.svg')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v index.png')
+
+# elevation change
 
 plt.figure()
 plt.plot(cyc.cycSecs, (cyc.cycGrade * cyc.cycMps * cyc.secs).cumsum(), label='base')
@@ -140,3 +171,42 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v index.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v index.png')
+
+# grade
+
+plt.figure()
+plt.plot(cyc.cycSecs, cyc.cycGrade, label='base')
+plt.plot(sim_drive.cyc.cycSecs, sim_drive.cyc.cycGrade, label='achieved', linestyle='--')
+plt.grid()
+plt.legend(loc='upper left')
+plt.xlabel('Time [s]')
+plt.ylabel('Grade [-]')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v time.svg')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v time.png')
+
+plt.figure()
+plt.plot(cyc.cycGrade, label='base')
+plt.plot(sim_drive.cyc.cycGrade, label='achieved', linestyle='--')
+plt.grid()
+plt.legend(loc='upper left')
+plt.xlabel('Index')
+plt.ylabel('Grade [-]')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v index.svg')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v index.png')
+
+# time dilation
+
+plt.figure()
+plt.plot(sim_drive.cyc.secs)
+plt.grid()
+plt.xlabel('Index')
+plt.ylabel('Time Dilation')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\time dilation.svg')
+plt.savefig(
+    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\time dilation.png')
+

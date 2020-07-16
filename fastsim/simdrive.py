@@ -11,6 +11,7 @@ from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_    # import the types
 import warnings
 warnings.simplefilter('ignore')
+from math import isclose
 
 # local modules
 from . import globalvars as gl
@@ -147,6 +148,7 @@ class SimDriveCore(object):
         self.motor_index_debug = np.zeros(len_cyc, dtype=np.float64)
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
+        self.trace_miss_iters = np.zeros(len_cyc, dtype=np.float64)
 
     def sim_drive_walk(self, initSoc=None):
         """Receives second-by-second cycle information, vehicle properties, 
@@ -198,21 +200,27 @@ class SimDriveCore(object):
 
         if self.sim_params.missed_trace_correction:
             if self.distMeters[self.i] > 0:
-                time_dilation_factor = min(max(
+                time_dilation_factor = [1.1, min(max(
                     (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
                     ) / self.distMeters[self.i] + 1,
                     1),
-                    self.sim_params.max_time_dilation)
+                    self.sim_params.max_time_dilation)]
             else:
-                time_dilation_factor = 1
-            
-            if time_dilation_factor > 1:
+                time_dilation_factor = [1, 1]
+
+            if self.i in np.arange(220, 224):
+                    x = 37  
+
+            # must be a loop to iterate until time dilation factor converges
+            while not(isclose(time_dilation_factor[-1], time_dilation_factor[-2], 
+                rel_tol=1e-6)):
                 self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
-                    time_dilation_factor
+                    time_dilation_factor[-1]
                 self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
-                self.cyc.cycGrade[self.i] = np.interp(
-                    self.cyc.cycDistMeters[:self.i].sum(), 
-                    self.cyc0.cycDistMeters.cumsum(), self.cyc0.cycGrade)
+                # grade probably does not need to be updated because distance is not supposed to be changing
+                # self.cyc.cycGrade[self.i] = np.interp(
+                #     self.cyc.cycDistMeters[:self.i].sum(), 
+                #     self.cyc0.cycDistMeters.cumsum(), self.cyc0.cycGrade)
                 self.set_misc_calcs(self.i)
                 self.set_comp_lims(self.i)
                 self.set_power_calcs(self.i)
@@ -220,6 +228,17 @@ class SimDriveCore(object):
                 self.set_hybrid_cont_calcs(self.i)
                 self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
                 self.set_hybrid_cont_decisions(self.i)
+                self.set_fc_power(self.i)
+                time_dilation_factor.append(min(max(
+                    (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
+                    ) / self.distMeters[self.i] + 1,
+                    1),
+                    self.sim_params.max_time_dilation))
+                if self.i in np.arange(220, 224):
+                     x = 37  
+            
+            self.trace_miss_iters[self.i] = len(time_dilation_factor)
+
 
         self.i += 1 # increment time step counter
 
@@ -1076,7 +1095,7 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
              'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
-             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw']
+             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'trace_miss_iters']
 
 # create types for instances of TypedVehicle and TypedCycle
 veh_type = TypedVehicle.class_type.instance_type
