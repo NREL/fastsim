@@ -52,14 +52,17 @@ print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 t0 = time.time()
 
 sim_drive_params = simdrive.SimDriveParams(missed_trace_correction=True)
-sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
-# sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit, sim_drive_params) 
-# cyc_jit is necessary even for SimDriveClassic to get correct behavior 
-# in overriding self.cyc.secs
+sim_drive_params.min_time_dilation = 0.9
+sim_drive_params.time_dilation_tol = 1e-1
+# sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
+sim_drive = simdrive.SimDriveClassic(cyc, veh, sim_drive_params) 
 
 sim_drive.sim_drive() 
 
 print('Time to run sim_drive: {:.3f} s'.format(time.time() - t0))
+
+print('Distance percent error w.r.t. base cycle: {:.3%}'.format(
+    (sim_drive.distMeters.sum() - cyc.cycDistMeters.sum()) / cyc.cycDistMeters.sum()))
 
 # elevation delta based on dilated cycle secs
 delta_elev_dilated = (sim_drive.cyc.cycGrade * sim_drive.cyc.secs * sim_drive.cyc.cycMps).sum()
@@ -80,6 +83,7 @@ plt.xlabel('Time [s]')
 plt.ylabel('Speed [mps]')
 plt.savefig(r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v time.svg')
 plt.savefig(r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v time.png')
+plt.show()
 
 plt.figure()
 plt.plot(cyc.cycMps, label='base')
@@ -92,6 +96,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v index.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v index.png')
+plt.show()
 
 # distance
 
@@ -107,6 +112,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v time.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v time.png')
+plt.show()
 
 plt.figure()
 plt.plot((cyc.cycMps * cyc.secs).cumsum() / 1e3, label='base')
@@ -120,6 +126,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v index.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v index.png')
+plt.show()
 
 plt.figure()
 plt.plot(sim_drive.cyc.cycSecs,
@@ -136,6 +143,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v time.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v time.png')
+plt.show()
 
 plt.figure()
 plt.plot((cyc.cycDistMeters.cumsum() -
@@ -148,6 +156,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v index.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v index.png')
+plt.show()
 
 # elevation change
 
@@ -165,6 +174,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v time.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v time.png')
+plt.show()
 
 
 plt.figure()
@@ -181,6 +191,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v index.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v index.png')
+plt.show()
 
 # grade
 
@@ -195,6 +206,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v time.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v time.png')
+plt.show()
 
 plt.figure()
 plt.plot(cyc.cycGrade, label='base')
@@ -207,6 +219,7 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v index.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v index.png')
+plt.show()
 
 # time dilation
 
@@ -219,4 +232,5 @@ plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\time dilation.svg')
 plt.savefig(
     r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\time dilation.png')
+plt.show()
 

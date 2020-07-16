@@ -22,16 +22,20 @@ from .vehicle import TypedVehicle
 
 param_spec = [('missed_trace_correction', bool_), # if True, missed trace correction is active, default = False
             ('max_time_dilation', float64), # maximum time dilation to "catch up" with trace
-            ('min_time_dilation', float64) # minimum time dilation to let trace "catch up"
+            ('min_time_dilation', float64), # minimum time dilation to let trace "catch up"
+            ('time_dilation_tol', float64), # convergence criteria for time dilation
             ]
 @jitclass(param_spec)
 class SimDriveParams(object):
     """Class containing attributes used for configuring sim_drive.  Usually the defaults are ok, 
     and there will be no need to use this."""
     def __init__(self, missed_trace_correction=False):
+        """Default values that affect simulation behavior.  
+        Can be modified after instantiation."""
         self.missed_trace_correction = missed_trace_correction # by default, do not fix missed trace time steps
-        self.max_time_dilation = 10 # can be overridden after instantiation
-        self.min_time_dilation = 0.1 # can be overridden after instantiation
+        self.max_time_dilation = 10 
+        self.min_time_dilation = 0.1 
+        self.time_dilation_tol = 1e-3
 
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
@@ -210,7 +214,8 @@ class SimDriveCore(object):
                     self.sim_params.max_time_dilation)
 
             # loop to iterate until time dilation factor converges
-            while abs(time_dilation_factor[-1] - time_dilation_factor[-2]) / abs(time_dilation_factor[-2]) > 1e-6:
+            while abs(time_dilation_factor[-1] - time_dilation_factor[-2]) / \
+                abs(time_dilation_factor[-2]) > self.sim_params.time_dilation_tol:
                 self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
                     time_dilation_factor[-1]
                 self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
