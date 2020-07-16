@@ -16,23 +16,31 @@ import importlib
 from fastsim import simdrive, vehicle, cycle
 from fastsim import globalvars as gl
 
-importlib.reload(simdrive)
+# importlib.reload(simdrive)
 
 t0 = time.time()
-cyc_df = pd.read_csv(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\longHaulDriveCycle (1).csv')
-cyc_df.drop(columns=['Unnamed: 0'], inplace=True)
-cyc_df = cyc_df.iloc[200:16_104]
-cyc_df.reset_index(inplace=True)
-cyc_df['TimeStamp'] = pd.to_datetime(cyc_df['TimeStamp'])
-cyc_df['cycSecs'] = (cyc_df['TimeStamp'] - cyc_df.loc[0, 'TimeStamp']).dt.total_seconds()
-cyc_df['cycMps'] = cyc_df['Speed_Mph'] / gl.mphPerMps
-cyc_df['delta elevation [m]'] = (cyc_df['elevation_Feet'] - \
-    cyc_df.iloc[0]['elevation_Feet']) / 3.28
-cyc = cycle.Cycle(cyc_dict={'cycSecs':cyc_df['cycSecs'].values.copy(), 
-    'cycMps':cyc_df['cycMps'].values.copy(),
-    'cycGrade': cyc_df['grade_decimalOfPercent'].values.copy()})
+try: # if the cycle has already been loaded, just use it
+    cyc = cycle.Cycle(cyc_dict={'cycSecs': cyc_df['cycSecs'].values.copy(),
+                                'cycMps': cyc_df['cycMps'].values.copy(),
+                                'cycGrade': cyc_df['grade_decimalOfPercent'].values.copy()})
+    cyc_jit = cyc.get_numba_cyc()
+except: # if that fails, load it
+    cyc_df = pd.read_csv(
+        r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\longHaulDriveCycle (1).csv')
+    cyc_df.drop(columns=['Unnamed: 0'], inplace=True)
+    cyc_df = cyc_df.iloc[200:16_104]
+    cyc_df.reset_index(inplace=True)
+    cyc_df['TimeStamp'] = pd.to_datetime(cyc_df['TimeStamp'])
+    cyc_df['cycSecs'] = (cyc_df['TimeStamp'] - cyc_df.loc[0, 'TimeStamp']).dt.total_seconds()
+    cyc_df['cycMps'] = cyc_df['Speed_Mph'] / gl.mphPerMps
+    cyc_df['delta elevation [m]'] = (cyc_df['elevation_Feet'] - \
+        cyc_df.iloc[0]['elevation_Feet']) / 3.28
+
+cyc = cycle.Cycle(cyc_dict={'cycSecs': cyc_df['cycSecs'].values.copy(),
+                            'cycMps': cyc_df['cycMps'].values.copy(),
+                            'cycGrade': cyc_df['grade_decimalOfPercent'].values.copy()})
 cyc_jit = cyc.get_numba_cyc()
+
 print('Time to load cycle: {:.3f} s'.format(time.time() - t0))
 
 t0 = time.time()
@@ -44,8 +52,10 @@ print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 t0 = time.time()
 
 sim_drive_params = simdrive.SimDriveParams(missed_trace_correction=True)
-# sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
-sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit, sim_drive_params)
+sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
+# sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit, sim_drive_params) 
+# cyc_jit is necessary even for SimDriveClassic to get correct behavior 
+# in overriding self.cyc.secs
 
 sim_drive.sim_drive() 
 
@@ -116,7 +126,7 @@ plt.plot(sim_drive.cyc.cycSecs,
     (np.interp(
     sim_drive.cyc.cycSecs, 
     cyc.cycSecs, 
-    (cyc.cycMps * cyc.secs).cumsum()) - (sim_drive.mpsAch * sim_drive.cyc.secs).cumsum())
+    cyc.cycDistMeters.cumsum()) - sim_drive.distMeters.cumsum())
          / 1e3, label='base')
 plt.grid()
 plt.legend(loc='upper left')

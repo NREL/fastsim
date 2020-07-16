@@ -11,7 +11,6 @@ from numba import jitclass                 # import the decorator
 from numba import float64, int32, bool_    # import the types
 import warnings
 warnings.simplefilter('ignore')
-from math import isclose
 
 # local modules
 from . import globalvars as gl
@@ -22,7 +21,8 @@ from .vehicle import TypedVehicle
 # thermal boundary conditions, missed trace behavior, etc.). 
 
 param_spec = [('missed_trace_correction', bool_), # if True, missed trace correction is active, default = False
-            ('max_time_dilation', float64) # allowable trace miss distance
+            ('max_time_dilation', float64), # maximum time dilation to "catch up" with trace
+            ('min_time_dilation', float64) # minimum time dilation to let trace "catch up"
             ]
 @jitclass(param_spec)
 class SimDriveParams(object):
@@ -31,6 +31,7 @@ class SimDriveParams(object):
     def __init__(self, missed_trace_correction=False):
         self.missed_trace_correction = missed_trace_correction # by default, do not fix missed trace time steps
         self.max_time_dilation = 10 # can be overridden after instantiation
+        self.min_time_dilation = 0.1 # can be overridden after instantiation
 
 class SimDriveCore(object):
     """Class containing methods for running FASTSim iteration.  This class needs to be extended 
@@ -199,21 +200,17 @@ class SimDriveCore(object):
         self.set_fc_power(self.i)
 
         if self.sim_params.missed_trace_correction:
+            time_dilation_factor = [1, 1]
             if self.distMeters[self.i] > 0:
-                time_dilation_factor = [1.1, min(max(
+                time_dilation_factor[0] = 1.1
+                time_dilation_factor[1] =  min(max(
                     (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
-                    ) / self.distMeters[self.i] + 1,
-                    1),
-                    self.sim_params.max_time_dilation)]
-            else:
-                time_dilation_factor = [1, 1]
+                     + self.distMeters[self.i]) / self.distMeters[self.i] + 1,
+                    self.sim_params.min_time_dilation),
+                    self.sim_params.max_time_dilation)
 
-            if self.i in np.arange(220, 224):
-                    x = 37  
-
-            # must be a loop to iterate until time dilation factor converges
-            while not(isclose(time_dilation_factor[-1], time_dilation_factor[-2], 
-                rel_tol=1e-6)):
+            # loop to iterate until time dilation factor converges
+            while abs(time_dilation_factor[-1] - time_dilation_factor[-2]) / abs(time_dilation_factor[-2]) > 1e-6:
                 self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
                     time_dilation_factor[-1]
                 self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
@@ -231,11 +228,9 @@ class SimDriveCore(object):
                 self.set_fc_power(self.i)
                 time_dilation_factor.append(min(max(
                     (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
-                    ) / self.distMeters[self.i] + 1,
-                    1),
+                     + self.distMeters[self.i]) / self.distMeters[self.i] + 1,
+                    self.sim_params.min_time_dilation),
                     self.sim_params.max_time_dilation))
-                if self.i in np.arange(220, 224):
-                     x = 37  
             
             self.trace_miss_iters[self.i] = len(time_dilation_factor)
 
