@@ -54,13 +54,15 @@ t0 = time.time()
 sim_drive_params = simdrive.SimDriveParams(missed_trace_correction=True)
 sim_drive_params.min_time_dilation = 0.9
 sim_drive_params.time_dilation_tol = 1e-1
-# sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
-sim_drive = simdrive.SimDriveClassic(cyc, veh, sim_drive_params) 
+sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
+# sim_drive = simdrive.SimDriveClassic(cyc, veh, sim_drive_params) 
 
 sim_drive.sim_drive() 
 
-print('Time to run sim_drive: {:.3f} s'.format(time.time() - t0))
+t_delta = time.time() - t0
 
+print('Time to run sim_drive: {:.3f} s'.format(t_delta))
+print('Mean number of trace miss iterations: {:.3f}'.format(sim_drive.trace_miss_iters.mean()))
 print('Distance percent error w.r.t. base cycle: {:.3%}'.format(
     (sim_drive.distMeters.sum() - cyc.cycDistMeters.sum()) / cyc.cycDistMeters.sum()))
 
