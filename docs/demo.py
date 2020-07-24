@@ -74,7 +74,8 @@ print(time.time() - t0)
 
 
 t0 = time.time()
-veh = vehicle.Vehicle(1)
+# veh = vehicle.Vehicle(1)
+veh = vehicle.Vehicle(veh_file='../vehdb/2016 TOYOTA Corolla 4cyl 2WD.csv')
 veh_jit = veh.get_numba_veh()
 print(time.time() - t0)
 
