@@ -17,7 +17,7 @@ warnings.simplefilter('ignore')
 from fastsim import globalvars as gl
 from fastsim.simdrive import SimDriveCore, spec
 
-# Fluid Properties
+# Fluid Properties for calculations
 teAirForPropsDegC = np.arange(-20, 140, 20) # deg C
 rhoAirArray = np.array([1.38990154, 1.28813317, 1.20025098, 1.12359437, 
                         1.05614161, 0.99632897, 0.94292798, 0.89496013]) 
@@ -50,6 +50,12 @@ re_array = np.array([0, 4, 40, 4e3, 40e3])
 # radiator behavior for hot engine -- impose steady temperature by whatever heat loss is needed
 # radiator aux load -- maybe constant times heat loss via radiator (e.g. 0.1?)
 # impact of engine temperature on engine efficiency
+
+# thinking about cabin model and interaction with heater:
+# cabin needs to leak!
+# treat it as a flat plate with vehicle dimensions and thermal mass
+# heater core: error relative to target, --nominal coolant flow rate--, no recirc, 
+# nominal air flow rate (cabin exchanges per min?) at some assumed effectiveness -- tunable?
 
 hotspec = spec + [('teAmbDegC', float64), # ambient temperature
                     ('teFcDegC', float64[:]), # fuel converter temperature
@@ -213,7 +219,7 @@ class SimDriveHot(SimDriveCore):
             np.interp(teFcFilmDegC, teAirForPropsDegC, muAirArray) 
         # density * speed * diameter / dynamic viscosity
 
-        def get_conv_params(Re):
+        def get_sphere_conv_params(Re):
             """Given Reynolds number, return C and m.
             Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44"""
             if Re < 4:
@@ -243,7 +249,7 @@ class SimDriveHot(SimDriveCore):
         else:
             # vehicle is moving AND radiator is NOT needed
             # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-            self.hFcToAmb[i-1] = (get_conv_params(Re_fc)[0] * Re_fc ** get_conv_params(Re_fc)[1]) * \
+            self.hFcToAmb[i-1] = (get_sphere_conv_params(Re_fc)[0] * Re_fc ** get_sphere_conv_params(Re_fc)[1]) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, PrAirArray) ** (1 / 3) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, kAirArray) / self.fcDiam
         self.fcConvToAmbKw[i-1] = self.hFcToAmb[i-1] * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC)
@@ -287,7 +293,8 @@ class SimDriveHot(SimDriveCore):
         if self.fcKwOutAch[i] == 0:
             self.fcKwInAch[i] = 0
         else:
-            tempFitPolyCoeffs = np.array([1.018e-01, 1.637e-03, -3.000e-06])
+            tempFitPolyCoeffs = np.array([1.018e-01, 1.637e-03, -3.000e-06]) 
+            # polynomial for fc efficiency 
             self.fcEffAdj[i] = max(min((tempFitPolyCoeffs[0] + self.teFcDegC[i] * tempFitPolyCoeffs[1] + self.teFcDegC[i] ** 2 * tempFitPolyCoeffs[2]) \
                 / 0.2248, 1), 0.3019)
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
