@@ -395,7 +395,8 @@ class SimDriveCore(object):
                 self.debug_flag[i] = 4
         
     def set_power_calcs(self, i):
-        """Calculate and set power variables at time step 'i'.
+        """Calculate power requirements to meet cycle and determine if
+        cycle can be met.  
         Arguments
         ------------
         i: index of time step"""
@@ -436,7 +437,7 @@ class SimDriveCore(object):
             self.transKwOutAch[i] = self.curMaxTransKwOut[i]
         
     def set_ach_speed(self, i):
-        """Calculate and set variables dependent on speed
+        """Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
         Arguments
         ------------
         i: index of time step"""
@@ -518,9 +519,6 @@ class SimDriveCore(object):
                 1e3 - self.curMaxTransKwOut[i]
 
             Total = np.array([Total3, Total2, Total1, Total0])
-            # Total_roots = np.roots(Total).astype(np.float64)
-            # ind = np.int32(np.argmin(np.abs(np.array([self.cyc.cycMps[i] - tot_root for tot_root in Total_roots]))))
-            # self.mpsAch[i] = Total_roots[ind]
             self.mpsAch[i] = newton_mps_estimate(Total)
 
         self.mphAch[i] = self.mpsAch[i] * gl.mphPerMps
@@ -1011,7 +1009,6 @@ class SimDriveCore(object):
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
-        # accelKw is redundant with cycAccelKw and can probably be removed        
 
 
 class SimDriveClassic(SimDriveCore):
