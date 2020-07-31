@@ -132,7 +132,7 @@ class SimDriveCore(object):
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
 
-    def sim_drive_walk(self, initSoc=None):
+    def sim_drive_walk(self, initSoc):
         """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and runs sim_drive_step to perform a 
         backward facing powertrain simulation. Method 'sim_drive' runs this
@@ -147,8 +147,9 @@ class SimDriveCore(object):
         ###   Loop Through Time  ###
         ############################
 
-        ###  Assign First ValueS  ###
+        ###  Assign First Values  ###
         ### Drive Train
+        self.__init__(self.cyc, self.veh) # reinitialize arrays for each new run
         self.cycMet[0] = 1
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
@@ -178,10 +179,12 @@ class SimDriveCore(object):
         ----------
         i: index of time step"""
 
-        if self.veh.noElecAux == True:
-            self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
-        else:
-            self.auxInKw[i] = self.veh.auxKw            
+        # if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
+        if self.auxInKw[i] == 0:
+            if self.veh.noElecAux == True:
+                self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
+            else:
+                self.auxInKw[i] = self.veh.auxKw            
 
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
