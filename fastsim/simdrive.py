@@ -178,10 +178,11 @@ class SimDriveCore(object):
         ----------
         i: index of time step"""
 
-        if self.veh.noElecAux == True:
-            self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
-        else:
-            self.auxInKw[i] = self.veh.auxKw            
+        if self.auxInKw[i] == 0:
+            if self.veh.noElecAux == True:
+                self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
+            else:
+                self.auxInKw[i] = self.veh.auxKw            
 
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
