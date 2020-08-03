@@ -1,22 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # FASTSim Hot Demonstration
-# 
-# ![fastsim icon](icon_fastsim.jpg)
-# 
-# Developed by NREL, the Future Automotive Systems Technology Simulator (FASTSim) evaluates the impact of technology improvements on efficiency, performance, cost, and battery life in conventional vehicles, hybrid electric vehicles (HEVs), plug-in hybrid electric vehicles (PHEVs), and all-electric vehicles (EVs).
-# 
-# FASTSim answers questions such as:
-# - Which battery sizes are most cost effective for a PHEV or EV?
-# - At what battery prices do PHEVs and EVs become cost effective?
-# - On average, how much fuel does a PHEV with a 30-mile electric range save?
-# - How much fuel savings does an HEV provide for a given drive cycle?
-# - How do lifetime costs and petroleum use compare for conventional vehicles, HEVs, PHEVs, and EVs?
-# 
-# FASTSim was originally implemented in Microsoft Excel. The pythonic implementation of FASTSim, demonstrated here, captures the drive cycle energy consumption simulation component of the software. The python version of FASTSim is more convenient than the Excel version when very high computational speed is desired, such as for simulating a large batch of drive cycles.
-
-
 import sys
 import os
 from pathlib import Path
@@ -29,10 +10,10 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 import importlib
-# import seaborn as sns
-# sns.set(font_scale=2, style='whitegrid')
-
-
+from fmpy import read_model_description, extract
+from fmpy.fmi2 import FMU2Slave
+from fmpy.util import plot_result, download_test_file
+import shutil
 
 # local modules
 from fastsim import simdrivehot, simdrive, vehicle, cycle
@@ -42,7 +23,7 @@ from fastsim import simdrivehot, simdrive, vehicle, cycle
 t0 = time.time()
 cyc = cycle.Cycle("udds")
 cyc_jit = cyc.get_numba_cyc()
-print(time.time() - t0)
+print(f"Cycle load time: {time.time() - t0:.3f} s")
 
 
 # ### Load Powertrain Model
@@ -53,7 +34,7 @@ print(time.time() - t0)
 t0 = time.time()
 veh = vehicle.Vehicle(9)
 veh_jit = veh.get_numba_veh()
-print(time.time() - t0)
+print(f"Vehicle load time: {time.time() - t0:.3f} s")
 
 
 # ### Run FASTSim
@@ -68,19 +49,16 @@ importlib.reload(simdrivehot)
 sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit)
 sim_drive.sim_drive() 
 
-print(time.time() - t0)
+print(f"Sim drive time: {time.time() - t0:.3f} s")
 
 
-# In[
 t0 = time.time()
 sim_drive_post = simdrive.SimDrivePost(sim_drive)
 output = sim_drive_post.get_output()
 sim_drive_post.set_battery_wear()
 diag = sim_drive_post.get_diagnostics()
-print(time.time() - t0)
+print(f"Post-processing time: {time.time() - t0:.3f} s")
 
-
-# ### Results
 
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
 df['speed'] = cyc.cycMps * 2.23694  # Convert mps to mph
