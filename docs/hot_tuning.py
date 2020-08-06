@@ -25,36 +25,62 @@ from pymoo.visualization.scatter import Scatter
 
 # local modules
 from fastsim import simdrivehot, simdrive, vehicle, cycle
-# importlib.reload(simdrive)
-# importlib.reload(cycle)
+
+# load the vehicle
+t0 = time.time()
+veh = vehicle.Vehicle(9) # this needs to come from the file for the Fusion after Fusion data is converted to standalone file type
+veh_jit = veh.get_numba_veh()
+print(f"Vehicle load time: {time.time() - t0:.3f} s")
+
+# load the vehicle test data
+test_data_path = r'C:\Users\cbaker2\Documents\TestData\FordFusionTestData'
+
+# create drive cycles from vehicle test data in a list
 
 t0 = time.time()
 cyc = cycle.Cycle("udds")
 cyc_jit = cyc.get_numba_cyc()
 print(f"Cycle load time: {time.time() - t0:.3f} s")
 
-
-# ### Load Powertrain Model
-# 
-# A vehicle database in CSV format is required to be in the working directory where FASTSim is running (i.e. the same directory as this notebook). The "get_veh" function selects the appropriate vehicle attributes from the database and contructs the powertrain model (engine efficiency map, etc.). An integer value corresponds to each vehicle in the database. To add a new vehicle, simply populate a new row to the vehicle database CSV.
-
-
 t0 = time.time()
-veh = vehicle.Vehicle(9)
-veh_jit = veh.get_numba_veh()
-print(f"Vehicle load time: {time.time() - t0:.3f} s")
-
-
-# ### Run FASTSim
-# 
-# The "sim_drive" function takes the drive cycle and vehicle models defined above as inputs. The output is a dictionary of time series and scalar values described the simulation results. Typically of interest is the "gge" key, which is an array of time series energy consumption data at each time step in the drive cycle.
-# 
-# If running FASTSim in batch over many drive cycles, the output from "sim_drive" can be written to files or database for batch post-processing. 
-
-
-t0 = time.time()
-importlib.reload(simdrivehot)
 sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit)
 sim_drive.sim_drive() 
 
 print(f"Sim drive time: {time.time() - t0:.3f} s")
+
+
+class ThermalProblem(Problem):
+    "Class for creating PyMoo problem for FASTSimHot vehicle."
+
+    def __init__(self, **kwargs):
+        super().__init__(n_var=5, n_obj=2,
+                         # lower bounds
+                         xl=anp.array([50e3, 0.1, 0.01, 10, 250, 0.2]),
+                         # upper bounds
+                         xu=anp.array([300e3, 0.95, 1, 200, 1500, 0.5]),
+                         **kwargs,
+                         elementwise_evaluation=True)
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        err_arr = np.array([get_error_for_cycle(x)])
+        f1 = err_arr[:, 0]
+        f2 = err_arr[:, 1]
+
+        out['F'] = anp.column_stack([f1, f2])
+
+
+problem = ThermalProblem(parallelization=("threads", 6))
+algorithm = NSGA2(pop_size=6, eliminate_duplicates=True)
+t0 = time.time()
+res = minimize(problem,
+               algorithm,
+               ('n_gen', 10),
+               seed=1,
+               verbose=True)
+t1 = time.time()
+print('res.X:\n', res.X)
+print('res.F:\n', res.F)
+
+print('Elapsed time:', round(t1 - t0, 2))
+print('Real time ratio:', round((stop_time - start_time) / (t1 - t0), 0))
+print('Error function tested successfully.')
