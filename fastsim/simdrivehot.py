@@ -57,7 +57,7 @@ re_array = np.array([0, 4, 40, 4e3, 40e3])
 # heater core: error relative to target, --nominal coolant flow rate--, no recirc, 
 # nominal air flow rate (cabin exchanges per min?) at some assumed effectiveness -- tunable?
 
-hotspec = spec + [('teAmbDegC', float64), # ambient temperature
+hotspec = spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('teFcDegC', float64[:]), # fuel converter temperature
                     ('fcEffAdj', float64[:]), # fuel converter temperature efficiency correction
                     ('fcHeatGenKw', float64[:]), # fuel converter heat generation
@@ -108,6 +108,9 @@ class SimDriveHot(SimDriveCore):
         self.cabConvToAmbKw = np.zeros(len_cyc, dtype=np.float64)
         self.cabFromHtrKw = np.zeros(len_cyc, dtype=np.float64)
         self.hFcToAmb = np.zeros(len_cyc, dtype=np.float64)
+        # this block ~should~ prevent the __init__ call in sim_drive_walk from 
+        # overriding the prescribed ambient temperature
+        self.teAmbDegC = np.ones(len_cyc, dtype=np.float64) * teAmbDegC 
         
         # scalars
         self.teFcDegC[0] = teFcInitDegC
@@ -115,10 +118,10 @@ class SimDriveHot(SimDriveCore):
         self.fcDiam = 1
         self.fcSurfArea = np.pi * self.fcDiam ** 2 / 4
         self.cabThrmMass = 5
-        self.teAmbDegC = teAmbDegC
         self.hFcToAmbStop = 50
         self.hFcToAmbRad = 500
         self.fcCombToThrmlMassKw = 0.5 
+
 
     def sim_drive(self, *args):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -211,9 +214,12 @@ class SimDriveHot(SimDriveCore):
         ----------
         i: index of time step"""
 
+        # most of the thermal equations are at [i-1] because the various thermally 
+        # sensitive component efficiencies dependent on the [i] temperatures, but 
+        # these are in turn dependent on [i-1] heat transfer processes  
         # Constitutive equations for fuel converter
         self.fcHeatGenKw[i-1] = self.fcCombToThrmlMassKw * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
-        teFcFilmDegC = 0.5 * (self.teFcDegC[i] + self.teAmbDegC)
+        teFcFilmDegC = 0.5 * (self.teFcDegC[i] + self.teAmbDegC[i])
         Re_fc = np.interp(teFcFilmDegC, teAirForPropsDegC, rhoAirArray) \
             * self.mpsAch[i-1] * self.fcDiam / \
             np.interp(teFcFilmDegC, teAirForPropsDegC, muAirArray) 
@@ -252,7 +258,7 @@ class SimDriveHot(SimDriveCore):
             self.hFcToAmb[i-1] = (get_sphere_conv_params(Re_fc)[0] * Re_fc ** get_sphere_conv_params(Re_fc)[1]) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, PrAirArray) ** (1 / 3) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, kAirArray) / self.fcDiam
-        self.fcConvToAmbKw[i-1] = self.hFcToAmb[i-1] * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC)
+        self.fcConvToAmbKw[i-1] = self.hFcToAmb[i-1] * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC[i-1])
         self.fcToHtrKw[i-1] = 0  # placeholder
         # Energy balance for fuel converter
         self.teFcDegC[i] = self.teFcDegC[i-1] + (
