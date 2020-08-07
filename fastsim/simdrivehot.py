@@ -188,6 +188,34 @@ class SimDriveHot(SimDriveCore):
         
         self.set_post_scalars()            
    
+    def sim_drive_walk(self, initSoc):
+        """Receives second-by-second cycle information, vehicle properties, 
+        and an initial state of charge and runs sim_drive_step to perform a 
+        backward facing powertrain simulation. Method 'sim_drive' runs this
+        iteratively to achieve correct SOC initial and final conditions, as 
+        needed.
+
+        Arguments
+        ------------
+        initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles"""
+
+        ############################
+        ###   Loop Through Time  ###
+        ############################
+
+        ###  Assign First Values  ###
+        ### Drive Train
+        # reinitialize arrays for each new run
+        self.__init__(self.cyc, self.veh, self.teAmbDegC)
+        self.cycMet[0] = 1
+        self.curSocTarget[0] = self.veh.maxSoc
+        self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
+        self.soc[0] = initSoc
+
+        self.i = 1  # time step counter
+        while self.i < len(self.cyc.cycSecs):
+            self.sim_drive_step()
+
     def sim_drive_step(self, *args):
         """
         Override of sim_drive_step for thermal modeling.  
