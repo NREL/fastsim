@@ -14,6 +14,7 @@ import re
 import matplotlib.pyplot as plt
 import importlib
 from collections import ChainMap
+from inspect import signature
 
 # pymoo stuff
 from pymoo.optimize import minimize
@@ -152,7 +153,7 @@ cyc_name = 'us06x4 0F cs'
 def get_error_for_cycle(x):
     """Function for running a single cycle and returning the error."""
     # unpack input parameters
-    fcDiam, hFcToAmbStop, hFcToAmbRad = x
+    fcThrmMass, fcDiam, hFcToAmbStop, hFcToAmbRad = x
 
     # create cycle.Cycle()
     test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
@@ -165,15 +166,27 @@ def get_error_for_cycle(x):
     cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
     cyc_jit = cyc.get_numba_cyc()
 
+    # simulate
     sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit)
     sim_drive.teAmbDegC = np.interp(cycSecs,
             test_time_steps,
             df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values)
     sim_drive.sim_drive()
 
-    fc_te_err = trapz(sim_drive.teFcDegC
+    # calculate error
+    fc_te_err = trapz(y=abs(sim_drive.teFcDegC - np.interp(
+        cyc.cycSecs, test_time_steps, 'CylinderHeadTempC'
+        )), x=self.cyc.cycSecs) * self.cyc.cycSecs[-1]
+    fc_dte_err = trapz(y=abs(sim_drive.teFcDegC - np.interp(
+        cyc.cycSecs, test_time_steps, 'CylinderHeadTempC'
+        )), x=self.cyc.cycSecs) * self.cyc.cycSecs[-1]
 
-    return fc_te_err
+    return fc_te_err, fc_dte_err
+
+no_args = signature(get_error_for_cycle).parameters
+
+# test function and get number of outputs
+no_outs = len()
 
 class ThermalProblem(Problem):
     "Class for creating PyMoo problem for FASTSimHot vehicle."
