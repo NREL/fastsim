@@ -10,7 +10,7 @@ Vehicle,vehPtType,1,
 ,cargoKg,0,
 ,vehOverrideKg,6590,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 1"
 Fuel / Fuel Converter,maxFuelStorKw,5000,carry over
-,fuelStorSecsToPeakPwr,0.1,engineering judgment
+,fuelStorSecsToPeakPwr,1,carry over
 ,fuelStorKwh,4000,carry over
 ,fuelStorKwhPerKg,9.875636446,carry over
 ,maxFuelConvKw,212,
@@ -37,7 +37,7 @@ ESS,maxEssKw,0,n/a
 ,essRoundTripEff,0.97,n/a
 ,essLifeCoefA,135,n/a
 ,essLifeCoefB,-0.6844,n/a
-Wheels,wheelInertiaKgM2,0.815,needs tuning
+Wheels,wheelInertiaKgM2,0.815,carry over
 ,numWheels,6,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
 ,wheelRrCoef,0.0127,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
 ,wheelRadiusM,0.386,"215/85R16E, Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
