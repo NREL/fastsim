@@ -253,13 +253,10 @@ algorithm = NSGA2(pop_size=6, eliminate_duplicates=True)
 t0 = time.time()
 res = minimize(problem,
                algorithm,
-               ('n_gen', 10),
+               ('n_gen', 50),
                seed=1,
                verbose=True)
 t1 = time.time()
 print('res.X:\n', res.X)
 print('res.F:\n', res.F)
 
-print('Elapsed time:', round(t1 - t0, 2))
-print('Real time ratio:', round((stop_time - start_time) / (t1 - t0), 0))
-print('Error function tested successfully.')
