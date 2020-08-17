@@ -1064,8 +1064,20 @@ class SimDriveClassic(SimDriveCore):
 
             self.sim_drive_walk(initSoc)
 
-        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
+        elif (self.veh.vehPtType == 3 and initSoc == None):  # PHEV
+            # To get this working do the same thing that is implemented in Excel FASTSim. 
+            # In Excel, click "Assign macro" in the context menu then go to the function 
+            # runPhevShortcut and emulate it here.  
+            # If EV, initializing initial SOC to maximum SOC.
 
+            initSoc = self.veh.maxSoc
+            self.sim_drive_walk(initSoc)
+
+            initSoc = self.veh.minSoc
+            self.sim_drive_walk(initSoc)
+            
+
+        elif (self.veh.vehPtType == 4 and initSoc == None): # BEV
             # If EV, initializing initial SOC to maximum SOC.
 
             initSoc = self.veh.maxSoc
