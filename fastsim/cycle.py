@@ -23,7 +23,7 @@ CYCLES_DIR = os.path.abspath(
         os.path.join(
             THIS_DIR, '..', 'cycles'))
 STANDARD_CYCLE_KEYS = ['cycSecs', 'cycMps',
-                       'cycGrade', 'cycRoadType', 'cycMph', 'secs']
+                       'cycGrade', 'cycRoadType', 'cycMph', 'secs', 'cycDistMeters']
 
 
 class Cycle(object):
@@ -91,7 +91,8 @@ class Cycle(object):
     def set_dependents(self):
         """Sets values dependent on cycle info loaded from file."""
         self.cycMph = self.cycMps * gl.mphPerMps
-        self.secs = np.insert(np.diff(self.cycSecs), 0, 0) # time step deltas 
+        self.secs = np.insert(np.diff(self.cycSecs), 0, 0) # time step deltas
+        self.cycDistMeters = (self.cycMps * self.secs) 
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
@@ -102,6 +103,17 @@ class Cycle(object):
             cyc[key] = self.__getattribute__(key)
         
         return cyc
+    
+    def copy(self):
+        """Return copy of Cycle instance."""
+        cyc_dict = {'cycSecs': self.cycSecs,
+                    'cycMps': self.cycMps,
+                    'cycGrade': self.cycGrade,
+                    'cycRoadType': self.cycRoadType
+                    }
+        cyc = Cycle(cyc_dict=cyc_dict)
+        return cyc
+
 
 
 # type specifications for attributes of Cycle class
@@ -110,7 +122,8 @@ cyc_spec = [('cycSecs', float64[:]),
             ('cycGrade', float64[:]),
             ('cycRoadType', float64[:]),
             ('cycMph', float64[:]),
-            ('secs', float64[:])
+            ('secs', float64[:]),
+            ('cycDistMeters', float64[:])
 ]
 
 
@@ -127,7 +140,21 @@ class TypedCycle(object):
         self.cycRoadType = np.zeros(len_cyc, dtype=np.float64)
         self.cycMph = np.zeros(len_cyc, dtype=np.float64)
         self.secs = np.zeros(len_cyc, dtype=np.float64)
+        self.cycDistMeters = np.zeros(len_cyc, dtype=np.float64)
 
+    def copy(self):
+        """Return copy of TypedCycle instance."""
+        cyc = TypedCycle(len(self.cycSecs))
+        cyc.cycSecs = np.copy(self.cycSecs)
+        cyc.cycMps = np.copy(self.cycMps)
+        cyc.cycGrade = np.copy(self.cycGrade)
+        cyc.cycRoadType = np.copy(self.cycRoadType)
+        cyc.cycMph = np.copy(self.cycMph)
+        cyc.secs = np.copy(self.secs)
+        cyc.cycDistMeters = np.copy(self.cycDistMeters)
+        return cyc
+
+    
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6):
     """
