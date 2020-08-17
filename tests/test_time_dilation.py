@@ -26,10 +26,10 @@ try: # if the cycle has already been loaded, just use it
     cyc_jit = cyc.get_numba_cyc()
 except: # if that fails, load it
     cyc_df = pd.read_csv(
-        r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\longHaulDriveCycle (1).csv')
+        r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\longHaulDriveCycle.csv')
     cyc_df.drop(columns=['Unnamed: 0'], inplace=True)
-    cyc_df = cyc_df.iloc[200:16_104]
-    cyc_df.reset_index(inplace=True)
+    # cyc_df = cyc_df.iloc[200:16_104]
+    # cyc_df.reset_index(inplace=True)
     cyc_df['TimeStamp'] = pd.to_datetime(cyc_df['TimeStamp'])
     cyc_df['cycSecs'] = (cyc_df['TimeStamp'] - cyc_df.loc[0, 'TimeStamp']).dt.total_seconds()
     cyc_df['cycMps'] = cyc_df['Speed_Mph'] / gl.mphPerMps
@@ -44,15 +44,15 @@ cyc_jit = cyc.get_numba_cyc()
 print('Time to load cycle: {:.3f} s'.format(time.time() - t0))
 
 t0 = time.time()
-veh = vehicle.Vehicle(1)
-veh.vehKg = 15e3
+veh = vehicle.Vehicle(26)
+# veh.vehKg = 15e3
 veh_jit = veh.get_numba_veh()
 print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 
 t0 = time.time()
 
 sim_drive_params = simdrive.SimDriveParams(missed_trace_correction=True)
-sim_drive_params.min_time_dilation = 0.9
+sim_drive_params.min_time_dilation = 1
 sim_drive_params.time_dilation_tol = 1e-1
 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
 # sim_drive = simdrive.SimDriveClassic(cyc, veh, sim_drive_params) 
