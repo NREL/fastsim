@@ -28,14 +28,20 @@ class Vehicle(object):
     Optional Arguments:
     ---------
     vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-    veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db"""
+    veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db
+    
+    If a single vehicle veh_file is provided, vnum cannot be passed, and 
+    veh_file must be passed a keyword argument."""
 
     def __init__(self, vnum=None, veh_file=None):
         super().__init__()
-        if veh_file:
+        if veh_file and vnum:
             self.load_veh(vnum, veh_file=veh_file)
-        elif vnum:
+        elif vnum and not veh_file:
             self.load_veh(vnum)
+        else:
+            # vnum = 0 tells load_veh that the file contains only 1 vehicle
+            self.load_veh(0, veh_file=veh_file)
 
     def get_numba_veh(self):
         """Load numba JIT-compiled vehicle."""
@@ -61,10 +67,19 @@ class Vehicle(object):
         veh_file (optional override): string or filelike obj, alternative 
         to default FASTSim_py_veh_db"""
 
-        if veh_file:
-            vehdf = pd.read_csv(Path(veh_file))
+        if vnum != 0:
+            if veh_file:
+                vehdf = pd.read_csv(Path(veh_file))
+            else:
+                vehdf = pd.read_csv(DEFAULT_VEH_DB)
         else:
-            vehdf = pd.read_csv(DEFAULT_VEH_DB)
+            vehdf = pd.read_csv(Path(veh_file))
+            vehdf = vehdf.transpose()
+            vehdf.columns = vehdf.iloc[1]
+            vehdf.drop(vehdf.index[0], inplace=True)
+            vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
+            vehdf.loc['Param Value', 'Selection'] = 0
+            vnum = 0
         vehdf.set_index('Selection', inplace=True, drop=False)
 
         def clean_data(raw_data):
