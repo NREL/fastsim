@@ -29,13 +29,15 @@ from fastsim import simdrivehot, simdrive, vehicle, cycle
 
 # load the vehicle test data
 def load_test_data():
+    print('Loading test data.')
     test_data_path = 'C:\\Users\\cbaker2\\Documents\\TestData\\FordFusionTestData\\'
     t0 = time.time()
     datadirs = [test_data_path + 'udds_tests\\',
                 test_data_path + 'us06_tests\\']
-    tests = [os.listdir(f) for f in datadirs]
+    tests = [[test for test in os.listdir(f) if 
+        'csv' in test] for f in datadirs]
 
-    dflist = [{j: pd.read_excel(i+j, sheet_name='Data')
+    dflist = [{j: pd.read_csv(i+j)
             for j in tests[datadirs.index(i)]} for i in datadirs]
     print('Elapsed time to read data files: {:.3e} s'.format(time.time() - t0))
     dfdict0 = dict(ChainMap(*reversed(dflist)))
@@ -140,21 +142,49 @@ cyc = cycle.Cycle("udds")
 cyc_jit = cyc.get_numba_cyc()
 print(f"Cycle load time: {time.time() - t0:.3f} s")
 
+# run it once before tuning to compile
 t0 = time.time()
 sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit)
 sim_drive.sim_drive() 
 
 print(f"Sim drive time: {time.time() - t0:.3f} s")
 
-idx = pd.IndexSlice
+idx = pd.IndexSlice # used to slice multi index 
 
 cyc_name = 'us06x4 0F cs'
 
+# list of parameter names to be modified to obtain objectives
+params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'hFcToAmbRad']
+lower_bounds = anp.array([50e3, 0.1, 1, 100])
+upper_bounds = anp.array([500e3, 5, 50, 10e3])
+
+# list of tuples of pairs of objective errors to minimize in the form of 
+# [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].  
+error_vars = [('teFcDegC', 'CylinderHeadTempC'),
+              ('fcKwInAch', 'Fuel_Power_Calc[kW]')]
+
+def get_error_val(model, test, model_time_steps, test_time_steps):
+    """Returns time-averaged error for model and test signal.
+    Arguments:
+    ----------
+    model: array of values for signal from model
+    model_time_steps: array (or scalar for constant) of values for model time steps [s]
+    test: array of values for signal from test
+    
+    Output: 
+    -------
+    err: integral of absolute value of difference between model and 
+    test per time"""
+
+    err = trapz(
+        y=abs(model - np.interp(
+            x=model_time_steps, xp=test_time_steps, fp=test)), 
+        x=model_time_steps) / model_time_steps[-1]
+
+    return err
+
 def get_error_for_cycle(x):
     """Function for running a single cycle and returning the error."""
-    # unpack input parameters
-    fcThrmMass, fcDiam, hFcToAmbStop, hFcToAmbRad = x
-
     # create cycle.Cycle()
     test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
     
@@ -173,30 +203,40 @@ def get_error_for_cycle(x):
             df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values)
     sim_drive.sim_drive()
 
+    # unpack input parameters
+    for i in range(len(x)):
+        sim_drive.__setattr__(params[i], x[i])
+
+    sim_drive.sim_drive()
+
     # calculate error
-    fc_te_err = trapz(y=abs(sim_drive.teFcDegC - np.interp(
-        cyc.cycSecs, test_time_steps, 'CylinderHeadTempC'
-        )), x=self.cyc.cycSecs) * self.cyc.cycSecs[-1]
-    fc_dte_err = trapz(y=abs(sim_drive.teFcDegC - np.interp(
-        cyc.cycSecs, test_time_steps, 'CylinderHeadTempC'
-        )), x=self.cyc.cycSecs) * self.cyc.cycSecs[-1]
+    errors = []
+    for i in range(len(error_vars)):
+        model_err_var = sim_drive.__getattribute__(error_vars[i][0])
+        test_err_var = df.loc[idx[cyc_name, :, :], error_vars[i][1]].values
 
-    return fc_te_err, fc_dte_err
+        err = get_error_val(model_err_var, test_err_var, 
+            model_time_steps=cycSecs, test_time_steps=test_time_steps)
 
-no_args = signature(get_error_for_cycle).parameters
+        errors.append(err)
+
+    return tuple(errors)
+
+no_args = len(params)
+# no_args = signature(get_error_for_cycle).parameters # another possible way to do this
 
 # test function and get number of outputs
-no_outs = len()
+no_outs = len(error_vars)
 
 class ThermalProblem(Problem):
     "Class for creating PyMoo problem for FASTSimHot vehicle."
 
     def __init__(self, **kwargs):
-        super().__init__(n_var=5, n_obj=2,
+        super().__init__(n_var=no_args, n_obj=no_outs,
                          # lower bounds
-                         xl=anp.array([50e3, 0.1, 0.01, 10, 250, 0.2]),
+                         xl=lower_bounds,
                          # upper bounds
-                         xu=anp.array([300e3, 0.95, 1, 200, 1500, 0.5]),
+                         xu=upper_bounds,
                          **kwargs,
                          elementwise_evaluation=True)
 
