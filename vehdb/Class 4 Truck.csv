@@ -56,7 +56,7 @@ Wheels,wheelInertiaKgM2,0.815,carry over
 ,auxKw,0,n/a
 ,forceAuxOnFC,FALSE,n/a
 ,transKg,114,n/a
-,transEff,0.85,n/a
+,transEff,0.94,from Chen Zhang
 ,compMassMultiplier,1.4,n/a
 ,essToFuelOkError,0.005,n/a
 ,maxRegen,0.98,n/a
