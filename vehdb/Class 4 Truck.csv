@@ -53,7 +53,7 @@ Wheels,wheelInertiaKgM2,0.815,carry over
 ,kwDemandFcOn,100,n/a
 ,altEff,1,n/a
 ,chgEff,0.86,n/a
-,auxKw,0,n/a
+,auxKw,0.5,n/a
 ,forceAuxOnFC,FALSE,n/a
 ,transKg,114,n/a
 ,transEff,0.94,from Chen Zhang
