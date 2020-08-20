@@ -142,20 +142,25 @@ class SimDriveClassic(object):
         ------------
         initSoc: (optional) initial SOC for electrified vehicles.  
             Must be between 0 and 1.
-        auxInKw: auxInKw override.  Array of length 1 or same length as cyc.cycSecs.  
-        Default of np.zeros(1) or provided np.zeros(len(cyc.cycSecs)) causes veh.auxKw to be used.
-        If zero is actually desired as a scalar, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
-        or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
-        override mechanism.  
+        auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
+                Default of np.zeros(1) causes veh.auxKw to be used.
+                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
+                override mechanism.  
         """
+
+        if (auxInKwOverride == 0).all():
+            auxInKwOverride = self.auxInKw
 
         if initSoc != None:
             if initSoc > 1.0 or initSoc < 0.0:
                 print('Must enter a valid initial SOC between 0.0 and 1.0')
                 print('Running standard initial SOC controls')
                 initSoc = None
+            else:
+                self.sim_drive_walk(initSoc, auxInKwOverride)
 
-        if self.veh.vehPtType == 1:  # Conventional
+        elif self.veh.vehPtType == 1:  # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
 
@@ -210,9 +215,9 @@ class SimDriveClassic(object):
         Arguments
         ------------
         initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
-        auxInKw: auxInKw override.  Array of length 1 or same length as cyc.cycSecs.  
-                Default of np.zeros(1) or provided np.zeros(len(cyc.cycSecs)) causes veh.auxKw to be used.
-                If zero is actually desired as a scalar, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+        auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
+                Default of np.zeros(1) causes veh.auxKw to be used.
+                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
                 or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
                 override mechanism.  
         """
@@ -223,12 +228,8 @@ class SimDriveClassic(object):
 
         ###  Assign First Values  ###
         ### Drive Train
-        # check if auxInKw is already set (either manually (e.g. sim_drive.auxInKw = np.array(...) or via optional positional argument))
-        # if yes, copy it to local var to preserve it past the init
         self.__init__(self.cyc, self.veh) # reinitialize arrays for each new run
-        if len(auxInKwOverride) == 1 and auxInKwOverride[0] != 0:
-            self.auxInKw = np.ones(len(self.auxInKw), dtype=np.float64) * auxInKwOverride[0]
-        elif len(auxInKwOverride) > 1:
+        if not((auxInKwOverride == 0).all()):
             self.auxInKw = auxInKwOverride
         
         self.cycMet[0] = 1
@@ -259,7 +260,7 @@ class SimDriveClassic(object):
         Arguments:
         ----------
         i: index of time step"""
-
+        a = 666
         # if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
         if (self.auxInKw[i:] == 0).all():
             # if all elements after i-1 are zero, trigger default behavior; otherwise, use override value 
@@ -267,7 +268,7 @@ class SimDriveClassic(object):
                 self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
             else:
                 self.auxInKw[i] = self.veh.auxKw            
-
+        b = 666
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
             self.reachedBuff[i] = 0
@@ -1098,19 +1099,25 @@ class SimDriveJit(SimDriveClassic):
             Leave empty for default value.  Otherwise, must be between 0 and 1.
             Numba's jitclass does not support keyword args so this allows for optionally
             passing initSoc as positional argument.
-            auxInKw: auxInKw override.  Array of length 1 or same length as cyc.cycSecs.  
-            Default of np.zeros(1) or provided np.zeros(len(cyc.cycSecs)) causes veh.auxKw to be used.
-            If zero is actually desired as a scalar, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
-            or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
-            override mechanism.  
+            auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
+                Default of np.zeros(1) causes veh.auxKw to be used.
+                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
+                override mechanism.  
         """
 
-        if (initSoc != -1) and (initSoc > 1.0 or initSoc < 0.0):
+        if (auxInKwOverride == 0).all():
+            auxInKwOverride = self.auxInKw
+
+        if (initSoc != -1):
+            if (initSoc > 1.0 or initSoc < 0.0):
                 print('Must enter a valid initial SOC between 0.0 and 1.0')
                 print('Running standard initial SOC controls')
                 initSoc = -1 # override initSoc if invalid value is used
+            else:
+                self.sim_drive_walk(initSoc, auxInKwOverride)
     
-        if self.veh.vehPtType == 1: # Conventional
+        elif self.veh.vehPtType == 1: # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
 
