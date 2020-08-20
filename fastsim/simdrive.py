@@ -18,10 +18,14 @@ from .cycle import TypedCycle
 from .vehicle import TypedVehicle
 
 
-
-class SimDriveCore(object):
-    """Class containing methods for running FASTSim iteration.  This class needs to be extended 
-    by a class with an init method before being runnable."""
+class SimDriveClassic(object):
+    """Class containing methods for running FASTSim vehicle 
+    fuel economy simulations. This class is not compiled and will 
+    run slower for large batch runs.
+    Arguments:
+    ----------
+    cyc: cycle.Cycle instance
+    veh: vehicle.Vehicle instance"""
 
     def __init__(self, cyc, veh):
         self.veh = veh
@@ -131,6 +135,64 @@ class SimDriveCore(object):
         self.motor_index_debug = np.zeros(len_cyc, dtype=np.float64)
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
+
+    def sim_drive(self, initSoc=None):
+        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+        Arguments
+        ------------
+        initSoc: (optional) initial SOC for electrified vehicles.  
+            Must be between 0 and 1."""
+
+        if initSoc != None:
+            if initSoc > 1.0 or initSoc < 0.0:
+                print('Must enter a valid initial SOC between 0.0 and 1.0')
+                print('Running standard initial SOC controls')
+                initSoc = None
+
+        if self.veh.vehPtType == 1:  # Conventional
+
+            # If no EV / Hybrid components, no SOC considerations.
+
+            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
+
+            self.sim_drive_walk(initSoc)
+
+        elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
+
+            #####################################
+            ### Charge Balancing Vehicle SOC ###
+            #####################################
+
+            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Iterating until tolerance met or 30 attempts made.
+
+            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
+            ess2fuelKwh = 1.0
+            sim_count = 0
+            while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
+                sim_count += 1
+                self.sim_drive_walk(initSoc)
+                fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
+                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
+                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
+                                     self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
+                initSoc = min(1.0, max(0.0, self.soc[-1]))
+
+            self.sim_drive_walk(initSoc)
+
+        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
+
+            # If EV, initializing initial SOC to maximum SOC.
+
+            initSoc = self.veh.maxSoc
+
+            self.sim_drive_walk(initSoc)
+
+        else:
+
+            self.sim_drive_walk(initSoc)
+
+        self.set_post_scalars()
 
     def sim_drive_walk(self, initSoc):
         """Receives second-by-second cycle information, vehicle properties, 
@@ -947,74 +1009,6 @@ class SimDriveCore(object):
         # accelKw is redundant with cycAccelKw and can probably be removed        
 
 
-class SimDriveClassic(SimDriveCore):
-    """Class containing methods for running FASTSim vehicle 
-    fuel economy simulations. This class is not compiled and will 
-    run slower for large batch runs.
-    Arguments:
-    ----------
-    cyc: cycle.Cycle instance
-    veh: vehicle.Vehicle instance"""
-
-    def sim_drive(self, initSoc=None):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        Arguments
-        ------------
-        initSoc: (optional) initial SOC for electrified vehicles.  
-            Must be between 0 and 1."""
-
-        if initSoc != None:
-            if initSoc > 1.0 or initSoc < 0.0:
-                print('Must enter a valid initial SOC between 0.0 and 1.0')
-                print('Running standard initial SOC controls')
-                initSoc = None
-
-        if self.veh.vehPtType == 1:  # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-
-            self.sim_drive_walk(initSoc)
-
-        elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
-
-            #####################################
-            ### Charge Balancing Vehicle SOC ###
-            #####################################
-
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
-            # Iterating until tolerance met or 30 attempts made.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            ess2fuelKwh = 1.0
-            sim_count = 0
-            while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
-                sim_count += 1
-                self.sim_drive_walk(initSoc)
-                fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
-                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
-                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
-                                     self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
-                initSoc = min(1.0, max(0.0, self.soc[-1]))
-
-            self.sim_drive_walk(initSoc)
-
-        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
-
-            # If EV, initializing initial SOC to maximum SOC.
-
-            initSoc = self.veh.maxSoc
-
-            self.sim_drive_walk(initSoc)
-
-        else:
-
-            self.sim_drive_walk(initSoc)
-
-        self.set_post_scalars()
-
-
 # list of array attributes in SimDrive class for generating list of type specification tuples
 attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
              'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
@@ -1067,7 +1061,7 @@ spec.extend([('i', int32),
 
 
 @jitclass(spec)
-class SimDriveJit(SimDriveCore):
+class SimDriveJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle fuel economy simulations. This class will be 
     faster for large batch runs.
@@ -1136,7 +1130,7 @@ class SimDriveJit(SimDriveCore):
         self.set_post_scalars()            
             
 @jitclass(spec)
-class SimAccelTestJit(SimDriveCore):
+class SimAccelTestJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle acceleration simulation. This class will be 
     faster for large batch runs."""
@@ -1165,7 +1159,7 @@ class SimAccelTestJit(SimDriveCore):
         self.set_post_scalars()
 
 
-class SimAccelTest(SimDriveCore):
+class SimAccelTest(SimDriveClassic):
     """Class for running FASTSim vehicle acceleration simulation."""
 
     def sim_drive(self):
