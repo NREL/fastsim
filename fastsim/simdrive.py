@@ -194,7 +194,7 @@ class SimDriveClassic(object):
 
         self.set_post_scalars()
 
-    def sim_drive_walk(self, initSoc):
+    def sim_drive_walk(self, initSoc, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and runs sim_drive_step to perform a 
         backward facing powertrain simulation. Method 'sim_drive' runs this
@@ -203,7 +203,13 @@ class SimDriveClassic(object):
 
         Arguments
         ------------
-        initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles"""
+        initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
+        auxInKw: auxInKw override.  Can be or array of length 1 or same length as self.cyc.cycSecs.  
+                Default of np.zeros(1) or provided np.zeros(len(self.auxInKw)) causes veh.auxKw to be used.
+                If zero is actually desired as a scalar, either zero out veh.auxKw before use, 
+                or use `np.finfo(np.float64).tiny`.  If zero is needed for only a subset of 
+                array elements, use `np.finfo(np.float64).tiny`.  
+        """
         
         ############################
         ###   Loop Through Time  ###
@@ -211,7 +217,14 @@ class SimDriveClassic(object):
 
         ###  Assign First Values  ###
         ### Drive Train
+        # check if auxInKw is already set (either manually (e.g. sim_drive.auxInKw = np.array(...) or via optional positional argument))
+        # if yes, copy it to local var to preserve it past the init
         self.__init__(self.cyc, self.veh) # reinitialize arrays for each new run
+        if len(auxInKwOverride) == 1 and auxInKwOverride[0] != 0:
+            self.auxInKw = np.ones(len(self.auxInKw), dtype=np.float64) * auxInKwOverride[0]
+        elif len(auxInKwOverride) > 1:
+            self.auxInKw = auxInKwOverride
+        
         self.cycMet[0] = 1
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
@@ -242,7 +255,8 @@ class SimDriveClassic(object):
         i: index of time step"""
 
         # if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
-        if self.auxInKw[i] == 0:
+        if (self.auxInKw[i:] == 0).all():
+            # if all elements after i-1 are zero, trigger default behavior; otherwise, use override value 
             if self.veh.noElecAux == True:
                 self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
             else:
