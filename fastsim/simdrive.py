@@ -136,12 +136,18 @@ class SimDriveClassic(object):
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
 
-    def sim_drive(self, initSoc=None):
+    def sim_drive(self, initSoc=None, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
         initSoc: (optional) initial SOC for electrified vehicles.  
-            Must be between 0 and 1."""
+            Must be between 0 and 1.
+        auxInKw: auxInKw override.  Array of length 1 or same length as cyc.cycSecs.  
+        Default of np.zeros(1) or provided np.zeros(len(cyc.cycSecs)) causes veh.auxKw to be used.
+        If zero is actually desired as a scalar, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+        or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
+        override mechanism.  
+        """
 
         if initSoc != None:
             if initSoc > 1.0 or initSoc < 0.0:
@@ -155,7 +161,7 @@ class SimDriveClassic(object):
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
 
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
 
@@ -171,14 +177,14 @@ class SimDriveClassic(object):
             sim_count = 0
             while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
                 sim_count += 1
-                self.sim_drive_walk(initSoc)
+                self.sim_drive_walk(initSoc, auxInKwOverride)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
                 ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
                                      self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
 
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
 
@@ -186,11 +192,11 @@ class SimDriveClassic(object):
 
             initSoc = self.veh.maxSoc
 
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         else:
 
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         self.set_post_scalars()
 
@@ -204,11 +210,11 @@ class SimDriveClassic(object):
         Arguments
         ------------
         initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
-        auxInKw: auxInKw override.  Can be or array of length 1 or same length as self.cyc.cycSecs.  
-                Default of np.zeros(1) or provided np.zeros(len(self.auxInKw)) causes veh.auxKw to be used.
-                If zero is actually desired as a scalar, either zero out veh.auxKw before use, 
-                or use `np.finfo(np.float64).tiny`.  If zero is needed for only a subset of 
-                array elements, use `np.finfo(np.float64).tiny`.  
+        auxInKw: auxInKw override.  Array of length 1 or same length as cyc.cycSecs.  
+                Default of np.zeros(1) or provided np.zeros(len(cyc.cycSecs)) causes veh.auxKw to be used.
+                If zero is actually desired as a scalar, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
+                override mechanism.  
         """
         
         ############################
@@ -1084,14 +1090,20 @@ class SimDriveJit(SimDriveClassic):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    def sim_drive(self, initSoc=-1):
+    def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
         initSoc: initial SOC for electrified vehicles.  
             Leave empty for default value.  Otherwise, must be between 0 and 1.
             Numba's jitclass does not support keyword args so this allows for optionally
-            passing initSoc as positional argument."""
+            passing initSoc as positional argument.
+            auxInKw: auxInKw override.  Array of length 1 or same length as cyc.cycSecs.  
+            Default of np.zeros(1) or provided np.zeros(len(cyc.cycSecs)) causes veh.auxKw to be used.
+            If zero is actually desired as a scalar, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+            or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
+            override mechanism.  
+        """
 
         if (initSoc != -1) and (initSoc > 1.0 or initSoc < 0.0):
                 print('Must enter a valid initial SOC between 0.0 and 1.0')
@@ -1104,7 +1116,7 @@ class SimDriveJit(SimDriveClassic):
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0 # this initSoc has no impact on results
             
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV 
 
@@ -1120,14 +1132,14 @@ class SimDriveJit(SimDriveClassic):
             sim_count = 0
             while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
                 sim_count += 1
-                self.sim_drive_walk(initSoc)
+                self.sim_drive_walk(initSoc, auxInKwOverride)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
                 ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) * 
                     self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
                         
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
 
@@ -1135,11 +1147,11 @@ class SimDriveJit(SimDriveClassic):
 
             initSoc = self.veh.maxSoc
             
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         else:
             
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
         
         self.set_post_scalars()            
             
