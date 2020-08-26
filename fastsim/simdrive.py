@@ -37,9 +37,14 @@ class SimDriveParams(object):
         self.min_time_dilation = 0.1 
         self.time_dilation_tol = 1e-3
 
-class SimDriveCore(object):
-    """Class containing methods for running FASTSim iteration.  This class needs to be extended 
-    by a class with an init method before being runnable."""
+class SimDriveClassic(object):
+    """Class containing methods for running FASTSim vehicle 
+    fuel economy simulations. This class is not compiled and will 
+    run slower for large batch runs.
+    Arguments:
+    ----------
+    cyc: cycle.Cycle instance
+    veh: vehicle.Vehicle instance"""
 
     def __init__(self, cyc, veh, sim_params=SimDriveParams(), props=params.PhysicalProperties()):
         """Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
@@ -156,7 +161,76 @@ class SimDriveCore(object):
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
         self.trace_miss_iters = np.zeros(len_cyc, dtype=np.float64)
 
-    def sim_drive_walk(self, initSoc=None):
+    def sim_drive(self, initSoc=None, auxInKwOverride=np.zeros(1, dtype=np.float64)):
+        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+        Arguments
+        ------------
+        initSoc: (optional) initial SOC for electrified vehicles.  
+            Must be between 0 and 1.
+        auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
+                Default of np.zeros(1) causes veh.auxKw to be used.
+                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
+                override mechanism.  
+        """
+
+        if (auxInKwOverride == 0).all():
+            auxInKwOverride = self.auxInKw
+
+        if initSoc != None:
+            if initSoc > 1.0 or initSoc < 0.0:
+                print('Must enter a valid initial SOC between 0.0 and 1.0')
+                print('Running standard initial SOC controls')
+                initSoc = None
+            else:
+                self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        elif self.veh.vehPtType == 1:  # Conventional
+
+            # If no EV / Hybrid components, no SOC considerations.
+
+            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
+
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
+
+            #####################################
+            ### Charge Balancing Vehicle SOC ###
+            #####################################
+
+            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Iterating until tolerance met or 30 attempts made.
+
+            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
+            ess2fuelKwh = 1.0
+            sim_count = 0
+            while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
+                sim_count += 1
+                self.sim_drive_walk(initSoc, auxInKwOverride)
+                fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
+                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
+                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
+                                     self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
+                initSoc = min(1.0, max(0.0, self.soc[-1]))
+
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
+
+            # If EV, initializing initial SOC to maximum SOC.
+
+            initSoc = self.veh.maxSoc
+
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        else:
+
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        self.set_post_scalars()
+
+    def sim_drive_walk(self, initSoc, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and runs sim_drive_step to perform a 
         backward facing powertrain simulation. Method 'sim_drive' runs this
@@ -165,14 +239,24 @@ class SimDriveCore(object):
 
         Arguments
         ------------
-        initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles"""
+        initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
+        auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
+                Default of np.zeros(1) causes veh.auxKw to be used.
+                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
+                override mechanism.  
+        """
         
         ############################
         ###   Loop Through Time  ###
         ############################
 
-        ###  Assign First ValueS  ###
+        ###  Assign First Values  ###
         ### Drive Train
+        self.__init__(self.cyc, self.veh) # reinitialize arrays for each new run
+        if not((auxInKwOverride == 0).all()):
+            self.auxInKw = auxInKwOverride
+        
         self.cycMet[0] = 1
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
@@ -248,12 +332,15 @@ class SimDriveCore(object):
         Arguments:
         ----------
         i: index of time step"""
-
-        if self.veh.noElecAux == True:
-            self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
-        else:
-            self.auxInKw[i] = self.veh.auxKw            
-
+        a = 666
+        # if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
+        if (self.auxInKw[i:] == 0).all():
+            # if all elements after i-1 are zero, trigger default behavior; otherwise, use override value 
+            if self.veh.noElecAux == True:
+                self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
+            else:
+                self.auxInKw[i] = self.veh.auxKw            
+        b = 666
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
             self.reachedBuff[i] = 0
@@ -1012,86 +1099,6 @@ class SimDriveCore(object):
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
 
 
-class SimDriveClassic(SimDriveCore):
-    """Class containing methods for running FASTSim vehicle 
-    fuel economy simulations. This class is not compiled and will 
-    run slower for large batch runs.
-    Arguments:
-    ----------
-    cyc: cycle.Cycle instance
-    veh: vehicle.Vehicle instance"""
-
-    def sim_drive(self, initSoc=None):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        Arguments
-        ------------
-        initSoc: (optional) initial SOC for electrified vehicles.  
-            Must be between 0 and 1."""
-
-        if initSoc != None:
-            if initSoc > 1.0 or initSoc < 0.0:
-                print('Must enter a valid initial SOC between 0.0 and 1.0')
-                print('Running standard initial SOC controls')
-                initSoc = None
-
-        if self.veh.vehPtType == 1:  # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-
-            self.sim_drive_walk(initSoc)
-
-        elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
-
-            #####################################
-            ### Charge Balancing Vehicle SOC ###
-            #####################################
-
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
-            # Iterating until tolerance met or 30 attempts made.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            ess2fuelKwh = 1.0
-            sim_count = 0
-            while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
-                sim_count += 1
-                self.sim_drive_walk(initSoc)
-                fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
-                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
-                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
-                                     self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
-                initSoc = min(1.0, max(0.0, self.soc[-1]))
-
-            self.sim_drive_walk(initSoc)
-
-        elif (self.veh.vehPtType == 3 and initSoc == None):  # PHEV
-            # To get this working do the same thing that is implemented in Excel FASTSim. 
-            # In Excel, click "Assign macro" in the context menu then go to the function 
-            # runPhevShortcut and emulate it here.  
-            # If EV, initializing initial SOC to maximum SOC.
-
-            initSoc = self.veh.maxSoc
-            self.sim_drive_walk(initSoc)
-
-            initSoc = self.veh.minSoc
-            self.sim_drive_walk(initSoc)
-            
-
-        elif (self.veh.vehPtType == 4 and initSoc == None): # BEV
-            # If EV, initializing initial SOC to maximum SOC.
-
-            initSoc = self.veh.maxSoc
-
-            self.sim_drive_walk(initSoc)
-
-        else:
-
-            self.sim_drive_walk(initSoc)
-
-        self.set_post_scalars()
-
-
 # list of array attributes in SimDrive class for generating list of type specification tuples
 attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
              'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
@@ -1152,7 +1159,7 @@ spec.extend([('i', int32),
 
 
 @jitclass(spec)
-class SimDriveJit(SimDriveCore):
+class SimDriveJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle fuel economy simulations. This class will be 
     faster for large batch runs.
@@ -1161,27 +1168,39 @@ class SimDriveJit(SimDriveCore):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    def sim_drive(self, initSoc=-1):
+    def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
         initSoc: initial SOC for electrified vehicles.  
             Leave empty for default value.  Otherwise, must be between 0 and 1.
             Numba's jitclass does not support keyword args so this allows for optionally
-            passing initSoc as positional argument."""
+            passing initSoc as positional argument.
+            auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
+                Default of np.zeros(1) causes veh.auxKw to be used.
+                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
+                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
+                override mechanism.  
+        """
 
-        if (initSoc != -1) and (initSoc > 1.0 or initSoc < 0.0):
+        if (auxInKwOverride == 0).all():
+            auxInKwOverride = self.auxInKw
+
+        if (initSoc != -1):
+            if (initSoc > 1.0 or initSoc < 0.0):
                 print('Must enter a valid initial SOC between 0.0 and 1.0')
                 print('Running standard initial SOC controls')
                 initSoc = -1 # override initSoc if invalid value is used
+            else:
+                self.sim_drive_walk(initSoc, auxInKwOverride)
     
-        if self.veh.vehPtType == 1: # Conventional
+        elif self.veh.vehPtType == 1: # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0 # this initSoc has no impact on results
             
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV 
 
@@ -1197,14 +1216,14 @@ class SimDriveJit(SimDriveCore):
             sim_count = 0
             while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
                 sim_count += 1
-                self.sim_drive_walk(initSoc)
+                self.sim_drive_walk(initSoc, auxInKwOverride)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
                 ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) * 
                     self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
                         
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
 
@@ -1212,16 +1231,16 @@ class SimDriveJit(SimDriveCore):
 
             initSoc = self.veh.maxSoc
             
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         else:
             
-            self.sim_drive_walk(initSoc)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
         
         self.set_post_scalars()            
             
 @jitclass(spec)
-class SimAccelTestJit(SimDriveCore):
+class SimAccelTestJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle acceleration simulation. This class will be 
     faster for large batch runs."""
@@ -1250,7 +1269,7 @@ class SimAccelTestJit(SimDriveCore):
         self.set_post_scalars()
 
 
-class SimAccelTest(SimDriveCore):
+class SimAccelTest(SimDriveClassic):
     """Class for running FASTSim vehicle acceleration simulation."""
 
     def sim_drive(self):
