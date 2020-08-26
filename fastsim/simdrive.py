@@ -253,7 +253,8 @@ class SimDriveClassic(object):
 
         ###  Assign First Values  ###
         ### Drive Train
-        self.__init__(self.cyc, self.veh) # reinitialize arrays for each new run
+        self.__init__(self.cyc, self.veh, sim_params=self.sim_params, props=self.props) # reinitialize arrays for each new run
+        # in above, arguments must be explicit for numba
         if not((auxInKwOverride == 0).all()):
             self.auxInKw = auxInKwOverride
         
