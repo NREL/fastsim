@@ -16,7 +16,7 @@ from pathlib import Path
 import copy
 
 # local modules
-from . import globalvars as gl
+from . import parameters as params
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 CYCLES_DIR = os.path.abspath(
@@ -90,7 +90,7 @@ class Cycle(object):
     
     def set_dependents(self):
         """Sets values dependent on cycle info loaded from file."""
-        self.cycMph = self.cycMps * gl.mphPerMps
+        self.cycMph = self.cycMps * params.mphPerMps
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0) # time step deltas
         self.cycDistMeters = (self.cycMps * self.secs) 
     
@@ -352,6 +352,8 @@ def clip_by_times(cycle, t_end, t_start=0):
             new_cycle[k] = np.array(cycle[k])[idx]
         except:
             new_cycle[k] = cycle[k]
+
+    new_cycle['cycSecs'] -= new_cycle['cycSecs'][0] # reset time to start at zero
     return new_cycle
 
 
