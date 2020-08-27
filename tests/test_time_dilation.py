@@ -21,15 +21,17 @@ from fastsim import parameters as params
 # importlib.reload(simdrive)
 
 t0 = time.time()
-cyc = cycle.Cycle(cyc_file_path=Path('../cycles/longHaulDriveCycle.csv'))
+cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(
+    cycle.Cycle(cyc_file_path=Path('../cycles/longHaulDriveCycle.csv')).get_cyc_dict(),
+    t_start=1_800, t_end=18_000))
 cyc_jit = cyc.get_numba_cyc()
 print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
 
 
 t0 = time.time()
 # veh = vehicle.Vehicle(26)
-# veh.vehKg *= 4
 veh = vehicle.Vehicle(veh_file=Path('../vehdb/Line Haul Conv.csv'))
+veh.vehKg *= 2
 veh_jit = veh.get_numba_veh()
 print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 
@@ -41,7 +43,6 @@ sim_drive_params.min_time_dilation = 1
 sim_drive_params.time_dilation_tol = 1e-1
 sd_fixed = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
 sd_base = simdrive.SimDriveJit(cyc_jit, veh_jit)
-
 
 sd_fixed.sim_drive() 
 sd_base.sim_drive()
@@ -164,7 +165,7 @@ plt.plot(cyc.cycSecs, (cyc.cycGrade * cyc.cycMps * cyc.secs).cumsum(), label='tr
 plt.plot(sd_fixed.cyc.cycSecs, (cyc.cycGrade * cyc.secs *
                                  sd_fixed.mpsAch).cumsum(), label='undilated', linestyle='--')
 plt.plot(sd_fixed.cyc.cycSecs, (sd_fixed.cyc.cycGrade * sd_fixed.cyc.secs *
-                                 sd_fixed.mpsAch).cumsum(), label='achieved', linestyle='-.')
+                                 sd_fixed.mpsAch).cumsum(), label='dilated', linestyle='-.')
 # plt.grid()
 plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
@@ -182,7 +183,7 @@ plt.plot((cyc.cycGrade * cyc.cycMps *
                        cyc.secs).cumsum(), label='trace')
 plt.plot((cyc.cycGrade * cyc.secs * sd_fixed.mpsAch).cumsum(), label='undilated', linestyle='--')
 plt.plot((sd_fixed.cyc.cycGrade * sd_fixed.cyc.secs *
-                                 sd_fixed.mpsAch).cumsum(), label='achieved', linestyle='-.')
+                                 sd_fixed.mpsAch).cumsum(), label='dilated', linestyle='-.')
 # plt.grid()
 plt.legend(loc='upper left')
 plt.xlabel('Index')
@@ -198,7 +199,7 @@ plt.show()
 
 plt.figure()
 plt.plot(cyc.cycSecs, cyc.cycGrade, label='trace')
-plt.plot(sd_fixed.cyc.cycSecs, sd_fixed.cyc.cycGrade, label='achieved', linestyle='--')
+plt.plot(sd_fixed.cyc.cycSecs, sd_fixed.cyc.cycGrade, label='dilated', linestyle='--')
 # plt.grid()
 plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
@@ -212,7 +213,7 @@ plt.show()
 
 plt.figure()
 plt.plot(cyc.cycGrade, label='trace')
-plt.plot(sd_fixed.cyc.cycGrade, label='achieved', linestyle='--')
+plt.plot(sd_fixed.cyc.cycGrade, label='dilated', linestyle='--')
 # plt.grid()
 plt.legend(loc='upper left')
 plt.xlabel('Index')
