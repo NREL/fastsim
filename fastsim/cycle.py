@@ -352,6 +352,8 @@ def clip_by_times(cycle, t_end, t_start=0):
             new_cycle[k] = np.array(cycle[k])[idx]
         except:
             new_cycle[k] = cycle[k]
+
+    new_cycle['cycSecs'] -= new_cycle['cycSecs'][0] # reset time to start at zero
     return new_cycle
 
 
