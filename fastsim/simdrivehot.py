@@ -14,8 +14,8 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from fastsim import globalvars as gl
-from fastsim.simdrive import SimDriveCore, spec
+from fastsim import params
+from fastsim.simdrive import SimDriveClassic, spec
 
 # Fluid Properties for calculations
 teAirForPropsDegC = np.arange(-20, 140, 20) # deg C
@@ -78,7 +78,7 @@ hotspec = spec + [('teAmbDegC', float64[:]), # ambient temperature
                     # remainder goes to environment (e.g. via tailpipe)
                     ]
 
-class SimDriveHot(SimDriveCore):
+class SimDriveHot(SimDriveClassic):
     """Class containing methods for running FASTSim vehicle 
     fuel economy simulations with thermal behavior. 
     
@@ -91,11 +91,11 @@ class SimDriveHot(SimDriveCore):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    __init_core = SimDriveCore.__init__ # workaround for initializing super class within jitclass
+    __init_classic = SimDriveClassic.__init__ # workaround for initializing super class within jitclass
     
     def __init__(self, cyc, veh, teAmbDegC=22, teFcInitDegC=90, teCabInitDegC=22):
         """Initialize time array variables that are not used in base SimDrive."""
-        self.__init_core(cyc, veh)
+        self.__init_classic(cyc, veh)
         
         len_cyc = len(self.cyc.cycSecs)
         self.teFcDegC = np.zeros(len_cyc, dtype=np.float64)

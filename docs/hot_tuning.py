@@ -131,7 +131,7 @@ df = load_test_data()
 
 # load the vehicle
 t0 = time.time()
-veh = vehicle.Vehicle(9) # this needs to come from the file for the Fusion after Fusion data is converted to standalone file type
+veh = vehicle.Vehicle(veh_file=Path('../vehdb/2012 Ford Fusion.csv'))
 veh_jit = veh.get_numba_veh()
 print(f"Vehicle load time: {time.time() - t0:.3f} s")
 
