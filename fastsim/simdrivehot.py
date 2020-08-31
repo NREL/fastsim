@@ -62,19 +62,21 @@ hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('fcHeatGenKw', float64[:]), # fuel converter heat generation
                     ('fcConvToAmbKw', float64[:]), # fuel converter convection to ambient
                     ('fcToHtrKw', float64[:]), # fuel converter heat loss to heater core
-                    ('fcThrmMass', float64), # fuel converter thermal mass (kJ/(kg*K))
+                    ('fcThrmMass', float64), # fuel converter thermal mass [kJ/K]
                     ('teCabDegC', float64[:]), # cabin temperature
                     ('cabSolarKw', float64[:]), # cabin solar load
                     ('cabConvToAmbKw', float64[:]), # cabin convection to ambient
                     ('cabFromHtrKw', float64[:]), # cabin heat from heater 
-                    ('cabThrmMass', float64),  # cabin thermal mass (kJ/(kg*K))
-                    ('fcDiam', float64), # engine characteristic length for heat transfer calcs 
+                    ('cabThrmMass', float64),  # cabin thermal mass [kJ/K]
+                    ('fcDiam', float64), # engine characteristic length [m] for heat transfer calcs 
                     ('fcSurfArea', float64), # engine surface area for heat transfer calcs
                     ('hFcToAmbStop', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
                     ('hFcToAmbRad', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient if radiator is active
                     ('hFcToAmb', float64[:]), # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
                     ('fcCombToThrmlMassKw', float64), # fraction of combustion heat that goes to FC thermal mass
                     # remainder goes to environment (e.g. via tailpipe)
+                    ('teFcInitDegC', float64),
+                    ('teCabInitDegC', float64),
                     ]
 
 class SimDriveHot(SimDriveClassic):
@@ -90,10 +92,19 @@ class SimDriveHot(SimDriveClassic):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    def __init__(self, cyc, veh, teAmbDegC=22, teFcInitDegC=90, teCabInitDegC=22):
-        """Initialize time array variables that are not used in base SimDrive."""
+    def __init__(self, cyc, veh, teAmbDegC, teFcInitDegC=90, teCabInitDegC=22):
+        """Initialize time array variables that are not used in base SimDrive.
+        Arguments:
+        ----------
+        teAmbDegC: array of ambient temperatures [C].  Must be declared with 
+            dtype=np.float64, e.g. np.zeros(len(cyc.cycSecs, dtype=np.float64)).
+        teFcInitDegC: (optional) fuel converter initial temperature [C]
+        teCabInitDegC: (optional) cabin initial temperature [C]"""
         self.__init_objects__(cyc, veh)
         self.init_arrays()
+        self.init_thermal_arrays(teAmbDegC, teFcInitDegC, teCabInitDegC)
+
+    def init_thermal_arrays(self, teAmbDegC, teFcInitDegC, teCabInitDegC):
         len_cyc = len(self.cyc.cycSecs)
         self.teFcDegC = np.zeros(len_cyc, dtype=np.float64)
         self.fcEffAdj = np.zeros(len_cyc, dtype=np.float64)
@@ -107,12 +118,15 @@ class SimDriveHot(SimDriveClassic):
         self.hFcToAmb = np.zeros(len_cyc, dtype=np.float64)
         # this block ~should~ prevent the __init__ call in sim_drive_walk from 
         # overriding the prescribed ambient temperature
-        self.teAmbDegC = np.ones(len_cyc, dtype=np.float64) * teAmbDegC 
+        self.teAmbDegC = teAmbDegC
         
         # scalars
+        self.teFcInitDegC = teFcInitDegC # for persistence through iteration
         self.teFcDegC[0] = teFcInitDegC
-        self.fcThrmMass = 100
-        self.fcDiam = 1
+        self.teCabInitDegC = teCabInitDegC # for persistence through iteration
+        self.teCabDegC[0] = teCabInitDegC
+        self.fcThrmMass = 100 
+        self.fcDiam = 1 
         self.fcSurfArea = np.pi * self.fcDiam ** 2 / 4
         self.cabThrmMass = 5
         self.hFcToAmbStop = 50
@@ -203,7 +217,8 @@ class SimDriveHot(SimDriveClassic):
         ###  Assign First Values  ###
         ### Drive Train
         # reinitialize arrays for each new run
-        self.__init__(self.cyc, self.veh, self.teAmbDegC)
+        self.init_arrays() # reinitialize arrays for each new run
+        self.init_thermal_arrays(self.teAmbDegC, self.teFcInitDegC, self.teCabInitDegC)
         self.cycMet[0] = 1
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh

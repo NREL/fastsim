@@ -142,8 +142,9 @@ print(f"Cycle load time: {time.time() - t0:.3f} s")
 
 # run it once before tuning to compile
 t0 = time.time()
-sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit)
-sim_drive.sim_drive() 
+sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit, 
+    teAmbDegC=np.ones(len(cyc.cycSecs), dtype=np.float64) * 0, teFcInitDegC=0, teCabInitDegC=0)
+sim_drive.sim_drive()
 
 print(f"Sim drive time: {time.time() - t0:.3f} s")
 
@@ -186,6 +187,7 @@ def get_error_for_cycle(x):
     """Function for running a single cycle and returning the error."""
     # create cycle.Cycle()
     test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
+    test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
     
     cycSecs = np.arange(0, round(test_time_steps[-1], 0))
     cycMps = np.interp(cycSecs, 
@@ -196,10 +198,9 @@ def get_error_for_cycle(x):
     cyc_jit = cyc.get_numba_cyc()
 
     # simulate
-    sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit)
-    sim_drive.teAmbDegC = np.interp(cycSecs,
-            test_time_steps,
-            df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values)
+    sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit, 
+        teAmbDegC = np.interp(cycSecs, test_time_steps, test_time_steps)
+    )   
     sim_drive.sim_drive()
 
     # unpack input parameters
