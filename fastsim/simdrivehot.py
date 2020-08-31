@@ -15,7 +15,7 @@ warnings.simplefilter('ignore')
 
 # local modules
 from fastsim import params
-from fastsim.simdrive import SimDriveClassic, spec
+from fastsim.simdrive import SimDriveClassic, sim_drive_spec
 
 # Fluid Properties for calculations
 teAirForPropsDegC = np.arange(-20, 140, 20) # deg C
@@ -57,7 +57,7 @@ re_array = np.array([0, 4, 40, 4e3, 40e3])
 # heater core: error relative to target, --nominal coolant flow rate--, no recirc, 
 # nominal air flow rate (cabin exchanges per min?) at some assumed effectiveness -- tunable?
 
-hotspec = spec + [('teAmbDegC', float64[:]), # ambient temperature
+hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('teFcDegC', float64[:]), # fuel converter temperature
                     ('fcEffAdj', float64[:]), # fuel converter temperature efficiency correction
                     ('fcHeatGenKw', float64[:]), # fuel converter heat generation
