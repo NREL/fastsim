@@ -14,7 +14,6 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from fastsim import params
 from fastsim.simdrive import SimDriveClassic, sim_drive_spec
 
 # Fluid Properties for calculations
