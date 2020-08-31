@@ -127,8 +127,6 @@ def load_test_data():
     
     return df
 
-df = load_test_data()
-
 # load the vehicle
 t0 = time.time()
 veh = vehicle.Vehicle(veh_file=Path('../vehdb/2012 Ford Fusion.csv'))
@@ -149,6 +147,7 @@ sim_drive.sim_drive()
 
 print(f"Sim drive time: {time.time() - t0:.3f} s")
 
+df = load_test_data()
 idx = pd.IndexSlice # used to slice multi index 
 
 cyc_name = 'us06x4 0F cs'
