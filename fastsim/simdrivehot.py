@@ -90,12 +90,10 @@ class SimDriveHot(SimDriveClassic):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    __init_classic = SimDriveClassic.__init__ # workaround for initializing super class within jitclass
-    
     def __init__(self, cyc, veh, teAmbDegC=22, teFcInitDegC=90, teCabInitDegC=22):
         """Initialize time array variables that are not used in base SimDrive."""
-        self.__init_classic(cyc, veh)
-        
+        self.__init_objects__(cyc, veh)
+        self.init_arrays()
         len_cyc = len(self.cyc.cycSecs)
         self.teFcDegC = np.zeros(len_cyc, dtype=np.float64)
         self.fcEffAdj = np.zeros(len_cyc, dtype=np.float64)

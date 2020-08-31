@@ -30,14 +30,14 @@ param_spec = [('missed_trace_correction', bool_), # if True, missed trace correc
 class SimDriveParams(object):
     """Class containing attributes used for configuring sim_drive.  Usually the defaults are ok, 
     and there will be no need to use this."""
-    def __init__(self, missed_trace_correction=False, verbose=True):
+    def __init__(self):
         """Default values that affect simulation behavior.  
         Can be modified after instantiation."""
-        self.missed_trace_correction = missed_trace_correction # by default, do not fix missed trace time steps
+        self.missed_trace_correction = False # by default, do not fix missed trace time steps
         self.max_time_dilation = 10 
         self.min_time_dilation = 0.1 
         self.time_dilation_tol = 1e-3
-        self.verbose=verbose
+        self.verbose=True
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
@@ -48,15 +48,20 @@ class SimDriveClassic(object):
     cyc: cycle.Cycle instance
     veh: vehicle.Vehicle instance"""
 
-    def __init__(self, cyc, veh, sim_params=SimDriveParams(), props=params.PhysicalProperties()):
+    def __init__(self, cyc, veh):
         """Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
         sim_params is needed only if non-default behavior is desired."""
+        self.__init_objects__(cyc, veh)
+        self.init_arrays()
+
+    def __init_objects__(self, cyc, veh):        
         self.veh = veh
         self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = sim_params
-        self.props = props
+        self.sim_params = SimDriveParams()
+        self.props = params.PhysicalProperties()
 
+    def init_arrays(self):
         len_cyc = len(self.cyc.cycSecs)
         self.i = 1 # initialize step counter for possible use outside sim_drive_walk()
 
@@ -255,7 +260,7 @@ class SimDriveClassic(object):
 
         ###  Assign First Values  ###
         ### Drive Train
-        self.__init__(self.cyc, self.veh, sim_params=self.sim_params, props=self.props) # reinitialize arrays for each new run
+        self.init_arrays() # reinitialize arrays for each new run
         # in above, arguments must be explicit for numba
         if not((auxInKwOverride == 0).all()):
             self.auxInKw = auxInKwOverride
