@@ -1117,22 +1117,10 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
              'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'trace_miss_iters']
 
-# create types for instances of TypedVehicle and TypedCycle
-veh_type = TypedVehicle.class_type.instance_type
-cyc_type = TypedCycle.class_type.instance_type
-props_type = params.PhysicalProperties.class_type.instance_type
-param_type = SimDriveParams.class_type.instance_type
-
-spec = [(attr, float64[:]) for attr in attr_list]
+sim_drive_spec = [(attr, float64[:]) for attr in attr_list]
 # extend with locally defined classes
-spec.extend([('veh', veh_type),
-            ('cyc', cyc_type),
-            ('cyc0', cyc_type),
-            ('sim_params', param_type),
-            ('props', props_type),
-            ])
 # extend list with non-float64[:] attributes that not contained in attr_list
-spec.extend([('i', int32),
+sim_drive_spec.extend([('i', int32),
              ('fcForcedOn', bool_[:]),
              ('fcForcedState', int32[:]),
              ('canPowerAllElectrically', bool_[:]),
@@ -1146,7 +1134,7 @@ spec.extend([('i', int32),
              ('Gallons_gas_equivalent_per_mile', float64),
              ('mpgge_elec', float64),
              ('grid_mpgge_elec', float64),
-             ('dragKj', float64), 
+             ('dragKj', float64),
              ('ascentKj', float64),
              ('rrKj', float64),
              ('brakeKj', float64),
@@ -1158,10 +1146,23 @@ spec.extend([('i', int32),
              ('netKj', float64),
              ('keKj', float64),
              ('energyAuditError', float64)
-])
+             ])
+
+# create types for instances of TypedVehicle and TypedCycle
+veh_type = TypedVehicle.class_type.instance_type
+cyc_type = TypedCycle.class_type.instance_type
+props_type = params.PhysicalProperties.class_type.instance_type
+param_type = SimDriveParams.class_type.instance_type
+
+sim_drive_spec.extend([('veh', veh_type),
+            ('cyc', cyc_type),
+            ('cyc0', cyc_type),
+            ('props', props_type),
+            ('sim_params', param_type),
+            ])
 
 
-@jitclass(spec)
+@jitclass(sim_drive_spec)
 class SimDriveJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle fuel economy simulations. This class will be 
@@ -1242,7 +1243,7 @@ class SimDriveJit(SimDriveClassic):
         
         self.set_post_scalars()            
             
-@jitclass(spec)
+@jitclass(sim_drive_spec)
 class SimAccelTestJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle acceleration simulation. This class will be 
@@ -1308,7 +1309,7 @@ class SimDrivePost(object):
         ---------------
         sim_drive: solved sim_drive object"""
 
-        for item in spec:
+        for item in sim_drive_spec:
             self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))
 
     def get_output(self):
