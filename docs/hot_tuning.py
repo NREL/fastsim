@@ -154,9 +154,9 @@ idx = pd.IndexSlice # used to slice multi index
 cyc_name = 'us06x4 0F cs'
 
 # list of parameter names to be modified to obtain objectives
-params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'hFcToAmbRad']
-lower_bounds = anp.array([50e3, 0.1, 1, 100])
-upper_bounds = anp.array([500e3, 5, 50, 10e3])
+params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff']
+lower_bounds = anp.array([50, 0.1, 1, 2])
+upper_bounds = anp.array([500, 5, 200, 50])
 
 # list of tuples of pairs of objective errors to minimize in the form of 
 # [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].  
@@ -257,6 +257,16 @@ res = minimize(problem,
                seed=1,
                verbose=True)
 t1 = time.time()
-print('res.X:\n', res.X)
-print('res.F:\n', res.F)
+print('\nParameter pareto sets:')
+for i in res.X:
+    print('[', end='')
+    for j in i:
+        print(f'{j:.3e},', end='')
+    print(']\n', end='')
+print('\nResults pareto sets:')
+for i in res.F:
+    print('[', end='')
+    for j in i:
+        print(f'{j:.3e},', end='')
+    print(']\n', end='')
 
