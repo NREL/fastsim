@@ -102,9 +102,22 @@ class SimDriveHot(SimDriveClassic):
         teCabInitDegC: (optional) cabin initial temperature [C]"""
         self.__init_objects__(cyc, veh)
         self.init_arrays()
-        self.init_thermal_arrays(teAmbDegC, teFcInitDegC, teCabInitDegC)
+        self.init_thermal_arrays(teAmbDegC)
+        self.init_thermal_scalars(teFcInitDegC, teCabInitDegC)
 
-    def init_thermal_arrays(self, teAmbDegC, teFcInitDegC, teCabInitDegC):
+    def init_thermal_scalars(self, teFcInitDegC, teCabInitDegC):
+        # scalars
+        self.teFcInitDegC = teFcInitDegC # for persistence through iteration
+        self.teCabInitDegC = teCabInitDegC # for persistence through iteration
+        self.fcThrmMass = 100 
+        self.fcDiam = 1 
+        self.fcSurfArea = np.pi * self.fcDiam ** 2 / 4
+        self.cabThrmMass = 5
+        self.hFcToAmbStop = 50
+        self.hFcToAmbRad = 500
+        self.fcCombToThrmlMassKw = 0.5 
+
+    def init_thermal_arrays(self, teAmbDegC):
         len_cyc = len(self.cyc.cycSecs)
         self.teFcDegC = np.zeros(len_cyc, dtype=np.float64)
         self.fcEffAdj = np.zeros(len_cyc, dtype=np.float64)
@@ -118,21 +131,10 @@ class SimDriveHot(SimDriveClassic):
         self.hFcToAmb = np.zeros(len_cyc, dtype=np.float64)
         # this block ~should~ prevent the __init__ call in sim_drive_walk from 
         # overriding the prescribed ambient temperature
-        self.teAmbDegC = teAmbDegC
-        
-        # scalars
-        self.teFcInitDegC = teFcInitDegC # for persistence through iteration
-        self.teFcDegC[0] = teFcInitDegC
-        self.teCabInitDegC = teCabInitDegC # for persistence through iteration
-        self.teCabDegC[0] = teCabInitDegC
-        self.fcThrmMass = 100 
-        self.fcDiam = 1 
-        self.fcSurfArea = np.pi * self.fcDiam ** 2 / 4
-        self.cabThrmMass = 5
-        self.hFcToAmbStop = 50
-        self.hFcToAmbRad = 500
-        self.fcCombToThrmlMassKw = 0.5 
+        self.teFcDegC[0] = self.teFcInitDegC
+        self.teCabDegC[0] = self.teCabInitDegC
 
+        self.teAmbDegC = teAmbDegC
 
     def sim_drive(self, *args):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -218,7 +220,7 @@ class SimDriveHot(SimDriveClassic):
         ### Drive Train
         # reinitialize arrays for each new run
         self.init_arrays() # reinitialize arrays for each new run
-        self.init_thermal_arrays(self.teAmbDegC, self.teFcInitDegC, self.teCabInitDegC)
+        self.init_thermal_arrays(self.teAmbDegC)
         self.cycMet[0] = 1
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
