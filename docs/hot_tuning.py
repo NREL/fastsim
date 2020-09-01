@@ -160,8 +160,8 @@ upper_bounds = anp.array([500, 5, 200, 50])
 
 # list of tuples of pairs of objective errors to minimize in the form of 
 # [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].  
-error_vars = [('teFcDegC', 'CylinderHeadTempC'),
-              ('fcKwInAch', 'Fuel_Power_Calc[kW]')]
+error_vars = [('teFcDegC', 'CylinderHeadTempC'),]
+            #   ('fcKwInAch', 'Fuel_Power_Calc[kW]')]
 
 def get_error_val(model, test, model_time_steps, test_time_steps):
     """Returns time-averaged error for model and test signal.
@@ -242,10 +242,11 @@ class ThermalProblem(Problem):
 
     def _evaluate(self, x, out, *args, **kwargs):
         err_arr = np.array([get_error_for_cycle(x)])
-        f1 = err_arr[:, 0]
-        f2 = err_arr[:, 1]
+        f = []
+        for i in range(err_arr.shape[1]):
+            f.append(err_arr[:, i])
 
-        out['F'] = anp.column_stack([f1, f2])
+        out['F'] = anp.column_stack([f])
 
 
 problem = ThermalProblem(parallelization=("threads", 6))
