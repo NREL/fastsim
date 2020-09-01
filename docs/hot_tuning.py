@@ -199,7 +199,7 @@ def get_error_for_cycle(x):
 
     # simulate
     sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit, 
-        teAmbDegC = np.interp(cycSecs, test_time_steps, test_time_steps)
+        teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb)
     )   
     sim_drive.sim_drive()
 
