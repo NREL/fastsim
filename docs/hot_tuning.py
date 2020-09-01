@@ -259,15 +259,6 @@ res = minimize(problem,
                verbose=True)
 t1 = time.time()
 print('\nParameter pareto sets:')
-for i in res.X:
-    print('[', end='')
-    for j in i:
-        print(f'{j:.3e},', end='')
-    print(']\n', end='')
-print('\nResults pareto sets:')
-for i in res.F:
-    print('[', end='')
-    for j in i:
-        print(f'{j:.3e},', end='')
-    print(']\n', end='')
-
+print(np.array2string(res.X, precision=3, separator=', '))
+print('Results pareto sets:')
+print(np.array2string(res.F, precision=3, separator=', '))
