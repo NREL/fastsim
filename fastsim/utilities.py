@@ -3,7 +3,8 @@
 R_air = 287  # J/(kg*K)
 
 def get_rho_air(elevation_m, temperature_degC, full_output=False):
-    """Returns air density [kg/m**3] for given elevation and temperature."""
+    """Returns air density [kg/m**3] for given elevation and temperature.
+    Source: https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html"""
     #     T = 15.04 - .00649 * h
     #     p = 101.29 * [(T + 273.1)/288.08]^5.256
     T_standard = 15.04 - 0.00649 * elevation_m  # nasa [degC]

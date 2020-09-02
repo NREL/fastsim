@@ -75,8 +75,11 @@ hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('hFcToAmb', float64[:]), # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
                     ('fcCombToThrmlMassKw', float64), # fraction of combustion heat that goes to FC thermal mass
                     # remainder goes to environment (e.g. via tailpipe)
-                    ('teFcInitDegC', float64),
-                    ('teCabInitDegC', float64),
+                    ('teFcInitDegC', float64), # fuel converter initial temperature [deg C]
+                    ('teCabInitDegC', float64), # cabin inital temperature [deg C]
+                    ('teTStatSTODegC', float64), # temperature [ºC] at which thermostat starts to open 
+                    ('teTStatFODegC', float64), # temperature [ºC] at which thermostat is fully open 
+                    ('radiator_eff', float64), # radiator effectiveness -- ratio of active heat rejection from radiator to passive heat rejection
                     ]
 
 class SimDriveHot(SimDriveClassic):
@@ -114,8 +117,10 @@ class SimDriveHot(SimDriveClassic):
         self.fcSurfArea = np.pi * self.fcDiam ** 2 / 4
         self.cabThrmMass = 5
         self.hFcToAmbStop = 50
-        self.hFcToAmbRad = 500
         self.fcCombToThrmlMassKw = 0.5 
+        self.teTStatSTODegC = 85
+        self.teTStatFODegC = 90
+        self.radiator_eff = 5
 
     def init_thermal_arrays(self, teAmbDegC):
         len_cyc = len(self.cyc.cycSecs)
@@ -260,8 +265,8 @@ class SimDriveHot(SimDriveClassic):
         # sensitive component efficiencies dependent on the [i] temperatures, but 
         # these are in turn dependent on [i-1] heat transfer processes  
         # Constitutive equations for fuel converter
-        self.fcHeatGenKw[i-1] = self.fcCombToThrmlMassKw * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
-        teFcFilmDegC = 0.5 * (self.teFcDegC[i] + self.teAmbDegC[i])
+        self.fcHeatGenKw[i] = self.fcCombToThrmlMassKw * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
+        teFcFilmDegC = 0.5 * (self.teFcDegC[i-1] + self.teAmbDegC[i])
         Re_fc = np.interp(teFcFilmDegC, teAirForPropsDegC, rhoAirArray) \
             * self.mpsAch[i-1] * self.fcDiam / \
             np.interp(teFcFilmDegC, teAirForPropsDegC, muAirArray) 
@@ -288,24 +293,30 @@ class SimDriveHot(SimDriveClassic):
             return [C, m]
 
         # calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
-        if (self.teFcDegC[i-1] >= 90):
-            # vehicle is moving OR stopped AND radiator is needed
-            self.hFcToAmb[i-1] = self.hFcToAmbRad
-        elif (self.mpsAch[i-1] < 1):
-            # vehicle is stopped AND radiator is NOT needed
-            self.hFcToAmb[i-1] = self.hFcToAmbStop
+        if self.mpsAch[i-1] < 1:
+            # if stopped, scale based on thermostat opening and constant convection
+            self.hFcToAmb[i] = np.interp(self.teFcDegC[i-1], 
+                [self.teTStatSTODegC, self.teTStatFODegC],
+                [self.hFcToAmbStop, self.hFcToAmbStop * self.radiator_eff])
         else:
-            # vehicle is moving AND radiator is NOT needed
+            # if moving, scale based on speed dependent convection and thermostat opening
+            self.hFcToAmb[i] = np.interp(self.teFcDegC[i-1],
+                [self.teTStatSTODegC, self.teTStatFODegC],
+                [self.hFcToAmbStop, self.hFcToAmbStop * self.radiator_eff])
             # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-            self.hFcToAmb[i-1] = (get_sphere_conv_params(Re_fc)[0] * Re_fc ** get_sphere_conv_params(Re_fc)[1]) * \
+            hFcToAmbSphere = (get_sphere_conv_params(Re_fc)[0] * Re_fc ** get_sphere_conv_params(Re_fc)[1]) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, PrAirArray) ** (1 / 3) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, kAirArray) / self.fcDiam
-        self.fcConvToAmbKw[i-1] = self.hFcToAmb[i-1] * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC[i-1])
-        self.fcToHtrKw[i-1] = 0  # placeholder
+            self.hFcToAmb[i] = np.interp(self.teFcDegC[i-1],
+                [self.teTStatSTODegC, self.teTStatFODegC],
+                [hFcToAmbSphere, hFcToAmbSphere * self.radiator_eff])
+
+        self.fcConvToAmbKw[i] = self.hFcToAmb[i] * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC[i-1])
+        self.fcToHtrKw[i] = 0  # placeholder
         # Energy balance for fuel converter
         self.teFcDegC[i] = self.teFcDegC[i-1] + (
-            self.fcHeatGenKw[i-1] - self.fcConvToAmbKw[i-1] - self.fcToHtrKw[i-1]
-        ) / self.fcThrmMass * self.cyc.secs[i-1]
+            self.fcHeatGenKw[i] - self.fcConvToAmbKw[i] - self.fcToHtrKw[i]
+            ) / self.fcThrmMass * self.cyc.secs[i]
         
     def set_fc_power(self, i):
         """Sets fcKwOutAch and fcKwInAch.
@@ -343,8 +354,11 @@ class SimDriveHot(SimDriveClassic):
         else:
             tempFitPolyCoeffs = np.array([1.018e-01, 1.637e-03, -3.000e-06]) 
             # polynomial for fc efficiency 
-            self.fcEffAdj[i] = max(min((tempFitPolyCoeffs[0] + self.teFcDegC[i] * tempFitPolyCoeffs[1] + self.teFcDegC[i] ** 2 * tempFitPolyCoeffs[2]) \
-                / 0.2248, 1), 0.3019)
+            self.fcEffAdj[i] = max(
+                min(
+                    (tempFitPolyCoeffs[0] + self.teFcDegC[i] * tempFitPolyCoeffs[1] + 
+                    self.teFcDegC[i] ** 2 * tempFitPolyCoeffs[2]) / 0.2248, 1), 
+                0.3019)
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / self.veh.fcEffArray[-1] / self.fcEffAdj[i]
             else:
