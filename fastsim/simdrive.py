@@ -1358,7 +1358,9 @@ class SimDrivePost(object):
         output['fcKwOutAch'] = np.asarray(self.fcKwOutAch)
         output['fsKwhOutAch'] = np.asarray(self.fsKwhOutAch)
         output['fcKwInAch'] = np.asarray(self.fcKwInAch)
+        output['essKwOutAch'] = np.asarray(self.essKwOutAch)
         output['time'] = np.asarray(self.cyc.cycSecs)
+        output['distMiles'] = np.asarray(self.distMiles)
 
         return output
 
