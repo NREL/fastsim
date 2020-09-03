@@ -11,7 +11,7 @@ First, clone the repository from GitHub:
 FASTSim depends on python 3.7. One way to satisfy this is to use conda:
 
     conda create -n fastsim python=3.7
-    conda activate evi-pro
+    conda activate fastsim
     
 Then, just run a pip install:
 
