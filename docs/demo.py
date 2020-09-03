@@ -1,4 +1,5 @@
-# To add a new cell, type '# To add a new markdown cell, type 'from IPython import get_ipython
+#!/usr/bin/env python
+# coding: utf-8
 
 # # FASTSim Demonstration
 # 
@@ -18,10 +19,6 @@
 import sys
 import os
 from pathlib import Path
-# allow it to find simdrive module
-fsimpath=str(Path(os.getcwd()).parents[0])
-if fsimpath not in sys.path:
-    sys.path.append(fsimpath)
 import numpy as np
 import time
 import pandas as pd
@@ -35,8 +32,7 @@ from fastsim import simdrive, vehicle, cycle
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
 
-# ## Individual Drive Cycle
-# ### Load Drive Cycle
+# ## ### Load Drive Cycle
 # 
 # Default (UDDS, US06, HWFET) cycles can be loaded from the ```../cycles``` directory, or custom cycles can be specified in the same format. The expected format is a dictionary with the following keys: 
 # 
@@ -70,17 +66,14 @@ print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
 t0 = time.time()
 
-# instantiate and run classic version via convenience wrapper
 # sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit)
 # sim_drive.sim_drive()
 
-# instantiate and run JIT compiled version directly
 # SimDriveJit can only take one mandatory positional argument for initSoc
 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
 sim_drive.sim_drive() 
 
 print(f'Time to simulate: {time.time() - t0:.2e} s')
-
 
 t0 = time.time()
 sim_drive_post = simdrive.SimDrivePost(sim_drive)
@@ -93,7 +86,6 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
 df['speed'] = cyc.cycMps * 2.23694  # Convert mps to mph
-
 
 fig, ax = plt.subplots(figsize=(9, 5))
 kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
@@ -108,6 +100,7 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
+# plt.show()
 
 # ## Running sim_drive_step() with modified auxInKw
 # Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020  
@@ -115,9 +108,8 @@ ax2.tick_params('y', colors='xkcd:pale red')
 
 ## Running sim_drive_step() with modified auxInKw
 # Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020
-# THis method is a bit slower in terms of compute effort, but it allows 
-# more flexibility because auxInKw at each time step can be determined
-# on the fly
+
+t0 = time.time()
 
 veh_jit = vehicle.Vehicle(9).get_numba_veh()
 cyc_jit = cycle.Cycle('udds').get_numba_cyc()
@@ -137,11 +129,14 @@ plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
 plt.show()
+print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 # ### Overriding using a constant value
 
 ## Running sim_drive_step() with modified auxInKw
 # Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020
+
+t0 = time.time()
 
 veh_jit = vehicle.Vehicle(9).get_numba_veh()
 cyc_jit = cycle.Cycle('udds').get_numba_cyc()
@@ -157,16 +152,20 @@ plt.ylabel('Power [kW]')
 plt.legend()
 plt.show()
 
+print(f'Time to simulate: {time.time() - t0:.2e} s')
+
 # ### Overriding using a time trace
 
 ## Running sim_drive_step() with modified auxInKw
 # Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020
 
+t0 = time.time()
+
 veh_jit = vehicle.Vehicle(9).get_numba_veh()
 cyc_jit = cycle.Cycle('udds').get_numba_cyc()
 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
 
-# by assigning the value directly
+# by assigning the value directly (this is faster than using positional args)
 sim_drive.auxInKw = cyc_jit.cycSecs / cyc_jit.cycSecs[-1] * 10 
 sim_drive.sim_drive()
 
@@ -178,9 +177,14 @@ plt.ylabel('Power [kW]')
 plt.legend()
 plt.show()
 
+print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 # by assigning positional arguments
-# may require recompile if these arguments have not been passed
+# may require recompile if these arguments have not been passed,
+# but this is the fastest approach after compilation
+
+t0 = time.time()
+
 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
 sim_drive.sim_drive(-1, cyc_jit.cycSecs / cyc_jit.cycSecs[-1] * 10)
 
@@ -191,6 +195,8 @@ plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
 plt.show()
+
+print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 # ## Batch Drive Cycles - TSDC Drive Cycles
 # 
@@ -261,7 +267,10 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     cyc['cycRoadType'] = np.zeros(len(pnts))
     cyc = cycle.Cycle(cyc_dict=cyc).get_numba_cyc()
     
+    sim_params = simdrive.SimDriveParams()
+    sim_params.verbose = False
     sim_drive = simdrive.SimDriveJit(cyc, veh)
+    sim_drive.sim_params = sim_params
     sim_drive.sim_drive()
     sim_drive_post = simdrive.SimDrivePost(sim_drive)
     output = sim_drive_post.get_output()
@@ -289,13 +298,11 @@ df_fltr = results_df[(results_df['distance_mi'] < 1000)
                      & (results_df['distance_mi'] > 0) &
                      (results_df['avg_speed_mph'] < 100)]
 
-
 plt.figure()
 df_fltr.mpgge.hist(bins=20, rwidth=.9)
 plt.xlabel('Miles per Gallon')
 plt.ylabel('Number of Cycles')
 plt.show()
-
 
 df_fltr.plot(
     x='avg_speed_mph',
@@ -323,6 +330,7 @@ plt.ylabel('Fuel Economy [MPG]')
 plt.show()
 
 # # Cycle manipulation tools
+
 # ## Micro-trip
 
 # load vehicle
@@ -331,7 +339,6 @@ veh = vehicle.Vehicle(1)
 # veh_jit = veh.get_numba_veh()
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
-
 # generate micro-trip 
 t0 = time.time()
 cyc = cycle.Cycle("udds")
@@ -339,7 +346,6 @@ microtrips = cycle.to_microtrips(cyc.get_cyc_dict())
 cyc.set_from_dict(microtrips[1])
 cyc_jit = cyc.get_numba_cyc()
 print(f'Time to load cycle: {time.time() - t0:.2e} s')
-
 
 # simulate
 t0 = time.time()
@@ -384,7 +390,6 @@ veh = vehicle.Vehicle(1)
 veh_jit = veh.get_numba_veh()
 print(f'Time to load veicle: {time.time() - t0:.2e} s')
 
-
 # generate concatenated trip
 t0 = time.time()
 cyc1 = cycle.Cycle("udds")
@@ -393,7 +398,6 @@ cyc_combo = cycle.concat([cyc1.get_cyc_dict(), cyc2.get_cyc_dict()])
 cyc_combo = cycle.Cycle(cyc_dict=cyc_combo)
 cyc_combo_jit = cyc_combo.get_numba_cyc()
 print(f'Time to load cycles: {time.time() - t0:.2e} s')
-
 
 # simulate
 t0 = time.time()
@@ -471,7 +475,6 @@ veh = vehicle.Vehicle(1)
 veh_jit = veh.get_numba_veh()
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
-
 # generate concatenated trip
 t0 = time.time()
 cyc1 = cycle.Cycle("udds")
@@ -483,7 +486,6 @@ cyc_combo = cycle.resample(cyc_combo, new_dt=1)
 cyc_combo = cycle.Cycle(cyc_dict=cyc_combo)
 cyc_combo_jit = cyc_combo.get_numba_cyc()
 print(f'Time to load and concatenate cycles: {time.time() - t0:.2e} s')
-
 
 # simulate
 t0 = time.time()
@@ -528,7 +530,6 @@ veh = vehicle.Vehicle(1)
 # veh_jit = veh.get_numba_veh()
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
-
 # generate micro-trip 
 t0 = time.time()
 cyc = cycle.Cycle("udds")
@@ -536,7 +537,6 @@ cyc = cycle.clip_by_times(cyc.get_cyc_dict(), t_end=300)
 cyc = cycle.Cycle(cyc_dict=cyc)
 cyc_jit = cyc.get_numba_cyc()
 print(f'Time to load and clip cycle: {time.time() - t0:.2e} s')
-
 
 # simulate
 t0 = time.time()
@@ -572,5 +572,4 @@ ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
 plt.show()
-
 
