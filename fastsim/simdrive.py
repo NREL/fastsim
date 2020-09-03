@@ -24,18 +24,20 @@ param_spec = [('missed_trace_correction', bool_), # if True, missed trace correc
             ('max_time_dilation', float64), # maximum time dilation to "catch up" with trace
             ('min_time_dilation', float64), # minimum time dilation to let trace "catch up"
             ('time_dilation_tol', float64), # convergence criteria for time dilation
+            ('verbose', bool_), # whether to print warning statements
             ]
 @jitclass(param_spec)
 class SimDriveParams(object):
     """Class containing attributes used for configuring sim_drive.  Usually the defaults are ok, 
     and there will be no need to use this."""
-    def __init__(self, missed_trace_correction=False):
+    def __init__(self):
         """Default values that affect simulation behavior.  
         Can be modified after instantiation."""
-        self.missed_trace_correction = missed_trace_correction # by default, do not fix missed trace time steps
+        self.missed_trace_correction = False # by default, do not fix missed trace time steps
         self.max_time_dilation = 10 
         self.min_time_dilation = 0.1 
         self.time_dilation_tol = 1e-3
+        self.verbose=True
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
@@ -46,15 +48,20 @@ class SimDriveClassic(object):
     cyc: cycle.Cycle instance
     veh: vehicle.Vehicle instance"""
 
-    def __init__(self, cyc, veh, sim_params=SimDriveParams(), props=params.PhysicalProperties()):
+    def __init__(self, cyc, veh):
         """Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
         sim_params is needed only if non-default behavior is desired."""
+        self.__init_objects__(cyc, veh)
+        self.init_arrays()
+
+    def __init_objects__(self, cyc, veh):        
         self.veh = veh
         self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = sim_params
-        self.props = props
+        self.sim_params = SimDriveParams()
+        self.props = params.PhysicalProperties()
 
+    def init_arrays(self):
         len_cyc = len(self.cyc.cycSecs)
         self.i = 1 # initialize step counter for possible use outside sim_drive_walk()
 
@@ -253,7 +260,7 @@ class SimDriveClassic(object):
 
         ###  Assign First Values  ###
         ### Drive Train
-        self.__init__(self.cyc, self.veh, sim_params=self.sim_params, props=self.props) # reinitialize arrays for each new run
+        self.init_arrays() # reinitialize arrays for each new run
         # in above, arguments must be explicit for numba
         if not((auxInKwOverride == 0).all()):
             self.auxInKw = auxInKwOverride
@@ -273,9 +280,11 @@ class SimDriveClassic(object):
         if self.sim_params.missed_trace_correction: 
             self.cyc.cycSecs = self.cyc.secs.cumsum() # correct cycSecs based on actual trace
 
-        if (self.cyc.secs > 5).any():
-            print('Max time dilation factor =', (round(self.cyc.secs.max(), 3)))
+        if (self.cyc.secs > 5).any() and self.sim_params.verbose:
+            if self.sim_params.missed_trace_correction:
+                print('Max time dilation factor =', (round(self.cyc.secs.max(), 3)))
             print('Warning: large time steps affect accuracy significantly.')
+            print('Max time step =', (round(self.cyc.secs.max(), 3)))
 
     def sim_drive_step(self):
         """Step through 1 time step."""
@@ -333,7 +342,6 @@ class SimDriveClassic(object):
         Arguments:
         ----------
         i: index of time step"""
-        a = 666
         # if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
         if (self.auxInKw[i:] == 0).all():
             # if all elements after i-1 are zero, trigger default behavior; otherwise, use override value 
@@ -341,7 +349,6 @@ class SimDriveClassic(object):
                 self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
             else:
                 self.auxInKw[i] = self.veh.auxKw            
-        b = 666
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
             self.reachedBuff[i] = 0
@@ -1115,22 +1122,10 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
              'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'trace_miss_iters']
 
-# create types for instances of TypedVehicle and TypedCycle
-veh_type = TypedVehicle.class_type.instance_type
-cyc_type = TypedCycle.class_type.instance_type
-props_type = params.PhysicalProperties.class_type.instance_type
-param_type = SimDriveParams.class_type.instance_type
-
-spec = [(attr, float64[:]) for attr in attr_list]
+sim_drive_spec = [(attr, float64[:]) for attr in attr_list]
 # extend with locally defined classes
-spec.extend([('veh', veh_type),
-            ('cyc', cyc_type),
-            ('cyc0', cyc_type),
-            ('sim_params', param_type),
-            ('props', props_type),
-            ])
 # extend list with non-float64[:] attributes that not contained in attr_list
-spec.extend([('i', int32),
+sim_drive_spec.extend([('i', int32),
              ('fcForcedOn', bool_[:]),
              ('fcForcedState', int32[:]),
              ('canPowerAllElectrically', bool_[:]),
@@ -1144,7 +1139,7 @@ spec.extend([('i', int32),
              ('Gallons_gas_equivalent_per_mile', float64),
              ('mpgge_elec', float64),
              ('grid_mpgge_elec', float64),
-             ('dragKj', float64), 
+             ('dragKj', float64),
              ('ascentKj', float64),
              ('rrKj', float64),
              ('brakeKj', float64),
@@ -1156,10 +1151,23 @@ spec.extend([('i', int32),
              ('netKj', float64),
              ('keKj', float64),
              ('energyAuditError', float64)
-])
+             ])
+
+# create types for instances of TypedVehicle and TypedCycle
+veh_type = TypedVehicle.class_type.instance_type
+cyc_type = TypedCycle.class_type.instance_type
+props_type = params.PhysicalProperties.class_type.instance_type
+param_type = SimDriveParams.class_type.instance_type
+
+sim_drive_spec.extend([('veh', veh_type),
+            ('cyc', cyc_type),
+            ('cyc0', cyc_type),
+            ('props', props_type),
+            ('sim_params', param_type),
+            ])
 
 
-@jitclass(spec)
+@jitclass(sim_drive_spec)
 class SimDriveJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle fuel economy simulations. This class will be 
@@ -1240,7 +1248,7 @@ class SimDriveJit(SimDriveClassic):
         
         self.set_post_scalars()            
             
-@jitclass(spec)
+@jitclass(sim_drive_spec)
 class SimAccelTestJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle acceleration simulation. This class will be 
@@ -1306,7 +1314,7 @@ class SimDrivePost(object):
         ---------------
         sim_drive: solved sim_drive object"""
 
-        for item in spec:
+        for item in sim_drive_spec:
             self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))
 
     def get_output(self):
@@ -1358,9 +1366,7 @@ class SimDrivePost(object):
         output['fcKwOutAch'] = np.asarray(self.fcKwOutAch)
         output['fsKwhOutAch'] = np.asarray(self.fsKwhOutAch)
         output['fcKwInAch'] = np.asarray(self.fcKwInAch)
-        output['essKwOutAch'] = np.asarray(self.essKwOutAch)
         output['time'] = np.asarray(self.cyc.cycSecs)
-        output['distMiles'] = np.asarray(self.distMiles)
 
         return output
 
