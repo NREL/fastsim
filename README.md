@@ -36,10 +36,10 @@ help(fastsim.simdrive.SimDriveClassic)
 # Testing
 
 ## Against Previous Python Version
-Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master branch version from 17 December 2019.  For timing comparisons, run 'tests/test26veh3cyc_CPUtime.py'.  
+Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master branch version from 17 December 2019.  For timing comparisons, run 'tests/test26veh3cyc_CPUtime.py' from within 'tests/'.  
 
 ## Against Excel FASTSim
-If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can run 'tests/test_vs_excel.py' to do an experimental (i.e. beta) comparison against Excel results.  
+If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can run 'tests/test_vs_excel.py' from within 'tests/' to do an experimental (i.e. beta) comparison against Excel results.  
 
 # numba
 To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim.simdrive`, `fastsim.cycle`, and `fastsim/vehicle`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
