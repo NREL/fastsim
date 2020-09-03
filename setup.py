@@ -23,7 +23,7 @@ setuptools.setup(
         "pandas>=1",
         "matplotlib",
         "numpy>=1.18",
-        "numba>=0.50",
+        "numba",
         "scipy>=1.5",
         "seaborn>=0.10",
         "bleach>=2.1",
