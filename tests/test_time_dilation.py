@@ -1,10 +1,6 @@
 import sys
 import os
 from pathlib import Path
-# allow it to find simdrive module
-fsimpath=str(Path(os.getcwd()).parents[0])
-if fsimpath not in sys.path:
-    sys.path.append(fsimpath)
 import numpy as np
 import time
 import pandas as pd
