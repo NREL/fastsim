@@ -35,5 +35,8 @@ setuptools.setup(
         "jupyter_core>=4.6",
         "jupyterlab>=2.1",
         "jupyterlab_server>=1.2",
+        "keyring>=15.1",
+        "pkginfo>=1.4.2",
+        "tqdm>=4.14",
     ],
 )
