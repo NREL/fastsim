@@ -1,9 +1,0 @@
-Running FASTSim once.
-0.684058427810669
-
-Loading cycle data for batch runs.
-Elapsed time = 3.38
-
-Starting batch runs.
-Run Complete. Total runtime = 16.74s
-     Average time per cycle = 0.07s
