@@ -79,4 +79,4 @@ Wheels,wheelInertiaKgM2,0.815,
 ,valVehBaseCost,,
 ,valMsrp,,
 ,minFcTimeOn,30,
-,idleFcKw,0.5,engineering judgment
+,idleFcKw,0.5,
