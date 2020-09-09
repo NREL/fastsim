@@ -54,7 +54,7 @@ print(f'Time to load cycle: {time.time() - t0:.2e} s')
 # A vehicle database in CSV format is required to be in the working directory where FASTSim is running (i.e. the same directory as this notebook). The "get_veh" function selects the appropriate vehicle attributes from the database and contructs the powertrain model (engine efficiency map, etc.). An integer value corresponds to each vehicle in the database. To add a new vehicle, simply populate a new row to the vehicle database CSV.
 
 t0 = time.time()
-veh = vehicle.Vehicle(veh_file=Path('../vehdb/Class 4 Truck.csv'))
+veh = vehicle.Vehicle(veh_file=Path('../vehdb/Class 4 Box Truck.csv'))
 veh_jit = veh.get_numba_veh()
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
