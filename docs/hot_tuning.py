@@ -55,14 +55,15 @@ idx = pd.IndexSlice # used to slice multi index
 cyc_name = 'us06x4 0F cs'
 
 # list of parameter names to be modified to obtain objectives
-params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff']
-lower_bounds = anp.array([50, 0.1, 1, 2])
-upper_bounds = anp.array([500, 5, 200, 50])
+params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff', 'fcTempEffOffset', 'fcTempEffSlope']
+lower_bounds = anp.array([50, 0.1, 1, 2, 0.25, 0.0001])
+upper_bounds = anp.array([500, 5, 200, 50, 0.95, 0.1])
 
 # list of tuples of pairs of objective errors to minimize in the form of 
 # [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].  
-error_vars = [('teFcDegC', 'CylinderHeadTempC'),]
-            #   ('fcKwInAch', 'Fuel_Power_Calc[kW]')]
+error_vars = [('teFcDegC', 'CylinderHeadTempC'),
+              ('fcKwInAch', 'Fuel_Power_Calc[kW]'),
+              ]
 
 def get_error_val(model, test, model_time_steps, test_time_steps):
     """Returns time-averaged error for model and test signal.
@@ -120,6 +121,7 @@ def get_error_for_cycle(x):
             model_time_steps=cycSecs, test_time_steps=test_time_steps)
 
         errors.append(err)
+    print(errors)
 
     return tuple(errors)
 
@@ -143,19 +145,21 @@ class ThermalProblem(Problem):
 
     def _evaluate(self, x, out, *args, **kwargs):
         err_arr = np.array([get_error_for_cycle(x)])
+        # f1 = err_arr[:, 0]    
+        # f2 = err_arr[:, 1]
+        # out['F'] = anp.column_stack([f1, f2])        
         f = []
         for i in range(err_arr.shape[1]):
             f.append(err_arr[:, i])
+        out['F'] = anp.column_stack(f)
 
-        out['F'] = anp.column_stack([f])
 
-
-problem = ThermalProblem(parallelization=("threads", 6))
+problem = ThermalProblem(parallelization=("threads", 1))
 algorithm = NSGA2(pop_size=6, eliminate_duplicates=True)
 t0 = time.time()
 res = minimize(problem,
                algorithm,
-               ('n_gen', 50),
+               ('n_gen', 5),
                seed=1,
                verbose=True)
 t1 = time.time()

@@ -80,6 +80,8 @@ hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('teTStatSTODegC', float64), # temperature [ºC] at which thermostat starts to open 
                     ('teTStatFODegC', float64), # temperature [ºC] at which thermostat is fully open 
                     ('radiator_eff', float64), # radiator effectiveness -- ratio of active heat rejection from radiator to passive heat rejection
+                    ('fcTempEffOffset', float64), # offset for scaling FC efficiency w.r.t. to temperature
+                    ('fcTempEffSlope', float64), # slope for scaling FC efficiency w.r.t. to temperature
                     ]
 
 class SimDriveHot(SimDriveClassic):
@@ -121,6 +123,8 @@ class SimDriveHot(SimDriveClassic):
         self.teTStatSTODegC = 85
         self.teTStatFODegC = 90
         self.radiator_eff = 5
+        self.fcTempEffOffset = 0.1
+        self.fcTempEffSlope = 0.01
 
     def init_thermal_arrays(self, teAmbDegC):
         len_cyc = len(self.cyc.cycSecs)
@@ -352,15 +356,14 @@ class SimDriveHot(SimDriveClassic):
         if self.fcKwOutAch[i] == 0:
             self.fcKwInAch[i] = 0
         else:
-            tempFitPolyCoeffs = np.array([1.018e-01, 1.637e-03, -3.000e-06]) 
-            # polynomial for fc efficiency 
-            self.fcEffAdj[i] = max(
-                min(
-                    (tempFitPolyCoeffs[0] + self.teFcDegC[i] * tempFitPolyCoeffs[1] + 
-                    self.teFcDegC[i] ** 2 * tempFitPolyCoeffs[2]) / 0.2248, 1), 
-                0.3019)
+            # 0 to 1 scaling for multiplying efficiency to be dependent on temperature.
+            self.fcEffAdj[i] = max(0,
+                                min(1, 
+                                     self.fcTempEffOffset + self.fcTempEffSlope * self.teFcDegC[i]
+                                    )
+                                )
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
-                self.fcKwInAch[i] = self.fcKwOutAch[i] / self.veh.fcEffArray[-1] / self.fcEffAdj[i]
+                self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[-1] * self.fcEffAdj[i])
             else:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / \
                     (self.veh.fcEffArray[max(1, np.argmax(self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)]) \
