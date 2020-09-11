@@ -362,7 +362,7 @@ class SimDriveHot(SimDriveClassic):
             self.fcKwInAch[i] = 0
         else:
             # 0 to 1 scaling for multiplying efficiency to be dependent on temperature.
-            self.fcEffAdj[i] = max(0,
+            self.fcEffAdj[i] = max(np.finfo(np.float64).eps,
                                 min(1, 
                                      self.fcTempEffOffset + self.fcTempEffSlope * self.teFcDegC[i]
                                     )

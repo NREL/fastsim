@@ -106,22 +106,22 @@ def get_error_for_cycle(x):
     cyc_jit = cyc.get_numba_cyc()
 
     # simulate
-    try:
-        # some conditions cause SimDriveHotJit to have divide by zero errors
-        sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
-                        teAmbDegC=np.interp(cycSecs, test_time_steps, test_te_amb),
-                        teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
-        )   
+    # try:
+    # some conditions cause SimDriveHotJit to have divide by zero errors
+    sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
+                    teAmbDegC=np.interp(cycSecs, test_time_steps, test_te_amb),
+                    teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
+    )   
 
-        sim_drive.sim_drive()
-        
-    except:
-        sim_drive=simdrivehot.SimDriveHot(cyc_jit, veh_jit,
-                        teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb),
-                        teFcInitDegC = df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
-        )
+    sim_drive.sim_drive()
 
-        sim_drive.sim_drive()
+    # except:
+    #     sim_drive=simdrivehot.SimDriveHot(cyc_jit, veh_jit,
+    #                     teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb),
+    #                     teFcInitDegC = df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
+    #     )
+
+    #     sim_drive.sim_drive()
 
 
     # unpack input parameters
@@ -171,7 +171,7 @@ class ThermalProblem(Problem):
             f.append(err_arr[:, i])
         out['F'] = anp.column_stack(f)
 
-
+print('Running optimization.')
 problem = ThermalProblem(parallelization=("threads", 6))
 algorithm = NSGA2(pop_size=6, eliminate_duplicates=True)
 t0 = time.time()    
