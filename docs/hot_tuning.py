@@ -25,13 +25,17 @@ from pymoo.model.problem import Problem
 from pymoo.visualization.scatter import Scatter
 
 # local modules
-from fastsim import simdrivehot, simdrive, vehicle, cycle
+from fastsim import simdrivehot, simdrive, vehicle, cycle, utils
 import docs.hot_utilities as hot_util
 
 # load the vehicle
 t0 = time.time()
 veh = vehicle.Vehicle(veh_file=Path('../vehdb/2012 Ford Fusion.csv'))
 veh_jit = veh.get_numba_veh()
+veh_jit.dragCoef, veh_jit.wheelRrCoef = utils.abc_to_drag_coeffs(3625 / 2.2,
+                                                                 veh.frontalAreaM2,
+                                                                 35.55, 0.2159, 0.0182)
+veh_jit.fcEffArray *= 1 / 1.0539  # correcting for remaining difference
 print(f"Vehicle load time: {time.time() - t0:.3f} s")
 
 # create drive cycles from vehicle test data in a dict
@@ -51,6 +55,8 @@ print(f"Sim drive time: {time.time() - t0:.3f} s")
 
 df = hot_util.load_test_data()
 idx = pd.IndexSlice # used to slice multi index 
+
+#%%
 
 cyc_name = 'us06x4 0F cs'
 
@@ -100,10 +106,23 @@ def get_error_for_cycle(x):
     cyc_jit = cyc.get_numba_cyc()
 
     # simulate
-    sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit, 
-        teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb)
-    )   
-    sim_drive.sim_drive()
+    try:
+        # some conditions cause SimDriveHotJit to have divide by zero errors
+        sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
+                        teAmbDegC=np.interp(cycSecs, test_time_steps, test_te_amb),
+                        teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
+        )   
+
+        sim_drive.sim_drive()
+        
+    except:
+        sim_drive=simdrivehot.SimDriveHot(cyc_jit, veh_jit,
+                        teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb),
+                        teFcInitDegC = df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
+        )
+
+        sim_drive.sim_drive()
+
 
     # unpack input parameters
     for i in range(len(x)):
@@ -121,7 +140,6 @@ def get_error_for_cycle(x):
             model_time_steps=cycSecs, test_time_steps=test_time_steps)
 
         errors.append(err)
-    print(errors)
 
     return tuple(errors)
 
@@ -154,12 +172,12 @@ class ThermalProblem(Problem):
         out['F'] = anp.column_stack(f)
 
 
-problem = ThermalProblem(parallelization=("threads", 1))
+problem = ThermalProblem(parallelization=("threads", 6))
 algorithm = NSGA2(pop_size=6, eliminate_duplicates=True)
-t0 = time.time()
+t0 = time.time()    
 res = minimize(problem,
                algorithm,
-               ('n_gen', 5),
+               ('n_gen', 50),
                seed=1,
                verbose=True)
 t1 = time.time()
@@ -167,3 +185,4 @@ print('\nParameter pareto sets:')
 print(np.array2string(res.X, precision=3, separator=', '))
 print('Results pareto sets:')
 print(np.array2string(res.F, precision=3, separator=', '))
+
