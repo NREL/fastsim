@@ -36,6 +36,7 @@ veh_jit.dragCoef, veh_jit.wheelRrCoef = utils.abc_to_drag_coeffs(3625 / 2.2,
                                                                  veh.frontalAreaM2,
                                                                  35.55, 0.2159, 0.0182)
 veh_jit.fcEffArray *= 1 / 1.0539  # correcting for remaining difference
+veh_jit.auxKw = 1.1
 print(f"Vehicle load time: {time.time() - t0:.3f} s")
 
 # create drive cycles from vehicle test data in a dict
@@ -96,6 +97,9 @@ def get_error_for_cycle(x):
     # create cycle.Cycle()
     test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
     test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
+    # fix this to actually calculate the rolling mean for 10 steps (~1 s)
+    df.loc[idx[cyc_name, :, :],
+           'Fuel_Power_Calc_rollav[kW]'] = df.loc[idx[cyc_name, :, ], 'Fuel_Power_Calc[kW]']
     
     cycSecs = np.arange(0, round(test_time_steps[-1], 0))
     cycMps = np.interp(cycSecs, 
@@ -173,11 +177,11 @@ class ThermalProblem(Problem):
 
 print('Running optimization.')
 problem = ThermalProblem(parallelization=("threads", 6))
-algorithm = NSGA2(pop_size=6, eliminate_duplicates=True)
+algorithm = NSGA2(pop_size=12, eliminate_duplicates=True)
 t0 = time.time()    
 res = minimize(problem,
                algorithm,
-               ('n_gen', 50),
+               ('n_gen', 100),
                seed=1,
                verbose=True)
 t1 = time.time()
