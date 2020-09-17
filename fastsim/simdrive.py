@@ -20,24 +20,36 @@ from fastsim.vehicle import TypedVehicle
 # Object for containing model parameters (e.g. solver variants, 
 # thermal boundary conditions, missed trace behavior, etc.). 
 
-param_spec = [('missed_trace_correction', bool_), # if True, missed trace correction is active, default = False
-            ('max_time_dilation', float64), # maximum time dilation to "catch up" with trace
-            ('min_time_dilation', float64), # minimum time dilation to let trace "catch up"
-            ('time_dilation_tol', float64), # convergence criteria for time dilation
-            ('verbose', bool_), # whether to print warning statements
+param_spec = [('missed_trace_correction', bool_), 
+            ('max_time_dilation', float64), 
+            ('min_time_dilation', float64), 
+            ('time_dilation_tol', float64), 
+            ('verbose', bool_), 
             ]
 @jitclass(param_spec)
 class SimDriveParams(object):
     """Class containing attributes used for configuring sim_drive.  Usually the defaults are ok, 
-    and there will be no need to use this."""
+    and there will be no need to use this.
+
+    See comments in code for descriptions of various parameters that affect simulation behavior.  
+    If, for example, you want to suppress warning messages, use the following pastable code EXAMPLE:
+    
+    >>> cyc = cycle.Cycle('udds').get_numba_cyc()
+    >>> veh = vehicle.Vehicle(1).get_numba_veh()
+    >>> sim_params = simdrive.SimDriveParams()
+    >>> sim_params.verbose = False # turn off error messages for large time steps
+    >>> sim_drive = simdrive.SimDriveJit(cyc, veh)
+    >>> sim_drive.sim_params = sim_params
+    >>> sim_drive.sim_drive()"""
+
     def __init__(self):
         """Default values that affect simulation behavior.  
         Can be modified after instantiation."""
-        self.missed_trace_correction = False # by default, do not fix missed trace time steps
-        self.max_time_dilation = 10 
-        self.min_time_dilation = 0.1 
-        self.time_dilation_tol = 1e-3
-        self.verbose=True
+        self.missed_trace_correction = False  # if True, missed trace correction is active, default = False
+        self.max_time_dilation = 10  # maximum time dilation factor to "catch up" with trace
+        self.min_time_dilation = 0.1  # minimum time dilation to let trace "catch up"
+        self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
+        self.verbose=True # show warning and other messages
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
@@ -283,7 +295,8 @@ class SimDriveClassic(object):
         if (self.cyc.secs > 5).any() and self.sim_params.verbose:
             if self.sim_params.missed_trace_correction:
                 print('Max time dilation factor =', (round(self.cyc.secs.max(), 3)))
-            print('Warning: large time steps affect accuracy significantly.')
+            print("Warning: large time steps affect accuracy significantly.") 
+            print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
             print('Max time step =', (round(self.cyc.secs.max(), 3)))
 
     def sim_drive_step(self):
