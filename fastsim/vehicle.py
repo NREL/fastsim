@@ -32,8 +32,8 @@ class Vehicle(object):
     vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
     veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db
     
-    If a sinparamse vehicle veh_file is provided, vnum cannot be passed, and 
-    veh_file must be passed a keyword argument."""
+    If a standalone vehicle veh_file is provided, vnum cannot be passed, and 
+    veh_file must be passed as a keyword argument."""
 
     def __init__(self, vnum=None, veh_file=None):
         super().__init__()
