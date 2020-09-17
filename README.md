@@ -3,21 +3,43 @@ This repo houses the pythonic flavor of FASTSim which is based on the original E
 
 All classes and methods are self-documented.  
 
-# Usage
-To run an example:
-1. Assuming you have the latest version of [Anaconda Python Distribution](https://www.anaconda.com/products/individual), open the anaconda prompt, navigate to the top level fastsim directory, and run `conda env create -f environment.yml`.
-2. Activate the environment with `$ conda activate fastsim_py`.
-3. Navigate to .../fastsim/docs and run `jupter lab demo.ipynb` to see a demo of fastsim use cases. 
+# Installation
+First, clone the repository from GitHub:
 
-To use FASTSim as an external library, make sure the fastsim package is on your path and then import `fastsim.simdrive`.  
+    git clone git@github.nrel.gov:MBAP/fastsim.git
+    
+FASTSim depends on python 3.7. One way to satisfy this is to use conda:
+
+    conda create -n fastsim python=3.7
+    conda activate fastsim
+    
+Then, just run a pip install:
+
+    pip install -e fastsim 
+    
+This will install FASTSim with minimal dependencies.
+
+NOTE: if you are already in the FASTSim root directory (i.e. the one that houses the file `setup.py`), you can run:
+
+    pip install -e .
+
+# Usage
+To run an example, navigate to fastsim/docs and run `jupter lab demo.ipynb` to see a demo of fastsim use cases. There are other examples in fastsim/docs and fastsim/tests.  
+
+To get help in an interactive ipython or jupyter session:  
+```
+import fastsim
+fastsim.simdrive.SimDriveClassic? # or
+help(fastsim.simdrive.SimDriveClassic)
+```
 
 # Testing
 
 ## Against Previous Python Version
-Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master branch version from 17 December 2019.  For timing comparisons, run 'tests/test26veh3cyc_CPUtime.py'.  
+Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master branch version from 17 December 2019.  For timing comparisons, run 'tests/test26veh3cyc_CPUtime.py' from within 'tests/'.  
 
 ## Against Excel FASTSim
-This has not been implemented yet.
+If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can run 'tests/test_vs_excel.py' from within 'tests/' to do an experimental (i.e. beta) comparison against Excel results.  
 
 # numba
 To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim.simdrive`, `fastsim.cycle`, and `fastsim/vehicle`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
@@ -28,7 +50,7 @@ To significantly speed up the simulations `numba` has been used extensively to a
 
 ## numba pitfalls
 - `numba` does not always work well with `numpy`, although this happens in rare occassions and has completely been resolved in this code base, as far as we know.
-- Some users have reported Python __zombie__ processes that crop up when using the `numba` extended code. This has been a difficult to reproduce bug and may have been user platform specific, it also involved heavy use of `xlwings` calling the code via Excel. These zombies can be seen in the Task Manager as latent Pythonw processes, they will prevent `numba` from recompiling, even if you delete the `__pycache__` folder
+- Some users have reported Python __zombie__ processes that crop up when using the `numba` extended code. This has been a difficult to reproduce bug and may have been user platform specific, it also involved heavy use of `xlwings` calling the code via Excel. These zombies can be seen in the Task Manager as latent Pythonw processes, they will prevent `numba` from recompiling, even if you delete the `__pycache__` folders.
 
 # List of Abbreviations
 cur = current time step  
@@ -55,4 +77,6 @@ des = desired value
 ach = achieved value  
 in = component input  
 out = component output  
+
+# Known Bugs
 

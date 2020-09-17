@@ -1,5 +1,3 @@
-# To add a new cell, type '# To add a new markdown cell, type 'from IPython import get_ipython
-
 # # FASTSim Demonstration
 # 
 # ![fastsim icon](fastsim-icon-web-131x172.jpg)
@@ -18,10 +16,6 @@
 import sys
 import os
 from pathlib import Path
-# allow it to find simdrive module
-fsimpath=str(Path(os.getcwd()).parents[0])
-if fsimpath not in sys.path:
-    sys.path.append(fsimpath)
 import numpy as np
 import time
 import pandas as pd
@@ -108,6 +102,7 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
+# plt.show()
 
 # ## Running sim_drive_step() with modified auxInKw
 # Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020  
@@ -115,9 +110,8 @@ ax2.tick_params('y', colors='xkcd:pale red')
 
 ## Running sim_drive_step() with modified auxInKw
 # Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020
-# THis method is a bit slower in terms of compute effort, but it allows 
-# more flexibility because auxInKw at each time step can be determined
-# on the fly
+
+t0 = time.time()
 
 veh_jit = vehicle.Vehicle(9).get_numba_veh()
 cyc_jit = cycle.Cycle('udds').get_numba_cyc()
@@ -137,11 +131,14 @@ plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
 plt.show()
+print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 # ### Overriding using a constant value
 
 ## Running sim_drive_step() with modified auxInKw
 # Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020
+
+t0 = time.time()
 
 veh_jit = vehicle.Vehicle(9).get_numba_veh()
 cyc_jit = cycle.Cycle('udds').get_numba_cyc()
@@ -157,16 +154,20 @@ plt.ylabel('Power [kW]')
 plt.legend()
 plt.show()
 
+print(f'Time to simulate: {time.time() - t0:.2e} s')
+
 # ### Overriding using a time trace
 
 ## Running sim_drive_step() with modified auxInKw
 # Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020
 
+t0 = time.time()
+
 veh_jit = vehicle.Vehicle(9).get_numba_veh()
 cyc_jit = cycle.Cycle('udds').get_numba_cyc()
 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
 
-# by assigning the value directly
+# by assigning the value directly (this is faster than using positional args)
 sim_drive.auxInKw = cyc_jit.cycSecs / cyc_jit.cycSecs[-1] * 10 
 sim_drive.sim_drive()
 
@@ -178,9 +179,15 @@ plt.ylabel('Power [kW]')
 plt.legend()
 plt.show()
 
+print(f'Time to simulate: {time.time() - t0:.2e} s')
+
 
 # by assigning positional arguments
-# may require recompile if these arguments have not been passed
+# may require recompile if these arguments have not been passed,
+# but this is the fastest approach after compilation
+
+t0 = time.time()
+
 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
 sim_drive.sim_drive(-1, cyc_jit.cycSecs / cyc_jit.cycSecs[-1] * 10)
 
@@ -191,6 +198,8 @@ plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
 plt.show()
+
+print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 # ## Batch Drive Cycles - TSDC Drive Cycles
 # 
@@ -240,6 +249,7 @@ t1 = time.time()
 print(f'Time to load cycles: {time.time() - t0:.2e} s')
 
 # ### Load Model, Run FASTSim
+# Includes example of how to load cycle from dict
 
 veh = vehicle.Vehicle(1).get_numba_veh()  # load vehicle model
 output_dict = {}
@@ -259,9 +269,13 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
             (pnts['time_local'] -
              pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')))
     cyc['cycRoadType'] = np.zeros(len(pnts))
+    # example of loading cycle from dict
     cyc = cycle.Cycle(cyc_dict=cyc).get_numba_cyc()
     
+    sim_params = simdrive.SimDriveParams()
+    sim_params.verbose = False # turn off error messages for large time steps
     sim_drive = simdrive.SimDriveJit(cyc, veh)
+    sim_drive.sim_params = sim_params
     sim_drive.sim_drive()
     sim_drive_post = simdrive.SimDrivePost(sim_drive)
     output = sim_drive_post.get_output()
@@ -377,17 +391,20 @@ ax2.tick_params('y', colors='xkcd:pale red')
 plt.show()
 
 # ## Concat cycles/trips
+# Includes examples of loading vehicle from standalone file and loading non-standard cycle from file
 
 # load vehicle
 t0 = time.time()
-veh = vehicle.Vehicle(1)
+# load from standalone vehicle file
+veh = vehicle.Vehicle(veh_file=Path('../vehdb/2012 Ford Fusion.csv')) 
 veh_jit = veh.get_numba_veh()
 print(f'Time to load veicle: {time.time() - t0:.2e} s')
 
 
 # generate concatenated trip
 t0 = time.time()
-cyc1 = cycle.Cycle("udds")
+# load from cycle file path
+cyc1 = cycle.Cycle(cyc_file_path=Path('../cycles/udds.csv'))
 cyc2 = cycle.Cycle("us06")
 cyc_combo = cycle.concat([cyc1.get_cyc_dict(), cyc2.get_cyc_dict()])
 cyc_combo = cycle.Cycle(cyc_dict=cyc_combo)

@@ -3,6 +3,7 @@ physical properties that should rarely change, and vehicle model parameters
 that can be modified by advanced users."""
 
 import numpy as np
+from numba import jitclass, float64
 
 # vehicle types
 CONV = 1
@@ -21,9 +22,15 @@ mphPerMps = 2.2369
 kWhPerGGE = 33.7
 metersPerMile = 1609.00
 
-### Physical constants that could change under certain special circumstances (e.g. high altitude or extreme weather) 
-airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
-gravityMPerSec2 = 9.81
+@jitclass([('airDensityKgPerM3', float64),
+           ('gravityMPerSec2', float64),])
+class PhysicalProperties(object):
+    """Container class for physical constants that could change under certain special 
+    circumstances (e.g. high altitude or extreme weather) """
+
+    def __init__(self):
+        self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
+        self.gravityMPerSec2 = 9.81
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***

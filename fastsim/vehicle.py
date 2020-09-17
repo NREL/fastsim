@@ -15,12 +15,14 @@ from pathlib import Path
 import ast
 
 # local modules
-from . import globalvars as gl
+from . import parameters as params
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
         os.path.join(
             THIS_DIR, '..', 'docs', 'FASTSim_py_veh_db.csv'))
+
+props = params.PhysicalProperties()
 
 
 class Vehicle(object):
@@ -28,14 +30,20 @@ class Vehicle(object):
     Optional Arguments:
     ---------
     vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-    veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db"""
+    veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db
+    
+    If a standalone vehicle veh_file is provided, vnum cannot be passed, and 
+    veh_file must be passed as a keyword argument."""
 
     def __init__(self, vnum=None, veh_file=None):
         super().__init__()
-        if veh_file:
+        if veh_file and vnum:
             self.load_veh(vnum, veh_file=veh_file)
-        elif vnum:
+        elif vnum and not veh_file:
             self.load_veh(vnum)
+        else:
+            # vnum = 0 tells load_veh that the file contains only 1 vehicle
+            self.load_veh(0, veh_file=veh_file)
 
     def get_numba_veh(self):
         """Load numba JIT-compiled vehicle."""
@@ -61,10 +69,19 @@ class Vehicle(object):
         veh_file (optional override): string or filelike obj, alternative 
         to default FASTSim_py_veh_db"""
 
-        if veh_file:
-            vehdf = pd.read_csv(Path(veh_file))
+        if vnum != 0:
+            if veh_file:
+                vehdf = pd.read_csv(Path(veh_file))
+            else:
+                vehdf = pd.read_csv(DEFAULT_VEH_DB)
         else:
-            vehdf = pd.read_csv(DEFAULT_VEH_DB)
+            vehdf = pd.read_csv(Path(veh_file))
+            vehdf = vehdf.transpose()
+            vehdf.columns = vehdf.iloc[1]
+            vehdf.drop(vehdf.index[0], inplace=True)
+            vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
+            vehdf.loc['Param Value', 'Selection'] = 0
+            vnum = 0
         vehdf.set_index('Selection', inplace=True, drop=False)
 
         def clean_data(raw_data):
@@ -144,7 +161,7 @@ class Vehicle(object):
         ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
         ### see "FC Model" tab in FASTSim for Excel
 
-        # Power and efficiency arrays are defined in globalvars.py
+        # Power and efficiency arrays are defined in parameters.py
         # Can also be input in CSV as array under column fcEffMap of form
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
@@ -152,32 +169,32 @@ class Vehicle(object):
             self.fcEffMap = np.array(ast.literal_eval(self.fcEffMap))
         except ValueError:
             if self.fcEffType == 1:  # SI engine
-                self.fcEffMap = gl.eff_si + self.fcAbsEffImpr
+                self.fcEffMap = params.eff_si + self.fcAbsEffImpr
 
             elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
-                self.fcEffMap = gl.eff_atk + self.fcAbsEffImpr
+                self.fcEffMap = params.eff_atk + self.fcAbsEffImpr
 
             elif self.fcEffType == 3:  # Diesel (compression ignition) engine
-                self.fcEffMap = gl.eff_diesel + self.fcAbsEffImpr
+                self.fcEffMap = params.eff_diesel + self.fcAbsEffImpr
 
             elif self.fcEffType == 4:  # H2 fuel cell
-                self.fcEffMap = gl.eff_fuel_cell + self.fcAbsEffImpr
+                self.fcEffMap = params.eff_fuel_cell + self.fcAbsEffImpr
 
             elif self.fcEffType == 5:  # heavy duty Diesel engine
-                self.fcEffMap = gl.eff_hd_diesel + self.fcAbsEffImpr
+                self.fcEffMap = params.eff_hd_diesel + self.fcAbsEffImpr
         if len(self.fcEffMap) != 12:
             raise ValueError('fcEffMap has length of {}, but should have length of 12'.
                 format(len(self.fcEffMap)))
 
         # discrete array of possible engine power outputs
-        inputKwOutArray = gl.fcPwrOutPerc * self.maxFuelConvKw
+        inputKwOutArray = params.fcPwrOutPerc * self.maxFuelConvKw
         # Relatively continuous array of possible engine power outputs
-        fcKwOutArray = self.maxFuelConvKw * gl.fcPercOutArray
+        fcKwOutArray = self.maxFuelConvKw * params.fcPercOutArray
         # Initializes relatively continuous array for fcEFF
-        fcEffArray = np.zeros(len(gl.fcPercOutArray))
+        fcEffArray = np.zeros(len(params.fcPercOutArray))
 
         # the following for loop populates fcEffArray
-        for j in range(0, len(gl.fcPercOutArray) - 1):
+        for j in range(0, len(params.fcPercOutArray) - 1):
             low_index = np.argmax(inputKwOutArray >= fcKwOutArray[j])
             fcinterp_x_1 = inputKwOutArray[low_index-1]
             fcinterp_x_2 = inputKwOutArray[low_index]
@@ -198,13 +215,13 @@ class Vehicle(object):
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
 
-        # Power and efficiency arrays are defined in globalvars.py
+        # Power and efficiency arrays are defined in parameters.py
         # can also be overridden by motor power and efficiency columns in the input file
         # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
         try:
             self.mcPwrOutPerc = np.array(ast.literal_eval(self.mcPwrOutPerc))
         except ValueError:
-            self.mcPwrOutPerc = gl.mcPwrOutPerc
+            self.mcPwrOutPerc = params.mcPwrOutPerc
         if len(self.mcPwrOutPerc) != 11:
             raise ValueError('mcPwrOutPerc has length of {}, but should have length of 11'.
                              format(len(self.mcPwrOutPerc)))
@@ -212,7 +229,7 @@ class Vehicle(object):
         try:
             self.largeBaselineEff = np.array(ast.literal_eval(self.largeBaselineEff))
         except ValueError:
-            self.largeBaselineEff = gl.large_baseline_eff
+            self.largeBaselineEff = params.large_baseline_eff
         if len(self.largeBaselineEff) != 11:
             raise ValueError('largeBaselineEff has length of {}, but should have length of 11'.
                              format(len(self.largeBaselineEff)))
@@ -220,13 +237,13 @@ class Vehicle(object):
         try:
             self.smallBaselineEff = np.array(ast.literal_eval(self.smallBaselineEff))
         except ValueError:
-            self.smallBaselineEff = gl.small_baseline_eff
+            self.smallBaselineEff = params.small_baseline_eff
         if len(self.smallBaselineEff) != 11:
             raise ValueError('smallBaselineEff has length of {}, but should have length of 11'.
                              format(len(self.smallBaselineEff)))
 
         if np.isnan(self.modernMax):
-            self.modernMax = gl.modern_max            
+            self.modernMax = params.modern_max            
         
         modern_diff = self.modernMax - max(self.largeBaselineEff)
 
@@ -240,10 +257,10 @@ class Vehicle(object):
                 (1 - mcKwAdjPerc)*(self.smallBaselineEff[k])
 
         mcInputKwOutArray = self.mcPwrOutPerc * self.maxMotorKw
-        mcFullEffArray = np.zeros(len(gl.mcPercOutArray))
-        mcKwOutArray = np.linspace(0, 1, len(gl.mcPercOutArray)) * self.maxMotorKw
+        mcFullEffArray = np.zeros(len(params.mcPercOutArray))
+        mcKwOutArray = np.linspace(0, 1, len(params.mcPercOutArray)) * self.maxMotorKw
 
-        for m in range(1, len(gl.mcPercOutArray) - 1):
+        for m in range(1, len(params.mcPercOutArray) - 1):
             low_index = np.argmax(mcInputKwOutArray >= mcKwOutArray[m])
 
             fcinterp_x_1 = mcInputKwOutArray[low_index-1]
@@ -312,8 +329,8 @@ class Vehicle(object):
         else:
             self.vehKg = self.vehOverrideKg
 
-        self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * gl.gravityMPerSec2) /
-                              (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * gl.gravityMPerSec2)) * gl.gravityMPerSec2
+        self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * props.gravityMPerSec2) /
+                              (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * props.gravityMPerSec2)) * props.gravityMPerSec2
         self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
         # for stats and interest

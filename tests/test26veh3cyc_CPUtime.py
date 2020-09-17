@@ -10,11 +10,6 @@ import os
 import sys
 import importlib
 
-from pathlib import Path
-fsimpath = str(Path(os.getcwd()).parents[0])
-if fsimpath not in sys.path:
-    sys.path.append(fsimpath)
-
 # local modules
 from fastsim import simdrive, vehicle, cycle
 importlib.reload(simdrive)

@@ -3,13 +3,7 @@
 import sys
 import os
 import numpy as np
-from pathlib import Path
-# allow it to find simdrive module
-fsimpath=str(Path(os.getcwd()).parents[0])
-if fsimpath not in sys.path:
-    sys.path.append(fsimpath)
-# allow simdrive to find Global module
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from fastsim import simdrive, vehicle, cycle
 
 def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
