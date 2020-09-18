@@ -1,10 +1,6 @@
 import sys
 import os
 from pathlib import Path
-# allow it to find simdrive module
-fsimpath=str(Path(os.getcwd()).parents[0])
-if fsimpath not in sys.path:
-    sys.path.append(fsimpath)
 import numpy as np
 from scipy.integrate import cumtrapz, trapz
 import autograd.numpy as anp
@@ -18,11 +14,10 @@ from inspect import signature
 
 # pymoo stuff
 from pymoo.optimize import minimize
-from pymoo.algorithms.nsga2 import NSGA2
+from pymoo.algorithms.nsga2 import NSGA2 as NSGA
 import autograd.numpy as anp
 from pymoo.util.misc import stack
 from pymoo.model.problem import Problem
-from pymoo.visualization.scatter import Scatter
 
 # local modules
 from fastsim import simdrivehot, simdrive, vehicle, cycle, utils
@@ -59,7 +54,7 @@ idx = pd.IndexSlice # used to slice multi index
 
 #%%
 
-tuning_cyc_names = ['uddsx2 95F cs', 'uddsx4 20F cs', 'us06x2 72F cs', 'us06x4 0F cs']
+tuning_cyc_names = ['uddsx4 20F cs', 'us06x2 72F cs', 'us06x4 0F cs']
 
 # list of parameter names to be modified to obtain objectives
 params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff', 'fcTempEffOffset', 'fcTempEffSlope']
@@ -84,9 +79,10 @@ def rollav(data, width=10):
     return out
 
 
-for item in error_vars:
-    df.loc[idx[cyc_name, :, :], item[1]] = rollav(
-        df.loc[idx[cyc_name, :, :], item[1]])
+for cyc_name in tuning_cyc_names:
+    for item in error_vars:
+        df.loc[idx[cyc_name, :, :], item[1]] = rollav(
+            df.loc[idx[cyc_name, :, :], item[1]])
 
 
 def get_error_val(model, test, model_time_steps, test_time_steps):
@@ -195,11 +191,11 @@ class ThermalProblem(Problem):
 
 print('Running optimization.')
 problem = ThermalProblem(parallelization=("threads", 6))
-algorithm = NSGA2(pop_size=12, eliminate_duplicates=True)
+algorithm = NSGA(pop_size=12, eliminate_duplicates=True)
 t0 = time.time()    
 res = minimize(problem,
                algorithm,
-               ('n_gen', 25),
+               ('n_gen', 100),
                seed=1,
                verbose=True)
 t1 = time.time()
@@ -207,4 +203,82 @@ print('\nParameter pareto sets:')
 print(np.array2string(res.X, precision=3, separator=', '))
 print('Results pareto sets:')
 print(np.array2string(res.F, precision=3, separator=', '))
+
+# %%
+# Plot things
+# print('\nPlotting parallel coordinates.')
+
+validation_cyc_names = [name for name in df.index.levels[0] if re.search('(0|20|72)F', name)]
+
+def plot_cyc_traces(pareto_set_number):
+    print('\nPlotting time traces.')
+    for cyc_name in validation_cyc_names:
+        test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
+        test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
+
+        cycSecs = np.arange(0, round(test_time_steps[-1], 0))
+        cycMps = np.interp(cycSecs, 
+            test_time_steps, 
+            df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'].values)
+
+        cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
+        cyc_jit = cyc.get_numba_cyc()
+
+        sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
+                        teAmbDegC=np.interp(
+                        cycSecs, test_time_steps, test_te_amb),
+                        teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0])
+
+        params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop',
+                'radiator_eff', 'fcTempEffOffset', 'fcTempEffSlope']
+        
+        x = res.X[pareto_set_number]
+
+        for i, param in enumerate(params):
+            sim_drive.__setattr__(param, x[i])
+        
+        sim_drive.sim_drive()
+
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
+        ax1.plot(cyc.cycSecs, sim_drive.teFcDegC, label='model')
+        ax1.plot(test_time_steps, df.loc[idx[cyc_name,
+                                            :, :], 'CylinderHeadTempC'], label='test')
+        ax1.set_ylabel('FC Temp. [$^\circ$C]')
+        ax1.legend()
+        if cyc_name in tuning_cyc_names:
+            title = cyc_name + ' tuning'
+        else:
+            title = cyc_name + ' validation'
+        ax1.set_title(title)
+        ax2.plot(cyc.cycSecs, sim_drive.mpsAch)
+        ax2.set_xlabel('Time [s]')
+        ax2.set_ylabel('Speed \nAchieved [mps]')
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
+        ax1.plot(cyc.cycSecs[1:], cumtrapz(x=cyc.cycSecs,
+                                        y=sim_drive.fcKwInAch * 1e-3), label='model')
+        ax1.plot(test_time_steps[1:], cumtrapz(
+            x=test_time_steps, y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3), label='test')
+        ax1.set_ylabel('Fuel Energy [MJ]')
+        ax1.legend()
+        if cyc_name in tuning_cyc_names:
+            title = cyc_name + ' tuning'
+        else:
+            title = cyc_name + ' validation'
+        ax1.set_title(title)
+        ax2.plot(cyc.cycSecs, sim_drive.mpsAch, label='model')
+        ax2.plot(df.loc[idx[cyc_name, :, :], 'Time[s]'],
+                df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'],
+                label='test', linestyle='--')
+        ax2.set_xlabel('Time [s]')
+        ax2.set_ylabel('Speed \nAchieved [mps]')
+
+        fuel_frac_err = (np.trapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch) -
+                        np.trapz(x=test_time_steps,
+                                y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])) /\
+            np.trapz(x=test_time_steps,
+                    y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])
+        less_more = 'less' if fuel_frac_err < 0 else 'more'
+        print(f"Model uses {abs(fuel_frac_err):.2%} " + less_more + " fuel than test.")
 
