@@ -59,7 +59,7 @@ idx = pd.IndexSlice # used to slice multi index
 
 #%%
 
-cyc_name = 'us06x4 0F cs'
+tuning_cyc_names = ['uddsx2 95F cs', 'uddsx4 20F cs', 'us06x2 72F cs', 'us06x4 0F cs']
 
 # list of parameter names to be modified to obtain objectives
 params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff', 'fcTempEffOffset', 'fcTempEffSlope']
@@ -112,55 +112,56 @@ def get_error_val(model, test, model_time_steps, test_time_steps):
 def get_error_for_cycle(x):
     """Function for running a single cycle and returning the error."""
     # create cycle.Cycle()
-    test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
-    test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
+    errors = []     
+    for cyc_name in tuning_cyc_names:
+        test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
+        test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
 
-    cycSecs = np.arange(0, round(test_time_steps[-1], 0))
-    cycMps = np.interp(cycSecs, 
-        test_time_steps, 
-        df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'].values)
+        cycSecs = np.arange(0, round(test_time_steps[-1], 0))
+        cycMps = np.interp(cycSecs, 
+            test_time_steps, 
+            df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'].values)
 
-    cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
-    cyc_jit = cyc.get_numba_cyc()
+        cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
+        cyc_jit = cyc.get_numba_cyc()
 
-    # simulate
-    # try:
-    # some conditions cause SimDriveHotJit to have divide by zero errors
-    sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
-                    teAmbDegC=np.interp(cycSecs, test_time_steps, test_te_amb),
-                    teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
-    )   
+        # simulate
+        # try:
+        # some conditions cause SimDriveHotJit to have divide by zero errors
+        sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
+                        teAmbDegC=np.interp(cycSecs, test_time_steps, test_te_amb),
+                        teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
+        )   
 
-    sim_drive.sim_drive()
+        sim_drive.sim_drive()
 
-    # except:
-    #     sim_drive=simdrivehot.SimDriveHot(cyc_jit, veh_jit,
-    #                     teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb),
-    #                     teFcInitDegC = df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
-    #     )
+        # except:
+        #     sim_drive=simdrivehot.SimDriveHot(cyc_jit, veh_jit,
+        #                     teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb),
+        #                     teFcInitDegC = df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
+        #     )
 
-    #     sim_drive.sim_drive()
+        #     sim_drive.sim_drive()
 
 
-    # unpack input parameters
-    for i in range(len(x)):
-        sim_drive.__setattr__(params[i], x[i])
+        # unpack input parameters
+        for i in range(len(x)):
+            sim_drive.__setattr__(params[i], x[i])
 
-    sim_drive.sim_drive()
+        sim_drive.sim_drive()
 
-    # calculate error
-    errors = []
-    for i in range(len(error_vars)):
-        model_err_var = sim_drive.__getattribute__(error_vars[i][0])
-        test_err_var = df.loc[idx[cyc_name, :, :], error_vars[i][1]].values
+        # calculate error
+        for i in range(len(error_vars)):
+            model_err_var = sim_drive.__getattribute__(error_vars[i][0])
+            test_err_var = df.loc[idx[cyc_name, :, :], error_vars[i][1]].values
 
-        err = get_error_val(model_err_var, test_err_var, 
-            model_time_steps=cycSecs, test_time_steps=test_time_steps)
+            err = get_error_val(model_err_var, test_err_var, 
+                model_time_steps=cycSecs, test_time_steps=test_time_steps)
 
-        errors.append(err)
-    fuel_err = abs(np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps) - 
-                np.trapz(y=sim_drive.fcKwInAch, x=cycSecs))
-    errors.append(fuel_err)
+            errors.append(err)
+        fuel_err = abs(np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps) - 
+                    np.trapz(y=sim_drive.fcKwInAch, x=cycSecs))
+        errors.append(fuel_err)
 
     return tuple(errors)
 
@@ -174,7 +175,7 @@ class ThermalProblem(Problem):
     "Class for creating PyMoo problem for FASTSimHot vehicle."
 
     def __init__(self, **kwargs):
-        super().__init__(n_var=no_args, n_obj=no_outs,
+        super().__init__(n_var=no_args, n_obj=no_outs * len(tuning_cyc_names),
                          # lower bounds
                          xl=lower_bounds,
                          # upper bounds
