@@ -72,6 +72,23 @@ error_vars = [('teFcDegC', 'CylinderHeadTempC'),
               ('fcKwInAch', 'Fuel_Power_Calc[kW]'),
               ]
 
+def rollav(data, width=10):
+    """Rolling mean for `data` with `width`"""
+    out = np.zeros(len(data))
+    out[0] = data[0]
+    for i in range(1, len(data)):
+        if i < width:
+            out[i] = data[:i].mean()
+        else:
+            out[i] = data[i-width:i].mean()
+    return out
+
+
+for item in error_vars:
+    df.loc[idx[cyc_name, :, :], item[1]] = rollav(
+        df.loc[idx[cyc_name, :, :], item[1]])
+
+
 def get_error_val(model, test, model_time_steps, test_time_steps):
     """Returns time-averaged error for model and test signal.
     Arguments:
@@ -97,10 +114,7 @@ def get_error_for_cycle(x):
     # create cycle.Cycle()
     test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
     test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
-    # fix this to actually calculate the rolling mean for 10 steps (~1 s)
-    df.loc[idx[cyc_name, :, :],
-           'Fuel_Power_Calc_rollav[kW]'] = df.loc[idx[cyc_name, :, ], 'Fuel_Power_Calc[kW]']
-    
+
     cycSecs = np.arange(0, round(test_time_steps[-1], 0))
     cycMps = np.interp(cycSecs, 
         test_time_steps, 
@@ -144,14 +158,17 @@ def get_error_for_cycle(x):
             model_time_steps=cycSecs, test_time_steps=test_time_steps)
 
         errors.append(err)
+    fuel_err = abs(np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps) - 
+                np.trapz(y=sim_drive.fcKwInAch, x=cycSecs))
+    errors.append(fuel_err)
 
     return tuple(errors)
 
 no_args = len(params)
 # no_args = signature(get_error_for_cycle).parameters # another possible way to do this
 
-# test function and get number of outputs
-no_outs = len(error_vars)
+# get number of outputs
+no_outs = len(error_vars) + 1
 
 class ThermalProblem(Problem):
     "Class for creating PyMoo problem for FASTSimHot vehicle."
@@ -181,7 +198,7 @@ algorithm = NSGA2(pop_size=12, eliminate_duplicates=True)
 t0 = time.time()    
 res = minimize(problem,
                algorithm,
-               ('n_gen', 100),
+               ('n_gen', 25),
                seed=1,
                verbose=True)
 t1 = time.time()
