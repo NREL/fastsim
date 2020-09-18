@@ -210,7 +210,7 @@ print(np.array2string(res.F, precision=3, separator=', '))
 
 validation_cyc_names = [name for name in df.index.levels[0] if re.search('(0|20|72)F', name)]
 
-def plot_cyc_traces(pareto_set_number):
+def plot_cyc_traces(pareto_set_number, show_plots=False):
     print('\nPlotting time traces.')
     for cyc_name in validation_cyc_names:
         test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
@@ -239,46 +239,53 @@ def plot_cyc_traces(pareto_set_number):
         
         sim_drive.sim_drive()
 
-
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
-        ax1.plot(cyc.cycSecs, sim_drive.teFcDegC, label='model')
-        ax1.plot(test_time_steps, df.loc[idx[cyc_name,
-                                            :, :], 'CylinderHeadTempC'], label='test')
-        ax1.set_ylabel('FC Temp. [$^\circ$C]')
-        ax1.legend()
-        if cyc_name in tuning_cyc_names:
-            title = cyc_name + ' tuning'
-        else:
-            title = cyc_name + ' validation'
-        ax1.set_title(title)
-        ax2.plot(cyc.cycSecs, sim_drive.mpsAch)
-        ax2.set_xlabel('Time [s]')
-        ax2.set_ylabel('Speed \nAchieved [mps]')
-
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
-        ax1.plot(cyc.cycSecs[1:], cumtrapz(x=cyc.cycSecs,
-                                        y=sim_drive.fcKwInAch * 1e-3), label='model')
-        ax1.plot(test_time_steps[1:], cumtrapz(
-            x=test_time_steps, y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3), label='test')
-        ax1.set_ylabel('Fuel Energy [MJ]')
-        ax1.legend()
-        if cyc_name in tuning_cyc_names:
-            title = cyc_name + ' tuning'
-        else:
-            title = cyc_name + ' validation'
-        ax1.set_title(title)
-        ax2.plot(cyc.cycSecs, sim_drive.mpsAch, label='model')
-        ax2.plot(df.loc[idx[cyc_name, :, :], 'Time[s]'],
-                df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'],
-                label='test', linestyle='--')
-        ax2.set_xlabel('Time [s]')
-        ax2.set_ylabel('Speed \nAchieved [mps]')
-
         fuel_frac_err = (np.trapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch) -
+                         np.trapz(x=test_time_steps,
+                                  y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])) /\
                         np.trapz(x=test_time_steps,
-                                y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])) /\
-            np.trapz(x=test_time_steps,
-                    y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])
-        less_more = 'less' if fuel_frac_err < 0 else 'more'
-        print(f"Model uses {abs(fuel_frac_err):.2%} " + less_more + " fuel than test.")
+                            y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])
+        temp_err = get_error_val(
+            sim_drive.teFcDegC, df.loc[idx[cyc_name,
+                                           :, :], 'CylinderHeadTempC'],
+            cycSecs, test_time_steps) 
 
+        less_more = 'less' if fuel_frac_err < 0 else 'more'
+        print('\n' + cyc_name)
+        print(f"Model uses {abs(fuel_frac_err):.2%} " +
+              less_more + " fuel than test.")
+        print(f"Model temperature error: {temp_err:.2f} ºC")
+
+        if show_plots:
+            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
+            ax1.plot(cyc.cycSecs, sim_drive.teFcDegC, label='model')
+            ax1.plot(test_time_steps, df.loc[idx[cyc_name,
+                                                :, :], 'CylinderHeadTempC'], label='test')
+            ax1.set_ylabel('FC Temp. [$^\circ$C]')
+            ax1.legend()
+            if cyc_name in tuning_cyc_names:
+                title = cyc_name + ' tuning'
+            else:
+                title = cyc_name + ' validation'
+            ax1.set_title(title)
+            ax2.plot(cyc.cycSecs, sim_drive.mpsAch)
+            ax2.set_xlabel('Time [s]')
+            ax2.set_ylabel('Speed \nAchieved [mps]')
+
+            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
+            ax1.plot(cyc.cycSecs[1:], cumtrapz(x=cyc.cycSecs,
+                                            y=sim_drive.fcKwInAch * 1e-3), label='model')
+            ax1.plot(test_time_steps[1:], cumtrapz(
+                x=test_time_steps, y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3), label='test')
+            ax1.set_ylabel('Fuel Energy [MJ]')
+            ax1.legend()
+            if cyc_name in tuning_cyc_names:
+                title = cyc_name + ' tuning'
+            else:
+                title = cyc_name + ' validation'
+            ax1.set_title(title)
+            ax2.plot(cyc.cycSecs, sim_drive.mpsAch, label='model')
+            ax2.plot(df.loc[idx[cyc_name, :, :], 'Time[s]'],
+                    df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'],
+                    label='test', linestyle='--')
+            ax2.set_xlabel('Time [s]')
+            ax2.set_ylabel('Speed \nAchieved [mps]')
