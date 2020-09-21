@@ -348,10 +348,6 @@ class SimDriveHot(SimDriveClassic):
             self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
                 0, self.transKwInAch[i] - self.mcMechKwOutAch[i]))
 
-        if self.fcKwOutAch[i] == 0:
-            self.fcKwInAch[i] = 0.0
-            self.fcKwOutAch_pct[i] = 0
-
         if self.veh.maxFuelConvKw == 0:
             self.fcKwOutAch_pct[i] = 0
         else:
@@ -360,9 +356,11 @@ class SimDriveHot(SimDriveClassic):
 
         if self.fcKwOutAch[i] == 0:
             self.fcKwInAch[i] = 0
+            self.fcKwOutAch_pct[i] = 0
+
         else:
             # 0 to 1 scaling for multiplying efficiency to be dependent on temperature.
-            self.fcEffAdj[i] = max(np.finfo(np.float64).eps,
+            self.fcEffAdj[i] = max(0.1, # assuming that 90% is max temp-dependent efficiency reduction
                                 min(1, 
                                      self.fcTempEffOffset + self.fcTempEffSlope * self.teFcDegC[i]
                                     )

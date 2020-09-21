@@ -121,24 +121,12 @@ def get_error_for_cycle(x):
         cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
         cyc_jit = cyc.get_numba_cyc()
 
-        # simulate
-        # try:
-        # some conditions cause SimDriveHotJit to have divide by zero errors
         sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
                         teAmbDegC=np.interp(cycSecs, test_time_steps, test_te_amb),
                         teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
         )   
 
         sim_drive.sim_drive()
-
-        # except:
-        #     sim_drive=simdrivehot.SimDriveHot(cyc_jit, veh_jit,
-        #                     teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb),
-        #                     teFcInitDegC = df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
-        #     )
-
-        #     sim_drive.sim_drive()
-
 
         # unpack input parameters
         for i in range(len(x)):
@@ -155,8 +143,10 @@ def get_error_for_cycle(x):
                 model_time_steps=cycSecs, test_time_steps=test_time_steps)
 
             errors.append(err)
+        # normalized fuel error
         fuel_err = abs(np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps) - 
-                    np.trapz(y=sim_drive.fcKwInAch, x=cycSecs))
+                    np.trapz(y=sim_drive.fcKwInAch, x=cycSecs)) / \
+                        np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps)
         errors.append(fuel_err)
 
     return tuple(errors)
@@ -195,18 +185,38 @@ algorithm = NSGA(pop_size=12, eliminate_duplicates=True)
 t0 = time.time()    
 res = minimize(problem,
                algorithm,
-               ('n_gen', 100),
+               ('n_gen', 50),
                seed=1,
                verbose=True)
 t1 = time.time()
+print(f'\nElapsed time for optimization: {t1 - t0:.2e} s')
 print('\nParameter pareto sets:')
 print(np.array2string(res.X, precision=3, separator=', '))
 print('Results pareto sets:')
 print(np.array2string(res.F, precision=3, separator=', '))
 
+# x = [7.3372e+01, 4.2731e+00, 7.4348e+00, 1.6187e+01, 3.7450e-01, 6.1751e-03] # is pretty goood
+
+
 # %%
-# Plot things
+# Plot parallel coordinates
 # print('\nPlotting parallel coordinates.')
+
+import custom.parcoordnorm as parcoord
+
+pareto_list = []
+for pareto_objs in res.F:
+    pareto_list.append(pareto_objs.tolist())
+
+columns = [cyc_name + ' ' + var_name for cyc_name in tuning_cyc_names for var_name in ['temp', 'fuel kW', 'fuel kJ']]
+
+df_res = pd.DataFrame(data=pareto_list, columns=columns)
+# df_res['set'] = df_res.index
+
+parcoord.parcoordnorm(df_res.copy(), df_res.columns[0])
+
+#%%
+# plot traces 
 
 validation_cyc_names = [name for name in df.index.levels[0] if re.search('(0|20|72)F', name)]
 

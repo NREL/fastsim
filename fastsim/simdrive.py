@@ -1015,25 +1015,15 @@ class SimDriveClassic(object):
             self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
                 0, self.transKwInAch[i] - self.mcMechKwOutAch[i]))
 
-        if self.fcKwOutAch[i] == 0:
-            self.fcKwInAch[i] = 0.0
-            self.fcKwOutAch_pct[i] = 0
-
         if self.veh.maxFuelConvKw == 0:
             self.fcKwOutAch_pct[i] = 0
         else:
             self.fcKwOutAch_pct[i] = self.fcKwOutAch[i] / self.veh.maxFuelConvKw
 
-        # this series of if statments can probably be condensed to:
-        # `self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[max(1, np.argmax(
-                # self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)])`
-        # and to be consistent with python's zero-based indexing should probably be changed to:
-        # `self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[max(0, np.argmax(
-                # self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)])`
-        # This needs to be checked against excel
-                
         if self.fcKwOutAch[i] == 0:
             self.fcKwInAch[i] = 0
+            self.fcKwOutAch_pct[i] = 0
+
         else:
             self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[np.argmax(
                 self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW)) - 1])
