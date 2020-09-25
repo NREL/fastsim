@@ -84,6 +84,7 @@ hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('teCabInitDegC', float64), # cabin inital temperature [deg C]
                     ('teTStatSTODegC', float64), # temperature [ºC] at which thermostat starts to open 
                     ('teTStatFODegC', float64), # temperature [ºC] at which thermostat is fully open 
+                    ('teTStatDeltaDegC', float64), # temperature delta [ºC] over which thermostat is partially open
                     ('radiator_eff', float64), # radiator effectiveness -- ratio of active heat rejection from radiator to passive heat rejection
                     ('fcTempEffOffset', float64), # offset for scaling FC efficiency w.r.t. to temperature
                     ('fcTempEffSlope', float64), # slope for scaling FC efficiency w.r.t. to temperature
@@ -126,7 +127,8 @@ class SimDriveHot(SimDriveClassic):
         self.hFcToAmbStop = 50
         self.fcCombToThrmlMassKw = 0.5 
         self.teTStatSTODegC = 85
-        self.teTStatFODegC = 90
+        self.teTStatDeltaDegC = 5
+        self.teTStatFODegC = self.teTStatSTODegC + self.teTStatDeltaDegC
         self.radiator_eff = 5
         self.fcTempEffOffset = 0.1
         self.fcTempEffSlope = 0.01

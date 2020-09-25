@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import importlib
 from collections import ChainMap
 from inspect import signature
+import pickle
 
 # pymoo stuff
 from pymoo.optimize import minimize
@@ -57,9 +58,10 @@ idx = pd.IndexSlice # used to slice multi index
 tuning_cyc_names = ['uddsx4 20F cs', 'us06x2 72F cs', 'us06x4 0F cs']
 
 # list of parameter names to be modified to obtain objectives
-params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff', 'fcTempEffOffset', 'fcTempEffSlope']
-lower_bounds = anp.array([50, 0.1, 1, 2, 0.25, 0.0001])
-upper_bounds = anp.array([500, 5, 200, 50, 0.95, 0.1])
+params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff',
+          'fcTempEffOffset', 'fcTempEffSlope', 'teTStatDeltaDegC', 'teTStatSTODegC']
+lower_bounds = anp.array([50, 0.1, 1, 2, 0.25, 0.0001, 1, 75])
+upper_bounds = anp.array([500, 5, 200, 50, 0.95, 0.1, 15, 95])
 
 # list of tuples of pairs of objective errors to minimize in the form of 
 # [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].  
@@ -179,13 +181,14 @@ class ThermalProblem(Problem):
             f.append(err_arr[:, i])
         out['F'] = anp.column_stack(f)
 
+#%% 
 print('Running optimization.')
 problem = ThermalProblem(parallelization=("threads", 6))
 algorithm = NSGA(pop_size=12, eliminate_duplicates=True)
 t0 = time.time()    
 res = minimize(problem,
                algorithm,
-               ('n_gen', 50),
+               ('n_gen', 5000),
                seed=1,
                verbose=True)
 t1 = time.time()
@@ -195,8 +198,17 @@ print(np.array2string(res.X, precision=3, separator=', '))
 print('Results pareto sets:')
 print(np.array2string(res.F, precision=3, separator=', '))
 
-# x = [7.3372e+01, 4.2731e+00, 7.4348e+00, 1.6187e+01, 3.7450e-01, 6.1751e-03] # is pretty goood
+# write results to file
+with open('tuning_res.txt', 'w') as f:
+    f.write('\nParameter pareto sets:\n')
+    f.write(np.array2string(res.X, precision=3, separator=', ') + '\n')
+    f.write('\nResults pareto sets:\n')
+    f.write(np.array2string(res.F, precision=3, separator=', ') + '\n')
 
+# pickle results
+pickle.dump(res, open('res.p', 'wb'))
+pickle.dump(res.X, open('res_x.p', 'wb'))
+pickle.dump(res.F, open('res_f.p', 'wb'))
 
 # %%
 # Plot parallel coordinates
@@ -213,14 +225,14 @@ columns = [cyc_name + ' ' + var_name for cyc_name in tuning_cyc_names for var_na
 df_res = pd.DataFrame(data=pareto_list, columns=columns)
 # df_res['set'] = df_res.index
 
-parcoord.parcoordnorm(df_res.copy(), df_res.columns[0])
+# parcoord.parcoordnorm(df_res.copy(), df_res.columns[0])
 
 #%%
 # plot traces 
 
 validation_cyc_names = [name for name in df.index.levels[0] if re.search('(0|20|72)F', name)]
 
-def plot_cyc_traces(pareto_set_number, show_plots=False):
+def plot_cyc_traces(x, show_plots=False):
     print('\nPlotting time traces.')
     for cyc_name in validation_cyc_names:
         test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
@@ -242,8 +254,6 @@ def plot_cyc_traces(pareto_set_number, show_plots=False):
         params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop',
                 'radiator_eff', 'fcTempEffOffset', 'fcTempEffSlope']
         
-        x = res.X[pareto_set_number]
-
         for i, param in enumerate(params):
             sim_drive.__setattr__(param, x[i])
         
