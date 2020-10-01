@@ -1,0 +1,1 @@
+This directory contains informal test scripts.  In the future, it will likely conform to python's unittest package.  
