@@ -274,7 +274,8 @@ class Vehicle(object):
         mcFullEffArray[0] = 0
         mcFullEffArray[-1] = mcEffArray[-1]
 
-        mcKwInArray = mcKwOutArray / mcFullEffArray
+        mcKwInArray = np.concatenate(
+            [[0], mcKwOutArray[1:] / mcFullEffArray[1:]])
         mcKwInArray[0] = 0
 
         self.mcKwInArray = mcKwInArray
