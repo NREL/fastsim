@@ -1,3 +1,4 @@
+# %%
 import sys
 import os
 from pathlib import Path
@@ -128,12 +129,11 @@ def get_error_for_cycle(x):
                         teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
         )   
 
-        sim_drive.sim_drive()
-
         # unpack input parameters
         for i in range(len(x)):
             sim_drive.__setattr__(params[i], x[i])
 
+        sim_drive.teTStatFODegC = sim_drive.teTStatSTODegC + sim_drive.teTStatDeltaDegC
         sim_drive.sim_drive()
 
         # calculate error
@@ -188,7 +188,7 @@ algorithm = NSGA(pop_size=12, eliminate_duplicates=True)
 t0 = time.time()    
 res = minimize(problem,
                algorithm,
-               ('n_gen', 5000),
+               ('n_gen', 500),
                seed=1,
                verbose=True)
 t1 = time.time()
@@ -209,6 +209,10 @@ with open('tuning_res.txt', 'w') as f:
 pickle.dump(res, open('res.p', 'wb'))
 pickle.dump(res.X, open('res_x.p', 'wb'))
 pickle.dump(res.F, open('res_f.p', 'wb'))
+
+# %% 
+
+res = pickle.load(open('res.p', 'rb'))
 
 # %%
 # Plot parallel coordinates
@@ -250,14 +254,15 @@ def plot_cyc_traces(x, show_plots=False):
                         teAmbDegC=np.interp(
                         cycSecs, test_time_steps, test_te_amb),
                         teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0])
-
-        params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop',
-                'radiator_eff', 'fcTempEffOffset', 'fcTempEffSlope']
         
-        for i, param in enumerate(params):
-            sim_drive.__setattr__(param, x[i])
-        
+        # unpack input parameters
+        for i in range(len(x)):
+            sim_drive.__setattr__(params[i], x[i])
+        sim_drive.teTStatFODegC = sim_drive.teTStatSTODegC + sim_drive.teTStatDeltaDegC
         sim_drive.sim_drive()
+        
+        print(f'teTStatSTODegC = {sim_drive.teTStatSTODegC:.2f}')
+        print(f'teTStatFODegC = {sim_drive.teTStatFODegC:.2f}')
 
         fuel_frac_err = (np.trapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch) -
                          np.trapz(x=test_time_steps,
