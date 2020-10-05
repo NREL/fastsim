@@ -16,7 +16,8 @@ import pickle
 
 # pymoo stuff
 from pymoo.optimize import minimize
-from pymoo.algorithms.nsga2 import NSGA2 as NSGA
+from pymoo.algorithms.nsga3 import NSGA3 as NSGA
+from pymoo.factory import get_reference_directions
 import autograd.numpy as anp
 from pymoo.util.misc import stack
 from pymoo.model.problem import Problem
@@ -24,6 +25,8 @@ from pymoo.model.problem import Problem
 # local modules
 from fastsim import simdrivehot, simdrive, vehicle, cycle, utils
 import docs.hot_utilities as hot_util
+
+#%%
 
 # load the vehicle
 t0 = time.time()
@@ -156,12 +159,13 @@ no_args = len(params)
 
 # get number of outputs
 no_outs = len(error_vars) + 1
+n_obj = no_outs * len(tuning_cyc_names)
 
 class ThermalProblem(Problem):
     "Class for creating PyMoo problem for FASTSimHot vehicle."
 
     def __init__(self, **kwargs):
-        super().__init__(n_var=no_args, n_obj=no_outs * len(tuning_cyc_names),
+        super().__init__(n_var=no_args, n_obj=n_obj,
                          # lower bounds
                          xl=lower_bounds,
                          # upper bounds
@@ -182,11 +186,13 @@ class ThermalProblem(Problem):
 #%% 
 print('Running optimization.')
 problem = ThermalProblem(parallelization=("threads", 1))
-algorithm = NSGA(pop_size=12, eliminate_duplicates=True,)
+# See https://pymoo.org/algorithms/nsga3.html
+ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=3)
+algorithm = NSGA(pop_size=200, eliminate_duplicates=True, ref_dirs=ref_dirs)
 t0 = time.time()    
 res = minimize(problem,
                algorithm,
-               ('n_gen', 500),
+               ('n_gen', 25),
                seed=1,
                verbose=True,)
             #    save_history=True)
@@ -229,6 +235,7 @@ print(df_res.filter(regex='fuel kJ').sum(axis=1).sort_values())
 # plot traces 
 
 validation_cyc_names = [name for name in df.index.levels[0] if re.search('(0|20|72)F', name)]
+rcParams.update({'font.size': 18})
 
 def plot_cyc_traces(x, show_plots=False):
     print('\nPlotting time traces.')
@@ -307,3 +314,5 @@ def plot_cyc_traces(x, show_plots=False):
             ax2.set_ylabel('Speed \nAchieved [mps]')
             plt.savefig('plots/' + title + '.svg')
             plt.savefig('plots/' + title + '.png')
+
+# %%
