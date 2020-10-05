@@ -305,6 +305,5 @@ def plot_cyc_traces(x, show_plots=False):
                     label='test', linestyle='--')
             ax2.set_xlabel('Time [s]')
             ax2.set_ylabel('Speed \nAchieved [mps]')
-
-
-# %%
+            plt.savefig('plots/' + title + '.svg')
+            plt.savefig('plots/' + title + '.png')
