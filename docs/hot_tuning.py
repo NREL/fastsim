@@ -56,12 +56,12 @@ idx = pd.IndexSlice # used to slice multi index
 
 #%%
 
-tuning_cyc_names = ['uddsx4 20F cs', 'us06x2 72F cs', 'us06x4 0F cs']
+tuning_cyc_names = ['us06x2 72F cs', 'us06x2 20F cs', 'uddsx4 0F cs']
 
 # list of parameter names to be modified to obtain objectives
 params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff',
           'fcTempEffOffset', 'fcTempEffSlope', 'teTStatDeltaDegC', 'teTStatSTODegC']
-lower_bounds = anp.array([50, 0.1, 1, 2, 0.25, 0.0001, 1, 75])
+lower_bounds = anp.array([50, 0.1, 1, 2, 0.1, 0.0001, 1, 75])
 upper_bounds = anp.array([500, 5, 200, 50, 0.95, 0.1, 15, 95])
 
 # list of tuples of pairs of objective errors to minimize in the form of 
@@ -81,12 +81,10 @@ def rollav(data, width=10):
             out[i] = data[i-width:i].mean()
     return out
 
-
 for cyc_name in tuning_cyc_names:
     for item in error_vars:
         df.loc[idx[cyc_name, :, :], item[1]] = rollav(
             df.loc[idx[cyc_name, :, :], item[1]])
-
 
 def get_error_val(model, test, model_time_steps, test_time_steps):
     """Returns time-averaged error for model and test signal.
@@ -183,14 +181,15 @@ class ThermalProblem(Problem):
 
 #%% 
 print('Running optimization.')
-problem = ThermalProblem(parallelization=("threads", 6))
-algorithm = NSGA(pop_size=12, eliminate_duplicates=True)
+problem = ThermalProblem(parallelization=("threads", 1))
+algorithm = NSGA(pop_size=12, eliminate_duplicates=True,)
 t0 = time.time()    
 res = minimize(problem,
                algorithm,
                ('n_gen', 500),
                seed=1,
-               verbose=True)
+               verbose=True,)
+            #    save_history=True)
 t1 = time.time()
 print(f'\nElapsed time for optimization: {t1 - t0:.2e} s')
 print('\nParameter pareto sets:')
@@ -207,19 +206,13 @@ with open('tuning_res.txt', 'w') as f:
 
 # pickle results
 pickle.dump(res, open('res.p', 'wb'))
-pickle.dump(res.X, open('res_x.p', 'wb'))
-pickle.dump(res.F, open('res_f.p', 'wb'))
 
 # %% 
 
 res = pickle.load(open('res.p', 'rb'))
 
 # %%
-# Plot parallel coordinates
-# print('\nPlotting parallel coordinates.')
-
-import custom.parcoordnorm as parcoord
-
+# get pareto objectives in a pandas dataframe
 pareto_list = []
 for pareto_objs in res.F:
     pareto_list.append(pareto_objs.tolist())
@@ -227,9 +220,10 @@ for pareto_objs in res.F:
 columns = [cyc_name + ' ' + var_name for cyc_name in tuning_cyc_names for var_name in ['temp', 'fuel kW', 'fuel kJ']]
 
 df_res = pd.DataFrame(data=pareto_list, columns=columns)
-# df_res['set'] = df_res.index
 
-# parcoord.parcoordnorm(df_res.copy(), df_res.columns[0])
+print(df_res.filter(regex='temp').sum(axis=1).sort_values())
+print('\n')
+print(df_res.filter(regex='fuel kJ').sum(axis=1).sort_values())
 
 #%%
 # plot traces 
@@ -261,9 +255,6 @@ def plot_cyc_traces(x, show_plots=False):
         sim_drive.teTStatFODegC = sim_drive.teTStatSTODegC + sim_drive.teTStatDeltaDegC
         sim_drive.sim_drive()
         
-        print(f'teTStatSTODegC = {sim_drive.teTStatSTODegC:.2f}')
-        print(f'teTStatFODegC = {sim_drive.teTStatFODegC:.2f}')
-
         fuel_frac_err = (np.trapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch) -
                          np.trapz(x=test_time_steps,
                                   y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])) /\
@@ -314,3 +305,6 @@ def plot_cyc_traces(x, show_plots=False):
                     label='test', linestyle='--')
             ax2.set_xlabel('Time [s]')
             ax2.set_ylabel('Speed \nAchieved [mps]')
+
+
+# %%
