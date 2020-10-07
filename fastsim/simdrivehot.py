@@ -76,7 +76,6 @@ hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('fcDiam', float64), # engine characteristic length [m] for heat transfer calcs 
                     ('fcSurfArea', float64), # engine surface area for heat transfer calcs
                     ('hFcToAmbStop', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
-                    ('hFcToAmbRad', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient if radiator is active
                     ('hFcToAmb', float64[:]), # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
                     ('fcCombToThrmlMassKw', float64), # fraction of combustion heat that goes to FC thermal mass
                     # remainder goes to environment (e.g. via tailpipe)
