@@ -13,6 +13,7 @@ import importlib
 from collections import ChainMap
 from inspect import signature
 import pickle
+import seaborn as sns
 
 # pymoo stuff
 from pymoo.optimize import minimize
@@ -57,9 +58,13 @@ print(f"Sim drive time: {time.time() - t0:.3f} s")
 df = hot_util.load_test_data()
 idx = pd.IndexSlice # used to slice multi index 
 
-#%%
-
 tuning_cyc_names = ['us06x2 72F cs', 'us06x2 20F cs', 'uddsx4 0F cs']
+for cyc_name in tuning_cyc_names:
+    for item in error_vars:
+        df.loc[idx[cyc_name, :, :], item[1]] = rollav(
+            df.loc[idx[cyc_name, :, :], item[1]])
+
+#%%
 
 # list of parameter names to be modified to obtain objectives
 params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff',
@@ -83,11 +88,6 @@ def rollav(data, width=10):
         else:
             out[i] = data[i-width:i].mean()
     return out
-
-for cyc_name in tuning_cyc_names:
-    for item in error_vars:
-        df.loc[idx[cyc_name, :, :], item[1]] = rollav(
-            df.loc[idx[cyc_name, :, :], item[1]])
 
 def get_error_val(model, test, model_time_steps, test_time_steps):
     """Returns time-averaged error for model and test signal.
@@ -184,34 +184,38 @@ class ThermalProblem(Problem):
         out['F'] = anp.column_stack(f)
 
 #%% 
-print('Running optimization.')
-problem = ThermalProblem(parallelization=("threads", 1))
-# See https://pymoo.org/algorithms/nsga3.html
-ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=3)
-algorithm = NSGA(pop_size=200, eliminate_duplicates=True, ref_dirs=ref_dirs)
-t0 = time.time()    
-res = minimize(problem,
-               algorithm,
-               ('n_gen', 25),
-               seed=1,
-               verbose=True,)
-            #    save_history=True)
-t1 = time.time()
-print(f'\nElapsed time for optimization: {t1 - t0:.2e} s')
-print('\nParameter pareto sets:')
-print(np.array2string(res.X, precision=3, separator=', '))
-print('Results pareto sets:')
-print(np.array2string(res.F, precision=3, separator=', '))
 
-# write results to file
-with open('tuning_res.txt', 'w') as f:
-    f.write('\nParameter pareto sets:\n')
-    f.write(np.array2string(res.X, precision=3, separator=', ') + '\n')
-    f.write('\nResults pareto sets:\n')
-    f.write(np.array2string(res.F, precision=3, separator=', ') + '\n')
+run_optimization = False
 
-# pickle results
-pickle.dump(res, open('res.p', 'wb'))
+if run_optimization:
+    print('Running optimization.')
+    problem = ThermalProblem(parallelization=("threads", 1))
+    # See https://pymoo.org/algorithms/nsga3.html
+    ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=3)
+    algorithm = NSGA(pop_size=200, eliminate_duplicates=True, ref_dirs=ref_dirs)
+    t0 = time.time()    
+    res = minimize(problem,
+                algorithm,
+                ('n_gen', 25),
+                seed=1,
+                verbose=True,)
+                #    save_history=True)
+    t1 = time.time()
+    print(f'\nElapsed time for optimization: {t1 - t0:.2e} s')
+    print('\nParameter pareto sets:')
+    print(np.array2string(res.X, precision=3, separator=', '))
+    print('Results pareto sets:')
+    print(np.array2string(res.F, precision=3, separator=', '))
+
+    # write results to file
+    with open('tuning_res.txt', 'w') as f:
+        f.write('\nParameter pareto sets:\n')
+        f.write(np.array2string(res.X, precision=3, separator=', ') + '\n')
+        f.write('\nResults pareto sets:\n')
+        f.write(np.array2string(res.F, precision=3, separator=', ') + '\n')
+
+    # pickle results
+    pickle.dump(res, open('res.p', 'wb'))
 
 # %% 
 
@@ -235,7 +239,7 @@ print(df_res.filter(regex='fuel kJ').sum(axis=1).sort_values())
 # plot traces 
 
 validation_cyc_names = [name for name in df.index.levels[0] if re.search('(0|20|72)F', name)]
-rcParams.update({'font.size': 18})
+sns.set(font_scale=2)
 
 def plot_cyc_traces(x, show_plots=False):
     print('\nPlotting time traces.')
@@ -255,7 +259,9 @@ def plot_cyc_traces(x, show_plots=False):
                         teAmbDegC=np.interp(
                         cycSecs, test_time_steps, test_te_amb),
                         teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0])
-        
+        sd_base = simdrive.SimDriveJit(cyc_jit, veh_jit)
+        sd_base.sim_drive()
+
         # unpack input parameters
         for i in range(len(x)):
             sim_drive.__setattr__(params[i], x[i])
@@ -279,6 +285,7 @@ def plot_cyc_traces(x, show_plots=False):
         print(f"Model temperature error: {temp_err:.2f} ºC")
 
         if show_plots:
+            # temperature plot
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
             ax1.plot(cyc.cycSecs, sim_drive.teFcDegC, label='model')
             ax1.plot(test_time_steps, df.loc[idx[cyc_name,
@@ -292,11 +299,16 @@ def plot_cyc_traces(x, show_plots=False):
             ax1.set_title(title)
             ax2.plot(cyc.cycSecs, sim_drive.mpsAch)
             ax2.set_xlabel('Time [s]')
-            ax2.set_ylabel('Speed \nAchieved [mps]')
+            ax2.set_ylabel('Speed [mps]')
+            plt.savefig('plots/' + title + ' temp.svg')
+            plt.savefig('plots/' + title + ' temp.png')
 
+            # fuel energy plot
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
             ax1.plot(cyc.cycSecs[1:], cumtrapz(x=cyc.cycSecs,
-                                            y=sim_drive.fcKwInAch * 1e-3), label='model')
+                                            y=sim_drive.fcKwInAch * 1e-3), label='thermal')
+            ax1.plot(cyc.cycSecs[1:], cumtrapz(x=cyc.cycSecs,
+                                               y=sd_base.fcKwInAch * 1e-3), label='no thermal')
             ax1.plot(test_time_steps[1:], cumtrapz(
                 x=test_time_steps, y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3), label='test')
             ax1.set_ylabel('Fuel Energy [MJ]')
@@ -307,12 +319,7 @@ def plot_cyc_traces(x, show_plots=False):
                 title = cyc_name + ' validation'
             ax1.set_title(title)
             ax2.plot(cyc.cycSecs, sim_drive.mpsAch, label='model')
-            ax2.plot(df.loc[idx[cyc_name, :, :], 'Time[s]'],
-                    df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'],
-                    label='test', linestyle='--')
             ax2.set_xlabel('Time [s]')
-            ax2.set_ylabel('Speed \nAchieved [mps]')
-            plt.savefig('plots/' + title + '.svg')
-            plt.savefig('plots/' + title + '.png')
-
-# %%
+            ax2.set_ylabel('Speed [mps]')
+            plt.savefig('plots/' + title + ' energy.svg')
+            plt.savefig('plots/' + title + ' energy.png')
