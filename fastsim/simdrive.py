@@ -598,28 +598,27 @@ class SimDriveClassic(object):
                 _ys = [abs(y) for y in ys]
                 return xs[_ys.index(min(_ys))]
 
-            Drag3 = (1.0 / 16.0) * self.props.airDensityKgPerM3 * \
+            Drag3 = 1.0 / 16.0 * self.props.airDensityKgPerM3 * \
                 self.veh.dragCoef * self.veh.frontalAreaM2
-            Accel2 = self.veh.vehKg / (2.0 * (self.cyc.secs[i]))
-            Drag2 = (3.0 / 16.0) * self.props.airDensityKgPerM3 * \
+            Accel2 = self.veh.vehKg / (2.0 * self.cyc.secs[i])
+            Drag2 = 3.0 / 16.0 * self.props.airDensityKgPerM3 * \
                 self.veh.dragCoef * self.veh.frontalAreaM2 * self.mpsAch[i-1]
             Wheel2 = 0.5 * self.veh.wheelInertiaKgM2 * \
-                self.veh.numWheels / (self.cyc.secs[i] * (self.veh.wheelRadiusM**2))
+                self.veh.numWheels / (self.cyc.secs[i] * self.veh.wheelRadiusM ** 2)
             Drag1 = (3.0 / 16.0) * self.props.airDensityKgPerM3 * self.veh.dragCoef * \
-                self.veh.frontalAreaM2 * ((self.mpsAch[i-1])**2)
-            Roll1 = (self.props.gravityMPerSec2 * self.veh.wheelRrCoef * self.veh.vehKg / 2.0)
-            Ascent1 = (self.props.gravityMPerSec2 *
-                        np.sin(np.arctan(self.cyc.cycGrade[i])) * self.veh.vehKg / 2.0)
-            Accel0 = - \
-                (self.veh.vehKg * ((self.mpsAch[i-1])**2)) / (2.0 * (self.cyc.secs[i]))
-            Drag0 = (1.0 / 16.0) * self.props.airDensityKgPerM3 * self.veh.dragCoef * \
-                self.veh.frontalAreaM2 * ((self.mpsAch[i-1])**3)
-            Roll0 = (self.props.gravityMPerSec2 * self.veh.wheelRrCoef *
-                        self.veh.vehKg * self.mpsAch[i-1] / 2.0)
-            Ascent0 = (
-                self.props.gravityMPerSec2 * np.sin(np.arctan(self.cyc.cycGrade[i])) * self.veh.vehKg * self.mpsAch[i-1] / 2.0)
-            Wheel0 = -((0.5 * self.veh.wheelInertiaKgM2 * self.veh.numWheels *
-                        (self.mpsAch[i-1]**2)) / (self.cyc.secs[i] * (self.veh.wheelRadiusM**2)))
+                self.veh.frontalAreaM2 * self.mpsAch[i-1] ** 2
+            Roll1 =  self.veh.vehKg * self.props.gravityMPerSec2 * self.veh.wheelRrCoef / 2.0
+            Ascent1 = self.props.gravityMPerSec2 * \
+                np.sin(np.arctan(self.cyc.cycGrade[i])) * self.veh.vehKg / 2.0
+            Accel0 = -self.veh.vehKg * self.mpsAch[i-1] ** 2 / (2.0 * self.cyc.secs[i])
+            Drag0 = 1.0 / 16.0 * self.props.airDensityKgPerM3 * self.veh.dragCoef * \
+                self.veh.frontalAreaM2 * self.mpsAch[i-1] ** 3
+            Roll0 = self.veh.vehKg * self.props.gravityMPerSec2 * \
+                self.veh.wheelRrCoef * self.mpsAch[i-1] / 2.0
+            Ascent0 = self.props.gravityMPerSec2 * np.sin(np.arctan(self.cyc.cycGrade[i])) \
+                * self.veh.vehKg * self.mpsAch[i-1] / 2.0
+            Wheel0 = -0.5 * self.veh.wheelInertiaKgM2 * self.veh.numWheels * \
+                self.mpsAch[i-1] ** 2 / (self.cyc.secs[i] * self.veh.wheelRadiusM ** 2)
 
             Total3 = Drag3 / 1e3
             Total2 = (Accel2 + Drag2 + Wheel2) / 1e3
