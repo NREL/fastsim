@@ -216,6 +216,8 @@ if run_optimization:
 
     # pickle results
     pickle.dump(res, open('res.p', 'wb'))
+else:
+    print('Skipping optimization.  Set `run_optimization = True` to change this.')
 
 # %% 
 
