@@ -607,14 +607,16 @@ class SimDriveClassic(object):
                 self.veh.numWheels / (self.cyc.secs[i] * self.veh.wheelRadiusM ** 2)
             Drag1 = 3.0 / 16.0 * self.props.airDensityKgPerM3 * self.veh.dragCoef * \
                 self.veh.frontalAreaM2 * self.mpsAch[i-1] ** 2
-            Roll1 = 0.5 * self.veh.vehKg * self.props.gravityMPerSec2 * self.veh.wheelRrCoef 
+            Roll1 = 0.5 * self.veh.vehKg * self.props.gravityMPerSec2 * self.veh.wheelRrCoef \
+                * np.cos(np.arctan(self.cyc.cycGrade[i])) 
             Ascent1 = 0.5 * self.props.gravityMPerSec2 * \
                 np.sin(np.arctan(self.cyc.cycGrade[i])) * self.veh.vehKg 
             Accel0 = -0.5 * self.veh.vehKg * self.mpsAch[i-1] ** 2 / self.cyc.secs[i]
             Drag0 = 1.0 / 16.0 * self.props.airDensityKgPerM3 * self.veh.dragCoef * \
                 self.veh.frontalAreaM2 * self.mpsAch[i-1] ** 3
             Roll0 = 0.5 * self.veh.vehKg * self.props.gravityMPerSec2 * \
-                self.veh.wheelRrCoef * self.mpsAch[i-1] 
+                self.veh.wheelRrCoef * np.cos(np.arctan(self.cyc.cycGrade[i])) \
+                * self.mpsAch[i-1]
             Ascent0 = 0.5 * self.props.gravityMPerSec2 * np.sin(np.arctan(self.cyc.cycGrade[i])) \
                 * self.veh.vehKg * self.mpsAch[i-1] 
             Wheel0 = -0.5 * self.veh.wheelInertiaKgM2 * self.veh.numWheels * \
