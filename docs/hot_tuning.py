@@ -58,25 +58,12 @@ print(f"Sim drive time: {time.time() - t0:.3f} s")
 df = hot_util.load_test_data()
 idx = pd.IndexSlice # used to slice multi index 
 
-tuning_cyc_names = ['us06x2 72F cs', 'us06x2 20F cs', 'uddsx4 0F cs']
-for cyc_name in tuning_cyc_names:
-    for item in error_vars:
-        df.loc[idx[cyc_name, :, :], item[1]] = rollav(
-            df.loc[idx[cyc_name, :, :], item[1]])
-
-#%%
-
-# list of parameter names to be modified to obtain objectives
-params = ['fcThrmMass', 'fcDiam', 'hFcToAmbStop', 'radiator_eff',
-          'fcTempEffOffset', 'fcTempEffSlope', 'teTStatDeltaDegC', 'teTStatSTODegC']
-lower_bounds = anp.array([50, 0.1, 1, 2, 0.1, 0.0001, 1, 75])
-upper_bounds = anp.array([500, 5, 200, 50, 0.95, 0.1, 15, 95])
-
-# list of tuples of pairs of objective errors to minimize in the form of 
-# [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].  
+# list of tuples of pairs of objective errors to minimize in the form of
+# [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].
 error_vars = [('teFcDegC', 'CylinderHeadTempC'),
               ('fcKwInAch', 'Fuel_Power_Calc[kW]'),
               ]
+
 
 def rollav(data, width=10):
     """Rolling mean for `data` with `width`"""
@@ -88,6 +75,27 @@ def rollav(data, width=10):
         else:
             out[i] = data[i-width:i].mean()
     return out
+
+#%%
+tuning_cyc_names = ['us06x2 72F cs', 'us06x2 20F cs', 'uddsx4 0F cs']
+for cyc_name in tuning_cyc_names:
+    for item in error_vars:
+        df.loc[idx[cyc_name, :, :], item[1]] = rollav(
+            df.loc[idx[cyc_name, :, :], item[1]])
+
+#%%
+
+# list of parameter names to be modified to obtain objectives
+
+params_bounds = [('fcThrmMass', 50, 500), ('fcDiam', 0.1, 5), 
+                ('fcCombToThrmlMassFrac', 0.15, 0.5), ('hFcToAmbStop', 1, 200), 
+                ('radiator_eff', 2, 50), ('fcTempEffOffset', 0.1, 0.95), 
+                ('fcTempEffSlope', 1e-4, 0.1), ('teTStatDeltaDegC', 1, 15), 
+                ('teTStatSTODegC', 75, 95)]
+
+params = [item[0] for item in params_bounds]
+lower_bounds = anp.array([item[1] for item in params_bounds])
+upper_bounds = anp.array([item[2] for item in params_bounds])
 
 def get_error_val(model, test, model_time_steps, test_time_steps):
     """Returns time-averaged error for model and test signal.
@@ -233,8 +241,9 @@ columns = [cyc_name + ' ' + var_name for cyc_name in tuning_cyc_names for var_na
 
 df_res = pd.DataFrame(data=pareto_list, columns=columns)
 
+print('Sorted by sum of temperature errors.')
 print(df_res.filter(regex='temp').sum(axis=1).sort_values())
-print('\n')
+print('\nSorted by sum of fuel kJ errors.')
 print(df_res.filter(regex='fuel kJ').sum(axis=1).sort_values())
 
 #%%
