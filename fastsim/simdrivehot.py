@@ -77,7 +77,7 @@ hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('fcSurfArea', float64), # engine surface area for heat transfer calcs
                     ('hFcToAmbStop', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
                     ('hFcToAmb', float64[:]), # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
-                    ('fcCombToThrmlMassKw', float64), # fraction of combustion heat that goes to FC thermal mass
+                    ('fcCombToThrmlMassFrac', float64), # fraction of combustion heat that goes to FC thermal mass
                     # remainder goes to environment (e.g. via tailpipe)
                     ('teFcInitDegC', float64), # fuel converter initial temperature [deg C]
                     ('teCabInitDegC', float64), # cabin inital temperature [deg C]
@@ -124,7 +124,7 @@ class SimDriveHot(SimDriveClassic):
         self.fcSurfArea = np.pi * self.fcDiam ** 2 / 4
         self.cabThrmMass = 5
         self.hFcToAmbStop = 50
-        self.fcCombToThrmlMassKw = 0.5 
+        self.fcCombToThrmlMassFrac = 0.5 
         self.teTStatSTODegC = 85
         self.teTStatDeltaDegC = 5
         self.teTStatFODegC = self.teTStatSTODegC + self.teTStatDeltaDegC
@@ -275,7 +275,7 @@ class SimDriveHot(SimDriveClassic):
         # sensitive component efficiencies dependent on the [i] temperatures, but 
         # these are in turn dependent on [i-1] heat transfer processes  
         # Constitutive equations for fuel converter
-        self.fcHeatGenKw[i] = self.fcCombToThrmlMassKw * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
+        self.fcHeatGenKw[i] = self.fcCombToThrmlMassFrac * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
         teFcFilmDegC = 0.5 * (self.teFcDegC[i-1] + self.teAmbDegC[i-1])
         Re_fc = np.interp(teFcFilmDegC, teAirForPropsDegC, rhoAirArray) \
             * self.mpsAch[i-1] * self.fcDiam / \
