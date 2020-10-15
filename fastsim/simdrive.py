@@ -127,6 +127,7 @@ class SimDriveClassic(object):
         self.fcKwOutAch_pct = np.zeros(len_cyc, dtype=np.float64)
         self.fcKwInAch = np.zeros(len_cyc, dtype=np.float64)
         self.fsKwOutAch = np.zeros(len_cyc, dtype=np.float64)
+        self.fsCumuMjOutAch = np.zeros(len_cyc, dtype=np.float64)
         self.fsKwhOutAch = np.zeros(len_cyc, dtype=np.float64)
         self.essCurKwh = np.zeros(len_cyc, dtype=np.float64)
         self.soc = np.zeros(len_cyc, dtype=np.float64)
@@ -1038,6 +1039,8 @@ class SimDriveClassic(object):
         """Sets scalar variables that can be calculated after a cycle is run. 
         This includes mpgge, various energy metrics, and others"""
 
+        self.fsCumuMjOutAch = (self.fsKwOutAch * self.cyc.secs).cumsum() * 1e-3
+
         if self.fsKwhOutAch.sum() == 0:
             self.mpgge = 0
 
@@ -1118,7 +1121,7 @@ attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxF
              'cycTracKwReq', 'curMaxTracKw', 'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
              'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 'transKwOutAch', 'transKwInAch', 
              'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
-             'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
+             'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsCumuMjOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
              'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
              'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'desiredEssKwOutForAE', 
              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
