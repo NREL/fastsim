@@ -54,6 +54,8 @@ sim_drive.sim_drive()
 
 print(f"Sim drive time: {time.time() - t0:.3f} s")
 
+#%%
+
 df = hot_util.load_test_data()
 idx = pd.IndexSlice # used to slice multi index 
 
@@ -87,12 +89,15 @@ for cyc_name in df.index.levels[0]:
 error_vars = [('teFcDegC', 'CylinderHeadTempC'),
               ('fsCumuMjOutAch', 'Fuel_Energy_Calc[MJ]')
               ]
-# list of parameter names to be modified to obtain objectives
-
-params_bounds = [('fcThrmMass', 50, 500), ('fcDiam', 0.1, 5), 
-                ('fcCombToThrmlMassFrac', 0.15, 0.5), ('hFcToAmbStop', 1, 200), 
-                ('radiator_eff', 2, 50), ('fcTempEffOffset', 0.1, 0.95), 
-                ('fcTempEffSlope', 1e-4, 0.1), ('teTStatDeltaDegC', 1, 15), 
+# list of parameter names, lower bounds, and upper bounds to be modified to obtain objectives
+params_bounds = [('fcThrmMass', 50, 500), 
+                ('fcDiam', 0.1, 5), 
+                ('fcCombToThrmlMassFrac', 0.15, 0.5),   
+                ('hFcToAmbStop', 1, 200), 
+                ('radiator_eff', 2, 50), 
+                ('fcTempEffOffset', 0.1, 0.95), 
+                ('fcTempEffSlope', 1e-4, 0.1), 
+                ('teTStatDeltaDegC', 1, 15), 
                 ('teTStatSTODegC', 75, 95)]
 
 params = [item[0] for item in params_bounds]
@@ -156,24 +161,14 @@ def get_error_for_cycle(x):
                 model_time_steps=cycSecs, test_time_steps=test_time_steps)
 
             errors.append(err)
-        # normalized fuel error
-        fuel_err = (
-                    np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps) - 
-                    np.trapz(y=sim_drive.fcKwInAch, x=cycSecs)) / \
-                        np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps)
-
-        fuel_err = abs(np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps) - 
-                    np.trapz(y=sim_drive.fcKwInAch, x=cycSecs)) / \
-                        np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps)
-        errors.append(fuel_err)
-
+    
     return tuple(errors)
 
 no_args = len(params)
 # no_args = signature(get_error_for_cycle).parameters # another possible way to do this
 
 # get number of outputs
-no_outs = len(error_vars) + 1
+no_outs = len(error_vars)
 n_obj = no_outs * len(tuning_cyc_names)
 
 class ThermalProblem(Problem):
@@ -211,7 +206,7 @@ if run_optimization:
     t0 = time.time()    
     res = minimize(problem, 
                 algorithm,
-                ('n_gen', 25),
+                ('n_gen', 50),
                 seed=1,
                 verbose=True,)
                 #    save_history=True)
@@ -242,16 +237,17 @@ res = pickle.load(open('res.p', 'rb'))
 # get pareto objectives in a pandas dataframe
 pareto_list = []
 for pareto_objs in res.F:
-    pareto_list.append(pareto_objs.tolist())
+    pareto_list.append(
+        pareto_objs[[True, True, False, True, True, False, True, True, False]].tolist())
 
-columns = [cyc_name + ' ' + var_name for cyc_name in tuning_cyc_names for var_name in ['temp', 'fuel kW', 'fuel kJ']]
+columns = [cyc_name + ' ' + var_name for cyc_name in tuning_cyc_names for var_name in ['temp', 'fuel']]
 
 df_res = pd.DataFrame(data=pareto_list, columns=columns)
 
 print('Sorted by sum of temperature errors.')
 print(df_res.filter(regex='temp').sum(axis=1).sort_values())
-print('\nSorted by sum of fuel kJ errors.')
-print(df_res.filter(regex='fuel kJ').sum(axis=1).sort_values())
+print('\nSorted by sum of fuel errors.')
+print(df_res.filter(regex='fuel').sum(axis=1).sort_values())
 
 #%%
 # plot traces 
@@ -323,9 +319,9 @@ def plot_cyc_traces(x, show_plots=False):
 
             # fuel energy plot
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
-            ax1.plot(cyc.cycSecs[1:], sim_drive.fsCumuMjOutAch, label='thermal')
-            ax1.plot(cyc.cycSecs[1:], sd_base.fsCumuMjOutAch, label='no thermal')
-            ax1.plot(test_time_steps[1:], 
+            ax1.plot(cyc.cycSecs, sim_drive.fsCumuMjOutAch, label='thermal')
+            ax1.plot(cyc.cycSecs, sd_base.fsCumuMjOutAch, label='no thermal')
+            ax1.plot(test_time_steps, 
                 df.loc[idx[cyc_name, :, :], 'Fuel_Energy_Calc[MJ]'], 
                 label='test')
             ax1.set_ylabel('Fuel Energy [MJ]')
@@ -340,3 +336,5 @@ def plot_cyc_traces(x, show_plots=False):
             ax2.set_ylabel('Speed [mps]')
             plt.savefig('plots/' + title + ' energy.svg')
             plt.savefig('plots/' + title + ' energy.png')
+
+# %%
