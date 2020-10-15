@@ -310,9 +310,6 @@ class SimDriveHot(SimDriveClassic):
                 [self.hFcToAmbStop, self.hFcToAmbStop * self.radiator_eff])
         else:
             # if moving, scale based on speed dependent convection and thermostat opening
-            self.hFcToAmb[i] = np.interp(self.teFcDegC[i-1],
-                [self.teTStatSTODegC, self.teTStatFODegC],
-                [self.hFcToAmbStop, self.hFcToAmbStop * self.radiator_eff])
             # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
             hFcToAmbSphere = (get_sphere_conv_params(Re_fc)[0] * Re_fc ** get_sphere_conv_params(Re_fc)[1]) * \
                 np.interp(teFcFilmDegC, teAirForPropsDegC, PrAirArray) ** (1 / 3) * \
