@@ -41,7 +41,6 @@ veh_jit.auxKw = 1.1
 print(f"Vehicle load time: {time.time() - t0:.3f} s")
 
 # create drive cycles from vehicle test data in a dict
-
 t0 = time.time()
 cyc = cycle.Cycle("udds")
 cyc_jit = cyc.get_numba_cyc()
@@ -58,13 +57,6 @@ print(f"Sim drive time: {time.time() - t0:.3f} s")
 df = hot_util.load_test_data()
 idx = pd.IndexSlice # used to slice multi index 
 
-# list of tuples of pairs of objective errors to minimize in the form of
-# [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].
-error_vars = [('teFcDegC', 'CylinderHeadTempC'),
-              ('fcKwInAch', 'Fuel_Power_Calc[kW]'),
-              ]
-
-
 def rollav(data, width=10):
     """Rolling mean for `data` with `width`"""
     out = np.zeros(len(data))
@@ -76,15 +68,25 @@ def rollav(data, width=10):
             out[i] = data[i-width:i].mean()
     return out
 
-#%%
 tuning_cyc_names = ['us06x2 72F cs', 'us06x2 20F cs', 'uddsx4 0F cs']
-for cyc_name in tuning_cyc_names:
-    for item in error_vars:
-        df.loc[idx[cyc_name, :, :], item[1]] = rollav(
-            df.loc[idx[cyc_name, :, :], item[1]])
+# clean up temperature noise a bit
+for cyc_name in df.index.levels[0]:
+    df.loc[idx[cyc_name, :, :], 'CylinderHeadTempC'] = rollav(
+        df.loc[idx[cyc_name, :, :], 'CylinderHeadTempC'])
+    df.loc[idx[cyc_name, :, :], 'Fuel_Energy_Calc[MJ]'] = np.concatenate(
+        [[0], cumtrapz(
+            y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3,
+            x=df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]']
+        )])
+        
 
 #%%
 
+# list of tuples of pairs of objective errors to minimize in the form of
+# [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].
+error_vars = [('teFcDegC', 'CylinderHeadTempC'),
+              ('fsCumuMjOutAch', 'Fuel_Energy_Calc[MJ]')
+              ]
 # list of parameter names to be modified to obtain objectives
 
 params_bounds = [('fcThrmMass', 50, 500), ('fcDiam', 0.1, 5), 
@@ -155,6 +157,11 @@ def get_error_for_cycle(x):
 
             errors.append(err)
         # normalized fuel error
+        fuel_err = (
+                    np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps) - 
+                    np.trapz(y=sim_drive.fcKwInAch, x=cycSecs)) / \
+                        np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps)
+
         fuel_err = abs(np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps) - 
                     np.trapz(y=sim_drive.fcKwInAch, x=cycSecs)) / \
                         np.trapz(y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], x=test_time_steps)
@@ -193,7 +200,7 @@ class ThermalProblem(Problem):
 
 #%% 
 
-run_optimization = False
+run_optimization = True
 
 if run_optimization:
     print('Running optimization.')
@@ -202,7 +209,7 @@ if run_optimization:
     ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=3)
     algorithm = NSGA(pop_size=200, eliminate_duplicates=True, ref_dirs=ref_dirs)
     t0 = time.time()    
-    res = minimize(problem,
+    res = minimize(problem, 
                 algorithm,
                 ('n_gen', 25),
                 seed=1,
@@ -267,9 +274,9 @@ def plot_cyc_traces(x, show_plots=False):
         cyc_jit = cyc.get_numba_cyc()
 
         sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
-                        teAmbDegC=np.interp(
-                        cycSecs, test_time_steps, test_te_amb),
-                        teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0])
+            teAmbDegC=np.interp(
+            cycSecs, test_time_steps, test_te_amb),
+            teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0])
         sd_base = simdrive.SimDriveJit(cyc_jit, veh_jit)
         sd_base.sim_drive()
 
@@ -280,10 +287,10 @@ def plot_cyc_traces(x, show_plots=False):
         sim_drive.sim_drive()
         
         fuel_frac_err = (np.trapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch) -
-                         np.trapz(x=test_time_steps,
-                                  y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])) /\
-                        np.trapz(x=test_time_steps,
-                            y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])
+            np.trapz(x=test_time_steps,
+                y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])) /\
+            np.trapz(x=test_time_steps,
+                y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])
         temp_err = get_error_val(
             sim_drive.teFcDegC, df.loc[idx[cyc_name,
                                            :, :], 'CylinderHeadTempC'],
@@ -316,12 +323,11 @@ def plot_cyc_traces(x, show_plots=False):
 
             # fuel energy plot
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
-            ax1.plot(cyc.cycSecs[1:], cumtrapz(x=cyc.cycSecs,
-                                            y=sim_drive.fcKwInAch * 1e-3), label='thermal')
-            ax1.plot(cyc.cycSecs[1:], cumtrapz(x=cyc.cycSecs,
-                                               y=sd_base.fcKwInAch * 1e-3), label='no thermal')
-            ax1.plot(test_time_steps[1:], cumtrapz(
-                x=test_time_steps, y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3), label='test')
+            ax1.plot(cyc.cycSecs[1:], sim_drive.fsCumuMjOutAch, label='thermal')
+            ax1.plot(cyc.cycSecs[1:], sd_base.fsCumuMjOutAch, label='no thermal')
+            ax1.plot(test_time_steps[1:], 
+                df.loc[idx[cyc_name, :, :], 'Fuel_Energy_Calc[MJ]'], 
+                label='test')
             ax1.set_ylabel('Fuel Energy [MJ]')
             ax1.legend()
             if cyc_name in tuning_cyc_names:
