@@ -216,7 +216,7 @@ if run_optimization:
     t0 = time.time()    
     res = minimize(problem, 
                 algorithm,
-                ('n_gen', 50),
+                ('n_gen', 100),
                 seed=1,
                 verbose=True,)
                 #    save_history=True)
@@ -250,6 +250,9 @@ for pareto_objs in res.F:
     pareto_list.append(pareto_objs.tolist())
 
 columns = [cyc_name + ' ' + var_name for cyc_name in tuning_cyc_names for var_name in ['temp', 'fuel']]
+
+params_res = lambda design: [(param, np.round(val, decimals=3)) 
+    for param, val in zip(params, res.X[design])]
 
 df_res = pd.DataFrame(data=pareto_list, columns=columns)
 
