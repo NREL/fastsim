@@ -56,7 +56,7 @@ print(f"Sim drive time: {time.time() - t0:.3f} s")
 
 #%%
 
-df = hot_util.load_test_data()
+df0 = hot_util.load_test_data()
 idx = pd.IndexSlice # used to slice multi index 
 
 def rollav(data, width=10):
@@ -72,15 +72,28 @@ def rollav(data, width=10):
 
 tuning_cyc_names = ['us06x2 72F cs', 'us06x2 20F cs', 'uddsx4 0F cs']
 # clean up temperature noise a bit
-for cyc_name in df.index.levels[0]:
-    df.loc[idx[cyc_name, :, :], 'CylinderHeadTempC'] = rollav(
-        df.loc[idx[cyc_name, :, :], 'CylinderHeadTempC'])
-    df.loc[idx[cyc_name, :, :], 'Fuel_Energy_Calc[MJ]'] = np.concatenate(
+for cyc_name in df0.index.levels[0]:
+    df0.loc[idx[cyc_name, :, :], 'CylinderHeadTempC'] = rollav(
+        df0.loc[idx[cyc_name, :, :], 'CylinderHeadTempC'])
+    df0.loc[idx[cyc_name, :, :], 'Fuel_Energy_Calc[MJ]'] = np.concatenate(
         [[0], cumtrapz(
-            y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3,
-            x=df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]']
+            y=df0.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3,
+            x=df0.loc[idx[cyc_name, :, :], 'DAQ_Time[s]']
         )])
         
+#%%
+# Store df contents in dicts with ~1 Hz sampling for faster simulation and such
+
+dfdict = {}
+for cyc_name in df0.index.levels[0]:
+    # dfdict[cyc_name] = pd.DataFrame({'DAQ_Time[s]': df0.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values[::10],
+    #                                  'Fuel_Energy_Calc[MJ]': df0.loc[idx[cyc_name, :, :], 'Fuel_Energy_Calc[MJ]'].values[::10],
+    #                                  'Cell_Temp[C]': df0.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values[::10],
+    #                                  'CylinderHeadTempC': df0.loc[idx[cyc_name, :, :], 'CylinderHeadTempC'].values[::10],})
+    dfdict[cyc_name] = pd.DataFrame({col: df0.loc[idx[cyc_name, :, :], col].values[::10]
+        for col in df0.columns})
+
+# df.reset_index(inplace=Truey, drop=True)
 
 #%%
 
@@ -104,7 +117,7 @@ params = [item[0] for item in params_bounds]
 lower_bounds = anp.array([item[1] for item in params_bounds])
 upper_bounds = anp.array([item[2] for item in params_bounds])
 
-def get_error_val(model, test, model_time_steps, test_time_steps):
+def get_error_val(model, test, time_steps):
     """Returns time-averaged error for model and test signal.
     Arguments:
     ----------
@@ -118,9 +131,8 @@ def get_error_val(model, test, model_time_steps, test_time_steps):
     test per time"""
 
     err = trapz(
-        y=abs(model - np.interp(
-            x=model_time_steps, xp=test_time_steps, fp=test)), 
-        x=model_time_steps) / model_time_steps[-1]
+        y=abs(model - test), 
+        x=time_steps) / time_steps[-1]
 
     return err
 
@@ -129,20 +141,18 @@ def get_error_for_cycle(x):
     # create cycle.Cycle()
     errors = []     
     for cyc_name in tuning_cyc_names:
-        test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
-        test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
+        test_time_steps = dfdict[cyc_name]['DAQ_Time[s]'].values
+        test_te_amb = dfdict[cyc_name]['Cell_Temp[C]'].values
 
-        cycSecs = np.arange(0, round(test_time_steps[-1], 0))
-        cycMps = np.interp(cycSecs, 
-            test_time_steps, 
-            df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'].values)
+        cycSecs = test_time_steps
+        cycMps = dfdict[cyc_name]['Dyno_Spd[mps]'].values
 
         cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
         cyc_jit = cyc.get_numba_cyc()
 
         sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
-                        teAmbDegC=np.interp(cycSecs, test_time_steps, test_te_amb),
-                        teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]
+                        teAmbDegC=test_te_amb,
+                        teFcInitDegC=dfdict[cyc_name]['CylinderHeadTempC'].values[0]
         )   
 
         # unpack input parameters
@@ -155,10 +165,10 @@ def get_error_for_cycle(x):
         # calculate error
         for i in range(len(error_vars)):
             model_err_var = sim_drive.__getattribute__(error_vars[i][0])
-            test_err_var = df.loc[idx[cyc_name, :, :], error_vars[i][1]].values
+            test_err_var = dfdict[cyc_name][error_vars[i][1]].values
 
             err = get_error_val(model_err_var, test_err_var, 
-                model_time_steps=cycSecs, test_time_steps=test_time_steps)
+                time_steps=cycSecs)
 
             errors.append(err)
     
