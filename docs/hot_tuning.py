@@ -247,8 +247,7 @@ res = pickle.load(open('res.p', 'rb'))
 # get pareto objectives in a pandas dataframe
 pareto_list = []
 for pareto_objs in res.F:
-    pareto_list.append(
-        pareto_objs[[True, True, False, True, True, False, True, True, False]].tolist())
+    pareto_list.append(pareto_objs.tolist())
 
 columns = [cyc_name + ' ' + var_name for cyc_name in tuning_cyc_names for var_name in ['temp', 'fuel']]
 
@@ -259,30 +258,38 @@ print(df_res.filter(regex='temp').sum(axis=1).sort_values())
 print('\nSorted by sum of fuel errors.')
 print(df_res.filter(regex='fuel').sum(axis=1).sort_values())
 
+# check for results that are better than the mean in both
+temp_set = set(df_res.filter(regex='temp').sum(axis=1).sort_values().loc[
+                df_res.filter(regex='temp').sum(axis=1).sort_values()
+               < df_res.filter(regex='temp').sum(axis=1).mean()].index)
+fuel_set = set(df_res.filter(regex='fuel').sum(axis=1).sort_values().loc[
+                df_res.filter(regex='fuel').sum(axis=1).sort_values()
+               < df_res.filter(regex='fuel').sum(axis=1).mean()].index)
+
+print('\nValues better than mean for both fuel and temp:')
+print(fuel_set & temp_set)
+
 #%%
 # plot traces 
 
-validation_cyc_names = [name for name in df.index.levels[0] if re.search('(0|20|72)F', name)]
+validation_cyc_names = [name for name in df0.index.levels[0] if re.search('(0|20|72)F', name)]
 sns.set(font_scale=2)
 
 def plot_cyc_traces(x, show_plots=False):
     print('\nPlotting time traces.')
     for cyc_name in validation_cyc_names:
-        test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
-        test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
+        test_time_steps = dfdict[cyc_name]['DAQ_Time[s]'].values
+        test_te_amb = dfdict[cyc_name]['Cell_Temp[C]'].values
 
-        cycSecs = np.arange(0, round(test_time_steps[-1], 0))
-        cycMps = np.interp(cycSecs, 
-            test_time_steps, 
-            df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'].values)
+        cycSecs = test_time_steps
+        cycMps = dfdict[cyc_name]['Dyno_Spd[mps]'].values
 
         cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
         cyc_jit = cyc.get_numba_cyc()
 
         sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
-            teAmbDegC=np.interp(
-            cycSecs, test_time_steps, test_te_amb),
-            teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0])
+            teAmbDegC=test_te_amb,
+            teFcInitDegC=dfdict[cyc_name]['CylinderHeadTempC'][0])
         sd_base = simdrive.SimDriveJit(cyc_jit, veh_jit)
         sd_base.sim_drive()
 
@@ -294,13 +301,13 @@ def plot_cyc_traces(x, show_plots=False):
         
         fuel_frac_err = (np.trapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch) -
             np.trapz(x=test_time_steps,
-                y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])) /\
+                y=dfdict[cyc_name]['Fuel_Power_Calc[kW]'])) /\
             np.trapz(x=test_time_steps,
-                y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'])
+                y=dfdict[cyc_name]['Fuel_Power_Calc[kW]'])
         temp_err = get_error_val(
-            sim_drive.teFcDegC, df.loc[idx[cyc_name,
-                                           :, :], 'CylinderHeadTempC'],
-            cycSecs, test_time_steps) 
+            sim_drive.teFcDegC, 
+            dfdict[cyc_name]['CylinderHeadTempC'],
+            test_time_steps) 
 
         less_more = 'less' if fuel_frac_err < 0 else 'more'
         print('\n' + cyc_name)
@@ -311,9 +318,12 @@ def plot_cyc_traces(x, show_plots=False):
         if show_plots:
             # temperature plot
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
-            ax1.plot(cyc.cycSecs, sim_drive.teFcDegC, label='model')
-            ax1.plot(test_time_steps, df.loc[idx[cyc_name,
-                                                :, :], 'CylinderHeadTempC'], label='test')
+            ax1.plot(cyc.cycSecs, 
+                sim_drive.teFcDegC, 
+                label='model')
+            ax1.plot(test_time_steps, 
+                dfdict[cyc_name]['CylinderHeadTempC'], 
+                label='test')
             ax1.set_ylabel('FC Temp. [$^\circ$C]')
             ax1.legend()
             if cyc_name in tuning_cyc_names:
@@ -332,7 +342,7 @@ def plot_cyc_traces(x, show_plots=False):
             ax1.plot(cyc.cycSecs, sim_drive.fsCumuMjOutAch, label='thermal')
             ax1.plot(cyc.cycSecs, sd_base.fsCumuMjOutAch, label='no thermal')
             ax1.plot(test_time_steps, 
-                df.loc[idx[cyc_name, :, :], 'Fuel_Energy_Calc[MJ]'], 
+                dfdict[cyc_name]['Fuel_Energy_Calc[MJ]'], 
                 label='test')
             ax1.set_ylabel('Fuel Energy [MJ]')
             ax1.legend()
@@ -346,5 +356,3 @@ def plot_cyc_traces(x, show_plots=False):
             ax2.set_ylabel('Speed [mps]')
             plt.savefig('plots/' + title + ' energy.svg')
             plt.savefig('plots/' + title + ' energy.png')
-
-# %%
