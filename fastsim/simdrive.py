@@ -434,8 +434,11 @@ class SimDriveClassic(object):
                 self.mcElecInLimKw[i] = min(
                     self.veh.mcKwOutArray[-1], self.veh.maxMotorKw)
             else:
-                self.mcElecInLimKw[i] = min(self.veh.mcKwOutArray[np.argmax(self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) -
-                                                                                                0.01, self.curMaxAvailElecKw[i])) - 1], self.veh.maxMotorKw)
+                self.mcElecInLimKw[i] = min(
+                    self.veh.mcKwOutArray[
+                            np.argmax(self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) -
+                                0.01, self.curMaxAvailElecKw[i])) - 1],
+                    self.veh.maxMotorKw)
         else:
             self.mcElecInLimKw[i] = 0.0
 
