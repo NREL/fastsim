@@ -45,7 +45,7 @@ def run_python_fastsim():
             sim_drive.sim_drive()
 
             res_dict['fe_' + cycname] = sim_drive.mpgge
-            res_dict['kW_hr__mi_' + cycname] = sim_drive.electric_kWh_per_mi
+            res_dict['kW_hr__mi_' + cycname] = sim_drive.battery_kWh_per_mi
         res_python[veh.Scenario_name] = res_dict
                                    
     t1 = time.time()
@@ -109,27 +109,31 @@ def compare(res_python, res_excel):
     res_comps = {}
     for vehname in common_names:
         res_comp = {}
-        if not(isclose(res_python[vehname]['kW_hr__mi_udds'], res_excel[vehname]['kW_hr__mi_udds'], rel_tol=1e-6, abs_tol=1e-6)):
+        if not(isclose(res_python[vehname]['kW_hr__mi_udds'], res_excel[vehname]['kW_hr__mi_udds'], 
+            rel_tol=1e-6, abs_tol=1e-6)):
             res_comp['udds_elec_per_err'] = (
                 res_python[vehname]['kW_hr__mi_udds'] -
                 res_excel[vehname]['kW_hr__mi_udds']) / res_excel[vehname]['kW_hr__mi_udds'] * 100
         else:
             res_comp['udds_elec_per_err'] = 0.0
 
-        if not(isclose(res_python[vehname]['kW_hr__mi_hwfet'], res_excel[vehname]['kW_hr__mi_hwfet'], rel_tol=1e-6, abs_tol=1e-6)):
+        if not(isclose(res_python[vehname]['kW_hr__mi_hwfet'], res_excel[vehname]['kW_hr__mi_hwfet'], 
+            rel_tol=1e-6, abs_tol=1e-6)):
             res_comp['hwfet_elec_per_err'] = (
                 res_python[vehname]['kW_hr__mi_hwfet'] -
                 res_excel[vehname]['kW_hr__mi_hwfet']) / res_excel[vehname]['kW_hr__mi_hwfet'] * 100
         else:
             res_comp['hwfet_elec_per_err'] = 0.0
 
-        if not(isclose(res_python[vehname]['fe_udds'], res_excel[vehname]['fe_udds'], rel_tol=1e-6, abs_tol=1e-6)):
+        if not(isclose(res_python[vehname]['fe_udds'], res_excel[vehname]['fe_udds'], 
+            rel_tol=1e-6, abs_tol=1e-6)):
             res_comp['udds_perc_err'] = (
                 res_python[vehname]['fe_udds'] - res_excel[vehname]['fe_udds']) / res_excel[vehname]['fe_udds'] * 100
         else: 
             res_comp['udds_perc_err'] = 0.0
 
-        if not(isclose(res_python[vehname]['fe_hwfet'], res_excel[vehname]['fe_hwfet'], rel_tol=1e-6, abs_tol=1e-6)):
+        if not(isclose(res_python[vehname]['fe_hwfet'], res_excel[vehname]['fe_hwfet'], 
+            rel_tol=1e-6, abs_tol=1e-6)):
             res_comp['hwy_perc_err'] = (
                 res_python[vehname]['fe_hwfet'] - res_excel[vehname]['fe_hwfet']) / res_excel[vehname]['fe_hwfet'] * 100
         else:

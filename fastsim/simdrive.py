@@ -204,14 +204,15 @@ class SimDriveClassic(object):
                 initSoc = None
             else:
                 self.sim_drive_walk(initSoc, auxInKwOverride)
+                self.set_post_scalars()
 
         elif self.veh.vehPtType == 1:  # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-
             self.sim_drive_walk(initSoc, auxInKwOverride)
+            self.set_post_scalars()
 
         elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
 
@@ -235,20 +236,84 @@ class SimDriveClassic(object):
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
 
             self.sim_drive_walk(initSoc, auxInKwOverride)
+            self.set_post_scalars()
 
-        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
+        elif self.veh.vehPtType == 3 and initSoc == None: # PHEV
+            print('running PHEV SOC iteration')
+            # This runs 1 cycle starting at max SOC then runs 1 cycle starting at min SOC.  
+            # By assuming that the battery SOC depletion per mile is constanc across cycles,
+            # the first cycle can be extrapolated until charge sustaining kicks in.  
+
+            initSoc = self.veh.maxSoc
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+            self.set_post_scalars()
+            # charge depletion battery kW-hr/mi
+            cdBattKwh__mi = self.battery_kWh_per_mi
+            # charge depletion mpg
+            cdFcMpg = self.mpgge
+
+            # SOC change during 1 cycle
+            deltaSoc = (self.veh.maxSoc - self.veh.minSoc)
+            # total number of miles in charge depletion mode, assuming constant kWh_per_mi
+            totalCdMiles = deltaSoc * \
+                self.veh.maxEssKwh / self.battery_kWh_per_mi
+            # float64 number of cycles in charge depletion mode, up to transition
+            cdCycs = totalCdMiles / self.distMiles.sum()
+            # integer number of cycles in charge depletion mode, ***not*** including transition cycle
+            cdReps = np.floor(cdCycs)            
+            print('totalCdMiles', totalCdMiles)
+            print('cdCycs', cdCycs)
+            print('cdReps', cdReps)
+
+            # transition cycle
+            initSoc = self.veh.minSoc + 0.01 # the 0.01 is here to be consistent with Excel
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+            self.set_post_scalars()
+            transBattKwh__mi = self.battery_kWh_per_mi
+            transFcMpg = self.mpgge
+
+            # charge sustaining cycle
+            initSoc = self.soc[-1] # the 0.01 is here to be consistent with Excel
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+            self.set_post_scalars()
+            csBattKwh__mi = self.battery_kWh_per_mi
+            csFcMpg = self.mpgge
+
+            print('cdBattKwh__mi:', cdBattKwh__mi)
+            print('csBattKwh__mi:', csBattKwh__mi)
+            print('cdFcMpg:', cdFcMpg)
+            print('csFcMpg:', csFcMpg)
+            
+            # note that all values set by `self.set_post_scalars` are relevant only to 
+            # the final charge sustaining cycle
+
+            # harmonic average of charged depletion, transition, and charge sustaining phases
+            self.mpgge = (cdReps + 1) / (
+                cdReps / cdFcMpg + 
+                (cdCycs - cdReps) / transFcMpg + 
+                (1 - cdCycs + cdReps) / csFcMpg)
+            self.battery_kWh_per_mi = (cdReps + 1) / (
+                cdReps / cdBattKwh__mi + 
+                (cdCycs - cdReps) / transBattKwh__mi + 
+                (1 - cdCycs + cdReps) / csBattKwh__mi)
+
+            print('mpgge:', self.mpgge)
+            print('battery_kWh_per_mi', self.battery_kWh_per_mi)
+
+
+        elif self.veh.vehPtType == 4 and initSoc == None:  # BEV
 
             # If EV, initializing initial SOC to maximum SOC.
 
             initSoc = self.veh.maxSoc
-
             self.sim_drive_walk(initSoc, auxInKwOverride)
+            self.set_post_scalars()
 
         else:
 
             self.sim_drive_walk(initSoc, auxInKwOverride)
+            self.set_post_scalars()
 
-        self.set_post_scalars()
 
     def sim_drive_walk(self, initSoc, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Receives second-by-second cycle information, vehicle properties, 
