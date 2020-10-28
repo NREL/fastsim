@@ -247,10 +247,10 @@ class SimDriveClassic(object):
             initSoc = self.veh.maxSoc
             self.sim_drive_walk(initSoc, auxInKwOverride)
             self.set_post_scalars()
-            # charge depletion battery kW-hr/mi
-            cdBattKwh__mi = self.battery_kWh_per_mi
-            # charge depletion mpg
-            cdFcMpg = self.mpgge
+            # charge depletion battery kW-hr
+            cdBattKwh = self.essDischgKj / 3600.0
+            # charge depletion fuel gallons
+            cdFsGal = self.fsKwhOutAch.sum() / params.kWhPerGGE
 
             # SOC change during 1 cycle
             deltaSoc = (self.veh.maxSoc - self.veh.minSoc)
@@ -259,46 +259,28 @@ class SimDriveClassic(object):
                 self.veh.maxEssKwh / self.battery_kWh_per_mi
             # float64 number of cycles in charge depletion mode, up to transition
             cdCycs = totalCdMiles / self.distMiles.sum()
-            # integer number of cycles in charge depletion mode, ***not*** including transition cycle
-            cdReps = np.floor(cdCycs)            
-            print('totalCdMiles', totalCdMiles)
-            print('cdCycs', cdCycs)
-            print('cdReps', cdReps)
+            # fraction of transition cycle spent in charge depletion
+            cdFracInTrans = cdCycs % np.floor(cdCycs)    
+            totalMiles = self.distMiles.sum() * (cdCycs + (1 - cdFracInTrans))
 
-            # transition cycle
+            # first cycle that ends in charge sustaining behavior
             initSoc = self.veh.minSoc + 0.01 # the 0.01 is here to be consistent with Excel
             self.sim_drive_walk(initSoc, auxInKwOverride)
             self.set_post_scalars()
-            transBattKwh__mi = self.battery_kWh_per_mi
-            transFcMpg = self.mpgge
+            # charge depletion battery kW-hr
+            csBattKwh = self.essDischgKj / 3600.0
+            # charge depletion fuel gallons
+            csFsGal = self.fsKwhOutAch.sum() / params.kWhPerGGE
 
-            # charge sustaining cycle
-            initSoc = self.soc[-1] # the 0.01 is here to be consistent with Excel
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-            self.set_post_scalars()
-            csBattKwh__mi = self.battery_kWh_per_mi
-            csFcMpg = self.mpgge
-
-            print('cdBattKwh__mi:', cdBattKwh__mi)
-            print('csBattKwh__mi:', csBattKwh__mi)
-            print('cdFcMpg:', cdFcMpg)
-            print('csFcMpg:', csFcMpg)
-            
             # note that all values set by `self.set_post_scalars` are relevant only to 
             # the final charge sustaining cycle
 
             # harmonic average of charged depletion, transition, and charge sustaining phases
-            self.mpgge = (cdReps + 1) / (
-                cdReps / cdFcMpg + 
-                (cdCycs - cdReps) / transFcMpg + 
-                (1 - cdCycs + cdReps) / csFcMpg)
-            self.battery_kWh_per_mi = (cdReps + 1) / (
-                cdReps / cdBattKwh__mi + 
-                (cdCycs - cdReps) / transBattKwh__mi + 
-                (1 - cdCycs + cdReps) / csBattKwh__mi)
+            self.mpgge = totalMiles / (cdFsGal * cdCycs + csFsGal)
+            self.battery_kWh_per_mi = (cdBattKwh * cdCycs + csBattKwh) / totalMiles
 
-            print('mpgge:', self.mpgge)
-            print('battery_kWh_per_mi', self.battery_kWh_per_mi)
+            print('mpgge =', self.mpgge)
+            print('battery_kWh_per_mi =', self.battery_kWh_per_mi)
 
 
         elif self.veh.vehPtType == 4 and initSoc == None:  # BEV
@@ -1114,7 +1096,7 @@ class SimDriveClassic(object):
 
         else:
             self.mpgge = self.distMiles.sum() / \
-                (self.fsKwhOutAch.sum() * (1 / params.kWhPerGGE))
+                (self.fsKwhOutAch.sum() / params.kWhPerGGE)
 
         self.roadwayChgKj = (self.roadwayChgKwOutAch * self.cyc.secs).sum()
         self.essDischgKj = - \
