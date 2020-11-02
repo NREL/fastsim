@@ -2,9 +2,12 @@
 physical properties that should rarely change, and vehicle model parameters 
 that can be modified by advanced users."""
 
+import os
 import numpy as np
 from numba import jitclass, float64
 import json
+
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # vehicle types
 CONV = 1
@@ -73,8 +76,9 @@ mcPercOutArray = np.linspace(0, 1, 101)
 
 ENERGY_AUDIT_ERROR_TOLERANCE = 0.02 # i.e., 2%
 
+
 # loading long arrays from json file
-with open('../resources/longparams.json', 'r') as paramfile:
+with open(os.path.join(THIS_DIR, 'resources', 'longparams.json'), 'r') as paramfile:
     param_dict = json.load(paramfile)
 
 # PHEV-specific parameters

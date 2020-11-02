@@ -1,1 +1,0 @@
-This directory contains standalone vehicle files.  
