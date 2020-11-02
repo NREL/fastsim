@@ -27,7 +27,7 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
 
 def main():
     # just use first vehicle in default database
-    for i in range(1,29):
+    for i in range(1,27):
         veh = vehicle.Vehicle(i)
         accel_cyc = cycle.Cycle(std_cyc_name=None,
                                    cyc_dict=create_accel_cyc())
