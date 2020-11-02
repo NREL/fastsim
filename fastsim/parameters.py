@@ -4,6 +4,7 @@ that can be modified by advanced users."""
 
 import numpy as np
 from numba import jitclass, float64
+import json
 
 # vehicle types
 CONV = 1
@@ -21,6 +22,16 @@ FC_EFF_TYPES = {1: "SI", 2: "Diesel - ISB280", 3: "Diesel", 4: "Fuel Cell", 5: "
 mphPerMps = 2.2369
 kWhPerGGE = 33.7
 metersPerMile = 1609.00
+
+# EPA fuel economy adjustment parameters
+
+# 2008	2017	2016
+# City Intercept	0.003259	0.004091	0.003259
+# City Slope	1.1805	1.1601	1.1805
+# Highway Intercept	0.001376	0.003191	0.001376
+# Highway Slope	1.3466	1.2945	1.3466
+maxEpaAdj = 0.3 # maximum EPA adjustment factor
+
 
 @jitclass([('airDensityKgPerM3', float64),
            ('gravityMPerSec2', float64),])
@@ -61,3 +72,11 @@ modern_max = 0.95
 mcPercOutArray = np.linspace(0, 1, 101)
 
 ENERGY_AUDIT_ERROR_TOLERANCE = 0.02 # i.e., 2%
+
+# loading long arrays from json file
+with open('../resources/longparams.json', 'r') as paramfile:
+    param_dict = json.load(paramfile)
+
+# PHEV-specific parameters
+rechgFreqMiles = param_dict['rechgFreqMiles']
+ufArray = param_dict['ufArray']
