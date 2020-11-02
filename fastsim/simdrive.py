@@ -8,7 +8,7 @@ import pandas as pd
 import re
 import sys
 from numba import jitclass                 # import the decorator
-from numba import float64, int32, bool_    # import the types
+from numba import float64, int32, bool_   # import the types
 import warnings
 warnings.simplefilter('ignore')
 
@@ -24,7 +24,7 @@ param_spec = [('missed_trace_correction', bool_),
             ('max_time_dilation', float64), 
             ('min_time_dilation', float64), 
             ('time_dilation_tol', float64), 
-            ('verbose', bool_), 
+            ('verbose', bool_),
             ]
 @jitclass(param_spec)
 class SimDriveParams(object):
@@ -207,22 +207,17 @@ class SimDriveClassic(object):
                 self.set_post_scalars()
 
         elif self.veh.vehPtType == 1:  # Conventional
-
             # If no EV / Hybrid components, no SOC considerations.
-
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc, auxInKwOverride)
             self.set_post_scalars()
 
         elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
-
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
-
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
-
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             ess2fuelKwh = 1.0
             sim_count = 0
@@ -286,13 +281,11 @@ class SimDriveClassic(object):
         elif self.veh.vehPtType == 4 and initSoc == None:  # BEV
 
             # If EV, initializing initial SOC to maximum SOC.
-
             initSoc = self.veh.maxSoc
             self.sim_drive_walk(initSoc, auxInKwOverride)
             self.set_post_scalars()
 
         else:
-
             self.sim_drive_walk(initSoc, auxInKwOverride)
             self.set_post_scalars()
 
