@@ -1,6 +1,8 @@
 """Module containing classes and methods for calculating label fuel economy.
 For example usage, see ../README.md"""
 
+import sys
+
 from fastsim import simdrive, cycle, vehicle, params
 
 def get_label_fe(veh, full_detail=False, verbose=False):
@@ -26,22 +28,23 @@ def get_label_fe(veh, full_detail=False, verbose=False):
     # load the cycles and intstantiate simdrive objects
     if 'TypedVehicle' in str(type(veh)):
         cyc['udds'] = cycle.Cycle('udds').get_numba_cyc()
-        cyc['hwy'] = cycle.Cycle('hwy').get_numba_cyc()
+        cyc['hwfet'] = cycle.Cycle('hwfet').get_numba_cyc()
 
         sd['udds'] = simdrive.SimDriveJit(cyc['udds'], veh)
-        sd['hwy'] = simdrive.SimDriveJit(cyc['hwy'], veh)
+        sd['hwfet'] = simdrive.SimDriveJit(cyc['hwfet'], veh)
 
     else:
         cyc['udds'] = cycle.Cycle('udds')
-        cyc['hwy'] = cycle.Cycle('hwy')
+        cyc['hwfet'] = cycle.Cycle('hwfet')
 
         sd['udds'] = simdrive.SimDriveClassic(cyc['udds'], veh)
-        sd['hwy'] = simdrive.SimDriveClassic(cyc['hwy'], veh)
+        sd['hwfet'] = simdrive.SimDriveClassic(cyc['hwfet'], veh)
+
+    # run simdrive for non-phev powertrains
+    sd['udds'].sim_drive()
+    sd['hwfet'].sim_drive()
 
     if params.PT_TYPES[veh.vehPtType] != 'PHEV':
-        # run simdrive for non-phev powertrains    
-        sd['udds'].sim_drive()
-        sd['hwy'].sim_drive()
         # efficiency-related calculations
         # adjusted combined city/highway mpg
         out['adjCombMpgge'] = 666
@@ -123,3 +126,14 @@ def get_label_fe(veh, full_detail=False, verbose=False):
         return out, sd
     else:
         return out
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        veh = vehicle.Vehicle(sys.argv[1])
+    else:
+        veh = vehicle.Vehicle(1) # load default vehicle
+
+    out = get_label_fe(veh)
+    for key in out.keys():
+        print(key + f': {out[key]:.5g}')
+    
