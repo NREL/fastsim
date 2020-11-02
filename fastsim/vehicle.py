@@ -20,7 +20,7 @@ from . import parameters as params
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
         os.path.join(
-            THIS_DIR, '..', 'docs', 'FASTSim_py_veh_db.csv'))
+            THIS_DIR, '..', 'resources', 'FASTSim_py_veh_db.csv'))
 
 props = params.PhysicalProperties()
 
