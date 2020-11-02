@@ -21,7 +21,7 @@ from . import parameters as params
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 CYCLES_DIR = os.path.abspath(
         os.path.join(
-            THIS_DIR, '..', 'resources', 'cycles'))
+            THIS_DIR, 'resources', 'cycles'))
 STANDARD_CYCLE_KEYS = ['cycSecs', 'cycMps',
                        'cycGrade', 'cycRoadType', 'cycMph', 'secs', 'cycDistMeters']
 

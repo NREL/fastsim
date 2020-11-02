@@ -234,7 +234,7 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 
 t0 = time.time()
-data_path = '../resources/cycles/cmap_subset/'  # path to drive cycles
+data_path = '../fastsim/resources/cycles/cmap_subset/'  # path to drive cycles
 
 drive_cycs_df = pd.DataFrame()
 trips_df = pd.DataFrame()
@@ -434,7 +434,7 @@ plt.show()
 # load vehicle
 t0 = time.time()
 # load from standalone vehicle file
-veh = vehicle.Vehicle(veh_file=Path('../resources/vehdb/2012 Ford Fusion.csv')) 
+veh = vehicle.Vehicle(veh_file=Path('../fastsim/resources/vehdb/2012 Ford Fusion.csv')) 
 veh_jit = veh.get_numba_veh()
 print(f'Time to load veicle: {time.time() - t0:.2e} s')
 
@@ -443,7 +443,7 @@ print(f'Time to load veicle: {time.time() - t0:.2e} s')
 # generate concatenated trip
 t0 = time.time()
 # load from cycle file path
-cyc1 = cycle.Cycle(cyc_file_path=Path('../resources/cycles/udds.csv'))
+cyc1 = cycle.Cycle(cyc_file_path=Path('../fastsim/resources/cycles/udds.csv'))
 cyc2 = cycle.Cycle("us06")
 cyc_combo = cycle.concat([cyc1.get_cyc_dict(), cyc2.get_cyc_dict()])
 cyc_combo = cycle.Cycle(cyc_dict=cyc_combo)
