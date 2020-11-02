@@ -33,14 +33,23 @@ class Vehicle(object):
     veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db
     
     If a single vehicle veh_file is provided, vnum cannot be passed, and 
-    veh_file must be passed as a keyword argument."""
+    veh_file must be passed as a keyword argument. Files contained in 
+    fastsim/resources/vehdb can be loaded with the filename if 
+    provided as the vnum argument.  Specifying veh_file will explicitly load 
+    whatever file path is provided."""
 
     def __init__(self, vnum=None, veh_file=None):
         super().__init__()
         if veh_file and vnum:
             self.load_veh(vnum, veh_file=veh_file)
         elif vnum and not veh_file:
-            self.load_veh(vnum)
+            if type(vnum) == int:
+                # load numbered vehicle
+                self.load_veh(vnum)
+            else:
+                # load FASTSim's standalone vehicles
+                self.load_veh(0, veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum)
+
         else:
             # vnum = 0 tells load_veh that the file contains only 1 vehicle
             self.load_veh(0, veh_file=veh_file)
