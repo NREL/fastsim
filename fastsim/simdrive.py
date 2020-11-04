@@ -242,40 +242,41 @@ class SimDriveClassic(object):
             initSoc = self.veh.maxSoc
             self.sim_drive_walk(initSoc, auxInKwOverride)
             self.set_post_scalars()
-            # charge depletion battery kW-hr
-            cdBattKwh = self.essDischgKj / 3600.0
-            # charge depletion fuel gallons
-            cdFsGal = self.fsKwhOutAch.sum() / params.kWhPerGGE
+            
+            # # charge depletion battery kW-hr
+            # cdBattKwh = self.essDischgKj / 3600.0
+            # # charge depletion fuel gallons
+            # cdFsGal = self.fsKwhOutAch.sum() / params.kWhPerGGE
 
-            # SOC change during 1 cycle
-            deltaSoc = (self.veh.maxSoc - self.veh.minSoc)
-            # total number of miles in charge depletion mode, assuming constant kWh_per_mi
-            totalCdMiles = deltaSoc * \
-                self.veh.maxEssKwh / self.battery_kWh_per_mi
-            # float64 number of cycles in charge depletion mode, up to transition
-            cdCycs = totalCdMiles / self.distMiles.sum()
-            # fraction of transition cycle spent in charge depletion
-            cdFracInTrans = cdCycs % np.floor(cdCycs)    
-            totalMiles = self.distMiles.sum() * (cdCycs + (1 - cdFracInTrans))
+            # # SOC change during 1 cycle
+            # deltaSoc = (self.veh.maxSoc - self.veh.minSoc)
+            # # total number of miles in charge depletion mode, assuming constant kWh_per_mi
+            # totalCdMiles = deltaSoc * \
+            #     self.veh.maxEssKwh / self.battery_kWh_per_mi
+            # # float64 number of cycles in charge depletion mode, up to transition
+            # cdCycs = totalCdMiles / self.distMiles.sum()
+            # # fraction of transition cycle spent in charge depletion
+            # cdFracInTrans = cdCycs % np.floor(cdCycs)    
+            # totalMiles = self.distMiles.sum() * (cdCycs + (1 - cdFracInTrans))
 
-            # first cycle that ends in charge sustaining behavior
-            initSoc = self.veh.minSoc + 0.01 # the 0.01 is here to be consistent with Excel
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-            self.set_post_scalars()
-            # charge depletion battery kW-hr
-            csBattKwh = self.essDischgKj / 3600.0
-            # charge depletion fuel gallons
-            csFsGal = self.fsKwhOutAch.sum() / params.kWhPerGGE
+            # # first cycle that ends in charge sustaining behavior
+            # initSoc = self.veh.minSoc + 0.01 # the 0.01 is here to be consistent with Excel
+            # self.sim_drive_walk(initSoc, auxInKwOverride)
+            # self.set_post_scalars()
+            # # charge depletion battery kW-hr
+            # csBattKwh = self.essDischgKj / 3600.0
+            # # charge depletion fuel gallons
+            # csFsGal = self.fsKwhOutAch.sum() / params.kWhPerGGE
 
-            # note that all values set by `self.set_post_scalars` are relevant only to 
-            # the final charge sustaining cycle
+            # # note that all values set by `self.set_post_scalars` are relevant only to 
+            # # the final charge sustaining cycle
 
-            # harmonic average of charged depletion, transition, and charge sustaining phases
-            self.mpgge = totalMiles / (cdFsGal * cdCycs + csFsGal)
-            self.battery_kWh_per_mi = (cdBattKwh * cdCycs + csBattKwh) / totalMiles
+            # # harmonic average of charged depletion, transition, and charge sustaining phases
+            # self.mpgge = totalMiles / (cdFsGal * cdCycs + csFsGal)
+            # self.battery_kWh_per_mi = (cdBattKwh * cdCycs + csBattKwh) / totalMiles
 
-            print('mpgge =', self.mpgge)
-            print('battery_kWh_per_mi =', self.battery_kWh_per_mi)
+            # print('mpgge =', self.mpgge)
+            # print('battery_kWh_per_mi =', self.battery_kWh_per_mi)
 
 
         elif self.veh.vehPtType == 4 and initSoc == None:  # BEV

@@ -11,7 +11,7 @@ import xlwings as xw
 from math import isclose
 
 # local modules
-from fastsim import simdrive, vehicle, cycle
+from fastsim import simdrive, vehicle, cycle, simdrivelabel
 
 
 def run_python_fastsim():
@@ -20,33 +20,17 @@ def run_python_fastsim():
 
     t0 = time.time()
 
-    cycles = ['udds', 'hwfet']
     vehicles = np.arange(1, 27)
 
     print('Instantiating classes.')
     print()
-    veh = vehicle.Vehicle(1)
-    veh_jit = veh.get_numba_veh()
-    cyc = cycle.Cycle('udds')
-    cyc_jit = cyc.get_numba_cyc()
 
     res_python = {}
 
     for vehno in vehicles:
         print('vehno =', vehno)
-        res_dict = {}
-        for cycname in cycles:
-            if not((vehno == 1) and (cycname == 'udds')):
-                cyc.set_standard_cycle(cycname)
-                cyc_jit = cyc.get_numba_cyc()
-                veh.load_veh(vehno)
-                veh_jit = veh.get_numba_veh()
-            sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
-            sim_drive.sim_drive()
-
-            res_dict['fe_' + cycname] = sim_drive.mpgge
-            res_dict['kW_hr__mi_' + cycname] = sim_drive.battery_kWh_per_mi
-        res_python[veh.Scenario_name] = res_dict
+        veh_jit = vehicle.Vehicle(vehno).get_numba_veh()
+        res_python[veh_jit.Scenario_name] = simdrivelabel.get_label_fe(veh_jit)
                                    
     t1 = time.time()
     print()
@@ -63,10 +47,10 @@ def run_excel_fastsim():
 
     # initial setup
     wb = xw.Book('FASTSim.xlsm')  # FASTSim.xlsm must be open
+    # capture sheets with results of interest
     sht_veh = wb.sheets('VehicleIO')
-    sht_udds = wb.sheets('UDDS')
-    sht_hwy = wb.sheets('HWY')
     sht_vehnames = wb.sheets('SavedVehs')
+    # setup macros to run from python
     app = wb.app
     load_veh_macro = app.macro("FASTSim.xlsm!reloadVehInfo")
     run_macro = app.macro("FASTSim.xlsm!run.run")
@@ -78,16 +62,17 @@ def run_excel_fastsim():
         print('vehno =', vehno)
         # running a particular vehicle and getting the result
         res_dict = {}
+        # set excel to run vehno
         sht_veh.range('C6').value = vehno
         load_veh_macro()
         run_macro()
-        res_dict['fe_udds'] = sht_udds.range(
-            'C118').value if sht_udds.range('C118').value != None else 0
-        res_dict['fe_hwfet'] = sht_hwy.range(
-            'C118').value if sht_hwy.range('C118').value != None else 0
-        res_dict['kW_hr__mi_udds'] = sht_udds.range('C120').value
-        res_dict['kW_hr__mi_hwfet'] = sht_hwy.range('C120').value
-
+        # lab results (unadjusted)
+        res_dict['labUddsMpgge'] = sht_veh.range('labUddsMpgge').value
+        res_dict['labHwyMpgge'] = sht_veh.range('labHwyMpgge').value
+        res_dict['labCombMpgge'] = sht_veh.range('labCombMpgge').value
+        res_dict['labUddsKwhPerMile'] = sht_veh.range('labUddsKwhPerMile').value
+        res_dict['labHwyKwhPerMile'] = sht_veh.range('labHwyKwhPerMile').value
+        res_dict['labCombKwhPerMile'] = sht_veh.range('labCombKwhPerMile').value
         res_excel[sht_vehnames.range('B' + str(vehno + 2)).value] = res_dict
 
     t1 = time.time()
@@ -105,48 +90,31 @@ def compare(res_python, res_excel):
     Returns dict of comparsion results."""
 
     common_names = set(res_python.keys()) & set(res_excel.keys())
-    
+
+    ERR_TOL = 1e-3
+
+    res_keys = ['labUddsMpgge', 'labHwyMpgge', 'labCombMpgge', 
+        'labUddsKwhPerMile', 'labHwyKwhPerMile', 'labCombKwhPerMile']
+
+
     res_comps = {}
     for vehname in common_names:
-        res_comp = {}
-        if not(isclose(res_python[vehname]['kW_hr__mi_udds'], res_excel[vehname]['kW_hr__mi_udds'], 
-            rel_tol=1e-6, abs_tol=1e-6)):
-            res_comp['udds_elec_per_err'] = (
-                res_python[vehname]['kW_hr__mi_udds'] -
-                res_excel[vehname]['kW_hr__mi_udds']) / res_excel[vehname]['kW_hr__mi_udds'] * 100
-        else:
-            res_comp['udds_elec_per_err'] = 0.0
-
-        if not(isclose(res_python[vehname]['kW_hr__mi_hwfet'], res_excel[vehname]['kW_hr__mi_hwfet'], 
-            rel_tol=1e-6, abs_tol=1e-6)):
-            res_comp['hwfet_elec_per_err'] = (
-                res_python[vehname]['kW_hr__mi_hwfet'] -
-                res_excel[vehname]['kW_hr__mi_hwfet']) / res_excel[vehname]['kW_hr__mi_hwfet'] * 100
-        else:
-            res_comp['hwfet_elec_per_err'] = 0.0
-
-        if not(isclose(res_python[vehname]['fe_udds'], res_excel[vehname]['fe_udds'], 
-            rel_tol=1e-6, abs_tol=1e-6)):
-            res_comp['udds_perc_err'] = (
-                res_python[vehname]['fe_udds'] - res_excel[vehname]['fe_udds']) / res_excel[vehname]['fe_udds'] * 100
-        else: 
-            res_comp['udds_perc_err'] = 0.0
-
-        if not(isclose(res_python[vehname]['fe_hwfet'], res_excel[vehname]['fe_hwfet'], 
-            rel_tol=1e-6, abs_tol=1e-6)):
-            res_comp['hwy_perc_err'] = (
-                res_python[vehname]['fe_hwfet'] - res_excel[vehname]['fe_hwfet']) / res_excel[vehname]['fe_hwfet'] * 100
-        else:
-            res_comp['hwy_perc_err'] = 0.0
+        for res_key in res_keys:
+            res_comp = {}
+            if not(isclose(res_python[vehname][res_key], 
+                res_excel[vehname][res_key],
+                rel_tol=ERR_TOL, abs_tol=ERR_TOL)):
+                res_comp[res_key + '_frac_err'] = (
+                    res_python[vehname][res_key] -
+                    res_excel[vehname][res_key]) / res_excel[vehname][res_key]
+            else:
+                res_comp[res_key] = 0.0
 
         res_comps[vehname] = res_comp
         print('')
         print(vehname)
-        
-        print('FE % Error, UDDS: {:.2f}'.format(res_comps[vehname]['udds_perc_err']))
-        print('FE % Error, HWY: {:.2f}'.format(res_comps[vehname]['hwy_perc_err']))
-        print('kW-hr/mi % Error, UDDS: {:.4f}'.format(res_comps[vehname]['udds_elec_per_err']))
-        print('wK-hr/mi % Error, HWY: {:.4f}'.format(res_comps[vehname]['hwfet_elec_per_err']))
+        for res_key in res_comp.keys():
+            print(res_key + f' = {res_comp[res_key]:.3%}')        
     return res_comps
 
 if __name__ == "__main__":
