@@ -226,8 +226,11 @@ class SimDriveClassic(object):
                 self.sim_drive_walk(initSoc, auxInKwOverride)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
-                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
-                                     self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
+                if (fuelKj + roadwayChgKj) > 0:
+                    ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
+                                        self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
+                else:
+                    ess2fuelKwh = 0.0
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
 
             self.sim_drive_walk(initSoc, auxInKwOverride)
