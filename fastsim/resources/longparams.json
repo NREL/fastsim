@@ -1206,5 +1206,19 @@
         100.0,
         100.0,
         100.0
-    ]
+    ],
+    "LD_FE_Adj_Coef": {
+        "2008": {
+            "City Intercept": 0.003259,
+            "City Slope": 1.1805,
+            "Highway Intercept": 0.001376,
+            "Highway Slope": 1.3466
+        },
+        "2017": {
+            "City Intercept": 0.004091,
+            "City Slope": 1.1601,
+            "Highway Intercept": 0.003191,
+            "Highway Slope": 1.2945
+        }
+    }
 }
