@@ -31,7 +31,7 @@ import docs.hot_utilities as hot_util
 
 # load the vehicle
 t0 = time.time()
-veh = vehicle.Vehicle(veh_file=Path('../vehdb/2012 Ford Fusion.csv'))
+veh = vehicle.Vehicle('2012 Ford Fusion.csv')
 veh_jit = veh.get_numba_veh()
 veh_jit.dragCoef, veh_jit.wheelRrCoef = utils.abc_to_drag_coeffs(3625 / 2.2,
                                                                  veh.frontalAreaM2,
@@ -205,7 +205,7 @@ class ThermalProblem(Problem):
 
 #%% 
 
-run_optimization = True
+run_optimization = False
 
 if run_optimization:
     print('Running optimization.')
@@ -359,3 +359,28 @@ def plot_cyc_traces(x, show_plots=False):
             ax2.set_ylabel('Speed [mps]')
             plt.savefig('plots/' + title + ' energy.svg')
             plt.savefig('plots/' + title + ' energy.png')
+
+            # temperature and fuel energy plot
+            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
+            ax1.plot(cyc.cycSecs,
+                     sim_drive.teFcDegC,
+                     label='thermal model')
+            ax1.plot(test_time_steps,
+                     dfdict[cyc_name]['CylinderHeadTempC'],
+                     label='test')
+            ax1.set_ylabel('FC Temp. [$^\circ$C]')
+            ax1.legend()
+            if cyc_name in tuning_cyc_names:
+                title = cyc_name + ' tuning'
+            else:
+                title = cyc_name + ' validation'
+            ax1.set_title(title)
+            ax2.plot(cyc.cycSecs, sim_drive.fsCumuMjOutAch, label='thermal model')
+            ax2.plot(cyc.cycSecs, sd_base.fsCumuMjOutAch, label='no thermal model')
+            ax2.plot(test_time_steps,
+                     dfdict[cyc_name]['Fuel_Energy_Calc[MJ]'],
+                     label='test')
+            ax2.set_ylabel('Fuel Energy [MJ]')
+            ax2.legend()
+            plt.savefig('plots/' + title + ' both.svg')
+            plt.savefig('plots/' + title + ' both.png')
