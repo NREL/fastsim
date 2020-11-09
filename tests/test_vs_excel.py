@@ -55,7 +55,7 @@ def run_excel_fastsim():
     load_veh_macro = app.macro("FASTSim.xlsm!reloadVehInfo")
     run_macro = app.macro("FASTSim.xlsm!run.run")
 
-    vehicles = np.arange(1, 27)
+    vehicles = np.arange(1, 39)
     res_excel = {}
     
     for vehno in vehicles:
@@ -73,7 +73,19 @@ def run_excel_fastsim():
         res_dict['labUddsKwhPerMile'] = sht_veh.range('labUddsKwhPerMile').value
         res_dict['labHwyKwhPerMile'] = sht_veh.range('labHwyKwhPerMile').value
         res_dict['labCombKwhPerMile'] = sht_veh.range('labCombKwhPerMile').value
-        res_excel[sht_vehnames.range('B' + str(vehno + 2)).value] = res_dict
+
+        # adjusted results
+        res_dict['adjUddsMpgge'] = sht_veh.range('adjUddsMpgge').value
+        res_dict['adjHwyMpgge'] = sht_veh.range('adjHwyMpgge').value
+        res_dict['adjCombMpgge'] = sht_veh.range('adjCombMpgge').value
+        res_dict['adjUddsKwhPerMile'] = sht_veh.range('adjUddsKwhPerMile').value
+        res_dict['adjHwyKwhPerMile'] = sht_veh.range('adjHwyKwhPerMile').value
+        res_dict['adjCombKwhPerMile'] = sht_veh.range('adjCombKwhPerMile').value
+
+        for key in res_dict.keys():
+            if (res_dict[key] == '') | (res_dict[key] == None):
+                res_dict[key] = 0
+                res_excel[sht_vehnames.range('B' + str(vehno + 2)).value] = res_dict
 
     t1 = time.time()
     print()
@@ -91,31 +103,41 @@ def compare(res_python, res_excel):
 
     common_names = set(res_python.keys()) & set(res_excel.keys())
 
-    ERR_TOL = 1e-3
+    ERR_TOL = 0.02
 
     res_keys = ['labUddsMpgge', 'labHwyMpgge', 'labCombMpgge', 
-        'labUddsKwhPerMile', 'labHwyKwhPerMile', 'labCombKwhPerMile']
-
+        'labUddsKwhPerMile', 'labHwyKwhPerMile', 'labCombKwhPerMile',
+        'adjUddsMpgge', 'adjHwyMpgge', 'adjCombMpgge', 
+        'adjUddsKwhPerMile', 'adjHwyKwhPerMile', 'adjCombKwhPerMile', ]
 
     res_comps = {}
     for vehname in common_names:
+        print('')
+        print(vehname)
+        print('***'*5)
         for res_key in res_keys:
             res_comp = {}
             if not(isclose(res_python[vehname][res_key], 
                 res_excel[vehname][res_key],
                 rel_tol=ERR_TOL, abs_tol=ERR_TOL)):
-                res_comp[res_key + '_frac_err'] = (
-                    res_python[vehname][res_key] -
-                    res_excel[vehname][res_key]) / res_excel[vehname][res_key]
+                try:
+                    res_comp[res_key + '_frac_err'] = (
+                        res_python[vehname][res_key] -
+                        res_excel[vehname][res_key]) / res_excel[vehname][res_key]
+                except:
+                    res_comp[res_key + '_frac_err'] = np.float64('666'*6)
+                print(
+                    res_key + ' error = {:.3g}%'.format(res_comp[res_key + '_frac_err'] * 100))
+                print('')
             else:
-                res_comp[res_key] = 0.0
+                res_comp[res_key + '_frac_err'] = 0.0
+        if (np.array(list(res_comp.values())) == 0).all():
+            print(f'All values within error tolerance of {ERR_TOL:.3g}')
 
         res_comps[vehname] = res_comp
-        print('')
-        print(vehname)
-        for res_key in res_comp.keys():
-            print(res_key + f' = {res_comp[res_key]:.3%}')        
     return res_comps
 
 if __name__ == "__main__":
-    _ = compare(run_python_fastsim(), run_excel_fastsim())
+    res_python = run_python_fastsim()
+    res_excel = run_excel_fastsim()
+    res_comp = compare(res_python, res_excel)

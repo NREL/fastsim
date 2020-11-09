@@ -3,6 +3,7 @@ For example usage, see ../README.md"""
 
 import sys
 import numpy as np
+import re
 
 from fastsim import simdrive, cycle, vehicle, params
 
@@ -48,6 +49,7 @@ def get_label_fe(veh, full_detail=False, verbose=False):
     # run calculations for non-PHEV powertrains
     if params.PT_TYPES[veh.vehPtType] != 'PHEV':
         # efficiency-related calculations
+        # lab values
         # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labUddsMpgge
         out['labUddsMpgge'] = sd['udds'].mpgge
         # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labHwyMpgge
@@ -63,14 +65,54 @@ def get_label_fe(veh, full_detail=False, verbose=False):
         out['labCombKwhPerMile'] = 0.55 * sd['udds'].battery_kWh_per_mi + \
             0.45 * sd['hwfet'].battery_kWh_per_mi
 
-        # adjusted combined city/highway mpg
-        out['adjCombMpgge'] = 666
+        # adjusted values for mpg
+        if params.PT_TYPES[veh.vehPtType] != 'EV':
+            # vehicle model year if Scenario_name contains a 4 digit string
+            if re.match('\d{4}', veh.Scenario_name):
+                vehYear = np.float32(
+                    re.match('\d{4}', veh.Scenario_name).group()
+                    )
+                if vehYear < 2017: 
+                    adjParams = params.param_dict['LD_FE_Adj_Coef']['2008']
+                else:
+                    adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
+            else: 
+                adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
+
+            # CV or HEV case (not PHEV)
+            out['adjUddsMpgge'] = 1 / (
+                adjParams['City Intercept'] + adjParams['City Slope'] / sd['udds'].mpgge)
+            # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!adjHwyMpgge
+            out['adjHwyMpgge'] = 1 / (
+                adjParams['City Intercept'] + adjParams['City Slope'] / sd['hwfet'].mpgge)
+            out['adjCombMpgge'] = 1 / \
+                (0.55 / out['adjUddsMpgge'] + 0.45 / out['adjHwyMpgge'])
+        else:
+            # EV case
+            # lab
+            out['labUddsMpgge'] = 0
+            out['labHwyMpgge'] = 0
+            out['labCombMpgge'] = 0
+            # adjusted
+            out['adjUddsMpgge'] = 0
+            out['adjHwyMpgge'] = 0
+            out['adjCombMpgge'] = 0
+        
+        # adjusted kW-hr/mi
+        try:
+            out['adjUddsKwhPerMile'] = 1 / (max(
+                (1 / (adjParams['City Intercept'] + (adjParams['City Slope'] / 
+                (1 / out['labUddsKwhPerMile'] * params.kWhPerGGE)))), 666))
+        except:
+            out['adjUddsKwhPerMile'] = 0
+        out['adjUddsKwhPerMileNoChgEff'] = out['adjUddsKwhPerMile'] * params.chgEff
+        out['adjHwyKwhPerMile'] = 666
+        out['adjCombKwhPerMile'] = 666        
+
         # range for combined city/highway
-        out['rangeMiles'] = 666
-        # utility factor (percent driving in charge depletion mode)
-        out['UF'] = 666
-        # adjusted combined city/highway kW-hr/mi
-        out['adjCombKwhPerMile'] = 666
+        out['rangeMiles'] = veh.maxEssKwh / out['adjCombKwhPerMile']
+        # utility factor (percent driving in PHEV charge depletion mode)
+        out['UF'] = 0
 
     else:
         # do PHEV soc iteration
@@ -122,6 +164,7 @@ def get_label_fe(veh, full_detail=False, verbose=False):
             cdBattKwh * cdCycs + csBattKwh) / totalMiles
 
         # efficiency-related calculations
+        # lab
         # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labUddsMpgge
         out['labUddsMpgge'] = 666
         # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labHwyMpgge
@@ -131,6 +174,17 @@ def get_label_fe(veh, full_detail=False, verbose=False):
         out['labUddsKwhPerMile'] = 666
         out['labHwyKwhPerMile'] = 666
         out['labCombKwhPerMile'] = 666
+
+        # adjusted
+        # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!adjUddsMpgge
+        out['adjUddsMpgge'] = 666
+        # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!adjHwyMpgge
+        out['adjHwyMpgge'] = 666
+        out['adjCombMpgge'] = 666
+
+        out['adjUddsKwhPerMile'] = 666
+        out['adjHwyKwhPerMile'] = 666
+        out['adjCombKwhPerMile'] = 666
 
         # adjusted combined city/highway mpg
         out['adjCombMpgge'] = 666
@@ -145,8 +199,8 @@ def get_label_fe(veh, full_detail=False, verbose=False):
     # zero-to-sixty time
     out['accelSecs'] = 666
     
-    # success Boolea -- did all of the tests work(e.g. met trace within ~2 mph)?
-    out['resFound'] = True # this may need fancier logic
+    # success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
+    out['resFound'] = True # this may need fancier logic than just always being true
 
     if full_detail and verbose:
         for key in out.keys():
