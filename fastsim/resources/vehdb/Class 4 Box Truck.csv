@@ -1,0 +1,82 @@
+,Param Name,Param Value,Param Source / Comments
+Category,Scenario name,Class 4 Truck (Isuzu NPR HD),
+Vehicle,vehPtType,1,
+,dragCoef,0.6078,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
+,frontalAreaM2,8.686,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
+,gliderKg,0,using override
+,vehCgM,1.17,"https://www.isuzucv.com/en/app/site/pdf?file=n_brochure.pdf, half of overall height"
+,driveAxleWeightFrac,0.5,
+,wheelBaseM,4.08,https://www.isuzucv.com/en/app/site/pdf?file=n_brochure.pdf
+,cargoKg,0,using override
+,vehOverrideKg,6590,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 1"
+Fuel / Fuel Converter,maxFuelStorKw,5000,
+,fuelStorSecsToPeakPwr,1,
+,fuelStorKwh,1068,"https://www.isuzucv.com/en/app/site/pdf?file=n_brochure.pdf, 30 gallons"
+,fuelStorKwhPerKg,11.08,Diesel fuel has LHV of 39.9 MJ/kg per https://afdc.energy.gov/fuels/fuel_comparison_chart.pdf
+,maxFuelConvKw,212,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
+,fcEffMap,"[0.08,  0.12, 0.18, 0.21, 0.23, 0.28, 0.3, 0.34, 0.39, 0.39, 0.385, 0.37]",https://www.nrel.gov/transportation/refuel.html
+,fcEffType,3,
+,fcAbsEffImpr,0,
+,fuelConvSecsToPeakPwr,6,
+,fuelConvBaseKg,61,using override
+,fuelConvKwPerKg,0.62,
+Motor,mcPwrOutPerc,,n/a
+,largeBaselineEff,,n/a
+,smallBaselineEff,,n/a
+,modernMax,0.95,n/a
+,maxMotorKw,0,n/a
+,motorPeakEff,0.95,n/a
+,motorSecsToPeakPwr,4,n/a
+,stopStart,FALSE,n/a
+,mcPeKgPerKw,0.833,n/a
+,mcPeBaseKg,21.6,n/a
+ESS,maxEssKw,0,n/a
+,maxEssKwh,0,n/a
+,essKgPerKwh,44,n/a
+,essBaseKg,0,n/a
+,essRoundTripEff,0.97,n/a
+,essLifeCoefA,135,n/a
+,essLifeCoefB,-0.6844,n/a
+Wheels,wheelInertiaKgM2,0.815,
+,numWheels,6,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
+,wheelRrCoef,0.0127,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
+,wheelRadiusM,0.386,"215/85R16E, Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
+,wheelCoefOfFric,0.7,
+"SOC, ESS Discharch / Charge",minSoc,0.4,n/a
+,maxSoc,0.8,n/a
+,essDischgToFcMaxEffPerc,1,n/a
+,essChgToFcMaxEffPerc,0.1,n/a
+"Acceleration, FC, Efficiency, Mass, Regen, etc",maxAccelBufferMph,60,n/a
+,maxAccelBufferPercOfUseableSoc,0.5,n/a
+,percHighAccBuf,0,n/a
+,mphFcOn,1,n/a
+,kwDemandFcOn,100,n/a
+,altEff,1,
+,chgEff,0.86,n/a
+,auxKw,0.5,
+,forceAuxOnFC,FALSE,n/a
+,transKg,114,n/a
+,transEff,0.94,
+,compMassMultiplier,1.4,n/a
+,essToFuelOkError,0.005,n/a
+,maxRegen,0.98,n/a
+"Val: MPGGE, KwhPM, 0 to 60, etc",valUddsMpgge,,
+,valHwyMpgge,,
+,valCombMpgge,,
+,valUddsKwhPerMile,,
+,valHwyKwhPerMile,,
+,valCombKwhPerMile,,
+,valCdRangeMi,,
+,valConst65MphKwhPerMile,,
+,valConst60MphKwhPerMile,,
+,valConst55MphKwhPerMile,,
+,valConst45MphKwhPerMile,,
+,valUnadjUddsKwhPerMile,,
+,valUnadjHwyKwhPerMile,,
+,val0To60Mph,,
+,valEssLifeMiles,,
+,valRangeMiles,,
+,valVehBaseCost,,
+,valMsrp,,
+,minFcTimeOn,30,
+,idleFcKw,0.5,
