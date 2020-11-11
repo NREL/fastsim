@@ -7,7 +7,7 @@ import re
 
 from fastsim import simdrive, cycle, vehicle, params
 
-def get_label_fe(veh, full_detail=False, verbose=False):
+def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
     """Generates label fuel economy (FE) values for a provided vehicle.
     
     Arguments:
@@ -19,6 +19,8 @@ def get_label_fe(veh, full_detail=False, verbose=False):
         If True, sim_drive objects for each cycle are also returned.  
     verbose : boolean, default false
         If true, print out key results
+    chgEff : float between 0 and 1
+        Override for chgEff -- currently not functional
         
     Returns label fuel economy values as a dict and (optionally)
     simdrive.SimDriveJit objects."""
@@ -45,72 +47,92 @@ def get_label_fe(veh, full_detail=False, verbose=False):
     # run simdrive for non-phev powertrains
     sd['udds'].sim_drive()
     sd['hwfet'].sim_drive()
+    
+    # find year-based adjustment parameters
+    # re is for vehicle model year if Scenario_name contains a 4 digit string
+    if re.match('\d{4}', veh.Scenario_name):
+        vehYear = np.float32(
+            re.match('\d{4}', veh.Scenario_name).group()
+        )
+        if vehYear < 2017:
+            adjParams = params.param_dict['LD_FE_Adj_Coef']['2008']
+        else:
+            adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
+    else:
+        adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
+    out['adjParams'] = adjParams
 
     # run calculations for non-PHEV powertrains
     if params.PT_TYPES[veh.vehPtType] != 'PHEV':
-        # efficiency-related calculations
         # lab values
-        # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labUddsMpgge
-        out['labUddsMpgge'] = sd['udds'].mpgge
-        # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labHwyMpgge
-        out['labHwyMpgge'] = sd['hwfet'].mpgge
-        try:
+
+        if params.PT_TYPES[veh.vehPtType] != 'EV':
+            # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labUddsMpgge
+            out['labUddsMpgge'] = sd['udds'].mpgge
+            # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labHwyMpgge
+            out['labHwyMpgge'] = sd['hwfet'].mpgge
             out['labCombMpgge'] = 1 / \
                 (0.55 / sd['udds'].mpgge + 0.45 / sd['hwfet'].mpgge)
-        except:
+        else:
+            out['labUddsMpgge'] = 0
+            out['labHwyMpgge'] = 0
             out['labCombMpgge'] = 0
 
-        out['labUddsKwhPerMile'] = sd['udds'].battery_kWh_per_mi
-        out['labHwyKwhPerMile'] = sd['hwfet'].battery_kWh_per_mi
-        out['labCombKwhPerMile'] = 0.55 * sd['udds'].battery_kWh_per_mi + \
-            0.45 * sd['hwfet'].battery_kWh_per_mi
+        if params.PT_TYPES[veh.vehPtType] == 'EV':
+            out['labUddsKwhPerMile'] = sd['udds'].battery_kWh_per_mi
+            out['labHwyKwhPerMile'] = sd['hwfet'].battery_kWh_per_mi
+            out['labCombKwhPerMile'] = 0.55 * sd['udds'].battery_kWh_per_mi + \
+                0.45 * sd['hwfet'].battery_kWh_per_mi
+        else:
+            out['labUddsKwhPerMile'] = 0
+            out['labHwyKwhPerMile'] = 0
+            out['labCombKwhPerMile'] = 0
 
         # adjusted values for mpg
-        if params.PT_TYPES[veh.vehPtType] != 'EV':
-            # vehicle model year if Scenario_name contains a 4 digit string
-            if re.match('\d{4}', veh.Scenario_name):
-                vehYear = np.float32(
-                    re.match('\d{4}', veh.Scenario_name).group()
-                    )
-                if vehYear < 2017: 
-                    adjParams = params.param_dict['LD_FE_Adj_Coef']['2008']
-                else:
-                    adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
-            else: 
-                adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
-
+        if params.PT_TYPES[veh.vehPtType] != 'EV': # non-EV case
             # CV or HEV case (not PHEV)
+            # HEV SOC iteration is handled in simdrive.SimDriveClassic
             out['adjUddsMpgge'] = 1 / (
                 adjParams['City Intercept'] + adjParams['City Slope'] / sd['udds'].mpgge)
             # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!adjHwyMpgge
             out['adjHwyMpgge'] = 1 / (
-                adjParams['City Intercept'] + adjParams['City Slope'] / sd['hwfet'].mpgge)
+                adjParams['Highway Intercept'] + adjParams['Highway Slope'] / sd['hwfet'].mpgge)
             out['adjCombMpgge'] = 1 / \
                 (0.55 / out['adjUddsMpgge'] + 0.45 / out['adjHwyMpgge'])
-        else:
-            # EV case
-            # lab
-            out['labUddsMpgge'] = 0
-            out['labHwyMpgge'] = 0
-            out['labCombMpgge'] = 0
-            # adjusted
-            out['adjUddsMpgge'] = 0
-            out['adjHwyMpgge'] = 0
-            out['adjCombMpgge'] = 0
-        
+        else: # EV case
+            # Mpgge is all zero for EV
+            zero_keys = ['labUddsMpgge', 'labHwyMpgge', 'labCombMpgge',
+                         'adjUddsMpgge', 'adjHwyMpgge', 'adjCombMpgge']
+            for key in zero_keys:
+                out[key] = 0
+            
         # adjusted kW-hr/mi
-        try:
-            out['adjUddsKwhPerMile'] = 1 / (max(
-                (1 / (adjParams['City Intercept'] + (adjParams['City Slope'] / 
-                (1 / out['labUddsKwhPerMile'] * params.kWhPerGGE)))), 666))
-        except:
-            out['adjUddsKwhPerMile'] = 0
-        out['adjUddsKwhPerMileNoChgEff'] = out['adjUddsKwhPerMile'] * params.chgEff
-        out['adjHwyKwhPerMile'] = 666
-        out['adjCombKwhPerMile'] = 666        
+        if params.PT_TYPES[veh.vehPtType] == "EV": # EV Case
+            out['adjUddsKwhPerMile'] = (1 / max(
+                (1 / (adjParams['City Intercept'] + (adjParams['City Slope'] / ((1 / out['labUddsKwhPerMile']) * params.kWhPerGGE)))),
+                (1 / out['labUddsKwhPerMile']) * params.kWhPerGGE * (1 - params.maxEpaAdj))
+                ) * params.kWhPerGGE / params.chgEff 
+            out['adjHwyKwhPerMile'] = (1 / max(
+                (1 / (adjParams['Highway Intercept'] + (adjParams['Highway Slope'] / ((1 / out['labHwyKwhPerMile']) * params.kWhPerGGE)))),
+                (1 / out['labHwyKwhPerMile']) * params.kWhPerGGE * (1 - params.maxEpaAdj))
+                ) * params.kWhPerGGE / params.chgEff 
+            out['adjCombKwhPerMile'] = 0.55 * out['adjUddsKwhPerMile'] + \
+                0.45 * out['adjHwyKwhPerMile']
 
-        # range for combined city/highway
-        out['rangeMiles'] = veh.maxEssKwh / out['adjCombKwhPerMile']
+            out['adjUddsEssKwhPerMile'] = out['adjUddsKwhPerMile'] * params.chgEff
+            out['adjHwyEssKwhPerMile'] = out['adjHwyKwhPerMile'] * params.chgEff
+            out['adjCombEssKwhPerMile'] = out['adjCombKwhPerMile'] * params.chgEff
+
+            # range for combined city/highway
+            out['rangeMiles'] = veh.maxEssKwh / out['adjCombEssKwhPerMile']
+
+        else: # non-PEV cases
+            zero_keys = ['adjUddsKwhPerMile', 'adjHwyKwhPerMile', 'adjCombKwhPerMile',
+                         'adjUddsEssKwhPerMile', 'adjHwyEssKwhPerMile', 'adjCombEssKwhPerMile'
+                         'rangeMiles',]
+            for key in zero_keys:
+                out[key] = 0
+
         # utility factor (percent driving in PHEV charge depletion mode)
         out['UF'] = 0
 
@@ -182,9 +204,16 @@ def get_label_fe(veh, full_detail=False, verbose=False):
         out['adjHwyMpgge'] = 666
         out['adjCombMpgge'] = 666
 
-        out['adjUddsKwhPerMile'] = 666
+        # out['adjUddsKwhPerMile'] =  sum(if(isnumber(phevUddsAdjUfKwhPerMile), phevUddsAdjUfKwhPerMile)) / max(phevUddsUf) / chgEff
+        out['adjUddsKwhPerMile'] = 1 / (max(
+            (1 / (adjParams['City Intercept'] + (adjParams['City Slope'] /
+                                                 (1 / out['labUddsKwhPerMile'] * params.kWhPerGGE)))), 666))
         out['adjHwyKwhPerMile'] = 666
         out['adjCombKwhPerMile'] = 666
+
+        out['adjUddsEssKwhPerMile'] = out['adjUddsKwhPerMile'] * params.chgEff
+        out['adjHwyEssKwhPerMile'] = out['adjHwyKwhPerMile'] * params.chgEff
+        out['adjCombEssKwhPerMile'] = out['adjCombKwhPerMile'] * params.chgEff
 
         # adjusted combined city/highway mpg
         out['adjCombMpgge'] = 666

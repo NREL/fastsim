@@ -27,12 +27,6 @@ kWhPerGGE = 33.7
 metersPerMile = 1609.00
 
 # EPA fuel economy adjustment parameters
-
-# 2008	2017	2016
-# City Intercept	0.003259	0.004091	0.003259
-# City Slope	1.1805	1.1601	1.1805
-# Highway Intercept	0.001376	0.003191	0.001376
-# Highway Slope	1.3466	1.2945	1.3466
 maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
 
