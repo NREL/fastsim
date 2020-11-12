@@ -150,14 +150,6 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
         # charge depletion fuel gallons
         cdFsGal = sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
 
-        # # from excel where prevMiles `C298:`
-        # udds_mpg_thing = max(
-        #     1 / (cityIntercept + (citySlope / (sd[key].distMiles.sum() / (phevUddsGasKwh / params.kWhPerGGE)))),
-        #     sd[key].distMiles.sum() / (phevUddsGasKwh / params.kWhPerGGE) * (1 - params.maxEpaAdj)
-        #     )
-
-        # udds_kwHr__mi_thing = =IF(ISNUMBER(+@phevUddsElecKwh),IF(+@phevUddsElecKwh=0,0,(1/MAX(1/(cityIntercept+(citySlope/((1/+@phevUddsLabKwhPerMile)*'Veh Model'!kWhPerGGE))),(1-'Veh Model'!maxEpaAdj)*((+@phevUddsMiles-C301)/(+@phevUddsElecKwh*(1/'Veh Model'!kWhPerGGE)))))*'Veh Model'!kWhPerGGE),"")
-
         # SOC change during 1 cycle
         deltaSoc = (sd[key].veh.maxSoc - sd[key].veh.minSoc)
         # total number of miles in charge depletion mode, assuming constant kWh_per_mi
