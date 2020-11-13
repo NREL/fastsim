@@ -52,14 +52,24 @@ re_array = np.array([0, 4, 40, 4e3, 40e3], dtype=np.float64)
 # engine temperature
 # engine interaction with ambient via convection
 # radiator behavior for hot engine -- impose steady temperature by whatever heat loss is needed
-# radiator aux load -- maybe constant times heat loss via radiator (e.g. 0.1?)
-# impact of engine temperature on engine efficiency
+# radiator aux load -- maybe constant times heat loss via radiator (e.g. 0.1?) 
+# ... aka aux load penalty per radiator heat removal 
+# impact of engine temperature on engine efficiency -- check
 
 # thinking about cabin model and interaction with heater:
-# cabin needs to leak!
+# cabin needs to have "leak" as heat exchange with ambient
 # treat it as a flat plate with vehicle dimensions and thermal mass
 # heater core: error relative to target, --nominal coolant flow rate--, no recirc, 
 # nominal air flow rate (cabin exchanges per min?) at some assumed effectiveness -- tunable?
+# aux load penalty per battery heat removal
+
+# battery model 
+# *** parameters: specific heat (c_p, [J/(kg-K)]) (since there is already a mass)
+# *** heat transfer coefficient per ESS volume (need density if not already included) that maybe is active only
+# when vehicle is stationary/off
+# *** similar heat tranfer coefficient for when battery is hot (maybe ramp up w.r.t. temperature like thermostat behavior)
+# *** solve for heat gen in battery (should just be simple subtraction)
+# *** aux load penalty per battery heat removal
 
 hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
                     ('teFcDegC', float64[:]), # fuel converter temperature
