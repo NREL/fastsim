@@ -216,32 +216,39 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             # utility factor calculation for last charge depletion iteration and transition iteration
             # ported from excel
             phev_calc['labIterUf'] = interpf(
-                np.arange(np.ceil(phev_calc['cdCycs'])) * sd[key].distMiles.sum(), # might need a plus 1 here
+                np.arange(np.ceil(phev_calc['cdCycs']) + 1) * sd[key].distMiles.sum(), # might need a plus 1 here
             )
 
             # city and highway mpg
             # charge depleting
             # phevUddsLabUfGpm = (1/+@phevUddsLabMpg)*(+@phevLabUddsUf-R302)
             # cdLabUddsMpg = 1 / (SUM(IF(ISNUMBER(phevLabUddsUf), phevUddsLabUfGpm)) / MAX(phevLabUddsUf))
-            phev_calc['cdMpg'] = 0 
-                # 1 / (
-                # phev_calc['transFsGal'] / sd[key].distMiles.sum() * 
-                # (phev_calc['labIterUf'][-1] - phev_calc['labIterUf'][-2]))
+            # =IF(AND(ISNUMBER(+@phevLabUddsUf), ISNUMBER(+@phevUddsLabMpg)), 
+            #   (1/+@phevUddsLabMpg)*(+@phevLabUddsUf-R302), 
+            #       IF(AND(ISNUMBER(R302), +@phevUddsUf=""), 
+            #           (1-R302)*(1/+@phevUddsLabMpg), 
+        #               ""))
+            phev_calc['cdLabMpg'] = 1 / ((
+                phev_calc['transFsGal'] / sd[key].distMiles.sum() * 
+                (phev_calc['labIterUf'][-1] - phev_calc['labIterUf'][-2])
+            ) / max(phev_calc['labIterUf']))
 
             # charge sustaining
-            phev_calc['csMpg'] = 1 / (
-                phev_calc['csFsGal'] / sd[key].distMiles.sum() * 
-                (1 - phev_calc['labIterUf'][-1]))
+            phev_calc['csMpg'] = sd[key].distMiles.sum() / phev_calc['csFsGal']
 
             phev_calc['labUf'] = np.float(interpf(phev_calc['cdMiles']))
             
+            # =@IF(@INDEX(vehPtOptions,vehPtType)="PHEV"
+            #   ,1/((IFERROR(1/cdUddsMpg,0)*labUddsUf)+((1/csUddsMpg)*(1-labUddsUf))),
+            #   INDIRECT("UDDS!mpgge"))
             phev_calc['labMpgge'] = 1 / ((1 / phev_calc['csMpg'] * (1 - phev_calc['labUf'])))
             
             # labCombMpgge
 
             phev_calc['labIterKwhPerMile'] = np.concatenate((
                 phev_calc['cdBattKwh'] * np.ones(int(np.floor(phev_calc['cdCycs']))), [phev_calc['transBattKwh']])) / (
-                    sd[key].distMiles.sum() * np.ceil(phev_calc['cdCycs']))
+                    sd[key].distMiles.sum())
+
             # compare above to:
             # IF(AND(ISNUMBER(+@phevLabUddsUf), ISNUMBER(+@phevUddsLabKwhPerMile)), 
             #     +@phevUddsLabKwhPerMile*(+@phevLabUddsUf-R300), 
@@ -250,11 +257,13 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             #         ""))
 
             phev_calc['labIterUfKwhPerMile'] = np.append(
-                phev_calc['labIterKwhPerMile'][:-1] * np.diff(phev_calc['labIterUf']), 
-                phev_calc['labIterKwhPerMile'][-1] * (1 - phev_calc['labIterUf'][-1]))
+                phev_calc['labIterKwhPerMile'] * np.diff(phev_calc['labIterUf']), 
+                0)
 
             # SUM(IF(ISNUMBER(phevLabUddsUf), phevUddsLabUfKwhPerMile))/MAX(phevLabUddsUf)
-            # phev_calc['labKwhPerMile'] = (np.floor(phev_calc['cdCycs']) * ) 
+
+            phev_calc['labKwhPerMile'] = phev_calc['labIterUfKwhPerMile'] / \
+                max(phev_calc['labIterUf'])
 
             # labUddsKwhPerMile
             # labHwyKwhPerMile
@@ -275,8 +284,6 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
 
             # labUddsUf
             # labHwyUf
-            # labUddsMpgge
-            # labHwyMpgge
             # labCombMpgge
             # labUddsKwhPerMile
             # labHwyKwhPerMile
