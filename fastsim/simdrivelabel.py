@@ -5,6 +5,7 @@ from numba.cuda.simulator import kernel
 from fastsim.parameters import PT_TYPES
 import sys
 import numpy as np
+from scipy.interpolate import interp1d
 import re
 
 from fastsim import simdrive, cycle, vehicle, params
@@ -63,6 +64,10 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
     else:
         adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
     out['adjParams'] = adjParams
+
+    interpf = interp1d(x=params.param_dict['rechgFreqMiles'],
+        y=params.param_dict['ufArray'], 
+        kind='previous')
 
     # run calculations for non-PHEV powertrains
     if params.PT_TYPES[veh.vehPtType] != 'PHEV':
@@ -157,9 +162,10 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             phev_calc = phev_calcs[key] # assigned for for easier syntax
             # charge depletion cycle has already been simulated
             # charge depletion battery kW-hr
-            phev_calc['cdBattKwh'] = sd[key].essDischgKj / 3600.0
+            phev_calc['cdBattKwh'] = (
+                sd[key].soc[0] - sd[key].soc[-1]) * veh.maxEssKwh
             # charge depletion fuel gallons
-            phev_calc['cdFsGal'] = sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
+            phev_calc['cdFsGal'] = 0 # sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
 
             # SOC change during 1 cycle
             phev_calc['deltaSoc'] = (sd[key].veh.maxSoc - sd[key].veh.minSoc)
@@ -173,13 +179,17 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             # phev_calc['totalMiles'] = sd[key].distMiles.sum() * (phev_calc['cdCycs'] + (1 - phev_calc['cdFracInTrans']))
 
             # transition cycle
-            sd[key].sim_drive(phev_calc['cdFracInTrans'])
+            phev_calc['transInitSoc'] = (
+                phev_calc['deltaSoc'] / phev_calc['cdCycs']) * \
+                (phev_calc['cdCycs'] - np.floor(phev_calc['cdCycs'])) + veh.minSoc
+            sd[key].sim_drive(phev_calc['transInitSoc'])
             # charge depletion battery kW-hr
-            phev_calc['transBattKwh'] = sd[key].essDischgKj / \
-                3600.0  # should be nearly zero
+            phev_calc['transBattKwh'] = (
+                sd[key].soc[0] - sd[key].soc[-1]) * veh.maxEssKwh
             # charge depletion fuel gallons
             phev_calc['transFsGal'] = sd[key].fsKwhOutAch.sum() / \
                 params.kWhPerGGE
+            phev_calc['transFsKwh'] = sd[key].fsKwhOutAch.sum() 
 
             # charge sustaining
             # the 0.01 is here to be consistent with Excel
@@ -187,16 +197,10 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             sd[key].sim_drive(initSoc)
 
             # charge sustaining battery kW-hr
-            phev_calc['csBattKwh'] = sd[key].essDischgKj / 3600.0 # should be nearly zero
+            phev_calc['csBattKwh'] = 0 # (sd[key].soc[0] - sd[key].soc[-1]) * veh.maxEssKwh
             # charge sustaining fuel gallons
             phev_calc['csFsGal'] = sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
-
-            # charge sustaining battery kW-hr
-            phev_calc['csBattKwh'] = sd[key].essDischgKj / \
-                3600.0  
-            # charge sustaining fuel gallons, should be nearly zero
-            phev_calc['csFsGal'] = sd[key].fsKwhOutAch.sum() / \
-                params.kWhPerGGE
+            phev_calc['csFsKwh'] = sd[key].fsKwhOutAch.sum() 
 
             # note that all values set by `sd[key].set_post_scalars` are relevant only to
             # the final charge sustaining cycle
@@ -211,31 +215,27 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             # includes transition cycle
             # utility factor calculation for last charge depletion iteration and transition iteration
             # ported from excel
-            phev_calc['labIterUf'] = np.interp(
-                x=np.arange(np.ceil(phev_calc['cdCycs'])) * sd[key].distMiles.sum(), # might need a plus 1 here
-                xp=params.param_dict['rechgFreqMiles'],
-                fp=params.param_dict['ufArray'])
+            phev_calc['labIterUf'] = interpf(
+                np.arange(np.ceil(phev_calc['cdCycs'])) * sd[key].distMiles.sum(), # might need a plus 1 here
+            )
 
             # city and highway mpg
             # charge depleting
             # phevUddsLabUfGpm = (1/+@phevUddsLabMpg)*(+@phevLabUddsUf-R302)
             # cdLabUddsMpg = 1 / (SUM(IF(ISNUMBER(phevLabUddsUf), phevUddsLabUfGpm)) / MAX(phevLabUddsUf))
-            phev_calc['cdMpg'] = 1 / (
-                phev_calc['transFsGal'] / sd[key].distMiles.sum() * 
-                (phev_calc['labIterUf'][-1] - phev_calc['labIterUf'][-2]))
+            phev_calc['cdMpg'] = 0 
+                # 1 / (
+                # phev_calc['transFsGal'] / sd[key].distMiles.sum() * 
+                # (phev_calc['labIterUf'][-1] - phev_calc['labIterUf'][-2]))
 
             # charge sustaining
             phev_calc['csMpg'] = 1 / (
-                phev_calc['cdFsGal'] / sd[key].distMiles.sum() * 
+                phev_calc['csFsGal'] / sd[key].distMiles.sum() * 
                 (1 - phev_calc['labIterUf'][-1]))
 
-            phev_calc['labUf'] = np.interp(
-                x=phev_calc['cdMiles'],
-                xp=params.param_dict['rechgFreqMiles'],
-                fp=params.param_dict['ufArray'])
+            phev_calc['labUf'] = np.float(interpf(phev_calc['cdMiles']))
             
-            phev_calc['labMpgge'] = 1 / ((1 / phev_calc['cdMpg'] * phev_calc['labUf'] + 
-                1 / phev_calc['csMpg'] * (1 - phev_calc['labUf'])))
+            phev_calc['labMpgge'] = 1 / ((1 / phev_calc['csMpg'] * (1 - phev_calc['labUf'])))
             
             # labCombMpgge
 
