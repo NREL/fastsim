@@ -178,6 +178,9 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             phev_calc['cdFracInTrans'] = phev_calc['cdCycs'] % np.floor(phev_calc['cdCycs'])
             # phev_calc['totalMiles'] = sd[key].distMiles.sum() * (phev_calc['cdCycs'] + (1 - phev_calc['cdFracInTrans']))
 
+            phev_calc['cdFsGal'] = sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
+            phev_calc['cdFsKwh'] = sd[key].fsKwhOutAch.sum()
+
             # transition cycle
             phev_calc['transInitSoc'] = (
                 phev_calc['deltaSoc'] / phev_calc['cdCycs']) * \
@@ -238,9 +241,6 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
 
             phev_calc['labUf'] = np.float(interpf(phev_calc['cdMiles']))
             
-            # =@IF(@INDEX(vehPtOptions,vehPtType)="PHEV"
-            #   ,1/((IFERROR(1/cdUddsMpg,0)*labUddsUf)+((1/csUddsMpg)*(1-labUddsUf))),
-            #   INDIRECT("UDDS!mpgge"))
             phev_calc['labMpgge'] = 1 / ((1 / phev_calc['csMpg'] * (1 - phev_calc['labUf'])))
             
             # labCombMpgge
@@ -249,34 +249,57 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc['cdBattKwh'] * np.ones(int(np.floor(phev_calc['cdCycs']))), [phev_calc['transBattKwh']])) / (
                     sd[key].distMiles.sum())
 
-            # compare above to:
-            # IF(AND(ISNUMBER(+@phevLabUddsUf), ISNUMBER(+@phevUddsLabKwhPerMile)), 
-            #     +@phevUddsLabKwhPerMile*(+@phevLabUddsUf-R300), 
-            #     IF(AND(ISNUMBER(R300), +@phevUddsUf=""), 
-            #         (1-R300)*+@phevUddsLabKwhPerMile, 
-            #         ""))
-
             phev_calc['labIterUfKwhPerMile'] = np.append(
                 phev_calc['labIterKwhPerMile'] * np.diff(phev_calc['labIterUf']), 
                 0)
 
-            # SUM(IF(ISNUMBER(phevLabUddsUf), phevUddsLabUfKwhPerMile))/MAX(phevLabUddsUf)
+            phev_calc['labKwhPerMile'] = phev_calc['labIterUfKwhPerMile'] / \
+                max(phev_calc['labIterUf'])
+
+            # labCombKwhPerMile
 
             phev_calc['labKwhPerMile'] = phev_calc['labIterUfKwhPerMile'] / \
                 max(phev_calc['labIterUf'])
 
-            # labUddsKwhPerMile
-            # labHwyKwhPerMile
+            if key == 'udds':
+                phev_calc['adjIterMpgge'] = np.concatenate((np.zeros(np.floor(phev_calc['cdCycs'])), 
+                    max(1 / (adjParams['City Intercept'] + (adjParams['City Slope'] / (sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / params.kWhPerGGE)))), 
+                        sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / params.kWhPerGGE) * (1 - params.maxEpaAdj)),
+                    max(1 / (adjParams['City Intercept'] + (adjParams['City Slope'] / (sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / params.kWhPerGGE)))),
+                        sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / params.kWhPerGGE) * (1 - params.maxEpaAdj)),
+                ))
+            else:
+                phev_calc['adjIterMpgge'] = np.concatenate((np.zeros(np.floor(phev_calc['cdCycs'])), 
+                    max(1 / (adjParams['Highway Intercept'] + (adjParams['Highway Slope'] / (sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / params.kWhPerGGE)))), 
+                        sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / params.kWhPerGGE) * (1 - params.maxEpaAdj)),
+                    max(1 / (adjParams['Highway Intercept'] + (adjParams['Highway Slope'] / (sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / params.kWhPerGGE)))),
+                        sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / params.kWhPerGGE) * (1 - params.maxEpaAdj)),
+                ))
 
-            # labCombKwhPerMile
+                    
+            phev_calc['adjIterKwhPerMile'] = 666
+            phev_calc['adjIterCdMiles'] = 666
+            phev_calc['adjIterCdUf'] = 666
 
-            # labUddsEssKwhPerMile
-            # labHwyEssKwhPerMile
+            # 1 / ((
+            #     phev_calc['transFsGal'] / sd[key].distMiles.sum() *
+            #     (phev_calc['labIterUf'][-1] - phev_calc['labIterUf'][-2])
+            # ) / max(phev_calc['labIterUf']))
 
-            # labCombEssKwhPerMile
+            # =IF(ISNUMBER(+@phevUddsMiles),
+            #   MAX(1/(cityIntercept+(citySlope/((+@phevUddsMiles-C302)/((+@phevUddsGasKwh)*(1/'Veh Model'!kWhPerGGE))))),
+            #       (((+@phevUddsMiles-C302)/(+@phevUddsGasKwh*(1/'Veh Model'!kWhPerGGE)))*(1-'Veh Model'!maxEpaAdj))),
+            #   "")
+            # 1 / (
+            #     adjParams['City Intercept'] + adjParams['City Slope'] / sd[key].mpgge)
 
-            # adjCdUddsMiles
-            # adjCdHwyMiles
+
+            # phev_calc['adjCdMpgge'] = 666
+            #     1/(SUM(IF(
+            #         ISNUMBER(phevUddsAdjCdMiles), 
+            #         phevUddsAdjUfGpm))
+            #     /MAX(phevUddsUf))
+
             # adjCdUddsMpg
             # adjCdHwyMpg
             # adjCsUddsMpg
@@ -290,17 +313,20 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             # labCombKwhPerMile
             # labUddsEssKwhPerMile
             # labHwyEssKwhPerMile
+
         out['phev_calcs'] = phev_calcs
 
         # efficiency-related calculations
         # lab
         out['labUddsMpgge'] = phev_calcs['udds']['labMpgge']
         out['labHwyMpgge'] = phev_calcs['hwy']['labMpgge']
-        out['labCombMpgge'] = 666
+        out['labCombMpgge'] = 1 / (
+            0.55 / phev_calcs['udds']['labMpgge'] + 0.45 / phev_calcs['hwy']['labMpgge'])
 
-        out['labUddsKwhPerMile'] = 666
-        out['labHwyKwhPerMile'] = 666
-        out['labCombKwhPerMile'] = 666
+        out['labUddsKwhPerMile'] = phev_calcs['udds']['labKwhPerMile']
+        out['labHwyKwhPerMile'] = phev_calcs['hwy']['labKwhPerMile']
+        out['labCombKwhPerMile'] = 0.55 * phev_calcs['udds']['labKwhPerMile'] + \
+            0.45 * phev_calcs['hwy']['labKwhPerMile']
 
         # adjusted
         # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!adjUddsMpgge
@@ -322,8 +348,6 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
         out['rangeMiles'] = 666
         # utility factor (percent driving in charge depletion mode)
         out['UF'] = 666
-        # adjusted combined city/highway kW-hr/mi
-        out['adjCombKwhPerMile'] = 666
 
     # non-efficiency-related calculations
     # zero-to-sixty time
