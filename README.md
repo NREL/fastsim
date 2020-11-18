@@ -15,13 +15,15 @@ FASTSim depends on python 3.7. One way to satisfy this is to use conda:
     
 Then, just run a pip install:
 
-    pip install -e fastsim 
+    pip install fastsim 
     
 This will install FASTSim with minimal dependencies.
 
 NOTE: if you are already in the FASTSim root directory (i.e. the one that houses the file `setup.py`), you can run:
 
-    pip install -e .
+    pip install .
+
+FASTSim can also be installed with the `-e` option (i.e. `pip install -e fastsim`) so that FASTSim files can be editable. Developers will find this option handy since FASTSim will be installed in place from the installation location, and any updates will be propagated each time FASTSim is freshly imported.  
 
 # Usage
 To run an example, navigate to fastsim/docs and run `jupter lab demo.ipynb` to see a demo of fastsim use cases. There are other examples in fastsim/docs and fastsim/tests.  
@@ -77,6 +79,9 @@ des = desired value
 ach = achieved value  
 in = component input  
 out = component output  
+
+# Release Notes
+0.0.2 -- pip install can be informed without using the `-e` option.  This is enabled by the resources/ folder, which contains support files that FASTSim will need to run.  
 
 # Known Bugs
 
