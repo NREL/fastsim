@@ -46,6 +46,8 @@ re_array = np.array([0, 4, 40, 4e3, 40e3], dtype=np.float64)
 
 # things to model:
 # cabin temperature
+    # use cabin volume (usually readily available) for thermal mass
+    # use wheel base and some nominal width (probably a constant mostly???) to calculate flat plate heat transfer coefficient
 # power associated with maintaining cabin temperature as variable aux load for both cooling and heating
 # solar heat load
 # cabin interaction with convection (flat plate?)
