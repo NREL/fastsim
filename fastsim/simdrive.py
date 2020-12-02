@@ -1,5 +1,5 @@
-"""Module containing classes and methods for simulating vehicle drive cycle.
-For example usage, see ../README.md"""
+"""Module containing classes and methods for simulating vehicle drive
+cycle. For example usage, see ../README.md"""
 
 ### Import necessary python modules
 import os
@@ -25,15 +25,17 @@ param_spec = [('missed_trace_correction', bool_),
             ('min_time_dilation', float64), 
             ('time_dilation_tol', float64), 
             ('verbose', bool_), 
+            ('sim_count_max', int32)
             ]
 @jitclass(param_spec)
 class SimDriveParams(object):
-    """Class containing attributes used for configuring sim_drive.  Usually the defaults are ok, 
-    and there will be no need to use this.
+    """Class containing attributes used for configuring sim_drive.
+    Usually the defaults are ok, and there will be no need to use this.
 
-    See comments in code for descriptions of various parameters that affect simulation behavior.  
-    If, for example, you want to suppress warning messages, use the following pastable code EXAMPLE:
-    
+    See comments in code for descriptions of various parameters that
+    affect simulation behavior. If, for example, you want to suppress
+    warning messages, use the following pastable code EXAMPLE:
+
     >>> cyc = cycle.Cycle('udds').get_numba_cyc()
     >>> veh = vehicle.Vehicle(1).get_numba_veh()
     >>> sim_params = simdrive.SimDriveParams()
@@ -49,6 +51,7 @@ class SimDriveParams(object):
         self.max_time_dilation = 10  # maximum time dilation factor to "catch up" with trace
         self.min_time_dilation = 0.1  # minimum time dilation to let trace "catch up"
         self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
+        self.sim_count_max = 30 # max allowable number of HEV SOC iterations
         self.verbose=True # show warning and other messages
 
 class SimDriveClassic(object):
@@ -189,13 +192,15 @@ class SimDriveClassic(object):
             Must be between 0 and 1.
         auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
                 Default of np.zeros(1) causes veh.auxKw to be used.
-                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
-                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
-                override mechanism.  
+                If zero is actually desired as an override, either set
+                veh.auxKw = 0 before instantiaton of SimDrive*, or use
+                `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the
+                final value to non-zero prevents override mechanism.  
         """
 
         if (auxInKwOverride == 0).all():
             auxInKwOverride = self.auxInKw
+        self.hev_sim_count = 0
 
         if initSoc != None:
             if initSoc > 1.0 or initSoc < 0.0:
@@ -224,9 +229,8 @@ class SimDriveClassic(object):
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             ess2fuelKwh = 1.0
-            sim_count = 0
-            while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
-                sim_count += 1
+            while ess2fuelKwh > self.veh.essToFuelOkError and self.hev_sim_count < self.sim_params.sim_count_max:
+                self.hev_sim_count += 1
                 self.sim_drive_walk(initSoc, auxInKwOverride)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
@@ -264,10 +268,10 @@ class SimDriveClassic(object):
         ------------
         initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
         auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
-                Default of np.zeros(1) causes veh.auxKw to be used.
-                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
-                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
-                override mechanism.  
+                Default of np.zeros(1) causes veh.auxKw to be used. If zero is actually
+                desired as an override, either set veh.auxKw = 0 before instantiaton of
+                SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
+                the final value to non-zero prevents override mechanism.  
         """
         
         ############################
@@ -1163,7 +1167,8 @@ sim_drive_spec.extend([('i', int32),
              ('fcKj', float64),
              ('netKj', float64),
              ('keKj', float64),
-             ('energyAuditError', float64)
+             ('energyAuditError', float64),
+             ('hev_sim_count', float64), 
              ])
 
 # create types for instances of TypedVehicle and TypedCycle
@@ -1199,14 +1204,16 @@ class SimDriveJit(SimDriveClassic):
             Numba's jitclass does not support keyword args so this allows for optionally
             passing initSoc as positional argument.
             auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
-                Default of np.zeros(1) causes veh.auxKw to be used.
-                If zero is actually desired as an override, either set veh.auxKw = 0 before instantiaton of SimDrive*, 
-                or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the final value to non-zero prevents 
-                override mechanism.  
+                Default of np.zeros(1) causes veh.auxKw to be used. If zero is actually
+                desired as an override, either set veh.auxKw = 0 before instantiaton of
+                SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
+                the final value to non-zero prevents override mechanism.  
         """
 
         if (auxInKwOverride == 0).all():
             auxInKwOverride = self.auxInKw
+
+        self.hev_sim_count = 0 # probably not necassary since numba initializes int vars as 0, but adds clarity
 
         if (initSoc != -1):
             if (initSoc > 1.0 or initSoc < 0.0):
@@ -1235,9 +1242,8 @@ class SimDriveJit(SimDriveClassic):
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             ess2fuelKwh = 1.0
-            sim_count = 0
-            while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
-                sim_count += 1
+            while ess2fuelKwh > self.veh.essToFuelOkError and self.hev_sim_count < self.sim_params.sim_count_max:
+                self.hev_sim_count += 1
                 self.sim_drive_walk(initSoc, auxInKwOverride)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
