@@ -1,5 +1,5 @@
-"""Module containing classes and methods for for loading vehicle and cycle data.
-For example usage, see ../README.md"""
+"""Module containing classes and methods for for loading vehicle and
+cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules
 import os
@@ -31,10 +31,19 @@ class Cycle(object):
     for drive cycle."""
 
     def __init__(self, std_cyc_name=None, cyc_dict=None, cyc_file_path=None):
-        """Runs other methods, depending on provided keyword argument. Only one keyword
-        argument should be provided.  Keyword arguments are identical to 
-        arguments required by corresponding methods.  The argument 'std_cyc_name' can be
-        optionally passed as a positional argument."""
+        """Runs other methods, depending on provided keyword argument.
+        Only one keyword argument should be provided.          
+        
+        Keyword Arguments:
+        ------------------
+        std_cyc_name : string for name of standard cycle in resources/cycles/.  
+            Must match filename minus '.csv' extension.
+        cyc_dict : dictionary with 'cycSecs' and 'cycMps' keys (at minimum) 
+            and corresponding arrays.  
+        cyc_file_path : string for path to custom cycle file, which much have
+            same format as cycles in resources/cycles/
+        """
+        
         super().__init__()
         if std_cyc_name:
             self.set_standard_cycle(std_cyc_name)
@@ -51,19 +60,20 @@ class Cycle(object):
         return numba_cyc
 
     def set_standard_cycle(self, std_cyc_name):
-        """Load time trace of speed, grade, and road type in a pandas dataframe.
+        """Load time trace of speed, grade, and road type in a pandas
+        dataframe.
         Argument:
         ---------
         std_cyc_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
-        csv_path = os.path.join(CYCLES_DIR, std_cyc_name.lower() + '.csv')
+        csv_path = os.path.join(CYCLES_DIR, std_cyc_name + '.csv')
         cyc = pd.read_csv(Path(csv_path))
         for column in cyc.columns:
             self.__setattr__(column, cyc[column].to_numpy())
         self.set_dependents()
 
     def set_from_file(self, cyc_file_path):
-        """Load time trace of speed, grade, and road type from 
-        user-provided csv file in a pandas dataframe.
+        """Load time trace of speed, grade, and road type from user-provided csv
+        file in a pandas dataframe.
         Argument:
         ---------
         cyc_file_path: path to file containing cycle data"""
@@ -73,8 +83,9 @@ class Cycle(object):
         self.set_dependents()
 
     def set_from_dict(self, cyc_dict):
-        """Set cycle attributes from dict with keys 'cycGrade', 'cycMps', 'cycSecs', 'cycRoadType'
-        and numpy arrays of equal length for values.
+        """Set cycle attributes from dict with keys 'cycSecs', 'cycMps',
+        'cycGrade' (optional), 'cycRoadType' (optional) and numpy arrays of
+        equal length for values.
         Arguments
         ---------
         cyc_dict: dict containing cycle data
@@ -164,8 +175,8 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6):
     Arguments:
     ----------
     cycle: drive cycle converted to dictionary by cycle.get_cyc_dict()
-    stop_speed_m__s: speed at which vehicle is considered stopped for 
-        trip separation
+    stop_speed_m__s: speed at which vehicle is considered stopped for trip
+    separation
     """
     microtrips = []
     ts = np.array(cycle['cycSecs'])
@@ -201,8 +212,8 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6):
 def make_cycle(ts, vs, gs=None, rs=None):
     """
     (Array Num) (Array Num) (Array Num)? -> Dict
-    Create a cycle from times, speeds, and grades. If grades is not specified,
-    it is set to zero.
+    Create a cycle from times, speeds, and grades. If grades is not
+    specified, it is set to zero.
     Arguments:
     ----------
     ts: array of times [s]
@@ -303,8 +314,8 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
         the end time of the cycle. Defaults to the last time of the passed in
         cycle.
     - hold_keys: None or (Set String), if specified, yields values that
-                 should be interpolated step-wise, holding their value
-                 until an explicit change (i.e., NOT interpolated)
+                 should be interpolated step-wise, holding their value until
+                 an explicit change (i.e., NOT interpolated)
     Resamples all non-time metrics by the new sample time.
     """
     if new_dt is None:
