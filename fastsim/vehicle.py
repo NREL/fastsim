@@ -1,5 +1,5 @@
-"""Module containing classes and methods for for loading vehicle and cycle data.
-For example usage, see ../README.md"""
+"""Module containing classes and methods for for loading vehicle and
+cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules
 import os
@@ -30,13 +30,14 @@ class Vehicle(object):
     Optional Arguments:
     ---------
     vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-    veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db
+    veh_file: string or filelike obj, alternative to default
+        FASTSim_py_veh_db
     
-    If a single vehicle veh_file is provided, vnum cannot be passed, and 
-    veh_file must be passed as a keyword argument. Files contained in 
-    fastsim/resources/vehdb can be loaded with the filename if 
-    provided as the vnum argument.  Specifying veh_file will explicitly load 
-    whatever file path is provided."""
+    If a single vehicle veh_file is provided, vnum cannot be passed, and
+    veh_file must be passed as a keyword argument. Files contained in
+    fastsim/resources/vehdb can be loaded with the filename if provided as
+    the vnum argument.  Specifying veh_file will explicitly load whatever
+    file path is provided."""
 
     def __init__(self, vnum=None, veh_file=None):
         super().__init__()
@@ -76,7 +77,10 @@ class Vehicle(object):
         ---------
         vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
         veh_file (optional override): string or filelike obj, alternative 
-        to default FASTSim_py_veh_db"""
+        to default FASTSim_py_veh_db
+        
+        If default values are modified after loading, you may need to 
+        rerun set_init_calcs() and set_veh_mass() to propagate changes."""
 
         if vnum != 0:
             if veh_file:
