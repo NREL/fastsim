@@ -4,7 +4,8 @@ that can be modified by advanced users."""
 
 import os
 import numpy as np
-from numba import jitclass, float64
+from numba.experimental import jitclass
+from numba import float64
 import json
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
