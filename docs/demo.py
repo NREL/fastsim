@@ -25,11 +25,11 @@ import importlib
 # import seaborn as sns
 # sns.set(font_scale=2, style='whitegrid')
 
-
 # local modules
 from fastsim import simdrive, vehicle, cycle
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
+
 
 # ## Individual Drive Cycle
 # ### Load Drive Cycle
@@ -51,6 +51,7 @@ t1 = time.time()
 print(f'Time to load cycle: {t1 - t0:.2e} s')
 cyc_jit = cyc.get_numba_cyc()
 print(f'Time to JIT compile cycle: {time.time() - t1:.2e} s')
+
 
 # ### Load Powertrain Model
 # 
@@ -98,16 +99,12 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 # ### Results
 
 
-df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc.cycMps * 2.23694  # Convert mps to mph
-
-
-
 fig, ax = plt.subplots(figsize=(9, 5))
-kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
+ax.plot(cyc.cycSecs, sim_drive.fcKwInAch, label='kW')
 
 ax2 = ax.twinx()
-speed_line = df.speed.plot(color='xkcd:pale red', ax=ax2, label='Speed')
+speed_line = ax2.plot(cyc.cycSecs, sim_drive.mphAch, 
+                  color='xkcd:pale red', label='Speed')
 
 ax.set_xlabel('Cycle Time [s]', weight='bold')
 ax.set_ylabel('Engine Input Power [kW]', weight='bold', color='xkcd:bluish')
@@ -116,7 +113,7 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
-# plt.show()
+plt.show()
 
 
 # ## Running sim_drive_step() with modified auxInKw
@@ -234,7 +231,7 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 
 t0 = time.time()
-data_path = '../fastsim/resources/cycles/cmap_subset/'  # path to drive cycles
+data_path = Path(simdrive.__file__).parent / 'resources/cycles/cmap_subset/'  # path to drive cycles
 
 drive_cycs_df = pd.DataFrame()
 trips_df = pd.DataFrame()
@@ -247,16 +244,16 @@ for i in veh_dirs:
     sampno = int(i.split('_')[0])
     vehno = int(i.split('_')[1])
     
-    dc_csvs = os.listdir(data_path+i)
+    dc_csvs = os.listdir(data_path / i)
     dc_csvs = [fn for fn in dc_csvs if not fn.endswith('trips.csv')]
     
-    df_i = pd.read_csv(data_path+i+'/trips.csv', index_col=False)
+    df_i = pd.read_csv(data_path / i / 'trips.csv', index_col=False)
     trips_df = trips_df.append(df_i, ignore_index=True)
     
     veh_pnts_df = pd.DataFrame()
     
     for j in dc_csvs:
-        df_j = pd.read_csv(data_path+i+'/'+j, index_col=False)
+        df_j = pd.read_csv(data_path / i / j, index_col=False)
         veh_pnts_df = veh_pnts_df.append(df_j, ignore_index=True)
         
     for k in range(len(df_i)):
@@ -434,7 +431,7 @@ plt.show()
 # load vehicle
 t0 = time.time()
 # load from standalone vehicle file
-veh = vehicle.Vehicle(veh_file=Path('../fastsim/resources/vehdb/2012 Ford Fusion.csv')) 
+veh = vehicle.Vehicle('2012 Ford Fusion.csv') # load vehicle using name
 veh_jit = veh.get_numba_veh()
 print(f'Time to load veicle: {time.time() - t0:.2e} s')
 
@@ -443,7 +440,8 @@ print(f'Time to load veicle: {time.time() - t0:.2e} s')
 # generate concatenated trip
 t0 = time.time()
 # load from cycle file path
-cyc1 = cycle.Cycle(cyc_file_path=Path('../fastsim/resources/cycles/udds.csv'))
+cyc1 = cycle.Cycle(cyc_file_path=Path(simdrive.__file__).parent / 
+                   'resources/cycles/udds.csv')
 cyc2 = cycle.Cycle("us06")
 cyc_combo = cycle.concat([cyc1.get_cyc_dict(), cyc2.get_cyc_dict()])
 cyc_combo = cycle.Cycle(cyc_dict=cyc_combo)
@@ -532,7 +530,9 @@ print(f'Time to load and resample: {time.time() - t0:.2e} s')
 
 # load vehicle
 t0 = time.time()
-veh = vehicle.Vehicle(1)
+# load vehicle using explicit path
+veh = vehicle.Vehicle(veh_file=Path(simdrive.__file__).parent / 
+                      'resources/vehdb/2012 Ford Fusion.csv')
 veh_jit = veh.get_numba_veh()
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
