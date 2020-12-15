@@ -1,13 +1,17 @@
 """Test script that runs all the vehicles in both Excel and Python FASTSim for both UDDS and HWFET cycles."""
 
-import xlwings as xw
 import pandas as pd
 import time
 import numpy as np
 import os
 import sys
 import importlib
-import xlwings as xw
+try:
+    import xlwings as xw
+except:
+    print('You need to install xlwings by running `pip install xlwings`')
+    print('in a python environment.')
+    raise
 from math import isclose
 
 # local modules
