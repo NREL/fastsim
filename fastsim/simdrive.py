@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import re
 import sys
+from fastsim import vehicle
 from numba.experimental import jitclass                 # import the decorator
 from numba import float64, int32, bool_    # import the types
 import warnings
@@ -14,6 +15,7 @@ warnings.simplefilter('ignore')
 
 # local modules
 from fastsim import parameters as params
+from fastsim import cycle
 from fastsim.cycle import TypedCycle
 from fastsim.vehicle import TypedVehicle
 
@@ -1164,66 +1166,105 @@ class SimDriveClassic(object):
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
 
+def get_sim_drive_spec():
+    # do stuff
+    cyc = cycle.Cycle('udds')
+    veh = vehicle.Vehicle(1)
+    sim_drive = SimDriveClassic(cyc, veh)
+    sim_drive.sim_drive()
 
-# list of array attributes in SimDrive class for generating list of type specification tuples
-attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
-             'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
-             'essLimMcRegenPercKw', 'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut', 'cycDragKw', 'cycAccelKw', 'cycAscentKw', 
-             'cycTracKwReq', 'curMaxTracKw', 'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
-             'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 'transKwOutAch', 'transKwInAch', 
-             'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
-             'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsCumuMjOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
-             'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
-             'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'desiredEssKwOutForAE', 
-             'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
-             'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
-             'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
-             'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'trace_miss_iters']
+    sim_drive_spec = []
 
-sim_drive_spec = [(attr, float64[:]) for attr in attr_list]
-# extend with locally defined classes
-# extend list with non-float64[:] attributes that not contained in attr_list
-sim_drive_spec.extend([('i', int32),
-             ('fcForcedOn', bool_[:]),
-             ('fcForcedState', int32[:]),
-             ('canPowerAllElectrically', bool_[:]),
-             ('mpgge', float64),
-             ('roadwayChgKj', float64),
-             ('essDischgKj', float64),
-             ('battery_kWh_per_mi', float64),
-             ('electric_kWh_per_mi', float64),
-             ('fuelKj', float64),
-             ('ess2fuelKwh', float64),
-             ('Gallons_gas_equivalent_per_mile', float64),
-             ('mpgge_elec', float64),
-             ('grid_mpgge_elec', float64),
-             ('dragKj', float64),
-             ('ascentKj', float64),
-             ('rrKj', float64),
-             ('brakeKj', float64),
-             ('transKj', float64),
-             ('mcKj', float64),
-             ('essEffKj', float64),
-             ('auxKj', float64),
-             ('fcKj', float64),
-             ('netKj', float64),
-             ('keKj', float64),
-             ('energyAuditError', float64),
-             ('hev_sim_count', float64), 
-             ])
+    # create types for instances of TypedVehicle and TypedCycle
+    veh_type = TypedVehicle.class_type.instance_type
+    cyc_type = TypedCycle.class_type.instance_type
+    props_type = params.PhysicalProperties.class_type.instance_type
+    param_type = SimDriveParams.class_type.instance_type
+    
+    # the stuff in the for loop is sketchy
+    for key, val in sim_drive.__dict__.items():
+        if type(val) == np.float64:
+            sim_drive_spec.append((key, float64)) 
+        elif (type(val) == np.int32) or (type(val) == np.int) or (type(val) == np.int64):
+            sim_drive_spec.append((key, int32))
+        elif type(val) == np.bool_:
+            sim_drive_spec.append((key, bool_))
 
-# create types for instances of TypedVehicle and TypedCycle
-veh_type = TypedVehicle.class_type.instance_type
-cyc_type = TypedCycle.class_type.instance_type
-props_type = params.PhysicalProperties.class_type.instance_type
-param_type = SimDriveParams.class_type.instance_type
+        elif (type(val) == np.ndarray):
+            if type(val[0]) == np.float64:
+                sim_drive_spec.append((key, float64[:]))
+            elif type(val[0]) == np.int32:
+                sim_drive_spec.append((key, int32[:]))
+            elif type(val[0]) == np.bool_:
+                sim_drive_spec.append((key, bool_[:]))
+            else:
+                raise Exception('Invalid type.')
 
-sim_drive_spec.extend([('veh', veh_type),
-            ('cyc', cyc_type),
-            ('cyc0', cyc_type),
-            ('props', props_type),
-            ('sim_params', param_type),
-            ])
+        elif key == 'veh':
+            sim_drive_spec.append(('veh', veh_type))
+        elif key == 'cyc':
+            sim_drive_spec.append(('cyc', cyc_type))
+        elif key == 'cyc0':
+            sim_drive_spec.append(('cyc0', cyc_type))
+        elif key == 'props':
+            sim_drive_spec.append(('props', props_type))
+        elif key == 'sim_params':
+            sim_drive_spec.append(('sim_params', param_type))
+        
+        else:
+            raise Exception('Invalid type.')
+
+    return sim_drive_spec
+
+sim_drive_spec = get_sim_drive_spec()
+
+# # list of array attributes in SimDrive class for generating list of type specification tuples
+# attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
+#              'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
+#              'essLimMcRegenPercKw', 'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut', 'cycDragKw', 'cycAccelKw', 'cycAscentKw', 
+#              'cycTracKwReq', 'curMaxTracKw', 'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
+#              'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 'transKwOutAch', 'transKwInAch', 
+#              'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
+#              'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsCumuMjOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
+#              'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
+#              'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'desiredEssKwOutForAE', 
+#              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
+#              'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
+#              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
+#              'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'trace_miss_iters']
+
+# sim_drive_spec = [(attr, float64[:]) for attr in attr_list]
+# # extend with locally defined classes
+# # extend list with non-float64[:] attributes that not contained in attr_list
+# sim_drive_spec.extend([('i', int32),
+#              ('fcForcedOn', bool_[:]),
+#              ('fcForcedState', int32[:]),
+#              ('canPowerAllElectrically', bool_[:]),
+#              ('mpgge', float64),
+#              ('roadwayChgKj', float64),
+#              ('essDischgKj', float64),
+#              ('battery_kWh_per_mi', float64),
+#              ('electric_kWh_per_mi', float64),
+#              ('fuelKj', float64),
+#              ('ess2fuelKwh', float64),
+#              ('Gallons_gas_equivalent_per_mile', float64),
+#              ('mpgge_elec', float64),
+#              ('grid_mpgge_elec', float64),
+#              ('dragKj', float64),
+#              ('ascentKj', float64),
+#              ('rrKj', float64),
+#              ('brakeKj', float64),
+#              ('transKj', float64),
+#              ('mcKj', float64),
+#              ('essEffKj', float64),
+#              ('auxKj', float64),
+#              ('fcKj', float64),
+#              ('netKj', float64),
+#              ('keKj', float64),
+#              ('energyAuditError', float64),
+#              ('hev_sim_count', float64), 
+#              ])
+
 
 
 @jitclass(sim_drive_spec)
