@@ -19,18 +19,23 @@ from fastsim import cycle
 from fastsim.cycle import TypedCycle
 from fastsim.vehicle import TypedVehicle
 
+# def build_spec(object):
+# it'd be cool if there was a really slick function for mapping data 
+# types to jit data types that could be reused in multiple places
+
 # Object for containing model parameters (e.g. solver variants, 
 # thermal boundary conditions, missed trace behavior, etc.). 
 
-param_spec = [('missed_trace_correction', bool_), 
-            ('max_time_dilation', float64), 
-            ('min_time_dilation', float64), 
-            ('time_dilation_tol', float64), 
-            ('verbose', bool_), 
-            ('sim_count_max', int32)
-            ]
-@jitclass(param_spec)
-class SimDriveParams(object):
+# param_spec = [('missed_trace_correction', bool_), 
+#             ('max_time_dilation', float64), 
+#             ('min_time_dilation', float64), 
+#             ('time_dilation_tol', float64), 
+#             ('verbose', bool_), 
+#             ('sim_count_max', int32)
+#             ]
+
+
+class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.
     Usually the defaults are ok, and there will be no need to use this.
 
@@ -53,8 +58,34 @@ class SimDriveParams(object):
         self.max_time_dilation = 10  # maximum time dilation factor to "catch up" with trace
         self.min_time_dilation = 0.1  # minimum time dilation to let trace "catch up"
         self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
-        self.sim_count_max = 30 # max allowable number of HEV SOC iterations
-        self.verbose=True # show warning and other messages
+        self.sim_count_max = 30  # max allowable number of HEV SOC iterations
+        self.verbose = True  # show warning and other messages
+
+
+def get_param_spec():
+    """Generates and returns type casting info for jitclass `SimDriveParams`."""
+    param_spec = []
+
+    sim_params = SimDriveParamsClassic()
+
+    # this is violating DRY principles because it's also used below
+    # it should be abstracted eventually
+    for key, val in sim_params.__dict__.items():
+        if (type(val) == np.float64) or (type(val) == float):
+            param_spec.append((key, float64)) 
+        elif ((type(val) == np.int32) or (type(val) == np.int) 
+            or (type(val) == np.int64) or (type(val) == int)):
+            param_spec.append((key, int32))
+        elif (type(val) == np.bool_) or (type(val) == bool):
+            param_spec.append((key, bool_))
+
+    return param_spec
+
+param_spec = get_param_spec()
+
+@jitclass(param_spec)
+class SimDriveParams(SimDriveParamsClassic):
+    pass
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
@@ -1126,7 +1157,7 @@ class SimDriveClassic(object):
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
 
 def get_sim_drive_spec():
-    # do stuff
+    """Generates and returns type casting info for jitclass `SimDriveJit`."""
     cyc = cycle.Cycle('udds')
     veh = vehicle.Vehicle(1)
     sim_drive = SimDriveClassic(cyc, veh)
