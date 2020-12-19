@@ -14,12 +14,54 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from fastsim import parameters as params
+from fastsim import params
 from fastsim import cycle
+from fastsim import vehicle
 from fastsim.cycle import TypedCycle
 from fastsim.vehicle import TypedVehicle
 
-# def build_spec(object):
+def build_spec(instance):
+
+    # create types for instances of TypedVehicle and TypedCycle
+    veh_type = TypedVehicle.class_type.instance_type
+    cyc_type = TypedCycle.class_type.instance_type
+    props_type = params.PhysicalProperties.class_type.instance_type
+    param_type = SimDriveParams.class_type.instance_type
+    
+    if 'sim_drive' in instance.__dir__():
+        instance.sim_drive()
+
+    # list of tuples containg possible types, assigned type for scalar, 
+    # and assigned type for array
+    spec_tuples = [([int, np.int32, np.int64, np.int], int32, int32[:]), 
+                ([float, np.float32, np.float64, np.float], float64, float64[:]),
+                ([bool, np.bool, np.bool_], bool_, bool_[:]),
+                ([vehicle.Vehicle], veh_type, None),
+                ([cycle.Cycle], cyc_type, None),
+                ([params.PhysicalProperties]),
+                ]
+    
+    spec = []
+
+    for key, val in instance.__dict__.items():
+        t = type(val)
+        jit_type = None
+        if t == np.ndarray:
+            for matched_types, _, assigned_type in spec_tuples:
+                if type(val[0]) in matched_types:
+                    jit_type = assigned_type
+                    break
+        else:
+            for matched_types, assigned_type, _ in spec_tuples:
+                if t in matched_types:
+                    jit_type = assigned_type
+                    break
+        if jit_type is None:
+            raise Exception(key + " does not map to anything in spec_tuples")
+        spec.append((key, jit_type))
+    
+    return spec
+
 # it'd be cool if there was a really slick function for mapping data 
 # types to jit data types that could be reused in multiple places
 
@@ -62,26 +104,7 @@ class SimDriveParamsClassic(object):
         self.verbose = True  # show warning and other messages
 
 
-def get_param_spec():
-    """Generates and returns type casting info for jitclass `SimDriveParams`."""
-    param_spec = []
-
-    sim_params = SimDriveParamsClassic()
-
-    # this is violating DRY principles because it's also used below
-    # it should be abstracted eventually
-    for key, val in sim_params.__dict__.items():
-        if (type(val) == np.float64) or (type(val) == float):
-            param_spec.append((key, float64)) 
-        elif ((type(val) == np.int32) or (type(val) == np.int) 
-            or (type(val) == np.int64) or (type(val) == int)):
-            param_spec.append((key, int32))
-        elif (type(val) == np.bool_) or (type(val) == bool):
-            param_spec.append((key, bool_))
-
-    return param_spec
-
-param_spec = get_param_spec()
+param_spec = build_spec(SimDriveParamsClassic())
 
 @jitclass(param_spec)
 class SimDriveParams(SimDriveParamsClassic):
@@ -106,8 +129,8 @@ class SimDriveClassic(object):
         self.veh = veh
         self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = SimDriveParams()
-        self.props = params.PhysicalProperties()
+        self.sim_params = SimDriveParamsClassic()
+        self.props = params.PhysicalPropertiesClassic()
 
     def init_arrays(self):
         len_cyc = len(self.cyc.cycSecs)
