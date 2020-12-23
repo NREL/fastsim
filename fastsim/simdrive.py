@@ -14,17 +14,16 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from fastsim import params
+from fastsim import parameters as params
 from fastsim import cycle
-from fastsim import vehicle
-from fastsim.cycle import TypedCycle
-from fastsim.vehicle import TypedVehicle
+from fastsim.cycle import CycleJit
+from fastsim.vehicle import VehicleJit
 
 def build_spec(instance):
 
-    # create types for instances of TypedVehicle and TypedCycle
-    veh_type = TypedVehicle.class_type.instance_type
-    cyc_type = TypedCycle.class_type.instance_type
+    # create types for instances of VehicleJit and CycleJit
+    veh_type = VehicleJit.class_type.instance_type
+    cyc_type = CycleJit.class_type.instance_type
     props_type = params.PhysicalProperties.class_type.instance_type
     param_type = SimDriveParams.class_type.instance_type
     
@@ -90,7 +89,26 @@ class SimDriveParamsClassic(object):
         self.verbose = True  # show warning and other messages
 
 
-param_spec = build_spec(SimDriveParamsClassic())
+def get_param_spec():
+    """Generates and returns type casting info for jitclass `SimDriveParams`."""
+    param_spec = []
+
+    sim_params = SimDriveParamsClassic()
+
+    # this is violating DRY principles because it's also used below
+    # it should be abstracted eventually
+    for key, val in sim_params.__dict__.items():
+        if (type(val) == np.float64) or (type(val) == float):
+            param_spec.append((key, float64)) 
+        elif ((type(val) == np.int32) or (type(val) == np.int) 
+            or (type(val) == np.int64) or (type(val) == int)):
+            param_spec.append((key, int32))
+        elif (type(val) == np.bool_) or (type(val) == bool):
+            param_spec.append((key, bool_))
+
+    return param_spec
+
+param_spec = get_param_spec()
 
 @jitclass(param_spec)
 class SimDriveParams(SimDriveParamsClassic):
@@ -115,8 +133,8 @@ class SimDriveClassic(object):
         self.veh = veh
         self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = SimDriveParamsClassic()
-        self.props = params.PhysicalPropertiesClassic()
+        self.sim_params = SimDriveParams()
+        self.props = params.PhysicalProperties()
 
     def init_arrays(self):
         len_cyc = len(self.cyc.cycSecs)

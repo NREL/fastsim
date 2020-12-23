@@ -36,19 +36,16 @@ metersPerMile = 1609.00
 # Highway Slope	1.3466	1.2945	1.3466
 maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
-class PhysicalPropertiesClassic(object):
+
+@jitclass([('airDensityKgPerM3', float64),
+           ('gravityMPerSec2', float64),])
+class PhysicalProperties(object):
     """Container class for physical constants that could change under certain special 
     circumstances (e.g. high altitude or extreme weather) """
 
     def __init__(self):
         self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
         self.gravityMPerSec2 = 9.81
-
-
-@jitclass([('airDensityKgPerM3', float64),
-           ('gravityMPerSec2', float64),])
-class PhysicalProperties(PhysicalPropertiesClassic):
-    pass
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
