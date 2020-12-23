@@ -9,8 +9,6 @@ import re
 import sys
 from fastsim import vehicle
 from numba.experimental import jitclass                 # import the decorator
-from numba import float64, int32, bool_    # import the types
-from numba.types import string
 import warnings
 warnings.simplefilter('ignore')
 
@@ -19,56 +17,7 @@ from fastsim import parameters as params
 from fastsim import cycle
 from fastsim.cycle import CycleJit
 from fastsim.vehicle import VehicleJit
-
-def build_spec(instance):
-    """Given a FASTSim object instance, returns list of tuples with 
-    attribute names and numba types."""
-    if 'sim_drive' in instance.__dir__():
-        # run sim_drive to flesh out all the attributes
-        instance.sim_drive()
-        # create types for instances of VehicleJit and CycleJit
-        veh_type = VehicleJit.class_type.instance_type
-        cyc_type = CycleJit.class_type.instance_type
-        props_type = params.PhysicalPropertiesJit.class_type.instance_type
-        param_type = SimDriveParams.class_type.instance_type
-    else:
-        veh_type = None
-        cyc_type = None
-        props_type = None
-        param_type = None
-
-    # list of tuples containg possible types, assigned type for scalar, 
-    # and assigned type for array
-    spec_tuples = [([float, np.float32, np.float64, np.float], float64, float64[:]),
-                ([int, np.int32, np.int64, np.int], int32, int32[:]), 
-                ([bool, np.bool, np.bool_], bool_, bool_[:]),
-                ([str], string, string[:]),
-                ([vehicle.Vehicle], veh_type, None),
-                ([cycle.Cycle], cyc_type, None),
-                ([params.PhysicalProperties], props_type, None),
-                ([SimDriveParamsClassic], param_type, None),
-                ]
-    
-    spec = []
-
-    for key, val in instance.__dict__.items():
-        t = type(val)
-        jit_type = None
-        if t == np.ndarray:
-            for matched_types, _, assigned_type in spec_tuples:
-                if type(val[0]) in matched_types:
-                    jit_type = assigned_type
-                    break
-        else:
-            for matched_types, assigned_type, _ in spec_tuples:
-                if t in matched_types:
-                    jit_type = assigned_type
-                    break
-        if jit_type is None:
-            raise Exception(str(t) + " does not map to anything in spec_tuples")
-        spec.append((key, jit_type))
-    
-    return spec
+from fastsim.utilities import build_spec
 
 
 class SimDriveParamsClassic(object):
