@@ -16,7 +16,7 @@ import ast
 
 # local modules
 from . import parameters as params
-from fastsim.buildspec import build_spec
+from .buildspec import build_spec
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -42,7 +42,6 @@ class Vehicle(object):
     file path is provided."""
 
     def __init__(self, vnum=None, veh_file=None):
-        super().__init__()
         if veh_file and vnum:
             self.load_veh(vnum, veh_file=veh_file)
         elif vnum and not veh_file:
