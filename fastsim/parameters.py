@@ -7,7 +7,7 @@ import numpy as np
 from numba.experimental import jitclass
 import json
 
-from fastsim.build_spec import build_spec
+from fastsim.buildspec import build_spec
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
