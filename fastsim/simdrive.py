@@ -20,15 +20,19 @@ from fastsim.cycle import CycleJit
 from fastsim.vehicle import VehicleJit
 
 def build_spec(instance):
-
-    # create types for instances of VehicleJit and CycleJit
-    veh_type = VehicleJit.class_type.instance_type
-    cyc_type = CycleJit.class_type.instance_type
-    props_type = params.PhysicalProperties.class_type.instance_type
-    param_type = SimDriveParams.class_type.instance_type
     
     if 'sim_drive' in instance.__dir__():
         instance.sim_drive()
+        # create types for instances of VehicleJit and CycleJit
+        veh_type = VehicleJit.class_type.instance_type
+        cyc_type = CycleJit.class_type.instance_type
+        props_type = params.PhysicalProperties.class_type.instance_type
+        param_type = SimDriveParams.class_type.instance_type
+    else:
+        veh_type = None
+        cyc_type = None
+        props_type = None
+        param_type = None
 
     # list of tuples containg possible types, assigned type for scalar, 
     # and assigned type for array
@@ -108,11 +112,15 @@ def get_param_spec():
 
     return param_spec
 
-param_spec = get_param_spec()
+
+param_spec = build_spec(SimDriveParamsClassic())
 
 @jitclass(param_spec)
 class SimDriveParams(SimDriveParamsClassic):
     pass
+
+
+
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
