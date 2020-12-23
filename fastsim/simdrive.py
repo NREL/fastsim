@@ -62,20 +62,6 @@ def build_spec(instance):
     
     return spec
 
-# it'd be cool if there was a really slick function for mapping data 
-# types to jit data types that could be reused in multiple places
-
-# Object for containing model parameters (e.g. solver variants, 
-# thermal boundary conditions, missed trace behavior, etc.). 
-
-# param_spec = [('missed_trace_correction', bool_), 
-#             ('max_time_dilation', float64), 
-#             ('min_time_dilation', float64), 
-#             ('time_dilation_tol', float64), 
-#             ('verbose', bool_), 
-#             ('sim_count_max', int32)
-#             ]
-
 
 class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.
@@ -1188,9 +1174,9 @@ def get_sim_drive_spec():
 
     sim_drive_spec = []
 
-    # create types for instances of TypedVehicle and TypedCycle
-    veh_type = TypedVehicle.class_type.instance_type
-    cyc_type = TypedCycle.class_type.instance_type
+    # create types for instances of VehicleJit and CycleJit
+    veh_type = VehicleJit.class_type.instance_type
+    cyc_type = CycleJit.class_type.instance_type
     props_type = params.PhysicalProperties.class_type.instance_type
     param_type = SimDriveParams.class_type.instance_type
     
@@ -1231,54 +1217,6 @@ def get_sim_drive_spec():
 
 sim_drive_spec = get_sim_drive_spec()
 
-# # list of array attributes in SimDrive class for generating list of type specification tuples
-# attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
-#              'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
-#              'essLimMcRegenPercKw', 'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut', 'cycDragKw', 'cycAccelKw', 'cycAscentKw', 
-#              'cycTracKwReq', 'curMaxTracKw', 'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
-#              'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 'transKwOutAch', 'transKwInAch', 
-#              'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
-#              'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsCumuMjOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
-#              'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
-#              'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'desiredEssKwOutForAE', 
-#              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
-#              'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
-#              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
-#              'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'trace_miss_iters']
-
-# sim_drive_spec = [(attr, float64[:]) for attr in attr_list]
-# # extend with locally defined classes
-# # extend list with non-float64[:] attributes that not contained in attr_list
-# sim_drive_spec.extend([('i', int32),
-#              ('fcForcedOn', bool_[:]),
-#              ('fcForcedState', int32[:]),
-#              ('canPowerAllElectrically', bool_[:]),
-#              ('mpgge', float64),
-#              ('roadwayChgKj', float64),
-#              ('essDischgKj', float64),
-#              ('battery_kWh_per_mi', float64),
-#              ('electric_kWh_per_mi', float64),
-#              ('fuelKj', float64),
-#              ('ess2fuelKwh', float64),
-#              ('Gallons_gas_equivalent_per_mile', float64),
-#              ('mpgge_elec', float64),
-#              ('grid_mpgge_elec', float64),
-#              ('dragKj', float64),
-#              ('ascentKj', float64),
-#              ('rrKj', float64),
-#              ('brakeKj', float64),
-#              ('transKj', float64),
-#              ('mcKj', float64),
-#              ('essEffKj', float64),
-#              ('auxKj', float64),
-#              ('fcKj', float64),
-#              ('netKj', float64),
-#              ('keKj', float64),
-#              ('energyAuditError', float64),
-#              ('hev_sim_count', float64), 
-#              ])
-
-
 
 @jitclass(sim_drive_spec)
 class SimDriveJit(SimDriveClassic):
@@ -1287,8 +1225,8 @@ class SimDriveJit(SimDriveClassic):
     faster for large batch runs.
     Arguments:
     ----------
-    cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
-    veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
+    cyc: cycle.CycleJit instance. Can come from cycle.Cycle.get_numba_cyc
+    veh: vehicle.VehicleJit instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
     def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.

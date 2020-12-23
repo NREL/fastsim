@@ -58,7 +58,7 @@ class Vehicle(object):
     def get_numba_veh(self):
         """Load numba JIT-compiled vehicle."""
         if 'numba_veh' not in self.__dict__:
-            self.numba_veh = TypedVehicle()
+            self.numba_veh = VehicleJit()
         for item in veh_spec:
             if (type(self.__getattribute__(item[0])) == np.ndarray) | (type(self.__getattribute__(item[0])) == np.float64):
                 self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float64))
@@ -455,7 +455,7 @@ veh_spec = [('Selection', int32),
 
 
 @jitclass(veh_spec)
-class TypedVehicle(object):
+class VehicleJit(object):
     """Just-in-time compiled version of Vehicle using numba."""
     
     def __init__(self):

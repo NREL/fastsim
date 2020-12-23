@@ -54,7 +54,7 @@ class Cycle(object):
         
     def get_numba_cyc(self):
         """Returns numba jitclass version of Cycle object."""
-        numba_cyc = TypedCycle(len(self.cycSecs))
+        numba_cyc = CycleJit(len(self.cycSecs))
         for key in STANDARD_CYCLE_KEYS:
             numba_cyc.__setattr__(key, self.__getattribute__(key).astype(np.float64))
         return numba_cyc
@@ -139,7 +139,7 @@ cyc_spec = [('cycSecs', float64[:]),
 
 
 @jitclass(cyc_spec)
-class TypedCycle(object):
+class CycleJit(object):
     """Just-in-time compiled version of Cycle using numba."""
     
     def __init__(self, len_cyc):
@@ -154,8 +154,8 @@ class TypedCycle(object):
         self.cycDistMeters = np.zeros(len_cyc, dtype=np.float64)
 
     def copy(self):
-        """Return copy of TypedCycle instance."""
-        cyc = TypedCycle(len(self.cycSecs))
+        """Return copy of CycleJit instance."""
+        cyc = CycleJit(len(self.cycSecs))
         cyc.cycSecs = np.copy(self.cycSecs)
         cyc.cycMps = np.copy(self.cycMps)
         cyc.cycGrade = np.copy(self.cycGrade)
