@@ -6,11 +6,11 @@ from fastsim import parameters as params
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from fastsim import vehicle, cycle, simdrive, parameters
+from fastsim import parameters
 
 sns.set()
 
-# props = parameters.PhysicalProperties()
+props = parameters.PhysicalProperties()
 R_air = 287  # J/(kg*K)
 
 def get_rho_air(elevation_m, temperature_degC, full_output=False):
