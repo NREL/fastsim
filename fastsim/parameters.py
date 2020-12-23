@@ -5,8 +5,9 @@ that can be modified by advanced users."""
 import os
 import numpy as np
 from numba.experimental import jitclass
-from numba import float64
 import json
+
+from fastsim.build_spec import build_spec
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -45,8 +46,9 @@ class PhysicalProperties(object):
         self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
         self.gravityMPerSec2 = 9.81
 
-@jitclass([('airDensityKgPerM3', float64),
-           ('gravityMPerSec2', float64),])
+props_spec = build_spec(PhysicalProperties())
+
+@jitclass(props_spec)
 class PhysicalPropertiesJit(PhysicalProperties):
     """Container class for physical constants that could change under certain special 
     circumstances (e.g. high altitude or extreme weather) """

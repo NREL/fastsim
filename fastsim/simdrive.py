@@ -17,7 +17,7 @@ from fastsim import parameters as params
 from fastsim import cycle
 from fastsim.cycle import CycleJit
 from fastsim.vehicle import VehicleJit
-from fastsim.utilities import build_spec
+from fastsim.build_spec import build_spec
 
 
 class SimDriveParamsClassic(object):
