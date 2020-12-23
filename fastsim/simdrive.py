@@ -10,6 +10,7 @@ import sys
 from fastsim import vehicle
 from numba.experimental import jitclass                 # import the decorator
 from numba import float64, int32, bool_    # import the types
+from numba.types import string
 import warnings
 warnings.simplefilter('ignore')
 
@@ -20,13 +21,15 @@ from fastsim.cycle import CycleJit
 from fastsim.vehicle import VehicleJit
 
 def build_spec(instance):
-    
+    """Given a FASTSim object instance, returns list of tuples with 
+    attribute names and numba types."""
     if 'sim_drive' in instance.__dir__():
+        # run sim_drive to flesh out all the attributes
         instance.sim_drive()
         # create types for instances of VehicleJit and CycleJit
         veh_type = VehicleJit.class_type.instance_type
         cyc_type = CycleJit.class_type.instance_type
-        props_type = params.PhysicalProperties.class_type.instance_type
+        props_type = params.PhysicalPropertiesJit.class_type.instance_type
         param_type = SimDriveParams.class_type.instance_type
     else:
         veh_type = None
@@ -36,12 +39,14 @@ def build_spec(instance):
 
     # list of tuples containg possible types, assigned type for scalar, 
     # and assigned type for array
-    spec_tuples = [([int, np.int32, np.int64, np.int], int32, int32[:]), 
-                ([float, np.float32, np.float64, np.float], float64, float64[:]),
+    spec_tuples = [([float, np.float32, np.float64, np.float], float64, float64[:]),
+                ([int, np.int32, np.int64, np.int], int32, int32[:]), 
                 ([bool, np.bool, np.bool_], bool_, bool_[:]),
+                ([str], string, string[:]),
                 ([vehicle.Vehicle], veh_type, None),
                 ([cycle.Cycle], cyc_type, None),
-                ([params.PhysicalProperties]),
+                ([params.PhysicalProperties], props_type, None),
+                ([SimDriveParamsClassic], param_type, None),
                 ]
     
     spec = []
@@ -60,7 +65,7 @@ def build_spec(instance):
                     jit_type = assigned_type
                     break
         if jit_type is None:
-            raise Exception(key + " does not map to anything in spec_tuples")
+            raise Exception(str(t) + " does not map to anything in spec_tuples")
         spec.append((key, jit_type))
     
     return spec
@@ -93,33 +98,11 @@ class SimDriveParamsClassic(object):
         self.verbose = True  # show warning and other messages
 
 
-def get_param_spec():
-    """Generates and returns type casting info for jitclass `SimDriveParams`."""
-    param_spec = []
-
-    sim_params = SimDriveParamsClassic()
-
-    # this is violating DRY principles because it's also used below
-    # it should be abstracted eventually
-    for key, val in sim_params.__dict__.items():
-        if (type(val) == np.float64) or (type(val) == float):
-            param_spec.append((key, float64)) 
-        elif ((type(val) == np.int32) or (type(val) == np.int) 
-            or (type(val) == np.int64) or (type(val) == int)):
-            param_spec.append((key, int32))
-        elif (type(val) == np.bool_) or (type(val) == bool):
-            param_spec.append((key, bool_))
-
-    return param_spec
-
-
 param_spec = build_spec(SimDriveParamsClassic())
 
 @jitclass(param_spec)
 class SimDriveParams(SimDriveParamsClassic):
     pass
-
-
 
 
 class SimDriveClassic(object):
@@ -141,7 +124,7 @@ class SimDriveClassic(object):
         self.veh = veh
         self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = SimDriveParams()
+        self.sim_params = SimDriveParamsClassic()
         self.props = params.PhysicalProperties()
 
     def init_arrays(self):
@@ -1241,7 +1224,7 @@ def get_sim_drive_spec():
 
     return sim_drive_spec
 
-sim_drive_spec = get_sim_drive_spec()
+sim_drive_spec = build_spec(SimDriveClassic(cycle.Cycle('udds'), vehicle.Vehicle(1)))
 
 
 @jitclass(sim_drive_spec)
@@ -1253,6 +1236,13 @@ class SimDriveJit(SimDriveClassic):
     ----------
     cyc: cycle.CycleJit instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.VehicleJit instance. Can come from vehicle.Vehicle.get_numba_veh"""
+
+    def __init_objects__(self, cyc, veh):        
+        self.veh = veh
+        self.cyc = cyc.copy() # this cycle may be manipulated
+        self.cyc0 = cyc.copy() # this cycle is not to be manipulated
+        self.sim_params = SimDriveParams()
+        self.props = params.PhysicalPropertiesJit()
 
     def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
