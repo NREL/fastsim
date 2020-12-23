@@ -1123,56 +1123,6 @@ class SimDriveClassic(object):
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
 
-def get_sim_drive_spec():
-    """Generates and returns type casting info for jitclass `SimDriveJit`."""
-    cyc = cycle.Cycle('udds')
-    veh = vehicle.Vehicle(1)
-    sim_drive = SimDriveClassic(cyc, veh)
-    sim_drive.sim_drive()
-
-    sim_drive_spec = []
-
-    # create types for instances of VehicleJit and CycleJit
-    veh_type = VehicleJit.class_type.instance_type
-    cyc_type = CycleJit.class_type.instance_type
-    props_type = params.PhysicalProperties.class_type.instance_type
-    param_type = SimDriveParams.class_type.instance_type
-    
-    # the stuff in the for loop is sketchy
-    for key, val in sim_drive.__dict__.items():
-        if type(val) == np.float64:
-            sim_drive_spec.append((key, float64)) 
-        elif (type(val) == np.int32) or (type(val) == np.int) or (type(val) == np.int64):
-            sim_drive_spec.append((key, int32))
-        elif type(val) == np.bool_:
-            sim_drive_spec.append((key, bool_))
-
-        elif (type(val) == np.ndarray):
-            if type(val[0]) == np.float64:
-                sim_drive_spec.append((key, float64[:]))
-            elif type(val[0]) == np.int32:
-                sim_drive_spec.append((key, int32[:]))
-            elif type(val[0]) == np.bool_:
-                sim_drive_spec.append((key, bool_[:]))
-            else:
-                raise Exception('Invalid type.')
-
-        elif key == 'veh':
-            sim_drive_spec.append(('veh', veh_type))
-        elif key == 'cyc':
-            sim_drive_spec.append(('cyc', cyc_type))
-        elif key == 'cyc0':
-            sim_drive_spec.append(('cyc0', cyc_type))
-        elif key == 'props':
-            sim_drive_spec.append(('props', props_type))
-        elif key == 'sim_params':
-            sim_drive_spec.append(('sim_params', param_type))
-        
-        else:
-            raise Exception('Invalid type.')
-
-    return sim_drive_spec
-
 sim_drive_spec = build_spec(SimDriveClassic(cycle.Cycle('udds'), vehicle.Vehicle(1)))
 
 
