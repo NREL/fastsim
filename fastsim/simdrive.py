@@ -43,12 +43,10 @@ class SimDriveParamsClassic(object):
     affect simulation behavior. If, for example, you want to suppress
     warning messages, use the following pastable code EXAMPLE:
 
-    >>> cyc = cycle.Cycle('udds').get_numba_cyc()
-    >>> veh = vehicle.Vehicle(1).get_numba_veh()
-    >>> sim_params = simdrive.SimDriveParams()
-    >>> sim_params.verbose = False # turn off error messages for large time steps
-    >>> sim_drive = simdrive.SimDriveJit(cyc, veh)
-    >>> sim_drive.sim_params = sim_params
+    >>> cyc = cycle.Cycle('udds')
+    >>> veh = vehicle.Vehicle(1)
+    >>> sim_drive = simdrive.SimDriveClassic(cyc, veh)
+    >>> sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     >>> sim_drive.sim_drive()"""
 
     def __init__(self):
