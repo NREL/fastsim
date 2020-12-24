@@ -17,7 +17,7 @@ import copy
 
 # local modules
 from . import parameters as params
-from . import buildspec
+from .buildspec import build_spec
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 CYCLES_DIR = os.path.abspath(
@@ -45,7 +45,6 @@ class Cycle(object):
             same format as cycles in resources/cycles/
         """
         
-        super().__init__()
         if std_cyc_name:
             self.set_standard_cycle(std_cyc_name)
         if cyc_dict:
@@ -105,6 +104,12 @@ class Cycle(object):
         self.cycMph = self.cycMps * params.mphPerMps
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0) # time step deltas
         self.cycDistMeters = (self.cycMps * self.secs) 
+        for key in self.__dir__():
+            try:
+                self.__setattr__(key, 
+                    np.array(self.__getattribute__(key), dtype=np.float64))
+            except:
+                pass
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
@@ -129,14 +134,7 @@ class Cycle(object):
 
 
 # type specifications for attributes of Cycle class
-cyc_spec = [('cycSecs', float64[:]),
-            ('cycMps', float64[:]),
-            ('cycGrade', float64[:]),
-            ('cycRoadType', float64[:]),
-            ('cycMph', float64[:]),
-            ('secs', float64[:]),
-            ('cycDistMeters', float64[:])
-]
+cyc_spec = build_spec(Cycle('udds'))
 
 
 @jitclass(cyc_spec)
