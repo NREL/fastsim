@@ -17,6 +17,7 @@ import copy
 
 # local modules
 from . import parameters as params
+from . import buildspec
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 CYCLES_DIR = os.path.abspath(
