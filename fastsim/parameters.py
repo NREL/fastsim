@@ -5,8 +5,9 @@ that can be modified by advanced users."""
 import os
 import numpy as np
 from numba.experimental import jitclass
-from numba import float64
 import json
+
+from fastsim.buildspec import build_spec
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -31,8 +32,6 @@ metersPerMile = 1609.00
 maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
 
-@jitclass([('airDensityKgPerM3', float64),
-           ('gravityMPerSec2', float64),])
 class PhysicalProperties(object):
     """Container class for physical constants that could change under certain special 
     circumstances (e.g. high altitude or extreme weather) """
@@ -40,6 +39,14 @@ class PhysicalProperties(object):
     def __init__(self):
         self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
         self.gravityMPerSec2 = 9.81
+
+props_spec = build_spec(PhysicalProperties())
+
+@jitclass(props_spec)
+class PhysicalPropertiesJit(PhysicalProperties):
+    """Container class for physical constants that could change under certain special 
+    circumstances (e.g. high altitude or extreme weather) """
+    pass
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***

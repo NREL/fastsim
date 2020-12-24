@@ -9,28 +9,18 @@ import re
 import sys
 from fastsim import vehicle
 from numba.experimental import jitclass                 # import the decorator
-from numba import float64, int32, bool_    # import the types
 import warnings
 warnings.simplefilter('ignore')
 
 # local modules
 from fastsim import parameters as params
 from fastsim import cycle
-from fastsim.cycle import TypedCycle
-from fastsim.vehicle import TypedVehicle
+from fastsim.cycle import CycleJit
+from fastsim.vehicle import VehicleJit
+from fastsim.buildspec import build_spec
 
-# Object for containing model parameters (e.g. solver variants, 
-# thermal boundary conditions, missed trace behavior, etc.). 
 
-param_spec = [('missed_trace_correction', bool_), 
-            ('max_time_dilation', float64), 
-            ('min_time_dilation', float64), 
-            ('time_dilation_tol', float64), 
-            ('verbose', bool_), 
-            ('sim_count_max', int32)
-            ]
-@jitclass(param_spec)
-class SimDriveParams(object):
+class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.
     Usually the defaults are ok, and there will be no need to use this.
 
@@ -38,12 +28,10 @@ class SimDriveParams(object):
     affect simulation behavior. If, for example, you want to suppress
     warning messages, use the following pastable code EXAMPLE:
 
-    >>> cyc = cycle.Cycle('udds').get_numba_cyc()
-    >>> veh = vehicle.Vehicle(1).get_numba_veh()
-    >>> sim_params = simdrive.SimDriveParams()
-    >>> sim_params.verbose = False # turn off error messages for large time steps
-    >>> sim_drive = simdrive.SimDriveJit(cyc, veh)
-    >>> sim_drive.sim_params = sim_params
+    >>> cyc = cycle.Cycle('udds')
+    >>> veh = vehicle.Vehicle(1)
+    >>> sim_drive = simdrive.SimDriveClassic(cyc, veh)
+    >>> sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     >>> sim_drive.sim_drive()"""
 
     def __init__(self):
@@ -53,8 +41,16 @@ class SimDriveParams(object):
         self.max_time_dilation = 10  # maximum time dilation factor to "catch up" with trace
         self.min_time_dilation = 0.1  # minimum time dilation to let trace "catch up"
         self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
-        self.sim_count_max = 30 # max allowable number of HEV SOC iterations
-        self.verbose=True # show warning and other messages
+        self.sim_count_max = 30  # max allowable number of HEV SOC iterations
+        self.verbose = True  # show warning and other messages
+
+
+param_spec = build_spec(SimDriveParamsClassic())
+
+@jitclass(param_spec)
+class SimDriveParams(SimDriveParamsClassic):
+    pass
+
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
@@ -75,7 +71,7 @@ class SimDriveClassic(object):
         self.veh = veh
         self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = SimDriveParams()
+        self.sim_params = SimDriveParamsClassic()
         self.props = params.PhysicalProperties()
 
     def init_arrays(self):
@@ -1166,105 +1162,7 @@ class SimDriveClassic(object):
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
 
-def get_sim_drive_spec():
-    # do stuff
-    cyc = cycle.Cycle('udds')
-    veh = vehicle.Vehicle(1)
-    sim_drive = SimDriveClassic(cyc, veh)
-    sim_drive.sim_drive()
-
-    sim_drive_spec = []
-
-    # create types for instances of TypedVehicle and TypedCycle
-    veh_type = TypedVehicle.class_type.instance_type
-    cyc_type = TypedCycle.class_type.instance_type
-    props_type = params.PhysicalProperties.class_type.instance_type
-    param_type = SimDriveParams.class_type.instance_type
-    
-    # the stuff in the for loop is sketchy
-    for key, val in sim_drive.__dict__.items():
-        if type(val) == np.float64:
-            sim_drive_spec.append((key, float64)) 
-        elif (type(val) == np.int32) or (type(val) == np.int) or (type(val) == np.int64):
-            sim_drive_spec.append((key, int32))
-        elif type(val) == np.bool_:
-            sim_drive_spec.append((key, bool_))
-
-        elif (type(val) == np.ndarray):
-            if type(val[0]) == np.float64:
-                sim_drive_spec.append((key, float64[:]))
-            elif type(val[0]) == np.int32:
-                sim_drive_spec.append((key, int32[:]))
-            elif type(val[0]) == np.bool_:
-                sim_drive_spec.append((key, bool_[:]))
-            else:
-                raise Exception('Invalid type.')
-
-        elif key == 'veh':
-            sim_drive_spec.append(('veh', veh_type))
-        elif key == 'cyc':
-            sim_drive_spec.append(('cyc', cyc_type))
-        elif key == 'cyc0':
-            sim_drive_spec.append(('cyc0', cyc_type))
-        elif key == 'props':
-            sim_drive_spec.append(('props', props_type))
-        elif key == 'sim_params':
-            sim_drive_spec.append(('sim_params', param_type))
-        
-        else:
-            raise Exception('Invalid type.')
-
-    return sim_drive_spec
-
-sim_drive_spec = get_sim_drive_spec()
-
-# # list of array attributes in SimDrive class for generating list of type specification tuples
-# attr_list = ['curMaxFsKwOut', 'fcTransLimKw', 'fcFsLimKw', 'fcMaxKwIn', 'curMaxFcKwOut', 'essCapLimDischgKw', 'curMaxEssKwOut', 
-#              'curMaxAvailElecKw', 'essCapLimChgKw', 'curMaxEssChgKw', 'curMaxElecKw', 'mcElecInLimKw', 'mcTransiLimKw', 'curMaxMcKwOut', 
-#              'essLimMcRegenPercKw', 'essLimMcRegenKw', 'curMaxMechMcKwIn', 'curMaxTransKwOut', 'cycDragKw', 'cycAccelKw', 'cycAscentKw', 
-#              'cycTracKwReq', 'curMaxTracKw', 'spareTracKw', 'cycRrKw', 'cycWheelRadPerSec', 'cycTireInertiaKw', 'cycWheelKwReq', 
-#              'regenContrLimKwPerc', 'cycRegenBrakeKw', 'cycFricBrakeKw', 'cycTransKwOutReq', 'cycMet', 'transKwOutAch', 'transKwInAch', 
-#              'curSocTarget', 'minMcKw2HelpFc', 'mcMechKwOutAch', 'mcElecKwInAch', 'auxInKw', 'roadwayChgKwOutAch', 'minEssKw2HelpFc', 
-#              'essKwOutAch', 'fcKwOutAch', 'fcKwOutAch_pct', 'fcKwInAch', 'fsKwOutAch', 'fsCumuMjOutAch', 'fsKwhOutAch', 'essCurKwh', 'soc', 
-#              'regenBufferSoc', 'essRegenBufferDischgKw', 'maxEssRegenBufferChgKw', 'essAccelBufferChgKw', 'accelBufferSoc', 
-#              'maxEssAccelBufferDischgKw', 'essAccelRegenDischgKw', 'mcElectInKwForMaxFcEff', 'electKwReq4AE', 'desiredEssKwOutForAE', 
-#              'essAEKwOut', 'erAEKwOut', 'essDesiredKw4FcEff', 'essKwIfFcIsReq', 'curMaxMcElecKwIn', 'fcKwGapFrEff', 'erKwIfFcIsReq', 
-#              'mcElecKwInIfFcIsReq', 'mcKwIfFcIsReq', 'mcMechKw4ForcedFc', 'fcTimeOn', 'prevfcTimeOn', 'mpsAch', 'mphAch', 'distMeters',
-#              'distMiles', 'highAccFcOnTag', 'reachedBuff', 'maxTracMps', 'addKwh', 'dodCycs', 'essPercDeadArray', 'dragKw', 'essLossKw',
-#              'accelKw', 'ascentKw', 'rrKw', 'motor_index_debug', 'debug_flag', 'curMaxRoadwayChgKw', 'trace_miss_iters']
-
-# sim_drive_spec = [(attr, float64[:]) for attr in attr_list]
-# # extend with locally defined classes
-# # extend list with non-float64[:] attributes that not contained in attr_list
-# sim_drive_spec.extend([('i', int32),
-#              ('fcForcedOn', bool_[:]),
-#              ('fcForcedState', int32[:]),
-#              ('canPowerAllElectrically', bool_[:]),
-#              ('mpgge', float64),
-#              ('roadwayChgKj', float64),
-#              ('essDischgKj', float64),
-#              ('battery_kWh_per_mi', float64),
-#              ('electric_kWh_per_mi', float64),
-#              ('fuelKj', float64),
-#              ('ess2fuelKwh', float64),
-#              ('Gallons_gas_equivalent_per_mile', float64),
-#              ('mpgge_elec', float64),
-#              ('grid_mpgge_elec', float64),
-#              ('dragKj', float64),
-#              ('ascentKj', float64),
-#              ('rrKj', float64),
-#              ('brakeKj', float64),
-#              ('transKj', float64),
-#              ('mcKj', float64),
-#              ('essEffKj', float64),
-#              ('auxKj', float64),
-#              ('fcKj', float64),
-#              ('netKj', float64),
-#              ('keKj', float64),
-#              ('energyAuditError', float64),
-#              ('hev_sim_count', float64), 
-#              ])
-
+sim_drive_spec = build_spec(SimDriveClassic(cycle.Cycle('udds'), vehicle.Vehicle(1)))
 
 
 @jitclass(sim_drive_spec)
@@ -1274,8 +1172,15 @@ class SimDriveJit(SimDriveClassic):
     faster for large batch runs.
     Arguments:
     ----------
-    cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
-    veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
+    cyc: cycle.CycleJit instance. Can come from cycle.Cycle.get_numba_cyc
+    veh: vehicle.VehicleJit instance. Can come from vehicle.Vehicle.get_numba_veh"""
+
+    def __init_objects__(self, cyc, veh):        
+        self.veh = veh
+        self.cyc = cyc.copy() # this cycle may be manipulated
+        self.cyc0 = cyc.copy() # this cycle is not to be manipulated
+        self.sim_params = SimDriveParams()
+        self.props = params.PhysicalPropertiesJit()
 
     def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.

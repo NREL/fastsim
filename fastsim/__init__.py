@@ -2,6 +2,7 @@
 For example usage, see ../README.md"""
 
 from fastsim import simdrive, vehicle, cycle
+# convenient aliases
 from fastsim import utilities as utils
 from fastsim import parameters as params
 

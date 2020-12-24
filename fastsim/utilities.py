@@ -6,9 +6,11 @@ from fastsim import parameters as params
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from fastsim import parameters
+
 sns.set()
 
-props = params.PhysicalProperties()
+props = parameters.PhysicalProperties()
 R_air = 287  # J/(kg*K)
 
 def get_rho_air(elevation_m, temperature_degC, full_output=False):
@@ -127,3 +129,4 @@ def drag_coeffs_to_abc(veh_kg, veh_fa_m2, dragCoef, wheelRrCoef, show_plots=Fals
         plt.ylabel('Road Load [lb]')
 
     return a, b, c
+
