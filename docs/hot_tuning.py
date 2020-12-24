@@ -384,3 +384,5 @@ def plot_cyc_traces(x, show_plots=False):
             ax2.legend()
             plt.savefig('plots/' + title + ' both.svg')
             plt.savefig('plots/' + title + ' both.png')
+
+plot_cyc_traces(res.X[8], show_plots=True)

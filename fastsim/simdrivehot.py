@@ -8,13 +8,17 @@ import numpy as np
 import pandas as pd
 import re
 import sys
-from numba import jitclass                 # import the decorator
+from numba.experimental import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types   # import the types
 import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from fastsim.simdrive import SimDriveClassic, sim_drive_spec
+from fastsim import parameters as params
+from fastsim.simdrive import SimDriveClassic, SimDriveParams
+from fastsim.cycle import Cycle
+from fastsim.vehicle import Vehicle
+from fastsim.buildspec import build_spec
 
 # Fluid Properties for calculations
 teAirForPropsDegC = np.arange(-20, 140, 20, dtype=np.float64) # deg C
@@ -73,33 +77,33 @@ re_array = np.array([0, 4, 40, 4e3, 40e3], dtype=np.float64)
 # *** solve for heat gen in battery (should just be simple subtraction)
 # *** aux load penalty per battery heat removal
 
-hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
-                    ('teFcDegC', float64[:]), # fuel converter temperature
-                    ('fcEffAdj', float64[:]), # fuel converter temperature efficiency correction
-                    ('fcHeatGenKw', float64[:]), # fuel converter heat generation
-                    ('fcConvToAmbKw', float64[:]), # fuel converter convection to ambient
-                    ('fcToHtrKw', float64[:]), # fuel converter heat loss to heater core
-                    ('fcThrmMass', float64), # fuel converter thermal mass [kJ/K]
-                    ('teCabDegC', float64[:]), # cabin temperature
-                    ('cabSolarKw', float64[:]), # cabin solar load
-                    ('cabConvToAmbKw', float64[:]), # cabin convection to ambient
-                    ('cabFromHtrKw', float64[:]), # cabin heat from heater 
-                    ('cabThrmMass', float64),  # cabin thermal mass [kJ/K]
-                    ('fcDiam', float64), # engine characteristic length [m] for heat transfer calcs 
-                    ('fcSurfArea', float64), # engine surface area for heat transfer calcs
-                    ('hFcToAmbStop', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
-                    ('hFcToAmb', float64[:]), # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
-                    ('fcCombToThrmlMassFrac', float64), # fraction of combustion heat that goes to FC thermal mass
-                    # remainder goes to environment (e.g. via tailpipe)
-                    ('teFcInitDegC', float64), # fuel converter initial temperature [deg C]
-                    ('teCabInitDegC', float64), # cabin inital temperature [deg C]
-                    ('teTStatSTODegC', float64), # temperature [ºC] at which thermostat starts to open 
-                    ('teTStatFODegC', float64), # temperature [ºC] at which thermostat is fully open 
-                    ('teTStatDeltaDegC', float64), # temperature delta [ºC] over which thermostat is partially open
-                    ('radiator_eff', float64), # radiator effectiveness -- ratio of active heat rejection from radiator to passive heat rejection
-                    ('fcTempEffOffset', float64), # offset for scaling FC efficiency w.r.t. to temperature
-                    ('fcTempEffSlope', float64), # slope for scaling FC efficiency w.r.t. to temperature
-                    ]
+# hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
+#                     ('teFcDegC', float64[:]), # fuel converter temperature
+#                     ('fcEffAdj', float64[:]), # fuel converter temperature efficiency correction
+#                     ('fcHeatGenKw', float64[:]), # fuel converter heat generation
+#                     ('fcConvToAmbKw', float64[:]), # fuel converter convection to ambient
+#                     ('fcToHtrKw', float64[:]), # fuel converter heat loss to heater core
+#                     ('fcThrmMass', float64), # fuel converter thermal mass [kJ/K]
+#                     ('teCabDegC', float64[:]), # cabin temperature
+#                     ('cabSolarKw', float64[:]), # cabin solar load
+#                     ('cabConvToAmbKw', float64[:]), # cabin convection to ambient
+#                     ('cabFromHtrKw', float64[:]), # cabin heat from heater 
+#                     ('cabThrmMass', float64),  # cabin thermal mass [kJ/K]
+#                     ('fcDiam', float64), # engine characteristic length [m] for heat transfer calcs 
+#                     ('fcSurfArea', float64), # engine surface area for heat transfer calcs
+#                     ('hFcToAmbStop', float64), # heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
+#                     ('hFcToAmb', float64[:]), # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
+#                     ('fcCombToThrmlMassFrac', float64), # fraction of combustion heat that goes to FC thermal mass
+#                     # remainder goes to environment (e.g. via tailpipe)
+#                     ('teFcInitDegC', float64), # fuel converter initial temperature [deg C]
+#                     ('teCabInitDegC', float64), # cabin inital temperature [deg C]
+#                     ('teTStatSTODegC', float64), # temperature [ºC] at which thermostat starts to open 
+#                     ('teTStatFODegC', float64), # temperature [ºC] at which thermostat is fully open 
+#                     ('teTStatDeltaDegC', float64), # temperature delta [ºC] over which thermostat is partially open
+#                     ('radiator_eff', float64), # radiator effectiveness -- ratio of active heat rejection from radiator to passive heat rejection
+#                     ('fcTempEffOffset', float64), # offset for scaling FC efficiency w.r.t. to temperature
+#                     ('fcTempEffSlope', float64), # slope for scaling FC efficiency w.r.t. to temperature
+#                     ]
 
 class SimDriveHot(SimDriveClassic):
     """Class containing methods for running FASTSim vehicle 
@@ -114,7 +118,7 @@ class SimDriveHot(SimDriveClassic):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    def __init__(self, cyc, veh, teAmbDegC, teFcInitDegC=90, teCabInitDegC=22):
+    def __init__(self, cyc, veh, teAmbDegC, teFcInitDegC=90.0, teCabInitDegC=22.0):
         """Initialize time array variables that are not used in base SimDrive.
         Arguments:
         ----------
@@ -131,16 +135,16 @@ class SimDriveHot(SimDriveClassic):
         # scalars
         self.teFcInitDegC = teFcInitDegC # for persistence through iteration
         self.teCabInitDegC = teCabInitDegC # for persistence through iteration
-        self.fcThrmMass = 100 
-        self.fcDiam = 1 
-        self.fcSurfArea = np.pi * self.fcDiam ** 2 / 4
-        self.cabThrmMass = 5
-        self.hFcToAmbStop = 50
+        self.fcThrmMass = 100.0
+        self.fcDiam = 1.0
+        self.fcSurfArea = np.pi * self.fcDiam ** 2.0 / 4.0
+        self.cabThrmMass = 5.0
+        self.hFcToAmbStop = 50.0
         self.fcCombToThrmlMassFrac = 0.5 
-        self.teTStatSTODegC = 85
-        self.teTStatDeltaDegC = 5
+        self.teTStatSTODegC = 85.0
+        self.teTStatDeltaDegC = 5.0
         self.teTStatFODegC = self.teTStatSTODegC + self.teTStatDeltaDegC
-        self.radiator_eff = 5
+        self.radiator_eff = 5.0
         self.fcTempEffOffset = 0.1
         self.fcTempEffSlope = 0.01
 
@@ -163,72 +167,7 @@ class SimDriveHot(SimDriveClassic):
 
         self.teAmbDegC = teAmbDegC
 
-    def sim_drive(self, *args):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        Arguments
-        ------------
-        args[0]: first argument in *args is initial SOC for electrified vehicles.  
-            Leave empty for default value.  Otherwise, must be between 0 and 1.
-            Numba's jitclass does not support keyword args so this is allows for optionally
-            passing initSoc."""
-
-        if len(args) > 0:
-            initSoc = args[0] # set initSoc
-            if (initSoc != -1) and (initSoc > 1.0 or initSoc < 0.0):
-                    print('Must enter a valid initial SOC between 0.0 and 1.0')
-                    print('Running standard initial SOC controls')
-                    initSoc = -1 # override initSoc if invalid value is used
-            elif initSoc == -1:
-                print('initSoc = -1 passed to drive default SOC behavior.')
-        else:
-            initSoc = -1 # -1 enforces the default SOC behavior
-    
-        if self.veh.vehPtType == 1: # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0 # this initSoc has no impact on results
-            
-            self.sim_drive_walk(initSoc)
-
-        elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV 
-
-            #####################################
-            ### Charge Balancing Vehicle SOC ###
-            #####################################
-
-            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
-            # Iterating until tolerance met or 30 attempts made.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            ess2fuelKwh = 1.0
-            sim_count = 0
-            while ess2fuelKwh > self.veh.essToFuelOkError and sim_count < 30:
-                sim_count += 1
-                self.sim_drive_walk(initSoc)
-                fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
-                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
-                ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) * 
-                    self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
-                initSoc = min(1.0, max(0.0, self.soc[-1]))
-                        
-            self.sim_drive_walk(initSoc)
-
-        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
-
-            # If EV, initializing initial SOC to maximum SOC.
-
-            initSoc = self.veh.maxSoc
-            
-            self.sim_drive_walk(initSoc)
-
-        else:
-            
-            self.sim_drive_walk(initSoc)
-        
-        self.set_post_scalars()            
-   
-    def sim_drive_walk(self, initSoc):
+    def sim_drive_walk(self, initSoc, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and runs sim_drive_step to perform a 
         backward facing powertrain simulation. Method 'sim_drive' runs this
@@ -331,7 +270,7 @@ class SimDriveHot(SimDriveClassic):
                 [hFcToAmbSphere, hFcToAmbSphere * self.radiator_eff])
 
         self.fcConvToAmbKw[i] = self.hFcToAmb[i] * 1e-3 * self.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC[i-1])
-        self.fcToHtrKw[i] = 0  # placeholder
+        self.fcToHtrKw[i] = 0.0  # placeholder
         # Energy balance for fuel converter
         self.teFcDegC[i] = self.teFcDegC[i-1] + (
             self.fcHeatGenKw[i] - self.fcConvToAmbKw[i] - self.fcToHtrKw[i]
@@ -387,6 +326,9 @@ class SimDriveHot(SimDriveClassic):
         self.fsKwhOutAch[i] = self.fsKwOutAch[i] * \
             self.cyc.secs[i] * (1 / 3600.0)
 
+hotspec = build_spec(SimDriveHot(Cycle('udds'), 
+                    Vehicle(1), 
+                    teAmbDegC=np.ones(len(Cycle('udds').cycSecs))))
 
 @jitclass(hotspec)
 class SimDriveHotJit(SimDriveHot):
@@ -403,5 +345,90 @@ class SimDriveHotJit(SimDriveHot):
     ----------
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
+
+    def __init_objects__(self, cyc, veh):
+        """Override of method in super class (SimDriveHot)."""
+        self.veh = veh
+        self.cyc = cyc.copy()  # this cycle may be manipulated
+        self.cyc0 = cyc.copy()  # this cycle is not to be manipulated
+        self.sim_params = SimDriveParams()
+        self.props = params.PhysicalPropertiesJit()
+
+
+    def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
+        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+        Arguments
+        ------------
+        initSoc: initial SOC for electrified vehicles.
+            Leave empty for default value.  Otherwise, must be between 0 and 1.
+            Numba's jitclass does not support keyword args so this allows for optionally
+            passing initSoc as positional argument.
+            auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.
+                Default of np.zeros(1) causes veh.auxKw to be used. If zero is actually
+                desired as an override, either set veh.auxKw = 0 before instantiaton of
+                SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
+                the final value to non-zero prevents override mechanism.
+        """
+
+        if (auxInKwOverride == 0).all():
+            auxInKwOverride = self.auxInKw
+
+        self.hev_sim_count = 0 # probably not necassary since numba initializes int vars as 0, but adds clarity
+
+        if (initSoc != -1):
+            if (initSoc > 1.0 or initSoc < 0.0):
+                print('Must enter a valid initial SOC between 0.0 and 1.0')
+                print('Running standard initial SOC controls')
+                initSoc = -1  # override initSoc if invalid value is used
+            else:
+                self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        elif self.veh.vehPtType == 1:  # Conventional
+
+            # If no EV / Hybrid components, no SOC considerations.
+
+            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0  # this initSoc has no impact on results
+
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV
+
+            #####################################
+            ### Charge Balancing Vehicle SOC ###
+            #####################################
+
+            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Iterating until tolerance met or 30 attempts made.
+
+            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
+            ess2fuelKwh = 1.0
+            while ess2fuelKwh > self.veh.essToFuelOkError and self.hev_sim_count < self.sim_params.sim_count_max:
+                self.hev_sim_count += 1
+                self.sim_drive_walk(initSoc, auxInKwOverride)
+                fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
+                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
+                if (fuelKj + roadwayChgKj) > 0:
+                    ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
+                                        self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
+                else:
+                    ess2fuelKwh = 0.0
+                initSoc = min(1.0, max(0.0, self.soc[-1]))
+
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1):  # PHEV and BEV
+
+            # If EV, initializing initial SOC to maximum SOC.
+
+            initSoc = self.veh.maxSoc
+
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        else:
+
+            self.sim_drive_walk(initSoc, auxInKwOverride)
+
+        self.set_post_scalars()
+
 
     
