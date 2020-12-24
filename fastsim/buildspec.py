@@ -40,7 +40,6 @@ def build_spec(instance, error='raise'):
                 simdrive.SimDriveParams.class_type.instance_type, None),
         ])
 
-
     spec = []
 
     for key, val in instance.__dict__.items():
@@ -59,14 +58,16 @@ def build_spec(instance, error='raise'):
         if jit_type is None:
             if error == 'raise':
                 raise Exception(
-                    str(t) + " does not map to anything in spec_tuples")
+                    str(t) + " does not map to anything in spec_tuples" 
+                    + '\nYou may need to modify `spec_tuples` in `build_spec`.')
             elif error == 'warn':
-                print("Warning: " + str(t) + " does not map to anything in spec_tuples.")
+                print("Warning: " + str(t) + " does not map to anything in spec_tuples."
+                    + '\nYou may need to modify `spec_tuples` in `build_spec`.')
             elif error == 'ignore':
                 pass
             else:
-                raise Exception('Invalid value ' + str(error) 
-                    + ' provided in build_spec error argument.')
+                raise Exception('Invalid value `' + str(error) 
+                    + '` provided in build_spec error argument.') 
         spec.append((key, jit_type))
 
     return spec
