@@ -10,6 +10,9 @@ import re
 
 from fastsim import simdrive, cycle, vehicle, params
 
+cyc_udds = cycle.Cycle('udds')
+cyc_hwfet = cycle.Cycle('hwfet')
+
 def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
     """Generates label fuel economy (FE) values for a provided vehicle.
     
@@ -33,19 +36,23 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
     out = {}
 
     # load the cycles and intstantiate simdrive objects
-    if 'TypedVehicle' in str(type(veh)):
-        cyc['udds'] = cycle.Cycle('udds').get_numba_cyc()
-        cyc['hwy'] = cycle.Cycle('hwfet').get_numba_cyc()
+    if 'VehicleJit' in str(type(veh)):
+        cyc['udds'] = cyc_udds.get_numba_cyc()
+        cyc['hwy'] = cyc_hwfet.get_numba_cyc()
 
         sd['udds'] = simdrive.SimDriveJit(cyc['udds'], veh)
         sd['hwy'] = simdrive.SimDriveJit(cyc['hwy'], veh)
+        
+        out['numba_used'] = True
 
     else:
-        cyc['udds'] = cycle.Cycle('udds')
-        cyc['hwy'] = cycle.Cycle('hwfet')
+        cyc['udds'] = cyc_udds.copy()
+        cyc['hwy'] = cyc_hwfet.copy()
 
         sd['udds'] = simdrive.SimDriveClassic(cyc['udds'], veh)
         sd['hwy'] = simdrive.SimDriveClassic(cyc['hwy'], veh)
+
+        out['numba_used'] = False
 
     # run simdrive for non-phev powertrains
     sd['udds'].sim_drive()
@@ -365,7 +372,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
     elif verbose:
         for key in out.keys():
             print(key + f': {out[key]:.5g}')
-        return outtn
+        return out
     else:
         return out
 
