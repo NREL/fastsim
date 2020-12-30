@@ -278,7 +278,7 @@ print(fuel_set & temp_set)
 validation_cyc_names = [name for name in df0.index.levels[0] if re.search('(0|20|72)F', name)]
 sns.set(font_scale=2)
 
-def plot_cyc_traces(x, show_plots=False):
+def plot_cyc_traces(x, show_plots=None):
     print('\nPlotting time traces.')
     for cyc_name in validation_cyc_names:
         test_time_steps = dfdict[cyc_name]['DAQ_Time[s]'].values
@@ -318,7 +318,7 @@ def plot_cyc_traces(x, show_plots=False):
               less_more + " fuel than test.")
         print(f"Model temperature error: {temp_err:.2f} ºC")
 
-        if show_plots:
+        if (show_plots == 'temp') or ('temp' in show_plots):
             # temperature plot
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
             ax1.plot(cyc.cycSecs, 
@@ -337,9 +337,10 @@ def plot_cyc_traces(x, show_plots=False):
             ax2.plot(cyc.cycSecs, sim_drive.mpsAch)
             ax2.set_xlabel('Time [s]')
             ax2.set_ylabel('Speed [mps]')
-            plt.savefig('plots/' + title + ' temp.svg')
-            plt.savefig('plots/' + title + ' temp.png')
+            # plt.savefig('plots/' + title + ' temp.svg')
+            # plt.savefig('plots/' + title + ' temp.png')
 
+        if (show_plots == 'fuel') or 'fuel' in show_plots:
             # fuel energy plot
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
             ax1.plot(cyc.cycSecs, sim_drive.fsCumuMjOutAch, label='thermal')
@@ -357,32 +358,43 @@ def plot_cyc_traces(x, show_plots=False):
             ax2.plot(cyc.cycSecs, sim_drive.mpsAch, label='model')
             ax2.set_xlabel('Time [s]')
             ax2.set_ylabel('Speed [mps]')
-            plt.savefig('plots/' + title + ' energy.svg')
-            plt.savefig('plots/' + title + ' energy.png')
+            # plt.savefig('plots/' + title + ' energy.svg')
+            # plt.savefig('plots/' + title + ' energy.png')
 
-            # temperature and fuel energy plot
-            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
-            ax1.plot(cyc.cycSecs,
+        if (show_plots == 'all') or 'all' in show_plots:
+            # temperature, fuel energy, and speed trace plot
+            fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 8))
+            ax[0].plot(cyc.cycSecs,
                      sim_drive.teFcDegC,
                      label='thermal model')
-            ax1.plot(test_time_steps,
+            ax[0].plot(np.empty(0), np.empty(0), label='no thermal model')
+            ax[0].plot(test_time_steps,
                      dfdict[cyc_name]['CylinderHeadTempC'],
                      label='test')
-            ax1.set_ylabel('FC Temp. [$^\circ$C]')
-            ax1.legend()
+            ax[0].set_ylabel('Eng. Temp. \n[$^\circ$C]')
             if cyc_name in tuning_cyc_names:
                 title = cyc_name + ' tuning'
             else:
                 title = cyc_name + ' validation'
-            ax1.set_title(title)
-            ax2.plot(cyc.cycSecs, sim_drive.fsCumuMjOutAch, label='thermal model')
-            ax2.plot(cyc.cycSecs, sd_base.fsCumuMjOutAch, label='no thermal model')
-            ax2.plot(test_time_steps,
+            ax[0].set_title(title)
+            ax[0].legend()
+
+            ax[1].plot(cyc.cycSecs, sim_drive.fsCumuMjOutAch, label='thermal model')
+            ax[1].plot(cyc.cycSecs, sd_base.fsCumuMjOutAch, label='no thermal model')
+            ax[1].plot(test_time_steps,
                      dfdict[cyc_name]['Fuel_Energy_Calc[MJ]'],
                      label='test')
-            ax2.set_ylabel('Fuel Energy [MJ]')
-            ax2.legend()
+            ax[1].set_ylabel('Fuel \nEnergy [MJ]')
+
+            ax[2].plot(cyc.cycSecs, sim_drive.mpsAch)
+            ax[2].set_xlabel('Time [s]')
+            ax[2].set_ylabel('Speed [mps]')
+            plt.tight_layout()
             plt.savefig('plots/' + title + ' both.svg')
             plt.savefig('plots/' + title + ' both.png')
 
-plot_cyc_traces(res.X[8], show_plots=True)
+
+plot_cyc_traces(res.X[8], show_plots='all') # this index of res.X should be modified as appropriate
+
+
+# %%
