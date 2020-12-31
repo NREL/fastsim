@@ -77,6 +77,11 @@ re_array = np.array([0, 4, 40, 4e3, 40e3], dtype=np.float64)
 # *** solve for heat gen in battery (should just be simple subtraction)
 # *** aux load penalty per battery heat removal
 
+# ####################################################################################
+# ####################################################################################
+# ####################################################################################
+# Use the comments from this section before getting rid of it outright
+
 # hotspec = sim_drive_spec + [('teAmbDegC', float64[:]), # ambient temperature
 #                     ('teFcDegC', float64[:]), # fuel converter temperature
 #                     ('fcEffAdj', float64[:]), # fuel converter temperature efficiency correction
