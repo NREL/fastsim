@@ -26,7 +26,7 @@ NOTE: if you are already in the FASTSim root directory (i.e. the one that houses
 FASTSim can also be installed with the `-e` option (i.e. `pip install -e fastsim`) so that FASTSim files can be editable. Developers will find this option handy since FASTSim will be installed in place from the installation location, and any updates will be propagated each time FASTSim is freshly imported.  
 
 # Usage
-To run an example, navigate to fastsim/docs and run `jupter lab demo.ipynb` to see a demo of fastsim use cases. There are other examples in fastsim/docs and fastsim/tests.  
+To run an example, navigate to fastsim/docs and run `jupyter lab demo.ipynb` to see a demo of fastsim use cases. There are other examples in fastsim/docs and fastsim/tests.  
 
 To get help in an interactive ipython or jupyter session:  
 ```
