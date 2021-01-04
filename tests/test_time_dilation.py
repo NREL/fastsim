@@ -18,15 +18,17 @@ from fastsim import parameters as params
 
 t0 = time.time()
 cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(
-    cycle.Cycle(cyc_file_path=Path('../cycles/longHaulDriveCycle.csv')).get_cyc_dict(),
-    t_start=1_800, t_end=18_000))
+    cycle.Cycle(
+        cyc_file_path=Path(__file__).resolve().parents[1] / 
+            'fastsim/resources/cycles/longHaulDriveCycle.csv').get_cyc_dict(),
+    t_end=18_000, t_start=1_800))
 cyc_jit = cyc.get_numba_cyc()
 print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
 
 
 t0 = time.time()
-# veh = vehicle.Vehicle(26)
-veh = vehicle.Vehicle(veh_file=Path('../vehdb/Line Haul Conv.csv'))
+veh = vehicle.Vehicle(
+    veh_file=Path(__file__).resolve().parents[1] / 'fastsim/resources/vehdb/Line Haul Conv.csv')
 veh.vehKg *= 2
 veh_jit = veh.get_numba_veh()
 print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
