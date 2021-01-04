@@ -333,16 +333,12 @@ class SimDriveClassic(object):
                 self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
                     time_dilation_factor[-1]
                 self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
-                # grade probably does not need to be updated because distance is not supposed to be changing
-                # self.cyc.cycGrade[self.i] = np.interp(
-                #     self.cyc.cycDistMeters[:self.i].sum(), 
-                #     self.cyc0.cycDistMeters.cumsum(), self.cyc0.cycGrade)
                 self.set_misc_calcs(self.i)
                 self.set_comp_lims(self.i)
                 self.set_power_calcs(self.i)
                 self.set_ach_speed(self.i)
                 self.set_hybrid_cont_calcs(self.i)
-                self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
+                self.set_fc_forced_state(self.i)
                 self.set_hybrid_cont_decisions(self.i)
                 self.set_fc_power(self.i)
                 time_dilation_factor.append(min(max(
@@ -400,8 +396,6 @@ class SimDriveClassic(object):
         self.curMaxFcKwOut[i] = min(
             self.veh.maxFuelConvKw, self.fcFsLimKw[i], self.fcTransLimKw[i])
 
-        # *** I think self.veh.maxEssKw should also be in the following
-        # boolean condition
         if self.veh.maxEssKwh == 0 or self.soc[i-1] < self.veh.minSoc:
             self.essCapLimDischgKw[i] = 0.0
 
