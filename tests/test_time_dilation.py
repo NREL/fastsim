@@ -18,15 +18,17 @@ from fastsim import parameters as params
 
 t0 = time.time()
 cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(
-    cycle.Cycle(cyc_file_path=Path('../cycles/longHaulDriveCycle.csv')).get_cyc_dict(),
-    t_start=1_800, t_end=18_000))
+    cycle.Cycle(
+        cyc_file_path=Path(__file__).resolve().parents[1] / 
+            'fastsim/resources/cycles/longHaulDriveCycle.csv').get_cyc_dict(),
+    t_end=18_000, t_start=1_800))
 cyc_jit = cyc.get_numba_cyc()
 print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
 
 
 t0 = time.time()
-# veh = vehicle.Vehicle(26)
-veh = vehicle.Vehicle(veh_file=Path('../vehdb/Line Haul Conv.csv'))
+veh = vehicle.Vehicle(
+    veh_file=Path(__file__).resolve().parents[1] / 'fastsim/resources/vehdb/Line Haul Conv.csv')
 veh.vehKg *= 2
 veh_jit = veh.get_numba_veh()
 print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
@@ -68,8 +70,6 @@ plt.legend()
 plt.xlabel('Time [s]')
 plt.ylabel('Speed [mps]')
 plt.title('Speed v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v time.svg')
-plt.savefig(r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v time.png')
 plt.show()
 
 plt.figure()
@@ -80,10 +80,6 @@ plt.legend()
 plt.xlabel('Index')
 plt.ylabel('Speed [mps]')
 plt.title('Speed v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v index.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\speed v index.png')
 plt.show()
 
 # distance
@@ -99,10 +95,6 @@ plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Distance [km]')
 plt.title('Distance v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v time.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v time.png')
 plt.show()
 
 plt.figure()
@@ -116,10 +108,6 @@ plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Distance [km]')
 plt.title('Distance v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v index.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist v index.png')
 plt.show()
 
 plt.figure()
@@ -134,10 +122,6 @@ plt.xlabel('Time [s]')
 plt.ylabel('Distance (trace - achieved) [km]')
 plt.title('Trace Miss v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
 plt.tight_layout()
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v time.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v time.png')
 plt.show()
 
 plt.figure()
@@ -148,10 +132,6 @@ plt.xlabel('Index')
 plt.ylabel('Distance (trace - achieved) [m]')
 plt.title('Trace Miss v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
 plt.tight_layout()
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v index.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\dist diff v index.png')
 plt.show()
 
 # elevation change
@@ -167,10 +147,6 @@ plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Delta Elevation [m]')
 plt.title('Delta Elev. v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v time.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v time.png')
 plt.show()
 
 
@@ -185,10 +161,6 @@ plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Delta Elevation [m]')
 plt.title('Delta Elev. v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v index.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\elev v index.png')
 plt.show()
 
 # grade
@@ -201,10 +173,6 @@ plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Grade [-]')
 plt.title('Grade v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v time.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v time.png')
 plt.show()
 
 plt.figure()
@@ -215,10 +183,6 @@ plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Grade [-]')
 plt.title('Grade v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v index.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\grade v index.png')
 plt.show()
 
 # time dilation
@@ -229,10 +193,6 @@ plt.plot(sd_fixed.cyc.secs)
 plt.xlabel('Index')
 plt.ylabel('Time Dilation')
 plt.title('Time Dilation, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\time dilation.svg')
-plt.savefig(
-    r'C:\Users\cbaker2\Documents\Projects\FASTSim\MDHD\plots\time dilation.png')
 plt.show()
 
 
