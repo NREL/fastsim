@@ -66,6 +66,8 @@ class SimDriveClassic(object):
         sim_params is needed only if non-default behavior is desired."""
         self.__init_objects__(cyc, veh)
         self.init_arrays()
+        # initialized here for downstream classes that do not run sim_drive
+        self.hev_sim_count = 0 
 
     def __init_objects__(self, cyc, veh):        
         self.veh = veh
@@ -1153,7 +1155,7 @@ class SimDriveJit(SimDriveClassic):
         if (auxInKwOverride == 0).all():
             auxInKwOverride = self.auxInKw
 
-        self.hev_sim_count = 0 # probably not necassary since numba initializes int vars as 0, but adds clarity
+        self.hev_sim_count = 0
 
         if (initSoc != -1):
             if (initSoc > 1.0 or initSoc < 0.0):

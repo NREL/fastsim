@@ -21,7 +21,8 @@ setuptools.setup(
     python_requires='>=3.7',
     include_package_data=True,
     package_data={
-        "fastsim.resources": ["*"]
+        "fastsim.resources": ["*"],
+        "fastsim.docs": ["*"],
     },
     install_requires=[
         "pandas>=1",
@@ -39,5 +40,6 @@ setuptools.setup(
         "pkginfo",
         "tqdm",
         "docutils",
+        "jedi==0.17.2"
     ],
 )
