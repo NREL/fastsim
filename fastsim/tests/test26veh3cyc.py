@@ -8,6 +8,7 @@ import re
 import os
 import sys
 import inspect
+from pathlib import Path
 
 # local modules
 from fastsim import simdrive, vehicle, cycle
@@ -33,7 +34,7 @@ def run_test26veh3cyc(use_jitclass=True, err_tol=1e-4):
 
     print('Instantiating classes.')
     print()
-    veh = vehicle.Vehicle(1, veh_file='test_veh_db.csv')
+    veh = vehicle.Vehicle(1)
     if use_jitclass:
         veh_jit = veh.get_numba_veh()
     cyc = cycle.Cycle('udds')
@@ -50,7 +51,7 @@ def run_test26veh3cyc(use_jitclass=True, err_tol=1e-4):
                 cyc.set_standard_cycle(cycname)
                 if use_jitclass:
                     cyc_jit = cyc.get_numba_cyc()
-                veh.load_veh(vehno, veh_file='test_veh_db.csv')
+                veh.load_veh(vehno)
                 if use_jitclass:
                     veh_jit = veh.get_numba_veh()
 
@@ -86,7 +87,7 @@ def run_test26veh3cyc(use_jitclass=True, err_tol=1e-4):
     print()
     print('Elapsed time: ', round(t1 - t0, 2), 's')
 
-    df0 = pd.read_csv('../fastsim/resources/master_benchmark_vars.csv')
+    df0 = pd.read_csv(Path(simdrive.__file__).parent.resolve() / 'resources/master_benchmark_vars.csv')
 
     # make sure both dataframes have the same columns
     new_cols = {col for col in df.columns} - {col for col in df0.columns}
