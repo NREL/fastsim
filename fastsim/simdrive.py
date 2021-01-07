@@ -1106,7 +1106,7 @@ class SimDriveClassic(object):
             + self.mcKj + self.essEffKj + self.auxKj + self.fcKj
 
         self.keKj = 0.5 * self.veh.vehKg * \
-            (self.cyc.cycMps[0]**2 - self.cyc.cycMps[-1]**2) / 1000
+            (self.mpsAch[0]**2 - self.mpsAch[-1]**2) / 1000
         
         self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
             (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
