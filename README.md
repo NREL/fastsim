@@ -13,15 +13,11 @@ FASTSim depends on python 3.7. One way to satisfy this is to use conda:
     conda create -n fastsim python=3.7
     conda activate fastsim
     
-Then, just run a pip install:
-
-    pip install fastsim 
-    
-This will install FASTSim with minimal dependencies.
-
-NOTE: if you are already in the FASTSim root directory (i.e. the one that houses the file `setup.py`), you can run:
+Then, from within the top level of the folder created by the `git clone` command, just run a pip install:
 
     pip install .
+    
+This will install FASTSim with minimal dependencies.
 
 FASTSim can also be installed with the `-e` option (i.e. `pip install -e fastsim`) so that FASTSim files can be editable. Developers will find this option handy since FASTSim will be installed in place from the installation location, and any updates will be propagated each time FASTSim is freshly imported.  
 
@@ -81,7 +77,9 @@ in = component input
 out = component output  
 
 # Release Notes
-0.0.2 -- pip install can be informed without using the `-e` option.  This is enabled by the resources/ folder, which contains support files that FASTSim will need to run.  
+0.1.0 -- pip install without using the `-e` option now copies all fastsim files and folder hierarchy into the python site-packages folder.  Tests are now included as modules inside of a sub-package.   
 
 # Known Bugs
+
+tests/accel_test.py will print "Warning: There is a problem with conservation of energy." for some vehicles.  This will be resolved in a future release.   
 
