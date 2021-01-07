@@ -1,0 +1,3 @@
+include LICENSE LICENSE.md README.md setup.py
+recursive-include fastsim/resources *
+recursive-include fastsim/docs *

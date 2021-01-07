@@ -1,5 +1,5 @@
-"""Module containing classes and methods for for loading vehicle and cycle data.
-For example usage, see ../README.md"""
+"""Module containing classes and methods for for loading vehicle and
+cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules
 import os
@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import re
 import sys
-from numba import jitclass                 # import the decorator
+from numba.experimental import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types    # import the types
 import warnings
 warnings.simplefilter('ignore')
@@ -16,11 +16,13 @@ import ast
 
 # local modules
 from . import parameters as params
+from .buildspec import build_spec
+
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
         os.path.join(
-            THIS_DIR, '..', 'docs', 'FASTSim_py_veh_db.csv'))
+            THIS_DIR, 'resources', 'FASTSim_py_veh_db.csv'))
 
 props = params.PhysicalProperties()
 
@@ -30,17 +32,26 @@ class Vehicle(object):
     Optional Arguments:
     ---------
     vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-    veh_file: string or filelike obj, alternative to default FASTSim_py_veh_db
+    veh_file: string or filelike obj, alternative to default
+        FASTSim_py_veh_db
     
-    If a standalone vehicle veh_file is provided, vnum cannot be passed, and 
-    veh_file must be passed as a keyword argument."""
+    If a single vehicle veh_file is provided, vnum cannot be passed, and
+    veh_file must be passed as a keyword argument. Files contained in
+    fastsim/resources/vehdb can be loaded with the filename if provided as
+    the vnum argument.  Specifying veh_file will explicitly load whatever
+    file path is provided."""
 
     def __init__(self, vnum=None, veh_file=None):
-        super().__init__()
         if veh_file and vnum:
             self.load_veh(vnum, veh_file=veh_file)
         elif vnum and not veh_file:
-            self.load_veh(vnum)
+            if type(vnum) == int:
+                # load numbered vehicle
+                self.load_veh(vnum)
+            else:
+                # load FASTSim's standalone vehicles
+                self.load_veh(0, veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum)
+
         else:
             # vnum = 0 tells load_veh that the file contains only 1 vehicle
             self.load_veh(0, veh_file=veh_file)
@@ -48,7 +59,7 @@ class Vehicle(object):
     def get_numba_veh(self):
         """Load numba JIT-compiled vehicle."""
         if 'numba_veh' not in self.__dict__:
-            self.numba_veh = TypedVehicle()
+            self.numba_veh = VehicleJit()
         for item in veh_spec:
             if (type(self.__getattribute__(item[0])) == np.ndarray) | (type(self.__getattribute__(item[0])) == np.float64):
                 self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float64))
@@ -67,7 +78,10 @@ class Vehicle(object):
         ---------
         vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
         veh_file (optional override): string or filelike obj, alternative 
-        to default FASTSim_py_veh_db"""
+        to default FASTSim_py_veh_db
+        
+        If default values are modified after loading, you may need to 
+        rerun set_init_calcs() and set_veh_mass() to propagate changes."""
 
         if vnum != 0:
             if veh_file:
@@ -274,7 +288,8 @@ class Vehicle(object):
         mcFullEffArray[0] = 0
         mcFullEffArray[-1] = mcEffArray[-1]
 
-        mcKwInArray = mcKwOutArray / mcFullEffArray
+        mcKwInArray = np.concatenate(
+            [[0], mcKwOutArray[1:] / mcFullEffArray[1:]])
         mcKwInArray[0] = 0
 
         self.mcKwInArray = mcKwInArray
@@ -339,109 +354,11 @@ class Vehicle(object):
         self.fcMassKg =  fc_mass_kg
         self.fsMassKg =  fs_mass_kg
 
-
-# type specifications for attributions of Vehicle class
-veh_spec = [('Selection', int32),
-    ('Scenario_name', types.unicode_type),
-    ('vehPtType', int32),
-    ('dragCoef', float64),
-    ('frontalAreaM2', float64),
-    ('gliderKg', float64),
-    ('vehCgM', float64),
-    ('driveAxleWeightFrac', float64),
-    ('wheelBaseM', float64),
-    ('cargoKg', float64),
-    ('vehOverrideKg', float64),
-    ('maxFuelStorKw', float64),
-    ('fuelStorSecsToPeakPwr', float64),
-    ('fuelStorKwh', float64),
-    ('fuelStorKwhPerKg', float64),
-    ('maxFuelConvKw', float64),
-    ('fcEffType', int32),
-    ('fcAbsEffImpr', float64),
-    ('fuelConvSecsToPeakPwr', float64),
-    ('fuelConvBaseKg', float64),
-    ('fuelConvKwPerKg', float64),
-    ('maxMotorKw', float64),
-    ('motorPeakEff', float64),
-    ('motorSecsToPeakPwr', float64),
-    ('stopStart', bool_),
-    ('mcPeKgPerKw', float64),
-    ('mcPeBaseKg', float64),
-    ('maxEssKw', float64),
-    ('maxEssKwh', float64),
-    ('essKgPerKwh', float64),
-    ('essBaseKg', float64),
-    ('essRoundTripEff', float64),
-    ('essLifeCoefA', float64),
-    ('essLifeCoefB', float64),
-    ('wheelInertiaKgM2', float64),
-    ('numWheels', float64),
-    ('wheelRrCoef', float64),
-    ('wheelRadiusM', float64),
-    ('wheelCoefOfFric', float64),
-    ('minSoc', float64),
-    ('maxSoc', float64),
-    ('essDischgToFcMaxEffPerc', float64),
-    ('essChgToFcMaxEffPerc', float64),
-    ('maxAccelBufferMph', float64),
-    ('maxAccelBufferPercOfUseableSoc', float64),
-    ('percHighAccBuf', float64),
-    ('mphFcOn', float64),
-    ('kwDemandFcOn', float64),
-    ('altEff', float64),
-    ('chgEff', float64),
-    ('auxKw', float64),
-    ('forceAuxOnFC', bool_),
-    ('transKg', float64),
-    ('transEff', float64),
-    ('compMassMultiplier', float64),
-    ('essToFuelOkError', float64),
-    ('maxRegen', float64),
-    ('valUddsMpgge', float64),
-    ('valHwyMpgge', float64),
-    ('valCombMpgge', float64),
-    ('valUddsKwhPerMile', float64),
-    ('valHwyKwhPerMile', float64),
-    ('valCombKwhPerMile', float64),
-    ('valCdRangeMi', float64),
-    ('valConst65MphKwhPerMile', float64),
-    ('valConst60MphKwhPerMile', float64),
-    ('valConst55MphKwhPerMile', float64),
-    ('valConst45MphKwhPerMile', float64),
-    ('valUnadjUddsKwhPerMile', float64),
-    ('valUnadjHwyKwhPerMile', float64),
-    ('val0To60Mph', float64),
-    ('valEssLifeMiles', float64),
-    ('valRangeMiles', float64),
-    ('valVehBaseCost', float64),
-    ('valMsrp', float64),
-    ('minFcTimeOn', float64),
-    ('idleFcKw', float64),
-    ('MaxRoadwayChgKw', float64[:]),
-    ('chargingOn', bool_),
-    ('noElecSys', bool_),
-    ('noElecAux', bool_),
-    ('vehTypeSelection', int32),
-    ('fcEffArray', float64[:]),
-    ('fcKwOutArray', float64[:]),
-    ('maxFcEffKw', float64),
-    ('fcMaxOutkW', float64),
-    ('mcKwInArray', float64[:]),
-    ('mcKwOutArray', float64[:]),
-    ('mcMaxElecInKw', float64),
-    ('mcFullEffArray', float64[:]),
-    ('mcEffArray', float64[:]),
-    ('regenA', float64),
-    ('regenB', float64),
-    ('vehKg', float64),
-    ('maxTracMps2', float64),
-    ('maxRegenKwh', float64)
-]
+veh_spec = build_spec(Vehicle(1))
 
 
 @jitclass(veh_spec)
-class TypedVehicle(object):
+class VehicleJit(object):
     """Just-in-time compiled version of Vehicle using numba."""
     
     def __init__(self):

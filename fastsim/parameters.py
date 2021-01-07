@@ -2,8 +2,14 @@
 physical properties that should rarely change, and vehicle model parameters 
 that can be modified by advanced users."""
 
+import os
 import numpy as np
-from numba import jitclass, float64
+from numba.experimental import jitclass
+import json
+
+from fastsim.buildspec import build_spec
+
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # vehicle types
 CONV = 1
@@ -22,8 +28,16 @@ mphPerMps = 2.2369
 kWhPerGGE = 33.7
 metersPerMile = 1609.00
 
-@jitclass([('airDensityKgPerM3', float64),
-           ('gravityMPerSec2', float64),])
+# EPA fuel economy adjustment parameters
+
+# 2008	2017	2016
+# City Intercept	0.003259	0.004091	0.003259
+# City Slope	1.1805	1.1601	1.1805
+# Highway Intercept	0.001376	0.003191	0.001376
+# Highway Slope	1.3466	1.2945	1.3466
+maxEpaAdj = 0.3 # maximum EPA adjustment factor
+
+
 class PhysicalProperties(object):
     """Container class for physical constants that could change under certain special 
     circumstances (e.g. high altitude or extreme weather) """
@@ -31,6 +45,14 @@ class PhysicalProperties(object):
     def __init__(self):
         self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
         self.gravityMPerSec2 = 9.81
+
+props_spec = build_spec(PhysicalProperties())
+
+@jitclass(props_spec)
+class PhysicalPropertiesJit(PhysicalProperties):
+    """Container class for physical constants that could change under certain special 
+    circumstances (e.g. high altitude or extreme weather) """
+    pass
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
@@ -61,3 +83,12 @@ modern_max = 0.95
 mcPercOutArray = np.linspace(0, 1, 101)
 
 ENERGY_AUDIT_ERROR_TOLERANCE = 0.02 # i.e., 2%
+
+
+# loading long arrays from json file
+with open(os.path.join(THIS_DIR, 'resources', 'longparams.json'), 'r') as paramfile:
+    param_dict = json.load(paramfile)
+
+# PHEV-specific parameters
+rechgFreqMiles = param_dict['rechgFreqMiles']
+ufArray = param_dict['ufArray']
