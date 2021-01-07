@@ -34,7 +34,7 @@ def main():
         accel_out = simdrive.SimAccelTest(cyc=accel_cyc, veh=veh)
         accel_out.sim_drive()
         acvhd_0_to_acc_speed_secs = simdrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']
-        print('vehicle {}: acceleration [s] {}'.format(i, acvhd_0_to_acc_speed_secs))
+        print('vehicle {}: acceleration [s] {:.3f}'.format(i, acvhd_0_to_acc_speed_secs))
 
 if __name__=='__main__':
     main()
