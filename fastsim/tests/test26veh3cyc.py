@@ -14,7 +14,7 @@ from pathlib import Path
 from fastsim import simdrive, vehicle, cycle
 
 
-def run_test26veh3cyc(use_jitclass=True, err_tol=1e-4):
+def main(use_jitclass=True, err_tol=1e-4):
     """Runs test test for 26 vehicles and 3 cycles.  
     Test compares cumulative positive and negative energy 
     values to a benchmark from earlier.
@@ -131,10 +131,10 @@ if __name__ == "__main__":
             err_tol = float(sys.argv[2])
             print(f"Using error tolerance of {err_tol:.3g}.")
         else:
-            err_tol = list(inspect.signature(run_test26veh3cyc).parameters.values())[1].default
+            err_tol = list(inspect.signature(main).parameters.values())[1].default
             print(f"Using error default tolerance of {err_tol:.3g}.")
 
-        run_test26veh3cyc(use_jitclass=use_jitclass, err_tol=err_tol)
+        main(use_jitclass=use_jitclass, err_tol=err_tol)
     else:
         print('Using numba JIT compilation.')
-        run_test26veh3cyc()
+        main()
