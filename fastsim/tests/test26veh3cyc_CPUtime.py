@@ -14,7 +14,7 @@ import importlib
 from fastsim import simdrive, vehicle, cycle
 importlib.reload(simdrive)
 
-def run_test26veh3cyc_CPUtime(use_jitclass=True):
+def main(use_jitclass=True):
     t0 = time.time()
 
     cyc_names = ['udds', 'hwfet', 'us06']
@@ -59,7 +59,7 @@ if __name__ == "__main__":
             use_jitclass = False
             print('Skipping numba JIT compilation.')
 
-        run_test26veh3cyc_CPUtime(use_jitclass=use_jitclass)
+        main(use_jitclass=use_jitclass)
     else:
         print('Using numba JIT compilation.')
-        run_test26veh3cyc_CPUtime()
+        main()

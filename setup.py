@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fastsim",  
-    version="0.0.4",
+    version="0.1.0",
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
     description="Tool for modeling vehicle powertrains",
@@ -21,7 +21,8 @@ setuptools.setup(
     python_requires='>=3.7',
     include_package_data=True,
     package_data={
-        "fastsim.resources": ["*"]
+        "fastsim.resources": ["*"],
+        "fastsim.docs": ["*"],
     },
     install_requires=[
         "pandas>=1",
@@ -39,5 +40,6 @@ setuptools.setup(
         "pkginfo",
         "tqdm",
         "docutils",
+        "jedi==0.17.2"
     ],
 )
