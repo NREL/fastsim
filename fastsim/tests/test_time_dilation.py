@@ -19,8 +19,8 @@ from fastsim import parameters as params
 t0 = time.time()
 cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(
     cycle.Cycle(
-        cyc_file_path=Path(__file__).resolve().parents[1] / 
-            'fastsim/resources/cycles/longHaulDriveCycle.csv').get_cyc_dict(),
+        cyc_file_path=Path(simdrive.__file__).resolve().parent / 
+            'resources/cycles/longHaulDriveCycle.csv').get_cyc_dict(),
     t_end=18_000, t_start=1_800))
 cyc_jit = cyc.get_numba_cyc()
 print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
@@ -28,7 +28,8 @@ print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
 
 t0 = time.time()
 veh = vehicle.Vehicle(
-    veh_file=Path(__file__).resolve().parents[1] / 'fastsim/resources/vehdb/Line Haul Conv.csv')
+    veh_file=Path(simdrive.__file__).resolve().parent / 
+        'resources/vehdb/Line Haul Conv.csv')
 veh.vehKg *= 2
 veh_jit = veh.get_numba_veh()
 print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
@@ -36,10 +37,12 @@ print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 
 t0 = time.time()
 
-sim_drive_params = simdrive.SimDriveParams(missed_trace_correction=True)
-sim_drive_params.min_time_dilation = 1
-sim_drive_params.time_dilation_tol = 1e-1
-sd_fixed = simdrive.SimDriveJit(cyc_jit, veh_jit, sim_drive_params)
+sd_fixed = simdrive.SimDriveJit(cyc_jit, veh_jit)
+sim_params = sd_fixed.sim_params
+sim_params.missed_trace_correction=True
+sim_params.min_time_dilation = 1
+sim_params.time_dilation_tol = 1e-1
+
 sd_base = simdrive.SimDriveJit(cyc_jit, veh_jit)
 
 sd_fixed.sim_drive() 

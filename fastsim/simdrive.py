@@ -66,6 +66,8 @@ class SimDriveClassic(object):
         sim_params is needed only if non-default behavior is desired."""
         self.__init_objects__(cyc, veh)
         self.init_arrays()
+        # initialized here for downstream classes that do not run sim_drive
+        self.hev_sim_count = 0 
 
     def __init_objects__(self, cyc, veh):        
         self.veh = veh
@@ -333,16 +335,12 @@ class SimDriveClassic(object):
                 self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
                     time_dilation_factor[-1]
                 self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
-                # grade probably does not need to be updated because distance is not supposed to be changing
-                # self.cyc.cycGrade[self.i] = np.interp(
-                #     self.cyc.cycDistMeters[:self.i].sum(), 
-                #     self.cyc0.cycDistMeters.cumsum(), self.cyc0.cycGrade)
                 self.set_misc_calcs(self.i)
                 self.set_comp_lims(self.i)
                 self.set_power_calcs(self.i)
                 self.set_ach_speed(self.i)
                 self.set_hybrid_cont_calcs(self.i)
-                self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
+                self.set_fc_forced_state(self.i)
                 self.set_hybrid_cont_decisions(self.i)
                 self.set_fc_power(self.i)
                 time_dilation_factor.append(min(max(
@@ -400,8 +398,6 @@ class SimDriveClassic(object):
         self.curMaxFcKwOut[i] = min(
             self.veh.maxFuelConvKw, self.fcFsLimKw[i], self.fcTransLimKw[i])
 
-        # *** I think self.veh.maxEssKw should also be in the following
-        # boolean condition
         if self.veh.maxEssKwh == 0 or self.soc[i-1] < self.veh.minSoc:
             self.essCapLimDischgKw[i] = 0.0
 
@@ -1110,7 +1106,7 @@ class SimDriveClassic(object):
             + self.mcKj + self.essEffKj + self.auxKj + self.fcKj
 
         self.keKj = 0.5 * self.veh.vehKg * \
-            (self.cyc.cycMps[0]**2 - self.cyc.cycMps[-1]**2) / 1000
+            (self.mpsAch[0]**2 - self.mpsAch[-1]**2) / 1000
         
         self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
             (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
@@ -1159,7 +1155,7 @@ class SimDriveJit(SimDriveClassic):
         if (auxInKwOverride == 0).all():
             auxInKwOverride = self.auxInKw
 
-        self.hev_sim_count = 0 # probably not necassary since numba initializes int vars as 0, but adds clarity
+        self.hev_sim_count = 0
 
         if (initSoc != -1):
             if (initSoc > 1.0 or initSoc < 0.0):
