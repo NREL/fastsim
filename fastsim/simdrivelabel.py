@@ -69,9 +69,11 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
         else:
             adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
     else:
+        # assume 2017 coefficients are valid
         adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
     out['adjParams'] = adjParams
 
+    # this is used only for PHEV
     interpf = interp1d(x=params.param_dict['rechgFreqMiles'],
         y=params.param_dict['ufArray'], 
         kind='previous')
@@ -375,6 +377,11 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
         return out
     else:
         return out
+
+
+def get_label_fe_phev():
+    """PHEV-specific function for label fe.  Requires same args as get_label_fe,
+    which will be available to it because it is called only inside that namespace."""
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
