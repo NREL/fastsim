@@ -25,7 +25,7 @@ from pymoo.model.problem import Problem
 
 # local modules
 from fastsim import simdrivehot, simdrive, vehicle, cycle, utils
-import docs.hot_utilities as hot_util
+import fastsim.docs.hot_utilities as hot_util
 
 #%%
 
@@ -395,6 +395,3 @@ def plot_cyc_traces(x, show_plots=None):
 
 
 plot_cyc_traces(res.X[8], show_plots='all') # this index of res.X should be modified as appropriate
-
-
-# %%
