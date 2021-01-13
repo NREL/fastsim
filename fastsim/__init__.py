@@ -1,7 +1,7 @@
 """Package contaning modules for running FASTSim.  
 For example usage, see ../README.md"""
 
-from fastsim import simdrive, vehicle, cycle
+from fastsim import simdrive, vehicle, cycle, tests
 # convenient aliases
 from fastsim import utilities as utils
 from fastsim import parameters as params
