@@ -3,3 +3,7 @@
 .vscode
 .DS_Store
 .idea
+.eggs
+build
+dist
+*.egg-info
