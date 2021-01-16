@@ -241,7 +241,6 @@ class SimDriveClassic(object):
             self.set_post_scalars()
 
         elif self.veh.vehPtType == 3 and initSoc == None: # PHEV
-            print('running PHEV SOC iteration')
             # This runs 1 cycle starting at max SOC then runs 1 cycle starting at min SOC.  
             # By assuming that the battery SOC depletion per mile is constanc across cycles,
             # the first cycle can be extrapolated until charge sustaining kicks in.  
