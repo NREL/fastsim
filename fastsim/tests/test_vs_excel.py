@@ -16,6 +16,7 @@ from math import isclose
 import importlib
 import pickle
 from fastsim import simdrive, vehicle, cycle, simdrivelabel
+importlib.reload(simdrivelabel) # useful for debugging
 
 
 def run_python(use_jit=False, verbose=True):
@@ -40,12 +41,12 @@ def run_python(use_jit=False, verbose=True):
     res_python = {}
 
     for vehno in vehicles:
-        if verbose:
-            print('vehno =', vehno)
         if use_jit:
             veh = vehicle.Vehicle(vehno).get_numba_veh()
         else:
             veh = vehicle.Vehicle(vehno)
+        if verbose:
+            print('Running ' + veh.Scenario_name)
         res_python[veh.Scenario_name] = simdrivelabel.get_label_fe(veh)
 
     t1 = time.time()
@@ -147,9 +148,12 @@ def compare(res_python, res_excel, err_tol=0.001):
         print(vehname)
         print('***'*7)
         res_comp = {}
-        if res_python[vehname]['veh'].vehPtType != 3:
+        # if res_python[vehname]['veh'].vehPtType != 3:
+        if True:
             for res_key in res_keys:
-                if not(isclose(res_python[vehname][res_key],
+                zzz = 26 # delete this debugging scaffolding when not in use
+                if (type(res_python[vehname][res_key]) != np.ndarray) and not(
+                    isclose(res_python[vehname][res_key],
                                 res_excel[vehname][res_key],
                                 rel_tol=err_tol, abs_tol=err_tol)):
                     res_comp[res_key + '_frac_err'] = (
@@ -184,4 +188,4 @@ def main(use_jit=False, err_tol=0.001, prev_res_path=None):
     res_comps = compare(res_python, res_excel)
 
 if __name__ == '__main__':
-    main()
+    main(use_jit=True, prev_res_path='res_excel.p')
