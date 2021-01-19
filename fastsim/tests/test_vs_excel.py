@@ -151,7 +151,6 @@ def compare(res_python, res_excel, err_tol=0.001):
         # if res_python[vehname]['veh'].vehPtType != 3:
         if True:
             for res_key in res_keys:
-                zzz = 26 # delete this debugging scaffolding when not in use
                 if (type(res_python[vehname][res_key]) != np.ndarray) and not(
                     isclose(res_python[vehname][res_key],
                                 res_excel[vehname][res_key],

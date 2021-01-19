@@ -197,6 +197,8 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
 
                 phev_calc['cdFsGal'] = sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
                 phev_calc['cdFsKwh'] = sd[key].fsKwhOutAch.sum()
+                phev_calc['cd_batt_kWh__mi'] = sd[key].battery_kWh_per_mi
+                phev_calc['cd_mpg'] = sd[key].mpgge
 
                 # utility factor calculation for last charge depletion iteration and transition iteration
                 # ported from excel
@@ -217,6 +219,8 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 # charge depletion fuel gallons
                 phev_calc['transFsGal'] = sd[key].fsKwhOutAch.sum() / \
                     params.kWhPerGGE
+                phev_calc['trans_batt_kWh__mi'] = sd[key].battery_kWh_per_mi
+                phev_calc['trans_mpg'] = sd[key].mpgge
 
                 # =IF(AND(ISNUMBER(+@phevLabUddsUf), ISNUMBER(+@phevUddsLabMpg)), (1/+@phevUddsLabMpg)*(+@phevLabUddsUf-R301), IF(AND(ISNUMBER(R301), +@phevUddsUf=""), (1-R301)*(1/+@phevUddsLabMpg), ""))
 
@@ -231,6 +235,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 # charge sustaining fuel gallons
                 phev_calc['csFsGal'] = sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
                 phev_calc['csFsKwh'] = sd[key].fsKwhOutAch.sum() 
+                phev_calc['cs_batt_kWh__mi'] = sd[key].battery_kWh_per_mi
 
                 phev_calc['labUfGpm'] = np.array(
                         [phev_calc['transFsGal'] * np.diff(phev_calc['labIterUf'])[-2],
@@ -238,7 +243,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                     ]) / sd[key].distMiles.sum()
 
                 phev_calc['cdMpg'] = phev_calc['labIterUf'][-1] / (phev_calc['transFsGal'] / sd[key].fsKwOutAch.sum())
-
+                phev_calc['cd_mpg'] = sd[key].mpgge
 
                 # note that all values set by `sd[key].set_post_scalars` are relevant only to
                 # the final charge sustaining cycle
@@ -271,21 +276,18 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 
                 # labCombMpgge
 
-                phev_calc['labIterKwhPerMile'] = np.concatenate((
-                    phev_calc['cdBattKwh'] * np.ones(int(np.floor(phev_calc['cdCycs']))), [phev_calc['transBattKwh']])) / (
-                        sd[key].distMiles.sum())
+                phev_calc['labIterKwhPerMile'] = np.concatenate(([0], 
+                    [phev_calc['cd_batt_kWh__mi']] * int(np.floor(phev_calc['cdCycs'])), 
+                    [phev_calc['trans_batt_kWh__mi']], [0]))
 
-                phev_calc['labIterUfKwhPerMile'] = np.append(
-                    phev_calc['labIterKwhPerMile'] * np.diff(phev_calc['labIterUf']), 
-                    0)
+                phev_calc['labIterUfKwhPerMile'] = np.concatenate(([0], 
+                    phev_calc['labIterKwhPerMile'][1:-1] * np.diff(phev_calc['labIterUf']), 
+                    [0]))
 
-                phev_calc['labKwhPerMile'] = phev_calc['labIterUfKwhPerMile'] / \
+                phev_calc['labKwhPerMile'] = phev_calc['labIterUfKwhPerMile'].sum() / \
                     max(phev_calc['labIterUf'])
 
                 # labCombKwhPerMile
-
-                phev_calc['labKwhPerMile'] = phev_calc['labIterUfKwhPerMile'] / \
-                    max(phev_calc['labIterUf'])
 
                 if key == 'udds':
                     phev_calc['adjIterMpgge'] = np.concatenate((np.zeros(int(np.floor(phev_calc['cdCycs']))), 
@@ -334,8 +336,6 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 # labUddsUf
                 # labHwyUf
                 # labCombMpgge
-                # labUddsKwhPerMile
-                # labHwyKwhPerMile
                 # labCombKwhPerMile
                 # labUddsEssKwhPerMile
                 # labHwyEssKwhPerMile
@@ -351,9 +351,8 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
 
             out['labUddsKwhPerMile'] = phev_calcs['udds']['labKwhPerMile']
             out['labHwyKwhPerMile'] = phev_calcs['hwy']['labKwhPerMile']
-            out['labCombKwhPerMile'] = 666
-            # 0.55 * phev_calcs['udds']['labKwhPerMile'] + \
-            #     0.45 * phev_calcs['hwy']['labKwhPerMile']
+            out['labCombKwhPerMile'] =  0.55 * phev_calcs['udds']['labKwhPerMile'] + \
+                0.45 * phev_calcs['hwy']['labKwhPerMile']
 
             # adjusted
             # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!adjUddsMpgge
