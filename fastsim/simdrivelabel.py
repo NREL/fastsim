@@ -246,11 +246,10 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc['cs_batt_kWh__mi'] = sd[key].battery_kWh_per_mi
 
                 phev_calc['labUfGpm'] = np.array(
-                        [phev_calc['transFsGal'] * np.diff(phev_calc['labIterUf'])[-2],
+                        [phev_calc['transFsGal'] * np.diff(phev_calc['labIterUf'])[-1],
                         phev_calc['csFsGal'] * (1 - phev_calc['labIterUf'][-1])
                     ]) / sd[key].distMiles.sum()
 
-                phev_calc['cdMpg'] = phev_calc['labIterUf'][-1] / (phev_calc['transFsGal'] / sd[key].fsKwOutAch.sum())
                 phev_calc['cd_mpg'] = sd[key].mpgge
 
                 # note that all values set by `sd[key].set_post_scalars` are relevant only to
@@ -260,8 +259,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 if (veh.maxSoc - phev_calcs['regenSocBuffer'] - sd[key].soc.min()) < 0.01:
                     phev_calc['cdMiles'] = 1000
                 else:
-                    phev_calc['cdMiles'] = phev_calc['cdCycs'] * \
-                        sd[key].distMiles.sum()
+                    phev_calc['cdMiles'] = np.ceil(phev_calc['cdCycs']) * sd[key].distMiles.sum()
             
                 # city and highway mpg
                 # charge depleting
@@ -279,10 +277,13 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc['csMpg'] = sd[key].distMiles.sum() / phev_calc['csFsGal']
 
                 phev_calc['labUf'] = np.float(interpf(phev_calc['cdMiles']))
-                
-                phev_calc['labMpgge'] = 1 / ((1 / phev_calc['csMpg'] * (1 - phev_calc['labUf'])))
-                
+                                
                 # labCombMpgge
+                phev_calc['cdMpg'] = max(
+                    phev_calc['labIterUf']) / phev_calc['labUfGpm'][-2]
+
+                phev_calc['labMpgge'] = 1 / (phev_calc['labUf'] / phev_calc['cdMpg'] +
+                    (1 - phev_calc['labUf']) / phev_calc['csMpg'])
 
                 phev_calc['labIterKwhPerMile'] = np.concatenate(([0], 
                     [phev_calc['cd_batt_kWh__mi']] * int(np.floor(phev_calc['cdCycs'])), 
@@ -367,26 +368,20 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                     [(1 / phev_calc['adjIterMpgge'][-2]) * np.diff(phev_calc['adjIterUf'])[-2]],
                     [(1 / phev_calc['adjIterMpgge'][-1]) * (1 - phev_calc['adjIterUf'][-2])]
                     ))
+
+                phev_calc['adjIterUfKwhPerMile'] = phev_calc['adjIterKwhPerMile'] * \
+                    np.concatenate(([0], np.diff(phev_calc['adjIterUf'])))
+
+                phev_calc['adjCdMpgge'] = 1 / \
+                    phev_calc['adjIterUfGpm'][-2] * max(phev_calc['adjIterUf'])
+                phev_calc['adjCsMpgge'] = 1 / \
+                    phev_calc['adjIterUfGpm'][-1] * (1 - max(phev_calc['adjIterUf']))
+
+                phev_calc['adjUf'] = np.float(interpf(phev_calc['adjCdMiles']))
+
+                phev_calc['adjMpgge'] = 1 / (phev_calc['adjUf'] / phev_calc['adjCdMpgge'] +
+                    (1 - phev_calc['adjUf']) / phev_calc['adjCsMpgge'])
                 
-                # 1 / ((
-                #     phev_calc['transFsGal'] / sd[key].distMiles.sum() *
-                #     (phev_calc['labIterUf'][-1] - phev_calc['labIterUf'][-2])
-                # ) / max(phev_calc['labIterUf']))
-
-                # =IF(ISNUMBER(+@phevUddsMiles),
-                #   MAX(1/(cityIntercept+(citySlope/((+@phevUddsMiles-C302)/((+@phevUddsGasKwh)*(1/'Veh Model'!kWhPerGGE))))),
-                #       (((+@phevUddsMiles-C302)/(+@phevUddsGasKwh*(1/'Veh Model'!kWhPerGGE)))*(1-'Veh Model'!maxEpaAdj))),
-                #   "")
-                # 1 / (
-                #     adjParams['City Intercept'] + adjParams['City Slope'] / sd[key].mpgge)
-
-
-                # phev_calc['adjCdMpgge'] = 666
-                #     1/(SUM(IF(
-                #         ISNUMBER(phevUddsAdjCdMiles), 
-                #         phevUddsAdjUfGpm))
-                #     /MAX(phevUddsUf))
-
                 # adjCdUddsMpg
                 # adjCdHwyMpg
                 # adjCsUddsMpg
