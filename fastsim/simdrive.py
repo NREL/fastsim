@@ -1258,6 +1258,13 @@ class SimAccelTestJit(SimDriveClassic):
     for running FASTSim vehicle acceleration simulation. This class will be 
     faster for large batch runs."""
 
+    def __init_objects__(self, cyc, veh):        
+        self.veh = veh
+        self.cyc = cyc.copy() # this cycle may be manipulated
+        self.cyc0 = cyc.copy() # this cycle is not to be manipulated
+        self.sim_params = SimDriveParams()
+        self.props = params.PhysicalPropertiesJit()
+
     def sim_drive(self):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
 

@@ -37,7 +37,13 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
     out['veh'] = veh
 
     # load the cycles and intstantiate simdrive objects
+    accel_cyc_secs = np.arange(0, 300, 0.1)
+    cyc_dict = {'cycSecs': accel_cyc_secs,
+                'cycMps': np.append([0],
+                np.ones(len(accel_cyc_secs) - 1) * 90 / params.mphPerMps)}
+
     if 'VehicleJit' in str(type(veh)):
+        cyc['accel'] = cycle.Cycle(cyc_dict=cyc_dict).get_numba_cyc()
         cyc['udds'] = cyc_udds.get_numba_cyc()
         cyc['hwy'] = cyc_hwfet.get_numba_cyc()
 
@@ -47,6 +53,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
         out['numba_used'] = True
 
     else:
+        cyc['accel'] = cycle.Cycle(cyc_dict=cyc_dict)
         cyc['udds'] = cyc_udds.copy()
         cyc['hwy'] = cyc_hwfet.copy()
 
@@ -388,18 +395,6 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc['adjEssKwhPerMile'] = phev_calc['adjIterUfKwhPerMile'].sum(
                     ) / phev_calc['adjIterUf'].max() 
 
-                # adjCdUddsMpg
-                # adjCdHwyMpg
-                # adjCsUddsMpg
-                # adjCsHwyMpg
-
-                # labUddsUf
-                # labHwyUf
-                # labCombMpgge
-                # labCombKwhPerMile
-                # labUddsEssKwhPerMile
-                # labHwyEssKwhPerMile
-
             out['phev_calcs'] = phev_calcs
 
             # efficiency-related calculations
@@ -431,18 +426,29 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 0.45 * phev_calcs['hwy']['adjEssKwhPerMile']
 
             # range for combined city/highway
-            out['rangeMiles'] = -1 # placeholder value
+            out['rangeMiles'] = "need to build model for this"
             # utility factor (percent driving in charge depletion mode)
-            out['UF'] = -1 # placeholder value
+            out['UF'] = "need to build model for this"
 
         get_label_fe_phev()
 
-    # non-efficiency-related calculations
-    # zero-to-sixty time
-    out['accelSecs'] = 666
-    
+    # run accelerating sim_drive
+    if 'VehicleJit' in str(type(veh)):
+        sd['accel'] = simdrive.SimAccelTestJit(cyc['accel'], veh)
+    else:
+        sd['accel'] = simdrive.SimAccelTest(cyc['accel'], veh)
+
+    sd['accel'].sim_drive()
+    if (sd['accel'].mphAch >= 60).any():
+        out['netAccel'] = np.interp(
+            x=60, xp=sd['accel'].mphAch, fp=cyc['accel'].cycSecs)
+    else:
+        # in case vehicle never exceeds 60 mph, penalize it a lot with a high number
+        print(veh.Scenario_name + ' never achieves 60 mph.')
+        out['netAccel'] = 1e3
+
     # success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
-    out['resFound'] = True # this may need fancier logic than just always being true
+    out['resFound'] = "model needs to be implemented for this" # this may need fancier logic than just always being true
 
     if full_detail and verbose:
         for key in out.keys():

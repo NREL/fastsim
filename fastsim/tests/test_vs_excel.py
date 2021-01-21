@@ -9,8 +9,10 @@ import pandas as pd
 import time
 import numpy as np
 import os
+import json
 import sys
 import importlib
+from pathlib import Path
 import xlwings as xw
 from math import isclose
 import importlib
@@ -56,16 +58,23 @@ def run_python(use_jit=False, verbose=True):
     return res_python
 
 
-def run_excel(prev_res_path=None):
+def run_excel(prev_res_path=Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.json', 
+    rerun_excel=False):
     """Runs excel fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
     Arguments: 
     -----------
-    prev_res_path : path (str) to prevous results in pickle (*.p) file"""
+    prev_res_path : path (str) to prevous results in pickle (*.p) file
+    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
 
-    if prev_res_path:
-        res_excel = pickle.load(open(prev_res_path, 'rb'))
+    if not(rerun_excel):
+        print("Loading Excel results.")
+        if '.p' in str(prev_res_path):
+            res_excel = pickle.load(open(prev_res_path, 'rb'))
+        elif '.json' in str(prev_res_path):
+            res_excel = json.load(open(prev_res_path, 'r'))
     else:  
+        print("Running Excel")
         t0 = time.time()
 
         # initial setup
@@ -108,6 +117,9 @@ def run_excel(prev_res_path=None):
             res_dict['adjHwyKwhPerMile'] = sht_veh.range('adjHwyKwhPerMile').value
             res_dict['adjCombKwhPerMile'] = sht_veh.range(
                 'adjCombKwhPerMile').value
+            
+            # performance
+            res_dict['netAccel'] = sht_veh.range('netAccel').value
 
             for key in res_dict.keys():
                 if (res_dict[key] == '') | (res_dict[key] == None):
@@ -126,7 +138,7 @@ def compare(res_python, res_excel, err_tol=0.001):
     """Finds common vehicle names in both excel and python 
     (hypothetically all of them, but there may be discrepancies) and then compares
     fuel economy results.  
-    Arguments: results from run_python_fastsim and run_excel_fastsim
+    Arguments: results from run_python and run_excel
     Returns dict of comparsion results.
     
     Arguments:
@@ -140,7 +152,8 @@ def compare(res_python, res_excel, err_tol=0.001):
     res_keys = ['labUddsMpgge', 'labHwyMpgge', 'labCombMpgge',
                 'labUddsKwhPerMile', 'labHwyKwhPerMile', 'labCombKwhPerMile',
                 'adjUddsMpgge', 'adjHwyMpgge', 'adjCombMpgge',
-                'adjUddsKwhPerMile', 'adjHwyKwhPerMile', 'adjCombKwhPerMile', ]
+                'adjUddsKwhPerMile', 'adjHwyKwhPerMile', 'adjCombKwhPerMile', 
+                'netAccel', ]
 
     res_comps = {}
     for vehname in common_names:
@@ -173,18 +186,21 @@ def compare(res_python, res_excel, err_tol=0.001):
     return res_comps
 
 
-def main(use_jit=False, err_tol=0.001, prev_res_path=None):
+def main(use_jit=True, err_tol=0.001, 
+    prev_res_path=Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.json',
+    rerun_excel=False):
     """Function for running both python and excel and then comparing
     Arguments:
     **********
     use_jit : Boolean
         if True, use numba jitclass
     err_tol : (float) error tolerance, default=1e-3
-    prev_res_path : path (str) to prevous results in pickle (*.p) file"""
+    prev_res_path : path (str) to prevous results in pickle (*.p) file
+    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
 
     res_python = run_python(verbose=False, use_jit=use_jit)
-    res_excel = run_excel(prev_res_path)
+    res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
     res_comps = compare(res_python, res_excel)
 
 if __name__ == '__main__':
-    main(use_jit=True, prev_res_path='res_excel.p')
+    main()
