@@ -382,6 +382,12 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc['adjMpgge'] = 1 / (phev_calc['adjUf'] / phev_calc['adjCdMpgge'] +
                     (1 - phev_calc['adjUf']) / phev_calc['adjCsMpgge'])
                 
+                phev_calc['adjKwhPerMile'] = phev_calc['adjIterUfKwhPerMile'].sum(
+                    ) / phev_calc['adjIterUf'].max() / veh.chgEff
+
+                phev_calc['adjBattKwhPerMile'] = phev_calc['adjIterUfKwhPerMile'].sum(
+                    ) / phev_calc['adjIterUf'].max() 
+
                 # adjCdUddsMpg
                 # adjCdHwyMpg
                 # adjCsUddsMpg
