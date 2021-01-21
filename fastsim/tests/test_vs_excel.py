@@ -58,7 +58,10 @@ def run_python(use_jit=False, verbose=True):
     return res_python
 
 
-def run_excel(prev_res_path=Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.json', 
+PREV_RES_PATH = Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.json'
+
+
+def run_excel(prev_res_path=PREV_RES_PATH, 
     rerun_excel=False):
     """Runs excel fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
@@ -186,19 +189,19 @@ def compare(res_python, res_excel, err_tol=0.001):
     return res_comps
 
 
-def main(use_jit=True, err_tol=0.001, 
-    prev_res_path=Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.json',
+def main(use_jitclass=True, err_tol=0.001, 
+    prev_res_path=PREV_RES_PATH,
     rerun_excel=False):
     """Function for running both python and excel and then comparing
     Arguments:
     **********
-    use_jit : Boolean
+    use_jitclass : Boolean
         if True, use numba jitclass
     err_tol : (float) error tolerance, default=1e-3
     prev_res_path : path (str) to prevous results in pickle (*.p) file
     rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
 
-    res_python = run_python(verbose=False, use_jit=use_jit)
+    res_python = run_python(verbose=False, use_jit=use_jitclass)
     res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
     res_comps = compare(res_python, res_excel)
 
