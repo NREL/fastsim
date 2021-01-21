@@ -45,10 +45,10 @@ class Vehicle(object):
         if veh_file and vnum:
             self.load_veh(vnum, veh_file=veh_file)
         elif vnum and not veh_file:
-            if type(vnum) == int:
+            try:
                 # load numbered vehicle
                 self.load_veh(vnum)
-            else:
+            except:
                 # load FASTSim's standalone vehicles
                 self.load_veh(0, veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum)
 
