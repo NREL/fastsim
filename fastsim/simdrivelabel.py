@@ -1,14 +1,14 @@
 """Module containing classes and methods for calculating label fuel economy.
 For example usage, see ../README.md"""
 
-from numba.cuda.simulator import kernel
 from fastsim.parameters import PT_TYPES
 import sys
 import numpy as np
 from scipy.interpolate import interp1d
 import re
 
-from fastsim import simdrive, cycle, vehicle, params
+from fastsim import simdrive, cycle, vehicle
+from fastsim import parameters as params
 
 cyc_udds = cycle.Cycle('udds')
 cyc_hwfet = cycle.Cycle('hwfet')
