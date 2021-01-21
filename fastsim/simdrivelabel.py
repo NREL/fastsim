@@ -179,7 +179,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc = phev_calcs[key] # assigned for for easier syntax
                 # charge depletion cycle has already been simulated
                 # charge depletion battery kW-hr
-                phev_calc['cdBattKwh'] = (
+                phev_calc['cdEssKwh'] = (
                     veh.maxSoc - veh.minSoc) * veh.maxEssKwh
                 # charge depletion fuel gallons
                 phev_calc['cdFsGal'] = 0 # sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
@@ -197,7 +197,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
 
                 phev_calc['cdFsGal'] = sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
                 phev_calc['cdFsKwh'] = sd[key].fsKwhOutAch.sum()
-                phev_calc['cd_batt_kWh__mi'] = sd[key].battery_kWh_per_mi
+                phev_calc['cd_ess_kWh__mi'] = sd[key].battery_kWh_per_mi
                 phev_calc['cd_mpg'] = sd[key].mpgge
 
                 # utility factor calculation for last charge depletion iteration and transition iteration
@@ -214,13 +214,13 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 # run the transition cycle
                 sd[key].sim_drive(phev_calc['transInitSoc'])
                 # charge depletion battery kW-hr
-                phev_calc['transBattKwh'] = (phev_calc['cd_batt_kWh__mi'] * sd[key].distMiles.sum() * 
+                phev_calc['transEssKwh'] = (phev_calc['cd_ess_kWh__mi'] * sd[key].distMiles.sum() * 
                     phev_calc['cdFracInTrans'])
                     # (sd[key].soc[0] - sd[key].soc[-1]) * veh.maxEssKwh # not how excel does it
                 # charge depletion fuel gallons
                     # sd[key].fsKwhOutAch.sum() / \
                     #     params.kWhPerGGE # not how excel does it
-                phev_calc['trans_batt_kWh__mi'] = (phev_calc['cd_batt_kWh__mi'] * 
+                phev_calc['trans_ess_kWh__mi'] = (phev_calc['cd_ess_kWh__mi'] * 
                     phev_calc['cdFracInTrans'])
                     # sd[key].battery_kWh_per_mi # not how excel does it
 
@@ -233,7 +233,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 initSoc = sd[key].veh.minSoc + 0.01
                 sd[key].sim_drive(initSoc)
                 # charge sustaining battery kW-hr
-                phev_calc['csBattKwh'] = 0 # (sd[key].soc[0] - sd[key].soc[-1]) * veh.maxEssKwh
+                phev_calc['csEssKwh'] = 0 # (sd[key].soc[0] - sd[key].soc[-1]) * veh.maxEssKwh
                 # charge sustaining fuel gallons
                 phev_calc['csFsGal'] = sd[key].fsKwhOutAch.sum() / params.kWhPerGGE
                 # charge depletion fuel gallons, dependent on phev_calc['transFsGal']
@@ -242,8 +242,8 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc['csFsKwh'] = sd[key].fsKwhOutAch.sum() 
                 phev_calc['transFsKwh'] = (
                     phev_calc['csFsKwh'] * (1 - phev_calc['cdFracInTrans']))
-                phev_calc['csBattKwh'] = sd[key].essDischgKj
-                phev_calc['cs_batt_kWh__mi'] = sd[key].battery_kWh_per_mi
+                phev_calc['csEssKwh'] = sd[key].essDischgKj
+                phev_calc['cs_ess_kWh__mi'] = sd[key].battery_kWh_per_mi
 
                 phev_calc['labUfGpm'] = np.array(
                         [phev_calc['transFsGal'] * np.diff(phev_calc['labIterUf'])[-1],
@@ -286,8 +286,8 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                     (1 - phev_calc['labUf']) / phev_calc['csMpg'])
 
                 phev_calc['labIterKwhPerMile'] = np.concatenate(([0], 
-                    [phev_calc['cd_batt_kWh__mi']] * int(np.floor(phev_calc['cdCycs'])), 
-                    [phev_calc['trans_batt_kWh__mi']], [0]))
+                    [phev_calc['cd_ess_kWh__mi']] * int(np.floor(phev_calc['cdCycs'])), 
+                    [phev_calc['trans_ess_kWh__mi']], [0]))
 
                 phev_calc['labIterUfKwhPerMile'] = np.concatenate(([0], 
                     phev_calc['labIterKwhPerMile'][1:-1] * np.diff(phev_calc['labIterUf']), 
@@ -342,11 +342,11 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                         phev_calc['adjIterCdMiles'][c] = 0
                     elif c <= np.floor(phev_calc['cdCycs']):
                         phev_calc['adjIterCdMiles'][c] = (
-                            phev_calc['adjIterCdMiles'][c-1] + phev_calc['cd_batt_kWh__mi'] * 
+                            phev_calc['adjIterCdMiles'][c-1] + phev_calc['cd_ess_kWh__mi'] * 
                             sd[key].distMiles.sum() / phev_calc['adjIterKwhPerMile'][c])
                     elif c == np.floor(phev_calc['cdCycs']) + 1:
                         phev_calc['adjIterCdMiles'][c] = (
-                            phev_calc['adjIterCdMiles'][c-1] + phev_calc['trans_batt_kWh__mi'] *
+                            phev_calc['adjIterCdMiles'][c-1] + phev_calc['trans_ess_kWh__mi'] *
                             sd[key].distMiles.sum() / phev_calc['adjIterKwhPerMile'][c])
                     else:
                         phev_calc['adjIterCdMiles'][c] = 0
@@ -385,7 +385,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc['adjKwhPerMile'] = phev_calc['adjIterUfKwhPerMile'].sum(
                     ) / phev_calc['adjIterUf'].max() / veh.chgEff
 
-                phev_calc['adjBattKwhPerMile'] = phev_calc['adjIterUfKwhPerMile'].sum(
+                phev_calc['adjEssKwhPerMile'] = phev_calc['adjIterUfKwhPerMile'].sum(
                     ) / phev_calc['adjIterUf'].max() 
 
                 # adjCdUddsMpg
@@ -415,25 +415,25 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 0.45 * phev_calcs['hwy']['labKwhPerMile']
 
             # adjusted
-            # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!adjUddsMpgge
-            out['adjUddsMpgge'] = 666
-            # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!adjHwyMpgge
-            out['adjHwyMpgge'] = 666
-            out['adjCombMpgge'] = 666
+            out['adjUddsMpgge'] = phev_calcs['udds']['adjMpgge']
+            out['adjHwyMpgge'] = phev_calcs['hwy']['adjMpgge']
+            out['adjCombMpgge'] = 1 / (
+                0.55 / phev_calcs['udds']['adjMpgge'] + 0.45 / phev_calcs['hwy']['adjMpgge'])
 
-            # out['adjUddsKwhPerMile'] =  sum(if(isnumber(phevUddsAdjUfKwhPerMile), phevUddsAdjUfKwhPerMile)) / max(phevUddsUf) / chgEff
-            out['adjUddsKwhPerMile'] = 666
-            out['adjHwyKwhPerMile'] = 666
-            out['adjCombKwhPerMile'] = 666
+            out['adjUddsKwhPerMile'] = phev_calcs['udds']['adjKwhPerMile']
+            out['adjHwyKwhPerMile'] = phev_calcs['hwy']['adjKwhPerMile']
+            out['adjCombKwhPerMile'] = 0.55 * phev_calcs['udds']['adjKwhPerMile'] + \
+                0.45 * phev_calcs['hwy']['adjKwhPerMile']
 
-            out['adjUddsEssKwhPerMile'] = out['adjUddsKwhPerMile'] * params.chgEff
-            out['adjHwyEssKwhPerMile'] = out['adjHwyKwhPerMile'] * params.chgEff
-            out['adjCombEssKwhPerMile'] = out['adjCombKwhPerMile'] * params.chgEff
+            out['adjUddsEssKwhPerMile'] = phev_calcs['udds']['adjEssKwhPerMile']
+            out['adjHwyEssKwhPerMile'] = phev_calcs['hwy']['adjEssKwhPerMile']
+            out['adjCombEssKwhPerMile'] = 0.55 * phev_calcs['udds']['adjEssKwhPerMile'] + \
+                0.45 * phev_calcs['hwy']['adjEssKwhPerMile']
 
             # range for combined city/highway
-            out['rangeMiles'] = 666
+            out['rangeMiles'] = -1 # placeholder value
             # utility factor (percent driving in charge depletion mode)
-            out['UF'] = 666
+            out['UF'] = -1 # placeholder value
 
         get_label_fe_phev()
 
