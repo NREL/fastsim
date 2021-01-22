@@ -152,6 +152,9 @@ def compare(res_python, res_excel, err_tol=0.001):
 
     common_names = set(res_python.keys()) & set(res_excel.keys())
 
+    known_error_list = ['2017 Prius Prime',
+                        'Toyota Mirai', 'Regional Delivery Class 8 Truck']
+
     res_keys = ['labUddsMpgge', 'labHwyMpgge', 'labCombMpgge',
                 'labUddsKwhPerMile', 'labHwyKwhPerMile', 'labCombKwhPerMile',
                 'adjUddsMpgge', 'adjHwyMpgge', 'adjCombMpgge',
@@ -164,28 +167,29 @@ def compare(res_python, res_excel, err_tol=0.001):
         print(vehname)
         print('***'*7)
         res_comp = {}
-        # if res_python[vehname]['veh'].vehPtType != 3:
-        if True:
-            for res_key in res_keys:
-                if (type(res_python[vehname][res_key]) != np.ndarray) and not(
-                    isclose(res_python[vehname][res_key],
-                                res_excel[vehname][res_key],
-                                rel_tol=err_tol, abs_tol=err_tol)):
-                    res_comp[res_key + '_frac_err'] = (
-                        res_python[vehname][res_key] -
-                        res_excel[vehname][res_key]) / res_excel[vehname][res_key]
-                else:
-                    res_comp[res_key + '_frac_err'] = 0.0
-                if res_comp[res_key + '_frac_err'] != 0.0:
-                    print(
-                        res_key + ' error = {:.3g}%'.format(res_comp[res_key + '_frac_err'] * 100))
 
-            if (np.array(list(res_comp.values())) == 0).all():
-                print(f'All values within error tolerance of {err_tol:.3g}')
+        if vehname in known_error_list:
+            print("Discrepancy in model year between Excel and Python")
+            print("is probably the root cause of efficiency errors below.")
 
-            res_comps[vehname] = res_comp.copy()
-        else:
-            print('You ran a PHEV, which is not working yet in python')
+        for res_key in res_keys:
+            if (type(res_python[vehname][res_key]) != np.ndarray) and not(
+                isclose(res_python[vehname][res_key],
+                            res_excel[vehname][res_key],
+                            rel_tol=err_tol, abs_tol=err_tol)):
+                res_comp[res_key + '_frac_err'] = (
+                    res_python[vehname][res_key] -
+                    res_excel[vehname][res_key]) / res_excel[vehname][res_key]
+            else:
+                res_comp[res_key + '_frac_err'] = 0.0
+            if res_comp[res_key + '_frac_err'] != 0.0:
+                print(
+                    res_key + ' error = {:.3g}%'.format(res_comp[res_key + '_frac_err'] * 100))
+
+        if (np.array(list(res_comp.values())) == 0).all():
+            print(f'All values within error tolerance of {err_tol:.3g}')
+
+        res_comps[vehname] = res_comp.copy()
     return res_comps
 
 
