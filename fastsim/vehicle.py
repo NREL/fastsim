@@ -23,6 +23,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
         os.path.join(
             THIS_DIR, 'resources', 'FASTSim_py_veh_db.csv'))
+DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
 
 props = params.PhysicalProperties()
 
@@ -87,7 +88,7 @@ class Vehicle(object):
             if veh_file:
                 vehdf = pd.read_csv(Path(veh_file))
             else:
-                vehdf = pd.read_csv(DEFAULT_VEH_DB)
+                vehdf = DEFAULT_VEHDF
         else:
             vehdf = pd.read_csv(Path(veh_file))
             vehdf = vehdf.transpose()
