@@ -148,9 +148,15 @@ class CycleJit(object):
         self.cycMps = np.zeros(len_cyc, dtype=np.float64)
         self.cycGrade = np.zeros(len_cyc, dtype=np.float64)
         self.cycRoadType = np.zeros(len_cyc, dtype=np.float64)
-        self.cycMph = np.zeros(len_cyc, dtype=np.float64)
         self.secs = np.zeros(len_cyc, dtype=np.float64)
+        self.cycMph = np.zeros(len_cyc, dtype=np.float64)
         self.cycDistMeters = np.zeros(len_cyc, dtype=np.float64)
+
+    def set_dependents(self):
+        """Sets values based on cycMps"""
+        self.cycMph = self.cycMps * params.mphPerMps
+        self.secs = np.insert(np.diff(self.cycSecs), 0, 0)  # time step deltas
+        self.cycDistMeters = (self.cycMps * self.secs)
 
     def copy(self):
         """Return copy of CycleJit instance."""
