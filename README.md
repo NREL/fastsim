@@ -79,7 +79,7 @@ in = component input
 out = component output  
 
 # Release Notes
-0.1.0 -- pip install without using the `-e` option now copies all fastsim files and folder hierarchy into the python site-packages folder.  Tests are now included as modules inside of a sub-package.   
+0.1.1 -- now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.
 
 # Known Bugs
 
