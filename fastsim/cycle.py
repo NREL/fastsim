@@ -77,7 +77,7 @@ class Cycle(object):
         Argument:
         ---------
         cyc_file_path: path to file containing cycle data"""
-        cyc = pd.read_csv(cyc_file_path)
+        cyc = pd.read_csv(Path(cyc_file_path))
         for column in cyc.columns:
             self.__setattr__(column, cyc[column].to_numpy())
         self.set_dependents()
