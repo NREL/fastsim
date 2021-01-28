@@ -31,8 +31,8 @@ props = params.PhysicalProperties()
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
 
-    def __init__(self, vnum=None, veh_file=None):
-        """See doc string for load_veh for additional details.
+    def __init__(self, vnum=None, veh_file=None, verbose=True):
+        """See doc string for load_veh for additional details on arguments.
     
         If a single vehicle `veh_file` is provided, vnum cannot be passed, and
         veh_file must be passed as a keyword argument. Files contained in
@@ -41,20 +41,20 @@ class Vehicle(object):
         file path is provided, using `vnum` if appropriate."""
         
         if veh_file and vnum:
-            self.load_veh(vnum, veh_file=veh_file)
+            self.load_veh(vnum, veh_file=veh_file, verbose=verbose)
         elif vnum and not veh_file:
             try:
                 # load numbered vehicle
                 int(vnum)
-                self.load_veh(int(vnum))
+                self.load_veh(int(vnum), verbose=verbose)
             except:
                 # load FASTSim's standalone vehicles 
                 # (vnum is a filename (str or pathlib.Path) in this case)
-                self.load_veh(veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum)
+                self.load_veh(veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum, verbose=verbose)
 
         else:
             # not passing `vnum` tells load_veh that the file contains only 1 vehicle
-            self.load_veh(veh_file=veh_file)
+            self.load_veh(veh_file=veh_file, verbose=verbose)
 
     def get_numba_veh(self):
         """Load numba JIT-compiled vehicle."""
@@ -71,7 +71,7 @@ class Vehicle(object):
             
         return self.numba_veh
     
-    def load_veh(self, vnum=None, veh_file=None, return_vehdf=False):
+    def load_veh(self, vnum=None, veh_file=None, return_vehdf=False, verbose=True):
         """Load vehicle parameters from file.
 
         Arguments:
@@ -147,8 +147,17 @@ class Vehicle(object):
             # assign dataframe columns 
             self.__setattr__(col1, vehdf.loc[vnum, col])
         
+        # make sure all the attributes needed by CycleJit are set
+        # this could potentially cause unexpected behaviors
+        missing_cols = set(DEFAULT_VEHDF.columns) - set(vehdf.columns)
+        if len(missing_cols) > 0:
+            if verbose:
+                print("np.nan filled in for values missing from " + "'" + str(veh_file) + "'")
+            for col in missing_cols:
+                self.__setattr__(col, np.nan)
+
         self.set_init_calcs()
-        self.set_veh_mass()
+        self.set_veh_mass()            
 
         if return_vehdf:
             return vehdf
