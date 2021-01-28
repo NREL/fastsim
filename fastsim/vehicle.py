@@ -29,20 +29,17 @@ props = params.PhysicalProperties()
 
 
 class Vehicle(object):
-    """Class for loading and contaning vehicle attributes
-    Optional Arguments:
-    ---------
-    vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-    veh_file: string or filelike obj, alternative to default
-        FASTSim_py_veh_db
-    
-    If a single vehicle veh_file is provided, vnum cannot be passed, and
-    veh_file must be passed as a keyword argument. Files contained in
-    fastsim/resources/vehdb can be loaded with the filename if provided as
-    the vnum argument.  Specifying veh_file will explicitly load whatever
-    file path is provided."""
+    """Class for loading and contaning vehicle attributes"""
 
     def __init__(self, vnum=None, veh_file=None):
+        """See doc string for load_veh for additional details.
+    
+        If a single vehicle `veh_file` is provided, vnum cannot be passed, and
+        veh_file must be passed as a keyword argument. Files contained in
+        fastsim/resources/vehdb can be loaded with the filename if provided as
+        the `vnum` argument.  Specifying `veh_file` will explicitly load whatever
+        file path is provided, using `vnum` if appropriate."""
+        
         if veh_file and vnum:
             self.load_veh(vnum, veh_file=veh_file)
         elif vnum and not veh_file:
@@ -51,11 +48,11 @@ class Vehicle(object):
                 self.load_veh(vnum)
             except:
                 # load FASTSim's standalone vehicles
-                self.load_veh(0, veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum)
+                self.load_veh(veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum)
 
         else:
-            # vnum = 0 tells load_veh that the file contains only 1 vehicle
-            self.load_veh(0, veh_file=veh_file)
+            # not passing `vnum` tells load_veh that the file contains only 1 vehicle
+            self.load_veh(veh_file=veh_file)
 
     def get_numba_veh(self):
         """Load numba JIT-compiled vehicle."""
@@ -72,24 +69,24 @@ class Vehicle(object):
             
         return self.numba_veh
     
-    def load_veh(self, vnum, veh_file=None):
-        """Load vehicle parameters from string or filelike obj, 
-        alternative to default FASTSim_py_veh_db
+    def load_veh(self, vnum=None, veh_file=None, return_vehdf=False):
+        """Load vehicle parameters from file.
+
         Arguments:
         ---------
         vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-        veh_file (optional override): string or filelike obj, alternative 
-        to default FASTSim_py_veh_db
-        
+        veh_file: path (str or pathlib.Path) to vehicle file 
+        return_vehdf: (Boolean) if True, returns vehdf.  Mostly useful for 
+            debugging purpsose.   
+
         If default values are modified after loading, you may need to 
         rerun set_init_calcs() and set_veh_mass() to propagate changes."""
 
-        if vnum != 0:
-            if veh_file:
-                vehdf = pd.read_csv(Path(veh_file))
-            else:
-                vehdf = DEFAULT_VEHDF
-        else:
+        if vnum and veh_file:
+            vehdf = pd.read_csv(Path(veh_file))
+        elif vnum:
+            vehdf = DEFAULT_VEHDF
+        elif veh_file:
             vehdf = pd.read_csv(Path(veh_file))
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
@@ -97,6 +94,8 @@ class Vehicle(object):
             vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
             vehdf.loc['Param Value', 'Selection'] = 0
             vnum = 0
+        else:
+            raise Exception('load_veh requires `vnum` and/or `veh_file`.')
         vehdf.set_index('Selection', inplace=True, drop=False)
 
         def clean_data(raw_data):
@@ -148,6 +147,9 @@ class Vehicle(object):
         
         self.set_init_calcs()
         self.set_veh_mass()
+
+        if return_vehdf:
+            return vehdf
 
     def set_init_calcs(self):
         """Set parameters that can be calculated after loading vehicle data"""
