@@ -29,12 +29,6 @@ kWhPerGGE = 33.7
 metersPerMile = 1609.00
 
 # EPA fuel economy adjustment parameters
-
-# 2008	2017	2016
-# City Intercept	0.003259	0.004091	0.003259
-# City Slope	1.1805	1.1601	1.1805
-# Highway Intercept	0.001376	0.003191	0.001376
-# Highway Slope	1.3466	1.2945	1.3466
 maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
 
@@ -84,6 +78,7 @@ mcPercOutArray = np.linspace(0, 1, 101)
 
 ENERGY_AUDIT_ERROR_TOLERANCE = 0.02 # i.e., 2%
 
+chgEff = 0.86 # charger efficiency for PEVs, this should probably not be hard coded long term
 
 # loading long arrays from json file
 with open(os.path.join(THIS_DIR, 'resources', 'longparams.json'), 'r') as paramfile:

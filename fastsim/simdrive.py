@@ -80,7 +80,7 @@ class SimDriveClassic(object):
         len_cyc = len(self.cyc.cycSecs)
         self.i = 1 # initialize step counter for possible use outside sim_drive_walk()
 
-        # Component Limits -- calculated dynamically"
+        # Component Limits -- calculated dynamically
         self.curMaxFsKwOut = np.zeros(len_cyc, dtype=np.float64)
         self.fcTransLimKw = np.zeros(len_cyc, dtype=np.float64)
         self.fcFsLimKw = np.zeros(len_cyc, dtype=np.float64)
@@ -223,10 +223,8 @@ class SimDriveClassic(object):
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
-
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
-
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             ess2fuelKwh = 1.0
             while ess2fuelKwh > self.veh.essToFuelOkError and self.hev_sim_count < self.sim_params.sim_count_max:
@@ -673,7 +671,7 @@ class SimDriveClassic(object):
 
         else:
             self.regenBufferSoc[i] = max(((self.veh.maxEssKwh * self.veh.maxSoc) - (0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1000)
-                                                                            * (1.0 / 3600) * self.veh.motorPeakEff * self.veh.maxRegen)) / self.veh.maxEssKwh, self.veh.minSoc)
+                * (1.0 / 3600) * self.veh.motorPeakEff * self.veh.maxRegen)) / self.veh.maxEssKwh, self.veh.minSoc)
 
             self.essRegenBufferDischgKw[i] = min(self.curMaxEssKwOut[i], max(
                 0, (self.soc[i-1] - self.regenBufferSoc[i]) * self.veh.maxEssKwh * 3600 / self.cyc.secs[i]))
@@ -686,8 +684,8 @@ class SimDriveClassic(object):
 
         else:
             self.accelBufferSoc[i] = min(max((((((((self.veh.maxAccelBufferMph * (1 / params.mphPerMps))**2)) - ((self.cyc.cycMps[i]**2))) /
-                                                (((self.veh.maxAccelBufferMph * (1 / params.mphPerMps))**2))) * (min(self.veh.maxAccelBufferPercOfUseableSoc * \
-                                                                            (self.veh.maxSoc - self.veh.minSoc), self.veh.maxRegenKwh / self.veh.maxEssKwh) * self.veh.maxEssKwh)) / self.veh.maxEssKwh) + \
+                (((self.veh.maxAccelBufferMph * (1 / params.mphPerMps))**2))) * (min(self.veh.maxAccelBufferPercOfUseableSoc * \
+                (self.veh.maxSoc - self.veh.minSoc), self.veh.maxRegenKwh / self.veh.maxEssKwh) * self.veh.maxEssKwh)) / self.veh.maxEssKwh) + \
                 self.veh.minSoc, self.veh.minSoc), self.veh.maxSoc)
 
             self.essAccelBufferChgKw[i] = max(
@@ -697,7 +695,7 @@ class SimDriveClassic(object):
 
         if self.regenBufferSoc[i] < self.accelBufferSoc[i]:
             self.essAccelRegenDischgKw[i] = max(min(((self.soc[i-1] - (self.regenBufferSoc[i] + self.accelBufferSoc[i]) / 2) * self.veh.maxEssKwh * 3600.0) /
-                                                    self.cyc.secs[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+                self.cyc.secs[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
 
         elif self.soc[i-1] > self.regenBufferSoc[i]:
             self.essAccelRegenDischgKw[i] = max(min(
@@ -1050,7 +1048,7 @@ class SimDriveClassic(object):
 
         else:
             self.mpgge = self.distMiles.sum() / \
-                (self.fsKwhOutAch.sum() * (1 / params.kWhPerGGE))
+                (self.fsKwhOutAch.sum() / params.kWhPerGGE)
 
         self.roadwayChgKj = (self.roadwayChgKwOutAch * self.cyc.secs).sum()
         self.essDischgKj = - \
@@ -1217,6 +1215,13 @@ class SimAccelTestJit(SimDriveClassic):
     """Class compiled using numba just-in-time compilation containing methods 
     for running FASTSim vehicle acceleration simulation. This class will be 
     faster for large batch runs."""
+
+    def __init_objects__(self, cyc, veh):        
+        self.veh = veh
+        self.cyc = cyc.copy() # this cycle may be manipulated
+        self.cyc0 = cyc.copy() # this cycle is not to be manipulated
+        self.sim_params = SimDriveParams()
+        self.props = params.PhysicalPropertiesJit()
 
     def sim_drive(self):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""

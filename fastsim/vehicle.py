@@ -23,38 +23,38 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_VEH_DB = os.path.abspath(
         os.path.join(
             THIS_DIR, 'resources', 'FASTSim_py_veh_db.csv'))
+DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
 
 props = params.PhysicalProperties()
 
 
 class Vehicle(object):
-    """Class for loading and contaning vehicle attributes
-    Optional Arguments:
-    ---------
-    vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-    veh_file: string or filelike obj, alternative to default
-        FASTSim_py_veh_db
-    
-    If a single vehicle veh_file is provided, vnum cannot be passed, and
-    veh_file must be passed as a keyword argument. Files contained in
-    fastsim/resources/vehdb can be loaded with the filename if provided as
-    the vnum argument.  Specifying veh_file will explicitly load whatever
-    file path is provided."""
+    """Class for loading and contaning vehicle attributes"""
 
-    def __init__(self, vnum=None, veh_file=None):
+    def __init__(self, vnum=None, veh_file=None, verbose=True):
+        """See doc string for load_veh for additional details on arguments.
+    
+        If a single vehicle `veh_file` is provided, vnum cannot be passed, and
+        veh_file must be passed as a keyword argument. Files contained in
+        fastsim/resources/vehdb can be loaded with the filename if provided as
+        the `vnum` argument.  Specifying `veh_file` will explicitly load whatever
+        file path is provided, using `vnum` if appropriate."""
+        
         if veh_file and vnum:
-            self.load_veh(vnum, veh_file=veh_file)
+            self.load_veh(vnum, veh_file=veh_file, verbose=verbose)
         elif vnum and not veh_file:
-            if type(vnum) == int:
+            try:
                 # load numbered vehicle
-                self.load_veh(vnum)
-            else:
-                # load FASTSim's standalone vehicles
-                self.load_veh(0, veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum)
+                int(vnum)
+                self.load_veh(int(vnum), verbose=verbose)
+            except:
+                # load FASTSim's standalone vehicles 
+                # (vnum is a filename (str or pathlib.Path) in this case)
+                self.load_veh(veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum, verbose=verbose)
 
         else:
-            # vnum = 0 tells load_veh that the file contains only 1 vehicle
-            self.load_veh(0, veh_file=veh_file)
+            # not passing `vnum` tells load_veh that the file contains only 1 vehicle
+            self.load_veh(veh_file=veh_file, verbose=verbose)
 
     def get_numba_veh(self):
         """Load numba JIT-compiled vehicle."""
@@ -71,24 +71,24 @@ class Vehicle(object):
             
         return self.numba_veh
     
-    def load_veh(self, vnum, veh_file=None):
-        """Load vehicle parameters from string or filelike obj, 
-        alternative to default FASTSim_py_veh_db
+    def load_veh(self, vnum=None, veh_file=None, return_vehdf=False, verbose=True):
+        """Load vehicle parameters from file.
+
         Arguments:
         ---------
-        vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-        veh_file (optional override): string or filelike obj, alternative 
-        to default FASTSim_py_veh_db
-        
+        vnum: row number (int) of vehicle to simulate in 'FASTSim_py_veh_db.csv'
+        veh_file: path (str or pathlib.Path) to vehicle file 
+        return_vehdf: (Boolean) if True, returns vehdf.  Mostly useful for 
+            debugging purpsose.   
+
         If default values are modified after loading, you may need to 
         rerun set_init_calcs() and set_veh_mass() to propagate changes."""
 
-        if vnum != 0:
-            if veh_file:
-                vehdf = pd.read_csv(Path(veh_file))
-            else:
-                vehdf = pd.read_csv(DEFAULT_VEH_DB)
-        else:
+        if vnum and veh_file:
+            vehdf = pd.read_csv(Path(veh_file))
+        elif vnum:
+            vehdf = DEFAULT_VEHDF
+        elif veh_file:
             vehdf = pd.read_csv(Path(veh_file))
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
@@ -96,6 +96,8 @@ class Vehicle(object):
             vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
             vehdf.loc['Param Value', 'Selection'] = 0
             vnum = 0
+        else:
+            raise Exception('load_veh requires `vnum` and/or `veh_file`.')
         vehdf.set_index('Selection', inplace=True, drop=False)
 
         def clean_data(raw_data):
@@ -138,15 +140,27 @@ class Vehicle(object):
         # empty strings for cells that had no values easier to deal with
         vehdf.loc[vnum] = vehdf.loc[vnum].apply(clean_data)
 
-        ### selects specified vnum from vehdf
+        # set columns and values as instance attributes and values
         for col in vehdf.columns:
             col1 = col.replace(' ', '_')
             
             # assign dataframe columns 
             self.__setattr__(col1, vehdf.loc[vnum, col])
         
+        # make sure all the attributes needed by CycleJit are set
+        # this could potentially cause unexpected behaviors
+        missing_cols = set(DEFAULT_VEHDF.columns) - set(vehdf.columns)
+        if len(missing_cols) > 0:
+            if verbose:
+                print("np.nan filled in for values missing from " + "'" + str(veh_file) + "'")
+            for col in missing_cols:
+                self.__setattr__(col, np.nan)
+
         self.set_init_calcs()
-        self.set_veh_mass()
+        self.set_veh_mass()            
+
+        if return_vehdf:
+            return vehdf
 
     def set_init_calcs(self):
         """Set parameters that can be calculated after loading vehicle data"""

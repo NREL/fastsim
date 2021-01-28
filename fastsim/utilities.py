@@ -130,3 +130,17 @@ def drag_coeffs_to_abc(veh_kg, veh_fa_m2, dragCoef, wheelRrCoef, show_plots=Fals
 
     return a, b, c
 
+def l__100km_to_mpg(l__100km):
+    """Given fuel economy in L/100km, returns mpg."""
+
+    mpg = 1 / (l__100km / 3.785 / 100 / 1_000 * params.metersPerMile)
+
+    return mpg
+
+
+def mpg_to_l__100km(mpg):
+    """Given fuel economy in mpg, returns L/100km."""
+
+    l__100km = 1 / (mpg / 3.785 * params.metersPerMile / 1_000 / 100)
+
+    return l__100km

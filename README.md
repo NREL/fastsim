@@ -34,10 +34,12 @@ help(fastsim.simdrive.SimDriveClassic)
 # Testing
 
 ## Against Previous Python Version
-Run the file 'tests/test26veh3cyc.py' to compare FASTSim back to the master branch version from 17 December 2019.  For timing comparisons, run 'tests/test26veh3cyc_CPUtime.py' from within 'tests/'.  
+
+To run tests, first run the command `from fastim import tests`.  
+To compare FASTSim back to the master branch version from 17 December 2019, run `tests.test26veh3cyc.main()`.  For timing comparisons, run `tests.test26veh3cyc_CPUtime.main()`.  
 
 ## Against Excel FASTSim
-If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can run 'tests/test_vs_excel.py' from within 'tests/' to do an experimental (i.e. beta) comparison against Excel results.  
+To compare Python FASTSim results to Excel FASTSim, you can run `tests.test_vs_excel.main()` to do an experimental (i.e. beta) comparison against saved Excel results. If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can specify `rerun_excel=True` to do a live run of the Excel version.
 
 # numba
 To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim.simdrive`, `fastsim.cycle`, and `fastsim/vehicle`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
@@ -77,7 +79,7 @@ in = component input
 out = component output  
 
 # Release Notes
-0.1.0 -- pip install without using the `-e` option now copies all fastsim files and folder hierarchy into the python site-packages folder.  Tests are now included as modules inside of a sub-package.   
+0.1.1 -- now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.
 
 # Known Bugs
 
