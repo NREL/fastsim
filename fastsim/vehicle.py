@@ -45,9 +45,11 @@ class Vehicle(object):
         elif vnum and not veh_file:
             try:
                 # load numbered vehicle
-                self.load_veh(vnum)
+                int(vnum)
+                self.load_veh(int(vnum))
             except:
-                # load FASTSim's standalone vehicles
+                # load FASTSim's standalone vehicles 
+                # (vnum is a filename (str or pathlib.Path) in this case)
                 self.load_veh(veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum)
 
         else:
@@ -74,7 +76,7 @@ class Vehicle(object):
 
         Arguments:
         ---------
-        vnum: row number of vehicle to simulate in 'FASTSim_py_veh_db.csv'
+        vnum: row number (int) of vehicle to simulate in 'FASTSim_py_veh_db.csv'
         veh_file: path (str or pathlib.Path) to vehicle file 
         return_vehdf: (Boolean) if True, returns vehdf.  Mostly useful for 
             debugging purpsose.   
@@ -138,7 +140,7 @@ class Vehicle(object):
         # empty strings for cells that had no values easier to deal with
         vehdf.loc[vnum] = vehdf.loc[vnum].apply(clean_data)
 
-        ### selects specified vnum from vehdf
+        # set columns and values as instance attributes and values
         for col in vehdf.columns:
             col1 = col.replace(' ', '_')
             
