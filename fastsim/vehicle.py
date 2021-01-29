@@ -372,7 +372,7 @@ veh_spec = build_spec(Vehicle(1))
 
 
 @jitclass(veh_spec)
-class VehicleJit(object):
+class VehicleJit(Vehicle):
     """Just-in-time compiled version of Vehicle using numba."""
     
     def __init__(self):
@@ -385,3 +385,19 @@ class VehicleJit(object):
         self.mcKwOutArray = np.zeros(101, dtype=np.float64)
         self.mcFullEffArray = np.zeros(101, dtype=np.float64)
         self.mcEffArray = np.zeros(11, dtype=np.float64)
+
+    def get_numba_veh(self):
+        """Overriding base class due to numba incompatibilities."""
+        pass
+
+    def load_veh(self):
+        """Overriding base class due to numba incompatibilities."""
+        pass
+
+    def set_init_calcs(self):
+        """Overriding base class due to numba incompatibilities."""
+        pass
+
+    def set_veh_mass(self):
+        """Overriding base class due to numba incompatibilities."""
+        pass
