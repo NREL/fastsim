@@ -358,8 +358,10 @@ class Vehicle(object):
         else:
             self.vehKg = self.vehOverrideKg
 
-        self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * props.gravityMPerSec2) /
-                              (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * props.gravityMPerSec2)) * props.gravityMPerSec2
+        self.maxTracMps2 = (
+            self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * self.props.gravityMPerSec2 /
+            (1 + self.vehCgM * self.wheelCoefOfFric / self.wheelBaseM)
+            ) / (self.vehKg * self.props.gravityMPerSec2)  * self.props.gravityMPerSec2
         self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
         # for stats and interest
