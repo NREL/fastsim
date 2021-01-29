@@ -20,8 +20,6 @@ BEV  = 4
 # vehicle types to string rep
 PT_TYPES = {CONV: "Conv", HEV: "HEV", PHEV: "PHEV", BEV: "EV"}
 
-FC_EFF_TYPES = {1: "SI", 2: "Diesel - ISB280", 3: "Diesel", 4: "Fuel Cell", 5: "Hybrid Diesel", 6: "Diesel - HD",
-                7: "Diesel - HDISM Scaled", 8: "Diesel - HDISM Scaled", 9: "CNG"}
 
 ### Unit conversions that should NEVER change
 mphPerMps = 2.2369
