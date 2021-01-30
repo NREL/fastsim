@@ -52,6 +52,13 @@ class Cycle(object):
         if cyc_file_path:
             self.set_from_file(cyc_file_path)
         
+        for key in self.__dir__():
+            try:
+                self.__setattr__(key,
+                    np.array(self.__getattribute__(key), dtype=np.float64))
+            except:
+                pass
+
     def get_numba_cyc(self):
         """Returns numba jitclass version of Cycle object."""
         numba_cyc = CycleJit(len(self.cycSecs))
@@ -68,7 +75,8 @@ class Cycle(object):
         csv_path = os.path.join(CYCLES_DIR, std_cyc_name + '.csv')
         cyc = pd.read_csv(Path(csv_path))
         for column in cyc.columns:
-            self.__setattr__(column, cyc[column].to_numpy())
+            if column in STANDARD_CYCLE_KEYS:
+                self.__setattr__(column, cyc[column].to_numpy())
         self.set_dependents()
 
     def set_from_file(self, cyc_file_path):
@@ -79,7 +87,8 @@ class Cycle(object):
         cyc_file_path: path to file containing cycle data"""
         cyc = pd.read_csv(Path(cyc_file_path))
         for column in cyc.columns:
-            self.__setattr__(column, cyc[column].to_numpy())
+            if column in STANDARD_CYCLE_KEYS:
+                self.__setattr__(column, cyc[column].to_numpy())
         self.set_dependents()
 
     def set_from_dict(self, cyc_dict):
@@ -91,7 +100,8 @@ class Cycle(object):
         cyc_dict: dict containing cycle data
         """
         for key in cyc_dict.keys():
-            self.__setattr__(key, cyc_dict[key])
+            if key in STANDARD_CYCLE_KEYS:
+                self.__setattr__(key, cyc_dict[key])
         # fill in unspecified optional values with zeros
         if 'cycGrade' not in cyc_dict.keys():
             self.__setattr__('cycGrade', np.zeros(len(self.cycMps)))
@@ -104,12 +114,6 @@ class Cycle(object):
         self.cycMph = self.cycMps * params.mphPerMps
         self.secs = np.insert(np.diff(self.cycSecs), 0, 0) # time step deltas
         self.cycDistMeters = (self.cycMps * self.secs) 
-        for key in self.__dir__():
-            try:
-                self.__setattr__(key, 
-                    np.array(self.__getattribute__(key), dtype=np.float64))
-            except:
-                pass
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
@@ -138,7 +142,7 @@ cyc_spec = build_spec(Cycle('udds'))
 
 
 @jitclass(cyc_spec)
-class CycleJit(object):
+class CycleJit(Cycle):
     """Just-in-time compiled version of Cycle using numba."""
     
     def __init__(self, len_cyc):
@@ -152,12 +156,6 @@ class CycleJit(object):
         self.cycMph = np.zeros(len_cyc, dtype=np.float64)
         self.cycDistMeters = np.zeros(len_cyc, dtype=np.float64)
 
-    def set_dependents(self):
-        """Sets values based on cycMps"""
-        self.cycMph = self.cycMps * params.mphPerMps
-        self.secs = np.insert(np.diff(self.cycSecs), 0, 0)  # time step deltas
-        self.cycDistMeters = (self.cycMps * self.secs)
-
     def copy(self):
         """Return copy of CycleJit instance."""
         cyc = CycleJit(len(self.cycSecs))
@@ -170,7 +168,26 @@ class CycleJit(object):
         cyc.cycDistMeters = np.copy(self.cycDistMeters)
         return cyc
 
-    
+    def get_numba_cyc(self):
+        """Overrides parent class (Cycle) with dummy method
+        to avoid numba incompatibilities."""
+        print(self.get_numba_cyc.__doc__)
+
+    def set_standard_cycle(self):
+        """Overrides parent class (Cycle) with dummy method
+        to avoid numba incompatibilities."""
+        print(self.set_standard_cycle.__doc__)
+
+    def set_from_file(self):
+        """Overrides parent class (Cycle) with dummy method
+        to avoid numba incompatibilities."""
+        print(self.set_from_file.__doc__)
+
+    def set_from_dict(self):
+        """Overrides parent class (Cycle) with dummy method
+        to avoid numba incompatibilities."""
+        print(self.set_from_dict.__doc__)
+        
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6):
     """

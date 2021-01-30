@@ -20,8 +20,6 @@ BEV  = 4
 # vehicle types to string rep
 PT_TYPES = {CONV: "Conv", HEV: "HEV", PHEV: "PHEV", BEV: "EV"}
 
-FC_EFF_TYPES = {1: "SI", 2: "Diesel - ISB280", 3: "Diesel", 4: "Fuel Cell", 5: "Hybrid Diesel", 6: "Diesel - HD",
-                7: "Diesel - HDISM Scaled", 8: "Diesel - HDISM Scaled", 9: "CNG"}
 
 ### Unit conversions that should NEVER change
 mphPerMps = 2.2369
@@ -51,7 +49,8 @@ class PhysicalPropertiesJit(PhysicalProperties):
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
 fcPwrOutPerc = np.array(
-    [0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00])
+    [0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00], 
+    dtype=np.float64)
 
 # fc arrays and parameters
 # Efficiencies at different power out percentages by FC type -- all

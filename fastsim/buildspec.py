@@ -22,7 +22,7 @@ def build_spec(instance, error='raise'):
         ([str], string, string[:]),
     ]
 
-    if 'sim_drive' in instance.__dir__():
+    if 'SimDriveClassic' in str(instance.__class__):
         # if this import is done before this if branch is triggered,
         # weird circular import issues may happen
         from fastsim import vehicle, cycle, parameters, simdrive
@@ -38,6 +38,18 @@ def build_spec(instance, error='raise'):
                 parameters.PhysicalPropertiesJit.class_type.instance_type, None),
             ([simdrive.SimDriveParamsClassic],
                 simdrive.SimDriveParams.class_type.instance_type, None),
+        ])
+
+    if 'Vehicle' in str(instance.__class__):
+        # if this import is done before this if branch is triggered,
+        # weird circular import issues may happen
+        from fastsim import parameters
+        # list of tuples containg possible types, assigned type for scalar,
+        # and assigned type for array
+        spec_tuples.extend([
+            # complex types that are attributes of simdrive.SimDrive*
+            ([parameters.PhysicalProperties],
+                parameters.PhysicalPropertiesJit.class_type.instance_type, None),
         ])
 
     spec = []

@@ -25,8 +25,6 @@ DEFAULT_VEH_DB = os.path.abspath(
             THIS_DIR, 'resources', 'FASTSim_py_veh_db.csv'))
 DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
 
-props = params.PhysicalProperties()
-
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
@@ -40,6 +38,11 @@ class Vehicle(object):
         the `vnum` argument.  Specifying `veh_file` will explicitly load whatever
         file path is provided, using `vnum` if appropriate."""
         
+        self.props = params.PhysicalProperties()
+        self.fcPwrOutPerc = params.fcPwrOutPerc
+        self.fcPercOutArray = params.fcPercOutArray
+        self.mcPercOutArray = params.mcPercOutArray
+
         if veh_file and vnum:
             self.load_veh(vnum, veh_file=veh_file, verbose=verbose)
         elif vnum and not veh_file:
@@ -65,6 +68,8 @@ class Vehicle(object):
                 self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float64))
             elif type(self.__getattribute__(item[0])) == np.int64:
                 self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.int32))
+            elif item[0] == 'props':
+                self.numba_veh.__setattr__(item[0], params.PhysicalPropertiesJit())
             else:
                 self.numba_veh.__setattr__(
                     item[0], self.__getattribute__(item[0]))
@@ -164,28 +169,6 @@ class Vehicle(object):
 
     def set_init_calcs(self):
         """Set parameters that can be calculated after loading vehicle data"""
-        ### Build roadway power lookup table
-        self.MaxRoadwayChgKw = np.zeros(6)
-        self.chargingOn = False
-
-        # Checking if a vehicle has any hybrid components
-        if self.maxEssKwh == 0 or self.maxEssKw == 0 or self.maxMotorKw == 0:
-            self.noElecSys = True
-
-        else:
-            self.noElecSys = False
-
-        # Checking if aux loads go through an alternator
-        if self.noElecSys == True or self.maxMotorKw <= self.auxKw or self.forceAuxOnFC == True:
-            self.noElecAux = True
-
-        else:
-            self.noElecAux = False
-
-        # Copying vehPtType to additional key
-        self.vehTypeSelection = self.vehPtType
-        # to be consistent with Excel version but not used in Python version
-
         ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
         ### see "FC Model" tab in FASTSim for Excel
 
@@ -214,32 +197,6 @@ class Vehicle(object):
             raise ValueError('fcEffMap has length of {}, but should have length of 12'.
                 format(len(self.fcEffMap)))
 
-        # discrete array of possible engine power outputs
-        inputKwOutArray = params.fcPwrOutPerc * self.maxFuelConvKw
-        # Relatively continuous array of possible engine power outputs
-        fcKwOutArray = self.maxFuelConvKw * params.fcPercOutArray
-        # Initializes relatively continuous array for fcEFF
-        fcEffArray = np.zeros(len(params.fcPercOutArray))
-
-        # the following for loop populates fcEffArray
-        for j in range(0, len(params.fcPercOutArray) - 1):
-            low_index = np.argmax(inputKwOutArray >= fcKwOutArray[j])
-            fcinterp_x_1 = inputKwOutArray[low_index-1]
-            fcinterp_x_2 = inputKwOutArray[low_index]
-            fcinterp_y_1 = self.fcEffMap[low_index-1]
-            fcinterp_y_2 = self.fcEffMap[low_index]
-            fcEffArray[j] = (fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 -
-                                fcinterp_x_1) * (fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
-
-        # populate final value
-        fcEffArray[-1] = self.fcEffMap[-1]
-
-        # assign corresponding values in veh dict
-        self.fcEffArray = fcEffArray
-        self.fcKwOutArray = fcKwOutArray
-        self.maxFcEffKw = self.fcKwOutArray[np.argmax(fcEffArray)]
-        self.fcMaxOutkW = np.max(inputKwOutArray)
-            
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
 
@@ -255,21 +212,75 @@ class Vehicle(object):
                              format(len(self.mcPwrOutPerc)))
 
         try:
-            self.largeBaselineEff = np.array(ast.literal_eval(self.largeBaselineEff))
+            self.largeBaselineEff = np.array(
+                ast.literal_eval(self.largeBaselineEff))
         except ValueError:
             self.largeBaselineEff = params.large_baseline_eff
         if len(self.largeBaselineEff) != 11:
             raise ValueError('largeBaselineEff has length of {}, but should have length of 11'.
                              format(len(self.largeBaselineEff)))
-        
+
         try:
-            self.smallBaselineEff = np.array(ast.literal_eval(self.smallBaselineEff))
+            self.smallBaselineEff = np.array(
+                ast.literal_eval(self.smallBaselineEff))
         except ValueError:
             self.smallBaselineEff = params.small_baseline_eff
+
         if len(self.smallBaselineEff) != 11:
             raise ValueError('smallBaselineEff has length of {}, but should have length of 11'.
-                             format(len(self.smallBaselineEff)))
+                format(len(self.smallBaselineEff)))
 
+        if 'stopStart' in self.__dir__() and np.isnan(self.__getattribute__('stopStart')):
+            self.stopStart = False
+
+        self.set_dependents()
+
+    def set_dependents(self):
+        """Sets derived parameters."""
+        
+        ### Build roadway power lookup table
+        self.MaxRoadwayChgKw = np.zeros(6)
+        self.chargingOn = False
+
+        # Checking if a vehicle has any hybrid components
+        if (self.maxEssKwh == 0) or (self.maxEssKw == 0) or (self.maxMotorKw == 0):
+            self.noElecSys = True
+        else:
+            self.noElecSys = False
+
+        # Checking if aux loads go through an alternator
+        if (self.noElecSys == True) or (self.maxMotorKw <= self.auxKw) or (self.forceAuxOnFC == True):
+            self.noElecAux = True
+        else:
+            self.noElecAux = False
+
+        # Copying vehPtType to additional key
+        self.vehTypeSelection = self.vehPtType
+        # to be consistent with Excel version but not used in Python version
+
+        # discrete array of possible engine power outputs
+        self.inputKwOutArray = self.fcPwrOutPerc * self.maxFuelConvKw
+        # Relatively continuous array of possible engine power outputs
+        self.fcKwOutArray = self.maxFuelConvKw * self.fcPercOutArray
+        # Initializes relatively continuous array for fcEFF
+        self.fcEffArray = np.zeros(len(self.fcPercOutArray))
+
+        # the following for loop populates fcEffArray
+        for j in range(0, len(self.fcPercOutArray) - 1):
+            low_index = np.argmax(self.inputKwOutArray >= self.fcKwOutArray[j])
+            fcinterp_x_1 = self.inputKwOutArray[low_index-1]
+            fcinterp_x_2 = self.inputKwOutArray[low_index]
+            fcinterp_y_1 = self.fcEffMap[low_index-1]
+            fcinterp_y_2 = self.fcEffMap[low_index]
+            self.fcEffArray[j] = (self.fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 -
+                                fcinterp_x_1) * (fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
+
+        # populate final value
+        self.fcEffArray[-1] = self.fcEffMap[-1]
+
+        self.maxFcEffKw = self.fcKwOutArray[np.argmax(self.fcEffArray)]
+        self.fcMaxOutkW = np.max(self.inputKwOutArray)
+            
         if np.isnan(self.modernMax):
             self.modernMax = params.modern_max            
         
@@ -285,10 +296,10 @@ class Vehicle(object):
                 (1 - mcKwAdjPerc)*(self.smallBaselineEff[k])
 
         mcInputKwOutArray = self.mcPwrOutPerc * self.maxMotorKw
-        mcFullEffArray = np.zeros(len(params.mcPercOutArray))
-        mcKwOutArray = np.linspace(0, 1, len(params.mcPercOutArray)) * self.maxMotorKw
+        mcFullEffArray = np.zeros(len(self.mcPercOutArray))
+        mcKwOutArray = np.linspace(0, 1, len(self.mcPercOutArray)) * self.maxMotorKw
 
-        for m in range(1, len(params.mcPercOutArray) - 1):
+        for m in range(1, len(self.mcPercOutArray) - 1):
             low_index = np.argmax(mcInputKwOutArray >= mcKwOutArray[m])
 
             fcinterp_x_1 = mcInputKwOutArray[low_index-1]
@@ -303,7 +314,7 @@ class Vehicle(object):
         mcFullEffArray[-1] = mcEffArray[-1]
 
         mcKwInArray = np.concatenate(
-            [[0], mcKwOutArray[1:] / mcFullEffArray[1:]])
+            (np.zeros(1, dtype=np.float64), mcKwOutArray[1:] / mcFullEffArray[1:]))
         mcKwInArray[0] = 0
 
         self.mcKwInArray = mcKwInArray
@@ -311,9 +322,6 @@ class Vehicle(object):
         self.mcMaxElecInKw = max(mcKwInArray)
         self.mcFullEffArray = mcFullEffArray
         self.mcEffArray = mcEffArray
-
-        if 'stopStart' in self.__dir__() and np.isnan(self.__getattribute__('stopStart')):
-            self.stopStart = False
 
         self.mcMaxElecInKw = max(self.mcKwInArray)
 
@@ -358,8 +366,10 @@ class Vehicle(object):
         else:
             self.vehKg = self.vehOverrideKg
 
-        self.maxTracMps2 = ((((self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * props.gravityMPerSec2) /
-                              (1+((self.vehCgM * self.wheelCoefOfFric) / self.wheelBaseM))))/(self.vehKg * props.gravityMPerSec2)) * props.gravityMPerSec2
+        self.maxTracMps2 = (
+            self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * self.props.gravityMPerSec2 /
+            (1 + self.vehCgM * self.wheelCoefOfFric / self.wheelBaseM)
+            ) / (self.vehKg * self.props.gravityMPerSec2)  * self.props.gravityMPerSec2
         self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
         # for stats and interest
@@ -372,7 +382,7 @@ veh_spec = build_spec(Vehicle(1))
 
 
 @jitclass(veh_spec)
-class VehicleJit(object):
+class VehicleJit(Vehicle):
     """Just-in-time compiled version of Vehicle using numba."""
     
     def __init__(self):
@@ -385,3 +395,21 @@ class VehicleJit(object):
         self.mcKwOutArray = np.zeros(101, dtype=np.float64)
         self.mcFullEffArray = np.zeros(101, dtype=np.float64)
         self.mcEffArray = np.zeros(11, dtype=np.float64)
+
+        self.props = params.PhysicalPropertiesJit()
+
+    def get_numba_veh(self):
+        """Overrides parent class (Cycle) with dummy method 
+        to avoid numba incompatibilities."""
+        print(self.get_numba_veh.__doc__)
+
+    def load_veh(self):
+        """Overrides parent class (Cycle) with dummy method 
+        to avoid numba incompatibilities."""
+        print(self.load_veh.__doc__)
+
+    def set_init_calcs(self):
+        """Overrides parent class (Cycle) with dummy method 
+        to avoid numba incompatibilities.
+        Runs self.set_dependents()"""
+        self.set_dependents()
