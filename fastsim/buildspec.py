@@ -22,7 +22,8 @@ def build_spec(instance, error='raise'):
         ([str], string, string[:]),
     ]
 
-    if 'SimDriveClassic' in str(instance.__class__):
+    if any(class_name in str(instance.__class__) for
+        class_name in ['SimDriveClassic', 'SimDriveHot']):
         # if this import is done before this if branch is triggered,
         # weird circular import issues may happen
         from fastsim import vehicle, cycle, parameters, simdrive
