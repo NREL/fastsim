@@ -29,34 +29,37 @@ def main(use_jitclass=True, err_tol=1e-4):
     """
     t0 = time.time()
 
-    cycles = ['udds', 'hwfet', 'us06']
-    vehicles = np.arange(1, 27)
-
     print('Instantiating classes.')
     print()
+
+    if use_jitclass:
+        cycs = [cycle.Cycle(cyc_name).get_numba_cyc() 
+                for cyc_name in ['udds', 'hwfet', 'us06']]
+    else:
+        cycs = [cycle.Cycle(cyc_name)
+                for cyc_name in ['udds', 'hwfet', 'us06']]
+    vehnos = np.arange(1, 27)
+
     veh = vehicle.Vehicle(1)
     if use_jitclass:
         veh_jit = veh.get_numba_veh()
-    cyc = cycle.Cycle('udds')
-    if use_jitclass:
-        cyc_jit = cyc.get_numba_cyc()
-
     energyAuditErrors = []
 
+    dict_diag = {}
+    t0a = 0 
     iter = 0
-    for vehno in vehicles:
+    for vehno in vehnos:
         print('vehno =', vehno)
-        for cycname in cycles:
-            if not((vehno == 1) and (cycname == 'udds')):
-                cyc.set_standard_cycle(cycname)
-                if use_jitclass:
-                    cyc_jit = cyc.get_numba_cyc()
-                veh.load_veh(vehno)
+        if vehno == 2:
+            t0a = time.time()
+        for cyc in cycs:
+            if not(vehno == 1):
+                veh = vehicle.Vehicle(vehno)
                 if use_jitclass:
                     veh_jit = veh.get_numba_veh()
 
             if use_jitclass:
-                sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
+                sim_drive = simdrive.SimDriveJit(cyc, veh_jit)
                 sim_drive.sim_drive()
             else:
                 sim_drive = simdrive.SimDriveClassic(cyc, veh)
@@ -68,16 +71,15 @@ def main(use_jitclass=True, err_tol=1e-4):
             energyAuditErrors.append(sim_drive.energyAuditError)
 
             if iter == 0:
-                dict_diag = {}
                 dict_diag['vnum'] = [vehno]
-                dict_diag['cycle'] = [cycname]
+                dict_diag['cycle'] = [cyc]
                 for key in diagno.keys():
                     dict_diag[key] = [diagno[key]]
                 iter += 1
 
             else:
                 dict_diag['vnum'].append(vehno)
-                dict_diag['cycle'].append(cycname)
+                dict_diag['cycle'].append(cyc)
                 for key in diagno.keys():
                     dict_diag[key].append(diagno[key])
 
@@ -85,7 +87,9 @@ def main(use_jitclass=True, err_tol=1e-4):
 
     t1 = time.time()
     print()
-    print('Elapsed time: ', round(t1 - t0, 2), 's')
+    print('Elapsed time: {:.2f} s'.format(t1 - t0))
+    print('Elapsed time since first vehicle: {:.2f} s'.format(t1 - t0a, 2))
+
 
     df0 = pd.read_csv(Path(simdrive.__file__).parent.resolve() / 'resources/master_benchmark_vars.csv')
 
