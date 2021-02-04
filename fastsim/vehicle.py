@@ -161,17 +161,6 @@ class Vehicle(object):
             for col in missing_cols:
                 self.__setattr__(col, np.nan)
 
-        self.set_init_calcs()
-        self.set_veh_mass()            
-
-        if return_vehdf:
-            return vehdf
-
-    def set_init_calcs(self):
-        """Set parameters that can be calculated after loading vehicle data"""
-        ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
-        ### see "FC Model" tab in FASTSim for Excel
-
         # Power and efficiency arrays are defined in parameters.py
         # Can also be input in CSV as array under column fcEffMap of form
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
@@ -193,10 +182,6 @@ class Vehicle(object):
 
             elif self.fcEffType == 5:  # heavy duty Diesel engine
                 self.fcEffMap = params.eff_hd_diesel + self.fcAbsEffImpr
-        if len(self.fcEffMap) != 12:
-            raise ValueError('fcEffMap has length of {}, but should have length of 12'.
-                format(len(self.fcEffMap)))
-
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
 
@@ -207,6 +192,23 @@ class Vehicle(object):
             self.mcPwrOutPerc = np.array(ast.literal_eval(self.mcPwrOutPerc))
         except ValueError:
             self.mcPwrOutPerc = params.mcPwrOutPerc
+
+
+        self.set_init_calcs()
+        self.set_veh_mass()            
+
+        if return_vehdf:
+            return vehdf
+
+    def set_init_calcs(self):
+        """Set parameters that can be calculated after loading vehicle data"""
+        ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
+        ### see "FC Model" tab in FASTSim for Excel
+
+        if len(self.fcEffMap) != 12:
+            raise ValueError('fcEffMap has length of {}, but should have length of 12'.
+                             format(len(self.fcEffMap)))
+
         if len(self.mcPwrOutPerc) != 11:
             raise ValueError('mcPwrOutPerc has length of {}, but should have length of 11'.
                              format(len(self.mcPwrOutPerc)))
