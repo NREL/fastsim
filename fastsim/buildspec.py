@@ -40,6 +40,12 @@ def build_spec(instance, error='raise'):
             ([simdrive.SimDriveParamsClassic],
                 simdrive.SimDriveParams.class_type.instance_type, None),
         ])
+        
+        if 'SimDriveHot' in str(instance.__class__):
+            from fastsim imp
+            spec_tuples.extend([
+                ([])
+            ])
 
     if 'Vehicle' in str(instance.__class__):
         # if this import is done before this if branch is triggered,
