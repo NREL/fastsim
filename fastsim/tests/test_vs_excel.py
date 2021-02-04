@@ -4,7 +4,6 @@
 
 
 # local modules
-import xlwings as xw
 import pandas as pd
 import time
 import numpy as np
@@ -13,12 +12,17 @@ import json
 import sys
 import importlib
 from pathlib import Path
-import xlwings as xw
 from math import isclose
 import importlib
 import pickle
 from fastsim import simdrive, vehicle, cycle, simdrivelabel
 importlib.reload(simdrivelabel) # useful for debugging
+
+try:
+    import xlwings as xw
+    xw_success = True
+except:
+    xw_success = False
 
 
 def run_python(use_jit=False, verbose=True):
@@ -70,13 +74,13 @@ def run_excel(prev_res_path=PREV_RES_PATH,
     prev_res_path : path (str) to prevous results in pickle (*.p) file
     rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
 
-    if not(rerun_excel):
+    if not(rerun_excel) and prev_res_path:
         print("Loading Excel results.")
         if '.p' in str(prev_res_path):
             res_excel = pickle.load(open(prev_res_path, 'rb'))
         elif '.json' in str(prev_res_path):
             res_excel = json.load(open(prev_res_path, 'r'))
-    else:  
+    elif xw_success:  
         print("Running Excel")
         t0 = time.time()
 
@@ -133,6 +137,11 @@ def run_excel(prev_res_path=PREV_RES_PATH,
         t1 = time.time()
         print()
         print('Elapsed time: ', round(t1 - t0, 2), 's')
+    else:
+        print("""Warning: cannot run test_vs_excel.run_excel()
+        because xlwings is not installed. Run the command:
+        `pip install xlwings` if compatible with your OS.""")
+
 
     return res_excel
 
@@ -205,9 +214,18 @@ def main(use_jitclass=True, err_tol=0.001,
     prev_res_path : path (str) to prevous results in pickle (*.p) file
     rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
 
-    res_python = run_python(verbose=False, use_jit=use_jitclass)
-    res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
-    res_comps = compare(res_python, res_excel)
+    if xw_success and rerun_excel:
+        res_python = run_python(verbose=False, use_jit=use_jitclass)
+        res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
+        res_comps = compare(res_python, res_excel)
+    elif prev_res_path and not(rerun_excel):
+        res_python = run_python(verbose=False, use_jit=use_jitclass)
+        res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
+        res_comps = compare(res_python, res_excel)
+    else:
+        print("""Warning: cannot run test_vs_excel.run_excel()
+        because xlwings is not installed. Run the command:
+        `pip install xlwings` if compatible with your OS.""")
 
 if __name__ == '__main__':
     main()
