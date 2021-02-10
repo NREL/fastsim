@@ -2,6 +2,7 @@
 For example usage, see ../README.md"""
 
 ### Import necessary python modules
+from build.lib.fastsim import simdrive
 import os
 from scipy.interpolate import interp1d
 import numpy as np
@@ -25,32 +26,33 @@ class FluidProperties(object):
     """Fluid Properties for calculations"""
     def __init__(self):
         self.teAirForPropsDegC = np.arange(-20, 140, 20, dtype=np.float64) # deg C
-        self.rhoAirArray = np.array([1.38990154, 1.28813317, 1.20025098, 1.12359437, 
+        # density of air [kg / m ** 3]
+        self.rhoAirArray = np.array([1.38990154, 1.28813317, 1.20025098, 1.12359437,
                                 1.05614161, 0.99632897, 0.94292798, 0.89496013], 
                                 dtype=np.float64)
-                                # density of air [kg / m ** 3]
+        # thermal conductivity of air [W / (m * K)]
         self.kAirArray = np.array([0.02262832, 0.02416948, 0.02567436, 0.02714545, 0.02858511,
                             0.02999558, 0.03137898, 0.03273731], dtype=np.float64)
-                            # thermal conductivity of air [W / (m * K)]
+        # specific heat of air [kJ / (kg * K)]
         self.cpAirArray = np.array([1003.15536494, 1003.71709112, 1004.49073603, 1005.51659149,
                             1006.82540109, 1008.43752504, 1010.36365822, 1012.60611422], 
                             dtype=np.float64) / 1e3
-                            # specific heat of air [kJ / (kg * K)]
+        # specific enthalpy of air [kJ / kg]
         self.hAirArray = np.array([253436.58748754, 273504.99629716, 293586.68523714, 313686.30935277,
                             333809.23760193, 353961.34965289, 374148.83386308, 394378.00634841], 
                             dtype=np.float64) / 1e3
-                            # specific enthalpy of air [kJ / kg]
+        # Prandtl number of air
         self.PrAirArray = np.array([0.71884378, 0.7159169, 0.71334768, 0.71112444, 0.70923784,
                             0.7076777, 0.70643177, 0.70548553], 
                             dtype=np.float64)
-                                # Prandtl number of air
+        # Dynamic viscosity of air [Pa * s]
         self.muAirArray = np.array([1.62150624e-05, 1.72392601e-05, 1.82328655e-05, 1.91978833e-05,
                             2.01362020e-05, 2.10495969e-05, 2.19397343e-05, 2.28081749e-05], 
                             dtype=np.float64)
-                            # Dynamic viscosity of air [Pa * s]
+        # array of Re values for piecewise caluclation of Nu
         self.re_array = np.array([0, 4, 40, 4e3, 40e3], dtype=np.float64)
 
-@jitclass(build_spec(FluidProperties))
+@jitclass(build_spec(FluidProperties()))
 class FluidPropertiesJit(FluidProperties):
     """Numba jitclass version of FluidProperties"""
     pass
@@ -142,6 +144,14 @@ class SimDriveHot(SimDriveClassic):
         self.init_arrays()
         self.init_thermal_scalars(teFcInitDegC, teCabInitDegC)
         self.init_thermal_arrays(teAmbDegC)
+
+    def __init_objects__(self, cyc, veh):
+        self.veh = veh
+        self.cyc = cyc.copy()  # this cycle may be manipulated
+        self.cyc0 = cyc.copy()  # this cycle is not to be manipulated
+        self.sim_params = simdrive.SimDriveParamsClassic()
+        self.props = params.PhysicalProperties()
+        self.fprops = FluidProperties()
 
     def init_thermal_scalars(self, teFcInitDegC, teCabInitDegC):
         # scalars
@@ -240,9 +250,10 @@ class SimDriveHot(SimDriveClassic):
         # Constitutive equations for fuel converter
         self.fcHeatGenKw[i] = self.fcCombToThrmlMassFrac * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
         teFcFilmDegC = 0.5 * (self.teFcDegC[i-1] + self.teAmbDegC[i-1])
-        Re_fc = np.interp(teFcFilmDegC, teAirForPropsDegC, rhoAirArray) \
-            * self.mpsAch[i-1] * self.fcDiam / \
-            np.interp(teFcFilmDegC, teAirForPropsDegC, muAirArray) 
+        Re_fc = np.interp(teFcFilmDegC, self.fprops.teAirForPropsDegC, 
+            self.fprops.rhoAirArray) * self.mpsAch[i-1] * self.fcDiam / \
+            np.interp(teFcFilmDegC, self.fprops.teAirForPropsDegC, 
+                self.fprops.muAirArray) 
         # density * speed * diameter / dynamic viscosity
 
         def get_sphere_conv_params(Re):
@@ -275,8 +286,8 @@ class SimDriveHot(SimDriveClassic):
             # if moving, scale based on speed dependent convection and thermostat opening
             # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
             hFcToAmbSphere = (get_sphere_conv_params(Re_fc)[0] * Re_fc ** get_sphere_conv_params(Re_fc)[1]) * \
-                np.interp(teFcFilmDegC, teAirForPropsDegC, PrAirArray) ** (1 / 3) * \
-                np.interp(teFcFilmDegC, teAirForPropsDegC, kAirArray) / self.fcDiam
+                np.interp(teFcFilmDegC, self.fprops.teAirForPropsDegC, self.fprops.PrAirArray) ** (1 / 3) * \
+                np.interp(teFcFilmDegC, self.fprops.teAirForPropsDegC, self.fprops.kAirArray) / self.fcDiam
             self.hFcToAmb[i] = np.interp(self.teFcDegC[i-1],
                 [self.teTStatSTODegC, self.teTStatFODegC],
                 [hFcToAmbSphere, hFcToAmbSphere * self.radiator_eff])
@@ -365,6 +376,7 @@ class SimDriveHotJit(SimDriveHot):
         self.cyc0 = cyc.copy()  # this cycle is not to be manipulated
         self.sim_params = SimDriveParams()
         self.props = params.PhysicalPropertiesJit()
+        self.fprops = FluidPropertiesJit()
 
 
     def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):

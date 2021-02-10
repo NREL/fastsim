@@ -42,9 +42,10 @@ def build_spec(instance, error='raise'):
         ])
         
         if 'SimDriveHot' in str(instance.__class__):
-            from fastsim imp
+            from fastsim import simdrivehot
             spec_tuples.extend([
-                ([])
+                ([simdrivehot.FluidProperties], 
+                    simdrivehot.FluidPropertiesJit.class_type.instance_type, None)
             ])
 
     if 'Vehicle' in str(instance.__class__):
@@ -62,26 +63,26 @@ def build_spec(instance, error='raise'):
     spec = []
 
     for key, val in instance.__dict__.items():
-        t = type(val)
         jit_type = None
-        if t == np.ndarray:
+        if type(val) == np.ndarray:
             for matched_types, _, assigned_type in spec_tuples:
                 if type(val[0]) in matched_types:
                     jit_type = assigned_type
                     break
         else:
             for matched_types, assigned_type, _ in spec_tuples:
-                if t in matched_types:
+                if type(val) in matched_types:
                     jit_type = assigned_type
                     break
+        debug = 'yes'
         if jit_type is None:
+            err_msg = ("Type of " + str(instance) + "." + str(key) + 
+                    " does not map to anything in spec_tuples" 
+                    + '\nYou may need to modify `spec_tuples` in `build_spec`.')
             if error == 'raise':
-                raise Exception(
-                    str(t) + " does not map to anything in spec_tuples" 
-                    + '\nYou may need to modify `spec_tuples` in `build_spec`.')
+                raise Exception(err_msg)
             elif error == 'warn':
-                print("Warning: " + str(t) + " does not map to anything in spec_tuples."
-                    + '\nYou may need to modify `spec_tuples` in `build_spec`.')
+                print("Warning: " + err_msg)
             elif error == 'ignore':
                 pass
             else:
