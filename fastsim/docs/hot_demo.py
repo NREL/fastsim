@@ -33,8 +33,6 @@ importlib.reload(hot_utils)
 # %% [markdown]
 # # IMPORTANT TASKS
 # ## General
-# Make sure temp is initalized for each sim_drive_walk  
-# Make sure fc efficiency impact is accounted for  
 # Make sure heater affects engine temp and maybe aux load  
 # Make sure A/C affects aux load  
 # Cabin thermal model before tuning?
@@ -321,7 +319,6 @@ plt.legend(title='Ambient Temp [°C]')
 plt.xlabel('Engine Initial Temperature [°C]')
 plt.ylabel('Fuel Economy Decrease [mpg]' + '\n w.r.t. Baseline')
 # plt.plot(init_temps_degC, np.ones(len(init_temps_degC)) * sim_drive_no_thrm.mpgge)
-plt.savefig('plots/FE vs temp sweep.svg')
 plt.show()
 
 
@@ -333,7 +330,6 @@ plt.legend(title='Ambient Temp [°C]')
 plt.xlabel('Engine Initial Temperature [°C]')
 plt.ylabel('Fuel Economy [mpg]')
 plt.plot(init_temps_degC, np.ones(len(init_temps_degC)) * sim_drive_no_thrm.mpgge)
-plt.savefig('plots/FE vs temp sweep.svg')
 plt.show()
 
 
@@ -435,5 +431,3 @@ mean = np.trapz(x=df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values[::10],
     / df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values[-1]
 print("Elapsed time: {:.3e} s".format(time.time() - t0))
 print(f'mean = {mean:.6e}')
-
-
