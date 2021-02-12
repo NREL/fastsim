@@ -457,8 +457,13 @@ class SimDriveClassic(object):
                 self.curMaxMcElecKwIn[i] = self.curMaxMcKwOut[i] / \
                     self.veh.mcFullEffArray[-1]
             else:
-                self.curMaxMcElecKwIn[i] = self.curMaxMcKwOut[i] / self.veh.mcFullEffArray[max(1, np.argmax(self.veh.mcKwOutArray
-                                            > min(self.veh.maxMotorKw - 0.01, self.curMaxMcKwOut[i])) - 1)]
+                self.curMaxMcElecKwIn[i] = (self.curMaxMcKwOut[i] / 
+                    self.veh.mcFullEffArray[
+                        max(1, np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, 
+                            self.curMaxMcKwOut[i])) - 1
+                        )
+                    ]
+                )
 
         if self.veh.maxMotorKw == 0:
             self.essLimMcRegenPercKw[i] = 0.0
@@ -474,8 +479,12 @@ class SimDriveClassic(object):
                 self.essLimMcRegenKw[i] = min(
                     self.veh.maxMotorKw, self.curMaxEssChgKw[i] / self.veh.mcFullEffArray[-1])
             else:
-                self.essLimMcRegenKw[i] = min(self.veh.maxMotorKw, self.curMaxEssChgKw[i] / self.veh.mcFullEffArray
-                                                [max(1, np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.curMaxEssChgKw[i] - self.curMaxRoadwayChgKw[i])) - 1)])
+                self.essLimMcRegenKw[i] = min(self.veh.maxMotorKw, 
+                    self.curMaxEssChgKw[i] / self.veh.mcFullEffArray[
+                        max(1, np.argmax(
+                            self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, 
+                            self.curMaxEssChgKw[i] - self.curMaxRoadwayChgKw[i])) - 1)]
+                )
 
         self.curMaxMechMcKwIn[i] = min(
             self.essLimMcRegenKw[i], self.veh.maxMotorKw)
@@ -717,11 +726,13 @@ class SimDriveClassic(object):
         elif self.transKwOutAch[i] < self.veh.maxFcEffKw:
 
             if self.fcKwGapFrEff[i] == self.veh.maxMotorKw:
-                self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / \
-                    self.veh.mcFullEffArray[-1] * -1
+                self.mcElectInKwForMaxFcEff[i] = -self.fcKwGapFrEff[i] / \
+                    self.veh.mcFullEffArray[-1]
             else:
-                self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / self.veh.mcFullEffArray[max(
-                    1, np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1)] * -1
+                self.mcElectInKwForMaxFcEff[i] = (-self.fcKwGapFrEff[i] / 
+                    self.veh.mcFullEffArray[max(1, 
+                        np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1)]
+                )
 
         else:
 
@@ -737,12 +748,13 @@ class SimDriveClassic(object):
 
         elif self.transKwInAch[i] > 0:
             if self.transKwInAch[i] == self.veh.maxMotorKw:
-
                 self.electKwReq4AE[i] = self.transKwInAch[i] / \
                     self.veh.mcFullEffArray[-1] + self.auxInKw[i]
             else:
-                self.electKwReq4AE[i] = self.transKwInAch[i] / self.veh.mcFullEffArray[max(1, np.argmax(
-                    self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.transKwInAch[i])) - 1)] + self.auxInKw[i]
+                self.electKwReq4AE[i] = (self.transKwInAch[i] / 
+                    self.veh.mcFullEffArray[max(1, np.argmax(
+                        self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.transKwInAch[i])) - 1)] + self.auxInKw[i]
+                )
 
         else:
             self.electKwReq4AE[i] = 0
@@ -1029,8 +1041,12 @@ class SimDriveClassic(object):
             self.fcKwOutAch_pct[i] = 0
 
         else:
-            self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[np.argmax(
-                self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW)) - 1])
+            self.fcKwInAch[i] = (
+                self.fcKwOutAch[i] / (self.veh.fcEffArray[np.argmax(
+                    self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW)) - 1]) 
+                if self.veh.fcEffArray[np.argmax(
+                    self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW)) - 1] != 0
+                else 0)
 
         self.fsKwOutAch[i] = self.fcKwInAch[i]
 
@@ -1109,7 +1125,8 @@ class SimDriveClassic(object):
         self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
             (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
 
-        if np.abs(self.energyAuditError) > params.ENERGY_AUDIT_ERROR_TOLERANCE:
+        if (np.abs(self.energyAuditError) > params.ENERGY_AUDIT_ERROR_TOLERANCE) and \
+            self.sim_params.verbose:
             print('Warning: There is a problem with conservation of energy.')
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \

@@ -264,21 +264,8 @@ class Vehicle(object):
         self.inputKwOutArray = self.fcPwrOutPerc * self.maxFuelConvKw
         # Relatively continuous array of possible engine power outputs
         self.fcKwOutArray = self.maxFuelConvKw * self.fcPercOutArray
-        # Initializes relatively continuous array for fcEFF
-        self.fcEffArray = np.zeros(len(self.fcPercOutArray))
-
-        # the following for loop populates fcEffArray
-        for j in range(0, len(self.fcPercOutArray) - 1):
-            low_index = np.argmax(self.inputKwOutArray >= self.fcKwOutArray[j])
-            fcinterp_x_1 = self.inputKwOutArray[low_index-1]
-            fcinterp_x_2 = self.inputKwOutArray[low_index]
-            fcinterp_y_1 = self.fcEffMap[low_index-1]
-            fcinterp_y_2 = self.fcEffMap[low_index]
-            self.fcEffArray[j] = (self.fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 -
-                                fcinterp_x_1) * (fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
-
-        # populate final value
-        self.fcEffArray[-1] = self.fcEffMap[-1]
+        # Creates relatively continuous array for fcEff
+        self.fcEffArray = np.interp(x=self.fcPercOutArray, xp=self.fcPwrOutPerc, fp=self.fcEffMap)
 
         self.maxFcEffKw = self.fcKwOutArray[np.argmax(self.fcEffArray)]
         self.fcMaxOutkW = np.max(self.inputKwOutArray)
@@ -291,29 +278,20 @@ class Vehicle(object):
         large_baseline_eff_adj = self.largeBaselineEff + modern_diff
 
         mcKwAdjPerc = max(0.0, min((self.maxMotorKw - 7.5)/(75.0 - 7.5), 1.0))
-        mcEffArray = np.zeros(len(self.mcPwrOutPerc))
+        self.mcEffArray = np.zeros(len(self.mcPwrOutPerc))
 
-        for k in range(0, len(self.mcPwrOutPerc)):
-            mcEffArray[k] = mcKwAdjPerc * large_baseline_eff_adj[k] + \
-                (1 - mcKwAdjPerc)*(self.smallBaselineEff[k])
+        self.mcEffArray = mcKwAdjPerc * large_baseline_eff_adj + \
+                (1 - mcKwAdjPerc) * self.smallBaselineEff
 
         mcInputKwOutArray = self.mcPwrOutPerc * self.maxMotorKw
-        mcFullEffArray = np.zeros(len(self.mcPercOutArray))
         mcKwOutArray = np.linspace(0, 1, len(self.mcPercOutArray)) * self.maxMotorKw
 
-        for m in range(1, len(self.mcPercOutArray) - 1):
-            low_index = np.argmax(mcInputKwOutArray >= mcKwOutArray[m])
-
-            fcinterp_x_1 = mcInputKwOutArray[low_index-1]
-            fcinterp_x_2 = mcInputKwOutArray[low_index]
-            fcinterp_y_1 = mcEffArray[low_index-1]
-            fcinterp_y_2 = mcEffArray[low_index]
-
-            mcFullEffArray[m] = (mcKwOutArray[m] - fcinterp_x_1)/(
-                fcinterp_x_2 - fcinterp_x_1)*(fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
+        mcFullEffArray = np.interp(
+            x=self.mcPercOutArray, xp=self.mcPwrOutPerc, fp=self.mcEffArray)
+        mcFullEffArray[0] = 0.0 #
 
         mcFullEffArray[0] = 0
-        mcFullEffArray[-1] = mcEffArray[-1]
+        mcFullEffArray[-1] = self.mcEffArray[-1]
 
         mcKwInArray = np.concatenate(
             (np.zeros(1, dtype=np.float64), mcKwOutArray[1:] / mcFullEffArray[1:]))
@@ -323,7 +301,6 @@ class Vehicle(object):
         self.mcKwOutArray = mcKwOutArray
         self.mcMaxElecInKw = max(mcKwInArray)
         self.mcFullEffArray = mcFullEffArray
-        self.mcEffArray = mcEffArray
 
         self.mcMaxElecInKw = max(self.mcKwInArray)
 
