@@ -264,21 +264,8 @@ class Vehicle(object):
         self.inputKwOutArray = self.fcPwrOutPerc * self.maxFuelConvKw
         # Relatively continuous array of possible engine power outputs
         self.fcKwOutArray = self.maxFuelConvKw * self.fcPercOutArray
-        # Initializes relatively continuous array for fcEFF
-        self.fcEffArray = np.zeros(len(self.fcPercOutArray))
-
-        # the following for loop populates fcEffArray
-        for j in range(0, len(self.fcPercOutArray) - 1):
-            low_index = np.argmax(self.inputKwOutArray >= self.fcKwOutArray[j])
-            fcinterp_x_1 = self.inputKwOutArray[low_index-1]
-            fcinterp_x_2 = self.inputKwOutArray[low_index]
-            fcinterp_y_1 = self.fcEffMap[low_index-1]
-            fcinterp_y_2 = self.fcEffMap[low_index]
-            self.fcEffArray[j] = (self.fcKwOutArray[j] - fcinterp_x_1)/(fcinterp_x_2 -
-                                fcinterp_x_1) * (fcinterp_y_2 - fcinterp_y_1) + fcinterp_y_1
-
-        # populate final value
-        self.fcEffArray[-1] = self.fcEffMap[-1]
+        # Creates relatively continuous array for fcEff
+        self.fcEffArray = np.interp(x=self.fcPercOutArray, xp=self.fcPwrOutPerc, fp=self.fcEffMap)
 
         self.maxFcEffKw = self.fcKwOutArray[np.argmax(self.fcEffArray)]
         self.fcMaxOutkW = np.max(self.inputKwOutArray)
