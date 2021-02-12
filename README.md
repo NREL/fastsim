@@ -79,6 +79,7 @@ in = component input
 out = component output  
 
 # Release Notes
+0.1.4 -- Bug fix: `mcEffMap` is now robust to having zero as first element
 0.1.3 -- Bug fix: `fastsim.vehicle.Vehicle` method `set_init_calcs` no longer overrides `fcEffMap`.  
 0.1.2 -- Fixes os-dependency of xlwings by not running stuff that needs xlwings.  Improvements in functional tests.  Refinment utomated typying of jitclass objects.  
 0.1.1 -- Now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.  
