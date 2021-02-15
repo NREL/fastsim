@@ -14,7 +14,7 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from fastsim import parameters as params
+from fastsim import params, utils
 from fastsim.simdrive import SimDriveClassic, SimDriveParams
 from fastsim.cycle import Cycle
 from fastsim.vehicle import Vehicle
@@ -26,10 +26,6 @@ class AirProperties(object):
     def __init__(self):
         # array at of temperatures at which properties are evaluated ()
         self._te_array_degC = np.arange(-20, 140, 20, dtype=np.float64) 
-        # density of air [kg / m ** 3]
-        self._rho_array = np.array([1.38990154, 1.28813317, 1.20025098, 1.12359437,
-                                1.05614161, 0.99632897, 0.94292798, 0.89496013], 
-                                dtype=np.float64)
         # thermal conductivity of air [W / (m * K)]
         self._k_Array = np.array([0.02262832, 0.02416948, 0.02567436, 0.02714545, 0.02858511,
                             0.02999558, 0.03137898, 0.03273731], dtype=np.float64)
@@ -52,8 +48,8 @@ class AirProperties(object):
         # array of Re values for piecewise caluclation of Nu
         self.re_array = np.array([0, 4, 40, 4e3, 40e3], dtype=np.float64)
 
-    def get_rho(self, T):
-        return np.interp(T, self._te_array_degC, self._rho_array)
+    def get_rho(self, T, h=180):
+        return utils.get_rho_air(T, h)
 
     def get_k(self, T):
         return np.interp(T, self._te_array_degC, self._k_Array)
