@@ -260,7 +260,7 @@ plt.show()
 # %%
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(9,5))
 ax1.plot(cyc.cycSecs, sim_drive.hFcToAmb, label='final')
-ax1.plot(cyc.cycSecs, sim_drive.hFcToAmbStop * np.ones(len(cyc.cycSecs)), 
+ax1.plot(cyc.cycSecs, sim_drive.vehthrm.hFcToAmbStop * np.ones(len(cyc.cycSecs)), 
          label='stop')
 ax1.set_ylabel('h [W/m^2/K]')
 ax1.legend()
