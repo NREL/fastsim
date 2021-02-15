@@ -45,8 +45,6 @@ class AirProperties(object):
         self._mu_Array = np.array([1.62150624e-05, 1.72392601e-05, 1.82328655e-05, 1.91978833e-05,
                             2.01362020e-05, 2.10495969e-05, 2.19397343e-05, 2.28081749e-05], 
                             dtype=np.float64)
-        # array of Re values for piecewise caluclation of Nu
-        self.re_array = np.array([0, 4, 40, 4e3, 40e3], dtype=np.float64)
 
     def get_rho(self, T, h=180):
         return utils.get_rho_air(T, h)
