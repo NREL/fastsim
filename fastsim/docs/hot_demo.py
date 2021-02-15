@@ -150,8 +150,8 @@ x = np.array([1.24638517e+02, 1.32330629e+00, 1.01128242e+02, 2.09979938e+01,
        2.90921564e-01, 7.94733767e-03, 6.63340063e+00, 8.83717822e+01]) 
 # best as of 12 pm on 5 October 2020
 for i, param in enumerate(params):
-    sim_drive.__setattr__(param, x[i])
-sim_drive.teTStatFODegC = sim_drive.teTStatSTODegC + sim_drive.teTStatDeltaDegC
+    sim_drive.vehthrm.__setattr__(param, x[i])
+sim_drive.vehthrm.teTStatFODegC = sim_drive.vehthrm.teTStatSTODegC + sim_drive.vehthrm.teTStatDeltaDegC
     
 sim_drive.sim_drive()
 print(f'Elapsed time: {time.time() - t0:.2e} s')

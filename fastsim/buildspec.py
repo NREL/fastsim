@@ -45,7 +45,9 @@ def build_spec(instance, error='raise'):
             from fastsim import simdrivehot
             spec_tuples.extend([
                 ([simdrivehot.AirProperties], 
-                    simdrivehot.AirPropertiesJit.class_type.instance_type, None)
+                    simdrivehot.AirPropertiesJit.class_type.instance_type, None),
+                ([simdrivehot.VehicleThermal], 
+                simdrivehot.VehicleThermalJit.class_type.instance_type, None),
             ])
 
     if 'Vehicle' in str(instance.__class__):
