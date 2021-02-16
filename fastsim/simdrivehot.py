@@ -2,7 +2,6 @@
 For example usage, see ../README.md"""
 
 ### Import necessary python modules
-from build.lib.fastsim import simdrive
 import os
 import numpy as np
 import pandas as pd
@@ -14,7 +13,7 @@ import warnings
 warnings.simplefilter('ignore')
 
 # local modules
-from fastsim import params, utils
+from fastsim import params, utils, simdrive
 from fastsim.simdrive import SimDriveClassic, SimDriveParams
 from fastsim.cycle import Cycle
 from fastsim.vehicle import Vehicle
