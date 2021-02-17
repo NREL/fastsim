@@ -157,9 +157,10 @@ def get_error_for_cycle(x):
 
         # unpack input parameters
         for i in range(len(x)):
-            sim_drive.__setattr__(params[i], x[i])
+            sim_drive.vehthrm.__setattr__(params[i], x[i])
 
-        sim_drive.teTStatFODegC = sim_drive.teTStatSTODegC + sim_drive.teTStatDeltaDegC
+        sim_drive.vehthrm.teTStatFODegC = sim_drive.vehthrm.teTStatSTODegC + \
+            sim_drive.vehthrm.teTStatDeltaDegC
         sim_drive.sim_drive()
 
         # calculate error
@@ -205,7 +206,7 @@ class ThermalProblem(Problem):
 
 #%% 
 
-run_optimization = False
+run_optimization = True
 
 if run_optimization:
     print('Running optimization.')
