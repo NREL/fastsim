@@ -206,7 +206,7 @@ class ThermalProblem(Problem):
 
 #%% 
 
-run_optimization = True
+run_optimization = False
 
 if run_optimization:
     print('Running optimization.')
@@ -299,8 +299,9 @@ def plot_cyc_traces(x, show_plots=None):
 
         # unpack input parameters
         for i in range(len(x)):
-            sim_drive.__setattr__(params[i], x[i])
-        sim_drive.teTStatFODegC = sim_drive.teTStatSTODegC + sim_drive.teTStatDeltaDegC
+            sim_drive.vehthrm.__setattr__(params[i], x[i])
+        sim_drive.vehthrm.teTStatFODegC = sim_drive.vehthrm.teTStatSTODegC + \
+            sim_drive.vehthrm.teTStatDeltaDegC
         sim_drive.sim_drive()
         
         fuel_frac_err = (np.trapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch) -
@@ -391,8 +392,10 @@ def plot_cyc_traces(x, show_plots=None):
             ax[2].set_xlabel('Time [s]')
             ax[2].set_ylabel('Speed [mps]')
             plt.tight_layout()
-            plt.savefig('plots/' + title + ' both.svg')
-            plt.savefig('plots/' + title + ' both.png')
+            # plt.savefig('plots/' + title + ' both.svg')
+            # plt.savefig('plots/' + title + ' both.png')
 
 
 plot_cyc_traces(res.X[8], show_plots='all') # this index of res.X should be modified as appropriate
+
+# %%
