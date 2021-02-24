@@ -304,7 +304,7 @@ class SimDriveHot(SimDriveClassic):
                 [hFcToAmbSphere, hFcToAmbSphere * self.vehthrm.radiator_eff])
 
         self.fcConvToAmbKw[i] = self.hFcToAmb[i] * 1e-3 * self.vehthrm.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC[i-1])
-        self.fcToHtrKw[i] = 0.0  # placeholder
+        # self.fcToHtrKw[i] = 0.0  # placeholder
         # Energy balance for fuel converter
         self.teFcDegC[i] = self.teFcDegC[i-1] + (
             self.fcHeatGenKw[i] - self.fcConvToAmbKw[i] - self.fcToHtrKw[i]
