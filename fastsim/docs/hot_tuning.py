@@ -25,6 +25,7 @@ from pymoo.model.problem import Problem
 
 # local modules
 from fastsim import simdrivehot, simdrive, vehicle, cycle, utils
+from fastsim import calibration as cal
 import fastsim.docs.hot_utilities as hot_util
 
 #%%
@@ -117,25 +118,6 @@ params = [item[0] for item in params_bounds]
 lower_bounds = anp.array([item[1] for item in params_bounds])
 upper_bounds = anp.array([item[2] for item in params_bounds])
 
-def get_error_val(model, test, time_steps):
-    """Returns time-averaged error for model and test signal.
-    Arguments:
-    ----------
-    model: array of values for signal from model
-    model_time_steps: array (or scalar for constant) of values for model time steps [s]
-    test: array of values for signal from test
-    
-    Output: 
-    -------
-    err: integral of absolute value of difference between model and 
-    test per time"""
-
-    err = trapz(
-        y=abs(model - test), 
-        x=time_steps) / time_steps[-1]
-
-    return err
-
 def get_error_for_cycle(x):
     """Function for running a single cycle and returning the error."""
     # create cycle.Cycle()
@@ -168,7 +150,7 @@ def get_error_for_cycle(x):
             model_err_var = sim_drive.__getattribute__(error_vars[i][0])
             test_err_var = dfdict[cyc_name][error_vars[i][1]].values
 
-            err = get_error_val(model_err_var, test_err_var, 
+            err = cal.get_error_val(model_err_var, test_err_var, 
                 time_steps=cycSecs)
 
             errors.append(err)
@@ -309,7 +291,7 @@ def plot_cyc_traces(x, show_plots=None):
                 y=dfdict[cyc_name]['Fuel_Power_Calc[kW]'])) /\
             np.trapz(x=test_time_steps,
                 y=dfdict[cyc_name]['Fuel_Power_Calc[kW]'])
-        temp_err = get_error_val(
+        temp_err = cal.get_error_val(
             sim_drive.teFcDegC, 
             dfdict[cyc_name]['CylinderHeadTempC'],
             test_time_steps) 
