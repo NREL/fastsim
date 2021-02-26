@@ -244,13 +244,20 @@ print(df_res.filter(regex='temp').sum(axis=1).sort_values())
 print('\nSorted by sum of fuel errors.')
 print(df_res.filter(regex='fuel').sum(axis=1).sort_values())
 
-# check for results that are better than the mean in both
-temp_set = set(df_res.filter(regex='temp').sum(axis=1).sort_values().loc[
-                df_res.filter(regex='temp').sum(axis=1).sort_values()
-               < df_res.filter(regex='temp').sum(axis=1).mean()].index)
-fuel_set = set(df_res.filter(regex='fuel').sum(axis=1).sort_values().loc[
-                df_res.filter(regex='fuel').sum(axis=1).sort_values()
-               < df_res.filter(regex='fuel').sum(axis=1).mean()].index)
+# for loop to find the first quantile value that captures designs that are inside 
+# of that quantile (such that 0.3 means in the best 30%) in both the fuel and 
+# temperature columns
+for quantile in np.linspace(0, 1, 21):
+    # check for results that are better quantile in both temperatures and fuels
+    temp_set = set(df_res.filter(regex='temp').sum(axis=1).sort_values().loc[
+                    df_res.filter(regex='temp').sum(axis=1).sort_values()
+                < df_res.filter(regex='temp').sum(axis=1).quantile(0.3)].index)
+    fuel_set = set(df_res.filter(regex='fuel').sum(axis=1).sort_values().loc[
+                    df_res.filter(regex='fuel').sum(axis=1).sort_values()
+                < df_res.filter(regex='fuel').sum(axis=1).quantile(0.3)].index)
+
+    if len(fuel_set & temp_set) > 0:
+        break
 
 print('\nValues better than mean for both fuel and temp:')
 print(fuel_set & temp_set)
