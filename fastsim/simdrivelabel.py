@@ -429,8 +429,11 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             out['rangeMiles'] = "need to build model for this"
             # utility factor (percent driving in charge depletion mode)
             out['UF'] = "need to build model for this"
+            out['netPhevCDMiles'] = "need to build model for this"
 
         get_label_fe_phev()
+
+    out['netRangeMiles'] = "need to build model for this"
 
     # run accelerating sim_drive
     if 'VehicleJit' in str(type(veh)):
