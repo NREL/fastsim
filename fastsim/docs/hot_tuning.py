@@ -188,7 +188,7 @@ class ThermalProblem(Problem):
 
 #%% 
 
-run_optimization = False
+run_optimization = True
 
 if run_optimization:
     print('Running optimization.')
@@ -201,8 +201,8 @@ if run_optimization:
                 algorithm,
                 ('n_gen', 100),
                 seed=1,
-                verbose=True,)
-                #    save_history=True)
+                verbose=True,
+                save_history=True)
     t1 = time.time()
     print(f'\nElapsed time for optimization: {t1 - t0:.2e} s')
     print('\nParameter pareto sets:')
