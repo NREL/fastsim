@@ -188,7 +188,7 @@ class ThermalProblem(Problem):
 
 #%% 
 
-run_optimization = True
+run_optimization = False
 
 if run_optimization:
     print('Running optimization.')
@@ -244,22 +244,25 @@ print(df_res.filter(regex='temp').sum(axis=1).sort_values())
 print('\nSorted by sum of fuel errors.')
 print(df_res.filter(regex='fuel').sum(axis=1).sort_values())
 
+# %%
 # for loop to find the first quantile value that captures designs that are inside 
 # of that quantile (such that 0.3 means in the best 30%) in both the fuel and 
 # temperature columns
-for quantile in np.linspace(0, 1, 21):
-    # check for results that are better quantile in both temperatures and fuels
+# check for results that are better quantile in both temperatures and fuels
+
+for quantile in np.arange(0, 1.01, 0.01):
     temp_set = set(df_res.filter(regex='temp').sum(axis=1).sort_values().loc[
                     df_res.filter(regex='temp').sum(axis=1).sort_values()
-                < df_res.filter(regex='temp').sum(axis=1).quantile(0.3)].index)
+                < df_res.filter(regex='temp').sum(axis=1).quantile(quantile)].index)
     fuel_set = set(df_res.filter(regex='fuel').sum(axis=1).sort_values().loc[
                     df_res.filter(regex='fuel').sum(axis=1).sort_values()
-                < df_res.filter(regex='fuel').sum(axis=1).quantile(0.3)].index)
+                < df_res.filter(regex='fuel').sum(axis=1).quantile(quantile)].index)
 
     if len(fuel_set & temp_set) > 0:
         break
 
-print('\nValues better than mean for both fuel and temp:')
+
+print("\nValues better than top " + f"{quantile:.0%}" + " quantile for both fuel and temp:")
 print(fuel_set & temp_set)
 
 #%%
