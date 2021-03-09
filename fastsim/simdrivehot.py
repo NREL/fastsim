@@ -79,8 +79,12 @@ class VehicleThermal(object):
         self.fcDiam = 1.0
         # parameter for ngine surface area for heat transfer calcs
         self.fcSurfArea = np.pi * self.fcDiam ** 2.0 / 4.0
-        # parameter for abin thermal mass [kJ/K]
+        # parameter for cabin thermal mass [kJ/K]
         self.cabThrmMass = 5.0
+        # cabin length [m], modeled as a flat plate
+        self.cabLength = 2.5 
+        # cabin width [m], modeled as a flat plate
+        self.cabWidth = 1.75
         # parameter for eat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
         self.hFcToAmbStop = 50.0
         # parameter for fraction of combustion heat that goes to fuel converter (engine) 
@@ -99,6 +103,11 @@ class VehicleThermal(object):
         self.fcTempEffOffset = 0.1
         # slope for scaling FC efficiency w.r.t. to temperature
         self.fcTempEffSlope = 0.01
+        # HVAC model 'internal' or 'external' w.r.t. fastsim
+        self.hvac_model = 'external'
+        # cabin model 'internal' or 'external' w.r.t. fastsim
+        self.cabin_model = 'internal'
+
 
 @jitclass(build_spec(VehicleThermal()))
 class VehicleThermalJit(VehicleThermal):
@@ -190,8 +199,6 @@ class SimDriveHot(SimDriveClassic):
         self.cabSolarKw = np.zeros(len_cyc, dtype=np.float64)
         # cabin convection to ambient
         self.cabConvToAmbKw = np.zeros(len_cyc, dtype=np.float64)
-        # cabin heat from heater
-        self.cabFromHtrKw = np.zeros(len_cyc, dtype=np.float64)
         # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
         self.hFcToAmb = np.zeros(len_cyc, dtype=np.float64)
         
@@ -304,7 +311,31 @@ class SimDriveHot(SimDriveClassic):
                 [hFcToAmbSphere, hFcToAmbSphere * self.vehthrm.radiator_eff])
 
         self.fcConvToAmbKw[i] = self.hFcToAmb[i] * 1e-3 * self.vehthrm.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC[i-1])
-        # self.fcToHtrKw[i] = 0.0  # placeholder
+        
+        if self.vehthrm.hvac_model == 'internal':
+            self.fcToHtrKw[i] = 0.0 # placeholder
+
+        if self.vehthrm.cabin_model == 'internal':
+            # flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
+            # Transfer, 7th Edition
+            teCabFilmDegC = 0.5 * (self.teCabDegC[i-1] + self.teAmbDegC[i-1])
+            Re_L = self.air.get_rho(teCabFilmDegC) * self.mpsAch[i-1] * self.vehthrm.cabLength / self.air.get_mu(teCabFilmDegC)
+            Re_L_crit = 5.0e5 # critical Re for transition to turbulence
+            if Re_L < Re_L_crit:
+                # equation 7.30
+                Nu_L_bar = 0.664 * Re_L ** 0.5 * self.air.get_Pr(teCabFilmDegC) ** (1 / 3)
+            else:
+                # equation 7.38
+                A = 871.0 # equation 7.39
+                Nu_L_bar = (0.037 * Re_L ** 0.8 - A) * self.air.get_Pr(teCabFilmDegC)
+            
+            self.cabConvToAmbKw[i] = 1e-3 * (self.vehthrm.cabLength * self.vehthrm.cabWidth) * Nu_L_bar * \
+                self.air.get_k(teFcFilmDegC) / self.vehthrm.cabLength * (self.teCabDegC[i-1] - self.teAmbDegC[i-1]) 
+            
+            self.teCabDegC[i] = self.teCabDegC[i-1] + \
+                (self.fcToHtrKw[i] - self.cabConvToAmbKw[i]) / \
+                    self.vehthrm.cabThrmMass * self.cyc.secs[i]
+        
         # Energy balance for fuel converter
         self.teFcDegC[i] = self.teFcDegC[i-1] + (
             self.fcHeatGenKw[i] - self.fcConvToAmbKw[i] - self.fcToHtrKw[i]
