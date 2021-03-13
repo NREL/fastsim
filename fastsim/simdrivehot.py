@@ -85,7 +85,11 @@ class VehicleThermal(object):
         self.cabLength = 2.5 
         # cabin width [m], modeled as a flat plate
         self.cabWidth = 1.75
-        # parameter for eat transfer coeff [W / (m ** 2 * K)] from eng to ambient during stop
+        # cabin shell thermal resistance [m **2 * K / W]
+        self.RCabToAmb = 0.5 
+        # parameter for heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during vehicle stop
+        self.hCabToAmbStop = 50.0
+        # parameter for heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during vehicle stop
         self.hFcToAmbStop = 50.0
         # parameter for fraction of combustion heat that goes to fuel converter (engine) 
         # thermal mass. Remainder goes to environment (e.g. via tailpipe)
@@ -329,8 +333,14 @@ class SimDriveHot(SimDriveClassic):
                 A = 871.0 # equation 7.39
                 Nu_L_bar = (0.037 * Re_L ** 0.8 - A) * self.air.get_Pr(teCabFilmDegC)
             
-            self.cabConvToAmbKw[i] = 1e-3 * (self.vehthrm.cabLength * self.vehthrm.cabWidth) * Nu_L_bar * \
-                self.air.get_k(teFcFilmDegC) / self.vehthrm.cabLength * (self.teCabDegC[i-1] - self.teAmbDegC[i-1]) 
+            if self.mphAch[i-1] > 2.0:                
+                self.cabConvToAmbKw[i] = 1e-3 * (self.vehthrm.cabLength * self.vehthrm.cabWidth) / (
+                    1 / (Nu_L_bar * self.air.get_k(teFcFilmDegC) / self.vehthrm.cabLength) + self.vehthrm.RCabToAmb
+                    ) * (self.teCabDegC[i-1] - self.teAmbDegC[i-1]) 
+            else:
+                self.cabConvToAmbKw[i] = 1e-3 * (self.vehthrm.cabLength * self.vehthrm.cabWidth) / (
+                    1 / self.vehthrm.hCabToAmbStop + self.vehthrm.RCabToAmb
+                    ) * (self.teCabDegC[i-1] - self.teAmbDegC[i-1])
             
             self.teCabDegC[i] = self.teCabDegC[i-1] + \
                 (self.fcToHtrKw[i] - self.cabConvToAmbKw[i]) / \
