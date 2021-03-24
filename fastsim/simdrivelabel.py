@@ -148,12 +148,12 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             out['adjCombEssKwhPerMile'] = out['adjCombKwhPerMile'] * params.chgEff
 
             # range for combined city/highway
-            out['rangeMiles'] = veh.maxEssKwh / out['adjCombEssKwhPerMile']
+            out['netRangeMiles'] = veh.maxEssKwh / out['adjCombEssKwhPerMile']
 
         else: # non-PEV cases
             zero_keys = ['adjUddsKwhPerMile', 'adjHwyKwhPerMile', 'adjCombKwhPerMile',
                          'adjUddsEssKwhPerMile', 'adjHwyEssKwhPerMile', 'adjCombEssKwhPerMile'
-                         'rangeMiles',]
+                         'netRangeMiles',]
             for key in zero_keys:
                 out[key] = 0
 
@@ -415,6 +415,11 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             out['adjCombMpgge'] = 1 / (
                 0.55 / phev_calcs['udds']['adjMpgge'] + 0.45 / phev_calcs['hwy']['adjMpgge'])
 
+            out['adjCsCombMpgge'] = 1 / (
+                0.55 / phev_calcs['udds']['adjCsMpgge'] + 0.45 / phev_calcs['hwy']['adjCsMpgge'])
+            out['adjCdCombMpgge'] = 1 / (
+                0.55 / phev_calcs['udds']['adjCdMpgge'] + 0.45 / phev_calcs['hwy']['adjCdMpgge'])
+
             out['adjUddsKwhPerMile'] = phev_calcs['udds']['adjKwhPerMile']
             out['adjHwyKwhPerMile'] = phev_calcs['hwy']['adjKwhPerMile']
             out['adjCombKwhPerMile'] = 0.55 * phev_calcs['udds']['adjKwhPerMile'] + \
@@ -426,15 +431,19 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 0.45 * phev_calcs['hwy']['adjEssKwhPerMile']
 
             # range for combined city/highway
-            out['rangeMiles'] = "need to build model for this"
             # utility factor (percent driving in charge depletion mode)
-            out['UF'] = "need to build model for this"
-            out['netPhevCDMiles'] = "need to build model for this"
+            out['UF'] = interpf(0.55 * phev_calcs['udds']['adjCdMiles'] +
+                                0.45 * phev_calcs['hwy']['adjCdMiles'])
 
+            out['netPhevCDMiles'] = 0.55 * phev_calcs['udds']['adjCdMiles'] + \
+                                0.45 * phev_calcs['hwy']['adjCdMiles']
+           
+            out['netRangeMiles'] = (veh.fuelStorKwh / params.kWhPerGGE - 
+                out['netPhevCDMiles'] / out['adjCdCombMpgge']
+                ) * out['adjCsCombMpgge'] + out['netPhevCDMiles']
+ 
         get_label_fe_phev()
-
-    out['netRangeMiles'] = "need to build model for this"
-
+        
     # run accelerating sim_drive
     if 'VehicleJit' in str(type(veh)):
         sd['accel'] = simdrive.SimAccelTestJit(cyc['accel'], veh)
@@ -468,12 +477,12 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        veh = vehicle.Vehicle(sys.argv[1])
-    else:
-        veh = vehicle.Vehicle(1) # load default vehicle
+    veh = vehicle.Vehicle(1) # load default vehicle
 
     out = get_label_fe(veh)
     for key in out.keys():
-        print(key + f': {out[key]:.5g}')
+        try:
+            print(key + f': {out[key]:.5g}')
+        except:
+            print(key + f': {out[key]}')
     
