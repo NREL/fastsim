@@ -103,10 +103,17 @@ class VehicleThermal(object):
         # radiator effectiveness -- ratio of active heat rejection from 
         # radiator to passive heat rejection
         self.radiator_eff = 5.0
-        # offset for scaling FC efficiency w.r.t. to temperature
+        # 'linear' or 'exponential'
+        # if 'linear', temparature has linear impact on efficiency.  If 'exponential',
+        # temperature has exponential impact on temperature
+        self.fc_temp_eff_model = 'linear'  
+        # offset for scaling FC efficiency w.r.t. to temperature in linear or exponential model
         self.fcTempEffOffset = 0.1
-        # slope for scaling FC efficiency w.r.t. to temperature
+        # slope for scaling FC efficiency w.r.t. to temperature in linear model
+        # exponential decay constant for exponential model
         self.fcTempEffSlope = 0.01
+        # minimum coefficient for scaling FC efficiency as a function of temperature
+        self.fcTempEffMin = 0.1
         # HVAC model 'internal' or 'external' w.r.t. fastsim
         self.hvac_model = 'external'
         # cabin model 'internal' or 'external' w.r.t. fastsim
@@ -383,12 +390,19 @@ class SimDriveHot(SimDriveClassic):
             self.fcKwOutAch_pct[i] = 0
 
         else:
-            # 0 to 1 scaling for multiplying efficiency to be dependent on temperature.
-            self.fcEffAdj[i] = max(0.1, # assuming that 90% is max temp-dependent efficiency reduction
-                min(1, 
-                    self.vehthrm.fcTempEffOffset + self.vehthrm.fcTempEffSlope * self.teFcDegC[i]
-                    )
-            )
+            if self.vehthrm.fc_temp_eff_model == 'linear':
+                # scaling for multiplying efficiency to be dependent on temperature.
+                self.fcEffAdj[i] = max(self.vehthrm.fcTempEffMin,  
+                    min(1, 
+                        self.vehthrm.fcTempEffOffset + self.vehthrm.fcTempEffSlope * self.teFcDegC[i]
+                        )
+                )
+            elif self.vehthrm.fc_temp_eff_model == 'exponential':
+                self.fcEffAdj[i] = max(self.vehthrm.fcTempEffMin, 
+                    1 - np.exp(-max(
+                        self.teFcDegC[i] - self.vehthrm.fcTempEffOffset, 0) / self.vehthrm.fcTempEffSlope)
+                )
+                
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[-1] * self.fcEffAdj[i])
             else:

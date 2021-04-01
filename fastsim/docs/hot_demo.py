@@ -27,6 +27,7 @@ sns.set()
 from fastsim import simdrivehot, simdrive, vehicle, cycle, params, utils
 import hot_utilities as hot_utils
 importlib.reload(hot_utils)
+importlib.reload(simdrivehot)
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
 
@@ -140,7 +141,7 @@ print("Elapsed time to create cycle: {:.2e} s".format(time.time() - t0))
 
 # %%
 t0 = time.time()
-sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit, 
+sim_drive = simdrivehot.SimDriveHot(cyc_jit, veh_jit, 
     teAmbDegC = np.interp(cycSecs, test_time_steps, test_te_amb),
       teFcInitDegC=df.loc[idx[cyc_name, :, 0], 'CylinderHeadTempC'][0]) 
 
@@ -152,7 +153,12 @@ x = np.array([1.24638517e+02, 1.32330629e+00, 1.01128242e+02, 2.09979938e+01,
 for i, param in enumerate(params):
     sim_drive.vehthrm.__setattr__(param, x[i])
 sim_drive.vehthrm.teTStatFODegC = sim_drive.vehthrm.teTStatSTODegC + sim_drive.vehthrm.teTStatDeltaDegC
-    
+
+# sim_drive.vehthrm.fc_temp_eff_model = 'exponential'
+# sim_drive.vehthrm.fcTempEffOffset = 0
+# sim_drive.vehthrm.fcTempEffSlope = 30
+# sim_drive.vehthrm.fcTempEffMin = 0.5
+
 sim_drive.sim_drive()
 print(f'Elapsed time: {time.time() - t0:.2e} s')
 
@@ -160,7 +166,8 @@ print(f'Elapsed time: {time.time() - t0:.2e} s')
 # ### Results
 
 # %%
-fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10,8))
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8), gridspec_kw={
+    'height_ratios': [3, 1]})
 ax1.plot(cyc.cycSecs, sim_drive.teFcDegC, label='model')
 ax1.plot(test_time_steps, df.loc[idx[cyc_name, :, :], 'CylinderHeadTempC'], label='test')
 ax1.set_ylabel('FC Temp. [$^\circ$C]')
@@ -172,7 +179,8 @@ plt.show()
 
 
 # %%
-fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10,8))
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10,8), gridspec_kw={
+                            'height_ratios': [3, 1]})
 ax1.plot(cyc.cycSecs[1:], cumtrapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch * 1e-3), label='model')
 ax1.plot(test_time_steps[1:], cumtrapz(x=test_time_steps, y=df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'] * 1e-3), label='test')
 ax1.set_ylabel('Fuel Energy [MJ]')
@@ -195,7 +203,8 @@ print(f"Model uses {abs(fuel_frac_err):.2%} " + less_more + " fuel than test.")
 
 
 # %%
-fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10,8))
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8), gridspec_kw={
+    'height_ratios': [3, 1]})
 ax1.plot(cyc.cycSecs, sim_drive.fcKwInAch, label='model')
 ax1.plot(test_time_steps, df.loc[idx[cyc_name, :, :], 'Fuel_Power_Calc[kW]'], label='test')
 ax1.set_ylabel('Fuel Power [kW]')
@@ -218,7 +227,8 @@ print(f"Model uses {abs(fuel_frac_err):.2%} " + less_more + " fuel than test.")
 
 
 # %%
-fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10,8))
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8), gridspec_kw={
+    'height_ratios': [3, 1]})
 ax1.plot(cyc.cycSecs[1:], 
          cumtrapz(x=cyc.cycSecs, 
                   y=sim_drive.fcKwInAch - 
@@ -258,7 +268,8 @@ plt.show()
 
 
 # %%
-fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(9,5))
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(9, 5), gridspec_kw={
+    'height_ratios': [3, 1]})
 ax1.plot(cyc.cycSecs, sim_drive.hFcToAmb, label='final')
 ax1.plot(cyc.cycSecs, sim_drive.vehthrm.hFcToAmbStop * np.ones(len(cyc.cycSecs)), 
          label='stop')
