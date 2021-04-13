@@ -208,7 +208,7 @@ def compare(res_python, res_excel, err_tol=0.001):
 
 def main(use_jitclass=True, err_tol=0.001, 
     prev_res_path=PREV_RES_PATH,
-    rerun_excel=True):
+    rerun_excel=False):
     """Function for running both python and excel and then comparing
     Arguments:
     **********
