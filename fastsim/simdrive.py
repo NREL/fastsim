@@ -43,6 +43,9 @@ class SimDriveParamsClassic(object):
         self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
         self.sim_count_max = 30  # max allowable number of HEV SOC iterations
         self.verbose = True  # show warning and other messages
+        self.newton_gain = 0.9 # newton solver gain
+        self.newton_max_iter = 100 # newton solver max iterations
+        self.newton_xtol = 1e-9 # newton solver tolerance
 
 
 param_spec = build_spec(SimDriveParamsClassic())
@@ -183,6 +186,7 @@ class SimDriveClassic(object):
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
         self.trace_miss_iters = np.zeros(len_cyc, dtype=np.float64)
+        self.newton_iters = np.zeros(len_cyc, dtype=np.float64)
 
     def sim_drive(self, initSoc=None, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -569,7 +573,6 @@ class SimDriveClassic(object):
 
         #Cycle is not met
         else:
-
             def newton_mps_estimate(Totals):
                 t3 = Totals[0]
                 t2 = Totals[1]
@@ -582,10 +585,10 @@ class SimDriveClassic(object):
                 # initial guess
                 xi = max(1.0, self.mpsAch[i-1])
                 # stop criteria
-                max_iter = 100
-                xtol = 1e-18
+                max_iter = self.sim_params.newton_max_iter
+                xtol = self.sim_params.newton_xtol
                 # solver gain
-                g = 0.8
+                g = self.sim_params.newton_gain
                 yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
                 mi = 3 * t3 * xi ** 2 + 2 * t2 * xi + t1
                 bi = yi - xi * mi
@@ -606,6 +609,8 @@ class SimDriveClassic(object):
                     bs.append(bi)
                     converged = abs((xs[-1] - xs[-2]) / xs[-2]) < xtol 
                     iterate += 1
+                
+                self.newton_iters[i] = iterate
 
                 _ys = [abs(y) for y in ys]
                 return xs[_ys.index(min(_ys))]
