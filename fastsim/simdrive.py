@@ -526,7 +526,7 @@ class SimDriveClassic(object):
         ------------
         i: index of time step"""
 
-        if not(self.cycMet[i]) and (self.newton_iters[i] > 0):
+        if self.newton_iters[i] > 0:
             mpsAch = self.mpsAch[i]
         else:
             mpsAch = self.cyc.cycMps[i]
