@@ -7,7 +7,6 @@ import numpy as np
 import re
 import os
 import sys
-import inspect
 from pathlib import Path
 
 # local modules
@@ -29,15 +28,14 @@ def main(use_jitclass=True, err_tol=1e-4):
     """
     t0 = time.time()
 
-    print('Instantiating classes.')
-    print()
+    print('Instantiating classes.\n')
 
-    if use_jitclass:
-        cycs = [cycle.Cycle(cyc_name).get_numba_cyc() 
-                for cyc_name in ['udds', 'hwfet', 'us06']]
-    else:
-        cycs = [cycle.Cycle(cyc_name)
-                for cyc_name in ['udds', 'hwfet', 'us06']]
+    cyc_names = ['udds', 'hwfet', 'us06']
+    cycs = {
+        cyc_name: cycle.Cycle(cyc_name).get_numba_cyc() if use_jitclass else 
+            cycle.Cycle(cyc_name) for cyc_name in cyc_names
+        }
+
     vehnos = np.arange(1, 27)
 
     veh = vehicle.Vehicle(1)
@@ -52,7 +50,7 @@ def main(use_jitclass=True, err_tol=1e-4):
         print('vehno =', vehno)
         if vehno == 2:
             t0a = time.time()
-        for cyc in cycs:
+        for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
                 veh = vehicle.Vehicle(vehno)
                 if use_jitclass:
@@ -72,14 +70,14 @@ def main(use_jitclass=True, err_tol=1e-4):
 
             if iter == 0:
                 dict_diag['vnum'] = [vehno]
-                dict_diag['cycle'] = [cyc]
+                dict_diag['cycle'] = [cyc_name]
                 for key in diagno.keys():
                     dict_diag[key] = [diagno[key]]
                 iter += 1
 
             else:
                 dict_diag['vnum'].append(vehno)
-                dict_diag['cycle'].append(cyc)
+                dict_diag['cycle'].append(cyc_name)
                 for key in diagno.keys():
                     dict_diag[key].append(diagno[key])
 
@@ -108,7 +106,7 @@ def main(use_jitclass=True, err_tol=1e-4):
             if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=err_tol, abs_tol=err_tol)):
                 df_err.loc[idx, col] = (df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
                 abs_err.append(np.abs(df_err.loc[idx, col]))
-                print(str(round(df_err.loc[idx, col] * 100, 5)) + '% for')
+                print(f"{df_err.loc[idx, col]:.5%} for")
                 print('New Value: ' + str(round(df.loc[idx, col], 15)))
                 print('vnum = ' + str(df.loc[idx, 'vnum']))            
                 print('cycle = ' + str(df.loc[idx, 'cycle']))            
@@ -123,22 +121,7 @@ def main(use_jitclass=True, err_tol=1e-4):
     else: 
         print(f'No errors exceed the {err_tol:.3g} tolerance threshold.')
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        if re.match('(?i)true', sys.argv[1]):
-            use_jitclass = True
-            print('Using numba JIT compilation.')
-        else:
-            use_jitclass = False
-            print('Skipping numba JIT compilation.')
-        if len(sys.argv) > 2:
-            err_tol = float(sys.argv[2])
-            print(f"Using error tolerance of {err_tol:.3g}.")
-        else:
-            err_tol = list(inspect.signature(main).parameters.values())[1].default
-            print(f"Using error default tolerance of {err_tol:.3g}.")
+    return df_err, df, df0
 
-        main(use_jitclass=use_jitclass, err_tol=err_tol)
-    else:
-        print('Using numba JIT compilation.')
-        main()
+if __name__ == "__main__":
+    _ = main()
