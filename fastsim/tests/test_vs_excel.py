@@ -127,6 +127,8 @@ def run_excel(prev_res_path=PREV_RES_PATH,
             
             # performance
             res_dict['netAccel'] = sht_veh.range('netAccel').value
+            res_dict['UF'] = sht_veh.range('UF').value
+            res_dict['netRangeMiles'] = sht_veh.range('netRangeMiles').value
 
             for key in res_dict.keys():
                 if (res_dict[key] == '') | (res_dict[key] == None):
@@ -142,6 +144,8 @@ def run_excel(prev_res_path=PREV_RES_PATH,
         because xlwings is not installed. Run the command:
         `pip install xlwings` if compatible with your OS.""")
 
+    if rerun_excel:
+        json.dump(res_excel, open(prev_res_path, 'w'))
 
     return res_excel
 

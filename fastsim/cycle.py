@@ -89,6 +89,11 @@ class Cycle(object):
         for column in cyc.columns:
             if column in STANDARD_CYCLE_KEYS:
                 self.__setattr__(column, cyc[column].to_numpy())
+        # fill in unspecified optional values with zeros
+        if 'cycGrade' not in cyc.columns:
+            self.__setattr__('cycGrade', np.zeros(len(self.cycMps)))
+        if 'cycRoadType' not in cyc.columns:
+            self.__setattr__('cycRoadType', np.zeros(len(self.cycMps)))
         self.set_dependents()
 
     def set_from_dict(self, cyc_dict):

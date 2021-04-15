@@ -43,6 +43,9 @@ class SimDriveParamsClassic(object):
         self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
         self.sim_count_max = 30  # max allowable number of HEV SOC iterations
         self.verbose = True  # show warning and other messages
+        self.newton_gain = 0.9 # newton solver gain
+        self.newton_max_iter = 100 # newton solver max iterations
+        self.newton_xtol = 1e-9 # newton solver tolerance
 
 
 param_spec = build_spec(SimDriveParamsClassic())
@@ -115,7 +118,7 @@ class SimDriveClassic(object):
         self.cycRegenBrakeKw = np.zeros(len_cyc, dtype=np.float64)
         self.cycFricBrakeKw = np.zeros(len_cyc, dtype=np.float64)
         self.cycTransKwOutReq = np.zeros(len_cyc, dtype=np.float64)
-        self.cycMet = np.zeros(len_cyc, dtype=np.float64)
+        self.cycMet = np.array([False] * len_cyc, dtype=np.bool_)
         self.transKwOutAch = np.zeros(len_cyc, dtype=np.float64)
         self.transKwInAch = np.zeros(len_cyc, dtype=np.float64)
         self.curSocTarget = np.zeros(len_cyc, dtype=np.float64)
@@ -183,6 +186,7 @@ class SimDriveClassic(object):
         self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
         self.trace_miss_iters = np.zeros(len_cyc, dtype=np.float64)
+        self.newton_iters = np.zeros(len_cyc, dtype=np.float64)
 
     def sim_drive(self, initSoc=None, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -283,7 +287,7 @@ class SimDriveClassic(object):
         if not((auxInKwOverride == 0).all()):
             self.auxInKw = auxInKwOverride
         
-        self.cycMet[0] = 1
+        self.cycMet[0] = True
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
         self.soc[0] = initSoc
@@ -522,19 +526,24 @@ class SimDriveClassic(object):
         ------------
         i: index of time step"""
 
+        if self.newton_iters[i] > 0:
+            mpsAch = self.mpsAch[i]
+        else:
+            mpsAch = self.cyc.cycMps[i]
+
         self.cycDragKw[i] = 0.5 * self.props.airDensityKgPerM3 * self.veh.dragCoef * \
             self.veh.frontalAreaM2 * \
-            (((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0)**3) / 1000.0
+            (((self.mpsAch[i-1] + mpsAch) / 2.0)**3) / 1000.0
         self.cycAccelKw[i] = (self.veh.vehKg / (2.0 * (self.cyc.secs[i]))) * \
-            ((self.cyc.cycMps[i]**2) - (self.mpsAch[i-1]**2)) / 1000.0
+            ((mpsAch**2) - (self.mpsAch[i-1]**2)) / 1000.0
         self.cycAscentKw[i] = self.props.gravityMPerSec2 * np.sin(np.arctan(
-            self.cyc.cycGrade[i])) * self.veh.vehKg * ((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0) / 1000.0
+            self.cyc.cycGrade[i])) * self.veh.vehKg * ((self.mpsAch[i-1] + mpsAch) / 2.0) / 1000.0
         self.cycTracKwReq[i] = self.cycDragKw[i] + \
             self.cycAccelKw[i] + self.cycAscentKw[i]
         self.spareTracKw[i] = self.curMaxTracKw[i] - self.cycTracKwReq[i]
         self.cycRrKw[i] = self.props.gravityMPerSec2 * self.veh.wheelRrCoef * \
-            self.veh.vehKg * ((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0) / 1000.0
-        self.cycWheelRadPerSec[i] = self.cyc.cycMps[i] / self.veh.wheelRadiusM
+            self.veh.vehKg * ((self.mpsAch[i-1] + mpsAch) / 2.0) / 1000.0
+        self.cycWheelRadPerSec[i] = mpsAch / self.veh.wheelRadiusM
         self.cycTireInertiaKw[i] = (((0.5) * self.veh.wheelInertiaKgM2 * (self.veh.numWheels * (self.cycWheelRadPerSec[i]**2.0)) / self.cyc.secs[i]) -
                                     ((0.5) * self.veh.wheelInertiaKgM2 * (self.veh.numWheels * ((self.mpsAch[i-1] / self.veh.wheelRadiusM)**2.0)) / self.cyc.secs[i])) / 1000.0
 
@@ -550,11 +559,11 @@ class SimDriveClassic(object):
             self.cycFricBrakeKw[i]
 
         if self.cycTransKwOutReq[i] <= self.curMaxTransKwOut[i]:
-            self.cycMet[i] = 1
+            self.cycMet[i] = True
             self.transKwOutAch[i] = self.cycTransKwOutReq[i]
 
         else:
-            self.cycMet[i] = -1
+            self.cycMet[i] = False
             self.transKwOutAch[i] = self.curMaxTransKwOut[i]
         
     def set_ach_speed(self, i):
@@ -564,12 +573,11 @@ class SimDriveClassic(object):
         i: index of time step"""
 
         # Cycle is met
-        if self.cycMet[i] == 1:
+        if self.cycMet[i] == True:
             self.mpsAch[i] = self.cyc.cycMps[i]
 
         #Cycle is not met
         else:
-
             def newton_mps_estimate(Totals):
                 t3 = Totals[0]
                 t2 = Totals[1]
@@ -582,10 +590,10 @@ class SimDriveClassic(object):
                 # initial guess
                 xi = max(1.0, self.mpsAch[i-1])
                 # stop criteria
-                max_iter = 100
-                xtol = 1e-18
+                max_iter = self.sim_params.newton_max_iter
+                xtol = self.sim_params.newton_xtol
                 # solver gain
-                g = 0.8
+                g = self.sim_params.newton_gain
                 yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
                 mi = 3 * t3 * xi ** 2 + 2 * t2 * xi + t1
                 bi = yi - xi * mi
@@ -606,6 +614,8 @@ class SimDriveClassic(object):
                     bs.append(bi)
                     converged = abs((xs[-1] - xs[-2]) / xs[-2]) < xtol 
                     iterate += 1
+                
+                self.newton_iters[i] = iterate
 
                 _ys = [abs(y) for y in ys]
                 return xs[_ys.index(min(_ys))]
@@ -642,10 +652,12 @@ class SimDriveClassic(object):
 
             Total = np.array([Total3, Total2, Total1, Total0])
             self.mpsAch[i] = newton_mps_estimate(Total)
+            self.set_power_calcs(i)
 
         self.mphAch[i] = self.mpsAch[i] * params.mphPerMps
         self.distMeters[i] = self.mpsAch[i] * self.cyc.secs[i]
         self.distMiles[i] = self.distMeters[i] * (1.0 / params.metersPerMile)
+
         
     def set_hybrid_cont_calcs(self, i):
         """Hybrid control calculations.  
@@ -658,7 +670,7 @@ class SimDriveClassic(object):
         else:
             self.transKwInAch[i] = self.transKwOutAch[i] * self.veh.transEff
 
-        if self.cycMet[i] == 1:
+        if self.cycMet[i] == True:
 
             if self.veh.fcEffType == 4:
                 self.minMcKw2HelpFc[i] = max(
@@ -1128,6 +1140,7 @@ class SimDriveClassic(object):
         if (np.abs(self.energyAuditError) > params.ENERGY_AUDIT_ERROR_TOLERANCE) and \
             self.sim_params.verbose:
             print('Warning: There is a problem with conservation of energy.')
+            print('Energy Audit Error:', np.round(self.energyAuditError, 5))
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
