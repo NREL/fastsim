@@ -171,8 +171,8 @@ class SimDriveClassic(object):
         self.mphAch = np.zeros(len_cyc, dtype=np.float64)
         self.distMeters = np.zeros(len_cyc, dtype=np.float64)
         self.distMiles = np.zeros(len_cyc, dtype=np.float64)
-        self.highAccFcOnTag = np.zeros(len_cyc, dtype=np.float64)
-        self.reachedBuff = np.zeros(len_cyc, dtype=np.float64)
+        self.highAccFcOnTag = np.array([False] * len_cyc, dtype=np.bool_)
+        self.reachedBuff = np.array([False] * len_cyc, dtype=np.bool_)
         self.maxTracMps = np.zeros(len_cyc, dtype=np.float64)
         self.addKwh = np.zeros(len_cyc, dtype=np.float64)
         self.dodCycs = np.zeros(len_cyc, dtype=np.float64)
@@ -362,21 +362,21 @@ class SimDriveClassic(object):
         # if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
         if (self.auxInKw[i:] == 0).all():
             # if all elements after i-1 are zero, trigger default behavior; otherwise, use override value 
-            if self.veh.noElecAux == True:
+            if self.veh.noElecAux:
                 self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
             else:
                 self.auxInKw[i] = self.veh.auxKw            
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
-            self.reachedBuff[i] = 0
+            self.reachedBuff[i] = False
         else:
-            self.reachedBuff[i] = 1
+            self.reachedBuff[i] = True
 
         # Does the engine need to be on for low SOC or high acceleration
-        if self.soc[i-1] < self.veh.minSoc or (self.highAccFcOnTag[i-1] == 1 and self.reachedBuff[i] == 0):
-            self.highAccFcOnTag[i] = 1
+        if self.soc[i-1] < self.veh.minSoc or (self.highAccFcOnTag[i-1] and not(self.reachedBuff[i])):
+            self.highAccFcOnTag[i] = True
         else:
-            self.highAccFcOnTag[i] = 0
+            self.highAccFcOnTag[i] = False
         self.maxTracMps[i] = self.mpsAch[i-1] + (self.veh.maxTracMps2 * self.cyc.secs[i])
 
     def set_comp_lims(self, i):
@@ -495,7 +495,7 @@ class SimDriveClassic(object):
 
         if self.veh.fcEffType == 4:
 
-            if self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
+            if self.veh.noElecSys or self.veh.noElecAux or self.highAccFcOnTag[i]:
                 self.curMaxTransKwOut[i] = min(
                     (self.curMaxMcKwOut[i] - self.auxInKw[i]) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
 
@@ -505,7 +505,7 @@ class SimDriveClassic(object):
 
         else:
 
-            if self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
+            if self.veh.noElecSys or self.veh.noElecAux or self.highAccFcOnTag[i]:
                 self.curMaxTransKwOut[i] = min((self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] -
                                                 self.auxInKw[i]) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
 
@@ -567,7 +567,7 @@ class SimDriveClassic(object):
         i: index of time step"""
 
         # Cycle is met
-        if self.cycMet[i] == True:
+        if self.cycMet[i]:
             self.mpsAch[i] = self.cyc.cycMps[i]
 
         #Cycle is not met
@@ -664,7 +664,7 @@ class SimDriveClassic(object):
         else:
             self.transKwInAch[i] = self.transKwOutAch[i] * self.veh.transEff
 
-        if self.cycMet[i] == True:
+        if self.cycMet[i]:
 
             if self.veh.fcEffType == 4:
                 self.minMcKw2HelpFc[i] = max(
@@ -677,7 +677,7 @@ class SimDriveClassic(object):
             self.minMcKw2HelpFc[i] = max(
                 self.curMaxMcKwOut[i], -self.curMaxMechMcKwIn[i])
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.regenBufferSoc[i] = 0
 
         elif self.veh.chargingOn:
@@ -694,7 +694,7 @@ class SimDriveClassic(object):
             self.maxEssRegenBufferChgKw[i] = min(max(
                 0, (self.regenBufferSoc[i] - self.soc[i-1]) * self.veh.maxEssKwh * 3600.0 / self.cyc.secs[i]), self.curMaxEssChgKw[i])
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.accelBufferSoc[i] = 0
 
         else:
@@ -726,7 +726,7 @@ class SimDriveClassic(object):
 
         self.fcKwGapFrEff[i] = abs(self.transKwOutAch[i] - self.veh.maxFcEffKw)
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.mcElectInKwForMaxFcEff[i] = 0
 
         elif self.transKwOutAch[i] < self.veh.maxFcEffKw:
@@ -749,7 +749,7 @@ class SimDriveClassic(object):
                 self.mcElectInKwForMaxFcEff[i] = self.veh.mcKwInArray[np.argmax(
                     self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1]
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.electKwReq4AE[i] = 0
 
         elif self.transKwInAch[i] > 0:
@@ -823,7 +823,7 @@ class SimDriveClassic(object):
         else:
             self.fcForcedOn[i] = False
 
-        if self.fcForcedOn[i] == False or self.canPowerAllElectrically[i] == False:
+        if not(self.fcForcedOn[i]) or not(self.canPowerAllElectrically[i]):
             self.fcForcedState[i] = 1
             self.mcMechKw4ForcedFc[i] = 0
 
@@ -887,7 +887,7 @@ class SimDriveClassic(object):
 
         self.mcElecKwInIfFcIsReq[i] = self.essKwIfFcIsReq[i] + self.erKwIfFcIsReq[i] - self.auxInKw[i]
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.mcKwIfFcIsReq[i] = 0
 
         elif self.mcElecKwInIfFcIsReq[i] == 0:
@@ -913,7 +913,7 @@ class SimDriveClassic(object):
         if self.veh.maxMotorKw == 0:
             self.mcMechKwOutAch[i] = 0
 
-        elif self.fcForcedOn[i] == True and self.canPowerAllElectrically[i] == True and (self.veh.vehPtType == 2.0 or self.veh.vehPtType == 3.0) and self.veh.fcEffType !=4:
+        elif self.fcForcedOn[i] and self.canPowerAllElectrically[i] and (self.veh.vehPtType == 2.0 or self.veh.vehPtType == 3.0) and self.veh.fcEffType !=4:
             self.mcMechKwOutAch[i] = self.mcMechKw4ForcedFc[i]
 
         elif self.transKwInAch[i] <= 0:
@@ -985,7 +985,7 @@ class SimDriveClassic(object):
                 self.essKwOutAch[i] = self.mcElecKwInAch[i] + \
                     self.auxInKw[i] - self.roadwayChgKwOutAch[i]
 
-        elif self.highAccFcOnTag[i] == 1 or self.veh.noElecAux == True:
+        elif self.highAccFcOnTag[i] or self.veh.noElecAux:
             self.essKwOutAch[i] = self.mcElecKwInAch[i] - \
                 self.roadwayChgKwOutAch[i]
 
@@ -993,7 +993,7 @@ class SimDriveClassic(object):
             self.essKwOutAch[i] = self.mcElecKwInAch[i] + \
                 self.auxInKw[i] - self.roadwayChgKwOutAch[i]
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.essCurKwh[i] = 0
 
         elif self.essKwOutAch[i] < 0:
@@ -1010,7 +1010,7 @@ class SimDriveClassic(object):
         else:
             self.soc[i] = self.essCurKwh[i] / self.veh.maxEssKwh
 
-        if self.canPowerAllElectrically[i] == True and self.fcForcedOn[i] == False and self.fcKwOutAch[i] == 0:
+        if self.canPowerAllElectrically[i] and not(self.fcForcedOn[i]) and self.fcKwOutAch[i] == 0.0:
             self.fcTimeOn[i] = 0
         else:
             self.fcTimeOn[i] = self.fcTimeOn[i-1] + self.cyc.secs[i]
@@ -1028,7 +1028,7 @@ class SimDriveClassic(object):
             self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
                 0, self.mcElecKwInAch[i] + self.auxInKw[i] - self.essKwOutAch[i] - self.roadwayChgKwOutAch[i]))
 
-        elif self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
+        elif self.veh.noElecSys or self.veh.noElecAux or self.highAccFcOnTag[i]:
             self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
                 0, self.transKwInAch[i] - self.mcMechKwOutAch[i] + self.auxInKw[i]))
 
