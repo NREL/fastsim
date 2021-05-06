@@ -182,8 +182,6 @@ class SimDriveClassic(object):
         self.accelKw = np.zeros(len_cyc, dtype=np.float64)
         self.ascentKw = np.zeros(len_cyc, dtype=np.float64)
         self.rrKw = np.zeros(len_cyc, dtype=np.float64)
-        self.motor_index_debug = np.zeros(len_cyc, dtype=np.float64)
-        self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
         self.trace_miss_iters = np.zeros(len_cyc, dtype=np.float64)
         self.newton_iters = np.zeros(len_cyc, dtype=np.float64)
@@ -500,24 +498,20 @@ class SimDriveClassic(object):
             if self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
                 self.curMaxTransKwOut[i] = min(
                     (self.curMaxMcKwOut[i] - self.auxInKw[i]) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
-                self.debug_flag[i] = 1
 
             else:
                 self.curMaxTransKwOut[i] = min((self.curMaxMcKwOut[i] - min(
                     self.curMaxElecKw[i], 0)) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
-                self.debug_flag[i] = 2
 
         else:
 
             if self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
                 self.curMaxTransKwOut[i] = min((self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] -
                                                 self.auxInKw[i]) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
-                self.debug_flag[i] = 3
 
             else:
                 self.curMaxTransKwOut[i] = min((self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] -
                                                 min(self.curMaxElecKw[i], 0)) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
-                self.debug_flag[i] = 4
         
     def set_power_calcs(self, i):
         """Calculate power requirements to meet cycle and determine if
@@ -944,7 +938,6 @@ class SimDriveClassic(object):
 
         if self.mcMechKwOutAch[i] == 0:
             self.mcElecKwInAch[i] = 0.0
-            self.motor_index_debug[i] = 0
 
         elif self.mcMechKwOutAch[i] < 0:
 
@@ -1357,11 +1350,6 @@ class SimDrivePost(object):
         else:
             output['ZeroToSixtyTime_secs'] = 0.0
 
-        #######################################################################
-        ####  Time series information for additional analysis / debugging. ####
-        ####             Add parameters of interest as needed.             ####
-        #######################################################################
-
         output['fcKwOutAch'] = np.asarray(self.fcKwOutAch)
         output['fsKwhOutAch'] = np.asarray(self.fsKwhOutAch)
         output['fcKwInAch'] = np.asarray(self.fcKwInAch)
@@ -1371,7 +1359,7 @@ class SimDrivePost(object):
 
     # optional post-processing methods
     def get_diagnostics(self):
-        """This method is to be run after runing sim_drive, if diagnostic variables 
+        """This method is to be run after runing sim_drive if diagnostic variables 
         are needed.  Diagnostic variables are returned in a dict.  Diagnostic variables include:
         - final integrated value of all positive powers
         - final integrated value of all negative powers
