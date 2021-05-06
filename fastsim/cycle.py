@@ -19,12 +19,12 @@ import copy
 from . import parameters as params
 from .buildspec import build_spec
 
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-CYCLES_DIR = os.path.abspath(
-        os.path.join(
-            THIS_DIR, 'resources', 'cycles'))
-STANDARD_CYCLE_KEYS = ['cycSecs', 'cycMps',
-                       'cycGrade', 'cycRoadType', 'cycMph', 'secs', 'cycDistMeters']
+THIS_DIR = Path(__file__).parent
+CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
+STANDARD_CYCLE_KEYS = [
+    'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType', 
+    'cycMph', 'secs', 'cycDistMeters', 'name',
+    ]
 
 
 class Cycle(object):
@@ -63,7 +63,8 @@ class Cycle(object):
         """Returns numba jitclass version of Cycle object."""
         numba_cyc = CycleJit(len(self.cycSecs))
         for key in STANDARD_CYCLE_KEYS:
-            numba_cyc.__setattr__(key, self.__getattribute__(key).astype(np.float64))
+            if type(self.__getattribute__(key)) != str:
+                numba_cyc.__setattr__(key, self.__getattribute__(key).astype(np.float64))
         return numba_cyc
 
     def set_standard_cycle(self, std_cyc_name):
@@ -72,12 +73,8 @@ class Cycle(object):
         Argument:
         ---------
         std_cyc_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
-        csv_path = os.path.join(CYCLES_DIR, std_cyc_name + '.csv')
-        cyc = pd.read_csv(Path(csv_path))
-        for column in cyc.columns:
-            if column in STANDARD_CYCLE_KEYS:
-                self.__setattr__(column, cyc[column].to_numpy())
-        self.set_dependents()
+        csv_path = Path(CYCLES_DIR) / (std_cyc_name + '.csv')
+        self.set_from_file(csv_path)
 
     def set_from_file(self, cyc_file_path):
         """Load time trace of speed, grade, and road type from user-provided csv
@@ -86,6 +83,7 @@ class Cycle(object):
         ---------
         cyc_file_path: path to file containing cycle data"""
         cyc = pd.read_csv(Path(cyc_file_path))
+        self.name = Path(cyc_file_path).stem
         for column in cyc.columns:
             if column in STANDARD_CYCLE_KEYS:
                 self.__setattr__(column, cyc[column].to_numpy())
@@ -112,6 +110,8 @@ class Cycle(object):
             self.__setattr__('cycGrade', np.zeros(len(self.cycMps)))
         if 'cycRoadType' not in cyc_dict.keys():
             self.__setattr__('cycRoadType', np.zeros(len(self.cycMps)))
+        if 'name' not in cyc_dict.keys():
+            self.__setattr__('name', 'from_dict')
         self.set_dependents()
     
     def set_dependents(self):
@@ -122,7 +122,7 @@ class Cycle(object):
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
-        keys = ['cycSecs', 'cycMps', 'cycGrade', 'cycRoadType']
+        keys = ['cycSecs', 'cycMps', 'cycGrade', 'cycRoadType', 'name']
         
         cyc = {}
         for key in keys:

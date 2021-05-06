@@ -19,10 +19,8 @@ from . import parameters as params
 from .buildspec import build_spec
 
 
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_VEH_DB = os.path.abspath(
-        os.path.join(
-            THIS_DIR, 'resources', 'FASTSim_py_veh_db.csv'))
+THIS_DIR = Path(__file__).parent
+DEFAULT_VEH_DB = Path(THIS_DIR) / 'resources' / 'FASTSim_py_veh_db.csv'
 DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
 
 

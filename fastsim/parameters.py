@@ -6,10 +6,12 @@ import os
 import numpy as np
 from numba.experimental import jitclass
 import json
+from pathlib import Path
+
 
 from fastsim.buildspec import build_spec
 
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+THIS_DIR = Path(__file__).parent
 
 # vehicle types
 CONV = 1
@@ -80,7 +82,7 @@ ENERGY_AUDIT_ERROR_TOLERANCE = 0.02 # i.e., 2%
 chgEff = 0.86 # charger efficiency for PEVs, this should probably not be hard coded long term
 
 # loading long arrays from json file
-with open(os.path.join(THIS_DIR, 'resources', 'longparams.json'), 'r') as paramfile:
+with open(THIS_DIR / 'resources' / 'longparams.json', 'r') as paramfile:
     param_dict = json.load(paramfile)
 
 # PHEV-specific parameters
