@@ -8,6 +8,7 @@ import re
 import os
 import sys
 from pathlib import Path
+import unittest
 
 # local modules
 from fastsim import simdrive, vehicle, cycle
@@ -123,5 +124,16 @@ def main(use_jitclass=True, err_tol=1e-4):
 
     return df_err, df, df0
 
-if __name__ == "__main__":
-    _ = main()
+class TestSimDriveSweep(unittest.TestCase):
+    def test_with_jit(self):
+        "Compares jit results against benchmark."
+        print('Running TestSimDriveSweep.test_with_jit')
+        df_err, _, _ = main(use_jitclass=True)
+        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
+
+    def test_without_jit(self):
+        "Compares non-jit results against benchmark."
+        print('Running TestSimDriveSweep.test_without_jit')
+        df_err, _, _ = main(use_jitclass=False)
+        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
+        
