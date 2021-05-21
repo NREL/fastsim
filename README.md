@@ -4,22 +4,22 @@ This repo houses the pythonic flavor of FASTSim which is based on the original E
 All classes and methods are self-documented.  
 
 # Installation
-First, clone the repository from GitHub:
+First, clone the repository from GitHub if you don't already have a local copy of the FASTSim package files:
 
     git clone git@github.nrel.gov:MBAP/fastsim.git
     
-FASTSim depends on python 3.7. One way to satisfy this is to use conda:
+FASTSim depends on python 3.7. One way to satisfy this is to use conda (we recommend Anaconda Powershell Prompt for Windows OS):
 
     conda create -n fastsim python=3.7
     conda activate fastsim
     
-Then, from within the top level of the folder created by the `git clone` command, just run a pip install:
+Then, from within the top level of the FASTSim folder, run a pip install:
 
-    pip install .
+    pip install -e .
     
-This will install FASTSim with minimal dependencies.
+This will install FASTSim with minimal dependencies in place so that FASTSim files can be editable (`-e` provides this behavior). Developers will find this option handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
 
-FASTSim can also be installed with the `-e` option (i.e. `pip install -e fastsim`) so that FASTSim files can be editable. Developers will find this option handy since FASTSim will be installed in place from the installation location, and any updates will be propagated each time FASTSim is freshly imported.  
+For users who are not developers, FASTSim can also be installed without the `-e` option (i.e. `pip install .`), and package files will be copied to the python site-packages folder.   
 
 # Usage
 To run an example, navigate to fastsim/docs and run `jupyter lab demo.ipynb` to see a demo of fastsim use cases. There are other examples in fastsim/docs and fastsim/tests.  
@@ -79,6 +79,7 @@ in = component input
 out = component output  
 
 # Release Notes
+0.1.6 -- Fixed energy audit calculations to be based on achieved speed.  Updated this file.
 0.1.5 -- Updated to be compatible with ADOPT
 0.1.4 -- Bug fix: `mcEffMap` is now robust to having zero as first element
 0.1.3 -- Bug fix: `fastsim.vehicle.Vehicle` method `set_init_calcs` no longer overrides `fcEffMap`.  
