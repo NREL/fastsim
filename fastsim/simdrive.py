@@ -1089,12 +1089,13 @@ class SimDriveClassic(object):
         if self.mpgge == 0:
             # hardcoded conversion
             self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / params.kWhPerGGE
-            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / 33.7 / self.veh.chgEff
+            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / params.kWhPerGGE / self.veh.chgEff
 
         else:
             self.Gallons_gas_equivalent_per_mile = 1 / \
                 self.mpgge + self.electric_kWh_per_mi  / params.kWhPerGGE
-            grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + self.electric_kWh_per_mi / 33.7 / self.veh.chgEff
+            grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + \
+                self.electric_kWh_per_mi / params.kWhPerGGE / self.veh.chgEff
 
         self.grid_mpgge_elec = 1 / grid_Gallons_gas_equivalent_per_mile
         self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
