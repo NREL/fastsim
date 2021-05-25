@@ -5,6 +5,7 @@ cycle data. For example usage, see ../README.md"""
 import os
 import numpy as np
 import pandas as pd
+import types as pytypes
 import re
 import sys
 from numba.experimental import jitclass                 # import the decorator
@@ -20,87 +21,75 @@ from .buildspec import build_spec
 
 
 THIS_DIR = Path(__file__).parent
-DEFAULT_VEH_DB = Path(THIS_DIR) / 'resources' / 'FASTSim_py_veh_db.csv'
+DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
 DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
 
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
 
-    def __init__(self, vnum=None, veh_file=None, verbose=True):
-        """See doc string for load_veh for additional details on arguments.
-    
+    def __init__(self, vnum_or_file=None, veh_file=None, veh_dict=None, verbose=True):
+        """Arguments:
+        veh_dict: If provided, vehicle is instantiated from dictionary, which must 
+            contain a fully instantiated parameter set.
+
+        TODO: fix this section
         If a single vehicle `veh_file` is provided, vnum cannot be passed, and
         veh_file must be passed as a keyword argument. Files contained in
         fastsim/resources/vehdb can be loaded with the filename if provided as
-        the `vnum` argument.  Specifying `veh_file` will explicitly load whatever
-        file path is provided, using `vnum` if appropriate."""
+        the `vnum_or_file` argument.  Specifying `veh_file` will explicitly load whatever
+        file path is provided, using `vnum_or_file` as an integer, if appropriate.
+        
+        See below for `load_veh` documentaion.\n""" + self.load_veh.__doc__
         
         self.props = params.PhysicalProperties()
         self.fcPwrOutPerc = params.fcPwrOutPerc
         self.fcPercOutArray = params.fcPercOutArray
         self.mcPercOutArray = params.mcPercOutArray
 
-        if veh_file and vnum:
-            self.load_veh(vnum, veh_file=veh_file, verbose=verbose)
-        elif vnum and not veh_file:
-            try:
-                # load numbered vehicle
-                int(vnum)
-                self.load_veh(int(vnum), verbose=verbose)
-            except:
-                # load FASTSim's standalone vehicles 
-                # (vnum is a filename (str or pathlib.Path) in this case)
-                self.load_veh(veh_file=Path(THIS_DIR) / 'resources/vehdb' / vnum, verbose=verbose)
-
+        if veh_dict:
+            for key, val in veh_dict.items():
+                self.__setattr__(key, val)
         else:
-            # not passing `vnum` tells load_veh that the file contains only 1 vehicle
-            self.load_veh(veh_file=veh_file, verbose=verbose)
+            self.load_veh(vnum_or_file=vnum_or_file, veh_file=veh_file)
 
-    def get_numba_veh(self):
-        """Load numba JIT-compiled vehicle."""
-        if 'numba_veh' not in self.__dict__:
-            self.numba_veh = VehicleJit()
-        for item in veh_spec:
-            if (type(self.__getattribute__(item[0])) == np.ndarray) | (type(self.__getattribute__(item[0])) == np.float64):
-                self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float64))
-            elif type(self.__getattribute__(item[0])) == np.int64:
-                self.numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.int32))
-            elif item[0] == 'props':
-                self.numba_veh.__setattr__(item[0], params.PhysicalPropertiesJit())
-            else:
-                self.numba_veh.__setattr__(
-                    item[0], self.__getattribute__(item[0]))
-            
-        return self.numba_veh
-    
-    def load_veh(self, vnum=None, veh_file=None, return_vehdf=False, verbose=True):
+    def load_veh(self, vnum_or_file=None, veh_file=None, return_vehdf=False, verbose=True):
         """Load vehicle parameters from file.
 
         Arguments:
         ---------
-        vnum: row number (int) of vehicle to simulate in 'FASTSim_py_veh_db.csv'
-        veh_file: path (str or pathlib.Path) to vehicle file 
-        return_vehdf: (Boolean) if True, returns vehdf.  Mostly useful for 
-            debugging purpsose.   
+        vnum_or_file: row number (int) of vehicle to simulate in 'FASTSim_py_veh_db.csv' 
+            or supplied `veh_file` path (str or pathlib.Path) containing rows of vehicle 
+            specs.  If only filename is passed, vehicle is assumed to be in resources/vehdb
+        veh_file: path (str or pathlib.Path) to vehicle file if vnum_or_file is also 
+            supplied as an int
+        return_vehdf: (Boolean) if True, returns vehdf.  Useful for debugging purpsoses.   
 
         If default values are modified after loading, you may need to 
         rerun set_init_calcs() and set_veh_mass() to propagate changes."""
 
-        if vnum and veh_file:
-            vehdf = pd.read_csv(Path(veh_file))
-        elif vnum:
-            vehdf = DEFAULT_VEHDF
-        elif veh_file:
-            vehdf = pd.read_csv(Path(veh_file))
+        if (type(vnum_or_file) in [type(Path()), str]):
+            # if a file path is passed
+            if Path(vnum_or_file).name == str((Path(vnum_or_file))):
+                # if only filename is provided assume in resources/vehdb
+                vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
+            vehdf = pd.read_csv(Path(vnum_or_file))
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
             vehdf.drop(vehdf.index[0], inplace=True)
             vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
             vehdf.loc['Param Value', 'Selection'] = 0
             vnum = 0
+        elif str(vnum_or_file).isnumeric() and veh_file:
+            # if a numeric is passed along with veh_file
+            vnum = vnum_or_file
+            vehdf = pd.read_csv(Path(veh_file))
+        elif str(vnum_or_file).isnumeric():
+            # if a numeric is passed alone
+            vnum = vnum_or_file
+            vehdf = DEFAULT_VEHDF
         else:
-            raise Exception('load_veh requires `vnum` and/or `veh_file`.')
+            raise Exception('load_veh requires `vnum_or_file` and/or `veh_file`.')
         vehdf.set_index('Selection', inplace=True, drop=False)
 
         def clean_data(raw_data):
@@ -146,16 +135,16 @@ class Vehicle(object):
         # set columns and values as instance attributes and values
         for col in vehdf.columns:
             col1 = col.replace(' ', '_')
-            
-            # assign dataframe columns 
+            # assign dataframe columns
             self.__setattr__(col1, vehdf.loc[vnum, col])
-        
+
         # make sure all the attributes needed by CycleJit are set
         # this could potentially cause unexpected behaviors
         missing_cols = set(DEFAULT_VEHDF.columns) - set(vehdf.columns)
         if len(missing_cols) > 0:
             if verbose:
-                print("np.nan filled in for values missing from " + "'" + str(veh_file) + "'")
+                print("np.nan filled in for values missing from " +
+                      "'" + str(veh_file) + "'")
             for col in missing_cols:
                 self.__setattr__(col, np.nan)
 
@@ -191,13 +180,29 @@ class Vehicle(object):
         except ValueError:
             self.mcPwrOutPerc = params.mcPwrOutPerc
 
-
         self.set_init_calcs()
-        self.set_veh_mass()            
+        self.set_veh_mass()
 
         if return_vehdf:
             return vehdf
 
+    def get_numba_veh(self):
+        """Load numba JIT-compiled vehicle."""
+        if 'numba_veh' not in self.__dict__:
+            numba_veh = VehicleJit()
+        for item in veh_spec:
+            if (type(self.__getattribute__(item[0])) in [np.ndarray, np.float64]):
+                numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float64))
+            elif type(self.__getattribute__(item[0])) == np.int64:
+                numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.int32))
+            elif item[0] == 'props':
+                numba_veh.__setattr__(item[0], params.PhysicalPropertiesJit())
+            else:
+                numba_veh.__setattr__(
+                    item[0], self.__getattribute__(item[0]))
+            
+        return numba_veh
+    
     def set_init_calcs(self):
         """Set parameters that can be calculated after loading vehicle data"""
         ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
@@ -355,6 +360,10 @@ class Vehicle(object):
         self.fcMassKg =  fc_mass_kg
         self.fsMassKg =  fs_mass_kg
 
+    def get_veh_dict(self):
+        """Return dictionary with all vehicle attributes"""
+        
+
 veh_spec = build_spec(Vehicle(1))
 
 
@@ -390,3 +399,61 @@ class VehicleJit(Vehicle):
         to avoid numba incompatibilities.
         Runs self.set_dependents()"""
         self.set_dependents()
+
+
+def copy_vehicle(veh, return_dict=False):
+    """Returns copy of Vehicle or VehicleJit.
+    Arguments:
+    veh: instantiated Vehicle or VehicleJit
+    return_dict: (Boolean) if True, returns vehicle as dict. 
+        Otherwise, returns exact copy.
+    """
+
+    veh_dict = {}
+
+    for key in veh.__dir__():
+        if (not key.startswith('_')) and \
+                (type(veh.__getattribute__(key)) != pytypes.MethodType):
+            veh_dict[key] = veh.__getattribute__(key)
+
+    if return_dict:
+        return veh_dict
+    else:
+        if type(veh) == Vehicle:
+            veh = Vehicle(veh_dict=veh_dict)
+        else:
+            # expects `veh` to be instantiated VehicleJit
+            veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
+        return veh
+
+def veh_equal(veh1, veh2, full_out=False):
+    """Given veh1 and veh2, which can be Vehicle and/or VehicleJit
+    instances, return True if equal.
+    
+    Arguments:
+    ----------
+    """
+
+    veh_dict1 = copy_vehicle(veh1, True)
+    veh_dict2 = copy_vehicle(veh2, True)
+    err_list = []
+    keys = list(veh_dict1.keys())
+    keys.remove('props') # no need to compare this one
+    for key in keys:
+        if pd.api.types.is_list_like(veh_dict1[key]):
+            if (veh_dict1[key] != veh_dict2[key]).any():
+                if not full_out: return False
+                err_list.append(
+                    {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
+        elif veh_dict1[key] != veh_dict2[key]:
+            try:
+                if np.isnan(veh_dict1[key]) and np.isnan(veh_dict2[key]):
+                    continue # treat as equal if both nan
+            except:
+                pass
+            if not full_out: return False
+            err_list.append(
+                {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
+    if full_out: return err_list
+
+    return True

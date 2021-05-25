@@ -1394,7 +1394,10 @@ class SimDrivePost(object):
             output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], self.cyc.cycSecs)
         
         output['distMilesFinal'] = sum(self.distMiles)
-        output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * params.kWhPerGGE
+        if sum(self.fsKwhOutAch) > 0:
+            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * params.kWhPerGGE
+        else:
+            output['mpgge'] = 0
     
         return output
 

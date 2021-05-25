@@ -34,7 +34,6 @@ import importlib
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# %%
 # local modules
 from fastsim import simdrive, vehicle, cycle
 # importlib.reload(simdrive)
@@ -77,15 +76,11 @@ print(f'Time to JIT compile vehicle: {time.time() - t1:.2e} s')
 
 # %% [markdown]
 # ### Run FASTSim
-# 
-# The "sim_drive" function takes the drive cycle and vehicle models defined above as inputs. The output is a dictionary of time series and scalar values described the simulation results. Typically of interest is the "gge" key, which is an array of time series energy consumption data at each time step in the drive cycle.
-# 
-# If running FASTSim in batch over many drive cycles, the output from "sim_drive" can be written to files or database for batch post-processing. 
 
 # %%
 t0 = time.time()
 
-# instantiate and run classic version via convenience wrapper
+# instantiate and run classic version 
 # sim_drive = simdrive.SimDriveClassic(cyc_jit, veh_jit)
 # sim_drive.sim_drive()
 
@@ -328,9 +323,13 @@ print('     Average time per cycle = {:.2f} s'.format((
 # %% [markdown]
 # ### Results
 # 
-# In this demo, the batch results from all 494 drive cycles were output to a Pandas Dataframe to simplify post-processing. Any python data structure or output file format can be used to save batch results. For simplicity, time series data was not stored, but it could certainly be included in batch processing.
-# 
-# In order to plot the data, a handful of results are filtered out either because they are much longer than we are interested in, or there was some GPS issue in data acquisition that led to an unrealistically high cycle average speed.
+# In this demo, the batch results from all 494 drive cycles were output to a 
+# Pandas Dataframe to simplify post-processing. Any python data structure or 
+# output file format can be used to save batch results. For simplicity, time 
+# series data was not stored, but it could certainly be included in batch processing.
+# In order to plot the data, a handful of results are filtered out either because 
+# they are much longer than we are interested in, or there was some GPS issue in 
+# data acquisition that led to an unrealistically high cycle average speed.
 
 # %%
 df_fltr = results_df[(results_df['distance_mi'] < 1000)
@@ -435,13 +434,14 @@ plt.show()
 
 # %% [markdown]
 # ## Concat cycles/trips
-# Includes examples of loading vehicle from standalone file and loading non-standard cycle from file
+# Includes examples of loading vehicle from standalone file and loading non-standard 
+# cycle from file
 
 # %%
 # load vehicle
 t0 = time.time()
 # load from standalone vehicle file
-veh = vehicle.Vehicle('2012 Ford Fusion.csv') # load vehicle using name
+veh = vehicle.Vehicle('2012_Ford_Fusion.csv') # load vehicle using name
 veh_jit = veh.get_numba_veh()
 print(f'Time to load veicle: {time.time() - t0:.2e} s')
 
@@ -541,8 +541,8 @@ print(f'Time to load and resample: {time.time() - t0:.2e} s')
 # load vehicle
 t0 = time.time()
 # load vehicle using explicit path
-veh = vehicle.Vehicle(veh_file=Path(simdrive.__file__).parent / 
-                      'resources/vehdb/2012 Ford Fusion.csv')
+veh = vehicle.Vehicle(Path(simdrive.__file__).parent / 
+                      'resources/vehdb/2012_Ford_Fusion.csv')
 veh_jit = veh.get_numba_veh()
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
@@ -550,11 +550,12 @@ print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 # %%
 # generate concatenated trip
 t0 = time.time()
-cyc1 = cycle.Cycle("udds")
+cyc_udds = cycle.Cycle("udds")
 # Generate cycle with 0.1 s time steps
-cyc1 = cycle.Cycle(cyc_dict=cycle.resample(cyc1.get_cyc_dict(), new_dt=0.1))
-cyc2 = cycle.Cycle("us06")
-cyc_combo = cycle.concat([cyc1.get_cyc_dict(), cyc2.get_cyc_dict()])
+cyc_udds_10Hz = cycle.Cycle(
+    cyc_dict=cycle.resample(cyc_udds.get_cyc_dict(), new_dt=0.1))
+cyc_us06 = cycle.Cycle("us06")
+cyc_combo = cycle.concat([cyc_udds_10Hz.get_cyc_dict(), cyc_us06.get_cyc_dict()])
 cyc_combo = cycle.resample(cyc_combo, new_dt=1)
 cyc_combo = cycle.Cycle(cyc_dict=cyc_combo)
 cyc_combo_jit = cyc_combo.get_numba_cyc()
@@ -657,5 +658,3 @@ ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
 plt.show()
-
-

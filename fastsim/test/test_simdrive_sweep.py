@@ -137,3 +137,5 @@ class TestSimDriveSweep(unittest.TestCase):
         df_err, _, _ = main(use_jitclass=False)
         self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
         
+if __name__ == '__main__':
+    main()

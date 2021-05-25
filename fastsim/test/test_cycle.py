@@ -1,4 +1,4 @@
-"""Test for cycle creation."""
+"""Test suite for cycle instantiation and manipulation."""
 
 import unittest
 from pathlib import Path
