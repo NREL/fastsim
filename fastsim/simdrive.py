@@ -8,7 +8,7 @@ import pandas as pd
 import re
 import sys
 from fastsim import vehicle
-from numba.experimental import jitclass                 # import the decorator
+from numba.experimental import jitclass # import the decorator
 import warnings
 warnings.simplefilter('ignore')
 
