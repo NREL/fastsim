@@ -83,7 +83,7 @@ in = component input
 out = component output  
 
 # Release Notes
-0.1.6 -- Fixed energy audit calculations to be based on achieved speed.  Updated this file.
+0.1.6 -- Fixed energy audit calculations to be based on achieved speed.  Updated this file.  
 0.1.5 -- Updated to be compatible with ADOPT
 0.1.4 -- Bug fix: `mcEffMap` is now robust to having zero as first element
 0.1.3 -- Bug fix: `fastsim.vehicle.Vehicle` method `set_init_calcs` no longer overrides `fcEffMap`.  
