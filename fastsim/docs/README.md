@@ -24,9 +24,7 @@ This will install FASTSim with minimal dependencies in place so that FASTSim fil
 For users who are not developers, FASTSim can also be installed without the `-e` option (i.e. `pip install .`), and package files will be copied to the python site-packages folder.   
 
 # Usage
-To run an example, navigate to fastsim/docs and run  
-`jupyter lab demo.ipynb` 
-to see a demo of fastsim use cases. There are other examples in fastsim/docs and fastsim/test.  
+To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/test.  
 
 To get help in an interactive ipython or jupyter session:  
 ```
@@ -35,7 +33,11 @@ fastsim.simdrive.SimDriveClassic? # or
 help(fastsim.simdrive.SimDriveClassic)
 ```
 
+Help can be used in this manner on any FASTSim object.
+
 # Testing
+
+The `unittest` package has been implemented such that you can run `python -m unittest discover` from within the fastsim folder, and all tests will be automatically discovered and run.  
 
 ## Against Previous Python Version
 
@@ -89,7 +91,4 @@ out = component output
 0.1.3 -- Bug fix: `fastsim.vehicle.Vehicle` method `set_init_calcs` no longer overrides `fcEffMap`.  
 0.1.2 -- Fixes os-dependency of xlwings by not running stuff that needs xlwings.  Improvements in functional test.  Refinment utomated typying of jitclass objects.  
 0.1.1 -- Now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.  
-
-# Known Bugs
-
 
