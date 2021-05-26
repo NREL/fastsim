@@ -24,3 +24,7 @@ class TestCycle(unittest.TestCase):
             pd.DataFrame(cyc.get_cyc_dict()) ==
             pd.DataFrame(cyc_from_dict.get_cyc_dict())).all().all()
         )
+
+    # TODO: implement this
+    # def test_copy(self):
+    #     """checks that copy methods produce identical cycles"""
