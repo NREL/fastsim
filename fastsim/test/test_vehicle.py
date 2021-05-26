@@ -10,8 +10,7 @@ from fastsim import vehicle
 
 class TestVehicle(unittest.TestCase):
     def test_equal(self):
-        """Verify that a copied VehicleJit and identical Vehicle 
-        are equal"""
+        """Verify that a copied VehicleJit and identically instantiated Vehicle are equal."""
 
         veh = vehicle.Vehicle(1)
         veh_jit = veh.get_numba_veh()
