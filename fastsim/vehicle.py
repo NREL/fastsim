@@ -360,11 +360,7 @@ class Vehicle(object):
         self.fcMassKg =  fc_mass_kg
         self.fsMassKg =  fs_mass_kg
 
-    def get_veh_dict(self):
-        """Return dictionary with all vehicle attributes"""
-        
-
-veh_spec = build_spec(Vehicle(1))
+veh_spec = build_spec(Vehicle('template.csv'))
 
 
 @jitclass(veh_spec)
