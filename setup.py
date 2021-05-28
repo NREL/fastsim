@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fastsim",  
-    version="0.1.5",
+    version="1.0.0",
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
     description="Tool for modeling vehicle powertrains",
@@ -28,18 +28,7 @@ setuptools.setup(
         "pandas>=1",
         "matplotlib>=3.3",
         "numpy>=1.18",
-        "numba==0.52",
+        "numba>=0.52",
         "seaborn>=0.10",
-        "jupyter>=1.0",
-        "jupyter_client>=6.1",
-        "jupyter_console>=6.1",
-        "jupyter_core>=4.6",
-        "jupyterlab>=2.1",
-        "jupyterlab_server>=1.2",
-        "keyring",
-        "pkginfo",
-        "tqdm",
-        "docutils",
-        "jedi==0.17.2"
     ],
 )

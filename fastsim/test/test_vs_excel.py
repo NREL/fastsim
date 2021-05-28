@@ -1,6 +1,6 @@
-"""Module for comparing python results with Excel."""
-
-"""Test script that runs all the vehicles in both Excel and Python FASTSim for both UDDS and HWFET cycles."""
+"""Module for comparing python results with Excel by running all the vehicles 
+in both Excel (uses archived results if Excel version not available) and 
+Python FASTSim for both UDDS and HWFET cycles."""
 
 
 # local modules
@@ -14,14 +14,17 @@ import importlib
 from pathlib import Path
 from math import isclose
 import importlib
-import pickle
+import unittest
+
+
 from fastsim import simdrive, vehicle, cycle, simdrivelabel
 importlib.reload(simdrivelabel) # useful for debugging
 
-try:
-    import xlwings as xw
+
+if 'xlwings' in sys.modules:
     xw_success = True
-except:
+    import xlwings as xw
+else:
     xw_success = False
 
 
@@ -75,13 +78,10 @@ def run_excel(prev_res_path=PREV_RES_PATH,
     rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
 
     if not(rerun_excel) and prev_res_path:
-        print("Loading Excel results.")
-        if '.p' in str(prev_res_path):
-            res_excel = pickle.load(open(prev_res_path, 'rb'))
-        elif '.json' in str(prev_res_path):
-            res_excel = json.load(open(prev_res_path, 'r'))
+        print("Loading archived Excel results.")
+        res_excel = json.load(open(prev_res_path, 'r'))
     elif xw_success:  
-        print("Running Excel")
+        print("Running Excel.")
         t0 = time.time()
 
         # initial setup
@@ -149,6 +149,12 @@ def run_excel(prev_res_path=PREV_RES_PATH,
 
     return res_excel
 
+# vehicles for which fairly large discrepancies in efficiencies are expected
+# TODO: implement model year as an optional vehicle parameter so that python can 
+# match excel perfectly (e.g. to 6 sig figs)
+KNOWN_ERROR_LIST = ['2017 Prius Prime',
+    'Toyota Mirai', 'Regional Delivery Class 8 Truck']
+
 
 def compare(res_python, res_excel, err_tol=0.001):
     """Finds common vehicle names in both excel and python 
@@ -165,9 +171,6 @@ def compare(res_python, res_excel, err_tol=0.001):
 
     common_names = set(res_python.keys()) & set(res_excel.keys())
 
-    known_error_list = ['2017 Prius Prime',
-                        'Toyota Mirai', 'Regional Delivery Class 8 Truck']
-
     res_keys = ['labUddsMpgge', 'labHwyMpgge', 'labCombMpgge',
                 'labUddsKwhPerMile', 'labHwyKwhPerMile', 'labCombKwhPerMile',
                 'adjUddsMpgge', 'adjHwyMpgge', 'adjCombMpgge',
@@ -181,7 +184,7 @@ def compare(res_python, res_excel, err_tol=0.001):
         print('***'*7)
         res_comp = {}
 
-        if vehname in known_error_list:
+        if vehname in KNOWN_ERROR_LIST:
             print("Discrepancy in model year between Excel and Python")
             print("is probably the root cause of efficiency errors below.")
 
@@ -220,9 +223,10 @@ def main(use_jitclass=True, err_tol=0.001,
 
     if xw_success and rerun_excel:
         res_python = run_python(verbose=False, use_jit=use_jitclass)
-        res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
+        res_excel = run_excel(prev_res_path=prev_res_path,
+                              rerun_excel=rerun_excel)
         res_comps = compare(res_python, res_excel)
-    elif prev_res_path and not(rerun_excel):
+    elif not(rerun_excel):
         res_python = run_python(verbose=False, use_jit=use_jitclass)
         res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
         res_comps = compare(res_python, res_excel)
@@ -231,5 +235,48 @@ def main(use_jitclass=True, err_tol=0.001,
         because xlwings is not installed. Run the command:
         `pip install xlwings` if compatible with your OS.""")
 
-if __name__ == '__main__':
-    main()
+    return res_comps
+
+# 2.2% acceleration error between python and excel is ok because python interpolates
+ACCEL_ERR_TOL = 0.022 
+
+class TestExcel(unittest.TestCase):
+    def test_with_jit(self):
+        "Compares jit results against archived Excel results."
+        print("Running ExcelTest.test_with_jit")
+        res_python = run_python(verbose=False, use_jit=True)
+        res_excel = run_excel(prev_res_path=PREV_RES_PATH,
+                              rerun_excel=False)
+        res_comps = compare(res_python, res_excel)
+
+        failed_tests = []
+        for veh_key, veh_val in res_comps.items():
+            if veh_key not in KNOWN_ERROR_LIST:
+                for attr_key, attr_val in veh_val.items():
+                    if attr_key == 'netAccel_frac_err':
+                        if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+                            failed_tests.append(veh_key + '.' + attr_key)
+                    elif attr_val != 0:
+                        failed_tests.append(veh_key + '.' + attr_key)
+
+        self.assertEqual(failed_tests, [])
+
+    def test_without_jit(self):
+        "Compares non-jit results against archived Excel results."
+        print("Running ExcelTest.test_without_jit")
+        res_python = run_python(verbose=False, use_jit=False)
+        res_excel = run_excel(prev_res_path=PREV_RES_PATH,
+                              rerun_excel=False)
+        res_comps = compare(res_python, res_excel)
+
+        failed_tests = []
+        for veh_key, veh_val in res_comps.items():
+            if veh_key not in KNOWN_ERROR_LIST:
+                for attr_key, attr_val in veh_val.items():
+                    if attr_key == 'netAccel_frac_err':
+                        if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+                            failed_tests.append(veh_key + '.' + attr_key)
+                    elif attr_val != 0:
+                        failed_tests.append(veh_key + '.' + attr_key)
+
+        self.assertEqual(failed_tests, [])

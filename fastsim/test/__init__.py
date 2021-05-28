@@ -1,6 +1,8 @@
-"""Package containing tests for FASTSim."""
+"""Package containing tests for FASTSim.
+Run the tests either by importing the package or with 
+`python -m unittest discover` from within fastsim."""
 
-from . import accel_test, test26veh3cyc, test_vs_excel
+from . import test_simdrive_sweep, test_vs_excel
 # from . import test_vs_excel # this test does not work yet and is therefore not imported for now
 # from . import test_time_dilation # not setup to be used as module so not imported
 
@@ -10,10 +12,7 @@ def run_all_working_tests(use_jitclass=True):
     except test_vs_excel.py, which has known bugs."""
 
     print("Running test26veh3cyc.")
-    test26veh3cyc.main(use_jitclass)
+    test_simdrive_sweep.main(use_jitclass)
     
-    print("\nRunning accel_test.")
-    accel_test.main(use_jitclass)
-
     print("\nRunning comparison with Excel FASTSim.")
     test_vs_excel.main(use_jitclass)
