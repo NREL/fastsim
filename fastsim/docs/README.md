@@ -92,3 +92,15 @@ out = component output
 0.1.2 -- Fixes os-dependency of xlwings by not running stuff that needs xlwings.  Improvements in functional test.  Refinment utomated typying of jitclass objects.  
 0.1.1 -- Now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.  
 
+# Contributors
+Wood, Eric
+Ramroth, Laurie
+Payne, Grant
+Moniot, Matthew
+Lustbader, Jason
+Lopp, Sean
+Holden, Jacob
+Gonder, Jeffrey
+Brooker, Aaron
+Baker, Chad
+
