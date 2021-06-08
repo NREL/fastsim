@@ -93,16 +93,13 @@ out = component output
 0.1.1 -- Now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.  
 
 # Contributors
-Aaron	Brooker	Aaron.Brooker@nrel.gov
-Jeffrey	Gonder	Jeff.Gonder@nrel.gov
-Chad	Baker	Chad.Baker@nrel.gov
-Eric	Wood	Eric.Wood@nrel.gov
-Jacob	Holden	Jacob.Holden@nrel.gov
-Grant	Payne	Grant.Payne@nrel.gov
-Matthew	Moniot	Matthew.Moniot@nrel.gov
-Jason	Lustbader	Jason.Lustbader@nrel.gov
-Sean	Lopp	sean@rstudio.com
-Laurie	Ramroth	lramroth@ford.com
-
-
-
+Aaron Brooker -- Aaron.Brooker@nrel.gov
+Jeffrey Gonder -- Jeff.Gonder@nrel.gov
+Chad Baker -- Chad.Baker@nrel.gov
+Eric Wood -- Eric.Wood@nrel.gov
+Jacob Holden -- Jacob.Holden@nrel.gov
+Grant Payne -- Grant.Payne@nrel.gov
+Matthew Moniot -- Matthew.Moniot@nrel.gov
+Jason Lustbader -- Jason.Lustbader@nrel.gov
+Sean Lopp -- sean@rstudio.com
+Laurie Ramroth -- lramroth@ford.com
