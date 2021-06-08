@@ -9,7 +9,6 @@ import types as pytypes
 import re
 import sys
 from numba.experimental import jitclass                 # import the decorator
-from numba import float64, int32, bool_, types    # import the types
 import warnings
 warnings.simplefilter('ignore')
 from pathlib import Path
@@ -32,15 +31,8 @@ class Vehicle(object):
         """Arguments:
         veh_dict: If provided, vehicle is instantiated from dictionary, which must 
             contain a fully instantiated parameter set.
-
-        TODO: fix this section
-        If a single vehicle `veh_file` is provided, vnum cannot be passed, and
-        veh_file must be passed as a keyword argument. Files contained in
-        fastsim/resources/vehdb can be loaded with the filename if provided as
-        the `vnum_or_file` argument.  Specifying `veh_file` will explicitly load whatever
-        file path is provided, using `vnum_or_file` as an integer, if appropriate.
         
-        See below for `load_veh` documentaion.\n""" + self.load_veh.__doc__
+        See below for `load_veh` method documentaion.\n""" + self.load_veh.__doc__
         
         self.props = params.PhysicalProperties()
         self.fcPwrOutPerc = params.fcPwrOutPerc
