@@ -685,8 +685,12 @@ class SimDriveClassic(object):
                 self.veh.maxSoc - (self.veh.maxRegenKwh / self.veh.maxEssKwh), (self.veh.maxSoc + self.veh.minSoc) / 2)
 
         else:
-            self.regenBufferSoc[i] = max(((self.veh.maxEssKwh * self.veh.maxSoc) - (0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1000)
-                * (1.0 / 3600) * self.veh.motorPeakEff * self.veh.maxRegen)) / self.veh.maxEssKwh, self.veh.minSoc)
+            self.regenBufferSoc[i] = max(
+                (self.veh.maxEssKwh * self.veh.maxSoc - 
+                    0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1000) * (1.0 / 3600) * self.veh.motorPeakEff * self.veh.maxRegen
+                    ) / self.veh.maxEssKwh, 
+                self.veh.minSoc
+            )
 
             self.essRegenBufferDischgKw[i] = min(self.curMaxEssKwOut[i], max(
                 0, (self.soc[i-1] - self.regenBufferSoc[i]) * self.veh.maxEssKwh * 3600 / self.cyc.secs[i]))
@@ -698,23 +702,40 @@ class SimDriveClassic(object):
             self.accelBufferSoc[i] = 0
 
         else:
-            self.accelBufferSoc[i] = min(max((((((((self.veh.maxAccelBufferMph * (1 / params.mphPerMps))**2)) - ((self.cyc.cycMps[i]**2))) /
-                (((self.veh.maxAccelBufferMph * (1 / params.mphPerMps))**2))) * (min(self.veh.maxAccelBufferPercOfUseableSoc * \
-                (self.veh.maxSoc - self.veh.minSoc), self.veh.maxRegenKwh / self.veh.maxEssKwh) * self.veh.maxEssKwh)) / self.veh.maxEssKwh) + \
-                self.veh.minSoc, self.veh.minSoc), self.veh.maxSoc)
+            self.accelBufferSoc[i] = min(
+                max(
+                    ((self.veh.maxAccelBufferMph / params.mphPerMps) ** 2 - self.cyc.cycMps[i] ** 2) / 
+                    (self.veh.maxAccelBufferMph / params.mphPerMps) ** 2 * min(
+                        self.veh.maxAccelBufferPercOfUseableSoc * (self.veh.maxSoc - self.veh.minSoc), 
+                        self.veh.maxRegenKwh / self.veh.maxEssKwh
+                    ) * self.veh.maxEssKwh / self.veh.maxEssKwh + self.veh.minSoc, 
+                    self.veh.minSoc
+                ), 
+                self.veh.maxSoc
+                )
 
             self.essAccelBufferChgKw[i] = max(
                 0, (self.accelBufferSoc[i] - self.soc[i-1]) * self.veh.maxEssKwh * 3600.0 / self.cyc.secs[i])
-            self.maxEssAccelBufferDischgKw[i] = min(max(
+            self.maxEssAccelBufferDischgKw[i] = min(
+                max(
                 0, (self.soc[i-1] - self.accelBufferSoc[i]) * self.veh.maxEssKwh * 3600 / self.cyc.secs[i]), self.curMaxEssKwOut[i])
 
         if self.regenBufferSoc[i] < self.accelBufferSoc[i]:
-            self.essAccelRegenDischgKw[i] = max(min(((self.soc[i-1] - (self.regenBufferSoc[i] + self.accelBufferSoc[i]) / 2) * self.veh.maxEssKwh * 3600.0) /
-                self.cyc.secs[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+            self.essAccelRegenDischgKw[i] = max(
+                min(
+                    (self.soc[i-1] - (self.regenBufferSoc[i] + self.accelBufferSoc[i]) / 2) * self.veh.maxEssKwh * 3600.0 / self.cyc.secs[i], 
+                    self.curMaxEssKwOut[i]
+                ), 
+                -self.curMaxEssChgKw[i]
+            )
 
         elif self.soc[i-1] > self.regenBufferSoc[i]:
-            self.essAccelRegenDischgKw[i] = max(min(
-                self.essRegenBufferDischgKw[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+            self.essAccelRegenDischgKw[i] = max(
+                min(
+                    self.essRegenBufferDischgKw[i], 
+                    self.curMaxEssKwOut[i]), 
+                -self.curMaxEssChgKw[i]
+            )
 
         elif self.soc[i-1] < self.accelBufferSoc[i]:
             self.essAccelRegenDischgKw[i] = max(
