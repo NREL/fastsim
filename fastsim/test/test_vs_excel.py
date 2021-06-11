@@ -150,10 +150,7 @@ def run_excel(prev_res_path=PREV_RES_PATH,
     return res_excel
 
 # vehicles for which fairly large discrepancies in efficiencies are expected
-# TODO: implement model year as an optional vehicle parameter so that python can 
-# match excel perfectly (e.g. to 6 sig figs)
-KNOWN_ERROR_LIST = ['2017 Prius Prime',
-    'Toyota Mirai', 'Regional Delivery Class 8 Truck']
+KNOWN_ERROR_LIST = ['Regional Delivery Class 8 Truck']
 
 
 def compare(res_python, res_excel, err_tol=0.001):

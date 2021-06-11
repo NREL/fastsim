@@ -2,12 +2,10 @@
 cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules
-import os
 import numpy as np
 import pandas as pd
 import types as pytypes
 import re
-import sys
 from numba.experimental import jitclass                 # import the decorator
 import warnings
 warnings.simplefilter('ignore')
@@ -121,7 +119,7 @@ class Vehicle(object):
 
             return data
 
-        # empty strings for cells that had no values easier to deal with
+        # empty strings for cells that had no values are easier to deal with
         vehdf.loc[vnum] = vehdf.loc[vnum].apply(clean_data)
 
         # set columns and values as instance attributes and values
@@ -172,6 +170,18 @@ class Vehicle(object):
         except ValueError:
             self.mcPwrOutPerc = params.mcPwrOutPerc
 
+        # assigning vehYear if not provided
+        if ('vehYear' not in vehdf.columns) or (self.vehYear == np.nan):
+            # re is for vehicle model year if Scenario_name starts with any 4 digit string
+            if re.match('\d{4}', self.Scenario_name):
+                self.vehYear = np.int32(
+                    re.match('\d{4}', self.Scenario_name).group()
+                )
+            else:
+                self.vehYear = np.int32(0000)
+        # in case vehYear gets loaded from file as float
+        self.vehYear = np.int32(self.vehYear)
+            
         self.set_init_calcs()
         self.set_veh_mass()
 
