@@ -15,7 +15,7 @@ def load_test_data(use_cs=True, use_hs=False):
     use_hs=True loads hot start data"""
 
     print('Loading test data.')
-    test_data_path = 'C:\\Users\\cbaker2\\Documents\\TestData\\FordFusionTestData\\'
+    test_data_path = 'C:\\Users\\cbaker2\\Documents\\DynoTestData\\FordFusionTestData\\'
     t0 = time.time()
     datadirs = [test_data_path + 'udds_tests\\',
                 test_data_path + 'us06_tests\\']

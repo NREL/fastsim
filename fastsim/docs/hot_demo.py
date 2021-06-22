@@ -57,7 +57,7 @@ importlib.reload(simdrivehot)
 
 # %%
 t0 = time.time()
-veh = vehicle.Vehicle('2012 Ford Fusion.csv')
+veh = vehicle.Vehicle('2012_Ford_Fusion.csv')
 veh_jit = veh.get_numba_veh()
 print(time.time() - t0)
 
