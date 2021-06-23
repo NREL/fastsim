@@ -417,12 +417,15 @@ class SimDriveHot(SimDriveClassic):
                 self.hFcToAmb[i] = hCatToAmbSphere
 
             self.catConvToAmbKw[i] = self.hCatToAmb[i] * 1e-3 * self.vehthrm.catSurfArea * (self.teCatDegC[i-1] - self.teCatDegC[i-1])
+            self.teCatDegC[i] = self.teCatDegC[i-1] + (
+                self.catHeatGenKw[i] - self.catConvToAmbKw[i]) / self.vehthrm.catThrmMass * self.cyc.secs[i]
 
         if self.vehthrm.fc_model != 'external':
             # Energy balance for fuel converter
-            self.teCatDegC[i] = self.teCatDegC[i-1] + (
-                self.catHeatGenKw[i] - self.catConvToAmbKw[i]) / self.vehthrm.catThrmMass * self.cyc.secs[i]
-        
+            self.teFcDegC[i] = self.teFcDegC[i-1] + (
+               self.fcHeatGenKw[i] - self.fcConvToAmbKw[i] - self.fcToHtrKw[i]
+            ) / self.vehthrm.fcThrmMass * self.cyc.secs[i]
+       
     def set_fc_power(self, i):
         """Sets fcKwOutAch and fcKwInAch.
         Arguments
