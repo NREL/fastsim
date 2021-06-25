@@ -356,11 +356,11 @@ class Vehicle(object):
             ) / (self.vehKg * self.props.gravityMPerSec2)  * self.props.gravityMPerSec2
         self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
-        # for stats and interest
-        self.essMassKg = ess_mass_kg
-        self.mcMassKg =  mc_mass_kg
-        self.fcMassKg =  fc_mass_kg
-        self.fsMassKg =  fs_mass_kg
+        # copying to instance attributes
+        self.essMassKg = np.float64(ess_mass_kg)
+        self.mcMassKg =  np.float64(mc_mass_kg)
+        self.fcMassKg =  np.float64(fc_mass_kg)
+        self.fsMassKg =  np.float64(fs_mass_kg)
 
 veh_spec = build_spec(Vehicle('template.csv'))
 
