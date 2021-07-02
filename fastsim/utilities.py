@@ -144,3 +144,32 @@ def mpg_to_l__100km(mpg):
     l__100km = 1 / (mpg / 3.785 * params.metersPerMile / 1_000 / 100)
 
     return l__100km
+
+
+def rollav(x, y, width=10):
+    """
+    Returns x-weighted backward-looking rolling average of y.  
+    Good for resampling data that needs to preserve cumulative information.
+    Arguments:
+    ----------
+    x : x data
+    y : y data (`len(y) == len(x)` must be True)
+    width: rolling average width
+    """
+
+    assert(len(x) == len(y))
+
+    dx = np.concatenate([0, x.diff()])
+
+    yroll = np.zeros(len(x))
+    yroll[0] = y[0]
+
+    for i in range(1, len(x)):
+        if i < width:
+            yroll[i] = (
+                dx[:i] * y[:i]).sum() / (x[i] - x[0])
+        else:
+            yroll[i] = (
+                dx[i-width:i] * y[i-width:i]).sum() / (
+                    x[i] - x[i-width])
+    return yroll
