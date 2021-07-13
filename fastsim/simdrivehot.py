@@ -78,8 +78,6 @@ class VehicleThermal(object):
         self.fcThrmMass = 100.0
         # parameter for ngine characteristic length [m] for heat transfer calcs
         self.fcDiam = 1.0
-        # parameter for engine surface area [m**2] for heat transfer calcs
-        self.fcSurfArea = np.pi * self.fcDiam ** 2.0 / 4.0
         # parameter for heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during vehicle stop
         self.hFcToAmbStop = 50.0
         # parameter for fraction of combustion heat that goes to fuel converter (engine) 
@@ -127,8 +125,6 @@ class VehicleThermal(object):
         # parameter for heat transfer coeff [W / (m ** 2 * K)] from catalyst to ambient
         # during vehicle stop
         self.hCatToAmbStop = 50.0
-        # parameter for catalyst surface area [m**2] for heat transfer calcs
-        self.catSurfArea = np.pi * self.catDiam ** 2.0 / 4.0
 
         # model choices
         # HVAC model 'internal' or 'external' w.r.t. fastsim
@@ -140,6 +136,21 @@ class VehicleThermal(object):
         # catalyst model 'internal' or 'external' w.r.t. fastsim 
         # 'external' (effectively no model) is default
         self.cat_model = 'external'
+
+        self.set_dependents()
+
+    def set_dependents(self):
+        """
+        Sets dependent variables based on values set in __init__ or 
+        externally overriden.  
+        """
+        # parameter for engine surface area [m**2] for heat transfer calcs
+        self.fcSurfArea = np.pi * self.fcDiam ** 2.0 / 4.0
+        # parameter for catalyst surface area [m**2] for heat transfer calcs
+        self.catSurfArea = np.pi * self.catDiam ** 2.0 / 4.0
+
+
+
 
 
 @jitclass(build_spec(VehicleThermal()))
