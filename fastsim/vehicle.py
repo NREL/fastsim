@@ -2,12 +2,10 @@
 cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules
-import os
 import numpy as np
 import pandas as pd
 import types as pytypes
 import re
-import sys
 from numba.experimental import jitclass                 # import the decorator
 import warnings
 warnings.simplefilter('ignore')
@@ -121,7 +119,7 @@ class Vehicle(object):
 
             return data
 
-        # empty strings for cells that had no values easier to deal with
+        # empty strings for cells that had no values are easier to deal with
         vehdf.loc[vnum] = vehdf.loc[vnum].apply(clean_data)
 
         # set columns and values as instance attributes and values
@@ -145,22 +143,35 @@ class Vehicle(object):
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
         try:
+            # check if fcEffMap is provided in vehicle csv file
             self.fcEffMap = np.array(ast.literal_eval(self.fcEffMap))
+        
         except ValueError:
             if self.fcEffType == 1:  # SI engine
-                self.fcEffMap = params.eff_si + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_si + self.fcAbsEffImpr
 
             elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
-                self.fcEffMap = params.eff_atk + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_atk + self.fcAbsEffImpr
 
             elif self.fcEffType == 3:  # Diesel (compression ignition) engine
-                self.fcEffMap = params.eff_diesel + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_diesel + self.fcAbsEffImpr
 
             elif self.fcEffType == 4:  # H2 fuel cell
-                self.fcEffMap = params.eff_fuel_cell + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_fuel_cell + self.fcAbsEffImpr
 
             elif self.fcEffType == 5:  # heavy duty Diesel engine
-                self.fcEffMap = params.eff_hd_diesel + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_hd_diesel + self.fcAbsEffImpr
+
+        try:
+            # check if fcPwrOutPerc is provided in vehicle csv file
+            self.fcPwrOutPerc = np.array(ast.literal_eval(self.fcPwrOutPerc))
+        except ValueError:
+            self.fcPwrOutPerc = params.fcPwrOutPerc
+
+        fc_eff_len_err = f'len(fcPwrOutPerc) ({len(self.fcPwrOutPerc)}) is not' +\
+            f'equal to len(fcEffMap) ({len(self.fcEffMap)})'
+        assert len(self.fcPwrOutPerc) == len(self.fcEffMap), fc_eff_len_err
+
         ### Defining MC efficiency curve as lookup table for %power_in vs power_out
         ### see "Motor" tab in FASTSim for Excel
 
@@ -168,10 +179,50 @@ class Vehicle(object):
         # can also be overridden by motor power and efficiency columns in the input file
         # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
         try:
+            # check if mcPwrOutPerc is provided in vehicle csv file
             self.mcPwrOutPerc = np.array(ast.literal_eval(self.mcPwrOutPerc))
         except ValueError:
             self.mcPwrOutPerc = params.mcPwrOutPerc
 
+        try:
+            self.largeBaselineEff = np.array(
+                ast.literal_eval(self.largeBaselineEff))
+        except ValueError:
+            self.largeBaselineEff = params.large_baseline_eff
+
+        try:
+            self.smallBaselineEff = np.array(
+                ast.literal_eval(self.smallBaselineEff))
+        except ValueError:
+            self.smallBaselineEff = params.small_baseline_eff
+
+        mc_large_eff_len_err = f'len(mcPwrOutPerc) ({len(self.mcPwrOutPerc)}) is not' +\
+            f'equal to len(largeBaselineEff) ({len(self.largeBaselineEff)})'
+        assert len(self.mcPwrOutPerc) == len(
+            self.largeBaselineEff), mc_large_eff_len_err
+        mc_small_eff_len_err = f'len(mcPwrOutPerc) ({len(self.mcPwrOutPerc)}) is not' +\
+            f'equal to len(smallBaselineEff) ({len(self.smallBaselineEff)})'
+        assert len(self.mcPwrOutPerc) == len(
+            self.smallBaselineEff), mc_small_eff_len_err
+
+
+        # set stopStart if not provided
+        if 'stopStart' in self.__dir__() and np.isnan(self.__getattribute__('stopStart')):
+            self.stopStart = False
+
+
+        # assigning vehYear if not provided
+        if ('vehYear' not in vehdf.columns) or (self.vehYear == np.nan):
+            # re is for vehicle model year if Scenario_name starts with any 4 digit string
+            if re.match('\d{4}', self.Scenario_name):
+                self.vehYear = np.int32(
+                    re.match('\d{4}', self.Scenario_name).group()
+                )
+            else:
+                self.vehYear = np.int32(0000)
+        # in case vehYear gets loaded from file as float
+        self.vehYear = np.int32(self.vehYear)
+            
         self.set_init_calcs()
         self.set_veh_mass()
 
@@ -196,39 +247,7 @@ class Vehicle(object):
         return numba_veh
     
     def set_init_calcs(self):
-        """Set parameters that can be calculated after loading vehicle data"""
-        ### Defining Fuel Converter efficiency curve as lookup table for %power_in vs power_out
-        ### see "FC Model" tab in FASTSim for Excel
-
-        if len(self.fcEffMap) != 12:
-            raise ValueError('fcEffMap has length of {}, but should have length of 12'.
-                             format(len(self.fcEffMap)))
-
-        if len(self.mcPwrOutPerc) != 11:
-            raise ValueError('mcPwrOutPerc has length of {}, but should have length of 11'.
-                             format(len(self.mcPwrOutPerc)))
-
-        try:
-            self.largeBaselineEff = np.array(
-                ast.literal_eval(self.largeBaselineEff))
-        except ValueError:
-            self.largeBaselineEff = params.large_baseline_eff
-        if len(self.largeBaselineEff) != 11:
-            raise ValueError('largeBaselineEff has length of {}, but should have length of 11'.
-                             format(len(self.largeBaselineEff)))
-
-        try:
-            self.smallBaselineEff = np.array(
-                ast.literal_eval(self.smallBaselineEff))
-        except ValueError:
-            self.smallBaselineEff = params.small_baseline_eff
-
-        if len(self.smallBaselineEff) != 11:
-            raise ValueError('smallBaselineEff has length of {}, but should have length of 11'.
-                format(len(self.smallBaselineEff)))
-
-        if 'stopStart' in self.__dir__() and np.isnan(self.__getattribute__('stopStart')):
-            self.stopStart = False
+        """Legacy method for calling set_dependents."""
 
         self.set_dependents()
 
@@ -346,11 +365,11 @@ class Vehicle(object):
             ) / (self.vehKg * self.props.gravityMPerSec2)  * self.props.gravityMPerSec2
         self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
-        # for stats and interest
-        self.essMassKg = ess_mass_kg
-        self.mcMassKg =  mc_mass_kg
-        self.fcMassKg =  fc_mass_kg
-        self.fsMassKg =  fs_mass_kg
+        # copying to instance attributes
+        self.essMassKg = np.float64(ess_mass_kg)
+        self.mcMassKg =  np.float64(mc_mass_kg)
+        self.fcMassKg =  np.float64(fc_mass_kg)
+        self.fsMassKg =  np.float64(fs_mass_kg)
 
 veh_spec = build_spec(Vehicle('template.csv'))
 

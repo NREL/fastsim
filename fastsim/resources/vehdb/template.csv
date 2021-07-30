@@ -1,6 +1,7 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,Template Vehicle for typing,template vehicle for attribute typing
-Vehicle,vehPtType,1,
+Vehicle,vehYear,0,
+,vehPtType,1,
 ,dragCoef,0.304,calculated from https://www.epa.gov/compliance-and-fuel-economy-data/data-cars-used-testing-fuel-economy
 ,frontalAreaM2,2.574,
 ,gliderKg,1045.636,

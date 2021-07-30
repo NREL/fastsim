@@ -85,6 +85,8 @@ in = component input
 out = component output  
 
 # Release Notes
+1.0.2 -- forced type np.float64 on vehicle mass attributes
+1.0.1 -- Added `vehYear` attribute to vehicle and other minor changes.  
 1.0.0 -- Implemented unittest package.  Fixed energy audit calculations to be based on achieved speed.  Updated this file.  Improved documentation.  Vehicle can be instantiated as dict.  
 0.1.5 -- Updated to be compatible with ADOPT  
 0.1.4 -- Bug fix: `mcEffMap` is now robust to having zero as first element  

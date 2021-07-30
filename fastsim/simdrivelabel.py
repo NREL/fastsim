@@ -1,11 +1,8 @@
 """Module containing classes and methods for calculating label fuel economy.
 For example usage, see ../README.md"""
 
-from fastsim.parameters import PT_TYPES
-import sys
 import numpy as np
 from scipy.interpolate import interp1d
-import re
 
 from fastsim import simdrive, cycle, vehicle
 from fastsim import parameters as params
@@ -67,15 +64,8 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
     sd['hwy'].sim_drive()
     
     # find year-based adjustment parameters
-    # re is for vehicle model year if Scenario_name contains a 4 digit string
-    if re.match('\d{4}', veh.Scenario_name):
-        vehYear = np.float32(
-            re.match('\d{4}', veh.Scenario_name).group()
-        )
-        if vehYear < 2017:
-            adjParams = params.param_dict['LD_FE_Adj_Coef']['2008']
-        else:
-            adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
+    if veh.vehYear < 2017:
+        adjParams = params.param_dict['LD_FE_Adj_Coef']['2008']
     else:
         # assume 2017 coefficients are valid
         adjParams = params.param_dict['LD_FE_Adj_Coef']['2017']
