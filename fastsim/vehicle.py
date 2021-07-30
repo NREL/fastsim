@@ -212,7 +212,7 @@ class Vehicle(object):
 
 
         # assigning vehYear if not provided
-        if ('vehYear' not in vehdf.columns) or (self.vehYear == np.nan):
+        if ('vehYear' not in vehdf.columns) or np.isnan(self.vehYear):
             # re is for vehicle model year if Scenario_name starts with any 4 digit string
             if re.match('\d{4}', self.Scenario_name):
                 self.vehYear = np.int32(
