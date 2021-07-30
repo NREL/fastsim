@@ -9,8 +9,6 @@ import re
 import sys
 from numba.experimental import jitclass                 # import the decorator
 from numba import float64, int32, bool_, types   # import the types
-import warnings
-warnings.simplefilter('ignore')
 
 # local modules
 from fastsim import params, utils, simdrive
