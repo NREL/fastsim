@@ -147,14 +147,44 @@ class VehicleThermal(object):
         # parameter for catalyst surface area [m**2] for heat transfer calcs
         self.catSurfArea = np.pi * self.catDiam ** 2.0 / 4.0
 
-
-
-
-
 @jitclass(build_spec(VehicleThermal()))
 class VehicleThermalJit(VehicleThermal):
     """Numba jitclass version of VehicleThermal"""
     pass
+
+
+class ConvectionCalcs(object):
+    "Class with methods for convection calculations"
+    def __init__(self):
+        self.__dummy = 0.0
+
+    def get_sphere_conv_params(self, Re):
+        """
+        Given Reynolds number, return C and m to calculate Nusselt number for 
+        sphere, from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
+        """
+        if Re < 4:
+            C = 0.989
+            m = 0.330
+        elif Re < 40:
+            C = 0.911
+            m = 0.385
+        elif Re < 4e3:
+            C = 0.683
+            m = 0.466
+        elif Re < 40e3:
+            C = 0.193
+            m = 0.618
+        else:
+            C = 0.027
+            m = 0.805
+        return [C, m]
+
+@jitclass(build_spec(ConvectionCalcs()))
+class ConvectionCalcsJit(ConvectionCalcs):
+    "Numba JIT version of ConvectionCalcs."
+    pass
+
 
 # things to model:
 # cabin temperature
@@ -219,6 +249,7 @@ class SimDriveHot(SimDriveClassic):
         self.sim_params = simdrive.SimDriveParamsClassic()
         self.props = params.PhysicalProperties()
         self.air = AirProperties()
+        self.conv_calcs = ConvectionCalcs()
         self.vehthrm = VehicleThermal()
 
     def init_thermal_arrays(self, teAmbDegC):
@@ -308,28 +339,6 @@ class SimDriveHot(SimDriveClassic):
 
         self.i += 1 # increment time step counter
 
-    def get_sphere_conv_params(self, Re):
-        """
-        Given Reynolds number, return C and m to calculate Nusselt number for 
-        sphere, from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-        """
-        if Re < 4:
-            C = 0.989
-            m = 0.330
-        elif Re < 40:
-            C = 0.911
-            m = 0.385
-        elif Re < 4e3:
-            C = 0.683
-            m = 0.466
-        elif Re < 40e3:
-            C = 0.193
-            m = 0.618
-        else:
-            C = 0.027
-            m = 0.805
-        return [C, m]
-
     def set_thermal_calcs(self, i):
         """Sets temperature calculations at time step 'i'
         Arguments:
@@ -361,7 +370,7 @@ class SimDriveHot(SimDriveClassic):
                 # Calculate heat transfer coefficient for sphere, 
                 # from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
 
-                fc_sphere_conv_params = self.get_sphere_conv_params(Re_fc)
+                fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(Re_fc)
                 hFcToAmbSphere = (fc_sphere_conv_params[0] * Re_fc ** fc_sphere_conv_params[1]) * \
                     self.air.get_Pr(teFcFilmDegC) ** (1 / 3) * \
                     self.air.get_k(teFcFilmDegC) / self.vehthrm.fcDiam
@@ -421,7 +430,7 @@ class SimDriveHot(SimDriveClassic):
             else:
                 # if moving, scale based on speed dependent convection and thermostat opening
                 # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-                cat_sphere_conv_params = self.get_sphere_conv_params(Re_cat)
+                cat_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(Re_cat)
                 hCatToAmbSphere = (cat_sphere_conv_params[0] * Re_cat ** cat_sphere_conv_params[1]) * \
                     self.air.get_Pr(teFcFilmDegC) ** (1 / 3) * \
                     self.air.get_k(teFcFilmDegC) / self.vehthrm.catDiam
@@ -522,6 +531,7 @@ class SimDriveHotJit(SimDriveHot):
         self.sim_params = SimDriveParams()
         self.props = params.PhysicalPropertiesJit()
         self.air = AirPropertiesJit()
+        self.conv_calcs = ConvectionCalcsJit()
         self.vehthrm = VehicleThermalJit()
 
 

@@ -46,4 +46,5 @@ class TestSimDriveHot(unittest.TestCase):
         )
 
 if __name__ == '__main__':
+    print(get_fc_temp_delta())
     unittest.main()

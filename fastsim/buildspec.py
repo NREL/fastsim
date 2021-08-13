@@ -48,6 +48,8 @@ def build_spec(instance, error='raise'):
                     simdrivehot.AirPropertiesJit.class_type.instance_type, None),
                 ([simdrivehot.VehicleThermal], 
                 simdrivehot.VehicleThermalJit.class_type.instance_type, None),
+                ([simdrivehot.ConvectionCalcs],
+                 simdrivehot.ConvectionCalcsJit.class_type.instance_type, None),
             ])
 
     if 'Vehicle' in str(instance.__class__):
@@ -76,7 +78,6 @@ def build_spec(instance, error='raise'):
                 if type(val) in matched_types:
                     jit_type = assigned_type
                     break
-        debug = 'yes'
         if jit_type is None:
             err_msg = ("Type of " + str(instance) + "." + str(key) + 
                     " does not map to anything in spec_tuples" 
