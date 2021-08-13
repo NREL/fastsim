@@ -8,14 +8,22 @@ import numpy as np
 from fastsim import cycle, vehicle, simdrivehot
 
 
-def get_fc_temp_delta():
+def get_fc_temp_delta(use_jit=True):
     """Returns FC/engine temperature delta over UDDS cycle."""
     cyc = cycle.Cycle('udds')
     veh = vehicle.Vehicle(1)
-    sim_drive = simdrivehot.SimDriveHot(
-        cyc, veh,
-        teAmbDegC=np.ones(len(cyc.cycSecs)) * 22,
-        teFcInitDegC=22)
+
+    if not use_jit:
+        sim_drive = simdrivehot.SimDriveHot(
+            cyc, veh,
+            teAmbDegC=np.ones(len(cyc.cycSecs)) * 22,
+            teFcInitDegC=22)
+    else:
+        sim_drive = simdrivehot.SimDriveHotJit(
+            cyc, veh,
+            teAmbDegC=np.ones(len(cyc.cycSecs)) * 22,
+            teFcInitDegC=22)
+
     sim_drive.sim_drive()
     delta = sim_drive.teFcDegC[-1] - sim_drive.teFcDegC[0]
     return delta
