@@ -308,6 +308,28 @@ class SimDriveHot(SimDriveClassic):
 
         self.i += 1 # increment time step counter
 
+    def get_sphere_conv_params(self, Re):
+        """
+        Given Reynolds number, return C and m to calculate Nusselt number for 
+        sphere, from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
+        """
+        if Re < 4:
+            C = 0.989
+            m = 0.330
+        elif Re < 40:
+            C = 0.911
+            m = 0.385
+        elif Re < 4e3:
+            C = 0.683
+            m = 0.466
+        elif Re < 40e3:
+            C = 0.193
+            m = 0.618
+        else:
+            C = 0.027
+            m = 0.805
+        return [C, m]
+
     def set_thermal_calcs(self, i):
         """Sets temperature calculations at time step 'i'
         Arguments:
@@ -317,28 +339,6 @@ class SimDriveHot(SimDriveClassic):
         # most of the thermal equations are at [i-1] because the various thermally 
         # sensitive component efficiencies dependent on the [i] temperatures, but 
         # these are in turn dependent on [i-1] heat transfer processes  
-
-        def get_sphere_conv_params(Re):
-            """
-            Given Reynolds number, return C and m to calculate Nusselt number for 
-            sphere, from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-            """
-            if Re < 4:
-                C = 0.989
-                m = 0.330
-            elif Re < 40:
-                C = 0.911
-                m = 0.385
-            elif Re < 4e3:
-                C = 0.683
-                m = 0.466
-            elif Re < 40e3:
-                C = 0.193
-                m = 0.618
-            else:
-                C = 0.027
-                m = 0.805
-            return [C, m]
 
         if self.vehthrm.fc_model != 'external':
             # external or internal model handling fuel converter (engine) thermal behavior
@@ -361,7 +361,8 @@ class SimDriveHot(SimDriveClassic):
                 # Calculate heat transfer coefficient for sphere, 
                 # from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
 
-                hFcToAmbSphere = (get_sphere_conv_params(Re_fc)[0] * Re_fc ** get_sphere_conv_params(Re_fc)[1]) * \
+                fc_sphere_conv_params = self.get_sphere_conv_params(Re_fc)
+                hFcToAmbSphere = (fc_sphere_conv_params[0] * Re_fc ** fc_sphere_conv_params[1]) * \
                     self.air.get_Pr(teFcFilmDegC) ** (1 / 3) * \
                     self.air.get_k(teFcFilmDegC) / self.vehthrm.fcDiam
                 self.hFcToAmb[i] = np.interp(self.teFcDegC[i-1],
@@ -420,7 +421,8 @@ class SimDriveHot(SimDriveClassic):
             else:
                 # if moving, scale based on speed dependent convection and thermostat opening
                 # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-                hCatToAmbSphere = (get_sphere_conv_params(Re_cat)[0] * Re_cat ** get_sphere_conv_params(Re_cat)[1]) * \
+                cat_sphere_conv_params = self.get_sphere_conv_params(Re_cat)
+                hCatToAmbSphere = (cat_sphere_conv_params[0] * Re_cat ** cat_sphere_conv_params[1]) * \
                     self.air.get_Pr(teFcFilmDegC) ** (1 / 3) * \
                     self.air.get_k(teFcFilmDegC) / self.vehthrm.catDiam
                 self.hFcToAmb[i] = hCatToAmbSphere
