@@ -4,8 +4,10 @@ import unittest
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import importlib
 
 from fastsim import cycle, vehicle, simdrivehot
+importlib.reload(simdrivehot)
 
 
 def get_fc_temp_delta(use_jit=True):
