@@ -19,6 +19,8 @@ def get_fc_temp_delta(use_jit=True):
             teAmbDegC=np.ones(len(cyc.cycSecs)) * 22,
             teFcInitDegC=22)
     else:
+        cyc = cyc.get_numba_cyc()
+        veh = veh.get_numba_veh()
         sim_drive = simdrivehot.SimDriveHotJit(
             cyc, veh,
             teAmbDegC=np.ones(len(cyc.cycSecs)) * 22,
