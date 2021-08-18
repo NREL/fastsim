@@ -16,10 +16,12 @@ from fastsim.simdrive import SimDriveClassic, SimDriveParams
 from fastsim.cycle import Cycle
 from fastsim.vehicle import Vehicle
 from fastsim.buildspec import build_spec
+from scipy.optimize.minpack import fsolve
 
 
 class AirProperties(object):
     """Fluid Properties for calculations"""
+    # TODO: add source
     def __init__(self):
         # array at of temperatures at which properties are evaluated ()
         self._te_array_degC = np.arange(-20, 140, 20, dtype=np.float64) 
@@ -31,6 +33,7 @@ class AirProperties(object):
                             1006.82540109, 1008.43752504, 1010.36365822, 1012.60611422], 
                             dtype=np.float64) / 1e3
         # specific enthalpy of air [kJ / kg]
+        # w.r.t. to what reference?
         self._h_Array = np.array([253436.58748754, 273504.99629716, 293586.68523714, 313686.30935277,
                             333809.23760193, 353961.34965289, 374148.83386308, 394378.00634841], 
                             dtype=np.float64) / 1e3
@@ -60,6 +63,11 @@ class AirProperties(object):
 
     def get_mu(self, T):
         return np.interp(T, self._te_array_degC, self._mu_Array)
+
+    def get_T_from_h(self, h, T_guess=None):
+        def get_h_err(T, h):
+            return h - self.get_h(T)
+        return fsolve(get_h_err, T_guess if T_guess else 22, args=(h))[0]
 
 
 @jitclass(build_spec(AirProperties()))
