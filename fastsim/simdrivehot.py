@@ -33,7 +33,7 @@ class AirProperties(object):
                             1006.82540109, 1008.43752504, 1010.36365822, 1012.60611422], 
                             dtype=np.float64) / 1e3
         # specific enthalpy of air [kJ / kg]
-        # w.r.t. to what reference?
+        # w.r.t. 0K reference
         self._h_Array = np.array([253436.58748754, 273504.99629716, 293586.68523714, 313686.30935277,
                             333809.23760193, 353961.34965289, 374148.83386308, 394378.00634841], 
                             dtype=np.float64) / 1e3
