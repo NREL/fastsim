@@ -133,7 +133,7 @@ class Vehicle(object):
         missing_cols = set(DEFAULT_VEHDF.columns) - set(vehdf.columns)
         if len(missing_cols) > 0:
             if verbose:
-                print("np.nan filled in for values missing from " +
+                print(f"np.nan filled in for {list(missing_cols)} missing from " +
                       "'" + str(veh_file) + "'")
             for col in missing_cols:
                 self.__setattr__(col, np.nan)
