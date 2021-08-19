@@ -28,4 +28,4 @@ class TestSimDriveClassic(unittest.TestCase):
         sim_drive = simdrive.SimDriveClassic(cyc, veh)
         sim_drive.sim_drive_walk(initSoc=1)
 
-        self.assertEqual(sim_drive.fsKwOutAch.sum(), 24410.31348426869)
+        self.assertAlmostEqual(sim_drive.fsKwOutAch.sum(), 24410.31348426869, places=4)
