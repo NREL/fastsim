@@ -45,6 +45,14 @@ class TestSimDriveHot(unittest.TestCase):
             get_fc_temp_delta()
         )
 
+class TestAirProperties(unittest.TestCase):
+    def test_enthalpy(self):
+        air = simdrivehot.AirProperties()
+        h0 = 400
+        T = air.get_T_from_h(h0)
+        h = air.get_h(T)
+        self.assertAlmostEqual(h, h0)
+
 if __name__ == '__main__':
     print(get_fc_temp_delta())
     unittest.main()
