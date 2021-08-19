@@ -16,7 +16,6 @@ from fastsim.simdrive import SimDriveClassic, SimDriveParams
 from fastsim.cycle import Cycle
 from fastsim.vehicle import Vehicle
 from fastsim.buildspec import build_spec
-from scipy.optimize.minpack import fsolve
 
 
 class AirProperties(object):
@@ -53,6 +52,7 @@ class AirProperties(object):
         return np.interp(T, self._te_array_degC, self._k_Array)
 
     def get_cp(self, T):
+        "kJ / (kg * K)"
         return np.interp(T, self._te_array_degC, self._cp_Array)
 
     def get_h(self, T):
@@ -64,11 +64,8 @@ class AirProperties(object):
     def get_mu(self, T):
         return np.interp(T, self._te_array_degC, self._mu_Array)
 
-    def get_T_from_h(self, h, T_guess=None):
-        def get_h_err(T, h):
-            return h - self.get_h(T)
-        return fsolve(get_h_err, T_guess if T_guess else 22, args=(h))[0]
-
+    def get_T_from_h(self, h):
+        return np.interp(h, self._h_Array, self._te_array_degC)
 
 @jitclass(build_spec(AirProperties()))
 class AirPropertiesJit(AirProperties):
