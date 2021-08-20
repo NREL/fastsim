@@ -8,7 +8,7 @@ import pandas as pd
 import re
 import sys
 from numba.experimental import jitclass                 # import the decorator
-from numba import float64, int32, bool_, types   # import the types
+from numba import float64, int32, bool_, types, njit   # import the types
 
 # local modules
 from fastsim import params, utils, simdrive
@@ -16,6 +16,15 @@ from fastsim.simdrive import SimDriveClassic, SimDriveParams
 from fastsim.cycle import Cycle
 from fastsim.vehicle import Vehicle
 from fastsim.buildspec import build_spec
+
+from CoolProp.CoolProp import PropsSI
+# TODO: do stuff with this stuff:
+# print(f"c_p: {PropsSI('C', 'P', 101325, 'T', 300, 'Air'):.3g}")
+# print(f"h: {PropsSI('H', 'P', 101325, 'T', 300, 'Air'):.3g}")
+# print(f"k: {PropsSI('L', 'P', 101325, 'T', 300, 'Air'):.3g}")
+# print(f"$\alpha$: {PropsSI('%', 'P', 101325, 'T', 300, 'Air'):.3g}")
+# print(f"rho: {PropsSI('D', 'P', 101325, 'T', 300, 'Air'):.3g}")
+# print(f"mu: {PropsSI('V', 'P', 101325, 'T', 300, 'Air'):.3g}")
 
 
 class AirProperties(object):
