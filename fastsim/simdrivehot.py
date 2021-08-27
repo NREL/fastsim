@@ -84,7 +84,7 @@ class AirProperties(object):
             6.6467e-05, 6.8424e-05, 7.0364e-05, 7.2289e-05, 7.4202e-05
        ], dtype=np.float64)
         # Prandtl number of air
-        self._Pr_Array = self._mu_Array * self._cp_Array / self._mu_Array
+        self._Pr_Array = self._mu_Array * self._cp_Array / self._k_Array
 
     def get_rho(self, T, h=180):
         """"

@@ -30,7 +30,9 @@ def get_fc_temp_delta(use_jit=True):
 
     sim_drive.sim_drive()
     delta = sim_drive.teFcDegC[-1] - sim_drive.teFcDegC[0]
-    return delta
+    reference_delta = 65.675
+    return delta - reference_delta         
+
 
 
 class TestSimDriveHot(unittest.TestCase):
@@ -38,11 +40,10 @@ class TestSimDriveHot(unittest.TestCase):
         """Test to verify expected delta between starting temperature and final temperature."""
         # value for running above vehicle and cycle combination as of git commit
         # 27b99823dfd1
-        reference_value = 65.68819480855775
 
-        self.assertEqual(
-            reference_value, 
-            get_fc_temp_delta()
+        self.assertAlmostEqual( 
+            get_fc_temp_delta(), 0.00,
+            places=3
         )
 
 class TestAirProperties(unittest.TestCase):
