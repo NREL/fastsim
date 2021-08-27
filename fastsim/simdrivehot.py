@@ -17,63 +17,144 @@ from fastsim.cycle import Cycle
 from fastsim.vehicle import Vehicle
 from fastsim.buildspec import build_spec
 
-from CoolProp.CoolProp import PropsSI
-# TODO: do stuff with this stuff:
-# print(f"c_p: {PropsSI('C', 'P', 101325, 'T', 300, 'Air'):.3g}")
-# print(f"h: {PropsSI('H', 'P', 101325, 'T', 300, 'Air'):.3g}")
-# print(f"k: {PropsSI('L', 'P', 101325, 'T', 300, 'Air'):.3g}")
-# print(f"$\alpha$: {PropsSI('%', 'P', 101325, 'T', 300, 'Air'):.3g}")
-# print(f"rho: {PropsSI('D', 'P', 101325, 'T', 300, 'Air'):.3g}")
-# print(f"mu: {PropsSI('V', 'P', 101325, 'T', 300, 'Air'):.3g}")
-
 
 class AirProperties(object):
-    """Fluid Properties for calculations"""
-    # TODO: add source
+    """Fluid Properties for calculations.  
+    
+    Values obtained via:
+    >>> from CoolProp.CoolProp import PropsSI
+    >>> import numpy as np
+    >>> import pandas as pd
+    >>> T_degC = np.linspace(-60, 2_000, 25) 
+    >>> T = T_degC + 273.15
+    >>> prop_dict = {
+    >>>     'T [°C]': T_degC,
+    >>>     'h [J/kg]': [0] * len(T),
+    >>>     'k [W/(m*K)]': [0] * len(T),
+    >>>     'rho [kg/m^3]': [0] * len(T),
+    >>>     'c_p [J/(kg*K)]': [0] * len(T),
+    >>>     'mu [Pa*s]': [0] * len(T),
+    >>> }
+
+    >>> for i, _ in enumerate(T_degC):
+    >>>     prop_dict['h [J/kg]'][i] = f"{PropsSI('H', 'P', 101325, 'T', T[i], 'Air'):.5g}" # specific enthalpy [J/(kg*K)]
+    >>>     prop_dict['k [W/(m*K)]'][i] = f"{PropsSI('L', 'P', 101325, 'T', T[i], 'Air'):.5g}" # thermal conductivity [W/(m*K)]
+    >>>     prop_dict['rho [kg/m^3]'][i] = f"{PropsSI('D', 'P', 101325, 'T', T[i], 'Air'):.5g}" # density [kg/m^3]
+    >>>     prop_dict['c_p [J/(kg*K)]'][i] = f"{PropsSI('C', 'P', 101325, 'T', T[i], 'Air'):.5g}" # density [kg/m^3]
+    >>>     prop_dict['mu [Pa*s]'][i] = f"{PropsSI('V', 'P', 101325, 'T', T[i], 'Air'):.5g}" # viscosity [Pa*s]
+
+    >>> prop_df = pd.DataFrame(data=prop_dict)
+    >>> pd.set_option('display.float_format', lambda x: '%.3g' % x)
+    >>> prop_df = prop_df.apply(np.float64)
+
+    """
     def __init__(self):
-        # array at of temperatures at which properties are evaluated ()
-        self._te_array_degC = np.arange(-20, 140, 20, dtype=np.float64) 
+        # array at of temperatures [°C] at which properties are evaluated ()
+        self._te_array_degC = np.linspace(-60, 2_000, 25) 
         # thermal conductivity of air [W / (m * K)]
-        self._k_Array = np.array([0.02262832, 0.02416948, 0.02567436, 0.02714545, 0.02858511,
-                            0.02999558, 0.03137898, 0.03273731], dtype=np.float64)
-        # specific heat of air [kJ / (kg * K)]
-        self._cp_Array = np.array([1003.15536494, 1003.71709112, 1004.49073603, 1005.51659149,
-                            1006.82540109, 1008.43752504, 1010.36365822, 1012.60611422], 
-                            dtype=np.float64) / 1e3
-        # specific enthalpy of air [kJ / kg]
+        self._k_Array = np.array([ 
+            0.019597, 0.026309, 0.032422, 0.038089, 0.043416, 0.048477,
+            0.053325, 0.058   , 0.062534, 0.066949, 0.071265, 0.075498,
+            0.079659, 0.08376 , 0.087808, 0.091812, 0.095777, 0.099708,
+            0.10361 , 0.10749 , 0.11135 , 0.11519 , 0.11901 , 0.12282 ,
+            0.12662         
+       ], dtype=np.float64)
+        # specific heat of air [J / (kg * K)]
+        self._cp_Array = np.array([
+            1006.2, 1006.3, 1012.4, 1024.5, 1041.4, 1061.1, 1081.7, 1101.9,
+            1120.9, 1138.3, 1154. , 1168. , 1180.6, 1191.9, 1202. , 1211.1,
+            1219.3, 1226.8, 1233.6, 1239.9, 1245.7, 1251.1, 1256.1, 1260.8,
+            1265.3
+        ], dtype=np.float64)
+        # specific enthalpy of air [J / kg]
         # w.r.t. 0K reference
-        self._h_Array = np.array([253436.58748754, 273504.99629716, 293586.68523714, 313686.30935277,
-                            333809.23760193, 353961.34965289, 374148.83386308, 394378.00634841], 
-                            dtype=np.float64) / 1e3
-        # Prandtl number of air
-        self._Pr_Array = np.array([0.71884378, 0.7159169, 0.71334768, 0.71112444, 0.70923784,
-                            0.7076777, 0.70643177, 0.70548553], 
-                            dtype=np.float64)
+        self._h_Array = np.array([
+            338940.,  425270.,  511870.,  599250.,  687890.,  778110.,
+            870070.,  963790., 1059200., 1156200., 1254600., 1354200.,
+            1455000., 1556900., 1659600., 1763200., 1867500., 1972500.,
+            2078100., 2184200., 2290900., 2398100., 2505700., 2613700.,
+            2722100.
+        ], dtype=np.float64)
         # Dynamic viscosity of air [Pa * s]
-        self._mu_Array = np.array([1.62150624e-05, 1.72392601e-05, 1.82328655e-05, 1.91978833e-05,
-                            2.01362020e-05, 2.10495969e-05, 2.19397343e-05, 2.28081749e-05], 
-                            dtype=np.float64)
+        self._mu_Array = np.array([
+            1.4067e-05, 1.8488e-05, 2.2404e-05, 2.5948e-05, 2.9206e-05,
+            3.2240e-05, 3.5094e-05, 3.7802e-05, 4.0389e-05, 4.2873e-05,
+            4.5272e-05, 4.7596e-05, 4.9858e-05, 5.2064e-05, 5.4224e-05,
+            5.6341e-05, 5.8423e-05, 6.0473e-05, 6.2494e-05, 6.4491e-05,
+            6.6467e-05, 6.8424e-05, 7.0364e-05, 7.2289e-05, 7.4202e-05
+       ], dtype=np.float64)
+        # Prandtl number of air
+        self._Pr_Array = self._mu_Array * self._cp_Array / self._mu_Array
 
     def get_rho(self, T, h=180):
+        """"
+        Returns density [kg/m^3] of air 
+        Arguments:
+        ----------
+        T: Float
+            temperature [°C] of air 
+        h=180: Float
+            evelation [m] above sea level 
+        """
         return utils.get_rho_air(T, h)
 
     def get_k(self, T):
+        """"
+        Returns thermal conductivity [W/(m*K)] of air 
+        Arguments:
+        ----------
+        T: Float
+            temperature [°C] of air 
+        """
         return np.interp(T, self._te_array_degC, self._k_Array)
 
     def get_cp(self, T):
-        "kJ / (kg * K)"
+        """Returns specific heat [J/(kg*K)] of air 
+        Arguments:
+        ----------
+        T: Float
+            temperature [°C] of air 
+        """
         return np.interp(T, self._te_array_degC, self._cp_Array)
 
     def get_h(self, T):
+        """"
+        Returns specific enthalpy [J/kg] of air 
+        Arguments:
+        ----------
+        T: Float
+            temperature [°C] of air 
+        """
         return np.interp(T, self._te_array_degC, self._h_Array)
 
     def get_Pr(self, T):
+        """"
+        Returns thermal Prandtl number of air 
+        Arguments:
+        ----------
+        T: Float
+            temperature [°C] of air 
+        """
         return np.interp(T, self._te_array_degC, self._Pr_Array)
 
     def get_mu(self, T):
+        """"
+        Returns dynamic viscosity [Pa*s] of air 
+        Arguments:
+        ----------
+        T: Float
+            temperature [°C] of air 
+        """
         return np.interp(T, self._te_array_degC, self._mu_Array)
 
     def get_T_from_h(self, h):
+        """"
+        Returns temperature [°C] of air 
+        Arguments:
+        ----------
+        h: Float
+            specific enthalpy [J/kg] of air 
+        """
         return np.interp(h, self._h_Array, self._te_array_degC)
 
 @jitclass(build_spec(AirProperties()))
