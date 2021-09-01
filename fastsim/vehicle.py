@@ -27,17 +27,18 @@ class Vehicle(object):
 
     def __init__(self, vnum_or_file=None, veh_file=None, veh_dict=None, verbose=True):
         """Arguments:
+        vnum_or_file: if provided as dict, gets treated as `veh_dict`.  Otherwise,
+            default `load_veh` behavior.  
         veh_dict: If provided, vehicle is instantiated from dictionary, which must 
             contain a fully instantiated parameter set.
         
         See below for `load_veh` method documentaion.\n""" + self.load_veh.__doc__
         
         self.props = params.PhysicalProperties()
-        self.fcPwrOutPerc = params.fcPwrOutPerc
         self.fcPercOutArray = params.fcPercOutArray
         self.mcPercOutArray = params.mcPercOutArray
 
-        if veh_dict:
+        if veh_dict or (type(vnum_or_file) == dict):
             for key, val in veh_dict.items():
                 self.__setattr__(key, val)
         else:
@@ -106,10 +107,10 @@ class Vehicle(object):
                     pass
 
             # replace string for TRUE with Boolean True
-            elif re.search('(?i)true', data) != None:
+            elif re.search('(?i)true', data) is not None:
                 data = True
             # replace string for FALSE with Boolean False
-            elif re.search('(?i)false', data) != None:
+            elif re.search('(?i)false', data) is not None:
                 data = False
             else:
                 try:
@@ -119,7 +120,6 @@ class Vehicle(object):
 
             return data
 
-        # empty strings for cells that had no values are easier to deal with
         vehdf.loc[vnum] = vehdf.loc[vnum].apply(clean_data)
 
         # set columns and values as instance attributes and values
@@ -144,9 +144,9 @@ class Vehicle(object):
         # no quotes necessary
         try:
             # check if fcEffMap is provided in vehicle csv file
-            self.fcEffMap = np.array(ast.literal_eval(self.fcEffMap))
+            self.fcEffMap = np.array(ast.literal_eval(vehdf['fcEffMap']))
         
-        except ValueError:
+        except:
             if self.fcEffType == 1:  # SI engine
                 self.fcEffMap = params.fcEffMap_si + self.fcAbsEffImpr
 
@@ -164,8 +164,8 @@ class Vehicle(object):
 
         try:
             # check if fcPwrOutPerc is provided in vehicle csv file
-            self.fcPwrOutPerc = np.array(ast.literal_eval(self.fcPwrOutPerc))
-        except ValueError:
+            self.fcPwrOutPerc = np.array(ast.literal_eval(vehdf['fcPwrOutPerc']))
+        except:
             self.fcPwrOutPerc = params.fcPwrOutPerc
 
         fc_eff_len_err = f'len(fcPwrOutPerc) ({len(self.fcPwrOutPerc)}) is not' +\
@@ -180,20 +180,19 @@ class Vehicle(object):
         # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
         try:
             # check if mcPwrOutPerc is provided in vehicle csv file
-            self.mcPwrOutPerc = np.array(ast.literal_eval(self.mcPwrOutPerc))
-        except ValueError:
+            self.mcPwrOutPerc = np.array(ast.literal_eval(vehdf['mcPwrOutPerc']))
+        except:
             self.mcPwrOutPerc = params.mcPwrOutPerc
 
         try:
             self.largeBaselineEff = np.array(
-                ast.literal_eval(self.largeBaselineEff))
-        except ValueError:
+                ast.literal_eval(vehdf['largeBaselineEff']))
+        except:
             self.largeBaselineEff = params.large_baseline_eff
 
         try:
-            self.smallBaselineEff = np.array(
-                ast.literal_eval(self.smallBaselineEff))
-        except ValueError:
+            self.smallBaselineEff = np.array(ast.literal_eval(vehdf['smallBaselineEff']))
+        except:
             self.smallBaselineEff = params.small_baseline_eff
 
         mc_large_eff_len_err = f'len(mcPwrOutPerc) ({len(self.mcPwrOutPerc)}) is not' +\
@@ -205,11 +204,15 @@ class Vehicle(object):
         assert len(self.mcPwrOutPerc) == len(
             self.smallBaselineEff), mc_small_eff_len_err
 
-
         # set stopStart if not provided
         if 'stopStart' in self.__dir__() and np.isnan(self.__getattribute__('stopStart')):
             self.stopStart = False
 
+        # assign motor efficiency params
+        if ('smallMotorPowerKw' not in vehdf.columns) or np.isnan(self.smallMotorPowerKw):
+            self.smallMotorPowerKw = 7.5 # default (float)
+        if ('largMotorPowerKw' not in vehdf.columns) or np.isnan(self.largMotorPowerKw):
+            self.largeMotorPowerKw = 75.0 # default (float)
 
         # assigning vehYear if not provided
         if ('vehYear' not in vehdf.columns) or np.isnan(self.vehYear):
@@ -220,6 +223,7 @@ class Vehicle(object):
                 )
             else:
                 self.vehYear = np.int32(0000)
+        
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
             
@@ -291,8 +295,12 @@ class Vehicle(object):
 
         large_baseline_eff_adj = self.largeBaselineEff + modern_diff
 
-        mcKwAdjPerc = max(0.0, min((self.maxMotorKw - 7.5)/(75.0 - 7.5), 1.0))
-        self.mcEffArray = np.zeros(len(self.mcPwrOutPerc))
+        mcKwAdjPerc = max(
+            0.0, 
+            min(
+                (self.maxMotorKw - self.smallMotorPowerKw)/(self.largeMotorPowerKw - self.smallMotorPowerKw), 
+                1.0)
+            )
 
         self.mcEffArray = mcKwAdjPerc * large_baseline_eff_adj + \
                 (1 - mcKwAdjPerc) * self.smallBaselineEff

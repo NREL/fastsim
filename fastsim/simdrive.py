@@ -2,6 +2,7 @@
 cycle. For example usage, see ../README.md"""
 
 ### Import necessary python modules
+from logging import debug
 import os
 import numpy as np
 import pandas as pd
@@ -295,7 +296,12 @@ class SimDriveClassic(object):
 
         self.i = 1 # time step counter
         while self.i < len(self.cyc.cycSecs):
+            if self.i <= 1:
+                debug = True    
             self.sim_drive_step()
+            if self.i <= 1:
+                debug = True
+
         
         if self.sim_params.missed_trace_correction: 
             self.cyc.cycSecs = self.cyc.secs.cumsum() # correct cycSecs based on actual trace
@@ -687,8 +693,8 @@ class SimDriveClassic(object):
         else:
             self.regenBufferSoc[i] = max(
                 (self.veh.maxEssKwh * self.veh.maxSoc - 
-                    0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1000) * (1.0 / 3600) * self.veh.motorPeakEff * self.veh.maxRegen
-                    ) / self.veh.maxEssKwh, 
+                    0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1000) * (1.0 / 3600) * 
+                    self.veh.motorPeakEff * self.veh.maxRegen) / self.veh.maxEssKwh, 
                 self.veh.minSoc
             )
 
