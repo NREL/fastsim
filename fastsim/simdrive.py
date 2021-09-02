@@ -290,6 +290,8 @@ class SimDriveClassic(object):
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
         self.soc[0] = initSoc
+        self.mpsAch[0] = self.cyc0.cycMps[0]
+        self.mphAch[0] = self.cyc0.cycMph[0]
 
         if self.sim_params.missed_trace_correction:
             self.cyc = self.cyc0.copy() # reset the cycle in case it has been manipulated
