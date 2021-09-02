@@ -238,26 +238,6 @@ def main(use_jitclass=True, err_tol=0.001,
 ACCEL_ERR_TOL = 0.022 
 
 class TestExcel(unittest.TestCase):
-    def test_with_jit(self):
-        "Compares jit results against archived Excel results."
-        print("Running ExcelTest.test_with_jit")
-        res_python = run_python(verbose=False, use_jit=True)
-        res_excel = run_excel(prev_res_path=PREV_RES_PATH,
-                              rerun_excel=False)
-        res_comps = compare(res_python, res_excel)
-
-        failed_tests = []
-        for veh_key, veh_val in res_comps.items():
-            if veh_key not in KNOWN_ERROR_LIST:
-                for attr_key, attr_val in veh_val.items():
-                    if attr_key == 'netAccel_frac_err':
-                        if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
-                            failed_tests.append(veh_key + '.' + attr_key)
-                    elif attr_val != 0:
-                        failed_tests.append(veh_key + '.' + attr_key)
-
-        self.assertEqual(failed_tests, [])
-
     def test_without_jit(self):
         "Compares non-jit results against archived Excel results."
         print("Running ExcelTest.test_without_jit")
@@ -277,3 +257,25 @@ class TestExcel(unittest.TestCase):
                         failed_tests.append(veh_key + '.' + attr_key)
 
         self.assertEqual(failed_tests, [])
+
+    # commented due to redundancy with test_simdrive_sweep
+    # def test_with_jit(self):
+    #     "Compares jit results against archived Excel results."
+    #     print("Running ExcelTest.test_with_jit")
+    #     res_python = run_python(verbose=False, use_jit=True)
+    #     res_excel = run_excel(prev_res_path=PREV_RES_PATH,
+    #                           rerun_excel=False)
+    #     res_comps = compare(res_python, res_excel)
+
+    #     failed_tests = []
+    #     for veh_key, veh_val in res_comps.items():
+    #         if veh_key not in KNOWN_ERROR_LIST:
+    #             for attr_key, attr_val in veh_val.items():
+    #                 if attr_key == 'netAccel_frac_err':
+    #                     if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+    #                         failed_tests.append(veh_key + '.' + attr_key)
+    #                 elif attr_val != 0:
+    #                     failed_tests.append(veh_key + '.' + attr_key)
+
+    #     self.assertEqual(failed_tests, [])
+

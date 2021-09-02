@@ -131,11 +131,12 @@ class TestSimDriveSweep(unittest.TestCase):
         df_err, _, _ = main(use_jitclass=True)
         self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
 
-    def test_without_jit(self):
-        "Compares non-jit results against benchmark."
-        print('Running TestSimDriveSweep.test_without_jit')
-        df_err, _, _ = main(use_jitclass=False)
-        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
+    # this implicitly works if test_with_jit works, but may 
+    # def test_without_jit(self):
+    #     "Compares non-jit results against benchmark."
+    #     print('Running TestSimDriveSweep.test_without_jit')
+    #     df_err, _, _ = main(use_jitclass=False)
+    #     self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
         
 if __name__ == '__main__':
     df_err, df, df0 = main()
