@@ -1,5 +1,7 @@
-"""Module containing classes and methods for for loading vehicle and
-cycle data. For example usage, see ../README.md"""
+"""
+Module containing classes and methods for for loading vehicle and
+cycle data. For example usage, see ../README.md
+"""
 
 ### Import necessary python modules
 import numpy as np
@@ -16,11 +18,14 @@ import ast
 from . import parameters as params
 from .buildspec import build_spec
 
-
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
 DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
 
+__doc__ += f"""To create a new vehicle model, copy \n`{(THIS_DIR / 'resources/vehdb/template.csv').resolve()}`
+to a working directory not inside \n`{THIS_DIR.resolve()}`
+and edit as appropriate.
+"""
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
