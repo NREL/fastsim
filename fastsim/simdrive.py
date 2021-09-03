@@ -11,7 +11,6 @@ import sys
 from fastsim import vehicle
 from numba.experimental import jitclass # import the decorator
 import warnings
-warnings.simplefilter('ignore')
 
 # local modules
 from fastsim import parameters as params
