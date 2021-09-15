@@ -9,8 +9,6 @@ import pandas as pd
 import types as pytypes
 import re
 from numba.experimental import jitclass                 # import the decorator
-import warnings
-warnings.simplefilter('ignore')
 from pathlib import Path
 import ast
 

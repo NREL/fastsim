@@ -79,7 +79,8 @@ def run_excel(prev_res_path=PREV_RES_PATH,
 
     if not(rerun_excel) and prev_res_path:
         print("Loading archived Excel results.")
-        res_excel = json.load(open(prev_res_path, 'r'))
+        with open(prev_res_path, 'r') as file:
+            res_excel = json.load(file)
     elif xw_success:  
         print("Running Excel.")
         t0 = time.time()
@@ -145,7 +146,8 @@ def run_excel(prev_res_path=PREV_RES_PATH,
         `pip install xlwings` if compatible with your OS.""")
 
     if rerun_excel:
-        json.dump(res_excel, open(prev_res_path, 'w'))
+        with open(prev_res_path, 'w') as file:
+            json.dump(res_excel, file)
 
     return res_excel
 
