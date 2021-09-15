@@ -141,14 +141,14 @@ class Vehicle(object):
             for col in missing_cols:
                 self.__setattr__(col, np.nan)
 
-        vehdf = dict(vehdf.loc[vnum, :])
+        veh_dict = dict(vehdf.loc[vnum, :])
         # Power and efficiency arrays are defined in parameters.py
         # Can also be input in CSV as array under column fcEffMap of form
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
         try:
             # check if fcEffMap is provided in vehicle csv file
-            self.fcEffMap = np.array(ast.literal_eval(vehdf['fcEffMap'])) + self.fcAbsEffImpr
+            self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap'])) + self.fcAbsEffImpr
         
         except:
             if self.fcEffType == 1:  # SI engine
@@ -168,7 +168,7 @@ class Vehicle(object):
 
         try:
             # check if fcPwrOutPerc is provided in vehicle csv file
-            self.fcPwrOutPerc = np.array(ast.literal_eval(vehdf['fcPwrOutPerc']))
+            self.fcPwrOutPerc = np.array(ast.literal_eval(veh_dict['fcPwrOutPerc']))
         except:
             self.fcPwrOutPerc = params.fcPwrOutPerc
 
@@ -184,18 +184,18 @@ class Vehicle(object):
         # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
         try:
             # check if mcPwrOutPerc is provided in vehicle csv file
-            self.mcPwrOutPerc = np.array(ast.literal_eval(vehdf['mcPwrOutPerc']))
+            self.mcPwrOutPerc = np.array(ast.literal_eval(veh_dict['mcPwrOutPerc']))
         except:
             self.mcPwrOutPerc = params.mcPwrOutPerc
 
         try:
             self.largeBaselineEff = np.array(
-                ast.literal_eval(vehdf['largeBaselineEff']))
+                ast.literal_eval(veh_dict['largeBaselineEff']))
         except:
             self.largeBaselineEff = params.large_baseline_eff
 
         try:
-            self.smallBaselineEff = np.array(ast.literal_eval(vehdf['smallBaselineEff']))
+            self.smallBaselineEff = np.array(ast.literal_eval(veh_dict['smallBaselineEff']))
         except:
             self.smallBaselineEff = params.small_baseline_eff
 
@@ -213,13 +213,13 @@ class Vehicle(object):
             self.stopStart = False
 
         # assign motor efficiency params
-        if ('smallMotorPowerKw' not in vehdf) or np.isnan(self.smallMotorPowerKw):
+        if ('smallMotorPowerKw' not in veh_dict) or np.isnan(self.smallMotorPowerKw):
             self.smallMotorPowerKw = 7.5 # default (float)
-        if ('largMotorPowerKw' not in vehdf) or np.isnan(self.largMotorPowerKw):
+        if ('largMotorPowerKw' not in veh_dict) or np.isnan(self.largMotorPowerKw):
             self.largeMotorPowerKw = 75.0 # default (float)
 
         # assigning vehYear if not provided
-        if ('vehYear' not in vehdf) or np.isnan(self.vehYear):
+        if ('vehYear' not in veh_dict) or np.isnan(self.vehYear):
             # re is for vehicle model year if Scenario_name starts with any 4 digit string
             if re.match('\d{4}', self.Scenario_name):
                 self.vehYear = np.int32(
