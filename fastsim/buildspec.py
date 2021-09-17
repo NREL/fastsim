@@ -5,7 +5,7 @@ import numpy as np
 from numba import float64, int32, bool_    # import the types
 from numba.types import string
 
-from fastsim import cycle
+from fastsim import parameters, cycle, vehicle, simdrive
 
 def build_spec(instance, error='raise', extra=None):
     """
@@ -19,12 +19,14 @@ def build_spec(instance, error='raise', extra=None):
             'warn' -- warn without error when invalid key is used
             'ignore' -- completely ignore errors
     extra : list of tuples that extends spec in format:
-        [('var_name', type), # examples to follow
-        ('var1', numba.float64), # for a scalar
-        ('var2', numba.float64[:]) # for an array
-        ]
+        [
+            ('var_name', type), # examples to follow
+            ('var1', numba.float64), # for a scalar
+            ('var2', numba.float64[:]) # for an array
+        ] # this can also be extended to output of build_spec
     """
 
+    # types that are native to python/numpy/numba
     spec_tuples = [
         ([float, np.float32, np.float64, np.float], float64, float64[:]),
         ([int, np.int32, np.int64, np.int], int32, int32[:]),
@@ -32,39 +34,31 @@ def build_spec(instance, error='raise', extra=None):
         ([str], string, string[:]),
     ]
 
-    attr_types = [type(instance.__getattribute__(attr)) for attr in instance.__dict__.keys()]
+    # code for handling custom and/or user-defined types 
+    attrs = [instance.__getattribute__(key) for key in instance.__dict__.keys()]
+    attr_types = [type(attr) for attr in attrs]
 
-    if cycle.Cycle in attr_types:
-        spec_tuples.append([cycle.Cycle], cycle.CycleJit.class_type.instance_type, None),
-
-    if 'SimDriveClassic' in str(instance.__class__):
-        # if this import is done before this if branch is triggered,
-        # weird circular import issues may happen
-        from fastsim import vehicle, parameters, simdrive
-        # run sim_drive to flesh out all the attributes
+    if 'sim_drive' in instance.__dir__():
         instance.sim_drive()
-        # list of tuples containg possible types, assigned type for scalar,
-        # and assigned type for array
-        spec_tuples.extend([
-            # complex types that are attributes of simdrive.SimDrive*
-            ([vehicle.Vehicle], vehicle.VehicleJit.class_type.instance_type, None),
-            ([parameters.PhysicalProperties],
-                parameters.PhysicalPropertiesJit.class_type.instance_type, None),
-            ([simdrive.SimDriveParamsClassic],
-                simdrive.SimDriveParams.class_type.instance_type, None),
-        ])
 
-    if 'Vehicle' in str(instance.__class__):
-        # if this import is done before this if branch is triggered,
-        # weird circular import issues may happen
-        from fastsim import parameters
-        # list of tuples containg possible types, assigned type for scalar,
-        # and assigned type for array
-        spec_tuples.extend([
-            # complex types that are attributes of simdrive.SimDrive*
-            ([parameters.PhysicalProperties],
-                parameters.PhysicalPropertiesJit.class_type.instance_type, None),
-        ])
+    # list of tuples of base types and their corresponding jit types
+    if cycle.Cycle in attr_types:
+        from . import cyclejit
+        spec_tuples.append(
+            ([cycle.Cycle], cyclejit.CycleJit.class_type.instance_type, None))
+    if vehicle.Vehicle in attr_types:
+        from . import vehiclejit
+        spec_tuples.append(
+            ([vehicle.Vehicle], vehiclejit.VehicleJit.class_type.instance_type, None))
+    if parameters.PhysicalProperties in attr_types:
+        from . import parametersjit
+        spec_tuples.append((
+            [parameters.PhysicalProperties], 
+                parametersjit.PhysicalPropertiesJit.class_type.instance_type, None))
+    if simdrive.SimDriveParamsClassic in attr_types:
+        from . import simdrivejit
+        spec_tuples.append((
+            [simdrive.SimDriveParamsClassic], simdrivejit.SimDriveParams.class_type.instance_type, None))
 
     spec = []
 
@@ -87,12 +81,8 @@ def build_spec(instance, error='raise', extra=None):
                     str(t) + " does not map to anything in spec_tuples" 
                     + '\nYou may need to modify `spec_tuples` in `build_spec`.')
             elif error == 'warn':
-<<<<<<< HEAD
                 print("Warning: " + str(t) + " does not map to anything in spec_tuples."
                     + '\nYou may need to modify `spec_tuples` in `build_spec`.')
-=======
-                warnings.warn("Warning: " + err_msg)
->>>>>>> 72298b5... buildspec now types cycle regardless of instance type
             elif error == 'ignore':
                 pass
             else:

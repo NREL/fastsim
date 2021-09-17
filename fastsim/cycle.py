@@ -1,4 +1,4 @@
-"""Module containing classes and methods for for loading vehicle and
+"""Module containing classes and methods for for loading 
 cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules
@@ -8,14 +8,11 @@ from scipy.interpolate import interp1d
 import pandas as pd
 import re
 import sys
-from numba.experimental import jitclass                 # import the decorator
-from numba import float64, int32, bool_, types    # import the types
 from pathlib import Path
 import copy
 
 # local modules
 from . import parameters as params
-from .buildspec import build_spec
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
@@ -52,6 +49,7 @@ class Cycle(object):
         
     def get_numba_cyc(self):
         """Returns numba jitclass version of Cycle object."""
+        from .cyclejit import CycleJit
         numba_cyc = CycleJit(len(self.cycSecs))
         for key in STANDARD_CYCLE_KEYS:
             if pd.api.types.is_list_like(self.__getattribute__(key)):
@@ -142,65 +140,6 @@ class Cycle(object):
         cyc = Cycle(cyc_dict=cyc_dict)
         return cyc
 
-
-
-# type specifications for attributes of Cycle class
-cyc_spec = build_spec(Cycle('udds'))
-
-
-@jitclass(cyc_spec)
-class CycleJit(Cycle):
-    """Just-in-time compiled version of Cycle using numba."""
-    
-    def __init__(self, len_cyc):
-        """This method initialized type numpy arrays as required by 
-        numba jitclass."""
-        self.cycSecs = np.zeros(len_cyc, dtype=np.float64)
-        self.cycMps = np.zeros(len_cyc, dtype=np.float64)
-        self.cycGrade = np.zeros(len_cyc, dtype=np.float64)
-        self.cycRoadType = np.zeros(len_cyc, dtype=np.float64)
-        self.secs = np.zeros(len_cyc, dtype=np.float64)
-        self.cycMph = np.zeros(len_cyc, dtype=np.float64)
-        self.cycDistMeters = np.zeros(len_cyc, dtype=np.float64)
-
-    def copy(self):
-        """Returns copy of CycleJit instance."""
-        # must be explicit because jitclass has no __getattribute__ until instantiated
-        cyc = CycleJit(len(self.cycSecs))
-        cyc.cycSecs = np.copy(self.cycSecs)
-        cyc.cycMps = np.copy(self.cycMps)
-        cyc.cycGrade = np.copy(self.cycGrade)
-        cyc.cycRoadType = np.copy(self.cycRoadType)
-        cyc.cycMph = np.copy(self.cycMph)
-        cyc.secs = np.copy(self.secs)
-        cyc.cycDistMeters = np.copy(self.cycDistMeters)
-        cyc.name = self.name # should be copy of name
-        return cyc
-
-    def get_numba_cyc(self):
-        """Overrides parent class (Cycle) with dummy method
-        to avoid numba incompatibilities."""
-        print(self.get_numba_cyc.__doc__)
-
-    def set_standard_cycle(self):
-        """Overrides parent class (Cycle) with dummy method
-        to avoid numba incompatibilities."""
-        print(self.set_standard_cycle.__doc__)
-
-    def set_from_file(self):
-        """Overrides parent class (Cycle) with dummy method
-        to avoid numba incompatibilities."""
-        print(self.set_from_file.__doc__)
-
-    def set_from_dict(self):
-        """Overrides parent class (Cycle) with dummy method
-        to avoid numba incompatibilities."""
-        print(self.set_from_dict.__doc__)
-
-    def get_cyc_dict(self):
-        """Overrides parent class (Cycle) with dummy method
-            to avoid numba incompatibilities."""
-        print(self.get_cyc_dict.__doc__)
 
 def copy_cycle(cycle, return_dict=False):
     """Returns copy of Cycle or CycleJit.

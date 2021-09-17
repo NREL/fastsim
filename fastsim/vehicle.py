@@ -1,6 +1,5 @@
 """
-Module containing classes and methods for for loading vehicle and
-cycle data. For example usage, see ../README.md
+Module containing classes and methods for for loading vehicle data. For example usage, see ../README.md
 """
 
 ### Import necessary python modules
@@ -14,7 +13,6 @@ import ast
 
 # local modules
 from . import parameters as params
-from .buildspec import build_spec
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -239,6 +237,7 @@ class Vehicle(object):
 
     def get_numba_veh(self):
         """Load numba JIT-compiled vehicle."""
+        from .vehiclejit import VehicleJit, veh_spec
         if 'numba_veh' not in self.__dict__:
             numba_veh = VehicleJit()
         for item in veh_spec:
@@ -382,42 +381,6 @@ class Vehicle(object):
         self.mcMassKg =  np.float64(mc_mass_kg)
         self.fcMassKg =  np.float64(fc_mass_kg)
         self.fsMassKg =  np.float64(fs_mass_kg)
-
-veh_spec = build_spec(Vehicle('template.csv'))
-
-
-@jitclass(veh_spec)
-class VehicleJit(Vehicle):
-    """Just-in-time compiled version of Vehicle using numba."""
-    
-    def __init__(self):
-        """This method initialized type numpy arrays as required by
-        numba jitclass."""
-        self.MaxRoadwayChgKw = np.zeros(6, dtype=np.float64)
-        self.fcEffArray = np.zeros(100, dtype=np.float64)
-        self.fcKwOutArray = np.zeros(100, dtype=np.float64)
-        self.mcKwInArray = np.zeros(101, dtype=np.float64)
-        self.mcKwOutArray = np.zeros(101, dtype=np.float64)
-        self.mcFullEffArray = np.zeros(101, dtype=np.float64)
-        self.mcEffArray = np.zeros(11, dtype=np.float64)
-
-        self.props = params.PhysicalPropertiesJit()
-
-    def get_numba_veh(self):
-        """Overrides parent class (Cycle) with dummy method 
-        to avoid numba incompatibilities."""
-        print(self.get_numba_veh.__doc__)
-
-    def load_veh(self):
-        """Overrides parent class (Cycle) with dummy method 
-        to avoid numba incompatibilities."""
-        print(self.load_veh.__doc__)
-
-    def set_init_calcs(self):
-        """Overrides parent class (Cycle) with dummy method 
-        to avoid numba incompatibilities.
-        Runs self.set_dependents()"""
-        self.set_dependents()
 
 
 def copy_vehicle(veh, return_dict=False):

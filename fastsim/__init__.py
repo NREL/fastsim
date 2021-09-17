@@ -3,10 +3,11 @@ For example usage, see """
 
 from pathlib import Path 
 
-from fastsim import simdrive, vehicle, cycle, test
-# convenient aliases
+from . import parameters as params
 from fastsim import utilities as utils
-from fastsim import parameters as params
+from . import simdrive, vehicle, cycle, buildspec
+from . import parametersjit, vehiclejit, cyclejit, simdrivejit, test
+# convenient aliases
 
 from pkg_resources import get_distribution
 
