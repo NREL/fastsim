@@ -8,16 +8,9 @@ import numpy as np
 import pandas as pd
 import re
 import sys
-from fastsim import vehicle
-from numba.experimental import jitclass # import the decorator
 import warnings
 
-# local modules
-from fastsim import parameters as params
-from fastsim import cycle
-from fastsim.cycle import CycleJit
-from fastsim.vehicle import VehicleJit
-from fastsim.buildspec import build_spec
+from . import params, cycle, vehicle
 
 
 class SimDriveParamsClassic(object):
@@ -46,13 +39,6 @@ class SimDriveParamsClassic(object):
         self.newton_gain = 0.9 # newton solver gain
         self.newton_max_iter = 100 # newton solver max iterations
         self.newton_xtol = 1e-9 # newton solver tolerance
-
-
-param_spec = build_spec(SimDriveParamsClassic())
-
-@jitclass(param_spec)
-class SimDriveParams(SimDriveParamsClassic):
-    pass
 
 
 class SimDriveClassic(object):
@@ -1089,11 +1075,11 @@ class SimDriveClassic(object):
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
         This includes mpgge, various energy metrics, and others"""
-
+        
         self.fsCumuMjOutAch = (self.fsKwOutAch * self.cyc.secs).cumsum() * 1e-3
 
         if self.fsKwhOutAch.sum() == 0:
-            self.mpgge = 0
+            self.mpgge = 0.0
 
         else:
             self.mpgge = self.distMiles.sum() / \
@@ -1117,7 +1103,8 @@ class SimDriveClassic(object):
         if self.mpgge == 0:
             # hardcoded conversion
             self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / params.kWhPerGGE
-            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / params.kWhPerGGE / self.veh.chgEff
+            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / params.kWhPerGGE / \
+                self.veh.chgEff
 
         else:
             self.Gallons_gas_equivalent_per_mile = 1 / \
@@ -1141,7 +1128,8 @@ class SimDriveClassic(object):
             else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(self.veh.essRoundTripEff))
                 if self.essKwOutAch[i] < 0
             else self.essKwOutAch[i] * (1.0 / np.sqrt(self.veh.essRoundTripEff)) - self.essKwOutAch[i]
-            for i in range(1, len(self.cyc.cycSecs))])
+            for i in range(1, len(self.cyc.cycSecs))]
+        )
         
         self.brakeKj = (self.cycFricBrakeKw * self.cyc.secs).sum()
         self.transKj = ((self.transKwInAch - self.transKwOutAch) * self.cyc.secs).sum()
@@ -1156,8 +1144,8 @@ class SimDriveClassic(object):
         self.keKj = 0.5 * self.veh.vehKg * \
             (self.mpsAch[0]**2 - self.mpsAch[-1]**2) / 1000
         
-        self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
-            (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
+        self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj
+            ) / (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
 
         if (np.abs(self.energyAuditError) > params.ENERGY_AUDIT_ERROR_TOLERANCE) and \
             self.sim_params.verbose:
@@ -1166,137 +1154,6 @@ class SimDriveClassic(object):
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
             ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
-
-sim_drive_spec = build_spec(SimDriveClassic(cycle.Cycle('udds'), vehicle.Vehicle(1)))
-
-
-@jitclass(sim_drive_spec)
-class SimDriveJit(SimDriveClassic):
-    """Class compiled using numba just-in-time compilation containing methods 
-    for running FASTSim vehicle fuel economy simulations. This class will be 
-    faster for large batch runs.
-    Arguments:
-    ----------
-    cyc: cycle.CycleJit instance. Can come from cycle.Cycle.get_numba_cyc
-    veh: vehicle.VehicleJit instance. Can come from vehicle.Vehicle.get_numba_veh"""
-
-    def __init_objects__(self, cyc, veh):        
-        self.veh = veh
-        self.cyc = cyc.copy() # this cycle may be manipulated
-        self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = SimDriveParams()
-        self.props = params.PhysicalPropertiesJit()
-
-    def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        Arguments
-        ------------
-        initSoc: initial SOC for electrified vehicles.  
-            Leave empty for default value.  Otherwise, must be between 0 and 1.
-            Numba's jitclass does not support keyword args so this allows for optionally
-            passing initSoc as positional argument.
-            auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
-                Default of np.zeros(1) causes veh.auxKw to be used. If zero is actually
-                desired as an override, either set veh.auxKw = 0 before instantiaton of
-                SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
-                the final value to non-zero prevents override mechanism.  
-        """
-
-        if (auxInKwOverride == 0).all():
-            auxInKwOverride = self.auxInKw
-
-        self.hev_sim_count = 0
-
-        if (initSoc != -1):
-            if (initSoc > 1.0 or initSoc < 0.0):
-                print('Must enter a valid initial SOC between 0.0 and 1.0')
-                print('Running standard initial SOC controls')
-                initSoc = -1 # override initSoc if invalid value is used
-            else:
-                self.sim_drive_walk(initSoc, auxInKwOverride)
-    
-        elif self.veh.vehPtType == 1: # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0 # this initSoc has no impact on results
-            
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
-        elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV 
-
-            #####################################
-            ### Charge Balancing Vehicle SOC ###
-            #####################################
-
-            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
-            # Iterating until tolerance met or 30 attempts made.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            ess2fuelKwh = 1.0
-            while ess2fuelKwh > self.veh.essToFuelOkError and self.hev_sim_count < self.sim_params.sim_count_max:
-                self.hev_sim_count += 1
-                self.sim_drive_walk(initSoc, auxInKwOverride)
-                fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
-                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
-                if (fuelKj + roadwayChgKj) > 0:
-                    ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
-                                         self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
-                else:
-                    ess2fuelKwh = 0.0
-                initSoc = min(1.0, max(0.0, self.soc[-1]))
-                        
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
-        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
-
-            # If EV, initializing initial SOC to maximum SOC.
-
-            initSoc = self.veh.maxSoc
-            
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
-        else:
-            
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-        
-        self.set_post_scalars()            
-            
-@jitclass(sim_drive_spec)
-class SimAccelTestJit(SimDriveClassic):
-    """Class compiled using numba just-in-time compilation containing methods 
-    for running FASTSim vehicle acceleration simulation. This class will be 
-    faster for large batch runs."""
-
-    def __init_objects__(self, cyc, veh):        
-        self.veh = veh
-        self.cyc = cyc.copy() # this cycle may be manipulated
-        self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = SimDriveParams()
-        self.props = params.PhysicalPropertiesJit()
-
-    def sim_drive(self):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
-
-        if self.veh.vehPtType == 1:  # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_walk(initSoc)
-
-        elif self.veh.vehPtType == 2:  # HEV
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_walk(initSoc)
-
-        else:
-
-            # If EV, initializing initial SOC to maximum SOC.
-            initSoc = self.veh.maxSoc
-            self.sim_drive_walk(initSoc)
-
-        self.set_post_scalars()
 
 
 class SimAccelTest(SimDriveClassic):
@@ -1334,6 +1191,10 @@ class SimDrivePost(object):
         """Arguments:
         ---------------
         sim_drive: solved sim_drive object"""
+        
+        from .simdrivejit import sim_drive_spec
+        # dummy = SimDriveClassic(cycle.Cycle('udds'), vehicle.Vehicle(1))
+        # dummy.sim_drive()
 
         for item in sim_drive_spec:
             self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))
@@ -1450,3 +1311,28 @@ class SimDrivePost(object):
             else 0
             for i in range(0, len(self.essCurKwh))])
 
+
+# convenience wrappers for backwards compatibility
+def SimDriveJit(cyc_jit, veh_jit):
+    """
+    Wrapper for simdrivejit.SimDriveJit:
+    """
+    from . import simdrivejit
+
+    sim_drive_jit = simdrivejit.SimDriveJit(cyc_jit, veh_jit)
+
+    SimDriveJit.__doc__ += sim_drive_jit.__doc__
+
+    return sim_drive_jit
+
+def SimAccelTestJit(cyc_jit, veh_jit):
+    """
+    Wrapper for simdrivejit.SimAccelTestJit:
+    """
+    from . import simdrivejit
+
+    sim_drive_jit = simdrivejit.SimAccelTestJit(cyc_jit, veh_jit)
+
+    SimDriveJit.__doc__ += sim_drive_jit.__doc__
+
+    return sim_drive_jit
