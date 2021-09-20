@@ -5,7 +5,7 @@ import numpy as np
 from numba import float64, int32, bool_    # import the types
 from numba.types import string
 
-from fastsim import parameters, cycle, vehicle, simdrive
+from fastsim import parameters, cycle, vehicle, simdrive, simdrivehot
 
 def build_spec(instance, error='raise', extra=None):
     """
@@ -41,17 +41,22 @@ def build_spec(instance, error='raise', extra=None):
     if 'sim_drive' in instance.__dir__():
         instance.sim_drive()
 
-    # TODO: make this look like stuff starting on line 57
-    if 'SimDriveHot' in str(instance.__class__):
-        from fastsim import simdrivehot
-        spec_tuples.extend([
-            ([simdrivehot.AirProperties], 
-                simdrivehot.AirPropertiesJit.class_type.instance_type, None),
-            ([simdrivehot.VehicleThermal], 
-            simdrivehot.VehicleThermalJit.class_type.instance_type, None),
-            ([simdrivehot.ConvectionCalcs],
-                simdrivehot.ConvectionCalcsJit.class_type.instance_type, None),
-        ])
+### BEGIN FASTSim Hot only 
+
+    if simdrivehot.AirProperties in attr_types:
+        from . import simdrivehotjit
+        spec_tuples.append(([simdrivehot.AirProperties], 
+            simdrivehotjit.AirPropertiesJit.class_type.instance_type, None))
+    if simdrivehot.VehicleThermal in attr_types:
+        from . import simdrivehotjit
+        spec_tuples.append(([simdrivehot.VehicleThermal], 
+            simdrivehotjit.VehicleThermalJit.class_type.instance_type, None))
+    if simdrivehot.ConvectionCalcs in attr_types:
+        from . import simdrivehotjit
+        spec_tuples.append(([simdrivehot.ConvectionCalcs], 
+            simdrivehotjit.ConvectionCalcsJit.class_type.instance_type, None))
+
+### END FASTSim Hot only 
 
     # list of tuples of base types and their corresponding jit types
     if cycle.Cycle in attr_types:
