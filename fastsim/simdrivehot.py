@@ -46,7 +46,15 @@ class AirProperties(object):
     """
     def __init__(self):
         # array at of temperatures [°C] at which properties are evaluated ()
-        self._te_array_degC = np.logspace(1, np.log10(5e3 + 70), 25) - 70
+        self._te_array_degC = np.array([ 
+            -60.        ,  -57.03690616,  -53.1958198 ,  -48.21658352,
+            -41.7619528 ,  -33.39475442,  -22.54827664,   -8.48788571,
+            9.73873099,   33.36606527,   63.99440042,  103.69819869,
+            155.16660498,  221.88558305,  308.37402042,  420.48979341,
+            565.82652205,  754.22788725,  998.45434496, 1315.04739396,
+            1725.44993435, 2257.45859876, 2947.10642291, 3841.10336915,
+            5000.        
+        ], dtype=np.float64)
         # thermal conductivity of air [W / (m * K)]
         self._k_Array = np.array([ 
             0.019597, 0.019841, 0.020156, 0.020561, 0.021083, 0.021753,
@@ -502,7 +510,6 @@ class SimDriveHot(SimDriveClassic):
             # calculate heat transfer coeff. from cat to ambient [W / (m ** 2 * K)]
             if self.mpsAch[i-1] < 1:
                 # if stopped, scale based on constant convection
-                # TODO: initialize this
                 self.hCatToAmb[i] = self.vehthrm.hCatToAmbStop
             else:
                 # if moving, scale based on speed dependent convection and thermostat opening

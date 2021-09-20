@@ -22,7 +22,6 @@ PT_TYPES = {CONV: "Conv", HEV: "HEV", PHEV: "PHEV", BEV: "EV"}
 
 ### Unit conversions that should NEVER change
 mphPerMps = 2.2369
-# TODO: make a way to change this for diesel or other fuels
 kWhPerGGE = 33.7 
 metersPerMile = 1609.00
 

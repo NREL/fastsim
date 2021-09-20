@@ -21,12 +21,25 @@ sns.set()
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
+# %%
+from fastsim import vehicle, cycle
+from fastsim import simdrivehotjit
+importlib.reload(simdrivehotjit)
+
+# %%
+sdhot = simdrivehotjit.SimDriveHotJit(
+    cycle.Cycle('udds').get_numba_cyc(), 
+    vehicle.Vehicle(1).get_numba_veh(), 
+    22 * np.ones(len(cycle.Cycle('udds').cycSecs))
+)
+sdhot.sim_drive()
+
 
 # %%
 # local modules
 from fastsim import simdrivehot, simdrive, vehicle, cycle, params, utils
-import hot_utilities as hot_utils
-importlib.reload(hot_utils)
+# import hot_utilities as hot_utils
+# importlib.reload(hot_utils)
 importlib.reload(simdrivehot)
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
