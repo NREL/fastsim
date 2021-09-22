@@ -19,11 +19,13 @@ def build_spec(instance, error='raise', extra=None):
             'warn' -- warn without error when invalid key is used
             'ignore' -- completely ignore errors
     extra : list of tuples that extends spec in format:
-        [
-            ('var_name', type), # examples to follow
-            ('var1', numba.float64), # for a scalar
-            ('var2', numba.float64[:]) # for an array
-        ] # this can also be extended to output of build_spec
+        >>> [
+        >>>     ('var_name', type), # examples to follow
+        >>>     ('var1', numba.float64), # for a scalar
+        >>>     ('var2', numba.float64[:]), # for an array
+        >>> ]   
+        this can optionally be extended to output of build_spec or 
+        provided here as a kwarg.
     """
 
     # types that are native to python/numpy/numba
