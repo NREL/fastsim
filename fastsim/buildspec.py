@@ -1,11 +1,13 @@
 """Module containing function for building spec list for numba jitclass decorator."""
 
+import inspect
 import warnings
 import numpy as np
 from numba import float64, int32, bool_    # import the types
 from numba.types import string
 
 from fastsim import parameters, cycle, vehicle, simdrive, simdrivehot
+
 
 def build_spec(instance, error='raise', extra=None):
     """
@@ -19,11 +21,13 @@ def build_spec(instance, error='raise', extra=None):
             'warn' -- warn without error when invalid key is used
             'ignore' -- completely ignore errors
     extra : list of tuples that extends spec in format:
-        [
-            ('var_name', type), # examples to follow
-            ('var1', numba.float64), # for a scalar
-            ('var2', numba.float64[:]) # for an array
-        ] # this can also be extended to output of build_spec
+        >>> [
+        >>>     ('var_name', type), # examples to follow
+        >>>     ('var1', numba.float64), # for a scalar
+        >>>     ('var2', numba.float64[:]), # for an array
+        >>> ]   
+        this can optionally be extended to output of build_spec or 
+        provided here as a kwarg.
     """
 
     # types that are native to python/numpy/numba
@@ -79,7 +83,16 @@ def build_spec(instance, error='raise', extra=None):
 
     spec = []
 
+    def isprop(attr):
+        return isinstance(attr, property)
+
+    prop_attrs = [name for (name, _) in inspect.getmembers(vehicle.Vehicle, isprop)]
+
     for key, val in instance.__dict__.items():
+        if key in prop_attrs:
+            continue # properties should not be typed for numba jitclass
+
+        t = type(val)
         jit_type = None
         if type(val) == np.ndarray:
             for matched_types, _, assigned_type in spec_tuples:
@@ -92,18 +105,15 @@ def build_spec(instance, error='raise', extra=None):
                     jit_type = assigned_type
                     break
         if jit_type is None:
-            err_msg = ("Type of " + str(instance) + "." + str(key) + 
-                    " does not map to anything in spec_tuples" 
-                    + '\nYou may need to modify `spec_tuples` in `build_spec`.')
+            msg = f"Type `{t}` of `{val}` for `{key}` not known to build_spec."
             if error == 'raise':
-                raise Exception(err_msg)
+                raise Exception(msg)
             elif error == 'warn':
-                warnings.warn("Warning: " + err_msg)
+                warnings.warn(msg)
             elif error == 'ignore':
                 pass
             else:
-                raise Exception('Invalid value `' + str(error) 
-                    + '` provided in build_spec error argument.') 
+                raise Exception(msg) 
         spec.append((key, jit_type))
 
         if extra:
