@@ -29,8 +29,6 @@ Motor,mcPwrOutPerc,"[0.00, 0.02, 0.04, 0.06, 0.08,  0.10,  0.20,  0.40,  0.60,  
 ,largeBaselineEff,"[0.83, 0.85,    0.87,  0.89,  0.90,  0.91,  0.93,  0.94,  0.94,  0.93,  0.92]",array of motor efficiencies corresponding to fraction of peak power for large motor. Can be left blank.
 ,smallBaselineEff,"[0.12,  0.16,   0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93,  0.92]",array of motor efficiencies corresponding to fraction of peak power for small motor. Can be left blank.
 ,modernMax,0.95,efficiency adjustment coefficient -- needs better documentation
-,maxMotorKw,1.1,needs to be zero for conventional!  Needs to be non-zero for stop start but does not get used.  Needs to be lower than mxEssKw for full utilization.
-,motorPeakEff,0.95,this might be redundant with modernMax
 ,smallMotorPowerKw,7.5,low power motor for efficiency scaling. Can be left blank
 ,largeMotorPowerKw,75,high power motor for efficiency scaling. Can be left blank
 ,motorSecsToPeakPwr,4.8,lag/delay for motor to reach peak power

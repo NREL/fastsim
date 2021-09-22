@@ -1,11 +1,13 @@
 """Module containing function for building spec list for numba jitclass decorator."""
 
+import inspect
 import warnings
 import numpy as np
 from numba import float64, int32, bool_    # import the types
 from numba.types import string
 
 from fastsim import parameters, cycle, vehicle, simdrive
+
 
 def build_spec(instance, error='raise', extra=None):
     """
@@ -64,7 +66,15 @@ def build_spec(instance, error='raise', extra=None):
 
     spec = []
 
+    def isprop(attr):
+        return isinstance(attr, property)
+
+    prop_attrs = [name for (name, _) in inspect.getmembers(vehicle.Vehicle, isprop)]
+
     for key, val in instance.__dict__.items():
+        if key in prop_attrs:
+            continue # properties should not be typed for numba jitclass
+
         t = type(val)
         jit_type = None
         if t == np.ndarray:
@@ -83,7 +93,7 @@ def build_spec(instance, error='raise', extra=None):
                     str(t) + " does not map to anything in spec_tuples" 
                     + '\nYou may need to modify `spec_tuples` in `build_spec`.')
             elif error == 'warn':
-                print("Warning: " + str(t) + " does not map to anything in spec_tuples."
+                warnings.warn(str(t) + " does not map to anything in spec_tuples."
                     + '\nYou may need to modify `spec_tuples` in `build_spec`.')
             elif error == 'ignore':
                 pass

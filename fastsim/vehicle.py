@@ -23,6 +23,9 @@ to a working directory not inside \n`{THIS_DIR.resolve()}`
 and edit as appropriate.
 """
 
+# deprecated columns that should trigger failure
+BANNED_COLUMNS = ['motorPeakEff']
+
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
 
@@ -65,6 +68,7 @@ class Vehicle(object):
             if Path(vnum_or_file).name == str((Path(vnum_or_file))):
                 # if only filename is provided assume in resources/vehdb
                 vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
+            veh_file = vnum_or_file
             vehdf = pd.read_csv(Path(vnum_or_file))
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
@@ -79,10 +83,14 @@ class Vehicle(object):
         elif str(vnum_or_file).isnumeric():
             # if a numeric is passed alone
             vnum = vnum_or_file
+            veh_file = DEFAULT_VEH_DB
             vehdf = DEFAULT_VEHDF
         else:
             raise Exception('load_veh requires `vnum_or_file` and/or `veh_file`.')
         vehdf.set_index('Selection', inplace=True, drop=False)
+
+        for banned in BANNED_COLUMNS:
+            assert banned not in vehdf.columns, f"`{banned}` is deprecated and must be removed from {veh_file}."
 
         def clean_data(raw_data):
             """Cleans up data formatting.
@@ -186,16 +194,8 @@ class Vehicle(object):
         except:
             self.mcPwrOutPerc = params.mcPwrOutPerc
 
-        try:
-            self.largeBaselineEff = np.array(
-                ast.literal_eval(veh_dict['largeBaselineEff']))
-        except:
-            self.largeBaselineEff = params.large_baseline_eff
-
-        try:
-            self.smallBaselineEff = np.array(ast.literal_eval(veh_dict['smallBaselineEff']))
-        except:
-            self.smallBaselineEff = params.small_baseline_eff
+        self.largeBaselineEff = params.large_baseline_eff
+        self.smallBaselineEff = params.small_baseline_eff
 
         mc_large_eff_len_err = f'len(mcPwrOutPerc) ({len(self.mcPwrOutPerc)}) is not' +\
             f'equal to len(largeBaselineEff) ({len(self.largeBaselineEff)})'
@@ -381,6 +381,39 @@ class Vehicle(object):
         self.mcMassKg =  np.float64(mc_mass_kg)
         self.fcMassKg =  np.float64(fc_mass_kg)
         self.fsMassKg =  np.float64(fs_mass_kg)
+
+    def get_motorPeakEff(self):
+        "Return `np.max(self.mcEffArray)`"
+        return np.max(self.mcEffArray)
+
+    def set_motorPeakEff(self, new_peak):
+        """
+        Set motor peak efficiency EVERWHERE.  
+        
+        Arguments:
+        ----------
+        new_peak: float, new peak motor efficiency in decimal form 
+        """
+        self.mcEffArray *= 1 + new_peak
+        self.mcFullEffArray *= 1 + new_peak
+
+    motorPeakEff = property(get_motorPeakEff, set_motorPeakEff)
+
+    def get_fcPeakEff(self):
+        "Return `np.max(self.fcEffArray)`"
+        return np.max(self.fcEffArray)
+
+    def set_fcPeakEff(self, new_peak):
+        """
+        Set fc peak efficiency EVERWHERE.  
+        
+        Arguments:
+        ----------
+        new_peak: float, new peak fc efficiency in decimal form 
+        """
+        self.fcEffArray *= 1 + new_peak
+
+    fcPeakEff = property(get_fcPeakEff, set_fcPeakEff)
 
 
 def copy_vehicle(veh, return_dict=False):
