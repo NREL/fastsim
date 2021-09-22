@@ -21,11 +21,7 @@ Fuel / Fuel Converter,maxFuelStorKw,5000,
 ,fuelConvBaseKg,61,using override
 ,fuelConvKwPerKg,0.62,
 Motor,mcPwrOutPerc,,n/a
-,largeBaselineEff,,n/a
-,smallBaselineEff,,n/a
-,modernMax,0.95,n/a
 ,maxMotorKw,0,n/a
-,motorPeakEff,0.95,n/a
 ,motorSecsToPeakPwr,4,n/a
 ,stopStart,FALSE,n/a
 ,mcPeKgPerKw,0.833,n/a

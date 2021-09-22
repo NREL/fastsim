@@ -12,7 +12,7 @@ from pathlib import Path
 import ast
 
 # local modules
-from . import parameters as params
+from fastsim import parameters as params
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -24,12 +24,15 @@ and edit as appropriate.
 """
 
 # deprecated columns that should trigger failure
-BANNED_COLUMNS = ['motorPeakEff']
+BANNED_COLUMNS = [
+    'motorPeakEff', 'largeBaselineEff', 'smallBaselineEff', 'modernMax', 'smallMotorPowerKw', 
+    'largeMotorPowerKw',
+]
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
 
-    def __init__(self, vnum_or_file=None, veh_file=None, veh_dict=None, verbose=True):
+    def __init__(self, vnum_or_file=None, veh_file=None, veh_dict=None, verbose=True, **kwargs):
         """Arguments:
         vnum_or_file: if provided as dict, gets treated as `veh_dict`.  Otherwise,
             default `load_veh` behavior.  
@@ -48,7 +51,7 @@ class Vehicle(object):
         else:
             self.load_veh(vnum_or_file=vnum_or_file, veh_file=veh_file)
 
-    def load_veh(self, vnum_or_file=None, veh_file=None, return_vehdf=False, verbose=True):
+    def load_veh(self, vnum_or_file=None, veh_file=None, return_vehdf=False, verbose=True, **kwargs):
         """Load vehicle parameters from file.
 
         Arguments:
@@ -194,7 +197,13 @@ class Vehicle(object):
         except:
             self.mcPwrOutPerc = params.mcPwrOutPerc
 
-        self.largeBaselineEff = params.large_baseline_eff
+        try:
+            # check if mcEffMap is provided in vehicle csv file
+            self.mcEffMap = np.array(ast.literal_eval(veh_dict['mcEffMap']))
+        except:
+            self.mcEffMap = None
+
+        self.largeBaselineEff = kwargs.pop('largeBaselineEff', params.large_baseline_eff)
         self.smallBaselineEff = params.small_baseline_eff
 
         mc_large_eff_len_err = f'len(mcPwrOutPerc) ({len(self.mcPwrOutPerc)}) is not' +\
@@ -210,11 +219,8 @@ class Vehicle(object):
         if 'stopStart' in self.__dir__() and np.isnan(self.__getattribute__('stopStart')):
             self.stopStart = False
 
-        # assign motor efficiency params
-        if ('smallMotorPowerKw' not in veh_dict) or np.isnan(self.smallMotorPowerKw):
-            self.smallMotorPowerKw = 7.5 # default (float)
-        if ('largMotorPowerKw' not in veh_dict) or np.isnan(self.largMotorPowerKw):
-            self.largeMotorPowerKw = 75.0 # default (float)
+        self.smallMotorPowerKw = 7.5 # default (float)
+        self.largeMotorPowerKw = 75.0 # default (float)
 
         # assigning vehYear if not provided
         if ('vehYear' not in veh_dict) or np.isnan(self.vehYear):
@@ -291,8 +297,7 @@ class Vehicle(object):
         self.maxFcEffKw = self.fcKwOutArray[np.argmax(self.fcEffArray)]
         self.fcMaxOutkW = np.max(self.inputKwOutArray)
             
-        if np.isnan(self.modernMax):
-            self.modernMax = params.modern_max            
+        self.modernMax = params.modern_max            
         
         modern_diff = self.modernMax - max(self.largeBaselineEff)
 
@@ -305,8 +310,12 @@ class Vehicle(object):
                 1.0)
             )
 
-        self.mcEffArray = mcKwAdjPerc * large_baseline_eff_adj + \
-                (1 - mcKwAdjPerc) * self.smallBaselineEff
+        if self.mcEffMap is None:
+            self.mcEffArray = mcKwAdjPerc * large_baseline_eff_adj + \
+                    (1 - mcKwAdjPerc) * self.smallBaselineEff
+            self.mcEffMap = self.mcEffArray
+        else:
+            self.mcEffArray = self.mcEffMap
 
         mcInputKwOutArray = self.mcPwrOutPerc * self.maxMotorKw
         mcKwOutArray = np.linspace(0, 1, len(self.mcPercOutArray)) * self.maxMotorKw
@@ -384,7 +393,8 @@ class Vehicle(object):
 
     def get_motorPeakEff(self):
         "Return `np.max(self.mcEffArray)`"
-        return np.max(self.mcEffArray)
+        assert np.max(self.mcFullEffArray) == np.max(self.mcEffArray)
+        return np.max(self.mcFullEffArray)
 
     def set_motorPeakEff(self, new_peak):
         """
@@ -472,3 +482,6 @@ def veh_equal(veh1, veh2, full_out=False):
     if full_out: return err_list
 
     return True
+
+if __name__ == '__main__':
+    Vehicle('template.csv')

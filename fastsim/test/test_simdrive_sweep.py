@@ -107,18 +107,18 @@ def main(use_jitclass=True, err_tol=1e-4):
             if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=err_tol, abs_tol=err_tol)):
                 df_err.loc[idx, col] = (df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
                 abs_err.append(np.abs(df_err.loc[idx, col]))
-                print(f"{df_err.loc[idx, col]:.5%} for")
+                print(f"{df_err.loc[idx, col]:.5%} error for {col}")
+                print(f"vehicle: {vehicle.DEFAULT_VEHDF[vehicle.DEFAULT_VEHDF['Selection'] == df.loc[idx, 'vnum']]['Scenario name'].values[0]}")
+                print(f"cycle: {df.loc[idx, 'cycle']}")         
                 print('New Value: ' + str(round(df.loc[idx, col], 15)))
-                print('vnum = ' + str(df.loc[idx, 'vnum']))            
-                print('cycle = ' + str(df.loc[idx, 'cycle']))            
-                print('idx =', idx, ', col =', col)
+                print('Old Value: ' + str(round(df0.loc[idx, col], 15)))
                 print()
             else:
                 df_err.loc[idx, col] = 0
 
     abs_err = np.array(abs_err)
     if len(abs_err) > 0:
-        print('\nmax error =', str(round(abs_err.max() * 100, 4)) + '%')
+        print(f'\nmax error = {abs_err.max():.3%}')
     else: 
         print(f'No errors exceed the {err_tol:.3g} tolerance threshold.')
 
@@ -139,4 +139,4 @@ class TestSimDriveSweep(unittest.TestCase):
     #     self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
         
 if __name__ == '__main__':
-    df_err, df, df0 = main()
+    df_err, df, df0 = main(use_jitclass=False)
