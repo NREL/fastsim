@@ -88,18 +88,15 @@ def build_spec(instance, error='raise', extra=None):
                     jit_type = assigned_type
                     break
         if jit_type is None:
+            msg = f"Type `{t}` of `{val}` for `{key}` not known to build_spec."
             if error == 'raise':
-                raise Exception(
-                    str(t) + " does not map to anything in spec_tuples" 
-                    + '\nYou may need to modify `spec_tuples` in `build_spec`.')
+                raise Exception(msg)
             elif error == 'warn':
-                warnings.warn(str(t) + " does not map to anything in spec_tuples."
-                    + '\nYou may need to modify `spec_tuples` in `build_spec`.')
+                warnings.warn(msg)
             elif error == 'ignore':
                 pass
             else:
-                raise Exception('Invalid value `' + str(error) 
-                    + '` provided in build_spec error argument.') 
+                raise Exception(msg) 
         spec.append((key, jit_type))
 
         if extra:

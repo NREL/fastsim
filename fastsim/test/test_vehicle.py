@@ -16,3 +16,18 @@ class TestVehicle(unittest.TestCase):
         veh_jit = veh.get_numba_veh()
         veh_jit_copy = vehicle.copy_vehicle(veh_jit)
         self.assertTrue(vehicle.veh_equal(veh_jit, veh_jit_copy))
+
+    def test_properties(self):
+        veh = vehicle.Vehicle(10)
+        self.assertEqual(veh.motorPeakEff, np.max(veh.mcEffArray))
+        self.assertEqual(veh.motorPeakEff, np.max(veh.mcFullEffArray))
+        veh.motorPeakEff = 0.85
+        self.assertEqual(veh.motorPeakEff, np.max(veh.mcEffArray))
+        self.assertEqual(veh.motorPeakEff, np.max(veh.mcFullEffArray))
+        veh.motorPeakEff += 0.05
+        self.assertEqual(veh.motorPeakEff, np.max(veh.mcEffArray))
+        self.assertEqual(veh.motorPeakEff, np.max(veh.mcFullEffArray))
+        veh.mcFullEffArray *= 1.05
+        veh.mcEffArray *= 1.05
+        self.assertEqual(veh.motorPeakEff, np.max(veh.mcEffArray))
+        self.assertEqual(veh.motorPeakEff, np.max(veh.mcFullEffArray))
