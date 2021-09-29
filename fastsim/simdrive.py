@@ -681,7 +681,7 @@ class SimDriveClassic(object):
             self.regenBufferSoc[i] = max(
                 (self.veh.maxEssKwh * self.veh.maxSoc - 
                     0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1000) * (1.0 / 3600) * 
-                    self.veh.motorPeakEff * self.veh.maxRegen) / self.veh.maxEssKwh, 
+                    self.veh.mcPeakEff * self.veh.maxRegen) / self.veh.maxEssKwh, 
                 self.veh.minSoc
             )
 

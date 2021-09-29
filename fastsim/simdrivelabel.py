@@ -166,7 +166,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             phev_calcs = {} # init dict for phev calcs
             phev_calcs['regenSocBuffer'] = min(
                 ((0.5 * veh.vehKg * ((60 * (1 / params.mphPerMps)) ** 2)) * (1 / 3600) * (1 / 1000)
-                * veh.maxRegen * veh.motorPeakEff) / veh.maxEssKwh,
+                * veh.maxRegen * veh.mcPeakEff) / veh.maxEssKwh,
                 (veh.maxSoc - veh.minSoc) / 2
             )
 

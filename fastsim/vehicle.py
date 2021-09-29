@@ -25,7 +25,7 @@ and edit as appropriate.
 
 # deprecated columns that should trigger failure
 BANNED_COLUMNS = [
-    'motorPeakEff', 'largeBaselineEff', 'smallBaselineEff', 'modernMax', 'smallMotorPowerKw', 
+    'mcPeakEff', 'largeBaselineEff', 'smallBaselineEff', 'modernMax', 'smallMotorPowerKw', 
     'largeMotorPowerKw',
 ]
 
@@ -391,12 +391,12 @@ class Vehicle(object):
         self.fcMassKg =  np.float64(fc_mass_kg)
         self.fsMassKg =  np.float64(fs_mass_kg)
 
-    def get_motorPeakEff(self):
+    def get_mcPeakEff(self):
         "Return `np.max(self.mcEffArray)`"
         assert np.max(self.mcFullEffArray) == np.max(self.mcEffArray)
         return np.max(self.mcFullEffArray)
 
-    def set_motorPeakEff(self, new_peak):
+    def set_mcPeakEff(self, new_peak):
         """
         Set motor peak efficiency EVERWHERE.  
         
@@ -404,10 +404,10 @@ class Vehicle(object):
         ----------
         new_peak: float, new peak motor efficiency in decimal form 
         """
-        self.mcEffArray *= 1 + new_peak
-        self.mcFullEffArray *= 1 + new_peak
+        self.mcEffArray *= new_peak / self.mcEffArray.max()
+        self.mcFullEffArray *= new_peak / self.mcFullEffArray.max()
 
-    motorPeakEff = property(get_motorPeakEff, set_motorPeakEff)
+    mcPeakEff = property(get_mcPeakEff, set_mcPeakEff)
 
     def get_fcPeakEff(self):
         "Return `np.max(self.fcEffArray)`"
@@ -421,7 +421,7 @@ class Vehicle(object):
         ----------
         new_peak: float, new peak fc efficiency in decimal form 
         """
-        self.fcEffArray *= 1 + new_peak
+        self.fcEffArray *= new_peak / self.fcEffArray.max()
 
     fcPeakEff = property(get_fcPeakEff, set_fcPeakEff)
 
