@@ -434,6 +434,7 @@ class Vehicle(object):
         new_peak: float, new peak fc efficiency in decimal form 
         """
         self.fcEffArray *= new_peak / self.fcEffArray.max()
+        self.fcEffMap *= new_peak / self.fcEffArray.max()
 
     fcPeakEff = property(get_fcPeakEff, set_fcPeakEff)
 
