@@ -1,6 +1,10 @@
-"""Global constants representing unit conversions that shourd never change, 
+"""
+Global constants representing unit conversions that shourd never change, 
 physical properties that should rarely change, and vehicle model parameters 
-that can be modified by advanced users."""
+that can be modified by advanced users.  
+Note that modifications to parameters in this module do not propagate to 
+numba-jit-compiled objects.  
+"""
 
 import os
 import numpy as np
