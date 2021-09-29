@@ -39,6 +39,12 @@ class SimDriveParamsClassic(object):
         self.newton_gain = 0.9 # newton solver gain
         self.newton_max_iter = 100 # newton solver max iterations
         self.newton_xtol = 1e-9 # newton solver tolerance
+        self.kWhPerGGE = 33.7 # kWh per gallon of gasoline
+                
+        # EPA fuel economy adjustment parameters
+        self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
+
+
 
 
 class SimDriveClassic(object):
@@ -1083,7 +1089,7 @@ class SimDriveClassic(object):
 
         else:
             self.mpgge = self.distMiles.sum() / \
-                (self.fsKwhOutAch.sum() / params.kWhPerGGE)
+                (self.fsKwhOutAch.sum() / self.sim_params.kWhPerGGE)
 
         self.roadwayChgKj = (self.roadwayChgKwOutAch * self.cyc.secs).sum()
         self.essDischgKj = - \
@@ -1102,15 +1108,15 @@ class SimDriveClassic(object):
 
         if self.mpgge == 0:
             # hardcoded conversion
-            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / params.kWhPerGGE
-            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / params.kWhPerGGE / \
+            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.sim_params.kWhPerGGE
+            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.sim_params.kWhPerGGE / \
                 self.veh.chgEff
 
         else:
             self.Gallons_gas_equivalent_per_mile = 1 / \
-                self.mpgge + self.electric_kWh_per_mi  / params.kWhPerGGE
+                self.mpgge + self.electric_kWh_per_mi  / self.sim_params.kWhPerGGE
             grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + \
-                self.electric_kWh_per_mi / params.kWhPerGGE / self.veh.chgEff
+                self.electric_kWh_per_mi / self.sim_params.kWhPerGGE / self.veh.chgEff
 
         self.grid_mpgge_elec = 1 / grid_Gallons_gas_equivalent_per_mile
         self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
@@ -1284,7 +1290,7 @@ class SimDrivePost(object):
         
         output['distMilesFinal'] = sum(self.distMiles)
         if sum(self.fsKwhOutAch) > 0:
-            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * params.kWhPerGGE
+            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * self.sim_params.kWhPerGGE
         else:
             output['mpgge'] = 0
     

@@ -26,19 +26,14 @@ PT_TYPES = {CONV: "Conv", HEV: "HEV", PHEV: "PHEV", BEV: "EV"}
 
 ### Unit conversions that should NEVER change
 mphPerMps = 2.2369
-# TODO: make a way to change this for diesel or other fuels
-kWhPerGGE = 33.7 
 metersPerMile = 1609.00
-
-# EPA fuel economy adjustment parameters
-maxEpaAdj = 0.3 # maximum EPA adjustment factor
-
 
 class PhysicalProperties(object):
     """Container class for physical constants that could change under certain special 
     circumstances (e.g. high altitude or extreme weather) """
 
     def __init__(self):
+        # Make this altitude and temperature dependent, and allow it to change with time
         self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
         self.gravityMPerSec2 = 9.81
 

@@ -229,14 +229,13 @@ class Vehicle(object):
         self.largeMotorPowerKw = 75.0 # default (float)
 
         # assigning vehYear if not provided
+        self.vehYear = np.int32(0000)
         if ('vehYear' not in veh_dict) or np.isnan(self.vehYear):
-            # re is for vehicle model year if Scenario_name starts with any 4 digit string
+            # regex is for vehicle model year if Scenario_name starts with any 4 digit string
             if re.match('\d{4}', self.Scenario_name):
                 self.vehYear = np.int32(
                     re.match('\d{4}', self.Scenario_name).group()
                 )
-            else:
-                self.vehYear = np.int32(0000)
         
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
