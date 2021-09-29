@@ -23,11 +23,16 @@ to a working directory not inside \n`{THIS_DIR.resolve()}`
 and edit as appropriate.
 """
 
-# deprecated columns that should trigger failure
-BANNED_COLUMNS = [
-    'mcPeakEff', 'largeBaselineEff', 'smallBaselineEff', 'modernMax', 'smallMotorPowerKw', 
-    'largeMotorPowerKw',
-]
+def get_template_df():
+    vehdf = pd.read_csv(THIS_DIR / 'resources' / 'vehdb' / 'template.csv')
+    vehdf = vehdf.transpose()
+    vehdf.columns = vehdf.iloc[1]
+    vehdf.drop(vehdf.index[0], inplace=True)
+    vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
+    vehdf.loc['Param Value', 'Selection'] = 0
+    return vehdf
+
+TEMPLATE_VEHDF = get_template_df()
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
@@ -92,8 +97,9 @@ class Vehicle(object):
             raise Exception('load_veh requires `vnum_or_file` and/or `veh_file`.')
         vehdf.set_index('Selection', inplace=True, drop=False)
 
-        for banned in BANNED_COLUMNS:
-            assert banned not in vehdf.columns, f"`{banned}` is deprecated and must be removed from {veh_file}."
+        # verify that only allowed columns have been provided
+        for col in vehdf.columns:
+            assert col in TEMPLATE_VEHDF.columns, f"`{col}` is deprecated and must be removed from {veh_file}."
 
         def clean_data(raw_data):
             """Cleans up data formatting.
@@ -157,23 +163,23 @@ class Vehicle(object):
         # no quotes necessary
         try:
             # check if fcEffMap is provided in vehicle csv file
-            self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap'])) + self.fcAbsEffImpr
+            self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap']))
         
         except:
             if self.fcEffType == 1:  # SI engine
-                self.fcEffMap = params.fcEffMap_si + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_si
 
             elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
-                self.fcEffMap = params.fcEffMap_atk + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_atk
 
             elif self.fcEffType == 3:  # Diesel (compression ignition) engine
-                self.fcEffMap = params.fcEffMap_diesel + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_diesel
 
             elif self.fcEffType == 4:  # H2 fuel cell
-                self.fcEffMap = params.fcEffMap_fuel_cell + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_fuel_cell
 
             elif self.fcEffType == 5:  # heavy duty Diesel engine
-                self.fcEffMap = params.fcEffMap_hd_diesel + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_hd_diesel
 
         try:
             # check if fcPwrOutPerc is provided in vehicle csv file
