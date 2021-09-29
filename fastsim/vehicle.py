@@ -43,6 +43,7 @@ class Vehicle(object):
             default `load_veh` behavior.  
         veh_dict: If provided, vehicle is instantiated from dictionary, which must 
             contain a fully instantiated parameter set.
+        verbose: print information during vehicle loading
         
         See below for `load_veh` method documentaion.\n""" + self.load_veh.__doc__
         
@@ -54,7 +55,7 @@ class Vehicle(object):
             for key, val in veh_dict.items():
                 self.__setattr__(key, val)
         else:
-            self.load_veh(vnum_or_file=vnum_or_file, veh_file=veh_file)
+            self.load_veh(vnum_or_file=vnum_or_file, veh_file=veh_file, verbose=verbose, **kwargs)
 
     def load_veh(self, vnum_or_file=None, veh_file=None, return_vehdf=False, verbose=True, **kwargs):
         """Load vehicle parameters from file.
@@ -73,11 +74,16 @@ class Vehicle(object):
 
         if (type(vnum_or_file) in [type(Path()), str]):
             # if a file path is passed
-            if Path(vnum_or_file).name == str((Path(vnum_or_file))):
-                # if only filename is provided assume in resources/vehdb
+            if not str(vnum_or_file).endswith('.csv'):
+                vnum_or_file = Path(str(vnum_or_file) + '.csv')
+            if (Path(vnum_or_file).name == str(Path(vnum_or_file))) and not (Path().resolve() /
+                vnum_or_file).exists():
                 vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
+                if verbose: print(f'Loading vehicle from {vnum_or_file}')
+                # if only filename is provided and not in local dir, assume in resources/vehdb
+            
             veh_file = vnum_or_file
-            vehdf = pd.read_csv(Path(vnum_or_file))
+            vehdf = pd.read_csv(vnum_or_file)
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
             vehdf.drop(vehdf.index[0], inplace=True)
@@ -87,7 +93,7 @@ class Vehicle(object):
         elif str(vnum_or_file).isnumeric() and veh_file:
             # if a numeric is passed along with veh_file
             vnum = vnum_or_file
-            vehdf = pd.read_csv(Path(veh_file))
+            vehdf = pd.read_csv(veh_file)
         elif str(vnum_or_file).isnumeric():
             # if a numeric is passed alone
             vnum = vnum_or_file
@@ -229,13 +235,14 @@ class Vehicle(object):
         self.largeMotorPowerKw = 75.0 # default (float)
 
         # assigning vehYear if not provided
-        self.vehYear = np.int32(0000)
         if ('vehYear' not in veh_dict) or np.isnan(self.vehYear):
             # regex is for vehicle model year if Scenario_name starts with any 4 digit string
-            if re.match('\d{4}', self.Scenario_name):
+            if re.match('\d{4}', str(self.Scenario_name)):
                 self.vehYear = np.int32(
                     re.match('\d{4}', self.Scenario_name).group()
                 )
+            else:
+                self.vehYear = np.int32(0) # set 0 as default to get correct type
         
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
@@ -487,6 +494,3 @@ def veh_equal(veh1, veh2, full_out=False):
     if full_out: return err_list
 
     return True
-
-if __name__ == '__main__':
-    Vehicle('template.csv')
