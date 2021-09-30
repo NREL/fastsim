@@ -591,28 +591,28 @@ class SimDriveHot(SimDriveClassic):
 
 def VehicleThermalJit():
     """Wrapper for Numba jitclass version of VehicleThermal"""
-    import simdrivehotjit 
+    from . import simdrivehotjit 
     VehicleThermalJit.__doc__ += simdrivehotjit.VehicleThermalJit().__doc__ 
 
     return simdrivehotjit.VehicleThermalJit()
 
 def ConvectionCalcsJit():
     "Wrapper for Numba JIT version of ConvectionCalcs."
-    import simdrivehotjit 
+    from . import simdrivehotjit 
     ConvectionCalcs.__doc__ += simdrivehotjit.ConvectionCalcsJit().__doc__
 
     return simdrivehotjit.ConvectionCalcsJit()
 
 def AirPropertiesJit():
     """Wrapper for Numba jitclass version of FluidProperties"""
-    import simdrivehotjit
+    from . import simdrivehotjit
     AirProperties.__doc__ += simdrivehotjit.AirPropertiesJit().__doc__
 
     return simdrivehotjit.AirPropertiesJit()
 
 def SimDriveHotJit(cyc, veh, teAmbDegC, teFcInitDegC=90.0, teCabInitDegC=22.0):
     """Wrapper for Numba jitclass version of SimDriveHot"""
-    import simdrivehotjit
-    SimDriveHotJit.__doc__ += simdrivehotjit.SimDriveHotJit().__doc__
+    from . import simdrivehotjit
+    SimDriveHotJit.__doc__ += simdrivehotjit.SimDriveHotJit.__doc__
 
     return simdrivehotjit.SimDriveHotJit(cyc, veh, teAmbDegC, teFcInitDegC, teCabInitDegC)
