@@ -44,16 +44,16 @@ def run_python(use_jit=False, verbose=True):
 
     vehicles = np.arange(1, 27)
 
-    print('Instantiating classes.')
+    print('Running vehicle sweep.')
     print()
 
     res_python = {}
 
     for vehno in vehicles:
         if use_jit:
-            veh = vehicle.Vehicle(vehno).get_numba_veh()
+            veh = vehicle.Vehicle(vehno, verbose=verbose).get_numba_veh()
         else:
-            veh = vehicle.Vehicle(vehno)
+            veh = vehicle.Vehicle(vehno, verbose=verbose)
         if verbose:
             print('Running ' + veh.Scenario_name)
         res_python[veh.Scenario_name] = simdrivelabel.get_label_fe(veh)
@@ -155,7 +155,7 @@ def run_excel(prev_res_path=PREV_RES_PATH,
 KNOWN_ERROR_LIST = ['Regional Delivery Class 8 Truck']
 
 
-def compare(res_python, res_excel, err_tol=0.001):
+def compare(res_python, res_excel, err_tol=0.001, verbose=True):
     """Finds common vehicle names in both excel and python 
     (hypothetically all of them, but there may be discrepancies) and then compares
     fuel economy results.  
@@ -178,12 +178,13 @@ def compare(res_python, res_excel, err_tol=0.001):
 
     res_comps = {}
     for vehname in common_names:
-        print('\n')
-        print(vehname)
-        print('***'*7)
+        if verbose:
+            print('\n')
+            print(vehname)
+            print('***'*7)
         res_comp = {}
 
-        if vehname in KNOWN_ERROR_LIST:
+        if (vehname in KNOWN_ERROR_LIST) and verbose:
             print("Discrepancy in model year between Excel and Python")
             print("is probably the root cause of efficiency errors below.")
 
@@ -198,10 +199,11 @@ def compare(res_python, res_excel, err_tol=0.001):
             else:
                 res_comp[res_key + '_frac_err'] = 0.0
             if res_comp[res_key + '_frac_err'] != 0.0:
-                print(
-                    res_key + ' error = {:.3g}%'.format(res_comp[res_key + '_frac_err'] * 100))
+                error = res_comp[res_key + '_frac_err'] * 100
+                if verbose:
+                    print(f"{vehname} - {res_key} error = {error:.3g}%")
 
-        if (np.array(list(res_comp.values())) == 0).all():
+        if (np.array(list(res_comp.values())) == 0).all() and verbose:
             print(f'All values within error tolerance of {err_tol:.3g}')
 
         res_comps[vehname] = res_comp.copy()
@@ -242,11 +244,11 @@ ACCEL_ERR_TOL = 0.022
 class TestExcel(unittest.TestCase):
     def test_without_jit(self):
         "Compares non-jit results against archived Excel results."
-        print("Running ExcelTest.test_without_jit")
+        print(f"Running {type(self)}.test_without_jit")
         res_python = run_python(verbose=False, use_jit=False)
         res_excel = run_excel(prev_res_path=PREV_RES_PATH,
                               rerun_excel=False)
-        res_comps = compare(res_python, res_excel)
+        res_comps = compare(res_python, res_excel, verbose=False)
 
         failed_tests = []
         for veh_key, veh_val in res_comps.items():

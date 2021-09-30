@@ -45,8 +45,6 @@ class SimDriveParamsClassic(object):
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
 
-
-
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
     fuel economy simulations. This class is not compiled and will 
@@ -1199,8 +1197,6 @@ class SimDrivePost(object):
         sim_drive: solved sim_drive object"""
         
         from .simdrivejit import sim_drive_spec
-        # dummy = SimDriveClassic(cycle.Cycle('udds'), vehicle.Vehicle(1))
-        # dummy.sim_drive()
 
         for item in sim_drive_spec:
             self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))

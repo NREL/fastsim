@@ -154,11 +154,11 @@ class Vehicle(object):
 
         # make sure all the attributes needed by CycleJit are set
         # this could potentially cause unexpected behaviors
-        missing_cols = set(DEFAULT_VEHDF.columns) - set(vehdf.columns)
+        missing_cols = set(TEMPLATE_VEHDF.columns) - set(vehdf.columns)
         if len(missing_cols) > 0:
             if verbose:
-                print(f"np.nan filled in for {list(missing_cols)} missing from " +
-                      "'" + str(veh_file) + "'")
+                print(f"np.nan filled in for {list(missing_cols)} missing from '{str(veh_file)}'.")
+                print(f"Turn this warning off by passing `verbose=False` when instantiating {type(self)}.")
             for col in missing_cols:
                 self.__setattr__(col, np.nan)
 

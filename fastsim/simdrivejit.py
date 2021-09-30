@@ -15,7 +15,7 @@ param_spec = build_spec(SimDriveParamsClassic())
 class SimDriveParams(SimDriveParamsClassic):
     pass
 
-sim_drive_spec = build_spec(SimDriveClassic(Cycle('udds'), Vehicle(1)))
+sim_drive_spec = build_spec(SimDriveClassic(Cycle('udds'), Vehicle(1, verbose=False)))
 
 @jitclass(sim_drive_spec)
 class SimDriveJit(SimDriveClassic):
