@@ -10,10 +10,12 @@ from fastsim import cycle
 class TestCycle(unittest.TestCase):
     def test_monotonicity(self):
         "checks that time is monotonically increasing"
+        print(f"Running {type(self)}.test_monotonicity.")
         self.assertTrue((np.diff(cycle.Cycle('udds').cycSecs) > 0).all())
 
     def test_load_dict(self):
         "checks that conversion from dict works"
+        print(f"Running {type(self)}.test_load_dict.")
         cyc = cycle.Cycle('udds')
         cyc_df = pd.read_csv(Path(cycle.__file__).parent / 'resources/cycles/udds.csv')
         cyc_dict = cyc_df.to_dict(orient='list')

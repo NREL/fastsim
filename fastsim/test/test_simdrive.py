@@ -12,8 +12,10 @@ class TestSimDriveClassic(unittest.TestCase):
     """Tests for fastsim.simdrive.SimDriveClassic methods"""
     def test_sim_drive_step(self):
         "Verify that sim_drive_step produces an expected result."
+        
+        print(f"Running {type(self)}.test_sim_drive_step.")
         cyc = cycle.Cycle('udds')
-        veh = vehicle.Vehicle(1)
+        veh = vehicle.Vehicle(1, verbose=False)
         sim_drive = simdrive.SimDriveClassic(cyc, veh)
 
         for x in range(100):
@@ -23,14 +25,18 @@ class TestSimDriveClassic(unittest.TestCase):
     
     def test_sim_drive_walk(self):
         """Verify that sim_drive_walk produces an expected result."""
+        
+        print(f"Running {type(self)}.test_sim_drive_walk.")
         cyc = cycle.Cycle('udds')
-        veh = vehicle.Vehicle(1)
+        veh = vehicle.Vehicle(1, verbose=False)
         sim_drive = simdrive.SimDriveClassic(cyc, veh)
         sim_drive.sim_drive_walk(initSoc=1)
 
         self.assertAlmostEqual(sim_drive.fsKwOutAch.sum(), 24410.31348426869, places=4)
 
     def test_split_cycles(self):
+
+        print(f"Running {type(self)}.test_split_cycles.")
         t_clip = 210 # speed is non-zero here
         cyc1 = cycle.Cycle(
             cyc_dict=(cycle.clip_by_times(cycle.Cycle('udds').get_cyc_dict(), t_end=t_clip))
@@ -41,7 +47,7 @@ class TestSimDriveClassic(unittest.TestCase):
             t_start=t_clip, t_end=t_end))
             )
 
-        veh = vehicle.Vehicle(1)
+        veh = vehicle.Vehicle(1, verbose=False)
 
         sd1 = simdrive.SimDriveClassic(cyc1, veh)
         sd1.sim_drive()

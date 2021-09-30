@@ -14,7 +14,7 @@ import unittest
 from fastsim import simdrive, vehicle, cycle
 
 
-def main(use_jitclass=True, err_tol=1e-4):
+def main(use_jitclass=True, err_tol=1e-4, verbose=True):
     """Runs test test for 26 vehicles and 3 cycles.  
     Test compares cumulative positive and negative energy 
     values to a benchmark from earlier.
@@ -29,7 +29,7 @@ def main(use_jitclass=True, err_tol=1e-4):
     """
     t0 = time.time()
 
-    print('Instantiating classes.\n')
+    print('Running vehicle sweep.\n')
 
     cyc_names = ['udds', 'hwfet', 'us06']
     cycs = {
@@ -39,7 +39,7 @@ def main(use_jitclass=True, err_tol=1e-4):
 
     vehnos = np.arange(1, 27)
 
-    veh = vehicle.Vehicle(1)
+    veh = vehicle.Vehicle(1, verbose=verbose)
     if use_jitclass:
         veh_jit = veh.get_numba_veh()
     energyAuditErrors = []
@@ -48,12 +48,13 @@ def main(use_jitclass=True, err_tol=1e-4):
     t0a = 0 
     iter = 0
     for vehno in vehnos:
-        print('vehno =', vehno)
+        if verbose:
+            print('vehno =', vehno)
         if vehno == 2:
             t0a = time.time()
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
-                veh = vehicle.Vehicle(vehno)
+                veh = vehicle.Vehicle(vehno, verbose=verbose)
                 if use_jitclass:
                     veh_jit = veh.get_numba_veh()
 
@@ -127,8 +128,8 @@ def main(use_jitclass=True, err_tol=1e-4):
 class TestSimDriveSweep(unittest.TestCase):
     def test_with_jit(self):
         "Compares jit results against benchmark."
-        print('Running TestSimDriveSweep.test_with_jit')
-        df_err, _, _ = main(use_jitclass=True)
+        print(f"Running {type(self)}.test_with_jit.") 
+        df_err, _, _ = main(use_jitclass=True, verbose=False)
         self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
 
     # this implicitly works if test_with_jit works, but may 
