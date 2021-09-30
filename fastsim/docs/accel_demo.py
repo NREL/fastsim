@@ -39,13 +39,13 @@ def main(use_jitclass=True):
             veh = vehicle.Vehicle(i).get_numba_veh()
             accel_cyc = cycle.Cycle(std_cyc_name=None,
                 cyc_dict=create_accel_cyc()).get_numba_cyc()
-            accel_out = simdrive.SimAccelTestJit(cyc=accel_cyc, veh=veh)
+            accel_out = simdrive.SimAccelTestJit(accel_cyc, veh)
 
         else:
             veh = vehicle.Vehicle(i)
             accel_cyc = cycle.Cycle(std_cyc_name=None,
                 cyc_dict=create_accel_cyc())
-            accel_out = simdrive.SimAccelTest(cyc=accel_cyc, veh=veh)
+            accel_out = simdrive.SimAccelTest(accel_cyc, veh)
         
         accel_out.sim_drive()
         acvhd_0_to_acc_speed_secs = simdrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']
