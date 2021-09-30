@@ -85,8 +85,8 @@ def build_spec(instance, error='raise', extra=None):
 
     def isprop(attr):
         return isinstance(attr, property)
-
-    prop_attrs = [name for (name, _) in inspect.getmembers(vehicle.Vehicle, isprop)]
+        
+    prop_attrs = [name for (name, _) in inspect.getmembers(type(instance), isprop)]
 
     for key, val in instance.__dict__.items():
         if key in prop_attrs:

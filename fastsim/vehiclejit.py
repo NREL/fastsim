@@ -10,7 +10,7 @@ from .buildspec import build_spec
 from .vehicle import Vehicle
 from . import parametersjit
 
-veh_spec = build_spec(Vehicle('template.csv'))
+veh_spec = build_spec(Vehicle('template.csv', verbose=False))
 
 
 @jitclass(veh_spec)

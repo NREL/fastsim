@@ -23,11 +23,16 @@ to a working directory not inside \n`{THIS_DIR.resolve()}`
 and edit as appropriate.
 """
 
-# deprecated columns that should trigger failure
-BANNED_COLUMNS = [
-    'motorPeakEff', 'largeBaselineEff', 'smallBaselineEff', 'modernMax', 'smallMotorPowerKw', 
-    'largeMotorPowerKw',
-]
+def get_template_df():
+    vehdf = pd.read_csv(THIS_DIR / 'resources' / 'vehdb' / 'template.csv')
+    vehdf = vehdf.transpose()
+    vehdf.columns = vehdf.iloc[1]
+    vehdf.drop(vehdf.index[0], inplace=True)
+    vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
+    vehdf.loc['Param Value', 'Selection'] = 0
+    return vehdf
+
+TEMPLATE_VEHDF = get_template_df()
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
@@ -38,6 +43,7 @@ class Vehicle(object):
             default `load_veh` behavior.  
         veh_dict: If provided, vehicle is instantiated from dictionary, which must 
             contain a fully instantiated parameter set.
+        verbose: print information during vehicle loading
         
         See below for `load_veh` method documentaion.\n""" + self.load_veh.__doc__
         
@@ -49,7 +55,7 @@ class Vehicle(object):
             for key, val in veh_dict.items():
                 self.__setattr__(key, val)
         else:
-            self.load_veh(vnum_or_file=vnum_or_file, veh_file=veh_file)
+            self.load_veh(vnum_or_file=vnum_or_file, veh_file=veh_file, verbose=verbose, **kwargs)
 
     def load_veh(self, vnum_or_file=None, veh_file=None, return_vehdf=False, verbose=True, **kwargs):
         """Load vehicle parameters from file.
@@ -68,11 +74,16 @@ class Vehicle(object):
 
         if (type(vnum_or_file) in [type(Path()), str]):
             # if a file path is passed
-            if Path(vnum_or_file).name == str((Path(vnum_or_file))):
-                # if only filename is provided assume in resources/vehdb
+            if not str(vnum_or_file).endswith('.csv'):
+                vnum_or_file = Path(str(vnum_or_file) + '.csv')
+            if (Path(vnum_or_file).name == str(Path(vnum_or_file))) and not (Path().resolve() /
+                vnum_or_file).exists():
                 vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
+                if verbose: print(f'Loading vehicle from {vnum_or_file}')
+                # if only filename is provided and not in local dir, assume in resources/vehdb
+            
             veh_file = vnum_or_file
-            vehdf = pd.read_csv(Path(vnum_or_file))
+            vehdf = pd.read_csv(vnum_or_file)
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
             vehdf.drop(vehdf.index[0], inplace=True)
@@ -82,7 +93,7 @@ class Vehicle(object):
         elif str(vnum_or_file).isnumeric() and veh_file:
             # if a numeric is passed along with veh_file
             vnum = vnum_or_file
-            vehdf = pd.read_csv(Path(veh_file))
+            vehdf = pd.read_csv(veh_file)
         elif str(vnum_or_file).isnumeric():
             # if a numeric is passed alone
             vnum = vnum_or_file
@@ -92,8 +103,9 @@ class Vehicle(object):
             raise Exception('load_veh requires `vnum_or_file` and/or `veh_file`.')
         vehdf.set_index('Selection', inplace=True, drop=False)
 
-        for banned in BANNED_COLUMNS:
-            assert banned not in vehdf.columns, f"`{banned}` is deprecated and must be removed from {veh_file}."
+        # verify that only allowed columns have been provided
+        for col in vehdf.columns:
+            assert col in TEMPLATE_VEHDF.columns, f"`{col}` is deprecated and must be removed from {veh_file}."
 
         def clean_data(raw_data):
             """Cleans up data formatting.
@@ -157,23 +169,23 @@ class Vehicle(object):
         # no quotes necessary
         try:
             # check if fcEffMap is provided in vehicle csv file
-            self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap'])) + self.fcAbsEffImpr
+            self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap']))
         
         except:
             if self.fcEffType == 1:  # SI engine
-                self.fcEffMap = params.fcEffMap_si + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_si
 
             elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
-                self.fcEffMap = params.fcEffMap_atk + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_atk
 
             elif self.fcEffType == 3:  # Diesel (compression ignition) engine
-                self.fcEffMap = params.fcEffMap_diesel + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_diesel
 
             elif self.fcEffType == 4:  # H2 fuel cell
-                self.fcEffMap = params.fcEffMap_fuel_cell + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_fuel_cell
 
             elif self.fcEffType == 5:  # heavy duty Diesel engine
-                self.fcEffMap = params.fcEffMap_hd_diesel + self.fcAbsEffImpr
+                self.fcEffMap = params.fcEffMap_hd_diesel
 
         try:
             # check if fcPwrOutPerc is provided in vehicle csv file
@@ -224,13 +236,13 @@ class Vehicle(object):
 
         # assigning vehYear if not provided
         if ('vehYear' not in veh_dict) or np.isnan(self.vehYear):
-            # re is for vehicle model year if Scenario_name starts with any 4 digit string
-            if re.match('\d{4}', self.Scenario_name):
+            # regex is for vehicle model year if Scenario_name starts with any 4 digit string
+            if re.match('\d{4}', str(self.Scenario_name)):
                 self.vehYear = np.int32(
                     re.match('\d{4}', self.Scenario_name).group()
                 )
             else:
-                self.vehYear = np.int32(0000)
+                self.vehYear = np.int32(0) # set 0 as default to get correct type
         
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
@@ -391,12 +403,12 @@ class Vehicle(object):
         self.fcMassKg =  np.float64(fc_mass_kg)
         self.fsMassKg =  np.float64(fs_mass_kg)
 
-    def get_motorPeakEff(self):
+    def get_mcPeakEff(self):
         "Return `np.max(self.mcEffArray)`"
         assert np.max(self.mcFullEffArray) == np.max(self.mcEffArray)
         return np.max(self.mcFullEffArray)
 
-    def set_motorPeakEff(self, new_peak):
+    def set_mcPeakEff(self, new_peak):
         """
         Set motor peak efficiency EVERWHERE.  
         
@@ -404,10 +416,10 @@ class Vehicle(object):
         ----------
         new_peak: float, new peak motor efficiency in decimal form 
         """
-        self.mcEffArray *= 1 + new_peak
-        self.mcFullEffArray *= 1 + new_peak
+        self.mcEffArray *= new_peak / self.mcEffArray.max()
+        self.mcFullEffArray *= new_peak / self.mcFullEffArray.max()
 
-    motorPeakEff = property(get_motorPeakEff, set_motorPeakEff)
+    mcPeakEff = property(get_mcPeakEff, set_mcPeakEff)
 
     def get_fcPeakEff(self):
         "Return `np.max(self.fcEffArray)`"
@@ -421,7 +433,8 @@ class Vehicle(object):
         ----------
         new_peak: float, new peak fc efficiency in decimal form 
         """
-        self.fcEffArray *= 1 + new_peak
+        self.fcEffArray *= new_peak / self.fcEffArray.max()
+        self.fcEffMap *= new_peak / self.fcEffArray.max()
 
     fcPeakEff = property(get_fcPeakEff, set_fcPeakEff)
 
@@ -482,6 +495,3 @@ def veh_equal(veh1, veh2, full_out=False):
     if full_out: return err_list
 
     return True
-
-if __name__ == '__main__':
-    Vehicle('template.csv')

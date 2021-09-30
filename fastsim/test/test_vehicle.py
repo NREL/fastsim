@@ -19,6 +19,7 @@ class TestVehicle(unittest.TestCase):
 
     def test_properties(self):
         veh = vehicle.Vehicle(10)
+<<<<<<< HEAD
         self.assertEqual(veh.motorPeakEff, np.max(veh.mcEffArray))
         self.assertEqual(veh.motorPeakEff, np.max(veh.mcFullEffArray))
         veh.motorPeakEff = 0.85
@@ -31,3 +32,17 @@ class TestVehicle(unittest.TestCase):
         veh.mcEffArray *= 1.05
         self.assertEqual(veh.motorPeakEff, np.max(veh.mcEffArray))
         self.assertEqual(veh.motorPeakEff, np.max(veh.mcFullEffArray))
+=======
+        self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
+        self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
+        veh.mcPeakEff = 0.85
+        self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
+        self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
+        veh.mcPeakEff += 0.05
+        self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
+        self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
+        veh.mcFullEffArray *= 1.05
+        veh.mcEffArray *= 1.05
+        self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
+        self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
+>>>>>>> 2021b-dev

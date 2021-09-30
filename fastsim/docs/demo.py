@@ -35,7 +35,7 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # local modules
-from fastsim import simdrive, vehicle, cycle
+from fastsim import simdrive, vehicle, cycle, params
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
 
@@ -85,20 +85,10 @@ t0 = time.time()
 # sim_drive.sim_drive()
 
 # instantiate and run JIT compiled version directly
-# SimDriveJit can only take one mandatory positional argument for initSoc
 sim_drive = simdrive.SimDriveJit(cyc_jit, veh_jit)
 sim_drive.sim_drive() 
 
 print(f'Time to simulate: {time.time() - t0:.2e} s')
-
-
-# %%
-t0 = time.time()
-sim_drive_post = simdrive.SimDrivePost(sim_drive)
-output = sim_drive_post.get_output()
-sim_drive_post.set_battery_wear()
-diag = sim_drive_post.get_diagnostics()
-print(f'Time to post process: {time.time() - t0:.2e} s')
 
 # %% [markdown]
 # ### Results
@@ -227,12 +217,23 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 # %% [markdown]
 # ## Batch Drive Cycles - TSDC Drive Cycles
 # 
-# FASTSim's most significant advantage over other powertrain simulation tools comes from the ability to simulate many drive cycles quickly. The same three steps described above (load cycle, load model, run FASTSim) will be used here, however, the demonstration highlights how quickly FASTSim runs over __2,225 miles of driving__ data for 22 vehicles.  Running on a single core, the 241 drive cycles take roughly 25 seconds to run. Each drive cycle requires a fraction of a second of computational time. 
+# FASTSim's most significant advantage over other powertrain simulation tools comes from the ability 
+# to simulate many drive cycles quickly. The same three steps described above (load cycle, load model, run FASTSim) 
+# will be used here, however, the demonstration highlights how quickly FASTSim runs over __2,225 miles of driving__ 
+# data for 22 vehicles.  Running on a single core, the 241 drive cycles take roughly 25 seconds to run. Each drive 
+# cycle requires a fraction of a second of computational time. 
 # 
-# The drive cycles simulated are from a subset of Chicago Regional Household Travel Inventory housed in the the Transportation Secure Data Center ([TSDC](https://www.nrel.gov/transportation/secure-transportation-data/tsdc-cleansed-data.html)). Cycles within the TSDC are publicly available for download and easily integrate with FASTSim. You may contact the [TSDC](tsdc@nrel.gov) for general questions on the data center, or [Venu Garikapati](venu.garikapati@nrel.gov) for partnership-related inquiries. 
+# The drive cycles simulated are from a subset of Chicago Regional Household Travel Inventory housed in the the 
+# Transportation Secure Data Center ([TSDC](https://www.nrel.gov/transportation/secure-transportation-data/tsdc-cleansed-data.html)). 
+# Cycles within the TSDC are publicly available for download and easily integrate with FASTSim. You may contact the 
+# [TSDC](tsdc@nrel.gov) for general questions on the data center, or [Venu Garikapati](venu.garikapati@nrel.gov) for 
+# partnership-related inquiries. 
 # 
 # ### Load Cycles
-# Iterate through the drive cycles directory structure and load the cycles into one pandas dataframe. If memory is an issue, this processing can be broken into smaller chunks. The points table must have trip identifiers appended to run FASTSim on individual trips. The trips are identified and labeled using the start and end timestamps in the "trips.csv" summary tables in each of the vehicle directories downloadable from the TSDC.
+# Iterate through the drive cycles directory structure and load the cycles into one pandas dataframe. If memory is an issue, 
+# this processing can be broken into smaller chunks. The points table must have trip identifiers appended to run FASTSim on 
+# individual trips. The trips are identified and labeled using the start and end timestamps in the "trips.csv" summary tables 
+# in each of the vehicle directories downloadable from the TSDC.
 
 # %%
 t0 = time.time()
@@ -245,30 +246,31 @@ veh_dirs = os.listdir(data_path)
 veh_dirs = [dn for dn in veh_dirs if not dn.startswith('.')]
 
 unique_tripno = 0
-for i in veh_dirs:
-    sampno = int(i.split('_')[0])
-    vehno = int(i.split('_')[1])
+for subdir in veh_dirs:
+    sampno = int(subdir.split('_')[0])
+    vehno = int(subdir.split('_')[1])
     
-    dc_csvs = os.listdir(data_path / i)
+    dc_csvs = os.listdir(data_path / subdir)
     dc_csvs = [fn for fn in dc_csvs if not fn.endswith('trips.csv')]
     
-    df_i = pd.read_csv(data_path / i / 'trips.csv', index_col=False)
+    df_i = pd.read_csv(data_path / subdir / 'trips.csv', index_col=False)
     trips_df = trips_df.append(df_i, ignore_index=True)
     
     veh_pnts_df = pd.DataFrame()
     
     for j in dc_csvs:
-        df_j = pd.read_csv(data_path / i / j, index_col=False)
+        df_j = pd.read_csv(data_path / subdir / j, index_col=False)
         veh_pnts_df = veh_pnts_df.append(df_j, ignore_index=True)
         
     for k in range(len(df_i)):
         start_ts = df_i.start_ts.iloc[k]
         end_ts = df_i.end_ts.iloc[k]
-        tripK_df = veh_pnts_df.loc[(veh_pnts_df['timestamp']>=start_ts) &                         (veh_pnts_df['timestamp']<=end_ts)]
-        tripK_df['nrel_trip_id'] = [unique_tripno]*len(tripK_df)
+        tripK_df = veh_pnts_df.loc[
+            (veh_pnts_df['timestamp'] >= start_ts) & (veh_pnts_df['timestamp'] <= end_ts)].copy()
+        tripK_df['nrel_trip_id'] = [unique_tripno] * len(tripK_df)
         unique_tripno += 1
-        tripK_df['sampno'] = [sampno]*len(tripK_df)
-        tripK_df['vehno'] = [vehno]*len(tripK_df)
+        tripK_df['sampno'] = [sampno] * len(tripK_df)
+        tripK_df['vehno'] = [vehno] * len(tripK_df)
         drive_cycs_df = drive_cycs_df.append(tripK_df, ignore_index=True)
 t1 = time.time()
 print(f'Time to load cycles: {time.time() - t0:.2e} s')
@@ -279,38 +281,39 @@ print(f'Time to load cycles: {time.time() - t0:.2e} s')
 
 # %%
 veh = vehicle.Vehicle(1).get_numba_veh()  # load vehicle model
-output_dict = {}
+output = {}
 
 results_df = pd.DataFrame()
 t_start = time.time()
 for trp in list(drive_cycs_df.nrel_trip_id.unique()):
-    pnts = drive_cycs_df[drive_cycs_df['nrel_trip_id'] == trp]
+    pnts = drive_cycs_df[drive_cycs_df['nrel_trip_id'] == trp].copy()
     pnts['time_local'] = pd.to_datetime(pnts['timestamp'])
 
     cyc = {}
     cyc['cycGrade'] = np.zeros(len(pnts))
     cyc['cycMps'] = np.array(
-        pnts['speed_mph'] * 0.44704)  # MPH to MPS conversion
+        pnts['speed_mph'] / params.mphPerMps)  # MPH to MPS conversion
     cyc['cycSecs'] = np.array(
         np.cumsum(
             (pnts['time_local'] -
-             pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')))
+             pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')
+        )
+    )
     cyc['cycRoadType'] = np.zeros(len(pnts))
     # example of loading cycle from dict
     cyc = cycle.Cycle(cyc_dict=cyc).get_numba_cyc()
     
-    sim_params = simdrive.SimDriveParams()
-    sim_params.verbose = False # turn off error messages for large time steps
     sim_drive = simdrive.SimDriveJit(cyc, veh)
-    sim_drive.sim_params = sim_params
+    sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     sim_drive.sim_drive()
-    sim_drive_post = simdrive.SimDrivePost(sim_drive)
-    output = sim_drive_post.get_output()
-    
-    del output['soc'], output['fcKwInAch'], output['fcKwOutAch'],    output['fsKwhOutAch']
 
     output['nrel_trip_id'] = trp
+    output['distance_mi'] = sum(sim_drive.distMiles)
+    duration_sec = sim_drive.cyc.cycSecs[-1] - sim_drive.cyc.cycSecs[0]
+    output['avg_speed_mph'] = sum(
+        sim_drive.distMiles) / (duration_sec / 3600.0)
     results_df = results_df.append(output, ignore_index=True)
+    output['mpgge'] = sim_drive.mpgge
     
 t_end = time.time()
 
@@ -354,13 +357,13 @@ df_fltr.plot(
     alpha=0.3)
 
 # Configure legend and axes
-l1 = plt.scatter([], [], s=5, edgecolors='none', c='xkcd:bluish')
-l2 = plt.scatter([], [], s=50, edgecolors='none', c='xkcd:bluish')
-l3 = plt.scatter([], [], s=250, edgecolors='none', c='xkcd:bluish')
+l1 = plt.scatter([], [], s=5, edgecolors='none', color='xkcd:bluish')
+l2 = plt.scatter([], [], s=50, edgecolors='none', color='xkcd:bluish')
+l3 = plt.scatter([], [], s=250, edgecolors='none', color='xkcd:bluish')
 
 labels = ["1 Mile", "10 Miles", "50 Miles"]
 
-leg = plt.legend(
+plt.legend(
     [l1, l2, l3],
     labels,
     title='Cycle Distance',

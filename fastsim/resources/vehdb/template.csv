@@ -18,8 +18,7 @@ Fuel / Fuel Converter / Engine,maxFuelStorKw,2000.8,max fuel flow of fuel storag
 ,maxFuelConvKw,119.3,max fuel converter (engine or fuel cell) power
 ,fcPwrOutPerc,"[0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00]",array of fuel converter fraction of peak power at which efficiencies are known. Can be left blank.
 ,fcEffMap,"[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]",array of fuel converter efficiencies corresponding to fraction of peak power. Can be left blank.
-,fcEffType,1,"1: SI engine, 2: Atkinson, 3: diesel, 4: fuel cell, 5: hd diesel"
-,fcAbsEffImpr,0.000001,"offset for fcEffMap, "
+,fcEffType,1,"1: SI engine, 2: Atkinson, 3: diesel, 4: fuel cell, 5: hd diesel; overridden by fcEffMap if fcEffMap is not blank"
 ,fuelConvSecsToPeakPwr,6.1,lag/delay for engine to reach peak power
 ,fuelConvBaseKg,61.3,engine weight before scaling by power
 ,fuelConvKwPerKg,2.13,engine weight per power scaling to be added to fuelConvBaseKg

@@ -85,7 +85,12 @@ in = component input
 out = component output  
 
 # Release Notes
+<<<<<<< HEAD
 1.1.0 -- separated jitclasses into own module, made vehicle parameter setting more robust
+=======
+1.1.1 -- made vehicle loading more robust
+1.1.0 -- separated jitclasses into own module, made vehicle engine and motor efficiency setting more robust
+>>>>>>> 2021b-dev
 1.0.4 -- bug fix with custom engine curve
 1.0.3 -- bug fixes, faster testing
 1.0.2 -- forced type np.float64 on vehicle mass attributes

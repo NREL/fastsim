@@ -1,6 +1,10 @@
-"""Global constants representing unit conversions that shourd never change, 
+"""
+Global constants representing unit conversions that shourd never change, 
 physical properties that should rarely change, and vehicle model parameters 
-that can be modified by advanced users."""
+that can be modified by advanced users.  
+Note that modifications to parameters in this module do not propagate to 
+numba-jit-compiled objects.  
+"""
 
 import os
 import numpy as np
@@ -22,18 +26,14 @@ PT_TYPES = {CONV: "Conv", HEV: "HEV", PHEV: "PHEV", BEV: "EV"}
 
 ### Unit conversions that should NEVER change
 mphPerMps = 2.2369
-kWhPerGGE = 33.7 
 metersPerMile = 1609.00
-
-# EPA fuel economy adjustment parameters
-maxEpaAdj = 0.3 # maximum EPA adjustment factor
-
 
 class PhysicalProperties(object):
     """Container class for physical constants that could change under certain special 
     circumstances (e.g. high altitude or extreme weather) """
 
     def __init__(self):
+        # Make this altitude and temperature dependent, and allow it to change with time
         self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
         self.gravityMPerSec2 = 9.81
 
