@@ -27,10 +27,11 @@ class AirPropertiesJit(AirProperties):
     """Numba jitclass version of FluidProperties"""
     pass
 
-
-_hotspec = build_spec(SimDriveHot(Cycle('udds'), 
-                    Vehicle(1), 
-                    teAmbDegC=np.ones(len(Cycle('udds').cycSecs))))
+_hotspec = build_spec(
+    SimDriveHot(Cycle('udds'), 
+    Vehicle(1, verbose=False), 
+    teAmbDegC=np.ones(len(Cycle('udds').cycSecs)))
+)
 @jitclass(_hotspec)
 class SimDriveHotJit(SimDriveHot):
     """JTI-compiled class containing methods for running FASTSim vehicle 

@@ -12,7 +12,6 @@ from . import parametersjit
 
 veh_spec = build_spec(Vehicle('template.csv', verbose=False))
 
-
 @jitclass(veh_spec)
 class VehicleJit(Vehicle):
     """Just-in-time compiled version of Vehicle using numba."""
