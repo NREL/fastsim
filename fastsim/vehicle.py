@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import types as pytypes
 import re
-from numba.experimental import jitclass                 # import the decorator
 from pathlib import Path
 import ast
 
