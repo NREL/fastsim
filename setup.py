@@ -8,9 +8,13 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="fastsim",  
 <<<<<<< HEAD
+<<<<<<< HEAD
     version="1.1.0",
 =======
     version="1.1.1",
+>>>>>>> 2021b-dev
+=======
+    version="1.1.2",
 >>>>>>> 2021b-dev
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
