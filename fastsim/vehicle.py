@@ -78,7 +78,7 @@ class Vehicle(object):
             if (Path(vnum_or_file).name == str(Path(vnum_or_file))) and not (Path().resolve() /
                 vnum_or_file).exists():
                 vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
-                if verbose: print(f'Loading vehicle from {vnum_or_file}')
+                if verbose: print(f'Loading vehicle from\n{Path(vnum_or_file).resolve()}')
                 # if only filename is provided and not in local dir, assume in resources/vehdb
             
             veh_file = vnum_or_file
@@ -89,11 +89,11 @@ class Vehicle(object):
             vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
             vehdf.loc['Param Value', 'Selection'] = 0
             vnum = 0
-        elif str(vnum_or_file).isnumeric() and veh_file:
+        elif str(int(vnum_or_file)).isnumeric() and veh_file:
             # if a numeric is passed along with veh_file
             vnum = vnum_or_file
             vehdf = pd.read_csv(veh_file)
-        elif str(vnum_or_file).isnumeric():
+        elif str(int(vnum_or_file)).isnumeric():
             # if a numeric is passed alone
             vnum = vnum_or_file
             veh_file = DEFAULT_VEH_DB
