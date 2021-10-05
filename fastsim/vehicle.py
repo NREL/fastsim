@@ -238,7 +238,7 @@ class Vehicle(object):
             # regex is for vehicle model year if Scenario_name starts with any 4 digit string
             if re.match('\d{4}', str(self.Scenario_name)):
                 self.vehYear = np.int32(
-                    re.match('\d{4}', self.Scenario_name).group()
+                    re.match('\d{4}', str(self.Scenario_name)).group()
                 )
             else:
                 self.vehYear = np.int32(0) # set 0 as default to get correct type
