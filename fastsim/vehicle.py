@@ -327,13 +327,10 @@ class Vehicle(object):
         else:
             self.mcEffArray = self.mcEffMap
 
-        mcInputKwOutArray = self.mcPwrOutPerc * self.maxMotorKw
         mcKwOutArray = np.linspace(0, 1, len(self.mcPercOutArray)) * self.maxMotorKw
 
         mcFullEffArray = np.interp(
             x=self.mcPercOutArray, xp=self.mcPwrOutPerc, fp=self.mcEffArray)
-        mcFullEffArray[0] = 0.0 #
-
         mcFullEffArray[0] = 0
         mcFullEffArray[-1] = self.mcEffArray[-1]
 
