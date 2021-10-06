@@ -307,9 +307,6 @@ class Vehicle(object):
         # Creates relatively continuous array for fcEff
         self.fcEffArray = np.interp(x=self.fcPercOutArray, xp=self.fcPwrOutPerc, fp=self.fcEffMap)
 
-        self.maxFcEffKw = self.fcKwOutArray[np.argmax(self.fcEffArray)]
-        self.fcMaxOutkW = np.max(self.inputKwOutArray)
-            
         self.modernMax = params.modern_max            
         
         modern_diff = self.modernMax - max(self.largeBaselineEff)
@@ -403,8 +400,12 @@ class Vehicle(object):
         self.fcMassKg =  np.float64(fc_mass_kg)
         self.fsMassKg =  np.float64(fs_mass_kg)
 
-    # properties
+    # properties -- these were created to make sure modifications to curves propagate
 
+    @property
+    def maxFcEffKw(self): return self.fcKwOutArray[np.argmax(self.fcEffArray)]
+    @property
+    def fcMaxOutkW(self): return np.max(self.inputKwOutArray)
     @property
     def maxRegenKwh(self): return 0.5 * self.vehKg * (27**2) / (3600 * 1000)    
 
