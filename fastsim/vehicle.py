@@ -8,6 +8,7 @@ import pandas as pd
 import types as pytypes
 import re
 from pathlib import Path
+import inspect
 import ast
 
 # local modules
@@ -52,7 +53,12 @@ class Vehicle(object):
 
         if veh_dict or (type(vnum_or_file) == dict):
             for key, val in veh_dict.items():
-                self.__setattr__(key, val)
+                try:
+                    self.__setattr__(key, val)
+                except AttributeError as err_msg: 
+                    # exceptions for properties that can't be set.  
+                    if str(err_msg) != "can't set attribute":
+                        raise AttributeError
         else:
             self.load_veh(vnum_or_file=vnum_or_file, veh_file=veh_file, verbose=verbose, **kwargs)
 
@@ -294,10 +300,6 @@ class Vehicle(object):
         else:
             self.noElecAux = False
 
-        # Copying vehPtType to additional key
-        self.vehTypeSelection = self.vehPtType
-        # to be consistent with Excel version but not used in Python version
-
         # discrete array of possible engine power outputs
         self.inputKwOutArray = self.fcPwrOutPerc * self.maxFuelConvKw
         # Relatively continuous array of possible engine power outputs
@@ -394,13 +396,25 @@ class Vehicle(object):
             self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * self.props.gravityMPerSec2 /
             (1 + self.vehCgM * self.wheelCoefOfFric / self.wheelBaseM)
             ) / (self.vehKg * self.props.gravityMPerSec2)  * self.props.gravityMPerSec2
-        self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
         # copying to instance attributes
         self.essMassKg = np.float64(ess_mass_kg)
         self.mcMassKg =  np.float64(mc_mass_kg)
         self.fcMassKg =  np.float64(fc_mass_kg)
         self.fsMassKg =  np.float64(fs_mass_kg)
+
+    # properties
+
+    @property
+    def maxRegenKwh(self): return 0.5 * self.vehKg * (27**2) / (3600 * 1000)    
+
+    @property
+    def vehTypeSelection(self): 
+        """
+        Copying vehPtType to additional key
+        to be consistent with Excel version but not used in Python version
+        """
+        return self.vehPtType
 
     def get_mcPeakEff(self):
         "Return `np.max(self.mcEffArray)`"
