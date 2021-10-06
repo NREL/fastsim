@@ -372,8 +372,8 @@ class Vehicle(object):
             if self.maxFuelConvKw == 0:
                 fc_mass_kg = 0.0
             else:
-                fc_mass_kg = (((1 / self.fuelConvKwPerKg) * self.maxFuelConvKw +
-                            self.fuelConvBaseKg)) * self.compMassMultiplier
+                fc_mass_kg = (1 / self.fuelConvKwPerKg * self.maxFuelConvKw +
+                    self.fuelConvBaseKg) * self.compMassMultiplier
             if self.maxFuelStorKw == 0:
                 fs_mass_kg = 0.0
             else:
