@@ -45,9 +45,9 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True):
 
     vehnos = np.arange(1, 27)
 
-    veh = vehicle.Vehicle(1, verbose=verbose)
+    veh = vehicle.Vehicle(1, verbose=False)
     if use_jitclass:
-        veh_jit = veh.get_numba_veh()
+        veh = veh.get_numba_veh()
     energyAuditErrors = []
 
     dict_diag = {}
@@ -60,12 +60,12 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True):
             t0a = time.time()
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
-                veh = vehicle.Vehicle(vehno, verbose=verbose)
+                veh = vehicle.Vehicle(vehno, verbose=False)
                 if use_jitclass:
-                    veh_jit = veh.get_numba_veh()
+                    veh = veh.get_numba_veh()
 
             if use_jitclass:
-                sim_drive = simdrive.SimDriveJit(cyc, veh_jit)
+                sim_drive = simdrive.SimDriveJit(cyc, veh)
                 sim_drive.sim_drive()
             else:
                 sim_drive = simdrive.SimDriveClassic(cyc, veh)
@@ -78,6 +78,7 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True):
 
             if iter == 0:
                 dict_diag['vnum'] = [vehno]
+                dict_diag['Scenario_name'] = [veh.Scenario_name]
                 dict_diag['cycle'] = [cyc_name]
                 for key in diagno.keys():
                     dict_diag[key] = [diagno[key]]
@@ -85,6 +86,7 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True):
 
             else:
                 dict_diag['vnum'].append(vehno)
+                dict_diag['Scenario_name'].append(veh.Scenario_name)
                 dict_diag['cycle'].append(cyc_name)
                 for key in diagno.keys():
                     dict_diag[key].append(diagno[key])
@@ -99,18 +101,16 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True):
 
     df0 = pd.read_csv(Path(simdrive.__file__).parent.resolve() / 'resources/master_benchmark_vars.csv')
 
-    # make sure both dataframes have the same columns
+    # make sure new dataframe does not incude newly added or deprecated columns
     new_cols = {col for col in df.columns} - {col for col in df0.columns}
-    df.drop(columns=new_cols, inplace=True)
     old_cols = {col for col in df0.columns} - {col for col in df.columns}
-    df0.drop(columns=old_cols, inplace=True)
-
+    
     from math import isclose
 
-    df_err = df.copy()
+    df_err = df.copy().drop(columns=list(new_cols) + list(old_cols))
     abs_err = []
     for idx in df.index:
-        for col in df.columns[2:]:
+        for col in df_err.columns[2:]:
             if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=err_tol, abs_tol=err_tol)):
                 df_err.loc[idx, col] = (df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
                 abs_err.append(np.abs(df_err.loc[idx, col]))
