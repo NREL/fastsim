@@ -26,6 +26,12 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True):
         default of 1e-4 was selected to prevent minor errors from showing.  
         As of 31 December 2020, a recent python update caused errors that 
         are smaller than this and therefore ok to neglect.
+
+    Returns:
+    --------
+    df_err : pandas datafram, fractional errors
+    df : pandas dataframe, new values
+    df0 : pandas dataframe, original benchmark values
     """
     t0 = time.time()
 
