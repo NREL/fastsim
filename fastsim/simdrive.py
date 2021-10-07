@@ -54,7 +54,7 @@ class SimDriveClassic(object):
     cyc: cycle.Cycle instance
     veh: vehicle.Vehicle instance"""
 
-    def __init__(self, cyc, veh):
+    def __init__(self, cyc: cycle.Cycle, veh: vehicle.Vehicle):
         """Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
         sim_params is needed only if non-default behavior is desired."""
         self.__init_objects__(cyc, veh)

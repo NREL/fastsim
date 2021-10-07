@@ -8,6 +8,7 @@ import pandas as pd
 import types as pytypes
 import re
 from pathlib import Path
+import inspect
 import ast
 
 # local modules
@@ -52,7 +53,12 @@ class Vehicle(object):
 
         if veh_dict or (type(vnum_or_file) == dict):
             for key, val in veh_dict.items():
-                self.__setattr__(key, val)
+                try:
+                    self.__setattr__(key, val)
+                except AttributeError as err_msg: 
+                    # exceptions for properties that can't be set.  
+                    if str(err_msg) != "can't set attribute":
+                        raise AttributeError
         else:
             self.load_veh(vnum_or_file=vnum_or_file, veh_file=veh_file, verbose=verbose, **kwargs)
 
@@ -238,7 +244,7 @@ class Vehicle(object):
             # regex is for vehicle model year if Scenario_name starts with any 4 digit string
             if re.match('\d{4}', str(self.Scenario_name)):
                 self.vehYear = np.int32(
-                    re.match('\d{4}', self.Scenario_name).group()
+                    re.match('\d{4}', str(self.Scenario_name)).group()
                 )
             else:
                 self.vehYear = np.int32(0) # set 0 as default to get correct type
@@ -294,10 +300,6 @@ class Vehicle(object):
         else:
             self.noElecAux = False
 
-        # Copying vehPtType to additional key
-        self.vehTypeSelection = self.vehPtType
-        # to be consistent with Excel version but not used in Python version
-
         # discrete array of possible engine power outputs
         self.inputKwOutArray = self.fcPwrOutPerc * self.maxFuelConvKw
         # Relatively continuous array of possible engine power outputs
@@ -305,9 +307,6 @@ class Vehicle(object):
         # Creates relatively continuous array for fcEff
         self.fcEffArray = np.interp(x=self.fcPercOutArray, xp=self.fcPwrOutPerc, fp=self.fcEffMap)
 
-        self.maxFcEffKw = self.fcKwOutArray[np.argmax(self.fcEffArray)]
-        self.fcMaxOutkW = np.max(self.inputKwOutArray)
-            
         self.modernMax = params.modern_max            
         
         modern_diff = self.modernMax - max(self.largeBaselineEff)
@@ -328,13 +327,10 @@ class Vehicle(object):
         else:
             self.mcEffArray = self.mcEffMap
 
-        mcInputKwOutArray = self.mcPwrOutPerc * self.maxMotorKw
         mcKwOutArray = np.linspace(0, 1, len(self.mcPercOutArray)) * self.maxMotorKw
 
         mcFullEffArray = np.interp(
             x=self.mcPercOutArray, xp=self.mcPwrOutPerc, fp=self.mcEffArray)
-        mcFullEffArray[0] = 0.0 #
-
         mcFullEffArray[0] = 0
         mcFullEffArray[-1] = self.mcEffArray[-1]
 
@@ -376,8 +372,8 @@ class Vehicle(object):
             if self.maxFuelConvKw == 0:
                 fc_mass_kg = 0.0
             else:
-                fc_mass_kg = (((1 / self.fuelConvKwPerKg) * self.maxFuelConvKw +
-                            self.fuelConvBaseKg)) * self.compMassMultiplier
+                fc_mass_kg = (1 / self.fuelConvKwPerKg * self.maxFuelConvKw +
+                    self.fuelConvBaseKg) * self.compMassMultiplier
             if self.maxFuelStorKw == 0:
                 fs_mass_kg = 0.0
             else:
@@ -394,13 +390,29 @@ class Vehicle(object):
             self.wheelCoefOfFric * self.driveAxleWeightFrac * self.vehKg * self.props.gravityMPerSec2 /
             (1 + self.vehCgM * self.wheelCoefOfFric / self.wheelBaseM)
             ) / (self.vehKg * self.props.gravityMPerSec2)  * self.props.gravityMPerSec2
-        self.maxRegenKwh = 0.5 * self.vehKg * (27**2) / (3600 * 1000)
 
         # copying to instance attributes
         self.essMassKg = np.float64(ess_mass_kg)
         self.mcMassKg =  np.float64(mc_mass_kg)
         self.fcMassKg =  np.float64(fc_mass_kg)
         self.fsMassKg =  np.float64(fs_mass_kg)
+
+    # properties -- these were created to make sure modifications to curves propagate
+
+    @property
+    def maxFcEffKw(self): return self.fcKwOutArray[np.argmax(self.fcEffArray)]
+    @property
+    def fcMaxOutkW(self): return np.max(self.inputKwOutArray)
+    @property
+    def maxRegenKwh(self): return 0.5 * self.vehKg * (27**2) / (3600 * 1000)    
+
+    @property
+    def vehTypeSelection(self): 
+        """
+        Copying vehPtType to additional key
+        to be consistent with Excel version but not used in Python version
+        """
+        return self.vehPtType
 
     def get_mcPeakEff(self):
         "Return `np.max(self.mcEffArray)`"
