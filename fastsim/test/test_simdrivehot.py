@@ -43,7 +43,7 @@ class TestSimDriveHot(unittest.TestCase):
 
         self.assertAlmostEqual( 
             get_fc_temp_delta(), 0.00,
-            places=3
+            places=2
         )
 
 class TestAirProperties(unittest.TestCase):
