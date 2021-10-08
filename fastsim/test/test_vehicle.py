@@ -35,3 +35,7 @@ class TestVehicle(unittest.TestCase):
         veh.mcEffArray *= 1.05
         self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
         self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
+
+if __name__ == '__main__':
+    from fastsim import vehicle 
+    veh = vehicle.Vehicle(1).get_numba_veh()
