@@ -450,12 +450,16 @@ class Vehicle(object):
     fcPeakEff = property(get_fcPeakEff, set_fcPeakEff)
 
 
-def copy_vehicle(veh, return_dict=False):
+def copy_vehicle(veh, return_dict=False, use_jit=None):
     """Returns copy of Vehicle or VehicleJit.
     Arguments:
     veh: instantiated Vehicle or VehicleJit
     return_dict: (Boolean) if True, returns vehicle as dict. 
         Otherwise, returns exact copy.
+    use_jit: (Boolean)
+        default -- infer from arg
+        True -- use numba
+        False -- don't use numba
     """
 
     veh_dict = {}
@@ -467,13 +471,19 @@ def copy_vehicle(veh, return_dict=False):
 
     if return_dict:
         return veh_dict
-    else:
+        
+    if use_jit is None:
         if type(veh) == Vehicle:
             veh = Vehicle(veh_dict=veh_dict)
         else:
             # expects `veh` to be instantiated VehicleJit
             veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
-        return veh
+    elif use_jit:
+        veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
+    else:
+        veh = Vehicle(veh_dict=veh_dict)
+
+    return veh  
 
 def veh_equal(veh1, veh2, full_out=False):
     """Given veh1 and veh2, which can be Vehicle and/or VehicleJit
