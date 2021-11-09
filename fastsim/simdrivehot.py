@@ -2,6 +2,7 @@
 For example usage, see ../README.md"""
 
 ### Import necessary python modules
+from itertools import cycle
 import os
 import numpy as np
 import pandas as pd
@@ -11,8 +12,8 @@ import sys
 # local modules
 from fastsim import params, utils, simdrive
 from fastsim.simdrive import SimDriveClassic
-from fastsim.cycle import Cycle
-from fastsim.vehicle import Vehicle
+from fastsim import cycle
+from fastsim import vehicle
 
 class AirProperties(object):
     """Fluid Properties for calculations.  
@@ -248,6 +249,23 @@ class VehicleThermal(object):
     def catSurfArea(self):
         return np.pi * self.catDiam ** 2.0 / 4.0
 
+def copy_vehthrm(vehthrm, use_jit=None):
+    """
+    Return non-jit version of numba JIT-compiled vehicle.
+    Arguments:
+    vehthrm: simdrivehot.VehicleThermal
+    use_jit: (Boolean)
+        default -- infer from arg
+        True -- use numba
+        False -- don't use numba
+
+    """
+    from fastsim.buildspec import build_spec
+    vehthrm = VehicleThermalJit() if use_jit else VehicleThermal() 
+    for item in build_spec(VehicleThermal()):
+        vehthrm.__setattr__(item[0], vehthrm.__getattribute__(item[0]))
+        
+    return vehthrm
 
 class ConvectionCalcs(object):
     "Class with methods for convection calculations"
@@ -622,3 +640,39 @@ def SimDriveHotJit(cyc, veh, teAmbDegC, teFcInitDegC=90.0, teCabInitDegC=22.0):
     SimDriveHotJit.__doc__ += simdrivehotjit.SimDriveHotJit.__doc__
 
     return simdrivehotjit.SimDriveHotJit(cyc, veh, teAmbDegC, teFcInitDegC, teCabInitDegC)
+
+def copy_sim_drive_hot(sdhotjit:SimDriveHotJit):
+    """
+    Given fully solved SimDriveHotJit, returns identical SimDriveHot()
+    """
+    from . import simdrivehotjit
+
+    # create dummy instance
+    sdhot = SimDriveHot(
+        cycle.Cycle('udds'), 
+        vehicle.Vehicle(1, verbose=False), 
+        teAmbDegC=np.ones(len(cycle.Cycle('udds').cycSecs))
+    )
+
+    # overwrite
+    for keytup in simdrivehotjit._hotspec:
+        key = keytup[0]
+        if key not in ['cyc', 'veh']:
+            sdhot.__setattr__(
+                key, 
+                sdhotjit.__getattribute__(key)
+            )
+        elif key == 'cyc':
+            # make sure it's not jitted
+            sdhot.cyc = cycle.copy_cycle(sdhotjit.cyc, use_jit=False)
+
+        elif key == 'veh':
+            # make sure it's not jitted
+            sdhot.cyc = vehicle.copy_vehicle(sdhotjit.veh, use_jit=False)
+
+        elif key == 'vehthrm':
+            # make sure it's not jitted
+            sdhot.vehthrm = copy_vehthrm(sdhotjit.vehthrm, use_jit=False)
+    
+    return sdhot
+
