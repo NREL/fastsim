@@ -181,7 +181,7 @@ def copy_cycle(cycle, return_dict=False, use_jit=None):
         if (not key.startswith('_')) and \
             (type(cycle.__getattribute__(key)) != types.MethodType):
             # set the key if it's not a method and not a private variable
-            cyc_dict[key] = cycle.__getattribute(key)
+            cyc_dict[key] = cycle.__getattribute__(key)
         
         if return_dict:
             return cyc_dict
