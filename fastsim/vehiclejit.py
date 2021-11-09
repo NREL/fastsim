@@ -39,10 +39,3 @@ class VehicleJit(Vehicle):
         to avoid numba incompatibilities."""
         print(self.load_veh.__doc__)
 
-    def set_init_calcs(self):
-        """Overrides parent class (Cycle) with dummy method 
-        to avoid numba incompatibilities.
-        Runs self.set_dependents()"""
-        self.set_dependents()
-
-

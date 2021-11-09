@@ -230,17 +230,23 @@ class VehicleThermal(object):
         # 'external' (effectively no model) is default
         self.cat_model = 'external'
 
-        self.set_dependents()
+    def get_numba_vehthrm(self):
+        """Load numba JIT-compiled vehicle."""
+        from fastsim.buildspec import build_spec
+        numba_vehthrm = VehicleThermalJit()
+        for item in build_spec(VehicleThermal()):
+            numba_vehthrm.__setattr__(item[0], self.__getattribute__(item[0]))
+            
+        return numba_vehthrm
 
-    def set_dependents(self):
-        """
-        Sets dependent variables based on values set in __init__ or 
-        externally overriden.  
-        """
-        # parameter for engine surface area [m**2] for heat transfer calcs
-        self.fcSurfArea = np.pi * self.fcDiam ** 2.0 / 4.0
-        # parameter for catalyst surface area [m**2] for heat transfer calcs
-        self.catSurfArea = np.pi * self.catDiam ** 2.0 / 4.0
+    # parameter for engine surface area [m**2] for heat transfer calcs
+    @property
+    def fcSurfArea(self):
+        return np.pi * self.fcDiam ** 2.0 / 4.0
+    # parameter for catalyst surface area [m**2] for heat transfer calcs
+    @property
+    def catSurfArea(self):
+        return np.pi * self.catDiam ** 2.0 / 4.0
 
 
 class ConvectionCalcs(object):
