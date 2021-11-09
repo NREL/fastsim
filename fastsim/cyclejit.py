@@ -24,9 +24,6 @@ class CycleJit(Cycle):
         self.cycMps = np.zeros(len_cyc, dtype=np.float64)
         self.cycGrade = np.zeros(len_cyc, dtype=np.float64)
         self.cycRoadType = np.zeros(len_cyc, dtype=np.float64)
-        self.secs = np.zeros(len_cyc, dtype=np.float64)
-        self.cycMph = np.zeros(len_cyc, dtype=np.float64)
-        self.cycDistMeters = np.zeros(len_cyc, dtype=np.float64)
 
     def copy(self):
         """Returns copy of CycleJit instance."""
@@ -36,9 +33,6 @@ class CycleJit(Cycle):
         cyc.cycMps = np.copy(self.cycMps)
         cyc.cycGrade = np.copy(self.cycGrade)
         cyc.cycRoadType = np.copy(self.cycRoadType)
-        cyc.cycMph = np.copy(self.cycMph)
-        cyc.secs = np.copy(self.secs)
-        cyc.cycDistMeters = np.copy(self.cycDistMeters)
         cyc.name = self.name # should be copy of name
         return cyc
 

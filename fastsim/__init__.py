@@ -6,7 +6,9 @@ from pathlib import Path
 from . import parameters as params
 from fastsim import utilities as utils
 from . import simdrive, vehicle, cycle, buildspec
-from . import parametersjit, vehiclejit, cyclejit, simdrivejit, test, simdrivehot, simdrivehotjit
+from . import parametersjit, vehiclejit, cyclejit, simdrivejit, tests
+
+# convenient aliases
 
 from pkg_resources import get_distribution
 

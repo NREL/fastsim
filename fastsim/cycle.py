@@ -10,6 +10,7 @@ import re
 import sys
 from pathlib import Path
 import copy
+import types
 
 # local modules
 from . import parameters as params
@@ -17,9 +18,7 @@ from . import parameters as params
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
 STANDARD_CYCLE_KEYS = [
-    'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType', 
-    'cycMph', 'secs', 'cycDistMeters', 'name',
-    ]
+    'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType', 'name',]
 
 
 class Cycle(object):
@@ -86,7 +85,6 @@ class Cycle(object):
         if 'cycRoadType' not in cyc.columns:
             self.__setattr__('cycRoadType', np.zeros(
                 len(self.cycMps), dtype=np.float64))
-        self.set_dependents()
 
     def set_from_dict(self, cyc_dict):
         """Set cycle attributes from dict with keys 'cycSecs', 'cycMps',
@@ -111,13 +109,37 @@ class Cycle(object):
                 len(self.cycMps), dtype=np.float64))
         if 'name' not in cyc_dict.keys():
             self.__setattr__('name', 'from_dict')
-        self.set_dependents()
     
-    def set_dependents(self):
-        """Sets values dependent on cycle info loaded from file."""
-        self.cycMph = self.cycMps * params.mphPerMps
-        self.secs = np.insert(np.diff(self.cycSecs), 0, 0) # time step deltas
-        self.cycDistMeters = (self.cycMps * self.secs) 
+
+    ### Properties
+
+    def get_cycMph(self):
+        return self.cycMps * params.mphPerMps
+
+    def set_cycMph(self, new_value):
+        self.cycMps = new_value / params.mphPerMps
+
+    cycMph = property(get_cycMph, set_cycMph)
+
+    def get_time_s(self):
+        return self.cycSecs
+
+    def set_time_s(self, new_value):
+        self.cycSecs = new_value
+
+    time_s = property(get_time_s, set_time_s)
+
+    @property
+    def secs(self):
+        return np.append(0.0, self.cycSecs[1:] - self.cycSecs[:-1]) # time step deltas
+
+    @property
+    def dt_s(self):
+        return self.secs
+    
+    @property
+    def cycDistMeters(self):
+        return self.cycMps * self.secs
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
@@ -141,12 +163,16 @@ class Cycle(object):
         return cyc
 
 
-def copy_cycle(cycle, return_dict=False):
+def copy_cycle(cycle, return_dict=False, use_jit=None):
     """Returns copy of Cycle or CycleJit.
     Arguments:
     cycle: instantianed Cycle or CycleJit
     return_dict: (Boolean) if True, returns cycle as dict. 
         Otherwise, returns exact copy.
+    use_jit: (Boolean)
+        default -- infer from cycle
+        True -- use numba
+        False -- don't use numba
     """
 
     cyc_dict = {}
@@ -154,15 +180,22 @@ def copy_cycle(cycle, return_dict=False):
     for key in cycle.__dir__():
         if (not key.startswith('_')) and \
             (type(cycle.__getattribute__(key)) != types.MethodType):
+            # set the key if it's not a method and not a private variable
             cyc_dict[key] = cycle.__getattribute(key)
         
         if return_dict:
             return cyc_dict
         
-        if type(cycle) == Cycle:
-            cyc = Cycle(cyc_dict=cyc_dict)
-        else:
+        if use_jit is None:
+            if type(cycle) == Cycle:
+                cyc = Cycle(cyc_dict=cyc_dict)
+            else:
+                cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
+        elif use_jit:
             cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
+        else:
+            cyc = Cycle(cyc_dict=cyc_dict)
+            
         return cyc                
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6):

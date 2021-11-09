@@ -24,7 +24,7 @@ This will install FASTSim with minimal dependencies in place so that FASTSim fil
 For users who are not developers, FASTSim can also be installed without the `-e` option (i.e. `pip install .`), and package files will be copied to the python site-packages folder.   
 
 # Usage
-To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/test.  
+To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
 
 To get help in an interactive ipython or jupyter session:  
 ```
@@ -41,11 +41,11 @@ The `unittest` package has been implemented such that you can run `python -m uni
 
 ## Against Previous Python Version
 
-To run test, first run the command `from fastim import test`.  
-To compare FASTSim back to the master branch version from 17 December 2019, run `test.test26veh3cyc.main()`.  For timing comparisons, run `test.test26veh3cyc_CPUtime.main()`.  
+To run tests, first run the command `from fastim import tests`.  
+To compare FASTSim back to the master branch version from 17 December 2019, run `tests.test26veh3cyc.main()`.  For timing comparisons, run `tests.test26veh3cyc_CPUtime.main()`.  
 
 ## Against Excel FASTSim
-To compare Python FASTSim results to Excel FASTSim, you can run `test.test_vs_excel.main()` to do an experimental (i.e. beta) comparison against saved Excel results. If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can specify `rerun_excel=True` to do a live run of the Excel version.
+To compare Python FASTSim results to Excel FASTSim, you can run `tests.test_vs_excel.main()` to do an experimental (i.e. beta) comparison against saved Excel results. If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can specify `rerun_excel=True` to do a live run of the Excel version.
 
 # numba
 To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim.simdrive`, `fastsim.cycle`, and `fastsim/vehicle`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
