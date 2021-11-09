@@ -17,9 +17,7 @@ from . import parameters as params
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
 STANDARD_CYCLE_KEYS = [
-    'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType', 
-    'cycMph', 'secs', 'cycDistMeters', 'name',
-    ]
+    'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType', 'name',]
 
 
 class Cycle(object):
@@ -86,7 +84,6 @@ class Cycle(object):
         if 'cycRoadType' not in cyc.columns:
             self.__setattr__('cycRoadType', np.zeros(
                 len(self.cycMps), dtype=np.float64))
-        self.set_dependents()
 
     def set_from_dict(self, cyc_dict):
         """Set cycle attributes from dict with keys 'cycSecs', 'cycMps',
@@ -111,13 +108,25 @@ class Cycle(object):
                 len(self.cycMps), dtype=np.float64))
         if 'name' not in cyc_dict.keys():
             self.__setattr__('name', 'from_dict')
-        self.set_dependents()
     
-    def set_dependents(self):
-        """Sets values dependent on cycle info loaded from file."""
-        self.cycMph = self.cycMps * params.mphPerMps
-        self.secs = np.insert(np.diff(self.cycSecs), 0, 0) # time step deltas
-        self.cycDistMeters = (self.cycMps * self.secs) 
+
+    ### Properties
+
+    def get_cycMph(self):
+        return self.cycMps * params.mphPerMps
+
+    def set_cycMph(self, new_value):
+        self.cycMps = new_value / params.mphPerMps
+
+    cycMph = property(get_cycMph, set_cycMph)
+
+    @property
+    def secs(self):
+        return np.append(0.0, self.cycSecs[1:] - self.cycSecs[:-1]) # time step deltas
+    
+    @property
+    def cycDistMeters(self):
+        return self.cycMps * self.secs
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
