@@ -10,6 +10,7 @@ import re
 import sys
 from pathlib import Path
 import copy
+import types
 
 # local modules
 from . import parameters as params
@@ -162,12 +163,16 @@ class Cycle(object):
         return cyc
 
 
-def copy_cycle(cycle, return_dict=False):
+def copy_cycle(cycle, return_dict=False, use_jit=None):
     """Returns copy of Cycle or CycleJit.
     Arguments:
     cycle: instantianed Cycle or CycleJit
     return_dict: (Boolean) if True, returns cycle as dict. 
         Otherwise, returns exact copy.
+    use_jit: (Boolean)
+        default -- infer from cycle
+        True -- use numba
+        False -- don't use numba
     """
 
     cyc_dict = {}
@@ -175,15 +180,22 @@ def copy_cycle(cycle, return_dict=False):
     for key in cycle.__dir__():
         if (not key.startswith('_')) and \
             (type(cycle.__getattribute__(key)) != types.MethodType):
+            # set the key if it's not a method and not a private variable
             cyc_dict[key] = cycle.__getattribute(key)
         
         if return_dict:
             return cyc_dict
         
-        if type(cycle) == Cycle:
-            cyc = Cycle(cyc_dict=cyc_dict)
-        else:
+        if use_jit is None:
+            if type(cycle) == Cycle:
+                cyc = Cycle(cyc_dict=cyc_dict)
+            else:
+                cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
+        elif use_jit:
             cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
+        else:
+            cyc = Cycle(cyc_dict=cyc_dict)
+            
         return cyc                
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6):
