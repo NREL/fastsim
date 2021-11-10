@@ -668,7 +668,7 @@ def copy_sim_drive_hot(sdhotjit:SimDriveHotJit):
 
         elif key == 'veh':
             # make sure it's not jitted
-            sdhot.cyc = vehicle.copy_vehicle(sdhotjit.veh, use_jit=False)
+            sdhot.veh = vehicle.copy_vehicle(sdhotjit.veh, use_jit=False)
 
         elif key == 'vehthrm':
             # make sure it's not jitted
