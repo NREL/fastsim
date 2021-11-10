@@ -163,10 +163,10 @@ class Cycle(object):
         return cyc
 
 
-def copy_cycle(cycle, return_dict=False, use_jit=None):
+def copy_cycle(cyc, return_dict=False, use_jit=None):
     """Returns copy of Cycle or CycleJit.
     Arguments:
-    cycle: instantianed Cycle or CycleJit
+    cyc: instantianed Cycle or CycleJit
     return_dict: (Boolean) if True, returns cycle as dict. 
         Otherwise, returns exact copy.
     use_jit: (Boolean)
@@ -180,13 +180,13 @@ def copy_cycle(cycle, return_dict=False, use_jit=None):
     from . import cyclejit
     for keytup in cyclejit.cyc_spec:
         key = keytup[0]
-        cyc_dict[key] = cycle.__getattribute__(key)
+        cyc_dict[key] = cyc.__getattribute__(key)
         
         if return_dict:
             return cyc_dict
         
         if use_jit is None:
-            if type(cycle) == Cycle:
+            if type(cyc) == Cycle:
                 cyc = Cycle(cyc_dict=cyc_dict)
             else:
                 cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
