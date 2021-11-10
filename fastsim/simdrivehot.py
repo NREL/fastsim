@@ -348,6 +348,7 @@ class SimDriveHot(SimDriveClassic):
         self.__init_objects__(cyc, veh)
         self.teFcInitDegC = teFcInitDegC # for persistence through iteration
         self.teCabInitDegC = teCabInitDegC # for persistence through iteration
+        self.hev_sim_count = 0
         self.init_arrays()
         self.init_thermal_arrays(teAmbDegC)
 
