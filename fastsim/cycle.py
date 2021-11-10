@@ -182,20 +182,20 @@ def copy_cycle(cyc, return_dict=False, use_jit=None):
         key = keytup[0]
         cyc_dict[key] = cyc.__getattribute__(key)
         
-        if return_dict:
-            return cyc_dict
-        
-        if use_jit is None:
-            if type(cyc) == Cycle:
-                cyc = Cycle(cyc_dict=cyc_dict)
-            else:
-                cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-        elif use_jit:
-            cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-        else:
+    if return_dict:
+        return cyc_dict
+    
+    if use_jit is None:
+        if type(cyc) == Cycle:
             cyc = Cycle(cyc_dict=cyc_dict)
-            
-        return cyc                
+        else:
+            cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
+    elif use_jit:
+        cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
+    else:
+        cyc = Cycle(cyc_dict=cyc_dict)
+        
+    return cyc                
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6):
     """
