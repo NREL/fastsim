@@ -372,8 +372,16 @@ class Vehicle(object):
             warnings.warn(f'Override variables from file: {list(kwargs.keys())}')
 
         # overrides from file
-        self.fcPeakEff = kwargs.pop('fcPeakEffOverride', self.fcPeakEff)
-        self.mcPeakEff = kwargs.pop('mcPeakEffOverride', self.mcPeakEff)
+        if 'fcPeakEffOverride' in kwargs:
+            if not(np.isnan(kwargs['fcPeakEffOverride'])):
+                self.fcPeakEff = kwargs.pop('fcPeakEffOverride', self.fcPeakEff)
+            else:
+                _ = kwargs.pop('fcPeakEffOverride')
+        if 'mcPeakEffOverride' in kwargs:
+            if not(np.isnan(kwargs['mcPeakEffOverride'])):
+                self.mcPeakEff = kwargs.pop('mcPeakEffOverride', self.mcPeakEff)
+            else:
+                _ = kwargs.pop('mcPeakEffOverride')
 
         if len(kwargs) > 0:
             warnings.warn(f"Invalid kwargs provided to Vehicle.set_dependents: {list(kwargs.keys())}")
