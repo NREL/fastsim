@@ -642,18 +642,28 @@ def SimDriveHotJit(cyc, veh, teAmbDegC, teFcInitDegC=90.0, teCabInitDegC=22.0):
 
     return simdrivehotjit.SimDriveHotJit(cyc, veh, teAmbDegC, teFcInitDegC, teCabInitDegC)
 
-def copy_sim_drive_hot(sdhotjit:SimDriveHotJit):
+def copy_sim_drive_hot(sdhotjit:SimDriveHotJit, use_jit=False):
     """
-    Given fully solved SimDriveHotJit, returns identical SimDriveHot()
+    Given fully solved SimDriveHotJit, returns identical SimDriveHot().
+
+    Arguments:
+    ----------
+    use_jit: Boolean, use numba jitclasses or not
     """
     from . import simdrivehotjit
 
-    # create dummy instance
-    sdhot = SimDriveHot(
-        cycle.Cycle('udds'), 
-        vehicle.Vehicle(1, verbose=False), 
-        teAmbDegC=np.ones(len(cycle.Cycle('udds').cycSecs))
-    )
+    if use_jit:
+        sdhot = SimDriveHotJit(
+            cycle.Cycle('udds'), 
+            vehicle.Vehicle(1, verbose=False), 
+            teAmbDegC=np.ones(len(cycle.Cycle('udds').cycSecs))
+        )
+    else:
+        sdhot = SimDriveHot(
+            cycle.Cycle('udds'), 
+            vehicle.Vehicle(1, verbose=False), 
+            teAmbDegC=np.ones(len(cycle.Cycle('udds').cycSecs))
+        )
 
     # overwrite
     for keytup in simdrivehotjit._hotspec:
