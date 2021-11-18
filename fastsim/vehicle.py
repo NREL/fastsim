@@ -368,6 +368,9 @@ class Vehicle(object):
         self.regenA = 500.0  # hardcoded
         self.regenB = 0.99  # hardcoded
 
+        if len(kwargs) > 0:
+            warnings.warn(f'Override variables from file: {list(kwargs.keys())}')
+
         # overrides from file
         self.fcPeakEff = kwargs.pop('fcPeakEffOverride', self.fcPeakEff)
         self.mcPeakEff = kwargs.pop('mcPeakEffOverride', self.mcPeakEff)
