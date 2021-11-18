@@ -3,6 +3,7 @@ Module containing classes and methods for for loading vehicle data. For example 
 """
 
 ### Import necessary python modules
+import warnings
 import numpy as np
 import pandas as pd
 import types as pytypes
@@ -33,6 +34,9 @@ def get_template_df():
     return vehdf
 
 TEMPLATE_VEHDF = get_template_df()
+
+# list of optional parameters that do not get assigned as vehicle attributes
+OPT_INIT_PARAMS = ['fcPeakEffOverride', 'mcPeakEffOverride']
 
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
@@ -110,7 +114,7 @@ class Vehicle(object):
 
         # verify that only allowed columns have been provided
         for col in vehdf.columns:
-            assert col in TEMPLATE_VEHDF.columns, f"`{col}` is deprecated and must be removed from {veh_file}."
+            assert col in list(TEMPLATE_VEHDF.columns) + OPT_INIT_PARAMS, f"`{col}` is deprecated and must be removed from {veh_file}."
 
         def clean_data(raw_data):
             """Cleans up data formatting.
@@ -154,8 +158,9 @@ class Vehicle(object):
         # set columns and values as instance attributes and values
         for col in vehdf.columns:
             col1 = col.replace(' ', '_')
-            # assign dataframe columns
-            self.__setattr__(col1, vehdf.loc[vnum, col])
+            if col not in OPT_INIT_PARAMS:
+                # assign dataframe columns to vehicle
+                self.__setattr__(col1, vehdf.loc[vnum, col])
 
         # make sure all the attributes needed by CycleJit are set
         # this could potentially cause unexpected behaviors
@@ -173,7 +178,7 @@ class Vehicle(object):
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
         try:
-            # check if fcEffMap is provided in vehicle csv file
+            # check if optional parameter fcEffMap is provided in vehicle csv file
             self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap']))
         
         except:
@@ -193,7 +198,7 @@ class Vehicle(object):
                 self.fcEffMap = params.fcEffMap_hd_diesel
 
         try:
-            # check if fcPwrOutPerc is provided in vehicle csv file
+            # check if optional parameter fcPwrOutPerc is provided in vehicle csv file
             self.fcPwrOutPerc = np.array(ast.literal_eval(veh_dict['fcPwrOutPerc']))
         except:
             self.fcPwrOutPerc = params.fcPwrOutPerc
@@ -239,7 +244,7 @@ class Vehicle(object):
         self.smallMotorPowerKw = 7.5 # default (float)
         self.largeMotorPowerKw = 75.0 # default (float)
 
-        # assigning vehYear if not provided
+        # check if vehYear provided in file, and, if not, provide value from Scenario_name or default of 0
         if ('vehYear' not in veh_dict) or np.isnan(self.vehYear):
             # regex is for vehicle model year if Scenario_name starts with any 4 digit string
             if re.match('\d{4}', str(self.Scenario_name)):
@@ -252,7 +257,10 @@ class Vehicle(object):
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
             
-        self.set_init_calcs()
+        self.set_init_calcs(
+            # provide kwargs for load-time overrides
+            **{opt_init_param: veh_dict.pop(opt_init_param) for opt_init_param in OPT_INIT_PARAMS if opt_init_param in veh_dict}
+        )
         self.set_veh_mass()
 
         if return_vehdf:
@@ -276,13 +284,23 @@ class Vehicle(object):
             
         return numba_veh
     
-    def set_init_calcs(self):
-        """Legacy method for calling set_dependents."""
+    def set_init_calcs(self, **kwargs):
+        """
+        Legacy method for calling set_dependents.
+        """
 
-        self.set_dependents()
+        self.set_dependents(**kwargs)
 
-    def set_dependents(self):
-        """Sets derived parameters."""
+    def set_dependents(self, **kwargs):
+        """
+        Sets derived parameters.
+        Arguments:
+        ----------
+        fcPeakEffOverride: float (0, 1), if provided, overrides fuel converter peak 
+            efficiency with proportional scaling
+        mcPeakEffOverride: float (0, 1), if provided, overrides motor peak efficiency
+            with proportional scaling
+        """
         
         ### Build roadway power lookup table
         self.MaxRoadwayChgKw = np.zeros(6)
@@ -349,6 +367,19 @@ class Vehicle(object):
         ### see "Regen" tab in FASTSim for Excel
         self.regenA = 500.0  # hardcoded
         self.regenB = 0.99  # hardcoded
+
+        # overrides from file
+        self.fcPeakEff = kwargs.pop('fcPeakEffOverride', self.fcPeakEff)
+        self.mcPeakEff = kwargs.pop('mcPeakEffOverride', self.mcPeakEff)
+
+        if len(kwargs) > 0:
+            warnings.warn(f"Invalid kwargs provided to Vehicle.set_dependents: {list(kwargs.keys())}")
+
+        # check that efficiencies are not violating the first law of thermo
+        assert self.fcEffArray.min() >= 0, f"min MC eff {self.fcEffArray.min()} < 0 is not allowed"
+        assert self.fcPeakEff < 1, f"fcPeakEff {self.fcPeakEff} >= 1 is not allowed."
+        assert self.mcFullEffArray.min() >= 0, f"min MC eff {self.mcFullEffArray.min()} < 0 is not allowed"
+        assert self.mcPeakEff < 1, f"mcPeakEff {self.mcPeakEff} >= 1 is not allowed."
 
     def set_veh_mass(self):
         """Calculate total vehicle mass.  Sum up component masses if 

@@ -36,6 +36,13 @@ class TestVehicle(unittest.TestCase):
         self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
         self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
 
+    def test_file_overrides(self):
+        veh = vehicle.Vehicle('test_overrides')
+        self.assertAlmostEqual(veh.mcPeakEff, 0.2, 3)
+        self.assertAlmostEqual(veh.fcPeakEff, 0.9, 3)
+        with self.assertRaises(AssertionError):
+            vehicle.Vehicle('fail_overrides')
+
 if __name__ == '__main__':
     from fastsim import vehicle 
     veh = vehicle.Vehicle(1).get_numba_veh()
