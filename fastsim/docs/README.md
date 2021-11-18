@@ -85,6 +85,7 @@ in = component input
 out = component output  
 
 # Release Notes
+1.1.3 -- provisioned for optional load time motor and engine peak overrides
 1.1.2 -- made vehicle loading _more_ more robust
 1.1.1 -- made vehicle loading more robust
 1.1.0 -- separated jitclasses into own module, made vehicle engine and motor efficiency setting more robust
