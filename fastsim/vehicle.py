@@ -371,16 +371,16 @@ class Vehicle(object):
 
         if fcPeakEffOverride != -1:
             self.fcPeakEff = fcPeakEffOverride
-            warnings.warn("fcPeakEffOverride is modifying efficiency curve.")
+            print("fcPeakEffOverride is modifying efficiency curve.")
         if mcPeakEffOverride != -1:
             self.mcPeakEff = mcPeakEffOverride
-            warnings.warn("mcPeakEffOverride is modifying efficiency curve.")
+            print("mcPeakEffOverride is modifying efficiency curve.")
 
         # check that efficiencies are not violating the first law of thermo
-        assert self.fcEffArray.min() >= 0, f"min MC eff {self.fcEffArray.min()} < 0 is not allowed"
-        assert self.fcPeakEff < 1, f"fcPeakEff {self.fcPeakEff} >= 1 is not allowed."
-        assert self.mcFullEffArray.min() >= 0, f"min MC eff {self.mcFullEffArray.min()} < 0 is not allowed"
-        assert self.mcPeakEff < 1, f"mcPeakEff {self.mcPeakEff} >= 1 is not allowed."
+        assert self.fcEffArray.min() >= 0, f"min MC eff < 0 is not allowed"
+        assert self.fcPeakEff < 1, f"fcPeakEff >= 1 is not allowed."
+        assert self.mcFullEffArray.min() >= 0, f"min MC eff < 0 is not allowed"
+        assert self.mcPeakEff < 1, f"mcPeakEff >= 1 is not allowed."
 
     def set_veh_mass(self):
         """Calculate total vehicle mass.  Sum up component masses if 

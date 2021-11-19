@@ -36,6 +36,10 @@ class TestVehicle(unittest.TestCase):
         self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
         self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
 
+    def test_set_dependents(self):
+        veh = vehicle.Vehicle(1).get_numba_veh()
+        veh.set_dependents()
+
     def test_file_overrides(self):
         veh = vehicle.Vehicle('test_overrides')
         self.assertAlmostEqual(veh.mcPeakEff, 0.2, 3)
