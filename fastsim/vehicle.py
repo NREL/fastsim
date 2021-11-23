@@ -259,7 +259,8 @@ class Vehicle(object):
             
         self.set_init_calcs(
             # provide kwargs for load-time overrides
-            **{opt_init_param: veh_dict.pop(opt_init_param) for opt_init_param in OPT_INIT_PARAMS if opt_init_param in veh_dict}
+            # -1 is used as a surrogate for None, which is not an option in numba
+            **{opt_init_param: veh_dict.pop(opt_init_param, -1) for opt_init_param in OPT_INIT_PARAMS}
         )
         self.set_veh_mass()
 
@@ -284,22 +285,22 @@ class Vehicle(object):
             
         return numba_veh
     
-    def set_init_calcs(self, **kwargs):
+    def set_init_calcs(self, fcPeakEffOverride=-1, mcPeakEffOverride=-1):
         """
         Legacy method for calling set_dependents.
         """
 
-        self.set_dependents(**kwargs)
+        self.set_dependents(fcPeakEffOverride, mcPeakEffOverride)
 
-    def set_dependents(self, **kwargs):
+    def set_dependents(self, fcPeakEffOverride=-1, mcPeakEffOverride=-1):
         """
         Sets derived parameters.
         Arguments:
         ----------
         fcPeakEffOverride: float (0, 1), if provided, overrides fuel converter peak 
-            efficiency with proportional scaling
+            efficiency with proportional scaling.  Default of -1 has no effect.
         mcPeakEffOverride: float (0, 1), if provided, overrides motor peak efficiency
-            with proportional scaling
+            with proportional scaling.  Default of -1 has no effect.  
         """
         
         ### Build roadway power lookup table
@@ -368,29 +369,18 @@ class Vehicle(object):
         self.regenA = 500.0  # hardcoded
         self.regenB = 0.99  # hardcoded
 
-        if len(kwargs) > 0:
-            warnings.warn(f'Override variables from file: {list(kwargs.keys())}')
-
-        # overrides from file
-        if 'fcPeakEffOverride' in kwargs:
-            if not(np.isnan(kwargs['fcPeakEffOverride'])):
-                self.fcPeakEff = kwargs.pop('fcPeakEffOverride', self.fcPeakEff)
-            else:
-                _ = kwargs.pop('fcPeakEffOverride')
-        if 'mcPeakEffOverride' in kwargs:
-            if not(np.isnan(kwargs['mcPeakEffOverride'])):
-                self.mcPeakEff = kwargs.pop('mcPeakEffOverride', self.mcPeakEff)
-            else:
-                _ = kwargs.pop('mcPeakEffOverride')
-
-        if len(kwargs) > 0:
-            warnings.warn(f"Invalid kwargs provided to Vehicle.set_dependents: {list(kwargs.keys())}")
+        if fcPeakEffOverride != -1:
+            self.fcPeakEff = fcPeakEffOverride
+            print("fcPeakEffOverride is modifying efficiency curve.")
+        if mcPeakEffOverride != -1:
+            self.mcPeakEff = mcPeakEffOverride
+            print("mcPeakEffOverride is modifying efficiency curve.")
 
         # check that efficiencies are not violating the first law of thermo
-        assert self.fcEffArray.min() >= 0, f"min MC eff {self.fcEffArray.min()} < 0 is not allowed"
-        assert self.fcPeakEff < 1, f"fcPeakEff {self.fcPeakEff} >= 1 is not allowed."
-        assert self.mcFullEffArray.min() >= 0, f"min MC eff {self.mcFullEffArray.min()} < 0 is not allowed"
-        assert self.mcPeakEff < 1, f"mcPeakEff {self.mcPeakEff} >= 1 is not allowed."
+        assert self.fcEffArray.min() >= 0, f"min MC eff < 0 is not allowed"
+        assert self.fcPeakEff < 1, f"fcPeakEff >= 1 is not allowed."
+        assert self.mcFullEffArray.min() >= 0, f"min MC eff < 0 is not allowed"
+        assert self.mcPeakEff < 1, f"mcPeakEff >= 1 is not allowed."
 
     def set_veh_mass(self):
         """Calculate total vehicle mass.  Sum up component masses if 

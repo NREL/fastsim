@@ -85,6 +85,8 @@ in = component input
 out = component output  
 
 # Release Notes
+1.1.6 -- another bug fix for numba compatibility with corresponding unit test
+1.1.5 -- bug fix for numba compatibility of fcPeakEffOverride and mcPeakEffOverride
 1.1.4 -- nan bug fix for fcPeakEffOverride and mcPeakEffOverride
 1.1.3 -- provisioned for optional load time motor and engine peak overrides
 1.1.2 -- made vehicle loading _more_ more robust
