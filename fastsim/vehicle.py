@@ -505,11 +505,14 @@ def copy_vehicle(veh, return_dict=False, use_jit=None):
         return veh_dict
         
     if use_jit is None:
+        from . import vehiclejit
         if type(veh) == Vehicle:
             veh = Vehicle(veh_dict=veh_dict)
-        else:
+        elif type(veh) == type(vehiclejit.VehicleJit()):
             # expects `veh` to be instantiated VehicleJit
             veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
+        else:
+            raise TypeError('Did not receive either fastsim.vehicle.Vehicle() or fastsim.vehiclejit.VehicleJit()')
     elif use_jit:
         veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
     else:
