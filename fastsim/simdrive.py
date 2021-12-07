@@ -546,16 +546,15 @@ class SimDriveClassic(object):
         self.cycTracKwReq[i] = self.cycDragKw[i] + \
             self.cycAccelKw[i] + self.cycAscentKw[i]
         self.spareTracKw[i] = self.curMaxTracKw[i] - self.cycTracKwReq[i]
-        self.cycRrKw[i] = self.props.gravityMPerSec2 * self.veh.wheelRrCoef * \
-            self.veh.vehKg * ((self.mpsAch[i-1] + mpsAch) / 2.0) / 1000.0
+        self.cycRrKw[i] = self.veh.vehKg * self.props.gravityMPerSec2 * self.veh.wheelRrCoef * np.cos(
+            np.arctan(self.cyc.cycGrade[i])) * (self.mpsAch[i-1] + mpsAch) / 2.0 / 1000.0
         self.cycWheelRadPerSec[i] = mpsAch / self.veh.wheelRadiusM
         self.cycTireInertiaKw[i] = (
             0.5 * self.veh.wheelInertiaKgM2 * self.veh.numWheels * self.cycWheelRadPerSec[i] ** 2.0 / self.cyc.secs[i] -
             0.5 * self.veh.wheelInertiaKgM2 * self.veh.numWheels * (self.mpsAch[i-1] / self.veh.wheelRadiusM) ** 2.0 / self.cyc.secs[i]
         ) / 1000.0
 
-        self.cycWheelKwReq[i] = self.cycTracKwReq[i] + \
-            self.cycRrKw[i] + self.cycTireInertiaKw[i]
+        self.cycWheelKwReq[i] = self.cycTracKwReq[i] + self.cycRrKw[i] + self.cycTireInertiaKw[i]
         self.regenContrLimKwPerc[i] = self.veh.maxRegen / (1 + self.veh.regenA * np.exp(-self.veh.regenB * (
             (self.cyc.cycMph[i] + self.mpsAch[i-1] * params.mphPerMps) / 2.0 + 1 - 0)))
         self.cycRegenBrakeKw[i] = max(min(
