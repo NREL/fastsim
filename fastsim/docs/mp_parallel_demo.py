@@ -20,7 +20,6 @@ def run_sd(cyc_num: int):
     # convert to jit inside the parallelized function
     cyc_jit = cycs[cyc_num].get_numba_cyc()
     veh_jit = veh.get_numba_veh()
-    # this example is not using simdrivehot, but the changes should be miminal
     sd = fsim.simdrive.SimDriveJit(cyc_jit, veh_jit)
     sd.sim_drive()
     if cyc_num % 100 == 0:
