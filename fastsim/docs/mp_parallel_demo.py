@@ -17,7 +17,7 @@ veh = fsim.vehicle.Vehicle(11, verbose=False)
 cycs = [fsim.cycle.Cycle('udds')] * 1_000
 
 def run_sd(cyc_num: int):
-    # convert to jit inside the parallelized function
+    # convert to jit inside the parallelized function to allow for pickling
     cyc_jit = cycs[cyc_num].get_numba_cyc()
     veh_jit = veh.get_numba_veh()
     sd = fsim.simdrive.SimDriveJit(cyc_jit, veh_jit)
@@ -36,7 +36,9 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         processes = int(sys.argv[1])
     else:
-        processes = 4 # results in 250 runs of udds per process, which appears to be optimal
+        # processes = 4 results in 250 runs of udds per process, which appears to be optimal
+        # this is equivalent to 250 runs * 1,400 s / run = 350,000 s per process
+        processes = 4 
 
     print(f"Running with {processes} pool processes.")
     with mp.Pool(processes=processes) as pool:
