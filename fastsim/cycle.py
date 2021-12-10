@@ -64,7 +64,7 @@ class Cycle(object):
         Argument:
         ---------
         std_cyc_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
-        csv_path = Path(CYCLES_DIR) / (std_cyc_name + '.csv')
+        csv_path = Path(CYCLES_DIR) / (std_cyc_name.replace('.csv', '') + '.csv')
         self.set_from_file(csv_path)
 
     def set_from_file(self, cyc_file_path):
