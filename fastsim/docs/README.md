@@ -24,6 +24,7 @@ This will install FASTSim with minimal dependencies in place so that FASTSim fil
 For users who are not developers, FASTSim can also be installed without the `-e` option (i.e. `pip install .`), and package files will be copied to the python site-packages folder.   
 
 # Update
+Note: the following instructions work only if you are inside NREL VPN:  
 To update, run
 ```
 pip install fastsim --upgrade --extra-index-url=https://github.nrel.gov/pages/MBAP/mbap-pypi/
