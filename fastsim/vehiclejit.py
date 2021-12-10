@@ -30,9 +30,8 @@ class VehicleJit(Vehicle):
         self.props = parametersjit.PhysicalPropertiesJit()
 
     def get_numba_veh(self):
-        """Overrides parent class (Cycle) with dummy method 
-        to avoid numba incompatibilities."""
-        print(self.get_numba_veh.__doc__)
+        """Returns self."""
+        return self
 
     def load_veh(self):
         """Overrides parent class (Cycle) with dummy method 

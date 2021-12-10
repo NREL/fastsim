@@ -37,9 +37,8 @@ class CycleJit(Cycle):
         return cyc
 
     def get_numba_cyc(self):
-        """Overrides parent class (Cycle) with dummy method
-        to avoid numba incompatibilities."""
-        print(self.get_numba_cyc.__doc__)
+        """Returns self."""
+        return self
 
     def set_standard_cycle(self):
         """Overrides parent class (Cycle) with dummy method

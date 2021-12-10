@@ -23,6 +23,13 @@ This will install FASTSim with minimal dependencies in place so that FASTSim fil
 
 For users who are not developers, FASTSim can also be installed without the `-e` option (i.e. `pip install .`), and package files will be copied to the python site-packages folder.   
 
+# Update
+Note: the following instructions work only if you are inside NREL VPN:  
+To update, run
+```
+pip install fastsim --upgrade --extra-index-url=https://github.nrel.gov/pages/MBAP/mbap-pypi/
+```
+
 # Usage
 To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
 
@@ -85,6 +92,7 @@ in = component input
 out = component output  
 
 # Release Notes
+1.1.7 -- get_numba_veh() and get_numba_cyc() can now be called from already jitted objects
 1.1.6 -- another bug fix for numba compatibility with corresponding unit test
 1.1.5 -- bug fix for numba compatibility of fcPeakEffOverride and mcPeakEffOverride
 1.1.4 -- nan bug fix for fcPeakEffOverride and mcPeakEffOverride
