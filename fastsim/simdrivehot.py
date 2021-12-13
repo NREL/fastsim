@@ -169,56 +169,56 @@ class VehicleThermal(object):
         """Initial default values for vehicle thermal parameters."""
         # fuel converter / engine
         # parameter fuel converter thermal mass [kJ/K]
-        self.fcThrmMass = 100.0
+        self.fc_C = 100.0
         # parameter for ngine characteristic length [m] for heat transfer calcs
-        self.fcDiam = 1.0
+        self.fc_L = 1.0
         # parameter for heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during vehicle stop
-        self.hFcToAmbStop = 50.0
+        self.fc_h_to_amb_stop = 50.0
         # parameter for fraction of combustion heat that goes to fuel converter (engine) 
         # thermal mass. Remainder goes to environment (e.g. via tailpipe)
-        self.fcCombToThrmlMassFrac = 0.5 
+        self.comb_h_to_thrml_mass_frac = 0.5 
         # parameter for temperature [ºC] at which thermostat starts to open
-        self.teTStatSTODegC = 85.0
+        self.tstat_te_sto_degC = 85.0
         # temperature delta [ºC] over which thermostat is partially open
-        self.teTStatDeltaDegC = 5.0
+        self.tstat_te_delta_degC = 5.0
         # derived temperature [ºC] at which thermostat is fully open
-        self.teTStatFODegC = self.teTStatSTODegC + self.teTStatDeltaDegC
+        self.tstat_te_fo_degC = self.tstat_te_sto_degC + self.tstat_te_delta_degC
         # radiator effectiveness -- ratio of active heat rejection from 
         # radiator to passive heat rejection
-        self.radiator_eff = 5.0
+        self.rad_eps = 5.0
         # 'linear' or 'exponential'
         # if 'linear', temparature has linear impact on efficiency.  If 'exponential',
         # temperature has exponential impact on temperature
         self.fc_temp_eff_model = 'linear'  
         # offset for scaling FC efficiency w.r.t. to temperature in linear or exponential model
-        self.fcTempEffOffset = 0.1
+        self.fc_temp_eff_offset = 0.1
         # slope for scaling FC efficiency w.r.t. to temperature in linear model
         # exponential decay constant for exponential model
-        self.fcTempEffSlope = 0.01
+        self.fc_temp_eff_slope = 0.01
         # minimum coefficient for scaling FC efficiency as a function of temperature
-        self.fcTempEffMin = 0.1
+        self.fc_temp_eff_min = 0.1
 
         # cabin
         # parameter for cabin thermal mass [kJ/K]
-        self.cabThrmMass = 5.0
+        self.cab_C = 5.0
         # cabin length [m], modeled as a flat plate
-        self.cabLength = 2.5
+        self.cab_L_length = 2.5
         # cabin width [m], modeled as a flat plate
-        self.cabWidth = 1.75
+        self.cab_L_width = 1.75
         # cabin shell thermal resistance [m **2 * K / W]
-        self.RCabToAmb = 0.5
+        self.cab_r_to_amb = 0.5
         # parameter for heat transfer coeff [W / (m ** 2 * K)] from cabin to ambient during
         # vehicle stop
-        self.hCabToAmbStop = 50.0
+        self.cab_h_to_amb_stop = 50.0
 
         # catalytic converter (catalyst)
-        # diameter [m] of catalyst as sphere
-        self.catDiam = 0.3
+        # diameter [m] of catalyst as sphere for thermal model
+        self.cat_L = 0.3
         # catalyst thermal capacitance [kJ/K]
-        self.catThrmMass = 20.0 
+        self.cat_C = 20.0 
         # parameter for heat transfer coeff [W / (m ** 2 * K)] from catalyst to ambient
         # during vehicle stop
-        self.hCatToAmbStop = 50.0
+        self.cat_h_to_amb_stop = 50.0
 
         # model choices
         # HVAC model 'internal' or 'external' w.r.t. fastsim
@@ -243,11 +243,11 @@ class VehicleThermal(object):
     # parameter for engine surface area [m**2] for heat transfer calcs
     @property
     def fcSurfArea(self):
-        return np.pi * self.fcDiam ** 2.0 / 4.0
+        return np.pi * self.fc_L ** 2.0 / 4.0
     # parameter for catalyst surface area [m**2] for heat transfer calcs
     @property
     def catSurfArea(self):
-        return np.pi * self.catDiam ** 2.0 / 4.0
+        return np.pi * self.cat_L ** 2.0 / 4.0
 
 def copy_vehthrm(vehthrm, use_jit=None):
     """
@@ -337,20 +337,20 @@ class SimDriveHot(SimDriveClassic):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    def __init__(self, cyc, veh, teAmbDegC, teFcInitDegC=90.0, teCabInitDegC=22.0):
+    def __init__(self, cyc, veh, amb_te_degC, fc_te_init_degC=90.0, cab_te_init_degC=22.0):
         """Initialize time array variables that are not used in base SimDrive.
         Arguments:
         ----------
-        teAmbDegC: array of ambient temperatures [C].  Must be declared with 
+        amb_te_degC: array of ambient temperatures [C].  Must be declared with 
             dtype=np.float64, e.g. np.zeros(len(cyc.cycSecs, dtype=np.float64)).
-        teFcInitDegC: (optional) fuel converter initial temperature [C]
-        teCabInitDegC: (optional) cabin initial temperature [C]"""
+        fc_te_init_degC: (optional) fuel converter initial temperature [C]
+        cab_te_init_degC: (optional) cabin initial temperature [C]"""
         self.__init_objects__(cyc, veh)
-        self.teFcInitDegC = teFcInitDegC # for persistence through iteration
-        self.teCabInitDegC = teCabInitDegC # for persistence through iteration
+        self.fc_te_init_degC = fc_te_init_degC # for persistence through iteration
+        self.cab_te_init_degC = cab_te_init_degC # for persistence through iteration
         self.hev_sim_count = 0
         self.init_arrays()
-        self.init_thermal_arrays(teAmbDegC)
+        self.init_thermal_arrays(amb_te_degC)
 
     def __init_objects__(self, cyc, veh):
         self.veh = veh
@@ -362,43 +362,43 @@ class SimDriveHot(SimDriveClassic):
         self.conv_calcs = ConvectionCalcs()
         self.vehthrm = VehicleThermal()
 
-    def init_thermal_arrays(self, teAmbDegC):
+    def init_thermal_arrays(self, amb_te_degC):
         """Arguments:
-        teAmbDegC : Float, ambient temperature array for cycle"""
+        amb_te_degC : Float, ambient temperature array for cycle"""
         len_cyc = len(self.cyc.cycSecs)
         # fuel converter (engine) temperature [°C]
-        self.teFcDegC = np.zeros(len_cyc, dtype=np.float64)
+        self.fc_te_degC = np.zeros(len_cyc, dtype=np.float64) 
         # fuel converter temperature efficiency correction
-        self.fcEffAdj = np.zeros(len_cyc, dtype=np.float64)
+        self.fc_L = np.zeros(len_cyc, dtype=np.float64)
         # fuel converter heat generation [kW]
-        self.fcHeatGenKw = np.zeros(len_cyc, dtype=np.float64)
+        self.fc_qdot_kW = np.zeros(len_cyc, dtype=np.float64)
         # fuel converter convection to ambient [kW]
-        self.fcConvToAmbKw = np.zeros(len_cyc, dtype=np.float64)
+        self.fc_qdot_to_amb_kW = np.zeros(len_cyc, dtype=np.float64)
         # fuel converter heat loss to heater core [kW]
-        self.fcToHtrKw = np.zeros(len_cyc, dtype=np.float64)
+        self.fc_clnt_to_htr_kW = np.zeros(len_cyc, dtype=np.float64)
         # cabin temperature [°C]
-        self.teCabDegC = np.zeros(len_cyc, dtype=np.float64)
+        self.cab_te_degC = np.zeros(len_cyc, dtype=np.float64)
         # cabin solar load [kW]
-        self.cabSolarKw = np.zeros(len_cyc, dtype=np.float64)
+        self.cab_qdot_solar_kW = np.zeros(len_cyc, dtype=np.float64)
         # cabin convection to ambient [kW]
-        self.cabConvToAmbKw = np.zeros(len_cyc, dtype=np.float64) 
+        self.cab_qdot_to_amb_kW = np.zeros(len_cyc, dtype=np.float64) 
         # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
-        self.hFcToAmb = np.zeros(len_cyc, dtype=np.float64)
+        self.fc_htc_to_amb = np.zeros(len_cyc, dtype=np.float64)
         # catalyst heat generation [kW]
-        self.catHeatGenKw = np.zeros(len_cyc, dtype=np.float64)
+        self.cat_qdot_kW = np.zeros(len_cyc, dtype=np.float64)
         # catalytic converter convection coefficient to ambient [W / (m ** 2 * K)]
-        self.hCatToAmb = np.zeros(len_cyc, dtype=np.float64)
+        self.cat_htc_to_amb = np.zeros(len_cyc, dtype=np.float64)
         # heat transfer from catalyst to ambient [kW]
-        self.catConvToAmbKw = np.zeros(len_cyc, dtype=np.float64)
+        self.cat_qdot_to_amb_kW = np.zeros(len_cyc, dtype=np.float64)
         # catalyst temperature [°C]
-        self.teCatDegC = np.zeros(len_cyc, dtype=np.float64)
+        self.cat_te_degC = np.zeros(len_cyc, dtype=np.float64)
         
         # this block ~should~ prevent the __init__ call in sim_drive_walk from 
         # overriding the prescribed ambient temperature
-        self.teFcDegC[0] = self.teFcInitDegC
-        self.teCabDegC[0] = self.teCabInitDegC
+        self.fc_te_degC[0] = self.fc_te_init_degC
+        self.cab_te_degC[0] = self.cab_te_init_degC
 
-        self.teAmbDegC = teAmbDegC
+        self.amb_te_degC = amb_te_degC
 
     def sim_drive_walk(self, initSoc, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Receives second-by-second cycle information, vehicle properties, 
@@ -419,7 +419,7 @@ class SimDriveHot(SimDriveClassic):
         ### Drive Train
         # reinitialize arrays for each new run
         self.init_arrays() # reinitialize arrays for each new run
-        self.init_thermal_arrays(self.teAmbDegC)
+        self.init_thermal_arrays(self.amb_te_degC)
         self.cycMet[0] = 1
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
@@ -464,41 +464,41 @@ class SimDriveHot(SimDriveClassic):
             # only internal model choice is sphere-based model 
 
             # Constitutive equations for fuel converter
-            self.fcHeatGenKw[i] = self.vehthrm.fcCombToThrmlMassFrac * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
-            teFcFilmDegC = 0.5 * (self.teFcDegC[i-1] + self.teAmbDegC[i-1])
+            self.fc_qdot_kW[i] = self.vehthrm.comb_h_to_thrml_mass_frac * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
+            teFcFilmDegC = 0.5 * (self.fc_te_degC[i-1] + self.amb_te_degC[i-1])
             # density * speed * diameter / dynamic viscosity
-            Re_fc = self.air.get_rho(teFcFilmDegC) * self.mpsAch[i-1] * self.vehthrm.fcDiam / \
+            Re_fc = self.air.get_rho(teFcFilmDegC) * self.mpsAch[i-1] * self.vehthrm.fc_L / \
                 self.air.get_mu(teFcFilmDegC) 
 
             # calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
             if self.mpsAch[i-1] < 1:
                 # if stopped, scale based on thermostat opening and constant convection
-                self.hFcToAmb[i] = np.interp(self.teFcDegC[i-1], 
-                    [self.vehthrm.teTStatSTODegC, self.vehthrm.teTStatFODegC],
-                    [self.vehthrm.hFcToAmbStop, self.vehthrm.hFcToAmbStop * self.vehthrm.radiator_eff])
+                self.fc_htc_to_amb[i] = np.interp(self.fc_te_degC[i-1], 
+                    [self.vehthrm.tstat_te_sto_degC, self.vehthrm.tstat_te_fo_degC],
+                    [self.vehthrm.fc_h_to_amb_stop, self.vehthrm.fc_h_to_amb_stop * self.vehthrm.rad_eps])
             else:
                 # Calculate heat transfer coefficient for sphere, 
                 # from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
 
                 fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(Re_fc)
-                hFcToAmbSphere = (fc_sphere_conv_params[0] * Re_fc ** fc_sphere_conv_params[1]) * \
+                fc_htc_to_ambSphere = (fc_sphere_conv_params[0] * Re_fc ** fc_sphere_conv_params[1]) * \
                     self.air.get_Pr(teFcFilmDegC) ** (1 / 3) * \
-                    self.air.get_k(teFcFilmDegC) / self.vehthrm.fcDiam
-                self.hFcToAmb[i] = np.interp(self.teFcDegC[i-1],
-                    [self.vehthrm.teTStatSTODegC, self.vehthrm.teTStatFODegC],
-                    [hFcToAmbSphere, hFcToAmbSphere * self.vehthrm.radiator_eff])
+                    self.air.get_k(teFcFilmDegC) / self.vehthrm.fc_L
+                self.fc_htc_to_amb[i] = np.interp(self.fc_te_degC[i-1],
+                    [self.vehthrm.tstat_te_sto_degC, self.vehthrm.tstat_te_fo_degC],
+                    [fc_htc_to_ambSphere, fc_htc_to_ambSphere * self.vehthrm.rad_eps])
 
-            self.fcConvToAmbKw[i] = self.hFcToAmb[i] * 1e-3 * self.vehthrm.fcSurfArea * (self.teFcDegC[i-1] - self.teAmbDegC[i-1])
+            self.fc_qdot_to_amb_kW[i] = self.fc_htc_to_amb[i] * 1e-3 * self.vehthrm.fcSurfArea * (self.fc_te_degC[i-1] - self.amb_te_degC[i-1])
         
         if self.vehthrm.hvac_model != 'external':
-            self.fcToHtrKw[i] = 0.0 # placeholder
+            self.fc_clnt_to_htr_kW[i] = 0.0 # placeholder
 
         if self.vehthrm.cabin_model != 'external':
             # if self.vehthrm.cabin_model == 'flat plate':
             # flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
             # Transfer, 7th Edition
-            teCabFilmDegC = 0.5 * (self.teCabDegC[i-1] + self.teAmbDegC[i-1])
-            Re_L = self.air.get_rho(teCabFilmDegC) * self.mpsAch[i-1] * self.vehthrm.cabLength / self.air.get_mu(teCabFilmDegC)
+            teCabFilmDegC = 0.5 * (self.cab_te_degC[i-1] + self.amb_te_degC[i-1])
+            Re_L = self.air.get_rho(teCabFilmDegC) * self.mpsAch[i-1] * self.vehthrm.cab_L_length / self.air.get_mu(teCabFilmDegC)
             Re_L_crit = 5.0e5 # critical Re for transition to turbulence
             if Re_L < Re_L_crit:
                 # equation 7.30
@@ -509,51 +509,51 @@ class SimDriveHot(SimDriveClassic):
                 Nu_L_bar = (0.037 * Re_L ** 0.8 - A) * self.air.get_Pr(teCabFilmDegC)
             
             if self.mphAch[i-1] > 2.0:                
-                self.cabConvToAmbKw[i] = 1e-3 * (self.vehthrm.cabLength * self.vehthrm.cabWidth) / (
-                    1 / (Nu_L_bar * self.air.get_k(teFcFilmDegC) / self.vehthrm.cabLength) + self.vehthrm.RCabToAmb
-                    ) * (self.teCabDegC[i-1] - self.teAmbDegC[i-1]) 
+                self.cab_qdot_to_amb_kW[i] = 1e-3 * (self.vehthrm.cab_L_length * self.vehthrm.cab_L_width) / (
+                    1 / (Nu_L_bar * self.air.get_k(teFcFilmDegC) / self.vehthrm.cab_L_length) + self.vehthrm.cab_r_to_amb
+                    ) * (self.cab_te_degC[i-1] - self.amb_te_degC[i-1]) 
             else:
-                self.cabConvToAmbKw[i] = 1e-3 * (self.vehthrm.cabLength * self.vehthrm.cabWidth) / (
-                    1 / self.vehthrm.hCabToAmbStop + self.vehthrm.RCabToAmb
-                    ) * (self.teCabDegC[i-1] - self.teAmbDegC[i-1])
+                self.cab_qdot_to_amb_kW[i] = 1e-3 * (self.vehthrm.cab_L_length * self.vehthrm.cab_L_width) / (
+                    1 / self.vehthrm.cab_h_to_amb_stop + self.vehthrm.cab_r_to_amb
+                    ) * (self.cab_te_degC[i-1] - self.amb_te_degC[i-1])
             
-            self.teCabDegC[i] = self.teCabDegC[i-1] + \
-                (self.fcToHtrKw[i] - self.cabConvToAmbKw[i]) / \
-                    self.vehthrm.cabThrmMass * self.cyc.secs[i]
+            self.cab_te_degC[i] = self.cab_te_degC[i-1] + \
+                (self.fc_clnt_to_htr_kW[i] - self.cab_qdot_to_amb_kW[i]) / \
+                    self.vehthrm.cab_C * self.cyc.secs[i]
         
         if self.vehthrm.cat_model != 'external':
             # external or internal model handling catalyst thermal behavior
             # only internal model choice is sphere-based model 
 
             # Constitutive equations for catalyst
-            self.catHeatGenKw[i] = 666 # TODO: put something substantive here
-            teCatFilmDegC = 0.5 * (self.teCatDegC[i-1] + self.teAmbDegC[i-1])
+            self.cat_qdot_kW[i] = 666 # TODO: put something substantive here
+            teCatFilmDegC = 0.5 * (self.cat_te_degC[i-1] + self.amb_te_degC[i-1])
             # density * speed * diameter / dynamic viscosity
-            Re_cat = self.air.get_rho(teCatFilmDegC) * self.mpsAch[i-1] * self.vehthrm.catDiam / \
+            Re_cat = self.air.get_rho(teCatFilmDegC) * self.mpsAch[i-1] * self.vehthrm.cat_L / \
                 self.air.get_mu(teCatFilmDegC) 
 
             # calculate heat transfer coeff. from cat to ambient [W / (m ** 2 * K)]
             if self.mpsAch[i-1] < 1:
                 # if stopped, scale based on constant convection
-                self.hCatToAmb[i] = self.vehthrm.hCatToAmbStop
+                self.cat_htc_to_amb[i] = self.vehthrm.cat_h_to_amb_stop
             else:
                 # if moving, scale based on speed dependent convection and thermostat opening
                 # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
                 cat_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(Re_cat)
-                hCatToAmbSphere = (cat_sphere_conv_params[0] * Re_cat ** cat_sphere_conv_params[1]) * \
+                cat_htc_to_ambSphere = (cat_sphere_conv_params[0] * Re_cat ** cat_sphere_conv_params[1]) * \
                     self.air.get_Pr(teFcFilmDegC) ** (1 / 3) * \
-                    self.air.get_k(teFcFilmDegC) / self.vehthrm.catDiam
-                self.hFcToAmb[i] = hCatToAmbSphere
+                    self.air.get_k(teFcFilmDegC) / self.vehthrm.cat_L
+                self.fc_htc_to_amb[i] = cat_htc_to_ambSphere
 
-            self.catConvToAmbKw[i] = self.hCatToAmb[i] * 1e-3 * self.vehthrm.catSurfArea * (self.teCatDegC[i-1] - self.teCatDegC[i-1])
-            self.teCatDegC[i] = self.teCatDegC[i-1] + (
-                self.catHeatGenKw[i] - self.catConvToAmbKw[i]) / self.vehthrm.catThrmMass * self.cyc.secs[i]
+            self.cat_qdot_to_amb_kW[i] = self.cat_htc_to_amb[i] * 1e-3 * self.vehthrm.catSurfArea * (self.cat_te_degC[i-1] - self.cat_te_degC[i-1])
+            self.cat_te_degC[i] = self.cat_te_degC[i-1] + (
+                self.cat_qdot_kW[i] - self.cat_qdot_to_amb_kW[i]) / self.vehthrm.cat_C * self.cyc.secs[i]
 
         if self.vehthrm.fc_model != 'external':
             # Energy balance for fuel converter
-            self.teFcDegC[i] = self.teFcDegC[i-1] + (
-               self.fcHeatGenKw[i] - self.fcConvToAmbKw[i] - self.fcToHtrKw[i]
-            ) / self.vehthrm.fcThrmMass * self.cyc.secs[i]
+            self.fc_te_degC[i] = self.fc_te_degC[i-1] + (
+               self.fc_qdot_kW[i] - self.fc_qdot_to_amb_kW[i] - self.fc_clnt_to_htr_kW[i]
+            ) / self.vehthrm.fc_C * self.cyc.secs[i]
        
     def set_fc_power(self, i):
         """Sets fcKwOutAch and fcKwInAch.
@@ -589,23 +589,23 @@ class SimDriveHot(SimDriveClassic):
         else:
             if self.vehthrm.fc_temp_eff_model == 'linear':
                 # scaling for multiplying efficiency to be dependent on temperature.
-                self.fcEffAdj[i] = max(self.vehthrm.fcTempEffMin,  
+                self.fc_L[i] = max(self.vehthrm.fc_temp_eff_min,  
                     min(1, 
-                        self.vehthrm.fcTempEffOffset + self.vehthrm.fcTempEffSlope * self.teFcDegC[i]
+                        self.vehthrm.fc_temp_eff_offset + self.vehthrm.fc_temp_eff_slope * self.fc_te_degC[i]
                         )
                 )
             elif self.vehthrm.fc_temp_eff_model == 'exponential':
-                self.fcEffAdj[i] = max(self.vehthrm.fcTempEffMin, 
+                self.fc_L[i] = max(self.vehthrm.fc_temp_eff_min, 
                     1 - np.exp(-max(
-                        self.teFcDegC[i] - self.vehthrm.fcTempEffOffset, 0) / self.vehthrm.fcTempEffSlope)
+                        self.fc_te_degC[i] - self.vehthrm.fc_temp_eff_offset, 0) / self.vehthrm.fc_temp_eff_slope)
                 )
                 
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
-                self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[-1] * self.fcEffAdj[i])
+                self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[-1] * self.fc_L[i])
             else:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / \
                     (self.veh.fcEffArray[max(1, np.argmax(self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)]) \
-                        / self.fcEffAdj[i]
+                        / self.fc_L[i]
 
         self.fsKwOutAch[i] = self.fcKwInAch[i]
 
@@ -635,10 +635,10 @@ def AirPropertiesJit():
 
     return simdrivehotjit.AirPropertiesJit()
 
-def SimDriveHotJit(cyc, veh, teAmbDegC, teFcInitDegC=90.0, teCabInitDegC=22.0):
+def SimDriveHotJit(cyc, veh, amb_te_degC, fc_te_init_degC=90.0, cab_te_init_degC=22.0):
     """Wrapper for Numba jitclass version of SimDriveHot"""
     from . import simdrivehotjit
     SimDriveHotJit.__doc__ += simdrivehotjit.SimDriveHotJit.__doc__
 
-    return simdrivehotjit.SimDriveHotJit(cyc, veh, teAmbDegC, teFcInitDegC, teCabInitDegC)
+    return simdrivehotjit.SimDriveHotJit(cyc, veh, amb_te_degC, fc_te_init_degC, cab_te_init_degC)
 

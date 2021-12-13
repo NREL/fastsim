@@ -18,18 +18,18 @@ def get_fc_temp_delta(use_jit=True):
     if not use_jit:
         sim_drive = simdrivehot.SimDriveHot(
             cyc, veh,
-            teAmbDegC=np.ones(len(cyc.cycSecs)) * 22,
-            teFcInitDegC=22)
+            amb_te_degC=np.ones(len(cyc.cycSecs)) * 22,
+            fc_te_init_degC=22)
     else:
         cyc = cyc.get_numba_cyc()
         veh = veh.get_numba_veh()
         sim_drive = simdrivehot.SimDriveHotJit(
             cyc, veh,
-            teAmbDegC=np.ones(len(cyc.cycSecs)) * 22,
-            teFcInitDegC=22)
+            amb_te_degC=np.ones(len(cyc.cycSecs)) * 22,
+            fc_te_init_degC=22)
 
     sim_drive.sim_drive()
-    delta = sim_drive.teFcDegC[-1] - sim_drive.teFcDegC[0]
+    delta = sim_drive.fc_te_degC[-1] - sim_drive.fc_te_degC[0]
     reference_delta = 65.675
     return delta - reference_delta         
 

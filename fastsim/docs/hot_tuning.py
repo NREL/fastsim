@@ -50,7 +50,7 @@ print(f"Cycle load time: {time.time() - t0:.3f} s")
 # run it once before tuning to compile
 t0 = time.time()
 sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit, 
-    teAmbDegC=np.ones(len(cyc.cycSecs), dtype=np.float64) * 0, teFcInitDegC=0, teCabInitDegC=0)
+    amb_te_degC=np.ones(len(cyc.cycSecs), dtype=np.float64) * 0, fc_te_init_degC=0, cab_te_init_degC=0)
 sim_drive.sim_drive()
 
 print(f"Sim drive time: {time.time() - t0:.3f} s")
@@ -100,19 +100,19 @@ for cyc_name in df0.index.levels[0]:
 
 # list of tuples of pairs of objective errors to minimize in the form of
 # [('model signal1', 'test signal1'), ('model signal2', 'test signal2'), ...].
-error_vars = [('teFcDegC', 'CylinderHeadTempC'),
+error_vars = [('fc_te_degC', 'CylinderHeadTempC'),
               ('fsCumuMjOutAch', 'Fuel_Energy_Calc[MJ]')
               ]
 # list of parameter names, lower bounds, and upper bounds to be modified to obtain objectives
-params_bounds = [('fcThrmMass', 50, 500), 
-                ('fcDiam', 0.1, 5), 
-                ('fcCombToThrmlMassFrac', 0.15, 0.5),   
-                ('hFcToAmbStop', 1, 200), 
-                ('radiator_eff', 2, 50), 
-                ('fcTempEffOffset', 0.1, 0.95), 
-                ('fcTempEffSlope', 1e-4, 0.1), 
-                ('teTStatDeltaDegC', 1, 15), 
-                ('teTStatSTODegC', 75, 95)]
+params_bounds = [('fc_C', 50, 500), 
+                ('fc_L', 0.1, 5), 
+                ('comb_h_to_thrml_mass_frac', 0.15, 0.5),   
+                ('fc_h_to_amb_stop', 1, 200), 
+                ('rad_eps', 2, 50), 
+                ('fc_temp_eff_offset', 0.1, 0.95), 
+                ('fc_temp_eff_slope', 1e-4, 0.1), 
+                ('tstat_te_delta_degC', 1, 15), 
+                ('tstat_te_sto_degC', 75, 95)]
 
 params = [item[0] for item in params_bounds]
 lower_bounds = anp.array([item[1] for item in params_bounds])
@@ -133,16 +133,16 @@ def get_error_for_cycle(x):
         cyc_jit = cyc.get_numba_cyc()
 
         sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
-                        teAmbDegC=test_te_amb,
-                        teFcInitDegC=dfdict[cyc_name]['CylinderHeadTempC'].values[0]
+                        amb_te_degC=test_te_amb,
+                        fc_te_init_degC=dfdict[cyc_name]['CylinderHeadTempC'].values[0]
         )   
 
         # unpack input parameters
         for i in range(len(x)):
             sim_drive.vehthrm.__setattr__(params[i], x[i])
 
-        sim_drive.vehthrm.teTStatFODegC = sim_drive.vehthrm.teTStatSTODegC + \
-            sim_drive.vehthrm.teTStatDeltaDegC
+        sim_drive.vehthrm.tstat_te_fo_degC = sim_drive.vehthrm.tstat_te_sto_degC + \
+            sim_drive.vehthrm.tstat_te_delta_degC
         sim_drive.sim_drive()
 
         # calculate error
@@ -284,16 +284,16 @@ def plot_cyc_traces(x, show_plots=None):
         cyc_jit = cyc.get_numba_cyc()
 
         sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
-            teAmbDegC=test_te_amb,
-            teFcInitDegC=dfdict[cyc_name]['CylinderHeadTempC'][0])
+            amb_te_degC=test_te_amb,
+            fc_te_init_degC=dfdict[cyc_name]['CylinderHeadTempC'][0])
         sd_base = simdrive.SimDriveJit(cyc_jit, veh_jit)
         sd_base.sim_drive()
 
         # unpack input parameters
         for i in range(len(x)):
             sim_drive.vehthrm.__setattr__(params[i], x[i])
-        sim_drive.vehthrm.teTStatFODegC = sim_drive.vehthrm.teTStatSTODegC + \
-            sim_drive.vehthrm.teTStatDeltaDegC
+        sim_drive.vehthrm.tstat_te_fo_degC = sim_drive.vehthrm.tstat_te_sto_degC + \
+            sim_drive.vehthrm.tstat_te_delta_degC
         sim_drive.sim_drive()
         
         fuel_frac_err = (np.trapz(x=cyc.cycSecs, y=sim_drive.fcKwInAch) -
@@ -302,7 +302,7 @@ def plot_cyc_traces(x, show_plots=None):
             np.trapz(x=test_time_steps,
                 y=dfdict[cyc_name]['Fuel_Power_Calc[kW]'])
         temp_err = cal.get_error_val(
-            sim_drive.teFcDegC, 
+            sim_drive.fc_te_degC, 
             dfdict[cyc_name]['CylinderHeadTempC'],
             test_time_steps) 
 
@@ -316,7 +316,7 @@ def plot_cyc_traces(x, show_plots=None):
             # temperature plot
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
             ax1.plot(cyc.cycSecs, 
-                sim_drive.teFcDegC, 
+                sim_drive.fc_te_degC, 
                 label='model')
             ax1.plot(test_time_steps, 
                 dfdict[cyc_name]['CylinderHeadTempC'], 
@@ -359,7 +359,7 @@ def plot_cyc_traces(x, show_plots=None):
             # temperature, fuel energy, and speed trace plot
             fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 8))
             ax[0].plot(cyc.cycSecs,
-                     sim_drive.teFcDegC,
+                     sim_drive.fc_te_degC,
                      label='thermal model')
             ax[0].plot(np.empty(0), np.empty(0), label='no thermal model')
             ax[0].plot(test_time_steps,
