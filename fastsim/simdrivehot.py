@@ -181,8 +181,6 @@ class VehicleThermal(object):
         self.tstat_te_sto_degC = 85.0
         # temperature delta [ºC] over which thermostat is partially open
         self.tstat_te_delta_degC = 5.0
-        # derived temperature [ºC] at which thermostat is fully open
-        self.tstat_te_fo_degC = self.tstat_te_sto_degC + self.tstat_te_delta_degC
         # radiator effectiveness -- ratio of active heat rejection from 
         # radiator to passive heat rejection
         self.rad_eps = 5.0
@@ -239,6 +237,11 @@ class VehicleThermal(object):
             numba_vehthrm.__setattr__(item[0], self.__getattribute__(item[0]))
             
         return numba_vehthrm
+
+    # derived temperature [ºC] at which thermostat is fully open
+    @property
+    def tstat_te_fo_degC(self):
+        return self.tstat_te_sto_degC + self.tstat_te_delta_degC
 
     # parameter for engine surface area [m**2] for heat transfer calcs
     @property
