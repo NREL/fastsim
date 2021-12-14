@@ -60,7 +60,7 @@ class SimDriveHotJit(SimDriveHot):
         self.vehthrm = VehicleThermalJit()
 
 
-    def sim_drive(self, initSoc=-1, aux_in_override_kW=np.zeros(1, dtype=np.float64)):
+    def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
@@ -75,8 +75,8 @@ class SimDriveHotJit(SimDriveHot):
                 the final value to non-zero prevents override mechanism.
         """
 
-        if (aux_in_override_kW == 0).all():
-            aux_in_override_kW = self.auxInKw
+        if (auxInKwOverride == 0).all():
+            auxInKwOverride = self.auxInKw
 
         self.hev_sim_count = 0 # probably not necassary since numba initializes int vars as 0, but adds clarity
 
@@ -86,7 +86,7 @@ class SimDriveHotJit(SimDriveHot):
                 print('Running standard initial SOC controls')
                 initSoc = -1  # override initSoc if invalid value is used
             else:
-                self.sim_drive_walk(initSoc, aux_in_override_kW)
+                self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif self.veh.vehPtType == 1:  # Conventional
 
@@ -94,7 +94,7 @@ class SimDriveHotJit(SimDriveHot):
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0  # this initSoc has no impact on results
 
-            self.sim_drive_walk(initSoc, aux_in_override_kW)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV
 
@@ -109,7 +109,7 @@ class SimDriveHotJit(SimDriveHot):
             ess2fuelKwh = 1.0
             while ess2fuelKwh > self.veh.essToFuelOkError and self.hev_sim_count < self.sim_params.sim_count_max:
                 self.hev_sim_count += 1
-                self.sim_drive_walk(initSoc, aux_in_override_kW)
+                self.sim_drive_walk(initSoc, auxInKwOverride)
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
                 if (fuelKj + roadwayChgKj) > 0:
@@ -119,7 +119,7 @@ class SimDriveHotJit(SimDriveHot):
                     ess2fuelKwh = 0.0
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
 
-            self.sim_drive_walk(initSoc, aux_in_override_kW)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1):  # PHEV and BEV
 
@@ -127,11 +127,11 @@ class SimDriveHotJit(SimDriveHot):
 
             initSoc = self.veh.maxSoc
 
-            self.sim_drive_walk(initSoc, aux_in_override_kW)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         else:
 
-            self.sim_drive_walk(initSoc, aux_in_override_kW)
+            self.sim_drive_walk(initSoc, auxInKwOverride)
 
         self.set_post_scalars()
 
