@@ -468,10 +468,10 @@ class SimDriveHot(SimDriveClassic):
 
             # Constitutive equations for fuel converter
             self.fc_qdot_kW[i] = self.vehthrm.comb_h_to_thrml_mass_frac * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
-            teFcFilmDegC = 0.5 * (self.fc_te_degC[i-1] + self.amb_te_degC[i-1])
+            fc_air_film_te_degC = 0.5 * (self.fc_te_degC[i-1] + self.amb_te_degC[i-1])
             # density * speed * diameter / dynamic viscosity
-            Re_fc = self.air.get_rho(teFcFilmDegC) * self.mpsAch[i-1] * self.vehthrm.fc_L / \
-                self.air.get_mu(teFcFilmDegC) 
+            fc_air_film_Re = self.air.get_rho(fc_air_film_te_degC) * self.mpsAch[i-1] * self.vehthrm.fc_L / \
+                self.air.get_mu(fc_air_film_te_degC) 
 
             # calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
             if self.mpsAch[i-1] < 1:
@@ -483,10 +483,10 @@ class SimDriveHot(SimDriveClassic):
                 # Calculate heat transfer coefficient for sphere, 
                 # from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
 
-                fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(Re_fc)
-                fc_htc_to_ambSphere = (fc_sphere_conv_params[0] * Re_fc ** fc_sphere_conv_params[1]) * \
-                    self.air.get_Pr(teFcFilmDegC) ** (1 / 3) * \
-                    self.air.get_k(teFcFilmDegC) / self.vehthrm.fc_L
+                fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(fc_air_film_Re)
+                fc_htc_to_ambSphere = (fc_sphere_conv_params[0] * fc_air_film_Re ** fc_sphere_conv_params[1]) * \
+                    self.air.get_Pr(fc_air_film_te_degC) ** (1 / 3) * \
+                    self.air.get_k(fc_air_film_te_degC) / self.vehthrm.fc_L
                 self.fc_htc_to_amb[i] = np.interp(self.fc_te_degC[i-1],
                     [self.vehthrm.tstat_te_sto_degC, self.vehthrm.tstat_te_fo_degC],
                     [fc_htc_to_ambSphere, fc_htc_to_ambSphere * self.vehthrm.rad_eps])
@@ -513,7 +513,7 @@ class SimDriveHot(SimDriveClassic):
             
             if self.mphAch[i-1] > 2.0:                
                 self.cab_qdot_to_amb_kW[i] = 1e-3 * (self.vehthrm.cab_L_length * self.vehthrm.cab_L_width) / (
-                    1 / (Nu_L_bar * self.air.get_k(teFcFilmDegC) / self.vehthrm.cab_L_length) + self.vehthrm.cab_r_to_amb
+                    1 / (Nu_L_bar * self.air.get_k(fc_air_film_te_degC) / self.vehthrm.cab_L_length) + self.vehthrm.cab_r_to_amb
                     ) * (self.cab_te_degC[i-1] - self.amb_te_degC[i-1]) 
             else:
                 self.cab_qdot_to_amb_kW[i] = 1e-3 * (self.vehthrm.cab_L_length * self.vehthrm.cab_L_width) / (
@@ -544,8 +544,8 @@ class SimDriveHot(SimDriveClassic):
                 # Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
                 cat_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(Re_cat)
                 cat_htc_to_ambSphere = (cat_sphere_conv_params[0] * Re_cat ** cat_sphere_conv_params[1]) * \
-                    self.air.get_Pr(teFcFilmDegC) ** (1 / 3) * \
-                    self.air.get_k(teFcFilmDegC) / self.vehthrm.cat_L
+                    self.air.get_Pr(fc_air_film_te_degC) ** (1 / 3) * \
+                    self.air.get_k(fc_air_film_te_degC) / self.vehthrm.cat_L
                 self.fc_htc_to_amb[i] = cat_htc_to_ambSphere
 
             self.cat_qdot_to_amb_kW[i] = self.cat_htc_to_amb[i] * 1e-3 * self.vehthrm.catSurfArea * (self.cat_te_degC[i-1] - self.cat_te_degC[i-1])
