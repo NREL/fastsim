@@ -40,10 +40,20 @@ class SimDriveParamsClassic(object):
         self.newton_max_iter = 100 # newton solver max iterations
         self.newton_xtol = 1e-9 # newton solver tolerance
         self.kWhPerGGE = 33.7 # kWh per gallon of gasoline
+        self.fuel_rho_kg__L = 0.75 # gasoline density in kg/L https://inchem.org/documents/icsc/icsc/eics1400.htm
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
+    def get_fuel_lhv_kJ__kg(self):
+        # fuel_lhv_kJ__kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg__L [kg/L] * 3_600 [s/hr] = [kJ/kg]
+        return self.kWhPerGGE / 3.785 / self.fuel_rho_kg__L * 3_600 
+
+    def set_fuel_lhv_kJ__kg(self, value):
+        # kWhPerGGE = fuel_lhv_kJ__kg * fuel_rho_kg__L [kg/L] * 3.785 [L/gal] / 3_600 [s/hr] = [kJ/kg]
+        self.kWhPerGGE = value * 3.785 * self.fuel_rho_kg__L / 3_600
+
+    fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
