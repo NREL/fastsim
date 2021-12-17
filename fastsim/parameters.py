@@ -36,6 +36,19 @@ class PhysicalProperties(object):
         # Make this altitude and temperature dependent, and allow it to change with time
         self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
         self.gravityMPerSec2 = 9.81
+        self.kWhPerGGE = 33.7 # kWh per gallon of gasoline
+        self.fuel_rho_kg__L = 0.75 # gasoline density in kg/L https://inchem.org/documents/icsc/icsc/eics1400.htm
+
+    def get_fuel_lhv_kJ__kg(self):
+        # fuel_lhv_kJ__kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg__L [kg/L] * 3_600 [s/hr] = [kJ/kg]
+        return self.kWhPerGGE / 3.785 / self.fuel_rho_kg__L * 3_600 
+
+    def set_fuel_lhv_kJ__kg(self, value):
+        # kWhPerGGE = fuel_lhv_kJ__kg * fuel_rho_kg__L [kg/L] * 3.785 [L/gal] / 3_600 [s/hr] = [kJ/kg]
+        self.kWhPerGGE = value * 3.785 * self.fuel_rho_kg__L / 3_600
+
+    fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)
+
 
 def PhysicalPropertiesJit():
     "Wrapper for parametersjit: "
