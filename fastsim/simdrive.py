@@ -39,21 +39,9 @@ class SimDriveParamsClassic(object):
         self.newton_gain = 0.9 # newton solver gain
         self.newton_max_iter = 100 # newton solver max iterations
         self.newton_xtol = 1e-9 # newton solver tolerance
-        self.kWhPerGGE = 33.7 # kWh per gallon of gasoline
-        self.fuel_rho_kg__L = 0.75 # gasoline density in kg/L https://inchem.org/documents/icsc/icsc/eics1400.htm
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
-
-    def get_fuel_lhv_kJ__kg(self):
-        # fuel_lhv_kJ__kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg__L [kg/L] * 3_600 [s/hr] = [kJ/kg]
-        return self.kWhPerGGE / 3.785 / self.fuel_rho_kg__L * 3_600 
-
-    def set_fuel_lhv_kJ__kg(self, value):
-        # kWhPerGGE = fuel_lhv_kJ__kg * fuel_rho_kg__L [kg/L] * 3.785 [L/gal] / 3_600 [s/hr] = [kJ/kg]
-        self.kWhPerGGE = value * 3.785 * self.fuel_rho_kg__L / 3_600
-
-    fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
@@ -1112,7 +1100,7 @@ class SimDriveClassic(object):
 
         else:
             self.mpgge = self.distMiles.sum() / \
-                (self.fsKwhOutAch.sum() / self.sim_params.kWhPerGGE)
+                (self.fsKwhOutAch.sum() / self.props.kWhPerGGE)
 
         self.roadwayChgKj = (self.roadwayChgKwOutAch * self.cyc.secs).sum()
         self.essDischgKj = - \
@@ -1131,15 +1119,15 @@ class SimDriveClassic(object):
 
         if self.mpgge == 0:
             # hardcoded conversion
-            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.sim_params.kWhPerGGE
-            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.sim_params.kWhPerGGE / \
+            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.props.kWhPerGGE
+            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.props.kWhPerGGE / \
                 self.veh.chgEff
 
         else:
             self.Gallons_gas_equivalent_per_mile = 1 / \
-                self.mpgge + self.electric_kWh_per_mi  / self.sim_params.kWhPerGGE
+                self.mpgge + self.electric_kWh_per_mi  / self.props.kWhPerGGE
             grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + \
-                self.electric_kWh_per_mi / self.sim_params.kWhPerGGE / self.veh.chgEff
+                self.electric_kWh_per_mi / self.props.kWhPerGGE / self.veh.chgEff
 
         self.grid_mpgge_elec = 1 / grid_Gallons_gas_equivalent_per_mile
         self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
@@ -1311,7 +1299,7 @@ class SimDrivePost(object):
         
         output['distMilesFinal'] = sum(self.distMiles)
         if sum(self.fsKwhOutAch) > 0:
-            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * self.sim_params.kWhPerGGE
+            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * self.props.kWhPerGGE
         else:
             output['mpgge'] = 0
     
