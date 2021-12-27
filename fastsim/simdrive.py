@@ -60,7 +60,7 @@ class SimDriveClassic(object):
         # initialized here for downstream classes that do not run sim_drive
         self.hev_sim_count = 0 
 
-    def __init_objects__(self, cyc, veh):        
+    def __init_objects__(self, cyc: cycle.Cycle, veh: vehicle.Vehicle):        
         self.veh = veh
         self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
