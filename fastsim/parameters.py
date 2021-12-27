@@ -38,6 +38,7 @@ class PhysicalProperties(object):
         self.gravityMPerSec2 = 9.81
         self.kWhPerGGE = 33.7 # kWh per gallon of gasoline
         self.fuel_rho_kg__L = 0.75 # gasoline density in kg/L https://inchem.org/documents/icsc/icsc/eics1400.htm
+        self.fuel_afr_stoich = 14.7 # gasoline stoichiometric air-fuel ratio https://en.wikipedia.org/wiki/Air%E2%80%93fuel_ratio
 
     def get_fuel_lhv_kJ__kg(self):
         # fuel_lhv_kJ__kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg__L [kg/L] * 3_600 [s/hr] = [kJ/kg]
