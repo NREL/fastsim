@@ -560,17 +560,17 @@ class SimDriveHot(SimDriveClassic):
         Solve fuel converter thermal behavior assuming convection parameters of sphere.
         """
         # Constitutive equations for fuel converter
+        # calculation of adiabatic flame temperature
         self.fc_te_adiabatic_degC[i] = self.air.get_T_from_h(
             ((1 + self.fc_lambda[i] * self.props.fuel_afr_stoich) * self.air.get_h(self.amb_te_degC[i]) + 
                 self.props.fuel_lhv_kJ__kg * 1_000 * min(1, self.fc_lambda[i])
             ) / (1 + self.fc_lambda[i] * self.props.fuel_afr_stoich)
         )
 
+        # heat generation 
         self.fc_qdot_kW[i] = self.vehthrm.fc_coeff_from_comb * (
-            self.fc_te_adiabatic_degC[i] - self.fc_te_degC) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
+            self.fc_te_adiabatic_degC[i] - self.fc_te_degC[i-1]) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
     
-        self.fc_qdot_kW[i] = self.vehthrm.fc_hA_from_comb * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
-        fc_air_film_te_degC = 0.5 * (self.fc_te_degC[i-1] + self.amb_te_degC[i-1])
         # density * speed * diameter / dynamic viscosity
         fc_air_film_Re = self.air.get_rho(fc_air_film_te_degC) * self.mpsAch[i-1] * self.vehthrm.fc_L / \
             self.air.get_mu(fc_air_film_te_degC) 
