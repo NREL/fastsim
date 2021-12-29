@@ -176,7 +176,7 @@ class VehicleThermal(object):
         self.fc_htc_to_amb_stop = 50.0
         # coeff. for fraction of combustion heat that goes to fuel converter (engine) 
         # thermal mass. Remainder goes to environment (e.g. via tailpipe)
-        self.fc_coeff_from_comb = 0.5 
+        self.fc_coeff_from_comb = 1e-4 
         # parameter for temperature [ºC] at which thermostat starts to open
         self.tstat_te_sto_degC = 85.0
         # temperature delta [ºC] over which thermostat is partially open
