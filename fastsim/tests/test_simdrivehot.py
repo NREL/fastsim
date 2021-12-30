@@ -50,7 +50,7 @@ class TestAirProperties(unittest.TestCase):
     def test_enthalpy(self):
         air = simdrivehot.AirProperties()
         h0 = 400e3
-        T = air.get_T_from_h(h0)
+        T = air.get_te_from_h(h0)
         h = air.get_h(T)
         self.assertAlmostEqual(h, h0)
 
