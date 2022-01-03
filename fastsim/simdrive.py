@@ -2,22 +2,15 @@
 cycle. For example usage, see ../README.md"""
 
 ### Import necessary python modules
+from logging import debug
 import os
 import numpy as np
 import pandas as pd
 import re
 import sys
-from fastsim import vehicle
-from numba.experimental import jitclass                 # import the decorator
 import warnings
-warnings.simplefilter('ignore')
 
-# local modules
-from fastsim import parameters as params
-from fastsim import cycle
-from fastsim.cycle import CycleJit
-from fastsim.vehicle import VehicleJit
-from fastsim.buildspec import build_spec
+from . import params, cycle, vehicle
 
 
 class SimDriveParamsClassic(object):
@@ -43,14 +36,12 @@ class SimDriveParamsClassic(object):
         self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
         self.sim_count_max = 30  # max allowable number of HEV SOC iterations
         self.verbose = True  # show warning and other messages
-
-
-param_spec = build_spec(SimDriveParamsClassic())
-
-@jitclass(param_spec)
-class SimDriveParams(SimDriveParamsClassic):
-    pass
-
+        self.newton_gain = 0.9 # newton solver gain
+        self.newton_max_iter = 100 # newton solver max iterations
+        self.newton_xtol = 1e-9 # newton solver tolerance
+                
+        # EPA fuel economy adjustment parameters
+        self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
@@ -61,7 +52,7 @@ class SimDriveClassic(object):
     cyc: cycle.Cycle instance
     veh: vehicle.Vehicle instance"""
 
-    def __init__(self, cyc, veh):
+    def __init__(self, cyc: cycle.Cycle, veh: vehicle.Vehicle):
         """Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
         sim_params is needed only if non-default behavior is desired."""
         self.__init_objects__(cyc, veh)
@@ -69,7 +60,7 @@ class SimDriveClassic(object):
         # initialized here for downstream classes that do not run sim_drive
         self.hev_sim_count = 0 
 
-    def __init_objects__(self, cyc, veh):        
+    def __init_objects__(self, cyc: cycle.Cycle, veh: vehicle.Vehicle):        
         self.veh = veh
         self.cyc = cyc.copy() # this cycle may be manipulated
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
@@ -80,7 +71,7 @@ class SimDriveClassic(object):
         len_cyc = len(self.cyc.cycSecs)
         self.i = 1 # initialize step counter for possible use outside sim_drive_walk()
 
-        # Component Limits -- calculated dynamically"
+        # Component Limits -- calculated dynamically
         self.curMaxFsKwOut = np.zeros(len_cyc, dtype=np.float64)
         self.fcTransLimKw = np.zeros(len_cyc, dtype=np.float64)
         self.fcFsLimKw = np.zeros(len_cyc, dtype=np.float64)
@@ -115,7 +106,7 @@ class SimDriveClassic(object):
         self.cycRegenBrakeKw = np.zeros(len_cyc, dtype=np.float64)
         self.cycFricBrakeKw = np.zeros(len_cyc, dtype=np.float64)
         self.cycTransKwOutReq = np.zeros(len_cyc, dtype=np.float64)
-        self.cycMet = np.zeros(len_cyc, dtype=np.float64)
+        self.cycMet = np.array([False] * len_cyc, dtype=np.bool_)
         self.transKwOutAch = np.zeros(len_cyc, dtype=np.float64)
         self.transKwInAch = np.zeros(len_cyc, dtype=np.float64)
         self.curSocTarget = np.zeros(len_cyc, dtype=np.float64)
@@ -168,8 +159,8 @@ class SimDriveClassic(object):
         self.mphAch = np.zeros(len_cyc, dtype=np.float64)
         self.distMeters = np.zeros(len_cyc, dtype=np.float64)
         self.distMiles = np.zeros(len_cyc, dtype=np.float64)
-        self.highAccFcOnTag = np.zeros(len_cyc, dtype=np.float64)
-        self.reachedBuff = np.zeros(len_cyc, dtype=np.float64)
+        self.highAccFcOnTag = np.array([False] * len_cyc, dtype=np.bool_)
+        self.reachedBuff = np.array([False] * len_cyc, dtype=np.bool_)
         self.maxTracMps = np.zeros(len_cyc, dtype=np.float64)
         self.addKwh = np.zeros(len_cyc, dtype=np.float64)
         self.dodCycs = np.zeros(len_cyc, dtype=np.float64)
@@ -179,10 +170,9 @@ class SimDriveClassic(object):
         self.accelKw = np.zeros(len_cyc, dtype=np.float64)
         self.ascentKw = np.zeros(len_cyc, dtype=np.float64)
         self.rrKw = np.zeros(len_cyc, dtype=np.float64)
-        self.motor_index_debug = np.zeros(len_cyc, dtype=np.float64)
-        self.debug_flag = np.zeros(len_cyc, dtype=np.float64)
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
         self.trace_miss_iters = np.zeros(len_cyc, dtype=np.float64)
+        self.newton_iters = np.zeros(len_cyc, dtype=np.float64)
 
     def sim_drive(self, initSoc=None, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -223,10 +213,8 @@ class SimDriveClassic(object):
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
-
-            # Charge balancing SOC for PHEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
-
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             ess2fuelKwh = 1.0
             while ess2fuelKwh > self.veh.essToFuelOkError and self.hev_sim_count < self.sim_params.sim_count_max:
@@ -235,8 +223,9 @@ class SimDriveClassic(object):
                 fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
                 roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
                 if (fuelKj + roadwayChgKj) > 0:
-                    ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
-                                        self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
+                    ess2fuelKwh = np.abs(
+                        (self.soc[0] - self.soc[-1]) * self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj)
+                    )
                 else:
                     ess2fuelKwh = 0.0
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
@@ -285,17 +274,24 @@ class SimDriveClassic(object):
         if not((auxInKwOverride == 0).all()):
             self.auxInKw = auxInKwOverride
         
-        self.cycMet[0] = 1
+        self.cycMet[0] = True
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
         self.soc[0] = initSoc
+        self.mpsAch[0] = self.cyc0.cycMps[0]
+        self.mphAch[0] = self.cyc0.cycMph[0]
 
         if self.sim_params.missed_trace_correction:
             self.cyc = self.cyc0.copy() # reset the cycle in case it has been manipulated
 
         self.i = 1 # time step counter
         while self.i < len(self.cyc.cycSecs):
+            if self.i <= 1:
+                debug = True    
             self.sim_drive_step()
+            if self.i <= 1:
+                debug = True
+
         
         if self.sim_params.missed_trace_correction: 
             self.cyc.cycSecs = self.cyc.secs.cumsum() # correct cycSecs based on actual trace
@@ -362,21 +358,21 @@ class SimDriveClassic(object):
         # if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
         if (self.auxInKw[i:] == 0).all():
             # if all elements after i-1 are zero, trigger default behavior; otherwise, use override value 
-            if self.veh.noElecAux == True:
+            if self.veh.noElecAux:
                 self.auxInKw[i] = self.veh.auxKw / self.veh.altEff
             else:
                 self.auxInKw[i] = self.veh.auxKw            
         # Is SOC below min threshold?
         if self.soc[i-1] < (self.veh.minSoc + self.veh.percHighAccBuf):
-            self.reachedBuff[i] = 0
+            self.reachedBuff[i] = False
         else:
-            self.reachedBuff[i] = 1
+            self.reachedBuff[i] = True
 
         # Does the engine need to be on for low SOC or high acceleration
-        if self.soc[i-1] < self.veh.minSoc or (self.highAccFcOnTag[i-1] == 1 and self.reachedBuff[i] == 0):
-            self.highAccFcOnTag[i] = 1
+        if self.soc[i-1] < self.veh.minSoc or (self.highAccFcOnTag[i-1] and not(self.reachedBuff[i])):
+            self.highAccFcOnTag[i] = True
         else:
-            self.highAccFcOnTag[i] = 0
+            self.highAccFcOnTag[i] = False
         self.maxTracMps[i] = self.mpsAch[i-1] + (self.veh.maxTracMps2 * self.cyc.secs[i])
 
     def set_comp_lims(self, i):
@@ -390,8 +386,9 @@ class SimDriveClassic(object):
         self.curMaxFsKwOut[i] = min(self.veh.maxFuelStorKw, self.fsKwOutAch[i-1] + (
             (self.veh.maxFuelStorKw / self.veh.fuelStorSecsToPeakPwr) * (self.cyc.secs[i])))
         # maximum fuel storage power output rate of change
-        self.fcTransLimKw[i] = self.fcKwOutAch[i-1] + \
-            ((self.veh.maxFuelConvKw / self.veh.fuelConvSecsToPeakPwr) * (self.cyc.secs[i]))
+        self.fcTransLimKw[i] = self.fcKwOutAch[i-1] + (
+            self.veh.maxFuelConvKw / self.veh.fuelConvSecsToPeakPwr * self.cyc.secs[i]
+        )
 
         self.fcMaxKwIn[i] = min(self.curMaxFsKwOut[i], self.veh.maxFuelStorKw)
         self.fcFsLimKw[i] = self.veh.fcMaxOutkW
@@ -402,8 +399,8 @@ class SimDriveClassic(object):
             self.essCapLimDischgKw[i] = 0.0
 
         else:
-            self.essCapLimDischgKw[i] = (
-                self.veh.maxEssKwh * np.sqrt(self.veh.essRoundTripEff)) * 3600.0 * (self.soc[i-1] - self.veh.minSoc) / (self.cyc.secs[i])
+            self.essCapLimDischgKw[i] = self.veh.maxEssKwh * np.sqrt(self.veh.essRoundTripEff) * 3600.0 * (
+                self.soc[i-1] - self.veh.minSoc) / self.cyc.secs[i]
         self.curMaxEssKwOut[i] = min(
             self.veh.maxEssKw, self.essCapLimDischgKw[i])
 
@@ -411,8 +408,11 @@ class SimDriveClassic(object):
             self.essCapLimChgKw[i] = 0
 
         else:
-            self.essCapLimChgKw[i] = max(((self.veh.maxSoc - self.soc[i-1]) * self.veh.maxEssKwh * (1 /
-                                                                                            np.sqrt(self.veh.essRoundTripEff))) / ((self.cyc.secs[i]) * (1 / 3600.0)), 0)
+            self.essCapLimChgKw[i] = max(
+                (self.veh.maxSoc - self.soc[i-1]) * self.veh.maxEssKwh * 1 / np.sqrt(self.veh.essRoundTripEff) / 
+                (self.cyc.secs[i] * 1 / 3600.0), 
+                0
+            )
 
         self.curMaxEssChgKw[i] = min(self.essCapLimChgKw[i], self.veh.maxEssKw)
 
@@ -445,7 +445,7 @@ class SimDriveClassic(object):
 
         # Motor transient power limit
         self.mcTransiLimKw[i] = abs(
-            self.mcMechKwOutAch[i-1]) + ((self.veh.maxMotorKw / self.veh.motorSecsToPeakPwr) * (self.cyc.secs[i]))
+            self.mcMechKwOutAch[i-1]) + self.veh.maxMotorKw / self.veh.motorSecsToPeakPwr * self.cyc.secs[i]
 
         self.curMaxMcKwOut[i] = max(
             min(self.mcElecInLimKw[i], self.mcTransiLimKw[i], 
@@ -459,8 +459,13 @@ class SimDriveClassic(object):
                 self.curMaxMcElecKwIn[i] = self.curMaxMcKwOut[i] / \
                     self.veh.mcFullEffArray[-1]
             else:
-                self.curMaxMcElecKwIn[i] = self.curMaxMcKwOut[i] / self.veh.mcFullEffArray[max(1, np.argmax(self.veh.mcKwOutArray
-                                            > min(self.veh.maxMotorKw - 0.01, self.curMaxMcKwOut[i])) - 1)]
+                self.curMaxMcElecKwIn[i] = (self.curMaxMcKwOut[i] / 
+                    self.veh.mcFullEffArray[
+                        max(1, np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, 
+                            self.curMaxMcKwOut[i])) - 1
+                        )
+                    ]
+                )
 
         if self.veh.maxMotorKw == 0:
             self.essLimMcRegenPercKw[i] = 0.0
@@ -476,37 +481,47 @@ class SimDriveClassic(object):
                 self.essLimMcRegenKw[i] = min(
                     self.veh.maxMotorKw, self.curMaxEssChgKw[i] / self.veh.mcFullEffArray[-1])
             else:
-                self.essLimMcRegenKw[i] = min(self.veh.maxMotorKw, self.curMaxEssChgKw[i] / self.veh.mcFullEffArray
-                                                [max(1, np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.curMaxEssChgKw[i] - self.curMaxRoadwayChgKw[i])) - 1)])
+                self.essLimMcRegenKw[i] = min(self.veh.maxMotorKw, 
+                    self.curMaxEssChgKw[i] / self.veh.mcFullEffArray[
+                        max(1, np.argmax(
+                            self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, 
+                            self.curMaxEssChgKw[i] - self.curMaxRoadwayChgKw[i])) - 1)]
+                )
 
         self.curMaxMechMcKwIn[i] = min(
             self.essLimMcRegenKw[i], self.veh.maxMotorKw)
-        self.curMaxTracKw[i] = (((self.veh.wheelCoefOfFric * self.veh.driveAxleWeightFrac * self.veh.vehKg * self.props.gravityMPerSec2)
-                                    / (1 + ((self.veh.vehCgM * self.veh.wheelCoefOfFric) / self.veh.wheelBaseM))) / 1000.0) * (self.maxTracMps[i])
+        self.curMaxTracKw[i] = (
+            self.veh.wheelCoefOfFric * self.veh.driveAxleWeightFrac * self.veh.vehKg * self.props.gravityMPerSec2
+            / (1 + self.veh.vehCgM * self.veh.wheelCoefOfFric / self.veh.wheelBaseM) / 1000.0 * self.maxTracMps[i]
+        )
 
         if self.veh.fcEffType == 4:
 
-            if self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
+            if self.veh.noElecSys or self.veh.noElecAux or self.highAccFcOnTag[i]:
                 self.curMaxTransKwOut[i] = min(
-                    (self.curMaxMcKwOut[i] - self.auxInKw[i]) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
-                self.debug_flag[i] = 1
+                    (self.curMaxMcKwOut[i] - self.auxInKw[i]) * self.veh.transEff, 
+                    self.curMaxTracKw[i] / self.veh.transEff
+                )
 
             else:
-                self.curMaxTransKwOut[i] = min((self.curMaxMcKwOut[i] - min(
-                    self.curMaxElecKw[i], 0)) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
-                self.debug_flag[i] = 2
+                self.curMaxTransKwOut[i] = min(
+                    (self.curMaxMcKwOut[i] - min(self.curMaxElecKw[i], 0)) * self.veh.transEff, 
+                    self.curMaxTracKw[i] / self.veh.transEff
+                )
 
         else:
 
-            if self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
-                self.curMaxTransKwOut[i] = min((self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] -
-                                                self.auxInKw[i]) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
-                self.debug_flag[i] = 3
+            if self.veh.noElecSys or self.veh.noElecAux or self.highAccFcOnTag[i]:
+                self.curMaxTransKwOut[i] = min(
+                    (self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] - self.auxInKw[i]) * self.veh.transEff, 
+                    self.curMaxTracKw[i] / self.veh.transEff
+                )
 
             else:
-                self.curMaxTransKwOut[i] = min((self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] -
-                                                min(self.curMaxElecKw[i], 0)) * self.veh.transEff, self.curMaxTracKw[i] / self.veh.transEff)
-                self.debug_flag[i] = 4
+                self.curMaxTransKwOut[i] = min(
+                    (self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] - min(self.curMaxElecKw[i], 0)) * self.veh.transEff, 
+                    self.curMaxTracKw[i] / self.veh.transEff
+                )
         
     def set_power_calcs(self, i):
         """Calculate power requirements to meet cycle and determine if
@@ -515,24 +530,29 @@ class SimDriveClassic(object):
         ------------
         i: index of time step"""
 
-        self.cycDragKw[i] = 0.5 * self.props.airDensityKgPerM3 * self.veh.dragCoef * \
-            self.veh.frontalAreaM2 * \
-            (((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0)**3) / 1000.0
+        if self.newton_iters[i] > 0:
+            mpsAch = self.mpsAch[i]
+        else:
+            mpsAch = self.cyc.cycMps[i]
+
+        self.cycDragKw[i] = 0.5 * self.props.airDensityKgPerM3 * self.veh.dragCoef * self.veh.frontalAreaM2 * (
+            (self.mpsAch[i-1] + mpsAch) / 2.0)**3 / 1000.0
         self.cycAccelKw[i] = (self.veh.vehKg / (2.0 * (self.cyc.secs[i]))) * \
-            ((self.cyc.cycMps[i]**2) - (self.mpsAch[i-1]**2)) / 1000.0
+            (mpsAch ** 2 - self.mpsAch[i-1] ** 2) / 1000.0
         self.cycAscentKw[i] = self.props.gravityMPerSec2 * np.sin(np.arctan(
-            self.cyc.cycGrade[i])) * self.veh.vehKg * ((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0) / 1000.0
+            self.cyc.cycGrade[i])) * self.veh.vehKg * ((self.mpsAch[i-1] + mpsAch) / 2.0) / 1000.0
         self.cycTracKwReq[i] = self.cycDragKw[i] + \
             self.cycAccelKw[i] + self.cycAscentKw[i]
         self.spareTracKw[i] = self.curMaxTracKw[i] - self.cycTracKwReq[i]
-        self.cycRrKw[i] = self.props.gravityMPerSec2 * self.veh.wheelRrCoef * \
-            self.veh.vehKg * ((self.mpsAch[i-1] + self.cyc.cycMps[i]) / 2.0) / 1000.0
-        self.cycWheelRadPerSec[i] = self.cyc.cycMps[i] / self.veh.wheelRadiusM
-        self.cycTireInertiaKw[i] = (((0.5) * self.veh.wheelInertiaKgM2 * (self.veh.numWheels * (self.cycWheelRadPerSec[i]**2.0)) / self.cyc.secs[i]) -
-                                    ((0.5) * self.veh.wheelInertiaKgM2 * (self.veh.numWheels * ((self.mpsAch[i-1] / self.veh.wheelRadiusM)**2.0)) / self.cyc.secs[i])) / 1000.0
+        self.cycRrKw[i] = self.veh.vehKg * self.props.gravityMPerSec2 * self.veh.wheelRrCoef * np.cos(
+            np.arctan(self.cyc.cycGrade[i])) * (self.mpsAch[i-1] + mpsAch) / 2.0 / 1000.0
+        self.cycWheelRadPerSec[i] = mpsAch / self.veh.wheelRadiusM
+        self.cycTireInertiaKw[i] = (
+            0.5 * self.veh.wheelInertiaKgM2 * self.veh.numWheels * self.cycWheelRadPerSec[i] ** 2.0 / self.cyc.secs[i] -
+            0.5 * self.veh.wheelInertiaKgM2 * self.veh.numWheels * (self.mpsAch[i-1] / self.veh.wheelRadiusM) ** 2.0 / self.cyc.secs[i]
+        ) / 1000.0
 
-        self.cycWheelKwReq[i] = self.cycTracKwReq[i] + \
-            self.cycRrKw[i] + self.cycTireInertiaKw[i]
+        self.cycWheelKwReq[i] = self.cycTracKwReq[i] + self.cycRrKw[i] + self.cycTireInertiaKw[i]
         self.regenContrLimKwPerc[i] = self.veh.maxRegen / (1 + self.veh.regenA * np.exp(-self.veh.regenB * (
             (self.cyc.cycMph[i] + self.mpsAch[i-1] * params.mphPerMps) / 2.0 + 1 - 0)))
         self.cycRegenBrakeKw[i] = max(min(
@@ -543,11 +563,11 @@ class SimDriveClassic(object):
             self.cycFricBrakeKw[i]
 
         if self.cycTransKwOutReq[i] <= self.curMaxTransKwOut[i]:
-            self.cycMet[i] = 1
+            self.cycMet[i] = True
             self.transKwOutAch[i] = self.cycTransKwOutReq[i]
 
         else:
-            self.cycMet[i] = -1
+            self.cycMet[i] = False
             self.transKwOutAch[i] = self.curMaxTransKwOut[i]
         
     def set_ach_speed(self, i):
@@ -557,12 +577,11 @@ class SimDriveClassic(object):
         i: index of time step"""
 
         # Cycle is met
-        if self.cycMet[i] == 1:
+        if self.cycMet[i]:
             self.mpsAch[i] = self.cyc.cycMps[i]
 
         #Cycle is not met
         else:
-
             def newton_mps_estimate(Totals):
                 t3 = Totals[0]
                 t2 = Totals[1]
@@ -575,10 +594,10 @@ class SimDriveClassic(object):
                 # initial guess
                 xi = max(1.0, self.mpsAch[i-1])
                 # stop criteria
-                max_iter = 100
-                xtol = 1e-18
+                max_iter = self.sim_params.newton_max_iter
+                xtol = self.sim_params.newton_xtol
                 # solver gain
-                g = 0.8
+                g = self.sim_params.newton_gain
                 yi = t3 * xi ** 3 + t2 * xi ** 2 + t1 * xi + t0
                 mi = 3 * t3 * xi ** 2 + 2 * t2 * xi + t1
                 bi = yi - xi * mi
@@ -599,6 +618,8 @@ class SimDriveClassic(object):
                     bs.append(bi)
                     converged = abs((xs[-1] - xs[-2]) / xs[-2]) < xtol 
                     iterate += 1
+                
+                self.newton_iters[i] = iterate
 
                 _ys = [abs(y) for y in ys]
                 return xs[_ys.index(min(_ys))]
@@ -635,10 +656,12 @@ class SimDriveClassic(object):
 
             Total = np.array([Total3, Total2, Total1, Total0])
             self.mpsAch[i] = newton_mps_estimate(Total)
+            self.set_power_calcs(i)
 
         self.mphAch[i] = self.mpsAch[i] * params.mphPerMps
         self.distMeters[i] = self.mpsAch[i] * self.cyc.secs[i]
         self.distMiles[i] = self.distMeters[i] * (1.0 / params.metersPerMile)
+
         
     def set_hybrid_cont_calcs(self, i):
         """Hybrid control calculations.  
@@ -651,7 +674,7 @@ class SimDriveClassic(object):
         else:
             self.transKwInAch[i] = self.transKwOutAch[i] * self.veh.transEff
 
-        if self.cycMet[i] == 1:
+        if self.cycMet[i]:
 
             if self.veh.fcEffType == 4:
                 self.minMcKw2HelpFc[i] = max(
@@ -664,7 +687,7 @@ class SimDriveClassic(object):
             self.minMcKw2HelpFc[i] = max(
                 self.curMaxMcKwOut[i], -self.curMaxMechMcKwIn[i])
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.regenBufferSoc[i] = 0
 
         elif self.veh.chargingOn:
@@ -672,8 +695,12 @@ class SimDriveClassic(object):
                 self.veh.maxSoc - (self.veh.maxRegenKwh / self.veh.maxEssKwh), (self.veh.maxSoc + self.veh.minSoc) / 2)
 
         else:
-            self.regenBufferSoc[i] = max(((self.veh.maxEssKwh * self.veh.maxSoc) - (0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1000)
-                                                                            * (1.0 / 3600) * self.veh.motorPeakEff * self.veh.maxRegen)) / self.veh.maxEssKwh, self.veh.minSoc)
+            self.regenBufferSoc[i] = max(
+                (self.veh.maxEssKwh * self.veh.maxSoc - 
+                    0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1000) * (1.0 / 3600) * 
+                    self.veh.mcPeakEff * self.veh.maxRegen) / self.veh.maxEssKwh, 
+                self.veh.minSoc
+            )
 
             self.essRegenBufferDischgKw[i] = min(self.curMaxEssKwOut[i], max(
                 0, (self.soc[i-1] - self.regenBufferSoc[i]) * self.veh.maxEssKwh * 3600 / self.cyc.secs[i]))
@@ -681,27 +708,44 @@ class SimDriveClassic(object):
             self.maxEssRegenBufferChgKw[i] = min(max(
                 0, (self.regenBufferSoc[i] - self.soc[i-1]) * self.veh.maxEssKwh * 3600.0 / self.cyc.secs[i]), self.curMaxEssChgKw[i])
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.accelBufferSoc[i] = 0
 
         else:
-            self.accelBufferSoc[i] = min(max((((((((self.veh.maxAccelBufferMph * (1 / params.mphPerMps))**2)) - ((self.cyc.cycMps[i]**2))) /
-                                                (((self.veh.maxAccelBufferMph * (1 / params.mphPerMps))**2))) * (min(self.veh.maxAccelBufferPercOfUseableSoc * \
-                                                                            (self.veh.maxSoc - self.veh.minSoc), self.veh.maxRegenKwh / self.veh.maxEssKwh) * self.veh.maxEssKwh)) / self.veh.maxEssKwh) + \
-                self.veh.minSoc, self.veh.minSoc), self.veh.maxSoc)
+            self.accelBufferSoc[i] = min(
+                max(
+                    ((self.veh.maxAccelBufferMph / params.mphPerMps) ** 2 - self.cyc.cycMps[i] ** 2) / 
+                    (self.veh.maxAccelBufferMph / params.mphPerMps) ** 2 * min(
+                        self.veh.maxAccelBufferPercOfUseableSoc * (self.veh.maxSoc - self.veh.minSoc), 
+                        self.veh.maxRegenKwh / self.veh.maxEssKwh
+                    ) * self.veh.maxEssKwh / self.veh.maxEssKwh + self.veh.minSoc, 
+                    self.veh.minSoc
+                ), 
+                self.veh.maxSoc
+                )
 
             self.essAccelBufferChgKw[i] = max(
                 0, (self.accelBufferSoc[i] - self.soc[i-1]) * self.veh.maxEssKwh * 3600.0 / self.cyc.secs[i])
-            self.maxEssAccelBufferDischgKw[i] = min(max(
+            self.maxEssAccelBufferDischgKw[i] = min(
+                max(
                 0, (self.soc[i-1] - self.accelBufferSoc[i]) * self.veh.maxEssKwh * 3600 / self.cyc.secs[i]), self.curMaxEssKwOut[i])
 
         if self.regenBufferSoc[i] < self.accelBufferSoc[i]:
-            self.essAccelRegenDischgKw[i] = max(min(((self.soc[i-1] - (self.regenBufferSoc[i] + self.accelBufferSoc[i]) / 2) * self.veh.maxEssKwh * 3600.0) /
-                                                    self.cyc.secs[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+            self.essAccelRegenDischgKw[i] = max(
+                min(
+                    (self.soc[i-1] - (self.regenBufferSoc[i] + self.accelBufferSoc[i]) / 2) * self.veh.maxEssKwh * 3600.0 / self.cyc.secs[i], 
+                    self.curMaxEssKwOut[i]
+                ), 
+                -self.curMaxEssChgKw[i]
+            )
 
         elif self.soc[i-1] > self.regenBufferSoc[i]:
-            self.essAccelRegenDischgKw[i] = max(min(
-                self.essRegenBufferDischgKw[i], self.curMaxEssKwOut[i]), -self.curMaxEssChgKw[i])
+            self.essAccelRegenDischgKw[i] = max(
+                min(
+                    self.essRegenBufferDischgKw[i], 
+                    self.curMaxEssKwOut[i]), 
+                -self.curMaxEssChgKw[i]
+            )
 
         elif self.soc[i-1] < self.accelBufferSoc[i]:
             self.essAccelRegenDischgKw[i] = max(
@@ -713,17 +757,19 @@ class SimDriveClassic(object):
 
         self.fcKwGapFrEff[i] = abs(self.transKwOutAch[i] - self.veh.maxFcEffKw)
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.mcElectInKwForMaxFcEff[i] = 0
 
         elif self.transKwOutAch[i] < self.veh.maxFcEffKw:
 
             if self.fcKwGapFrEff[i] == self.veh.maxMotorKw:
-                self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / \
-                    self.veh.mcFullEffArray[-1] * -1
+                self.mcElectInKwForMaxFcEff[i] = -self.fcKwGapFrEff[i] / \
+                    self.veh.mcFullEffArray[-1]
             else:
-                self.mcElectInKwForMaxFcEff[i] = self.fcKwGapFrEff[i] / self.veh.mcFullEffArray[max(
-                    1, np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1)] * -1
+                self.mcElectInKwForMaxFcEff[i] = (-self.fcKwGapFrEff[i] / 
+                    self.veh.mcFullEffArray[max(1, 
+                        np.argmax(self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1)]
+                )
 
         else:
 
@@ -734,17 +780,18 @@ class SimDriveClassic(object):
                 self.mcElectInKwForMaxFcEff[i] = self.veh.mcKwInArray[np.argmax(
                     self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.fcKwGapFrEff[i])) - 1]
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.electKwReq4AE[i] = 0
 
         elif self.transKwInAch[i] > 0:
             if self.transKwInAch[i] == self.veh.maxMotorKw:
-
                 self.electKwReq4AE[i] = self.transKwInAch[i] / \
                     self.veh.mcFullEffArray[-1] + self.auxInKw[i]
             else:
-                self.electKwReq4AE[i] = self.transKwInAch[i] / self.veh.mcFullEffArray[max(1, np.argmax(
-                    self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.transKwInAch[i])) - 1)] + self.auxInKw[i]
+                self.electKwReq4AE[i] = (self.transKwInAch[i] / 
+                    self.veh.mcFullEffArray[max(1, np.argmax(
+                        self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.transKwInAch[i])) - 1)] + self.auxInKw[i]
+                )
 
         else:
             self.electKwReq4AE[i] = 0
@@ -807,7 +854,7 @@ class SimDriveClassic(object):
         else:
             self.fcForcedOn[i] = False
 
-        if self.fcForcedOn[i] == False or self.canPowerAllElectrically[i] == False:
+        if not(self.fcForcedOn[i]) or not(self.canPowerAllElectrically[i]):
             self.fcForcedState[i] = 1
             self.mcMechKw4ForcedFc[i] = 0
 
@@ -871,7 +918,7 @@ class SimDriveClassic(object):
 
         self.mcElecKwInIfFcIsReq[i] = self.essKwIfFcIsReq[i] + self.erKwIfFcIsReq[i] - self.auxInKw[i]
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.mcKwIfFcIsReq[i] = 0
 
         elif self.mcElecKwInIfFcIsReq[i] == 0:
@@ -897,7 +944,7 @@ class SimDriveClassic(object):
         if self.veh.maxMotorKw == 0:
             self.mcMechKwOutAch[i] = 0
 
-        elif self.fcForcedOn[i] == True and self.canPowerAllElectrically[i] == True and (self.veh.vehPtType == 2.0 or self.veh.vehPtType == 3.0) and self.veh.fcEffType !=4:
+        elif self.fcForcedOn[i] and self.canPowerAllElectrically[i] and (self.veh.vehPtType == 2.0 or self.veh.vehPtType == 3.0) and self.veh.fcEffType !=4:
             self.mcMechKwOutAch[i] = self.mcMechKw4ForcedFc[i]
 
         elif self.transKwInAch[i] <= 0:
@@ -922,7 +969,6 @@ class SimDriveClassic(object):
 
         if self.mcMechKwOutAch[i] == 0:
             self.mcElecKwInAch[i] = 0.0
-            self.motor_index_debug[i] = 0
 
         elif self.mcMechKwOutAch[i] < 0:
 
@@ -970,7 +1016,7 @@ class SimDriveClassic(object):
                 self.essKwOutAch[i] = self.mcElecKwInAch[i] + \
                     self.auxInKw[i] - self.roadwayChgKwOutAch[i]
 
-        elif self.highAccFcOnTag[i] == 1 or self.veh.noElecAux == True:
+        elif self.highAccFcOnTag[i] or self.veh.noElecAux:
             self.essKwOutAch[i] = self.mcElecKwInAch[i] - \
                 self.roadwayChgKwOutAch[i]
 
@@ -978,7 +1024,7 @@ class SimDriveClassic(object):
             self.essKwOutAch[i] = self.mcElecKwInAch[i] + \
                 self.auxInKw[i] - self.roadwayChgKwOutAch[i]
 
-        if self.veh.noElecSys == True:
+        if self.veh.noElecSys:
             self.essCurKwh[i] = 0
 
         elif self.essKwOutAch[i] < 0:
@@ -995,7 +1041,7 @@ class SimDriveClassic(object):
         else:
             self.soc[i] = self.essCurKwh[i] / self.veh.maxEssKwh
 
-        if self.canPowerAllElectrically[i] == True and self.fcForcedOn[i] == False and self.fcKwOutAch[i] == 0:
+        if self.canPowerAllElectrically[i] and not(self.fcForcedOn[i]) and self.fcKwOutAch[i] == 0.0:
             self.fcTimeOn[i] = 0
         else:
             self.fcTimeOn[i] = self.fcTimeOn[i-1] + self.cyc.secs[i]
@@ -1013,7 +1059,7 @@ class SimDriveClassic(object):
             self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
                 0, self.mcElecKwInAch[i] + self.auxInKw[i] - self.essKwOutAch[i] - self.roadwayChgKwOutAch[i]))
 
-        elif self.veh.noElecSys == True or self.veh.noElecAux == True or self.highAccFcOnTag[i] == 1:
+        elif self.veh.noElecSys or self.veh.noElecAux or self.highAccFcOnTag[i]:
             self.fcKwOutAch[i] = min(self.curMaxFcKwOut[i], max(
                 0, self.transKwInAch[i] - self.mcMechKwOutAch[i] + self.auxInKw[i]))
 
@@ -1031,8 +1077,12 @@ class SimDriveClassic(object):
             self.fcKwOutAch_pct[i] = 0
 
         else:
-            self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[np.argmax(
-                self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW)) - 1])
+            self.fcKwInAch[i] = (
+                self.fcKwOutAch[i] / (self.veh.fcEffArray[np.argmax(
+                    self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW)) - 1]) 
+                if self.veh.fcEffArray[np.argmax(
+                    self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW)) - 1] != 0
+                else 0)
 
         self.fsKwOutAch[i] = self.fcKwInAch[i]
 
@@ -1042,15 +1092,15 @@ class SimDriveClassic(object):
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
         This includes mpgge, various energy metrics, and others"""
-
+        
         self.fsCumuMjOutAch = (self.fsKwOutAch * self.cyc.secs).cumsum() * 1e-3
 
         if self.fsKwhOutAch.sum() == 0:
-            self.mpgge = 0
+            self.mpgge = 0.0
 
         else:
             self.mpgge = self.distMiles.sum() / \
-                (self.fsKwhOutAch.sum() * (1 / params.kWhPerGGE))
+                (self.fsKwhOutAch.sum() / self.props.kWhPerGGE)
 
         self.roadwayChgKj = (self.roadwayChgKwOutAch * self.cyc.secs).sum()
         self.essDischgKj = - \
@@ -1069,13 +1119,15 @@ class SimDriveClassic(object):
 
         if self.mpgge == 0:
             # hardcoded conversion
-            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / params.kWhPerGGE
-            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / 33.7 / self.veh.chgEff
+            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.props.kWhPerGGE
+            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.props.kWhPerGGE / \
+                self.veh.chgEff
 
         else:
             self.Gallons_gas_equivalent_per_mile = 1 / \
-                self.mpgge + self.electric_kWh_per_mi  / params.kWhPerGGE
-            grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + self.electric_kWh_per_mi / 33.7 / self.veh.chgEff
+                self.mpgge + self.electric_kWh_per_mi  / self.props.kWhPerGGE
+            grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + \
+                self.electric_kWh_per_mi / self.props.kWhPerGGE / self.veh.chgEff
 
         self.grid_mpgge_elec = 1 / grid_Gallons_gas_equivalent_per_mile
         self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
@@ -1093,7 +1145,8 @@ class SimDriveClassic(object):
             else -self.essKwOutAch[i] - (-self.essKwOutAch[i] * np.sqrt(self.veh.essRoundTripEff))
                 if self.essKwOutAch[i] < 0
             else self.essKwOutAch[i] * (1.0 / np.sqrt(self.veh.essRoundTripEff)) - self.essKwOutAch[i]
-            for i in range(1, len(self.cyc.cycSecs))])
+            for i in range(1, len(self.cyc.cycSecs))]
+        )
         
         self.brakeKj = (self.cycFricBrakeKw * self.cyc.secs).sum()
         self.transKj = ((self.transKwInAch - self.transKwOutAch) * self.cyc.secs).sum()
@@ -1108,138 +1161,16 @@ class SimDriveClassic(object):
         self.keKj = 0.5 * self.veh.vehKg * \
             (self.mpsAch[0]**2 - self.mpsAch[-1]**2) / 1000
         
-        self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj) /\
-            (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
+        self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj
+            ) / (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
 
-        if np.abs(self.energyAuditError) > params.ENERGY_AUDIT_ERROR_TOLERANCE:
+        if (np.abs(self.energyAuditError) > params.ENERGY_AUDIT_ERROR_TOLERANCE) and \
+            self.sim_params.verbose:
             print('Warning: There is a problem with conservation of energy.')
+            print('Energy Audit Error:', np.round(self.energyAuditError, 5))
 
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * \
-            ((self.mpsAch[1:]**2) - (self.mpsAch[:-1]**2)) / 1000.0 
-
-sim_drive_spec = build_spec(SimDriveClassic(cycle.Cycle('udds'), vehicle.Vehicle(1)))
-
-
-@jitclass(sim_drive_spec)
-class SimDriveJit(SimDriveClassic):
-    """Class compiled using numba just-in-time compilation containing methods 
-    for running FASTSim vehicle fuel economy simulations. This class will be 
-    faster for large batch runs.
-    Arguments:
-    ----------
-    cyc: cycle.CycleJit instance. Can come from cycle.Cycle.get_numba_cyc
-    veh: vehicle.VehicleJit instance. Can come from vehicle.Vehicle.get_numba_veh"""
-
-    def __init_objects__(self, cyc, veh):        
-        self.veh = veh
-        self.cyc = cyc.copy() # this cycle may be manipulated
-        self.cyc0 = cyc.copy() # this cycle is not to be manipulated
-        self.sim_params = SimDriveParams()
-        self.props = params.PhysicalPropertiesJit()
-
-    def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        Arguments
-        ------------
-        initSoc: initial SOC for electrified vehicles.  
-            Leave empty for default value.  Otherwise, must be between 0 and 1.
-            Numba's jitclass does not support keyword args so this allows for optionally
-            passing initSoc as positional argument.
-            auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
-                Default of np.zeros(1) causes veh.auxKw to be used. If zero is actually
-                desired as an override, either set veh.auxKw = 0 before instantiaton of
-                SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
-                the final value to non-zero prevents override mechanism.  
-        """
-
-        if (auxInKwOverride == 0).all():
-            auxInKwOverride = self.auxInKw
-
-        self.hev_sim_count = 0
-
-        if (initSoc != -1):
-            if (initSoc > 1.0 or initSoc < 0.0):
-                print('Must enter a valid initial SOC between 0.0 and 1.0')
-                print('Running standard initial SOC controls')
-                initSoc = -1 # override initSoc if invalid value is used
-            else:
-                self.sim_drive_walk(initSoc, auxInKwOverride)
-    
-        elif self.veh.vehPtType == 1: # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0 # this initSoc has no impact on results
-            
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
-        elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV 
-
-            #####################################
-            ### Charge Balancing Vehicle SOC ###
-            #####################################
-
-            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
-            # Iterating until tolerance met or 30 attempts made.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            ess2fuelKwh = 1.0
-            while ess2fuelKwh > self.veh.essToFuelOkError and self.hev_sim_count < self.sim_params.sim_count_max:
-                self.hev_sim_count += 1
-                self.sim_drive_walk(initSoc, auxInKwOverride)
-                fuelKj = np.sum(self.fsKwOutAch * self.cyc.secs)
-                roadwayChgKj = np.sum(self.roadwayChgKwOutAch * self.cyc.secs)
-                if (fuelKj + roadwayChgKj) > 0:
-                    ess2fuelKwh = np.abs((self.soc[0] - self.soc[-1]) *
-                                         self.veh.maxEssKwh * 3600 / (fuelKj + roadwayChgKj))
-                else:
-                    ess2fuelKwh = 0.0
-                initSoc = min(1.0, max(0.0, self.soc[-1]))
-                        
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
-        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1): # PHEV and BEV
-
-            # If EV, initializing initial SOC to maximum SOC.
-
-            initSoc = self.veh.maxSoc
-            
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
-        else:
-            
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-        
-        self.set_post_scalars()            
-            
-@jitclass(sim_drive_spec)
-class SimAccelTestJit(SimDriveClassic):
-    """Class compiled using numba just-in-time compilation containing methods 
-    for running FASTSim vehicle acceleration simulation. This class will be 
-    faster for large batch runs."""
-
-    def sim_drive(self):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
-
-        if self.veh.vehPtType == 1:  # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_walk(initSoc)
-
-        elif self.veh.vehPtType == 2:  # HEV
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_walk(initSoc)
-
-        else:
-
-            # If EV, initializing initial SOC to maximum SOC.
-            initSoc = self.veh.maxSoc
-            self.sim_drive_walk(initSoc)
-
-        self.set_post_scalars()
+            (self.mpsAch[1:] ** 2 - self.mpsAch[:-1] ** 2) / 1000.0 
 
 
 class SimAccelTest(SimDriveClassic):
@@ -1277,6 +1208,8 @@ class SimDrivePost(object):
         """Arguments:
         ---------------
         sim_drive: solved sim_drive object"""
+        
+        from .simdrivejit import sim_drive_spec
 
         for item in sim_drive_spec:
             self.__setattr__(item[0], sim_drive.__getattribute__(item[0]))
@@ -1322,11 +1255,6 @@ class SimDrivePost(object):
         else:
             output['ZeroToSixtyTime_secs'] = 0.0
 
-        #######################################################################
-        ####  Time series information for additional analysis / debugging. ####
-        ####             Add parameters of interest as needed.             ####
-        #######################################################################
-
         output['fcKwOutAch'] = np.asarray(self.fcKwOutAch)
         output['fsKwhOutAch'] = np.asarray(self.fsKwhOutAch)
         output['fcKwInAch'] = np.asarray(self.fcKwInAch)
@@ -1336,7 +1264,7 @@ class SimDrivePost(object):
 
     # optional post-processing methods
     def get_diagnostics(self):
-        """This method is to be run after runing sim_drive, if diagnostic variables 
+        """This method is to be run after runing sim_drive if diagnostic variables 
         are needed.  Diagnostic variables are returned in a dict.  Diagnostic variables include:
         - final integrated value of all positive powers
         - final integrated value of all negative powers
@@ -1370,7 +1298,10 @@ class SimDrivePost(object):
             output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], self.cyc.cycSecs)
         
         output['distMilesFinal'] = sum(self.distMiles)
-        output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * params.kWhPerGGE
+        if sum(self.fsKwhOutAch) > 0:
+            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * self.props.kWhPerGGE
+        else:
+            output['mpgge'] = 0
     
         return output
 
@@ -1395,3 +1326,28 @@ class SimDrivePost(object):
             else 0
             for i in range(0, len(self.essCurKwh))])
 
+
+# convenience wrappers for backwards compatibility
+def SimDriveJit(cyc_jit, veh_jit):
+    """
+    Wrapper for simdrivejit.SimDriveJit:
+    """
+    from . import simdrivejit
+
+    sim_drive_jit = simdrivejit.SimDriveJit(cyc_jit, veh_jit)
+
+    SimDriveJit.__doc__ += sim_drive_jit.__doc__
+
+    return sim_drive_jit
+
+def SimAccelTestJit(cyc_jit, veh_jit):
+    """
+    Wrapper for simdrivejit.SimAccelTestJit:
+    """
+    from . import simdrivejit
+
+    sim_drive_jit = simdrivejit.SimAccelTestJit(cyc_jit, veh_jit)
+
+    SimDriveJit.__doc__ += sim_drive_jit.__doc__
+
+    return sim_drive_jit

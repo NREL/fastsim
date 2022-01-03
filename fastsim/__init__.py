@@ -1,11 +1,17 @@
 """Package contaning modules for running FASTSim.  
-For example usage, see ../README.md"""
+For example usage, see """
 
-from fastsim import simdrive, vehicle, cycle
-# convenient aliases
+from pathlib import Path 
+
+from . import parameters as params
 from fastsim import utilities as utils
-from fastsim import parameters as params
+from . import simdrive, vehicle, cycle, buildspec
+from . import parametersjit, vehiclejit, cyclejit, simdrivejit, tests
+
+# convenient aliases
 
 from pkg_resources import get_distribution
 
 __version__ = get_distribution('fastsim').version
+
+__doc__ += f"{Path(__file__).parent / 'docs/README.md'}"

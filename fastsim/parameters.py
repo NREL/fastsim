@@ -1,15 +1,18 @@
-"""Global constants representing unit conversions that shourd never change, 
+"""
+Global constants representing unit conversions that shourd never change, 
 physical properties that should rarely change, and vehicle model parameters 
-that can be modified by advanced users."""
+that can be modified by advanced users.  
+Note that modifications to parameters in this module do not propagate to 
+numba-jit-compiled objects.  
+"""
 
 import os
 import numpy as np
-from numba.experimental import jitclass
 import json
+from pathlib import Path
 
-from fastsim.buildspec import build_spec
 
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+THIS_DIR = Path(__file__).parent
 
 # vehicle types
 CONV = 1
@@ -20,52 +23,55 @@ BEV  = 4
 # vehicle types to string rep
 PT_TYPES = {CONV: "Conv", HEV: "HEV", PHEV: "PHEV", BEV: "EV"}
 
-FC_EFF_TYPES = {1: "SI", 2: "Diesel - ISB280", 3: "Diesel", 4: "Fuel Cell", 5: "Hybrid Diesel", 6: "Diesel - HD",
-                7: "Diesel - HDISM Scaled", 8: "Diesel - HDISM Scaled", 9: "CNG"}
 
 ### Unit conversions that should NEVER change
 mphPerMps = 2.2369
-kWhPerGGE = 33.7
 metersPerMile = 1609.00
-
-# EPA fuel economy adjustment parameters
-
-# 2008	2017	2016
-# City Intercept	0.003259	0.004091	0.003259
-# City Slope	1.1805	1.1601	1.1805
-# Highway Intercept	0.001376	0.003191	0.001376
-# Highway Slope	1.3466	1.2945	1.3466
-maxEpaAdj = 0.3 # maximum EPA adjustment factor
-
 
 class PhysicalProperties(object):
     """Container class for physical constants that could change under certain special 
     circumstances (e.g. high altitude or extreme weather) """
 
     def __init__(self):
+        # Make this altitude and temperature dependent, and allow it to change with time
         self.airDensityKgPerM3 = 1.2  # Sea level air density at approximately 20C
         self.gravityMPerSec2 = 9.81
+        self.kWhPerGGE = 33.7 # kWh per gallon of gasoline
+        self.fuel_rho_kg__L = 0.75 # gasoline density in kg/L https://inchem.org/documents/icsc/icsc/eics1400.htm
 
-props_spec = build_spec(PhysicalProperties())
+    def get_fuel_lhv_kJ__kg(self):
+        # fuel_lhv_kJ__kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg__L [kg/L] * 3_600 [s/hr] = [kJ/kg]
+        return self.kWhPerGGE / 3.785 / self.fuel_rho_kg__L * 3_600 
 
-@jitclass(props_spec)
-class PhysicalPropertiesJit(PhysicalProperties):
-    """Container class for physical constants that could change under certain special 
-    circumstances (e.g. high altitude or extreme weather) """
-    pass
+    def set_fuel_lhv_kJ__kg(self, value):
+        # kWhPerGGE = fuel_lhv_kJ__kg * fuel_rho_kg__L [kg/L] * 3.785 [L/gal] / 3_600 [s/hr] = [kJ/kg]
+        self.kWhPerGGE = value * 3.785 * self.fuel_rho_kg__L / 3_600
+
+    fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)
+
+
+def PhysicalPropertiesJit():
+    "Wrapper for parametersjit: "
+    from . import parametersjit
+
+    props = parametersjit.PhysicalPropertiesJit()
+    PhysicalPropertiesJit.__doc__ += props.__doc__
+
+    return props
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
 fcPwrOutPerc = np.array(
-    [0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00])
+    [0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00], 
+    dtype=np.float64)
 
 # fc arrays and parameters
 # Efficiencies at different power out percentages by FC type -- all
-eff_si = np.array([0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30])
-eff_atk = np.array([0.10, 0.12, 0.28, 0.35, 0.375, 0.39, 0.40, 0.40, 0.38, 0.37, 0.36, 0.35])
-eff_diesel = np.array([0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
-eff_fuel_cell = np.array([0.10, 0.30, 0.36, 0.45, 0.50, 0.56, 0.58, 0.60, 0.58, 0.57, 0.55, 0.54])
-eff_hd_diesel = np.array([0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
+fcEffMap_si = np.array([0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30])
+fcEffMap_atk = np.array([0.10, 0.12, 0.28, 0.35, 0.375, 0.39, 0.40, 0.40, 0.38, 0.37, 0.36, 0.35])
+fcEffMap_diesel = np.array([0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
+fcEffMap_fuel_cell = np.array([0.10, 0.30, 0.36, 0.45, 0.50, 0.56, 0.58, 0.60, 0.58, 0.57, 0.55, 0.54])
+fcEffMap_hd_diesel = np.array([0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
 
 
 # Relatively continuous power out percentages for assigning FC efficiencies
@@ -84,9 +90,10 @@ mcPercOutArray = np.linspace(0, 1, 101)
 
 ENERGY_AUDIT_ERROR_TOLERANCE = 0.02 # i.e., 2%
 
+chgEff = 0.86 # charger efficiency for PEVs, this should probably not be hard coded long term
 
 # loading long arrays from json file
-with open(os.path.join(THIS_DIR, 'resources', 'longparams.json'), 'r') as paramfile:
+with open(THIS_DIR / 'resources' / 'longparams.json', 'r') as paramfile:
     param_dict = json.load(paramfile)
 
 # PHEV-specific parameters

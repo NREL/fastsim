@@ -1,3 +1,5 @@
+"""PyPI setup script.  To use it, run `python setup.py sdist bdist_wheel` from this directory."""
+
 import setuptools
 
 with open("README.md", "r") as fh:
@@ -5,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fastsim",  
-    version="0.1.0",
+    version="1.1.7",
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
     description="Tool for modeling vehicle powertrains",
@@ -28,18 +30,7 @@ setuptools.setup(
         "pandas>=1",
         "matplotlib>=3.3",
         "numpy>=1.18",
-        "numba==0.52",
+        "numba>=0.52",
         "seaborn>=0.10",
-        "jupyter>=1.0",
-        "jupyter_client>=6.1",
-        "jupyter_console>=6.1",
-        "jupyter_core>=4.6",
-        "jupyterlab>=2.1",
-        "jupyterlab_server>=1.2",
-        "keyring",
-        "pkginfo",
-        "tqdm",
-        "docutils",
-        "jedi==0.17.2"
     ],
 )
