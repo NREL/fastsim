@@ -641,12 +641,12 @@ class SimDriveHot(SimDriveClassic):
         """
 
         # TODO make exhaust port interact thermally with engine rather than ambient
-        self.exh_mdot[i] = self.fsKwOutAch[i] / self.props.fuel_lhv_kJ__kg * (1 + self.props.fuel_afr_stoich)
+        self.exh_mdot[i] = self.fsKwOutAch[i-1] / self.props.fuel_lhv_kJ__kg * (1 + self.props.fuel_afr_stoich)
         self.exh_Hdot_kW[i] = (1 - self.vehthrm.fc_coeff_from_comb * (
             self.fc_te_adiabatic_degC[i] - self.fc_te_degC[i-1])) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
         
         if self.exh_mdot[i] > 5e-4:
-            self.exhport_exh_te_in_degC[i] = self.air.get_te_from_h(self.exh_Hdot_kW[i] / self.exh_mdot[i] * 1e3
+            self.exhport_exh_te_in_degC[i] = self.air.get_te_from_h(self.exh_Hdot_kW[i] * 1e3 / self.exh_mdot[i]
             )
         else:
             # when flow is small, assume inlet temperature is temporally constant
@@ -660,7 +660,7 @@ class SimDriveHot(SimDriveClassic):
                 # nominal heat transfer to ambient
                 self.vehthrm.exhport_hA_ext * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]), 
                 # max possible heat transfer to ambient
-                self.vehthrm.exhport_C_kJ__K * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
+                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
             )
         else:
             # exhaust port cooler than ambient
@@ -668,20 +668,20 @@ class SimDriveHot(SimDriveClassic):
                 # nominal heat transfer to ambient
                 self.vehthrm.exhport_hA_ext * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]), 
                 # max possible heat transfer to ambient
-                self.vehthrm.exhport_C_kJ__K * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
+                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
             )                
 
         if (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) > 0:
             # exhaust hotter than exhaust port
             self.exhport_qdot_from_exh[i] = min(
                 self.exh_mdot[i-1] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
-                self.vehthrm.exhport_C_kJ__K * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
+                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
             )
         else:
             # exhaust cooler than exhaust port
             self.exhport_qdot_from_exh[i] = max(
                 self.exh_mdot[i-1] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
-                self.vehthrm.exhport_C_kJ__K * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
+                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
             )
 
         self.exhport_qdot_net[i] = self.exhport_qdot_from_exh[i] - self.exhport_qdot_to_amb[i]
@@ -722,7 +722,7 @@ class SimDriveHot(SimDriveClassic):
                 # nominal heat transfer to ambient
                 self.cat_htc_to_amb[i] * self.vehthrm.cat_area_ext * (self.cat_te_degC[i-1] - self.amb_te_degC[i-1]), 
                 # max possible heat transfer to ambient
-                self.vehthrm.cat_C_kJ__K * (self.cat_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
+                self.vehthrm.cat_C_kJ__K * 1e3 * (self.cat_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
             )
         else:
             # ambient hotter than cat (less common)
@@ -730,16 +730,23 @@ class SimDriveHot(SimDriveClassic):
                 # nominal heat transfer to ambient
                 self.cat_htc_to_amb[i] * self.vehthrm.cat_area_ext * (self.cat_te_degC[i-1] - self.amb_te_degC[i-1]), 
                 # max possible heat transfer to ambient
-                self.vehthrm.cat_C_kJ__K * (self.cat_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
+                self.vehthrm.cat_C_kJ__K * 1e3 * (self.cat_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
             )                
-            
+        
+        if self.exh_mdot[i] > 5e-4:
+            self.cat_exh_te_in_degC[i] = self.air.get_te_from_h(
+                (self.exh_Hdot_kW[i] * 1e3 - self.exhport_qdot_from_exh) / self.exh_mdot[i])
+        else:
+            # when flow is small, assume inlet temperature is temporally constant
+            self.cat_exh_te_in_degC[i] = self.cat_exh_te_in_degC[i-1]
+
         if (self.cat_exh_te_in_degC[i-1] - self.cat_te_degC[i-1]) > 0:
             # exhaust hotter than cat
             self.cat_qdot_from_exh[i] = min(
                 # limited by exhaust heat capacitance flow
                 self.exh_mdot[i-1] * (self.air.get_h(self.cat_exh_te_in_degC[i-1]) - self.air.get_h(self.cat_te_degC[i-1])),
                 # limited by catalyst thermal mass temperature change
-                self.vehthrm.cab_C_kJ__K * (self.cat_exh_te_in_degC[i-1] - self.cat_te_degC[i-1]) / self.cyc.dt_s[i]
+                self.vehthrm.cab_C_kJ__K * 1e3 * (self.cat_exh_te_in_degC[i-1] - self.cat_te_degC[i-1]) / self.cyc.dt_s[i]
             )
         else:
             # cat hotter than exhaust(less common)
@@ -747,7 +754,7 @@ class SimDriveHot(SimDriveClassic):
                 # limited by exhaust heat capacitance flow
                 self.exh_mdot[i-1] * (self.air.get_h(self.cat_exh_te_in_degC[i-1]) - self.air.get_h(self.cat_te_degC[i-1])),
                 # limited by catalyst thermal mass temperature change
-                self.vehthrm.cat_C_kJ__K * (self.cat_exh_te_in_degC[i-1] - self.cat_te_degC[i-1]) / self.cyc.dt_s[i]
+                self.vehthrm.cat_C_kJ__K * 1e3 * (self.cat_exh_te_in_degC[i-1] - self.cat_te_degC[i-1]) / self.cyc.dt_s[i]
             )
 
         # catalyst heat generation
