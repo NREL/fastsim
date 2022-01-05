@@ -57,7 +57,7 @@ class AirProperties(object):
             5000.        
         ], dtype=np.float64)
         # thermal conductivity of air [W / (m * K)]
-        self._k_Array = np.array([ 
+        self._k_array = np.array([ 
             0.019597, 0.019841, 0.020156, 0.020561, 0.021083, 0.021753,
             0.022612, 0.023708, 0.025102, 0.026867, 0.02909 , 0.031875,
             0.035342, 0.039633, 0.044917, 0.051398, 0.059334, 0.069059,
@@ -65,7 +65,7 @@ class AirProperties(object):
             0.26081 
         ], dtype=np.float64)
         # specific heat of air [J / (kg * K)]
-        self._cp_Array = np.array([
+        self._cp_array = np.array([
             1006.2, 1006.1, 1006. , 1005.9, 1005.7, 1005.6, 1005.5, 1005.6,
             1005.9, 1006.6, 1008.3, 1011.6, 1017.9, 1028.9, 1047. , 1073.4,
             1107.6, 1146.1, 1184.5, 1219.5, 1250.1, 1277.1, 1301.7, 1324.5,
@@ -73,7 +73,7 @@ class AirProperties(object):
         ], dtype=np.float64)
         # specific enthalpy of air [J / kg]
         # w.r.t. 0K reference
-        self._h_Array = np.array([
+        self._h_array = np.array([
             338940.,  341930.,  345790.,  350800.,  357290.,  365710.,
             376610.,  390750.,  409080.,  432860.,  463710.,  503800.,
             556020.,  624280.,  714030.,  832880.,  991400., 1203800.,
@@ -81,7 +81,7 @@ class AirProperties(object):
             6662000.
         ], dtype=np.float64)
         # Dynamic viscosity of air [Pa * s]
-        self._mu_Array = np.array([
+        self._mu_rray = np.array([
             1.4067e-05, 1.4230e-05, 1.4440e-05, 1.4711e-05, 1.5058e-05,
             1.5502e-05, 1.6069e-05, 1.6791e-05, 1.7703e-05, 1.8850e-05,
             2.0283e-05, 2.2058e-05, 2.4240e-05, 2.6899e-05, 3.0112e-05,
@@ -89,7 +89,7 @@ class AirProperties(object):
             6.8036e-05, 7.9878e-05, 9.4840e-05, 1.1423e-04, 1.4006e-04
         ], dtype=np.float64)
         # Prandtl number of air
-        self._Pr_Array = self._mu_Array * self._cp_Array / self._k_Array
+        self._Pr_array = self._mu_rray * self._cp_array / self._k_array
 
     def get_rho(self, T, h=180):
         """"
@@ -111,7 +111,7 @@ class AirProperties(object):
         T: Float
             temperature [°C] of air 
         """
-        return np.interp(T, self._te_array_degC, self._k_Array)
+        return np.interp(T, self._te_array_degC, self._k_array)
 
     def get_cp(self, T):
         """Returns specific heat [J/(kg*K)] of air 
@@ -120,7 +120,7 @@ class AirProperties(object):
         T: Float
             temperature [°C] of air 
         """
-        return np.interp(T, self._te_array_degC, self._cp_Array)
+        return np.interp(T, self._te_array_degC, self._cp_array)
 
     def get_h(self, T):
         """"
@@ -130,7 +130,7 @@ class AirProperties(object):
         T: Float
             temperature [°C] of air 
         """
-        return np.interp(T, self._te_array_degC, self._h_Array)
+        return np.interp(T, self._te_array_degC, self._h_array)
 
     def get_Pr(self, T):
         """"
@@ -140,7 +140,7 @@ class AirProperties(object):
         T: Float
             temperature [°C] of air 
         """
-        return np.interp(T, self._te_array_degC, self._Pr_Array)
+        return np.interp(T, self._te_array_degC, self._Pr_array)
 
     def get_mu(self, T):
         """"
@@ -150,7 +150,7 @@ class AirProperties(object):
         T: Float
             temperature [°C] of air 
         """
-        return np.interp(T, self._te_array_degC, self._mu_Array)
+        return np.interp(T, self._te_array_degC, self._mu_rray)
 
     def get_te_from_h(self, h):
         """"
@@ -160,7 +160,7 @@ class AirProperties(object):
         h: Float
             specific enthalpy [J/kg] of air 
         """
-        return np.interp(h, self._h_Array, self._te_array_degC)
+        return np.interp(h, self._h_array, self._te_array_degC)
 
 
 class VehicleThermal(object):
