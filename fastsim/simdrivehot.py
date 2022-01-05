@@ -391,7 +391,9 @@ class SimDriveHot(SimDriveClassic):
         # fuel converter (engine) temperature [°C]
         self.fc_te_degC = np.zeros(len_cyc, dtype=np.float64) 
         # fuel converter temperature efficiency correction
-        self.fc_L = np.zeros(len_cyc, dtype=np.float64)
+        self.fc_eta_temp_coeff = np.zeros(len_cyc, dtype=np.float64)
+        # fuel converter heat generation per total heat release minus shaft power
+        self.fc_qdot_per_net_heat = np.zeros(len_cyc, dtype=np.float64)
         # fuel converter heat generation [kW]
         self.fc_qdot_kW = np.zeros(len_cyc, dtype=np.float64)
         # fuel converter convection to ambient [kW]
@@ -572,9 +574,11 @@ class SimDriveHot(SimDriveClassic):
             ) / (1 + self.fc_lambda[i] * self.props.fuel_afr_stoich)
         )
 
+        # limited between 0 and 1, but should really not get near 1
+        self.fc_qdot_per_net_heat[i] = max(0, min(1, self.vehthrm.fc_coeff_from_comb * (self.fc_te_adiabatic_degC[i] - self.fc_te_degC[i-1])))
+
         # heat generation 
-        self.fc_qdot_kW[i] = self.vehthrm.fc_coeff_from_comb * (
-            self.fc_te_adiabatic_degC[i] - self.fc_te_degC[i-1]) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
+        self.fc_qdot_kW[i] = self.fc_qdot_per_net_heat[i] * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
 
         # film temperature for external convection calculations
         fc_air_film_te_degC = 0.5 * (self.fc_te_degC[i-1] + self.amb_te_degC[i-1])
@@ -642,12 +646,10 @@ class SimDriveHot(SimDriveClassic):
 
         # TODO make exhaust port interact thermally with engine rather than ambient
         self.exh_mdot[i] = self.fsKwOutAch[i-1] / self.props.fuel_lhv_kJ__kg * (1 + self.props.fuel_afr_stoich)
-        self.exh_Hdot_kW[i] = (1 - self.vehthrm.fc_coeff_from_comb * (
-            self.fc_te_adiabatic_degC[i] - self.fc_te_degC[i-1])) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
+        self.exh_Hdot_kW[i] = (1 - self.fc_qdot_per_net_heat[i]) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
         
         if self.exh_mdot[i] > 5e-4:
-            self.exhport_exh_te_in_degC[i] = self.air.get_te_from_h(self.exh_Hdot_kW[i] * 1e3 / self.exh_mdot[i]
-            )
+            self.exhport_exh_te_in_degC[i] = self.air.get_te_from_h(self.exh_Hdot_kW[i] * 1e3 / self.exh_mdot[i])
         else:
             # when flow is small, assume inlet temperature is temporally constant
             self.exhport_exh_te_in_degC[i] = self.exhport_exh_te_in_degC[i-1]
@@ -671,22 +673,22 @@ class SimDriveHot(SimDriveClassic):
                 self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
             )                
 
-        if (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) > 0:
+        if (self.exhport_exh_te_in_degC[i] - self.exhport_te_degC[i-1]) > 0:
             # exhaust hotter than exhaust port
             self.exhport_qdot_from_exh[i] = min(
-                self.exh_mdot[i-1] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
+                self.exh_mdot[i] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
                 self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
             )
         else:
             # exhaust cooler than exhaust port
             self.exhport_qdot_from_exh[i] = max(
-                self.exh_mdot[i-1] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
+                self.exh_mdot[i] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
                 self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
             )
 
         self.exhport_qdot_net[i] = self.exhport_qdot_from_exh[i] - self.exhport_qdot_to_amb[i]
         self.exhport_te_degC[i] = (
-            self.exhport_te_degC[i-1] + self.exhport_qdot_net[i] * 1e-3 / self.vehthrm.exhport_C_kJ__K * self.cyc.dt_s[i]
+            self.exhport_te_degC[i-1] + self.exhport_qdot_net[i] / (self.vehthrm.exhport_C_kJ__K * 1e3) * self.cyc.dt_s[i]
         )
 
     def set_cat_thermal_calcs(self, i):
@@ -735,26 +737,26 @@ class SimDriveHot(SimDriveClassic):
         
         if self.exh_mdot[i] > 5e-4:
             self.cat_exh_te_in_degC[i] = self.air.get_te_from_h(
-                (self.exh_Hdot_kW[i] * 1e3 - self.exhport_qdot_from_exh) / self.exh_mdot[i])
+                (self.exh_Hdot_kW[i] * 1e3 - self.exhport_qdot_from_exh[i]) / self.exh_mdot[i])
         else:
             # when flow is small, assume inlet temperature is temporally constant
             self.cat_exh_te_in_degC[i] = self.cat_exh_te_in_degC[i-1]
 
-        if (self.cat_exh_te_in_degC[i-1] - self.cat_te_degC[i-1]) > 0:
+        if (self.cat_exh_te_in_degC[i] - self.cat_te_degC[i-1]) > 0:
             # exhaust hotter than cat
             self.cat_qdot_from_exh[i] = min(
                 # limited by exhaust heat capacitance flow
-                self.exh_mdot[i-1] * (self.air.get_h(self.cat_exh_te_in_degC[i-1]) - self.air.get_h(self.cat_te_degC[i-1])),
+                self.exh_mdot[i] * (self.air.get_h(self.cat_exh_te_in_degC[i]) - self.air.get_h(self.cat_te_degC[i-1])),
                 # limited by catalyst thermal mass temperature change
-                self.vehthrm.cab_C_kJ__K * 1e3 * (self.cat_exh_te_in_degC[i-1] - self.cat_te_degC[i-1]) / self.cyc.dt_s[i]
+                self.vehthrm.cab_C_kJ__K * 1e3 * (self.cat_exh_te_in_degC[i] - self.cat_te_degC[i-1]) / self.cyc.dt_s[i]
             )
         else:
             # cat hotter than exhaust(less common)
             self.cat_qdot_from_exh[i] = max(
                 # limited by exhaust heat capacitance flow
-                self.exh_mdot[i-1] * (self.air.get_h(self.cat_exh_te_in_degC[i-1]) - self.air.get_h(self.cat_te_degC[i-1])),
+                self.exh_mdot[i] * (self.air.get_h(self.cat_exh_te_in_degC[i]) - self.air.get_h(self.cat_te_degC[i-1])),
                 # limited by catalyst thermal mass temperature change
-                self.vehthrm.cat_C_kJ__K * 1e3 * (self.cat_exh_te_in_degC[i-1] - self.cat_te_degC[i-1]) / self.cyc.dt_s[i]
+                self.vehthrm.cat_C_kJ__K * 1e3 * (self.cat_exh_te_in_degC[i] - self.cat_te_degC[i-1]) / self.cyc.dt_s[i]
             )
 
         # catalyst heat generation
@@ -802,23 +804,23 @@ class SimDriveHot(SimDriveClassic):
 
             if self.vehthrm.fc_temp_eff_model == 'linear':
                 # scaling for multiplying efficiency to be dependent on temperature.
-                self.fc_L[i] = max(self.vehthrm.fc_temp_eff_min,  
+                self.fc_eta_temp_coeff[i] = max(self.vehthrm.fc_temp_eff_min,  
                     min(1, 
                         self.vehthrm.fc_temp_eff_offset + self.vehthrm.fc_temp_eff_slope * self.fc_te_degC[i]
                         )
                 )
             elif self.vehthrm.fc_temp_eff_model == 'exponential':
-                self.fc_L[i] = max(self.vehthrm.fc_temp_eff_min, 
+                self.fc_eta_temp_coeff[i] = max(self.vehthrm.fc_temp_eff_min, 
                     1 - np.exp(-max(
                         self.fc_te_degC[i] - self.vehthrm.fc_temp_eff_offset, 0) / self.vehthrm.fc_temp_eff_slope)
                 )
                 
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
-                self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[-1] * self.fc_L[i])
+                self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[-1] * self.fc_eta_temp_coeff[i])
             else:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / \
                     (self.veh.fcEffArray[max(1, np.argmax(self.veh.fcKwOutArray > min(self.fcKwOutAch[i], self.veh.fcMaxOutkW - 0.001)) - 1)]) \
-                        / self.fc_L[i]
+                        / self.fc_eta_temp_coeff[i]
 
         self.fsKwOutAch[i] = self.fcKwInAch[i]
 
@@ -847,10 +849,11 @@ def AirPropertiesJit():
 
     return simdrivehotjit.AirPropertiesJit()
 
-def SimDriveHotJit(cyc, veh, amb_te_degC, fc_te_init_degC=90.0, cab_te_init_degC=22.0):
+def SimDriveHotJit(cyc, veh, amb_te_degC, fc_te_init_degC=90.0, cab_te_init_degC=22.0, exhport_te_init_degC=22.0, cat_te_init_degC=22.0):
     """Wrapper for Numba jitclass version of SimDriveHot"""
+    # TODO: make the kwargs for this function programmatically depend on simdrivehotjit.SimDriveHotJit using inspect package
     from . import simdrivehotjit
     SimDriveHotJit.__doc__ += simdrivehotjit.SimDriveHotJit.__doc__
 
-    return simdrivehotjit.SimDriveHotJit(cyc, veh, amb_te_degC, fc_te_init_degC, cab_te_init_degC)
+    return simdrivehotjit.SimDriveHotJit(cyc, veh, amb_te_degC, fc_te_init_degC, cab_te_init_degC, exhport_te_init_degC, cat_te_init_degC)
 
