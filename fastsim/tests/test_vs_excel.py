@@ -29,7 +29,8 @@ else:
 
 
 def run_python(use_jit=False, verbose=True):
-    """Runs python fastsim through 26 vehicles and returns list of dictionaries 
+    """
+    Runs python fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
     
     Arguments:
@@ -70,12 +71,14 @@ PREV_RES_PATH = Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.j
 
 def run_excel(prev_res_path=PREV_RES_PATH, 
     rerun_excel=False):
-    """Runs excel fastsim through 26 vehicles and returns list of dictionaries 
+    """
+    Runs excel fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
     Arguments: 
     -----------
     prev_res_path : path (str) to prevous results in pickle (*.p) file
-    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
+    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open
+    """
 
     if not(rerun_excel) and prev_res_path:
         print("Loading archived Excel results.")
@@ -156,7 +159,8 @@ KNOWN_ERROR_LIST = ['Regional Delivery Class 8 Truck']
 
 
 def compare(res_python, res_excel, err_tol=0.001, verbose=True):
-    """Finds common vehicle names in both excel and python 
+    """
+    Finds common vehicle names in both excel and python 
     (hypothetically all of them, but there may be discrepancies) and then compares
     fuel economy results.  
     Arguments: results from run_python and run_excel
@@ -166,7 +170,10 @@ def compare(res_python, res_excel, err_tol=0.001, verbose=True):
     ----------
     res_python : output of run_python
     res_excel : output of run_excel
-    err_tol : (float) error tolerance, default=1e-3"""
+    err_tol : (float) error tolerance, default=1e-3
+    verbose : Boolean
+        if True, print progress
+    """
 
     common_names = set(res_python.keys()) & set(res_excel.keys())
 
@@ -210,25 +217,27 @@ def compare(res_python, res_excel, err_tol=0.001, verbose=True):
     return res_comps
 
 
-def main(use_jitclass=True, err_tol=0.001, 
-    prev_res_path=PREV_RES_PATH,
-    rerun_excel=False):
-    """Function for running both python and excel and then comparing
+def main(use_jitclass=True, err_tol=0.001, prev_res_path=PREV_RES_PATH, rerun_excel=False, verbose=False):
+    """
+    Function for running both python and excel and then comparing
     Arguments:
     **********
     use_jitclass : Boolean
         if True, use numba jitclass
     err_tol : (float) error tolerance, default=1e-3
     prev_res_path : path (str) to prevous results in pickle (*.p) file
-    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
+    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open
+    verbose : Boolean
+        if True, print progress
+    """
 
     if xw_success and rerun_excel:
-        res_python = run_python(verbose=False, use_jit=use_jitclass)
+        res_python = run_python(verbose=verbose, use_jit=use_jitclass)
         res_excel = run_excel(prev_res_path=prev_res_path,
                               rerun_excel=rerun_excel)
         res_comps = compare(res_python, res_excel)
     elif not(rerun_excel):
-        res_python = run_python(verbose=False, use_jit=use_jitclass)
+        res_python = run_python(verbose=verbose, use_jit=use_jitclass)
         res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
         res_comps = compare(res_python, res_excel)
     else:
