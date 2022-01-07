@@ -192,6 +192,8 @@ class VehicleThermal(object):
         # if 'linear', temparature has linear impact on efficiency.  If 'exponential',
         # temperature has exponential impact on temperature
         self.fc_temp_eff_model = 'exponential'  
+        # component on which fc temp-dependence is dependent.  'catalyst' or 'fuel converter'
+        self.fc_temp_eff_component = 'fuel converter'
         # offset for scaling FC efficiency w.r.t. to temperature in linear or exponential model
         self.fc_temp_eff_offset = 0.1
         # slope for scaling FC efficiency w.r.t. to temperature in linear model
@@ -636,8 +638,7 @@ class SimDriveHot(SimDriveClassic):
                 ) * (self.cab_te_degC[i-1] - self.amb_te_degC[i-1])
         
         self.cab_te_degC[i] = self.cab_te_degC[i-1] + \
-            (self.fc_clnt_to_htr_kW[i] - self.cab_qdot_to_amb_kW[i]) / \
-                self.vehthrm.cab_C_kJ__K * self.cyc.dt_s[i]
+            (self.fc_clnt_to_htr_kW[i] - self.cab_qdot_to_amb_kW[i]) / self.vehthrm.cab_C_kJ__K * self.cyc.dt_s[i]
 
     def set_exhport_thermal_calcs(self, i):
         """
@@ -801,6 +802,7 @@ class SimDriveHot(SimDriveClassic):
         else:
             # verify that valid option is specified
             assert self.vehthrm.fc_temp_eff_model in ['linear', 'exponential'], "Invalid option."
+            assert self.vehthrm.fc_temp_eff_component in ['fuel converter', 'catalyst'], "Invalid option."
 
             if self.vehthrm.fc_temp_eff_model == 'linear':
                 # scaling for multiplying efficiency to be dependent on temperature.
@@ -812,7 +814,11 @@ class SimDriveHot(SimDriveClassic):
             elif self.vehthrm.fc_temp_eff_model == 'exponential':
                 self.fc_eta_temp_coeff[i] = max(self.vehthrm.fc_temp_eff_min, 
                     1 - np.exp(-max(
-                        self.fc_te_degC[i] - self.vehthrm.fc_temp_eff_offset, 0) / self.vehthrm.fc_temp_eff_slope)
+                        (
+                            self.fc_te_degC[i] if self.vehthrm.fc_temp_eff_component == 'fuel converter' 
+                            else self.cat_te_degC[i] if self.vehthrm.fc_temp_eff_component == 'catalyst'
+                            else 0 # this option should never happen
+                        ) - self.vehthrm.fc_temp_eff_offset, 0) / self.vehthrm.fc_temp_eff_slope)
                 )
                 
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
