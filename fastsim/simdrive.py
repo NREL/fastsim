@@ -418,16 +418,13 @@ class SimDriveClassic(object):
 
         # Current maximum electrical power that can go toward propulsion, not including motor limitations
         if self.veh.fcEffType == 4:
-            self.curMaxElecKw[i] = self.curMaxFcKwOut[i] + self.curMaxRoadwayChgKw[i] + \
-                self.curMaxEssKwOut[i] - self.auxInKw[i]
+            self.curMaxElecKw[i] = self.curMaxFcKwOut[i] + self.curMaxRoadwayChgKw[i] + self.curMaxEssKwOut[i] - self.auxInKw[i]
 
         else:
-            self.curMaxElecKw[i] = self.curMaxRoadwayChgKw[i] + \
-                self.curMaxEssKwOut[i] - self.auxInKw[i]
+            self.curMaxElecKw[i] = self.curMaxRoadwayChgKw[i] + self.curMaxEssKwOut[i] - self.auxInKw[i]
 
         # Current maximum electrical power that can go toward propulsion, including motor limitations
-        self.curMaxAvailElecKw[i] = min(
-            self.curMaxElecKw[i], self.veh.mcMaxElecInKw)
+        self.curMaxAvailElecKw[i] = min(self.curMaxElecKw[i], self.veh.mcMaxElecInKw)
 
         if self.curMaxElecKw[i] > 0:
             # limit power going into e-machine controller to
