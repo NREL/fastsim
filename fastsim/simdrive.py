@@ -1165,14 +1165,18 @@ class SimDriveClassic(object):
         self.accelKw[1:] = (self.veh.vehKg / (2.0 * (self.cyc.secs[1:]))) * (
             self.mpsAch[1:] ** 2 - self.mpsAch[:-1] ** 2) / 1_000
 
-        self.trace_miss_dist_frac = (self.distMeters.sum() - self.cyc.cycDistMeters.sum()) / self.cyc.cycDistMeters.sum()
+        self.trace_miss = False
+        self.trace_miss_dist_frac = abs(self.distMeters.sum() - self.cyc.cycDistMeters.sum()) / self.cyc.cycDistMeters.sum()
         if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol:
+            self.trace_miss = True
             print('Warning: Trace miss distance fraction:', np.round(self.trace_miss_dist_frac, 5))
             print('Exceeds tolerance of: ', np.round(self.sim_params.trace_miss_dist_tol, 5))
-
-        self.trace_miss_speed_mps = max(self.mpsAch - self.cyc.cycMps) 
-        if self.trace_miss_dist_frac > self.sim_params.trace_miss_speed_mps_tol:
-            print('Warning: Trace miss speed fraction:', np.round(self.trace_miss_speed_mps, 5))
+        self.trace_miss_speed_mps = max([
+            abs(self.mpsAch[i] - self.cyc.cycMps[i]) for i in range(len(self.cyc.time_s))
+        ])
+        if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol:
+            self.trace_miss = True
+            print('Warning: Trace miss speed [m/s]:', np.round(self.trace_miss_speed_mps, 5))
             print('Exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
         
 
