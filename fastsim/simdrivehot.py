@@ -222,7 +222,7 @@ class VehicleThermal(object):
         # exhaust port (exhport) model 'internal' or 'external' w.r.t. fastsim 
         self.exhport_model = 'external'
         # thermal conductance [W/K] for heat transfer to ambient
-        self.exhport_hA_ext = 0.05 
+        self.exhport_hA_to_fc = 0.05 
         # thermal conductance [W/K] for heat transfer from exhaust
         self.exhport_hA_int = 0.05 
         # exhaust port thermal capacitance [kJ/K]
@@ -401,7 +401,7 @@ class SimDriveHot(SimDriveClassic):
         # fuel converter convection to ambient [kW]
         self.fc_qdot_to_amb_kW = np.zeros(len_cyc, dtype=np.float64)
         # fuel converter heat loss to heater core [kW]
-        self.fc_clnt_to_htr_kW = np.zeros(len_cyc, dtype=np.float64)
+        self.fc_qdot_to_htr_kW = np.zeros(len_cyc, dtype=np.float64)
         # heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
         self.fc_htc_to_amb = np.zeros(len_cyc, dtype=np.float64)
         # lambda (air/fuel ratio normalized w.r.t. stoich air/fuel ratio) -- 1 is reasonable default
@@ -428,8 +428,8 @@ class SimDriveHot(SimDriveClassic):
         self.exhport_exh_te_in_degC = np.append(
             self.exhport_te_init_degC, np.zeros(len_cyc - 1, dtype=np.float64)
         )
-        # heat transfer from exhport to ambient [kW]
-        self.exhport_qdot_to_amb = np.zeros(len_cyc, dtype=np.float64)
+        # heat transfer from exhport to block [kW]
+        self.exhport_qdot_to_block = np.zeros(len_cyc, dtype=np.float64)
         # catalyst temperature [°C]
         self.exhport_te_degC = np.append(
             self.exhport_te_init_degC, np.zeros(len_cyc - 1, dtype=np.float64)
@@ -538,7 +538,7 @@ class SimDriveHot(SimDriveClassic):
         assert self.vehthrm.hvac_model in ['external', 'internal'], "Invalid option."
 
         if self.vehthrm.hvac_model == 'internal':
-            self.fc_clnt_to_htr_kW[i] = 0.0 # placeholder
+            self.fc_qdot_to_htr_kW[i] = 0.0 # placeholder
 
         # verify that valid option is specified
         assert self.vehthrm.cabin_model in ['external', 'internal'], "Invalid option."
@@ -561,7 +561,7 @@ class SimDriveHot(SimDriveClassic):
         if self.vehthrm.fc_model == 'internal':
             # Energy balance for fuel converter
             self.fc_te_degC[i] = self.fc_te_degC[i-1] + (
-               self.fc_qdot_kW[i] - self.fc_qdot_to_amb_kW[i] - self.fc_clnt_to_htr_kW[i]
+               self.fc_qdot_kW[i] - self.fc_qdot_to_amb_kW[i] - self.fc_qdot_to_htr_kW[i] + self.exhport_qdot_to_block[i]
             ) / self.vehthrm.fc_C_kJ__K * self.cyc.dt_s[i]
        
     def set_fc_thermal_calcs(self, i):
@@ -638,7 +638,7 @@ class SimDriveHot(SimDriveClassic):
                 ) * (self.cab_te_degC[i-1] - self.amb_te_degC[i-1])
         
         self.cab_te_degC[i] = self.cab_te_degC[i-1] + \
-            (self.fc_clnt_to_htr_kW[i] - self.cab_qdot_to_amb_kW[i]) / self.vehthrm.cab_C_kJ__K * self.cyc.dt_s[i]
+            (self.fc_qdot_to_htr_kW[i] - self.cab_qdot_to_amb_kW[i]) / self.vehthrm.cab_C_kJ__K * self.cyc.dt_s[i]
 
     def set_exhport_thermal_calcs(self, i):
         """
@@ -657,37 +657,45 @@ class SimDriveHot(SimDriveClassic):
 
         # calculate heat transfer coeff. from exhaust port to ambient [W / (m ** 2 * K)]
 
-        if (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]) > 0:
-            # if exhaust port is hotter than ambient, make sure heat transfer cannot violate the first law
-            self.exhport_qdot_to_amb[i] = min(
-                # nominal heat transfer to ambient
-                self.vehthrm.exhport_hA_ext * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]), 
-                # max possible heat transfer to ambient
-                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
+        if (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]) > 0:
+            # if exhaust port is hotter than block, make sure heat transfer cannot violate the first law
+            self.exhport_qdot_to_block[i] = min(
+                # nominal heat transfer to block
+                self.vehthrm.exhport_hA_to_fc * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]), 
+                # max possible heat transfer to block
+                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]) / self.cyc.dt_s[i] 
             )
         else:
             # exhaust port cooler than ambient
-            self.exhport_qdot_to_amb[i] = max(
-                # nominal heat transfer to ambient
-                self.vehthrm.exhport_hA_ext * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]), 
-                # max possible heat transfer to ambient
-                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.amb_te_degC[i-1]) / self.cyc.dt_s[i] 
+            self.exhport_qdot_to_block[i] = max(
+                # nominal heat transfer to block
+                self.vehthrm.exhport_hA_to_fc * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]), 
+                # max possible heat transfer to block
+                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]) / self.cyc.dt_s[i] 
             )                
 
         if (self.exhport_exh_te_in_degC[i] - self.exhport_te_degC[i-1]) > 0:
             # exhaust hotter than exhaust port
             self.exhport_qdot_from_exh[i] = min(
+                # nominal heat transfer to exhaust port
+                self.vehthrm.exhport_hA_int * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]), 
+                # max possible heat transfer from exhaust
                 self.exh_mdot[i] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
+                # max possible heat transfer to exhaust port
                 self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
             )
         else:
             # exhaust cooler than exhaust port
             self.exhport_qdot_from_exh[i] = max(
+                # nominal heat transfer to exhaust port
+                self.vehthrm.exhport_hA_int * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]), 
+                # max possible heat transfer from exhaust
                 self.exh_mdot[i] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
+                # max possible heat transfer to exhaust port
                 self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
             )
 
-        self.exhport_qdot_net[i] = self.exhport_qdot_from_exh[i] - self.exhport_qdot_to_amb[i]
+        self.exhport_qdot_net[i] = self.exhport_qdot_from_exh[i] - self.exhport_qdot_to_block[i]
         self.exhport_te_degC[i] = (
             self.exhport_te_degC[i-1] + self.exhport_qdot_net[i] / (self.vehthrm.exhport_C_kJ__K * 1e3) * self.cyc.dt_s[i]
         )
