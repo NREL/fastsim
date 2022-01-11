@@ -88,8 +88,6 @@ small_baseline_eff = np.array(
 modern_max = 0.95
 mcPercOutArray = np.linspace(0, 1, 101)
 
-ENERGY_AUDIT_ERROR_TOLERANCE = 0.02 # i.e., 2%
-
 chgEff = 0.86 # charger efficiency for PEVs, this should probably not be hard coded long term
 
 # loading long arrays from json file
