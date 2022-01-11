@@ -554,10 +554,8 @@ class SimDriveClassic(object):
             (self.cyc.cycMph[i] + self.mpsAch[i-1] * params.mphPerMps) / 2.0 + 1 - 0)))
         self.cycRegenBrakeKw[i] = max(min(
             self.curMaxMechMcKwIn[i] * self.veh.transEff, self.regenContrLimKwPerc[i] * -self.cycWheelKwReq[i]), 0)
-        self.cycFricBrakeKw[i] = - \
-            min(self.cycRegenBrakeKw[i] + self.cycWheelKwReq[i], 0)
-        self.cycTransKwOutReq[i] = self.cycWheelKwReq[i] + \
-            self.cycFricBrakeKw[i]
+        self.cycFricBrakeKw[i] = - min(self.cycRegenBrakeKw[i] + self.cycWheelKwReq[i], 0)
+        self.cycTransKwOutReq[i] = self.cycWheelKwReq[i] + self.cycFricBrakeKw[i]
 
         if self.cycTransKwOutReq[i] <= self.curMaxTransKwOut[i]:
             self.cycMet[i] = True
