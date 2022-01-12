@@ -645,12 +645,11 @@ class SimDriveHot(SimDriveClassic):
         Solve exhport thermal behavior.
         """
 
-        # TODO make exhaust port interact thermally with engine rather than ambient
         self.exh_mdot[i] = self.fsKwOutAch[i-1] / self.props.fuel_lhv_kJ__kg * (1 + self.props.fuel_afr_stoich)
         self.exh_Hdot_kW[i] = (1 - self.fc_qdot_per_net_heat[i]) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
         
         if self.exh_mdot[i] > 5e-4:
-            self.exhport_exh_te_in_degC[i] = self.air.get_te_from_h(self.exh_Hdot_kW[i] * 1e3 / self.exh_mdot[i])
+            self.exhport_exh_te_in_degC[i] = max(self.air.get_te_from_h(self.exh_Hdot_kW[i] * 1e3 / self.exh_mdot[i]), self.fc_te_adiabatic_degC[i])
         else:
             # when flow is small, assume inlet temperature is temporally constant
             self.exhport_exh_te_in_degC[i] = self.exhport_exh_te_in_degC[i-1]
@@ -658,7 +657,7 @@ class SimDriveHot(SimDriveClassic):
         # calculate heat transfer coeff. from exhaust port to ambient [W / (m ** 2 * K)]
 
         if (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]) > 0:
-            # if exhaust port is hotter than block, make sure heat transfer cannot violate the first law
+            # if exhaust port is hotter than block, make sure heat transfer cannot violate the second law
             self.exhport_qdot_to_block[i] = min(
                 # nominal heat transfer to block
                 self.vehthrm.exhport_hA_to_fc * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]), 
@@ -666,7 +665,7 @@ class SimDriveHot(SimDriveClassic):
                 self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]) / self.cyc.dt_s[i] 
             )
         else:
-            # exhaust port cooler than ambient
+            # exhaust port cooler than the block
             self.exhport_qdot_to_block[i] = max(
                 # nominal heat transfer to block
                 self.vehthrm.exhport_hA_to_fc * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]), 
@@ -745,8 +744,9 @@ class SimDriveHot(SimDriveClassic):
             )                
         
         if self.exh_mdot[i] > 5e-4:
-            self.cat_exh_te_in_degC[i] = self.air.get_te_from_h(
-                (self.exh_Hdot_kW[i] * 1e3 - self.exhport_qdot_from_exh[i]) / self.exh_mdot[i])
+            self.cat_exh_te_in_degC[i] = max(
+                self.air.get_te_from_h((self.exh_Hdot_kW[i] * 1e3 - self.exhport_qdot_from_exh[i]) / self.exh_mdot[i]),
+                self.fc_te_adiabatic_degC[i])
         else:
             # when flow is small, assume inlet temperature is temporally constant
             self.cat_exh_te_in_degC[i] = self.cat_exh_te_in_degC[i-1]
