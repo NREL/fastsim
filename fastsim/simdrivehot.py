@@ -649,7 +649,9 @@ class SimDriveHot(SimDriveClassic):
         self.exh_Hdot_kW[i] = (1 - self.fc_qdot_per_net_heat[i]) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
         
         if self.exh_mdot[i] > 5e-4:
-            self.exhport_exh_te_in_degC[i] = max(self.air.get_te_from_h(self.exh_Hdot_kW[i] * 1e3 / self.exh_mdot[i]), self.fc_te_adiabatic_degC[i])
+            self.exhport_exh_te_in_degC[i] = min(
+                self.air.get_te_from_h(self.exh_Hdot_kW[i] * 1e3 / self.exh_mdot[i]), 
+                self.fc_te_adiabatic_degC[i])
         else:
             # when flow is small, assume inlet temperature is temporally constant
             self.exhport_exh_te_in_degC[i] = self.exhport_exh_te_in_degC[i-1]
@@ -744,7 +746,7 @@ class SimDriveHot(SimDriveClassic):
             )                
         
         if self.exh_mdot[i] > 5e-4:
-            self.cat_exh_te_in_degC[i] = max(
+            self.cat_exh_te_in_degC[i] = min(
                 self.air.get_te_from_h((self.exh_Hdot_kW[i] * 1e3 - self.exhport_qdot_from_exh[i]) / self.exh_mdot[i]),
                 self.fc_te_adiabatic_degC[i])
         else:
