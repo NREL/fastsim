@@ -678,21 +678,21 @@ class SimDriveHot(SimDriveClassic):
             # exhaust hotter than exhaust port
             self.exhport_qdot_from_exh[i] = min(
                 # nominal heat transfer to exhaust port
-                self.vehthrm.exhport_hA_int * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]), 
+                self.vehthrm.exhport_hA_int * (self.exhport_exh_te_in_degC[i] - self.exhport_te_degC[i-1]), 
                 # max possible heat transfer from exhaust
-                self.exh_mdot[i] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
+                self.exh_mdot[i] * (self.air.get_h(self.exhport_exh_te_in_degC[i]) - self.air.get_h(self.exhport_te_degC[i-1])),
                 # max possible heat transfer to exhaust port
-                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
+                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
             )
         else:
             # exhaust cooler than exhaust port
             self.exhport_qdot_from_exh[i] = max(
                 # nominal heat transfer to exhaust port
-                self.vehthrm.exhport_hA_int * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]), 
+                self.vehthrm.exhport_hA_int * (self.exhport_exh_te_in_degC[i] - self.exhport_te_degC[i-1]), 
                 # max possible heat transfer from exhaust
-                self.exh_mdot[i] * (self.air.get_h(self.exhport_exh_te_in_degC[i-1]) - self.air.get_h(self.exhport_te_degC[i-1])),
+                self.exh_mdot[i] * (self.air.get_h(self.exhport_exh_te_in_degC[i]) - self.air.get_h(self.exhport_te_degC[i-1])),
                 # max possible heat transfer to exhaust port
-                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i-1] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
+                self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_exh_te_in_degC[i] - self.exhport_te_degC[i-1]) / self.cyc.dt_s[i]
             )
 
         self.exhport_qdot_net[i] = self.exhport_qdot_from_exh[i] - self.exhport_qdot_to_amb[i]
