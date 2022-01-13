@@ -192,7 +192,7 @@ class VehicleThermal(object):
         # if 'linear', temparature has linear impact on efficiency.  If 'exponential',
         # temperature has exponential impact on temperature
         self.fc_temp_eff_model = 'exponential'  
-        # component on which fc temp-dependence is dependent.  'catalyst' or 'fuel converter'
+        # component on which fc temp-dependence is dependent.  'catalyst', 'hybrid', or 'fuel converter'
         self.fc_temp_eff_component = 'fuel converter'
         # offset for scaling FC efficiency w.r.t. to temperature in linear or exponential model
         self.fc_temp_eff_offset = 0.1
@@ -239,6 +239,10 @@ class VehicleThermal(object):
         # parameter for heat transfer coeff [W / (m ** 2 * K)] from catalyst to ambient
         # during vehicle stop
         self.cat_h_to_amb_stop = 50.0
+        # lightoff temperature to be used when self.fc_temp_eff_component == 'hybrid'
+        self.cat_te_lightoff_degC = 400.0
+        # cat engine efficiency coeff. to be used when self.fc_temp_eff_component == 'hybrid'
+        self.cat_fc_eta_coeff = 0.5
 
         # model choices
         # HVAC model 'internal' or 'external' w.r.t. fastsim
@@ -643,8 +647,8 @@ class SimDriveHot(SimDriveClassic):
         """
         Solve exhport thermal behavior.
         """
-
-        self.exh_mdot[i] = self.fsKwOutAch[i-1] / self.props.fuel_lhv_kJ__kg * (1 + self.props.fuel_afr_stoich)
+        # lambda index may need adjustment, depending on how this ends up being modeled.
+        self.exh_mdot[i] = self.fsKwOutAch[i-1] / self.props.fuel_lhv_kJ__kg * (1 + self.props.fuel_afr_stoich * self.fc_lambda[i-1])
         self.exh_Hdot_kW[i] = (1 - self.fc_qdot_per_net_heat[i]) * (self.fcKwInAch[i-1] - self.fcKwOutAch[i-1])
         
         if self.exh_mdot[i] > 5e-4:
@@ -658,7 +662,7 @@ class SimDriveHot(SimDriveClassic):
         # calculate heat transfer coeff. from exhaust port to ambient [W / (m ** 2 * K)]
 
         if (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]) > 0:
-            # if exhaust port is hotter than block, make sure heat transfer cannot violate the second law
+            # if exhaust port is hotter than ambient, make sure heat transfer cannot violate the second law
             self.exhport_qdot_to_amb[i] = min(
                 # nominal heat transfer to amb
                 self.vehthrm.exhport_hA_to_amb * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]), 
@@ -666,7 +670,7 @@ class SimDriveHot(SimDriveClassic):
                 self.vehthrm.exhport_C_kJ__K * 1e3 * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]) / self.cyc.dt_s[i] 
             )
         else:
-            # exhaust port cooler than the block
+            # exhaust port cooler than the ambient
             self.exhport_qdot_to_amb[i] = max(
                 # nominal heat transfer to amb
                 self.vehthrm.exhport_hA_to_amb * (self.exhport_te_degC[i-1] - self.fc_te_degC[i-1]), 
@@ -811,7 +815,7 @@ class SimDriveHot(SimDriveClassic):
         else:
             # verify that valid option is specified
             assert self.vehthrm.fc_temp_eff_model in ['linear', 'exponential'], "Invalid option."
-            assert self.vehthrm.fc_temp_eff_component in ['fuel converter', 'catalyst'], "Invalid option."
+            assert self.vehthrm.fc_temp_eff_component in ['fuel converter', 'catalyst', 'hybrid'], "Invalid option."
 
             if self.vehthrm.fc_temp_eff_model == 'linear':
                 # scaling for multiplying efficiency to be dependent on temperature.
@@ -821,14 +825,23 @@ class SimDriveHot(SimDriveClassic):
                         )
                 )
             elif self.vehthrm.fc_temp_eff_model == 'exponential':
+                if self.vehthrm.fc_temp_eff_component in ['fuel converter', 'hybrid']:
+                    fc_eff_temp_degC = self.fc_te_degC[i]
+                elif self.vehthrm.fc_temp_eff_component == 'catalyst':
+                    fc_eff_temp_degC = self.fc_te_degC[i]
+
                 self.fc_eta_temp_coeff[i] = max(self.vehthrm.fc_temp_eff_min, 
                     1 - np.exp(-max(
-                        (
-                            self.fc_te_degC[i] if self.vehthrm.fc_temp_eff_component == 'fuel converter' 
-                            else self.cat_te_degC[i] if self.vehthrm.fc_temp_eff_component == 'catalyst'
-                            else 0 # this option should never happen
-                        ) - self.vehthrm.fc_temp_eff_offset, 0) / self.vehthrm.fc_temp_eff_slope)
+                        fc_eff_temp_degC - self.vehthrm.fc_temp_eff_offset, 0) / self.vehthrm.fc_temp_eff_slope)
                 )
+
+                if self.vehthrm.fc_temp_eff_component == 'hybrid':
+                    if self.cat_te_degC[i] < self.vehthrm.cat_te_lightoff_degC:
+                        # reduce efficiency to account for catalyst not being lit off
+                        self.fc_eta_temp_coeff[i] = max(
+                            self.vehthrm.cat_fc_eta_coeff,
+                            self.vehthrm.fc_temp_eff_min
+                        )
                 
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[-1] * self.fc_eta_temp_coeff[i])
