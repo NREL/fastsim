@@ -52,12 +52,12 @@ def run_python(use_jit=False, verbose=True):
 
     for vehno in vehicles:
         if use_jit:
-            veh = vehicle.Vehicle(vehno, verbose=verbose).get_numba_veh()
+            veh = vehicle.Vehicle(vehno, verbose=False).get_numba_veh()
         else:
-            veh = vehicle.Vehicle(vehno, verbose=verbose)
+            veh = vehicle.Vehicle(vehno, verbose=False)
         if verbose:
             print('Running ' + veh.Scenario_name)
-        res_python[veh.Scenario_name] = simdrivelabel.get_label_fe(veh)
+        res_python[veh.Scenario_name] = simdrivelabel.get_label_fe(veh, verbose=False)
 
     t1 = time.time()
     print()
@@ -254,7 +254,7 @@ class TestExcel(unittest.TestCase):
     def test_without_jit(self):
         "Compares non-jit results against archived Excel results."
         print(f"Running {type(self)}.test_without_jit")
-        res_python = run_python(verbose=False, use_jit=False)
+        res_python = run_python(verbose=True, use_jit=False)
         res_excel = run_excel(prev_res_path=PREV_RES_PATH,
                               rerun_excel=False)
         res_comps = compare(res_python, res_excel, verbose=False)

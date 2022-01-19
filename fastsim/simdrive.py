@@ -754,10 +754,8 @@ class SimDriveClassic(object):
             self.mcElectInKwForMaxFcEff[i] = 0
 
         elif self.transKwOutAch[i] < self.veh.maxFcEffKw:
-
             if self.fcKwGapFrEff[i] == self.veh.maxMotorKw:
-                self.mcElectInKwForMaxFcEff[i] = -self.fcKwGapFrEff[i] / \
-                    self.veh.mcFullEffArray[-1]
+                self.mcElectInKwForMaxFcEff[i] = -self.fcKwGapFrEff[i] / self.veh.mcFullEffArray[-1]
             else:
                 self.mcElectInKwForMaxFcEff[i] = (-self.fcKwGapFrEff[i] / 
                     self.veh.mcFullEffArray[max(1, 
@@ -765,7 +763,6 @@ class SimDriveClassic(object):
                 )
 
         else:
-
             if self.fcKwGapFrEff[i] == self.veh.maxMotorKw:
                 self.mcElectInKwForMaxFcEff[i] = self.veh.mcKwInArray[len(
                     self.veh.mcKwInArray) - 1]
@@ -920,16 +917,14 @@ class SimDriveClassic(object):
         elif self.mcElecKwInIfFcIsReq[i] > 0:
 
             if self.mcElecKwInIfFcIsReq[i] == max(self.veh.mcKwInArray):
-                self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * \
-                    self.veh.mcFullEffArray[-1]
+                self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * self.veh.mcFullEffArray[-1]
             else:
                 self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] * self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) - 0.01, self.mcElecKwInIfFcIsReq[i])) - 1)]
 
         else:
             if self.mcElecKwInIfFcIsReq[i] * -1 == max(self.veh.mcKwInArray):
-                self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / \
-                    self.veh.mcFullEffArray[-1]
+                self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / self.veh.mcFullEffArray[-1]
             else:
                 self.mcKwIfFcIsReq[i] = self.mcElecKwInIfFcIsReq[i] / (self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) - 0.01, self.mcElecKwInIfFcIsReq[i] * -1)) - 1)])
@@ -966,16 +961,14 @@ class SimDriveClassic(object):
         elif self.mcMechKwOutAch[i] < 0:
 
             if self.mcMechKwOutAch[i] * -1 == max(self.veh.mcKwInArray):
-                self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * \
-                    self.veh.mcFullEffArray[-1]
+                self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * self.veh.mcFullEffArray[-1]
             else:
                 self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] * self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwInArray > min(max(self.veh.mcKwInArray) - 0.01, self.mcMechKwOutAch[i] * -1)) - 1)]
 
         else:
             if self.veh.maxMotorKw == self.mcMechKwOutAch[i]:
-                self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / \
-                    self.veh.mcFullEffArray[-1]
+                self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / self.veh.mcFullEffArray[-1]
             else:
                 self.mcElecKwInAch[i] = self.mcMechKwOutAch[i] / self.veh.mcFullEffArray[max(1, np.argmax(
                     self.veh.mcKwOutArray > min(self.veh.maxMotorKw - 0.01, self.mcMechKwOutAch[i])) - 1)]
@@ -1126,7 +1119,8 @@ class SimDriveClassic(object):
         self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
 
         # energy audit calcs
-        self.dragKw = self.cycDragKw
+        # TODO: verify that cyc\w+Kw and \w+Kw should be the same because maybe they shouldn't
+        self.dragKw = self.cycDragKw 
         self.dragKj = (self.dragKw * self.cyc.secs).sum()
         self.ascentKw = self.cycAscentKw
         self.ascentKj = (self.ascentKw * self.cyc.secs).sum()
@@ -1169,15 +1163,17 @@ class SimDriveClassic(object):
         self.trace_miss_dist_frac = abs(self.distMeters.sum() - self.cyc.cycDistMeters.sum()) / self.cyc.cycDistMeters.sum()
         if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol:
             self.trace_miss = True
-            print('Warning: Trace miss distance fraction:', np.round(self.trace_miss_dist_frac, 5))
-            print('Exceeds tolerance of: ', np.round(self.sim_params.trace_miss_dist_tol, 5))
+            if self.sim_params.verbose:
+                print('Warning: Trace miss distance fraction:', np.round(self.trace_miss_dist_frac, 5))
+                print('Exceeds tolerance of: ', np.round(self.sim_params.trace_miss_dist_tol, 5))
         self.trace_miss_speed_mps = max([
             abs(self.mpsAch[i] - self.cyc.cycMps[i]) for i in range(len(self.cyc.time_s))
         ])
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol:
             self.trace_miss = True
-            print('Warning: Trace miss speed [m/s]:', np.round(self.trace_miss_speed_mps, 5))
-            print('Exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
+            if self.sim_params.verbose:
+                print('Warning: Trace miss speed [m/s]:', np.round(self.trace_miss_speed_mps, 5))
+                print('Exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
         
 
 
