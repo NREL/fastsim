@@ -196,19 +196,12 @@ class SimDriveClassic(object):
                 print('Must enter a valid initial SOC between 0.0 and 1.0')
                 print('Running standard initial SOC controls')
                 initSoc = None
-            else:
-                self.sim_drive_walk(initSoc, auxInKwOverride)
 
         elif self.veh.vehPtType == 1:  # Conventional
-
             # If no EV / Hybrid components, no SOC considerations.
-
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
 
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
         elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
-
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
@@ -229,19 +222,11 @@ class SimDriveClassic(object):
                     ess2fuelKwh = 0.0
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
 
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
         elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
-
             # If EV, initializing initial SOC to maximum SOC.
-
             initSoc = self.veh.maxSoc
 
-            self.sim_drive_walk(initSoc, auxInKwOverride)
-
-        else:
-
-            self.sim_drive_walk(initSoc, auxInKwOverride)
+        self.sim_drive_walk(initSoc, auxInKwOverride)
 
         self.set_post_scalars()
 
@@ -291,7 +276,6 @@ class SimDriveClassic(object):
             if self.i <= 1:
                 debug = True
 
-        
         if self.sim_params.missed_trace_correction: 
             self.cyc.cycSecs = self.cyc.secs.cumsum() # correct cycSecs based on actual trace
 
@@ -315,37 +299,7 @@ class SimDriveClassic(object):
         self.set_fc_power(self.i)
 
         if self.sim_params.missed_trace_correction:
-            time_dilation_factor = [1, 1]
-            if self.distMeters[self.i] > 0:
-                time_dilation_factor[0] = 1.1
-                time_dilation_factor[1] =  min(max(
-                    (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
-                     + self.distMeters[self.i]) / self.distMeters[self.i] + 1,
-                    self.sim_params.min_time_dilation),
-                    self.sim_params.max_time_dilation)
-
-            # loop to iterate until time dilation factor converges
-            while abs(time_dilation_factor[-1] - time_dilation_factor[-2]) / \
-                abs(time_dilation_factor[-2]) > self.sim_params.time_dilation_tol:
-                self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
-                    time_dilation_factor[-1]
-                self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
-                self.set_misc_calcs(self.i)
-                self.set_comp_lims(self.i)
-                self.set_power_calcs(self.i)
-                self.set_ach_speed(self.i)
-                self.set_hybrid_cont_calcs(self.i)
-                self.set_fc_forced_state(self.i)
-                self.set_hybrid_cont_decisions(self.i)
-                self.set_fc_power(self.i)
-                time_dilation_factor.append(min(max(
-                    (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
-                     + self.distMeters[self.i]) / self.distMeters[self.i] + 1,
-                    self.sim_params.min_time_dilation),
-                    self.sim_params.max_time_dilation))
-            
-            self.trace_miss_iters[self.i] = len(time_dilation_factor)
-
+            self.set_time_dilation(self.i)
 
         self.i += 1 # increment time step counter
 
@@ -1075,6 +1029,39 @@ class SimDriveClassic(object):
         self.fsKwhOutAch[i] = self.fsKwOutAch[i] * \
             self.cyc.secs[i] * (1 / 3_600.0)
 
+    def set_time_dilation(self, i):
+        time_dilation_factor = [1, 1]
+        if self.distMeters[self.i] > 0:
+            time_dilation_factor[0] = 1.1
+            time_dilation_factor[1] =  min(max(
+                (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
+                    + self.distMeters[self.i]) / self.distMeters[self.i] + 1,
+                self.sim_params.min_time_dilation),
+                self.sim_params.max_time_dilation)
+
+        # loop to iterate until time dilation factor converges
+        while abs(time_dilation_factor[-1] - time_dilation_factor[-2]) / \
+            abs(time_dilation_factor[-2]) > self.sim_params.time_dilation_tol:
+            self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
+                time_dilation_factor[-1]
+            self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
+            self.set_misc_calcs(self.i)
+            self.set_comp_lims(self.i)
+            self.set_power_calcs(self.i)
+            self.set_ach_speed(self.i)
+            self.set_hybrid_cont_calcs(self.i)
+            self.set_fc_forced_state(self.i)
+            self.set_hybrid_cont_decisions(self.i)
+            self.set_fc_power(self.i)
+            time_dilation_factor.append(min(max(
+                (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
+                    + self.distMeters[self.i]) / self.distMeters[self.i] + 1,
+                self.sim_params.min_time_dilation),
+                self.sim_params.max_time_dilation))
+        
+        self.trace_miss_iters[self.i] = len(time_dilation_factor)
+
+    
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
         This includes mpgge, various energy metrics, and others"""
