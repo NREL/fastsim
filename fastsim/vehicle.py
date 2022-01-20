@@ -3,7 +3,6 @@ Module containing classes and methods for for loading vehicle data. For example 
 """
 
 ### Import necessary python modules
-import warnings
 import numpy as np
 import pandas as pd
 import types as pytypes

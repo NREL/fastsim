@@ -14,7 +14,7 @@ import unittest
 from fastsim import simdrive, vehicle, cycle
 
 
-def main(use_jitclass=True, err_tol=1e-4, verbose=True):
+def main(use_jitclass=True, err_tol=1e-4, verbose=True, sim_drive_verbose=False):
     """Runs test test for 26 vehicles and 3 cycles.  
     Test compares cumulative positive and negative energy 
     values to a benchmark from earlier.
@@ -26,6 +26,8 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True):
         default of 1e-4 was selected to prevent minor errors from showing.  
         As of 31 December 2020, a recent python update caused errors that 
         are smaller than this and therefore ok to neglect.
+    verbose: if True, prints progress
+    sim_drive_verbose: if True, prints warnings about trace miss and similar
 
     Returns:
     --------
@@ -66,10 +68,13 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True):
 
             if use_jitclass:
                 sim_drive = simdrive.SimDriveJit(cyc, veh)
-                sim_drive.sim_drive()
             else:
                 sim_drive = simdrive.SimDriveClassic(cyc, veh)
-                sim_drive.sim_drive()
+            # US06 is known to cause substantial trace miss.
+            # This should probably be addressed at some point, but for now, 
+            # the tolerances are set high to avoid lots of printed warnings.
+            sim_drive.sim_params.verbose = sim_drive_verbose
+            sim_drive.sim_drive()
                 
             sim_drive_post = simdrive.SimDrivePost(sim_drive)
             # sim_drive_post.set_battery_wear()
@@ -135,7 +140,7 @@ class TestSimDriveSweep(unittest.TestCase):
     def test_with_jit(self):
         "Compares jit results against benchmark."
         print(f"Running {type(self)}.test_with_jit.") 
-        df_err, _, _ = main(use_jitclass=True, verbose=False)
+        df_err, _, _ = main(use_jitclass=True, verbose=True)
         self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
 
     # this implicitly works if test_with_jit works, but may 

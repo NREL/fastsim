@@ -13,7 +13,7 @@ cyc_hwfet = cycle.Cycle('hwfet')
 sim_params = simdrive.SimDriveParamsClassic()
 props = params.PhysicalProperties()
 
-def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
+def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False, chgEff=None):
     """Generates label fuel economy (FE) values for a provided vehicle.
     
     Arguments:
@@ -25,6 +25,8 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
         If True, sim_drive objects for each cycle are also returned.  
     verbose : boolean, default false
         If true, print out key results
+    sim_drive_verbose: boolean, default False,
+        if True, prints warnings about trace miss and similar
     chgEff : float between 0 and 1
         Override for chgEff -- currently not functional
         
@@ -63,7 +65,9 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
         out['numba_used'] = False
 
     # run simdrive for non-phev powertrains
+    sd['udds'].sim_params.verbose = sim_drive_verbose
     sd['udds'].sim_drive()
+    sd['hwy'].sim_params.verbose = sim_drive_verbose
     sd['hwy'].sim_drive()
     
     # find year-based adjustment parameters
@@ -163,7 +167,9 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
             # By assuming that the battery SOC depletion per mile is constant across cycles,
             # the first cycle can be extrapolated until charge sustaining kicks in.
             
+            sd['udds'].sim_params.verbose = sim_drive_verbose
             sd['udds'].sim_drive(veh.maxSoc)
+            sd['hwy'].sim_params.verbose = sim_drive_verbose
             sd['hwy'].sim_drive(veh.maxSoc)
 
             phev_calcs = {} # init dict for phev calcs
@@ -212,6 +218,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 phev_calc['transInitSoc'] = veh.maxSoc - np.floor(phev_calc['cdCycs']) * phev_calc['deltaSoc']
                 
                 # run the transition cycle
+                sd[key].sim_params.verbose = sim_drive_verbose
                 sd[key].sim_drive(phev_calc['transInitSoc'])
                 # charge depletion battery kW-hr
                 phev_calc['transEssKwh'] = (phev_calc['cd_ess_kWh__mi'] * sd[key].distMiles.sum() * 
@@ -231,6 +238,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
                 # charge sustaining
                 # the 0.01 is here to be consistent with Excel
                 initSoc = sd[key].veh.minSoc + 0.01
+                sd[key].sim_params.verbose = sim_drive_verbose
                 sd[key].sim_drive(initSoc)
                 # charge sustaining battery kW-hr
                 phev_calc['csEssKwh'] = 0 # (sd[key].soc[0] - sd[key].soc[-1]) * veh.maxEssKwh
@@ -443,6 +451,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
     else:
         sd['accel'] = simdrive.SimAccelTest(cyc['accel'], veh)
 
+    sd['accel'].sim_params.verbose = sim_drive_verbose
     sd['accel'].sim_drive()
     if (sd['accel'].mphAch >= 60).any():
         out['netAccel'] = np.interp(
@@ -457,13 +466,20 @@ def get_label_fe(veh, full_detail=False, verbose=False, chgEff=None):
 
     if full_detail and verbose:
         for key in out.keys():
-            print(key + f': {out[key]:.5g}')
+            try:
+                print(key + f': {out[key]:.5g}')
+            except:
+                print(key + f': {out[key]}')
+    
         return out, sd
     elif full_detail:
         return out, sd
     elif verbose:
         for key in out.keys():
-            print(key + f': {out[key]:.5g}')
+            try:
+                print(key + f': {out[key]:.5g}')
+            except:
+                print(key + f': {out[key]}')
         return out
     else:
         return out
