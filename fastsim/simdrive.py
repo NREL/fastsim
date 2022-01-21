@@ -27,10 +27,11 @@ class SimDriveParamsClassic(object):
         """Default values that affect simulation behavior.  
         Can be modified after instantiation."""
         self.missed_trace_correction = False  # if True, missed trace correction is active, default = False
-        self.max_time_dilation = 10  # maximum time dilation factor to "catch up" with trace
-        self.min_time_dilation = 0.1  # minimum time dilation to let trace "catch up"
+        self.max_time_dilation = 2  # maximum time dilation factor to "catch up" with trace
+        self.min_time_dilation = 0.5  # minimum time dilation to let trace "catch up"
         self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
-        self.trace_miss_speed_mps_tol = 0.001 # threshold of error in speed [m/s] that triggers warning
+        self.max_trace_miss_iters = 5 # number of iterations to achieve time dilation correction
+        self.trace_miss_speed_mps_tol = 1.0 # threshold of error in speed [m/s] that triggers warning
         self.trace_miss_dist_tol = 0.001 # threshold of fractional eror in distance that triggers warning
         self.sim_count_max = 30  # max allowable number of HEV SOC iterations
         self.verbose = True  # show warning and other messages
@@ -279,25 +280,27 @@ class SimDriveClassic(object):
         if self.sim_params.missed_trace_correction: 
             self.cyc.cycSecs = self.cyc.secs.cumsum() # correct cycSecs based on actual trace
 
-        if (self.cyc.secs > 5).any() and self.sim_params.verbose:
+        if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
             if self.sim_params.missed_trace_correction:
-                print('Max time dilation factor =', (round(self.cyc.secs.max(), 3)))
+                print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
             print("Warning: large time steps affect accuracy significantly.") 
             print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
             print('Max time step =', (round(self.cyc.secs.max(), 3)))
 
+    def solve_step(self, i):
+        """Perform all the calculations to solve 1 time step."""
+        self.set_misc_calcs(i)
+        self.set_comp_lims(i)
+        self.set_power_calcs(i)
+        self.set_ach_speed(i)
+        self.set_hybrid_cont_calcs(i)
+        self.set_fc_forced_state(i) # can probably be *mostly* done with list comprehension in post processing
+        self.set_hybrid_cont_decisions(i)
+        self.set_fc_power(i)
+
     def sim_drive_step(self):
         """Step through 1 time step."""
-
-        self.set_misc_calcs(self.i)
-        self.set_comp_lims(self.i)
-        self.set_power_calcs(self.i)
-        self.set_ach_speed(self.i)
-        self.set_hybrid_cont_calcs(self.i)
-        self.set_fc_forced_state(self.i) # can probably be *mostly* done with list comprehension in post processing
-        self.set_hybrid_cont_decisions(self.i)
-        self.set_fc_power(self.i)
-
+        self.solve_step(self.i)
         if self.sim_params.missed_trace_correction:
             self.set_time_dilation(self.i)
 
@@ -1030,36 +1033,52 @@ class SimDriveClassic(object):
             self.cyc.secs[i] * (1 / 3_600.0)
 
     def set_time_dilation(self, i):
-        time_dilation_factor = [1, 1]
-        if self.distMeters[self.i] > 0:
-            time_dilation_factor[0] = 1.1
-            time_dilation_factor[1] =  min(max(
-                (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
-                    + self.distMeters[self.i]) / self.distMeters[self.i] + 1,
-                self.sim_params.min_time_dilation),
-                self.sim_params.max_time_dilation)
+        trace_met = abs(
+            self.cyc0.cycDistMeters[:i].sum() - self.distMeters[:i].sum()) / self.cyc0.cycDistMeters[:i].sum() < self.sim_params.time_dilation_tol
 
-        # loop to iterate until time dilation factor converges
-        while abs(time_dilation_factor[-1] - time_dilation_factor[-2]) / \
-            abs(time_dilation_factor[-2]) > self.sim_params.time_dilation_tol:
-            self.cyc.secs[self.i] = self.cyc0.secs[self.i] * \
-                time_dilation_factor[-1]
-            self.cyc.cycDistMeters[self.i] = self.cyc.cycMps[self.i] * self.cyc.secs[self.i]
-            self.set_misc_calcs(self.i)
-            self.set_comp_lims(self.i)
-            self.set_power_calcs(self.i)
-            self.set_ach_speed(self.i)
-            self.set_hybrid_cont_calcs(self.i)
-            self.set_fc_forced_state(self.i)
-            self.set_hybrid_cont_decisions(self.i)
-            self.set_fc_power(self.i)
-            time_dilation_factor.append(min(max(
-                (self.cyc0.cycDistMeters[:self.i].sum() - self.distMeters[:self.i].sum()
-                    + self.distMeters[self.i]) / self.distMeters[self.i] + 1,
-                self.sim_params.min_time_dilation),
-                self.sim_params.max_time_dilation))
-        
-        self.trace_miss_iters[self.i] = len(time_dilation_factor)
+        if not(trace_met):
+            self.trace_miss_iters[i] += 1
+
+            d_short = [self.cyc0.cycDistMeters[:i].sum() - self.distMeters[:i].sum()] # positive if behind trace
+            t_dilation = [
+                1, # no time dilation initially
+                d_short / self.cyc.dt_s[i] / self.mpsAch[i] # initial guess, speed that needed to be achived per speed that was achieved
+            ]
+            # add time dilation factor * step size to current and subsequent times
+            self.cyc.time_s[i:] += self.cyc.dt_s[i] * t_dilation[-1]
+            self.solve_step(i)
+            trace_met = (
+                # convergence criteria
+                (abs(self.cyc0.cycDistMeters[:i].sum() - self.distMeters[:i].sum()) / 
+                    self.cyc0.cycDistMeters[:i].sum() < self.sim_params.time_dilation_tol) or
+                # exceeding max time dilation
+                (t_dilation[-1] > self.sim_params.max_time_dilation) or
+                # lower than min time dilation
+                (t_dilation[-1] < self.sim_params.min_time_dilation)
+            )
+
+        while not(trace_met):
+            # iterate newton's method until time dilation has converged or other exit criteria trigger trace_met == True
+            # distance shortfall [m]            
+            # correct time steps
+            d_short.append(self.cyc0.cycDistMeters[:i].sum() - self.distMeters[:i].sum())
+            t_dilation.append(t_dilation[-1] - (t_dilation[-1] - t_dilation[-2]) / (d_short[-2] - d_short[-1]) * d_short[-1])
+            self.cyc.time_s[i:] += self.cyc.dt_s[i] * t_dilation[-1]
+
+            self.solve_step(i)
+            self.trace_miss_iters[i] += 1
+
+            trace_met = (
+                # convergence criteria
+                (abs(self.cyc0.cycDistMeters[:i].sum() - self.distMeters[:i].sum()) / 
+                    self.cyc0.cycDistMeters[:i].sum() < self.sim_params.time_dilation_tol) or
+                # max iterations
+                (self.trace_miss_iters[i] >= self.sim_params.max_trace_miss_iters) or
+                # exceeding max time dilation
+                (t_dilation[-1] > self.sim_params.max_time_dilation) or
+                # lower than min time dilation
+                (t_dilation[-1] < self.sim_params.min_time_dilation)
+            )
 
     
     def set_post_scalars(self):
@@ -1072,8 +1091,7 @@ class SimDriveClassic(object):
             self.mpgge = 0.0
 
         else:
-            self.mpgge = self.distMiles.sum() / \
-                (self.fsKwhOutAch.sum() / self.props.kWhPerGGE)
+            self.mpgge = self.distMiles.sum() / (self.fsKwhOutAch.sum() / self.props.kWhPerGGE)
 
         self.roadwayChgKj = (self.roadwayChgKwOutAch * self.cyc.secs).sum()
         self.essDischgKj = - \
