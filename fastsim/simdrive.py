@@ -301,7 +301,7 @@ class SimDriveClassic(object):
     def sim_drive_step(self):
         """Step through 1 time step."""
         self.solve_step(self.i)
-        if self.sim_params.missed_trace_correction:
+        if self.sim_params.missed_trace_correction and (self.cyc0.cycDistMeters[:self.i].sum() > 0):
             self.set_time_dilation(self.i)
 
         self.i += 1 # increment time step counter
@@ -1044,6 +1044,7 @@ class SimDriveClassic(object):
                 1, # no time dilation initially
                 d_short[-1] / self.cyc0.dt_s[i] / self.mpsAch[i] # initial guess, speed that needed to be achived per speed that was achieved
             ]
+
             # add time dilation factor * step size to current and subsequent times
             self.cyc.time_s[i:] += self.cyc.dt_s[i] * t_dilation[-1]
             self.solve_step(i)
@@ -1079,7 +1080,6 @@ class SimDriveClassic(object):
                 # lower than min time dilation
                 (t_dilation[-1] < self.sim_params.min_time_dilation)
             )
-
     
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
