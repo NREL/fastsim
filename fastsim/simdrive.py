@@ -1042,7 +1042,7 @@ class SimDriveClassic(object):
             d_short = [self.cyc0.cycDistMeters[:i].sum() - self.distMeters[:i].sum()] # positive if behind trace
             t_dilation = [
                 1, # no time dilation initially
-                d_short / self.cyc.dt_s[i] / self.mpsAch[i] # initial guess, speed that needed to be achived per speed that was achieved
+                d_short[-1] / self.cyc0.dt_s[i] / self.mpsAch[i] # initial guess, speed that needed to be achived per speed that was achieved
             ]
             # add time dilation factor * step size to current and subsequent times
             self.cyc.time_s[i:] += self.cyc.dt_s[i] * t_dilation[-1]
