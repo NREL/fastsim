@@ -1165,7 +1165,7 @@ class SimDriveClassic(object):
             self.mpsAch[1:] ** 2 - self.mpsAch[:-1] ** 2) / 1_000
 
         self.trace_miss = False
-        self.trace_miss_dist_frac = abs(self.distMeters.sum() - self.cyc.cycDistMeters.sum()) / self.cyc.cycDistMeters.sum()
+        self.trace_miss_dist_frac = abs(self.distMeters.sum() - self.cyc0.cycDistMeters.sum()) / self.cyc0.cycDistMeters.sum()
         if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol:
             self.trace_miss = True
             if self.sim_params.verbose:
