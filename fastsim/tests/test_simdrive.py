@@ -66,3 +66,19 @@ class TestSimDriveClassic(unittest.TestCase):
             sd1.fsKwOutAch.sum() + sd2.fsKwOutAch.sum(), 
             sdtot.fsKwOutAch.sum(),
             places=5)
+
+    def test_time_dilation(self):
+        veh = vehicle.Vehicle(1)
+        cyc = cycle.Cycle(cyc_dict={
+            'cycSecs': np.arange(10),
+            'cycMps': np.append(2, np.ones(9) * 6),
+        })
+        sd = simdrive.SimDriveClassic(cyc, veh)
+        sd.sim_params.missed_trace_correction = True
+        sd.sim_params.max_time_dilation = 0.05 # maximum upper margin for time dilation
+        sd.sim_drive()
+
+        trace_miss_corrected = (
+            abs(sd.distMeters.sum() - sd.cyc0.cycDistMeters.sum()) / sd.cyc0.cycDistMeters.sum()) < sd.sim_params.time_dilation_tol
+
+        self.assertTrue(trace_miss_corrected)
