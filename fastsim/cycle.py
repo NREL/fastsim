@@ -129,14 +129,16 @@ class Cycle(object):
 
     time_s = property(get_time_s, set_time_s)
 
+    # time step deltas
     @property
     def secs(self):
-        return np.append(0.0, self.cycSecs[1:] - self.cycSecs[:-1]) # time step deltas
+        return np.append(0.0, self.cycSecs[1:] - self.cycSecs[:-1]) 
 
     @property
     def dt_s(self):
         return self.secs
     
+    # distance at each time step
     @property
     def cycDistMeters(self):
         return self.cycMps * self.secs
