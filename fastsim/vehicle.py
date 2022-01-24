@@ -229,12 +229,10 @@ class Vehicle(object):
 
         mc_large_eff_len_err = f'len(mcPwrOutPerc) ({len(self.mcPwrOutPerc)}) is not' +\
             f'equal to len(largeBaselineEff) ({len(self.largeBaselineEff)})'
-        assert len(self.mcPwrOutPerc) == len(
-            self.largeBaselineEff), mc_large_eff_len_err
+        assert len(self.mcPwrOutPerc) == len(self.largeBaselineEff), mc_large_eff_len_err
         mc_small_eff_len_err = f'len(mcPwrOutPerc) ({len(self.mcPwrOutPerc)}) is not' +\
             f'equal to len(smallBaselineEff) ({len(self.smallBaselineEff)})'
-        assert len(self.mcPwrOutPerc) == len(
-            self.smallBaselineEff), mc_small_eff_len_err
+        assert len(self.mcPwrOutPerc) == len(self.smallBaselineEff), mc_small_eff_len_err
 
         # set stopStart if not provided
         if 'stopStart' in self.__dir__() and np.isnan(self.__getattribute__('stopStart')):
@@ -255,7 +253,7 @@ class Vehicle(object):
         
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
-            
+        
         self.set_init_calcs(
             # provide kwargs for load-time overrides
             # -1 is used as a surrogate for None, which is not an option in numba
@@ -302,6 +300,16 @@ class Vehicle(object):
             with proportional scaling.  Default of -1 has no effect.  
         """
         
+        if self.Scenario_name != 'Template Vehicle for setting up data types':
+            if self.vehPtType == params.BEV:
+                assert self.maxFuelStorKw == 0, 'maxFuelStorKw must be zero for provided BEV powertrain type'
+                assert self.fuelStorKwh  == 0, 'fuelStorKwh must be zero for provided BEV powertrain type'
+                assert self.maxFuelConvKw == 0, 'maxFuelConvKw must be zero for provided BEV powertrain type'
+            elif (self.vehPtType == params.CONV) and not(self.stopStart):
+                assert self.maxMotorKw == 0, 'maxMotorKw must be zero for provided Conv powertrain type'
+                assert self.maxEssKw == 0, 'maxEssKw must be zero for provided Conv powertrain type'
+                assert self.maxEssKwh == 0, 'maxEssKwh must be zero for provided Conv powertrain type'
+
         ### Build roadway power lookup table
         self.MaxRoadwayChgKw = np.zeros(6)
         self.chargingOn = False
