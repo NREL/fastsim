@@ -82,3 +82,20 @@ class TestSimDriveClassic(unittest.TestCase):
             abs(sd.distMeters.sum() - sd.cyc0.cycDistMeters.sum()) / sd.cyc0.cycDistMeters.sum()) < sd.sim_params.time_dilation_tol
 
         self.assertTrue(trace_miss_corrected)
+
+    def test_stop_start(self):
+        cyc = cycle.Cycle('udds').get_cyc_dict()
+        cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(cyc, 130))
+
+        veh = vehicle.Vehicle(1)
+        veh.stopStart = True
+        veh.maxMotorKw = 1
+        veh.maxEssKw = 5
+        veh.maxEssKwh = 1
+        veh.set_init_calcs()
+
+        sd = simdrive.SimDriveClassic(cyc, veh)
+        sd.sim_drive()
+
+        self.assertTrue(sd.fcKwInAch[10] == 0)
+        self.assertTrue(sd.fcKwInAch[37] == 0)
