@@ -31,10 +31,11 @@ class SimDriveParamsClassic(object):
         self.max_time_dilation = 1.0  
         # minimum time dilation margin to let trace "catch up" -- e.g. -0.5 means 50% reduction in step size
         self.min_time_dilation = -0.5  
-        self.time_dilation_tol = 1e-3  # convergence criteria for time dilation
+        self.time_dilation_tol = 5e-4  # convergence criteria for time dilation
         self.max_trace_miss_iters = 5 # number of iterations to achieve time dilation correction
         self.trace_miss_speed_mps_tol = 1.0 # threshold of error in speed [m/s] that triggers warning
-        self.trace_miss_dist_tol = 0.001 # threshold of fractional eror in distance that triggers warning
+        self.trace_miss_time_tol = 1e-3 # threshold for printing warning when time dilation is active
+        self.trace_miss_dist_tol = 1e-3 # threshold of fractional eror in distance that triggers warning
         self.sim_count_max = 30  # max allowable number of HEV SOC iterations
         self.verbose = True  # show warning and other messages
         self.newton_gain = 0.9 # newton solver gain
@@ -1183,11 +1184,21 @@ class SimDriveClassic(object):
 
         self.trace_miss = False
         self.trace_miss_dist_frac = abs(self.distMeters.sum() - self.cyc0.cycDistMeters.sum()) / self.cyc0.cycDistMeters.sum()
-        if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol:
-            self.trace_miss = True
-            if self.sim_params.verbose:
-                print('Warning: Trace miss distance fraction:', np.round(self.trace_miss_dist_frac, 5))
-                print('Exceeds tolerance of: ', np.round(self.sim_params.trace_miss_dist_tol, 5))
+        self.trace_miss_time_frac = abs(self.cyc.time_s[-1] - self.cyc0.time_s[-1]) / self.cyc0.time_s[-1]
+
+        if not(self.sim_params.missed_trace_correction):
+            if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol:
+                self.trace_miss = True
+                if self.sim_params.verbose:
+                    print('Warning: Trace miss distance fraction:', np.round(self.trace_miss_dist_frac, 5))
+                    print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_dist_tol, 5))
+        else:
+            if self.trace_miss_time_frac > self.sim_params.trace_miss_time_tol:
+                self.trace_miss = True
+                if self.sim_params.verbose:
+                    print('Warning: Trace miss time fraction:', np.round(self.trace_miss_time_frac, 5))
+                    print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_time_tol, 5))
+
         self.trace_miss_speed_mps = max([
             abs(self.mpsAch[i] - self.cyc.cycMps[i]) for i in range(len(self.cyc.time_s))
         ])
@@ -1195,7 +1206,7 @@ class SimDriveClassic(object):
             self.trace_miss = True
             if self.sim_params.verbose:
                 print('Warning: Trace miss speed [m/s]:', np.round(self.trace_miss_speed_mps, 5))
-                print('Exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
+                print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
         
 
 
