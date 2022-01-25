@@ -177,25 +177,28 @@ class SimDriveClassic(object):
         self.trace_miss_iters = np.zeros(len_cyc, dtype=np.float64)
         self.newton_iters = np.zeros(len_cyc, dtype=np.float64)
 
-    def sim_drive(self, initSoc=None, auxInKwOverride=np.zeros(1, dtype=np.float64)):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+    def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
+        """
+        Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
-        initSoc: (optional) initial SOC for electrified vehicles.  
-            Must be between 0 and 1.
+        initSoc: initial SOC for electrified vehicles.  
+            Leave empty for default value.  Otherwise, must be between 0 and 1.
+            Numba's jitclass does not support keyword args so this allows for optionally
+            passing initSoc as positional argument.
         auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
-                Default of np.zeros(1) causes veh.auxKw to be used.
-                If zero is actually desired as an override, either set
-                veh.auxKw = 0 before instantiaton of SimDrive*, or use
-                `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the
-                final value to non-zero prevents override mechanism.  
+            Default of np.zeros(1) causes veh.auxKw to be used.
+            If zero is actually desired as an override, either set
+            veh.auxKw = 0 before instantiaton of SimDrive*, or use
+            `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the
+            final value to non-zero prevents override mechanism.  
         """
 
         if (auxInKwOverride == 0).all():
             auxInKwOverride = self.auxInKw
         self.hev_sim_count = 0
 
-        if initSoc != None:
+        if initSoc != -1:
             if initSoc > 1.0 or initSoc < 0.0:
                 print('Must enter a valid initial SOC between 0.0 and 1.0')
                 print('Running standard initial SOC controls')
@@ -205,7 +208,7 @@ class SimDriveClassic(object):
             # If no EV / Hybrid components, no SOC considerations.
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
 
-        elif self.veh.vehPtType == 2 and initSoc == None:  # HEV
+        elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
@@ -226,7 +229,7 @@ class SimDriveClassic(object):
                     ess2fuelKwh = 0.0
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
 
-        elif (self.veh.vehPtType == 3 and initSoc == None) or (self.veh.vehPtType == 4 and initSoc == None):  # PHEV and BEV
+        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1):  # PHEV and BEV
             # If EV, initializing initial SOC to maximum SOC.
             initSoc = self.veh.maxSoc
 
