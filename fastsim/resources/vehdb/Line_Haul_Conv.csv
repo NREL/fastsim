@@ -1,6 +1,6 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,Line Haul Conv,
-Vehicle,vehPtType,1,
+Vehicle,vehPtType,Conv,
 ,dragCoef,0.546,
 ,frontalAreaM2,10.4,
 ,gliderKg,11776,

@@ -1,6 +1,6 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,2012 Ford Fusion,
-Vehicle,vehPtType,1,
+Vehicle,vehPtType,Conv,
 ,dragCoef,0.393,
 ,frontalAreaM2,2.12,
 ,gliderKg,791.0702892,

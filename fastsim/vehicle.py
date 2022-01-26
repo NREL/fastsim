@@ -37,6 +37,13 @@ TEMPLATE_VEHDF = get_template_df()
 # list of optional parameters that do not get assigned as vehicle attributes
 OPT_INIT_PARAMS = ['fcPeakEffOverride', 'mcPeakEffOverride']
 
+VEH_PT_TYPES = ["Conv", "HEV", "PHEV", "BEV"]
+
+CONV = VEH_PT_TYPES[0]
+HEV = VEH_PT_TYPES[1]
+PHEV = VEH_PT_TYPES[2]
+BEV = VEH_PT_TYPES[3]
+        
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
 
@@ -50,7 +57,7 @@ class Vehicle(object):
         
         See below for `load_veh` method documentaion.\n""" + self.load_veh.__doc__
         
-        self.props = params.PhysicalProperties()
+        self.props = params.PhysicalProperties() 
         self.fcPercOutArray = params.fcPercOutArray
         self.mcPercOutArray = params.mcPercOutArray
 
@@ -301,11 +308,11 @@ class Vehicle(object):
         """
         
         if self.Scenario_name != 'Template Vehicle for setting up data types':
-            if self.vehPtType == params.BEV:
+            if self.vehPtType == BEV:
                 assert self.maxFuelStorKw == 0, 'maxFuelStorKw must be zero for provided BEV powertrain type'
                 assert self.fuelStorKwh  == 0, 'fuelStorKwh must be zero for provided BEV powertrain type'
                 assert self.maxFuelConvKw == 0, 'maxFuelConvKw must be zero for provided BEV powertrain type'
-            elif (self.vehPtType == params.CONV) and not(self.stopStart):
+            elif (self.vehPtType == CONV) and not(self.stopStart):
                 assert self.maxMotorKw == 0, 'maxMotorKw must be zero for provided Conv powertrain type'
                 assert self.maxEssKw == 0, 'maxEssKw must be zero for provided Conv powertrain type'
                 assert self.maxEssKwh == 0, 'maxEssKwh must be zero for provided Conv powertrain type'

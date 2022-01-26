@@ -1,6 +1,6 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,2017 Toyota Highlander 3.5 L,
-Vehicle,vehPtType,1,
+Vehicle,vehPtType,Conv,
 ,dragCoef,0.1966,calculated from https://www.epa.gov/compliance-and-fuel-economy-data/data-cars-used-testing-fuel-economy
 ,frontalAreaM2,6,best guess
 ,gliderKg,791.0702892,overriden

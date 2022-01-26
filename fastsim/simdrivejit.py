@@ -46,26 +46,3 @@ class SimAccelTestJit(SimAccelTest):
         self.cyc0 = cyc.copy() # this cycle is not to be manipulated
         self.sim_params = SimDriveParams()
         self.props = paramsjit.PhysicalPropertiesJit()
-
-    def sim_drive(self):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
-
-        if self.veh.vehPtType == 1:  # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_walk(initSoc)
-
-        elif self.veh.vehPtType == 2:  # HEV
-
-            initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
-            self.sim_drive_walk(initSoc)
-
-        else:
-
-            # If EV, initializing initial SOC to maximum SOC.
-            initSoc = self.veh.maxSoc
-            self.sim_drive_walk(initSoc)
-
-        self.set_post_scalars()

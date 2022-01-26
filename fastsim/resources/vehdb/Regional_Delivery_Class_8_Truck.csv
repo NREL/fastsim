@@ -1,6 +1,6 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,Regional Delivery Class 8 Truck,
-Vehicle,vehPtType,1,
+Vehicle,vehPtType,Conv,
 ,dragCoef,0.8,
 ,frontalAreaM2,10,
 ,gliderKg,13625,

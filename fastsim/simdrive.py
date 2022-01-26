@@ -7,7 +7,7 @@ import numpy as np
 import re
 
 from . import params, cycle, vehicle
-
+from .vehicle import CONV, HEV, PHEV, BEV
 
 class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.
@@ -204,11 +204,11 @@ class SimDriveClassic(object):
                 print('Running standard initial SOC controls')
                 initSoc = None
 
-        elif self.veh.vehPtType == 1:  # Conventional
+        elif self.veh.vehPtType == CONV:  # Conventional
             # If no EV / Hybrid components, no SOC considerations.
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
 
-        elif self.veh.vehPtType == 2 and initSoc == -1:  # HEV
+        elif self.veh.vehPtType == HEV and initSoc == -1:  # HEV
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
@@ -229,7 +229,7 @@ class SimDriveClassic(object):
                     ess2fuelKwh = 0.0
                 initSoc = min(1.0, max(0.0, self.soc[-1]))
 
-        elif (self.veh.vehPtType == 3 and initSoc == -1) or (self.veh.vehPtType == 4 and initSoc == -1):  # PHEV and BEV
+        elif (self.veh.vehPtType == PHEV and initSoc == -1) or (self.veh.vehPtType == BEV and initSoc == -1):  # PHEV and BEV
             # If EV, initializing initial SOC to maximum SOC.
             initSoc = self.veh.maxSoc
 
@@ -962,7 +962,7 @@ class SimDriveClassic(object):
         if self.veh.maxMotorKw == 0:
             self.mcMechKwOutAch[i] = 0
 
-        elif self.fcForcedOn[i] and self.canPowerAllElectrically[i] and (self.veh.vehPtType == 2.0 or self.veh.vehPtType == 3.0) and self.veh.fcEffType !=4:
+        elif self.fcForcedOn[i] and self.canPowerAllElectrically[i] and (self.veh.vehPtType == HEV or self.veh.vehPtType == PHEV) and (self.veh.fcEffType !=4):
             self.mcMechKwOutAch[i] = self.mcMechKw4ForcedFc[i]
 
         elif self.transKwInAch[i] <= 0:
@@ -1309,14 +1309,14 @@ class SimAccelTest(SimDriveClassic):
     def sim_drive(self):
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
 
-        if self.veh.vehPtType == 1:  # Conventional
+        if self.veh.vehPtType == CONV:  # Conventional
 
             # If no EV / Hybrid components, no SOC considerations.
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)
 
-        elif self.veh.vehPtType == 2:  # HEV
+        elif self.veh.vehPtType == HEV:  # HEV
 
             initSoc = (self.veh.maxSoc + self.veh.minSoc) / 2.0
             self.sim_drive_walk(initSoc)

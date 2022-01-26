@@ -1,6 +1,6 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,Class 4 Truck (Isuzu NPR HD),
-Vehicle,vehPtType,1,
+Vehicle,vehPtType,Conv,
 ,dragCoef,0.6078,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
 ,frontalAreaM2,8.686,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
 ,gliderKg,0,using override

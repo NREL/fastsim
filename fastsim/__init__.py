@@ -8,8 +8,6 @@ from fastsim import utilities as utils
 from . import simdrive, vehicle, cycle, buildspec
 from . import parametersjit, vehiclejit, cyclejit, simdrivejit, tests
 
-# convenient aliases
-
 from pkg_resources import get_distribution
 
 __version__ = get_distribution('fastsim').version

@@ -1,6 +1,6 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,2016 TOYOTA Corolla 4cyl 2WD,
-Vehicle,vehPtType,1,
+Vehicle,vehPtType,Conv,
 ,dragCoef,0.3,
 ,frontalAreaM2,2.574,
 ,gliderKg,1045.636,
