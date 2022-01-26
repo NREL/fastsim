@@ -542,7 +542,25 @@ class SimDriveClassic(object):
         else:
             self.cycMet[i] = False
             self.transKwOutAch[i] = self.curMaxTransKwOut[i]
-        
+
+        if self.transKwOutAch[i] > 0:
+            self.transKwInAch[i] = self.transKwOutAch[i] / self.veh.transEff
+        else:
+            self.transKwInAch[i] = self.transKwOutAch[i] * self.veh.transEff
+
+        if self.cycMet[i]:
+
+            if self.veh.fcEffType == 4:
+                self.minMcKw2HelpFc[i] = max(
+                    self.transKwInAch[i], -self.curMaxMechMcKwIn[i])
+
+            else:
+                self.minMcKw2HelpFc[i] = max(
+                    self.transKwInAch[i] - self.curMaxFcKwOut[i], -self.curMaxMechMcKwIn[i])
+        else:
+            self.minMcKw2HelpFc[i] = max(
+                self.curMaxMcKwOut[i], -self.curMaxMechMcKwIn[i])
+
     def set_ach_speed(self, i):
         """Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
         Arguments
@@ -634,30 +652,11 @@ class SimDriveClassic(object):
         self.distMeters[i] = self.mpsAch[i] * self.cyc.secs[i]
         self.distMiles[i] = self.distMeters[i] * (1.0 / params.metersPerMile)
 
-        
     def set_hybrid_cont_calcs(self, i):
         """Hybrid control calculations.  
         Arguments
         ------------
         i: index of time step"""
-
-        if self.transKwOutAch[i] > 0:
-            self.transKwInAch[i] = self.transKwOutAch[i] / self.veh.transEff
-        else:
-            self.transKwInAch[i] = self.transKwOutAch[i] * self.veh.transEff
-
-        if self.cycMet[i]:
-
-            if self.veh.fcEffType == 4:
-                self.minMcKw2HelpFc[i] = max(
-                    self.transKwInAch[i], -self.curMaxMechMcKwIn[i])
-
-            else:
-                self.minMcKw2HelpFc[i] = max(
-                    self.transKwInAch[i] - self.curMaxFcKwOut[i], -self.curMaxMechMcKwIn[i])
-        else:
-            self.minMcKw2HelpFc[i] = max(
-                self.curMaxMcKwOut[i], -self.curMaxMechMcKwIn[i])
 
         if self.veh.noElecSys:
             self.regenBufferSoc[i] = 0
@@ -1237,7 +1236,6 @@ class SimDriveClassic(object):
         self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
 
         # energy audit calcs
-        # TODO: verify that cyc\w+Kw and \w+Kw should be the same because maybe they shouldn't
         self.dragKw = self.cycDragKw 
         self.dragKj = (self.dragKw * self.cyc.secs).sum()
         self.ascentKw = self.cycAscentKw
