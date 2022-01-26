@@ -142,6 +142,13 @@ class Cycle(object):
     @property
     def cycDistMeters(self):
         return self.cycMps * self.secs
+
+    @property
+    def delta_elev_m(self):
+        """
+        Cumulative elevation change w.r.t. to initial
+        """
+        return (self.cycDistMeters * self.cycGrade).cumsum()
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
