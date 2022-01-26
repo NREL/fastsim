@@ -7,7 +7,8 @@ import numpy as np
 import re
 
 from . import params, cycle, vehicle
-from .vehicle import CONV, HEV, PHEV, BEV
+# these imports are needed for numba to type these correctly
+from .vehicle import CONV, HEV, PHEV, BEV 
 
 class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.

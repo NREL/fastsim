@@ -37,12 +37,19 @@ TEMPLATE_VEHDF = get_template_df()
 # list of optional parameters that do not get assigned as vehicle attributes
 OPT_INIT_PARAMS = ['fcPeakEffOverride', 'mcPeakEffOverride']
 
-VEH_PT_TYPES = ["Conv", "HEV", "PHEV", "BEV"]
+VEH_PT_TYPES = ("Conv", "HEV", "PHEV", "BEV")
 
 CONV = VEH_PT_TYPES[0]
 HEV = VEH_PT_TYPES[1]
 PHEV = VEH_PT_TYPES[2]
 BEV = VEH_PT_TYPES[3]
+
+FC_EFF_TYPES = ("SI", "Atkinson", "Diesel", "H2FC", "HD_Diesel")
+SI = FC_EFF_TYPES[0]
+ATKINSON = FC_EFF_TYPES[1]
+DIESEL = FC_EFF_TYPES[2]
+H2FC = FC_EFF_TYPES[3]
+HD_DIESEL = FC_EFF_TYPES[4]
         
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
@@ -183,24 +190,25 @@ class Vehicle(object):
         # Can also be input in CSV as array under column fcEffMap of form
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
+        self.fcEffType == str(self.fcEffType)
         try:
             # check if optional parameter fcEffMap is provided in vehicle csv file
             self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap']))
         
         except:
-            if self.fcEffType == 1:  # SI engine
+            if self.fcEffType == SI:  # SI engine
                 self.fcEffMap = params.fcEffMap_si
 
-            elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
+            elif self.fcEffType == ATKINSON:  # Atkinson cycle SI engine -- greater expansion
                 self.fcEffMap = params.fcEffMap_atk
 
-            elif self.fcEffType == 3:  # Diesel (compression ignition) engine
+            elif self.fcEffType == DIESEL:  # Diesel (compression ignition) engine
                 self.fcEffMap = params.fcEffMap_diesel
 
-            elif self.fcEffType == 4:  # H2 fuel cell
+            elif self.fcEffType == H2FC:  # H2 fuel cell
                 self.fcEffMap = params.fcEffMap_fuel_cell
 
-            elif self.fcEffType == 5:  # heavy duty Diesel engine
+            elif self.fcEffType == HD_DIESEL:  # heavy duty Diesel engine
                 self.fcEffMap = params.fcEffMap_hd_diesel
 
         try:

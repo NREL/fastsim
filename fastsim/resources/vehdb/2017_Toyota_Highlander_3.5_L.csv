@@ -15,7 +15,7 @@ Fuel / Fuel Converter,maxFuelStorKw,1000,
 ,fuelStorKwhPerKg,9.89473291,
 ,maxFuelConvKw,220,https://cars.usnews.com/cars-trucks/toyota/highlander/2017
 ,fcEffMap,,
-,fcEffType,1,
+,fcEffType,Conv,
 ,fuelConvSecsToPeakPwr,6,
 ,fuelConvBaseKg,61,
 ,fuelConvKwPerKg,0.47,
