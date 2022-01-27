@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 import inspect
 import ast
+import warnings
 
 # local modules
 from fastsim import parameters as params
@@ -191,6 +192,11 @@ class Vehicle(object):
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
         self.fcEffType == str(self.fcEffType)
+        if (self.fcEffType not in FC_EFF_TYPES) and verbose:
+            warn_str = f"""fcEffType {self.fcEffType} not in {FC_EFF_TYPES}.
+            If `fcPwrOutPerc` and `fcEffMap` are specified, this should be ok."""
+            warnings.warn(warn_str)
+
         try:
             # check if optional parameter fcEffMap is provided in vehicle csv file
             self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap']))
@@ -268,6 +274,8 @@ class Vehicle(object):
         
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
+
+        assert self.vehPtType in VEH_PT_TYPES
         
         self.set_init_calcs(
             # provide kwargs for load-time overrides
