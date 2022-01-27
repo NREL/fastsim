@@ -969,7 +969,7 @@ class SimDriveClassic(object):
 
         elif self.transKwInAch[i] <= 0:
 
-            if self.veh.fcEffType !=4 and self.veh.maxFuelConvKw > 0:
+            if self.veh.fcEffType !=H2FC and self.veh.maxFuelConvKw > 0:
                 if self.canPowerAllElectrically[i] == 1:
                     self.mcMechKwOutAch[i] = - \
                         min(self.curMaxMechMcKwIn[i], -self.transKwInAch[i])
