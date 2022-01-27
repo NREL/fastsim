@@ -9,6 +9,7 @@ import re
 from . import params, cycle, vehicle
 # these imports are needed for numba to type these correctly
 from .vehicle import CONV, HEV, PHEV, BEV 
+from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
 
 class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.
@@ -382,7 +383,7 @@ class SimDriveClassic(object):
         self.curMaxEssChgKw[i] = min(self.essCapLimChgKw[i], self.veh.maxEssKw)
 
         # Current maximum electrical power that can go toward propulsion, not including motor limitations
-        if self.veh.fcEffType == 4:
+        if self.veh.fcEffType == H2FC:
             self.curMaxElecKw[i] = self.curMaxFcKwOut[i] + self.curMaxRoadwayChgKw[i] + self.curMaxEssKwOut[i] - self.auxInKw[i]
 
         else:
@@ -468,7 +469,7 @@ class SimDriveClassic(object):
             / (1 + self.veh.vehCgM * self.veh.wheelCoefOfFric / self.veh.wheelBaseM) / 1_000 * self.maxTracMps[i]
         )
 
-        if self.veh.fcEffType == 4:
+        if self.veh.fcEffType == H2FC:
 
             if self.veh.noElecSys or self.veh.noElecAux or self.highAccFcOnTag[i]:
                 self.curMaxTransKwOut[i] = min(
@@ -551,7 +552,7 @@ class SimDriveClassic(object):
 
         if self.cycMet[i]:
 
-            if self.veh.fcEffType == 4:
+            if self.veh.fcEffType == H2FC:
                 self.minMcKw2HelpFc[i] = max(
                     self.transKwInAch[i], -self.curMaxMechMcKwIn[i])
 
@@ -963,7 +964,7 @@ class SimDriveClassic(object):
         if self.veh.maxMotorKw == 0:
             self.mcMechKwOutAch[i] = 0
 
-        elif self.fcForcedOn[i] and self.canPowerAllElectrically[i] and (self.veh.vehPtType == HEV or self.veh.vehPtType == PHEV) and (self.veh.fcEffType !=4):
+        elif self.fcForcedOn[i] and self.canPowerAllElectrically[i] and (self.veh.vehPtType == HEV or self.veh.vehPtType == PHEV) and (self.veh.fcEffType != H2FC):
             self.mcMechKwOutAch[i] = self.mcMechKw4ForcedFc[i]
 
         elif self.transKwInAch[i] <= 0:
@@ -1018,7 +1019,7 @@ class SimDriveClassic(object):
         if self.curMaxRoadwayChgKw[i] == 0:
             self.roadwayChgKwOutAch[i] = 0
 
-        elif self.veh.fcEffType == 4:
+        elif self.veh.fcEffType == H2FC:
             self.roadwayChgKwOutAch[i] = max(
                 0, 
                 self.mcElecKwInAch[i], 
@@ -1038,7 +1039,7 @@ class SimDriveClassic(object):
         if self.veh.maxEssKw == 0 or self.veh.maxEssKwh == 0:
             self.essKwOutAch[i] = 0
 
-        elif self.veh.fcEffType == 4:
+        elif self.veh.fcEffType == H2FC:
 
             if self.transKwOutAch[i] >=0:
                 self.essKwOutAch[i] = min(max(
@@ -1088,7 +1089,7 @@ class SimDriveClassic(object):
         if self.veh.maxFuelConvKw == 0:
             self.fcKwOutAch[i] = 0
 
-        elif self.veh.fcEffType == 4:
+        elif self.veh.fcEffType == H2FC:
             self.fcKwOutAch[i] = min(
                 self.curMaxFcKwOut[i], 
                 max(0, 
