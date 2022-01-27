@@ -293,7 +293,7 @@ class TestExcel(unittest.TestCase):
     #     self.assertEqual(failed_tests, [])
 
 if __name__ == "__main__":
-        res_python = run_python(verbose=True, use_jit=False)
+        res_python = run_python(verbose=True, use_jit=True)
         res_excel = run_excel(prev_res_path=PREV_RES_PATH,
                               rerun_excel=False)
         res_comps = compare(res_python, res_excel, verbose=False)
