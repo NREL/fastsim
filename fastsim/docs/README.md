@@ -92,6 +92,7 @@ in = component input
 out = component output  
 
 # Release Notes
+1.2.2 -- added checks for some conflicting vehicle parameters.  Vehicle parameters `fcEffType` and `vehPtType` must now be str type. 
 1.2.1 -- improved time dilation and added test for it
 1.1.7 -- get_numba_veh() and get_numba_cyc() can now be called from already jitted objects
 1.1.6 -- another bug fix for numba compatibility with corresponding unit test
