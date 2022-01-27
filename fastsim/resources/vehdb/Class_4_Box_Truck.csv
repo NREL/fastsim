@@ -15,7 +15,7 @@ Fuel / Fuel Converter,maxFuelStorKw,5000,
 ,fuelStorKwhPerKg,11.08,Diesel fuel has LHV of 39.9 MJ/kg per https://afdc.energy.gov/fuels/fuel_comparison_chart.pdf
 ,maxFuelConvKw,212,"Source: Aerodynamic Drag Reduction Technologies Testing of Heavy-Duty Vocational Vehicles and a Dry Van Trailer, Adam Ragatz and Matt Thornton, Table 8"
 ,fcEffMap,"[0.08,  0.12, 0.18, 0.21, 0.23, 0.28, 0.3, 0.34, 0.39, 0.39, 0.385, 0.37]",https://www.nrel.gov/transportation/refuel.html
-,fcEffType,3,
+,fcEffType,Diesel,
 ,fuelConvSecsToPeakPwr,6,
 ,fuelConvBaseKg,61,using override
 ,fuelConvKwPerKg,0.62,
