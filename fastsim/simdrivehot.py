@@ -838,10 +838,7 @@ class SimDriveHot(SimDriveClassic):
                 if self.vehthrm.fc_temp_eff_component == 'hybrid':
                     if self.cat_te_degC[i] < self.vehthrm.cat_te_lightoff_degC:
                         # reduce efficiency to account for catalyst not being lit off
-                        self.fc_eta_temp_coeff[i] = max(
-                            self.vehthrm.cat_fc_eta_coeff,
-                            self.vehthrm.fc_temp_eff_min
-                        )
+                        self.fc_eta_temp_coeff[i] = self.fc_eta_temp_coeff[i] * self.vehthrm.cat_fc_eta_coeff
                 
             if self.fcKwOutAch[i] == self.veh.fcMaxOutkW:
                 self.fcKwInAch[i] = self.fcKwOutAch[i] / (self.veh.fcEffArray[-1] * self.fc_eta_temp_coeff[i])
