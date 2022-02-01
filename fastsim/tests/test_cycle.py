@@ -30,3 +30,5 @@ class TestCycle(unittest.TestCase):
     # TODO: implement this
     # def test_copy(self):
     #     """checks that copy methods produce identical cycles"""
+
+    # TODO: port examples from ../docs/demo.py that use cycle functions to here

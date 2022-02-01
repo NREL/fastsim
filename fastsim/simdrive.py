@@ -295,6 +295,17 @@ class SimDriveClassic(object):
             print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
             print('Max time step =', (round(self.cyc.secs.max(), 3)))
 
+    def sim_drive_step(self):
+        """Step through 1 time step."""
+        self.solve_step(self.i)
+        if self.sim_params.missed_trace_correction and (self.cyc0.cycDistMeters[:self.i].sum() > 0):
+            self.set_time_dilation(self.i)
+        # TODO: implement something for coasting here
+        # if self.impose_coast[i] == True
+            # self.set_coast_speeed(i)
+
+        self.i += 1 # increment time step counter
+    
     def solve_step(self, i):
         """Perform all the calculations to solve 1 time step."""
         self.set_misc_calcs(i)
@@ -305,14 +316,6 @@ class SimDriveClassic(object):
         self.set_fc_forced_state(i) # can probably be *mostly* done with list comprehension in post processing
         self.set_hybrid_cont_decisions(i)
         self.set_fc_power(i)
-
-    def sim_drive_step(self):
-        """Step through 1 time step."""
-        self.solve_step(self.i)
-        if self.sim_params.missed_trace_correction and (self.cyc0.cycDistMeters[:self.i].sum() > 0):
-            self.set_time_dilation(self.i)
-
-        self.i += 1 # increment time step counter
 
     def set_misc_calcs(self, i):
         """Sets misc. calculations at time step 'i'
@@ -510,9 +513,8 @@ class SimDriveClassic(object):
             mpsAch = self.cyc.cycMps[i]
 
         self.cycDragKw[i] = 0.5 * self.props.airDensityKgPerM3 * self.veh.dragCoef * self.veh.frontalAreaM2 * (
-            (self.mpsAch[i-1] + mpsAch) / 2.0)**3 / 1_000
-        self.cycAccelKw[i] = (self.veh.vehKg / (2.0 * (self.cyc.secs[i]))) * \
-            (mpsAch ** 2 - self.mpsAch[i-1] ** 2) / 1_000
+            (self.mpsAch[i-1] + mpsAch) / 2.0) ** 3 / 1_000
+        self.cycAccelKw[i] = self.veh.vehKg / (2.0 * self.cyc.secs[i]) * (mpsAch ** 2 - self.mpsAch[i-1] ** 2) / 1_000
         self.cycAscentKw[i] = self.props.gravityMPerSec2 * np.sin(np.arctan(
             self.cyc.cycGrade[i])) * self.veh.vehKg * ((self.mpsAch[i-1] + mpsAch) / 2.0) / 1_000
         self.cycTracKwReq[i] = self.cycDragKw[i] + \
@@ -670,7 +672,7 @@ class SimDriveClassic(object):
         else:
             self.regenBufferSoc[i] = max(
                 (self.veh.maxEssKwh * self.veh.maxSoc - 
-                    0.5 * self.veh.vehKg * (self.cyc.cycMps[i]**2) * (1.0 / 1_000) * (1.0 / 3_600) * 
+                    0.5 * self.veh.vehKg * (self.cyc.cycMps[i] ** 2) * (1.0 / 1_000) * (1.0 / 3_600) * 
                     self.veh.mcPeakEff * self.veh.maxRegen) / self.veh.maxEssKwh, 
                 self.veh.minSoc
             )
@@ -1195,6 +1197,13 @@ class SimDriveClassic(object):
                 (t_dilation[-1] <= self.sim_params.min_time_dilation)
             )
     
+    def set_coast_speed(self, i):
+        """
+        Placeholder for method to impose coasting.
+        Might be good to include logic for deciding when to coast.
+        """
+        pass
+
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
         This includes mpgge, various energy metrics, and others"""
@@ -1264,7 +1273,7 @@ class SimDriveClassic(object):
             + self.mcKj + self.essEffKj + self.auxKj + self.fcKj
 
         self.keKj = 0.5 * self.veh.vehKg * \
-            (self.mpsAch[0]**2 - self.mpsAch[-1]**2) / 1_000
+            (self.mpsAch[0] ** 2 - self.mpsAch[-1] ** 2) / 1_000
         
         self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj
             ) / (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
