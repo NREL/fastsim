@@ -102,7 +102,7 @@ class TestCycle(unittest.TestCase):
         (are_equal, issues) = dicts_are_equal(cyc_dict, reconstituted_cycle, "original_cycle", "reconstituted_cycle")
         self.assertTrue(are_equal, "; ".join(issues))
 
-    def test_setting_microtrip_from_a_dict(self):
+    def test_set_from_dict_for_a_microtrip(self):
         "Test splitting into microtrips and setting is as expected"
         cyc = cycle.Cycle("udds")
         cyc_dict = cyc.get_cyc_dict()
@@ -111,6 +111,23 @@ class TestCycle(unittest.TestCase):
         mt_dict = cyc.get_cyc_dict()
         (are_equal, issues) = dicts_are_equal(microtrips[1], mt_dict, "first_microtrip", "microtrip_via_set_from_dict")
         self.assertTrue(are_equal, "; ".join(issues))
+    
+    def test_duration_of_concatenated_cycles_is_the_sum_of_the_components(self):
+        "Test that two cycles concatenated have the same duration as the sum of the constituents"
+        cyc1 = cycle.Cycle('udds')
+        cyc2 = cycle.Cycle('us06')
+        cyc_concat12 = cycle.concat([cyc1.get_cyc_dict(), cyc2.get_cyc_dict()])
+        cyc_concat21 = cycle.concat([cyc2.get_cyc_dict(), cyc1.get_cyc_dict()])
+        cyc12 = cycle.Cycle(cyc_dict=cyc_concat12)
+        cyc21 = cycle.Cycle(cyc_dict=cyc_concat21)
+        self.assertEqual(cyc_concat12["cycSecs"][-1], cyc_concat21["cycSecs"][-1])
+        self.assertEqual(cyc1.cycSecs[-1] + cyc2.cycSecs[-1], cyc_concat21["cycSecs"][-1])
+        self.assertEqual(cyc12.cycSecs[-1], cyc1.cycSecs[-1] + cyc2.cycSecs[-1])
+        self.assertEqual(cyc21.cycSecs[-1], cyc1.cycSecs[-1] + cyc2.cycSecs[-1])
+        self.assertEqual(len(cyc12.cycSecs), len(cyc1.cycSecs) + len(cyc2.cycSecs) - 1)
+        self.assertEqual(len(cyc12.cycMps), len(cyc1.cycMps) + len(cyc2.cycMps) - 1)
+        self.assertEqual(len(cyc12.cycGrade), len(cyc1.cycGrade) + len(cyc2.cycGrade) - 1)
+        self.assertEqual(len(cyc12.cycRoadType), len(cyc1.cycRoadType) + len(cyc2.cycRoadType) - 1)
 
 
     # TODO: implement this
