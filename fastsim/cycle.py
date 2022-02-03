@@ -302,37 +302,37 @@ def equals(c1, c2):
     return True
 
 
-def concat(cycles):
+def concat(cycles, name=None):
     """
-    (Array Dict) -> Dict
-    Concatenates cycles together one after another
+    Concatenates cycles together one after another into a single dictionary
+    - cycles: (Array Dict)
+    - name: (optional) string or None, if a string, adds the "name" key to the output
+    RETURNS: Dict
     """
     final_cycle = {'cycSecs': np.array([]),
                    'cycMps': np.array([]),
                    'cycGrade': np.array([]),
                    'cycRoadType': np.array([])}
+    keys = [k for k in final_cycle.keys()]
     first = True
     for cycle in cycles:
         if first:
-            final_cycle['cycSecs'] = np.array(cycle['cycSecs'])
-            final_cycle['cycMps'] = np.array(cycle['cycMps'])
-            final_cycle['cycGrade'] = np.array(cycle['cycGrade'])
-            final_cycle['cycRoadType'] = np.array(cycle['cycRoadType'])
+            for k in keys:
+                final_cycle[k] = np.array(cycle[k])
             first = False
         # if len(final_cycle['cycSecs']) == 0: # ???
         #     t0 = 0.0
         else:
-            t0 = final_cycle['cycSecs'][-1]
-            N_pre = len(final_cycle['cycSecs'])
-            final_cycle['cycSecs'] = np.concatenate([
-                final_cycle['cycSecs'],
-                np.array(cycle['cycSecs'][1:]) + t0])
-            final_cycle['cycMps'] = np.concatenate([
-                final_cycle['cycMps'],
-                np.array(cycle['cycMps'][1:])])
-            final_cycle['cycGrade'] = np.concatenate([
-                final_cycle['cycGrade'],
-                np.array(cycle['cycGrade'][1:])])
+            for k in keys:
+                if k == 'cycSecs':
+                    t0 = final_cycle[k][-1]
+                    final_cycle[k] = np.concatenate([
+                        final_cycle[k], np.array(cycle[k][1:]) + t0])
+                else:
+                    final_cycle[k] = np.concatenate([
+                        final_cycle[k], np.array(cycle[k][1:])])
+    if name is not None:
+        final_cycle["name"] = name
     return final_cycle
 
 
