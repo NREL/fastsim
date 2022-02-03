@@ -26,6 +26,16 @@ class TestCycle(unittest.TestCase):
             pd.DataFrame(cyc.get_cyc_dict()) ==
             pd.DataFrame(cyc_from_dict.get_cyc_dict())).all().all()
         )
+    
+    def test_that_udds_has_18_microtrips(self):
+        "Check that the number of microtrips equals expected"
+        cyc = cycle.Cycle("udds")
+        microtrips = cycle.to_microtrips(cyc.get_cyc_dict())
+        expected_number_of_microtrips = 18
+        actual_number_of_microtrips = len(microtrips)
+        self.assertTrue(
+            expected_number_of_microtrips == actual_number_of_microtrips,
+            f"Expected {expected_number_of_microtrips} microtrips in UDDS but got {actual_number_of_microtrips}")
 
     # TODO: implement this
     # def test_copy(self):
