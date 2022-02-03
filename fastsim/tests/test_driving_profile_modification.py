@@ -14,5 +14,5 @@ class TestDrivingProfileModification(unittest.TestCase):
     def tearDown(self) -> None:
         return super().tearDown()
     
-    def test_that_eco_approach_engages():
+    def test_that_eco_approach_engages(self):
         pass
