@@ -206,7 +206,7 @@ def copy_cycle(cyc, return_dict=False, use_jit=None):
         
     return cyc                
 
-def to_microtrips(cycle, stop_speed_m__s=1e-6):
+def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
     """
     Split a cycle into an array of microtrips with one microtrip being a start
     to subsequent stop plus any idle (stopped time).
@@ -215,7 +215,9 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6):
     ----------
     cycle: drive cycle converted to dictionary by cycle.get_cyc_dict()
     stop_speed_m__s: speed at which vehicle is considered stopped for trip
-    separation
+        separation
+    keep_name: (optional) bool, if True and cycle contains "name", adds
+        that name to all microtrips
     """
     microtrips = []
     ts = np.array(cycle['cycSecs'])
@@ -245,6 +247,9 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6):
     if len(mt['cycSecs']) > 0:
         mt['cycSecs'] = mt['cycSecs'] - mt['cycSecs'][0]
         microtrips.append(mt)
+    if keep_name and "name" in cycle:
+        for m in microtrips:
+            m["name"] = cycle["name"]
     return microtrips
 
 

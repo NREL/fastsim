@@ -7,6 +7,51 @@ import numpy as np
 
 from fastsim import cycle
 
+
+def dicts_are_equal(d1, d2, d1_name=None, d2_name=None):
+    """Checks if dictionaries are equal
+    - d1: dict
+    - d2: dict
+    - d1_name: None or string, the name used for dict 1 in messaging
+    - d2_name: None or string, the name used for dict 1 in messaging
+    RETURN: (boolean, (Array string)),
+    Returns (True, []) if the dictionaries are equal; otherwise, returns
+    (False, [... list of issues here])
+    """
+    if d1_name is None:
+        d1_name = "d1"
+    if d2_name is None:
+        d2_name = "d2"
+    are_equal = True
+    issues = []
+    d1_keys = sorted([k for k in d1.keys()])
+    d2_keys = sorted([k for k in d2.keys()])
+    if len(d1_keys) != len(d2_keys):
+        are_equal = False
+        issues.append(
+            f"Expected the number of keys in {d1_name} to equal that of {d2_name} " +
+            f"but got {len(d1_keys)} and {len(d2_keys)} respectively\n" +
+            f"{d1_name} keys: {str(d1_keys)}\n" +
+            f"{d2_name} keys: {str(d2_keys)}")
+    if (are_equal):
+        for k in d1_keys:
+            if len(d1[k]) != len(d2[k]):
+                are_equal = False
+                issues.append(
+                    f"Expected len({d1_name}[\"{k}\"]) == len({d2_name}[\"{k}\"]) " +
+                    f"but got {len(d1[k])} and {len(d2[k])}, respectively")
+                break
+            if isinstance(d1[k], np.ndarray) and isinstance(d2[k], np.ndarray):
+                if not (d1[k] == d2[k]).all():
+                    are_equal = False
+                    issues.append(f"np.ndarray {d1_name}['{k}'] != {d2_name}['{k}']")
+                    break
+            elif d1[k] != d2[k]:
+                are_equal = False
+                issues.append(f"{d1_name}['{k}'] != {d2_name}['{k}']")
+                break
+    return (are_equal, issues)
+
 class TestCycle(unittest.TestCase):
     def test_monotonicity(self):
         "checks that time is monotonically increasing"
@@ -44,24 +89,29 @@ class TestCycle(unittest.TestCase):
         microtrips = cycle.to_microtrips(cyc_dict)
         # NOTE: specifying the name for concat is required to get the same keys 
         reconstituted_cycle = cycle.concat(microtrips, name=cyc_dict["name"])
-        original_keys = sorted([k for k in cyc_dict.keys()])
-        reconstituted_keys = sorted([k for k in reconstituted_cycle.keys()])
-        self.assertEqual(
-            len(original_keys), len(reconstituted_keys),
-            f"Expected {len(original_keys)} but got {len(reconstituted_keys)}\n" +
-            f"original_keys: {str(original_keys)}\nreconstituted_keys: {str(reconstituted_keys)}")
-        for key in original_keys:
-            self.assertEqual(
-                len(cyc_dict[key]), len(reconstituted_cycle[key]),
-                f"Value lengths not equal for key {key}")
-            if key == "name":
-                self.assertEqual(
-                    cyc_dict[key], reconstituted_cycle[key],
-                    f"Values not equal for key {key}")
-            else:
-                self.assertTrue(
-                    (cyc_dict[key] == reconstituted_cycle[key]).all(),
-                    f"Values not equal for key {key}")
+        (are_equal, issues) = dicts_are_equal(cyc_dict, reconstituted_cycle, "original_cycle", "reconstituted_cycle")
+        self.assertTrue(are_equal, "; ".join(issues))
+
+    def test_roundtrip_of_microtrip_and_concat_using_keep_name_arg(self):
+        "A cycle split into microtrips and concatenated back together should equal the original"
+        cyc = cycle.Cycle("udds")
+        cyc_dict = cyc.get_cyc_dict()
+        microtrips = cycle.to_microtrips(cyc_dict, keep_name=True)
+        # NOTE: specifying the name for concat is required to get the same keys 
+        reconstituted_cycle = cycle.concat(microtrips, name=cyc_dict["name"])
+        (are_equal, issues) = dicts_are_equal(cyc_dict, reconstituted_cycle, "original_cycle", "reconstituted_cycle")
+        self.assertTrue(are_equal, "; ".join(issues))
+
+    def test_setting_microtrip_from_a_dict(self):
+        "Test splitting into microtrips and setting is as expected"
+        cyc = cycle.Cycle("udds")
+        cyc_dict = cyc.get_cyc_dict()
+        microtrips = cycle.to_microtrips(cyc_dict, keep_name=True)
+        cyc.set_from_dict(microtrips[1])
+        mt_dict = cyc.get_cyc_dict()
+        (are_equal, issues) = dicts_are_equal(microtrips[1], mt_dict, "first_microtrip", "microtrip_via_set_from_dict")
+        self.assertTrue(are_equal, "; ".join(issues))
+
 
     # TODO: implement this
     # def test_copy(self):
