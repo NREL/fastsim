@@ -173,8 +173,14 @@ class TestCycle(unittest.TestCase):
     def test_clip_by_times(self):
         "Test that clipping by times works as expected"
         udds = cycle.Cycle("udds").get_cyc_dict()
-        udds = cycle.clip_by_times(udds, t_end=300)
-        self.assertTrue(udds['cycSecs'][-1] == 300.0)
+        udds_start = cycle.clip_by_times(udds, t_end=300)
+        udds_end = cycle.clip_by_times(udds, t_end=udds["cycSecs"][-1], t_start=300)
+        self.assertTrue(udds_start['cycSecs'][-1] == 300.0)
+        self.assertTrue(udds_start['cycSecs'][0] == 0.0)
+        self.assertTrue(udds_end['cycSecs'][-1] == udds["cycSecs"][-1] - 300.0)
+        self.assertTrue(udds_end['cycSecs'][0] == 0.0)
+        udds_reconstruct = cycle.concat([udds_start, udds_end], name=udds["name"])
+        self.assertTrue(cycle.equals(udds, udds_reconstruct))
 
     # TODO: implement this
     # def test_copy(self):
