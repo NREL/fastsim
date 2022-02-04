@@ -128,7 +128,53 @@ class TestCycle(unittest.TestCase):
         self.assertEqual(len(cyc12.cycMps), len(cyc1.cycMps) + len(cyc2.cycMps) - 1)
         self.assertEqual(len(cyc12.cycGrade), len(cyc1.cycGrade) + len(cyc2.cycGrade) - 1)
         self.assertEqual(len(cyc12.cycRoadType), len(cyc1.cycRoadType) + len(cyc2.cycRoadType) - 1)
-
+    
+    def test_cycle_equality(self):
+        "Test structural equality of driving cycles"
+        udds = cycle.Cycle("udds")
+        us06 = cycle.Cycle("us06")
+        self.assertFalse(cycle.equals(udds.get_cyc_dict(), us06.get_cyc_dict()))
+        udds_2 = cycle.Cycle("udds")
+        self.assertTrue(cycle.equals(udds.get_cyc_dict(), udds_2.get_cyc_dict()))
+        cyc2dict = udds_2.get_cyc_dict()
+        cyc2dict['extra key'] = None
+        self.assertFalse(cycle.equals(udds.get_cyc_dict(), cyc2dict))
+    
+    def test_that_cycle_resampling_works_as_expected(self):
+        "Test resampling the values of a cycle"
+        for cycle_name in ["udds", "us06", "hwfet", "longHaulDriveCycle"]:
+            cyc = cycle.Cycle(cycle_name)
+            cyc_at_dt0_1 = cycle.Cycle(cyc_dict=cycle.resample(cyc.get_cyc_dict(), new_dt=0.1))
+            cyc_at_dt10 = cycle.Cycle(cyc_dict=cycle.resample(cyc.get_cyc_dict(), new_dt=10))
+            msg = f"issue for {cycle_name}, {len(cyc.cycSecs)} points, duration {cyc.cycSecs[-1]}"
+            expected_num_at_dt0_1 = 10 * len(cyc.cycSecs) - 9
+            self.assertEqual(len(cyc_at_dt0_1.cycSecs), expected_num_at_dt0_1, msg)
+            self.assertEqual(len(cyc_at_dt0_1.cycMps), expected_num_at_dt0_1, msg)
+            self.assertEqual(len(cyc_at_dt0_1.cycGrade), expected_num_at_dt0_1, msg)
+            self.assertEqual(len(cyc_at_dt0_1.cycRoadType), expected_num_at_dt0_1, msg)
+            expected_num_at_dt10 = len(cyc.cycSecs) // 10 + (0 if len(cyc.cycSecs) % 10 == 0 else 1)
+            self.assertEqual(len(cyc_at_dt10.cycSecs), expected_num_at_dt10, msg)
+            self.assertEqual(len(cyc_at_dt10.cycMps), expected_num_at_dt10, msg)
+            self.assertEqual(len(cyc_at_dt10.cycGrade), expected_num_at_dt10, msg)
+            self.assertEqual(len(cyc_at_dt10.cycRoadType), expected_num_at_dt10, msg)
+    
+    def test_resampling_and_concatenating_cycles(self):
+        "Test that concatenating cycles at different sampling rates works as expected"
+        udds = cycle.Cycle("udds")
+        udds_10Hz = cycle.Cycle(
+            cyc_dict=cycle.resample(udds.get_cyc_dict(), new_dt=0.1))
+        us06 = cycle.Cycle("us06")
+        combo_resampled = cycle.resample(
+            cycle.concat([udds_10Hz.get_cyc_dict(), us06.get_cyc_dict()]),
+            new_dt=1)
+        combo = cycle.concat([udds.get_cyc_dict(), us06.get_cyc_dict()])
+        self.assertTrue(cycle.equals(combo, combo_resampled))
+    
+    def test_clip_by_times(self):
+        "Test that clipping by times works as expected"
+        udds = cycle.Cycle("udds").get_cyc_dict()
+        udds = cycle.clip_by_times(udds, t_end=300)
+        self.assertTrue(udds['cycSecs'][-1] == 300.0)
 
     # TODO: implement this
     # def test_copy(self):
