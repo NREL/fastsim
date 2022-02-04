@@ -280,7 +280,7 @@ def make_cycle(ts, vs, gs=None, rs=None):
             'cycRoadType': np.array(rs)}
 
 
-def equals(c1, c2):
+def equals(c1, c2, verbose=True):
     """
     Dict Dict -> Bool
     Returns true if the two cycles are equal, false otherwise
@@ -288,21 +288,25 @@ def equals(c1, c2):
     ----------
     c1: cycle as dictionary from get_cyc_dict()
     c2: cycle as dictionary from get_cyc_dict()
+    verbose: Bool, optional (default: True), if True, prints why not equal
     """
     if c1.keys() != c2.keys():
-        c2missing = set(c1.keys()) - set(c2.keys())
-        c1missing = set(c2.keys()) - set(c1.keys())
-        if len(c1missing) > 0:
-            print('c2 keys not contained in c1: {}'.format(c1missing))
-        if len(c2missing) > 0:
-            print('c1 keys not contained in c2: {}'.format(c2missing))
+        if verbose:
+            c2missing = set(c1.keys()) - set(c2.keys())
+            c1missing = set(c2.keys()) - set(c1.keys())
+            if len(c1missing) > 0:
+                print('c2 keys not contained in c1: {}'.format(c1missing))
+            if len(c2missing) > 0:
+                print('c1 keys not contained in c2: {}'.format(c2missing))
         return False
     for k in c1.keys():
         if len(c1[k]) != len(c2[k]):
-            print(k + ' has a length discrepancy.')
+            if verbose:
+                print(k + ' has a length discrepancy.')
             return False
         if np.any(np.array(c1[k]) != np.array(c2[k])):
-            print(k + ' has a value discrepancy.')
+            if verbose:
+                print(k + ' has a value discrepancy.')
             return False
     return True
 
@@ -310,9 +314,11 @@ def equals(c1, c2):
 def concat(cycles, name=None):
     """
     Concatenates cycles together one after another into a single dictionary
-    - cycles: (Array Dict)
-    - name: (optional) string or None, if a string, adds the "name" key to the output
-    RETURNS: Dict
+    (Array Dict) String -> Dict
+    Arguments:
+    ----------
+    cycles: (Array Dict)
+    name: (optional) string or None, if a string, adds the "name" key to the output
     """
     final_cycle = {'cycSecs': np.array([]),
                    'cycMps': np.array([]),

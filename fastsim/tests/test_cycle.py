@@ -133,12 +133,12 @@ class TestCycle(unittest.TestCase):
         "Test structural equality of driving cycles"
         udds = cycle.Cycle("udds")
         us06 = cycle.Cycle("us06")
-        self.assertFalse(cycle.equals(udds.get_cyc_dict(), us06.get_cyc_dict()))
+        self.assertFalse(cycle.equals(udds.get_cyc_dict(), us06.get_cyc_dict(), verbose=False))
         udds_2 = cycle.Cycle("udds")
-        self.assertTrue(cycle.equals(udds.get_cyc_dict(), udds_2.get_cyc_dict()))
+        self.assertTrue(cycle.equals(udds.get_cyc_dict(), udds_2.get_cyc_dict(), verbose=False))
         cyc2dict = udds_2.get_cyc_dict()
         cyc2dict['extra key'] = None
-        self.assertFalse(cycle.equals(udds.get_cyc_dict(), cyc2dict))
+        self.assertFalse(cycle.equals(udds.get_cyc_dict(), cyc2dict, verbose=False))
     
     def test_that_cycle_resampling_works_as_expected(self):
         "Test resampling the values of a cycle"
@@ -168,7 +168,7 @@ class TestCycle(unittest.TestCase):
             cycle.concat([udds_10Hz.get_cyc_dict(), us06.get_cyc_dict()]),
             new_dt=1)
         combo = cycle.concat([udds.get_cyc_dict(), us06.get_cyc_dict()])
-        self.assertTrue(cycle.equals(combo, combo_resampled))
+        self.assertTrue(cycle.equals(combo, combo_resampled, verbose=False))
     
     def test_clip_by_times(self):
         "Test that clipping by times works as expected"
@@ -180,10 +180,53 @@ class TestCycle(unittest.TestCase):
         self.assertTrue(udds_end['cycSecs'][-1] == udds["cycSecs"][-1] - 300.0)
         self.assertTrue(udds_end['cycSecs'][0] == 0.0)
         udds_reconstruct = cycle.concat([udds_start, udds_end], name=udds["name"])
-        self.assertTrue(cycle.equals(udds, udds_reconstruct))
+        self.assertTrue(cycle.equals(udds, udds_reconstruct, verbose=False))
 
-    # TODO: implement this
-    # def test_copy(self):
-    #     """checks that copy methods produce identical cycles"""
+    def test_get_accelerations(self):
+        "Test getting and processing accelerations"
+        tri = {
+            'name': "triangular speed trace",
+            'cycSecs': np.array([0.0, 10.0, 20.0]),
+            'cycMps': np.array([0.0, 5.0, 0.0]),
+            'cycGrade': np.array([0.0, 0.0, 0.0]),
+            'cycRoadType': np.array([0.0, 0.0, 0.0]),
+        }
+        expected_tri = np.array([0.5, -0.5]) # acceleration (m/s2)
+        trapz = {
+            'name': "trapezoidal speed trace",
+            'cycSecs': np.array([0.0, 10.0, 20.0, 30.0, 40.0]),
+            'cycMps': np.array([0.0, 5.0, 5.0, 0.0, 0.0]),
+            'cycGrade': np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
+            'cycRoadType': np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
+        }
+        expected_trapz = np.array([0.5, 0.0, -0.5, 0.0]) # acceleration (m/s2)
+        for (cyc, expected_accels_m__s2) in [(tri, expected_tri), (trapz, expected_trapz)]:
+            actual_accels_m__s2 = cycle.accelerations(cyc)
+            self.assertEqual(len(actual_accels_m__s2), len(expected_accels_m__s2))
+            for idx, (e, a) in enumerate(zip(expected_accels_m__s2, actual_accels_m__s2)):
+                self.assertAlmostEqual(e, a, f"{cyc['name']} {idx}")
+            exp_max_accel_m__s2 = np.max(expected_accels_m__s2)
+            act_max_accel_m__s2 = cycle.peak_acceleration(cyc)
+            self.assertAlmostEqual(exp_max_accel_m__s2, act_max_accel_m__s2)
+            exp_min_accel_m__s2 = np.min(expected_accels_m__s2)
+            act_min_accel_m__s2 = cycle.peak_deceleration(cyc)
+            self.assertAlmostEqual(exp_min_accel_m__s2, act_min_accel_m__s2)
 
-    # TODO: port examples from ../docs/demo.py that use cycle functions to here
+    def test_that_copy_creates_idential_structures(self):
+        "Checks that copy methods produce identical cycles"
+        udds = cycle.Cycle('udds')
+        another_udds = udds.copy()
+        self.assertTrue(udds.get_cyc_dict(), another_udds.get_cyc_dict())
+    
+    def test_make_cycle(self):
+        "Check that make_cycle works as expected"
+        # TODO: should make_cycle automatically place time on a consistent basis?
+        #   That is, if you feed it [1,2,3] for seconds, should you get [0, 1, 2]?
+        #   This could be an optional parameter passed in...
+        cyc = cycle.make_cycle([0, 1, 2], [0, 1, 0])
+        self.assertEqual(cyc['cycSecs'][0], 0.0)
+        self.assertEqual(cyc['cycSecs'][-1], 2.0)
+        expected_keys = {'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType'} 
+        self.assertEqual(expected_keys, {k for k in cyc.keys()})
+        for k in expected_keys:
+            self.assertEqual(len(cyc[k]), 3)
