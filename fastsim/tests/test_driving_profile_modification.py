@@ -26,7 +26,7 @@ class TestDrivingProfileModification(unittest.TestCase):
     
     def test_that_eco_approach_engages(self):
         "Test the standard interface to Eco-Approach for 'free coasting'"
-        coast_start_mph = 30.0
+        coast_start_mph = 39.99
         self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
         while self.sim_drive.i < len(self.trapz.cycSecs):
             i = self.sim_drive.i
