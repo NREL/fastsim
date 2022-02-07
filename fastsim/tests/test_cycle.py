@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from fastsim import cycle
+from fastsim import cycle, params
 
 
 def dicts_are_equal(d1, d2, d1_name=None, d2_name=None):
@@ -169,6 +169,19 @@ class TestCycle(unittest.TestCase):
             new_dt=1)
         combo = cycle.concat([udds.get_cyc_dict(), us06.get_cyc_dict()])
         self.assertTrue(cycle.equals(combo, combo_resampled, verbose=False))
+    
+    def test_resampling_with_hold_keys(self):
+        "Test that 'hold_keys' works with resampling"
+        trapz = cycle.make_cycle(
+            [0.0, 10.0, 20.0, 30.0],
+            [0.0, 40.0 / params.mphPerMps, 40.0 / params.mphPerMps, 0.0])
+        trapz['auxInKw'] = [1.0, 1.0, 3.0, 3.0]
+        trapz_at_1hz = cycle.resample(trapz, new_dt=1.0, hold_keys={'auxInKw'})
+        self.assertTrue(len(trapz_at_1hz['auxInKw']) == len(trapz_at_1hz['cycSecs']),
+            f"Expected length of auxInKw ({len(trapz_at_1hz['auxInKw'])}) " +
+            f"to equal length of cycSecs ({len(trapz_at_1hz['cycSecs'])})"
+        )
+        self.assertEqual({1.0, 3.0}, {aux for aux in trapz_at_1hz['auxInKw']})
     
     def test_clip_by_times(self):
         "Test that clipping by times works as expected"
