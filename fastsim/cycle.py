@@ -402,21 +402,13 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
                 prepend=0.0
             ) / new_dt
             midstep_times = np.arange(
-                start_time + 0.5*new_dt, end_time - 0.5*new_dt + eps, step=new_dt)
+                start_time + (0.5 * new_dt), end_time - (0.5 * new_dt) + eps, step=new_dt)
             midstep_times = np.insert(midstep_times, 0, 0.0)
             new_cycle[k] = np.interp(
                 x=new_cycle['cycSecs'],
                 xp=midstep_times,
                 fp=step_averages
             )
-            #new_cycle[k] = np.diff(
-            #    np.interp(
-            #        x=new_cycle['cycSecs'],
-            #        xp=cycle['cycSecs'],
-            #        fp=np.insert(avg_rate_var * np.diff(np.array(cycle['cycSecs'])).cumsum(), 0, 0.0)
-            #    ),
-            #    prepend=0
-            #) / new_dt
             continue
         try:
             new_cycle[k] = np.interp(
