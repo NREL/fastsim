@@ -119,6 +119,7 @@ class SimDriveClassic(object):
         self.mcMechKwOutAch = np.zeros(len_cyc, dtype=np.float64)
         self.mcElecKwInAch = np.zeros(len_cyc, dtype=np.float64)
         self.auxInKw = np.zeros(len_cyc, dtype=np.float64)
+        self.impose_coast = np.array([False] * len_cyc, dtype=np.bool_)
         self.roadwayChgKwOutAch = np.zeros(len_cyc, dtype=np.float64)
         self.minEssKw2HelpFc = np.zeros(len_cyc, dtype=np.float64)
         self.essKwOutAch = np.zeros(len_cyc, dtype=np.float64)
