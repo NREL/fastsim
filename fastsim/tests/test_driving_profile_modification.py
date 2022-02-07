@@ -26,12 +26,13 @@ class TestDrivingProfileModification(unittest.TestCase):
     
     def test_that_eco_approach_engages(self):
         "Test the standard interface to Eco-Approach for 'free coasting'"
-        coast_start_mph = 39.99
+        coast_start_mph = 30.0
         self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
         while self.sim_drive.i < len(self.trapz.cycSecs):
             i = self.sim_drive.i
             prev_i = max(0, i-1)
-            self.sim_drive.impose_coast[i] = self.sim_drive.impose_coast[prev_i] or self.sim_drive.mphAch[i] >= coast_start_mph
+            self.sim_drive.impose_coast[i] = self.sim_drive.impose_coast[prev_i] or self.sim_drive.mphAch[prev_i] >= coast_start_mph
             self.sim_drive.sim_drive_step()
-        #TODO here
-        #self.assertTrue(self.sim_drive.impose_coast.any(), "Coast should have been imposed over some portion of the cycle")
+        self.assertFalse(self.sim_drive.impose_coast[0])
+        self.assertTrue(self.sim_drive.impose_coast[-1])
+        self.assertTrue(self.sim_drive.impose_coast.any(), "Coast should have been imposed over some portion of the cycle")
