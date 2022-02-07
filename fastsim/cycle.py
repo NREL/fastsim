@@ -348,7 +348,7 @@ def concat(cycles, name=None):
 
 
 def resample(cycle, new_dt=None, start_time=None, end_time=None,
-             hold_keys=None):
+             hold_keys=None, rate_keys=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
     Resample a cycle with a new delta time from start time to end time.
@@ -366,6 +366,10 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
     - hold_keys: None or (Set String), if specified, yields values that
                  should be interpolated step-wise, holding their value until
                  an explicit change (i.e., NOT interpolated)
+    - rate_keys: None or (Set String), if specified, yields values that maintain
+                 the interpolated value of the given rate. So, for example,
+                 if a speed, will set the speed such that the distance traveled
+                 is consistent.
     Resamples all non-time metrics by the new sample time.
     """
     if new_dt is None:
@@ -383,6 +387,36 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
         elif hold_keys is not None and k in hold_keys:
             f = interp1d(cycle['cycSecs'], cycle[k], 0)
             new_cycle[k] = f(new_cycle['cycSecs'])
+            continue
+        elif rate_keys is not None and k in rate_keys:
+            rate_var = np.array(cycle[k])
+            # below is same as [(rate_var[i+1] + rate_var[i])/2.0 for i in range(len(rate_var) - 1)]
+            avg_rate_var = (rate_var[1:] + rate_var[:-1]) / 2.0
+            dts_orig = np.diff(cycle['cycSecs'])
+            step_averages = np.diff(
+                np.interp(
+                    x=new_cycle['cycSecs'],
+                    xp=cycle['cycSecs'],
+                    fp=np.insert((avg_rate_var * dts_orig).cumsum(), 0, 0.0)
+                ),
+                prepend=0.0
+            ) / new_dt
+            midstep_times = np.arange(
+                start_time + 0.5*new_dt, end_time - 0.5*new_dt + eps, step=new_dt)
+            midstep_times = np.insert(midstep_times, 0, 0.0)
+            new_cycle[k] = np.interp(
+                x=new_cycle['cycSecs'],
+                xp=midstep_times,
+                fp=step_averages
+            )
+            #new_cycle[k] = np.diff(
+            #    np.interp(
+            #        x=new_cycle['cycSecs'],
+            #        xp=cycle['cycSecs'],
+            #        fp=np.insert(avg_rate_var * np.diff(np.array(cycle['cycSecs'])).cumsum(), 0, 0.0)
+            #    ),
+            #    prepend=0
+            #) / new_dt
             continue
         try:
             new_cycle[k] = np.interp(
