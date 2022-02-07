@@ -204,42 +204,56 @@ class TestCycle(unittest.TestCase):
         self.assertEqual({1.0, 3.0}, {aux for aux in trapz_at_1hz['auxInKw']})
 
     def test_that_resampling_preservers_total_distance_traveled_using_rate_keys(self):
-        """Distance traveled before and after resampling should be the same when rate_keys are used
-        TODO:
-        - assert that distance is not the same without specifying rate variables
-        - assert that with rate_variables specified, you get the same distance
-        NOTE:
-        - cycMps will be in a derived cycle; only do on cycMps
-        """
-        udds = cycle.Cycle('udds').get_cyc_dict()
-        # Note: UDDS is 1369 seconds, sampling at 10Hz gives us a cycle to 1360 seconds
-        # Thus, when checking distance traveled, we need to compare up to 1360 seconds.
-        # DOWNSAMPLING
-        new_dt_s = 10.0
-        udds_at_0_1hz = cycle.resample(udds, new_dt=new_dt_s)
-        dist_m = calc_distance_traveled_m(
-            udds, up_to=udds_at_0_1hz['cycSecs'][-1])
-        dist_at_0_1hz_m = calc_distance_traveled_m(
-            udds_at_0_1hz, up_to=udds_at_0_1hz['cycSecs'][-1])
-        self.assertTrue(abs(dist_m - dist_at_0_1hz_m) > 1)
-        udds_at_0_1hz_rate_keys = cycle.resample(
-            udds, new_dt=new_dt_s, rate_keys={'cycMps'})
-        self.assertAlmostEqual(
-            udds_at_0_1hz['cycSecs'][-1],
-            udds_at_0_1hz_rate_keys['cycSecs'][-1])
-        dist_at_0_1hz_w_rate_keys_m = calc_distance_traveled_m(
-            udds_at_0_1hz_rate_keys, up_to=udds_at_0_1hz['cycSecs'][-1])
-        self.assertAlmostEqual(dist_m, dist_at_0_1hz_w_rate_keys_m, 3)
-        # UPSAMPLING
-        new_dt_s = 0.1
-        udds_at_10hz = cycle.resample(udds, new_dt=new_dt_s)
-        dist_at_10hz_m = calc_distance_traveled_m(
-            udds_at_10hz, up_to=udds_at_10hz['cycSecs'][-1])
-        self.assertTrue(abs(dist_m - dist_at_10hz_m) > 1)
-        udds_at_10hz_rate_keys = cycle.resample(udds, new_dt=new_dt_s, rate_keys={'cycMps'})
-        dist_at_10hz_w_rate_keys_m = calc_distance_traveled_m(
-            udds_at_10hz_rate_keys, up_to=udds_at_10hz_rate_keys['cycSecs'][-1])
-        #self.assertAlmostEqual(dist_m, dist_at_10hz_w_rate_keys_m, 3)
+        "Distance traveled before and after resampling should be the same when rate_keys are used"
+        for cycle_name in ['udds', 'us06', 'hwfet', 'longHaulDriveCycle']:
+            the_cyc = cycle.Cycle(cycle_name).get_cyc_dict()
+            # DOWNSAMPLING
+            new_dt_s = 10.0
+            cyc_at_0_1hz = cycle.resample(the_cyc, new_dt=new_dt_s)
+            msg = (
+                f"issue for {cycle_name} (downsampling)\n" + 
+                f"cycle: {cycle_name}\n" +
+                f"duration {the_cyc['cycSecs'][-1]} s\n" +
+                f"duration {cyc_at_0_1hz['cycSecs'][-1]} s (0.1 Hz)\n"
+            )
+            dist_m = calc_distance_traveled_m(
+                the_cyc, up_to=cyc_at_0_1hz['cycSecs'][-1])
+            dist_at_0_1hz_m = calc_distance_traveled_m(
+                cyc_at_0_1hz, up_to=cyc_at_0_1hz['cycSecs'][-1])
+            self.assertTrue(abs(dist_m - dist_at_0_1hz_m) > 1, msg=msg)
+            cyc_at_0_1hz_rate_keys = cycle.resample(
+                the_cyc, new_dt=new_dt_s, rate_keys={'cycMps'})
+            self.assertAlmostEqual(
+                cyc_at_0_1hz['cycSecs'][-1],
+                cyc_at_0_1hz_rate_keys['cycSecs'][-1], msg=msg)
+            dist_at_0_1hz_w_rate_keys_m = calc_distance_traveled_m(
+                cyc_at_0_1hz_rate_keys, up_to=cyc_at_0_1hz['cycSecs'][-1])
+            self.assertAlmostEqual(dist_m, dist_at_0_1hz_w_rate_keys_m, 3, msg=msg)
+            self.assertTrue((the_cyc['cycMps'] >= 0.0).all(), msg=msg)
+            self.assertTrue((cyc_at_0_1hz['cycMps'] >= 0.0).all(), msg=msg)
+            self.assertTrue((cyc_at_0_1hz_rate_keys['cycMps'] >= 0.0).all(), msg=msg)
+            # UPSAMPLING
+            new_dt_s = 0.1
+            cyc_at_10hz = cycle.resample(the_cyc, new_dt=new_dt_s)
+            msg = (
+                f"issue for {cycle_name} (upsampling)\n" + 
+                f"cycle: {cycle_name}\n" +
+                f"duration {the_cyc['cycSecs'][-1]} s\n" +
+                f"duration {cyc_at_10hz['cycSecs'][-1]} s (10 Hz)\n"
+            )
+            dist_m = calc_distance_traveled_m(
+                the_cyc, up_to=cyc_at_10hz['cycSecs'][-1])
+            dist_at_10hz_m = calc_distance_traveled_m(
+                cyc_at_10hz, up_to=cyc_at_10hz['cycSecs'][-1])
+            # NOTE: upsampling doesn't cause a distance discrepancy
+            self.assertAlmostEqual(dist_m, dist_at_10hz_m, msg=msg)
+            cyc_at_10hz_rate_keys = cycle.resample(the_cyc, new_dt=new_dt_s, rate_keys={'cycMps'})
+            dist_at_10hz_w_rate_keys_m = calc_distance_traveled_m(
+                cyc_at_10hz_rate_keys, up_to=cyc_at_10hz_rate_keys['cycSecs'][-1])
+            # NOTE: specifying rate keys shouldn't change the distance calculation with rate keys
+            self.assertAlmostEqual(dist_m, dist_at_10hz_w_rate_keys_m, 3, msg=msg)
+            self.assertTrue((cyc_at_10hz['cycMps'] >= 0.0).all(), msg=msg)
+            self.assertTrue((cyc_at_10hz_rate_keys['cycMps'] >= 0.0).all(), msg=msg)
     
     def test_clip_by_times(self):
         "Test that clipping by times works as expected"

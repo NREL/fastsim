@@ -369,7 +369,8 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
     - rate_keys: None or (Set String), if specified, yields values that maintain
                  the interpolated value of the given rate. So, for example,
                  if a speed, will set the speed such that the distance traveled
-                 is consistent.
+                 is consistent. Note: using rate keys for cycMps may result in
+                 non-zero starting and ending speeds
     Resamples all non-time metrics by the new sample time.
     """
     if new_dt is None:
@@ -399,11 +400,16 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
                     xp=cycle['cycSecs'],
                     fp=np.insert((avg_rate_var * dts_orig).cumsum(), 0, 0.0)
                 ),
-                prepend=0.0
             ) / new_dt
-            midstep_times = np.arange(
-                start_time + (0.5 * new_dt), end_time - (0.5 * new_dt) + eps, step=new_dt)
-            midstep_times = np.insert(midstep_times, 0, 0.0)
+            step_averages = np.insert(step_averages, 0, step_averages[0])
+            step_averages = np.append(step_averages, step_averages[-1])
+            midstep_times = np.concatenate(
+                (
+                    [0.0],
+                    np.arange(
+                        start_time + (0.5 * new_dt), end_time - (0.5 * new_dt) + eps, step=new_dt),
+                    [end_time],
+                ))
             new_cycle[k] = np.interp(
                 x=new_cycle['cycSecs'],
                 xp=midstep_times,
