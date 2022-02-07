@@ -203,7 +203,7 @@ class TestCycle(unittest.TestCase):
         )
         self.assertEqual({1.0, 3.0}, {aux for aux in trapz_at_1hz['auxInKw']})
 
-    def test_that_resampling_preservers_total_distance_traveled_using_rate_keys(self):
+    def test_that_resampling_preserves_total_distance_traveled_using_rate_keys(self):
         "Distance traveled before and after resampling should be the same when rate_keys are used"
         for cycle_name in ['udds', 'us06', 'hwfet', 'longHaulDriveCycle']:
             the_cyc = cycle.Cycle(cycle_name).get_cyc_dict()
