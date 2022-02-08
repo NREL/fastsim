@@ -95,33 +95,38 @@ class Vehicle(object):
         If default values are modified after loading, you may need to 
         rerun set_init_calcs() and set_veh_mass() to propagate changes."""
 
-        if (type(vnum_or_file) in [type(Path()), str]):
-            # if a file path is passed
-            if not str(vnum_or_file).endswith('.csv'):
-                vnum_or_file = Path(str(vnum_or_file) + '.csv')
-            if (Path(vnum_or_file).name == str(Path(vnum_or_file))) and not (Path().resolve() /
-                vnum_or_file).exists():
-                vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
-                if verbose: print(f'Loading vehicle from\n{Path(vnum_or_file).resolve()}')
-                # if only filename is provided and not in local dir, assume in resources/vehdb
-            
-            veh_file = vnum_or_file
-            vehdf = pd.read_csv(vnum_or_file)
+        def get_single_vehicle_df(veh_file):
+            vehdf = pd.read_csv(veh_file)
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
             vehdf.drop(vehdf.index[0], inplace=True)
             vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
             vehdf.loc['Param Value', 'Selection'] = 0
+            return vehdf
+
+        if (type(vnum_or_file) in [type(Path()), str]):
+            # if a file path is passed
+            if not str(vnum_or_file).endswith('.csv'):
+                vnum_or_file = Path(str(vnum_or_file) + '.csv')
+            if (Path(vnum_or_file).name == str(Path(vnum_or_file))) and not (Path().resolve() / vnum_or_file).exists():
+                vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
+                if verbose: print(f'Loading vehicle from\n{Path(vnum_or_file).resolve()}')
+                # if only filename is provided and not in local dir, assume in resources/vehdb
+            veh_file = vnum_or_file
+            vehdf = get_single_vehicle_df(veh_file)
             vnum = 0
-        elif str(int(vnum_or_file)).isnumeric() and veh_file:
+        elif vnum_or_file and str(int(vnum_or_file)).isnumeric() and veh_file:
             # if a numeric is passed along with veh_file
             vnum = vnum_or_file
             vehdf = pd.read_csv(veh_file)
-        elif str(int(vnum_or_file)).isnumeric():
+        elif vnum_or_file and str(int(vnum_or_file)).isnumeric():
             # if a numeric is passed alone
             vnum = vnum_or_file
             veh_file = DEFAULT_VEH_DB
             vehdf = DEFAULT_VEHDF
+        elif veh_file:
+            vehdf = get_single_vehicle_df(veh_file)
+            vnum = 0
         else:
             raise Exception('load_veh requires `vnum_or_file` and/or `veh_file`.')
         vehdf.set_index('Selection', inplace=True, drop=False)
@@ -192,16 +197,18 @@ class Vehicle(object):
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
         self.fcEffType == str(self.fcEffType)
-        if (self.fcEffType not in FC_EFF_TYPES) and verbose:
-            warn_str = f"""fcEffType {self.fcEffType} not in {FC_EFF_TYPES}.
-            If `fcPwrOutPerc` and `fcEffMap` are specified, this should be ok."""
-            warnings.warn(warn_str)
 
         try:
             # check if optional parameter fcEffMap is provided in vehicle csv file
             self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap']))
+            if verbose:
+                print(f"fcEffMap is overriding fcEffType in {veh_file}")
         
         except:
+            warn_str = f"""fcEffType {self.fcEffType} is not in {FC_EFF_TYPES},
+            and `fcEffMap` is not provided."""
+            assert self.fcEffType in FC_EFF_TYPES, warn_str
+
             if self.fcEffType == SI:  # SI engine
                 self.fcEffMap = params.fcEffMap_si
 
@@ -275,7 +282,7 @@ class Vehicle(object):
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
 
-        assert self.vehPtType in VEH_PT_TYPES
+        assert self.vehPtType in VEH_PT_TYPES, f"vehPtType {self.vehPtType} not in {VEH_PT_TYPES}"
         
         self.set_init_calcs(
             # provide kwargs for load-time overrides
