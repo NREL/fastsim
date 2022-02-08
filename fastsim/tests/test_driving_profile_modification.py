@@ -27,7 +27,7 @@ class TestDrivingProfileModification(unittest.TestCase):
     def tearDown(self) -> None:
         return super().tearDown()
     
-    def test_that_eco_approach_engages(self):
+    def test_that_impose_coast_causes_coast(self):
         "Test the standard interface to Eco-Approach for 'free coasting'"
         coast_start_mph = 39.99
         self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
@@ -51,5 +51,26 @@ class TestDrivingProfileModification(unittest.TestCase):
             ax.plot(self.trapz.cycSecs, self.sim_drive_coast.mphAch, 'blue', label='coast')
             ax.set_xlabel('Elapsed Time (s)')
             ax.set_ylabel('Speed (mph)')
+            ax.legend()
             fig.tight_layout()
-            fig.savefig('junk.png', dpi=300)
+            fig.savefig('coasting-by-time.png', dpi=300)
+            (fig, ax) = plt.subplots()
+            ax.plot(self.trapz.cycDistMeters.cumsum(), self.trapz.cycMph, 'gray', label='shadow-trace')
+            ax.plot(self.sim_drive_coast.distMeters.cumsum(), self.sim_drive_coast.mphAch, 'blue', label='coast')
+            ax.set_title('Coasting over Trapezoidal Cycle')
+            ax.set_xlabel('Distance Traveled (m)')
+            ax.set_ylabel('Speed (mph)')
+            ax.legend()
+            fig.tight_layout()
+            fig.savefig('coasting-by-distance.png', dpi=300)
+            fig = None
+            ax = None
+
+    def test_eco_approach_modeling(self):
+        "Test a simplified model of eco-approach"
+        fastsim.simdrive.run_eco_approach(self.sim_drive_coast)
+        self.assertTrue(self.sim_drive_coast.impose_coast.any())
+        max_trace_miss_coast_m__s = np.absolute(self.trapz.cycMps - self.sim_drive_coast.mpsAch).max()
+        self.assertTrue(max_trace_miss_coast_m__s > 1.0)
+        self.assertTrue(self.sim_drive_coast.mphAch.max() > 20.0)
+

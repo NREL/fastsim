@@ -1492,3 +1492,22 @@ def SimAccelTestJit(cyc_jit, veh_jit):
     SimDriveJit.__doc__ += sim_drive_jit.__doc__
 
     return sim_drive_jit
+
+def run_eco_approach(
+    sim_drive,
+    #lookahead_distance_m=None
+    ):
+    """
+    Run eco-approach
+    - sim_drive: SimDriveClassic or SimDriveJit instance with cycle and vehicle
+    #- lookahead_distance_m: None or positive number, if None, lookahead is the entire distance of the cycle.
+    #    This is the distance ahead that a stop can be detected.
+        
+    """
+    coast_start_mph = 39.99
+    while sim_drive.i < len(sim_drive.cyc.cycSecs):
+        i = sim_drive.i
+        prev_i = max(0, i-1)
+        sim_drive.impose_coast[i] = sim_drive.impose_coast[prev_i] or sim_drive.mphAch[prev_i] >= coast_start_mph
+        sim_drive.sim_drive_step()
+    return sim_drive
