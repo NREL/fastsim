@@ -49,6 +49,7 @@ class TestDrivingProfileModification(unittest.TestCase):
             (fig, ax) = plt.subplots()
             ax.plot(self.trapz.cycSecs, self.trapz.cycMph, 'gray', label='shadow-trace')
             ax.plot(self.trapz.cycSecs, self.sim_drive_coast.mphAch, 'blue', label='coast')
+            ax.plot(self.trapz.cycSecs, self.sim_drive_coast.mphAch, 'r.')
             ax.set_xlabel('Elapsed Time (s)')
             ax.set_ylabel('Speed (mph)')
             ax.legend()

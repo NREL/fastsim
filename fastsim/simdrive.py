@@ -516,26 +516,44 @@ class SimDriveClassic(object):
         "Private method to calculate the maximum average speed to not pass the shadow trace (cyc0)"
         if target_speed_m__s is None:
             target_speed_m__s = self.sim_params.max_coast_speed_m__s
-        cyc0_dist_at_next_step_m = self.cyc0.cycDistMeters.cumsum()[i]
+        cyc0_distances_m = self.cyc0.cycDistMeters.cumsum()
+        cyc0_dist_at_next_step_m = cyc0_distances_m[i]
+        # cyc0_speed_at_next_step_m__s = self.cyc0.cycMps[i]
         dist_traveled_m = self.distMeters[:i].sum()
         max_step_dist_m = cyc0_dist_at_next_step_m - dist_traveled_m
         max_avg_speed_m__s = max_step_dist_m / self.cyc0.secs[i]
         max_next_speed_m__s = 2 * max_avg_speed_m__s - self.mpsAch[i - 1]
         next_speed_m__s = max(0, min(max_next_speed_m__s, target_speed_m__s))
         if False:
-            # d(t) = d0 + v0*t + 0.5*a*t**2; d(t) - d0 = distance_to_stop_by_brakes_m; t = time_to_stop_by_brake_s
-            # d(t) - d0 = dts = v0*t + 0.5*a*t**2 = v0*(-v0/a) + 0.5*a*(-v0/a)*(-v0/a)
-            # dts = -v0**2/a + 0.5*v0**2/a = v0**2 * (-1 + 0.5) = -0.5*(v0**2/a)
-            # a = -0.5 * (v0**2) / dts
-            dist_to_next_stop_m = self._calc_dist_to_next_stop_m(i)
-            avg_speed_m__s = 0.5 * (next_speed_m__s + self.mpsAch[i-1])
-            dist_step_m = avg_speed_m__s * self.cyc0.secs[i]
-            const_decel_to_stop_m__s2 = -0.5 * next_speed_m__s * next_speed_m__s / (dist_to_next_stop_m - dist_step_m)
-            if const_decel_to_stop_m__s2 < self.sim_params.nominal_brake_accel_for_coast_m__s2:
-                import pdb
-                const_decel_to_stop0_m__s2 = -0.5 * self.mpsAch[i-1] * self.mpsAch[i-1] / dist_to_next_stop_m
-                next_speed_m__s = self.mpsAch[i-1] + const_decel_to_stop0_m__s2 * self.cyc0.secs[i]
-                pdb.set_trace()
+            # TIME-TO-STOP (constant deceleration)
+            # v(t) = v0 + a*t
+            # v(t) = 0 at stop, let's find the t when v(t) is 0 or the time-to-stop or tts
+            # 0 = v0 + a*tts
+            # -v0 = a*tts
+            # -v0 = a*tts
+            # -v0/a = tts
+            # tts = -v0/a
+            # DISTANCE-TO-STOP (constant deceleration)
+            # d(t) = d0 + v0*t + 0.5*a*t**2
+            # d(t) - d0 = dts
+            # dts = v0*t + 0.5*a*t**2
+            # dts = v0*t + 0.5*a*t**2; lets' put in t = tts
+            # dts = v0*tts + 0.5*a*tts**2
+            # dts = v0*(-v0/a) + 0.5*a*(-v0/a)*(-v0/a)
+            # dts = -v0*v0/a + 0.5*v0*v0/a = v0*v0/a * (-1 + 0.5) = -0.5*v0*v0/a
+            # dts = -0.5*v0*v0/a
+            # dts = 0.5 * v0 * tts
+            # CONSTANT-ACCELERATION-FOR-STOP
+            # a = -0.5*(v0*v0)/dts
+            # INITIAL-SPEED-FOR-STOP-AT-CONST-ACCEL
+            # v0 = sqrt(-2*dts*a)
+            tts0 = -1 * self.mpsAch[i-1] / self.sim_params.nominal_brake_accel_for_coast_m__s2
+            dts0 = 0.5 * self.mpsAch[i-1] * tts0 # 0.5 * next_speed_m__s * next_speed_m__s / self.sim_params.nominal_brake_accel_for_coast_m__s2
+            dist_to_next_stop0_m = self._calc_dist_to_next_stop_m(i)
+            if self.mpsAch[i-1] > 0 and dist_to_next_stop0_m > 0 and dts0 >= dist_to_next_stop0_m:
+                a = -0.5 * self.mpsAch[i-1] * self.mpsAch[i-1] / dist_to_next_stop0_m
+                next_speed_proposed_m__s = self.mpsAch[i-1] + a * self.cyc0.secs[i]
+                next_speed_m__s = max(0, min(next_speed_proposed_m__s, next_speed_m__s))
         return next_speed_m__s
 
         
