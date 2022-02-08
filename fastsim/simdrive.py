@@ -301,9 +301,6 @@ class SimDriveClassic(object):
         self.solve_step(self.i)
         if self.sim_params.missed_trace_correction and (self.cyc0.cycDistMeters[:self.i].sum() > 0):
             self.set_time_dilation(self.i)
-        # TODO: implement something for coasting here
-        # if self.impose_coast[i] == True
-            # self.set_coast_speeed(i)
 
         self.i += 1 # increment time step counter
     
@@ -500,6 +497,8 @@ class SimDriveClassic(object):
                     (self.curMaxMcKwOut[i] + self.curMaxFcKwOut[i] - min(self.curMaxElecKw[i], 0)) * self.veh.transEff, 
                     self.curMaxTracKw[i] / self.veh.transEff
                 )
+        if self.impose_coast[i]:
+            self.curMaxTransKwOut[i] = 0.0
         
     def set_power_calcs(self, i):
         """Calculate power requirements to meet cycle and determine if
@@ -1202,6 +1201,7 @@ class SimDriveClassic(object):
         """
         Placeholder for method to impose coasting.
         Might be good to include logic for deciding when to coast.
+        Solve for the next-step speed that will yield a zero roadload
         """
         pass
 
