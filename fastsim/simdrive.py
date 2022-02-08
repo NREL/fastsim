@@ -525,6 +525,7 @@ class SimDriveClassic(object):
         max_next_speed_m__s = 2 * max_avg_speed_m__s - self.mpsAch[i - 1]
         next_speed_m__s = max(0, min(max_next_speed_m__s, target_speed_m__s))
         if False:
+            # TODO: Need to take into account closing speed and max/min accelerations over multiple steps so we don't get harsh stops
             # TIME-TO-STOP (constant deceleration)
             # v(t) = v0 + a*t
             # v(t) = 0 at stop, let's find the t when v(t) is 0 or the time-to-stop or tts
