@@ -206,7 +206,7 @@ def copy_cycle(cyc, return_dict=False, use_jit=None):
         
     return cyc                
 
-def to_microtrips(cycle, stop_speed_m__s=1e-6):
+def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
     """
     Split a cycle into an array of microtrips with one microtrip being a start
     to subsequent stop plus any idle (stopped time).
@@ -215,7 +215,9 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6):
     ----------
     cycle: drive cycle converted to dictionary by cycle.get_cyc_dict()
     stop_speed_m__s: speed at which vehicle is considered stopped for trip
-    separation
+        separation
+    keep_name: (optional) bool, if True and cycle contains "name", adds
+        that name to all microtrips
     """
     microtrips = []
     ts = np.array(cycle['cycSecs'])
@@ -245,6 +247,9 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6):
     if len(mt['cycSecs']) > 0:
         mt['cycSecs'] = mt['cycSecs'] - mt['cycSecs'][0]
         microtrips.append(mt)
+    if keep_name and "name" in cycle:
+        for m in microtrips:
+            m["name"] = cycle["name"]
     return microtrips
 
 
@@ -275,7 +280,7 @@ def make_cycle(ts, vs, gs=None, rs=None):
             'cycRoadType': np.array(rs)}
 
 
-def equals(c1, c2):
+def equals(c1, c2, verbose=True):
     """
     Dict Dict -> Bool
     Returns true if the two cycles are equal, false otherwise
@@ -283,61 +288,67 @@ def equals(c1, c2):
     ----------
     c1: cycle as dictionary from get_cyc_dict()
     c2: cycle as dictionary from get_cyc_dict()
+    verbose: Bool, optional (default: True), if True, prints why not equal
     """
     if c1.keys() != c2.keys():
-        c2missing = set(c1.keys()) - set(c2.keys())
-        c1missing = set(c2.keys()) - set(c1.keys())
-        if len(c1missing) > 0:
-            print('c2 keys not contained in c1: {}'.format(c1missing))
-        if len(c2missing) > 0:
-            print('c1 keys not contained in c2: {}'.format(c2missing))
+        if verbose:
+            c2missing = set(c1.keys()) - set(c2.keys())
+            c1missing = set(c2.keys()) - set(c1.keys())
+            if len(c1missing) > 0:
+                print('c2 keys not contained in c1: {}'.format(c1missing))
+            if len(c2missing) > 0:
+                print('c1 keys not contained in c2: {}'.format(c2missing))
         return False
     for k in c1.keys():
         if len(c1[k]) != len(c2[k]):
-            print(k + ' has a length discrepancy.')
+            if verbose:
+                print(k + ' has a length discrepancy.')
             return False
         if np.any(np.array(c1[k]) != np.array(c2[k])):
-            print(k + ' has a value discrepancy.')
+            if verbose:
+                print(k + ' has a value discrepancy.')
             return False
     return True
 
 
-def concat(cycles):
+def concat(cycles, name=None):
     """
-    (Array Dict) -> Dict
-    Concatenates cycles together one after another
+    Concatenates cycles together one after another into a single dictionary
+    (Array Dict) String -> Dict
+    Arguments:
+    ----------
+    cycles: (Array Dict)
+    name: (optional) string or None, if a string, adds the "name" key to the output
     """
     final_cycle = {'cycSecs': np.array([]),
                    'cycMps': np.array([]),
                    'cycGrade': np.array([]),
                    'cycRoadType': np.array([])}
+    keys = [k for k in final_cycle.keys()]
     first = True
     for cycle in cycles:
         if first:
-            final_cycle['cycSecs'] = np.array(cycle['cycSecs'])
-            final_cycle['cycMps'] = np.array(cycle['cycMps'])
-            final_cycle['cycGrade'] = np.array(cycle['cycGrade'])
-            final_cycle['cycRoadType'] = np.array(cycle['cycRoadType'])
+            for k in keys:
+                final_cycle[k] = np.array(cycle[k])
             first = False
         # if len(final_cycle['cycSecs']) == 0: # ???
         #     t0 = 0.0
         else:
-            t0 = final_cycle['cycSecs'][-1]
-            N_pre = len(final_cycle['cycSecs'])
-            final_cycle['cycSecs'] = np.concatenate([
-                final_cycle['cycSecs'],
-                np.array(cycle['cycSecs'][1:]) + t0])
-            final_cycle['cycMps'] = np.concatenate([
-                final_cycle['cycMps'],
-                np.array(cycle['cycMps'][1:])])
-            final_cycle['cycGrade'] = np.concatenate([
-                final_cycle['cycGrade'],
-                np.array(cycle['cycGrade'][1:])])
+            for k in keys:
+                if k == 'cycSecs':
+                    t0 = final_cycle[k][-1]
+                    final_cycle[k] = np.concatenate([
+                        final_cycle[k], np.array(cycle[k][1:]) + t0])
+                else:
+                    final_cycle[k] = np.concatenate([
+                        final_cycle[k], np.array(cycle[k][1:])])
+    if name is not None:
+        final_cycle["name"] = name
     return final_cycle
 
 
 def resample(cycle, new_dt=None, start_time=None, end_time=None,
-             hold_keys=None):
+             hold_keys=None, rate_keys=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
     Resample a cycle with a new delta time from start time to end time.
@@ -355,6 +366,11 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
     - hold_keys: None or (Set String), if specified, yields values that
                  should be interpolated step-wise, holding their value until
                  an explicit change (i.e., NOT interpolated)
+    - rate_keys: None or (Set String), if specified, yields values that maintain
+                 the interpolated value of the given rate. So, for example,
+                 if a speed, will set the speed such that the distance traveled
+                 is consistent. Note: using rate keys for cycMps may result in
+                 non-zero starting and ending speeds
     Resamples all non-time metrics by the new sample time.
     """
     if new_dt is None:
@@ -372,6 +388,33 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
         elif hold_keys is not None and k in hold_keys:
             f = interp1d(cycle['cycSecs'], cycle[k], 0)
             new_cycle[k] = f(new_cycle['cycSecs'])
+            continue
+        elif rate_keys is not None and k in rate_keys:
+            rate_var = np.array(cycle[k])
+            # below is same as [(rate_var[i+1] + rate_var[i])/2.0 for i in range(len(rate_var) - 1)]
+            avg_rate_var = (rate_var[1:] + rate_var[:-1]) / 2.0
+            dts_orig = np.diff(cycle['cycSecs'])
+            step_averages = np.diff(
+                np.interp(
+                    x=new_cycle['cycSecs'],
+                    xp=cycle['cycSecs'],
+                    fp=np.insert((avg_rate_var * dts_orig).cumsum(), 0, 0.0)
+                ),
+            ) / new_dt
+            step_averages = np.insert(step_averages, 0, step_averages[0])
+            step_averages = np.append(step_averages, step_averages[-1])
+            midstep_times = np.concatenate(
+                (
+                    [0.0],
+                    np.arange(
+                        start_time + (0.5 * new_dt), end_time - (0.5 * new_dt) + eps, step=new_dt),
+                    [end_time],
+                ))
+            new_cycle[k] = np.interp(
+                x=new_cycle['cycSecs'],
+                xp=midstep_times,
+                fp=step_averages
+            )
             continue
         try:
             new_cycle[k] = np.interp(
