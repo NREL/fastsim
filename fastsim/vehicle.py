@@ -196,7 +196,7 @@ class Vehicle(object):
         # Can also be input in CSV as array under column fcEffMap of form
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
-        self.fcEffType == str(self.fcEffType)
+        self.fcEffType = str(self.fcEffType)
 
         try:
             # check if optional parameter fcEffMap is provided in vehicle csv file
