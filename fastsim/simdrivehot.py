@@ -359,21 +359,25 @@ class SimDriveHot(SimDriveClassic):
     cyc: cycle.TypedCycle instance. Can come from cycle.Cycle.get_numba_cyc
     veh: vehicle.TypedVehicle instance. Can come from vehicle.Vehicle.get_numba_veh"""
 
-    def __init__(self, cyc, veh, amb_te_degC, fc_te_init_degC=90.0, cab_te_init_degC=22.0, exhport_te_init_degC=22.0, cat_te_init_degC=22.0):
+    def __init__(self, cyc, veh, amb_te_degC, fc_te_init_degC=-1e3, cab_te_init_degC=-1e3, exhport_te_init_degC=-1e3, cat_te_init_degC=-1e3):
         """Initialize time array variables that are not used in base SimDrive.
         Arguments:
         ----------
         amb_te_degC: array of ambient temperatures [C].  Must be declared with 
             dtype=np.float64, e.g. np.zeros(len(cyc.cycSecs, dtype=np.float64)).
-        fc_te_init_degC: (optional) fuel converter initial temperature [C]
-        cab_te_init_degC: (optional) cabin initial temperature [C]"""
+        fc_te_init_degC: (optional) fuel converter initial temperature [C].  Defaults to amb_te_degC[0]
+        cab_te_init_degC: (optional) cabin initial temperature [C].  Defaults to amb_te_degC[0]
+        exhport_te_init_degC: (optional) exhuast port initial temperature [C
+        cat_te_init_degC: (optional) catalyst initial temperature [C].  Defaults to amb_te_degC[0]
+        """
         self.__init_objects__(cyc, veh)
         
         # for persistence through iteration        
-        self.fc_te_init_degC = fc_te_init_degC 
-        self.cab_te_init_degC = cab_te_init_degC 
-        self.exhport_te_init_degC = exhport_te_init_degC 
-        self.cat_te_init_degC = cat_te_init_degC 
+        self.fc_te_init_degC = fc_te_init_degC if fc_te_init_degC != -1e3 else amb_te_degC[0]
+        self.cab_te_init_degC = cab_te_init_degC if cab_te_init_degC != -1e3 else amb_te_degC[0]
+        self.exhport_te_init_degC = exhport_te_init_degC if exhport_te_init_degC != -1e3 else amb_te_degC[0]
+        self.cat_te_init_degC = cat_te_init_degC if cat_te_init_degC != -1e3 else amb_te_degC[0]
+
         
         self.hev_sim_count = 0
         self.init_arrays()
