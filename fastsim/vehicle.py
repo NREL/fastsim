@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 import inspect
 import ast
+import warnings
 
 # local modules
 from fastsim import parameters as params
@@ -37,6 +38,20 @@ TEMPLATE_VEHDF = get_template_df()
 # list of optional parameters that do not get assigned as vehicle attributes
 OPT_INIT_PARAMS = ['fcPeakEffOverride', 'mcPeakEffOverride']
 
+VEH_PT_TYPES = ("Conv", "HEV", "PHEV", "BEV")
+
+CONV = VEH_PT_TYPES[0]
+HEV = VEH_PT_TYPES[1]
+PHEV = VEH_PT_TYPES[2]
+BEV = VEH_PT_TYPES[3]
+
+FC_EFF_TYPES = ("SI", "Atkinson", "Diesel", "H2FC", "HD_Diesel")
+SI = FC_EFF_TYPES[0]
+ATKINSON = FC_EFF_TYPES[1]
+DIESEL = FC_EFF_TYPES[2]
+H2FC = FC_EFF_TYPES[3]
+HD_DIESEL = FC_EFF_TYPES[4]
+        
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
 
@@ -50,7 +65,7 @@ class Vehicle(object):
         
         See below for `load_veh` method documentaion.\n""" + self.load_veh.__doc__
         
-        self.props = params.PhysicalProperties()
+        self.props = params.PhysicalProperties() 
         self.fcPercOutArray = params.fcPercOutArray
         self.mcPercOutArray = params.mcPercOutArray
 
@@ -80,33 +95,38 @@ class Vehicle(object):
         If default values are modified after loading, you may need to 
         rerun set_init_calcs() and set_veh_mass() to propagate changes."""
 
-        if (type(vnum_or_file) in [type(Path()), str]):
-            # if a file path is passed
-            if not str(vnum_or_file).endswith('.csv'):
-                vnum_or_file = Path(str(vnum_or_file) + '.csv')
-            if (Path(vnum_or_file).name == str(Path(vnum_or_file))) and not (Path().resolve() /
-                vnum_or_file).exists():
-                vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
-                if verbose: print(f'Loading vehicle from\n{Path(vnum_or_file).resolve()}')
-                # if only filename is provided and not in local dir, assume in resources/vehdb
-            
-            veh_file = vnum_or_file
-            vehdf = pd.read_csv(vnum_or_file)
+        def get_single_vehicle_df(veh_file):
+            vehdf = pd.read_csv(veh_file)
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
             vehdf.drop(vehdf.index[0], inplace=True)
             vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
             vehdf.loc['Param Value', 'Selection'] = 0
+            return vehdf
+
+        if (type(vnum_or_file) in [type(Path()), str]):
+            # if a file path is passed
+            if not str(vnum_or_file).endswith('.csv'):
+                vnum_or_file = Path(str(vnum_or_file) + '.csv')
+            if (Path(vnum_or_file).name == str(Path(vnum_or_file))) and not (Path().resolve() / vnum_or_file).exists():
+                vnum_or_file = THIS_DIR / 'resources/vehdb' / vnum_or_file
+                if verbose: print(f'Loading vehicle from\n{Path(vnum_or_file).resolve()}')
+                # if only filename is provided and not in local dir, assume in resources/vehdb
+            veh_file = vnum_or_file
+            vehdf = get_single_vehicle_df(veh_file)
             vnum = 0
-        elif str(int(vnum_or_file)).isnumeric() and veh_file:
+        elif vnum_or_file and str(int(vnum_or_file)).isnumeric() and veh_file:
             # if a numeric is passed along with veh_file
             vnum = vnum_or_file
             vehdf = pd.read_csv(veh_file)
-        elif str(int(vnum_or_file)).isnumeric():
+        elif vnum_or_file and str(int(vnum_or_file)).isnumeric():
             # if a numeric is passed alone
             vnum = vnum_or_file
             veh_file = DEFAULT_VEH_DB
             vehdf = DEFAULT_VEHDF
+        elif veh_file:
+            vehdf = get_single_vehicle_df(veh_file)
+            vnum = 0
         else:
             raise Exception('load_veh requires `vnum_or_file` and/or `veh_file`.')
         vehdf.set_index('Selection', inplace=True, drop=False)
@@ -176,24 +196,32 @@ class Vehicle(object):
         # Can also be input in CSV as array under column fcEffMap of form
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
         # no quotes necessary
+        self.fcEffType == str(self.fcEffType)
+
         try:
             # check if optional parameter fcEffMap is provided in vehicle csv file
             self.fcEffMap = np.array(ast.literal_eval(veh_dict['fcEffMap']))
+            if verbose:
+                print(f"fcEffMap is overriding fcEffType in {veh_file}")
         
         except:
-            if self.fcEffType == 1:  # SI engine
+            warn_str = f"""fcEffType {self.fcEffType} is not in {FC_EFF_TYPES},
+            and `fcEffMap` is not provided."""
+            assert self.fcEffType in FC_EFF_TYPES, warn_str
+
+            if self.fcEffType == SI:  # SI engine
                 self.fcEffMap = params.fcEffMap_si
 
-            elif self.fcEffType == 2:  # Atkinson cycle SI engine -- greater expansion
+            elif self.fcEffType == ATKINSON:  # Atkinson cycle SI engine -- greater expansion
                 self.fcEffMap = params.fcEffMap_atk
 
-            elif self.fcEffType == 3:  # Diesel (compression ignition) engine
+            elif self.fcEffType == DIESEL:  # Diesel (compression ignition) engine
                 self.fcEffMap = params.fcEffMap_diesel
 
-            elif self.fcEffType == 4:  # H2 fuel cell
+            elif self.fcEffType == H2FC:  # H2 fuel cell
                 self.fcEffMap = params.fcEffMap_fuel_cell
 
-            elif self.fcEffType == 5:  # heavy duty Diesel engine
+            elif self.fcEffType == HD_DIESEL:  # heavy duty Diesel engine
                 self.fcEffMap = params.fcEffMap_hd_diesel
 
         try:
@@ -253,6 +281,8 @@ class Vehicle(object):
         
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
+
+        assert self.vehPtType in VEH_PT_TYPES, f"vehPtType {self.vehPtType} not in {VEH_PT_TYPES}"
         
         self.set_init_calcs(
             # provide kwargs for load-time overrides
@@ -301,11 +331,11 @@ class Vehicle(object):
         """
         
         if self.Scenario_name != 'Template Vehicle for setting up data types':
-            if self.vehPtType == params.BEV:
+            if self.vehPtType == BEV:
                 assert self.maxFuelStorKw == 0, 'maxFuelStorKw must be zero for provided BEV powertrain type'
                 assert self.fuelStorKwh  == 0, 'fuelStorKwh must be zero for provided BEV powertrain type'
                 assert self.maxFuelConvKw == 0, 'maxFuelConvKw must be zero for provided BEV powertrain type'
-            elif (self.vehPtType == params.CONV) and not(self.stopStart):
+            elif (self.vehPtType == CONV) and not(self.stopStart):
                 assert self.maxMotorKw == 0, 'maxMotorKw must be zero for provided Conv powertrain type'
                 assert self.maxEssKw == 0, 'maxEssKw must be zero for provided Conv powertrain type'
                 assert self.maxEssKwh == 0, 'maxEssKwh must be zero for provided Conv powertrain type'

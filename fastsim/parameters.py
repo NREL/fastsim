@@ -14,15 +14,6 @@ from pathlib import Path
 
 THIS_DIR = Path(__file__).parent
 
-# vehicle types
-CONV = 1
-HEV  = 2
-PHEV = 3
-BEV  = 4
-
-# vehicle types to string rep
-PT_TYPES = {CONV: "Conv", HEV: "HEV", PHEV: "PHEV", BEV: "EV"}
-
 
 ### Unit conversions that should NEVER change
 mphPerMps = 2.2369

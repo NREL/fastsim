@@ -84,10 +84,10 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
         kind='previous')
 
     # run calculations for non-PHEV powertrains
-    if params.PT_TYPES[veh.vehPtType] != 'PHEV':
+    if veh.vehPtType != vehicle.PHEV:
         # lab values
 
-        if params.PT_TYPES[veh.vehPtType] != 'EV':
+        if veh.vehPtType != vehicle.BEV:
             # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labUddsMpgge
             out['labUddsMpgge'] = sd['udds'].mpgge
             # compare to Excel 'VehicleIO'!C203 or 'VehicleIO'!labHwyMpgge
@@ -99,7 +99,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
             out['labHwyMpgge'] = 0
             out['labCombMpgge'] = 0
 
-        if params.PT_TYPES[veh.vehPtType] == 'EV':
+        if veh.vehPtType == vehicle.BEV:
             out['labUddsKwhPerMile'] = sd['udds'].battery_kWh_per_mi
             out['labHwyKwhPerMile'] = sd['hwy'].battery_kWh_per_mi
             out['labCombKwhPerMile'] = 0.55 * sd['udds'].battery_kWh_per_mi + \
@@ -110,7 +110,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
             out['labCombKwhPerMile'] = 0
 
         # adjusted values for mpg
-        if params.PT_TYPES[veh.vehPtType] != 'EV': # non-EV case
+        if veh.vehPtType != vehicle.BEV: # non-EV case
             # CV or HEV case (not PHEV)
             # HEV SOC iteration is handled in simdrive.SimDriveClassic
             out['adjUddsMpgge'] = 1 / (
@@ -128,7 +128,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
                 out[key] = 0
             
         # adjusted kW-hr/mi
-        if params.PT_TYPES[veh.vehPtType] == "EV": # EV Case
+        if veh.vehPtType == vehicle.BEV: # EV Case
             out['adjUddsKwhPerMile'] = (1 / max(
                 (1 / (adjParams['City Intercept'] + (adjParams['City Slope'] / ((1 / out['labUddsKwhPerMile']) * props.kWhPerGGE)))),
                 (1 / out['labUddsKwhPerMile']) * props.kWhPerGGE * (1 - sim_params.maxEpaAdj))

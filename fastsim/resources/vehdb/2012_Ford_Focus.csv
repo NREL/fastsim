@@ -1,6 +1,6 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,2012 Ford Focus,any parameters without comments are carryover from 2016 TOYOTA Corolla 4cyl 2WD
-Vehicle,vehPtType,1,
+Vehicle,vehPtType,Conv,
 ,dragCoef,0.304,calculated from https://www.epa.gov/compliance-and-fuel-economy-data/data-cars-used-testing-fuel-economy
 ,frontalAreaM2,2.574,
 ,gliderKg,1045.636,
@@ -15,7 +15,7 @@ Fuel / Fuel Converter,maxFuelStorKw,2000,
 ,fuelStorKwhPerKg,9.89,
 ,maxFuelConvKw,119.3,
 ,fcEffMap,"[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]",
-,fcEffType,1,
+,fcEffType,SI,
 ,fuelConvSecsToPeakPwr,6,
 ,fuelConvBaseKg,61,
 ,fuelConvKwPerKg,2.13,

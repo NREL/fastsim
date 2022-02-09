@@ -28,7 +28,7 @@ else:
     xw_success = False
 
 
-def run_python(use_jit=False, verbose=True):
+def run_python(vehicles=np.arange(1, 27), use_jit=False, verbose=True):
     """
     Runs python fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
@@ -42,8 +42,6 @@ def run_python(use_jit=False, verbose=True):
     """
 
     t0 = time.time()
-
-    vehicles = np.arange(1, 27)
 
     print('Running vehicle sweep.')
     print()
@@ -69,8 +67,7 @@ def run_python(use_jit=False, verbose=True):
 PREV_RES_PATH = Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.json'
 
 
-def run_excel(prev_res_path=PREV_RES_PATH, 
-    rerun_excel=False):
+def run_excel(vehicles=np.arange(1, 28), prev_res_path=PREV_RES_PATH, rerun_excel=False):
     """
     Runs excel fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
@@ -98,7 +95,6 @@ def run_excel(prev_res_path=PREV_RES_PATH,
         load_veh_macro = app.macro("FASTSim.xlsm!reloadVehInfo")
         run_macro = app.macro("FASTSim.xlsm!run.run")
 
-        vehicles = np.arange(1, 28)
         res_excel = {}
 
         for vehno in vehicles:
@@ -292,3 +288,18 @@ class TestExcel(unittest.TestCase):
 
     #     self.assertEqual(failed_tests, [])
 
+if __name__ == "__main__":
+        res_python = run_python(vehicles=[24], verbose=True, use_jit=False)
+        res_excel = run_excel(vehicles=[24], prev_res_path=PREV_RES_PATH,
+                              rerun_excel=False)
+        res_comps = compare(res_python, res_excel, verbose=False)
+
+        failed_tests = []
+        for veh_key, veh_val in res_comps.items():
+            if veh_key not in KNOWN_ERROR_LIST:
+                for attr_key, attr_val in veh_val.items():
+                    if attr_key == 'netAccel_frac_err':
+                        if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+                            failed_tests.append(veh_key + '.' + attr_key)
+                    elif attr_val != 0:
+                        failed_tests.append(veh_key + '.' + attr_key)    
