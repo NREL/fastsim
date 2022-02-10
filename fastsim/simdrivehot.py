@@ -526,6 +526,16 @@ class SimDriveHot(SimDriveClassic):
 
         self.i += 1 # increment time step counter
 
+    def thermal_soak_walk(self):
+        """
+        Method for stepping through zero-speed, key-off cycle for ambient thermal soak.  
+        No powertrain dynamics are modeled when this method is called.  
+        """
+        self.i = 1
+        while self.i < len(self.cyc.time_s):
+            self.set_thermal_calcs(self.i)
+            self.i += 1
+
     def set_thermal_calcs(self, i):
         """Sets temperature calculations at time step 'i'
         Arguments:
