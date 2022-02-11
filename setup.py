@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fastsim",  
-    version="1.2.4",
+    version="1.2.5",
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
     description="Tool for modeling vehicle powertrains",
@@ -20,7 +20,7 @@ setuptools.setup(
         "License :: Other/Proprietary License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7',
+    python_requires='3.8',
     include_package_data=True,
     package_data={
         "fastsim.resources": ["*"],
