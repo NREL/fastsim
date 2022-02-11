@@ -44,9 +44,11 @@ class SimDriveParamsClassic(object):
         self.newton_max_iter = 100 # newton solver max iterations
         self.newton_xtol = 1e-9 # newton solver tolerance
         self.energy_audit_error_tol = 0.002 # tolerance for energy audit error warning, i.e. 0.1%
+        self.allow_coast = False # if True, coasting to stops are allowed
         self.allow_passing_during_coast = False # if True, coasting vehicle can eclipse the shadow trace
         self.max_coast_speed_m__s = 100.0 / params.mphPerMps # maximum allowable speed under coast
-        self.nominal_brake_accel_for_coast_m__s2 = -1.78816
+        self.nominal_brake_accel_for_coast_m__s2 = -1.0 # -1.78816
+        self.coast_to_brake_speed_m__s = 7.5 # 20.0 / params.mphPerMps # speed when coasting uses friction brakes
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
@@ -301,6 +303,8 @@ class SimDriveClassic(object):
 
     def sim_drive_step(self):
         """Step through 1 time step."""
+        if self.sim_params.allow_coast:
+            self.set_coast_speed(self.i)
         self.solve_step(self.i)
         if self.sim_params.missed_trace_correction and (self.cyc0.cycDistMeters[:self.i].sum() > 0) and not self.impose_coast[self.i]:
             self.set_time_dilation(self.i)
@@ -503,61 +507,6 @@ class SimDriveClassic(object):
         if self.impose_coast[i]:
             self.curMaxTransKwOut[i] = 0.0
     
-    def _calc_dist_to_next_stop_m(self, i):
-        ""
-        distances_of_stops_m = self.cyc0.cycDistMeters.cumsum()[self.cyc0.cycMps < 1e-6]
-        dist_traveled_m = self.distMeters[:i].sum()
-        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > dist_traveled_m]
-        if len(remaining_stops_m) > 0:
-            return remaining_stops_m[0] - dist_traveled_m
-        return 0.0
-    
-    def _calc_max_next_speed_no_pass(self, i, target_speed_m__s=None):
-        "Private method to calculate the maximum average speed to not pass the shadow trace (cyc0)"
-        if target_speed_m__s is None:
-            target_speed_m__s = self.sim_params.max_coast_speed_m__s
-        cyc0_distances_m = self.cyc0.cycDistMeters.cumsum()
-        cyc0_dist_at_next_step_m = cyc0_distances_m[i]
-        # cyc0_speed_at_next_step_m__s = self.cyc0.cycMps[i]
-        dist_traveled_m = self.distMeters[:i].sum()
-        max_step_dist_m = cyc0_dist_at_next_step_m - dist_traveled_m
-        max_avg_speed_m__s = max_step_dist_m / self.cyc0.secs[i]
-        max_next_speed_m__s = 2 * max_avg_speed_m__s - self.mpsAch[i - 1]
-        next_speed_m__s = max(0, min(max_next_speed_m__s, target_speed_m__s))
-        if False:
-            # TODO: Need to take into account closing speed and max/min accelerations over multiple steps so we don't get harsh stops
-            # TIME-TO-STOP (constant deceleration)
-            # v(t) = v0 + a*t
-            # v(t) = 0 at stop, let's find the t when v(t) is 0 or the time-to-stop or tts
-            # 0 = v0 + a*tts
-            # -v0 = a*tts
-            # -v0 = a*tts
-            # -v0/a = tts
-            # tts = -v0/a
-            # DISTANCE-TO-STOP (constant deceleration)
-            # d(t) = d0 + v0*t + 0.5*a*t**2
-            # d(t) - d0 = dts
-            # dts = v0*t + 0.5*a*t**2
-            # dts = v0*t + 0.5*a*t**2; lets' put in t = tts
-            # dts = v0*tts + 0.5*a*tts**2
-            # dts = v0*(-v0/a) + 0.5*a*(-v0/a)*(-v0/a)
-            # dts = -v0*v0/a + 0.5*v0*v0/a = v0*v0/a * (-1 + 0.5) = -0.5*v0*v0/a
-            # dts = -0.5*v0*v0/a
-            # dts = 0.5 * v0 * tts
-            # CONSTANT-ACCELERATION-FOR-STOP
-            # a = -0.5*(v0*v0)/dts
-            # INITIAL-SPEED-FOR-STOP-AT-CONST-ACCEL
-            # v0 = sqrt(-2*dts*a)
-            tts0 = -1 * self.mpsAch[i-1] / self.sim_params.nominal_brake_accel_for_coast_m__s2
-            dts0 = 0.5 * self.mpsAch[i-1] * tts0 # 0.5 * next_speed_m__s * next_speed_m__s / self.sim_params.nominal_brake_accel_for_coast_m__s2
-            dist_to_next_stop0_m = self._calc_dist_to_next_stop_m(i)
-            if self.mpsAch[i-1] > 0 and dist_to_next_stop0_m > 0 and dts0 >= dist_to_next_stop0_m:
-                a = -0.5 * self.mpsAch[i-1] * self.mpsAch[i-1] / dist_to_next_stop0_m
-                next_speed_proposed_m__s = self.mpsAch[i-1] + a * self.cyc0.secs[i]
-                next_speed_m__s = max(0, min(next_speed_proposed_m__s, next_speed_m__s))
-        return next_speed_m__s
-
-        
     def set_power_calcs(self, i):
         """Calculate power requirements to meet cycle and determine if
         cycle can be met.  
@@ -567,15 +516,10 @@ class SimDriveClassic(object):
 
         if self.newton_iters[i] > 0:
             mpsAch = self.mpsAch[i]
-            if self.impose_coast[i] and not self.sim_params.allow_passing_during_coast:
-                mpsAch = self._calc_max_next_speed_no_pass(i, mpsAch)
-        elif self.impose_coast[i]:
-            if self.sim_params.allow_passing_during_coast:
-                mpsAch = self.sim_params.max_coast_speed_m__s
-            else:
-                mpsAch = self._calc_max_next_speed_no_pass(i, self.sim_params.max_coast_speed_m__s)
         else:
             mpsAch = self.cyc.cycMps[i]
+
+        # NOTE: use of self.cyc.cycMph[i] in regenContrLimKwPerc[i] calculation seems wrong. Shouldn't it be mpsAch?
 
         self.cycDragKw[i] = 0.5 * self.props.airDensityKgPerM3 * self.veh.dragCoef * self.veh.frontalAreaM2 * (
             (self.mpsAch[i-1] + mpsAch) / 2.0) ** 3 / 1_000
@@ -1268,7 +1212,42 @@ class SimDriveClassic(object):
         Might be good to include logic for deciding when to coast.
         Solve for the next-step speed that will yield a zero roadload
         """
-        pass
+        TOL = 1e-6
+        v0 = self.mpsAch[i-1]
+        if v0 < TOL:
+            self.impose_coast[i] = False
+        else:
+            self.impose_coast[i] = self.impose_coast[i-1] or cycle.should_impose_coast(self.cyc0, self.cyc, i, None)
+        if not self.impose_coast[i]:
+            return
+        if self.sim_params.allow_passing_during_coast:
+            # we could be coasting downhill so could in theory go to a higher speed
+            # since we can pass, allow vehicle to go up to max coasting speed (m/s)
+            # the solver will show us what we can actually achieve
+            self.cyc.cycMps[i] = self.sim_params.max_coast_speed_m__s
+        else:
+            # distances of lead vehicle (m)
+            ds_lv = self.cyc0.cycDistMeters.cumsum()
+            d0 = self.distMeters[:i].sum() # current distance traveled at start of step
+            d1_lv = ds_lv[i]
+            max_step_distance_m = (d1_lv - d0)
+            max_avg_speed_m__s = max_step_distance_m / self.cyc0.secs[i]
+            max_next_speed_m__s = 2 * max_avg_speed_m__s - v0
+            self.cyc.cycMps[i] = max(0, min(max_next_speed_m__s, self.sim_params.max_coast_speed_m__s))
+        # Solve for the actual next speed if coasting
+        self.solve_step(i)
+        trajectory = cycle.calc_next_rendezvous_trajectory(
+            self.cyc,
+            self.cyc0,
+            time_horizon_s=20.0,
+            distance_horizon_m=1000.0,
+            brake_start_speed_m__s=7.5,
+            min_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2,
+            max_accel_m__s2=(self.cyc.cycMps[i] - self.mpsAch[i-1]) / self.cyc.secs[i]
+        )
+        if trajectory is not None:
+            # adjust cyc to perform the trajectory
+            pass
 
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
@@ -1557,28 +1536,3 @@ def SimAccelTestJit(cyc_jit, veh_jit):
     SimDriveJit.__doc__ += sim_drive_jit.__doc__
 
     return sim_drive_jit
-
-def run_eco_approach(
-    sim_drive,
-    #lookahead_distance_m=None
-    ):
-    """
-    Run eco-approach
-    - sim_drive: SimDriveClassic or SimDriveJit instance with cycle and vehicle
-    #- lookahead_distance_m: None or positive number, if None, lookahead is the entire distance of the cycle.
-    #    This is the distance ahead that a stop can be detected.
-        
-    """
-    # coast_brake_start_speed_m__s = 20.0 / params.mphPerMps
-    # coast_brake_decel_m__s2 = 2.5
-    # coast_resistance_Nm = 0.0 # translate powertrain efficiency to Nm? to N?
-
-    coast_start_mph = 39.99
-    while sim_drive.i < len(sim_drive.cyc.cycSecs):
-        i = sim_drive.i
-        prev_i = max(0, i-1)
-        sim_drive.impose_coast[i] = sim_drive.impose_coast[prev_i] or sim_drive.mphAch[prev_i] >= coast_start_mph
-        if sim_drive.mphAch[prev_i] == 0.0:
-            sim_drive.impose_coast[i] = False
-        sim_drive.sim_drive_step()
-    return sim_drive

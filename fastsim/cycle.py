@@ -440,3 +440,396 @@ def peak_deceleration(cycle):
     OUTPUTS: Real, the maximum acceleration
     """
     return np.min(accelerations(cycle))
+
+
+TOL = 1e-6
+
+
+def bracket(n, nmin, nmax):
+    """
+    Brackets a number, n, between a low and high limit
+    - n: Number, some number
+    - nmin: (or Number None), the minimum value for number
+    - nmax: (or Number None), the maximum value for number
+    RETURN: Number
+    TODO: switch to np.clip
+    """
+    assert (nmin is None) or (nmax is None) or (nmax >= nmin)
+    if nmax is not None and n > nmax:
+        return nmax
+    elif nmin is not None and n < nmin:
+        return nmin
+    return n
+
+
+def calc_adjusted_brake_accel(v0, dts0, dt, a_brake_min, a_brake_max):
+    """
+    Calculate the adjusted brake acceleration. Attempts to
+    decelerate such that we cover the given distance to stop
+    within the constraints of a_brake_min and a_brake_max.
+    - v0: non-negative number, current vehicle speed (m/s)
+    - dts0: (or number None), current distance to stop from v0 (m, can be None)
+    - dt: positive number, the time-step duration (s)
+    - a_brake_min: number, the minimum brake acceleration (m/s2)
+    - a_brake_max: number, the maximum brake acceleration (m/s2)
+    Note: a_brake_min and a_brake_max should be negative. Also:
+        assumes: |a_brake_min| >= |a_brake_max|
+    RETURN: number, the braking acceleration (m/s2)
+    """
+    assert np.abs(a_brake_min) >= np.abs(a_brake_max)
+    assert a_brake_min < 0.0
+    assert a_brake_max < 0.0
+    assert v0 >= 0.0
+    assert dt > 0.0
+    if v0 == 0.0:
+        return 0.0
+    if dts0 is not None:
+        assert dts0 >= 0.0
+        v_avg_brake = v0 / 2.0
+        if v_avg_brake > 0.0:
+            dt_brake_remaining = dts0 / v_avg_brake
+        else:
+            dt_brake_remaining = None
+        if v0 <= min(a_brake_min, a_brake_max) * dt:
+            a_brake_adj = -v0 / dt
+        elif dt_brake_remaining is None or dt_brake_remaining <= 0.0:
+            a_brake_adj = a_brake_min
+        else:
+            a_brake_adj = bracket(-v0 / dt_brake_remaining, a_brake_min, a_brake_max)
+    else:
+        a_brake_adj = a_brake_min
+    return a_brake_adj
+
+
+def next_speed_by_eco_approach(
+    v0,
+    dt,
+    a_brake,
+    a_brake_min,
+    dts0,
+    a_coast,
+    v_brake_start,
+    dtlv0,
+    d0_lv,
+    d1_lv,
+    min_ttc,
+):
+    """
+    Given the state, parameters, and derived values, return
+    the next speed under eco-approach in meters/second.
+    K = dv/dd = constant
+    a(t) = K * v(t)
+    a(t)/v(t) = K
+    v1 = v0 + integral(K * v(t), 0, dt) = v0 + K * integral(v, 0, dt)
+                                        = v0 + K * delta_dist_0_to_1
+    1: (v1 - v0) / delta_dist_0_to_1 = K
+    2: delta_dist_0_to_1 = (v0 + v1) * dt / 2.0
+    substitute 2 into 1:
+        (v1 - v0) / ((v0 + v1) * dt / 2.0) = K
+        (v1 - v0) / (v0 + v1) = 0.5 * K * dt
+        (v1 - v0) = (v0 + v1) * 0.5 * K * dt
+        v1 = v0 + 0.5 * K * (v0 + v1) * dt
+    INPUTS
+    - v0: non-negative number, vehicle speed at the beginning of the step (i.e., last step's speed achieved) (m/s)
+    - dt: positive number, the step duration (s)
+    - a_brake: negative number, nominal braking acceleration (m/s2)
+    - a_brake_min: negative number, maximum braking acceleration that will be entertained (m/s2)
+    - dts0: non-negative number, the distance to the next stop from the start of the time-step (m)
+    - a_coast: number, the coasting acceleration (m/s2)
+    - v_brake_start: positive number, the speed at which friction braking engages (m/s)
+    - dtlv0: non-negative number, distance to lead vehicle from start of time-step (m)
+    - d0_lv: non-negative number, distance of the lead vehicle at beginning of step (m)
+    - d1_lv: non-negative number, distance of the lead vehicle at end of step (m)
+    - min_ttc: positive number, the minimum time allowed for closing the distance to lead vehicle (s)
+    NOTE:
+    - a_brake >= a_brake_min (i.e., abs(a_brake) <= abs(a_brake_min))
+    RETURN: number, the next speed (m/s)
+    TODO:
+    - investigate: doesn't look like this takes into account positive coasting accelerations (e.g., going down hill and picking up speed)
+    """
+    dv_coast = a_coast * dt
+    v1_coast = bracket(v0 + dv_coast, 0.0, None)
+    dv_brake = a_brake * dt
+    v1_brake = bracket(v0 + dv_brake, 0.0, None)
+    if v0 > v_brake_start and v1_coast > v_brake_start:
+        v1 = v1_coast
+    elif v0 <= v_brake_start:
+        a_brake_adj = calc_adjusted_brake_accel(v0, dts0, dt, a_brake, a_brake_min)
+        v1 = bracket(v0 + a_brake_adj * dt, 0.0, None)
+    else:
+        # treat coasting like constant acceleration
+        # TODO: revisit this; doesn't look like it preserves distance integration
+        dt_coast = (v0 - v_brake_start) / a_coast if a_coast != 0.0 else dt
+        dd_coast = (v0 + v_brake_start) * dt_coast / 2.0
+        dt_brake = dt - dt_coast
+        a_brake_adj = calc_adjusted_brake_accel(
+            v0, dts0 - dd_coast, dt_brake, a_brake, a_brake_min
+        )
+        v1 = v0 + dt_coast * a_coast + dt_brake * a_brake_adj
+    vavg = (v0 + v1) / 2.0
+    dd = vavg * dt
+    dd_lv = d1_lv - d0_lv
+    dtlv1 = dtlv0 + dd_lv - dd
+    if dd_lv > dd or v1 < v_brake_start:
+        return v1
+    if v1 > 0.0:
+        ttc1 = dtlv1 / v1
+    else:
+        ttc1 = None
+    if ttc1 is not None and ttc1 >= min_ttc:
+        return v1
+    # In order to never collide, dd <= dd_lv
+    # dd = vavg_never_collide * dt = (v0 + v1_never_collide) * dt / 2.0
+    # (v0 + v1_never_collide) / 2.0 = dd_lv / dt
+    # v0 + v1_never_collide = 2.0 * (dd_lv / dt)
+    # v1_never_collide = 2.0 * (dd_lv / dt) - v0
+    # however, we won't go below what we could get from braking nor below 0
+    if ttc1 is not None:
+        f = bracket(ttc1 / min_ttc, 0.1, 0.9)
+    else:
+        f = 0.9
+    v1_never_collide = bracket(2.0 * (dd_lv / dt) - v0, v1_brake, None)
+    return bracket(v1 * f + v1_never_collide * (1.0 - f), 0.0, None)
+
+
+def limit_next_speed(
+    v1_proposed,
+    dtlv0,
+    v1_lv,
+    v0,
+    v0_lv,
+    dt,
+    a_brake,
+    step,
+    t0,
+    d0,
+    lv_ds,
+    total_cycle_distance_m,
+    total_cycle_time_s,
+    d1_lv,
+    d2_lv,
+):
+    """
+    Limit the next speed due to considerations of crash avoidance with leading vehicle.
+    - v1_proposed: non-negative number, proposed next speed at end of step (m/s)
+    - dtlv0: non-negative number, distance to lead vehicle from start of time-step (m)
+    - v1_lv: non-negative number, the current speed of the lead vehicle (m/s)
+    - v0: non-negative number, vehicle speed at start of step (m/s)
+    - v0_lv: non-negative number, vehicle speed of lead vehicle at start of step (m/s)
+    - dt: positive number, time-step duration (s)
+    - a_brake: negative number, nominal braking acceleration (via engaging friction brakes) (m/s2)
+    - step: non-negative integer, the step index; corresponds to i-1 in FASTSim
+    - t0: non-negative number, elapsed time at step-start (s)
+    - d0: non-negative number, distance traveled from start at step-start (m)
+    - lv_ds: (array non-negative-number), lead-vehicle distances traveled from start (m)
+    - total_cycle_distance_m: non-negative number, total distance over the whole cycle (i.e., total distance traveled over the cycle) (m)
+    - total_cycle_time_s: non-negative number, total cycle elapsed time (s)
+    - d1_lv: non-negative number, distance of lead vehicle at end of this time-step (m)
+    - d2_lv: non-negative number, distance of lead vehicle at end of NEXT time-step (m)
+    RETURN: non-negative number, limited next speed (m/s)
+    """
+    if (
+        np.abs(dtlv0) < TOL
+        and np.abs(v0_lv - v0) < TOL
+        and np.abs(v1_lv - v1_proposed) < TOL
+    ):
+        # If we're in step with lead vehicle, don't attempt to limit speed
+        return v1_proposed
+    dv_brake = a_brake * dt
+    dv_brake_abs = np.abs(dv_brake)
+    # if v1_proposed < dv_brake_abs:
+    #    # don't regulate speed if we can go to complete stop in one time step
+    #    return v1_proposed
+    # Let's assume that lead-vehicle data is resampled to dtime_s periods at initialization
+    num_steps_to_stop = int(np.ceil(v1_proposed / dv_brake_abs))
+    dd_proposed = (v0 + v1_proposed) * dt / 2.0
+    d1_proposed = d0 + dd_proposed
+    idx0 = step + 1
+    idx1 = idx0 + num_steps_to_stop
+    lv_ds = lv_ds[idx0:idx1]
+    D = total_cycle_distance_m
+    T = total_cycle_time_s
+    dtd = D - d0
+    dtd1 = dtd - dd_proposed
+    ttd = T - t0
+    ttd1 = ttd - dt
+    if ttd > 0.0:
+        a_dest_dist0 = (dtd - v0 * ttd) / (0.5 * ttd * ttd)
+        if ttd1 > 0.0:
+            a_dest_dist1 = (dtd1 - v1_proposed * ttd1) / (0.5 * ttd1 * ttd1)
+        else:
+            a_dest_dist1 = 0.0
+    else:
+        a_dest_dist0 = 0.0
+        a_dest_dist1 = 0.0
+    a_dist0 = min(
+        [0.0]
+        + [
+            (d_lv - d0 - v0 * (idx + 1) * dt) / (0.5 * ((idx + 1) * dt) ** 2)
+            for idx, d_lv in enumerate(lv_ds)
+        ]
+    )
+    a_dist1 = min(
+        [0.0]
+        + [
+            (d_lv - d1_proposed - v1_proposed * idx * dt) / (0.5 * (idx * dt) ** 2)
+            for idx, d_lv in enumerate(lv_ds)
+            if idx > 0
+        ]
+    )
+    a_min0 = min(a_dist0, a_dest_dist0, 0.0)
+    a_min1 = min(a_dist1, a_dest_dist1, 0.0)
+    if a_min0 > 0.9 * a_brake and a_min1 <= 0.9 * a_brake:
+        v1_max = v0 + a_min0 * dt
+    elif a_min0 <= 0.9 * a_brake:
+        v1_max = v0 + a_brake * dt
+    else:
+        v1_max = v1_proposed
+    dd_nocrash = min(d2_lv, D) - d0
+    v1_lim_dist = dd_nocrash / dt - v0 / 2.0
+    vavg_nocrash = (min(d1_lv, D) - d0) / dt
+    v1_nocrash = bracket(vavg_nocrash * 2.0 - v0, 0.0, None)
+    v1 = bracket(v1_proposed, 0.0, max(min(v1_nocrash, v1_lim_dist, v1_max), 0.0))
+    # v1 = bracket(v1_proposed, 0.0, max(min(v1_max, v1_nocrash), 0.0))
+    return v1
+
+
+def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
+    """
+    Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
+    INPUTS:
+    - n: Int, number of time-steps away from rendezvous
+    - D0: Num, distance of simulated vehicle (m/s)
+    - v0: Num, speed of simulated vehicle (m/s)
+    - Dr: Num, distance of rendezvous point (m)
+    - vr: Num, speed of rendezvous point (m/s)
+    - dt: Num, step duration (s)
+    RETURNS: (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
+    Returns the constant jerk and acceleration for initial time step.
+    """
+    assert n > 0
+    assert Dr > D0
+    dDr = Dr - D0
+    dvr = vr - v0
+    k = (dvr - (2.0 * dDr / (n * dt)) + 2.0 * v0) / (
+        0.5 * n * (n - 1) * dt
+        - (1.0 / 3) * (n - 1) * (n - 2) * dt
+        - 0.5 * (n - 1) * dt * dt
+    )
+    a0 = (
+        (dDr / dt)
+        - n * v0
+        - ((1.0 / 6) * n * (n - 1) * (n - 2) * dt + 0.25 * n * (n - 1) * dt * dt) * k
+    ) / (0.5 * n * n * dt)
+    return {"jerk_m__s3": k, "accel_m__s2": a0}
+
+
+def accel_for_constant_jerk(n, a0, k, dt):
+    """
+    Int Num Num Num -> Num
+    Calculate the acceleration n timesteps away
+    INPUTS:
+    - n: Int, number of times steps away to calculate
+    - a0: Num, initial acceleration (m/s2)
+    - k: Num, constant jerk (m/s3)
+    - dt: Num, time-step duration in seconds
+    OUTPUT: Num, the acceleration n timesteps away (m/s2)
+    """
+    return a0 + (n * k * dt)
+
+
+def speed_for_constant_jerk(n, v0, a0, k, dt):
+    """
+    Int Num Num Num Num -> Num
+    Calculate speed (m/s) n timesteps away
+    INPUTS:
+    - n: Int, numer of timesteps away to calculate
+    - v0: Num, initial speed (m/s)
+    - a0: Num, initial acceleration (m/s2)
+    - k: Num, constant jerk
+    - dt: Num, duration of a timestep (s)
+    OUTPUT: Num, the speed n timesteps away (m/s)
+    """
+    return v0 + (n * a0 * dt) + (0.5 * n * (n - 1) * k * dt)
+
+
+def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
+    """
+    Int Num Num Num Num Num -> Num
+    Calculate distance (m) after n timesteps
+    INPUTS:
+    - n: Int, numer of timesteps away to calculate
+    - d0: Num, initial distance (m)
+    - v0: Num, initial speed (m/s)
+    - a0: Num, initial acceleration (m/s2)
+    - k: Num, constant jerk
+    - dt: Num, duration of a timestep (s)
+    OUTPUT: Num, the distance at n timesteps away (m)
+    """
+    term1 = dt * (
+        (n * v0)
+        + (0.5 * n * (n - 1) * a0 * dt)
+        + ((1.0 / 6.0) * k * dt * (n - 2) * (n - 1) * n)
+    )
+    term2 = 0.5 * dt * dt * ((n * a0) + (0.5 * n * (n - 1) * k * dt))
+    return d0 + term1 + term2
+
+
+def should_impose_coast(cyc0, cyc, idx, coasting_factors):
+    """
+    - cyc0: Cycle, reference cycle
+    - cyc: Cycle, current cycle
+    - idx: non-negative integer, the current position in cyc
+    - coasting_factors: (dict (tuple speed_m__s, grade_pct) dv__dd), yields
+      the change in speed by distance by speed and by grade
+      speed_m__s (m/s, >= 0), grade_pct (%), and dv__dd (m/s / m) are all numbers
+    RETURN: Bool if vehicle should initiate coasting
+    Coast logic is that the vehicle should coast if it is within coasting distance of a stop
+    """
+    return cyc.cycMps[idx] > 17.0
+
+
+def calc_next_rendezvous_trajectory(
+    cyc,
+    lead_cyc,
+    time_horizon_s,
+    distance_horizon_m,
+    brake_start_speed_m__s,
+    min_accel_m__s2,
+    max_accel_m__s2,
+):
+    """
+    - cyc: Cycle, the cycle dictionary for the cycle to be modified
+    - lead_cyc: Cycle, the lead cycle for reference
+    - time_horizon_s: positive number, the time ahead to look for rendezvous opportunities (s)
+    - distance_horizon_m: positive number, the distance ahead to detect rendezvous opportunities (m)
+    - brake_start_speed_m__s: non-negative number, the speed at and below which friction braking starts (m/s)
+    - min_accel_m__s2: number, the minimum acceleration permitted (m/s2)
+    - max_accel_m__s2: number, the maximum acceleration permitted (m/s2)
+    RETURN: None or {
+        "distance_m" non-negative number, the distance from start of cycle to rendezvous at (m)
+        "speed_m__s" non-negative number, the speed to rendezvous at,
+        "n" positive integer, the number of steps ahead to rendezvous at
+        "k" number, the Jerk or first derivative of acceleration m/s3
+        "accel_m__s2", number, the initial acceleration of the trajectory
+    }
+    If no rendezvous exists within the scope, then returns None
+    Otherwise, returns the next closest rendezvous in time/space
+    """
+    return None
+
+
+def calc_distance_to_next_stop(distance_m, cyc):
+    """
+    Calculate the distance to the next stop given the current distance position and a cycle
+    - distance_m: non-negative number, the current distance from start (m)
+    - cyc: Cycle, the cycle to use to evaluate next stop distances
+    RETURN: non-negative number, the distance from the current position to the next stop (m)
+    NOTE:
+    - If there is no next stop or if we are at the stop, 0.0 is returned
+    """
+    distances_of_stops_m = np.unique(cyc.cycDistMeters.cumsum()[cyc.cycMps < TOL])
+    remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (distance_m + TOL)]
+    if len(remaining_stops_m) > 0:
+        return remaining_stops_m[0] - distance_m
+    return 0.0
