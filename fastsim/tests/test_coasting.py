@@ -30,6 +30,29 @@ class TestCoasting(unittest.TestCase):
     def tearDown(self) -> None:
         return super().tearDown()
     
+    def test_that_cycle_modifications_work_as_expected(self):
+        ""
+        idx = 20
+        n = 10
+        accel = -1.0
+        jerk = 0.0
+        trapz = self.trapz.copy()
+        fastsim.cycle.modify_cycle_with_trajectory(
+            trapz, idx, n, jerk, -1.0
+        )
+        self.assertNotEqual(self.trapz.cycMps[idx], trapz.cycMps[idx])
+        self.assertEqual(len(self.trapz.cycMps), len(trapz.cycMps))
+        self.assertTrue(self.trapz.cycMps[idx] > trapz.cycMps[idx])
+        for i in range(len(self.trapz.cycSecs)):
+            msg = f"i: {i}; idx: {idx}; idx+n: {idx+n}"
+            if i < idx or i >= idx+n:
+                self.assertEqual(self.trapz.cycMps[i], trapz.cycMps[i])
+            else:
+                self.assertAlmostEqual(
+                    self.trapz.cycMps[idx-1] + (accel * (i - idx + 1)),
+                    trapz.cycMps[i]
+                )
+    
     def test_that_we_can_coast(self):
         "Test the standard interface to Eco-Approach for 'free coasting'"
         self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
