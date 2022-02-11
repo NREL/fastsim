@@ -92,6 +92,7 @@ in = component input
 out = component output  
 
 # Release Notes
+1.2.6 -- time dilation bug fix for zero speed  
 1.2.4 -- bug fix changing `==` to `=`  
 1.2.3 -- `veh_file` can be passed as standalone argument.  `fcEffType` can be anything if `fcEffMap` is provided, but typing is otherwise enforced.  
 1.2.2 -- added checks for some conflicting vehicle parameters.  Vehicle parameters `fcEffType` and `vehPtType` must now be str type.  

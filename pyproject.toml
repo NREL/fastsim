@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastsim"
-version = "1.2.5"
+version = "1.2.6"
 description = "The Future Automotive Systems Technology Simulator (FASTSim) provides a simple way to compare powertrains and estimate the impact of technology improvements on light-, medium-, and heavy-duty vehicle efficiency, performance, cost, and battery life."
 authors = ["Your Name <you@example.com>"]
 
@@ -9,6 +9,7 @@ python = "3.8"
 numba = "^0.55.1"
 seaborn = "^0.11.2"
 matplotlib = "^3.5.1"
+pandas = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
 openpyxl = "^3.0.9"
