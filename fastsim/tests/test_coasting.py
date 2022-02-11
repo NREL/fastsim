@@ -11,7 +11,7 @@ import fastsim
 MPH_TO_MPS = 1.0 / fastsim.params.mphPerMps
 
 
-class TestDrivingProfileModification(unittest.TestCase):
+class TestCoasting(unittest.TestCase):
     def setUp(self) -> None:
         # create a trapezoidal trip shape
         trapz = fastsim.cycle.make_cycle(
@@ -45,18 +45,18 @@ class TestDrivingProfileModification(unittest.TestCase):
         if True:
             import matplotlib.pyplot as plt
             (fig, ax) = plt.subplots()
-            ax.plot(self.trapz.cycSecs, self.trapz.cycMps, 'gray', label='shadow-trace')
-            ax.plot(self.trapz.cycSecs, self.sim_drive_coast.mpsAch, 'blue', label='coast')
-            ax.plot(self.trapz.cycSecs, self.sim_drive_coast.mpsAch, 'r.')
+            ax.plot(self.sim_drive_coast.cyc0.cycSecs, self.sim_drive_coast.cyc0.cycMps, 'gray', label='shadow-trace')
+            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.cyc.cycMps, 'blue', label='coast')
+            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.cyc.cycMps, 'r.')
             ax.set_xlabel('Elapsed Time (s)')
             ax.set_ylabel('Speed (m/s)')
             ax.legend()
             fig.tight_layout()
             fig.savefig('coasting-by-time.png', dpi=300)
             (fig, ax) = plt.subplots()
-            ax.plot(self.trapz.cycDistMeters.cumsum(), self.trapz.cycMps, 'gray', label='shadow-trace')
-            ax.plot(self.sim_drive_coast.distMeters.cumsum(), self.sim_drive_coast.mpsAch, 'blue', label='coast')
-            ax.plot(self.sim_drive_coast.distMeters.cumsum(), self.sim_drive_coast.mpsAch, 'r.')
+            ax.plot(self.sim_drive_coast.cyc0.cycDistMeters.cumsum(), self.sim_drive_coast.cyc0.cycMps, 'gray', label='shadow-trace')
+            ax.plot(self.sim_drive_coast.cyc.cycDistMeters.cumsum(), self.sim_drive_coast.cyc.cycMps, 'blue', label='coast')
+            ax.plot(self.sim_drive_coast.cyc.cycDistMeters.cumsum(), self.sim_drive_coast.cyc.cycMps, 'r.')
             ax.set_title('Coasting over Trapezoidal Cycle')
             ax.set_xlabel('Distance Traveled (m)')
             ax.set_ylabel('Speed (m/s)')
@@ -66,9 +66,9 @@ class TestDrivingProfileModification(unittest.TestCase):
             fig = None
             ax = None
             (fig, ax) = plt.subplots()
-            ax.plot(self.trapz.cycSecs, self.trapz.cycDistMeters.cumsum(), 'gray', label='shadow-trace')
-            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.distMeters.cumsum(), 'blue', label='coast')
-            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.distMeters.cumsum(), 'r.')
+            ax.plot(self.sim_drive_coast.cyc0.cycSecs, self.sim_drive_coast.cyc0.cycDistMeters.cumsum(), 'gray', label='shadow-trace')
+            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.cyc.cycDistMeters.cumsum(), 'blue', label='coast')
+            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.cyc.cycDistMeters.cumsum(), 'r.')
             ax.set_title('Coasting over Trapezoidal Cycle')
             ax.set_xlabel('Elapsed Time (s)')
             ax.set_ylabel('Distance Traveled (m)')
