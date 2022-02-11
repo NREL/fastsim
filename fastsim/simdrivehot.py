@@ -166,6 +166,9 @@ class AirProperties(object):
 class VehicleThermal(object):
     """Class for containing vehicle thermal (and related) parameters."""
     def __init__(self):
+        self.__init__base__()
+
+    def __init__base__(self):
         """Initial default values for vehicle thermal parameters."""
         # fuel converter / engine
         # parameter fuel converter thermal mass [kJ/K]
