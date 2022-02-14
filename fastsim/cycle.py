@@ -142,6 +142,10 @@ class Cycle(object):
     @property
     def cycDistMeters(self):
         return self.cycMps * self.secs
+    
+    @property
+    def cycDistMeters_v2(self):
+        return np.insert(0.5 * (self.cycMps[1:] + self.cycMps[:-1]), 0, 0.0) * self.secs
 
     @property
     def delta_elev_m(self):
@@ -726,14 +730,15 @@ def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
 
 def accel_for_constant_jerk(n, a0, k, dt):
     """
-    Int Num Num Num -> Num
     Calculate the acceleration n timesteps away
     INPUTS:
     - n: Int, number of times steps away to calculate
     - a0: Num, initial acceleration (m/s2)
     - k: Num, constant jerk (m/s3)
     - dt: Num, time-step duration in seconds
-    OUTPUT: Num, the acceleration n timesteps away (m/s2)
+    NOTE:
+    - this is the constant acceleration over the time-step from sample n to sample n+1
+    RETURN: Num, the acceleration n timesteps away (m/s2)
     """
     return a0 + (n * k * dt)
 
@@ -748,14 +753,15 @@ def speed_for_constant_jerk(n, v0, a0, k, dt):
     - a0: Num, initial acceleration (m/s2)
     - k: Num, constant jerk
     - dt: Num, duration of a timestep (s)
-    OUTPUT: Num, the speed n timesteps away (m/s)
+    NOTE:
+    - this is the speed for the start of the time-step at n
+    RETURN: Num, the speed n timesteps away (m/s)
     """
     return v0 + (n * a0 * dt) + (0.5 * n * (n - 1) * k * dt)
 
 
 def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     """
-    Int Num Num Num Num Num -> Num
     Calculate distance (m) after n timesteps
     INPUTS:
     - n: Int, numer of timesteps away to calculate
@@ -764,7 +770,9 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     - a0: Num, initial acceleration (m/s2)
     - k: Num, constant jerk
     - dt: Num, duration of a timestep (s)
-    OUTPUT: Num, the distance at n timesteps away (m)
+    NOTE:
+    - this is the distance traveled from start (i.e., n=0) measured at sample point n
+    RETURN: Num, the distance at n timesteps away (m)
     """
     term1 = dt * (
         (n * v0)
@@ -832,6 +840,7 @@ def calc_next_rendezvous_trajectory(
     #   - if none match stick with proposed target-speed, else start implementing constant jerk
     """
     TOL = 1e-6
+    # v0 is where n=0, i.e., idx-1
     v0 = cyc.cycMps[idx-1]
     if v0 < (brake_start_speed_m__s + TOL):
         # don't process braking
@@ -839,7 +848,7 @@ def calc_next_rendezvous_trajectory(
     if min_accel_m__s2 > max_accel_m__s2:
         min_accel_m__s2, max_accel_m__s2 = max_accel_m__s2, min_accel_m__s2
     num_samples = len(cyc.cycMps)
-    d0 = cyc.cycDistMeters[:idx].sum()
+    d0 = cyc.cycDistMeters_v2[:idx].sum()
     v1 = cyc.cycMps[idx]
     dt = cyc.secs[idx]
     a_proposed = (v1 - v0) / dt
@@ -853,7 +862,7 @@ def calc_next_rendezvous_trajectory(
     dtb = -0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_accel_m__s2
     # distance to brake initiation from start of time-step (m)
     dtbi0 = dts0 - dtb
-    cyc0_distances_m = cyc0.cycDistMeters.cumsum()
+    cyc0_distances_m = cyc0.cycDistMeters_v2.cumsum()
     # Now, check rendezvous trajectories
     if time_horizon_s > 0.0:
         step_idx = idx
@@ -916,7 +925,7 @@ def calc_next_rendezvous_trajectory(
                     if r_bi['accel_m__s2'] < max_accel_m__s2 and r_bi['accel_m__s2'] > min_accel_m__s2 and r_bi['jerk_m__s3'] >= 0.0:
                         as_bi = np.array([
                             accel_for_constant_jerk(n, r_bi['accel_m__s2'], r_bi['jerk_m__s3'], dt)
-                            for n in range(1, step_ahead + 1)
+                            for n in range(step_ahead)
                         ])
                         accel_spread = np.abs(as_bi.max() - as_bi.min())
                         flag = (
@@ -946,11 +955,39 @@ def calc_distance_to_next_stop(distance_m, cyc):
     NOTE:
     - If there is no next stop or if we are at the stop, 0.0 is returned
     """
-    distances_of_stops_m = np.unique(cyc.cycDistMeters.cumsum()[cyc.cycMps < TOL])
+    distances_of_stops_m = np.unique(cyc.cycDistMeters_v2.cumsum()[cyc.cycMps < TOL])
     remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (distance_m + TOL)]
     if len(remaining_stops_m) > 0:
         return remaining_stops_m[0] - distance_m
     return 0.0
+
+
+def modify_cycle_with_trajectory(cyc, idx, n, jerk_m__s3, accel0_m__s2):
+    """
+    Modifies cyc using the given trajectory parameters
+    - cyc: Cycle, the cycle dictionary for the cycle to be modified
+    - idx: non-negative integer, the point in the cycle to initiate
+      modification (note: THIS point is modified since trajectory should be calculated from idx-1)
+    - jerk_m__s3: number, the "Jerk" associated with the trajectory (m/s3)
+    - accel0_m__s2: number, the initial acceleration (m/s2)
+    NOTE:
+    - also resamples cycle grade based on distance by mapping to elevation points
+    - modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment
+    - NOT ROBUST AGAINST VARIABLE DURATION TIME-STEPS
+    RETURN: Number, final modified speed (m/s)
+    TODO: need to update to resample grade by distance
+    """
+    num_samples = len(cyc.cycSecs)
+    v0 = cyc.cycMps[idx-1]
+    dt = cyc.secs[idx]
+    v = v0
+    for ni in range(1, n+1):
+        idx_to_set = (idx - 1) + ni
+        if idx_to_set >= num_samples:
+            break
+        v = speed_for_constant_jerk(ni, v0, accel0_m__s2, jerk_m__s3, dt)
+        cyc.cycMps[idx_to_set] = v
+    return v
 
 
 def modify_cycle_adding_braking_trajectory(cyc, brake_accel_m__s2, idx):
@@ -976,31 +1013,8 @@ def modify_cycle_adding_braking_trajectory(cyc, brake_accel_m__s2, idx):
             dt_step = cyc.secs[step_idx]
             dt_ahead += dt_step
             v = max(0.0, v0 + brake_accel_m__s2 * dt_ahead)
+            if v < TOL:
+                v = 0.0
             cyc.cycMps[step_idx] = v
             step_idx += 1
 
-def modify_cycle_with_trajectory(cyc, idx, n, jerk_m__s3, accel0_m__s2):
-    """
-    Modifies cyc using the given trajectory parameters
-    - cyc: Cycle, the cycle dictionary for the cycle to be modified
-    - idx: non-negative integer, the point in the cycle to initiate
-      modification (note: THIS point is not modified but all points
-      afterward are)
-    - jerk_m__s3: number, the "Jerk" associated with the trajectory (m/s3)
-    - accel0_m__s2: number, the initial acceleration (m/s2)
-    NOTE:
-    - also resamples cycle grade based on distance by mapping to elevation points
-    -  modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment
-    RETURN: Number, final modified speed (m/s)
-    TODO: need to update to resample grade
-    """
-    num_samples = len(cyc.cycSecs)
-    v = cyc.cycMps[idx-1]
-    for ni in range(1, n+1):
-        if idx+ni >= num_samples:
-            break
-        dt = cyc.secs[idx+ni]
-        accel = accel_for_constant_jerk(ni, accel0_m__s2, jerk_m__s3, dt)
-        v = max(0.0, v + accel * dt)
-        cyc.cycMps[idx+ni] = v
-    return v
