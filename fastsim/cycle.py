@@ -1014,12 +1014,3 @@ def modify_cycle_adding_braking_trajectory(cyc, brake_accel_m__s2, idx):
     n = int(np.ceil(tts_s / dt))
     trajectory = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
     modify_cycle_with_trajectory(cyc, idx, n, trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
-    #while v > TOL and step_idx < num_samples:
-    #    dt_step = cyc.secs[step_idx]
-    #    dt_ahead += dt_step
-    #    v = max(0.0, v0 + brake_accel_m__s2 * dt_ahead)
-    #    if v < TOL:
-    #        v = 0.0
-    #    cyc.cycMps[step_idx] = v
-    #    step_idx += 1
-
