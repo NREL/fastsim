@@ -1148,8 +1148,10 @@ class SimDriveClassic(object):
 
     def set_time_dilation(self, i):
         trace_met = (
-            abs(self.cyc0.cycDistMeters[:i+1].sum() - self.distMeters[:i+1].sum()) / self.cyc0.cycDistMeters[:i+1].sum()
-        ) < self.sim_params.time_dilation_tol
+            ((abs(self.cyc0.cycDistMeters[:i+1].sum() - self.distMeters[:i+1].sum()) / self.cyc0.cycDistMeters[:i+1].sum()
+            ) < self.sim_params.time_dilation_tol) or 
+            (self.cyc.cycMps[i] == 0) # if prescribed speed is zero, trace is met to avoid div-by-zero errors and other possible wackiness
+        )
 
         if not(trace_met):
             self.trace_miss_iters[i] += 1
