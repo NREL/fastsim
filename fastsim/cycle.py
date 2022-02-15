@@ -144,8 +144,12 @@ class Cycle(object):
         return self.cycMps * self.secs
     
     @property
+    def cycAvgMps(self):
+        return np.insert(0.5 * (self.cycMps[1:] + self.cycMps[:-1]), 0, 0.0)
+    
+    @property
     def cycDistMeters_v2(self):
-        return np.insert(0.5 * (self.cycMps[1:] + self.cycMps[:-1]), 0, 0.0) * self.secs
+        return self.cycAvgMps * self.secs
 
     @property
     def delta_elev_m(self):
@@ -783,7 +787,7 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     return d0 + term1 + term2
 
 
-def should_impose_coast(cyc0, cyc, idx, coasting_factors):
+def should_impose_coast(cyc0, cyc, idx, coasting_factors=None, coast_start_speed_m__s=None):
     """
     - cyc0: Cycle, reference cycle
     - cyc: Cycle, current cycle
@@ -791,10 +795,13 @@ def should_impose_coast(cyc0, cyc, idx, coasting_factors):
     - coasting_factors: (dict (tuple speed_m__s, grade_pct) dv__dd), yields
       the change in speed by distance by speed and by grade
       speed_m__s (m/s, >= 0), grade_pct (%), and dv__dd (m/s / m) are all numbers
+    - coast_start_speed_m__s: (or None non-negative number), if greater than or equal to the given speed, initiate coast
     RETURN: Bool if vehicle should initiate coasting
     Coast logic is that the vehicle should coast if it is within coasting distance of a stop
     """
-    return cyc.cycMps[idx] > 17.0
+    if coast_start_speed_m__s is not None:
+        return cyc.cycMps[idx] >= coast_start_speed_m__s
+    return False
 
 
 def calc_next_rendezvous_trajectory(
@@ -999,22 +1006,20 @@ def modify_cycle_adding_braking_trajectory(cyc, brake_accel_m__s2, idx):
     - resample grade to be correct by distance
     """
     assert brake_accel_m__s2 < 0.0
-    num_samples = len(cyc.cycMps)
     v0 = cyc.cycMps[idx-1]
-    v1 = cyc.cycMps[idx]
     dt = cyc.secs[idx]
-    a_proposed = (v1 - v0) / dt
-    if np.abs(a_proposed - brake_accel_m__s2) > TOL:
-        # begin braking deceleration
-        v = v0
-        step_idx = idx
-        dt_ahead = 0.0
-        while v > TOL and step_idx < num_samples:
-            dt_step = cyc.secs[step_idx]
-            dt_ahead += dt_step
-            v = max(0.0, v0 + brake_accel_m__s2 * dt_ahead)
-            if v < TOL:
-                v = 0.0
-            cyc.cycMps[step_idx] = v
-            step_idx += 1
+    # begin braking deceleration
+    dts_m = 0.5 * v0 * v0 / np.abs(brake_accel_m__s2)
+    tts_s = -v0 / brake_accel_m__s2
+    n = int(np.ceil(tts_s / dt))
+    trajectory = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
+    modify_cycle_with_trajectory(cyc, idx, n, trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
+    #while v > TOL and step_idx < num_samples:
+    #    dt_step = cyc.secs[step_idx]
+    #    dt_ahead += dt_step
+    #    v = max(0.0, v0 + brake_accel_m__s2 * dt_ahead)
+    #    if v < TOL:
+    #        v = 0.0
+    #    cyc.cycMps[step_idx] = v
+    #    step_idx += 1
 

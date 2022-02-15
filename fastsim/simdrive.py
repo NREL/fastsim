@@ -46,9 +46,10 @@ class SimDriveParamsClassic(object):
         self.energy_audit_error_tol = 0.002 # tolerance for energy audit error warning, i.e. 0.1%
         self.allow_coast = False # if True, coasting to stops are allowed
         self.allow_passing_during_coast = False # if True, coasting vehicle can eclipse the shadow trace
-        self.max_coast_speed_m__s = 30.0 # 100.0 / params.mphPerMps # maximum allowable speed under coast
+        self.max_coast_speed_m__s = 40.0 # 100.0 / params.mphPerMps # maximum allowable speed under coast
         self.nominal_brake_accel_for_coast_m__s2 = -2.5 # -1.875 # -2.0 # -1.78816
         self.coast_to_brake_speed_m__s = 7.5 # 20.0 / params.mphPerMps # speed when coasting uses friction brakes
+        self.coast_start_speed_m__s = 38.0 # m/s
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
@@ -308,7 +309,7 @@ class SimDriveClassic(object):
         self.solve_step(self.i)
         if self.sim_params.missed_trace_correction and (self.cyc0.cycDistMeters[:self.i].sum() > 0) and not self.impose_coast[self.i]:
             self.set_time_dilation(self.i)
-        if self.sim_params.allow_coast and self.impose_coast[self.i]:
+        if self.sim_params.allow_coast:
             self.cyc.cycMps[self.i] = self.mpsAch[self.i]
 
         self.i += 1 # increment time step counter
@@ -1220,7 +1221,15 @@ class SimDriveClassic(object):
             #self.impose_coast[i] = False
             pass
         else:
-            self.impose_coast[i] = self.impose_coast[i-1] or cycle.should_impose_coast(self.cyc0, self.cyc, i, None)
+            self.impose_coast[i] = (
+                self.impose_coast[i-1]
+                or cycle.should_impose_coast(
+                    self.cyc0,
+                    self.cyc,
+                    i,
+                    coast_start_speed_m__s=self.sim_params.coast_start_speed_m__s
+                )
+            )
         if not self.impose_coast[i]:
             return
         v1_traj = self.cyc.cycMps[i]
@@ -1233,14 +1242,11 @@ class SimDriveClassic(object):
             else:
                 # distances of lead vehicle (m)
                 ds_lv = self.cyc0.cycDistMeters.cumsum()
-                d0 = self.distMeters[:i].sum() # current distance traveled at start of step
+                d0 = self.cyc.cycDistMeters_v2[:i].sum() # current distance traveled at start of step
                 d1_lv = ds_lv[i]
-                # dd_proposed = ((self.cyc.cycMps[i] + self.cyc.cycMps[i-1]) / 2.0) * self.cyc0.secs[i]
                 max_step_distance_m = d1_lv - d0
                 max_avg_speed_m__s = max_step_distance_m / self.cyc0.secs[i]
                 max_next_speed_m__s = 2 * max_avg_speed_m__s - v0
-                #self.cyc.cycMps[i] = max(0, min(max_next_speed_m__s, self.sim_params.max_coast_speed_m__s, next_speed_orig_m__s))
-                #self.cyc.cycMps[i] = max(0, min(v1_lv, max_next_speed_m__s, self.sim_params.max_coast_speed_m__s))
                 self.cyc.cycMps[i] = max(0, min(max_next_speed_m__s, self.sim_params.max_coast_speed_m__s))
         # Solve for the actual coasting speed
         self.solve_step(i)

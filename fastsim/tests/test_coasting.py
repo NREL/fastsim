@@ -29,6 +29,7 @@ class TestCoasting(unittest.TestCase):
         self.sim_drive = fastsim.simdrive.SimDriveClassic(self.trapz, self.veh)
         self.sim_drive_coast = fastsim.simdrive.SimDriveClassic(self.trapz, self.veh)
         self.sim_drive_coast.sim_params.allow_coast = True
+        self.sim_drive_coast.sim_params.coast_start_speed_m__s = 17.0
         return super().setUp()
     
     def tearDown(self) -> None:
@@ -262,3 +263,46 @@ class TestCoasting(unittest.TestCase):
         # TODO: is there a way to get the distance from 45 to 55s using existing cycDistMeters system?
         #self.assertAlmostEqual(d_expected, d_v1)
         self.assertAlmostEqual(d_expected, d_v2)
+
+    def test_brake_trajectory(self):
+        ""
+        trapz = self.trapz.copy()
+        brake_accel_m__s2 = -2.0
+        idx = 30
+        dt = 1.0
+        v0 = trapz.cycMps[idx]
+        # distance required to stop (m)
+        expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
+        tts_s = -v0 / brake_accel_m__s2
+        n = int(np.ceil(tts_s / dt))
+        fastsim.cycle.modify_cycle_adding_braking_trajectory(trapz, brake_accel_m__s2, idx+1)
+        self.assertAlmostEqual(v0, trapz.cycMps[idx])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*dt, trapz.cycMps[idx+1])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*2*dt, trapz.cycMps[idx+2])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*3*dt, trapz.cycMps[idx+3])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*4*dt, trapz.cycMps[idx+4])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*5*dt, trapz.cycMps[idx+5])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*6*dt, trapz.cycMps[idx+6])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*7*dt, trapz.cycMps[idx+7])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*8*dt, trapz.cycMps[idx+8])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*9*dt, trapz.cycMps[idx+9])
+        self.assertAlmostEqual(v0 + brake_accel_m__s2*10*dt, trapz.cycMps[idx+10])
+        self.assertEqual(10, n)
+        self.assertAlmostEqual(20.0, trapz.cycMps[idx+11])
+        dts_m = trapz.cycDistMeters_v2[idx+1:idx+n+1].sum()
+        self.assertAlmostEqual(expected_dts_m, dts_m)
+        # Now try with a brake deceleration that doesn't devide evenly by time-steps
+        trapz = self.trapz.copy()
+        brake_accel_m__s2 = -1.75
+        idx = 30
+        dt = 1.0
+        v0 = trapz.cycMps[idx]
+        # distance required to stop (m)
+        expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
+        tts_s = -v0 / brake_accel_m__s2
+        n = int(np.ceil(tts_s / dt))
+        fastsim.cycle.modify_cycle_adding_braking_trajectory(trapz, brake_accel_m__s2, idx+1)
+        self.assertAlmostEqual(v0, trapz.cycMps[idx])
+        self.assertEqual(12, n)
+        dts_m = trapz.cycDistMeters_v2[idx+1:idx+n+1].sum()
+        self.assertAlmostEqual(expected_dts_m, dts_m)
