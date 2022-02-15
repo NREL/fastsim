@@ -268,8 +268,8 @@ python-versions = ">=3.7"
 
 [metadata]
 lock-version = "1.1"
-python-versions = " >=3.7,<3.11"
-content-hash = "c103075640b3c1b02a83606f81e75a693f982e1a9c7e2171eb64a6033ff8b66d"
+python-versions = " >=3.7,<3.9"
+content-hash = "faea2f52617b4fd090a6deaa566f8f8fc0ed3cfb761a6fdd7517ef5a7c07c7b0"
 
 [metadata.files]
 autograd = [
