@@ -50,6 +50,7 @@ class SimDriveParamsClassic(object):
         self.nominal_brake_accel_for_coast_m__s2 = -2.5 # -1.875 # -2.0 # -1.78816
         self.coast_to_brake_speed_m__s = 7.5 # 20.0 / params.mphPerMps # speed when coasting uses friction brakes
         self.coast_start_speed_m__s = 38.0 # m/s
+        self.coast_dvdd_1__s = -0.01 # m/s / m
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
@@ -1223,13 +1224,19 @@ class SimDriveClassic(object):
             #self.impose_coast[i] = False
             pass
         else:
+            coast_start_speed_m__s = None
+            if self.sim_params.coast_start_speed_m__s > 0.0:
+                coast_start_speed_m__s = self.sim_params.coast_start_speed_m__s
             self.impose_coast[i] = (
                 self.impose_coast[i-1]
                 or cycle.should_impose_coast(
                     self.cyc0,
                     self.cyc,
                     i,
-                    coast_start_speed_m__s=self.sim_params.coast_start_speed_m__s
+                    dvdd=self.sim_params.coast_dvdd_1__s,
+                    brake_start_speed_m__s=self.sim_params.coast_to_brake_speed_m__s,
+                    brake_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2,
+                    coast_start_speed_m__s=coast_start_speed_m__s
                 )
             )
         if not self.impose_coast[i]:
@@ -1286,35 +1293,11 @@ class SimDriveClassic(object):
                         trajectory['n'],
                         trajectory['jerk_m__s3'],
                         trajectory['accel_m__s2'])
-                    print(
-                        f"final_speed_m__s: {final_speed_m__s}\n"
-                        + f"... trajectory: {str(trajectory)}\n"
-                        + f"... self.cyc.cycMps[i+n]: {self.cyc.cycMps[i+trajectory['n']]}\n"
-                        + f"... self.cyc.cycMps[i+n-1]: {self.cyc.cycMps[i+trajectory['n']-1]}\n"
-                        + f"... self.cyc.cycMps[i+n+1]: {self.cyc.cycMps[i+trajectory['n']+1]}\n"
-                    )
                     if np.abs(final_speed_m__s - self.sim_params.coast_to_brake_speed_m__s) < 0.1:
-                        print(
-                            "Before modifying for braking trajectory\n"
-                            + f"... self.cyc.cycMps[i+n]: {self.cyc.cycMps[i+trajectory['n']]}\n"
-                            + f"... self.cyc.cycMps[i+n-1]: {self.cyc.cycMps[i+trajectory['n']-1]}\n"
-                            + f"... self.cyc.cycMps[i+n+1]: {self.cyc.cycMps[i+trajectory['n']+1]}\n"
-                            + "... Starting modification for braking trajectory\n"
-                        )
                         cycle.modify_cycle_adding_braking_trajectory(
                             self.cyc,
                             self.sim_params.nominal_brake_accel_for_coast_m__s2,
                             i + trajectory['n']
-                        )
-                        print(
-                            "After modification for braking trajectory\n"
-                            + f"... self.cyc.cycMps[i+n]: {self.cyc.cycMps[i+trajectory['n']]}\n"
-                            + f"... self.cyc.cycMps[i+n-1]: {self.cyc.cycMps[i+trajectory['n']-1]}\n"
-                            + f"... self.cyc.cycMps[i+n+1]: {self.cyc.cycMps[i+trajectory['n']+1]}\n"
-                            + f"... self.cyc.cycMps[i+n+2]: {self.cyc.cycMps[i+trajectory['n']+2]}\n"
-                            + f"... self.cyc.cycMps[i+n+3]: {self.cyc.cycMps[i+trajectory['n']+3]}\n"
-                            + f"... self.cyc.cycMps[i+n+3]: {self.cyc.cycMps[i+trajectory['n']+4]}\n"
-                            + f"... self.cyc.cycMps[i+n+3]: {self.cyc.cycMps[i+trajectory['n']+5]}\n"
                         )
 
     def set_post_scalars(self):

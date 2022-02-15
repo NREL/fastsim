@@ -8,7 +8,52 @@ import numpy as np
 import fastsim
 
 
-MPH_TO_MPS = 1.0 / fastsim.params.mphPerMps
+def make_coasting_plot(cyc0, cyc, use_mph=False, save_file=None, do_show=False):
+    """
+    - cyc0: Cycle, the reference cycle (the "shadow trace" or "lead vehicle")
+    - cyc: Cycle, the actual cycle driven
+    - use_mph: Bool, if True, plot in miles per hour, else m/s
+    - save_file: (Or None string), if specified, save the file to disk
+    - do_show: Bool, whether to show the file or not
+    RETURN: None
+    - saves creates the given file and shows it
+    """
+    import matplotlib.pyplot as plt
+    ts_orig = cyc0.cycSecs
+    vs_orig = cyc0.cycMps
+    m = fastsim.params.mphPerMps if use_mph else 1.0
+    ds_orig = cyc0.cycDistMeters_v2.cumsum()
+    ts = cyc.cycSecs
+    vs = cyc.cycMps
+    ds = cyc.cycDistMeters_v2.cumsum()
+    gaps = ds_orig - ds
+    speed_units = "mph" if use_mph else "m/s"
+    (fig, axs) = plt.subplots(nrows=3)
+    ax = axs[1]
+    ax.plot(ts_orig, vs_orig * m, 'gray', label='shadow-trace')
+    ax.plot(ts, vs * m, 'blue', label='coast')
+    ax.plot(ts, vs * m, 'r.')
+    ax.set_xlabel('Elapsed Time (s)')
+    ax.set_ylabel(f'Speed ({speed_units})')
+    ax.legend(loc=0, prop={'size': 6})
+    ax = axs[2]
+    ax.plot(ds_orig, vs_orig * m, 'gray', label='shadow-trace')
+    ax.plot(ds, vs * m, 'blue', label='coast')
+    ax.plot(ds, vs * m, 'r.')
+    ax.set_xlabel('Distance Traveled (m)')
+    ax.set_ylabel(f'Speed ({speed_units})')
+    ax = axs[0]
+    ax.plot(ts_orig, gaps, 'gray', label='shadow-trace')
+    ax.set_xlabel('Elapsed Time (s)')
+    ax.set_ylabel('Gap (m)')
+    fig.tight_layout()
+    print(f'Distance Traveled for Coasting Vehicle: {ds.sum()} m')
+    print(f'Distance Traveled for Cycle           : {ds_orig.sum()} m')
+    if save_file is not None:
+        fig.savefig(save_file, dpi=300)
+    if do_show:
+        plt.show()
+    plt.close()
 
 
 class TestCoasting(unittest.TestCase):
@@ -20,7 +65,6 @@ class TestCoasting(unittest.TestCase):
         self.distance_of_stop_m = 900.0
         trapz = fastsim.cycle.make_cycle(
             [0.0, 10.0, 45.0, 55.0, 100.0],
-            #[0.0, 40.0 * MPH_TO_MPS, 40.0 * MPH_TO_MPS, 0.0, 0.0],
             [0.0, 20.0, 20.0, 0.0, 0.0],
         )
         trapz = fastsim.cycle.resample(trapz, new_dt=1.0)
@@ -113,57 +157,16 @@ class TestCoasting(unittest.TestCase):
         "Test the standard interface to Eco-Approach for 'free coasting'"
         self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
         while self.sim_drive_coast.i < len(self.trapz.cycSecs):
-            #self.sim_drive.sim_drive_step()
             self.sim_drive_coast.sim_drive_step()
-        #max_trace_miss_m__s = np.absolute(self.trapz.cycMps - self.sim_drive.mpsAch).max()
         max_trace_miss_coast_m__s = np.absolute(self.trapz.cycMps - self.sim_drive_coast.mpsAch).max()
-        #self.assertTrue(max_trace_miss_m__s < 0.01, f"Max trace miss: {max_trace_miss_m__s} m/s")
         self.assertTrue(max_trace_miss_coast_m__s > 1.0, f"Max trace miss: {max_trace_miss_coast_m__s} m/s")
-        #self.assertFalse(self.sim_drive.impose_coast.any())
         self.assertFalse(self.sim_drive_coast.impose_coast[0])
         if True:
-            do_show = False
-            import matplotlib.pyplot as plt
-            (fig, ax) = plt.subplots()
-            ax.plot(self.sim_drive_coast.cyc0.cycSecs, self.sim_drive_coast.cyc0.cycMps, 'gray', label='shadow-trace')
-            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.cyc.cycMps, 'blue', label='coast')
-            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.cyc.cycMps, 'r.')
-            ax.set_xlabel('Elapsed Time (s)')
-            ax.set_ylabel('Speed (m/s)')
-            ax.legend()
-            fig.tight_layout()
-            fig.savefig('coasting-by-time.png', dpi=300)
-            if not do_show:
-                plt.close()
-            (fig, ax) = plt.subplots()
-            ax.plot(self.sim_drive_coast.cyc0.cycDistMeters.cumsum(), self.sim_drive_coast.cyc0.cycMps, 'gray', label='shadow-trace')
-            ax.plot(self.sim_drive_coast.cyc.cycDistMeters.cumsum(), self.sim_drive_coast.cyc.cycMps, 'blue', label='coast')
-            ax.plot(self.sim_drive_coast.cyc.cycDistMeters.cumsum(), self.sim_drive_coast.cyc.cycMps, 'r.')
-            ax.set_title('Coasting over Trapezoidal Cycle')
-            ax.set_xlabel('Distance Traveled (m)')
-            ax.set_ylabel('Speed (m/s)')
-            ax.legend()
-            fig.tight_layout()
-            fig.savefig('coasting-by-distance.png', dpi=300)
-            if do_show:
-                plt.show()
-            else:
-                plt.close()
-            fig = None
-            ax = None
-            (fig, ax) = plt.subplots()
-            ax.plot(self.sim_drive_coast.cyc0.cycSecs, self.sim_drive_coast.cyc0.cycDistMeters.cumsum(), 'gray', label='shadow-trace')
-            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.cyc.cycDistMeters.cumsum(), 'blue', label='coast')
-            ax.plot(self.sim_drive_coast.cyc.cycSecs, self.sim_drive_coast.cyc.cycDistMeters.cumsum(), 'r.')
-            ax.set_title('Coasting over Trapezoidal Cycle')
-            ax.set_xlabel('Elapsed Time (s)')
-            ax.set_ylabel('Distance Traveled (m)')
-            ax.legend()
-            fig.tight_layout()
-            fig.savefig('coasting-distance-by-time.png', dpi=300)
-            plt.close()
-            print(f'Distance Traveled for Coasting Vehilce: {self.sim_drive_coast.distMeters.sum()} m')
-            print(f'Distance Traveled for Cycle           : {self.sim_drive.cyc0.cycDistMeters.sum()} m')
+            make_coasting_plot(
+                self.sim_drive_coast.cyc0,
+                self.sim_drive_coast.cyc,
+                use_mph=False,
+                save_file='junk-test-that-we-can-coast.png')
 
     def test_eco_approach_modeling(self):
         "Test a simplified model of eco-approach"
@@ -319,3 +322,40 @@ class TestCoasting(unittest.TestCase):
         self.assertEqual(12, n)
         dts_m = trapz.cycDistMeters_v2[idx+1:idx+n+1].sum()
         self.assertAlmostEqual(expected_dts_m, dts_m)
+    
+    def test_logic_to_enter_eco_approach_automatically(self):
+        "Test that we can auto-enter eco-approach"
+        trapz = self.trapz.copy()
+        veh = fastsim.vehicle.Vehicle(5)
+        sd = fastsim.simdrive.SimDriveClassic(trapz, veh)
+        sd.sim_params.allow_coast = True
+        sd.sim_params.coast_start_speed_m__s = -1
+        sd.sim_drive()
+        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+        if True:
+            make_coasting_plot(
+                sd.cyc0,
+                sd.cyc,
+                use_mph=False,
+                save_file='junk-test-logic-to-enter-eco-approach-automatically-1.png')
+        trapz2 = fastsim.cycle.Cycle(
+            cyc_dict=fastsim.cycle.resample(
+                fastsim.cycle.make_cycle(
+                    [0.0, 10.0, 200.0, 210.0, 300.0],
+                    [0.0, 20.0, 20.0, 0.0, 0.0],
+                ),
+                new_dt=1.0
+            )
+        )
+        veh = fastsim.vehicle.Vehicle(5)
+        sd = fastsim.simdrive.SimDriveClassic(trapz2, veh)
+        sd.sim_params.allow_coast = True
+        sd.sim_params.coast_start_speed_m__s = -1
+        sd.sim_drive()
+        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+        if True:
+            make_coasting_plot(
+                sd.cyc0,
+                sd.cyc,
+                use_mph=False,
+                save_file='junk-test-logic-to-enter-eco-approach-automatically-2.png')

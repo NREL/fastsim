@@ -830,21 +830,68 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     return d0 + term1 + term2
 
 
-def should_impose_coast(cyc0, cyc, idx, coasting_factors=None, coast_start_speed_m__s=None):
+def calc_distance_to_stop_coast(v0, dvdd, v_brake, a_brake):
+    """
+    Given an initial speed, the constant change in speed with distance, the speed at which
+    braking starts, and the acceleration during braking, determine the total distance
+    required to come to coast/brake to a stop.
+    - v0: non-negative-number, the initial speed (m/s)
+    - dvdd: number, the change in speed (dv) by change in distance (dd) (m/s / m)
+    - v_brake: non-negative-number, the speed at which friction brakes initiate (m/s)
+    - a_brake: negative-number, the constant braking deceleration
+    RETURN: (Or None number), the distance to stop from coast
+    - if dvdd is positive (from, for example, coasting downhill) returns None
+    TODO:
+    - this needs to be enhanced to have dvdd vary by distance
+    """
+    assert a_brake < 0.0
+    if dvdd >= 0.0:
+        return None
+    if v0 <= v_brake:
+        d_coast = 0.0
+        t_brake = -v0 / a_brake
+        d_brake = t_brake * (v0 + 0.5 * a_brake * t_brake)
+    else:
+        dv = v0 - v_brake
+        d_coast = -dv / dvdd
+        t_brake = -v_brake / a_brake
+        d_brake = t_brake * (v_brake + 0.5 * a_brake * t_brake)
+    dts = d_coast + d_brake
+    if dts < 0:
+        return None
+    return dts
+
+
+def should_impose_coast(cyc0, cyc, idx, dvdd, brake_start_speed_m__s, brake_accel_m__s2, coast_start_speed_m__s=None):
     """
     - cyc0: Cycle, reference cycle
     - cyc: Cycle, current cycle
     - idx: non-negative integer, the current position in cyc
-    - coasting_factors: (dict (tuple speed_m__s, grade_pct) dv__dd), yields
-      the change in speed by distance by speed and by grade
-      speed_m__s (m/s, >= 0), grade_pct (%), and dv__dd (m/s / m) are all numbers
-    - coast_start_speed_m__s: (or None non-negative number), if greater than or equal to the given speed, initiate coast
+    - dvdd: number, the change in speed by distance (m/s / m or 1/s)
+    - brake_start_speed_m__s: non-negative-number, the speed at which friction braking starts (m/s)
+    - brake_accel_m__s2: negative-number, the constant braking acceleration (m/s2)
+    - coast_start_speed_m__s: (or None non-negative number), if specified and speed at idx is greater
+        than or equal to the given speed, initiate coast (m/s)
     RETURN: Bool if vehicle should initiate coasting
-    Coast logic is that the vehicle should coast if it is within coasting distance of a stop
+    Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
+    - if distance to coast from start of step is <= distance to next stop
+    - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
     """
+    assert idx > 0
+    assert dvdd < 0.0
+    assert brake_start_speed_m__s >= 0.0
+    assert brake_accel_m__s2 < 0.0
     if coast_start_speed_m__s is not None:
         return cyc.cycMps[idx] >= coast_start_speed_m__s
-    return False
+    v0 = cyc.cycMps[idx-1]
+    d0 = cyc.cycDistMeters_v2[:idx].sum()
+    # distance to stop by coasting from start of step (idx-1)
+    dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
+    if dtsc0 is None:
+        return False
+    # distance to next stop (m)
+    dts0 = calc_distance_to_next_stop(d0, cyc0)
+    return dtsc0 >= dts0
 
 
 def calc_next_rendezvous_trajectory(
