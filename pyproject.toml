@@ -5,11 +5,11 @@ description = "The Future Automotive Systems Technology Simulator (FASTSim) prov
 authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = " >=3.7,<3.11"
 numba = "^0.55.1"
 seaborn = "^0.11.2"
 matplotlib = "^3.5.1"
-pandas = "^1.4.0"
+pandas = "^1"
 
 [tool.poetry.dev-dependencies]
 openpyxl = "^3.0.9"
