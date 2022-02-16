@@ -700,9 +700,6 @@ def calc_distance_to_stop_coast_v2(
         i += 1
         if stop:
             break
-    print(f"ITERATIONS: {i}")
-    print(f"v: {v}")
-    print(f"d: {d}")
     if np.abs(v - v_brake) < TOL:
         return d + dtb
     return None
@@ -740,12 +737,11 @@ def calc_distance_to_stop_coast(v0, dvdd, v_brake, a_brake):
     return dts
 
 
-def should_impose_coast(cyc0, cyc, idx, dvdd, brake_start_speed_m__s, brake_accel_m__s2, coast_start_speed_m__s=None):
+def should_impose_coast(cyc0, cyc, idx, brake_start_speed_m__s, brake_accel_m__s2, coast_start_speed_m__s=None):
     """
     - cyc0: Cycle, reference cycle
     - cyc: Cycle, current cycle
     - idx: non-negative integer, the current position in cyc
-    - dvdd: number, the change in speed by distance (m/s / m or 1/s)
     - brake_start_speed_m__s: non-negative-number, the speed at which friction braking starts (m/s)
     - brake_accel_m__s2: negative-number, the constant braking acceleration (m/s2)
     - coast_start_speed_m__s: (or None non-negative number), if specified and speed at idx is greater
@@ -756,15 +752,31 @@ def should_impose_coast(cyc0, cyc, idx, dvdd, brake_start_speed_m__s, brake_acce
     - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
     """
     assert idx > 0
-    assert dvdd < 0.0
     assert brake_start_speed_m__s >= 0.0
     assert brake_accel_m__s2 < 0.0
     if coast_start_speed_m__s is not None:
         return cyc.cycMps[idx] >= coast_start_speed_m__s
+    ds = cyc0.cycDistMeters_v2.cumsum()
+    gs = cyc0.cycGrade
     v0 = cyc.cycMps[idx-1]
-    d0 = cyc.cycDistMeters_v2[:idx].sum()
+    d0 = ds[idx]
+    ds_mask = ds >= d0
+    dt_s = sorted(np.unique(cyc0.secs[idx:]))[0]
     # distance to stop by coasting from start of step (idx-1)
-    dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
+    #dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
+    dtsc0 = calc_distance_to_stop_coast_v2(
+        v0,
+        brake_start_speed_m__s,
+        brake_accel_m__s2,
+        distances_m=ds[ds_mask] - d0,
+        grade_by_distance=gs[ds_mask],
+        veh_mass_kg=1893.6704171330643,
+        air_density_kg__m3=1.2,
+        CDFA_m2=0.355*3.066,
+        rrc=0.006,
+        gravity_m__s2=9.81,
+        dt_s=dt_s
+    )
     if dtsc0 is None:
         return False
     # distance to next stop (m)

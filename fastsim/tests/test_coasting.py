@@ -548,3 +548,34 @@ class TestCoasting(unittest.TestCase):
         expected_d = (1.0/(rrc*g)) * 0.5 * (v0*v0 - v_brake*v_brake) + -0.5 * (v0 * v0) / a_brake
         self.assertAlmostEqual(expected_d, d)
         
+    def test_that_coasting_logic_works_going_uphill(self):
+        "When going uphill, we want to ensure we can still hit our coasting target"
+        trapz = fastsim.cycle.Cycle(
+            cyc_dict=fastsim.cycle.resample(
+                fastsim.cycle.make_cycle(
+                    [0.0, 10.0, 45.0, 55.0, 100.0],
+                    [0.0, 20.0, 20.0, 0.0, 0.0],
+                    [0.01, 0.01, 0.01, 0.01, 0.01],
+                ),
+                new_dt=1.0,
+                hold_keys={'cycGrade'},
+            )
+        )
+        veh = fastsim.vehicle.Vehicle(5, verbose=False)
+        print(f'veh mass (kg): {veh.vehKg}')
+        sd = fastsim.simdrive.SimDriveClassic(trapz, veh)
+        sd.sim_params.allow_coast = True
+        sd.sim_params.coast_start_speed_m__s = -1
+        sd.sim_params.coast_to_brake_speed_m__s = 4.0
+        sd.sim_params.verbose = False
+        sd.sim_drive()
+        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+        if True or DO_PLOTS:
+            make_coasting_plot(
+                sd.cyc0,
+                sd.cyc,
+                use_mph=False,
+                save_file='test_that_coasting_logic_works_going_uphill.png')
+        # TODO: can we increase the precision?
+        self.assertAlmostEqual(
+            sd.cyc0.cycDistMeters_v2.sum(), sd.cyc.cycDistMeters.sum(), 0)

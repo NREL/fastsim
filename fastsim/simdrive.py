@@ -1233,7 +1233,6 @@ class SimDriveClassic(object):
                     self.cyc0,
                     self.cyc,
                     i,
-                    dvdd=self.sim_params.coast_dvdd_1__s,
                     brake_start_speed_m__s=self.sim_params.coast_to_brake_speed_m__s,
                     brake_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2,
                     coast_start_speed_m__s=coast_start_speed_m__s
