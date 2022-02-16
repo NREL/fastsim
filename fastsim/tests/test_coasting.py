@@ -562,7 +562,6 @@ class TestCoasting(unittest.TestCase):
             )
         )
         veh = fastsim.vehicle.Vehicle(5, verbose=False)
-        print(f'veh mass (kg): {veh.vehKg}')
         sd = fastsim.simdrive.SimDriveClassic(trapz, veh)
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m__s = -1
@@ -570,7 +569,7 @@ class TestCoasting(unittest.TestCase):
         sd.sim_params.verbose = False
         sd.sim_drive()
         self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-        if True or DO_PLOTS:
+        if DO_PLOTS:
             make_coasting_plot(
                 sd.cyc0,
                 sd.cyc,
