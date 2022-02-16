@@ -146,7 +146,7 @@ class Cycle(object):
     
     @property
     def cycAvgMps(self):
-        return np.insert(0.5 * (self.cycMps[1:] + self.cycMps[:-1]), 0, 0.0)
+        return np.append(0.0, 0.5 * (self.cycMps[1:] + self.cycMps[:-1]))
     
     @property
     def cycDistMeters_v2(self):
@@ -407,10 +407,10 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
                 np.interp(
                     x=new_cycle['cycSecs'],
                     xp=cycle['cycSecs'],
-                    fp=np.insert((avg_rate_var * dts_orig).cumsum(), 0, 0.0)
+                    fp=np.append(0.0, (avg_rate_var * dts_orig).cumsum())
                 ),
             ) / new_dt
-            step_averages = np.insert(step_averages, 0, step_averages[0])
+            step_averages = np.append(step_averages[0], step_averages)
             step_averages = np.append(step_averages, step_averages[-1])
             midstep_times = np.concatenate(
                 (
