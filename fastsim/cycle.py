@@ -553,7 +553,9 @@ def speed_for_constant_jerk(n, v0, a0, k, dt):
     - k: Num, constant jerk
     - dt: Num, duration of a timestep (s)
     NOTE:
-    - this is the speed for the start of the time-step at n
+    - this is the speed at sample n
+    - if n == 0, speed is v0
+    - if n == 1, speed is v0 + a0*dt, etc.
     RETURN: Num, the speed n timesteps away (m/s)
     """
     return v0 + (n * a0 * dt) + (0.5 * n * (n - 1) * k * dt)
@@ -737,7 +739,14 @@ def calc_distance_to_stop_coast(v0, dvdd, v_brake, a_brake):
     return dts
 
 
-def should_impose_coast(cyc0, cyc, idx, brake_start_speed_m__s, brake_accel_m__s2, coast_start_speed_m__s=None):
+def should_impose_coast(
+    cyc0,
+    cyc,
+    idx,
+    brake_start_speed_m__s,
+    brake_accel_m__s2,
+    coast_start_speed_m__s=None,
+    verbose=False):
     """
     - cyc0: Cycle, reference cycle
     - cyc: Cycle, current cycle
@@ -746,6 +755,7 @@ def should_impose_coast(cyc0, cyc, idx, brake_start_speed_m__s, brake_accel_m__s
     - brake_accel_m__s2: negative-number, the constant braking acceleration (m/s2)
     - coast_start_speed_m__s: (or None non-negative number), if specified and speed at idx is greater
         than or equal to the given speed, initiate coast (m/s)
+    - verbose: Bool, if True, prints out debug information
     RETURN: Bool if vehicle should initiate coasting
     Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
     - if distance to coast from start of step is <= distance to next stop
@@ -759,7 +769,7 @@ def should_impose_coast(cyc0, cyc, idx, brake_start_speed_m__s, brake_accel_m__s
     ds = cyc0.cycDistMeters_v2.cumsum()
     gs = cyc0.cycGrade
     v0 = cyc.cycMps[idx-1]
-    d0 = ds[idx]
+    d0 = ds[idx-1]
     ds_mask = ds >= d0
     dt_s = sorted(np.unique(cyc0.secs[idx:]))[0]
     # distance to stop by coasting from start of step (idx-1)
@@ -777,10 +787,19 @@ def should_impose_coast(cyc0, cyc, idx, brake_start_speed_m__s, brake_accel_m__s
         gravity_m__s2=9.81,
         dt_s=dt_s
     )
+    if verbose:
+        print(f"should_impose_coast {idx}")
+        print(f"... v0            : {v0}")
+        print(f"... d0            : {d0}")
+        print(f"... dt_s          : {dt_s}")
+        print(f"... dtsc0         : {dtsc0}")
     if dtsc0 is None:
         return False
     # distance to next stop (m)
     dts0 = calc_distance_to_next_stop(d0, cyc0)
+    if verbose:
+        print(f"... dts0          : {dts0}")
+        print(f"... dtsc0 >= dts0 : {dtsc0 >= dts0}")
     return dtsc0 >= dts0
 
 
@@ -977,7 +996,7 @@ def modify_cycle_with_trajectory(cyc, idx, n, jerk_m__s3, accel0_m__s2):
     return v
 
 
-def modify_cycle_adding_braking_trajectory(cyc, brake_accel_m__s2, idx):
+def modify_cycle_adding_braking_trajectory(cyc, brake_accel_m__s2, idx, verbose=False):
     """
     - cyc: Cycle, the cycle to modify
     - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
@@ -988,10 +1007,26 @@ def modify_cycle_adding_braking_trajectory(cyc, brake_accel_m__s2, idx):
     assert brake_accel_m__s2 < 0.0
     v0 = cyc.cycMps[idx-1]
     dt = cyc.secs[idx]
-    # begin braking deceleration
-    dts_m = 0.5 * v0 * v0 / np.abs(brake_accel_m__s2)
+    # distance-to-stop (m)
+    dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
+    # time-to-stop (s)
     tts_s = -v0 / brake_accel_m__s2
-    n = int(np.ceil(tts_s / dt))
+    # number of steps to take
+    n = int(np.round(tts_s / dt))
     trajectory = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
-    modify_cycle_with_trajectory(cyc, idx, n, trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
+    if verbose:
+        print(f"BRAKING: {idx}")
+        print(f"... n               : {n}")
+        print(f"... trajectory      : {trajectory}")
+        print(f"... cyc.cycMps[{idx-1}] : {cyc.cycMps[idx-1]} m/s")
+        print(f"... cyc.cycMps[{idx}]   : {cyc.cycMps[idx]} m/s")
+    final_speed_m__s = modify_cycle_with_trajectory(cyc, idx, n, trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
+    if verbose:
+        print("... after trajectory written ...")
+        i_max = len(cyc.cycMps) - 1
+        print(f"... cyc.cycMps[{idx-1}] : {cyc.cycMps[idx-1]} m/s")
+        print(f"... cyc.cycMps[{idx}]   : {cyc.cycMps[idx]} m/s")
+        print(f"... cyc.cycMps[{min(idx+1, i_max)}]   : {cyc.cycMps[min(idx+1, i_max)]} m/s")
+        print(f"... cyc.cycMps[{min(idx+1, i_max)}]   : {cyc.cycMps[min(idx+2, i_max)]} m/s")
+        print(f"... final_speed_m__s: {final_speed_m__s}")
 

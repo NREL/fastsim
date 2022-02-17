@@ -12,13 +12,15 @@ import fastsim
 DO_PLOTS = False
 
 
-def make_coasting_plot(cyc0, cyc, use_mph=False, save_file=None, do_show=False):
+def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_show=False, verbose=False):
     """
     - cyc0: Cycle, the reference cycle (the "shadow trace" or "lead vehicle")
     - cyc: Cycle, the actual cycle driven
     - use_mph: Bool, if True, plot in miles per hour, else m/s
+    - title: None or string, if string, set the title
     - save_file: (Or None string), if specified, save the file to disk
     - do_show: Bool, whether to show the file or not
+    - verbose: Bool, if True, prints out
     RETURN: None
     - saves creates the given file and shows it
     """
@@ -32,27 +34,38 @@ def make_coasting_plot(cyc0, cyc, use_mph=False, save_file=None, do_show=False):
     ds = cyc.cycDistMeters_v2.cumsum()
     gaps = ds_orig - ds
     speed_units = "mph" if use_mph else "m/s"
+    fontsize=10
     (fig, axs) = plt.subplots(nrows=3)
     ax = axs[1]
     ax.plot(ts_orig, vs_orig * m, 'gray', label='shadow-trace')
     ax.plot(ts, vs * m, 'blue', label='coast')
     ax.plot(ts, vs * m, 'r.')
-    ax.set_xlabel('Elapsed Time (s)')
-    ax.set_ylabel(f'Speed ({speed_units})')
+    ax.set_xlabel('Elapsed Time (s)', fontsize=fontsize)
+    ax.set_ylabel(f'Speed ({speed_units})', fontsize=fontsize)
     ax.legend(loc=0, prop={'size': 6})
     ax = axs[2]
+    ax_right = ax.twinx()
+    ax_right.plot(ds_orig, cyc0.cycGrade * 100, 'y--', label='grade')
+    ax_right.set_ylabel('Grade (%)', fontsize=fontsize)
+    ax_right.grid(False)
+    ax.set_zorder(ax_right.get_zorder()+1)
+    ax.grid(False)
+    ax.set_frame_on(False)
     ax.plot(ds_orig, vs_orig * m, 'gray', label='shadow-trace')
     ax.plot(ds, vs * m, 'blue', label='coast')
     ax.plot(ds, vs * m, 'r.')
-    ax.set_xlabel('Distance Traveled (m)')
-    ax.set_ylabel(f'Speed ({speed_units})')
+    ax.set_xlabel('Distance Traveled (m)', fontsize=fontsize)
+    ax.set_ylabel(f'Speed ({speed_units})', fontsize=fontsize)
     ax = axs[0]
     ax.plot(ts_orig, gaps, 'gray', label='shadow-trace')
-    ax.set_xlabel('Elapsed Time (s)')
-    ax.set_ylabel('Gap (m)')
+    ax.set_xlabel('Elapsed Time (s)', fontsize=fontsize)
+    ax.set_ylabel('Gap (m)', fontsize=fontsize)
+    if title is not None:
+        ax.set_title(title)
     fig.tight_layout()
-    print(f'Distance Traveled for Coasting Vehicle: {ds.sum()} m')
-    print(f'Distance Traveled for Cycle           : {ds_orig.sum()} m')
+    if verbose:
+        print(f'Distance Traveled for Coasting Vehicle: {cyc.cycDistMeters_v2.sum()} m')
+        print(f'Distance Traveled for Cycle           : {cyc0.cycDistMeters_v2.sum()} m')
     if save_file is not None:
         fig.savefig(save_file, dpi=300)
     if do_show:
@@ -243,6 +256,7 @@ class TestCoasting(unittest.TestCase):
                 self.sim_drive_coast.cyc0,
                 self.sim_drive_coast.cyc,
                 use_mph=False,
+                title="Test That We Can Coast",
                 save_file='junk-test-that-we-can-coast.png')
 
     def test_eco_approach_modeling(self):
@@ -256,8 +270,8 @@ class TestCoasting(unittest.TestCase):
         # TODO: can we increase the precision of matching?
         self.assertAlmostEqual(
             self.trapz.cycDistMeters.sum(),
-            self.sim_drive_coast.distMeters.sum(), 0,
-            "Assert the end distances are equal\n" +
+            self.sim_drive_coast.distMeters.sum(),
+            msg="Assert the end distances are equal\n" +
             f"Got {self.trapz.cycDistMeters.sum()} m and {self.sim_drive_coast.distMeters.sum()} m")
 
     def test_consistency_of_constant_jerk_trajectory(self):
@@ -390,10 +404,10 @@ class TestCoasting(unittest.TestCase):
         # distance required to stop (m)
         expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
         tts_s = -v0 / brake_accel_m__s2
-        n = int(np.ceil(tts_s / dt))
+        n = int(np.round(tts_s / dt))
         fastsim.cycle.modify_cycle_adding_braking_trajectory(trapz, brake_accel_m__s2, idx+1)
         self.assertAlmostEqual(v0, trapz.cycMps[idx])
-        self.assertEqual(12, n)
+        self.assertEqual(11, n)
         dts_m = trapz.cycDistMeters_v2[idx+1:idx+n+1].sum()
         self.assertAlmostEqual(expected_dts_m, dts_m)
     
@@ -413,6 +427,7 @@ class TestCoasting(unittest.TestCase):
                 sd.cyc0,
                 sd.cyc,
                 use_mph=False,
+                title="Logic to Enter Eco-Approach Automatically (no 1)",
                 save_file='junk-test-logic-to-enter-eco-approach-automatically-1.png')
         trapz2 = fastsim.cycle.Cycle(
             cyc_dict=fastsim.cycle.resample(
@@ -436,6 +451,7 @@ class TestCoasting(unittest.TestCase):
                 sd.cyc0,
                 sd.cyc,
                 use_mph=False,
+                title="Logic to Enter Eco-Approach Automatically (no 2)",
                 save_file='junk-test-logic-to-enter-eco-approach-automatically-2.png')
             make_dvdd_plot(
                 sd.cyc,
@@ -482,6 +498,7 @@ class TestCoasting(unittest.TestCase):
                 sd.cyc0,
                 sd.cyc,
                 use_mph=False,
+                title="Test That Coasting Works Going Uphill",
                 save_file='junk-test_that_coasting_works_going_uphill-trace.png')
             make_dvdd_plot(
                 sd.cyc,
@@ -550,12 +567,13 @@ class TestCoasting(unittest.TestCase):
         
     def test_that_coasting_logic_works_going_uphill(self):
         "When going uphill, we want to ensure we can still hit our coasting target"
+        grade = 0.01
         trapz = fastsim.cycle.Cycle(
             cyc_dict=fastsim.cycle.resample(
                 fastsim.cycle.make_cycle(
                     [0.0, 10.0, 45.0, 55.0, 100.0],
                     [0.0, 20.0, 20.0, 0.0, 0.0],
-                    [0.01, 0.01, 0.01, 0.01, 0.01],
+                    [grade]*5,
                 ),
                 new_dt=1.0,
                 hold_keys={'cycGrade'},
@@ -566,15 +584,54 @@ class TestCoasting(unittest.TestCase):
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m__s = -1
         sd.sim_params.coast_to_brake_speed_m__s = 4.0
+        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.0
         sd.sim_params.verbose = False
+        sd.sim_params.coast_verbose = False
         sd.sim_drive()
         self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-        if DO_PLOTS:
+        if True or DO_PLOTS:
             make_coasting_plot(
                 sd.cyc0,
                 sd.cyc,
                 use_mph=False,
-                save_file='test_that_coasting_logic_works_going_uphill.png')
-        # TODO: can we increase the precision?
+                title="That Coasting Logic Works Going Uphill (Veh 5)",
+                do_show=False,
+                save_file='test_that_coasting_logic_works_going_uphill-trace-vehicle-5.png')
+        # assert we have grade set correctly
+        self.assertTrue((sd.cyc0.cycGrade == grade).all())
+        self.assertTrue((sd.cyc.cycGrade == grade).all())
         self.assertAlmostEqual(
-            sd.cyc0.cycDistMeters_v2.sum(), sd.cyc.cycDistMeters.sum(), 0)
+            sd.cyc0.cycDistMeters_v2.sum(), sd.cyc.cycDistMeters_v2.sum())
+        if False:
+            # test with a different vehicle and grade
+            grade = 0.02
+            trapz = fastsim.cycle.Cycle(
+                cyc_dict=fastsim.cycle.resample(
+                    fastsim.cycle.make_cycle(
+                        [0.0, 10.0, 45.0, 55.0, 100.0],
+                        [0.0, 20.0, 20.0, 0.0, 0.0],
+                        [grade]*5,
+                    ),
+                    new_dt=1.0,
+                    hold_keys={'cycGrade'},
+                )
+            )
+            veh = fastsim.vehicle.Vehicle(1, verbose=False)
+            sd = fastsim.simdrive.SimDriveClassic(trapz, veh)
+            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_start_speed_m__s = -1
+            sd.sim_params.coast_to_brake_speed_m__s = 7.5
+            sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.5
+            sd.sim_params.verbose = False
+            sd.sim_drive()
+            self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+            if True or DO_PLOTS:
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="That Coasting Logic Works Going Uphill (Veh 1)",
+                    save_file='test_that_coasting_logic_works_going_uphill-trace-vehicle-1.png')
+            # TODO: can we increase the precision?
+            self.assertAlmostEqual(
+                sd.cyc0.cycDistMeters_v2.sum(), sd.cyc.cycDistMeters.sum())

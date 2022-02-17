@@ -50,7 +50,7 @@ class SimDriveParamsClassic(object):
         self.nominal_brake_accel_for_coast_m__s2 = -2.5 # -1.875 # -2.0 # -1.78816
         self.coast_to_brake_speed_m__s = 7.5 # 20.0 / params.mphPerMps # speed when coasting uses friction brakes
         self.coast_start_speed_m__s = 38.0 # m/s
-        self.coast_dvdd_1__s = -0.01 # m/s / m
+        self.coast_verbose = False
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
@@ -1221,6 +1221,7 @@ class SimDriveClassic(object):
         TOL = 1e-6
         v0 = self.mpsAch[i-1]
         if v0 < TOL:
+            # TODO: need to determine how to leave coast and rejoin shadow trace
             #self.impose_coast[i] = False
             pass
         else:
@@ -1238,6 +1239,23 @@ class SimDriveClassic(object):
                     coast_start_speed_m__s=coast_start_speed_m__s
                 )
             )
+            if self.sim_params.coast_verbose and not self.impose_coast[i-1] and self.impose_coast[i]:
+                print(f"BEGIN IMPOSING COAST AT {i}")
+                print(f"... self.cyc0.cycMps[i-1]: {self.cyc0.cycMps[i-1]}")
+                print(f"... self.cyc0.cycMps[i]  : {self.cyc0.cycMps[i]}")
+                print(f"... self.cyc.cycMps[i-1] : {self.cyc.cycMps[i-1]}")
+                print(f"... self.cyc.cycMps[i]   : {self.cyc.cycMps[i]}")
+                print(f"... self.cyc0.cycGrade[i]: {self.cyc0.cycGrade[i]}")
+                cycle.should_impose_coast(
+                    self.cyc0,
+                    self.cyc,
+                    i,
+                    brake_start_speed_m__s=self.sim_params.coast_to_brake_speed_m__s,
+                    brake_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2,
+                    coast_start_speed_m__s=coast_start_speed_m__s,
+                    verbose=True
+                )
+
         if not self.impose_coast[i]:
             return
         v1_traj = self.cyc.cycMps[i]
@@ -1258,20 +1276,30 @@ class SimDriveClassic(object):
                 self.cyc.cycMps[i] = max(0, min(max_next_speed_m__s, self.sim_params.max_coast_speed_m__s))
         # Solve for the actual coasting speed
         self.solve_step(i)
+        self.newton_iters[i] = 0 # reset newton iters
         self.cyc.cycMps[i] = self.mpsAch[i]
         accel_proposed = (self.cyc.cycMps[i] - self.cyc.cycMps[i-1]) / self.cyc.secs[i]
         if self.cyc.cycMps[i] < TOL:
+            self.cyc.cycMps[i] = 0.0
             return
         if np.abs(self.cyc.cycMps[i] - v1_traj) > TOL:
+            adjusted_current_speed = False
             if self.cyc.cycMps[i] < (self.sim_params.coast_to_brake_speed_m__s + TOL):
                 v1_before = self.cyc.cycMps[i]
+                if self.sim_params.coast_verbose:
+                    print(f"STARTING BRAKE TRAJECTORY AT {i}")
+                    print(f"... self.cyc.cycSecs[i] : {self.cyc.cycSecs[i]} s")
+                    print(f"... self.cyc.cycMps[i-1]: {self.cyc.cycMps[i-1]} m/s")
+                    print(f"... self.cyc.cycMps[i]  : {self.cyc.cycMps[i]} m/s")
                 cycle.modify_cycle_adding_braking_trajectory(
                     self.cyc,
                     self.sim_params.nominal_brake_accel_for_coast_m__s2,
-                    i
+                    i,
+                    verbose=self.sim_params.coast_verbose
                 )
                 v1_after = self.cyc.cycMps[i]
                 assert v1_before != v1_after
+                adjusted_current_speed = True
             else:
                 trajectory = cycle.calc_next_rendezvous_trajectory(
                     self.cyc,
@@ -1292,12 +1320,40 @@ class SimDriveClassic(object):
                         trajectory['n'],
                         trajectory['jerk_m__s3'],
                         trajectory['accel_m__s2'])
+                    adjusted_current_speed = True
+                    if self.sim_params.coast_verbose:
+                        print(f"ADDED TRAJECTORY AT {i}")
+                        print(f"... self.cyc.cycSecs[i] : {self.cyc.cycSecs[i]} s")
+                        print(f"... self.cyc.cycMps[i-1]: {self.cyc.cycMps[i-1]} m/s")
+                        print(f"... self.cyc.cycMps[i]  : {self.cyc.cycMps[i]} m/s")
+                        print(f"... final_speed_m__s    : {final_speed_m__s} m/s")
+                        print(f"... trajectory          : {trajectory}")
                     if np.abs(final_speed_m__s - self.sim_params.coast_to_brake_speed_m__s) < 0.1:
+                        i_for_brake = i+trajectory['n']
+                        if self.sim_params.coast_verbose:
+                            print(f"STARTING BRAKE TRAJECTORY AT {i_for_brake} AFTER NORMAL TRAJECTORY")
+                            print(f"... self.cyc.cycSecs[ib] : {self.cyc.cycSecs[i_for_brake]} s")
+                            print(f"... self.cyc.cycMps[ib-1]: {self.cyc.cycMps[i_for_brake-1]} m/s")
+                            print(f"... self.cyc.cycMps[ib]  : {self.cyc.cycMps[i_for_brake]} m/s")
                         cycle.modify_cycle_adding_braking_trajectory(
                             self.cyc,
                             self.sim_params.nominal_brake_accel_for_coast_m__s2,
-                            i + trajectory['n']
+                            i_for_brake,
+                            verbose=self.sim_params.coast_verbose
                         )
+                        adjusted_current_speed = True
+            if adjusted_current_speed:
+                # TODO: should we have an iterate=True/False, flag on solve_step to
+                # ensure newton iters is reset? vs having to call manually?
+                self.solve_step(i)
+                self.newton_iters[i] = 0 # reset newton iters
+                if self.sim_params.coast_verbose:
+                    print(f"AFTER RESOLVE AT {i}")
+                    print(f"... self.cyc.cycSecs[i] : {self.cyc.cycSecs[i]} s")
+                    print(f"... self.cyc.cycMps[i-1]: {self.cyc.cycMps[i-1]} m/s")
+                    print(f"... self.cyc.cycMps[i]  : {self.cyc.cycMps[i]} m/s")
+                    print(f"... self.mpsAch[i]      : {self.mpsAch[i]} m/s")
+                self.cyc.cycMps[i] = self.mpsAch[i]
 
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
