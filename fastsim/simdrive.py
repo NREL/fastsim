@@ -1212,6 +1212,52 @@ class SimDriveClassic(object):
                 (t_dilation[-1] <= self.sim_params.min_time_dilation)
             )
     
+    def _should_impose_coast(self, i, verbose=False):
+        """
+        - i: non-negative integer, the current position in cyc
+        - verbose: Bool, if True, prints out debug information
+        RETURN: Bool if vehicle should initiate coasting
+        Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
+        - if distance to coast from start of step is <= distance to next stop
+        - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
+        """
+        if self.sim_params.coast_start_speed_m__s > 0.0:
+            return self.cyc.cycMps[i] >= self.sim_params.coast_start_speed_m__s
+        ds = self.cyc0.cycDistMeters_v2.cumsum()
+        gs = self.cyc0.cycGrade
+        v0 = self.cyc.cycMps[i-1]
+        d0 = ds[i-1]
+        ds_mask = ds >= d0
+        # distance to stop by coasting from start of step (i-1)
+        #dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
+        dtsc0 = cycle.calc_distance_to_stop_coast_v2(
+            v0,
+            self.sim_params.coast_to_brake_speed_m__s,
+            self.sim_params.nominal_brake_accel_for_coast_m__s2,
+            distances_m=ds[ds_mask] - d0,
+            grade_by_distance=gs[ds_mask],
+            veh_mass_kg=self.veh.vehKg,
+            air_density_kg__m3=self.props.airDensityKgPerM3,
+            CDFA_m2=self.veh.dragCoef*self.veh.frontalAreaM2,
+            rrc=self.veh.wheelRrCoef,
+            gravity_m__s2=self.props.gravityMPerSec2,
+            dt_s=self.cyc0.secs[i],
+            verbose=self.sim_params.coast_verbose,
+        )
+        if verbose:
+            print(f"should_impose_coast {i}")
+            print(f"... v0            : {v0}")
+            print(f"... d0            : {d0}")
+            print(f"... dtsc0         : {dtsc0}")
+        if dtsc0 is None:
+            return False
+        # distance to next stop (m)
+        dts0 = cycle.calc_distance_to_next_stop(d0, self.cyc0)
+        if verbose:
+            print(f"... dts0          : {dts0}")
+            print(f"... dtsc0 >= dts0 : {dtsc0 >= dts0}")
+        return dtsc0 >= dts0
+    
     def set_coast_speed(self, i):
         """
         Placeholder for method to impose coasting.
@@ -1228,17 +1274,7 @@ class SimDriveClassic(object):
             coast_start_speed_m__s = None
             if self.sim_params.coast_start_speed_m__s > 0.0:
                 coast_start_speed_m__s = self.sim_params.coast_start_speed_m__s
-            self.impose_coast[i] = (
-                self.impose_coast[i-1]
-                or cycle.should_impose_coast(
-                    self.cyc0,
-                    self.cyc,
-                    i,
-                    brake_start_speed_m__s=self.sim_params.coast_to_brake_speed_m__s,
-                    brake_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2,
-                    coast_start_speed_m__s=coast_start_speed_m__s
-                )
-            )
+            self.impose_coast[i] = self.impose_coast[i-1] or self._should_impose_coast(i)
             if self.sim_params.coast_verbose and not self.impose_coast[i-1] and self.impose_coast[i]:
                 print(f"BEGIN IMPOSING COAST AT {i}")
                 print(f"... self.cyc0.cycMps[i-1]: {self.cyc0.cycMps[i-1]}")
@@ -1246,15 +1282,7 @@ class SimDriveClassic(object):
                 print(f"... self.cyc.cycMps[i-1] : {self.cyc.cycMps[i-1]}")
                 print(f"... self.cyc.cycMps[i]   : {self.cyc.cycMps[i]}")
                 print(f"... self.cyc0.cycGrade[i]: {self.cyc0.cycGrade[i]}")
-                cycle.should_impose_coast(
-                    self.cyc0,
-                    self.cyc,
-                    i,
-                    brake_start_speed_m__s=self.sim_params.coast_to_brake_speed_m__s,
-                    brake_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2,
-                    coast_start_speed_m__s=coast_start_speed_m__s,
-                    verbose=True
-                )
+                self._should_impose_coast(i, verbose=True)
 
         if not self.impose_coast[i]:
             return
