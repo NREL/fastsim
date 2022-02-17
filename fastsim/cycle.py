@@ -179,6 +179,68 @@ class Cycle(object):
                     }
         cyc = Cycle(cyc_dict=cyc_dict)
         return cyc
+    
+    def calc_distance_to_next_stop_from(self, distance_m):
+        """
+        Calculate the distance to next stop from `distance_m`
+        - distance_m: non-negative-number, the current distance from start (m)
+        RETURN: -1 or non-negative-integer
+        - if there are no more stops ahead, return -1
+        - else returns the distance to the next stop from distance_m
+        """
+        distances_of_stops_m = np.unique(self.cycDistMeters_v2.cumsum()[self.cycMps < TOL])
+        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (distance_m + TOL)]
+        if len(remaining_stops_m) > 0:
+            return remaining_stops_m[0] - distance_m
+        return -1.0
+
+    def modify_by_const_jerk_trajectory(self, idx, n, jerk_m__s3, accel0_m__s2):
+        """
+        Modifies the cycle using the given constant-jerk trajectory parameters
+        - idx: non-negative integer, the point in the cycle to initiate
+        modification (note: THIS point is modified since trajectory should be calculated from idx-1)
+        - jerk_m__s3: number, the "Jerk" associated with the trajectory (m/s3)
+        - accel0_m__s2: number, the initial acceleration (m/s2)
+        NOTE:
+        - modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment
+        - CAUTION: NOT ROBUST AGAINST VARIABLE DURATION TIME-STEPS
+        RETURN: Number, final modified speed (m/s)
+        """
+        num_samples = len(self.cycSecs)
+        v0 = self.cycMps[idx-1]
+        dt = self.secs[idx]
+        v = v0
+        for ni in range(1, int(n)+1):
+            idx_to_set = (int(idx) - 1) + ni
+            if idx_to_set >= num_samples:
+                break
+            v = speed_for_constant_jerk(ni, v0, accel0_m__s2, jerk_m__s3, dt)
+            self.cycMps[idx_to_set] = v
+        return v
+
+    def modify_with_braking_trajectory(self, brake_accel_m__s2, idx):
+        """
+        Add a braking trajectory that would cover the same distance as the given constant brake deceleration
+        - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
+        - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
+        RETURN: non-negative-number, the final speed of the modified trajectory (m/s) 
+        - modifies the cycle in place for braking
+        """
+        assert brake_accel_m__s2 < 0.0
+        i = int(idx)
+        v0 = self.cycMps[i-1]
+        dt = self.secs[i]
+        # distance-to-stop (m)
+        dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
+        # time-to-stop (s)
+        tts_s = -v0 / brake_accel_m__s2
+        # number of steps to take
+        n = int(np.round(tts_s / dt))
+        if n < 2:
+            # need at least 2 steps
+            n = 2
+        trajectory = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
+        return self.modify_by_const_jerk_trajectory(i, n, trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
 
 
 def copy_cycle(cyc, return_dict=False, use_jit=None):
@@ -584,243 +646,6 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     return d0 + term1 + term2
 
 
-def calc_dvdd(v, grade, veh_mass_kg, air_density_kg__m3, CDFA_m2, rrc, gravity_m__s2=9.81):
-    """
-    Calculates the derivative dv/dd (change in speed by change in distance)
-    - v: number, the speed at which to evaluate dv/dd (m/s)
-    - grade: number, the road grade as a decimal fraction
-    - veh_mass_kg: positive-number, the vehicle mass (kg)
-    - air_density_kg__m3: positive-number, density of air (kg/m3)
-    - CDFA_m2: positive-number, coefficient of drag times frontal area (m2)
-    - rrc: positive-number, rolling resistance coefficient
-    - gravity_m__s2: positive-number, the acceleration due to gravity (m/s2)
-    RETURN: number, the dv/dd for these conditions
-    """
-    atan_grade = float(np.arctan(grade))
-    g = gravity_m__s2
-    M = veh_mass_kg
-    rho_CDFA = air_density_kg__m3 * CDFA_m2
-    return -1.0 * (
-        (g/v) * (np.sin(atan_grade) + rrc * np.cos(atan_grade))
-        + (0.5 * rho_CDFA * (1.0/M) * v)
-    )
-
-
-def calc_distance_to_stop_coast_v2(
-    v0,
-    v_brake,
-    a_brake,
-    distances_m,
-    grade_by_distance,
-    veh_mass_kg,
-    air_density_kg__m3,
-    CDFA_m2,
-    rrc,
-    gravity_m__s2=9.81,
-    dt_s=1.0,
-    verbose=False,
-    ):
-    """
-    Calculate the distance to stop via coasting in meters.
-    - v0: non-negative-number, initial speed (m/s)
-    - v_brake: non-negative-number, the speed at which to initiate friction braking (m/s)
-    - a_brake: negative-number, the constant acceleration during braking (m/s2)
-    - distances_m: array-of-non-negative-number, must be increasing. Used for grade interpolation (m)
-    - grade_by_distance: array-of-number, the fractional road grade (i.e., 0.01 == 1% grade); this
-        array must be the same length as the distances_m array
-    - veh_mass_kg: positive-number, the mass of the vehicle (kg)
-    - air_density_kg__m3: non-negative-number, the density of air (kg/m3)
-    - CDFA_m2: positive-number, the drag coefficient times frontal area (m2)
-    - rrc: non-negative-number, the rolling resitance of the tires
-    - gravity_m__s2: non-negative-number, the acceleration due to gravity (m/s2); default: 9.81 m/s2
-    - dt_s: positive-number, the time to move forward when sampling (s); default: 1 s
-    - verbose: Bool, if True, print out diagnostics
-    RETURN: None or non-negative-number
-    - if None, there is no solution to a coast-down distance.
-        This can happen due to being too close to the given
-        stop or perhaps due to coasting downhill
-    - if a non-negative-number, the distance in meters that the vehicle
-        would freely coast if unobstructed. Accounts for grade between
-        the current point and end-point
-    """
-    assert v0 >= 0.0
-    assert a_brake < 0.0
-    assert v_brake >= 0.0
-    assert len(distances_m) == len(grade_by_distance)
-    assert veh_mass_kg > 0.0
-    assert air_density_kg__m3 >= 0.0
-    assert CDFA_m2 > 0.0
-    assert rrc >= 0.0
-    assert gravity_m__s2 >= 0.0
-    assert dt_s > 0.0
-    v = v0
-    # distance traveled while stopping via friction-braking (i.e., distance to brake)
-    dtb = -0.5 * v_brake * v_brake / a_brake
-    if v0 <= v_brake:
-        if verbose:
-            print("calc_distance_to_stop_coast_v2 EARLY RETURN V0 <= V_brake")
-            print(f"... v0     : {v0} m/s")
-            print(f"... v_brake: {v_brake} m/s")
-            print(f"... dtb    : {dtb} m")
-            print(f"... a_brake: {a_brake} m/s2")
-        return -0.5 * v0 * v0 / a_brake
-    d = 0.0
-    d_max = distances_m[-1]
-    unique_grades = np.unique(grade_by_distance)
-    unique_grade = unique_grades[0] if len(unique_grades) == 1 else None
-    if unique_grade is not None:
-        # if there is only one grade, there may be a closed-form solution
-        theta = np.arctan(unique_grade)
-        c1 = gravity_m__s2 * (np.sin(theta) + rrc * np.cos(theta))
-        c2 = (air_density_kg__m3 * CDFA_m2) / (2.0 * veh_mass_kg)
-        v02 = v0 * v0
-        vb2 = v_brake * v_brake
-        d = None
-        if c2 == 0.0:
-            if c1 > 0.0:
-                d = (1.0 / (2.0 * c1)) * (v02 - vb2)
-        else:
-            try:
-                d = (1.0 / (2.0 * c2)) * (np.log(c1 + c2 * v02) - np.log(c1 + c2 * vb2))
-            except Exception:
-                pass
-        if verbose:
-            print("calc_distance_to_stop_coast_v2 UNIQUE GRADE FOUND")
-            print(f"... theta  : {theta} radians")
-            print(f"... grade  : {unique_grade * 100}%")
-            print(f"... c1     : {c1}")
-            print(f"... c2     : {c2}")
-            print(f"... dtb    : {dtb} m")
-            print(f"... a_brake: {a_brake} m/s2")
-            print(f"... d      : {d} m")
-        if d is not None:
-            return d + dtb
-    i = 0
-    MAX_ITER = 2000
-    ITERS_PER_STEP = 2
-    while v > v_brake and v >= 0.0 and d <= d_max and i < MAX_ITER:
-        gr = unique_grade if unique_grade is not None else np.interp(d, distances_m, grade_by_distance)
-        k = calc_dvdd(v, gr, veh_mass_kg, air_density_kg__m3, CDFA_m2, rrc, gravity_m__s2)
-        v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
-        vavg = 0.5 * (v + v_next)
-        for i in range(ITERS_PER_STEP):
-            k = calc_dvdd(vavg, gr, veh_mass_kg, air_density_kg__m3, CDFA_m2, rrc, gravity_m__s2)
-            v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
-            vavg = 0.5 * (v + v_next)
-        if k >= 0.0 and unique_grade is not None:
-            # there is no solution for coastdown -- speed will never decrease 
-            return None
-        stop = v_next <= v_brake
-        if stop:
-            v_next = v_brake
-        vavg = 0.5 * (v + v_next)
-        dd = vavg * dt_s
-        d += dd
-        v = v_next
-        i += 1
-        if stop:
-            break
-    if np.abs(v - v_brake) < TOL:
-        return d + dtb
-    return None
-
-
-def calc_distance_to_stop_coast(v0, dvdd, v_brake, a_brake):
-    """
-    Given an initial speed, the constant change in speed with distance, the speed at which
-    braking starts, and the acceleration during braking, determine the total distance
-    required to come to coast/brake to a stop.
-    - v0: non-negative-number, the initial speed (m/s)
-    - dvdd: number, the change in speed (dv) by change in distance (dd) (m/s / m)
-    - v_brake: non-negative-number, the speed at which friction brakes initiate (m/s)
-    - a_brake: negative-number, the constant braking deceleration
-    RETURN: (Or None number), the distance to stop from coast
-    - if dvdd is positive (from, for example, coasting downhill) returns None
-    TODO:
-    - this needs to be enhanced to have dvdd vary by distance
-    """
-    assert a_brake < 0.0
-    if dvdd >= 0.0:
-        return None
-    if v0 <= v_brake:
-        d_coast = 0.0
-        t_brake = -v0 / a_brake
-        d_brake = t_brake * (v0 + 0.5 * a_brake * t_brake)
-    else:
-        dv = v0 - v_brake
-        d_coast = -dv / dvdd
-        t_brake = -v_brake / a_brake
-        d_brake = t_brake * (v_brake + 0.5 * a_brake * t_brake)
-    dts = d_coast + d_brake
-    if dts < 0:
-        return None
-    return dts
-
-
-def should_impose_coast(
-    cyc0,
-    cyc,
-    idx,
-    brake_start_speed_m__s,
-    brake_accel_m__s2,
-    coast_start_speed_m__s=None,
-    verbose=False):
-    """
-    - cyc0: Cycle, reference cycle
-    - cyc: Cycle, current cycle
-    - idx: non-negative integer, the current position in cyc
-    - brake_start_speed_m__s: non-negative-number, the speed at which friction braking starts (m/s)
-    - brake_accel_m__s2: negative-number, the constant braking acceleration (m/s2)
-    - coast_start_speed_m__s: (or None non-negative number), if specified and speed at idx is greater
-        than or equal to the given speed, initiate coast (m/s)
-    - verbose: Bool, if True, prints out debug information
-    RETURN: Bool if vehicle should initiate coasting
-    Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
-    - if distance to coast from start of step is <= distance to next stop
-    - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
-    """
-    assert idx > 0
-    assert brake_start_speed_m__s >= 0.0
-    assert brake_accel_m__s2 < 0.0
-    if coast_start_speed_m__s is not None:
-        return cyc.cycMps[idx] >= coast_start_speed_m__s
-    ds = cyc0.cycDistMeters_v2.cumsum()
-    gs = cyc0.cycGrade
-    v0 = cyc.cycMps[idx-1]
-    d0 = ds[idx-1]
-    ds_mask = ds >= d0
-    dt_s = sorted(np.unique(cyc0.secs[idx:]))[0]
-    # distance to stop by coasting from start of step (idx-1)
-    #dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
-    dtsc0 = calc_distance_to_stop_coast_v2(
-        v0,
-        brake_start_speed_m__s,
-        brake_accel_m__s2,
-        distances_m=ds[ds_mask] - d0,
-        grade_by_distance=gs[ds_mask],
-        veh_mass_kg=1893.6704171330643,
-        air_density_kg__m3=1.2,
-        CDFA_m2=0.355*3.066,
-        rrc=0.006,
-        gravity_m__s2=9.81,
-        dt_s=dt_s
-    )
-    if verbose:
-        print(f"should_impose_coast {idx}")
-        print(f"... v0            : {v0}")
-        print(f"... d0            : {d0}")
-        print(f"... dt_s          : {dt_s}")
-        print(f"... dtsc0         : {dtsc0}")
-    if dtsc0 is None:
-        return False
-    # distance to next stop (m)
-    dts0 = calc_distance_to_next_stop(d0, cyc0)
-    if verbose:
-        print(f"... dts0          : {dts0}")
-        print(f"... dtsc0 >= dts0 : {dtsc0 >= dts0}")
-    return dtsc0 >= dts0
-
-
 def calc_next_rendezvous_trajectory(
     cyc,
     idx,
@@ -877,7 +702,7 @@ def calc_next_rendezvous_trajectory(
     dt = cyc.secs[idx]
     a_proposed = (v1 - v0) / dt
     # distance to stop from start of time-step
-    dts0 = calc_distance_to_next_stop(d0, cyc0) 
+    dts0 = cyc0.calc_distance_to_next_stop_from(d0) 
     if dts0 < TOL:
         # no stop to coast towards or we're there...
         return None
@@ -968,93 +793,3 @@ def calc_next_rendezvous_trajectory(
         if r_best is not None:
             return r_best
     return None
-
-
-def calc_distance_to_next_stop(distance_m, cyc):
-    """
-    Calculate the distance to the next stop given the current distance position and a cycle
-    - distance_m: non-negative number, the current distance from start (m)
-    - cyc: Cycle, the cycle to use to evaluate next stop distances
-    RETURN: non-negative number, the distance from the current position to the next stop (m)
-    NOTE:
-    - If there is no next stop or if we are at the stop, 0.0 is returned
-    """
-    distances_of_stops_m = np.unique(cyc.cycDistMeters_v2.cumsum()[cyc.cycMps < TOL])
-    remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (distance_m + TOL)]
-    if len(remaining_stops_m) > 0:
-        return remaining_stops_m[0] - distance_m
-    return 0.0
-
-
-def modify_cycle_with_trajectory(cyc, idx, n, jerk_m__s3, accel0_m__s2):
-    """
-    Modifies cyc using the given trajectory parameters
-    - cyc: Cycle, the cycle dictionary for the cycle to be modified
-    - idx: non-negative integer, the point in the cycle to initiate
-      modification (note: THIS point is modified since trajectory should be calculated from idx-1)
-    - jerk_m__s3: number, the "Jerk" associated with the trajectory (m/s3)
-    - accel0_m__s2: number, the initial acceleration (m/s2)
-    NOTE:
-    - also resamples cycle grade based on distance by mapping to elevation points
-    - modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment
-    - NOT ROBUST AGAINST VARIABLE DURATION TIME-STEPS
-    RETURN: Number, final modified speed (m/s)
-    TODO: need to update to resample grade by distance
-    """
-    num_samples = len(cyc.cycSecs)
-    v0 = cyc.cycMps[idx-1]
-    dt = cyc.secs[idx]
-    v = v0
-    for ni in range(1, n+1):
-        idx_to_set = (idx - 1) + ni
-        if idx_to_set >= num_samples:
-            break
-        v = speed_for_constant_jerk(ni, v0, accel0_m__s2, jerk_m__s3, dt)
-        cyc.cycMps[idx_to_set] = v
-    return v
-
-
-def modify_cycle_adding_braking_trajectory(cyc, brake_accel_m__s2, idx, verbose=False):
-    """
-    - cyc: Cycle, the cycle to modify
-    - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
-    - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
-    RETURN: None
-    - modifies the cycle for braking
-    TODO:
-    - resample grade to be correct by distance
-    """
-    TOL = 1e-6
-    assert brake_accel_m__s2 < 0.0
-    v0 = cyc.cycMps[idx-1]
-    if False and (v0 < TOL or v0 < (-1.0 * brake_accel_m__s2 * cyc.secs[idx] + TOL)):
-        # we're stopped or within a time-step of stopping so just stop
-        cyc.cycMps[idx] = 0.0
-        return
-    dt = cyc.secs[idx]
-    # distance-to-stop (m)
-    dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
-    # time-to-stop (s)
-    tts_s = -v0 / brake_accel_m__s2
-    # number of steps to take
-    n = int(np.round(tts_s / dt))
-    if n < 2:
-        # need at least 2 steps
-        n = 2
-    trajectory = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
-    if verbose:
-        print(f"BRAKING: {idx}")
-        print(f"... n               : {n}")
-        print(f"... trajectory      : {trajectory}")
-        print(f"... cyc.cycMps[{idx-1}] : {cyc.cycMps[idx-1]} m/s")
-        print(f"... cyc.cycMps[{idx}]   : {cyc.cycMps[idx]} m/s")
-    final_speed_m__s = modify_cycle_with_trajectory(cyc, idx, n, trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
-    if verbose:
-        print("... after trajectory written ...")
-        i_max = len(cyc.cycMps) - 1
-        print(f"... cyc.cycMps[{idx-1}] : {cyc.cycMps[idx-1]} m/s")
-        print(f"... cyc.cycMps[{idx}]   : {cyc.cycMps[idx]} m/s")
-        print(f"... cyc.cycMps[{min(idx+1, i_max)}]   : {cyc.cycMps[min(idx+1, i_max)]} m/s")
-        print(f"... cyc.cycMps[{min(idx+1, i_max)}]   : {cyc.cycMps[min(idx+2, i_max)]} m/s")
-        print(f"... final_speed_m__s: {final_speed_m__s}")
-

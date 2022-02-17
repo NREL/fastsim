@@ -187,7 +187,7 @@ class TestCoasting(unittest.TestCase):
         expected_distance_m = 300.0 # 100m + (20s - 10s) * 20m/s
         dist_m = self.trapz.cycDistMeters_v2[:(idx + 1)].sum()
         self.assertAlmostEqual(expected_distance_m, dist_m)
-        dts = fastsim.cycle.calc_distance_to_next_stop(dist_m, self.trapz)
+        dts = self.trapz.calc_distance_to_next_stop_from(dist_m)
         dts_expected_m = 900 - dist_m
         self.assertAlmostEqual(dts_expected_m, dts)
 
@@ -198,9 +198,7 @@ class TestCoasting(unittest.TestCase):
         accel = -1.0
         jerk = 0.1
         trapz = self.trapz.copy()
-        fastsim.cycle.modify_cycle_with_trajectory(
-            trapz, idx, n, jerk, -1.0
-        )
+        trapz.modify_by_const_jerk_trajectory(idx, n, jerk, -1.0)
         self.assertNotEqual(self.trapz.cycMps[idx], trapz.cycMps[idx])
         self.assertEqual(len(self.trapz.cycMps), len(trapz.cycMps))
         self.assertTrue(self.trapz.cycMps[idx] > trapz.cycMps[idx])
@@ -227,9 +225,7 @@ class TestCoasting(unittest.TestCase):
         accel = -1.0
         jerk = 0.0
         trapz = self.trapz.copy()
-        fastsim.cycle.modify_cycle_with_trajectory(
-            trapz, idx, n, jerk, -1.0
-        )
+        trapz.modify_by_const_jerk_trajectory(idx, n, jerk, -1.0)
         self.assertNotEqual(self.trapz.cycMps[idx], trapz.cycMps[idx])
         self.assertEqual(len(self.trapz.cycMps), len(trapz.cycMps))
         self.assertTrue(self.trapz.cycMps[idx] > trapz.cycMps[idx])
@@ -310,15 +306,14 @@ class TestCoasting(unittest.TestCase):
         v0 = self.trapz.cycMps[idx-1]
         dt = self.trapz.secs[idx]
         brake_decel_m__s2 = 2.5
-        dts0 = fastsim.cycle.calc_distance_to_next_stop(d0, trapz)
+        dts0 = trapz.calc_distance_to_next_stop_from(d0)
         # speed at which friction braking initiates (m/s)
         brake_start_speed_m__s = 7.5
         # distance to brake (m)
         dtb = 0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_decel_m__s2
         dtbi0 = dts0 - dtb
         trajectory = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, d0 + dtbi0, brake_start_speed_m__s, dt)
-        final_speed_m__s = fastsim.cycle.modify_cycle_with_trajectory(
-            self.trapz,
+        final_speed_m__s = self.trapz.modify_by_const_jerk_trajectory(
             idx,
             n,
             trajectory['jerk_m__s3'],
@@ -378,7 +373,7 @@ class TestCoasting(unittest.TestCase):
         expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
         tts_s = -v0 / brake_accel_m__s2
         n = int(np.ceil(tts_s / dt))
-        fastsim.cycle.modify_cycle_adding_braking_trajectory(trapz, brake_accel_m__s2, idx+1)
+        trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
         self.assertAlmostEqual(v0, trapz.cycMps[idx])
         self.assertAlmostEqual(v0 + brake_accel_m__s2*dt, trapz.cycMps[idx+1])
         self.assertAlmostEqual(v0 + brake_accel_m__s2*2*dt, trapz.cycMps[idx+2])
@@ -404,7 +399,7 @@ class TestCoasting(unittest.TestCase):
         expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
         tts_s = -v0 / brake_accel_m__s2
         n = int(np.round(tts_s / dt))
-        fastsim.cycle.modify_cycle_adding_braking_trajectory(trapz, brake_accel_m__s2, idx+1)
+        trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
         self.assertAlmostEqual(v0, trapz.cycMps[idx])
         self.assertEqual(11, n)
         dts_m = trapz.cycDistMeters_v2[idx+1:idx+n+1].sum()
@@ -514,56 +509,6 @@ class TestCoasting(unittest.TestCase):
                 msg="Should still cover the same distance when coasting as parent cycle"
             )
 
-    def test_that_distance_to_stop_by_coast_works_as_expected(self):
-        "Testing the fundamental distance to stop via coast function"
-        v0 = 5.0
-        v_brake = 7.5
-        a_brake = -2.5
-        M = self.veh.vehKg
-        rho = self.sim_drive.props.airDensityKgPerM3
-        g = self.sim_drive.props.gravityMPerSec2
-        CD = self.veh.dragCoef
-        FA = self.veh.frontalAreaM2
-        rrc = self.veh.wheelRrCoef
-        dt = 1.0
-        d = fastsim.cycle.calc_distance_to_stop_coast_v2(
-            v0, v_brake, a_brake,
-            distances_m=np.array([0.0, 100_000.0]),
-            grade_by_distance=np.array([0.0, 0.0]),
-            veh_mass_kg=M, air_density_kg__m3=rho, CDFA_m2=CD*FA,
-            rrc=rrc, gravity_m__s2=g, dt_s=dt
-        )
-        expected_d = -0.5 * (v0 * v0) / a_brake
-        self.assertAlmostEqual(expected_d, d)
-        v0 = v_brake
-        d = fastsim.cycle.calc_distance_to_stop_coast_v2(
-            v0, v_brake, a_brake,
-            distances_m=np.array([0.0, 100_000.0]),
-            grade_by_distance=np.array([0.0, 0.0]),
-            veh_mass_kg=M, air_density_kg__m3=rho, CDFA_m2=CD*FA,
-            rrc=rrc, gravity_m__s2=g, dt_s=dt
-        )
-        expected_d = -0.5 * (v0 * v0) / a_brake
-        self.assertAlmostEqual(expected_d, d)
-        v0 = 20.0
-        M = 10000.0 # set easier-to-compute mass
-        rrc = 0.1 # set easier rrc
-        g = 10.0 # make math easier
-        rho = 0.0 # turn off aerodynamic drag
-        k = fastsim.cycle.calc_dvdd(v0, 0.0, M, rho, CD*FA, rrc, g)
-        expected_k = -1 * (g/v0) * rrc
-        self.assertAlmostEqual(expected_k, k)
-        d = fastsim.cycle.calc_distance_to_stop_coast_v2(
-            v0, v_brake, a_brake,
-            distances_m=np.array([0.0, 100_000.0]),
-            grade_by_distance=np.array([0.0, 0.0]),
-            veh_mass_kg=M, air_density_kg__m3=rho, CDFA_m2=CD*FA,
-            rrc=rrc, gravity_m__s2=g, dt_s=dt
-        )
-        self.assertTrue(d is not None)
-        expected_d = (1.0/(rrc*g)) * 0.5 * (v0*v0 - v_brake*v_brake) + -0.5 * (v_brake * v_brake) / a_brake
-        self.assertAlmostEqual(expected_d, d)
-        
     def test_that_coasting_logic_works_going_uphill(self):
         "When going uphill, we want to ensure we can still hit our coasting target"
         grade = 0.01

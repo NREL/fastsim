@@ -1211,8 +1211,112 @@ class SimDriveClassic(object):
                 # lower than min time dilation
                 (t_dilation[-1] <= self.sim_params.min_time_dilation)
             )
+
+    def _calc_dvdd(self, v, grade):
+        """
+        Calculates the derivative dv/dd (change in speed by change in distance)
+        - v: number, the speed at which to evaluate dv/dd (m/s)
+        - grade: number, the road grade as a decimal fraction
+        RETURN: number, the dv/dd for these conditions
+        """
+        if v <= 0.0:
+            return 0.0
+        atan_grade = float(np.arctan(grade))
+        g = self.props.gravityMPerSec2
+        M = self.veh.vehKg
+        rho_CDFA = self.props.airDensityKgPerM3 * self.veh.dragCoef * self.veh.frontalAreaM2
+        rrc = self.veh.wheelRrCoef
+        return -1.0 * (
+            (g/v) * (np.sin(atan_grade) + rrc * np.cos(atan_grade))
+            + (0.5 * rho_CDFA * (1.0/M) * v)
+        )
+
+    def _calc_distance_to_stop_coast_v2(self, i):
+        """
+        Calculate the distance to stop via coasting in meters.
+        - i: non-negative-integer, the current index
+        RETURN: non-negative-number or -1.0
+        - if -1.0, it means there is no solution to a coast-down distance.
+            This can happen due to being too close to the given
+            stop or perhaps due to coasting downhill
+        - if a non-negative-number, the distance in meters that the vehicle
+            would freely coast if unobstructed. Accounts for grade between
+            the current point and end-point
+        """
+        TOL = 1e-6
+        NOT_FOUND = -1.0
+        v0 = self.cyc.cycMps[i-1]
+        v_brake = self.sim_params.coast_to_brake_speed_m__s
+        a_brake = self.sim_params.nominal_brake_accel_for_coast_m__s2
+        ds = self.cyc0.cycDistMeters_v2.cumsum()
+        gs = self.cyc0.cycGrade
+        d0 = ds[i-1]
+        ds_mask = ds >= d0
+        dt_s = self.cyc0.secs[i]
+        distances_m = ds[ds_mask] - d0
+        grade_by_distance = gs[ds_mask]
+        veh_mass_kg = self.veh.vehKg
+        air_density_kg__m3 = self.props.airDensityKgPerM3
+        CDFA_m2 = self.veh.dragCoef * self.veh.frontalAreaM2
+        rrc = self.veh.wheelRrCoef
+        gravity_m__s2 = self.props.gravityMPerSec2
+        v = v0
+        # distance traveled while stopping via friction-braking (i.e., distance to brake)
+        dtb = -0.5 * v_brake * v_brake / a_brake
+        if v0 <= v_brake:
+            return -0.5 * v0 * v0 / a_brake
+        d = 0.0
+        d_max = distances_m[-1]
+        unique_grades = np.unique(grade_by_distance)
+        unique_grade = unique_grades[0] if len(unique_grades) == 1 else None
+        if unique_grade is not None:
+            # if there is only one grade, there may be a closed-form solution
+            theta = np.arctan(unique_grade)
+            c1 = gravity_m__s2 * (np.sin(theta) + rrc * np.cos(theta))
+            c2 = (air_density_kg__m3 * CDFA_m2) / (2.0 * veh_mass_kg)
+            v02 = v0 * v0
+            vb2 = v_brake * v_brake
+            d = NOT_FOUND
+            if c2 == 0.0:
+                if c1 > 0.0:
+                    d = (1.0 / (2.0 * c1)) * (v02 - vb2)
+            else:
+                try:
+                    d = (1.0 / (2.0 * c2)) * (np.log(c1 + c2 * v02) - np.log(c1 + c2 * vb2))
+                except Exception:
+                    pass
+            if d != NOT_FOUND:
+                return d + dtb
+        i = 0
+        MAX_ITER = 2000
+        ITERS_PER_STEP = 2
+        while v > v_brake and v >= 0.0 and d <= d_max and i < MAX_ITER:
+            gr = unique_grade if unique_grade is not None else np.interp(d, distances_m, grade_by_distance)
+            k = self._calc_dvdd(v, gr)
+            v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
+            vavg = 0.5 * (v + v_next)
+            for i in range(ITERS_PER_STEP):
+                k = self._calc_dvdd(vavg, gr)
+                v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
+                vavg = 0.5 * (v + v_next)
+            if k >= 0.0 and unique_grade is not None:
+                # there is no solution for coastdown -- speed will never decrease 
+                return NOT_FOUND
+            stop = v_next <= v_brake
+            if stop:
+                v_next = v_brake
+            vavg = 0.5 * (v + v_next)
+            dd = vavg * dt_s
+            d += dd
+            v = v_next
+            i += 1
+            if stop:
+                break
+        if np.abs(v - v_brake) < TOL:
+            return d + dtb
+        return NOT_FOUND
     
-    def _should_impose_coast(self, i, verbose=False):
+    def _should_impose_coast(self, i):
         """
         - i: non-negative integer, the current position in cyc
         - verbose: Bool, if True, prints out debug information
@@ -1223,39 +1327,14 @@ class SimDriveClassic(object):
         """
         if self.sim_params.coast_start_speed_m__s > 0.0:
             return self.cyc.cycMps[i] >= self.sim_params.coast_start_speed_m__s
-        ds = self.cyc0.cycDistMeters_v2.cumsum()
-        gs = self.cyc0.cycGrade
-        v0 = self.cyc.cycMps[i-1]
-        d0 = ds[i-1]
-        ds_mask = ds >= d0
+        d0 = self.cyc0.cycDistMeters_v2[:i].sum()
         # distance to stop by coasting from start of step (i-1)
         #dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
-        dtsc0 = cycle.calc_distance_to_stop_coast_v2(
-            v0,
-            self.sim_params.coast_to_brake_speed_m__s,
-            self.sim_params.nominal_brake_accel_for_coast_m__s2,
-            distances_m=ds[ds_mask] - d0,
-            grade_by_distance=gs[ds_mask],
-            veh_mass_kg=self.veh.vehKg,
-            air_density_kg__m3=self.props.airDensityKgPerM3,
-            CDFA_m2=self.veh.dragCoef*self.veh.frontalAreaM2,
-            rrc=self.veh.wheelRrCoef,
-            gravity_m__s2=self.props.gravityMPerSec2,
-            dt_s=self.cyc0.secs[i],
-            verbose=self.sim_params.coast_verbose,
-        )
-        if verbose:
-            print(f"should_impose_coast {i}")
-            print(f"... v0            : {v0}")
-            print(f"... d0            : {d0}")
-            print(f"... dtsc0         : {dtsc0}")
-        if dtsc0 is None:
+        dtsc0 = self._calc_distance_to_stop_coast_v2(i)
+        if dtsc0 < 0.0:
             return False
         # distance to next stop (m)
-        dts0 = cycle.calc_distance_to_next_stop(d0, self.cyc0)
-        if verbose:
-            print(f"... dts0          : {dts0}")
-            print(f"... dtsc0 >= dts0 : {dtsc0 >= dts0}")
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
         return dtsc0 >= dts0
     
     def set_coast_speed(self, i):
@@ -1271,18 +1350,7 @@ class SimDriveClassic(object):
             #self.impose_coast[i] = False
             pass
         else:
-            coast_start_speed_m__s = None
-            if self.sim_params.coast_start_speed_m__s > 0.0:
-                coast_start_speed_m__s = self.sim_params.coast_start_speed_m__s
             self.impose_coast[i] = self.impose_coast[i-1] or self._should_impose_coast(i)
-            if self.sim_params.coast_verbose and not self.impose_coast[i-1] and self.impose_coast[i]:
-                print(f"BEGIN IMPOSING COAST AT {i}")
-                print(f"... self.cyc0.cycMps[i-1]: {self.cyc0.cycMps[i-1]}")
-                print(f"... self.cyc0.cycMps[i]  : {self.cyc0.cycMps[i]}")
-                print(f"... self.cyc.cycMps[i-1] : {self.cyc.cycMps[i-1]}")
-                print(f"... self.cyc.cycMps[i]   : {self.cyc.cycMps[i]}")
-                print(f"... self.cyc0.cycGrade[i]: {self.cyc0.cycGrade[i]}")
-                self._should_impose_coast(i, verbose=True)
 
         if not self.impose_coast[i]:
             return
@@ -1314,17 +1382,7 @@ class SimDriveClassic(object):
             adjusted_current_speed = False
             if self.cyc.cycMps[i] < (self.sim_params.coast_to_brake_speed_m__s + TOL):
                 v1_before = self.cyc.cycMps[i]
-                if self.sim_params.coast_verbose:
-                    print(f"STARTING BRAKE TRAJECTORY AT {i}")
-                    print(f"... self.cyc.cycSecs[i] : {self.cyc.cycSecs[i]} s")
-                    print(f"... self.cyc.cycMps[i-1]: {self.cyc.cycMps[i-1]} m/s")
-                    print(f"... self.cyc.cycMps[i]  : {self.cyc.cycMps[i]} m/s")
-                cycle.modify_cycle_adding_braking_trajectory(
-                    self.cyc,
-                    self.sim_params.nominal_brake_accel_for_coast_m__s2,
-                    i,
-                    verbose=self.sim_params.coast_verbose
-                )
+                self.cyc.modify_with_braking_trajectory(self.sim_params.nominal_brake_accel_for_coast_m__s2, i)
                 v1_after = self.cyc.cycMps[i]
                 assert v1_before != v1_after
                 adjusted_current_speed = True
@@ -1342,32 +1400,14 @@ class SimDriveClassic(object):
                 )
                 if trajectory is not None:
                     # adjust cyc to perform the trajectory
-                    final_speed_m__s = cycle.modify_cycle_with_trajectory(
-                        self.cyc,
-                        i,
-                        trajectory['n'],
-                        trajectory['jerk_m__s3'],
-                        trajectory['accel_m__s2'])
+                    final_speed_m__s = self.cyc.modify_by_const_jerk_trajectory(
+                        i, trajectory['n'], trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
                     adjusted_current_speed = True
-                    if self.sim_params.coast_verbose:
-                        print(f"ADDED TRAJECTORY AT {i}")
-                        print(f"... self.cyc.cycSecs[i] : {self.cyc.cycSecs[i]} s")
-                        print(f"... self.cyc.cycMps[i-1]: {self.cyc.cycMps[i-1]} m/s")
-                        print(f"... self.cyc.cycMps[i]  : {self.cyc.cycMps[i]} m/s")
-                        print(f"... final_speed_m__s    : {final_speed_m__s} m/s")
-                        print(f"... trajectory          : {trajectory}")
                     if np.abs(final_speed_m__s - self.sim_params.coast_to_brake_speed_m__s) < 0.1:
-                        i_for_brake = i+trajectory['n']
-                        if self.sim_params.coast_verbose:
-                            print(f"STARTING BRAKE TRAJECTORY AT {i_for_brake} AFTER NORMAL TRAJECTORY")
-                            print(f"... self.cyc.cycSecs[ib] : {self.cyc.cycSecs[i_for_brake]} s")
-                            print(f"... self.cyc.cycMps[ib-1]: {self.cyc.cycMps[i_for_brake-1]} m/s")
-                            print(f"... self.cyc.cycMps[ib]  : {self.cyc.cycMps[i_for_brake]} m/s")
-                        cycle.modify_cycle_adding_braking_trajectory(
-                            self.cyc,
+                        i_for_brake = i + trajectory['n']
+                        self.cyc.modify_with_braking_trajectory(
                             self.sim_params.nominal_brake_accel_for_coast_m__s2,
                             i_for_brake,
-                            verbose=self.sim_params.coast_verbose
                         )
                         adjusted_current_speed = True
             if adjusted_current_speed:
@@ -1375,12 +1415,6 @@ class SimDriveClassic(object):
                 # ensure newton iters is reset? vs having to call manually?
                 self.solve_step(i)
                 self.newton_iters[i] = 0 # reset newton iters
-                if self.sim_params.coast_verbose:
-                    print(f"AFTER RESOLVE AT {i}")
-                    print(f"... self.cyc.cycSecs[i] : {self.cyc.cycSecs[i]} s")
-                    print(f"... self.cyc.cycMps[i-1]: {self.cyc.cycMps[i-1]} m/s")
-                    print(f"... self.cyc.cycMps[i]  : {self.cyc.cycMps[i]} m/s")
-                    print(f"... self.mpsAch[i]      : {self.mpsAch[i]} m/s")
                 self.cyc.cycMps[i] = self.mpsAch[i]
 
     def set_post_scalars(self):
