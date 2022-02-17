@@ -1277,14 +1277,13 @@ class SimDriveClassic(object):
             v02 = v0 * v0
             vb2 = v_brake * v_brake
             d = NOT_FOUND
+            a1 = c1 + c2 * v02
+            b1 = c1 + c2 * vb2
             if c2 == 0.0:
                 if c1 > 0.0:
                     d = (1.0 / (2.0 * c1)) * (v02 - vb2)
-            else:
-                try:
-                    d = (1.0 / (2.0 * c2)) * (np.log(c1 + c2 * v02) - np.log(c1 + c2 * vb2))
-                except Exception:
-                    pass
+            elif a1 > 0.0 and b1 > 0.0:
+                d = (1.0 / (2.0 * c2)) * (np.log(a1) - np.log(b1))
             if d != NOT_FOUND:
                 return d + dtb
         i = 0

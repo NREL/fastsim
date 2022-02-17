@@ -579,3 +579,119 @@ class TestCoasting(unittest.TestCase):
                 save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1.png')
         self.assertAlmostEqual(
             sd.cyc0.cycDistMeters_v2.sum(), sd.cyc.cycDistMeters.sum())
+
+    def test_that_coasting_logic_works_going_downhill(self):
+        "When going downhill, ensure we can still hit our coasting target"
+        grade = -0.0025
+        trapz = fastsim.cycle.Cycle(
+            cyc_dict=fastsim.cycle.resample(
+                fastsim.cycle.make_cycle(
+                    [0.0, 10.0, 45.0, 55.0, 200.0],
+                    [0.0, 20.0, 20.0, 0.0, 0.0],
+                    [grade]*5,
+                ),
+                new_dt=1.0,
+                hold_keys={'cycGrade'},
+            )
+        )
+        veh = fastsim.vehicle.Vehicle(5, verbose=False)
+        sd = fastsim.simdrive.SimDriveClassic(trapz, veh)
+        sd.sim_params.allow_coast = True
+        sd.sim_params.coast_start_speed_m__s = -1
+        sd.sim_params.coast_to_brake_speed_m__s = 4.0
+        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.0
+        sd.sim_params.verbose = False
+        sd.sim_params.coast_verbose = False
+        sd.sim_drive()
+        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+        if DO_PLOTS:
+            make_coasting_plot(
+                sd.cyc0,
+                sd.cyc,
+                use_mph=False,
+                title="That Coasting Logic Works Going Downhill (Veh 5)",
+                do_show=False,
+                save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5.png')
+        # assert we have grade set correctly
+        self.assertTrue((sd.cyc0.cycGrade == grade).all())
+        self.assertTrue((sd.cyc.cycGrade == grade).all())
+        self.assertAlmostEqual(
+            sd.cyc0.cycDistMeters_v2.sum(), sd.cyc.cycDistMeters_v2.sum())
+        # test with a different vehicle and grade
+        grade = -0.005
+        trapz = fastsim.cycle.Cycle(
+            cyc_dict=fastsim.cycle.resample(
+                fastsim.cycle.make_cycle(
+                    [0.0, 10.0, 45.0, 55.0, 200.0],
+                    [0.0, 20.0, 20.0, 0.0, 0.0],
+                    [grade]*5,
+                ),
+                new_dt=1.0,
+                hold_keys={'cycGrade'},
+            )
+        )
+        veh = fastsim.vehicle.Vehicle(1, verbose=False)
+        sd = fastsim.simdrive.SimDriveClassic(trapz, veh)
+        sd.sim_params.allow_coast = True
+        sd.sim_params.coast_start_speed_m__s = -1
+        sd.sim_params.coast_to_brake_speed_m__s = 7.5
+        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.5
+        sd.sim_params.verbose = False
+        sd.sim_params.coast_verbose = False
+        sd.sim_drive()
+        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+        if DO_PLOTS:
+            make_coasting_plot(
+                sd.cyc0,
+                sd.cyc,
+                use_mph=False,
+                title="That Coasting Logic Works Going Downhill (Veh 1)",
+                do_show=False,
+                save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1.png')
+        self.assertAlmostEqual(
+            sd.cyc0.cycDistMeters_v2.sum(), sd.cyc.cycDistMeters.sum())
+
+    def test_that_coasting_works_with_multiple_stops_and_grades(self):
+        "When going downhill, ensure we can still hit our coasting target"
+        grade1 = -0.005
+        grade2 = 0.005
+        c1 = fastsim.cycle.resample(
+            fastsim.cycle.make_cycle(
+                [0.0, 10.0, 45.0, 55.0, 200.0],
+                [0.0, 20.0, 20.0, 0.0, 0.0],
+                [grade1]*5,
+            ),
+            new_dt=1.0,
+            hold_keys={'cycGrade'},
+        )
+        c2 = fastsim.cycle.resample(
+            fastsim.cycle.make_cycle(
+                [0.0, 10.0, 45.0, 55.0, 200.0],
+                [0.0, 20.0, 20.0, 0.0, 0.0],
+                [grade2]*5,
+            ),
+            new_dt=1.0,
+            hold_keys={'cycGrade'},
+        )
+        veh = fastsim.vehicle.Vehicle(5, verbose=False)
+        cyc = fastsim.cycle.Cycle(cyc_dict=fastsim.cycle.concat([c1, c2]))
+        sd = fastsim.simdrive.SimDriveClassic(cyc, veh)
+        sd.sim_params.allow_coast = True
+        sd.sim_params.coast_start_speed_m__s = -1
+        sd.sim_params.coast_to_brake_speed_m__s = 4.0
+        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.0
+        sd.sim_params.verbose = False
+        sd.sim_params.coast_verbose = False
+        sd.sim_drive()
+        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+        if True or DO_PLOTS:
+            make_coasting_plot(
+                sd.cyc0,
+                sd.cyc,
+                use_mph=False,
+                title="Coasting With Multiple Stops and Grades (Veh 5)",
+                do_show=False,
+                save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5.png')
+        # assert we have grade set correctly
+        self.assertAlmostEqual(
+            sd.cyc0.cycDistMeters_v2.sum(), sd.cyc.cycDistMeters_v2.sum())
