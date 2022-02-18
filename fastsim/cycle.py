@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 import copy
 import types
+from numba import njit
 
 # local modules
 from . import parameters as params
@@ -559,6 +560,7 @@ def peak_deceleration(cycle):
 TOL = 1e-6
 
 
+@njit
 def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
     """
     Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
@@ -589,6 +591,7 @@ def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
     return {"jerk_m__s3": k, "accel_m__s2": a0}
 
 
+@njit
 def accel_for_constant_jerk(n, a0, k, dt):
     """
     Calculate the acceleration n timesteps away
@@ -604,6 +607,7 @@ def accel_for_constant_jerk(n, a0, k, dt):
     return a0 + (n * k * dt)
 
 
+@njit
 def speed_for_constant_jerk(n, v0, a0, k, dt):
     """
     Int Num Num Num Num -> Num
@@ -623,6 +627,7 @@ def speed_for_constant_jerk(n, v0, a0, k, dt):
     return v0 + (n * a0 * dt) + (0.5 * n * (n - 1) * k * dt)
 
 
+@njit
 def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     """
     Calculate distance (m) after n timesteps
@@ -646,6 +651,7 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     return d0 + term1 + term2
 
 
+@njit
 def calc_next_rendezvous_trajectory(
     cyc,
     idx,
@@ -749,7 +755,7 @@ def calc_next_rendezvous_trajectory(
                         r_best = r_lv
                 if r_best is not None:
                     # return if we have a single-step solution
-                    print(f"We have a single-step solution [{idx}]: {str(r_best)}")
+                    #print(f"We have a single-step solution [{idx}]: {str(r_best)}")
                     return r_best
             else:
                 if False:
