@@ -237,8 +237,6 @@ class SimDriveClassic(object):
 
         self.sim_drive_walk(initSoc, auxInKwOverride)
 
-        self.set_post_scalars()
-
     def sim_drive_walk(self, initSoc, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and runs sim_drive_step to perform a 
@@ -294,6 +292,8 @@ class SimDriveClassic(object):
             print("Warning: large time steps affect accuracy significantly.") 
             print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
             print('Max time step =', (round(self.cyc.secs.max(), 3)))
+
+        self.set_post_scalars()
 
     def sim_drive_step(self):
         """Step through 1 time step."""
