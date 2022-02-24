@@ -189,8 +189,8 @@ class Cycle(object):
         - if there are no more stops ahead, return -1
         - else returns the distance to the next stop from distance_m
         """
-        distances_of_stops_m = np.unique(self.cycDistMeters_v2.cumsum()[self.cycMps < TOL])
-        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (distance_m + TOL)]
+        distances_of_stops_m = np.unique(self.cycDistMeters_v2.cumsum()[self.cycMps < 1e-6])
+        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (distance_m + 1e-6)]
         if len(remaining_stops_m) > 0:
             return remaining_stops_m[0] - distance_m
         return -1.0
@@ -240,8 +240,8 @@ class Cycle(object):
         if n < 2:
             # need at least 2 steps
             n = 2
-        trajectory = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
-        return self.modify_by_const_jerk_trajectory(i, n, trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
+        jerk_m__s3, accel_m__s2 = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
+        return self.modify_by_const_jerk_trajectory(i, n, jerk_m__s3, accel_m__s2)
 
 
 def copy_cycle(cyc, return_dict=False, use_jit=None):
@@ -557,9 +557,6 @@ def peak_deceleration(cycle):
     return np.min(accelerations(cycle))
 
 
-TOL = 1e-6
-
-
 @njit
 def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
     """
@@ -571,7 +568,7 @@ def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
     - Dr: Num, distance of rendezvous point (m)
     - vr: Num, speed of rendezvous point (m/s)
     - dt: Num, step duration (s)
-    RETURNS: (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
+    RETURNS: (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
     Returns the constant jerk and acceleration for initial time step.
     """
     assert n > 1
@@ -588,7 +585,7 @@ def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
         - n * v0
         - ((1.0 / 6) * n * (n - 1) * (n - 2) * dt + 0.25 * n * (n - 1) * dt * dt) * k
     ) / (0.5 * n * n * dt)
-    return {"jerk_m__s3": k, "accel_m__s2": a0}
+    return (k, a0)
 
 
 @njit
@@ -649,153 +646,3 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     )
     term2 = 0.5 * dt * dt * ((n * a0) + (0.5 * n * (n - 1) * k * dt))
     return d0 + term1 + term2
-
-
-@njit
-def calc_next_rendezvous_trajectory(
-    cyc,
-    idx,
-    cyc0,
-    time_horizon_s,
-    distance_horizon_m,
-    min_accel_m__s2,
-    max_accel_m__s2,
-    brake_start_speed_m__s,
-    brake_accel_m__s2,
-):
-    """
-    - cyc: Cycle, the cycle dictionary for the cycle to be modified
-    - idx: non-negative integer, the index into cyc for the start-of-step
-    - cyc0: Cycle, the lead cycle for reference
-    - time_horizon_s: positive number, the time ahead to look for rendezvous opportunities (s)
-    - distance_horizon_m: positive number, the distance ahead to detect rendezvous opportunities (m)
-    - min_accel_m__s2: number, the minimum acceleration permitted (m/s2)
-    - max_accel_m__s2: number, the maximum acceleration permitted (m/s2)
-    - brake_start_speed_m__s2: non-negative number, speed at which friction brakes engage (m/s)
-    - brake_accel_m__s2: negative number, the brake acceleration (m/s2)
-    RETURN: None or {
-        "distance_m" non-negative number, the distance from start of cycle to rendezvous at (m)
-        "speed_m__s" non-negative number, the speed to rendezvous at,
-        "n" positive integer, the number of steps ahead to rendezvous at
-        "k" number, the Jerk or first derivative of acceleration m/s3
-        "accel_m__s2", number, the initial acceleration of the trajectory
-    }
-    If no rendezvous exists within the scope, then returns None
-    Otherwise, returns the next closest rendezvous in time/space
-
-    # - dts0 <- determine the distance to the next stop from the start of step
-    # - dtb <- the distance to brake by braking speed from brake initialization speed (m)
-    # - dtbi0 <- distance to brake initiation; dts0 - dtb
-    # - Check for rendezvous opportunities with lead vehicle and with brake initiation distance 
-    #   for up to or equal to X seconds ahead (or end of cycle) by
-    #   - calculating the constant-jerk trajectory to rendezvous with lead vehicle at time-steps up to X seconds ahead (or end of cycle)
-    #   - calculating the constant-jerk trajectory to rendezvous with dtbi0 at time-steps up to X seconds ahead (or end of cycle)
-    #   - drop trajectories unless all accelerations on trajectory are less than the current acceleration
-    #   - for those remaining, pick the one with the highest min-acceleration
-    #   - if none match stick with proposed target-speed, else start implementing constant jerk
-    """
-    TOL = 1e-6
-    # v0 is where n=0, i.e., idx-1
-    v0 = cyc.cycMps[idx-1]
-    if v0 < (brake_start_speed_m__s + TOL):
-        # don't process braking
-        return None
-    if min_accel_m__s2 > max_accel_m__s2:
-        min_accel_m__s2, max_accel_m__s2 = max_accel_m__s2, min_accel_m__s2
-    num_samples = len(cyc.cycMps)
-    d0 = cyc.cycDistMeters_v2[:idx].sum()
-    v1 = cyc.cycMps[idx]
-    dt = cyc.secs[idx]
-    a_proposed = (v1 - v0) / dt
-    # distance to stop from start of time-step
-    dts0 = cyc0.calc_distance_to_next_stop_from(d0) 
-    if dts0 < TOL:
-        # no stop to coast towards or we're there...
-        return None
-    dt = cyc.secs[idx]
-    # distance to brake from the brake start speed (m/s)
-    dtb = -0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_accel_m__s2
-    # distance to brake initiation from start of time-step (m)
-    dtbi0 = dts0 - dtb
-    cyc0_distances_m = cyc0.cycDistMeters_v2.cumsum()
-    # Now, check rendezvous trajectories
-    if time_horizon_s > 0.0:
-        step_idx = idx
-        dt_plan = 0.0
-        r_best = None
-        while dt_plan <= time_horizon_s and step_idx < num_samples:
-            dt_plan += cyc0.secs[step_idx]
-            step_ahead = step_idx - (idx - 1)
-            if step_ahead == 1:
-                # for brake init rendezvous
-                accel = (brake_start_speed_m__s - v0) / dt
-                r_bi = {
-                    'accel_m__s2': accel,
-                    'jerk_m__s3': 0.0,
-                    'n': 1,
-                    'min_accel_m__s2': accel,
-                    'max_accel_m__s2': accel,
-                    'mean_accel_m__s2': accel,
-                }
-                v1 = max(0.0, v0 + accel * dt)
-                dd_proposed = ((v0 + v1) / 2.0) * dt
-                if np.abs(v1 - brake_start_speed_m__s) < TOL and np.abs(dtbi0 - dd_proposed) < TOL:
-                    r_best = r_bi
-                if False:
-                    # lead-vehicle rendezvous
-                    dtlv0 = cyc0_distances_m[step_idx] - dist_traveled_m # distance to lead vehicle from step start
-                    accel = (self.cyc0.cycMps[step_idx] - v0) / dt
-                    r_lv = {
-                        'accel_m__s2': accel,
-                        'min_accel_m__s2': accel,
-                        'max_accel_m__s2': accel,
-                    }
-                    dd_proposed = ((v0 + v0 + accel * dt) / 2.0) * dt
-                    if np.abs(dtlv0 - dd_proposed) < TOL:
-                        r_best = r_lv
-                if r_best is not None:
-                    # return if we have a single-step solution
-                    #print(f"We have a single-step solution [{idx}]: {str(r_best)}")
-                    return r_best
-            else:
-                if False:
-                    # rendezvous trajectory for lead vehicle -- assumes fixed time-steps
-                    r_lv = calc_constant_jerk_trajectory(
-                        step_ahead, dist_traveled_m, v0, cyc0_distances_m[step_idx], self.cyc0.cycMps[step_idx], dt)
-                    if r_lv['accel_m__s2'] < a_proposed:
-                        # accelerations by step for the rendezvous with lead vehicle
-                        as_r_lv = np.array([
-                            accel_for_constant_jerk(n, r_lv['accel_m__s2'], r_lv['jerk_m__s3'], dt)
-                            for n in range(1, step_ahead + 1)
-                        ])
-                        #if r_best is None or as_r_lv.min() > r_best['min_accel_m__s2']:
-                        if (as_r_lv <= a_proposed).all() and (r_best is None or as_r_lv.max() < r_best['min_accel_m__s2']):
-                            r_best = r_lv
-                            r_best['min_accel_m__s2'] = as_r_lv.min()
-                            r_best['max_accel_m__s2'] = as_r_lv.max()
-                if dtbi0 > TOL:
-                    # rendezvous trajectory for brake-start -- assumes fixed time-steps
-                    r_bi = calc_constant_jerk_trajectory(
-                        step_ahead, 0.0, v0, dtbi0, brake_start_speed_m__s, dt)
-                    if r_bi['accel_m__s2'] < max_accel_m__s2 and r_bi['accel_m__s2'] > min_accel_m__s2 and r_bi['jerk_m__s3'] >= 0.0:
-                        as_bi = np.array([
-                            accel_for_constant_jerk(n, r_bi['accel_m__s2'], r_bi['jerk_m__s3'], dt)
-                            for n in range(step_ahead)
-                        ])
-                        accel_spread = np.abs(as_bi.max() - as_bi.min())
-                        flag = (
-                            (as_bi.max() < (max_accel_m__s2 + TOL) and as_bi.min() > (min_accel_m__s2 - TOL))
-                            and
-                            (r_best is None or (accel_spread < r_best['accel_spread_m__s2']))
-                        )
-                        if flag:
-                            r_best = r_bi
-                            r_best['n'] = step_ahead
-                            r_best['max_accel_m__s2'] = as_bi.max()
-                            r_best['min_accel_m__s2'] = as_bi.min()
-                            r_best['mean_accel_m__s2'] = as_bi.mean()
-                            r_best['accel_spread_m__s2'] = accel_spread
-            step_idx += 1
-        if r_best is not None:
-            return r_best
-    return None

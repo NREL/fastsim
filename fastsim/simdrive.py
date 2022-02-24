@@ -1321,6 +1321,103 @@ class SimDriveClassic(object):
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
         return dtsc0 >= dts0
     
+    def _calc_next_rendezvous_trajectory(self, i, min_accel_m__s2, max_accel_m__s2):
+        """
+        Calculate next rendezvous trajectory.
+        - i: non-negative integer, the index into cyc for the start-of-step
+        - min_accel_m__s2: number, the minimum acceleration permitted (m/s2)
+        - max_accel_m__s2: number, the maximum acceleration permitted (m/s2)
+        RETURN: (Tuple
+            found_rendezvous: Bool, if True the remainder of the data is valid; if False, no rendezvous found
+            n: positive integer, the number of steps ahead to rendezvous at
+            jerk_m__s3: number, the Jerk or first-derivative of acceleration (m/s3)
+            accel_m__s2: number, the initial acceleration of the trajectory (m/s2)
+        )
+        If no rendezvous exists within the scope, the returned tuple has False for the first item.
+        Otherwise, returns the next closest rendezvous in time/space
+        """
+        # v0 is where n=0, i.e., idx-1
+        v0 = self.cyc.cycMps[i-1]
+        brake_start_speed_m__s = self.sim_params.coast_to_brake_speed_m__s
+        brake_accel_m__s2 = self.sim_params.nominal_brake_accel_for_coast_m__s2
+        time_horizon_s = 20.0
+        # distance_horizon_m = 1000.0
+        not_found_n = 0
+        not_found_jerk_m__s3 = 0.0
+        not_found_accel_m__s2 = 0.0
+        not_found = (False, not_found_n, not_found_jerk_m__s3, not_found_accel_m__s2)
+        if v0 < (brake_start_speed_m__s + 1e-6):
+            # don't process braking
+            return not_found
+        if min_accel_m__s2 > max_accel_m__s2:
+            min_accel_m__s2, max_accel_m__s2 = max_accel_m__s2, min_accel_m__s2
+        num_samples = len(self.cyc.cycMps)
+        d0 = self.cyc.cycDistMeters_v2[:i].sum()
+        v1 = self.cyc.cycMps[i]
+        dt = self.cyc.secs[i]
+        # a_proposed = (v1 - v0) / dt
+        # distance to stop from start of time-step
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0) 
+        if dts0 < 1e-6:
+            # no stop to coast towards or we're there...
+            return not_found
+        dt = self.cyc.secs[i]
+        # distance to brake from the brake start speed (m/s)
+        dtb = -0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_accel_m__s2
+        # distance to brake initiation from start of time-step (m)
+        dtbi0 = dts0 - dtb
+        cyc0_distances_m = self.cyc0.cycDistMeters_v2.cumsum()
+        # Now, check rendezvous trajectories
+        if time_horizon_s > 0.0:
+            step_idx = i
+            dt_plan = 0.0
+            r_best_found = False
+            r_best_n = 0
+            r_best_jerk_m__s3 = 0.0
+            r_best_accel_m__s2 = 0.0
+            r_best_accel_spread_m__s2 = 0.0
+            while dt_plan <= time_horizon_s and step_idx < num_samples:
+                dt_plan += self.cyc0.secs[step_idx]
+                step_ahead = step_idx - (i - 1)
+                if step_ahead == 1:
+                    # for brake init rendezvous
+                    accel = (brake_start_speed_m__s - v0) / dt
+                    v1 = max(0.0, v0 + accel * dt)
+                    dd_proposed = ((v0 + v1) / 2.0) * dt
+                    if np.abs(v1 - brake_start_speed_m__s) < 1e-6 and np.abs(dtbi0 - dd_proposed) < 1e-6:
+                        r_best_found = True
+                        r_best_n = 1
+                        r_best_accel_m__s2 = accel
+                        r_best_jerk_m__s3 = 0.0
+                        r_best_accel_spread_m__s2 = 0.0
+                        break
+                else:
+                    if dtbi0 > 1e-6:
+                        # rendezvous trajectory for brake-start -- assumes fixed time-steps
+                        r_bi_jerk_m__s3, r_bi_accel_m__s2 = cycle.calc_constant_jerk_trajectory(
+                            step_ahead, 0.0, v0, dtbi0, brake_start_speed_m__s, dt)
+                        if r_bi_accel_m__s2 < max_accel_m__s2 and r_bi_accel_m__s2 > min_accel_m__s2 and r_bi_jerk_m__s3 >= 0.0:
+                            as_bi = np.array([
+                                cycle.accel_for_constant_jerk(n, r_bi_accel_m__s2, r_bi_jerk_m__s3, dt)
+                                for n in range(step_ahead)
+                            ])
+                            accel_spread = np.abs(as_bi.max() - as_bi.min())
+                            flag = (
+                                (as_bi.max() < (max_accel_m__s2 + 1e-6) and as_bi.min() > (min_accel_m__s2 - 1e-6))
+                                and
+                                (not r_best_found or (accel_spread < r_best_accel_spread_m__s2))
+                            )
+                            if flag:
+                                r_best_found = True
+                                r_best_n = step_ahead
+                                r_best_accel_m__s2 = r_bi_accel_m__s2
+                                r_best_jerk_m__s3 = r_bi_jerk_m__s3
+                                r_best_accel_spread_m__s2 = accel_spread
+                step_idx += 1
+            if r_best_found:
+                return (r_best_found, r_best_n, r_best_jerk_m__s3, r_best_accel_m__s2)
+        return not_found
+    
     def set_coast_speed(self, i):
         """
         Placeholder for method to impose coasting.
@@ -1371,24 +1468,18 @@ class SimDriveClassic(object):
                 assert v1_before != v1_after
                 adjusted_current_speed = True
             else:
-                trajectory = cycle.calc_next_rendezvous_trajectory(
-                    self.cyc,
+                traj_found, traj_n, traj_jerk_m__s3, traj_accel_m__s2 = self._calc_next_rendezvous_trajectory(
                     i,
-                    self.cyc0,
-                    time_horizon_s=20.0,
-                    distance_horizon_m=1000.0,
                     min_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2,
-                    max_accel_m__s2=min(accel_proposed, 0.0),
-                    brake_start_speed_m__s=self.sim_params.coast_to_brake_speed_m__s,
-                    brake_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2
+                    max_accel_m__s2=min(accel_proposed, 0.0)
                 )
-                if trajectory is not None:
+                if traj_found:
                     # adjust cyc to perform the trajectory
                     final_speed_m__s = self.cyc.modify_by_const_jerk_trajectory(
-                        i, trajectory['n'], trajectory['jerk_m__s3'], trajectory['accel_m__s2'])
+                        i, traj_n, traj_jerk_m__s3, traj_accel_m__s2)
                     adjusted_current_speed = True
                     if np.abs(final_speed_m__s - self.sim_params.coast_to_brake_speed_m__s) < 0.1:
-                        i_for_brake = i + trajectory['n']
+                        i_for_brake = i + traj_n
                         self.cyc.modify_with_braking_trajectory(
                             self.sim_params.nominal_brake_accel_for_coast_m__s2,
                             i_for_brake,

@@ -277,9 +277,7 @@ class TestCoasting(unittest.TestCase):
         d0 = 0.0
         dr = 120.0
         dt = 1.0
-        trajectory = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, dr, vr, dt)
-        a0 = trajectory['accel_m__s2']
-        k = trajectory['jerk_m__s3']
+        k, a0 = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, dr, vr, dt)
         v = v0
         d = d0
         a = a0
@@ -312,12 +310,12 @@ class TestCoasting(unittest.TestCase):
         # distance to brake (m)
         dtb = 0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_decel_m__s2
         dtbi0 = dts0 - dtb
-        trajectory = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, d0 + dtbi0, brake_start_speed_m__s, dt)
+        jerk_m__s3, accel_m__s2 = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, d0 + dtbi0, brake_start_speed_m__s, dt)
         final_speed_m__s = self.trapz.modify_by_const_jerk_trajectory(
             idx,
             n,
-            trajectory['jerk_m__s3'],
-            trajectory['accel_m__s2'])
+            jerk_m__s3,
+            accel_m__s2)
         self.assertAlmostEqual(final_speed_m__s, brake_start_speed_m__s)
 
     def test_that_cycle_distance_reported_is_correct(self):
