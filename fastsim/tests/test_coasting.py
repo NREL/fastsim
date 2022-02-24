@@ -12,7 +12,7 @@ import fastsim
 DO_PLOTS = False
 
 
-def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_show=False, verbose=False):
+def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_show=False, verbose=False, gap_offset_m=0.0):
     """
     - cyc0: Cycle, the reference cycle (the "shadow trace" or "lead vehicle")
     - cyc: Cycle, the actual cycle driven
@@ -21,6 +21,7 @@ def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_
     - save_file: (Or None string), if specified, save the file to disk
     - do_show: Bool, whether to show the file or not
     - verbose: Bool, if True, prints out
+    - gap_offset_m: number, an offset to apply to the gap metrics (m)
     RETURN: None
     - saves creates the given file and shows it
     """
@@ -57,7 +58,7 @@ def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_
     ax.set_xlabel('Distance Traveled (m)', fontsize=fontsize)
     ax.set_ylabel(f'Speed ({speed_units})', fontsize=fontsize)
     ax = axs[0]
-    ax.plot(ts_orig, gaps, 'gray', label='shadow-trace')
+    ax.plot(ts_orig, gaps + gap_offset_m, 'gray', label='shadow-trace')
     ax.set_xlabel('Elapsed Time (s)', fontsize=fontsize)
     ax.set_ylabel('Gap (m)', fontsize=fontsize)
     if title is not None:

@@ -295,7 +295,7 @@ class Vehicle(object):
         # function of the vehicle speed
         self.lead_speed_coef_s = 1.0 # m / (m/s)
         # with respect to the closing acceleration
-        self.lead_accel_coef_s2 = -1.0 # m / (m/s2)
+        self.lead_accel_coef_s2 = 1.0 # m / (m/s2)
 
         self.set_init_calcs(
             # provide kwargs for load-time overrides

@@ -52,7 +52,6 @@ class SimDriveParamsClassic(object):
         self.coast_start_speed_m__s = 38.0 # m/s
         self.coast_verbose = False
         self.follow_allow = False
-        self.follow_initial_gap_m = 0.0
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
@@ -194,7 +193,7 @@ class SimDriveClassic(object):
         "Provides the gap-with lead vehicle from start to finish"
         gaps_m = self.cyc0.cycDistMeters_v2.cumsum() - self.cyc.cycDistMeters_v2.cumsum()
         if self.sim_params.follow_allow:
-            gaps_m += self.sim_params.follow_initial_gap_m
+            gaps_m += self.veh.lead_offset_m
         return gaps_m
 
     def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
@@ -313,6 +312,52 @@ class SimDriveClassic(object):
 
         self.set_post_scalars()
 
+    def _set_speed_for_target_gap(self, i):
+        """
+        - i: non-negative integer, the step index
+        RETURN: None
+        EFFECTS:
+        - sets the next speed (m/s)
+        """
+        lead_accel_m__s2 = (self.cyc0.cycMps[i] - self.cyc0.cycMps[i-1]) / self.cyc0.secs[i]
+        # target gap cannot be less than the lead offset (m)
+        target_gap_m = float(
+            max(
+                self.veh.lead_offset_m
+                + self.veh.lead_speed_coef_s * self.cyc0.cycMps[i]
+                + self.veh.lead_accel_coef_s2 * lead_accel_m__s2,
+                self.veh.lead_offset_m
+            )
+        )
+        lead_v0_m__s = self.cyc0.cycMps[i-1]
+        lead_v1_m__s = self.cyc0.cycMps[i]
+        lead_vavg_m__s = 0.5 * (lead_v0_m__s + lead_v1_m__s)
+        lead_dd_m = lead_vavg_m__s * self.cyc0.dt_s[i]
+        lead_d0_m = float(self.cyc0.cycDistMeters_v2[:i].sum()) + self.veh.lead_offset_m
+        d0_m = float(self.cyc.cycDistMeters_v2[:i].sum())
+        gap0_m = lead_d0_m - d0_m
+        # Determine the target distance to cover for next step, dd_m
+        #   target_gap_m = (lead_d0_m - d0_m) + (lead_dd_m - dd_m)
+        #                = gap0_m + lead_dd_m - dd_m
+        # reorganizing:
+        #   dd_m = gap0_m + lead_dd_m - target_gap_m
+        accel_max_m__s2 = 2.0
+        accel_min_m__s2 = -2.0
+        lead_d1_m = lead_d0_m + lead_dd_m
+        d1_nopass_m = lead_d1_m - self.veh.lead_offset_m
+        dd_nopass_m = d1_nopass_m - d0_m
+        dd_max_m = 0.5 * (self.mpsAch[i-1] + max(self.mpsAch[i-1] + accel_max_m__s2 * self.cyc.dt_s[i], 0.0)) * self.cyc.dt_s[i]
+        dd_min_m = 0.5 * (self.mpsAch[i-1] + max(self.mpsAch[i-1] + accel_min_m__s2 * self.cyc.dt_s[i], 0.0)) * self.cyc.dt_s[i]
+        dd_m = float(np.clip(lead_dd_m + gap0_m - target_gap_m, dd_min_m, dd_max_m))
+        dd_m = max(min(dd_m, dd_nopass_m), 0.0)
+        # Determine the next speed based on target distance to cover
+        #   dd = vavg * dt = 0.5 * (v1 + v0) * dt
+        #   2*dd/dt = v1 + v0
+        # re-arranging:
+        #   v1 = 2*dd/dt - v0
+        self.cyc.cycMps[i] = max(
+            ((2.0 * dd_m) / self.cyc.dt_s[i]) - self.mpsAch[i-1], 0.0)
+
     def sim_drive_step(self):
         """
         Step through 1 time step.
@@ -320,11 +365,13 @@ class SimDriveClassic(object):
         TODO: consider implementing for battery SOC dependence
         """
         if self.sim_params.allow_coast:
-            self.set_coast_speed(self.i)
+            self._set_coast_speed(self.i)
+        if self.sim_params.follow_allow:
+            self._set_speed_for_target_gap(self.i)
         self.solve_step(self.i)
         if self.sim_params.missed_trace_correction and (self.cyc0.cycDistMeters[:self.i].sum() > 0) and not self.impose_coast[self.i]:
             self.set_time_dilation(self.i)
-        if self.sim_params.allow_coast:
+        if self.sim_params.allow_coast or self.sim_params.follow_allow:
             self.cyc.cycMps[self.i] = self.mpsAch[self.i]
 
         self.i += 1 # increment time step counter
@@ -1428,7 +1475,7 @@ class SimDriveClassic(object):
                 return (r_best_found, r_best_n, r_best_jerk_m__s3, r_best_accel_m__s2)
         return not_found
     
-    def set_coast_speed(self, i):
+    def _set_coast_speed(self, i):
         """
         Placeholder for method to impose coasting.
         Might be good to include logic for deciding when to coast.
