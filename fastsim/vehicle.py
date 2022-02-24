@@ -284,6 +284,19 @@ class Vehicle(object):
 
         assert self.vehPtType in VEH_PT_TYPES, f"vehPtType {self.vehPtType} not in {VEH_PT_TYPES}"
         
+        # functional form
+        # def target_gap():
+        #     accel_m__s2 = (mpsAch[i] - mpsAch[i-1]) / cyc.dts[i]
+        #     lead_accel_m__s2 = (cyc0.cycMps[i] - cyc0.cycMps[i-1]) / cyc0.secs[i]
+        #     closing_accel_m__s2 = accel_m__s2 - lead_accel_m__s2
+        #     return lead_offset + lead_speed_coef * mpsAch[i] + lead_accel_coef_s2 * closing_accel_m__s2
+        # define attributes for eco-cruise behavior (gap)
+        self.lead_offset_m = 5.0
+        # function of the vehicle speed
+        self.lead_speed_coef_s = 1.0 # m / (m/s)
+        # with respect to the closing acceleration
+        self.lead_accel_coef_s2 = -1.0 # m / (m/s2)
+
         self.set_init_calcs(
             # provide kwargs for load-time overrides
             # -1 is used as a surrogate for None, which is not an option in numba

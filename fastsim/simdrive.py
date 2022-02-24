@@ -304,7 +304,11 @@ class SimDriveClassic(object):
             print('Max time step =', (round(self.cyc.secs.max(), 3)))
 
     def sim_drive_step(self):
-        """Step through 1 time step."""
+        """
+        Step through 1 time step.
+        TODO: create self.set_speed_for_target_gap(self.i):
+        TODO: consider implementing for battery SOC dependence
+        """
         if self.sim_params.allow_coast:
             self.set_coast_speed(self.i)
         self.solve_step(self.i)
