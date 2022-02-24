@@ -52,6 +52,7 @@ class SimDriveParamsClassic(object):
         self.coast_start_speed_m__s = 38.0 # m/s
         self.coast_verbose = False
         self.follow_allow = False
+        self.follow_model = 0 # 0 - custom, 1 - Intelligent Driver Model
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
@@ -312,7 +313,18 @@ class SimDriveClassic(object):
 
         self.set_post_scalars()
 
-    def _set_speed_for_target_gap(self, i):
+    def _set_speed_for_target_gap_using_idm(self, i):
+        """
+        Set gap
+        - i: non-negative integer, the step index
+        RETURN: None
+        EFFECTS:
+        - sets the next speed (m/s)
+        """
+        pass
+
+
+    def _set_speed_for_target_gap_using_custom_model(self, i):
         """
         - i: non-negative integer, the step index
         RETURN: None
@@ -357,6 +369,18 @@ class SimDriveClassic(object):
         #   v1 = 2*dd/dt - v0
         self.cyc.cycMps[i] = max(
             ((2.0 * dd_m) / self.cyc.dt_s[i]) - self.mpsAch[i-1], 0.0)
+
+    def _set_speed_for_target_gap(self, i):
+        """
+        - i: non-negative integer, the step index
+        RETURN: None
+        EFFECTS:
+        - sets the next speed (m/s)
+        """
+        if self.sim_params.follow_model == 0:
+            self._set_speed_for_target_gap_using_custom_model(i)
+        elif self.sim_params.follow_model == 1:
+            self._set_speed_for_target_gap_using_idm(i)
 
     def sim_drive_step(self):
         """
