@@ -333,8 +333,8 @@ class SimDriveClassic(object):
         lead_v1_m__s = self.cyc0.cycMps[i]
         lead_vavg_m__s = 0.5 * (lead_v0_m__s + lead_v1_m__s)
         lead_dd_m = lead_vavg_m__s * self.cyc0.dt_s[i]
-        lead_d0_m = float(self.cyc0.cycDistMeters_v2[:i].sum()) + self.veh.lead_offset_m
-        d0_m = float(self.cyc.cycDistMeters_v2[:i].sum())
+        lead_d0_m = self.cyc0.cycDistMeters_v2[:i].sum() + self.veh.lead_offset_m
+        d0_m = self.cyc.cycDistMeters_v2[:i].sum()
         gap0_m = lead_d0_m - d0_m
         # Determine the target distance to cover for next step, dd_m
         #   target_gap_m = (lead_d0_m - d0_m) + (lead_dd_m - dd_m)
@@ -348,7 +348,7 @@ class SimDriveClassic(object):
         dd_nopass_m = d1_nopass_m - d0_m
         dd_max_m = 0.5 * (self.mpsAch[i-1] + max(self.mpsAch[i-1] + accel_max_m__s2 * self.cyc.dt_s[i], 0.0)) * self.cyc.dt_s[i]
         dd_min_m = 0.5 * (self.mpsAch[i-1] + max(self.mpsAch[i-1] + accel_min_m__s2 * self.cyc.dt_s[i], 0.0)) * self.cyc.dt_s[i]
-        dd_m = float(np.clip(lead_dd_m + gap0_m - target_gap_m, dd_min_m, dd_max_m))
+        dd_m = min(max(lead_dd_m + gap0_m - target_gap_m, dd_min_m), dd_max_m)
         dd_m = max(min(dd_m, dd_nopass_m), 0.0)
         # Determine the next speed based on target distance to cover
         #   dd = vavg * dt = 0.5 * (v1 + v0) * dt
