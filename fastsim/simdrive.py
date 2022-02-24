@@ -51,6 +51,8 @@ class SimDriveParamsClassic(object):
         self.coast_to_brake_speed_m__s = 7.5 # 20.0 / params.mphPerMps # speed when coasting uses friction brakes
         self.coast_start_speed_m__s = 38.0 # m/s
         self.coast_verbose = False
+        self.follow_allow = False
+        self.follow_initial_gap_m = 0.0
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
@@ -186,6 +188,14 @@ class SimDriveClassic(object):
         self.curMaxRoadwayChgKw = np.zeros(len_cyc, dtype=np.float64)
         self.trace_miss_iters = np.zeros(len_cyc, dtype=np.float64)
         self.newton_iters = np.zeros(len_cyc, dtype=np.float64)
+
+    @property
+    def gap_to_lead_vehicle_m(self):
+        "Provides the gap-with lead vehicle from start to finish"
+        gaps_m = self.cyc0.cycDistMeters_v2.cumsum() - self.cyc.cycDistMeters_v2.cumsum()
+        if self.sim_params.follow_allow:
+            gaps_m += self.sim_params.follow_initial_gap_m
+        return gaps_m
 
     def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
         """
