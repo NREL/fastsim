@@ -5,12 +5,14 @@ cycle. For example usage, see ../README.md"""
 from logging import debug
 import numpy as np
 import re
+from dataclasses import dataclass
 
 from . import params, cycle, vehicle
 # these imports are needed for numba to type these correctly
 from .vehicle import CONV, HEV, PHEV, BEV 
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
 
+@dataclass
 class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.
     Usually the defaults are ok, and there will be no need to use this.
@@ -23,30 +25,30 @@ class SimDriveParamsClassic(object):
     >>> veh = vehicle.Vehicle(1)
     >>> sim_drive = simdrive.SimDriveClassic(cyc, veh)
     >>> sim_drive.sim_params.verbose = False # turn off error messages for large time steps
-    >>> sim_drive.sim_drive()"""
-
-    def __init__(self):
-        """Default values that affect simulation behavior.  
-        Can be modified after instantiation."""
-        self.missed_trace_correction = False  # if True, missed trace correction is active, default = False
-        # maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
-        self.max_time_dilation = 1.0  
-        # minimum time dilation margin to let trace "catch up" -- e.g. -0.5 means 50% reduction in step size
-        self.min_time_dilation = -0.5  
-        self.time_dilation_tol = 5e-4  # convergence criteria for time dilation
-        self.max_trace_miss_iters = 5 # number of iterations to achieve time dilation correction
-        self.trace_miss_speed_mps_tol = 1.0 # threshold of error in speed [m/s] that triggers warning
-        self.trace_miss_time_tol = 1e-3 # threshold for printing warning when time dilation is active
-        self.trace_miss_dist_tol = 1e-3 # threshold of fractional eror in distance that triggers warning
-        self.sim_count_max = 30  # max allowable number of HEV SOC iterations
-        self.verbose = True  # show warning and other messages
-        self.newton_gain = 0.9 # newton solver gain
-        self.newton_max_iter = 100 # newton solver max iterations
-        self.newton_xtol = 1e-9 # newton solver tolerance
-        self.energy_audit_error_tol = 0.002 # tolerance for energy audit error warning, i.e. 0.1%
-                
-        # EPA fuel economy adjustment parameters
-        self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
+    >>> sim_drive.sim_drive()
+    
+    Below are default values that affect simulation behavior.  
+    These can be passed as arguments on instantiation or can be modified after instantiation.
+    """
+    missed_trace_correction:bool = False  # if True, missed trace correction is active, default = False
+    # maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
+    max_time_dilation:float = 1.0  
+    # minimum time dilation margin to let trace "catch up" -- e.g. -0.5 means 50% reduction in step size
+    min_time_dilation:float = -0.5  
+    time_dilation_tol:float = 5e-4  # convergence criteria for time dilation
+    max_trace_miss_iters:int = 5 # number of iterations to achieve time dilation correction
+    trace_miss_speed_mps_tol:float = 1.0 # threshold of error in speed [m/s] that triggers warning
+    trace_miss_time_tol:float = 1e-3 # threshold for printing warning when time dilation is active
+    trace_miss_dist_tol:float = 1e-3 # threshold of fractional eror in distance that triggers warning
+    sim_count_max:int = 30  # max allowable number of HEV SOC iterations
+    verbose:bool = True  # show warning and other messages
+    newton_gain:float = 0.9 # newton solver gain
+    newton_max_iter:int = 100 # newton solver max iterations
+    newton_xtol:float = 1e-9 # newton solver tolerance
+    energy_audit_error_tol:float = 0.002 # tolerance for energy audit error warning, i.e. 0.1%
+            
+    # EPA fuel economy adjustment parameters
+    maxEpaAdj:float = 0.3 # maximum EPA adjustment factor
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
