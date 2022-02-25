@@ -1444,9 +1444,10 @@ class SimDrivePost(object):
 
 
 # convenience wrappers for backwards compatibility
-def SimDriveJit(cyc_jit, veh_jit):
+# return type hint is for linting purpsoses only
+def SimDriveJit(cyc_jit, veh_jit) -> SimDriveClassic:
     """
-    Wrapper for simdrivejit.SimDriveJit:
+    Wrapper for simdrivejit.SimDriveJit
     """
     from . import simdrivejit
 
@@ -1456,9 +1457,10 @@ def SimDriveJit(cyc_jit, veh_jit):
 
     return sim_drive_jit
 
-def SimAccelTestJit(cyc_jit, veh_jit):
+# return type hint is for linting purpsoses only
+def SimAccelTestJit(cyc_jit, veh_jit) -> SimAccelTest:
     """
-    Wrapper for simdrivejit.SimAccelTestJit:
+    Wrapper for simdrivejit.SimAccelTestJit
     """
     from . import simdrivejit
 

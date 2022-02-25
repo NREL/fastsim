@@ -113,7 +113,7 @@ class Cycle(object):
 
     ### Properties
 
-    def get_cycMph(self):
+    def get_cycMph(self) -> np.ndarray:
         return self.cycMps * params.mphPerMps
 
     def set_cycMph(self, new_value):
@@ -121,7 +121,7 @@ class Cycle(object):
 
     cycMph = property(get_cycMph, set_cycMph)
 
-    def get_time_s(self):
+    def get_time_s(self) -> np.ndarray:
         return self.cycSecs
 
     def set_time_s(self, new_value):
@@ -131,26 +131,26 @@ class Cycle(object):
 
     # time step deltas
     @property
-    def secs(self):
+    def secs(self) -> np.ndarray:
         return np.append(0.0, self.cycSecs[1:] - self.cycSecs[:-1]) 
 
     @property
-    def dt_s(self):
+    def dt_s(self) -> np.ndarray:
         return self.secs
     
     # distance at each time step
     @property
-    def cycDistMeters(self):
+    def cycDistMeters(self) -> np.ndarray:
         return self.cycMps * self.secs
 
     @property
-    def delta_elev_m(self):
+    def delta_elev_m(self) -> np.ndarray:
         """
         Cumulative elevation change w.r.t. to initial
         """
         return (self.cycDistMeters * self.cycGrade).cumsum()
     
-    def get_cyc_dict(self):
+    def get_cyc_dict(self) -> dict:
         """Returns cycle as dict rather than class instance."""
         keys = STANDARD_CYCLE_KEYS
         
@@ -253,7 +253,7 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
     return microtrips
 
 
-def make_cycle(ts, vs, gs=None, rs=None):
+def make_cycle(ts, vs, gs=None, rs=None) -> dict:
     """
     (Array Num) (Array Num) (Array Num)? -> Dict
     Create a cycle from times, speeds, and grades. If grades is not
@@ -280,7 +280,7 @@ def make_cycle(ts, vs, gs=None, rs=None):
             'cycRoadType': np.array(rs)}
 
 
-def equals(c1, c2, verbose=True):
+def equals(c1, c2, verbose=True) -> bool:
     """
     Dict Dict -> Bool
     Returns true if the two cycles are equal, false otherwise
