@@ -296,6 +296,14 @@ class Vehicle(object):
         self.lead_speed_coef_s = 1.0 # m / (m/s)
         # with respect to the closing acceleration
         self.lead_accel_coef_s2 = 1.0 # m / (m/s2)
+        
+        # IDM - Intelligent Driver Model, Adaptive Cruise Control version
+        self.idm_v_desired_m__s = 33.33
+        self.idm_dt_headway_s = 1.0
+        self.idm_minimum_gap_m = 2.0
+        self.idm_delta = 4.0
+        self.idm_accel_m__s2 = 1.0
+        self.idm_decel_m__s2 = 1.5
 
         self.set_init_calcs(
             # provide kwargs for load-time overrides

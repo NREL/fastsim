@@ -216,3 +216,81 @@ class TestFollowing(unittest.TestCase):
             self.sd.cyc.cycDistMeters_v2.sum(),
             places=-1,
             msg='Distance traveled should be fairly close')
+
+    def test_sweeping_idm_parameters(self):
+        "Tests use of the IDM model for following"
+        if DO_PLOTS:
+            import matplotlib.pyplot as plt
+            import pandas as pd
+            import seaborn as sns
+            sns.set()
+
+            udds = fastsim.cycle.Cycle('udds').get_numba_cyc()
+            veh = fastsim.vehicle.Vehicle(5, verbose=False).get_numba_veh()
+            average_speed_m__s = np.mean(udds.cycMps)
+            average_speed_when_moving_m__s = np.mean(udds.cycMps[udds.cycDistMeters_v2 > 0.0])
+            max_speed_m__s = np.max(udds.cycMps)
+            dt_headways = np.linspace(0.5, 4.0, num=8, endpoint=True)
+            v_desireds = np.array(sorted([average_speed_m__s, average_speed_when_moving_m__s, max_speed_m__s]))
+            s_mins = np.linspace(1.0, 10.0, num=10, endpoint=True)
+            deltas = np.linspace(2.0, 6.0, num=5, endpoint=True)
+            a_accels = np.linspace(0.5, 2.5, num=5, endpoint=True)
+            b_accels = np.linspace(1.0, 3.0, num=5, endpoint=True)
+            sd = fastsim.simdrive.SimDriveJit(udds, veh)
+            sd.sim_drive()
+            base_distance_m = sd.cyc.cycDistMeters_v2.sum()
+            base_fuel_consumption_gal__100mi = 100.0 / sd.mpgge
+            results = {
+                'dt_headway_s': [0.0],
+                'v_desired_m__s': [0.0],
+                's_min_m': [0.0],
+                'delta': [0.0],
+                'a_m__s2': [0.0],
+                'b_m__s2': [0.0],
+                'fuel_economy_mpgge': [sd.mpgge],
+                'fuel_consumption_gal__100mi': [base_fuel_consumption_gal__100mi],
+                'distance_m': [base_distance_m],
+                'distance_short_m': [0.0],
+            }
+            idx = 0
+            for dt_h_s in dt_headways:
+                for v_d_m__s in v_desireds:
+                    for s_min_m in s_mins:
+                        for delta in deltas:
+                            for a_m__s2 in a_accels:
+                                for b_m__s2 in b_accels:
+                                    idx += 1
+                                    if idx % 10 == 0:
+                                        print(f"Running {idx}...")
+                                    if True:
+                                        veh.lead_accel_coef_s2 = 0.0
+                                        veh.lead_speed_coef_s = 0.0
+                                        veh.lead_offset_m = 0.0
+                                        veh.idm_minimum_gap_m = s_min_m
+                                        veh.idm_delta = delta
+                                        veh.idm_accel_m__s2 = a_m__s2
+                                        veh.idm_decel_m__s2 = b_m__s2
+                                        veh.idm_v_desired_m__s = v_d_m__s
+                                        veh.idm_dt_headway_s = dt_h_s
+                                        sd = fastsim.simdrive.SimDriveJit(udds, veh)
+                                        sd.sim_params.follow_allow = True
+                                        sd.sim_params.follow_model = fastsim.simdrive.FOLLOW_MODEL_IDM
+                                        sd.sim_drive()
+                                        results['dt_headway_s'].append(dt_h_s)
+                                        results['v_desired_m__s'].append(v_d_m__s)
+                                        results['s_min_m'].append(s_min_m)
+                                        results['delta'].append(delta)
+                                        results['a_m__s2'].append(a_m__s2)
+                                        results['b_m__s2'].append(b_m__s2)
+                                        results['fuel_economy_mpgge'].append(sd.mpgge)
+                                        if sd.mpgge > 0.0:
+                                            results['fuel_consumption_gal__100mi'].append(100.0 / sd.mpgge)
+                                        else:
+                                            results['fuel_consumption_gal__100mi'].append(-1.0)
+                                        dist_m = sd.cyc.cycDistMeters_v2.sum()
+                                        results['distance_m'].append(dist_m)
+                                        results['distance_short_m'].append(base_distance_m - dist_m)
+            print(f"idx: {idx}")
+            results = pd.DataFrame(results)
+            results.to_csv('test_sweeping_idm_parameters.csv')
+            print('DONE!')

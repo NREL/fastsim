@@ -57,8 +57,7 @@ class SimDriveParamsClassic(object):
         self.coast_verbose = False
         self.follow_allow = False
         self.follow_model = FOLLOW_MODEL_CUSTOM # 0 - custom, 1 - Intelligent Driver Model
-        self.follow_idm_minimum_gap_m = 5.0
-                
+
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
@@ -199,7 +198,10 @@ class SimDriveClassic(object):
         "Provides the gap-with lead vehicle from start to finish"
         gaps_m = self.cyc0.cycDistMeters_v2.cumsum() - self.cyc.cycDistMeters_v2.cumsum()
         if self.sim_params.follow_allow:
-            gaps_m += self.veh.lead_offset_m
+            if self.sim_params.follow_model == FOLLOW_MODEL_CUSTOM:
+                gaps_m += self.veh.lead_offset_m
+            elif self.sim_params.follow_model == FOLLOW_MODEL_IDM:
+                gaps_m += self.veh.idm_minimum_gap_m
         return gaps_m
 
     def sim_drive(self, initSoc=-1, auxInKwOverride=np.zeros(1, dtype=np.float64)):
@@ -335,19 +337,23 @@ class SimDriveClassic(object):
         dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
         s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
         """
-        delta = 4.0
-        a_m__s2 = 0.5 # acceleration (m/s2)
-        b_m__s2 = 2.0 # deceleration (m/s2)
+        # PARAMETERS
+        delta = self.veh.idm_delta
+        a_m__s2 = self.veh.idm_accel_m__s2 # acceleration (m/s2)
+        b_m__s2 = self.veh.idm_decel_m__s2 # deceleration (m/s2)
+        dt_headway_s = self.veh.idm_dt_headway_s
+        s0_m = self.veh.idm_minimum_gap_m # we assume vehicle's start out "minimum gap" apart
+        # DERIVED VALUES
         sqrt_ab = (a_m__s2 * b_m__s2)**0.5
         v0_m__s = self.mpsAch[i-1]
         v0_lead_m__s = self.cyc0.cycMps[i-1]
         dv0_m__s = v0_m__s - v0_lead_m__s
         v_desired_m__s = np.mean(self.cyc0.cycMps[self.cyc0.cycMps > 0.0])
-        dt_headway_s = 2.0
-        d0_lead_m = self.cyc0.cycDistMeters_v2[:i].sum() + self.veh.lead_offset_m
+        d0_lead_m = self.cyc0.cycDistMeters_v2[:i].sum() + s0_m
         d0_m = self.cyc.cycDistMeters_v2[:i].sum()
-        s_m = d0_lead_m - d0_m
-        s_target_m = self.sim_params.follow_idm_minimum_gap_m + max(0.0, (v0_m__s * dt_headway_s) + ((v0_m__s * dv0_m__s)/(2.0 * sqrt_ab)))
+        s_m = max(d0_lead_m - d0_m, 0.01)
+        # IDM EQUATIONS
+        s_target_m = s0_m + max(0.0, (v0_m__s * dt_headway_s) + ((v0_m__s * dv0_m__s)/(2.0 * sqrt_ab)))
         accel_target_m__s2 = a_m__s2 * (1.0 - ((v0_m__s / v_desired_m__s) ** delta) - ((s_target_m / s_m)**2))
         self.cyc.cycMps[i] = max(v0_m__s + (accel_target_m__s2 * self.cyc.dt_s[i]), 0.0)
 
@@ -408,8 +414,8 @@ class SimDriveClassic(object):
             self._set_speed_for_target_gap_using_custom_model(i)
         elif self.sim_params.follow_model == FOLLOW_MODEL_IDM:
             self._set_speed_for_target_gap_using_idm(i)
-        else:
-            raise Exception(f'Unhandled follow_model {self.sim_params.follow_model}')
+        # TODO: how to raise an error or warning here? Numba doesn't like `raise Exception` apparently...
+        # ... Perhaps just print out a warning?
 
     def sim_drive_step(self):
         """
