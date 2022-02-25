@@ -11,6 +11,10 @@ from . import params, cycle, vehicle
 from .vehicle import CONV, HEV, PHEV, BEV 
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
 
+
+FOLLOW_MODEL_CUSTOM = 0
+FOLLOW_MODEL_IDM = 1
+
 class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.
     Usually the defaults are ok, and there will be no need to use this.
@@ -52,7 +56,8 @@ class SimDriveParamsClassic(object):
         self.coast_start_speed_m__s = 38.0 # m/s
         self.coast_verbose = False
         self.follow_allow = False
-        self.follow_model = 0 # 0 - custom, 1 - Intelligent Driver Model
+        self.follow_model = FOLLOW_MODEL_CUSTOM # 0 - custom, 1 - Intelligent Driver Model
+        self.follow_idm_minimum_gap_m = 5.0
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
@@ -320,9 +325,31 @@ class SimDriveClassic(object):
         RETURN: None
         EFFECTS:
         - sets the next speed (m/s)
+        EQUATION:
+        parameters:
+            - v_desired: the desired speed (m/s)
+            - delta: number, typical value is 4.0
+            - a:
+            - b:
+        s = d_lead - d
+        dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
+        s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
         """
-        pass
-
+        delta = 4.0
+        a_m__s2 = 0.5 # acceleration (m/s2)
+        b_m__s2 = 2.0 # deceleration (m/s2)
+        sqrt_ab = (a_m__s2 * b_m__s2)**0.5
+        v0_m__s = self.mpsAch[i-1]
+        v0_lead_m__s = self.cyc0.cycMps[i-1]
+        dv0_m__s = v0_m__s - v0_lead_m__s
+        v_desired_m__s = np.mean(self.cyc0.cycMps[self.cyc0.cycMps > 0.0])
+        dt_headway_s = 2.0
+        d0_lead_m = self.cyc0.cycDistMeters_v2[:i].sum() + self.veh.lead_offset_m
+        d0_m = self.cyc.cycDistMeters_v2[:i].sum()
+        s_m = d0_lead_m - d0_m
+        s_target_m = self.sim_params.follow_idm_minimum_gap_m + max(0.0, (v0_m__s * dt_headway_s) + ((v0_m__s * dv0_m__s)/(2.0 * sqrt_ab)))
+        accel_target_m__s2 = a_m__s2 * (1.0 - ((v0_m__s / v_desired_m__s) ** delta) - ((s_target_m / s_m)**2))
+        self.cyc.cycMps[i] = max(v0_m__s + (accel_target_m__s2 * self.cyc.dt_s[i]), 0.0)
 
     def _set_speed_for_target_gap_using_custom_model(self, i):
         """
@@ -377,10 +404,12 @@ class SimDriveClassic(object):
         EFFECTS:
         - sets the next speed (m/s)
         """
-        if self.sim_params.follow_model == 0:
+        if self.sim_params.follow_model == FOLLOW_MODEL_CUSTOM:
             self._set_speed_for_target_gap_using_custom_model(i)
-        elif self.sim_params.follow_model == 1:
+        elif self.sim_params.follow_model == FOLLOW_MODEL_IDM:
             self._set_speed_for_target_gap_using_idm(i)
+        else:
+            raise Exception(f'Unhandled follow_model {self.sim_params.follow_model}')
 
     def sim_drive_step(self):
         """

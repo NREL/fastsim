@@ -197,3 +197,22 @@ class TestFollowing(unittest.TestCase):
             fig.tight_layout()
             fig.savefig(save_file, dpi=300)
             plt.close()
+    
+    def test_that_we_can_use_the_idm(self):
+        "Tests use of the IDM model for following"
+        self.sd.sim_params.follow_model = fastsim.simdrive.FOLLOW_MODEL_IDM
+        self.sd.sim_drive()
+        gaps_m = self.sd.gap_to_lead_vehicle_m
+        self.assertTrue((gaps_m > self.initial_gap_m).any())
+        if DO_PLOTS:
+            from fastsim.tests.test_coasting import make_coasting_plot
+            make_coasting_plot(
+                self.sd.cyc0, self.sd.cyc,
+                gap_offset_m=self.veh.lead_offset_m,
+                title='test_that_we_can_use_the_idm__1.png',
+                save_file="test_that_we_can_use_the_idm__1.png")
+        self.assertAlmostEqual(
+            self.sd.cyc0.cycDistMeters_v2.sum(),
+            self.sd.cyc.cycDistMeters_v2.sum(),
+            places=-1,
+            msg='Distance traveled should be fairly close')
