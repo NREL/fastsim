@@ -9,7 +9,7 @@ import pandas as pd
 import re
 import sys
 from pathlib import Path
-import copy
+from copy import deepcopy
 import types
 
 # local modules
@@ -172,8 +172,9 @@ class Cycle(object):
         return cyc
 
 
-def copy_cycle(cyc, return_dict=False, use_jit=None):
-    """Returns copy of Cycle or CycleJit.
+def copy_cycle(cyc:Cycle, return_dict=False, use_jit=None) -> Cycle:
+    """
+    Returns copy of Cycle or CycleJit.
     Arguments:
     cyc: instantianed Cycle or CycleJit
     return_dict: (Boolean) if True, returns cycle as dict. 
@@ -189,20 +190,18 @@ def copy_cycle(cyc, return_dict=False, use_jit=None):
     from . import cyclejit
     for keytup in cyclejit.cyc_spec:
         key = keytup[0]
-        cyc_dict[key] = cyc.__getattribute__(key)
+        cyc_dict[key] = deepcopy(cyc.__getattribute__(key))
         
     if return_dict:
         return cyc_dict
     
     if use_jit is None:
-        if type(cyc) == Cycle:
-            cyc = Cycle(cyc_dict=cyc_dict)
-        else:
-            cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-    elif use_jit:
+        use_jit = "Jit" in str(type(cyc))
+    
+    cyc = Cycle(cyc_dict=cyc_dict)
+    
+    if use_jit:
         cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-    else:
-        cyc = Cycle(cyc_dict=cyc_dict)
         
     return cyc                
 
@@ -422,7 +421,7 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
         except:
             # if the value can't be interpolated, it must not be a numerical
             # array. Just add it back in as is.
-            new_cycle[k] = copy.deepcopy(cycle[k])
+            new_cycle[k] = deepcopy(cycle[k])
     return new_cycle
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from fastsim import cycle, vehicle, simdrive
+from fastsim import cycle, vehicle, simdrive, cyclejit, vehiclejit
 
 
 class TestSimDriveClassic(unittest.TestCase):
@@ -99,3 +99,28 @@ class TestSimDriveClassic(unittest.TestCase):
 
         self.assertTrue(sd.fcKwInAch[10] == 0)
         self.assertTrue(sd.fcKwInAch[37] == 0)
+    
+    def test_copy(self):
+        veh = vehicle.Vehicle(1)
+        cyc = cycle.Cycle('udds')
+        # sd = fsim.simdrive.SimDriveJit(cyc, veh)
+        sd = simdrive.SimDriveClassic(cyc, veh)
+        # needed to ensure all attributes are generated
+        # done before jit to reduce jit-compile time
+        sd.sim_drive()         
+        sd.fsKwhOutAch[5] = 10.0 # arbitrary value to test
+        sd_jit = simdrive.copy_sim_drive(sd, use_jit=True)
+        # verify jit types
+        self.assertTrue(type(cyclejit.CycleJit(8)) == type(sd_jit.cyc))
+        self.assertTrue(type(vehiclejit.VehicleJit()) == type(sd_jit.veh)) 
+        # verify that changed parameter propagates through copy
+        self.assertEqual(sd.fsKwOutAch[5], sd_jit.fsKwOutAch[5])
+        sd_copy = simdrive.copy_sim_drive(sd_jit, use_jit=False)
+        # verify type
+        self.assertTrue(type(vehicle.Vehicle(1)) == type(sd_copy.veh)) 
+        # verify that changed parameter propagates through copy
+        self.assertEqual(sd.fsKwOutAch[5], sd_copy.fsKwOutAch[5])
+        # verify that new parameter change does not affect previous instances
+        sd_copy.fsKwOutAch[5] = 0.0
+        self.assertNotEqual(sd.fsKwOutAch[5], sd_copy.fsKwOutAch[5])
+        self.assertNotEqual(sd_jit.fsKwOutAch[5], sd_copy.fsKwOutAch[5])
