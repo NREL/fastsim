@@ -336,6 +336,10 @@ class SimDriveClassic(object):
         s = d_lead - d
         dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
         s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
+        REFERENCE:
+        Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
+            Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
+            DOI: https://doi.org/10.1007/978-3-642-32460-4.
         """
         # PARAMETERS
         delta = self.veh.idm_delta
