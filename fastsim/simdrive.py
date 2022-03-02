@@ -1898,35 +1898,19 @@ def estimate_corrected_fuel_kJ(sd: SimDriveClassic) -> float:
     - sd: SimDriveClassic, the simdrive instance after simulation
     RETURN: number, the kJ of fuel corrected for SOC imbalance
     """
+    if sd.veh.vehPtType != HEV:
+        return sd.fuelKj
     def f(mask, numer, denom, default):
         if not mask.any():
             return default
-        return np.abs(numer[mask].sum() / denom[mask].sum())
+        return numer[mask].sum() / denom[mask].sum()
     kJ__kWh = 3600.0
     delta_soc = sd.soc[-1] - sd.soc[0]
     ess_eff = np.sqrt(sd.veh.essRoundTripEff)
-    #TODO: test and switch to mask below
-    #mask = sd.mcMechKwOutAch < 0.0
-    mask = (sd.essKwOutAch * sd.cyc.dt_s) < 0.0
-    if not mask.any():
-        mc_chg_eff = sd.veh.mcPeakEff
-    else:
-        mc_chg_eff = np.abs(sd.mcElecKwInAch[mask].sum() / sd.mcMechKwOutAch[mask].sum())
-    mask = sd.mcMechKwOutAch > 0.0
-    if not mask.any():
-        mc_dis_eff = mc_chg_eff
-    else:
-        mc_dis_eff = np.abs(sd.mcMechKwOutAch[mask].sum() / sd.mcElecKwInAch[mask].sum())
-    mask = sd.mcElecKwInAch > 0.0
-    if not mask.any():
-        ess_traction_frac = 1.0
-    else:
-        ess_traction_frac = sd.mcElecKwInAch[mask].sum() / sd.essKwOutAch[mask].sum()
-    mask = sd.transKwInAch > 0.0
-    if not mask.any():
-        fc_eff = sd.fcKwOutAch.sum() / sd.fcKwInAch.sum()
-    else:
-        fc_eff = sd.fcKwOutAch[mask].sum() / sd.fcKwInAch[mask].sum()
+    mc_chg_eff = f(sd.mcMechKwOutAch < 0.0, sd.mcElecKwInAch, sd.mcMechKwOutAch, sd.veh.mcPeakEff)
+    mc_dis_eff = f(sd.mcMechKwOutAch > 0.0, sd.mcMechKwOutAch, sd.mcElecKwInAch, mc_chg_eff)
+    ess_traction_frac = f(sd.mcElecKwInAch > 0.0, sd.mcElecKwInAch, sd.essKwOutAch, 1.0)
+    fc_eff = f(sd.transKwInAch > 0.0, sd.fcKwOutAch, sd.fcKwInAch, sd.fcKwOutAch.sum() / sd.fcKwInAch.sum())
     if delta_soc >= 0.0:
         k = (sd.veh.maxEssKwh * kJ__kWh * ess_eff * mc_dis_eff * ess_traction_frac) / fc_eff
         equivalent_fuel_kJ = -1.0 * delta_soc * k
