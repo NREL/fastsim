@@ -9,6 +9,7 @@ import fastsim
 
 
 DO_PLOTS = False
+VERBOSE = False
 
 
 class TestSocCorrection(unittest.TestCase):
@@ -55,7 +56,7 @@ class TestSocCorrection(unittest.TestCase):
                 )
         total_absolute_percent_error = sum([abs(x) for x in results['percent_error']])
         average_absolute_percent_error = total_absolute_percent_error / len(results['percent_error'])
-        if True:
+        if VERBOSE:
             print(f"Total Absolute Percent Error: {total_absolute_percent_error}")
             print(f"Average Absolute Percent Error: {average_absolute_percent_error}")
         self.assertTrue(average_absolute_percent_error < 1.0)
