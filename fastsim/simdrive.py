@@ -51,7 +51,7 @@ class SimDriveParamsClassic(object):
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
 
 
-def copy_sim_params(sim_params:SimDriveParamsClassic, use_jit=None) -> SimDriveParamsClassic:
+def copy_sim_params(sim_params:SimDriveParamsClassic, use_jit:bool=None) -> SimDriveParamsClassic:
     """
     Returns copy of SimDriveParamsClassic or SimDriveParamsJit.
     Arguments:
@@ -1500,10 +1500,12 @@ def copy_sim_drive(sd:SimDriveClassic, use_jit=None) -> SimDriveClassic:
 
     for keytup in simdrivejit.sim_drive_spec:
         key = keytup[0]
-        if key in ['cyc', 'cyc0'] :
+        if key == 'cyc':
             sd_copy.__setattr__(
                 key, 
                 cycle.copy_cycle(sd.__getattribute__(key), use_jit=use_jit))
+        if key == 'cyc0':
+            pass
         elif key == 'veh':
             sd_copy.veh = vehicle.copy_vehicle(sd.veh, return_dict=False, use_jit=use_jit)
         elif key == 'sim_params':

@@ -346,7 +346,7 @@ def concat(cycles, name=None):
     return final_cycle
 
 
-def resample(cycle, new_dt=None, start_time=None, end_time=None,
+def resample(cycle:Cycle, new_dt=None, start_time=None, end_time=None,
              hold_keys=None, rate_keys=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
