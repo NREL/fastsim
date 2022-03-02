@@ -1892,3 +1892,45 @@ def SimAccelTestJit(cyc_jit, veh_jit):
     SimDriveJit.__doc__ += sim_drive_jit.__doc__
 
     return sim_drive_jit
+
+def estimate_corrected_fuel_kJ(sd: SimDriveClassic) -> float:
+    """
+    - sd: SimDriveClassic, the simdrive instance after simulation
+    RETURN: number, the kJ of fuel corrected for SOC imbalance
+    """
+    def f(mask, numer, denom, default):
+        if not mask.any():
+            return default
+        return np.abs(numer[mask].sum() / denom[mask].sum())
+    kJ__kWh = 3600.0
+    delta_soc = sd.soc[-1] - sd.soc[0]
+    ess_eff = np.sqrt(sd.veh.essRoundTripEff)
+    #TODO: test and switch to mask below
+    #mask = sd.mcMechKwOutAch < 0.0
+    mask = (sd.essKwOutAch * sd.cyc.dt_s) < 0.0
+    if not mask.any():
+        mc_chg_eff = sd.veh.mcPeakEff
+    else:
+        mc_chg_eff = np.abs(sd.mcElecKwInAch[mask].sum() / sd.mcMechKwOutAch[mask].sum())
+    mask = sd.mcMechKwOutAch > 0.0
+    if not mask.any():
+        mc_dis_eff = mc_chg_eff
+    else:
+        mc_dis_eff = np.abs(sd.mcMechKwOutAch[mask].sum() / sd.mcElecKwInAch[mask].sum())
+    mask = sd.mcElecKwInAch > 0.0
+    if not mask.any():
+        ess_traction_frac = 1.0
+    else:
+        ess_traction_frac = sd.mcElecKwInAch[mask].sum() / sd.essKwOutAch[mask].sum()
+    mask = sd.transKwInAch > 0.0
+    if not mask.any():
+        fc_eff = sd.fcKwOutAch.sum() / sd.fcKwInAch.sum()
+    else:
+        fc_eff = sd.fcKwOutAch[mask].sum() / sd.fcKwInAch[mask].sum()
+    if delta_soc >= 0.0:
+        k = (sd.veh.maxEssKwh * kJ__kWh * ess_eff * mc_dis_eff * ess_traction_frac) / fc_eff
+        equivalent_fuel_kJ = -1.0 * delta_soc * k
+    else:
+        k = (sd.veh.maxEssKwh * kJ__kWh) / (ess_eff * mc_chg_eff * fc_eff)
+        equivalent_fuel_kJ = -1.0 * delta_soc * k
+    return sd.fuelKj + equivalent_fuel_kJ
