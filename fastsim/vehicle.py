@@ -8,7 +8,7 @@ import pandas as pd
 import types as pytypes
 import re
 from pathlib import Path
-import inspect
+from copy import deepcopy
 import ast
 import warnings
 
@@ -540,8 +540,9 @@ class Vehicle(object):
     fcPeakEff = property(get_fcPeakEff, set_fcPeakEff)
 
 
-def copy_vehicle(veh, return_dict=False, use_jit=None):
-    """Returns copy of Vehicle or VehicleJit.
+def copy_vehicle(veh:Vehicle, return_dict=False, use_jit=None) -> Vehicle:
+    """
+    Returns copy of Vehicle or VehicleJit.
     Arguments:
     veh: instantiated Vehicle or VehicleJit
     return_dict: (Boolean) if True, returns vehicle as dict. 
@@ -554,27 +555,21 @@ def copy_vehicle(veh, return_dict=False, use_jit=None):
 
     veh_dict = {}
 
-    for key in veh.__dir__():
-        if (not key.startswith('_')) and \
-                (type(veh.__getattribute__(key)) != pytypes.MethodType):
-            veh_dict[key] = veh.__getattribute__(key)
+    from . import vehiclejit
+    for keytup in vehiclejit.veh_spec:
+        key = keytup[0]
+        if key != 'props':         
+            veh_dict[key] = deepcopy(veh.__getattribute__(key))
 
     if return_dict:
         return veh_dict
         
     if use_jit is None:
-        from . import vehiclejit
-        if type(veh) == Vehicle:
-            veh = Vehicle(veh_dict=veh_dict)
-        elif type(veh) == type(vehiclejit.VehicleJit()):
-            # expects `veh` to be instantiated VehicleJit
-            veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
-        else:
-            raise TypeError('Did not receive either fastsim.vehicle.Vehicle() or fastsim.vehiclejit.VehicleJit()')
-    elif use_jit:
-        veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
-    else:
-        veh = Vehicle(veh_dict=veh_dict)
+        use_jit = "Jit" in str(type(veh))
+
+    veh = Vehicle(veh_dict=veh_dict)
+    if use_jit:
+        veh = veh.get_numba_veh()
 
     return veh  
 
@@ -590,7 +585,6 @@ def veh_equal(veh1, veh2, full_out=False):
     veh_dict2 = copy_vehicle(veh2, True)
     err_list = []
     keys = list(veh_dict1.keys())
-    keys.remove('props') # no need to compare this one
     for key in keys:
         if pd.api.types.is_list_like(veh_dict1[key]):
             if (veh_dict1[key] != veh_dict2[key]).any():
