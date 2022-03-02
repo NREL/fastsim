@@ -1481,11 +1481,7 @@ def estimate_corrected_fuel_kJ(sd: SimDriveClassic) -> float:
     delta_soc = sd.soc[-1] - sd.soc[0]
     ess_eff = np.sqrt(sd.veh.essRoundTripEff)
     mc_chg_eff = f(sd.mcMechKwOutAch < 0.0, sd.mcElecKwInAch, sd.mcMechKwOutAch, sd.veh.mcPeakEff)
-    mask = sd.mcMechKwOutAch > 0.0
-    if not mask.any():
-        mc_dis_eff = mc_chg_eff
-    else:
-        mc_dis_eff = np.abs(sd.mcMechKwOutAch[mask].sum() / sd.mcElecKwInAch[mask].sum())
+    mc_dis_eff = f(sd.mcMechKwOutAch > 0.0, sd.mcMechKwOutAch, sd.mcElecKwInAch, mc_chg_eff)
     mask = sd.mcElecKwInAch > 0.0
     if not mask.any():
         ess_traction_frac = 1.0
