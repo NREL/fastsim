@@ -1473,6 +1473,8 @@ def estimate_corrected_fuel_kJ(sd: SimDriveClassic) -> float:
     - sd: SimDriveClassic, the simdrive instance after simulation
     RETURN: number, the kJ of fuel corrected for SOC imbalance
     """
+    if sd.veh.vehPtType != HEV:
+        return sd.fuelKj
     def f(mask, numer, denom, default):
         if not mask.any():
             return default
