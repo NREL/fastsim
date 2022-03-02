@@ -10,6 +10,7 @@ import os
 import numpy as np
 import json
 from pathlib import Path
+from copy import deepcopy
 
 
 THIS_DIR = Path(__file__).parent
@@ -49,6 +50,31 @@ def PhysicalPropertiesJit():
     PhysicalPropertiesJit.__doc__ += props.__doc__
 
     return props
+
+def copy_props(props:PhysicalProperties, use_jit=None) -> PhysicalProperties:
+    """
+    Returns copy of PhysicalProperties or PhysicalPropertiesJit.
+    Arguments:
+    sd: instantianed PhysicalProperties or PhysicalPropertiesJit
+    use_jit: (Boolean)
+        default -- infer from cycle
+        True -- use numba
+        False -- don't use numba
+    """
+
+    from . import parametersjit
+
+    if use_jit is None:
+        use_jit = "Jit" in str(type(props))
+
+    props_copy = PhysicalPropertiesJit() if use_jit else PhysicalProperties()
+
+    for keytup in parametersjit.props_spec:
+        key = keytup[0]
+        props_copy.__setattr__(key, deepcopy(props.__getattribute__(key)))
+
+    return props_copy  
+
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***

@@ -5,11 +5,13 @@ cycle. For example usage, see ../README.md"""
 from logging import debug
 import numpy as np
 import re
+from copy import deepcopy
 
 from . import params, cycle, vehicle
 # these imports are needed for numba to type these correctly
 from .vehicle import CONV, HEV, PHEV, BEV 
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
+
 
 class SimDriveParamsClassic(object):
     """Class containing attributes used for configuring sim_drive.
@@ -47,6 +49,33 @@ class SimDriveParamsClassic(object):
                 
         # EPA fuel economy adjustment parameters
         self.maxEpaAdj = 0.3 # maximum EPA adjustment factor
+
+
+def copy_sim_params(sim_params:SimDriveParamsClassic, use_jit:bool=None) -> SimDriveParamsClassic:
+    """
+    Returns copy of SimDriveParamsClassic or SimDriveParamsJit.
+    Arguments:
+    sd: instantianed SimDriveParamsClassic or SimDriveParamsJit
+    use_jit: (Boolean)
+        default -- infer from cycle
+        True -- use numba
+        False -- don't use numba
+    """
+
+    from . import simdrivejit
+
+    if use_jit is None:
+        use_jit = "Classic" not in str(type(sim_params))
+
+    sim_params_copy = simdrivejit.SimDriveParams() if use_jit else SimDriveParamsClassic()
+
+    for keytup in simdrivejit.param_spec:
+        key = keytup[0]
+        sim_params_copy.__setattr__(key, deepcopy(sim_params.__getattribute__(key)))
+
+    return sim_params_copy  
+
+
 
 class SimDriveClassic(object):
     """Class containing methods for running FASTSim vehicle 
@@ -1287,7 +1316,7 @@ class SimDriveClassic(object):
             if self.sim_params.verbose:
                 print('Warning: Trace miss speed [m/s]:', np.round(self.trace_miss_speed_mps, 5))
                 print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
-        
+
 
 
 class SimAccelTest(SimDriveClassic):
@@ -1443,10 +1472,60 @@ class SimDrivePost(object):
             for i in range(0, len(self.essCurKwh))])
 
 
-# convenience wrappers for backwards compatibility
-def SimDriveJit(cyc_jit, veh_jit):
+def copy_sim_drive(sd:SimDriveClassic, use_jit=None) -> SimDriveClassic:
+    """Returns copy of SimDriveClassic or SimDriveJit as SimDriveClassic.
+    Arguments:
+    ----------
+    sd: instantiated SimDriveClassic or SimDriveJit
+    use_jit: (bool)
+        default(None) -- infer from sd
+        True -- use numba
+        False -- don't use numba
     """
-    Wrapper for simdrivejit.SimDriveJit:
+
+    from . import simdrivejit
+    if use_jit is None:
+        use_jit = "Jit" in str(type(sd))
+
+    if use_jit:
+        sd_copy = simdrivejit.SimDriveJit(
+            cycle.copy_cycle(sd.cyc0, use_jit=use_jit), 
+            vehicle.copy_vehicle(sd.veh, use_jit=use_jit)
+            ) 
+    else:
+        sd_copy = SimDriveClassic(
+            cycle.copy_cycle(sd.cyc0, use_jit=use_jit), 
+            vehicle.copy_vehicle(sd.veh, use_jit=use_jit)
+            ) 
+
+    for keytup in simdrivejit.sim_drive_spec:
+        key = keytup[0]
+        if key == 'cyc':
+            sd_copy.__setattr__(
+                key, 
+                cycle.copy_cycle(sd.__getattribute__(key), use_jit=use_jit))
+        if key == 'cyc0':
+            pass
+        elif key == 'veh':
+            sd_copy.veh = vehicle.copy_vehicle(sd.veh, return_dict=False, use_jit=use_jit)
+        elif key == 'sim_params':
+            sd_copy.sim_params = copy_sim_params(sd.sim_params, use_jit=use_jit)
+        elif key == 'props':
+            sd_copy.props = params.copy_props(sd.props, use_jit=use_jit)
+        else: 
+            # should be ok to deep copy
+            sd_copy.__setattr__(key, deepcopy(sd.__getattribute__(key)))
+        
+    return sd_copy                
+
+
+
+
+# convenience wrappers for backwards compatibility
+# return type hint is for linting purpsoses only
+def SimDriveJit(cyc_jit, veh_jit) -> SimDriveClassic:
+    """
+    Wrapper for simdrivejit.SimDriveJit
     """
     from . import simdrivejit
 
@@ -1456,9 +1535,10 @@ def SimDriveJit(cyc_jit, veh_jit):
 
     return sim_drive_jit
 
-def SimAccelTestJit(cyc_jit, veh_jit):
+# return type hint is for linting purpsoses only
+def SimAccelTestJit(cyc_jit, veh_jit) -> SimAccelTest:
     """
-    Wrapper for simdrivejit.SimAccelTestJit:
+    Wrapper for simdrivejit.SimAccelTestJit
     """
     from . import simdrivejit
 

@@ -9,7 +9,7 @@ from numba.types import string
 from fastsim import parameters, cycle, vehicle, simdrive
 
 
-def build_spec(instance, error='raise', extra=None):
+def build_spec(instance, error='raise', extra=None) -> list:
     """
     Given a FASTSim object instance, returns list of tuples with 
     attribute names and numba types.
@@ -66,7 +66,7 @@ def build_spec(instance, error='raise', extra=None):
 
     spec = []
 
-    def isprop(attr):
+    def isprop(attr) -> bool:
         return isinstance(attr, property)
         
     prop_attrs = [name for (name, _) in inspect.getmembers(type(instance), isprop)]

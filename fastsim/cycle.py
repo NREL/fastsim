@@ -9,7 +9,7 @@ import pandas as pd
 import re
 import sys
 from pathlib import Path
-import copy
+from copy import deepcopy
 import types
 
 # local modules
@@ -113,7 +113,7 @@ class Cycle(object):
 
     ### Properties
 
-    def get_cycMph(self):
+    def get_cycMph(self) -> np.ndarray:
         return self.cycMps * params.mphPerMps
 
     def set_cycMph(self, new_value):
@@ -121,7 +121,7 @@ class Cycle(object):
 
     cycMph = property(get_cycMph, set_cycMph)
 
-    def get_time_s(self):
+    def get_time_s(self) -> np.ndarray:
         return self.cycSecs
 
     def set_time_s(self, new_value):
@@ -131,26 +131,26 @@ class Cycle(object):
 
     # time step deltas
     @property
-    def secs(self):
+    def secs(self) -> np.ndarray:
         return np.append(0.0, self.cycSecs[1:] - self.cycSecs[:-1]) 
 
     @property
-    def dt_s(self):
+    def dt_s(self) -> np.ndarray:
         return self.secs
     
     # distance at each time step
     @property
-    def cycDistMeters(self):
+    def cycDistMeters(self) -> np.ndarray:
         return self.cycMps * self.secs
 
     @property
-    def delta_elev_m(self):
+    def delta_elev_m(self) -> np.ndarray:
         """
         Cumulative elevation change w.r.t. to initial
         """
         return (self.cycDistMeters * self.cycGrade).cumsum()
     
-    def get_cyc_dict(self):
+    def get_cyc_dict(self) -> dict:
         """Returns cycle as dict rather than class instance."""
         keys = STANDARD_CYCLE_KEYS
         
@@ -172,8 +172,9 @@ class Cycle(object):
         return cyc
 
 
-def copy_cycle(cyc, return_dict=False, use_jit=None):
-    """Returns copy of Cycle or CycleJit.
+def copy_cycle(cyc:Cycle, return_dict=False, use_jit=None) -> Cycle:
+    """
+    Returns copy of Cycle or CycleJit.
     Arguments:
     cyc: instantianed Cycle or CycleJit
     return_dict: (Boolean) if True, returns cycle as dict. 
@@ -189,20 +190,18 @@ def copy_cycle(cyc, return_dict=False, use_jit=None):
     from . import cyclejit
     for keytup in cyclejit.cyc_spec:
         key = keytup[0]
-        cyc_dict[key] = cyc.__getattribute__(key)
+        cyc_dict[key] = deepcopy(cyc.__getattribute__(key))
         
     if return_dict:
         return cyc_dict
     
     if use_jit is None:
-        if type(cyc) == Cycle:
-            cyc = Cycle(cyc_dict=cyc_dict)
-        else:
-            cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-    elif use_jit:
+        use_jit = "Jit" in str(type(cyc))
+    
+    cyc = Cycle(cyc_dict=cyc_dict)
+    
+    if use_jit:
         cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-    else:
-        cyc = Cycle(cyc_dict=cyc_dict)
         
     return cyc                
 
@@ -253,7 +252,7 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
     return microtrips
 
 
-def make_cycle(ts, vs, gs=None, rs=None):
+def make_cycle(ts, vs, gs=None, rs=None) -> dict:
     """
     (Array Num) (Array Num) (Array Num)? -> Dict
     Create a cycle from times, speeds, and grades. If grades is not
@@ -280,7 +279,7 @@ def make_cycle(ts, vs, gs=None, rs=None):
             'cycRoadType': np.array(rs)}
 
 
-def equals(c1, c2, verbose=True):
+def equals(c1, c2, verbose=True) -> bool:
     """
     Dict Dict -> Bool
     Returns true if the two cycles are equal, false otherwise
@@ -347,7 +346,7 @@ def concat(cycles, name=None):
     return final_cycle
 
 
-def resample(cycle, new_dt=None, start_time=None, end_time=None,
+def resample(cycle:Cycle, new_dt=None, start_time=None, end_time=None,
              hold_keys=None, rate_keys=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
@@ -422,7 +421,7 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
         except:
             # if the value can't be interpolated, it must not be a numerical
             # array. Just add it back in as is.
-            new_cycle[k] = copy.deepcopy(cycle[k])
+            new_cycle[k] = deepcopy(cycle[k])
     return new_cycle
 
 
