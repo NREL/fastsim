@@ -29,6 +29,7 @@ class TestSocCorrection(unittest.TestCase):
             'fuel_kJ': [],
             'soc_corrected_fuel_kJ': [],
             'equivalent_fuel_kJ': [],
+            'percent_error': [],
         }
         for cyc_name in cyc_names:
             cyc = fastsim.cycle.Cycle(cyc_name)
@@ -47,10 +48,17 @@ class TestSocCorrection(unittest.TestCase):
                 results['equivalent_fuel_kJ'].append(equivalent_fuel_kJ)
                 results['soc_corrected_fuel_kJ'].append(sd0.fuelKj)
                 err_percent = ((equivalent_fuel_kJ - sd0.fuelKj) * 100.0) / sd0.fuelKj
+                results['percent_error'].append(err_percent)
                 self.assertTrue(
                     np.abs(err_percent) < 2.0,
                     msg=f'Not within 2% for soc0={initSoc} & cycle={cyc_name}; {err_percent} %'
                 )
+        total_absolute_percent_error = sum([abs(x) for x in results['percent_error']])
+        average_absolute_percent_error = total_absolute_percent_error / len(results['percent_error'])
+        if True:
+            print(f"Total Absolute Percent Error: {total_absolute_percent_error}")
+            print(f"Average Absolute Percent Error: {average_absolute_percent_error}")
+        self.assertTrue(average_absolute_percent_error < 1.0)
         if DO_PLOTS:
             import matplotlib.pyplot as plt
             import seaborn as sns
