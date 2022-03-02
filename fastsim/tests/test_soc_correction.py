@@ -21,7 +21,7 @@ class TestSocCorrection(unittest.TestCase):
     def test_that_soc_correction_method_works(self):
         "Test using an SOC equivalency method versus other techniques"
         veh = fastsim.vehicle.Vehicle(11) # Toyota Highlander Hybrid
-        cyc_names = ['udds', 'us06', 'hwfet'] #, 'longHaulDriveCycle']
+        cyc_names = ['udds', 'us06', 'hwfet']
         results = {
             'cycle': [],
             'init_soc': [],
@@ -35,69 +35,22 @@ class TestSocCorrection(unittest.TestCase):
 
             sd0 = fastsim.simdrive.SimDriveClassic(cyc, veh)
             sd0.sim_drive() # with SOC correction
-            for initSoc in np.linspace(veh.minSoc, veh.maxSoc, 10, endpoint=True): # [(veh.minSoc + veh.maxSoc)/2.0]
+            for initSoc in np.linspace(veh.minSoc, veh.maxSoc, 10, endpoint=True):
                 sd = fastsim.simdrive.SimDriveClassic(cyc, veh)
                 sd.sim_drive(initSoc)
+                equivalent_fuel_kJ = fastsim.simdrive.estimate_corrected_fuel_kJ(sd)
                 delta_soc = sd.soc[-1] - sd.soc[0]
-                essDischgKj = sd.essKwOutAch * sd.cyc.dt_s
-                charge = essDischgKj < 0.0
-                discharge = essDischgKj > 0.0
-                ess_eff = np.sqrt(veh.essRoundTripEff)
-                mc_chg_eff = np.abs(sd.mcElecKwInAch[charge].sum() / sd.mcMechKwOutAch[charge].sum())
-                if not discharge.any():
-                    mc_dis_eff = mc_chg_eff
-                else:
-                    mc_dis_eff = np.abs(sd.mcMechKwOutAch[discharge].sum() / sd.mcElecKwInAch[discharge].sum())
-                fc_eff = sd.fcKwOutAch.sum() / sd.fcKwInAch.sum()
-                regen_kJ = sd.transKwInAch[charge] * sd.cyc.dt_s[charge]
-                regen_kJ[regen_kJ > 0.0] = 0.0
-                regen_kJ = -1.0 * regen_kJ
-                fc_charge_kJ = (sd.fcKwOutAch[charge] * sd.cyc.dt_s[charge] - regen_kJ)
-                fc_charge_kJ[fc_charge_kJ < 0] = 0.0
-                mc_regen_in_kJ = sd.mcMechKwOutAch[charge] * sd.cyc.dt_s[charge]
-                mc_regen_in_kJ[mc_regen_in_kJ > 0.0] = 0.0
-                mc_regen_in_kJ = -1.0 * mc_regen_in_kJ
-                charge = sd.mcMechKwOutAch < 0.0
-                E_chg_kJ = (sd.mcMechKwOutAch[charge] * sd.cyc.dt_s[charge]).sum()
-                mask = np.logical_and(charge, sd.transKwInAch < 0.0)
-                E_tx_chg_kJ = (sd.transKwInAch[mask] * sd.cyc.dt_s[mask]).sum()
-                motoring = sd.transKwInAch > 0.0
-                fc_eff = sd.fcKwOutAch[motoring].sum() / sd.fcKwInAch[motoring].sum()
-                mask = sd.mcMechKwOutAch > 0.0
-                if not mask.any():
-                    mc_dis_eff = mc_chg_eff
-                else:
-                    mc_dis_eff = np.abs(sd.mcMechKwOutAch[mask].sum() / sd.mcElecKwInAch[mask].sum())
-                kJ__kWh = 3600.0
-                mask = sd.mcElecKwInAch > 0.0
-                if not mask.any():
-                    ess_traction_frac = 1.0
-                else:
-                    ess_traction_frac = sd.mcElecKwInAch[mask].sum() / sd.essKwOutAch[mask].sum()
-                my_k = 1.0
-                if delta_soc >= 0.0:
-                    my_k = (veh.maxEssKwh * kJ__kWh * ess_eff * mc_dis_eff * ess_traction_frac) / fc_eff
-                    equivalent_fuel_kJ = -1.0 * delta_soc * my_k
-                else:
-                    my_k = (veh.maxEssKwh * kJ__kWh) / (ess_eff * mc_chg_eff * fc_eff)
-                    equivalent_fuel_kJ = -1.0 * delta_soc * my_k
-                my_c = my_k / 100.0
                 results['cycle'].append(cyc_name)
                 results['init_soc'].append(initSoc)
                 results['delta_soc'].append(delta_soc)
                 results['fuel_kJ'].append(sd.fuelKj)
                 results['equivalent_fuel_kJ'].append(equivalent_fuel_kJ)
                 results['soc_corrected_fuel_kJ'].append(sd0.fuelKj)
-                expected_fuel_estimate_kJ = sd.fuelKj + equivalent_fuel_kJ
-                actual_fuel_estimate_kJ = fastsim.simdrive.estimate_corrected_fuel_kJ(sd)
-                self.assertAlmostEqual(
-                    expected_fuel_estimate_kJ, actual_fuel_estimate_kJ, -1,
-                    msg=f'Discrepancy for soc0={initSoc} & cycle={cyc_name}'
+                err_percent = ((equivalent_fuel_kJ - sd0.fuelKj) * 100.0) / sd0.fuelKj
+                self.assertTrue(
+                    np.abs(err_percent) < 2.0,
+                    msg=f'Not within 2% for soc0={initSoc} & cycle={cyc_name}; {err_percent} %'
                 )
-                if delta_soc == 0.0:
-                    c = 0.0
-                else:
-                    c = (sd.fuelKj - sd0.fuelKj) / (delta_soc * 100) 
         if DO_PLOTS:
             import matplotlib.pyplot as plt
             import seaborn as sns
