@@ -1,9 +1,10 @@
 extern crate ndarray;
 use pyo3::prelude::*;
 
+mod params;
+
 mod cycle;
 use cycle::*;
-
 
 
 /// Function for adding Rust structs as Python Classes
