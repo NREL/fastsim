@@ -6,6 +6,7 @@ from fastsim import parameters as params
 import seaborn as sns
 import matplotlib.pyplot as plt
 from numba import njit
+import re
 
 from fastsim import parameters
 
@@ -177,3 +178,8 @@ def rollav(x, y, width=10):
                 dx[i-width:i] * y[i-width:i]).sum() / (
                     x[i] - x[i-width])
     return yroll
+
+def camel_to_snake(name):
+    "Given camelCase, returns snake_case."
+    name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
