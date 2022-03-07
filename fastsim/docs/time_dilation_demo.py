@@ -21,29 +21,27 @@ from fastsim import parameters as params
 # %%
 
 t0 = time.time()
-cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(
+cyc = cycle.Cycle.from_dict(cyc_dict=cycle.clip_by_times(
    cycle.Cycle.from_file('longHaulDriveCycle').get_cyc_dict(),
     t_end=18_000, t_start=1_800))
-cyc_jit = cyc.get_numba_cyc()
 print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
 
 
 t0 = time.time()
 veh = vehicle.Vehicle('Line_Haul_Conv.csv')
 veh.vehKg *= 2
-veh_jit = veh.get_numba_veh()
 print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 
 
 t0 = time.time()
 
-sd_fixed = simdrive.SimDriveJit(cyc_jit, veh_jit)
+sd_fixed = simdrive.SimDriveClassic(cyc, veh)
 sim_params = sd_fixed.sim_params
 sim_params.missed_trace_correction=True
 sim_params.min_time_dilation = 1
 sim_params.time_dilation_tol = 1e-1
 
-sd_base = simdrive.SimDriveJit(cyc_jit, veh_jit)
+sd_base = simdrive.SimDriveClassic(cyc, veh)
 
 sd_fixed.sim_drive() 
 sd_base.sim_drive()
@@ -53,7 +51,7 @@ t_delta = time.time() - t0
 print('Time to run sim_drive: {:.3f} s'.format(t_delta))
 print('Mean number of trace miss iterations: {:.3f}'.format(sd_fixed.trace_miss_iters.mean()))
 print('Distance percent error w.r.t. base cycle: {:.3%}'.format(
-    (sd_fixed.distMeters.sum() - cyc.cycDistMeters.sum()) / cyc.cycDistMeters.sum()))
+    (sd_fixed.distMeters.sum() - cyc.dist_m.sum()) / cyc.dist_m.sum()))
 
 # elevation delta based on dilated cycle secs
 delta_elev_dilated = (sd_fixed.cyc.grade * sd_fixed.cyc.dt_s * sd_fixed.cyc.mps).sum()
@@ -118,7 +116,7 @@ plt.plot(sd_fixed.cyc.time_s,
     (np.interp(
     sd_fixed.cyc.time_s, 
     cyc.time_s, 
-    cyc.cycDistMeters.cumsum()) - sd_fixed.distMeters.cumsum())
+    cyc.dist_m.cumsum()) - sd_fixed.distMeters.cumsum())
          / 1e3)
 # plt.grid()
 plt.xlabel('Time [s]')
@@ -128,7 +126,7 @@ plt.tight_layout()
 plt.show()
 
 plt.figure()
-plt.plot((cyc.cycDistMeters.cumsum() -
+plt.plot((cyc.dist_m.cumsum() -
          sd_fixed.distMeters.cumsum()))
 # plt.grid()
 plt.xlabel('Index')
@@ -197,5 +195,6 @@ plt.xlabel('Index')
 plt.ylabel('Time Dilation')
 plt.title('Time Dilation, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
 plt.show()
+
 
 

@@ -14,13 +14,12 @@ import fastsim as fsim
 
 veh = fsim.vehicle.Vehicle(11, verbose=False)
 # contrived cycles for this example
-cycs = [fsim.cycle.Cycle('udds')] * 1_000
+cycs = [fsim.cycle.Cycle.from_file('udds')] * 1_000
 
 def run_sd(cyc_num: int):
-    # convert to jit inside the parallelized function to allow for pickling
-    cyc_jit = cycs[cyc_num].get_numba_cyc()
-    veh_jit = veh.get_numba_veh()
-    sd = fsim.simdrive.SimDriveJit(cyc_jit, veh_jit)
+    # convert to compiled version inside the parallelized function to allow for pickling
+    cyc = cycs[cyc_num]
+    sd = fsim.simdrive.SimDriveClassic(cyc, veh)
     sd.sim_drive()
     if cyc_num % 100 == 0:
         print(f"Finished cycle {cyc_num}")

@@ -7,7 +7,6 @@ import numpy as np
 from fastsim import parameters as params
 import seaborn as sns
 import matplotlib.pyplot as plt
-from numba import njit
 import re
 
 from fastsim import parameters
@@ -17,7 +16,7 @@ sns.set()
 props = parameters.PhysicalProperties()
 R_air = 287  # J/(kg*K)
 
-@njit
+
 def get_rho_air(temperature_degC, elevation_m=180):
     """Returns air density [kg/m**3] for given elevation and temperature.
     Source: https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html

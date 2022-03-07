@@ -21,31 +21,22 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     mps[0] = 0.
     mps = np.array(mps)
     time_s = np.arange(0, length_in_seconds, 1. / hz)
-    cycGrade = np.array([float(grade)] * (length_in_seconds * hz))
+    grade = np.array([float(grade)] * (length_in_seconds * hz))
     road_type = np.zeros(length_in_seconds * hz)
-    cyc = {'mps': mps, 'time_s': time_s, 'cycGrade': cycGrade, 'road_type':road_type}
+    cyc = {'mps': mps, 'time_s': time_s, 'grade': grade, 'road_type':road_type}
     return cyc
 
-def main(use_jitclass=True):
+def main():
     """
     Arguments:
     ----------
-    use_jitclass : Boolean
-        if True, use numba jitclass"""
+    """
 
     # just use first vehicle in default database
     for i in range(1,27):
-        if use_jitclass:
-            veh = vehicle.Vehicle(i).get_numba_veh()
-            accel_cyc = cycle.Cycle(std_cyc_name=None,
-                cyc_dict=create_accel_cyc()).get_numba_cyc()
-            accel_out = simdrive.SimAccelTestJit(accel_cyc, veh)
-
-        else:
-            veh = vehicle.Vehicle(i)
-            accel_cyc = cycle.Cycle(std_cyc_name=None,
-                cyc_dict=create_accel_cyc())
-            accel_out = simdrive.SimAccelTest(accel_cyc, veh)
+        veh = vehicle.Vehicle(i)
+        accel_cyc = cycle.Cycle.from_dict(cyc_dict=create_accel_cyc())
+        accel_out = simdrive.SimAccelTest(accel_cyc, veh)
         
         accel_out.sim_drive()
         acvhd_0_to_acc_speed_secs = simdrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']

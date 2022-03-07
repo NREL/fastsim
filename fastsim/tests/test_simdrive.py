@@ -38,12 +38,12 @@ class TestSimDriveClassic(unittest.TestCase):
 
         print(f"Running {type(self)}.test_split_cycles.")
         t_clip = 210 # speed is non-zero here
-        cyc1 = cycle.Cycle(
-            cyc_dict=(cycle.clip_by_times(cycle.Cycle('udds').get_cyc_dict(), t_end=t_clip))
+        cyc1 = cycle.Cycle.from_dict(
+            cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(), t_end=t_clip))
             )
         t_end =cycle.Cycle.from_file('udds').time_s[-1]
-        cyc2 = cycle.Cycle(
-            cyc_dict=(cycle.clip_by_times(cycle.Cycle('udds').get_cyc_dict(), 
+        cyc2 = cycle.Cycle.from_dict(
+            cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(), 
             t_start=t_clip, t_end=t_end))
             )
 
@@ -69,7 +69,7 @@ class TestSimDriveClassic(unittest.TestCase):
 
     def test_time_dilation(self):
         veh = vehicle.Vehicle(1)
-        cyc = cycle.Cycle(cyc_dict={
+        cyc = cycle.Cycle.from_dict(cyc_dict={
             'time_s': np.arange(10),
             'mps': np.append(2, np.ones(9) * 6),
         })
@@ -79,13 +79,13 @@ class TestSimDriveClassic(unittest.TestCase):
         sd.sim_drive()
 
         trace_miss_corrected = (
-            abs(sd.distMeters.sum() - sd.cyc0.cycDistMeters.sum()) / sd.cyc0.cycDistMeters.sum()) < sd.sim_params.time_dilation_tol
+            abs(sd.distMeters.sum() - sd.cyc0.dist_m.sum()) / sd.cyc0.dist_m.sum()) < sd.sim_params.time_dilation_tol
 
         self.assertTrue(trace_miss_corrected)
 
     def test_stop_start(self):
         cyc =cycle.Cycle.from_file('udds').get_cyc_dict()
-        cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(cyc, 130))
+        cyc = cycle.Cycle.from_dict(cyc_dict=cycle.clip_by_times(cyc, 130))
 
         veh = vehicle.Vehicle(1)
         veh.stopStart = True

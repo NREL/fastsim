@@ -14,9 +14,8 @@ class TestVehicle(unittest.TestCase):
         
         print(f"Running {type(self)}.test_equal.")
         veh = vehicle.Vehicle(1, verbose=False)
-        veh_jit = veh.get_numba_veh()
-        veh_jit_copy = vehicle.copy_vehicle(veh_jit)
-        self.assertTrue(vehicle.veh_equal(veh_jit, veh_jit_copy))
+        veh_copy = vehicle.copy_vehicle(veh)
+        self.assertTrue(vehicle.veh_equal(veh, veh_copy))
 
     def test_properties(self):
         """Verify that some of the property variables are working as expected."""
@@ -37,7 +36,7 @@ class TestVehicle(unittest.TestCase):
         self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
 
     def test_set_dependents(self):
-        veh = vehicle.Vehicle(1).get_numba_veh()
+        veh = vehicle.Vehicle(1)
         veh.set_dependents()
 
     def test_file_overrides(self):
@@ -49,4 +48,4 @@ class TestVehicle(unittest.TestCase):
 
 if __name__ == '__main__':
     from fastsim import vehicle 
-    veh = vehicle.Vehicle(1).get_numba_veh()
+    veh = vehicle.Vehicle(1)

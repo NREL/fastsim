@@ -40,15 +40,6 @@ class PhysicalProperties(object):
     fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)
 
 
-def PhysicalPropertiesJit():
-    "Wrapper for parametersjit: "
-    from . import parametersjit
-
-    props = parametersjit.PhysicalPropertiesJit()
-    PhysicalPropertiesJit.__doc__ += props.__doc__
-
-    return props
-
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
 fcPwrOutPerc = np.array(

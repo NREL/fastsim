@@ -10,10 +10,11 @@ import re
 from pathlib import Path
 import inspect
 import ast
-import warnings
+import copy
 
 # local modules
 from fastsim import parameters as params
+from . import utils
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -286,7 +287,6 @@ class Vehicle(object):
         
         self.set_init_calcs(
             # provide kwargs for load-time overrides
-            # -1 is used as a surrogate for None, which is not an option in numba
             **{opt_init_param: veh_dict.pop(opt_init_param, -1) for opt_init_param in OPT_INIT_PARAMS}
         )
         self.set_veh_mass()
@@ -505,41 +505,22 @@ class Vehicle(object):
     fcPeakEff = property(get_fcPeakEff, set_fcPeakEff)
 
 
-def copy_vehicle(veh, return_dict=False, use_jit=None):
-    """Returns copy of Vehicle or VehicleJit.
+def copy_vehicle(veh:Vehicle, return_dict=False, use_rust=None):
+    """Returns copy of Vehicle.
     Arguments:
-    veh: instantiated Vehicle or VehicleJit
+    veh: instantiated Vehicle
     return_dict: (Boolean) if True, returns vehicle as dict. 
-        Otherwise, returns exact copy.
-    use_jit: (Boolean)
-        default -- infer from arg
-        True -- use numba
-        False -- don't use numba
     """
 
     veh_dict = {}
 
-    for key in veh.__dir__():
-        if (not key.startswith('_')) and \
-                (type(veh.__getattribute__(key)) != pytypes.MethodType):
-            veh_dict[key] = veh.__getattribute__(key)
+    for key in utils.get_attrs(veh):
+        veh_dict[key] = copy.deepcopy(veh.__getattribute__(key))
 
     if return_dict:
         return veh_dict
         
-    if use_jit is None:
-        from . import vehiclejit
-        if type(veh) == Vehicle:
-            veh = Vehicle(veh_dict=veh_dict)
-        elif type(veh) == type(vehiclejit.VehicleJit()):
-            # expects `veh` to be instantiated VehicleJit
-            veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
-        else:
-            raise TypeError('Did not receive either fastsim.vehicle.Vehicle() or fastsim.vehiclejit.VehicleJit()')
-    elif use_jit:
-        veh = Vehicle(veh_dict=veh_dict).get_numba_veh()
-    else:
-        veh = Vehicle(veh_dict=veh_dict)
+    veh = Vehicle(veh_dict=veh_dict)
 
     return veh  
 

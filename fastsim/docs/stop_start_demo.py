@@ -23,24 +23,22 @@ from fastsim import simdrive, cycle, vehicle
 
 # %%
 t0 = time.time()
-# cyc = cycle.Cycle(cyc_dict=
-#                   cycle.clip_by_times(cycle.Cycle("udds").get_cyc_dict(), 130))
-cyc =cycle.Cycle.from_file('udds').get_cyc_dict()
-cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(cyc, 130))
-cyc_jit = cyc.get_numba_cyc()
+# cyc = cycle.Cycle.from_dict(cyc_dict=
+#                   cycle.clip_by_times(cycle.Cycle.from_file("udds").get_cyc_dict(), 130))
+cyc = cycle.Cycle.from_file('udds').get_cyc_dict()
+cyc = cycle.Cycle.from_dict(cycle.clip_by_times(cyc, 130))
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 
 
 # %%
 t0 = time.time()
 vehno = 1
-veh0 = vehicle.Vehicle(vehno).get_numba_veh()
+veh0 = vehicle.Vehicle(vehno)
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 
 
 # %%
 t0 = time.time()
-# veh1 = vehicle.Vehicle(28).get_numba_veh()
 veh1 = vehicle.Vehicle(vehno)
 veh1.stopStart = True
 veh1.maxMotorKw = 1
@@ -48,15 +46,14 @@ veh1.maxEssKw = 5
 veh1.maxEssKwh = 1
 veh1.set_init_calcs()
 veh1.vehKg = veh0.vehKg
-veh1 = veh1.get_numba_veh()
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 
 
 # %%
 t0 = time.time()
-sim_drive0 = simdrive.SimDriveJit(cyc_jit, veh0)
+sim_drive0 = simdrive.SimDriveClassic(cyc, veh0)
 sim_drive0.sim_drive()
-sim_drive1 = simdrive.SimDriveJit(cyc_jit, veh1)
+sim_drive1 = simdrive.SimDriveClassic(cyc, veh1)
 sim_drive1.sim_drive()
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 

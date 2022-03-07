@@ -14,14 +14,13 @@ import unittest
 from fastsim import simdrive, vehicle, cycle
 
 
-def main(use_jitclass=True, err_tol=1e-4, verbose=True, sim_drive_verbose=False):
+def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
     """Runs test test for 26 vehicles and 3 cycles.  
     Test compares cumulative positive and negative energy 
     values to a benchmark from earlier.
     
     Arguments:
     ----------
-    use_jitclass : use numba or not, default True
     err_tol : error tolerance
         default of 1e-4 was selected to prevent minor errors from showing.  
         As of 31 December 2020, a recent python update caused errors that 
@@ -41,15 +40,12 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True, sim_drive_verbose=False)
 
     cyc_names = ['udds', 'hwfet', 'us06']
     cycs = {
-        cyc_name: cycle.Cycle(cyc_name).get_numba_cyc() if use_jitclass else 
-            cycle.Cycle(cyc_name) for cyc_name in cyc_names
+        cyc_name: cycle.Cycle.from_file(cyc_name) for cyc_name in cyc_names
         }
 
     vehnos = np.arange(1, 27)
 
     veh = vehicle.Vehicle(1, verbose=False)
-    if use_jitclass:
-        veh = veh.get_numba_veh()
     energyAuditErrors = []
 
     dict_diag = {}
@@ -63,13 +59,7 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True, sim_drive_verbose=False)
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
                 veh = vehicle.Vehicle(vehno, verbose=False)
-                if use_jitclass:
-                    veh = veh.get_numba_veh()
-
-            if use_jitclass:
-                sim_drive = simdrive.SimDriveJit(cyc, veh)
-            else:
-                sim_drive = simdrive.SimDriveClassic(cyc, veh)
+            sim_drive = simdrive.SimDriveClassic(cyc, veh)
             # US06 is known to cause substantial trace miss.
             # This should probably be addressed at some point, but for now, 
             # the tolerances are set high to avoid lots of printed warnings.
@@ -137,18 +127,11 @@ def main(use_jitclass=True, err_tol=1e-4, verbose=True, sim_drive_verbose=False)
     return df_err, df, df0
 
 class TestSimDriveSweep(unittest.TestCase):
-    def test_with_jit(self):
-        "Compares jit results against benchmark."
-        print(f"Running {type(self)}.test_with_jit.") 
-        df_err, _, _ = main(use_jitclass=True, verbose=True)
+    def test_sweep(self):
+        "Compares results against benchmark."
+        print(f"Running {type(self)}.") 
+        df_err, _, _ = main(verbose=True)
         self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
-
-    # this implicitly works if test_with_jit works, but may 
-    # def test_without_jit(self):
-    #     "Compares non-jit results against benchmark."
-    #     print('Running TestSimDriveSweep.test_without_jit')
-    #     df_err, _, _ = main(use_jitclass=False)
-    #     self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
         
 if __name__ == '__main__':
-    df_err, df, df0 = main(use_jitclass=False)
+    df_err, df, df0 = main()

@@ -36,10 +36,10 @@ class Cycle(object):
     for drive cycle.  Instantiate with the `from_file` or `from_dict` method.  
     """
 
-    time_s: np.ndarray
-    mps: np.ndarray
-    grade: np.ndarray
-    road_type: np.ndarray
+    time_s: np.ndarray(1, dtype=float)
+    mps: np.ndarray(1, dtype=float)
+    grade: np.ndarray(1, dtype=float)
+    road_type: np.ndarray(1, dtype=float)
     name: str
 
     @classmethod
@@ -63,7 +63,7 @@ class Cycle(object):
             
         cyc_df = pd.read_csv(filename)
         cyc_dict = cyc_df.to_dict(orient='list')
-        cyc_dict = {key:np.array(val) for key, val in cyc_dict.items()}
+        cyc_dict = {key:np.array(val, dtype=float) for key, val in cyc_dict.items()}
         cyc_dict['name'] = filename.stem
 
         return cls.from_dict(cyc_dict)
@@ -92,7 +92,6 @@ class Cycle(object):
         assert len(set(new_cyc_dict.keys()) - set(STANDARD_CYCLE_KEYS)) == 0
         return cls(**new_cyc_dict)
 
-
     def get_numba_cyc(self):
         """Deprecated."""
         raise NotImplementedError("This method has been deprecated.  Use get_rust_cyc instead.")
@@ -110,7 +109,7 @@ class Cycle(object):
     # time step deltas
     @property
     def dt_s(self) -> np.ndarray:
-        return np.diff(self.time_s, prepend=0)
+        return np.array(np.diff(self.time_s, prepend=0), dtype=float)
     
     # distance at each time step
     @property
@@ -148,7 +147,7 @@ class LegacyCycle(object):
         Given cycle, returns legacy cycle.
         """
         for key, val in NEW_TO_OLD.items():
-            self.__setattr__(val, cycle.__getattribute__(key))
+            self.__setattr__(val, copy.deepcopy(cycle.__getattribute__(key)))
 
 
 def copy_cycle(cyc, return_dict=False):
@@ -157,17 +156,18 @@ def copy_cycle(cyc, return_dict=False):
     cyc: instantianed Cycle or CycleJit
     return_dict: (Boolean) if True, returns cycle as dict. 
         Otherwise, returns exact copy.
-    use_jit: (Boolean)
-        default -- infer from cycle
-        True -- use numba
-        False -- don't use numba
     """
 
     cyc_dict = {}
 
     for key in utils.get_attrs(cyc):
-        cyc_dict[key] = copy.deepcopy(cyc.__getattribute__(key))
-        
+        val_to_copy = cyc.__getattribute__(key)
+        if type(val_to_copy) == np.ndarray:
+            # has to be float or time_s will get converted to int
+            cyc_dict[key] = np.array(copy.deepcopy(val_to_copy), dtype=float)
+        else:
+            cyc_dict[key] = copy.deepcopy(val_to_copy)
+
     if return_dict:
         return cyc_dict
     

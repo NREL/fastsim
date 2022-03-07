@@ -259,7 +259,6 @@ class SimDriveClassic(object):
         ###  Assign First Values  ###
         ### Drive Train
         self.init_arrays() # reinitialize arrays for each new run
-        # in above, arguments must be explicit for numba
         if not((auxInKwOverride == 0).all()):
             self.auxInKw = auxInKwOverride
         
@@ -271,7 +270,9 @@ class SimDriveClassic(object):
         self.mphAch[0] = self.cyc0.mph[0]
 
         if self.sim_params.missed_trace_correction:
-            self.cyc = self.cyc0.copy() # reset the cycle in case it has been manipulated
+            self.cyc = cycle.copy_cycle(self.cyc0) # reset the cycle in case it has been manipulated
+            print('copy type')
+            print(type(self.cyc.time_s[1]))
 
         self.i = 1 # time step counter
         while self.i < len(self.cyc.time_s):
@@ -1152,6 +1153,15 @@ class SimDriveClassic(object):
             ]
 
             # add time dilation factor * step size to current and subsequent times
+            print('time_s')
+            print(type(self.cyc.time_s[i]))
+            print(self.cyc.time_s[i])
+            print('dt_s')
+            print(type(self.cyc.dt_s[i]))
+            print(self.cyc.dt_s[i])
+            print('t_dilation')
+            print(type(t_dilation[-1]))
+            print(t_dilation[-1])
             self.cyc.time_s[i:] += self.cyc.dt_s[i] * t_dilation[-1]
             self.solve_step(i)
             trace_met = (

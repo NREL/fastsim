@@ -19,8 +19,6 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
     Arguments:
     ----------
     veh : vehicle.Vehicle() or vehicle.TypedVehicle() instance.  
-        If TypedVehicle instance is provided, simdrive.SimDriveJit() instance will be used.  
-        Otherwise, simdrive.SimDriveClassic() instance will be used.
     full_detail : boolean, default False
         If True, sim_drive objects for each cycle are also returned.  
     verbose : boolean, default false
@@ -31,7 +29,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
         Override for chgEff -- currently not functional
         
     Returns label fuel economy values as a dict and (optionally)
-    simdrive.SimDriveJit objects."""
+    simdrive.SimDriveClassic objects."""
 
     cyc = {}
     sd = {}
@@ -44,25 +42,12 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
                 'mps': np.append([0],
                 np.ones(len(accel_cyc_secs) - 1) * 90 / params.MPH_PER_MPS)}
 
-    if 'VehicleJit' in str(type(veh)):
-        cyc['accel'] = cycle.Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-        cyc['udds'] = cyc_udds.get_numba_cyc()
-        cyc['hwy'] = cyc_hwfet.get_numba_cyc()
+    cyc['accel'] = cycle.Cycle.from_dict(cyc_dict)
+    cyc['udds'] = cycle.copy_cycle(cyc_udds)
+    cyc['hwy'] = cycle.copy_cycle(cyc_hwfet)
 
-        sd['udds'] = simdrive.SimDriveJit(cyc['udds'], veh)
-        sd['hwy'] = simdrive.SimDriveJit(cyc['hwy'], veh)
-        
-        out['numba_used'] = True
-
-    else:
-        cyc['accel'] = cycle.Cycle(cyc_dict=cyc_dict)
-        cyc['udds'] = cyc_udds.copy()
-        cyc['hwy'] = cyc_hwfet.copy()
-
-        sd['udds'] = simdrive.SimDriveClassic(cyc['udds'], veh)
-        sd['hwy'] = simdrive.SimDriveClassic(cyc['hwy'], veh)
-
-        out['numba_used'] = False
+    sd['udds'] = simdrive.SimDriveClassic(cyc['udds'], veh)
+    sd['hwy'] = simdrive.SimDriveClassic(cyc['hwy'], veh)
 
     # run simdrive for non-phev powertrains
     sd['udds'].sim_params.verbose = sim_drive_verbose
