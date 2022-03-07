@@ -1,6 +1,5 @@
 import numpy as np
 
-from fastsim import cycle, vehicle, simdrivehot
 
 def get_error_val(model, test, time_steps, normalize=True):
     """Returns time-averaged error for model and test signal.

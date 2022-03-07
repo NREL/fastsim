@@ -25,7 +25,7 @@ from fastsim import simdrive, cycle, vehicle
 t0 = time.time()
 # cyc = cycle.Cycle(cyc_dict=
 #                   cycle.clip_by_times(cycle.Cycle("udds").get_cyc_dict(), 130))
-cyc = cycle.Cycle('udds').get_cyc_dict()
+cyc =cycle.Cycle.from_file('udds').get_cyc_dict()
 cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(cyc, 130))
 cyc_jit = cyc.get_numba_cyc()
 print(f"Elapsed time: {time.time() - t0:.3e} s")

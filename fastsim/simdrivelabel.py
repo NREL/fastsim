@@ -7,8 +7,8 @@ from scipy.interpolate import interp1d
 from fastsim import simdrive, cycle, vehicle
 from fastsim import parameters as params
 
-cyc_udds = cycle.Cycle('udds')
-cyc_hwfet = cycle.Cycle('hwfet')
+cyc_udds = cycle.Cycle.from_file('udds')
+cyc_hwfet = cycle.Cycle.from_file('hwfet')
 
 sim_params = simdrive.SimDriveParamsClassic()
 props = params.PhysicalProperties()
@@ -42,7 +42,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
     accel_cyc_secs = np.arange(0, 300, 0.1)
     cyc_dict = {'cycSecs': accel_cyc_secs,
                 'mps': np.append([0],
-                np.ones(len(accel_cyc_secs) - 1) * 90 / params.mphPerMps)}
+                np.ones(len(accel_cyc_secs) - 1) * 90 / params.MPH_PER_MPS)}
 
     if 'VehicleJit' in str(type(veh)):
         cyc['accel'] = cycle.Cycle(cyc_dict=cyc_dict).get_numba_cyc()
@@ -174,7 +174,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
 
             phev_calcs = {} # init dict for phev calcs
             phev_calcs['regenSocBuffer'] = min(
-                ((0.5 * veh.vehKg * ((60 * (1 / params.mphPerMps)) ** 2)) * (1 / 3600) * (1 / 1000)
+                ((0.5 * veh.vehKg * ((60 * (1 / params.MPH_PER_MPS)) ** 2)) * (1 / 3600) * (1 / 1000)
                 * veh.maxRegen * veh.mcPeakEff) / veh.maxEssKwh,
                 (veh.maxSoc - veh.minSoc) / 2
             )

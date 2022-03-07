@@ -81,7 +81,7 @@ class TestCycle(unittest.TestCase):
     def test_load_dict(self):
         "checks that conversion from dict works"
         print(f"Running {type(self)}.test_load_dict.")
-        cyc = cycle.Cycle('udds')
+        cyc =cycle.Cycle.from_file('udds')
         cyc_df = pd.read_csv(Path(cycle.__file__).parent / 'resources/cycles/udds.csv')
         cyc_dict = cyc_df.to_dict(orient='list')
         cyc_dict.update({'name': 'udds'})
@@ -134,8 +134,8 @@ class TestCycle(unittest.TestCase):
     
     def test_duration_of_concatenated_cycles_is_the_sum_of_the_components(self):
         "Test that two cycles concatenated have the same duration as the sum of the constituents"
-        cyc1 = cycle.Cycle('udds')
-        cyc2 = cycle.Cycle('us06')
+        cyc1 =cycle.Cycle.from_file('udds')
+        cyc2 =cycle.Cycle.from_file('us06')
         cyc_concat12 = cycle.concat([cyc1.get_cyc_dict(), cyc2.get_cyc_dict()])
         cyc_concat21 = cycle.concat([cyc2.get_cyc_dict(), cyc1.get_cyc_dict()])
         cyc12 = cycle.Cycle(cyc_dict=cyc_concat12)
@@ -194,7 +194,7 @@ class TestCycle(unittest.TestCase):
         "Test that 'hold_keys' works with resampling"
         trapz = cycle.make_cycle(
             [0.0, 10.0, 20.0, 30.0],
-            [0.0, 40.0 / params.mphPerMps, 40.0 / params.mphPerMps, 0.0])
+            [0.0, 40.0 / params.MPH_PER_MPS, 40.0 / params.MPH_PER_MPS, 0.0])
         trapz['auxInKw'] = [1.0, 1.0, 3.0, 3.0]
         trapz_at_1hz = cycle.resample(trapz, new_dt=1.0, hold_keys={'auxInKw'})
         self.assertTrue(len(trapz_at_1hz['auxInKw']) == len(trapz_at_1hz['cycSecs']),
@@ -299,7 +299,7 @@ class TestCycle(unittest.TestCase):
 
     def test_that_copy_creates_idential_structures(self):
         "Checks that copy methods produce identical cycles"
-        udds = cycle.Cycle('udds')
+        udds =cycle.Cycle.from_file('udds')
         another_udds = udds.copy()
         self.assertTrue(udds.get_cyc_dict(), another_udds.get_cyc_dict())
     

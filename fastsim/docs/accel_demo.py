@@ -17,7 +17,7 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     grade @ 0 and hz @ 10 also matches XL version settings
     """
 
-    mps = np.array([(1 / params.mphPerMps) * float(spd_mph)] * (length_in_seconds * hz))
+    mps = np.array([(1 / params.MPH_PER_MPS) * float(spd_mph)] * (length_in_seconds * hz))
     mps[0] = 0.
     mps = np.array(mps)
     cycSecs = np.arange(0, length_in_seconds, 1. / hz)

@@ -1,6 +1,6 @@
 """Various optional utilities that may support some applications of FASTSim."""
 
-from types import Callable
+from typing import Callable
 import inspect
 from scipy.optimize import curve_fit
 import numpy as np
@@ -68,10 +68,10 @@ def abc_to_drag_coeffs(veh_kg, veh_fa_m2, a, b, c, show_plots=False):
         return out
 
     (dragCoef, wheelRrCoef), pcov = curve_fit(model_func_lb,
-                                              xdata=speed_mph / params.mphPerMps,
+                                              xdata=speed_mph / params.MPH_PER_MPS,
                                             ydata=dyno_func_lb(speed_mph),
                                             p0=[0.3, 0.01])
-    model_lb = model_func_lb(speed_mph / params.mphPerMps, dragCoef, wheelRrCoef)
+    model_lb = model_func_lb(speed_mph / params.MPH_PER_MPS, dragCoef, wheelRrCoef)
 
     if show_plots:
         plt.figure()    
@@ -116,7 +116,7 @@ def drag_coeffs_to_abc(veh_kg, veh_fa_m2, dragCoef, wheelRrCoef, show_plots=Fals
         return out
 
     model_lb = model_func_lb(
-        speed_mph / params.mphPerMps, dragCoef, wheelRrCoef)
+        speed_mph / params.MPH_PER_MPS, dragCoef, wheelRrCoef)
 
     # polynomial function for pounds vs speed
     dyno_func_lb = lambda speed_mph, a, b, c: np.poly1d([c, b, a])(speed_mph)
@@ -197,9 +197,9 @@ def isfunc(attr) -> bool:
 def get_attrs(instance):
     """
     Given an instantiated object, returns attributes that are not:
-    -- callable
-    -- special (i.e. start with `__`)
-    -- properties
+    -- callable  
+    -- special (i.e. start with `__`)  
+    -- properties  
     """
 
     keys = []

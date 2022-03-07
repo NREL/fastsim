@@ -18,8 +18,6 @@ from . import utils
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
-STANDARD_CYCLE_KEYS = [
-    'time_s', 'mps', 'grade', 'road_type', 'name',]
 
 # dicts for switching between legacy and new cycle keys
 OLD_TO_NEW = {
@@ -27,22 +25,25 @@ OLD_TO_NEW = {
     'cycMps': 'mps',
     'cycGrade': 'grade',
     'cycRoadType': 'road_type',
+    'name': 'name'
 }
 NEW_TO_OLD = {val: key for key, val in OLD_TO_NEW.items()}
-
+STANDARD_CYCLE_KEYS = OLD_TO_NEW.values()
 
 @dataclass
 class Cycle(object):
     """Object for containing time, speed, road grade, and road charging vectors 
     for drive cycle.  Instantiate with the `from_file` or `from_dict` method.  
     """
-    time_s: np.ndarray(dtype=float)
-    mps: np.ndarray(dtype=float)
-    grade: np.ndarray(dtype=float) = np.zeros(len(mps))
-    road_type: np.ndarray(dtype=float) = np.zeros(len(mps))
+
+    time_s: np.ndarray
+    mps: np.ndarray
+    grade: np.ndarray
+    road_type: np.ndarray
+    name: str
 
     @classmethod
-    def from_file(filename:str):
+    def from_file(cls, filename:str):
         """
         Load cycle from filename (str).
         Can be absolute or relative path.  If relative, looks in working dir first
@@ -58,21 +59,17 @@ class Cycle(object):
             filename += ".csv"
         if not Path(filename).exists() and (CYCLES_DIR / filename).exists():
             filename = CYCLES_DIR / filename
+        filename = Path(filename) # make sure it's path
             
         cyc_df = pd.read_csv(filename)
-        cyc_dict = {}
-        for key, val in cyc_df.to_dict():
-            # generate keys from legacy mapping, if needed
-            cyc_dict[OLD_TO_NEW.get(key, key)] = val
+        cyc_dict = cyc_df.to_dict(orient='list')
+        cyc_dict = {key:np.array(val) for key, val in cyc_dict.items()}
         cyc_dict['name'] = filename.stem
 
-        # check for invalid keys
-        assert set(cyc_dict.keys()) - set(STANDARD_CYCLE_KEYS) == 0
-
-        return Cycle(**cyc_dict)
+        return cls.from_dict(cyc_dict)
 
     @classmethod
-    def from_dict(cyc_dict:dict):
+    def from_dict(cls, cyc_dict:dict):
         """
         Load cycle from dict, which must contain keys for:
         -- `cycSecs` or `time_s`
@@ -81,14 +78,19 @@ class Cycle(object):
         -- `cycRoadType` or `road_type` (optional)
         """
         new_cyc_dict = {}
-        for key, val in cyc_dict():
+        for key, val in cyc_dict.items():
             # generate keys from legacy or current mapping
             new_cyc_dict[OLD_TO_NEW.get(key, key)] = val
         new_cyc_dict['name'] = cyc_dict.get('name', '')
+        # set zeros if not provided
+        new_cyc_dict['grade'] = new_cyc_dict.get(
+            'grade', np.zeros(len(new_cyc_dict['time_s'])))
+        new_cyc_dict['road_type'] = new_cyc_dict.get(
+            'road_type', np.zeros(len(new_cyc_dict['time_s'])))
 
         # check for invalid keys
-        assert set(cyc_dict.keys()) - set(STANDARD_CYCLE_KEYS) == 0
-        return Cycle(**cyc_dict)
+        assert len(set(new_cyc_dict.keys()) - set(STANDARD_CYCLE_KEYS)) == 0
+        return cls(**new_cyc_dict)
 
 
     def get_numba_cyc(self):
@@ -97,64 +99,46 @@ class Cycle(object):
 
     ### Properties
 
-    def get_cycMph(self):
-        return self.mps * params.mphPerMps
+    def get_mph(self) -> np.ndarray:
+        return self.mps * params.MPH_PER_MPS
 
-    def set_cycMph(self, new_value):
-        self.mps = new_value / params.mphPerMps
+    def set_mph(self, new_value):
+        self.mps = new_value / params.MPH_PER_MPS
 
-    cycMph = property(get_cycMph, set_cycMph)
-
-    def get_time_s(self):
-        return self.time_s
-
-    def set_time_s(self, new_value):
-        self.time_s = new_value
-
-    time_s = property(get_time_s, set_time_s)
+    mph = property(get_mph, set_mph)
 
     # time step deltas
     @property
-    def secs(self):
-        return np.append(0.0, self.time_s[1:] - self.time_s[:-1]) 
-
-    @property
-    def dt_s(self):
-        return self.secs
+    def dt_s(self) -> np.ndarray:
+        return np.diff(self.time_s, prepend=0)
     
     # distance at each time step
     @property
-    def cycDistMeters(self):
-        return self.mps * self.secs
+    def dist_m(self) -> np.ndarray:
+        return self.mps * self.dt_s
 
     @property
     def delta_elev_m(self):
         """
         Cumulative elevation change w.r.t. to initial
         """
-        return (self.cycDistMeters * self.grade).cumsum()
+        return (self.dist_m * self.grade).cumsum()
+
+    @property
+    def len(self) -> int:
+        "return cycle length"
+        return len(self.time_s)
     
-    def get_cyc_dict(self):
+    def get_cyc_dict(self) -> dict:
         """Returns cycle as dict rather than class instance."""
         keys = STANDARD_CYCLE_KEYS
         
         cyc = {}
         for key in keys:
-            cyc[key] = self.__getattribute__(key)
+            cyc[key] = copy.deepcopy(self.__getattribute__(key))
         
         return cyc
     
-    def copy(self):
-        """Return copy of Cycle instance."""
-        cyc_dict = {'time_s': self.time_s,
-                    'mps': self.mps,
-                    'grade': self.grade,
-                    'road_type': self.road_type,
-                    'name': self.name
-                    }
-        cyc = Cycle(cyc_dict=cyc_dict)
-        return cyc
-
 class LegacyCycle(object):
     """
     Implementation of Cycle with legacy keys.
@@ -167,7 +151,7 @@ class LegacyCycle(object):
             self.__setattr__(val, cycle.__getattribute__(key))
 
 
-def copy_cycle(cyc, return_dict=False, use_jit=None):
+def copy_cycle(cyc, return_dict=False):
     """Returns copy of Cycle or CycleJit.
     Arguments:
     cyc: instantianed Cycle or CycleJit
@@ -181,23 +165,13 @@ def copy_cycle(cyc, return_dict=False, use_jit=None):
 
     cyc_dict = {}
 
-    from . import cyclejit
-    for keytup in cyclejit.cyc_spec:
-        key = keytup[0]
-        cyc_dict[key] = cyc.__getattribute__(key)
+    for key in utils.get_attrs(cyc):
+        cyc_dict[key] = copy.deepcopy(cyc.__getattribute__(key))
         
     if return_dict:
         return cyc_dict
     
-    if use_jit is None:
-        if type(cyc) == Cycle:
-            cyc = Cycle(cyc_dict=cyc_dict)
-        else:
-            cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-    elif use_jit:
-        cyc = Cycle(cyc_dict=cyc_dict).get_numba_cyc()
-    else:
-        cyc = Cycle(cyc_dict=cyc_dict)
+    cyc = Cycle.from_dict(cyc_dict)
         
     return cyc                
 

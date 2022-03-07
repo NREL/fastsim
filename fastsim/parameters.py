@@ -14,7 +14,7 @@ THIS_DIR = Path(__file__).parent
 
 
 ### Unit conversions that should NEVER change
-mphPerMps = 2.2369
+MPH_PER_MPS = 2.2369
 metersPerMile = 1609.00
 
 class PhysicalProperties(object):

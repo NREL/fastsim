@@ -14,7 +14,7 @@ class TestSimDriveClassic(unittest.TestCase):
         "Verify that sim_drive_step produces an expected result."
         
         print(f"Running {type(self)}.test_sim_drive_step.")
-        cyc = cycle.Cycle('udds')
+        cyc =cycle.Cycle.from_file('udds')
         veh = vehicle.Vehicle(1, verbose=False)
         sim_drive = simdrive.SimDriveClassic(cyc, veh)
 
@@ -27,7 +27,7 @@ class TestSimDriveClassic(unittest.TestCase):
         """Verify that sim_drive_walk produces an expected result."""
         
         print(f"Running {type(self)}.test_sim_drive_walk.")
-        cyc = cycle.Cycle('udds')
+        cyc =cycle.Cycle.from_file('udds')
         veh = vehicle.Vehicle(1, verbose=False)
         sim_drive = simdrive.SimDriveClassic(cyc, veh)
         sim_drive.sim_drive_walk(initSoc=1)
@@ -41,7 +41,7 @@ class TestSimDriveClassic(unittest.TestCase):
         cyc1 = cycle.Cycle(
             cyc_dict=(cycle.clip_by_times(cycle.Cycle('udds').get_cyc_dict(), t_end=t_clip))
             )
-        t_end = cycle.Cycle('udds').cycSecs[-1]
+        t_end =cycle.Cycle.from_file('udds').cycSecs[-1]
         cyc2 = cycle.Cycle(
             cyc_dict=(cycle.clip_by_times(cycle.Cycle('udds').get_cyc_dict(), 
             t_start=t_clip, t_end=t_end))
@@ -58,7 +58,7 @@ class TestSimDriveClassic(unittest.TestCase):
         sd2.mphAch[0] = cyc2.mps[0]
         sd2.sim_drive()
 
-        cyc = cycle.Cycle('udds')
+        cyc =cycle.Cycle.from_file('udds')
         sdtot = simdrive.SimDriveClassic(cyc, veh)
         sdtot.sim_drive()
 
@@ -84,7 +84,7 @@ class TestSimDriveClassic(unittest.TestCase):
         self.assertTrue(trace_miss_corrected)
 
     def test_stop_start(self):
-        cyc = cycle.Cycle('udds').get_cyc_dict()
+        cyc =cycle.Cycle.from_file('udds').get_cyc_dict()
         cyc = cycle.Cycle(cyc_dict=cycle.clip_by_times(cyc, 130))
 
         veh = vehicle.Vehicle(1)
