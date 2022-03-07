@@ -20,6 +20,15 @@ CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
 STANDARD_CYCLE_KEYS = [
     'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType', 'name',]
 
+# dicts for switching between legacy and new cycle keys
+OLD_TO_NEW = {
+    'cycSecs': 'time_s',
+    'cycMps': 'mps',
+    'cycGrade': 'grade',
+    'cycRoadType': 'road_type',
+}
+NEW_TO_OLD = {val: key for key, val in OLD_TO_NEW.items()}
+
 
 class Cycle(object):
     """Object for containing time, speed, road grade, and road charging vectors 
@@ -47,16 +56,8 @@ class Cycle(object):
             self.set_from_file(cyc_file_path)
         
     def get_numba_cyc(self):
-        """Returns numba jitclass version of Cycle object."""
-        from .cyclejit import CycleJit
-        numba_cyc = CycleJit(len(self.cycSecs))
-        for key in STANDARD_CYCLE_KEYS:
-            if pd.api.types.is_list_like(self.__getattribute__(key)):
-                # type should already be np.float64 but astype explicitly enforces this
-                numba_cyc.__setattr__(key, self.__getattribute__(key).astype(np.float64))
-            elif type(self.__getattribute__(key)) == str:
-                numba_cyc.__setattr__(key, self.__getattribute__(key))
-        return numba_cyc
+        """Deprecated."""
+        raise NotImplementedError("This method has been deprecated.  Use get_rust_cyc instead.")
 
     def set_standard_cycle(self, std_cyc_name):
         """Load time trace of speed, grade, and road type in a pandas

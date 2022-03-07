@@ -30,7 +30,6 @@ setuptools.setup(
         "pandas>=1",
         "matplotlib>=3.3",
         "numpy>=1.18",
-        "numba>=0.52",
         "seaborn>=0.10",
     ],
 )

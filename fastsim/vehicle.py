@@ -181,7 +181,7 @@ class Vehicle(object):
                 # assign dataframe columns to vehicle
                 self.__setattr__(col1, vehdf.loc[vnum, col])
 
-        # make sure all the attributes needed by CycleJit are set
+        # make sure all the attributes
         # this could potentially cause unexpected behaviors
         missing_cols = set(TEMPLATE_VEHDF.columns) - set(vehdf.columns)
         if len(missing_cols) > 0:
@@ -295,22 +295,8 @@ class Vehicle(object):
             return vehdf
 
     def get_numba_veh(self):
-        """Load numba JIT-compiled vehicle."""
-        from .vehiclejit import VehicleJit, veh_spec
-        if 'numba_veh' not in self.__dict__:
-            numba_veh = VehicleJit()
-        for item in veh_spec:
-            if (type(self.__getattribute__(item[0])) in [np.ndarray, np.float64]):
-                numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.float64))
-            elif type(self.__getattribute__(item[0])) == np.int64:
-                numba_veh.__setattr__(item[0], self.__getattribute__(item[0]).astype(np.int32))
-            elif item[0] == 'props':
-                numba_veh.__setattr__(item[0], params.PhysicalPropertiesJit())
-            else:
-                numba_veh.__setattr__(
-                    item[0], self.__getattribute__(item[0]))
-            
-        return numba_veh
+        """Deprecated."""
+        raise NotImplementedError("This method has been deprecated.  Use get_rust_veh instead.")
     
     def set_init_calcs(self, fcPeakEffOverride=-1, mcPeakEffOverride=-1):
         """
