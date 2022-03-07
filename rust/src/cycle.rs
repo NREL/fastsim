@@ -82,7 +82,7 @@ impl Cycle{
     //     """
     //      elevation change w.r.t. to initial
     //     """
-    //     return (self.dist_m * self.cycGrade).cumsum()
+    //     return (self.dist_m * self.cycGrade).cumsum() // TODO: find a good way to implement cumsum
 }
 
 #[cfg(test)]
