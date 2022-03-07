@@ -185,9 +185,6 @@ class SimDriveClassic(object):
         Arguments
         ------------
         initSoc: initial SOC for electrified vehicles.  
-            Leave empty for default value.  Otherwise, must be between 0 and 1.
-            Numba's jitclass does not support keyword args so this allows for optionally
-            passing initSoc as positional argument.
         auxInKw: auxInKw override.  Array of same length as cyc.cycSecs.  
             Default of np.zeros(1) causes veh.auxKw to be used.
             If zero is actually desired as an override, either set
@@ -271,7 +268,7 @@ class SimDriveClassic(object):
         self.curSocTarget[0] = self.veh.maxSoc
         self.essCurKwh[0] = initSoc * self.veh.maxEssKwh
         self.soc[0] = initSoc
-        self.mpsAch[0] = self.cyc0.cycMps[0]
+        self.mpsAch[0] = self.cyc0.mps[0]
         self.mphAch[0] = self.cyc0.cycMph[0]
 
         if self.sim_params.missed_trace_correction:
@@ -510,7 +507,7 @@ class SimDriveClassic(object):
         if self.newton_iters[i] > 0:
             mpsAch = self.mpsAch[i]
         else:
-            mpsAch = self.cyc.cycMps[i]
+            mpsAch = self.cyc.mps[i]
 
         self.cycDragKw[i] = 0.5 * self.props.airDensityKgPerM3 * self.veh.dragCoef * self.veh.frontalAreaM2 * (
             (self.mpsAch[i-1] + mpsAch) / 2.0) ** 3 / 1_000
@@ -573,7 +570,7 @@ class SimDriveClassic(object):
 
         # Cycle is met
         if self.cycMet[i]:
-            self.mpsAch[i] = self.cyc.cycMps[i]
+            self.mpsAch[i] = self.cyc.mps[i]
 
         #Cycle is not met
         else:
@@ -672,7 +669,7 @@ class SimDriveClassic(object):
         else:
             self.regenBufferSoc[i] = max(
                 (self.veh.maxEssKwh * self.veh.maxSoc - 
-                    0.5 * self.veh.vehKg * (self.cyc.cycMps[i] ** 2) * (1.0 / 1_000) * (1.0 / 3_600) * 
+                    0.5 * self.veh.vehKg * (self.cyc.mps[i] ** 2) * (1.0 / 1_000) * (1.0 / 3_600) * 
                     self.veh.mcPeakEff * self.veh.maxRegen) / self.veh.maxEssKwh, 
                 self.veh.minSoc
             )
@@ -692,7 +689,7 @@ class SimDriveClassic(object):
         else:
             self.accelBufferSoc[i] = min(
                 max(
-                    ((self.veh.maxAccelBufferMph / params.mphPerMps) ** 2 - self.cyc.cycMps[i] ** 2) / 
+                    ((self.veh.maxAccelBufferMph / params.mphPerMps) ** 2 - self.cyc.mps[i] ** 2) / 
                     (self.veh.maxAccelBufferMph / params.mphPerMps) ** 2 * min(
                         self.veh.maxAccelBufferPercOfUseableSoc * (self.veh.maxSoc - self.veh.minSoc), 
                         self.veh.maxRegenKwh / self.veh.maxEssKwh
@@ -1138,7 +1135,7 @@ class SimDriveClassic(object):
         trace_met = (
             ((abs(self.cyc0.cycDistMeters[:i+1].sum() - self.distMeters[:i+1].sum()) / self.cyc0.cycDistMeters[:i+1].sum()
             ) < self.sim_params.time_dilation_tol) or 
-            (self.cyc.cycMps[i] == 0) # if prescribed speed is zero, trace is met to avoid div-by-zero errors and other possible wackiness
+            (self.cyc.mps[i] == 0) # if prescribed speed is zero, trace is met to avoid div-by-zero errors and other possible wackiness
         )
 
         if not(trace_met):
@@ -1306,7 +1303,7 @@ class SimDriveClassic(object):
                     print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_time_tol, 5))
 
         self.trace_miss_speed_mps = max([
-            abs(self.mpsAch[i] - self.cyc.cycMps[i]) for i in range(len(self.cyc.time_s))
+            abs(self.mpsAch[i] - self.cyc.mps[i]) for i in range(len(self.cyc.time_s))
         ])
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol:
             self.trace_miss = True
@@ -1314,7 +1311,6 @@ class SimDriveClassic(object):
                 print('Warning: Trace miss speed [m/s]:', np.round(self.trace_miss_speed_mps, 5))
                 print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
         
-
 
 class SimAccelTest(SimDriveClassic):
     """Class for running FASTSim vehicle acceleration simulation."""
@@ -1372,7 +1368,7 @@ class SimDrivePost(object):
         output['mpgge'] = self.mpgge
         output['battery_kWh_per_mi'] = self.battery_kWh_per_mi
         output['electric_kWh_per_mi'] = self.electric_kWh_per_mi
-        output['maxTraceMissMph'] = params.mphPerMps * max(abs(self.cyc.cycMps - self.mpsAch))
+        output['maxTraceMissMph'] = params.mphPerMps * max(abs(self.cyc.mps - self.mpsAch))
         self.maxTraceMissMph = output['maxTraceMissMph']
 
         output['ess2fuelKwh'] = self.ess2fuelKwh
@@ -1469,27 +1465,14 @@ class SimDrivePost(object):
             for i in range(0, len(self.essCurKwh))])
 
 
-# convenience wrappers for backwards compatibility
 def SimDriveJit(cyc_jit, veh_jit):
     """
-    Wrapper for simdrivejit.SimDriveJit:
+    deprecated
     """
-    from . import simdrivejit
-
-    sim_drive_jit = simdrivejit.SimDriveJit(cyc_jit, veh_jit)
-
-    SimDriveJit.__doc__ += sim_drive_jit.__doc__
-
-    return sim_drive_jit
+    raise NotImplementedError("This function has been deprecated.")
 
 def SimAccelTestJit(cyc_jit, veh_jit):
     """
-    Wrapper for simdrivejit.SimAccelTestJit:
+    deprecated
     """
-    from . import simdrivejit
-
-    sim_drive_jit = simdrivejit.SimAccelTestJit(cyc_jit, veh_jit)
-
-    SimDriveJit.__doc__ += sim_drive_jit.__doc__
-
-    return sim_drive_jit
+    raise NotImplementedError("This function has been deprecated")

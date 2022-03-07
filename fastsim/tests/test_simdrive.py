@@ -55,7 +55,7 @@ class TestSimDriveClassic(unittest.TestCase):
         sd2 = simdrive.SimDriveClassic(cyc2, veh)
         # this is a bug workaround.  There will be a fix that will make this workaround remain functional but unnecessary
         sd2.mpsAch[0] = cyc2.cycMph[0]
-        sd2.mphAch[0] = cyc2.cycMps[0]
+        sd2.mphAch[0] = cyc2.mps[0]
         sd2.sim_drive()
 
         cyc = cycle.Cycle('udds')
@@ -71,7 +71,7 @@ class TestSimDriveClassic(unittest.TestCase):
         veh = vehicle.Vehicle(1)
         cyc = cycle.Cycle(cyc_dict={
             'cycSecs': np.arange(10),
-            'cycMps': np.append(2, np.ones(9) * 6),
+            'mps': np.append(2, np.ones(9) * 6),
         })
         sd = simdrive.SimDriveClassic(cyc, veh)
         sd.sim_params.missed_trace_correction = True

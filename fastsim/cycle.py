@@ -2,7 +2,7 @@
 cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules
-import os
+from dataclasses import dataclass
 import numpy as np
 from scipy.interpolate import interp1d
 import pandas as pd
@@ -14,11 +14,12 @@ import types
 
 # local modules
 from . import parameters as params
+from . import utils
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
 STANDARD_CYCLE_KEYS = [
-    'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType', 'name',]
+    'time_s', 'mps', 'grade', 'road_type', 'name',]
 
 # dicts for switching between legacy and new cycle keys
 OLD_TO_NEW = {
@@ -30,110 +31,92 @@ OLD_TO_NEW = {
 NEW_TO_OLD = {val: key for key, val in OLD_TO_NEW.items()}
 
 
+@dataclass
 class Cycle(object):
     """Object for containing time, speed, road grade, and road charging vectors 
-    for drive cycle."""
+    for drive cycle.  Instantiate with the `from_file` or `from_dict` method.  
+    """
+    time_s: np.ndarray(dtype=float)
+    mps: np.ndarray(dtype=float)
+    grade: np.ndarray(dtype=float) = np.zeros(len(mps))
+    road_type: np.ndarray(dtype=float) = np.zeros(len(mps))
 
-    def __init__(self, std_cyc_name=None, cyc_dict=None, cyc_file_path=None):
-        """Runs other methods, depending on provided keyword argument.
-        Only one keyword argument should be provided.          
-        
-        Keyword Arguments:
-        ------------------
-        std_cyc_name : string for name of standard cycle in resources/cycles/.  
-            Must match filename minus '.csv' extension.
-        cyc_dict : dictionary with 'cycSecs' and 'cycMps' keys (at minimum) 
-            and corresponding arrays.  
-        cyc_file_path : string for path to custom cycle file, which much have
-            same format as cycles in resources/cycles/
+    @classmethod
+    def from_file(filename:str):
         """
+        Load cycle from filename (str).
+        Can be absolute or relative path.  If relative, looks in working dir first
+        and then in `fastsim/resources/cycles`.  
         
-        if std_cyc_name:
-            self.set_standard_cycle(std_cyc_name)
-        if cyc_dict:
-            self.set_from_dict(cyc_dict)
-        if cyc_file_path:
-            self.set_from_file(cyc_file_path)
-        
+        File must contain columns for:
+        -- `cycSecs` or `time_s`
+        -- `cycMps` or `mps`
+        -- `cycGrade` or `grade` (optional)
+        -- `cycRoadType` or `road_type` (optional)
+        """
+        if not filename.endswith('.csv'):
+            filename += ".csv"
+        if not Path(filename).exists() and (CYCLES_DIR / filename).exists():
+            filename = CYCLES_DIR / filename
+            
+        cyc_df = pd.read_csv(filename)
+        cyc_dict = {}
+        for key, val in cyc_df.to_dict():
+            # generate keys from legacy mapping, if needed
+            cyc_dict[OLD_TO_NEW.get(key, key)] = val
+        cyc_dict['name'] = filename.stem
+
+        # check for invalid keys
+        assert set(cyc_dict.keys()) - set(STANDARD_CYCLE_KEYS) == 0
+
+        return Cycle(**cyc_dict)
+
+    @classmethod
+    def from_dict(cyc_dict:dict):
+        """
+        Load cycle from dict, which must contain keys for:
+        -- `cycSecs` or `time_s`
+        -- `cycMps` or `mps`
+        -- `cycGrade` or `grade` (optional)
+        -- `cycRoadType` or `road_type` (optional)
+        """
+        new_cyc_dict = {}
+        for key, val in cyc_dict():
+            # generate keys from legacy or current mapping
+            new_cyc_dict[OLD_TO_NEW.get(key, key)] = val
+        new_cyc_dict['name'] = cyc_dict.get('name', '')
+
+        # check for invalid keys
+        assert set(cyc_dict.keys()) - set(STANDARD_CYCLE_KEYS) == 0
+        return Cycle(**cyc_dict)
+
+
     def get_numba_cyc(self):
         """Deprecated."""
         raise NotImplementedError("This method has been deprecated.  Use get_rust_cyc instead.")
 
-    def set_standard_cycle(self, std_cyc_name):
-        """Load time trace of speed, grade, and road type in a pandas
-        dataframe.
-        Argument:
-        ---------
-        std_cyc_name: cycle name string (e.g. 'udds', 'us06', 'hwfet')"""
-        csv_path = Path(CYCLES_DIR) / (std_cyc_name + '.csv')
-        self.set_from_file(csv_path)
-
-    def set_from_file(self, cyc_file_path):
-        """Load time trace of speed, grade, and road type from user-provided csv
-        file in a pandas dataframe.
-        Argument:
-        ---------
-        cyc_file_path: path to file containing cycle data"""
-        cyc = pd.read_csv(Path(cyc_file_path))
-        self.name = Path(cyc_file_path).stem
-        for column in cyc.columns:
-            if column in STANDARD_CYCLE_KEYS:
-                self.__setattr__(column, cyc[column].to_numpy(dtype=np.float64))
-        # fill in unspecified optional values with zeros
-        if 'cycGrade' not in cyc.columns:
-            self.__setattr__('cycGrade', np.zeros(
-                len(self.cycMps), dtype=np.float64))
-        if 'cycRoadType' not in cyc.columns:
-            self.__setattr__('cycRoadType', np.zeros(
-                len(self.cycMps), dtype=np.float64))
-
-    def set_from_dict(self, cyc_dict):
-        """Set cycle attributes from dict with keys 'cycSecs', 'cycMps',
-        'cycGrade' (optional), 'cycRoadType' (optional) and numpy arrays of
-        equal length for values.
-        Arguments
-        ---------
-        cyc_dict: dict containing cycle data
-        """
-        for key in cyc_dict.keys():
-            if key in STANDARD_CYCLE_KEYS:
-                if pd.api.types.is_list_like(cyc_dict[key]):
-                    self.__setattr__(key, np.array(cyc_dict[key], dtype=np.float64))
-                if key == 'name':
-                    self.__setattr__(key, cyc_dict[key])
-        # fill in unspecified optional values with zeros
-        if 'cycGrade' not in cyc_dict.keys():
-            self.__setattr__('cycGrade', np.zeros(
-                len(self.cycMps), dtype=np.float64))
-        if 'cycRoadType' not in cyc_dict.keys():
-            self.__setattr__('cycRoadType', np.zeros(
-                len(self.cycMps), dtype=np.float64))
-        if 'name' not in cyc_dict.keys():
-            self.__setattr__('name', 'from_dict')
-    
-
     ### Properties
 
     def get_cycMph(self):
-        return self.cycMps * params.mphPerMps
+        return self.mps * params.mphPerMps
 
     def set_cycMph(self, new_value):
-        self.cycMps = new_value / params.mphPerMps
+        self.mps = new_value / params.mphPerMps
 
     cycMph = property(get_cycMph, set_cycMph)
 
     def get_time_s(self):
-        return self.cycSecs
+        return self.time_s
 
     def set_time_s(self, new_value):
-        self.cycSecs = new_value
+        self.time_s = new_value
 
     time_s = property(get_time_s, set_time_s)
 
     # time step deltas
     @property
     def secs(self):
-        return np.append(0.0, self.cycSecs[1:] - self.cycSecs[:-1]) 
+        return np.append(0.0, self.time_s[1:] - self.time_s[:-1]) 
 
     @property
     def dt_s(self):
@@ -142,14 +125,14 @@ class Cycle(object):
     # distance at each time step
     @property
     def cycDistMeters(self):
-        return self.cycMps * self.secs
+        return self.mps * self.secs
 
     @property
     def delta_elev_m(self):
         """
         Cumulative elevation change w.r.t. to initial
         """
-        return (self.cycDistMeters * self.cycGrade).cumsum()
+        return (self.cycDistMeters * self.grade).cumsum()
     
     def get_cyc_dict(self):
         """Returns cycle as dict rather than class instance."""
@@ -163,14 +146,25 @@ class Cycle(object):
     
     def copy(self):
         """Return copy of Cycle instance."""
-        cyc_dict = {'cycSecs': self.cycSecs,
-                    'cycMps': self.cycMps,
-                    'cycGrade': self.cycGrade,
-                    'cycRoadType': self.cycRoadType,
+        cyc_dict = {'time_s': self.time_s,
+                    'mps': self.mps,
+                    'grade': self.grade,
+                    'road_type': self.road_type,
                     'name': self.name
                     }
         cyc = Cycle(cyc_dict=cyc_dict)
         return cyc
+
+class LegacyCycle(object):
+    """
+    Implementation of Cycle with legacy keys.
+    """
+    def __init__(self, cycle:Cycle):
+        """
+        Given cycle, returns legacy cycle.
+        """
+        for key, val in NEW_TO_OLD.items():
+            self.__setattr__(val, cycle.__getattribute__(key))
 
 
 def copy_cycle(cyc, return_dict=False, use_jit=None):
@@ -221,32 +215,32 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
         that name to all microtrips
     """
     microtrips = []
-    ts = np.array(cycle['cycSecs'])
-    vs = np.array(cycle['cycMps'])
-    gs = np.array(cycle['cycGrade'])
-    rs = np.array(cycle['cycRoadType'])
+    ts = np.array(cycle['time_s'])
+    vs = np.array(cycle['mps'])
+    gs = np.array(cycle['grade'])
+    rs = np.array(cycle['road_type'])
     mt = make_cycle([], [])
     moving = False
     for idx, (t, v, g, r) in enumerate(zip(ts, vs, gs, rs)):
         if v > stop_speed_m__s and not moving:
-            if len(mt['cycSecs']) > 1:
+            if len(mt['time_s']) > 1:
                 temp = make_cycle(
-                    [mt['cycSecs'][-1]],
-                    [mt['cycMps'][-1]],
-                    [mt['cycGrade'][-1]],
-                    [mt['cycRoadType'][-1]])
-                mt['cycSecs'] = mt['cycSecs'] - mt['cycSecs'][0]
+                    [mt['time_s'][-1]],
+                    [mt['mps'][-1]],
+                    [mt['grade'][-1]],
+                    [mt['road_type'][-1]])
+                mt['time_s'] = mt['time_s'] - mt['time_s'][0]
                 for k in mt:
                     mt[k] = np.array(mt[k])
                 microtrips.append(mt)
                 mt = temp
-        mt['cycSecs'] = np.append(mt['cycSecs'], [t])
-        mt['cycMps'] = np.append(mt['cycMps'], [v])
-        mt['cycGrade'] = np.append(mt['cycGrade'], [g])
-        mt['cycRoadType'] = np.append(mt['cycRoadType'], [r])
+        mt['time_s'] = np.append(mt['time_s'], [t])
+        mt['mps'] = np.append(mt['mps'], [v])
+        mt['grade'] = np.append(mt['grade'], [g])
+        mt['road_type'] = np.append(mt['road_type'], [r])
         moving = v > stop_speed_m__s
-    if len(mt['cycSecs']) > 0:
-        mt['cycSecs'] = mt['cycSecs'] - mt['cycSecs'][0]
+    if len(mt['time_s']) > 0:
+        mt['time_s'] = mt['time_s'] - mt['time_s'][0]
         microtrips.append(mt)
     if keep_name and "name" in cycle:
         for m in microtrips:
@@ -275,10 +269,10 @@ def make_cycle(ts, vs, gs=None, rs=None):
         rs = np.zeros(len(ts))
     else:
         assert len(ts) == len(rs)
-    return {'cycSecs': np.array(ts),
-            'cycMps': np.array(vs),
-            'cycGrade': np.array(gs),
-            'cycRoadType': np.array(rs)}
+    return {'time_s': np.array(ts),
+            'mps': np.array(vs),
+            'grade': np.array(gs),
+            'road_type': np.array(rs)}
 
 
 def equals(c1, c2, verbose=True):
@@ -321,10 +315,10 @@ def concat(cycles, name=None):
     cycles: (Array Dict)
     name: (optional) string or None, if a string, adds the "name" key to the output
     """
-    final_cycle = {'cycSecs': np.array([]),
-                   'cycMps': np.array([]),
-                   'cycGrade': np.array([]),
-                   'cycRoadType': np.array([])}
+    final_cycle = {'time_s': np.array([]),
+                   'mps': np.array([]),
+                   'grade': np.array([]),
+                   'road_type': np.array([])}
     keys = [k for k in final_cycle.keys()]
     first = True
     for cycle in cycles:
@@ -332,11 +326,11 @@ def concat(cycles, name=None):
             for k in keys:
                 final_cycle[k] = np.array(cycle[k])
             first = False
-        # if len(final_cycle['cycSecs']) == 0: # ???
+        # if len(final_cycle['time_s']) == 0: # ???
         #     t0 = 0.0
         else:
             for k in keys:
-                if k == 'cycSecs':
+                if k == 'time_s':
                     t0 = final_cycle[k][-1]
                     final_cycle[k] = np.concatenate([
                         final_cycle[k], np.array(cycle[k][1:]) + t0])
@@ -355,7 +349,7 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
     Resample a cycle with a new delta time from start time to end time.
 
     - cycle: Dict with keys
-        'cycSecs': numpy.array Real giving the elapsed time
+        'time_s': numpy.array Real giving the elapsed time
     - new_dt: Real, optional
         the new delta time of the sampling. Defaults to the
         difference between the first two times of the cycle passed in
@@ -370,35 +364,35 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
     - rate_keys: None or (Set String), if specified, yields values that maintain
                  the interpolated value of the given rate. So, for example,
                  if a speed, will set the speed such that the distance traveled
-                 is consistent. Note: using rate keys for cycMps may result in
+                 is consistent. Note: using rate keys for mps may result in
                  non-zero starting and ending speeds
     Resamples all non-time metrics by the new sample time.
     """
     if new_dt is None:
-        new_dt = cycle['cycSecs'][1] - cycle['cycSecs'][0]
+        new_dt = cycle['time_s'][1] - cycle['time_s'][0]
     if start_time is None:
         start_time = 0.0
     if end_time is None:
-        end_time = cycle['cycSecs'][-1]
+        end_time = cycle['time_s'][-1]
     new_cycle = {}
     eps = new_dt / 10.0
-    new_cycle['cycSecs'] = np.arange(start_time, end_time + eps, step=new_dt)
+    new_cycle['time_s'] = np.arange(start_time, end_time + eps, step=new_dt)
     for k in cycle:
-        if k == 'cycSecs':
+        if k == 'time_s':
             continue
         elif hold_keys is not None and k in hold_keys:
-            f = interp1d(cycle['cycSecs'], cycle[k], 0)
-            new_cycle[k] = f(new_cycle['cycSecs'])
+            f = interp1d(cycle['time_s'], cycle[k], 0)
+            new_cycle[k] = f(new_cycle['time_s'])
             continue
         elif rate_keys is not None and k in rate_keys:
             rate_var = np.array(cycle[k])
             # below is same as [(rate_var[i+1] + rate_var[i])/2.0 for i in range(len(rate_var) - 1)]
             avg_rate_var = (rate_var[1:] + rate_var[:-1]) / 2.0
-            dts_orig = np.diff(cycle['cycSecs'])
+            dts_orig = np.diff(cycle['time_s'])
             step_averages = np.diff(
                 np.interp(
-                    x=new_cycle['cycSecs'],
-                    xp=cycle['cycSecs'],
+                    x=new_cycle['time_s'],
+                    xp=cycle['time_s'],
                     fp=np.insert((avg_rate_var * dts_orig).cumsum(), 0, 0.0)
                 ),
             ) / new_dt
@@ -412,14 +406,14 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
                     [end_time],
                 ))
             new_cycle[k] = np.interp(
-                x=new_cycle['cycSecs'],
+                x=new_cycle['time_s'],
                 xp=midstep_times,
                 fp=step_averages
             )
             continue
         try:
             new_cycle[k] = np.interp(
-                new_cycle['cycSecs'], cycle['cycSecs'], cycle[k])
+                new_cycle['time_s'], cycle['time_s'], cycle[k])
         except:
             # if the value can't be interpolated, it must not be a numerical
             # array. Just add it back in as is.
@@ -438,8 +432,8 @@ def clip_by_times(cycle, t_end, t_start=0):
         to times >= t_start and <= t_end
     Clip the cycle to the given times and return
     """
-    idx = np.logical_and(cycle['cycSecs'] >= t_start,
-                         cycle['cycSecs'] <= t_end)
+    idx = np.logical_and(cycle['time_s'] >= t_start,
+                         cycle['time_s'] <= t_end)
     new_cycle = {}
     for k in cycle:
         try:
@@ -447,7 +441,7 @@ def clip_by_times(cycle, t_end, t_start=0):
         except:
             new_cycle[k] = cycle[k]
 
-    new_cycle['cycSecs'] -= new_cycle['cycSecs'][0] # reset time to start at zero
+    new_cycle['time_s'] -= new_cycle['time_s'][0] # reset time to start at zero
     return new_cycle
 
 
@@ -459,8 +453,8 @@ def accelerations(cycle):
     - cycle: Dict, a legitimate driving cycle
     OUTPUTS: Real, the maximum acceleration
     """
-    accels = (np.diff(np.array(cycle['cycMps']))
-              / np.diff(np.array(cycle['cycSecs'])))
+    accels = (np.diff(np.array(cycle['mps']))
+              / np.diff(np.array(cycle['time_s'])))
     return accels
 
 

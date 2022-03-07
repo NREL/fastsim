@@ -95,11 +95,11 @@ cyc_name = 'us06x2 95F hs'
 test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
 
 cycSecs = np.arange(0, round(test_time_steps[-1], 0))
-cycMps = np.interp(cycSecs, 
+mps = np.interp(cycSecs, 
     test_time_steps, 
     df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'].values)
 
-cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
+cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'mps':mps})
 cyc_jit = cyc.get_numba_cyc()
 print("Elapsed time to create cycle: {:.2e} s".format(time.time() - t0))
 
@@ -143,11 +143,11 @@ test_time_steps = df.loc[idx[cyc_name, :, :], 'DAQ_Time[s]'].values
 test_te_amb = df.loc[idx[cyc_name, :, :], 'Cell_Temp[C]'].values
 
 cycSecs = np.arange(0, round(test_time_steps[-1], 0))
-cycMps = np.interp(cycSecs, 
+mps = np.interp(cycSecs, 
     test_time_steps, 
     df.loc[idx[cyc_name, :, :], 'Dyno_Spd[mps]'].values)
 
-cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
+cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'mps':mps})
 cyc_jit = cyc.get_numba_cyc()
 print("Elapsed time to create cycle: {:.2e} s".format(time.time() - t0))
 

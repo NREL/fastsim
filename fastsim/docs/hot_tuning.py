@@ -127,9 +127,9 @@ def get_error_for_cycle(x):
         test_te_amb = dfdict[cyc_name]['Cell_Temp[C]'].values
 
         cycSecs = test_time_steps
-        cycMps = dfdict[cyc_name]['Dyno_Spd[mps]'].values
+        mps = dfdict[cyc_name]['Dyno_Spd[mps]'].values
 
-        cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
+        cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'mps':mps})
         cyc_jit = cyc.get_numba_cyc()
 
         sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,
@@ -278,9 +278,9 @@ def plot_cyc_traces(x, show_plots=None):
         test_te_amb = dfdict[cyc_name]['Cell_Temp[C]'].values
 
         cycSecs = test_time_steps
-        cycMps = dfdict[cyc_name]['Dyno_Spd[mps]'].values
+        mps = dfdict[cyc_name]['Dyno_Spd[mps]'].values
 
-        cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'cycMps':cycMps})
+        cyc = cycle.Cycle(cyc_dict={'cycSecs':cycSecs, 'mps':mps})
         cyc_jit = cyc.get_numba_cyc()
 
         sim_drive = simdrivehot.SimDriveHotJit(cyc_jit, veh_jit,

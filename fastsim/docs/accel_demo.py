@@ -17,13 +17,13 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     grade @ 0 and hz @ 10 also matches XL version settings
     """
 
-    cycMps = np.array([(1 / params.mphPerMps) * float(spd_mph)] * (length_in_seconds * hz))
-    cycMps[0] = 0.
-    cycMps = np.array(cycMps)
+    mps = np.array([(1 / params.mphPerMps) * float(spd_mph)] * (length_in_seconds * hz))
+    mps[0] = 0.
+    mps = np.array(mps)
     cycSecs = np.arange(0, length_in_seconds, 1. / hz)
     cycGrade = np.array([float(grade)] * (length_in_seconds * hz))
-    cycRoadType = np.zeros(length_in_seconds * hz)
-    cyc = {'cycMps': cycMps, 'cycSecs': cycSecs, 'cycGrade': cycGrade, 'cycRoadType':cycRoadType}
+    road_type = np.zeros(length_in_seconds * hz)
+    cyc = {'mps': mps, 'cycSecs': cycSecs, 'cycGrade': cycGrade, 'road_type':road_type}
     return cyc
 
 def main(use_jitclass=True):

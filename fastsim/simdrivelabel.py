@@ -41,7 +41,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
     # load the cycles and intstantiate simdrive objects
     accel_cyc_secs = np.arange(0, 300, 0.1)
     cyc_dict = {'cycSecs': accel_cyc_secs,
-                'cycMps': np.append([0],
+                'mps': np.append([0],
                 np.ones(len(accel_cyc_secs) - 1) * 90 / params.mphPerMps)}
 
     if 'VehicleJit' in str(type(veh)):

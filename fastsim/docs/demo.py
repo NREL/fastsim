@@ -45,11 +45,11 @@ from fastsim import simdrive, vehicle, cycle, params
 # 
 # Default (UDDS, US06, HWFET) cycles can be loaded from the ```../cycles``` directory, or custom cycles can be specified in the same format. The expected format is a dictionary with the following keys: 
 # 
-# ```['cycGrade', 'cycMps', 'cycSecs', 'cycRoadType']```
+# ```['cycGrade', 'mps', 'cycSecs', 'road_type']```
 # - cycGrade = Road grade [%/100]
-# - cycMps = Vehicle speed [meters per second]
+# - mps = Vehicle speed [meters per second]
 # - cycSecs = Relative time in the cycles [seconds]
-# - cycRoadType = Indicator as to whether or not there is a wireless charging capability from the road to vehicle
+# - road_type = Indicator as to whether or not there is a wireless charging capability from the road to vehicle
 # 
 # There is no limit to the length of a drive cycle that can be provided as an input to FASTSim.
 
@@ -291,7 +291,7 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
 
     cyc = {}
     cyc['cycGrade'] = np.zeros(len(pnts))
-    cyc['cycMps'] = np.array(
+    cyc['mps'] = np.array(
         pnts['speed_mph'] / params.mphPerMps)  # MPH to MPS conversion
     cyc['cycSecs'] = np.array(
         np.cumsum(
@@ -299,7 +299,7 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
              pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')
         )
     )
-    cyc['cycRoadType'] = np.zeros(len(pnts))
+    cyc['road_type'] = np.zeros(len(pnts))
     # example of loading cycle from dict
     cyc = cycle.Cycle(cyc_dict=cyc).get_numba_cyc()
     
@@ -418,7 +418,7 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 
 # %%
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc.cycMps * 2.23694  # Convert mps to mph
+df['speed'] = cyc.mps * 2.23694  # Convert mps to mph
 
 fig, ax = plt.subplots(figsize=(9, 5))
 kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
@@ -483,7 +483,7 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 
 # %%
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc_combo.cycMps * 2.23694  # Convert mps to mph
+df['speed'] = cyc_combo.mps * 2.23694  # Convert mps to mph
 
 fig, ax = plt.subplots(figsize=(9, 5))
 kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
@@ -586,7 +586,7 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 
 # %%
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc_combo.cycMps * 2.23694  # Convert mps to mph
+df['speed'] = cyc_combo.mps * 2.23694  # Convert mps to mph
 
 fig, ax = plt.subplots(figsize=(9, 5))
 kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
@@ -645,7 +645,7 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 
 # %%
 df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc.cycMps * 2.23694  # Convert mps to mph
+df['speed'] = cyc.mps * 2.23694  # Convert mps to mph
 
 fig, ax = plt.subplots(figsize=(9, 5))
 kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')

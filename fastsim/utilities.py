@@ -1,5 +1,7 @@
 """Various optional utilities that may support some applications of FASTSim."""
 
+from types import Callable
+import inspect
 from scipy.optimize import curve_fit
 import numpy as np
 from fastsim import parameters as params
@@ -183,3 +185,27 @@ def camel_to_snake(name):
     "Given camelCase, returns snake_case."
     name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
+
+def isprop(attr) -> bool:
+    "Checks if instance attribute is a property."
+    return isinstance(attr, property)
+
+def isfunc(attr) -> bool:
+    "Checks if instance attribute is method."
+    return isinstance(attr, Callable)
+
+def get_attrs(instance):
+    """
+    Given an instantiated object, returns attributes that are not:
+    -- callable
+    -- special (i.e. start with `__`)
+    -- properties
+    """
+
+    keys = []
+    props = [name for (name, _) in inspect.getmembers(type(instance), isprop)]
+    methods = [name for (name, _) in inspect.getmembers(type(instance), isfunc)]
+    for key in instance.__dir__():
+        if not(key.startswith("_")) and key not in (props + methods):
+            keys.append(key)
+    return keys

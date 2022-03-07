@@ -17,10 +17,10 @@ def calc_distance_traveled_m(cyc, up_to=None):
     RETURN: Number, the distance traveled in meters
     """
     if up_to is None:
-        return (np.diff(cyc['cycSecs']) * ((cyc['cycMps'][1:] + cyc['cycMps'][:-1])*0.5)).sum()
+        return (np.diff(cyc['cycSecs']) * ((cyc['mps'][1:] + cyc['mps'][:-1])*0.5)).sum()
     dist = 0.0
     ts = cyc['cycSecs']
-    avg_speeds = (cyc['cycMps'][1:] + cyc['cycMps'][:-1]) * 0.5
+    avg_speeds = (cyc['mps'][1:] + cyc['mps'][:-1]) * 0.5
     for (t, dt_s, avg_speed_m__s) in zip(ts[1:], np.diff(ts), avg_speeds):
         if t > up_to:
             return dist
@@ -145,9 +145,9 @@ class TestCycle(unittest.TestCase):
         self.assertEqual(cyc12.cycSecs[-1], cyc1.cycSecs[-1] + cyc2.cycSecs[-1])
         self.assertEqual(cyc21.cycSecs[-1], cyc1.cycSecs[-1] + cyc2.cycSecs[-1])
         self.assertEqual(len(cyc12.cycSecs), len(cyc1.cycSecs) + len(cyc2.cycSecs) - 1)
-        self.assertEqual(len(cyc12.cycMps), len(cyc1.cycMps) + len(cyc2.cycMps) - 1)
+        self.assertEqual(len(cyc12.mps), len(cyc1.mps) + len(cyc2.mps) - 1)
         self.assertEqual(len(cyc12.cycGrade), len(cyc1.cycGrade) + len(cyc2.cycGrade) - 1)
-        self.assertEqual(len(cyc12.cycRoadType), len(cyc1.cycRoadType) + len(cyc2.cycRoadType) - 1)
+        self.assertEqual(len(cyc12.road_type), len(cyc1.road_type) + len(cyc2.road_type) - 1)
     
     def test_cycle_equality(self):
         "Test structural equality of driving cycles"
@@ -169,14 +169,14 @@ class TestCycle(unittest.TestCase):
             msg = f"issue for {cycle_name}, {len(cyc.cycSecs)} points, duration {cyc.cycSecs[-1]}"
             expected_num_at_dt0_1 = 10 * len(cyc.cycSecs) - 9
             self.assertEqual(len(cyc_at_dt0_1.cycSecs), expected_num_at_dt0_1, msg)
-            self.assertEqual(len(cyc_at_dt0_1.cycMps), expected_num_at_dt0_1, msg)
+            self.assertEqual(len(cyc_at_dt0_1.mps), expected_num_at_dt0_1, msg)
             self.assertEqual(len(cyc_at_dt0_1.cycGrade), expected_num_at_dt0_1, msg)
-            self.assertEqual(len(cyc_at_dt0_1.cycRoadType), expected_num_at_dt0_1, msg)
+            self.assertEqual(len(cyc_at_dt0_1.road_type), expected_num_at_dt0_1, msg)
             expected_num_at_dt10 = len(cyc.cycSecs) // 10 + (0 if len(cyc.cycSecs) % 10 == 0 else 1)
             self.assertEqual(len(cyc_at_dt10.cycSecs), expected_num_at_dt10, msg)
-            self.assertEqual(len(cyc_at_dt10.cycMps), expected_num_at_dt10, msg)
+            self.assertEqual(len(cyc_at_dt10.mps), expected_num_at_dt10, msg)
             self.assertEqual(len(cyc_at_dt10.cycGrade), expected_num_at_dt10, msg)
-            self.assertEqual(len(cyc_at_dt10.cycRoadType), expected_num_at_dt10, msg)
+            self.assertEqual(len(cyc_at_dt10.road_type), expected_num_at_dt10, msg)
     
     def test_resampling_and_concatenating_cycles(self):
         "Test that concatenating cycles at different sampling rates works as expected"
@@ -222,16 +222,16 @@ class TestCycle(unittest.TestCase):
                 cyc_at_0_1hz, up_to=cyc_at_0_1hz['cycSecs'][-1])
             self.assertTrue(abs(dist_m - dist_at_0_1hz_m) > 1, msg=msg)
             cyc_at_0_1hz_rate_keys = cycle.resample(
-                the_cyc, new_dt=new_dt_s, rate_keys={'cycMps'})
+                the_cyc, new_dt=new_dt_s, rate_keys={'mps'})
             self.assertAlmostEqual(
                 cyc_at_0_1hz['cycSecs'][-1],
                 cyc_at_0_1hz_rate_keys['cycSecs'][-1], msg=msg)
             dist_at_0_1hz_w_rate_keys_m = calc_distance_traveled_m(
                 cyc_at_0_1hz_rate_keys, up_to=cyc_at_0_1hz['cycSecs'][-1])
             self.assertAlmostEqual(dist_m, dist_at_0_1hz_w_rate_keys_m, 3, msg=msg)
-            self.assertTrue((the_cyc['cycMps'] >= 0.0).all(), msg=msg)
-            self.assertTrue((cyc_at_0_1hz['cycMps'] >= 0.0).all(), msg=msg)
-            self.assertTrue((cyc_at_0_1hz_rate_keys['cycMps'] >= 0.0).all(), msg=msg)
+            self.assertTrue((the_cyc['mps'] >= 0.0).all(), msg=msg)
+            self.assertTrue((cyc_at_0_1hz['mps'] >= 0.0).all(), msg=msg)
+            self.assertTrue((cyc_at_0_1hz_rate_keys['mps'] >= 0.0).all(), msg=msg)
             # UPSAMPLING
             new_dt_s = 0.1
             cyc_at_10hz = cycle.resample(the_cyc, new_dt=new_dt_s)
@@ -247,13 +247,13 @@ class TestCycle(unittest.TestCase):
                 cyc_at_10hz, up_to=cyc_at_10hz['cycSecs'][-1])
             # NOTE: upsampling doesn't cause a distance discrepancy
             self.assertAlmostEqual(dist_m, dist_at_10hz_m, msg=msg)
-            cyc_at_10hz_rate_keys = cycle.resample(the_cyc, new_dt=new_dt_s, rate_keys={'cycMps'})
+            cyc_at_10hz_rate_keys = cycle.resample(the_cyc, new_dt=new_dt_s, rate_keys={'mps'})
             dist_at_10hz_w_rate_keys_m = calc_distance_traveled_m(
                 cyc_at_10hz_rate_keys, up_to=cyc_at_10hz_rate_keys['cycSecs'][-1])
             # NOTE: specifying rate keys shouldn't change the distance calculation with rate keys
             self.assertAlmostEqual(dist_m, dist_at_10hz_w_rate_keys_m, 3, msg=msg)
-            self.assertTrue((cyc_at_10hz['cycMps'] >= 0.0).all(), msg=msg)
-            self.assertTrue((cyc_at_10hz_rate_keys['cycMps'] >= 0.0).all(), msg=msg)
+            self.assertTrue((cyc_at_10hz['mps'] >= 0.0).all(), msg=msg)
+            self.assertTrue((cyc_at_10hz_rate_keys['mps'] >= 0.0).all(), msg=msg)
     
     def test_clip_by_times(self):
         "Test that clipping by times works as expected"
@@ -272,17 +272,17 @@ class TestCycle(unittest.TestCase):
         tri = {
             'name': "triangular speed trace",
             'cycSecs': np.array([0.0, 10.0, 20.0]),
-            'cycMps': np.array([0.0, 5.0, 0.0]),
+            'mps': np.array([0.0, 5.0, 0.0]),
             'cycGrade': np.array([0.0, 0.0, 0.0]),
-            'cycRoadType': np.array([0.0, 0.0, 0.0]),
+            'road_type': np.array([0.0, 0.0, 0.0]),
         }
         expected_tri = np.array([0.5, -0.5]) # acceleration (m/s2)
         trapz = {
             'name': "trapezoidal speed trace",
             'cycSecs': np.array([0.0, 10.0, 20.0, 30.0, 40.0]),
-            'cycMps': np.array([0.0, 5.0, 5.0, 0.0, 0.0]),
+            'mps': np.array([0.0, 5.0, 5.0, 0.0, 0.0]),
             'cycGrade': np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
-            'cycRoadType': np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
+            'road_type': np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
         }
         expected_trapz = np.array([0.5, 0.0, -0.5, 0.0]) # acceleration (m/s2)
         for (cyc, expected_accels_m__s2) in [(tri, expected_tri), (trapz, expected_trapz)]:
@@ -311,7 +311,7 @@ class TestCycle(unittest.TestCase):
         cyc = cycle.make_cycle([0, 1, 2], [0, 1, 0])
         self.assertEqual(cyc['cycSecs'][0], 0.0)
         self.assertEqual(cyc['cycSecs'][-1], 2.0)
-        expected_keys = {'cycSecs', 'cycMps', 'cycGrade', 'cycRoadType'} 
+        expected_keys = {'cycSecs', 'mps', 'cycGrade', 'road_type'} 
         self.assertEqual(expected_keys, {k for k in cyc.keys()})
         for k in expected_keys:
             self.assertEqual(len(cyc[k]), 3)
