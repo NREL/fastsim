@@ -41,7 +41,7 @@ class TestSimDriveClassic(unittest.TestCase):
         cyc1 = cycle.Cycle(
             cyc_dict=(cycle.clip_by_times(cycle.Cycle('udds').get_cyc_dict(), t_end=t_clip))
             )
-        t_end =cycle.Cycle.from_file('udds').cycSecs[-1]
+        t_end =cycle.Cycle.from_file('udds').time_s[-1]
         cyc2 = cycle.Cycle(
             cyc_dict=(cycle.clip_by_times(cycle.Cycle('udds').get_cyc_dict(), 
             t_start=t_clip, t_end=t_end))
@@ -54,7 +54,7 @@ class TestSimDriveClassic(unittest.TestCase):
 
         sd2 = simdrive.SimDriveClassic(cyc2, veh)
         # this is a bug workaround.  There will be a fix that will make this workaround remain functional but unnecessary
-        sd2.mpsAch[0] = cyc2.cycMph[0]
+        sd2.mpsAch[0] = cyc2.mph[0]
         sd2.mphAch[0] = cyc2.mps[0]
         sd2.sim_drive()
 
@@ -70,7 +70,7 @@ class TestSimDriveClassic(unittest.TestCase):
     def test_time_dilation(self):
         veh = vehicle.Vehicle(1)
         cyc = cycle.Cycle(cyc_dict={
-            'cycSecs': np.arange(10),
+            'time_s': np.arange(10),
             'mps': np.append(2, np.ones(9) * 6),
         })
         sd = simdrive.SimDriveClassic(cyc, veh)

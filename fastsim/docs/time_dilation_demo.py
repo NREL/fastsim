@@ -56,17 +56,17 @@ print('Distance percent error w.r.t. base cycle: {:.3%}'.format(
     (sd_fixed.distMeters.sum() - cyc.cycDistMeters.sum()) / cyc.cycDistMeters.sum()))
 
 # elevation delta based on dilated cycle secs
-delta_elev_dilated = (sd_fixed.cyc.cycGrade * sd_fixed.cyc.secs * sd_fixed.cyc.mps).sum()
+delta_elev_dilated = (sd_fixed.cyc.grade * sd_fixed.cyc.dt_s * sd_fixed.cyc.mps).sum()
 # elevation delta based on dilated cycle secs
-delta_elev_achieved = (sd_fixed.cyc.cycGrade *
-                      sd_fixed.cyc.secs * sd_fixed.mpsAch).sum()
+delta_elev_achieved = (sd_fixed.cyc.grade *
+                      sd_fixed.cyc.dt_s * sd_fixed.mpsAch).sum()
 
 # PLOTS
 
 # speed
 
-plt.plot(cyc.cycSecs, cyc.mps, label='trace')
-plt.plot(sd_fixed.cyc.cycSecs, sd_fixed.mpsAch,
+plt.plot(cyc.time_s, cyc.mps, label='trace')
+plt.plot(sd_fixed.cyc.time_s, sd_fixed.mpsAch,
          label='dilated', linestyle='--')
 # plt.grid()
 plt.legend()
@@ -88,11 +88,11 @@ plt.show()
 # distance
 
 plt.figure()
-plt.plot(cyc.cycSecs, (cyc.mps * cyc.secs).cumsum() / 1e3, label='trace')
-plt.plot(sd_fixed.cyc.cycSecs, (sd_fixed.mpsAch *
-                                 sd_fixed.cyc.secs).cumsum() / 1e3, label='dilated', linestyle='--')
-plt.plot(sd_base.cyc.cycSecs, (sd_base.mpsAch *
-                                 sd_base.cyc.secs).cumsum() / 1e3, label='base', linestyle='-.')
+plt.plot(cyc.time_s, (cyc.mps * cyc.dt_s).cumsum() / 1e3, label='trace')
+plt.plot(sd_fixed.cyc.time_s, (sd_fixed.mpsAch *
+                                 sd_fixed.cyc.dt_s).cumsum() / 1e3, label='dilated', linestyle='--')
+plt.plot(sd_base.cyc.time_s, (sd_base.mpsAch *
+                                 sd_base.cyc.dt_s).cumsum() / 1e3, label='base', linestyle='-.')
 # plt.grid()
 plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
@@ -101,10 +101,10 @@ plt.title('Distance v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.20
 plt.show()
 
 plt.figure()
-plt.plot((cyc.mps * cyc.secs).cumsum() / 1e3, label='trace')
-plt.plot((sd_fixed.mpsAch * sd_fixed.cyc.secs).cumsum() / 1e3,
+plt.plot((cyc.mps * cyc.dt_s).cumsum() / 1e3, label='trace')
+plt.plot((sd_fixed.mpsAch * sd_fixed.cyc.dt_s).cumsum() / 1e3,
          label='dilated', linestyle='--')
-plt.plot((sd_base.mpsAch * sd_base.cyc.secs).cumsum() / 1e3,
+plt.plot((sd_base.mpsAch * sd_base.cyc.dt_s).cumsum() / 1e3,
          label='base', linestyle='-.')
 # plt.grid()
 plt.legend(loc='upper left')
@@ -114,10 +114,10 @@ plt.title('Distance v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.2
 plt.show()
 
 plt.figure()
-plt.plot(sd_fixed.cyc.cycSecs,
+plt.plot(sd_fixed.cyc.time_s,
     (np.interp(
-    sd_fixed.cyc.cycSecs, 
-    cyc.cycSecs, 
+    sd_fixed.cyc.time_s, 
+    cyc.time_s, 
     cyc.cycDistMeters.cumsum()) - sd_fixed.distMeters.cumsum())
          / 1e3)
 # plt.grid()
@@ -140,10 +140,10 @@ plt.show()
 # elevation change
 
 plt.figure()
-plt.plot(cyc.cycSecs, (cyc.cycGrade * cyc.mps * cyc.secs).cumsum(), label='trace')
-plt.plot(sd_fixed.cyc.cycSecs, (cyc.cycGrade * cyc.secs *
+plt.plot(cyc.time_s, (cyc.grade * cyc.mps * cyc.dt_s).cumsum(), label='trace')
+plt.plot(sd_fixed.cyc.time_s, (cyc.grade * cyc.dt_s *
                                  sd_fixed.mpsAch).cumsum(), label='undilated', linestyle='--')
-plt.plot(sd_fixed.cyc.cycSecs, (sd_fixed.cyc.cycGrade * sd_fixed.cyc.secs *
+plt.plot(sd_fixed.cyc.time_s, (sd_fixed.cyc.grade * sd_fixed.cyc.dt_s *
                                  sd_fixed.mpsAch).cumsum(), label='dilated', linestyle='-.')
 # plt.grid()
 plt.legend(loc='upper left')
@@ -154,10 +154,10 @@ plt.show()
 
 
 plt.figure()
-plt.plot((cyc.cycGrade * cyc.mps *
-                       cyc.secs).cumsum(), label='trace')
-plt.plot((cyc.cycGrade * cyc.secs * sd_fixed.mpsAch).cumsum(), label='undilated', linestyle='--')
-plt.plot((sd_fixed.cyc.cycGrade * sd_fixed.cyc.secs *
+plt.plot((cyc.grade * cyc.mps *
+                       cyc.dt_s).cumsum(), label='trace')
+plt.plot((cyc.grade * cyc.dt_s * sd_fixed.mpsAch).cumsum(), label='undilated', linestyle='--')
+plt.plot((sd_fixed.cyc.grade * sd_fixed.cyc.dt_s *
                                  sd_fixed.mpsAch).cumsum(), label='dilated', linestyle='-.')
 # plt.grid()
 plt.legend(loc='upper left')
@@ -169,8 +169,8 @@ plt.show()
 # grade
 
 plt.figure()
-plt.plot(cyc.cycSecs, cyc.cycGrade, label='trace')
-plt.plot(sd_fixed.cyc.cycSecs, sd_fixed.cyc.cycGrade, label='dilated', linestyle='--')
+plt.plot(cyc.time_s, cyc.grade, label='trace')
+plt.plot(sd_fixed.cyc.time_s, sd_fixed.cyc.grade, label='dilated', linestyle='--')
 # plt.grid()
 plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
@@ -179,8 +179,8 @@ plt.title('Grade v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 /
 plt.show()
 
 plt.figure()
-plt.plot(cyc.cycGrade, label='trace')
-plt.plot(sd_fixed.cyc.cycGrade, label='dilated', linestyle='--')
+plt.plot(cyc.grade, label='trace')
+plt.plot(sd_fixed.cyc.grade, label='dilated', linestyle='--')
 # plt.grid()
 plt.legend(loc='upper left')
 plt.xlabel('Index')
@@ -191,7 +191,7 @@ plt.show()
 # time dilation
 
 plt.figure()
-plt.plot(sd_fixed.cyc.secs)
+plt.plot(sd_fixed.cyc.dt_s)
 # plt.grid()
 plt.xlabel('Index')
 plt.ylabel('Time Dilation')

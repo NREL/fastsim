@@ -20,10 +20,10 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     mps = np.array([(1 / params.MPH_PER_MPS) * float(spd_mph)] * (length_in_seconds * hz))
     mps[0] = 0.
     mps = np.array(mps)
-    cycSecs = np.arange(0, length_in_seconds, 1. / hz)
+    time_s = np.arange(0, length_in_seconds, 1. / hz)
     cycGrade = np.array([float(grade)] * (length_in_seconds * hz))
     road_type = np.zeros(length_in_seconds * hz)
-    cyc = {'mps': mps, 'cycSecs': cycSecs, 'cycGrade': cycGrade, 'road_type':road_type}
+    cyc = {'mps': mps, 'time_s': time_s, 'cycGrade': cycGrade, 'road_type':road_type}
     return cyc
 
 def main(use_jitclass=True):

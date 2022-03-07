@@ -40,7 +40,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
 
     # load the cycles and intstantiate simdrive objects
     accel_cyc_secs = np.arange(0, 300, 0.1)
-    cyc_dict = {'cycSecs': accel_cyc_secs,
+    cyc_dict = {'time_s': accel_cyc_secs,
                 'mps': np.append([0],
                 np.ones(len(accel_cyc_secs) - 1) * 90 / params.MPH_PER_MPS)}
 
@@ -455,7 +455,7 @@ def get_label_fe(veh, full_detail=False, verbose=False, sim_drive_verbose=False,
     sd['accel'].sim_drive()
     if (sd['accel'].mphAch >= 60).any():
         out['netAccel'] = np.interp(
-            x=60, xp=sd['accel'].mphAch, fp=cyc['accel'].cycSecs)
+            x=60, xp=sd['accel'].mphAch, fp=cyc['accel'].time_s)
     else:
         # in case vehicle never exceeds 60 mph, penalize it a lot with a high number
         print(veh.Scenario_name + ' never achieves 60 mph.')
