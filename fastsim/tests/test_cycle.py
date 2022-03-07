@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from fastsim import cycle, params
+from fastsim import cycle, params, utils
 
 
 def calc_distance_traveled_m(cyc, up_to=None):
@@ -315,3 +315,10 @@ class TestCycle(unittest.TestCase):
         self.assertEqual(expected_keys, {k for k in cyc.keys()})
         for k in expected_keys:
             self.assertEqual(len(cyc[k]), 3)
+
+    def test_key_conversion(self):
+        "check that legacy keys can still be generated"
+        old_keys = list(cycle.NEW_TO_OLD.values())
+        cyc = cycle.Cycle.from_file('udds')
+        old_cyc = cycle.LegacyCycle(cyc)
+        self.assertEqual(old_keys, utils.get_attrs(old_cyc))
