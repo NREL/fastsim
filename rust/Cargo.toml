@@ -9,6 +9,6 @@ name = "fastsim"
 crate-type = ["cdylib"]
 
 [dependencies]
-csv = "*"
 pyo3 = { version = "0.15.1", features = ["extension-module"] }
 ndarray = { version = "0.15.4"}
+numpy = "*"

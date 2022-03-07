@@ -2,6 +2,7 @@ extern crate ndarray;
 use pyo3::prelude::*;
 
 mod params;
+mod utils;
 
 mod cycle;
 use cycle::*;
