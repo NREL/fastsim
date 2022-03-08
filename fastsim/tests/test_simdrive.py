@@ -92,7 +92,7 @@ class TestSimDriveClassic(unittest.TestCase):
         veh.max_motor_kw = 1
         veh.max_ess_kw = 5
         veh.max_ess_kwh = 1
-        veh.set_init_calcs()
+        veh.__post_init__()
 
         sd = simdrive.SimDriveClassic(cyc, veh)
         sd.sim_drive()

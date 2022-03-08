@@ -1156,15 +1156,6 @@ class SimDriveClassic(object):
             ]
 
             # add time dilation factor * step size to current and subsequent times
-            print('time_s')
-            print(type(self.cyc.time_s[i]))
-            print(self.cyc.time_s[i])
-            print('dt_s')
-            print(type(self.cyc.dt_s[i]))
-            print(self.cyc.dt_s[i])
-            print('t_dilation')
-            print(type(t_dilation[-1]))
-            print(t_dilation[-1])
             self.cyc.time_s[i:] += self.cyc.dt_s[i] * t_dilation[-1]
             self.solve_step(i)
             trace_met = (
@@ -1355,7 +1346,7 @@ class SimDrivePost(object):
     """Class for post-processing of SimDrive instance.  Requires already-run 
     SimDriveJit or SimDriveClassic instance."""
     
-    def __init__(self, sim_drive):
+    def __init__(self, sim_drive:SimDriveClassic):
         """Arguments:
         ---------------
         sim_drive: solved sim_drive object"""
@@ -1447,7 +1438,7 @@ class SimDrivePost(object):
         
         output['distMilesFinal'] = sum(self.distMiles)
         if sum(self.fsKwhOutAch) > 0:
-            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * self.props.kWhPerGGE
+            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * self.props.kwh_per_gge
         else:
             output['mpgge'] = 0
     

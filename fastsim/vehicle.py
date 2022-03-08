@@ -16,7 +16,7 @@ from typing import Optional
 
 # local modules
 from fastsim import parameters as params
-from . import utils
+from fastsim import utils
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -99,96 +99,98 @@ keys_and_types = {
     "selection": int,
     "veh_year": int,
     "veh_pt_type": str,
-    "drag_coef": float,
-    "frontal_area_m2": float,
-    "glider_kg": float,
-    "veh_cg_m": float,
-    "drive_axle_weight_frac": float,
-    "wheel_base_m": float,
-    "cargo_kg": float,
-    "veh_override_kg": float,
-    "comp_mass_multiplier": float,
-    "max_fuel_stor_kw": float,
-    "fuel_stor_secs_to_peak_pwr": float,
-    "fuel_stor_kwh": float,
-    "fuel_stor_kwh_per_kg": float,
-    "max_fuel_conv_kw": float,
+    "drag_coef": np.float64,
+    "frontal_area_m2": np.float64,
+    "glider_kg": np.float64,
+    "veh_cg_m": np.float64,
+    "drive_axle_weight_frac": np.float64,
+    "wheel_base_m": np.float64,
+    "cargo_kg": np.float64,
+    "veh_override_kg": np.float64,
+    "comp_mass_multiplier": np.float64,
+    "max_fuel_stor_kw": np.float64,
+    "fuel_stor_secs_to_peak_pwr": np.float64,
+    "fuel_stor_kwh": np.float64,
+    "fuel_stor_kwh_per_kg": np.float64,
+    "max_fuel_conv_kw": np.float64,
     "fc_pwr_out_perc": np.array,
     "fc_eff_map": np.array,
     "fc_eff_type": str,
-    "fuel_conv_secs_to_peak_pwr": float,
-    "fuel_conv_base_kg": float,
-    "fuel_conv_kw_per_kg": float,
-    "min_fc_time_on": float,
-    "idle_fc_kw": float,
-    "max_motor_kw": float,
+    "fuel_conv_secs_to_peak_pwr": np.float64,
+    "fuel_conv_base_kg": np.float64,
+    "fuel_conv_kw_per_kg": np.float64,
+    "min_fc_time_on": np.float64,
+    "idle_fc_kw": np.float64,
+    "max_motor_kw": np.float64,
     "mc_pwr_out_perc": np.array,
     "mc_eff_map": np.array,
-    "motor_secs_to_peak_pwr": float,
-    "mc_pe_kg_per_kw": float,
-    "mc_pe_base_kg": float,
-    "max_ess_kw": float,
-    "max_ess_kwh": float,
-    "ess_kg_per_kwh": float,
-    "ess_base_kg": float,
-    "ess_round_trip_eff": float,
-    "ess_life_coef_a": float,
-    "ess_life_coef_b": float,
-    "min_soc": float,
-    "max_soc": float,
-    "ess_dischg_to_fc_max_eff_perc": float,
-    "ess_chg_to_fc_max_eff_perc": float,
-    "wheel_inertia_kg_m2": float,
+    "motor_secs_to_peak_pwr": np.float64,
+    "mc_pe_kg_per_kw": np.float64,
+    "mc_pe_base_kg": np.float64,
+    "max_ess_kw": np.float64,
+    "max_ess_kwh": np.float64,
+    "ess_kg_per_kwh": np.float64,
+    "ess_base_kg": np.float64,
+    "ess_round_trip_eff": np.float64,
+    "ess_life_coef_a": np.float64,
+    "ess_life_coef_b": np.float64,
+    "min_soc": np.float64,
+    "max_soc": np.float64,
+    "ess_dischg_to_fc_max_eff_perc": np.float64,
+    "ess_chg_to_fc_max_eff_perc": np.float64,
+    "wheel_inertia_kg_m2": np.float64,
     "num_wheels": int,
-    "wheel_rr_coef": float,
-    "wheel_radius_m": float,
-    "wheel_coef_of_fric": float,
-    "max_accel_buffer_mph": float,
-    "max_accel_buffer_perc_of_useable_soc": float,
-    "perc_high_acc_buf": float,
-    "mph_fc_on": float,
-    "kw_demand_fc_on": float,
-    "max_regen": bool,
+    "wheel_rr_coef": np.float64,
+    "wheel_radius_m": np.float64,
+    "wheel_coef_of_fric": np.float64,
+    "max_accel_buffer_mph": np.float64,
+    "max_accel_buffer_perc_of_useable_soc": np.float64,
+    "perc_high_acc_buf": np.float64,
+    "mph_fc_on": np.float64,
+    "kw_demand_fc_on": np.float64,
+    "max_regen": np.float64,
     "stop_start": bool,
-    "force_aux_on_fc": float,
-    "alt_eff": float,
-    "chg_eff": float,
-    "aux_kw": float,
-    "trans_kg": float,
-    "trans_eff": float,
-    "ess_to_fuel_ok_error": float,
-    "val_udds_mpgge": float,
-    "val_hwy_mpgge": float,
-    "val_comb_mpgge": float,
-    "val_udds_kwh_per_mile": float,
-    "val_hwy_kwh_per_mile": float,
-    "val_comb_kwh_per_mile": float,
-    "val_cd_range_mi": float,
-    "val_const65_mph_kwh_per_mile": float,
-    "val_const60_mph_kwh_per_mile": float,
-    "val_const55_mph_kwh_per_mile": float,
-    "val_const45_mph_kwh_per_mile": float,
-    "val_unadj_udds_kwh_per_mile": float,
-    "val_unadj_hwy_kwh_per_mile": float,
-    "val0_to60_mph": float,
-    "val_ess_life_miles": float,
-    "val_range_miles": float,
-    "val_veh_base_cost": float,
-    "val_msrp": float,
-    "fc_peak_eff_override":float,
-    "mc_peak_eff_override":float,
+    "force_aux_on_fc": np.float64,
+    "alt_eff": np.float64,
+    "chg_eff": np.float64,
+    "aux_kw": np.float64,
+    "trans_kg": np.float64,
+    "trans_eff": np.float64,
+    "ess_to_fuel_ok_error": np.float64,
+    "val_udds_mpgge": np.float64,
+    "val_hwy_mpgge": np.float64,
+    "val_comb_mpgge": np.float64,
+    "val_udds_kwh_per_mile": np.float64,
+    "val_hwy_kwh_per_mile": np.float64,
+    "val_comb_kwh_per_mile": np.float64,
+    "val_cd_range_mi": np.float64,
+    "val_const65_mph_kwh_per_mile": np.float64,
+    "val_const60_mph_kwh_per_mile": np.float64,
+    "val_const55_mph_kwh_per_mile": np.float64,
+    "val_const45_mph_kwh_per_mile": np.float64,
+    "val_unadj_udds_kwh_per_mile": np.float64,
+    "val_unadj_hwy_kwh_per_mile": np.float64,
+    "val0_to60_mph": np.float64,
+    "val_ess_life_miles": np.float64,
+    "val_range_miles": np.float64,
+    "val_veh_base_cost": np.float64,
+    "val_msrp": np.float64,
     # don't mess with this,
     "props": params.PhysicalProperties,
     # gets set during __post_init__,
     "large_baseline_eff": np.array,
     # gets set during __post_init__,
     "small_baseline_eff": np.array,
-    "small_motor_power_kw": float,
-    "large_motor_power_kw": float,
+    "small_motor_power_kw": np.float64,
+    "large_motor_power_kw": np.float64,
     # gets set during __post_init__,
     "fc_perc_out_array": np.array,
     # gets set during __post_init__,
     "fc_perc_out_array": np.array,
+    "max_roadway_chg_kw": np.array,
+    "charging_on": bool,
+    "no_elec_sys": bool,
+    "no_elec_aux": bool,
 }
 
 
@@ -279,8 +281,6 @@ class Vehicle(object):
     val_range_miles: float
     val_veh_base_cost: float
     val_msrp: float
-    fc_peak_eff_override: float =-1, 
-    mc_peak_eff_override: float =-1 
     # don't mess with this   
     props: params.PhysicalProperties = params.PhysicalProperties() 
     # gets set during __post_init__
@@ -297,9 +297,12 @@ class Vehicle(object):
     mc_perc_out_array = params.mc_perc_out_array
     ### Specify shape of mc regen efficiency curve
     ### see "Regen" tab in FASTSim for Excel
-    regen_a = 500.0  # hardcoded
-    regen_b = 0.99  # hardcoded
-
+    regen_a: float = 500.0  
+    regen_b: float = 0.99  
+    max_roadway_chg_kw: np.ndarray = np.zeros(6)
+    charging_on: bool = False
+    no_elec_sys: bool = False
+    no_elec_aux: bool = False
 
     @classmethod
     def from_vehdb(cls, vnum:int, verbose:bool=False):
@@ -373,10 +376,10 @@ class Vehicle(object):
 
         veh_dict.update(dict(vehdf.loc[vnum, :]))
 
-        return cls.from_dict(veh_dict, veh_file, verbose)
+        return cls.from_dict(veh_dict, verbose)
 
     @classmethod
-    def from_dict(cls, veh_dict:dict, veh_file:Path, verbose:bool):
+    def from_dict(cls, veh_dict:dict, verbose:bool=False):
         """
         Load vehicle from dict.  
         """
@@ -395,7 +398,7 @@ class Vehicle(object):
             # check if optional parameter fc_eff_map is provided in vehicle csv file
             veh_dict['fc_eff_map'] = np.array(ast.literal_eval(veh_dict['fcEffMap']))
             if verbose:
-                print(f"fcEffMap is overriding fc_eff_type in {veh_file}")
+                print(f"fcEffMap is overriding fc_eff_type")
         
         except:
             warn_str = f"""fc_eff_type {veh_dict['fc_eff_type']} is not in {FC_EFF_TYPES},
@@ -486,7 +489,7 @@ class Vehicle(object):
         # make sure types are right
         for key, val in veh_dict.items():
             if key != 'props':
-                veh_dict[key] = keys_and_types[key](val)
+                 veh_dict[key] = keys_and_types[key](val)
 
         return cls(**veh_dict)
         
@@ -496,8 +499,6 @@ class Vehicle(object):
         Sets derived parameters.
         Arguments:
         ----------
-        fc_peak_eff_override: float (0, 1), if provided, overrides fuel converter peak 
-            efficiency with proportional scaling.  Default of -1 has no effect.
         mc_peak_eff_override: float (0, 1), if provided, overrides motor peak efficiency
             with proportional scaling.  Default of -1 has no effect.  
         """
@@ -514,7 +515,7 @@ class Vehicle(object):
 
         ### Build roadway power lookup table
         self.MaxRoadwayChgKw = np.zeros(6)
-        self.charging_on = False
+        self.chargingOn = False
 
         # Checking if a vehicle has any hybrid components
         if (self.max_ess_kwh == 0) or (self.max_ess_kw == 0) or (self.max_motor_kw == 0):
@@ -694,7 +695,7 @@ def copy_vehicle(veh:Vehicle, return_dict=False, use_rust=None):
 
     veh_dict = {}
 
-    for key in utils.get_attrs(veh):
+    for key in keys_and_types.keys():
         veh_dict[key] = copy.deepcopy(veh.__getattribute__(key))
 
     if return_dict:
@@ -735,3 +736,7 @@ def veh_equal(veh1, veh2, full_out=False):
     if full_out: return err_list
 
     return True
+
+if __name__ == "__main__":
+    veh = Vehicle.from_vehdb(1, verbose=False)
+    veh_copy = copy_vehicle(veh)

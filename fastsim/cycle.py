@@ -1,4 +1,4 @@
-"""Module containing classes and methods for for loading 
+"""Module containing classes and methods for 
 cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules

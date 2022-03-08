@@ -30,11 +30,11 @@ class PhysicalProperties(object):
         self.fuel_afr_stoich = 14.7 # gasoline stoichiometric air-fuel ratio https://en.wikipedia.org/wiki/Air%E2%80%93fuel_ratio
 
     def get_fuel_lhv_kJ__kg(self):
-        # fuel_lhv_kJ__kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg__L [kg/L] * 3_600 [s/hr] = [kJ/kg]
+        # fuel_lhv_kJ__kg = kwh_per_gge / 3.785 [L/gal] / fuel_rho_kg__L [kg/L] * 3_600 [s/hr] = [kJ/kg]
         return self.kwh_per_gge / 3.785 / self.fuel_rho_kg__L * 3_600 
 
     def set_fuel_lhv_kJ__kg(self, value):
-        # kWhPerGGE = fuel_lhv_kJ__kg * fuel_rho_kg__L [kg/L] * 3.785 [L/gal] / 3_600 [s/hr] = [kJ/kg]
+        # kwh_per_gge = fuel_lhv_kJ__kg * fuel_rho_kg__L [kg/L] * 3.785 [L/gal] / 3_600 [s/hr] = [kJ/kg]
         self.kwh_per_gge = value * 3.785 * self.fuel_rho_kg__L / 3_600
 
     fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)

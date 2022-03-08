@@ -5,8 +5,7 @@ import pandas as pd
 import time
 import numpy as np
 import re
-import os
-import sys
+from typing import Tuple
 from pathlib import Path
 import unittest
 
@@ -73,7 +72,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
 
             if iter == 0:
                 dict_diag['vnum'] = [vehno]
-                dict_diag['Scenario_name'] = [veh.Scenario_name]
+                dict_diag['Scenario_name'] = [veh.scenario_name]
                 dict_diag['cycle'] = [cyc_name]
                 for key in diagno.keys():
                     dict_diag[key] = [diagno[key]]
@@ -81,7 +80,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
 
             else:
                 dict_diag['vnum'].append(vehno)
-                dict_diag['Scenario_name'].append(veh.Scenario_name)
+                dict_diag['Scenario_name'].append(veh.scenario_name)
                 dict_diag['cycle'].append(cyc_name)
                 for key in diagno.keys():
                     dict_diag[key].append(diagno[key])

@@ -10,7 +10,7 @@ from fastsim import vehicle
 
 class TestVehicle(unittest.TestCase):
     def test_equal(self):
-        """Verify that a copied VehicleJit and identically instantiated Vehicle are equal."""
+        """Verify that a copied Vehicle and original are equal."""
         
         print(f"Running {type(self)}.test_equal.")
         veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
@@ -34,17 +34,6 @@ class TestVehicle(unittest.TestCase):
         veh.mc_eff_array *= 1.05
         self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
         self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-
-    def test_set_dependents(self):
-        veh = vehicle.Vehicle.from_vehdb(1)
-        veh.set_dependents()
-
-    def test_file_overrides(self):
-        veh = vehicle.Vehicle.from_file('test_overrides')
-        self.assertAlmostEqual(veh.mc_peak_eff, 0.2, 3)
-        self.assertAlmostEqual(veh.fc_peak_eff, 0.9, 3)
-        with self.assertRaises(AssertionError):
-            vehicle.Vehicle.from_file('fail_overrides')
 
 if __name__ == '__main__':
     from fastsim import vehicle 
