@@ -18,6 +18,7 @@ from typing import Optional
 from fastsim import parameters as params
 from fastsim import utils
 from fastsim.vehicle_base import keys_and_types, NEW_TO_OLD
+import fastsimrust as fsr
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -601,7 +602,7 @@ class LegacyVehicle(object):
             self.__setattr__(val, copy.deepcopy(vehicle.__getattribute__(key)))
 
 
-def copy_vehicle(veh:Vehicle, return_type:str='vehicle', deep:bool=True):
+def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     """Returns copy of Vehicle.
     Arguments:
     veh: instantiated Vehicle
@@ -616,13 +617,25 @@ def copy_vehicle(veh:Vehicle, return_type:str='vehicle', deep:bool=True):
 
     for key in keys_and_types.keys():
         veh_dict[key] = copy.deepcopy(veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
+
+    if return_type is None:
+        if type(veh) == fsr.RustVehicle:
+            return_type = 'rust'
+        elif type(veh) == Vehicle:
+            return_type = 'vehicle'
+        elif type(veh) == LegacyVehicle:
+            return_type = "legacy"
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust, vehicle, or legacy.")
+
     if return_type == 'dict':
         return veh_dict
-    elif return_type == 'cycle':
-        return Vehicle.from_dict
-    elif return_type == 'legacy_cycle':
+    elif return_type == 'vehicle':
+        return Vehicle.from_dict(veh_dict)
+    elif return_type == 'legacy':
         return LegacyVehicle(veh_dict)
-    elif return_type == 'rust_cycle':
+    elif return_type == 'rust':
         raise NotImplementedError
     else:
         raise ValueError("Invalid return_type.")

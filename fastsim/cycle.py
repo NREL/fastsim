@@ -192,7 +192,7 @@ def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True):
             return_type = "legacy"
         else:
             raise NotImplementedError(
-                "Only implemented for rust_cycle, cycle, or legacy_cycle.")
+                "Only implemented for rust, cycle, or legacy.")
 
     if return_type == 'dict':
         return cyc_dict

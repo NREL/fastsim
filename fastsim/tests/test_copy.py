@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from fastsim import cycle, params, utils
+from fastsim import cycle, params, utils, vehicle
 import fastsimrust as fsr
 
 
@@ -47,4 +47,7 @@ class TestCopy(unittest.TestCase):
     
     def test_vehicle_copy(self):
         "Test that vehicle_copy works as expected"
-        pass
+        veh = vehicle.Vehicle.from_vehdb(5)
+        self.assertEqual(vehicle.Vehicle, type(veh))
+        veh2 = vehicle.copy_vehicle(veh)
+        self.assertEqual(vehicle.Vehicle, type(veh2))
