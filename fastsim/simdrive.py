@@ -375,12 +375,15 @@ class SimDriveClassic(object):
         b_m__s2 = self.veh.idm_decel_m__s2 # deceleration (m/s2)
         dt_headway_s = self.veh.idm_dt_headway_s
         s0_m = self.veh.idm_minimum_gap_m # we assume vehicle's start out "minimum gap" apart
+        if self.veh.idm_v_desired_m__s > 0:
+            v_desired_m__s = self.veh.idm_v_desired_m__s
+        else:
+            v_desired_m__s = self.cyc0.cycMps.max()
         # DERIVED VALUES
         sqrt_ab = (a_m__s2 * b_m__s2)**0.5
         v0_m__s = self.mpsAch[i-1]
         v0_lead_m__s = self.cyc0.cycMps[i-1]
         dv0_m__s = v0_m__s - v0_lead_m__s
-        v_desired_m__s = np.mean(self.cyc0.cycMps[self.cyc0.cycMps > 0.0])
         d0_lead_m = self.cyc0.cycDistMeters_v2[:i].sum() + s0_m
         d0_m = self.cyc.cycDistMeters_v2[:i].sum()
         s_m = max(d0_lead_m - d0_m, 0.01)
