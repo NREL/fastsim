@@ -1931,7 +1931,7 @@ def copy_sim_drive(sd:SimDriveClassic, use_jit=None) -> SimDriveClassic:
             sd_copy.__setattr__(
                 key, 
                 cycle.copy_cycle(sd.__getattribute__(key), use_jit=use_jit))
-        if key == 'cyc0':
+        elif key == 'cyc0':
             pass
         elif key == 'veh':
             sd_copy.veh = vehicle.copy_vehicle(sd.veh, return_dict=False, use_jit=use_jit)
