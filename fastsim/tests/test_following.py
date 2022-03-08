@@ -383,10 +383,10 @@ class TestFollowing(unittest.TestCase):
                                             except Exception as err: 
                                                 with open(save_dir / 'run-log.txt', 'a') as f:
                                                     f.write(f'issue creating plot for {key}: {err}')
-                                            if False:
-                                                with open(sd_path, 'wb') as f:
-                                                    sd_copy = fastsim.simdrive.copy_sim_drive(sd, use_jit=False)
-                                                    pickle.dump(sd_copy, f)
+                                            # Pickles the runs; note: takes a lot of disk space...
+                                            with open(sd_path, 'wb') as f:
+                                                sd_copy = fastsim.simdrive.copy_sim_drive(sd, use_jit=False)
+                                                pickle.dump(sd_copy, f)
                 print(f"idx: {idx}")
                 results = pd.DataFrame(results)
                 results.to_csv(datafile_path)
