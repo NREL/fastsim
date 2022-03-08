@@ -13,7 +13,7 @@ use super::utils::*;
 #[pyclass] 
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 
-pub struct Vehicle{
+pub struct RustVehicle{
     scenario_name: String,
     selection: u32,
     veh_year: u32,

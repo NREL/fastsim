@@ -5,8 +5,8 @@ pub mod params;
 pub mod utils;
 pub mod cycle;
 use cycle::*;
-// pub mod vehicle;
-// use vehicle::*;
+pub mod vehicle;
+use vehicle::*;
 
 
 
@@ -14,7 +14,7 @@ use cycle::*;
 #[pymodule]
 fn fastsimrust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<RustCycle>()?;
-    // m.add_class::<Vehicle>()?;
+    m.add_class::<RustVehicle>()?;
     // m.add_class::<SimDrive>()?;
     Ok(())
 }
