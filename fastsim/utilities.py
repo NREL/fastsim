@@ -61,7 +61,7 @@ def abc_to_drag_coeffs(veh_kg, veh_fa_m2, a, b, c, show_plots=False):
         wheelRrCoef: rolling resistance coefficient [-]
         """
 
-        out = (veh_kg * props.gravityMPerSec2 * wheelRrCoef +
+        out = (veh_kg * props.a_grav_mps2 * wheelRrCoef +
             0.5 * props.airDensityKgPerM3 * dragCoef * veh_fa_m2
             * speed_mps ** 2) / 4.448
         return out
@@ -109,7 +109,7 @@ def drag_coeffs_to_abc(veh_kg, veh_fa_m2, dragCoef, wheelRrCoef, show_plots=Fals
         wheelRrCoef: rolling resistance coefficient [-]
         """
 
-        out = (veh_kg * props.gravityMPerSec2 * wheelRrCoef +
+        out = (veh_kg * props.a_grav_mps2 * wheelRrCoef +
                0.5 * props.airDensityKgPerM3 * dragCoef * veh_fa_m2
                * speed_mps ** 2) / 4.448
         return out
@@ -139,7 +139,7 @@ def drag_coeffs_to_abc(veh_kg, veh_fa_m2, dragCoef, wheelRrCoef, show_plots=Fals
 def l__100km_to_mpg(l__100km):
     """Given fuel economy in L/100km, returns mpg."""
 
-    mpg = 1 / (l__100km / 3.785 / 100 / 1_000 * params.metersPerMile)
+    mpg = 1 / (l__100km / 3.785 / 100 / 1_000 * params.M_PER_MI)
 
     return mpg
 
@@ -147,7 +147,7 @@ def l__100km_to_mpg(l__100km):
 def mpg_to_l__100km(mpg):
     """Given fuel economy in mpg, returns L/100km."""
 
-    l__100km = 1 / (mpg / 3.785 * params.metersPerMile / 1_000 / 100)
+    l__100km = 1 / (mpg / 3.785 * params.M_PER_MI / 1_000 / 100)
 
     return l__100km
 

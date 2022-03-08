@@ -47,10 +47,10 @@ def run_python(vehicles=np.arange(1, 27), verbose=True):
     res_python = {}
 
     for vehno in vehicles:
-        veh = vehicle.Vehicle(vehno, verbose=False)
+        veh = vehicle.Vehicle.from_vehdb(vehno, verbose=False)
         if verbose:
-            print('Running ' + veh.Scenario_name)
-        res_python[veh.Scenario_name] = simdrivelabel.get_label_fe(veh, verbose=False)
+            print('Running ' + veh.scenario_name)
+        res_python[veh.scenario_name] = simdrivelabel.get_label_fe(veh, verbose=False)
 
     t1 = time.time()
     print()

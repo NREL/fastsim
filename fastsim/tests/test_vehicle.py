@@ -13,7 +13,7 @@ class TestVehicle(unittest.TestCase):
         """Verify that a copied VehicleJit and identically instantiated Vehicle are equal."""
         
         print(f"Running {type(self)}.test_equal.")
-        veh = vehicle.Vehicle(1, verbose=False)
+        veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
         veh_copy = vehicle.copy_vehicle(veh)
         self.assertTrue(vehicle.veh_equal(veh, veh_copy))
 
@@ -21,31 +21,31 @@ class TestVehicle(unittest.TestCase):
         """Verify that some of the property variables are working as expected."""
 
         print(f"Running {type(self)}.test_properties.")
-        veh = vehicle.Vehicle(10, verbose=False)
-        self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
-        self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
-        veh.mcPeakEff = 0.85
-        self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
-        self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
-        veh.mcPeakEff += 0.05
-        self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
-        self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
-        veh.mcFullEffArray *= 1.05
-        veh.mcEffArray *= 1.05
-        self.assertEqual(veh.mcPeakEff, np.max(veh.mcEffArray))
-        self.assertEqual(veh.mcPeakEff, np.max(veh.mcFullEffArray))
+        veh = vehicle.Vehicle.from_vehdb(10, verbose=False)
+        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        veh.mc_peak_eff = 0.85
+        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        veh.mc_peak_eff += 0.05
+        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        veh.mc_full_eff_array *= 1.05
+        veh.mc_eff_array *= 1.05
+        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
 
     def test_set_dependents(self):
-        veh = vehicle.Vehicle(1)
+        veh = vehicle.Vehicle.from_vehdb(1)
         veh.set_dependents()
 
     def test_file_overrides(self):
-        veh = vehicle.Vehicle('test_overrides')
-        self.assertAlmostEqual(veh.mcPeakEff, 0.2, 3)
-        self.assertAlmostEqual(veh.fcPeakEff, 0.9, 3)
+        veh = vehicle.Vehicle.from_file('test_overrides')
+        self.assertAlmostEqual(veh.mc_peak_eff, 0.2, 3)
+        self.assertAlmostEqual(veh.fc_peak_eff, 0.9, 3)
         with self.assertRaises(AssertionError):
-            vehicle.Vehicle('fail_overrides')
+            vehicle.Vehicle.from_file('fail_overrides')
 
 if __name__ == '__main__':
     from fastsim import vehicle 
-    veh = vehicle.Vehicle(1)
+    veh = vehicle.Vehicle.from_vehdb(1)

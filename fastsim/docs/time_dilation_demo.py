@@ -28,8 +28,8 @@ print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
 
 
 t0 = time.time()
-veh = vehicle.Vehicle('Line_Haul_Conv.csv')
-veh.vehKg *= 2
+veh = vehicle.Vehicle.from_file('Line_Haul_Conv.csv')
+veh.veh_kg *= 2
 print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 
 
@@ -70,7 +70,7 @@ plt.plot(sd_fixed.cyc.time_s, sd_fixed.mpsAch,
 plt.legend()
 plt.xlabel('Time [s]')
 plt.ylabel('Speed [mps]')
-plt.title('Speed v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Speed v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 plt.figure()
@@ -80,7 +80,7 @@ plt.plot(sd_fixed.mpsAch, label='dilated', linestyle='--')
 plt.legend()
 plt.xlabel('Index')
 plt.ylabel('Speed [mps]')
-plt.title('Speed v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Speed v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 # distance
@@ -95,7 +95,7 @@ plt.plot(sd_base.cyc.time_s, (sd_base.mpsAch *
 plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Distance [km]')
-plt.title('Distance v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Distance v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 plt.figure()
@@ -108,7 +108,7 @@ plt.plot((sd_base.mpsAch * sd_base.cyc.dt_s).cumsum() / 1e3,
 plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Distance [km]')
-plt.title('Distance v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Distance v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 plt.figure()
@@ -121,7 +121,7 @@ plt.plot(sd_fixed.cyc.time_s,
 # plt.grid()
 plt.xlabel('Time [s]')
 plt.ylabel('Distance (trace - achieved) [km]')
-plt.title('Trace Miss v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Trace Miss v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.tight_layout()
 plt.show()
 
@@ -131,7 +131,7 @@ plt.plot((cyc.dist_m.cumsum() -
 # plt.grid()
 plt.xlabel('Index')
 plt.ylabel('Distance (trace - achieved) [m]')
-plt.title('Trace Miss v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Trace Miss v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.tight_layout()
 plt.show()
 
@@ -147,7 +147,7 @@ plt.plot(sd_fixed.cyc.time_s, (sd_fixed.cyc.grade * sd_fixed.cyc.dt_s *
 plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Delta Elevation [m]')
-plt.title('Delta Elev. v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Delta Elev. v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 
@@ -161,7 +161,7 @@ plt.plot((sd_fixed.cyc.grade * sd_fixed.cyc.dt_s *
 plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Delta Elevation [m]')
-plt.title('Delta Elev. v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Delta Elev. v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 # grade
@@ -173,7 +173,7 @@ plt.plot(sd_fixed.cyc.time_s, sd_fixed.cyc.grade, label='dilated', linestyle='--
 plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Grade [-]')
-plt.title('Grade v. Time, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Grade v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 plt.figure()
@@ -183,7 +183,7 @@ plt.plot(sd_fixed.cyc.grade, label='dilated', linestyle='--')
 plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Grade [-]')
-plt.title('Grade v. Index, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Grade v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 # time dilation
@@ -193,7 +193,7 @@ plt.plot(sd_fixed.cyc.dt_s)
 # plt.grid()
 plt.xlabel('Index')
 plt.ylabel('Time Dilation')
-plt.title('Time Dilation, veh wt = {:,.0f} lbs'.format(round(veh.vehKg * 2.205 / 1000) * 1000))
+plt.title('Time Dilation, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
 
 

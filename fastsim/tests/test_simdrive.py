@@ -15,7 +15,7 @@ class TestSimDriveClassic(unittest.TestCase):
         
         print(f"Running {type(self)}.test_sim_drive_step.")
         cyc =cycle.Cycle.from_file('udds')
-        veh = vehicle.Vehicle(1, verbose=False)
+        veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
         sim_drive = simdrive.SimDriveClassic(cyc, veh)
 
         for x in range(100):
@@ -28,7 +28,7 @@ class TestSimDriveClassic(unittest.TestCase):
         
         print(f"Running {type(self)}.test_sim_drive_walk.")
         cyc =cycle.Cycle.from_file('udds')
-        veh = vehicle.Vehicle(1, verbose=False)
+        veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
         sim_drive = simdrive.SimDriveClassic(cyc, veh)
         sim_drive.sim_drive_walk(initSoc=1)
 
@@ -47,7 +47,7 @@ class TestSimDriveClassic(unittest.TestCase):
             t_start=t_clip, t_end=t_end))
             )
 
-        veh = vehicle.Vehicle(1, verbose=False)
+        veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
 
         sd1 = simdrive.SimDriveClassic(cyc1, veh)
         sd1.sim_drive()
@@ -68,7 +68,7 @@ class TestSimDriveClassic(unittest.TestCase):
             places=5)
 
     def test_time_dilation(self):
-        veh = vehicle.Vehicle(1)
+        veh = vehicle.Vehicle.from_vehdb(1)
         cyc = cycle.Cycle.from_dict(cyc_dict={
             'time_s': np.arange(10),
             'mps': np.append(2, np.ones(9) * 6),
@@ -87,11 +87,11 @@ class TestSimDriveClassic(unittest.TestCase):
         cyc =cycle.Cycle.from_file('udds').get_cyc_dict()
         cyc = cycle.Cycle.from_dict(cyc_dict=cycle.clip_by_times(cyc, 130))
 
-        veh = vehicle.Vehicle(1)
-        veh.stopStart = True
-        veh.maxMotorKw = 1
-        veh.maxEssKw = 5
-        veh.maxEssKwh = 1
+        veh = vehicle.Vehicle.from_vehdb(1)
+        veh.stop_start = True
+        veh.max_motor_kw = 1
+        veh.max_ess_kw = 5
+        veh.max_ess_kwh = 1
         veh.set_init_calcs()
 
         sd = simdrive.SimDriveClassic(cyc, veh)

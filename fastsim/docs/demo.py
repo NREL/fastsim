@@ -66,7 +66,7 @@ print(f'Time to load cycle: {t1 - t0:.2e} s')
 
 # %%
 t0 = time.time()
-veh = fsim.vehicle.Vehicle(9)
+veh = fsim.vehicle.Vehicle.from_vehdb(9)
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
 # %% [markdown]
@@ -112,11 +112,11 @@ plt.show()
 
 t0 = time.time()
 
-veh = fsim.vehicle.Vehicle(9)
+veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
 sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 initSoc = 0.7935
-sim_drive.essCurKwh[0] = initSoc * sim_drive.veh.maxEssKwh
+sim_drive.essCurKwh[0] = initSoc * sim_drive.veh.max_ess_kwh
 sim_drive.soc[0] = initSoc
 
 while sim_drive.i < len(cyc.time_s):
@@ -141,7 +141,7 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 t0 = time.time()
 
-veh = fsim.vehicle.Vehicle(9)
+veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
 sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 auxInKwConst = 12
@@ -166,7 +166,7 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 t0 = time.time()
 
-veh = fsim.vehicle.Vehicle(9)
+veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
 sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 
@@ -271,7 +271,7 @@ print(f'Time to load cycles: {time.time() - t0:.2e} s')
 # Includes example of how to load cycle from dict
 
 # %%
-veh = fsim.vehicle.Vehicle(1)  # load vehicle model
+veh = fsim.vehicle.Vehicle.from_vehdb(1)  # load vehicle model
 output = {}
 
 results_df = pd.DataFrame()
@@ -373,7 +373,7 @@ plt.show()
 # %%
 # load vehicle
 t0 = time.time()
-veh = fsim.vehicle.Vehicle(1)
+veh = fsim.vehicle.Vehicle.from_vehdb(1)
 # veh = veh
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
@@ -434,7 +434,7 @@ plt.show()
 # load vehicle
 t0 = time.time()
 # load from standalone vehicle file
-veh = fsim.vehicle.Vehicle('2012_Ford_Fusion.csv') # load vehicle using name
+veh = fsim.vehicle.Vehicle.from_file('2012_Ford_Fusion.csv') # load vehicle using name
 print(f'Time to load veicle: {time.time() - t0:.2e} s')
 
 
@@ -532,7 +532,7 @@ print(f'Time to load and resample: {time.time() - t0:.2e} s')
 # load vehicle
 t0 = time.time()
 # load vehicle using explicit path
-veh = fsim.vehicle.Vehicle(Path(fsim.simdrive.__file__).parent / 
+veh = fsim.vehicle.Vehicle.from_file(Path(fsim.simdrive.__file__).parent / 
                       'resources/vehdb/2012_Ford_Fusion.csv')
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
@@ -595,7 +595,7 @@ plt.show()
 # %%
 # load vehicle
 t0 = time.time()
-veh = fsim.vehicle.Vehicle(1)
+veh = fsim.vehicle.Vehicle.from_vehdb(1)
 # veh = veh
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 

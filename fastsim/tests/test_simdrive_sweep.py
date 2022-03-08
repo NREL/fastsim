@@ -45,7 +45,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
 
     vehnos = np.arange(1, 27)
 
-    veh = vehicle.Vehicle(1, verbose=False)
+    veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
     energyAuditErrors = []
 
     dict_diag = {}
@@ -58,7 +58,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
             t0a = time.time()
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
-                veh = vehicle.Vehicle(vehno, verbose=False)
+                veh = vehicle.Vehicle.from_vehdb(vehno, verbose=False)
             sim_drive = simdrive.SimDriveClassic(cyc, veh)
             # US06 is known to cause substantial trace miss.
             # This should probably be addressed at some point, but for now, 

@@ -34,7 +34,7 @@ def main():
 
     # just use first vehicle in default database
     for i in range(1,27):
-        veh = vehicle.Vehicle(i)
+        veh = vehicle.Vehicle.from_vehdb(i)
         accel_cyc = cycle.Cycle.from_dict(cyc_dict=create_accel_cyc())
         accel_out = simdrive.SimAccelTest(accel_cyc, veh)
         

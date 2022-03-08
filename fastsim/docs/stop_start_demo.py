@@ -33,19 +33,19 @@ print(f"Elapsed time: {time.time() - t0:.3e} s")
 # %%
 t0 = time.time()
 vehno = 1
-veh0 = vehicle.Vehicle(vehno)
+veh0 = vehicle.Vehicle.from_vehdb(vehno)
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 
 
 # %%
 t0 = time.time()
-veh1 = vehicle.Vehicle(vehno)
+veh1 = vehicle.Vehicle.from_vehdb(vehno)
 veh1.stopStart = True
 veh1.maxMotorKw = 1
 veh1.maxEssKw = 5
 veh1.maxEssKwh = 1
 veh1.set_init_calcs()
-veh1.vehKg = veh0.vehKg
+veh1.veh_kg = veh0.veh_kg
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 
 

@@ -59,7 +59,10 @@ class Cycle(object):
             filename += ".csv"
         if not Path(filename).exists() and (CYCLES_DIR / filename).exists():
             filename = CYCLES_DIR / filename
-        filename = Path(filename) # make sure it's path
+        elif Path(filename).exists():
+            filename = Path(filename) 
+        else:
+            raise ValueError("Invalid cycle filename.")
             
         cyc_df = pd.read_csv(filename)
         cyc_dict = cyc_df.to_dict(orient='list')
