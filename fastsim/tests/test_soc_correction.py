@@ -40,7 +40,7 @@ class TestSocCorrection(unittest.TestCase):
             for initSoc in np.linspace(veh.minSoc, veh.maxSoc, 10, endpoint=True):
                 sd = fastsim.simdrive.SimDriveClassic(cyc, veh)
                 sd.sim_drive(initSoc)
-                equivalent_fuel_kJ = fastsim.simdrive.estimate_corrected_fuel_kJ(sd)
+                equivalent_fuel_kJ = fastsim.simdrive.estimate_soc_corrected_fuel_kJ(sd)
                 delta_soc = sd.soc[-1] - sd.soc[0]
                 results['cycle'].append(cyc_name)
                 results['init_soc'].append(initSoc)

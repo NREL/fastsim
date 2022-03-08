@@ -1548,13 +1548,13 @@ def SimAccelTestJit(cyc_jit, veh_jit) -> SimAccelTest:
 
     return sim_drive_jit
 
-def estimate_corrected_fuel_kJ(sd: SimDriveClassic) -> float:
+def estimate_soc_corrected_fuel_kJ(sd: SimDriveClassic) -> float:
     """
     - sd: SimDriveClassic, the simdrive instance after simulation
     RETURN: number, the kJ of fuel corrected for SOC imbalance
     """
     if sd.veh.vehPtType != HEV:
-        return sd.fuelKj
+        raise ValueError(f"SimDrive instance must have a vehPtType of HEV; found {sd.veh.vehPtType}")
     def f(mask, numer, denom, default):
         if not mask.any():
             return default
