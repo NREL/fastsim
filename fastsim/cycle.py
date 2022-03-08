@@ -15,7 +15,7 @@ import types
 # local modules
 from . import parameters as params
 from . import utils
-from fastsimrust import Cycle
+import fastsimrust as fsr
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
@@ -143,6 +143,9 @@ class Cycle(object):
             cyc[key] = copy.deepcopy(self.__getattribute__(key))
         
         return cyc
+
+    def to_rust(self):
+        return copy_cycle(self, return_type='rust', deep=False)
     
 class LegacyCycle(object):
     """
@@ -155,22 +158,24 @@ class LegacyCycle(object):
         for key, val in NEW_TO_OLD.items():
             self.__setattr__(val, copy.deepcopy(cycle.__getattribute__(key)))
 
+ref_cyc = Cycle.from_file('udds')
 
-def copy_cycle(cyc:Cycle, return_type:str='cycle', deep:bool=True):
+def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True):
     """Returns copy of Cycle.
     Arguments:
     cyc: instantianed Cycle or CycleJit
     return_type: 
+        default: infer from type of cyc
         'dict': dict
         'cycle': Cycle 
-        'legacy_cycle': LegacyCycle
-        'rust_cycle': RustCycle
+        'legacy': LegacyCycle
+        'rust': RustCycle
     deep: if True, uses deepcopy on everything
     """
 
     cyc_dict = {}
 
-    for key in utils.get_attrs(cyc):
+    for key in utils.get_attrs(ref_cyc):
         val_to_copy = cyc.__getattribute__(key)
         if type(val_to_copy) == np.ndarray:
             # has to be float or time_s will get converted to int
@@ -178,14 +183,25 @@ def copy_cycle(cyc:Cycle, return_type:str='cycle', deep:bool=True):
         else:
             cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
+    if return_type is None:
+        if type(cyc) == fsr.RustCycle:
+            return_type = 'rust'
+        elif type(cyc) == Cycle:
+            return_type = 'cycle'
+        elif type(cyc) == LegacyCycle:
+            return_type = "legacy"
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust_cycle, cycle, or legacy_cycle.")
+
     if return_type == 'dict':
         return cyc_dict
     elif return_type == 'cycle':
         return Cycle.from_dict(cyc_dict)
-    elif return_type == 'legacy_cycle':
+    elif return_type == 'legacy':
         return LegacyCycle(cyc_dict)
-    elif return_type == 'rust_cycle':
-        raise NotImplementedError
+    elif return_type == 'rust':
+        return fsr.RustCycle(**cyc_dict)
     else:
         raise ValueError("Invalid return_type.")
         
