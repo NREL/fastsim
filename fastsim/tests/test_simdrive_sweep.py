@@ -58,7 +58,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
                 veh = vehicle.Vehicle.from_vehdb(vehno, verbose=False)
-            sim_drive = simdrive.SimDriveClassic(cyc, veh)
+            sim_drive = simdrive.SimDrive(cyc, veh)
             # US06 is known to cause substantial trace miss.
             # This should probably be addressed at some point, but for now, 
             # the tolerances are set high to avoid lots of printed warnings.

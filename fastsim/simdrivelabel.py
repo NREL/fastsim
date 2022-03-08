@@ -10,7 +10,7 @@ from fastsim import parameters as params
 cyc_udds = cycle.Cycle.from_file('udds')
 cyc_hwfet = cycle.Cycle.from_file('hwfet')
 
-sim_params = simdrive.SimDriveParamsClassic()
+sim_params = simdrive.SimDriveParams()
 props = params.PhysicalProperties()
 
 def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False, sim_drive_verbose:bool=False, chg_eff:float=None):
@@ -46,8 +46,8 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
     cyc['udds'] = cycle.copy_cycle(cyc_udds)
     cyc['hwy'] = cycle.copy_cycle(cyc_hwfet)
 
-    sd['udds'] = simdrive.SimDriveClassic(cyc['udds'], veh)
-    sd['hwy'] = simdrive.SimDriveClassic(cyc['hwy'], veh)
+    sd['udds'] = simdrive.SimDrive(cyc['udds'], veh)
+    sd['hwy'] = simdrive.SimDrive(cyc['hwy'], veh)
 
     # run simdrive for non-phev powertrains
     sd['udds'].sim_params.verbose = sim_drive_verbose
@@ -116,11 +116,11 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
         if veh.veh_pt_type == vehicle.BEV: # EV Case
             out['adjUddsKwhPerMile'] = (1 / max(
                 (1 / (adj_params['City Intercept'] + (adj_params['City Slope'] / ((1 / out['labUddsKwhPerMile']) * props.kwh_per_gge)))),
-                (1 / out['labUddsKwhPerMile']) * props.kwh_per_gge * (1 - sim_params.maxEpaAdj))
+                (1 / out['labUddsKwhPerMile']) * props.kwh_per_gge * (1 - sim_params.max_epa_adj))
                 ) * props.kwh_per_gge / params.chg_eff 
             out['adjHwyKwhPerMile'] = (1 / max(
                 (1 / (adj_params['Highway Intercept'] + (adj_params['Highway Slope'] / ((1 / out['labHwyKwhPerMile']) * props.kwh_per_gge)))),
-                (1 / out['labHwyKwhPerMile']) * props.kwh_per_gge * (1 - sim_params.maxEpaAdj))
+                (1 / out['labHwyKwhPerMile']) * props.kwh_per_gge * (1 - sim_params.max_epa_adj))
                 ) * props.kwh_per_gge / params.chg_eff 
             out['adjCombKwhPerMile'] = 0.55 * out['adjUddsKwhPerMile'] + \
                 0.45 * out['adjHwyKwhPerMile']
@@ -292,9 +292,9 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 if key == 'udds':
                     phev_calc['adjIterMpgge'] = np.concatenate((np.zeros(int(np.floor(phev_calc['cdCycs']))), 
                         [max(1 / (adj_params['City Intercept'] + (adj_params['City Slope'] / (sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / props.kwh_per_gge)))), 
-                            sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / props.kwh_per_gge) * (1 - sim_params.maxEpaAdj))],
+                            sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / props.kwh_per_gge) * (1 - sim_params.max_epa_adj))],
                         [max(1 / (adj_params['City Intercept'] + (adj_params['City Slope'] / (sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / props.kwh_per_gge)))),
-                            sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / props.kwh_per_gge) * (1 - sim_params.maxEpaAdj))],
+                            sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / props.kwh_per_gge) * (1 - sim_params.max_epa_adj))],
                     ))
 
                     phev_calc['adjIterKwhPerMile'] = np.zeros(len(phev_calc['labIterKwhPerMile']))
@@ -305,15 +305,15 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                             phev_calc['adjIterKwhPerMile'][c] = (
                                 1 / max(1 / (adj_params['City Intercept'] + (adj_params['City Slope'] / (
                                     (1 / phev_calc['labIterKwhPerMile'][c]) * props.kwh_per_gge))), 
-                                (1 - sim_params.maxEpaAdj) * ((1 / phev_calc['labIterKwhPerMile'][c]) * props.kwh_per_gge)
+                                (1 - sim_params.max_epa_adj) * ((1 / phev_calc['labIterKwhPerMile'][c]) * props.kwh_per_gge)
                                 )) * props.kwh_per_gge
 
                 else:
                     phev_calc['adjIterMpgge'] = np.concatenate((np.zeros(int(np.floor(phev_calc['cdCycs']))), 
                         [max(1 / (adj_params['Highway Intercept'] + (adj_params['Highway Slope'] / (sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / props.kwh_per_gge)))), 
-                            sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / props.kwh_per_gge) * (1 - sim_params.maxEpaAdj))],
+                            sd[key].distMiles.sum() / (phev_calc['transFsKwh'] / props.kwh_per_gge) * (1 - sim_params.max_epa_adj))],
                         [max(1 / (adj_params['Highway Intercept'] + (adj_params['Highway Slope'] / (sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / props.kwh_per_gge)))),
-                            sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / props.kwh_per_gge) * (1 - sim_params.maxEpaAdj))],
+                            sd[key].distMiles.sum() / (phev_calc['csFsKwh'] / props.kwh_per_gge) * (1 - sim_params.max_epa_adj))],
                     ))
 
                     phev_calc['adjIterKwhPerMile']=np.zeros(
@@ -325,7 +325,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                             phev_calc['adjIterKwhPerMile'][c]=(
                                 1 / max(1 / (adj_params['Highway Intercept'] + (adj_params['Highway Slope'] / (
                                     (1 / phev_calc['labIterKwhPerMile'][c]) * props.kwh_per_gge))),
-                                    (1 - sim_params.maxEpaAdj) * ((1 / phev_calc['labIterKwhPerMile'][c]) * props.kwh_per_gge)
+                                    (1 - sim_params.max_epa_adj) * ((1 / phev_calc['labIterKwhPerMile'][c]) * props.kwh_per_gge)
                                 )) * props.kwh_per_gge
 
                 phev_calc['adjIterCdMiles'] = np.zeros(
@@ -438,9 +438,9 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
 
     sd['accel'].sim_params.verbose = sim_drive_verbose
     sd['accel'].sim_drive()
-    if (sd['accel'].mphAch >= 60).any():
+    if (sd['accel'].mph_ach >= 60).any():
         out['netAccel'] = np.interp(
-            x=60, xp=sd['accel'].mphAch, fp=cyc['accel'].time_s)
+            x=60, xp=sd['accel'].mph_ach, fp=cyc['accel'].time_s)
     else:
         # in case vehicle never exceeds 60 mph, penalize it a lot with a high number
         print(veh.scenario_name + ' never achieves 60 mph.')

@@ -76,7 +76,7 @@ print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 t0 = time.time()
 
 # instantiate and run classic version 
-sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 sim_drive.sim_drive() 
 
 print(f'Time to simulate: {time.time() - t0:.2e} s')
@@ -86,10 +86,10 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 # %%
 fig, ax = plt.subplots(figsize=(9, 5))
-ax.plot(cyc.time_s, sim_drive.fcKwInAch, label='kW')
+ax.plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='kW')
 
 ax2 = ax.twinx()
-speed_line = ax2.plot(cyc.time_s, sim_drive.mphAch, 
+speed_line = ax2.plot(cyc.time_s, sim_drive.mph_ach, 
                   color='xkcd:pale red', label='Speed')
 
 ax.set_xlabel('Cycle Time [s]', weight='bold')
@@ -114,18 +114,18 @@ t0 = time.time()
 
 veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
-sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 initSoc = 0.7935
-sim_drive.essCurKwh[0] = initSoc * sim_drive.veh.max_ess_kwh
+sim_drive.ess_cur_kwh[0] = initSoc * sim_drive.veh.max_ess_kwh
 sim_drive.soc[0] = initSoc
 
 while sim_drive.i < len(cyc.time_s):
-    sim_drive.auxInKw[sim_drive.i] = sim_drive.i / cyc.time_s[-1] * 10 
+    sim_drive.aux_in_kw[sim_drive.i] = sim_drive.i / cyc.time_s[-1] * 10 
     # above could be a function of some internal sim_drive state
     sim_drive.sim_drive_step()
 
-plt.plot(cyc.time_s, sim_drive.fcKwOutAch, label='FC out')
-plt.plot(cyc.time_s, sim_drive.essKwOutAch, label='ESS out')
+plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
+plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
@@ -143,13 +143,13 @@ t0 = time.time()
 
 veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
-sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 auxInKwConst = 12
 sim_drive.sim_drive(-1, np.ones(len(cyc.time_s))*auxInKwConst)
 
 plt.figure()
-plt.plot(cyc.time_s, sim_drive.fcKwOutAch, label='FC out')
-plt.plot(cyc.time_s, sim_drive.essKwOutAch, label='ESS out')
+plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
+plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
@@ -168,15 +168,15 @@ t0 = time.time()
 
 veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
-sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 
 # by assigning the value directly (this is faster than using positional args)
-sim_drive.auxInKw = cyc.time_s / cyc.time_s[-1] * 10 
+sim_drive.aux_in_kw = cyc.time_s / cyc.time_s[-1] * 10 
 sim_drive.sim_drive()
 
 plt.figure()
-plt.plot(cyc.time_s, sim_drive.fcKwOutAch, label='FC out')
-plt.plot(cyc.time_s, sim_drive.essKwOutAch, label='ESS out')
+plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
+plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
@@ -192,12 +192,12 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 t0 = time.time()
 
-sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 sim_drive.sim_drive(-1, cyc.time_s / cyc.time_s[-1] * 10)
 
 plt.figure()
-plt.plot(cyc.time_s, sim_drive.fcKwOutAch, label='FC out')
-plt.plot(cyc.time_s, sim_drive.essKwOutAch, label='ESS out')
+plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
+plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
@@ -294,15 +294,15 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     # example of loading cycle from dict
     cyc = fsim.cycle.Cycle.from_dict(cyc)
     
-    sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
+    sim_drive = fsim.simdrive.SimDrive(cyc, veh)
     sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     sim_drive.sim_drive()
 
     output['nrel_trip_id'] = trp
-    output['distance_mi'] = sum(sim_drive.distMiles)
+    output['distance_mi'] = sum(sim_drive.dist_mi)
     duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
     output['avg_speed_mph'] = sum(
-        sim_drive.distMiles) / (duration_sec / 3600.0)
+        sim_drive.dist_mi) / (duration_sec / 3600.0)
     results_df = results_df.append(output, ignore_index=True)
     output['mpgge'] = sim_drive.mpgge
     
@@ -390,7 +390,7 @@ print(f'Time to load cycle: {time.time() - t0:.2e} s')
 # %%
 # simulate
 t0 = time.time()
-sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 sim_drive.sim_drive()
 # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 # sim_drive.sim_drive()
@@ -453,7 +453,7 @@ print(f'Time to load cycles: {time.time() - t0:.2e} s')
 # %%
 # simulate
 t0 = time.time()
-sim_drive = fsim.simdrive.SimDriveClassic(cyc_combo, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc_combo, veh)
 sim_drive.sim_drive()
 # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 # sim_drive.sim_drive()
@@ -554,7 +554,7 @@ print(f'Time to load and concatenate cycles: {time.time() - t0:.2e} s')
 # %%
 # simulate
 t0 = time.time()
-sim_drive = fsim.simdrive.SimDriveClassic(cyc_combo, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc_combo, veh)
 sim_drive.sim_drive()
 # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 # sim_drive.sim_drive()
@@ -612,7 +612,7 @@ print(f'Time to load and clip cycle: {time.time() - t0:.2e} s')
 # %%
 # simulate
 t0 = time.time()
-sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 sim_drive.sim_drive()
 # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 # sim_drive.sim_drive()

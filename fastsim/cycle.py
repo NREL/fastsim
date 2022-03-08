@@ -15,6 +15,7 @@ import types
 # local modules
 from . import parameters as params
 from . import utils
+from fastsimrust import Cycle
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
@@ -55,6 +56,8 @@ class Cycle(object):
         -- `cycGrade` or `grade` (optional)
         -- `cycRoadType` or `road_type` (optional)
         """
+        filename = str(filename)
+
         if not filename.endswith('.csv'):
             filename += ".csv"
         if not Path(filename).exists() and (CYCLES_DIR / filename).exists():
@@ -153,12 +156,16 @@ class LegacyCycle(object):
             self.__setattr__(val, copy.deepcopy(cycle.__getattribute__(key)))
 
 
-def copy_cycle(cyc, return_dict=False):
-    """Returns copy of Cycle or CycleJit.
+def copy_cycle(cyc:Cycle, return_type:str='cycle', deep:bool=True):
+    """Returns copy of Cycle.
     Arguments:
     cyc: instantianed Cycle or CycleJit
-    return_dict: (Boolean) if True, returns cycle as dict. 
-        Otherwise, returns exact copy.
+    return_type: 
+        'dict': dict
+        'cycle': Cycle 
+        'legacy_cycle': LegacyCycle
+        'rust_cycle': RustCycle
+    deep: if True, uses deepcopy on everything
     """
 
     cyc_dict = {}
@@ -167,16 +174,21 @@ def copy_cycle(cyc, return_dict=False):
         val_to_copy = cyc.__getattribute__(key)
         if type(val_to_copy) == np.ndarray:
             # has to be float or time_s will get converted to int
-            cyc_dict[key] = np.array(copy.deepcopy(val_to_copy), dtype=float)
+            cyc_dict[key] = np.array(copy.deepcopy(val_to_copy) if deep else val_to_copy, dtype=float)
         else:
-            cyc_dict[key] = copy.deepcopy(val_to_copy)
+            cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
-    if return_dict:
+    if return_type == 'dict':
         return cyc_dict
-    
-    cyc = Cycle.from_dict(cyc_dict)
+    elif return_type == 'cycle':
+        return Cycle.from_dict(cyc_dict)
+    elif return_type == 'legacy_cycle':
+        return LegacyCycle(cyc_dict)
+    elif return_type == 'rust_cycle':
+        raise NotImplementedError
+    else:
+        raise ValueError("Invalid return_type.")
         
-    return cyc                
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
     """

@@ -17,6 +17,7 @@ from typing import Optional
 # local modules
 from fastsim import parameters as params
 from fastsim import utils
+from fastsim.vehicle_base import keys_and_types, NEW_TO_OLD
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -93,105 +94,6 @@ def clean_data(raw_data):
             pass
 
     return data
-
-keys_and_types = {
-    "scenario_name": str,
-    "selection": int,
-    "veh_year": int,
-    "veh_pt_type": str,
-    "drag_coef": np.float64,
-    "frontal_area_m2": np.float64,
-    "glider_kg": np.float64,
-    "veh_cg_m": np.float64,
-    "drive_axle_weight_frac": np.float64,
-    "wheel_base_m": np.float64,
-    "cargo_kg": np.float64,
-    "veh_override_kg": np.float64,
-    "comp_mass_multiplier": np.float64,
-    "max_fuel_stor_kw": np.float64,
-    "fuel_stor_secs_to_peak_pwr": np.float64,
-    "fuel_stor_kwh": np.float64,
-    "fuel_stor_kwh_per_kg": np.float64,
-    "max_fuel_conv_kw": np.float64,
-    "fc_pwr_out_perc": np.array,
-    "fc_eff_map": np.array,
-    "fc_eff_type": str,
-    "fuel_conv_secs_to_peak_pwr": np.float64,
-    "fuel_conv_base_kg": np.float64,
-    "fuel_conv_kw_per_kg": np.float64,
-    "min_fc_time_on": np.float64,
-    "idle_fc_kw": np.float64,
-    "max_motor_kw": np.float64,
-    "mc_pwr_out_perc": np.array,
-    "mc_eff_map": np.array,
-    "motor_secs_to_peak_pwr": np.float64,
-    "mc_pe_kg_per_kw": np.float64,
-    "mc_pe_base_kg": np.float64,
-    "max_ess_kw": np.float64,
-    "max_ess_kwh": np.float64,
-    "ess_kg_per_kwh": np.float64,
-    "ess_base_kg": np.float64,
-    "ess_round_trip_eff": np.float64,
-    "ess_life_coef_a": np.float64,
-    "ess_life_coef_b": np.float64,
-    "min_soc": np.float64,
-    "max_soc": np.float64,
-    "ess_dischg_to_fc_max_eff_perc": np.float64,
-    "ess_chg_to_fc_max_eff_perc": np.float64,
-    "wheel_inertia_kg_m2": np.float64,
-    "num_wheels": int,
-    "wheel_rr_coef": np.float64,
-    "wheel_radius_m": np.float64,
-    "wheel_coef_of_fric": np.float64,
-    "max_accel_buffer_mph": np.float64,
-    "max_accel_buffer_perc_of_useable_soc": np.float64,
-    "perc_high_acc_buf": np.float64,
-    "mph_fc_on": np.float64,
-    "kw_demand_fc_on": np.float64,
-    "max_regen": np.float64,
-    "stop_start": bool,
-    "force_aux_on_fc": np.float64,
-    "alt_eff": np.float64,
-    "chg_eff": np.float64,
-    "aux_kw": np.float64,
-    "trans_kg": np.float64,
-    "trans_eff": np.float64,
-    "ess_to_fuel_ok_error": np.float64,
-    "val_udds_mpgge": np.float64,
-    "val_hwy_mpgge": np.float64,
-    "val_comb_mpgge": np.float64,
-    "val_udds_kwh_per_mile": np.float64,
-    "val_hwy_kwh_per_mile": np.float64,
-    "val_comb_kwh_per_mile": np.float64,
-    "val_cd_range_mi": np.float64,
-    "val_const65_mph_kwh_per_mile": np.float64,
-    "val_const60_mph_kwh_per_mile": np.float64,
-    "val_const55_mph_kwh_per_mile": np.float64,
-    "val_const45_mph_kwh_per_mile": np.float64,
-    "val_unadj_udds_kwh_per_mile": np.float64,
-    "val_unadj_hwy_kwh_per_mile": np.float64,
-    "val0_to60_mph": np.float64,
-    "val_ess_life_miles": np.float64,
-    "val_range_miles": np.float64,
-    "val_veh_base_cost": np.float64,
-    "val_msrp": np.float64,
-    # don't mess with this,
-    "props": params.PhysicalProperties,
-    # gets set during __post_init__,
-    "large_baseline_eff": np.array,
-    # gets set during __post_init__,
-    "small_baseline_eff": np.array,
-    "small_motor_power_kw": np.float64,
-    "large_motor_power_kw": np.float64,
-    # gets set during __post_init__,
-    "fc_perc_out_array": np.array,
-    # gets set during __post_init__,
-    "fc_perc_out_array": np.array,
-    "max_roadway_chg_kw": np.array,
-    "charging_on": bool,
-    "no_elec_sys": bool,
-    "no_elec_aux": bool,
-}
 
 
 @dataclass
@@ -320,6 +222,7 @@ class Vehicle(object):
         """
         Loads vehicle from file `filename` (str).  Looks in working dir and then 
         fastsim/resources/vehdb, which also contains numerous examples of vehicle csv files.
+        `vnum` is needed for multi-vehicle files.  
         """
         filename = str(filename)
         if not(str(filename).endswith('.csv')):
@@ -686,24 +589,43 @@ class Vehicle(object):
         raise NotImplementedError("This method has been deprecated.  Use get_rust_veh instead.")    
 
 
-def copy_vehicle(veh:Vehicle, return_dict=False, use_rust=None):
+class LegacyVehicle(object):
+    """
+    Implementation of Vehicle with legacy keys.
+    """
+    def __init__(self, vehicle:Vehicle):
+        """
+        Given cycle, returns legacy cycle.
+        """
+        for key, val in NEW_TO_OLD.items():
+            self.__setattr__(val, copy.deepcopy(vehicle.__getattribute__(key)))
+
+
+def copy_vehicle(veh:Vehicle, return_type:str='vehicle', deep:bool=True):
     """Returns copy of Vehicle.
     Arguments:
     veh: instantiated Vehicle
-    return_dict: (Boolean) if True, returns vehicle as dict. 
+    return_type: 
+        'dict': dict
+        'vehicle': Vehicle 
+        'legacy_vehicle': LegacyVehicle
+        'rust_vehicle': RustVehicle
     """
 
     veh_dict = {}
 
     for key in keys_and_types.keys():
-        veh_dict[key] = copy.deepcopy(veh.__getattribute__(key))
-
-    if return_dict:
+        veh_dict[key] = copy.deepcopy(veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
+    if return_type == 'dict':
         return veh_dict
-        
-    veh = Vehicle.from_dict(veh_dict)
-
-    return veh  
+    elif return_type == 'cycle':
+        return Vehicle.from_dict
+    elif return_type == 'legacy_cycle':
+        return LegacyVehicle(veh_dict)
+    elif return_type == 'rust_cycle':
+        raise NotImplementedError
+    else:
+        raise ValueError("Invalid return_type.")
 
 def veh_equal(veh1, veh2, full_out=False):
     """Given veh1 and veh2, which can be Vehicle and/or VehicleJit
@@ -736,7 +658,3 @@ def veh_equal(veh1, veh2, full_out=False):
     if full_out: return err_list
 
     return True
-
-if __name__ == "__main__":
-    veh = Vehicle.from_vehdb(1, verbose=False)
-    veh_copy = copy_vehicle(veh)
