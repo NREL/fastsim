@@ -261,8 +261,8 @@ class TestExcel(unittest.TestCase):
         self.assertEqual(failed_tests, [])
 
 if __name__ == "__main__":
-        res_python = run_python(vehicles=[24], verbose=True)
-        res_excel = run_excel(vehicles=[24], prev_res_path=PREV_RES_PATH,
+        res_python = run_python(vehicles=[12], verbose=True)
+        res_excel = run_excel(vehicles=[12], prev_res_path=PREV_RES_PATH,
                               rerun_excel=False)
         res_comps = compare(res_python, res_excel, verbose=False)
 

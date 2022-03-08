@@ -472,7 +472,7 @@ class Vehicle(object):
         veh_dict['large_motor_power_kw'] = 75.0 # default (float)
 
         # check if veh_year provided in file, and, if not, provide value from scenario_name or default of 0
-        if ('vehYear' not in veh_dict) or np.isnan(veh_dict['veh_year']):
+        if ('veh_year' not in veh_dict) or np.isnan(veh_dict['veh_year']):
             # regex is for vehicle model year if scenario_name starts with any 4 digit string
             if re.match('\d{4}', str(veh_dict['scenario_name'])):
                 veh_dict['veh_year'] = np.int32(
