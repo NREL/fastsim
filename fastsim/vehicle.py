@@ -417,8 +417,8 @@ class Vehicle(object):
                 assert self.max_ess_kwh == 0, 'maxEssKwh must be zero for provided Conv powertrain type'
 
         ### Build roadway power lookup table
-        self.MaxRoadwayChgKw = np.zeros(6)
-        self.chargingOn = False
+        self.max_roadway_chg_kw = np.zeros(6)
+        self.charging_on = False
 
         # Checking if a vehicle has any hybrid components
         if (self.max_ess_kwh == 0) or (self.max_ess_kw == 0) or (self.max_motor_kw == 0):
