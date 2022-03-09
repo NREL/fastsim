@@ -616,7 +616,17 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     veh_dict = {}
 
     for key in keys_and_types.keys():
-        veh_dict[key] = copy.deepcopy(veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
+        if type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties:
+            pp = veh.__getattribute__(key)
+            new_pp = fsr.RustPhysicalProperties()
+            new_pp.air_density_kg_per_m3 = pp.air_density_kg_per_m3
+            new_pp.a_grav_mps2 = pp.a_grav_mps2
+            new_pp.kwh_per_gge = pp.kwh_per_gge
+            new_pp.fuel_rho_kg__L = pp.fuel_rho_kg__L
+            new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
+            veh_dict[key] = new_pp
+        else:
+            veh_dict[key] = copy.deepcopy(veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
 
     if return_type is None:
         if type(veh) == fsr.RustVehicle:
