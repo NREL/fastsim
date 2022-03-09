@@ -51,6 +51,12 @@ class TestCopy(unittest.TestCase):
         self.assertEqual(params.PhysicalProperties, type(p))
         p2 = params.copy_physical_properties(p)
         self.assertEqual(params.PhysicalProperties, type(p2))
+        rust_p = params.copy_physical_properties(p, 'rust')
+        self.assertEqual(type(rust_p), fsr.RustPhysicalProperties)
+        #rust_cyc2 = cycle.copy_cycle(rust_cyc)
+        #self.assertEqual(type(rust_cyc2), fsr.RustCycle)
+        #rust_cyc3 = cycle.Cycle.from_file('udds').to_rust()
+        #self.assertEqual(type(rust_cyc3), fsr.RustCycle)
 
     
     def test_vehicle_copy(self):

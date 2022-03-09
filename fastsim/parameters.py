@@ -8,6 +8,11 @@ import os
 import numpy as np
 import json
 from pathlib import Path
+import copy
+import inspect
+from typing import Callable
+
+import fastsimrust as fsr
 
 
 THIS_DIR = Path(__file__).parent
@@ -20,6 +25,13 @@ M_PER_MI = 1609.00
 class PhysicalProperties(object):
     """Container class for physical constants that could change under certain special 
     circumstances (e.g. high altitude or extreme weather) """
+
+    @classmethod
+    def from_dict(cls, pp_dict:dict):
+        obj = cls()
+        for k, v in pp_dict.items():
+            obj.__setattr__(k, v)
+        return obj
 
     def __init__(self):
         # Make this altitude and temperature dependent, and allow it to change with time
@@ -39,6 +51,32 @@ class PhysicalProperties(object):
 
     fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)
 
+ref_physical_properties = PhysicalProperties()
+
+# TODO: the below 3 functions have been moved here temporarily to avoid a circular dependency for importing utils (which imports properties)
+def isprop(attr) -> bool:
+    "Checks if instance attribute is a property."
+    return isinstance(attr, property)
+
+def isfunc(attr) -> bool:
+    "Checks if instance attribute is method."
+    return isinstance(attr, Callable)
+
+def get_attrs(instance):
+    """
+    Given an instantiated object, returns attributes that are not:
+    -- callable  
+    -- special (i.e. start with `__`)  
+    -- properties  
+    """
+
+    keys = []
+    props = [name for (name, _) in inspect.getmembers(type(instance), isprop)]
+    methods = [name for (name, _) in inspect.getmembers(type(instance), isfunc)]
+    for key in instance.__dir__():
+        if not(key.startswith("_")) and key not in (props + methods):
+            keys.append(key)
+    return keys
 
 def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bool=True):
     """
@@ -49,10 +87,34 @@ def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bo
         default: infer from type of p
         'dict': dict
         'physical_properties': PhysicalProperties 
-        'legacy': LegacyPhysicalProperties
+        'legacy': LegacyPhysicalProperties -- NOT IMPLEMENTED YET; is it needed?
         'rust': RustPhysicalProperties
     deep: if True, uses deepcopy on everything
     """
+    p_dict = {}
+
+    for key in get_attrs(ref_physical_properties):
+        val_to_copy = p.__getattribute__(key)
+        p_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
+
+    if return_type is None:
+        if type(p) == fsr.RustPhysicalProperties:
+            return_type = 'rust'
+        elif type(p) == PhysicalProperties:
+            return_type = 'physical_properties'
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust and physical_properties")
+    
+    if return_type == 'dict':
+        return p_dict
+    elif return_type == 'physical_properties':
+        return PhysicalProperties.from_dict(p_dict)
+    elif return_type == 'rust':
+        return fsr.RustPhysicalProperties(**p_dict)
+    else:
+        raise ValueError("Invalid return_type.")
+
     return p
 
 
