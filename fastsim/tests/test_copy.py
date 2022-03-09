@@ -4,6 +4,7 @@ import unittest
 
 import numpy as np
 
+import fastsim.vehicle_base as fsvb
 from fastsim import cycle, params, utils, vehicle
 import fastsimrust as fsr
 
@@ -77,3 +78,34 @@ class TestCopy(unittest.TestCase):
         self.assertEqual(type(rust_veh), fsr.RustVehicle)
         rust_veh2 = vehicle.copy_vehicle(rust_veh)
         self.assertEqual(type(rust_veh2), fsr.RustVehicle)
+        rust_veh3 = vehicle.Vehicle.from_vehdb(5).to_rust()
+        self.assertEqual(type(rust_veh3), fsr.RustVehicle)
+        for key in fsvb.keys_and_types.keys():
+            if type(veh.__getattribute__(key)) is np.ndarray:
+                self.assertEqual(
+                    len(veh.__getattribute__(key)),
+                    len(rust_veh3.__getattribute__(key)),
+                    msg=f"Value lengths are not equal for {key}\n"
+                )
+                self.assertTrue(
+                    (veh.__getattribute__(key) == np.array(rust_veh3.__getattribute__(key))).all(),
+                    msg=(
+                        f"Values are not equal for {key}\n"
+                        + f"Python Vehicle: ({type(veh.__getattribute__(key))}) {veh.__getattribute__(key)}\n"
+                        + f"Rust Vehicle  : ({type(rust_veh3.__getattribute__(key))}) {rust_veh3.__getattribute__(key)}"
+                ))
+            elif type(veh.__getattribute__(key)) is params.PhysicalProperties:
+                # TODO: implement comparison
+                pass
+            else:
+                if type(veh.__getattribute__(key)) is np.float64 and np.isnan(veh.__getattribute__(key)):
+                    self.assertTrue(np.isnan(rust_veh3.__getattribute__(key)))
+                else:
+                    self.assertEqual(
+                        veh.__getattribute__(key),
+                        rust_veh3.__getattribute__(key),
+                        msg=(
+                            f"Values are not equal for {key}\n"
+                            + f"Python Vehicle: ({type(veh.__getattribute__(key))}) {veh.__getattribute__(key)}\n"
+                            + f"Rust Vehicle  : ({type(rust_veh3.__getattribute__(key))}) {rust_veh3.__getattribute__(key)}"
+                    ))

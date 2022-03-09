@@ -588,6 +588,10 @@ class Vehicle(object):
     def get_numba_veh(self):
         """Deprecated."""
         raise NotImplementedError("This method has been deprecated.  Use get_rust_veh instead.")    
+    
+    def to_rust(self):
+        """Return a Rust version of the vehicle"""
+        return copy_vehicle(self, 'rust')
 
 
 class LegacyVehicle(object):
@@ -647,6 +651,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     elif return_type == 'legacy':
         return LegacyVehicle(veh_dict)
     elif return_type == 'rust':
+        veh_dict['props'] = params.copy_physical_properties(veh_dict['props'], return_type, deep)
         return fsr.RustVehicle(**veh_dict)
     else:
         raise ValueError("Invalid return_type.")
