@@ -53,11 +53,19 @@ class TestCopy(unittest.TestCase):
         self.assertEqual(params.PhysicalProperties, type(p2))
         rust_p = params.copy_physical_properties(p, 'rust')
         self.assertEqual(type(rust_p), fsr.RustPhysicalProperties)
-        #rust_cyc2 = cycle.copy_cycle(rust_cyc)
-        #self.assertEqual(type(rust_cyc2), fsr.RustCycle)
-        #rust_cyc3 = cycle.Cycle.from_file('udds').to_rust()
-        #self.assertEqual(type(rust_cyc3), fsr.RustCycle)
-
+        rust_p2 = params.copy_physical_properties(rust_p)
+        self.assertEqual(type(rust_p2), fsr.RustPhysicalProperties)
+        rust_p3 = params.PhysicalProperties().to_rust()
+        self.assertEqual(type(rust_p3), fsr.RustPhysicalProperties)
+        for key in params.ref_physical_properties.__dict__.keys():
+            self.assertEqual(
+                p.__getattribute__(key),
+                rust_p3.__getattribute__(key),
+                msg=(
+                    f"Values are not equal for {key}\n"
+                    + f"Python Physical Properties: ({type(p.__getattribute__(key))}) {p.__getattribute__(key)}\n"
+                    + f"Rust Physical Properties  : ({type(rust_p3.__getattribute__(key))}) {rust_p3.__getattribute__(key)}"
+            ))
     
     def test_vehicle_copy(self):
         "Test that vehicle_copy works as expected"

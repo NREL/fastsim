@@ -51,6 +51,9 @@ class PhysicalProperties(object):
 
     fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)
 
+    def to_rust(self):
+        return copy_physical_properties(self, 'rust')
+
 ref_physical_properties = PhysicalProperties()
 
 # TODO: the below 3 functions have been moved here temporarily to avoid a circular dependency for importing utils (which imports properties)
