@@ -618,6 +618,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     for key in keys_and_types.keys():
         if type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties:
             pp = veh.__getattribute__(key)
+            # TODO: replace the below with a call to copy_physical_properties(...)
             new_pp = fsr.RustPhysicalProperties()
             new_pp.air_density_kg_per_m3 = pp.air_density_kg_per_m3
             new_pp.a_grav_mps2 = pp.a_grav_mps2
