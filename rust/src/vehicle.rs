@@ -1,6 +1,5 @@
 extern crate ndarray;
-//use ndarray::{Array, Array1}; 
-use ndarray::{Array1}; 
+use ndarray::{Array, Array1}; 
 extern crate pyo3;
 use pyo3::prelude::*;
 // use numpy::pyo3::Python;
@@ -355,23 +354,1093 @@ impl RustVehicle{
             mc_perc_out_array,
         }
     }
+
+    #[getter]
+    pub fn get_alt_eff(&self) -> PyResult<f64>{
+      Ok(self.alt_eff)
+    }
+    #[setter]
+    pub fn set_alt_eff(&mut self, new_value:f64) -> PyResult<()>{
+      self.alt_eff = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_aux_kw(&self) -> PyResult<f64>{
+      Ok(self.aux_kw)
+    }
+    #[setter]
+    pub fn set_aux_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.aux_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_cargo_kg(&self) -> PyResult<f64>{
+      Ok(self.cargo_kg)
+    }
+    #[setter]
+    pub fn set_cargo_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.cargo_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_charging_on(&self) -> PyResult<bool>{
+      Ok(self.charging_on)
+    }
+    #[setter]
+    pub fn set_charging_on(&mut self, new_value:bool) -> PyResult<()>{
+      self.charging_on = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_chg_eff(&self) -> PyResult<f64>{
+      Ok(self.chg_eff)
+    }
+    #[setter]
+    pub fn set_chg_eff(&mut self, new_value:f64) -> PyResult<()>{
+      self.chg_eff = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_comp_mass_multiplier(&self) -> PyResult<f64>{
+      Ok(self.comp_mass_multiplier)
+    }
+    #[setter]
+    pub fn set_comp_mass_multiplier(&mut self, new_value:f64) -> PyResult<()>{
+      self.comp_mass_multiplier = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_drag_coef(&self) -> PyResult<f64>{
+      Ok(self.drag_coef)
+    }
+    #[setter]
+    pub fn set_drag_coef(&mut self, new_value:f64) -> PyResult<()>{
+      self.drag_coef = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_drive_axle_weight_frac(&self) -> PyResult<f64>{
+      Ok(self.drive_axle_weight_frac)
+    }
+    #[setter]
+    pub fn set_drive_axle_weight_frac(&mut self, new_value:f64) -> PyResult<()>{
+      self.drive_axle_weight_frac = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_base_kg(&self) -> PyResult<f64>{
+      Ok(self.ess_base_kg)
+    }
+    #[setter]
+    pub fn set_ess_base_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_base_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_chg_to_fc_max_eff_perc(&self) -> PyResult<f64>{
+      Ok(self.ess_chg_to_fc_max_eff_perc)
+    }
+    #[setter]
+    pub fn set_ess_chg_to_fc_max_eff_perc(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_chg_to_fc_max_eff_perc = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_dischg_to_fc_max_eff_perc(&self) -> PyResult<f64>{
+      Ok(self.ess_dischg_to_fc_max_eff_perc)
+    }
+    #[setter]
+    pub fn set_ess_dischg_to_fc_max_eff_perc(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_dischg_to_fc_max_eff_perc = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_kg_per_kwh(&self) -> PyResult<f64>{
+      Ok(self.ess_kg_per_kwh)
+    }
+    #[setter]
+    pub fn set_ess_kg_per_kwh(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_kg_per_kwh = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_life_coef_a(&self) -> PyResult<f64>{
+      Ok(self.ess_life_coef_a)
+    }
+    #[setter]
+    pub fn set_ess_life_coef_a(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_life_coef_a = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_life_coef_b(&self) -> PyResult<f64>{
+      Ok(self.ess_life_coef_b)
+    }
+    #[setter]
+    pub fn set_ess_life_coef_b(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_life_coef_b = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_mass_kg(&self) -> PyResult<f64>{
+      Ok(self.ess_mass_kg)
+    }
+    #[setter]
+    pub fn set_ess_mass_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_mass_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_round_trip_eff(&self) -> PyResult<f64>{
+      Ok(self.ess_round_trip_eff)
+    }
+    #[setter]
+    pub fn set_ess_round_trip_eff(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_round_trip_eff = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_ess_to_fuel_ok_error(&self) -> PyResult<f64>{
+      Ok(self.ess_to_fuel_ok_error)
+    }
+    #[setter]
+    pub fn set_ess_to_fuel_ok_error(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_to_fuel_ok_error = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fc_eff_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.fc_eff_array.to_vec())
+    }
+    #[setter]
+    pub fn set_fc_eff_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.fc_eff_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fc_eff_map(&self) -> PyResult<Vec<f64>>{
+      Ok(self.fc_eff_map.to_vec())
+    }
+    #[setter]
+    pub fn set_fc_eff_map(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.fc_eff_map = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fc_eff_type(&self) -> PyResult<String>{
+      Ok(self.fc_eff_type.clone())
+    }
+    #[setter]
+    pub fn set_fc_eff_type(&mut self, new_value:String) -> PyResult<()>{
+      self.fc_eff_type = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fc_kw_out_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.fc_kw_out_array.to_vec())
+    }
+    #[setter]
+    pub fn set_fc_kw_out_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.fc_kw_out_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fc_mass_kg(&self) -> PyResult<f64>{
+      Ok(self.fc_mass_kg)
+    }
+    #[setter]
+    pub fn set_fc_mass_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.fc_mass_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fc_perc_out_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.fc_perc_out_array.to_vec())
+    }
+    #[setter]
+    pub fn set_fc_perc_out_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.fc_perc_out_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fc_pwr_out_perc(&self) -> PyResult<f64>{
+      Ok(self.fc_pwr_out_perc)
+    }
+    #[setter]
+    pub fn set_fc_pwr_out_perc(&mut self, new_value:f64) -> PyResult<()>{
+      self.fc_pwr_out_perc = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_force_aux_on_fc(&self) -> PyResult<f64>{
+      Ok(self.force_aux_on_fc)
+    }
+    #[setter]
+    pub fn set_force_aux_on_fc(&mut self, new_value:f64) -> PyResult<()>{
+      self.force_aux_on_fc = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_frontal_area_m2(&self) -> PyResult<f64>{
+      Ok(self.frontal_area_m2)
+    }
+    #[setter]
+    pub fn set_frontal_area_m2(&mut self, new_value:f64) -> PyResult<()>{
+      self.frontal_area_m2 = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fs_mass_kg(&self) -> PyResult<f64>{
+      Ok(self.fs_mass_kg)
+    }
+    #[setter]
+    pub fn set_fs_mass_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.fs_mass_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fuel_conv_base_kg(&self) -> PyResult<f64>{
+      Ok(self.fuel_conv_base_kg)
+    }
+    #[setter]
+    pub fn set_fuel_conv_base_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.fuel_conv_base_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fuel_conv_kw_per_kg(&self) -> PyResult<f64>{
+      Ok(self.fuel_conv_kw_per_kg)
+    }
+    #[setter]
+    pub fn set_fuel_conv_kw_per_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.fuel_conv_kw_per_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fuel_conv_secs_to_peak_pwr(&self) -> PyResult<f64>{
+      Ok(self.fuel_conv_secs_to_peak_pwr)
+    }
+    #[setter]
+    pub fn set_fuel_conv_secs_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
+      self.fuel_conv_secs_to_peak_pwr = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fuel_stor_kwh(&self) -> PyResult<f64>{
+      Ok(self.fuel_stor_kwh)
+    }
+    #[setter]
+    pub fn set_fuel_stor_kwh(&mut self, new_value:f64) -> PyResult<()>{
+      self.fuel_stor_kwh = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fuel_stor_kwh_per_kg(&self) -> PyResult<f64>{
+      Ok(self.fuel_stor_kwh_per_kg)
+    }
+    #[setter]
+    pub fn set_fuel_stor_kwh_per_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.fuel_stor_kwh_per_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_fuel_stor_secs_to_peak_pwr(&self) -> PyResult<f64>{
+      Ok(self.fuel_stor_secs_to_peak_pwr)
+    }
+    #[setter]
+    pub fn set_fuel_stor_secs_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
+      self.fuel_stor_secs_to_peak_pwr = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_glider_kg(&self) -> PyResult<f64>{
+      Ok(self.glider_kg)
+    }
+    #[setter]
+    pub fn set_glider_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.glider_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_idle_fc_kw(&self) -> PyResult<f64>{
+      Ok(self.idle_fc_kw)
+    }
+    #[setter]
+    pub fn set_idle_fc_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.idle_fc_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_input_kw_out_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.input_kw_out_array.to_vec())
+    }
+    #[setter]
+    pub fn set_input_kw_out_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.input_kw_out_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_kw_demand_fc_on(&self) -> PyResult<f64>{
+      Ok(self.kw_demand_fc_on)
+    }
+    #[setter]
+    pub fn set_kw_demand_fc_on(&mut self, new_value:f64) -> PyResult<()>{
+      self.kw_demand_fc_on = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_large_baseline_eff(&self) -> PyResult<Vec<f64>>{
+      Ok(self.large_baseline_eff.to_vec())
+    }
+    #[setter]
+    pub fn set_large_baseline_eff(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.large_baseline_eff = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_large_motor_power_kw(&self) -> PyResult<f64>{
+      Ok(self.large_motor_power_kw)
+    }
+    #[setter]
+    pub fn set_large_motor_power_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.large_motor_power_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_accel_buffer_mph(&self) -> PyResult<f64>{
+      Ok(self.max_accel_buffer_mph)
+    }
+    #[setter]
+    pub fn set_max_accel_buffer_mph(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_accel_buffer_mph = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_accel_buffer_perc_of_useable_soc(&self) -> PyResult<f64>{
+      Ok(self.max_accel_buffer_perc_of_useable_soc)
+    }
+    #[setter]
+    pub fn set_max_accel_buffer_perc_of_useable_soc(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_accel_buffer_perc_of_useable_soc = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_ess_kw(&self) -> PyResult<f64>{
+      Ok(self.max_ess_kw)
+    }
+    #[setter]
+    pub fn set_max_ess_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_ess_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_ess_kwh(&self) -> PyResult<f64>{
+      Ok(self.max_ess_kwh)
+    }
+    #[setter]
+    pub fn set_max_ess_kwh(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_ess_kwh = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_fuel_conv_kw(&self) -> PyResult<f64>{
+      Ok(self.max_fuel_conv_kw)
+    }
+    #[setter]
+    pub fn set_max_fuel_conv_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_fuel_conv_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_fuel_stor_kw(&self) -> PyResult<f64>{
+      Ok(self.max_fuel_stor_kw)
+    }
+    #[setter]
+    pub fn set_max_fuel_stor_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_fuel_stor_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_motor_kw(&self) -> PyResult<f64>{
+      Ok(self.max_motor_kw)
+    }
+    #[setter]
+    pub fn set_max_motor_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_motor_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_regen(&self) -> PyResult<bool>{
+      Ok(self.max_regen)
+    }
+    #[setter]
+    pub fn set_max_regen(&mut self, new_value:bool) -> PyResult<()>{
+      self.max_regen = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_roadway_chg_kw(&self) -> PyResult<Vec<f64>>{
+      Ok(self.max_roadway_chg_kw.to_vec())
+    }
+    #[setter]
+    pub fn set_max_roadway_chg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.max_roadway_chg_kw = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_soc(&self) -> PyResult<f64>{
+      Ok(self.max_soc)
+    }
+    #[setter]
+    pub fn set_max_soc(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_soc = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_max_trac_mps2(&self) -> PyResult<f64>{
+      Ok(self.max_trac_mps2)
+    }
+    #[setter]
+    pub fn set_max_trac_mps2(&mut self, new_value:f64) -> PyResult<()>{
+      self.max_trac_mps2 = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_eff_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.mc_eff_array.to_vec())
+    }
+    #[setter]
+    pub fn set_mc_eff_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.mc_eff_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_eff_map(&self) -> PyResult<Vec<f64>>{
+      Ok(self.mc_eff_map.to_vec())
+    }
+    #[setter]
+    pub fn set_mc_eff_map(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.mc_eff_map = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_full_eff_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.mc_full_eff_array.to_vec())
+    }
+    #[setter]
+    pub fn set_mc_full_eff_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.mc_full_eff_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_kw_in_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.mc_kw_in_array.to_vec())
+    }
+    #[setter]
+    pub fn set_mc_kw_in_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.mc_kw_in_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_kw_out_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.mc_kw_out_array.to_vec())
+    }
+    #[setter]
+    pub fn set_mc_kw_out_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.mc_kw_out_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_mass_kg(&self) -> PyResult<f64>{
+      Ok(self.mc_mass_kg)
+    }
+    #[setter]
+    pub fn set_mc_mass_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.mc_mass_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_max_elec_in_kw(&self) -> PyResult<f64>{
+      Ok(self.mc_max_elec_in_kw)
+    }
+    #[setter]
+    pub fn set_mc_max_elec_in_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.mc_max_elec_in_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_pe_base_kg(&self) -> PyResult<f64>{
+      Ok(self.mc_pe_base_kg)
+    }
+    #[setter]
+    pub fn set_mc_pe_base_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.mc_pe_base_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_pe_kg_per_kw(&self) -> PyResult<f64>{
+      Ok(self.mc_pe_kg_per_kw)
+    }
+    #[setter]
+    pub fn set_mc_pe_kg_per_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.mc_pe_kg_per_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_perc_out_array(&self) -> PyResult<Vec<f64>>{
+      Ok(self.mc_perc_out_array.to_vec())
+    }
+    #[setter]
+    pub fn set_mc_perc_out_array(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.mc_perc_out_array = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mc_pwr_out_perc(&self) -> PyResult<Vec<f64>>{
+      Ok(self.mc_pwr_out_perc.to_vec())
+    }
+    #[setter]
+    pub fn set_mc_pwr_out_perc(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.mc_pwr_out_perc = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_min_fc_time_on(&self) -> PyResult<f64>{
+      Ok(self.min_fc_time_on)
+    }
+    #[setter]
+    pub fn set_min_fc_time_on(&mut self, new_value:f64) -> PyResult<()>{
+      self.min_fc_time_on = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_min_soc(&self) -> PyResult<f64>{
+      Ok(self.min_soc)
+    }
+    #[setter]
+    pub fn set_min_soc(&mut self, new_value:f64) -> PyResult<()>{
+      self.min_soc = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_modern_max(&self) -> PyResult<f64>{
+      Ok(self.modern_max)
+    }
+    #[setter]
+    pub fn set_modern_max(&mut self, new_value:f64) -> PyResult<()>{
+      self.modern_max = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_motor_secs_to_peak_pwr(&self) -> PyResult<f64>{
+      Ok(self.motor_secs_to_peak_pwr)
+    }
+    #[setter]
+    pub fn set_motor_secs_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
+      self.motor_secs_to_peak_pwr = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_mph_fc_on(&self) -> PyResult<f64>{
+      Ok(self.mph_fc_on)
+    }
+    #[setter]
+    pub fn set_mph_fc_on(&mut self, new_value:f64) -> PyResult<()>{
+      self.mph_fc_on = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_no_elec_aux(&self) -> PyResult<bool>{
+      Ok(self.no_elec_aux)
+    }
+    #[setter]
+    pub fn set_no_elec_aux(&mut self, new_value:bool) -> PyResult<()>{
+      self.no_elec_aux = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_no_elec_sys(&self) -> PyResult<bool>{
+      Ok(self.no_elec_sys)
+    }
+    #[setter]
+    pub fn set_no_elec_sys(&mut self, new_value:bool) -> PyResult<()>{
+      self.no_elec_sys = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_num_wheels(&self) -> PyResult<f64>{
+      Ok(self.num_wheels)
+    }
+    #[setter]
+    pub fn set_num_wheels(&mut self, new_value:f64) -> PyResult<()>{
+      self.num_wheels = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_perc_high_acc_buf(&self) -> PyResult<f64>{
+      Ok(self.perc_high_acc_buf)
+    }
+    #[setter]
+    pub fn set_perc_high_acc_buf(&mut self, new_value:f64) -> PyResult<()>{
+      self.perc_high_acc_buf = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_props(&self) -> PyResult<RustPhysicalProperties>{
+      let new_props = RustPhysicalProperties{
+        air_density_kg_per_m3: self.props.air_density_kg_per_m3,
+        a_grav_mps2: self.props.a_grav_mps2,
+        kwh_per_gge: self.props.kwh_per_gge,
+        fuel_rho_kg__L: self.props.fuel_rho_kg__L,
+        fuel_afr_stoich: self.props.fuel_afr_stoich,
+      };
+      Ok(new_props)
+    }
+    #[setter]
+    pub fn set_props(&mut self, new_value:RustPhysicalProperties) -> PyResult<()>{
+      self.props = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_regen_a(&self) -> PyResult<f64>{
+      Ok(self.regen_a)
+    }
+    #[setter]
+    pub fn set_regen_a(&mut self, new_value:f64) -> PyResult<()>{
+      self.regen_a = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_regen_b(&self) -> PyResult<f64>{
+      Ok(self.regen_b)
+    }
+    #[setter]
+    pub fn set_regen_b(&mut self, new_value:f64) -> PyResult<()>{
+      self.regen_b = new_value;
+      Ok(())
+    }
+
     #[getter]
     pub fn get_scenario_name(&self) -> PyResult<String>{
-        Ok(self.scenario_name.clone())
+      Ok(self.scenario_name.clone())
     }
     #[setter]
     pub fn set_scenario_name(&mut self, new_value:String) -> PyResult<()>{
-        self.scenario_name = new_value;
-        Ok(())
+      self.scenario_name = new_value;
+      Ok(())
     }
 
     #[getter]
     pub fn get_selection(&self) -> PyResult<u32>{
-        Ok(self.selection)
+      Ok(self.selection)
     }
     #[setter]
     pub fn set_selection(&mut self, new_value:u32) -> PyResult<()>{
-        self.selection = new_value;
-        Ok(())
+      self.selection = new_value;
+      Ok(())
     }
+
+    #[getter]
+    pub fn get_small_baseline_eff(&self) -> PyResult<Vec<f64>>{
+      Ok(self.small_baseline_eff.to_vec())
+    }
+    #[setter]
+    pub fn set_small_baseline_eff(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.small_baseline_eff = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_small_motor_power_kw(&self) -> PyResult<f64>{
+      Ok(self.small_motor_power_kw)
+    }
+    #[setter]
+    pub fn set_small_motor_power_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.small_motor_power_kw = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_stop_start(&self) -> PyResult<bool>{
+      Ok(self.stop_start)
+    }
+    #[setter]
+    pub fn set_stop_start(&mut self, new_value:bool) -> PyResult<()>{
+      self.stop_start = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_trans_eff(&self) -> PyResult<f64>{
+      Ok(self.trans_eff)
+    }
+    #[setter]
+    pub fn set_trans_eff(&mut self, new_value:f64) -> PyResult<()>{
+      self.trans_eff = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_trans_kg(&self) -> PyResult<f64>{
+      Ok(self.trans_kg)
+    }
+    #[setter]
+    pub fn set_trans_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.trans_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val0_to60_mph(&self) -> PyResult<f64>{
+      Ok(self.val0_to60_mph)
+    }
+    #[setter]
+    pub fn set_val0_to60_mph(&mut self, new_value:f64) -> PyResult<()>{
+      self.val0_to60_mph = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_cd_range_mi(&self) -> PyResult<f64>{
+      Ok(self.val_cd_range_mi)
+    }
+    #[setter]
+    pub fn set_val_cd_range_mi(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_cd_range_mi = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_comb_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_comb_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_comb_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_comb_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_comb_mpgge(&self) -> PyResult<f64>{
+      Ok(self.val_comb_mpgge)
+    }
+    #[setter]
+    pub fn set_val_comb_mpgge(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_comb_mpgge = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_const45_mph_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_const45_mph_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_const45_mph_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_const45_mph_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_const55_mph_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_const55_mph_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_const55_mph_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_const55_mph_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_const60_mph_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_const60_mph_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_const60_mph_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_const60_mph_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_const65_mph_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_const65_mph_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_const65_mph_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_const65_mph_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_ess_life_miles(&self) -> PyResult<f64>{
+      Ok(self.val_ess_life_miles)
+    }
+    #[setter]
+    pub fn set_val_ess_life_miles(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_ess_life_miles = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_hwy_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_hwy_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_hwy_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_hwy_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_hwy_mpgge(&self) -> PyResult<f64>{
+      Ok(self.val_hwy_mpgge)
+    }
+    #[setter]
+    pub fn set_val_hwy_mpgge(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_hwy_mpgge = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_msrp(&self) -> PyResult<f64>{
+      Ok(self.val_msrp)
+    }
+    #[setter]
+    pub fn set_val_msrp(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_msrp = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_range_miles(&self) -> PyResult<f64>{
+      Ok(self.val_range_miles)
+    }
+    #[setter]
+    pub fn set_val_range_miles(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_range_miles = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_udds_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_udds_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_udds_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_udds_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_udds_mpgge(&self) -> PyResult<f64>{
+      Ok(self.val_udds_mpgge)
+    }
+    #[setter]
+    pub fn set_val_udds_mpgge(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_udds_mpgge = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_unadj_hwy_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_unadj_hwy_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_unadj_hwy_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_unadj_hwy_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_unadj_udds_kwh_per_mile(&self) -> PyResult<f64>{
+      Ok(self.val_unadj_udds_kwh_per_mile)
+    }
+    #[setter]
+    pub fn set_val_unadj_udds_kwh_per_mile(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_unadj_udds_kwh_per_mile = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_val_veh_base_cost(&self) -> PyResult<f64>{
+      Ok(self.val_veh_base_cost)
+    }
+    #[setter]
+    pub fn set_val_veh_base_cost(&mut self, new_value:f64) -> PyResult<()>{
+      self.val_veh_base_cost = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_veh_cg_m(&self) -> PyResult<f64>{
+      Ok(self.veh_cg_m)
+    }
+    #[setter]
+    pub fn set_veh_cg_m(&mut self, new_value:f64) -> PyResult<()>{
+      self.veh_cg_m = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_veh_kg(&self) -> PyResult<f64>{
+      Ok(self.veh_kg)
+    }
+    #[setter]
+    pub fn set_veh_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.veh_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_veh_override_kg(&self) -> PyResult<f64>{
+      Ok(self.veh_override_kg)
+    }
+    #[setter]
+    pub fn set_veh_override_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.veh_override_kg = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_veh_pt_type(&self) -> PyResult<String>{
+      Ok(self.veh_pt_type.clone())
+    }
+    #[setter]
+    pub fn set_veh_pt_type(&mut self, new_value:String) -> PyResult<()>{
+      self.veh_pt_type = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_veh_year(&self) -> PyResult<u32>{
+      Ok(self.veh_year)
+    }
+    #[setter]
+    pub fn set_veh_year(&mut self, new_value:u32) -> PyResult<()>{
+      self.veh_year = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_wheel_base_m(&self) -> PyResult<f64>{
+      Ok(self.wheel_base_m)
+    }
+    #[setter]
+    pub fn set_wheel_base_m(&mut self, new_value:f64) -> PyResult<()>{
+      self.wheel_base_m = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_wheel_coef_of_fric(&self) -> PyResult<f64>{
+      Ok(self.wheel_coef_of_fric)
+    }
+    #[setter]
+    pub fn set_wheel_coef_of_fric(&mut self, new_value:f64) -> PyResult<()>{
+      self.wheel_coef_of_fric = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_wheel_inertia_kg_m2(&self) -> PyResult<f64>{
+      Ok(self.wheel_inertia_kg_m2)
+    }
+    #[setter]
+    pub fn set_wheel_inertia_kg_m2(&mut self, new_value:f64) -> PyResult<()>{
+      self.wheel_inertia_kg_m2 = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_wheel_radius_m(&self) -> PyResult<f64>{
+      Ok(self.wheel_radius_m)
+    }
+    #[setter]
+    pub fn set_wheel_radius_m(&mut self, new_value:f64) -> PyResult<()>{
+      self.wheel_radius_m = new_value;
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_wheel_rr_coef(&self) -> PyResult<f64>{
+      Ok(self.wheel_rr_coef)
+    }
+    #[setter]
+    pub fn set_wheel_rr_coef(&mut self, new_value:f64) -> PyResult<()>{
+      self.wheel_rr_coef = new_value;
+      Ok(())
+    }
+
+
 }
