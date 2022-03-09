@@ -636,7 +636,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     elif return_type == 'legacy':
         return LegacyVehicle(veh_dict)
     elif return_type == 'rust':
-        raise NotImplementedError
+        return fsr.RustVehicle(**veh_dict)
     else:
         raise ValueError("Invalid return_type.")
 
