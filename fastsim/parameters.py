@@ -40,6 +40,22 @@ class PhysicalProperties(object):
     fuel_lhv_kJ__kg = property(get_fuel_lhv_kJ__kg, set_fuel_lhv_kJ__kg)
 
 
+def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bool=True):
+    """
+    Returns copy of PhysicalProperties.
+    Arguments:
+    p: instantianed PhysicalProperties or RustPhysicalProperties 
+    return_type: 
+        default: infer from type of p
+        'dict': dict
+        'physical_properties': PhysicalProperties 
+        'legacy': LegacyPhysicalProperties
+        'rust': RustPhysicalProperties
+    deep: if True, uses deepcopy on everything
+    """
+    return p
+
+
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
 fc_pwr_out_perc = np.array(

@@ -45,6 +45,14 @@ class TestCopy(unittest.TestCase):
                         + f"Rust Cycle  : ({type(rust_cyc3.__getattribute__(key))}) {rust_cyc3.__getattribute__(key)}"
                 ))
     
+    def test_physical_properties_copy(self):
+        "Test that copy_physical_properties works as expected"
+        p = params.PhysicalProperties()
+        self.assertEqual(params.PhysicalProperties, type(p))
+        p2 = params.copy_physical_properties(p)
+        self.assertEqual(params.PhysicalProperties, type(p2))
+
+    
     def test_vehicle_copy(self):
         "Test that vehicle_copy works as expected"
         veh = vehicle.Vehicle.from_vehdb(5)
