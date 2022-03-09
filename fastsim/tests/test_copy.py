@@ -53,3 +53,5 @@ class TestCopy(unittest.TestCase):
         self.assertEqual(vehicle.Vehicle, type(veh2))
         rust_veh = vehicle.copy_vehicle(veh, 'rust')
         self.assertEqual(type(rust_veh), fsr.RustVehicle)
+        rust_veh2 = vehicle.copy_vehicle(rust_veh)
+        self.assertEqual(type(rust_veh2), fsr.RustVehicle)

@@ -355,4 +355,23 @@ impl RustVehicle{
             mc_perc_out_array,
         }
     }
+    #[getter]
+    pub fn get_scenario_name(&self) -> PyResult<String>{
+        Ok(self.scenario_name.clone())
+    }
+    #[setter]
+    pub fn set_scenario_name(&mut self, new_value:String) -> PyResult<()>{
+        self.scenario_name = new_value;
+        Ok(())
+    }
+
+    #[getter]
+    pub fn get_selection(&self) -> PyResult<u32>{
+        Ok(self.selection)
+    }
+    #[setter]
+    pub fn set_selection(&mut self, new_value:u32) -> PyResult<()>{
+        self.selection = new_value;
+        Ok(())
+    }
 }
