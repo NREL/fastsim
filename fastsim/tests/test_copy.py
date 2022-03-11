@@ -5,12 +5,12 @@ import unittest
 import numpy as np
 
 import fastsim.vehicle_base as fsvb
-from fastsim import cycle, params, utils, vehicle
+from fastsim import cycle, params, utils, vehicle, simdrive
 import fastsimrust as fsr
 
 
 class TestCopy(unittest.TestCase):
-    def test_cycle_copy(self):
+    def test_copy_cycle(self):
         "Test that cycle_copy works as expected"
         cyc = cycle.Cycle.from_file('udds')
         self.assertEqual(cycle.Cycle, type(cyc))
@@ -46,7 +46,7 @@ class TestCopy(unittest.TestCase):
                         + f"Rust Cycle  : ({type(rust_cyc3.__getattribute__(key))}) {rust_cyc3.__getattribute__(key)}"
                 ))
     
-    def test_physical_properties_copy(self):
+    def test_copy_physical_properties(self):
         "Test that copy_physical_properties works as expected"
         p = params.PhysicalProperties()
         self.assertEqual(params.PhysicalProperties, type(p))
@@ -68,7 +68,7 @@ class TestCopy(unittest.TestCase):
                     + f"Rust Physical Properties  : ({type(rust_p3.__getattribute__(key))}) {rust_p3.__getattribute__(key)}"
             ))
     
-    def test_vehicle_copy(self):
+    def test_copy_vehicle(self):
         "Test that vehicle_copy works as expected"
         veh = vehicle.Vehicle.from_vehdb(5)
         self.assertEqual(vehicle.Vehicle, type(veh))
@@ -109,3 +109,10 @@ class TestCopy(unittest.TestCase):
                             + f"Python Vehicle: ({type(veh.__getattribute__(key))}) {veh.__getattribute__(key)}\n"
                             + f"Rust Vehicle  : ({type(rust_veh3.__getattribute__(key))}) {rust_veh3.__getattribute__(key)}"
                     ))
+
+    def test_copy_sim_params(self):
+        "Test that copy_sim_params works as expected"
+        sdp = simdrive.SimDriveParams()
+        self.assertEqual(simdrive.SimDriveParams, type(sdp))
+        sdp2 = simdrive.copy_sim_params(sdp)
+        self.assertEqual(simdrive.SimDriveParams, type(sdp2))

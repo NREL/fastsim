@@ -48,6 +48,21 @@ class SimDriveParams(object):
         # EPA fuel economy adjustment parameters
         self.max_epa_adj = 0.3 # maximum EPA adjustment factor
 
+def copy_sim_params(sdp: SimDriveParams):
+    """
+    Returns copy of SimDriveParams.
+    Arguments:
+    sdp: instantianed SimDriveParams or RustSimDriveParams
+    return_type: 
+        default: infer from type of sdp
+        'dict': dict
+        'sim_params': SimDriveParams 
+        'legacy': LegacySimDriveParams
+        'rust': RustSimDriveParams
+    deep: if True, uses deepcopy on everything
+    """
+    return sdp
+
 class SimDrive(object):
     """Class containing methods for running FASTSim vehicle 
     fuel economy simulations. This class is not compiled and will 
