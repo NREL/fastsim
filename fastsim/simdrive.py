@@ -5,6 +5,7 @@ cycle. For example usage, see ../README.md"""
 from logging import debug
 import numpy as np
 import re
+import copy
 
 import fastsimrust as fsr
 from . import params, cycle, vehicle, utils, inspect_utils
@@ -105,7 +106,7 @@ def copy_sim_params(sdp: SimDriveParams, return_type:str=None):
     elif return_type == 'rust':
         return fsr.RustSimDriveParams(**sdp_dict)
     else:
-        raise ValueError("Invalid return_type.")
+        raise ValueError(f"Invalid return_type: '{return_type}'")
 
 def sim_params_equal(a:SimDriveParams, b:SimDriveParams):
     """
@@ -1391,7 +1392,7 @@ class LegacySimDrive(object):
     pass
 
 
-def copy_sim_drive(sd:SimDrive, return_type:str='legacy') -> SimDrive:
+def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDrive:
     """Returns copy of SimDriveClassic or SimDriveJit as SimDriveClassic.
     Arguments:
     ----------
@@ -1401,27 +1402,43 @@ def copy_sim_drive(sd:SimDrive, return_type:str='legacy') -> SimDrive:
     # TODO: if the rust version is input, make sure to copy lists to numpy arrays
     # TODO: no need to implement dict for copy_sim_drive, but please do for the subordinate classes
 
+    if return_type is None:
+        #if type(sd) == fsr.RustSimDrive:
+        #    return_type = 'rust'
+        if type(sd) == SimDrive:
+            return_type = 'sim_drive'
+        elif type(sd) == LegacySimDrive:
+            return_type = "legacy"
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust, sim_drive, or legacy.")
+
+    cyc_return_type = 'cycle' if return_type == 'sim_drive' else return_type
+    veh_return_type = 'vehicle' if return_type == 'sim_drive' else return_type
     sd_copy = SimDrive(
-        cycle.copy_cycle(sd.cyc0, use_jit=use_jit), 
-        vehicle.copy_vehicle(sd.veh, use_jit=use_jit)
-        ) 
+        cycle.copy_cycle(sd.cyc0, cyc_return_type, deep), 
+        vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
+    ) 
 
     for key in utils.get_attrs(sd):
         if key == 'cyc':
             sd_copy.__setattr__(
                 key, 
-                cycle.copy_cycle(sd.__getattribute__(key), use_jit=use_jit))
+                cycle.copy_cycle(sd.__getattribute__(key), cyc_return_type, deep))
         elif key == 'cyc0':
             pass
         elif key == 'veh':
-            sd_copy.veh = vehicle.copy_vehicle(sd.veh, return_dict=False, use_jit=use_jit)
+            pass
         elif key == 'sim_params':
-            sd_copy.sim_params = copy_sim_params(sd.sim_params, use_jit=use_jit)
+            sp_return_type = 'sim_params' if (return_type == 'sim_drive' or return_type == 'legacy') else return_type
+            sd_copy.sim_params = copy_sim_params(sd.sim_params, sp_return_type)
         elif key == 'props':
-            sd_copy.props = params.copy_props(sd.props, use_jit=use_jit)
+            pp_return_type = 'physical_properties' if (return_type == 'sim_drive' or return_type == 'legacy') else return_type
+            sd_copy.props = params.copy_physical_properties(sd.props, pp_return_type)
         else: 
             # should be ok to deep copy
-            sd_copy.__setattr__(key, deepcopy(sd.__getattribute__(key)))
+            val = sd.__getattribute__(key)
+            sd_copy.__setattr__(key, copy.deepcopy(val) if deep else val)
         
     return sd_copy                
 

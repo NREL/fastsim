@@ -203,7 +203,7 @@ def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True):
     elif return_type == 'rust':
         return fsr.RustCycle(**cyc_dict)
     else:
-        raise ValueError("Invalid return_type.")
+        raise ValueError(f"Invalid return_type: '{return_type}'")
         
 def cyc_equal(a: Cycle, b:Cycle)-> bool:
     "Return True if a and b are equal"

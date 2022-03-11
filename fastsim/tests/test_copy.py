@@ -89,4 +89,21 @@ class TestCopy(unittest.TestCase):
     
     def test_copy_sim_drive(self):
         "Test that copy_sim_drive works as expected"
-        pass
+        cyc = cycle.Cycle.from_file('udds')
+        veh = vehicle.Vehicle.from_vehdb(5)
+        sd = simdrive.SimDrive(cyc, veh)
+        self.assertEqual(simdrive.SimDrive, type(sd))
+        sd2 = simdrive.copy_sim_drive(sd)
+        self.assertEqual(simdrive.SimDrive, type(sd2))
+        #self.assertFalse(cyc is cyc2, msg="Ensure we actually copied; that we don't just have the same object")
+        #cyc_dict = cycle.copy_cycle(cyc, 'dict')
+        #self.assertEqual(dict, type(cyc_dict))
+        #rust_cyc = cycle.copy_cycle(cyc, 'rust')
+        #self.assertEqual(type(rust_cyc), fsr.RustCycle)
+        #rust_cyc2 = cycle.copy_cycle(rust_cyc)
+        #self.assertEqual(type(rust_cyc2), fsr.RustCycle)
+        #rust_cyc3 = cycle.Cycle.from_file('udds').to_rust()
+        #self.assertEqual(type(rust_cyc3), fsr.RustCycle)
+        #self.assertTrue(cycle.cyc_equal(cyc, rust_cyc3))
+        #cyc.name = 'bob'
+        #self.assertFalse(cycle.cyc_equal(cyc, rust_cyc3))

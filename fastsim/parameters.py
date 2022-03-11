@@ -91,7 +91,7 @@ def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bo
     elif return_type == 'rust':
         return fsr.RustPhysicalProperties(**p_dict)
     else:
-        raise ValueError("Invalid return_type.")
+        raise ValueError(f"Invalid return_type: '{return_type}'")
 
 def physical_properties_equal(a:PhysicalProperties, b:PhysicalProperties)-> bool:
     "Return True if the physical properties are equal by value"
