@@ -205,6 +205,13 @@ def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True):
     else:
         raise ValueError("Invalid return_type.")
         
+def cyc_equal(a: Cycle, b:Cycle)-> bool:
+    "Return True if a and b are equal"
+    if a is b:
+        return True
+    a_dict = copy_cycle(a, 'dict')
+    b_dict = copy_cycle(b, 'dict')
+    return equals(a_dict, b_dict, verbose=False)
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
     """

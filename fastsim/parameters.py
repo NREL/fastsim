@@ -93,8 +93,14 @@ def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bo
     else:
         raise ValueError("Invalid return_type.")
 
-    return p
-
+def physical_properties_equal(a:PhysicalProperties, b:PhysicalProperties)-> bool:
+    "Return True if the physical properties are equal by value"
+    if a is b:
+        return True
+    for key in ref_physical_properties.__dict__.keys():
+        if a.__getattribute__(key) != b.__getattribute__(key):
+            return False
+    return True
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***
