@@ -74,10 +74,10 @@ def get_attrs(instance):
     """
 
     keys = []
-    props = [name for (name, _) in inspect.getmembers(type(instance), isprop)]
+    pyprops = [name for (name, _) in inspect.getmembers(type(instance), isprop)]
     methods = [name for (name, _) in inspect.getmembers(type(instance), isfunc)]
     for key in instance.__dir__():
-        if not(key.startswith("_")) and key not in (props + methods):
+        if not(key.startswith("_")) and key not in (pyprops + methods):
             keys.append(key)
     return keys
 
