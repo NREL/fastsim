@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from fastsim import cycle, params, utils
+from fastsim import cycle, params, inspect_utils
 
 
 def calc_distance_traveled_m(cyc, up_to=None):
@@ -321,4 +321,4 @@ class TestCycle(unittest.TestCase):
         old_keys = list(cycle.NEW_TO_OLD.values())
         cyc = cycle.Cycle.from_file('udds')
         old_cyc = cycle.LegacyCycle(cyc)
-        self.assertEqual(old_keys, utils.get_attrs(old_cyc))
+        self.assertEqual(old_keys, inspect_utils.get_attrs(old_cyc))

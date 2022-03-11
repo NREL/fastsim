@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import re
 
 from fastsim import parameters
-from .inspect_utils import get_attrs
 
 sns.set()
 

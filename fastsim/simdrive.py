@@ -8,7 +8,7 @@ import re
 import copy
 
 import fastsimrust as fsr
-from . import params, cycle, vehicle, utils, inspect_utils
+from . import params, cycle, vehicle, inspect_utils
 # these imports are needed for numba to type these correctly
 from .vehicle import CONV, HEV, PHEV, BEV 
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
@@ -1431,7 +1431,7 @@ def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDriv
     if return_type == 'rust':
         return fsr.RustSimDrive()
 
-    for key in utils.get_attrs(sd):
+    for key in inspect_utils.get_attrs(sd):
         if key == 'cyc':
             sd_copy.__setattr__(
                 key, 
@@ -1490,7 +1490,7 @@ class SimDrivePost(object):
         ---------------
         sim_drive: solved sim_drive object"""
         
-        for item in utils.get_attrs(sim_drive):
+        for item in inspect_utils.get_attrs(sim_drive):
             self.__setattr__(item, sim_drive.__getattribute__(item))
 
     def get_output(self):
