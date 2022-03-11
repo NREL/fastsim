@@ -104,8 +104,8 @@ class TestCopy(unittest.TestCase):
         original_i = sd.i
         sd.i = original_i + 1
         self.assertFalse(simdrive.sim_drive_equal(sd, rust_sd))
-        #rust_cyc3 = cycle.Cycle.from_file('udds').to_rust()
-        #self.assertEqual(type(rust_cyc3), fsr.RustCycle)
+        rust_sd3 = simdrive.SimDrive(cyc, veh).to_rust()
+        self.assertEqual(type(rust_sd3), fsr.RustSimDrive)
         #self.assertTrue(cycle.cyc_equal(cyc, rust_cyc3))
         #cyc.name = 'bob'
         #self.assertFalse(cycle.cyc_equal(cyc, rust_cyc3))

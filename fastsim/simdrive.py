@@ -1387,6 +1387,10 @@ class SimDrive(object):
             if self.sim_params.verbose:
                 print('Warning: Trace miss speed [m/s]:', np.round(self.trace_miss_speed_mps, 5))
                 print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
+    
+    def to_rust(self):
+        "Create a rust version of SimDrive"
+        return copy_sim_drive(self, 'rust', True)
 
 class LegacySimDrive(object):
     pass
