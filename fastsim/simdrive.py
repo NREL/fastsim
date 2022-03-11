@@ -1486,7 +1486,7 @@ def sim_drive_equal(a:SimDrive, b:SimDrive, verbose=False) -> bool:
                 if verbose:
                     print(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
-        elif type(a_val) == np.ndarray:
+        elif type(a_val) == np.ndarray or type(b_val) == np.ndarray:
             if not (a_val == b_val).all():
                 if verbose:
                     print(f"unequal at key {k}: {a_val} != {b_val}")

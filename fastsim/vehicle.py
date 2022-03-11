@@ -673,7 +673,7 @@ def veh_equal(veh1, veh2, full_out=False):
     keys.remove('props') # no need to compare this one
     for key in keys:
         if pd.api.types.is_list_like(veh_dict1[key]):
-            if (veh_dict1[key] != veh_dict2[key]).any():
+            if (np.array(veh_dict1[key]) != np.array(veh_dict2[key])).any():
                 if not full_out: return False
                 err_list.append(
                     {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
