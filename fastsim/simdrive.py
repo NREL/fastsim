@@ -30,8 +30,8 @@ class SimDriveParams(object):
     def from_dict(cls, sdp_dict):
         """Create from a dictionary"""
         sdp = cls()
-        #for k, v in sdp_dict.items():
-        #    sdp.__setattribute__(k, v)
+        for k, v in sdp_dict.items():
+            sdp.__setattr__(k, v)
         return sdp
 
     def __init__(self):
@@ -68,30 +68,25 @@ def copy_sim_params(sdp: SimDriveParams, return_type:str=None):
         default: infer from type of sdp
         'dict': dict
         'sim_params': SimDriveParams 
-        'legacy': LegacySimDriveParams
+        TODO: 'legacy', NOT IMPLEMENTED - do we need it? 'legacy': LegacySimDriveParams 
         'rust': RustSimDriveParams
     deep: if True, uses deepcopy on everything
     """
     sdp_dict = {}
 
-    #for key in inspect_utils.get_attrs(ref_sim_drive_params):
-    #    val_to_copy = sdp.__getattribute__(key)
-    #    if type(val_to_copy) == np.ndarray:
-    #        # has to be float or time_s will get converted to int
-    #        cyc_dict[key] = np.array(copy.deepcopy(val_to_copy) if deep else val_to_copy, dtype=float)
-    #    else:
-    #        cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
+    for key in inspect_utils.get_attrs(ref_sim_drive_params):
+        sdp_dict[key] = sdp.__getattribute__(key)
 
-    #if return_type is None:
-    #    if type(cyc) == fsr.RustCycle:
-    #        return_type = 'rust'
-    #    elif type(cyc) == Cycle:
-    #        return_type = 'cycle'
-    #    elif type(cyc) == LegacyCycle:
-    #        return_type = "legacy"
-    #    else:
-    #        raise NotImplementedError(
-    #            "Only implemented for rust, cycle, or legacy.")
+    if return_type is None:
+        if type(sdp) == fsr.RustSimDriveParams:
+            return_type = 'rust'
+        elif type(sdp) == SimDriveParams:
+            return_type = 'sim_params'
+        #elif type(cyc) == LegacyCycle:
+        #    return_type = "legacy"
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust, cycle, or legacy.")
 
     #if return_type == 'dict':
     #    return sdp_dict
@@ -99,12 +94,32 @@ def copy_sim_params(sdp: SimDriveParams, return_type:str=None):
     #    return SimDriveParams.from_dict(sdp_dict)
     #elif return_type == 'legacy':
     #    return LegacyCycle(cyc_dict)
-    if return_type != 'rust':
+    if return_type == 'dict':
+        return sdp_dict
+    elif return_type == 'sim_params':
         return SimDriveParams.from_dict(sdp_dict)
     elif return_type == 'rust':
         return fsr.RustSimDriveParams(**sdp_dict)
     else:
         raise ValueError("Invalid return_type.")
+
+def sim_params_equal(a:SimDriveParams, b:SimDriveParams):
+    """
+    Returns True if objects are structurally equal (i.e., equal by value), else false.
+    Arguments:
+    a: instantiated SimDriveParams object
+    b: instantiated SimDriveParams object
+    """
+    if a is b:
+        return True
+    a_dict = copy_sim_params(a, 'dict')
+    b_dict = copy_sim_params(b, 'dict')
+    if len(a_dict) != len(b_dict):
+        return False
+    for k in a_dict.keys():
+        if a_dict[k] != b_dict[k]:
+            return False
+    return True
 
 class SimDrive(object):
     """Class containing methods for running FASTSim vehicle 
