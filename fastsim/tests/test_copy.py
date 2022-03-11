@@ -132,3 +132,4 @@ class TestCopy(unittest.TestCase):
         self.assertEqual(len(sdp_dict), len(simdrive.ref_sim_drive_params.__dict__))
         rust_sdp = simdrive.copy_sim_params(sdp, 'rust')
         self.assertEqual(fsr.RustSimDriveParams, type(rust_sdp))
+        self.assertTrue(simdrive.sim_params_equal(sdp, rust_sdp), msg="Assert that values equal")
