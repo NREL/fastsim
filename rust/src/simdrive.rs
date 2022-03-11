@@ -217,3 +217,19 @@ impl RustSimDriveParams{
       Ok(())
     }
 }
+
+#[pyclass] 
+#[derive(Debug, Clone)]
+/// Struct containing time trace data 
+pub struct RustSimDrive{
+    test: f64
+}
+
+#[pymethods]
+impl RustSimDrive{
+    #[new]
+    pub fn __new__() -> Self{
+        let test: f64 = 42.0;
+        RustSimDrive{test}
+    }
+}

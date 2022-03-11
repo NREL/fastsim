@@ -1397,6 +1397,12 @@ def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDriv
     Arguments:
     ----------
     sd: instantiated SimDriveClassic or SimDriveJit
+    return_type: 
+        default: infer from type of sd
+        'sim_drive': Cycle 
+        'legacy': LegacyCycle
+        'rust': RustCycle
+    deep: if True, uses deepcopy on everything
     """
 
     # TODO: if the rust version is input, make sure to copy lists to numpy arrays
@@ -1407,6 +1413,8 @@ def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDriv
         #    return_type = 'rust'
         if type(sd) == SimDrive:
             return_type = 'sim_drive'
+        elif type(sd) == fsr.RustSimDrive:
+            return_type = 'rust'
         elif type(sd) == LegacySimDrive:
             return_type = "legacy"
         else:
@@ -1419,6 +1427,9 @@ def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDriv
         cycle.copy_cycle(sd.cyc0, cyc_return_type, deep), 
         vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
     ) 
+
+    if return_type == 'rust':
+        return fsr.RustSimDrive()
 
     for key in utils.get_attrs(sd):
         if key == 'cyc':
