@@ -127,8 +127,9 @@ mod tests {
         let time_s = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
         let speed_mps = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
         let grade = Array::zeros(10).to_vec();
+        let road_type = Array::zeros(10).to_vec();        
         let name = String::from("test");
-        let cyc = RustCycle::__new__(time_s, speed_mps, grade, name);
+        let cyc = RustCycle::__new__(time_s, speed_mps, grade, road_type, name);
         assert_eq!(cyc.dist_m().sum(), 45.0);
     }
 }
