@@ -98,8 +98,12 @@ class TestCopy(unittest.TestCase):
         self.assertFalse(sd is sd2, msg="Ensure we actually copied; that we don't just have the same object")
         rust_sd = simdrive.copy_sim_drive(sd, 'rust')
         self.assertEqual(type(rust_sd), fsr.RustSimDrive)
-        #rust_cyc2 = cycle.copy_cycle(rust_cyc)
-        #self.assertEqual(type(rust_cyc2), fsr.RustCycle)
+        rust_sd2 = simdrive.copy_sim_drive(rust_sd)
+        self.assertEqual(type(rust_sd2), fsr.RustSimDrive)
+        self.assertTrue(simdrive.sim_drive_equal(sd, rust_sd, verbose=True))
+        original_i = sd.i
+        sd.i = original_i + 1
+        self.assertFalse(simdrive.sim_drive_equal(sd, rust_sd))
         #rust_cyc3 = cycle.Cycle.from_file('udds').to_rust()
         #self.assertEqual(type(rust_cyc3), fsr.RustCycle)
         #self.assertTrue(cycle.cyc_equal(cyc, rust_cyc3))

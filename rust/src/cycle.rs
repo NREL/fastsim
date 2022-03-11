@@ -15,13 +15,13 @@ use super::utils::*;
 /// Struct containing time trace data 
 pub struct RustCycle{
     /// array of time [s]
-    time_s: Array1<f64>,
+    pub time_s: Array1<f64>,
     /// array of speed [m/s]
-    mps: Array1<f64>,    
+    pub mps: Array1<f64>,    
     /// array of grade [rise/run]
-    grade: Array1<f64>,
+    pub grade: Array1<f64>,
     /// array of max possible charge rate from roadway
-    road_type: Array1<f64>, 
+    pub road_type: Array1<f64>, 
     #[pyo3(get, set)]
     name: String    
 }

@@ -1392,6 +1392,9 @@ class LegacySimDrive(object):
     pass
 
 
+ref_sim_drive = SimDrive(cycle.ref_cyc, vehicle.ref_veh)
+sd_params = inspect_utils.get_attrs(ref_sim_drive)
+
 def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDrive:
     """Returns copy of SimDriveClassic or SimDriveJit as SimDriveClassic.
     Arguments:
@@ -1423,13 +1426,12 @@ def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDriv
 
     cyc_return_type = 'cycle' if return_type == 'sim_drive' else return_type
     veh_return_type = 'vehicle' if return_type == 'sim_drive' else return_type
-    sd_copy = SimDrive(
-        cycle.copy_cycle(sd.cyc0, cyc_return_type, deep), 
-        vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
-    ) 
+    cyc = cycle.copy_cycle(sd.cyc0, cyc_return_type, deep)
+    veh = vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
+    sd_copy = SimDrive(cyc, veh)
 
     if return_type == 'rust':
-        return fsr.RustSimDrive()
+        return fsr.RustSimDrive(cyc, veh)
 
     for key in utils.get_attrs(sd):
         if key == 'cyc':
@@ -1446,13 +1448,50 @@ def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDriv
         elif key == 'props':
             pp_return_type = 'physical_properties' if (return_type == 'sim_drive' or return_type == 'legacy') else return_type
             sd_copy.props = params.copy_physical_properties(sd.props, pp_return_type)
-        else: 
+        else:
             # should be ok to deep copy
             val = sd.__getattribute__(key)
             sd_copy.__setattr__(key, copy.deepcopy(val) if deep else val)
         
     return sd_copy                
 
+def sim_drive_equal(a:SimDrive, b:SimDrive, verbose=False) -> bool:
+    ""
+    if a is b:
+        return True
+    for k in ref_sim_drive.__dict__.keys():
+        a_val = a.__getattribute__(k)
+        b_val = b.__getattribute__(k)
+        if k == 'cyc' or k == 'cyc0':
+            if not cycle.cyc_equal(a_val, b_val):
+                if verbose:
+                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                return False
+        elif k == 'veh':
+            if not vehicle.veh_equal(a_val, b_val):
+                if verbose:
+                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                return False
+        elif k == 'props':
+            if not params.physical_properties_equal(a_val, b_val):
+                if verbose:
+                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                return False
+        elif k == 'sim_params':
+            if not sim_params_equal(a_val, b_val):
+                if verbose:
+                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                return False
+        elif type(a_val) == np.ndarray:
+            if not (a_val == b_val).all():
+                if verbose:
+                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                return False
+        elif a_val != b_val:
+            if verbose:
+                print(f"unequal at key {k}: {a_val} != {b_val}")
+            return False
+    return True
 
 class SimAccelTest(SimDrive):
     """Class for running FASTSim vehicle acceleration simulation."""
