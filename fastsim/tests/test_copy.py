@@ -116,3 +116,6 @@ class TestCopy(unittest.TestCase):
         self.assertEqual(simdrive.SimDriveParams, type(sdp))
         sdp2 = simdrive.copy_sim_params(sdp)
         self.assertEqual(simdrive.SimDriveParams, type(sdp2))
+        self.assertFalse(sdp is sdp2, msg="Ensure we actually copied; that we don't just have the same object")
+        rust_sdp = simdrive.copy_sim_params(sdp, 'rust')
+        self.assertEqual(fsr.RustSimDriveParams, type(rust_sdp))

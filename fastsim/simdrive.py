@@ -6,7 +6,8 @@ from logging import debug
 import numpy as np
 import re
 
-from . import params, cycle, vehicle, utils
+import fastsimrust as fsr
+from . import params, cycle, vehicle, utils, inspect_utils
 # these imports are needed for numba to type these correctly
 from .vehicle import CONV, HEV, PHEV, BEV 
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
@@ -24,6 +25,14 @@ class SimDriveParams(object):
     >>> sim_drive = simdrive.SimDriveClassic(cyc, veh)
     >>> sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     >>> sim_drive.sim_drive()"""
+
+    @classmethod
+    def from_dict(cls, sdp_dict):
+        """Create from a dictionary"""
+        sdp = cls()
+        #for k, v in sdp_dict.items():
+        #    sdp.__setattribute__(k, v)
+        return sdp
 
     def __init__(self):
         """Default values that affect simulation behavior.  
@@ -48,7 +57,9 @@ class SimDriveParams(object):
         # EPA fuel economy adjustment parameters
         self.max_epa_adj = 0.3 # maximum EPA adjustment factor
 
-def copy_sim_params(sdp: SimDriveParams):
+ref_sim_drive_params = SimDriveParams()
+
+def copy_sim_params(sdp: SimDriveParams, return_type:str=None):
     """
     Returns copy of SimDriveParams.
     Arguments:
@@ -61,7 +72,39 @@ def copy_sim_params(sdp: SimDriveParams):
         'rust': RustSimDriveParams
     deep: if True, uses deepcopy on everything
     """
-    return sdp
+    sdp_dict = {}
+
+    #for key in inspect_utils.get_attrs(ref_sim_drive_params):
+    #    val_to_copy = sdp.__getattribute__(key)
+    #    if type(val_to_copy) == np.ndarray:
+    #        # has to be float or time_s will get converted to int
+    #        cyc_dict[key] = np.array(copy.deepcopy(val_to_copy) if deep else val_to_copy, dtype=float)
+    #    else:
+    #        cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
+
+    #if return_type is None:
+    #    if type(cyc) == fsr.RustCycle:
+    #        return_type = 'rust'
+    #    elif type(cyc) == Cycle:
+    #        return_type = 'cycle'
+    #    elif type(cyc) == LegacyCycle:
+    #        return_type = "legacy"
+    #    else:
+    #        raise NotImplementedError(
+    #            "Only implemented for rust, cycle, or legacy.")
+
+    #if return_type == 'dict':
+    #    return sdp_dict
+    #elif return_type == 'sim_params':
+    #    return SimDriveParams.from_dict(sdp_dict)
+    #elif return_type == 'legacy':
+    #    return LegacyCycle(cyc_dict)
+    if return_type != 'rust':
+        return SimDriveParams.from_dict(sdp_dict)
+    elif return_type == 'rust':
+        return fsr.RustSimDriveParams(**sdp_dict)
+    else:
+        raise ValueError("Invalid return_type.")
 
 class SimDrive(object):
     """Class containing methods for running FASTSim vehicle 
