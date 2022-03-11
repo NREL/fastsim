@@ -9,8 +9,8 @@ import numpy as np
 import json
 from pathlib import Path
 import copy
-import inspect
-from typing import Callable
+
+from . import inspect_utils
 
 import fastsimrust as fsr
 
@@ -56,31 +56,6 @@ class PhysicalProperties(object):
 
 ref_physical_properties = PhysicalProperties()
 
-# TODO: the below 3 functions have been moved here temporarily to avoid a circular dependency for importing utils (which imports properties)
-def isprop(attr) -> bool:
-    "Checks if instance attribute is a property."
-    return isinstance(attr, property)
-
-def isfunc(attr) -> bool:
-    "Checks if instance attribute is method."
-    return isinstance(attr, Callable)
-
-def get_attrs(instance):
-    """
-    Given an instantiated object, returns attributes that are not:
-    -- callable  
-    -- special (i.e. start with `__`)  
-    -- properties  
-    """
-
-    keys = []
-    pyprops = [name for (name, _) in inspect.getmembers(type(instance), isprop)]
-    methods = [name for (name, _) in inspect.getmembers(type(instance), isfunc)]
-    for key in instance.__dir__():
-        if not(key.startswith("_")) and key not in (pyprops + methods):
-            keys.append(key)
-    return keys
-
 def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bool=True):
     """
     Returns copy of PhysicalProperties.
@@ -96,7 +71,7 @@ def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bo
     """
     p_dict = {}
 
-    for key in get_attrs(ref_physical_properties):
+    for key in inspect_utils.get_attrs(ref_physical_properties):
         val_to_copy = p.__getattribute__(key)
         p_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
@@ -116,10 +91,16 @@ def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bo
     elif return_type == 'rust':
         return fsr.RustPhysicalProperties(**p_dict)
     else:
-        raise ValueError("Invalid return_type.")
+        raise ValueError(f"Invalid return_type: '{return_type}'")
 
-    return p
-
+def physical_properties_equal(a:PhysicalProperties, b:PhysicalProperties)-> bool:
+    "Return True if the physical properties are equal by value"
+    if a is b:
+        return True
+    for key in ref_physical_properties.__dict__.keys():
+        if a.__getattribute__(key) != b.__getattribute__(key):
+            return False
+    return True
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***

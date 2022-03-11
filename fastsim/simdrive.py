@@ -5,8 +5,10 @@ cycle. For example usage, see ../README.md"""
 from logging import debug
 import numpy as np
 import re
+import copy
 
-from . import params, cycle, vehicle, utils
+import fastsimrust as fsr
+from . import params, cycle, vehicle, utils, inspect_utils
 # these imports are needed for numba to type these correctly
 from .vehicle import CONV, HEV, PHEV, BEV 
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
@@ -24,6 +26,14 @@ class SimDriveParams(object):
     >>> sim_drive = simdrive.SimDriveClassic(cyc, veh)
     >>> sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     >>> sim_drive.sim_drive()"""
+
+    @classmethod
+    def from_dict(cls, sdp_dict):
+        """Create from a dictionary"""
+        sdp = cls()
+        for k, v in sdp_dict.items():
+            sdp.__setattr__(k, v)
+        return sdp
 
     def __init__(self):
         """Default values that affect simulation behavior.  
@@ -47,6 +57,74 @@ class SimDriveParams(object):
                 
         # EPA fuel economy adjustment parameters
         self.max_epa_adj = 0.3 # maximum EPA adjustment factor
+
+    def to_rust(self):
+        """Change to the Rust version"""
+        return copy_sim_params(self, 'rust')
+
+ref_sim_drive_params = SimDriveParams()
+
+def copy_sim_params(sdp: SimDriveParams, return_type:str=None):
+    """
+    Returns copy of SimDriveParams.
+    Arguments:
+    sdp: instantianed SimDriveParams or RustSimDriveParams
+    return_type: 
+        default: infer from type of sdp
+        'dict': dict
+        'sim_params': SimDriveParams 
+        TODO: 'legacy', NOT IMPLEMENTED - do we need it? 'legacy': LegacySimDriveParams 
+        'rust': RustSimDriveParams
+    deep: if True, uses deepcopy on everything
+    """
+    sdp_dict = {}
+
+    for key in inspect_utils.get_attrs(ref_sim_drive_params):
+        sdp_dict[key] = sdp.__getattribute__(key)
+
+    if return_type is None:
+        if type(sdp) == fsr.RustSimDriveParams:
+            return_type = 'rust'
+        elif type(sdp) == SimDriveParams:
+            return_type = 'sim_params'
+        #elif type(cyc) == LegacyCycle:
+        #    return_type = "legacy"
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust, cycle, or legacy.")
+
+    #if return_type == 'dict':
+    #    return sdp_dict
+    #elif return_type == 'sim_params':
+    #    return SimDriveParams.from_dict(sdp_dict)
+    #elif return_type == 'legacy':
+    #    return LegacyCycle(cyc_dict)
+    if return_type == 'dict':
+        return sdp_dict
+    elif return_type == 'sim_params':
+        return SimDriveParams.from_dict(sdp_dict)
+    elif return_type == 'rust':
+        return fsr.RustSimDriveParams(**sdp_dict)
+    else:
+        raise ValueError(f"Invalid return_type: '{return_type}'")
+
+def sim_params_equal(a:SimDriveParams, b:SimDriveParams):
+    """
+    Returns True if objects are structurally equal (i.e., equal by value), else false.
+    Arguments:
+    a: instantiated SimDriveParams object
+    b: instantiated SimDriveParams object
+    """
+    if a is b:
+        return True
+    a_dict = copy_sim_params(a, 'dict')
+    b_dict = copy_sim_params(b, 'dict')
+    if len(a_dict) != len(b_dict):
+        return False
+    for k in a_dict.keys():
+        if a_dict[k] != b_dict[k]:
+            return False
+    return True
 
 class SimDrive(object):
     """Class containing methods for running FASTSim vehicle 
@@ -1314,7 +1392,7 @@ class LegacySimDrive(object):
     pass
 
 
-def copy_sim_drive(sd:SimDrive, return_type:str='legacy') -> SimDrive:
+def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDrive:
     """Returns copy of SimDriveClassic or SimDriveJit as SimDriveClassic.
     Arguments:
     ----------
@@ -1324,27 +1402,43 @@ def copy_sim_drive(sd:SimDrive, return_type:str='legacy') -> SimDrive:
     # TODO: if the rust version is input, make sure to copy lists to numpy arrays
     # TODO: no need to implement dict for copy_sim_drive, but please do for the subordinate classes
 
+    if return_type is None:
+        #if type(sd) == fsr.RustSimDrive:
+        #    return_type = 'rust'
+        if type(sd) == SimDrive:
+            return_type = 'sim_drive'
+        elif type(sd) == LegacySimDrive:
+            return_type = "legacy"
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust, sim_drive, or legacy.")
+
+    cyc_return_type = 'cycle' if return_type == 'sim_drive' else return_type
+    veh_return_type = 'vehicle' if return_type == 'sim_drive' else return_type
     sd_copy = SimDrive(
-        cycle.copy_cycle(sd.cyc0, use_jit=use_jit), 
-        vehicle.copy_vehicle(sd.veh, use_jit=use_jit)
-        ) 
+        cycle.copy_cycle(sd.cyc0, cyc_return_type, deep), 
+        vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
+    ) 
 
     for key in utils.get_attrs(sd):
         if key == 'cyc':
             sd_copy.__setattr__(
                 key, 
-                cycle.copy_cycle(sd.__getattribute__(key), use_jit=use_jit))
+                cycle.copy_cycle(sd.__getattribute__(key), cyc_return_type, deep))
         elif key == 'cyc0':
             pass
         elif key == 'veh':
-            sd_copy.veh = vehicle.copy_vehicle(sd.veh, return_dict=False, use_jit=use_jit)
+            pass
         elif key == 'sim_params':
-            sd_copy.sim_params = copy_sim_params(sd.sim_params, use_jit=use_jit)
+            sp_return_type = 'sim_params' if (return_type == 'sim_drive' or return_type == 'legacy') else return_type
+            sd_copy.sim_params = copy_sim_params(sd.sim_params, sp_return_type)
         elif key == 'props':
-            sd_copy.props = params.copy_props(sd.props, use_jit=use_jit)
+            pp_return_type = 'physical_properties' if (return_type == 'sim_drive' or return_type == 'legacy') else return_type
+            sd_copy.props = params.copy_physical_properties(sd.props, pp_return_type)
         else: 
             # should be ok to deep copy
-            sd_copy.__setattr__(key, deepcopy(sd.__getattribute__(key)))
+            val = sd.__getattribute__(key)
+            sd_copy.__setattr__(key, copy.deepcopy(val) if deep else val)
         
     return sd_copy                
 
@@ -1446,10 +1540,10 @@ class SimDrivePost(object):
         
         base_var_list = list(self.__dict__.keys())
         pw_var_list = [var for var in base_var_list if re.search(
-            '\w*Kw(?!h)\w*', var)] 
+            '\w*_kw(?!h)\w*', var)]
             # find all vars containing 'Kw' but not 'Kwh'
         
-        prog = re.compile('(\w*)Kw(?!h)(\w*)') 
+        prog = re.compile('(\w*)_kw(?!h)(\w*)') 
         # find all vars containing 'Kw' but not Kwh and capture parts before and after 'Kw'
         # using compile speeds up iteration
 
@@ -1458,21 +1552,21 @@ class SimDrivePost(object):
         tempvars = {} # dict for contaning intermediate variables
         output = {}
         for var in pw_var_list:
-            tempvars[var + 'Pos'] = [x if x >= 0 
+            tempvars[var + '_pos'] = [x if x >= 0 
                                         else 0 
                                         for x in self.__getattribute__(var)]
-            tempvars[var + 'Neg'] = [x if x < 0 
+            tempvars[var + '_neg'] = [x if x < 0 
                                         else 0 
                                         for x in self.__getattribute__(var)]    
                         
             # Assign values to output dict for positive and negative energy variable names
             search = prog.search(var)
-            output[search[1] + 'Kj' + search[2] + 'Pos'] = np.trapz(tempvars[var + 'Pos'], self.cyc.time_s)
-            output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], self.cyc.time_s)
+            output[search[1] + '_kj' + search[2] + '_pos'] = np.trapz(tempvars[var + '_pos'], self.cyc.time_s)
+            output[search[1] + '_kj' + search[2] + '_neg'] = np.trapz(tempvars[var + '_neg'], self.cyc.time_s)
         
-        output['distMilesFinal'] = sum(self.distMiles)
-        if sum(self.fsKwhOutAch) > 0:
-            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * self.props.kwh_per_gge
+        output['dist_miles_final'] = sum(self.dist_mi)
+        if sum(self.fs_kwh_out_ach) > 0:
+            output['mpgge'] = sum(self.dist_mi) / sum(self.fs_kwh_out_ach) * self.props.kwh_per_gge
         else:
             output['mpgge'] = 0
     

@@ -10,7 +10,7 @@ from pathlib import Path
 import unittest
 
 # local modules
-from fastsim import simdrive, vehicle, cycle
+from fastsim import simdrive, vehicle, cycle, utils
 
 
 def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
@@ -93,15 +93,16 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
     print('Elapsed time since first vehicle: {:.2f} s'.format(t1 - t0a, 2))
 
 
+    # NOTE: cyc_wheel_* variables are being missed as they are called cyc_whl_* in SimDrive
     df0 = pd.read_csv(Path(simdrive.__file__).parent.resolve() / 'resources/master_benchmark_vars.csv')
+    df0 = df0.rename(columns=utils.camel_to_snake)
 
     # make sure new dataframe does not incude newly added or deprecated columns
     new_cols = {col for col in df.columns} - {col for col in df0.columns}
-    old_cols = {col for col in df0.columns} - {col for col in df.columns}
     
     from math import isclose
 
-    df_err = df.copy().drop(columns=list(new_cols) + list(old_cols))
+    df_err = df.copy().drop(columns=list(new_cols))
     abs_err = []
     for idx in df.index:
         for col in df_err.columns[2:]:

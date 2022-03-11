@@ -654,7 +654,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
         veh_dict['props'] = params.copy_physical_properties(veh_dict['props'], return_type, deep)
         return fsr.RustVehicle(**veh_dict)
     else:
-        raise ValueError("Invalid return_type.")
+        raise ValueError(f"Invalid return_type: '{return_type}'")
 
 def veh_equal(veh1, veh2, full_out=False):
     """Given veh1 and veh2, which can be Vehicle and/or VehicleJit
@@ -664,8 +664,8 @@ def veh_equal(veh1, veh2, full_out=False):
     ----------
     """
 
-    veh_dict1 = copy_vehicle(veh1, True)
-    veh_dict2 = copy_vehicle(veh2, True)
+    veh_dict1 = copy_vehicle(veh1, return_type='dict', deep=True)
+    veh_dict2 = copy_vehicle(veh2, return_type='dict', deep=True)
     err_list = []
     keys = list(veh_dict1.keys())
     keys.remove('props') # no need to compare this one
