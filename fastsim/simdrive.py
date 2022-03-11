@@ -57,6 +57,10 @@ class SimDriveParams(object):
         # EPA fuel economy adjustment parameters
         self.max_epa_adj = 0.3 # maximum EPA adjustment factor
 
+    def to_rust(self):
+        """Change to the Rust version"""
+        return copy_sim_params(self, 'rust')
+
 ref_sim_drive_params = SimDriveParams()
 
 def copy_sim_params(sdp: SimDriveParams, return_type:str=None):
