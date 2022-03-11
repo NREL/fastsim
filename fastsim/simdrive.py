@@ -1446,10 +1446,10 @@ class SimDrivePost(object):
         
         base_var_list = list(self.__dict__.keys())
         pw_var_list = [var for var in base_var_list if re.search(
-            '\w*Kw(?!h)\w*', var)] 
+            '\w*_kw(?!h)\w*', var)]
             # find all vars containing 'Kw' but not 'Kwh'
         
-        prog = re.compile('(\w*)Kw(?!h)(\w*)') 
+        prog = re.compile('(\w*)_kw(?!h)(\w*)') 
         # find all vars containing 'Kw' but not Kwh and capture parts before and after 'Kw'
         # using compile speeds up iteration
 
@@ -1458,21 +1458,21 @@ class SimDrivePost(object):
         tempvars = {} # dict for contaning intermediate variables
         output = {}
         for var in pw_var_list:
-            tempvars[var + 'Pos'] = [x if x >= 0 
+            tempvars[var + '_pos'] = [x if x >= 0 
                                         else 0 
                                         for x in self.__getattribute__(var)]
-            tempvars[var + 'Neg'] = [x if x < 0 
+            tempvars[var + '_neg'] = [x if x < 0 
                                         else 0 
                                         for x in self.__getattribute__(var)]    
                         
             # Assign values to output dict for positive and negative energy variable names
             search = prog.search(var)
-            output[search[1] + 'Kj' + search[2] + 'Pos'] = np.trapz(tempvars[var + 'Pos'], self.cyc.time_s)
-            output[search[1] + 'Kj' + search[2] + 'Neg'] = np.trapz(tempvars[var + 'Neg'], self.cyc.time_s)
+            output[search[1] + '_kj' + search[2] + '_pos'] = np.trapz(tempvars[var + '_pos'], self.cyc.time_s)
+            output[search[1] + '_kj' + search[2] + '_neg'] = np.trapz(tempvars[var + '_neg'], self.cyc.time_s)
         
-        output['distMilesFinal'] = sum(self.distMiles)
-        if sum(self.fsKwhOutAch) > 0:
-            output['mpgge'] = sum(self.distMiles) / sum(self.fsKwhOutAch) * self.props.kwh_per_gge
+        output['dist_miles_final'] = sum(self.dist_mi)
+        if sum(self.fs_kwh_out_ach) > 0:
+            output['mpgge'] = sum(self.dist_mi) / sum(self.fs_kwh_out_ach) * self.props.kwh_per_gge
         else:
             output['mpgge'] = 0
     

@@ -664,8 +664,8 @@ def veh_equal(veh1, veh2, full_out=False):
     ----------
     """
 
-    veh_dict1 = copy_vehicle(veh1, True)
-    veh_dict2 = copy_vehicle(veh2, True)
+    veh_dict1 = copy_vehicle(veh1, return_type='dict', deep=True)
+    veh_dict2 = copy_vehicle(veh2, return_type='dict', deep=True)
     err_list = []
     keys = list(veh_dict1.keys())
     keys.remove('props') # no need to compare this one
