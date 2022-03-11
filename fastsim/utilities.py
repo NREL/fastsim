@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 import re
 
 from fastsim import parameters
-# TODO: switch from get_attrs to using the *.__dict__ directly
-from .inspect_utils import get_attrs
 
 sns.set()
 

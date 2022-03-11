@@ -14,7 +14,7 @@ import types
 
 # local modules
 from . import parameters as params
-from . import utils
+from . import inspect_utils
 import fastsimrust as fsr
 
 THIS_DIR = Path(__file__).parent
@@ -175,7 +175,7 @@ def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True):
 
     cyc_dict = {}
 
-    for key in utils.get_attrs(ref_cyc):
+    for key in inspect_utils.get_attrs(ref_cyc):
         val_to_copy = cyc.__getattribute__(key)
         if type(val_to_copy) == np.ndarray:
             # has to be float or time_s will get converted to int

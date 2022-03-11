@@ -10,10 +10,15 @@ pub const METERS_PER_MILE:f64 = 1609.00;
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 
 pub struct RustPhysicalProperties{
+    #[pyo3(get, set)]
     pub air_density_kg_per_m3:f64, // = 1.2, Sea level air density at approximately 20C
+    #[pyo3(get, set)]
     pub a_grav_mps2:f64, // = 9.81
+    #[pyo3(get, set)]
     pub kwh_per_gge:f64, // = 33.7 # kWh per gallon of gasoline
+    #[pyo3(get, set)]
     pub fuel_rho_kg__L:f64, // = 0.75 # gasoline density in kg/L https://inchem.org/documents/icsc/icsc/eics1400.htm
+    #[pyo3(get, set)]
     pub fuel_afr_stoich:f64 // = 14.7 # gasoline stoichiometric air-fuel ratio https://en.wikipedia.org/wiki/Air%E2%80%93fuel_ratio
 }
 
