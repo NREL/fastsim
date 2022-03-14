@@ -10,6 +10,14 @@ use pyo3::prelude::*;
 use super::params::*;
 //use super::utils::*;
 
+// TODO consider making the following enums, like this:
+pub enum VehPtType {
+    Conv,
+    HEV,
+    PHEV,
+    BEV
+}
+
 pub const VEH_PT_TYPES:Vec<String> = vec![
     String::from("Conv"), 
     String::from("HEV"), 
