@@ -11,21 +11,21 @@ use super::cycle::RustCycle;
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 
 pub struct RustSimDriveParams{
-    missed_trace_correction: bool, // if True, missed trace correction is active, default = False
-    max_time_dilation: f64,
-    min_time_dilation: f64,
-    time_dilation_tol: f64,
-    max_trace_miss_iters: u32,
-    trace_miss_speed_mps_tol: f64,
-    trace_miss_time_tol: f64,
-    trace_miss_dist_tol: f64,
-    sim_count_max: u32,
-    verbose: bool,
-    newton_gain: f64,
-    newton_max_iter: u32,
-    newton_xtol: f64,
-    energy_audit_error_tol: f64,
-    max_epa_adj: f64,
+    pub missed_trace_correction: bool, // if True, missed trace correction is active, default = False
+    pub max_time_dilation: f64,
+    pub min_time_dilation: f64,
+    pub time_dilation_tol: f64,
+    pub max_trace_miss_iters: u32,
+    pub trace_miss_speed_mps_tol: f64,
+    pub trace_miss_time_tol: f64,
+    pub trace_miss_dist_tol: f64,
+    pub sim_count_max: u32,
+    pub verbose: bool,
+    pub newton_gain: f64,
+    pub newton_max_iter: u32,
+    pub newton_xtol: f64,
+    pub energy_audit_error_tol: f64,
+    pub max_epa_adj: f64,
 }
 
 #[pymethods]
