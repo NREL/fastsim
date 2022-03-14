@@ -42,6 +42,11 @@ impl RustCycle{
         let road_type = Array::from_vec(road_type);
         RustCycle {time_s, mps, grade, road_type, name}
     }
+
+    fn len(&self) -> usize{
+        self.time_s.len()
+    }
+
     #[getter]
     pub fn get_mps(&self) -> PyResult<Vec<f64>>{
         Ok((&self.mps).to_vec())
@@ -69,6 +74,7 @@ impl RustCycle{
         self.road_type = Array::from_vec(new_value);
         Ok(())
     }
+
     #[getter]
     pub fn get_mph(&self) -> PyResult<Vec<f64>>{
         Ok((&self.mps * MPH_PER_MPS).to_vec())
@@ -109,6 +115,11 @@ impl RustCycle{
     /// distance covered in each time step
     pub fn dist_m(&self) -> Array1<f64>{
         &self.mps * self.dt_s()
+    }
+
+    /// get mph from self.mps
+    pub fn mph(&self) -> Array1<f64> {
+        &self.mps * MPH_PER_MPS
     }
 
     // pub fn delta_elev_m(self):

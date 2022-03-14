@@ -1,5 +1,5 @@
 extern crate ndarray;
-use ndarray::{Array, Array1}; 
+use ndarray::{Array, Array1, s}; 
 extern crate pyo3;
 use pyo3::prelude::*;
 use super::params::RustPhysicalProperties;
@@ -539,8 +539,111 @@ impl RustSimDrive{
         }
     }
 
+    /// Receives second-by-second cycle information, vehicle properties, 
+    /// and an initial state of charge and runs sim_drive_step to perform a 
+    /// backward facing powertrain simulation. Method 'sim_drive' runs this
+    /// iteratively to achieve correct SOC initial and final conditions, as 
+    /// needed.
+    /// 
+    /// Arguments
+    /// ------------
+    /// initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
+    /// auxInKw: auxInKw override.  Array of same length as cyc.time_s.  
+    ///         Default of np.zeros(1) causes veh.aux_kw to be used. If zero is actually
+    ///         desired as an override, either set veh.aux_kw = 0 before instantiaton of
+    ///         SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
+    ///         the final value to non-zero prevents override mechanism.  
+    pub fn sim_drive_walk(&mut self, init_soc:f64) {
+        // TODO: implement method for `init_arrays`
+        // TODO: implement method for aux_in_kw_override
+        self.cyc_met[0] = true;
+        self.cur_soc_target[0] = self.veh.max_soc;
+        self.ess_cur_kwh[0] = init_soc * self.veh.max_ess_kwh;
+        self.soc[0] = init_soc;
+        self.mps_ach[0] = self.cyc0.mps[0];
+        self.mph_ach[0] = self.cyc0.mph()[0];
+
+        if self.sim_params.missed_trace_correction {
+            self.cyc = self.cyc0.clone();  // reset the cycle in case it has been manipulated
+        }
+        self.i = 1; // time step counter
+        while self.i < self.cyc.time_s.len() {
+            self.sim_drive_step()
+        }
+
+    // TODO: uncomment and implement
+    //    if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
+    //         if self.sim_params.missed_trace_correction:
+    //             print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
+    //         print("Warning: large time steps affect accuracy significantly.") 
+    //         print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
+    //         print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
+    }
+    
+    /// Step through 1 time step.
+    fn sim_drive_step(&mut self) {
+        self.solve_step(self.i);
+        
+        // TODO: implement and uncomment
+        // if self.sim_params.missed_trace_correction && (self.cyc0.dist_m.slice(s![0..self.i]).sum() > 0){
+        //     self.set_time_dilation(self.i)
+        // }
+
+        // TODO: implement something for coasting here
+        // if self.impose_coast[i] == True
+        //     self.set_coast_speeed(i)
+
+        self.i += 1  // increment time step counter
+    }
+    
+    /// Perform all the calculations to solve 1 time step.
+    fn solve_step(&mut self, i:usize) {
+        self.set_misc_calcs(i)
+        // self.set_comp_lims(i)
+        // self.set_power_calcs(i)
+        // self.set_ach_speed(i)
+        // self.set_hybrid_cont_calcs(i)
+        // self.set_fc_forced_state(i) # can probably be *mostly* done with list comprehension in post processing
+        // self.set_hybrid_cont_decisions(i)
+        // self.set_fc_power(i)
+    }
+
+    /// Sets misc. calculations at time step 'i'
+    /// Arguments:
+    /// ----------
+    /// i: index of time step
+    fn set_misc_calcs(&mut self, i:usize) {
+        // if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
+        if self.aux_in_kw.slice(s![i..self.len()-1]).iter().all(|&x| x == 0.0) {
+            // if all elements after i-1 are zero, trigger default behavior; otherwise, use override value 
+            if self.veh.no_elec_aux{
+                self.aux_in_kw[i] = self.veh.aux_kw / self.veh.alt_eff;
+            } else {
+                self.aux_in_kw[i] = self.veh.aux_kw;
+            }
+        }
+        // Is SOC below min threshold?
+        if self.soc[i-1] < (self.veh.min_soc + self.veh.perc_high_acc_buf) {
+            self.reached_buff[i] = false;
+        } else {
+            self.reached_buff[i] = true;
+        }
+
+        // Does the engine need to be on for low SOC or high acceleration
+        if self.soc[i-1] < self.veh.min_soc || (self.high_acc_fc_on_tag[i-1] && !(self.reached_buff[i])){
+            self.high_acc_fc_on_tag[i] = true } else{
+            self.high_acc_fc_on_tag[i] = false
+        }
+        self.max_trac_mps[i] = self.mps_ach[i-1] + (self.veh.max_trac_mps2 * self.cyc.dt_s()[i])
+
+    }
+
     // Methods for getting and setting arrays and other complex fields
     // note that python cannot specify a specific index to set but must reset the entire array 
+
+    fn len(&self) -> usize {
+        self.cyc.time_s.len()
+    }
 
     #[getter]
     pub fn get_veh(&self) -> PyResult<RustVehicle>{
@@ -1551,5 +1654,4 @@ impl RustSimDrive{
       self.trans_kw_out_ach = Array::from_vec(new_value);
       Ok(())
     }
-
 }
