@@ -224,111 +224,114 @@ impl RustSimDriveParams{
 #[pyclass] 
 #[derive(Debug, Clone)]
 pub struct RustSimDrive{
-    hev_sim_count: usize,
-    veh: RustVehicle,
-    cyc: RustCycle,
-    cyc0: RustCycle,
-    sim_params: RustSimDriveParams,
-    props: RustPhysicalProperties,
-    i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()
-    cur_max_fs_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fc_trans_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fc_fs_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fc_max_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_fc_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_cap_lim_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_ess_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_avail_elec_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_cap_lim_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_ess_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_elec_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    mc_elec_in_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    mc_transi_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_mc_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_lim_mc_regen_perc_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_lim_mc_regen_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_mech_mc_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_trans_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_drag_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_accel_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_ascent_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_trac_kw_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_trac_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    spare_trac_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_rr_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_whl_rad_per_sec: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    cyc_tire_inertia_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_whl_kw_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    regen_contrl_lim_kw_perc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_regen_brake_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_fric_brake_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_trans_kw_out_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cyc_met: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
-    trans_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    trans_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_soc_target: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    min_mc_kw_2help_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    mc_mech_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    mc_elec_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    aux_in_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    roadway_chg_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    min_ess_kw_2help_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fc_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fc_kw_out_ach_pct: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fc_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fs_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fs_cumu_mj_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fs_kwh_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_cur_kwh: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    regen_buff_soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    ess_regen_buff_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    max_ess_regen_buff_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    ess_accel_buff_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    accel_buff_soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    max_ess_accell_buff_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    ess_accel_regen_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    mc_elec_in_kw_for_max_fc_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    elec_kw_req_4ae: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    can_pwr_all_elec: Array1<f64>, // np.array(  // oddball
-    desired_ess_kw_out_for_ae: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_ae_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    er_ae_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_desired_kw_4fc_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    cur_max_mc_elec_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fc_kw_gap_fr_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    er_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    mc_elec_kw_in_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    mc_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    fc_forced_on: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
-    fc_forced_state: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.int32)
-    mc_mech_kw_4forced_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    fc_time_on: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    prev_fc_time_on: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    mps_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    mph_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    dist_m: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddbal
-    dist_mi: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    high_acc_fc_on_tag: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
-    reached_buff: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
-    max_trac_mps: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    add_kwh: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    dod_cycs: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_perc_dead: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    drag_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ess_loss_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    accel_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    ascent_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    rr_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    cur_max_roadway_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    trace_miss_iters: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    newton_iters: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    #[pyo3(get, set)]
+    pub hev_sim_count: usize,
+    pub veh: RustVehicle,
+    pub cyc: RustCycle,
+    pub cyc0: RustCycle,
+    pub sim_params: RustSimDriveParams,
+    pub props: RustPhysicalProperties,
+    #[pyo3(get, set)]
+    pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()
+    pub cur_max_fs_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fc_trans_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fc_fs_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fc_max_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_fc_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_cap_lim_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_ess_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_avail_elec_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_cap_lim_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_ess_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_elec_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub mc_elec_in_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub mc_transi_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_mc_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_lim_mc_regen_perc_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_lim_mc_regen_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_mech_mc_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_trans_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_drag_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_accel_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_ascent_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_trac_kw_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_trac_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub spare_trac_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_rr_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_whl_rad_per_sec: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub cyc_tire_inertia_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_whl_kw_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub regen_contrl_lim_kw_perc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_regen_brake_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_fric_brake_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_trans_kw_out_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cyc_met: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
+    pub trans_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub trans_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_soc_target: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub min_mc_kw_2help_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub mc_mech_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub mc_elec_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub aux_in_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub roadway_chg_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub min_ess_kw_2help_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fc_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fc_kw_out_ach_pct: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fc_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fs_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fs_cumu_mj_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fs_kwh_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_cur_kwh: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub regen_buff_soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub ess_regen_buff_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub max_ess_regen_buff_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub ess_accel_buff_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub accel_buff_soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub max_ess_accell_buff_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub ess_accel_regen_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub mc_elec_in_kw_for_max_fc_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub elec_kw_req_4ae: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub can_pwr_all_elec: Array1<f64>, // np.array(  // oddball
+    pub desired_ess_kw_out_for_ae: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_ae_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub er_ae_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_desired_kw_4fc_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub cur_max_mc_elec_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fc_kw_gap_fr_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub er_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub mc_elec_kw_in_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub mc_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub fc_forced_on: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
+    pub fc_forced_state: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.int32)
+    pub mc_mech_kw_4forced_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub fc_time_on: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub prev_fc_time_on: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub mps_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub mph_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub dist_m: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddbal
+    pub dist_mi: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub high_acc_fc_on_tag: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
+    pub reached_buff: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
+    pub max_trac_mps: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub add_kwh: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub dod_cycs: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_perc_dead: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+    pub drag_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ess_loss_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub accel_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub ascent_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub rr_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_roadway_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub trace_miss_iters: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub newton_iters: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
 }
 
 #[pymethods]
 impl RustSimDrive{
+    /// method for instantiating SimDriveRust
     #[new]
     pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self{
         let hev_sim_count: usize = 0;
@@ -535,6 +538,9 @@ impl RustSimDrive{
             newton_iters, // np.zeros(self.cyc.len, dtype=np.float64)
         }
     }
+
+    // Methods for getting and setting arrays and other complex fields
+    // note that python cannot specify a specific index to set but must reset the entire array 
 
     #[getter]
     pub fn get_veh(&self) -> PyResult<RustVehicle>{

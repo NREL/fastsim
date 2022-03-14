@@ -15,188 +15,188 @@ use super::params::*;
 /// Struct containing time trace data 
 pub struct RustVehicle{
     #[pyo3(get, set)]
-    props: RustPhysicalProperties, 
+    pub props: RustPhysicalProperties, 
     #[pyo3(get, set)]
-    scenario_name: String,
+    pub scenario_name: String,
     #[pyo3(get, set)]
-    selection: u32,
+    pub selection: u32,
     #[pyo3(get, set)]
-    veh_year: u32,
+    pub veh_year: u32,
     #[pyo3(get, set)]
-    veh_pt_type: String,
+    pub veh_pt_type: String,
     #[pyo3(get, set)]
-    drag_coef: f64,
+    pub drag_coef: f64,
     #[pyo3(get, set)]
-    frontal_area_m2: f64,
+    pub frontal_area_m2: f64,
     #[pyo3(get, set)]
-    glider_kg: f64,
+    pub glider_kg: f64,
     #[pyo3(get, set)]
-    veh_cg_m: f64,
+    pub veh_cg_m: f64,
     #[pyo3(get, set)]
-    drive_axle_weight_frac: f64,
+    pub drive_axle_weight_frac: f64,
     #[pyo3(get, set)]
-    wheel_base_m: f64,
+    pub wheel_base_m: f64,
     #[pyo3(get, set)]
-    cargo_kg: f64,
+    pub cargo_kg: f64,
     #[pyo3(get, set)]
-    veh_override_kg: f64,
+    pub veh_override_kg: f64,
     #[pyo3(get, set)]
-    comp_mass_multiplier: f64,
+    pub comp_mass_multiplier: f64,
     #[pyo3(get, set)]
-    max_fuel_stor_kw: f64,
+    pub max_fuel_stor_kw: f64,
     #[pyo3(get, set)]
-    fuel_stor_secs_to_peak_pwr: f64,
+    pub fuel_stor_secs_to_peak_pwr: f64,
     #[pyo3(get, set)]
-    fuel_stor_kwh: f64,
+    pub fuel_stor_kwh: f64,
     #[pyo3(get, set)]
-    fuel_stor_kwh_per_kg: f64,
+    pub fuel_stor_kwh_per_kg: f64,
     #[pyo3(get, set)]
-    max_fuel_conv_kw: f64,
-    fc_pwr_out_perc: Array1<f64>,
-    fc_eff_map: Array1<f64>,
+    pub max_fuel_conv_kw: f64,
+    pub fc_pwr_out_perc: Array1<f64>,
+    pub fc_eff_map: Array1<f64>,
     #[pyo3(get, set)]
-    fc_eff_type: String,
+    pub fc_eff_type: String,
     #[pyo3(get, set)]
-    fuel_conv_secs_to_peak_pwr: f64,
+    pub fuel_conv_secs_to_peak_pwr: f64,
     #[pyo3(get, set)]
-    fuel_conv_base_kg: f64,
+    pub fuel_conv_base_kg: f64,
     #[pyo3(get, set)]
-    fuel_conv_kw_per_kg: f64,
+    pub fuel_conv_kw_per_kg: f64,
     #[pyo3(get, set)]
-    min_fc_time_on: f64,
+    pub min_fc_time_on: f64,
     #[pyo3(get, set)]
-    idle_fc_kw: f64,
+    pub idle_fc_kw: f64,
     #[pyo3(get, set)]
-    max_motor_kw: f64,
-    mc_pwr_out_perc: Array1<f64>,
-    mc_eff_map: Array1<f64>,
+    pub max_motor_kw: f64,
+    pub mc_pwr_out_perc: Array1<f64>,
+    pub mc_eff_map: Array1<f64>,
     #[pyo3(get, set)]
-    motor_secs_to_peak_pwr: f64,
+    pub motor_secs_to_peak_pwr: f64,
     #[pyo3(get, set)]
-    mc_pe_kg_per_kw: f64,
+    pub mc_pe_kg_per_kw: f64,
     #[pyo3(get, set)]
-    mc_pe_base_kg: f64,
+    pub mc_pe_base_kg: f64,
     #[pyo3(get, set)]
-    max_ess_kw: f64,
+    pub max_ess_kw: f64,
     #[pyo3(get, set)]
-    max_ess_kwh: f64,
+    pub max_ess_kwh: f64,
     #[pyo3(get, set)]
-    ess_kg_per_kwh: f64,
+    pub ess_kg_per_kwh: f64,
     #[pyo3(get, set)]
-    ess_base_kg: f64,
+    pub ess_base_kg: f64,
     #[pyo3(get, set)]
-    ess_round_trip_eff: f64,
+    pub ess_round_trip_eff: f64,
     #[pyo3(get, set)]
-    ess_life_coef_a: f64,
+    pub ess_life_coef_a: f64,
     #[pyo3(get, set)]
-    ess_life_coef_b: f64,
+    pub ess_life_coef_b: f64,
     #[pyo3(get, set)]
-    min_soc: f64,
+    pub min_soc: f64,
     #[pyo3(get, set)]
-    max_soc: f64,
+    pub max_soc: f64,
     #[pyo3(get, set)]
-    ess_dischg_to_fc_max_eff_perc: f64,
+    pub ess_dischg_to_fc_max_eff_perc: f64,
     #[pyo3(get, set)]
-    ess_chg_to_fc_max_eff_perc: f64,
+    pub ess_chg_to_fc_max_eff_perc: f64,
     #[pyo3(get, set)]
-    wheel_inertia_kg_m2: f64,
+    pub wheel_inertia_kg_m2: f64,
     #[pyo3(get, set)]
-    num_wheels: f64,
+    pub num_wheels: f64,
     #[pyo3(get, set)]
-    wheel_rr_coef: f64,
+    pub wheel_rr_coef: f64,
     #[pyo3(get, set)]
-    wheel_radius_m: f64,
+    pub wheel_radius_m: f64,
     #[pyo3(get, set)]
-    wheel_coef_of_fric: f64,
+    pub wheel_coef_of_fric: f64,
     #[pyo3(get, set)]
-    max_accel_buffer_mph: f64,
+    pub max_accel_buffer_mph: f64,
     #[pyo3(get, set)]
-    max_accel_buffer_perc_of_useable_soc: f64,
+    pub max_accel_buffer_perc_of_useable_soc: f64,
     #[pyo3(get, set)]
-    perc_high_acc_buf: f64,
+    pub perc_high_acc_buf: f64,
     #[pyo3(get, set)]
-    mph_fc_on: f64,
+    pub mph_fc_on: f64,
     #[pyo3(get, set)]
-    kw_demand_fc_on: f64,
+    pub kw_demand_fc_on: f64,
     #[pyo3(get, set)]
-    max_regen: f64,
+    pub max_regen: f64,
     #[pyo3(get, set)]
-    stop_start: bool,
+    pub stop_start: bool,
     #[pyo3(get, set)]
-    force_aux_on_fc: f64,
+    pub force_aux_on_fc: f64,
     #[pyo3(get, set)]
-    alt_eff: f64,
+    pub alt_eff: f64,
     #[pyo3(get, set)]
-    chg_eff: f64,
+    pub chg_eff: f64,
     #[pyo3(get, set)]
-    aux_kw: f64,
+    pub aux_kw: f64,
     #[pyo3(get, set)]
-    trans_kg: f64,
+    pub trans_kg: f64,
     #[pyo3(get, set)]
-    trans_eff: f64,
+    pub trans_eff: f64,
     #[pyo3(get, set)]
-    ess_to_fuel_ok_error: f64,
-    large_baseline_eff: Array1<f64>,
-    small_baseline_eff: Array1<f64>,
+    pub ess_to_fuel_ok_error: f64,
+    pub large_baseline_eff: Array1<f64>,
+    pub small_baseline_eff: Array1<f64>,
     #[pyo3(get, set)]
-    small_motor_power_kw: f64,
+    pub small_motor_power_kw: f64,
     #[pyo3(get, set)]
-    large_motor_power_kw: f64,
-    fc_perc_out_array: Array1<f64>,
+    pub large_motor_power_kw: f64,
+    pub fc_perc_out_array: Array1<f64>,
     #[pyo3(get, set)]
-    regen_a: f64,
+    pub regen_a: f64,
     #[pyo3(get, set)]
-    regen_b: f64,
+    pub regen_b: f64,
     #[pyo3(get, set)]
-    charging_on: bool,
+    pub charging_on: bool,
     #[pyo3(get, set)]
-    no_elec_sys: bool,
+    pub no_elec_sys: bool,
     #[pyo3(get, set)]
-    no_elec_aux: bool,
-    max_roadway_chg_kw: Array1<f64>,
-    input_kw_out_array: Array1<f64>,
-    fc_kw_out_array: Array1<f64>,
-    fc_eff_array: Array1<f64>,
+    pub no_elec_aux: bool,
+    pub max_roadway_chg_kw: Array1<f64>,
+    pub input_kw_out_array: Array1<f64>,
+    pub fc_kw_out_array: Array1<f64>,
+    pub fc_eff_array: Array1<f64>,
     #[pyo3(get, set)]
-    modern_max: f64,
-    mc_eff_array: Array1<f64>,
-    mc_kw_in_array: Array1<f64>,
-    mc_kw_out_array: Array1<f64>,
+    pub modern_max: f64,
+    pub mc_eff_array: Array1<f64>,
+    pub mc_kw_in_array: Array1<f64>,
+    pub mc_kw_out_array: Array1<f64>,
     #[pyo3(get, set)]
-    mc_max_elec_in_kw: f64,
-    mc_full_eff_array: Array1<f64>,
+    pub mc_max_elec_in_kw: f64,
+    pub mc_full_eff_array: Array1<f64>,
     #[pyo3(get, set)]
-    veh_kg: f64,
+    pub veh_kg: f64,
     #[pyo3(get, set)]
-    max_trac_mps2: f64,
+    pub max_trac_mps2: f64,
     #[pyo3(get, set)]
-    ess_mass_kg: f64,
+    pub ess_mass_kg: f64,
     #[pyo3(get, set)]
-    mc_mass_kg: f64,
+    pub mc_mass_kg: f64,
     #[pyo3(get, set)]
-    fc_mass_kg: f64,
+    pub fc_mass_kg: f64,
     #[pyo3(get, set)]
-    fs_mass_kg: f64,
-    mc_perc_out_array: Array1<f64>,
+    pub fs_mass_kg: f64,
+    pub mc_perc_out_array: Array1<f64>,
     // these probably don't need to be in rust
-    val_udds_mpgge: f64,
-    val_hwy_mpgge: f64,
-    val_comb_mpgge: f64,
-    val_udds_kwh_per_mile: f64,
-    val_hwy_kwh_per_mile: f64,
-    val_comb_kwh_per_mile: f64,
-    val_cd_range_mi: f64,
-    val_const65_mph_kwh_per_mile: f64,
-    val_const60_mph_kwh_per_mile: f64,
-    val_const55_mph_kwh_per_mile: f64,
-    val_const45_mph_kwh_per_mile: f64,
-    val_unadj_udds_kwh_per_mile: f64,
-    val_unadj_hwy_kwh_per_mile: f64,
-    val0_to60_mph: f64,
-    val_ess_life_miles: f64,
-    val_range_miles: f64,
-    val_veh_base_cost: f64,
-    val_msrp: f64,
+    pub val_udds_mpgge: f64,
+    pub val_hwy_mpgge: f64,
+    pub val_comb_mpgge: f64,
+    pub val_udds_kwh_per_mile: f64,
+    pub val_hwy_kwh_per_mile: f64,
+    pub val_comb_kwh_per_mile: f64,
+    pub val_cd_range_mi: f64,
+    pub val_const65_mph_kwh_per_mile: f64,
+    pub val_const60_mph_kwh_per_mile: f64,
+    pub val_const55_mph_kwh_per_mile: f64,
+    pub val_const45_mph_kwh_per_mile: f64,
+    pub val_unadj_udds_kwh_per_mile: f64,
+    pub val_unadj_hwy_kwh_per_mile: f64,
+    pub val0_to60_mph: f64,
+    pub val_ess_life_miles: f64,
+    pub val_range_miles: f64,
+    pub val_veh_base_cost: f64,
+    pub val_msrp: f64,
 }
 
 /// RustVehicle class for containing: 
