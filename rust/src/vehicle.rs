@@ -10,37 +10,19 @@ use pyo3::prelude::*;
 use super::params::*;
 //use super::utils::*;
 
-// TODO consider making the following enums, like this:
-pub enum VehPtType {
-    Conv,
-    HEV,
-    PHEV,
-    BEV
-}
+pub const CONV:&str = "Conv";
+pub const HEV:&str = "HEV";
+pub const PHEV:&str = "PHEV";
+pub const BEV:&str = "BEV";
+pub const VEH_PT_TYPES: [&'static str; 4] = [CONV, HEV, PHEV, BEV];
 
-pub const VEH_PT_TYPES:Vec<String> = vec![
-    String::from("Conv"), 
-    String::from("HEV"), 
-    String::from("PHEV"), 
-    String::from("BEV")];
+pub const SI:&str = "SI";
+pub const ATKINSON:&str = "Atkinson";
+pub const DIESEL:&str = "Diesel";
+pub const H2FC:&str = "H2FC";
+pub const HD_DIESEL:&str = "HD_Diesel";
 
-pub const CONV:String = VEH_PT_TYPES[0];
-pub const HEV:String = VEH_PT_TYPES[1];
-pub const PHEV:String = VEH_PT_TYPES[2];
-pub const BEV:String = VEH_PT_TYPES[3];
-
-const FC_EFF_TYPES:Vec<String> = vec![
-    String::from("SI"), 
-    String::from("Atkinson"), 
-    String::from("Diesel"), 
-    String::from("H2FC"), 
-    String::from("HD_Diesel")];
-
-pub const SI:String = FC_EFF_TYPES[0];
-pub const ATKINSON:String = FC_EFF_TYPES[1];
-pub const DIESEL:String = FC_EFF_TYPES[2];
-pub const H2FC:String = FC_EFF_TYPES[3];
-pub const HD_DIESEL:String = FC_EFF_TYPES[4];
+pub const FC_EFF_TYPES:[&'static str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 
 
 #[pyclass] 
