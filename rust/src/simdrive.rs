@@ -2,8 +2,9 @@ extern crate ndarray;
 use ndarray::{Array, Array1, s}; 
 extern crate pyo3;
 use pyo3::prelude::*;
+use std::cmp;
 
-use super::utils::{max, min};
+use super::utils::*;
 use super::params::RustPhysicalProperties;
 use super::vehicle::*;
 use super::cycle::RustCycle;
@@ -235,100 +236,100 @@ pub struct RustSimDrive{
     pub props: RustPhysicalProperties,
     #[pyo3(get, set)]
     pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()
-    pub cur_max_fs_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fc_trans_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fc_fs_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fc_max_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_fc_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_cap_lim_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_ess_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_avail_elec_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_cap_lim_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_ess_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_elec_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub mc_elec_in_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub mc_transi_lim_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_mc_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_lim_mc_regen_perc_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_lim_mc_regen_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_mech_mc_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_trans_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_drag_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_accel_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_ascent_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_trac_kw_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_trac_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub spare_trac_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_rr_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_whl_rad_per_sec: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub cyc_tire_inertia_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_whl_kw_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub regen_contrl_lim_kw_perc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_regen_brake_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_fric_brake_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_trans_kw_out_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cyc_met: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
-    pub trans_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub trans_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_soc_target: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub min_mc_kw_2help_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub mc_mech_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub mc_elec_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub aux_in_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub roadway_chg_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub min_ess_kw_2help_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fc_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fc_kw_out_ach_pct: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fc_kw_in_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fs_kw_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fs_cumu_mj_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fs_kwh_out_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_cur_kwh: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub regen_buff_soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub ess_regen_buff_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub max_ess_regen_buff_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub ess_accel_buff_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub accel_buff_soc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub max_ess_accell_buff_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub ess_accel_regen_dischg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub mc_elec_in_kw_for_max_fc_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub elec_kw_req_4ae: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub can_pwr_all_elec: Array1<f64>, // np.array(  // oddball
-    pub desired_ess_kw_out_for_ae: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_ae_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub er_ae_kw_out: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_desired_kw_4fc_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub cur_max_mc_elec_kw_in: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fc_kw_gap_fr_eff: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub er_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub mc_elec_kw_in_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub mc_kw_if_fc_req: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub fc_forced_on: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
-    pub fc_forced_state: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.int32)
-    pub mc_mech_kw_4forced_fc: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub fc_time_on: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub prev_fc_time_on: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub mps_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub mph_ach: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub dist_m: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddbal
-    pub dist_mi: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub high_acc_fc_on_tag: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
-    pub reached_buff: Array1<bool>, // np.array([False] * self.cyc.len, dtype=np.bool_)
-    pub max_trac_mps: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub add_kwh: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub dod_cycs: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_perc_dead: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-    pub drag_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ess_loss_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub accel_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub ascent_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub rr_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub cur_max_roadway_chg_kw: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub trace_miss_iters: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
-    pub newton_iters: Array1<f64>, // np.zeros(self.cyc.len, dtype=np.float64)
+    pub cur_max_fs_kw_out: Array1<f64>, 
+    pub fc_trans_lim_kw: Array1<f64>, 
+    pub fc_fs_lim_kw: Array1<f64>, 
+    pub fc_max_kw_in: Array1<f64>, 
+    pub cur_max_fc_kw_out: Array1<f64>, 
+    pub ess_cap_lim_dischg_kw: Array1<f64>, 
+    pub cur_max_ess_kw_out: Array1<f64>, 
+    pub cur_max_avail_elec_kw: Array1<f64>, 
+    pub ess_cap_lim_chg_kw: Array1<f64>, 
+    pub cur_max_ess_chg_kw: Array1<f64>, 
+    pub cur_max_elec_kw: Array1<f64>, 
+    pub mc_elec_in_lim_kw: Array1<f64>, 
+    pub mc_transi_lim_kw: Array1<f64>, 
+    pub cur_max_mc_kw_out: Array1<f64>, 
+    pub ess_lim_mc_regen_perc_kw: Array1<f64>, 
+    pub ess_lim_mc_regen_kw: Array1<f64>, 
+    pub cur_max_mech_mc_kw_in: Array1<f64>, 
+    pub cur_max_trans_kw_out: Array1<f64>, 
+    pub cyc_drag_kw: Array1<f64>, 
+    pub cyc_accel_kw: Array1<f64>, 
+    pub cyc_ascent_kw: Array1<f64>, 
+    pub cyc_trac_kw_req: Array1<f64>, 
+    pub cur_max_trac_kw: Array1<f64>, 
+    pub spare_trac_kw: Array1<f64>, 
+    pub cyc_rr_kw: Array1<f64>, 
+    pub cyc_whl_rad_per_sec: Array1<f64>,   
+    pub cyc_tire_inertia_kw: Array1<f64>, 
+    pub cyc_whl_kw_req: Array1<f64>,   
+    pub regen_contrl_lim_kw_perc: Array1<f64>, 
+    pub cyc_regen_brake_kw: Array1<f64>, 
+    pub cyc_fric_brake_kw: Array1<f64>, 
+    pub cyc_trans_kw_out_req: Array1<f64>, 
+    pub cyc_met: Array1<bool>, 
+    pub trans_kw_out_ach: Array1<f64>, 
+    pub trans_kw_in_ach: Array1<f64>, 
+    pub cur_soc_target: Array1<f64>, 
+    pub min_mc_kw_2help_fc: Array1<f64>, 
+    pub mc_mech_kw_out_ach: Array1<f64>, 
+    pub mc_elec_kw_in_ach: Array1<f64>, 
+    pub aux_in_kw: Array1<f64>, 
+    pub roadway_chg_kw_out_ach: Array1<f64>, 
+    pub min_ess_kw_2help_fc: Array1<f64>, 
+    pub ess_kw_out_ach: Array1<f64>, 
+    pub fc_kw_out_ach: Array1<f64>, 
+    pub fc_kw_out_ach_pct: Array1<f64>, 
+    pub fc_kw_in_ach: Array1<f64>, 
+    pub fs_kw_out_ach: Array1<f64>, 
+    pub fs_cumu_mj_out_ach: Array1<f64>, 
+    pub fs_kwh_out_ach: Array1<f64>, 
+    pub ess_cur_kwh: Array1<f64>, 
+    pub soc: Array1<f64>, 
+    pub regen_buff_soc: Array1<f64>,   
+    pub ess_regen_buff_dischg_kw: Array1<f64>,   
+    pub max_ess_regen_buff_chg_kw: Array1<f64>,   
+    pub ess_accel_buff_chg_kw: Array1<f64>,   
+    pub accel_buff_soc: Array1<f64>,   
+    pub max_ess_accell_buff_dischg_kw: Array1<f64>,   
+    pub ess_accel_regen_dischg_kw: Array1<f64>, 
+    pub mc_elec_in_kw_for_max_fc_eff: Array1<f64>, 
+    pub elec_kw_req_4ae: Array1<f64>,   
+    pub can_pwr_all_elec: Array1<f64>, 
+    pub desired_ess_kw_out_for_ae: Array1<f64>, 
+    pub ess_ae_kw_out: Array1<f64>, 
+    pub er_ae_kw_out: Array1<f64>, 
+    pub ess_desired_kw_4fc_eff: Array1<f64>, 
+    pub ess_kw_if_fc_req: Array1<f64>,   
+    pub cur_max_mc_elec_kw_in: Array1<f64>, 
+    pub fc_kw_gap_fr_eff: Array1<f64>, 
+    pub er_kw_if_fc_req: Array1<f64>,   
+    pub mc_elec_kw_in_if_fc_req: Array1<f64>,   
+    pub mc_kw_if_fc_req: Array1<f64>,   
+    pub fc_forced_on: Array1<bool>, 
+    pub fc_forced_state: Array1<f64>, 
+    pub mc_mech_kw_4forced_fc: Array1<f64>, 
+    pub fc_time_on: Array1<f64>, 
+    pub prev_fc_time_on: Array1<f64>, 
+    pub mps_ach: Array1<f64>, 
+    pub mph_ach: Array1<f64>, 
+    pub dist_m: Array1<f64>,   
+    pub dist_mi: Array1<f64>,   
+    pub high_acc_fc_on_tag: Array1<bool>, 
+    pub reached_buff: Array1<bool>, 
+    pub max_trac_mps: Array1<f64>, 
+    pub add_kwh: Array1<f64>, 
+    pub dod_cycs: Array1<f64>, 
+    pub ess_perc_dead: Array1<f64>,   
+    pub drag_kw: Array1<f64>, 
+    pub ess_loss_kw: Array1<f64>, 
+    pub accel_kw: Array1<f64>, 
+    pub ascent_kw: Array1<f64>, 
+    pub rr_kw: Array1<f64>, 
+    pub cur_max_roadway_chg_kw: Array1<f64>, 
+    pub trace_miss_iters: Array1<f64>, 
+    pub newton_iters: Array1<f64>, 
 }
 
 #[pymethods]
@@ -342,100 +343,100 @@ impl RustSimDrive{
         let props = RustPhysicalProperties::__new__();
         let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
         let cyc_len = cyc.time_s.len(); //get_len() as usize;
-        let cur_max_fs_kw_out = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fc_trans_lim_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fc_fs_lim_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fc_max_kw_in = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_fc_kw_out = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_cap_lim_dischg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_ess_kw_out = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_avail_elec_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_cap_lim_chg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_ess_chg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_elec_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let mc_elec_in_lim_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let mc_transi_lim_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_mc_kw_out = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_lim_mc_regen_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_mech_mc_kw_in = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_trans_kw_out = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_drag_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_accel_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_ascent_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_trac_kw_req = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_trac_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let spare_trac_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_rr_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_whl_rad_per_sec = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let cyc_tire_inertia_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_whl_kw_req = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let regen_contrl_lim_kw_perc = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_regen_brake_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_fric_brake_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_trans_kw_out_req = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cyc_met = Array::from_vec(vec![false; cyc_len]); // np.array([False] * self.cyc_len, dtype=np.bool_)
-        let trans_kw_out_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let trans_kw_in_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_soc_target = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let min_mc_kw_2help_fc = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let mc_mech_kw_out_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let mc_elec_kw_in_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let aux_in_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let roadway_chg_kw_out_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let min_ess_kw_2help_fc = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_kw_out_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fc_kw_out_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fc_kw_out_ach_pct = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fc_kw_in_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fs_kw_out_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fs_cumu_mj_out_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fs_kwh_out_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_cur_kwh = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let soc = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let regen_buff_soc = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let ess_regen_buff_dischg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let max_ess_regen_buff_chg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let ess_accel_buff_chg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let accel_buff_soc = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let max_ess_accell_buff_dischg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let ess_accel_regen_dischg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let elec_kw_req_4ae = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let can_pwr_all_elec = Array::zeros(cyc_len); // np.array(  // oddball
-        let desired_ess_kw_out_for_ae = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_ae_kw_out = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let er_ae_kw_out = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_desired_kw_4fc_eff = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_kw_if_fc_req = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let cur_max_mc_elec_kw_in = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fc_kw_gap_fr_eff = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let er_kw_if_fc_req = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let mc_kw_if_fc_req = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
+        let cur_max_fs_kw_out = Array::zeros(cyc_len); 
+        let fc_trans_lim_kw = Array::zeros(cyc_len); 
+        let fc_fs_lim_kw = Array::zeros(cyc_len); 
+        let fc_max_kw_in = Array::zeros(cyc_len); 
+        let cur_max_fc_kw_out = Array::zeros(cyc_len); 
+        let ess_cap_lim_dischg_kw = Array::zeros(cyc_len); 
+        let cur_max_ess_kw_out = Array::zeros(cyc_len); 
+        let cur_max_avail_elec_kw = Array::zeros(cyc_len); 
+        let ess_cap_lim_chg_kw = Array::zeros(cyc_len); 
+        let cur_max_ess_chg_kw = Array::zeros(cyc_len); 
+        let cur_max_elec_kw = Array::zeros(cyc_len); 
+        let mc_elec_in_lim_kw = Array::zeros(cyc_len); 
+        let mc_transi_lim_kw = Array::zeros(cyc_len); 
+        let cur_max_mc_kw_out = Array::zeros(cyc_len); 
+        let ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len); 
+        let ess_lim_mc_regen_kw = Array::zeros(cyc_len); 
+        let cur_max_mech_mc_kw_in = Array::zeros(cyc_len); 
+        let cur_max_trans_kw_out = Array::zeros(cyc_len); 
+        let cyc_drag_kw = Array::zeros(cyc_len); 
+        let cyc_accel_kw = Array::zeros(cyc_len); 
+        let cyc_ascent_kw = Array::zeros(cyc_len); 
+        let cyc_trac_kw_req = Array::zeros(cyc_len); 
+        let cur_max_trac_kw = Array::zeros(cyc_len); 
+        let spare_trac_kw = Array::zeros(cyc_len); 
+        let cyc_rr_kw = Array::zeros(cyc_len); 
+        let cyc_whl_rad_per_sec = Array::zeros(cyc_len);   
+        let cyc_tire_inertia_kw = Array::zeros(cyc_len); 
+        let cyc_whl_kw_req = Array::zeros(cyc_len);   
+        let regen_contrl_lim_kw_perc = Array::zeros(cyc_len); 
+        let cyc_regen_brake_kw = Array::zeros(cyc_len); 
+        let cyc_fric_brake_kw = Array::zeros(cyc_len); 
+        let cyc_trans_kw_out_req = Array::zeros(cyc_len); 
+        let cyc_met = Array::from_vec(vec![false; cyc_len]); 
+        let trans_kw_out_ach = Array::zeros(cyc_len); 
+        let trans_kw_in_ach = Array::zeros(cyc_len); 
+        let cur_soc_target = Array::zeros(cyc_len); 
+        let min_mc_kw_2help_fc = Array::zeros(cyc_len); 
+        let mc_mech_kw_out_ach = Array::zeros(cyc_len); 
+        let mc_elec_kw_in_ach = Array::zeros(cyc_len); 
+        let aux_in_kw = Array::zeros(cyc_len); 
+        let roadway_chg_kw_out_ach = Array::zeros(cyc_len); 
+        let min_ess_kw_2help_fc = Array::zeros(cyc_len); 
+        let ess_kw_out_ach = Array::zeros(cyc_len); 
+        let fc_kw_out_ach = Array::zeros(cyc_len); 
+        let fc_kw_out_ach_pct = Array::zeros(cyc_len); 
+        let fc_kw_in_ach = Array::zeros(cyc_len); 
+        let fs_kw_out_ach = Array::zeros(cyc_len); 
+        let fs_cumu_mj_out_ach = Array::zeros(cyc_len); 
+        let fs_kwh_out_ach = Array::zeros(cyc_len); 
+        let ess_cur_kwh = Array::zeros(cyc_len); 
+        let soc = Array::zeros(cyc_len); 
+        let regen_buff_soc = Array::zeros(cyc_len);   
+        let ess_regen_buff_dischg_kw = Array::zeros(cyc_len);   
+        let max_ess_regen_buff_chg_kw = Array::zeros(cyc_len);   
+        let ess_accel_buff_chg_kw = Array::zeros(cyc_len);   
+        let accel_buff_soc = Array::zeros(cyc_len);   
+        let max_ess_accell_buff_dischg_kw = Array::zeros(cyc_len);   
+        let ess_accel_regen_dischg_kw = Array::zeros(cyc_len); 
+        let mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len); 
+        let elec_kw_req_4ae = Array::zeros(cyc_len);   
+        let can_pwr_all_elec = Array::zeros(cyc_len); // np.array(  
+        let desired_ess_kw_out_for_ae = Array::zeros(cyc_len); 
+        let ess_ae_kw_out = Array::zeros(cyc_len); 
+        let er_ae_kw_out = Array::zeros(cyc_len); 
+        let ess_desired_kw_4fc_eff = Array::zeros(cyc_len); 
+        let ess_kw_if_fc_req = Array::zeros(cyc_len);   
+        let cur_max_mc_elec_kw_in = Array::zeros(cyc_len); 
+        let fc_kw_gap_fr_eff = Array::zeros(cyc_len); 
+        let er_kw_if_fc_req = Array::zeros(cyc_len);   
+        let mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len);   
+        let mc_kw_if_fc_req = Array::zeros(cyc_len);   
         let fc_forced_on = Array::from_vec(vec![false; cyc_len]); // np.array([False] * self.cyc_len, dtype=np.bool_)
         let fc_forced_state = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.int32)
-        let mc_mech_kw_4forced_fc = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let fc_time_on = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let prev_fc_time_on = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let mps_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let mph_ach = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let dist_m = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddbal
-        let dist_mi = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
+        let mc_mech_kw_4forced_fc = Array::zeros(cyc_len); 
+        let fc_time_on = Array::zeros(cyc_len); 
+        let prev_fc_time_on = Array::zeros(cyc_len); 
+        let mps_ach = Array::zeros(cyc_len); 
+        let mph_ach = Array::zeros(cyc_len); 
+        let dist_m = Array::zeros(cyc_len);   // oddbal
+        let dist_mi = Array::zeros(cyc_len);   
         let high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]); // np.array([False] * self.cyc_len, dtype=np.bool_)
         let reached_buff = Array::from_vec(vec![false; cyc_len]); // np.array([False] * self.cyc_len, dtype=np.bool_)
-        let max_trac_mps = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let add_kwh = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let dod_cycs = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_perc_dead = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)  // oddball
-        let drag_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ess_loss_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let accel_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let ascent_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let rr_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let cur_max_roadway_chg_kw = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let trace_miss_iters = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
-        let newton_iters = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.float64)
+        let max_trac_mps = Array::zeros(cyc_len); 
+        let add_kwh = Array::zeros(cyc_len); 
+        let dod_cycs = Array::zeros(cyc_len); 
+        let ess_perc_dead = Array::zeros(cyc_len);   
+        let drag_kw = Array::zeros(cyc_len); 
+        let ess_loss_kw = Array::zeros(cyc_len); 
+        let accel_kw = Array::zeros(cyc_len); 
+        let ascent_kw = Array::zeros(cyc_len); 
+        let rr_kw = Array::zeros(cyc_len); 
+        let cur_max_roadway_chg_kw = Array::zeros(cyc_len); 
+        let trace_miss_iters = Array::zeros(cyc_len); 
+        let newton_iters = Array::zeros(cyc_len); 
         RustSimDrive{
             hev_sim_count,
             veh,
@@ -444,100 +445,100 @@ impl RustSimDrive{
             sim_params,
             props,
             i, // 1 # initialize step counter for possible use outside sim_drive_walk()
-            cur_max_fs_kw_out, // np.zeros(self.cyc.len, dtype=np.float64)
-            fc_trans_lim_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            fc_fs_lim_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            fc_max_kw_in, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_fc_kw_out, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_cap_lim_dischg_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_ess_kw_out, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_avail_elec_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_cap_lim_chg_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_ess_chg_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_elec_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            mc_elec_in_lim_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            mc_transi_lim_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_mc_kw_out, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_lim_mc_regen_perc_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_lim_mc_regen_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_mech_mc_kw_in, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_trans_kw_out, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_drag_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_accel_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_ascent_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_trac_kw_req, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_trac_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            spare_trac_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_rr_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_whl_rad_per_sec, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            cyc_tire_inertia_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_whl_kw_req, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            regen_contrl_lim_kw_perc, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_regen_brake_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_fric_brake_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cyc_trans_kw_out_req, // np.zeros(self.cyc.len, dtype=np.float64)
+            cur_max_fs_kw_out, 
+            fc_trans_lim_kw, 
+            fc_fs_lim_kw, 
+            fc_max_kw_in, 
+            cur_max_fc_kw_out, 
+            ess_cap_lim_dischg_kw, 
+            cur_max_ess_kw_out, 
+            cur_max_avail_elec_kw, 
+            ess_cap_lim_chg_kw, 
+            cur_max_ess_chg_kw, 
+            cur_max_elec_kw, 
+            mc_elec_in_lim_kw, 
+            mc_transi_lim_kw, 
+            cur_max_mc_kw_out, 
+            ess_lim_mc_regen_perc_kw, 
+            ess_lim_mc_regen_kw, 
+            cur_max_mech_mc_kw_in, 
+            cur_max_trans_kw_out, 
+            cyc_drag_kw, 
+            cyc_accel_kw, 
+            cyc_ascent_kw, 
+            cyc_trac_kw_req, 
+            cur_max_trac_kw, 
+            spare_trac_kw, 
+            cyc_rr_kw, 
+            cyc_whl_rad_per_sec,   
+            cyc_tire_inertia_kw, 
+            cyc_whl_kw_req,   
+            regen_contrl_lim_kw_perc, 
+            cyc_regen_brake_kw, 
+            cyc_fric_brake_kw, 
+            cyc_trans_kw_out_req, 
             cyc_met, // np.array([False] * self.cyc.len, dtype=np.bool_)
-            trans_kw_out_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            trans_kw_in_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_soc_target, // np.zeros(self.cyc.len, dtype=np.float64)
-            min_mc_kw_2help_fc, // np.zeros(self.cyc.len, dtype=np.float64)
-            mc_mech_kw_out_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            mc_elec_kw_in_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            aux_in_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            roadway_chg_kw_out_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            min_ess_kw_2help_fc, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_kw_out_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            fc_kw_out_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            fc_kw_out_ach_pct, // np.zeros(self.cyc.len, dtype=np.float64)
-            fc_kw_in_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            fs_kw_out_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            fs_cumu_mj_out_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            fs_kwh_out_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_cur_kwh, // np.zeros(self.cyc.len, dtype=np.float64)
-            soc, // np.zeros(self.cyc.len, dtype=np.float64)
-            regen_buff_soc, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            ess_regen_buff_dischg_kw, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            max_ess_regen_buff_chg_kw, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            ess_accel_buff_chg_kw, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            accel_buff_soc, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            max_ess_accell_buff_dischg_kw, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            ess_accel_regen_dischg_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            mc_elec_in_kw_for_max_fc_eff, // np.zeros(self.cyc.len, dtype=np.float64)
-            elec_kw_req_4ae, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            can_pwr_all_elec, // np.array(  // oddball
-            desired_ess_kw_out_for_ae, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_ae_kw_out, // np.zeros(self.cyc.len, dtype=np.float64)
-            er_ae_kw_out, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_desired_kw_4fc_eff, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_kw_if_fc_req, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            cur_max_mc_elec_kw_in, // np.zeros(self.cyc.len, dtype=np.float64)
-            fc_kw_gap_fr_eff, // np.zeros(self.cyc.len, dtype=np.float64)
-            er_kw_if_fc_req, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            mc_elec_kw_in_if_fc_req, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            mc_kw_if_fc_req, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+            trans_kw_out_ach, 
+            trans_kw_in_ach, 
+            cur_soc_target, 
+            min_mc_kw_2help_fc, 
+            mc_mech_kw_out_ach, 
+            mc_elec_kw_in_ach, 
+            aux_in_kw, 
+            roadway_chg_kw_out_ach, 
+            min_ess_kw_2help_fc, 
+            ess_kw_out_ach, 
+            fc_kw_out_ach, 
+            fc_kw_out_ach_pct, 
+            fc_kw_in_ach, 
+            fs_kw_out_ach, 
+            fs_cumu_mj_out_ach, 
+            fs_kwh_out_ach, 
+            ess_cur_kwh, 
+            soc, 
+            regen_buff_soc,   
+            ess_regen_buff_dischg_kw,   
+            max_ess_regen_buff_chg_kw,   
+            ess_accel_buff_chg_kw,   
+            accel_buff_soc,   
+            max_ess_accell_buff_dischg_kw,   
+            ess_accel_regen_dischg_kw, 
+            mc_elec_in_kw_for_max_fc_eff, 
+            elec_kw_req_4ae,   
+            can_pwr_all_elec, // np.array(  
+            desired_ess_kw_out_for_ae, 
+            ess_ae_kw_out, 
+            er_ae_kw_out, 
+            ess_desired_kw_4fc_eff, 
+            ess_kw_if_fc_req,   
+            cur_max_mc_elec_kw_in, 
+            fc_kw_gap_fr_eff, 
+            er_kw_if_fc_req,   
+            mc_elec_kw_in_if_fc_req,   
+            mc_kw_if_fc_req,   
             fc_forced_on, // np.array([False] * self.cyc.len, dtype=np.bool_)
             fc_forced_state, // np.zeros(self.cyc.len, dtype=np.int32)
-            mc_mech_kw_4forced_fc, // np.zeros(self.cyc.len, dtype=np.float64)
-            fc_time_on, // np.zeros(self.cyc.len, dtype=np.float64)
-            prev_fc_time_on, // np.zeros(self.cyc.len, dtype=np.float64)
-            mps_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            mph_ach, // np.zeros(self.cyc.len, dtype=np.float64)
-            dist_m, // np.zeros(self.cyc.len, dtype=np.float64)  // oddbal
-            dist_mi, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
+            mc_mech_kw_4forced_fc, 
+            fc_time_on, 
+            prev_fc_time_on, 
+            mps_ach, 
+            mph_ach, 
+            dist_m,   // oddbal
+            dist_mi,   
             high_acc_fc_on_tag, // np.array([False] * self.cyc.len, dtype=np.bool_)
             reached_buff, // np.array([False] * self.cyc.len, dtype=np.bool_)
-            max_trac_mps, // np.zeros(self.cyc.len, dtype=np.float64)
-            add_kwh, // np.zeros(self.cyc.len, dtype=np.float64)
-            dod_cycs, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_perc_dead, // np.zeros(self.cyc.len, dtype=np.float64)  // oddball
-            drag_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            ess_loss_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            accel_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            ascent_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            rr_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            cur_max_roadway_chg_kw, // np.zeros(self.cyc.len, dtype=np.float64)
-            trace_miss_iters, // np.zeros(self.cyc.len, dtype=np.float64)
-            newton_iters, // np.zeros(self.cyc.len, dtype=np.float64)
+            max_trac_mps, 
+            add_kwh, 
+            dod_cycs, 
+            ess_perc_dead,   
+            drag_kw, 
+            ess_loss_kw, 
+            accel_kw, 
+            ascent_kw, 
+            rr_kw, 
+            cur_max_roadway_chg_kw, 
+            trace_miss_iters, 
+            newton_iters, 
         }
     }
 
@@ -657,26 +658,27 @@ impl RustSimDrive{
         );
 
         self.fc_max_kw_in[i] = min(self.cur_max_fs_kw_out[i], self.veh.max_fuel_stor_kw);
-        self.fc_fs_lim_kw[i] = self.veh.input_kw_out_array.max();
+        self.fc_fs_lim_kw[i] = arrmax(&self.veh.input_kw_out_array);
         self.cur_max_fc_kw_out[i] = min(
-            self.veh.max_fuel_conv_kw, self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i]);
+            self.veh.max_fuel_conv_kw, 
+            min(self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i]));
 
-        if self.veh.max_ess_kwh == 0 || self.soc[i-1] < self.veh.min_soc {
+        if self.veh.max_ess_kwh == 0.0 || self.soc[i-1] < self.veh.min_soc {
             self.ess_cap_lim_dischg_kw[i] = 0.0;
         } else {
-            self.ess_cap_lim_dischg_kw[i] = self.veh.max_ess_kwh * np.sqrt(self.veh.ess_round_trip_eff) * 3.6e3 * (
+            self.ess_cap_lim_dischg_kw[i] = self.veh.max_ess_kwh * self.veh.ess_round_trip_eff.sqrt() * 3.6e3 * (
                 self.soc[i-1] - self.veh.min_soc) / self.cyc.dt_s()[i];
         }
         self.cur_max_ess_kw_out[i] = min(
             self.veh.max_ess_kw, self.ess_cap_lim_dischg_kw[i]);
 
-        if self.veh.max_ess_kwh == 0 || self.veh.max_ess_kw == 0 {
-            self.ess_cap_lim_chg_kw[i] = 0;
+        if self.veh.max_ess_kwh == 0.0 || self.veh.max_ess_kw == 0.0 {
+            self.ess_cap_lim_chg_kw[i] = 0.0;
         } else {
             self.ess_cap_lim_chg_kw[i] = max(
-                (self.veh.max_soc - self.soc[i-1]) * self.veh.max_ess_kwh * 1 / self.veh.ess_round_trip_eff.sqrt() / 
-                (self.cyc.dt_s()[i] * 1 / 3.6e3), 
-                0);
+                (self.veh.max_soc - self.soc[i-1]) * self.veh.max_ess_kwh / self.veh.ess_round_trip_eff.sqrt() / 
+                (self.cyc.dt_s()[i] / 3.6e3), 
+                0.0);
         }
 
         self.cur_max_ess_chg_kw[i] = min(self.ess_cap_lim_chg_kw[i], self.veh.max_ess_kw);
@@ -691,18 +693,20 @@ impl RustSimDrive{
         // Current maximum electrical power that can go toward propulsion, including motor limitations
         self.cur_max_avail_elec_kw[i] = min(self.cur_max_elec_kw[i], self.veh.mc_max_elec_in_kw);
 
-        if self.cur_max_elec_kw[i] > 0 {
+        if self.cur_max_elec_kw[i] > 0.0 {
             // limit power going into e-machine controller to
-            if self.cur_max_avail_elec_kw[i] == self.veh.mc_kw_in_array.max() {
-                self.mc_elec_in_lim_kw[i] = min(self.veh.mc_kw_out_array[-1], self.veh.max_motor_kw);
+            if self.cur_max_avail_elec_kw[i] == arrmax(&self.veh.mc_kw_in_array) {
+                let end = self.veh.mc_kw_out_array.len() - 1;
+                self.mc_elec_in_lim_kw[i] = min(self.veh.mc_kw_out_array[end], self.veh.max_motor_kw);
             }
             else {
                 self.mc_elec_in_lim_kw[i] = min(
-                    self.veh.mc_kw_out_array[
-                        np_argmax(self.veh.mc_kw_in_array.map(|x| *x > min(
-                            self.veh.mc_kw_in_array.max() - 0.01, 
-                            self.cur_max_avail_elec_kw[i]
-                        ))) - 1.0],
+                    self.veh.mc_kw_out_array[np_argmax(
+                        &self.veh.mc_kw_in_array.map(|x| *x > min(
+                            arrmax(&self.veh.mc_kw_in_array) - 0.01, 
+                            self.cur_max_avail_elec_kw[i])
+                        )
+                    ) - 1 as usize],
                     self.veh.max_motor_kw)}
         }
         else {
@@ -710,8 +714,7 @@ impl RustSimDrive{
         }
 
         // Motor transient power limit
-        self.mc_transi_lim_kw[i] = abs(
-            self.mc_mech_kw_out_ach[i-1]) + self.veh.max_motor_kw / self.veh.motor_secs_to_peak_pwr * self.cyc.dt_s()[i];
+        self.mc_transi_lim_kw[i] = self.mc_mech_kw_out_ach[i-1].abs() + self.veh.max_motor_kw / self.veh.motor_secs_to_peak_pwr * self.cyc.dt_s()[i];
 
         self.cur_max_mc_kw_out[i] = max(
             min(min(
@@ -725,38 +728,41 @@ impl RustSimDrive{
             self.cur_max_mc_elec_kw_in[i] = 0.0;
         } else {
             if self.cur_max_mc_kw_out[i] == self.veh.max_motor_kw {
-                self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[-1];
+                let end = self.veh.mc_full_eff_array.len() - 1;
+                self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[end];
             } else {
-                self.cur_max_mc_elec_kw_in[i] = (self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[max(1, np_argmax(
-                            self.veh.mc_kw_out_array.map(|x| *x > min(self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))
-                            ) - 1
+                self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[cmp::max(
+                    1, 
+                    np_argmax(
+                        &self.veh.mc_kw_out_array.map(|x| *x > min(
+                            self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))) - 1 
                         )
                     ]
-                )
             };
         }
 
-        if self.veh.max_motor_kw == 0 {
+        if self.veh.max_motor_kw == 0.0 {
             self.ess_lim_mc_regen_perc_kw[i] = 0.0;
         }
         else {
             self.ess_lim_mc_regen_perc_kw[i] = min(
-                (self.cur_max_ess_chg_kw[i] + self.aux_in_kw[i]) / self.veh.max_motor_kw, 1);
+                (self.cur_max_ess_chg_kw[i] + self.aux_in_kw[i]) / self.veh.max_motor_kw, 1.0);
         }
         if self.cur_max_ess_chg_kw[i] == 0.0 {
             self.ess_lim_mc_regen_kw[i] = 0.0;
         } else {
             if self.veh.max_motor_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i] {
+                let end = self.veh.mc_full_eff_array.len() - 1;
                 self.ess_lim_mc_regen_kw[i] = min(
-                    self.veh.max_motor_kw, self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[-1]);
+                    self.veh.max_motor_kw, self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[end]);
             }
             else {
                 self.ess_lim_mc_regen_kw[i] = min(
                     self.veh.max_motor_kw, 
                     self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[
-                        max(1.0, 
+                        cmp::max(1, 
                             np_argmax(
-                                self.veh.mc_kw_out_array.map(|x| *x > min(
+                                &self.veh.mc_kw_out_array.map(|x| *x > min(
                                     self.veh.max_motor_kw - 0.01, 
                                     self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
                                 ))
@@ -769,8 +775,8 @@ impl RustSimDrive{
         self.cur_max_mech_mc_kw_in[i] = min(
             self.ess_lim_mc_regen_kw[i], self.veh.max_motor_kw);
         
-        self.cur_max_trac_kw[i] = (self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac * self.veh.veh_kg * self.props.a_grav_mps2
-            / (1 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1_000 * self.max_trac_mps[i]);
+        self.cur_max_trac_kw[i] = self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac * self.veh.veh_kg * self.props.a_grav_mps2
+            / (1.0 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1_000.0 * self.max_trac_mps[i];
 
         if self.veh.fc_eff_type == H2FC {
             if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
@@ -781,7 +787,7 @@ impl RustSimDrive{
             } else 
                 {
                 self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] - min(self.cur_max_elec_kw[i], 0)) * self.veh.trans_eff, 
+                    (self.cur_max_mc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff, 
                     self.cur_max_trac_kw[i] / self.veh.trans_eff
                 );
             }
@@ -797,7 +803,7 @@ impl RustSimDrive{
 
             else {
                 self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - min(self.cur_max_elec_kw[i], 0)) * self.veh.trans_eff, 
+                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff, 
                     self.cur_max_trac_kw[i] / self.veh.trans_eff
                 );
             }

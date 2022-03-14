@@ -35,8 +35,21 @@ pub fn arrmax(arr:&Array1<f64>) -> f64 {
         .copied()
         .map(NotNan::new)
         .flatten() // ignore NAN values (errors from the previous line)
+        .max()
+        .map(NotNan::into_inner)
+        .unwrap()    
+}
+
+/// return max <f64> of arr
+pub fn arrmin(arr:&Array1<f64>) -> f64 {
+    arr
+        .iter()
+        .copied()
+        .map(NotNan::new)
+        .flatten() // ignore NAN values (errors from the previous line)
         .min()
-        .map(NotNan::into_inner)    
+        .map(NotNan::into_inner)
+        .unwrap()    
 }
 
 #[cfg(test)]
