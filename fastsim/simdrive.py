@@ -312,9 +312,6 @@ class SimDriveClassic(object):
             if self.i <= 1:
                 debug = True
 
-        if self.sim_params.missed_trace_correction: 
-            self.cyc.cycSecs = self.cyc.secs.cumsum() # correct cycSecs based on actual trace
-
         if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
             if self.sim_params.missed_trace_correction:
                 print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
