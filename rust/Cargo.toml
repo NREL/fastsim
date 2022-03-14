@@ -11,4 +11,7 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "0.15.1", features = ["extension-module"] }
 ndarray = { version = "0.15.4"}
-numpy = "*"
+ordered-float = "2.10.0"
+
+[http]
+check-revoke = false
