@@ -11,10 +11,7 @@ pub fn diff(x:&Array1<f64>) -> Array1<f64>{
 
 
 // TODO: implement this for emulating np.argmax:
-// nearly workable function for returning first true index of vector
-// https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=ab83986ac69e13f9f1e97d7ced7b1dd8
-// `first_true` fn seems to run faster than `position` method but probably needs to handle all false case
-
+// https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=a338a0aba3e8c901e53863d093f642d3
 
 #[cfg(test)]
 mod tests {
