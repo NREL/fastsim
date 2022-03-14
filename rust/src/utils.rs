@@ -9,9 +9,14 @@ pub fn diff(x:&Array1<f64>) -> Array1<f64>{
     ).unwrap()
 }
 
+/// Emulates numpy.argmax
+/// Arguments:
+/// arr: Array1<bool> -- array of bools
+/// Returns index of first true value, or last index if all false
+pub fn np_argmax(arr: &Array1<bool>) -> usize {
+    arr.iter().position(|&x| x).unwrap_or(arr.len() - 1) // unwrap_or allows for default if not found
+}
 
-// TODO: implement this for emulating np.argmax:
-// https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=a338a0aba3e8c901e53863d093f642d3
 
 #[cfg(test)]
 mod tests {

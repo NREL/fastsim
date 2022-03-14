@@ -349,15 +349,10 @@ class SimDrive(object):
 
         if self.sim_params.missed_trace_correction:
             self.cyc = cycle.copy_cycle(self.cyc0) # reset the cycle in case it has been manipulated
-            print('copy type')
-            print(type(self.cyc.time_s[1]))
 
         self.i = 1 # time step counter
         while self.i < len(self.cyc.time_s):
             self.sim_drive_step()
-
-        if self.sim_params.missed_trace_correction: 
-            self.cyc.time_s = self.cyc.dt_s.cumsum() # correct time_s based on actual trace
 
         if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
             if self.sim_params.missed_trace_correction:
