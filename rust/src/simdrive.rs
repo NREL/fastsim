@@ -2,8 +2,10 @@ extern crate ndarray;
 use ndarray::{Array, Array1, s}; 
 extern crate pyo3;
 use pyo3::prelude::*;
+
+use super::utils::{max, min};
 use super::params::RustPhysicalProperties;
-use super::vehicle::RustVehicle;
+use super::vehicle::*;
 use super::cycle::RustCycle;
 
 
@@ -635,6 +637,171 @@ impl RustSimDrive{
             self.high_acc_fc_on_tag[i] = false
         }
         self.max_trac_mps[i] = self.mps_ach[i-1] + (self.veh.max_trac_mps2 * self.cyc.dt_s()[i])
+
+    }
+
+    /// Sets component limits for time step 'i'
+    /// Arguments
+    /// ------------
+    /// i: index of time step
+    /// initSoc: initial SOC for electrified vehicles
+    fn set_comp_lims(&mut self, i:usize) {
+        // max fuel storage power output
+        self.cur_max_fs_kw_out[i] = min(
+            self.veh.max_fuel_stor_kw,
+            self.fs_kw_out_ach[i-1] + (
+                (self.veh.max_fuel_stor_kw / self.veh.fuel_stor_secs_to_peak_pwr) * (self.cyc.dt_s()[i])));
+        // maximum fuel storage power output rate of change
+        self.fc_trans_lim_kw[i] = self.fc_kw_out_ach[i-1] + (
+            self.veh.max_fuel_conv_kw / self.veh.fuel_conv_secs_to_peak_pwr * self.cyc.dt_s()[i]
+        );
+
+        self.fc_max_kw_in[i] = min(self.cur_max_fs_kw_out[i], self.veh.max_fuel_stor_kw);
+        self.fc_fs_lim_kw[i] = self.veh.input_kw_out_array.max();
+        self.cur_max_fc_kw_out[i] = min(
+            self.veh.max_fuel_conv_kw, self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i]);
+
+        if self.veh.max_ess_kwh == 0 || self.soc[i-1] < self.veh.min_soc {
+            self.ess_cap_lim_dischg_kw[i] = 0.0;
+        } else {
+            self.ess_cap_lim_dischg_kw[i] = self.veh.max_ess_kwh * np.sqrt(self.veh.ess_round_trip_eff) * 3.6e3 * (
+                self.soc[i-1] - self.veh.min_soc) / self.cyc.dt_s()[i];
+        }
+        self.cur_max_ess_kw_out[i] = min(
+            self.veh.max_ess_kw, self.ess_cap_lim_dischg_kw[i]);
+
+        if self.veh.max_ess_kwh == 0 || self.veh.max_ess_kw == 0 {
+            self.ess_cap_lim_chg_kw[i] = 0;
+        } else {
+            self.ess_cap_lim_chg_kw[i] = max(
+                (self.veh.max_soc - self.soc[i-1]) * self.veh.max_ess_kwh * 1 / self.veh.ess_round_trip_eff.sqrt() / 
+                (self.cyc.dt_s()[i] * 1 / 3.6e3), 
+                0);
+        }
+
+        self.cur_max_ess_chg_kw[i] = min(self.ess_cap_lim_chg_kw[i], self.veh.max_ess_kw);
+
+        // Current maximum electrical power that can go toward propulsion, not including motor limitations
+        if self.veh.fc_eff_type == H2FC {
+            self.cur_max_elec_kw[i] = self.cur_max_fc_kw_out[i] + self.cur_max_roadway_chg_kw[i] + self.cur_max_ess_kw_out[i] - self.aux_in_kw[i];
+        } else {
+            self.cur_max_elec_kw[i] = self.cur_max_roadway_chg_kw[i] + self.cur_max_ess_kw_out[i] - self.aux_in_kw[i];
+        }
+
+        // Current maximum electrical power that can go toward propulsion, including motor limitations
+        self.cur_max_avail_elec_kw[i] = min(self.cur_max_elec_kw[i], self.veh.mc_max_elec_in_kw);
+
+        if self.cur_max_elec_kw[i] > 0 {
+            // limit power going into e-machine controller to
+            if self.cur_max_avail_elec_kw[i] == self.veh.mc_kw_in_array.max() {
+                self.mc_elec_in_lim_kw[i] = min(self.veh.mc_kw_out_array[-1], self.veh.max_motor_kw);
+            }
+            else {
+                self.mc_elec_in_lim_kw[i] = min(
+                    self.veh.mc_kw_out_array[
+                        np_argmax(self.veh.mc_kw_in_array.map(|x| *x > min(
+                            self.veh.mc_kw_in_array.max() - 0.01, 
+                            self.cur_max_avail_elec_kw[i]
+                        ))) - 1.0],
+                    self.veh.max_motor_kw)}
+        }
+        else {
+            self.mc_elec_in_lim_kw[i] = 0.0;
+        }
+
+        // Motor transient power limit
+        self.mc_transi_lim_kw[i] = abs(
+            self.mc_mech_kw_out_ach[i-1]) + self.veh.max_motor_kw / self.veh.motor_secs_to_peak_pwr * self.cyc.dt_s()[i];
+
+        self.cur_max_mc_kw_out[i] = max(
+            min(min(
+                self.mc_elec_in_lim_kw[i], 
+                self.mc_transi_lim_kw[i]),
+                if self.veh.stop_start {0.0} else {1.0} * self.veh.max_motor_kw),
+            -self.veh.max_motor_kw
+        );
+
+        if self.cur_max_mc_kw_out[i] == 0.0 {
+            self.cur_max_mc_elec_kw_in[i] = 0.0;
+        } else {
+            if self.cur_max_mc_kw_out[i] == self.veh.max_motor_kw {
+                self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[-1];
+            } else {
+                self.cur_max_mc_elec_kw_in[i] = (self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[max(1, np_argmax(
+                            self.veh.mc_kw_out_array.map(|x| *x > min(self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))
+                            ) - 1
+                        )
+                    ]
+                )
+            };
+        }
+
+        if self.veh.max_motor_kw == 0 {
+            self.ess_lim_mc_regen_perc_kw[i] = 0.0;
+        }
+        else {
+            self.ess_lim_mc_regen_perc_kw[i] = min(
+                (self.cur_max_ess_chg_kw[i] + self.aux_in_kw[i]) / self.veh.max_motor_kw, 1);
+        }
+        if self.cur_max_ess_chg_kw[i] == 0.0 {
+            self.ess_lim_mc_regen_kw[i] = 0.0;
+        } else {
+            if self.veh.max_motor_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i] {
+                self.ess_lim_mc_regen_kw[i] = min(
+                    self.veh.max_motor_kw, self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[-1]);
+            }
+            else {
+                self.ess_lim_mc_regen_kw[i] = min(
+                    self.veh.max_motor_kw, 
+                    self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[
+                        max(1.0, 
+                            np_argmax(
+                                self.veh.mc_kw_out_array.map(|x| *x > min(
+                                    self.veh.max_motor_kw - 0.01, 
+                                    self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
+                                ))
+                            ) - 1
+                        )
+                    ]
+                );
+            }
+        }
+        self.cur_max_mech_mc_kw_in[i] = min(
+            self.ess_lim_mc_regen_kw[i], self.veh.max_motor_kw);
+        
+        self.cur_max_trac_kw[i] = (self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac * self.veh.veh_kg * self.props.a_grav_mps2
+            / (1 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1_000 * self.max_trac_mps[i]);
+
+        if self.veh.fc_eff_type == H2FC {
+            if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
+                self.cur_max_trans_kw_out[i] = min(
+                    (self.cur_max_mc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff, 
+                    self.cur_max_trac_kw[i] / self.veh.trans_eff
+                );
+            } else 
+                {
+                self.cur_max_trans_kw_out[i] = min(
+                    (self.cur_max_mc_kw_out[i] - min(self.cur_max_elec_kw[i], 0)) * self.veh.trans_eff, 
+                    self.cur_max_trac_kw[i] / self.veh.trans_eff
+                );
+            }
+        }
+
+        else {
+            if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
+                self.cur_max_trans_kw_out[i] = min(
+                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff, 
+                    self.cur_max_trac_kw[i] / self.veh.trans_eff
+                );
+            }
+
+            else {
+                self.cur_max_trans_kw_out[i] = min(
+                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - min(self.cur_max_elec_kw[i], 0)) * self.veh.trans_eff, 
+                    self.cur_max_trac_kw[i] / self.veh.trans_eff
+                );
+            }
+        }
 
     }
 

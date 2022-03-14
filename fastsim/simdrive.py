@@ -288,7 +288,7 @@ class SimDrive(object):
             #####################################
             ### Charge Balancing Vehicle SOC ###
             #####################################
-            # Charge balancing SOC for HEV vehicle types. Iterating initsoc and comparing to final SOC.
+            # Charge balancing SOC for HEV vehicle types. Iterating init_soc and comparing to final SOC.
             # Iterating until tolerance met or 30 attempts made.
             init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
             ess_2fuel_kwh = 1.0
@@ -323,7 +323,7 @@ class SimDrive(object):
 
         Arguments
         ------------
-        initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
+        init_soc (optional): initial battery state-of-charge (SOC) for electrified vehicles
         auxInKw: auxInKw override.  Array of same length as cyc.time_s.  
                 Default of np.zeros(1) causes veh.aux_kw to be used. If zero is actually
                 desired as an override, either set veh.aux_kw = 0 before instantiaton of
@@ -410,11 +410,13 @@ class SimDrive(object):
         self.max_trac_mps[i] = self.mps_ach[i-1] + (self.veh.max_trac_mps2 * self.cyc.dt_s[i])
 
     def set_comp_lims(self, i):
-        """Sets component limits for time step 'i'
+        """
+        Sets component limits for time step 'i'
         Arguments
         ------------
         i: index of time step
-        initSoc: initial SOC for electrified vehicles"""
+        init_soc: initial SOC for electrified vehicles
+        """
 
         # max fuel storage power output
         self.cur_max_fs_kw_out[i] = min(
@@ -1503,19 +1505,19 @@ class SimAccelTest(SimDrive):
 
             # If no EV / Hybrid components, no SOC considerations.
 
-            initSoc = (self.veh.max_soc + self.veh.min_soc) / 2.0
-            self.sim_drive_walk(initSoc)
+            init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
+            self.sim_drive_walk(init_soc)
 
         elif self.veh.veh_pt_type == HEV:  # HEV
 
-            initSoc = (self.veh.max_soc + self.veh.min_soc) / 2.0
-            self.sim_drive_walk(initSoc)
+            init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
+            self.sim_drive_walk(init_soc)
 
         else:
 
             # If EV, initializing initial SOC to maximum SOC.
-            initSoc = self.veh.max_soc
-            self.sim_drive_walk(initSoc)
+            init_soc = self.veh.max_soc
+            self.sim_drive_walk(init_soc)
 
         self.set_post_scalars()
 
@@ -1536,7 +1538,7 @@ class SimDrivePost(object):
         """Calculate finalized results
         Arguments
         ------------
-        initSoc: initial SOC for electrified vehicles
+        init_soc: initial SOC for electrified vehicles
         
         Returns
         ------------

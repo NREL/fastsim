@@ -10,6 +10,31 @@ use pyo3::prelude::*;
 use super::params::*;
 //use super::utils::*;
 
+const VEH_PT_TYPES:Vec<String> = vec![
+    String::from("Conv"), 
+    String::from("HEV"), 
+    String::from("PHEV"), 
+    String::from("BEV")];
+
+const CONV:String = VEH_PT_TYPES[0];
+const HEV:String = VEH_PT_TYPES[1];
+const PHEV:String = VEH_PT_TYPES[2];
+const BEV:String = VEH_PT_TYPES[3];
+
+const FC_EFF_TYPES:Vec<String> = vec![
+    String::from("SI"), 
+    String::from("Atkinson"), 
+    String::from("Diesel"), 
+    String::from("H2FC"), 
+    String::from("HD_Diesel")];
+
+const SI:String = FC_EFF_TYPES[0];
+const ATKINSON:String = FC_EFF_TYPES[1];
+const DIESEL:String = FC_EFF_TYPES[2];
+const H2FC:String = FC_EFF_TYPES[3];
+const HD_DIESEL:String = FC_EFF_TYPES[4];
+
+
 #[pyclass] 
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 

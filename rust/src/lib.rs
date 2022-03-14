@@ -10,9 +10,6 @@ pub mod vehicle;
 use vehicle::*;
 pub mod simdrive;
 use simdrive::*;
-pub mod simdriveimpl;
-use simdriveimpl::*;
-
 
 
 /// Function for adding Rust structs as Python Classes
@@ -23,6 +20,5 @@ fn fastsimrust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<RustPhysicalProperties>()?;
     m.add_class::<RustSimDriveParams>()?;
     m.add_class::<RustSimDrive>()?;
-    // m.add_class::<SimDrive>()?;
     Ok(())
 }
