@@ -314,7 +314,8 @@ class SimDrive(object):
         self.set_post_scalars()
 
     def sim_drive_walk(self, init_soc, aux_in_kw_override=np.zeros(1, dtype=np.float64)):
-        """Receives second-by-second cycle information, vehicle properties, 
+        """
+        Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and runs sim_drive_step to perform a 
         backward facing powertrain simulation. Method 'sim_drive' runs this
         iteratively to achieve correct SOC initial and final conditions, as 
