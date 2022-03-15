@@ -695,9 +695,6 @@ impl RustSimDrive{
         // Current maximum electrical power that can go toward propulsion, including motor limitations
         self.cur_max_avail_elec_kw[i] = min(self.cur_max_elec_kw[i], self.veh.mc_max_elec_in_kw);
 
-
-        // TODO: fix `PanicException: ndarray: index out of bounds` that is likely coming from np_argmax below
-        // then continue uncommenting code.  
         if self.cur_max_elec_kw[i] > 0.0 {
             // limit power going into e-machine controller to
             if self.cur_max_avail_elec_kw[i] == arrmax(&self.veh.mc_kw_in_array) {
