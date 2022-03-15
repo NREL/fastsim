@@ -695,6 +695,9 @@ impl RustSimDrive{
         // Current maximum electrical power that can go toward propulsion, including motor limitations
         self.cur_max_avail_elec_kw[i] = min(self.cur_max_elec_kw[i], self.veh.mc_max_elec_in_kw);
 
+
+        // TODO: fix `PanicException: ndarray: index out of bounds` that is likely coming from np_argmax belowe
+        // then continue uncommenting code.  
         if self.cur_max_elec_kw[i] > 0.0 {
             // limit power going into e-machine controller to
             if self.cur_max_avail_elec_kw[i] == arrmax(&self.veh.mc_kw_in_array) {
@@ -715,102 +718,101 @@ impl RustSimDrive{
             self.mc_elec_in_lim_kw[i] = 0.0;
         }
 
-        // Motor transient power limit
-        self.mc_transi_lim_kw[i] = self.mc_mech_kw_out_ach[i-1].abs() + self.veh.max_motor_kw / self.veh.motor_secs_to_peak_pwr * self.cyc.dt_s()[i];
+        // // Motor transient power limit
+        // self.mc_transi_lim_kw[i] = self.mc_mech_kw_out_ach[i-1].abs() + self.veh.max_motor_kw / self.veh.motor_secs_to_peak_pwr * self.cyc.dt_s()[i];
 
-        self.cur_max_mc_kw_out[i] = max(
-            min(min(
-                self.mc_elec_in_lim_kw[i], 
-                self.mc_transi_lim_kw[i]),
-                if self.veh.stop_start {0.0} else {1.0} * self.veh.max_motor_kw),
-            -self.veh.max_motor_kw
-        );
+        // self.cur_max_mc_kw_out[i] = max(
+        //     min(min(
+        //         self.mc_elec_in_lim_kw[i], 
+        //         self.mc_transi_lim_kw[i]),
+        //         if self.veh.stop_start {0.0} else {1.0} * self.veh.max_motor_kw),
+        //     -self.veh.max_motor_kw
+        // );
 
-        if self.cur_max_mc_kw_out[i] == 0.0 {
-            self.cur_max_mc_elec_kw_in[i] = 0.0;
-        } else {
-            if self.cur_max_mc_kw_out[i] == self.veh.max_motor_kw {
-                let end = self.veh.mc_full_eff_array.len() - 1;
-                self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[end];
-            } else {
-                self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[cmp::max(
-                    1, 
-                    np_argmax(
-                        &self.veh.mc_kw_out_array.map(|x| *x > min(
-                            self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))) - 1 
-                        )
-                    ]
-            };
-        }
+        // if self.cur_max_mc_kw_out[i] == 0.0 {
+        //     self.cur_max_mc_elec_kw_in[i] = 0.0;
+        // } else {
+        //     if self.cur_max_mc_kw_out[i] == self.veh.max_motor_kw {
+        //         let end = self.veh.mc_full_eff_array.len() - 1;
+        //         self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[end];
+        //     } else {
+        //         self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[cmp::max(
+        //             1, 
+        //             np_argmax(
+        //                 &self.veh.mc_kw_out_array.map(|x| *x > min(
+        //                     self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))) - 1 
+        //                 )
+        //             ]
+        //     };
+        // }
 
-        if self.veh.max_motor_kw == 0.0 {
-            self.ess_lim_mc_regen_perc_kw[i] = 0.0;
-        }
-        else {
-            self.ess_lim_mc_regen_perc_kw[i] = min(
-                (self.cur_max_ess_chg_kw[i] + self.aux_in_kw[i]) / self.veh.max_motor_kw, 1.0);
-        }
-        if self.cur_max_ess_chg_kw[i] == 0.0 {
-            self.ess_lim_mc_regen_kw[i] = 0.0;
-        } else {
-            if self.veh.max_motor_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i] {
-                let end = self.veh.mc_full_eff_array.len() - 1;
-                self.ess_lim_mc_regen_kw[i] = min(
-                    self.veh.max_motor_kw, self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[end]);
-            }
-            else {
-                self.ess_lim_mc_regen_kw[i] = min(
-                    self.veh.max_motor_kw, 
-                    self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[
-                        cmp::max(1, 
-                            np_argmax(
-                                &self.veh.mc_kw_out_array.map(|x| *x > min(
-                                    self.veh.max_motor_kw - 0.01, 
-                                    self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
-                                ))
-                            ) - 1
-                        )
-                    ]
-                );
-            }
-        }
-        self.cur_max_mech_mc_kw_in[i] = min(
-            self.ess_lim_mc_regen_kw[i], self.veh.max_motor_kw);
+        // if self.veh.max_motor_kw == 0.0 {
+        //     self.ess_lim_mc_regen_perc_kw[i] = 0.0;
+        // }
+        // else {
+        //     self.ess_lim_mc_regen_perc_kw[i] = min(
+        //         (self.cur_max_ess_chg_kw[i] + self.aux_in_kw[i]) / self.veh.max_motor_kw, 1.0);
+        // }
+        // if self.cur_max_ess_chg_kw[i] == 0.0 {
+        //     self.ess_lim_mc_regen_kw[i] = 0.0;
+        // } else {
+        //     if self.veh.max_motor_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i] {
+        //         let end = self.veh.mc_full_eff_array.len() - 1;
+        //         self.ess_lim_mc_regen_kw[i] = min(
+        //             self.veh.max_motor_kw, self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[end]);
+        //     }
+        //     else {
+        //         self.ess_lim_mc_regen_kw[i] = min(
+        //             self.veh.max_motor_kw, 
+        //             self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[
+        //                 cmp::max(1, 
+        //                     np_argmax(
+        //                         &self.veh.mc_kw_out_array.map(|x| *x > min(
+        //                             self.veh.max_motor_kw - 0.01, 
+        //                             self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
+        //                         ))
+        //                     ) - 1
+        //                 )
+        //             ]
+        //         );
+        //     }
+        // }
+        // self.cur_max_mech_mc_kw_in[i] = min(
+        //     self.ess_lim_mc_regen_kw[i], self.veh.max_motor_kw);
         
-        self.cur_max_trac_kw[i] = self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac * self.veh.veh_kg * self.props.a_grav_mps2
-            / (1.0 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1e3 * self.max_trac_mps[i];
+        // self.cur_max_trac_kw[i] = self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac * self.veh.veh_kg * self.props.a_grav_mps2
+        //     / (1.0 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1e3 * self.max_trac_mps[i];
 
-        if self.veh.fc_eff_type == H2FC {
-            if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
-                self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff, 
-                    self.cur_max_trac_kw[i] / self.veh.trans_eff
-                );
-            } else 
-                {
-                self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff, 
-                    self.cur_max_trac_kw[i] / self.veh.trans_eff
-                );
-            }
-        }
+        // if self.veh.fc_eff_type == H2FC {
+        //     if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
+        //         self.cur_max_trans_kw_out[i] = min(
+        //             (self.cur_max_mc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff, 
+        //             self.cur_max_trac_kw[i] / self.veh.trans_eff
+        //         );
+        //     } else 
+        //         {
+        //         self.cur_max_trans_kw_out[i] = min(
+        //             (self.cur_max_mc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff, 
+        //             self.cur_max_trac_kw[i] / self.veh.trans_eff
+        //         );
+        //     }
+        // }
 
-        else {
-            if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
-                self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff, 
-                    self.cur_max_trac_kw[i] / self.veh.trans_eff
-                );
-            }
+        // else {
+        //     if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
+        //         self.cur_max_trans_kw_out[i] = min(
+        //             (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff, 
+        //             self.cur_max_trac_kw[i] / self.veh.trans_eff
+        //         );
+        //     }
 
-            else {
-                self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff, 
-                    self.cur_max_trac_kw[i] / self.veh.trans_eff
-                );
-            }
-        }
-
+        //     else {
+        //         self.cur_max_trans_kw_out[i] = min(
+        //             (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff, 
+        //             self.cur_max_trac_kw[i] / self.veh.trans_eff
+        //         );
+        //     }
+        // }
     }
 
     /// Calculate power requirements to meet cycle and determine if
