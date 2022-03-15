@@ -17,7 +17,7 @@ pub fn diff(x:&Array1<f64>) -> Array1<f64>{
 /// if array is of len() == 0, returns 0.
 pub fn np_argmax(arr: &Array1<bool>) -> usize {
     let len = arr.len();
-    if (len == 0) {
+    if len == 0 {
         return 0;
     }
     arr.iter().position(|&x| x).unwrap_or(len - 1) // unwrap_or allows for default if not found
