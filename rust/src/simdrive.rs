@@ -1,11 +1,12 @@
 extern crate ndarray;
-use ndarray::{Array, Array1, s}; 
+use ndarray::{Array, Array1, array, s, Axis}; 
 extern crate pyo3;
 use pyo3::prelude::*;
 use std::cmp;
 
 use super::utils::*;
 use super::params::RustPhysicalProperties;
+use super::params;
 use super::vehicle::*;
 use super::cycle::RustCycle;
 
@@ -14,7 +15,7 @@ use super::cycle::RustCycle;
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 
 pub struct RustSimDriveParams{
-    pub missed_trace_correction: bool, // if True, missed trace correction is active, default = False
+    pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
     pub max_time_dilation: f64,
     pub min_time_dilation: f64,
     pub time_dilation_tol: f64,
@@ -35,7 +36,7 @@ pub struct RustSimDriveParams{
 impl RustSimDriveParams{
     #[new]
     pub fn __new__() -> Self{
-        // if True, missed trace correction is active, default = False
+        // if true, missed trace correction is active, default = false
         let missed_trace_correction = false;
         // maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
         let max_time_dilation: f64 = 1.0;
@@ -329,7 +330,7 @@ pub struct RustSimDrive{
     pub rr_kw: Array1<f64>, 
     pub cur_max_roadway_chg_kw: Array1<f64>, 
     pub trace_miss_iters: Array1<f64>, 
-    pub newton_iters: Array1<f64>, 
+    pub newton_iters: Array1<u32>, 
 }
 
 #[pymethods]
@@ -403,7 +404,7 @@ impl RustSimDrive{
         let ess_accel_regen_dischg_kw = Array::zeros(cyc_len); 
         let mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len); 
         let elec_kw_req_4ae = Array::zeros(cyc_len);   
-        let can_pwr_all_elec = Array::zeros(cyc_len); // np.array(  
+        let can_pwr_all_elec = Array::zeros(cyc_len); 
         let desired_ess_kw_out_for_ae = Array::zeros(cyc_len); 
         let ess_ae_kw_out = Array::zeros(cyc_len); 
         let er_ae_kw_out = Array::zeros(cyc_len); 
@@ -414,17 +415,17 @@ impl RustSimDrive{
         let er_kw_if_fc_req = Array::zeros(cyc_len);   
         let mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len);   
         let mc_kw_if_fc_req = Array::zeros(cyc_len);   
-        let fc_forced_on = Array::from_vec(vec![false; cyc_len]); // np.array([False] * self.cyc_len, dtype=np.bool_)
-        let fc_forced_state = Array::zeros(cyc_len); // np.zeros(self.cyc_len, dtype=np.int32)
+        let fc_forced_on = Array::from_vec(vec![false; cyc_len]); 
+        let fc_forced_state = Array::zeros(cyc_len); 
         let mc_mech_kw_4forced_fc = Array::zeros(cyc_len); 
         let fc_time_on = Array::zeros(cyc_len); 
         let prev_fc_time_on = Array::zeros(cyc_len); 
         let mps_ach = Array::zeros(cyc_len); 
         let mph_ach = Array::zeros(cyc_len); 
-        let dist_m = Array::zeros(cyc_len);   // oddbal
+        let dist_m = Array::zeros(cyc_len);  
         let dist_mi = Array::zeros(cyc_len);   
-        let high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]); // np.array([False] * self.cyc_len, dtype=np.bool_)
-        let reached_buff = Array::from_vec(vec![false; cyc_len]); // np.array([False] * self.cyc_len, dtype=np.bool_)
+        let high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]); 
+        let reached_buff = Array::from_vec(vec![false; cyc_len]); 
         let max_trac_mps = Array::zeros(cyc_len); 
         let add_kwh = Array::zeros(cyc_len); 
         let dod_cycs = Array::zeros(cyc_len); 
@@ -477,7 +478,7 @@ impl RustSimDrive{
             cyc_regen_brake_kw, 
             cyc_fric_brake_kw, 
             cyc_trans_kw_out_req, 
-            cyc_met, // np.array([False] * self.cyc.len, dtype=np.bool_)
+            cyc_met, 
             trans_kw_out_ach, 
             trans_kw_in_ach, 
             cur_soc_target, 
@@ -505,7 +506,7 @@ impl RustSimDrive{
             ess_accel_regen_dischg_kw, 
             mc_elec_in_kw_for_max_fc_eff, 
             elec_kw_req_4ae,   
-            can_pwr_all_elec, // np.array(  
+            can_pwr_all_elec, 
             desired_ess_kw_out_for_ae, 
             ess_ae_kw_out, 
             er_ae_kw_out, 
@@ -516,17 +517,17 @@ impl RustSimDrive{
             er_kw_if_fc_req,   
             mc_elec_kw_in_if_fc_req,   
             mc_kw_if_fc_req,   
-            fc_forced_on, // np.array([False] * self.cyc.len, dtype=np.bool_)
-            fc_forced_state, // np.zeros(self.cyc.len, dtype=np.int32)
+            fc_forced_on,
+            fc_forced_state,
             mc_mech_kw_4forced_fc, 
             fc_time_on, 
             prev_fc_time_on, 
             mps_ach, 
             mph_ach, 
-            dist_m,   // oddbal
+            dist_m,   
             dist_mi,   
-            high_acc_fc_on_tag, // np.array([False] * self.cyc.len, dtype=np.bool_)
-            reached_buff, // np.array([False] * self.cyc.len, dtype=np.bool_)
+            high_acc_fc_on_tag, 
+            reached_buff,
             max_trac_mps, 
             add_kwh, 
             dod_cycs, 
@@ -593,7 +594,7 @@ impl RustSimDrive{
         // }
 
         // TODO: implement something for coasting here
-        // if self.impose_coast[i] == True
+        // if self.impose_coast[i] == true
         //     self.set_coast_speeed(i)
 
         self.i += 1  // increment time step counter
@@ -776,7 +777,7 @@ impl RustSimDrive{
             self.ess_lim_mc_regen_kw[i], self.veh.max_motor_kw);
         
         self.cur_max_trac_kw[i] = self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac * self.veh.veh_kg * self.props.a_grav_mps2
-            / (1.0 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1_000.0 * self.max_trac_mps[i];
+            / (1.0 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1e3 * self.max_trac_mps[i];
 
         if self.veh.fc_eff_type == H2FC {
             if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
@@ -810,6 +811,166 @@ impl RustSimDrive{
         }
 
     }
+
+    /// Calculate power requirements to meet cycle and determine if
+    /// cycle can be met.  
+    /// Arguments
+    /// ------------
+    /// i: index of time step
+    fn set_power_calcs(&mut self, i:usize) {
+        let mpsAch = if &self.newton_iters[i] > &0u32 {
+            self.mps_ach[i]
+        } else {
+            self.cyc.mps[i]
+        };
+
+        self.cyc_drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
+            (self.mps_ach[i-1] + mpsAch) / 2.0).powf(3.0) / 1e3;
+        self.cyc_accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s()[i]) * (mpsAch.powf(2.0) - self.mps_ach[i-1].powf(2.0)) / 1e3;
+        self.cyc_ascent_kw[i] = self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin() * 
+            self.veh.veh_kg * (self.mps_ach[i-1] + mpsAch) / 2.0 / 1e3;
+        self.cyc_trac_kw_req[i] = self.cyc_drag_kw[i] + self.cyc_accel_kw[i] + self.cyc_ascent_kw[i];
+        self.spare_trac_kw[i] = self.cur_max_trac_kw[i] - self.cyc_trac_kw_req[i];
+        self.cyc_rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef * 
+            self.cyc.grade[i].atan().cos() * (self.mps_ach[i-1] + mpsAch) / 2.0 / 1e3;
+        self.cyc_whl_rad_per_sec[i] = mpsAch / self.veh.wheel_radius_m;
+        self.cyc_tire_inertia_kw[i] = (
+            0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * self.cyc_whl_rad_per_sec[i].powf(2.0) / self.cyc.dt_s()[i] -
+            0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * (self.mps_ach[i-1] / self.veh.wheel_radius_m).powf(2.0) / 
+            self.cyc.dt_s()[i]) / 1e3;
+
+        self.cyc_whl_kw_req[i] = self.cyc_trac_kw_req[i] + self.cyc_rr_kw[i] + self.cyc_tire_inertia_kw[i];
+        self.regen_contrl_lim_kw_perc[i] = self.veh.max_regen / (1.0 + self.veh.regen_a * (-self.veh.regen_b * (
+            (self.cyc.mph()[i] + self.mps_ach[i-1] * params::MPH_PER_MPS) / 2.0 + 1.0)).exp());
+        self.cyc_regen_brake_kw[i] = max(min(
+                self.cur_max_mech_mc_kw_in[i] * self.veh.trans_eff, 
+                self.regen_contrl_lim_kw_perc[i] * -self.cyc_whl_kw_req[i]), 
+            0.0
+        );
+        self.cyc_fric_brake_kw[i] = -min(self.cyc_regen_brake_kw[i] + self.cyc_whl_kw_req[i], 0.0);
+        self.cyc_trans_kw_out_req[i] = self.cyc_whl_kw_req[i] + self.cyc_fric_brake_kw[i];
+
+        if self.cyc_trans_kw_out_req[i] <= self.cur_max_trans_kw_out[i] {
+            self.cyc_met[i] = true;
+            self.trans_kw_out_ach[i] = self.cyc_trans_kw_out_req[i];
+        }
+
+        else {
+            self.cyc_met[i] = false;
+            self.trans_kw_out_ach[i] = self.cur_max_trans_kw_out[i];
+        }
+
+        if self.trans_kw_out_ach[i] > 0.0 {
+            self.trans_kw_in_ach[i] = self.trans_kw_out_ach[i] / self.veh.trans_eff;
+        }
+        else {
+            self.trans_kw_in_ach[i] = self.trans_kw_out_ach[i] * self.veh.trans_eff;
+        }
+
+        if self.cyc_met[i]{
+            if self.veh.fc_eff_type == H2FC {
+                self.min_mc_kw_2help_fc[i] = max(
+                    self.trans_kw_in_ach[i], -self.cur_max_mech_mc_kw_in[i]);
+            } else {
+                self.min_mc_kw_2help_fc[i] = max(
+                    self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i], -self.cur_max_mech_mc_kw_in[i]);
+            }
+        } else {
+            self.min_mc_kw_2help_fc[i] = max(
+                self.cur_max_mc_kw_out[i], -self.cur_max_mech_mc_kw_in[i]);
+        }
+    }
+
+    // // Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
+    // // Arguments
+    // // ------------
+    // // i: index of time step
+    // fn set_ach_speed(self, i:usize) {
+    //     // Cycle is met
+    //     if self.cyc_met[i] {
+    //         self.mps_ach[i] = self.cyc.mps[i];
+    //     }
+
+    //     //Cycle is not met
+    //     else {
+    //         let drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * 
+    //             self.veh.drag_coef * self.veh.frontal_area_m2;
+    //         let accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s()[i];
+    //         let drag2 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * 
+    //             self.veh.drag_coef * self.veh.frontal_area_m2 * self.mps_ach[i-1];
+    //         let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 * 
+    //             self.veh.num_wheels / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
+    //         let drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * 
+    //             self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(2.0);
+    //         let roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef 
+    //             * self.cyc.grade[i].atan().cos();
+    //         let ascent1 = 0.5 * self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin() * self.veh.veh_kg ;
+    //         let accel0 = -0.5 * self.veh.veh_kg * self.mps_ach[i-1].powf(2.0) / self.cyc.dt_s()[i];
+    //         let drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * 
+    //             self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(3.0);
+    //         let roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * 
+    //             self.veh.wheel_rr_coef * self.cyc.grade[i].atan().cos() * self.mps_ach[i-1];
+    //         let ascent0 = 0.5 * self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin()
+    //             * self.veh.veh_kg * self.mps_ach[i-1];
+    //         let wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * 
+    //             self.mps_ach[i-1].powf(2.0) / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
+
+    //         let total3 = drag3 / 1e3;
+    //         let total2 = (accel2 + drag2 + wheel2) / 1e3;
+    //         let total1 = (drag1 + roll1 + ascent1) / 1e3;
+    //         let total0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) / 1e3 - self.cur_max_trans_kw_out[i];
+
+    //         let totals = array![total3, total2, total1, total0];
+
+    //         let t3 = totals[0];
+    //         let t2 = totals[1];
+    //         let t1 = totals[2];
+    //         let t0 = totals[3];
+    //         // initial guess
+    //         let xi = max(1.0, self.mps_ach[i-1]);
+    //         // stop criteria
+    //         let max_iter = self.sim_params.newton_max_iter;
+    //         let xtol = self.sim_params.newton_xtol;
+    //         // solver gain
+    //         let g = self.sim_params.newton_gain;
+    //         let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
+    //         let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
+    //         let bi = yi - xi * mi;
+    //         let xs = vec![xi];
+    //         let ys = vec![yi];
+    //         let ms = vec![mi];
+    //         let bs = vec![bi];
+    //         let mut iterate = 1;
+    //         let converged = false;
+    //         while iterate < max_iter && !converged {
+    //             let end = xs.len() - 1;
+    //             let xi = xs[end] * (1.0 - g) - g * bs[end] / ms[end];
+    //             let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
+    //             let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
+    //             let bi = yi - xi * mi;
+    //             xs.push(xi);
+    //             ys.push(yi);
+    //             ms.push(mi);
+    //             bs.push(bi);
+    //             let end = xs.len() - 1;
+    //             let converged = ((xs[end] - xs[end-1]) / xs[end-1]).abs() < xtol;
+    //             iterate += 1;
+    //         }
+            
+    //         self.newton_iters[i] = iterate;
+
+    //         let _ys = Array::from_vec(ys).map(|x| x.abs());
+    //         // xs[_ys.index(min(_ys))]
+    //         self.mps_ach[i] = xs[_ys.iter().position(|&x| x == arrmin(&_ys)).unwrap()];
+            
+    //     };
+
+    //     self.set_power_calcs(i);
+
+    //     self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
+    //     self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s()[i];
+    //     self.dist_mi[i] = self.dist_m[i] * 1.0 / params::M_PER_MI;
+    // }  
 
     // Methods for getting and setting arrays and other complex fields
     // note that python cannot specify a specific index to set but must reset the entire array 
@@ -1709,11 +1870,11 @@ impl RustSimDrive{
     }
 
     #[getter]
-    pub fn get_newton_iters(&self) -> PyResult<Vec<f64>>{
+    pub fn get_newton_iters(&self) -> PyResult<Vec<u32>>{
       Ok(self.newton_iters.to_vec())
     }
     #[setter]
-    pub fn set_newton_iters(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+    pub fn set_newton_iters(&mut self, new_value:Vec<u32>) -> PyResult<()>{
       self.newton_iters = Array::from_vec(new_value);
       Ok(())
     }

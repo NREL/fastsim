@@ -570,11 +570,13 @@ class SimDrive(object):
                 )
         
     def set_power_calcs(self, i):
-        """Calculate power requirements to meet cycle and determine if
+        """
+        Calculate power requirements to meet cycle and determine if
         cycle can be met.  
         Arguments
         ------------
-        i: index of time step"""
+        i: index of time step
+        """
 
         if self.newton_iters[i] > 0:
             mpsAch = self.mps_ach[i]
@@ -599,7 +601,7 @@ class SimDrive(object):
 
         self.cyc_whl_kw_req[i] = self.cyc_trac_kw_req[i] + self.cyc_rr_kw[i] + self.cyc_tire_inertia_kw[i]
         self.regen_contrl_lim_kw_perc[i] = self.veh.max_regen / (1 + self.veh.regen_a * np.exp(-self.veh.regen_b * (
-            (self.cyc.mph[i] + self.mps_ach[i-1] * params.MPH_PER_MPS) / 2.0 + 1 - 0)))
+            (self.cyc.mph[i] + self.mps_ach[i-1] * params.MPH_PER_MPS) / 2.0 + 1.0)))
         self.cyc_regen_brake_kw[i] = max(min(
                 self.cur_max_mech_mc_kw_in[i] * self.veh.trans_eff, 
                 self.regen_contrl_lim_kw_perc[i] * -self.cyc_whl_kw_req[i]), 
@@ -635,10 +637,12 @@ class SimDrive(object):
                 self.cur_max_mc_kw_out[i], -self.cur_max_mech_mc_kw_in[i])
 
     def set_ach_speed(self, i):
-        """Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
+        """
+        Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
         Arguments
         ------------
-        i: index of time step"""
+        i: index of time step
+        """
 
         # Cycle is met
         if self.cyc_met[i]:
