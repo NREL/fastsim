@@ -696,7 +696,7 @@ impl RustSimDrive{
         self.cur_max_avail_elec_kw[i] = min(self.cur_max_elec_kw[i], self.veh.mc_max_elec_in_kw);
 
 
-        // TODO: fix `PanicException: ndarray: index out of bounds` that is likely coming from np_argmax belowe
+        // TODO: fix `PanicException: ndarray: index out of bounds` that is likely coming from np_argmax below
         // then continue uncommenting code.  
         if self.cur_max_elec_kw[i] > 0.0 {
             // limit power going into e-machine controller to
@@ -1988,5 +1988,221 @@ impl RustSimDrive{
     pub fn set_trans_kw_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
       self.trans_kw_out_ach = Array::from_vec(new_value);
       Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sim_drive_walk() {
+        // CYCLE
+        let time_s = vec![0.0, 1.0, 2.0];
+        let speed_mps = vec![0.0, 1.0, 0.0];
+        let grade = vec![0.0, 0.0, 0.0];
+        let road_type = vec![0.0, 0.0, 0.0];        
+        let name = String::from("test");
+        let cyc = RustCycle::__new__(time_s, speed_mps, grade, road_type, name);
+
+        // VEHICLE
+        let scenario_name = String::from("2016 FORD Escape 4cyl 2WD");
+        let selection: u32 = 5;
+        let veh_year: u32 = 2016;
+        let veh_pt_type = String::from("Conv");
+        let drag_coef: f64 = 0.355;
+        let frontal_area_m2: f64 = 3.066;
+        let glider_kg: f64 = 1359.166;
+        let veh_cg_m: f64 = 0.53;
+        let drive_axle_weight_frac: f64 = 0.59;
+        let wheel_base_m: f64 = 2.6;
+        let cargo_kg: f64 = 136.0;
+        let veh_override_kg: f64 = f64::NAN;
+        let comp_mass_multiplier: f64 = 1.4;
+        let max_fuel_stor_kw: f64 = 2000.0;
+        let fuel_stor_secs_to_peak_pwr: f64 = 1.0;
+        let fuel_stor_kwh: f64 = 504.0;
+        let fuel_stor_kwh_per_kg: f64 = 9.89;
+        let max_fuel_conv_kw: f64 = 125.0;
+        let fc_pwr_out_perc: Vec<f64> = vec![0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0];
+        let fc_eff_map: Vec<f64> = vec![0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3];
+        let fc_eff_type: String = String::from("SI");
+        let fuel_conv_secs_to_peak_pwr: f64 = 6.0;
+        let fuel_conv_base_kg: f64 = 61.0;
+        let fuel_conv_kw_per_kg: f64 = 2.13;
+        let min_fc_time_on: f64 = 30.0;
+        let idle_fc_kw: f64 = 2.5;
+        let max_motor_kw: f64 = 0.0;
+        let mc_pwr_out_perc: Vec<f64> = vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
+        let mc_eff_map: Vec<f64> = vec![0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92];
+        let motor_secs_to_peak_pwr: f64 = 4.0;
+        let mc_pe_kg_per_kw: f64 = 0.833;
+        let mc_pe_base_kg: f64 = 21.6;
+        let max_ess_kw: f64 = 0.0;
+        let max_ess_kwh: f64 = 0.0;
+        let ess_kg_per_kwh: f64 = 8.0;
+        let ess_base_kg: f64 = 75.0;
+        let ess_round_trip_eff: f64 = 0.97;
+        let ess_life_coef_a: f64 = 110.0;
+        let ess_life_coef_b: f64 = -0.6811;
+        let min_soc: f64 = 0.4;
+        let max_soc: f64 = 0.8;
+        let ess_dischg_to_fc_max_eff_perc: f64 = 0.0;
+        let ess_chg_to_fc_max_eff_perc: f64 = 0.0;
+        let wheel_inertia_kg_m2: f64 = 0.815;
+        let num_wheels: f64 = 4.0;
+        let wheel_rr_coef: f64 = 0.006;
+        let wheel_radius_m: f64 = 0.336;
+        let wheel_coef_of_fric: f64 = 0.7;
+        let max_accel_buffer_mph: f64 = 60.0;
+        let max_accel_buffer_perc_of_useable_soc: f64 = 0.2;
+        let perc_high_acc_buf: f64 = 0.0;
+        let mph_fc_on: f64 = 30.0;
+        let kw_demand_fc_on: f64 = 100.0;
+        let max_regen: f64 = 0.98;
+        let stop_start: bool = false;
+        let force_aux_on_fc: f64 = 0.0;
+        let alt_eff: f64 = 1.0;
+        let chg_eff: f64 = 0.86;
+        let aux_kw: f64 = 0.7;
+        let trans_kg: f64 = 114.0;
+        let trans_eff: f64 = 0.92;
+        let ess_to_fuel_ok_error: f64 = 0.005;
+        let val_udds_mpgge: f64 = 23.0;
+        let val_hwy_mpgge: f64 = 32.0;
+        let val_comb_mpgge: f64 = 26.0;
+        let val_udds_kwh_per_mile: f64 = f64::NAN;
+        let val_hwy_kwh_per_mile: f64 = f64::NAN;
+        let val_comb_kwh_per_mile: f64 = f64::NAN;
+        let val_cd_range_mi: f64 = f64::NAN;
+        let val_const65_mph_kwh_per_mile: f64 = f64::NAN;
+        let val_const60_mph_kwh_per_mile: f64 = f64::NAN;
+        let val_const55_mph_kwh_per_mile: f64 = f64::NAN;
+        let val_const45_mph_kwh_per_mile: f64 = f64::NAN;
+        let val_unadj_udds_kwh_per_mile: f64 = f64::NAN;
+        let val_unadj_hwy_kwh_per_mile: f64 = f64::NAN;
+        let val0_to60_mph: f64 = 9.9;
+        let val_ess_life_miles: f64 = f64::NAN;
+        let val_range_miles: f64 = f64::NAN;
+        let val_veh_base_cost: f64 = f64::NAN;
+        let val_msrp: f64 = f64::NAN;
+        let props = RustPhysicalProperties::__new__();  
+        let large_baseline_eff: Vec<f64> = vec![0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92];
+        let small_baseline_eff: Vec<f64> = vec![0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92];
+        let small_motor_power_kw: f64 = 7.5;
+        let large_motor_power_kw: f64 = 75.0;
+        let fc_perc_out_array: Vec<f64> = vec![
+          0.0  , 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01 , 0.011,
+          0.012, 0.013, 0.014, 0.015, 0.016, 0.017, 0.018, 0.019, 0.02 , 0.021, 0.022, 0.023,
+          0.024, 0.025, 0.026, 0.027, 0.028, 0.029, 0.03 , 0.035, 0.04 , 0.045, 0.05 , 0.055,
+          0.06 , 0.065, 0.07 , 0.08 , 0.09 , 0.1  , 0.11 , 0.12 , 0.13 , 0.14 , 0.15 , 0.16 ,
+          0.17 , 0.18 , 0.19 , 0.2  , 0.21 , 0.22 , 0.23 , 0.24 , 0.25 , 0.26 , 0.27 , 0.28 ,
+          0.29 , 0.3  , 0.31 , 0.32 , 0.33 , 0.34 , 0.35 , 0.36 , 0.37 , 0.38 , 0.39 , 0.4  ,
+          0.41 , 0.42 , 0.43 , 0.44 , 0.45 , 0.46 , 0.47 , 0.48 , 0.49 , 0.5  , 0.51 , 0.52 ,
+          0.53 , 0.54 , 0.55 , 0.56 , 0.57 , 0.58 , 0.59 , 0.6  , 0.65 , 0.7  , 0.75 , 0.8  ,
+          0.85 , 0.9  , 0.95 , 1.0
+        ];
+        let max_roadway_chg_kw: Vec<f64> = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let charging_on: bool = false;
+        let no_elec_sys: bool = true;
+        let no_elec_aux: bool = true;
+        let veh = RustVehicle::__new__(
+          scenario_name,
+          selection,
+          veh_year,
+          veh_pt_type,
+          drag_coef,
+          frontal_area_m2,
+          glider_kg,
+          veh_cg_m,
+          drive_axle_weight_frac,
+          wheel_base_m,
+          cargo_kg,
+          veh_override_kg,
+          comp_mass_multiplier,
+          max_fuel_stor_kw,
+          fuel_stor_secs_to_peak_pwr,
+          fuel_stor_kwh,
+          fuel_stor_kwh_per_kg,
+          max_fuel_conv_kw,
+          fc_pwr_out_perc,
+          fc_eff_map,
+          fc_eff_type,
+          fuel_conv_secs_to_peak_pwr,
+          fuel_conv_base_kg,
+          fuel_conv_kw_per_kg,
+          min_fc_time_on,
+          idle_fc_kw,
+          max_motor_kw,
+          mc_pwr_out_perc,
+          mc_eff_map,
+          motor_secs_to_peak_pwr,
+          mc_pe_kg_per_kw,
+          mc_pe_base_kg,
+          max_ess_kw,
+          max_ess_kwh,
+          ess_kg_per_kwh,
+          ess_base_kg,
+          ess_round_trip_eff,
+          ess_life_coef_a,
+          ess_life_coef_b,
+          min_soc,
+          max_soc,
+          ess_dischg_to_fc_max_eff_perc,
+          ess_chg_to_fc_max_eff_perc,
+          wheel_inertia_kg_m2,
+          num_wheels,
+          wheel_rr_coef,
+          wheel_radius_m,
+          wheel_coef_of_fric,
+          max_accel_buffer_mph,
+          max_accel_buffer_perc_of_useable_soc,
+          perc_high_acc_buf,
+          mph_fc_on,
+          kw_demand_fc_on,
+          max_regen,
+          stop_start,
+          force_aux_on_fc,
+          alt_eff,
+          chg_eff,
+          aux_kw,
+          trans_kg,
+          trans_eff,
+          ess_to_fuel_ok_error,
+          val_udds_mpgge,
+          val_hwy_mpgge,
+          val_comb_mpgge,
+          val_udds_kwh_per_mile,
+          val_hwy_kwh_per_mile,
+          val_comb_kwh_per_mile,
+          val_cd_range_mi,
+          val_const65_mph_kwh_per_mile,
+          val_const60_mph_kwh_per_mile,
+          val_const55_mph_kwh_per_mile,
+          val_const45_mph_kwh_per_mile,
+          val_unadj_udds_kwh_per_mile,
+          val_unadj_hwy_kwh_per_mile,
+          val0_to60_mph,
+          val_ess_life_miles,
+          val_range_miles,
+          val_veh_base_cost,
+          val_msrp,
+          props,  
+          large_baseline_eff,
+          small_baseline_eff,
+          small_motor_power_kw,
+          large_motor_power_kw,
+          fc_perc_out_array,
+          charging_on,
+          no_elec_sys,
+          no_elec_aux,
+          max_roadway_chg_kw,
+        );
+
+        // SIM DRIVE
+        let mut sd = RustSimDrive::__new__(cyc, veh);
+        let init_soc: f64 = 0.5;
+        sd.sim_drive_walk(init_soc);
+        assert_eq!(1, 1);
     }
 }
