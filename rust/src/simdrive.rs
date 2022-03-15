@@ -2003,6 +2003,7 @@ mod tests {
         let grade = vec![0.0, 0.0, 0.0];
         let road_type = vec![0.0, 0.0, 0.0];        
         let name = String::from("test");
+        let cycle_length: usize = time_s.len();
         let cyc = RustCycle::__new__(time_s, speed_mps, grade, road_type, name);
 
         // VEHICLE
@@ -2203,6 +2204,8 @@ mod tests {
         let mut sd = RustSimDrive::__new__(cyc, veh);
         let init_soc: f64 = 0.5;
         sd.sim_drive_walk(init_soc);
-        assert_eq!(1, 1);
+
+        let expected_final_i: usize = cycle_length;
+        assert_eq!(sd.i, expected_final_i);
     }
 }
