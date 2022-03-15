@@ -604,8 +604,8 @@ impl RustSimDrive{
     fn solve_step(&mut self, i:usize) {
         self.set_misc_calcs(i);
         self.set_comp_lims(i);
-        self.set_power_calcs(i);
-        self.set_ach_speed(i);
+        // self.set_power_calcs(i);
+        // self.set_ach_speed(i);
         // TODO: uncomment these!
         // self.set_hybrid_cont_calcs(i)
         // self.set_fc_forced_state(i) # can probably be *mostly* done with list comprehension in post processing
@@ -652,8 +652,8 @@ impl RustSimDrive{
         // max fuel storage power output
         self.cur_max_fs_kw_out[i] = min(
             self.veh.max_fuel_stor_kw,
-            self.fs_kw_out_ach[i-1] + (
-                (self.veh.max_fuel_stor_kw / self.veh.fuel_stor_secs_to_peak_pwr) * (self.cyc.dt_s()[i])));
+            self.fs_kw_out_ach[i-1] + 
+                self.veh.max_fuel_stor_kw / self.veh.fuel_stor_secs_to_peak_pwr * self.cyc.dt_s()[i]);
         // maximum fuel storage power output rate of change
         self.fc_trans_lim_kw[i] = self.fc_kw_out_ach[i-1] + (
             self.veh.max_fuel_conv_kw / self.veh.fuel_conv_secs_to_peak_pwr * self.cyc.dt_s()[i]
@@ -942,7 +942,7 @@ impl RustSimDrive{
             let mut ms = vec![mi];
             let mut bs = vec![bi];
             let mut iterate = 1;
-            let converged = false;
+            let mut converged = false;
             while iterate < max_iter && !converged {
                 let end = xs.len() - 1;
                 let xi = xs[end] * (1.0 - g) - g * bs[end] / ms[end];
@@ -954,7 +954,7 @@ impl RustSimDrive{
                 ms.push(mi);
                 bs.push(bi);
                 let end = xs.len() - 1;
-                let converged = ((xs[end] - xs[end-1]) / xs[end-1]).abs() < xtol;
+                converged = ((xs[end] - xs[end-1]) / xs[end-1]).abs() < xtol;
                 iterate += 1;
             }
             
