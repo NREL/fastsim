@@ -602,10 +602,10 @@ impl RustSimDrive{
     
     /// Perform all the calculations to solve 1 time step.
     fn solve_step(&mut self, i:usize) {
-        self.set_misc_calcs(i)
-        self.set_comp_lims(i)
-        self.set_power_calcs(i)
-        self.set_ach_speed(i)
+        self.set_misc_calcs(i);
+        self.set_comp_lims(i);
+        self.set_power_calcs(i);
+        self.set_ach_speed(i);
         // TODO: uncomment these!
         // self.set_hybrid_cont_calcs(i)
         // self.set_fc_forced_state(i) # can probably be *mostly* done with list comprehension in post processing
