@@ -718,16 +718,16 @@ impl RustSimDrive{
             self.mc_elec_in_lim_kw[i] = 0.0;
         }
 
-        // // Motor transient power limit
-        // self.mc_transi_lim_kw[i] = self.mc_mech_kw_out_ach[i-1].abs() + self.veh.max_motor_kw / self.veh.motor_secs_to_peak_pwr * self.cyc.dt_s()[i];
+        // Motor transient power limit
+        self.mc_transi_lim_kw[i] = self.mc_mech_kw_out_ach[i-1].abs() + self.veh.max_motor_kw / self.veh.motor_secs_to_peak_pwr * self.cyc.dt_s()[i];
 
-        // self.cur_max_mc_kw_out[i] = max(
-        //     min(min(
-        //         self.mc_elec_in_lim_kw[i], 
-        //         self.mc_transi_lim_kw[i]),
-        //         if self.veh.stop_start {0.0} else {1.0} * self.veh.max_motor_kw),
-        //     -self.veh.max_motor_kw
-        // );
+        self.cur_max_mc_kw_out[i] = max(
+            min(min(
+                self.mc_elec_in_lim_kw[i], 
+                self.mc_transi_lim_kw[i]),
+                if self.veh.stop_start {0.0} else {1.0} * self.veh.max_motor_kw),
+            -self.veh.max_motor_kw
+        );
 
         // if self.cur_max_mc_kw_out[i] == 0.0 {
         //     self.cur_max_mc_elec_kw_in[i] = 0.0;
