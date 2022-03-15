@@ -1434,11 +1434,11 @@ def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDriv
     veh_return_type = 'vehicle' if return_type == 'sim_drive' else return_type
     cyc = cycle.copy_cycle(sd.cyc0, cyc_return_type, deep)
     veh = vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
-    sd_copy = SimDrive(cyc, veh)
 
     if return_type == 'rust':
         return fsr.RustSimDrive(cyc, veh)
 
+    sd_copy = SimDrive(cyc, veh)
     for key in inspect_utils.get_attrs(sd):
         if key == 'cyc':
             sd_copy.__setattr__(
