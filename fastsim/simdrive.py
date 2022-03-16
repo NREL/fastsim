@@ -1304,10 +1304,10 @@ class SimDrive(object):
         self.fuel_kj = (self.fs_kw_out_ach * self.cyc.dt_s).sum()
 
         if (self.fuel_kj + self.roadway_chg_kj) == 0:
-            self.ess2fuelKwh  = 1.0
+            self.ess2fuel_kwh  = 1.0
 
         else:
-            self.ess2fuelKwh  = self.ess_dischg_kj / (self.fuel_kj + self.roadway_chg_kj)
+            self.ess2fuel_kwh  = self.ess_dischg_kj / (self.fuel_kj + self.roadway_chg_kj)
 
         if self.mpgge == 0:
             # hardcoded conversion
