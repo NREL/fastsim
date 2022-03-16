@@ -36,12 +36,21 @@ pub fn load_cycle(p: &Path) -> Result<RustCycle, String> {
     // if !path.exists() {
     //     return Err(String::from("path doesn't exist"));
     // }
-    let time_s = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
-    let speed_mps = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
-    let grade = Array::zeros(10).to_vec();
-    let road_type = Array::zeros(10).to_vec();        
+    let mut time_s = Vec::<f64>::new();
+    let mut speed_mps = Vec::<f64>::new();
+    let mut grade = Vec::<f64>::new();
+    let mut road_type = Vec::<f64>::new();
     let name = String::from(p.file_stem().unwrap().to_str().unwrap());
-    // let mut rdr = csv::Reader::from_reader(p)?;
+    //let mut rdr = csv::ReaderBuilder::new(p)
+    //    .has_headers(true)
+    //    .from_reader(p);
+    //for result in rdr.records() {
+    //    let record = result?;
+    //    ts.push(record[0].parse::<f64>().unwrap());
+    //    ss.push(record[1].parse::<f64>().unwrap());
+    //    gs.push() = Vec<f64>::new();
+    //    rts = Vec<f64>::new();
+    //}
     Ok(RustCycle::__new__(time_s, speed_mps, grade, road_type, name))
 }
 
