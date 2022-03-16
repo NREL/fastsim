@@ -41,16 +41,17 @@ pub fn load_cycle(p: &Path) -> Result<RustCycle, String> {
     let mut grade = Vec::<f64>::new();
     let mut road_type = Vec::<f64>::new();
     let name = String::from(p.file_stem().unwrap().to_str().unwrap());
-    //let mut rdr = csv::ReaderBuilder::new(p)
-    //    .has_headers(true)
-    //    .from_reader(p);
-    //for result in rdr.records() {
-    //    let record = result?;
-    //    ts.push(record[0].parse::<f64>().unwrap());
-    //    ss.push(record[1].parse::<f64>().unwrap());
-    //    gs.push() = Vec<f64>::new();
-    //    rts = Vec<f64>::new();
-    //}
+    let file = File::open(p).expect("an existing file");
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .from_reader(file);
+    for result in rdr.records() {
+        let record = result.expect("a proper csv row");
+        time_s.push(record[0].parse::<f64>().unwrap());
+        speed_mps.push(record[1].parse::<f64>().unwrap());
+        grade.push(record[2].parse::<f64>().unwrap());
+        road_type.push(record[3].parse::<f64>().unwrap());
+    }
     Ok(RustCycle::__new__(time_s, speed_mps, grade, road_type, name))
 }
 
@@ -173,10 +174,17 @@ mod tests {
 
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
-        let path = Path::new("C:/Users/mokeefe/Documents/fastsim-2022/fastsim/resources/cycle/udds.csv");
+        let path = Path::new("C:\\Users\\mokeefe\\Documents\\fastsim-2022\\fastsim\\fastsim\\resources\\cycles\\udds.csv");
+        assert!(path.exists());
         match load_cycle(&path) {
             Ok(cyc) => {
                 assert_eq!(cyc.name, String::from("udds"));
+                let num_entries = cyc.time_s.len();
+                assert!(num_entries > 0);
+                assert_eq!(num_entries, cyc.time_s.len());
+                assert_eq!(num_entries, cyc.mps.len());
+                assert_eq!(num_entries, cyc.grade.len());
+                assert_eq!(num_entries, cyc.road_type.len());
             },
             Err(s) => panic!("{}", s),
         }
