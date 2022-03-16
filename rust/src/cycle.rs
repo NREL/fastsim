@@ -175,6 +175,7 @@ mod tests {
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
         let path = Path::new("C:\\Users\\mokeefe\\Documents\\fastsim-2022\\fastsim\\fastsim\\resources\\cycles\\udds.csv");
+        let expected_udds_length: usize = 1370;
         assert!(path.exists());
         match load_cycle(&path) {
             Ok(cyc) => {
@@ -185,6 +186,7 @@ mod tests {
                 assert_eq!(num_entries, cyc.mps.len());
                 assert_eq!(num_entries, cyc.grade.len());
                 assert_eq!(num_entries, cyc.road_type.len());
+                assert_eq!(num_entries, expected_udds_length);
             },
             Err(s) => panic!("{}", s),
         }
