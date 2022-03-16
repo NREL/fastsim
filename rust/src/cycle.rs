@@ -1,4 +1,8 @@
 extern crate ndarray;
+
+use std::fs::File;
+use std::path::Path;
+
 use ndarray::{Array, Array1}; 
 extern crate pyo3;
 use pyo3::prelude::*;
@@ -26,6 +30,20 @@ pub struct RustCycle{
     name: String    
 }
 
+pub fn load_cycle(p: &Path) -> Result<RustCycle, String> {
+    // LOAD CSV
+    // TODO: handle file missing
+    // if !path.exists() {
+    //     return Err(String::from("path doesn't exist"));
+    // }
+    let time_s = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
+    let speed_mps = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
+    let grade = Array::zeros(10).to_vec();
+    let road_type = Array::zeros(10).to_vec();        
+    let name = String::from(p.file_stem().unwrap().to_str().unwrap());
+    // let mut rdr = csv::Reader::from_reader(p)?;
+    Ok(RustCycle::__new__(time_s, speed_mps, grade, road_type, name))
+}
 
 /// RustCycle class for containing: 
 /// -- time_s, 
@@ -142,5 +160,16 @@ mod tests {
         let name = String::from("test");
         let cyc = RustCycle::__new__(time_s, speed_mps, grade, road_type, name);
         assert_eq!(cyc.dist_m().sum(), 45.0);
+    }
+
+    #[test]
+    fn test_loading_a_cycle_from_the_filesystem() {
+        let path = Path::new("C:/Users/mokeefe/Documents/fastsim-2022/fastsim/resources/cycle/udds.csv");
+        match load_cycle(&path) {
+            Ok(cyc) => {
+                assert_eq!(cyc.name, String::from("udds"));
+            },
+            Err(s) => panic!("{}", s),
+        }
     }
 }
