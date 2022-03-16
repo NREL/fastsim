@@ -11,7 +11,7 @@ import fastsimrust as fsr
 
 
 class TestRust(unittest.TestCase):
-    def test_run_sim_drive(self):
+    def test_run_sim_drive_conv(self):
         cyc = cycle.Cycle.from_file('udds').to_rust()
         veh = vehicle.Vehicle.from_vehdb(5).to_rust()
         #sd = simdrive.SimDrive(cyc, veh).to_rust()
@@ -19,3 +19,12 @@ class TestRust(unittest.TestCase):
         sd.sim_drive_walk(0.5)
         self.assertTrue(sd.i > 1)
         self.assertEqual(sd.i, len(cyc.time_s))
+
+    def test_run_sim_drive_conv(self):
+        cyc = cycle.Cycle.from_file('udds').to_rust()
+        veh = vehicle.Vehicle.from_vehdb(11).to_rust()
+        #sd = simdrive.SimDrive(cyc, veh).to_rust()
+        sd = fsr.RustSimDrive(cyc, veh)
+        sd.sim_drive_walk(0.5)
+        self.assertTrue(sd.i > 1)
+        self.assertEqual(sd.i, len(cyc.time_s))        
