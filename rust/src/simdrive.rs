@@ -613,6 +613,186 @@ impl RustSimDrive{
         // self.set_fc_power(i)
     }
 
+    /// Hybrid control calculations.  
+    /// Arguments
+    /// ------------
+    /// i: index of time step
+    fn set_hybrid_cont_calcs(&mut self, i:usize) {
+        if self.veh.no_elec_sys {
+            self.regen_buff_soc[i] = 0.0;
+        }
+        else if self.veh.charging_on {
+            self.regen_buff_soc[i] = max(
+                self.veh.max_soc - (self.veh.max_regen_kwh() / self.veh.max_ess_kwh),
+                (self.veh.max_soc + self.veh.min_soc) / 2.0);
+        }
+        else {
+            self.regen_buff_soc[i] = max(
+                (self.veh.max_ess_kwh * self.veh.max_soc - 
+                    0.5 * self.veh.veh_kg * (self.cyc.mps[i].powf(2.0)) * (1.0 / 1_000.0) * (1.0 / 3_600.0) * 
+                    self.veh.mc_peak_eff() * self.veh.max_regen) / self.veh.max_ess_kwh, 
+                self.veh.min_soc
+            );
+
+            self.ess_regen_buff_dischg_kw[i] = min(self.cur_max_ess_kw_out[i], max(
+                0.0, (self.soc[i-1] - self.regen_buff_soc[i]) * self.veh.max_ess_kwh * 3_600.0 / self.cyc.dt_s()[i]));
+
+            self.max_ess_regen_buff_chg_kw[i] = min(max(
+                    0.0, 
+                    (self.regen_buff_soc[i] - self.soc[i-1]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s()[i]), 
+                self.cur_max_ess_chg_kw[i]
+            );
+        }
+        // if self.veh.no_elec_sys {
+        //     self.accel_buff_soc[i] = 0;
+        // }
+        // else {
+        //     self.accel_buff_soc[i] = min(
+        //         max(
+        //             ((self.veh.max_accel_buffer_mph / params.MPH_PER_MPS) ** 2 - self.cyc.mps[i] ** 2) / 
+        //             (self.veh.max_accel_buffer_mph / params.MPH_PER_MPS) ** 2 * min(
+        //                 self.veh.max_accel_buffer_perc_of_useable_soc * (self.veh.max_soc - self.veh.min_soc), 
+        //                 self.veh.max_regen_kwh / self.veh.max_ess_kwh
+        //             ) * self.veh.max_ess_kwh / self.veh.max_ess_kwh + self.veh.min_soc, 
+        //             self.veh.min_soc
+        //         ), 
+        //         self.veh.max_soc
+        //         );
+
+        //     self.ess_accel_buff_chg_kw[i] = max(
+        //         0, (self.accel_buff_soc[i] - self.soc[i-1]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s[i]);
+        //     self.max_ess_accell_buff_dischg_kw[i] = min(
+        //         max(
+        //             0, 
+        //             (self.soc[i-1] - self.accel_buff_soc[i]) * self.veh.max_ess_kwh * 3_600 / self.cyc.dt_s[i]), 
+        //         self.cur_max_ess_kw_out[i]
+        //     );
+        // }
+        // if self.regen_buff_soc[i] < self.accel_buff_soc[i] {
+        //     self.ess_accel_regen_dischg_kw[i] = max(
+        //         min(
+        //             (self.soc[i-1] - (self.regen_buff_soc[i] + self.accel_buff_soc[i]) / 2) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s[i], 
+        //             self.cur_max_ess_kw_out[i]
+        //         ), 
+        //         -self.cur_max_ess_chg_kw[i]
+        //     );
+        // }
+        // else if self.soc[i-1] > self.regen_buff_soc[i] {
+        //     self.ess_accel_regen_dischg_kw[i] = max(
+        //         min(
+        //             self.ess_regen_buff_dischg_kw[i], 
+        //             self.cur_max_ess_kw_out[i]), 
+        //         -self.cur_max_ess_chg_kw[i]
+        //     );
+        // }
+        // else if self.soc[i-1] < self.accel_buff_soc[i] {
+        //     self.ess_accel_regen_dischg_kw[i] = max(
+        //         min(-1.0 * self.ess_accel_buff_chg_kw[i], self.cur_max_ess_kw_out[i]), -self.cur_max_ess_chg_kw[i]);
+        // }
+        // else {
+        //     self.ess_accel_regen_dischg_kw[i] = max(
+        //         min(0, self.cur_max_ess_kw_out[i]), -self.cur_max_ess_chg_kw[i]);
+        // }
+        // self.fc_kw_gap_fr_eff[i] = abs(self.trans_kw_out_ach[i] - self.veh.max_fc_eff_kw);
+
+        // if self.veh.no_elec_sys {
+        //     self.mc_elec_in_kw_for_max_fc_eff[i] = 0;
+        // }
+        // else if self.trans_kw_out_ach[i] < self.veh.max_fc_eff_kw {
+        //     if self.fc_kw_gap_fr_eff[i] == self.veh.max_motor_kw {
+        //         self.mc_elec_in_kw_for_max_fc_eff[i] = -self.fc_kw_gap_fr_eff[i] / self.veh.mc_full_eff_array[-1];
+        //     }
+        //     else {
+        //         self.mc_elec_in_kw_for_max_fc_eff[i] = (-self.fc_kw_gap_fr_eff[i] / 
+        //             self.veh.mc_full_eff_array[max(1, 
+        //                 np.argmax(self.veh.mc_kw_out_array > min(self.veh.max_motor_kw - 0.01, self.fc_kw_gap_fr_eff[i])) - 1)]
+        //         );
+        //     }
+        // }
+        // else {
+        //     if self.fc_kw_gap_fr_eff[i] == self.veh.max_motor_kw {
+        //         self.mc_elec_in_kw_for_max_fc_eff[i] = self.veh.mc_kw_in_array[len(
+        //             self.veh.mc_kw_in_array) - 1];
+        //     }
+        //     else {
+        //         self.mc_elec_in_kw_for_max_fc_eff[i] = self.veh.mc_kw_in_array[np.argmax(
+        //             self.veh.mc_kw_out_array > min(self.veh.max_motor_kw - 0.01, self.fc_kw_gap_fr_eff[i])) - 1];
+        //     }
+        // }
+        // if self.veh.no_elec_sys {
+        //     self.elec_kw_req_4ae[i] = 0.0;
+        // }
+        // else if self.trans_kw_in_ach[i] > 0 {
+        //     if self.trans_kw_in_ach[i] == self.veh.max_motor_kw {
+        //         self.elec_kw_req_4ae[i] = self.trans_kw_in_ach[i] / self.veh.mc_full_eff_array[-1] + self.aux_in_kw[i];
+        //     }
+        //     else {
+        //         self.elec_kw_req_4ae[i] = (self.trans_kw_in_ach[i] / 
+        //             self.veh.mc_full_eff_array[max(1, np.argmax(
+        //                 self.veh.mc_kw_out_array > min(self.veh.max_motor_kw - 0.01, self.trans_kw_in_ach[i])) - 1)] + self.aux_in_kw[i]
+        //         );
+        //     }
+        // }
+        // else {
+        //     self.elec_kw_req_4ae[i] = 0.0;
+        // }
+
+        // self.prev_fc_time_on[i] = self.fc_time_on[i-1];
+
+        // // some conditions in the following if statement have a buffer of 1e-6 to prevent false positives/negatives because these have been encountered in practice.
+        // if self.veh.max_fuel_conv_kw == 0.0 {
+        //     self.can_pwr_all_elec[i] = self.accel_buff_soc[i] < self.soc[i-1] &&
+        //         (self.trans_kw_in_ach[i] - 1e-6) <= self.cur_max_mc_kw_out[i] &&
+        //         (self.elec_kw_req_4ae[i] < self.cur_max_elec_kw[i] or self.veh.max_fuel_conv_kw == 0.0);
+        // }
+        // else {
+        //     self.can_pwr_all_elec[i] = self.accel_buff_soc[i] < self.soc[i-1] &&
+        //         (self.trans_kw_in_ach[i] - 1e-6) <= self.cur_max_mc_kw_out[i] &&
+        //         (self.elec_kw_req_4ae[i] < self.cur_max_elec_kw[i] or self.veh.max_fuel_conv_kw == 0)
+        //         && ((self.cyc.mph[i] - 1e-6) <= self.veh.mph_fc_on or self.veh.charging_on) &&
+        //         self.elec_kw_req_4ae[i] <= self.veh.kw_demand_fc_on;
+        // }
+        // if self.can_pwr_all_elec[i] {
+
+        //     if self.trans_kw_in_ach[i] < self.aux_in_kw[i] {
+        //         self.desired_ess_kw_out_for_ae[i] = self.aux_in_kw[i] +
+        //             self.trans_kw_in_ach[i];
+        //     }
+        //     else if self.regen_buff_soc[i] < self.accel_buff_soc[i] {
+        //         self.desired_ess_kw_out_for_ae[i] = self.ess_accel_regen_dischg_kw[i];
+        //     }
+        //     else if self.soc[i-1] > self.regen_buff_soc[i] {
+        //         self.desired_ess_kw_out_for_ae[i] = self.ess_regen_buff_dischg_kw[i];
+        //     }
+        //     else if self.soc[i-1] < self.accel_buff_soc[i] {
+        //         self.desired_ess_kw_out_for_ae[i] = -self.ess_accel_buff_chg_kw[i];
+        //     }
+        //     else {
+        //         self.desired_ess_kw_out_for_ae[i] = self.trans_kw_in_ach[i] +
+        //             self.aux_in_kw[i] - self.cur_max_roadway_chg_kw[i];
+        //     }
+        // }
+        // else {   
+        //     self.desired_ess_kw_out_for_ae[i] = 0.0;
+        // }
+
+        // if self.can_pwr_all_elec[i] {
+        //     self.ess_ae_kw_out[i] = max(
+        //         -self.cur_max_ess_chg_kw[i], 
+        //         -self.max_ess_regen_buff_chg_kw[i], 
+        //         min(0, self.cur_max_roadway_chg_kw[i] - self.trans_kw_in_ach[i] + self.aux_in_kw[i]), 
+        //         min(self.cur_max_ess_kw_out[i], self.desired_ess_kw_out_for_ae[i])
+        //     );
+        // }
+        // else {
+        //     self.ess_ae_kw_out[i] = 0.0;
+        // }
+
+        // self.er_ae_kw_out[i] = min(
+        //     max(0, self.trans_kw_in_ach[i] + self.aux_in_kw[i] - self.ess_ae_kw_out[i]), 
+        //     self.cur_max_roadway_chg_kw[i]);
+    }
+
     /// Sets misc. calculations at time step 'i'
     /// Arguments:
     /// ----------
