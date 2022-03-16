@@ -1550,7 +1550,7 @@ class SimDrivePost(object):
         output = {}
 
         output['mpgge'] = self.mpgge
-        output['battery_kWh_per_mi'] = self.battery_kWh_per_mi
+        output['battery_kWh_per_mi'] = self.battery_kwh_per_mi
         output['electric_kWh_per_mi'] = self.electric_kWh_per_mi
         output['maxTraceMissMph'] = params.MPH_PER_MPS * max(abs(self.cyc.mps - self.mpsAch))
         self.maxTraceMissMph = output['maxTraceMissMph']

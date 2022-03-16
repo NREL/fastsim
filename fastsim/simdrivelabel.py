@@ -179,7 +179,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 phev_calc['deltaSoc'] = (sd[key].soc[0] - sd[key].soc[-1])
                 # total number of miles in charge depletion mode, assuming constant kWh_per_mi
                 phev_calc['totalCdMiles'] = (veh.max_soc - veh.min_soc) * \
-                    sd[key].veh.max_ess_kwh / sd[key].battery_kWh_per_mi
+                    sd[key].veh.max_ess_kwh / sd[key].battery_kwh_per_mi
                 # float64 number of cycles in charge depletion mode, up to transition
                 phev_calc['cdCycs'] = phev_calc['totalCdMiles'] / sd[key].dist_mi.sum()
                 # fraction of transition cycle spent in charge depletion
@@ -188,7 +188,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
 
                 phev_calc['cdFsGal'] = sd[key].fs_kwh_out_ach.sum() / props.kwh_per_gge
                 phev_calc['cdFsKwh'] = sd[key].fs_kwh_out_ach.sum()
-                phev_calc['cd_ess_kWh__mi'] = sd[key].battery_kWh_per_mi
+                phev_calc['cd_ess_kWh__mi'] = sd[key].battery_kwh_per_mi
                 phev_calc['cd_mpg'] = sd[key].mpgge
 
                 # utility factor calculation for last charge depletion iteration and transition iteration
@@ -235,8 +235,8 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 phev_calc['csFsKwh'] = sd[key].fs_kwh_out_ach.sum() 
                 phev_calc['transFsKwh'] = (
                     phev_calc['csFsKwh'] * (1 - phev_calc['cdFracInTrans']))
-                phev_calc['csEssKwh'] = sd[key].essDischgKj
-                phev_calc['cs_ess_kWh__mi'] = sd[key].battery_kWh_per_mi
+                phev_calc['csEssKwh'] = sd[key].ess_dischg_kj
+                phev_calc['cs_ess_kWh__mi'] = sd[key].battery_kwh_per_mi
 
                 phev_calc['labUfGpm'] = np.array(
                         [phev_calc['transFsGal'] * np.diff(phev_calc['labIterUf'])[-1],
