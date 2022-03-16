@@ -15,12 +15,12 @@ pub fn diff(x:&Array1<f64>) -> Array1<f64>{
 /// arr: Array1<bool> -- array of bools
 /// Returns index of first true value, or last index if all false
 /// if array is of len() == 0, returns 0.
-pub fn np_argmax(arr: &Array1<bool>) -> usize {
+pub fn np_argmax(arr: &Array1<bool>) -> Option<usize> {
     let len = arr.len();
     if len == 0 {
-        return 0;
+        return None;
     }
-    arr.iter().position(|&x| x).unwrap_or(len - 1) // unwrap_or allows for default if not found
+    Some(arr.iter().position(|&x| x).unwrap_or(len - 1)) // unwrap_or allows for default if not found
 }
 
 /// return max of 2 f64
@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn test_that_np_argmax_finds_the_right_index_when_one_exists(){
         let xs: Array1<bool> = Array::from_vec(vec![false, false, true, false, false]);
-        let idx = np_argmax(&xs);
+        let idx = np_argmax(&xs).unwrap();
         let expected_idx: usize = 2;
         assert_eq!(idx, expected_idx)
     }
@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn test_that_np_argmax_yields_last_index_when_nothing_found(){
         let xs: Array1<bool> = Array::from_vec(vec![false, false, false, false, false]);
-        let idx = np_argmax(&xs);
+        let idx = np_argmax(&xs).unwrap();
         let expected_idx: usize = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
@@ -88,7 +88,7 @@ mod tests {
         let idx = np_argmax(&xs);
         // unclear what should happen here; np.argmax throws a ValueError in the case of an empty vector
         // ... possibly we should return an Option type?
-        let expected_idx: usize = 0; 
+        let expected_idx:Option<usize> = None; 
         assert_eq!(idx, expected_idx);
     }
 }

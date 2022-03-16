@@ -608,7 +608,7 @@ impl RustSimDrive{
         self.set_ach_speed(i);
         // TODO: uncomment these!
         // self.set_hybrid_cont_calcs(i)
-        // self.set_fc_forced_state(i) # can probably be *mostly* done with list comprehension in post processing
+        // self.set_fc_forced_state(i) 
         // self.set_hybrid_cont_decisions(i)
         // self.set_fc_power(i)
     }
@@ -888,7 +888,7 @@ impl RustSimDrive{
                             arrmax(&self.veh.mc_kw_in_array) - 0.01, 
                             self.cur_max_avail_elec_kw[i])
                         )
-                    ) - 1 as usize],
+                    ).unwrap_or(0) - 1 as usize],
                     self.veh.max_motor_kw)}
         }
         else {
@@ -917,7 +917,7 @@ impl RustSimDrive{
                     1, 
                     np_argmax(
                         &self.veh.mc_kw_out_array.map(|x| *x > min(
-                            self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))) - 1 
+                            self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))).unwrap_or(0) - 1 
                         )
                     ]
             };
@@ -948,7 +948,7 @@ impl RustSimDrive{
                                     self.veh.max_motor_kw - 0.01, 
                                     self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
                                 ))
-                            ) - 1
+                            ).unwrap_or(0) - 1
                         )
                     ]
                 );
