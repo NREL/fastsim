@@ -216,13 +216,20 @@ pub struct RustVehicle{
 
 /// RustVehicle rust methods
 impl RustVehicle{
-  pub fn max_regen_kwh(&self) -> f64{
-    0.5 * self.veh_kg * (27.0*27.0) / (3_600.0 * 1_000.0)
-  }
+    pub fn max_regen_kwh(&self) -> f64{
+        0.5 * self.veh_kg * (27.0*27.0) / (3_600.0 * 1_000.0)
+    }       
 
-  pub fn mc_peak_eff(&self) -> f64{
-    arrmax(&self.mc_full_eff_array)
-  }
+    pub fn mc_peak_eff(&self) -> f64{
+        arrmax(&self.mc_full_eff_array)
+    }
+
+    pub fn max_fc_eff_kw(&self) -> f64{
+        let fc_kw_out_arr_max = arrmax(&self.fc_kw_out_array);
+        self.fc_kw_out_array[
+            np_argmax(&self.fc_eff_array.map(
+                |x| *x == fc_kw_out_arr_max)).unwrap_or(0)]
+    }
 }
 
 /// RustVehicle class for containing: 
@@ -338,7 +345,7 @@ impl RustVehicle{
         // fc_mass_kg: f64,
         // fs_mass_kg: f64,
         // mc_perc_out_array: Vec<f64>,
-    ) -> Self{
+    ) -> Self {
         // Define Optionals
         let regen_a: f64 = 500.0;
         let regen_b: f64 = 0.99;
@@ -501,6 +508,16 @@ impl RustVehicle{
             fs_mass_kg,
             mc_perc_out_array,
         }
+    }
+
+    #[getter]
+    pub fn get_max_fc_eff_kw(&self) -> PyResult<f64> {
+        Ok(self.max_fc_eff_kw())
+    }
+
+    #[getter]
+    pub fn get_max_regen_kwh(&self) -> PyResult<f64> {
+        Ok(self.max_regen_kwh())
     }
 
     #[getter]
