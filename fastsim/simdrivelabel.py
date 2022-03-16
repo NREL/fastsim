@@ -85,10 +85,10 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
             out['labCombMpgge'] = 0
 
         if veh.veh_pt_type == vehicle.BEV:
-            out['labUddsKwhPerMile'] = sd['udds'].battery_kWh_per_mi
-            out['labHwyKwhPerMile'] = sd['hwy'].battery_kWh_per_mi
-            out['labCombKwhPerMile'] = 0.55 * sd['udds'].battery_kWh_per_mi + \
-                0.45 * sd['hwy'].battery_kWh_per_mi
+            out['labUddsKwhPerMile'] = sd['udds'].battery_kwh_per_mi
+            out['labHwyKwhPerMile'] = sd['hwy'].battery_kwh_per_mi
+            out['labCombKwhPerMile'] = 0.55 * sd['udds'].battery_kwh_per_mi + \
+                0.45 * sd['hwy'].battery_kwh_per_mi
         else:
             out['labUddsKwhPerMile'] = 0
             out['labHwyKwhPerMile'] = 0

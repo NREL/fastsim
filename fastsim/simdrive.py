@@ -1294,43 +1294,43 @@ class SimDrive(object):
         else:
             self.mpgge = self.dist_mi.sum() / (self.fs_kwh_out_ach.sum() / self.props.kwh_per_gge)
 
-        self.roadwayChgKj = (self.roadway_chg_kw_out_ach * self.cyc.dt_s).sum()
-        self.essDischgKj = - \
+        self.roadway_chg_kj = (self.roadway_chg_kw_out_ach * self.cyc.dt_s).sum()
+        self.ess_dischg_kj = - \
             (self.soc[-1] - self.soc[0]) * self.veh.max_ess_kwh * 3.6e3
-        self.battery_kWh_per_mi  = (
-            self.essDischgKj / 3.6e3) / self.dist_mi.sum()
-        self.electric_kWh_per_mi  = (
-            (self.roadwayChgKj + self.essDischgKj) / 3.6e3) / self.dist_mi.sum()
-        self.fuelKj = (self.fs_kw_out_ach * self.cyc.dt_s).sum()
+        self.battery_kwh_per_mi  = (
+            self.ess_dischg_kj / 3.6e3) / self.dist_mi.sum()
+        self.electric_kwh_per_mi  = (
+            (self.roadway_chg_kj + self.ess_dischg_kj) / 3.6e3) / self.dist_mi.sum()
+        self.fuel_kj = (self.fs_kw_out_ach * self.cyc.dt_s).sum()
 
-        if (self.fuelKj + self.roadwayChgKj) == 0:
+        if (self.fuel_kj + self.roadway_chg_kj) == 0:
             self.ess2fuelKwh  = 1.0
 
         else:
-            self.ess2fuelKwh  = self.essDischgKj / (self.fuelKj + self.roadwayChgKj)
+            self.ess2fuelKwh  = self.ess_dischg_kj / (self.fuel_kj + self.roadway_chg_kj)
 
         if self.mpgge == 0:
             # hardcoded conversion
-            self.Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.props.kwh_per_gge
-            grid_Gallons_gas_equivalent_per_mile = self.electric_kWh_per_mi / self.props.kwh_per_gge / \
+            self.gallons_gas_equivalent_per_mile = self.electric_kwh_per_mi / self.props.kwh_per_gge
+            grid_gallons_gas_equivalent_per_mile = self.electric_kwh_per_mi / self.props.kwh_per_gge / \
                 self.veh.chg_eff
 
         else:
-            self.Gallons_gas_equivalent_per_mile = 1 / \
-                self.mpgge + self.electric_kWh_per_mi  / self.props.kwh_per_gge
-            grid_Gallons_gas_equivalent_per_mile = 1 / self.mpgge + \
-                self.electric_kWh_per_mi / self.props.kwh_per_gge / self.veh.chg_eff
+            self.gallons_gas_equivalent_per_mile = 1 / \
+                self.mpgge + self.electric_kwh_per_mi  / self.props.kwh_per_gge
+            grid_gallons_gas_equivalent_per_mile = 1 / self.mpgge + \
+                self.electric_kwh_per_mi / self.props.kwh_per_gge / self.veh.chg_eff
 
-        self.grid_mpgge_elec = 1 / grid_Gallons_gas_equivalent_per_mile
-        self.mpgge_elec = 1 / self.Gallons_gas_equivalent_per_mile
+        self.grid_mpgge_elec = 1 / grid_gallons_gas_equivalent_per_mile
+        self.mpgge_elec = 1 / self.gallons_gas_equivalent_per_mile
 
         # energy audit calcs
         self.drag_kw = self.cyc_drag_kw 
-        self.dragKj = (self.drag_kw * self.cyc.dt_s).sum()
+        self.drag_kj = (self.drag_kw * self.cyc.dt_s).sum()
         self.ascent_kw = self.cyc_ascent_kw
-        self.ascentKj = (self.ascent_kw * self.cyc.dt_s).sum()
+        self.ascent_kj = (self.ascent_kw * self.cyc.dt_s).sum()
         self.rr_kw = self.cyc_rr_kw
-        self.rrKj = (self.rr_kw * self.cyc.dt_s).sum()
+        self.rr_kj = (self.rr_kw * self.cyc.dt_s).sum()
 
         self.ess_loss_kw[1:] = np.array(
             [0 if (self.veh.max_ess_kw == 0 or self.veh.max_ess_kwh == 0)
@@ -1340,21 +1340,20 @@ class SimDrive(object):
             for i in range(1, len(self.cyc.time_s))]
         )
         
-        self.brakeKj = (self.cyc_fric_brake_kw * self.cyc.dt_s).sum()
-        self.transKj = ((self.trans_kw_in_ach - self.trans_kw_out_ach) * self.cyc.dt_s).sum()
-        self.mcKj = ((self.mc_elec_kw_in_ach - self.mc_mech_kw_out_ach) * self.cyc.dt_s).sum()
-        self.essEffKj = (self.ess_loss_kw * self.cyc.dt_s).sum()
-        self.auxKj = (self.aux_in_kw * self.cyc.dt_s).sum()
-        self.fcKj = ((self.fc_kw_in_ach - self.fc_kw_out_ach) * self.cyc.dt_s).sum()
+        self.brake_kj = (self.cyc_fric_brake_kw * self.cyc.dt_s).sum()
+        self.trans_kj = ((self.trans_kw_in_ach - self.trans_kw_out_ach) * self.cyc.dt_s).sum()
+        self.mc_kj = ((self.mc_elec_kw_in_ach - self.mc_mech_kw_out_ach) * self.cyc.dt_s).sum()
+        self.ess_eff_kj = (self.ess_loss_kw * self.cyc.dt_s).sum()
+        self.aux_kj = (self.aux_in_kw * self.cyc.dt_s).sum()
+        self.fc_kj = ((self.fc_kw_in_ach - self.fc_kw_out_ach) * self.cyc.dt_s).sum()
         
-        self.netKj = self.dragKj + self.ascentKj + self.rrKj + self.brakeKj + self.transKj \
-            + self.mcKj + self.essEffKj + self.auxKj + self.fcKj
+        self.net_kj = self.drag_kj + self.ascent_kj + self.rr_kj + self.brake_kj + self.trans_kj \
+            + self.mc_kj + self.ess_eff_kj + self.aux_kj + self.fc_kj
 
-        self.keKj = 0.5 * self.veh.veh_kg * \
-            (self.mps_ach[0] ** 2 - self.mps_ach[-1] ** 2) / 1_000
+        self.ke_kj = 0.5 * self.veh.veh_kg * (self.mps_ach[0] ** 2 - self.mps_ach[-1] ** 2) / 1_000
         
-        self.energyAuditError = ((self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj) - self.netKj
-            ) / (self.roadwayChgKj + self.essDischgKj + self.fuelKj + self.keKj)
+        self.energyAuditError = ((self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj) - self.net_kj
+            ) / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj)
 
         if (np.abs(self.energyAuditError) > self.sim_params.energy_audit_error_tol) and \
             self.sim_params.verbose:
