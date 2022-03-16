@@ -2282,6 +2282,8 @@ mod tests {
         let charging_on: bool = false;
         let no_elec_sys: bool = true;
         let no_elec_aux: bool = true;
+        // DERIVED
+        let input_kw_out_array = (Array::from(fc_pwr_out_perc.clone()) * max_fuel_conv_kw).to_vec();
         let veh = RustVehicle::__new__(
           scenario_name,
           selection,
@@ -2373,6 +2375,7 @@ mod tests {
           no_elec_sys,
           no_elec_aux,
           max_roadway_chg_kw,
+          input_kw_out_array,
         );
 
         // SIM DRIVE

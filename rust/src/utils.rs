@@ -57,6 +57,34 @@ pub fn arrmin(arr:&Array1<f64>) -> f64 {
         .unwrap()    
 }
 
+// /// interpolation algorithm from http://www.cplusplus.com/forum/general/216928/
+// fn interpolate(x_data:&Array1<f64>, y_data:&Array1<f64>, x:&f64, extrapolate:bool) -> f64 {
+//     let size = x_data.len();
+// 
+//     let mut i = 0;
+//     if x >= &x_data[size - 2] {
+//         i = size - 2;
+//     } else {
+//         while x > &x_data[i + 1]{
+//             i += 1;
+//         }
+//     }
+//     let xl = &x_data[i];
+//     let mut yl = &y_data[i]; 
+//     let xr = &x_data[i + 1]; 
+//     let mut yr = &y_data[i + 1];
+//     if !extrapolate {
+//         if x < xl{
+//             yr = yl;
+//         }
+//         if x > xr{
+//             yl = yr;
+//         }
+//     }
+//     let dydx = (yr - yl) / (xr - xl);
+//     yl + dydx * (x - xl)
+// }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,4 +119,12 @@ mod tests {
         let expected_idx:Option<usize> = None; 
         assert_eq!(idx, expected_idx);
     }
+
+    // #[test]
+    // fn test_that_interpolation_works(){
+    //     let xs: Array1<f64> = Array::from_vec(vec![0.0,  1.0,  2.0,  3.0,  4.0]);
+    //     let ys: Array1<f64> = Array::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
+    //     let x: f64 = 0.5;
+    //     let y_lookup = interpolate(xs, ys, x, false);
+    // }
 }

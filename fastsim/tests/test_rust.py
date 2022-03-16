@@ -28,4 +28,4 @@ class TestRust(unittest.TestCase):
         # TODO: uncomment the below once sim_drive_walk works again
         #sd.sim_drive_walk(0.5)
         #self.assertTrue(sd.i > 1)
-        #self.assertEqual(sd.i, len(cyc.time_s))        
+        #self.assertEqual(sd.i, len(cyc.time_s))
