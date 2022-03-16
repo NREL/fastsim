@@ -351,6 +351,7 @@ impl RustVehicle{
         let small_baseline_eff = Array::from_vec(small_baseline_eff);
         let fc_perc_out_array = Array::from_vec(fc_perc_out_array);
         let max_roadway_chg_kw = Array::from_vec(max_roadway_chg_kw);
+        // TODO: uncomment these or implement appropriate methods
         // let input_kw_out_array = Array::from_vec(input_kw_out_array);
         // let fc_kw_out_array = Array::from_vec(fc_kw_out_array);
         // let fc_eff_array = Array::from_vec(fc_eff_array);
