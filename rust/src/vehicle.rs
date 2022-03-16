@@ -322,7 +322,7 @@ impl RustVehicle{
         no_elec_sys: bool,
         no_elec_aux: bool,
         max_roadway_chg_kw: Vec<f64>,
-        // input_kw_out_array: Vec<f64>,
+        input_kw_out_array: Vec<f64>,
         // fc_kw_out_array: Vec<f64>,
         // fc_eff_array: Vec<f64>,
         // modern_max: f64,
@@ -352,7 +352,7 @@ impl RustVehicle{
         let fc_perc_out_array = Array::from_vec(fc_perc_out_array);
         let max_roadway_chg_kw = Array::from_vec(max_roadway_chg_kw);
         // TODO: uncomment these or implement appropriate methods
-        // let input_kw_out_array = Array::from_vec(input_kw_out_array);
+        let input_kw_out_array = Array::from_vec(input_kw_out_array);
         // let fc_kw_out_array = Array::from_vec(fc_kw_out_array);
         // let fc_eff_array = Array::from_vec(fc_eff_array);
         // let mc_eff_array = Array::from_vec(mc_eff_array);
@@ -361,8 +361,9 @@ impl RustVehicle{
         // let mc_full_eff_array = Array::from_vec(mc_full_eff_array);
         // let mc_perc_out_array = Array::from_vec(mc_perc_out_array);
 
-        // Derived Values
-        let input_kw_out_array = fc_pwr_out_perc.clone() * max_fuel_conv_kw;
+        // DERIVED VALUES
+        // TODO: correctly implement and re-enable these after Rust does all initialization of inputs
+        // let input_kw_out_array = fc_pwr_out_perc.clone() * max_fuel_conv_kw;
         let fc_kw_out_array = fc_perc_out_array.clone() * max_fuel_conv_kw;
         // TODO: need to do interpolation here... use `ndarray_stats`?
         let fc_eff_array = fc_eff_map.clone();
