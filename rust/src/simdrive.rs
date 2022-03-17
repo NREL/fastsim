@@ -1,5 +1,5 @@
 extern crate ndarray;
-use ndarray::{Array, Array1, array, s}; 
+use ndarray::{Array, Array1, array, s};
 extern crate pyo3;
 use pyo3::prelude::*;
 use std::cmp;
@@ -11,9 +11,9 @@ use super::vehicle::*;
 use super::cycle::RustCycle;
 
 
-#[pyclass] 
+#[pyclass]
 #[derive(Debug, Clone)]
-/// Struct containing time trace data 
+/// Struct containing time trace data
 pub struct RustSimDriveParams{
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
     pub max_time_dilation: f64,
@@ -225,7 +225,7 @@ impl RustSimDriveParams{
     }
 }
 
-#[pyclass] 
+#[pyclass]
 #[derive(Debug, Clone)]
 pub struct RustSimDrive{
     #[pyo3(get, set)]
@@ -237,100 +237,100 @@ pub struct RustSimDrive{
     pub props: RustPhysicalProperties,
     #[pyo3(get, set)]
     pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()
-    pub cur_max_fs_kw_out: Array1<f64>, 
-    pub fc_trans_lim_kw: Array1<f64>, 
-    pub fc_fs_lim_kw: Array1<f64>, 
-    pub fc_max_kw_in: Array1<f64>, 
-    pub cur_max_fc_kw_out: Array1<f64>, 
-    pub ess_cap_lim_dischg_kw: Array1<f64>, 
-    pub cur_max_ess_kw_out: Array1<f64>, 
-    pub cur_max_avail_elec_kw: Array1<f64>, 
-    pub ess_cap_lim_chg_kw: Array1<f64>, 
-    pub cur_max_ess_chg_kw: Array1<f64>, 
-    pub cur_max_elec_kw: Array1<f64>, 
-    pub mc_elec_in_lim_kw: Array1<f64>, 
-    pub mc_transi_lim_kw: Array1<f64>, 
-    pub cur_max_mc_kw_out: Array1<f64>, 
-    pub ess_lim_mc_regen_perc_kw: Array1<f64>, 
-    pub ess_lim_mc_regen_kw: Array1<f64>, 
-    pub cur_max_mech_mc_kw_in: Array1<f64>, 
-    pub cur_max_trans_kw_out: Array1<f64>, 
-    pub cyc_drag_kw: Array1<f64>, 
-    pub cyc_accel_kw: Array1<f64>, 
-    pub cyc_ascent_kw: Array1<f64>, 
-    pub cyc_trac_kw_req: Array1<f64>, 
-    pub cur_max_trac_kw: Array1<f64>, 
-    pub spare_trac_kw: Array1<f64>, 
-    pub cyc_rr_kw: Array1<f64>, 
-    pub cyc_whl_rad_per_sec: Array1<f64>,   
-    pub cyc_tire_inertia_kw: Array1<f64>, 
-    pub cyc_whl_kw_req: Array1<f64>,   
-    pub regen_contrl_lim_kw_perc: Array1<f64>, 
-    pub cyc_regen_brake_kw: Array1<f64>, 
-    pub cyc_fric_brake_kw: Array1<f64>, 
-    pub cyc_trans_kw_out_req: Array1<f64>, 
-    pub cyc_met: Array1<bool>, 
-    pub trans_kw_out_ach: Array1<f64>, 
-    pub trans_kw_in_ach: Array1<f64>, 
-    pub cur_soc_target: Array1<f64>, 
-    pub min_mc_kw_2help_fc: Array1<f64>, 
-    pub mc_mech_kw_out_ach: Array1<f64>, 
-    pub mc_elec_kw_in_ach: Array1<f64>, 
-    pub aux_in_kw: Array1<f64>, 
-    pub roadway_chg_kw_out_ach: Array1<f64>, 
-    pub min_ess_kw_2help_fc: Array1<f64>, 
-    pub ess_kw_out_ach: Array1<f64>, 
-    pub fc_kw_out_ach: Array1<f64>, 
-    pub fc_kw_out_ach_pct: Array1<f64>, 
-    pub fc_kw_in_ach: Array1<f64>, 
-    pub fs_kw_out_ach: Array1<f64>, 
-    pub fs_cumu_mj_out_ach: Array1<f64>, 
-    pub fs_kwh_out_ach: Array1<f64>, 
-    pub ess_cur_kwh: Array1<f64>, 
-    pub soc: Array1<f64>, 
-    pub regen_buff_soc: Array1<f64>,   
-    pub ess_regen_buff_dischg_kw: Array1<f64>,   
-    pub max_ess_regen_buff_chg_kw: Array1<f64>,   
-    pub ess_accel_buff_chg_kw: Array1<f64>,   
-    pub accel_buff_soc: Array1<f64>,   
-    pub max_ess_accell_buff_dischg_kw: Array1<f64>,   
-    pub ess_accel_regen_dischg_kw: Array1<f64>, 
-    pub mc_elec_in_kw_for_max_fc_eff: Array1<f64>, 
-    pub elec_kw_req_4ae: Array1<f64>,   
-    pub can_pwr_all_elec: Array1<bool>, 
-    pub desired_ess_kw_out_for_ae: Array1<f64>, 
-    pub ess_ae_kw_out: Array1<f64>, 
-    pub er_ae_kw_out: Array1<f64>, 
-    pub ess_desired_kw_4fc_eff: Array1<f64>, 
-    pub ess_kw_if_fc_req: Array1<f64>,   
-    pub cur_max_mc_elec_kw_in: Array1<f64>, 
-    pub fc_kw_gap_fr_eff: Array1<f64>, 
-    pub er_kw_if_fc_req: Array1<f64>,   
-    pub mc_elec_kw_in_if_fc_req: Array1<f64>,   
-    pub mc_kw_if_fc_req: Array1<f64>,   
-    pub fc_forced_on: Array1<bool>, 
-    pub fc_forced_state: Array1<u32>, 
-    pub mc_mech_kw_4forced_fc: Array1<f64>, 
-    pub fc_time_on: Array1<f64>, 
-    pub prev_fc_time_on: Array1<f64>, 
-    pub mps_ach: Array1<f64>, 
-    pub mph_ach: Array1<f64>, 
-    pub dist_m: Array1<f64>,   
-    pub dist_mi: Array1<f64>,   
-    pub high_acc_fc_on_tag: Array1<bool>, 
-    pub reached_buff: Array1<bool>, 
-    pub max_trac_mps: Array1<f64>, 
-    pub add_kwh: Array1<f64>, 
-    pub dod_cycs: Array1<f64>, 
-    pub ess_perc_dead: Array1<f64>,   
-    pub drag_kw: Array1<f64>, 
-    pub ess_loss_kw: Array1<f64>, 
-    pub accel_kw: Array1<f64>, 
-    pub ascent_kw: Array1<f64>, 
-    pub rr_kw: Array1<f64>, 
-    pub cur_max_roadway_chg_kw: Array1<f64>, 
-    pub trace_miss_iters: Array1<f64>, 
-    pub newton_iters: Array1<u32>, 
+    pub cur_max_fs_kw_out: Array1<f64>,
+    pub fc_trans_lim_kw: Array1<f64>,
+    pub fc_fs_lim_kw: Array1<f64>,
+    pub fc_max_kw_in: Array1<f64>,
+    pub cur_max_fc_kw_out: Array1<f64>,
+    pub ess_cap_lim_dischg_kw: Array1<f64>,
+    pub cur_max_ess_kw_out: Array1<f64>,
+    pub cur_max_avail_elec_kw: Array1<f64>,
+    pub ess_cap_lim_chg_kw: Array1<f64>,
+    pub cur_max_ess_chg_kw: Array1<f64>,
+    pub cur_max_elec_kw: Array1<f64>,
+    pub mc_elec_in_lim_kw: Array1<f64>,
+    pub mc_transi_lim_kw: Array1<f64>,
+    pub cur_max_mc_kw_out: Array1<f64>,
+    pub ess_lim_mc_regen_perc_kw: Array1<f64>,
+    pub ess_lim_mc_regen_kw: Array1<f64>,
+    pub cur_max_mech_mc_kw_in: Array1<f64>,
+    pub cur_max_trans_kw_out: Array1<f64>,
+    pub cyc_drag_kw: Array1<f64>,
+    pub cyc_accel_kw: Array1<f64>,
+    pub cyc_ascent_kw: Array1<f64>,
+    pub cyc_trac_kw_req: Array1<f64>,
+    pub cur_max_trac_kw: Array1<f64>,
+    pub spare_trac_kw: Array1<f64>,
+    pub cyc_rr_kw: Array1<f64>,
+    pub cyc_whl_rad_per_sec: Array1<f64>,
+    pub cyc_tire_inertia_kw: Array1<f64>,
+    pub cyc_whl_kw_req: Array1<f64>,
+    pub regen_contrl_lim_kw_perc: Array1<f64>,
+    pub cyc_regen_brake_kw: Array1<f64>,
+    pub cyc_fric_brake_kw: Array1<f64>,
+    pub cyc_trans_kw_out_req: Array1<f64>,
+    pub cyc_met: Array1<bool>,
+    pub trans_kw_out_ach: Array1<f64>,
+    pub trans_kw_in_ach: Array1<f64>,
+    pub cur_soc_target: Array1<f64>,
+    pub min_mc_kw_2help_fc: Array1<f64>,
+    pub mc_mech_kw_out_ach: Array1<f64>,
+    pub mc_elec_kw_in_ach: Array1<f64>,
+    pub aux_in_kw: Array1<f64>,
+    pub roadway_chg_kw_out_ach: Array1<f64>,
+    pub min_ess_kw_2help_fc: Array1<f64>,
+    pub ess_kw_out_ach: Array1<f64>,
+    pub fc_kw_out_ach: Array1<f64>,
+    pub fc_kw_out_ach_pct: Array1<f64>,
+    pub fc_kw_in_ach: Array1<f64>,
+    pub fs_kw_out_ach: Array1<f64>,
+    pub fs_cumu_mj_out_ach: Array1<f64>,
+    pub fs_kwh_out_ach: Array1<f64>,
+    pub ess_cur_kwh: Array1<f64>,
+    pub soc: Array1<f64>,
+    pub regen_buff_soc: Array1<f64>,
+    pub ess_regen_buff_dischg_kw: Array1<f64>,
+    pub max_ess_regen_buff_chg_kw: Array1<f64>,
+    pub ess_accel_buff_chg_kw: Array1<f64>,
+    pub accel_buff_soc: Array1<f64>,
+    pub max_ess_accell_buff_dischg_kw: Array1<f64>,
+    pub ess_accel_regen_dischg_kw: Array1<f64>,
+    pub mc_elec_in_kw_for_max_fc_eff: Array1<f64>,
+    pub elec_kw_req_4ae: Array1<f64>,
+    pub can_pwr_all_elec: Array1<bool>,
+    pub desired_ess_kw_out_for_ae: Array1<f64>,
+    pub ess_ae_kw_out: Array1<f64>,
+    pub er_ae_kw_out: Array1<f64>,
+    pub ess_desired_kw_4fc_eff: Array1<f64>,
+    pub ess_kw_if_fc_req: Array1<f64>,
+    pub cur_max_mc_elec_kw_in: Array1<f64>,
+    pub fc_kw_gap_fr_eff: Array1<f64>,
+    pub er_kw_if_fc_req: Array1<f64>,
+    pub mc_elec_kw_in_if_fc_req: Array1<f64>,
+    pub mc_kw_if_fc_req: Array1<f64>,
+    pub fc_forced_on: Array1<bool>,
+    pub fc_forced_state: Array1<u32>,
+    pub mc_mech_kw_4forced_fc: Array1<f64>,
+    pub fc_time_on: Array1<f64>,
+    pub prev_fc_time_on: Array1<f64>,
+    pub mps_ach: Array1<f64>,
+    pub mph_ach: Array1<f64>,
+    pub dist_m: Array1<f64>,
+    pub dist_mi: Array1<f64>,
+    pub high_acc_fc_on_tag: Array1<bool>,
+    pub reached_buff: Array1<bool>,
+    pub max_trac_mps: Array1<f64>,
+    pub add_kwh: Array1<f64>,
+    pub dod_cycs: Array1<f64>,
+    pub ess_perc_dead: Array1<f64>,
+    pub drag_kw: Array1<f64>,
+    pub ess_loss_kw: Array1<f64>,
+    pub accel_kw: Array1<f64>,
+    pub ascent_kw: Array1<f64>,
+    pub rr_kw: Array1<f64>,
+    pub cur_max_roadway_chg_kw: Array1<f64>,
+    pub trace_miss_iters: Array1<f64>,
+    pub newton_iters: Array1<u32>,
 }
 
 #[pymethods]
@@ -344,100 +344,100 @@ impl RustSimDrive{
         let props = RustPhysicalProperties::__new__();
         let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
         let cyc_len = cyc.time_s.len(); //get_len() as usize;
-        let cur_max_fs_kw_out = Array::zeros(cyc_len); 
-        let fc_trans_lim_kw = Array::zeros(cyc_len); 
-        let fc_fs_lim_kw = Array::zeros(cyc_len); 
-        let fc_max_kw_in = Array::zeros(cyc_len); 
-        let cur_max_fc_kw_out = Array::zeros(cyc_len); 
-        let ess_cap_lim_dischg_kw = Array::zeros(cyc_len); 
-        let cur_max_ess_kw_out = Array::zeros(cyc_len); 
-        let cur_max_avail_elec_kw = Array::zeros(cyc_len); 
-        let ess_cap_lim_chg_kw = Array::zeros(cyc_len); 
-        let cur_max_ess_chg_kw = Array::zeros(cyc_len); 
-        let cur_max_elec_kw = Array::zeros(cyc_len); 
-        let mc_elec_in_lim_kw = Array::zeros(cyc_len); 
-        let mc_transi_lim_kw = Array::zeros(cyc_len); 
-        let cur_max_mc_kw_out = Array::zeros(cyc_len); 
-        let ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len); 
-        let ess_lim_mc_regen_kw = Array::zeros(cyc_len); 
-        let cur_max_mech_mc_kw_in = Array::zeros(cyc_len); 
-        let cur_max_trans_kw_out = Array::zeros(cyc_len); 
-        let cyc_drag_kw = Array::zeros(cyc_len); 
-        let cyc_accel_kw = Array::zeros(cyc_len); 
-        let cyc_ascent_kw = Array::zeros(cyc_len); 
-        let cyc_trac_kw_req = Array::zeros(cyc_len); 
-        let cur_max_trac_kw = Array::zeros(cyc_len); 
-        let spare_trac_kw = Array::zeros(cyc_len); 
-        let cyc_rr_kw = Array::zeros(cyc_len); 
-        let cyc_whl_rad_per_sec = Array::zeros(cyc_len);   
-        let cyc_tire_inertia_kw = Array::zeros(cyc_len); 
-        let cyc_whl_kw_req = Array::zeros(cyc_len);   
-        let regen_contrl_lim_kw_perc = Array::zeros(cyc_len); 
-        let cyc_regen_brake_kw = Array::zeros(cyc_len); 
-        let cyc_fric_brake_kw = Array::zeros(cyc_len); 
-        let cyc_trans_kw_out_req = Array::zeros(cyc_len); 
-        let cyc_met = Array::from_vec(vec![false; cyc_len]); 
-        let trans_kw_out_ach = Array::zeros(cyc_len); 
-        let trans_kw_in_ach = Array::zeros(cyc_len); 
-        let cur_soc_target = Array::zeros(cyc_len); 
-        let min_mc_kw_2help_fc = Array::zeros(cyc_len); 
-        let mc_mech_kw_out_ach = Array::zeros(cyc_len); 
-        let mc_elec_kw_in_ach = Array::zeros(cyc_len); 
-        let aux_in_kw = Array::zeros(cyc_len); 
-        let roadway_chg_kw_out_ach = Array::zeros(cyc_len); 
-        let min_ess_kw_2help_fc = Array::zeros(cyc_len); 
-        let ess_kw_out_ach = Array::zeros(cyc_len); 
-        let fc_kw_out_ach = Array::zeros(cyc_len); 
-        let fc_kw_out_ach_pct = Array::zeros(cyc_len); 
-        let fc_kw_in_ach = Array::zeros(cyc_len); 
-        let fs_kw_out_ach = Array::zeros(cyc_len); 
-        let fs_cumu_mj_out_ach = Array::zeros(cyc_len); 
-        let fs_kwh_out_ach = Array::zeros(cyc_len); 
-        let ess_cur_kwh = Array::zeros(cyc_len); 
-        let soc = Array::zeros(cyc_len); 
-        let regen_buff_soc = Array::zeros(cyc_len);   
-        let ess_regen_buff_dischg_kw = Array::zeros(cyc_len);   
-        let max_ess_regen_buff_chg_kw = Array::zeros(cyc_len);   
-        let ess_accel_buff_chg_kw = Array::zeros(cyc_len);   
-        let accel_buff_soc = Array::zeros(cyc_len);   
-        let max_ess_accell_buff_dischg_kw = Array::zeros(cyc_len);   
-        let ess_accel_regen_dischg_kw = Array::zeros(cyc_len); 
-        let mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len); 
-        let elec_kw_req_4ae = Array::zeros(cyc_len);   
-        let can_pwr_all_elec = Array::from_vec(vec![false; cyc_len]); 
-        let desired_ess_kw_out_for_ae = Array::zeros(cyc_len); 
-        let ess_ae_kw_out = Array::zeros(cyc_len); 
-        let er_ae_kw_out = Array::zeros(cyc_len); 
-        let ess_desired_kw_4fc_eff = Array::zeros(cyc_len); 
-        let ess_kw_if_fc_req = Array::zeros(cyc_len);   
-        let cur_max_mc_elec_kw_in = Array::zeros(cyc_len); 
-        let fc_kw_gap_fr_eff = Array::zeros(cyc_len); 
-        let er_kw_if_fc_req = Array::zeros(cyc_len);   
-        let mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len);   
-        let mc_kw_if_fc_req = Array::zeros(cyc_len);   
-        let fc_forced_on = Array::from_vec(vec![false; cyc_len]); 
-        let fc_forced_state = Array::zeros(cyc_len); 
-        let mc_mech_kw_4forced_fc = Array::zeros(cyc_len); 
-        let fc_time_on = Array::zeros(cyc_len); 
-        let prev_fc_time_on = Array::zeros(cyc_len); 
-        let mps_ach = Array::zeros(cyc_len); 
-        let mph_ach = Array::zeros(cyc_len); 
-        let dist_m = Array::zeros(cyc_len);  
-        let dist_mi = Array::zeros(cyc_len);   
-        let high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]); 
-        let reached_buff = Array::from_vec(vec![false; cyc_len]); 
-        let max_trac_mps = Array::zeros(cyc_len); 
-        let add_kwh = Array::zeros(cyc_len); 
-        let dod_cycs = Array::zeros(cyc_len); 
-        let ess_perc_dead = Array::zeros(cyc_len);   
-        let drag_kw = Array::zeros(cyc_len); 
-        let ess_loss_kw = Array::zeros(cyc_len); 
-        let accel_kw = Array::zeros(cyc_len); 
-        let ascent_kw = Array::zeros(cyc_len); 
-        let rr_kw = Array::zeros(cyc_len); 
-        let cur_max_roadway_chg_kw = Array::zeros(cyc_len); 
-        let trace_miss_iters = Array::zeros(cyc_len); 
-        let newton_iters = Array::zeros(cyc_len); 
+        let cur_max_fs_kw_out = Array::zeros(cyc_len);
+        let fc_trans_lim_kw = Array::zeros(cyc_len);
+        let fc_fs_lim_kw = Array::zeros(cyc_len);
+        let fc_max_kw_in = Array::zeros(cyc_len);
+        let cur_max_fc_kw_out = Array::zeros(cyc_len);
+        let ess_cap_lim_dischg_kw = Array::zeros(cyc_len);
+        let cur_max_ess_kw_out = Array::zeros(cyc_len);
+        let cur_max_avail_elec_kw = Array::zeros(cyc_len);
+        let ess_cap_lim_chg_kw = Array::zeros(cyc_len);
+        let cur_max_ess_chg_kw = Array::zeros(cyc_len);
+        let cur_max_elec_kw = Array::zeros(cyc_len);
+        let mc_elec_in_lim_kw = Array::zeros(cyc_len);
+        let mc_transi_lim_kw = Array::zeros(cyc_len);
+        let cur_max_mc_kw_out = Array::zeros(cyc_len);
+        let ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len);
+        let ess_lim_mc_regen_kw = Array::zeros(cyc_len);
+        let cur_max_mech_mc_kw_in = Array::zeros(cyc_len);
+        let cur_max_trans_kw_out = Array::zeros(cyc_len);
+        let cyc_drag_kw = Array::zeros(cyc_len);
+        let cyc_accel_kw = Array::zeros(cyc_len);
+        let cyc_ascent_kw = Array::zeros(cyc_len);
+        let cyc_trac_kw_req = Array::zeros(cyc_len);
+        let cur_max_trac_kw = Array::zeros(cyc_len);
+        let spare_trac_kw = Array::zeros(cyc_len);
+        let cyc_rr_kw = Array::zeros(cyc_len);
+        let cyc_whl_rad_per_sec = Array::zeros(cyc_len);
+        let cyc_tire_inertia_kw = Array::zeros(cyc_len);
+        let cyc_whl_kw_req = Array::zeros(cyc_len);
+        let regen_contrl_lim_kw_perc = Array::zeros(cyc_len);
+        let cyc_regen_brake_kw = Array::zeros(cyc_len);
+        let cyc_fric_brake_kw = Array::zeros(cyc_len);
+        let cyc_trans_kw_out_req = Array::zeros(cyc_len);
+        let cyc_met = Array::from_vec(vec![false; cyc_len]);
+        let trans_kw_out_ach = Array::zeros(cyc_len);
+        let trans_kw_in_ach = Array::zeros(cyc_len);
+        let cur_soc_target = Array::zeros(cyc_len);
+        let min_mc_kw_2help_fc = Array::zeros(cyc_len);
+        let mc_mech_kw_out_ach = Array::zeros(cyc_len);
+        let mc_elec_kw_in_ach = Array::zeros(cyc_len);
+        let aux_in_kw = Array::zeros(cyc_len);
+        let roadway_chg_kw_out_ach = Array::zeros(cyc_len);
+        let min_ess_kw_2help_fc = Array::zeros(cyc_len);
+        let ess_kw_out_ach = Array::zeros(cyc_len);
+        let fc_kw_out_ach = Array::zeros(cyc_len);
+        let fc_kw_out_ach_pct = Array::zeros(cyc_len);
+        let fc_kw_in_ach = Array::zeros(cyc_len);
+        let fs_kw_out_ach = Array::zeros(cyc_len);
+        let fs_cumu_mj_out_ach = Array::zeros(cyc_len);
+        let fs_kwh_out_ach = Array::zeros(cyc_len);
+        let ess_cur_kwh = Array::zeros(cyc_len);
+        let soc = Array::zeros(cyc_len);
+        let regen_buff_soc = Array::zeros(cyc_len);
+        let ess_regen_buff_dischg_kw = Array::zeros(cyc_len);
+        let max_ess_regen_buff_chg_kw = Array::zeros(cyc_len);
+        let ess_accel_buff_chg_kw = Array::zeros(cyc_len);
+        let accel_buff_soc = Array::zeros(cyc_len);
+        let max_ess_accell_buff_dischg_kw = Array::zeros(cyc_len);
+        let ess_accel_regen_dischg_kw = Array::zeros(cyc_len);
+        let mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len);
+        let elec_kw_req_4ae = Array::zeros(cyc_len);
+        let can_pwr_all_elec = Array::from_vec(vec![false; cyc_len]);
+        let desired_ess_kw_out_for_ae = Array::zeros(cyc_len);
+        let ess_ae_kw_out = Array::zeros(cyc_len);
+        let er_ae_kw_out = Array::zeros(cyc_len);
+        let ess_desired_kw_4fc_eff = Array::zeros(cyc_len);
+        let ess_kw_if_fc_req = Array::zeros(cyc_len);
+        let cur_max_mc_elec_kw_in = Array::zeros(cyc_len);
+        let fc_kw_gap_fr_eff = Array::zeros(cyc_len);
+        let er_kw_if_fc_req = Array::zeros(cyc_len);
+        let mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len);
+        let mc_kw_if_fc_req = Array::zeros(cyc_len);
+        let fc_forced_on = Array::from_vec(vec![false; cyc_len]);
+        let fc_forced_state = Array::zeros(cyc_len);
+        let mc_mech_kw_4forced_fc = Array::zeros(cyc_len);
+        let fc_time_on = Array::zeros(cyc_len);
+        let prev_fc_time_on = Array::zeros(cyc_len);
+        let mps_ach = Array::zeros(cyc_len);
+        let mph_ach = Array::zeros(cyc_len);
+        let dist_m = Array::zeros(cyc_len);
+        let dist_mi = Array::zeros(cyc_len);
+        let high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]);
+        let reached_buff = Array::from_vec(vec![false; cyc_len]);
+        let max_trac_mps = Array::zeros(cyc_len);
+        let add_kwh = Array::zeros(cyc_len);
+        let dod_cycs = Array::zeros(cyc_len);
+        let ess_perc_dead = Array::zeros(cyc_len);
+        let drag_kw = Array::zeros(cyc_len);
+        let ess_loss_kw = Array::zeros(cyc_len);
+        let accel_kw = Array::zeros(cyc_len);
+        let ascent_kw = Array::zeros(cyc_len);
+        let rr_kw = Array::zeros(cyc_len);
+        let cur_max_roadway_chg_kw = Array::zeros(cyc_len);
+        let trace_miss_iters = Array::zeros(cyc_len);
+        let newton_iters = Array::zeros(cyc_len);
         RustSimDrive{
             hev_sim_count,
             veh,
@@ -446,117 +446,117 @@ impl RustSimDrive{
             sim_params,
             props,
             i, // 1 # initialize step counter for possible use outside sim_drive_walk()
-            cur_max_fs_kw_out, 
-            fc_trans_lim_kw, 
-            fc_fs_lim_kw, 
-            fc_max_kw_in, 
-            cur_max_fc_kw_out, 
-            ess_cap_lim_dischg_kw, 
-            cur_max_ess_kw_out, 
-            cur_max_avail_elec_kw, 
-            ess_cap_lim_chg_kw, 
-            cur_max_ess_chg_kw, 
-            cur_max_elec_kw, 
-            mc_elec_in_lim_kw, 
-            mc_transi_lim_kw, 
-            cur_max_mc_kw_out, 
-            ess_lim_mc_regen_perc_kw, 
-            ess_lim_mc_regen_kw, 
-            cur_max_mech_mc_kw_in, 
-            cur_max_trans_kw_out, 
-            cyc_drag_kw, 
-            cyc_accel_kw, 
-            cyc_ascent_kw, 
-            cyc_trac_kw_req, 
-            cur_max_trac_kw, 
-            spare_trac_kw, 
-            cyc_rr_kw, 
-            cyc_whl_rad_per_sec,   
-            cyc_tire_inertia_kw, 
-            cyc_whl_kw_req,   
-            regen_contrl_lim_kw_perc, 
-            cyc_regen_brake_kw, 
-            cyc_fric_brake_kw, 
-            cyc_trans_kw_out_req, 
-            cyc_met, 
-            trans_kw_out_ach, 
-            trans_kw_in_ach, 
-            cur_soc_target, 
-            min_mc_kw_2help_fc, 
-            mc_mech_kw_out_ach, 
-            mc_elec_kw_in_ach, 
-            aux_in_kw, 
-            roadway_chg_kw_out_ach, 
-            min_ess_kw_2help_fc, 
-            ess_kw_out_ach, 
-            fc_kw_out_ach, 
-            fc_kw_out_ach_pct, 
-            fc_kw_in_ach, 
-            fs_kw_out_ach, 
-            fs_cumu_mj_out_ach, 
-            fs_kwh_out_ach, 
-            ess_cur_kwh, 
-            soc, 
-            regen_buff_soc,   
-            ess_regen_buff_dischg_kw,   
-            max_ess_regen_buff_chg_kw,   
-            ess_accel_buff_chg_kw,   
-            accel_buff_soc,   
-            max_ess_accell_buff_dischg_kw,   
-            ess_accel_regen_dischg_kw, 
-            mc_elec_in_kw_for_max_fc_eff, 
-            elec_kw_req_4ae,   
-            can_pwr_all_elec, 
-            desired_ess_kw_out_for_ae, 
-            ess_ae_kw_out, 
-            er_ae_kw_out, 
-            ess_desired_kw_4fc_eff, 
-            ess_kw_if_fc_req,   
-            cur_max_mc_elec_kw_in, 
-            fc_kw_gap_fr_eff, 
-            er_kw_if_fc_req,   
-            mc_elec_kw_in_if_fc_req,   
-            mc_kw_if_fc_req,   
+            cur_max_fs_kw_out,
+            fc_trans_lim_kw,
+            fc_fs_lim_kw,
+            fc_max_kw_in,
+            cur_max_fc_kw_out,
+            ess_cap_lim_dischg_kw,
+            cur_max_ess_kw_out,
+            cur_max_avail_elec_kw,
+            ess_cap_lim_chg_kw,
+            cur_max_ess_chg_kw,
+            cur_max_elec_kw,
+            mc_elec_in_lim_kw,
+            mc_transi_lim_kw,
+            cur_max_mc_kw_out,
+            ess_lim_mc_regen_perc_kw,
+            ess_lim_mc_regen_kw,
+            cur_max_mech_mc_kw_in,
+            cur_max_trans_kw_out,
+            cyc_drag_kw,
+            cyc_accel_kw,
+            cyc_ascent_kw,
+            cyc_trac_kw_req,
+            cur_max_trac_kw,
+            spare_trac_kw,
+            cyc_rr_kw,
+            cyc_whl_rad_per_sec,
+            cyc_tire_inertia_kw,
+            cyc_whl_kw_req,
+            regen_contrl_lim_kw_perc,
+            cyc_regen_brake_kw,
+            cyc_fric_brake_kw,
+            cyc_trans_kw_out_req,
+            cyc_met,
+            trans_kw_out_ach,
+            trans_kw_in_ach,
+            cur_soc_target,
+            min_mc_kw_2help_fc,
+            mc_mech_kw_out_ach,
+            mc_elec_kw_in_ach,
+            aux_in_kw,
+            roadway_chg_kw_out_ach,
+            min_ess_kw_2help_fc,
+            ess_kw_out_ach,
+            fc_kw_out_ach,
+            fc_kw_out_ach_pct,
+            fc_kw_in_ach,
+            fs_kw_out_ach,
+            fs_cumu_mj_out_ach,
+            fs_kwh_out_ach,
+            ess_cur_kwh,
+            soc,
+            regen_buff_soc,
+            ess_regen_buff_dischg_kw,
+            max_ess_regen_buff_chg_kw,
+            ess_accel_buff_chg_kw,
+            accel_buff_soc,
+            max_ess_accell_buff_dischg_kw,
+            ess_accel_regen_dischg_kw,
+            mc_elec_in_kw_for_max_fc_eff,
+            elec_kw_req_4ae,
+            can_pwr_all_elec,
+            desired_ess_kw_out_for_ae,
+            ess_ae_kw_out,
+            er_ae_kw_out,
+            ess_desired_kw_4fc_eff,
+            ess_kw_if_fc_req,
+            cur_max_mc_elec_kw_in,
+            fc_kw_gap_fr_eff,
+            er_kw_if_fc_req,
+            mc_elec_kw_in_if_fc_req,
+            mc_kw_if_fc_req,
             fc_forced_on,
             fc_forced_state,
-            mc_mech_kw_4forced_fc, 
-            fc_time_on, 
-            prev_fc_time_on, 
-            mps_ach, 
-            mph_ach, 
-            dist_m,   
-            dist_mi,   
-            high_acc_fc_on_tag, 
+            mc_mech_kw_4forced_fc,
+            fc_time_on,
+            prev_fc_time_on,
+            mps_ach,
+            mph_ach,
+            dist_m,
+            dist_mi,
+            high_acc_fc_on_tag,
             reached_buff,
-            max_trac_mps, 
-            add_kwh, 
-            dod_cycs, 
-            ess_perc_dead,   
-            drag_kw, 
-            ess_loss_kw, 
-            accel_kw, 
-            ascent_kw, 
-            rr_kw, 
-            cur_max_roadway_chg_kw, 
-            trace_miss_iters, 
-            newton_iters, 
+            max_trac_mps,
+            add_kwh,
+            dod_cycs,
+            ess_perc_dead,
+            drag_kw,
+            ess_loss_kw,
+            accel_kw,
+            ascent_kw,
+            rr_kw,
+            cur_max_roadway_chg_kw,
+            trace_miss_iters,
+            newton_iters,
         }
     }
 
-    /// Receives second-by-second cycle information, vehicle properties, 
-    /// and an initial state of charge and runs sim_drive_step to perform a 
+    /// Receives second-by-second cycle information, vehicle properties,
+    /// and an initial state of charge and runs sim_drive_step to perform a
     /// backward facing powertrain simulation. Method 'sim_drive' runs this
-    /// iteratively to achieve correct SOC initial and final conditions, as 
+    /// iteratively to achieve correct SOC initial and final conditions, as
     /// needed.
-    /// 
+    ///
     /// Arguments
     /// ------------
     /// initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
-    /// auxInKw: auxInKw override.  Array of same length as cyc.time_s.  
+    /// auxInKw: auxInKw override.  Array of same length as cyc.time_s.
     ///         Default of np.zeros(1) causes veh.aux_kw to be used. If zero is actually
     ///         desired as an override, either set veh.aux_kw = 0 before instantiaton of
     ///         SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
-    ///         the final value to non-zero prevents override mechanism.  
+    ///         the final value to non-zero prevents override mechanism.
     pub fn sim_drive_walk(&mut self, init_soc:f64) {
         // TODO: implement method for `init_arrays`
         // TODO: implement method for aux_in_kw_override
@@ -579,15 +579,15 @@ impl RustSimDrive{
     //    if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
     //         if self.sim_params.missed_trace_correction:
     //             print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
-    //         print("Warning: large time steps affect accuracy significantly.") 
+    //         print("Warning: large time steps affect accuracy significantly.")
     //         print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
     //         print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
     }
-    
+
     /// Step through 1 time step.
     fn sim_drive_step(&mut self) {
         self.solve_step(self.i);
-        
+
         // TODO: implement and uncomment
         // if self.sim_params.missed_trace_correction && (self.cyc0.dist_m.slice(s![0..self.i]).sum() > 0){
         //     self.set_time_dilation(self.i)
@@ -599,7 +599,7 @@ impl RustSimDrive{
 
         self.i += 1  // increment time step counter
     }
-    
+
     /// Perform all the calculations to solve 1 time step.
     fn solve_step(&mut self, i:usize) {
         self.set_misc_calcs(i);
@@ -608,9 +608,9 @@ impl RustSimDrive{
         self.set_ach_speed(i);
         self.set_hybrid_cont_calcs(i);
         self.set_fc_forced_state(i);
+        self.set_hybrid_cont_decisions(i);
         // TODO: uncomment these!
-        // self.set_hybrid_cont_decisions(i)
-        // self.set_fc_power(i)
+        // self.set_fc_power(i);
     }
 
 
@@ -621,7 +621,7 @@ impl RustSimDrive{
     fn set_misc_calcs(&mut self, i:usize) {
         // if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
         if self.aux_in_kw.slice(s![i..self.len()-1]).iter().all(|&x| x == 0.0) {
-            // if all elements after i-1 are zero, trigger default behavior; otherwise, use override value 
+            // if all elements after i-1 are zero, trigger default behavior; otherwise, use override value
             if self.veh.no_elec_aux{
                 self.aux_in_kw[i] = self.veh.aux_kw / self.veh.alt_eff;
             } else {
@@ -653,7 +653,7 @@ impl RustSimDrive{
         // max fuel storage power output
         self.cur_max_fs_kw_out[i] = min(
             self.veh.max_fuel_stor_kw,
-            self.fs_kw_out_ach[i-1] + 
+            self.fs_kw_out_ach[i-1] +
                 self.veh.max_fuel_stor_kw / self.veh.fuel_stor_secs_to_peak_pwr * self.cyc.dt_s()[i]);
         // maximum fuel storage power output rate of change
         self.fc_trans_lim_kw[i] = self.fc_kw_out_ach[i-1] + (
@@ -663,7 +663,7 @@ impl RustSimDrive{
         self.fc_max_kw_in[i] = min(self.cur_max_fs_kw_out[i], self.veh.max_fuel_stor_kw);
         self.fc_fs_lim_kw[i] = arrmax(&self.veh.input_kw_out_array);
         self.cur_max_fc_kw_out[i] = min(
-            self.veh.max_fuel_conv_kw, 
+            self.veh.max_fuel_conv_kw,
             min(self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i]));
 
         if self.veh.max_ess_kwh == 0.0 || self.soc[i-1] < self.veh.min_soc {
@@ -679,8 +679,8 @@ impl RustSimDrive{
             self.ess_cap_lim_chg_kw[i] = 0.0;
         } else {
             self.ess_cap_lim_chg_kw[i] = max(
-                (self.veh.max_soc - self.soc[i-1]) * self.veh.max_ess_kwh / self.veh.ess_round_trip_eff.sqrt() / 
-                (self.cyc.dt_s()[i] / 3.6e3), 
+                (self.veh.max_soc - self.soc[i-1]) * self.veh.max_ess_kwh / self.veh.ess_round_trip_eff.sqrt() /
+                (self.cyc.dt_s()[i] / 3.6e3),
                 0.0);
         }
 
@@ -700,14 +700,14 @@ impl RustSimDrive{
             // limit power going into e-machine controller to
             if self.cur_max_avail_elec_kw[i] == arrmax(&self.veh.mc_kw_in_array) {
                 self.mc_elec_in_lim_kw[i] = min(
-                    self.veh.mc_kw_out_array[self.veh.mc_kw_out_array.len() - 1], 
+                    self.veh.mc_kw_out_array[self.veh.mc_kw_out_array.len() - 1],
                     self.veh.max_motor_kw);
             }
             else {
                 self.mc_elec_in_lim_kw[i] = min(
                     self.veh.mc_kw_out_array[np_argmax(
                         &self.veh.mc_kw_in_array.map(|x| *x > min(
-                            arrmax(&self.veh.mc_kw_in_array) - 0.01, 
+                            arrmax(&self.veh.mc_kw_in_array) - 0.01,
                             self.cur_max_avail_elec_kw[i])
                         )
                     ).unwrap_or(0) - 1 as usize],
@@ -722,7 +722,7 @@ impl RustSimDrive{
 
         self.cur_max_mc_kw_out[i] = max(
             min(min(
-                self.mc_elec_in_lim_kw[i], 
+                self.mc_elec_in_lim_kw[i],
                 self.mc_transi_lim_kw[i]),
                 if self.veh.stop_start {0.0} else {1.0} * self.veh.max_motor_kw),
             -self.veh.max_motor_kw
@@ -732,14 +732,14 @@ impl RustSimDrive{
             self.cur_max_mc_elec_kw_in[i] = 0.0;
         } else {
             if self.cur_max_mc_kw_out[i] == self.veh.max_motor_kw {
-                self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / 
+                self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] /
                     self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1];
             } else {
                 self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[cmp::max(
-                    1, 
+                    1,
                     np_argmax(
                         &self.veh.mc_kw_out_array.map(|x| *x > min(
-                            self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))).unwrap_or(0) - 1 
+                            self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i]))).unwrap_or(0) - 1
                         )
                     ]
             };
@@ -761,12 +761,12 @@ impl RustSimDrive{
             }
             else {
                 self.ess_lim_mc_regen_kw[i] = min(
-                    self.veh.max_motor_kw, 
+                    self.veh.max_motor_kw,
                     self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[
-                        cmp::max(1, 
+                        cmp::max(1,
                             np_argmax(
                                 &self.veh.mc_kw_out_array.map(|x| *x > min(
-                                    self.veh.max_motor_kw - 0.01, 
+                                    self.veh.max_motor_kw - 0.01,
                                     self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
                                 ))
                             ).unwrap_or(0) - 1
@@ -777,20 +777,20 @@ impl RustSimDrive{
         }
         self.cur_max_mech_mc_kw_in[i] = min(
             self.ess_lim_mc_regen_kw[i], self.veh.max_motor_kw);
-        
+
         self.cur_max_trac_kw[i] = self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac * self.veh.veh_kg * self.props.a_grav_mps2
             / (1.0 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1e3 * self.max_trac_mps[i];
 
         if self.veh.fc_eff_type == H2FC {
             if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
                 self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff, 
+                    (self.cur_max_mc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff,
                     self.cur_max_trac_kw[i] / self.veh.trans_eff
                 );
-            } else 
+            } else
                 {
                 self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff, 
+                    (self.cur_max_mc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff,
                     self.cur_max_trac_kw[i] / self.veh.trans_eff
                 );
             }
@@ -798,13 +798,13 @@ impl RustSimDrive{
         else {
             if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
                 self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff, 
+                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - self.aux_in_kw[i]) * self.veh.trans_eff,
                     self.cur_max_trac_kw[i] / self.veh.trans_eff
                 );
             }
             else {
                 self.cur_max_trans_kw_out[i] = min(
-                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff, 
+                    (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] - min(self.cur_max_elec_kw[i], 0.0)) * self.veh.trans_eff,
                     self.cur_max_trac_kw[i] / self.veh.trans_eff
                 );
             }
@@ -812,7 +812,7 @@ impl RustSimDrive{
     }
 
     /// Calculate power requirements to meet cycle and determine if
-    /// cycle can be met.  
+    /// cycle can be met.
     /// Arguments
     /// ------------
     /// i: index of time step
@@ -826,24 +826,24 @@ impl RustSimDrive{
         self.cyc_drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
             (self.mps_ach[i-1] + mps_ach) / 2.0).powf(3.0) / 1e3;
         self.cyc_accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s()[i]) * (mps_ach.powf(2.0) - self.mps_ach[i-1].powf(2.0)) / 1e3;
-        self.cyc_ascent_kw[i] = self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin() * 
+        self.cyc_ascent_kw[i] = self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin() *
             self.veh.veh_kg * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1e3;
         self.cyc_trac_kw_req[i] = self.cyc_drag_kw[i] + self.cyc_accel_kw[i] + self.cyc_ascent_kw[i];
         self.spare_trac_kw[i] = self.cur_max_trac_kw[i] - self.cyc_trac_kw_req[i];
-        self.cyc_rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef * 
+        self.cyc_rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef *
             self.cyc.grade[i].atan().cos() * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1e3;
         self.cyc_whl_rad_per_sec[i] = mps_ach / self.veh.wheel_radius_m;
         self.cyc_tire_inertia_kw[i] = (
             0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * self.cyc_whl_rad_per_sec[i].powf(2.0) / self.cyc.dt_s()[i] -
-            0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * (self.mps_ach[i-1] / self.veh.wheel_radius_m).powf(2.0) / 
+            0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * (self.mps_ach[i-1] / self.veh.wheel_radius_m).powf(2.0) /
             self.cyc.dt_s()[i]) / 1e3;
 
         self.cyc_whl_kw_req[i] = self.cyc_trac_kw_req[i] + self.cyc_rr_kw[i] + self.cyc_tire_inertia_kw[i];
         self.regen_contrl_lim_kw_perc[i] = self.veh.max_regen / (1.0 + self.veh.regen_a * (-self.veh.regen_b * (
             (self.cyc.mph()[i] + self.mps_ach[i-1] * params::MPH_PER_MPS) / 2.0 + 1.0)).exp());
         self.cyc_regen_brake_kw[i] = max(min(
-                self.cur_max_mech_mc_kw_in[i] * self.veh.trans_eff, 
-                self.regen_contrl_lim_kw_perc[i] * -self.cyc_whl_kw_req[i]), 
+                self.cur_max_mech_mc_kw_in[i] * self.veh.trans_eff,
+                self.regen_contrl_lim_kw_perc[i] * -self.cyc_whl_kw_req[i]),
             0.0
         );
         self.cyc_fric_brake_kw[i] = -min(self.cyc_regen_brake_kw[i] + self.cyc_whl_kw_req[i], 0.0);
@@ -892,26 +892,26 @@ impl RustSimDrive{
 
         //Cycle is not met
         else {
-            let drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * 
+            let drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 *
                 self.veh.drag_coef * self.veh.frontal_area_m2;
             let accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s()[i];
-            let drag2 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * 
+            let drag2 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 *
                 self.veh.drag_coef * self.veh.frontal_area_m2 * self.mps_ach[i-1];
-            let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 * 
+            let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 *
                 self.veh.num_wheels / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
-            let drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * 
+            let drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef *
                 self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(2.0);
-            let roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef 
+            let roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef
                 * self.cyc.grade[i].atan().cos();
             let ascent1 = 0.5 * self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin() * self.veh.veh_kg;
             let accel0 = -0.5 * self.veh.veh_kg * self.mps_ach[i-1].powf(2.0) / self.cyc.dt_s()[i];
-            let drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * 
+            let drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef *
                 self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(3.0);
-            let roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * 
+            let roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 *
                 self.veh.wheel_rr_coef * self.cyc.grade[i].atan().cos() * self.mps_ach[i-1];
             let ascent0 = 0.5 * self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin()
                 * self.veh.veh_kg * self.mps_ach[i-1];
-            let wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * 
+            let wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels *
                 self.mps_ach[i-1].powf(2.0) / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
 
             let total3 = drag3 / 1e3;
@@ -954,7 +954,7 @@ impl RustSimDrive{
                 converged = ((xs[xs.len()-1] - xs[xs.len()-2]) / xs[xs.len()-2]).abs() < xtol;
                 iterate += 1;
             }
-            
+
             self.newton_iters[i] = iterate;
 
             let _ys = Array::from_vec(ys).map(|x| x.abs());
@@ -966,9 +966,9 @@ impl RustSimDrive{
         self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
         self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s()[i];
         self.dist_mi[i] = self.dist_m[i] * 1.0 / params::M_PER_MI;
-    }  
+    }
 
-    /// Hybrid control calculations.  
+    /// Hybrid control calculations.
     /// Arguments
     /// ------------
     /// i: index of time step
@@ -983,9 +983,9 @@ impl RustSimDrive{
         }
         else {
             self.regen_buff_soc[i] = max(
-                (self.veh.max_ess_kwh * self.veh.max_soc - 
-                    0.5 * self.veh.veh_kg * (self.cyc.mps[i].powf(2.0)) * (1.0 / 1_000.0) * (1.0 / 3_600.0) * 
-                    self.veh.mc_peak_eff() * self.veh.max_regen) / self.veh.max_ess_kwh, 
+                (self.veh.max_ess_kwh * self.veh.max_soc -
+                    0.5 * self.veh.veh_kg * (self.cyc.mps[i].powf(2.0)) * (1.0 / 1_000.0) * (1.0 / 3_600.0) *
+                    self.veh.mc_peak_eff() * self.veh.max_regen) / self.veh.max_ess_kwh,
                 self.veh.min_soc
             );
 
@@ -993,8 +993,8 @@ impl RustSimDrive{
                 0.0, (self.soc[i-1] - self.regen_buff_soc[i]) * self.veh.max_ess_kwh * 3_600.0 / self.cyc.dt_s()[i]));
 
             self.max_ess_regen_buff_chg_kw[i] = min(max(
-                    0.0, 
-                    (self.regen_buff_soc[i] - self.soc[i-1]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s()[i]), 
+                    0.0,
+                    (self.regen_buff_soc[i] - self.soc[i-1]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s()[i]),
                 self.cur_max_ess_chg_kw[i]
             );
         }
@@ -1004,13 +1004,13 @@ impl RustSimDrive{
         else {
             self.accel_buff_soc[i] = min(
                 max(
-                    ((self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powf(2.0) - self.cyc.mps[i].powf(2.0)) / 
+                    ((self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powf(2.0) - self.cyc.mps[i].powf(2.0)) /
                     (self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powf(2.0) * min(
-                        self.veh.max_accel_buffer_perc_of_useable_soc * (self.veh.max_soc - self.veh.min_soc), 
+                        self.veh.max_accel_buffer_perc_of_useable_soc * (self.veh.max_soc - self.veh.min_soc),
                         self.veh.max_regen_kwh() / self.veh.max_ess_kwh
-                    ) * self.veh.max_ess_kwh / self.veh.max_ess_kwh + self.veh.min_soc, 
+                    ) * self.veh.max_ess_kwh / self.veh.max_ess_kwh + self.veh.min_soc,
                     self.veh.min_soc
-                ), 
+                ),
                 self.veh.max_soc
                 );
 
@@ -1018,24 +1018,24 @@ impl RustSimDrive{
                 0.0, (self.accel_buff_soc[i] - self.soc[i-1]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s()[i]);
             self.max_ess_accell_buff_dischg_kw[i] = min(
                 max(
-                    0.0, 
-                    (self.soc[i-1] - self.accel_buff_soc[i]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s()[i]), 
+                    0.0,
+                    (self.soc[i-1] - self.accel_buff_soc[i]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s()[i]),
                 self.cur_max_ess_kw_out[i]
             );
         }
         if self.regen_buff_soc[i] < self.accel_buff_soc[i] {
             self.ess_accel_regen_dischg_kw[i] = max(
                 min(
-                    (self.soc[i-1] - (self.regen_buff_soc[i] + self.accel_buff_soc[i]) / 2.0) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s()[i], 
+                    (self.soc[i-1] - (self.regen_buff_soc[i] + self.accel_buff_soc[i]) / 2.0) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s()[i],
                     self.cur_max_ess_kw_out[i]
-                ), 
+                ),
                 -self.cur_max_ess_chg_kw[i]
             );
         } else if self.soc[i-1] > self.regen_buff_soc[i] {
             self.ess_accel_regen_dischg_kw[i] = max(
                 min(
-                    self.ess_regen_buff_dischg_kw[i], 
-                    self.cur_max_ess_kw_out[i]), 
+                    self.ess_regen_buff_dischg_kw[i],
+                    self.cur_max_ess_kw_out[i]),
                 -self.cur_max_ess_chg_kw[i]
             );
         } else if self.soc[i-1] < self.accel_buff_soc[i] {
@@ -1055,10 +1055,10 @@ impl RustSimDrive{
                 self.mc_elec_in_kw_for_max_fc_eff[i] = -self.fc_kw_gap_fr_eff[i] / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len()-1];
             }
             else {
-                self.mc_elec_in_kw_for_max_fc_eff[i] = -self.fc_kw_gap_fr_eff[i] / 
+                self.mc_elec_in_kw_for_max_fc_eff[i] = -self.fc_kw_gap_fr_eff[i] /
                     self.veh.mc_full_eff_array[cmp::max(
-                        1, 
-                        np_argmax(&self.veh.mc_kw_out_array.map(|x| *x > 
+                        1,
+                        np_argmax(&self.veh.mc_kw_out_array.map(|x| *x >
                             min(self.veh.max_motor_kw - 0.01, self.fc_kw_gap_fr_eff[i]))).unwrap_or(0) - 1)];
             }
         }
@@ -1070,7 +1070,7 @@ impl RustSimDrive{
             else {
                 self.mc_elec_in_kw_for_max_fc_eff[i] = self.veh.mc_kw_in_array[
                     np_argmax(
-                        &self.veh.mc_kw_out_array.map(|x| *x > 
+                        &self.veh.mc_kw_out_array.map(|x| *x >
                             min(self.veh.max_motor_kw - 0.01, self.fc_kw_gap_fr_eff[i]))).unwrap_or(0) - 1];
             }
         }
@@ -1083,10 +1083,10 @@ impl RustSimDrive{
                     self.veh.mc_full_eff_array.len()-1] + self.aux_in_kw[i];
             }
             else {
-                self.elec_kw_req_4ae[i] = self.trans_kw_in_ach[i] / 
+                self.elec_kw_req_4ae[i] = self.trans_kw_in_ach[i] /
                     self.veh.mc_full_eff_array[cmp::max(
-                        1, 
-                        np_argmax(&self.veh.mc_kw_out_array.map(|x| *x > 
+                        1,
+                        np_argmax(&self.veh.mc_kw_out_array.map(|x| *x >
                             min(self.veh.max_motor_kw - 0.01, self.trans_kw_in_ach[i]))).unwrap_or(0) - 1)] + self.aux_in_kw[i]
                 ;
             }
@@ -1128,15 +1128,15 @@ impl RustSimDrive{
                 self.desired_ess_kw_out_for_ae[i] = self.trans_kw_in_ach[i] + self.aux_in_kw[i] - self.cur_max_roadway_chg_kw[i];
             }
         }
-        else {   
+        else {
             self.desired_ess_kw_out_for_ae[i] = 0.0;
         }
 
         if self.can_pwr_all_elec[i] {
             self.ess_ae_kw_out[i] = max(
-                -self.cur_max_ess_chg_kw[i], 
-                max(-self.max_ess_regen_buff_chg_kw[i], 
-                    max(min(0.0, self.cur_max_roadway_chg_kw[i] - self.trans_kw_in_ach[i] + self.aux_in_kw[i]), 
+                -self.cur_max_ess_chg_kw[i],
+                max(-self.max_ess_regen_buff_chg_kw[i],
+                    max(min(0.0, self.cur_max_roadway_chg_kw[i] - self.trans_kw_in_ach[i] + self.aux_in_kw[i]),
                         min(self.cur_max_ess_kw_out[i], self.desired_ess_kw_out_for_ae[i])))
             );
         }
@@ -1145,14 +1145,14 @@ impl RustSimDrive{
         }
 
         self.er_ae_kw_out[i] = min(
-            max(0.0, self.trans_kw_in_ach[i] + self.aux_in_kw[i] - self.ess_ae_kw_out[i]), 
+            max(0.0, self.trans_kw_in_ach[i] + self.aux_in_kw[i] - self.ess_ae_kw_out[i]),
             self.cur_max_roadway_chg_kw[i]);
     }
 
     /// Calculate control variables related to engine on/off state
-    /// Arguments       
+    /// Arguments
     /// ------------
-    /// i: index of time step    
+    /// i: index of time step
     fn set_fc_forced_state(&mut self, i:usize) {
         // force fuel converter on if it was on in the previous time step, but only if fc
         // has not been on longer than minFcTimeOn
@@ -1183,235 +1183,252 @@ impl RustSimDrive{
         // Ok(())
     }
 
-    // // TODO: start here
-    // def set_hybrid_cont_decisions(self, i):
-    //     """
-    //     Hybrid control decisions.
-    //     Arguments
-    //     ------------
-    //     i: index of time step
-    //     """
 
-    //     if (-self.mc_elec_in_kw_for_max_fc_eff[i] - self.cur_max_roadway_chg_kw[i]) > 0:
-    //         self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i] -
-    //                                         self.cur_max_roadway_chg_kw[i]) * self.veh.ess_dischg_to_fc_max_eff_perc
+    /// Hybrid control decisions.
+    /// Arguments
+    /// ------------
+    /// i: index of time step
+    fn set_hybrid_cont_decisions(&mut self, i:usize) {
+        if (-self.mc_elec_in_kw_for_max_fc_eff[i] - self.cur_max_roadway_chg_kw[i]) > 0.0 {
+            self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i] -
+                self.cur_max_roadway_chg_kw[i]) * self.veh.ess_dischg_to_fc_max_eff_perc;
+        } else {
+            self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i] -
+                self.cur_max_roadway_chg_kw[i]) * self.veh.ess_chg_to_fc_max_eff_perc;
+        }
 
-    //     else:
-    //         self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i] - \
-    //                                         self.cur_max_roadway_chg_kw[i]) * self.veh.ess_chg_to_fc_max_eff_perc
+        if self.accel_buff_soc[i] > self.regen_buff_soc[i] {
+            self.ess_kw_if_fc_req[i] = min(
+                self.cur_max_ess_kw_out[i],
+                min(
+                    self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
+                    min(self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+                        max(-self.cur_max_ess_chg_kw[i], self.ess_accel_regen_dischg_kw[i])))
+                );
+        } else if self.ess_regen_buff_dischg_kw[i] > 0.0 {
+            self.ess_kw_if_fc_req[i] = min(
+                self.cur_max_ess_kw_out[i],
+                min(self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
+                    min(self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+                        max(-self.cur_max_ess_chg_kw[i],
+                            min(self.ess_accel_regen_dischg_kw[i],
+                                min(self.mc_elec_in_lim_kw[i] + self.aux_in_kw[i],
+                                    max(self.ess_regen_buff_dischg_kw[i], self.ess_desired_kw_4fc_eff[i]))
+                            )
+                        )
+                    )
+                )
+            );
+        } else if self.ess_accel_buff_chg_kw[i] > 0.0 {
+            self.ess_kw_if_fc_req[i] = min(
+                self.cur_max_ess_kw_out[i],
+                min(self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
+                    min(self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+                        max(-self.cur_max_ess_chg_kw[i],
+                            max(-self.max_ess_regen_buff_chg_kw[i],
+                                min(-self.ess_accel_buff_chg_kw[i], self.ess_desired_kw_4fc_eff[i])
+                            )
+                        )
+                    )
+                )
+            );
+        } else if self.ess_desired_kw_4fc_eff[i] > 0.0 {
+            self.ess_kw_if_fc_req[i] = min(
+                self.cur_max_ess_kw_out[i],
+                min(self.veh.mc_max_elec_in_kw + self.aux_in_kw[i],
+                    min(self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+                        max(-self.cur_max_ess_chg_kw[i],
+                            min(self.ess_desired_kw_4fc_eff[i], self.max_ess_accell_buff_dischg_kw[i])
+                        )
+                    )
+                )
+            );
+        } else {
+            self.ess_kw_if_fc_req[i] = min(
+                self.cur_max_ess_kw_out[i],
+                min(self.veh.mc_max_elec_in_kw + self.aux_in_kw[i],
+                    min(self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+                        max(-self.cur_max_ess_chg_kw[i],
+                            max(self.ess_desired_kw_4fc_eff[i], -self.max_ess_regen_buff_chg_kw[i])
+                        )
+                    )
+                )
+            );
+        }
 
-    //     if self.accel_buff_soc[i] > self.regen_buff_soc[i]:
-    //         self.ess_kw_if_fc_req[i] = min(
-    //             self.cur_max_ess_kw_out[i], 
-    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
-    //             max(-self.cur_max_ess_chg_kw[i], self.ess_accel_regen_dischg_kw[i]))
+        self.er_kw_if_fc_req[i] = max(0.0,
+            min(
+                self.cur_max_roadway_chg_kw[i], 
+                min(self.cur_max_mech_mc_kw_in[i],
+                    self.ess_kw_if_fc_req[i] - self.mc_elec_in_lim_kw[i] + self.aux_in_kw[i])
+            )
+        );
 
-    //     elif self.ess_regen_buff_dischg_kw[i] > 0:
-    //         self.ess_kw_if_fc_req[i] = min(
-    //             self.cur_max_ess_kw_out[i], 
-    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
-    //             max(-self.cur_max_ess_chg_kw[i], 
-    //                 min(self.ess_accel_regen_dischg_kw[i], 
-    //                     self.mc_elec_in_lim_kw[i] + self.aux_in_kw[i], 
-    //                     max(self.ess_regen_buff_dischg_kw[i], self.ess_desired_kw_4fc_eff[i])
-    //                 )
-    //             )
-    //         )
+        self.mc_elec_kw_in_if_fc_req[i] = self.ess_kw_if_fc_req[i] + self.er_kw_if_fc_req[i] - self.aux_in_kw[i];
 
-    //     elif self.ess_accel_buff_chg_kw[i] > 0:
-    //         self.ess_kw_if_fc_req[i] = min(
-    //             self.cur_max_ess_kw_out[i], 
-    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
-    //             max(-self.cur_max_ess_chg_kw[i], 
-    //                 max(-1 * self.max_ess_regen_buff_chg_kw[i], 
-    //                     min(-self.ess_accel_buff_chg_kw[i], self.ess_desired_kw_4fc_eff[i])
-    //                 )
-    //             )
-    //         )
+        if self.veh.no_elec_sys {
+            self.mc_kw_if_fc_req[i] = 0.0;
+        } else if self.mc_elec_kw_in_if_fc_req[i] == 0.0 {
+            self.mc_kw_if_fc_req[i] = 0.0;
+        }
 
-    //     elif self.ess_desired_kw_4fc_eff[i] > 0:
-    //         self.ess_kw_if_fc_req[i] = min(
-    //             self.cur_max_ess_kw_out[i], 
-    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
-    //             self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
-    //             max(-self.cur_max_ess_chg_kw[i], 
-    //                 min(self.ess_desired_kw_4fc_eff[i], self.max_ess_accell_buff_dischg_kw[i])
-    //             )
-    //         )
+        else if self.mc_elec_kw_in_if_fc_req[i] > 0.0 {
+            if self.mc_elec_kw_in_if_fc_req[i] == arrmax(&self.veh.mc_kw_in_array){
+                self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len()-1];
+            }
+            else {
+                self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array[
+                    cmp::max(1, np_argmax(
+                            &self.veh.mc_kw_in_array.map(|x| *x > min(arrmax(&self.veh.mc_kw_in_array) - 0.01, self.mc_elec_kw_in_if_fc_req[i]))
+                        ).unwrap_or(0) - 1
+                    )
+                ]
+            }
+        }
 
-    //     else:
-    //         self.ess_kw_if_fc_req[i] = min(
-    //             self.cur_max_ess_kw_out[i], 
-    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
-    //             self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
-    //             max(-self.cur_max_ess_chg_kw[i], 
-    //                 max(self.ess_desired_kw_4fc_eff[i], -self.max_ess_regen_buff_chg_kw[i])
-    //             )
-    //         )
+        else {
+            if -self.mc_elec_kw_in_if_fc_req[i] == arrmax(&self.veh.mc_kw_in_array) {
+                self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len()-1];
+            }
+            else {
+                self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] / self.veh.mc_full_eff_array[
+                    cmp::max(1, np_argmax(
+                        &self.veh.mc_kw_in_array.map(|x| *x > min(
+                            arrmax(&self.veh.mc_kw_in_array) - 0.01, 
+                            -self.mc_elec_kw_in_if_fc_req[i]))).unwrap_or(0) - 1
+                    )
+                ];
+            }
+        }
 
-    //     self.er_kw_if_fc_req[i] = max(0, 
-    //         min(
-    //             self.cur_max_roadway_chg_kw[i], self.cur_max_mech_mc_kw_in[i],
-    //             self.ess_kw_if_fc_req[i] - self.mc_elec_in_lim_kw[i] + self.aux_in_kw[i]
-    //         )
-    //     )
+        if self.veh.max_motor_kw == 0.0 {
+            self.mc_mech_kw_out_ach[i] = 0.0;
+        } else if self.fc_forced_on[i] && self.can_pwr_all_elec[i] && (self.veh.veh_pt_type == HEV || self.veh.veh_pt_type == PHEV) && (self.veh.fc_eff_type != H2FC) {
+            self.mc_mech_kw_out_ach[i] = self.mc_mech_kw_4forced_fc[i];
+        } else if self.trans_kw_in_ach[i] <= 0.0 {
+            if self.veh.fc_eff_type !=H2FC && self.veh.max_fuel_conv_kw > 0.0 {
+                if self.can_pwr_all_elec[i] {
+                    self.mc_mech_kw_out_ach[i] = - min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]);
+                } else {
+                    self.mc_mech_kw_out_ach[i] = min(
+                        -min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]),
+                        max(-self.cur_max_fc_kw_out[i], self.mc_kw_if_fc_req[i])
+                    );
+                } 
+            } else {
+                    self.mc_mech_kw_out_ach[i] = min(
+                        -min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]),
+                        -self.trans_kw_in_ach[i]
+                    );
+            }
+        } else if self.can_pwr_all_elec[i] {
+            self.mc_mech_kw_out_ach[i] = self.trans_kw_in_ach[i]
+        }
 
-    //     self.mc_elec_kw_in_if_fc_req[i] = self.ess_kw_if_fc_req[i] + self.er_kw_if_fc_req[i] - self.aux_in_kw[i]
+        else {
+            self.mc_mech_kw_out_ach[i] = max(self.min_mc_kw_2help_fc[i], self.mc_kw_if_fc_req[i])
+        }
 
-    //     if self.veh.no_elec_sys:
-    //         self.mc_kw_if_fc_req[i] = 0
+        if self.mc_mech_kw_out_ach[i] == 0.0{
+            self.mc_elec_kw_in_ach[i] = 0.0;
+        }
 
-    //     elif self.mc_elec_kw_in_if_fc_req[i] == 0:
-    //         self.mc_kw_if_fc_req[i] = 0
+        else if self.mc_mech_kw_out_ach[i] < 0.0 {
+            if -self.mc_mech_kw_out_ach[i] == arrmax(&self.veh.mc_kw_in_array){
+                self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] * self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len()-1]
+            } else {
+                self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] * self.veh.mc_full_eff_array[
+                    cmp::max(1, np_argmax(&self.veh.mc_kw_in_array.map(|x| *x  > min(
+                        arrmax(&self.veh.mc_kw_in_array) - 0.01,
+                        -self.mc_mech_kw_out_ach[i]))).unwrap_or(0) - 1
+                    )
+                ];
+            }
+        }
+        else {
+            if self.veh.max_motor_kw == self.mc_mech_kw_out_ach[i] {
+                self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len()-1]
+            } else {
+                self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array[
+                    cmp::max(1, np_argmax(&self.veh.mc_kw_out_array.map(|x| *x > min(
+                        self.veh.max_motor_kw - 0.01,
+                        self.mc_mech_kw_out_ach[i]))).unwrap_or(0) - 1
+                    )
+                ];
+            }
+        }
 
-    //     elif self.mc_elec_kw_in_if_fc_req[i] > 0:
+        if self.cur_max_roadway_chg_kw[i] == 0.0 {
+            self.roadway_chg_kw_out_ach[i] = 0.0 
+        } else if self.veh.fc_eff_type == H2FC {
+            self.roadway_chg_kw_out_ach[i] = max(
+                0.0,
+                max(self.mc_elec_kw_in_ach[i],
+                    max(self.max_ess_regen_buff_chg_kw[i],
+                        max(self.ess_regen_buff_dischg_kw[i],
+                            self.cur_max_roadway_chg_kw[i]
+                        )
+                    )
+                )
+            );
+        } else if self.can_pwr_all_elec[i] {
+            self.roadway_chg_kw_out_ach[i] = self.er_ae_kw_out[i];
+        } else {
+            self.roadway_chg_kw_out_ach[i] = self.er_kw_if_fc_req[i];
+        }
 
-    //         if self.mc_elec_kw_in_if_fc_req[i] == max(self.veh.mc_kw_in_array):
-    //             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array[-1]
-    //         else:
-    //             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array[
-    //                 max(1, np.argmax(
-    //                         self.veh.mc_kw_in_array > min(max(self.veh.mc_kw_in_array) - 0.01, self.mc_elec_kw_in_if_fc_req[i])
-    //                     ) - 1
-    //                 )
-    //             ]
+        self.min_ess_kw_2help_fc[i] = self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - 
+            self.cur_max_fc_kw_out[i] - self.roadway_chg_kw_out_ach[i];
 
-    //     else:
-    //         if self.mc_elec_kw_in_if_fc_req[i] * -1 == max(self.veh.mc_kw_in_array):
-    //             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] / self.veh.mc_full_eff_array[-1]
-    //         else:
-    //             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] / (self.veh.mc_full_eff_array[
-    //                     max(1, np.argmax(
-    //                         self.veh.mc_kw_in_array > min(max(self.veh.mc_kw_in_array) - 0.01, self.mc_elec_kw_in_if_fc_req[i] * -1)) - 1
-    //                     )
-    //                 ]
-    //             )
+        if self.veh.max_ess_kw == 0.0 || self.veh.max_ess_kwh == 0.0 {
+            self.ess_kw_out_ach[i] = 0.0;
+        } else if self.veh.fc_eff_type == H2FC {
+            if self.trans_kw_out_ach[i] >= 0.0 {
+                self.ess_kw_out_ach[i] = min(
+                    self.cur_max_ess_kw_out[i],
+                    min(self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i],
+                        max(
+                            self.min_ess_kw_2help_fc[i],
+                            max(self.ess_desired_kw_4fc_eff[i],
+                                self.ess_accel_regen_dischg_kw[i])))
+                );
+            } else {
+                self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] + 
+                    self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i];
+            }
+        } else if self.high_acc_fc_on_tag[i] || self.veh.no_elec_aux{
+            self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] - self.roadway_chg_kw_out_ach[i];
+        }
 
-    //     if self.veh.max_motor_kw == 0:
-    //         self.mc_mech_kw_out_ach[i] = 0
+        else {
+            self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i];
+        }
 
-    //     elif self.fc_forced_on[i] and self.can_pwr_all_elec[i] and (self.veh.veh_pt_type == HEV or 
-    //         self.veh.veh_pt_type == PHEV) and (self.veh.fc_eff_type != H2FC):
-    //         self.mc_mech_kw_out_ach[i] = self.mc_mech_kw_4forced_fc[i]
+        if self.veh.no_elec_sys{
+            self.ess_cur_kwh[i] = 0.0
+        } else if self.ess_kw_out_ach[i] < 0.0 {
+            self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s()[i] /
+                3.6e3 * self.veh.ess_round_trip_eff.sqrt();
+        } else {
+            self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s()[i] / 
+                3.6e3 * self.veh.ess_round_trip_eff.sqrt();
+        }
 
-    //     elif self.trans_kw_in_ach[i] <= 0:
+        if self.veh.max_ess_kwh == 0.0 {
+            self.soc[i] = 0.0;
+        } else {
+            self.soc[i] = self.ess_cur_kwh[i] / self.veh.max_ess_kwh;
+        } 
 
-    //         if self.veh.fc_eff_type !=H2FC and self.veh.max_fuel_conv_kw > 0:
-    //             if self.can_pwr_all_elec[i] == 1:
-    //                 self.mc_mech_kw_out_ach[i] = - \
-    //                     min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i])
-    //             else:
-    //                 self.mc_mech_kw_out_ach[i] = min(
-    //                     -min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]),
-    //                     max(-self.cur_max_fc_kw_out[i], self.mc_kw_if_fc_req[i])
-    //                 )
-    //         else:
-    //             self.mc_mech_kw_out_ach[i] = min(
-    //                 -min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]), 
-    //                 -self.trans_kw_in_ach[i]
-    //             )
-
-    //     elif self.can_pwr_all_elec[i] == 1:
-    //         self.mc_mech_kw_out_ach[i] = self.trans_kw_in_ach[i]
-
-    //     else:
-    //         self.mc_mech_kw_out_ach[i] = max(self.min_mc_kw_2help_fc[i], self.mc_kw_if_fc_req[i])
-
-    //     if self.mc_mech_kw_out_ach[i] == 0:
-    //         self.mc_elec_kw_in_ach[i] = 0.0
-
-    //     elif self.mc_mech_kw_out_ach[i] < 0:
-
-    //         if self.mc_mech_kw_out_ach[i] * -1 == max(self.veh.mc_kw_in_array):
-    //             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] * self.veh.mc_full_eff_array[-1]
-    //         else:
-    //             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] * self.veh.mc_full_eff_array[
-    //                 max(1, np.argmax(self.veh.mc_kw_in_array > min(
-    //                     max(self.veh.mc_kw_in_array) - 0.01, 
-    //                     self.mc_mech_kw_out_ach[i] * -1)) - 1
-    //                 )
-    //             ]
-
-    //     else:
-    //         if self.veh.max_motor_kw == self.mc_mech_kw_out_ach[i]:
-    //             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array[-1]
-    //         else:
-    //             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array[
-    //                 max(1, np.argmax(self.veh.mc_kw_out_array > min(
-    //                     self.veh.max_motor_kw - 0.01, 
-    //                     self.mc_mech_kw_out_ach[i])) - 1
-    //                 )
-    //             ]
-
-    //     if self.cur_max_roadway_chg_kw[i] == 0:
-    //         self.roadway_chg_kw_out_ach[i] = 0
-
-    //     elif self.veh.fc_eff_type == H2FC:
-    //         self.roadway_chg_kw_out_ach[i] = max(
-    //             0, 
-    //             self.mc_elec_kw_in_ach[i], 
-    //             self.max_ess_regen_buff_chg_kw[i], 
-    //             self.ess_regen_buff_dischg_kw[i], 
-    //             self.cur_max_roadway_chg_kw[i])
-
-    //     elif self.can_pwr_all_elec[i] == 1:
-    //         self.roadway_chg_kw_out_ach[i] = self.er_ae_kw_out[i]
-
-    //     else:
-    //         self.roadway_chg_kw_out_ach[i] = self.er_kw_if_fc_req[i]
-
-    //     self.min_ess_kw_2help_fc[i] = self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - \
-    //         self.cur_max_fc_kw_out[i] - self.roadway_chg_kw_out_ach[i]
-
-    //     if self.veh.max_ess_kw == 0 or self.veh.max_ess_kwh == 0:
-    //         self.ess_kw_out_ach[i] = 0
-
-    //     elif self.veh.fc_eff_type == H2FC:
-
-    //         if self.trans_kw_out_ach[i] >=0:
-    //             self.ess_kw_out_ach[i] = min(max(
-    //                     self.min_ess_kw_2help_fc[i], 
-    //                     self.ess_desired_kw_4fc_eff[i], 
-    //                     self.ess_accel_regen_dischg_kw[i]),
-    //                 self.cur_max_ess_kw_out[i], 
-    //                 self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i]
-    //             )
-
-    //         else:
-    //             self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] + \
-    //                 self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i]
-
-    //     elif self.high_acc_fc_on_tag[i] or self.veh.no_elec_aux:
-    //         self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] - self.roadway_chg_kw_out_ach[i]
-
-    //     else:
-    //         self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i]
-
-    //     if self.veh.no_elec_sys:
-    //         self.ess_cur_kwh[i] = 0
-
-    //     elif self.ess_kw_out_ach[i] < 0:
-    //         self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s[i] /\
-    //             3.6e3 * np.sqrt(self.veh.ess_round_trip_eff)
-
-    //     else:
-    //         self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s[i] / \
-    //             3.6e3 * (1 / np.sqrt(self.veh.ess_round_trip_eff))
-
-    //     if self.veh.max_ess_kwh == 0:
-    //         self.soc[i] = 0.0
-
-    //     else:
-    //         self.soc[i] = self.ess_cur_kwh[i] / self.veh.max_ess_kwh
-
-    //     if self.can_pwr_all_elec[i] and not(self.fc_forced_on[i]) and self.fc_kw_out_ach[i] == 0.0:
-    //         self.fc_time_on[i] = 0
-    //     else:
-    //         self.fc_time_on[i] = self.fc_time_on[i-1] + self.cyc.dt_s[i]
-    
+        if self.can_pwr_all_elec[i] && !self.fc_forced_on[i] && self.fc_kw_out_ach[i] == 0.0{
+            self.fc_time_on[i] = 0.0
+        } else {
+            self.fc_time_on[i] = self.fc_time_on[i-1] + self.cyc.dt_s()[i];
+        }
+    }
 
     // Methods for getting and setting arrays and other complex fields
-    // note that python cannot specify a specific index to set but must reset the entire array 
+    // note that python cannot specify a specific index to set but must reset the entire array
 
     fn len(&self) -> usize {
         self.cyc.time_s.len()
