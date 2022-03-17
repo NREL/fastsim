@@ -1,7 +1,7 @@
 extern crate ndarray;
 
 use std::fs::File;
-use std::path::Path;
+use std::path::PathBuf;
 
 use ndarray::{Array, Array1}; 
 extern crate pyo3;
@@ -30,15 +30,19 @@ pub struct RustCycle{
     name: String    
 }
 
+
 /// Load cycle from csv file
-pub fn load_cycle(p: &Path) -> Result<RustCycle, String> {
-    if p.exists() {
+pub fn load_cycle(pathstr: String) -> Result<RustCycle, String> {
+    // TODO: figure out how to make this a struct method 
+    // needs trait implementation for String to work as argument
+    let pathbuf = PathBuf::from(pathstr);
+    if pathbuf.exists() {
         let mut time_s = Vec::<f64>::new();
         let mut speed_mps = Vec::<f64>::new();
         let mut grade = Vec::<f64>::new();
         let mut road_type = Vec::<f64>::new();
-        let name = String::from(p.file_stem().unwrap().to_str().unwrap());
-        let file = File::open(p).expect("an existing file");
+        let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
+        let file = File::open(pathbuf).expect("an existing file");
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(true)
             .from_reader(file);
@@ -55,6 +59,8 @@ pub fn load_cycle(p: &Path) -> Result<RustCycle, String> {
     }
 }
 
+
+
 /// RustCycle class for containing: 
 /// -- time_s, 
 /// -- mps (speed [m/s])
@@ -70,7 +76,7 @@ impl RustCycle{
         let road_type = Array::from_vec(road_type);
         RustCycle {time_s, mps, grade, road_type, name}
     }
-
+    
     fn len(&self) -> usize{
         self.time_s.len()
     }
@@ -174,10 +180,10 @@ mod tests {
 
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
-        let path = Path::new("../fastsim/resources/cycles/udds.csv");
+        let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        assert!(path.exists());
-        match load_cycle(&path) {
+        assert!(PathBuf::from(&pathstr).exists());
+        match load_cycle(pathstr) {
             Ok(cyc) => {
                 assert_eq!(cyc.name, String::from("udds"));
                 let num_entries = cyc.time_s.len();
