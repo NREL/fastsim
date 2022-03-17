@@ -309,7 +309,7 @@ pub struct RustSimDrive{
     pub mc_elec_kw_in_if_fc_req: Array1<f64>,   
     pub mc_kw_if_fc_req: Array1<f64>,   
     pub fc_forced_on: Array1<bool>, 
-    pub fc_forced_state: Array1<f64>, 
+    pub fc_forced_state: Array1<u32>, 
     pub mc_mech_kw_4forced_fc: Array1<f64>, 
     pub fc_time_on: Array1<f64>, 
     pub prev_fc_time_on: Array1<f64>, 
@@ -606,9 +606,9 @@ impl RustSimDrive{
         self.set_comp_lims(i);
         self.set_power_calcs(i);
         self.set_ach_speed(i);
-        self.set_hybrid_cont_calcs(i)
+        self.set_hybrid_cont_calcs(i);
+        self.set_fc_forced_state(i);
         // TODO: uncomment these!
-        // self.set_fc_forced_state(i) 
         // self.set_hybrid_cont_decisions(i)
         // self.set_fc_power(i)
     }
@@ -1149,6 +1149,42 @@ impl RustSimDrive{
             self.cur_max_roadway_chg_kw[i]);
     }
 
+    /// Calculate control variables related to engine on/off state
+    /// Arguments       
+    /// ------------
+    /// i: index of time step    
+    fn set_fc_forced_state(&mut self, i:usize) {
+        // force fuel converter on if it was on in the previous time step, but only if fc
+        // has not been on longer than minFcTimeOn
+        if self.prev_fc_time_on[i] > 0.0 && self.prev_fc_time_on[i] < self.veh.min_fc_time_on - self.cyc.dt_s()[i]{
+            self.fc_forced_on[i] = true;
+        } else {
+            self.fc_forced_on[i] = false
+        }
+
+        if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
+            self.fc_forced_state[i] = 1;
+            self.mc_mech_kw_4forced_fc[i] = 0.0;
+        } else if self.trans_kw_in_ach[i] < 0.0 {
+            self.fc_forced_state[i] = 2;
+            self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i];
+        } else if self.veh.max_fc_eff_kw() == self.trans_kw_in_ach[i] {
+            self.fc_forced_state[i] = 3;
+            self.mc_mech_kw_4forced_fc[i] = 0.0 } else if self.veh.idle_fc_kw > self.trans_kw_in_ach[i] && self.cyc_accel_kw[i] >= 0.0 {
+            self.fc_forced_state[i] = 4;
+            self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.idle_fc_kw;
+        } else if self.veh.max_fc_eff_kw() > self.trans_kw_in_ach[i] {
+            self.fc_forced_state[i] = 5;
+            self.mc_mech_kw_4forced_fc[i] = 0.0;
+        } else {
+            self.fc_forced_state[i] = 6;
+            self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.max_fc_eff_kw();
+        }
+        // Ok(())
+    }
+
+
+    
 
     // Methods for getting and setting arrays and other complex fields
     // note that python cannot specify a specific index to set but must reset the entire array 
@@ -1748,11 +1784,11 @@ impl RustSimDrive{
     }
 
     #[getter]
-    pub fn get_fc_forced_state(&self) -> PyResult<Vec<f64>>{
+    pub fn get_fc_forced_state(&self) -> PyResult<Vec<u32>>{
       Ok(self.fc_forced_state.to_vec())
     }
     #[setter]
-    pub fn set_fc_forced_state(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+    pub fn set_fc_forced_state_arr(&mut self, new_value:Vec<u32>) -> PyResult<()>{
       self.fc_forced_state = Array::from_vec(new_value);
       Ok(())
     }
