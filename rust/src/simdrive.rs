@@ -1183,7 +1183,231 @@ impl RustSimDrive{
         // Ok(())
     }
 
+    // // TODO: start here
+    // def set_hybrid_cont_decisions(self, i):
+    //     """
+    //     Hybrid control decisions.
+    //     Arguments
+    //     ------------
+    //     i: index of time step
+    //     """
 
+    //     if (-self.mc_elec_in_kw_for_max_fc_eff[i] - self.cur_max_roadway_chg_kw[i]) > 0:
+    //         self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i] -
+    //                                         self.cur_max_roadway_chg_kw[i]) * self.veh.ess_dischg_to_fc_max_eff_perc
+
+    //     else:
+    //         self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i] - \
+    //                                         self.cur_max_roadway_chg_kw[i]) * self.veh.ess_chg_to_fc_max_eff_perc
+
+    //     if self.accel_buff_soc[i] > self.regen_buff_soc[i]:
+    //         self.ess_kw_if_fc_req[i] = min(
+    //             self.cur_max_ess_kw_out[i], 
+    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+    //             max(-self.cur_max_ess_chg_kw[i], self.ess_accel_regen_dischg_kw[i]))
+
+    //     elif self.ess_regen_buff_dischg_kw[i] > 0:
+    //         self.ess_kw_if_fc_req[i] = min(
+    //             self.cur_max_ess_kw_out[i], 
+    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+    //             max(-self.cur_max_ess_chg_kw[i], 
+    //                 min(self.ess_accel_regen_dischg_kw[i], 
+    //                     self.mc_elec_in_lim_kw[i] + self.aux_in_kw[i], 
+    //                     max(self.ess_regen_buff_dischg_kw[i], self.ess_desired_kw_4fc_eff[i])
+    //                 )
+    //             )
+    //         )
+
+    //     elif self.ess_accel_buff_chg_kw[i] > 0:
+    //         self.ess_kw_if_fc_req[i] = min(
+    //             self.cur_max_ess_kw_out[i], 
+    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+    //             max(-self.cur_max_ess_chg_kw[i], 
+    //                 max(-1 * self.max_ess_regen_buff_chg_kw[i], 
+    //                     min(-self.ess_accel_buff_chg_kw[i], self.ess_desired_kw_4fc_eff[i])
+    //                 )
+    //             )
+    //         )
+
+    //     elif self.ess_desired_kw_4fc_eff[i] > 0:
+    //         self.ess_kw_if_fc_req[i] = min(
+    //             self.cur_max_ess_kw_out[i], 
+    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
+    //             self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+    //             max(-self.cur_max_ess_chg_kw[i], 
+    //                 min(self.ess_desired_kw_4fc_eff[i], self.max_ess_accell_buff_dischg_kw[i])
+    //             )
+    //         )
+
+    //     else:
+    //         self.ess_kw_if_fc_req[i] = min(
+    //             self.cur_max_ess_kw_out[i], 
+    //             self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
+    //             self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
+    //             max(-self.cur_max_ess_chg_kw[i], 
+    //                 max(self.ess_desired_kw_4fc_eff[i], -self.max_ess_regen_buff_chg_kw[i])
+    //             )
+    //         )
+
+    //     self.er_kw_if_fc_req[i] = max(0, 
+    //         min(
+    //             self.cur_max_roadway_chg_kw[i], self.cur_max_mech_mc_kw_in[i],
+    //             self.ess_kw_if_fc_req[i] - self.mc_elec_in_lim_kw[i] + self.aux_in_kw[i]
+    //         )
+    //     )
+
+    //     self.mc_elec_kw_in_if_fc_req[i] = self.ess_kw_if_fc_req[i] + self.er_kw_if_fc_req[i] - self.aux_in_kw[i]
+
+    //     if self.veh.no_elec_sys:
+    //         self.mc_kw_if_fc_req[i] = 0
+
+    //     elif self.mc_elec_kw_in_if_fc_req[i] == 0:
+    //         self.mc_kw_if_fc_req[i] = 0
+
+    //     elif self.mc_elec_kw_in_if_fc_req[i] > 0:
+
+    //         if self.mc_elec_kw_in_if_fc_req[i] == max(self.veh.mc_kw_in_array):
+    //             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array[-1]
+    //         else:
+    //             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array[
+    //                 max(1, np.argmax(
+    //                         self.veh.mc_kw_in_array > min(max(self.veh.mc_kw_in_array) - 0.01, self.mc_elec_kw_in_if_fc_req[i])
+    //                     ) - 1
+    //                 )
+    //             ]
+
+    //     else:
+    //         if self.mc_elec_kw_in_if_fc_req[i] * -1 == max(self.veh.mc_kw_in_array):
+    //             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] / self.veh.mc_full_eff_array[-1]
+    //         else:
+    //             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] / (self.veh.mc_full_eff_array[
+    //                     max(1, np.argmax(
+    //                         self.veh.mc_kw_in_array > min(max(self.veh.mc_kw_in_array) - 0.01, self.mc_elec_kw_in_if_fc_req[i] * -1)) - 1
+    //                     )
+    //                 ]
+    //             )
+
+    //     if self.veh.max_motor_kw == 0:
+    //         self.mc_mech_kw_out_ach[i] = 0
+
+    //     elif self.fc_forced_on[i] and self.can_pwr_all_elec[i] and (self.veh.veh_pt_type == HEV or 
+    //         self.veh.veh_pt_type == PHEV) and (self.veh.fc_eff_type != H2FC):
+    //         self.mc_mech_kw_out_ach[i] = self.mc_mech_kw_4forced_fc[i]
+
+    //     elif self.trans_kw_in_ach[i] <= 0:
+
+    //         if self.veh.fc_eff_type !=H2FC and self.veh.max_fuel_conv_kw > 0:
+    //             if self.can_pwr_all_elec[i] == 1:
+    //                 self.mc_mech_kw_out_ach[i] = - \
+    //                     min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i])
+    //             else:
+    //                 self.mc_mech_kw_out_ach[i] = min(
+    //                     -min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]),
+    //                     max(-self.cur_max_fc_kw_out[i], self.mc_kw_if_fc_req[i])
+    //                 )
+    //         else:
+    //             self.mc_mech_kw_out_ach[i] = min(
+    //                 -min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]), 
+    //                 -self.trans_kw_in_ach[i]
+    //             )
+
+    //     elif self.can_pwr_all_elec[i] == 1:
+    //         self.mc_mech_kw_out_ach[i] = self.trans_kw_in_ach[i]
+
+    //     else:
+    //         self.mc_mech_kw_out_ach[i] = max(self.min_mc_kw_2help_fc[i], self.mc_kw_if_fc_req[i])
+
+    //     if self.mc_mech_kw_out_ach[i] == 0:
+    //         self.mc_elec_kw_in_ach[i] = 0.0
+
+    //     elif self.mc_mech_kw_out_ach[i] < 0:
+
+    //         if self.mc_mech_kw_out_ach[i] * -1 == max(self.veh.mc_kw_in_array):
+    //             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] * self.veh.mc_full_eff_array[-1]
+    //         else:
+    //             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] * self.veh.mc_full_eff_array[
+    //                 max(1, np.argmax(self.veh.mc_kw_in_array > min(
+    //                     max(self.veh.mc_kw_in_array) - 0.01, 
+    //                     self.mc_mech_kw_out_ach[i] * -1)) - 1
+    //                 )
+    //             ]
+
+    //     else:
+    //         if self.veh.max_motor_kw == self.mc_mech_kw_out_ach[i]:
+    //             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array[-1]
+    //         else:
+    //             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array[
+    //                 max(1, np.argmax(self.veh.mc_kw_out_array > min(
+    //                     self.veh.max_motor_kw - 0.01, 
+    //                     self.mc_mech_kw_out_ach[i])) - 1
+    //                 )
+    //             ]
+
+    //     if self.cur_max_roadway_chg_kw[i] == 0:
+    //         self.roadway_chg_kw_out_ach[i] = 0
+
+    //     elif self.veh.fc_eff_type == H2FC:
+    //         self.roadway_chg_kw_out_ach[i] = max(
+    //             0, 
+    //             self.mc_elec_kw_in_ach[i], 
+    //             self.max_ess_regen_buff_chg_kw[i], 
+    //             self.ess_regen_buff_dischg_kw[i], 
+    //             self.cur_max_roadway_chg_kw[i])
+
+    //     elif self.can_pwr_all_elec[i] == 1:
+    //         self.roadway_chg_kw_out_ach[i] = self.er_ae_kw_out[i]
+
+    //     else:
+    //         self.roadway_chg_kw_out_ach[i] = self.er_kw_if_fc_req[i]
+
+    //     self.min_ess_kw_2help_fc[i] = self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - \
+    //         self.cur_max_fc_kw_out[i] - self.roadway_chg_kw_out_ach[i]
+
+    //     if self.veh.max_ess_kw == 0 or self.veh.max_ess_kwh == 0:
+    //         self.ess_kw_out_ach[i] = 0
+
+    //     elif self.veh.fc_eff_type == H2FC:
+
+    //         if self.trans_kw_out_ach[i] >=0:
+    //             self.ess_kw_out_ach[i] = min(max(
+    //                     self.min_ess_kw_2help_fc[i], 
+    //                     self.ess_desired_kw_4fc_eff[i], 
+    //                     self.ess_accel_regen_dischg_kw[i]),
+    //                 self.cur_max_ess_kw_out[i], 
+    //                 self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i]
+    //             )
+
+    //         else:
+    //             self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] + \
+    //                 self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i]
+
+    //     elif self.high_acc_fc_on_tag[i] or self.veh.no_elec_aux:
+    //         self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] - self.roadway_chg_kw_out_ach[i]
+
+    //     else:
+    //         self.ess_kw_out_ach[i] = self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i]
+
+    //     if self.veh.no_elec_sys:
+    //         self.ess_cur_kwh[i] = 0
+
+    //     elif self.ess_kw_out_ach[i] < 0:
+    //         self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s[i] /\
+    //             3.6e3 * np.sqrt(self.veh.ess_round_trip_eff)
+
+    //     else:
+    //         self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s[i] / \
+    //             3.6e3 * (1 / np.sqrt(self.veh.ess_round_trip_eff))
+
+    //     if self.veh.max_ess_kwh == 0:
+    //         self.soc[i] = 0.0
+
+    //     else:
+    //         self.soc[i] = self.ess_cur_kwh[i] / self.veh.max_ess_kwh
+
+    //     if self.can_pwr_all_elec[i] and not(self.fc_forced_on[i]) and self.fc_kw_out_ach[i] == 0.0:
+    //         self.fc_time_on[i] = 0
+    //     else:
+    //         self.fc_time_on[i] = self.fc_time_on[i-1] + self.cyc.dt_s[i]
     
 
     // Methods for getting and setting arrays and other complex fields
