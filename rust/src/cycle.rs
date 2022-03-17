@@ -31,35 +31,6 @@ pub struct RustCycle{
 }
 
 
-/// Load cycle from csv file
-pub fn load_cycle(pathstr: String) -> Result<RustCycle, String> {
-    // TODO: figure out how to make this a struct method 
-    // needs trait implementation for String to work as argument
-    let pathbuf = PathBuf::from(pathstr);
-    if pathbuf.exists() {
-        let mut time_s = Vec::<f64>::new();
-        let mut speed_mps = Vec::<f64>::new();
-        let mut grade = Vec::<f64>::new();
-        let mut road_type = Vec::<f64>::new();
-        let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
-        let file = File::open(pathbuf).expect("an existing file");
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(file);
-        for result in rdr.records() {
-            let record = result.expect("a proper csv row");
-            time_s.push(record[0].parse::<f64>().unwrap());
-            speed_mps.push(record[1].parse::<f64>().unwrap());
-            grade.push(record[2].parse::<f64>().unwrap());
-            road_type.push(record[3].parse::<f64>().unwrap());
-        }
-        Ok(RustCycle::__new__(time_s, speed_mps, grade, road_type, name))    
-    } else {
-        Err(String::from("path doesn't exist"))
-    }
-}
-
-
 
 /// RustCycle class for containing: 
 /// -- time_s, 
@@ -156,6 +127,34 @@ impl RustCycle{
         &self.mps * MPH_PER_MPS
     }
 
+    /// Load cycle from csv file
+    pub fn from_file(pathstr: String) -> Result<RustCycle, String> {
+        // TODO: figure out how to make this a pymethod 
+        // needs trait implementation for String to work as argument
+        let pathbuf = PathBuf::from(pathstr);
+        if pathbuf.exists() {
+            let mut time_s = Vec::<f64>::new();
+            let mut speed_mps = Vec::<f64>::new();
+            let mut grade = Vec::<f64>::new();
+            let mut road_type = Vec::<f64>::new();
+            let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
+            let file = File::open(pathbuf).expect("an existing file");
+            let mut rdr = csv::ReaderBuilder::new()
+                .has_headers(true)
+                .from_reader(file);
+            for result in rdr.records() {
+                let record = result.expect("a proper csv row");
+                time_s.push(record[0].parse::<f64>().unwrap());
+                speed_mps.push(record[1].parse::<f64>().unwrap());
+                grade.push(record[2].parse::<f64>().unwrap());
+                road_type.push(record[3].parse::<f64>().unwrap());
+            }
+            Ok(RustCycle::__new__(time_s, speed_mps, grade, road_type, name))    
+        } else {
+            Err(String::from("path doesn't exist"))
+        }
+    }
+
     // pub fn delta_elev_m(self):
     //     """
     //      elevation change w.r.t. to initial
@@ -182,8 +181,7 @@ mod tests {
     fn test_loading_a_cycle_from_the_filesystem() {
         let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        assert!(PathBuf::from(&pathstr).exists());
-        match load_cycle(pathstr) {
+        match RustCycle::from_file(pathstr) {
             Ok(cyc) => {
                 assert_eq!(cyc.name, String::from("udds"));
                 let num_entries = cyc.time_s.len();
