@@ -31,7 +31,6 @@ pub struct RustCycle{
 }
 
 
-
 /// RustCycle class for containing: 
 /// -- time_s, 
 /// -- mps (speed [m/s])
@@ -39,13 +38,18 @@ pub struct RustCycle{
 /// -- road_type (this is legacy and will likely change to road charging capacity [kW])
 #[pymethods]
 impl RustCycle{
+    // #[new]
+    // pub fn __new__(time_s: Vec<f64>, mps: Vec<f64>, grade: Vec<f64>, road_type:Vec<f64>, name:String) -> Self{
+    //     let time_s = Array::from_vec(time_s);
+    //     let mps = Array::from_vec(mps);
+    //     let grade = Array::from_vec(grade);
+    //     let road_type = Array::from_vec(road_type);
+    //     RustCycle {time_s, mps, grade, road_type, name}
+    // }
+
     #[new]
-    pub fn __new__(time_s: Vec<f64>, mps: Vec<f64>, grade: Vec<f64>, road_type:Vec<f64>, name:String) -> Self{
-        let time_s = Array::from_vec(time_s);
-        let mps = Array::from_vec(mps);
-        let grade = Array::from_vec(grade);
-        let road_type = Array::from_vec(road_type);
-        RustCycle {time_s, mps, grade, road_type, name}
+    pub fn __new__(pathstr: String) -> Self {
+        Self::from_file(pathstr).unwrap()
     }
     
     fn len(&self) -> usize{
@@ -113,6 +117,14 @@ impl RustCycle{
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
 impl RustCycle{
+    pub fn new(time_s: Vec<f64>, mps: Vec<f64>, grade: Vec<f64>, road_type:Vec<f64>, name:String) -> Self{
+        let time_s = Array::from_vec(time_s);
+        let mps = Array::from_vec(mps);
+        let grade = Array::from_vec(grade);
+        let road_type = Array::from_vec(road_type);
+        RustCycle {time_s, mps, grade, road_type, name}
+    }
+
     /// rust-internal time steps
     pub fn dt_s(&self) -> Array1<f64> {
         diff(&self.time_s)
@@ -149,7 +161,7 @@ impl RustCycle{
                 grade.push(record[2].parse::<f64>().unwrap());
                 road_type.push(record[3].parse::<f64>().unwrap());
             }
-            Ok(RustCycle::__new__(time_s, speed_mps, grade, road_type, name))    
+            Ok(RustCycle::new(time_s, speed_mps, grade, road_type, name))    
         } else {
             Err(String::from("path doesn't exist"))
         }
@@ -173,7 +185,7 @@ mod tests {
         let grade = Array::zeros(10).to_vec();
         let road_type = Array::zeros(10).to_vec();        
         let name = String::from("test");
-        let cyc = RustCycle::__new__(time_s, speed_mps, grade, road_type, name);
+        let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
         assert_eq!(cyc.dist_m().sum(), 45.0);
     }
 

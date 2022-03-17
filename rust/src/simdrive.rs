@@ -2181,7 +2181,7 @@ mod tests {
         let road_type = vec![0.0, 0.0, 0.0];        
         let name = String::from("test");
         let cycle_length: usize = time_s.len();
-        let cyc = RustCycle::__new__(time_s, speed_mps, grade, road_type, name);
+        let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
 
         // VEHICLE
         let scenario_name = String::from("2016 FORD Escape 4cyl 2WD");
