@@ -899,10 +899,12 @@ class SimDrive(object):
             self.cur_max_roadway_chg_kw[i])
     
     def set_fc_forced_state(self, i):
-        """Calculate control variables related to engine on/off state
+        """
+        Calculate control variables related to engine on/off state
         Arguments       
         ------------
-        i: index of time step"""
+        i: index of time step
+        """
         # force fuel converter on if it was on in the previous time step, but only if fc
         # has not been on longer than minFcTimeOn
         if self.prev_fc_time_on[i] > 0 and self.prev_fc_time_on[i] < self.veh.min_fc_time_on - self.cyc.dt_s[i]:
