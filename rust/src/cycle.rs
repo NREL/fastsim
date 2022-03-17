@@ -5,7 +5,9 @@ use std::path::PathBuf;
 
 use ndarray::{Array, Array1}; 
 extern crate pyo3;
+use pyo3::exceptions::PyFileNotFoundError;
 use pyo3::prelude::*;
+use pyo3::types::PyType;
 // use numpy::pyo3::Python;
 // use numpy::ndarray::array;
 // use numpy::{ToPyArray, PyArray};
@@ -48,9 +50,13 @@ impl RustCycle{
     }    
 
     // TODO: make this work
-    // pub fn __new__(pathstr: String) -> Self {
-    //     Self::from_file(pathstr).unwrap()
-    // }
+    #[classmethod]
+    pub fn from_file_py(cls: &PyType, pathstr: String) -> PyResult<RustCycle> {
+        match Self::from_file(&pathstr) {
+            Ok(cyc) => Ok(cyc),
+            Err(msg) => Err(PyFileNotFoundError::new_err(msg))
+        }
+    }
     
     pub fn len(&self) -> usize{
         self.time_s.len()
@@ -150,7 +156,7 @@ impl RustCycle{
     }
 
     /// Load cycle from csv file
-    pub fn from_file(pathstr: String) -> Result<RustCycle, String> {
+    pub fn from_file(pathstr: &String) -> Result<RustCycle, String> {
         // TODO: figure out how to make this a pymethod 
         // needs trait implementation for String to work as argument
         let pathbuf = PathBuf::from(pathstr);
@@ -173,7 +179,7 @@ impl RustCycle{
             }
             Ok(RustCycle::new(time_s, speed_mps, grade, road_type, name))    
         } else {
-            Err(String::from("path doesn't exist"))
+            Err(format!("path {pathstr} doesn't exist"))
         }
     }
 
@@ -198,7 +204,7 @@ mod tests {
     fn test_loading_a_cycle_from_the_filesystem() {
         let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        match RustCycle::from_file(pathstr) {
+        match RustCycle::from_file(&pathstr) {
             Ok(cyc) => {
                 assert_eq!(cyc.name, String::from("udds"));
                 let num_entries = cyc.time_s.len();
