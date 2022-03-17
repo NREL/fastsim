@@ -38,21 +38,21 @@ pub struct RustCycle{
 /// -- road_type (this is legacy and will likely change to road charging capacity [kW])
 #[pymethods]
 impl RustCycle{
-    // #[new]
-    // pub fn __new__(time_s: Vec<f64>, mps: Vec<f64>, grade: Vec<f64>, road_type:Vec<f64>, name:String) -> Self{
-    //     let time_s = Array::from_vec(time_s);
-    //     let mps = Array::from_vec(mps);
-    //     let grade = Array::from_vec(grade);
-    //     let road_type = Array::from_vec(road_type);
-    //     RustCycle {time_s, mps, grade, road_type, name}
-    // }
-
     #[new]
-    pub fn __new__(pathstr: String) -> Self {
-        Self::from_file(pathstr).unwrap()
-    }
+    pub fn __new__(time_s: Vec<f64>, mps: Vec<f64>, grade: Vec<f64>, road_type:Vec<f64>, name:String) -> Self{
+        let time_s = Array::from_vec(time_s);
+        let mps = Array::from_vec(mps);
+        let grade = Array::from_vec(grade);
+        let road_type = Array::from_vec(road_type);
+        RustCycle {time_s, mps, grade, road_type, name}
+    }    
+
+    // TODO: make this work
+    // pub fn __new__(pathstr: String) -> Self {
+    //     Self::from_file(pathstr).unwrap()
+    // }
     
-    fn len(&self) -> usize{
+    pub fn len(&self) -> usize{
         self.time_s.len()
     }
 
@@ -125,6 +125,16 @@ impl RustCycle{
         RustCycle {time_s, mps, grade, road_type, name}
     }
 
+    pub fn test_cyc() -> Self {
+        let time_s = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
+        let speed_mps = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
+        let grade = Array::zeros(10).to_vec();
+        let road_type = Array::zeros(10).to_vec();        
+        let name = String::from("test");
+        RustCycle::new(time_s, speed_mps, grade, road_type, name)    
+    }
+
+
     /// rust-internal time steps
     pub fn dt_s(&self) -> Array1<f64> {
         diff(&self.time_s)
@@ -180,12 +190,7 @@ mod tests {
 
     #[test]
     fn test_dist() {
-        let time_s = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
-        let speed_mps = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
-        let grade = Array::zeros(10).to_vec();
-        let road_type = Array::zeros(10).to_vec();        
-        let name = String::from("test");
-        let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
+        let cyc = RustCycle::test_cyc();
         assert_eq!(cyc.dist_m().sum(), 45.0);
     }
 
