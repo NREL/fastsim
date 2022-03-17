@@ -13,6 +13,3 @@ pyo3 = { version = "0.15.1", features = ["extension-module"] }
 ndarray = { version = "0.15.4"}
 ordered-float = "2.10.0"
 csv = "1.1"
-
-[http]
-check-revoke = false
