@@ -938,10 +938,12 @@ class SimDrive(object):
                 self.veh.max_fc_eff_kw
 
     def set_hybrid_cont_decisions(self, i):
-        """Hybrid control decisions.
+        """
+        Hybrid control decisions.
         Arguments
         ------------
-        i: index of time step"""
+        i: index of time step
+        """
 
         if (-self.mc_elec_in_kw_for_max_fc_eff[i] - self.cur_max_roadway_chg_kw[i]) > 0:
             self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i] -
