@@ -74,14 +74,22 @@ print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 # ### Run FASTSim
 
 # %%
-t0 = time.time()
 
 # instantiate and run classic version 
-# sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-sim_drive = fsr.RustSimDrive(cyc.to_rust(), veh.to_rust())
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
+t0 = time.time()
 sim_drive.sim_drive_walk(0.5) 
+t_py = time.time() - t0
+print(f'Time to simulate: {t_py:.2e} s')
 
-print(f'Time to simulate: {time.time() - t0:.2e} s')
+t0 = time.time()
+sdr = fsr.RustSimDrive(cyc.to_rust(), veh.to_rust())
+sdr.sim_drive_walk(0.5) 
+t_rust = time.time() - t0
+print(f'Time to simulate in rust: {t_rust:.2e} s')
+
+print(f"Rust provides a {t_py/t_rust:.5g}x speedup")
+
 
 # %% [markdown]
 # ### Results
