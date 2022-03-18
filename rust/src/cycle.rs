@@ -51,7 +51,7 @@ impl RustCycle{
 
     // TODO: make this work
     #[classmethod]
-    pub fn from_file_py(cls: &PyType, pathstr: String) -> PyResult<RustCycle> {
+    pub fn from_file_py(_cls: &PyType, pathstr: String) -> PyResult<RustCycle> {
         match Self::from_file(&pathstr) {
             Ok(cyc) => Ok(cyc),
             Err(msg) => Err(PyFileNotFoundError::new_err(msg))
