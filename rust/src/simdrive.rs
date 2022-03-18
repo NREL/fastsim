@@ -1440,7 +1440,7 @@ impl RustSimDrive{
                     self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.ess_kw_out_ach[i] - self.roadway_chg_kw_out_ach[i]
                 )
             );
-        } else if self.veh.no_elec_sys||self.veh.no_elec_aux||self.high_acc_fc_on_tag[i] {
+        } else if self.veh.no_elec_sys || self.veh.no_elec_aux || self.high_acc_fc_on_tag[i] {
             self.fc_kw_out_ach[i] = min(
                 self.cur_max_fc_kw_out[i], 
                 max(

@@ -225,10 +225,9 @@ impl RustVehicle{
     }
 
     pub fn max_fc_eff_kw(&self) -> f64{
-        let fc_kw_out_arr_max = arrmax(&self.fc_kw_out_array);
-        self.fc_kw_out_array[
-            np_argmax(&self.fc_eff_array.map(
-                |x| *x == fc_kw_out_arr_max)).unwrap_or(0)]
+        let fc_eff_arr_max_i = np_argmax(
+            &self.fc_eff_array.map(|x| *x == arrmax(&self.fc_eff_array))).unwrap_or(0);
+        self.fc_kw_out_array[fc_eff_arr_max_i]
     }
 
     pub fn fc_max_out_kw(&self) -> f64 {
@@ -350,9 +349,10 @@ impl RustVehicle{
         // DERIVED
         let input_kw_out_array = (Array::from(fc_pwr_out_perc.clone()) * max_fuel_conv_kw).to_vec();
         let fc_kw_out_array = (Array::from(fc_perc_out_array.clone()) * max_fuel_conv_kw).to_vec();
-        let fc_eff_array = fc_eff_map.clone();
-        let mc_kw_out_array = (Array::linspace(0.0, 1.0, 50) * max_motor_kw).to_vec();
-        let mc_eff_array = mc_eff_map.clone();
+        let fc_eff_array = fc_perc_out_array.iter().map(|&x| interpolate(&x, &Array::from(fc_pwr_out_perc.clone()), &Array::from(fc_eff_map.clone()), false)).collect::<Vec<_>>();
+        let mc_perc_out_array = Array::linspace(0.0, 1.0, 101).to_vec();
+        let mc_kw_out_array = (Array::linspace(0.0, 1.0, mc_perc_out_array.len()) * max_motor_kw).to_vec();
+        let mc_eff_array = large_baseline_eff.iter().map(|&x| interpolate(&x, &Array::from(mc_pwr_out_perc.clone()), &Array::from(mc_eff_map.clone()), false)).collect::<Vec<_>>();
         let mc_kw_in_array = Array::ones(mc_kw_out_array.len()).to_vec();
         let mc_full_eff_array = Array::ones(mc_eff_array.len()).to_vec();
         let veh_kg: f64 = cargo_kg + glider_kg + trans_kg * comp_mass_multiplier
@@ -361,9 +361,8 @@ impl RustVehicle{
             wheel_coef_of_fric * drive_axle_weight_frac * veh_kg * props.a_grav_mps2 /
             (1.0 + veh_cg_m * wheel_coef_of_fric / wheel_base_m)
             ) / (veh_kg * props.a_grav_mps2)  * props.a_grav_mps2;
-        let mc_perc_out_array = Array::linspace(0.0, 1.0, 101).to_vec();
         
-        RustVehicle::__new__(
+        RustVehicle::__new__(   
             scenario_name,
             selection,
             veh_year,
@@ -736,6 +735,11 @@ impl RustVehicle{
     #[getter]
     pub fn get_max_regen_kwh(&self) -> PyResult<f64> {
         Ok(self.max_regen_kwh())
+    }
+
+    #[getter]
+    pub fn get_fc_max_out_kw(&self) -> f64 {
+        arrmax(&self.input_kw_out_array)
     }
 
     #[getter]
