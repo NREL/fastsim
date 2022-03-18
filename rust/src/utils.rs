@@ -36,24 +36,18 @@ pub fn min(a:f64, b:f64) -> f64 {
 /// return max <f64> of arr
 pub fn arrmax(arr:&Array1<f64>) -> f64 {
     arr
-        .iter()
-        .copied()
-        .map(NotNan::new)
-        .flatten() // ignore NAN values (errors from the previous line)
-        .max()
-        .map(NotNan::into_inner)
+        .to_vec()
+        .into_iter()
+        .reduce(f64::max)
         .unwrap()    
 }
 
 /// return max <f64> of arr
 pub fn arrmin(arr:&Array1<f64>) -> f64 {
     arr
-        .iter()
-        .copied()
-        .map(NotNan::new)
-        .flatten() // ignore NAN values (errors from the previous line)
-        .min()
-        .map(NotNan::into_inner)
+        .to_vec()
+        .into_iter()
+        .reduce(f64::min)
         .unwrap()    
 }
 

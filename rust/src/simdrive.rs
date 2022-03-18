@@ -609,8 +609,7 @@ impl RustSimDrive{
         self.set_hybrid_cont_calcs(i);
         self.set_fc_forced_state(i);
         self.set_hybrid_cont_decisions(i);
-        // TODO: uncomment these!
-        // self.set_fc_power(i);
+        self.set_fc_power(i);
     }
 
 
@@ -1426,6 +1425,58 @@ impl RustSimDrive{
             self.fc_time_on[i] = self.fc_time_on[i-1] + self.cyc.dt_s()[i];
         }
     }
+
+    /// Sets fcKwOutAch and fcKwInAch.
+    /// Arguments
+    /// ------------
+    /// i: index of time step
+    fn set_fc_power(&mut self, i:usize) {
+        if self.veh.max_fuel_conv_kw == 0.0 {
+            self.fc_kw_out_ach[i] = 0.0;
+        } else if self.veh.fc_eff_type == H2FC {
+            self.fc_kw_out_ach[i] = min(
+                self.cur_max_fc_kw_out[i], 
+                max(0.0, 
+                    self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.ess_kw_out_ach[i] - self.roadway_chg_kw_out_ach[i]
+                )
+            );
+        } else if self.veh.no_elec_sys||self.veh.no_elec_aux||self.high_acc_fc_on_tag[i] {
+            self.fc_kw_out_ach[i] = min(
+                self.cur_max_fc_kw_out[i], 
+                max(
+                    0.0, 
+                    self.trans_kw_in_ach[i] - self.mc_mech_kw_out_ach[i] + self.aux_in_kw[i]
+                )
+            );
+        } else {
+            self.fc_kw_out_ach[i] = min(self.cur_max_fc_kw_out[i], max(
+                0.0, self.trans_kw_in_ach[i] - self.mc_mech_kw_out_ach[i]));
+            }
+
+        if self.veh.max_fuel_conv_kw == 0.0 {
+            self.fc_kw_out_ach_pct[i] = 0.0;
+        } else {
+            self.fc_kw_out_ach_pct[i] = self.fc_kw_out_ach[i] / self.veh.max_fuel_conv_kw;
+        }
+
+        if self.fc_kw_out_ach[i] == 0.0 {
+            self.fc_kw_in_ach[i] = 0.0;
+            self.fc_kw_out_ach_pct[i] = 0.0;
+        } else {
+            if self.veh.fc_eff_array[np_argmax(
+                &self.veh.fc_kw_out_array.map(|x| *x > min(self.fc_kw_out_ach[i], self.veh.fc_max_out_kw()))).unwrap_or(0) - 1] != 0.0 {
+                self.fc_kw_in_ach[i] = self.fc_kw_out_ach[i] / (self.veh.fc_eff_array[np_argmax(
+                        &self.veh.fc_kw_out_array.map(|x| *x > min(self.fc_kw_out_ach[i], self.veh.fc_max_out_kw()))).unwrap_or(0) - 1]);
+            } else {
+                self.fc_kw_in_ach[i] = 0.0
+            }
+        }
+
+        self.fs_kw_out_ach[i] = self.fc_kw_in_ach[i];
+
+        self.fs_kwh_out_ach[i] = self.fs_kw_out_ach[i] * self.cyc.dt_s()[i] / 3.6e3;
+    }
+
 
     // Methods for getting and setting arrays and other complex fields
     // note that python cannot specify a specific index to set but must reset the entire array

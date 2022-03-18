@@ -95,20 +95,16 @@ print(f"Rust provides a {t_py/t_rust:.5g}x speedup")
 # ### Results
 
 # %%
-fig, ax = plt.subplots(figsize=(9, 5))
-ax.plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='kW')
+fig, ax = plt.subplots(2, 1, figsize=(9, 5))
+ax[0].plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='py')
+ax[0].plot(cyc.time_s, sdr.fc_kw_in_ach, label='rust')
+ax[0].legend()
+ax[0].set_ylabel('Engine Input\nPower [kW]')
 
-ax2 = ax.twinx()
-speed_line = ax2.plot(cyc.time_s, sim_drive.mph_ach, 
-                  color='xkcd:pale red', label='Speed')
+ax[1].plot(cyc.time_s, sim_drive.mph_ach)
+ax[1].set_xlabel('Cycle Time [s]')
+ax[1].set_ylabel('Speed [MPH]')
 
-ax.set_xlabel('Cycle Time [s]', weight='bold')
-ax.set_ylabel('Engine Input Power [kW]', weight='bold', color='xkcd:bluish')
-ax.tick_params('y', colors='xkcd:bluish')
-
-ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
-ax2.grid(False)
-ax2.tick_params('y', colors='xkcd:pale red')
 plt.show()
 
 # %% [markdown]

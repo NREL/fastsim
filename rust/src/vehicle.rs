@@ -231,6 +231,10 @@ impl RustVehicle{
                 |x| *x == fc_kw_out_arr_max)).unwrap_or(0)]
     }
 
+    pub fn fc_max_out_kw(&self) -> f64 {
+        arrmax(&self.input_kw_out_array)
+    }
+
     pub fn test_veh() -> Self {
         let scenario_name = String::from("2016 FORD Escape 4cyl 2WD");
         let selection: u32 = 5;
