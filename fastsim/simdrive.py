@@ -1163,10 +1163,12 @@ class SimDrive(object):
             self.fc_time_on[i] = self.fc_time_on[i-1] + self.cyc.dt_s[i]
     
     def set_fc_power(self, i):
-        """Sets fcKwOutAch and fcKwInAch.
+        """
+        Sets fcKwOutAch and fcKwInAch.
         Arguments
         ------------
-        i: index of time step"""
+        i: index of time step
+        """
 
         if self.veh.max_fuel_conv_kw == 0:
             self.fc_kw_out_ach[i] = 0
