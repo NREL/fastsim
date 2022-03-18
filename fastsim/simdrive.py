@@ -429,7 +429,7 @@ class SimDrive(object):
         )
 
         self.fc_max_kw_in[i] = min(self.cur_max_fs_kw_out[i], self.veh.max_fuel_stor_kw)
-        self.fc_fs_lim_kw[i] = self.veh.fc_max_out_kw
+        self.fc_fs_lim_kw[i] = self.veh.max_fuel_conv_kw
         self.cur_max_fc_kw_out[i] = min(
             self.veh.max_fuel_conv_kw, self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i])
 
@@ -1206,9 +1206,9 @@ class SimDrive(object):
         else:
             self.fc_kw_in_ach[i] = (
                 self.fc_kw_out_ach[i] / (self.veh.fc_eff_array[np.argmax(
-                    self.veh.fc_kw_out_array > min(self.fc_kw_out_ach[i], self.veh.fc_max_out_kw)) - 1]) 
+                    self.veh.fc_kw_out_array > min(self.fc_kw_out_ach[i], self.veh.max_fuel_conv_kw)) - 1]) 
                 if self.veh.fc_eff_array[np.argmax(
-                    self.veh.fc_kw_out_array > min(self.fc_kw_out_ach[i], self.veh.fc_max_out_kw)) - 1] != 0
+                    self.veh.fc_kw_out_array > min(self.fc_kw_out_ach[i], self.veh.max_fuel_conv_kw)) - 1] != 0
                 else 0)
 
         self.fs_kw_out_ach[i] = self.fc_kw_in_ach[i]

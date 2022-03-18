@@ -538,8 +538,6 @@ class Vehicle(object):
     @property
     def max_fc_eff_kw(self): return self.fc_kw_out_array[np.argmax(self.fc_eff_array)]
     @property
-    def fc_max_out_kw(self): return np.max(self.input_kw_out_array)
-    @property
     def max_regen_kwh(self): return 0.5 * self.veh_kg * (27**2) / (3600 * 1000)    
 
     @property
