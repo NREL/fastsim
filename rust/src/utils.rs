@@ -1,5 +1,5 @@
 extern crate ndarray;
-use ndarray::{Array, Array1, array, Axis, s, concatenate}; 
+use ndarray::{Array1, array, Axis, s, concatenate}; 
 use ordered_float::NotNan; // 2.0.0
 
 
