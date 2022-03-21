@@ -1,7 +1,6 @@
 extern crate ndarray;
 use ndarray::{Array1, array, Axis, s, concatenate}; 
 use ordered_float::NotNan; // 2.0.0
-use rayon::prelude::*;
 
 
 pub fn diff(x:&Array1<f64>) -> Array1<f64>{
@@ -13,27 +12,21 @@ pub fn diff(x:&Array1<f64>) -> Array1<f64>{
 
 
 /// Return first index of `arr` greater than `cut`
-pub fn first_grtr(arr: &[f64], cut: f64, use_rayon: bool) -> Option<usize> {
+pub fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
     let len = arr.len();
     if len == 0 {
         return None;
-    } else if use_rayon {
-        Some(arr.par_iter().position_first(|&x| x == cut).unwrap_or(len - 1)) // unwrap_or allows for default if not found       
-    } else {
-        Some(arr.iter().position(|&x| x == cut).unwrap_or(len - 1)) // unwrap_or allows for default if not found
     }
+    Some(arr.iter().position(|&x| x > cut).unwrap_or(len - 1)) // unwrap_or allows for default if not found
 }
 
 /// Return first index of `arr` equal to`cut`
-pub fn first_eq(arr: &[f64], cut: f64, use_rayon: bool) -> Option<usize> {
+pub fn first_eq(arr: &[f64], cut: f64) -> Option<usize> {
     let len = arr.len();
     if len == 0 {
         return None;
-    } else if use_rayon {
-        Some(arr.par_iter().position_first(|&x| x == cut).unwrap_or(len - 1)) // unwrap_or allows for default if not found       
-    } else {
-        Some(arr.iter().position(|&x| x == cut).unwrap_or(len - 1)) // unwrap_or allows for default if not found
     }
+    Some(arr.iter().position(|&x| x == cut).unwrap_or(len - 1)) // unwrap_or allows for default if not found
 }
 
 /// return max of 2 f64
@@ -122,7 +115,7 @@ mod tests {
     #[test]
     fn test_that_first_eq_finds_the_right_index_when_one_exists(){
         let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
-        let idx = first_eq(&xs, 3.3, true).unwrap();
+        let idx = first_eq(&xs, 3.3).unwrap();
         let expected_idx: usize = 2;
         assert_eq!(idx, expected_idx)
     }
@@ -130,7 +123,7 @@ mod tests {
     #[test]
     fn test_that_first_eq_yields_last_index_when_nothing_found(){
         let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
-        let idx = first_eq(&xs, 7.0, true).unwrap();
+        let idx = first_eq(&xs, 7.0).unwrap();
         let expected_idx: usize = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
@@ -139,7 +132,7 @@ mod tests {
     #[test]
     fn test_that_first_grtr_finds_the_right_index_when_one_exists(){
         let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
-        let idx = first_grtr(&xs, 3.0, true).unwrap();
+        let idx = first_grtr(&xs, 3.0).unwrap();
         let expected_idx: usize = 2;
         assert_eq!(idx, expected_idx)
     }
@@ -147,7 +140,7 @@ mod tests {
     #[test]
     fn test_that_first_grtr_yields_last_index_when_nothing_found(){
         let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
-        let idx = first_grtr(&xs, 7.0, true).unwrap();
+        let idx = first_grtr(&xs, 7.0).unwrap();
         let expected_idx: usize = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }

@@ -227,7 +227,7 @@ impl RustVehicle{
     }
 
     pub fn max_fc_eff_kw(&self) -> f64{
-        let fc_eff_arr_max_i = first_eq(&self.fc_eff_array, arrmax(&self.fc_eff_array), true).unwrap_or(0);
+        let fc_eff_arr_max_i = first_eq(&self.fc_eff_array, arrmax(&self.fc_eff_array)).unwrap_or(0);
         self.fc_kw_out_array[fc_eff_arr_max_i]
     }
 
