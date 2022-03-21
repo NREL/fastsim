@@ -12,20 +12,35 @@ use super::cycle::RustCycle;
 #[derive(Debug, Clone)]
 /// Struct containing time trace data
 pub struct RustSimDriveParams{
+    #[pyo3(get, set)]
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
+    #[pyo3(get, set)]
     pub max_time_dilation: f64,
+    #[pyo3(get, set)]
     pub min_time_dilation: f64,
+    #[pyo3(get, set)]
     pub time_dilation_tol: f64,
+    #[pyo3(get, set)]
     pub max_trace_miss_iters: u32,
+    #[pyo3(get, set)]
     pub trace_miss_speed_mps_tol: f64,
+    #[pyo3(get, set)]
     pub trace_miss_time_tol: f64,
+    #[pyo3(get, set)]
     pub trace_miss_dist_tol: f64,
+    #[pyo3(get, set)]
     pub sim_count_max: u32,
+    #[pyo3(get, set)]
     pub verbose: bool,
+    #[pyo3(get, set)]
     pub newton_gain: f64,
+    #[pyo3(get, set)]
     pub newton_max_iter: u32,
+    #[pyo3(get, set)]
     pub newton_xtol: f64,
+    #[pyo3(get, set)]
     pub energy_audit_error_tol: f64,
+    #[pyo3(get, set)]
     pub max_epa_adj: f64,
 }
 
@@ -69,156 +84,6 @@ impl RustSimDriveParams{
             energy_audit_error_tol,
             max_epa_adj,
         }
-    }
-
-    #[getter]
-    pub fn get_energy_audit_error_tol(&self) -> PyResult<f64>{
-      Ok(self.energy_audit_error_tol)
-    }
-    #[setter]
-    pub fn set_energy_audit_error_tol(&mut self, new_value:f64) -> PyResult<()>{
-      self.energy_audit_error_tol = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_max_epa_adj(&self) -> PyResult<f64>{
-      Ok(self.max_epa_adj)
-    }
-    #[setter]
-    pub fn set_max_epa_adj(&mut self, new_value:f64) -> PyResult<()>{
-      self.max_epa_adj = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_max_time_dilation(&self) -> PyResult<f64>{
-      Ok(self.max_time_dilation)
-    }
-    #[setter]
-    pub fn set_max_time_dilation(&mut self, new_value:f64) -> PyResult<()>{
-      self.max_time_dilation = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_max_trace_miss_iters(&self) -> PyResult<u32>{
-      Ok(self.max_trace_miss_iters)
-    }
-    #[setter]
-    pub fn set_max_trace_miss_iters(&mut self, new_value:u32) -> PyResult<()>{
-      self.max_trace_miss_iters = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_min_time_dilation(&self) -> PyResult<f64>{
-      Ok(self.min_time_dilation)
-    }
-    #[setter]
-    pub fn set_min_time_dilation(&mut self, new_value:f64) -> PyResult<()>{
-      self.min_time_dilation = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_missed_trace_correction(&self) -> PyResult<bool>{
-      Ok(self.missed_trace_correction)
-    }
-    #[setter]
-    pub fn set_missed_trace_correction(&mut self, new_value:bool) -> PyResult<()>{
-      self.missed_trace_correction = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_newton_gain(&self) -> PyResult<f64>{
-      Ok(self.newton_gain)
-    }
-    #[setter]
-    pub fn set_newton_gain(&mut self, new_value:f64) -> PyResult<()>{
-      self.newton_gain = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_newton_max_iter(&self) -> PyResult<u32>{
-      Ok(self.newton_max_iter)
-    }
-    #[setter]
-    pub fn set_newton_max_iter(&mut self, new_value:u32) -> PyResult<()>{
-      self.newton_max_iter = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_newton_xtol(&self) -> PyResult<f64>{
-      Ok(self.newton_xtol)
-    }
-    #[setter]
-    pub fn set_newton_xtol(&mut self, new_value:f64) -> PyResult<()>{
-      self.newton_xtol = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_sim_count_max(&self) -> PyResult<u32>{
-      Ok(self.sim_count_max)
-    }
-    #[setter]
-    pub fn set_sim_count_max(&mut self, new_value:u32) -> PyResult<()>{
-      self.sim_count_max = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_time_dilation_tol(&self) -> PyResult<f64>{
-      Ok(self.time_dilation_tol)
-    }
-    #[setter]
-    pub fn set_time_dilation_tol(&mut self, new_value:f64) -> PyResult<()>{
-      self.time_dilation_tol = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_trace_miss_dist_tol(&self) -> PyResult<f64>{
-      Ok(self.trace_miss_dist_tol)
-    }
-    #[setter]
-    pub fn set_trace_miss_dist_tol(&mut self, new_value:f64) -> PyResult<()>{
-      self.trace_miss_dist_tol = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_trace_miss_speed_mps_tol(&self) -> PyResult<f64>{
-      Ok(self.trace_miss_speed_mps_tol)
-    }
-    #[setter]
-    pub fn set_trace_miss_speed_mps_tol(&mut self, new_value:f64) -> PyResult<()>{
-      self.trace_miss_speed_mps_tol = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_trace_miss_time_tol(&self) -> PyResult<f64>{
-      Ok(self.trace_miss_time_tol)
-    }
-    #[setter]
-    pub fn set_trace_miss_time_tol(&mut self, new_value:f64) -> PyResult<()>{
-      self.trace_miss_time_tol = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_verbose(&self) -> PyResult<bool>{
-      Ok(self.verbose)
-    }
-    #[setter]
-    pub fn set_verbose(&mut self, new_value:bool) -> PyResult<()>{
-      self.verbose = new_value;
-      Ok(())
     }
 }
 
