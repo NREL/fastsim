@@ -328,6 +328,8 @@ pub struct RustSimDrive{
     pub cur_max_roadway_chg_kw: Array1<f64>,
     pub trace_miss_iters: Array1<f64>,
     pub newton_iters: Array1<u32>,
+    pub fuel_kj: f64,
+    pub ess_dischg_kj: f64,
 }
 
 #[pymethods]
@@ -435,6 +437,8 @@ impl RustSimDrive{
         let cur_max_roadway_chg_kw = Array::zeros(cyc_len);
         let trace_miss_iters = Array::zeros(cyc_len);
         let newton_iters = Array::zeros(cyc_len);
+        let fuel_kj: f64 = 0.0;
+        let ess_dischg_kj: f64 = 0.0;
         RustSimDrive{
             hev_sim_count,
             veh,
@@ -537,6 +541,8 @@ impl RustSimDrive{
             cur_max_roadway_chg_kw,
             trace_miss_iters,
             newton_iters,
+            fuel_kj,
+            ess_dischg_kj,
         }
     }
 
@@ -571,8 +577,9 @@ impl RustSimDrive{
     pub fn set_fc_ess_power(&mut self, i:usize) {
         self.set_fc_ess_power_rust(i)
     }
-
-
+    pub fn set_post_scalars(& mut self) {
+        self.set_post_scalars_rust()
+    }
     // Methods for getting and setting arrays and other complex fields
     // note that python cannot specify a specific index to set but must reset the entire array
 
@@ -1588,6 +1595,16 @@ impl RustSimDrive{
     pub fn set_trans_kw_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
       self.trans_kw_out_ach = Array::from_vec(new_value);
       Ok(())
+    }
+
+    #[getter]
+    pub fn get_fuel_kj(&self) -> PyResult<f64>{
+      Ok(self.fuel_kj)
+    }
+
+    #[getter]
+    pub fn get_ess_dischg_kj(&self) -> PyResult<f64>{
+      Ok(self.ess_dischg_kj)
     }
 }
 
