@@ -969,6 +969,11 @@ impl RustSimDrive {
        // else:
        //     self.ess2fuel_kwh  = self.ess_dischg_kj / (self.fuel_kj + self.roadway_chg_kj)
 
+
+       // DO NOT IMPLEMENT THE FOLLOWING: !!!!!!!!!!!!!!!!!!!!!!
+       // make sure tests pass without these
+       // a downstream project totally abused the `mpgge_elec` so I don't want to provide it anymore  
+
        // if self.mpgge == 0:
        //     # hardcoded conversion
        //     self.gallons_gas_equivalent_per_mile = self.electric_kwh_per_mi / self.props.kwh_per_gge
@@ -983,6 +988,12 @@ impl RustSimDrive {
 
        // self.grid_mpgge_elec = 1 / grid_gallons_gas_equivalent_per_mile
        // self.mpgge_elec = 1 / self.gallons_gas_equivalent_per_mile
+
+        // RESUME IMPLEMENTATION BELOW HERE
+
+        // TODO: where "\w+_kw" and "cyc_\w+_kw" are identical remove the "cyc_\w+_kw" variant
+        // for "cyc_\w+_kw" that don't have a corresponding "\w+_kw", remove the cyc_ prefix, as it 
+        // provides no value
 
        // # energy audit calcs
        // self.drag_kw = self.cyc_drag_kw 
