@@ -547,6 +547,9 @@ impl RustSimDrive{
     }
 
     // wrappers for core methods
+    // TODO, put doc strings on these and all structs
+    // comments preceding a struct, method, or function definition with `///` instead of `\\`
+    // get interpreted as doc strings in python
     pub fn sim_drive_walk(&mut self, init_soc: f64) {
         self.walk(init_soc)
     }
