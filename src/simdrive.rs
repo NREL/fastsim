@@ -12,7 +12,7 @@ use super::cycle::RustCycle;
 #[derive(Debug, Clone)]
 /// Struct containing time trace data
 pub struct RustSimDriveParams{
-    #[pyo3(get, set)]
+    #[pyo3(get, set)]  // enables get/set access from python for simple data types
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
     #[pyo3(get, set)]
     pub max_time_dilation: f64,

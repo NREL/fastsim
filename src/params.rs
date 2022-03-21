@@ -10,7 +10,7 @@ pub const M_PER_MI:f64 = 1609.00;
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 
 pub struct RustPhysicalProperties{
-    #[pyo3(get, set)]
+    #[pyo3(get, set)]  // enables get/set access from python for simple data types
     pub air_density_kg_per_m3:f64, // = 1.2, Sea level air density at approximately 20C
     #[pyo3(get, set)]
     pub a_grav_mps2:f64, // = 9.81
@@ -34,55 +34,5 @@ impl RustPhysicalProperties{
         RustPhysicalProperties{
             air_density_kg_per_m3, a_grav_mps2, kwh_per_gge, fuel_rho_kg__L, fuel_afr_stoich
         }
-    }
-
-    #[getter]
-    pub fn get_a_grav_mps2(&self) -> PyResult<f64>{
-      Ok(self.a_grav_mps2)
-    }
-    #[setter]
-    pub fn set_a_grav_mps2(&mut self, new_value:f64) -> PyResult<()>{
-      self.a_grav_mps2 = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_air_density_kg_per_m3(&self) -> PyResult<f64>{
-      Ok(self.air_density_kg_per_m3)
-    }
-    #[setter]
-    pub fn set_air_density_kg_per_m3(&mut self, new_value:f64) -> PyResult<()>{
-      self.air_density_kg_per_m3 = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_fuel_afr_stoich(&self) -> PyResult<f64>{
-      Ok(self.fuel_afr_stoich)
-    }
-    #[setter]
-    pub fn set_fuel_afr_stoich(&mut self, new_value:f64) -> PyResult<()>{
-      self.fuel_afr_stoich = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_fuel_rho_kg__L(&self) -> PyResult<f64>{
-      Ok(self.fuel_rho_kg__L)
-    }
-    #[setter]
-    pub fn set_fuel_rho_kg__L(&mut self, new_value:f64) -> PyResult<()>{
-      self.fuel_rho_kg__L = new_value;
-      Ok(())
-    }
-
-    #[getter]
-    pub fn get_kwh_per_gge(&self) -> PyResult<f64>{
-      Ok(self.kwh_per_gge)
-    }
-    #[setter]
-    pub fn set_kwh_per_gge(&mut self, new_value:f64) -> PyResult<()>{
-      self.kwh_per_gge = new_value;
-      Ok(())
     }
 }
