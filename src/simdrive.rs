@@ -590,6 +590,8 @@ impl RustSimDrive{
         self.cyc.time_s.len()
     }
 
+    // doc strings not needed for getters or setters
+
     #[getter]
     pub fn get_veh(&self) -> PyResult<RustVehicle>{
         Ok(self.veh.clone())
