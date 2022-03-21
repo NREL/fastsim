@@ -17,8 +17,8 @@ impl RustSimDrive {
     ///
     /// Arguments
     /// ------------
-    /// initSoc (optional): initial battery state-of-charge (SOC) for electrified vehicles
-    /// auxInKw: auxInKw override.  Array of same length as cyc.time_s.
+    /// init_soc (optional): initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
     ///         Default of np.zeros(1) causes veh.aux_kw to be used. If zero is actually
     ///         desired as an override, either set veh.aux_kw = 0 before instantiaton of
     ///         SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
