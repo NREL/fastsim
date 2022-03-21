@@ -395,6 +395,27 @@ class Vehicle(object):
             if key != 'props':
                  veh_dict[key] = keys_and_types[key](val)
 
+        keys_to_remove = [
+            'input_kw_out_array',
+            'fc_kw_out_array',
+            'fc_eff_array',
+            'modern_max',
+            'mc_eff_array',
+            'mc_kw_in_array',
+            'mc_kw_out_array',
+            'mc_max_elec_in_kw',
+            'mc_full_eff_array',
+            'veh_kg',
+            'max_trac_mps2',
+            'ess_mass_kg',
+            'mc_mass_kg',
+            'fc_mass_kg',
+            'fs_mass_kg',
+            'mc_perc_out_array',
+        ]
+        for key in keys_to_remove:
+            if key in veh_dict:
+                del veh_dict[key]
         return cls(**veh_dict)
         
 
