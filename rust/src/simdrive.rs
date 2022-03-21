@@ -332,6 +332,7 @@ pub struct RustSimDrive{
     pub trace_miss_iters: Array1<f64>,
     pub newton_iters: Array1<u32>,
     pub fuel_kj: f64,
+    pub ess_dischg_kj: f64,
 }
 
 #[pymethods]
@@ -440,6 +441,7 @@ impl RustSimDrive{
         let trace_miss_iters = Array::zeros(cyc_len);
         let newton_iters = Array::zeros(cyc_len);
         let fuel_kj: f64 = 0.0;
+        let ess_dischg_kj: f64 = 0.0;
         RustSimDrive{
             hev_sim_count,
             veh,
@@ -543,6 +545,7 @@ impl RustSimDrive{
             trace_miss_iters,
             newton_iters,
             fuel_kj,
+            ess_dischg_kj,
         }
     }
 
@@ -1492,8 +1495,7 @@ impl RustSimDrive{
        //     self.mpgge = self.dist_mi.sum() / (self.fs_kwh_out_ach.sum() / self.props.kwh_per_gge)
 
        // self.roadway_chg_kj = (self.roadway_chg_kw_out_ach * self.cyc.dt_s).sum()
-       // self.ess_dischg_kj = - \
-       //     (self.soc[-1] - self.soc[0]) * self.veh.max_ess_kwh * 3.6e3
+       self.ess_dischg_kj = -1.0 * (self.soc[self.soc.len()-1] - self.soc[0]) * self.veh.max_ess_kwh * 3.6e3;
        // self.battery_kwh_per_mi  = (
        //     self.ess_dischg_kj / 3.6e3) / self.dist_mi.sum()
        // self.electric_kwh_per_mi  = (
@@ -2606,6 +2608,11 @@ impl RustSimDrive{
     #[getter]
     pub fn get_fuel_kj(&self) -> PyResult<f64>{
       Ok(self.fuel_kj)
+    }
+
+    #[getter]
+    pub fn get_ess_dischg_kj(&self) -> PyResult<f64>{
+      Ok(self.ess_dischg_kj)
     }
 }
 
