@@ -13,6 +13,7 @@ pyo3 = { version = "0.15.1", features = ["extension-module"] }
 ndarray = { version = "0.15.4"}
 ordered-float = "2.10.0"
 csv = "1.1"
+rayon = "1.5.1"
 # itertools = "0.10.3"
 
 [profile.release]
