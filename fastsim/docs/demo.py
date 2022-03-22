@@ -82,6 +82,7 @@ sim_drive.sim_drive_walk(0.5)
 t_py = time.time() - t0
 print(f'Time to simulate: {t_py:.2e} s')
 
+# %%
 sdr = fsr.RustSimDrive(cyc.to_rust(), veh.to_rust())
 t0 = time.time()
 sdr.sim_drive_walk(0.5) 
@@ -97,9 +98,20 @@ print(f"Rust provides a {t_py/t_rust:.5g}x speedup")
 # %%
 fig, ax = plt.subplots(2, 1, figsize=(9, 5))
 ax[0].plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='py')
-ax[0].plot(cyc.time_s, sdr.fc_kw_in_ach, label='rust')
+ax[0].plot(cyc.time_s, sdr.fc_kw_in_ach, linestyle='--', label='rust')
 ax[0].legend()
 ax[0].set_ylabel('Engine Input\nPower [kW]')
+
+ax[1].plot(cyc.time_s, sim_drive.mph_ach)
+ax[1].set_xlabel('Cycle Time [s]')
+ax[1].set_ylabel('Speed [MPH]')
+
+plt.show()
+
+# %%
+fig, ax = plt.subplots(2, 1, figsize=(9, 5))
+ax[0].plot(cyc.time_s, sdr.fc_kw_in_ach - sim_drive.fc_kw_in_ach)
+ax[0].set_ylabel('Engine Input\nPower Error [kW]')
 
 ax[1].plot(cyc.time_s, sim_drive.mph_ach)
 ax[1].set_xlabel('Cycle Time [s]')
