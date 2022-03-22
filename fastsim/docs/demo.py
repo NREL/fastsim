@@ -82,7 +82,6 @@ sim_drive.sim_drive_walk(0.5)
 t_py = time.time() - t0
 print(f'Time to simulate: {t_py:.2e} s')
 
-# %%
 sdr = fsr.RustSimDrive(cyc.to_rust(), veh.to_rust())
 t0 = time.time()
 sdr.sim_drive_walk(0.5) 
