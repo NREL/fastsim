@@ -85,7 +85,7 @@ impl RustSimDrive {
     /// i: index of time step
     pub fn set_misc_calcs_rust(&mut self, i:usize) {
         // if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
-        if self.aux_in_kw.slice(s![i..self.len()-1]).iter().all(|&x| x == 0.0) {
+        if self.aux_in_kw.slice(s![i..]).iter().all(|&x| x == 0.0) {
             // if all elements after i-1 are zero, trigger default behavior; otherwise, use override value
             if self.veh.no_elec_aux{
                 self.aux_in_kw[i] = self.veh.aux_kw / self.veh.alt_eff;
