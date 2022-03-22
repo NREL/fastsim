@@ -504,8 +504,7 @@ impl RustSimDrive {
             }
             if self.veh.no_elec_sys {
                 self.accel_buff_soc[i] = 0.0;
-            }
-            else {
+            } else {
                 self.accel_buff_soc[i] = min(
                     max(
                         ((self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powf(2.0) - self.cyc.mps[i].powf(2.0)) /
