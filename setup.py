@@ -7,6 +7,11 @@ import setuptools
 # TODO: put the folliwing in MANIFEST.in: 
 # include Cargo.toml
 # recursive include src *
+# put this in pyproject.toml:
+# [build-system]
+# requires = ["maturin>=0.12,<0.13", "setuptools", "wheel", "setuptools-rust"]
+# build-backend = "maturin"
+
 
 with open("README.md", "r") as fh:
     long_description = fh.read()

@@ -1,7 +1,3 @@
-[build-system]
-requires = ["maturin>=0.12,<0.13", "setuptools", "wheel", "setuptools-rust"]
-build-backend = "maturin"
-
 [project]
 name = "fastsim"
 requires-python = ">=3.6"
