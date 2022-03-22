@@ -1,16 +1,18 @@
 ![FASTSim Logo](fastsim-icon-web-131x172.jpg)
 
 # Description
-This is the pythonic flavor of FASTSim which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. Other FASTSim flavors may spin off as variations on this core functionality, but these should integrated back into master if there is any intent of persistence.
+This is the python/rust flavor of FASTSim which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. Other FASTSim flavors may spin off as variations on this core functionality, but these should integrated back into master if there is any intent of persistence.
 
 All classes and methods are self-documented.  
 
 # Installation
+
+## Python
 First, clone the repository from GitHub if you don't already have a local copy of the FASTSim package files:
 
     git clone git@github.nrel.gov:MBAP/fastsim.git  
     
-FASTSim depends on python 3.8. One way to satisfy this is to use conda (we recommend Anaconda Powershell Prompt for Windows OS):
+FASTSim depends on python >= 3.7. One way to satisfy this is to use conda (we recommend Anaconda Powershell Prompt for Windows OS):
 
     conda create -n fastsim python=3.8
     conda activate fastsim
@@ -22,6 +24,14 @@ Then, from within the top level of the FASTSim folder, run a pip install:
 This will install FASTSim with minimal dependencies in place so that FASTSim files can be editable (`-e` provides this behavior). Developers will find this option handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
 
 For users who are not developers, FASTSim can also be installed without the `-e` option (i.e. `pip install .`), and package files will be copied to the python site-packages folder.   
+
+## Rust
+1. Assuming you've [installed rust](https://www.rust-lang.org/tools/install), within the same python environment, run `pip install maturin`.  
+1. _Optional_: Within the top folder of this repo (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.  
+1. In the same folder, you should now be able to run `maturin devlop --rust`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py` through the first plot (and maybe beyond).
+
+## Future
+We plan to make this all pip installable such that you can just run `pip install fastsimrust` and not have to mess with compiling rust or even need to have rust installed.  
 
 # Update
 Note: the following instructions work only if you are inside NREL VPN:  
