@@ -2,11 +2,19 @@ extern crate ndarray;
 use ndarray::{Array, Array1};
 extern crate pyo3;
 use pyo3::prelude::*;
+use pyo3::exceptions;
 
 use super::params::RustPhysicalProperties;
 use super::vehicle::*;
 use super::cycle::RustCycle;
 
+
+fn handle_sd_res(res:Result<(), String>) -> PyResult<()> {
+    match res {
+        Ok(()) => Ok(()),
+        Err(msg) => Err(exceptions::PyRuntimeError::new_err(msg))
+    }
+}
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -415,38 +423,40 @@ impl RustSimDrive{
     // TODO, put doc strings on these and all structs
     // comments preceding a struct, method, or function definition with `///` instead of `\\`
     // get interpreted as doc strings in python
-    pub fn sim_drive_walk(&mut self, init_soc: f64) {
-        self.walk(init_soc)
+    pub fn sim_drive_walk(&mut self, init_soc: f64) -> PyResult<()> {
+       handle_sd_res(self.walk(init_soc))
     }
-    pub fn sim_drive_step(&mut self) {
-        self.step();
+
+    pub fn sim_drive_step(&mut self) -> PyResult<()> {
+        handle_sd_res(self.step())
     }
-    pub fn set_misc_calcs(&mut self, i:usize) {
-        self.set_misc_calcs_rust(i)
+
+    pub fn set_misc_calcs(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_misc_calcs_rust(i))
     }
-    pub fn set_comp_lims(&mut self, i:usize) {
-        self.set_comp_lims_rust(i)
+    pub fn set_comp_lims(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_comp_lims_rust(i))
     }
-    pub fn set_power_calcs(&mut self, i:usize) {
-        self.set_power_calcs_rust(i)
+    pub fn set_power_calcs(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_power_calcs_rust(i))
     }
-    pub fn set_ach_speed(&mut self, i:usize) {
-        self.set_ach_speed_rust(i)
+    pub fn set_ach_speed(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_ach_speed_rust(i))
     }
-    pub fn set_hybrid_cont_calcs(&mut self, i:usize) {
-        self.set_hybrid_cont_calcs_rust(i)
+    pub fn set_hybrid_cont_calcs(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_hybrid_cont_calcs_rust(i))
     }
-    pub fn set_fc_forced_state(&mut self, i:usize) {
-        self.set_fc_forced_state_rust(i)
+    pub fn set_fc_forced_state(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_fc_forced_state_rust(i))
     }
-    pub fn set_hybrid_cont_decisions(&mut self, i:usize) {
-        self.set_hybrid_cont_decisions_rust(i)
+    pub fn set_hybrid_cont_decisions(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_hybrid_cont_decisions_rust(i))
     }
-    pub fn set_fc_ess_power(&mut self, i:usize) {
-        self.set_fc_ess_power_rust(i)
+    pub fn set_fc_ess_power(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_fc_ess_power_rust(i))
     }
-    pub fn set_post_scalars(& mut self) {
-        self.set_post_scalars_rust()
+    pub fn set_post_scalars(& mut self) -> PyResult<()> {
+        handle_sd_res(self.set_post_scalars_rust())
     }
     // Methods for getting and setting arrays and other complex fields
     // note that python cannot specify a specific index to set but must reset the entire array
