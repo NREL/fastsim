@@ -15,7 +15,7 @@ import types
 # local modules
 from . import parameters as params
 from . import inspect_utils
-import fastsim.fastsimrust as fsr
+import fastsimrust as fsr
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'

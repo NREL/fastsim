@@ -36,7 +36,7 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 
 # local modules
 import fastsim as fsim
-import fastsim.fastsimrust as fsr
+import fastsimrust as fsr
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
 

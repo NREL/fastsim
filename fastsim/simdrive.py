@@ -7,7 +7,7 @@ import numpy as np
 import re
 import copy
 
-import fastsim.fastsimrust as fsr
+import fastsimrust as fsr
 from . import params, cycle, vehicle, inspect_utils
 # these imports are needed for numba to type these correctly
 from .vehicle import CONV, HEV, PHEV, BEV 
