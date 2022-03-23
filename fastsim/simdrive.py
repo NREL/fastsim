@@ -1544,3 +1544,29 @@ def SimAccelTestJit(cyc_jit, veh_jit) -> SimAccelTest:
     SimDriveJit.__doc__ += sim_drive_jit.__doc__
 
     return sim_drive_jit
+
+def estimate_soc_corrected_fuel_kJ(sd: SimDriveClassic) -> float:
+    """
+    - sd: SimDriveClassic, the simdrive instance after simulation
+    RETURN: number, the kJ of fuel corrected for SOC imbalance
+    """
+    if sd.veh.vehPtType != HEV:
+        raise ValueError(f"SimDrive instance must have a vehPtType of HEV; found {sd.veh.vehPtType}")
+    def f(mask, numer, denom, default):
+        if not mask.any():
+            return default
+        return numer[mask].sum() / denom[mask].sum()
+    kJ__kWh = 3600.0
+    delta_soc = sd.soc[-1] - sd.soc[0]
+    ess_eff = np.sqrt(sd.veh.essRoundTripEff)
+    mc_chg_eff = f(sd.mcMechKwOutAch < 0.0, sd.mcElecKwInAch, sd.mcMechKwOutAch, sd.veh.mcPeakEff)
+    mc_dis_eff = f(sd.mcMechKwOutAch > 0.0, sd.mcMechKwOutAch, sd.mcElecKwInAch, mc_chg_eff)
+    ess_traction_frac = f(sd.mcElecKwInAch > 0.0, sd.mcElecKwInAch, sd.essKwOutAch, 1.0)
+    fc_eff = f(sd.transKwInAch > 0.0, sd.fcKwOutAch, sd.fcKwInAch, sd.fcKwOutAch.sum() / sd.fcKwInAch.sum())
+    if delta_soc >= 0.0:
+        k = (sd.veh.maxEssKwh * kJ__kWh * ess_eff * mc_dis_eff * ess_traction_frac) / fc_eff
+        equivalent_fuel_kJ = -1.0 * delta_soc * k
+    else:
+        k = (sd.veh.maxEssKwh * kJ__kWh) / (ess_eff * mc_chg_eff * fc_eff)
+        equivalent_fuel_kJ = -1.0 * delta_soc * k
+    return sd.fuelKj + equivalent_fuel_kJ
