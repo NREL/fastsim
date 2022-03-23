@@ -134,21 +134,8 @@ class TestRust(unittest.TestCase):
                             print(f"REAL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
                 if has_errors:
                     has_any_errors = True
-                    py_test = py['regen_buff_soc'][i] < py['accel_buff_soc'][i]
-                    ru_test = ru['regen_buff_soc'][i] < ru['accel_buff_soc'][i]
-                    print(f"regen_buff_soc[{i}] < accel_buff_soc[{i}]: py {py_test}, ru {ru_test}")
-                    py_test = py['soc'][i-1] > py['regen_buff_soc'][i]
-                    ru_test = ru['soc'][i-1] > ru['regen_buff_soc'][i]
-                    print(f"soc[{i-1}] > regen_buff_soc[{i}]: py {py_test}, ru {ru_test}")
-                    py_test = py['soc'][i-1] < py['accel_buff_soc'][i]
-                    ru_test = ru['soc'][i-1] < ru['accel_buff_soc'][i]
-                    print(f"soc[{i-1}] < accel_buff_soc[{i}]: py {py_test}, ru {ru_test}")
-                    print(f"... soc[{i}] = py {py['soc'][i]}, ru {ru['soc'][i]}")
-                    print(f"... soc[{i-1}] = py {py['soc'][i-1]}, ru {ru['soc'][i-1]}")
-                    print(f"... regen_buff_soc[{i}] = py {py['regen_buff_soc'][i]}, ru {ru['regen_buff_soc'][i]}")
-                    print(f"... accel_buff_soc[{i}] = py {py['accel_buff_soc'][i]}, ru {ru['accel_buff_soc'][i]}")
                     break
-        #self.assertFalse(has_any_errors)
+        self.assertFalse(has_any_errors)
     
     def test_fueling_prediction_for_multiple_vehicle(self):
         for vehid in [1, 9, 14, 17, 24]:
