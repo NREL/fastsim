@@ -7,11 +7,6 @@ All classes and methods are self-documented.
 
 # Installation
 
-## Rust
-1. Assuming you've [installed rust](https://www.rust-lang.org/tools/install), within the same python environment, run `pip install maturin`.  
-1. _Optional_: Within the top folder of this repo (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.  
-1. In the same folder, you should now be able to run `maturin devlop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py` through the first plot (and maybe beyond).
-
 ## Python
 First, clone the repository from GitHub if you don't already have a local copy of the FASTSim package files:
 
@@ -30,8 +25,13 @@ This will install FASTSim with minimal dependencies in place so that FASTSim fil
 
 For users who are not developers, FASTSim can also be installed without the `-e` option (i.e. `pip install .`), and package files will be copied to the python site-packages folder.   
 
+## Rust
+1. Assuming you've [installed rust](https://www.rust-lang.org/tools/install), within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`.  
+1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.  
+1. In the same folder, you should now be able to run `maturin devlop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py` through the first plot (and maybe beyond).
+
 ## Future
-We plan to make this all pip installable such that you can just run `pip install fastsimrust` and not have to mess with compiling rust or even need to have rust installed.  
+We plan to make this all pip installable such that you can just run `pip install fastsimrust` and not have to mess with cloning the github repo, compiling rust, or even needing to have rust installed.  
 
 # Update
 Note: the following instructions work only if you are inside NREL VPN:  

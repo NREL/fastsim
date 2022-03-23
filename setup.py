@@ -1,29 +1,20 @@
 """PyPI setup script.  To use it, run `python setup.py sdist bdist_wheel` from this directory."""
 
 import setuptools
-# from setuptools_rust import Binding, RustExtension
-
-# TODO: uncomment lines for rust stuff to work after figuring out how to properly configure it
-# TODO: put the folliwing in MANIFEST.in: 
-# include Cargo.toml
-# recursive include src *
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="fastsim",  
-    version="0.0.1",
-    # rust_extensions=[RustExtension("fastsimrust.fastsimrust", binding=Binding.PyO3)],
-    # rust extensions are not zip safe, just like C-extensions.
-    # zip_safe=False,    
+    version="1.2.6",
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
     description="Tool for modeling vehicle powertrains",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://www.nrel.gov/transportation/fastsim.html",
-    packages=setuptools.find_packages().append("fastsimrust"),
+    packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: Other/Proprietary License",
@@ -40,6 +31,5 @@ setuptools.setup(
         "matplotlib>=3.3",
         "numpy>=1.18",
         "seaborn>=0.10",
-        # "setuptools_rust>1",
     ],
 )

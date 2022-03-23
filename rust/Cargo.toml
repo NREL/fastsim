@@ -1,7 +1,7 @@
 [package]
 name = "fastsimrust"
-version = "0.0.1"
-edition = "2021" # rust, not fastsim, edition
+version = "2.0.0"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -13,7 +13,6 @@ pyo3 = { version = "0.15.1", features = ["extension-module"] }
 ndarray = { version = "0.15.4"}
 ordered-float = "2.10.0"
 csv = "1.1"
-# itertools = "0.10.3"
 
 [profile.release]
 # https://deterministic.space/high-performance-rust.html

@@ -114,7 +114,7 @@ impl RustSimDrive {
         };
 
         if let Err(()) = res() {
-            Err("`set_misc_calcs_rust` failed".to_string())
+            Err(format!("`set_misc_calcs_rust` failed at time step {}", i))
         } else {
             Ok(())
         }
