@@ -1,3 +1,5 @@
 include LICENSE LICENSE.md README.md setup.py
+include pyproject.toml rust/Cargo.toml
+recursive-include rust/src *
 recursive-include fastsim/resources *
 recursive-include fastsim/docs *
