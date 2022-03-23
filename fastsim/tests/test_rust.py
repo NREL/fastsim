@@ -7,7 +7,7 @@ import numpy as np
 
 import fastsim.vehicle_base as fsvb
 from fastsim import cycle, vehicle, simdrive
-import fastsim.fastsimrust as fsr
+import fastsimrust as fsr
 
 
 class TestRust(unittest.TestCase):
