@@ -156,8 +156,6 @@ impl RustCycle{
 
     /// Load cycle from csv file
     pub fn from_file(pathstr: &String) -> Result<RustCycle, String> {
-        // TODO: figure out how to make this a pymethod 
-        // needs trait implementation for String to work as argument
         let pathbuf = PathBuf::from(pathstr);
         if pathbuf.exists() {
             let mut time_s = Vec::<f64>::new();
