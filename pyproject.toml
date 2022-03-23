@@ -1,7 +1,5 @@
 [build-system]
 requires = [
-    # The minimum setuptools version is specific to the PEP 517 backend,
-    # and may be stricter than the version required in `setup.cfg`
     "setuptools>=40.6.0",
     "wheel",
     "setuptools-rust>=0.11.4",
