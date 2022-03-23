@@ -67,7 +67,7 @@ pub fn arrmin(arr:&[f64]) -> f64 {
 pub fn ndarrmin(arr:&Array1<f64>) -> f64 {
     arr.to_vec()
         .into_iter()
-        .reduce(f64::max)
+        .reduce(f64::min)
         .unwrap()
 }
 
@@ -143,6 +143,13 @@ mod tests {
         let idx = first_grtr(&xs, 7.0).unwrap();
         let expected_idx: usize = xs.len() - 1;
         assert_eq!(idx, expected_idx)
+    }
+
+    #[test]
+    fn test_that_ndarrmin_returns_the_min(){
+        let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
+        let xmin = ndarrmin(&xs);
+        assert_eq!(xmin, 3.0);
     }
 
     // #[test]
