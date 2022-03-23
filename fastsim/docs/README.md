@@ -21,7 +21,7 @@ Then, from within the top level of the FASTSim folder, run a pip install:
 
     pip install .
     
-This will install FASTSim with the include rust extensions. 
+This will install FASTSim with the included rust extensions. 
 
 ## Developers
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
