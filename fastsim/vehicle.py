@@ -18,7 +18,7 @@ from typing import Optional
 from fastsim import parameters as params
 from fastsim import utils
 from fastsim.vehicle_base import keys_and_types, NEW_TO_OLD
-import fastsimrust as fsr
+import fastsim.fastsimrust as fsr
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'

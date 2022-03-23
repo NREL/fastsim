@@ -1,6 +1,7 @@
 """PyPI setup script.  To use it, run `python setup.py sdist bdist_wheel` from this directory."""
 
 import setuptools
+from setuptools_rust import RustExtension, Binding
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -31,5 +32,15 @@ setuptools.setup(
         "matplotlib>=3.3",
         "numpy>=1.18",
         "seaborn>=0.10",
+    ],
+    # rust extension
+    zip_safe = False,
+    rust_extensions=[
+        RustExtension(
+            "fastsim.fastsimrust",
+            "rust/Cargo.toml",
+            binding=Binding.PyO3,
+            py_limited_api=True,
+        )
     ],
 )

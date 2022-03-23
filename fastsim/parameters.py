@@ -12,7 +12,7 @@ import copy
 
 from . import inspect_utils
 
-import fastsimrust as fsr
+import fastsim.fastsimrust as fsr
 
 
 THIS_DIR = Path(__file__).parent
