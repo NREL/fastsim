@@ -452,9 +452,25 @@ impl RustSimDrive {
                 }
 
                 self.newton_iters[i] = iterate;
-
-                let _ys = Array::from_vec(ys).map(|x| x.abs());
-                self.mps_ach[i] = xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()];
+                
+                let mut the_mps_ach: f64 = 0.0;
+                let mut min_abs_y: Option<f64> = None;
+                for (&x, &y) in xs.iter().zip(ys.iter()) {
+                    let abs_y = y.abs();
+                    match min_abs_y {
+                        Some(min_y) => {
+                            if x >= 0.0 && abs_y < min_y {
+                                min_abs_y = Some(abs_y);
+                                the_mps_ach = x;
+                            }
+                        },
+                        None => {
+                            min_abs_y = Some(abs_y);
+                            the_mps_ach = x;
+                        },
+                    }
+                }
+                self.mps_ach[i] = the_mps_ach;
             }
 
             self.set_power_calcs(i).unwrap();

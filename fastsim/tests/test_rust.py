@@ -112,6 +112,13 @@ class TestRust(unittest.TestCase):
                 ru_cyc_dt_s = np.array(ru_sd.cyc.dt_s)
                 self.assertAlmostEqual(py_sd.cyc.mps[i], ru_cyc_mps[i])
                 self.assertAlmostEqual(py_sd.cyc.dt_s[i], ru_cyc_dt_s[i])
+                ru_sd_mps_ach = np.array(ru_sd.mps_ach)
+                self.assertTrue(
+                    py_sd.mps_ach[i] >= 0.0,
+                    msg=f'PYTHON: Detected negative speed for {vehid} at {i}: {py_sd.mps_ach[i]} m/s')
+                self.assertTrue(
+                    ru_sd_mps_ach[i] >= 0.0,
+                    msg=f'RUST  : Detected negative speed for {vehid} at {i}: {ru_sd_mps_ach[i]} m/s')
                 for v in vars:
                     py[v] = py_sd.__getattribute__(v)
                     ru[v] = ru_sd.__getattribute__(v)
