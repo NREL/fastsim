@@ -124,3 +124,14 @@ class TestSimDriveClassic(unittest.TestCase):
         sd_copy.fsKwOutAch[5] = 0.0
         self.assertNotEqual(sd.fsKwOutAch[5], sd_copy.fsKwOutAch[5])
         self.assertNotEqual(sd_jit.fsKwOutAch[5], sd_copy.fsKwOutAch[5])
+    
+    def test_achieved_speed_never_negative(self):
+        for vehid in range(1, 27):
+            veh = vehicle.Vehicle(vehid)
+            cyc = cycle.Cycle('udds')
+            sd = simdrive.SimDriveClassic(cyc, veh)
+            sd.sim_drive()
+            self.assertTrue(
+                (sd.mpsAch < 0.0).any(),
+                msg=f'Achieved speed contains negative values for vehicle {vehid}'
+            )
