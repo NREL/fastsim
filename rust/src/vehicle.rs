@@ -159,7 +159,10 @@ pub struct RustVehicle{
     pub small_motor_power_kw: f64,
     #[pyo3(get, set)]
     pub large_motor_power_kw: f64,
-    pub fc_perc_out_array: [f64; 100],
+    // this and other fixed-size arrays can probably be vectors
+    // without any performance penalty with the current implementation
+    // of the functions in utils.rs
+    pub fc_perc_out_array: [f64; 100],  
     #[pyo3(get, set)]
     pub regen_a: f64,
     #[pyo3(get, set)]
