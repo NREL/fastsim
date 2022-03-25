@@ -111,3 +111,7 @@ class TestSimDriveClassic(unittest.TestCase):
                 (sd.mps_ach < 0.0).any(),
                 msg=f'Achieved speed contains negative values for vehicle {vehid}'
             )
+            self.assertFalse(
+                (sd.mps_ach > sd.cyc0.mps).any(),
+                msg=f'Achieved speed is greater than requested speed for {vehid}'
+            )

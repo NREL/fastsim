@@ -162,3 +162,21 @@ class TestRust(unittest.TestCase):
             rust_ess_dischg_kj = sd.ess_dischg_kj
             self.assertAlmostEqual(py_fuel_kj, rust_fuel_kj, msg=f'Non-agreement for vehicle {vehid} for fuel')
             self.assertAlmostEqual(py_ess_dischg_kj, rust_ess_dischg_kj, msg=f'Non-agreement for vehicle {vehid} for ess discharge')
+
+    def test_achieved_speed_never_negative(self):
+        for vehid in range(1, 27):
+            veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
+            cyc = cycle.Cycle.from_file('udds').to_rust()
+            sd = fsr.RustSimDrive(cyc, veh)
+            sd.sim_drive_walk(0.1)
+            sd.set_post_scalars()
+            sd_mps_ach = np.array(sd.mps_ach)
+            sd_cyc0_mps = np.array(sd.cyc0.mps)
+            self.assertFalse(
+                (sd_mps_ach < 0.0).any(),
+                msg=f'Achieved speed contains negative values for vehicle {vehid}'
+            )
+            self.assertFalse(
+                (sd_mps_ach > sd_cyc0_mps).any(),
+                msg=f'Achieved speed is greater than requested speed for {vehid}'
+            )

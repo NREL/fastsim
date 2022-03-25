@@ -689,13 +689,8 @@ class SimDrive(object):
                 
                 self.newton_iters[i] = iterate
 
-                min_abs_y = None
-                best_x = 0.0
-                for x, y in zip(xs, ys):
-                    if x >= 0.0 and (min_abs_y is None or abs(y) < min_abs_y):
-                        min_abs_y = abs(y)
-                        best_x = x
-                return best_x
+                _ys = [abs(y) for y in ys]
+                return max(xs[_ys.index(min(_ys))], 0.0)
 
             drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * \
                 self.veh.drag_coef * self.veh.frontal_area_m2
