@@ -130,23 +130,12 @@ class TestSimDriveClassic(unittest.TestCase):
             veh = vehicle.Vehicle(vehid, verbose=False)
             cyc = cycle.Cycle('udds')
             sd = simdrive.SimDriveClassic(cyc, veh)
-            sd.sim_drive()
-            if (sd.mpsAch < 0.0).any():
-                print(f'Found issue with {vehid}. Plotting...')
-                import matplotlib.pyplot as plt
-                import seaborn as sns
-                fig, ax = plt.subplots()
-                ax.plot(sd.cyc0.time_s, sd.cyc0.cycMps, 'b-', label='Reference')
-                ax.plot(sd.cyc0.time_s, sd.mpsAch, 'r-', label='Actual')
-                ax.set_ylabel('Speed (m/s)')
-                ax2 = ax.twinx()
-                ax2.plot(sd.cyc0.time_s, sd.cyc0.cycMps - sd.mpsAch, 'k-')
-                ax2.set_ylabel('Speed (m/s)')
-                ax2.set_xlabel('Elapsed Time (s)')
-                fig.set_tight_layout(True)
-                fig.savefig(f'veh{vehid}_speed_issue.png', dpi=300)
-                plt.close()
+            sd.sim_drive_walk(0.1)
             self.assertFalse(
                 (sd.mpsAch < 0.0).any(),
                 msg=f'Achieved speed contains negative values for vehicle {vehid}'
+            )
+            self.assertFalse(
+                (sd.mpsAch > sd.cyc0.cycMps).any(),
+                msg=f'Achieved speed is greater than requested speed for {vehid}'
             )
