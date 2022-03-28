@@ -78,7 +78,7 @@ print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 # instantiate and run classic version 
 sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 t0 = time.time()
-sim_drive.sim_drive_walk(0.5) 
+sim_drive.sim_drive() 
 t_py = time.time() - t0
 print(f'Time to simulate: {t_py:.2e} s')
 
@@ -86,7 +86,7 @@ rc = cyc.to_rust()
 rv = veh.to_rust()
 sdr = fsr.RustSimDrive(rc, rv)
 t0 = time.time()
-sdr.sim_drive_walk(0.5) 
+sdr.sim_drive() 
 t_rust = time.time() - t0
 print(f'Time to simulate in rust: {t_rust:.2e} s')
 
