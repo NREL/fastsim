@@ -506,7 +506,8 @@ impl RustSimDrive{
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_fc_forced_state(&mut self, i:usize) -> PyResult<()> {
+    /// `_py` extension is needed to avoid name collision with getter/setter methods
+    pub fn set_fc_forced_state_py(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_fc_forced_state_rust(i))
     }
 
@@ -1132,11 +1133,11 @@ impl RustSimDrive{
     }
 
     #[getter]
-    pub fn get_fc_forced_state_arr(&self) -> PyResult<Vec<u32>>{
+    pub fn get_fc_forced_state(&self) -> PyResult<Vec<u32>>{
       Ok(self.fc_forced_state.to_vec())
     }
     #[setter]
-    pub fn set_fc_forced_state_arr(&mut self, new_value:Vec<u32>) -> PyResult<()>{
+    pub fn set_fc_forced_state(&mut self, new_value:Vec<u32>) -> PyResult<()>{
       self.fc_forced_state = Array::from_vec(new_value);
       Ok(())
     }
