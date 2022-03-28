@@ -160,7 +160,7 @@ class LegacyCycle(object):
 
 ref_cyc = Cycle.from_file('udds')
 
-def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True):
+def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True) -> Cycle:
     """Returns copy of Cycle.
     Arguments:
     cyc: instantianed Cycle or CycleJit
