@@ -101,20 +101,28 @@ class TestRust(unittest.TestCase):
             self.assertAlmostEqual(py_sd.veh.mc_max_elec_in_kw, ru_sd.veh.mc_max_elec_in_kw)
             self.assertAlmostEqual(py_sd.veh.max_ess_kwh, ru_sd.veh.max_ess_kwh)
             self.assertAlmostEqual(py_sd.veh.ess_round_trip_eff, ru_sd.veh.ess_round_trip_eff)
+            py_sd.sim_drive_walk(0.0)
+            ru_sd.sim_drive_walk(0.0)
+            py = {}
+            ru = {}
+            py_cyc_drag_kw = np.array(py_sd.cyc_drag_kw)
+            ru_cyc_drag_kw = np.array(ru_sd.cyc_drag_kw)
+            ru_cyc_mps = np.array(ru_sd.cyc.mps)
+            ru_cyc_dt_s = np.array(ru_sd.cyc.dt_s)
+            self.assertTrue((np.abs(py_sd.cyc.mps - ru_cyc_mps) < 1e-6).all())
+            self.assertTrue((np.abs(py_sd.cyc.dt_s - ru_cyc_dt_s) < 1e-6).all())
+            ru_sd_mps_ach = np.array(ru_sd.mps_ach)
+            self.assertTrue(
+                (py_sd.mps_ach >= 0.0).all(),
+                msg=f'PYTHON: Detected negative speed for {vehid}')
+            self.assertTrue(
+                (ru_sd_mps_ach >= 0.0).all(),
+                msg=f'RUST  : Detected negative speed for {vehid}')
+            for v in vars:
+                py[v] = py_sd.__getattribute__(v)
+                ru[v] = ru_sd.__getattribute__(v)
             for i in range(1, N):
-                py = {}
-                ru = {}
-                py_sd.sim_drive_step()
-                ru_sd.sim_drive_step()
-                py_cyc_drag_kw = py_sd.cyc_drag_kw
-                ru_cyc_drag_kw = ru_sd.cyc_drag_kw
-                ru_cyc_mps = np.array(ru_sd.cyc.mps)
-                ru_cyc_dt_s = np.array(ru_sd.cyc.dt_s)
-                self.assertAlmostEqual(py_sd.cyc.mps[i], ru_cyc_mps[i])
-                self.assertAlmostEqual(py_sd.cyc.dt_s[i], ru_cyc_dt_s[i])
                 for v in vars:
-                    py[v] = py_sd.__getattribute__(v)
-                    ru[v] = ru_sd.__getattribute__(v)
                     if v == "cyc_drag_kw":
                         self.assertEqual(py[v][i], py_cyc_drag_kw[i])
                         self.assertEqual(ru[v][i], ru_cyc_drag_kw[i])
@@ -155,3 +163,21 @@ class TestRust(unittest.TestCase):
             rust_ess_dischg_kj = sd.ess_dischg_kj
             self.assertAlmostEqual(py_fuel_kj, rust_fuel_kj, msg=f'Non-agreement for vehicle {vehid} for fuel')
             self.assertAlmostEqual(py_ess_dischg_kj, rust_ess_dischg_kj, msg=f'Non-agreement for vehicle {vehid} for ess discharge')
+
+    def test_achieved_speed_never_negative(self):
+        for vehid in range(1, 27):
+            veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
+            cyc = cycle.Cycle.from_file('udds').to_rust()
+            sd = fsr.RustSimDrive(cyc, veh)
+            sd.sim_drive_walk(0.1)
+            sd.set_post_scalars()
+            sd_mps_ach = np.array(sd.mps_ach)
+            sd_cyc0_mps = np.array(sd.cyc0.mps)
+            self.assertFalse(
+                (sd_mps_ach < 0.0).any(),
+                msg=f'Achieved speed contains negative values for vehicle {vehid}'
+            )
+            self.assertFalse(
+                (sd_mps_ach > sd_cyc0_mps).any(),
+                msg=f'Achieved speed is greater than requested speed for {vehid}'
+            )

@@ -99,3 +99,19 @@ class TestSimDriveClassic(unittest.TestCase):
 
         self.assertTrue(sd.fc_kw_in_ach[10] == 0)
         self.assertTrue(sd.fc_kw_in_ach[37] == 0)
+    
+    def test_achieved_speed_never_negative(self):
+        for vehid in range(1, 27):
+            veh = vehicle.Vehicle.from_vehdb(vehid)
+            cyc = cycle.Cycle.from_file('udds')
+            sd = simdrive.SimDrive(cyc, veh)
+            sd.sim_drive_walk(0.1)
+            sd.set_post_scalars()
+            self.assertFalse(
+                (sd.mps_ach < 0.0).any(),
+                msg=f'Achieved speed contains negative values for vehicle {vehid}'
+            )
+            self.assertFalse(
+                (sd.mps_ach > sd.cyc0.mps).any(),
+                msg=f'Achieved speed is greater than requested speed for {vehid}'
+            )

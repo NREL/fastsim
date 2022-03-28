@@ -452,9 +452,12 @@ impl RustSimDrive {
                 }
 
                 self.newton_iters[i] = iterate;
-
+                
                 let _ys = Array::from_vec(ys).map(|x| x.abs());
-                self.mps_ach[i] = xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()];
+                self.mps_ach[i] = max(
+                    xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
+                    0.0
+                );
             }
 
             self.set_power_calcs(i).unwrap();
