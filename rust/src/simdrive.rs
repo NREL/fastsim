@@ -203,6 +203,14 @@ pub struct RustSimDrive{
     pub newton_iters: Array1<u32>,
     pub fuel_kj: f64,
     pub ess_dischg_kj: f64,
+    #[pyo3(get)]
+    pub energy_audit_error: f64,
+    #[pyo3(get)]
+    pub mpgge: f64,
+    #[pyo3(get)]
+    pub roadway_chg_kj: f64,
+    #[pyo3(get)]
+    pub battery_kwh_per_mi: f64,
 }
 
 #[pymethods]
@@ -312,6 +320,10 @@ impl RustSimDrive{
         let newton_iters = Array::zeros(cyc_len);
         let fuel_kj: f64 = 0.0;
         let ess_dischg_kj: f64 = 0.0;
+        let energy_audit_error: f64 = 0.0;
+        let mpgge: f64 = 0.0;
+        let roadway_chg_kj: f64 = 0.0;
+        let battery_kwh_per_mi: f64 = 0.0;
         RustSimDrive{
             hev_sim_count,
             veh,
@@ -416,6 +428,10 @@ impl RustSimDrive{
             newton_iters,
             fuel_kj,
             ess_dischg_kj,
+            energy_audit_error,
+            mpgge,
+            roadway_chg_kj,
+            battery_kwh_per_mi,
         }
     }
 

@@ -57,6 +57,12 @@ pub fn ndarrmin(arr:&Array1<f64>) -> f64 {
         .unwrap()
 }
 
+/// return cumsum <f64> of arr
+pub fn ndarrcumsum(arr:&Array1<f64>) -> Array1<f64> {
+    let mut res = arr.clone();
+    res.accumulate_axis_inplace(Axis(0), |&prev, curr| *curr += prev);
+    res
+}
 
 // TODO: if interpolation is used at each time step, change it to take native, fixed-size array
 /// interpolation algorithm from http://www.cplusplus.com/forum/general/216928/
@@ -136,6 +142,18 @@ mod tests {
         let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
         let xmin = ndarrmin(&xs);
         assert_eq!(xmin, 3.0);
+    }
+
+    #[test]
+    fn test_ndarrcumsum_expected_output(){
+        let xs = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0]);
+        let expected_ys = Array1::from_vec(vec![0.0, 1.0, 3.0, 6.0]);
+        let ys = ndarrcumsum(&xs);
+        let mut i: usize = 0;
+        for (ye, y) in expected_ys.iter().zip(ys.iter()) {
+            assert_eq!(ye, y, "unequal at {}", i);
+            i += 1;
+        }
     }
 
     // #[test]

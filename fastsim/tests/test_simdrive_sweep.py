@@ -11,9 +11,10 @@ import unittest
 
 # local modules
 from fastsim import simdrive, vehicle, cycle, utils
+import fastsimrust as fsr
 
 
-def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
+def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     """Runs test test for 26 vehicles and 3 cycles.  
     Test compares cumulative positive and negative energy 
     values to a benchmark from earlier.
@@ -26,6 +27,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
         are smaller than this and therefore ok to neglect.
     verbose: if True, prints progress
     sim_drive_verbose: if True, prints warnings about trace miss and similar
+    use_rust: Boolean, if True, use Rust version of classes, else python version
 
     Returns:
     --------
@@ -37,14 +39,24 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
 
     print('Running vehicle sweep.\n')
 
+    def to_rust(obj):
+        if use_rust:
+            return obj.to_rust()
+        return obj
+    
+    def make_simdrive(*args, **kwargs):
+        if use_rust:
+            return simdrive.RustSimDrive(*args, **kwargs)
+        return simdrive.SimDrive(*args, **kwargs)
+
     cyc_names = ['udds', 'hwfet', 'us06']
     cycs = {
-        cyc_name: cycle.Cycle.from_file(cyc_name) for cyc_name in cyc_names
+        cyc_name: to_rust(cycle.Cycle.from_file(cyc_name)) for cyc_name in cyc_names
         }
 
     vehnos = np.arange(1, 27)
 
-    veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+    veh = to_rust(vehicle.Vehicle.from_vehdb(1, verbose=False))
     energyAuditErrors = []
 
     dict_diag = {}
@@ -57,8 +69,13 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
             t0a = time.time()
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
-                veh = vehicle.Vehicle.from_vehdb(vehno, verbose=False)
-            sim_drive = simdrive.SimDrive(cyc, veh)
+                veh = to_rust(vehicle.Vehicle.from_vehdb(vehno, verbose=False))
+            if use_rust:
+                assert type(cyc) == fsr.RustCycle
+                assert type(veh) == fsr.RustVehicle
+            sim_drive = make_simdrive(cyc, veh)
+            if use_rust:
+                assert type(sim_drive) == fsr.RustSimDrive
             # US06 is known to cause substantial trace miss.
             # This should probably be addressed at some point, but for now, 
             # the tolerances are set high to avoid lots of printed warnings.
@@ -131,7 +148,9 @@ class TestSimDriveSweep(unittest.TestCase):
         "Compares results against benchmark."
         print(f"Running {type(self)}.") 
         df_err, _, _ = main(verbose=True)
-        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0)
+        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0, msg="Failed for Python version")
+        #df_err, _, _ = main(verbose=True, use_rust=True)
+        #self.assertEqual(df_err.iloc[:, 2:].max().max(), 0, msg="Failed for Rust version")
         
 if __name__ == '__main__':
     df_err, df, df0 = main()

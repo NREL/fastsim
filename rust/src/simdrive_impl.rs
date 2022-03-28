@@ -1,6 +1,6 @@
 use ndarray::{Array, Array1, array, s};
 use std::cmp;
-use super::utils::{arrmax, first_grtr, min, max, ndarrmin};
+use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrcumsum};
 use super::vehicle::*;
 use super::params;
 
@@ -1099,19 +1099,18 @@ impl RustSimDrive {
     /// This includes mpgge, various energy metrics, and others
     /// TODO: finish implementing this
     pub fn set_post_scalars_rust(& mut self) -> Result<(), String> {
-        let mut res = || -> Result<(), ()> {    
-            // self.fs_cumu_mj_out_ach = (self.fs_kw_out_ach * self.cyc.dt_s).cumsum() * 1e-3
+        let mut res = || -> Result<(), ()> {
+            self.fs_cumu_mj_out_ach = ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3));
 
-            // if self.fs_kwh_out_ach.sum() == 0:
-            //     self.mpgge = 0.0
+            if self.fs_kwh_out_ach.sum() == 0.0 {
+                self.mpgge = 0.0;
+            } else {
+                self.mpgge = self.dist_mi.sum() / (self.fs_kwh_out_ach.sum() / self.props.kwh_per_gge);
+            }
 
-            // else:
-            //     self.mpgge = self.dist_mi.sum() / (self.fs_kwh_out_ach.sum() / self.props.kwh_per_gge)
-
-            // self.roadway_chg_kj = (self.roadway_chg_kw_out_ach * self.cyc.dt_s).sum()
+            self.roadway_chg_kj = (self.roadway_chg_kw_out_ach.clone() * self.cyc.dt_s()).sum();
             self.ess_dischg_kj = -1.0 * (self.soc[self.soc.len()-1] - self.soc[0]) * self.veh.max_ess_kwh * 3.6e3;
-            // self.battery_kwh_per_mi  = (
-            //     self.ess_dischg_kj / 3.6e3) / self.dist_mi.sum()
+            self.battery_kwh_per_mi  = (self.ess_dischg_kj / 3.6e3) / self.dist_mi.sum();
             // self.electric_kwh_per_mi  = (
             //     (self.roadway_chg_kj + self.ess_dischg_kj) / 3.6e3) / self.dist_mi.sum()
             self.fuel_kj = (self.fs_kw_out_ach.clone() * self.cyc.dt_s()).sum();
