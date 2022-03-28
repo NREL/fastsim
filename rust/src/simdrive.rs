@@ -1132,7 +1132,7 @@ impl RustSimDrive{
     }
 
     #[getter]
-    pub fn get_fc_forced_state(&self) -> PyResult<Vec<u32>>{
+    pub fn get_fc_forced_state_arr(&self) -> PyResult<Vec<u32>>{
       Ok(self.fc_forced_state.to_vec())
     }
     #[setter]
