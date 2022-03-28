@@ -68,7 +68,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False):
             sim_drive_post = simdrive.SimDrivePost(sim_drive)
             # sim_drive_post.set_battery_wear()
             diagno = sim_drive_post.get_diagnostics()
-            energyAuditErrors.append(sim_drive.energyAuditError)
+            energyAuditErrors.append(sim_drive.energy_audit_error)
 
             if iter == 0:
                 dict_diag['vnum'] = [vehno]
