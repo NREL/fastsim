@@ -156,19 +156,19 @@ impl RustCycle{
 
     /// Load cycle from csv file
     pub fn from_file(pathstr: &String) -> Result<RustCycle, String> {
-        let pathbuf = PathBuf::from(pathstr);
+        let pathbuf = PathBuf::from(&pathstr);
         if pathbuf.exists() {
             let mut time_s = Vec::<f64>::new();
             let mut speed_mps = Vec::<f64>::new();
             let mut grade = Vec::<f64>::new();
             let mut road_type = Vec::<f64>::new();
             let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
-            let file = File::open(pathbuf).expect("an existing file");
+            let file = File::open(pathbuf).expect("Cycle file not found.");
             let mut rdr = csv::ReaderBuilder::new()
                 .has_headers(true)
                 .from_reader(file);
             for result in rdr.records() {
-                let record = result.expect("a proper csv row");
+                let record = result.expect("Row not able to load.");
                 time_s.push(record[0].parse::<f64>().unwrap());
                 speed_mps.push(record[1].parse::<f64>().unwrap());
                 grade.push(record[2].parse::<f64>().unwrap());
