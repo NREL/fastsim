@@ -1,4 +1,4 @@
-use ndarray::{Array, array, s};
+use ndarray::{Array, Array1, array, s};
 use std::cmp;
 use super::utils::{arrmax, first_grtr, min, max, ndarrmin};
 use super::vehicle::*;
@@ -9,23 +9,98 @@ use super::simdrive::RustSimDrive;
 
 impl RustSimDrive {
 
+    /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+    /// Arguments
+    /// ------------
+    /// init_soc: initial SOC for electrified vehicles.  
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    ///     Default of None causes veh.aux_kw to be used. 
+    pub fn sim_drive_rust(&mut self, init_soc:Option<f64>, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
+        self.hev_sim_count = 0;
+
+        let init_soc = match init_soc {
+            Some(x) => {
+                if x > 1.0 || x < 0.0 {
+                    println!("Must enter a valid initial SOC between 0.0 and 1.0");
+                    println!("Running standard initial SOC controls");
+                    None
+                } else {
+                    Some(x)
+                }
+            },
+            None => None,
+        };
+
+        let init_soc = match init_soc {
+            Some(x) => {
+                x
+            },
+            None => {
+                if self.veh.veh_pt_type == CONV{
+                    // If no EV / Hybrid components, no SOC considerations.
+                    (self.veh.max_soc + self.veh.min_soc) / 2.0
+                } else if self.veh.veh_pt_type == HEV {  
+                    // #####################################
+                    // ### Charge Balancing Vehicle SOC ###
+                    // #####################################
+                    // Charge balancing SOC for HEV vehicle types. Iterating init_soc and comparing to final SOC.
+                    // Iterating until tolerance met or 30 attempts made.
+                    let mut init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0;
+                    let mut ess_2fuel_kwh = 1.0;
+                    while ess_2fuel_kwh > self.veh.ess_to_fuel_ok_error && self.hev_sim_count < self.sim_params.sim_count_max {
+                        self.hev_sim_count += 1;
+                        self.walk(init_soc, aux_in_kw_override.clone())?;
+                        let fuel_kj = (&self.fs_kw_out_ach * self.cyc.dt_s()).sum();
+                        let roadway_chg_kj = (&self.roadway_chg_kw_out_ach * self.cyc.dt_s()).sum();
+                        if (fuel_kj + roadway_chg_kj) > 0.0 {
+                            ess_2fuel_kwh = (
+                                (self.soc[0] - self.soc[self.len()-1]) * self.veh.max_ess_kwh * 3.6e3 / (fuel_kj + roadway_chg_kj)
+                            ).abs();
+                        } else {
+                            ess_2fuel_kwh = 0.0;
+                        }
+                        init_soc = min(1.0, max(0.0, self.soc[self.len()-1]));
+                    }
+                    init_soc
+                } else if self.veh.veh_pt_type == PHEV || self.veh.veh_pt_type == BEV { 
+                    // If EV, initializing initial SOC to maximum SOC.
+                    self.veh.max_soc
+                } else {
+                    panic!("Failed to properly initialize soc.");
+                }
+            },
+        };
+
+        if self.hev_sim_count == 0 {
+            self.walk(init_soc, aux_in_kw_override)?;
+        }
+
+        self.set_post_scalars_rust()?;
+        Ok(())
+    }
+
     /// Receives second-by-second cycle information, vehicle properties,
     /// and an initial state of charge and runs sim_drive_step to perform a
-    /// backward facing powertrain simulation. Method 'sim_drive' runs this
+    /// backward facing powertrain simulation. Method `sim_drive` runs this
     /// iteratively to achieve correct SOC initial and final conditions, as
     /// needed.
     ///
     /// Arguments
     /// ------------
-    /// init_soc (optional): initial battery state-of-charge (SOC) for electrified vehicles
-    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
-    ///         Default of np.zeros(1) causes veh.aux_kw to be used. If zero is actually
-    ///         desired as an override, either set veh.aux_kw = 0 before instantiaton of
-    ///         SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
-    ///         the final value to non-zero prevents override mechanism.
-    pub fn walk(&mut self, init_soc:f64) -> Result<(), String> {
-        // TODO: implement method for `init_arrays`
+    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: (Optional) aux_in_kw override.  Array of same length as cyc.time_s.
+    ///         None causes veh.aux_kw to be used. 
+    pub fn walk(&mut self, init_soc:f64, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
+        // TODO: maybe implement method for `init_arrays`
         // TODO: implement method for aux_in_kw_override
+
+        match aux_in_kw_override {
+            Some(arr) => {
+                self.aux_in_kw = arr;
+            },
+            None => ()
+        }
+
         self.cyc_met[0] = true;
         self.cur_soc_target[0] = self.veh.max_soc;
         self.ess_cur_kwh[0] = init_soc * self.veh.max_ess_kwh;
@@ -960,7 +1035,7 @@ impl RustSimDrive {
         }
     }
 
-    /// Sets fcKwOutAch and fcKwInAch.
+    /// Sets power consumption values for the current time step.
     /// Arguments
     /// ------------
     /// i: index of time step

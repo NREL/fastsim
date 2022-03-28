@@ -37,7 +37,7 @@ pub struct RustSimDriveParams{
     #[pyo3(get, set)]
     pub trace_miss_dist_tol: f64,
     #[pyo3(get, set)]
-    pub sim_count_max: u32,
+    pub sim_count_max: usize,
     #[pyo3(get, set)]
     pub verbose: bool,
     #[pyo3(get, set)]
@@ -67,7 +67,7 @@ impl RustSimDriveParams{
         let trace_miss_speed_mps_tol: f64 = 1.0; // # threshold of error in speed [m/s] that triggers warning
         let trace_miss_time_tol: f64 = 1e-3; // threshold for printing warning when time dilation is active
         let trace_miss_dist_tol: f64 = 1e-3; // threshold of fractional eror in distance that triggers warning
-        let sim_count_max: u32 = 30; // max allowable number of HEV SOC iterations
+        let sim_count_max: usize = 30; // max allowable number of HEV SOC iterations
         let verbose = true; // show warning and other messages
         let newton_gain: f64 = 0.9; // newton solver gain
         let newton_max_iter: u32 = 100; // newton solver max iterations
@@ -423,48 +423,122 @@ impl RustSimDrive{
     // TODO, put doc strings on these and all structs
     // comments preceding a struct, method, or function definition with `///` instead of `\\`
     // get interpreted as doc strings in python
-    pub fn sim_drive_walk(&mut self, init_soc: f64) -> PyResult<()> {
-       handle_sd_res(self.walk(init_soc))
+
+    /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+    /// Arguments
+    /// ------------
+    /// init_soc: initial SOC for electrified vehicles.  
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    ///     Default of None causes veh.aux_kw to be used. 
+    pub fn sim_drive(&mut self, init_soc:Option<f64>, aux_in_kw_override:Option<Vec<f64>>) -> PyResult<()> {
+        let aux_in_kw_override = aux_in_kw_override.map(|x| Array1::from(x));
+        handle_sd_res(self.sim_drive_rust(init_soc, aux_in_kw_override))
     }
 
+    /// Receives second-by-second cycle information, vehicle properties,
+    /// and an initial state of charge and runs sim_drive_step to perform a
+    /// backward facing powertrain simulation. Method 'sim_drive' runs this
+    /// iteratively to achieve correct SOC initial and final conditions, as
+    /// needed.
+    ///
+    /// Arguments
+    /// ------------
+    /// init_soc (optional): initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
+    ///         None causes veh.aux_kw to be used. 
+    pub fn sim_drive_walk(&mut self, init_soc: f64, aux_in_kw_override:Option<Vec<f64>>) -> PyResult<()> {
+        let aux_in_kw_override = aux_in_kw_override.map(|x| Array1::from(x));
+        handle_sd_res(self.walk(init_soc, aux_in_kw_override))
+    }
+
+    /// Step through 1 time step.
     pub fn sim_drive_step(&mut self) -> PyResult<()> {
         handle_sd_res(self.step())
     }
 
+    /// Perform all the calculations to solve 1 time step.
+    pub fn solve_step(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.solve_step_rust(i))
+    }
+
+    /// Sets misc. calculations at time step 'i'
+    /// Arguments:
+    /// ----------
+    /// i: index of time step
     pub fn set_misc_calcs(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_misc_calcs_rust(i))
     }
+
+    // Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
+    // Arguments
+    // ------------
+    // i: index of time step
     pub fn set_comp_lims(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_comp_lims_rust(i))
     }
+
+    /// Calculate power requirements to meet cycle and determine if
+    /// cycle can be met.
+    /// Arguments
+    /// ------------
+    /// i: index of time step
     pub fn set_power_calcs(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_power_calcs_rust(i))
     }
+
+    // Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
+    // Arguments
+    // ------------
+    // i: index of time step
     pub fn set_ach_speed(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_ach_speed_rust(i))
     }
+
+    /// Hybrid control calculations.
+    /// Arguments
+    /// ------------
+    /// i: index of time step
     pub fn set_hybrid_cont_calcs(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_hybrid_cont_calcs_rust(i))
     }
+
+    /// Calculate control variables related to engine on/off state
+    /// Arguments
+    /// ------------
+    /// i: index of time step
     pub fn set_fc_forced_state(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_fc_forced_state_rust(i))
     }
+
+    /// Hybrid control decisions.
+    /// Arguments
+    /// ------------
+    /// i: index of time step
     pub fn set_hybrid_cont_decisions(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_hybrid_cont_decisions_rust(i))
     }
+
+    /// Sets power consumption values for the current time step.
+    /// Arguments
+    /// ------------
+    /// i: index of time step
     pub fn set_fc_ess_power(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_fc_ess_power_rust(i))
     }
+
+    /// Sets scalar variables that can be calculated after a cycle is run. 
+    /// This includes mpgge, various energy metrics, and others
     pub fn set_post_scalars(& mut self) -> PyResult<()> {
         handle_sd_res(self.set_post_scalars_rust())
     }
-    // Methods for getting and setting arrays and other complex fields
-    // note that python cannot specify a specific index to set but must reset the entire array
 
+    /// Return length of time arrays
     pub fn len(&self) -> usize {
         self.cyc.time_s.len()
     }
 
+    // Methods for getting and setting arrays and other complex fields
+    // note that python cannot specify a specific index to set but must reset the entire array
     // doc strings not needed for getters or setters
 
     #[getter]
