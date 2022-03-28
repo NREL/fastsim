@@ -1395,6 +1395,18 @@ class SimDrive(object):
         "Create a rust version of SimDrive"
         return copy_sim_drive(self, 'rust', True)
 
+
+def RustSimDrive(cyc: fsr.RustCycle, veh: fsr.RustVehicle) -> SimDrive:
+    """
+    Wrapper function to make SimDriveRust look like SimDrive for language server.
+    Arguments:
+    ----------
+    cyc: cycle.Cycle instance
+    veh: vehicle.Vehicle instance"""
+
+    return fsr.RustSimDrive(cyc, veh)
+    
+
 class LegacySimDrive(object):
     pass
 
@@ -1529,7 +1541,7 @@ class SimAccelTest(SimDrive):
 
 class SimDrivePost(object):
     """Class for post-processing of SimDrive instance.  Requires already-run 
-    SimDriveJit or SimDriveClassic instance."""
+    SimDrive instance."""
     
     def __init__(self, sim_drive:SimDrive):
         """Arguments:

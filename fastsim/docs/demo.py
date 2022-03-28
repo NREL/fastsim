@@ -36,7 +36,6 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 
 # local modules
 import fastsim as fsim
-import fastsimrust as fsr
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
 
@@ -84,7 +83,7 @@ print(f'Time to simulate: {t_py:.2e} s')
 
 rc = cyc.to_rust()
 rv = veh.to_rust()
-sdr = fsr.RustSimDrive(rc, rv)
+sdr = fsim.simdrive.RustSimDrive(rc, rv)
 t0 = time.time()
 sdr.sim_drive() 
 t_rust = time.time() - t0
