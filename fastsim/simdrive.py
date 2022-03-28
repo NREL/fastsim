@@ -3,6 +3,7 @@ cycle. For example usage, see ../README.md"""
 
 ### Import necessary python modules
 from logging import debug
+from typing import Optional
 import numpy as np
 import re
 import copy
@@ -256,64 +257,61 @@ class SimDrive(object):
         self.trace_miss_iters = np.zeros(self.cyc.len, dtype=np.float64)
         self.newton_iters = np.zeros(self.cyc.len, dtype=np.float64)
 
-    def sim_drive(self, init_soc=-1, aux_in_kw_override=np.zeros(1, dtype=np.float64)):
+    def sim_drive(self, init_soc:Optional[float]=None, aux_in_kw_override:Optional[np.ndarray]=None):
         """
         Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
         init_soc: initial SOC for electrified vehicles.  
         aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
-            Default of np.zeros(1) causes veh.aux_kw to be used.
-            If zero is actually desired as an override, either set
-            veh.aux_kw = 0 before instantiaton of SimDrive*, or use
-            `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting the
-            final value to non-zero prevents override mechanism.  
+            Default of None causes veh.aux_kw to be used. 
         """
 
-        if (aux_in_kw_override == 0).all():
-            aux_in_kw_override = self.aux_in_kw
         self.hev_sim_count = 0
 
-        if init_soc != -1:
+        if init_soc is not None:
             if init_soc > 1.0 or init_soc < 0.0:
                 print('Must enter a valid initial SOC between 0.0 and 1.0')
                 print('Running standard initial SOC controls')
                 init_soc = None
 
-        elif self.veh.veh_pt_type == CONV:  # Conventional
-            # If no EV / Hybrid components, no SOC considerations.
-            init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
+        if init_soc is None:
+            if self.veh.veh_pt_type == CONV:  # Conventional
+                # If no EV / Hybrid components, no SOC considerations.
+                init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
 
-        elif self.veh.veh_pt_type == HEV and init_soc == -1:  # HEV
-            #####################################
-            ### Charge Balancing Vehicle SOC ###
-            #####################################
-            # Charge balancing SOC for HEV vehicle types. Iterating init_soc and comparing to final SOC.
-            # Iterating until tolerance met or 30 attempts made.
-            init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
-            ess_2fuel_kwh = 1.0
-            while ess_2fuel_kwh > self.veh.ess_to_fuel_ok_error and self.hev_sim_count < self.sim_params.sim_count_max:
-                self.hev_sim_count += 1
-                self.sim_drive_walk(init_soc, aux_in_kw_override)
-                fuel_kj = np.sum(self.fs_kw_out_ach * self.cyc.dt_s)
-                roadway_chg_kj = np.sum(self.roadway_chg_kw_out_ach * self.cyc.dt_s)
-                if (fuel_kj + roadway_chg_kj) > 0:
-                    ess_2fuel_kwh = np.abs(
-                        (self.soc[0] - self.soc[-1]) * self.veh.max_ess_kwh * 3_600 / (fuel_kj + roadway_chg_kj)
-                    )
-                else:
-                    ess_2fuel_kwh = 0.0
-                init_soc = min(1.0, max(0.0, self.soc[-1]))
+            elif self.veh.veh_pt_type == HEV:  # HEV
+                #####################################
+                ### Charge Balancing Vehicle SOC ###
+                #####################################
+                # Charge balancing SOC for HEV vehicle types. Iterating init_soc and comparing to final SOC.
+                # Iterating until tolerance met or 30 attempts made.
+                init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
+                ess_2fuel_kwh = 1.0
+                while ess_2fuel_kwh > self.veh.ess_to_fuel_ok_error and self.hev_sim_count < self.sim_params.sim_count_max:
+                    self.hev_sim_count += 1
+                    self.sim_drive_walk(init_soc, aux_in_kw_override)
+                    fuel_kj = np.sum(self.fs_kw_out_ach * self.cyc.dt_s)
+                    roadway_chg_kj = np.sum(self.roadway_chg_kw_out_ach * self.cyc.dt_s)
+                    if (fuel_kj + roadway_chg_kj) > 0:
+                        ess_2fuel_kwh = np.abs(
+                            (self.soc[0] - self.soc[-1]) * self.veh.max_ess_kwh * 3_600 / (fuel_kj + roadway_chg_kj)
+                        )
+                    else:
+                        ess_2fuel_kwh = 0.0
+                    init_soc = min(1.0, max(0.0, self.soc[-1]))
 
-        elif (self.veh.veh_pt_type == PHEV and init_soc == -1) or (self.veh.veh_pt_type == BEV and init_soc == -1):  # PHEV and BEV
-            # If EV, initializing initial SOC to maximum SOC.
-            init_soc = self.veh.max_soc
+            elif self.veh.veh_pt_type == PHEV or self.veh.veh_pt_type == BEV:  # PHEV and BEV
+                # If EV, initializing initial SOC to maximum SOC.
+                init_soc = self.veh.max_soc
 
-        self.sim_drive_walk(init_soc, aux_in_kw_override)
+        if self.hev_sim_count == 0:
+            # make sure it runs at least once
+            self.sim_drive_walk(init_soc, aux_in_kw_override)
 
         self.set_post_scalars()
 
-    def sim_drive_walk(self, init_soc, aux_in_kw_override=np.zeros(1, dtype=np.float64)):
+    def sim_drive_walk(self, init_soc:float, aux_in_kw_override:Optional[np.ndarray]=None):
         """
         Receives second-by-second cycle information, vehicle properties, 
         and an initial state of charge and runs sim_drive_step to perform a 
@@ -323,12 +321,9 @@ class SimDrive(object):
 
         Arguments
         ------------
-        init_soc (optional): initial battery state-of-charge (SOC) for electrified vehicles
-        auxInKw: auxInKw override.  Array of same length as cyc.time_s.  
-                Default of np.zeros(1) causes veh.aux_kw to be used. If zero is actually
-                desired as an override, either set veh.aux_kw = 0 before instantiaton of
-                SimDrive*, or use `np.finfo(np.float64).tiny` for auxInKw[-1]. Setting
-                the final value to non-zero prevents override mechanism.  
+        init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+        aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+                Default of None causes veh.aux_kw to be used. 
         """
         
         ############################
@@ -338,8 +333,9 @@ class SimDrive(object):
         ###  Assign First Values  ###
         ### Drive Train
         self.init_arrays() # reinitialize arrays for each new run
-        if not((aux_in_kw_override == 0).all()):
-            self.aux_in_kw = aux_in_kw_override
+        
+        if aux_in_kw_override is None:
+            aux_in_kw_override = self.aux_in_kw
         
         self.cyc_met[0] = True
         self.cur_soc_target[0] = self.veh.max_soc
@@ -1358,13 +1354,13 @@ class SimDrive(object):
 
         self.ke_kj = 0.5 * self.veh.veh_kg * (self.mps_ach[0] ** 2 - self.mps_ach[-1] ** 2) / 1_000
         
-        self.energyAuditError = ((self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj) - self.net_kj
+        self.energy_audit_error = ((self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj) - self.net_kj
             ) / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj)
 
-        if (np.abs(self.energyAuditError) > self.sim_params.energy_audit_error_tol) and \
+        if (np.abs(self.energy_audit_error) > self.sim_params.energy_audit_error_tol) and \
             self.sim_params.verbose:
             print('Warning: There is a problem with conservation of energy.')
-            print('Energy Audit Error:', np.round(self.energyAuditError, 5))
+            print('Energy Audit Error:', np.round(self.energy_audit_error, 5))
 
         self.accel_kw[1:] = (self.veh.veh_kg / (2.0 * (self.cyc.dt_s[1:]))) * (
             self.mps_ach[1:] ** 2 - self.mps_ach[:-1] ** 2) / 1_000
