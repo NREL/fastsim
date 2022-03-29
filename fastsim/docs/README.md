@@ -7,6 +7,8 @@ All classes and methods are self-documented.
 
 # Installation
 
+For both the Standard and Developers installation procedures, you need to make sure you have the [rust toolchain installed](https://www.rust-lang.org/tools/install).
+
 ## Standard 
 First, clone the repository from GitHub if you don't already have a local copy of the FASTSim package files:
 
@@ -29,7 +31,7 @@ Developers might want to install the code in place so that FASTSim files can be 
 To do this, a couple of extra steps are required:
 
 1. First install the python code in place `DEVELOP_MODE=True pip install -e .`
-1. Then, assuming you already have the [rust toolchain installed](https://www.rust-lang.org/tools/install), within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`
+1. Within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`
 1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests
 1. In the same folder, you should now be able to run `maturin devlop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py` through the first plot (and maybe beyond)
 
