@@ -9,6 +9,114 @@ use super::simdrive::RustSimDrive;
 
 impl RustSimDrive {
 
+    // TODO: probably shouldn't be public...?
+    pub fn init_arrays(&mut self) {
+        self.i = 1; // initialize step counter for possible use outside sim_drive_walk()
+        let cyc_len = self.cyc0.time_s.len(); //get_len() as usize;
+
+        // Component Limits -- calculated dynamically
+        self.cur_max_fs_kw_out = Array::zeros(cyc_len);
+        self.fc_trans_lim_kw = Array::zeros(cyc_len);
+        self.fc_fs_lim_kw = Array::zeros(cyc_len);
+        self.fc_max_kw_in = Array::zeros(cyc_len);
+        self.cur_max_fc_kw_out = Array::zeros(cyc_len);
+        self.ess_cap_lim_dischg_kw = Array::zeros(cyc_len);
+        self.cur_max_ess_kw_out = Array::zeros(cyc_len);
+        self.cur_max_avail_elec_kw = Array::zeros(cyc_len);
+        self.ess_cap_lim_chg_kw = Array::zeros(cyc_len);
+        self.cur_max_ess_chg_kw = Array::zeros(cyc_len);
+        self.cur_max_elec_kw = Array::zeros(cyc_len);
+        self.mc_elec_in_lim_kw = Array::zeros(cyc_len);
+        self.mc_transi_lim_kw = Array::zeros(cyc_len);
+        self.cur_max_mc_kw_out = Array::zeros(cyc_len);
+        self.ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len);
+        self.ess_lim_mc_regen_kw = Array::zeros(cyc_len);
+        self.cur_max_mech_mc_kw_in = Array::zeros(cyc_len);
+        self.cur_max_trans_kw_out = Array::zeros(cyc_len);
+
+        // Drive Train
+        self.cyc_drag_kw = Array::zeros(cyc_len);
+        self.cyc_accel_kw = Array::zeros(cyc_len);
+        self.cyc_ascent_kw = Array::zeros(cyc_len);
+        self.cyc_trac_kw_req = Array::zeros(cyc_len);
+        self.cur_max_trac_kw = Array::zeros(cyc_len);
+        self.spare_trac_kw = Array::zeros(cyc_len);
+        self.cyc_rr_kw = Array::zeros(cyc_len);
+        self.cyc_whl_rad_per_sec = Array::zeros(cyc_len);
+        self.cyc_tire_inertia_kw = Array::zeros(cyc_len);
+        self.cyc_whl_kw_req = Array::zeros(cyc_len);
+        self.regen_contrl_lim_kw_perc = Array::zeros(cyc_len);
+        self.cyc_regen_brake_kw = Array::zeros(cyc_len);
+        self.cyc_fric_brake_kw = Array::zeros(cyc_len);
+        self.cyc_trans_kw_out_req = Array::zeros(cyc_len);
+        self.cyc_met = Array::from_vec(vec![false; cyc_len]);
+        self.trans_kw_out_ach = Array::zeros(cyc_len);
+        self.trans_kw_in_ach = Array::zeros(cyc_len);
+        self.cur_soc_target = Array::zeros(cyc_len);
+        self.min_mc_kw_2help_fc = Array::zeros(cyc_len);
+        self.mc_mech_kw_out_ach = Array::zeros(cyc_len);
+        self.mc_elec_kw_in_ach = Array::zeros(cyc_len);
+        self.aux_in_kw = Array::zeros(cyc_len);
+        self.roadway_chg_kw_out_ach = Array::zeros(cyc_len);
+        self.min_ess_kw_2help_fc = Array::zeros(cyc_len);
+        self.ess_kw_out_ach = Array::zeros(cyc_len);
+        self.fc_kw_out_ach = Array::zeros(cyc_len);
+        self.fc_kw_out_ach_pct = Array::zeros(cyc_len);
+        self.fc_kw_in_ach = Array::zeros(cyc_len);
+        self.fs_kw_out_ach = Array::zeros(cyc_len);
+        self.fs_cumu_mj_out_ach = Array::zeros(cyc_len);
+        self.fs_kwh_out_ach = Array::zeros(cyc_len);
+        self.ess_cur_kwh = Array::zeros(cyc_len);
+        self.soc = Array::zeros(cyc_len);
+
+        // Vehicle Attributes, Control Variables
+        self.regen_buff_soc = Array::zeros(cyc_len);
+        self.ess_regen_buff_dischg_kw = Array::zeros(cyc_len);
+        self.max_ess_regen_buff_chg_kw = Array::zeros(cyc_len);
+        self.ess_accel_buff_chg_kw = Array::zeros(cyc_len);
+        self.accel_buff_soc = Array::zeros(cyc_len);
+        self.max_ess_accell_buff_dischg_kw = Array::zeros(cyc_len);
+        self.ess_accel_regen_dischg_kw = Array::zeros(cyc_len);
+        self.mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len);
+        self.elec_kw_req_4ae = Array::zeros(cyc_len);
+        self.can_pwr_all_elec = Array::from_vec(vec![false; cyc_len]);
+        self.desired_ess_kw_out_for_ae = Array::zeros(cyc_len);
+        self.ess_ae_kw_out = Array::zeros(cyc_len);
+        self.er_ae_kw_out = Array::zeros(cyc_len);
+        self.ess_desired_kw_4fc_eff = Array::zeros(cyc_len);
+        self.ess_kw_if_fc_req = Array::zeros(cyc_len);
+        self.cur_max_mc_elec_kw_in = Array::zeros(cyc_len);
+        self.fc_kw_gap_fr_eff = Array::zeros(cyc_len);
+        self.er_kw_if_fc_req = Array::zeros(cyc_len);
+        self.mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len);
+        self.mc_kw_if_fc_req = Array::zeros(cyc_len);
+        self.fc_forced_on = Array::from_vec(vec![false; cyc_len]);
+        self.fc_forced_state = Array::zeros(cyc_len);
+        self.mc_mech_kw_4forced_fc = Array::zeros(cyc_len);
+        self.fc_time_on = Array::zeros(cyc_len);
+        self.prev_fc_time_on = Array::zeros(cyc_len);
+
+        // Additional Variables
+        self.mps_ach = Array::zeros(cyc_len);
+        self.mph_ach = Array::zeros(cyc_len);
+        self.dist_m = Array::zeros(cyc_len);
+        self.dist_mi = Array::zeros(cyc_len);
+        self.high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]);
+        self.reached_buff = Array::from_vec(vec![false; cyc_len]);
+        self.max_trac_mps = Array::zeros(cyc_len);
+        self.add_kwh = Array::zeros(cyc_len);
+        self.dod_cycs = Array::zeros(cyc_len);
+        self.ess_perc_dead = Array::zeros(cyc_len);
+        self.drag_kw = Array::zeros(cyc_len);
+        self.ess_loss_kw = Array::zeros(cyc_len);
+        self.accel_kw = Array::zeros(cyc_len);
+        self.ascent_kw = Array::zeros(cyc_len);
+        self.rr_kw = Array::zeros(cyc_len);
+        self.cur_max_roadway_chg_kw = Array::zeros(cyc_len);
+        self.trace_miss_iters = Array::zeros(cyc_len);
+        self.newton_iters = Array::zeros(cyc_len);
+    }
+
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
     /// Arguments
     /// ------------
@@ -91,7 +199,7 @@ impl RustSimDrive {
     /// aux_in_kw: (Optional) aux_in_kw override.  Array of same length as cyc.time_s.
     ///         None causes veh.aux_kw to be used. 
     pub fn walk(&mut self, init_soc:f64, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
-        // TODO: maybe implement method for `init_arrays`
+        self.init_arrays();
         // TODO: implement method for aux_in_kw_override
 
         match aux_in_kw_override {
@@ -455,7 +563,7 @@ impl RustSimDrive {
     // ------------
     // i: index of time step
     pub fn set_ach_speed_rust(&mut self, i:usize) -> Result<(), String> {
-        let mut res = || -> Result<(), ()> {
+        let mut res = || -> Result<(), String> {
             // Cycle is met
             if self.cyc_met[i] {
                 self.mps_ach[i] = self.cyc.mps[i];
@@ -535,16 +643,18 @@ impl RustSimDrive {
                 );
             }
 
-            self.set_power_calcs(i).unwrap();
-
-            self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
-            self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s()[i];
-            self.dist_mi[i] = self.dist_m[i] * 1.0 / params::M_PER_MI;
-            Ok(())
+            if let Err(message) = self.set_power_calcs_rust(i) {
+                Err("call to `set_power_calcs_rust` failed within `set_ach_speed_rust`: ".to_string() + &message)
+            } else {
+                self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
+                self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s()[i];
+                self.dist_mi[i] = self.dist_m[i] * 1.0 / params::M_PER_MI;
+                Ok(())
+            }
         };   
 
-        if let Err(()) = res() {
-            Err("`set_ach_speed_rust` failed".to_string())
+        if let Err(message) = res() {
+            Err("`set_ach_speed_rust` failed: ".to_string() + &message)
         } else {
             Ok(())
         }
