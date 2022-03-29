@@ -28,7 +28,7 @@ else:
     xw_success = False
 
 
-def run_python(vehicles=np.arange(1, 27), verbose=True):
+def run_python(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
     """
     Runs python fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
@@ -37,6 +37,7 @@ def run_python(vehicles=np.arange(1, 27), verbose=True):
     **********
     verbose : Boolean
         if True, print progress
+    use_rust: Boolean, if True, use Rust versions of classes
     """
 
     t0 = time.time()
@@ -45,12 +46,16 @@ def run_python(vehicles=np.arange(1, 27), verbose=True):
     print()
 
     res_python = {}
+    def to_rust(obj):
+        if use_rust:
+            return obj.to_rust()
+        return obj
 
     for vehno in vehicles:
-        veh = vehicle.Vehicle.from_vehdb(vehno, verbose=False)
+        veh = to_rust(vehicle.Vehicle.from_vehdb(vehno, verbose=False))
         if verbose:
             print('Running ' + veh.scenario_name)
-        res_python[veh.scenario_name] = simdrivelabel.get_label_fe(veh, verbose=False)
+        res_python[veh.scenario_name] = simdrivelabel.get_label_fe(veh, verbose=False, use_rust=use_rust)
 
     t1 = time.time()
     print()
@@ -242,23 +247,24 @@ ACCEL_ERR_TOL = 0.022
 class TestExcel(unittest.TestCase):
     def test_vs_excel(self):
         "Compares results against archived Excel results."
-        print(f"Running {type(self)}")
-        res_python = run_python(verbose=True)
-        res_excel = run_excel(prev_res_path=PREV_RES_PATH,
-                              rerun_excel=False)
-        res_comps = compare(res_python, res_excel, verbose=False)
+        for use_rust in [False, True]:
+            print(f"Running {type(self)} (Rust: {use_rust})")
+            res_python = run_python(verbose=True, use_rust=use_rust)
+            res_excel = run_excel(prev_res_path=PREV_RES_PATH,
+                                rerun_excel=False)
+            res_comps = compare(res_python, res_excel, verbose=False)
 
-        failed_tests = []
-        for veh_key, veh_val in res_comps.items():
-            if veh_key not in KNOWN_ERROR_LIST:
-                for attr_key, attr_val in veh_val.items():
-                    if attr_key == 'netAccel_frac_err':
-                        if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+            failed_tests = []
+            for veh_key, veh_val in res_comps.items():
+                if veh_key not in KNOWN_ERROR_LIST:
+                    for attr_key, attr_val in veh_val.items():
+                        if attr_key == 'netAccel_frac_err':
+                            if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+                                failed_tests.append(veh_key + '.' + attr_key)
+                        elif attr_val != 0:
                             failed_tests.append(veh_key + '.' + attr_key)
-                    elif attr_val != 0:
-                        failed_tests.append(veh_key + '.' + attr_key)
 
-        self.assertEqual(failed_tests, [])
+            self.assertEqual(failed_tests, [])
 
 if __name__ == "__main__":
         res_python = run_python(vehicles=[12], verbose=True)

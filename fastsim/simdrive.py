@@ -596,6 +596,7 @@ class SimDrive(object):
         ) / 1_000
 
         self.cyc_whl_kw_req[i] = self.cyc_trac_kw_req[i] + self.cyc_rr_kw[i] + self.cyc_tire_inertia_kw[i]
+        # TODO: check below, should we be using self.cyc.mph[i] OR should it be mpsAch converted to mph?
         self.regen_contrl_lim_kw_perc[i] = self.veh.max_regen / (1 + self.veh.regen_a * np.exp(-self.veh.regen_b * (
             (self.cyc.mph[i] + self.mps_ach[i-1] * params.MPH_PER_MPS) / 2.0 + 1.0)))
         self.cyc_regen_brake_kw[i] = max(min(
@@ -1382,6 +1383,7 @@ class SimDrive(object):
                     print('Warning: Trace miss time fraction:', np.round(self.trace_miss_time_frac, 5))
                     print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_time_tol, 5))
 
+        # NOTE: I believe this should be accessing self.cyc0.mps[i] instead of self.cyc.mps[i]; self.cyc may be modified...
         self.trace_miss_speed_mps = max([
             abs(self.mps_ach[i] - self.cyc.mps[i]) for i in range(len(self.cyc.time_s))
         ])
@@ -1537,6 +1539,22 @@ class SimAccelTest(SimDrive):
             self.sim_drive_walk(init_soc)
 
         self.set_post_scalars()
+
+
+def run_simdrive_for_accel_test(sd:SimDrive):
+    """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
+    if sd.veh.veh_pt_type == CONV:  # Conventional
+        # If no EV / Hybrid components, no SOC considerations.
+        init_soc = (sd.veh.max_soc + sd.veh.min_soc) / 2.0
+        sd.sim_drive_walk(init_soc)
+    elif sd.veh.veh_pt_type == HEV:  # HEV
+        init_soc = (sd.veh.max_soc + sd.veh.min_soc) / 2.0
+        sd.sim_drive_walk(init_soc)
+    else:
+        # If EV, initializing initial SOC to maximum SOC.
+        init_soc = sd.veh.max_soc
+        sd.sim_drive_walk(init_soc)
+    sd.set_post_scalars()
 
 
 class SimDrivePost(object):
