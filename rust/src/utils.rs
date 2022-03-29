@@ -67,9 +67,10 @@ pub fn ndarrmax(arr:&Array1<f64>) -> f64 {
 
 /// return cumsum <f64> of arr
 pub fn ndarrcumsum(arr:&Array1<f64>) -> Array1<f64> {
-    let mut res = arr.clone();
-    res.accumulate_axis_inplace(Axis(0), |&prev, curr| *curr += prev);
-    res
+    arr.iter().scan(0.0, |acc, &x| {
+		*acc += x;
+		Some(*acc)
+	}).collect()
 }
 
 // TODO: if interpolation is used at each time step, change it to take native, fixed-size array
