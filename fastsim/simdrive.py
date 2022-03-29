@@ -1541,6 +1541,22 @@ class SimAccelTest(SimDrive):
         self.set_post_scalars()
 
 
+def run_simdrive_for_accel_test(sd:SimDrive):
+    """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
+    if sd.veh.veh_pt_type == CONV:  # Conventional
+        # If no EV / Hybrid components, no SOC considerations.
+        init_soc = (sd.veh.max_soc + sd.veh.min_soc) / 2.0
+        sd.sim_drive_walk(init_soc)
+    elif sd.veh.veh_pt_type == HEV:  # HEV
+        init_soc = (sd.veh.max_soc + sd.veh.min_soc) / 2.0
+        sd.sim_drive_walk(init_soc)
+    else:
+        # If EV, initializing initial SOC to maximum SOC.
+        init_soc = sd.veh.max_soc
+        sd.sim_drive_walk(init_soc)
+    sd.set_post_scalars()
+
+
 class SimDrivePost(object):
     """Class for post-processing of SimDrive instance.  Requires already-run 
     SimDrive instance."""

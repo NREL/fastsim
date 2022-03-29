@@ -735,6 +735,17 @@ impl RustVehicle{
     }
 
     #[getter]
+    pub fn get_mc_peak_eff(&self) -> PyResult<f64>{
+        Ok(self.mc_peak_eff())
+    }
+
+    /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
+    /// Returns a clone of the current object
+    pub fn to_rust(&self) -> PyResult<RustVehicle> {
+      Ok(self.clone())
+    }
+
+    #[getter]
     pub fn get_max_fc_eff_kw(&self) -> PyResult<f64> {
         Ok(self.max_fc_eff_kw())
     }
