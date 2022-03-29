@@ -1,6 +1,6 @@
 use ndarray::{Array, Array1, array, s};
 use std::cmp;
-use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrcumsum};
+use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum};
 use super::vehicle::*;
 use super::params;
 
@@ -1111,15 +1111,16 @@ impl RustSimDrive {
             self.roadway_chg_kj = (self.roadway_chg_kw_out_ach.clone() * self.cyc.dt_s()).sum();
             self.ess_dischg_kj = -1.0 * (self.soc[self.soc.len()-1] - self.soc[0]) * self.veh.max_ess_kwh * 3.6e3;
             self.battery_kwh_per_mi  = (self.ess_dischg_kj / 3.6e3) / self.dist_mi.sum();
-            // self.electric_kwh_per_mi  = (
-            //     (self.roadway_chg_kj + self.ess_dischg_kj) / 3.6e3) / self.dist_mi.sum()
+            self.electric_kwh_per_mi  =
+                ((self.roadway_chg_kj + self.ess_dischg_kj) / 3.6e3)
+                / self.dist_mi.sum();
             self.fuel_kj = (self.fs_kw_out_ach.clone() * self.cyc.dt_s()).sum();
 
-            // if (self.fuel_kj + self.roadway_chg_kj) == 0:
-            //     self.ess2fuel_kwh  = 1.0
-
-            // else:
-            //     self.ess2fuel_kwh  = self.ess_dischg_kj / (self.fuel_kj + self.roadway_chg_kj)
+            if (self.fuel_kj + self.roadway_chg_kj) == 0.0 {
+                self.ess2fuel_kwh  = 1.0
+            } else {
+                self.ess2fuel_kwh  = self.ess_dischg_kj / (self.fuel_kj + self.roadway_chg_kj);
+            }
 
 
             // DO NOT IMPLEMENT THE FOLLOWING: !!!!!!!!!!!!!!!!!!!!!!
@@ -1147,13 +1148,13 @@ impl RustSimDrive {
                 // for "cyc_\w+_kw" that don't have a corresponding "\w+_kw", remove the cyc_ prefix, as it 
                 // provides no value
 
-            // # energy audit calcs
-            // self.drag_kw = self.cyc_drag_kw 
-            // self.drag_kj = (self.drag_kw * self.cyc.dt_s).sum()
-            // self.ascent_kw = self.cyc_ascent_kw
-            // self.ascent_kj = (self.ascent_kw * self.cyc.dt_s).sum()
-            // self.rr_kw = self.cyc_rr_kw
-            // self.rr_kj = (self.rr_kw * self.cyc.dt_s).sum()
+            // energy audit calcs
+            self.drag_kw = self.cyc_drag_kw.clone();
+            self.drag_kj = (self.drag_kw.clone() * self.cyc.dt_s()).sum();
+            self.ascent_kw = self.cyc_ascent_kw.clone();
+            self.ascent_kj = (self.ascent_kw.clone() * self.cyc.dt_s()).sum();
+            self.rr_kw = self.cyc_rr_kw.clone();
+            self.rr_kj = (self.rr_kw.clone() * self.cyc.dt_s()).sum();
 
             // self.ess_loss_kw[1:] = np.array(
             //     [0 if (self.veh.max_ess_kw == 0 or self.veh.max_ess_kwh == 0)
@@ -1162,55 +1163,96 @@ impl RustSimDrive {
             //     else self.ess_kw_out_ach[i] * (1.0 / np.sqrt(self.veh.ess_round_trip_eff)) - self.ess_kw_out_ach[i]
             //     for i in range(1, len(self.cyc.time_s))]
             // )
-            // 
-            // self.brake_kj = (self.cyc_fric_brake_kw * self.cyc.dt_s).sum()
-            // self.trans_kj = ((self.trans_kw_in_ach - self.trans_kw_out_ach) * self.cyc.dt_s).sum()
-            // self.mc_kj = ((self.mc_elec_kw_in_ach - self.mc_mech_kw_out_ach) * self.cyc.dt_s).sum()
-            // self.ess_eff_kj = (self.ess_loss_kw * self.cyc.dt_s).sum()
-            // self.aux_kj = (self.aux_in_kw * self.cyc.dt_s).sum()
-            // self.fc_kj = ((self.fc_kw_in_ach - self.fc_kw_out_ach) * self.cyc.dt_s).sum()
-            // 
-            // self.net_kj = self.drag_kj + self.ascent_kj + self.rr_kj + self.brake_kj + self.trans_kj \
-            //     + self.mc_kj + self.ess_eff_kj + self.aux_kj + self.fc_kj
+            for i in 1..self.cyc.time_s.len() {
+                if self.veh.max_ess_kw == 0.0 || self.veh.max_ess_kwh == 0.0 {
+                    self.ess_loss_kw[i] = 0.0;
+                } else if self.ess_kw_out_ach[i] < 0.0 {
+                    self.ess_loss_kw[i] =
+                        -self.ess_kw_out_ach[i] -
+                        (-self.ess_kw_out_ach[i]
+                            * self.veh.ess_round_trip_eff.sqrt());
+                } else {
+                    self.ess_loss_kw[i] =
+                        self.ess_kw_out_ach[i] *
+                        (1.0 / self.veh.ess_round_trip_eff.sqrt())
+                        - self.ess_kw_out_ach[i];
+                }
+            }
 
-            // self.ke_kj = 0.5 * self.veh.veh_kg * (self.mps_ach[0] ** 2 - self.mps_ach[-1] ** 2) / 1_000
-            // 
-            // self.energyAuditError = ((self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj) - self.net_kj
-            //     ) / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj)
+            self.brake_kj = (self.cyc_fric_brake_kw.clone() * self.cyc.dt_s()).sum();
+            self.trans_kj = ((self.trans_kw_in_ach.clone() - self.trans_kw_out_ach.clone()) * self.cyc.dt_s()).sum();
+            self.mc_kj = ((self.mc_elec_kw_in_ach.clone() - self.mc_mech_kw_out_ach.clone()) * self.cyc.dt_s()).sum();
+            self.ess_eff_kj = (self.ess_loss_kw.clone() * self.cyc.dt_s()).sum();
+            self.aux_kj = (self.aux_in_kw.clone() * self.cyc.dt_s()).sum();
+            self.fc_kj = ((self.fc_kw_in_ach.clone() - self.fc_kw_out_ach.clone()) * self.cyc.dt_s()).sum();
 
-            // if (np.abs(self.energyAuditError) > self.sim_params.energy_audit_error_tol) and \
-            //     self.sim_params.verbose:
-            //     print('Warning: There is a problem with conservation of energy.')
-            //     print('Energy Audit Error:', np.round(self.energyAuditError, 5))
+            self.net_kj = self.drag_kj + self.ascent_kj + self.rr_kj
+                + self.brake_kj + self.trans_kj + self.mc_kj
+                + self.ess_eff_kj + self.aux_kj + self.fc_kj;
 
-            // self.accel_kw[1:] = (self.veh.veh_kg / (2.0 * (self.cyc.dt_s[1:]))) * (
-            //     self.mps_ach[1:] ** 2 - self.mps_ach[:-1] ** 2) / 1_000
+            self.ke_kj = 0.5 * self.veh.veh_kg * (
+                self.mps_ach[0].powf(2.0) - self.mps_ach[self.mps_ach.len()-1].powf(2.0)) / 1_000.0;
 
-            // self.trace_miss = False
-            // self.trace_miss_dist_frac = abs(self.dist_m.sum() - self.cyc0.dist_m.sum()) / self.cyc0.dist_m.sum()
-            // self.trace_miss_time_frac = abs(self.cyc.time_s[-1] - self.cyc0.time_s[-1]) / self.cyc0.time_s[-1]
+            self.energy_audit_error = (
+                (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj
+                    + self.ke_kj) - self.net_kj)
+                / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj);
 
-            // if not(self.sim_params.missed_trace_correction):
-            //     if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol:
-            //         self.trace_miss = True
-            //         if self.sim_params.verbose:
-            //             print('Warning: Trace miss distance fraction:', np.round(self.trace_miss_dist_frac, 5))
-            //             print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_dist_tol, 5))
-            // else:
-            //     if self.trace_miss_time_frac > self.sim_params.trace_miss_time_tol:
-            //         self.trace_miss = True
-            //         if self.sim_params.verbose:
-            //             print('Warning: Trace miss time fraction:', np.round(self.trace_miss_time_frac, 5))
-            //             print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_time_tol, 5))
+            if (self.energy_audit_error.abs() > self.sim_params.energy_audit_error_tol) && self.sim_params.verbose {
+                println!("Warning: There is a problem with conservation of energy.");
+                println!("Energy Audit Error: {:.5}", self.energy_audit_error);
+            }
+            for i in 1..self.cyc.dt_s().len() {
+                // self.cyc_accel_kw[i] =
+                //    self.veh.veh_kg
+                //    / (2.0 * self.cyc.dt_s[i])
+                //    * (mpsAch ** 2 - self.mps_ach[i-1] ** 2) / 1_000
+                self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s()[i]) * (
+                    self.mps_ach[i].powf(2.0) - self.mps_ach[i-1].powf(2.0)) / 1_000.0;
+            }
 
-            // self.trace_miss_speed_mps = max([
-            //     abs(self.mps_ach[i] - self.cyc.mps[i]) for i in range(len(self.cyc.time_s))
-            // ])
-            // if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol:
-            //     self.trace_miss = True
-            //     if self.sim_params.verbose:
-            //         print('Warning: Trace miss speed [m/s]:', np.round(self.trace_miss_speed_mps, 5))
-            //         print('exceeds tolerance of: ', np.round(self.sim_params.trace_miss_speed_mps_tol, 5))
+            self.trace_miss = false;
+            self.trace_miss_dist_frac = (self.dist_m.sum() - self.cyc0.dist_m().sum()).abs() / self.cyc0.dist_m().sum();
+            self.trace_miss_time_frac = (
+                self.cyc.time_s[self.cyc.time_s.len()-1]
+                - self.cyc0.time_s[self.cyc0.time_s.len()-1])
+                / self.cyc0.time_s[self.cyc0.time_s.len()-1];
+
+            if !self.sim_params.missed_trace_correction {
+                if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol {
+                    self.trace_miss = true;
+                    if self.sim_params.verbose {
+                        println!(
+                            "Warning: Trace miss distance fraction: {:.5}",
+                            self.trace_miss_dist_frac);
+                        println!(
+                            "exceeds tolerance of: {:.5}",
+                            self.sim_params.trace_miss_dist_tol);
+                    }
+                }
+            } else {
+                if self.trace_miss_time_frac > self.sim_params.trace_miss_time_tol {
+                    self.trace_miss = true;
+                    if self.sim_params.verbose {
+                        println!(
+                            "Warning: Trace miss time fraction: {:.5}",
+                            self.trace_miss_time_frac);
+                        println!(
+                            "exceeds tolerance of: {:.5}",
+                            self.sim_params.trace_miss_time_tol);
+                    }
+                }
+            }
+
+            self.trace_miss_speed_mps = ndarrmax(
+                &(self.mps_ach.clone() - self.cyc.mps.clone()).map(|x| x.abs()));
+            if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol {
+                self.trace_miss = true;
+                if self.sim_params.verbose {
+                    println!("Warning: Trace miss speed [m/s]: {:.5}", self.trace_miss_speed_mps);
+                    println!("exceeds tolerance of: {:.5}", self.sim_params.trace_miss_speed_mps_tol);
+                }
+            }
             Ok(())
         };
 

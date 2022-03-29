@@ -1623,10 +1623,10 @@ class SimDrivePost(object):
         for var in pw_var_list:
             tempvars[var + '_pos'] = [x if x >= 0 
                                         else 0 
-                                        for x in self.__getattribute__(var)]
+                                        for x in np.array(self.__getattribute__(var))]
             tempvars[var + '_neg'] = [x if x < 0 
                                         else 0 
-                                        for x in self.__getattribute__(var)]    
+                                        for x in np.array(self.__getattribute__(var))]    
                         
             # Assign values to output dict for positive and negative energy variable names
             search = prog.search(var)

@@ -211,6 +211,40 @@ pub struct RustSimDrive{
     pub roadway_chg_kj: f64,
     #[pyo3(get)]
     pub battery_kwh_per_mi: f64,
+    #[pyo3(get)]
+    pub electric_kwh_per_mi: f64,
+    #[pyo3(get)]
+    pub ess2fuel_kwh: f64,
+    #[pyo3(get)]
+    pub drag_kj: f64,
+    #[pyo3(get)]
+    pub ascent_kj: f64,
+    #[pyo3(get)]
+    pub rr_kj: f64,
+    #[pyo3(get)]
+    pub brake_kj: f64,
+    #[pyo3(get)]
+    pub trans_kj: f64,
+    #[pyo3(get)]
+    pub mc_kj: f64,
+    #[pyo3(get)]
+    pub ess_eff_kj: f64,
+    #[pyo3(get)]
+    pub aux_kj: f64,
+    #[pyo3(get)]
+    pub fc_kj: f64,
+    #[pyo3(get)]
+    pub net_kj: f64,
+    #[pyo3(get)]
+    pub ke_kj: f64,
+    #[pyo3(get)]
+    pub trace_miss: bool,
+    #[pyo3(get)]
+    pub trace_miss_dist_frac: f64,
+    #[pyo3(get)]
+    pub trace_miss_time_frac: f64,
+    #[pyo3(get)]
+    pub trace_miss_speed_mps: f64,
 }
 
 #[pymethods]
@@ -324,6 +358,23 @@ impl RustSimDrive{
         let mpgge: f64 = 0.0;
         let roadway_chg_kj: f64 = 0.0;
         let battery_kwh_per_mi: f64 = 0.0;
+        let electric_kwh_per_mi: f64 = 0.0;
+        let ess2fuel_kwh: f64 = 0.0;
+        let drag_kj: f64 = 0.0;
+        let ascent_kj: f64 = 0.0;
+        let rr_kj: f64 = 0.0;
+        let brake_kj: f64 = 0.0;
+        let trans_kj: f64 = 0.0;
+        let mc_kj: f64 = 0.0;
+        let ess_eff_kj: f64 = 0.0;
+        let aux_kj: f64 = 0.0;
+        let fc_kj: f64 = 0.0;
+        let net_kj: f64 = 0.0;
+        let ke_kj: f64 = 0.0;
+        let trace_miss = false;
+        let trace_miss_dist_frac: f64 = 0.0;
+        let trace_miss_time_frac: f64 = 0.0;
+        let trace_miss_speed_mps: f64 = 0.0;
         RustSimDrive{
             hev_sim_count,
             veh,
@@ -432,6 +483,23 @@ impl RustSimDrive{
             mpgge,
             roadway_chg_kj,
             battery_kwh_per_mi,
+            electric_kwh_per_mi,
+            ess2fuel_kwh,
+            drag_kj,
+            ascent_kj,
+            rr_kj,
+            brake_kj,
+            trans_kj,
+            mc_kj,
+            ess_eff_kj,
+            aux_kj,
+            fc_kj,
+            net_kj,
+            ke_kj,
+            trace_miss,
+            trace_miss_dist_frac,
+            trace_miss_time_frac,
+            trace_miss_speed_mps,
         }
     }
 

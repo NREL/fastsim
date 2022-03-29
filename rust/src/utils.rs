@@ -57,6 +57,14 @@ pub fn ndarrmin(arr:&Array1<f64>) -> f64 {
         .unwrap()
 }
 
+/// return max <f64> of arr
+pub fn ndarrmax(arr:&Array1<f64>) -> f64 {
+    arr.to_vec()
+        .into_iter()
+        .reduce(f64::max)
+        .unwrap()
+}
+
 /// return cumsum <f64> of arr
 pub fn ndarrcumsum(arr:&Array1<f64>) -> Array1<f64> {
     let mut res = arr.clone();
@@ -142,6 +150,13 @@ mod tests {
         let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
         let xmin = ndarrmin(&xs);
         assert_eq!(xmin, 3.0);
+    }
+
+    #[test]
+    fn test_that_ndarrmax_returns_the_max(){
+        let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
+        let xmax = ndarrmax(&xs);
+        assert_eq!(xmax, 80.0);
     }
 
     #[test]

@@ -121,9 +121,14 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
 
     df_err = df.copy().drop(columns=list(new_cols))
     abs_err = []
+    col_for_max_error = None
+    max_abs_err = None
     for idx in df.index:
         for col in df_err.columns[2:]:
             if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=err_tol, abs_tol=err_tol)):
+                if max_abs_err is None or np.abs(df_err.loc[idx, col]) > max_abs_err:
+                    max_abs_err = np.abs(df_err.loc[idx, col])
+                    col_for_max_error = col
                 df_err.loc[idx, col] = (df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
                 abs_err.append(np.abs(df_err.loc[idx, col]))
                 print(f"{df_err.loc[idx, col]:.5%} error for {col}")
@@ -141,16 +146,41 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     else: 
         print(f'No errors exceed the {err_tol:.3g} tolerance threshold.')
 
-    return df_err, df, df0
+    return df_err, df, df0, col_for_max_error, max_abs_err
 
 class TestSimDriveSweep(unittest.TestCase):
     def test_sweep(self):
         "Compares results against benchmark."
-        print(f"Running {type(self)}.") 
-        df_err, _, _ = main(verbose=True)
-        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0, msg="Failed for Python version")
-        #df_err, _, _ = main(verbose=True, use_rust=True)
-        #self.assertEqual(df_err.iloc[:, 2:].max().max(), 0, msg="Failed for Rust version")
+        print(f"Running {type(self)}.")
+        df_err, _, _, max_err_col, max_abs_err= main(verbose=True)
+        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
+            msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
+        #df_err, _, _, max_err_col, max_abs_err = main(verbose=True, use_rust=True)
+        #self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
+        #    msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
+    
+    def test_post_diagnostics(self):
+        # PYTHON
+        cyc = cycle.Cycle.from_file("udds")
+        veh = vehicle.Vehicle.from_vehdb(1)
+        sd = simdrive.SimDrive(cyc, veh)
+        sd.sim_drive()
+        sdp = simdrive.SimDrivePost(sd)
+        py_diag = sdp.get_diagnostics()
+        # RUST
+        cyc = cycle.Cycle.from_file("udds").to_rust()
+        veh = vehicle.Vehicle.from_vehdb(1).to_rust()
+        sd = simdrive.RustSimDrive(cyc, veh)
+        sd.sim_drive()
+        sdp = simdrive.SimDrivePost(sd)
+        ru_diag = sdp.get_diagnostics()
+        py_key_set = {k for k in py_diag}
+        ru_key_set = {k for k in ru_diag}
+        self.assertEqual(py_key_set, ru_key_set,
+            msg=(
+                "Key sets not equal;"
+                + f"\nonly in python: {py_key_set - ru_key_set}"
+                + f"\nonly in Rust  : {ru_key_set - py_key_set}"))
         
 if __name__ == '__main__':
     df_err, df, df0 = main()
