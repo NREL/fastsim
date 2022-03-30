@@ -334,8 +334,13 @@ class SimDrive(object):
         ### Drive Train
         self.init_arrays() # reinitialize arrays for each new run
         
-        if aux_in_kw_override is None:
-            aux_in_kw_override = self.aux_in_kw
+        if aux_in_kw_override is not None:
+            if len(aux_in_kw_override) == len(self.aux_in_kw):
+                self.aux_in_kw = aux_in_kw_override
+            else:
+                print("WARNING! Provided aux_in_kw_override "
+                    + "is not the right length; needs "
+                    + f"{len(self.aux_in_kw)} elements")
         
         self.cyc_met[0] = True
         self.cur_soc_target[0] = self.veh.max_soc
