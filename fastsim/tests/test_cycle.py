@@ -1,6 +1,5 @@
 """Test suite for cycle instantiation and manipulation."""
 
-from tkinter import N
 import unittest
 from pathlib import Path
 import pandas as pd
