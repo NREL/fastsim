@@ -5,7 +5,7 @@ from IPython import get_ipython
 
 # %% [markdown]
 # # FASTSim Demonstration
-# 
+# |
 # ![fastsim icon](fastsim-icon-web-131x172.jpg)
 # 
 # Developed by NREL, the Future Automotive Systems Technology Simulator (FASTSim) evaluates the impact of technology improvements on efficiency, performance, cost, and battery life in conventional vehicles, hybrid electric vehicles (HEVs), plug-in hybrid electric vehicles (PHEVs), and all-electric vehicles (EVs).
@@ -75,16 +75,16 @@ print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 # %%
 
 # instantiate and run classic version 
-sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 t0 = time.time()
+sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 sim_drive.sim_drive() 
 t_py = time.time() - t0
 print(f'Time to simulate: {t_py:.2e} s')
 
 rc = cyc.to_rust()
 rv = veh.to_rust()
-sdr = fsim.simdrive.RustSimDrive(rc, rv)
 t0 = time.time()
+sdr = fsim.simdrive.RustSimDrive(rc, rv)
 sdr.sim_drive() 
 t_rust = time.time() - t0
 print(f'Time to simulate in rust: {t_rust:.2e} s')
