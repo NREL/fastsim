@@ -2,6 +2,7 @@ extern crate ndarray;
 
 use std::fs::File;
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 use ndarray::{Array, Array1}; 
 extern crate pyo3;
@@ -55,6 +56,17 @@ impl RustCycle{
             Ok(cyc) => Ok(cyc),
             Err(msg) => Err(PyFileNotFoundError::new_err(msg))
         }
+    }
+
+    /// Return a HashMap representing the cycle
+    pub fn get_cyc_dict(&self) -> PyResult<HashMap<String, Vec<f64>>>{
+        let dict: HashMap<String, Vec<f64>> = HashMap::from([
+            ("time_s".to_string(), self.time_s.to_vec()),
+            ("mps".to_string(), self.mps.to_vec()),
+            ("grade".to_string(), self.grade.to_vec()),
+            ("road_type".to_string(), self.road_type.to_vec()),
+        ]);
+        Ok(dict)
     }
     
     pub fn len(&self) -> usize{
