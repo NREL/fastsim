@@ -150,6 +150,41 @@ plt.legend()
 plt.show()
 print(f'Time to simulate: {time.time() - t0:.2e} s')
 
+# %%
+## Running sim_drive_step() with modified auxInKw using Rust
+# Note that the aux load array **must** be set as a whole. We currently
+# cannot set just an index of an array via the Python bindings to Rust at this time
+
+t0 = time.time()
+
+veh = fsim.vehicle.Vehicle.from_vehdb(9).to_rust()
+cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
+sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
+initSoc = 0.7935
+ess_cur_kwh = sim_drive.ess_cur_kwh
+ess_cur_kwh[0] = initSoc * sim_drive.veh.max_ess_kwh
+sim_drive.ess_cur_kwh = ess_cur_kwh
+soc = sim_drive.soc
+soc[0] = initSoc
+sim_drive.soc = soc
+
+while sim_drive.i < len(cyc.time_s):
+    # NOTE: we need to copy out and in the entire array to work with the Rust version
+    # that is, we can't set just a specific element of an array in rust via python bindings at this time
+    aux_in_kw = sim_drive.aux_in_kw
+    aux_in_kw[sim_drive.i] = sim_drive.i / cyc.time_s[-1] * 10 
+    sim_drive.aux_in_kw = aux_in_kw
+    # above could be a function of some internal sim_drive state
+    sim_drive.sim_drive_step()
+
+plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
+plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
+plt.xlabel('Time [s]')
+plt.ylabel('Power [kW]')
+plt.legend()
+plt.show()
+print(f'Time to simulate: {time.time() - t0:.2e} s')
+
 # %% [markdown]
 # ### Overriding using a constant value
 
@@ -163,7 +198,7 @@ veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
 sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 auxInKwConst = 12
-sim_drive.sim_drive(-1, np.ones(len(cyc.time_s))*auxInKwConst)
+sim_drive.sim_drive(None, np.ones(len(cyc.time_s))*auxInKwConst)
 
 plt.figure()
 plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
@@ -175,7 +210,29 @@ plt.show()
 
 print(f'Time to simulate: {time.time() - t0:.2e} s')
 
-# %% [markdown]
+
+# %%
+## Running sim_drive_step() with modified auxInKw using Rust
+# Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020
+t0 = time.time()
+
+veh = fsim.vehicle.Vehicle.from_vehdb(9).to_rust()
+cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
+sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
+auxInKwConst = 12
+sim_drive.sim_drive(None, np.ones(len(cyc.time_s))*auxInKwConst)
+
+plt.figure()
+plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
+plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
+plt.xlabel('Time [s]')
+plt.ylabel('Power [kW]')
+plt.legend()
+plt.show()
+
+print(f'Time to simulate: {time.time() - t0:.2e} s')
+
+# # %% [markdown]
 # ### Overriding using a time trace
 
 # %%
@@ -190,7 +247,33 @@ sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 
 # by assigning the value directly (this is faster than using positional args)
 sim_drive.aux_in_kw = cyc.time_s / cyc.time_s[-1] * 10 
-sim_drive.sim_drive()
+while sim_drive.i < len(sim_drive.cyc.time_s):
+    sim_drive.sim_drive_step()
+
+plt.figure()
+plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
+plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
+plt.xlabel('Time [s]')
+plt.ylabel('Power [kW]')
+plt.legend()
+plt.show()
+
+print(f'Time to simulate: {time.time() - t0:.2e} s')
+
+# %%
+## Running sim_drive_step() with modified auxInKw using Rust
+# Note that auxInKw is the only variable setup to be externally modified as of 1 July 2020
+
+t0 = time.time()
+
+veh = fsim.vehicle.Vehicle.from_vehdb(9).to_rust()
+cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
+sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
+
+# by assigning the value directly (this is faster than using positional args)
+sim_drive.aux_in_kw = np.array(cyc.time_s) / cyc.time_s[-1] * 10 
+while sim_drive.i < len(sim_drive.cyc.time_s):
+    sim_drive.sim_drive_step()
 
 plt.figure()
 plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
@@ -208,10 +291,36 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 # may require recompile if these arguments have not been passed,
 # but this is the fastest approach after compilation
 
+veh = fsim.vehicle.Vehicle.from_vehdb(9)
+cyc = fsim.cycle.Cycle.from_file('udds')
+
 t0 = time.time()
 
 sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-sim_drive.sim_drive(-1, cyc.time_s / cyc.time_s[-1] * 10)
+sim_drive.sim_drive(None, cyc.time_s / cyc.time_s[-1] * 10)
+
+plt.figure()
+plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
+plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
+plt.xlabel('Time [s]')
+plt.ylabel('Power [kW]')
+plt.legend()
+plt.show()
+
+print(f'Time to simulate: {time.time() - t0:.2e} s')
+
+# %%
+# by assigning positional arguments (using Rust)
+# may require recompile if these arguments have not been passed,
+# but this is the fastest approach after compilation
+
+veh = fsim.vehicle.Vehicle.from_vehdb(9).to_rust()
+cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
+
+t0 = time.time()
+
+sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
+sim_drive.sim_drive(None, np.array(cyc.time_s) / cyc.time_s[-1] * 10)
 
 plt.figure()
 plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
@@ -332,6 +441,51 @@ print(f'Simulations Complete. Total runtime = {t_end - t_start:.2f} s')
 print('     Average time per cycle = {:.2f} s'.format((
     t_end - t_start) / len(drive_cycs_df.nrel_trip_id.unique())))
 
+# %%
+# ... and the Rust version
+veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()  # load vehicle model
+output = {}
+
+rust_results_df = pd.DataFrame()
+t_start = time.time()
+for trp in list(drive_cycs_df.nrel_trip_id.unique()):
+    pnts = drive_cycs_df[drive_cycs_df['nrel_trip_id'] == trp].copy()
+    pnts['time_local'] = pd.to_datetime(pnts['timestamp'])
+
+    cyc = {}
+    cyc['cycGrade'] = np.zeros(len(pnts))
+    cyc['mps'] = np.array(
+        pnts['speed_mph'] / fsim.params.MPH_PER_MPS)  # MPH to MPS conversion
+    cyc['time_s'] = np.array(
+        np.cumsum(
+            (pnts['time_local'] -
+             pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')
+        )
+    )
+    cyc['road_type'] = np.zeros(len(pnts))
+    # example of loading cycle from dict
+    cyc = fsim.cycle.Cycle.from_dict(cyc).to_rust()
+    
+    sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
+    sim_drive.sim_params.verbose = False # turn off error messages for large time steps
+    sim_drive.sim_drive()
+
+    output['nrel_trip_id'] = trp
+    output['distance_mi'] = sum(sim_drive.dist_mi)
+    duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
+    output['avg_speed_mph'] = sum(
+        sim_drive.dist_mi) / (duration_sec / 3600.0)
+    rust_results_df = results_df.append(output, ignore_index=True)
+    output['mpgge'] = sim_drive.mpgge
+    
+t_end = time.time()
+
+# results_df = results_df.astype(float)
+
+print(f'Simulations Complete. Total runtime = {t_end - t_start:.2f} s')
+print('     Average time per cycle = {:.2f} s'.format((
+    t_end - t_start) / len(drive_cycs_df.nrel_trip_id.unique())))
+
 # %% [markdown]
 # ### Results
 # 
@@ -391,7 +545,7 @@ plt.show()
 # %%
 # load vehicle
 t0 = time.time()
-veh = fsim.vehicle.Vehicle.from_vehdb(1)
+veh = fsim.vehicle.Vehicle.from_vehdb(9)
 # veh = veh
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
