@@ -1677,10 +1677,13 @@ class SimDrivePost(object):
             else 0 
             for i in range(1, len(self.ess_cur_kwh))])
         
-        self.dod_cycs[1:] = np.array([
-            self.add_kwh[i-1] / self.veh.max_ess_kwh if self.add_kwh[i] == 0
-            else 0 
-            for i in range(1, len(self.ess_cur_kwh))])
+        if self.veh.max_ess_kwh == 0:
+            self.dod_cycs[1:] = np.array([0.0 for i in range(1, len(self.ess_cur_kwh))])
+        else:
+            self.dod_cycs[1:] = np.array([
+                self.add_kwh[i-1] / self.veh.max_ess_kwh if self.add_kwh[i] == 0
+                else 0 
+                for i in range(1, len(self.ess_cur_kwh))])
         
         self.ess_perc_dead = np.array([
             np.power(self.veh.ess_life_coef_a, 1.0 / self.veh.ess_life_coef_b) / np.power(self.dod_cycs[i], 
