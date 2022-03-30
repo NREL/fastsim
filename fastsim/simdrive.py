@@ -1588,35 +1588,39 @@ class SimDrivePost(object):
 
         output['mpgge'] = self.mpgge
         output['battery_kWh_per_mi'] = self.battery_kwh_per_mi
-        output['electric_kWh_per_mi'] = self.electric_kWh_per_mi
-        output['maxTraceMissMph'] = params.MPH_PER_MPS * max(abs(self.cyc.mps - self.mpsAch))
+        output['electric_kWh_per_mi'] = self.electric_kwh_per_mi
+        output['maxTraceMissMph'] = params.MPH_PER_MPS * max(abs(np.array(self.cyc.mps) - np.array(self.mps_ach)))
         self.maxTraceMissMph = output['maxTraceMissMph']
 
-        output['ess2fuelKwh'] = self.ess2fuelKwh
+        output['ess2fuelKwh'] = self.ess2fuel_kwh
 
         output['initial_soc'] = self.soc[0]
         output['final_soc'] = self.soc[-1]
 
-        output['mpgge_elec'] = self.mpgge_elec
+        # TODO: how to handle lack of mpgge_elec for RustSimDrive?
+        try:
+            output['mpgge_elec'] = self.mpgge_elec
+        except AttributeError:
+            output['mpgge_elec'] = 0.0
         output['soc'] = self.soc
-        output['distance_mi'] = sum(self.distMiles)
+        output['distance_mi'] = sum(self.dist_mi)
         duration_sec = self.cyc.time_s[-1] - self.cyc.time_s[0]
         output['avg_speed_mph'] = sum(
-            self.distMiles) / (duration_sec / 3.6e3)
+            self.dist_mi) / (duration_sec / 3.6e3)
         self.avg_speed_mph = output['avg_speed_mph']
-        self.accel = np.diff(self.mphAch) / np.diff(self.cyc.time_s)
+        self.accel = np.diff(self.mph_ach) / np.diff(self.cyc.time_s)
         output['avg_accel_mphps'] = np.mean(self.accel[self.accel > 0])
         self.avg_accel_mphps = output['avg_accel_mphps']
 
-        if max(self.mphAch) > 60:
-            output['ZeroToSixtyTime_secs'] = np.interp(60, self.mphAch, self.cyc.time_s)
+        if max(self.mph_ach) > 60:
+            output['ZeroToSixtyTime_secs'] = np.interp(60, self.mph_ach, self.cyc.time_s)
 
         else:
             output['ZeroToSixtyTime_secs'] = 0.0
 
-        output['fcKwOutAch'] = np.asarray(self.fcKwOutAch)
-        output['fsKwhOutAch'] = np.asarray(self.fsKwhOutAch)
-        output['fcKwInAch'] = np.asarray(self.fcKwInAch)
+        output['fcKwOutAch'] = np.asarray(self.fc_kw_out_ach)
+        output['fsKwhOutAch'] = np.asarray(self.fs_kwh_out_ach)
+        output['fcKwInAch'] = np.asarray(self.fc_kw_in_ach)
         output['time'] = np.asarray(self.cyc.time_s)
 
         return output
@@ -1667,23 +1671,23 @@ class SimDrivePost(object):
     def set_battery_wear(self):
         """Battery wear calcs"""
 
-        self.addKwh[1:] = np.array([
-            (self.essCurKwh[i] - self.essCurKwh[i-1]) + self.addKwh[i-1]
-            if self.essCurKwh[i] > self.essCurKwh[i-1]
+        self.add_kwh[1:] = np.array([
+            (self.ess_cur_kwh[i] - self.ess_cur_kwh[i-1]) + self.add_kwh[i-1]
+            if self.ess_cur_kwh[i] > self.ess_cur_kwh[i-1]
             else 0 
-            for i in range(1, len(self.essCurKwh))])
+            for i in range(1, len(self.ess_cur_kwh))])
         
-        self.dodCycs[1:] = np.array([
-            self.addKwh[i-1] / self.veh.max_ess_kwh if self.addKwh[i] == 0
+        self.dod_cycs[1:] = np.array([
+            self.add_kwh[i-1] / self.veh.max_ess_kwh if self.add_kwh[i] == 0
             else 0 
-            for i in range(1, len(self.essCurKwh))])
+            for i in range(1, len(self.ess_cur_kwh))])
         
-        self.essPercDeadArray = np.array([
-            np.power(self.veh.ess_life_coef_a, 1.0 / self.veh.ess_life_coef_b) / np.power(self.dodCycs[i], 
+        self.ess_perc_dead = np.array([
+            np.power(self.veh.ess_life_coef_a, 1.0 / self.veh.ess_life_coef_b) / np.power(self.dod_cycs[i], 
             1.0 / self.veh.ess_life_coef_b)
-            if self.dodCycs[i] != 0
+            if self.dod_cycs[i] != 0
             else 0
-            for i in range(0, len(self.essCurKwh))])
+            for i in range(0, len(self.ess_cur_kwh))])
 
 
 def SimDriveJit(cyc_jit, veh_jit):
