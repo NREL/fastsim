@@ -12,7 +12,7 @@ import fastsim as fsim
 import fastsimrust as fsr
 
 
-VERBOSE = True
+VERBOSE = False
 TOL = 1e-6
 
 
