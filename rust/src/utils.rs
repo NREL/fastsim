@@ -1,6 +1,5 @@
 extern crate ndarray;
 use ndarray::{Array1, array, Axis, s, concatenate}; 
-use ordered_float::NotNan; // 2.0.0
 
 
 pub fn diff(x:&Array1<f64>) -> Array1<f64>{
@@ -10,6 +9,19 @@ pub fn diff(x:&Array1<f64>) -> Array1<f64>{
     ).unwrap()
 }
 
+// TODO: check code here -- I'm sure there is a more elegant solution but this works.
+/// Returns a new array with a constant added starting at xs[i] to the end. Values prior to xs[i] are unchanged.
+pub fn add_from(xs:&Array1<f64>, i:usize, val:f64)->Array1<f64>{
+    let mut ys = Array1::zeros(xs.len());
+    for idx in 0..xs.len() {
+        if idx >= i {
+            ys[idx] = xs[idx] + val;
+        } else {
+            ys[idx] = xs[idx];
+        }
+    }
+    ys
+}
 
 /// Return first index of `arr` greater than `cut`
 pub fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
@@ -170,6 +182,19 @@ mod tests {
             assert_eq!(ye, y, "unequal at {}", i);
             i += 1;
         }
+    }
+
+    #[test]
+    fn test_add_from_yields_expected_output(){
+        let xs = Array1::from_vec(vec![1.0,2.0,3.0,4.0,5.0]);
+        let mut expected_ys = Array1::from_vec(vec![1.0,2.0,3.0,4.0,5.0]);
+        let mut actual_ys = add_from(&xs, 100, 1.0);
+        assert_eq!(expected_ys.len(), actual_ys.len());
+        assert_eq!(expected_ys, actual_ys);
+        expected_ys = Array1::from_vec(vec![1.0,2.0,4.0,5.0,6.0]);
+        actual_ys = add_from(&xs, 2, 1.0);
+        assert_eq!(expected_ys.len(), actual_ys.len());
+        assert_eq!(expected_ys, actual_ys);
     }
 
     // #[test]
