@@ -130,6 +130,11 @@ impl RustCycle{
     pub fn get_len(&self) -> PyResult<usize>{
         Ok(self.time_s.len())
     }
+    #[getter]
+    /// distance for each time-step in meters
+    pub fn get_dist_m(&self) -> PyResult<Vec<f64>>{
+        Ok(self.dist_m().to_vec())
+    }
 }
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
