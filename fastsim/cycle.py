@@ -444,8 +444,8 @@ def clip_by_times(cycle, t_end, t_start=0):
         to times >= t_start and <= t_end
     Clip the cycle to the given times and return
     """
-    idx = np.logical_and(cycle['time_s'] >= t_start,
-                         cycle['time_s'] <= t_end)
+    idx = np.logical_and(np.array(cycle['time_s']) >= t_start,
+                         np.array(cycle['time_s']) <= t_end)
     new_cycle = {}
     for k in cycle:
         try:
