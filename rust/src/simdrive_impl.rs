@@ -1,6 +1,6 @@
 use ndarray::{Array, Array1, array, s};
 use std::cmp;
-use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum};
+use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from};
 use super::vehicle::*;
 use super::params;
 
@@ -238,10 +238,9 @@ impl RustSimDrive {
     pub fn step(&mut self) -> Result<(), String> {
         self.solve_step_rust(self.i)?;
 
-        // TODO: implement and uncomment
-        // if self.sim_params.missed_trace_correction && (self.cyc0.dist_m.slice(s![0..self.i]).sum() > 0){
-        //     self.set_time_dilation(self.i)
-        // }
+        if self.sim_params.missed_trace_correction && (self.cyc0.dist_m().slice(s![0..self.i]).sum() > 0.0){
+            self.set_time_dilation_rust(self.i)?;
+        }
 
         // TODO: implement something for coasting here
         // if self.impose_coast[i] == true
@@ -1200,6 +1199,92 @@ impl RustSimDrive {
 
         if let Err(()) = res() {
             Err("`set_fc_ess_power_rust` failed".to_string())
+        } else {
+            Ok(())
+        }
+    }
+
+    ///
+    pub fn set_time_dilation_rust(&mut self, i:usize) -> Result<(), String>{
+        let mut res = || -> Result<(), String> {
+            // if prescribed speed is zero, trace is met to avoid div-by-zero errors and other possible wackiness
+            let mut trace_met =
+                (self.cyc.dist_m().slice(s![0..i+1]).sum() - self.dist_m.slice(s![0..i+1]).sum()).abs() / self.cyc0.dist_m().slice(s![0..i+1]).sum()
+                < self.sim_params.time_dilation_tol
+                || self.cyc.mps[i] == 0.0;
+
+            let mut d_short: Vec<f64> = vec![];
+            let mut t_dilation: Vec<f64> = vec![0.0]; // no time dilation initially
+            if !trace_met {
+                self.trace_miss_iters[i] += 1;
+
+                d_short.push(self.cyc0.dist_m().slice(s![0..i+1]).sum() - self.dist_m.slice(s![0..i+1]).sum()); // positive if behind trace
+                t_dilation.push(
+                    min(
+                        max(
+                            d_short[d_short.len()-1] / self.cyc0.dt_s()[i] / self.mps_ach[i], // initial guess, speed that needed to be achived per speed that was achieved
+                            self.sim_params.min_time_dilation
+                        ),
+                        self.sim_params.max_time_dilation,
+                    ),
+                );
+
+                // add time dilation factor * step size to current and subsequent times
+                self.cyc.time_s = add_from(&self.cyc.time_s, i, self.cyc.dt_s()[i] * t_dilation[t_dilation.len()-1]);
+                if let Err(message) = self.solve_step_rust(i) {
+                    return Err(message);
+                }
+
+                trace_met = 
+                    // convergence criteria
+                    (self.cyc0.dist_m().slice(s![0..i+1]).sum() - self.dist_m.slice(s![0..i+1]).sum()).abs() / self.cyc0.dist_m().slice(s![0..i+1]).sum()
+                    < self.sim_params.time_dilation_tol
+                    // exceeding max time dilation
+                    || t_dilation[t_dilation.len()-1] >= self.sim_params.max_time_dilation
+                    // lower than min time dilation
+                    || t_dilation[t_dilation.len()-1] <= self.sim_params.min_time_dilation;
+            }
+            while !trace_met {
+                // iterate newton's method until time dilation has converged or other exit criteria trigger trace_met == True
+                // distance shortfall [m]            
+                // correct time steps
+                d_short.push(self.cyc0.dist_m().slice(s![0..i+1]).sum() - self.dist_m.slice(s![0..i+1]).sum());
+                t_dilation.push(
+                    min(
+                        max(
+                            t_dilation[t_dilation.len()-1] - (t_dilation[t_dilation.len()-1] - t_dilation[t_dilation.len()-2])
+                            /
+                            (d_short[d_short.len()-1] - d_short[d_short.len()-2]) * d_short[d_short.len()-1],
+                            self.sim_params.min_time_dilation,
+                        ),
+                        self.sim_params.max_time_dilation
+                    )
+                );
+                self.cyc.time_s = add_from(&self.cyc.time_s, i, self.cyc.dt_s()[i] * t_dilation[t_dilation.len()-1]);
+
+                self.solve_step_rust(i)?;
+
+                if let Err(message) = self.solve_step_rust(i) {
+                    return Err(message);
+                }
+                self.trace_miss_iters[i] += 1;
+
+                trace_met = 
+                    // convergence criteria
+                    (self.cyc0.dist_m().slice(s![0..i+1]).sum() - self.dist_m.slice(s![0..i+1]).sum()).abs() / self.cyc0.dist_m().slice(s![0..i+1]).sum()
+                    < self.sim_params.time_dilation_tol
+                    // max iterations
+                    || self.trace_miss_iters[i] >= self.sim_params.max_trace_miss_iters
+                    // exceeding max time dilation
+                    || t_dilation[t_dilation.len()-1] >= self.sim_params.max_time_dilation
+                    // lower than min time dilation
+                    || t_dilation[t_dilation.len()-1] <= self.sim_params.min_time_dilation;
+            }
+            Ok(())
+        };
+
+        if let Err(message) = res() {
+            Err("`set_time_dilation_rust` failed: ".to_string() + &message)
         } else {
             Ok(())
         }

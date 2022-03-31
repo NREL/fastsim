@@ -199,7 +199,7 @@ pub struct RustSimDrive{
     pub ascent_kw: Array1<f64>,
     pub rr_kw: Array1<f64>,
     pub cur_max_roadway_chg_kw: Array1<f64>,
-    pub trace_miss_iters: Array1<f64>,
+    pub trace_miss_iters: Array1<u32>,
     pub newton_iters: Array1<u32>,
     pub fuel_kj: f64,
     pub ess_dischg_kj: f64,
@@ -609,6 +609,14 @@ impl RustSimDrive{
     /// i: index of time step
     pub fn set_fc_ess_power(&mut self, i:usize) -> PyResult<()> {
         handle_sd_res(self.set_fc_ess_power_rust(i))
+    }
+
+    /// Sets the time dilation for the current step.
+    /// Arguments
+    /// ------------
+    /// i: index of time step
+    pub fn set_time_dilation(&mut self, i:usize) -> PyResult<()> {
+        handle_sd_res(self.set_time_dilation_rust(i))
     }
 
     /// Sets scalar variables that can be calculated after a cycle is run. 
@@ -1607,11 +1615,11 @@ impl RustSimDrive{
     }
 
     #[getter]
-    pub fn get_trace_miss_iters(&self) -> PyResult<Vec<f64>>{
+    pub fn get_trace_miss_iters(&self) -> PyResult<Vec<u32>>{
       Ok(self.trace_miss_iters.to_vec())
     }
     #[setter]
-    pub fn set_trace_miss_iters(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+    pub fn set_trace_miss_iters(&mut self, new_value:Vec<u32>) -> PyResult<()>{
       self.trace_miss_iters = Array::from_vec(new_value);
       Ok(())
     }
