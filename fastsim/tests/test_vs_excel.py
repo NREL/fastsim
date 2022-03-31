@@ -21,6 +21,14 @@ from fastsim import simdrive, vehicle, cycle, simdrivelabel
 importlib.reload(simdrivelabel) # useful for debugging
 
 
+RUN_PYTHON = False
+RUN_RUST = True
+_USE_RUST_LIST = []
+if RUN_PYTHON:
+    _USE_RUST_LIST.append(False)
+if RUN_RUST:
+    _USE_RUST_LIST.append(True)
+
 if 'xlwings' in sys.modules:
     xw_success = True
     import xlwings as xw
@@ -28,7 +36,7 @@ else:
     xw_success = False
 
 
-def run_python(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
+def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
     """
     Runs python fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
@@ -226,12 +234,12 @@ def main(err_tol=0.001, prev_res_path=PREV_RES_PATH, rerun_excel=False, verbose=
     """
 
     if xw_success and rerun_excel:
-        res_python = run_python(verbose=verbose)
+        res_python = run(verbose=verbose)
         res_excel = run_excel(prev_res_path=prev_res_path,
                               rerun_excel=rerun_excel)
         res_comps = compare(res_python, res_excel)
     elif not(rerun_excel):
-        res_python = run_python(verbose=verbose)
+        res_python = run(verbose=verbose)
         res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
         res_comps = compare(res_python, res_excel)
     else:
@@ -247,9 +255,9 @@ ACCEL_ERR_TOL = 0.022
 class TestExcel(unittest.TestCase):
     def test_vs_excel(self):
         "Compares results against archived Excel results."
-        for use_rust in [False, True]:
+        for use_rust in _USE_RUST_LIST:
             print(f"Running {type(self)} (Rust: {use_rust})")
-            res_python = run_python(verbose=True, use_rust=use_rust)
+            res_python = run(verbose=True, use_rust=use_rust)
             res_excel = run_excel(prev_res_path=PREV_RES_PATH,
                                 rerun_excel=False)
             res_comps = compare(res_python, res_excel, verbose=False)
@@ -267,7 +275,7 @@ class TestExcel(unittest.TestCase):
             self.assertEqual(failed_tests, [])
 
 if __name__ == "__main__":
-        res_python = run_python(vehicles=[12], verbose=True)
+        res_python = run(vehicles=[12], verbose=True)
         res_excel = run_excel(vehicles=[12], prev_res_path=PREV_RES_PATH,
                               rerun_excel=False)
         res_comps = compare(res_python, res_excel, verbose=False)
