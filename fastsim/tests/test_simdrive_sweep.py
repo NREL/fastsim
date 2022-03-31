@@ -14,6 +14,10 @@ from fastsim import simdrive, vehicle, cycle, utils
 import fastsimrust as fsr
 
 
+RUN_PYTHON = False
+RUN_RUST = True
+
+
 def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     """Runs test test for 26 vehicles and 3 cycles.  
     Test compares cumulative positive and negative energy 
@@ -155,12 +159,14 @@ class TestSimDriveSweep(unittest.TestCase):
     def test_sweep(self):
         "Compares results against benchmark."
         print(f"Running {type(self)}.")
-        df_err, _, _, max_err_col, max_abs_err= main(verbose=True)
-        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
-            msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
-        df_err, _, _, max_err_col, max_abs_err = main(verbose=True, use_rust=True)
-        self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
-            msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
+        if RUN_PYTHON:
+            df_err, _, _, max_err_col, max_abs_err= main(verbose=True)
+            self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
+                msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
+        if RUN_RUST:
+            df_err, _, _, max_err_col, max_abs_err = main(verbose=True, use_rust=True)
+            self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
+                msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
     
     def test_post_diagnostics(self):
         vehid = 9 # FORD C-MAX
