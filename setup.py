@@ -25,7 +25,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fastsim",  
-    version="1.2.6",
+    version="2.0.0",
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
     description="Tool for modeling vehicle powertrains",
