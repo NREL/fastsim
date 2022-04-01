@@ -19,7 +19,7 @@ cycs = [fsim.cycle.Cycle.from_file('udds')] * 1_000
 def run_sd(cyc_num: int):
     # convert to compiled version inside the parallelized function to allow for pickling
     cyc = cycs[cyc_num]
-    sd = fsim.simdrive.SimDrive(cyc, veh)
+    sd = fsim.simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
     sd.sim_drive()
     if cyc_num % 100 == 0:
         print(f"Finished cycle {cyc_num}")
