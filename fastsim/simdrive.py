@@ -1317,21 +1317,6 @@ class SimDrive(object):
         else:
             self.ess2fuel_kwh  = self.ess_dischg_kj / (self.fuel_kj + self.roadway_chg_kj)
 
-        if self.mpgge == 0:
-            # hardcoded conversion
-            self.gallons_gas_equivalent_per_mile = self.electric_kwh_per_mi / self.props.kwh_per_gge
-            grid_gallons_gas_equivalent_per_mile = self.electric_kwh_per_mi / self.props.kwh_per_gge / \
-                self.veh.chg_eff
-
-        else:
-            self.gallons_gas_equivalent_per_mile = 1 / \
-                self.mpgge + self.electric_kwh_per_mi  / self.props.kwh_per_gge
-            grid_gallons_gas_equivalent_per_mile = 1 / self.mpgge + \
-                self.electric_kwh_per_mi / self.props.kwh_per_gge / self.veh.chg_eff
-
-        self.grid_mpgge_elec = 1 / grid_gallons_gas_equivalent_per_mile
-        self.mpgge_elec = 1 / self.gallons_gas_equivalent_per_mile
-
         # energy audit calcs
         self.drag_kw = self.cyc_drag_kw 
         self.drag_kj = (self.drag_kw * self.cyc.dt_s).sum()

@@ -1318,30 +1318,9 @@ impl RustSimDrive {
             }
 
 
-            // DO NOT IMPLEMENT THE FOLLOWING: !!!!!!!!!!!!!!!!!!!!!!
-            // make sure tests pass without these
-            // a downstream project totally abused the `mpgge_elec` so I don't want to provide it anymore  
-
-            // if self.mpgge == 0:
-            //     # hardcoded conversion
-            //     self.gallons_gas_equivalent_per_mile = self.electric_kwh_per_mi / self.props.kwh_per_gge
-            //     grid_gallons_gas_equivalent_per_mile = self.electric_kwh_per_mi / self.props.kwh_per_gge / \
-            //         self.veh.chg_eff
-
-            // else:
-            //     self.gallons_gas_equivalent_per_mile = 1 / \
-            //         self.mpgge + self.electric_kwh_per_mi  / self.props.kwh_per_gge
-            //     grid_gallons_gas_equivalent_per_mile = 1 / self.mpgge + \
-            //         self.electric_kwh_per_mi / self.props.kwh_per_gge / self.veh.chg_eff
-
-            // self.grid_mpgge_elec = 1 / grid_gallons_gas_equivalent_per_mile
-            // self.mpgge_elec = 1 / self.gallons_gas_equivalent_per_mile
-
-                // RESUME IMPLEMENTATION BELOW HERE
-
-                // TODO: where "\w+_kw" and "cyc_\w+_kw" are identical remove the "cyc_\w+_kw" variant
-                // for "cyc_\w+_kw" that don't have a corresponding "\w+_kw", remove the cyc_ prefix, as it 
-                // provides no value
+            // TODO: where "\w+_kw" and "cyc_\w+_kw" are identical remove the "cyc_\w+_kw" variant
+            // for "cyc_\w+_kw" that don't have a corresponding "\w+_kw", remove the cyc_ prefix, as it 
+            // provides no value
 
             // energy audit calcs
             self.drag_kw = self.cyc_drag_kw.clone();
@@ -1351,13 +1330,6 @@ impl RustSimDrive {
             self.rr_kw = self.cyc_rr_kw.clone();
             self.rr_kj = (self.rr_kw.clone() * self.cyc.dt_s()).sum();
 
-            // self.ess_loss_kw[1:] = np.array(
-            //     [0 if (self.veh.max_ess_kw == 0 or self.veh.max_ess_kwh == 0)
-            //     else -self.ess_kw_out_ach[i] - (-self.ess_kw_out_ach[i] * np.sqrt(self.veh.ess_round_trip_eff))
-            //         if self.ess_kw_out_ach[i] < 0
-            //     else self.ess_kw_out_ach[i] * (1.0 / np.sqrt(self.veh.ess_round_trip_eff)) - self.ess_kw_out_ach[i]
-            //     for i in range(1, len(self.cyc.time_s))]
-            // )
             for i in 1..self.cyc.time_s.len() {
                 if self.veh.max_ess_kw == 0.0 || self.veh.max_ess_kwh == 0.0 {
                     self.ess_loss_kw[i] = 0.0;
