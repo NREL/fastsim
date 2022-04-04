@@ -1689,3 +1689,37 @@ def SimAccelTestJit(cyc_jit, veh_jit):
     deprecated
     """
     raise NotImplementedError("This function has been deprecated")
+
+def estimate_soc_corrected_fuel_kJ(sd: SimDrive) -> float:
+    """
+    - sd: SimDriveClassic, the simdrive instance after simulation
+    RETURN: number, the kJ of fuel corrected for SOC imbalance
+    """
+    if sd.veh.veh_pt_type != HEV:
+        raise ValueError(f"SimDrive instance must have a vehPtType of HEV; found {sd.veh.veh_pt_type}")
+    def f(mask, numer, denom, default):
+        m = np.array(mask)
+        n = np.array(numer)
+        d = np.array(denom)
+        if not m.any():
+            return default
+        return n[m].sum() / d[m].sum()
+    kJ__kWh = 3600.0
+    delta_soc = sd.soc[-1] - sd.soc[0]
+    ess_eff = np.sqrt(sd.veh.ess_round_trip_eff)
+    mc_chg_eff = f(np.array(sd.mc_mech_kw_out_ach) < 0.0, sd.mc_elec_kw_in_ach, sd.mc_mech_kw_out_ach, sd.veh.mc_peak_eff)
+    mc_dis_eff = f(np.array(sd.mc_mech_kw_out_ach) > 0.0, sd.mc_mech_kw_out_ach, sd.mc_elec_kw_in_ach, mc_chg_eff)
+    ess_traction_frac = f(np.array(sd.mc_elec_kw_in_ach) > 0.0, sd.mc_elec_kw_in_ach, sd.ess_kw_out_ach, 1.0)
+    fc_eff = f(
+        np.array(sd.trans_kw_in_ach) > 0.0,
+        sd.fc_kw_out_ach,
+        sd.fc_kw_in_ach,
+        np.array(sd.fc_kw_out_ach).sum() / np.array(sd.fc_kw_in_ach).sum()
+    )
+    if delta_soc >= 0.0:
+        k = (sd.veh.max_ess_kwh * kJ__kWh * ess_eff * mc_dis_eff * ess_traction_frac) / fc_eff
+        equivalent_fuel_kJ = -1.0 * delta_soc * k
+    else:
+        k = (sd.veh.max_ess_kwh * kJ__kWh) / (ess_eff * mc_chg_eff * fc_eff)
+        equivalent_fuel_kJ = -1.0 * delta_soc * k
+    return sd.fuel_kj + equivalent_fuel_kJ
