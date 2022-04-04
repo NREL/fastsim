@@ -144,21 +144,31 @@ class TestSimDriveClassic(unittest.TestCase):
 
             self.assertTrue(trace_miss_corrected, msg="Issue in Python version")
         
-        if False and USE_RUST: # currently not passing
+        if USE_RUST:
             veh = vehicle.Vehicle.from_vehdb(1).to_rust()
             cyc = cycle.Cycle.from_dict(cyc_dict={
                 'time_s': np.arange(10),
                 'mps': np.append(2, np.ones(9) * 6),
             }).to_rust()
             sd = simdrive.RustSimDrive(cyc, veh)
-            sd.sim_params.missed_trace_correction = True
-            sd.sim_params.max_time_dilation = 0.05 # maximum upper margin for time dilation
+            sim_params = sd.sim_params
+            sim_params.missed_trace_correction = True
+            sim_params.max_time_dilation = 0.05 # maximum upper margin for time dilation
+            sd.sim_params = sim_params
             sd.sim_drive()
 
-            trace_miss_corrected = (
-                abs(np.array(sd.dist_m).sum() - np.array(sd.cyc0.dist_m).sum()) / np.array(sd.cyc0.dist_m).sum()) < sd.sim_params.time_dilation_tol
+            dist_err = np.abs(np.array(sd.dist_m).sum() - np.array(sd.cyc0.dist_m).sum()) / np.array(sd.cyc0.dist_m).sum()
+            trace_miss_corrected = dist_err < sd.sim_params.time_dilation_tol
 
-            self.assertTrue(trace_miss_corrected, msg="Issue in Rust version")
+            self.assertTrue(sd.sim_params.missed_trace_correction)
+            self.assertTrue(
+                trace_miss_corrected,
+                msg=(
+                    f"Issue in Rust version; dist_err: {dist_err}"
+                    + f"\ntrace_miss_iters: {np.max(sd.trace_miss_iters)}"
+                )
+
+            )
 
     def test_stop_start(self):
         if USE_PYTHON:
