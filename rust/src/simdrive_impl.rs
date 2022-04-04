@@ -1209,7 +1209,7 @@ impl RustSimDrive {
         let mut res = || -> Result<(), String> {
             // if prescribed speed is zero, trace is met to avoid div-by-zero errors and other possible wackiness
             let mut trace_met =
-                (self.cyc.dist_m().slice(s![0..i+1]).sum() - self.dist_m.slice(s![0..i+1]).sum()).abs() / self.cyc0.dist_m().slice(s![0..i+1]).sum()
+                (self.cyc.dist_m().slice(s![0..(i+1)]).sum() - self.dist_m.slice(s![0..(i+1)]).sum()).abs() / self.cyc0.dist_m().slice(s![0..(i+1)]).sum()
                 < self.sim_params.time_dilation_tol
                 || self.cyc.mps[i] == 0.0;
 
