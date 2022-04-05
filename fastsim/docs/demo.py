@@ -570,7 +570,6 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 t0 = time.time()
 sim_drive_post = fsim.simdrive.SimDrivePost(sim_drive)
-output = sim_drive_post.get_output()
 sim_drive_post.set_battery_wear()
 diag = sim_drive_post.get_diagnostics()
 print(f'Time to post process: {time.time() - t0:.2e} s')
@@ -579,14 +578,12 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 # ### Results
 
 # %%
-df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc.mps * 2.23694  # Convert mps to mph
 
 fig, ax = plt.subplots(figsize=(9, 5))
-kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
+kwh_line = ax.plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='kW')
 
 ax2 = ax.twinx()
-speed_line = df.speed.plot(color='xkcd:pale red', ax=ax2, label='Speed')
+speed_line = ax2.plot(cyc.time_s, sim_drive.mph_ach, color='xkcd:pale red', label='Speed')
 
 ax.set_xlabel('Cycle Time [s]', weight='bold')
 ax.set_ylabel('Engine Input Power [kW]', weight='bold', color='xkcd:bluish')
@@ -633,7 +630,6 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 t0 = time.time()
 sim_drive_post = fsim.simdrive.SimDrivePost(sim_drive)
-output = sim_drive_post.get_output()
 sim_drive_post.set_battery_wear()
 diag = sim_drive_post.get_diagnostics()
 print(f'Time to post process: {time.time() - t0:.2e} s')
@@ -642,14 +638,11 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 # ### Results
 
 # %%
-df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc_combo.mps * 2.23694  # Convert mps to mph
-
 fig, ax = plt.subplots(figsize=(9, 5))
-kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
+kwh_line = ax.plot(sim_drive.cyc.time_s, sim_drive.fc_kw_in_ach, label='kW')
 
 ax2 = ax.twinx()
-speed_line = df.speed.plot(color='xkcd:pale red', ax=ax2, label='Speed')
+speed_line = ax2.plot(sim_drive.cyc.time_s, sim_drive.mph_ach, color='xkcd:pale red', label='Speed')
 
 ax.set_xlabel('Cycle Time [s]', weight='bold')
 ax.set_ylabel('Engine Input Power [kW]', weight='bold', color='xkcd:bluish')
@@ -734,7 +727,6 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 t0 = time.time()
 sim_drive_post = fsim.simdrive.SimDrivePost(sim_drive)
-output = sim_drive_post.get_output()
 sim_drive_post.set_battery_wear()
 diag = sim_drive_post.get_diagnostics()
 print(f'Time to post process: {time.time() - t0:.2e} s')
@@ -743,14 +735,11 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 # ### Results
 
 # %%
-df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc_combo.mps * 2.23694  # Convert mps to mph
-
 fig, ax = plt.subplots(figsize=(9, 5))
-kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
+kwh_line = ax.plot(sim_drive.cyc.time_s, sim_drive.fc_kw_in_ach, label='kW')
 
 ax2 = ax.twinx()
-speed_line = df.speed.plot(color='xkcd:pale red', ax=ax2, label='Speed')
+speed_line = ax2.plot(sim_drive.cyc.time_s, sim_drive.mph_ach, color='xkcd:pale red', label='Speed')
 
 ax.set_xlabel('Cycle Time [s]', weight='bold')
 ax.set_ylabel('Engine Input Power [kW]', weight='bold', color='xkcd:bluish')
@@ -792,7 +781,6 @@ print(f'Time to simulate: {time.time() - t0:.2e} s')
 
 t0 = time.time()
 sim_drive_post = fsim.simdrive.SimDrivePost(sim_drive)
-output = sim_drive_post.get_output()
 sim_drive_post.set_battery_wear()
 diag = sim_drive_post.get_diagnostics()
 print(f'Time to post process: {time.time() - t0:.2e} s')
@@ -801,14 +789,11 @@ print(f'Time to post process: {time.time() - t0:.2e} s')
 # ### Results
 
 # %%
-df = pd.DataFrame.from_dict(output)[['soc','fcKwInAch']]
-df['speed'] = cyc.mps * 2.23694  # Convert mps to mph
-
 fig, ax = plt.subplots(figsize=(9, 5))
-kwh_line = df.fcKwInAch.plot(ax=ax, label='kW')
+kwh_line = ax.plot(sim_drive.cyc.time_s, sim_drive.fc_kw_in_ach, label='kW')
 
 ax2 = ax.twinx()
-speed_line = df.speed.plot(color='xkcd:pale red', ax=ax2, label='Speed')
+speed_line = ax2.plot(sim_drive.cyc.time_s, sim_drive.mph_ach ,color='xkcd:pale red', label='Speed')
 
 ax.set_xlabel('Cycle Time [s]', weight='bold')
 ax.set_ylabel('Engine Input Power [kW]', weight='bold', color='xkcd:bluish')
@@ -818,3 +803,5 @@ ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
 plt.show()
+
+# %%

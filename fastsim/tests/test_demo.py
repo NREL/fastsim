@@ -152,12 +152,11 @@ def use_simdrive_post(use_rust=False, verbose=False):
 
     t0 = time.time()
     sim_drive_post = fsim.simdrive.SimDrivePost(sim_drive)
-    output = sim_drive_post.get_output()
     sim_drive_post.set_battery_wear()
     diag = sim_drive_post.get_diagnostics()
     if verbose:
         print(f'Time to post process: {time.time() - t0:.2e} s')
-    return output, diag
+    return diag
 
 
 class TestDemo(unittest.TestCase):
@@ -268,11 +267,8 @@ class TestDemo(unittest.TestCase):
         self.assertTrue(ess_out_max_abs_diff < TOL)
 
     def test_using_simdrive_post(self):
-        py_out, py_diag = use_simdrive_post(use_rust=False, verbose=VERBOSE)
-        ru_out, ru_diag = use_simdrive_post(use_rust=True, verbose=VERBOSE)
-        py_out_keys = {k for k in py_out}
-        ru_out_keys = {k for k in ru_out}
-        self.assertEqual(py_out_keys, ru_out_keys)
+        py_diag = use_simdrive_post(use_rust=False, verbose=VERBOSE)
+        ru_diag = use_simdrive_post(use_rust=True, verbose=VERBOSE)
         py_diag_keys = {k for k in py_diag}
         ru_diag_keys = {k for k in ru_diag}
         self.assertEqual(py_diag_keys, ru_diag_keys)

@@ -1504,33 +1504,6 @@ def sim_drive_equal(a:SimDrive, b:SimDrive, verbose=False) -> bool:
             return False
     return True
 
-class SimAccelTest(SimDrive):
-    """Class for running FASTSim vehicle acceleration simulation."""
-
-    def sim_drive(self):
-        """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
-
-        if self.veh.veh_pt_type == CONV:  # Conventional
-
-            # If no EV / Hybrid components, no SOC considerations.
-
-            init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
-            self.sim_drive_walk(init_soc)
-
-        elif self.veh.veh_pt_type == HEV:  # HEV
-
-            init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0
-            self.sim_drive_walk(init_soc)
-
-        else:
-
-            # If EV, initializing initial SOC to maximum SOC.
-            init_soc = self.veh.max_soc
-            self.sim_drive_walk(init_soc)
-
-        self.set_post_scalars()
-
-
 def run_simdrive_for_accel_test(sd:SimDrive):
     """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType."""
     if sd.veh.veh_pt_type == CONV:  # Conventional
@@ -1558,57 +1531,6 @@ class SimDrivePost(object):
         
         for item in inspect_utils.get_attrs(sim_drive):
             self.__setattr__(item, sim_drive.__getattribute__(item))
-
-    def get_output(self):
-        """Calculate finalized results
-        Arguments
-        ------------
-        init_soc: initial SOC for electrified vehicles
-        
-        Returns
-        ------------
-        output: dict of summary output variables"""
-
-        output = {}
-
-        output['mpgge'] = self.mpgge
-        output['battery_kWh_per_mi'] = self.battery_kwh_per_mi
-        output['electric_kWh_per_mi'] = self.electric_kwh_per_mi
-        output['maxTraceMissMph'] = params.MPH_PER_MPS * max(abs(np.array(self.cyc.mps) - np.array(self.mps_ach)))
-        self.maxTraceMissMph = output['maxTraceMissMph']
-
-        output['ess2fuelKwh'] = self.ess2fuel_kwh
-
-        output['initial_soc'] = self.soc[0]
-        output['final_soc'] = self.soc[-1]
-
-        # TODO: how to handle lack of mpgge_elec for RustSimDrive?
-        try:
-            output['mpgge_elec'] = self.mpgge_elec
-        except AttributeError:
-            output['mpgge_elec'] = 0.0
-        output['soc'] = self.soc
-        output['distance_mi'] = sum(self.dist_mi)
-        duration_sec = self.cyc.time_s[-1] - self.cyc.time_s[0]
-        output['avg_speed_mph'] = sum(
-            self.dist_mi) / (duration_sec / 3.6e3)
-        self.avg_speed_mph = output['avg_speed_mph']
-        self.accel = np.diff(self.mph_ach) / np.diff(self.cyc.time_s)
-        output['avg_accel_mphps'] = np.mean(self.accel[self.accel > 0])
-        self.avg_accel_mphps = output['avg_accel_mphps']
-
-        if max(self.mph_ach) > 60:
-            output['ZeroToSixtyTime_secs'] = np.interp(60, self.mph_ach, self.cyc.time_s)
-
-        else:
-            output['ZeroToSixtyTime_secs'] = 0.0
-
-        output['fcKwOutAch'] = np.asarray(self.fc_kw_out_ach)
-        output['fsKwhOutAch'] = np.asarray(self.fs_kwh_out_ach)
-        output['fcKwInAch'] = np.asarray(self.fc_kw_in_ach)
-        output['time'] = np.asarray(self.cyc.time_s)
-
-        return output
 
     # optional post-processing methods
     def get_diagnostics(self):
@@ -1684,11 +1606,6 @@ def SimDriveJit(cyc_jit, veh_jit):
     """
     raise NotImplementedError("This function has been deprecated.")
 
-def SimAccelTestJit(cyc_jit, veh_jit):
-    """
-    deprecated
-    """
-    raise NotImplementedError("This function has been deprecated")
 
 def estimate_soc_corrected_fuel_kJ(sd: SimDrive) -> float:
     """
