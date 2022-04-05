@@ -176,9 +176,9 @@ class TestSimDriveClassic(unittest.TestCase):
 
             veh = vehicle.Vehicle.from_vehdb(1)
             veh.stop_start = True
-            veh.max_motor_kw = 1
-            veh.max_ess_kw = 5
-            veh.max_ess_kwh = 1
+            veh.mc_max_kw = 1
+            veh.ess_max_kw = 5
+            veh.ess_max_kwh = 1
             veh.__post_init__()
 
             sd = simdrive.SimDrive(cyc, veh)
@@ -193,9 +193,9 @@ class TestSimDriveClassic(unittest.TestCase):
 
             veh = vehicle.Vehicle.from_vehdb(1)
             veh.stop_start = True
-            veh.max_motor_kw = 1
-            veh.max_ess_kw = 5
-            veh.max_ess_kwh = 1
+            veh.mc_max_kw = 1
+            veh.ess_max_kw = 5
+            veh.ess_max_kwh = 1
             veh.__post_init__()
             veh = veh.to_rust()
 

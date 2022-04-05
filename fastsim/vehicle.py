@@ -57,6 +57,8 @@ ATKINSON = FC_EFF_TYPES[1]
 DIESEL = FC_EFF_TYPES[2]
 H2FC = FC_EFF_TYPES[3]
 HD_DIESEL = FC_EFF_TYPES[4]
+
+OLD_TO_NEW = {val:key for key, val in NEW_TO_OLD.items()}
         
 
 def clean_data(raw_data):
@@ -117,27 +119,27 @@ class Vehicle(object):
     cargo_kg: float
     veh_override_kg: float
     comp_mass_multiplier: float
-    max_fuel_stor_kw: float
-    fuel_stor_secs_to_peak_pwr: float
-    fuel_stor_kwh: float
-    fuel_stor_kwh_per_kg: float
-    max_fuel_conv_kw: float
+    fs_max_kw: float
+    fs_secs_to_peak_pwr: float
+    fs_kwh: float
+    fs_kwh_per_kg: float
+    fc_max_kw: float
     fc_pwr_out_perc: np.ndarray
     fc_eff_map: np.ndarray
     fc_eff_type: str
-    fuel_conv_secs_to_peak_pwr: float
-    fuel_conv_base_kg: float
-    fuel_conv_kw_per_kg: float
+    fc_sec_to_peak_pwr: float
+    fc_base_kg: float
+    fc_kw_per_kg: float
     min_fc_time_on: float
     idle_fc_kw: float
-    max_motor_kw: float
+    mc_max_kw: float
     mc_pwr_out_perc: np.ndarray
     mc_eff_map: np.ndarray
-    motor_secs_to_peak_pwr: float
+    mc_sec_to_peak_pwr: float
     mc_pe_kg_per_kw: float
     mc_pe_base_kg: float
-    max_ess_kw: float
-    max_ess_kwh: float
+    ess_max_kw: float
+    ess_max_kwh: float
     ess_kg_per_kwh: float
     ess_base_kg: float
     ess_round_trip_eff: float
@@ -288,9 +290,11 @@ class Vehicle(object):
         Load vehicle from dict.  
         """
         veh_dict_raw = veh_dict  # still camelCase
-        veh_dict = {utils.camel_to_snake(key).replace(' ', '_'):val 
-            for key, val in veh_dict_raw.items()}
-
+        veh_dict = {}
+        for key, val in veh_dict_raw.items():
+            key = key.replace(' ', '_')
+            key = OLD_TO_NEW.get(key, key)
+            veh_dict[key] = val
 
         # Power and efficiency arrays are defined in parameters.py
         # Can also be input in CSV as array under column fc_eff_map of form
@@ -430,34 +434,34 @@ class Vehicle(object):
         
         if self.scenario_name != 'Template Vehicle for setting up data types':
             if self.veh_pt_type == BEV:
-                assert self.max_fuel_stor_kw == 0, 'maxFuelStorKw must be zero for provided BEV powertrain type'
-                assert self.fuel_stor_kwh  == 0, 'fuelStorKwh must be zero for provided BEV powertrain type'
-                assert self.max_fuel_conv_kw == 0, 'maxFuelConvKw must be zero for provided BEV powertrain type'
+                assert self.fs_max_kw == 0, 'maxFuelStorKw must be zero for provided BEV powertrain type'
+                assert self.fs_kwh  == 0, 'fuelStorKwh must be zero for provided BEV powertrain type'
+                assert self.fc_max_kw == 0, 'maxFuelConvKw must be zero for provided BEV powertrain type'
             elif (self.veh_pt_type == CONV) and not(self.stop_start):
-                assert self.max_motor_kw == 0, 'maxMotorKw must be zero for provided Conv powertrain type'
-                assert self.max_ess_kw == 0, 'maxEssKw must be zero for provided Conv powertrain type'
-                assert self.max_ess_kwh == 0, 'maxEssKwh must be zero for provided Conv powertrain type'
+                assert self.mc_max_kw == 0, 'maxMotorKw must be zero for provided Conv powertrain type'
+                assert self.ess_max_kw == 0, 'maxEssKw must be zero for provided Conv powertrain type'
+                assert self.ess_max_kwh == 0, 'maxEssKwh must be zero for provided Conv powertrain type'
 
         ### Build roadway power lookup table
         self.max_roadway_chg_kw = np.zeros(6)
         self.charging_on = False
 
         # Checking if a vehicle has any hybrid components
-        if (self.max_ess_kwh == 0) or (self.max_ess_kw == 0) or (self.max_motor_kw == 0):
+        if (self.ess_max_kwh == 0) or (self.ess_max_kw == 0) or (self.mc_max_kw == 0):
             self.no_elec_sys = True
         else:
             self.no_elec_sys = False
 
         # Checking if aux loads go through an alternator
-        if (self.no_elec_sys == True) or (self.max_motor_kw <= self.aux_kw) or (self.force_aux_on_fc == True):
+        if (self.no_elec_sys == True) or (self.mc_max_kw <= self.aux_kw) or (self.force_aux_on_fc == True):
             self.no_elec_aux = True
         else:
             self.no_elec_aux = False
 
         # discrete array of possible engine power outputs
-        self.input_kw_out_array = self.fc_pwr_out_perc * self.max_fuel_conv_kw
+        self.input_kw_out_array = self.fc_pwr_out_perc * self.fc_max_kw
         # Relatively continuous array of possible engine power outputs
-        self.fc_kw_out_array = self.max_fuel_conv_kw * self.fc_perc_out_array
+        self.fc_kw_out_array = self.fc_max_kw * self.fc_perc_out_array
         # Creates relatively continuous array for fc_eff
         self.fc_eff_array = np.interp(x=self.fc_perc_out_array, xp=self.fc_pwr_out_perc, fp=self.fc_eff_map)
 
@@ -470,7 +474,7 @@ class Vehicle(object):
         mc_kw_adj_perc = max(
             0.0, 
             min(
-                (self.max_motor_kw - self.small_motor_power_kw) / (self.large_motor_power_kw - self.small_motor_power_kw), 
+                (self.mc_max_kw - self.small_motor_power_kw) / (self.large_motor_power_kw - self.small_motor_power_kw), 
                 1.0)
             )
 
@@ -481,7 +485,7 @@ class Vehicle(object):
         else:
             self.mc_eff_array = self.mc_eff_map
 
-        mc_kw_out_array = np.linspace(0, 1, len(self.mc_perc_out_array)) * self.max_motor_kw
+        mc_kw_out_array = np.linspace(0, 1, len(self.mc_perc_out_array)) * self.mc_max_kw
 
         mc_full_eff_array = np.interp(
             x=self.mc_perc_out_array, xp=self.mc_pwr_out_perc, fp=self.mc_eff_array)
@@ -516,26 +520,26 @@ class Vehicle(object):
         fs_mass_kg = 0
 
         if not(self.veh_override_kg > 0):
-            if self.max_ess_kwh == 0 or self.max_ess_kw == 0:
+            if self.ess_max_kwh == 0 or self.ess_max_kw == 0:
                 ess_mass_kg = 0.0
             else:
-                ess_mass_kg = ((self.max_ess_kwh * self.ess_kg_per_kwh) +
+                ess_mass_kg = ((self.ess_max_kwh * self.ess_kg_per_kwh) +
                             self.ess_base_kg) * self.comp_mass_multiplier
-            if self.max_motor_kw == 0:
+            if self.mc_max_kw == 0:
                 mc_mass_kg = 0.0
             else:
                 mc_mass_kg = (self.mc_pe_base_kg+(self.mc_pe_kg_per_kw
-                                                * self.max_motor_kw)) * self.comp_mass_multiplier
-            if self.max_fuel_conv_kw == 0:
+                                                * self.mc_max_kw)) * self.comp_mass_multiplier
+            if self.fc_max_kw == 0:
                 fc_mass_kg = 0.0
             else:
-                fc_mass_kg = (1 / self.fuel_conv_kw_per_kg * self.max_fuel_conv_kw +
-                    self.fuel_conv_base_kg) * self.comp_mass_multiplier
-            if self.max_fuel_stor_kw == 0:
+                fc_mass_kg = (1 / self.fc_kw_per_kg * self.fc_max_kw +
+                    self.fc_base_kg) * self.comp_mass_multiplier
+            if self.fs_max_kw == 0:
                 fs_mass_kg = 0.0
             else:
-                fs_mass_kg = ((1 / self.fuel_stor_kwh_per_kg) *
-                            self.fuel_stor_kwh) * self.comp_mass_multiplier
+                fs_mass_kg = ((1 / self.fs_kwh_per_kg) *
+                            self.fs_kwh) * self.comp_mass_multiplier
             self.veh_kg = self.cargo_kg + self.glider_kg + self.trans_kg * \
                 self.comp_mass_multiplier + ess_mass_kg + \
                 mc_mass_kg + fc_mass_kg + fs_mass_kg

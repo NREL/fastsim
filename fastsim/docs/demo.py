@@ -134,7 +134,7 @@ veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
 sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 initSoc = 0.7935
-sim_drive.ess_cur_kwh[0] = initSoc * sim_drive.veh.max_ess_kwh
+sim_drive.ess_cur_kwh[0] = initSoc * sim_drive.veh.ess_max_kwh
 sim_drive.soc[0] = initSoc
 
 while sim_drive.i < len(cyc.time_s):
@@ -162,7 +162,7 @@ cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
 sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
 initSoc = 0.7935
 ess_cur_kwh = sim_drive.ess_cur_kwh
-ess_cur_kwh[0] = initSoc * sim_drive.veh.max_ess_kwh
+ess_cur_kwh[0] = initSoc * sim_drive.veh.ess_max_kwh
 sim_drive.ess_cur_kwh = ess_cur_kwh
 soc = sim_drive.soc
 soc[0] = initSoc

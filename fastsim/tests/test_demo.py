@@ -69,7 +69,7 @@ def run_by_step_with_varying_aux_loads(use_rust=False, verbose=False):
         sim_drive = fsim.simdrive.SimDrive(cyc, veh)
     initSoc = 0.7935
     ess_cur_kwh = sim_drive.ess_cur_kwh
-    ess_cur_kwh[0] = initSoc * sim_drive.veh.max_ess_kwh
+    ess_cur_kwh[0] = initSoc * sim_drive.veh.ess_max_kwh
     sim_drive.ess_cur_kwh = ess_cur_kwh
     soc = sim_drive.soc
     soc[0] = initSoc
