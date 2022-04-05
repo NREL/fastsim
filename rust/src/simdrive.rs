@@ -53,11 +53,11 @@ pub struct RustSimDriveParams{
     #[pyo3(get, set)]
     pub allow_passing_during_coast: bool,
     #[pyo3(get, set)]
-    pub max_coast_speed_m__s: f64,
+    pub max_coast_speed_m_per_s: f64,
     #[pyo3(get, set)]
-    pub nominal_brake_accel_for_coast_m__s2: f64,
+    pub nominal_brake_accel_for_coast_m_per_s2: f64,
     #[pyo3(get, set)]
-    pub coast_to_brake_speed_m__s: f64,
+    pub coast_to_brake_speed_m_per_s: f64,
     #[pyo3(get, set)]
     pub coast_start_speed_m_per_s: f64,
     #[pyo3(get, set)]
@@ -94,9 +94,9 @@ impl RustSimDriveParams{
         // Coasting
         let allow_coast = false;
         let allow_passing_during_coast = false;
-        let max_coast_speed_m__s = 40.0;
-        let nominal_brake_accel_for_coast_m__s2 = -2.5;
-        let coast_to_brake_speed_m__s = 7.5;
+        let max_coast_speed_m_per_s = 40.0;
+        let nominal_brake_accel_for_coast_m_per_s2 = -2.5;
+        let coast_to_brake_speed_m_per_s = 7.5;
         let coast_start_speed_m_per_s = 38.0;
         let coast_verbose = false;
         // Following
@@ -121,9 +121,9 @@ impl RustSimDriveParams{
             energy_audit_error_tol,
             allow_coast,
             allow_passing_during_coast,
-            max_coast_speed_m__s,
-            nominal_brake_accel_for_coast_m__s2,
-            coast_to_brake_speed_m__s,
+            max_coast_speed_m_per_s,
+            nominal_brake_accel_for_coast_m_per_s2,
+            coast_to_brake_speed_m_per_s,
             coast_start_speed_m_per_s,
             coast_verbose,
             follow_allow,

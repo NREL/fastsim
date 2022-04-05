@@ -62,9 +62,9 @@ class SimDriveParams(object):
         self.energy_audit_error_tol = 0.002 # tolerance for energy audit error warning, i.e. 0.1%
         self.allow_coast = False # if True, coasting to stops are allowed
         self.allow_passing_during_coast = False # if True, coasting vehicle can eclipse the shadow trace
-        self.max_coast_speed_m__s = 40.0 # 100.0 / params.mphPerMps # maximum allowable speed under coast
-        self.nominal_brake_accel_for_coast_m__s2 = -2.5 # -1.875 # -2.0 # -1.78816
-        self.coast_to_brake_speed_m__s = 7.5 # 20.0 / params.mphPerMps # speed when coasting uses friction brakes
+        self.max_coast_speed_m_per_s = 40.0 # 100.0 / params.mphPerMps # maximum allowable speed under coast
+        self.nominal_brake_accel_for_coast_m_per_s2 = -2.5 # -1.875 # -2.0 # -1.78816
+        self.coast_to_brake_speed_m_per_s = 7.5 # 20.0 / params.mphPerMps # speed when coasting uses friction brakes
         self.coast_start_speed_m_per_s = 38.0 # m/s
         self.coast_verbose = False
         self.follow_allow = False
@@ -1471,8 +1471,8 @@ class SimDrive(object):
         TOL = 1e-6
         NOT_FOUND = -1.0
         v0 = self.cyc.mps[i-1]
-        v_brake = self.sim_params.coast_to_brake_speed_m__s
-        a_brake = self.sim_params.nominal_brake_accel_for_coast_m__s2
+        v_brake = self.sim_params.coast_to_brake_speed_m_per_s
+        a_brake = self.sim_params.nominal_brake_accel_for_coast_m_per_s2
         ds = self.cyc0.dist_v2_m.cumsum()
         gs = self.cyc0.grade
         d0 = ds[i-1]
@@ -1578,8 +1578,8 @@ class SimDrive(object):
         """
         # v0 is where n=0, i.e., idx-1
         v0 = self.cyc.mps[i-1]
-        brake_start_speed_m__s = self.sim_params.coast_to_brake_speed_m__s
-        brake_accel_m__s2 = self.sim_params.nominal_brake_accel_for_coast_m__s2
+        brake_start_speed_m__s = self.sim_params.coast_to_brake_speed_m_per_s
+        brake_accel_m__s2 = self.sim_params.nominal_brake_accel_for_coast_m_per_s2
         time_horizon_s = 20.0
         # distance_horizon_m = 1000.0
         not_found_n = 0
@@ -1676,12 +1676,12 @@ class SimDrive(object):
         if not self.impose_coast[i]:
             return
         v1_traj = self.cyc.mps[i]
-        if self.cyc.mps[i] == self.cyc0.mps[i] and v0 > self.sim_params.coast_to_brake_speed_m__s:
+        if self.cyc.mps[i] == self.cyc0.mps[i] and v0 > self.sim_params.coast_to_brake_speed_m_per_s:
             if self.sim_params.allow_passing_during_coast:
                 # we could be coasting downhill so could in theory go to a higher speed
                 # since we can pass, allow vehicle to go up to max coasting speed (m/s)
                 # the solver will show us what we can actually achieve
-                self.cyc.mps[i] = self.sim_params.max_coast_speed_m__s
+                self.cyc.mps[i] = self.sim_params.max_coast_speed_m_per_s
             else:
                 # distances of lead vehicle (m)
                 ds_lv = self.cyc0.dist_m.cumsum()
@@ -1690,7 +1690,7 @@ class SimDrive(object):
                 max_step_distance_m = d1_lv - d0
                 max_avg_speed_m__s = max_step_distance_m / self.cyc0.dt_s[i]
                 max_next_speed_m__s = 2 * max_avg_speed_m__s - v0
-                self.cyc.mps[i] = max(0, min(max_next_speed_m__s, self.sim_params.max_coast_speed_m__s))
+                self.cyc.mps[i] = max(0, min(max_next_speed_m__s, self.sim_params.max_coast_speed_m_per_s))
         # Solve for the actual coasting speed
         self.solve_step(i)
         self.newton_iters[i] = 0 # reset newton iters
@@ -1701,16 +1701,16 @@ class SimDrive(object):
             return
         if np.abs(self.cyc.mps[i] - v1_traj) > TOL:
             adjusted_current_speed = False
-            if self.cyc.mps[i] < (self.sim_params.coast_to_brake_speed_m__s + TOL):
+            if self.cyc.mps[i] < (self.sim_params.coast_to_brake_speed_m_per_s + TOL):
                 v1_before = self.cyc.mps[i]
-                self.cyc.modify_with_braking_trajectory(self.sim_params.nominal_brake_accel_for_coast_m__s2, i)
+                self.cyc.modify_with_braking_trajectory(self.sim_params.nominal_brake_accel_for_coast_m_per_s2, i)
                 v1_after = self.cyc.mps[i]
                 assert v1_before != v1_after
                 adjusted_current_speed = True
             else:
                 traj_found, traj_n, traj_jerk_m__s3, traj_accel_m__s2 = self._calc_next_rendezvous_trajectory(
                     i,
-                    min_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m__s2,
+                    min_accel_m__s2=self.sim_params.nominal_brake_accel_for_coast_m_per_s2,
                     max_accel_m__s2=min(accel_proposed, 0.0)
                 )
                 if traj_found:
@@ -1718,10 +1718,10 @@ class SimDrive(object):
                     final_speed_m__s = self.cyc.modify_by_const_jerk_trajectory(
                         i, traj_n, traj_jerk_m__s3, traj_accel_m__s2)
                     adjusted_current_speed = True
-                    if np.abs(final_speed_m__s - self.sim_params.coast_to_brake_speed_m__s) < 0.1:
+                    if np.abs(final_speed_m__s - self.sim_params.coast_to_brake_speed_m_per_s) < 0.1:
                         i_for_brake = i + traj_n
                         self.cyc.modify_with_braking_trajectory(
-                            self.sim_params.nominal_brake_accel_for_coast_m__s2,
+                            self.sim_params.nominal_brake_accel_for_coast_m_per_s2,
                             i_for_brake,
                         )
                         adjusted_current_speed = True

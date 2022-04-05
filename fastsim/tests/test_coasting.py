@@ -412,7 +412,7 @@ class TestCoasting(unittest.TestCase):
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m_per_s = -1
         sd.sim_params.verbose = False
-        sd.sim_params.coast_to_brake_speed_m__s = 4.0
+        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
         sd.sim_drive()
         self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
         if DO_PLOTS:
@@ -435,7 +435,7 @@ class TestCoasting(unittest.TestCase):
         sd = fastsim.simdrive.SimDrive(trapz2, veh)
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m__s = 4.0
+        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
         sd.sim_params.verbose = False
         sd.sim_drive()
         self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
@@ -470,7 +470,7 @@ class TestCoasting(unittest.TestCase):
         sd = fastsim.simdrive.SimDrive(trapz, veh)
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m__s = 4.0
+        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
         sd.sim_params.verbose = False
         sd.sim_drive()
         self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
@@ -526,8 +526,8 @@ class TestCoasting(unittest.TestCase):
         sd = fastsim.simdrive.SimDrive(trapz, veh)
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m__s = 4.0
-        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.0
+        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+        sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
         sd.sim_params.verbose = False
         sd.sim_params.coast_verbose = False
         sd.sim_drive()
@@ -562,8 +562,8 @@ class TestCoasting(unittest.TestCase):
         sd = fastsim.simdrive.SimDrive(trapz, veh)
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m__s = 7.5
-        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.5
+        sd.sim_params.coast_to_brake_speed_m_per_s = 7.5
+        sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.5
         sd.sim_params.verbose = False
         sd.sim_params.coast_verbose = False
         sd.sim_drive()
@@ -597,8 +597,8 @@ class TestCoasting(unittest.TestCase):
         sd = fastsim.simdrive.SimDrive(trapz, veh)
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m__s = 4.0
-        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.0
+        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+        sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
         sd.sim_params.verbose = False
         sd.sim_params.coast_verbose = False
         sd.sim_drive()
@@ -633,8 +633,8 @@ class TestCoasting(unittest.TestCase):
         sd = fastsim.simdrive.SimDrive(trapz, veh)
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m__s = 7.5
-        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.5
+        sd.sim_params.coast_to_brake_speed_m_per_s = 7.5
+        sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.5
         sd.sim_params.verbose = False
         sd.sim_params.coast_verbose = False
         sd.sim_drive()
@@ -677,8 +677,8 @@ class TestCoasting(unittest.TestCase):
         sd = fastsim.simdrive.SimDrive(cyc, veh)
         sd.sim_params.allow_coast = True
         sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m__s = 4.0
-        sd.sim_params.nominal_brake_accel_for_coast_m__s2 = -2.0
+        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+        sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
         sd.sim_params.verbose = False
         sd.sim_params.coast_verbose = False
         sd.sim_drive()
