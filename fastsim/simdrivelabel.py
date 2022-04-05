@@ -443,18 +443,13 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
         get_label_fe_phev()
         
     # run accelerating sim_drive
-    if 'VehicleJit' in str(type(veh)):
-        sd['accel'] = simdrive.SimAccelTestJit(cyc['accel'], veh)
-    elif use_rust:
+    if use_rust:
         sd['accel'] = simdrive.RustSimDrive(cyc['accel'], veh)
     else:
-        sd['accel'] = simdrive.SimAccelTest(cyc['accel'], veh)
+        sd['accel'] = simdrive.SimDrive(cyc['accel'], veh)
 
     sd['accel'].sim_params.verbose = sim_drive_verbose
-    if use_rust:
-        simdrive.run_simdrive_for_accel_test(sd['accel'])
-    else:
-        sd['accel'].sim_drive()
+    simdrive.run_simdrive_for_accel_test(sd['accel'])
     if (np.array(sd['accel'].mph_ach) >= 60).any():
         out['netAccel'] = np.interp(
             x=60, xp=sd['accel'].mph_ach, fp=cyc['accel'].time_s)

@@ -146,6 +146,10 @@ class TestRust(unittest.TestCase):
         self.assertFalse(has_any_errors)
     
     def test_fueling_prediction_for_multiple_vehicle(self):
+        """
+        This test assures that Rust and Python agree on at least one 
+        example of all permutations of veh_pt_type and fc_eff_type.
+        """
         for vehid in [1, 9, 14, 17, 24]:
             cyc = cycle.Cycle.from_file('udds')
             veh = vehicle.Vehicle.from_vehdb(vehid)

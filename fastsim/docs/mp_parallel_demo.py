@@ -7,8 +7,9 @@ Optional positional arguments:
 import multiprocessing as mp
 import time
 import datetime
-import sys
+import warnings
 import numpy as np
+import argparse
 
 import fastsim as fsim
 
@@ -26,18 +27,19 @@ def run_sd(cyc_num: int):
     
     return sd.mpgge
 
+parser = argparse.ArgumentParser(description='Parallelized FASTSim demo')
+parser.add_argument('-p', '--processes', type=int, default=4)
+
 if __name__ == '__main__':
     print(datetime.datetime.now())
     t0 = time.time()
 
-    assert len(sys.argv) <= 2, 'Expected at most 2 arguments.'
-
-    if len(sys.argv) == 2:
-        processes = int(sys.argv[1])
-    else:
-        # processes = 4 results in 250 runs of udds per process, which appears to be optimal
-        # this is equivalent to 250 runs * 1,400 s / run = 350,000 s per process
-        processes = 4 
+    # processes = 4 results in 250 runs of udds per process, which appears to be optimal
+    # this is equivalent to 250 runs * 1,400 s / run = 350,000 s per process
+    args, unknown = parser.parse_known_args()
+    processes = args.processes
+    if len(unknown) > 0:
+        warnings.warn(f"Unknown arguments: {unknown}")
 
     print(f"Running with {processes} pool processes.")
     with mp.Pool(processes=processes) as pool:
