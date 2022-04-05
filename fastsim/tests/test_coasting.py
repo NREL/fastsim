@@ -295,24 +295,46 @@ class TestCoasting(unittest.TestCase):
     
     def test_that_cycle_modifications_work_as_expected(self):
         ""
-        idx = 20
-        n = 10
-        accel = -1.0
-        jerk = 0.0
-        trapz = self.trapz.copy()
-        trapz.modify_by_const_jerk_trajectory(idx, n, jerk, -1.0)
-        self.assertNotEqual(self.trapz.mps[idx], trapz.mps[idx])
-        self.assertEqual(len(self.trapz.mps), len(trapz.mps))
-        self.assertTrue(self.trapz.mps[idx] > trapz.mps[idx])
-        for i in range(len(self.trapz.time_s)):
-            msg = f"i: {i}; idx: {idx}; idx+n: {idx+n}"
-            if i < idx or i >= idx+n:
-                self.assertEqual(self.trapz.mps[i], trapz.mps[i])
-            else:
-                self.assertAlmostEqual(
-                    self.trapz.mps[idx-1] + (accel * (i - idx + 1)),
-                    trapz.mps[i]
-                )
+        if USE_PYTHON:
+            idx = 20
+            n = 10
+            accel = -1.0
+            jerk = 0.0
+            trapz = self.trapz.copy()
+            trapz.modify_by_const_jerk_trajectory(idx, n, jerk, -1.0)
+            self.assertNotEqual(self.trapz.mps[idx], trapz.mps[idx])
+            self.assertEqual(len(self.trapz.mps), len(trapz.mps))
+            self.assertTrue(self.trapz.mps[idx] > trapz.mps[idx])
+            for i in range(len(self.trapz.time_s)):
+                msg = f"i: {i}; idx: {idx}; idx+n: {idx+n}"
+                if i < idx or i >= idx+n:
+                    self.assertEqual(self.trapz.mps[i], trapz.mps[i], msg=msg)
+                else:
+                    self.assertAlmostEqual(
+                        self.trapz.mps[idx-1] + (accel * (i - idx + 1)),
+                        trapz.mps[i],
+                        msg=msg,
+                    )
+        if USE_RUST:
+            idx = 20
+            n = 10
+            accel = -1.0
+            jerk = 0.0
+            trapz = self.ru_trapz.copy()
+            trapz.modify_by_const_jerk_trajectory(idx, n, jerk, -1.0)
+            self.assertNotEqual(self.ru_trapz.mps[idx], trapz.mps[idx])
+            self.assertEqual(len(self.ru_trapz.mps), len(trapz.mps))
+            self.assertTrue(self.ru_trapz.mps[idx] > trapz.mps[idx])
+            for i in range(len(self.ru_trapz.time_s)):
+                msg = f"i: {i}; idx: {idx}; idx+n: {idx+n}"
+                if i < idx or i >= idx+n:
+                    self.assertEqual(self.ru_trapz.mps[i], trapz.mps[i], msg=msg)
+                else:
+                    self.assertAlmostEqual(
+                        self.ru_trapz.mps[idx-1] + (accel * (i - idx + 1)),
+                        trapz.mps[i],
+                        msg=msg,
+                    )
     
     def test_that_we_can_coast(self):
         "Test the standard interface to Eco-Approach for 'free coasting'"
