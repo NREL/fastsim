@@ -34,13 +34,20 @@ def main():
 
     # just use first vehicle in default database
     for i in range(1,27):
-        veh = vehicle.Vehicle.from_vehdb(i)
-        accel_cyc = cycle.Cycle.from_dict(cyc_dict=create_accel_cyc())
-        accel_out = simdrive.SimAccelTest(accel_cyc, veh)
+        veh = vehicle.Vehicle.from_vehdb(i).to_rust()
+        accel_cyc = cycle.Cycle.from_dict(cyc_dict=create_accel_cyc()).to_rust()
+        sd_accel = simdrive.RustSimDrive(accel_cyc, veh)
         
-        accel_out.sim_drive()
-        acvhd_0_to_acc_speed_secs = simdrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']
-        print('vehicle {}: acceleration [s] {:.3f}'.format(i, acvhd_0_to_acc_speed_secs))
+        simdrive.run_simdrive_for_accel_test(sd_accel)
+        if (np.array(sd_accel.mph_ach) >= 60).any():
+                net_accel = np.interp(
+                    x=60, xp=sd_accel.mph_ach, fp=sd_accel.cyc.time_s)
+        else:
+            # in case vehicle never exceeds 60 mph, penalize it a lot with a high number
+            print(veh.scenario_name + ' never achieves 60 mph.')
+            net_accel = 1e3        
+        
+        print('vehicle {}: acceleration [s] {:.3f}'.format(i, net_accel))
 
 if __name__=='__main__':
     main()

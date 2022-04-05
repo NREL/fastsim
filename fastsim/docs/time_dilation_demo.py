@@ -195,6 +195,3 @@ plt.xlabel('Index')
 plt.ylabel('Time Dilation')
 plt.title('Time Dilation, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
-
-
-
