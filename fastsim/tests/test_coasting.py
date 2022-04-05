@@ -2,6 +2,7 @@
 Tests that check the drive cycle modification functionality.
 """
 import unittest
+from typing import Union, List
 
 import numpy as np
 from numpy.polynomial import Chebyshev
@@ -10,9 +11,19 @@ import fastsim
 
 
 DO_PLOTS = False
+USE_PYTHON = True
+USE_RUST = True
 
 
-def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_show=False, verbose=False, gap_offset_m=0.0):
+def make_coasting_plot(
+    cyc0:fastsim.cycle.Cycle,
+    cyc:fastsim.cycle.Cycle,
+    use_mph:bool=False,
+    title:Union[str, None]=None,
+    save_file:Union[str, None]=None,
+    do_show:bool=False,
+    verbose:bool=False,
+    gap_offset_m:float=0.0):
     """
     - cyc0: Cycle, the reference cycle (the "shadow trace" or "lead vehicle")
     - cyc: Cycle, the actual cycle driven
@@ -26,13 +37,13 @@ def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_
     - saves creates the given file and shows it
     """
     import matplotlib.pyplot as plt
-    ts_orig = cyc0.cycSecs
-    vs_orig = cyc0.cycMps
-    m = fastsim.params.mphPerMps if use_mph else 1.0
-    ds_orig = cyc0.cycDistMeters_v2.cumsum()
-    ts = cyc.cycSecs
-    vs = cyc.cycMps
-    ds = cyc.cycDistMeters_v2.cumsum()
+    ts_orig = np.array(cyc0.time_s)
+    vs_orig = np.array(cyc0.mps)
+    m = fastsim.params.MPH_PER_MPS if use_mph else 1.0
+    ds_orig = np.array(cyc0.dist_v2_m).cumsum()
+    ts = np.array(cyc.time_s)
+    vs = np.array(cyc.mps)
+    ds = np.array(cyc.dist_v2_m).cumsum()
     gaps = ds_orig - ds
     speed_units = "mph" if use_mph else "m/s"
     fontsize=10
@@ -46,7 +57,7 @@ def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_
     ax.legend(loc=0, prop={'size': 6})
     ax = axs[2]
     ax_right = ax.twinx()
-    ax_right.plot(ds_orig, cyc0.cycGrade * 100, 'y--', label='grade')
+    ax_right.plot(ds_orig, cyc0.grade * 100, 'y--', label='grade')
     ax_right.set_ylabel('Grade (%)', fontsize=fontsize)
     ax_right.grid(False)
     ax.set_zorder(ax_right.get_zorder()+1)
@@ -65,8 +76,8 @@ def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_
         ax.set_title(title)
     fig.tight_layout()
     if verbose:
-        print(f'Distance Traveled for Coasting Vehicle: {cyc.cycDistMeters_v2.sum()} m')
-        print(f'Distance Traveled for Cycle           : {cyc0.cycDistMeters_v2.sum()} m')
+        print(f'Distance Traveled for Coasting Vehicle: {cyc.dist_v2_m.sum()} m')
+        print(f'Distance Traveled for Cycle           : {cyc0.dist_v2_m.sum()} m')
     if save_file is not None:
         fig.savefig(save_file, dpi=300)
     if do_show:
@@ -75,29 +86,30 @@ def make_coasting_plot(cyc0, cyc, use_mph=False, title=None, save_file=None, do_
 
 
 def make_dvdd_plot(
-    cyc,
-    coast_to_break_speed_m__s=None,
-    use_mph=False,
-    save_file=None,
-    do_show=False,
-    curve_fit=True,
-    additional_xs=None, additional_ys=None):
+    cyc:fastsim.cycle.Cycle,
+    coast_to_break_speed_m__s:Union[float, None]=None,
+    use_mph:bool=False,
+    save_file:Union[None,str]=None,
+    do_show:bool=False,
+    curve_fit:bool=True,
+    additional_xs:Union[None,List[float]]=None,
+    additional_ys:Union[None,List[float]]=None):
     """
     """
     if coast_to_break_speed_m__s is None:
         coast_to_break_speed_m__s = 5.0 # m/s
     TOL = 1e-6
     import matplotlib.pyplot as plt
-    dvs = cyc.cycMps[1:] - cyc.cycMps[:-1]
-    vavgs = 0.5 * (cyc.cycMps[1:] + cyc.cycMps[:-1])
-    grades = cyc.cycGrade[:-1]
+    dvs = cyc.mps[1:] - cyc.mps[:-1]
+    vavgs = 0.5 * (cyc.mps[1:] + cyc.mps[:-1])
+    grades = cyc.grade[:-1]
     unique_grades = np.sort(np.unique(grades))
-    dds = vavgs * cyc.secs[1:]
+    dds = vavgs * cyc.time_s[1:]
     ks = dvs / dds
     ks[dds<TOL] = 0.0
 
     fig, ax = plt.subplots()
-    m = fastsim.params.mphPerMps if use_mph else 1.0
+    m = fastsim.params.MPH_PER_MPS if use_mph else 1.0
     speed_units = "mph" if use_mph else "m/s"
     c1 = None
     c2 = None
