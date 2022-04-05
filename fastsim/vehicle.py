@@ -42,7 +42,7 @@ def get_template_df():
 TEMPLATE_VEHDF = get_template_df()
 
 # list of optional parameters that do not get assigned as vehicle attributes
-OPT_INIT_PARAMS = ['fcPeakEffOverride', 'mcPeakEffOverride']
+OPT_INIT_PARAMS = []  #  TODO: maybe reinstate these: ['fc_peak_eff_override', 'mc_peak_eff_override']
 
 VEH_PT_TYPES = ("Conv", "HEV", "PHEV", "BEV")
 
@@ -260,7 +260,8 @@ class Vehicle(object):
         """given vehdf, generates dict to feed to `from_dict`"""
         # verify that only allowed columns have been provided
         for col in vehdf.columns:
-            assert col in list(TEMPLATE_VEHDF.columns) + OPT_INIT_PARAMS, f"`{col}` is deprecated and must be removed from {veh_file}."
+            col = col.replace(" ", "_")
+            assert col in list(OLD_TO_NEW.keys()) + list(NEW_TO_OLD.keys()) + OPT_INIT_PARAMS, f"`{col}` is deprecated and must be removed from {veh_file}."
 
         vehdf.loc[vnum] = vehdf.loc[vnum].apply(clean_data)
 
@@ -304,13 +305,15 @@ class Vehicle(object):
 
         try:
             # check if optional parameter fc_eff_map is provided in vehicle csv file
-            veh_dict['fc_eff_map'] = np.array(ast.literal_eval(veh_dict['fcEffMap']))
+            veh_dict['fc_eff_map'] = np.array(ast.literal_eval(
+                veh_dict['fc_eff_map']))
             if verbose:
-                print(f"fcEffMap is overriding fc_eff_type")
+                print(f"fc_eff_map is overriding fc_eff_type")
         
         except:
-            warn_str = f"""fc_eff_type {veh_dict['fc_eff_type']} is not in {FC_EFF_TYPES},
-            and `fcEffMap` is not provided."""
+            warn_str = f"""fc_eff_type {
+                veh_dict['fc_eff_map']} is not in {FC_EFF_TYPES},
+                and `fc_eff_map` is not provided."""
             assert veh_dict['fc_eff_type'] in FC_EFF_TYPES, warn_str
 
             if veh_dict['fc_eff_type'] == SI:  # SI engine
@@ -330,7 +333,8 @@ class Vehicle(object):
 
         try:
             # check if optional parameter fc_pwr_out_perc is provided in vehicle csv file
-            veh_dict['fc_pwr_out_perc'] = np.array(ast.literal_eval(veh_dict['fcPwrOutPerc']))
+            veh_dict['fc_pwr_out_perc'] = np.array(ast.literal_eval(
+                veh_dict['fc_pwr_out_perc']))
         except:
             veh_dict['fc_pwr_out_perc'] = params.fc_pwr_out_perc
 
@@ -348,13 +352,15 @@ class Vehicle(object):
         # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
         try:
             # check if mc_pwr_out_perc is provided in vehicle csv file
-            veh_dict['mc_pwr_out_perc'] = np.array(ast.literal_eval(veh_dict['mcPwrOutPerc']))
+            veh_dict['mc_pwr_out_perc'] = np.array(
+                ast.literal_eval(veh_dict['mc_pwr_out_perc']))
         except:
             veh_dict['mc_pwr_out_perc'] = params.mc_pwr_out_perc
 
         try:
             # check if mc_eff_map is provided in vehicle csv file
-            veh_dict['mc_eff_map'] = np.array(ast.literal_eval(veh_dict['mcEffMap']))
+            veh_dict['mc_eff_map'] = np.array(ast.literal_eval(
+                veh_dict.get('mcEffMap', veh_dict['mc_eff_map'])))
         except:
             veh_dict['mc_eff_map'] = None
 
