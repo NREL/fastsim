@@ -1403,9 +1403,6 @@ class LegacySimDrive(object):
     pass
 
 
-ref_sim_drive = SimDrive(cycle.ref_cyc, vehicle.ref_veh)
-sd_params = inspect_utils.get_attrs(ref_sim_drive)
-
 def copy_sim_drive(sd:SimDrive, return_type:str=None, deep:bool=True) -> SimDrive:
     """Returns copy of SimDriveClassic or SimDriveJit as SimDriveClassic.
     Arguments:

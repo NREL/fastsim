@@ -623,8 +623,6 @@ class Vehicle(object):
         return copy_vehicle(self, 'rust')
 
 
-ref_veh = Vehicle.from_vehdb(5)
-
 class LegacyVehicle(object):
     """
     Implementation of Vehicle with legacy keys.
