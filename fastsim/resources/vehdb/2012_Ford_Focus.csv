@@ -20,7 +20,7 @@ Fuel / Fuel Converter,maxFuelStorKw,2000,
 ,fuelConvBaseKg,61,
 ,fuelConvKwPerKg,2.13,
 Motor,mcPwrOutPerc,"[0.00, 0.02, 0.04, 0.06, 0.08,  0.10,  0.20,  0.40,  0.60,  0.80,  1.00]",
-,maxMotorKw,1,needs to be non-zero but does not get used
+,maxMotorKw,0,
 ,motorSecsToPeakPwr,4,
 ,stopStart,FALSE,
 ,mcPeKgPerKw,0.833,

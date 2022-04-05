@@ -430,13 +430,13 @@ class Vehicle(object):
         
         if self.scenario_name != 'Template Vehicle for setting up data types':
             if self.veh_pt_type == BEV:
-                assert self.fs_max_kw == 0, 'maxFuelStorKw must be zero for provided BEV powertrain type'
-                assert self.fs_kwh  == 0, 'fuelStorKwh must be zero for provided BEV powertrain type'
-                assert self.fc_max_kw == 0, 'maxFuelConvKw must be zero for provided BEV powertrain type'
+                assert self.fs_max_kw == 0, f'max_fuel_stor_kw must be zero for provided BEV powertrain type in {self.scenario_name}'
+                assert self.fs_kwh  == 0, f'fuel_stor_kwh must be zero for provided BEV powertrain type in {self.scenario_name}'
+                assert self.fc_max_kw == 0, f'max_fuel_conv_kw must be zero for provided BEV powertrain type in {self.scenario_name}'
             elif (self.veh_pt_type == CONV) and not(self.stop_start):
-                assert self.mc_max_kw == 0, 'maxMotorKw must be zero for provided Conv powertrain type'
-                assert self.ess_max_kw == 0, 'maxEssKw must be zero for provided Conv powertrain type'
-                assert self.ess_max_kwh == 0, 'maxEssKwh must be zero for provided Conv powertrain type'
+                assert self.mc_max_kw == 0, f'max_mc_kw must be zero for provided Conv powertrain type in {self.scenario_name}'
+                assert self.ess_max_kw == 0, f'max_ess_kw must be zero for provided Conv powertrain type in {self.scenario_name}'
+                assert self.ess_max_kwh == 0, f'max_ess_kwh must be zero for provided Conv powertrain type in {self.scenario_name}'
 
         ### Build roadway power lookup table
         self.max_roadway_chg_kw = np.zeros(6)

@@ -240,7 +240,7 @@ class TestSimDriveClassic(unittest.TestCase):
     def test_that_vehdb_single_files_simulate(self):
 
         for filepath in vehicle.VEHICLE_DIR.iterdir():
-            if "fail" not in filepath.name and filepath.suffix == '.csv':
+            if "fail" not in filepath.name and filepath.suffix == '.csv' and "overrides" not in filepath.name:
                 veh = vehicle.Vehicle.from_file(filepath)
         
         cyc = cycle.Cycle.from_file('udds')
@@ -248,9 +248,9 @@ class TestSimDriveClassic(unittest.TestCase):
         if USE_PYTHON:
             sd = simdrive.SimDrive(cyc, veh)
             sd.sim_drive()
-            self.assertEqual(sd.i, len(sd.cyc0))
-            
+            self.assertEqual(sd.i, sd.cyc0.len)
+
         if USE_RUST:
             sd = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
             sd.sim_drive()
-            self.assertEqual(sd.i, len(sd.cyc0))
+            self.assertEqual(sd.i, sd.cyc0.len())

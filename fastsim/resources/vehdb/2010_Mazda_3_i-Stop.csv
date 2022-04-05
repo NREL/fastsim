@@ -1,5 +1,5 @@
 ,Param Name,Param Value,Param Source / Comments
-Category,Scenario name,2012 Ford Focus,any parameters without comments are carryover from 2016 TOYOTA Corolla 4cyl 2WD
+Category,Scenario name,2010 Mazda 3 i-Stop,any parameters without comments are carryover from 2016 TOYOTA Corolla 4cyl 2WD
 Vehicle,vehPtType,Conv,
 ,dragCoef,0.3301,calculated from https://www.epa.gov/compliance-and-fuel-economy-data/data-cars-used-testing-fuel-economy
 ,frontalAreaM2,2.574,
@@ -20,7 +20,7 @@ Fuel / Fuel Converter,maxFuelStorKw,2000,
 ,fuelConvBaseKg,61,
 ,fuelConvKwPerKg,2.13,
 ,mcPwrOutPerc,"[0.00, 0.02, 0.04, 0.06, 0.08,  0.10,  0.20,  0.40,  0.60,  0.80,  1.00]",
-,maxMotorKw,1,needs to be non-zero but does not get used
+,maxMotorKw,0,
 ,motorSecsToPeakPwr,4,
 ,stopStart,FALSE,
 ,mcPeKgPerKw,0.833,
