@@ -237,6 +237,20 @@ class TestSimDriveClassic(unittest.TestCase):
                     msg=f'Achieved speed is greater than requested speed for {vehid}'
                 )
 
-    # def test_vehdb(self):
+    def test_that_vehdb_single_files_simulate(self):
 
-    #     if USE_RUST:
+        for filepath in vehicle.VEHICLE_DIR.iterdir():
+            if "fail" not in filepath.name and filepath.suffix == '.csv':
+                veh = vehicle.Vehicle.from_file(filepath)
+        
+        cyc = cycle.Cycle.from_file('udds')
+
+        if USE_PYTHON:
+            sd = simdrive.SimDrive(cyc, veh)
+            sd.sim_drive()
+            self.assertEqual(sd.i, len(sd.cyc0))
+            
+        if USE_RUST:
+            sd = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
+            sd.sim_drive()
+            self.assertEqual(sd.i, len(sd.cyc0))
