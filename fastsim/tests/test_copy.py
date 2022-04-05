@@ -63,7 +63,9 @@ class TestCopy(unittest.TestCase):
         self.assertEqual(type(rust_veh2), fsr.RustVehicle)
         rust_veh3 = vehicle.Vehicle.from_vehdb(5).to_rust()
         self.assertEqual(type(rust_veh3), fsr.RustVehicle)
-        self.assertTrue(vehicle.veh_equal(veh, rust_veh3))
+        self.assertTrue(
+            vehicle.veh_equal(veh, rust_veh3),
+            msg=f"Error list: {str(vehicle.veh_equal(veh, rust_veh3, full_out=True))}")
 
     def test_copy_sim_params(self):
         "Test that copy_sim_params works as expected"
@@ -78,7 +80,9 @@ class TestCopy(unittest.TestCase):
         self.assertEqual(len(sdp_dict), len(simdrive.ref_sim_drive_params.__dict__))
         rust_sdp = simdrive.copy_sim_params(sdp, 'rust')
         self.assertEqual(fsr.RustSimDriveParams, type(rust_sdp))
-        self.assertTrue(simdrive.sim_params_equal(sdp, rust_sdp), msg="Assert that values equal")
+        self.assertTrue(
+            simdrive.sim_params_equal(sdp, rust_sdp, verbose=True),
+            msg="Assert that values equal")
         rust_sdp2 = simdrive.copy_sim_params(rust_sdp)
         self.assertEqual(type(rust_sdp2), fsr.RustSimDriveParams)
         self.assertFalse(rust_sdp is rust_sdp2)
