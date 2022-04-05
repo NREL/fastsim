@@ -66,7 +66,7 @@ print(f'Time to load cycle: {t1 - t0:.2e} s')
 
 # %%
 t0 = time.time()
-veh = fsim.vehicle.Vehicle.from_vehdb(11)
+veh = fsim.vehicle.Vehicle.from_file("Line_Haul_Conv.csv")
 print(f'Time to load vehicle: {time.time() - t0:.2e} s')
 
 # %% [markdown]

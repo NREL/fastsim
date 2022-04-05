@@ -236,20 +236,19 @@ class Vehicle(object):
             filename = VEHICLE_DIR / filename
         else:
             raise ValueError("Invalid vehicle filename.")
+            
+        vehdf = pd.read_csv(filename)
 
         if vnum is None:
-            vehdf = pd.read_csv(filename)
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
             vehdf.drop(vehdf.index[0], inplace=True)
             vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
             vehdf.loc['Param Value', 'Selection'] = 0
             vnum = 0
-        else:
-            vehdf = pd.read_csv(filename)
-        
+
         vehdf.set_index('Selection', inplace=True, drop=False)
-        
+
         veh_file = filename
 
         return cls.from_df(vehdf, vnum, veh_file, verbose)
@@ -269,34 +268,26 @@ class Vehicle(object):
         # set columns and values as instance attributes and values
         for col in vehdf.columns:
             col1 = str(col).replace(' ', '_')
+            col1 = OLD_TO_NEW.get(col1, col1)
             if col not in OPT_INIT_PARAMS:
                 # assign dataframe columns to vehicle
                 veh_dict[col1] = vehdf.loc[vnum, col]
-
-        missing_cols = set(TEMPLATE_VEHDF.columns) - set(vehdf.columns)
-        if len(missing_cols) > 0:
-            if verbose:
-                print(f"0 filled in for {list(missing_cols)} missing from '{str(veh_file)}'.")
-                print(f"Turn this warning off by passing `verbose=False` when instantiating vehicle.")
-            for col in missing_cols:
-                veh_dict[col] = 0.0
-
-        veh_dict.update(dict(vehdf.loc[vnum, :]))
+        
+        # missing_cols = set(TEMPLATE_VEHDF.columns) - set(veh_dict.keys())
+        # if len(missing_cols) > 0:
+        #     if verbose:
+        #         print(f"0 filled in for {list(missing_cols)} missing from '{str(veh_file)}'.")
+        #         print(f"Turn this warning off by passing `verbose=False` when instantiating vehicle.")
+        #     for col in missing_cols:
+        #         veh_dict[col] = 0.0
 
         return cls.from_dict(veh_dict, verbose)
 
     @classmethod
     def from_dict(cls, veh_dict:dict, verbose:bool=False):
         """
-        Load vehicle from dict.  
+        Load vehicle from dict with snake_case key names.  
         """
-        veh_dict_raw = veh_dict  # still camelCase
-        veh_dict = {}
-        for key, val in veh_dict_raw.items():
-            key = key.replace(' ', '_')
-            key = OLD_TO_NEW.get(key, key)
-            veh_dict[key] = val
-
         # Power and efficiency arrays are defined in parameters.py
         # Can also be input in CSV as array under column fc_eff_map of form
         # [0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]
@@ -359,8 +350,7 @@ class Vehicle(object):
 
         try:
             # check if mc_eff_map is provided in vehicle csv file
-            veh_dict['mc_eff_map'] = np.array(ast.literal_eval(
-                veh_dict.get('mcEffMap', veh_dict['mc_eff_map'])))
+            veh_dict['mc_eff_map'] = np.array(ast.literal_eval(veh_dict['mc_eff_map']))
         except:
             veh_dict['mc_eff_map'] = None
 
@@ -374,12 +364,12 @@ class Vehicle(object):
         assert len(veh_dict['mc_pwr_out_perc']) == len(veh_dict['large_baseline_eff']), mc_large_eff_len_err
         
         small_baseline_eff_len = len(veh_dict['small_baseline_eff'])
-        mc_small_eff_len_err = f'len(mcPwrOutPerc) ({mc_pwr_out_len}) is not' +\
+        mc_small_eff_len_err = f'len(mc_pwr_out_perc) ({mc_pwr_out_len}) is not' +\
             f'equal to len(smallBaselineEff) ({small_baseline_eff_len})'
         assert len(veh_dict['mc_pwr_out_perc']) == len(veh_dict['small_baseline_eff']), mc_small_eff_len_err
 
         # set stop_start if not provided
-        if 'stopStart' in veh_dict and np.isnan(veh_dict['stopStart']):
+        if 'stop_start' in veh_dict and np.isnan(veh_dict['stop_start']):
             veh_dict['stop_start'] = False
 
         veh_dict['small_motor_power_kw'] = 7.5 # default (float)

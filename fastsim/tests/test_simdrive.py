@@ -236,3 +236,7 @@ class TestSimDriveClassic(unittest.TestCase):
                     (np.array(sd.mps_ach) > np.array(sd.cyc0.mps)).any(),
                     msg=f'Achieved speed is greater than requested speed for {vehid}'
                 )
+
+    # def test_vehdb(self):
+
+    #     if USE_RUST:
