@@ -1,7 +1,7 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,Template Vehicle for setting up data types,template vehicle for attribute typing
 Vehicle,vehYear,0,model year.  Can be left blank if not known or important
-,vehPtType,Conv,"1:conv., 2:HEV, 3:PHEV, 4:BEV"
+,vehPtType,Conv,"Conv, HEV, PHEV, BEV"
 ,dragCoef,0.304,drag coefficient
 ,frontalAreaM2,2.574,projected frontal area
 ,gliderKg,1045.636,"empty mass minus powertrain components (battery, motor, engine)"
