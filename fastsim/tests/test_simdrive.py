@@ -128,15 +128,17 @@ class TestSimDriveClassic(unittest.TestCase):
                 places=5)
 
     def test_time_dilation(self):
+        veh = vehicle.Vehicle.from_file('Line_Haul_Conv.csv')
+        # make the vehicle really heavy so it'll trigger substantial time dilation
+        veh.veh_kg *= 2
+        cyc = cycle.Cycle.from_dict(cyc_dict={
+            'time_s': np.arange(10),
+            'mps': np.append(2, np.ones(9) * 6),
+        })
         if USE_PYTHON:
-            veh = vehicle.Vehicle.from_vehdb(1)
-            cyc = cycle.Cycle.from_dict(cyc_dict={
-                'time_s': np.arange(10),
-                'mps': np.append(2, np.ones(9) * 6),
-            })
             sd = simdrive.SimDrive(cyc, veh)
             sd.sim_params.missed_trace_correction = True
-            sd.sim_params.max_time_dilation = 0.05 # maximum upper margin for time dilation
+            sd.sim_params.max_time_dilation = 0.1 # maximum upper margin for time dilation
             sd.sim_drive()
 
             trace_miss_corrected = (
@@ -145,15 +147,12 @@ class TestSimDriveClassic(unittest.TestCase):
             self.assertTrue(trace_miss_corrected, msg="Issue in Python version")
         
         if USE_RUST:
-            veh = vehicle.Vehicle.from_vehdb(1).to_rust()
-            cyc = cycle.Cycle.from_dict(cyc_dict={
-                'time_s': np.arange(10),
-                'mps': np.append(2, np.ones(9) * 6),
-            }).to_rust()
+            veh = veh.to_rust()
+            cyc = cyc.to_rust()
             sd = simdrive.RustSimDrive(cyc, veh)
             sim_params = sd.sim_params
             sim_params.missed_trace_correction = True
-            sim_params.max_time_dilation = 0.05 # maximum upper margin for time dilation
+            sim_params.max_time_dilation = 0.1 # maximum upper margin for time dilation
             sd.sim_params = sim_params
             sd.sim_drive()
 
