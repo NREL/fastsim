@@ -17,6 +17,23 @@ use pyo3::types::PyType;
 use super::params::*;
 use super::utils::*;
 
+/// Calculate speed (m/s) n timesteps away via a constant-jerk acceleration
+/// INPUTS:
+/// - n: Int, numer of timesteps away to calculate
+/// - v0: Num, initial speed (m/s)
+/// - a0: Num, initial acceleration (m/s2)
+/// - k: Num, constant jerk
+/// - dt: Num, duration of a timestep (s)
+/// NOTE:
+/// - this is the speed at sample n
+/// - if n == 0, speed is v0
+/// - if n == 1, speed is v0 + a0*dt, etc.
+/// RETURN: Num, the speed n timesteps away (m/s)
+pub fn speed_for_constant_jerk(n:usize, v0:f64, a0:f64, k:f64, dt:f64)->f64 {
+    let nn = n as f64;
+    v0 + (nn * a0 * dt) + (0.5 * nn * (nn - 1.0) * k * dt)
+}
+
 #[pyclass] 
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 
@@ -71,6 +88,19 @@ impl RustCycle{
     
     pub fn len(&self) -> usize{
         self.time_s.len()
+    }
+
+    pub fn copy(&self) -> PyResult<RustCycle>{
+        let time_s = self.time_s.clone();
+        let mps = self.mps.clone();
+        let grade = self.grade.clone();
+        let road_type = self.road_type.clone();
+        let name = self.name.clone();
+        Ok(RustCycle {time_s, mps, grade, road_type, name})
+    }
+
+    pub fn modify_by_const_jerk_trajectory(&mut self, idx:usize, n:usize, jerk_m_per_s3:f64, accel0_m_per_s2:f64)->PyResult<f64>{
+        Ok(self.modify_by_const_jerk_trajectory_rust(idx, n, jerk_m_per_s3, accel0_m_per_s2))
     }
 
     #[getter]
@@ -166,6 +196,32 @@ impl RustCycle{
         RustCycle::new(time_s, speed_mps, grade, road_type, name)    
     }
 
+    /// Modifies the cycle using the given constant-jerk trajectory parameters
+    /// - idx: non-negative integer, the point in the cycle to initiate
+    ///   modification (note: THIS point is modified since trajectory should be
+    ///   calculated from idx-1)
+    /// - n: non-negative integer, the number of steps ahead
+    /// - jerk_m__s3: number, the "Jerk" associated with the trajectory (m/s3)
+    /// - accel0_m__s2: number, the initial acceleration (m/s2)
+    /// NOTE:
+    /// - modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment
+    /// - CAUTION: NOT ROBUST AGAINST VARIABLE DURATION TIME-STEPS
+    /// RETURN: Number, final modified speed (m/s)
+    pub fn modify_by_const_jerk_trajectory_rust(&mut self, idx:usize, n:usize, jerk_m_per_s3:f64, accel0_m_per_s2:f64)->f64{
+        let num_samples = self.time_s.len();
+        let v0 = self.mps[idx-1];
+        let dt = self.dt_s()[idx];
+        let mut v = v0;
+        for ni in 1 .. n+1 {
+            let idx_to_set = (idx - 1) + ni;
+            if idx_to_set >= num_samples {
+                break
+            }
+            v = speed_for_constant_jerk(ni, v0, accel0_m_per_s2, jerk_m_per_s3, dt);
+            self.mps[idx_to_set] = v;
+        }
+        v
+    }
 
     /// rust-internal time steps
     pub fn dt_s(&self) -> Array1<f64> {

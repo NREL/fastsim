@@ -8,6 +8,7 @@ import numpy as np
 from numpy.polynomial import Chebyshev
 
 import fastsim
+import fastsimrust as fsr
 
 
 DO_PLOTS = False
@@ -239,30 +240,58 @@ class TestCoasting(unittest.TestCase):
 
     def test_cycle_modifications_with_constant_jerk(self):
         ""
-        idx = 20
-        n = 10
-        accel = -1.0
-        jerk = 0.1
-        trapz = self.trapz.copy()
-        trapz.modify_by_const_jerk_trajectory(idx, n, jerk, -1.0)
-        self.assertNotEqual(self.trapz.mps[idx], trapz.mps[idx])
-        self.assertEqual(len(self.trapz.mps), len(trapz.mps))
-        self.assertTrue(self.trapz.mps[idx] > trapz.mps[idx])
-        v0 = trapz.mps[idx-1]
-        v = v0
-        a = accel
-        for i in range(len(self.trapz.time_s)):
-            msg = f"i: {i}; idx: {idx}; idx+n: {idx+n}"
-            if i < idx or i >= idx+n:
-                self.assertEqual(self.trapz.mps[i], trapz.mps[i], msg)
-            else:
-                dt = trapz.dt_s[idx]
-                a_expected = fastsim.cycle.accel_for_constant_jerk(i - idx, accel, jerk, dt)
-                a = accel + (i - idx) * jerk * dt
-                v += a * dt
-                msg += f" a: {a}, v: {v}, dt: {dt}"
-                self.assertAlmostEqual(a_expected, a, msg=msg)
-                self.assertAlmostEqual(v, trapz.mps[i], msg=msg)
+        if USE_PYTHON:
+            idx = 20
+            n = 10
+            accel = -1.0
+            jerk = 0.1
+            trapz = self.trapz.copy()
+            self.assertEqual(type(trapz), fastsim.cycle.Cycle)
+            trapz.modify_by_const_jerk_trajectory(idx, n, jerk, -1.0)
+            self.assertNotEqual(self.trapz.mps[idx], trapz.mps[idx])
+            self.assertEqual(len(self.trapz.mps), len(trapz.mps))
+            self.assertTrue(self.trapz.mps[idx] > trapz.mps[idx])
+            v0 = trapz.mps[idx-1]
+            v = v0
+            a = accel
+            for i in range(len(self.trapz.time_s)):
+                msg = f"i: {i}; idx: {idx}; idx+n: {idx+n}"
+                if i < idx or i >= idx+n:
+                    self.assertEqual(self.trapz.mps[i], trapz.mps[i], msg)
+                else:
+                    dt = trapz.dt_s[idx]
+                    a_expected = fastsim.cycle.accel_for_constant_jerk(i - idx, accel, jerk, dt)
+                    a = accel + (i - idx) * jerk * dt
+                    v += a * dt
+                    msg += f" a: {a}, v: {v}, dt: {dt}"
+                    self.assertAlmostEqual(a_expected, a, msg=msg)
+                    self.assertAlmostEqual(v, trapz.mps[i], msg=msg)
+        if USE_RUST:
+            idx = 20
+            n = 10
+            accel = -1.0
+            jerk = 0.1
+            trapz = self.ru_trapz.copy()
+            self.assertEqual(type(trapz), fsr.RustCycle)
+            trapz.modify_by_const_jerk_trajectory(idx, n, jerk, -1.0)
+            self.assertNotEqual(self.trapz.mps[idx], trapz.mps[idx])
+            self.assertEqual(len(self.trapz.mps), len(trapz.mps))
+            self.assertTrue(self.trapz.mps[idx] > trapz.mps[idx])
+            v0 = trapz.mps[idx-1]
+            v = v0
+            a = accel
+            for i in range(len(self.trapz.time_s)):
+                msg = f"i: {i}; idx: {idx}; idx+n: {idx+n}"
+                if i < idx or i >= idx+n:
+                    self.assertEqual(self.trapz.mps[i], trapz.mps[i], msg)
+                else:
+                    dt = trapz.dt_s[idx]
+                    a_expected = fastsim.cycle.accel_for_constant_jerk(i - idx, accel, jerk, dt)
+                    a = accel + (i - idx) * jerk * dt
+                    v += a * dt
+                    msg += f" a: {a}, v: {v}, dt: {dt}"
+                    self.assertAlmostEqual(a_expected, a, msg=msg)
+                    self.assertAlmostEqual(v, trapz.mps[i], msg=msg)
     
     def test_that_cycle_modifications_work_as_expected(self):
         ""
