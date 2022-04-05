@@ -170,13 +170,24 @@ class TestCoasting(unittest.TestCase):
             [0.0, 20.0, 20.0, 0.0, 0.0],
         )
         trapz = fastsim.cycle.resample(trapz, new_dt=1.0)
-        self.trapz = fastsim.cycle.Cycle.from_dict(trapz)
-        self.veh = fastsim.vehicle.Vehicle.from_vehdb(5)
-        self.sim_drive = fastsim.simdrive.SimDrive(self.trapz, self.veh)
-        self.sim_drive_coast = fastsim.simdrive.SimDrive(self.trapz, self.veh)
-        self.sim_drive_coast.sim_params.allow_coast = True
-        self.sim_drive_coast.sim_params.coast_start_speed_m_per_s = 17.0
-        self.sim_drive_coast.sim_params.verbose = False
+        if USE_PYTHON:
+            self.trapz = fastsim.cycle.Cycle.from_dict(trapz)
+            self.veh = fastsim.vehicle.Vehicle.from_vehdb(5)
+            self.sim_drive = fastsim.simdrive.SimDrive(self.trapz, self.veh)
+            self.sim_drive_coast = fastsim.simdrive.SimDrive(self.trapz, self.veh)
+            self.sim_drive_coast.sim_params.allow_coast = True
+            self.sim_drive_coast.sim_params.coast_start_speed_m_per_s = 17.0
+            self.sim_drive_coast.sim_params.verbose = False
+        if USE_RUST:
+            self.ru_trapz = fastsim.cycle.Cycle.from_dict(trapz).to_rust()
+            self.ru_veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
+            self.ru_sim_drive = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
+            self.ru_sim_drive_coast = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
+            sim_params = self.ru_sim_drive_coast.sim_params
+            sim_params.allow_coast = True
+            sim_params.coast_start_speed_m_per_s = 17.0
+            sim_params.verbose = False
+            self.ru_sim_drive_coast.sim_params = sim_params
         return super().setUp()
     
     def tearDown(self) -> None:
@@ -185,24 +196,46 @@ class TestCoasting(unittest.TestCase):
     def test_cycle_reported_distance_traveled_m(self):
         ""
         # At the entering of constant-speed region
-        idx = 10
-        expected_time_s = 10.0
-        t = self.trapz.time_s[idx]
-        self.assertAlmostEqual(expected_time_s, t)
-        expected_distance_m = 100.0
-        dist_m = self.trapz.dist_v2_m[:(idx + 1)].sum()
-        self.assertAlmostEqual(expected_distance_m, dist_m)
-        # At t=20s
-        idx = 20
-        expected_time_s = 20.0
-        t = self.trapz.time_s[idx]
-        self.assertAlmostEqual(expected_time_s, t)
-        expected_distance_m = 300.0 # 100m + (20s - 10s) * 20m/s
-        dist_m = self.trapz.dist_v2_m[:(idx + 1)].sum()
-        self.assertAlmostEqual(expected_distance_m, dist_m)
-        dts = self.trapz.calc_distance_to_next_stop_from(dist_m)
-        dts_expected_m = 900 - dist_m
-        self.assertAlmostEqual(dts_expected_m, dts)
+        if USE_PYTHON:
+            idx = 10
+            expected_time_s = 10.0
+            t = self.trapz.time_s[idx]
+            self.assertAlmostEqual(expected_time_s, t)
+            expected_distance_m = 100.0
+            dist_m = self.trapz.dist_v2_m[:(idx + 1)].sum()
+            self.assertAlmostEqual(expected_distance_m, dist_m)
+            # At t=20s
+            idx = 20
+            expected_time_s = 20.0
+            t = self.trapz.time_s[idx]
+            self.assertAlmostEqual(expected_time_s, t)
+            expected_distance_m = 300.0 # 100m + (20s - 10s) * 20m/s
+            dist_m = self.trapz.dist_v2_m[:(idx + 1)].sum()
+            self.assertAlmostEqual(expected_distance_m, dist_m)
+            dds = self.trapz.calc_distance_to_next_stop_from(dist_m)
+            dds_expected_m = 900 - dist_m
+            self.assertAlmostEqual(dds_expected_m, dds, msg="Error in python version")
+        if USE_RUST:
+            idx = 10
+            expected_time_s = 10.0
+            t = self.ru_trapz.time_s[idx]
+            self.assertAlmostEqual(expected_time_s, t)
+            expected_distance_m = 100.0
+            dist_m = np.array(self.ru_trapz.dist_v2_m)[:(idx + 1)].sum()
+            self.assertAlmostEqual(
+                expected_distance_m, dist_m,
+                msg=f"Error in Rust version, Python dist: {self.trapz.dist_v2_m[:idx+1].sum()}")
+            # At t=20s
+            idx = 20
+            expected_time_s = 20.0
+            t = self.ru_trapz.time_s[idx]
+            self.assertAlmostEqual(expected_time_s, t)
+            expected_distance_m = 300.0 # 100m + (20s - 10s) * 20m/s
+            dist_m = np.array(self.trapz.dist_v2_m)[:(idx + 1)].sum()
+            self.assertAlmostEqual(expected_distance_m, dist_m, msg="Error in Rust version")
+            dds = self.trapz.calc_distance_to_next_stop_from(dist_m)
+            dds_expected_m = 900 - dist_m
+            self.assertAlmostEqual(dds_expected_m, dds, msg="Error in Rust version")
 
     def test_cycle_modifications_with_constant_jerk(self):
         ""

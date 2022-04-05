@@ -4,7 +4,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::collections::HashMap;
 
-use ndarray::{Array, Array1}; 
+use ndarray::{Axis, Array, Array1, s, concatenate}; 
 extern crate pyo3;
 use pyo3::exceptions::PyFileNotFoundError;
 use pyo3::prelude::*;
@@ -135,6 +135,16 @@ impl RustCycle{
     pub fn get_dist_m(&self) -> PyResult<Vec<f64>>{
         Ok(self.dist_m().to_vec())
     }
+    #[getter]
+    /// the average speeds over each step in meters per second
+    pub fn get_avg_mps(&self) -> PyResult<Vec<f64>>{
+        Ok(self.avg_mps().to_vec())
+    }
+    #[getter]
+    /// distance for each time-step in meters based on step-average speed
+    pub fn get_dist_v2_m(&self) -> PyResult<Vec<f64>>{
+        Ok(self.dist_v2_m().to_vec())
+    }
 }
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
@@ -164,6 +174,22 @@ impl RustCycle{
     /// distance covered in each time step
     pub fn dist_m(&self) -> Array1<f64>{
         &self.mps * self.dt_s()
+    }
+    pub fn avg_mps(&self) -> Array1<f64>{
+        let num_items = self.mps.len();
+        if num_items < 1{
+            Array::zeros(1)
+        } else {
+            let vavgs = 0.5 * (
+                &self.mps.slice(s![1..num_items])
+                + &self.mps.slice(s![0..(num_items-1)])
+            );
+            concatenate![Axis(0), Array::zeros(1), vavgs]
+        }
+    }
+    /// distance covered in each time step that is based on the average time of each step
+    pub fn dist_v2_m(&self) -> Array1<f64>{
+        &self.avg_mps() * &self.dt_s()
     }
 
     /// get mph from self.mps
@@ -212,6 +238,28 @@ mod tests {
     fn test_dist() {
         let cyc = RustCycle::test_cyc();
         assert_eq!(cyc.dist_m().sum(), 45.0);
+    }
+
+    #[test]
+    fn test_average_speeds_and_distances() {
+        let time_s = vec![0.0, 10.0, 30.0, 34.0, 40.0];
+        let speed_mps = vec![0.0, 10.0, 10.0, 0.0, 0.0];
+        let grade = Array::zeros(5).to_vec();
+        let road_type = Array::zeros(5).to_vec();        
+        let name = String::from("test");
+        let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);    
+        let avg_mps = cyc.avg_mps();
+        let expected_avg_mps = Array::from_vec(vec![0.0, 5.0, 10.0, 5.0, 0.0]);
+        assert_eq!(expected_avg_mps.len(), avg_mps.len());
+        for (expected, actual) in expected_avg_mps.iter().zip(avg_mps.iter()) {
+            assert_eq!(expected, actual);
+        }
+        let dist_m = cyc.dist_v2_m();
+        let expected_dist_m = Array::from_vec(vec![0.0, 50.0, 200.0, 20.0, 0.0]);
+        assert_eq!(expected_dist_m.len(), dist_m.len());
+        for (expected, actual) in expected_dist_m.iter().zip(dist_m.iter()) {
+            assert_eq!(expected, actual);
+        }
     }
 
     #[test]
