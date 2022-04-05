@@ -59,7 +59,7 @@ pub struct RustSimDriveParams{
     #[pyo3(get, set)]
     pub coast_to_brake_speed_m__s: f64,
     #[pyo3(get, set)]
-    pub coast_start_speed_m__s: f64,
+    pub coast_start_speed_m_per_s: f64,
     #[pyo3(get, set)]
     pub coast_verbose: bool,
     #[pyo3(get, set)]
@@ -97,7 +97,7 @@ impl RustSimDriveParams{
         let max_coast_speed_m__s = 40.0;
         let nominal_brake_accel_for_coast_m__s2 = -2.5;
         let coast_to_brake_speed_m__s = 7.5;
-        let coast_start_speed_m__s = 38.0;
+        let coast_start_speed_m_per_s = 38.0;
         let coast_verbose = false;
         // Following
         let follow_allow = false;
@@ -124,7 +124,7 @@ impl RustSimDriveParams{
             max_coast_speed_m__s,
             nominal_brake_accel_for_coast_m__s2,
             coast_to_brake_speed_m__s,
-            coast_start_speed_m__s,
+            coast_start_speed_m_per_s,
             coast_verbose,
             follow_allow,
             follow_model,

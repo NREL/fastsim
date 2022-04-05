@@ -65,7 +65,7 @@ class SimDriveParams(object):
         self.max_coast_speed_m__s = 40.0 # 100.0 / params.mphPerMps # maximum allowable speed under coast
         self.nominal_brake_accel_for_coast_m__s2 = -2.5 # -1.875 # -2.0 # -1.78816
         self.coast_to_brake_speed_m__s = 7.5 # 20.0 / params.mphPerMps # speed when coasting uses friction brakes
-        self.coast_start_speed_m__s = 38.0 # m/s
+        self.coast_start_speed_m_per_s = 38.0 # m/s
         self.coast_verbose = False
         self.follow_allow = False
         self.follow_model = FOLLOW_MODEL_CUSTOM # 0 - custom, 1 - Intelligent Driver Model
@@ -1549,8 +1549,8 @@ class SimDrive(object):
         - if distance to coast from start of step is <= distance to next stop
         - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
         """
-        if self.sim_params.coast_start_speed_m__s > 0.0:
-            return self.cyc.mps[i] >= self.sim_params.coast_start_speed_m__s
+        if self.sim_params.coast_start_speed_m_per_s > 0.0:
+            return self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s
         d0 = self.cyc0.dist_v2_m[:i].sum()
         # distance to stop by coasting from start of step (i-1)
         #dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
