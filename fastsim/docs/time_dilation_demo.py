@@ -38,8 +38,9 @@ t0 = time.time()
 sd_fixed = simdrive.SimDrive(cyc, veh)
 sim_params = sd_fixed.sim_params
 sim_params.missed_trace_correction=True
-sim_params.min_time_dilation = 1
-sim_params.time_dilation_tol = 1e-1
+# sim_params.min_time_dilation = 1
+sim_params.max_time_dilation = 0.1
+# sim_params.time_dilation_tol = 1e-1
 
 sd_base = simdrive.SimDrive(cyc, veh)
 
@@ -195,3 +196,4 @@ plt.xlabel('Index')
 plt.ylabel('Time Dilation')
 plt.title('Time Dilation, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.show()
+# %%
