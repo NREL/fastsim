@@ -262,9 +262,9 @@ impl RustSimDrive {
         if self.sim_params.missed_trace_correction && (self.cyc0.dist_m().slice(s![0..self.i]).sum() > 0.0){
             self.set_time_dilation_rust(self.i)?;
         }
-        // TODO: implement 
-        //if self.sim_params.allow_coast or self.sim_params.follow_allow:
-        //    self.cyc.mps[self.i] = self.mps_ach[self.i]
+        if self.sim_params.allow_coast || self.sim_params.follow_allow {
+            self.cyc.mps[self.i] = self.mps_ach[self.i];
+        }
 
         self.i += 1;  // increment time step counter
         Ok(())
@@ -487,6 +487,9 @@ impl RustSimDrive {
                         self.cur_max_trac_kw[i] / self.veh.trans_eff
                     );
                 }
+            }
+            if self.impose_coast[i] {
+                self.cur_max_trans_kw_out[i] = 0.0;
             }
             Ok(())
         };
@@ -1407,7 +1410,7 @@ impl RustSimDrive {
             let mut k = self.calc_dvdd(v, gr);
             let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
             let mut vavg = 0.5 * (v + v_next);
-            for j in 0..iters_per_step {
+            for _j in 0..iters_per_step {
                 k = self.calc_dvdd(vavg, gr);
                 v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
                 vavg = 0.5 * (v + v_next);
@@ -1443,21 +1446,23 @@ impl RustSimDrive {
     /// - if distance to coast from start of step is <= distance to next stop
     /// - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
     fn should_impose_coast(&self, i:usize) -> bool {
+        let do_coast: bool; 
         if self.sim_params.coast_start_speed_m_per_s > 0.0 {
-            self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s
+            do_coast = self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s;
         } else {
             let d0 = self.cyc0.dist_v2_m().slice(s![0..i]).sum();
             // distance to stop by coasting from start of step (i-1)
             // dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
             let dtsc0 = self.calc_distance_to_stop_coast_v2(i);
             if dtsc0 < 0.0 {
-                false
+                do_coast = false;
             } else {
                 // distance to next stop (m)
                 let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
-                dtsc0 >= dts0
+                do_coast = dtsc0 >= dts0;
             }
         }
+        do_coast
     }
 
 
@@ -1486,10 +1491,10 @@ impl RustSimDrive {
         let brake_accel_m_per_s2 = self.sim_params.nominal_brake_accel_for_coast_m_per_s2;
         let time_horizon_s = 20.0;
         // distance_horizon_m = 1000.0
-        let not_found_n = 0;
-        let not_found_jerk_m_per_s3 = 0.0;
-        let not_found_accel_m_per_s2 = 0.0;
-        let not_found = (false, not_found_n, not_found_jerk_m_per_s3, not_found_accel_m_per_s2);
+        let not_found_n: usize = 0;
+        let not_found_jerk_m_per_s3: f64 = 0.0;
+        let not_found_accel_m_per_s2: f64 = 0.0;
+        let not_found: (bool, usize, f64, f64) = (false, not_found_n, not_found_jerk_m_per_s3, not_found_accel_m_per_s2);
         if v0 < (brake_start_speed_m_per_s + tol) {
             // don't process braking
             return not_found;
@@ -1508,13 +1513,11 @@ impl RustSimDrive {
             // no stop to coast towards or we're there...
             return not_found;
         }
-        let v1 = self.cyc.mps[i];
         let dt = self.cyc.dt_s()[i];
         // distance to brake from the brake start speed (m/s)
         let dtb = -0.5 * brake_start_speed_m_per_s * brake_start_speed_m_per_s / brake_accel_m_per_s2;
         // distance to brake initiation from start of time-step (m)
         let dtbi0 = dts0 - dtb;
-        let cyc0_distances_m = ndarrcumsum(&self.cyc0.dist_v2_m());
         // Now, check rendezvous trajectories
         if time_horizon_s > 0.0 {
             let mut step_idx = i;
@@ -1532,16 +1535,15 @@ impl RustSimDrive {
                     let accel = (brake_start_speed_m_per_s - v0) / dt;
                     let v1 = max(0.0, v0 + accel * dt);
                     let dd_proposed = ((v0 + v1) / 2.0) * dt;
-                    if (v1 - brake_start_speed_m_per_s).abs() < 1e-6 && (dtbi0 - dd_proposed).abs() < 1e-6 {
+                    if (v1 - brake_start_speed_m_per_s).abs() < tol && (dtbi0 - dd_proposed).abs() < tol {
                         r_best_found = true;
                         r_best_n = 1;
-                        r_best_accel_m_per_s2 = accel;
                         r_best_jerk_m_per_s3 = 0.0;
-                        r_best_accel_spread_m_per_s2 = 0.0;
+                        r_best_accel_m_per_s2 = accel;
                         break
                     }
                 } else {
-                    if dtbi0 > 1e-6 {
+                    if dtbi0 >= tol {
                         // rendezvous trajectory for brake-start -- assumes fixed time-steps
                         let (r_bi_jerk_m_per_s3, r_bi_accel_m_per_s2) = calc_constant_jerk_trajectory(
                             step_ahead, 0.0, v0, dtbi0, brake_start_speed_m_per_s, dt);
@@ -1601,6 +1603,7 @@ impl RustSimDrive {
                 let ds_lv = ndarrcumsum(&self.cyc0.dist_m());
                 let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum(); // current distance traveled at start of step
                 let d1_lv = ds_lv[i];
+                assert!(d1_lv >= d0);
                 let max_step_distance_m = d1_lv - d0;
                 let max_avg_speed_m_per_s = max_step_distance_m / self.cyc0.dt_s()[i];
                 let max_next_speed_m_per_s = 2.0 * max_avg_speed_m_per_s - v0;

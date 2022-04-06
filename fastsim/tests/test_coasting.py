@@ -359,6 +359,9 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue(
                 self.ru_sim_drive_coast.sim_params.allow_coast,
                 "Ensure allow_coast is on")
+            self.assertFalse(
+                self.ru_sim_drive_coast.sim_params.allow_passing_during_coast,
+                "Passing during coast is not allowed")
             self.assertEqual(17.0, self.ru_sim_drive_coast.sim_params.coast_start_speed_m_per_s)
             self.assertFalse(
                 np.array(self.ru_sim_drive.impose_coast).any(),
