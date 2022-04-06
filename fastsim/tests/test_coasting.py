@@ -506,45 +506,86 @@ class TestCoasting(unittest.TestCase):
 
     def test_that_cycle_distance_reported_is_correct(self):
         "Test the reported distances via cycDistMeters"
-        # total distance
-        d_expected = 900.0
-        d_v1 = self.trapz.dist_m.sum()
-        d_v2 = self.trapz.dist_v2_m.sum()
-        self.assertAlmostEqual(d_expected, d_v1)
-        self.assertAlmostEqual(d_expected, d_v2)
-        # distance traveled between 0 s and 10 s
-        d_expected = 100.0 # 0.5 * (0s - 10s) * 20m/s = 100m
-        d_v1 = self.trapz.dist_m[:11].sum()
-        d_v2 = self.trapz.dist_v2_m[:11].sum()
-        # TODO: is there a way to get the distance from 0 to 10s using existing cycDistMeters system?
-        self.assertNotEqual(d_expected, d_v1)
-        self.assertAlmostEqual(d_expected, d_v2)
-        # distance traveled between 10 s and 45 s
-        d_expected = 700.0 # (45s - 10s) * 20m/s = 700m
-        d_v1 = self.trapz.dist_m[11:46].sum()
-        d_v2 = self.trapz.dist_v2_m[11:46].sum()
-        self.assertAlmostEqual(d_expected, d_v1)
-        self.assertAlmostEqual(d_expected, d_v2)
-        # distance traveled between 45 s and 55 s
-        d_expected = 100.0 # 0.5 * (45s - 55s) * 20m/s = 100m
-        d_v1 = self.trapz.dist_m[45:56].sum()
-        d_v2 = self.trapz.dist_v2_m[46:56].sum()
-        # TODO: is there a way to get the distance from 45 to 55s using existing cycDistMeters system?
-        self.assertNotEqual(d_expected, d_v1)
-        self.assertAlmostEqual(d_expected, d_v2)
-        # TRIANGLE RAMP SPEED CYCLE
-        const_spd_cyc = fastsim.cycle.Cycle.from_dict(
-            fastsim.cycle.resample(
-                fastsim.cycle.make_cycle(
-                    [0.0, 20.0],
-                    [0.0, 20.0]
-                ),
-                new_dt=1.0
+        if USE_PYTHON:
+            # total distance
+            d_expected = 900.0
+            d_v1 = self.trapz.dist_m.sum()
+            d_v2 = self.trapz.dist_v2_m.sum()
+            self.assertAlmostEqual(d_expected, d_v1)
+            self.assertAlmostEqual(d_expected, d_v2)
+            # distance traveled between 0 s and 10 s
+            d_expected = 100.0 # 0.5 * (0s - 10s) * 20m/s = 100m
+            d_v1 = self.trapz.dist_m[:11].sum()
+            d_v2 = self.trapz.dist_v2_m[:11].sum()
+            # TODO: is there a way to get the distance from 0 to 10s using existing cycDistMeters system?
+            self.assertNotEqual(d_expected, d_v1)
+            self.assertAlmostEqual(d_expected, d_v2)
+            # distance traveled between 10 s and 45 s
+            d_expected = 700.0 # (45s - 10s) * 20m/s = 700m
+            d_v1 = self.trapz.dist_m[11:46].sum()
+            d_v2 = self.trapz.dist_v2_m[11:46].sum()
+            self.assertAlmostEqual(d_expected, d_v1)
+            self.assertAlmostEqual(d_expected, d_v2)
+            # distance traveled between 45 s and 55 s
+            d_expected = 100.0 # 0.5 * (45s - 55s) * 20m/s = 100m
+            d_v1 = self.trapz.dist_m[45:56].sum()
+            d_v2 = self.trapz.dist_v2_m[46:56].sum()
+            # TODO: is there a way to get the distance from 45 to 55s using existing cycDistMeters system?
+            self.assertNotEqual(d_expected, d_v1)
+            self.assertAlmostEqual(d_expected, d_v2)
+            # TRIANGLE RAMP SPEED CYCLE
+            const_spd_cyc = fastsim.cycle.Cycle.from_dict(
+                fastsim.cycle.resample(
+                    fastsim.cycle.make_cycle(
+                        [0.0, 20.0],
+                        [0.0, 20.0]
+                    ),
+                    new_dt=1.0
+                )
             )
-        )
-        expected_dist_m = 200.0 # 0.5 * 20m/s x 20s = 200m
-        self.assertAlmostEqual(expected_dist_m, const_spd_cyc.dist_v2_m.sum())
-        self.assertNotEqual(expected_dist_m, const_spd_cyc.dist_m.sum())
+            expected_dist_m = 200.0 # 0.5 * 20m/s x 20s = 200m
+            self.assertAlmostEqual(expected_dist_m, const_spd_cyc.dist_v2_m.sum())
+            self.assertNotEqual(expected_dist_m, const_spd_cyc.dist_m.sum())
+        if USE_RUST:
+            # total distance
+            d_expected = 900.0
+            d_v1 = np.array(self.ru_trapz.dist_m).sum()
+            d_v2 = np.array(self.ru_trapz.dist_v2_m).sum()
+            self.assertAlmostEqual(d_expected, d_v1)
+            self.assertAlmostEqual(d_expected, d_v2)
+            # distance traveled between 0 s and 10 s
+            d_expected = 100.0 # 0.5 * (0s - 10s) * 20m/s = 100m
+            d_v1 = np.array(self.ru_trapz.dist_m)[:11].sum()
+            d_v2 = np.array(self.ru_trapz.dist_v2_m)[:11].sum()
+            # TODO: is there a way to get the distance from 0 to 10s using existing cycDistMeters system?
+            self.assertNotEqual(d_expected, d_v1)
+            self.assertAlmostEqual(d_expected, d_v2)
+            # distance traveled between 10 s and 45 s
+            d_expected = 700.0 # (45s - 10s) * 20m/s = 700m
+            d_v1 = np.array(self.ru_trapz.dist_m)[11:46].sum()
+            d_v2 = np.array(self.ru_trapz.dist_v2_m)[11:46].sum()
+            self.assertAlmostEqual(d_expected, d_v1)
+            self.assertAlmostEqual(d_expected, d_v2)
+            # distance traveled between 45 s and 55 s
+            d_expected = 100.0 # 0.5 * (45s - 55s) * 20m/s = 100m
+            d_v1 = np.array(self.trapz.dist_m)[45:56].sum()
+            d_v2 = np.array(self.trapz.dist_v2_m)[46:56].sum()
+            # TODO: is there a way to get the distance from 45 to 55s using existing cycDistMeters system?
+            self.assertNotEqual(d_expected, d_v1)
+            self.assertAlmostEqual(d_expected, d_v2)
+            # TRIANGLE RAMP SPEED CYCLE
+            const_spd_cyc = fastsim.cycle.Cycle.from_dict(
+                fastsim.cycle.resample(
+                    fastsim.cycle.make_cycle(
+                        [0.0, 20.0],
+                        [0.0, 20.0]
+                    ),
+                    new_dt=1.0
+                )
+            ).to_rust()
+            expected_dist_m = 200.0 # 0.5 * 20m/s x 20s = 200m
+            self.assertAlmostEqual(expected_dist_m, np.array(const_spd_cyc.dist_v2_m).sum())
+            self.assertNotEqual(expected_dist_m, np.array(const_spd_cyc.dist_m).sum())
 
     def test_brake_trajectory(self):
         ""
