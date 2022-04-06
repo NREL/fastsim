@@ -113,7 +113,7 @@ pub struct RustSimDrive{
     pub fc_max_kw_in: Array1<f64>,
     pub cur_max_fc_kw_out: Array1<f64>,
     pub ess_cap_lim_dischg_kw: Array1<f64>,
-    pub cur_max_ess_kw_out: Array1<f64>,
+    pub cur_ess_max_kw_out: Array1<f64>,
     pub cur_max_avail_elec_kw: Array1<f64>,
     pub ess_cap_lim_chg_kw: Array1<f64>,
     pub cur_max_ess_chg_kw: Array1<f64>,
@@ -264,7 +264,7 @@ impl RustSimDrive{
         let fc_max_kw_in = Array::zeros(cyc_len);
         let cur_max_fc_kw_out = Array::zeros(cyc_len);
         let ess_cap_lim_dischg_kw = Array::zeros(cyc_len);
-        let cur_max_ess_kw_out = Array::zeros(cyc_len);
+        let cur_ess_max_kw_out = Array::zeros(cyc_len);
         let cur_max_avail_elec_kw = Array::zeros(cyc_len);
         let ess_cap_lim_chg_kw = Array::zeros(cyc_len);
         let cur_max_ess_chg_kw = Array::zeros(cyc_len);
@@ -389,7 +389,7 @@ impl RustSimDrive{
             fc_max_kw_in,
             cur_max_fc_kw_out,
             ess_cap_lim_dischg_kw,
-            cur_max_ess_kw_out,
+            cur_ess_max_kw_out,
             cur_max_avail_elec_kw,
             ess_cap_lim_chg_kw,
             cur_max_ess_chg_kw,
@@ -775,12 +775,12 @@ impl RustSimDrive{
     }
 
     #[getter]
-    pub fn get_cur_max_ess_kw_out(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_ess_kw_out.to_vec())
+    pub fn get_cur_ess_max_kw_out(&self) -> PyResult<Vec<f64>>{
+      Ok(self.cur_ess_max_kw_out.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_ess_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_ess_kw_out = Array::from_vec(new_value);
+    pub fn set_cur_ess_max_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
+      self.cur_ess_max_kw_out = Array::from_vec(new_value);
       Ok(())
     }
 

@@ -206,7 +206,7 @@ class TestSimDriveSweep(unittest.TestCase):
             "cur_max_avail_elec_kw",
             "cur_max_elec_kw",
             "cur_max_ess_chg_kw",
-            "cur_max_ess_kw_out",
+            "cur_ess_max_kw_out",
             "cur_max_fs_kw_out",
             "cur_max_mc_elec_kw_in",
             "cur_max_mech_mc_kw_in",

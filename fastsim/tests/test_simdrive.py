@@ -176,9 +176,9 @@ class TestSimDriveClassic(unittest.TestCase):
 
             veh = vehicle.Vehicle.from_vehdb(1)
             veh.stop_start = True
-            veh.max_motor_kw = 1
-            veh.max_ess_kw = 5
-            veh.max_ess_kwh = 1
+            veh.mc_max_kw = 1
+            veh.ess_max_kw = 5
+            veh.ess_max_kwh = 1
             veh.__post_init__()
 
             sd = simdrive.SimDrive(cyc, veh)
@@ -193,9 +193,9 @@ class TestSimDriveClassic(unittest.TestCase):
 
             veh = vehicle.Vehicle.from_vehdb(1)
             veh.stop_start = True
-            veh.max_motor_kw = 1
-            veh.max_ess_kw = 5
-            veh.max_ess_kwh = 1
+            veh.mc_max_kw = 1
+            veh.ess_max_kw = 5
+            veh.ess_max_kwh = 1
             veh.__post_init__()
             veh = veh.to_rust()
 
@@ -236,3 +236,21 @@ class TestSimDriveClassic(unittest.TestCase):
                     (np.array(sd.mps_ach) > np.array(sd.cyc0.mps)).any(),
                     msg=f'Achieved speed is greater than requested speed for {vehid}'
                 )
+
+    def test_that_vehdb_single_files_simulate(self):
+
+        for filepath in vehicle.VEHICLE_DIR.iterdir():
+            if "fail" not in filepath.name and filepath.suffix == '.csv' and "overrides" not in filepath.name:
+                veh = vehicle.Vehicle.from_file(filepath)
+        
+        cyc = cycle.Cycle.from_file('udds')
+
+        if USE_PYTHON:
+            sd = simdrive.SimDrive(cyc, veh)
+            sd.sim_drive()
+            self.assertEqual(sd.i, sd.cyc0.len)
+
+        if USE_RUST:
+            sd = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
+            sd.sim_drive()
+            self.assertEqual(sd.i, sd.cyc0.len())
