@@ -384,17 +384,31 @@ class TestCoasting(unittest.TestCase):
 
     def test_eco_approach_modeling(self):
         "Test a simplified model of eco-approach"
-        self.sim_drive_coast.sim_drive()
-        self.assertFalse(self.sim_drive_coast.impose_coast.all(), "Assert we are not always in coast")
-        self.assertTrue(self.sim_drive_coast.impose_coast.any(), "Assert we are at least sometimes in coast")
-        max_trace_miss_coast_m__s = np.absolute(self.trapz.mps - self.sim_drive_coast.mps_ach).max()
-        self.assertTrue(max_trace_miss_coast_m__s > 1.0, "Assert we deviate from the shadow trace")
-        self.assertTrue(self.sim_drive_coast.mph_ach.max() > 20.0, "Assert we at least reach 20 mph")
-        self.assertAlmostEqual(
-            self.trapz.dist_m.sum(),
-            self.sim_drive_coast.dist_m.sum(),
-            msg="Assert the end distances are equal\n" +
-            f"Got {self.trapz.dist_m.sum()} m and {self.sim_drive_coast.dist_m.sum()} m")
+        if USE_PYTHON:
+            self.sim_drive_coast.sim_drive()
+            self.assertFalse(self.sim_drive_coast.impose_coast.all(), "Assert we are not always in coast")
+            self.assertTrue(self.sim_drive_coast.impose_coast.any(), "Assert we are at least sometimes in coast")
+            max_trace_miss_coast_m__s = np.absolute(self.trapz.mps - self.sim_drive_coast.mps_ach).max()
+            self.assertTrue(max_trace_miss_coast_m__s > 1.0, "Assert we deviate from the shadow trace")
+            self.assertTrue(self.sim_drive_coast.mph_ach.max() > 20.0, "Assert we at least reach 20 mph")
+            self.assertAlmostEqual(
+                self.trapz.dist_m.sum(),
+                self.sim_drive_coast.dist_m.sum(),
+                msg="Assert the end distances are equal\n" +
+                f"Got {self.trapz.dist_m.sum()} m and {self.sim_drive_coast.dist_m.sum()} m")
+        if USE_RUST:
+            self.ru_sim_drive_coast.sim_drive()
+            self.assertFalse(np.array(self.ru_sim_drive_coast.impose_coast).all(), "Assert we are not always in coast")
+            self.assertTrue(np.array(self.ru_sim_drive_coast.impose_coast).any(), "Assert we are at least sometimes in coast")
+            max_trace_miss_coast_m__s = np.absolute(
+                np.array(self.ru_trapz.mps) - np.array(self.ru_sim_drive_coast.mps_ach)).max()
+            self.assertTrue(max_trace_miss_coast_m__s > 1.0, "Assert we deviate from the shadow trace")
+            self.assertTrue(np.array(self.ru_sim_drive_coast.mph_ach).max() > 20.0, "Assert we at least reach 20 mph")
+            self.assertAlmostEqual(
+                np.array(self.ru_trapz.dist_m).sum(),
+                np.array(self.ru_sim_drive_coast.dist_m).sum(),
+                msg="Assert the end distances are equal\n" +
+                f"Got {np.array(self.ru_trapz.dist_m).sum()} m and {np.array(self.ru_sim_drive_coast.dist_m).sum()} m")
 
     def test_consistency_of_constant_jerk_trajectory(self):
         "Confirm that acceleration, speed, and distances are as expected for constant jerk trajectory"
