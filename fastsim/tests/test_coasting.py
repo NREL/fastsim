@@ -775,58 +775,102 @@ class TestCoasting(unittest.TestCase):
 
     def test_that_coasting_works_going_uphill(self):
         "Test coasting logic while hill climbing"
-        trapz = fastsim.cycle.Cycle.from_dict(
-            fastsim.cycle.resample(
-                fastsim.cycle.make_cycle(
-                    [0.0, 10.0, 45.0, 55.0, 100.0],
-                    [0.0, 20.0, 20.0, 0.0, 0.0],
-                    [0.01, 0.01, 0.01, 0.01, 0.01],
-                ),
-                new_dt=1.0,
-                hold_keys={'cycGrade'},
-            )
-        )
-        veh = fastsim.vehicle.Vehicle.from_vehdb(5)
-        sd = fastsim.simdrive.SimDrive(trapz, veh)
-        sd.sim_params.allow_coast = True
-        sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
-        sd.sim_params.verbose = False
-        sd.sim_drive()
-        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-        if DO_PLOTS:
-            vavgs = np.linspace(5.0, 40.0, endpoint=True)
-            grade = 0.01
-            def dvdd(vavg, grade):
-                atan_grade = float(np.arctan(grade))
-                g = sd.props.a_grav_mps2
-                M = veh.veh_kg
-                rho_CDFA = sd.props.air_density_kg_per_m3 * veh.frontal_area_m2 * veh.drag_coef
-                return (
-                    (g/vavg) * (np.sin(atan_grade) + veh.wheel_rr_coef * np.cos(atan_grade))
-                    + (0.5 * rho_CDFA * (1.0/M) * vavg)
+        if USE_PYTHON:
+            trapz = fastsim.cycle.Cycle.from_dict(
+                fastsim.cycle.resample(
+                    fastsim.cycle.make_cycle(
+                        [0.0, 10.0, 45.0, 55.0, 100.0],
+                        [0.0, 20.0, 20.0, 0.0, 0.0],
+                        [0.01, 0.01, 0.01, 0.01, 0.01],
+                    ),
+                    new_dt=1.0,
+                    hold_keys={'cycGrade'},
                 )
-            ks = [dvdd(vavg, grade) for vavg in vavgs]
-            make_coasting_plot(
-                sd.cyc0,
-                sd.cyc,
-                use_mph=False,
-                title="Test That Coasting Works Going Uphill",
-                save_file='junk-test_that_coasting_works_going_uphill-trace.png')
-            make_dvdd_plot(
-                sd.cyc,
-                use_mph=False,
-                save_file='junk-test_that_coasting_works_going_uphill-dvdd.png',
-                coast_to_break_speed_m__s=5.0,
-                additional_xs=vavgs,
-                additional_ys=ks
             )
-        if False:
-            self.assertAlmostEqual(
-                sd.cyc0.dist_v2_m.sum(),
-                sd.cyc.dist_v2_m.sum(),
-                msg="Should still cover the same distance when coasting as parent cycle"
-            )
+            veh = fastsim.vehicle.Vehicle.from_vehdb(5)
+            sd = fastsim.simdrive.SimDrive(trapz, veh)
+            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_start_speed_m_per_s = -1
+            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sd.sim_params.verbose = False
+            sd.sim_drive()
+            self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+            if DO_PLOTS:
+                vavgs = np.linspace(5.0, 40.0, endpoint=True)
+                grade = 0.01
+                def dvdd(vavg, grade):
+                    atan_grade = float(np.arctan(grade))
+                    g = sd.props.a_grav_mps2
+                    M = veh.veh_kg
+                    rho_CDFA = sd.props.air_density_kg_per_m3 * veh.frontal_area_m2 * veh.drag_coef
+                    return (
+                        (g/vavg) * (np.sin(atan_grade) + veh.wheel_rr_coef * np.cos(atan_grade))
+                        + (0.5 * rho_CDFA * (1.0/M) * vavg)
+                    )
+                ks = [dvdd(vavg, grade) for vavg in vavgs]
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="Test That Coasting Works Going Uphill",
+                    save_file='junk-test_that_coasting_works_going_uphill-trace.png')
+                make_dvdd_plot(
+                    sd.cyc,
+                    use_mph=False,
+                    save_file='junk-test_that_coasting_works_going_uphill-dvdd.png',
+                    coast_to_break_speed_m__s=5.0,
+                    additional_xs=vavgs,
+                    additional_ys=ks
+                )
+        if USE_RUST:
+            trapz = fastsim.cycle.Cycle.from_dict(
+                fastsim.cycle.resample(
+                    fastsim.cycle.make_cycle(
+                        [0.0, 10.0, 45.0, 55.0, 100.0],
+                        [0.0, 20.0, 20.0, 0.0, 0.0],
+                        [0.01, 0.01, 0.01, 0.01, 0.01],
+                    ),
+                    new_dt=1.0,
+                    hold_keys={'cycGrade'},
+                )
+            ).to_rust()
+            veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
+            sd = fastsim.simdrive.RustSimDrive(trapz, veh)
+            sim_params = sd.sim_params
+            sim_params.allow_coast = True
+            sim_params.coast_start_speed_m_per_s = -1
+            sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sim_params.verbose = False
+            sd.sim_params = sim_params
+            sd.sim_drive()
+            self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
+            if DO_PLOTS:
+                vavgs = np.linspace(5.0, 40.0, endpoint=True)
+                grade = 0.01
+                def dvdd(vavg, grade):
+                    atan_grade = float(np.arctan(grade))
+                    g = sd.props.a_grav_mps2
+                    M = veh.veh_kg
+                    rho_CDFA = sd.props.air_density_kg_per_m3 * veh.frontal_area_m2 * veh.drag_coef
+                    return (
+                        (g/vavg) * (np.sin(atan_grade) + veh.wheel_rr_coef * np.cos(atan_grade))
+                        + (0.5 * rho_CDFA * (1.0/M) * vavg)
+                    )
+                ks = [dvdd(vavg, grade) for vavg in vavgs]
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="Test That Coasting Works Going Uphill",
+                    save_file='junk-test_that_coasting_works_going_uphill-trace-rust.png')
+                make_dvdd_plot(
+                    sd.cyc,
+                    use_mph=False,
+                    save_file='junk-test_that_coasting_works_going_uphill-dvdd-rust.png',
+                    coast_to_break_speed_m__s=5.0,
+                    additional_xs=vavgs,
+                    additional_ys=ks
+                )
 
     def test_that_coasting_logic_works_going_uphill(self):
         "When going uphill, we want to ensure we can still hit our coasting target"
