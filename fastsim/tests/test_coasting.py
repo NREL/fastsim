@@ -897,7 +897,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_verbose = False
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if True or DO_PLOTS:
+            if DO_PLOTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -933,7 +933,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_verbose = False
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if True or DO_PLOTS:
+            if DO_PLOTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -968,7 +968,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params = sim_params
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if True or DO_PLOTS:
+            if DO_PLOTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1006,7 +1006,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params = sim_params
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if True or DO_PLOTS:
+            if DO_PLOTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
