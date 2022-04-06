@@ -589,46 +589,88 @@ class TestCoasting(unittest.TestCase):
 
     def test_brake_trajectory(self):
         ""
-        trapz = self.trapz.copy()
-        brake_accel_m__s2 = -2.0
-        idx = 30
-        dt = 1.0
-        v0 = trapz.mps[idx]
-        # distance required to stop (m)
-        expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
-        tts_s = -v0 / brake_accel_m__s2
-        n = int(np.ceil(tts_s / dt))
-        trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
-        self.assertAlmostEqual(v0, trapz.mps[idx])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*dt, trapz.mps[idx+1])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*2*dt, trapz.mps[idx+2])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*3*dt, trapz.mps[idx+3])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*4*dt, trapz.mps[idx+4])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*5*dt, trapz.mps[idx+5])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*6*dt, trapz.mps[idx+6])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*7*dt, trapz.mps[idx+7])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*8*dt, trapz.mps[idx+8])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*9*dt, trapz.mps[idx+9])
-        self.assertAlmostEqual(v0 + brake_accel_m__s2*10*dt, trapz.mps[idx+10])
-        self.assertEqual(10, n)
-        self.assertAlmostEqual(20.0, trapz.mps[idx+11])
-        dts_m = trapz.dist_v2_m[idx+1:idx+n+1].sum()
-        self.assertAlmostEqual(expected_dts_m, dts_m)
-        # Now try with a brake deceleration that doesn't devide evenly by time-steps
-        trapz = self.trapz.copy()
-        brake_accel_m__s2 = -1.75
-        idx = 30
-        dt = 1.0
-        v0 = trapz.mps[idx]
-        # distance required to stop (m)
-        expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
-        tts_s = -v0 / brake_accel_m__s2
-        n = int(np.round(tts_s / dt))
-        trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
-        self.assertAlmostEqual(v0, trapz.mps[idx])
-        self.assertEqual(11, n)
-        dts_m = trapz.dist_v2_m[idx+1:idx+n+1].sum()
-        self.assertAlmostEqual(expected_dts_m, dts_m)
+        if USE_PYTHON:
+            trapz = self.trapz.copy()
+            brake_accel_m__s2 = -2.0
+            idx = 30
+            dt = 1.0
+            v0 = trapz.mps[idx]
+            # distance required to stop (m)
+            expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
+            tts_s = -v0 / brake_accel_m__s2
+            n = int(np.ceil(tts_s / dt))
+            trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
+            self.assertAlmostEqual(v0, trapz.mps[idx])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*dt, trapz.mps[idx+1])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*2*dt, trapz.mps[idx+2])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*3*dt, trapz.mps[idx+3])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*4*dt, trapz.mps[idx+4])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*5*dt, trapz.mps[idx+5])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*6*dt, trapz.mps[idx+6])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*7*dt, trapz.mps[idx+7])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*8*dt, trapz.mps[idx+8])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*9*dt, trapz.mps[idx+9])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*10*dt, trapz.mps[idx+10])
+            self.assertEqual(10, n)
+            self.assertAlmostEqual(20.0, trapz.mps[idx+11])
+            dts_m = trapz.dist_v2_m[idx+1:idx+n+1].sum()
+            self.assertAlmostEqual(expected_dts_m, dts_m)
+            # Now try with a brake deceleration that doesn't devide evenly by time-steps
+            trapz = self.trapz.copy()
+            brake_accel_m__s2 = -1.75
+            idx = 30
+            dt = 1.0
+            v0 = trapz.mps[idx]
+            # distance required to stop (m)
+            expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
+            tts_s = -v0 / brake_accel_m__s2
+            n = int(np.round(tts_s / dt))
+            trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
+            self.assertAlmostEqual(v0, trapz.mps[idx])
+            self.assertEqual(11, n)
+            dts_m = trapz.dist_v2_m[idx+1:idx+n+1].sum()
+            self.assertAlmostEqual(expected_dts_m, dts_m)
+        if USE_RUST:
+            trapz = self.ru_trapz.copy()
+            brake_accel_m__s2 = -2.0
+            idx = 30
+            dt = 1.0
+            v0 = trapz.mps[idx]
+            # distance required to stop (m)
+            expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
+            tts_s = -v0 / brake_accel_m__s2
+            n = int(np.ceil(tts_s / dt))
+            trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
+            self.assertAlmostEqual(v0, trapz.mps[idx])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*dt, trapz.mps[idx+1])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*2*dt, trapz.mps[idx+2])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*3*dt, trapz.mps[idx+3])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*4*dt, trapz.mps[idx+4])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*5*dt, trapz.mps[idx+5])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*6*dt, trapz.mps[idx+6])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*7*dt, trapz.mps[idx+7])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*8*dt, trapz.mps[idx+8])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*9*dt, trapz.mps[idx+9])
+            self.assertAlmostEqual(v0 + brake_accel_m__s2*10*dt, trapz.mps[idx+10])
+            self.assertEqual(10, n)
+            self.assertAlmostEqual(20.0, trapz.mps[idx+11])
+            dts_m = np.array(trapz.dist_v2_m)[idx+1:idx+n+1].sum()
+            self.assertAlmostEqual(expected_dts_m, dts_m)
+            # Now try with a brake deceleration that doesn't devide evenly by time-steps
+            trapz = self.trapz.copy()
+            brake_accel_m__s2 = -1.75
+            idx = 30
+            dt = 1.0
+            v0 = trapz.mps[idx]
+            # distance required to stop (m)
+            expected_dts_m = 0.5 * v0 * v0 / abs(brake_accel_m__s2)
+            tts_s = -v0 / brake_accel_m__s2
+            n = int(np.round(tts_s / dt))
+            trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
+            self.assertAlmostEqual(v0, trapz.mps[idx])
+            self.assertEqual(11, n)
+            dts_m = np.array(trapz.dist_v2_m[idx+1:idx+n+1]).sum()
+            self.assertAlmostEqual(expected_dts_m, dts_m)
     
     def test_logic_to_enter_eco_approach_automatically(self):
         "Test that we can auto-enter eco-approach"
