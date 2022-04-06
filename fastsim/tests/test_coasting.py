@@ -1164,45 +1164,91 @@ class TestCoasting(unittest.TestCase):
 
     def test_that_coasting_works_with_multiple_stops_and_grades(self):
         "When going downhill, ensure we can still hit our coasting target"
-        grade1 = -0.005
-        grade2 = 0.005
-        c1 = fastsim.cycle.resample(
-            fastsim.cycle.make_cycle(
-                [0.0, 10.0, 45.0, 55.0, 200.0],
-                [0.0, 20.0, 20.0, 0.0, 0.0],
-                [grade1]*5,
-            ),
-            new_dt=1.0,
-            hold_keys={'cycGrade'},
-        )
-        c2 = fastsim.cycle.resample(
-            fastsim.cycle.make_cycle(
-                [0.0, 10.0, 45.0, 55.0, 200.0],
-                [0.0, 20.0, 20.0, 0.0, 0.0],
-                [grade2]*5,
-            ),
-            new_dt=1.0,
-            hold_keys={'cycGrade'},
-        )
-        veh = fastsim.vehicle.Vehicle.from_vehdb(5)
-        cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2]))
-        sd = fastsim.simdrive.SimDrive(cyc, veh)
-        sd.sim_params.allow_coast = True
-        sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
-        sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
-        sd.sim_params.verbose = False
-        sd.sim_params.coast_verbose = False
-        sd.sim_drive()
-        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-        if DO_PLOTS:
-            make_coasting_plot(
-                sd.cyc0,
-                sd.cyc,
-                use_mph=False,
-                title="Coasting With Multiple Stops and Grades (Veh 5)",
-                do_show=False,
-                save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5.png')
-        # assert we have grade set correctly
-        self.assertAlmostEqual(
-            sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
+        if USE_PYTHON:
+            grade1 = -0.005
+            grade2 = 0.005
+            c1 = fastsim.cycle.resample(
+                fastsim.cycle.make_cycle(
+                    [0.0, 10.0, 45.0, 55.0, 200.0],
+                    [0.0, 20.0, 20.0, 0.0, 0.0],
+                    [grade1]*5,
+                ),
+                new_dt=1.0,
+                hold_keys={'cycGrade'},
+            )
+            c2 = fastsim.cycle.resample(
+                fastsim.cycle.make_cycle(
+                    [0.0, 10.0, 45.0, 55.0, 200.0],
+                    [0.0, 20.0, 20.0, 0.0, 0.0],
+                    [grade2]*5,
+                ),
+                new_dt=1.0,
+                hold_keys={'cycGrade'},
+            )
+            veh = fastsim.vehicle.Vehicle.from_vehdb(5)
+            cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2]))
+            sd = fastsim.simdrive.SimDrive(cyc, veh)
+            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_start_speed_m_per_s = -1
+            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
+            sd.sim_params.verbose = False
+            sd.sim_params.coast_verbose = False
+            sd.sim_drive()
+            self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+            if DO_PLOTS:
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="Coasting With Multiple Stops and Grades (Veh 5)",
+                    do_show=False,
+                    save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5.png')
+            # assert we have grade set correctly
+            self.assertAlmostEqual(
+                sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
+        if USE_RUST:
+            grade1 = -0.005
+            grade2 = 0.005
+            c1 = fastsim.cycle.resample(
+                fastsim.cycle.make_cycle(
+                    [0.0, 10.0, 45.0, 55.0, 200.0],
+                    [0.0, 20.0, 20.0, 0.0, 0.0],
+                    [grade1]*5,
+                ),
+                new_dt=1.0,
+                hold_keys={'cycGrade'},
+            )
+            c2 = fastsim.cycle.resample(
+                fastsim.cycle.make_cycle(
+                    [0.0, 10.0, 45.0, 55.0, 200.0],
+                    [0.0, 20.0, 20.0, 0.0, 0.0],
+                    [grade2]*5,
+                ),
+                new_dt=1.0,
+                hold_keys={'cycGrade'},
+            )
+            veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
+            cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2])).to_rust()
+            sd = fastsim.simdrive.RustSimDrive(cyc, veh)
+            sim_params = sd.sim_params
+            sim_params.allow_coast = True
+            sim_params.coast_start_speed_m_per_s = -1
+            sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
+            sim_params.verbose = False
+            sim_params.coast_verbose = False
+            sd.sim_params = sim_params
+            sd.sim_drive()
+            self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
+            if DO_PLOTS:
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="Coasting With Multiple Stops and Grades (Veh 5)",
+                    do_show=False,
+                    save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5-rust.png')
+            # assert we have grade set correctly
+            self.assertAlmostEqual(
+                np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())
