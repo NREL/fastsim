@@ -17,23 +17,7 @@ use pyo3::types::PyType;
 use super::params::*;
 use super::utils::*;
 
-/// Calculate speed (m/s) n timesteps away via a constant-jerk acceleration
-/// INPUTS:
-/// - n: Int, numer of timesteps away to calculate
-/// - v0: Num, initial speed (m/s)
-/// - a0: Num, initial acceleration (m/s2)
-/// - k: Num, constant jerk
-/// - dt: Num, duration of a timestep (s)
-/// NOTE:
-/// - this is the speed at sample n
-/// - if n == 0, speed is v0
-/// - if n == 1, speed is v0 + a0*dt, etc.
-/// RETURN: Num, the speed n timesteps away (m/s)
-pub fn speed_for_constant_jerk(n:usize, v0:f64, a0:f64, k:f64, dt:f64)->f64 {
-    let n = n as f64;
-    v0 + (n * a0 * dt) + (0.5 * n * (n - 1.0) * k * dt)
-}
-
+#[pyfunction]
 /// Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
 /// INPUTS:
 /// - n: Int, number of time-steps away from rendezvous
@@ -63,6 +47,48 @@ pub fn calc_constant_jerk_trajectory(n: usize, d0:f64, v0:f64, dr:f64, vr:f64, d
     (k, a0)
 }
 
+#[pyfunction]
+/// Calculate distance (m) after n timesteps
+/// INPUTS:
+/// - n: Int, numer of timesteps away to calculate
+/// - d0: Num, initial distance (m)
+/// - v0: Num, initial speed (m/s)
+/// - a0: Num, initial acceleration (m/s2)
+/// - k: Num, constant jerk
+/// - dt: Num, duration of a timestep (s)
+/// NOTE:
+/// - this is the distance traveled from start (i.e., n=0) measured at sample point n
+/// RETURN: Num, the distance at n timesteps away (m)
+pub fn dist_for_constant_jerk(n:usize, d0:f64, v0:f64, a0:f64, k:f64, dt:f64) -> f64 {
+    let n = n as f64;
+    let term1 = dt * (
+        (n * v0)
+        + (0.5 * n * (n - 1.0) * a0 * dt)
+        + ((1.0 / 6.0) * k * dt * (n - 2.0) * (n - 1.0) * n)
+    );
+    let term2 = 0.5 * dt * dt * ((n * a0) + (0.5 * n * (n - 1.0) * k * dt));
+    d0 + term1 + term2
+}
+
+#[pyfunction]
+/// Calculate speed (m/s) n timesteps away via a constant-jerk acceleration
+/// INPUTS:
+/// - n: Int, numer of timesteps away to calculate
+/// - v0: Num, initial speed (m/s)
+/// - a0: Num, initial acceleration (m/s2)
+/// - k: Num, constant jerk
+/// - dt: Num, duration of a timestep (s)
+/// NOTE:
+/// - this is the speed at sample n
+/// - if n == 0, speed is v0
+/// - if n == 1, speed is v0 + a0*dt, etc.
+/// RETURN: Num, the speed n timesteps away (m/s)
+pub fn speed_for_constant_jerk(n:usize, v0:f64, a0:f64, k:f64, dt:f64)->f64 {
+    let n = n as f64;
+    v0 + (n * a0 * dt) + (0.5 * n * (n - 1.0) * k * dt)
+}
+
+#[pyfunction]
 /// Calculate the acceleration n timesteps away
 /// INPUTS:
 /// - n: Int, number of times steps away to calculate
@@ -85,6 +111,13 @@ pub fn accel_array_for_constant_jerk(nmax:usize, a0:f64, k:f64, dt:f64) -> Array
     Array1::from_vec(accels)
 }
 
+pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
+    m.add_function(wrap_pyfunction!(accel_for_constant_jerk, m)?)?;
+    m.add_function(wrap_pyfunction!(speed_for_constant_jerk, m)?)?;
+    m.add_function(wrap_pyfunction!(dist_for_constant_jerk, m)?)?;
+    Ok(())
+}
 
 #[pyclass] 
 #[derive(Debug, Clone)]

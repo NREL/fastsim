@@ -412,29 +412,52 @@ class TestCoasting(unittest.TestCase):
 
     def test_consistency_of_constant_jerk_trajectory(self):
         "Confirm that acceleration, speed, and distances are as expected for constant jerk trajectory"
-        n = 10 # ten time-steps
-        v0 = 15.0
-        vr = 7.5
-        d0 = 0.0
-        dr = 120.0
-        dt = 1.0
-        k, a0 = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, dr, vr, dt)
-        v = v0
-        d = d0
-        a = a0
-        vs = [v0]
-        for n in range(n):
-            a_expected = fastsim.cycle.accel_for_constant_jerk(n, a0, k, dt)
-            v_expected = fastsim.cycle.speed_for_constant_jerk(n, v0, a0, k, dt)
-            d_expected = fastsim.cycle.dist_for_constant_jerk(n, d0, v0, a0, k, dt)
-            if n > 0:
-                d += dt * (v + v + a * dt) / 2.0
-                v += a * dt
-            # acceleration is the constant acceleration for the NEXT time-step
-            a = a0 + n * k * dt
-            self.assertAlmostEqual(a, a_expected)
-            self.assertAlmostEqual(v, v_expected)
-            self.assertAlmostEqual(d, d_expected)
+        if USE_PYTHON:
+            n = 10 # ten time-steps
+            v0 = 15.0
+            vr = 7.5
+            d0 = 0.0
+            dr = 120.0
+            dt = 1.0
+            k, a0 = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, dr, vr, dt)
+            v = v0
+            d = d0
+            a = a0
+            for n in range(n):
+                a_expected = fastsim.cycle.accel_for_constant_jerk(n, a0, k, dt)
+                v_expected = fastsim.cycle.speed_for_constant_jerk(n, v0, a0, k, dt)
+                d_expected = fastsim.cycle.dist_for_constant_jerk(n, d0, v0, a0, k, dt)
+                if n > 0:
+                    d += dt * (v + v + a * dt) / 2.0
+                    v += a * dt
+                # acceleration is the constant acceleration for the NEXT time-step
+                a = a0 + n * k * dt
+                self.assertAlmostEqual(a, a_expected)
+                self.assertAlmostEqual(v, v_expected)
+                self.assertAlmostEqual(d, d_expected)
+        if USE_RUST:
+            n = 10 # ten time-steps
+            v0 = 15.0
+            vr = 7.5
+            d0 = 0.0
+            dr = 120.0
+            dt = 1.0
+            k, a0 = fsr.calc_constant_jerk_trajectory(n, d0, v0, dr, vr, dt)
+            v = v0
+            d = d0
+            a = a0
+            for n in range(n):
+                a_expected = fsr.accel_for_constant_jerk(n, a0, k, dt)
+                v_expected = fsr.speed_for_constant_jerk(n, v0, a0, k, dt)
+                d_expected = fsr.dist_for_constant_jerk(n, d0, v0, a0, k, dt)
+                if n > 0:
+                    d += dt * (v + v + a * dt) / 2.0
+                    v += a * dt
+                # acceleration is the constant acceleration for the NEXT time-step
+                a = a0 + n * k * dt
+                self.assertAlmostEqual(a, a_expected)
+                self.assertAlmostEqual(v, v_expected)
+                self.assertAlmostEqual(d, d_expected)
 
     def test_that_final_speed_of_cycle_modification_matches_trajectory_calcs(self):
         ""
