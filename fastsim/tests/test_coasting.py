@@ -345,7 +345,7 @@ class TestCoasting(unittest.TestCase):
             max_trace_miss_coast_m__s = np.absolute(self.trapz.mps - self.sim_drive_coast.mps_ach).max()
             self.assertTrue(max_trace_miss_coast_m__s > 1.0, f"Max trace miss: {max_trace_miss_coast_m__s} m/s")
             self.assertFalse(self.sim_drive_coast.impose_coast[0])
-            if True or DO_PLOTS:
+            if DO_PLOTS:
                 make_coasting_plot(
                     self.sim_drive_coast.cyc0,
                     self.sim_drive_coast.cyc,
@@ -374,7 +374,7 @@ class TestCoasting(unittest.TestCase):
                 max_trace_miss_coast_m__s > 1.0,
                 f"Max trace miss: {max_trace_miss_coast_m__s} m/s")
             self.assertFalse(self.ru_sim_drive_coast.impose_coast[0])
-            if True or DO_PLOTS:
+            if DO_PLOTS:
                 make_coasting_plot(
                     self.ru_sim_drive_coast.cyc0,
                     self.ru_sim_drive_coast.cyc,
