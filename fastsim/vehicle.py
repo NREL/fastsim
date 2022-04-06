@@ -35,8 +35,8 @@ def get_template_df():
     vehdf = vehdf.transpose()
     vehdf.columns = vehdf.iloc[1]
     vehdf.drop(vehdf.index[0], inplace=True)
-    vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
-    vehdf.loc['Param Value', 'Selection'] = 0
+    vehdf['selection'] = np.nan * np.ones(vehdf.shape[0])
+    vehdf.loc['Param Value', 'selection'] = 0
     return vehdf
 
 TEMPLATE_VEHDF = get_template_df()
@@ -216,7 +216,7 @@ class Vehicle(object):
         """
         vehdf = DEFAULT_VEHDF
         veh_file = DEFAULT_VEH_DB
-        vehdf.set_index('Selection', inplace=True, drop=False)
+        vehdf.set_index('selection', inplace=True, drop=False)
 
         return cls.from_df(vehdf, vnum, verbose)
 
@@ -243,11 +243,11 @@ class Vehicle(object):
             vehdf = vehdf.transpose()
             vehdf.columns = vehdf.iloc[1]
             vehdf.drop(vehdf.index[0], inplace=True)
-            vehdf['Selection'] = np.nan * np.ones(vehdf.shape[0])
-            vehdf.loc['Param Value', 'Selection'] = 0
+            vehdf['selection'] = np.nan * np.ones(vehdf.shape[0])
+            vehdf.loc['Param Value', 'selection'] = 0
             vnum = 0
 
-        vehdf.set_index('Selection', inplace=True, drop=False)
+        vehdf.set_index('selection', inplace=True, drop=False)
 
         veh_file = filename
 
