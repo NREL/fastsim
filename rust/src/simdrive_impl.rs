@@ -126,6 +126,8 @@ impl RustSimDrive {
                 gaps_m += self.veh.lead_offset_m;
             } else if self.sim_params.follow_model == 1 { // FOLLOW_MODEL_IDM
                 gaps_m += self.veh.idm_minimum_gap_m;
+            } else {
+                panic!("unhandled follow_model: {}", self.sim_params.follow_model);
             }
         }
         gaps_m

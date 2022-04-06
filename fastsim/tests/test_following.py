@@ -9,6 +9,8 @@ import fastsim
 
 
 DO_PLOTS = False
+USE_PYTHON = True
+USE_RUST = True
 
 
 class TestFollowing(unittest.TestCase):
@@ -19,15 +21,30 @@ class TestFollowing(unittest.TestCase):
             [0.0, 20.0, 20.0, 0.0, 0.0],
         )
         trapz = fastsim.cycle.resample(trapz, new_dt=1.0)
-        self.trapz = fastsim.cycle.Cycle.from_dict(trapz)
-        self.veh = fastsim.vehicle.Vehicle.from_vehdb(5)
-        self.veh.lead_offset_m = self.initial_gap_m
-        # sd0 is for reference to an unchanged, no-following simdrive
-        self.sd0 = fastsim.simdrive.SimDrive(self.trapz, self.veh)
-        self.sd0.sim_params.verbose = False
-        self.sd = fastsim.simdrive.SimDrive(self.trapz, self.veh)
-        self.sd.sim_params.follow_allow = True
-        self.sd.sim_params.verbose = False
+        if USE_PYTHON:
+            self.trapz = fastsim.cycle.Cycle.from_dict(trapz)
+            self.veh = fastsim.vehicle.Vehicle.from_vehdb(5)
+            self.veh.lead_offset_m = self.initial_gap_m
+            # sd0 is for reference to an unchanged, no-following simdrive
+            self.sd0 = fastsim.simdrive.SimDrive(self.trapz, self.veh)
+            self.sd0.sim_params.verbose = False
+            self.sd = fastsim.simdrive.SimDrive(self.trapz, self.veh)
+            self.sd.sim_params.follow_allow = True
+            self.sd.sim_params.verbose = False
+        if USE_RUST:
+            self.ru_trapz = fastsim.cycle.Cycle.from_dict(trapz).to_rust()
+            self.ru_veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
+            self.ru_veh.lead_offset_m = self.initial_gap_m
+            # sd0 is for reference to an unchanged, no-following simdrive
+            self.ru_sd0 = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
+            sim_params = self.ru_sd0.sim_params
+            sim_params.verbose = False
+            self.ru_sd0.sim_params = sim_params
+            self.ru_sd = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
+            sim_params = self.ru_sd.sim_params
+            sim_params.follow_allow = True
+            sim_params.verbose = False
+            self.ru_sd.sim_params = sim_params
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -35,25 +52,48 @@ class TestFollowing(unittest.TestCase):
     
     def test_that_we_have_a_gap_between_us_and_the_lead_vehicle(self):
         "A positive gap should exist between us and the lead vehicle"
-        self.assertTrue(self.sd.sim_params.follow_allow)
-        self.veh.lead_speed_coef_s = 0.0
-        self.veh.lead_offset_m = self.initial_gap_m
-        self.veh.lead_accel_coef_s2 = 0.0
-        self.sd.sim_drive()
-        self.assertTrue(self.sd.sim_params.follow_allow)
-        gaps_m = self.sd.gap_to_lead_vehicle_m
-        if DO_PLOTS:
-            import matplotlib.pyplot as plt
-            fig, ax = plt.subplots()
-            ax.plot(self.sd.cyc0.cycSecs, gaps_m, 'k.')
-            ax.set_xlabel('Elapsed Time (s)')
-            ax.set_ylabel('Gap (m)')
-            fig.tight_layout()
-            save_file = "test_that_we_have_a_gap_between_us_and_the_lead_vehicle__0.png"
-            fig.savefig(save_file, dpi=300)
-            plt.close()
-        self.assertTrue((gaps_m == 5.0).all())
-        self.assertAlmostEqual(self.sd.cyc0.dist_v2_m.sum(), self.sd.cyc.dist_v2_m.sum())
+        if USE_PYTHON:
+            self.assertTrue(self.sd.sim_params.follow_allow)
+            self.veh.lead_speed_coef_s = 0.0
+            self.veh.lead_offset_m = self.initial_gap_m
+            self.veh.lead_accel_coef_s2 = 0.0
+            self.sd.sim_drive()
+            self.assertTrue(self.sd.sim_params.follow_allow)
+            gaps_m = self.sd.gap_to_lead_vehicle_m
+            if DO_PLOTS:
+                import matplotlib.pyplot as plt
+                fig, ax = plt.subplots()
+                ax.plot(self.sd.cyc0.time_s, gaps_m, 'k.')
+                ax.set_xlabel('Elapsed Time (s)')
+                ax.set_ylabel('Gap (m)')
+                fig.tight_layout()
+                save_file = "test_that_we_have_a_gap_between_us_and_the_lead_vehicle__0.png"
+                fig.savefig(save_file, dpi=300)
+                plt.close()
+            self.assertTrue((gaps_m == 5.0).all())
+            self.assertAlmostEqual(self.sd.cyc0.dist_v2_m.sum(), self.sd.cyc.dist_v2_m.sum())
+        if USE_RUST:
+            self.assertTrue(self.ru_sd.sim_params.follow_allow)
+            self.ru_veh.lead_speed_coef_s = 0.0
+            self.ru_veh.lead_offset_m = self.initial_gap_m
+            self.ru_veh.lead_accel_coef_s2 = 0.0
+            self.ru_sd.sim_drive()
+            self.assertTrue(self.ru_sd.sim_params.follow_allow)
+            gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
+            if DO_PLOTS:
+                import matplotlib.pyplot as plt
+                fig, ax = plt.subplots()
+                ax.plot(self.ru_sd.cyc0.time_s, gaps_m, 'k.')
+                ax.set_xlabel('Elapsed Time (s)')
+                ax.set_ylabel('Gap (m)')
+                fig.tight_layout()
+                save_file = "test_that_we_have_a_gap_between_us_and_the_lead_vehicle__0-rust.png"
+                fig.savefig(save_file, dpi=300)
+                plt.close()
+            self.assertTrue((gaps_m == 5.0).all())
+            self.assertAlmostEqual(
+                np.array(self.ru_sd.cyc0.dist_v2_m).sum(),
+                np.array(self.ru_sd.cyc.dist_v2_m).sum())
 
     def test_that_the_gap_changes_over_the_cycle(self):
         "Ensure that our gap calculation is doing something"
