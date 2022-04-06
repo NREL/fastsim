@@ -1458,7 +1458,7 @@ impl RustSimDrive {
                 do_coast = false;
             } else {
                 // distance to next stop (m)
-                let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
+                let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
                 do_coast = dtsc0 >= dts0;
             }
         }
@@ -1508,7 +1508,7 @@ impl RustSimDrive {
         let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
         // a_proposed = (v1 - v0) / dt
         // distance to stop from start of time-step
-        let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
+        let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
         if dts0 < 1e-6 {
             // no stop to coast towards or we're there...
             return not_found;

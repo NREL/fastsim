@@ -461,26 +461,48 @@ class TestCoasting(unittest.TestCase):
 
     def test_that_final_speed_of_cycle_modification_matches_trajectory_calcs(self):
         ""
-        trapz = self.trapz.copy()
-        idx = 20
-        n = 20
-        d0 = self.trapz.dist_m[:idx].sum()
-        v0 = self.trapz.mps[idx-1]
-        dt = self.trapz.dt_s[idx]
-        brake_decel_m__s2 = 2.5
-        dts0 = trapz.calc_distance_to_next_stop_from(d0)
-        # speed at which friction braking initiates (m/s)
-        brake_start_speed_m__s = 7.5
-        # distance to brake (m)
-        dtb = 0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_decel_m__s2
-        dtbi0 = dts0 - dtb
-        jerk_m__s3, accel_m__s2 = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, d0 + dtbi0, brake_start_speed_m__s, dt)
-        final_speed_m__s = self.trapz.modify_by_const_jerk_trajectory(
-            idx,
-            n,
-            jerk_m__s3,
-            accel_m__s2)
-        self.assertAlmostEqual(final_speed_m__s, brake_start_speed_m__s)
+        if USE_PYTHON:
+            trapz = self.trapz.copy()
+            idx = 20
+            n = 20
+            d0 = self.trapz.dist_m[:idx].sum()
+            v0 = self.trapz.mps[idx-1]
+            dt = self.trapz.dt_s[idx]
+            brake_decel_m__s2 = 2.5
+            dts0 = trapz.calc_distance_to_next_stop_from(d0)
+            # speed at which friction braking initiates (m/s)
+            brake_start_speed_m__s = 7.5
+            # distance to brake (m)
+            dtb = 0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_decel_m__s2
+            dtbi0 = dts0 - dtb
+            jerk_m__s3, accel_m__s2 = fastsim.cycle.calc_constant_jerk_trajectory(n, d0, v0, d0 + dtbi0, brake_start_speed_m__s, dt)
+            final_speed_m__s = self.trapz.modify_by_const_jerk_trajectory(
+                idx,
+                n,
+                jerk_m__s3,
+                accel_m__s2)
+            self.assertAlmostEqual(final_speed_m__s, brake_start_speed_m__s)
+        if USE_RUST:
+            trapz = self.ru_trapz.copy()
+            idx = 20
+            n = 20
+            d0 = np.array(self.ru_trapz.dist_m)[:idx].sum()
+            v0 = self.ru_trapz.mps[idx-1]
+            dt = self.ru_trapz.dt_s[idx]
+            brake_decel_m__s2 = 2.5
+            dts0 = trapz.calc_distance_to_next_stop_from(d0)
+            # speed at which friction braking initiates (m/s)
+            brake_start_speed_m__s = 7.5
+            # distance to brake (m)
+            dtb = 0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_decel_m__s2
+            dtbi0 = dts0 - dtb
+            jerk_m__s3, accel_m__s2 = fsr.calc_constant_jerk_trajectory(n, d0, v0, d0 + dtbi0, brake_start_speed_m__s, dt)
+            final_speed_m__s = self.ru_trapz.modify_by_const_jerk_trajectory(
+                idx,
+                n,
+                jerk_m__s3,
+                accel_m__s2)
+            self.assertAlmostEqual(final_speed_m__s, brake_start_speed_m__s)
 
     def test_that_cycle_distance_reported_is_correct(self):
         "Test the reported distances via cycDistMeters"

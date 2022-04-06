@@ -192,6 +192,10 @@ impl RustCycle{
         Ok(self.modify_with_braking_trajectory_rust(brake_accel_m_per_s2, idx))
     }
 
+    pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> PyResult<f64> {
+        Ok(self.calc_distance_to_next_stop_from_rust(distance_m))
+    }
+
     #[getter]
     pub fn get_mps(&self) -> PyResult<Vec<f64>>{
         Ok((&self.mps).to_vec())
@@ -290,7 +294,7 @@ impl RustCycle{
     /// RETURN: -1 or non-negative-integer
     /// - if there are no more stops ahead, return -1
     /// - else returns the distance to the next stop from distance_m
-    pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> f64 {
+    pub fn calc_distance_to_next_stop_from_rust(&self, distance_m: f64) -> f64 {
         let tol: f64 = 1e-6;
         let not_found: f64 = -1.0;
         let mut d: f64 = 0.0;
