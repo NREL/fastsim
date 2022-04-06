@@ -34,6 +34,59 @@ pub fn speed_for_constant_jerk(n:usize, v0:f64, a0:f64, k:f64, dt:f64)->f64 {
     v0 + (nn * a0 * dt) + (0.5 * nn * (nn - 1.0) * k * dt)
 }
 
+/// Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
+/// INPUTS:
+/// - n: Int, number of time-steps away from rendezvous
+/// - D0: Num, distance of simulated vehicle (m/s)
+/// - v0: Num, speed of simulated vehicle (m/s)
+/// - Dr: Num, distance of rendezvous point (m)
+/// - vr: Num, speed of rendezvous point (m/s)
+/// - dt: Num, step duration (s)
+/// RETURNS: (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
+/// Returns the constant jerk and acceleration for initial time step.
+pub fn calc_constant_jerk_trajectory(n: usize, d0:f64, v0:f64, dr:f64, vr:f64, dt:f64)->(f64, f64){
+    assert!(n > 1);
+    assert!(dr > d0);
+    let n = n as f64;
+    let ddr = dr - d0;
+    let dvr = vr - v0;
+    let k = (dvr - (2.0 * ddr / (n * dt)) + 2.0 * v0) / (
+        0.5 * n * (n - 1.0) * dt
+        - (1.0 / 3.0) * (n - 1.0) * (n - 2.0) * dt
+        - 0.5 * (n - 1.0) * dt * dt
+    );
+    let a0 = (
+        (ddr / dt)
+        - n * v0
+        - ((1.0 / 6.0) * n * (n - 1.0) * (n - 2.0) * dt + 0.25 * n * (n - 1.0) * dt * dt) * k
+    ) / (0.5 * n * n * dt);
+    (k, a0)
+}
+
+/// Calculate the acceleration n timesteps away
+/// INPUTS:
+/// - n: Int, number of times steps away to calculate
+/// - a0: Num, initial acceleration (m/s2)
+/// - k: Num, constant jerk (m/s3)
+/// - dt: Num, time-step duration in seconds
+/// NOTE:
+/// - this is the constant acceleration over the time-step from sample n to sample n+1
+/// RETURN: Num, the acceleration n timesteps away (m/s2)
+pub fn accel_for_constant_jerk(n:usize, a0:f64, k:f64, dt:f64) -> f64 {
+    let n = n as f64;
+    a0 + (n * k * dt)
+}
+
+pub fn accel_array_for_constant_jerk(nmax:usize, a0:f64, k:f64, dt:f64) -> Array1::<f64> {
+    let mut accels: Vec<f64> = Vec::new();
+    for n in 0..nmax {
+        accels.push(accel_for_constant_jerk(n, a0, k, dt));
+    }
+    Array1::from_vec(accels)
+}
+
+
+
 #[pyclass] 
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 
@@ -100,6 +153,10 @@ impl RustCycle{
     }
 
     pub fn modify_by_const_jerk_trajectory(&mut self, idx:usize, n:usize, jerk_m_per_s3:f64, accel0_m_per_s2:f64)->PyResult<f64>{
+        Ok(self.modify_by_const_jerk_trajectory_rust(idx, n, jerk_m_per_s3, accel0_m_per_s2))
+    }
+
+    pub fn modify_with_braking_trajectory(&mut self, idx: usize, n: usize, jerk_m_per_s3: f64, accel0_m_per_s2: f64)->PyResult<f64>{
         Ok(self.modify_by_const_jerk_trajectory_rust(idx, n, jerk_m_per_s3, accel0_m_per_s2))
     }
 
@@ -196,6 +253,23 @@ impl RustCycle{
         RustCycle::new(time_s, speed_mps, grade, road_type, name)    
     }
 
+    /// Calculate the distance to next stop from `distance_m`
+    /// - distance_m: non-negative-number, the current distance from start (m)
+    /// RETURN: -1 or non-negative-integer
+    /// - if there are no more stops ahead, return -1
+    /// - else returns the distance to the next stop from distance_m
+    pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> f64 {
+        let tol: f64 = 1e-6;
+        let mut d: f64 = 0.0;
+        for (&dd, &v) in self.dist_v2_m().iter().zip(self.mps.iter()) {
+            d += dd;
+            if (v < tol) && (d > (distance_m + tol) ){
+                return d - distance_m;
+            }
+        }
+        -1.0
+    }
+
     /// Modifies the cycle using the given constant-jerk trajectory parameters
     /// - idx: non-negative integer, the point in the cycle to initiate
     ///   modification (note: THIS point is modified since trajectory should be
@@ -221,6 +295,26 @@ impl RustCycle{
             self.mps[idx_to_set] = v;
         }
         v
+    }
+
+    /// Add a braking trajectory that would cover the same distance as the given constant brake deceleration
+    /// - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
+    /// - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
+    /// RETURN: non-negative-number, the final speed of the modified trajectory (m/s) 
+    /// - modifies the cycle in place for braking
+    pub fn modify_with_braking_trajectory_rust(&mut self, brake_accel_m_per_s2:f64, idx:usize)->f64{
+        assert!(brake_accel_m_per_s2 < 0.0);
+        let i = idx;
+        let v0 = self.mps[i-1];
+        let dt = self.dt_s()[i];
+        // distance-to-stop (m)
+        let dts_m = -0.5 * v0 * v0 / brake_accel_m_per_s2;
+        // time-to-stop (s)
+        let tts_s = -v0 / brake_accel_m_per_s2;
+        // number of steps to take
+        let n: usize = if tts_s >= dt*1.5 {(tts_s / dt).round() as usize} else {2};
+        let (jerk_m_per_s3, accel_m_per_s2) = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt);
+        self.modify_by_const_jerk_trajectory_rust(i, n, jerk_m_per_s3, accel_m_per_s2)
     }
 
     /// rust-internal time steps

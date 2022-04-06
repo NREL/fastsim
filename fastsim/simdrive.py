@@ -1593,14 +1593,13 @@ class SimDrive(object):
             min_accel_m__s2, max_accel_m__s2 = max_accel_m__s2, min_accel_m__s2
         num_samples = len(self.cyc.mps)
         d0 = self.cyc.dist_v2_m[:i].sum()
-        v1 = self.cyc.mps[i]
-        dt = self.cyc.dt_s[i]
         # a_proposed = (v1 - v0) / dt
         # distance to stop from start of time-step
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0) 
         if dts0 < 1e-6:
             # no stop to coast towards or we're there...
             return not_found
+        v1 = self.cyc.mps[i]
         dt = self.cyc.dt_s[i]
         # distance to brake from the brake start speed (m/s)
         dtb = -0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_accel_m__s2

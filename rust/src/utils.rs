@@ -1,5 +1,6 @@
 extern crate ndarray;
 use ndarray::{Array1, array, Axis, s, concatenate}; 
+use std::collections::{HashSet};
 
 
 pub fn diff(x:&Array1<f64>) -> Array1<f64>{
@@ -83,6 +84,23 @@ pub fn ndarrcumsum(arr:&Array1<f64>) -> Array1<f64> {
 		*acc += x;
 		Some(*acc)
 	}).collect()
+}
+
+/// return the unique values of the array
+pub fn ndarrunique(arr:&Array1<f64>) -> Array1<f64> {
+    let mut set: HashSet<usize> = HashSet::new();
+    let mut new_arr: Vec<f64> = Vec::new();
+    let x_min = ndarrmin(arr);
+    let x_max = ndarrmax(arr);
+    let dx = if x_max == x_min {1.0} else {x_max - x_min};
+    for &x in arr.iter() {
+        let y = (((x - x_min) / dx) * (usize::MAX as f64)) as usize;
+        if !set.contains(&y) {
+            new_arr.push(x);
+            set.insert(y);
+        }
+    }
+    Array1::from_vec(new_arr)
 }
 
 // TODO: if interpolation is used at each time step, change it to take native, fixed-size array
@@ -197,6 +215,16 @@ mod tests {
         assert_eq!(expected_ys, actual_ys);
     }
 
+    #[test]
+    fn test_ndarrunique_works(){
+        let xs = Array1::from_vec(vec![0.0, 1.0, 1.0, 2.0, 10.0, 10.0, 11.0]);
+        let expected = Array1::from_vec(vec![0.0, 1.0, 2.0, 10.0, 11.0]);
+        let actual = ndarrunique(&xs);
+        assert_eq!(expected.len(), actual.len());
+        for (ex, act) in expected.iter().zip(actual.iter()) {
+            assert_eq!(ex, act);
+        }
+    }
     // #[test]
     // fn test_that_argmax_does_the_right_thing_on_an_empty_array(){
     //     let xs: Array1<bool> = Array::from_vec(vec![]);

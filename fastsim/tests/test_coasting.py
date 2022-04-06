@@ -58,7 +58,7 @@ def make_coasting_plot(
     ax.legend(loc=0, prop={'size': 6})
     ax = axs[2]
     ax_right = ax.twinx()
-    ax_right.plot(ds_orig, cyc0.grade * 100, 'y--', label='grade')
+    ax_right.plot(ds_orig, np.array(cyc0.grade) * 100, 'y--', label='grade')
     ax_right.set_ylabel('Grade (%)', fontsize=fontsize)
     ax_right.grid(False)
     ax.set_zorder(ax_right.get_zorder()+1)
@@ -338,19 +338,46 @@ class TestCoasting(unittest.TestCase):
     
     def test_that_we_can_coast(self):
         "Test the standard interface to Eco-Approach for 'free coasting'"
-        self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
-        while self.sim_drive_coast.i < len(self.trapz.time_s):
-            self.sim_drive_coast.sim_drive_step()
-        max_trace_miss_coast_m__s = np.absolute(self.trapz.mps - self.sim_drive_coast.mps_ach).max()
-        self.assertTrue(max_trace_miss_coast_m__s > 1.0, f"Max trace miss: {max_trace_miss_coast_m__s} m/s")
-        self.assertFalse(self.sim_drive_coast.impose_coast[0])
-        if DO_PLOTS:
-            make_coasting_plot(
-                self.sim_drive_coast.cyc0,
-                self.sim_drive_coast.cyc,
-                use_mph=False,
-                title="Test That We Can Coast",
-                save_file='junk-test-that-we-can-coast.png')
+        if USE_PYTHON:
+            self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
+            while self.sim_drive_coast.i < len(self.trapz.time_s):
+                self.sim_drive_coast.sim_drive_step()
+            max_trace_miss_coast_m__s = np.absolute(self.trapz.mps - self.sim_drive_coast.mps_ach).max()
+            self.assertTrue(max_trace_miss_coast_m__s > 1.0, f"Max trace miss: {max_trace_miss_coast_m__s} m/s")
+            self.assertFalse(self.sim_drive_coast.impose_coast[0])
+            if True or DO_PLOTS:
+                make_coasting_plot(
+                    self.sim_drive_coast.cyc0,
+                    self.sim_drive_coast.cyc,
+                    use_mph=False,
+                    title="Test That We Can Coast",
+                    save_file='junk-test-that-we-can-coast.png')
+        if USE_RUST:
+            self.assertFalse(
+                self.ru_sim_drive.sim_params.allow_coast,
+                "allow_coast is off by default")
+            self.assertTrue(
+                self.ru_sim_drive_coast.sim_params.allow_coast,
+                "Ensure allow_coast is on")
+            self.assertEqual(17.0, self.ru_sim_drive_coast.sim_params.coast_start_speed_m_per_s)
+            self.assertFalse(
+                np.array(self.ru_sim_drive.impose_coast).any(),
+                "All impose_coast starts out False")
+            while self.ru_sim_drive_coast.i < len(self.ru_trapz.time_s):
+                self.ru_sim_drive_coast.sim_drive_step()
+            max_trace_miss_coast_m__s = np.absolute(
+                np.array(self.ru_trapz.mps) - np.array(self.ru_sim_drive_coast.mps_ach)).max()
+            self.assertTrue(
+                max_trace_miss_coast_m__s > 1.0,
+                f"Max trace miss: {max_trace_miss_coast_m__s} m/s")
+            self.assertFalse(self.ru_sim_drive_coast.impose_coast[0])
+            if True or DO_PLOTS:
+                make_coasting_plot(
+                    self.ru_sim_drive_coast.cyc0,
+                    self.ru_sim_drive_coast.cyc,
+                    use_mph=False,
+                    title="Test That We Can Coast",
+                    save_file='junk-test-that-we-can-coast-rust.png')
 
     def test_eco_approach_modeling(self):
         "Test a simplified model of eco-approach"

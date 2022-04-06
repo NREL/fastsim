@@ -549,6 +549,11 @@ impl RustSimDrive{
     // comments preceding a struct, method, or function definition with `///` instead of `\\`
     // get interpreted as doc strings in python
 
+    /// Provides the gap-with lead vehicle from start to finish
+    pub fn gap_to_lead_vehicle_m(&self) -> PyResult<Vec<f64>>{
+      Ok(self.gap_to_lead_vehicle_m_rust().to_vec())
+    }
+
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
     /// Arguments
     /// ------------
