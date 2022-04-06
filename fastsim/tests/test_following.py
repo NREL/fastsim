@@ -336,9 +336,9 @@ class TestFollowing(unittest.TestCase):
                                             veh.lead_offset_m = 0.0
                                             veh.idm_minimum_gap_m = s_min_m
                                             veh.idm_delta = delta
-                                            veh.idm_accel_m__s2 = a_m__s2
-                                            veh.idm_decel_m__s2 = b_m__s2
-                                            veh.idm_v_desired_m__s = v_d_m__s
+                                            veh.idm_accel_m_per_s2 = a_m__s2
+                                            veh.idm_decel_m_per_s2 = b_m__s2
+                                            veh.idm_v_desired_m_per_s = v_d_m__s
                                             veh.idm_dt_headway_s = dt_h_s
                                             sd = fastsim.simdrive.SimDriveJit(udds, veh)
                                             sd.sim_params.follow_allow = True

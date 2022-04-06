@@ -221,12 +221,12 @@ class Vehicle(object):
     lead_accel_coef_s2: float = 1.0 # m / (m/s2)
     
     # IDM - Intelligent Driver Model, Adaptive Cruise Control version
-    idm_v_desired_m__s: float = 33.33
+    idm_v_desired_m_per_s: float = 33.33
     idm_dt_headway_s: float = 1.0
     idm_minimum_gap_m: float = 2.0
     idm_delta: float = 4.0
-    idm_accel_m__s2: float = 1.0
-    idm_decel_m__s2: float = 1.5
+    idm_accel_m_per_s2: float = 1.0
+    idm_decel_m_per_s2: float = 1.5
 
     @classmethod
     def from_vehdb(cls, vnum:int, verbose:bool=False):

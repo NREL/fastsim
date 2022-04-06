@@ -111,7 +111,7 @@ pub fn accel_array_for_constant_jerk(nmax:usize, a0:f64, k:f64, dt:f64) -> Array
     Array1::from_vec(accels)
 }
 
-pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(accel_for_constant_jerk, m)?)?;
     m.add_function(wrap_pyfunction!(speed_for_constant_jerk, m)?)?;

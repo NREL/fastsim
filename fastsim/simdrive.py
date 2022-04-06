@@ -425,12 +425,12 @@ class SimDrive(object):
         """
         # PARAMETERS
         delta = self.veh.idm_delta
-        a_m__s2 = self.veh.idm_accel_m__s2 # acceleration (m/s2)
-        b_m__s2 = self.veh.idm_decel_m__s2 # deceleration (m/s2)
+        a_m__s2 = self.veh.idm_accel_m_per_s2 # acceleration (m/s2)
+        b_m__s2 = self.veh.idm_decel_m_per_s2 # deceleration (m/s2)
         dt_headway_s = self.veh.idm_dt_headway_s
         s0_m = self.veh.idm_minimum_gap_m # we assume vehicle's start out "minimum gap" apart
-        if self.veh.idm_v_desired_m__s > 0:
-            v_desired_m__s = self.veh.idm_v_desired_m__s
+        if self.veh.idm_v_desired_m_per_s > 0:
+            v_desired_m__s = self.veh.idm_v_desired_m_per_s
         else:
             v_desired_m__s = self.cyc0.mps.max()
         # DERIVED VALUES
