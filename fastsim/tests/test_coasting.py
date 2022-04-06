@@ -101,11 +101,11 @@ def make_dvdd_plot(
         coast_to_break_speed_m__s = 5.0 # m/s
     TOL = 1e-6
     import matplotlib.pyplot as plt
-    dvs = cyc.mps[1:] - cyc.mps[:-1]
-    vavgs = 0.5 * (cyc.mps[1:] + cyc.mps[:-1])
-    grades = cyc.grade[:-1]
+    dvs = np.array(cyc.mps)[1:] - np.array(cyc.mps)[:-1]
+    vavgs = 0.5 * (np.array(cyc.mps)[1:] + np.array(cyc.mps[:-1]))
+    grades = np.array(cyc.grade)[:-1]
     unique_grades = np.sort(np.unique(grades))
-    dds = vavgs * cyc.time_s[1:]
+    dds = vavgs * np.array(cyc.time_s)[1:]
     ks = dvs / dds
     ks[dds<TOL] = 0.0
 
@@ -674,52 +674,104 @@ class TestCoasting(unittest.TestCase):
     
     def test_logic_to_enter_eco_approach_automatically(self):
         "Test that we can auto-enter eco-approach"
-        trapz = self.trapz.copy()
-        veh = fastsim.vehicle.Vehicle.from_vehdb(5)
-        sd = fastsim.simdrive.SimDrive(trapz, veh)
-        sd.sim_params.allow_coast = True
-        sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.verbose = False
-        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
-        sd.sim_drive()
-        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-        if DO_PLOTS:
-            make_coasting_plot(
-                sd.cyc0,
-                sd.cyc,
-                use_mph=False,
-                title="Logic to Enter Eco-Approach Automatically (no 1)",
-                save_file='junk-test-logic-to-enter-eco-approach-automatically-1.png')
-        trapz2 = fastsim.cycle.Cycle.from_dict(
-            fastsim.cycle.resample(
-                fastsim.cycle.make_cycle(
-                    [0.0, 10.0, 200.0, 210.0, 300.0],
-                    [0.0, 20.0, 20.0, 0.0, 0.0],
-                ),
-                new_dt=1.0
+        if USE_PYTHON:
+            trapz = self.trapz.copy()
+            veh = fastsim.vehicle.Vehicle.from_vehdb(5)
+            sd = fastsim.simdrive.SimDrive(trapz, veh)
+            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_start_speed_m_per_s = -1
+            sd.sim_params.verbose = False
+            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sd.sim_drive()
+            self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+            if DO_PLOTS:
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="Logic to Enter Eco-Approach Automatically (no 1)",
+                    save_file='junk-test-logic-to-enter-eco-approach-automatically-1.png')
+            trapz2 = fastsim.cycle.Cycle.from_dict(
+                fastsim.cycle.resample(
+                    fastsim.cycle.make_cycle(
+                        [0.0, 10.0, 200.0, 210.0, 300.0],
+                        [0.0, 20.0, 20.0, 0.0, 0.0],
+                    ),
+                    new_dt=1.0
+                )
             )
-        )
-        veh = fastsim.vehicle.Vehicle.from_vehdb(5)
-        sd = fastsim.simdrive.SimDrive(trapz2, veh)
-        sd.sim_params.allow_coast = True
-        sd.sim_params.coast_start_speed_m_per_s = -1
-        sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
-        sd.sim_params.verbose = False
-        sd.sim_drive()
-        self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-        if DO_PLOTS:
-            make_coasting_plot(
-                sd.cyc0,
-                sd.cyc,
-                use_mph=False,
-                title="Logic to Enter Eco-Approach Automatically (no 2)",
-                save_file='junk-test-logic-to-enter-eco-approach-automatically-2.png')
-            make_dvdd_plot(
-                sd.cyc,
-                use_mph=False,
-                save_file='junk-test-logic-to-enter-eco-approach-automatically-3-dvdd.png',
-                coast_to_break_speed_m__s=11.0
-            )
+            veh = fastsim.vehicle.Vehicle.from_vehdb(5)
+            sd = fastsim.simdrive.SimDrive(trapz2, veh)
+            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_start_speed_m_per_s = -1
+            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sd.sim_params.verbose = False
+            sd.sim_drive()
+            self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
+            if DO_PLOTS:
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="Logic to Enter Eco-Approach Automatically (no 2)",
+                    save_file='junk-test-logic-to-enter-eco-approach-automatically-2.png')
+                make_dvdd_plot(
+                    sd.cyc,
+                    use_mph=False,
+                    save_file='junk-test-logic-to-enter-eco-approach-automatically-3-dvdd.png',
+                    coast_to_break_speed_m__s=11.0
+                )
+        if USE_RUST:
+            trapz = self.ru_trapz.copy()
+            veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
+            sd = fastsim.simdrive.RustSimDrive(trapz, veh)
+            sim_params = sd.sim_params
+            sim_params.allow_coast = True
+            sim_params.coast_start_speed_m_per_s = -1
+            sim_params.verbose = False
+            sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sd.sim_params = sim_params
+            sd.sim_drive()
+            self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
+            if DO_PLOTS:
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="Logic to Enter Eco-Approach Automatically (no 1)",
+                    save_file='junk-test-logic-to-enter-eco-approach-automatically-1-rust.png')
+            trapz2 = fastsim.cycle.Cycle.from_dict(
+                fastsim.cycle.resample(
+                    fastsim.cycle.make_cycle(
+                        [0.0, 10.0, 200.0, 210.0, 300.0],
+                        [0.0, 20.0, 20.0, 0.0, 0.0],
+                    ),
+                    new_dt=1.0
+                )
+            ).to_rust()
+            veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
+            sd = fastsim.simdrive.RustSimDrive(trapz2, veh)
+            sim_params = sd.sim_params
+            sim_params.allow_coast = True
+            sim_params.coast_start_speed_m_per_s = -1
+            sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sim_params.verbose = False
+            sd.sim_params = sim_params
+            sd.sim_drive()
+            self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
+            if DO_PLOTS:
+                make_coasting_plot(
+                    sd.cyc0,
+                    sd.cyc,
+                    use_mph=False,
+                    title="Logic to Enter Eco-Approach Automatically (no 2)",
+                    save_file='junk-test-logic-to-enter-eco-approach-automatically-2-rust.png')
+                make_dvdd_plot(
+                    sd.cyc,
+                    use_mph=False,
+                    save_file='junk-test-logic-to-enter-eco-approach-automatically-3-dvdd-rust.png',
+                    coast_to_break_speed_m__s=11.0
+                )
 
     def test_that_coasting_works_going_uphill(self):
         "Test coasting logic while hill climbing"
