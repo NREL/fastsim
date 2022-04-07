@@ -383,22 +383,42 @@ class TestFollowing(unittest.TestCase):
     
     def test_that_we_can_use_the_idm(self):
         "Tests use of the IDM model for following"
-        self.sd.sim_params.follow_model = fastsim.simdrive.FOLLOW_MODEL_IDM
-        self.sd.sim_drive()
-        gaps_m = self.sd.gap_to_lead_vehicle_m
-        self.assertTrue((gaps_m > self.initial_gap_m).any())
-        if DO_PLOTS:
-            from fastsim.tests.test_coasting import make_coasting_plot
-            make_coasting_plot(
-                self.sd.cyc0, self.sd.cyc,
-                gap_offset_m=self.veh.lead_offset_m,
-                title='test_that_we_can_use_the_idm__1.png',
-                save_file="test_that_we_can_use_the_idm__1.png")
-        self.assertAlmostEqual(
-            self.sd.cyc0.dist_v2_m.sum(),
-            self.sd.cyc.dist_v2_m.sum(),
-            places=-1,
-            msg='Distance traveled should be fairly close')
+        if USE_PYTHON:
+            self.sd.sim_params.follow_model = fastsim.simdrive.FOLLOW_MODEL_IDM
+            self.sd.sim_drive()
+            gaps_m = self.sd.gap_to_lead_vehicle_m
+            self.assertTrue((gaps_m > self.initial_gap_m).any())
+            if DO_PLOTS:
+                from fastsim.tests.test_coasting import make_coasting_plot
+                make_coasting_plot(
+                    self.sd.cyc0, self.sd.cyc,
+                    gap_offset_m=self.veh.lead_offset_m,
+                    title='test_that_we_can_use_the_idm__1.png',
+                    save_file="test_that_we_can_use_the_idm__1.png")
+            self.assertAlmostEqual(
+                self.sd.cyc0.dist_v2_m.sum(),
+                self.sd.cyc.dist_v2_m.sum(),
+                places=-1,
+                msg='Distance traveled should be fairly close')
+        if USE_RUST:
+            sim_params = self.ru_sd.sim_params
+            sim_params.follow_model = fastsim.simdrive.FOLLOW_MODEL_IDM
+            self.ru_sd.sim_params = sim_params
+            self.ru_sd.sim_drive()
+            gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
+            self.assertTrue((gaps_m > self.initial_gap_m).any())
+            if DO_PLOTS:
+                from fastsim.tests.test_coasting import make_coasting_plot
+                make_coasting_plot(
+                    self.ru_sd.cyc0, self.ru_sd.cyc,
+                    gap_offset_m=self.ru_sd.veh.lead_offset_m,
+                    title='Test That We Can use the IDM (RUST)',
+                    save_file="test_that_we_can_use_the_idm__1-rust.png")
+            self.assertAlmostEqual(
+                np.array(self.ru_sd.cyc0.dist_v2_m).sum(),
+                np.array(self.ru_sd.cyc.dist_v2_m).sum(),
+                places=-1,
+                msg='Distance traveled should be fairly close')
 
     def test_sweeping_idm_parameters(self):
         "Tests use of the IDM model for following"
