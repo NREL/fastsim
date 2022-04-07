@@ -7,7 +7,6 @@ from typing import Optional
 import numpy as np
 import re
 import copy
-from copy import deepcopy
 
 import fastsimrust as fsr
 from . import params, cycle, vehicle, inspect_utils
