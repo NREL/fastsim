@@ -217,12 +217,6 @@ pub struct RustVehicle{
     pub val_range_miles: f64,
     pub val_veh_base_cost: f64,
     pub val_msrp: f64,
-    #[pyo3(get, set)]
-    pub lead_offset_m: f64,
-    #[pyo3(get, set)]
-    pub lead_speed_coef_s: f64, // m / (m/s)
-    #[pyo3(get, set)]
-    pub lead_accel_coef_s2: f64, // m / (m/s2)
     // IDM - Intelligent Driver Model, Adaptive Cruise Control version
     #[pyo3(get, set)]
     pub idm_v_desired_m_per_s: f64,
@@ -642,10 +636,6 @@ impl RustVehicle{
         //     (1.0 + veh_cg_m * wheel_coef_of_fric / wheel_base_m)
         // ) / (veh_kg * props.a_grav_mps2)  * props.a_grav_mps2;
 
-        // Custom Following Model
-        let lead_offset_m = 5.0;
-        let lead_speed_coef_s = 1.0; // m / (m/s)
-        let lead_accel_coef_s2 =  1.0; // m / (m/s2)
         // IDM - Intelligent Driver Model, Adaptive Cruise Control version
         let idm_v_desired_m_per_s = 33.33;
         let idm_dt_headway_s = 1.0;
@@ -763,9 +753,6 @@ impl RustVehicle{
             fc_mass_kg,
             fs_mass_kg,
             mc_perc_out_array,
-            lead_offset_m,
-            lead_speed_coef_s,
-            lead_accel_coef_s2,
             idm_v_desired_m_per_s,
             idm_dt_headway_s,
             idm_minimum_gap_m,

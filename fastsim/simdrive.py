@@ -16,9 +16,6 @@ from .vehicle import CONV, HEV, PHEV, BEV
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
 
 
-FOLLOW_MODEL_CUSTOM = 0
-FOLLOW_MODEL_IDM = 1
-
 class SimDriveParams(object):
     """Class containing attributes used for configuring sim_drive.
     Usually the defaults are ok, and there will be no need to use this.
@@ -68,7 +65,6 @@ class SimDriveParams(object):
         self.coast_start_speed_m_per_s = 38.0 # m/s
         self.coast_verbose = False
         self.follow_allow = False
-        self.follow_model = FOLLOW_MODEL_CUSTOM # 0 - custom, 1 - Intelligent Driver Model
 
         # EPA fuel economy adjustment parameters
         self.max_epa_adj = 0.3 # maximum EPA adjustment factor
@@ -288,10 +284,7 @@ class SimDrive(object):
         "Provides the gap-with lead vehicle from start to finish"
         gaps_m = self.cyc0.dist_v2_m.cumsum() - self.cyc.dist_v2_m.cumsum()
         if self.sim_params.follow_allow:
-            if self.sim_params.follow_model == FOLLOW_MODEL_CUSTOM:
-                gaps_m += self.veh.lead_offset_m
-            elif self.sim_params.follow_model == FOLLOW_MODEL_IDM:
-                gaps_m += self.veh.idm_minimum_gap_m
+            gaps_m += self.veh.idm_minimum_gap_m
         return gaps_m
 
     def sim_drive(self, init_soc:Optional[float]=None, aux_in_kw_override:Optional[np.ndarray]=None):
@@ -446,52 +439,6 @@ class SimDrive(object):
         accel_target_m__s2 = a_m__s2 * (1.0 - ((v0_m__s / v_desired_m__s) ** delta) - ((s_target_m / s_m)**2))
         self.cyc.mps[i] = max(v0_m__s + (accel_target_m__s2 * self.cyc.dt_s[i]), 0.0)
 
-    def _set_speed_for_target_gap_using_custom_model(self, i):
-        """
-        - i: non-negative integer, the step index
-        RETURN: None
-        EFFECTS:
-        - sets the next speed (m/s)
-        """
-        lead_accel_m__s2 = (self.cyc0.mps[i] - self.cyc0.mps[i-1]) / self.cyc0.dt_s[i]
-        # target gap cannot be less than the lead offset (m)
-        target_gap_m = float(
-            max(
-                self.veh.lead_offset_m
-                + self.veh.lead_speed_coef_s * self.cyc0.mps[i]
-                + self.veh.lead_accel_coef_s2 * lead_accel_m__s2,
-                self.veh.lead_offset_m
-            )
-        )
-        lead_v0_m__s = self.cyc0.mps[i-1]
-        lead_v1_m__s = self.cyc0.mps[i]
-        lead_vavg_m__s = 0.5 * (lead_v0_m__s + lead_v1_m__s)
-        lead_dd_m = lead_vavg_m__s * self.cyc0.dt_s[i]
-        lead_d0_m = self.cyc0.dist_v2_m[:i].sum() + self.veh.lead_offset_m
-        d0_m = self.cyc.dist_v2_m[:i].sum()
-        gap0_m = lead_d0_m - d0_m
-        # Determine the target distance to cover for next step, dd_m
-        #   target_gap_m = (lead_d0_m - d0_m) + (lead_dd_m - dd_m)
-        #                = gap0_m + lead_dd_m - dd_m
-        # reorganizing:
-        #   dd_m = gap0_m + lead_dd_m - target_gap_m
-        accel_max_m__s2 = 2.0
-        accel_min_m__s2 = -2.0
-        lead_d1_m = lead_d0_m + lead_dd_m
-        d1_nopass_m = lead_d1_m - self.veh.lead_offset_m
-        dd_nopass_m = d1_nopass_m - d0_m
-        dd_max_m = 0.5 * (self.mps_ach[i-1] + max(self.mps_ach[i-1] + accel_max_m__s2 * self.cyc.dt_s[i], 0.0)) * self.cyc.dt_s[i]
-        dd_min_m = 0.5 * (self.mps_ach[i-1] + max(self.mps_ach[i-1] + accel_min_m__s2 * self.cyc.dt_s[i], 0.0)) * self.cyc.dt_s[i]
-        dd_m = min(max(lead_dd_m + gap0_m - target_gap_m, dd_min_m), dd_max_m)
-        dd_m = max(min(dd_m, dd_nopass_m), 0.0)
-        # Determine the next speed based on target distance to cover
-        #   dd = vavg * dt = 0.5 * (v1 + v0) * dt
-        #   2*dd/dt = v1 + v0
-        # re-arranging:
-        #   v1 = 2*dd/dt - v0
-        self.cyc.mps[i] = max(
-            ((2.0 * dd_m) / self.cyc.dt_s[i]) - self.mps_ach[i-1], 0.0)
-
     def _set_speed_for_target_gap(self, i):
         """
         - i: non-negative integer, the step index
@@ -499,12 +446,7 @@ class SimDrive(object):
         EFFECTS:
         - sets the next speed (m/s)
         """
-        if self.sim_params.follow_model == FOLLOW_MODEL_CUSTOM:
-            self._set_speed_for_target_gap_using_custom_model(i)
-        elif self.sim_params.follow_model == FOLLOW_MODEL_IDM:
-            self._set_speed_for_target_gap_using_idm(i)
-        # TODO: how to raise an error or warning here? Numba doesn't like `raise Exception` apparently...
-        # ... Perhaps just print out a warning?
+        self._set_speed_for_target_gap_using_idm(i)
 
     def sim_drive_step(self):
         """

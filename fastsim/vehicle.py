@@ -207,19 +207,6 @@ class Vehicle(object):
     no_elec_sys: bool = False
     no_elec_aux: bool = False
 
-    # functional form
-    # def target_gap():
-    #     accel_m__s2 = (mpsAch[i] - mpsAch[i-1]) / cyc.dts[i]
-    #     lead_accel_m__s2 = (cyc0.cycMps[i] - cyc0.cycMps[i-1]) / cyc0.secs[i]
-    #     closing_accel_m__s2 = accel_m__s2 - lead_accel_m__s2
-    #     return lead_offset + lead_speed_coef * mpsAch[i] + lead_accel_coef_s2 * closing_accel_m__s2
-    # define attributes for eco-cruise behavior (gap)
-    lead_offset_m: float = 5.0
-    # function of the vehicle speed
-    lead_speed_coef_s: float = 1.0 # m / (m/s)
-    # with respect to the closing acceleration
-    lead_accel_coef_s2: float = 1.0 # m / (m/s2)
-    
     # IDM - Intelligent Driver Model, Adaptive Cruise Control version
     idm_v_desired_m_per_s: float = 33.33
     idm_dt_headway_s: float = 1.0

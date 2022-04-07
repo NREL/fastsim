@@ -122,13 +122,7 @@ impl RustSimDrive {
     pub fn gap_to_lead_vehicle_m_rust(&self) -> Array1<f64> {
         let mut gaps_m = ndarrcumsum(&self.cyc0.dist_v2_m()) - ndarrcumsum(&self.cyc.dist_v2_m());
         if self.sim_params.follow_allow {
-            if self.sim_params.follow_model == 0 { // FOLLOW_MODEL_CUSTOM
-                gaps_m += self.veh.lead_offset_m;
-            } else if self.sim_params.follow_model == 1 { // FOLLOW_MODEL_IDM
-                gaps_m += self.veh.idm_minimum_gap_m;
-            } else {
-                panic!("unhandled follow_model: {}", self.sim_params.follow_model);
-            }
+            gaps_m += self.veh.idm_minimum_gap_m;
         }
         gaps_m
     }
@@ -314,75 +308,8 @@ impl RustSimDrive {
     /// RETURN: None
     /// EFFECTS:
     /// - sets the next speed (m/s)
-    pub fn set_speed_for_target_gap_using_custom_model(&mut self, i:usize){
-        let lead_accel_m_per_s2 =
-            (self.cyc0.mps[i] - self.cyc0.mps[i-1])
-            / self.cyc0.dt_s()[i]
-        ;
-        // target gap cannot be less than the lead offset (m)
-        let target_gap_m = max(
-            self.veh.lead_offset_m
-            + self.veh.lead_speed_coef_s * self.cyc0.mps[i]
-            + self.veh.lead_accel_coef_s2 * lead_accel_m_per_s2,
-            self.veh.lead_offset_m
-        );
-        let lead_v0_m_per_s = self.cyc0.mps[i-1];
-        let lead_v1_m_per_s = self.cyc0.mps[i];
-        let lead_vavg_m_per_s = 0.5 * (lead_v0_m_per_s + lead_v1_m_per_s);
-        let lead_dd_m = lead_vavg_m_per_s * self.cyc0.dt_s()[i];
-        let lead_d0_m = self.cyc0.dist_v2_m().slice(s![0..i]).sum() + self.veh.lead_offset_m;
-        let d0_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
-        let gap0_m = lead_d0_m - d0_m;
-        // Determine the target distance to cover for next step, dd_m
-        //   target_gap_m = (lead_d0_m - d0_m) + (lead_dd_m - dd_m)
-        //                = gap0_m + lead_dd_m - dd_m
-        // reorganizing:
-        //   dd_m = gap0_m + lead_dd_m - target_gap_m
-        let accel_max_m_per_s2 = 2.0;
-        let accel_min_m_per_s2 = -2.0;
-        let lead_d1_m = lead_d0_m + lead_dd_m;
-        let d1_nopass_m = lead_d1_m - self.veh.lead_offset_m;
-        let dd_nopass_m = d1_nopass_m - d0_m;
-        let dd_max_m = 0.5 * (
-            self.mps_ach[i-1]
-            + max(
-                self.mps_ach[i-1] + accel_max_m_per_s2 * self.cyc.dt_s()[i],
-                0.0
-            )
-        ) * self.cyc.dt_s()[i];
-        let dd_min_m = 0.5 * (
-            self.mps_ach[i-1]
-            + max(
-                self.mps_ach[i-1]
-                + accel_min_m_per_s2 * self.cyc.dt_s()[i],
-                0.0
-            )
-        ) * self.cyc.dt_s()[i];
-        let dd_m = min(max(lead_dd_m + gap0_m - target_gap_m, dd_min_m), dd_max_m);
-        let dd_m = max(min(dd_m, dd_nopass_m), 0.0);
-        // Determine the next speed based on target distance to cover
-        //   dd = vavg * dt = 0.5 * (v1 + v0) * dt
-        //   2*dd/dt = v1 + v0
-        // re-arranging:
-        //   v1 = 2*dd/dt - v0
-        self.cyc.mps[i] = max(
-            ((2.0 * dd_m) / self.cyc.dt_s()[i]) - self.mps_ach[i-1],
-            0.0
-        );
-    }
-
-    /// - i: non-negative integer, the step index
-    /// RETURN: None
-    /// EFFECTS:
-    /// - sets the next speed (m/s)
     pub fn set_speed_for_target_gap(&mut self, i:usize){
-        if self.sim_params.follow_model == 0 { // FOLLOW_MODEL_CUSTOM
-            self.set_speed_for_target_gap_using_custom_model(i);
-        } else if self.sim_params.follow_model == 1 { // FOLLOW_MODEL_IDM
-            self.set_speed_for_target_gap_using_idm(i);
-        } else {
-            panic!("unhandled follow model {}", self.sim_params.follow_model);
-        }
+        self.set_speed_for_target_gap_using_idm(i);
     }
 
     /// Step through 1 time step.
