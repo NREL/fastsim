@@ -141,7 +141,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
             out['adjCombEssKwhPerMile'] = out['adjCombKwhPerMile'] * params.chg_eff
 
             # range for combined city/highway
-            out['netRangeMiles'] = veh.max_ess_kwh / out['adjCombEssKwhPerMile']
+            out['netRangeMiles'] = veh.ess_max_kwh / out['adjCombEssKwhPerMile']
 
         else: # non-PEV cases
             zero_keys = ['adjUddsKwhPerMile', 'adjHwyKwhPerMile', 'adjCombKwhPerMile',
@@ -172,7 +172,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
             phev_calcs = {} # init dict for phev calcs
             phev_calcs['regenSocBuffer'] = min(
                 ((0.5 * veh.veh_kg * ((60 * (1 / params.MPH_PER_MPS)) ** 2)) * (1 / 3600) * (1 / 1000)
-                * veh.max_regen * veh.mc_peak_eff) / veh.max_ess_kwh,
+                * veh.max_regen * veh.mc_peak_eff) / veh.ess_max_kwh,
                 (veh.max_soc - veh.min_soc) / 2
             )
 
@@ -183,7 +183,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 # charge depletion cycle has already been simulated
                 # charge depletion battery kW-hr
                 phev_calc['cdEssKwh'] = (
-                    veh.max_soc - veh.min_soc) * veh.max_ess_kwh
+                    veh.max_soc - veh.min_soc) * veh.ess_max_kwh
                 # charge depletion fuel gallons
                 phev_calc['cdFsGal'] = 0 # sd[key].fsKwhOutAch.sum() / props.kWhPerGGE
 
@@ -191,7 +191,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 phev_calc['deltaSoc'] = (sd[key].soc[0] - sd[key].soc[-1])
                 # total number of miles in charge depletion mode, assuming constant kWh_per_mi
                 phev_calc['totalCdMiles'] = (veh.max_soc - veh.min_soc) * \
-                    sd[key].veh.max_ess_kwh / sd[key].battery_kwh_per_mi
+                    sd[key].veh.ess_max_kwh / sd[key].battery_kwh_per_mi
                 # float64 number of cycles in charge depletion mode, up to transition
                 phev_calc['cdCycs'] = phev_calc['totalCdMiles'] / np.array(sd[key].dist_mi).sum()
                 # fraction of transition cycle spent in charge depletion
@@ -220,7 +220,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 # charge depletion battery kW-hr
                 phev_calc['transEssKwh'] = (phev_calc['cd_ess_kWh__mi'] * np.array(sd[key].dist_mi).sum() * 
                     phev_calc['cdFracInTrans'])
-                    # (sd[key].soc[0] - sd[key].soc[-1]) * veh.max_ess_kwh # not how excel does it
+                    # (sd[key].soc[0] - sd[key].soc[-1]) * veh.ess_max_kwh # not how excel does it
                 # charge depletion fuel gallons
                     # sd[key].fsKwhOutAch.sum() / \
                     #     props.kWhPerGGE # not how excel does it
@@ -238,7 +238,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 sd[key].sim_params.verbose = sim_drive_verbose
                 sd[key].sim_drive(initSoc)
                 # charge sustaining battery kW-hr
-                phev_calc['csEssKwh'] = 0 # (sd[key].soc[0] - sd[key].soc[-1]) * veh.max_ess_kwh
+                phev_calc['csEssKwh'] = 0 # (sd[key].soc[0] - sd[key].soc[-1]) * veh.ess_max_kwh
                 # charge sustaining fuel gallons
                 phev_calc['csFsGal'] = np.array(sd[key].fs_kwh_out_ach).sum() / props.kwh_per_gge
                 # charge depletion fuel gallons, dependent on phev_calc['transFsGal']
@@ -436,7 +436,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
             out['netPhevCDMiles'] = 0.55 * phev_calcs['udds']['adjCdMiles'] + \
                                 0.45 * phev_calcs['hwy']['adjCdMiles']
            
-            out['netRangeMiles'] = (veh.fuel_stor_kwh / props.kwh_per_gge - 
+            out['netRangeMiles'] = (veh.fs_kwh / props.kwh_per_gge - 
                 out['netPhevCDMiles'] / out['adjCdCombMpgge']
                 ) * out['adjCsCombMpgge'] + out['netPhevCDMiles']
  

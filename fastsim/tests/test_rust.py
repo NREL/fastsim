@@ -53,7 +53,7 @@ class TestRust(unittest.TestCase):
             "ess_desired_kw_4fc_eff",
             "accel_buff_soc",
             "regen_buff_soc",
-            "cur_max_ess_kw_out",
+            "cur_ess_max_kw_out",
             "cur_max_mc_elec_kw_in",
             "cur_max_ess_chg_kw",
             "ess_cur_kwh",
@@ -99,7 +99,7 @@ class TestRust(unittest.TestCase):
             self.assertAlmostEqual(py_sd.veh.drag_coef, ru_sd.veh.drag_coef)
             self.assertAlmostEqual(py_sd.veh.frontal_area_m2, ru_sd.veh.frontal_area_m2)
             self.assertAlmostEqual(py_sd.veh.mc_max_elec_in_kw, ru_sd.veh.mc_max_elec_in_kw)
-            self.assertAlmostEqual(py_sd.veh.max_ess_kwh, ru_sd.veh.max_ess_kwh)
+            self.assertAlmostEqual(py_sd.veh.ess_max_kwh, ru_sd.veh.ess_max_kwh)
             self.assertAlmostEqual(py_sd.veh.ess_round_trip_eff, ru_sd.veh.ess_round_trip_eff)
             py_sd.sim_drive_walk(0.0)
             ru_sd.sim_drive_walk(0.0)

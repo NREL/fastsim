@@ -181,7 +181,7 @@ class SimDrive(object):
         self.fc_max_kw_in = np.zeros(self.cyc.len, dtype=np.float64)
         self.cur_max_fc_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
         self.ess_cap_lim_dischg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_ess_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
+        self.cur_ess_max_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
         self.cur_max_avail_elec_kw = np.zeros(self.cyc.len, dtype=np.float64)
         self.ess_cap_lim_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
         self.cur_max_ess_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
@@ -324,7 +324,7 @@ class SimDrive(object):
                     roadway_chg_kj = np.sum(self.roadway_chg_kw_out_ach * self.cyc.dt_s)
                     if (fuel_kj + roadway_chg_kj) > 0:
                         ess_2fuel_kwh = np.abs(
-                            (self.soc[0] - self.soc[-1]) * self.veh.max_ess_kwh * 3_600 / (fuel_kj + roadway_chg_kj)
+                            (self.soc[0] - self.soc[-1]) * self.veh.ess_max_kwh * 3_600 / (fuel_kj + roadway_chg_kj)
                         )
                     else:
                         ess_2fuel_kwh = 0.0
@@ -373,7 +373,7 @@ class SimDrive(object):
         
         self.cyc_met[0] = True
         self.cur_soc_target[0] = self.veh.max_soc
-        self.ess_cur_kwh[0] = init_soc * self.veh.max_ess_kwh
+        self.ess_cur_kwh[0] = init_soc * self.veh.ess_max_kwh
         self.soc[0] = init_soc
         self.mps_ach[0] = self.cyc0.mps[0]
         self.mph_ach[0] = self.cyc0.mph[0]
@@ -512,46 +512,46 @@ class SimDrive(object):
 
         # max fuel storage power output
         self.cur_max_fs_kw_out[i] = min(
-            self.veh.max_fuel_stor_kw, 
+            self.veh.fs_max_kw, 
             self.fs_kw_out_ach[i-1] + (
-                (self.veh.max_fuel_stor_kw / self.veh.fuel_stor_secs_to_peak_pwr) * (self.cyc.dt_s[i])))
+                (self.veh.fs_max_kw / self.veh.fs_secs_to_peak_pwr) * (self.cyc.dt_s[i])))
         # maximum fuel storage power output rate of change
         self.fc_trans_lim_kw[i] = self.fc_kw_out_ach[i-1] + (
-            self.veh.max_fuel_conv_kw / self.veh.fuel_conv_secs_to_peak_pwr * self.cyc.dt_s[i]
+            self.veh.fc_max_kw / self.veh.fc_sec_to_peak_pwr * self.cyc.dt_s[i]
         )
 
-        self.fc_max_kw_in[i] = min(self.cur_max_fs_kw_out[i], self.veh.max_fuel_stor_kw)
-        self.fc_fs_lim_kw[i] = self.veh.max_fuel_conv_kw
+        self.fc_max_kw_in[i] = min(self.cur_max_fs_kw_out[i], self.veh.fs_max_kw)
+        self.fc_fs_lim_kw[i] = self.veh.fc_max_kw
         self.cur_max_fc_kw_out[i] = min(
-            self.veh.max_fuel_conv_kw, self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i])
+            self.veh.fc_max_kw, self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i])
 
-        if self.veh.max_ess_kwh == 0 or self.soc[i-1] < self.veh.min_soc:
+        if self.veh.ess_max_kwh == 0 or self.soc[i-1] < self.veh.min_soc:
             self.ess_cap_lim_dischg_kw[i] = 0.0
 
         else:
-            self.ess_cap_lim_dischg_kw[i] = self.veh.max_ess_kwh * np.sqrt(self.veh.ess_round_trip_eff) * 3.6e3 * (
+            self.ess_cap_lim_dischg_kw[i] = self.veh.ess_max_kwh * np.sqrt(self.veh.ess_round_trip_eff) * 3.6e3 * (
                 self.soc[i-1] - self.veh.min_soc) / self.cyc.dt_s[i]
-        self.cur_max_ess_kw_out[i] = min(
-            self.veh.max_ess_kw, self.ess_cap_lim_dischg_kw[i])
+        self.cur_ess_max_kw_out[i] = min(
+            self.veh.ess_max_kw, self.ess_cap_lim_dischg_kw[i])
 
-        if self.veh.max_ess_kwh == 0 or self.veh.max_ess_kw == 0:
+        if self.veh.ess_max_kwh == 0 or self.veh.ess_max_kw == 0:
             self.ess_cap_lim_chg_kw[i] = 0
 
         else:
             self.ess_cap_lim_chg_kw[i] = max(
-                (self.veh.max_soc - self.soc[i-1]) * self.veh.max_ess_kwh * 1 / np.sqrt(self.veh.ess_round_trip_eff) / 
+                (self.veh.max_soc - self.soc[i-1]) * self.veh.ess_max_kwh * 1 / np.sqrt(self.veh.ess_round_trip_eff) / 
                 (self.cyc.dt_s[i] * 1 / 3.6e3), 
                 0
             )
 
-        self.cur_max_ess_chg_kw[i] = min(self.ess_cap_lim_chg_kw[i], self.veh.max_ess_kw)
+        self.cur_max_ess_chg_kw[i] = min(self.ess_cap_lim_chg_kw[i], self.veh.ess_max_kw)
 
         # Current maximum electrical power that can go toward propulsion, not including motor limitations
         if self.veh.fc_eff_type == H2FC:
-            self.cur_max_elec_kw[i] = self.cur_max_fc_kw_out[i] + self.cur_max_roadway_chg_kw[i] + self.cur_max_ess_kw_out[i] - self.aux_in_kw[i]
+            self.cur_max_elec_kw[i] = self.cur_max_fc_kw_out[i] + self.cur_max_roadway_chg_kw[i] + self.cur_ess_max_kw_out[i] - self.aux_in_kw[i]
 
         else:
-            self.cur_max_elec_kw[i] = self.cur_max_roadway_chg_kw[i] + self.cur_max_ess_kw_out[i] - self.aux_in_kw[i]
+            self.cur_max_elec_kw[i] = self.cur_max_roadway_chg_kw[i] + self.cur_ess_max_kw_out[i] - self.aux_in_kw[i]
 
         # Current maximum electrical power that can go toward propulsion, including motor limitations
         self.cur_max_avail_elec_kw[i] = min(self.cur_max_elec_kw[i], self.veh.mc_max_elec_in_kw)
@@ -559,7 +559,7 @@ class SimDrive(object):
         if self.cur_max_elec_kw[i] > 0:
             # limit power going into e-machine controller to
             if self.cur_max_avail_elec_kw[i] == max(self.veh.mc_kw_in_array):
-                self.mc_elec_in_lim_kw[i] = min(self.veh.mc_kw_out_array[-1], self.veh.max_motor_kw)
+                self.mc_elec_in_lim_kw[i] = min(self.veh.mc_kw_out_array[-1], self.veh.mc_max_kw)
             else:
                 self.mc_elec_in_lim_kw[i] = min(
                     self.veh.mc_kw_out_array[
@@ -567,58 +567,58 @@ class SimDrive(object):
                             max(self.veh.mc_kw_in_array) - 0.01, 
                             self.cur_max_avail_elec_kw[i]
                         )) - 1],
-                    self.veh.max_motor_kw)
+                    self.veh.mc_max_kw)
         else:
             self.mc_elec_in_lim_kw[i] = 0.0
 
         # Motor transient power limit
         self.mc_transi_lim_kw[i] = abs(
-            self.mc_mech_kw_out_ach[i-1]) + self.veh.max_motor_kw / self.veh.motor_secs_to_peak_pwr * self.cyc.dt_s[i]
+            self.mc_mech_kw_out_ach[i-1]) + self.veh.mc_max_kw / self.veh.mc_sec_to_peak_pwr * self.cyc.dt_s[i]
 
         self.cur_max_mc_kw_out[i] = max(
             min(
                 self.mc_elec_in_lim_kw[i], 
                 self.mc_transi_lim_kw[i], 
-                np.float64(0 if self.veh.stop_start else 1) * self.veh.max_motor_kw),
-            -self.veh.max_motor_kw
+                np.float64(0 if self.veh.stop_start else 1) * self.veh.mc_max_kw),
+            -self.veh.mc_max_kw
         )
 
         if self.cur_max_mc_kw_out[i] == 0:
             self.cur_max_mc_elec_kw_in[i] = 0
         else:
-            if self.cur_max_mc_kw_out[i] == self.veh.max_motor_kw:
+            if self.cur_max_mc_kw_out[i] == self.veh.mc_max_kw:
                 self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i] / \
                     self.veh.mc_full_eff_array[-1]
             else:
                 self.cur_max_mc_elec_kw_in[i] = (self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array[
                         max(1, np.argmax(
-                            self.veh.mc_kw_out_array > min(self.veh.max_motor_kw - 0.01, self.cur_max_mc_kw_out[i])
+                            self.veh.mc_kw_out_array > min(self.veh.mc_max_kw - 0.01, self.cur_max_mc_kw_out[i])
                             ) - 1
                         )
                     ]
                 )
 
-        if self.veh.max_motor_kw == 0:
+        if self.veh.mc_max_kw == 0:
             self.ess_lim_mc_regen_perc_kw[i] = 0.0
 
         else:
             self.ess_lim_mc_regen_perc_kw[i] = min(
-                (self.cur_max_ess_chg_kw[i] + self.aux_in_kw[i]) / self.veh.max_motor_kw, 1)
+                (self.cur_max_ess_chg_kw[i] + self.aux_in_kw[i]) / self.veh.mc_max_kw, 1)
         if self.cur_max_ess_chg_kw[i] == 0:
             self.ess_lim_mc_regen_kw[i] = 0.0
 
         else:
-            if self.veh.max_motor_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]:
+            if self.veh.mc_max_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]:
                 self.ess_lim_mc_regen_kw[i] = min(
-                    self.veh.max_motor_kw, self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[-1])
+                    self.veh.mc_max_kw, self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[-1])
             else:
                 self.ess_lim_mc_regen_kw[i] = min(
-                    self.veh.max_motor_kw, 
+                    self.veh.mc_max_kw, 
                     self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[
                         max(1, 
                             np.argmax(
                                 self.veh.mc_kw_out_array > min(
-                                    self.veh.max_motor_kw - 0.01, 
+                                    self.veh.mc_max_kw - 0.01, 
                                     self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
                                 )
                             ) - 1
@@ -627,7 +627,7 @@ class SimDrive(object):
                 )
 
         self.cur_max_mech_mc_kw_in[i] = min(
-            self.ess_lim_mc_regen_kw[i], self.veh.max_motor_kw)
+            self.ess_lim_mc_regen_kw[i], self.veh.mc_max_kw)
         self.cur_max_trac_kw[i] = (
             self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac * self.veh.veh_kg * self.props.a_grav_mps2
             / (1 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1_000 * self.max_trac_mps[i]
@@ -837,22 +837,22 @@ class SimDrive(object):
 
         elif self.veh.charging_on:
             self.regen_buff_soc[i] = max(
-                self.veh.max_soc - (self.veh.max_regen_kwh / self.veh.max_ess_kwh), (self.veh.max_soc + self.veh.min_soc) / 2)
+                self.veh.max_soc - (self.veh.max_regen_kwh / self.veh.ess_max_kwh), (self.veh.max_soc + self.veh.min_soc) / 2)
 
         else:
             self.regen_buff_soc[i] = max(
-                (self.veh.max_ess_kwh * self.veh.max_soc - 
+                (self.veh.ess_max_kwh * self.veh.max_soc - 
                     0.5 * self.veh.veh_kg * (self.cyc.mps[i] ** 2) * (1.0 / 1_000) * (1.0 / 3_600) * 
-                    self.veh.mc_peak_eff * self.veh.max_regen) / self.veh.max_ess_kwh, 
+                    self.veh.mc_peak_eff * self.veh.max_regen) / self.veh.ess_max_kwh, 
                 self.veh.min_soc
             )
 
-            self.ess_regen_buff_dischg_kw[i] = min(self.cur_max_ess_kw_out[i], max(
-                0, (self.soc[i-1] - self.regen_buff_soc[i]) * self.veh.max_ess_kwh * 3_600 / self.cyc.dt_s[i]))
+            self.ess_regen_buff_dischg_kw[i] = min(self.cur_ess_max_kw_out[i], max(
+                0, (self.soc[i-1] - self.regen_buff_soc[i]) * self.veh.ess_max_kwh * 3_600 / self.cyc.dt_s[i]))
 
             self.max_ess_regen_buff_chg_kw[i] = min(max(
                     0, 
-                    (self.regen_buff_soc[i] - self.soc[i-1]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s[i]), 
+                    (self.regen_buff_soc[i] - self.soc[i-1]) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s[i]), 
                 self.cur_max_ess_chg_kw[i]
             )
 
@@ -865,27 +865,27 @@ class SimDrive(object):
                     ((self.veh.max_accel_buffer_mph / params.MPH_PER_MPS) ** 2 - self.cyc.mps[i] ** 2) / 
                     (self.veh.max_accel_buffer_mph / params.MPH_PER_MPS) ** 2 * min(
                         self.veh.max_accel_buffer_perc_of_useable_soc * (self.veh.max_soc - self.veh.min_soc), 
-                        self.veh.max_regen_kwh / self.veh.max_ess_kwh
-                    ) * self.veh.max_ess_kwh / self.veh.max_ess_kwh + self.veh.min_soc, 
+                        self.veh.max_regen_kwh / self.veh.ess_max_kwh
+                    ) * self.veh.ess_max_kwh / self.veh.ess_max_kwh + self.veh.min_soc, 
                     self.veh.min_soc
                 ), 
                 self.veh.max_soc
                 )
 
             self.ess_accel_buff_chg_kw[i] = max(
-                0, (self.accel_buff_soc[i] - self.soc[i-1]) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s[i])
+                0, (self.accel_buff_soc[i] - self.soc[i-1]) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s[i])
             self.max_ess_accell_buff_dischg_kw[i] = min(
                 max(
                     0, 
-                    (self.soc[i-1] - self.accel_buff_soc[i]) * self.veh.max_ess_kwh * 3_600 / self.cyc.dt_s[i]), 
-                self.cur_max_ess_kw_out[i]
+                    (self.soc[i-1] - self.accel_buff_soc[i]) * self.veh.ess_max_kwh * 3_600 / self.cyc.dt_s[i]), 
+                self.cur_ess_max_kw_out[i]
             )
 
         if self.regen_buff_soc[i] < self.accel_buff_soc[i]:
             self.ess_accel_regen_dischg_kw[i] = max(
                 min(
-                    (self.soc[i-1] - (self.regen_buff_soc[i] + self.accel_buff_soc[i]) / 2) * self.veh.max_ess_kwh * 3.6e3 / self.cyc.dt_s[i], 
-                    self.cur_max_ess_kw_out[i]
+                    (self.soc[i-1] - (self.regen_buff_soc[i] + self.accel_buff_soc[i]) / 2) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s[i], 
+                    self.cur_ess_max_kw_out[i]
                 ), 
                 -self.cur_max_ess_chg_kw[i]
             )
@@ -894,17 +894,17 @@ class SimDrive(object):
             self.ess_accel_regen_dischg_kw[i] = max(
                 min(
                     self.ess_regen_buff_dischg_kw[i], 
-                    self.cur_max_ess_kw_out[i]), 
+                    self.cur_ess_max_kw_out[i]), 
                 -self.cur_max_ess_chg_kw[i]
             )
 
         elif self.soc[i-1] < self.accel_buff_soc[i]:
             self.ess_accel_regen_dischg_kw[i] = max(
-                min(-1.0 * self.ess_accel_buff_chg_kw[i], self.cur_max_ess_kw_out[i]), -self.cur_max_ess_chg_kw[i])
+                min(-1.0 * self.ess_accel_buff_chg_kw[i], self.cur_ess_max_kw_out[i]), -self.cur_max_ess_chg_kw[i])
 
         else:
             self.ess_accel_regen_dischg_kw[i] = max(
-                min(0, self.cur_max_ess_kw_out[i]), -self.cur_max_ess_chg_kw[i])
+                min(0, self.cur_ess_max_kw_out[i]), -self.cur_max_ess_chg_kw[i])
 
         self.fc_kw_gap_fr_eff[i] = abs(self.trans_kw_out_ach[i] - self.veh.max_fc_eff_kw)
 
@@ -912,32 +912,32 @@ class SimDrive(object):
             self.mc_elec_in_kw_for_max_fc_eff[i] = 0
 
         elif self.trans_kw_out_ach[i] < self.veh.max_fc_eff_kw:
-            if self.fc_kw_gap_fr_eff[i] == self.veh.max_motor_kw:
+            if self.fc_kw_gap_fr_eff[i] == self.veh.mc_max_kw:
                 self.mc_elec_in_kw_for_max_fc_eff[i] = -self.fc_kw_gap_fr_eff[i] / self.veh.mc_full_eff_array[-1]
             else:
                 self.mc_elec_in_kw_for_max_fc_eff[i] = (-self.fc_kw_gap_fr_eff[i] / 
                     self.veh.mc_full_eff_array[max(1, 
-                        np.argmax(self.veh.mc_kw_out_array > min(self.veh.max_motor_kw - 0.01, self.fc_kw_gap_fr_eff[i])) - 1)]
+                        np.argmax(self.veh.mc_kw_out_array > min(self.veh.mc_max_kw - 0.01, self.fc_kw_gap_fr_eff[i])) - 1)]
                 )
 
         else:
-            if self.fc_kw_gap_fr_eff[i] == self.veh.max_motor_kw:
+            if self.fc_kw_gap_fr_eff[i] == self.veh.mc_max_kw:
                 self.mc_elec_in_kw_for_max_fc_eff[i] = self.veh.mc_kw_in_array[len(
                     self.veh.mc_kw_in_array) - 1]
             else:
                 self.mc_elec_in_kw_for_max_fc_eff[i] = self.veh.mc_kw_in_array[np.argmax(
-                    self.veh.mc_kw_out_array > min(self.veh.max_motor_kw - 0.01, self.fc_kw_gap_fr_eff[i])) - 1]
+                    self.veh.mc_kw_out_array > min(self.veh.mc_max_kw - 0.01, self.fc_kw_gap_fr_eff[i])) - 1]
 
         if self.veh.no_elec_sys:
             self.elec_kw_req_4ae[i] = 0
 
         elif self.trans_kw_in_ach[i] > 0:
-            if self.trans_kw_in_ach[i] == self.veh.max_motor_kw:
+            if self.trans_kw_in_ach[i] == self.veh.mc_max_kw:
                 self.elec_kw_req_4ae[i] = self.trans_kw_in_ach[i] / self.veh.mc_full_eff_array[-1] + self.aux_in_kw[i]
             else:
                 self.elec_kw_req_4ae[i] = (self.trans_kw_in_ach[i] / 
                     self.veh.mc_full_eff_array[max(1, np.argmax(
-                        self.veh.mc_kw_out_array > min(self.veh.max_motor_kw - 0.01, self.trans_kw_in_ach[i])) - 1)] + self.aux_in_kw[i]
+                        self.veh.mc_kw_out_array > min(self.veh.mc_max_kw - 0.01, self.trans_kw_in_ach[i])) - 1)] + self.aux_in_kw[i]
                 )
 
         else:
@@ -946,15 +946,15 @@ class SimDrive(object):
         self.prev_fc_time_on[i] = self.fc_time_on[i-1]
 
         # some conditions in the following if statement have a buffer of 1e-6 to prevent false positives/negatives because these have been encountered in practice.   
-        if self.veh.max_fuel_conv_kw == 0:
+        if self.veh.fc_max_kw == 0:
             self.can_pwr_all_elec[i] = self.accel_buff_soc[i] < self.soc[i-1] and  \
                 (self.trans_kw_in_ach[i] - 1e-6) <= self.cur_max_mc_kw_out[i] and \
-                (self.elec_kw_req_4ae[i] < self.cur_max_elec_kw[i] or self.veh.max_fuel_conv_kw == 0)
+                (self.elec_kw_req_4ae[i] < self.cur_max_elec_kw[i] or self.veh.fc_max_kw == 0)
 
         else:
             self.can_pwr_all_elec[i] = self.accel_buff_soc[i] < self.soc[i-1] and \
                 (self.trans_kw_in_ach[i] - 1e-6) <= self.cur_max_mc_kw_out[i] and \
-                (self.elec_kw_req_4ae[i] < self.cur_max_elec_kw[i] or self.veh.max_fuel_conv_kw == 0) \
+                (self.elec_kw_req_4ae[i] < self.cur_max_elec_kw[i] or self.veh.fc_max_kw == 0) \
                 and ((self.cyc.mph[i] - 1e-6) <= self.veh.mph_fc_on or self.veh.charging_on) and \
                 self.elec_kw_req_4ae[i] <= self.veh.kw_demand_fc_on
 
@@ -985,7 +985,7 @@ class SimDrive(object):
                 -self.cur_max_ess_chg_kw[i], 
                 -self.max_ess_regen_buff_chg_kw[i], 
                 min(0, self.cur_max_roadway_chg_kw[i] - self.trans_kw_in_ach[i] + self.aux_in_kw[i]), 
-                min(self.cur_max_ess_kw_out[i], self.desired_ess_kw_out_for_ae[i])
+                min(self.cur_ess_max_kw_out[i], self.desired_ess_kw_out_for_ae[i])
             )
 
         else:
@@ -1052,13 +1052,13 @@ class SimDrive(object):
 
         if self.accel_buff_soc[i] > self.regen_buff_soc[i]:
             self.ess_kw_if_fc_req[i] = min(
-                self.cur_max_ess_kw_out[i], 
+                self.cur_ess_max_kw_out[i], 
                 self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
                 max(-self.cur_max_ess_chg_kw[i], self.ess_accel_regen_dischg_kw[i]))
 
         elif self.ess_regen_buff_dischg_kw[i] > 0:
             self.ess_kw_if_fc_req[i] = min(
-                self.cur_max_ess_kw_out[i], 
+                self.cur_ess_max_kw_out[i], 
                 self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
                 max(-self.cur_max_ess_chg_kw[i], 
                     min(self.ess_accel_regen_dischg_kw[i], 
@@ -1070,7 +1070,7 @@ class SimDrive(object):
 
         elif self.ess_accel_buff_chg_kw[i] > 0:
             self.ess_kw_if_fc_req[i] = min(
-                self.cur_max_ess_kw_out[i], 
+                self.cur_ess_max_kw_out[i], 
                 self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
                 max(-self.cur_max_ess_chg_kw[i], 
                     max(-1 * self.max_ess_regen_buff_chg_kw[i], 
@@ -1081,7 +1081,7 @@ class SimDrive(object):
 
         elif self.ess_desired_kw_4fc_eff[i] > 0:
             self.ess_kw_if_fc_req[i] = min(
-                self.cur_max_ess_kw_out[i], 
+                self.cur_ess_max_kw_out[i], 
                 self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
                 self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
                 max(-self.cur_max_ess_chg_kw[i], 
@@ -1091,7 +1091,7 @@ class SimDrive(object):
 
         else:
             self.ess_kw_if_fc_req[i] = min(
-                self.cur_max_ess_kw_out[i], 
+                self.cur_ess_max_kw_out[i], 
                 self.veh.mc_max_elec_in_kw + self.aux_in_kw[i], 
                 self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
                 max(-self.cur_max_ess_chg_kw[i], 
@@ -1137,7 +1137,7 @@ class SimDrive(object):
                     ]
                 )
 
-        if self.veh.max_motor_kw == 0:
+        if self.veh.mc_max_kw == 0:
             self.mc_mech_kw_out_ach[i] = 0
 
         elif self.fc_forced_on[i] and self.can_pwr_all_elec[i] and (self.veh.veh_pt_type == HEV or 
@@ -1146,7 +1146,7 @@ class SimDrive(object):
 
         elif self.trans_kw_in_ach[i] <= 0:
 
-            if self.veh.fc_eff_type !=H2FC and self.veh.max_fuel_conv_kw > 0:
+            if self.veh.fc_eff_type !=H2FC and self.veh.fc_max_kw > 0:
                 if self.can_pwr_all_elec[i] == 1:
                     self.mc_mech_kw_out_ach[i] = - \
                         min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i])
@@ -1183,12 +1183,12 @@ class SimDrive(object):
                 ]
 
         else:
-            if self.veh.max_motor_kw == self.mc_mech_kw_out_ach[i]:
+            if self.veh.mc_max_kw == self.mc_mech_kw_out_ach[i]:
                 self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array[-1]
             else:
                 self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array[
                     max(1, np.argmax(self.veh.mc_kw_out_array > min(
-                        self.veh.max_motor_kw - 0.01, 
+                        self.veh.mc_max_kw - 0.01, 
                         self.mc_mech_kw_out_ach[i])) - 1
                     )
                 ]
@@ -1213,7 +1213,7 @@ class SimDrive(object):
         self.min_ess_kw_2help_fc[i] = self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - \
             self.cur_max_fc_kw_out[i] - self.roadway_chg_kw_out_ach[i]
 
-        if self.veh.max_ess_kw == 0 or self.veh.max_ess_kwh == 0:
+        if self.veh.ess_max_kw == 0 or self.veh.ess_max_kwh == 0:
             self.ess_kw_out_ach[i] = 0
 
         elif self.veh.fc_eff_type == H2FC:
@@ -1223,7 +1223,7 @@ class SimDrive(object):
                         self.min_ess_kw_2help_fc[i], 
                         self.ess_desired_kw_4fc_eff[i], 
                         self.ess_accel_regen_dischg_kw[i]),
-                    self.cur_max_ess_kw_out[i], 
+                    self.cur_ess_max_kw_out[i], 
                     self.mc_elec_kw_in_ach[i] + self.aux_in_kw[i] - self.roadway_chg_kw_out_ach[i]
                 )
 
@@ -1248,11 +1248,11 @@ class SimDrive(object):
             self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s[i] / \
                 3.6e3 * (1 / np.sqrt(self.veh.ess_round_trip_eff))
 
-        if self.veh.max_ess_kwh == 0:
+        if self.veh.ess_max_kwh == 0:
             self.soc[i] = 0.0
 
         else:
-            self.soc[i] = self.ess_cur_kwh[i] / self.veh.max_ess_kwh
+            self.soc[i] = self.ess_cur_kwh[i] / self.veh.ess_max_kwh
 
         if self.can_pwr_all_elec[i] and not(self.fc_forced_on[i]) and self.fc_kw_out_ach[i] == 0.0:
             self.fc_time_on[i] = 0
@@ -1267,7 +1267,7 @@ class SimDrive(object):
         i: index of time step
         """
 
-        if self.veh.max_fuel_conv_kw == 0:
+        if self.veh.fc_max_kw == 0:
             self.fc_kw_out_ach[i] = 0
 
         elif self.veh.fc_eff_type == H2FC:
@@ -1291,10 +1291,10 @@ class SimDrive(object):
             self.fc_kw_out_ach[i] = min(self.cur_max_fc_kw_out[i], max(
                 0, self.trans_kw_in_ach[i] - self.mc_mech_kw_out_ach[i]))
 
-        if self.veh.max_fuel_conv_kw == 0:
+        if self.veh.fc_max_kw == 0:
             self.fc_kw_out_ach_pct[i] = 0
         else:
-            self.fc_kw_out_ach_pct[i] = self.fc_kw_out_ach[i] / self.veh.max_fuel_conv_kw
+            self.fc_kw_out_ach_pct[i] = self.fc_kw_out_ach[i] / self.veh.fc_max_kw
 
         if self.fc_kw_out_ach[i] == 0:
             self.fc_kw_in_ach[i] = 0
@@ -1303,9 +1303,9 @@ class SimDrive(object):
         else:
             self.fc_kw_in_ach[i] = (
                 self.fc_kw_out_ach[i] / (self.veh.fc_eff_array[np.argmax(
-                    self.veh.fc_kw_out_array > min(self.fc_kw_out_ach[i], self.veh.max_fuel_conv_kw)) - 1]) 
+                    self.veh.fc_kw_out_array > min(self.fc_kw_out_ach[i], self.veh.fc_max_kw)) - 1]) 
                 if self.veh.fc_eff_array[np.argmax(
-                    self.veh.fc_kw_out_array > min(self.fc_kw_out_ach[i], self.veh.max_fuel_conv_kw)) - 1] != 0
+                    self.veh.fc_kw_out_array > min(self.fc_kw_out_ach[i], self.veh.fc_max_kw)) - 1] != 0
                 else 0)
 
         self.fs_kw_out_ach[i] = self.fc_kw_in_ach[i]
@@ -1686,7 +1686,7 @@ class SimDrive(object):
 
         self.roadway_chg_kj = (self.roadway_chg_kw_out_ach * self.cyc.dt_s).sum()
         self.ess_dischg_kj = - \
-            (self.soc[-1] - self.soc[0]) * self.veh.max_ess_kwh * 3.6e3
+            (self.soc[-1] - self.soc[0]) * self.veh.ess_max_kwh * 3.6e3
         self.battery_kwh_per_mi  = (
             self.ess_dischg_kj / 3.6e3) / self.dist_mi.sum()
         self.electric_kwh_per_mi  = (
@@ -1708,7 +1708,7 @@ class SimDrive(object):
         self.rr_kj = (self.rr_kw * self.cyc.dt_s).sum()
 
         self.ess_loss_kw[1:] = np.array(
-            [0 if (self.veh.max_ess_kw == 0 or self.veh.max_ess_kwh == 0)
+            [0 if (self.veh.ess_max_kw == 0 or self.veh.ess_max_kwh == 0)
             else -self.ess_kw_out_ach[i] - (-self.ess_kw_out_ach[i] * np.sqrt(self.veh.ess_round_trip_eff))
                 if self.ess_kw_out_ach[i] < 0
             else self.ess_kw_out_ach[i] * (1.0 / np.sqrt(self.veh.ess_round_trip_eff)) - self.ess_kw_out_ach[i]
@@ -1966,11 +1966,11 @@ class SimDrivePost(object):
             else 0 
             for i in range(1, len(self.ess_cur_kwh))])
         
-        if self.veh.max_ess_kwh == 0:
+        if self.veh.ess_max_kwh == 0:
             self.dod_cycs[1:] = np.array([0.0 for i in range(1, len(self.ess_cur_kwh))])
         else:
             self.dod_cycs[1:] = np.array([
-                self.add_kwh[i-1] / self.veh.max_ess_kwh if self.add_kwh[i] == 0
+                self.add_kwh[i-1] / self.veh.ess_max_kwh if self.add_kwh[i] == 0
                 else 0 
                 for i in range(1, len(self.ess_cur_kwh))])
         
@@ -2016,9 +2016,9 @@ def estimate_soc_corrected_fuel_kJ(sd: SimDrive) -> float:
         np.array(sd.fc_kw_out_ach).sum() / np.array(sd.fc_kw_in_ach).sum()
     )
     if delta_soc >= 0.0:
-        k = (sd.veh.max_ess_kwh * kJ__kWh * ess_eff * mc_dis_eff * ess_traction_frac) / fc_eff
+        k = (sd.veh.ess_max_kwh * kJ__kWh * ess_eff * mc_dis_eff * ess_traction_frac) / fc_eff
         equivalent_fuel_kJ = -1.0 * delta_soc * k
     else:
-        k = (sd.veh.max_ess_kwh * kJ__kWh) / (ess_eff * mc_chg_eff * fc_eff)
+        k = (sd.veh.ess_max_kwh * kJ__kWh) / (ess_eff * mc_chg_eff * fc_eff)
         equivalent_fuel_kJ = -1.0 * delta_soc * k
     return sd.fuel_kj + equivalent_fuel_kJ

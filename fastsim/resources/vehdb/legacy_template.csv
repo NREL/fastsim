@@ -1,0 +1,80 @@
+,Param Name,Param Value,Param Source / Comments
+Category,Scenario name,Template Vehicle for setting up data types,template vehicle for attribute typing
+Vehicle,vehYear,0,model year.  Can be left blank if not known or important
+,vehPtType,Conv,"1:conv., 2:HEV, 3:PHEV, 4:BEV"
+,dragCoef,0.304,drag coefficient
+,frontalAreaM2,2.574,projected frontal area
+,gliderKg,1045.636,"empty mass minus powertrain components (battery, motor, engine)"
+,vehCgM,0.53,height of cg
+,driveAxleWeightFrac,0.61,fraction of weight over drive axle for traction calculations
+,wheelBaseM,2.6,length of wheelbase
+,cargoKg,136.8,mass of cargo
+,vehOverrideKg,1473.9,"if supplied, overrides calculated total vehicle mass. Can be left blank"
+,compMassMultiplier,1.4,
+Fuel / Fuel Converter / Engine,maxFuelStorKw,2000.8,max fuel flow of fuel storage
+,fuelStorSecsToPeakPwr,1.1,lag/delay for fuel storage to reach peak fuel flow
+,fuelStorKwh,441.8,energy capacity of fuel storage
+,fuelStorKwhPerKg,9.89,energy density of fuel storage
+,maxFuelConvKw,119.3,max fuel converter (engine or fuel cell) power
+,fcPwrOutPerc,"[0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00]",array of fuel converter fraction of peak power at which efficiencies are known. Can be left blank.
+,fcEffMap,"[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]",array of fuel converter efficiencies corresponding to fraction of peak power. Can be left blank.
+,fcEffType,SI,"1: SI engine, 2: Atkinson, 3: diesel, 4: fuel cell, 5: hd diesel; overridden by fcEffMap if fcEffMap is not blank"
+,fuelConvSecsToPeakPwr,6.1,lag/delay for engine to reach peak power
+,fuelConvBaseKg,61.3,engine weight before scaling by power
+,fuelConvKwPerKg,2.13,engine weight per power scaling to be added to fuelConvBaseKg
+,minFcTimeOn,30.3,"for PHEV and HEV, duration of engine on time before engine is allowed to turn off again"
+,idleFcKw,1.96,
+Motor,maxMotorKw,1.1,"needs to be zero for conventional, non-zero for anything with a traction battery! Needs careful consideration for stop start systems. Needs to be lower than maxEssKw for full utilization of battery."
+,mcPwrOutPerc,"[0.00, 0.02, 0.04, 0.06, 0.08,  0.10,  0.20,  0.40,  0.60,  0.80,  1.00]",array of motor fraction of peak power at which efficiencies are known. Can be left blank.
+,mcEffMap,"[0.83, 0.85,    0.87,  0.89,  0.90,  0.91,  0.93,  0.94,  0.94,  0.93,  0.92]",array of motor efficiencies corresponding to fraction of peak power generic motor. Can be left blank.
+,motorSecsToPeakPwr,4.8,lag/delay for motor to reach peak power
+,mcPeKgPerKw,0.833,motor weight per power scale factor to be added to mcPePaseKg
+,mcPeBaseKg,21.6,base motor weight
+ESS / Battery,maxEssKw,0.1,max battery power output
+,maxEssKwh,0.3,max battery energy storage
+,essKgPerKwh,8.9,batter base weight
+,essBaseKg,75.8,battery weight per power scaling
+,essRoundTripEff,0.97,battery round trip efficiency
+,essLifeCoefA,110.8,
+,essLifeCoefB,-0.6811,
+,minSoc,0.1,minimum battery SOC
+,maxSoc,0.95,maximum battery SOC
+,essDischgToFcMaxEffPerc,0.3,
+,essChgToFcMaxEffPerc,0.3,
+Wheels,wheelInertiaKgM2,0.815,wheel inertia
+,numWheels,4,number of wheels
+,wheelRrCoef,0.0101,wheel rolling resistance
+,wheelRadiusM,0.336,wheel radius
+,wheelCoefOfFric,0.8,wheel coefficient of friction for traction calculations
+HEV Controls,maxAccelBufferMph,60.3,
+,maxAccelBufferPercOfUseableSoc,0.2,
+,percHighAccBuf,0.8,
+,mphFcOn,55.8,
+,kwDemandFcOn,100.8,
+,maxRegen,0.98,
+,stopStart,FALSE,is this a stop/start micro-HEV?
+,forceAuxOnFC,FALSE,
+Misc.,altEff,0.9,alternator efficiency
+,chgEff,0.86,charger efficiency
+,auxKw,0.7,
+,transKg,114.9,
+,transEff,0.92,
+,essToFuelOkError,0.005,
+Vehicle Performance Specs,valUddsMpgge,27.9,
+,valHwyMpgge,27.9,
+,valCombMpgge,27.9,
+,valUddsKwhPerMile,0.3,
+,valHwyKwhPerMile,0.3,
+,valCombKwhPerMile,0.3,
+,valCdRangeMi,33.3,
+,valConst65MphKwhPerMile,0.3,
+,valConst60MphKwhPerMile,0.3,
+,valConst55MphKwhPerMile,0.3,
+,valConst45MphKwhPerMile,0.3,
+,valUnadjUddsKwhPerMile,0.3,
+,valUnadjHwyKwhPerMile,0.3,
+,val0To60Mph,9.9,
+,valEssLifeMiles,98987678.8,
+,valRangeMiles,99.9,
+,valVehBaseCost,9987.8,
+,valMsrp,98789.8,

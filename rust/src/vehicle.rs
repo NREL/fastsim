@@ -60,43 +60,43 @@ pub struct RustVehicle{
     #[pyo3(get, set)]
     pub comp_mass_multiplier: f64,
     #[pyo3(get, set)]
-    pub max_fuel_stor_kw: f64,
+    pub fs_max_kw: f64,
     #[pyo3(get, set)]
-    pub fuel_stor_secs_to_peak_pwr: f64,
+    pub fs_secs_to_peak_pwr: f64,
     #[pyo3(get, set)]
-    pub fuel_stor_kwh: f64,
+    pub fs_kwh: f64,
     #[pyo3(get, set)]
-    pub fuel_stor_kwh_per_kg: f64,
+    pub fs_kwh_per_kg: f64,
     #[pyo3(get, set)]
-    pub max_fuel_conv_kw: f64,
+    pub fc_max_kw: f64,
     pub fc_pwr_out_perc: Array1<f64>,
     pub fc_eff_map: Array1<f64>,
     #[pyo3(get, set)]
     pub fc_eff_type: String,
     #[pyo3(get, set)]
-    pub fuel_conv_secs_to_peak_pwr: f64,
+    pub fc_sec_to_peak_pwr: f64,
     #[pyo3(get, set)]
-    pub fuel_conv_base_kg: f64,
+    pub fc_base_kg: f64,
     #[pyo3(get, set)]
-    pub fuel_conv_kw_per_kg: f64,
+    pub fc_kw_per_kg: f64,
     #[pyo3(get, set)]
     pub min_fc_time_on: f64,
     #[pyo3(get, set)]
     pub idle_fc_kw: f64,
     #[pyo3(get, set)]
-    pub max_motor_kw: f64,
+    pub mc_max_kw: f64,
     pub mc_pwr_out_perc: Array1<f64>,
     pub mc_eff_map: Array1<f64>,
     #[pyo3(get, set)]
-    pub motor_secs_to_peak_pwr: f64,
+    pub mc_sec_to_peak_pwr: f64,
     #[pyo3(get, set)]
     pub mc_pe_kg_per_kw: f64,
     #[pyo3(get, set)]
     pub mc_pe_base_kg: f64,
     #[pyo3(get, set)]
-    pub max_ess_kw: f64,
+    pub ess_max_kw: f64,
     #[pyo3(get, set)]
-    pub max_ess_kwh: f64,
+    pub ess_max_kwh: f64,
     #[pyo3(get, set)]
     pub ess_kg_per_kwh: f64,
     #[pyo3(get, set)]
@@ -261,27 +261,27 @@ impl RustVehicle{
         let cargo_kg: f64 = 136.0;
         let veh_override_kg: f64 = f64::NAN;
         let comp_mass_multiplier: f64 = 1.4;
-        let max_fuel_stor_kw: f64 = 2000.0;
-        let fuel_stor_secs_to_peak_pwr: f64 = 1.0;
-        let fuel_stor_kwh: f64 = 504.0;
-        let fuel_stor_kwh_per_kg: f64 = 9.89;
-        let max_fuel_conv_kw: f64 = 125.0;
+        let fs_max_kw: f64 = 2000.0;
+        let fs_secs_to_peak_pwr: f64 = 1.0;
+        let fs_kwh: f64 = 504.0;
+        let fs_kwh_per_kg: f64 = 9.89;
+        let fc_max_kw: f64 = 125.0;
         let fc_pwr_out_perc: Vec<f64> = vec![0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0];
         let fc_eff_map: Vec<f64> = vec![0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3];
         let fc_eff_type: String = String::from("SI");
-        let fuel_conv_secs_to_peak_pwr: f64 = 6.0;
-        let fuel_conv_base_kg: f64 = 61.0;
-        let fuel_conv_kw_per_kg: f64 = 2.13;
+        let fc_sec_to_peak_pwr: f64 = 6.0;
+        let fc_base_kg: f64 = 61.0;
+        let fc_kw_per_kg: f64 = 2.13;
         let min_fc_time_on: f64 = 30.0;
         let idle_fc_kw: f64 = 2.5;
-        let max_motor_kw: f64 = 0.0;
+        let mc_max_kw: f64 = 0.0;
         let mc_pwr_out_perc: Vec<f64> = vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
         let mc_eff_map: Vec<f64> = vec![0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92];
-        let motor_secs_to_peak_pwr: f64 = 4.0;
+        let mc_sec_to_peak_pwr: f64 = 4.0;
         let mc_pe_kg_per_kw: f64 = 0.833;
         let mc_pe_base_kg: f64 = 21.6;
-        let max_ess_kw: f64 = 0.0;
-        let max_ess_kwh: f64 = 0.0;
+        let ess_max_kw: f64 = 0.0;
+        let ess_max_kwh: f64 = 0.0;
         let ess_kg_per_kwh: f64 = 8.0;
         let ess_base_kg: f64 = 75.0;
         let ess_round_trip_eff: f64 = 0.97;
@@ -363,12 +363,12 @@ impl RustVehicle{
         // TODO: implement proper derivation for ess_mass_kg; see Vehicle.set_veh_mass(...)
         let fs_mass_kg: f64 = 0.0;        
         // DERIVED
-        let input_kw_out_array = fc_pwr_out_perc.iter().map(|&x| x * max_fuel_conv_kw).collect();
-        let fc_kw_out_array = fc_perc_out_array.iter().map(|&x| x * max_fuel_conv_kw).collect();
+        let input_kw_out_array = fc_pwr_out_perc.iter().map(|&x| x * fc_max_kw).collect();
+        let fc_kw_out_array = fc_perc_out_array.iter().map(|&x| x * fc_max_kw).collect();
         let fc_eff_array = fc_perc_out_array.iter().map(|&x| interpolate(
             &x, &Array::from(fc_pwr_out_perc.clone()), &Array::from(fc_eff_map.clone()), false)).collect::<Vec<_>>();
         let mc_perc_out_array = Array1::<f64>::linspace(0.0, 1.0, 101).to_vec();
-        let mc_kw_out_array = (Array::linspace(0.0, 1.0, mc_perc_out_array.len()) * max_motor_kw).to_vec();
+        let mc_kw_out_array = (Array::linspace(0.0, 1.0, mc_perc_out_array.len()) * mc_max_kw).to_vec();
         let mc_eff_array = large_baseline_eff.iter().map(|&x| interpolate(&x, &Array::from(mc_pwr_out_perc.clone()), &Array::from(mc_eff_map.clone()), false)).collect::<Vec<_>>();
         let mc_kw_in_array = Array::ones(mc_kw_out_array.len()).to_vec();
         let mc_full_eff_array = Array::ones(mc_eff_array.len()).to_vec();
@@ -393,27 +393,27 @@ impl RustVehicle{
             cargo_kg,
             veh_override_kg,
             comp_mass_multiplier,
-            max_fuel_stor_kw,
-            fuel_stor_secs_to_peak_pwr,
-            fuel_stor_kwh,
-            fuel_stor_kwh_per_kg,
-            max_fuel_conv_kw,
+            fs_max_kw,
+            fs_secs_to_peak_pwr,
+            fs_kwh,
+            fs_kwh_per_kg,
+            fc_max_kw,
             fc_pwr_out_perc,
             fc_eff_map,
             fc_eff_type,
-            fuel_conv_secs_to_peak_pwr,
-            fuel_conv_base_kg,
-            fuel_conv_kw_per_kg,
+            fc_sec_to_peak_pwr,
+            fc_base_kg,
+            fc_kw_per_kg,
             min_fc_time_on,
             idle_fc_kw,
-            max_motor_kw,
+            mc_max_kw,
             mc_pwr_out_perc,
             mc_eff_map,
-            motor_secs_to_peak_pwr,
+            mc_sec_to_peak_pwr,
             mc_pe_kg_per_kw,
             mc_pe_base_kg,
-            max_ess_kw,
-            max_ess_kwh,
+            ess_max_kw,
+            ess_max_kwh,
             ess_kg_per_kwh,
             ess_base_kg,
             ess_round_trip_eff,
@@ -510,27 +510,27 @@ impl RustVehicle{
         cargo_kg: f64,
         veh_override_kg: f64,
         comp_mass_multiplier: f64,
-        max_fuel_stor_kw: f64,
-        fuel_stor_secs_to_peak_pwr: f64,
-        fuel_stor_kwh: f64,
-        fuel_stor_kwh_per_kg: f64,
-        max_fuel_conv_kw: f64,
+        fs_max_kw: f64,
+        fs_secs_to_peak_pwr: f64,
+        fs_kwh: f64,
+        fs_kwh_per_kg: f64,
+        fc_max_kw: f64,
         fc_pwr_out_perc: Vec<f64>,
         fc_eff_map: Vec<f64>,
         fc_eff_type: String,
-        fuel_conv_secs_to_peak_pwr: f64,
-        fuel_conv_base_kg: f64,
-        fuel_conv_kw_per_kg: f64,
+        fc_sec_to_peak_pwr: f64,
+        fc_base_kg: f64,
+        fc_kw_per_kg: f64,
         min_fc_time_on: f64,
         idle_fc_kw: f64,
-        max_motor_kw: f64,
+        mc_max_kw: f64,
         mc_pwr_out_perc: Vec<f64>,
         mc_eff_map: Vec<f64>,
-        motor_secs_to_peak_pwr: f64,
+        mc_sec_to_peak_pwr: f64,
         mc_pe_kg_per_kw: f64,
         mc_pe_base_kg: f64,
-        max_ess_kw: f64,
-        max_ess_kwh: f64,
+        ess_max_kw: f64,
+        ess_max_kwh: f64,
         ess_kg_per_kwh: f64,
         ess_base_kg: f64,
         ess_round_trip_eff: f64,
@@ -658,27 +658,27 @@ impl RustVehicle{
             cargo_kg,
             veh_override_kg,
             comp_mass_multiplier,
-            max_fuel_stor_kw,
-            fuel_stor_secs_to_peak_pwr,
-            fuel_stor_kwh,
-            fuel_stor_kwh_per_kg,
-            max_fuel_conv_kw,
+            fs_max_kw,
+            fs_secs_to_peak_pwr,
+            fs_kwh,
+            fs_kwh_per_kg,
+            fc_max_kw,
             fc_pwr_out_perc,
             fc_eff_map,
             fc_eff_type,
-            fuel_conv_secs_to_peak_pwr,
-            fuel_conv_base_kg,
-            fuel_conv_kw_per_kg,
+            fc_sec_to_peak_pwr,
+            fc_base_kg,
+            fc_kw_per_kg,
             min_fc_time_on,
             idle_fc_kw,
-            max_motor_kw,
+            mc_max_kw,
             mc_pwr_out_perc,
             mc_eff_map,
-            motor_secs_to_peak_pwr,
+            mc_sec_to_peak_pwr,
             mc_pe_kg_per_kw,
             mc_pe_base_kg,
-            max_ess_kw,
-            max_ess_kwh,
+            ess_max_kw,
+            ess_max_kwh,
             ess_kg_per_kwh,
             ess_base_kg,
             ess_round_trip_eff,
@@ -1054,62 +1054,62 @@ impl RustVehicle{
     }
 
     #[getter]
-    pub fn get_fuel_conv_base_kg(&self) -> PyResult<f64>{
-      Ok(self.fuel_conv_base_kg)
+    pub fn get_fc_base_kg(&self) -> PyResult<f64>{
+      Ok(self.fc_base_kg)
     }
     #[setter]
-    pub fn set_fuel_conv_base_kg(&mut self, new_value:f64) -> PyResult<()>{
-      self.fuel_conv_base_kg = new_value;
+    pub fn set_fc_base_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.fc_base_kg = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_fuel_conv_kw_per_kg(&self) -> PyResult<f64>{
-      Ok(self.fuel_conv_kw_per_kg)
+    pub fn get_fc_kw_per_kg(&self) -> PyResult<f64>{
+      Ok(self.fc_kw_per_kg)
     }
     #[setter]
-    pub fn set_fuel_conv_kw_per_kg(&mut self, new_value:f64) -> PyResult<()>{
-      self.fuel_conv_kw_per_kg = new_value;
+    pub fn set_fc_kw_per_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.fc_kw_per_kg = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_fuel_conv_secs_to_peak_pwr(&self) -> PyResult<f64>{
-      Ok(self.fuel_conv_secs_to_peak_pwr)
+    pub fn get_fc_sec_to_peak_pwr(&self) -> PyResult<f64>{
+      Ok(self.fc_sec_to_peak_pwr)
     }
     #[setter]
-    pub fn set_fuel_conv_secs_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
-      self.fuel_conv_secs_to_peak_pwr = new_value;
+    pub fn set_fc_sec_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
+      self.fc_sec_to_peak_pwr = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_fuel_stor_kwh(&self) -> PyResult<f64>{
-      Ok(self.fuel_stor_kwh)
+    pub fn get_fs_kwh(&self) -> PyResult<f64>{
+      Ok(self.fs_kwh)
     }
     #[setter]
-    pub fn set_fuel_stor_kwh(&mut self, new_value:f64) -> PyResult<()>{
-      self.fuel_stor_kwh = new_value;
+    pub fn set_fs_kwh(&mut self, new_value:f64) -> PyResult<()>{
+      self.fs_kwh = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_fuel_stor_kwh_per_kg(&self) -> PyResult<f64>{
-      Ok(self.fuel_stor_kwh_per_kg)
+    pub fn get_fs_kwh_per_kg(&self) -> PyResult<f64>{
+      Ok(self.fs_kwh_per_kg)
     }
     #[setter]
-    pub fn set_fuel_stor_kwh_per_kg(&mut self, new_value:f64) -> PyResult<()>{
-      self.fuel_stor_kwh_per_kg = new_value;
+    pub fn set_fs_kwh_per_kg(&mut self, new_value:f64) -> PyResult<()>{
+      self.fs_kwh_per_kg = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_fuel_stor_secs_to_peak_pwr(&self) -> PyResult<f64>{
-      Ok(self.fuel_stor_secs_to_peak_pwr)
+    pub fn get_fs_secs_to_peak_pwr(&self) -> PyResult<f64>{
+      Ok(self.fs_secs_to_peak_pwr)
     }
     #[setter]
-    pub fn set_fuel_stor_secs_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
-      self.fuel_stor_secs_to_peak_pwr = new_value;
+    pub fn set_fs_secs_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
+      self.fs_secs_to_peak_pwr = new_value;
       Ok(())
     }
 
@@ -1194,52 +1194,52 @@ impl RustVehicle{
     }
 
     #[getter]
-    pub fn get_max_ess_kw(&self) -> PyResult<f64>{
-      Ok(self.max_ess_kw)
+    pub fn get_ess_max_kw(&self) -> PyResult<f64>{
+      Ok(self.ess_max_kw)
     }
     #[setter]
-    pub fn set_max_ess_kw(&mut self, new_value:f64) -> PyResult<()>{
-      self.max_ess_kw = new_value;
+    pub fn set_ess_max_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_max_kw = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_max_ess_kwh(&self) -> PyResult<f64>{
-      Ok(self.max_ess_kwh)
+    pub fn get_ess_max_kwh(&self) -> PyResult<f64>{
+      Ok(self.ess_max_kwh)
     }
     #[setter]
-    pub fn set_max_ess_kwh(&mut self, new_value:f64) -> PyResult<()>{
-      self.max_ess_kwh = new_value;
+    pub fn set_ess_max_kwh(&mut self, new_value:f64) -> PyResult<()>{
+      self.ess_max_kwh = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_max_fuel_conv_kw(&self) -> PyResult<f64>{
-      Ok(self.max_fuel_conv_kw)
+    pub fn get_fc_max_kw(&self) -> PyResult<f64>{
+      Ok(self.fc_max_kw)
     }
     #[setter]
-    pub fn set_max_fuel_conv_kw(&mut self, new_value:f64) -> PyResult<()>{
-      self.max_fuel_conv_kw = new_value;
+    pub fn set_fc_max_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.fc_max_kw = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_max_fuel_stor_kw(&self) -> PyResult<f64>{
-      Ok(self.max_fuel_stor_kw)
+    pub fn get_fs_max_kw(&self) -> PyResult<f64>{
+      Ok(self.fs_max_kw)
     }
     #[setter]
-    pub fn set_max_fuel_stor_kw(&mut self, new_value:f64) -> PyResult<()>{
-      self.max_fuel_stor_kw = new_value;
+    pub fn set_fs_max_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.fs_max_kw = new_value;
       Ok(())
     }
 
     #[getter]
-    pub fn get_max_motor_kw(&self) -> PyResult<f64>{
-      Ok(self.max_motor_kw)
+    pub fn get_mc_max_kw(&self) -> PyResult<f64>{
+      Ok(self.mc_max_kw)
     }
     #[setter]
-    pub fn set_max_motor_kw(&mut self, new_value:f64) -> PyResult<()>{
-      self.max_motor_kw = new_value;
+    pub fn set_mc_max_kw(&mut self, new_value:f64) -> PyResult<()>{
+      self.mc_max_kw = new_value;
       Ok(())
     }
 
@@ -1424,12 +1424,12 @@ impl RustVehicle{
     }
 
     #[getter]
-    pub fn get_motor_secs_to_peak_pwr(&self) -> PyResult<f64>{
-      Ok(self.motor_secs_to_peak_pwr)
+    pub fn get_mc_sec_to_peak_pwr(&self) -> PyResult<f64>{
+      Ok(self.mc_sec_to_peak_pwr)
     }
     #[setter]
-    pub fn set_motor_secs_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
-      self.motor_secs_to_peak_pwr = new_value;
+    pub fn set_mc_sec_to_peak_pwr(&mut self, new_value:f64) -> PyResult<()>{
+      self.mc_sec_to_peak_pwr = new_value;
       Ok(())
     }
 
@@ -1895,27 +1895,27 @@ mod tests {
     //     let cargo_kg: f64 = 136.0;
     //     let veh_override_kg: f64 = f64::NAN;
     //     let comp_mass_multiplier: f64 = 1.4;
-    //     let max_fuel_stor_kw: f64 = 2000.0;
-    //     let fuel_stor_secs_to_peak_pwr: f64 = 1.0;
-    //     let fuel_stor_kwh: f64 = 504.0;
-    //     let fuel_stor_kwh_per_kg: f64 = 9.89;
-    //     let max_fuel_conv_kw: f64 = 125.0;
+    //     let fs_max_kw: f64 = 2000.0;
+    //     let fs_secs_to_peak_pwr: f64 = 1.0;
+    //     let fs_kwh: f64 = 504.0;
+    //     let fs_kwh_per_kg: f64 = 9.89;
+    //     let fc_max_kw: f64 = 125.0;
     //     let fc_pwr_out_perc: Vec<f64> = vec![0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0];
     //     let fc_eff_map: Vec<f64> = vec![0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3];
     //     let fc_eff_type: String = String::from("SI");
-    //     let fuel_conv_secs_to_peak_pwr: f64 = 6.0;
-    //     let fuel_conv_base_kg: f64 = 61.0;
-    //     let fuel_conv_kw_per_kg: f64 = 2.13;
+    //     let fc_sec_to_peak_pwr: f64 = 6.0;
+    //     let fc_base_kg: f64 = 61.0;
+    //     let fc_kw_per_kg: f64 = 2.13;
     //     let min_fc_time_on: f64 = 30.0;
     //     let idle_fc_kw: f64 = 2.5;
-    //     let max_motor_kw: f64 = 0.0;
+    //     let mc_max_kw: f64 = 0.0;
     //     let mc_pwr_out_perc: Vec<f64> = vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
     //     let mc_eff_map: Vec<f64> = vec![0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92];
-    //     let motor_secs_to_peak_pwr: f64 = 4.0;
+    //     let mc_sec_to_peak_pwr: f64 = 4.0;
     //     let mc_pe_kg_per_kw: f64 = 0.833;
     //     let mc_pe_base_kg: f64 = 21.6;
-    //     let max_ess_kw: f64 = 0.0;
-    //     let max_ess_kwh: f64 = 0.0;
+    //     let ess_max_kw: f64 = 0.0;
+    //     let ess_max_kwh: f64 = 0.0;
     //     let ess_kg_per_kwh: f64 = 8.0;
     //     let ess_base_kg: f64 = 75.0;
     //     let ess_round_trip_eff: f64 = 0.97;
@@ -1996,27 +1996,27 @@ mod tests {
     //       cargo_kg,
     //       veh_override_kg,
     //       comp_mass_multiplier,
-    //       max_fuel_stor_kw,
-    //       fuel_stor_secs_to_peak_pwr,
-    //       fuel_stor_kwh,
-    //       fuel_stor_kwh_per_kg,
-    //       max_fuel_conv_kw,
+    //       fs_max_kw,
+    //       fs_secs_to_peak_pwr,
+    //       fs_kwh,
+    //       fs_kwh_per_kg,
+    //       fc_max_kw,
     //       fc_pwr_out_perc,
     //       fc_eff_map,
     //       fc_eff_type,
-    //       fuel_conv_secs_to_peak_pwr,
-    //       fuel_conv_base_kg,
-    //       fuel_conv_kw_per_kg,
+    //       fc_sec_to_peak_pwr,
+    //       fc_base_kg,
+    //       fc_kw_per_kg,
     //       min_fc_time_on,
     //       idle_fc_kw,
-    //       max_motor_kw,
+    //       mc_max_kw,
     //       mc_pwr_out_perc,
     //       mc_eff_map,
-    //       motor_secs_to_peak_pwr,
+    //       mc_sec_to_peak_pwr,
     //       mc_pe_kg_per_kw,
     //       mc_pe_base_kg,
-    //       max_ess_kw,
-    //       max_ess_kwh,
+    //       ess_max_kw,
+    //       ess_max_kwh,
     //       ess_kg_per_kwh,
     //       ess_base_kg,
     //       ess_round_trip_eff,
