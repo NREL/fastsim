@@ -250,15 +250,149 @@ impl RustSimDrive {
         Ok(())
     }
 
+
+    /// Set gap
+    /// - i: non-negative integer, the step index
+    /// RETURN: None
+    /// EFFECTS:
+    /// - sets the next speed (m/s)
+    /// EQUATION:
+    /// parameters:
+    ///     - v_desired: the desired speed (m/s)
+    ///     - delta: number, typical value is 4.0
+    ///     - a:
+    ///     - b:
+    /// s = d_lead - d
+    /// dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
+    /// s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
+    /// REFERENCE:
+    /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
+    ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
+    ///     DOI: https://doi.org/10.1007/978-3-642-32460-4.
+    pub fn set_speed_for_target_gap_using_idm(&mut self, i:usize){
+        // PARAMETERS
+        let delta = self.veh.idm_delta;
+        let a_m_per_s2 = self.veh.idm_accel_m_per_s2; // acceleration (m/s2)
+        let b_m_per_s2 = self.veh.idm_decel_m_per_s2; // deceleration (m/s2)
+        let dt_headway_s = self.veh.idm_dt_headway_s;
+        let s0_m = self.veh.idm_minimum_gap_m; // we assume vehicle's start out "minimum gap" apart
+        let v_desired_m_per_s = if self.veh.idm_v_desired_m_per_s > 0.0 {
+            self.veh.idm_v_desired_m_per_s
+        } else {
+            ndarrmax(&self.cyc0.mps)
+        };
+        // DERIVED VALUES
+        let sqrt_ab = (a_m_per_s2 * b_m_per_s2).sqrt();
+        let v0_m_per_s = self.mps_ach[i-1];
+        let v0_lead_m_per_s = self.cyc0.mps[i-1];
+        let dv0_m_per_s = v0_m_per_s - v0_lead_m_per_s;
+        let d0_lead_m = self.cyc0.dist_v2_m().slice(s![0..i]).sum() + s0_m;
+        let d0_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let s_m = max(d0_lead_m - d0_m, 0.01);
+        // IDM EQUATIONS
+        let s_target_m =
+            s0_m
+            + max(
+                0.0,
+                (v0_m_per_s * dt_headway_s) + ((v0_m_per_s * dv0_m_per_s)/(2.0 * sqrt_ab))
+            )
+        ;
+        let accel_target_m_per_s2 =
+            a_m_per_s2 * (
+                1.0
+                - ((v0_m_per_s / v_desired_m_per_s).powf(delta))
+                - ((s_target_m / s_m).powf(2.0))
+            )
+        ;
+        self.cyc.mps[i] = max(
+            v0_m_per_s + (accel_target_m_per_s2 * self.cyc.dt_s()[i]),
+            0.0
+        );
+    }
+
+    /// - i: non-negative integer, the step index
+    /// RETURN: None
+    /// EFFECTS:
+    /// - sets the next speed (m/s)
+    pub fn set_speed_for_target_gap_using_custom_model(&mut self, i:usize){
+        let lead_accel_m_per_s2 =
+            (self.cyc0.mps[i] - self.cyc0.mps[i-1])
+            / self.cyc0.dt_s()[i]
+        ;
+        // target gap cannot be less than the lead offset (m)
+        let target_gap_m = max(
+            self.veh.lead_offset_m
+            + self.veh.lead_speed_coef_s * self.cyc0.mps[i]
+            + self.veh.lead_accel_coef_s2 * lead_accel_m_per_s2,
+            self.veh.lead_offset_m
+        );
+        let lead_v0_m_per_s = self.cyc0.mps[i-1];
+        let lead_v1_m_per_s = self.cyc0.mps[i];
+        let lead_vavg_m_per_s = 0.5 * (lead_v0_m_per_s + lead_v1_m_per_s);
+        let lead_dd_m = lead_vavg_m_per_s * self.cyc0.dt_s()[i];
+        let lead_d0_m = self.cyc0.dist_v2_m().slice(s![0..i]).sum() + self.veh.lead_offset_m;
+        let d0_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let gap0_m = lead_d0_m - d0_m;
+        // Determine the target distance to cover for next step, dd_m
+        //   target_gap_m = (lead_d0_m - d0_m) + (lead_dd_m - dd_m)
+        //                = gap0_m + lead_dd_m - dd_m
+        // reorganizing:
+        //   dd_m = gap0_m + lead_dd_m - target_gap_m
+        let accel_max_m_per_s2 = 2.0;
+        let accel_min_m_per_s2 = -2.0;
+        let lead_d1_m = lead_d0_m + lead_dd_m;
+        let d1_nopass_m = lead_d1_m - self.veh.lead_offset_m;
+        let dd_nopass_m = d1_nopass_m - d0_m;
+        let dd_max_m = 0.5 * (
+            self.mps_ach[i-1]
+            + max(
+                self.mps_ach[i-1] + accel_max_m_per_s2 * self.cyc.dt_s()[i],
+                0.0
+            )
+        ) * self.cyc.dt_s()[i];
+        let dd_min_m = 0.5 * (
+            self.mps_ach[i-1]
+            + max(
+                self.mps_ach[i-1]
+                + accel_min_m_per_s2 * self.cyc.dt_s()[i],
+                0.0
+            )
+        ) * self.cyc.dt_s()[i];
+        let dd_m = min(max(lead_dd_m + gap0_m - target_gap_m, dd_min_m), dd_max_m);
+        let dd_m = max(min(dd_m, dd_nopass_m), 0.0);
+        // Determine the next speed based on target distance to cover
+        //   dd = vavg * dt = 0.5 * (v1 + v0) * dt
+        //   2*dd/dt = v1 + v0
+        // re-arranging:
+        //   v1 = 2*dd/dt - v0
+        self.cyc.mps[i] = max(
+            ((2.0 * dd_m) / self.cyc.dt_s()[i]) - self.mps_ach[i-1],
+            0.0
+        );
+    }
+
+    /// - i: non-negative integer, the step index
+    /// RETURN: None
+    /// EFFECTS:
+    /// - sets the next speed (m/s)
+    pub fn set_speed_for_target_gap(&mut self, i:usize){
+        if self.sim_params.follow_model == 0 { // FOLLOW_MODEL_CUSTOM
+            self.set_speed_for_target_gap_using_custom_model(i);
+        } else if self.sim_params.follow_model == 1 { // FOLLOW_MODEL_IDM
+            self.set_speed_for_target_gap_using_idm(i);
+        } else {
+            panic!("unhandled follow model {}", self.sim_params.follow_model);
+        }
+    }
+
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
         if self.sim_params.allow_coast {
             self.set_coast_speed(self.i)?;
         }
-        // TODO: implement this
-        //if self.sim_params.follow_allow {
-        //    self._set_speed_for_target_gap(self.i)
-        //}
+        if self.sim_params.follow_allow {
+            self.set_speed_for_target_gap(self.i);
+        }
         self.solve_step_rust(self.i)?;
 
         if self.sim_params.missed_trace_correction && (self.cyc0.dist_m().slice(s![0..self.i]).sum() > 0.0){
