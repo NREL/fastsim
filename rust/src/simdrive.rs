@@ -49,15 +49,15 @@ pub struct RustSimDriveParams{
     #[pyo3(get, set)]
     pub energy_audit_error_tol: f64,
     #[pyo3(get, set)]
-    pub allow_coast: bool,
+    pub coast_allow: bool,
     #[pyo3(get, set)]
-    pub allow_passing_during_coast: bool,
+    pub coast_allow_passing: bool,
     #[pyo3(get, set)]
-    pub max_coast_speed_m_per_s: f64,
+    pub coast_max_speed_m_per_s: f64,
     #[pyo3(get, set)]
-    pub nominal_brake_accel_for_coast_m_per_s2: f64,
+    pub coast_brake_accel_m_per_s2: f64,
     #[pyo3(get, set)]
-    pub coast_to_brake_speed_m_per_s: f64,
+    pub coast_brake_start_speed_m_per_s: f64,
     #[pyo3(get, set)]
     pub coast_start_speed_m_per_s: f64,
     #[pyo3(get, set)]
@@ -94,11 +94,11 @@ impl RustSimDriveParams{
         let newton_xtol: f64 = 1e-9; // newton solver tolerance
         let energy_audit_error_tol: f64 = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
         // Coasting
-        let allow_coast = false;
-        let allow_passing_during_coast = false;
-        let max_coast_speed_m_per_s = 40.0;
-        let nominal_brake_accel_for_coast_m_per_s2 = -2.5;
-        let coast_to_brake_speed_m_per_s = 7.5;
+        let coast_allow = false;
+        let coast_allow_passing = false;
+        let coast_max_speed_m_per_s = 40.0;
+        let coast_brake_accel_m_per_s2 = -2.5;
+        let coast_brake_start_speed_m_per_s = 7.5;
         let coast_start_speed_m_per_s = 38.0;
         let coast_verbose = false;
         let coast_time_horizon_for_adjustment_s = 20.0;
@@ -122,11 +122,11 @@ impl RustSimDriveParams{
             newton_max_iter,
             newton_xtol,
             energy_audit_error_tol,
-            allow_coast,
-            allow_passing_during_coast,
-            max_coast_speed_m_per_s,
-            nominal_brake_accel_for_coast_m_per_s2,
-            coast_to_brake_speed_m_per_s,
+            coast_allow,
+            coast_allow_passing,
+            coast_max_speed_m_per_s,
+            coast_brake_accel_m_per_s2,
+            coast_brake_start_speed_m_per_s,
             coast_start_speed_m_per_s,
             coast_verbose,
             coast_time_horizon_for_adjustment_s,

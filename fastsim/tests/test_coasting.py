@@ -176,7 +176,7 @@ class TestCoasting(unittest.TestCase):
             self.veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             self.sim_drive = fastsim.simdrive.SimDrive(self.trapz, self.veh)
             self.sim_drive_coast = fastsim.simdrive.SimDrive(self.trapz, self.veh)
-            self.sim_drive_coast.sim_params.allow_coast = True
+            self.sim_drive_coast.sim_params.coast_allow = True
             self.sim_drive_coast.sim_params.coast_start_speed_m_per_s = 17.0
             self.sim_drive_coast.sim_params.verbose = False
         if USE_RUST:
@@ -185,7 +185,7 @@ class TestCoasting(unittest.TestCase):
             self.ru_sim_drive = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
             self.ru_sim_drive_coast = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
             sim_params = self.ru_sim_drive_coast.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = 17.0
             sim_params.verbose = False
             self.ru_sim_drive_coast.sim_params = sim_params
@@ -354,13 +354,13 @@ class TestCoasting(unittest.TestCase):
                     save_file='junk-test-that-we-can-coast.png')
         if USE_RUST:
             self.assertFalse(
-                self.ru_sim_drive.sim_params.allow_coast,
-                "allow_coast is off by default")
+                self.ru_sim_drive.sim_params.coast_allow,
+                "coast_allow is False by default")
             self.assertTrue(
-                self.ru_sim_drive_coast.sim_params.allow_coast,
-                "Ensure allow_coast is on")
+                self.ru_sim_drive_coast.sim_params.coast_allow,
+                "Ensure coast_allow is True")
             self.assertFalse(
-                self.ru_sim_drive_coast.sim_params.allow_passing_during_coast,
+                self.ru_sim_drive_coast.sim_params.coast_allow_passing,
                 "Passing during coast is not allowed")
             self.assertEqual(17.0, self.ru_sim_drive_coast.sim_params.coast_start_speed_m_per_s)
             self.assertFalse(
@@ -678,10 +678,10 @@ class TestCoasting(unittest.TestCase):
             trapz = self.trapz.copy()
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             sd = fastsim.simdrive.SimDrive(trapz, veh)
-            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_allow = True
             sd.sim_params.coast_start_speed_m_per_s = -1
             sd.sim_params.verbose = False
-            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -702,9 +702,9 @@ class TestCoasting(unittest.TestCase):
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             sd = fastsim.simdrive.SimDrive(trapz2, veh)
-            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_allow = True
             sd.sim_params.coast_start_speed_m_per_s = -1
-            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
             sd.sim_params.verbose = False
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
@@ -726,10 +726,10 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sim_params = sd.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = -1
             sim_params.verbose = False
-            sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sim_params.coast_brake_start_speed_m_per_s = 4.0
             sd.sim_params = sim_params
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
@@ -752,9 +752,9 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz2, veh)
             sim_params = sd.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = -1
-            sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sim_params.coast_brake_start_speed_m_per_s = 4.0
             sim_params.verbose = False
             sd.sim_params = sim_params
             sd.sim_drive()
@@ -789,9 +789,9 @@ class TestCoasting(unittest.TestCase):
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             sd = fastsim.simdrive.SimDrive(trapz, veh)
-            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_allow = True
             sd.sim_params.coast_start_speed_m_per_s = -1
-            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
             sd.sim_params.verbose = False
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
@@ -837,9 +837,9 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sim_params = sd.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = -1
-            sim_params.coast_to_brake_speed_m_per_s = 4.0
+            sim_params.coast_brake_start_speed_m_per_s = 4.0
             sim_params.verbose = False
             sd.sim_params = sim_params
             sd.sim_drive()
@@ -889,10 +889,10 @@ class TestCoasting(unittest.TestCase):
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             sd = fastsim.simdrive.SimDrive(trapz, veh)
-            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_allow = True
             sd.sim_params.coast_start_speed_m_per_s = -1
-            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
-            sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
+            sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
+            sd.sim_params.coast_brake_accel_m_per_s2 = -2.0
             sd.sim_params.verbose = False
             sd.sim_params.coast_verbose = False
             sd.sim_drive()
@@ -925,10 +925,10 @@ class TestCoasting(unittest.TestCase):
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(1)
             sd = fastsim.simdrive.SimDrive(trapz, veh)
-            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_allow = True
             sd.sim_params.coast_start_speed_m_per_s = -1
-            sd.sim_params.coast_to_brake_speed_m_per_s = 7.5
-            sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.5
+            sd.sim_params.coast_brake_start_speed_m_per_s = 7.5
+            sd.sim_params.coast_brake_accel_m_per_s2 = -2.5
             sd.sim_params.verbose = False
             sd.sim_params.coast_verbose = False
             sd.sim_drive()
@@ -959,10 +959,10 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sim_params = sd.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = -1
-            sim_params.coast_to_brake_speed_m_per_s = 4.0
-            sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
+            sim_params.coast_brake_start_speed_m_per_s = 4.0
+            sim_params.coast_brake_accel_m_per_s2 = -2.0
             sim_params.verbose = False
             sim_params.coast_verbose = False
             sd.sim_params = sim_params
@@ -997,10 +997,10 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(1).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sim_params = sd.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = -1
-            sim_params.coast_to_brake_speed_m_per_s = 7.5
-            sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.5
+            sim_params.coast_brake_start_speed_m_per_s = 7.5
+            sim_params.coast_brake_accel_m_per_s2 = -2.5
             sim_params.verbose = False
             sim_params.coast_verbose = False
             sd.sim_params = sim_params
@@ -1034,10 +1034,10 @@ class TestCoasting(unittest.TestCase):
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             sd = fastsim.simdrive.SimDrive(trapz, veh)
-            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_allow = True
             sd.sim_params.coast_start_speed_m_per_s = -1
-            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
-            sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
+            sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
+            sd.sim_params.coast_brake_accel_m_per_s2 = -2.0
             sd.sim_params.verbose = False
             sd.sim_params.coast_verbose = False
             sd.sim_drive()
@@ -1070,10 +1070,10 @@ class TestCoasting(unittest.TestCase):
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(1)
             sd = fastsim.simdrive.SimDrive(trapz, veh)
-            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_allow = True
             sd.sim_params.coast_start_speed_m_per_s = -1
-            sd.sim_params.coast_to_brake_speed_m_per_s = 7.5
-            sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.5
+            sd.sim_params.coast_brake_start_speed_m_per_s = 7.5
+            sd.sim_params.coast_brake_accel_m_per_s2 = -2.5
             sd.sim_params.verbose = False
             sd.sim_params.coast_verbose = False
             sd.sim_drive()
@@ -1104,10 +1104,10 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sim_params = sd.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = -1
-            sim_params.coast_to_brake_speed_m_per_s = 4.0
-            sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
+            sim_params.coast_brake_start_speed_m_per_s = 4.0
+            sim_params.coast_brake_accel_m_per_s2 = -2.0
             sim_params.verbose = False
             sim_params.coast_verbose = False
             sd.sim_params = sim_params
@@ -1142,10 +1142,10 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(1).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sim_params = sd.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = -1
-            sim_params.coast_to_brake_speed_m_per_s = 7.5
-            sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.5
+            sim_params.coast_brake_start_speed_m_per_s = 7.5
+            sim_params.coast_brake_accel_m_per_s2 = -2.5
             sim_params.verbose = False
             sim_params.coast_verbose = False
             sd.sim_params = sim_params
@@ -1188,10 +1188,10 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2]))
             sd = fastsim.simdrive.SimDrive(cyc, veh)
-            sd.sim_params.allow_coast = True
+            sd.sim_params.coast_allow = True
             sd.sim_params.coast_start_speed_m_per_s = -1
-            sd.sim_params.coast_to_brake_speed_m_per_s = 4.0
-            sd.sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
+            sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
+            sd.sim_params.coast_brake_accel_m_per_s2 = -2.0
             sd.sim_params.verbose = False
             sd.sim_params.coast_verbose = False
             sd.sim_drive()
@@ -1232,10 +1232,10 @@ class TestCoasting(unittest.TestCase):
             cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2])).to_rust()
             sd = fastsim.simdrive.RustSimDrive(cyc, veh)
             sim_params = sd.sim_params
-            sim_params.allow_coast = True
+            sim_params.coast_allow = True
             sim_params.coast_start_speed_m_per_s = -1
-            sim_params.coast_to_brake_speed_m_per_s = 4.0
-            sim_params.nominal_brake_accel_for_coast_m_per_s2 = -2.0
+            sim_params.coast_brake_start_speed_m_per_s = 4.0
+            sim_params.coast_brake_accel_m_per_s2 = -2.0
             sim_params.verbose = False
             sim_params.coast_verbose = False
             sd.sim_params = sim_params

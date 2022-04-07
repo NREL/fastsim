@@ -314,7 +314,7 @@ impl RustSimDrive {
 
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
-        if self.sim_params.allow_coast {
+        if self.sim_params.coast_allow {
             self.set_coast_speed(self.i)?;
         }
         if self.sim_params.follow_allow {
@@ -325,7 +325,7 @@ impl RustSimDrive {
         if self.sim_params.missed_trace_correction && (self.cyc0.dist_m().slice(s![0..self.i]).sum() > 0.0){
             self.set_time_dilation_rust(self.i)?;
         }
-        if self.sim_params.allow_coast || self.sim_params.follow_allow {
+        if self.sim_params.coast_allow || self.sim_params.follow_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
         }
 
@@ -1409,8 +1409,8 @@ impl RustSimDrive {
         let tol = 1e-6;
         let not_found = -1.0;
         let v0 = self.cyc.mps[i-1];
-        let v_brake = self.sim_params.coast_to_brake_speed_m_per_s;
-        let a_brake = self.sim_params.nominal_brake_accel_for_coast_m_per_s2;
+        let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
+        let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
         let ds = ndarrcumsum(&self.cyc0.dist_v2_m());
         let gs = self.cyc0.grade.clone();
         let d0 = ds[i-1];
@@ -1550,8 +1550,8 @@ impl RustSimDrive {
         let tol = 1e-6;
         // v0 is where n=0, i.e., idx-1
         let v0 = self.cyc.mps[i-1];
-        let brake_start_speed_m_per_s = self.sim_params.coast_to_brake_speed_m_per_s;
-        let brake_accel_m_per_s2 = self.sim_params.nominal_brake_accel_for_coast_m_per_s2;
+        let brake_start_speed_m_per_s = self.sim_params.coast_brake_start_speed_m_per_s;
+        let brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2;
         let time_horizon_s = self.sim_params.coast_time_horizon_for_adjustment_s;
         // distance_horizon_m = 1000.0
         let not_found_n: usize = 0;
@@ -1655,12 +1655,12 @@ impl RustSimDrive {
             return Ok(());
         }
         let v1_traj = self.cyc.mps[i];
-        if self.cyc.mps[i] == self.cyc0.mps[i] && v0 > self.sim_params.coast_to_brake_speed_m_per_s {
-            if self.sim_params.allow_passing_during_coast {
+        if self.cyc.mps[i] == self.cyc0.mps[i] && v0 > self.sim_params.coast_brake_start_speed_m_per_s {
+            if self.sim_params.coast_allow_passing {
                 // we could be coasting downhill so could in theory go to a higher speed
                 // since we can pass, allow vehicle to go up to max coasting speed (m/s)
                 // the solver will show us what we can actually achieve
-                self.cyc.mps[i] = self.sim_params.max_coast_speed_m_per_s;
+                self.cyc.mps[i] = self.sim_params.coast_max_speed_m_per_s;
             } else {
                 // distances of lead vehicle (m)
                 let ds_lv = ndarrcumsum(&self.cyc0.dist_m());
@@ -1672,7 +1672,7 @@ impl RustSimDrive {
                 let max_next_speed_m_per_s = 2.0 * max_avg_speed_m_per_s - v0;
                 self.cyc.mps[i] = max(
                     0.0,
-                    min(max_next_speed_m_per_s, self.sim_params.max_coast_speed_m_per_s));
+                    min(max_next_speed_m_per_s, self.sim_params.coast_max_speed_m_per_s));
             }
         }
         // Solve for the actual coasting speed
@@ -1688,16 +1688,16 @@ impl RustSimDrive {
         }
         if (self.cyc.mps[i] - v1_traj).abs() > tol {
             let mut adjusted_current_speed = false;
-            if self.cyc.mps[i] < (self.sim_params.coast_to_brake_speed_m_per_s + tol) {
+            if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s + tol) {
                 let v1_before = self.cyc.mps[i];
-                self.cyc.modify_with_braking_trajectory_rust(self.sim_params.nominal_brake_accel_for_coast_m_per_s2, i);
+                self.cyc.modify_with_braking_trajectory_rust(self.sim_params.coast_brake_accel_m_per_s2, i);
                 let v1_after = self.cyc.mps[i];
                 assert_ne!(v1_before, v1_after);
                 adjusted_current_speed = true;
             } else {
                 let (traj_found, traj_n, traj_jerk_m_per_s3, traj_accel_m_per_s2) = self.calc_next_rendezvous_trajectory(
                     i,
-                    self.sim_params.nominal_brake_accel_for_coast_m_per_s2,
+                    self.sim_params.coast_brake_accel_m_per_s2,
                     min(accel_proposed, 0.0)
                 );
                 if traj_found {
@@ -1705,10 +1705,10 @@ impl RustSimDrive {
                     let final_speed_m_per_s = self.cyc.modify_by_const_jerk_trajectory_rust(
                         i, traj_n, traj_jerk_m_per_s3, traj_accel_m_per_s2);
                     adjusted_current_speed = true;
-                    if (final_speed_m_per_s - self.sim_params.coast_to_brake_speed_m_per_s).abs() < 0.1 {
+                    if (final_speed_m_per_s - self.sim_params.coast_brake_start_speed_m_per_s).abs() < 0.1 {
                         let i_for_brake = i + traj_n;
                         self.cyc.modify_with_braking_trajectory_rust(
-                            self.sim_params.nominal_brake_accel_for_coast_m_per_s2,
+                            self.sim_params.coast_brake_accel_m_per_s2,
                             i_for_brake,
                         );
                         adjusted_current_speed = true;
