@@ -1552,7 +1552,7 @@ impl RustSimDrive {
         let v0 = self.cyc.mps[i-1];
         let brake_start_speed_m_per_s = self.sim_params.coast_to_brake_speed_m_per_s;
         let brake_accel_m_per_s2 = self.sim_params.nominal_brake_accel_for_coast_m_per_s2;
-        let time_horizon_s = 20.0;
+        let time_horizon_s = self.sim_params.coast_time_horizon_for_adjustment_s;
         // distance_horizon_m = 1000.0
         let not_found_n: usize = 0;
         let not_found_jerk_m_per_s3: f64 = 0.0;
