@@ -142,10 +142,15 @@ impl RustSimDriveParams{
 pub struct RustSimDrive{
     #[pyo3(get, set)]
     pub hev_sim_count: usize,
+    #[pyo3(get, set)]
     pub veh: RustVehicle,
+    #[pyo3(get, set)]
     pub cyc: RustCycle,
+    #[pyo3(get, set)]
     pub cyc0: RustCycle,
+    #[pyo3(get, set)]
     pub sim_params: RustSimDriveParams,
+    #[pyo3(get, set)]
     pub props: RustPhysicalProperties,
     #[pyo3(get, set)]
     pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()
@@ -683,56 +688,6 @@ impl RustSimDrive{
     // Methods for getting and setting arrays and other complex fields
     // note that python cannot specify a specific index to set but must reset the entire array
     // doc strings not needed for getters or setters
-
-    #[getter]
-    pub fn get_veh(&self) -> PyResult<RustVehicle>{
-        Ok(self.veh.clone())
-    }
-    #[setter]
-    pub fn set_veh(&mut self, new_value:RustVehicle) -> PyResult<()>{
-        self.veh = new_value;
-        Ok(())
-    }
-
-    #[getter]
-    pub fn get_cyc(&self) -> PyResult<RustCycle>{
-        Ok(self.cyc.clone())
-    }
-    #[setter]
-    pub fn set_cyc(&mut self, new_value:RustCycle) -> PyResult<()>{
-        self.cyc = new_value;
-        Ok(())
-    }
-
-    #[getter]
-    pub fn get_cyc0(&self) -> PyResult<RustCycle>{
-        Ok(self.cyc0.clone())
-    }
-    #[setter]
-    pub fn set_cyc0(&mut self, new_value:RustCycle) -> PyResult<()>{
-        self.cyc0 = new_value;
-        Ok(())
-    }
-
-    #[getter]
-    pub fn get_sim_params(&self) -> PyResult<RustSimDriveParams>{
-        Ok(self.sim_params.clone())
-    }
-    #[setter]
-    pub fn set_sim_params(&mut self, new_value:RustSimDriveParams) -> PyResult<()>{
-        self.sim_params = new_value;
-        Ok(())
-    }
-
-    #[getter]
-    pub fn get_props(&self) -> PyResult<RustPhysicalProperties>{
-        Ok(self.props.clone())
-    }
-    #[setter]
-    pub fn set_props(&mut self, new_value:RustPhysicalProperties) -> PyResult<()>{
-        self.props = new_value;
-        Ok(())
-    }
 
     #[getter]
     pub fn get_accel_buff_soc(&self) -> PyResult<Vec<f64>>{
