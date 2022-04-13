@@ -154,6 +154,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
         out['UF'] = 0
 
     else:
+        # PHEV
         def get_label_fe_phev():
             """PHEV-specific function for label fe.  Requires same args as get_label_fe,
             which will be available to it because it is called only inside that namespace."""

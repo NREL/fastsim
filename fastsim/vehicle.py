@@ -9,7 +9,7 @@ import pandas as pd
 import types as pytypes
 import re
 from pathlib import Path
-import inspect
+from copy import deepcopy
 import ast
 import copy
 from typing import Optional
@@ -208,6 +208,14 @@ class Vehicle(object):
     charging_on: bool = False
     no_elec_sys: bool = False
     no_elec_aux: bool = False
+
+    # IDM - Intelligent Driver Model, Adaptive Cruise Control version
+    idm_v_desired_m_per_s: float = 33.33
+    idm_dt_headway_s: float = 1.0
+    idm_minimum_gap_m: float = 2.0
+    idm_delta: float = 4.0
+    idm_accel_m_per_s2: float = 1.0
+    idm_decel_m_per_s2: float = 1.5
 
     @classmethod
     def from_vehdb(cls, vnum:int, verbose:bool=False):
@@ -677,8 +685,8 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 
-def veh_equal(veh1, veh2, full_out=False):
-    """Given veh1 and veh2, which can be Vehicle and/or VehicleJit
+def veh_equal(veh1:Vehicle, veh2:Vehicle, full_out:bool=False)-> bool:
+    """Given veh1 and veh2, which can be Vehicle and/or RustVehicle
     instances, return True if equal.
     
     Arguments:
@@ -689,11 +697,19 @@ def veh_equal(veh1, veh2, full_out=False):
     veh_dict2 = copy_vehicle(veh2, return_type='dict', deep=True)
     err_list = []
     keys = list(veh_dict1.keys())
-    keys.remove('props') # no need to compare this one
     for key in keys:
-        if pd.api.types.is_list_like(veh_dict1[key]):
+        if key == "props":
+            p1 = veh_dict1[key]
+            p2 = veh_dict2[key]
+            if not params.physical_properties_equal(p1, p2):
+                if not full_out:
+                    return False
+                err_list.append(
+                    {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
+        elif pd.api.types.is_list_like(veh_dict1[key]):
             if (np.array(veh_dict1[key]) != np.array(veh_dict2[key])).any():
-                if not full_out: return False
+                if not full_out:
+                    return False
                 err_list.append(
                     {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
         elif veh_dict1[key] != veh_dict2[key]:
@@ -702,9 +718,11 @@ def veh_equal(veh1, veh2, full_out=False):
                     continue # treat as equal if both nan
             except:
                 pass
-            if not full_out: return False
+            if not full_out:
+                return False
             err_list.append(
                 {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
-    if full_out: return err_list
+    if full_out:
+        return err_list
 
     return True

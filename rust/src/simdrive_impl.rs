@@ -1,7 +1,8 @@
 use ndarray::{Array, Array1, array, s};
 use std::cmp;
-use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from};
+use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from, ndarrunique, interpolate};
 use super::vehicle::*;
+use super::cycle::{calc_constant_jerk_trajectory, accel_array_for_constant_jerk};
 use super::params;
 
 use super::simdrive::RustSimDrive;
@@ -115,6 +116,15 @@ impl RustSimDrive {
         self.cur_max_roadway_chg_kw = Array::zeros(cyc_len);
         self.trace_miss_iters = Array::zeros(cyc_len);
         self.newton_iters = Array::zeros(cyc_len);
+    }
+
+    /// Provides the gap-with lead vehicle from start to finish
+    pub fn gap_to_lead_vehicle_m_rust(&self) -> Array1<f64> {
+        let mut gaps_m = ndarrcumsum(&self.cyc0.dist_v2_m()) - ndarrcumsum(&self.cyc.dist_v2_m());
+        if self.sim_params.follow_allow {
+            gaps_m += self.veh.idm_minimum_gap_m;
+        }
+        gaps_m
     }
 
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -234,17 +244,90 @@ impl RustSimDrive {
         Ok(())
     }
 
+
+    /// Set gap
+    /// - i: non-negative integer, the step index
+    /// RETURN: None
+    /// EFFECTS:
+    /// - sets the next speed (m/s)
+    /// EQUATION:
+    /// parameters:
+    ///     - v_desired: the desired speed (m/s)
+    ///     - delta: number, typical value is 4.0
+    ///     - a:
+    ///     - b:
+    /// s = d_lead - d
+    /// dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
+    /// s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
+    /// REFERENCE:
+    /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
+    ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
+    ///     DOI: https://doi.org/10.1007/978-3-642-32460-4.
+    pub fn set_speed_for_target_gap_using_idm(&mut self, i:usize){
+        // PARAMETERS
+        let delta = self.veh.idm_delta;
+        let a_m_per_s2 = self.veh.idm_accel_m_per_s2; // acceleration (m/s2)
+        let b_m_per_s2 = self.veh.idm_decel_m_per_s2; // deceleration (m/s2)
+        let dt_headway_s = self.veh.idm_dt_headway_s;
+        let s0_m = self.veh.idm_minimum_gap_m; // we assume vehicle's start out "minimum gap" apart
+        let v_desired_m_per_s = if self.veh.idm_v_desired_m_per_s > 0.0 {
+            self.veh.idm_v_desired_m_per_s
+        } else {
+            ndarrmax(&self.cyc0.mps)
+        };
+        // DERIVED VALUES
+        let sqrt_ab = (a_m_per_s2 * b_m_per_s2).sqrt();
+        let v0_m_per_s = self.mps_ach[i-1];
+        let v0_lead_m_per_s = self.cyc0.mps[i-1];
+        let dv0_m_per_s = v0_m_per_s - v0_lead_m_per_s;
+        let d0_lead_m = self.cyc0.dist_v2_m().slice(s![0..i]).sum() + s0_m;
+        let d0_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let s_m = max(d0_lead_m - d0_m, 0.01);
+        // IDM EQUATIONS
+        let s_target_m =
+            s0_m
+            + max(
+                0.0,
+                (v0_m_per_s * dt_headway_s) + ((v0_m_per_s * dv0_m_per_s)/(2.0 * sqrt_ab))
+            )
+        ;
+        let accel_target_m_per_s2 =
+            a_m_per_s2 * (
+                1.0
+                - ((v0_m_per_s / v_desired_m_per_s).powf(delta))
+                - ((s_target_m / s_m).powf(2.0))
+            )
+        ;
+        self.cyc.mps[i] = max(
+            v0_m_per_s + (accel_target_m_per_s2 * self.cyc.dt_s()[i]),
+            0.0
+        );
+    }
+
+    /// - i: non-negative integer, the step index
+    /// RETURN: None
+    /// EFFECTS:
+    /// - sets the next speed (m/s)
+    pub fn set_speed_for_target_gap(&mut self, i:usize){
+        self.set_speed_for_target_gap_using_idm(i);
+    }
+
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
+        if self.sim_params.coast_allow {
+            self.set_coast_speed(self.i)?;
+        }
+        if self.sim_params.follow_allow {
+            self.set_speed_for_target_gap(self.i);
+        }
         self.solve_step_rust(self.i)?;
 
         if self.sim_params.missed_trace_correction && (self.cyc0.dist_m().slice(s![0..self.i]).sum() > 0.0){
             self.set_time_dilation_rust(self.i)?;
         }
-
-        // TODO: implement something for coasting here
-        // if self.impose_coast[i] == true
-        //     self.set_coast_speeed(i)
+        if self.sim_params.coast_allow || self.sim_params.follow_allow {
+            self.cyc.mps[self.i] = self.mps_ach[self.i];
+        }
 
         self.i += 1;  // increment time step counter
         Ok(())
@@ -467,6 +550,9 @@ impl RustSimDrive {
                         self.cur_max_trac_kw[i] / self.veh.trans_eff
                     );
                 }
+            }
+            if self.impose_coast[i] {
+                self.cur_max_trans_kw_out[i] = 0.0;
             }
             Ok(())
         };
@@ -1288,6 +1374,358 @@ impl RustSimDrive {
         } else {
             Ok(())
         }
+    }
+
+    // Calculates the derivative dv/dd (change in speed by change in distance)
+    // - v: number, the speed at which to evaluate dv/dd (m/s)
+    // - grade: number, the road grade as a decimal fraction
+    // RETURN: number, the dv/dd for these conditions
+    fn calc_dvdd(&self, v: f64, grade: f64) -> f64 {
+        if v <= 0.0 {
+            0.0
+        } else {
+            let atan_grade = grade.atan(); // float(np.arctan(grade))
+            let g = self.props.a_grav_mps2;
+            let m = self.veh.veh_kg;
+            let rho_cdfa = self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2;
+            let rrc = self.veh.wheel_rr_coef;
+            -1.0 * (
+                (g/v) * (atan_grade.sin() + rrc * atan_grade.cos())
+                + (0.5 * rho_cdfa * (1.0/m) * v)
+            )
+        }
+    }
+
+    /// Calculate the distance to stop via coasting in meters.
+    /// - i: non-negative-integer, the current index
+    /// RETURN: non-negative-number or -1.0
+    /// - if -1.0, it means there is no solution to a coast-down distance.
+    ///     This can happen due to being too close to the given
+    ///     stop or perhaps due to coasting downhill
+    /// - if a non-negative-number, the distance in meters that the vehicle
+    ///     would freely coast if unobstructed. Accounts for grade between
+    ///     the current point and end-point
+    fn calc_distance_to_stop_coast_v2(&self, i:usize) -> f64 {
+        let tol = 1e-6;
+        let not_found = -1.0;
+        let v0 = self.cyc.mps[i-1];
+        let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
+        let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
+        let ds = ndarrcumsum(&self.cyc0.dist_v2_m());
+        let gs = self.cyc0.grade.clone();
+        let d0 = ds[i-1];
+        let dt_s = self.cyc0.dt_s()[i];
+        let mut distances_m = vec![];
+        let mut grade_by_distance = vec![];
+        for idx in 0..ds.len() {
+            if ds[idx] > d0 {
+                distances_m.push(ds[idx] - d0);
+                grade_by_distance.push(gs[idx])
+            }
+        }
+        let distances_m = Array::from_vec(distances_m);
+        let grade_by_distance = Array::from_vec(grade_by_distance);
+        let veh_mass_kg = self.veh.veh_kg;
+        let air_density_kg_per_m3 = self.props.air_density_kg_per_m3;
+        let cdfa_m2 = self.veh.drag_coef * self.veh.frontal_area_m2;
+        let rrc = self.veh.wheel_rr_coef;
+        let gravity_m_per_s2 = self.props.a_grav_mps2;
+        let mut v = v0;
+        // distance traveled while stopping via friction-braking (i.e., distance to brake)
+        let dtb = -0.5 * v_brake * v_brake / a_brake;
+        if v0 <= v_brake {
+            return -0.5 * v0 * v0 / a_brake
+        }
+        let mut d = 0.0;
+        let d_max = distances_m[distances_m.len()-1];
+        let unique_grades = ndarrunique(&grade_by_distance);
+        if unique_grades.len() > 0 {
+            // if there is only one grade, there may be a closed-form solution
+            let unique_grade = unique_grades[0];
+            let theta = unique_grade.atan();
+            let c1 = gravity_m_per_s2 * (theta.sin() + rrc * theta.cos());
+            let c2 = (air_density_kg_per_m3 * cdfa_m2) / (2.0 * veh_mass_kg);
+            let v02 = v0 * v0;
+            let vb2 = v_brake * v_brake;
+            let mut d = not_found;
+            let a1 = c1 + c2 * v02;
+            let b1 = c1 + c2 * vb2;
+            if c2 == 0.0 {
+                if c1 > 0.0 {
+                    d = (1.0 / (2.0 * c1)) * (v02 - vb2);
+                }
+            } else if a1 > 0.0 && b1 > 0.0 {
+                d = (1.0 / (2.0 * c2)) * (a1.ln() - b1.ln());
+            }
+            if d != not_found {
+                return d + dtb;
+            }
+        }
+        let mut iter = 0;
+        let max_iter = 2000;
+        let iters_per_step = 2;
+        while v > v_brake && v >= 0.0 && d <= d_max && iter < max_iter {
+            let gr = if unique_grades.len() > 0 {
+                unique_grades[0]
+            } else {
+                interpolate(&d, &distances_m, &grade_by_distance, true)
+            };
+            let mut k = self.calc_dvdd(v, gr);
+            let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
+            let mut vavg = 0.5 * (v + v_next);
+            for _j in 0..iters_per_step {
+                k = self.calc_dvdd(vavg, gr);
+                v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
+                vavg = 0.5 * (v + v_next);
+            }
+            if k >= 0.0 && unique_grades.len() > 0 {
+                // there is no solution for coastdown -- speed will never decrease 
+                return not_found;
+            }
+            let stop = v_next <= v_brake;
+            if stop {
+                v_next = v_brake;
+            }
+            vavg = 0.5 * (v + v_next);
+            let dd = vavg * dt_s;
+            d += dd;
+            v = v_next;
+            iter += 1;
+            if stop {
+                break;
+            }
+        }
+        if (v - v_brake).abs() < tol {
+            d + dtb
+        } else {
+            not_found
+        }
+    }
+
+    /// - i: non-negative integer, the current position in cyc
+    /// - verbose: Bool, if True, prints out debug information
+    /// RETURN: Bool if vehicle should initiate coasting
+    /// Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
+    /// - if distance to coast from start of step is <= distance to next stop
+    /// - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
+    fn should_impose_coast(&self, i:usize) -> bool {
+        let do_coast: bool; 
+        if self.sim_params.coast_start_speed_m_per_s > 0.0 {
+            do_coast = self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s;
+        } else {
+            let d0 = self.cyc0.dist_v2_m().slice(s![0..i]).sum();
+            // distance to stop by coasting from start of step (i-1)
+            // dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
+            let dtsc0 = self.calc_distance_to_stop_coast_v2(i);
+            if dtsc0 < 0.0 {
+                do_coast = false;
+            } else {
+                // distance to next stop (m)
+                let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
+                do_coast = dtsc0 >= dts0;
+            }
+        }
+        do_coast
+    }
+
+
+    /// Calculate next rendezvous trajectory.
+    /// - i: non-negative integer, the index into cyc for the start-of-step
+    /// - min_accel_m__s2: number, the minimum acceleration permitted (m/s2)
+    /// - max_accel_m__s2: number, the maximum acceleration permitted (m/s2)
+    /// RETURN: (Tuple
+    ///     found_rendezvous: Bool, if True the remainder of the data is valid; if False, no rendezvous found
+    ///     n: positive integer, the number of steps ahead to rendezvous at
+    ///     jerk_m__s3: number, the Jerk or first-derivative of acceleration (m/s3)
+    ///     accel_m__s2: number, the initial acceleration of the trajectory (m/s2)
+    /// )
+    /// If no rendezvous exists within the scope, the returned tuple has False for the first item.
+    /// Otherwise, returns the next closest rendezvous in time/space
+    fn calc_next_rendezvous_trajectory(
+        &self,
+        i:usize,
+        min_accel_m_per_s2:f64,
+        max_accel_m_per_s2:f64
+    ) -> (bool, usize, f64, f64) {
+        let tol = 1e-6;
+        // v0 is where n=0, i.e., idx-1
+        let v0 = self.cyc.mps[i-1];
+        let brake_start_speed_m_per_s = self.sim_params.coast_brake_start_speed_m_per_s;
+        let brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2;
+        let time_horizon_s = self.sim_params.coast_time_horizon_for_adjustment_s;
+        // distance_horizon_m = 1000.0
+        let not_found_n: usize = 0;
+        let not_found_jerk_m_per_s3: f64 = 0.0;
+        let not_found_accel_m_per_s2: f64 = 0.0;
+        let not_found: (bool, usize, f64, f64) = (false, not_found_n, not_found_jerk_m_per_s3, not_found_accel_m_per_s2);
+        if v0 < (brake_start_speed_m_per_s + tol) {
+            // don't process braking
+            return not_found;
+        }
+        let (min_accel_m_per_s2, max_accel_m_per_s2) = if min_accel_m_per_s2 > max_accel_m_per_s2 {
+            (max_accel_m_per_s2, min_accel_m_per_s2)
+        } else {
+            (min_accel_m_per_s2, max_accel_m_per_s2)
+        };
+        let num_samples = self.cyc.mps.len();
+        let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        // a_proposed = (v1 - v0) / dt
+        // distance to stop from start of time-step
+        let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
+        if dts0 < 1e-6 {
+            // no stop to coast towards or we're there...
+            return not_found;
+        }
+        let dt = self.cyc.dt_s()[i];
+        // distance to brake from the brake start speed (m/s)
+        let dtb = -0.5 * brake_start_speed_m_per_s * brake_start_speed_m_per_s / brake_accel_m_per_s2;
+        // distance to brake initiation from start of time-step (m)
+        let dtbi0 = dts0 - dtb;
+        // Now, check rendezvous trajectories
+        if time_horizon_s > 0.0 {
+            let mut step_idx = i;
+            let mut dt_plan = 0.0;
+            let mut r_best_found = false;
+            let mut r_best_n = 0;
+            let mut r_best_jerk_m_per_s3 = 0.0;
+            let mut r_best_accel_m_per_s2 = 0.0;
+            let mut r_best_accel_spread_m_per_s2 = 0.0;
+            while dt_plan <= time_horizon_s && step_idx < num_samples {
+                dt_plan += self.cyc0.dt_s()[step_idx];
+                let step_ahead = step_idx - (i - 1);
+                if step_ahead == 1 {
+                    // for brake init rendezvous
+                    let accel = (brake_start_speed_m_per_s - v0) / dt;
+                    let v1 = max(0.0, v0 + accel * dt);
+                    let dd_proposed = ((v0 + v1) / 2.0) * dt;
+                    if (v1 - brake_start_speed_m_per_s).abs() < tol && (dtbi0 - dd_proposed).abs() < tol {
+                        r_best_found = true;
+                        r_best_n = 1;
+                        r_best_jerk_m_per_s3 = 0.0;
+                        r_best_accel_m_per_s2 = accel;
+                        break
+                    }
+                } else {
+                    if dtbi0 >= tol {
+                        // rendezvous trajectory for brake-start -- assumes fixed time-steps
+                        let (r_bi_jerk_m_per_s3, r_bi_accel_m_per_s2) = calc_constant_jerk_trajectory(
+                            step_ahead, 0.0, v0, dtbi0, brake_start_speed_m_per_s, dt);
+                        if r_bi_accel_m_per_s2 < max_accel_m_per_s2 && r_bi_accel_m_per_s2 > min_accel_m_per_s2 && r_bi_jerk_m_per_s3 >= 0.0 {
+                            let as_bi = accel_array_for_constant_jerk(step_ahead, r_bi_accel_m_per_s2, r_bi_jerk_m_per_s3, dt);
+                            let as_bi_min: f64 = as_bi.to_vec().into_iter().reduce(f64::min).unwrap_or(0.0);
+                            let as_bi_max: f64 = as_bi.to_vec().into_iter().reduce(f64::max).unwrap_or(0.0);
+                            let accel_spread = (as_bi_max - as_bi_min).abs();
+                            let flag =
+                                (as_bi_max < (max_accel_m_per_s2 + 1e-6) && as_bi_min > (min_accel_m_per_s2 - 1e-6))
+                                && 
+                                (!r_best_found || (accel_spread < r_best_accel_spread_m_per_s2))
+                            ;
+                            if flag {
+                                r_best_found = true;
+                                r_best_n = step_ahead;
+                                r_best_accel_m_per_s2 = r_bi_accel_m_per_s2;
+                                r_best_jerk_m_per_s3 = r_bi_jerk_m_per_s3;
+                                r_best_accel_spread_m_per_s2 = accel_spread;
+                            }
+                        }
+                    }
+                }
+                step_idx += 1;
+            }
+            if r_best_found {
+                return (r_best_found, r_best_n, r_best_jerk_m_per_s3, r_best_accel_m_per_s2);
+            }
+        }
+        not_found
+    }
+
+    /// Placeholder for method to impose coasting.
+    /// Might be good to include logic for deciding when to coast.
+    /// Solve for the next-step speed that will yield a zero roadload
+    fn set_coast_speed(&mut self, i:usize)->Result<(),String>{
+        let tol = 1e-6;
+        let v0 = self.mps_ach[i-1];
+        if v0 < tol {
+            // TODO: need to determine how to leave coast and rejoin shadow trace
+            // self.impose_coast[i] = False
+        } else {
+            self.impose_coast[i] = self.impose_coast[i-1] || self.should_impose_coast(i);
+        }
+        if !self.impose_coast[i]{
+            return Ok(());
+        }
+        let v1_traj = self.cyc.mps[i];
+        if self.cyc.mps[i] == self.cyc0.mps[i] && v0 > self.sim_params.coast_brake_start_speed_m_per_s {
+            if self.sim_params.coast_allow_passing {
+                // we could be coasting downhill so could in theory go to a higher speed
+                // since we can pass, allow vehicle to go up to max coasting speed (m/s)
+                // the solver will show us what we can actually achieve
+                self.cyc.mps[i] = self.sim_params.coast_max_speed_m_per_s;
+            } else {
+                // distances of lead vehicle (m)
+                let ds_lv = ndarrcumsum(&self.cyc0.dist_m());
+                let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum(); // current distance traveled at start of step
+                let d1_lv = ds_lv[i];
+                assert!(d1_lv >= d0);
+                let max_step_distance_m = d1_lv - d0;
+                let max_avg_speed_m_per_s = max_step_distance_m / self.cyc0.dt_s()[i];
+                let max_next_speed_m_per_s = 2.0 * max_avg_speed_m_per_s - v0;
+                self.cyc.mps[i] = max(
+                    0.0,
+                    min(max_next_speed_m_per_s, self.sim_params.coast_max_speed_m_per_s));
+            }
+        }
+        // Solve for the actual coasting speed
+        if let Err(message) = self.solve_step_rust(i) {
+            return Err("call to `solve_step_rust` failed within `set_coast_speed`: ".to_string() + &message);
+        }
+        self.newton_iters[i] = 0; // reset newton iters
+        self.cyc.mps[i] = self.mps_ach[i];
+        let accel_proposed = (self.cyc.mps[i] - self.cyc.mps[i-1]) / self.cyc.dt_s()[i];
+        if self.cyc.mps[i] < tol {
+            self.cyc.mps[i] = 0.0;
+            return Ok(());
+        }
+        if (self.cyc.mps[i] - v1_traj).abs() > tol {
+            let mut adjusted_current_speed = false;
+            if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s + tol) {
+                let v1_before = self.cyc.mps[i];
+                self.cyc.modify_with_braking_trajectory_rust(self.sim_params.coast_brake_accel_m_per_s2, i);
+                let v1_after = self.cyc.mps[i];
+                assert_ne!(v1_before, v1_after);
+                adjusted_current_speed = true;
+            } else {
+                let (traj_found, traj_n, traj_jerk_m_per_s3, traj_accel_m_per_s2) = self.calc_next_rendezvous_trajectory(
+                    i,
+                    self.sim_params.coast_brake_accel_m_per_s2,
+                    min(accel_proposed, 0.0)
+                );
+                if traj_found {
+                    // adjust cyc to perform the trajectory
+                    let final_speed_m_per_s = self.cyc.modify_by_const_jerk_trajectory_rust(
+                        i, traj_n, traj_jerk_m_per_s3, traj_accel_m_per_s2);
+                    adjusted_current_speed = true;
+                    if (final_speed_m_per_s - self.sim_params.coast_brake_start_speed_m_per_s).abs() < 0.1 {
+                        let i_for_brake = i + traj_n;
+                        self.cyc.modify_with_braking_trajectory_rust(
+                            self.sim_params.coast_brake_accel_m_per_s2,
+                            i_for_brake,
+                        );
+                        adjusted_current_speed = true;
+                    }
+                }
+            }
+            if adjusted_current_speed {
+                // TODO: should we have an iterate=True/False, flag on solve_step to
+                // ensure newton iters is reset? vs having to call manually?
+                if let Err(message) = self.solve_step_rust(i) {
+                    return Err("call to `solve_step_rust` failed within `set_coast_speed`: ".to_string() + &message);
+                }
+                self.newton_iters[i] = 0; // reset newton iters
+                self.cyc.mps[i] = self.mps_ach[i];
+            }
+        }
+        Ok(())
     }
 
     /// Sets scalar variables that can be calculated after a cycle is run. 

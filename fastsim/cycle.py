@@ -3,14 +3,18 @@ cycle data. For example usage, see ../README.md"""
 
 ### Import necessary python modules
 from dataclasses import dataclass
+import copy
+import cmath
+import os
 import numpy as np
 from scipy.interpolate import interp1d
 import pandas as pd
 import re
 import sys
 from pathlib import Path
-import copy
+from copy import deepcopy
 import types
+from numba import njit
 
 # local modules
 from . import parameters as params
@@ -123,7 +127,16 @@ class Cycle(object):
         return self.mps * self.dt_s
 
     @property
-    def delta_elev_m(self):
+    def avg_mps(self):
+        return np.append(0.0, 0.5 * (self.mps[1:] + self.mps[:-1]))
+    
+    # distance at each time step using average speed of the step
+    @property
+    def dist_v2_m(self):
+        return self.avg_mps * self.dt_s
+
+    @property
+    def delta_elev_m(self) -> np.ndarray:
         """
         Cumulative elevation change w.r.t. to initial
         """
@@ -146,6 +159,81 @@ class Cycle(object):
 
     def to_rust(self):
         return copy_cycle(self, return_type='rust', deep=False)
+
+    def copy(self):
+        """
+        Return a copy of this Cycle instance.
+        """
+        cyc_dict = {
+            'time_s': self.time_s.copy(),
+            'mps': self.mps.copy(),
+            'cycGrade': self.grade.copy(),
+            'cycRoadType': self.road_type.copy(),
+            'name': self.name,
+        }
+        return Cycle.from_dict(cyc_dict)
+
+    def calc_distance_to_next_stop_from(self, distance_m):
+        """
+        Calculate the distance to next stop from `distance_m`
+        - distance_m: non-negative-number, the current distance from start (m)
+        RETURN: -1 or non-negative-integer
+        - if there are no more stops ahead, return -1
+        - else returns the distance to the next stop from distance_m
+        """
+        distances_of_stops_m = np.unique(self.dist_v2_m.cumsum()[self.mps < 1e-6])
+        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (distance_m + 1e-6)]
+        if len(remaining_stops_m) > 0:
+            return remaining_stops_m[0] - distance_m
+        return -1.0
+
+    def modify_by_const_jerk_trajectory(self, idx, n, jerk_m__s3, accel0_m__s2):
+        """
+        Modifies the cycle using the given constant-jerk trajectory parameters
+        - idx: non-negative integer, the point in the cycle to initiate
+        modification (note: THIS point is modified since trajectory should be calculated from idx-1)
+        - jerk_m__s3: number, the "Jerk" associated with the trajectory (m/s3)
+        - accel0_m__s2: number, the initial acceleration (m/s2)
+        NOTE:
+        - modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment
+        - CAUTION: NOT ROBUST AGAINST VARIABLE DURATION TIME-STEPS
+        RETURN: Number, final modified speed (m/s)
+        """
+        num_samples = len(self.time_s)
+        v0 = self.mps[idx-1]
+        dt = self.dt_s[idx]
+        v = v0
+        for ni in range(1, int(n)+1):
+            idx_to_set = (int(idx) - 1) + ni
+            if idx_to_set >= num_samples:
+                break
+            v = speed_for_constant_jerk(ni, v0, accel0_m__s2, jerk_m__s3, dt)
+            self.mps[idx_to_set] = v
+        return v
+
+    def modify_with_braking_trajectory(self, brake_accel_m__s2, idx):
+        """
+        Add a braking trajectory that would cover the same distance as the given constant brake deceleration
+        - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
+        - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
+        RETURN: non-negative-number, the final speed of the modified trajectory (m/s) 
+        - modifies the cycle in place for braking
+        """
+        assert brake_accel_m__s2 < 0.0
+        i = int(idx)
+        v0 = self.mps[i-1]
+        dt = self.dt_s[i]
+        # distance-to-stop (m)
+        dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
+        # time-to-stop (s)
+        tts_s = -v0 / brake_accel_m__s2
+        # number of steps to take
+        n = int(np.round(tts_s / dt))
+        if n < 2:
+            # need at least 2 steps
+            n = 2
+        jerk_m__s3, accel_m__s2 = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
+        return self.modify_by_const_jerk_trajectory(i, n, jerk_m__s3, accel_m__s2)
     
 class LegacyCycle(object):
     """
@@ -260,7 +348,7 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
     return microtrips
 
 
-def make_cycle(ts, vs, gs=None, rs=None):
+def make_cycle(ts, vs, gs=None, rs=None) -> dict:
     """
     (Array Num) (Array Num) (Array Num)? -> Dict
     Create a cycle from times, speeds, and grades. If grades is not
@@ -287,7 +375,7 @@ def make_cycle(ts, vs, gs=None, rs=None):
             'road_type': np.array(rs)}
 
 
-def equals(c1, c2, verbose=True):
+def equals(c1, c2, verbose=True) -> bool:
     """
     Dict Dict -> Bool
     Returns true if the two cycles are equal, false otherwise
@@ -354,7 +442,7 @@ def concat(cycles, name=None):
     return final_cycle
 
 
-def resample(cycle, new_dt=None, start_time=None, end_time=None,
+def resample(cycle:Cycle, new_dt=None, start_time=None, end_time=None,
              hold_keys=None, rate_keys=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
@@ -408,7 +496,7 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
                     fp=np.insert((avg_rate_var * dts_orig).cumsum(), 0, 0.0)
                 ),
             ) / new_dt
-            step_averages = np.insert(step_averages, 0, step_averages[0])
+            step_averages = np.append(step_averages[0], step_averages)
             step_averages = np.append(step_averages, step_averages[-1])
             midstep_times = np.concatenate(
                 (
@@ -429,7 +517,7 @@ def resample(cycle, new_dt=None, start_time=None, end_time=None,
         except:
             # if the value can't be interpolated, it must not be a numerical
             # array. Just add it back in as is.
-            new_cycle[k] = copy.deepcopy(cycle[k])
+            new_cycle[k] = deepcopy(cycle[k])
     return new_cycle
 
 
@@ -490,3 +578,90 @@ def peak_deceleration(cycle):
     OUTPUTS: Real, the maximum acceleration
     """
     return np.min(accelerations(cycle))
+
+
+def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
+    """
+    Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
+    INPUTS:
+    - n: Int, number of time-steps away from rendezvous
+    - D0: Num, distance of simulated vehicle (m/s)
+    - v0: Num, speed of simulated vehicle (m/s)
+    - Dr: Num, distance of rendezvous point (m)
+    - vr: Num, speed of rendezvous point (m/s)
+    - dt: Num, step duration (s)
+    RETURNS: (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
+    Returns the constant jerk and acceleration for initial time step.
+    """
+    assert n > 1
+    assert Dr > D0
+    dDr = Dr - D0
+    dvr = vr - v0
+    k = (dvr - (2.0 * dDr / (n * dt)) + 2.0 * v0) / (
+        0.5 * n * (n - 1) * dt
+        - (1.0 / 3) * (n - 1) * (n - 2) * dt
+        - 0.5 * (n - 1) * dt * dt
+    )
+    a0 = (
+        (dDr / dt)
+        - n * v0
+        - ((1.0 / 6) * n * (n - 1) * (n - 2) * dt + 0.25 * n * (n - 1) * dt * dt) * k
+    ) / (0.5 * n * n * dt)
+    return (k, a0)
+
+
+def accel_for_constant_jerk(n, a0, k, dt):
+    """
+    Calculate the acceleration n timesteps away
+    INPUTS:
+    - n: Int, number of times steps away to calculate
+    - a0: Num, initial acceleration (m/s2)
+    - k: Num, constant jerk (m/s3)
+    - dt: Num, time-step duration in seconds
+    NOTE:
+    - this is the constant acceleration over the time-step from sample n to sample n+1
+    RETURN: Num, the acceleration n timesteps away (m/s2)
+    """
+    return a0 + (n * k * dt)
+
+
+def speed_for_constant_jerk(n, v0, a0, k, dt):
+    """
+    Int Num Num Num Num -> Num
+    Calculate speed (m/s) n timesteps away
+    INPUTS:
+    - n: Int, numer of timesteps away to calculate
+    - v0: Num, initial speed (m/s)
+    - a0: Num, initial acceleration (m/s2)
+    - k: Num, constant jerk
+    - dt: Num, duration of a timestep (s)
+    NOTE:
+    - this is the speed at sample n
+    - if n == 0, speed is v0
+    - if n == 1, speed is v0 + a0*dt, etc.
+    RETURN: Num, the speed n timesteps away (m/s)
+    """
+    return v0 + (n * a0 * dt) + (0.5 * n * (n - 1) * k * dt)
+
+
+def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
+    """
+    Calculate distance (m) after n timesteps
+    INPUTS:
+    - n: Int, numer of timesteps away to calculate
+    - d0: Num, initial distance (m)
+    - v0: Num, initial speed (m/s)
+    - a0: Num, initial acceleration (m/s2)
+    - k: Num, constant jerk
+    - dt: Num, duration of a timestep (s)
+    NOTE:
+    - this is the distance traveled from start (i.e., n=0) measured at sample point n
+    RETURN: Num, the distance at n timesteps away (m)
+    """
+    term1 = dt * (
+        (n * v0)
+        + (0.5 * n * (n - 1) * a0 * dt)
+        + ((1.0 / 6.0) * k * dt * (n - 2) * (n - 1) * n)
+    )
+    term2 = 0.5 * dt * dt * ((n * a0) + (0.5 * n * (n - 1) * k * dt))
+    return d0 + term1 + term2

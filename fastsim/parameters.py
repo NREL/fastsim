@@ -13,6 +13,7 @@ import copy
 from . import inspect_utils
 
 import fastsimrust as fsr
+from copy import deepcopy
 
 
 THIS_DIR = Path(__file__).parent
@@ -101,6 +102,31 @@ def physical_properties_equal(a:PhysicalProperties, b:PhysicalProperties)-> bool
         if a.__getattribute__(key) != b.__getattribute__(key):
             return False
     return True
+
+def copy_props(props:PhysicalProperties, use_jit=None) -> PhysicalProperties:
+    """
+    Returns copy of PhysicalProperties or PhysicalPropertiesJit.
+    Arguments:
+    sd: instantianed PhysicalProperties or PhysicalPropertiesJit
+    use_jit: (Boolean)
+        default -- infer from cycle
+        True -- use numba
+        False -- don't use numba
+    """
+
+    from . import parametersjit
+
+    if use_jit is None:
+        use_jit = "Jit" in str(type(props))
+
+    props_copy = PhysicalPropertiesJit() if use_jit else PhysicalProperties()
+
+    for keytup in parametersjit.props_spec:
+        key = keytup[0]
+        props_copy.__setattr__(key, deepcopy(props.__getattribute__(key)))
+
+    return props_copy  
+
 
 ### Vehicle model parameters that should be changed only by advanced users
 # Discrete power out percentages for assigning FC efficiencies -- all hardcoded ***

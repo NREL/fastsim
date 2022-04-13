@@ -49,6 +49,26 @@ pub struct RustSimDriveParams{
     #[pyo3(get, set)]
     pub energy_audit_error_tol: f64,
     #[pyo3(get, set)]
+    pub coast_allow: bool,
+    #[pyo3(get, set)]
+    pub coast_allow_passing: bool,
+    #[pyo3(get, set)]
+    pub coast_max_speed_m_per_s: f64,
+    #[pyo3(get, set)]
+    pub coast_brake_accel_m_per_s2: f64,
+    #[pyo3(get, set)]
+    pub coast_brake_start_speed_m_per_s: f64,
+    #[pyo3(get, set)]
+    pub coast_start_speed_m_per_s: f64,
+    #[pyo3(get, set)]
+    pub coast_verbose: bool,
+    #[pyo3(get, set)]
+    pub coast_time_horizon_for_adjustment_s: f64,
+    #[pyo3(get, set)]
+    pub follow_allow: bool,
+    #[pyo3(get, set)]
+    pub follow_model: usize,
+    #[pyo3(get, set)]
     pub max_epa_adj: f64,
 }
 
@@ -73,6 +93,18 @@ impl RustSimDriveParams{
         let newton_max_iter: u32 = 100; // newton solver max iterations
         let newton_xtol: f64 = 1e-9; // newton solver tolerance
         let energy_audit_error_tol: f64 = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
+        // Coasting
+        let coast_allow = false;
+        let coast_allow_passing = false;
+        let coast_max_speed_m_per_s = 40.0;
+        let coast_brake_accel_m_per_s2 = -2.5;
+        let coast_brake_start_speed_m_per_s = 7.5;
+        let coast_start_speed_m_per_s = 38.0;
+        let coast_verbose = false;
+        let coast_time_horizon_for_adjustment_s = 20.0;
+        // Following
+        let follow_allow = false;
+        let follow_model = 0;
         // EPA fuel economy adjustment parameters
         let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
         RustSimDriveParams{
@@ -90,6 +122,16 @@ impl RustSimDriveParams{
             newton_max_iter,
             newton_xtol,
             energy_audit_error_tol,
+            coast_allow,
+            coast_allow_passing,
+            coast_max_speed_m_per_s,
+            coast_brake_accel_m_per_s2,
+            coast_brake_start_speed_m_per_s,
+            coast_start_speed_m_per_s,
+            coast_verbose,
+            coast_time_horizon_for_adjustment_s,
+            follow_allow,
+            follow_model,
             max_epa_adj,
         }
     }
@@ -147,6 +189,7 @@ pub struct RustSimDrive{
     pub mc_mech_kw_out_ach: Array1<f64>,
     pub mc_elec_kw_in_ach: Array1<f64>,
     pub aux_in_kw: Array1<f64>,
+    pub impose_coast: Array1<bool>,
     pub roadway_chg_kw_out_ach: Array1<f64>,
     pub min_ess_kw_2help_fc: Array1<f64>,
     pub ess_kw_out_ach: Array1<f64>,
@@ -298,6 +341,7 @@ impl RustSimDrive{
         let mc_mech_kw_out_ach = Array::zeros(cyc_len);
         let mc_elec_kw_in_ach = Array::zeros(cyc_len);
         let aux_in_kw = Array::zeros(cyc_len);
+        let impose_coast = Array::from_vec(vec![false; cyc_len]);
         let roadway_chg_kw_out_ach = Array::zeros(cyc_len);
         let min_ess_kw_2help_fc = Array::zeros(cyc_len);
         let ess_kw_out_ach = Array::zeros(cyc_len);
@@ -423,6 +467,7 @@ impl RustSimDrive{
             mc_mech_kw_out_ach,
             mc_elec_kw_in_ach,
             aux_in_kw,
+            impose_coast,
             roadway_chg_kw_out_ach,
             min_ess_kw_2help_fc,
             ess_kw_out_ach,
@@ -507,6 +552,11 @@ impl RustSimDrive{
     // TODO, put doc strings on these and all structs
     // comments preceding a struct, method, or function definition with `///` instead of `\\`
     // get interpreted as doc strings in python
+
+    /// Provides the gap-with lead vehicle from start to finish
+    pub fn gap_to_lead_vehicle_m(&self) -> PyResult<Vec<f64>>{
+      Ok(self.gap_to_lead_vehicle_m_rust().to_vec())
+    }
 
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
     /// Arguments
@@ -731,6 +781,16 @@ impl RustSimDrive{
     #[setter]
     pub fn set_aux_in_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
       self.aux_in_kw = Array::from_vec(new_value);
+      Ok(())
+    }
+
+    #[getter]
+    pub fn get_impose_coast(&self) -> PyResult<Vec<bool>>{
+      Ok(self.impose_coast.to_vec())
+    }
+    #[setter]
+    pub fn set_impose_coast(&mut self, new_value:Vec<bool>) -> PyResult<()>{
+      self.impose_coast = Array::from_vec(new_value);
       Ok(())
     }
 
