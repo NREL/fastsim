@@ -1061,17 +1061,12 @@ impl RustSimDrive {
 
             self.mc_elec_kw_in_if_fc_req[i] = self.ess_kw_if_fc_req[i] + self.er_kw_if_fc_req[i] - self.aux_in_kw[i];
 
-            if self.veh.no_elec_sys {
+            if self.veh.no_elec_sys || self.mc_elec_kw_in_if_fc_req[i] == 0.0 {
                 self.mc_kw_if_fc_req[i] = 0.0;
-            } else if self.mc_elec_kw_in_if_fc_req[i] == 0.0 {
-                self.mc_kw_if_fc_req[i] = 0.0;
-            }
-
-            else if self.mc_elec_kw_in_if_fc_req[i] > 0.0 {
+            } else if self.mc_elec_kw_in_if_fc_req[i] > 0.0 {
                 if self.mc_elec_kw_in_if_fc_req[i] == arrmax(&self.veh.mc_kw_in_array){
                     self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len()-1];
-                }
-                else {
+                } else {
                     self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array[
                         cmp::max(1, first_grtr(
                                 &self.veh.mc_kw_in_array, min(arrmax(&self.veh.mc_kw_in_array) - 0.01, self.mc_elec_kw_in_if_fc_req[i])
@@ -1079,9 +1074,7 @@ impl RustSimDrive {
                         )
                     ]
                 }
-            }
-
-            else {
+            } else {
                 if -self.mc_elec_kw_in_if_fc_req[i] == arrmax(&self.veh.mc_kw_in_array) {
                     self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i] / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len()-1];
                 }
