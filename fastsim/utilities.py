@@ -8,6 +8,7 @@ from fastsim import parameters as params
 import seaborn as sns
 import matplotlib.pyplot as plt
 import re
+from typing import Tuple
 
 from fastsim import parameters
 
@@ -33,7 +34,9 @@ def get_rho_air(temperature_degC, elevation_m=180):
 
     return rho
 
-def abc_to_drag_coeffs(veh_kg, veh_fa_m2, a, b, c, show_plots=False):
+# TODO: implement these functions with sim_drive and a vehicle
+
+def abc_to_drag_coeffs(veh_kg:float, veh_fa_m2:float, a_lbf:float, b_lbf__mph:float, c_lbf__mph2:float, show_plots:bool=False) -> Tuple[float, float]:
     """For a given vehicle mass; frontal area; and target A, B, and C 
     coefficients; calculate and return drag and rolling resistance 
     coefficients.
@@ -42,17 +45,17 @@ def abc_to_drag_coeffs(veh_kg, veh_fa_m2, a, b, c, show_plots=False):
     ----------
     veh_kg: vehicle mass [kg]
     veh_fa_m2: vehicle frontal area [m^2]
-    a, b, c: coastdown coefficients for road load [lb] vs speed [mph]
+    a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]
     show_plots: if True, plots are shown
 
     It may be worthwhile to have this use get_rho_air() in the future. 
     """
 
     speed_mph = np.linspace(0, 70, 500)
-    dyno_func_lb = np.poly1d([c, b, a])  # polynomial function for pounds vs speed
+    dyno_func_lb = np.poly1d([c_lbf__mph2, b_lbf__mph, a_lbf])  # polynomial function for pounds vs speed
     dyno_lb = dyno_func_lb(speed_mph)
 
-    def model_func_lb(speed_mps, dragCoef, wheelRrCoef):
+    def model_func_lb(speed_mps, drag_coef, wheel_rr_coef):
         """fastsim-style solution for drag force on vehicle.
         Arguments:
         ---------
@@ -61,16 +64,16 @@ def abc_to_drag_coeffs(veh_kg, veh_fa_m2, a, b, c, show_plots=False):
         wheelRrCoef: rolling resistance coefficient [-]
         """
 
-        out = (veh_kg * props.a_grav_mps2 * wheelRrCoef +
-            0.5 * props.airDensityKgPerM3 * dragCoef * veh_fa_m2
+        out = (veh_kg * props.a_grav_mps2 * wheel_rr_coef +
+            0.5 * props.air_density_kg_per_m3 * drag_coef * veh_fa_m2
             * speed_mps ** 2) / 4.448
         return out
 
-    (dragCoef, wheelRrCoef), pcov = curve_fit(model_func_lb,
+    (drag_coef, wheel_rr_coef), pcov = curve_fit(model_func_lb,
                                               xdata=speed_mph / params.MPH_PER_MPS,
                                             ydata=dyno_func_lb(speed_mph),
                                             p0=[0.3, 0.01])
-    model_lb = model_func_lb(speed_mph / params.MPH_PER_MPS, dragCoef, wheelRrCoef)
+    model_lb = model_func_lb(speed_mph / params.MPH_PER_MPS, drag_coef, wheel_rr_coef)
 
     if show_plots:
         plt.figure()    
@@ -80,9 +83,12 @@ def abc_to_drag_coeffs(veh_kg, veh_fa_m2, a, b, c, show_plots=False):
         plt.xlabel('Speed [mph]')
         plt.ylabel('Road Load [lb]')
 
-    return dragCoef, wheelRrCoef
+    return drag_coef, wheel_rr_coef
 
-def drag_coeffs_to_abc(veh_kg, veh_fa_m2, dragCoef, wheelRrCoef, show_plots=False):
+# TODO, make drag_coeffs and abcs generate plots of drag force vs speed
+# and implement units in the inputs
+
+def drag_coeffs_to_abc(veh_kg:float, veh_fa_m2:float, drag_coef:float, wheel_rr_coef:float, show_plots:bool=False)  -> Tuple[float, float, float]:
     """For a given vehicle mass, frontal area, dragCoef, and wheelRrCoef, 
     calculate and return ABCs.
 
@@ -93,14 +99,14 @@ def drag_coeffs_to_abc(veh_kg, veh_fa_m2, dragCoef, wheelRrCoef, show_plots=Fals
     show_plots: if True, plots are shown
 
     Returns:
-    a, b, c: coastdown coefficients for road load [lb] vs speed [mph]
+    a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]
 
     It may be worthwhile to have this use get_rho_air() in the future. 
     """
 
     speed_mph = np.linspace(0, 70, 500)
 
-    def model_func_lb(speed_mps, dragCoef, wheelRrCoef):
+    def model_func_lb(speed_mps, drag_coef, wheel_rr_coef):
         """fastsim-style solution for drag force on vehicle.
         Arguments:
         ---------
@@ -109,13 +115,13 @@ def drag_coeffs_to_abc(veh_kg, veh_fa_m2, dragCoef, wheelRrCoef, show_plots=Fals
         wheelRrCoef: rolling resistance coefficient [-]
         """
 
-        out = (veh_kg * props.a_grav_mps2 * wheelRrCoef +
-               0.5 * props.airDensityKgPerM3 * dragCoef * veh_fa_m2
+        out = (veh_kg * props.a_grav_mps2 * wheel_rr_coef +
+               0.5 * props.air_density_kg_per_m3 * drag_coef * veh_fa_m2
                * speed_mps ** 2) / 4.448
         return out
 
     model_lb = model_func_lb(
-        speed_mph / params.MPH_PER_MPS, dragCoef, wheelRrCoef)
+        speed_mph / params.MPH_PER_MPS, drag_coef, wheel_rr_coef)
 
     # polynomial function for pounds vs speed
     dyno_func_lb = lambda speed_mph, a, b, c: np.poly1d([c, b, a])(speed_mph)
