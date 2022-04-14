@@ -61,9 +61,16 @@ class SimDriveParams(object):
         self.coast_max_speed_m_per_s = 40.0 # maximum allowable speed under coast
         self.coast_brake_accel_m_per_s2 = -2.5
         self.coast_brake_start_speed_m_per_s = 7.5 # speed when coasting uses friction brakes
-        self.coast_start_speed_m_per_s = 38.0 # m/s
+        self.coast_start_speed_m_per_s = 0.0 # m/s, if > 0, initiates coast when vehicle hits this speed; mostly for testing
         self.coast_time_horizon_for_adjustment_s = 20.0 # time-ahead for speed changes to be considered to hit distance mark
         self.follow_allow = False
+        # IDM - Intelligent Driver Model, Adaptive Cruise Control version
+        self.idm_v_desired_m_per_s: float = 33.33
+        self.idm_dt_headway_s: float = 1.0
+        self.idm_minimum_gap_m: float = 2.0
+        self.idm_delta: float = 4.0
+        self.idm_accel_m_per_s2: float = 1.0
+        self.idm_decel_m_per_s2: float = 1.5
 
         # EPA fuel economy adjustment parameters
         self.max_epa_adj = 0.3 # maximum EPA adjustment factor
@@ -283,7 +290,7 @@ class SimDrive(object):
         "Provides the gap-with lead vehicle from start to finish"
         gaps_m = self.cyc0.dist_v2_m.cumsum() - self.cyc.dist_v2_m.cumsum()
         if self.sim_params.follow_allow:
-            gaps_m += self.veh.idm_minimum_gap_m
+            gaps_m += self.sim_params.idm_minimum_gap_m
         return gaps_m
 
     def sim_drive(self, init_soc:Optional[float]=None, aux_in_kw_override:Optional[np.ndarray]=None):
@@ -416,13 +423,13 @@ class SimDrive(object):
             DOI: https://doi.org/10.1007/978-3-642-32460-4.
         """
         # PARAMETERS
-        delta = self.veh.idm_delta
-        a_m__s2 = self.veh.idm_accel_m_per_s2 # acceleration (m/s2)
-        b_m__s2 = self.veh.idm_decel_m_per_s2 # deceleration (m/s2)
-        dt_headway_s = self.veh.idm_dt_headway_s
-        s0_m = self.veh.idm_minimum_gap_m # we assume vehicle's start out "minimum gap" apart
-        if self.veh.idm_v_desired_m_per_s > 0:
-            v_desired_m__s = self.veh.idm_v_desired_m_per_s
+        delta = self.sim_params.idm_delta
+        a_m__s2 = self.sim_params.idm_accel_m_per_s2 # acceleration (m/s2)
+        b_m__s2 = self.sim_params.idm_decel_m_per_s2 # deceleration (m/s2)
+        dt_headway_s = self.sim_params.idm_dt_headway_s
+        s0_m = self.sim_params.idm_minimum_gap_m # we assume vehicle's start out "minimum gap" apart
+        if self.sim_params.idm_v_desired_m_per_s > 0:
+            v_desired_m__s = self.sim_params.idm_v_desired_m_per_s
         else:
             v_desired_m__s = self.cyc0.mps.max()
         # DERIVED VALUES

@@ -122,7 +122,7 @@ impl RustSimDrive {
     pub fn gap_to_lead_vehicle_m_rust(&self) -> Array1<f64> {
         let mut gaps_m = ndarrcumsum(&self.cyc0.dist_v2_m()) - ndarrcumsum(&self.cyc.dist_v2_m());
         if self.sim_params.follow_allow {
-            gaps_m += self.veh.idm_minimum_gap_m;
+            gaps_m += self.sim_params.idm_minimum_gap_m;
         }
         gaps_m
     }
@@ -265,13 +265,13 @@ impl RustSimDrive {
     ///     DOI: https://doi.org/10.1007/978-3-642-32460-4.
     pub fn set_speed_for_target_gap_using_idm(&mut self, i:usize){
         // PARAMETERS
-        let delta = self.veh.idm_delta;
-        let a_m_per_s2 = self.veh.idm_accel_m_per_s2; // acceleration (m/s2)
-        let b_m_per_s2 = self.veh.idm_decel_m_per_s2; // deceleration (m/s2)
-        let dt_headway_s = self.veh.idm_dt_headway_s;
-        let s0_m = self.veh.idm_minimum_gap_m; // we assume vehicle's start out "minimum gap" apart
-        let v_desired_m_per_s = if self.veh.idm_v_desired_m_per_s > 0.0 {
-            self.veh.idm_v_desired_m_per_s
+        let delta = self.sim_params.idm_delta;
+        let a_m_per_s2 = self.sim_params.idm_accel_m_per_s2; // acceleration (m/s2)
+        let b_m_per_s2 = self.sim_params.idm_decel_m_per_s2; // deceleration (m/s2)
+        let dt_headway_s = self.sim_params.idm_dt_headway_s;
+        let s0_m = self.sim_params.idm_minimum_gap_m; // we assume vehicle's start out "minimum gap" apart
+        let v_desired_m_per_s = if self.sim_params.idm_v_desired_m_per_s > 0.0 {
+            self.sim_params.idm_v_desired_m_per_s
         } else {
             ndarrmax(&self.cyc0.mps)
         };

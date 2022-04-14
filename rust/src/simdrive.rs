@@ -66,8 +66,20 @@ pub struct RustSimDriveParams{
     pub coast_time_horizon_for_adjustment_s: f64,
     #[pyo3(get, set)]
     pub follow_allow: bool,
+    // IDM - Intelligent Driver Model, Adaptive Cruise Control version
     #[pyo3(get, set)]
-    pub follow_model: usize,
+    pub idm_v_desired_m_per_s: f64,
+    #[pyo3(get, set)]
+    pub idm_dt_headway_s: f64,
+    #[pyo3(get, set)]
+    pub idm_minimum_gap_m: f64,
+    #[pyo3(get, set)]
+    pub idm_delta: f64,
+    #[pyo3(get, set)]
+    pub idm_accel_m_per_s2: f64,
+    #[pyo3(get, set)]
+    pub idm_decel_m_per_s2: f64,
+    // Other, Misc.
     #[pyo3(get, set)]
     pub max_epa_adj: f64,
 }
@@ -99,12 +111,18 @@ impl RustSimDriveParams{
         let coast_max_speed_m_per_s = 40.0;
         let coast_brake_accel_m_per_s2 = -2.5;
         let coast_brake_start_speed_m_per_s = 7.5;
-        let coast_start_speed_m_per_s = 38.0;
+        let coast_start_speed_m_per_s = 0.0;
         let coast_verbose = false;
         let coast_time_horizon_for_adjustment_s = 20.0;
         // Following
         let follow_allow = false;
-        let follow_model = 0;
+        // IDM - Intelligent Driver Model, Adaptive Cruise Control version
+        let idm_v_desired_m_per_s = 33.33;
+        let idm_dt_headway_s = 1.0;
+        let idm_minimum_gap_m = 2.0;
+        let idm_delta = 4.0;
+        let idm_accel_m_per_s2 = 1.0;
+        let idm_decel_m_per_s2 = 1.5;
         // EPA fuel economy adjustment parameters
         let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
         RustSimDriveParams{
@@ -131,7 +149,12 @@ impl RustSimDriveParams{
             coast_verbose,
             coast_time_horizon_for_adjustment_s,
             follow_allow,
-            follow_model,
+            idm_v_desired_m_per_s,
+            idm_dt_headway_s,
+            idm_minimum_gap_m,
+            idm_delta,
+            idm_accel_m_per_s2,
+            idm_decel_m_per_s2,
             max_epa_adj,
         }
     }
