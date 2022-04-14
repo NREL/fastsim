@@ -44,7 +44,6 @@ veh1.stopStart = True
 veh1.maxMotorKw = 1
 veh1.maxEssKw = 5
 veh1.maxEssKwh = 1
-veh1.set_init_calcs()
 veh1.veh_kg = veh0.veh_kg
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 
@@ -76,7 +75,7 @@ ax2.plot(cyc.time_s, sim_drive1.can_pwr_all_elec,
 ax2.set_ylabel('SS active')
 ax2.grid()
 
-ax1.plot(cyc.time_s, cyc.cycMph)
+ax1.plot(cyc.time_s, cyc.mph)
 ax1.yaxis.label.set_color('blue')
 ax1.tick_params(axis='y', colors='blue')
 ax1.set_ylabel('Speed [mph]')
@@ -102,7 +101,7 @@ ax2.set_xlim(ax0.get_xlim())
 ax2.set_yticks([0, 1])
 ax2.grid()
 
-ax1.plot(cyc.time_s, cyc.cycMph)
+ax1.plot(cyc.time_s, cyc.mph)
 ax1.yaxis.label.set_color('blue')
 ax1.tick_params(axis='y', colors='blue')
 ax1.set_ylabel('Speed [mph]')
