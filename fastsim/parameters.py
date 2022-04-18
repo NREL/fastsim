@@ -22,6 +22,8 @@ THIS_DIR = Path(__file__).parent
 ### Unit conversions that should NEVER change
 MPH_PER_MPS = 2.2369
 M_PER_MI = 1609.00
+# Newtons per pound-force
+N_PER_LBF = 4.448
 
 class PhysicalProperties(object):
     """Container class for physical constants that could change under certain special 

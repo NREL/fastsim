@@ -2,7 +2,7 @@
 
 from typing import Callable
 import inspect
-from scipy.optimize import curve_fit
+from scipy.optimize import minimize
 import numpy as np
 from fastsim import parameters as params
 import seaborn as sns
@@ -24,7 +24,7 @@ def get_rho_air(temperature_degC, elevation_m=180):
     Arguments:
     ----------
     temperature_degC : ambient temperature [°C]
-    elevation_m : elevation above sea level [m].  
+    elevation_m : elevation above sea level [m].
         Default 180 m is for Chicago, IL"""
     #     T = 15.04 - .00649 * h
     #     p = 101.29 * [(T + 273.1)/288.08]^5.256
@@ -36,60 +36,117 @@ def get_rho_air(temperature_degC, elevation_m=180):
 
 # TODO: implement these functions with sim_drive and a vehicle
 
-def abc_to_drag_coeffs(veh_kg:float, veh_fa_m2:float, a_lbf:float, b_lbf__mph:float, c_lbf__mph2:float, show_plots:bool=False) -> Tuple[float, float]:
-    """For a given vehicle mass; frontal area; and target A, B, and C 
-    coefficients; calculate and return drag and rolling resistance 
+
+def abc_to_drag_coeffs(veh,
+                       a_lbf: float, b_lbf__mph: float, c_lbf__mph2: float, show_plots: bool = False,
+                       use_rust=True) -> Tuple[float, float]:
+    """For a given vehicle and target A, B, and C
+    coefficients; calculate and return drag and rolling resistance
     coefficients.
 
     Arguments:
     ----------
-    veh_kg: vehicle mass [kg]
-    veh_fa_m2: vehicle frontal area [m^2]
+    veh: vehicle.Vehicle with all parameters correct except for drag and rolling resistance coefficients
     a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]
     show_plots: if True, plots are shown
+    use_rust: if True, use rust implementation of drag coefficient calculation.
 
-    It may be worthwhile to have this use get_rho_air() in the future. 
+    It may be worthwhile to have this use get_rho_air() in the future.
     """
 
-    speed_mph = np.linspace(0, 70, 500)
-    dyno_func_lb = np.poly1d([c_lbf__mph2, b_lbf__mph, a_lbf])  # polynomial function for pounds vs speed
-    dyno_lb = dyno_func_lb(speed_mph)
+    import fastsim as fsim  # to avoid circular import
 
-    def model_func_lb(speed_mps, drag_coef, wheel_rr_coef):
+    cd_len = 300
+
+    cyc = fsim.cycle.Cycle.from_dict({
+        'time_s': np.arange(0, cd_len),
+        'mps': np.linspace(70.0 / parameters.MPH_PER_MPS, 0, cd_len)
+    })
+
+    if use_rust:
+        cyc = cyc.to_rust()
+        veh = veh.to_rust()
+
+    # polynomial function for pounds vs speed
+    dyno_func_lb = np.poly1d([c_lbf__mph2, b_lbf__mph, a_lbf])
+
+    def get_err(x):
         """fastsim-style solution for drag force on vehicle.
         Arguments:
         ---------
-        speed: array of vehicle speeds [mps]
-        dragCoef: drag coefficient [-]
+        x: (speed: array of vehicle speeds [mps], dragCoef: drag coefficient [-])
         wheelRrCoef: rolling resistance coefficient [-]
         """
+        drag_coef, wheel_rr_coef = x
+        veh.drag_coef = drag_coef
+        veh.wheel_rr_coef = wheel_rr_coef
 
-        out = (veh_kg * props.a_grav_mps2 * wheel_rr_coef +
-            0.5 * props.air_density_kg_per_m3 * drag_coef * veh_fa_m2
-            * speed_mps ** 2) / 4.448
-        return out
+        if use_rust:
+            sd_coast = fsim.simdrive.RustSimDrive(cyc, veh)
+        else:
+            sd_coast = fsim.simdrive.SimDrive(cyc, veh)
+        sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
+        sd_coast.sim_drive()
 
-    (drag_coef, wheel_rr_coef), pcov = curve_fit(model_func_lb,
-                                              xdata=speed_mph / params.MPH_PER_MPS,
-                                            ydata=dyno_func_lb(speed_mph),
-                                            p0=[0.3, 0.01])
-    model_lb = model_func_lb(speed_mph / params.MPH_PER_MPS, drag_coef, wheel_rr_coef)
+        cutoff = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
+
+        err = fsim.cal.get_error_val(
+            ((np.array(sd_coast.drag_kw) + np.array(sd_coast.cyc_rr_kw)) /
+                np.array(sd_coast.mps_ach))[:cutoff],
+            (dyno_func_lb(sd_coast.mph_ach) * fsim.params.N_PER_LBF)[:cutoff],
+            cyc.time_s[:cutoff],
+            normalize=False
+        )
+
+        return err
+
+    res = minimize(get_err, x0=np.array([0.3, 0.01]))
+    (drag_coef, wheel_rr_coef) = res.x
+
+    veh.drag_coef, veh.wheel_rr_coef = drag_coef, wheel_rr_coef
+    if use_rust:
+        sd_coast = fsim.simdrive.RustSimDrive(cyc, veh)
+    else:
+        sd_coast = fsim.simdrive.SimDrive(cyc, veh)
+    sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
+    sd_coast.sim_drive()
 
     if show_plots:
-        plt.figure()    
-        plt.plot(speed_mph, dyno_lb, label='dyno')
-        plt.plot(speed_mph, model_lb, label='model')
+        plt.figure()
+        plt.plot(
+            sd_coast.mph_ach,
+            np.array(sd_coast.trans_kw_out_ach) /
+            np.array(sd_coast.mps_ach) / params.N_PER_LBF,
+            label='sim_drive')
+        plt.plot(sd_coast.mph_ach, dyno_func_lb(
+            sd_coast.mph_ach), label='ABCs')
         plt.legend()
         plt.xlabel('Speed [mph]')
         plt.ylabel('Road Load [lb]')
+
+        fig, ax = plt.subplots(3, 1, sharex=True)
+        ax[0].plot(cyc.time_s,
+                   np.array(sd_coast.trans_kw_out_ach) /
+                   np.array(sd_coast.mps_ach)
+                   )
+        ax[0].set_ylabel("Road Load [N]")
+
+        ax[1].plot(cyc.time_s, sd_coast.trans_kw_out_ach, label='ach')
+        ax[1].plot(cyc.time_s, sd_coast.cur_max_trans_kw_out, label='max')
+        ax[1].set_ylabel('trans kw')
+
+        ax[-1].plot(cyc.time_s, sd_coast.mph_ach)
+        ax[-1].set_ylabel("mph")
+        ax[-1].set_xlabel('Time [s]')
 
     return drag_coef, wheel_rr_coef
 
 # TODO, make drag_coeffs and abcs generate plots of drag force vs speed
 # and implement units in the inputs
 
-def drag_coeffs_to_abc(veh_kg:float, veh_fa_m2:float, drag_coef:float, wheel_rr_coef:float, show_plots:bool=False)  -> Tuple[float, float, float]:
-    """For a given vehicle mass, frontal area, dragCoef, and wheelRrCoef, 
+
+def drag_coeffs_to_abc(veh_kg: float, veh_fa_m2: float, drag_coef: float, wheel_rr_coef: float, show_plots: bool = False) -> Tuple[float, float, float]:
+    """For a given vehicle mass, frontal area, dragCoef, and wheelRrCoef,
     calculate and return ABCs.
 
     Arguments:
@@ -101,7 +158,7 @@ def drag_coeffs_to_abc(veh_kg:float, veh_fa_m2:float, drag_coef:float, wheel_rr_
     Returns:
     a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]
 
-    It may be worthwhile to have this use get_rho_air() in the future. 
+    It may be worthwhile to have this use get_rho_air() in the future.
     """
 
     speed_mph = np.linspace(0, 70, 500)
@@ -124,12 +181,13 @@ def drag_coeffs_to_abc(veh_kg:float, veh_fa_m2:float, drag_coef:float, wheel_rr_
         speed_mph / params.MPH_PER_MPS, drag_coef, wheel_rr_coef)
 
     # polynomial function for pounds vs speed
-    dyno_func_lb = lambda speed_mph, a, b, c: np.poly1d([c, b, a])(speed_mph)
+    def dyno_func_lb(speed_mph, a, b, c): return np.poly1d(
+        [c, b, a])(speed_mph)
 
     (a, b, c), pcov = curve_fit(dyno_func_lb,
-                        xdata=speed_mph,
-                        ydata=model_lb,
-                        p0=[10, 0.1, 0.01])
+                                xdata=speed_mph,
+                                ydata=model_lb,
+                                p0=[10, 0.1, 0.01])
     dyno_lb = dyno_func_lb(speed_mph, a, b, c)
 
     if show_plots:
@@ -141,6 +199,7 @@ def drag_coeffs_to_abc(veh_kg:float, veh_fa_m2:float, drag_coef:float, wheel_rr_
         plt.ylabel('Road Load [lb]')
 
     return a, b, c
+
 
 def l__100km_to_mpg(l__100km):
     """Given fuel economy in L/100km, returns mpg."""
@@ -185,6 +244,7 @@ def rollav(x, y, width=10):
                 dx[i-width:i] * y[i-width:i]).sum() / (
                     x[i] - x[i-width])
     return yroll
+
 
 def camel_to_snake(name):
     "Given camelCase, returns snake_case."
