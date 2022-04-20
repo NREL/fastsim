@@ -217,19 +217,6 @@ pub struct RustVehicle{
     pub val_range_miles: f64,
     pub val_veh_base_cost: f64,
     pub val_msrp: f64,
-    // IDM - Intelligent Driver Model, Adaptive Cruise Control version
-    #[pyo3(get, set)]
-    pub idm_v_desired_m_per_s: f64,
-    #[pyo3(get, set)]
-    pub idm_dt_headway_s: f64,
-    #[pyo3(get, set)]
-    pub idm_minimum_gap_m: f64,
-    #[pyo3(get, set)]
-    pub idm_delta: f64,
-    #[pyo3(get, set)]
-    pub idm_accel_m_per_s2: f64,
-    #[pyo3(get, set)]
-    pub idm_decel_m_per_s2: f64,
 }
 
 /// RustVehicle rust methods
@@ -636,14 +623,6 @@ impl RustVehicle{
         //     (1.0 + veh_cg_m * wheel_coef_of_fric / wheel_base_m)
         // ) / (veh_kg * props.a_grav_mps2)  * props.a_grav_mps2;
 
-        // IDM - Intelligent Driver Model, Adaptive Cruise Control version
-        let idm_v_desired_m_per_s = 33.33;
-        let idm_dt_headway_s = 1.0;
-        let idm_minimum_gap_m = 2.0;
-        let idm_delta = 4.0;
-        let idm_accel_m_per_s2 = 1.0;
-        let idm_decel_m_per_s2 = 1.5;
-
         RustVehicle {
             scenario_name,
             selection,
@@ -753,12 +732,6 @@ impl RustVehicle{
             fc_mass_kg,
             fs_mass_kg,
             mc_perc_out_array,
-            idm_v_desired_m_per_s,
-            idm_dt_headway_s,
-            idm_minimum_gap_m,
-            idm_delta,
-            idm_accel_m_per_s2,
-            idm_decel_m_per_s2,
         }
     }
 
