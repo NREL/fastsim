@@ -39,11 +39,6 @@ import fastsim as fsim
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
 
-
-# %% 
-fsim.utilities.abc_to_drag_coeffs(
-    fsim.vehicle.Vehicle.from_file("2012_Ford_Focus"), 25.91, 0.1943, 0.01796, show_plots=True)
-
 # %% [markdown]
 # ## Individual Drive Cycle
 # ### Load Drive Cycle
