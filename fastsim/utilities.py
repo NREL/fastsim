@@ -2,7 +2,7 @@
 
 from typing import Callable
 import inspect
-from scipy.optimize import minimize
+from scipy.optimize import minimize, curve_fit
 import numpy as np
 from fastsim import parameters as params
 import seaborn as sns
