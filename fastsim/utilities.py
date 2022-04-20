@@ -115,8 +115,9 @@ def abc_to_drag_coeffs(veh,
         plt.figure()
         plt.plot(
             sd_coast.mph_ach,
-            np.array(sd_coast.trans_kw_out_ach) /
-            np.array(sd_coast.mps_ach) / params.N_PER_LBF,
+            # np.array(sd_coast.trans_kw_out_ach) /
+            # np.array(sd_coast.mps_ach) / params.N_PER_LBF,
+            veh.veh_kg * -1 * np.diff(np.array(sd_coast.mps_ach),prepend=np.array(sd_coast.mps_ach)[0]) / params.N_PER_LBF,
             label='sim_drive')
         plt.plot(sd_coast.mph_ach, dyno_func_lb(
             sd_coast.mph_ach), label='ABCs')
@@ -126,8 +127,9 @@ def abc_to_drag_coeffs(veh,
 
         fig, ax = plt.subplots(3, 1, sharex=True)
         ax[0].plot(cyc.time_s,
-                   np.array(sd_coast.trans_kw_out_ach) /
-                   np.array(sd_coast.mps_ach)
+                   # np.array(sd_coast.trans_kw_out_ach) /
+                   veh.veh_kg *
+                   -1 * np.diff(np.array(sd_coast.mps_ach),prepend=np.array(sd_coast.mps_ach)[0])  # 1 Hz 
                    )
         ax[0].set_ylabel("Road Load [N]")
 
