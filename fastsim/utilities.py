@@ -138,7 +138,7 @@ def abc_to_drag_coeffs(veh,
         ax[-1].plot(cyc.time_s, sd_coast.mph_ach)
         ax[-1].set_ylabel("mph")
         ax[-1].set_xlabel('Time [s]')
-
+        plt.show()
     return drag_coef, wheel_rr_coef
 
 # TODO, make drag_coeffs and abcs generate plots of drag force vs speed
