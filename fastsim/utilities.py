@@ -91,7 +91,7 @@ def abc_to_drag_coeffs(veh,
         cutoff = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
 
         err = fsim.cal.get_error_val(
-            ((np.array(sd_coast.drag_kw) + np.array(sd_coast.cyc_rr_kw)) /
+            (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.cyc_rr_kw)) /
                 np.array(sd_coast.mps_ach))[:cutoff],
             (dyno_func_lb(sd_coast.mph_ach) * fsim.params.N_PER_LBF)[:cutoff],
             cyc.time_s[:cutoff],
