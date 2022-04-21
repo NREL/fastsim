@@ -78,22 +78,38 @@ class TestVehicle(unittest.TestCase):
                 f.write(csv_contents)
             return test_path
         veh_name = "2012_Ford_Fusion.csv"
-        veh_pristine = vehicle.Vehicle.from_file(veh_name)
         pristine_path = Path(vehicle.VEHICLE_DIR) / veh_name
-        pristine_fc_peak_eff = veh_pristine.fc_peak_eff
-        pristine_mc_peak_eff = veh_pristine.mc_peak_eff
         test_peak_eff = 0.5
-        with tempfile.TemporaryDirectory() as temp_dirname:
-            test_path = add_csv_parameter("fc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
-            veh = vehicle.Vehicle.from_file(test_path)
-            self.assertAlmostEqual(test_peak_eff, veh.fc_peak_eff)
-            self.assertTrue(abs(pristine_fc_peak_eff - veh.fc_peak_eff) > TOL)
-            self.assertAlmostEqual(pristine_mc_peak_eff, veh.mc_peak_eff)
-            test_path = add_csv_parameter("mc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
-            veh = vehicle.Vehicle.from_file(test_path)
-            self.assertAlmostEqual(test_peak_eff, veh.mc_peak_eff)
-            self.assertTrue(abs(pristine_mc_peak_eff - veh.mc_peak_eff) > TOL)
-            self.assertAlmostEqual(pristine_fc_peak_eff, veh.fc_peak_eff)
+        if USE_PYTHON:
+            veh_pristine = vehicle.Vehicle.from_file(veh_name)
+            pristine_fc_peak_eff = veh_pristine.fc_peak_eff
+            pristine_mc_peak_eff = veh_pristine.mc_peak_eff
+            with tempfile.TemporaryDirectory() as temp_dirname:
+                test_path = add_csv_parameter("fc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
+                veh = vehicle.Vehicle.from_file(test_path)
+                self.assertAlmostEqual(test_peak_eff, veh.fc_peak_eff)
+                self.assertTrue(abs(pristine_fc_peak_eff - veh.fc_peak_eff) > TOL)
+                self.assertAlmostEqual(pristine_mc_peak_eff, veh.mc_peak_eff)
+                test_path = add_csv_parameter("mc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
+                veh = vehicle.Vehicle.from_file(test_path)
+                self.assertAlmostEqual(test_peak_eff, veh.mc_peak_eff)
+                self.assertTrue(abs(pristine_mc_peak_eff - veh.mc_peak_eff) > TOL)
+                self.assertAlmostEqual(pristine_fc_peak_eff, veh.fc_peak_eff)
+        if USE_RUST:
+            veh_pristine = vehicle.Vehicle.from_file(veh_name).to_rust()
+            pristine_fc_peak_eff = veh_pristine.fc_peak_eff
+            pristine_mc_peak_eff = veh_pristine.mc_peak_eff
+            with tempfile.TemporaryDirectory() as temp_dirname:
+                test_path = add_csv_parameter("fc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
+                veh = vehicle.Vehicle.from_file(test_path).to_rust()
+                self.assertAlmostEqual(test_peak_eff, veh.fc_peak_eff)
+                self.assertTrue(abs(pristine_fc_peak_eff - veh.fc_peak_eff) > TOL)
+                self.assertAlmostEqual(pristine_mc_peak_eff, veh.mc_peak_eff)
+                test_path = add_csv_parameter("mc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
+                veh = vehicle.Vehicle.from_file(test_path).to_rust()
+                self.assertAlmostEqual(test_peak_eff, veh.mc_peak_eff)
+                self.assertTrue(abs(pristine_mc_peak_eff - veh.mc_peak_eff) > TOL)
+                self.assertAlmostEqual(pristine_fc_peak_eff, veh.fc_peak_eff)
 
 
 if __name__ == '__main__':
