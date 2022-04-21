@@ -65,7 +65,7 @@ keys_and_types = {
     "kw_demand_fc_on": np.float64,
     "max_regen": np.float64,
     "stop_start": bool,
-    "force_aux_on_fc": np.float64,
+    "force_aux_on_fc": bool,
     "alt_eff": np.float64,
     "chg_eff": np.float64,
     "aux_kw": np.float64,

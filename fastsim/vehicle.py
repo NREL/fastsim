@@ -161,7 +161,7 @@ class Vehicle(object):
     kw_demand_fc_on: float
     max_regen: bool
     stop_start: bool
-    force_aux_on_fc: float
+    force_aux_on_fc: bool 
     alt_eff: float
     chg_eff: float
     aux_kw: float

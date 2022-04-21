@@ -140,7 +140,7 @@ pub struct RustVehicle{
     #[pyo3(get, set)]
     pub stop_start: bool,
     #[pyo3(get, set)]
-    pub force_aux_on_fc: f64,
+    pub force_aux_on_fc: bool,
     #[pyo3(get, set)]
     pub alt_eff: f64,
     #[pyo3(get, set)]
@@ -303,7 +303,7 @@ impl RustVehicle{
         let kw_demand_fc_on: f64 = 100.0;
         let max_regen: f64 = 0.98;
         let stop_start: bool = false;
-        let force_aux_on_fc: f64 = 0.0;
+        let force_aux_on_fc: bool = false;
         let alt_eff: f64 = 1.0;
         let chg_eff: f64 = 0.86;
         let aux_kw: f64 = 0.7;
@@ -552,7 +552,7 @@ impl RustVehicle{
         kw_demand_fc_on: f64,
         max_regen: f64,
         stop_start: bool,
-        force_aux_on_fc: f64,
+        force_aux_on_fc: bool,
         alt_eff: f64,
         chg_eff: f64,
         aux_kw: f64,
@@ -1024,11 +1024,11 @@ impl RustVehicle{
     }
 
     #[getter]
-    pub fn get_force_aux_on_fc(&self) -> PyResult<f64>{
+    pub fn get_force_aux_on_fc(&self) -> PyResult<bool>{
       Ok(self.force_aux_on_fc)
     }
     #[setter]
-    pub fn set_force_aux_on_fc(&mut self, new_value:f64) -> PyResult<()>{
+    pub fn set_force_aux_on_fc(&mut self, new_value:bool) -> PyResult<()>{
       self.force_aux_on_fc = new_value;
       Ok(())
     }
@@ -1937,7 +1937,7 @@ mod tests {
     //     let kw_demand_fc_on: f64 = 100.0;
     //     let max_regen: f64 = 0.98;
     //     let stop_start: bool = false;
-    //     let force_aux_on_fc: f64 = 0.0;
+    //     let force_aux_on_fc: bool = false;
     //     let alt_eff: f64 = 1.0;
     //     let chg_eff: f64 = 0.86;
     //     let aux_kw: f64 = 0.7;
