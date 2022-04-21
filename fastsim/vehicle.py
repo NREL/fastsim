@@ -692,6 +692,7 @@ def veh_equal(veh1:Vehicle, veh2:Vehicle, full_out:bool=False)-> bool:
     Arguments:
     ----------
     """
+    TOL = 1e-6
 
     veh_dict1 = copy_vehicle(veh1, return_type='dict', deep=True)
     veh_dict2 = copy_vehicle(veh2, return_type='dict', deep=True)
@@ -707,7 +708,7 @@ def veh_equal(veh1:Vehicle, veh2:Vehicle, full_out:bool=False)-> bool:
                 err_list.append(
                     {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
         elif pd.api.types.is_list_like(veh_dict1[key]):
-            if (np.array(veh_dict1[key]) != np.array(veh_dict2[key])).any():
+            if (np.abs(np.array(veh_dict1[key]) - np.array(veh_dict2[key])) > TOL).any():
                 if not full_out:
                     return False
                 err_list.append(
