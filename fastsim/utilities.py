@@ -111,33 +111,38 @@ def abc_to_drag_coeffs(veh,
     sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
     sd_coast.sim_drive()
 
+    cutoff_val = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
+
     if show_plots:
         plt.figure()
         plt.plot(
-            sd_coast.mph_ach,
+            sd_coast.mph_ach[:cutoff_val],
             # np.array(sd_coast.trans_kw_out_ach) /
             # np.array(sd_coast.mps_ach) / params.N_PER_LBF,
-            veh.veh_kg * -1 * np.diff(np.array(sd_coast.mps_ach),prepend=np.array(sd_coast.mps_ach)[0]) / params.N_PER_LBF,
+            # veh.veh_kg * -1 * np.diff(np.array(sd_coast.mps_ach),prepend=np.array(sd_coast.mps_ach)[0]) / params.N_PER_LBF,
+            (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.cyc_rr_kw)) / np.array(sd_coast.mps_ach) 
+            / fsim.params.N_PER_LBF)[:cutoff_val],
             label='sim_drive')
-        plt.plot(sd_coast.mph_ach, dyno_func_lb(
-            sd_coast.mph_ach), label='ABCs')
+        plt.plot(sd_coast.mph_ach[:cutoff_val], (dyno_func_lb(
+            sd_coast.mph_ach))[:cutoff_val], label='ABCs')
         plt.legend()
         plt.xlabel('Speed [mph]')
         plt.ylabel('Road Load [lb]')
 
         fig, ax = plt.subplots(3, 1, sharex=True)
-        ax[0].plot(cyc.time_s,
+        ax[0].plot(cyc.time_s[:cutoff_val],
                    # np.array(sd_coast.trans_kw_out_ach) /
-                   veh.veh_kg *
-                   -1 * np.diff(np.array(sd_coast.mps_ach),prepend=np.array(sd_coast.mps_ach)[0])  # 1 Hz 
+                   # veh.veh_kg *
+                   # -1 * np.diff(np.array(sd_coast.mps_ach),prepend=np.array(sd_coast.mps_ach)[0])  # 1 Hz 
+                   (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.cyc_rr_kw)) / np.array(sd_coast.mps_ach))[:cutoff_val],
                    )
         ax[0].set_ylabel("Road Load [N]")
 
-        ax[1].plot(cyc.time_s, sd_coast.trans_kw_out_ach, label='ach')
-        ax[1].plot(cyc.time_s, sd_coast.cur_max_trans_kw_out, label='max')
+        ax[1].plot(cyc.time_s[:cutoff_val], sd_coast.trans_kw_out_ach[:cutoff_val], label='ach')
+        ax[1].plot(cyc.time_s[:cutoff_val], sd_coast.cur_max_trans_kw_out[:cutoff_val], label='max')
         ax[1].set_ylabel('trans kw')
 
-        ax[-1].plot(cyc.time_s, sd_coast.mph_ach)
+        ax[-1].plot(cyc.time_s[:cutoff_val], sd_coast.mph_ach[:cutoff_val])
         ax[-1].set_ylabel("mph")
         ax[-1].set_xlabel('Time [s]')
         plt.show()
