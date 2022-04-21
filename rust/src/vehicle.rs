@@ -513,17 +513,7 @@ impl RustVehicle{
         // TODO: make this look more like: 
         // fc_perc_out_array = np.r_[np.arange(0, 3.0, 0.1), np.arange(
         //     3.0, 7.0, 0.5), np.arange(7.0, 60.0, 1.0), np.arange(60.0, 105.0, 5.0)] / 100  # hardcoded ***        
-        let fc_perc_out_array: Vec<f64> = vec![
-          0.0  , 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01 , 0.011,
-          0.012, 0.013, 0.014, 0.015, 0.016, 0.017, 0.018, 0.019, 0.02 , 0.021, 0.022, 0.023,
-          0.024, 0.025, 0.026, 0.027, 0.028, 0.029, 0.03 , 0.035, 0.04 , 0.045, 0.05 , 0.055,
-          0.06 , 0.065, 0.07 , 0.08 , 0.09 , 0.1  , 0.11 , 0.12 , 0.13 , 0.14 , 0.15 , 0.16 ,
-          0.17 , 0.18 , 0.19 , 0.2  , 0.21 , 0.22 , 0.23 , 0.24 , 0.25 , 0.26 , 0.27 , 0.28 ,
-          0.29 , 0.3  , 0.31 , 0.32 , 0.33 , 0.34 , 0.35 , 0.36 , 0.37 , 0.38 , 0.39 , 0.4  ,
-          0.41 , 0.42 , 0.43 , 0.44 , 0.45 , 0.46 , 0.47 , 0.48 , 0.49 , 0.5  , 0.51 , 0.52 ,
-          0.53 , 0.54 , 0.55 , 0.56 , 0.57 , 0.58 , 0.59 , 0.6  , 0.65 , 0.7  , 0.75 , 0.8  ,
-          0.85 , 0.9  , 0.95 , 1.0
-        ];
+        let fc_perc_out_array: Vec<f64> = FC_PERC_OUT_ARRAY.to_vec();
         let max_roadway_chg_kw: Vec<f64> = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         let charging_on: bool = false;
         let no_elec_sys: bool = true;
@@ -544,7 +534,7 @@ impl RustVehicle{
         let fc_kw_out_array = fc_perc_out_array.iter().map(|&x| x * fc_max_kw).collect();
         let fc_eff_array = fc_perc_out_array.iter().map(|&x| interpolate(
             &x, &Array::from(fc_pwr_out_perc.clone()), &Array::from(fc_eff_map.clone()), false)).collect::<Vec<_>>();
-        let mc_perc_out_array = Array1::<f64>::linspace(0.0, 1.0, 101).to_vec();
+        let mc_perc_out_array = MC_PERC_OUT_ARRAY.to_vec();
         let mc_kw_out_array = (Array::linspace(0.0, 1.0, mc_perc_out_array.len()) * mc_max_kw).to_vec();
         let mc_eff_array = large_baseline_eff.iter().map(|&x| interpolate(&x, &Array::from(mc_pwr_out_perc.clone()), &Array::from(mc_eff_map.clone()), false)).collect::<Vec<_>>();
         let mc_kw_in_array = Array::ones(mc_kw_out_array.len()).to_vec();
@@ -789,7 +779,7 @@ impl RustVehicle{
         let mc_eff_map = Array::from_vec(mc_eff_map);
         let large_baseline_eff = Array::from_vec(large_baseline_eff);
         let small_baseline_eff = Array::from_vec(small_baseline_eff);
-        let fc_perc_out_array: [f64; 100] = fc_perc_out_array.try_into().unwrap();
+        let fc_perc_out_array: [f64; 100] = FC_PERC_OUT_ARRAY.clone();
         let max_roadway_chg_kw = Array::from_vec(max_roadway_chg_kw);
         let input_kw_out_array = Array::from_vec(input_kw_out_array);
         let fc_kw_out_array = fc_kw_out_array.try_into().unwrap();
@@ -799,9 +789,9 @@ impl RustVehicle{
         let mc_kw_in_array:[f64; 101] = mc_kw_in_array.try_into().unwrap();
         // get mc_kw_out_array converted to array
         let mc_kw_out_array: [f64; 101] = mc_kw_out_array.try_into().unwrap();
-        // get mc_fell_eff_vec into array form
-        let mc_full_eff_array: [f64; 101] = [1.0; 101]; // mc_full_eff_array.try_into().unwrap();
-        let mc_perc_out_array: [f64; 101] = mc_perc_out_array.try_into().unwrap();
+        // get mc_full_eff_vec into array form
+        let mc_full_eff_array: [f64; 101] = [1.0; 101];
+        let mc_perc_out_array: [f64; 101] = MC_PERC_OUT_ARRAY.clone();
 
         // DERIVED VALUES
         // TODO: correctly implement and re-enable these after Rust does all initialization of inputs
@@ -2125,17 +2115,7 @@ pub fn load_vehicle() -> RustVehicle {
   // TODO: make this look more like: 
   // fc_perc_out_array = np.r_[np.arange(0, 3.0, 0.1), np.arange(
   //     3.0, 7.0, 0.5), np.arange(7.0, 60.0, 1.0), np.arange(60.0, 105.0, 5.0)] / 100  # hardcoded ***        
-  let fc_perc_out_array: Vec<f64> = vec![
-    0.0  , 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01 , 0.011,
-    0.012, 0.013, 0.014, 0.015, 0.016, 0.017, 0.018, 0.019, 0.02 , 0.021, 0.022, 0.023,
-    0.024, 0.025, 0.026, 0.027, 0.028, 0.029, 0.03 , 0.035, 0.04 , 0.045, 0.05 , 0.055,
-    0.06 , 0.065, 0.07 , 0.08 , 0.09 , 0.1  , 0.11 , 0.12 , 0.13 , 0.14 , 0.15 , 0.16 ,
-    0.17 , 0.18 , 0.19 , 0.2  , 0.21 , 0.22 , 0.23 , 0.24 , 0.25 , 0.26 , 0.27 , 0.28 ,
-    0.29 , 0.3  , 0.31 , 0.32 , 0.33 , 0.34 , 0.35 , 0.36 , 0.37 , 0.38 , 0.39 , 0.4  ,
-    0.41 , 0.42 , 0.43 , 0.44 , 0.45 , 0.46 , 0.47 , 0.48 , 0.49 , 0.5  , 0.51 , 0.52 ,
-    0.53 , 0.54 , 0.55 , 0.56 , 0.57 , 0.58 , 0.59 , 0.6  , 0.65 , 0.7  , 0.75 , 0.8  ,
-    0.85 , 0.9  , 0.95 , 1.0
-  ];
+  let fc_perc_out_array: Vec<f64> = FC_PERC_OUT_ARRAY.to_vec();
   let max_roadway_chg_kw: Vec<f64> = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
   let charging_on: bool = false;
   let no_elec_sys: bool = true;
@@ -2156,7 +2136,7 @@ pub fn load_vehicle() -> RustVehicle {
   let fc_kw_out_array = fc_perc_out_array.iter().map(|&x| x * fc_max_kw).collect();
   let fc_eff_array = fc_perc_out_array.iter().map(|&x| interpolate(
       &x, &Array::from(fc_pwr_out_perc.clone()), &Array::from(fc_eff_map.clone()), false)).collect::<Vec<_>>();
-  let mc_perc_out_array = Array1::<f64>::linspace(0.0, 1.0, 101).to_vec();
+  let mc_perc_out_array = MC_PERC_OUT_ARRAY.to_vec();
   let mc_kw_out_array = (Array::linspace(0.0, 1.0, mc_perc_out_array.len()) * mc_max_kw).to_vec();
   let mc_eff_array = large_baseline_eff.iter().map(|&x| interpolate(&x, &Array::from(mc_pwr_out_perc.clone()), &Array::from(mc_eff_map.clone()), false)).collect::<Vec<_>>();
   let mc_kw_in_array = Array::ones(mc_kw_out_array.len()).to_vec();
