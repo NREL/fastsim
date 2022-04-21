@@ -209,14 +209,6 @@ class Vehicle(object):
     no_elec_sys: bool = False
     no_elec_aux: bool = False
 
-    # IDM - Intelligent Driver Model, Adaptive Cruise Control version
-    idm_v_desired_m_per_s: float = 33.33
-    idm_dt_headway_s: float = 1.0
-    idm_minimum_gap_m: float = 2.0
-    idm_delta: float = 4.0
-    idm_accel_m_per_s2: float = 1.0
-    idm_decel_m_per_s2: float = 1.5
-
     @classmethod
     def from_vehdb(cls, vnum:int, verbose:bool=False):
         """
