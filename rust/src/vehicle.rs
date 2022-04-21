@@ -229,6 +229,13 @@ impl RustVehicle{
         arrmax(&self.mc_full_eff_array)
     }
 
+    pub fn set_mc_peak_eff_rust(&mut self, new_peak: f64) {
+        let mc_max_eff = ndarrmax(&self.mc_eff_array);
+        self.mc_eff_array *= new_peak / mc_max_eff;
+        let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
+        self.mc_full_eff_array = self.mc_full_eff_array.map(|e:f64|->f64{ e * (new_peak / mc_max_full_eff)});
+    }
+
     pub fn max_fc_eff_kw(&self) -> f64{
         let fc_eff_arr_max_i = first_eq(&self.fc_eff_array, arrmax(&self.fc_eff_array)).unwrap_or(0);
         self.fc_kw_out_array[fc_eff_arr_max_i]
@@ -238,7 +245,7 @@ impl RustVehicle{
         arrmax(&self.fc_eff_array)
     }
 
-    pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
+    pub fn set_fc_peak_eff_rust(&mut self, new_peak: f64) {
         let old_fc_peak_eff = self.fc_peak_eff();
         let multiplier = new_peak / old_fc_peak_eff;
         self.fc_eff_array = self.fc_eff_array.map(|eff:f64|->f64{
@@ -918,8 +925,23 @@ impl RustVehicle{
     }
 
     #[getter]
+    pub fn get_fc_peak_eff(&self) -> PyResult<f64>{
+        Ok(self.fc_peak_eff())
+    }
+    #[setter]
+    pub fn set_fc_peak_eff(&mut self, new_value:f64) -> PyResult<()>{
+        self.set_fc_peak_eff_rust(new_value);
+        Ok(())
+    }
+
+    #[getter]
     pub fn get_mc_peak_eff(&self) -> PyResult<f64>{
         Ok(self.mc_peak_eff())
+    }
+    #[setter]
+    pub fn set_mc_peak_eff(&mut self, new_value:f64) -> PyResult<()>{
+        self.set_mc_peak_eff_rust(new_value);
+        Ok(())
     }
 
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method

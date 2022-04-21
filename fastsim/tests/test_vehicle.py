@@ -49,20 +49,20 @@ class TestVehicle(unittest.TestCase):
             veh.mc_eff_array *= 1.05
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-        #if USE_RUST:
-        #    veh = vehicle.Vehicle.from_vehdb(10, verbose=False).to_rust()
-        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-        #    veh.mc_peak_eff = 0.85
-        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-        #    veh.mc_peak_eff += 0.05
-        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-        #    veh.mc_full_eff_array *= 1.05
-        #    veh.mc_eff_array *= 1.05
-        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        if USE_RUST:
+            veh = vehicle.Vehicle.from_vehdb(10, verbose=False).to_rust()
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            veh.mc_peak_eff = 0.85
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            veh.mc_peak_eff += 0.05
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            veh.mc_full_eff_array = np.array(veh.mc_full_eff_array) * 1.05
+            veh.mc_eff_array = np.array(veh.mc_eff_array) * 1.05
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
     
     def test_fc_efficiency_override(self):
         """Verify that we can scale FC"""
