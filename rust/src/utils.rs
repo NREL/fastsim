@@ -235,11 +235,23 @@ mod tests {
     //     assert_eq!(idx, expected_idx);
     // }
 
-    // #[test]
-    // fn test_that_interpolation_works(){
-    //     let xs: Array1<f64> = Array::from_vec(vec![0.0,  1.0,  2.0,  3.0,  4.0]);
-    //     let ys: Array1<f64> = Array::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
-    //     let x: f64 = 0.5;
-    //     let y_lookup = interpolate(xs, ys, x, false);
-    // }
+    #[test]
+    fn test_that_interpolation_works(){
+        let xs = Array1::from_vec(vec![0.0,  1.0,  2.0,  3.0,  4.0]);
+        let ys = Array1::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
+        let x = 0.5;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 5.0;
+        assert_eq!(expected_y_lookup, y_lookup);
+    }
+
+    #[test]
+    fn test_that_interpolation_works_for_irrational_number(){
+        let xs = Array1::from_vec(vec![0.0,  1.0,  2.0,  3.0,  4.0]);
+        let ys = Array1::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
+        let x = 1.0 / 3.0;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 3.3333333333;
+        assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
+    }
 }

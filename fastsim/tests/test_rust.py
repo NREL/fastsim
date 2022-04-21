@@ -92,15 +92,17 @@ class TestRust(unittest.TestCase):
                 ru_cyc = cycle.Cycle.from_file(cyc_name).to_rust()
             ru_veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
             ru_sd = fsr.RustSimDrive(ru_cyc, ru_veh)
+            places = 6
+            tol = 10 ** (-1 * places)
             self.assertEqual(py_sd.props.air_density_kg_per_m3, ru_sd.props.air_density_kg_per_m3)
             self.assertEqual(py_sd.sim_params.newton_max_iter, ru_sd.sim_params.newton_max_iter)
             self.assertEqual(py_sd.sim_params.newton_gain, ru_sd.sim_params.newton_gain)
             self.assertEqual(py_sd.sim_params.newton_xtol, ru_sd.sim_params.newton_xtol)
-            self.assertAlmostEqual(py_sd.veh.drag_coef, ru_sd.veh.drag_coef)
-            self.assertAlmostEqual(py_sd.veh.frontal_area_m2, ru_sd.veh.frontal_area_m2)
-            self.assertAlmostEqual(py_sd.veh.mc_max_elec_in_kw, ru_sd.veh.mc_max_elec_in_kw)
-            self.assertAlmostEqual(py_sd.veh.ess_max_kwh, ru_sd.veh.ess_max_kwh)
-            self.assertAlmostEqual(py_sd.veh.ess_round_trip_eff, ru_sd.veh.ess_round_trip_eff)
+            self.assertAlmostEqual(py_sd.veh.drag_coef, ru_sd.veh.drag_coef, places=places)
+            self.assertAlmostEqual(py_sd.veh.frontal_area_m2, ru_sd.veh.frontal_area_m2, places=places)
+            self.assertAlmostEqual(py_sd.veh.mc_max_elec_in_kw, ru_sd.veh.mc_max_elec_in_kw, places=places)
+            self.assertAlmostEqual(py_sd.veh.ess_max_kwh, ru_sd.veh.ess_max_kwh, places=places)
+            self.assertAlmostEqual(py_sd.veh.ess_round_trip_eff, ru_sd.veh.ess_round_trip_eff, places=places)
             py_sd.sim_drive_walk(0.0)
             ru_sd.sim_drive_walk(0.0)
             py = {}
@@ -109,8 +111,8 @@ class TestRust(unittest.TestCase):
             ru_cyc_drag_kw = np.array(ru_sd.cyc_drag_kw)
             ru_cyc_mps = np.array(ru_sd.cyc.mps)
             ru_cyc_dt_s = np.array(ru_sd.cyc.dt_s)
-            self.assertTrue((np.abs(py_sd.cyc.mps - ru_cyc_mps) < 1e-6).all())
-            self.assertTrue((np.abs(py_sd.cyc.dt_s - ru_cyc_dt_s) < 1e-6).all())
+            self.assertTrue((np.abs(py_sd.cyc.mps - ru_cyc_mps) < tol).all())
+            self.assertTrue((np.abs(py_sd.cyc.dt_s - ru_cyc_dt_s) < tol).all())
             ru_sd_mps_ach = np.array(ru_sd.mps_ach)
             self.assertTrue(
                 (py_sd.mps_ach >= 0.0).all(),

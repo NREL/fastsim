@@ -6,6 +6,9 @@ use pyo3::prelude::*;
 pub const MPH_PER_MPS:f64 = 2.2369;
 pub const M_PER_MI:f64 = 1609.00;
 
+/// Misc Constants
+pub const MODERN_MAX:f64 = 0.95;
+
 #[pyclass] 
 #[derive(Debug, Clone)]
 /// Struct containing time trace data 
