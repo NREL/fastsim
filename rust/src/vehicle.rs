@@ -247,6 +247,196 @@ impl RustVehicle{
         self.fc_kw_out_array[fc_eff_arr_max_i]
     }
 
+    pub fn fc_peak_eff(&self) -> f64{
+        arrmax(&self.fc_eff_array)
+    }
+
+    pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
+        let old_fc_peak_eff = self.fc_peak_eff();
+        let multiplier = new_peak / old_fc_peak_eff;
+        self.fc_eff_array = self.fc_eff_array.map(|eff:f64|->f64{
+            eff * multiplier
+        }); 
+        let new_fc_peak_eff = self.fc_peak_eff();
+        let eff_map_multiplier = new_peak / new_fc_peak_eff;
+        self.fc_eff_map = self.fc_eff_map.map(|eff|->f64{
+            eff * eff_map_multiplier
+        });
+    }
+
+    /// Sets derived parameters.
+    /// Arguments:
+    /// ----------
+    /// mc_peak_eff_override: float (0, 1), if provided, overrides motor peak efficiency
+    ///     with proportional scaling.  Default of -1 has no effect.  
+    pub fn post_init(&mut self) {
+        if self.scenario_name != String::from("Template Vehicle for setting up data types") {
+            if self.veh_pt_type == BEV {
+                assert!(self.fs_max_kw == 0.0, "max_fuel_stor_kw must be zero for provided BEV powertrain type in {}", self.scenario_name);
+                assert!(self.fs_kwh  == 0.0, "fuel_stor_kwh must be zero for provided BEV powertrain type in {}", self.scenario_name);
+                assert!(self.fc_max_kw == 0.0, "max_fuel_conv_kw must be zero for provided BEV powertrain type in {}", self.scenario_name);
+            } else if (self.veh_pt_type == CONV) && !self.stop_start {
+                assert!(self.mc_max_kw == 0.0, "max_mc_kw must be zero for provided Conv powertrain type in {}", self.scenario_name);
+                assert!(self.ess_max_kw == 0.0, "max_ess_kw must be zero for provided Conv powertrain type in {}", self.scenario_name);
+                assert!(self.ess_max_kwh == 0.0, "max_ess_kwh must be zero for provided Conv powertrain type in {}", self.scenario_name);
+            }
+        }
+        // ### Build roadway power lookup table
+        self.max_roadway_chg_kw = Array1::from_vec(vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        self.charging_on = false;
+
+        // # Checking if a vehicle has any hybrid components
+        if (self.ess_max_kwh == 0.0) || (self.ess_max_kw == 0.0) || (self.mc_max_kw == 0.0) {
+            self.no_elec_sys = true;
+        } else {
+            self.no_elec_sys = false;
+        }
+
+        // # Checking if aux loads go through an alternator
+        if self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc {
+            self.no_elec_aux = true;
+        } else {
+            self.no_elec_aux = false;
+        }
+
+        // # discrete array of possible engine power outputs
+        self.input_kw_out_array = self.fc_pwr_out_perc.clone() * self.fc_max_kw;
+        // # Relatively continuous array of possible engine power outputs
+        self.fc_kw_out_array = self.fc_perc_out_array.map(|n| { n * self.fc_max_kw });
+        // # Creates relatively continuous array for fc_eff
+        self.fc_eff_array = self.fc_perc_out_array.map(|x: f64| -> f64 {
+            interpolate(
+                &x,
+                &Array1::from(self.fc_pwr_out_perc.to_vec()),
+                &self.fc_eff_map,
+                false,
+            )
+        });
+
+        self.modern_max = MODERN_MAX;
+        
+        // NOTE: unused because the first part of if/else commented below is unused
+        let modern_diff = self.modern_max - ndarrmax(&self.large_baseline_eff);
+        let large_baseline_eff_adj = self.large_baseline_eff.clone() + modern_diff;
+        let mc_kw_adj_perc = max(
+            0.0, 
+            min(
+                (self.mc_max_kw - self.small_motor_power_kw)
+                / (self.large_motor_power_kw - self.small_motor_power_kw), 
+                1.0,
+            ),
+        );
+
+        // NOTE: it should not be possible to have `None in self.mc_eff_map` in Rust (although NaN is possible...).
+        //       if we want to express that mc_eff_map should be calculated in some cases, but not others,
+        //       we may need some sort of option type ?
+        //if None in self.mc_eff_map:
+        //    self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj + \
+        //            (1 - mc_kw_adj_perc) * self.small_baseline_eff
+        //    self.mc_eff_map = self.mc_eff_array
+        //else:
+        //    self.mc_eff_array = self.mc_eff_map
+        if true {
+            self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
+            self.mc_eff_map = self.mc_eff_array.clone();
+        } else {
+            self.mc_eff_array = self.mc_eff_map.clone();
+        }
+
+        let mc_kw_out_array: [f64; 101] = (Array::linspace(0.0, 1.0, self.mc_perc_out_array.len()) * self.mc_max_kw)
+            .iter().map(|&x|{x}).collect::<Vec<f64>>().try_into().unwrap();
+
+        let mc_full_eff_array: [f64; 101] = self.mc_perc_out_array.iter().enumerate().map(|(idx, &x):(usize, &f64)|->f64 {
+            if idx == 0 {
+                0.0
+            } else if idx == (self.mc_perc_out_array.len() - 1) {
+                self.mc_eff_array[self.mc_eff_array.len() - 1]
+            } else {
+                interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
+            }
+        }).collect::<Vec<f64>>().try_into().unwrap();
+
+        let mc_kw_in_array: [f64; 101] = [0.0; 101].iter().enumerate().map(|(idx, _)| {
+            if idx == 0 {
+                0.0
+            } else {
+                mc_kw_out_array[idx] / mc_full_eff_array[idx]
+            }
+        }).collect::<Vec<f64>>().try_into().unwrap();
+
+        self.mc_kw_in_array = mc_kw_in_array;
+        self.mc_kw_out_array = mc_kw_out_array;
+        self.mc_max_elec_in_kw = arrmax(&mc_kw_in_array);
+        self.mc_full_eff_array = mc_full_eff_array;
+
+        self.mc_max_elec_in_kw = arrmax(&self.mc_kw_in_array);
+
+        // check that efficiencies are not violating the first law of thermo
+        assert!(arrmin(&self.fc_eff_array) >= 0.0, "min MC eff < 0 is not allowed");
+        assert!(self.fc_peak_eff() < 1.0, "fcPeakEff >= 1 is not allowed.");
+        assert!(arrmin(&self.mc_full_eff_array) >= 0.0, "min MC eff < 0 is not allowed");
+        assert!(self.mc_peak_eff() < 1.0, "mcPeakEff >= 1 is not allowed.");
+
+        self.set_veh_mass();
+    }
+
+    /// Calculate total vehicle mass. Sum up component masses if 
+    /// positive real number is not specified for self.veh_override_kg
+    pub fn set_veh_mass(&mut self) {
+        let mut ess_mass_kg = 0.0;
+        let mut mc_mass_kg = 0.0;
+        let mut fc_mass_kg = 0.0;
+        let mut fs_mass_kg = 0.0;
+
+        if !(self.veh_override_kg > 0.0) {
+            ess_mass_kg = if self.ess_max_kwh == 0.0 || self.ess_max_kw == 0.0 {
+                0.0
+            } else {
+                ((self.ess_max_kwh * self.ess_kg_per_kwh) + self.ess_base_kg)
+                * self.comp_mass_multiplier
+            };
+            mc_mass_kg = if self.mc_max_kw == 0.0 {
+                0.0
+            } else {
+                (self.mc_pe_base_kg + (self.mc_pe_kg_per_kw * self.mc_max_kw))
+                * self.comp_mass_multiplier
+            };
+            fc_mass_kg = if self.fc_max_kw == 0.0 {
+                0.0
+            } else {
+                (1.0 / self.fc_kw_per_kg * self.fc_max_kw + self.fc_base_kg)
+                * self.comp_mass_multiplier
+            };
+            fs_mass_kg = if self.fs_max_kw == 0.0 {
+                0.0
+            } else {
+                ((1.0 / self.fs_kwh_per_kg) * self.fs_kwh) * self.comp_mass_multiplier
+            };
+            self.veh_kg =
+                self.cargo_kg
+                + self.glider_kg
+                + self.trans_kg * self.comp_mass_multiplier
+                + ess_mass_kg
+                + mc_mass_kg
+                + fc_mass_kg
+                + fs_mass_kg;
+        } else {
+            // if positive real number is specified for veh_override_kg, use that
+            self.veh_kg = self.veh_override_kg;
+        }
+
+        self.max_trac_mps2 = (
+            self.wheel_coef_of_fric * self.drive_axle_weight_frac * self.veh_kg * self.props.a_grav_mps2 /
+            (1.0 + self.veh_cg_m * self.wheel_coef_of_fric / self.wheel_base_m)
+        ) / (self.veh_kg * self.props.a_grav_mps2)  * self.props.a_grav_mps2;
+
+        // copying to instance attributes
+        self.ess_mass_kg = ess_mass_kg;
+        self.mc_mass_kg =  mc_mass_kg;
+        self.fc_mass_kg =  fc_mass_kg;
+        self.fs_mass_kg =  fs_mass_kg;
+    }
+
     pub fn test_veh() -> Self {
         let scenario_name = String::from("2016 FORD Escape 4cyl 2WD");
         let selection: u32 = 5;
@@ -623,7 +813,7 @@ impl RustVehicle{
         // get mc_kw_out_array converted to array
         let mc_kw_out_array: [f64; 101] = mc_kw_out_array.try_into().unwrap();
         // get mc_fell_eff_vec into array form
-        let mc_full_eff_array: [f64; 101] = mc_full_eff_array.try_into().unwrap();
+        let mc_full_eff_array: [f64; 101] = [1.0; 101]; // mc_full_eff_array.try_into().unwrap();
         let mc_perc_out_array: [f64; 101] = mc_perc_out_array.try_into().unwrap();
 
         // DERIVED VALUES
@@ -644,7 +834,7 @@ impl RustVehicle{
         let idm_accel_m_per_s2 = 1.0;
         let idm_decel_m_per_s2 = 1.5;
 
-        RustVehicle {
+        let mut veh = RustVehicle {
             scenario_name,
             selection,
             veh_year,
@@ -759,7 +949,9 @@ impl RustVehicle{
             idm_delta,
             idm_accel_m_per_s2,
             idm_decel_m_per_s2,
-        }
+        };
+        veh.post_init();
+        veh
     }
 
     #[getter]
