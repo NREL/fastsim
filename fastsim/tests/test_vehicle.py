@@ -7,35 +7,62 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from fastsim import vehicle
+from fastsim import parameters, vehicle
+
+
+USE_PYTHON = True
+USE_RUST = True
 
 
 class TestVehicle(unittest.TestCase):
     def test_equal(self):
         """Verify that a copied Vehicle and original are equal."""
-        
-        print(f"Running {type(self)}.test_equal.")
-        veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
-        veh_copy = vehicle.copy_vehicle(veh)
-        self.assertTrue(vehicle.veh_equal(veh, veh_copy))
+        if USE_PYTHON:
+            veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+            veh_copy = vehicle.copy_vehicle(veh)
+            self.assertTrue(vehicle.veh_equal(veh, veh_copy))
+        if USE_RUST:
+            py_veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+            import fastsimrust as fsr
+            data = {**py_veh.__dict__}
+            data['fc_perc_out_array'] = np.copy(parameters.fc_perc_out_array)
+            data['mc_perc_out_array'] = np.copy(parameters.mc_perc_out_array)
+            data['props'] = parameters.copy_physical_properties(py_veh.props, 'rust')
+            veh = fsr.RustVehicle(**data)
+            veh_copy = vehicle.copy_vehicle(veh, 'rust')
+            self.assertTrue(vehicle.veh_equal(veh, veh_copy))
+            self.assertTrue(vehicle.veh_equal(py_veh, veh_copy))
 
     def test_properties(self):
         """Verify that some of the property variables are working as expected."""
-
-        print(f"Running {type(self)}.test_properties.")
-        veh = vehicle.Vehicle.from_vehdb(10, verbose=False)
-        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-        veh.mc_peak_eff = 0.85
-        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-        veh.mc_peak_eff += 0.05
-        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-        veh.mc_full_eff_array *= 1.05
-        veh.mc_eff_array *= 1.05
-        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-        self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        if USE_PYTHON:
+            veh = vehicle.Vehicle.from_vehdb(10, verbose=False)
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            veh.mc_peak_eff = 0.85
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            veh.mc_peak_eff += 0.05
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            veh.mc_full_eff_array *= 1.05
+            veh.mc_eff_array *= 1.05
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        #if USE_RUST:
+        #    veh = vehicle.Vehicle.from_vehdb(10, verbose=False).to_rust()
+        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        #    veh.mc_peak_eff = 0.85
+        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        #    veh.mc_peak_eff += 0.05
+        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+        #    veh.mc_full_eff_array *= 1.05
+        #    veh.mc_eff_array *= 1.05
+        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
+        #    self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
     
     def test_fc_efficiency_override(self):
         """Verify that we can scale FC"""
