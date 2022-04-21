@@ -4,7 +4,7 @@ Module containing classes and methods for for loading vehicle data. For example 
 
 ### Import necessary python modules
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, InitVar
 import pandas as pd
 import types as pytypes
 import re
@@ -42,7 +42,7 @@ def get_template_df():
 TEMPLATE_VEHDF = get_template_df()
 
 # list of optional parameters that do not get assigned as vehicle attributes
-OPT_INIT_PARAMS = []  #  TODO: maybe reinstate these: ['fc_peak_eff_override', 'mc_peak_eff_override']
+OPT_INIT_PARAMS = ['fc_peak_eff_override', 'mc_peak_eff_override']
 
 VEH_PT_TYPES = ("Conv", "HEV", "PHEV", "BEV")
 
@@ -194,10 +194,6 @@ class Vehicle(object):
     small_baseline_eff: Optional[np.ndarray] = None
     small_motor_power_kw: Optional[float] = 7.5
     large_motor_power_kw: Optional[float] = 7.5
-    # gets set during __post_init__
-    fc_perc_out_array: Optional[np.ndarray] = None
-    # gets set during __post_init__
-    fc_perc_out_array: Optional[np.ndarray] = None
     fc_perc_out_array = params.fc_perc_out_array
     mc_perc_out_array = params.mc_perc_out_array
     ### Specify shape of mc regen efficiency curve
@@ -208,6 +204,8 @@ class Vehicle(object):
     charging_on: bool = False
     no_elec_sys: bool = False
     no_elec_aux: bool = False
+    fc_peak_eff_override: InitVar[float] = -1.0
+    mc_peak_eff_override: InitVar[float] = -1.0
 
     @classmethod
     def from_vehdb(cls, vnum:int, verbose:bool=False):
@@ -269,9 +267,8 @@ class Vehicle(object):
         for col in vehdf.columns:
             col1 = str(col).replace(' ', '_')
             col1 = OLD_TO_NEW.get(col1, col1)
-            if col not in OPT_INIT_PARAMS:
-                # assign dataframe columns to vehicle
-                veh_dict[col1] = vehdf.loc[vnum, col]
+            # assign dataframe columns to vehicle
+            veh_dict[col1] = vehdf.loc[vnum, col]
         
         # missing_cols = set(TEMPLATE_VEHDF.columns) - set(veh_dict.keys())
         # if len(missing_cols) > 0:
@@ -393,7 +390,11 @@ class Vehicle(object):
         # make sure types are right
         for key, val in veh_dict.items():
             if key != 'props':
-                 veh_dict[key] = keys_and_types[key](val)
+                if key not in OPT_INIT_PARAMS:
+                    veh_dict[key] = keys_and_types[key](val)
+                else:
+                    # All OPT_INIT_PARAMS assumed to be float64
+                    veh_dict[key] = np.float64(val)
 
         keys_to_remove = [
             'input_kw_out_array',
@@ -411,6 +412,7 @@ class Vehicle(object):
             'mc_mass_kg',
             'fc_mass_kg',
             'fs_mass_kg',
+            'fc_perc_out_array',
             'mc_perc_out_array',
         ]
         for key in keys_to_remove:
@@ -419,13 +421,15 @@ class Vehicle(object):
         return cls(**veh_dict)
         
 
-    def __post_init__(self):
+    def __post_init__(self, fc_peak_eff_override:float=-1.0, mc_peak_eff_override:float=-1.0):
         """
         Sets derived parameters.
         Arguments:
         ----------
-        mc_peak_eff_override: float (0, 1), if provided, overrides motor peak efficiency
-            with proportional scaling.  Default of -1 has no effect.  
+        fc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides engine peak efficiency
+            with proportional scaling.  Default of -1 has no effect.
+        mc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
+            with proportional scaling.  Default of -1 has no effect.
         """
         
         if self.scenario_name != 'Template Vehicle for setting up data types':
@@ -498,6 +502,13 @@ class Vehicle(object):
         self.mc_full_eff_array = mc_full_eff_array
 
         self.mc_max_elec_in_kw = max(self.mc_kw_in_array)
+
+        if fc_peak_eff_override != -1.0:
+            self.fc_peak_eff = fc_peak_eff_override
+            print("fc_peak_eff_override is modifying efficiency curve")
+        if mc_peak_eff_override != -1.0:
+            self.mc_peak_eff = mc_peak_eff_override
+            print("mc_peak_eff_override is modifying efficiency curve")
 
         # check that efficiencies are not violating the first law of thermo
         assert self.fc_eff_array.min() >= 0, f"min MC eff < 0 is not allowed"
@@ -610,7 +621,14 @@ class Vehicle(object):
     
     def to_rust(self):
         """Return a Rust version of the vehicle"""
-        return copy_vehicle(self, 'rust')
+        # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
+        # ... we need to keep and re-set any changes to peak fc/mc efficiency
+        fc_peak = self.fc_peak_eff
+        mc_peak = self.mc_peak_eff
+        new_veh = copy_vehicle(self, 'rust')
+        new_veh.fc_peak_eff = fc_peak
+        new_veh.mc_peak_eff = mc_peak
+        return new_veh
 
 
 ref_veh = Vehicle.from_vehdb(5)
