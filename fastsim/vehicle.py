@@ -194,10 +194,6 @@ class Vehicle(object):
     small_baseline_eff: Optional[np.ndarray] = None
     small_motor_power_kw: Optional[float] = 7.5
     large_motor_power_kw: Optional[float] = 7.5
-    # gets set during __post_init__
-    fc_perc_out_array: Optional[np.ndarray] = None
-    # gets set during __post_init__
-    fc_perc_out_array: Optional[np.ndarray] = None
     fc_perc_out_array = params.fc_perc_out_array
     mc_perc_out_array = params.mc_perc_out_array
     ### Specify shape of mc regen efficiency curve
@@ -416,6 +412,7 @@ class Vehicle(object):
             'mc_mass_kg',
             'fc_mass_kg',
             'fs_mass_kg',
+            'fc_perc_out_array',
             'mc_perc_out_array',
         ]
         for key in keys_to_remove:
