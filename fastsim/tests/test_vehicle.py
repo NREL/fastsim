@@ -1,7 +1,9 @@
 """Test suite for cycle instantiation and manipulation."""
 
 import unittest
+import tempfile
 from pathlib import Path
+
 import pandas as pd
 import numpy as np
 
@@ -34,6 +36,38 @@ class TestVehicle(unittest.TestCase):
         veh.mc_eff_array *= 1.05
         self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
         self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+    
+    def test_fc_efficiency_override(self):
+        """Verify that we can scale FC"""
+        TOL = 1e-6
+        def add_csv_parameter(param_name:str, value:float, pristine_path:Path, temp_dirname:Path)->Path:
+            csv_contents = None
+            with open(pristine_path, 'r') as f:
+                csv_contents = f.read()
+            csv_contents += f',{param_name},{str(value)},\n'
+            assert param_name in csv_contents, f"Can't find param_name '{param_name}' in csv_contents!"
+            test_path = Path(temp_dirname) / "Test_Vehicle.csv"
+            with open(test_path, 'w') as f:
+                f.write(csv_contents)
+            return test_path
+        veh_name = "2012_Ford_Fusion.csv"
+        veh_pristine = vehicle.Vehicle.from_file(veh_name)
+        pristine_path = Path(vehicle.VEHICLE_DIR) / veh_name
+        pristine_fc_peak_eff = veh_pristine.fc_peak_eff
+        pristine_mc_peak_eff = veh_pristine.mc_peak_eff
+        test_peak_eff = 0.5
+        with tempfile.TemporaryDirectory() as temp_dirname:
+            test_path = add_csv_parameter("fc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
+            veh = vehicle.Vehicle.from_file(test_path)
+            self.assertAlmostEqual(test_peak_eff, veh.fc_peak_eff)
+            self.assertTrue(abs(pristine_fc_peak_eff - veh.fc_peak_eff) > TOL)
+            self.assertAlmostEqual(pristine_mc_peak_eff, veh.mc_peak_eff)
+            test_path = add_csv_parameter("mc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
+            veh = vehicle.Vehicle.from_file(test_path)
+            self.assertAlmostEqual(test_peak_eff, veh.mc_peak_eff)
+            self.assertTrue(abs(pristine_mc_peak_eff - veh.mc_peak_eff) > TOL)
+            self.assertAlmostEqual(pristine_fc_peak_eff, veh.fc_peak_eff)
+
 
 if __name__ == '__main__':
     from fastsim import vehicle 
