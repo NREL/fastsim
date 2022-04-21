@@ -642,8 +642,8 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     return_type: 
         'dict': dict
         'vehicle': Vehicle 
-        'legacy_vehicle': LegacyVehicle
-        'rust_vehicle': RustVehicle
+        'legacy': LegacyVehicle
+        'rust': RustVehicle
     """
 
     veh_dict = {}
