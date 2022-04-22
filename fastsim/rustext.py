@@ -8,3 +8,7 @@ try:
     RUST_AVAILABLE = True
 except ImportError:
     RUST_AVAILABLE = False
+
+def warn_rust_unavailable():
+    if not RUST_AVAILABLE:
+        print("Warning! FASTSimRust was requested but it is unavailable.")

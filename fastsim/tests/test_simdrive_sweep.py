@@ -11,7 +11,7 @@ import unittest
 
 # local modules
 from fastsim import simdrive, vehicle, cycle, utils
-from fastsim.rustext import RUST_AVAILABLE
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
@@ -45,9 +45,8 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     max_abs_err: number or None, the maximum absolute error if it exists
     """
     if not RUST_AVAILABLE and use_rust:
-        print(
-            "Warning! Request to use FASTSimRust but it's unavailable."
-        )
+        warn_rust_unavailable()
+        use_rust = False
     t0 = time.time()
 
     print('Running vehicle sweep.\n')

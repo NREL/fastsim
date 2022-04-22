@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 
 from fastsim import parameters, vehicle
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 
 
 USE_PYTHON = True
@@ -21,7 +22,9 @@ class TestVehicle(unittest.TestCase):
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
             veh_copy = vehicle.copy_vehicle(veh)
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
-        if USE_RUST:
+        if USE_RUST and not RUST_AVAILABLE:
+            warn_rust_unavailable()
+        if RUST_AVAILABLE and USE_RUST:
             py_veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
             import fastsimrust as fsr
             data = {**py_veh.__dict__}
