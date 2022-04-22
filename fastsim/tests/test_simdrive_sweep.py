@@ -11,7 +11,10 @@ import unittest
 
 # local modules
 from fastsim import simdrive, vehicle, cycle, utils
-import fastsimrust as fsr
+from fastsim.rustext import RUST_AVAILABLE
+
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
 
 
 RUN_PYTHON = False
@@ -41,6 +44,10 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     col_for_max_error: string or None, the column name of the column having max absolute error
     max_abs_err: number or None, the maximum absolute error if it exists
     """
+    if not RUST_AVAILABLE and use_rust:
+        print(
+            "Warning! Request to use FASTSimRust but it's unavailable."
+        )
     t0 = time.time()
 
     print('Running vehicle sweep.\n')
@@ -76,11 +83,11 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
                 veh = to_rust(vehicle.Vehicle.from_vehdb(vehno, verbose=False))
-            if use_rust:
+            if RUST_AVAILABLE and use_rust:
                 assert type(cyc) == fsr.RustCycle
                 assert type(veh) == fsr.RustVehicle
             sim_drive = make_simdrive(cyc, veh)
-            if use_rust:
+            if RUST_AVAILABLE and use_rust:
                 assert type(sim_drive) == fsr.RustSimDrive
             # US06 is known to cause substantial trace miss.
             # This should probably be addressed at some point, but for now, 

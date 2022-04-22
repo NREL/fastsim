@@ -9,11 +9,14 @@ import numpy as np
 import json
 from pathlib import Path
 import copy
+from copy import deepcopy
 
 from . import inspect_utils
 
-import fastsimrust as fsr
-from copy import deepcopy
+from .rustext import RUST_AVAILABLE
+
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
 
 
 THIS_DIR = Path(__file__).parent
@@ -77,19 +80,19 @@ def copy_physical_properties(p:PhysicalProperties, return_type:str=None, deep:bo
         p_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
     if return_type is None:
-        if type(p) == fsr.RustPhysicalProperties:
+        if RUST_AVAILABLE and type(p) == fsr.RustPhysicalProperties:
             return_type = 'rust'
         elif type(p) == PhysicalProperties:
             return_type = 'physical_properties'
         else:
             raise NotImplementedError(
                 "Only implemented for rust and physical_properties")
-    
+
     if return_type == 'dict':
         return p_dict
     elif return_type == 'physical_properties':
         return PhysicalProperties.from_dict(p_dict)
-    elif return_type == 'rust':
+    elif RUST_AVAILABLE and return_type == 'rust':
         return fsr.RustPhysicalProperties(**p_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")

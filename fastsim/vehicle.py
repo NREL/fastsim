@@ -18,7 +18,10 @@ from typing import Optional
 from fastsim import parameters as params
 from fastsim import utils
 from fastsim.vehicle_base import keys_and_types, NEW_TO_OLD
-import fastsimrust as fsr
+from .rustext import RUST_AVAILABLE
+
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -659,7 +662,10 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     veh_dict = {}
 
     for key in keys_and_types.keys():
-        if type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties:
+        if (
+            RUST_AVAILABLE
+            and type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties
+        ):
             pp = veh.__getattribute__(key)
             # TODO: replace the below with a call to copy_physical_properties(...)
             new_pp = fsr.RustPhysicalProperties()
@@ -673,7 +679,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
             veh_dict[key] = copy.deepcopy(veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
 
     if return_type is None:
-        if type(veh) == fsr.RustVehicle:
+        if RUST_AVAILABLE and type(veh) == fsr.RustVehicle:
             return_type = 'rust'
         elif type(veh) == Vehicle:
             return_type = 'vehicle'
@@ -689,7 +695,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
         return Vehicle.from_dict(veh_dict)
     elif return_type == 'legacy':
         return LegacyVehicle(veh_dict)
-    elif return_type == 'rust':
+    elif RUST_AVAILABLE and return_type == 'rust':
         veh_dict['props'] = params.copy_physical_properties(veh_dict['props'], return_type, deep)
         return fsr.RustVehicle(**veh_dict)
     else:
