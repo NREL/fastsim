@@ -13,6 +13,7 @@ import seaborn as sns
 
 import fastsim as fsim
 from fastsim.tests.test_coasting import make_coasting_plot
+from fastsim.rustext import RUST_AVAILABLE
 
 RAN_SUCCESSFULLY = False
 
@@ -46,35 +47,37 @@ IS_INTERACTIVE = maybe_str_to_bool(os.getenv('FASTSIM_DEMO_IS_INTERACTIVE'))
 # We're going to use a conventional vehicle with
 # the UDDS cycle.
 # %%
-cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
-veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
-sd = fsim.simdrive.RustSimDrive(cyc, veh)
-sd.sim_drive()
+if RUST_AVAILABLE:
+    cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
+    veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
+    sd = fsim.simdrive.RustSimDrive(cyc, veh)
+    sd.sim_drive()
 
-base_mpg = sd.mpgge
-if IS_INTERACTIVE:
-    print(f"Base fuel economy over UDDS: {sd.mpgge} mpg")
-    make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
+    base_mpg = sd.mpgge
+    if IS_INTERACTIVE:
+        print(f"Base fuel economy over UDDS: {sd.mpgge} mpg")
+        make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
 
 # %% [markdown]
 # ## Eco-Coasting
 # %%
-cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
-veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
-sd = fsim.simdrive.RustSimDrive(cyc, veh)
-params = sd.sim_params
-params.coast_allow = True
-params.coast_allow_passing = False
-params.coast_start_speed_m_per_s = -1.0
-sd.sim_params = params
-sd.sim_drive()
+if RUST_AVAILABLE:
+    cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
+    veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
+    sd = fsim.simdrive.RustSimDrive(cyc, veh)
+    params = sd.sim_params
+    params.coast_allow = True
+    params.coast_allow_passing = False
+    params.coast_start_speed_m_per_s = -1.0
+    sd.sim_params = params
+    sd.sim_drive()
 
-coast_mpg = sd.mpgge
-if IS_INTERACTIVE:
-    print(f"Coast fuel economy over UDDS: {sd.mpgge} mpg")
-    pct_savings = ((1.0/base_mpg) - (1.0/coast_mpg)) * 100.0 / ((1.0/base_mpg))
-    print(f"Percent Savings: {pct_savings} %")
-    make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
+    coast_mpg = sd.mpgge
+    if IS_INTERACTIVE:
+        print(f"Coast fuel economy over UDDS: {sd.mpgge} mpg")
+        pct_savings = ((1.0/base_mpg) - (1.0/coast_mpg)) * 100.0 / ((1.0/base_mpg))
+        print(f"Percent Savings: {pct_savings} %")
+        make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
 
 # %% [markdown]
 # # Car Following at Average Speed
@@ -86,11 +89,18 @@ cyc_stop = fsim.cycle.resample(
     fsim.cycle.make_cycle([0.0, 200.0], [0.0, 0.0]),
     new_dt=1.0,
 )
-cyc = fsim.cycle.Cycle.from_dict(
-    fsim.cycle.concat([cyc_udds, cyc_stop])
-).to_rust()
-veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
-sd = fsim.simdrive.RustSimDrive(cyc, veh)
+if RUST_AVAILABLE:
+    cyc = fsim.cycle.Cycle.from_dict(
+        fsim.cycle.concat([cyc_udds, cyc_stop])
+    ).to_rust()
+    veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
+    sd = fsim.simdrive.RustSimDrive(cyc, veh)
+else:
+    cyc = fsim.cycle.Cycle.from_dict(
+        fsim.cycle.concat([cyc_udds, cyc_stop])
+    )
+    veh = fsim.vehicle.Vehicle.from_vehdb(1)
+    sd = fsim.simdrive.SimDrive(cyc, veh)
 params = sd.sim_params
 params.follow_allow = True
 params.idm_accel_m_per_s2 = 1.0
@@ -120,17 +130,25 @@ cyc_stop = fsim.cycle.resample(
     fsim.cycle.make_cycle([0.0, 200.0], [0.0, 0.0]),
     new_dt=1.0,
 )
-cyc = fsim.cycle.Cycle.from_dict(
-    fsim.cycle.concat([cyc_udds, cyc_stop])
-).to_rust()
-veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
-sd = fsim.simdrive.RustSimDrive(cyc, veh)
-# sd = fsim.simdrive.SimDrive(cyc, veh)
+if RUST_AVAILABLE:
+    cyc = fsim.cycle.Cycle.from_dict(
+        fsim.cycle.concat([cyc_udds, cyc_stop])
+    ).to_rust()
+    veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
+    sd = fsim.simdrive.RustSimDrive(cyc, veh)
+else:
+    cyc = fsim.cycle.Cycle.from_dict(
+        fsim.cycle.concat([cyc_udds, cyc_stop])
+    )
+    veh = fsim.vehicle.Vehicle.from_vehdb(1)
+    sd = fsim.simdrive.SimDrive(cyc, veh)
 dist_and_avg_speeds = []
 microtrips = fsim.cycle.to_microtrips(cyc.get_cyc_dict())
 dist_at_start_of_microtrip_m = 0.0
 for mt in microtrips:
-    mt_cyc = fsim.cycle.Cycle.from_dict(mt).to_rust()
+    mt_cyc = fsim.cycle.Cycle.from_dict(mt)
+    if RUST_AVAILABLE:
+        mt_cyc = mt_cyc.to_rust()
     mt_dist_m = sum(mt_cyc.dist_m)
     mt_time_s = mt_cyc.time_s[-1]
     mt_avg_spd_m_per_s = mt_dist_m / mt_time_s if mt_time_s > 0.0 else 0.0

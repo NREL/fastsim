@@ -48,7 +48,7 @@ def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
     use_rust: Boolean, if True, use Rust versions of classes
     """
     if use_rust and not RUST_AVAILABLE:
-        warn_rust_unavailable()
+        warn_rust_unavailable(__file__)
 
     t0 = time.time()
 

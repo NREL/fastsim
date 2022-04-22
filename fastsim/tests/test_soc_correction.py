@@ -6,12 +6,16 @@ import unittest
 import numpy as np
 
 import fastsim
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 
 
 DO_PLOTS = False
 VERBOSE = False
 USE_PYTHON = False
 USE_RUST = True
+
+if USE_RUST and not RUST_AVAILABLE:
+    warn_rust_unavailable(__file__)
 
 
 def make_plots(cyc_names, results, lang):
@@ -106,7 +110,7 @@ class TestSocCorrection(unittest.TestCase):
             self.assertTrue(average_absolute_percent_error < 1.0)
             if DO_PLOTS:
                 make_plots(cyc_names, results, lang="py")
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             veh = fastsim.vehicle.Vehicle.from_vehdb(11).to_rust() # Toyota Highlander Hybrid
             cyc_names = ['udds', 'us06', 'hwfet']
             results = {

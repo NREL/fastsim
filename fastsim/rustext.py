@@ -9,6 +9,8 @@ try:
 except ImportError:
     RUST_AVAILABLE = False
 
-def warn_rust_unavailable():
+def warn_rust_unavailable(context=None):
     if not RUST_AVAILABLE:
         print("Warning! FASTSimRust was requested but it is unavailable.")
+        if context is not None:
+            print(f"- context: {context}")

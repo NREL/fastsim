@@ -16,9 +16,11 @@ from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 if RUST_AVAILABLE:
     import fastsimrust as fsr
 
-
 RUN_PYTHON = False
 RUN_RUST = True
+
+if RUN_RUST and not RUST_AVAILABLE:
+    warn_rust_unavailable(__file__)
 
 
 def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
@@ -45,7 +47,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     max_abs_err: number or None, the maximum absolute error if it exists
     """
     if not RUST_AVAILABLE and use_rust:
-        warn_rust_unavailable()
+        warn_rust_unavailable(__file__)
         use_rust = False
     t0 = time.time()
 
@@ -169,12 +171,14 @@ class TestSimDriveSweep(unittest.TestCase):
             df_err, _, _, max_err_col, max_abs_err= main(verbose=True)
             self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
                 msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
-        if RUN_RUST:
+        if RUST_AVAILABLE and RUN_RUST:
             df_err, _, _, max_err_col, max_abs_err = main(verbose=True, use_rust=True)
             self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
                 msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
     
     def test_post_diagnostics(self):
+        if not RUST_AVAILABLE:
+            return
         vehid = 9 # FORD C-MAX
         cyc_name = "us06"
         init_soc = None
