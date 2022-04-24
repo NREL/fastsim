@@ -7,11 +7,17 @@ import numpy as np
 
 import fastsim.vehicle_base as fsvb
 from fastsim import cycle, vehicle, simdrive
-import fastsimrust as fsr
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
+else:
+    warn_rust_unavailable(__file__)
 
 class TestRust(unittest.TestCase):
     def test_run_sim_drive_conv(self):
+        if not RUST_AVAILABLE:
+            return
         cyc = cycle.Cycle.from_file('udds').to_rust()
         veh = vehicle.Vehicle.from_vehdb(5).to_rust()
         #sd = simdrive.SimDrive(cyc, veh).to_rust()
@@ -21,6 +27,8 @@ class TestRust(unittest.TestCase):
         self.assertEqual(sd.i, len(cyc.time_s))
 
     def test_run_sim_drive_conv(self):
+        if not RUST_AVAILABLE:
+            return
         cyc = cycle.Cycle.from_file('udds').to_rust()
         veh = vehicle.Vehicle.from_vehdb(11).to_rust()
         sd = fsr.RustSimDrive(cyc, veh)
@@ -29,6 +37,8 @@ class TestRust(unittest.TestCase):
         self.assertEqual(sd.i, len(cyc.time_s))
     
     def test_step_by_step(self):
+        if not RUST_AVAILABLE:
+            return
         use_dict = False
         cyc_dict = {
             'cycSecs': np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]),
@@ -152,6 +162,8 @@ class TestRust(unittest.TestCase):
         This test assures that Rust and Python agree on at least one 
         example of all permutations of veh_pt_type and fc_eff_type.
         """
+        if not RUST_AVAILABLE:
+            return
         for vehid in [1, 9, 14, 17, 24]:
             cyc = cycle.Cycle.from_file('udds')
             veh = vehicle.Vehicle.from_vehdb(vehid)
@@ -171,6 +183,8 @@ class TestRust(unittest.TestCase):
             self.assertAlmostEqual(py_ess_dischg_kj, rust_ess_dischg_kj, msg=f'Non-agreement for vehicle {vehid} for ess discharge')
 
     def test_achieved_speed_never_negative(self):
+        if not RUST_AVAILABLE:
+            return
         for vehid in range(1, 27):
             veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
             cyc = cycle.Cycle.from_file('udds').to_rust()

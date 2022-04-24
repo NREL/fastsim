@@ -9,7 +9,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import fastsim as fsim
-import fastsimrust as fsr
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
+else:
+    warn_rust_unavailable(__file__)
 
 
 VERBOSE = False
@@ -19,7 +23,7 @@ TOL = 1e-6
 def load_cycle(use_rust=False, verbose=False):
     t0 = time.time()
     cyc = fsim.cycle.Cycle.from_file("udds")
-    if use_rust:
+    if RUST_AVAILABLE and use_rust:
         cyc = cyc.to_rust()
     t1 = time.time()
     if verbose:
@@ -30,7 +34,7 @@ def load_cycle(use_rust=False, verbose=False):
 def load_vehicle(use_rust=False, verbose=False):
     t0 = time.time()
     veh = fsim.vehicle.Vehicle.from_vehdb(11)
-    if use_rust:
+    if RUST_AVAILABLE and use_rust:
         veh = veh.to_rust()
     print(f'Time to load vehicle: {time.time() - t0:.2e} s')
     return veh
@@ -41,7 +45,7 @@ def run_simdrive(cyc=None, veh=None, use_rust=False, verbose=False):
         cyc = load_cycle(use_rust=use_rust, verbose=verbose)
     if veh is None:
         veh = load_vehicle(use_rust=use_rust, verbose=verbose)
-    if use_rust:
+    if RUST_AVAILABLE and use_rust:
         sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
     else:
         sim_drive = fsim.simdrive.SimDrive(cyc, veh)
@@ -61,7 +65,7 @@ def run_by_step_with_varying_aux_loads(use_rust=False, verbose=False):
 
     veh = fsim.vehicle.Vehicle.from_vehdb(9)
     cyc = fsim.cycle.Cycle.from_file('udds')
-    if use_rust:
+    if RUST_AVAILABLE and use_rust:
         cyc = cyc.to_rust()
         veh = veh.to_rust()
         sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
@@ -93,7 +97,7 @@ def run_by_step_with_varying_aux_loads(use_rust=False, verbose=False):
 def run_with_aux_overrides_in_simdrive(use_rust=False):
     veh = fsim.vehicle.Vehicle.from_vehdb(9)
     cyc = fsim.cycle.Cycle.from_file('udds')
-    if use_rust:
+    if RUST_AVAILABLE and use_rust:
         veh = veh.to_rust()
         cyc = cyc.to_rust()
         sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
@@ -108,7 +112,7 @@ def run_with_aux_override_direct_set(use_rust=False, verbose=False):
     t0 = time.time()
     veh = fsim.vehicle.Vehicle.from_vehdb(9)
     cyc = fsim.cycle.Cycle.from_file('udds')
-    if use_rust:
+    if RUST_AVAILABLE and use_rust:
         veh = veh.to_rust()
         cyc = cyc.to_rust()
         sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
@@ -138,7 +142,7 @@ def use_simdrive_post(use_rust=False, verbose=False):
         print(f'Time to load cycle: {time.time() - t0:.2e} s')
 
     t0 = time.time()
-    if  use_rust:
+    if RUST_AVAILABLE and use_rust:
         veh = veh.to_rust()
         cyc = cyc.to_rust()
         sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
@@ -162,6 +166,8 @@ def use_simdrive_post(use_rust=False, verbose=False):
 class TestDemo(unittest.TestCase):
     def test_load_cycle(self):
         for use_rust in [False, True]:
+            if use_rust and not RUST_AVAILABLE:
+                continue
             try:
                 c = load_cycle(use_rust=use_rust, verbose=VERBOSE)
                 if use_rust:
@@ -176,6 +182,8 @@ class TestDemo(unittest.TestCase):
 
     def test_load_vehicle(self):
         for use_rust in [False, True]:
+            if use_rust and not RUST_AVAILABLE:
+                continue
             try:
                 v = load_vehicle(use_rust=use_rust, verbose=VERBOSE)
                 if use_rust:
@@ -189,6 +197,8 @@ class TestDemo(unittest.TestCase):
                 )
 
     def test_run_simdrive(self):
+        if not RUST_AVAILABLE:
+            return
         py_cyc = load_cycle(use_rust=False)
         py_veh = load_vehicle(use_rust=False)
         ru_cyc = load_cycle(use_rust=True)
@@ -223,6 +233,8 @@ class TestDemo(unittest.TestCase):
         self.assertTrue(fc_kw_in_ach_max_abs_diff < TOL)
 
     def test_running_by_step_with_modified_aux_loads(self):
+        if not RUST_AVAILABLE:
+            return
         py_sd = run_by_step_with_varying_aux_loads(
             use_rust=False, verbose=VERBOSE)
         ru_sd = run_by_step_with_varying_aux_loads(
@@ -239,6 +251,8 @@ class TestDemo(unittest.TestCase):
         self.assertTrue(ess_out_max_abs_diff < TOL)
 
     def test_running_with_aux_overrides(self):
+        if not RUST_AVAILABLE:
+            return
         py_sd = run_with_aux_overrides_in_simdrive(use_rust=False)
         ru_sd = run_with_aux_overrides_in_simdrive(use_rust=True)
         fc_out_max_abs_diff = np.abs(
@@ -253,6 +267,8 @@ class TestDemo(unittest.TestCase):
         self.assertTrue(ess_out_max_abs_diff < TOL)
 
     def test_running_with_aux_overrides_v2(self):
+        if not RUST_AVAILABLE:
+            return
         py_sd = run_with_aux_override_direct_set(use_rust=False, verbose=VERBOSE)
         ru_sd = run_with_aux_override_direct_set(use_rust=True, verbose=VERBOSE)
         fc_out_max_abs_diff = np.abs(
@@ -267,6 +283,8 @@ class TestDemo(unittest.TestCase):
         self.assertTrue(ess_out_max_abs_diff < TOL)
 
     def test_using_simdrive_post(self):
+        if not RUST_AVAILABLE:
+            return
         py_diag = use_simdrive_post(use_rust=False, verbose=VERBOSE)
         ru_diag = use_simdrive_post(use_rust=True, verbose=VERBOSE)
         py_diag_keys = {k for k in py_diag}
@@ -274,6 +292,8 @@ class TestDemo(unittest.TestCase):
         self.assertEqual(py_diag_keys, ru_diag_keys)
 
     def test_cycle_to_dict(self):
+        if not RUST_AVAILABLE:
+            return
         py_cyc = fsim.cycle.Cycle.from_file('udds')
         ru_cyc = py_cyc.to_rust()
         py_dict = py_cyc.get_cyc_dict()

@@ -8,10 +8,14 @@ import numpy as np
 import re
 import copy
 
-import fastsimrust as fsr
+from .rustext import RUST_AVAILABLE
+
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
 from . import params, cycle, vehicle, inspect_utils
+
 # these imports are needed for numba to type these correctly
-from .vehicle import CONV, HEV, PHEV, BEV 
+from .vehicle import CONV, HEV, PHEV, BEV
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
 
 
@@ -100,7 +104,7 @@ def copy_sim_params(sdp: SimDriveParams, return_type:str=None):
         sdp_dict[key] = sdp.__getattribute__(key)
 
     if return_type is None:
-        if type(sdp) == fsr.RustSimDriveParams:
+        if RUST_AVAILABLE and type(sdp) == fsr.RustSimDriveParams:
             return_type = 'rust'
         elif type(sdp) == SimDriveParams:
             return_type = 'sim_params'
@@ -120,7 +124,7 @@ def copy_sim_params(sdp: SimDriveParams, return_type:str=None):
         return sdp_dict
     elif return_type == 'sim_params':
         return SimDriveParams.from_dict(sdp_dict)
-    elif return_type == 'rust':
+    elif RUST_AVAILABLE and return_type == 'rust':
         return fsr.RustSimDriveParams(**sdp_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
@@ -1777,16 +1781,31 @@ class SimDrive(object):
         return copy_sim_drive(self, 'rust', True)
 
 
-def RustSimDrive(cyc: fsr.RustCycle, veh: fsr.RustVehicle) -> SimDrive:
-    """
-    Wrapper function to make SimDriveRust look like SimDrive for language server.
-    Arguments:
-    ----------
-    cyc: cycle.Cycle instance
-    veh: vehicle.Vehicle instance"""
+if RUST_AVAILABLE:
 
-    return fsr.RustSimDrive(cyc, veh)
-    
+    def RustSimDrive(cyc: fsr.RustCycle, veh: fsr.RustVehicle) -> SimDrive:
+        """
+        Wrapper function to make SimDriveRust look like SimDrive for language server.
+        Arguments:
+        ----------
+        cyc: cycle.Cycle instance
+        veh: vehicle.Vehicle instance"""
+        return fsr.RustSimDrive(cyc, veh)
+
+else:
+
+    def RustSimDrive(cyc: cycle.Cycle, veh: vehicle.Vehicle) -> SimDrive:
+        """
+        Wrapper function to make SimDriveRust look like SimDrive for language server.
+        Arguments:
+        ----------
+        cyc: cycle.Cycle instance
+        veh: vehicle.Vehicle instance"""
+        raise ImportError(
+            "FASTSimRust does not seem to be available. Cannot instantiate RustSimDrive..."
+        )
+        return SimDrive(cyc, veh)
+
 
 class LegacySimDrive(object):
     pass

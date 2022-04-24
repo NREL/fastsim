@@ -16,8 +16,8 @@ from math import isclose
 import importlib
 import unittest
 
-
 from fastsim import simdrive, vehicle, cycle, simdrivelabel
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 importlib.reload(simdrivelabel) # useful for debugging
 
 
@@ -26,7 +26,7 @@ RUN_RUST = True
 _USE_RUST_LIST = []
 if RUN_PYTHON:
     _USE_RUST_LIST.append(False)
-if RUN_RUST:
+if RUN_RUST and RUST_AVAILABLE:
     _USE_RUST_LIST.append(True)
 
 if 'xlwings' in sys.modules:
@@ -47,6 +47,8 @@ def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
         if True, print progress
     use_rust: Boolean, if True, use Rust versions of classes
     """
+    if use_rust and not RUST_AVAILABLE:
+        warn_rust_unavailable(__file__)
 
     t0 = time.time()
 
@@ -55,7 +57,7 @@ def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
 
     res_python = {}
     def to_rust(obj):
-        if use_rust:
+        if use_rust and RUST_AVAILABLE:
             return obj.to_rust()
         return obj
 

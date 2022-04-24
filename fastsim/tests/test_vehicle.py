@@ -8,11 +8,14 @@ import pandas as pd
 import numpy as np
 
 from fastsim import parameters, vehicle
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 
 
 USE_PYTHON = True
 USE_RUST = True
 
+if USE_RUST and not RUST_AVAILABLE:
+    warn_rust_unavailable(__file__)
 
 class TestVehicle(unittest.TestCase):
     def test_equal(self):
@@ -21,7 +24,7 @@ class TestVehicle(unittest.TestCase):
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
             veh_copy = vehicle.copy_vehicle(veh)
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             py_veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
             import fastsimrust as fsr
             data = {**py_veh.__dict__}
@@ -49,7 +52,7 @@ class TestVehicle(unittest.TestCase):
             veh.mc_eff_array *= 1.05
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             veh = vehicle.Vehicle.from_vehdb(10, verbose=False).to_rust()
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
@@ -95,7 +98,7 @@ class TestVehicle(unittest.TestCase):
                 self.assertAlmostEqual(test_peak_eff, veh.mc_peak_eff)
                 self.assertTrue(abs(pristine_mc_peak_eff - veh.mc_peak_eff) > TOL)
                 self.assertAlmostEqual(pristine_fc_peak_eff, veh.fc_peak_eff)
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             veh_pristine = vehicle.Vehicle.from_file(veh_name).to_rust()
             pristine_fc_peak_eff = veh_pristine.fc_peak_eff
             pristine_mc_peak_eff = veh_pristine.mc_peak_eff
