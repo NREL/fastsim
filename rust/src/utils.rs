@@ -175,9 +175,22 @@ macro_rules! impl_pyo3_arr_methods {
                 Ok(self.0.to_vec())
             }
         }
-        impl $arrstruct {
-            pub fn new(value: Array1<$dtype>) -> Self {
+        /// create from array slice
+        impl From<&[$dtype]> for $arrstruct {
+            fn from(value: &[$dtype]) -> Self {
+                Self(Array1::from(value.to_vec()))
+            }
+        }
+        /// create from Array1
+        impl From<Array1<$dtype>> for $arrstruct {
+            fn from(value: Array1<$dtype>) -> Self {
                 Self(value)
+            }
+        }
+        /// create from Vec
+        impl From<Vec<$dtype>> for $arrstruct {
+            fn from(value: Vec<$dtype>) -> Self {
+                Self(Array1::from(value))
             }
         }
     };

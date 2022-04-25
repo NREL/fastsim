@@ -724,7 +724,7 @@ impl RustSimDrive {
 
     #[getter]
     pub fn get_accel_buff_soc(&self) -> PyResult<utils::Pyo3ArrayF64> {
-        Ok(utils::Pyo3ArrayF64::new(self.accel_buff_soc.clone()))
+        Ok(utils::Pyo3ArrayF64::from(self.accel_buff_soc.clone()))
     }
     #[setter]
     pub fn set_accel_buff_soc(&mut self, new_value: Vec<f64>) -> PyResult<()> {

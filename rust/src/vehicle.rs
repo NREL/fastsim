@@ -1251,8 +1251,8 @@ impl RustVehicle {
     }
 
     #[getter]
-    pub fn get_fc_kw_out_array(&self) -> PyResult<Vec<f64>> {
-        Ok(self.fc_kw_out_array.to_vec())
+    pub fn get_fc_kw_out_array(&self) -> PyResult<Pyo3ArrayF64> {
+        Ok(Pyo3ArrayF64::from(self.fc_kw_out_array.to_vec()))
     }
     #[setter]
     pub fn set_fc_kw_out_array(&mut self, new_value: Vec<f64>) -> PyResult<()> {
