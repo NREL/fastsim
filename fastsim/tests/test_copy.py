@@ -122,3 +122,17 @@ class TestCopy(unittest.TestCase):
             self.assertEqual(type(rust_sd3), fsr.RustSimDrive)
             self.assertTrue(simdrive.sim_drive_equal(rust_sd3, sd))
             self.assertTrue(simdrive.sim_drive_equal(rust_sd3, rust_sd))
+
+if __name__ == "__main__":
+    
+    cyc = cycle.Cycle.from_file('udds')
+    veh = vehicle.Vehicle.from_vehdb(5)
+    sd = simdrive.SimDrive(cyc, veh)
+    sd2 = simdrive.copy_sim_drive(sd)
+    if RUST_AVAILABLE:
+        rust_sd = simdrive.copy_sim_drive(sd, 'rust')
+        rust_sd2 = simdrive.copy_sim_drive(rust_sd)
+        assert simdrive.sim_drive_equal(sd, rust_sd, verbose=True)
+        rust_sd3 = simdrive.SimDrive(cyc, veh).to_rust()
+        assert simdrive.sim_drive_equal(rust_sd3, sd)
+        assert simdrive.sim_drive_equal(rust_sd3, rust_sd)

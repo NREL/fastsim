@@ -20,6 +20,9 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<RustPhysicalProperties>()?;
     m.add_class::<RustSimDriveParams>()?;
     m.add_class::<RustSimDrive>()?;
+    m.add_class::<utils::Pyo3ArrayBool>()?;
+    m.add_class::<utils::Pyo3ArrayF64>()?;
+    m.add_class::<utils::Pyo3ArrayU32>()?;
     cycle::register(py, m)?;
     Ok(())
 }

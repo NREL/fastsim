@@ -171,6 +171,7 @@ macro_rules! impl_pyo3_arr_methods {
                     "Setting array value at index is not implemented. Set entire array.",
                 ))
             }
+            /// returns python list
             pub fn to_list(&self) -> PyResult<Vec<$dtype>> {
                 Ok(self.0.to_vec())
             }
