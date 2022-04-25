@@ -4,9 +4,12 @@ extern crate pyo3;
 use pyo3::exceptions;
 use pyo3::prelude::*;
 
-use super::cycle::RustCycle;
-use super::params::RustPhysicalProperties;
-use super::vehicle::*;
+use crate::cycle::RustCycle;
+use crate::params::RustPhysicalProperties;
+use crate::utils;
+use crate::vehicle::*;
+
+
 
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     match res {
@@ -720,8 +723,8 @@ impl RustSimDrive {
     // doc strings not needed for getters or setters
 
     #[getter]
-    pub fn get_accel_buff_soc(&self) -> PyResult<Vec<f64>> {
-        Ok(self.accel_buff_soc.to_vec())
+    pub fn get_accel_buff_soc(&self) -> PyResult<utils::Pyo3ArrayF64> {
+        Ok(utils::Pyo3ArrayF64::new(self.accel_buff_soc.clone()))
     }
     #[setter]
     pub fn set_accel_buff_soc(&mut self, new_value: Vec<f64>) -> PyResult<()> {
