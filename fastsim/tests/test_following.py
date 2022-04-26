@@ -6,11 +6,15 @@ import unittest
 import numpy as np
 
 import fastsim
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 
 
 DO_PLOTS = False
 USE_PYTHON = True
 USE_RUST = True
+
+if USE_RUST and not RUST_AVAILABLE:
+    warn_rust_unavailable(__file__)
 
 
 class TestFollowing(unittest.TestCase):
@@ -24,17 +28,16 @@ class TestFollowing(unittest.TestCase):
         if USE_PYTHON:
             self.trapz = fastsim.cycle.Cycle.from_dict(trapz)
             self.veh = fastsim.vehicle.Vehicle.from_vehdb(5)
-            self.veh.idm_minimum_gap_m = self.initial_gap_m
             # sd0 is for reference to an unchanged, no-following simdrive
             self.sd0 = fastsim.simdrive.SimDrive(self.trapz, self.veh)
             self.sd0.sim_params.verbose = False
             self.sd = fastsim.simdrive.SimDrive(self.trapz, self.veh)
             self.sd.sim_params.follow_allow = True
+            self.sd.sim_params.idm_minimum_gap_m = self.initial_gap_m
             self.sd.sim_params.verbose = False
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             self.ru_trapz = fastsim.cycle.Cycle.from_dict(trapz).to_rust()
             self.ru_veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
-            self.ru_veh.idm_minimum_gap_m = self.initial_gap_m
             # sd0 is for reference to an unchanged, no-following simdrive
             self.ru_sd0 = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
             sim_params = self.ru_sd0.sim_params
@@ -44,6 +47,7 @@ class TestFollowing(unittest.TestCase):
             sim_params = self.ru_sd.sim_params
             sim_params.follow_allow = True
             sim_params.verbose = False
+            sim_params.idm_minimum_gap_m = self.initial_gap_m
             self.ru_sd.sim_params = sim_params
         return super().setUp()
 
@@ -69,7 +73,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
             self.assertTrue((gaps_m > 0.0).any())
             self.assertAlmostEqual(self.sd.cyc0.dist_v2_m.sum(), self.sd.cyc.dist_v2_m.sum(), places=-1)
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             self.assertTrue(self.ru_sd.sim_params.follow_allow)
             self.ru_sd.sim_drive()
             self.assertTrue(self.ru_sd.sim_params.follow_allow)
@@ -127,7 +131,7 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue(
                 (gaps_m > (self.initial_gap_m - 1.0)).all(),
                 msg='We cannot get closer than the initial gap distance')
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             self.ru_sd.sim_drive()
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
             if DO_PLOTS:
@@ -265,7 +269,7 @@ class TestFollowing(unittest.TestCase):
                 fig.tight_layout()
                 fig.savefig(save_file, dpi=300)
                 plt.close()
-            if USE_RUST:
+            if RUST_AVAILABLE and USE_RUST:
                 import matplotlib.pyplot as plt
                 import pandas as pd
                 import seaborn as sns
@@ -389,7 +393,7 @@ class TestFollowing(unittest.TestCase):
                 self.sd.cyc.dist_v2_m.sum(),
                 places=-1,
                 msg='Distance traveled should be fairly close')
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             self.ru_sd.sim_drive()
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
             self.assertTrue((gaps_m > self.initial_gap_m).any())
@@ -520,14 +524,14 @@ class TestFollowing(unittest.TestCase):
                                                 idx += 1
                                                 if idx % 10 == 0:
                                                     print(f"Running {idx}...")
-                                                veh.idm_minimum_gap_m = s_min_m
-                                                veh.idm_delta = delta
-                                                veh.idm_accel_m_per_s2 = a_m__s2
-                                                veh.idm_decel_m_per_s2 = b_m__s2
-                                                veh.idm_v_desired_m_per_s = v_d_m__s
-                                                veh.idm_dt_headway_s = dt_h_s
                                                 sd = fastsim.simdrive.SimDrive(udds, veh)
                                                 sd.sim_params.follow_allow = True
+                                                sd.sim_params.idm_minimum_gap_m = s_min_m
+                                                sd.sim_params.idm_delta = delta
+                                                sd.sim_params.idm_accel_m_per_s2 = a_m__s2
+                                                sd.sim_params.idm_decel_m_per_s2 = b_m__s2
+                                                sd.sim_params.idm_v_desired_m_per_s = v_d_m__s
+                                                sd.sim_params.idm_dt_headway_s = dt_h_s
                                                 sd.sim_drive()
                                                 results['pt_type'].append(pt_type)
                                                 results['dt_headway_s'].append(dt_h_s)
@@ -693,7 +697,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
 
                 print('DONE!')
-            if USE_RUST:
+            if RUST_AVAILABLE and USE_RUST:
                 import matplotlib
                 matplotlib.use('Agg')
                 import matplotlib.pyplot as plt
@@ -805,15 +809,15 @@ class TestFollowing(unittest.TestCase):
                                                 idx += 1
                                                 if idx % 10 == 0:
                                                     print(f"Running {idx}...")
-                                                veh.idm_minimum_gap_m = s_min_m
-                                                veh.idm_delta = delta
-                                                veh.idm_accel_m_per_s2 = a_m__s2
-                                                veh.idm_decel_m_per_s2 = b_m__s2
-                                                veh.idm_v_desired_m_per_s = v_d_m__s
-                                                veh.idm_dt_headway_s = dt_h_s
                                                 sd = fastsim.simdrive.RustSimDrive(udds, veh)
                                                 sim_params = sd.sim_params
                                                 sim_params.follow_allow = True
+                                                sim_params.idm_minimum_gap_m = s_min_m
+                                                sim_params.idm_delta = delta
+                                                sim_params.idm_accel_m_per_s2 = a_m__s2
+                                                sim_params.idm_decel_m_per_s2 = b_m__s2
+                                                sim_params.idm_v_desired_m_per_s = v_d_m__s
+                                                sim_params.idm_dt_headway_s = dt_h_s
                                                 sd.sim_params = sim_params
                                                 sd.sim_drive()
                                                 results['pt_type'].append(pt_type)

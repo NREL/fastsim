@@ -19,7 +19,10 @@ from numba import njit
 # local modules
 from . import parameters as params
 from . import inspect_utils
-import fastsimrust as fsr
+from .rustext import RUST_AVAILABLE
+
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
@@ -272,7 +275,7 @@ def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True) -> Cycle:
             cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
     if return_type is None:
-        if type(cyc) == fsr.RustCycle:
+        if RUST_AVAILABLE and type(cyc) == fsr.RustCycle:
             return_type = 'rust'
         elif type(cyc) == Cycle:
             return_type = 'cycle'
@@ -288,7 +291,7 @@ def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True) -> Cycle:
         return Cycle.from_dict(cyc_dict)
     elif return_type == 'legacy':
         return LegacyCycle(cyc_dict)
-    elif return_type == 'rust':
+    elif RUST_AVAILABLE and return_type == 'rust':
         return fsr.RustCycle(**cyc_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")

@@ -1,18 +1,24 @@
 extern crate ndarray;
-use ndarray::{Array1, array, Axis, s, concatenate}; 
-use std::collections::{HashSet};
+use ndarray::{array, concatenate, s, Array1, Axis};
+use pyo3::exceptions::{PyIndexError, PyNotImplementedError};
+use pyo3::prelude::*;
+use std::collections::HashSet;
+// use numpy::PyArray;
 
-
-pub fn diff(x:&Array1<f64>) -> Array1<f64>{
-    concatenate(Axis(0), 
-        &[array![0.0].view(),
-        (&x.slice(s![1..]) - &x.slice(s![..-1])).view()]
-    ).unwrap()
+pub fn diff(x: &Array1<f64>) -> Array1<f64> {
+    concatenate(
+        Axis(0),
+        &[
+            array![0.0].view(),
+            (&x.slice(s![1..]) - &x.slice(s![..-1])).view(),
+        ],
+    )
+    .unwrap()
 }
 
 // TODO: check code here -- I'm sure there is a more elegant solution but this works.
 /// Returns a new array with a constant added starting at xs[i] to the end. Values prior to xs[i] are unchanged.
-pub fn add_from(xs:&Array1<f64>, i:usize, val:f64)->Array1<f64>{
+pub fn add_from(xs: &Array1<f64>, i: usize, val: f64) -> Array1<f64> {
     let mut ys = Array1::zeros(xs.len());
     for idx in 0..xs.len() {
         if idx >= i {
@@ -43,56 +49,52 @@ pub fn first_eq(arr: &[f64], cut: f64) -> Option<usize> {
 }
 
 /// return max of 2 f64
-pub fn max(a:f64, b:f64) -> f64 {
+pub fn max(a: f64, b: f64) -> f64 {
     a.max(b)
 }
 
 /// return min of 2 f64
-pub fn min(a:f64, b:f64) -> f64 {
+pub fn min(a: f64, b: f64) -> f64 {
     a.min(b)
 }
 
 /// return max <f64> of arr
-pub fn arrmax(arr:&[f64]) -> f64 {
+pub fn arrmax(arr: &[f64]) -> f64 {
     arr.iter().copied().fold(f64::NAN, f64::max)
 }
 
 /// return min <f64> of arr
-pub fn arrmin(arr:&[f64]) -> f64 {
+pub fn arrmin(arr: &[f64]) -> f64 {
     arr.iter().copied().fold(f64::NAN, f64::min)
 }
 
 /// return min <f64> of arr
-pub fn ndarrmin(arr:&Array1<f64>) -> f64 {
-    arr.to_vec()
-        .into_iter()
-        .reduce(f64::min)
-        .unwrap()
+pub fn ndarrmin(arr: &Array1<f64>) -> f64 {
+    arr.to_vec().into_iter().reduce(f64::min).unwrap()
 }
 
 /// return max <f64> of arr
-pub fn ndarrmax(arr:&Array1<f64>) -> f64 {
-    arr.to_vec()
-        .into_iter()
-        .reduce(f64::max)
-        .unwrap()
+pub fn ndarrmax(arr: &Array1<f64>) -> f64 {
+    arr.to_vec().into_iter().reduce(f64::max).unwrap()
 }
 
 /// return cumsum <f64> of arr
-pub fn ndarrcumsum(arr:&Array1<f64>) -> Array1<f64> {
-    arr.iter().scan(0.0, |acc, &x| {
-		*acc += x;
-		Some(*acc)
-	}).collect()
+pub fn ndarrcumsum(arr: &Array1<f64>) -> Array1<f64> {
+    arr.iter()
+        .scan(0.0, |acc, &x| {
+            *acc += x;
+            Some(*acc)
+        })
+        .collect()
 }
 
 /// return the unique values of the array
-pub fn ndarrunique(arr:&Array1<f64>) -> Array1<f64> {
+pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
     let mut set: HashSet<usize> = HashSet::new();
     let mut new_arr: Vec<f64> = Vec::new();
     let x_min = ndarrmin(arr);
     let x_max = ndarrmax(arr);
-    let dx = if x_max == x_min {1.0} else {x_max - x_min};
+    let dx = if x_max == x_min { 1.0 } else { x_max - x_min };
     for &x in arr.iter() {
         let y = (((x - x_min) / dx) * (usize::MAX as f64)) as usize;
         if !set.contains(&y) {
@@ -107,26 +109,26 @@ pub fn ndarrunique(arr:&Array1<f64>) -> Array1<f64> {
 /// interpolation algorithm from http://www.cplusplus.com/forum/general/216928/
 /// Arguments:
 /// x : value at which to interpolate
-pub fn interpolate(x:&f64, x_data:&Array1<f64>, y_data:&Array1<f64>, extrapolate:bool) -> f64 {
+pub fn interpolate(x: &f64, x_data: &Array1<f64>, y_data: &Array1<f64>, extrapolate: bool) -> f64 {
     let size = x_data.len();
 
     let mut i = 0;
     if x >= &x_data[size - 2] {
         i = size - 2;
     } else {
-        while x > &x_data[i + 1]{
+        while x > &x_data[i + 1] {
             i += 1;
         }
     }
     let xl = &x_data[i];
-    let mut yl = &y_data[i]; 
-    let xr = &x_data[i + 1]; 
+    let mut yl = &y_data[i];
+    let xr = &x_data[i + 1];
     let mut yr = &y_data[i + 1];
     if !extrapolate {
-        if x < xl{
+        if x < xl {
             yr = yl;
         }
-        if x > xr{
+        if x > xr {
             yl = yr;
         }
     }
@@ -134,17 +136,68 @@ pub fn interpolate(x:&f64, x_data:&Array1<f64>, y_data:&Array1<f64>, extrapolate
     yl + dydx * (x - xl)
 }
 
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
+pub struct Pyo3ArrayU32(Array1<u32>);
+
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
+pub struct Pyo3ArrayF64(Array1<f64>);
+
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
+pub struct Pyo3ArrayBool(Array1<bool>);
+
+#[macro_export]
+macro_rules! impl_pyo3_arr_methods {
+    ($arrstruct:ident, $dtype:ident) => {
+        #[pymethods]
+        impl $arrstruct {
+            pub fn __repr__(&self) -> String {
+                format!("RustArray({:?})", self.0)
+            }
+            pub fn __str__(&self) -> String {
+                format!("{:?}", self.0)
+            }
+            pub fn __getitem__(&self, idx: usize) -> PyResult<$dtype> {
+                if idx >= self.0.len() {
+                    Err(PyIndexError::new_err("Index is out of bounds"))
+                } else {
+                    Ok(self.0[idx])
+                }
+            }
+            pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
+                Err(PyNotImplementedError::new_err(
+                    "Setting array value at index is not implemented. Set entire array.",
+                ))
+            }
+            pub fn to_list(&self) -> PyResult<Vec<$dtype>> {
+                Ok(self.0.to_vec())
+            }
+        }
+        impl $arrstruct {
+            pub fn new(value: Array1<$dtype>) -> Self {
+                Self(value)
+            }
+        }
+    };
+}
+
+impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
+impl_pyo3_arr_methods!(Pyo3ArrayBool, bool);
+impl_pyo3_arr_methods!(Pyo3ArrayU32, u32);
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_diff(){
+    fn test_diff() {
         assert_eq!(diff(&Array1::range(0.0, 3.0, 1.0)), array![0.0, 1.0, 1.0]);
     }
 
     #[test]
-    fn test_that_first_eq_finds_the_right_index_when_one_exists(){
+    fn test_that_first_eq_finds_the_right_index_when_one_exists() {
         let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_eq(&xs, 3.3).unwrap();
         let expected_idx: usize = 2;
@@ -152,16 +205,15 @@ mod tests {
     }
 
     #[test]
-    fn test_that_first_eq_yields_last_index_when_nothing_found(){
+    fn test_that_first_eq_yields_last_index_when_nothing_found() {
         let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_eq(&xs, 7.0).unwrap();
         let expected_idx: usize = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
 
-
     #[test]
-    fn test_that_first_grtr_finds_the_right_index_when_one_exists(){
+    fn test_that_first_grtr_finds_the_right_index_when_one_exists() {
         let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_grtr(&xs, 3.0).unwrap();
         let expected_idx: usize = 2;
@@ -169,7 +221,7 @@ mod tests {
     }
 
     #[test]
-    fn test_that_first_grtr_yields_last_index_when_nothing_found(){
+    fn test_that_first_grtr_yields_last_index_when_nothing_found() {
         let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_grtr(&xs, 7.0).unwrap();
         let expected_idx: usize = xs.len() - 1;
@@ -177,21 +229,21 @@ mod tests {
     }
 
     #[test]
-    fn test_that_ndarrmin_returns_the_min(){
+    fn test_that_ndarrmin_returns_the_min() {
         let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
         let xmin = ndarrmin(&xs);
         assert_eq!(xmin, 3.0);
     }
 
     #[test]
-    fn test_that_ndarrmax_returns_the_max(){
+    fn test_that_ndarrmax_returns_the_max() {
         let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
         let xmax = ndarrmax(&xs);
         assert_eq!(xmax, 80.0);
     }
 
     #[test]
-    fn test_ndarrcumsum_expected_output(){
+    fn test_ndarrcumsum_expected_output() {
         let xs = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0]);
         let expected_ys = Array1::from_vec(vec![0.0, 1.0, 3.0, 6.0]);
         let ys = ndarrcumsum(&xs);
@@ -203,20 +255,20 @@ mod tests {
     }
 
     #[test]
-    fn test_add_from_yields_expected_output(){
-        let xs = Array1::from_vec(vec![1.0,2.0,3.0,4.0,5.0]);
-        let mut expected_ys = Array1::from_vec(vec![1.0,2.0,3.0,4.0,5.0]);
+    fn test_add_from_yields_expected_output() {
+        let xs = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+        let mut expected_ys = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
         let mut actual_ys = add_from(&xs, 100, 1.0);
         assert_eq!(expected_ys.len(), actual_ys.len());
         assert_eq!(expected_ys, actual_ys);
-        expected_ys = Array1::from_vec(vec![1.0,2.0,4.0,5.0,6.0]);
+        expected_ys = Array1::from_vec(vec![1.0, 2.0, 4.0, 5.0, 6.0]);
         actual_ys = add_from(&xs, 2, 1.0);
         assert_eq!(expected_ys.len(), actual_ys.len());
         assert_eq!(expected_ys, actual_ys);
     }
 
     #[test]
-    fn test_ndarrunique_works(){
+    fn test_ndarrunique_works() {
         let xs = Array1::from_vec(vec![0.0, 1.0, 1.0, 2.0, 10.0, 10.0, 11.0]);
         let expected = Array1::from_vec(vec![0.0, 1.0, 2.0, 10.0, 11.0]);
         let actual = ndarrunique(&xs);
@@ -231,15 +283,27 @@ mod tests {
     //     let idx = first_grtr(&xs);
     //     // unclear what should happen here; np.argmax throws a ValueError in the case of an empty vector
     //     // ... possibly we should return an Option type?
-    //     let expected_idx:Option<usize> = None; 
+    //     let expected_idx:Option<usize> = None;
     //     assert_eq!(idx, expected_idx);
     // }
 
-    // #[test]
-    // fn test_that_interpolation_works(){
-    //     let xs: Array1<f64> = Array::from_vec(vec![0.0,  1.0,  2.0,  3.0,  4.0]);
-    //     let ys: Array1<f64> = Array::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
-    //     let x: f64 = 0.5;
-    //     let y_lookup = interpolate(xs, ys, x, false);
-    // }
+    #[test]
+    fn test_that_interpolation_works() {
+        let xs = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0, 4.0]);
+        let ys = Array1::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
+        let x = 0.5;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 5.0;
+        assert_eq!(expected_y_lookup, y_lookup);
+    }
+
+    #[test]
+    fn test_that_interpolation_works_for_irrational_number() {
+        let xs = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0, 4.0]);
+        let ys = Array1::from_vec(vec![0.0, 10.0, 20.0, 30.0, 40.0]);
+        let x = 1.0 / 3.0;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 3.3333333333;
+        assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
+    }
 }

@@ -7,11 +7,17 @@ import numpy as np
 
 import fastsim.vehicle_base as fsvb
 from fastsim import cycle, vehicle, simdrive
-import fastsimrust as fsr
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
+else:
+    warn_rust_unavailable(__file__)
 
 class TestRust(unittest.TestCase):
     def test_run_sim_drive_conv(self):
+        if not RUST_AVAILABLE:
+            return
         cyc = cycle.Cycle.from_file('udds').to_rust()
         veh = vehicle.Vehicle.from_vehdb(5).to_rust()
         #sd = simdrive.SimDrive(cyc, veh).to_rust()
@@ -21,6 +27,8 @@ class TestRust(unittest.TestCase):
         self.assertEqual(sd.i, len(cyc.time_s))
 
     def test_run_sim_drive_conv(self):
+        if not RUST_AVAILABLE:
+            return
         cyc = cycle.Cycle.from_file('udds').to_rust()
         veh = vehicle.Vehicle.from_vehdb(11).to_rust()
         sd = fsr.RustSimDrive(cyc, veh)
@@ -29,6 +37,8 @@ class TestRust(unittest.TestCase):
         self.assertEqual(sd.i, len(cyc.time_s))
     
     def test_step_by_step(self):
+        if not RUST_AVAILABLE:
+            return
         use_dict = False
         cyc_dict = {
             'cycSecs': np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]),
@@ -92,15 +102,17 @@ class TestRust(unittest.TestCase):
                 ru_cyc = cycle.Cycle.from_file(cyc_name).to_rust()
             ru_veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
             ru_sd = fsr.RustSimDrive(ru_cyc, ru_veh)
+            places = 6
+            tol = 10 ** (-1 * places)
             self.assertEqual(py_sd.props.air_density_kg_per_m3, ru_sd.props.air_density_kg_per_m3)
             self.assertEqual(py_sd.sim_params.newton_max_iter, ru_sd.sim_params.newton_max_iter)
             self.assertEqual(py_sd.sim_params.newton_gain, ru_sd.sim_params.newton_gain)
             self.assertEqual(py_sd.sim_params.newton_xtol, ru_sd.sim_params.newton_xtol)
-            self.assertAlmostEqual(py_sd.veh.drag_coef, ru_sd.veh.drag_coef)
-            self.assertAlmostEqual(py_sd.veh.frontal_area_m2, ru_sd.veh.frontal_area_m2)
-            self.assertAlmostEqual(py_sd.veh.mc_max_elec_in_kw, ru_sd.veh.mc_max_elec_in_kw)
-            self.assertAlmostEqual(py_sd.veh.ess_max_kwh, ru_sd.veh.ess_max_kwh)
-            self.assertAlmostEqual(py_sd.veh.ess_round_trip_eff, ru_sd.veh.ess_round_trip_eff)
+            self.assertAlmostEqual(py_sd.veh.drag_coef, ru_sd.veh.drag_coef, places=places)
+            self.assertAlmostEqual(py_sd.veh.frontal_area_m2, ru_sd.veh.frontal_area_m2, places=places)
+            self.assertAlmostEqual(py_sd.veh.mc_max_elec_in_kw, ru_sd.veh.mc_max_elec_in_kw, places=places)
+            self.assertAlmostEqual(py_sd.veh.ess_max_kwh, ru_sd.veh.ess_max_kwh, places=places)
+            self.assertAlmostEqual(py_sd.veh.ess_round_trip_eff, ru_sd.veh.ess_round_trip_eff, places=places)
             py_sd.sim_drive_walk(0.0)
             ru_sd.sim_drive_walk(0.0)
             py = {}
@@ -109,8 +121,8 @@ class TestRust(unittest.TestCase):
             ru_cyc_drag_kw = np.array(ru_sd.cyc_drag_kw)
             ru_cyc_mps = np.array(ru_sd.cyc.mps)
             ru_cyc_dt_s = np.array(ru_sd.cyc.dt_s)
-            self.assertTrue((np.abs(py_sd.cyc.mps - ru_cyc_mps) < 1e-6).all())
-            self.assertTrue((np.abs(py_sd.cyc.dt_s - ru_cyc_dt_s) < 1e-6).all())
+            self.assertTrue((np.abs(py_sd.cyc.mps - ru_cyc_mps) < tol).all())
+            self.assertTrue((np.abs(py_sd.cyc.dt_s - ru_cyc_dt_s) < tol).all())
             ru_sd_mps_ach = np.array(ru_sd.mps_ach)
             self.assertTrue(
                 (py_sd.mps_ach >= 0.0).all(),
@@ -150,6 +162,8 @@ class TestRust(unittest.TestCase):
         This test assures that Rust and Python agree on at least one 
         example of all permutations of veh_pt_type and fc_eff_type.
         """
+        if not RUST_AVAILABLE:
+            return
         for vehid in [1, 9, 14, 17, 24]:
             cyc = cycle.Cycle.from_file('udds')
             veh = vehicle.Vehicle.from_vehdb(vehid)
@@ -169,6 +183,8 @@ class TestRust(unittest.TestCase):
             self.assertAlmostEqual(py_ess_dischg_kj, rust_ess_dischg_kj, msg=f'Non-agreement for vehicle {vehid} for ess discharge')
 
     def test_achieved_speed_never_negative(self):
+        if not RUST_AVAILABLE:
+            return
         for vehid in range(1, 27):
             veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
             cyc = cycle.Cycle.from_file('udds').to_rust()

@@ -8,12 +8,16 @@ import numpy as np
 from numpy.polynomial import Chebyshev
 
 import fastsim
-import fastsimrust as fsr
-
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
 
 DO_PLOTS = False
 USE_PYTHON = True
 USE_RUST = True
+
+if USE_RUST and not RUST_AVAILABLE:
+    warn_rust_unavailable(__file__)
 
 
 def make_coasting_plot(
@@ -179,7 +183,7 @@ class TestCoasting(unittest.TestCase):
             self.sim_drive_coast.sim_params.coast_allow = True
             self.sim_drive_coast.sim_params.coast_start_speed_m_per_s = 17.0
             self.sim_drive_coast.sim_params.verbose = False
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             self.ru_trapz = fastsim.cycle.Cycle.from_dict(trapz).to_rust()
             self.ru_veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             self.ru_sim_drive = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
@@ -216,7 +220,7 @@ class TestCoasting(unittest.TestCase):
             dds = self.trapz.calc_distance_to_next_stop_from(dist_m)
             dds_expected_m = 900 - dist_m
             self.assertAlmostEqual(dds_expected_m, dds, msg="Error in python version")
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             idx = 10
             expected_time_s = 10.0
             t = self.ru_trapz.time_s[idx]
@@ -266,7 +270,7 @@ class TestCoasting(unittest.TestCase):
                     msg += f" a: {a}, v: {v}, dt: {dt}"
                     self.assertAlmostEqual(a_expected, a, msg=msg)
                     self.assertAlmostEqual(v, trapz.mps[i], msg=msg)
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             idx = 20
             n = 10
             accel = -1.0
@@ -315,7 +319,7 @@ class TestCoasting(unittest.TestCase):
                         trapz.mps[i],
                         msg=msg,
                     )
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             idx = 20
             n = 10
             accel = -1.0
@@ -352,7 +356,7 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="Test That We Can Coast",
                     save_file='junk-test-that-we-can-coast.png')
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             self.assertFalse(
                 self.ru_sim_drive.sim_params.coast_allow,
                 "coast_allow is False by default")
@@ -396,7 +400,7 @@ class TestCoasting(unittest.TestCase):
                 self.sim_drive_coast.dist_m.sum(),
                 msg="Assert the end distances are equal\n" +
                 f"Got {self.trapz.dist_m.sum()} m and {self.sim_drive_coast.dist_m.sum()} m")
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             self.ru_sim_drive_coast.sim_drive()
             self.assertFalse(np.array(self.ru_sim_drive_coast.impose_coast).all(), "Assert we are not always in coast")
             self.assertTrue(np.array(self.ru_sim_drive_coast.impose_coast).any(), "Assert we are at least sometimes in coast")
@@ -435,7 +439,7 @@ class TestCoasting(unittest.TestCase):
                 self.assertAlmostEqual(a, a_expected)
                 self.assertAlmostEqual(v, v_expected)
                 self.assertAlmostEqual(d, d_expected)
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             n = 10 # ten time-steps
             v0 = 15.0
             vr = 7.5
@@ -482,7 +486,7 @@ class TestCoasting(unittest.TestCase):
                 jerk_m__s3,
                 accel_m__s2)
             self.assertAlmostEqual(final_speed_m__s, brake_start_speed_m__s)
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             trapz = self.ru_trapz.copy()
             idx = 20
             n = 20
@@ -546,7 +550,7 @@ class TestCoasting(unittest.TestCase):
             expected_dist_m = 200.0 # 0.5 * 20m/s x 20s = 200m
             self.assertAlmostEqual(expected_dist_m, const_spd_cyc.dist_v2_m.sum())
             self.assertNotEqual(expected_dist_m, const_spd_cyc.dist_m.sum())
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             # total distance
             d_expected = 900.0
             d_v1 = np.array(self.ru_trapz.dist_m).sum()
@@ -630,7 +634,7 @@ class TestCoasting(unittest.TestCase):
             self.assertEqual(11, n)
             dts_m = trapz.dist_v2_m[idx+1:idx+n+1].sum()
             self.assertAlmostEqual(expected_dts_m, dts_m)
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             trapz = self.ru_trapz.copy()
             brake_accel_m__s2 = -2.0
             idx = 30
@@ -721,7 +725,7 @@ class TestCoasting(unittest.TestCase):
                     save_file='junk-test-logic-to-enter-eco-approach-automatically-3-dvdd.png',
                     coast_to_break_speed_m__s=11.0
                 )
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             trapz = self.ru_trapz.copy()
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
@@ -822,7 +826,7 @@ class TestCoasting(unittest.TestCase):
                     additional_xs=vavgs,
                     additional_ys=ks
                 )
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             trapz = fastsim.cycle.Cycle.from_dict(
                 fastsim.cycle.resample(
                     fastsim.cycle.make_cycle(
@@ -943,7 +947,7 @@ class TestCoasting(unittest.TestCase):
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1.png')
             self.assertAlmostEqual(
                 sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_m.sum())
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             grade = 0.01
             trapz = fastsim.cycle.Cycle.from_dict(
                 fastsim.cycle.resample(
@@ -1088,7 +1092,7 @@ class TestCoasting(unittest.TestCase):
                     save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1.png')
             self.assertAlmostEqual(
                 sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_m.sum())
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             grade = -0.0025
             trapz = fastsim.cycle.Cycle.from_dict(
                 fastsim.cycle.resample(
@@ -1207,7 +1211,7 @@ class TestCoasting(unittest.TestCase):
             # assert we have grade set correctly
             self.assertAlmostEqual(
                 sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             grade1 = -0.005
             grade2 = 0.005
             c1 = fastsim.cycle.resample(

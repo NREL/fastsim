@@ -1,26 +1,28 @@
 extern crate ndarray;
 use ndarray::{Array, Array1};
 extern crate pyo3;
-use pyo3::prelude::*;
 use pyo3::exceptions;
+use pyo3::prelude::*;
 
-use super::params::RustPhysicalProperties;
-use super::vehicle::*;
-use super::cycle::RustCycle;
+use crate::cycle::RustCycle;
+use crate::params::RustPhysicalProperties;
+use crate::utils;
+use crate::vehicle::*;
 
 
-fn handle_sd_res(res:Result<(), String>) -> PyResult<()> {
+
+fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     match res {
         Ok(()) => Ok(()),
-        Err(msg) => Err(exceptions::PyRuntimeError::new_err(msg))
+        Err(msg) => Err(exceptions::PyRuntimeError::new_err(msg)),
     }
 }
 
 #[pyclass]
 #[derive(Debug, Clone)]
 /// Struct containing time trace data
-pub struct RustSimDriveParams{
-    #[pyo3(get, set)]  // enables get/set access from python for simple data types
+pub struct RustSimDriveParams {
+    #[pyo3(get, set)] // enables get/set access from python for simple data types
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
     #[pyo3(get, set)]
     pub max_time_dilation: f64,
@@ -66,16 +68,28 @@ pub struct RustSimDriveParams{
     pub coast_time_horizon_for_adjustment_s: f64,
     #[pyo3(get, set)]
     pub follow_allow: bool,
+    // IDM - Intelligent Driver Model, Adaptive Cruise Control version
     #[pyo3(get, set)]
-    pub follow_model: usize,
+    pub idm_v_desired_m_per_s: f64,
+    #[pyo3(get, set)]
+    pub idm_dt_headway_s: f64,
+    #[pyo3(get, set)]
+    pub idm_minimum_gap_m: f64,
+    #[pyo3(get, set)]
+    pub idm_delta: f64,
+    #[pyo3(get, set)]
+    pub idm_accel_m_per_s2: f64,
+    #[pyo3(get, set)]
+    pub idm_decel_m_per_s2: f64,
+    // Other, Misc.
     #[pyo3(get, set)]
     pub max_epa_adj: f64,
 }
 
 #[pymethods]
-impl RustSimDriveParams{
+impl RustSimDriveParams {
     #[new]
-    pub fn __new__() -> Self{
+    pub fn __new__() -> Self {
         // if true, missed trace correction is active, default = false
         let missed_trace_correction = false;
         // maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
@@ -93,21 +107,27 @@ impl RustSimDriveParams{
         let newton_max_iter: u32 = 100; // newton solver max iterations
         let newton_xtol: f64 = 1e-9; // newton solver tolerance
         let energy_audit_error_tol: f64 = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
-        // Coasting
+                                                 // Coasting
         let coast_allow = false;
         let coast_allow_passing = false;
         let coast_max_speed_m_per_s = 40.0;
         let coast_brake_accel_m_per_s2 = -2.5;
         let coast_brake_start_speed_m_per_s = 7.5;
-        let coast_start_speed_m_per_s = 38.0;
+        let coast_start_speed_m_per_s = 0.0; // m/s, if > 0, initiates coast when vehicle hits this speed; mostly for testing
         let coast_verbose = false;
         let coast_time_horizon_for_adjustment_s = 20.0;
         // Following
         let follow_allow = false;
-        let follow_model = 0;
+        // IDM - Intelligent Driver Model, Adaptive Cruise Control version
+        let idm_v_desired_m_per_s = 33.33;
+        let idm_dt_headway_s = 1.0;
+        let idm_minimum_gap_m = 2.0;
+        let idm_delta = 4.0;
+        let idm_accel_m_per_s2 = 1.0;
+        let idm_decel_m_per_s2 = 1.5;
         // EPA fuel economy adjustment parameters
         let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
-        RustSimDriveParams{
+        RustSimDriveParams {
             missed_trace_correction,
             max_time_dilation,
             min_time_dilation,
@@ -131,7 +151,12 @@ impl RustSimDriveParams{
             coast_verbose,
             coast_time_horizon_for_adjustment_s,
             follow_allow,
-            follow_model,
+            idm_v_desired_m_per_s,
+            idm_dt_headway_s,
+            idm_minimum_gap_m,
+            idm_delta,
+            idm_accel_m_per_s2,
+            idm_decel_m_per_s2,
             max_epa_adj,
         }
     }
@@ -139,7 +164,7 @@ impl RustSimDriveParams{
 
 #[pyclass]
 #[derive(Debug, Clone)]
-pub struct RustSimDrive{
+pub struct RustSimDrive {
     #[pyo3(get, set)]
     pub hev_sim_count: usize,
     #[pyo3(get, set)]
@@ -296,10 +321,10 @@ pub struct RustSimDrive{
 }
 
 #[pymethods]
-impl RustSimDrive{
+impl RustSimDrive {
     /// method for instantiating SimDriveRust
     #[new]
-    pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self{
+    pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self {
         let hev_sim_count: usize = 0;
         let cyc0: RustCycle = cyc.clone();
         let sim_params = RustSimDriveParams::__new__();
@@ -424,7 +449,7 @@ impl RustSimDrive{
         let trace_miss_dist_frac: f64 = 0.0;
         let trace_miss_time_frac: f64 = 0.0;
         let trace_miss_speed_mps: f64 = 0.0;
-        RustSimDrive{
+        RustSimDrive {
             hev_sim_count,
             veh,
             cyc,
@@ -559,8 +584,8 @@ impl RustSimDrive{
     // get interpreted as doc strings in python
 
     /// Provides the gap-with lead vehicle from start to finish
-    pub fn gap_to_lead_vehicle_m(&self) -> PyResult<Vec<f64>>{
-      Ok(self.gap_to_lead_vehicle_m_rust().to_vec())
+    pub fn gap_to_lead_vehicle_m(&self) -> PyResult<Vec<f64>> {
+        Ok(self.gap_to_lead_vehicle_m_rust().to_vec())
     }
 
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
@@ -568,8 +593,12 @@ impl RustSimDrive{
     /// ------------
     /// init_soc: initial SOC for electrified vehicles.  
     /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
-    ///     Default of None causes veh.aux_kw to be used. 
-    pub fn sim_drive(&mut self, init_soc:Option<f64>, aux_in_kw_override:Option<Vec<f64>>) -> PyResult<()> {
+    ///     Default of None causes veh.aux_kw to be used.
+    pub fn sim_drive(
+        &mut self,
+        init_soc: Option<f64>,
+        aux_in_kw_override: Option<Vec<f64>>,
+    ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(|x| Array1::from(x));
         handle_sd_res(self.sim_drive_rust(init_soc, aux_in_kw_override))
     }
@@ -584,8 +613,12 @@ impl RustSimDrive{
     /// ------------
     /// init_soc (optional): initial battery state-of-charge (SOC) for electrified vehicles
     /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
-    ///         None causes veh.aux_kw to be used. 
-    pub fn sim_drive_walk(&mut self, init_soc: f64, aux_in_kw_override:Option<Vec<f64>>) -> PyResult<()> {
+    ///         None causes veh.aux_kw to be used.
+    pub fn sim_drive_walk(
+        &mut self,
+        init_soc: f64,
+        aux_in_kw_override: Option<Vec<f64>>,
+    ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(|x| Array1::from(x));
         handle_sd_res(self.walk(init_soc, aux_in_kw_override))
     }
@@ -596,7 +629,7 @@ impl RustSimDrive{
     }
 
     /// Perform all the calculations to solve 1 time step.
-    pub fn solve_step(&mut self, i:usize) -> PyResult<()> {
+    pub fn solve_step(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.solve_step_rust(i))
     }
 
@@ -604,7 +637,7 @@ impl RustSimDrive{
     /// Arguments:
     /// ----------
     /// i: index of time step
-    pub fn set_misc_calcs(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_misc_calcs(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_misc_calcs_rust(i))
     }
 
@@ -612,7 +645,7 @@ impl RustSimDrive{
     // Arguments
     // ------------
     // i: index of time step
-    pub fn set_comp_lims(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_comp_lims(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_comp_lims_rust(i))
     }
 
@@ -621,7 +654,7 @@ impl RustSimDrive{
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_power_calcs(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_power_calcs(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_power_calcs_rust(i))
     }
 
@@ -629,7 +662,7 @@ impl RustSimDrive{
     // Arguments
     // ------------
     // i: index of time step
-    pub fn set_ach_speed(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_ach_speed(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_ach_speed_rust(i))
     }
 
@@ -637,7 +670,7 @@ impl RustSimDrive{
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_calcs(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_hybrid_cont_calcs(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_hybrid_cont_calcs_rust(i))
     }
 
@@ -646,7 +679,7 @@ impl RustSimDrive{
     /// ------------
     /// i: index of time step
     /// `_py` extension is needed to avoid name collision with getter/setter methods
-    pub fn set_fc_forced_state_py(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_fc_forced_state_py(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_fc_forced_state_rust(i))
     }
 
@@ -654,7 +687,7 @@ impl RustSimDrive{
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_decisions(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_hybrid_cont_decisions_rust(i))
     }
 
@@ -662,7 +695,7 @@ impl RustSimDrive{
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_fc_ess_power(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_fc_ess_power(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_fc_ess_power_rust(i))
     }
 
@@ -670,13 +703,13 @@ impl RustSimDrive{
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_time_dilation(&mut self, i:usize) -> PyResult<()> {
+    pub fn set_time_dilation(&mut self, i: usize) -> PyResult<()> {
         handle_sd_res(self.set_time_dilation_rust(i))
     }
 
-    /// Sets scalar variables that can be calculated after a cycle is run. 
+    /// Sets scalar variables that can be calculated after a cycle is run.
     /// This includes mpgge, various energy metrics, and others
-    pub fn set_post_scalars(& mut self) -> PyResult<()> {
+    pub fn set_post_scalars(&mut self) -> PyResult<()> {
         handle_sd_res(self.set_post_scalars_rust())
     }
 
@@ -690,983 +723,983 @@ impl RustSimDrive{
     // doc strings not needed for getters or setters
 
     #[getter]
-    pub fn get_accel_buff_soc(&self) -> PyResult<Vec<f64>>{
-      Ok(self.accel_buff_soc.to_vec())
+    pub fn get_accel_buff_soc(&self) -> PyResult<utils::Pyo3ArrayF64> {
+        Ok(utils::Pyo3ArrayF64::new(self.accel_buff_soc.clone()))
     }
     #[setter]
-    pub fn set_accel_buff_soc(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.accel_buff_soc = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_accel_buff_soc(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.accel_buff_soc = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_accel_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.accel_kw.to_vec())
+    pub fn get_accel_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.accel_kw.to_vec())
     }
     #[setter]
-    pub fn set_accel_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.accel_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_accel_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.accel_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_add_kwh(&self) -> PyResult<Vec<f64>>{
-      Ok(self.add_kwh.to_vec())
+    pub fn get_add_kwh(&self) -> PyResult<Vec<f64>> {
+        Ok(self.add_kwh.to_vec())
     }
     #[setter]
-    pub fn set_add_kwh(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.add_kwh = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_add_kwh(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.add_kwh = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ascent_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ascent_kw.to_vec())
+    pub fn get_ascent_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ascent_kw.to_vec())
     }
     #[setter]
-    pub fn set_ascent_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ascent_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ascent_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ascent_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_aux_in_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.aux_in_kw.to_vec())
+    pub fn get_aux_in_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.aux_in_kw.to_vec())
     }
     #[setter]
-    pub fn set_aux_in_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.aux_in_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_aux_in_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.aux_in_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_impose_coast(&self) -> PyResult<Vec<bool>>{
-      Ok(self.impose_coast.to_vec())
+    pub fn get_impose_coast(&self) -> PyResult<Vec<bool>> {
+        Ok(self.impose_coast.to_vec())
     }
     #[setter]
-    pub fn set_impose_coast(&mut self, new_value:Vec<bool>) -> PyResult<()>{
-      self.impose_coast = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_impose_coast(&mut self, new_value: Vec<bool>) -> PyResult<()> {
+        self.impose_coast = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_can_pwr_all_elec(&self) -> PyResult<Vec<bool>>{
-      Ok(self.can_pwr_all_elec.to_vec())
+    pub fn get_can_pwr_all_elec(&self) -> PyResult<Vec<bool>> {
+        Ok(self.can_pwr_all_elec.to_vec())
     }
     #[setter]
-    pub fn set_can_pwr_all_elec(&mut self, new_value:Vec<bool>) -> PyResult<()>{
-      self.can_pwr_all_elec = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_can_pwr_all_elec(&mut self, new_value: Vec<bool>) -> PyResult<()> {
+        self.can_pwr_all_elec = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_avail_elec_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_avail_elec_kw.to_vec())
+    pub fn get_cur_max_avail_elec_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_avail_elec_kw.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_avail_elec_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_avail_elec_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_avail_elec_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_avail_elec_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_elec_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_elec_kw.to_vec())
+    pub fn get_cur_max_elec_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_elec_kw.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_elec_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_elec_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_elec_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_elec_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_ess_chg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_ess_chg_kw.to_vec())
+    pub fn get_cur_max_ess_chg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_ess_chg_kw.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_ess_chg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_ess_chg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_ess_chg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_ess_chg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_ess_max_kw_out(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_ess_max_kw_out.to_vec())
+    pub fn get_cur_ess_max_kw_out(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_ess_max_kw_out.to_vec())
     }
     #[setter]
-    pub fn set_cur_ess_max_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_ess_max_kw_out = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_ess_max_kw_out(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_ess_max_kw_out = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_fc_kw_out(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_fc_kw_out.to_vec())
+    pub fn get_cur_max_fc_kw_out(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_fc_kw_out.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_fc_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_fc_kw_out = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_fc_kw_out(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_fc_kw_out = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_fs_kw_out(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_fs_kw_out.to_vec())
+    pub fn get_cur_max_fs_kw_out(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_fs_kw_out.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_fs_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_fs_kw_out = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_fs_kw_out(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_fs_kw_out = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_mc_elec_kw_in(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_mc_elec_kw_in.to_vec())
+    pub fn get_cur_max_mc_elec_kw_in(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_mc_elec_kw_in.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_mc_elec_kw_in(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_mc_elec_kw_in = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_mc_elec_kw_in(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_mc_elec_kw_in = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_mc_kw_out(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_mc_kw_out.to_vec())
+    pub fn get_cur_max_mc_kw_out(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_mc_kw_out.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_mc_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_mc_kw_out = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_mc_kw_out(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_mc_kw_out = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_mech_mc_kw_in(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_mech_mc_kw_in.to_vec())
+    pub fn get_cur_max_mech_mc_kw_in(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_mech_mc_kw_in.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_mech_mc_kw_in(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_mech_mc_kw_in = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_mech_mc_kw_in(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_mech_mc_kw_in = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_roadway_chg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_roadway_chg_kw.to_vec())
+    pub fn get_cur_max_roadway_chg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_roadway_chg_kw.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_roadway_chg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_roadway_chg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_roadway_chg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_roadway_chg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_trac_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_trac_kw.to_vec())
+    pub fn get_cur_max_trac_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_trac_kw.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_trac_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_trac_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_trac_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_trac_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_max_trans_kw_out(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_max_trans_kw_out.to_vec())
+    pub fn get_cur_max_trans_kw_out(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_max_trans_kw_out.to_vec())
     }
     #[setter]
-    pub fn set_cur_max_trans_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_max_trans_kw_out = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_max_trans_kw_out(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_max_trans_kw_out = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cur_soc_target(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cur_soc_target.to_vec())
+    pub fn get_cur_soc_target(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cur_soc_target.to_vec())
     }
     #[setter]
-    pub fn set_cur_soc_target(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cur_soc_target = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cur_soc_target(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cur_soc_target = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_accel_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_accel_kw.to_vec())
+    pub fn get_cyc_accel_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_accel_kw.to_vec())
     }
     #[setter]
-    pub fn set_cyc_accel_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_accel_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_accel_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_accel_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_ascent_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_ascent_kw.to_vec())
+    pub fn get_cyc_ascent_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_ascent_kw.to_vec())
     }
     #[setter]
-    pub fn set_cyc_ascent_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_ascent_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_ascent_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_ascent_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_drag_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_drag_kw.to_vec())
+    pub fn get_cyc_drag_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_drag_kw.to_vec())
     }
     #[setter]
-    pub fn set_cyc_drag_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_drag_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_drag_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_drag_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_fric_brake_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_fric_brake_kw.to_vec())
+    pub fn get_cyc_fric_brake_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_fric_brake_kw.to_vec())
     }
     #[setter]
-    pub fn set_cyc_fric_brake_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_fric_brake_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_fric_brake_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_fric_brake_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_met(&self) -> PyResult<Vec<bool>>{
-      Ok(self.cyc_met.to_vec())
+    pub fn get_cyc_met(&self) -> PyResult<Vec<bool>> {
+        Ok(self.cyc_met.to_vec())
     }
     #[setter]
-    pub fn set_cyc_met(&mut self, new_value:Vec<bool>) -> PyResult<()>{
-      self.cyc_met = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_met(&mut self, new_value: Vec<bool>) -> PyResult<()> {
+        self.cyc_met = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_regen_brake_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_regen_brake_kw.to_vec())
+    pub fn get_cyc_regen_brake_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_regen_brake_kw.to_vec())
     }
     #[setter]
-    pub fn set_cyc_regen_brake_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_regen_brake_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_regen_brake_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_regen_brake_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_rr_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_rr_kw.to_vec())
+    pub fn get_cyc_rr_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_rr_kw.to_vec())
     }
     #[setter]
-    pub fn set_cyc_rr_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_rr_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_rr_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_rr_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_tire_inertia_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_tire_inertia_kw.to_vec())
+    pub fn get_cyc_tire_inertia_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_tire_inertia_kw.to_vec())
     }
     #[setter]
-    pub fn set_cyc_tire_inertia_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_tire_inertia_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_tire_inertia_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_tire_inertia_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_trac_kw_req(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_trac_kw_req.to_vec())
+    pub fn get_cyc_trac_kw_req(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_trac_kw_req.to_vec())
     }
     #[setter]
-    pub fn set_cyc_trac_kw_req(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_trac_kw_req = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_trac_kw_req(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_trac_kw_req = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_trans_kw_out_req(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_trans_kw_out_req.to_vec())
+    pub fn get_cyc_trans_kw_out_req(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_trans_kw_out_req.to_vec())
     }
     #[setter]
-    pub fn set_cyc_trans_kw_out_req(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_trans_kw_out_req = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_trans_kw_out_req(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_trans_kw_out_req = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_whl_kw_req(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_whl_kw_req.to_vec())
+    pub fn get_cyc_whl_kw_req(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_whl_kw_req.to_vec())
     }
     #[setter]
-    pub fn set_cyc_whl_kw_req(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_whl_kw_req = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_whl_kw_req(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_whl_kw_req = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_cyc_whl_rad_per_sec(&self) -> PyResult<Vec<f64>>{
-      Ok(self.cyc_whl_rad_per_sec.to_vec())
+    pub fn get_cyc_whl_rad_per_sec(&self) -> PyResult<Vec<f64>> {
+        Ok(self.cyc_whl_rad_per_sec.to_vec())
     }
     #[setter]
-    pub fn set_cyc_whl_rad_per_sec(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.cyc_whl_rad_per_sec = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_cyc_whl_rad_per_sec(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.cyc_whl_rad_per_sec = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_desired_ess_kw_out_for_ae(&self) -> PyResult<Vec<f64>>{
-      Ok(self.desired_ess_kw_out_for_ae.to_vec())
+    pub fn get_desired_ess_kw_out_for_ae(&self) -> PyResult<Vec<f64>> {
+        Ok(self.desired_ess_kw_out_for_ae.to_vec())
     }
     #[setter]
-    pub fn set_desired_ess_kw_out_for_ae(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.desired_ess_kw_out_for_ae = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_desired_ess_kw_out_for_ae(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.desired_ess_kw_out_for_ae = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_dist_m(&self) -> PyResult<Vec<f64>>{
-      Ok(self.dist_m.to_vec())
+    pub fn get_dist_m(&self) -> PyResult<Vec<f64>> {
+        Ok(self.dist_m.to_vec())
     }
     #[setter]
-    pub fn set_dist_m(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.dist_m = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_dist_m(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.dist_m = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_dist_mi(&self) -> PyResult<Vec<f64>>{
-      Ok(self.dist_mi.to_vec())
+    pub fn get_dist_mi(&self) -> PyResult<Vec<f64>> {
+        Ok(self.dist_mi.to_vec())
     }
     #[setter]
-    pub fn set_dist_mi(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.dist_mi = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_dist_mi(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.dist_mi = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_dod_cycs(&self) -> PyResult<Vec<f64>>{
-      Ok(self.dod_cycs.to_vec())
+    pub fn get_dod_cycs(&self) -> PyResult<Vec<f64>> {
+        Ok(self.dod_cycs.to_vec())
     }
     #[setter]
-    pub fn set_dod_cycs(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.dod_cycs = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_dod_cycs(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.dod_cycs = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_drag_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.drag_kw.to_vec())
+    pub fn get_drag_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.drag_kw.to_vec())
     }
     #[setter]
-    pub fn set_drag_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.drag_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_drag_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.drag_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_elec_kw_req_4ae(&self) -> PyResult<Vec<f64>>{
-      Ok(self.elec_kw_req_4ae.to_vec())
+    pub fn get_elec_kw_req_4ae(&self) -> PyResult<Vec<f64>> {
+        Ok(self.elec_kw_req_4ae.to_vec())
     }
     #[setter]
-    pub fn set_elec_kw_req_4ae(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.elec_kw_req_4ae = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_elec_kw_req_4ae(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.elec_kw_req_4ae = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_er_ae_kw_out(&self) -> PyResult<Vec<f64>>{
-      Ok(self.er_ae_kw_out.to_vec())
+    pub fn get_er_ae_kw_out(&self) -> PyResult<Vec<f64>> {
+        Ok(self.er_ae_kw_out.to_vec())
     }
     #[setter]
-    pub fn set_er_ae_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.er_ae_kw_out = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_er_ae_kw_out(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.er_ae_kw_out = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_er_kw_if_fc_req(&self) -> PyResult<Vec<f64>>{
-      Ok(self.er_kw_if_fc_req.to_vec())
+    pub fn get_er_kw_if_fc_req(&self) -> PyResult<Vec<f64>> {
+        Ok(self.er_kw_if_fc_req.to_vec())
     }
     #[setter]
-    pub fn set_er_kw_if_fc_req(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.er_kw_if_fc_req = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_er_kw_if_fc_req(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.er_kw_if_fc_req = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_accel_buff_chg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_accel_buff_chg_kw.to_vec())
+    pub fn get_ess_accel_buff_chg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_accel_buff_chg_kw.to_vec())
     }
     #[setter]
-    pub fn set_ess_accel_buff_chg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_accel_buff_chg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_accel_buff_chg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_accel_buff_chg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_accel_regen_dischg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_accel_regen_dischg_kw.to_vec())
+    pub fn get_ess_accel_regen_dischg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_accel_regen_dischg_kw.to_vec())
     }
     #[setter]
-    pub fn set_ess_accel_regen_dischg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_accel_regen_dischg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_accel_regen_dischg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_accel_regen_dischg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_ae_kw_out(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_ae_kw_out.to_vec())
+    pub fn get_ess_ae_kw_out(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_ae_kw_out.to_vec())
     }
     #[setter]
-    pub fn set_ess_ae_kw_out(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_ae_kw_out = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_ae_kw_out(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_ae_kw_out = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_cap_lim_chg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_cap_lim_chg_kw.to_vec())
+    pub fn get_ess_cap_lim_chg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_cap_lim_chg_kw.to_vec())
     }
     #[setter]
-    pub fn set_ess_cap_lim_chg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_cap_lim_chg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_cap_lim_chg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_cap_lim_chg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_cap_lim_dischg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_cap_lim_dischg_kw.to_vec())
+    pub fn get_ess_cap_lim_dischg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_cap_lim_dischg_kw.to_vec())
     }
     #[setter]
-    pub fn set_ess_cap_lim_dischg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_cap_lim_dischg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_cap_lim_dischg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_cap_lim_dischg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_cur_kwh(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_cur_kwh.to_vec())
+    pub fn get_ess_cur_kwh(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_cur_kwh.to_vec())
     }
     #[setter]
-    pub fn set_ess_cur_kwh(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_cur_kwh = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_cur_kwh(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_cur_kwh = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_desired_kw_4fc_eff(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_desired_kw_4fc_eff.to_vec())
+    pub fn get_ess_desired_kw_4fc_eff(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_desired_kw_4fc_eff.to_vec())
     }
     #[setter]
-    pub fn set_ess_desired_kw_4fc_eff(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_desired_kw_4fc_eff = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_desired_kw_4fc_eff(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_desired_kw_4fc_eff = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_kw_if_fc_req(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_kw_if_fc_req.to_vec())
+    pub fn get_ess_kw_if_fc_req(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_kw_if_fc_req.to_vec())
     }
     #[setter]
-    pub fn set_ess_kw_if_fc_req(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_kw_if_fc_req = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_kw_if_fc_req(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_kw_if_fc_req = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_kw_out_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_kw_out_ach.to_vec())
+    pub fn get_ess_kw_out_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_kw_out_ach.to_vec())
     }
     #[setter]
-    pub fn set_ess_kw_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_kw_out_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_kw_out_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_kw_out_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_lim_mc_regen_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_lim_mc_regen_kw.to_vec())
+    pub fn get_ess_lim_mc_regen_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_lim_mc_regen_kw.to_vec())
     }
     #[setter]
-    pub fn set_ess_lim_mc_regen_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_lim_mc_regen_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_lim_mc_regen_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_lim_mc_regen_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_lim_mc_regen_perc_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_lim_mc_regen_perc_kw.to_vec())
+    pub fn get_ess_lim_mc_regen_perc_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_lim_mc_regen_perc_kw.to_vec())
     }
     #[setter]
-    pub fn set_ess_lim_mc_regen_perc_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_lim_mc_regen_perc_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_lim_mc_regen_perc_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_lim_mc_regen_perc_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_loss_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_loss_kw.to_vec())
+    pub fn get_ess_loss_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_loss_kw.to_vec())
     }
     #[setter]
-    pub fn set_ess_loss_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_loss_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_loss_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_loss_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_perc_dead(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_perc_dead.to_vec())
+    pub fn get_ess_perc_dead(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_perc_dead.to_vec())
     }
     #[setter]
-    pub fn set_ess_perc_dead(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_perc_dead = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_perc_dead(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_perc_dead = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_ess_regen_buff_dischg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.ess_regen_buff_dischg_kw.to_vec())
+    pub fn get_ess_regen_buff_dischg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.ess_regen_buff_dischg_kw.to_vec())
     }
     #[setter]
-    pub fn set_ess_regen_buff_dischg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.ess_regen_buff_dischg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_ess_regen_buff_dischg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.ess_regen_buff_dischg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_forced_on(&self) -> PyResult<Vec<bool>>{
-      Ok(self.fc_forced_on.to_vec())
+    pub fn get_fc_forced_on(&self) -> PyResult<Vec<bool>> {
+        Ok(self.fc_forced_on.to_vec())
     }
     #[setter]
-    pub fn set_fc_forced_on(&mut self, new_value:Vec<bool>) -> PyResult<()>{
-      self.fc_forced_on = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_forced_on(&mut self, new_value: Vec<bool>) -> PyResult<()> {
+        self.fc_forced_on = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_forced_state(&self) -> PyResult<Vec<u32>>{
-      Ok(self.fc_forced_state.to_vec())
+    pub fn get_fc_forced_state(&self) -> PyResult<Vec<u32>> {
+        Ok(self.fc_forced_state.to_vec())
     }
     #[setter]
-    pub fn set_fc_forced_state(&mut self, new_value:Vec<u32>) -> PyResult<()>{
-      self.fc_forced_state = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_forced_state(&mut self, new_value: Vec<u32>) -> PyResult<()> {
+        self.fc_forced_state = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_fs_lim_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fc_fs_lim_kw.to_vec())
+    pub fn get_fc_fs_lim_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fc_fs_lim_kw.to_vec())
     }
     #[setter]
-    pub fn set_fc_fs_lim_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fc_fs_lim_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_fs_lim_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fc_fs_lim_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_kw_gap_fr_eff(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fc_kw_gap_fr_eff.to_vec())
+    pub fn get_fc_kw_gap_fr_eff(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fc_kw_gap_fr_eff.to_vec())
     }
     #[setter]
-    pub fn set_fc_kw_gap_fr_eff(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fc_kw_gap_fr_eff = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_kw_gap_fr_eff(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fc_kw_gap_fr_eff = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_kw_in_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fc_kw_in_ach.to_vec())
+    pub fn get_fc_kw_in_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fc_kw_in_ach.to_vec())
     }
     #[setter]
-    pub fn set_fc_kw_in_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fc_kw_in_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_kw_in_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fc_kw_in_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_kw_out_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fc_kw_out_ach.to_vec())
+    pub fn get_fc_kw_out_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fc_kw_out_ach.to_vec())
     }
     #[setter]
-    pub fn set_fc_kw_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fc_kw_out_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_kw_out_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fc_kw_out_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_kw_out_ach_pct(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fc_kw_out_ach_pct.to_vec())
+    pub fn get_fc_kw_out_ach_pct(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fc_kw_out_ach_pct.to_vec())
     }
     #[setter]
-    pub fn set_fc_kw_out_ach_pct(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fc_kw_out_ach_pct = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_kw_out_ach_pct(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fc_kw_out_ach_pct = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_max_kw_in(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fc_max_kw_in.to_vec())
+    pub fn get_fc_max_kw_in(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fc_max_kw_in.to_vec())
     }
     #[setter]
-    pub fn set_fc_max_kw_in(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fc_max_kw_in = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_max_kw_in(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fc_max_kw_in = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_time_on(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fc_time_on.to_vec())
+    pub fn get_fc_time_on(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fc_time_on.to_vec())
     }
     #[setter]
-    pub fn set_fc_time_on(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fc_time_on = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_time_on(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fc_time_on = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fc_trans_lim_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fc_trans_lim_kw.to_vec())
+    pub fn get_fc_trans_lim_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fc_trans_lim_kw.to_vec())
     }
     #[setter]
-    pub fn set_fc_trans_lim_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fc_trans_lim_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fc_trans_lim_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fc_trans_lim_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fs_cumu_mj_out_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fs_cumu_mj_out_ach.to_vec())
+    pub fn get_fs_cumu_mj_out_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fs_cumu_mj_out_ach.to_vec())
     }
     #[setter]
-    pub fn set_fs_cumu_mj_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fs_cumu_mj_out_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fs_cumu_mj_out_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fs_cumu_mj_out_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fs_kw_out_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fs_kw_out_ach.to_vec())
+    pub fn get_fs_kw_out_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fs_kw_out_ach.to_vec())
     }
     #[setter]
-    pub fn set_fs_kw_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fs_kw_out_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fs_kw_out_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fs_kw_out_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fs_kwh_out_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.fs_kwh_out_ach.to_vec())
+    pub fn get_fs_kwh_out_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.fs_kwh_out_ach.to_vec())
     }
     #[setter]
-    pub fn set_fs_kwh_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.fs_kwh_out_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_fs_kwh_out_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.fs_kwh_out_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_hev_sim_count(&self) -> PyResult<usize>{
-      Ok(self.hev_sim_count)
+    pub fn get_hev_sim_count(&self) -> PyResult<usize> {
+        Ok(self.hev_sim_count)
     }
     #[setter]
-    pub fn set_hev_sim_count(&mut self, new_value:usize) -> PyResult<()>{
-      self.hev_sim_count = new_value;
-      Ok(())
+    pub fn set_hev_sim_count(&mut self, new_value: usize) -> PyResult<()> {
+        self.hev_sim_count = new_value;
+        Ok(())
     }
 
     #[getter]
-    pub fn get_high_acc_fc_on_tag(&self) -> PyResult<Vec<bool>>{
-      Ok(self.high_acc_fc_on_tag.to_vec())
+    pub fn get_high_acc_fc_on_tag(&self) -> PyResult<Vec<bool>> {
+        Ok(self.high_acc_fc_on_tag.to_vec())
     }
     #[setter]
-    pub fn set_high_acc_fc_on_tag(&mut self, new_value:Vec<bool>) -> PyResult<()>{
-      self.high_acc_fc_on_tag = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_high_acc_fc_on_tag(&mut self, new_value: Vec<bool>) -> PyResult<()> {
+        self.high_acc_fc_on_tag = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_i(&self) -> PyResult<usize>{
-      Ok(self.i)
+    pub fn get_i(&self) -> PyResult<usize> {
+        Ok(self.i)
     }
     #[setter]
-    pub fn set_i(&mut self, new_value:usize) -> PyResult<()>{
-      self.i = new_value;
-      Ok(())
+    pub fn set_i(&mut self, new_value: usize) -> PyResult<()> {
+        self.i = new_value;
+        Ok(())
     }
 
     #[getter]
-    pub fn get_max_ess_accell_buff_dischg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.max_ess_accell_buff_dischg_kw.to_vec())
+    pub fn get_max_ess_accell_buff_dischg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.max_ess_accell_buff_dischg_kw.to_vec())
     }
     #[setter]
-    pub fn set_max_ess_accell_buff_dischg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.max_ess_accell_buff_dischg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_max_ess_accell_buff_dischg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.max_ess_accell_buff_dischg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_max_ess_regen_buff_chg_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.max_ess_regen_buff_chg_kw.to_vec())
+    pub fn get_max_ess_regen_buff_chg_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.max_ess_regen_buff_chg_kw.to_vec())
     }
     #[setter]
-    pub fn set_max_ess_regen_buff_chg_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.max_ess_regen_buff_chg_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_max_ess_regen_buff_chg_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.max_ess_regen_buff_chg_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_max_trac_mps(&self) -> PyResult<Vec<f64>>{
-      Ok(self.max_trac_mps.to_vec())
+    pub fn get_max_trac_mps(&self) -> PyResult<Vec<f64>> {
+        Ok(self.max_trac_mps.to_vec())
     }
     #[setter]
-    pub fn set_max_trac_mps(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.max_trac_mps = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_max_trac_mps(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.max_trac_mps = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mc_elec_in_kw_for_max_fc_eff(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mc_elec_in_kw_for_max_fc_eff.to_vec())
+    pub fn get_mc_elec_in_kw_for_max_fc_eff(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mc_elec_in_kw_for_max_fc_eff.to_vec())
     }
     #[setter]
-    pub fn set_mc_elec_in_kw_for_max_fc_eff(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mc_elec_in_kw_for_max_fc_eff = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mc_elec_in_kw_for_max_fc_eff(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mc_elec_in_kw_for_max_fc_eff = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mc_elec_in_lim_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mc_elec_in_lim_kw.to_vec())
+    pub fn get_mc_elec_in_lim_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mc_elec_in_lim_kw.to_vec())
     }
     #[setter]
-    pub fn set_mc_elec_in_lim_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mc_elec_in_lim_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mc_elec_in_lim_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mc_elec_in_lim_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mc_elec_kw_in_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mc_elec_kw_in_ach.to_vec())
+    pub fn get_mc_elec_kw_in_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mc_elec_kw_in_ach.to_vec())
     }
     #[setter]
-    pub fn set_mc_elec_kw_in_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mc_elec_kw_in_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mc_elec_kw_in_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mc_elec_kw_in_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mc_elec_kw_in_if_fc_req(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mc_elec_kw_in_if_fc_req.to_vec())
+    pub fn get_mc_elec_kw_in_if_fc_req(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mc_elec_kw_in_if_fc_req.to_vec())
     }
     #[setter]
-    pub fn set_mc_elec_kw_in_if_fc_req(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mc_elec_kw_in_if_fc_req = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mc_elec_kw_in_if_fc_req(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mc_elec_kw_in_if_fc_req = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mc_kw_if_fc_req(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mc_kw_if_fc_req.to_vec())
+    pub fn get_mc_kw_if_fc_req(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mc_kw_if_fc_req.to_vec())
     }
     #[setter]
-    pub fn set_mc_kw_if_fc_req(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mc_kw_if_fc_req = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mc_kw_if_fc_req(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mc_kw_if_fc_req = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mc_mech_kw_4forced_fc(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mc_mech_kw_4forced_fc.to_vec())
+    pub fn get_mc_mech_kw_4forced_fc(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mc_mech_kw_4forced_fc.to_vec())
     }
     #[setter]
-    pub fn set_mc_mech_kw_4forced_fc(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mc_mech_kw_4forced_fc = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mc_mech_kw_4forced_fc(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mc_mech_kw_4forced_fc = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mc_mech_kw_out_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mc_mech_kw_out_ach.to_vec())
+    pub fn get_mc_mech_kw_out_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mc_mech_kw_out_ach.to_vec())
     }
     #[setter]
-    pub fn set_mc_mech_kw_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mc_mech_kw_out_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mc_mech_kw_out_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mc_mech_kw_out_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mc_transi_lim_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mc_transi_lim_kw.to_vec())
+    pub fn get_mc_transi_lim_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mc_transi_lim_kw.to_vec())
     }
     #[setter]
-    pub fn set_mc_transi_lim_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mc_transi_lim_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mc_transi_lim_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mc_transi_lim_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_min_ess_kw_2help_fc(&self) -> PyResult<Vec<f64>>{
-      Ok(self.min_ess_kw_2help_fc.to_vec())
+    pub fn get_min_ess_kw_2help_fc(&self) -> PyResult<Vec<f64>> {
+        Ok(self.min_ess_kw_2help_fc.to_vec())
     }
     #[setter]
-    pub fn set_min_ess_kw_2help_fc(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.min_ess_kw_2help_fc = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_min_ess_kw_2help_fc(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.min_ess_kw_2help_fc = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_min_mc_kw_2help_fc(&self) -> PyResult<Vec<f64>>{
-      Ok(self.min_mc_kw_2help_fc.to_vec())
+    pub fn get_min_mc_kw_2help_fc(&self) -> PyResult<Vec<f64>> {
+        Ok(self.min_mc_kw_2help_fc.to_vec())
     }
     #[setter]
-    pub fn set_min_mc_kw_2help_fc(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.min_mc_kw_2help_fc = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_min_mc_kw_2help_fc(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.min_mc_kw_2help_fc = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mph_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mph_ach.to_vec())
+    pub fn get_mph_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mph_ach.to_vec())
     }
     #[setter]
-    pub fn set_mph_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mph_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mph_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mph_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_mps_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.mps_ach.to_vec())
+    pub fn get_mps_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.mps_ach.to_vec())
     }
     #[setter]
-    pub fn set_mps_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.mps_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_mps_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.mps_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_newton_iters(&self) -> PyResult<Vec<u32>>{
-      Ok(self.newton_iters.to_vec())
+    pub fn get_newton_iters(&self) -> PyResult<Vec<u32>> {
+        Ok(self.newton_iters.to_vec())
     }
     #[setter]
-    pub fn set_newton_iters(&mut self, new_value:Vec<u32>) -> PyResult<()>{
-      self.newton_iters = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_newton_iters(&mut self, new_value: Vec<u32>) -> PyResult<()> {
+        self.newton_iters = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_prev_fc_time_on(&self) -> PyResult<Vec<f64>>{
-      Ok(self.prev_fc_time_on.to_vec())
+    pub fn get_prev_fc_time_on(&self) -> PyResult<Vec<f64>> {
+        Ok(self.prev_fc_time_on.to_vec())
     }
     #[setter]
-    pub fn set_prev_fc_time_on(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.prev_fc_time_on = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_prev_fc_time_on(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.prev_fc_time_on = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_reached_buff(&self) -> PyResult<Vec<bool>>{
-      Ok(self.reached_buff.to_vec())
+    pub fn get_reached_buff(&self) -> PyResult<Vec<bool>> {
+        Ok(self.reached_buff.to_vec())
     }
     #[setter]
-    pub fn set_reached_buff(&mut self, new_value:Vec<bool>) -> PyResult<()>{
-      self.reached_buff = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_reached_buff(&mut self, new_value: Vec<bool>) -> PyResult<()> {
+        self.reached_buff = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_regen_buff_soc(&self) -> PyResult<Vec<f64>>{
-      Ok(self.regen_buff_soc.to_vec())
+    pub fn get_regen_buff_soc(&self) -> PyResult<Vec<f64>> {
+        Ok(self.regen_buff_soc.to_vec())
     }
     #[setter]
-    pub fn set_regen_buff_soc(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.regen_buff_soc = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_regen_buff_soc(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.regen_buff_soc = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_regen_contrl_lim_kw_perc(&self) -> PyResult<Vec<f64>>{
-      Ok(self.regen_contrl_lim_kw_perc.to_vec())
+    pub fn get_regen_contrl_lim_kw_perc(&self) -> PyResult<Vec<f64>> {
+        Ok(self.regen_contrl_lim_kw_perc.to_vec())
     }
     #[setter]
-    pub fn set_regen_contrl_lim_kw_perc(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.regen_contrl_lim_kw_perc = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_regen_contrl_lim_kw_perc(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.regen_contrl_lim_kw_perc = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_roadway_chg_kw_out_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.roadway_chg_kw_out_ach.to_vec())
+    pub fn get_roadway_chg_kw_out_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.roadway_chg_kw_out_ach.to_vec())
     }
     #[setter]
-    pub fn set_roadway_chg_kw_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.roadway_chg_kw_out_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_roadway_chg_kw_out_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.roadway_chg_kw_out_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_rr_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.rr_kw.to_vec())
+    pub fn get_rr_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.rr_kw.to_vec())
     }
     #[setter]
-    pub fn set_rr_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.rr_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_rr_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.rr_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_soc(&self) -> PyResult<Vec<f64>>{
-      Ok(self.soc.to_vec())
+    pub fn get_soc(&self) -> PyResult<Vec<f64>> {
+        Ok(self.soc.to_vec())
     }
     #[setter]
-    pub fn set_soc(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.soc = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_soc(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.soc = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_spare_trac_kw(&self) -> PyResult<Vec<f64>>{
-      Ok(self.spare_trac_kw.to_vec())
+    pub fn get_spare_trac_kw(&self) -> PyResult<Vec<f64>> {
+        Ok(self.spare_trac_kw.to_vec())
     }
     #[setter]
-    pub fn set_spare_trac_kw(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.spare_trac_kw = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_spare_trac_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.spare_trac_kw = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_trace_miss_iters(&self) -> PyResult<Vec<u32>>{
-      Ok(self.trace_miss_iters.to_vec())
+    pub fn get_trace_miss_iters(&self) -> PyResult<Vec<u32>> {
+        Ok(self.trace_miss_iters.to_vec())
     }
     #[setter]
-    pub fn set_trace_miss_iters(&mut self, new_value:Vec<u32>) -> PyResult<()>{
-      self.trace_miss_iters = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_trace_miss_iters(&mut self, new_value: Vec<u32>) -> PyResult<()> {
+        self.trace_miss_iters = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_trans_kw_in_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.trans_kw_in_ach.to_vec())
+    pub fn get_trans_kw_in_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.trans_kw_in_ach.to_vec())
     }
     #[setter]
-    pub fn set_trans_kw_in_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.trans_kw_in_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_trans_kw_in_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.trans_kw_in_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_trans_kw_out_ach(&self) -> PyResult<Vec<f64>>{
-      Ok(self.trans_kw_out_ach.to_vec())
+    pub fn get_trans_kw_out_ach(&self) -> PyResult<Vec<f64>> {
+        Ok(self.trans_kw_out_ach.to_vec())
     }
     #[setter]
-    pub fn set_trans_kw_out_ach(&mut self, new_value:Vec<f64>) -> PyResult<()>{
-      self.trans_kw_out_ach = Array::from_vec(new_value);
-      Ok(())
+    pub fn set_trans_kw_out_ach(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+        self.trans_kw_out_ach = Array::from_vec(new_value);
+        Ok(())
     }
 
     #[getter]
-    pub fn get_fuel_kj(&self) -> PyResult<f64>{
-      Ok(self.fuel_kj)
+    pub fn get_fuel_kj(&self) -> PyResult<f64> {
+        Ok(self.fuel_kj)
     }
 
     #[getter]
-    pub fn get_ess_dischg_kj(&self) -> PyResult<f64>{
-      Ok(self.ess_dischg_kj)
+    pub fn get_ess_dischg_kj(&self) -> PyResult<f64> {
+        Ok(self.ess_dischg_kj)
     }
 }
 

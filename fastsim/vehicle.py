@@ -4,7 +4,7 @@ Module containing classes and methods for for loading vehicle data. For example 
 
 ### Import necessary python modules
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, InitVar
 import pandas as pd
 import types as pytypes
 import re
@@ -18,7 +18,10 @@ from typing import Optional
 from fastsim import parameters as params
 from fastsim import utils
 from fastsim.vehicle_base import keys_and_types, NEW_TO_OLD
-import fastsimrust as fsr
+from .rustext import RUST_AVAILABLE
+
+if RUST_AVAILABLE:
+    import fastsimrust as fsr
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -42,7 +45,7 @@ def get_template_df():
 TEMPLATE_VEHDF = get_template_df()
 
 # list of optional parameters that do not get assigned as vehicle attributes
-OPT_INIT_PARAMS = []  #  TODO: maybe reinstate these: ['fc_peak_eff_override', 'mc_peak_eff_override']
+OPT_INIT_PARAMS = ['fc_peak_eff_override', 'mc_peak_eff_override']
 
 VEH_PT_TYPES = ("Conv", "HEV", "PHEV", "BEV")
 
@@ -161,7 +164,7 @@ class Vehicle(object):
     kw_demand_fc_on: float
     max_regen: bool
     stop_start: bool
-    force_aux_on_fc: float
+    force_aux_on_fc: bool 
     alt_eff: float
     chg_eff: float
     aux_kw: float
@@ -194,10 +197,6 @@ class Vehicle(object):
     small_baseline_eff: Optional[np.ndarray] = None
     small_motor_power_kw: Optional[float] = 7.5
     large_motor_power_kw: Optional[float] = 7.5
-    # gets set during __post_init__
-    fc_perc_out_array: Optional[np.ndarray] = None
-    # gets set during __post_init__
-    fc_perc_out_array: Optional[np.ndarray] = None
     fc_perc_out_array = params.fc_perc_out_array
     mc_perc_out_array = params.mc_perc_out_array
     ### Specify shape of mc regen efficiency curve
@@ -208,14 +207,8 @@ class Vehicle(object):
     charging_on: bool = False
     no_elec_sys: bool = False
     no_elec_aux: bool = False
-
-    # IDM - Intelligent Driver Model, Adaptive Cruise Control version
-    idm_v_desired_m_per_s: float = 33.33
-    idm_dt_headway_s: float = 1.0
-    idm_minimum_gap_m: float = 2.0
-    idm_delta: float = 4.0
-    idm_accel_m_per_s2: float = 1.0
-    idm_decel_m_per_s2: float = 1.5
+    fc_peak_eff_override: InitVar[float] = -1.0
+    mc_peak_eff_override: InitVar[float] = -1.0
 
     @classmethod
     def from_vehdb(cls, vnum:int, verbose:bool=False):
@@ -277,9 +270,8 @@ class Vehicle(object):
         for col in vehdf.columns:
             col1 = str(col).replace(' ', '_')
             col1 = OLD_TO_NEW.get(col1, col1)
-            if col not in OPT_INIT_PARAMS:
-                # assign dataframe columns to vehicle
-                veh_dict[col1] = vehdf.loc[vnum, col]
+            # assign dataframe columns to vehicle
+            veh_dict[col1] = vehdf.loc[vnum, col]
         
         # missing_cols = set(TEMPLATE_VEHDF.columns) - set(veh_dict.keys())
         # if len(missing_cols) > 0:
@@ -401,7 +393,11 @@ class Vehicle(object):
         # make sure types are right
         for key, val in veh_dict.items():
             if key != 'props':
-                 veh_dict[key] = keys_and_types[key](val)
+                if key not in OPT_INIT_PARAMS:
+                    veh_dict[key] = keys_and_types[key](val)
+                else:
+                    # All OPT_INIT_PARAMS assumed to be float64
+                    veh_dict[key] = np.float64(val)
 
         keys_to_remove = [
             'input_kw_out_array',
@@ -419,6 +415,7 @@ class Vehicle(object):
             'mc_mass_kg',
             'fc_mass_kg',
             'fs_mass_kg',
+            'fc_perc_out_array',
             'mc_perc_out_array',
         ]
         for key in keys_to_remove:
@@ -427,13 +424,15 @@ class Vehicle(object):
         return cls(**veh_dict)
         
 
-    def __post_init__(self):
+    def __post_init__(self, fc_peak_eff_override:float=-1.0, mc_peak_eff_override:float=-1.0):
         """
         Sets derived parameters.
         Arguments:
         ----------
-        mc_peak_eff_override: float (0, 1), if provided, overrides motor peak efficiency
-            with proportional scaling.  Default of -1 has no effect.  
+        fc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides engine peak efficiency
+            with proportional scaling.  Default of -1 has no effect.
+        mc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
+            with proportional scaling.  Default of -1 has no effect.
         """
         
         if self.scenario_name != 'Template Vehicle for setting up data types':
@@ -506,6 +505,13 @@ class Vehicle(object):
         self.mc_full_eff_array = mc_full_eff_array
 
         self.mc_max_elec_in_kw = max(self.mc_kw_in_array)
+
+        if fc_peak_eff_override != -1.0:
+            self.fc_peak_eff = fc_peak_eff_override
+            print("fc_peak_eff_override is modifying efficiency curve")
+        if mc_peak_eff_override != -1.0:
+            self.mc_peak_eff = mc_peak_eff_override
+            print("mc_peak_eff_override is modifying efficiency curve")
 
         # check that efficiencies are not violating the first law of thermo
         assert self.fc_eff_array.min() >= 0, f"min MC eff < 0 is not allowed"
@@ -618,7 +624,14 @@ class Vehicle(object):
     
     def to_rust(self):
         """Return a Rust version of the vehicle"""
-        return copy_vehicle(self, 'rust')
+        # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
+        # ... we need to keep and re-set any changes to peak fc/mc efficiency
+        fc_peak = self.fc_peak_eff
+        mc_peak = self.mc_peak_eff
+        new_veh = copy_vehicle(self, 'rust')
+        new_veh.fc_peak_eff = fc_peak
+        new_veh.mc_peak_eff = mc_peak
+        return new_veh
 
 
 ref_veh = Vehicle.from_vehdb(5)
@@ -642,14 +655,17 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     return_type: 
         'dict': dict
         'vehicle': Vehicle 
-        'legacy_vehicle': LegacyVehicle
-        'rust_vehicle': RustVehicle
+        'legacy': LegacyVehicle
+        'rust': RustVehicle
     """
 
     veh_dict = {}
 
     for key in keys_and_types.keys():
-        if type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties:
+        if (
+            RUST_AVAILABLE
+            and type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties
+        ):
             pp = veh.__getattribute__(key)
             # TODO: replace the below with a call to copy_physical_properties(...)
             new_pp = fsr.RustPhysicalProperties()
@@ -663,7 +679,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
             veh_dict[key] = copy.deepcopy(veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
 
     if return_type is None:
-        if type(veh) == fsr.RustVehicle:
+        if RUST_AVAILABLE and type(veh) == fsr.RustVehicle:
             return_type = 'rust'
         elif type(veh) == Vehicle:
             return_type = 'vehicle'
@@ -679,7 +695,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
         return Vehicle.from_dict(veh_dict)
     elif return_type == 'legacy':
         return LegacyVehicle(veh_dict)
-    elif return_type == 'rust':
+    elif RUST_AVAILABLE and return_type == 'rust':
         veh_dict['props'] = params.copy_physical_properties(veh_dict['props'], return_type, deep)
         return fsr.RustVehicle(**veh_dict)
     else:
@@ -692,6 +708,7 @@ def veh_equal(veh1:Vehicle, veh2:Vehicle, full_out:bool=False)-> bool:
     Arguments:
     ----------
     """
+    TOL = 1e-6
 
     veh_dict1 = copy_vehicle(veh1, return_type='dict', deep=True)
     veh_dict2 = copy_vehicle(veh2, return_type='dict', deep=True)
@@ -707,7 +724,7 @@ def veh_equal(veh1:Vehicle, veh2:Vehicle, full_out:bool=False)-> bool:
                 err_list.append(
                     {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
         elif pd.api.types.is_list_like(veh_dict1[key]):
-            if (np.array(veh_dict1[key]) != np.array(veh_dict2[key])).any():
+            if (np.abs(np.array(veh_dict1[key]) - np.array(veh_dict2[key])) > TOL).any():
                 if not full_out:
                     return False
                 err_list.append(
