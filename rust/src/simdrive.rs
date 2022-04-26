@@ -165,7 +165,7 @@ impl RustSimDriveParams {
 pub struct RustSimDrive {
     #[pyo3(get, set)]
     pub hev_sim_count: usize,
-    #[pyo3(set)]
+    #[pyo3(get, set)]
     pub veh: RustVehicle,
     #[pyo3(get, set)]
     pub cyc: RustCycle,
@@ -719,23 +719,6 @@ impl RustSimDrive {
     // Methods for getting and setting arrays and other complex fields
     // note that python cannot specify a specific index to set but must reset the entire array
     // doc strings not needed for getters or setters
-
-    #[getter]
-    pub fn get_veh(&self) -> PyResult<RustVehicle> {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-        py.run(
-            "print(\"`veh` getter returns a clone that is no longer nested in the sim_drive instance.\")",
-            None,
-            None,
-        )?;
-        py.run(
-            "print(\"Any values set here will have no effect.\")",
-            None,
-            None,
-        )?;
-        Ok(self.veh.clone())
-    }
 
     #[getter]
     pub fn get_accel_buff_soc(&self) -> PyResult<utils::Pyo3ArrayF64> {
