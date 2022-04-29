@@ -54,4 +54,6 @@ mpg_list = list(map(simdrive_get_mpg,simdrive_lst))
 
 print(mpg_list)
 
-plt.plot(cyc_wltp_combo.time_s,cyc_wltp_combo.mph)
+plt.plot(cyc_wltp_combo.time_s,np.array(cyc_wltp_combo.mph)*KM_PER_MILES)
+plt.xlabel("Time [s]")
+plt.ylabel('Velocity [kph]')

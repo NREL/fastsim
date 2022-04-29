@@ -14,7 +14,7 @@ Fuel / Fuel Converter,fs_max_kw,2000,Fuel Storage tank 50 liters
 ,fs_kwh,245,50 liter of gasoline using 0.75 SG and 12.06kwh/kg LHV
 ,fs_kwh_per_kg,12.06,
 ,fc_max_kw,96,
-,fc_eff_map,"[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]","[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]"
+,fc_eff_map,"[0.1, 0.12, 0.2, 0.3, 0.35, 0.38, 0.42, 0.45, 0.42, 0.38, 0.35, 0.32]","[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]"
 ,fc_eff_type,SI,
 ,fc_sec_to_peak_pwr,6,
 ,fc_base_kg,61,
@@ -55,7 +55,7 @@ Wheels,wheel_inertia_kg_m2,0.823,
 ,comp_mass_multiplier,1.4,
 ,ess_to_fuel_ok_error,0.005,
 ,max_regen,0.98,
-"Val: MPGGE, KwhPM, 0 to 60, etc",val_udds_mpgge,36,
+"Val: MPGGE, KwhPM, 0 to 60, etc",val_udds_mpgge,36,https://www.ultimatespecs.com/car-specs/Volkswagen/118818/Volkswagen-Golf-8-15-TSI-130HP.html
 ,val_hwy_mpgge,60,L38.2 M54.3 H61.4 EH53.3 Comb53.3 Source: https://www.encycarpedia.com/volkswagen/20-golf-1-5-tsi-130-hatch 
 ,val_comb_mpgge,49,https://www.auto-data.net/en/volkswagen-golf-viii-1.5-tsi-130hp-38151
 ,val_udds_kwh_per_mile,,
