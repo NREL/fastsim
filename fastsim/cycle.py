@@ -176,6 +176,24 @@ class Cycle(object):
         }
         return Cycle.from_dict(cyc_dict)
 
+    def grade_at_distance(self, distance_m):
+        """
+        Returns the grade at the given distance
+        """
+        delta_dists_m = self.dist_v2_m
+        if distance_m <= 0.0:
+            return self.grade[0]
+        if distance_m >= sum(delta_dists_m):
+            return self.grade[-1]
+        dist_mark = 0.0
+        last_grade = self.grade[0]
+        for g, dd in zip(self.grade, delta_dists_m):
+            if dist_mark <= distance_m and (dist_mark + dd) > distance_m:
+                return last_grade
+            dist_mark += dd
+            last_grade = g
+        return self.grade[-1]
+
     def calc_distance_to_next_stop_from(self, distance_m):
         """
         Calculate the distance to next stop from `distance_m`

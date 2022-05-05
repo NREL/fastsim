@@ -321,3 +321,49 @@ class TestCycle(unittest.TestCase):
         cyc = cycle.Cycle.from_file('udds')
         old_cyc = cycle.LegacyCycle(cyc)
         self.assertEqual(old_keys, inspect_utils.get_attrs(old_cyc))
+    
+    def test_get_grade_by_distance(self):
+        "check that we can lookup grade by distance"
+        expected_distances_m = [  0.0 ,  50.0 , 1050.0 ,  2050.0, 2100.0 ]
+        cyc = cycle.Cycle.from_dict(
+            cycle.make_cycle(
+                ts=[  0.0 ,  10.0 , 110.0 , 210.0 , 220.0 ],
+                vs=[  0.0 ,  10.0 ,  10.0 ,  10.0 ,   0.0 ],
+                gs=[  0.01,   0.01,   0.02,   0.02,   0.02],
+            ))
+        ds = cyc.dist_v2_m.cumsum()
+        self.assertEqual(len(expected_distances_m), len(ds))
+        for idx in range(len(expected_distances_m)):
+            self.assertAlmostEqual(expected_distances_m[idx], ds[idx])
+        cyc = cycle.Cycle.from_dict(
+            cycle.resample(
+                cycle.make_cycle(
+                    ts=[  0.0 ,  10.0 , 110.0 , 210.0 , 220.0 ],
+                    vs=[  0.0 ,  10.0 ,  10.0 ,  10.0 ,   0.0 ],
+                    gs=[  0.01,   0.01,   0.02,   0.02,   0.02],
+                ),
+                new_dt=1.0,
+                hold_keys={'grade'},
+            )
+        )
+        expected_g0 = 0.01
+        g0 = cyc.grade_at_distance(0.0)
+        self.assertAlmostEqual(expected_g0, g0)
+        g50 = cyc.grade_at_distance(50.0)
+        expected_g50 = 0.01
+        self.assertAlmostEqual(expected_g50, g50)
+        g1049 = cyc.grade_at_distance(1049.0)
+        expected_g1049 = 0.01
+        self.assertAlmostEqual(expected_g1049, g1049)
+        g1050 = cyc.grade_at_distance(1050.0)
+        expected_g1050 = 0.02
+        self.assertAlmostEqual(expected_g1050, g1050)
+        g1051 = cyc.grade_at_distance(1051.0)
+        expected_g1051 = 0.02
+        self.assertAlmostEqual(expected_g1051, g1051)
+        g2100 = cyc.grade_at_distance(2100.0)
+        expected_g2100 = 0.02
+        self.assertAlmostEqual(expected_g2100, g2100)
+        g2500 = cyc.grade_at_distance(2500.0)
+        expected_g2500 = 0.02
+        self.assertAlmostEqual(expected_g2500, g2500)
