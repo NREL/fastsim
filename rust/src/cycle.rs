@@ -196,6 +196,10 @@ impl RustCycle{
         Ok(self.calc_distance_to_next_stop_from_rust(distance_m))
     }
 
+    pub fn grade_at_distance(&self, distance_m: f64) -> PyResult<f64> {
+        Ok(self.grade_at_distance_rust(distance_m))
+    }
+
     #[getter]
     pub fn get_mps(&self) -> PyResult<Vec<f64>>{
         Ok((&self.mps).to_vec())
@@ -289,6 +293,28 @@ impl RustCycle{
         RustCycle::new(time_s, speed_mps, grade, road_type, name)    
     }
 
+    /// Returns the grade at the given distance
+    pub fn grade_at_distance_rust(&self, distance_m: f64) -> f64 {
+        let delta_dists_m: Array1<f64> = self.dist_v2_m();
+        if distance_m <= 0.0 {
+            return self.grade[0];
+        }
+        if distance_m >= delta_dists_m.sum() {
+            return self.grade[self.grade.len()-1];
+        }
+        let mut dist_mark: f64 = 0.0;
+        let mut last_grade: f64 = self.grade[0];
+        for idx in 0..self.grade.len() {
+            let dd = delta_dists_m[idx];
+            if (dist_mark <= distance_m) && ((dist_mark + dd) > distance_m) {
+                return last_grade;
+            }
+            dist_mark += dd;
+            last_grade = self.grade[idx];
+        }
+        return last_grade;
+    }
+
     /// Calculate the distance to next stop from `distance_m`
     /// - distance_m: non-negative-number, the current distance from start (m)
     /// RETURN: -1 or non-negative-integer
@@ -306,6 +332,8 @@ impl RustCycle{
         }
         not_found
     }
+
+
 
     /// Modifies the cycle using the given constant-jerk trajectory parameters
     /// - idx: non-negative integer, the point in the cycle to initiate
