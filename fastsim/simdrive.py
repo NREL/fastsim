@@ -690,16 +690,18 @@ class SimDrive(object):
 
         # TODO: use of self.cyc.mph[i] in regenContrLimKwPerc[i] calculation seems wrong. Shouldn't it be mpsAch or self.cyc0.mph[i]?
 
+        dist_traveled_m = self.cyc.dist_v2_m.cumsum()[i]
+        grade = self.cyc0.grade_at_distance(dist_traveled_m)
         self.cyc_drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
             (self.mps_ach[i-1] + mpsAch) / 2.0) ** 3 / 1_000
         self.cyc_accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s[i]) * (mpsAch ** 2 - self.mps_ach[i-1] ** 2) / 1_000
         self.cyc_ascent_kw[i] = self.props.a_grav_mps2 * np.sin(np.arctan(
-            self.cyc.grade[i])) * self.veh.veh_kg * ((self.mps_ach[i-1] + mpsAch) / 2.0) / 1_000
+            grade)) * self.veh.veh_kg * ((self.mps_ach[i-1] + mpsAch) / 2.0) / 1_000
         self.cyc_trac_kw_req[i] = self.cyc_drag_kw[i] + \
             self.cyc_accel_kw[i] + self.cyc_ascent_kw[i]
         self.spare_trac_kw[i] = self.cur_max_trac_kw[i] - self.cyc_trac_kw_req[i]
         self.cyc_rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef * np.cos(
-            np.arctan(self.cyc.grade[i])) * (self.mps_ach[i-1] + mpsAch) / 2.0 / 1_000
+            np.arctan(grade)) * (self.mps_ach[i-1] + mpsAch) / 2.0 / 1_000
         self.cyc_whl_rad_per_sec[i] = mpsAch / self.veh.wheel_radius_m
         self.cyc_tire_inertia_kw[i] = (
             0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * self.cyc_whl_rad_per_sec[i] ** 2.0 / self.cyc.dt_s[i] -
@@ -751,6 +753,8 @@ class SimDrive(object):
         ------------
         i: index of time step
         """
+        dist_traveled_m = self.cyc.dist_v2_m.cumsum()[i]
+        grade = self.cyc0.grade_at_distance(dist_traveled_m)
 
         # Cycle is met
         if self.cyc_met[i]:
@@ -810,16 +814,16 @@ class SimDrive(object):
             drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * \
                 self.veh.frontal_area_m2 * self.mps_ach[i-1] ** 2
             roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef \
-                * np.cos(np.arctan(self.cyc.grade[i])) 
+                * np.cos(np.arctan(grade)) 
             ascent1 = 0.5 * self.props.a_grav_mps2 * \
-                np.sin(np.arctan(self.cyc.grade[i])) * self.veh.veh_kg 
+                np.sin(np.arctan(grade)) * self.veh.veh_kg 
             accel0 = -0.5 * self.veh.veh_kg * self.mps_ach[i-1] ** 2 / self.cyc.dt_s[i]
             drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * \
                 self.veh.frontal_area_m2 * self.mps_ach[i-1] ** 3
             roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * \
-                self.veh.wheel_rr_coef * np.cos(np.arctan(self.cyc.grade[i])) \
+                self.veh.wheel_rr_coef * np.cos(np.arctan(grade)) \
                 * self.mps_ach[i-1]
-            ascent0 = 0.5 * self.props.a_grav_mps2 * np.sin(np.arctan(self.cyc.grade[i])) \
+            ascent0 = 0.5 * self.props.a_grav_mps2 * np.sin(np.arctan(grade)) \
                 * self.veh.veh_kg * self.mps_ach[i-1] 
             wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * \
                 self.mps_ach[i-1] ** 2 / (self.cyc.dt_s[i] * self.veh.wheel_radius_m ** 2)
