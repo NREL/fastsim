@@ -577,15 +577,18 @@ impl RustSimDrive {
                 self.cyc.mps[i]
             };
 
+            let distance_traveled_m = self.cyc.total_distance_traveled(i);
+            let grade = self.cyc0.grade_at_distance_rust(distance_traveled_m);
+
             self.cyc_drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
                 (self.mps_ach[i-1] + mps_ach) / 2.0).powf(3.0) / 1e3;
             self.cyc_accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s()[i]) * (mps_ach.powf(2.0) - self.mps_ach[i-1].powf(2.0)) / 1e3;
-            self.cyc_ascent_kw[i] = self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin() *
+            self.cyc_ascent_kw[i] = self.props.a_grav_mps2 * grade.atan().sin() *
                 self.veh.veh_kg * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1e3;
             self.cyc_trac_kw_req[i] = self.cyc_drag_kw[i] + self.cyc_accel_kw[i] + self.cyc_ascent_kw[i];
             self.spare_trac_kw[i] = self.cur_max_trac_kw[i] - self.cyc_trac_kw_req[i];
             self.cyc_rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef *
-                self.cyc.grade[i].atan().cos() * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1e3;
+                grade.atan().cos() * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1e3;
             self.cyc_whl_rad_per_sec[i] = mps_ach / self.veh.wheel_radius_m;
             self.cyc_tire_inertia_kw[i] = (
                 0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * self.cyc_whl_rad_per_sec[i].powf(2.0) / self.cyc.dt_s()[i] -
@@ -656,6 +659,9 @@ impl RustSimDrive {
 
             //Cycle is not met
             else {
+                let distance_traveled_m = self.cyc.total_distance_traveled(i);
+                let grade = self.cyc0.grade_at_distance_rust(distance_traveled_m);
+
                 let drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 *
                     self.veh.drag_coef * self.veh.frontal_area_m2;
                 let accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s()[i];
@@ -666,14 +672,14 @@ impl RustSimDrive {
                 let drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef *
                     self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(2.0);
                 let roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef
-                    * self.cyc.grade[i].atan().cos();
-                let ascent1 = 0.5 * self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin() * self.veh.veh_kg;
+                    * grade.atan().cos();
+                let ascent1 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin() * self.veh.veh_kg;
                 let accel0 = -0.5 * self.veh.veh_kg * self.mps_ach[i-1].powf(2.0) / self.cyc.dt_s()[i];
                 let drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef *
                     self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(3.0);
                 let roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 *
-                    self.veh.wheel_rr_coef * self.cyc.grade[i].atan().cos() * self.mps_ach[i-1];
-                let ascent0 = 0.5 * self.props.a_grav_mps2 * self.cyc.grade[i].atan().sin()
+                    self.veh.wheel_rr_coef * grade.atan().cos() * self.mps_ach[i-1];
+                let ascent0 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin()
                     * self.veh.veh_kg * self.mps_ach[i-1];
                 let wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels *
                     self.mps_ach[i-1].powf(2.0) / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
