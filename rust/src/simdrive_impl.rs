@@ -325,8 +325,11 @@ impl RustSimDrive {
         if self.sim_params.missed_trace_correction && (self.cyc0.dist_m().slice(s![0..self.i]).sum() > 0.0){
             self.set_time_dilation_rust(self.i)?;
         }
+        // TODO: shouldn't the below code always set cyc? Whether coasting or not?
         if self.sim_params.coast_allow || self.sim_params.follow_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
+            self.cyc.grade[self.i] = self.cyc0.grade_at_distance_rust(
+                self.cyc.total_distance_traveled(self.i));
         }
 
         self.i += 1;  // increment time step counter
