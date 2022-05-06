@@ -1,6 +1,6 @@
 use ndarray::{Array, Array1, array, s};
 use std::cmp;
-use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from, ndarrunique, interpolate};
+use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from, ndarrunique};
 use super::vehicle::*;
 use super::cycle::{calc_constant_jerk_trajectory, accel_array_for_constant_jerk};
 use super::params;
@@ -1467,7 +1467,8 @@ impl RustSimDrive {
             let gr = if unique_grades.len() > 0 {
                 unique_grades[0]
             } else {
-                interpolate(&d, &distances_m, &grade_by_distance, true)
+                // interpolate(&d, &distances_m, &grade_by_distance, true)
+                self.cyc0.grade_at_distance_rust(d + d0)
             };
             let mut k = self.calc_dvdd(v, gr);
             let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);

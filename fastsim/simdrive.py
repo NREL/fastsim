@@ -1473,7 +1473,7 @@ class SimDrive(object):
         MAX_ITER = 2000
         ITERS_PER_STEP = 2
         while v > v_brake and v >= 0.0 and d <= d_max and i < MAX_ITER:
-            gr = unique_grade if unique_grade is not None else np.interp(d, distances_m, grade_by_distance)
+            gr = unique_grade if unique_grade is not None else self.cyc0.grade_at_distance(d + d0) # np.interp(d, distances_m, grade_by_distance)
             k = self._calc_dvdd(v, gr)
             v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
             vavg = 0.5 * (v + v_next)
