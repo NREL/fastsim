@@ -192,7 +192,7 @@ class Cycle(object):
                 return last_grade
             dist_mark += dd
             last_grade = g
-        return self.grade[-1]
+        return last_grade
 
     def calc_distance_to_next_stop_from(self, distance_m):
         """
