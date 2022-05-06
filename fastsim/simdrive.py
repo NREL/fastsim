@@ -471,8 +471,10 @@ class SimDrive(object):
         self.solve_step(self.i)
         if self.sim_params.missed_trace_correction and (self.cyc0.dist_m[:self.i].sum() > 0):
             self.set_time_dilation(self.i)
+        # TODO: shouldn't this below always get set whether we're coasting or following or not?
         if self.sim_params.coast_allow or self.sim_params.follow_allow:
             self.cyc.mps[self.i] = self.mps_ach[self.i]
+            self.cyc.grade[self.i] = self.cyc0.grade_at_distance(self.cyc.dist_v2_m[:self.i].sum())
 
         self.i += 1 # increment time step counter
     
@@ -690,7 +692,7 @@ class SimDrive(object):
 
         # TODO: use of self.cyc.mph[i] in regenContrLimKwPerc[i] calculation seems wrong. Shouldn't it be mpsAch or self.cyc0.mph[i]?
 
-        dist_traveled_m = self.cyc.dist_v2_m.cumsum()[i]
+        dist_traveled_m = self.cyc.dist_v2_m[:i].sum() # self.cyc.dist_v2_m.cumsum()[i-1]
         grade = self.cyc0.grade_at_distance(dist_traveled_m)
         self.cyc_drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
             (self.mps_ach[i-1] + mpsAch) / 2.0) ** 3 / 1_000
@@ -753,9 +755,6 @@ class SimDrive(object):
         ------------
         i: index of time step
         """
-        dist_traveled_m = self.cyc.dist_v2_m.cumsum()[i]
-        grade = self.cyc0.grade_at_distance(dist_traveled_m)
-
         # Cycle is met
         if self.cyc_met[i]:
             self.mps_ach[i] = self.cyc.mps[i]
@@ -803,6 +802,9 @@ class SimDrive(object):
 
                 _ys = [abs(y) for y in ys]
                 return max(xs[_ys.index(min(_ys))], 0.0)
+
+            dist_traveled_m = self.cyc.dist_v2_m[:i].sum()
+            grade = self.cyc0.grade_at_distance(dist_traveled_m)
 
             drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * \
                 self.veh.drag_coef * self.veh.frontal_area_m2
