@@ -984,3 +984,99 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
 
                 print('DONE!')
+
+    def test_distance_based_grade_on_following(self):
+        "Tests use of the IDM model for following"
+        cyc = fastsim.cycle.make_cycle(
+            [0.0 , 10.0 , 20.0 , 30.0 , 40.0 , 50.0 , 99.0],
+            [0.0 , 10.0 , 10.0 , 10.0 , 10.0 ,  0.0 ,  0.0],
+            [0.01,  0.01,  0.0 , -0.01, -0.01,  0.0 ,  0.0],
+        )
+        cyc = fastsim.cycle.resample(cyc, new_dt=0.1, hold_keys={'grade'})
+        cyc = fastsim.cycle.Cycle.from_dict(cyc)
+        veh = fastsim.vehicle.Vehicle.from_vehdb(5)
+        sd = fastsim.simdrive.SimDrive(cyc, veh)
+        sd.sim_params.follow_allow = True
+        sd.sim_params.idm_minimum_gap_m = 5.0
+        sd.sim_params.idm_v_desired_m_per_s = 5.0
+        sd.sim_params.verbose = False
+        sd.sim_drive()
+        ts0 = sd.cyc0.time_s
+        dds0 = sd.cyc0.dist_v2_m
+        hs0 = sd.cyc0.delta_elev_m
+        ts1 = sd.cyc.time_s
+        dds1 = sd.cyc.dist_v2_m
+        hs1 = sd.cyc.delta_elev_m
+        self.assertAlmostEqual(sum(dds0), sum(dds1), places=-1)
+        self.assertAlmostEqual(hs0[-1], hs1[-1], places=-1)
+        def calc_dist_of_peak_elev(dds, hs):
+            d = 0.0
+            d_for_peak = 0.0
+            h_max = None
+            for dd, h in zip(dds, hs):
+                d += dd
+                if h_max is None or h > h_max:
+                    d_for_peak = d
+                    h_max = h
+            return d_for_peak
+        def calc_time_of_peak_elev(ts, hs):
+            t = 0.0
+            t_for_peak = 0.0
+            h_max = None
+            for t, h in zip(ts, hs):
+                if h_max is None or h > h_max:
+                    t_for_peak = t
+                    h_max = h
+            return t_for_peak
+        dist_at_peak0 = calc_dist_of_peak_elev(dds0, hs0)
+        dist_at_peak1 = calc_dist_of_peak_elev(dds1, hs1)
+        self.assertAlmostEqual(dist_at_peak0, dist_at_peak1, places=-1)
+        time_at_peak0 = calc_time_of_peak_elev(ts0, hs0)
+        time_at_peak1 = calc_time_of_peak_elev(ts1, hs1)
+        self.assertTrue((time_at_peak0 + 10.0) < time_at_peak1)
+        if False:
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots()
+            ax.plot(sd.cyc0.time_s, sd.cyc0.delta_elev_m, 'r-', label='cyc0')
+            ax.plot(sd.cyc.time_s, sd.cyc.delta_elev_m, 'k.', label='cyc')
+            ax.legend()
+            ax.set_xlabel('Elapsed Time (s)')
+            ax.set_ylabel('Elevation (m)')
+            fig.savefig('junk-elev.png', dpi=600)
+            plt.close()
+            fig, ax = plt.subplots()
+            ax.plot(sd.cyc0.time_s, sd.cyc0.mps, 'r-', label='cyc0')
+            ax.plot(sd.cyc.time_s, sd.cyc.mps, 'k.', label='cyc')
+            ax.legend()
+            ax.set_xlabel('Elapsed Time (s)')
+            ax.set_ylabel('Speed (m/s)')
+            fig.savefig('junk-mps.png', dpi=600)
+            plt.close()
+            fig, ax = plt.subplots()
+            ax.plot(sd.cyc0.dist_m.cumsum(), sd.cyc0.delta_elev_m, 'r-', label='cyc0')
+            ax.plot(sd.cyc.dist_m.cumsum(), sd.cyc.delta_elev_m, 'k.', label='cyc')
+            ax.legend()
+            ax.set_xlabel('Distance Traveled (s)')
+            ax.set_ylabel('Elevation (m)')
+            fig.savefig('junk-elev-by-dist.png', dpi=600)
+            plt.close()
+            fig, ax = plt.subplots()
+            ax.plot(sd.cyc0.dist_m.cumsum(), sd.cyc0.mps, 'r-', label='cyc0')
+            ax.plot(sd.cyc.dist_m.cumsum(), sd.cyc.mps, 'k.', label='cyc')
+            ax.legend()
+            ax.set_xlabel('Distance Traveled (m)')
+            ax.set_ylabel('Speed (m/s)')
+            fig.savefig('junk-mps-by-dist.png', dpi=600)
+            plt.close()
+            fig, ax = plt.subplots()
+            ax.plot(sd.cyc0.time_s, sd.cyc0.dist_m.cumsum(), 'r-', label='cyc0')
+            ax.plot(sd.cyc.time_s, sd.cyc.dist_m.cumsum(), 'k.', label='cyc')
+            ax.legend()
+            ax.set_xlabel('Elapsed Time (s)')
+            ax.set_ylabel('Distance Traveled (m)')
+            fig.savefig('junk-distance-by-time.png', dpi=600)
+            plt.close()
+            self.assertTrue((sd.cyc.dist_m == sd.dist_m).all())
+            self.assertTrue((sd.mps_ach == sd.cyc.mps).all())
+
+
