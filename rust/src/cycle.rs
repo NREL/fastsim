@@ -272,6 +272,10 @@ impl RustCycle{
     pub fn get_dist_v2_m(&self) -> PyResult<Vec<f64>>{
         Ok(self.dist_v2_m().to_vec())
     }
+    #[getter]
+    pub fn get_delta_elev_m(&self) -> PyResult<Vec<f64>>{
+        Ok(self.delta_elev_m().to_vec())
+    }
 }
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
@@ -459,11 +463,10 @@ impl RustCycle{
         }
     }
 
-    // pub fn delta_elev_m(self):
-    //     """
-    //      elevation change w.r.t. to initial
-    //     """
-    //     return (self.dist_m * self.cycGrade).cumsum() // TODO: find a good way to implement cumsum
+    /// elevation change w.r.t. to initial
+    pub fn delta_elev_m(&self) -> Array1<f64> {
+        ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+    }
 }
 
 #[cfg(test)]
