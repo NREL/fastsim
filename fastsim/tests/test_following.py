@@ -1003,13 +1003,13 @@ class TestFollowing(unittest.TestCase):
             sd.sim_params.verbose = False
             sd.sim_drive()
             ts0 = sd.cyc0.time_s
-            dds0 = sd.cyc0.dist_v2_m
+            dds0 = sd.cyc0.dist_m
             hs0 = sd.cyc0.delta_elev_m
             ts1 = sd.cyc.time_s
-            dds1 = sd.cyc.dist_v2_m
+            dds1 = sd.cyc.dist_m
             hs1 = sd.cyc.delta_elev_m
             self.assertAlmostEqual(sum(dds0), sum(dds1), places=-1)
-            self.assertAlmostEqual(hs0[-1], hs1[-1], places=-1)
+            self.assertAlmostEqual(hs0[-1], hs1[-1], places=6)
             def calc_dist_of_peak_elev(dds, hs):
                 d = 0.0
                 d_for_peak = 0.0
@@ -1031,7 +1031,7 @@ class TestFollowing(unittest.TestCase):
                 return t_for_peak
             dist_at_peak0 = calc_dist_of_peak_elev(dds0, hs0)
             dist_at_peak1 = calc_dist_of_peak_elev(dds1, hs1)
-            self.assertAlmostEqual(dist_at_peak0, dist_at_peak1, places=-1)
+            self.assertAlmostEqual(dist_at_peak0, dist_at_peak1, places=0)
             time_at_peak0 = calc_time_of_peak_elev(ts0, hs0)
             time_at_peak1 = calc_time_of_peak_elev(ts1, hs1)
             self.assertTrue((time_at_peak0 + 10.0) < time_at_peak1)
@@ -1079,7 +1079,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
                 self.assertTrue((sd.cyc.dist_m == sd.dist_m).all())
                 self.assertTrue((sd.mps_ach == sd.cyc.mps).all())
-        if USE_RUST:
+        if RUST_AVAILABLE and USE_RUST:
             cyc = fastsim.cycle.make_cycle(
                 [0.0 , 10.0 , 20.0 , 30.0 , 40.0 , 50.0 , 99.0],
                 [0.0 , 10.0 , 10.0 , 10.0 , 10.0 ,  0.0 ,  0.0],
@@ -1097,13 +1097,13 @@ class TestFollowing(unittest.TestCase):
             sd.sim_params = sim_params
             sd.sim_drive()
             ts0 = sd.cyc0.time_s
-            dds0 = sd.cyc0.dist_v2_m
+            dds0 = sd.cyc0.dist_m
             hs0 = sd.cyc0.delta_elev_m
             ts1 = sd.cyc.time_s
-            dds1 = sd.cyc.dist_v2_m
+            dds1 = sd.cyc.dist_m
             hs1 = sd.cyc.delta_elev_m
             self.assertAlmostEqual(sum(dds0), sum(dds1), places=-1)
-            self.assertAlmostEqual(hs0[-1], hs1[-1], places=-1)
+            self.assertAlmostEqual(hs0[-1], hs1[-1], places=6)
             def calc_dist_of_peak_elev(dds, hs):
                 d = 0.0
                 d_for_peak = 0.0
@@ -1125,7 +1125,7 @@ class TestFollowing(unittest.TestCase):
                 return t_for_peak
             dist_at_peak0 = calc_dist_of_peak_elev(dds0, hs0)
             dist_at_peak1 = calc_dist_of_peak_elev(dds1, hs1)
-            self.assertAlmostEqual(dist_at_peak0, dist_at_peak1, places=-1)
+            self.assertAlmostEqual(dist_at_peak0, dist_at_peak1, places=0)
             time_at_peak0 = calc_time_of_peak_elev(ts0, hs0)
             time_at_peak1 = calc_time_of_peak_elev(ts1, hs1)
             self.assertTrue((time_at_peak0 + 10.0) < time_at_peak1)
