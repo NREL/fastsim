@@ -911,7 +911,7 @@ class TestCoasting(unittest.TestCase):
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-5.png')
             # assert we have grade set correctly
             self.assertTrue((sd.cyc0.grade == grade).all())
-            self.assertTrue((sd.cyc.grade == grade).all())
+            self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
             self.assertAlmostEqual(
                 sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
             # test with a different vehicle and grade
@@ -982,7 +982,7 @@ class TestCoasting(unittest.TestCase):
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-5-rust.png')
             # assert we have grade set correctly
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
-            self.assertTrue((np.array(sd.cyc.grade) == grade).all())
+            self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
             self.assertAlmostEqual(
                 np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())
             # test with a different vehicle and grade
@@ -1056,7 +1056,7 @@ class TestCoasting(unittest.TestCase):
                     save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5.png')
             # assert we have grade set correctly
             self.assertTrue((sd.cyc0.grade == grade).all())
-            self.assertTrue((sd.cyc.grade == grade).all())
+            self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
             self.assertAlmostEqual(
                 sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
             # test with a different vehicle and grade
@@ -1127,7 +1127,7 @@ class TestCoasting(unittest.TestCase):
                     save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5-rust.png')
             # assert we have grade set correctly
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
-            self.assertTrue((np.array(sd.cyc.grade) == grade).all())
+            self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
             self.assertAlmostEqual(
                 np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())
             # test with a different vehicle and grade

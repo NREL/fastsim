@@ -195,9 +195,9 @@ impl RustCycle{
     pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> PyResult<f64> {
         Ok(self.calc_distance_to_next_stop_from_rust(distance_m))
     }
-
-    pub fn grade_at_distance(&self, distance_m: f64) -> PyResult<f64> {
-        Ok(self.grade_at_distance_rust(distance_m))
+    
+    pub fn average_grade_over_range(&self, distance_start_m: f64, delta_distance_m: f64) -> PyResult<f64> {
+        Ok(self.average_grade_over_range_rust(distance_start_m, delta_distance_m))
     }
 
     #[getter]
@@ -297,47 +297,20 @@ impl RustCycle{
         RustCycle::new(time_s, speed_mps, grade, road_type, name)    
     }
 
-    pub fn total_distance_traveled(&self, idx: usize) -> f64 {
-        let len = self.time_s.len();
-        let mut total_dist_m = 0.0;
-        let end_idx = if idx >= len {
-            if len == 0 {
-                0
-            } else {
-                len - 1
-            }
-        } else {
-            idx
-        };
-        for i in 0..end_idx {
-            let avg_speed_m_per_s = 0.5 * (self.mps[i+1] + self.mps[i]);
-            let dt_s = self.time_s[i+1] - self.time_s[i];
-            let dd_m = avg_speed_m_per_s * dt_s;
-            total_dist_m += dd_m;
+    /// Returns the average grade over the given range of distances
+    /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
+    /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
+    /// RETURN: number, the average grade (rise over run) over the given distance range
+    pub fn average_grade_over_range_rust(&self, distance_start_m:f64, delta_distance_m:f64) -> f64 {
+        let distances_m = ndarrcumsum(&self.dist_m());
+        if delta_distance_m <= 1e-6 {
+            // (x: &f64, x_data: &Array1<f64>, y_data: &Array1<f64>, extrapolate: bool)
+            return interpolate(&distance_start_m, &distances_m, &self.grade, false);
         }
-        total_dist_m
-    }
-
-    /// Returns the grade at the given distance
-    pub fn grade_at_distance_rust(&self, distance_m: f64) -> f64 {
-        let delta_dists_m: Array1<f64> = self.dist_v2_m();
-        if distance_m <= 0.0 {
-            return self.grade[0];
-        }
-        if distance_m >= delta_dists_m.sum() {
-            return self.grade[self.grade.len()-1];
-        }
-        let mut dist_mark: f64 = 0.0;
-        let mut last_grade: f64 = self.grade[0];
-        for idx in 0..self.grade.len() {
-            let dd = delta_dists_m[idx];
-            if (dist_mark <= distance_m) && ((dist_mark + dd) > distance_m) {
-                return last_grade;
-            }
-            dist_mark += dd;
-            last_grade = self.grade[idx];
-        }
-        return last_grade;
+        let elevations_m = self.delta_elev_m();
+        let e0 = interpolate(&distance_start_m, &distances_m, &elevations_m, false);
+        let e1 = interpolate(&(distance_start_m + delta_distance_m), &distances_m, &elevations_m, false);
+        (e1 - e0) / delta_distance_m
     }
 
     /// Calculate the distance to next stop from `distance_m`
@@ -357,8 +330,6 @@ impl RustCycle{
         }
         not_found
     }
-
-
 
     /// Modifies the cycle using the given constant-jerk trajectory parameters
     /// - idx: non-negative integer, the point in the cycle to initiate
@@ -518,24 +489,5 @@ mod tests {
             },
             Err(s) => panic!("{}", s),
         }
-    }
-    #[test]
-    fn test_calculating_total_distance_traveled() {
-        let time_s = Array::from_vec(vec![0.0, 10.0, 30.0, 40.0]);
-        let mps = Array::from_vec(vec![0.0, 10.0, 10.0, 0.0]);
-        let grade = Array::from_vec(vec![0.0, 0.0, 0.0, 0.0]);
-        let road_type = Array::from_vec(vec![0.0, 0.0, 0.0, 0.0]);
-        let name = String::from("test");
-        let cyc = RustCycle {time_s, mps, grade, road_type, name};
-        let expected_dist_0 = 0.0;
-        assert_eq!(expected_dist_0, cyc.total_distance_traveled(0));
-        let expected_dist_1 = 50.0;
-        assert_eq!(expected_dist_1, cyc.total_distance_traveled(1));
-        let expected_dist_2 = 250.0;
-        assert_eq!(expected_dist_2, cyc.total_distance_traveled(2));
-        let expected_dist_3 = 300.0;
-        assert_eq!(expected_dist_3, cyc.total_distance_traveled(3));
-        let expected_dist_4 = 300.0;
-        assert_eq!(expected_dist_4, cyc.total_distance_traveled(4));
     }
 }

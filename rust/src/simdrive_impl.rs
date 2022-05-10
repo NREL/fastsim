@@ -328,8 +328,9 @@ impl RustSimDrive {
         // TODO: shouldn't the below code always set cyc? Whether coasting or not?
         if self.sim_params.coast_allow || self.sim_params.follow_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
-            self.cyc.grade[self.i] = self.cyc0.grade_at_distance_rust(
-                self.cyc.total_distance_traveled(self.i));
+            self.cyc.grade[self.i] = self.cyc0.average_grade_over_range_rust(
+                self.cyc.dist_m().slice(s![0..self.i]).sum(),
+                self.cyc.dist_m()[self.i]);
         }
 
         self.i += 1;  // increment time step counter
@@ -580,8 +581,9 @@ impl RustSimDrive {
                 self.cyc.mps[i]
             };
 
-            let distance_traveled_m = self.cyc.total_distance_traveled(i);
-            let grade = self.cyc0.grade_at_distance_rust(distance_traveled_m);
+            let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
+            let grade = self.cyc0.average_grade_over_range_rust(
+                distance_traveled_m, mps_ach * self.cyc.dt_s()[i]);
 
             self.cyc_drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
                 (self.mps_ach[i-1] + mps_ach) / 2.0).powf(3.0) / 1e3;
@@ -662,8 +664,8 @@ impl RustSimDrive {
 
             //Cycle is not met
             else {
-                let distance_traveled_m = self.cyc.total_distance_traveled(i);
-                let grade = self.cyc0.grade_at_distance_rust(distance_traveled_m);
+                let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
+                let grade = self.cyc0.average_grade_over_range_rust(distance_traveled_m, 0.0);
 
                 let drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 *
                     self.veh.drag_coef * self.veh.frontal_area_m2;
@@ -1471,7 +1473,7 @@ impl RustSimDrive {
                 unique_grades[0]
             } else {
                 // interpolate(&d, &distances_m, &grade_by_distance, true)
-                self.cyc0.grade_at_distance_rust(d + d0)
+                self.cyc0.average_grade_over_range_rust(d0, d0)
             };
             let mut k = self.calc_dvdd(v, gr);
             let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
