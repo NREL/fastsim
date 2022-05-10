@@ -667,7 +667,7 @@ impl RustSimDrive {
                 let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
                 let mut grade_estimate = self.cyc0.average_grade_over_range_rust(
                     distance_traveled_m, 0.0);
-                let mut grade: f64 = grade_estimate;
+                let mut grade: f64;
                 let grade_tol = 1e-4;
                 let mut grade_diff = grade_tol + 1.0;
                 let max_grade_iter = 3;
