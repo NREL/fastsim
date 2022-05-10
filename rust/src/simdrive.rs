@@ -319,6 +319,7 @@ pub struct RustSimDrive {
 }
 
 #[pymethods]
+#[allow(clippy::len_without_is_empty)]
 impl RustSimDrive {
     /// method for instantiating SimDriveRust
     #[new]
@@ -617,7 +618,7 @@ impl RustSimDrive {
         init_soc: f64,
         aux_in_kw_override: Option<Vec<f64>>,
     ) -> PyResult<()> {
-        let aux_in_kw_override = aux_in_kw_override.map(|x| Array1::from(x));
+        let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
         handle_sd_res(self.walk(init_soc, aux_in_kw_override))
     }
 
