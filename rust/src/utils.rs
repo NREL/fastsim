@@ -109,7 +109,20 @@ pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
 /// interpolation algorithm from http://www.cplusplus.com/forum/general/216928/
 /// Arguments:
 /// x : value at which to interpolate
-pub fn interpolate(x: &f64, x_data: &Array1<f64>, y_data: &Array1<f64>, extrapolate: bool) -> f64 {
+pub fn interpolate(x: &f64, x_data_in: &Array1<f64>, y_data_in: &Array1<f64>, extrapolate: bool) -> f64 {
+    assert!(x_data_in.len() == y_data_in.len());
+    let mut new_x_data: Vec<f64> = Vec::new();
+    let mut new_y_data: Vec<f64> = Vec::new();
+    let mut last_x = x_data_in[0];
+    for idx in 0..x_data_in.len() {
+        if idx == 0 || (idx > 0 && x_data_in[idx] > last_x) {
+            last_x = x_data_in[idx];
+            new_x_data.push(x_data_in[idx]);
+            new_y_data.push(y_data_in[idx]);
+        }
+    }
+    let x_data = Array1::from_vec(new_x_data);
+    let y_data = Array1::from_vec(new_y_data);
     let size = x_data.len();
 
     let mut i = 0;
@@ -305,5 +318,45 @@ mod tests {
         let y_lookup = interpolate(&x, &xs, &ys, false);
         let expected_y_lookup = 3.3333333333;
         assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_interpolate_with_small_vectors() {
+        let xs = Array1::from_vec(vec![0.0, 1.0]);
+        let ys = Array1::from_vec(vec![0.0, 10.0]);
+        let x = 0.5;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 5.0;
+        assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_interpolate_when_lookup_is_at_end() {
+        let xs = Array1::from_vec(vec![0.0, 1.0]);
+        let ys = Array1::from_vec(vec![0.0, 10.0]);
+        let x = 1.0;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 10.0;
+        assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_interpolate_when_lookup_is_past_end_without_extrapolate() {
+        let xs = Array1::from_vec(vec![0.0, 1.0]);
+        let ys = Array1::from_vec(vec![0.0, 10.0]);
+        let x = 1.01;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 10.0;
+        assert!((expected_y_lookup - y_lookup).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_interpolate_with_x_data_that_repeats() {
+        let xs = Array1::from_vec(vec![0.0, 1.0, 1.0]);
+        let ys = Array1::from_vec(vec![0.0, 10.0, 10.0]);
+        let x = 1.0;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 10.0;
+        assert_eq!(expected_y_lookup,  y_lookup);
     }
 }
