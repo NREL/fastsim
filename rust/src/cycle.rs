@@ -310,7 +310,7 @@ impl RustCycle{
         let elevations_m = self.delta_elev_m();
         let e0 = interpolate(&distance_start_m, &distances_m, &elevations_m, false);
         let e1 = interpolate(&(distance_start_m + delta_distance_m), &distances_m, &elevations_m, false);
-        (e1 - e0) / delta_distance_m
+        ((e1 - e0) / delta_distance_m).asin().tan()
     }
 
     /// Calculate the distance to next stop from `distance_m`
