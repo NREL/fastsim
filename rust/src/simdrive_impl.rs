@@ -665,78 +665,92 @@ impl RustSimDrive {
             //Cycle is not met
             else {
                 let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
-                let grade = self.cyc0.average_grade_over_range_rust(distance_traveled_m, 0.0);
+                let mut grade_estimate = self.cyc0.average_grade_over_range_rust(
+                    distance_traveled_m, 0.0);
+                let mut grade: f64 = grade_estimate;
+                let grade_tol = 1e-4;
+                let mut grade_diff = grade_tol + 1.0;
+                let max_grade_iter = 3;
+                let mut grade_iter = 0;
+                while grade_diff > grade_tol && grade_iter < max_grade_iter{
+                    grade_iter += 1;
+                    grade = grade_estimate;
 
-                let drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 *
-                    self.veh.drag_coef * self.veh.frontal_area_m2;
-                let accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s()[i];
-                let drag2 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 *
-                    self.veh.drag_coef * self.veh.frontal_area_m2 * self.mps_ach[i-1];
-                let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 *
-                    self.veh.num_wheels / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
-                let drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef *
-                    self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(2.0);
-                let roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef
-                    * grade.atan().cos();
-                let ascent1 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin() * self.veh.veh_kg;
-                let accel0 = -0.5 * self.veh.veh_kg * self.mps_ach[i-1].powf(2.0) / self.cyc.dt_s()[i];
-                let drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef *
-                    self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(3.0);
-                let roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 *
-                    self.veh.wheel_rr_coef * grade.atan().cos() * self.mps_ach[i-1];
-                let ascent0 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin()
-                    * self.veh.veh_kg * self.mps_ach[i-1];
-                let wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels *
-                    self.mps_ach[i-1].powf(2.0) / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
+                    let drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 *
+                        self.veh.drag_coef * self.veh.frontal_area_m2;
+                    let accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s()[i];
+                    let drag2 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 *
+                        self.veh.drag_coef * self.veh.frontal_area_m2 * self.mps_ach[i-1];
+                    let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 *
+                        self.veh.num_wheels / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
+                    let drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef *
+                        self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(2.0);
+                    let roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef
+                        * grade.atan().cos();
+                    let ascent1 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin() * self.veh.veh_kg;
+                    let accel0 = -0.5 * self.veh.veh_kg * self.mps_ach[i-1].powf(2.0) / self.cyc.dt_s()[i];
+                    let drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef *
+                        self.veh.frontal_area_m2 * self.mps_ach[i-1].powf(3.0);
+                    let roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 *
+                        self.veh.wheel_rr_coef * grade.atan().cos() * self.mps_ach[i-1];
+                    let ascent0 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin()
+                        * self.veh.veh_kg * self.mps_ach[i-1];
+                    let wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels *
+                        self.mps_ach[i-1].powf(2.0) / (self.cyc.dt_s()[i] * self.veh.wheel_radius_m.powf(2.0));
 
-                let total3 = drag3 / 1e3;
-                let total2 = (accel2 + drag2 + wheel2) / 1e3;
-                let total1 = (drag1 + roll1 + ascent1) / 1e3;
-                let total0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) / 1e3 - self.cur_max_trans_kw_out[i];
+                    let total3 = drag3 / 1e3;
+                    let total2 = (accel2 + drag2 + wheel2) / 1e3;
+                    let total1 = (drag1 + roll1 + ascent1) / 1e3;
+                    let total0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) / 1e3 - self.cur_max_trans_kw_out[i];
 
-                let totals = array![total3, total2, total1, total0];
+                    let totals = array![total3, total2, total1, total0];
 
-                let t3 = totals[0];
-                let t2 = totals[1];
-                let t1 = totals[2];
-                let t0 = totals[3];
-                // initial guess
-                let xi = max(1.0, self.mps_ach[i-1]);
-                // stop criteria
-                let max_iter = self.sim_params.newton_max_iter;
-                let xtol = self.sim_params.newton_xtol;
-                // solver gain
-                let g = self.sim_params.newton_gain;
-                let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
-                let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
-                let bi = yi - xi * mi;
-                let mut xs = vec![xi];
-                let mut ys = vec![yi];
-                let mut ms = vec![mi];
-                let mut bs = vec![bi];
-                let mut iterate = 1;
-                let mut converged = false;
-                while iterate < max_iter && !converged {
-                    // let end = ;
-                    let xi = xs[xs.len() - 1] * (1.0 - g) - g * bs[xs.len() - 1] / ms[xs.len() - 1];
+                    let t3 = totals[0];
+                    let t2 = totals[1];
+                    let t1 = totals[2];
+                    let t0 = totals[3];
+                    // initial guess
+                    let xi = max(1.0, self.mps_ach[i-1]);
+                    // stop criteria
+                    let max_iter = self.sim_params.newton_max_iter;
+                    let xtol = self.sim_params.newton_xtol;
+                    // solver gain
+                    let g = self.sim_params.newton_gain;
                     let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
                     let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
                     let bi = yi - xi * mi;
-                    xs.push(xi);
-                    ys.push(yi);
-                    ms.push(mi);
-                    bs.push(bi);
-                    converged = ((xs[xs.len()-1] - xs[xs.len()-2]) / xs[xs.len()-2]).abs() < xtol;
-                    iterate += 1;
-                }
+                    let mut xs = vec![xi];
+                    let mut ys = vec![yi];
+                    let mut ms = vec![mi];
+                    let mut bs = vec![bi];
+                    let mut iterate = 1;
+                    let mut converged = false;
+                    while iterate < max_iter && !converged {
+                        // let end = ;
+                        let xi = xs[xs.len() - 1] * (1.0 - g) - g * bs[xs.len() - 1] / ms[xs.len() - 1];
+                        let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
+                        let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
+                        let bi = yi - xi * mi;
+                        xs.push(xi);
+                        ys.push(yi);
+                        ms.push(mi);
+                        bs.push(bi);
+                        converged = ((xs[xs.len()-1] - xs[xs.len()-2]) / xs[xs.len()-2]).abs() < xtol;
+                        iterate += 1;
+                    }
 
-                self.newton_iters[i] = iterate;
-                
-                let _ys = Array::from_vec(ys).map(|x| x.abs());
-                self.mps_ach[i] = max(
-                    xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
-                    0.0
-                );
+                    self.newton_iters[i] = iterate;
+                    
+                    let _ys = Array::from_vec(ys).map(|x| x.abs());
+                    self.mps_ach[i] = max(
+                        xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
+                        0.0
+                    );
+                    grade_estimate = self.cyc0.average_grade_over_range_rust(
+                        distance_traveled_m,
+                        self.cyc.dt_s()[i] * self.mps_ach[i]);
+                    grade_diff = (grade - grade_estimate).abs();
+                }
             }
 
             if let Err(message) = self.set_power_calcs_rust(i) {
