@@ -183,6 +183,8 @@ class Cycle(object):
         - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
         RETURN: number, the average grade (rise over run) over the given distance range
         """
+        if ((self.grade == 0.0).all()):
+            return 0.0
         distances_m = self.dist_m.cumsum()
         if delta_distance_m <= 0.0:
             return np.interp(distance_start_m, xp=distances_m, fp=self.grade)

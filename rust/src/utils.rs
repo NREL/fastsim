@@ -78,6 +78,16 @@ pub fn ndarrmax(arr: &Array1<f64>) -> f64 {
     arr.to_vec().into_iter().reduce(f64::max).unwrap()
 }
 
+/// return true if the array is all zeros
+pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
+    for idx in 0..arr.len() {
+        if arr[idx] != 0.0 {
+            return false;
+        }
+    }
+    return true;
+}
+
 /// return cumsum <f64> of arr
 pub fn ndarrcumsum(arr: &Array1<f64>) -> Array1<f64> {
     arr.iter()

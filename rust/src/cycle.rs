@@ -302,6 +302,10 @@ impl RustCycle{
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
     pub fn average_grade_over_range_rust(&self, distance_start_m:f64, delta_distance_m:f64) -> f64 {
+        if ndarrallzeros(&self.grade) {
+            // short-circuit for no-grade case
+            return 0.0;
+        }
         let distances_m = ndarrcumsum(&self.dist_m());
         if delta_distance_m <= 1e-6 {
             // (x: &f64, x_data: &Array1<f64>, y_data: &Array1<f64>, extrapolate: bool)
