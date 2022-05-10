@@ -176,6 +176,23 @@ class Cycle(object):
         }
         return Cycle.from_dict(cyc_dict)
 
+    def average_grade_over_range(self, distance_start_m, delta_distance_m):
+        """
+        Returns the average grade over the given range of distances
+        - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
+        - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
+        RETURN: number, the average grade (rise over run) over the given distance range
+        """
+        if ((self.grade == 0.0).all()):
+            return 0.0
+        distances_m = self.dist_m.cumsum()
+        if delta_distance_m <= 0.0:
+            return np.interp(distance_start_m, xp=distances_m, fp=self.grade)
+        elevations_m = self.delta_elev_m
+        e0 = np.interp(distance_start_m, xp=distances_m, fp=elevations_m)
+        e1 = np.interp(distance_start_m + delta_distance_m, xp=distances_m, fp=elevations_m)
+        return np.tan(np.arcsin((e1 - e0) / delta_distance_m))
+
     def calc_distance_to_next_stop_from(self, distance_m):
         """
         Calculate the distance to next stop from `distance_m`
