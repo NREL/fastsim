@@ -247,10 +247,8 @@ mod tests {
         let xs = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0]);
         let expected_ys = Array1::from_vec(vec![0.0, 1.0, 3.0, 6.0]);
         let ys = ndarrcumsum(&xs);
-        let mut i: usize = 0;
-        for (ye, y) in expected_ys.iter().zip(ys.iter()) {
+        for (i, (ye, y)) in expected_ys.iter().zip(ys.iter()).enumerate() {
             assert_eq!(ye, y, "unequal at {}", i);
-            i += 1;
         }
     }
 

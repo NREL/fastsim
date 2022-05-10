@@ -9,8 +9,6 @@ use crate::params::RustPhysicalProperties;
 use crate::utils;
 use crate::vehicle::*;
 
-
-
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     match res {
         Ok(()) => Ok(()),
@@ -599,7 +597,7 @@ impl RustSimDrive {
         init_soc: Option<f64>,
         aux_in_kw_override: Option<Vec<f64>>,
     ) -> PyResult<()> {
-        let aux_in_kw_override = aux_in_kw_override.map(|x| Array1::from(x));
+        let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
         handle_sd_res(self.sim_drive_rust(init_soc, aux_in_kw_override))
     }
 
