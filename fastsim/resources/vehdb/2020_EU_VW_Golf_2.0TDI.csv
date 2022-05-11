@@ -13,8 +13,8 @@ Fuel / Fuel Converter,fs_max_kw,2000,Fuel Storage tank 50 liters
 ,fs_secs_to_peak_pwr,1,
 ,fs_kwh,245,50 liter of gasoline using 0.75 SG and 12.06kwh/kg LHV
 ,fs_kwh_per_kg,12.06,
-,fc_max_kw,150,
-,fc_eff_map,,
+,fc_max_kw,110,
+,fc_eff_map,"[0.214,0.242,0.284,0.37,0.4,0.435,0.445,0.48,0.445,0.43,0.42,0.41]",
 ,fc_eff_type,Diesel,
 ,fc_sec_to_peak_pwr,6,
 ,fc_base_kg,61,
