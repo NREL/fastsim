@@ -37,9 +37,6 @@ To do this, a couple of extra steps are required:
 1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests
 1. In the same folder, you should now be able to run `maturin devlop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py` through the first plot (and maybe beyond)
 
-## Future
-We plan to make this all pip installable such that you can just run `pip install fastsimrust` and not have to mess with cloning the github repo, compiling rust, or even needing to have rust installed.  
-
 # Users with NREL VPN Access
 Note: the following instructions work only if you are inside NREL VPN:  
 To install and/or update, run
