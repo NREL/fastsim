@@ -1,7 +1,7 @@
 """Module containing classes and methods for 
 cycle data. For example usage, see ../README.md"""
 
-### Import necessary python modules
+# Import necessary python modules
 from dataclasses import dataclass
 import copy
 import cmath
@@ -14,7 +14,6 @@ import sys
 from pathlib import Path
 from copy import deepcopy
 import types
-from numba import njit
 
 # local modules
 from . import parameters as params
@@ -38,6 +37,7 @@ OLD_TO_NEW = {
 NEW_TO_OLD = {val: key for key, val in OLD_TO_NEW.items()}
 STANDARD_CYCLE_KEYS = OLD_TO_NEW.values()
 
+
 @dataclass
 class Cycle(object):
     """Object for containing time, speed, road grade, and road charging vectors 
@@ -51,12 +51,12 @@ class Cycle(object):
     name: str
 
     @classmethod
-    def from_file(cls, filename:str):
+    def from_file(cls, filename: str):
         """
         Load cycle from filename (str).
         Can be absolute or relative path.  If relative, looks in working dir first
         and then in `fastsim/resources/cycles`.  
-        
+
         File must contain columns for:
         -- `cycSecs` or `time_s`
         -- `cycMps` or `mps`
@@ -70,19 +70,20 @@ class Cycle(object):
         if not Path(filename).exists() and (CYCLES_DIR / filename).exists():
             filename = CYCLES_DIR / filename
         elif Path(filename).exists():
-            filename = Path(filename) 
+            filename = Path(filename)
         else:
             raise ValueError("Invalid cycle filename.")
-            
+
         cyc_df = pd.read_csv(filename)
         cyc_dict = cyc_df.to_dict(orient='list')
-        cyc_dict = {key:np.array(val, dtype=float) for key, val in cyc_dict.items()}
+        cyc_dict = {key: np.array(val, dtype=float)
+                    for key, val in cyc_dict.items()}
         cyc_dict['name'] = filename.stem
 
         return cls.from_dict(cyc_dict)
 
     @classmethod
-    def from_dict(cls, cyc_dict:dict):
+    def from_dict(cls, cyc_dict: dict):
         """
         Load cycle from dict, which must contain keys for:
         -- `cycSecs` or `time_s`
@@ -107,9 +108,10 @@ class Cycle(object):
 
     def get_numba_cyc(self):
         """Deprecated."""
-        raise NotImplementedError("This method has been deprecated.  Use get_rust_cyc instead.")
+        raise NotImplementedError(
+            "This method has been deprecated.  Use get_rust_cyc instead.")
 
-    ### Properties
+    # Properties
 
     def get_mph(self) -> np.ndarray:
         return self.mps * params.MPH_PER_MPS
@@ -123,7 +125,7 @@ class Cycle(object):
     @property
     def dt_s(self) -> np.ndarray:
         return np.array(np.diff(self.time_s, prepend=0), dtype=float)
-    
+
     # distance at each time step
     @property
     def dist_m(self) -> np.ndarray:
@@ -132,7 +134,7 @@ class Cycle(object):
     @property
     def avg_mps(self):
         return np.append(0.0, 0.5 * (self.mps[1:] + self.mps[:-1]))
-    
+
     # distance at each time step using average speed of the step
     @property
     def dist_v2_m(self):
@@ -149,15 +151,15 @@ class Cycle(object):
     def len(self) -> int:
         "return cycle length"
         return len(self.time_s)
-    
+
     def get_cyc_dict(self) -> dict:
         """Returns cycle as dict rather than class instance."""
         keys = STANDARD_CYCLE_KEYS
-        
+
         cyc = {}
         for key in keys:
             cyc[key] = copy.deepcopy(self.__getattribute__(key))
-        
+
         return cyc
 
     def to_rust(self):
@@ -190,7 +192,8 @@ class Cycle(object):
             return np.interp(distance_start_m, xp=distances_m, fp=self.grade)
         elevations_m = self.delta_elev_m
         e0 = np.interp(distance_start_m, xp=distances_m, fp=elevations_m)
-        e1 = np.interp(distance_start_m + delta_distance_m, xp=distances_m, fp=elevations_m)
+        e1 = np.interp(distance_start_m + delta_distance_m,
+                       xp=distances_m, fp=elevations_m)
         return np.tan(np.arcsin((e1 - e0) / delta_distance_m))
 
     def calc_distance_to_next_stop_from(self, distance_m):
@@ -201,8 +204,10 @@ class Cycle(object):
         - if there are no more stops ahead, return -1
         - else returns the distance to the next stop from distance_m
         """
-        distances_of_stops_m = np.unique(self.dist_v2_m.cumsum()[self.mps < 1e-6])
-        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (distance_m + 1e-6)]
+        distances_of_stops_m = np.unique(
+            self.dist_v2_m.cumsum()[self.mps < 1e-6])
+        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (
+            distance_m + 1e-6)]
         if len(remaining_stops_m) > 0:
             return remaining_stops_m[0] - distance_m
         return -1.0
@@ -252,23 +257,28 @@ class Cycle(object):
         if n < 2:
             # need at least 2 steps
             n = 2
-        jerk_m__s3, accel_m__s2 = calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)
+        jerk_m__s3, accel_m__s2 = calc_constant_jerk_trajectory(
+            n, 0.0, v0, dts_m, 0.0, dt)
         return self.modify_by_const_jerk_trajectory(i, n, jerk_m__s3, accel_m__s2)
-    
+
+
 class LegacyCycle(object):
     """
     Implementation of Cycle with legacy keys.
     """
-    def __init__(self, cycle:Cycle):
+
+    def __init__(self, cycle: Cycle):
         """
         Given cycle, returns legacy cycle.
         """
         for key, val in NEW_TO_OLD.items():
             self.__setattr__(val, copy.deepcopy(cycle.__getattribute__(key)))
 
+
 ref_cyc = Cycle.from_file('udds')
 
-def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True) -> Cycle:
+
+def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
     """Returns copy of Cycle.
     Arguments:
     cyc: instantianed Cycle or CycleJit
@@ -287,7 +297,8 @@ def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True) -> Cycle:
         val_to_copy = cyc.__getattribute__(key)
         if type(val_to_copy) == np.ndarray:
             # has to be float or time_s will get converted to int
-            cyc_dict[key] = np.array(copy.deepcopy(val_to_copy) if deep else val_to_copy, dtype=float)
+            cyc_dict[key] = np.array(copy.deepcopy(
+                val_to_copy) if deep else val_to_copy, dtype=float)
         else:
             cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
@@ -312,14 +323,16 @@ def copy_cycle(cyc:Cycle, return_type:str=None, deep:bool=True) -> Cycle:
         return fsr.RustCycle(**cyc_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
-        
-def cyc_equal(a: Cycle, b:Cycle)-> bool:
+
+
+def cyc_equal(a: Cycle, b: Cycle) -> bool:
     "Return True if a and b are equal"
     if a is b:
         return True
     a_dict = copy_cycle(a, 'dict')
     b_dict = copy_cycle(b, 'dict')
     return equals(a_dict, b_dict, verbose=False)
+
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
     """
@@ -462,7 +475,7 @@ def concat(cycles, name=None):
     return final_cycle
 
 
-def resample(cycle:Cycle, new_dt=None, start_time=None, end_time=None,
+def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
              hold_keys=None, rate_keys=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
@@ -561,7 +574,8 @@ def clip_by_times(cycle, t_end, t_start=0):
         except:
             new_cycle[k] = cycle[k]
 
-    new_cycle['time_s'] -= new_cycle['time_s'][0] # reset time to start at zero
+    # reset time to start at zero
+    new_cycle['time_s'] -= new_cycle['time_s'][0]
     return new_cycle
 
 
@@ -625,7 +639,8 @@ def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
     a0 = (
         (dDr / dt)
         - n * v0
-        - ((1.0 / 6) * n * (n - 1) * (n - 2) * dt + 0.25 * n * (n - 1) * dt * dt) * k
+        - ((1.0 / 6) * n * (n - 1) * (n - 2) *
+           dt + 0.25 * n * (n - 1) * dt * dt) * k
     ) / (0.5 * n * n * dt)
     return (k, a0)
 
