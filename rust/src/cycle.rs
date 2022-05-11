@@ -227,6 +227,10 @@ impl RustCycle {
     pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> PyResult<f64> {
         Ok(self.calc_distance_to_next_stop_from_rust(distance_m))
     }
+    
+    pub fn average_grade_over_range(&self, distance_start_m: f64, delta_distance_m: f64) -> PyResult<f64> {
+        Ok(self.average_grade_over_range_rust(distance_start_m, delta_distance_m))
+    }
 
     #[getter]
     pub fn get_mps(&self) -> PyResult<Vec<f64>> {
@@ -300,6 +304,10 @@ impl RustCycle {
     pub fn get_dist_v2_m(&self) -> PyResult<Vec<f64>> {
         Ok(self.dist_v2_m().to_vec())
     }
+    #[getter]
+    pub fn get_delta_elev_m(&self) -> PyResult<Vec<f64>>{
+        Ok(self.delta_elev_m().to_vec())
+    }
 }
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
@@ -331,6 +339,26 @@ impl RustCycle {
         let road_type = Array::zeros(10).to_vec();
         let name = String::from("test");
         RustCycle::new(time_s, speed_mps, grade, road_type, name)
+    }
+
+    /// Returns the average grade over the given range of distances
+    /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
+    /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
+    /// RETURN: number, the average grade (rise over run) over the given distance range
+    pub fn average_grade_over_range_rust(&self, distance_start_m:f64, delta_distance_m:f64) -> f64 {
+        if ndarrallzeros(&self.grade) {
+            // short-circuit for no-grade case
+            return 0.0;
+        }
+        let distances_m = ndarrcumsum(&self.dist_m());
+        if delta_distance_m <= 1e-6 {
+            // (x: &f64, x_data: &Array1<f64>, y_data: &Array1<f64>, extrapolate: bool)
+            return interpolate(&distance_start_m, &distances_m, &self.grade, false);
+        }
+        let elevations_m = self.delta_elev_m();
+        let e0 = interpolate(&distance_start_m, &distances_m, &elevations_m, false);
+        let e1 = interpolate(&(distance_start_m + delta_distance_m), &distances_m, &elevations_m, false);
+        ((e1 - e0) / delta_distance_m).asin().tan()
     }
 
     /// Calculate the distance to next stop from `distance_m`
@@ -463,11 +491,10 @@ impl RustCycle {
         }
     }
 
-    // pub fn delta_elev_m(self):
-    //     """
-    //      elevation change w.r.t. to initial
-    //     """
-    //     return (self.dist_m * self.cycGrade).cumsum() // TODO: find a good way to implement cumsum
+    /// elevation change w.r.t. to initial
+    pub fn delta_elev_m(&self) -> Array1<f64> {
+        ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+    }
 }
 
 #[cfg(test)]
