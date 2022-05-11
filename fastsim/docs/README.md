@@ -106,8 +106,9 @@ in = component input
 out = component output  
 
 # Release Notes
-2.0.0 -- All second-by-second calculations are now implemented in both rust and python.  Rust provides a ~30x speedup
-1.3.1 -- `fastsim.simdrive.copy_sim_drive` function can deepcopy jit to non-jit (and back) for pickling
+2.0.1 -- bug fix  
+2.0.0 -- All second-by-second calculations are now implemented in both rust and python.  Rust provides a ~30x speedup  
+1.3.1 -- `fastsim.simdrive.copy_sim_drive` function can deepcopy jit to non-jit (and back) for pickling  
 1.2.6 -- time dilation bug fix for zero speed  
 1.2.4 -- bug fix changing `==` to `=`  
 1.2.3 -- `veh_file` can be passed as standalone argument.  `fcEffType` can be anything if `fcEffMap` is provided, but typing is otherwise enforced.  
