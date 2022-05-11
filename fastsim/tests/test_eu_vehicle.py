@@ -9,8 +9,8 @@ from fastsim.simdrivelabel import get_label_fe
 import matplotlib.pyplot as plt
 
 def TestMain():
-    veh_2020_golf = fsim.vehicle.Vehicle(veh_file='./resources/vehdb/2020_EU_VW_Golf_1.5TSI.csv')
-    # veh_2020_golf = fsim.vehicle.Vehicle.from_file('./resources/vehdb/2020_EU_VW_Golf_2.0TDI.csv')
+    #veh_2020_golf = fsim.vehicle.Vehicle(veh_file='./resources/vehdb/2020_EU_VW_Golf_1.5TSI.csv')
+    veh_2020_golf = fsim.vehicle.Vehicle(veh_file='./resources/vehdb/2020_EU_VW_Golf_2.0TDI.csv')
     LBF_PER_NEWTON = 0.2248
     KM_PER_MILES = 1.609
     a = 76.2 * LBF_PER_NEWTON # ad-hoc 0.2248 lbf per newton
