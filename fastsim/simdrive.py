@@ -221,13 +221,9 @@ class SimDrive(object):
         self.cur_max_trans_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
 
         # Drive Train
-        self.cyc_drag_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_accel_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_ascent_kw = np.zeros(self.cyc.len, dtype=np.float64)
         self.cyc_trac_kw_req = np.zeros(self.cyc.len, dtype=np.float64)
         self.cur_max_trac_kw = np.zeros(self.cyc.len, dtype=np.float64)
         self.spare_trac_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_rr_kw = np.zeros(self.cyc.len, dtype=np.float64)
         self.cyc_whl_rad_per_sec = np.zeros(
             self.cyc.len, dtype=np.float64)  # oddball
         self.cyc_tire_inertia_kw = np.zeros(self.cyc.len, dtype=np.float64)
@@ -753,20 +749,22 @@ class SimDrive(object):
 
         # TODO: use of self.cyc.mph[i] in regenContrLimKwPerc[i] calculation seems wrong. Shouldn't it be mpsAch or self.cyc0.mph[i]?
 
-        dist_traveled_m = self.cyc.dist_v2_m[:i].sum() # self.cyc.dist_v2_m.cumsum()[i-1]
-        grade = self.cyc0.average_grade_over_range(dist_traveled_m, mpsAch * self.cyc.dt_s[i])
-        self.cyc_drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
+        # self.cyc.dist_v2_m.cumsum()[i-1]
+        dist_traveled_m = self.cyc.dist_v2_m[:i].sum()
+        grade = self.cyc0.average_grade_over_range(
+            dist_traveled_m, mpsAch * self.cyc.dt_s[i])
+        self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
             (self.mps_ach[i-1] + mpsAch) / 2.0) ** 3 / 1_000
-        self.cyc_accel_kw[i] = self.veh.veh_kg / \
+        self.accel_kw[i] = self.veh.veh_kg / \
             (2.0 * self.cyc.dt_s[i]) * \
             (mpsAch ** 2 - self.mps_ach[i-1] ** 2) / 1_000
-        self.cyc_ascent_kw[i] = self.props.a_grav_mps2 * np.sin(np.arctan(
+        self.ascent_kw[i] = self.props.a_grav_mps2 * np.sin(np.arctan(
             grade)) * self.veh.veh_kg * ((self.mps_ach[i-1] + mpsAch) / 2.0) / 1_000
-        self.cyc_trac_kw_req[i] = self.cyc_drag_kw[i] + \
-            self.cyc_accel_kw[i] + self.cyc_ascent_kw[i]
+        self.cyc_trac_kw_req[i] = self.drag_kw[i] + \
+            self.accel_kw[i] + self.ascent_kw[i]
         self.spare_trac_kw[i] = self.cur_max_trac_kw[i] - \
             self.cyc_trac_kw_req[i]
-        self.cyc_rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef * np.cos(
+        self.rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef * np.cos(
             np.arctan(grade)) * (self.mps_ach[i-1] + mpsAch) / 2.0 / 1_000
         self.cyc_whl_rad_per_sec[i] = mpsAch / self.veh.wheel_radius_m
         self.cyc_tire_inertia_kw[i] = (
@@ -777,7 +775,7 @@ class SimDrive(object):
         ) / 1_000
 
         self.cyc_whl_kw_req[i] = self.cyc_trac_kw_req[i] + \
-            self.cyc_rr_kw[i] + self.cyc_tire_inertia_kw[i]
+            self.rr_kw[i] + self.cyc_tire_inertia_kw[i]
         # TODO: check below, should we be using self.cyc.mph[i] OR should it be mpsAch converted to mph?
         self.regen_contrl_lim_kw_perc[i] = self.veh.max_regen / (1 + self.veh.regen_a * np.exp(-self.veh.regen_b * (
             (self.cyc.mph[i] + self.mps_ach[i-1] * params.MPH_PER_MPS) / 2.0 + 1.0)))
@@ -875,7 +873,8 @@ class SimDrive(object):
                 return max(xs[_ys.index(min(_ys))], 0.0)
 
             dist_traveled_m = self.cyc.dist_m[:i].sum()
-            grade_estimate = self.cyc0.average_grade_over_range(dist_traveled_m, 0.0)
+            grade_estimate = self.cyc0.average_grade_over_range(
+                dist_traveled_m, 0.0)
             grade_tol = 1e-6
             grade_diff = grade_tol + 1.0
             max_grade_iter = 3
@@ -896,17 +895,18 @@ class SimDrive(object):
                 drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * \
                     self.veh.frontal_area_m2 * self.mps_ach[i-1] ** 2
                 roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef \
-                    * np.cos(np.arctan(grade)) 
+                    * np.cos(np.arctan(grade))
                 ascent1 = 0.5 * self.props.a_grav_mps2 * \
-                    np.sin(np.arctan(grade)) * self.veh.veh_kg 
-                accel0 = -0.5 * self.veh.veh_kg * self.mps_ach[i-1] ** 2 / self.cyc.dt_s[i]
+                    np.sin(np.arctan(grade)) * self.veh.veh_kg
+                accel0 = -0.5 * self.veh.veh_kg * \
+                    self.mps_ach[i-1] ** 2 / self.cyc.dt_s[i]
                 drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * \
                     self.veh.frontal_area_m2 * self.mps_ach[i-1] ** 3
                 roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * \
                     self.veh.wheel_rr_coef * np.cos(np.arctan(grade)) \
                     * self.mps_ach[i-1]
                 ascent0 = 0.5 * self.props.a_grav_mps2 * np.sin(np.arctan(grade)) \
-                    * self.veh.veh_kg * self.mps_ach[i-1] 
+                    * self.veh.veh_kg * self.mps_ach[i-1]
                 wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * \
                     self.mps_ach[i-1] ** 2 / \
                     (self.cyc.dt_s[i] * self.veh.wheel_radius_m ** 2)
@@ -919,7 +919,8 @@ class SimDrive(object):
 
                 total = np.array([total3, total2, total1, total0])
                 self.mps_ach[i] = newton_mps_estimate(total)
-                grade_estimate = self.cyc0.average_grade_over_range(dist_traveled_m, self.cyc.dt_s[i] * self.mps_ach[i])
+                grade_estimate = self.cyc0.average_grade_over_range(
+                    dist_traveled_m, self.cyc.dt_s[i] * self.mps_ach[i])
                 grade_diff = np.abs(grade - grade_estimate)
             self.set_power_calcs(i)
 
@@ -1132,7 +1133,7 @@ class SimDrive(object):
             self.fc_forced_state[i] = 3
             self.mc_mech_kw_4forced_fc[i] = 0
 
-        elif self.veh.idle_fc_kw > self.trans_kw_in_ach[i] and self.cyc_accel_kw[i] >= 0:
+        elif self.veh.idle_fc_kw > self.trans_kw_in_ach[i] and self.accel_kw[i] >= 0:
             self.fc_forced_state[i] = 4
             self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - \
                 self.veh.idle_fc_kw
@@ -1601,7 +1602,8 @@ class SimDrive(object):
         MAX_ITER = 2000
         ITERS_PER_STEP = 2
         while v > v_brake and v >= 0.0 and d <= d_max and i < MAX_ITER:
-            gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(d0, d)
+            gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
+                d0, d)
             k = self._calc_dvdd(v, gr)
             v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
             vavg = 0.5 * (v + v_next)
@@ -1857,11 +1859,11 @@ class SimDrive(object):
                 (self.fuel_kj + self.roadway_chg_kj)
 
         # energy audit calcs
-        self.drag_kw = self.cyc_drag_kw
+        self.drag_kw = self.drag_kw
         self.drag_kj = (self.drag_kw * self.cyc.dt_s).sum()
-        self.ascent_kw = self.cyc_ascent_kw
+        self.ascent_kw = self.ascent_kw
         self.ascent_kj = (self.ascent_kw * self.cyc.dt_s).sum()
-        self.rr_kw = self.cyc_rr_kw
+        self.rr_kw = self.rr_kw
         self.rr_kj = (self.rr_kw * self.cyc.dt_s).sum()
 
         self.ess_loss_kw[1:] = np.array(

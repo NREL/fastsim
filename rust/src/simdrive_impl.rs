@@ -36,13 +36,9 @@ impl RustSimDrive {
         self.cur_max_trans_kw_out = Array::zeros(cyc_len);
 
         // Drive Train
-        self.cyc_drag_kw = Array::zeros(cyc_len);
-        self.cyc_accel_kw = Array::zeros(cyc_len);
-        self.cyc_ascent_kw = Array::zeros(cyc_len);
         self.cyc_trac_kw_req = Array::zeros(cyc_len);
         self.cur_max_trac_kw = Array::zeros(cyc_len);
         self.spare_trac_kw = Array::zeros(cyc_len);
-        self.cyc_rr_kw = Array::zeros(cyc_len);
         self.cyc_whl_rad_per_sec = Array::zeros(cyc_len);
         self.cyc_tire_inertia_kw = Array::zeros(cyc_len);
         self.cyc_whl_kw_req = Array::zeros(cyc_len);
@@ -573,14 +569,14 @@ impl RustSimDrive {
             let grade = self.cyc0.average_grade_over_range_rust(
                 distance_traveled_m, mps_ach * self.cyc.dt_s()[i]);
 
-            self.cyc_drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
+            self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
                 (self.mps_ach[i-1] + mps_ach) / 2.0).powf(3.0) / 1e3;
-            self.cyc_accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s()[i]) * (mps_ach.powf(2.0) - self.mps_ach[i-1].powf(2.0)) / 1e3;
-            self.cyc_ascent_kw[i] = self.props.a_grav_mps2 * grade.atan().sin() *
+            self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s()[i]) * (mps_ach.powf(2.0) - self.mps_ach[i-1].powf(2.0)) / 1e3;
+            self.ascent_kw[i] = self.props.a_grav_mps2 * grade.atan().sin() *
                 self.veh.veh_kg * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1e3;
-            self.cyc_trac_kw_req[i] = self.cyc_drag_kw[i] + self.cyc_accel_kw[i] + self.cyc_ascent_kw[i];
+            self.cyc_trac_kw_req[i] = self.drag_kw[i] + self.accel_kw[i] + self.ascent_kw[i];
             self.spare_trac_kw[i] = self.cur_max_trac_kw[i] - self.cyc_trac_kw_req[i];
-            self.cyc_rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef *
+            self.rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef *
                 grade.atan().cos() * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1e3;
             self.cyc_whl_rad_per_sec[i] = mps_ach / self.veh.wheel_radius_m;
             self.cyc_tire_inertia_kw[i] = (
@@ -588,7 +584,7 @@ impl RustSimDrive {
                 0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * (self.mps_ach[i-1] / self.veh.wheel_radius_m).powf(2.0) /
                 self.cyc.dt_s()[i]) / 1e3;
 
-            self.cyc_whl_kw_req[i] = self.cyc_trac_kw_req[i] + self.cyc_rr_kw[i] + self.cyc_tire_inertia_kw[i];
+            self.cyc_whl_kw_req[i] = self.cyc_trac_kw_req[i] + self.rr_kw[i] + self.cyc_tire_inertia_kw[i];
             self.regen_contrl_lim_kw_perc[i] = self.veh.max_regen / (1.0 + self.veh.regen_a * (-self.veh.regen_b * (
                 (self.cyc.mph()[i] + self.mps_ach[i-1] * params::MPH_PER_MPS) / 2.0 + 1.0)).exp());
             self.cyc_regen_brake_kw[i] = max(min(
@@ -968,7 +964,7 @@ impl RustSimDrive {
             } else if self.veh.max_fc_eff_kw() == self.trans_kw_in_ach[i] {
                 self.fc_forced_state[i] = 3;
                 self.mc_mech_kw_4forced_fc[i] = 0.0;
-            } else if self.veh.idle_fc_kw > self.trans_kw_in_ach[i] && self.cyc_accel_kw[i] >= 0.0 {
+            } else if self.veh.idle_fc_kw > self.trans_kw_in_ach[i] && self.accel_kw[i] >= 0.0 {
                 self.fc_forced_state[i] = 4;
                 self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.idle_fc_kw;
             } else if self.veh.max_fc_eff_kw() > self.trans_kw_in_ach[i] {
@@ -1757,11 +1753,8 @@ impl RustSimDrive {
             // provides no value
 
             // energy audit calcs
-            self.drag_kw = self.cyc_drag_kw.clone();
             self.drag_kj = (self.drag_kw.clone() * self.cyc.dt_s()).sum();
-            self.ascent_kw = self.cyc_ascent_kw.clone();
             self.ascent_kj = (self.ascent_kw.clone() * self.cyc.dt_s()).sum();
-            self.rr_kw = self.cyc_rr_kw.clone();
             self.rr_kj = (self.rr_kw.clone() * self.cyc.dt_s()).sum();
 
             for i in 1..self.cyc.time_s.len() {
@@ -1804,10 +1797,6 @@ impl RustSimDrive {
                 println!("Energy Audit Error: {:.5}", self.energy_audit_error);
             }
             for i in 1..self.cyc.dt_s().len() {
-                // self.cyc_accel_kw[i] =
-                //    self.veh.veh_kg
-                //    / (2.0 * self.cyc.dt_s[i])
-                //    * (mpsAch ** 2 - self.mps_ach[i-1] ** 2) / 1_000
                 self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s()[i]) * (
                     self.mps_ach[i].powf(2.0) - self.mps_ach[i-1].powf(2.0)) / 1_000.0;
             }

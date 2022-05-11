@@ -14,6 +14,7 @@ if RUST_AVAILABLE:
 else:
     warn_rust_unavailable(__file__)
 
+
 class TestRust(unittest.TestCase):
     def test_run_sim_drive_conv(self):
         if not RUST_AVAILABLE:
@@ -35,7 +36,7 @@ class TestRust(unittest.TestCase):
         sd.sim_drive_walk(0.5)
         self.assertTrue(sd.i > 1)
         self.assertEqual(sd.i, len(cyc.time_s))
-    
+
     def test_step_by_step(self):
         if not RUST_AVAILABLE:
             return
@@ -52,7 +53,6 @@ class TestRust(unittest.TestCase):
             "cur_max_fs_kw_out",
             "cur_max_trans_kw_out",
             "newton_iters",
-            "cyc_drag_kw",
             "min_mc_kw_2help_fc",
             "mps_ach",
             "dist_mi",
@@ -104,21 +104,28 @@ class TestRust(unittest.TestCase):
             ru_sd = fsr.RustSimDrive(ru_cyc, ru_veh)
             places = 6
             tol = 10 ** (-1 * places)
-            self.assertEqual(py_sd.props.air_density_kg_per_m3, ru_sd.props.air_density_kg_per_m3)
-            self.assertEqual(py_sd.sim_params.newton_max_iter, ru_sd.sim_params.newton_max_iter)
-            self.assertEqual(py_sd.sim_params.newton_gain, ru_sd.sim_params.newton_gain)
-            self.assertEqual(py_sd.sim_params.newton_xtol, ru_sd.sim_params.newton_xtol)
-            self.assertAlmostEqual(py_sd.veh.drag_coef, ru_sd.veh.drag_coef, places=places)
-            self.assertAlmostEqual(py_sd.veh.frontal_area_m2, ru_sd.veh.frontal_area_m2, places=places)
-            self.assertAlmostEqual(py_sd.veh.mc_max_elec_in_kw, ru_sd.veh.mc_max_elec_in_kw, places=places)
-            self.assertAlmostEqual(py_sd.veh.ess_max_kwh, ru_sd.veh.ess_max_kwh, places=places)
-            self.assertAlmostEqual(py_sd.veh.ess_round_trip_eff, ru_sd.veh.ess_round_trip_eff, places=places)
+            self.assertEqual(py_sd.props.air_density_kg_per_m3,
+                             ru_sd.props.air_density_kg_per_m3)
+            self.assertEqual(py_sd.sim_params.newton_max_iter,
+                             ru_sd.sim_params.newton_max_iter)
+            self.assertEqual(py_sd.sim_params.newton_gain,
+                             ru_sd.sim_params.newton_gain)
+            self.assertEqual(py_sd.sim_params.newton_xtol,
+                             ru_sd.sim_params.newton_xtol)
+            self.assertAlmostEqual(py_sd.veh.drag_coef,
+                                   ru_sd.veh.drag_coef, places=places)
+            self.assertAlmostEqual(
+                py_sd.veh.frontal_area_m2, ru_sd.veh.frontal_area_m2, places=places)
+            self.assertAlmostEqual(
+                py_sd.veh.mc_max_elec_in_kw, ru_sd.veh.mc_max_elec_in_kw, places=places)
+            self.assertAlmostEqual(py_sd.veh.ess_max_kwh,
+                                   ru_sd.veh.ess_max_kwh, places=places)
+            self.assertAlmostEqual(
+                py_sd.veh.ess_round_trip_eff, ru_sd.veh.ess_round_trip_eff, places=places)
             py_sd.sim_drive_walk(0.0)
             ru_sd.sim_drive_walk(0.0)
             py = {}
             ru = {}
-            py_cyc_drag_kw = np.array(py_sd.cyc_drag_kw)
-            ru_cyc_drag_kw = np.array(ru_sd.cyc_drag_kw)
             ru_cyc_mps = np.array(ru_sd.cyc.mps)
             ru_cyc_dt_s = np.array(ru_sd.cyc.dt_s)
             self.assertTrue((np.abs(py_sd.cyc.mps - ru_cyc_mps) < tol).all())
@@ -135,28 +142,27 @@ class TestRust(unittest.TestCase):
                 ru[v] = ru_sd.__getattribute__(v)
             for i in range(1, N):
                 for v in vars:
-                    if v == "cyc_drag_kw":
-                        self.assertEqual(py[v][i], py_cyc_drag_kw[i])
-                        self.assertEqual(ru[v][i], ru_cyc_drag_kw[i])
                     if type(py[v][i]) is bool or type(py[v][i]) is np.bool_:
                         if py[v][i] != ru[v][i]:
                             has_errors = True
                             if not printed_vehicle:
                                 printed_vehicle = True
                                 print(f'DISCREPANCY FOR VEHICLE {vehid}')
-                            print(f"BOOL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
+                            print(
+                                f"BOOL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
                     else:
                         if abs(py[v][i] - ru[v][i]) > 1e-6:
                             has_errors = True
                             if not printed_vehicle:
                                 printed_vehicle = True
                                 print(f'DISCREPANCY FOR VEHICLE {vehid}')
-                            print(f"REAL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
+                            print(
+                                f"REAL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
                 if has_errors:
                     has_any_errors = True
                     break
         self.assertFalse(has_any_errors)
-    
+
     def test_fueling_prediction_for_multiple_vehicle(self):
         """
         This test assures that Rust and Python agree on at least one 
@@ -179,8 +185,10 @@ class TestRust(unittest.TestCase):
             sd.set_post_scalars()
             rust_fuel_kj = sd.fuel_kj
             rust_ess_dischg_kj = sd.ess_dischg_kj
-            self.assertAlmostEqual(py_fuel_kj, rust_fuel_kj, msg=f'Non-agreement for vehicle {vehid} for fuel')
-            self.assertAlmostEqual(py_ess_dischg_kj, rust_ess_dischg_kj, msg=f'Non-agreement for vehicle {vehid} for ess discharge')
+            self.assertAlmostEqual(
+                py_fuel_kj, rust_fuel_kj, msg=f'Non-agreement for vehicle {vehid} for fuel')
+            self.assertAlmostEqual(py_ess_dischg_kj, rust_ess_dischg_kj,
+                                   msg=f'Non-agreement for vehicle {vehid} for ess discharge')
 
     def test_achieved_speed_never_negative(self):
         if not RUST_AVAILABLE:
