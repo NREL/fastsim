@@ -4,7 +4,7 @@ For example usage, see """
 from pathlib import Path 
 
 from . import parameters as params
-from fastsim import utilities as utils
+from . import utilities as utils
 from . import simdrive, vehicle, cycle, calibration, tests
 from . import calibration as cal
 
