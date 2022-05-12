@@ -10,11 +10,10 @@ import matplotlib.pyplot as plt
 import re
 from typing import Tuple
 
-from fastsim import parameters
 
 sns.set()
 
-props = parameters.PhysicalProperties()
+props = params.PhysicalProperties()
 R_air = 287  # J/(kg*K)
 
 
@@ -60,7 +59,7 @@ def abc_to_drag_coeffs(veh,
 
     cyc = fsim.cycle.Cycle.from_dict({
         'time_s': np.arange(0, cd_len),
-        'mps': np.linspace(70.0 / parameters.MPH_PER_MPS, 0, cd_len)
+        'mps': np.linspace(70.0 / params.MPH_PER_MPS, 0, cd_len)
     })
 
     if use_rust:
@@ -152,7 +151,7 @@ def abc_to_drag_coeffs(veh,
 # and implement units in the inputs
 
 
-def drag_coeffs_to_abc(veh_kg: float, veh_fa_m2: float, drag_coef: float, wheel_rr_coef: float, show_plots: bool = False) -> Tuple[float, float, float]:
+def drag_coeffs_to_abc(veh,show_plots: bool = False) -> Tuple[float, float, float]:
     """For a given vehicle mass, frontal area, dragCoef, and wheelRrCoef,
     calculate and return ABCs.
 
@@ -167,9 +166,13 @@ def drag_coeffs_to_abc(veh_kg: float, veh_fa_m2: float, drag_coef: float, wheel_
 
     It may be worthwhile to have this use get_rho_air() in the future.
     """
-
+    import fastsim as fsim
     speed_mph = np.linspace(0, 70, 500)
-
+    veh_kg = veh.veh_kg
+    veh_fa_m2 = veh.frontal_area_m2
+    drag_coef = veh.drag_coef 
+    wheel_rr_coef = veh.wheel_rr_coef
+    
     def model_func_lb(speed_mps, drag_coef, wheel_rr_coef):
         """fastsim-style solution for drag force on vehicle.
         Arguments:
@@ -190,7 +193,7 @@ def drag_coeffs_to_abc(veh_kg: float, veh_fa_m2: float, drag_coef: float, wheel_
     # polynomial function for pounds vs speed
     def dyno_func_lb(speed_mph, a, b, c): return np.poly1d(
         [c, b, a])(speed_mph)
-
+    # c, b, a = np.polyfit(x=speed_mph,y=model_lb,deg=2)
     (a, b, c), pcov = curve_fit(dyno_func_lb,
                                 xdata=speed_mph,
                                 ydata=model_lb,
@@ -204,6 +207,7 @@ def drag_coeffs_to_abc(veh_kg: float, veh_fa_m2: float, drag_coef: float, wheel_
         plt.legend()
         plt.xlabel('Speed [mph]')
         plt.ylabel('Road Load [lb]')
+        plt.show()
 
     return a, b, c
 
