@@ -211,12 +211,12 @@ class Vehicle(object):
     mc_peak_eff_override: InitVar[float] = -1.0
 
     @classmethod
-    def from_vehdb(cls, vnum:int, verbose:bool=False):
+    def from_vehdb(cls, vnum:int, veh_file:str=None, verbose:bool=False):
         """
-        Load vehicle `vnum` from default vehdb.
+        Load vehicle `vnum` from default vehdb or `veh_file`.
         """
         vehdf = DEFAULT_VEHDF
-        veh_file = DEFAULT_VEH_DB
+        veh_file = DEFAULT_VEH_DB if veh_file is None else veh_file
         vehdf.set_index('selection', inplace=True, drop=False)
 
         return cls.from_df(vehdf, vnum, verbose)
