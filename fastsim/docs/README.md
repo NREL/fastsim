@@ -106,7 +106,8 @@ in = component input
 out = component output  
 
 # Release Notes
-2.0.2 -- provisioned for non-default vehdb path
+2.0.3 -- exposed `veh.__post_init__`  
+2.0.2 -- provisioned for non-default vehdb path  
 2.0.1 -- bug fix  
 2.0.0 -- All second-by-second calculations are now implemented in both rust and python.  Rust provides a ~30x speedup  
 1.3.1 -- `fastsim.simdrive.copy_sim_drive` function can deepcopy jit to non-jit (and back) for pickling  

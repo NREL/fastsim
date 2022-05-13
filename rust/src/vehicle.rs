@@ -1015,6 +1015,10 @@ impl RustVehicle {
         veh
     }
 
+    pub fn __post_init__(&mut self) {
+        self.post_init();
+    }
+
     #[getter]
     pub fn get_fc_peak_eff(&self) -> PyResult<f64> {
         Ok(self.fc_peak_eff())
