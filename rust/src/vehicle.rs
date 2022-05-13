@@ -428,66 +428,6 @@ impl RustVehicle {
         self.set_veh_mass();
     }
 
-    /// Calculate total vehicle mass. Sum up component masses if
-    /// positive real number is not specified for self.veh_override_kg
-    #[allow(clippy::neg_cmp_op_on_partial_ord)]
-    pub fn set_veh_mass(&mut self) {
-        let mut ess_mass_kg = 0.0;
-        let mut mc_mass_kg = 0.0;
-        let mut fc_mass_kg = 0.0;
-        let mut fs_mass_kg = 0.0;
-
-        if !(self.veh_override_kg > 0.0) {
-            ess_mass_kg = if self.ess_max_kwh == 0.0 || self.ess_max_kw == 0.0 {
-                0.0
-            } else {
-                ((self.ess_max_kwh * self.ess_kg_per_kwh) + self.ess_base_kg)
-                    * self.comp_mass_multiplier
-            };
-            mc_mass_kg = if self.mc_max_kw == 0.0 {
-                0.0
-            } else {
-                (self.mc_pe_base_kg + (self.mc_pe_kg_per_kw * self.mc_max_kw))
-                    * self.comp_mass_multiplier
-            };
-            fc_mass_kg = if self.fc_max_kw == 0.0 {
-                0.0
-            } else {
-                (1.0 / self.fc_kw_per_kg * self.fc_max_kw + self.fc_base_kg)
-                    * self.comp_mass_multiplier
-            };
-            fs_mass_kg = if self.fs_max_kw == 0.0 {
-                0.0
-            } else {
-                ((1.0 / self.fs_kwh_per_kg) * self.fs_kwh) * self.comp_mass_multiplier
-            };
-            self.veh_kg = self.cargo_kg
-                + self.glider_kg
-                + self.trans_kg * self.comp_mass_multiplier
-                + ess_mass_kg
-                + mc_mass_kg
-                + fc_mass_kg
-                + fs_mass_kg;
-        } else {
-            // if positive real number is specified for veh_override_kg, use that
-            self.veh_kg = self.veh_override_kg;
-        }
-
-        self.max_trac_mps2 = (self.wheel_coef_of_fric
-            * self.drive_axle_weight_frac
-            * self.veh_kg
-            * self.props.a_grav_mps2
-            / (1.0 + self.veh_cg_m * self.wheel_coef_of_fric / self.wheel_base_m))
-            / (self.veh_kg * self.props.a_grav_mps2)
-            * self.props.a_grav_mps2;
-
-        // copying to instance attributes
-        self.ess_mass_kg = ess_mass_kg;
-        self.mc_mass_kg = mc_mass_kg;
-        self.fc_mass_kg = fc_mass_kg;
-        self.fs_mass_kg = fs_mass_kg;
-    }
-
     pub fn test_veh() -> Self {
         let scenario_name = String::from("2016 FORD Escape 4cyl 2WD");
         let selection: u32 = 5;
@@ -764,6 +704,66 @@ impl RustVehicle {
 #[pymethods]
 #[allow(clippy::too_many_arguments)]
 impl RustVehicle {
+    /// Calculate total vehicle mass. Sum up component masses if
+    /// positive real number is not specified for self.veh_override_kg
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
+    pub fn set_veh_mass(&mut self) {
+        let mut ess_mass_kg = 0.0;
+        let mut mc_mass_kg = 0.0;
+        let mut fc_mass_kg = 0.0;
+        let mut fs_mass_kg = 0.0;
+
+        if !(self.veh_override_kg > 0.0) {
+            ess_mass_kg = if self.ess_max_kwh == 0.0 || self.ess_max_kw == 0.0 {
+                0.0
+            } else {
+                ((self.ess_max_kwh * self.ess_kg_per_kwh) + self.ess_base_kg)
+                    * self.comp_mass_multiplier
+            };
+            mc_mass_kg = if self.mc_max_kw == 0.0 {
+                0.0
+            } else {
+                (self.mc_pe_base_kg + (self.mc_pe_kg_per_kw * self.mc_max_kw))
+                    * self.comp_mass_multiplier
+            };
+            fc_mass_kg = if self.fc_max_kw == 0.0 {
+                0.0
+            } else {
+                (1.0 / self.fc_kw_per_kg * self.fc_max_kw + self.fc_base_kg)
+                    * self.comp_mass_multiplier
+            };
+            fs_mass_kg = if self.fs_max_kw == 0.0 {
+                0.0
+            } else {
+                ((1.0 / self.fs_kwh_per_kg) * self.fs_kwh) * self.comp_mass_multiplier
+            };
+            self.veh_kg = self.cargo_kg
+                + self.glider_kg
+                + self.trans_kg * self.comp_mass_multiplier
+                + ess_mass_kg
+                + mc_mass_kg
+                + fc_mass_kg
+                + fs_mass_kg;
+        } else {
+            // if positive real number is specified for veh_override_kg, use that
+            self.veh_kg = self.veh_override_kg;
+        }
+
+        self.max_trac_mps2 = (self.wheel_coef_of_fric
+            * self.drive_axle_weight_frac
+            * self.veh_kg
+            * self.props.a_grav_mps2
+            / (1.0 + self.veh_cg_m * self.wheel_coef_of_fric / self.wheel_base_m))
+            / (self.veh_kg * self.props.a_grav_mps2)
+            * self.props.a_grav_mps2;
+
+        // copying to instance attributes
+        self.ess_mass_kg = ess_mass_kg;
+        self.mc_mass_kg = mc_mass_kg;
+        self.fc_mass_kg = fc_mass_kg;
+        self.fs_mass_kg = fs_mass_kg;
+    }
+
     #[new]
     pub fn __new__(
         scenario_name: String,
