@@ -106,6 +106,7 @@ in = component input
 out = component output  
 
 # Release Notes
+2.0.5 -- added `to_rust` method for cycle  
 2.0.4 -- exposed `veh.set_veh_mass`  
 2.0.3 -- exposed `veh.__post_init__`  
 2.0.2 -- provisioned for non-default vehdb path  

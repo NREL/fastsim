@@ -176,6 +176,10 @@ impl RustCycle {
         }
     }
 
+    pub fn to_rust(&self) -> PyResult<RustCycle> {
+        Ok(self.clone())
+    }
+
     /// Return a HashMap representing the cycle
     pub fn get_cyc_dict(&self) -> PyResult<HashMap<String, Vec<f64>>> {
         let dict: HashMap<String, Vec<f64>> = HashMap::from([
@@ -227,8 +231,12 @@ impl RustCycle {
     pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> PyResult<f64> {
         Ok(self.calc_distance_to_next_stop_from_rust(distance_m))
     }
-    
-    pub fn average_grade_over_range(&self, distance_start_m: f64, delta_distance_m: f64) -> PyResult<f64> {
+
+    pub fn average_grade_over_range(
+        &self,
+        distance_start_m: f64,
+        delta_distance_m: f64,
+    ) -> PyResult<f64> {
         Ok(self.average_grade_over_range_rust(distance_start_m, delta_distance_m))
     }
 
@@ -305,7 +313,7 @@ impl RustCycle {
         Ok(self.dist_v2_m().to_vec())
     }
     #[getter]
-    pub fn get_delta_elev_m(&self) -> PyResult<Vec<f64>>{
+    pub fn get_delta_elev_m(&self) -> PyResult<Vec<f64>> {
         Ok(self.delta_elev_m().to_vec())
     }
 }
@@ -345,7 +353,11 @@ impl RustCycle {
     /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
-    pub fn average_grade_over_range_rust(&self, distance_start_m:f64, delta_distance_m:f64) -> f64 {
+    pub fn average_grade_over_range_rust(
+        &self,
+        distance_start_m: f64,
+        delta_distance_m: f64,
+    ) -> f64 {
         if ndarrallzeros(&self.grade) {
             // short-circuit for no-grade case
             return 0.0;
@@ -357,7 +369,12 @@ impl RustCycle {
         }
         let elevations_m = self.delta_elev_m();
         let e0 = interpolate(&distance_start_m, &distances_m, &elevations_m, false);
-        let e1 = interpolate(&(distance_start_m + delta_distance_m), &distances_m, &elevations_m, false);
+        let e1 = interpolate(
+            &(distance_start_m + delta_distance_m),
+            &distances_m,
+            &elevations_m,
+            false,
+        );
         ((e1 - e0) / delta_distance_m).asin().tan()
     }
 
