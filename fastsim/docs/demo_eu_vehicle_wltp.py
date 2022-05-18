@@ -7,11 +7,9 @@ import fastsim as fsim
 from fastsim import simdrive
 from fastsim.simdrivelabel import get_label_fe
 import matplotlib.pyplot as plt
-#v = fsim.vehicle.Vehicle.from_file('./resources/vehdb/2016_EU_VW_Golf_1.4TSI.csv')
-#print(get_label_fe(v))
 
-veh_2020_golf = fsim.vehicle.Vehicle.from_file('./resources/vehdb/2020_EU_VW_Golf_1.5TSI.csv').to_rust()
-# veh_2020_golf = fsim.vehicle.Vehicle.from_file('./resources/vehdb/2020_EU_VW_Golf_2.0TDI.csv').to_rust()
+
+veh_2020_golf = fsim.vehicle.Vehicle.from_file('../resources/vehdb/2020_EU_VW_Golf_2.0TDI.csv').to_rust()
 LBF_PER_NEWTON = 0.2248
 KM_PER_MILES = 1.609
 a = 76.2 * LBF_PER_NEWTON # ad-hoc 0.2248 lbf per newton
@@ -55,8 +53,8 @@ mpg_list = list(map(simdrive_get_mpg,simdrive_lst))
 
 print(mpg_list)
 
-plt.plot(cyc_wltp_combo.time_s,np.array(cyc_wltp_combo.mph)*KM_PER_MILES)
-plt.xlabel("Time [s]")
-plt.ylabel('Velocity [kph]')
-plt.show()
-plt.savefig('WLTP.jpg')
+#plt.plot(cyc_wltp_combo.time_s,np.array(cyc_wltp_combo.mph)*KM_PER_MILES)
+#plt.xlabel("Time [s]")
+##plt.ylabel('Velocity [kph]')
+#plt.show()
+#plt.savefig('WLTP.jpg')
