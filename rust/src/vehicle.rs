@@ -16,7 +16,7 @@ pub const CONV: &str = "Conv";
 pub const HEV: &str = "HEV";
 pub const PHEV: &str = "PHEV";
 pub const BEV: &str = "BEV";
-pub const VEH_PT_TYPES: [&'static str; 4] = [CONV, HEV, PHEV, BEV];
+pub const VEH_PT_TYPES: [&str; 4] = [CONV, HEV, PHEV, BEV];
 
 pub const SI: &str = "SI";
 pub const ATKINSON: &str = "Atkinson";
@@ -24,7 +24,7 @@ pub const DIESEL: &str = "Diesel";
 pub const H2FC: &str = "H2FC";
 pub const HD_DIESEL: &str = "HD_Diesel";
 
-pub const FC_EFF_TYPES: [&'static str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
+pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -161,7 +161,7 @@ pub struct RustVehicle {
     // this and other fixed-size arrays can probably be vectors
     // without any performance penalty with the current implementation
     // of the functions in utils.rs
-    pub fc_perc_out_array: [f64; 100],
+    pub fc_perc_out_array: Vec<f64>,
     #[pyo3(get, set)]
     pub regen_a: f64,
     #[pyo3(get, set)]
@@ -174,16 +174,16 @@ pub struct RustVehicle {
     pub no_elec_aux: bool,
     pub max_roadway_chg_kw: Array1<f64>,
     pub input_kw_out_array: Array1<f64>,
-    pub fc_kw_out_array: [f64; 100],
-    pub fc_eff_array: [f64; 100],
+    pub fc_kw_out_array: Vec<f64>,
+    pub fc_eff_array: Vec<f64>,
     #[pyo3(get, set)]
     pub modern_max: f64,
     pub mc_eff_array: Array1<f64>,
-    pub mc_kw_in_array: [f64; 101],
-    pub mc_kw_out_array: [f64; 101],
+    pub mc_kw_in_array: Vec<f64>,
+    pub mc_kw_out_array: Vec<f64>,
     #[pyo3(get, set)]
     pub mc_max_elec_in_kw: f64,
-    pub mc_full_eff_array: [f64; 101],
+    pub mc_full_eff_array: Vec<f64>,
     #[pyo3(get, set)]
     pub veh_kg: f64,
     #[pyo3(get, set)]
@@ -196,7 +196,7 @@ pub struct RustVehicle {
     pub fc_mass_kg: f64,
     #[pyo3(get, set)]
     pub fs_mass_kg: f64,
-    pub mc_perc_out_array: [f64; 101],
+    pub mc_perc_out_array: Vec<f64>,
     // these probably don't need to be in rust
     pub val_udds_mpgge: f64,
     pub val_hwy_mpgge: f64,
@@ -234,7 +234,9 @@ impl RustVehicle {
         let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
         self.mc_full_eff_array = self
             .mc_full_eff_array
-            .map(|e: f64| -> f64 { e * (new_peak / mc_max_full_eff) });
+            .iter()
+            .map(|e: &f64| -> f64 { e * (new_peak / mc_max_full_eff) })
+            .collect();
     }
 
     pub fn max_fc_eff_kw(&self) -> f64 {
@@ -252,7 +254,9 @@ impl RustVehicle {
         let multiplier = new_peak / old_fc_peak_eff;
         self.fc_eff_array = self
             .fc_eff_array
-            .map(|eff: f64| -> f64 { eff * multiplier });
+            .iter()
+            .map(|eff: &f64| -> f64 { eff * multiplier })
+            .collect();
         let new_fc_peak_eff = self.fc_peak_eff();
         let eff_map_multiplier = new_peak / new_fc_peak_eff;
         self.fc_eff_map = self
@@ -266,7 +270,7 @@ impl RustVehicle {
     /// mc_peak_eff_override: float (0, 1), if provided, overrides motor peak efficiency
     ///     with proportional scaling.  Default of -1 has no effect.  
     pub fn post_init(&mut self) {
-        if self.scenario_name != String::from("Template Vehicle for setting up data types") {
+        if self.scenario_name != "Template Vehicle for setting up data types" {
             if self.veh_pt_type == BEV {
                 assert!(
                     self.fs_max_kw == 0.0,
@@ -322,16 +326,24 @@ impl RustVehicle {
         // # discrete array of possible engine power outputs
         self.input_kw_out_array = self.fc_pwr_out_perc.clone() * self.fc_max_kw;
         // # Relatively continuous array of possible engine power outputs
-        self.fc_kw_out_array = self.fc_perc_out_array.map(|n| n * self.fc_max_kw);
+        self.fc_kw_out_array = self
+            .fc_perc_out_array
+            .iter()
+            .map(|n| n * self.fc_max_kw)
+            .collect();
         // # Creates relatively continuous array for fc_eff
-        self.fc_eff_array = self.fc_perc_out_array.map(|x: f64| -> f64 {
-            interpolate(
-                &x,
-                &Array1::from(self.fc_pwr_out_perc.to_vec()),
-                &self.fc_eff_map,
-                false,
-            )
-        });
+        self.fc_eff_array = self
+            .fc_perc_out_array
+            .iter()
+            .map(|x: &f64| -> f64 {
+                interpolate(
+                    x,
+                    &Array1::from(self.fc_pwr_out_perc.to_vec()),
+                    &self.fc_eff_map,
+                    false,
+                )
+            })
+            .collect();
 
         self.modern_max = MODERN_MAX;
 
@@ -364,15 +376,10 @@ impl RustVehicle {
             self.mc_eff_array = self.mc_eff_map.clone();
         }
 
-        let mc_kw_out_array: [f64; 101] = (Array::linspace(0.0, 1.0, self.mc_perc_out_array.len())
-            * self.mc_max_kw)
-            .iter()
-            .map(|&x| x)
-            .collect::<Vec<f64>>()
-            .try_into()
-            .unwrap();
+        let mc_kw_out_array: Vec<f64> =
+            (Array::linspace(0.0, 1.0, self.mc_perc_out_array.len()) * self.mc_max_kw).to_vec();
 
-        let mc_full_eff_array: [f64; 101] = self
+        let mc_full_eff_array: Vec<f64> = self
             .mc_perc_out_array
             .iter()
             .enumerate()
@@ -385,11 +392,9 @@ impl RustVehicle {
                     interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
                 }
             })
-            .collect::<Vec<f64>>()
-            .try_into()
-            .unwrap();
+            .collect();
 
-        let mc_kw_in_array: [f64; 101] = [0.0; 101]
+        let mc_kw_in_array: Vec<f64> = [0.0; 101]
             .iter()
             .enumerate()
             .map(|(idx, _)| {
@@ -399,11 +404,9 @@ impl RustVehicle {
                     mc_kw_out_array[idx] / mc_full_eff_array[idx]
                 }
             })
-            .collect::<Vec<f64>>()
-            .try_into()
-            .unwrap();
+            .collect();
 
-        self.mc_kw_in_array = mc_kw_in_array;
+        self.mc_kw_in_array = mc_kw_in_array.clone();
         self.mc_kw_out_array = mc_kw_out_array;
         self.mc_max_elec_in_kw = arrmax(&mc_kw_in_array);
         self.mc_full_eff_array = mc_full_eff_array;
@@ -423,65 +426,6 @@ impl RustVehicle {
         assert!(self.mc_peak_eff() < 1.0, "mcPeakEff >= 1 is not allowed.");
 
         self.set_veh_mass();
-    }
-
-    /// Calculate total vehicle mass. Sum up component masses if
-    /// positive real number is not specified for self.veh_override_kg
-    pub fn set_veh_mass(&mut self) {
-        let mut ess_mass_kg = 0.0;
-        let mut mc_mass_kg = 0.0;
-        let mut fc_mass_kg = 0.0;
-        let mut fs_mass_kg = 0.0;
-
-        if !(self.veh_override_kg > 0.0) {
-            ess_mass_kg = if self.ess_max_kwh == 0.0 || self.ess_max_kw == 0.0 {
-                0.0
-            } else {
-                ((self.ess_max_kwh * self.ess_kg_per_kwh) + self.ess_base_kg)
-                    * self.comp_mass_multiplier
-            };
-            mc_mass_kg = if self.mc_max_kw == 0.0 {
-                0.0
-            } else {
-                (self.mc_pe_base_kg + (self.mc_pe_kg_per_kw * self.mc_max_kw))
-                    * self.comp_mass_multiplier
-            };
-            fc_mass_kg = if self.fc_max_kw == 0.0 {
-                0.0
-            } else {
-                (1.0 / self.fc_kw_per_kg * self.fc_max_kw + self.fc_base_kg)
-                    * self.comp_mass_multiplier
-            };
-            fs_mass_kg = if self.fs_max_kw == 0.0 {
-                0.0
-            } else {
-                ((1.0 / self.fs_kwh_per_kg) * self.fs_kwh) * self.comp_mass_multiplier
-            };
-            self.veh_kg = self.cargo_kg
-                + self.glider_kg
-                + self.trans_kg * self.comp_mass_multiplier
-                + ess_mass_kg
-                + mc_mass_kg
-                + fc_mass_kg
-                + fs_mass_kg;
-        } else {
-            // if positive real number is specified for veh_override_kg, use that
-            self.veh_kg = self.veh_override_kg;
-        }
-
-        self.max_trac_mps2 = (self.wheel_coef_of_fric
-            * self.drive_axle_weight_frac
-            * self.veh_kg
-            * self.props.a_grav_mps2
-            / (1.0 + self.veh_cg_m * self.wheel_coef_of_fric / self.wheel_base_m))
-            / (self.veh_kg * self.props.a_grav_mps2)
-            * self.props.a_grav_mps2;
-
-        // copying to instance attributes
-        self.ess_mass_kg = ess_mass_kg;
-        self.mc_mass_kg = mc_mass_kg;
-        self.fc_mass_kg = fc_mass_kg;
-        self.fs_mass_kg = fs_mass_kg;
     }
 
     pub fn test_veh() -> Self {
@@ -729,7 +673,7 @@ impl RustVehicle {
             small_baseline_eff,
             small_motor_power_kw,
             large_motor_power_kw,
-            fc_perc_out_array,
+            Some(fc_perc_out_array),
             charging_on,
             no_elec_sys,
             no_elec_aux,
@@ -742,7 +686,7 @@ impl RustVehicle {
             mc_kw_in_array,
             mc_kw_out_array,
             mc_max_elec_in_kw,
-            mc_full_eff_array,
+            Some(mc_full_eff_array),
             regen_a,
             regen_b,
             veh_kg,
@@ -751,14 +695,75 @@ impl RustVehicle {
             mc_mass_kg,
             fc_mass_kg,
             fs_mass_kg,
-            mc_perc_out_array,
+            Some(mc_perc_out_array),
         )
     }
 }
 
 /// RustVehicle class for containing:
 #[pymethods]
+#[allow(clippy::too_many_arguments)]
 impl RustVehicle {
+    /// Calculate total vehicle mass. Sum up component masses if
+    /// positive real number is not specified for self.veh_override_kg
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
+    pub fn set_veh_mass(&mut self) {
+        let mut ess_mass_kg = 0.0;
+        let mut mc_mass_kg = 0.0;
+        let mut fc_mass_kg = 0.0;
+        let mut fs_mass_kg = 0.0;
+
+        if !(self.veh_override_kg > 0.0) {
+            ess_mass_kg = if self.ess_max_kwh == 0.0 || self.ess_max_kw == 0.0 {
+                0.0
+            } else {
+                ((self.ess_max_kwh * self.ess_kg_per_kwh) + self.ess_base_kg)
+                    * self.comp_mass_multiplier
+            };
+            mc_mass_kg = if self.mc_max_kw == 0.0 {
+                0.0
+            } else {
+                (self.mc_pe_base_kg + (self.mc_pe_kg_per_kw * self.mc_max_kw))
+                    * self.comp_mass_multiplier
+            };
+            fc_mass_kg = if self.fc_max_kw == 0.0 {
+                0.0
+            } else {
+                (1.0 / self.fc_kw_per_kg * self.fc_max_kw + self.fc_base_kg)
+                    * self.comp_mass_multiplier
+            };
+            fs_mass_kg = if self.fs_max_kw == 0.0 {
+                0.0
+            } else {
+                ((1.0 / self.fs_kwh_per_kg) * self.fs_kwh) * self.comp_mass_multiplier
+            };
+            self.veh_kg = self.cargo_kg
+                + self.glider_kg
+                + self.trans_kg * self.comp_mass_multiplier
+                + ess_mass_kg
+                + mc_mass_kg
+                + fc_mass_kg
+                + fs_mass_kg;
+        } else {
+            // if positive real number is specified for veh_override_kg, use that
+            self.veh_kg = self.veh_override_kg;
+        }
+
+        self.max_trac_mps2 = (self.wheel_coef_of_fric
+            * self.drive_axle_weight_frac
+            * self.veh_kg
+            * self.props.a_grav_mps2
+            / (1.0 + self.veh_cg_m * self.wheel_coef_of_fric / self.wheel_base_m))
+            / (self.veh_kg * self.props.a_grav_mps2)
+            * self.props.a_grav_mps2;
+
+        // copying to instance attributes
+        self.ess_mass_kg = ess_mass_kg;
+        self.mc_mass_kg = mc_mass_kg;
+        self.fc_mass_kg = fc_mass_kg;
+        self.fs_mass_kg = fs_mass_kg;
+    }
+
     #[new]
     pub fn __new__(
         scenario_name: String,
@@ -846,7 +851,7 @@ impl RustVehicle {
         small_baseline_eff: Vec<f64>,
         small_motor_power_kw: f64,
         large_motor_power_kw: f64,
-        fc_perc_out_array: Vec<f64>,
+        fc_perc_out_array: Option<Vec<f64>>,
         charging_on: bool,
         no_elec_sys: bool,
         no_elec_aux: bool,
@@ -859,7 +864,7 @@ impl RustVehicle {
         mc_kw_in_array: Vec<f64>,
         mc_kw_out_array: Vec<f64>,
         mc_max_elec_in_kw: f64,
-        mc_full_eff_array: Vec<f64>,
+        mc_full_eff_array: Option<Vec<f64>>,
         regen_a: f64,
         regen_b: f64,
         veh_kg: f64,
@@ -868,7 +873,7 @@ impl RustVehicle {
         mc_mass_kg: f64,
         fc_mass_kg: f64,
         fs_mass_kg: f64,
-        mc_perc_out_array: Vec<f64>,
+        mc_perc_out_array: Option<Vec<f64>>,
     ) -> Self {
         let fc_pwr_out_perc = Array::from_vec(fc_pwr_out_perc);
         let fc_eff_map = Array::from_vec(fc_eff_map);
@@ -876,19 +881,15 @@ impl RustVehicle {
         let mc_eff_map = Array::from_vec(mc_eff_map);
         let large_baseline_eff = Array::from_vec(large_baseline_eff);
         let small_baseline_eff = Array::from_vec(small_baseline_eff);
-        let fc_perc_out_array: [f64; 100] = FC_PERC_OUT_ARRAY.clone();
+        let fc_perc_out_array: Vec<f64> =
+            fc_perc_out_array.unwrap_or_else(|| FC_PERC_OUT_ARRAY.clone().to_vec());
         let max_roadway_chg_kw = Array::from_vec(max_roadway_chg_kw);
         let input_kw_out_array = Array::from_vec(input_kw_out_array);
-        let fc_kw_out_array = fc_kw_out_array.try_into().unwrap();
-        let fc_eff_array: [f64; 100] = fc_eff_array.try_into().unwrap();
         let mc_eff_array = Array::from_vec(mc_eff_array);
-        // get mc_kw_in_array converted to array
-        let mc_kw_in_array: [f64; 101] = mc_kw_in_array.try_into().unwrap();
-        // get mc_kw_out_array converted to array
-        let mc_kw_out_array: [f64; 101] = mc_kw_out_array.try_into().unwrap();
         // get mc_full_eff_vec into array form
-        let mc_full_eff_array: [f64; 101] = [1.0; 101];
-        let mc_perc_out_array: [f64; 101] = MC_PERC_OUT_ARRAY.clone();
+        let mc_full_eff_array: Vec<f64> = mc_full_eff_array.unwrap_or_else(|| [1.0; 101].to_vec());
+        let mc_perc_out_array: Vec<f64> =
+            mc_perc_out_array.unwrap_or_else(|| MC_PERC_OUT_ARRAY.clone().to_vec());
 
         // DERIVED VALUES
         // TODO: correctly implement and re-enable these after Rust does all initialization of inputs
@@ -1012,6 +1013,10 @@ impl RustVehicle {
         };
         veh.post_init();
         veh
+    }
+
+    pub fn __post_init__(&mut self) {
+        self.post_init();
     }
 
     #[getter]
@@ -1226,7 +1231,7 @@ impl RustVehicle {
     }
     #[setter]
     pub fn set_fc_eff_array(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.fc_eff_array = new_value.try_into().unwrap();
+        self.fc_eff_array = new_value;
         Ok(())
     }
 
@@ -1256,7 +1261,7 @@ impl RustVehicle {
     }
     #[setter]
     pub fn set_fc_kw_out_array(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.fc_kw_out_array = new_value.try_into().unwrap();
+        self.fc_kw_out_array = new_value;
         Ok(())
     }
 
@@ -1276,7 +1281,7 @@ impl RustVehicle {
     }
     #[setter]
     pub fn set_fc_perc_out_array(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.fc_perc_out_array = new_value.try_into().unwrap();
+        self.fc_perc_out_array = new_value;
         Ok(())
     }
 
@@ -1576,7 +1581,7 @@ impl RustVehicle {
     }
     #[setter]
     pub fn set_mc_full_eff_array(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.mc_full_eff_array = new_value.try_into().unwrap();
+        self.mc_full_eff_array = new_value;
         Ok(())
     }
 
@@ -1586,7 +1591,7 @@ impl RustVehicle {
     }
     #[setter]
     pub fn set_mc_kw_in_array(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.mc_kw_in_array = new_value.try_into().unwrap();
+        self.mc_kw_in_array = new_value;
         Ok(())
     }
 
@@ -1596,7 +1601,7 @@ impl RustVehicle {
     }
     #[setter]
     pub fn set_mc_kw_out_array(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.mc_kw_out_array = new_value.try_into().unwrap();
+        self.mc_kw_out_array = new_value;
         Ok(())
     }
 
@@ -1646,7 +1651,7 @@ impl RustVehicle {
     }
     #[setter]
     pub fn set_mc_perc_out_array(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.mc_perc_out_array = new_value.try_into().unwrap();
+        self.mc_perc_out_array = new_value;
         Ok(())
     }
 
@@ -2269,7 +2274,7 @@ pub fn load_vehicle() -> RustVehicle {
         .collect::<Vec<_>>();
     let mc_perc_out_array = MC_PERC_OUT_ARRAY.to_vec();
     let mc_kw_out_array = (Array::linspace(0.0, 1.0, mc_perc_out_array.len()) * mc_max_kw).to_vec();
-    let mc_eff_array = large_baseline_eff
+    let mc_eff_array: Vec<f64> = large_baseline_eff
         .iter()
         .map(|&x| {
             interpolate(
@@ -2279,9 +2284,8 @@ pub fn load_vehicle() -> RustVehicle {
                 false,
             )
         })
-        .collect::<Vec<_>>();
+        .collect();
     let mc_kw_in_array = Array::ones(mc_kw_out_array.len()).to_vec();
-    let mc_full_eff_array = Array::ones(mc_eff_array.len()).to_vec();
     let veh_kg: f64 = 0.0;
     /*
     cargo_kg + glider_kg + trans_kg * comp_mass_multiplier
@@ -2379,7 +2383,7 @@ pub fn load_vehicle() -> RustVehicle {
         small_baseline_eff,
         small_motor_power_kw,
         large_motor_power_kw,
-        fc_perc_out_array,
+        None,
         charging_on,
         no_elec_sys,
         no_elec_aux,
@@ -2392,7 +2396,7 @@ pub fn load_vehicle() -> RustVehicle {
         mc_kw_in_array,
         mc_kw_out_array,
         mc_max_elec_in_kw,
-        mc_full_eff_array,
+        None,
         regen_a,
         regen_b,
         veh_kg,
@@ -2401,7 +2405,7 @@ pub fn load_vehicle() -> RustVehicle {
         mc_mass_kg,
         fc_mass_kg,
         fs_mass_kg,
-        mc_perc_out_array,
+        None,
     )
 }
 

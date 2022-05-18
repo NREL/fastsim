@@ -7,9 +7,11 @@ All classes and methods are self-documented.
 
 # Installation
 
+## From the git repository
+
 For both the Standard and Developers installation procedures, you need to make sure you have the [rust toolchain installed](https://www.rust-lang.org/tools/install).
 
-## Standard git 
+### Standard git 
 First, clone the repository from GitHub if you don't already have a local copy of the FASTSim package files:
 
     git clone git@github.nrel.gov:MBAP/fastsim.git  
@@ -25,7 +27,7 @@ Then, from within the top level of the FASTSim folder, run a pip install:
     
 This will install FASTSim with the included rust extensions. 
 
-## Developers
+### Developers
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
 
 To do this, a couple of extra steps are required:
@@ -35,12 +37,9 @@ To do this, a couple of extra steps are required:
 1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests
 1. In the same folder, you should now be able to run `maturin develop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py` through the first plot (and maybe beyond)
 
-## Future
-We plan to make this all pip installable such that you can just run `pip install fastsimrust` and not have to mess with cloning the github repo, compiling rust, or even needing to have rust installed.  
-
-# Update
+# Users with NREL VPN Access
 Note: the following instructions work only if you are inside NREL VPN:  
-To update, run
+To install and/or update, run
 ```
 pip install fastsim --upgrade --extra-index-url=https://github.nrel.gov/pages/MBAP/mbap-pypi/
 ```
@@ -107,7 +106,13 @@ in = component input
 out = component output  
 
 # Release Notes
-1.3.1 -- `fastsim.simdrive.copy_sim_drive` function can deepcopy jit to non-jit (and back) for pickling
+2.0.5 -- added `to_rust` method for cycle  
+2.0.4 -- exposed `veh.set_veh_mass`  
+2.0.3 -- exposed `veh.__post_init__`  
+2.0.2 -- provisioned for non-default vehdb path  
+2.0.1 -- bug fix  
+2.0.0 -- All second-by-second calculations are now implemented in both rust and python.  Rust provides a ~30x speedup  
+1.3.1 -- `fastsim.simdrive.copy_sim_drive` function can deepcopy jit to non-jit (and back) for pickling  
 1.2.6 -- time dilation bug fix for zero speed  
 1.2.4 -- bug fix changing `==` to `=`  
 1.2.3 -- `veh_file` can be passed as standalone argument.  `fcEffType` can be anything if `fcEffMap` is provided, but typing is otherwise enforced.  

@@ -24,8 +24,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="fastsim",  
-    version="2.0.0",
+    name="fastsim",
+    version="2.0.5",
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
     description="Tool for modeling vehicle powertrains",
@@ -51,6 +51,6 @@ setuptools.setup(
         "seaborn>=0.10",
     ],
     # rust extension
-    zip_safe = False,
+    zip_safe=False,
     rust_extensions=rust_extensions,
 )

@@ -9,8 +9,6 @@ use crate::params::RustPhysicalProperties;
 use crate::utils;
 use crate::vehicle::*;
 
-
-
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     match res {
         Ok(()) => Ok(()),
@@ -197,13 +195,9 @@ pub struct RustSimDrive {
     pub ess_lim_mc_regen_kw: Array1<f64>,
     pub cur_max_mech_mc_kw_in: Array1<f64>,
     pub cur_max_trans_kw_out: Array1<f64>,
-    pub cyc_drag_kw: Array1<f64>,
-    pub cyc_accel_kw: Array1<f64>,
-    pub cyc_ascent_kw: Array1<f64>,
     pub cyc_trac_kw_req: Array1<f64>,
     pub cur_max_trac_kw: Array1<f64>,
     pub spare_trac_kw: Array1<f64>,
-    pub cyc_rr_kw: Array1<f64>,
     pub cyc_whl_rad_per_sec: Array1<f64>,
     pub cyc_tire_inertia_kw: Array1<f64>,
     pub cyc_whl_kw_req: Array1<f64>,
@@ -321,6 +315,7 @@ pub struct RustSimDrive {
 }
 
 #[pymethods]
+#[allow(clippy::len_without_is_empty)]
 impl RustSimDrive {
     /// method for instantiating SimDriveRust
     #[new]
@@ -349,13 +344,9 @@ impl RustSimDrive {
         let ess_lim_mc_regen_kw = Array::zeros(cyc_len);
         let cur_max_mech_mc_kw_in = Array::zeros(cyc_len);
         let cur_max_trans_kw_out = Array::zeros(cyc_len);
-        let cyc_drag_kw = Array::zeros(cyc_len);
-        let cyc_accel_kw = Array::zeros(cyc_len);
-        let cyc_ascent_kw = Array::zeros(cyc_len);
         let cyc_trac_kw_req = Array::zeros(cyc_len);
         let cur_max_trac_kw = Array::zeros(cyc_len);
         let spare_trac_kw = Array::zeros(cyc_len);
-        let cyc_rr_kw = Array::zeros(cyc_len);
         let cyc_whl_rad_per_sec = Array::zeros(cyc_len);
         let cyc_tire_inertia_kw = Array::zeros(cyc_len);
         let cyc_whl_kw_req = Array::zeros(cyc_len);
@@ -475,13 +466,9 @@ impl RustSimDrive {
             ess_lim_mc_regen_kw,
             cur_max_mech_mc_kw_in,
             cur_max_trans_kw_out,
-            cyc_drag_kw,
-            cyc_accel_kw,
-            cyc_ascent_kw,
             cyc_trac_kw_req,
             cur_max_trac_kw,
             spare_trac_kw,
-            cyc_rr_kw,
             cyc_whl_rad_per_sec,
             cyc_tire_inertia_kw,
             cyc_whl_kw_req,
@@ -599,7 +586,7 @@ impl RustSimDrive {
         init_soc: Option<f64>,
         aux_in_kw_override: Option<Vec<f64>>,
     ) -> PyResult<()> {
-        let aux_in_kw_override = aux_in_kw_override.map(|x| Array1::from(x));
+        let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
         handle_sd_res(self.sim_drive_rust(init_soc, aux_in_kw_override))
     }
 
@@ -619,7 +606,7 @@ impl RustSimDrive {
         init_soc: f64,
         aux_in_kw_override: Option<Vec<f64>>,
     ) -> PyResult<()> {
-        let aux_in_kw_override = aux_in_kw_override.map(|x| Array1::from(x));
+        let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
         handle_sd_res(self.walk(init_soc, aux_in_kw_override))
     }
 
@@ -923,36 +910,6 @@ impl RustSimDrive {
     }
 
     #[getter]
-    pub fn get_cyc_accel_kw(&self) -> PyResult<Vec<f64>> {
-        Ok(self.cyc_accel_kw.to_vec())
-    }
-    #[setter]
-    pub fn set_cyc_accel_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.cyc_accel_kw = Array::from_vec(new_value);
-        Ok(())
-    }
-
-    #[getter]
-    pub fn get_cyc_ascent_kw(&self) -> PyResult<Vec<f64>> {
-        Ok(self.cyc_ascent_kw.to_vec())
-    }
-    #[setter]
-    pub fn set_cyc_ascent_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.cyc_ascent_kw = Array::from_vec(new_value);
-        Ok(())
-    }
-
-    #[getter]
-    pub fn get_cyc_drag_kw(&self) -> PyResult<Vec<f64>> {
-        Ok(self.cyc_drag_kw.to_vec())
-    }
-    #[setter]
-    pub fn set_cyc_drag_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.cyc_drag_kw = Array::from_vec(new_value);
-        Ok(())
-    }
-
-    #[getter]
     pub fn get_cyc_fric_brake_kw(&self) -> PyResult<Vec<f64>> {
         Ok(self.cyc_fric_brake_kw.to_vec())
     }
@@ -979,16 +936,6 @@ impl RustSimDrive {
     #[setter]
     pub fn set_cyc_regen_brake_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
         self.cyc_regen_brake_kw = Array::from_vec(new_value);
-        Ok(())
-    }
-
-    #[getter]
-    pub fn get_cyc_rr_kw(&self) -> PyResult<Vec<f64>> {
-        Ok(self.cyc_rr_kw.to_vec())
-    }
-    #[setter]
-    pub fn set_cyc_rr_kw(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.cyc_rr_kw = Array::from_vec(new_value);
         Ok(())
     }
 

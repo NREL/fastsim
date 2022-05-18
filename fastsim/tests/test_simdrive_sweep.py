@@ -27,7 +27,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     """Runs test test for 26 vehicles and 3 cycles.  
     Test compares cumulative positive and negative energy 
     values to a benchmark from earlier.
-    
+
     Arguments:
     ----------
     err_tol : error tolerance
@@ -57,7 +57,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
         if use_rust:
             return obj.to_rust()
         return obj
-    
+
     def make_simdrive(*args, **kwargs):
         if use_rust:
             return simdrive.RustSimDrive(*args, **kwargs)
@@ -66,7 +66,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     cyc_names = ['udds', 'hwfet', 'us06']
     cycs = {
         cyc_name: to_rust(cycle.Cycle.from_file(cyc_name)) for cyc_name in cyc_names
-        }
+    }
 
     vehnos = np.arange(1, 27)
 
@@ -74,7 +74,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     energyAuditErrors = []
 
     dict_diag = {}
-    t0a = 0 
+    t0a = 0
     iter = 0
     for vehno in vehnos:
         if verbose:
@@ -91,11 +91,11 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
             if RUST_AVAILABLE and use_rust:
                 assert type(sim_drive) == fsr.RustSimDrive
             # US06 is known to cause substantial trace miss.
-            # This should probably be addressed at some point, but for now, 
+            # This should probably be addressed at some point, but for now,
             # the tolerances are set high to avoid lots of printed warnings.
             sim_drive.sim_params.verbose = sim_drive_verbose
             sim_drive.sim_drive()
-                
+
             sim_drive_post = simdrive.SimDrivePost(sim_drive)
             # sim_drive_post.set_battery_wear()
             diagno = sim_drive_post.get_diagnostics()
@@ -123,14 +123,14 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     print('Elapsed time: {:.2f} s'.format(t1 - t0))
     print('Elapsed time since first vehicle: {:.2f} s'.format(t1 - t0a, 2))
 
-
     # NOTE: cyc_wheel_* variables are being missed as they are called cyc_whl_* in SimDrive
-    df0 = pd.read_csv(Path(simdrive.__file__).parent.resolve() / 'resources/master_benchmark_vars.csv')
+    df0 = pd.read_csv(Path(simdrive.__file__).parent.resolve() /
+                      'resources/master_benchmark_vars.csv')
     df0 = df0.rename(columns=utils.camel_to_snake)
 
     # make sure new dataframe does not incude newly added or deprecated columns
     new_cols = {col for col in df.columns} - {col for col in df0.columns}
-    
+
     from math import isclose
 
     df_err = df.copy().drop(columns=list(new_cols))
@@ -140,17 +140,19 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     for idx in df.index:
         for col in df_err.columns[2:]:
             if not(isclose(df.loc[idx, col], df0.loc[idx, col], rel_tol=err_tol, abs_tol=err_tol)):
-                df_err.loc[idx, col] = (df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
+                df_err.loc[idx, col] = (
+                    df.loc[idx, col] - df0.loc[idx, col]) / df0.loc[idx, col]
                 if max_abs_err is None or np.abs(df_err.loc[idx, col]) > max_abs_err:
                     max_abs_err = np.abs(df_err.loc[idx, col])
                     col_for_max_error = col
                 abs_err.append(np.abs(df_err.loc[idx, col]))
                 print(f"{df_err.loc[idx, col]:.5%} error for {col}")
-                print(f"vehicle  : {vehicle.DEFAULT_VEHDF[vehicle.DEFAULT_VEHDF['Selection'] == df.loc[idx, 'vnum']]['Scenario name'].values[0]}")
-                print(f"cycle    : {df.loc[idx, 'cycle']}")         
-                print( 'New Value: ' + str(round(df.loc[idx, col], 15)))
-                print( 'Old Value: ' + str(round(df0.loc[idx, col], 15)))
-                print( 'Index    : ' + str(idx))
+                print(
+                    f"vehicle  : {vehicle.DEFAULT_VEHDF[vehicle.DEFAULT_VEHDF['Selection'] == df.loc[idx, 'vnum']]['Scenario name'].values[0]}")
+                print(f"cycle    : {df.loc[idx, 'cycle']}")
+                print('New Value: ' + str(round(df.loc[idx, col], 15)))
+                print('Old Value: ' + str(round(df0.loc[idx, col], 15)))
+                print('Index    : ' + str(idx))
                 print()
             else:
                 df_err.loc[idx, col] = 0
@@ -158,28 +160,30 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
     abs_err = np.array(abs_err)
     if len(abs_err) > 0:
         print(f'\nmax error = {abs_err.max():.3%}')
-    else: 
+    else:
         print(f'No errors exceed the {err_tol:.3g} tolerance threshold.')
 
     return df_err, df, df0, col_for_max_error, max_abs_err
+
 
 class TestSimDriveSweep(unittest.TestCase):
     def test_sweep(self):
         "Compares results against benchmark."
         print(f"Running {type(self)}.")
         if RUN_PYTHON:
-            df_err, _, _, max_err_col, max_abs_err= main(verbose=True)
+            df_err, _, _, max_err_col, max_abs_err = main(verbose=True)
             self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
-                msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
+                             msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
         if RUST_AVAILABLE and RUN_RUST:
-            df_err, _, _, max_err_col, max_abs_err = main(verbose=True, use_rust=True)
+            df_err, _, _, max_err_col, max_abs_err = main(
+                verbose=True, use_rust=True)
             self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
-                msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
-    
+                             msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
+
     def test_post_diagnostics(self):
         if not RUST_AVAILABLE:
             return
-        vehid = 9 # FORD C-MAX
+        vehid = 9  # FORD C-MAX
         cyc_name = "us06"
         init_soc = None
         # PYTHON
@@ -207,10 +211,10 @@ class TestSimDriveSweep(unittest.TestCase):
         py_key_set = {k for k in py_diag}
         ru_key_set = {k for k in ru_diag}
         self.assertEqual(py_key_set, ru_key_set,
-            msg=(
-                "Key sets not equal;"
-                + f"\nonly in python: {py_key_set - ru_key_set}"
-                + f"\nonly in Rust  : {ru_key_set - py_key_set}"))
+                         msg=(
+                             "Key sets not equal;"
+                             + f"\nonly in python: {py_key_set - ru_key_set}"
+                             + f"\nonly in Rust  : {ru_key_set - py_key_set}"))
         vars_to_compare = [
             "aux_in_kw",
             "cur_max_avail_elec_kw",
@@ -222,12 +226,8 @@ class TestSimDriveSweep(unittest.TestCase):
             "cur_max_mech_mc_kw_in",
             "cur_max_trac_kw",
             "cur_max_trans_kw_out",
-            "cyc_accel_kw",
-            "cyc_ascent_kw",
-            "cyc_drag_kw",
             "cyc_fric_brake_kw",
             "cyc_met",
-            "cyc_rr_kw",
             "cyc_tire_inertia_kw",
             "cyc_trac_kw_req",
             "cyc_trans_kw_out_req",
@@ -266,18 +266,21 @@ class TestSimDriveSweep(unittest.TestCase):
                 if type(py_val[i]) is np.bool_ or type(py_val[i]) is bool:
                     if py_val[i] != ru_val[i]:
                         found_discrepancy = True
-                        print(f"{var}[{i}]: py = {py_val[i]}; ru = {ru_val[i]}")
+                        print(
+                            f"{var}[{i}]: py = {py_val[i]}; ru = {ru_val[i]}")
                 else:
                     abs_diff = np.abs(py_val[i] - ru_val[i])
                     if abs_diff > tol:
                         found_discrepancy = True
-                        print(f"{var}[{i}]: difference = {abs_diff}; py = {py_val[i]}; ru = {ru_val[i]}")
+                        print(
+                            f"{var}[{i}]: difference = {abs_diff}; py = {py_val[i]}; ru = {ru_val[i]}")
             if found_discrepancy:
                 break
         self.assertFalse(found_discrepancy)
         for k in py_key_set:
             self.assertAlmostEqual(py_diag[k], ru_diag[k],
-                msg=f"{k} doesn't equal")
-        
+                                   msg=f"{k} doesn't equal")
+
+
 if __name__ == '__main__':
     df_err, df, df0 = main()
