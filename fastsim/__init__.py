@@ -7,7 +7,7 @@ from . import parameters as params
 from . import utilities as utils
 from . import simdrive, vehicle, cycle, calibration, tests
 from . import calibration as cal
-from . import auxiliariess
+from . import auxiliaries
 
 from pkg_resources import get_distribution
 
