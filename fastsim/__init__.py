@@ -1,4 +1,4 @@
-"""Package contaning modules for running FASTSim.  
+"""Package containing modules for running FASTSim.  
 For example usage, see """
 
 from pathlib import Path 
@@ -7,6 +7,7 @@ from . import parameters as params
 from . import utilities as utils
 from . import simdrive, vehicle, cycle, calibration, tests
 from . import calibration as cal
+from . import auxiliariess
 
 from pkg_resources import get_distribution
 
