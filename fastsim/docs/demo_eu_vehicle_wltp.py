@@ -22,8 +22,6 @@ cyc_wltp_combo = fsim.cycle.Cycle.from_dict(cyc_wltp_combo).to_rust()
 
 def simdrive_get_mpg(cur_simdrive):
     cur_simdrive.sim_drive()
-    # cur_simdrive_post = fsim.simdrive.SimDrivePost(cur_simdrive)
-    # simdrive_out = cur_simdrive_post.get_diagnostics()
     return cur_simdrive.mpgge
 
 simdrive_lst = [
