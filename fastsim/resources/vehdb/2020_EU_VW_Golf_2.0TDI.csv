@@ -1,18 +1,18 @@
 ,Param Name,Param Value,Param Source / Comments
-Category,Scenario name,2020 VW Golf 1.5TSI ,L4284 W1789 H1456 Wheelbase2636 length:wheelbase = 1.63
+Category,Scenario name,2020 VW Golf 2.0TDI ,
 Vehicle,veh_pt_type,Conv,
 ,drag_coef,0.275,2019 https://www.carfolio.com/volkswagen-golf-2.0-tdi-618530
-,frontal_area_m2,2.21,"Use 2019 MY data, https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618"
+,frontal_area_m2,2.21,2019 https://www.carfolio.com/volkswagen-golf-2.0-tdi-618530
 ,glider_kg,1045.636,
 ,veh_cg_m,0.53,
 ,drive_axle_weight_frac,0.61,
-,wheel_base_m,2.636,https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618
+,wheel_base_m,2.636,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
 ,cargo_kg,136,
 ,veh_override_kg,1390,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
 Fuel / Fuel Converter,fs_max_kw,2000,Fuel Storage tank 50 liters
 ,fs_secs_to_peak_pwr,1,
-,fs_kwh,245,50 liter of gasoline using 0.75 SG and 12.06kwh/kg LHV
-,fs_kwh_per_kg,12.06,
+,fs_kwh,502,50 liter of gasoline using 0.85 SG and 11.83kwh/kg LHV
+,fs_kwh_per_kg,11.83,
 ,fc_max_kw,110,
 ,fc_eff_map,"[0.214,0.242,0.284,0.37,0.4,0.435,0.445,0.48,0.445,0.43,0.42,0.41]",
 ,fc_eff_type,Diesel,
@@ -55,9 +55,14 @@ Wheels,wheel_inertia_kg_m2,0.823,
 ,comp_mass_multiplier,1.4,
 ,ess_to_fuel_ok_error,0.005,
 ,max_regen,0.98,
-"Val: MPGGE, KwhPM, 0 to 60, etc",val_udds_mpgge,53.46,https://www.ultimatespecs.com/car-specs/Volkswagen/118818/Volkswagen-Golf-8-15-TSI-130HP.html
-,val_hwy_mpgge,71.28,L38.2 M54.3 H61.4 EH53.3 Comb53.3 Source: https://www.encycarpedia.com/volkswagen/20-golf-1-5-tsi-130-hatch 
-,val_comb_mpgge,63.57,https://www.auto-data.net/en/volkswagen-golf-viii-1.5-tsi-130hp-38151
+"Val: MPGGE, KwhPM, 0 to 60, etc",val_udds_mpgge,53.46,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
+,val_hwy_mpgge,69,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
+,val_comb_mpgge,63.57,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
+,val_wltp_low3_mpgge,43.5,https://www.encycarpedia.com/us/volkswagen/20-golf-2-0-tdi-150-hatch
+,val_wltp_medium3b_mpgge,52.3,
+,val_wltp_high3b_mpgge,63.5,
+,val_wltp_extra_high3_mpgge,53.5,
+,val_wltp_combined_mpgge,54.7,
 ,val_udds_kwh_per_mile,,
 ,val_hwy_kwh_per_mile,,
 ,val_comb_kwh_per_mile,,
