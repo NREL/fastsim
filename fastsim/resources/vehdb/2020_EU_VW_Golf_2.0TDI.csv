@@ -58,11 +58,6 @@ Wheels,wheel_inertia_kg_m2,0.823,
 "Val: MPGGE, KwhPM, 0 to 60, etc",val_udds_mpgge,53.46,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
 ,val_hwy_mpgge,69,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
 ,val_comb_mpgge,63.57,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
-,val_wltp_low3_mpgge,43.5,https://www.encycarpedia.com/us/volkswagen/20-golf-2-0-tdi-150-hatch
-,val_wltp_medium3b_mpgge,52.3,
-,val_wltp_high3b_mpgge,63.5,
-,val_wltp_extra_high3_mpgge,53.5,
-,val_wltp_combined_mpgge,54.7,
 ,val_udds_kwh_per_mile,,
 ,val_hwy_kwh_per_mile,,
 ,val_comb_kwh_per_mile,,
@@ -73,10 +68,10 @@ Wheels,wheel_inertia_kg_m2,0.823,
 ,val_const45_mph_kwh_per_mile,,
 ,val_unadj_udds_kwh_per_mile,,
 ,val_unadj_hwy_kwh_per_mile,,
-,val0_to60_mph,8.4,https://www.auto-data.net/en/volkswagen-golf-viii-1.5-tsi-130hp-38151
+,val0_to60_mph,8.4,
 ,val_ess_life_miles,,
 ,val_range_miles,,
 ,val_veh_base_cost,,
-,val_msrp,,
+,val_msrp,,https://www.auto-data.net/en/volkswagen-golf-viii-1.5-tsi-130hp-38151
 ,min_fc_time_on,30,
 ,idle_fc_kw,1.96,
