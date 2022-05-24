@@ -27,6 +27,7 @@ MPH_PER_MPS = 2.2369
 M_PER_MI = 1609.00
 # Newtons per pound-force
 N_PER_LBF = 4.448
+L_PER_GAL = 3.78541
 
 
 class PhysicalProperties(object):
