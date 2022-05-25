@@ -43,7 +43,8 @@ def hybrid_eu_veh_wltp_fe_test():
     WILLANS_FACTOR_gram_CO2__MJ = 724  # gCO2/MJ
     E10_HEAT_VALUE_kWh__liter = 8.64  # kWh/L
 
-    veh_2022_yaris = fsim.vehicle.Vehicle.from_file(str(Path(fsim.simdrive.__file__).parent /'resources/vehdb/2022_TOYOTA_Yaris_Hybrid_Mid.csv')).to_rust()
+    veh_2022_yaris = fsim.vehicle.Vehicle.from_file(str(Path(fsim.simdrive.__file__).parent /'resources/vehdb/2022_TOYOTA_Yaris_Hybrid_Mid.csv'))
+    veh_2022_yaris_rust = veh_2022_yaris.to_rust()
     
     # Measured FE (L/100km)
     meas_fe_combined_liter__100km = 3.8
@@ -52,25 +53,40 @@ def hybrid_eu_veh_wltp_fe_test():
     meas_fe_high_liter__100km = 3.5
     meas_fe_extrahigh_liter__100km = 5
     
-    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_low3.csv')).to_rust()
-    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_med3b.csv')).to_rust()
-    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_high3b.csv')).to_rust()
-    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_extra_high3.csv')).to_rust()
+    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_low3.csv'))
+    wltp_low_cyc_3_rust = wltp_low_cyc_3.to_rust()
+    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_med3b.csv'))
+    wltp_med_cyc_3b_rust = wltp_med_cyc_3b.to_rust()
+    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_high3b.csv'))
+    wltp_high_cyc_3b_rust = wltp_high_cyc_3b.to_rust()
+    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_extra_high3.csv'))
+    wltp_extrahigh_cyc_3_rust = wltp_extrahigh_cyc_3.to_rust()
     cyc_wltp_combined = fsim.cycle.concat([wltp_low_cyc_3.get_cyc_dict(), 
                                         wltp_med_cyc_3b.get_cyc_dict(),
                                         wltp_high_cyc_3b.get_cyc_dict(),
                                         wltp_extrahigh_cyc_3.get_cyc_dict()
                                         ]
                                        )
-    cyc_wltp_combined = fsim.cycle.Cycle.from_dict(cyc_wltp_combined).to_rust()
+    cyc_wltp_combined = fsim.cycle.Cycle.from_dict(cyc_wltp_combined)
+    cyc_wltp_combined_rust = cyc_wltp_combined.to_rust()
 
-    sim = fsim.simdrive.RustSimDrive(cyc_wltp_combined, veh_2022_yaris)
+    sim = fsim.simdrive.SimDrive(cyc_wltp_combined, veh_2022_yaris)
     sim.sim_drive()
+
+    sim_rust = fsim.simdrive.RustSimDrive(cyc_wltp_combined_rust,veh_2022_yaris_rust)
+    sim_rust.sim_drive()
     
-    dist_miles_combined = sum(sim.dist_mi)
-    energy_combined = sum(sim.fs_kwh_out_ach)
+    dist_miles_combined = sim.dist_mi.sum()
+    dist_miles_combined_rust = sum(sim_rust.dist_mi)
+    print(dist_miles_combined,dist_miles_combined_rust)
+    energy_combined = sim.fs_kwh_out_ach.sum()
+    energy_combined_rust = sum(sim_rust.fs_kwh_out_ach)
+    print(energy_combined,energy_combined_rust)
     fe_mpgge_combined = sim.mpgge
+    fe_mpgge_combined_rust = sim_rust.mpgge
     fe_l__100km_combined = utils.mpg_to_l__100km(fe_mpgge_combined)
+    fe_l__100km_combined_rust = utils.mpg_to_l__100km(fe_mpgge_combined_rust)
+    print(fe_l__100km_combined,fe_l__100km_combined_rust)
 
     i0 = len(wltp_low_cyc_3.time_s)
     i1 = i0 + len(wltp_med_cyc_3b.time_s)-1
@@ -103,26 +119,32 @@ def hybrid_eu_veh_wltp_fe_test():
         return fe_liter__100km_list
     
     fe_low3_l__100km, fe_med3b_l__100km, fe_high3b_l__100km, fe_extrahigh3_l__100km = hybrid_veh_fe_soc_correction(veh_2022_yaris, sim, wltp_3b_phase_slice_list)
-    
+    fe_low3_l__100km_rust, fe_med3b_l__100km_rust, fe_high3b_l__100km_rust, fe_extrahigh3_l__100km_rust = hybrid_veh_fe_soc_correction(veh_2022_yaris_rust, sim_rust, wltp_3b_phase_slice_list)
     
     print("LOW")
     print(f"  Target: {meas_fe_low_liter__100km} L/100km")
     print(f"  Simulation:  {fe_low3_l__100km:.2f} L/100km ({(fe_low3_l__100km - meas_fe_low_liter__100km)/meas_fe_low_liter__100km * 100:+.2f}%)")
+    print(f"  Rust Simulation:  {fe_low3_l__100km_rust:.2f} L/100km ({(fe_low3_l__100km_rust - meas_fe_low_liter__100km)/meas_fe_low_liter__100km * 100:+.2f}%)")
 
     print("MEDIUM")
     print(f"  Target: {meas_fe_med_liter__100km} L/100km")
     print(f"  Simulation:  {fe_med3b_l__100km:.2f} L/100km ({(fe_med3b_l__100km - meas_fe_med_liter__100km)/meas_fe_med_liter__100km * 100:+.2f}%)")
+    print(f"  Rust Simulation:  {fe_med3b_l__100km_rust:.2f} L/100km ({(fe_med3b_l__100km_rust - meas_fe_med_liter__100km)/meas_fe_med_liter__100km * 100:+.2f}%)")
 
     print("HIGH")
     print(f"  Target: {meas_fe_high_liter__100km} L/100km")
     print(f"  Simulation:  {fe_high3b_l__100km:.2f} L/100km ({(fe_high3b_l__100km - meas_fe_high_liter__100km)/meas_fe_high_liter__100km * 100:+.2f}%)")
+    print(f"  Rust Simulation:  {fe_high3b_l__100km_rust:.2f} L/100km ({(fe_high3b_l__100km_rust - meas_fe_high_liter__100km)/meas_fe_high_liter__100km * 100:+.2f}%)")
+
 
     print("EXTRA-HIGH")
     print(f"  Target: {meas_fe_extrahigh_liter__100km} L/100km")
     print(f"  Simulation:  {fe_extrahigh3_l__100km:.2f} L/100km ({(fe_extrahigh3_l__100km - meas_fe_extrahigh_liter__100km)/meas_fe_extrahigh_liter__100km * 100:+.2f}%)")
+    print(f"  Rust Simulation:  {fe_extrahigh3_l__100km_rust:.2f} L/100km ({(fe_extrahigh3_l__100km_rust - meas_fe_extrahigh_liter__100km)/meas_fe_extrahigh_liter__100km * 100:+.2f}%)")
 
     print("COMBINED")
     print(f"  Target: {meas_fe_combined_liter__100km} L/100km")
     print(f"  Simulation: {fe_l__100km_combined:.2f} L/100km ({(fe_l__100km_combined - meas_fe_combined_liter__100km)/meas_fe_combined_liter__100km * 100:+.2f}%)")
+    print(f"  Rust Simulation: {fe_l__100km_combined_rust:.2f} L/100km ({(fe_l__100km_combined_rust - meas_fe_combined_liter__100km)/meas_fe_combined_liter__100km * 100:+.2f}%)")
 
 hybrid_eu_veh_wltp_fe_test()
