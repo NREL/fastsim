@@ -85,7 +85,7 @@ pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
             return false;
         }
     }
-    true
+    return true;
 }
 
 /// return cumsum <f64> of arr
