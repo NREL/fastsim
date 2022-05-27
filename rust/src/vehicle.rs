@@ -269,7 +269,7 @@ impl RustVehicle {
     /// ----------
     /// mc_peak_eff_override: float (0, 1), if provided, overrides motor peak efficiency
     ///     with proportional scaling.  Default of -1 has no effect.  
-    pub fn post_init(&mut self) {
+    pub fn set_derived(&mut self) {
         if self.scenario_name != "Template Vehicle for setting up data types" {
             if self.veh_pt_type == BEV {
                 assert!(
@@ -387,7 +387,7 @@ impl RustVehicle {
                 if idx == 0 {
                     0.0
                 } else if idx == (self.mc_perc_out_array.len() - 1) {
-                    self.mc_eff_array[self.mc_eff_array.len() - 1]
+                    self.mc_eff_array[self.mc_eff_array.len() - 1]  // todo: figure out if this is actually needed
                 } else {
                     interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
                 }
@@ -517,6 +517,10 @@ impl RustVehicle {
         let val_veh_base_cost: f64 = f64::NAN;
         let val_msrp: f64 = f64::NAN;
         let props = RustPhysicalProperties::__new__();
+        // TODO: make large_baseline_eff and small_baseline_eff constanst at the module level
+        // pub const LARGE_BASELINE_EFF: &[f64; 11] = [
+            // 0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
+            // ]
         let large_baseline_eff: Vec<f64> = vec![
             0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
         ];
@@ -1011,12 +1015,8 @@ impl RustVehicle {
             fs_mass_kg,
             mc_perc_out_array,
         };
-        veh.post_init();
+        veh.set_derived();
         veh
-    }
-
-    pub fn __post_init__(&mut self) {
-        self.post_init();
     }
 
     #[getter]
@@ -2414,7 +2414,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_post_init_via_new() {
+    fn test_set_derived_via_new() {
         let veh = load_vehicle();
         assert!(veh.veh_kg > 0.0);
     }

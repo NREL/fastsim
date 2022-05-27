@@ -434,6 +434,18 @@ class Vehicle(object):
         mc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
             with proportional scaling.  Default of -1 has no effect.
         """
+        self.set_derived(fc_peak_eff_override, mc_peak_eff_override)
+        
+    def set_derived(self, fc_peak_eff_override:float=-1.0, mc_peak_eff_override:float=-1.0):
+        """
+        Sets derived parameters.
+        Arguments:
+        ----------
+        fc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides engine peak efficiency
+            with proportional scaling.  Default of -1 has no effect.
+        mc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
+            with proportional scaling.  Default of -1 has no effect.
+        """
         
         if self.scenario_name != 'Template Vehicle for setting up data types':
             if self.veh_pt_type == BEV:
@@ -626,6 +638,7 @@ class Vehicle(object):
         """Return a Rust version of the vehicle"""
         # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
         # ... we need to keep and re-set any changes to peak fc/mc efficiency
+        # TODO: Kyle, figure out if these copy operations need to happen
         fc_peak = self.fc_peak_eff
         mc_peak = self.mc_peak_eff
         new_veh = copy_vehicle(self, 'rust')

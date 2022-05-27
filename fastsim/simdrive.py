@@ -377,10 +377,8 @@ class SimDrive(object):
                 # If EV, initializing initial SOC to maximum SOC.
                 init_soc = self.veh.max_soc
 
-        if self.hev_sim_count == 0:
-            # make sure it runs at least once
-            self.sim_drive_walk(init_soc, aux_in_kw_override)
-
+        self.sim_drive_walk(init_soc, aux_in_kw_override)
+ 
         self.set_post_scalars()
 
     def sim_drive_walk(self, init_soc: float, aux_in_kw_override: Optional[np.ndarray] = None):
