@@ -369,11 +369,13 @@ impl RustVehicle {
         //else:
         //    self.mc_eff_array = self.mc_eff_map
         if true {
+            self.mc_eff_array = self.mc_eff_map.clone();
+
+        } else {
+            // println!("{:?}",self.mc_eff_map);
             self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
                 + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
             self.mc_eff_map = self.mc_eff_array.clone();
-        } else {
-            self.mc_eff_array = self.mc_eff_map.clone();
         }
 
         let mc_kw_out_array: Vec<f64> =
