@@ -185,9 +185,7 @@ impl RustSimDrive {
             },
         };
 
-        //if self.hev_sim_count == 0 {
         self.walk(init_soc, aux_in_kw_override)?;
-        //}
 
         self.set_post_scalars_rust()?;
         Ok(())

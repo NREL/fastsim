@@ -378,8 +378,6 @@ class SimDrive(object):
                 init_soc = self.veh.max_soc
 
         self.sim_drive_walk(init_soc, aux_in_kw_override)
- 
-        self.set_post_scalars()
 
     def sim_drive_walk(self, init_soc: float, aux_in_kw_override: Optional[np.ndarray] = None):
         """
@@ -435,7 +433,8 @@ class SimDrive(object):
             print(
                 "To suppress this message, view the doc string for simdrive.SimDriveParams.")
             print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
-        # self.set_post_scalars()
+        
+        self.set_post_scalars()
 
     def _set_speed_for_target_gap_using_idm(self, i):
         """
