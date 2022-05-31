@@ -370,7 +370,6 @@ impl RustVehicle {
         //    self.mc_eff_array = self.mc_eff_map
         if true {
             self.mc_eff_array = self.mc_eff_map.clone();
-
         } else {
             // println!("{:?}",self.mc_eff_map);
             self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
@@ -388,8 +387,6 @@ impl RustVehicle {
             .map(|(idx, &x): (usize, &f64)| -> f64 {
                 if idx == 0 {
                     0.0
-                } else if idx == (self.mc_perc_out_array.len() - 1) {
-                    self.mc_eff_array[self.mc_eff_array.len() - 1]  // todo: figure out if this is actually needed
                 } else {
                     interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
                 }
@@ -521,8 +518,8 @@ impl RustVehicle {
         let props = RustPhysicalProperties::__new__();
         // TODO: make large_baseline_eff and small_baseline_eff constanst at the module level
         // pub const LARGE_BASELINE_EFF: &[f64; 11] = [
-            // 0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
-            // ]
+        // 0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
+        // ]
         let large_baseline_eff: Vec<f64> = vec![
             0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
         ];
