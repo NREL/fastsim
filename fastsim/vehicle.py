@@ -637,14 +637,7 @@ class Vehicle(object):
     def to_rust(self):
         """Return a Rust version of the vehicle"""
         # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
-        # ... we need to keep and re-set any changes to peak fc/mc efficiency
-        # TODO: Kyle, figure out if these copy operations need to happen
-        fc_peak = self.fc_peak_eff
-        mc_peak = self.mc_peak_eff
-        new_veh = copy_vehicle(self, 'rust')
-        new_veh.fc_peak_eff = fc_peak
-        new_veh.mc_peak_eff = mc_peak
-        return new_veh
+        return copy_vehicle(self, 'rust')
 
 
 ref_veh = Vehicle.from_vehdb(5)
