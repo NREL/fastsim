@@ -2,7 +2,7 @@
 Module containing classes and methods for for loading vehicle data. For example usage, see ../README.md
 """
 
-### Import necessary python modules
+# Import necessary python modules
 import numpy as np
 from dataclasses import dataclass, InitVar
 import pandas as pd
@@ -33,6 +33,7 @@ to a working directory not inside \n`{THIS_DIR.resolve()}`
 and edit as appropriate.
 """
 
+
 def get_template_df():
     vehdf = pd.read_csv(VEHICLE_DIR / 'template.csv')
     vehdf = vehdf.transpose()
@@ -41,6 +42,7 @@ def get_template_df():
     vehdf['selection'] = np.nan * np.ones(vehdf.shape[0])
     vehdf.loc['Param Value', 'selection'] = 0
     return vehdf
+
 
 TEMPLATE_VEHDF = get_template_df()
 
@@ -61,8 +63,8 @@ DIESEL = FC_EFF_TYPES[2]
 H2FC = FC_EFF_TYPES[3]
 HD_DIESEL = FC_EFF_TYPES[4]
 
-OLD_TO_NEW = {val:key for key, val in NEW_TO_OLD.items()}
-        
+OLD_TO_NEW = {val: key for key, val in NEW_TO_OLD.items()}
+
 
 def clean_data(raw_data):
     """Cleans up data formatting.
@@ -164,7 +166,7 @@ class Vehicle(object):
     kw_demand_fc_on: float
     max_regen: bool
     stop_start: bool
-    force_aux_on_fc: bool 
+    force_aux_on_fc: bool
     alt_eff: float
     chg_eff: float
     aux_kw: float
@@ -189,8 +191,8 @@ class Vehicle(object):
     val_range_miles: float
     val_veh_base_cost: float
     val_msrp: float
-    # don't mess with this   
-    props: params.PhysicalProperties = params.PhysicalProperties() 
+    # don't mess with this
+    props: params.PhysicalProperties = params.PhysicalProperties()
     # gets set during __post_init__
     large_baseline_eff: Optional[np.ndarray] = None
     # gets set during __post_init__
@@ -199,21 +201,28 @@ class Vehicle(object):
     large_motor_power_kw: Optional[float] = 7.5
     fc_perc_out_array = params.fc_perc_out_array
     mc_perc_out_array = params.mc_perc_out_array
-    ### Specify shape of mc regen efficiency curve
-    ### see "Regen" tab in FASTSim for Excel
-    regen_a: float = 500.0  
-    regen_b: float = 0.99  
+    # Specify shape of mc regen efficiency curve
+    # see "Regen" tab in FASTSim for Excel
+    regen_a: float = 500.0
+    regen_b: float = 0.99
     max_roadway_chg_kw: np.ndarray = np.zeros(6)
     charging_on: bool = False
     no_elec_sys: bool = False
     no_elec_aux: bool = False
     fc_peak_eff_override: InitVar[float] = -1.0
     mc_peak_eff_override: InitVar[float] = -1.0
+    # if True, some derived vehicle attributes are not calulated in python but instead are calculated in Rust
+    to_rust: bool = True
 
     @classmethod
-    def from_vehdb(cls, vnum:int, veh_file:str=None, verbose:bool=False):
+    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = True, verbose: bool = False):
         """
         Load vehicle `vnum` from default vehdb or `veh_file`.
+        Arguments:
+            vnum: vehicle number
+            veh_file: path to vehicle database file
+            to_rust: if True, convert to rust-compatible vehicle
+            verbose: if True, print out warnings and other info
         """
         vehdf = DEFAULT_VEHDF
         veh_file = DEFAULT_VEH_DB if veh_file is None else veh_file
@@ -222,11 +231,16 @@ class Vehicle(object):
         return cls.from_df(vehdf, vnum, verbose)
 
     @classmethod
-    def from_file(cls, filename:str, vnum:int=None, verbose:bool=False):
+    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = True, verbose: bool = False):
         """
         Loads vehicle from file `filename` (str).  Looks in working dir and then 
         fastsim/resources/vehdb, which also contains numerous examples of vehicle csv files.
         `vnum` is needed for multi-vehicle files.  
+        Arguments:
+            filename: path to vehicle database file
+            vnum: vehicle number
+            to_rust: if True, convert to rust-compatible vehicle
+            verbose: if True, print out warnings and other info
         """
         filename = str(filename)
         if not(str(filename).endswith('.csv')):
@@ -237,7 +251,7 @@ class Vehicle(object):
             filename = VEHICLE_DIR / filename
         else:
             raise ValueError("Invalid vehicle filename.")
-            
+
         vehdf = pd.read_csv(filename)
 
         if vnum is None:
@@ -254,14 +268,22 @@ class Vehicle(object):
 
         return cls.from_df(vehdf, vnum, veh_file, verbose)
 
-
     @classmethod
-    def from_df(cls, vehdf:pd.DataFrame, vnum:int, veh_file:Path, verbose:bool=False):
-        """given vehdf, generates dict to feed to `from_dict`"""
+    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = True, verbose: bool = False):
+        """
+        Given vehdf, generates dict to feed to `from_dict`.
+        Arguments:
+            vehdf: pandas dataframe of vehicle attributes
+            vnum: vehicle number
+            veh_file: path to vehicle database file
+            to_rust: if True, convert to rust-compatible vehicle
+            verbose: if True, print out warnings and other info
+        """
         # verify that only allowed columns have been provided
         for col in vehdf.columns:
             col = col.replace(" ", "_")
-            assert col in list(OLD_TO_NEW.keys()) + list(NEW_TO_OLD.keys()) + OPT_INIT_PARAMS, f"`{col}` is deprecated and must be removed from {veh_file}."
+            assert col in list(OLD_TO_NEW.keys()) + list(NEW_TO_OLD.keys()) + \
+                OPT_INIT_PARAMS, f"`{col}` is deprecated and must be removed from {veh_file}."
 
         vehdf.loc[vnum] = vehdf.loc[vnum].apply(clean_data)
 
@@ -272,7 +294,7 @@ class Vehicle(object):
             col1 = OLD_TO_NEW.get(col1, col1)
             # assign dataframe columns to vehicle
             veh_dict[col1] = vehdf.loc[vnum, col]
-        
+
         # missing_cols = set(TEMPLATE_VEHDF.columns) - set(veh_dict.keys())
         # if len(missing_cols) > 0:
         #     if verbose:
@@ -284,9 +306,13 @@ class Vehicle(object):
         return cls.from_dict(veh_dict, verbose)
 
     @classmethod
-    def from_dict(cls, veh_dict:dict, verbose:bool=False):
+    def from_dict(cls, veh_dict: dict, to_rust: bool = True, verbose: bool = False):
         """
         Load vehicle from dict with snake_case key names.  
+        Arguments:
+            veh_dict: dict of vehicle attributes
+            to_rust: if True, convert to rust-compatible vehicle
+            verbose: if True, print out warnings and other info
         """
         # Power and efficiency arrays are defined in parameters.py
         # Can also be input in CSV as array under column fc_eff_map of form
@@ -300,7 +326,7 @@ class Vehicle(object):
                 veh_dict['fc_eff_map']))
             if verbose:
                 print(f"fc_eff_map is overriding fc_eff_type")
-        
+
         except:
             warn_str = f"""fc_eff_type {
                 veh_dict['fc_eff_map']} is not in {FC_EFF_TYPES},
@@ -310,10 +336,12 @@ class Vehicle(object):
             if veh_dict['fc_eff_type'] == SI:  # SI engine
                 veh_dict['fc_eff_map'] = params.fc_eff_map_si
 
-            elif veh_dict['fc_eff_type'] == ATKINSON:  # Atkinson cycle SI engine -- greater expansion
+            # Atkinson cycle SI engine -- greater expansion
+            elif veh_dict['fc_eff_type'] == ATKINSON:
                 veh_dict['fc_eff_map'] = params.fc_eff_map_atk
 
-            elif veh_dict['fc_eff_type'] == DIESEL:  # Diesel (compression ignition) engine
+            # Diesel (compression ignition) engine
+            elif veh_dict['fc_eff_type'] == DIESEL:
                 veh_dict['fc_eff_map'] = params.fc_eff_map_diesel
 
             elif veh_dict['fc_eff_type'] == H2FC:  # H2 fuel cell
@@ -329,14 +357,15 @@ class Vehicle(object):
         except:
             veh_dict['fc_pwr_out_perc'] = params.fc_pwr_out_perc
 
-        fc_eff_map_len = len(veh_dict['fc_eff_map']) 
+        fc_eff_map_len = len(veh_dict['fc_eff_map'])
         fc_pwr_len = len(veh_dict['fc_pwr_out_perc'])
         fc_eff_len_err = f'len(fcPwrOutPerc) ({fc_pwr_len}) is not' +\
             f'equal to len(fcEffMap) ({fc_eff_map_len})'
-        assert len(veh_dict['fc_pwr_out_perc']) == len(veh_dict['fc_eff_map']), fc_eff_len_err
+        assert len(veh_dict['fc_pwr_out_perc']) == len(
+            veh_dict['fc_eff_map']), fc_eff_len_err
 
-        ### Defining MC efficiency curve as lookup table for %power_in vs power_out
-        ### see "Motor" tab in FASTSim for Excel
+        # Defining MC efficiency curve as lookup table for %power_in vs power_out
+        # see "Motor" tab in FASTSim for Excel
 
         # Power and efficiency arrays are defined in parameters.py
         # can also be overridden by motor power and efficiency columns in the input file
@@ -350,7 +379,8 @@ class Vehicle(object):
 
         try:
             # check if mc_eff_map is provided in vehicle csv file
-            veh_dict['mc_eff_map'] = np.array(ast.literal_eval(veh_dict['mc_eff_map']))
+            veh_dict['mc_eff_map'] = np.array(
+                ast.literal_eval(veh_dict['mc_eff_map']))
         except:
             veh_dict['mc_eff_map'] = None
 
@@ -361,19 +391,21 @@ class Vehicle(object):
         large_baseline_eff_len = len(veh_dict['large_baseline_eff'])
         mc_large_eff_len_err = f'len(mcPwrOutPerc) ({mc_pwr_out_len}) is not' +\
             f'equal to len(largeBaselineEff) ({large_baseline_eff_len})'
-        assert len(veh_dict['mc_pwr_out_perc']) == len(veh_dict['large_baseline_eff']), mc_large_eff_len_err
-        
+        assert len(veh_dict['mc_pwr_out_perc']) == len(
+            veh_dict['large_baseline_eff']), mc_large_eff_len_err
+
         small_baseline_eff_len = len(veh_dict['small_baseline_eff'])
         mc_small_eff_len_err = f'len(mc_pwr_out_perc) ({mc_pwr_out_len}) is not' +\
             f'equal to len(smallBaselineEff) ({small_baseline_eff_len})'
-        assert len(veh_dict['mc_pwr_out_perc']) == len(veh_dict['small_baseline_eff']), mc_small_eff_len_err
+        assert len(veh_dict['mc_pwr_out_perc']) == len(
+            veh_dict['small_baseline_eff']), mc_small_eff_len_err
 
         # set stop_start if not provided
         if 'stop_start' in veh_dict and np.isnan(veh_dict['stop_start']):
             veh_dict['stop_start'] = False
 
-        veh_dict['small_motor_power_kw'] = 7.5 # default (float)
-        veh_dict['large_motor_power_kw'] = 75.0 # default (float)
+        veh_dict['small_motor_power_kw'] = 7.5  # default (float)
+        veh_dict['large_motor_power_kw'] = 75.0  # default (float)
 
         # check if veh_year provided in file, and, if not, provide value from scenario_name or default of 0
         if ('veh_year' not in veh_dict) or np.isnan(veh_dict['veh_year']):
@@ -383,8 +415,9 @@ class Vehicle(object):
                     re.match('\d{4}', str(veh_dict['scenario_name'])).group()
                 )
             else:
-                veh_dict['veh_year'] = np.int32(0) # set 0 as default to get correct type
-        
+                # set 0 as default to get correct type
+                veh_dict['veh_year'] = np.int32(0)
+
         # in case veh_year gets loaded from file as float
         veh_dict['veh_year'] = np.int32(veh_dict['veh_year'])
 
@@ -421,10 +454,10 @@ class Vehicle(object):
         for key in keys_to_remove:
             if key in veh_dict:
                 del veh_dict[key]
+        veh_dict['to_rust'] = to_rust
         return cls(**veh_dict)
-        
 
-    def __post_init__(self, fc_peak_eff_override:float=-1.0, mc_peak_eff_override:float=-1.0):
+    def __post_init__(self, fc_peak_eff_override: float = -1.0, mc_peak_eff_override: float = -1.0):
         """
         Sets derived parameters.
         Arguments:
@@ -434,9 +467,10 @@ class Vehicle(object):
         mc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
             with proportional scaling.  Default of -1 has no effect.
         """
-        self.set_derived(fc_peak_eff_override, mc_peak_eff_override)
-        
-    def set_derived(self, fc_peak_eff_override:float=-1.0, mc_peak_eff_override:float=-1.0):
+        if not self.to_rust:
+            self.set_derived(fc_peak_eff_override, mc_peak_eff_override)
+
+    def set_derived(self, fc_peak_eff_override: float = -1.0, mc_peak_eff_override: float = -1.0):
         """
         Sets derived parameters.
         Arguments:
@@ -446,18 +480,18 @@ class Vehicle(object):
         mc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
             with proportional scaling.  Default of -1 has no effect.
         """
-        
+
         if self.scenario_name != 'Template Vehicle for setting up data types':
             if self.veh_pt_type == BEV:
                 assert self.fs_max_kw == 0, f'max_fuel_stor_kw must be zero for provided BEV powertrain type in {self.scenario_name}'
-                assert self.fs_kwh  == 0, f'fuel_stor_kwh must be zero for provided BEV powertrain type in {self.scenario_name}'
+                assert self.fs_kwh == 0, f'fuel_stor_kwh must be zero for provided BEV powertrain type in {self.scenario_name}'
                 assert self.fc_max_kw == 0, f'max_fuel_conv_kw must be zero for provided BEV powertrain type in {self.scenario_name}'
             elif (self.veh_pt_type == CONV) and not(self.stop_start):
                 assert self.mc_max_kw == 0, f'max_mc_kw must be zero for provided Conv powertrain type in {self.scenario_name}'
                 assert self.ess_max_kw == 0, f'max_ess_kw must be zero for provided Conv powertrain type in {self.scenario_name}'
                 assert self.ess_max_kwh == 0, f'max_ess_kwh must be zero for provided Conv powertrain type in {self.scenario_name}'
 
-        ### Build roadway power lookup table
+        # Build roadway power lookup table
         self.max_roadway_chg_kw = np.zeros(6)
         self.charging_on = False
 
@@ -478,29 +512,32 @@ class Vehicle(object):
         # Relatively continuous array of possible engine power outputs
         self.fc_kw_out_array = self.fc_max_kw * self.fc_perc_out_array
         # Creates relatively continuous array for fc_eff
-        self.fc_eff_array = np.interp(x=self.fc_perc_out_array, xp=self.fc_pwr_out_perc, fp=self.fc_eff_map)
+        self.fc_eff_array = np.interp(
+            x=self.fc_perc_out_array, xp=self.fc_pwr_out_perc, fp=self.fc_eff_map)
 
-        self.modern_max = params.modern_max            
-        
+        self.modern_max = params.modern_max
+
         modern_diff = self.modern_max - max(self.large_baseline_eff)
 
         large_baseline_eff_adj = self.large_baseline_eff + modern_diff
 
         mc_kw_adj_perc = max(
-            0.0, 
+            0.0,
             min(
-                (self.mc_max_kw - self.small_motor_power_kw) / (self.large_motor_power_kw - self.small_motor_power_kw), 
+                (self.mc_max_kw - self.small_motor_power_kw) /
+                (self.large_motor_power_kw - self.small_motor_power_kw),
                 1.0)
-            )
+        )
 
         if None in self.mc_eff_map:
             self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj + \
-                    (1 - mc_kw_adj_perc) * self.small_baseline_eff
+                (1 - mc_kw_adj_perc) * self.small_baseline_eff
             self.mc_eff_map = self.mc_eff_array
         else:
             self.mc_eff_array = self.mc_eff_map
 
-        mc_kw_out_array = np.linspace(0, 1, len(self.mc_perc_out_array)) * self.mc_max_kw
+        mc_kw_out_array = np.linspace(
+            0, 1, len(self.mc_perc_out_array)) * self.mc_max_kw
 
         mc_full_eff_array = np.interp(
             x=self.mc_perc_out_array, xp=self.mc_pwr_out_perc, fp=self.mc_eff_array)
@@ -546,22 +583,22 @@ class Vehicle(object):
                 ess_mass_kg = 0.0
             else:
                 ess_mass_kg = ((self.ess_max_kwh * self.ess_kg_per_kwh) +
-                            self.ess_base_kg) * self.comp_mass_multiplier
+                               self.ess_base_kg) * self.comp_mass_multiplier
             if self.mc_max_kw == 0:
                 mc_mass_kg = 0.0
             else:
                 mc_mass_kg = (self.mc_pe_base_kg+(self.mc_pe_kg_per_kw
-                                                * self.mc_max_kw)) * self.comp_mass_multiplier
+                                                  * self.mc_max_kw)) * self.comp_mass_multiplier
             if self.fc_max_kw == 0:
                 fc_mass_kg = 0.0
             else:
                 fc_mass_kg = (1 / self.fc_kw_per_kg * self.fc_max_kw +
-                    self.fc_base_kg) * self.comp_mass_multiplier
+                              self.fc_base_kg) * self.comp_mass_multiplier
             if self.fs_max_kw == 0:
                 fs_mass_kg = 0.0
             else:
                 fs_mass_kg = ((1 / self.fs_kwh_per_kg) *
-                            self.fs_kwh) * self.comp_mass_multiplier
+                              self.fs_kwh) * self.comp_mass_multiplier
             self.veh_kg = self.cargo_kg + self.glider_kg + self.trans_kg * \
                 self.comp_mass_multiplier + ess_mass_kg + \
                 mc_mass_kg + fc_mass_kg + fs_mass_kg
@@ -572,23 +609,25 @@ class Vehicle(object):
         self.max_trac_mps2 = (
             self.wheel_coef_of_fric * self.drive_axle_weight_frac * self.veh_kg * self.props.a_grav_mps2 /
             (1 + self.veh_cg_m * self.wheel_coef_of_fric / self.wheel_base_m)
-            ) / (self.veh_kg * self.props.a_grav_mps2)  * self.props.a_grav_mps2
+        ) / (self.veh_kg * self.props.a_grav_mps2) * self.props.a_grav_mps2
 
         # copying to instance attributes
         self.ess_mass_kg = np.float64(ess_mass_kg)
-        self.mc_mass_kg =  np.float64(mc_mass_kg)
-        self.fc_mass_kg =  np.float64(fc_mass_kg)
-        self.fs_mass_kg =  np.float64(fs_mass_kg)
+        self.mc_mass_kg = np.float64(mc_mass_kg)
+        self.fc_mass_kg = np.float64(fc_mass_kg)
+        self.fs_mass_kg = np.float64(fs_mass_kg)
 
     # properties -- these were created to make sure modifications to curves propagate
 
     @property
-    def max_fc_eff_kw(self): return self.fc_kw_out_array[np.argmax(self.fc_eff_array)]
-    @property
-    def max_regen_kwh(self): return 0.5 * self.veh_kg * (27**2) / (3600 * 1000)    
+    def max_fc_eff_kw(
+        self): return self.fc_kw_out_array[np.argmax(self.fc_eff_array)]
 
     @property
-    def veh_type_selection(self): 
+    def max_regen_kwh(self): return 0.5 * self.veh_kg * (27**2) / (3600 * 1000)
+
+    @property
+    def veh_type_selection(self):
         """
         Copying veh_pt_type to additional key
         to be consistent with Excel version but not used in Python version
@@ -603,7 +642,7 @@ class Vehicle(object):
     def set_mcPeakEff(self, new_peak):
         """
         Set motor peak efficiency EVERWHERE.  
-        
+
         Arguments:
         ----------
         new_peak: float, new peak motor efficiency in decimal form 
@@ -620,7 +659,7 @@ class Vehicle(object):
     def set_fcPeakEff(self, new_peak):
         """
         Set fc peak efficiency EVERWHERE.  
-        
+
         Arguments:
         ----------
         new_peak: float, new peak fc efficiency in decimal form 
@@ -632,8 +671,9 @@ class Vehicle(object):
 
     def get_numba_veh(self):
         """Deprecated."""
-        raise NotImplementedError("This method has been deprecated.  Use get_rust_veh instead.")    
-    
+        raise NotImplementedError(
+            "This method has been deprecated.  Use get_rust_veh instead.")
+
     def to_rust(self):
         """Return a Rust version of the vehicle"""
         # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
@@ -642,11 +682,13 @@ class Vehicle(object):
 
 ref_veh = Vehicle.from_vehdb(5)
 
+
 class LegacyVehicle(object):
     """
     Implementation of Vehicle with legacy keys.
     """
-    def __init__(self, vehicle:Vehicle):
+
+    def __init__(self, vehicle: Vehicle):
         """
         Given cycle, returns legacy cycle.
         """
@@ -654,7 +696,7 @@ class LegacyVehicle(object):
             self.__setattr__(val, copy.deepcopy(vehicle.__getattribute__(key)))
 
 
-def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
+def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     """Returns copy of Vehicle.
     Arguments:
     veh: instantiated Vehicle
@@ -682,7 +724,8 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
             new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
             veh_dict[key] = new_pp
         else:
-            veh_dict[key] = copy.deepcopy(veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
+            veh_dict[key] = copy.deepcopy(veh.__getattribute__(
+                key)) if deep else veh.__getattribute__(key)
 
     if return_type is None:
         if RUST_AVAILABLE and type(veh) == fsr.RustVehicle:
@@ -702,16 +745,19 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
     elif return_type == 'legacy':
         return LegacyVehicle(veh_dict)
     elif RUST_AVAILABLE and return_type == 'rust':
-        veh_dict['props'] = params.copy_physical_properties(veh_dict['props'], return_type, deep)
-        veh_dict = {key: veh_dict[key] for key in veh_dict if key not in ["large_baseline_eff", "small_baseline_eff"]}
+        veh_dict['props'] = params.copy_physical_properties(
+            veh_dict['props'], return_type, deep)
+        veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [
+            "large_baseline_eff", "small_baseline_eff"]}
         return fsr.RustVehicle(**veh_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 
-def veh_equal(veh1:Vehicle, veh2:Vehicle, full_out:bool=False)-> bool:
+
+def veh_equal(veh1: Vehicle, veh2: Vehicle, full_out: bool = False) -> bool:
     """Given veh1 and veh2, which can be Vehicle and/or RustVehicle
     instances, return True if equal.
-    
+
     Arguments:
     ----------
     """
@@ -739,7 +785,7 @@ def veh_equal(veh1:Vehicle, veh2:Vehicle, full_out:bool=False)-> bool:
         elif veh_dict1[key] != veh_dict2[key]:
             try:
                 if np.isnan(veh_dict1[key]) and np.isnan(veh_dict2[key]):
-                    continue # treat as equal if both nan
+                    continue  # treat as equal if both nan
             except:
                 pass
             if not full_out:

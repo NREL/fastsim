@@ -265,11 +265,11 @@ impl RustVehicle {
             .map(|eff| -> f64 { eff * eff_map_multiplier });
     }
 
-    /// Sets derived parameters.
-    /// Arguments:
-    /// ----------
-    /// mc_peak_eff_override: float (0, 1), if provided, overrides motor peak efficiency
-    ///     with proportional scaling.  Default of -1 has no effect.  
+    /// Sets derived parameters.  
+    /// Arguments:  
+    /// ----------  
+    /// mc_peak_eff_override: float (0, 1), if provided, overrides motor peak efficiency  
+    ///     with proportional scaling.  Default of -1 has no effect.    
     pub fn set_derived(&mut self) {
         if self.scenario_name != "Template Vehicle for setting up data types" {
             if self.veh_pt_type == BEV {
