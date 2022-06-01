@@ -1,3 +1,5 @@
+//! Module for vehicle attributes and related functions and structs.
+
 extern crate ndarray;
 use ndarray::{Array, Array1};
 extern crate pyo3;
@@ -28,7 +30,7 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 
 #[pyclass]
 #[derive(Debug, Clone)]
-/// Struct containing time trace data
+/// Struct containing vehicle attributes
 pub struct RustVehicle {
     #[pyo3(get, set)]
     pub props: RustPhysicalProperties,
@@ -42,6 +44,7 @@ pub struct RustVehicle {
     pub veh_pt_type: String,
     #[pyo3(get, set)]
     pub drag_coef: f64,
+    /// Frontal area \[m²\]
     #[pyo3(get, set)]
     pub frontal_area_m2: f64,
     #[pyo3(get, set)]
