@@ -703,6 +703,7 @@ def copy_vehicle(veh:Vehicle, return_type:str=None, deep:bool=True):
         return LegacyVehicle(veh_dict)
     elif RUST_AVAILABLE and return_type == 'rust':
         veh_dict['props'] = params.copy_physical_properties(veh_dict['props'], return_type, deep)
+        veh_dict = {key: veh_dict[key] for key in veh_dict if key not in ["large_baseline_eff", "small_baseline_eff"]}
         return fsr.RustVehicle(**veh_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")

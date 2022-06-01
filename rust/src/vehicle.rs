@@ -152,8 +152,6 @@ pub struct RustVehicle {
     pub trans_eff: f64,
     #[pyo3(get, set)]
     pub ess_to_fuel_ok_error: f64,
-    pub large_baseline_eff: Array1<f64>,
-    pub small_baseline_eff: Array1<f64>,
     #[pyo3(get, set)]
     pub small_motor_power_kw: f64,
     #[pyo3(get, set)]
@@ -348,9 +346,11 @@ impl RustVehicle {
         self.modern_max = MODERN_MAX;
 
         // NOTE: unused because the first part of if/else commented below is unused
-        let modern_diff = self.modern_max - ndarrmax(&self.large_baseline_eff);
-        let large_baseline_eff_adj = self.large_baseline_eff.clone() + modern_diff;
-        let mc_kw_adj_perc = max(
+        let modern_diff = self.modern_max - arrmax(&LARGE_BASELINE_EFF);
+        let _large_baseline_eff_adj: Vec<f64> =
+            LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
+        // Should the above lines be moved to another file? Or maybe have the outputs hardcoded?
+        let _mc_kw_adj_perc = max(
             0.0,
             min(
                 (self.mc_max_kw - self.small_motor_power_kw)
@@ -368,13 +368,13 @@ impl RustVehicle {
         //    self.mc_eff_map = self.mc_eff_array
         //else:
         //    self.mc_eff_array = self.mc_eff_map
-        if true {
-            self.mc_eff_array = self.mc_eff_map.clone();
-        } else {
+        if false {
             // println!("{:?}",self.mc_eff_map);
-            self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
-                + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
-            self.mc_eff_map = self.mc_eff_array.clone();
+            // self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
+            //     + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
+            // self.mc_eff_map = self.mc_eff_array.clone();
+        } else {
+            self.mc_eff_array = self.mc_eff_map.clone();
         }
 
         let mc_kw_out_array: Vec<f64> =
@@ -520,12 +520,6 @@ impl RustVehicle {
         // pub const LARGE_BASELINE_EFF: &[f64; 11] = [
         // 0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
         // ]
-        let large_baseline_eff: Vec<f64> = vec![
-            0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
-        ];
-        let small_baseline_eff: Vec<f64> = vec![
-            0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92,
-        ];
         let small_motor_power_kw: f64 = 7.5;
         let large_motor_power_kw: f64 = 75.0;
         // TODO: make this look more like:
@@ -564,7 +558,7 @@ impl RustVehicle {
         let mc_perc_out_array = MC_PERC_OUT_ARRAY.to_vec();
         let mc_kw_out_array =
             (Array::linspace(0.0, 1.0, mc_perc_out_array.len()) * mc_max_kw).to_vec();
-        let mc_eff_array = large_baseline_eff
+        let mc_eff_array = LARGE_BASELINE_EFF
             .iter()
             .map(|&x| {
                 interpolate(
@@ -672,8 +666,6 @@ impl RustVehicle {
             val_veh_base_cost,
             val_msrp,
             props,
-            large_baseline_eff,
-            small_baseline_eff,
             small_motor_power_kw,
             large_motor_power_kw,
             Some(fc_perc_out_array),
@@ -850,8 +842,6 @@ impl RustVehicle {
         val_veh_base_cost: f64,
         val_msrp: f64,
         props: RustPhysicalProperties,
-        large_baseline_eff: Vec<f64>,
-        small_baseline_eff: Vec<f64>,
         small_motor_power_kw: f64,
         large_motor_power_kw: f64,
         fc_perc_out_array: Option<Vec<f64>>,
@@ -882,8 +872,6 @@ impl RustVehicle {
         let fc_eff_map = Array::from_vec(fc_eff_map);
         let mc_pwr_out_perc = Array::from_vec(mc_pwr_out_perc);
         let mc_eff_map = Array::from_vec(mc_eff_map);
-        let large_baseline_eff = Array::from_vec(large_baseline_eff);
-        let small_baseline_eff = Array::from_vec(small_baseline_eff);
         let fc_perc_out_array: Vec<f64> =
             fc_perc_out_array.unwrap_or_else(|| FC_PERC_OUT_ARRAY.clone().to_vec());
         let max_roadway_chg_kw = Array::from_vec(max_roadway_chg_kw);
@@ -986,8 +974,6 @@ impl RustVehicle {
             val_veh_base_cost,
             val_msrp,
             props,
-            large_baseline_eff,
-            small_baseline_eff,
             small_motor_power_kw,
             large_motor_power_kw,
             fc_perc_out_array,
@@ -1426,12 +1412,7 @@ impl RustVehicle {
 
     #[getter]
     pub fn get_large_baseline_eff(&self) -> PyResult<Vec<f64>> {
-        Ok(self.large_baseline_eff.to_vec())
-    }
-    #[setter]
-    pub fn set_large_baseline_eff(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.large_baseline_eff = Array::from_vec(new_value);
-        Ok(())
+        Ok(LARGE_BASELINE_EFF.to_vec())
     }
 
     #[getter]
@@ -1813,12 +1794,7 @@ impl RustVehicle {
 
     #[getter]
     pub fn get_small_baseline_eff(&self) -> PyResult<Vec<f64>> {
-        Ok(self.small_baseline_eff.to_vec())
-    }
-    #[setter]
-    pub fn set_small_baseline_eff(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.small_baseline_eff = Array::from_vec(new_value);
-        Ok(())
+        Ok(SMALL_BASELINE_EFF.to_vec())
     }
 
     #[getter]
@@ -2230,12 +2206,6 @@ pub fn load_vehicle() -> RustVehicle {
     let val_veh_base_cost: f64 = f64::NAN;
     let val_msrp: f64 = f64::NAN;
     let props = RustPhysicalProperties::__new__();
-    let large_baseline_eff: Vec<f64> = vec![
-        0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
-    ];
-    let small_baseline_eff: Vec<f64> = vec![
-        0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92,
-    ];
     let small_motor_power_kw: f64 = 7.5;
     let large_motor_power_kw: f64 = 75.0;
     // TODO: make this look more like:
@@ -2273,7 +2243,7 @@ pub fn load_vehicle() -> RustVehicle {
         .collect::<Vec<_>>();
     let mc_perc_out_array = MC_PERC_OUT_ARRAY.to_vec();
     let mc_kw_out_array = (Array::linspace(0.0, 1.0, mc_perc_out_array.len()) * mc_max_kw).to_vec();
-    let mc_eff_array: Vec<f64> = large_baseline_eff
+    let mc_eff_array: Vec<f64> = LARGE_BASELINE_EFF
         .iter()
         .map(|&x| {
             interpolate(
@@ -2378,8 +2348,6 @@ pub fn load_vehicle() -> RustVehicle {
         val_veh_base_cost,
         val_msrp,
         props,
-        large_baseline_eff,
-        small_baseline_eff,
         small_motor_power_kw,
         large_motor_power_kw,
         None,
@@ -2501,8 +2469,6 @@ mod tests {
     //     let val_veh_base_cost: f64 = f64::NAN;
     //     let val_msrp: f64 = f64::NAN;
     //     let props = RustPhysicalProperties::__new__();
-    //     let large_baseline_eff: Vec<f64> = vec![0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92];
-    //     let small_baseline_eff: Vec<f64> = vec![0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92];
     //     let small_motor_power_kw: f64 = 7.5;
     //     let large_motor_power_kw: f64 = 75.0;
     //     let fc_perc_out_array: Vec<f64> = vec![
@@ -2602,8 +2568,6 @@ mod tests {
     //       val_veh_base_cost,
     //       val_msrp,
     //       props,
-    //       large_baseline_eff,
-    //       small_baseline_eff,
     //       small_motor_power_kw,
     //       large_motor_power_kw,
     //       fc_perc_out_array,
