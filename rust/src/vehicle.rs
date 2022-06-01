@@ -44,7 +44,7 @@ pub struct RustVehicle {
     pub veh_pt_type: String,
     #[pyo3(get, set)]
     pub drag_coef: f64,
-    /// Frontal area (m^2)
+    /// Frontal area \[m²\]
     #[pyo3(get, set)]
     pub frontal_area_m2: f64,
     #[pyo3(get, set)]
