@@ -28,7 +28,7 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 
 #[pyclass]
 #[derive(Debug, Clone)]
-/// Struct containing time trace data
+/// Struct containing vehicle attributes
 pub struct RustVehicle {
     #[pyo3(get, set)]
     pub props: RustPhysicalProperties,
