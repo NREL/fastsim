@@ -9,7 +9,7 @@ Vehicle,vehYear,,
 ,driveAxleWeightFrac,0.61,
 ,wheelBaseM,2.56,https://www.toyota-europe.com/new-cars/yaris/grades-and-specs
 ,cargoKg,136,
-,vehOverrideKg,1650,
+,vehOverrideKg,1670,
 ,compMassMultiplier,1.4,
 Fuel / Fuel Converter / Engine,maxFuelStorKw,2000,
 ,fuelStorSecsToPeakPwr,1.1,
@@ -30,7 +30,7 @@ Motor,maxMotorKw,59,https://www.toyota-europe.com/new-cars/yaris/grades-and-spec
 ,motorSecsToPeakPwr,4.8,
 ,mcPeKgPerKw,0.833,
 ,mcPeBaseKg,21.6,
-ESS / Battery,maxEssKw,25,0.1
+ESS / Battery,maxEssKw,1000,Sufficiently high value so as to not impact calculation
 ,maxEssKwh,0.764,177.6 V * 4.3 Ah
 ,essKgPerKwh,8.9,
 ,essBaseKg,75.8,
