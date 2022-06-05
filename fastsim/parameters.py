@@ -135,6 +135,10 @@ fc_eff_map_fuel_cell = np.array(
 fc_eff_map_hd_diesel = np.array(
     [0.10, 0.14, 0.20, 0.26, 0.32, 0.39, 0.41, 0.42, 0.41, 0.38, 0.36, 0.34])
 
+# Regenerative constant
+regen_a: float= 500.0
+regen_b: float = 0.99
+
 
 # Relatively continuous power out percentages for assigning FC efficiencies
 fc_perc_out_array = np.r_[np.arange(0, 3.0, 0.1), np.arange(

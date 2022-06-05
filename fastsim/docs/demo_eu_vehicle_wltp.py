@@ -42,8 +42,8 @@ def convention_eu_veh_wltp_fe_test():
 def hybrid_eu_veh_wltp_fe_test():
     WILLANS_FACTOR_gram_CO2__MJ = 724  # gCO2/MJ
     E10_HEAT_VALUE_kWh__liter = 8.64  # kWh/L
-    veh_2022_yaris = fsim.vehicle.Vehicle.from_file(str(Path(fsim.simdrive.__file__).parent /'resources/vehdb/2022_TOYOTA_Yaris_Hybrid_Mid.csv'))
-    veh_2022_yaris_rust = veh_2022_yaris.to_rust()
+    veh_2022_yaris = fsim.vehicle.Vehicle.from_file(str(Path(fsim.simdrive.__file__).parent /'resources/vehdb/2022_TOYOTA_Yaris_Hybrid_Mid.csv'),to_rust=False,verbose=True)
+    veh_2022_yaris_rust = fsim.vehicle.Vehicle.from_file(str(Path(fsim.simdrive.__file__).parent /'resources/vehdb/2022_TOYOTA_Yaris_Hybrid_Mid.csv'),to_rust=True,verbose=True).to_rust()
     #print('Python & Rust Comparasion')
     #print("fc_eff_map: ")
     #print(veh_2022_yaris.mc_eff_map)

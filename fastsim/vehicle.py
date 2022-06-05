@@ -4,7 +4,7 @@ Module containing classes and methods for for loading vehicle data. For example 
 
 # Import necessary python modules
 import numpy as np
-from dataclasses import dataclass, InitVar
+from dataclasses import dataclass, field, InitVar
 import pandas as pd
 import types as pytypes
 import re
@@ -27,6 +27,35 @@ THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
 DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
 VEHICLE_DIR = THIS_DIR / 'resources' / 'vehdb'
+
+KEYS_TO_REMOVE = [
+            'large_baseline_eff',
+            'small_baseline_eff',
+            'large_motor_power_kw',
+            'small_motor_power_kw',
+            'charging_on',
+            'no_elec_sys',
+            'no_elec_aux',
+            'max_roadway_chg_kw',
+            'input_kw_out_array',
+            'fc_kw_out_array',
+            'fc_eff_array',
+            'modern_max',
+            'mc_eff_array',
+            'mc_kw_in_array',
+            'mc_kw_out_array',
+            'mc_max_elec_in_kw',
+            'mc_full_eff_array',
+            'veh_kg',
+            'max_trac_mps2',
+            'ess_mass_kg',
+            'mc_mass_kg',
+            'fc_mass_kg',
+            'fs_mass_kg',
+            'fc_perc_out_array',
+            'mc_perc_out_array',
+            'converted_to_rust',
+        ]
 
 __doc__ += f"""To create a new vehicle model, copy \n`{(THIS_DIR / 'resources/vehdb/template.csv').resolve()}`
 to a working directory not inside \n`{THIS_DIR.resolve()}`
@@ -194,25 +223,46 @@ class Vehicle(object):
     # don't mess with this
     props: params.PhysicalProperties = params.PhysicalProperties()
     # gets set during __post_init__
-    large_baseline_eff: Optional[np.ndarray] = None
-    # gets set during __post_init__
-    small_baseline_eff: Optional[np.ndarray] = None
-    small_motor_power_kw: Optional[float] = 7.5
-    large_motor_power_kw: Optional[float] = 7.5
-    fc_perc_out_array = params.fc_perc_out_array
-    mc_perc_out_array = params.mc_perc_out_array
+    large_baseline_eff: np.ndarray = field(init=False)
+    small_baseline_eff: np.ndarray = field(init=False)
+    large_motor_power_kw: float = field(init=False)
+    small_motor_power_kw: float = field(init=False)
+    fc_perc_out_array: np.ndarray = field(init=False)
+    mc_perc_out_array: np.ndarray = field(init=False)
+
     # Specify shape of mc regen efficiency curve
     # see "Regen" tab in FASTSim for Excel
-    regen_a: float = 500.0
-    regen_b: float = 0.99
-    max_roadway_chg_kw: np.ndarray = np.zeros(6)
-    charging_on: bool = False
-    no_elec_sys: bool = False
-    no_elec_aux: bool = False
+    # Not sure if these params need further API modification;
+    # will keep it as it-is
+    regen_a: float = params.regen_a
+    regen_b: float = params.regen_b
+
+    # gets set during __post_init__
+    max_roadway_chg_kw: np.ndarray = field(init=False)
+    input_kw_out_array: np.ndarray = field(init=False)
+    fc_kw_out_array: np.ndarray = field(init=False)
+    fc_eff_array: np.ndarray = field(init=False)
+    charging_on: bool = field(init=False)
+    no_elec_sys: bool = field(init=False)
+    no_elec_aux: bool = field(init=False)
+    modern_max: float = field(init=False)
+    mc_eff_array: np.ndarray = field(init=False)
+    mc_kw_in_array: np.ndarray = field(init=False)
+    mc_kw_out_array: np.ndarray = field(init=False)
+    mc_max_elec_in_kw: float = field(init=False)
+    mc_full_eff_array: np.ndarray = field(init=False)
+    veh_kg: float = field(init=False)
+    max_trac_mps2: float = field(init=False)
+    ess_mass_kg: float = field(init=False)
+    mc_mass_kg: float = field(init=False)
+    fc_mass_kg: float = field(init=False)
+    fs_mass_kg: float = field(init=False)
+
+    # if True, some derived vehicle attributes are not calulated in python 
+    # but instead are calculated in Rust
+    converted_to_rust: InitVar[bool] = True
     fc_peak_eff_override: InitVar[float] = -1.0
     mc_peak_eff_override: InitVar[float] = -1.0
-    # if True, some derived vehicle attributes are not calulated in python but instead are calculated in Rust
-    to_rust: bool = True
 
     @classmethod
     def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = True, verbose: bool = False):
@@ -228,7 +278,7 @@ class Vehicle(object):
         veh_file = DEFAULT_VEH_DB if veh_file is None else veh_file
         vehdf.set_index('selection', inplace=True, drop=False)
 
-        return cls.from_df(vehdf, vnum, verbose)
+        return cls.from_df(vehdf, vnum, to_rust, verbose)
 
     @classmethod
     def from_file(cls, filename: str, vnum: int = None, to_rust: bool = True, verbose: bool = False):
@@ -266,7 +316,7 @@ class Vehicle(object):
 
         veh_file = filename
 
-        return cls.from_df(vehdf, vnum, veh_file, verbose)
+        return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
 
     @classmethod
     def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = True, verbose: bool = False):
@@ -303,7 +353,7 @@ class Vehicle(object):
         #     for col in missing_cols:
         #         veh_dict[col] = 0.0
 
-        return cls.from_dict(veh_dict, verbose)
+        return cls.from_dict(veh_dict, to_rust, verbose)
 
     @classmethod
     def from_dict(cls, veh_dict: dict, to_rust: bool = True, verbose: bool = False):
@@ -325,7 +375,7 @@ class Vehicle(object):
             veh_dict['fc_eff_map'] = np.array(ast.literal_eval(
                 veh_dict['fc_eff_map']))
             if verbose:
-                print(f"fc_eff_map is overriding fc_eff_type")
+                print(f"reading in fc_eff_map, and it is overriding fc_eff_type")
 
         except:
             warn_str = f"""fc_eff_type {
@@ -372,40 +422,37 @@ class Vehicle(object):
         # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
         try:
             # check if mc_pwr_out_perc is provided in vehicle csv file
-            veh_dict['mc_pwr_out_perc'] = np.array(
-                ast.literal_eval(veh_dict['mc_pwr_out_perc']))
+            veh_dict['mc_pwr_out_perc'] = np.array(ast.literal_eval(veh_dict['mc_pwr_out_perc']))
         except:
+            if verbose:
+                print(f'No proper mcPwrOutPerc provided; using default values')
             veh_dict['mc_pwr_out_perc'] = params.mc_pwr_out_perc
+
+        # check if self-provided mc_pwr_out_perc has the required length
+        large_baseline_eff_len = len(params.large_baseline_eff)
+        mc_pwr_out_len = len(veh_dict['mc_pwr_out_perc'])
+        mc_large_eff_len_err = f'len(mcPwrOutPerc) ({mc_pwr_out_len}) is not' +\
+            f'equal to given len(largeBaselineEff) ({large_baseline_eff_len})'
+        assert len(veh_dict['mc_pwr_out_perc']) == len(params.large_baseline_eff), mc_large_eff_len_err
 
         try:
             # check if mc_eff_map is provided in vehicle csv file
-            veh_dict['mc_eff_map'] = np.array(
-                ast.literal_eval(veh_dict['mc_eff_map']))
+            veh_dict['mc_eff_map'] = np.array(ast.literal_eval(veh_dict['mc_eff_map']))
+            mc_eff_map_len = len(veh_dict['mc_eff_map'])
+            mc_eff_map_len_err = f'len(mcEffMap) ({mc_eff_map_len}) is not' +\
+            f'equal to given len(largeBaselineEff) ({large_baseline_eff_len})'
+            assert len(veh_dict['mc_pwr_out_perc']) == len(params.large_baseline_eff), mc_eff_map_len_err
         except:
+            if verbose:
+                print('No proper mcEffMap provided, will used default method to calculate')
             veh_dict['mc_eff_map'] = None
-
-        veh_dict['large_baseline_eff'] = params.large_baseline_eff
-        veh_dict['small_baseline_eff'] = params.small_baseline_eff
-
-        mc_pwr_out_len = len(veh_dict['mc_pwr_out_perc'])
-        large_baseline_eff_len = len(veh_dict['large_baseline_eff'])
-        mc_large_eff_len_err = f'len(mcPwrOutPerc) ({mc_pwr_out_len}) is not' +\
-            f'equal to len(largeBaselineEff) ({large_baseline_eff_len})'
-        assert len(veh_dict['mc_pwr_out_perc']) == len(
-            veh_dict['large_baseline_eff']), mc_large_eff_len_err
-
-        small_baseline_eff_len = len(veh_dict['small_baseline_eff'])
-        mc_small_eff_len_err = f'len(mc_pwr_out_perc) ({mc_pwr_out_len}) is not' +\
-            f'equal to len(smallBaselineEff) ({small_baseline_eff_len})'
-        assert len(veh_dict['mc_pwr_out_perc']) == len(
-            veh_dict['small_baseline_eff']), mc_small_eff_len_err
-
+        
         # set stop_start if not provided
         if 'stop_start' in veh_dict and np.isnan(veh_dict['stop_start']):
             veh_dict['stop_start'] = False
 
-        veh_dict['small_motor_power_kw'] = 7.5  # default (float)
-        veh_dict['large_motor_power_kw'] = 75.0  # default (float)
+        if 'veh_override_kg' not in veh_dict or np.isnan(veh_dict['veh_override_kg']):
+            veh_dict['veh_override_kg'] = None
 
         # check if veh_year provided in file, and, if not, provide value from scenario_name or default of 0
         if ('veh_year' not in veh_dict) or np.isnan(veh_dict['veh_year']):
@@ -427,37 +474,23 @@ class Vehicle(object):
         for key, val in veh_dict.items():
             if key != 'props':
                 if key not in OPT_INIT_PARAMS:
-                    veh_dict[key] = keys_and_types[key](val)
+                    if key in ['veh_override_kg','mc_eff_map'] and val is None:
+                        pass
+                    else:
+                        veh_dict[key] = keys_and_types[key](val)
                 else:
                     # All OPT_INIT_PARAMS assumed to be float64
                     veh_dict[key] = np.float64(val)
+        
+        #veh_dict['converted_to_rust'] = to_rust
+        
+        ##for key in KEYS_TO_REMOVE:
+        #    if key in veh_dict:
+        #        del veh_dict[key]
 
-        keys_to_remove = [
-            'input_kw_out_array',
-            'fc_kw_out_array',
-            'fc_eff_array',
-            'modern_max',
-            'mc_eff_array',
-            'mc_kw_in_array',
-            'mc_kw_out_array',
-            'mc_max_elec_in_kw',
-            'mc_full_eff_array',
-            'veh_kg',
-            'max_trac_mps2',
-            'ess_mass_kg',
-            'mc_mass_kg',
-            'fc_mass_kg',
-            'fs_mass_kg',
-            'fc_perc_out_array',
-            'mc_perc_out_array',
-        ]
-        for key in keys_to_remove:
-            if key in veh_dict:
-                del veh_dict[key]
-        veh_dict['to_rust'] = to_rust
-        return cls(**veh_dict)
+        return cls(**veh_dict,converted_to_rust=to_rust)
 
-    def __post_init__(self, fc_peak_eff_override: float = -1.0, mc_peak_eff_override: float = -1.0):
+    def __post_init__(self, converted_to_rust: bool, fc_peak_eff_override: float = -1.0, mc_peak_eff_override: float = -1.0):
         """
         Sets derived parameters.
         Arguments:
@@ -467,7 +500,7 @@ class Vehicle(object):
         mc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
             with proportional scaling.  Default of -1 has no effect.
         """
-        if not self.to_rust:
+        if not converted_to_rust:
             self.set_derived(fc_peak_eff_override, mc_peak_eff_override)
 
     def set_derived(self, fc_peak_eff_override: float = -1.0, mc_peak_eff_override: float = -1.0):
@@ -480,6 +513,16 @@ class Vehicle(object):
         mc_peak_eff_override: float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
             with proportional scaling.  Default of -1 has no effect.
         """
+        # Build up constant
+        self.large_baseline_eff = params.large_baseline_eff
+        self.small_baseline_eff = params.small_baseline_eff
+        self.small_motor_power_kw = 7.5   # default (float)
+        self.large_motor_power_kw = 75.0  # default (float)
+        self.fc_perc_out_array = params.fc_perc_out_array
+        self.mc_perc_out_array = params.mc_perc_out_array
+        # Build roadway power lookup table
+        self.max_roadway_chg_kw = np.zeros(6)
+        self.charging_on = False
 
         if self.scenario_name != 'Template Vehicle for setting up data types':
             if self.veh_pt_type == BEV:
@@ -489,11 +532,7 @@ class Vehicle(object):
             elif (self.veh_pt_type == CONV) and not(self.stop_start):
                 assert self.mc_max_kw == 0, f'max_mc_kw must be zero for provided Conv powertrain type in {self.scenario_name}'
                 assert self.ess_max_kw == 0, f'max_ess_kw must be zero for provided Conv powertrain type in {self.scenario_name}'
-                assert self.ess_max_kwh == 0, f'max_ess_kwh must be zero for provided Conv powertrain type in {self.scenario_name}'
-
-        # Build roadway power lookup table
-        self.max_roadway_chg_kw = np.zeros(6)
-        self.charging_on = False
+                assert self.ess_max_kwh == 0, f'max_ess_kwh must be zero for provided Conv powertrain type in {self.scenario_name}'   
 
         # Checking if a vehicle has any hybrid components
         if (self.ess_max_kwh == 0) or (self.ess_max_kw == 0) or (self.mc_max_kw == 0):
@@ -529,10 +568,10 @@ class Vehicle(object):
                 1.0)
         )
 
-        if None in self.mc_eff_map:
-            self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj + \
+        if self.mc_eff_map is None:
+            self.mc_eff_map = mc_kw_adj_perc * large_baseline_eff_adj + \
                 (1 - mc_kw_adj_perc) * self.small_baseline_eff
-            self.mc_eff_map = self.mc_eff_array
+            self.mc_eff_array = self.mc_eff_map
         else:
             self.mc_eff_array = self.mc_eff_map
 
@@ -578,7 +617,7 @@ class Vehicle(object):
         fc_mass_kg = 0
         fs_mass_kg = 0
 
-        if not(self.veh_override_kg > 0):
+        if (self.veh_override_kg is None) or (not(self.veh_override_kg > 0)):
             if self.ess_max_kwh == 0 or self.ess_max_kw == 0:
                 ess_mass_kg = 0.0
             else:
@@ -677,7 +716,7 @@ class Vehicle(object):
     def to_rust(self):
         """Return a Rust version of the vehicle"""
         # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
-        return copy_vehicle(self, 'rust')
+        return copy_vehicle(self, 'rust', partial_key=True)
 
 
 ref_veh = Vehicle.from_vehdb(5)
@@ -696,7 +735,7 @@ class LegacyVehicle(object):
             self.__setattr__(val, copy.deepcopy(vehicle.__getattribute__(key)))
 
 
-def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
+def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True, partial_key: bool = True):
     """Returns copy of Vehicle.
     Arguments:
     veh: instantiated Vehicle
@@ -710,6 +749,11 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     veh_dict = {}
 
     for key in keys_and_types.keys():
+        if partial_key:
+            if key in KEYS_TO_REMOVE:
+                continue
+            else:
+                assert key in veh.__dict__
         if (
             RUST_AVAILABLE
             and type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties
