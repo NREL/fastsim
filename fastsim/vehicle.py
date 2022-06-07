@@ -278,7 +278,7 @@ class Vehicle(object):
         veh_file = DEFAULT_VEH_DB if veh_file is None else veh_file
         vehdf.set_index('selection', inplace=True, drop=False)
 
-        return cls.from_df(vehdf, vnum, to_rust, verbose)
+        return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
 
     @classmethod
     def from_file(cls, filename: str, vnum: int = None, to_rust: bool = True, verbose: bool = False):
@@ -716,7 +716,7 @@ class Vehicle(object):
     def to_rust(self):
         """Return a Rust version of the vehicle"""
         # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
-        return copy_vehicle(self, 'rust', partial_key=True)
+        return copy_vehicle(self, 'rust')
 
 
 ref_veh = Vehicle.from_vehdb(5)
@@ -734,8 +734,10 @@ class LegacyVehicle(object):
         for key, val in NEW_TO_OLD.items():
             self.__setattr__(val, copy.deepcopy(vehicle.__getattribute__(key)))
 
+RETURN_TYPES = ['dict', 'vehicle', 'legacy', 'rust']
+DICT, VEHICLE, LEGACY, RUST = RETURN_TYPES
 
-def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True, partial_key: bool = True):
+def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     """Returns copy of Vehicle.
     Arguments:
     veh: instantiated Vehicle
@@ -748,8 +750,19 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True, parti
 
     veh_dict = {}
 
+    if return_type is None:
+        if RUST_AVAILABLE and type(veh) == fsr.RustVehicle:
+            return_type = RUST
+        elif type(veh) == Vehicle:
+            return_type = VEHICLE
+        elif type(veh) == LegacyVehicle:
+            return_type = LEGACY
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust, vehicle, or legacy.")
+
     for key in keys_and_types.keys():
-        if partial_key:
+        if return_type == RUST:
             if key in KEYS_TO_REMOVE:
                 continue
             else:
@@ -771,24 +784,14 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True, parti
             veh_dict[key] = copy.deepcopy(veh.__getattribute__(
                 key)) if deep else veh.__getattribute__(key)
 
-    if return_type is None:
-        if RUST_AVAILABLE and type(veh) == fsr.RustVehicle:
-            return_type = 'rust'
-        elif type(veh) == Vehicle:
-            return_type = 'vehicle'
-        elif type(veh) == LegacyVehicle:
-            return_type = "legacy"
-        else:
-            raise NotImplementedError(
-                "Only implemented for rust, vehicle, or legacy.")
 
-    if return_type == 'dict':
+    if return_type == DICT:
         return veh_dict
-    elif return_type == 'vehicle':
+    elif return_type == VEHICLE:
         return Vehicle.from_dict(veh_dict)
-    elif return_type == 'legacy':
+    elif return_type == LEGACY:
         return LegacyVehicle(veh_dict)
-    elif RUST_AVAILABLE and return_type == 'rust':
+    elif RUST_AVAILABLE and return_type == RUST:
         veh_dict['props'] = params.copy_physical_properties(
             veh_dict['props'], return_type, deep)
         veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [

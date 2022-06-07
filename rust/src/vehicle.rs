@@ -371,20 +371,18 @@ impl RustVehicle {
         //    self.mc_eff_map = self.mc_eff_array
         //else:
         //    self.mc_eff_array = self.mc_eff_map
-        if self.mc_eff_map == Array1::<f64>::zeros(LARGE_BASELINE_EFF.len())  {
-            self.mc_eff_map = large_baseline_eff_adj.iter()
-                              .zip(SMALL_BASELINE_EFF.iter())
-                              .map(|(&x, &y)| {
-                                mc_kw_adj_perc * x + (1.0 - mc_kw_adj_perc) * y
-                              })
-                              .collect();
+        if self.mc_eff_map == Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()) {
+            self.mc_eff_map = large_baseline_eff_adj
+                .iter()
+                .zip(SMALL_BASELINE_EFF.iter())
+                .map(|(&x, &y)| mc_kw_adj_perc * x + (1.0 - mc_kw_adj_perc) * y)
+                .collect();
         }
         self.mc_eff_array = self.mc_eff_map.clone();
-            // println!("{:?}",self.mc_eff_map);
-            // self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
-            //     + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
-            // self.mc_eff_map = self.mc_eff_array.clone(); 
-        
+        // println!("{:?}",self.mc_eff_map);
+        // self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
+        //     + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
+        // self.mc_eff_map = self.mc_eff_array.clone();
 
         let mc_kw_out_array: Vec<f64> =
             (Array::linspace(0.0, 1.0, self.mc_perc_out_array.len()) * self.mc_max_kw).to_vec();
@@ -717,7 +715,7 @@ impl RustVehicle {
         let mut fc_mass_kg = 0.0;
         let mut fs_mass_kg = 0.0;
 
-        if !(self.veh_override_kg>0.0) {
+        if !(self.veh_override_kg > 0.0) {
             ess_mass_kg = if self.ess_max_kwh == 0.0 || self.ess_max_kw == 0.0 {
                 0.0
             } else {
@@ -877,14 +875,14 @@ impl RustVehicle {
         //fs_mass_kg: f64,
         //mc_perc_out_array: Option<Vec<f64>>,
     ) -> Self {
-        println!("Initialization starts");
         let fc_pwr_out_perc = Array::from_vec(fc_pwr_out_perc);
         let fc_eff_map = Array::from_vec(fc_eff_map);
         let mc_pwr_out_perc = Array::from_vec(mc_pwr_out_perc);
-        let mc_eff_map: Array1<f64> = Array::from_vec(mc_eff_map.unwrap_or_else(|| vec![0.0;LARGE_BASELINE_EFF.len()]));
+        let mc_eff_map: Array1<f64> =
+            Array::from_vec(mc_eff_map.unwrap_or_else(|| vec![0.0; LARGE_BASELINE_EFF.len()]));
         //let fc_perc_out_array: Vec<f64> = FC_PERC_OUT_ARRAY.clone().to_vec();
         //let mc_perc_out_array: Vec<f64> = MC_PERC_OUT_ARRAY.clone().to_vec();
-        let veh_override_kg : f64 = veh_override_kg.unwrap_or(0.0);
+        let veh_override_kg: f64 = veh_override_kg.unwrap_or(0.0);
         //    fc_perc_out_array.unwrap_or_else(|| FC_PERC_OUT_ARRAY.clone().to_vec());
         // let max_roadway_chg_kw = Array::from_vec(max_roadway_chg_kw);
         //  let input_kw_out_array = Array::from_vec(input_kw_out_array);
@@ -1002,7 +1000,7 @@ impl RustVehicle {
             mc_kw_out_array: Vec::new(),
             mc_max_elec_in_kw: 0.0,
             mc_full_eff_array: Vec::new(),
-            veh_kg:0.0,
+            veh_kg: 0.0,
             max_trac_mps2: 0.0,
             ess_mass_kg: 0.0,
             mc_mass_kg: 0.0,
