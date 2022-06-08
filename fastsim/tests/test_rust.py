@@ -106,7 +106,7 @@ class TestRust(unittest.TestCase):
             self.test_vehicle_for_discrepancies(vnum=17, **kwargs)
             self.test_vehicle_for_discrepancies(vnum=20, **kwargs)
 
-    def test_vehicle_for_discrepancies(self, vnum=1, veh_filename=None, cyc_dict=None, cyc_name="udds", has_any_errors=False):
+    def test_vehicle_for_discrepancies(self, vnum=1, veh_filename=None, cyc_dict=None, cyc_name="udds"):
         """
         Test for finding discrepancies between Rust and Python
         simulations for vehicle database models or standalone models.
@@ -119,9 +119,9 @@ class TestRust(unittest.TestCase):
         cyc_rust = cyc_python.to_rust()
         # Load selected (or default) vehicle
         if veh_filename is None:
-            veh_python = vehicle.Vehicle.from_vehdb(vnum, to_rust=False)
+            veh_python = vehicle.Vehicle.from_vehdb(vnum)
         else:
-            veh_python = vehicle.Vehicle.from_file(veh_filename, to_rust=False)
+            veh_python = vehicle.Vehicle.from_file(veh_filename)
         veh_name = veh_python.scenario_name
         veh_rust = veh_python.to_rust()
         # Instantiate SimDrive objects

@@ -265,7 +265,7 @@ class Vehicle(object):
     mc_peak_eff_override: InitVar[float] = -1.0
 
     @classmethod
-    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = True, verbose: bool = False):
+    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False, verbose: bool = False):
         """
         Load vehicle `vnum` from default vehdb or `veh_file`.
         Arguments:
@@ -281,7 +281,7 @@ class Vehicle(object):
         return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
 
     @classmethod
-    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = True, verbose: bool = False):
+    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = False, verbose: bool = False):
         """
         Loads vehicle from file `filename` (str).  Looks in working dir and then 
         fastsim/resources/vehdb, which also contains numerous examples of vehicle csv files.
@@ -319,7 +319,7 @@ class Vehicle(object):
         return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
 
     @classmethod
-    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = True, verbose: bool = False):
+    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = False, verbose: bool = False):
         """
         Given vehdf, generates dict to feed to `from_dict`.
         Arguments:
@@ -356,7 +356,7 @@ class Vehicle(object):
         return cls.from_dict(veh_dict, to_rust, verbose)
 
     @classmethod
-    def from_dict(cls, veh_dict: dict, to_rust: bool = True, verbose: bool = False):
+    def from_dict(cls, veh_dict: dict, to_rust: bool = False, verbose: bool = False):
         """
         Load vehicle from dict with snake_case key names.  
         Arguments:
