@@ -2,8 +2,8 @@
 Category,Scenario name,2022 Renault Zoe ZE50 R135,
 Vehicle,vehYear,,
 ,vehPtType,BEV,
-,dragCoef,0.304,
-,frontalAreaM2,2.574,
+,dragCoef,0.3359,0.75 / frontal area; using 2016 Zoe SCx https://web.archive.org/web/20180219235311/https://media.group.renault.com/global/en-gb/download/84850
+,frontalAreaM2,2.233,1.787 m * 1.562 m * 0.8; https://ev-database.org/car/1205/Renault-Zoe-ZE50-R135
 ,gliderKg,1502,https://www.renault.co.uk/electric-vehicles/zoe/specifications.html
 ,vehCgM,0.53,
 ,driveAxleWeightFrac,0.61,
@@ -37,8 +37,8 @@ ESS / Battery,maxEssKw,1000,Sufficiently high value so as to not impact calculat
 ,essRoundTripEff,0.97,
 ,essLifeCoefA,110.8,
 ,essLifeCoefB,-0.6811,
-,minSoc,0.049,(54.66-52.0)/54.7; https://ev-database.org/car/1164/Renault-Zoe-ZE50-R110#charge-table
-,maxSoc,1,
+,minSoc,0.029,(54.66-52.0)/54.7; https://ev-database.org/car/1164/Renault-Zoe-ZE50-R110#charge-table
+,maxSoc,0.98,
 ,essDischgToFcMaxEffPerc,0.3,
 ,essChgToFcMaxEffPerc,0.3,
 Wheels,wheelInertiaKgM2,0.815,
@@ -56,7 +56,7 @@ HEV Controls,maxAccelBufferMph,60.3,
 ,forceAuxOnFC,FALSE,
 Misc.,altEff,0.9,
 ,chgEff,0.86,
-,auxKw,0.7,
+,auxKw,1.1,
 ,transKg,114.9,
 ,transEff,0.92,
 ,essToFuelOkError,0.005,
