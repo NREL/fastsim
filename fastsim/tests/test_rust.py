@@ -73,7 +73,7 @@ class TestRust(unittest.TestCase):
         self.assertTrue(sd.i > 1)
         self.assertEqual(sd.i, len(cyc.time_s))
 
-    def test_discrepancies(self, veh_type="ALL", use_dict=True):
+    def test_discrepancies(self, veh_type="ALL", use_dict=True, cyc_name="udds"):
         """
         Function for testing for Rust/Python discrepancies, both in the vehicle database
         CSV as well as the individual model files. Uses test_vehicle_for_discrepancies as backend.
@@ -83,6 +83,7 @@ class TestRust(unittest.TestCase):
                 can be "CONV", "HEV", "PHEV", "BEV", or "ALL"
             use_dict: if True, use small cyc_dict to speed up test
                 if false, default to UDDS
+            cyc_name: name of cycle from database to use if use_dict == False
         """
         if not RUST_AVAILABLE:
             raise Exception("Rust unavailable.")
@@ -95,7 +96,6 @@ class TestRust(unittest.TestCase):
             "cycMps":  np.array([0.0, 0.4, 0.8, 1.2, 1.2, 1.2, 1.2, 0.8, 0.4, 0.0, 0.0]),
             "cycGrade": np.array([0.0] * 11),
         } if use_dict else None
-        cyc_name = "udds"
 
         kwargs = {
             "cyc_dict": cyc_dict,
