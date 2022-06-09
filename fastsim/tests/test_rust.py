@@ -74,6 +74,17 @@ class TestRust(unittest.TestCase):
         self.assertEqual(sd.i, len(cyc.time_s))
 
     def test_discrepancies(self, veh_type="all", use_dict=True):
+        """
+        Function for testing for Rust/Python discrepancies, both in the vehicle database
+        CSV as well as the individual model files. Uses test_vehicle_for_discrepancies as backend.
+        TODO: Does python -m unittest discover fail if this takes arguments?
+        Arguments:
+            veh_type: type of vehicle to test for discrepancies
+                can be "conv", "hev", "phev", "bev", or "all"
+                TODO: Should this be made an Enum?
+            use_dict: if True, use small cyc_dict to speed up test
+                if false, default to UDDS
+        """
         if not RUST_AVAILABLE:
             return
         veh_types = ["conv", "hev", "phev", "bev", "all"]
@@ -108,9 +119,14 @@ class TestRust(unittest.TestCase):
 
     def test_vehicle_for_discrepancies(self, vnum=1, veh_filename=None, cyc_dict=None, cyc_name="udds"):
         """
-        Test for finding discrepancies between Rust and Python
-        simulations for vehicle database models or standalone models.
-        """        
+        Test for finding discrepancies between Rust and Python for single vehicle.
+        TODO: Does python -m unittest discover fail if this takes arguments?
+        Arguments:
+            vnum: vehicle database number, optional, default option without any arguments
+            veh_filename: vehicle filename from vehdb folder, optional
+            cyc_dict: cycle dictionary for custom cycle, optional
+            cyc_name: cycle name from cycle database, optional
+        """    
         # Load cycle
         if cyc_dict is not None:
             cyc_python = cycle.Cycle.from_dict(cyc_dict)
