@@ -73,23 +73,22 @@ class TestRust(unittest.TestCase):
         self.assertTrue(sd.i > 1)
         self.assertEqual(sd.i, len(cyc.time_s))
 
-    def test_discrepancies(self, veh_type="all", use_dict=True):
+    def test_discrepancies(self, veh_type="ALL", use_dict=True):
         """
         Function for testing for Rust/Python discrepancies, both in the vehicle database
         CSV as well as the individual model files. Uses test_vehicle_for_discrepancies as backend.
         TODO: Does python -m unittest discover fail if this takes arguments?
         Arguments:
             veh_type: type of vehicle to test for discrepancies
-                can be "conv", "hev", "phev", "bev", or "all"
-                TODO: Should this be made an Enum?
+                can be "CONV", "HEV", "PHEV", "BEV", or "ALL"
             use_dict: if True, use small cyc_dict to speed up test
                 if false, default to UDDS
         """
         if not RUST_AVAILABLE:
-            return
-        veh_types = ["conv", "hev", "phev", "bev", "all"]
+            raise Exception("Rust unavailable.")
+        veh_types = ["CONV", "HEV", "PHEV", "BEV", "ALL"]
         if veh_type not in veh_types:
-            return
+            raise ValueError(f'veh_type "{veh_type}" not in {veh_types}.')
         
         cyc_dict = {
             "cycSecs": np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]),
@@ -102,18 +101,18 @@ class TestRust(unittest.TestCase):
             "cyc_dict": cyc_dict,
             "cyc_name": cyc_name,
         }
-        if veh_type in ["conv", "all"]:
+        if veh_type in ["CONV", "ALL"]:
             self.test_vehicle_for_discrepancies(vnum=4, **kwargs)
             self.test_vehicle_for_discrepancies(vnum=7, **kwargs)
             self.test_vehicle_for_discrepancies(veh_filename="2016_EU_VW_Golf_1.4TSI.csv", **kwargs)
-        if veh_type in ["hev", "all"]:
+        if veh_type in ["HEV", "ALL"]:
             self.test_vehicle_for_discrepancies(vnum=9, **kwargs)
             self.test_vehicle_for_discrepancies(vnum=10, **kwargs)
             self.test_vehicle_for_discrepancies(veh_filename="2022_TOYOTA_Yaris_Hybrid_Mid.csv", **kwargs)
-        if veh_type in ["phev", "all"]:
+        if veh_type in ["PHEV", "ALL"]:
             self.test_vehicle_for_discrepancies(vnum=13, **kwargs)
             self.test_vehicle_for_discrepancies(vnum=16, **kwargs)
-        if veh_type in ["bev", "all"]:
+        if veh_type in ["BEV", "ALL"]:
             self.test_vehicle_for_discrepancies(vnum=17, **kwargs)
             self.test_vehicle_for_discrepancies(vnum=20, **kwargs)
 
