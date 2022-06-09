@@ -9,17 +9,18 @@ import fastsim.utilities as utils
 import matplotlib.pyplot as plt
 
 
-
-
 def convention_eu_veh_wltp_fe_test():
-    veh_2020_golf = fsim.vehicle.Vehicle.from_file(str(Path(fsim.simdrive.__file__).parent /'resources/vehdb/2020_EU_VW_Golf_2.0TDI.csv')).to_rust()
+    veh_2020_golf = fsim.vehicle.Vehicle.from_file('2020_EU_VW_Golf_2.0TDI.csv').to_rust()
 
-    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_low3.csv')).to_rust()
-    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_med3b.csv')).to_rust()
-    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_high3b.csv')).to_rust()
-    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_extra_high3.csv')).to_rust()
-    cyc_wltp_combo = fsim.cycle.concat([wltp_low_cyc_3.get_cyc_dict(), wltp_med_cyc_3b.get_cyc_dict(),
-                                wltp_high_cyc_3b.get_cyc_dict(),wltp_extrahigh_cyc_3.get_cyc_dict()])
+    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_low3.csv').to_rust()
+    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_med3b.csv').to_rust()
+    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_high3b.csv').to_rust()
+    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_extra_high3.csv').to_rust()
+    cyc_wltp_combo = fsim.cycle.concat([wltp_low_cyc_3.get_cyc_dict(), 
+                                        wltp_med_cyc_3b.get_cyc_dict(),
+                                        wltp_high_cyc_3b.get_cyc_dict(),
+                                        wltp_extrahigh_cyc_3.get_cyc_dict()]
+                                      )
     cyc_wltp_combo = fsim.cycle.Cycle.from_dict(cyc_wltp_combo).to_rust()
 
 
@@ -36,25 +37,13 @@ def convention_eu_veh_wltp_fe_test():
                     ] 
 
     mpg_list = list(map(simdrive_get_mpg,simdrive_lst))
-
     print(mpg_list)
 
 def hybrid_eu_veh_wltp_fe_test():
     WILLANS_FACTOR_gram_CO2__MJ = 724  # gCO2/MJ
     E10_HEAT_VALUE_kWh__liter = 8.64  # kWh/L
-    veh_2022_yaris = fsim.vehicle.Vehicle.from_file(str(Path(fsim.simdrive.__file__).parent /'resources/vehdb/2022_TOYOTA_Yaris_Hybrid_Mid.csv'),to_rust=False,verbose=True)
-    veh_2022_yaris_rust = fsim.vehicle.Vehicle.from_file(str(Path(fsim.simdrive.__file__).parent /'resources/vehdb/2022_TOYOTA_Yaris_Hybrid_Mid.csv'),to_rust=True,verbose=True).to_rust()
-    #print('Python & Rust Comparasion')
-    #print("fc_eff_map: ")
-    #print(veh_2022_yaris.mc_eff_map)
-    #print(veh_2022_yaris_rust.mc_eff_map)
-    #print('mc_full_eff_array')
-    #print(veh_2022_yaris.mc_full_eff_array)
-    #print(veh_2022_yaris_rust.mc_full_eff_array)
-    #print('mc_kw_in_array')
-    #print(veh_2022_yaris.mc_kw_in_array)
-    #print(veh_2022_yaris_rust.mc_kw_in_array)
-
+    veh_2022_yaris = fsim.vehicle.Vehicle.from_file('2022_TOYOTA_Yaris_Hybrid_Mid.csv',to_rust=False,verbose=True)
+    veh_2022_yaris_rust = fsim.vehicle.Vehicle.from_file('2022_TOYOTA_Yaris_Hybrid_Mid.csv',to_rust=True,verbose=True).to_rust()
     
     # Measured FE (L/100km)
     meas_fe_combined_liter__100km = 3.8
@@ -63,13 +52,13 @@ def hybrid_eu_veh_wltp_fe_test():
     meas_fe_high_liter__100km = 3.5
     meas_fe_extrahigh_liter__100km = 5
     
-    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_low3.csv'))
+    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_low3.csv')
     wltp_low_cyc_3_rust = wltp_low_cyc_3.to_rust()
-    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_med3b.csv'))
+    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_med3b.csv')
     wltp_med_cyc_3b_rust = wltp_med_cyc_3b.to_rust()
-    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_high3b.csv'))
+    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_high3b.csv')
     wltp_high_cyc_3b_rust = wltp_high_cyc_3b.to_rust()
-    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file(str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/wltc_class3_extra_high3.csv'))
+    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_extra_high3.csv')
     wltp_extrahigh_cyc_3_rust = wltp_extrahigh_cyc_3.to_rust()
     cyc_wltp_combined = fsim.cycle.concat([wltp_low_cyc_3.get_cyc_dict(), 
                                         wltp_med_cyc_3b.get_cyc_dict(),
@@ -156,4 +145,5 @@ def hybrid_eu_veh_wltp_fe_test():
     print(f"  Simulation: {fe_l__100km_combined:.6f} L/100km ({(fe_l__100km_combined - meas_fe_combined_liter__100km)/meas_fe_combined_liter__100km * 100:+.6f}%)")
     print(f"  Rust Simulation: {fe_l__100km_combined_rust:.2f} L/100km ({(fe_l__100km_combined_rust - meas_fe_combined_liter__100km)/meas_fe_combined_liter__100km * 100:+.2f}%)")
 
-hybrid_eu_veh_wltp_fe_test()
+if __name__ == '__main__':
+    hybrid_eu_veh_wltp_fe_test()
