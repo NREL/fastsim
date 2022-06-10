@@ -451,7 +451,7 @@ class Vehicle(object):
         if 'stop_start' in veh_dict and np.isnan(veh_dict['stop_start']):
             veh_dict['stop_start'] = False
 
-        if 'veh_override_kg' not in veh_dict or np.isnan(veh_dict['veh_override_kg']):
+        if ('veh_override_kg' not in veh_dict) or (veh_dict['veh_override_kg'] is None) or np.isnan(veh_dict['veh_override_kg']):
             veh_dict['veh_override_kg'] = None
 
         # check if veh_year provided in file, and, if not, provide value from scenario_name or default of 0
@@ -635,6 +635,7 @@ class Vehicle(object):
         fs_mass_kg = 0
 
         if (self.veh_override_kg is None) or (not(self.veh_override_kg > 0)):
+            self.veh_override_kg = 0.0  # Rust/Python compatibility fix
             if self.ess_max_kwh == 0 or self.ess_max_kw == 0:
                 ess_mass_kg = 0.0
             else:
@@ -757,7 +758,7 @@ DICT, VEHICLE, LEGACY, RUST = RETURN_TYPES
 def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     """Returns copy of Vehicle.
     Arguments:
-    veh: instantiated Vehicle
+    veh: instantiated Vehicle or RustVehicle
     return_type: 
         'dict': dict
         'vehicle': Vehicle 
@@ -779,11 +780,9 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
                 "Only implemented for rust, vehicle, or legacy.")
 
     for key in keys_and_types.keys():
-        if return_type == RUST:
-            if key in KEYS_TO_REMOVE:
-                continue
-            else:
-                assert key in veh.__dict__
+        if key in KEYS_TO_REMOVE:
+            continue
+
         if (
             RUST_AVAILABLE
             and type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties
