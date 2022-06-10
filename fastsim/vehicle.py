@@ -261,8 +261,8 @@ class Vehicle(object):
     # if True, some derived vehicle attributes are not calulated in python 
     # but instead are calculated in Rust
     converted_to_rust: InitVar[bool] = True
-    fc_peak_eff_override: InitVar[float] = -1.0
-    mc_peak_eff_override: InitVar[float] = -1.0
+    fc_peak_eff_override: InitVar[Optional[float]] = None
+    mc_peak_eff_override: InitVar[Optional[float]] = None
 
     @classmethod
     def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False, verbose: bool = False):
@@ -470,6 +470,23 @@ class Vehicle(object):
 
         assert veh_dict['veh_pt_type'] in VEH_PT_TYPES, f"veh_pt_type {veh_dict['veh_pt_type']} not in {VEH_PT_TYPES}"
 
+        if "fc_peak_eff_override" in veh_dict:
+            try:
+                veh_dict['fc_peak_eff_override'] = np.float64(veh_dict['fc_peak_eff_override'])
+                assert 0.0 < veh_dict['fc_peak_eff_override'] < 1.0 
+            except:
+                if verbose:
+                    print('No proper fc peak eff override value provided, will not override fc peak eff')
+                veh_dict['fc_peak_eff_override'] = None
+        if "mc_peak_eff_override" in veh_dict:
+            try:
+                veh_dict['mc_peak_eff_override'] = np.float64(veh_dict['mc_peak_eff_override'])
+                assert 0.0 < veh_dict['mc_peak_eff_override'] < 1.0 
+            except:
+                if verbose:
+                    print('No proper mc peak eff override value provided, will not override mc peak eff')
+                veh_dict['mc_peak_eff_override'] = None
+
         # make sure types are right
         for key, val in veh_dict.items():
             if key != 'props':
@@ -480,7 +497,7 @@ class Vehicle(object):
                         veh_dict[key] = keys_and_types[key](val)
                 else:
                     # All OPT_INIT_PARAMS assumed to be float64
-                    veh_dict[key] = np.float64(val)
+                    veh_dict[key] = np.float64(val) if val is not None else val
         
         #veh_dict['converted_to_rust'] = to_rust
         
@@ -490,7 +507,7 @@ class Vehicle(object):
 
         return cls(**veh_dict,converted_to_rust=to_rust)
 
-    def __post_init__(self, converted_to_rust: bool, fc_peak_eff_override: float = -1.0, mc_peak_eff_override: float = -1.0):
+    def __post_init__(self, converted_to_rust: bool, fc_peak_eff_override: Optional[np.float64] = None, mc_peak_eff_override: Optional[np.float64] = None):
         """
         Sets derived parameters.
         Arguments:
@@ -503,7 +520,7 @@ class Vehicle(object):
         if not converted_to_rust:
             self.set_derived(fc_peak_eff_override, mc_peak_eff_override)
 
-    def set_derived(self, fc_peak_eff_override: float = -1.0, mc_peak_eff_override: float = -1.0):
+    def set_derived(self, fc_peak_eff_override: Optional[np.float64] = None, mc_peak_eff_override: Optional[np.float64] = None):
         """
         Sets derived parameters.
         Arguments:
@@ -594,10 +611,10 @@ class Vehicle(object):
 
         self.mc_max_elec_in_kw = max(self.mc_kw_in_array)
 
-        if fc_peak_eff_override != -1.0:
+        if fc_peak_eff_override is not None:
             self.fc_peak_eff = fc_peak_eff_override
             print("fc_peak_eff_override is modifying efficiency curve")
-        if mc_peak_eff_override != -1.0:
+        if mc_peak_eff_override is not None:
             self.mc_peak_eff = mc_peak_eff_override
             print("mc_peak_eff_override is modifying efficiency curve")
 
