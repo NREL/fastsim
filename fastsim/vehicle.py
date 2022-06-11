@@ -220,6 +220,8 @@ class Vehicle(object):
     val_range_miles: float
     val_veh_base_cost: float
     val_msrp: float
+    fc_peak_eff_override: Optional[float] = field(default=None)
+    mc_peak_eff_override: Optional[float] = field(default=None)
     # don't mess with this
     props: params.PhysicalProperties = params.PhysicalProperties()
     # gets set during __post_init__
@@ -260,9 +262,7 @@ class Vehicle(object):
 
     # if True, some derived vehicle attributes are not calulated in python 
     # but instead are calculated in Rust
-    converted_to_rust: InitVar[bool] = True
-    fc_peak_eff_override: InitVar[Optional[float]] = None
-    mc_peak_eff_override: InitVar[Optional[float]] = None
+    converted_to_rust: InitVar[bool] = field(default=True)
 
     @classmethod
     def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False, verbose: bool = False):
@@ -490,14 +490,10 @@ class Vehicle(object):
         # make sure types are right
         for key, val in veh_dict.items():
             if key != 'props':
-                if key not in OPT_INIT_PARAMS:
-                    if key in ['veh_override_kg','mc_eff_map'] and val is None:
-                        pass
-                    else:
-                        veh_dict[key] = keys_and_types[key](val)
+                if key in ['veh_override_kg','mc_eff_map','fc_peak_eff_override', 'mc_peak_eff_override'] and val is None:
+                    pass
                 else:
-                    # All OPT_INIT_PARAMS assumed to be float64
-                    veh_dict[key] = np.float64(val) if val is not None else val
+                    veh_dict[key] = keys_and_types[key](val)
         
         #veh_dict['converted_to_rust'] = to_rust
         
@@ -507,7 +503,7 @@ class Vehicle(object):
 
         return cls(**veh_dict,converted_to_rust=to_rust)
 
-    def __post_init__(self, converted_to_rust: bool, fc_peak_eff_override: Optional[np.float64] = None, mc_peak_eff_override: Optional[np.float64] = None):
+    def __post_init__(self, converted_to_rust: bool = False):
         """
         Sets derived parameters.
         Arguments:
@@ -518,9 +514,9 @@ class Vehicle(object):
             with proportional scaling.  Default of -1 has no effect.
         """
         if not converted_to_rust:
-            self.set_derived(fc_peak_eff_override, mc_peak_eff_override)
+            self.set_derived()
 
-    def set_derived(self, fc_peak_eff_override: Optional[np.float64] = None, mc_peak_eff_override: Optional[np.float64] = None):
+    def set_derived(self):
         """
         Sets derived parameters.
         Arguments:
@@ -611,12 +607,14 @@ class Vehicle(object):
 
         self.mc_max_elec_in_kw = max(self.mc_kw_in_array)
 
-        if fc_peak_eff_override is not None:
-            self.fc_peak_eff = fc_peak_eff_override
+        if self.fc_peak_eff_override is not None:
+            self.fc_peak_eff = self.fc_peak_eff_override
             print("fc_peak_eff_override is modifying efficiency curve")
-        if mc_peak_eff_override is not None:
-            self.mc_peak_eff = mc_peak_eff_override
+            self.fc_peak_eff_override = None
+        if self.mc_peak_eff_override is not None:
+            self.mc_peak_eff = self.mc_peak_eff_override
             print("mc_peak_eff_override is modifying efficiency curve")
+            self.me_peak_eff_override = None
 
         # check that efficiencies are not violating the first law of thermo
         assert self.fc_eff_array.min() >= 0, f"min MC eff < 0 is not allowed"
@@ -782,7 +780,6 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     for key in keys_and_types.keys():
         if key in KEYS_TO_REMOVE:
             continue
-
         if (
             RUST_AVAILABLE
             and type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties

@@ -26,14 +26,14 @@ class TestVehicle(unittest.TestCase):
             veh_copy = vehicle.copy_vehicle(veh)
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
         if RUST_AVAILABLE and USE_RUST:
-            py_veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+            py_veh = vehicle.Vehicle.from_vehdb(1, to_rust=True, verbose=False)
             import fastsimrust as fsr
             data = {**py_veh.__dict__}
-            data['fc_perc_out_array'] = np.copy(parameters.fc_perc_out_array)
-            data['mc_perc_out_array'] = np.copy(parameters.mc_perc_out_array)
             data['props'] = parameters.copy_physical_properties(
                 py_veh.props, 'rust')
             veh = fsr.RustVehicle(**data)
+            py_veh.set_derived()
+            veh = vehicle.copy_vehicle(py_veh,'rust')
             veh_copy = vehicle.copy_vehicle(veh, 'rust')
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
             self.assertTrue(vehicle.veh_equal(py_veh, veh_copy))
@@ -106,13 +106,13 @@ class TestVehicle(unittest.TestCase):
                     abs(pristine_mc_peak_eff - veh.mc_peak_eff) > TOL)
                 self.assertAlmostEqual(pristine_fc_peak_eff, veh.fc_peak_eff)
         if RUST_AVAILABLE and USE_RUST:
-            veh_pristine = vehicle.Vehicle.from_file(veh_name).to_rust()
+            veh_pristine = vehicle.Vehicle.from_file(veh_name,to_rust=True).to_rust()
             pristine_fc_peak_eff = veh_pristine.fc_peak_eff
             pristine_mc_peak_eff = veh_pristine.mc_peak_eff
             with tempfile.TemporaryDirectory() as temp_dirname:
                 test_path = add_csv_parameter(
                     "fc_peak_eff_override", test_peak_eff, pristine_path, temp_dirname)
-                veh = vehicle.Vehicle.from_file(test_path).to_rust()
+                veh = vehicle.Vehicle.from_file(test_path,to_rust=True).to_rust()
                 self.assertAlmostEqual(test_peak_eff, veh.fc_peak_eff)
                 self.assertTrue(
                     abs(pristine_fc_peak_eff - veh.fc_peak_eff) > TOL)
@@ -130,15 +130,9 @@ class TestVehicle(unittest.TestCase):
         Verify that we can set derived parameters or not on init.
         """
         v0 = vehicle.Vehicle.from_vehdb(10, to_rust=False)
-        self.assertTrue("large_baseline_eff" in v0.__dict__)
-        v1 = vehicle.Vehicle.from_vehdb(10, to_rust=False).to_rust()
-        self.assertTrue("large_baseline_eff" in v1.__dict__)
-        # should not have derived params
-        v2 = vehicle.Vehicle.from_vehdb(10, to_rust=True)
-        self.assertFalse("large_baseline_eff" not in v2.__dict__)
-        v3 = vehicle.Vehicle.from_vehdb(10, to_rust=True).to_rust()
-        self.assertFalse("large_baseline_eff" in v3.__dict__)
-
+        self.assertTrue("fc_eff_array" in v0.__dict__)
+        v1 = vehicle.Vehicle.from_vehdb(10, to_rust=True)
+        self.assertFalse("fc_eff_array" in v1.__dict__)
 
 if __name__ == '__main__':
     from fastsim import vehicle

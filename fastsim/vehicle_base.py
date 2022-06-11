@@ -124,6 +124,8 @@ keys_and_types = {
     "fc_mass_kg": np.float64,
     "fs_mass_kg": np.float64,
     "mc_perc_out_array": np.array,
+    "fc_peak_eff_override": np.float64,
+    "mc_peak_eff_override": np.float64,
 }
 
 # Dict of new keys and old keys
@@ -235,5 +237,7 @@ NEW_TO_OLD = {
     "ess_mass_kg": "essMassKg",
     "mc_mass_kg": "mcMassKg",
     "fc_mass_kg": "fcMassKg",
-    "fs_mass_kg": "fsMassKg"
+    "fs_mass_kg": "fsMassKg",
+    "fc_peak_eff_override": "fcPeakEffOverride",
+    "mc_peak_eff_override": "mcPeakEffOverride",
 }

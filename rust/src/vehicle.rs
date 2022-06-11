@@ -217,6 +217,10 @@ pub struct RustVehicle {
     pub val_range_miles: f64,
     pub val_veh_base_cost: f64,
     pub val_msrp: f64,
+    #[pyo3(get, set)]
+    pub fc_peak_eff_override: Option<f64>,
+    #[pyo3(get, set)]
+    pub mc_peak_eff_override: Option<f64>,
 }
 
 /// RustVehicle rust methods
@@ -418,6 +422,15 @@ impl RustVehicle {
         self.mc_full_eff_array = mc_full_eff_array;
 
         self.mc_max_elec_in_kw = arrmax(&self.mc_kw_in_array);
+
+        if let Some(new_fc_peak) = self.fc_peak_eff_override {
+            self.set_fc_peak_eff_rust(new_fc_peak);
+            self.fc_peak_eff_override = None;
+        }
+        if let Some(new_mc_peak) = self.mc_peak_eff_override {
+            self.set_mc_peak_eff_rust(new_mc_peak);
+            self.mc_peak_eff_override = None;
+        }
 
         // check that efficiencies are not violating the first law of thermo
         assert!(
@@ -698,6 +711,8 @@ impl RustVehicle {
             //fc_mass_kg,
             //fs_mass_kg,
             //Some(mc_perc_out_array),
+            None,
+            None,
         )
     }
 }
@@ -874,6 +889,9 @@ impl RustVehicle {
         //fc_mass_kg: f64,
         //fs_mass_kg: f64,
         //mc_perc_out_array: Option<Vec<f64>>,
+        fc_peak_eff_override: Option<f64>,
+        mc_peak_eff_override: Option<f64>,
+
     ) -> Self {
         let fc_pwr_out_perc = Array::from_vec(fc_pwr_out_perc);
         let fc_eff_map = Array::from_vec(fc_eff_map);
@@ -1007,6 +1025,8 @@ impl RustVehicle {
             fc_mass_kg: 0.0,
             fs_mass_kg: 0.0,
             mc_perc_out_array: MC_PERC_OUT_ARRAY.clone().to_vec(),
+            fc_peak_eff_override,
+            mc_peak_eff_override,
         };
         veh.set_derived();
         veh
@@ -2381,6 +2401,8 @@ pub fn load_vehicle() -> RustVehicle {
         //fc_mass_kg,
         //fs_mass_kg,
         //None,
+        None,
+        None,
     )
 }
 
