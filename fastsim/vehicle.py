@@ -610,11 +610,9 @@ class Vehicle(object):
         if self.fc_peak_eff_override is not None:
             self.fc_peak_eff = self.fc_peak_eff_override
             print("fc_peak_eff_override is modifying efficiency curve")
-            self.fc_peak_eff_override = None
         if self.mc_peak_eff_override is not None:
             self.mc_peak_eff = self.mc_peak_eff_override
             print("mc_peak_eff_override is modifying efficiency curve")
-            self.me_peak_eff_override = None
 
         # check that efficiencies are not violating the first law of thermo
         assert self.fc_eff_array.min() >= 0, f"min MC eff < 0 is not allowed"
@@ -696,7 +694,7 @@ class Vehicle(object):
 
     def set_mcPeakEff(self, new_peak):
         """
-        Set motor peak efficiency EVERWHERE.  
+        Set motor peak efficiency EVERYWHERE.  
 
         Arguments:
         ----------
