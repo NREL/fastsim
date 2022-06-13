@@ -11,6 +11,7 @@ use vehicle::RustVehicle;
 pub mod simdrive;
 use simdrive::{RustSimDrive, RustSimDriveParams};
 pub mod simdrive_impl;
+pub mod thermal;
 
 /// Function for adding Rust structs as Python Classes
 #[pymodule]
