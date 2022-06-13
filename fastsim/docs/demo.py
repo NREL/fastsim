@@ -39,6 +39,13 @@ import fastsim as fsim
 # importlib.reload(simdrive)
 # importlib.reload(cycle)
 
+#%%
+
+v0 = fsim.vehicle.Vehicle.from_vehdb(10, to_rust=False)
+v1 = fsim.vehicle.Vehicle.from_vehdb(10, to_rust=False).to_rust()
+v2 = fsim.vehicle.Vehicle.from_vehdb(10, to_rust=True) # should not have derived params
+v3 = fsim.vehicle.Vehicle.from_vehdb(10, to_rust=True).to_rust()
+
 # %% [markdown]
 # ## Individual Drive Cycle
 # ### Load Drive Cycle
