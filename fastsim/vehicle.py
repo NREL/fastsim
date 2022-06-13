@@ -275,7 +275,8 @@ class Vehicle(object):
             verbose: if True, print out warnings and other info
         """
         vehdf = DEFAULT_VEHDF
-        veh_file = DEFAULT_VEH_DB if veh_file is None else veh_file
+        if veh_file is not None: 
+            vehdf = pd.read_csv(veh_file)
         vehdf.set_index('selection', inplace=True, drop=False)
 
         return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
