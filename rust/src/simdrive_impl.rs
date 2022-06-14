@@ -305,11 +305,11 @@ impl RustSimDrive {
 
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
-        if self.sim_params.coast_allow {
-            self.set_coast_speed(self.i)?;
-        }
         if self.sim_params.follow_allow {
             self.set_speed_for_target_gap(self.i);
+        }
+        if self.sim_params.coast_allow {
+            self.set_coast_speed(self.i)?;
         }
         self.solve_step_rust(self.i)?;
 
@@ -1405,7 +1405,7 @@ impl RustSimDrive {
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
         let ds = ndarrcumsum(&self.cyc0.dist_v2_m());
         let gs = self.cyc0.grade.clone();
-        let d0 = ds[i-1];
+        let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
         let dt_s = self.cyc0.dt_s()[i];
         let mut distances_m = vec![];
         let mut grade_by_distance = vec![];
@@ -1506,14 +1506,13 @@ impl RustSimDrive {
         if self.sim_params.coast_start_speed_m_per_s > 0.0 {
             do_coast = self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s;
         } else {
-            let d0 = self.cyc0.dist_v2_m().slice(s![0..i]).sum();
             // distance to stop by coasting from start of step (i-1)
-            // dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
             let dtsc0 = self.calc_distance_to_stop_coast_v2(i);
             if dtsc0 < 0.0 {
                 do_coast = false;
             } else {
                 // distance to next stop (m)
+                let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
                 let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
                 do_coast = dtsc0 >= dts0;
             }
@@ -1638,7 +1637,7 @@ impl RustSimDrive {
         let v0 = self.mps_ach[i-1];
         if v0 < tol {
             // TODO: need to determine how to leave coast and rejoin shadow trace
-            // self.impose_coast[i] = False
+            self.impose_coast[i] = false;
         } else {
             self.impose_coast[i] = self.impose_coast[i-1] || self.should_impose_coast(i);
         }
@@ -1646,7 +1645,7 @@ impl RustSimDrive {
             return Ok(());
         }
         let v1_traj = self.cyc.mps[i];
-        if self.cyc.mps[i] == self.cyc0.mps[i] && v0 > self.sim_params.coast_brake_start_speed_m_per_s {
+        if (self.sim_params.follow_allow || self.cyc.mps[i] == self.cyc0.mps[i]) && v0 > self.sim_params.coast_brake_start_speed_m_per_s {
             if self.sim_params.coast_allow_passing {
                 // we could be coasting downhill so could in theory go to a higher speed
                 // since we can pass, allow vehicle to go up to max coasting speed (m/s)

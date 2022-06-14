@@ -500,10 +500,10 @@ class SimDrive(object):
         TODO: create self.set_speed_for_target_gap(self.i):
         TODO: consider implementing for battery SOC dependence
         """
-        if self.sim_params.coast_allow:
-            self._set_coast_speed(self.i)
         if self.sim_params.follow_allow:
             self._set_speed_for_target_gap(self.i)
+        if self.sim_params.coast_allow:
+            self._set_coast_speed(self.i)
         self.solve_step(self.i)
         if self.sim_params.missed_trace_correction and (self.cyc0.dist_m[:self.i].sum() > 0):
             self.set_time_dilation(self.i)
@@ -1558,7 +1558,7 @@ class SimDrive(object):
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
         ds = self.cyc0.dist_v2_m.cumsum()
         gs = self.cyc0.grade
-        d0 = ds[i-1]
+        d0 = self.cyc.dist_v2_m[:i].sum()
         ds_mask = ds >= d0
         dt_s = self.cyc0.dt_s[i]
         distances_m = ds[ds_mask] - d0
@@ -1635,13 +1635,12 @@ class SimDrive(object):
         """
         if self.sim_params.coast_start_speed_m_per_s > 0.0:
             return self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s
-        d0 = self.cyc0.dist_v2_m[:i].sum()
         # distance to stop by coasting from start of step (i-1)
-        #dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
         dtsc0 = self._calc_distance_to_stop_coast_v2(i)
         if dtsc0 < 0.0:
             return False
         # distance to next stop (m)
+        d0 = self.cyc.dist_v2_m[:i].sum()
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
         return dtsc0 >= dts0
 
@@ -1690,7 +1689,6 @@ class SimDrive(object):
         dtb = -0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_accel_m__s2
         # distance to brake initiation from start of time-step (m)
         dtbi0 = dts0 - dtb
-        cyc0_distances_m = self.cyc0.dist_v2_m.cumsum()
         # Now, check rendezvous trajectories
         if time_horizon_s > 0.0:
             step_idx = i
@@ -1755,8 +1753,7 @@ class SimDrive(object):
         v0 = self.mps_ach[i-1]
         if v0 < TOL:
             # TODO: need to determine how to leave coast and rejoin shadow trace
-            #self.impose_coast[i] = False
-            pass
+            self.impose_coast[i] = False
         else:
             self.impose_coast[i] = self.impose_coast[i -
                                                      1] or self._should_impose_coast(i)
@@ -1764,7 +1761,7 @@ class SimDrive(object):
         if not self.impose_coast[i]:
             return
         v1_traj = self.cyc.mps[i]
-        if self.cyc.mps[i] == self.cyc0.mps[i] and v0 > self.sim_params.coast_brake_start_speed_m_per_s:
+        if (self.sim_params.follow_allow or self.cyc.mps[i] == self.cyc0.mps[i]) and v0 > self.sim_params.coast_brake_start_speed_m_per_s:
             if self.sim_params.coast_allow_passing:
                 # we could be coasting downhill so could in theory go to a higher speed
                 # since we can pass, allow vehicle to go up to max coasting speed (m/s)

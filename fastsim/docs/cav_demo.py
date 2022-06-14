@@ -195,6 +195,48 @@ if IS_INTERACTIVE:
     print(f"Percent Savings: {pct_savings} %")
     make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
 
+# %% [markdown]
+# # Eco-Cruise and Eco-Approach running at the same time
+#
+# Here, we run an Eco-Cruise and Eco-Approach at the same time.
+cyc_udds = fsim.cycle.Cycle.from_file('udds').get_cyc_dict()
+cyc_stop = fsim.cycle.resample(
+    fsim.cycle.make_cycle([0.0, 400.0], [0.0, 0.0]),
+    new_dt=1.0,
+)
+if RUST_AVAILABLE:
+    cyc = fsim.cycle.Cycle.from_dict(
+        fsim.cycle.concat([cyc_udds, cyc_stop])
+    ).to_rust()
+    veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
+    sd = fsim.simdrive.RustSimDrive(cyc, veh)
+else:
+    cyc = fsim.cycle.Cycle.from_dict(
+        fsim.cycle.concat([cyc_udds, cyc_stop])
+    )
+    veh = fsim.vehicle.Vehicle.from_vehdb(1)
+    sd = fsim.simdrive.SimDrive(cyc, veh)
+params = sd.sim_params
+params.coast_allow = True
+params.coast_allow_passing = False
+params.coast_start_speed_m_per_s = -1.0
+params.follow_allow = True
+params.idm_accel_m_per_s2 = 0.5
+params.idm_decel_m_per_s2 = -2.5
+params.idm_dt_headway_s = 2.0
+params.idm_minimum_gap_m = 10.0
+params.idm_v_desired_m_per_s = 15.0 # np.sum(cyc_udds['mps']) / cyc_udds['time_s'][-1]
+sd.sim_params = params
+sd.sim_drive()
+
+if IS_INTERACTIVE:
+    eco_mpg = sd.mpgge
+    print(f"Cruise and Coast fuel economy over UDDS: {sd.mpgge} mpg")
+    pct_savings = ((1.0/base_mpg) - (1.0/eco_mpg)) * 100.0 / ((1.0/base_mpg))
+    print(f"Percent Savings: {pct_savings} %")
+    make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
+
+
 # %%
 # The flag below lets us know if this module ran successfully without error
 RAN_SUCCESSFULLY = True
