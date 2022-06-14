@@ -1,202 +1,134 @@
-//! Module containing thermal models for fastsim.  
+//! Module for simulating thermal behavior of powertrains
 
-use crate::utils::interpolate as interp;
-use ndarray::Array1;
-
-/// Fluid Properties for calculations.  
-///
-/// Values obtained via (in Python):
-/// ```python
-/// >>> from CoolProp.CoolProp import PropsSI
-/// >>> import numpy as np
-/// >>> import pandas as pd
-/// >>> T_degC = np.logspace(1, np.log10(5e3 + 70), 25) - 70
-/// >>> T = T_degC + 273.15
-/// >>> prop_dict = {
-/// >>>     'T [°C]': T_degC,
-/// >>>     'h [J/kg]': [0] * len(T),
-/// >>>     'k [W/(m*K)]': [0] * len(T),
-/// >>>     'rho [kg/m^3]': [0] * len(T),
-/// >>>     'c_p [J/(kg*K)]': [0] * len(T),
-/// >>>     'mu [Pa*s]': [0] * len(T),
-/// >>> }
-///
-/// >>> for i, _ in enumerate(T_degC):
-/// >>>     prop_dict['h [J/kg]'][i] = f"{PropsSI('H', 'P', 101325, 'T', T[i], 'Air'):.5g}" # specific enthalpy [J/(kg*K)]
-/// >>>     prop_dict['k [W/(m*K)]'][i] = f"{PropsSI('L', 'P', 101325, 'T', T[i], 'Air'):.5g}" # thermal conductivity [W/(m*K)]
-/// >>>     prop_dict['rho [kg/m^3]'][i] = f"{PropsSI('D', 'P', 101325, 'T', T[i], 'Air'):.5g}" # density [kg/m^3]
-/// >>>     prop_dict['c_p [J/(kg*K)]'][i] = f"{PropsSI('C', 'P', 101325, 'T', T[i], 'Air'):.5g}" # density [kg/m^3]
-/// >>>     prop_dict['mu [Pa*s]'][i] = f"{PropsSI('V', 'P', 101325, 'T', T[i], 'Air'):.5g}" # viscosity [Pa*s]
-///
-/// >>> prop_df = pd.DataFrame(data=prop_dict)
-/// >>> pd.set_option('display.float_format', lambda x: '%.3g' % x)
-/// >>> prop_df = prop_df.apply(np.float64)
-/// ```
-
-pub const R_AIR: f64 = 287.0; // J/(kg*K)
-
-pub struct AirProperties {
-    /// Private array of temperatures [°C] at which properties are evaluated ()
-    te_array_degc: Array1<f64>,
-    /// Private thermal conductivity of air \[W / (m * K)\]
-    k_array: Array1<f64>,
-    /// Private specific heat of air \[J / (kg * K)\]
-    c_p_array: Array1<f64>,
-    /// Private specific enthalpy of air \[J / kg\] w.r.t. 0K reference
-    h_array: Array1<f64>,
-    /// Private dynamic viscosity of air \[Pa * s\]
-    mu_array: Array1<f64>,
-    /// Private Prandtl number of air
-    pr_array: Array1<f64>,
+/// Whether FC thermal modeling is handled by FASTSim
+pub enum FcModelTypes {
+    /// Thermal modeling of fuel converter is handled inside FASTSim
+    Internal(FcTempEffModel, FcTempEffComponent),
+    /// Thermal modeling of fuel converter will be overriden by wrapper code
+    External,
 }
 
-impl AirProperties {
-    pub fn new(&mut self) -> Self {
-        let te_array_degc = Array1::from_vec(
-            [
-                -60.,
-                -57.03690616,
-                -53.1958198,
-                -48.21658352,
-                -41.7619528,
-                -33.39475442,
-                -22.54827664,
-                -8.48788571,
-                9.73873099,
-                33.36606527,
-                63.99440042,
-                103.69819869,
-                155.16660498,
-                221.88558305,
-                308.37402042,
-                420.48979341,
-                565.82652205,
-                754.22788725,
-                998.45434496,
-                1315.04739396,
-                1725.44993435,
-                2257.45859876,
-                2947.10642291,
-                3841.10336915,
-                5000.,
-            ]
-            .into(),
-        );
-        let k_array = Array1::from_vec(
-            [
-                0.019597, 0.019841, 0.020156, 0.020561, 0.021083, 0.021753, 0.022612, 0.023708,
-                0.025102, 0.026867, 0.02909, 0.031875, 0.035342, 0.039633, 0.044917, 0.051398,
-                0.059334, 0.069059, 0.081025, 0.095855, 0.11442, 0.13797, 0.16828, 0.20795,
-                0.26081,
-            ]
-            .into(),
-        );
-        let c_p_array = Array1::from_vec(
-            [
-                1006.2, 1006.1, 1006., 1005.9, 1005.7, 1005.6, 1005.5, 1005.6, 1005.9, 1006.6,
-                1008.3, 1011.6, 1017.9, 1028.9, 1047., 1073.4, 1107.6, 1146.1, 1184.5, 1219.5,
-                1250.1, 1277.1, 1301.7, 1324.5, 1347.,
-            ]
-            .into(),
-        );
-        let h_array = Array1::from_vec(
-            [
-                338940., 341930., 345790., 350800., 357290., 365710., 376610., 390750., 409080.,
-                432860., 463710., 503800., 556020., 624280., 714030., 832880., 991400., 1203800.,
-                1488700., 1869600., 2376700., 3049400., 3939100., 5113600., 6662000.,
-            ]
-            .into(),
-        );
-        let mu_array = Array1::from_vec(
-            [
-                1.4067e-05, 1.4230e-05, 1.4440e-05, 1.4711e-05, 1.5058e-05, 1.5502e-05, 1.6069e-05,
-                1.6791e-05, 1.7703e-05, 1.8850e-05, 2.0283e-05, 2.2058e-05, 2.4240e-05, 2.6899e-05,
-                3.0112e-05, 3.3966e-05, 3.8567e-05, 4.4049e-05, 5.0595e-05, 5.8464e-05, 6.8036e-05,
-                7.9878e-05, 9.4840e-05, 1.1423e-04, 1.4006e-04,
-            ]
-            .into(),
-        );
+impl Default for FcModelTypes {
+    fn default() -> Self {
+        FcModelTypes::Internal(FcTempEffModel::default(), FcTempEffComponent::default())
+    }
+}
 
-        let pr_array = self.mu_array.clone() * self.c_p_array.clone() / self.k_array.clone();
+/// Which commponent temperature affects FC efficency
+pub enum FcTempEffComponent {
+    /// FC efficiency is purely dependent on cat temp
+    Catalyst,
+    /// FC efficency is dependent on both cat and FC temp
+    Hybrid,
+    /// FC efficiency is dependent on FC temp only
+    FuelConverter,
+}
 
-        Self {
-            te_array_degc,
-            k_array,
-            c_p_array,
-            h_array,
-            mu_array,
-            pr_array,
+impl Default for FcTempEffComponent {
+    fn default() -> Self {
+        FcTempEffComponent::FuelConverter
+    }
+}
+
+/// Model variants for how FC efficiency depends on temperature
+pub enum FcTempEffModel {
+    /// Linear temperature dependence
+    Linear { offset: f64, slope: f64, min: f64 },
+    /// Exponential temperature dependence
+    Exponential { offset: f64, lag: f64, min: f64 },
+}
+
+impl Default for FcTempEffModel {
+    fn default() -> Self {
+        // todo: check on reasonableness of default values
+        FcTempEffModel::Exponential {
+            offset: 0.0,
+            lag: 25.0,
+            min: 0.2,
         }
     }
+}
 
-    /// Returns density [kg/m^3] of air  
-    /// Source: https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html  
-    /// T = 15.04 - .00649 * h  
-    /// p = 101.29 * [(T + 273.1)/288.08]^5.256  
-    /// Arguments:  
-    /// ----------  
-    /// te_air: f64  
-    ///     ambient temperature \[°C\] of air   
-    /// h=180: Option<f64>  
-    ///     evelation \[m\] above sea level   
-    pub fn get_rho(self, te_air: f64, h: Option<f64>) -> f64 {
-        let h = h.unwrap_or(180.0);
-        let te_standard = 15.04 - 0.00649 * h; // \[degC\]
-        let p = 101.29e3 * ((te_standard + 273.1) / 288.08).powf(5.256); // \[Pa\]
-        p / (R_AIR * (te_air + 273.15)) // [kg/m**3]
-    }
+/// Whether compontent thermal model is handled by FASTSim
+pub enum ComponentModelTypes {
+    /// Component temperature is handled inside FASTSim
+    Internal,
+    /// Component temperature will be overriden by wrapper code
+    External,
+}
 
-    /// Returns thermal conductivity [W/(m*K)] of air
-    /// Arguments:
-    /// ----------
-    /// te_air: Float
-    ///     temperature [°C] of air
-    pub fn get_k(self, te_air: f64) -> f64 {
-        interp(&te_air, &self.te_array_degc, &self.k_array, false)
+impl Default for ComponentModelTypes {
+    fn default() -> Self {
+        ComponentModelTypes::Internal
     }
+}
 
-    /// Returns specific heat [J/(kg*K)] of air
-    /// Arguments:
-    /// ----------
-    /// te_air: f64
-    ///     temperature [°C] of air
-    pub fn get_cp(self, te_air: f64) -> f64 {
-        interp(&te_air, &self.te_array_degc, &self.c_p_array, false)
-    }
+/// Struct for containing vehicle thermal (and related) parameters.
+#[allow(non_snake_case)]
+pub struct VehicleThermal {
+    // fuel converter / engine
+    /// parameter fuel converter thermal mass [kJ/K]
+    pub fc_c_kj__k: f64,
+    /// parameter for engine characteristic length [m] for heat transfer calcs
+    pub fc_l: f64,
+    /// parameter for heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during vehicle stop
+    pub fc_htc_to_amb_stop: f64,
+    /// coeff. for fraction of combustion heat that goes to fuel converter (engine)
+    /// thermal mass. Remainder goes to environment (e.g. via tailpipe)
+    pub fc_coeff_from_comb: f64,
+    /// parameter for temperature [°C] at which thermostat starts to open
+    pub tstat_te_sto_deg_c: f64,
+    /// temperature delta [°C] over which thermostat is partially open
+    pub tstat_te_delta_deg_c: f64,
+    /// radiator effectiveness -- ratio of active heat rejection from
+    /// radiator to passive heat rejection
+    pub rad_eps: f64,
 
-    /// Returns specific enthalpy [J/kg] of air  
-    /// Arguments:  
-    /// ----------
-    ///     temperature [°C] of air
-    /// te_air: Float
-    pub fn get_h(self, te_air: f64) -> f64 {
-        interp(&te_air, &self.te_array_degc, &self.h_array, false)
-    }
+    /// temperature-dependent efficiency
+    /// fuel converter (engine or fuel cell) thermal model type
+    pub fc_model: FcModelTypes,
 
-    /// Returns thermal Prandtl number of air
-    /// Arguments:
-    /// ----------
-    /// te_air: f64
-    ///     temperature [°C] of air     
-    pub fn get_pr(self, te_air: f64) -> f64 {
-        interp(&te_air, &self.te_array_degc, &self.pr_array, false)
-    }
+    // cabin
+    /// cabin model internal or external w.r.t. fastsim
+    pub cabin_model: ComponentModelTypes,
+    /// parameter for cabin thermal mass [kJ/K]
+    pub cab_c_kj__k: f64,
+    /// cabin length [m], modeled as a flat plate
+    pub cab_l_length: f64,
+    /// cabin width [m], modeled as a flat plate
+    pub cab_l_width: f64,
+    /// cabin shell thermal resistance [m **2 * K / W]
+    pub cab_r_to_amb: f64,
+    /// parameter for heat transfer coeff [W / (m ** 2 * K)] from cabin to ambient during
+    /// vehicle stop
+    pub cab_h_to_amb_stop: f64,
 
-    /// Returns dynamic viscosity \[Pa*s\] of air
-    /// Arguments:
-    /// ----------
-    /// te_air: f64
-    ///     temperature [°C] of air
-    pub fn get_mu(self, te_air: f64) -> f64 {
-        interp(&te_air, &self.te_array_degc, &self.mu_array, false)
-    }
+    // exhaust port
+    /// 'external' (effectively no model) is default
+    /// exhaust port model type
+    pub exhport_model: ComponentModelTypes,
+    /// thermal conductance [W/K] for heat transfer to ambient
+    pub exhport_ha_to_amb: f64,
+    /// thermal conductance [W/K] for heat transfer from exhaust
+    pub exhport_ha_int: f64,
+    /// exhaust port thermal capacitance [kJ/K]
+    pub exhport_c_kj__k: f64,
 
-    /// Returns temperature [°C] of air
-    /// Arguments:
-    /// ----------
-    /// h: Float
-    ///     specific enthalpy [J/kg] of air
-    pub fn get_te_from_h(self, h: f64) -> f64 {
-        interp(&h, &self.h_array, &self.te_array_degc, false)
-    }
+    // catalytic converter (catalyst)
+    pub cat_model: ComponentModelTypes,
+    /// diameter [m] of catalyst as sphere for thermal model
+    pub cat_l: f64,
+    /// catalyst thermal capacitance [kJ/K]
+    pub cat_c_kj__K: f64,
+    /// parameter for heat transfer coeff [W / (m ** 2 * K)] from catalyst to ambient
+    /// during vehicle stop
+    pub cat_h_to_amb_stop: f64,
+    /// lightoff temperature to be used when fc_temp_eff_component == 'hybrid'
+    pub cat_te_lightoff_deg_c: f64,
+    /// cat engine efficiency coeff. to be used when fc_temp_eff_component == 'hybrid'
+    pub cat_fc_eta_coeff: f64,
+
+    // model choices
+    /// HVAC model type
+    pub hvac_model: ComponentModelTypes,
 }

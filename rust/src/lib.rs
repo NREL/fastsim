@@ -3,13 +3,14 @@ use pyo3::prelude::*;
 
 pub mod params;
 use params::RustPhysicalProperties;
-pub mod utils;
 pub mod cycle;
+pub mod utils;
 use cycle::RustCycle;
 pub mod vehicle;
 use vehicle::RustVehicle;
 pub mod simdrive;
 use simdrive::{RustSimDrive, RustSimDriveParams};
+pub mod air;
 pub mod simdrive_impl;
 pub mod thermal;
 
