@@ -265,249 +265,7 @@ impl RustSimDrive {
     /// method for instantiating SimDriveRust
     #[new]
     pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self {
-        let hev_sim_count: usize = 0;
-        let cyc0: RustCycle = cyc.clone();
-        let sim_params = RustSimDriveParams::default();
-        let props = RustPhysicalProperties::__new__();
-        let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
-        let cyc_len = cyc.time_s.len(); //get_len() as usize;
-        let cur_max_fs_kw_out = Array::zeros(cyc_len);
-        let fc_trans_lim_kw = Array::zeros(cyc_len);
-        let fc_fs_lim_kw = Array::zeros(cyc_len);
-        let fc_max_kw_in = Array::zeros(cyc_len);
-        let cur_max_fc_kw_out = Array::zeros(cyc_len);
-        let ess_cap_lim_dischg_kw = Array::zeros(cyc_len);
-        let cur_ess_max_kw_out = Array::zeros(cyc_len);
-        let cur_max_avail_elec_kw = Array::zeros(cyc_len);
-        let ess_cap_lim_chg_kw = Array::zeros(cyc_len);
-        let cur_max_ess_chg_kw = Array::zeros(cyc_len);
-        let cur_max_elec_kw = Array::zeros(cyc_len);
-        let mc_elec_in_lim_kw = Array::zeros(cyc_len);
-        let mc_transi_lim_kw = Array::zeros(cyc_len);
-        let cur_max_mc_kw_out = Array::zeros(cyc_len);
-        let ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len);
-        let ess_lim_mc_regen_kw = Array::zeros(cyc_len);
-        let cur_max_mech_mc_kw_in = Array::zeros(cyc_len);
-        let cur_max_trans_kw_out = Array::zeros(cyc_len);
-        let cyc_trac_kw_req = Array::zeros(cyc_len);
-        let cur_max_trac_kw = Array::zeros(cyc_len);
-        let spare_trac_kw = Array::zeros(cyc_len);
-        let cyc_whl_rad_per_sec = Array::zeros(cyc_len);
-        let cyc_tire_inertia_kw = Array::zeros(cyc_len);
-        let cyc_whl_kw_req = Array::zeros(cyc_len);
-        let regen_contrl_lim_kw_perc = Array::zeros(cyc_len);
-        let cyc_regen_brake_kw = Array::zeros(cyc_len);
-        let cyc_fric_brake_kw = Array::zeros(cyc_len);
-        let cyc_trans_kw_out_req = Array::zeros(cyc_len);
-        let cyc_met = Array::from_vec(vec![false; cyc_len]);
-        let trans_kw_out_ach = Array::zeros(cyc_len);
-        let trans_kw_in_ach = Array::zeros(cyc_len);
-        let cur_soc_target = Array::zeros(cyc_len);
-        let min_mc_kw_2help_fc = Array::zeros(cyc_len);
-        let mc_mech_kw_out_ach = Array::zeros(cyc_len);
-        let mc_elec_kw_in_ach = Array::zeros(cyc_len);
-        let aux_in_kw = Array::zeros(cyc_len);
-        let impose_coast = Array::from_vec(vec![false; cyc_len]);
-        let roadway_chg_kw_out_ach = Array::zeros(cyc_len);
-        let min_ess_kw_2help_fc = Array::zeros(cyc_len);
-        let ess_kw_out_ach = Array::zeros(cyc_len);
-        let fc_kw_out_ach = Array::zeros(cyc_len);
-        let fc_kw_out_ach_pct = Array::zeros(cyc_len);
-        let fc_kw_in_ach = Array::zeros(cyc_len);
-        let fs_kw_out_ach = Array::zeros(cyc_len);
-        let fs_cumu_mj_out_ach = Array::zeros(cyc_len);
-        let fs_kwh_out_ach = Array::zeros(cyc_len);
-        let ess_cur_kwh = Array::zeros(cyc_len);
-        let soc = Array::zeros(cyc_len);
-        let regen_buff_soc = Array::zeros(cyc_len);
-        let ess_regen_buff_dischg_kw = Array::zeros(cyc_len);
-        let max_ess_regen_buff_chg_kw = Array::zeros(cyc_len);
-        let ess_accel_buff_chg_kw = Array::zeros(cyc_len);
-        let accel_buff_soc = Array::zeros(cyc_len);
-        let max_ess_accell_buff_dischg_kw = Array::zeros(cyc_len);
-        let ess_accel_regen_dischg_kw = Array::zeros(cyc_len);
-        let mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len);
-        let elec_kw_req_4ae = Array::zeros(cyc_len);
-        let can_pwr_all_elec = Array::from_vec(vec![false; cyc_len]);
-        let desired_ess_kw_out_for_ae = Array::zeros(cyc_len);
-        let ess_ae_kw_out = Array::zeros(cyc_len);
-        let er_ae_kw_out = Array::zeros(cyc_len);
-        let ess_desired_kw_4fc_eff = Array::zeros(cyc_len);
-        let ess_kw_if_fc_req = Array::zeros(cyc_len);
-        let cur_max_mc_elec_kw_in = Array::zeros(cyc_len);
-        let fc_kw_gap_fr_eff = Array::zeros(cyc_len);
-        let er_kw_if_fc_req = Array::zeros(cyc_len);
-        let mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len);
-        let mc_kw_if_fc_req = Array::zeros(cyc_len);
-        let fc_forced_on = Array::from_vec(vec![false; cyc_len]);
-        let fc_forced_state = Array::zeros(cyc_len);
-        let mc_mech_kw_4forced_fc = Array::zeros(cyc_len);
-        let fc_time_on = Array::zeros(cyc_len);
-        let prev_fc_time_on = Array::zeros(cyc_len);
-        let mps_ach = Array::zeros(cyc_len);
-        let mph_ach = Array::zeros(cyc_len);
-        let dist_m = Array::zeros(cyc_len);
-        let dist_mi = Array::zeros(cyc_len);
-        let high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]);
-        let reached_buff = Array::from_vec(vec![false; cyc_len]);
-        let max_trac_mps = Array::zeros(cyc_len);
-        let add_kwh = Array::zeros(cyc_len);
-        let dod_cycs = Array::zeros(cyc_len);
-        let ess_perc_dead = Array::zeros(cyc_len);
-        let drag_kw = Array::zeros(cyc_len);
-        let ess_loss_kw = Array::zeros(cyc_len);
-        let accel_kw = Array::zeros(cyc_len);
-        let ascent_kw = Array::zeros(cyc_len);
-        let rr_kw = Array::zeros(cyc_len);
-        let cur_max_roadway_chg_kw = Array::zeros(cyc_len);
-        let trace_miss_iters = Array::zeros(cyc_len);
-        let newton_iters = Array::zeros(cyc_len);
-        let fuel_kj: f64 = 0.0;
-        let ess_dischg_kj: f64 = 0.0;
-        let energy_audit_error: f64 = 0.0;
-        let mpgge: f64 = 0.0;
-        let roadway_chg_kj: f64 = 0.0;
-        let battery_kwh_per_mi: f64 = 0.0;
-        let electric_kwh_per_mi: f64 = 0.0;
-        let ess2fuel_kwh: f64 = 0.0;
-        let drag_kj: f64 = 0.0;
-        let ascent_kj: f64 = 0.0;
-        let rr_kj: f64 = 0.0;
-        let brake_kj: f64 = 0.0;
-        let trans_kj: f64 = 0.0;
-        let mc_kj: f64 = 0.0;
-        let ess_eff_kj: f64 = 0.0;
-        let aux_kj: f64 = 0.0;
-        let fc_kj: f64 = 0.0;
-        let net_kj: f64 = 0.0;
-        let ke_kj: f64 = 0.0;
-        let trace_miss = false;
-        let trace_miss_dist_frac: f64 = 0.0;
-        let trace_miss_time_frac: f64 = 0.0;
-        let trace_miss_speed_mps: f64 = 0.0;
-        RustSimDrive {
-            hev_sim_count,
-            veh,
-            cyc,
-            cyc0,
-            sim_params,
-            props,
-            i, // 1 # initialize step counter for possible use outside sim_drive_walk()
-            cur_max_fs_kw_out,
-            fc_trans_lim_kw,
-            fc_fs_lim_kw,
-            fc_max_kw_in,
-            cur_max_fc_kw_out,
-            ess_cap_lim_dischg_kw,
-            cur_ess_max_kw_out,
-            cur_max_avail_elec_kw,
-            ess_cap_lim_chg_kw,
-            cur_max_ess_chg_kw,
-            cur_max_elec_kw,
-            mc_elec_in_lim_kw,
-            mc_transi_lim_kw,
-            cur_max_mc_kw_out,
-            ess_lim_mc_regen_perc_kw,
-            ess_lim_mc_regen_kw,
-            cur_max_mech_mc_kw_in,
-            cur_max_trans_kw_out,
-            cyc_trac_kw_req,
-            cur_max_trac_kw,
-            spare_trac_kw,
-            cyc_whl_rad_per_sec,
-            cyc_tire_inertia_kw,
-            cyc_whl_kw_req,
-            regen_contrl_lim_kw_perc,
-            cyc_regen_brake_kw,
-            cyc_fric_brake_kw,
-            cyc_trans_kw_out_req,
-            cyc_met,
-            trans_kw_out_ach,
-            trans_kw_in_ach,
-            cur_soc_target,
-            min_mc_kw_2help_fc,
-            mc_mech_kw_out_ach,
-            mc_elec_kw_in_ach,
-            aux_in_kw,
-            impose_coast,
-            roadway_chg_kw_out_ach,
-            min_ess_kw_2help_fc,
-            ess_kw_out_ach,
-            fc_kw_out_ach,
-            fc_kw_out_ach_pct,
-            fc_kw_in_ach,
-            fs_kw_out_ach,
-            fs_cumu_mj_out_ach,
-            fs_kwh_out_ach,
-            ess_cur_kwh,
-            soc,
-            regen_buff_soc,
-            ess_regen_buff_dischg_kw,
-            max_ess_regen_buff_chg_kw,
-            ess_accel_buff_chg_kw,
-            accel_buff_soc,
-            max_ess_accell_buff_dischg_kw,
-            ess_accel_regen_dischg_kw,
-            mc_elec_in_kw_for_max_fc_eff,
-            elec_kw_req_4ae,
-            can_pwr_all_elec,
-            desired_ess_kw_out_for_ae,
-            ess_ae_kw_out,
-            er_ae_kw_out,
-            ess_desired_kw_4fc_eff,
-            ess_kw_if_fc_req,
-            cur_max_mc_elec_kw_in,
-            fc_kw_gap_fr_eff,
-            er_kw_if_fc_req,
-            mc_elec_kw_in_if_fc_req,
-            mc_kw_if_fc_req,
-            fc_forced_on,
-            fc_forced_state,
-            mc_mech_kw_4forced_fc,
-            fc_time_on,
-            prev_fc_time_on,
-            mps_ach,
-            mph_ach,
-            dist_m,
-            dist_mi,
-            high_acc_fc_on_tag,
-            reached_buff,
-            max_trac_mps,
-            add_kwh,
-            dod_cycs,
-            ess_perc_dead,
-            drag_kw,
-            ess_loss_kw,
-            accel_kw,
-            ascent_kw,
-            rr_kw,
-            cur_max_roadway_chg_kw,
-            trace_miss_iters,
-            newton_iters,
-            fuel_kj,
-            ess_dischg_kj,
-            energy_audit_error,
-            mpgge,
-            roadway_chg_kj,
-            battery_kwh_per_mi,
-            electric_kwh_per_mi,
-            ess2fuel_kwh,
-            drag_kj,
-            ascent_kj,
-            rr_kj,
-            brake_kj,
-            trans_kj,
-            mc_kj,
-            ess_eff_kj,
-            aux_kj,
-            fc_kj,
-            net_kj,
-            ke_kj,
-            trace_miss,
-            trace_miss_dist_frac,
-            trace_miss_time_frac,
-            trace_miss_speed_mps,
-        }
+        Self::new(cyc, veh)
     }
 
     // wrappers for core methods
@@ -515,24 +273,26 @@ impl RustSimDrive {
     // comments preceding a struct, method, or function definition with `///` instead of `\\`
     // get interpreted as doc strings in python
 
+    #[pyo3(name = "gap_to_lead_vehicle_m")]
     /// Provides the gap-with lead vehicle from start to finish
-    pub fn gap_to_lead_vehicle_m(&self) -> PyResult<Vec<f64>> {
-        Ok(self.gap_to_lead_vehicle_m_rust().to_vec())
+    pub fn gap_to_lead_vehicle_m_py(&self) -> PyResult<Vec<f64>> {
+        Ok(self.gap_to_lead_vehicle_m().to_vec())
     }
 
+    #[pyo3(name = "sim_drive")]
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
     /// Arguments
     /// ------------
     /// init_soc: initial SOC for electrified vehicles.  
     /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
     ///     Default of None causes veh.aux_kw to be used.
-    pub fn sim_drive(
+    pub fn sim_drive_py(
         &mut self,
         init_soc: Option<f64>,
         aux_in_kw_override: Option<Vec<f64>>,
     ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
-        handle_sd_res(self.sim_drive_rust(init_soc, aux_in_kw_override))
+        handle_sd_res(self.sim_drive(init_soc, aux_in_kw_override))
     }
 
     /// Receives second-by-second cycle information, vehicle properties,
@@ -560,52 +320,59 @@ impl RustSimDrive {
         handle_sd_res(self.step())
     }
 
+    #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
-    pub fn solve_step(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.solve_step_rust(i))
+    pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.solve_step(i))
     }
 
+    #[pyo3(name = "set_misc_calcs")]
     /// Sets misc. calculations at time step 'i'
     /// Arguments:
     /// ----------
     /// i: index of time step
-    pub fn set_misc_calcs(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_misc_calcs_rust(i))
+    pub fn set_misc_calcs_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.set_misc_calcs(i))
     }
 
+    #[pyo3(name = "set_comp_lims")]
     // Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
     // Arguments
     // ------------
     // i: index of time step
-    pub fn set_comp_lims(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_comp_lims_rust(i))
+    pub fn set_comp_lims_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.set_comp_lims(i))
     }
 
+    #[pyo3(name = "set_power_calcs")]
     /// Calculate power requirements to meet cycle and determine if
     /// cycle can be met.
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_power_calcs(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_power_calcs_rust(i))
+    pub fn set_power_calcs_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.set_power_calcs(i))
     }
 
+    #[pyo3(name = "set_ach_speed")]
     // Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
     // Arguments
     // ------------
     // i: index of time step
-    pub fn set_ach_speed(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_ach_speed_rust(i))
+    pub fn set_ach_speed_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.set_ach_speed(i))
     }
 
+    #[pyo3(name = "set_hybrid_cont_calcs")]
     /// Hybrid control calculations.
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_calcs(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_hybrid_cont_calcs_rust(i))
+    pub fn set_hybrid_cont_calcs_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.set_hybrid_cont_calcs(i))
     }
 
+    #[pyo3(name = "set_fc_forced_state")]
     /// Calculate control variables related to engine on/off state
     /// Arguments
     /// ------------
@@ -615,34 +382,38 @@ impl RustSimDrive {
         handle_sd_res(self.set_fc_forced_state_rust(i))
     }
 
+    #[pyo3(name = "set_hybrid_cont_decisions")]
     /// Hybrid control decisions.
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_hybrid_cont_decisions_rust(i))
+    pub fn set_hybrid_cont_decisions_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.set_hybrid_cont_decisions(i))
     }
 
+    #[pyo3(name = "set_fc_power")]
     /// Sets power consumption values for the current time step.
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_fc_ess_power(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_fc_ess_power_rust(i))
+    pub fn set_fc_power_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.set_fc_power(i))
     }
 
+    #[pyo3(name = "set_time_dilation")]
     /// Sets the time dilation for the current step.
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_time_dilation(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_time_dilation_rust(i))
+    pub fn set_time_dilation_py(&mut self, i: usize) -> PyResult<()> {
+        handle_sd_res(self.set_time_dilation(i))
     }
 
+    #[pyo3(name = "set_post_scalars")]
     /// Sets scalar variables that can be calculated after a cycle is run.
     /// This includes mpgge, various energy metrics, and others
-    pub fn set_post_scalars(&mut self) -> PyResult<()> {
-        handle_sd_res(self.set_post_scalars_rust())
+    pub fn set_post_scalars_py(&mut self) -> PyResult<()> {
+        handle_sd_res(self.set_post_scalars())
     }
 
     /// Return length of time arrays
