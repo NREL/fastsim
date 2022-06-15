@@ -2,10 +2,12 @@ extern crate ndarray;
 use ndarray::{Array, Array1};
 extern crate pyo3;
 use pyo3::exceptions;
+use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
 
 use crate::cycle::RustCycle;
 use crate::params::RustPhysicalProperties;
+use crate::proc_macros::add_pyo3_api;
 use crate::utils;
 use crate::vehicle::*;
 
@@ -18,76 +20,46 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
 
 #[pyclass]
 #[derive(Debug, Clone)]
+#[add_pyo3_api]
 /// Struct containing time trace data
 pub struct RustSimDriveParams {
-    #[pyo3(get, set)] // enables get/set access from python for simple data types
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
-    #[pyo3(get, set)]
     pub max_time_dilation: f64,
-    #[pyo3(get, set)]
     pub min_time_dilation: f64,
-    #[pyo3(get, set)]
     pub time_dilation_tol: f64,
-    #[pyo3(get, set)]
     pub max_trace_miss_iters: u32,
-    #[pyo3(get, set)]
     pub trace_miss_speed_mps_tol: f64,
-    #[pyo3(get, set)]
     pub trace_miss_time_tol: f64,
-    #[pyo3(get, set)]
     pub trace_miss_dist_tol: f64,
-    #[pyo3(get, set)]
     pub sim_count_max: usize,
-    #[pyo3(get, set)]
     pub verbose: bool,
-    #[pyo3(get, set)]
     pub newton_gain: f64,
-    #[pyo3(get, set)]
     pub newton_max_iter: u32,
-    #[pyo3(get, set)]
     pub newton_xtol: f64,
-    #[pyo3(get, set)]
     pub energy_audit_error_tol: f64,
-    #[pyo3(get, set)]
     pub coast_allow: bool,
-    #[pyo3(get, set)]
     pub coast_allow_passing: bool,
-    #[pyo3(get, set)]
     pub coast_max_speed_m_per_s: f64,
-    #[pyo3(get, set)]
     pub coast_brake_accel_m_per_s2: f64,
-    #[pyo3(get, set)]
     pub coast_brake_start_speed_m_per_s: f64,
-    #[pyo3(get, set)]
     pub coast_start_speed_m_per_s: f64,
-    #[pyo3(get, set)]
     pub coast_verbose: bool,
-    #[pyo3(get, set)]
     pub coast_time_horizon_for_adjustment_s: f64,
-    #[pyo3(get, set)]
     pub follow_allow: bool,
     // IDM - Intelligent Driver Model, Adaptive Cruise Control version
-    #[pyo3(get, set)]
     pub idm_v_desired_m_per_s: f64,
-    #[pyo3(get, set)]
     pub idm_dt_headway_s: f64,
-    #[pyo3(get, set)]
     pub idm_minimum_gap_m: f64,
-    #[pyo3(get, set)]
     pub idm_delta: f64,
-    #[pyo3(get, set)]
     pub idm_accel_m_per_s2: f64,
-    #[pyo3(get, set)]
     pub idm_decel_m_per_s2: f64,
     // Other, Misc.
-    #[pyo3(get, set)]
     pub max_epa_adj: f64,
+    pub orphaned: bool,
 }
 
-#[pymethods]
 impl RustSimDriveParams {
-    #[new]
-    pub fn __new__() -> Self {
+    pub fn new() -> Self {
         // if true, missed trace correction is active, default = false
         let missed_trace_correction = false;
         // maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
@@ -125,7 +97,7 @@ impl RustSimDriveParams {
         let idm_decel_m_per_s2 = 1.5;
         // EPA fuel economy adjustment parameters
         let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
-        RustSimDriveParams {
+        Self {
             missed_trace_correction,
             max_time_dilation,
             min_time_dilation,
@@ -156,6 +128,7 @@ impl RustSimDriveParams {
             idm_accel_m_per_s2,
             idm_decel_m_per_s2,
             max_epa_adj,
+            orphaned: false,
         }
     }
 }
@@ -163,19 +136,12 @@ impl RustSimDriveParams {
 #[pyclass]
 #[derive(Debug, Clone)]
 pub struct RustSimDrive {
-    #[pyo3(get, set)]
     pub hev_sim_count: usize,
-    #[pyo3(get, set)]
     pub veh: RustVehicle,
-    #[pyo3(get, set)]
     pub cyc: RustCycle,
-    #[pyo3(get, set)]
     pub cyc0: RustCycle,
-    #[pyo3(get, set)]
     pub sim_params: RustSimDriveParams,
-    #[pyo3(get, set)]
     pub props: RustPhysicalProperties,
-    #[pyo3(get, set)]
     pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()
     pub cur_max_fs_kw_out: Array1<f64>,
     pub fc_trans_lim_kw: Array1<f64>,
@@ -270,47 +236,26 @@ pub struct RustSimDrive {
     pub newton_iters: Array1<u32>,
     pub fuel_kj: f64,
     pub ess_dischg_kj: f64,
-    #[pyo3(get)]
     pub energy_audit_error: f64,
-    #[pyo3(get)]
     pub mpgge: f64,
-    #[pyo3(get)]
     pub roadway_chg_kj: f64,
-    #[pyo3(get)]
     pub battery_kwh_per_mi: f64,
-    #[pyo3(get)]
     pub electric_kwh_per_mi: f64,
-    #[pyo3(get)]
     pub ess2fuel_kwh: f64,
-    #[pyo3(get)]
     pub drag_kj: f64,
-    #[pyo3(get)]
     pub ascent_kj: f64,
-    #[pyo3(get)]
     pub rr_kj: f64,
-    #[pyo3(get)]
     pub brake_kj: f64,
-    #[pyo3(get)]
     pub trans_kj: f64,
-    #[pyo3(get)]
     pub mc_kj: f64,
-    #[pyo3(get)]
     pub ess_eff_kj: f64,
-    #[pyo3(get)]
     pub aux_kj: f64,
-    #[pyo3(get)]
     pub fc_kj: f64,
-    #[pyo3(get)]
     pub net_kj: f64,
-    #[pyo3(get)]
     pub ke_kj: f64,
-    #[pyo3(get)]
     pub trace_miss: bool,
-    #[pyo3(get)]
     pub trace_miss_dist_frac: f64,
-    #[pyo3(get)]
     pub trace_miss_time_frac: f64,
-    #[pyo3(get)]
     pub trace_miss_speed_mps: f64,
 }
 
@@ -322,7 +267,7 @@ impl RustSimDrive {
     pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self {
         let hev_sim_count: usize = 0;
         let cyc0: RustCycle = cyc.clone();
-        let sim_params = RustSimDriveParams::__new__();
+        let sim_params = RustSimDriveParams::new();
         let props = RustPhysicalProperties::__new__();
         let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
         let cyc_len = cyc.time_s.len(); //get_len() as usize;
