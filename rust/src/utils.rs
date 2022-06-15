@@ -189,11 +189,11 @@ macro_rules! impl_pyo3_arr_methods {
             pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
                 Err(PyNotImplementedError::new_err(
                     "Setting value at index is not implemented. 
-                    Run `to_list` method, modify value at index, and 
+                    Run `tolist` method, modify value at index, and 
                     then set entire array.",
                 ))
             }
-            pub fn to_list(&self) -> PyResult<Vec<$dtype>> {
+            pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
                 Ok(self.0.to_vec())
             }
         }
@@ -225,11 +225,11 @@ macro_rules! impl_pyo3_vec_methods {
             pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
                 Err(PyNotImplementedError::new_err(
                     "Setting value at index is not implemented. 
-                    Run `to_list` method, modify value at index, and 
+                    Run `tolist` method, modify value at index, and 
                     then set entire vector.",
                 ))
             }
-            pub fn to_list(&self) -> PyResult<Vec<$dtype>> {
+            pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
                 Ok(self.0.clone())
             }
         }

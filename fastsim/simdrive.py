@@ -372,7 +372,7 @@ class SimDrive(object):
                     else:
                         ess_2fuel_kwh = 0.0
                     init_soc = min(1.0, max(0.0, self.soc[-1]))
-                    
+
             elif self.veh.veh_pt_type == PHEV or self.veh.veh_pt_type == BEV:  # PHEV and BEV
                 # If EV, initializing initial SOC to maximum SOC.
                 init_soc = self.veh.max_soc
@@ -433,7 +433,7 @@ class SimDrive(object):
             print(
                 "To suppress this message, view the doc string for simdrive.SimDriveParams.")
             print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
-        
+
         self.set_post_scalars()
 
     def _set_speed_for_target_gap_using_idm(self, i):
@@ -2062,11 +2062,11 @@ def sim_drive_equal(a: SimDrive, b: SimDrive, verbose=False) -> bool:
                 if verbose:
                     print(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
-        elif 'to_list' in a_val.__dir__() + b_val.__dir__():
-            if 'to_list' in a_val.__dir__():
-                a_val = np.array(a_val.to_list())
-            if 'to_list' in b_val.__dir__():
-                b_val = np.array(b_val.to_list())
+        elif 'tolist' in a_val.__dir__() + b_val.__dir__():
+            if 'tolist' in a_val.__dir__():
+                a_val = np.array(a_val.tolist())
+            if 'tolist' in b_val.__dir__():
+                b_val = np.array(b_val.tolist())
             if not (a_val == b_val).all():
                 if verbose:
                     print(f"unequal at key {k}: {a_val} != {b_val}")

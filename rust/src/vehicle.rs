@@ -275,9 +275,15 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
     }
 
     #[setter]
-    #[pyo3(name = "set_mc_peak_eff")]
-    pub fn set_mc_peak_eff_py(&mut self, new_peak: f64) {
-        self.set_mc_peak_eff(new_peak);
+    pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
+        let mc_max_eff = ndarrmax(&self.mc_eff_array);
+        self.mc_eff_array *= new_peak / mc_max_eff;
+        let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
+        self.mc_full_eff_array = self
+            .mc_full_eff_array
+            .iter()
+            .map(|e: &f64| -> f64 { e * (new_peak / mc_max_full_eff) })
+            .collect();
     }
 
     #[getter]
@@ -291,9 +297,19 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
     }
 
     #[setter]
-    #[pyo3(name = "set_fc_peak_eff")]
-    pub fn set_fc_peak_eff_py(&mut self, new_peak: f64) {
-        self.set_fc_peak_eff(new_peak)
+    pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
+        let old_fc_peak_eff = self.fc_peak_eff();
+        let multiplier = new_peak / old_fc_peak_eff;
+        self.fc_eff_array = self
+            .fc_eff_array
+            .iter()
+            .map(|eff: &f64| -> f64 { eff * multiplier })
+            .collect();
+        let new_fc_peak_eff = self.fc_peak_eff();
+        let eff_map_multiplier = new_peak / new_fc_peak_eff;
+        self.fc_eff_map = self
+            .fc_eff_map
+            .map(|eff| -> f64 { eff * eff_map_multiplier });
     }
 
     #[pyo3(name = "set_derived")]
@@ -746,17 +762,6 @@ impl RustVehicle {
         arrmax(&self.mc_full_eff_array)
     }
 
-    pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
-        let mc_max_eff = ndarrmax(&self.mc_eff_array);
-        self.mc_eff_array *= new_peak / mc_max_eff;
-        let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
-        self.mc_full_eff_array = self
-            .mc_full_eff_array
-            .iter()
-            .map(|e: &f64| -> f64 { e * (new_peak / mc_max_full_eff) })
-            .collect();
-    }
-
     pub fn max_fc_eff_kw(&self) -> f64 {
         let fc_eff_arr_max_i =
             first_eq(&self.fc_eff_array, arrmax(&self.fc_eff_array)).unwrap_or(0);
@@ -765,21 +770,6 @@ impl RustVehicle {
 
     pub fn fc_peak_eff(&self) -> f64 {
         arrmax(&self.fc_eff_array)
-    }
-
-    pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
-        let old_fc_peak_eff = self.fc_peak_eff();
-        let multiplier = new_peak / old_fc_peak_eff;
-        self.fc_eff_array = self
-            .fc_eff_array
-            .iter()
-            .map(|eff: &f64| -> f64 { eff * multiplier })
-            .collect();
-        let new_fc_peak_eff = self.fc_peak_eff();
-        let eff_map_multiplier = new_peak / new_fc_peak_eff;
-        self.fc_eff_map = self
-            .fc_eff_map
-            .map(|eff| -> f64 { eff * eff_map_multiplier });
     }
 
     /// Sets derived parameters.  

@@ -774,7 +774,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
             return_type = LEGACY
         else:
             raise NotImplementedError(
-                "Only implemented for rust, vehicle, or legacy.")
+                "Only implemented for rust, dict, vehicle, or legacy.")
 
     for key in keys_and_types.keys():
         if key in KEYS_TO_REMOVE:
@@ -793,8 +793,9 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
             new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
             veh_dict[key] = new_pp
         else:
-            veh_dict[key] = copy.deepcopy(veh.__getattribute__(
-                key)) if deep else veh.__getattribute__(key)
+            veh_dict[key] = copy.deepcopy(
+                veh.__getattribute__(key)) if deep else veh.__getattribute__(key
+            )
 
 
     if return_type == DICT:
