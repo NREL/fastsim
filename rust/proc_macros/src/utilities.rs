@@ -1,6 +1,74 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens}; // ToTokens is implicitly used as a trait
 
+macro_rules! impl_vec_get_set {
+    ($opts: ident, $fident: ident, $impl_block: ident, $contained_type: ty, $wrapper_type: expr, $has_orphaned: expr) => {
+        if !$opts.skip_get {
+            let get_name: TokenStream2 = format!("get_{}", $fident).parse().unwrap();
+            $impl_block.extend::<TokenStream2>(quote! {
+                #[getter]
+                pub fn #get_name(&self) -> PyResult<$wrapper_type> {
+                    Ok($wrapper_type::new(self.#$fident.clone()))
+                }
+            });
+        }
+        if !$opts.skip_set {
+            let set_name: TokenStream2 = format!("set_{}", $fident).parse().unwrap();
+            match stringify!($wrapper_type) {
+                "Pyo3VecF64" => {
+                    if $has_orphaned {
+                        $impl_block.extend(quote! {
+                            #[setter]
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> PyResult<()> {
+                                if !self.orphaned {
+                                    self.#$fident = new_value;
+                                    Ok(())
+                                } else {
+                                    Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                                }
+                            }
+                        })
+                    } else {
+                        $impl_block.extend(quote! {
+                            #[setter]
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> PyResult<()> {
+                                self.#$fident = new_value;
+                                Ok(())
+                            }
+                        })
+                    }
+                }
+                _ => {
+                    if $has_orphaned {
+                        $impl_block.extend(quote! {
+                            #[setter]
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> PyResult<()> {
+                                if !self.orphaned {
+                                    self.#$fident = Array1::from_vec(new_value);
+                                    Ok(())
+                                } else {
+                                    Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                                }
+                            }
+                        })
+                    } else {
+                        $impl_block.extend(quote! {
+                            #[setter]
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> PyResult<()> {
+                                self.#$fident = Array1::from_vec(new_value);
+                                Ok(())
+                            }
+                        })
+                    }
+                }
+            }
+
+        }
+    };
+}
+
+
+
 /// Generates pyo3 getter methods  
 ///
 /// general match arguments:  
@@ -108,112 +176,20 @@ pub fn impl_getters_and_setters(
     let type_str = type_path.clone().into_token_stream().to_string();
     match type_str.as_str() {
         "Array1 < f64 >" => {
-            if !opts.skip_get {
-                let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
-                impl_block.extend::<TokenStream2>(quote! {
-                    #[getter]
-                    pub fn #get_name(&self) -> PyResult<Pyo3ArrayF64> {
-                        Ok(Pyo3ArrayF64::new(self.#ident.clone()))
-                    }
-                });
-            }
-
-            if !opts.skip_set {
-                let set_name: TokenStream2 = format!("set_{}", ident).parse().unwrap();
-                impl_block.extend(quote! {
-                    #[setter]
-                    pub fn #set_name(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-                        if !self.orphaned {
-                            self.#ident = Array1::from_vec(new_value);
-                            Ok(())
-                        } else {
-                            Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
-                        }
-                    }
-                })
-            }
+            impl_vec_get_set!(opts, ident, impl_block, f64, Pyo3ArrayF64, has_orphaned);
         }      
         "Array1 < u32 >" => {
-            if !opts.skip_get {
-                let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
-                impl_block.extend::<TokenStream2>(quote! {
-                    #[getter]
-                    pub fn #get_name(&self) -> PyResult<Pyo3ArrayU32> {
-                        Ok(Pyo3ArrayU32::new(self.#ident.clone()))
-                    }
-                });
-            }
-
-            if !opts.skip_set {
-                let set_name: TokenStream2 = format!("set_{}", ident).parse().unwrap();
-                impl_block.extend(quote! {
-                    #[setter]
-                    pub fn #set_name(&mut self, new_value: Vec<U32>) -> PyResult<()> {
-                        if !self.orphaned {
-                            self.#ident = Array1::from_vec(new_value);
-                            Ok(())
-                        } else {
-                            Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
-                        }
-                    }
-                })
-            }
-        }        
+            impl_vec_get_set!(opts, ident, impl_block, u32, Pyo3ArrayU32, has_orphaned);
+        }
         "Array1 < bool >" => {
-            if !opts.skip_get {
-                let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
-                impl_block.extend::<TokenStream2>(quote! {
-                    #[getter]
-                    pub fn #get_name(&self) -> PyResult<Pyo3ArrayBool> {
-                        Ok(Pyo3ArrayBool::new(self.#ident.clone()))
-                    }
-                });
-            }
-
-            if !opts.skip_set {
-                let set_name: TokenStream2 = format!("set_{}", ident).parse().unwrap();
-                impl_block.extend(quote! {
-                    #[setter]
-                    pub fn #set_name(&mut self, new_value: Vec<Bool>) -> PyResult<()> {
-                        if !self.orphaned {
-                            self.#ident = Array1::from_vec(new_value);
-                            Ok(())
-                        } else {
-                            Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
-                        }
-                    }
-                })
-            }
+            impl_vec_get_set!(opts, ident, impl_block, bool, Pyo3ArrayBool, has_orphaned);
         }
         "Vec < f64 >" => {
-            if !opts.skip_get {
-                let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
-                impl_block.extend::<TokenStream2>(quote! {
-                    #[getter]
-                    pub fn #get_name(&self) -> PyResult<Pyo3VecF64> {
-                        Ok(Pyo3VecF64::new(self.#ident.clone()))
-                    }
-                });
-            }
-
-            if !opts.skip_set {
-                let set_name: TokenStream2 = format!("set_{}", ident).parse().unwrap();
-                impl_block.extend(quote! {
-                    #[setter]
-                    pub fn #set_name(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-                        if !self.orphaned {
-                            self.#ident = new_value;
-                            Ok(())
-                        } else {
-                            Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
-                        }
-                    }
-                })
-            }
-        }
+            impl_vec_get_set!(opts, ident, impl_block, f64, Pyo3VecF64, has_orphaned);
     // type_str if type_str.contains("Vec") => {
-        //     todo!();
+        //     todo!();00
         // }
+        }
         _ => match ident.to_string().as_str() {
             "orphaned" => {
                 impl_block.extend::<TokenStream2>(quote! {
@@ -235,3 +211,4 @@ pub fn impl_getters_and_setters(
         },
     }
 }
+

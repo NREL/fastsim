@@ -15,8 +15,8 @@ use pyo3::exceptions::PyAttributeError;
 
 // local
 use crate::proc_macros::add_pyo3_api;
-use super::params::*;
-use super::utils::*;
+use crate::params::*;
+use crate::utils::*;
 
 pub const CONV: &str = "Conv";
 pub const HEV: &str = "HEV";
@@ -67,7 +67,8 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
         idle_fc_kw: f64,
         mc_max_kw: f64,
         mc_pwr_out_perc: Vec<f64>,
-        mc_eff_map: Option<Vec<f64>>,
+        // todo: check how this behaves w.r.t. to being a keyword argument with positional arguments after it
+        mc_eff_map: Option<Vec<f64>>,  
         mc_sec_to_peak_pwr: f64,
         mc_pe_kg_per_kw: f64,
         mc_pe_base_kg: f64,

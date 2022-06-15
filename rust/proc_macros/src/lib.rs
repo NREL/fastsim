@@ -10,9 +10,8 @@ use utilities::{impl_getters_and_setters, FieldOptions};
 #[proc_macro_attribute]
 pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
+    // println!("{}", ast.ident.to_string());
     let ident = &ast.ident;
-    // println!("{}", String::from("*").repeat(30));
-    // println!("struct: {}", ast.ident.to_string());
 
     let mut impl_block = TokenStream2::default();
     impl_block.extend::<TokenStream2>(attr.into());
@@ -53,7 +52,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         "has_orphaned" => opts.field_has_orphaned = true,
                                         // todo: figure out how to use span to have rust-analyzer highlight the exact code
                                         // where this gets messed up
-                                        _ => {panic!("Invalid api option. Valid options are: `skip_get` and `skip_set`")}
+                                        _ => {panic!("Invalid api option. Valid options are: `skip_get`, `skip_set`, and `has_orphaned`")}
                                     }
                                 }
                             }
@@ -119,7 +118,10 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let mut output: TokenStream2 = ast.to_token_stream();
+
     output.extend(impl_block);
-    // println!("{}", output.to_string());
+    // if ast.ident.to_string() == "RustSimDrive" {
+    //     println!("{}", output.to_string());
+    // }
     output.into()
 }
