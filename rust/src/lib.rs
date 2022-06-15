@@ -1,6 +1,8 @@
 extern crate ndarray;
 use pyo3::prelude::*;
 
+extern crate proc_macros;
+
 pub mod params;
 use params::RustPhysicalProperties;
 pub mod utils;

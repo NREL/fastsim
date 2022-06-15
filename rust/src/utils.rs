@@ -5,6 +5,11 @@ use pyo3::prelude::*;
 use std::collections::HashSet;
 // use numpy::PyArray;
 
+/// Error message for when user attempts to set value in a nested struct.
+pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
+Assign nested struct to own variable, run the `reset_orphaned` method, and then 
+modify field value. Then set the nested struct back inside containing struct.";
+
 pub fn diff(x: &Array1<f64>) -> Array1<f64> {
     concatenate(
         Axis(0),
@@ -119,7 +124,12 @@ pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
 /// interpolation algorithm from http://www.cplusplus.com/forum/general/216928/
 /// Arguments:
 /// x : value at which to interpolate
-pub fn interpolate(x: &f64, x_data_in: &Array1<f64>, y_data_in: &Array1<f64>, extrapolate: bool) -> f64 {
+pub fn interpolate(
+    x: &f64,
+    x_data_in: &Array1<f64>,
+    y_data_in: &Array1<f64>,
+    extrapolate: bool,
+) -> f64 {
     assert!(x_data_in.len() == y_data_in.len());
     let mut new_x_data: Vec<f64> = Vec::new();
     let mut new_y_data: Vec<f64> = Vec::new();
@@ -365,6 +375,6 @@ mod tests {
         let x = 1.0;
         let y_lookup = interpolate(&x, &xs, &ys, false);
         let expected_y_lookup = 10.0;
-        assert_eq!(expected_y_lookup,  y_lookup);
+        assert_eq!(expected_y_lookup, y_lookup);
     }
 }

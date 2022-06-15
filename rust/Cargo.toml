@@ -12,9 +12,11 @@ crate-type = ["cdylib"]
 pyo3 = { version = "0.15.1", features = ["extension-module"] }
 ndarray = { version = "0.15.4"}
 csv = "1.1"
+proc_macros = { path = "proc_macros" }
+
 
 [profile.release]
 # https://deterministic.space/high-performance-rust.html
-opt-level = 3               # Use slightly better optimizations.
+opt-level = 3               # Use better optimizations.
 lto = "fat"  # aggressively optimize inter-crate linking
 codegen-units = 1  # optimize connection between modules

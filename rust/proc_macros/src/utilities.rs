@@ -1,0 +1,159 @@
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{quote, ToTokens}; // ToTokens is implicitly used as a trait
+
+/// Generates pyo3 getter methods  
+///
+/// general match arguments:  
+/// - type: type of variable (e.g. `f64`)
+/// - field: struct field
+/// - impl_block: TokenStream2
+/// - opts: FieldOptions struct instance
+macro_rules! impl_get_body {
+    ( 
+        $type: ident, $field: ident, $impl_block: ident, $opts: ident
+    ) => {
+        if !$opts.skip_get {
+            let get_name: TokenStream2 = format!("get_{}", $field).parse().unwrap();
+            let get_block = if $opts.field_has_orphaned {
+                quote! {
+                    #[getter]
+                    pub fn #get_name(&mut self) -> PyResult<#$type> {
+                        self.#$field.orphaned = true;
+                        Ok(self.#$field.clone())
+                    }
+                }
+            } else {
+                quote! {
+                    #[getter]
+                    pub fn #get_name(&self) -> PyResult<#$type> {
+                        Ok(self.#$field.clone())
+                    }
+                }
+            };
+            $impl_block.extend::<TokenStream2>(get_block)
+        }
+    };
+}
+
+/// Generates pyo3 setter methods
+///
+/// general match arguments:
+/// - type: type of variable (e.g. `f64`)
+/// - field: struct field
+/// - impl_block: TokenStream2
+/// - has_orphaned: bool, true if struct has `orphaned` field
+/// - opts: FieldOptions struct instance
+
+macro_rules! impl_set_body {
+    ( // for generic
+        $type: ident, $field: ident, $impl_block: ident, $has_orphaned: expr, $opts: ident
+    ) => {
+        if !$opts.skip_set {
+            let set_name: TokenStream2 = format!("set_{}", $field).parse().unwrap();
+            let orphaned_set_block = if $has_orphaned && $opts.field_has_orphaned {
+                quote! {
+                    if !self.orphaned {
+                        self.#$field = new_value;
+                        self.#$field.orphaned = false;
+                        Ok(())
+                    } else {
+                        Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                    }
+                }
+            } else if $has_orphaned {
+                quote! {
+                    if !self.orphaned {
+                        self.#$field = new_value;
+                        Ok(())
+                    } else {
+                        Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                    }
+                }
+            } else {
+                quote! {
+                        self.#$field = new_value;
+                        Ok(())
+                }
+            };
+
+            $impl_block.extend::<TokenStream2>(quote! {
+                #[setter]
+                pub fn #set_name(&mut self, new_value: #$type) ->  PyResult<()> {
+                    #orphaned_set_block
+                }
+            });
+        }
+    };
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct FieldOptions {
+    /// if true, getters are not generated for a field
+    pub skip_get: bool,
+    /// if true, setters are not generated for a field
+    pub skip_set: bool,
+    /// if true, current field is itself a struct with `orphaned` field
+    pub field_has_orphaned: bool,
+}
+
+
+pub fn impl_getters_and_setters(
+    type_path: syn::TypePath,
+    impl_block: &mut TokenStream2,
+    ident: &proc_macro2::Ident,
+    opts: FieldOptions,
+    has_orphaned: bool,
+    ftype: syn::Type,
+) {
+    let type_str = type_path.clone().into_token_stream().to_string();
+    match type_str.as_str() {
+        "Vec < f64 >" => {
+            if !opts.skip_get {
+                let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
+                impl_block.extend::<TokenStream2>(quote! {
+                    #[getter]
+                    pub fn #get_name(&self) -> PyResult<Pyo3VecWrapper> {
+                        Ok(Pyo3VecWrapper::new(self.#ident.clone()))
+                    }
+                });
+            }
+
+            if !opts.skip_set {
+                let set_name: TokenStream2 = format!("set_{}", ident).parse().unwrap();
+                impl_block.extend(quote! {
+                    #[setter]
+                    pub fn #set_name(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+                        if !self.orphaned {
+                            self.#ident = new_value;
+                            Ok(())
+                        } else {
+                            Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                        }
+                    }
+                })
+            }
+        }
+        // type_str if type_str.contains("Vec") => {
+        //     todo!();
+        // }
+        _ => match ident.to_string().as_str() {
+            "orphaned" => {
+                impl_block.extend::<TokenStream2>(quote! {
+                    #[getter]
+                    pub fn get_orphaned(&self) -> PyResult<bool> {
+                        Ok(self.orphaned)
+                    }
+                    /// Reset the orphaned flag to false.
+                    pub fn reset_orphaned(&mut self) -> PyResult<()> {
+                        self.orphaned = false;
+                        Ok(())
+                    }
+                })
+            }
+            _ => {
+                impl_get_body!(ftype, ident, impl_block, opts);
+                impl_set_body!(ftype, ident, impl_block, has_orphaned, opts);
+            }
+        },
+    }
+}
