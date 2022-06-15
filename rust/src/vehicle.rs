@@ -319,12 +319,13 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
-    pub fn to_rust(&self) -> PyResult<RustVehicle> {
+    pub fn to_rust(&self) -> PyResult<Self> {
         Ok(self.clone())
     }
 )]
 /// Struct containing vehicle attributes
 pub struct RustVehicle {
+    #[api(has_orphaned)]
     pub props: RustPhysicalProperties,
     pub scenario_name: String,
     pub selection: u32,
