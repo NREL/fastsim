@@ -90,7 +90,7 @@ pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
             return false;
         }
     }
-    return true;
+    true
 }
 
 /// return cumsum <f64> of arr
@@ -169,8 +169,6 @@ pub fn interpolate(
     yl + dydx * (x - xl)
 }
 
-
-#[macro_export]
 macro_rules! impl_pyo3_arr_methods {
     ($arrstruct:ident, $dtype:ident) => {
         #[pymethods]
@@ -190,7 +188,9 @@ macro_rules! impl_pyo3_arr_methods {
             }
             pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
                 Err(PyNotImplementedError::new_err(
-                    "Setting array value at index is not implemented. Set entire array.",
+                    "Setting value at index is not implemented. 
+                    Run `to_list` method, modify value at index, and 
+                    then set entire array.",
                 ))
             }
             pub fn to_list(&self) -> PyResult<Vec<$dtype>> {
@@ -205,23 +205,61 @@ macro_rules! impl_pyo3_arr_methods {
     };
 }
 
+macro_rules! impl_pyo3_vec_methods {
+    ($vecstruct:ident, $dtype:ident) => {
+        #[pymethods]
+        impl $vecstruct {
+            pub fn __repr__(&self) -> String {
+                format!("RustArray({:?})", self.0)
+            }
+            pub fn __str__(&self) -> String {
+                format!("{:?}", self.0)
+            }
+            pub fn __getitem__(&self, idx: usize) -> PyResult<$dtype> {
+                if idx >= self.0.len() {
+                    Err(PyIndexError::new_err("Index is out of bounds"))
+                } else {
+                    Ok(self.0[idx])
+                }
+            }
+            pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
+                Err(PyNotImplementedError::new_err(
+                    "Setting value at index is not implemented. 
+                    Run `to_list` method, modify value at index, and 
+                    then set entire vector.",
+                ))
+            }
+            pub fn to_list(&self) -> PyResult<Vec<$dtype>> {
+                Ok(self.0.clone())
+            }
+        }
+        impl $vecstruct {
+            pub fn new(value: Vec<$dtype>) -> Self {
+                Self(value.to_vec())
+            }
+        }
+    };
+}
+
 /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
 #[pyclass]
 pub struct Pyo3ArrayU32(Array1<u32>);
+impl_pyo3_arr_methods!(Pyo3ArrayU32, u32);
 
 /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
 #[pyclass]
 pub struct Pyo3ArrayF64(Array1<f64>);
+impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
 
 /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
 #[pyclass]
 pub struct Pyo3ArrayBool(Array1<bool>);
-
-
-impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
 impl_pyo3_arr_methods!(Pyo3ArrayBool, bool);
-impl_pyo3_arr_methods!(Pyo3ArrayU32, u32);
 
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
+pub struct Pyo3VecF64(Vec<f64>);
+impl_pyo3_vec_methods!(Pyo3VecF64, f64);
 
 #[cfg(test)]
 mod tests {

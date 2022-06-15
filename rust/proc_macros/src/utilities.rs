@@ -132,8 +132,86 @@ pub fn impl_getters_and_setters(
                     }
                 })
             }
+        }      
+        "Array1 < u32 >" => {
+            if !opts.skip_get {
+                let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
+                impl_block.extend::<TokenStream2>(quote! {
+                    #[getter]
+                    pub fn #get_name(&self) -> PyResult<Pyo3ArrayU32> {
+                        Ok(Pyo3ArrayU32::new(self.#ident.clone()))
+                    }
+                });
+            }
+
+            if !opts.skip_set {
+                let set_name: TokenStream2 = format!("set_{}", ident).parse().unwrap();
+                impl_block.extend(quote! {
+                    #[setter]
+                    pub fn #set_name(&mut self, new_value: Vec<U32>) -> PyResult<()> {
+                        if !self.orphaned {
+                            self.#ident = Array1::from_vec(new_value);
+                            Ok(())
+                        } else {
+                            Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                        }
+                    }
+                })
+            }
+        }        
+        "Array1 < bool >" => {
+            if !opts.skip_get {
+                let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
+                impl_block.extend::<TokenStream2>(quote! {
+                    #[getter]
+                    pub fn #get_name(&self) -> PyResult<Pyo3ArrayBool> {
+                        Ok(Pyo3ArrayBool::new(self.#ident.clone()))
+                    }
+                });
+            }
+
+            if !opts.skip_set {
+                let set_name: TokenStream2 = format!("set_{}", ident).parse().unwrap();
+                impl_block.extend(quote! {
+                    #[setter]
+                    pub fn #set_name(&mut self, new_value: Vec<Bool>) -> PyResult<()> {
+                        if !self.orphaned {
+                            self.#ident = Array1::from_vec(new_value);
+                            Ok(())
+                        } else {
+                            Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                        }
+                    }
+                })
+            }
         }
-        // type_str if type_str.contains("Vec") => {
+        "Vec < f64 >" => {
+            if !opts.skip_get {
+                let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
+                impl_block.extend::<TokenStream2>(quote! {
+                    #[getter]
+                    pub fn #get_name(&self) -> PyResult<Pyo3VecF64> {
+                        Ok(Pyo3VecF64::new(self.#ident.clone()))
+                    }
+                });
+            }
+
+            if !opts.skip_set {
+                let set_name: TokenStream2 = format!("set_{}", ident).parse().unwrap();
+                impl_block.extend(quote! {
+                    #[setter]
+                    pub fn #set_name(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+                        if !self.orphaned {
+                            self.#ident = new_value;
+                            Ok(())
+                        } else {
+                            Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                        }
+                    }
+                })
+            }
+        }
+    // type_str if type_str.contains("Vec") => {
         //     todo!();
         // }
         _ => match ident.to_string().as_str() {
