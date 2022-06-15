@@ -58,8 +58,8 @@ pub struct RustSimDriveParams {
     pub orphaned: bool,
 }
 
-impl RustSimDriveParams {
-    pub fn new() -> Self {
+impl Default for RustSimDriveParams {
+    fn default() -> Self {
         // if true, missed trace correction is active, default = false
         let missed_trace_correction = false;
         // maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
@@ -267,7 +267,7 @@ impl RustSimDrive {
     pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self {
         let hev_sim_count: usize = 0;
         let cyc0: RustCycle = cyc.clone();
-        let sim_params = RustSimDriveParams::new();
+        let sim_params = RustSimDriveParams::default();
         let props = RustPhysicalProperties::__new__();
         let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
         let cyc_len = cyc.time_s.len(); //get_len() as usize;
