@@ -89,27 +89,27 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         panic!("Invalid use of `add_pyo3_api` macro.  Works on structs with named fields only.")
     };
 
-    impl_block.extend::<TokenStream2>(quote! {
-        #[classmethod]
-        #[pyo3(name = "default")]
-        pub fn default_py(_cls: &PyType) -> PyResult<Self> {
-            Ok(Self::default())
-        }
-    });
+    // impl_block.extend::<TokenStream2>(quote! {
+    //     #[classmethod]
+    //     #[pyo3(name = "default")]
+    //     pub fn default_py(_cls: &PyType) -> PyResult<Self> {
+    //         Ok(Self::default())
+    //     }
+    // });
 
-    impl_block.extend::<TokenStream2>(quote! {
-        pub fn to_json(&self) -> PyResult<String> {
-            Ok(serde_json::to_string(&self).unwrap())
-        }
-    });
+    // impl_block.extend::<TokenStream2>(quote! {
+    //     pub fn to_json(&self) -> PyResult<String> {
+    //         Ok(serde_json::to_string(&self).unwrap())
+    //     }
+    // });
 
-    impl_block.extend::<TokenStream2>(quote! {
-        #[classmethod]
-        pub fn from_json(_cls: &PyType, json_str:String) -> PyResult<Self> {
-            let obj: #ident = serde_json::from_str(&json_str).unwrap();
-            Ok(obj)
-        }
-    });
+    // impl_block.extend::<TokenStream2>(quote! {
+    //     #[classmethod]
+    //     pub fn from_json(_cls: &PyType, json_str:String) -> PyResult<Self> {
+    //         let obj: #ident = serde_json::from_str(&json_str).unwrap();
+    //         Ok(obj)
+    //     }
+    // });
 
     let impl_block = quote! {
         #[pymethods]

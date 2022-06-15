@@ -9,10 +9,10 @@ pub const M_PER_MI: f64 = 1609.00;
 /// Misc Constants
 pub const MODERN_MAX: f64 = 0.95;
 
-#[pyclass]
-#[derive(Debug, Clone)]
-#[allow(non_snake_case)]
 /// Struct containing time trace data
+#[pyclass]
+#[derive(Debug, Clone, PartialEq)]
+#[allow(non_snake_case)]
 pub struct RustPhysicalProperties {
     #[pyo3(get, set)] // enables get/set access from python for simple data types
     pub air_density_kg_per_m3: f64, // = 1.2, Sea level air density at approximately 20C

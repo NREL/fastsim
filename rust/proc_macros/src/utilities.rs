@@ -107,13 +107,13 @@ pub fn impl_getters_and_setters(
 ) {
     let type_str = type_path.clone().into_token_stream().to_string();
     match type_str.as_str() {
-        "Vec < f64 >" => {
+        "Array1 < f64 >" => {
             if !opts.skip_get {
                 let get_name: TokenStream2 = format!("get_{}", ident).parse().unwrap();
                 impl_block.extend::<TokenStream2>(quote! {
                     #[getter]
-                    pub fn #get_name(&self) -> PyResult<Pyo3VecWrapper> {
-                        Ok(Pyo3VecWrapper::new(self.#ident.clone()))
+                    pub fn #get_name(&self) -> PyResult<Pyo3ArrayF64> {
+                        Ok(Pyo3ArrayF64::new(self.#ident.clone()))
                     }
                 });
             }
@@ -124,7 +124,7 @@ pub fn impl_getters_and_setters(
                     #[setter]
                     pub fn #set_name(&mut self, new_value: Vec<f64>) -> PyResult<()> {
                         if !self.orphaned {
-                            self.#ident = new_value;
+                            self.#ident = Array1::from_vec(new_value);
                             Ok(())
                         } else {
                             Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
