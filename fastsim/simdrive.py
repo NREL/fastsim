@@ -378,14 +378,11 @@ class SimDrive(object):
                 init_soc = self.veh.max_soc
 
         self.sim_drive_walk(init_soc, aux_in_kw_override)
-
-    def sim_drive_walk(self, init_soc: float, aux_in_kw_override: Optional[np.ndarray] = None):
+    
+    def init_for_step(self, init_soc: Optional[float] = None, aux_in_kw_override: Optional[np.ndarray] = None):
         """
-        Receives second-by-second cycle information, vehicle properties, 
-        and an initial state of charge and runs sim_drive_step to perform a 
-        backward facing powertrain simulation. Method 'sim_drive' runs this
-        iteratively to achieve correct SOC initial and final conditions, as 
-        needed.
+        This is a specialty method which should be called prior to using
+        sim_drive_step in a loop.
 
         Arguments
         ------------
@@ -393,6 +390,12 @@ class SimDrive(object):
         aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
                 Default of None causes veh.aux_kw to be used. 
         """
+        if init_soc is None:
+            init_soc = self.veh.max_soc
+        if init_soc > self.veh.max_soc:
+            print("WARNING! Provided init_soc is greater than max_soc;"
+                + " setting init_soc to max_soc")
+            init_soc = self.veh.max_soc
 
         ############################
         ###   Loop Through Time  ###
@@ -422,6 +425,23 @@ class SimDrive(object):
             self.cyc = cycle.copy_cycle(self.cyc0)
 
         self.i = 1  # time step counter
+
+    def sim_drive_walk(self, init_soc: float, aux_in_kw_override: Optional[np.ndarray] = None):
+        """
+        Receives second-by-second cycle information, vehicle properties, 
+        and an initial state of charge and runs sim_drive_step to perform a 
+        backward facing powertrain simulation. Method 'sim_drive' runs this
+        iteratively to achieve correct SOC initial and final conditions, as 
+        needed.
+
+        Arguments
+        ------------
+        init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+        aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+                Default of None causes veh.aux_kw to be used. 
+        """
+        self.init_for_step(init_soc, aux_in_kw_override)
+
         while self.i < len(self.cyc.time_s):
             self.sim_drive_step()
 

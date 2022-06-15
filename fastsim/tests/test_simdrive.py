@@ -27,6 +27,7 @@ class TestSimDriveClassic(unittest.TestCase):
             cyc =cycle.Cycle.from_file('udds')
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
             sim_drive = simdrive.SimDrive(cyc, veh)
+            sim_drive.init_for_step()
 
             for x in range(100):
                 sim_drive.sim_drive_step()
@@ -38,6 +39,7 @@ class TestSimDriveClassic(unittest.TestCase):
             cyc =cycle.Cycle.from_file('udds').to_rust()
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False).to_rust()
             sim_drive = simdrive.RustSimDrive(cyc, veh)
+            sim_drive.init_for_step()
 
             for x in range(100):
                 sim_drive.sim_drive_step()
