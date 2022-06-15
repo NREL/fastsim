@@ -319,7 +319,7 @@ impl RustSimDrive {
         // TODO: shouldn't the below code always set cyc? Whether coasting or not?
         if self.sim_params.coast_allow || self.sim_params.follow_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
-            self.cyc.grade[self.i] = self.cyc0.average_grade_over_range_rust(
+            self.cyc.grade[self.i] = self.cyc0.average_grade_over_range(
                 self.cyc.dist_m().slice(s![0..self.i]).sum(),
                 self.cyc.dist_m()[self.i]);
         }
@@ -564,7 +564,7 @@ impl RustSimDrive {
             };
 
             let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
-            let grade = self.cyc0.average_grade_over_range_rust(
+            let grade = self.cyc0.average_grade_over_range(
                 distance_traveled_m, mps_ach * self.cyc.dt_s()[i]);
 
             self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
@@ -647,7 +647,7 @@ impl RustSimDrive {
             //Cycle is not met
             else {
                 let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
-                let mut grade_estimate = self.cyc0.average_grade_over_range_rust(
+                let mut grade_estimate = self.cyc0.average_grade_over_range(
                     distance_traveled_m, 0.0);
                 let mut grade: f64;
                 let grade_tol = 1e-4;
@@ -728,7 +728,7 @@ impl RustSimDrive {
                         xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
                         0.0
                     );
-                    grade_estimate = self.cyc0.average_grade_over_range_rust(
+                    grade_estimate = self.cyc0.average_grade_over_range(
                         distance_traveled_m,
                         self.cyc.dt_s()[i] * self.mps_ach[i]);
                     grade_diff = (grade - grade_estimate).abs();
@@ -1461,7 +1461,7 @@ impl RustSimDrive {
                 unique_grades[0]
             } else {
                 // interpolate(&d, &distances_m, &grade_by_distance, true)
-                self.cyc0.average_grade_over_range_rust(d0, d0)
+                self.cyc0.average_grade_over_range(d0, d0)
             };
             let mut k = self.calc_dvdd(v, gr);
             let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
@@ -1514,7 +1514,7 @@ impl RustSimDrive {
                 do_coast = false;
             } else {
                 // distance to next stop (m)
-                let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
+                let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
                 do_coast = dtsc0 >= dts0;
             }
         }
@@ -1564,7 +1564,7 @@ impl RustSimDrive {
         let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
         // a_proposed = (v1 - v0) / dt
         // distance to stop from start of time-step
-        let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
+        let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
         if dts0 < 1e-6 {
             // no stop to coast towards or we're there...
             return not_found;
@@ -1681,7 +1681,7 @@ impl RustSimDrive {
             let mut adjusted_current_speed = false;
             if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s + tol) {
                 let v1_before = self.cyc.mps[i];
-                self.cyc.modify_with_braking_trajectory_rust(self.sim_params.coast_brake_accel_m_per_s2, i);
+                self.cyc.modify_with_braking_trajectory(self.sim_params.coast_brake_accel_m_per_s2, i);
                 let v1_after = self.cyc.mps[i];
                 assert_ne!(v1_before, v1_after);
                 adjusted_current_speed = true;
@@ -1693,12 +1693,12 @@ impl RustSimDrive {
                 );
                 if traj_found {
                     // adjust cyc to perform the trajectory
-                    let final_speed_m_per_s = self.cyc.modify_by_const_jerk_trajectory_rust(
+                    let final_speed_m_per_s = self.cyc.modify_by_const_jerk_trajectory(
                         i, traj_n, traj_jerk_m_per_s3, traj_accel_m_per_s2);
                     adjusted_current_speed = true;
                     if (final_speed_m_per_s - self.sim_params.coast_brake_start_speed_m_per_s).abs() < 0.1 {
                         let i_for_brake = i + traj_n;
-                        self.cyc.modify_with_braking_trajectory_rust(
+                        self.cyc.modify_with_braking_trajectory(
                             self.sim_params.coast_brake_accel_m_per_s2,
                             i_for_brake,
                         );

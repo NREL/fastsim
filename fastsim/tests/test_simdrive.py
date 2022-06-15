@@ -19,64 +19,69 @@ if USE_RUST and not RUST_AVAILABLE:
 
 class TestSimDriveClassic(unittest.TestCase):
     """Tests for fastsim.simdrive.SimDriveClassic methods"""
+
     def test_sim_drive_step(self):
         "Verify that sim_drive_step produces an expected result."
-        
+
         if USE_PYTHON:
             print(f"Running {type(self)}.test_sim_drive_step.")
-            cyc =cycle.Cycle.from_file('udds')
+            cyc = cycle.Cycle.from_file('udds')
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
             sim_drive = simdrive.SimDrive(cyc, veh)
 
             for x in range(100):
                 sim_drive.sim_drive_step()
-            
+
             self.assertEqual(sim_drive.fs_kw_out_ach[100], 29.32533101828119)
 
         if RUST_AVAILABLE and USE_RUST:
             msg = f"Issue Running {type(self)}.test_sim_drive_step. Rust"
-            cyc =cycle.Cycle.from_file('udds').to_rust()
+            cyc = cycle.Cycle.from_file('udds').to_rust()
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False).to_rust()
             sim_drive = simdrive.RustSimDrive(cyc, veh)
 
             for x in range(100):
                 sim_drive.sim_drive_step()
-            
-            self.assertEqual(sim_drive.fs_kw_out_ach[100], 29.32533101828119, msg=msg)
-    
+
+            self.assertEqual(
+                sim_drive.fs_kw_out_ach[100], 29.32533101828119, msg=msg)
+
     def test_sim_drive_walk(self):
         """Verify that sim_drive_walk produces an expected result."""
-        
+
         if USE_PYTHON:
             print(f"Running {type(self)}.test_sim_drive_walk. Python")
-            cyc =cycle.Cycle.from_file('udds')
+            cyc = cycle.Cycle.from_file('udds')
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
             sim_drive = simdrive.SimDrive(cyc, veh)
             sim_drive.sim_drive_walk(init_soc=1)
 
-            self.assertAlmostEqual(sim_drive.fs_kw_out_ach.sum(), 24410.31348426869, places=4)
+            self.assertAlmostEqual(
+                sim_drive.fs_kw_out_ach.sum(), 24410.31348426869, places=4)
 
         if RUST_AVAILABLE and USE_RUST:
             msg = f"Issue Running {type(self)}.test_sim_drive_walk. Rust"
-            cyc =cycle.Cycle.from_file('udds')
+            cyc = cycle.Cycle.from_file('udds')
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
             sim_drive = simdrive.SimDrive(cyc, veh)
             sim_drive.sim_drive_walk(init_soc=1)
 
-            self.assertAlmostEqual(sim_drive.fs_kw_out_ach.sum(), 24410.31348426869, places=4, msg=msg)
+            self.assertAlmostEqual(
+                sim_drive.fs_kw_out_ach.sum(), 24410.31348426869, places=4, msg=msg)
 
     def test_split_cycles(self):
         if USE_PYTHON:
             print(f"Running {type(self)}.test_split_cycles.")
-            t_clip = 210 # speed is non-zero here
+            t_clip = 210  # speed is non-zero here
             cyc1 = cycle.Cycle.from_dict(
-                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(), t_end=t_clip))
-                )
-            t_end =cycle.Cycle.from_file('udds').time_s[-1]
+                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file(
+                    'udds').get_cyc_dict(), t_end=t_clip))
+            )
+            t_end = cycle.Cycle.from_file('udds').time_s[-1]
             cyc2 = cycle.Cycle.from_dict(
-                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(), 
-                t_start=t_clip, t_end=t_end))
-                )
+                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(),
+                                              t_start=t_clip, t_end=t_end))
+            )
 
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
 
@@ -89,25 +94,26 @@ class TestSimDriveClassic(unittest.TestCase):
             sd2.mph_ach[0] = cyc2.mps[0]
             sd2.sim_drive()
 
-            cyc =cycle.Cycle.from_file('udds')
+            cyc = cycle.Cycle.from_file('udds')
             sdtot = simdrive.SimDrive(cyc, veh)
             sdtot.sim_drive()
 
             self.assertAlmostEqual(
-                sd1.fs_kw_out_ach.sum() + sd2.fs_kw_out_ach.sum(), 
+                sd1.fs_kw_out_ach.sum() + sd2.fs_kw_out_ach.sum(),
                 sdtot.fs_kw_out_ach.sum(),
                 places=5)
         if RUST_AVAILABLE and USE_RUST:
             msg = f"Issue Running {type(self)}.test_split_cycles. Rust."
-            t_clip = 210 # speed is non-zero here
+            t_clip = 210  # speed is non-zero here
             cyc1 = cycle.Cycle.from_dict(
-                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(), t_end=t_clip))
-                ).to_rust()
-            t_end =cycle.Cycle.from_file('udds').time_s[-1]
+                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file(
+                    'udds').get_cyc_dict(), t_end=t_clip))
+            ).to_rust()
+            t_end = cycle.Cycle.from_file('udds').time_s[-1]
             cyc2 = cycle.Cycle.from_dict(
-                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(), 
-                t_start=t_clip, t_end=t_end))
-                ).to_rust()
+                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(),
+                                              t_start=t_clip, t_end=t_end))
+            ).to_rust()
 
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False).to_rust()
 
@@ -123,12 +129,13 @@ class TestSimDriveClassic(unittest.TestCase):
             sd2.mph_ach = mps_ach
             sd2.sim_drive()
 
-            cyc =cycle.Cycle.from_file('udds').to_rust()
+            cyc = cycle.Cycle.from_file('udds').to_rust()
             sdtot = simdrive.RustSimDrive(cyc, veh)
             sdtot.sim_drive()
 
             self.assertAlmostEqual(
-                np.array(sd1.fs_kw_out_ach).sum() + np.array(sd2.fs_kw_out_ach).sum(), 
+                np.array(sd1.fs_kw_out_ach).sum() +
+                np.array(sd2.fs_kw_out_ach).sum(),
                 np.array(sdtot.fs_kw_out_ach).sum(),
                 places=5)
 
@@ -143,25 +150,27 @@ class TestSimDriveClassic(unittest.TestCase):
         if USE_PYTHON:
             sd = simdrive.SimDrive(cyc, veh)
             sd.sim_params.missed_trace_correction = True
-            sd.sim_params.max_time_dilation = 0.1 # maximum upper margin for time dilation
+            sd.sim_params.max_time_dilation = 0.1  # maximum upper margin for time dilation
             sd.sim_drive()
 
             trace_miss_corrected = (
                 abs(sd.dist_m.sum() - sd.cyc0.dist_m.sum()) / sd.cyc0.dist_m.sum()) < sd.sim_params.time_dilation_tol
 
-            self.assertTrue(trace_miss_corrected, msg="Issue in Python version")
-        
+            self.assertTrue(trace_miss_corrected,
+                            msg="Issue in Python version")
+
         if RUST_AVAILABLE and USE_RUST:
             veh = veh.to_rust()
             cyc = cyc.to_rust()
             sd = simdrive.RustSimDrive(cyc, veh)
             sim_params = sd.sim_params
             sim_params.missed_trace_correction = True
-            sim_params.max_time_dilation = 0.1 # maximum upper margin for time dilation
+            sim_params.max_time_dilation = 0.1  # maximum upper margin for time dilation
             sd.sim_params = sim_params
             sd.sim_drive()
 
-            dist_err = np.abs(np.array(sd.dist_m).sum() - np.array(sd.cyc0.dist_m).sum()) / np.array(sd.cyc0.dist_m).sum()
+            dist_err = np.abs(np.array(sd.dist_m).sum(
+            ) - np.array(sd.cyc0.dist_m).sum()) / np.array(sd.cyc0.dist_m).sum()
             trace_miss_corrected = dist_err < sd.sim_params.time_dilation_tol
 
             self.assertTrue(sd.sim_params.missed_trace_correction)
@@ -176,7 +185,7 @@ class TestSimDriveClassic(unittest.TestCase):
 
     def test_stop_start(self):
         if USE_PYTHON:
-            cyc =cycle.Cycle.from_file('udds').get_cyc_dict()
+            cyc = cycle.Cycle.from_file('udds').get_cyc_dict()
             cyc = cycle.Cycle.from_dict(cyc_dict=cycle.clip_by_times(cyc, 130))
 
             veh = vehicle.Vehicle.from_vehdb(1)
@@ -193,8 +202,9 @@ class TestSimDriveClassic(unittest.TestCase):
             self.assertTrue(sd.fc_kw_in_ach[37] == 0)
         if RUST_AVAILABLE and USE_RUST:
             msg = "Issue with Rust version"
-            cyc =cycle.Cycle.from_file('udds').to_rust().get_cyc_dict()
-            cyc = cycle.Cycle.from_dict(cyc_dict=cycle.clip_by_times(cyc, 130)).to_rust()
+            cyc = cycle.Cycle.from_file('udds').to_rust().get_cyc_dict()
+            cyc = cycle.Cycle.from_dict(
+                cyc_dict=cycle.clip_by_times(cyc, 130)).to_rust()
 
             veh = vehicle.Vehicle.from_vehdb(1)
             veh.stop_start = True
@@ -209,7 +219,7 @@ class TestSimDriveClassic(unittest.TestCase):
 
             self.assertTrue(sd.fc_kw_in_ach[10] == 0, msg=msg)
             self.assertTrue(sd.fc_kw_in_ach[37] == 0, msg=msg)
-    
+
     def test_achieved_speed_never_negative(self):
         if USE_PYTHON:
             for vehid in range(1, 27):
@@ -247,7 +257,7 @@ class TestSimDriveClassic(unittest.TestCase):
         for filepath in vehicle.VEHICLE_DIR.iterdir():
             if "fail" not in filepath.name and filepath.suffix == '.csv' and "overrides" not in filepath.name:
                 veh = vehicle.Vehicle.from_file(filepath)
-        
+
         cyc = cycle.Cycle.from_file('udds')
 
         if USE_PYTHON:
@@ -258,4 +268,4 @@ class TestSimDriveClassic(unittest.TestCase):
         if RUST_AVAILABLE and USE_RUST:
             sd = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
             sd.sim_drive()
-            self.assertEqual(sd.i, sd.cyc0.len())
+            self.assertEqual(sd.i, sd.cyc0.len)

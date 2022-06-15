@@ -176,34 +176,38 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(self.clone())
     }
 
-    pub fn modify_by_const_jerk_trajectory(
+    #[pyo3(name = "modify_by_const_jerk_trajectory")]
+    pub fn modify_by_const_jerk_trajectory_py(
         &mut self,
         idx: usize,
         n: usize,
         jerk_m_per_s3: f64,
         accel0_m_per_s2: f64,
     ) -> PyResult<f64> {
-        Ok(self.modify_by_const_jerk_trajectory_rust(idx, n, jerk_m_per_s3, accel0_m_per_s2))
+        Ok(self.modify_by_const_jerk_trajectory(idx, n, jerk_m_per_s3, accel0_m_per_s2))
     }
 
-    pub fn modify_with_braking_trajectory(
+    #[pyo3(name = "modify_with_braking_trajectory")]
+    pub fn modify_with_braking_trajectory_py(
         &mut self,
         brake_accel_m_per_s2: f64,
         idx: usize,
     ) -> PyResult<f64> {
-        Ok(self.modify_with_braking_trajectory_rust(brake_accel_m_per_s2, idx))
+        Ok(self.modify_with_braking_trajectory(brake_accel_m_per_s2, idx))
     }
 
-    pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> PyResult<f64> {
-        Ok(self.calc_distance_to_next_stop_from_rust(distance_m))
+    #[pyo3(name = "calc_distance_to_next_stop_from")]
+    pub fn calc_distance_to_next_stop_from_py(&self, distance_m: f64) -> PyResult<f64> {
+        Ok(self.calc_distance_to_next_stop_from(distance_m))
     }
 
-    pub fn average_grade_over_range(
+    #[pyo3(name = "average_grade_over_range")]
+    pub fn average_grade_over_range_py(
         &self,
         distance_start_m: f64,
         delta_distance_m: f64,
     ) -> PyResult<f64> {
-        Ok(self.average_grade_over_range_rust(distance_start_m, delta_distance_m))
+        Ok(self.average_grade_over_range(distance_start_m, delta_distance_m))
     }
 
     #[getter]
@@ -234,6 +238,11 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     /// distance for each time-step in meters based on step-average speed
     pub fn get_dist_v2_m(&self) -> PyResult<Vec<f64>> {
         Ok(self.dist_v2_m().to_vec())
+    }
+    #[getter]
+    /// distance for each time step based on final speed
+    pub fn get_dist_m(&self) -> PyResult<Vec<f64>> {
+        Ok(self.dist_m().to_vec())
     }
     #[getter]
     pub fn get_delta_elev_m(&self) -> PyResult<Vec<f64>> {
@@ -299,7 +308,7 @@ impl RustCycle {
     /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
-    pub fn average_grade_over_range_rust(
+    pub fn average_grade_over_range(
         &self,
         distance_start_m: f64,
         delta_distance_m: f64,
@@ -329,7 +338,7 @@ impl RustCycle {
     /// RETURN: -1 or non-negative-integer
     /// - if there are no more stops ahead, return -1
     /// - else returns the distance to the next stop from distance_m
-    pub fn calc_distance_to_next_stop_from_rust(&self, distance_m: f64) -> f64 {
+    pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> f64 {
         let tol: f64 = 1e-6;
         let not_found: f64 = -1.0;
         let mut d: f64 = 0.0;
@@ -353,7 +362,7 @@ impl RustCycle {
     /// - modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment
     /// - CAUTION: NOT ROBUST AGAINST VARIABLE DURATION TIME-STEPS
     /// RETURN: Number, final modified speed (m/s)
-    pub fn modify_by_const_jerk_trajectory_rust(
+    pub fn modify_by_const_jerk_trajectory(
         &mut self,
         i: usize,
         n: usize,
@@ -380,7 +389,7 @@ impl RustCycle {
     /// - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
     /// RETURN: non-negative-number, the final speed of the modified trajectory (m/s)
     /// - modifies the cycle in place for braking
-    pub fn modify_with_braking_trajectory_rust(
+    pub fn modify_with_braking_trajectory(
         &mut self,
         brake_accel_m_per_s2: f64,
         i: usize,
@@ -397,7 +406,7 @@ impl RustCycle {
         let n: usize = if n < 2 { 2 } else { n }; // need at least 2 steps
         let (jerk_m_per_s3, accel_m_per_s2) =
             calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt);
-        self.modify_by_const_jerk_trajectory_rust(i, n, jerk_m_per_s3, accel_m_per_s2)
+        self.modify_by_const_jerk_trajectory(i, n, jerk_m_per_s3, accel_m_per_s2)
     }
 
     /// rust-internal time steps
