@@ -140,9 +140,7 @@ t0 = time.time()
 veh = fsim.vehicle.Vehicle.from_vehdb(9)
 cyc = fsim.cycle.Cycle.from_file('udds')
 sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-initSoc = 0.7935
-sim_drive.ess_cur_kwh[0] = initSoc * sim_drive.veh.ess_max_kwh
-sim_drive.soc[0] = initSoc
+sim_drive.init_for_step(init_soc=0.7935)
 
 while sim_drive.i < len(cyc.time_s):
     sim_drive.aux_in_kw[sim_drive.i] = sim_drive.i / cyc.time_s[-1] * 10 
@@ -167,13 +165,7 @@ t0 = time.time()
 veh = fsim.vehicle.Vehicle.from_vehdb(9).to_rust()
 cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
 sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
-initSoc = 0.7935
-ess_cur_kwh = sim_drive.ess_cur_kwh
-ess_cur_kwh[0] = initSoc * sim_drive.veh.ess_max_kwh
-sim_drive.ess_cur_kwh = ess_cur_kwh
-soc = sim_drive.soc
-soc[0] = initSoc
-sim_drive.soc = soc
+sim_drive.init_for_step(init_soc=0.7935)
 
 while sim_drive.i < len(cyc.time_s):
     # NOTE: we need to copy out and in the entire array to work with the Rust version
@@ -253,7 +245,8 @@ cyc = fsim.cycle.Cycle.from_file('udds')
 sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 
 # by assigning the value directly (this is faster than using positional args)
-sim_drive.aux_in_kw = cyc.time_s / cyc.time_s[-1] * 10 
+sim_drive.init_for_step(
+    aux_in_kw_override=cyc.time_s / cyc.time_s[-1] * 10)
 while sim_drive.i < len(sim_drive.cyc.time_s):
     sim_drive.sim_drive_step()
 
@@ -278,7 +271,9 @@ cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
 sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
 
 # by assigning the value directly (this is faster than using positional args)
-sim_drive.aux_in_kw = np.array(cyc.time_s) / cyc.time_s[-1] * 10 
+sim_drive.init_for_step(
+    aux_in_kw_override=np.array(cyc.time_s) / cyc.time_s[-1] * 10
+)
 while sim_drive.i < len(sim_drive.cyc.time_s):
     sim_drive.sim_drive_step()
 
