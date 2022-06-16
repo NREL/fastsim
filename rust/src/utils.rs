@@ -196,6 +196,9 @@ macro_rules! impl_pyo3_arr_methods {
             pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
                 Ok(self.0.to_vec())
             }
+            pub fn __len__(&self) -> PyResult<usize> {
+                Ok(self.0.len())
+            }
         }
         impl $arrstruct {
             pub fn new(value: Array1<$dtype>) -> Self {
