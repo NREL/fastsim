@@ -590,6 +590,19 @@ impl RustSimDrive {
         handle_sd_res(self.sim_drive_rust(init_soc, aux_in_kw_override))
     }
 
+    /// This is a specialty method which should be called prior to using
+    /// sim_drive_step in a loop.
+    /// Arguments
+    /// ------------
+    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    ///         Default of None causes veh.aux_kw to be used. 
+    pub fn init_for_step(&mut self, init_soc: Option<f64>, aux_in_kw_override: Option<Vec<f64>>) -> PyResult<()> {
+        let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
+        self.init_for_step_rust(init_soc, aux_in_kw_override);
+        Ok(())
+    }
+
     /// Receives second-by-second cycle information, vehicle properties,
     /// and an initial state of charge and runs sim_drive_step to perform a
     /// backward facing powertrain simulation. Method 'sim_drive' runs this

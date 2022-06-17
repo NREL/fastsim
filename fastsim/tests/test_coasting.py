@@ -344,6 +344,7 @@ class TestCoasting(unittest.TestCase):
         "Test the standard interface to Eco-Approach for 'free coasting'"
         if USE_PYTHON:
             self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
+            self.sim_drive.init_for_step()
             while self.sim_drive_coast.i < len(self.trapz.time_s):
                 self.sim_drive_coast.sim_drive_step()
             max_trace_miss_coast_m__s = np.absolute(self.trapz.mps - self.sim_drive_coast.mps_ach).max()
@@ -370,6 +371,7 @@ class TestCoasting(unittest.TestCase):
             self.assertFalse(
                 np.array(self.ru_sim_drive.impose_coast).any(),
                 "All impose_coast starts out False")
+            self.ru_sim_drive.init_for_step()
             while self.ru_sim_drive_coast.i < len(self.ru_trapz.time_s):
                 self.ru_sim_drive_coast.sim_drive_step()
             max_trace_miss_coast_m__s = np.absolute(
