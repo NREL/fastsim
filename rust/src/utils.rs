@@ -2,7 +2,10 @@ extern crate ndarray;
 use ndarray::{array, concatenate, s, Array1, Axis};
 use pyo3::exceptions::{PyIndexError, PyNotImplementedError};
 use pyo3::prelude::*;
+use pyo3::Python;
 use std::collections::HashSet;
+use numpy::array::PyArray1;
+use numpy::convert::ToPyArray;
 // use numpy::PyArray;
 
 /// Error message for when user attempts to set value in a nested struct.
@@ -196,8 +199,18 @@ macro_rules! impl_pyo3_arr_methods {
             pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
                 Ok(self.0.to_vec())
             }
+            pub fn __list__(&self) -> PyResult<Vec<$dtype>> {
+                Ok(self.0.to_vec())
+            }
             pub fn __len__(&self) -> PyResult<usize> {
                 Ok(self.0.len())
+            }
+            pub fn __array__<'py>(&self, py:Python<'py>) -> PyResult<&'py PyArray1<$dtype>>{
+                //let m =  PyArray1::from_array(py, &self.0);
+                //Ok(m)
+                Ok(self.0.to_pyarray(py))
+                //pub fn __array__(&self) -> PyResult<Vec<$dtype>>{
+                //    Ok(self.0.to_vec())
             }
         }
         impl $arrstruct {
@@ -234,6 +247,12 @@ macro_rules! impl_pyo3_vec_methods {
             }
             pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
                 Ok(self.0.clone())
+            }
+            pub fn __list__(&self) -> PyResult<Vec<$dtype>> {
+                Ok(self.0.clone())
+            }
+            pub fn __len__(&self) -> PyResult<usize> {
+                Ok(self.0.len())
             }
         }
         impl $vecstruct {

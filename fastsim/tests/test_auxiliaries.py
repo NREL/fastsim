@@ -27,3 +27,7 @@ class test_auxiliaries(unittest.TestCase):
         self.assertAlmostEqual(34.26168611118723, a_lbf)
         self.assertAlmostEqual(0, b_lbf__mph)
         self.assertAlmostEqual(0.020817239083920212, c_lbf__mph2)
+
+if __name__ == '__main__':
+    a = test_auxiliaries()
+    a.test_abc_to_drag_coeffs()

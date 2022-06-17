@@ -35,7 +35,6 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 #[pyclass]
 #[derive(Clone, Debug, PartialEq)]
 #[add_pyo3_api(
-    
     #[allow(clippy::too_many_arguments)]
     #[new]
     pub fn __new__(

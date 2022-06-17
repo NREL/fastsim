@@ -136,4 +136,7 @@ class TestVehicle(unittest.TestCase):
 
 if __name__ == '__main__':
     from fastsim import vehicle
-    veh = vehicle.Vehicle.from_vehdb(1)
+    veh = vehicle.Vehicle.from_vehdb(1,to_rust=True).to_rust()
+    print(type(veh.mc_eff_array),veh.mc_eff_array)
+    print(type(list(veh.mc_eff_array)),list(veh.mc_eff_array))
+    print(type(np.array(veh.mc_eff_array)),np.array(veh.mc_eff_array))
