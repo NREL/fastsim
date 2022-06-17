@@ -318,6 +318,7 @@ class SimDrive(object):
         self.cur_max_roadway_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
         self.trace_miss_iters = np.zeros(self.cyc.len, dtype=np.float64)
         self.newton_iters = np.zeros(self.cyc.len, dtype=np.float64)
+        self.coast_delay_index = 0
 
     @property
     def gap_to_lead_vehicle_m(self):
@@ -524,6 +525,10 @@ class SimDrive(object):
             self._set_speed_for_target_gap(self.i)
         if self.sim_params.coast_allow:
             self._set_coast_speed(self.i)
+            max_next_speed_m__s = self._max_next_speed_for_noncollision(self.i)
+            if not self.sim_params.follow_allow:
+                if self.cyc.mps[self.i] > (max_next_speed_m__s + 0.001):
+                    self.cyc.mps[self.i] = max_next_speed_m__s
         self.solve_step(self.i)
         if self.sim_params.missed_trace_correction and (self.cyc0.dist_m[:self.i].sum() > 0):
             self.set_time_dilation(self.i)
@@ -1763,6 +1768,35 @@ class SimDrive(object):
                 return (r_best_found, r_best_n, r_best_jerk_m__s3, r_best_accel_m__s2)
         return not_found
 
+    def _max_next_speed_for_noncollision(self, i):
+        """
+        """
+        # distances of lead vehicle (m)
+        ds_lv = self.cyc0.dist_v2_m.cumsum()
+        # conditions at start of step
+        v0 = self.cyc.mps[i-1]
+        d0 = self.cyc.dist_v2_m[:i].sum()
+        if (ds_lv[i-1] - d0) <= 0.01:
+            return self.sim_params.coast_max_speed_m_per_s
+        if (i + 1) < len(self.cyc0.time_s) and (ds_lv[i+1] - d0) > 0:
+            (_, a0) = cycle.calc_constant_jerk_trajectory(
+                n=2,
+                D0=0.0,
+                v0=v0,
+                Dr=ds_lv[i+1] - d0,
+                vr=self.cyc0.mps[i+1],
+                dt=0.5 * (self.cyc0.time_s[i+1] - self.cyc0.time_s[i-1])
+            )
+            two_step_max_next_speed_m_per_s = max(0.0, v0 + a0 * self.cyc0.dt_s[i])
+        else:
+            two_step_max_next_speed_m_per_s = self.sim_params.coast_max_speed_m_per_s
+        max_avg_speed_m__s = (ds_lv[i] - d0) / self.cyc0.dt_s[i]
+        one_step_max_next_speed_m_per_s = max(0.0, 2.0 * max_avg_speed_m__s - v0)
+        max_next_speed_m_per_s = min(one_step_max_next_speed_m_per_s, two_step_max_next_speed_m_per_s)
+        if max_next_speed_m_per_s < 0.0:
+            max_next_speed_m_per_s = 0.0
+        return max_next_speed_m_per_s
+
     def _set_coast_speed(self, i):
         """
         Placeholder for method to impose coasting.
@@ -1774,28 +1808,37 @@ class SimDrive(object):
         if v0 < TOL:
             # TODO: need to determine how to leave coast and rejoin shadow trace
             self.impose_coast[i] = False
+            self.coast_delay_index = 0
+            if not self.sim_params.follow_allow:
+                d0 = self.cyc.dist_v2_m[:i].sum()
+                d0_lv = self.cyc0.dist_v2_m[:i].sum()
+                if d0_lv > d0:
+                    d_lv = 0.0
+                    for idx, (dd, v) in enumerate(zip(self.cyc0.dist_v2_m, self.cyc0.mps)):
+                        d_lv += dd
+                        if i < idx:
+                            continue
+                        dtlv = d_lv - d0
+                        if dtlv >= 0.0 and v > 0.0:
+                            self.coast_delay_index = i - idx
+                            break
         else:
             self.impose_coast[i] = self.impose_coast[i -
                                                      1] or self._should_impose_coast(i)
 
         if not self.impose_coast[i]:
+            if not self.sim_params.follow_allow:
+                self.cyc.mps[i] = self.cyc0.mps[i - self.coast_delay_index]
             return
         v1_traj = self.cyc.mps[i]
-        if (self.sim_params.follow_allow or self.cyc.mps[i] == self.cyc0.mps[i]) and v0 > self.sim_params.coast_brake_start_speed_m_per_s:
+        if v0 > self.sim_params.coast_brake_start_speed_m_per_s:
             if self.sim_params.coast_allow_passing:
                 # we could be coasting downhill so could in theory go to a higher speed
                 # since we can pass, allow vehicle to go up to max coasting speed (m/s)
                 # the solver will show us what we can actually achieve
                 self.cyc.mps[i] = self.sim_params.coast_max_speed_m_per_s
             else:
-                # distances of lead vehicle (m)
-                ds_lv = self.cyc0.dist_m.cumsum()
-                # current distance traveled at start of step
-                d0 = self.cyc.dist_v2_m[:i].sum()
-                d1_lv = ds_lv[i]
-                max_step_distance_m = d1_lv - d0
-                max_avg_speed_m__s = max_step_distance_m / self.cyc0.dt_s[i]
-                max_next_speed_m__s = 2 * max_avg_speed_m__s - v0
+                max_next_speed_m__s = self._max_next_speed_for_noncollision(i)
                 self.cyc.mps[i] = max(
                     0, min(max_next_speed_m__s, self.sim_params.coast_max_speed_m_per_s))
         # Solve for the actual coasting speed
