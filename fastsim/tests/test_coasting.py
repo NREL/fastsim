@@ -54,9 +54,9 @@ def make_coasting_plot(
     fontsize=10
     (fig, axs) = plt.subplots(nrows=3)
     ax = axs[1]
-    ax.plot(ts_orig, vs_orig * m, 'gray', label='shadow-trace')
-    ax.plot(ts, vs * m, 'blue', label='coast')
-    ax.plot(ts, vs * m, 'r.')
+    ax.plot(ts_orig, vs_orig * m, 'gray', label='lead')
+    ax.plot(ts, vs * m, 'blue', label='cav')
+    ax.plot(ts, vs * m, 'r.', markersize=0.5)
     ax.set_xlabel('Elapsed Time (s)', fontsize=fontsize)
     ax.set_ylabel(f'Speed ({speed_units})', fontsize=fontsize)
     ax.legend(loc=0, prop={'size': 6})
@@ -68,13 +68,13 @@ def make_coasting_plot(
     ax.set_zorder(ax_right.get_zorder()+1)
     ax.grid(False)
     ax.set_frame_on(False)
-    ax.plot(ds_orig, vs_orig * m, 'gray', label='shadow-trace')
-    ax.plot(ds, vs * m, 'blue', label='coast')
-    ax.plot(ds, vs * m, 'r.')
+    ax.plot(ds_orig, vs_orig * m, 'gray', label='lead')
+    ax.plot(ds, vs * m, 'blue', label='cav')
+    ax.plot(ds, vs * m, 'r.', markersize=0.5)
     ax.set_xlabel('Distance Traveled (m)', fontsize=fontsize)
     ax.set_ylabel(f'Speed ({speed_units})', fontsize=fontsize)
     ax = axs[0]
-    ax.plot(ts_orig, gaps + gap_offset_m, 'gray', label='shadow-trace')
+    ax.plot(ts_orig, gaps + gap_offset_m, 'gray', label='lead')
     ax.set_xlabel('Elapsed Time (s)', fontsize=fontsize)
     ax.set_ylabel('Gap (m)', fontsize=fontsize)
     if title is not None:
