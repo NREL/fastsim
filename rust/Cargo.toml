@@ -9,12 +9,14 @@ name = "fastsimrust"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.15.1", features = ["extension-module"] }
+pyo3 = { version = "0.16.5", features = ["extension-module"] }
 ndarray = { version = "0.15.4"}
 csv = "1.1"
 proc_macros = { path = "proc_macros" }
 serde_json = { version = "1.0.81" }
 serde = { version = "1.0.137", features = ["derive"] }
+numpy = "0.16.2"
+
 
 
 [profile.release]
