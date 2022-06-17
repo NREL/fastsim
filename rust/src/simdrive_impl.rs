@@ -257,8 +257,8 @@ impl RustSimDrive {
     pub fn set_speed_for_target_gap_using_idm(&mut self, i:usize){
         // PARAMETERS
         let delta = self.sim_params.idm_delta;
-        let a_m_per_s2 = self.sim_params.idm_accel_m_per_s2; // acceleration (m/s2)
-        let b_m_per_s2 = self.sim_params.idm_decel_m_per_s2; // deceleration (m/s2)
+        let a_m_per_s2 = self.sim_params.idm_accel_m_per_s2.abs(); // acceleration (m/s2)
+        let b_m_per_s2 = self.sim_params.idm_decel_m_per_s2.abs(); // deceleration (m/s2)
         let dt_headway_s = self.sim_params.idm_dt_headway_s;
         let s0_m = self.sim_params.idm_minimum_gap_m; // we assume vehicle's start out "minimum gap" apart
         let v_desired_m_per_s = if self.sim_params.idm_v_desired_m_per_s > 0.0 {

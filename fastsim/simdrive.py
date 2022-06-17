@@ -459,8 +459,8 @@ class SimDrive(object):
         """
         # PARAMETERS
         delta = self.sim_params.idm_delta
-        a_m__s2 = self.sim_params.idm_accel_m_per_s2  # acceleration (m/s2)
-        b_m__s2 = self.sim_params.idm_decel_m_per_s2  # deceleration (m/s2)
+        a_m__s2 = abs(self.sim_params.idm_accel_m_per_s2)  # acceleration (m/s2)
+        b_m__s2 = abs(self.sim_params.idm_decel_m_per_s2)  # deceleration (m/s2)
         dt_headway_s = self.sim_params.idm_dt_headway_s
         # we assume vehicle's start out "minimum gap" apart
         s0_m = self.sim_params.idm_minimum_gap_m
