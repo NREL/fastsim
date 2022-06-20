@@ -193,6 +193,9 @@ macro_rules! impl_pyo3_arr_methods {
                     then set entire array.",
                 ))
             }
+            pub fn __len__(&self) -> PyResult<usize> {
+                Ok(self.0.len())
+            }
             pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
                 Ok(self.0.to_vec())
             }
