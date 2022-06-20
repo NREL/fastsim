@@ -36,9 +36,9 @@ def extend_cycle(cyc, absolute_time_s=0, time_fraction=0):
 
 def make_distance_by_time_plot(cyc0, cyc, save_file=None, do_show=False):
     (fig, ax) = plt.subplots()
-    ax.plot(cyc0.time_s, cyc0.dist_m.cumsum(), 'k-', label='lead')
-    ax.plot(cyc.time_s, cyc.dist_m.cumsum(), 'b-', label='cav')
-    ax.plot(cyc.time_s, cyc.dist_m.cumsum(), 'r.', markersize=0.5)
+    ax.plot(cyc0.time_s, cyc0.dist_m.cumsum(), 'gray', label='lead')
+    ax.plot(cyc.time_s, cyc.dist_m.cumsum(), 'b-', lw=2, label='cav')
+    ax.plot(cyc.time_s, cyc.dist_m.cumsum(), 'r.', ms=1)
     ax.set_xlabel('Elapsed Time (s)')
     ax.set_ylabel('Distance (m)')
     ax.legend(loc=0)
@@ -48,6 +48,28 @@ def make_distance_by_time_plot(cyc0, cyc, save_file=None, do_show=False):
     if do_show:
         plt.show()
     plt.close()
+
+def make_debug_plot(sd, save_file=None, do_show=False):
+    """
+    """
+    (fig, axs) = plt.subplots(nrows=2)
+    axs[0].plot(sd.cyc0.time_s, sd.cyc0.mps, 'gray', label='lead')
+    axs[0].plot(sd.cyc.time_s, sd.cyc.mps, 'b-', lw=2, label='cav')
+    axs[0].plot(sd.cyc.time_s, sd.cyc.mps, 'r.', ms=1)
+    axs[0].set_xlabel('Elapsed Time (s)')
+    axs[0].set_ylabel('Speed (m/s)')
+    axs[0].legend(loc=0)
+    axs[1].plot(sd.cyc.time_s, sd.coast_delay_index, 'b.', lw=2, label='coast delay')
+    axs[1].plot(sd.cyc.time_s, sd.impose_coast, 'r.', ms=1, label='impose coast')
+    axs[1].set_ylabel('Flags')
+    axs[1].legend(loc=0)
+    fig.tight_layout()
+    if save_file is not None:
+        fig.savefig(save_file, dpi=300)
+    if do_show:
+        plt.show()
+    plt.close()
+
 
 
 def make_save_file(prefix, postfix, save_dir=None):
@@ -63,8 +85,9 @@ def no_eco_driving(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, d
     sim = fastsim.simdrive.SimDrive(cyc, veh)
     sim.sim_drive(init_soc=init_soc)
     print(f"NO ECO-DRIVING: {sim.mpgge:.3f} mpg")
-    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base.png', save_dir))
+    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
     make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base_dist_by_time.png', save_dir))
+    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'base_debug.png', save_dir))
     return (
         ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sim.dist_mi.sum(),
         sim.dist_mi.sum()
@@ -83,8 +106,9 @@ def eco_coast(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sho
     sim.sim_params = params
     sim.sim_drive(init_soc=init_soc)
     print(f"ECO-COAST: {sim.mpgge:.3f} mpg")
-    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast.png', save_dir))
+    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
     make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_dist_by_time.png', save_dir))
+    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_debug.png', save_dir))
     return (
         ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sim.dist_mi.sum(),
         sim.dist_mi.sum()
@@ -163,8 +187,9 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
         sim.sim_drive_step()
     sim.set_post_scalars()
     print(f"ECO-CRUISE: {sim.mpgge:.3f} mpg")
-    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise.png', save_dir))
+    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
     make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise_dist_by_time.png', save_dir))
+    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocruise_debug.png', save_dir))
     return (
         ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sim.dist_mi.sum(),
         sim.dist_mi.sum()
@@ -207,8 +232,9 @@ def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=N
         sim.sim_drive_step()
     sim.set_post_scalars()
     print(f"ECO-COAST + ECO-CRUISE: {sim.mpgge:.3f} mpg")
-    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco.png', save_dir))
+    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
     make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco_dist_by_time.png', save_dir))
+    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'alleco_debug.png', save_dir))
     return (
         ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sim.dist_mi.sum(),
         sim.dist_mi.sum()

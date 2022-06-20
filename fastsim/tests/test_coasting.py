@@ -28,7 +28,8 @@ def make_coasting_plot(
     save_file:Union[str, None]=None,
     do_show:bool=False,
     verbose:bool=False,
-    gap_offset_m:float=0.0):
+    gap_offset_m:float=0.0,
+    coast_brake_start_speed_m_per_s=None):
     """
     - cyc0: Cycle, the reference cycle (the "shadow trace" or "lead vehicle")
     - cyc: Cycle, the actual cycle driven
@@ -38,6 +39,7 @@ def make_coasting_plot(
     - do_show: Bool, whether to show the file or not
     - verbose: Bool, if True, prints out
     - gap_offset_m: number, an offset to apply to the gap metrics (m)
+    - coast_brake_start_speed_m_per_s: None | number, if supplied, plots the coast-start speed (m/s)
     RETURN: None
     - saves creates the given file and shows it
     """
@@ -54,9 +56,11 @@ def make_coasting_plot(
     fontsize=10
     (fig, axs) = plt.subplots(nrows=3)
     ax = axs[1]
+    if coast_brake_start_speed_m_per_s is not None:
+        ax.plot([ts[0], ts[-1]], [coast_brake_start_speed_m_per_s, coast_brake_start_speed_m_per_s], 'y--', label='coast brake start speed')
     ax.plot(ts_orig, vs_orig * m, 'gray', label='lead')
-    ax.plot(ts, vs * m, 'blue', label='cav')
-    ax.plot(ts, vs * m, 'r.', markersize=0.5)
+    ax.plot(ts, vs * m, 'b-', lw=2, label='cav')
+    ax.plot(ts, vs * m, 'r.', ms=1)
     ax.set_xlabel('Elapsed Time (s)', fontsize=fontsize)
     ax.set_ylabel(f'Speed ({speed_units})', fontsize=fontsize)
     ax.legend(loc=0, prop={'size': 6})
@@ -69,8 +73,8 @@ def make_coasting_plot(
     ax.grid(False)
     ax.set_frame_on(False)
     ax.plot(ds_orig, vs_orig * m, 'gray', label='lead')
-    ax.plot(ds, vs * m, 'blue', label='cav')
-    ax.plot(ds, vs * m, 'r.', markersize=0.5)
+    ax.plot(ds, vs * m, 'b-', lw=2, label='cav')
+    ax.plot(ds, vs * m, 'r.', ms=1)
     ax.set_xlabel('Distance Traveled (m)', fontsize=fontsize)
     ax.set_ylabel(f'Speed ({speed_units})', fontsize=fontsize)
     ax = axs[0]
