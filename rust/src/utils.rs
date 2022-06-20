@@ -179,13 +179,15 @@ macro_rules! impl_pyo3_arr_methods {
             pub fn __str__(&self) -> String {
                 format!("{:?}", self.0)
             }
-            pub fn __getitem__(&self, idx: usize) -> PyResult<$dtype> {
-                if idx >= self.0.len() {
-                    Err(PyIndexError::new_err("Index is out of bounds"))
+            pub fn __getitem__(&self, idx: i32) -> PyResult<$dtype> {
+                if idx >= self.0.len() as i32 {
+                  Err(PyIndexError::new_err("Index is out of bounds"))
+                } else if idx >= 0 {
+                  Ok(self.0[idx as usize])
                 } else {
-                    Ok(self.0[idx])
+                  Ok(self.0[self.0.len() + idx as usize])
                 }
-            }
+              }
             pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
                 Err(PyNotImplementedError::new_err(
                     "Setting value at index is not implemented. 
@@ -221,13 +223,15 @@ macro_rules! impl_pyo3_vec_methods {
             pub fn __str__(&self) -> String {
                 format!("{:?}", self.0)
             }
-            pub fn __getitem__(&self, idx: usize) -> PyResult<$dtype> {
-                if idx >= self.0.len() {
-                    Err(PyIndexError::new_err("Index is out of bounds"))
+            pub fn __getitem__(&self, idx: i32) -> PyResult<$dtype> {
+                if idx >= self.0.len() as i32 {
+                  Err(PyIndexError::new_err("Index is out of bounds"))
+                } else if idx >= 0 {
+                  Ok(self.0[idx as usize])
                 } else {
-                    Ok(self.0[idx])
+                  Ok(self.0[self.0.len() + idx as usize])
                 }
-            }
+              }
             pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
                 Err(PyNotImplementedError::new_err(
                     "Setting value at index is not implemented. 
