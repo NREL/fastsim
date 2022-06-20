@@ -290,7 +290,6 @@ impl Default for RustSimDriveParams {
         handle_sd_res(self.set_post_scalars())
     }
 
-    #[allow(clippy::len_without_is_empty)]
     /// Return length of time arrays
     pub fn len(&self) -> usize {
         self.cyc.time_s.len()
