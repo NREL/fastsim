@@ -103,6 +103,7 @@ def eco_coast(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sho
     params.coast_allow = True
     params.coast_allow_passing = False
     params.coast_start_speed_m_per_s = -1.0
+    params.coast_time_horizon_for_adjustment_s = 20.0
     sim.sim_params = params
     sim.sim_drive(init_soc=init_soc)
     print(f"ECO-COAST: {sim.mpgge:.3f} mpg")
@@ -207,6 +208,7 @@ def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=N
     params.coast_allow = True
     params.coast_allow_passing = False
     params.coast_start_speed_m_per_s = -1.0
+    params.coast_time_horizon_for_adjustment_s = 20.0
     # Eco-cruise parameters
     params.follow_allow = True
     params.idm_accel_m_per_s2 = 0.5
