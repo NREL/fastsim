@@ -15,7 +15,6 @@ csv = "1.1"
 proc_macros = { path = "proc_macros" }
 serde_json = { version = "1.0.81" }
 serde = { version = "1.0.137", features = ["derive"] }
-numpy = "0.16.2"
 
 
 

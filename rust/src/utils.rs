@@ -2,10 +2,7 @@ extern crate ndarray;
 use ndarray::{array, concatenate, s, Array1, Axis};
 use pyo3::exceptions::{PyIndexError, PyNotImplementedError};
 use pyo3::prelude::*;
-use pyo3::Python;
 use std::collections::HashSet;
-use numpy::array::PyArray1;
-use numpy::convert::ToPyArray;
 // use numpy::PyArray;
 
 /// Error message for when user attempts to set value in a nested struct.

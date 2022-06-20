@@ -60,7 +60,6 @@ version = "0.0.1"
 dependencies = [
  "csv",
  "ndarray",
- "numpy",
  "proc_macros",
  "pyo3",
  "serde",
@@ -169,19 +168,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "numpy"
-version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "383ae168529a39fc97cbc1d9d4fa865377731a519bc27553ed96f50594de7c45"
-dependencies = [
- "libc",
- "ndarray",
- "num-complex",
- "num-traits",
- "pyo3",
 ]
 
 [[package]]
