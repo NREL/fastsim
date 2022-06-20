@@ -240,27 +240,31 @@ def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=No
     outputs.append(output)
 
 
-def main(cycle_name=None, do_show=None):
+def main(cycle_name=None, powertrain=None, do_show=None):
     save_dir = OUTPUT_DIR
     save_dir.mkdir(parents=True, exist_ok=True)
     cyc_names = [cycle_name] if cycle_name is not None else ["hwfet", "udds", "us06"]
     outputs = []
     for cyc_name in cyc_names:
-        veh_conv = fastsim.vehicle.Vehicle.from_vehdb(1)
-        print(f"CONV: {veh_conv.scenario_name}")
-        run_for_powertrain(save_dir, outputs, cyc_name, veh_conv, 'conv', init_soc=None, do_show=do_show)
+        if powertrain is None or powertrain == "conv":
+            veh_conv = fastsim.vehicle.Vehicle.from_vehdb(1)
+            print(f"CONV: {veh_conv.scenario_name}")
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_conv, 'conv', init_soc=None, do_show=do_show)
 
-        veh_hev = fastsim.vehicle.Vehicle.from_vehdb(9)
-        print(f"HEV: {veh_hev.scenario_name}")
-        run_for_powertrain(save_dir, outputs, cyc_name, veh_hev, 'hev', init_soc=0.8, do_show=do_show)
+        if powertrain is None or powertrain == "hev":
+            veh_hev = fastsim.vehicle.Vehicle.from_vehdb(9)
+            print(f"HEV: {veh_hev.scenario_name}")
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_hev, 'hev', init_soc=0.8, do_show=do_show)
 
-        veh_phev = fastsim.vehicle.Vehicle.from_vehdb(12)
-        print(f"PHEV: {veh_phev.scenario_name}")
-        run_for_powertrain(save_dir, outputs, cyc_name, veh_phev, 'phev', init_soc=1.0, do_show=do_show)
+        if powertrain is None or powertrain == "phev":
+            veh_phev = fastsim.vehicle.Vehicle.from_vehdb(12)
+            print(f"PHEV: {veh_phev.scenario_name}")
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_phev, 'phev', init_soc=1.0, do_show=do_show)
 
-        veh_bev = fastsim.vehicle.Vehicle.from_vehdb(17)
-        print(f"BEV: {veh_bev.scenario_name}")
-        run_for_powertrain(save_dir, outputs, cyc_name, veh_bev, 'bev', init_soc=1.0, do_show=do_show)
+        if powertrain is None or powertrain == "bev":
+            veh_bev = fastsim.vehicle.Vehicle.from_vehdb(17)
+            print(f"BEV: {veh_bev.scenario_name}")
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_bev, 'bev', init_soc=1.0, do_show=do_show)
 
     keys = [
         'powertrain', 'cycle', 'veh',
@@ -282,7 +286,10 @@ if __name__ == "__main__":
     cycle_name = None
     if len(sys.argv) >= 2:
         cycle_name = sys.argv[1]
+    powertrain = None
+    if len(sys.argv) >= 3 and sys.argv[2] in ("conv", "hev", "phev", "bev"):
+        powertrain = sys.argv[2]
     do_show = None
-    if len(sys.argv) >= 3 and sys.argv[2] == 'show':
+    if len(sys.argv) >= 4 and sys.argv[3] == 'show':
         do_show = True
-    main(cycle_name, do_show=do_show)
+    main(cycle_name, powertrain=powertrain, do_show=do_show)
