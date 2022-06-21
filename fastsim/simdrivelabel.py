@@ -61,9 +61,16 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
     sd['hwy'] = make_simdrive(cyc['hwy'], veh)
 
     # run simdrive for non-phev powertrains
-    sd['udds'].sim_params.verbose = sim_drive_verbose
+    temp_sd_params1 = sd['udds'].sim_params
+    temp_sd_params1.reset_orphaned()
+    temp_sd_params1.verbose = sim_drive_verbose
+    sd['udds'].sim_params = temp_sd_params1
     sd['udds'].sim_drive()
-    sd['hwy'].sim_params.verbose = sim_drive_verbose
+
+    temp_sd_params2 = sd['hwy'].sim_params
+    temp_sd_params2.reset_orphaned()
+    temp_sd_params2.verbose = sim_drive_verbose
+    sd['hwy'].sim_params = temp_sd_params2
     sd['hwy'].sim_drive()
     
     # find year-based adjustment parameters
@@ -447,10 +454,13 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
         sd['accel'] = simdrive.RustSimDrive(cyc['accel'], veh)
     else:
         sd['accel'] = simdrive.SimDrive(cyc['accel'], veh)
-
-    sd['accel'].sim_params.verbose = sim_drive_verbose
+    temp_params = sd['accel'].sim_params
+    temp_params.reset_orphaned()
+    temp_params.verbose = sim_drive_verbose
+    sd['accel'].sim_params = temp_params
     simdrive.run_simdrive_for_accel_test(sd['accel'])
-    if (np.array(sd['accel'].mph_ach) >= 60).any():
+    print(type(np.array(sd['accel'].mph_ach)))
+    if (np.array(list(sd['accel'].mph_ach)) >= 60).any():
         out['netAccel'] = np.interp(
             x=60, xp=sd['accel'].mph_ach, fp=cyc['accel'].time_s)
     else:
@@ -483,9 +493,9 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
 
 
 if __name__ == '__main__':
-    veh = vehicle.Vehicle.from_vehdb(1) # load default vehicle
+    veh = vehicle.Vehicle.from_vehdb(1).to_rust() # load default vehicle
 
-    out = get_label_fe(veh)
+    out = get_label_fe(veh,use_rust=True)
     for key in out.keys():
         try:
             print(key + f': {out[key]:.5g}')
