@@ -504,7 +504,7 @@ impl RustCycle {
             }
             Ok(Self::new(time_s, speed_mps, grade, road_type, name))
         } else {
-            Err(format!("path {pathstr} doesn't exist"))
+            Err(format!("path {} doesn't exist", pathstr))
         }
     }
 
