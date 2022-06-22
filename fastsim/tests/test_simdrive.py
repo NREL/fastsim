@@ -7,7 +7,7 @@ import numpy as np
 
 from fastsim import cycle, vehicle, simdrive
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
-
+from fastsim.auxiliaries import set_nested_values
 
 USE_PYTHON = False
 USE_RUST = True
@@ -163,10 +163,9 @@ class TestSimDriveClassic(unittest.TestCase):
             veh = veh.to_rust()
             cyc = cyc.to_rust()
             sd = simdrive.RustSimDrive(cyc, veh)
-            sim_params = sd.sim_params
-            sim_params.missed_trace_correction = True
-            sim_params.max_time_dilation = 0.1  # maximum upper margin for time dilation
-            sd.sim_params = sim_params
+            sd.sim_params = set_nested_values(sd.sim_params, 
+            ["missed_trace_correction", 'max_time_dilation'], 
+            [True ,0.1])
             sd.sim_drive()
 
             dist_err = np.abs(np.array(sd.dist_m).sum(

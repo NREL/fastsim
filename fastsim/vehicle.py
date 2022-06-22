@@ -803,10 +803,18 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
             new_pp.fuel_rho_kg__L = pp.fuel_rho_kg__L
             new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
             veh_dict[key] = new_pp
+        elif ((RUST_AVAILABLE) 
+               and (
+                (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayU32)
+                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
+                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayBool)
+                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
+                )
+              ):
+            veh_dict[key] = list(veh.__getattribute__(key))
         else:
             veh_dict[key] = copy.deepcopy(
-                veh.__getattribute__(key)) if deep else veh.__getattribute__(key
-                                                                             )
+                veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
 
     if return_type == DICT:
         return veh_dict

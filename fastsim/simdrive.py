@@ -2150,14 +2150,14 @@ class SimDrivePost(object):
             # Assign values to output dict for positive and negative energy variable names
             search = prog.search(var)
             output[search[1] + '_kj' + search[2] +
-                   '_pos'] = np.trapz(tempvars[var + '_pos'], self.cyc.time_s)
+                   '_pos'] = np.trapz(np.array(tempvars[var + '_pos']), np.array(self.cyc.time_s))
             output[search[1] + '_kj' + search[2] +
-                   '_neg'] = np.trapz(tempvars[var + '_neg'], self.cyc.time_s)
+                   '_neg'] = np.trapz(np.array(tempvars[var + '_neg']), np.array(self.cyc.time_s))
 
-        output['dist_miles_final'] = sum(self.dist_mi)
-        if sum(self.fs_kwh_out_ach) > 0:
+        output['dist_miles_final'] = sum(np.array(self.dist_mi))
+        if sum(np.array(self.fs_kwh_out_ach)) > 0:
             output['mpgge'] = sum(
-                self.dist_mi) / sum(self.fs_kwh_out_ach) * self.props.kwh_per_gge
+                np.array(self.dist_mi)) / sum(np.array(self.fs_kwh_out_ach)) * self.props.kwh_per_gge
         else:
             output['mpgge'] = 0
 
@@ -2216,15 +2216,15 @@ def estimate_soc_corrected_fuel_kJ(sd: SimDrive) -> float:
     delta_soc = sd.soc[-1] - sd.soc[0]
     ess_eff = np.sqrt(sd.veh.ess_round_trip_eff)
     mc_chg_eff = f(np.array(sd.mc_mech_kw_out_ach) < 0.0,
-                   sd.mc_elec_kw_in_ach, sd.mc_mech_kw_out_ach, sd.veh.mc_peak_eff)
-    mc_dis_eff = f(np.array(sd.mc_mech_kw_out_ach) > 0.0,
-                   sd.mc_mech_kw_out_ach, sd.mc_elec_kw_in_ach, mc_chg_eff)
+                   np.array(sd.mc_elec_kw_in_ach), np.array(sd.mc_mech_kw_out_ach), sd.veh.mc_peak_eff)
+    mc_dis_eff = f(np.array(sd.mc_mech_kw_out_ach)> 0.0,
+                   np.array(sd.mc_mech_kw_out_ach), np.array(sd.mc_elec_kw_in_ach), mc_chg_eff)
     ess_traction_frac = f(np.array(sd.mc_elec_kw_in_ach)
-                          > 0.0, sd.mc_elec_kw_in_ach, sd.ess_kw_out_ach, 1.0)
+                          > 0.0, np.array(sd.mc_elec_kw_in_ach), np.array(sd.ess_kw_out_ach), 1.0)
     fc_eff = f(
         np.array(sd.trans_kw_in_ach) > 0.0,
-        sd.fc_kw_out_ach,
-        sd.fc_kw_in_ach,
+        np.array(sd.fc_kw_out_ach),
+        np.array(sd.fc_kw_in_ach),
         np.array(sd.fc_kw_out_ach).sum() / np.array(sd.fc_kw_in_ach).sum()
     )
     if delta_soc >= 0.0:
