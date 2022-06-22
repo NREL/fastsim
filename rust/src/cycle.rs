@@ -483,7 +483,7 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_file(pathstr: &str) -> Result<RustCycle, String> {
+    pub fn from_file(pathstr: &str) -> Result<Self, String> {
         let pathbuf = PathBuf::from(&pathstr);
         if pathbuf.exists() {
             let mut time_s = Vec::<f64>::new();
@@ -502,7 +502,7 @@ impl RustCycle {
                 grade.push(record[2].parse::<f64>().unwrap());
                 road_type.push(record[3].parse::<f64>().unwrap());
             }
-            Ok(RustCycle::new(time_s, speed_mps, grade, road_type, name))
+            Ok(Self::new(time_s, speed_mps, grade, road_type, name))
         } else {
             Err(format!("path {pathstr} doesn't exist"))
         }
