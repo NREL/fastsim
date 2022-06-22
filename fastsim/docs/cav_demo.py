@@ -171,6 +171,7 @@ params.idm_dt_headway_s = 2.0
 params.idm_minimum_gap_m = 10.0
 params.idm_v_desired_m_per_s = dist_and_avg_speeds[0][1]
 sd.sim_params = params
+sd.init_for_step()
 current_mt_idx = 0
 dist_traveled_m = 0.0
 while sd.i < len(cyc.time_s):

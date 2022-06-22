@@ -438,19 +438,21 @@ impl RustSimDrive {
         Ok(())
     }
 
-    /// Receives second-by-second cycle information, vehicle properties,
-    /// and an initial state of charge and runs sim_drive_step to perform a
-    /// backward facing powertrain simulation. Method `sim_drive` runs this
-    /// iteratively to achieve correct SOC initial and final conditions, as
-    /// needed.
-    ///
-    /// Arguments
-    /// ------------
-    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
-    /// aux_in_kw: (Optional) aux_in_kw override.  Array of same length as cyc.time_s.
-    ///         None causes veh.aux_kw to be used. 
-    pub fn walk(&mut self, init_soc:f64, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
+    pub fn init_for_step_rust(&mut self, init_soc:Option<f64>, aux_in_kw_override: Option<Array1<f64>>) {
+        let init_soc = match init_soc {
+            Some(x) => {
+                if !(0.0..=1.0).contains(&x) || x > self.veh.max_soc {
+                    println!("WARNING! Provided init_soc must be in range [0.0, 1.0] and less than max_soc");
+                    println!("Setting init_soc to max_soc");
+                    self.veh.max_soc
+                } else {
+                    x
+                }
+            },
+            None => self.veh.max_soc,
+        };
         self.init_arrays();
+
         // TODO: implement method for aux_in_kw_override
 
         if let Some(arr) = aux_in_kw_override {
@@ -468,6 +470,21 @@ impl RustSimDrive {
             self.cyc = self.cyc0.clone();  // reset the cycle in case it has been manipulated
         }
         self.i = 1; // time step counter
+    }
+
+    /// Receives second-by-second cycle information, vehicle properties,
+    /// and an initial state of charge and runs sim_drive_step to perform a
+    /// backward facing powertrain simulation. Method `sim_drive` runs this
+    /// iteratively to achieve correct SOC initial and final conditions, as
+    /// needed.
+    ///
+    /// Arguments
+    /// ------------
+    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: (Optional) aux_in_kw override.  Array of same length as cyc.time_s.
+    ///         None causes veh.aux_kw to be used. 
+    pub fn walk(&mut self, init_soc:f64, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
+        self.init_for_step_rust(Some(init_soc), aux_in_kw_override);
         while self.i < self.cyc.time_s.len() {
             self.step()?;
         }
