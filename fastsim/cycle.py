@@ -241,11 +241,16 @@ class Cycle(object):
         Add a braking trajectory that would cover the same distance as the given constant brake deceleration
         - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
         - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
-        RETURN: non-negative-number, the final speed of the modified trajectory (m/s) 
-        - modifies the cycle in place for braking
+        RETURN: (non-negative-number, positive-integer)
+        - the final speed of the modified trajectory (m/s) 
+        - the number of time-steps required to complete the braking maneuver
+        NOTE:
+        - modifies the cycle in place for the braking trajectory
         """
         assert brake_accel_m__s2 < 0.0
         i = int(idx)
+        if i >= len(self.time_s):
+            return self.mps[-1], 0
         v0 = self.mps[i-1]
         dt = self.dt_s[i]
         # distance-to-stop (m)
@@ -259,7 +264,7 @@ class Cycle(object):
             n = 2
         jerk_m__s3, accel_m__s2 = calc_constant_jerk_trajectory(
             n, 0.0, v0, dts_m, 0.0, dt)
-        return self.modify_by_const_jerk_trajectory(i, n, jerk_m__s3, accel_m__s2)
+        return self.modify_by_const_jerk_trajectory(i, n, jerk_m__s3, accel_m__s2), n
 
 
 class LegacyCycle(object):
