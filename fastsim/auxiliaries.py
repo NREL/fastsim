@@ -211,15 +211,8 @@ def drag_coeffs_to_abc(veh,
 
     return a_lbf, b_lbf__mph, c_lbf__mph2
 
-def set_nested_values(nested_struct, attribute_to_edit: List[str], attribute_val: List):
-    temp_handler = nested_struct
-    try:
-        temp_handler.reset_orphaned()
-    except:
-        raise TypeError('current nested struct does not have `reset_orphaned` method')
-    assert len(attribute_to_edit) == len(attribute_val),\
-        f"The attribute number provided is `{len(attribute_to_edit)}` and newly provided value number is `{len(attribute_val)}`."
-    for i in range(len(attribute_to_edit)):
-        setattr(temp_handler,attribute_to_edit[i],attribute_val[i])
-    nested_struct = temp_handler
+def set_nested_values(nested_struct, **kwargs):
+    nested_struct.reset_orphaned()
+    for key, value in kwargs.items():
+        setattr(nested_struct, key, value)
     return nested_struct

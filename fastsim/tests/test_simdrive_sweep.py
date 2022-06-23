@@ -94,7 +94,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
             # US06 is known to cause substantial trace miss.
             # This should probably be addressed at some point, but for now,
             # the tolerances are set high to avoid lots of printed warnings.
-            sim_drive.sim_params = set_nested_values(sim_drive.sim_params,["verbose"], [sim_drive_verbose])
+            sim_drive.sim_params = set_nested_values(sim_drive.sim_params, verbose=sim_drive_verbose)
             sim_drive.sim_drive()
 
             sim_drive_post = simdrive.SimDrivePost(sim_drive)

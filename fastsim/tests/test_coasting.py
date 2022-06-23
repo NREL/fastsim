@@ -190,8 +190,9 @@ class TestCoasting(unittest.TestCase):
             self.ru_sim_drive = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
             self.ru_sim_drive_coast = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
             self.ru_sim_drive_coast.sim_params = set_nested_values(self.ru_sim_drive_coast.sim_params,
-                   ['coast_allow', 'coast_start_speed_m_per_s', 'verbose'],
-                   [True, 17.0, False]
+                coast_allow=True,
+                coast_start_speed_m_per_s=17.0,
+                verbose=False
             )
         return super().setUp()
     
@@ -736,8 +737,11 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sd.sim_params = set_nested_values(sd.sim_params,
-                                           ['coast_allow', 'coast_start_speed_m_per_s', 'verbose', 'coast_brake_start_speed_m_per_s'],
-                                           [True, -1, False, 4.0])
+                coast_allow=True,
+                coast_start_speed_m_per_s=-1,
+                verbose=False,
+                coast_brake_start_speed_m_per_s=4.0
+            )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -759,8 +763,11 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz2, veh)
             sd.sim_params = set_nested_values(sd.sim_params,
-                                           ['coast_allow', 'coast_start_speed_m_per_s', 'verbose', 'coast_brake_start_speed_m_per_s'],
-                                           [True, -1, False, 4.0])
+                coast_allow=True,
+                coast_start_speed_m_per_s=-1,
+                verbose=False,
+                coast_brake_start_speed_m_per_s=4.0
+            )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -841,8 +848,11 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sd.sim_params = set_nested_values(sd.sim_params,
-                                           ['coast_allow', 'coast_start_speed_m_per_s', 'verbose', 'coast_brake_start_speed_m_per_s'],
-                                           [True, -1, False, 4.0])
+                coast_allow=True,
+                coast_start_speed_m_per_s=-1,
+                verbose=False,
+                coast_brake_start_speed_m_per_s=4.0
+            )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -960,8 +970,13 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sd.sim_params = set_nested_values(sd.sim_params,
-                    ['coast_allow', 'coast_start_speed_m_per_s', 'verbose', 'coast_brake_start_speed_m_per_s', 'coast_brake_accel_m_per_s2', 'coast_verbose'],
-                    [True, -1, False, 4.0, -2.0, False])
+                coast_allow=True,
+                coast_start_speed_m_per_s=-1,
+                verbose=False,
+                coast_brake_start_speed_m_per_s=4.0,
+                coast_brake_accel_m_per_s2=-2.0,
+                coast_verbose=False
+            )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -993,8 +1008,13 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(1).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sd.sim_params = set_nested_values(sd.sim_params,
-                    ['coast_allow', 'coast_start_speed_m_per_s', 'verbose', 'coast_brake_start_speed_m_per_s', 'coast_brake_accel_m_per_s2', 'coast_verbose'],
-                    [True, -1, False, 7.5, -2.5, False])
+                coast_allow=True,
+                coast_start_speed_m_per_s=-1,
+                verbose=False,
+                coast_brake_start_speed_m_per_s=7.5,
+                coast_brake_accel_m_per_s2=-2.5,
+                coast_verbose=False
+            )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -1095,8 +1115,13 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sd.sim_params = set_nested_values(sd.sim_params,
-                ['coast_allow', 'coast_start_speed_m_per_s', 'verbose', 'coast_brake_start_speed_m_per_s', 'coast_brake_accel_m_per_s2', 'coast_verbose'],
-                [True, -1, False, 4.0, -2.0, False])
+                coast_allow=True,
+                coast_start_speed_m_per_s=-1,
+                verbose=False,
+                coast_brake_start_speed_m_per_s=4.0,
+                coast_brake_accel_m_per_s2=-2.0,
+                coast_verbose=False
+            )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -1128,8 +1153,13 @@ class TestCoasting(unittest.TestCase):
             veh = fastsim.vehicle.Vehicle.from_vehdb(1).to_rust()
             sd = fastsim.simdrive.RustSimDrive(trapz, veh)
             sd.sim_params = set_nested_values(sd.sim_params,
-                ['coast_allow', 'coast_start_speed_m_per_s', 'verbose', 'coast_brake_start_speed_m_per_s', 'coast_brake_accel_m_per_s2', 'coast_verbose'],
-                [True, -1, False, 7.5, -2.5, False])
+                coast_allow=True,
+                coast_start_speed_m_per_s=-1,
+                verbose=False,
+                coast_brake_start_speed_m_per_s=7.5,
+                coast_brake_accel_m_per_s2=-2.5,
+                coast_verbose=False
+            )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -1213,8 +1243,13 @@ class TestCoasting(unittest.TestCase):
             cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2])).to_rust()
             sd = fastsim.simdrive.RustSimDrive(cyc, veh)
             sd.sim_params = set_nested_values(sd.sim_params,
-                ['coast_allow', 'coast_start_speed_m_per_s', 'verbose', 'coast_brake_start_speed_m_per_s', 'coast_brake_accel_m_per_s2', 'coast_verbose'],
-                [True, -1, False, 4.0, -2.0, False])
+                coast_allow=True,
+                coast_start_speed_m_per_s=-1,
+                verbose=False,
+                coast_brake_start_speed_m_per_s=4.0,
+                coast_brake_accel_m_per_s2=-2.0,
+                coast_verbose=False
+            )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:

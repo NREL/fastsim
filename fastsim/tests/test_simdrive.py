@@ -166,8 +166,9 @@ class TestSimDriveClassic(unittest.TestCase):
             cyc = cyc.to_rust()
             sd = simdrive.RustSimDrive(cyc, veh)
             sd.sim_params = set_nested_values(sd.sim_params, 
-            ["missed_trace_correction", 'max_time_dilation'], 
-            [True ,0.1])
+                missed_trace_correction=True,
+                max_time_dilation=0.1
+            )
             sd.sim_drive()
 
             dist_err = np.abs(np.array(sd.dist_m).sum(
