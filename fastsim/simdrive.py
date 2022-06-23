@@ -74,6 +74,7 @@ class SimDriveParams(object):
         self.coast_brake_start_speed_m_per_s = 7.5
         # m/s, if > 0, initiates coast when vehicle hits this speed; mostly for testing
         self.coast_start_speed_m_per_s = 0.0
+        self.coast_verbose = False
         # time-ahead for speed changes to be considered to hit distance mark
         self.coast_time_horizon_for_adjustment_s = 20.0
         self.follow_allow = False
