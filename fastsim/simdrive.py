@@ -2187,20 +2187,24 @@ class SimDrivePost(object):
     def set_battery_wear(self):
         """Battery wear calcs"""
 
-        self.add_kwh[1:] = np.array([
-            (self.ess_cur_kwh[i] - self.ess_cur_kwh[i-1]) + self.add_kwh[i-1]
+        add_kwh = self.add_kwh if type(self.add_kwh) is np.ndarray else np.array(self.add_kwh)
+        add_kwh[1:] = np.array([
+            (self.ess_cur_kwh[i] - self.ess_cur_kwh[i-1]) + add_kwh[i-1]
             if self.ess_cur_kwh[i] > self.ess_cur_kwh[i-1]
             else 0
             for i in range(1, len(self.ess_cur_kwh))])
+        self.add_kwh = add_kwh
 
+        dod_cycs = self.dod_cycs if type(self.dod_cycs) is np.ndarray else np.array(self.dod_cycs)
         if self.veh.ess_max_kwh == 0:
-            self.dod_cycs[1:] = np.array(
+            dod_cycs[1:] = np.array(
                 [0.0 for i in range(1, len(self.ess_cur_kwh))])
         else:
-            self.dod_cycs[1:] = np.array([
+            dod_cycs[1:] = np.array([
                 self.add_kwh[i-1] / self.veh.ess_max_kwh if self.add_kwh[i] == 0
                 else 0
                 for i in range(1, len(self.ess_cur_kwh))])
+        self.dod_cycs = dod_cycs
 
         self.ess_perc_dead = np.array([
             np.power(self.veh.ess_life_coef_a, 1.0 / self.veh.ess_life_coef_b) / np.power(self.dod_cycs[i],
