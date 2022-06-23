@@ -194,6 +194,13 @@ impl Default for RustSimDriveParams {
         handle_sd_res(self.step())
     }
 
+    #[pyo3(name = "init_for_step")]
+    /// Initialize simdrive for iteration
+    pub fn init_for_step_py(&mut self, init_soc:Option<f64>, aux_in_kw_override: Option<Vec<f64>>) -> PyResult<()> {
+        let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
+        handle_sd_res(self.init_for_step(init_soc, aux_in_kw_override))
+    }
+
     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
     pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
