@@ -216,7 +216,7 @@ def compare(res_python, res_excel, err_tol=0.001, verbose=True):
                 if verbose:
                     print(f"{vehname} - {res_key} error = {error:.3g}%")
 
-        if (np.array(list(res_comp.values())) == 0).all() and verbose:
+        if (np.array(res_comp.values()) == 0).all() and verbose:
             print(f'All values within error tolerance of {err_tol:.3g}')
 
         res_comps[vehname] = res_comp.copy()
