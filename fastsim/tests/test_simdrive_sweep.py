@@ -284,4 +284,8 @@ class TestSimDriveSweep(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    df_err, df, df0 = main()
+    df_err, df, df0, col_for_max_error, max_abs_err = main()
+
+    test = TestSimDriveSweep()
+    test.test_sweep()
+    test.test_post_diagnostics()

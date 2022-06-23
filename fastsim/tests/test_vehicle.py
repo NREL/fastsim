@@ -135,8 +135,8 @@ class TestVehicle(unittest.TestCase):
         self.assertFalse("fc_eff_array" in v1.__dict__)
 
 if __name__ == '__main__':
-    from fastsim import vehicle
-    veh = vehicle.Vehicle.from_vehdb(1,to_rust=True).to_rust()
-    print(type(veh.mc_eff_array),veh.mc_eff_array)
-    print(type(list(veh.mc_eff_array)),list(veh.mc_eff_array))
-    print(type(np.array(veh.mc_eff_array)),np.array(veh.mc_eff_array))
+    test = TestVehicle()
+    test.test_equal()
+    test.test_properties()
+    test.test_fc_efficiency_override()
+    test.test_set_derived_init()

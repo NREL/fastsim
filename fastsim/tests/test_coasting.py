@@ -1235,7 +1235,7 @@ if __name__ == '__main__':
         test.test_cycle_modifications_with_constant_jerk()
         test.test_that_cycle_modifications_work_as_expected()
         test.test_that_we_can_coast()
-        test.test_eco_approach_modeling()
+        test.test_eco_approach_modeling()  # error here?
         test.test_consistency_of_constant_jerk_trajectory()
         test.test_that_final_speed_of_cycle_modification_matches_trajectory_calcs()
         test.test_that_cycle_distance_reported_is_correct()

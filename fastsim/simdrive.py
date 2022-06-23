@@ -92,7 +92,10 @@ class SimDriveParams(object):
     def to_rust(self):
         """Change to the Rust version"""
         return copy_sim_params(self, 'rust')
-
+    
+    def reset_orphaned(self):
+        """Dummy method for flexibility between Rust/Python version interfaces"""
+        pass
 
 ref_sim_drive_params = SimDriveParams()
 

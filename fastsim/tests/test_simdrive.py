@@ -270,3 +270,13 @@ class TestSimDriveClassic(unittest.TestCase):
             sd = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
             sd.sim_drive()
             self.assertEqual(sd.i, sd.cyc0.len)
+
+if __name__ == "__main__":
+    test = TestSimDriveClassic()
+    test.test_sim_drive_step()
+    test.test_sim_drive_walk()
+    test.test_split_cycles()
+    test.test_time_dilation()
+    test.test_stop_start()
+    test.test_achieved_speed_never_negative()
+    test.test_that_vehdb_single_files_simulate()

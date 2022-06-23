@@ -1174,9 +1174,9 @@ class TestFollowing(unittest.TestCase):
 
 if __name__ == "__main__":
     with TestFollowing() as test:
-        #test.test_that_we_have_a_gap_between_us_and_the_lead_vehicle()
-        #test.test_that_the_gap_changes_over_the_cycle()
-        #test.test_that_following_works_over_parameter_sweep()
-        #test.test_that_we_can_use_the_idm()
-        #test.test_sweeping_idm_parameters()
+        test.test_that_we_have_a_gap_between_us_and_the_lead_vehicle()
+        test.test_that_the_gap_changes_over_the_cycle()
+        test.test_that_following_works_over_parameter_sweep()
+        test.test_that_we_can_use_the_idm()
+        test.test_sweeping_idm_parameters()
         test.test_distance_based_grade_on_following()

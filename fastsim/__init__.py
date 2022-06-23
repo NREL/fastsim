@@ -23,5 +23,6 @@ try:
     setattr(Pyo3ArrayF64, "__array__", _as_numpy_array)
     setattr(Pyo3ArrayU32, "__array__", _as_numpy_array)
     setattr(Pyo3ArrayBool, "__array__", _as_numpy_array)
+    setattr(Pyo3VecF64, "__array__", _as_numpy_array)
 except ImportError:
     print("fastsimrust not installed")

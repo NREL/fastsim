@@ -126,7 +126,7 @@ class TestCopy(unittest.TestCase):
 if __name__ == "__main__":
     test = TestCopy()
     test.test_copy_cycle()
-    #test.test_copy_physical_properties()
-    #test.test_copy_vehicle()
-    #test.test_copy_sim_params()
-    #test.test_copy_sim_drive()
+    test.test_copy_physical_properties()
+    test.test_copy_vehicle()
+    test.test_copy_sim_params()
+    test.test_copy_sim_drive()
