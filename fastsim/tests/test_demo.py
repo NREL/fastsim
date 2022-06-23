@@ -299,3 +299,14 @@ class TestDemo(unittest.TestCase):
         ru_keys = {k for k in ru_dict}
         ru_keys.add("name") # Rust doesn't provide 'name'
         self.assertEqual(py_keys, ru_keys)
+
+if __name__ == "__main__":
+    test = TestDemo()
+    test.test_load_cycle()
+    test.test_load_vehicle()
+    test.test_run_simdrive()
+    test.test_running_by_step_with_modified_aux_loads()
+    test.test_running_with_aux_overrides()
+    test.test_running_with_aux_overrides_v2()
+    test.test_using_simdrive_post()
+    test.test_cycle_to_dict()

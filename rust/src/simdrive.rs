@@ -20,7 +20,80 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
 
 #[pyclass]
 #[derive(Debug, Clone)]
-#[add_pyo3_api]
+#[add_pyo3_api(
+    #[new]
+    pub fn __new__(
+        missed_trace_correction: bool, // if true, missed trace correction is active, default = false
+        max_time_dilation: f64,
+        min_time_dilation: f64,
+        time_dilation_tol: f64,
+        max_trace_miss_iters: u32,
+        trace_miss_speed_mps_tol: f64,
+        trace_miss_time_tol: f64,
+        trace_miss_dist_tol: f64,
+        sim_count_max: usize,
+        verbose: bool,
+        newton_gain: f64,
+        newton_max_iter: u32,
+        newton_xtol: f64,
+        energy_audit_error_tol: f64,
+        coast_allow: bool,
+        coast_allow_passing: bool,
+        coast_max_speed_m_per_s: f64,
+        coast_brake_accel_m_per_s2: f64,
+        coast_brake_start_speed_m_per_s: f64,
+        coast_start_speed_m_per_s: f64,
+        coast_verbose: bool,
+        coast_time_horizon_for_adjustment_s: f64,
+        follow_allow: bool,
+        // IDM - Intelligent Driver Model, Adaptive Cruise Control version
+        idm_v_desired_m_per_s: f64,
+        idm_dt_headway_s: f64,
+        idm_minimum_gap_m: f64,
+        idm_delta: f64,
+        idm_accel_m_per_s2: f64,
+        idm_decel_m_per_s2: f64,
+        // Other, Misc.
+        max_epa_adj: f64,
+    ) -> Self {
+        Self {
+            missed_trace_correction, // if true, missed trace correction is active, default = false
+            max_time_dilation,
+            min_time_dilation,
+            time_dilation_tol,
+            max_trace_miss_iters,
+            trace_miss_speed_mps_tol,
+            trace_miss_time_tol,
+            trace_miss_dist_tol,
+            sim_count_max,
+            verbose,
+            newton_gain,
+            newton_max_iter,
+            newton_xtol,
+            energy_audit_error_tol,
+            coast_allow,
+            coast_allow_passing,
+            coast_max_speed_m_per_s,
+            coast_brake_accel_m_per_s2,
+            coast_brake_start_speed_m_per_s,
+            coast_start_speed_m_per_s,
+            coast_verbose,
+            coast_time_horizon_for_adjustment_s,
+            follow_allow,
+            // IDM - Intelligent Driver Model, Adaptive Cruise Control version
+            idm_v_desired_m_per_s,
+            idm_dt_headway_s,
+            idm_minimum_gap_m,
+            idm_delta,
+            idm_accel_m_per_s2,
+            idm_decel_m_per_s2,
+            // Other, Misc.
+            max_epa_adj,
+            orphaned: false
+        }
+    }
+)]
+
 /// Struct containing time trace data
 pub struct RustSimDriveParams {
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false

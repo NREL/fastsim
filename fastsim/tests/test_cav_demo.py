@@ -15,3 +15,7 @@ class TestCavDemo(unittest.TestCase):
         else:
             del os.environ[is_interactive_key]
         self.assertTrue(RAN_SUCCESSFULLY)
+
+if __name__ == "__main__":
+    test = TestCavDemo()
+    test.test_that_demo_runs_without_error()

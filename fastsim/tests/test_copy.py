@@ -122,3 +122,7 @@ class TestCopy(unittest.TestCase):
             self.assertEqual(type(rust_sd3), fsr.RustSimDrive)
             self.assertTrue(simdrive.sim_drive_equal(rust_sd3, sd))
             self.assertTrue(simdrive.sim_drive_equal(rust_sd3, rust_sd))
+
+if __name__ == "__main__":
+    test = TestCopy()
+    test.test_copy_sim_params()

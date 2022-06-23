@@ -29,5 +29,6 @@ class test_auxiliaries(unittest.TestCase):
         self.assertAlmostEqual(0.020817239083920212, c_lbf__mph2)
 
 if __name__ == '__main__':
-    a = test_auxiliaries()
-    a.test_abc_to_drag_coeffs()
+    test = test_auxiliaries()
+    test.test_abc_to_drag_coeffs()
+    test.test_drag_coeffs_to_abc()

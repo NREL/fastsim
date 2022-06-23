@@ -195,8 +195,11 @@ class TestCoasting(unittest.TestCase):
             )
         return super().setUp()
     
-    def tearDown(self) -> None:
-        return super().tearDown()
+    def __enter__(self):
+        self.setUp()
+  
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.tearDown()
 
     def test_cycle_reported_distance_traveled_m(self):
         ""
@@ -1226,5 +1229,18 @@ class TestCoasting(unittest.TestCase):
                 np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())
 
 if __name__ == '__main__':
-    a = TestCoasting()
-    a.setUp()
+    with TestCoasting() as test:
+        test.test_cycle_reported_distance_traveled_m()
+        test.test_cycle_modifications_with_constant_jerk()
+        test.test_that_cycle_modifications_work_as_expected()
+        test.test_that_we_can_coast()
+        test.test_eco_approach_modeling()
+        test.test_consistency_of_constant_jerk_trajectory()
+        test.test_that_final_speed_of_cycle_modification_matches_trajectory_calcs()
+        test.test_that_cycle_distance_reported_is_correct()
+        test.test_brake_trajectory()
+        test.test_logic_to_enter_eco_approach_automatically()
+        test.test_that_coasting_works_going_uphill()
+        test.test_that_coasting_logic_works_going_uphill()
+        test.test_that_coasting_logic_works_going_downhill()
+        test.test_that_coasting_works_with_multiple_stops_and_grades()
