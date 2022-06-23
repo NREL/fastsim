@@ -262,18 +262,28 @@ impl Default for RustSimDriveParams {
         handle_sd_res(self.walk(init_soc, aux_in_kw_override))
     }
 
-    /// Step through 1 time step.
-    pub fn sim_drive_step(&mut self) -> PyResult<()> {
-        handle_sd_res(self.step())
-    }
-
     #[pyo3(name = "init_for_step")]
-    /// Initialize simdrive for iteration
-    pub fn init_for_step_py(&mut self, init_soc:Option<f64>, aux_in_kw_override: Option<Vec<f64>>) -> PyResult<()> {
+    /// This is a specialty method which should be called prior to using
+    /// sim_drive_step in a loop.
+    /// Arguments
+    /// ------------
+    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    ///         Default of None causes veh.aux_kw to be used.
+    pub fn init_for_step_py(
+        &mut self,
+        init_soc:Option<f64>,
+        aux_in_kw_override: Option<Vec<f64>>
+    ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
         handle_sd_res(self.init_for_step(init_soc, aux_in_kw_override))
     }
 
+    /// Step through 1 time step.
+    pub fn sim_drive_step(&mut self) -> PyResult<()> {
+        handle_sd_res(self.step())
+    }
+    
     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
     pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
