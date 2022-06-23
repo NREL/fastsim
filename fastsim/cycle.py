@@ -295,10 +295,10 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
 
     for key in inspect_utils.get_attrs(ref_cyc):
         val_to_copy = cyc.__getattribute__(key)
-        if type(val_to_copy) == np.ndarray:
+        if type(val_to_copy) in [np.ndarray, fsr.Pyo3ArrayU32, fsr.Pyo3ArrayF64, fsr.Pyo3VecF64]:
             # has to be float or time_s will get converted to int
-            cyc_dict[key] = np.array(copy.deepcopy(
-                val_to_copy) if deep else val_to_copy, dtype=float)
+            cyc_dict[key] = copy.deepcopy(np.array(
+                val_to_copy, dtype=float) if deep else val_to_copy)
         else:
             cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 

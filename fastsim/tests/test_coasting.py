@@ -197,6 +197,7 @@ class TestCoasting(unittest.TestCase):
     
     def __enter__(self):
         self.setUp()
+        return self
   
     def __exit__(self, exc_type, exc_value, traceback):
         self.tearDown()

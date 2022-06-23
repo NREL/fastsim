@@ -47,9 +47,13 @@ class TestFollowing(unittest.TestCase):
             [False, True, self.initial_gap_m])
         return super().setUp()
 
-    def tearDown(self) -> None:
-        return super().tearDown()
-    
+    def __enter__(self):
+        self.setUp()
+        return self
+  
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.tearDown()
+
     def test_that_we_have_a_gap_between_us_and_the_lead_vehicle(self):
         "A positive gap should exist between us and the lead vehicle"
         if USE_PYTHON:
@@ -156,7 +160,6 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue(
                 (gaps_m > (self.initial_gap_m - 1.0)).all(),
                 msg='We cannot get closer than the initial gap distance')
-
 
     def test_that_following_works_over_parameter_sweep(self):
         "We're going to sweep through all of the parameters and see how it goes"
@@ -1088,7 +1091,7 @@ class TestFollowing(unittest.TestCase):
             sd.sim_params = set_nested_values(
                 sd.sim_params,
                 ['follow_allow', 'idm_minimum_gap_m', 'idm_v_desired_m_per_s', 'verbose'],
-                [True, 5.0, -5.0, False]
+                [True, 5.0, 5.0, False]
             )
             sd.sim_drive()
             ts0 = sd.cyc0.time_s
@@ -1169,3 +1172,11 @@ class TestFollowing(unittest.TestCase):
                 self.assertTrue((np.array(sd.cyc.dist_m) == np.array(sd.dist_m)).all())
                 self.assertTrue((np.array(sd.mps_ach) == np.array(sd.cyc.mps)).all())
 
+if __name__ == "__main__":
+    with TestFollowing() as test:
+        #test.test_that_we_have_a_gap_between_us_and_the_lead_vehicle()
+        #test.test_that_the_gap_changes_over_the_cycle()
+        #test.test_that_following_works_over_parameter_sweep()
+        #test.test_that_we_can_use_the_idm()
+        #test.test_sweeping_idm_parameters()
+        test.test_distance_based_grade_on_following()
