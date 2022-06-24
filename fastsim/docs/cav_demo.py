@@ -172,7 +172,7 @@ sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
     idm_minimum_gap_m=10.0,
     idm_v_desired_m_per_s=dist_and_avg_speeds[0][1]
 )
-sd.init_for_step()
+sd.init_for_step(init_soc=veh.max_soc)
 current_mt_idx = 0
 dist_traveled_m = 0.0
 while sd.i < len(cyc.time_s):

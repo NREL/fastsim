@@ -7,6 +7,5 @@ class test_utils(unittest.TestCase):
         self.assertEqual("ess_ae_kw_out", utils.camel_to_snake("essAEKwOut"))
         self.assertEqual("elect_kw_req4_ae", utils.camel_to_snake("electKwReq4AE"))
 
-if __name__ == "__main__":
-    test = test_utils()
-    test.test_camel_to_snake()
+if __name__ == '__main__':
+    unittest.main()

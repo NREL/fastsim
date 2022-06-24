@@ -147,6 +147,5 @@ class TestSocCorrection(unittest.TestCase):
             if DO_PLOTS:
                 make_plots(cyc_names, results, lang="rust")
 
-if __name__ == "__main__":
-    test = TestSocCorrection()
-    test.test_that_soc_correction_method_works()
+if __name__ == '__main__':
+    unittest.main()

@@ -135,8 +135,4 @@ class TestVehicle(unittest.TestCase):
         self.assertFalse("fc_eff_array" in v1.__dict__)
 
 if __name__ == '__main__':
-    test = TestVehicle()
-    test.test_equal()
-    test.test_properties()
-    test.test_fc_efficiency_override()
-    test.test_set_derived_init()
+    unittest.main()

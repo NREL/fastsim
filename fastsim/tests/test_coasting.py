@@ -196,13 +196,6 @@ class TestCoasting(unittest.TestCase):
             )
         return super().setUp()
     
-    def __enter__(self):
-        self.setUp()
-        return self
-  
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.tearDown()
-
     def test_cycle_reported_distance_traveled_m(self):
         ""
         # At the entering of constant-speed region
@@ -349,7 +342,7 @@ class TestCoasting(unittest.TestCase):
         "Test the standard interface to Eco-Approach for 'free coasting'"
         if USE_PYTHON:
             self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
-            self.sim_drive.init_for_step()
+            self.sim_drive.init_for_step(init_soc=self.veh.max_soc)
             while self.sim_drive_coast.i < len(self.trapz.time_s):
                 self.sim_drive_coast.sim_drive_step()
             max_trace_miss_coast_m__s = np.absolute(self.trapz.mps - self.sim_drive_coast.mps_ach).max()
@@ -376,7 +369,7 @@ class TestCoasting(unittest.TestCase):
             self.assertFalse(
                 np.array(self.ru_sim_drive.impose_coast).any(),
                 "All impose_coast starts out False")
-            self.ru_sim_drive.init_for_step()
+            self.ru_sim_drive.init_for_step(init_soc=self.ru_veh.max_soc)
             while self.ru_sim_drive_coast.i < len(self.ru_trapz.time_s):
                 self.ru_sim_drive_coast.sim_drive_step()
             max_trace_miss_coast_m__s = np.absolute(
@@ -1265,18 +1258,4 @@ class TestCoasting(unittest.TestCase):
                 np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())
 
 if __name__ == '__main__':
-    with TestCoasting() as test:
-        test.test_cycle_reported_distance_traveled_m()
-        test.test_cycle_modifications_with_constant_jerk()
-        test.test_that_cycle_modifications_work_as_expected()
-        test.test_that_we_can_coast()
-        test.test_eco_approach_modeling()  # error here?
-        test.test_consistency_of_constant_jerk_trajectory()
-        test.test_that_final_speed_of_cycle_modification_matches_trajectory_calcs()
-        test.test_that_cycle_distance_reported_is_correct()
-        test.test_brake_trajectory()
-        test.test_logic_to_enter_eco_approach_automatically()
-        test.test_that_coasting_works_going_uphill()
-        test.test_that_coasting_logic_works_going_uphill()
-        test.test_that_coasting_logic_works_going_downhill()
-        test.test_that_coasting_works_with_multiple_stops_and_grades()
+    unittest.main()

@@ -379,23 +379,5 @@ class TestCycle(unittest.TestCase):
         expected_gr = 0.015
         self.assertAlmostEqual(expected_gr, gr, places=5)
 
-if __name__ == "__main__":
-    test = TestCycle()
-    test.test_monotonicity()
-    test.test_load_dict()
-    test.test_that_udds_has_18_microtrips()
-    test.test_roundtrip_of_microtrip_and_concat()
-    test.test_roundtrip_of_microtrip_and_concat_using_keep_name_arg()
-    test.test_set_from_dict_for_a_microtrip()
-    test.test_duration_of_concatenated_cycles_is_the_sum_of_the_components()
-    test.test_cycle_equality()
-    test.test_that_cycle_resampling_works_as_expected()
-    test.test_resampling_and_concatenating_cycles()
-    test.test_resampling_with_hold_keys()
-    test.test_that_resampling_preserves_total_distance_traveled_using_rate_keys()
-    test.test_clip_by_times()
-    test.test_get_accelerations()
-    test.test_that_copy_creates_idential_structures()
-    test.test_make_cycle()
-    test.test_key_conversion()
-    test.test_get_grade_by_distance()
+if __name__ == '__main__':
+    unittest.main()

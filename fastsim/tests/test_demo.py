@@ -115,6 +115,7 @@ def run_with_aux_override_direct_set(use_rust=False, verbose=False):
         sim_drive = fsim.simdrive.SimDrive(cyc, veh)
     # by assigning the value directly (this is faster than using positional args)
     sim_drive.init_for_step(
+        init_soc=veh.max_soc,
         aux_in_kw_override=np.array(cyc.time_s) / cyc.time_s[-1] * 10
     )
     while sim_drive.i < len(sim_drive.cyc.time_s):
@@ -300,13 +301,5 @@ class TestDemo(unittest.TestCase):
         ru_keys.add("name") # Rust doesn't provide 'name'
         self.assertEqual(py_keys, ru_keys)
 
-if __name__ == "__main__":
-    test = TestDemo()
-    test.test_load_cycle()
-    test.test_load_vehicle()
-    test.test_run_simdrive()
-    test.test_running_by_step_with_modified_aux_loads()
-    test.test_running_with_aux_overrides()
-    test.test_running_with_aux_overrides_v2()
-    test.test_using_simdrive_post()
-    test.test_cycle_to_dict()
+if __name__ == '__main__':
+    unittest.main()

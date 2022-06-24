@@ -40,7 +40,7 @@ class TestSimDriveClassic(unittest.TestCase):
             cyc = cycle.Cycle.from_file('udds').to_rust()
             veh = vehicle.Vehicle.from_vehdb(1, verbose=False).to_rust()
             sim_drive = simdrive.RustSimDrive(cyc, veh)
-            sim_drive.init_for_step()
+            sim_drive.init_for_step(init_soc=veh.max_soc)
 
             for x in range(100):
                 sim_drive.sim_drive_step()
@@ -272,12 +272,5 @@ class TestSimDriveClassic(unittest.TestCase):
             sd.sim_drive()
             self.assertEqual(sd.i, sd.cyc0.len)
 
-if __name__ == "__main__":
-    test = TestSimDriveClassic()
-    test.test_sim_drive_step()
-    test.test_sim_drive_walk()
-    test.test_split_cycles()
-    test.test_time_dilation()
-    test.test_stop_start()
-    test.test_achieved_speed_never_negative()
-    test.test_that_vehdb_single_files_simulate()
+if __name__ == '__main__':
+    unittest.main()

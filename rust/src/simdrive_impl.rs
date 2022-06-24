@@ -388,9 +388,9 @@ impl RustSimDrive {
                     // If no EV / Hybrid components, no SOC considerations.
                     (self.veh.max_soc + self.veh.min_soc) / 2.0
                 } else if self.veh.veh_pt_type == HEV {  
-                    // #####################################
+                    // ####################################
                     // ### Charge Balancing Vehicle SOC ###
-                    // #####################################
+                    // ####################################
                     // Charge balancing SOC for HEV vehicle types. Iterating init_soc and comparing to final SOC.
                     // Iterating until tolerance met or 30 attempts made.
                     let mut init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0;
@@ -414,7 +414,7 @@ impl RustSimDrive {
                     // If EV, initializing initial SOC to maximum SOC.
                     self.veh.max_soc
                 } else {
-                    panic!("Failed to properly initialize soc.");
+                    panic!("Failed to properly initialize SOC.");
                 }
             },
         };
@@ -452,10 +452,17 @@ impl RustSimDrive {
         Ok(())
     }
 
+    /// This is a specialty method which should be called prior to using
+    /// sim_drive_step in a loop.
+    /// Arguments
+    /// ------------
+    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    ///         Default of None causes veh.aux_kw to be used.
     pub fn init_for_step(&mut self, init_soc:f64, aux_in_kw_override: Option<Array1<f64>>) -> Result<(), String> {
         let init_soc = if !(self.veh.min_soc..=self.veh.max_soc).contains(&init_soc) {
-            println!("WARNING! Provided init_soc is outside range of min_soc..max_soc: {}..{};
-            setting init_soc to max_soc", self.veh.min_soc, self.veh.max_soc);
+            println!("WARNING! Provided init_soc is outside range [min_soc, max_soc]: [{}, {}]. Setting init_soc to max_soc.",
+                self.veh.min_soc, self.veh.max_soc);
             self.veh.max_soc
         } else {
             init_soc

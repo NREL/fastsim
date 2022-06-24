@@ -292,5 +292,4 @@ if __name__ == "__main__":
                 elif attr_val != 0:
                     failed_tests.append(veh_key + '.' + attr_key)    
 
-    test = TestExcel()
-    test.test_vs_excel()
+    unittest.main()
