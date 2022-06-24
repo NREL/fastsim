@@ -115,6 +115,7 @@ def run_with_aux_override_direct_set(use_rust=False, verbose=False):
         sim_drive = fsim.simdrive.SimDrive(cyc, veh)
     # by assigning the value directly (this is faster than using positional args)
     sim_drive.init_for_step(
+        init_soc=veh.max_soc,
         aux_in_kw_override=np.array(cyc.time_s) / cyc.time_s[-1] * 10
     )
     while sim_drive.i < len(sim_drive.cyc.time_s):
@@ -299,3 +300,6 @@ class TestDemo(unittest.TestCase):
         ru_keys = {k for k in ru_dict}
         ru_keys.add("name") # Rust doesn't provide 'name'
         self.assertEqual(py_keys, ru_keys)
+
+if __name__ == '__main__':
+    unittest.main()

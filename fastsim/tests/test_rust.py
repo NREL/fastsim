@@ -323,3 +323,6 @@ class TestRust(unittest.TestCase):
                 (sd_mps_ach > sd_cyc0_mps).any(),
                 msg=f'Achieved speed is greater than requested speed for {vehid}'
             )
+
+if __name__ == '__main__':
+    unittest.main()

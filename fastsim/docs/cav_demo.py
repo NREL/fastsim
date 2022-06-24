@@ -66,10 +66,11 @@ if RUST_AVAILABLE:
     veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
     sd = fsim.simdrive.RustSimDrive(cyc, veh)
     params = sd.sim_params
-    params.coast_allow = True
-    params.coast_allow_passing = False
-    params.coast_start_speed_m_per_s = -1.0
-    sd.sim_params = params
+    sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
+        coast_allow=True,
+        coast_allow_passing=False,
+        coast_start_speed_m_per_s=-1.0
+    )
     sd.sim_drive()
 
     coast_mpg = sd.mpgge
@@ -101,14 +102,14 @@ else:
     )
     veh = fsim.vehicle.Vehicle.from_vehdb(1)
     sd = fsim.simdrive.SimDrive(cyc, veh)
-params = sd.sim_params
-params.follow_allow = True
-params.idm_accel_m_per_s2 = 1.0
-params.idm_decel_m_per_s2 = -2.5
-params.idm_dt_headway_s = 2.0
-params.idm_minimum_gap_m = 0.0
-params.idm_v_desired_m_per_s = np.average(np.array(cyc.mps))
-sd.sim_params = params
+sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
+    follow_allow=True,
+    idm_accel_m_per_s2=1.0,
+    idm_decel_m_per_s2=-2.5,
+    idm_dt_headway_s=2.0,
+    idm_minimum_gap_m=0.0,
+    idm_v_desired_m_per_s=np.average(np.array(cyc.mps))
+)
 sd.sim_drive()
 
 cruise_mpg = sd.mpgge
@@ -163,15 +164,15 @@ for mt in microtrips:
     dist_at_start_of_microtrip_m += mt_dist_m
 if IS_INTERACTIVE:
     print(f"Found speeds for {len(dist_and_avg_speeds)} microtrips")
-params = sd.sim_params
-params.follow_allow = True
-params.idm_accel_m_per_s2 = 0.5
-params.idm_decel_m_per_s2 = -2.5
-params.idm_dt_headway_s = 2.0
-params.idm_minimum_gap_m = 10.0
-params.idm_v_desired_m_per_s = dist_and_avg_speeds[0][1]
-sd.sim_params = params
-sd.init_for_step()
+sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
+    follow_allow=True,
+    idm_accel_m_per_s2=0.5,
+    idm_decel_m_per_s2=-2.5,
+    idm_dt_headway_s=2.0,
+    idm_minimum_gap_m=10.0,
+    idm_v_desired_m_per_s=dist_and_avg_speeds[0][1]
+)
+sd.init_for_step(init_soc=veh.max_soc)
 current_mt_idx = 0
 dist_traveled_m = 0.0
 while sd.i < len(cyc.time_s):
@@ -181,8 +182,9 @@ while sd.i < len(cyc.time_s):
     if current_mt_idx < len(dist_and_avg_speeds):
         mt_start_dist_m, mt_avg_spd_m_per_s = dist_and_avg_speeds[current_mt_idx]
         if dist_traveled_m >= mt_start_dist_m:
-            params.idm_v_desired_m_per_s = mt_avg_spd_m_per_s
-            sd.sim_params = params
+            sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
+                idm_v_desired_m_per_s=mt_avg_spd_m_per_s
+            )
             if IS_INTERACTIVE:
                 print(f"... setting idm_v_desired_m_per_s = {sd.sim_params.idm_v_desired_m_per_s}")
             current_mt_idx += 1

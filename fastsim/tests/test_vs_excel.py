@@ -216,7 +216,7 @@ def compare(res_python, res_excel, err_tol=0.001, verbose=True):
                 if verbose:
                     print(f"{vehname} - {res_key} error = {error:.3g}%")
 
-        if (np.array(list(res_comp.values())) == 0).all() and verbose:
+        if (np.array(res_comp.values()) == 0).all() and verbose:
             print(f'All values within error tolerance of {err_tol:.3g}')
 
         res_comps[vehname] = res_comp.copy()
@@ -277,17 +277,19 @@ class TestExcel(unittest.TestCase):
             self.assertEqual(failed_tests, [])
 
 if __name__ == "__main__":
-        res_python = run(vehicles=[12], verbose=True)
-        res_excel = run_excel(vehicles=[12], prev_res_path=PREV_RES_PATH,
-                              rerun_excel=False)
-        res_comps = compare(res_python, res_excel, verbose=False)
+    res_python = run(vehicles=[12], verbose=True)
+    res_excel = run_excel(vehicles=[12], prev_res_path=PREV_RES_PATH,
+                            rerun_excel=False)
+    res_comps = compare(res_python, res_excel, verbose=False)
 
-        failed_tests = []
-        for veh_key, veh_val in res_comps.items():
-            if veh_key not in KNOWN_ERROR_LIST:
-                for attr_key, attr_val in veh_val.items():
-                    if attr_key == 'netAccel_frac_err':
-                        if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
-                            failed_tests.append(veh_key + '.' + attr_key)
-                    elif attr_val != 0:
-                        failed_tests.append(veh_key + '.' + attr_key)    
+    failed_tests = []
+    for veh_key, veh_val in res_comps.items():
+        if veh_key not in KNOWN_ERROR_LIST:
+            for attr_key, attr_val in veh_val.items():
+                if attr_key == 'netAccel_frac_err':
+                    if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+                        failed_tests.append(veh_key + '.' + attr_key)
+                elif attr_val != 0:
+                    failed_tests.append(veh_key + '.' + attr_key)    
+
+    unittest.main()

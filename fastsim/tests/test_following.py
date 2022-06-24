@@ -7,7 +7,7 @@ import numpy as np
 
 import fastsim
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
-
+from fastsim.auxiliaries import set_nested_values
 
 DO_PLOTS = False
 USE_PYTHON = True
@@ -40,20 +40,15 @@ class TestFollowing(unittest.TestCase):
             self.ru_veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             # sd0 is for reference to an unchanged, no-following simdrive
             self.ru_sd0 = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
-            sim_params = self.ru_sd0.sim_params
-            sim_params.verbose = False
-            self.ru_sd0.sim_params = sim_params
+            self.ru_sd0.sim_params = set_nested_values(self.ru_sd0.sim_params, verbose=False)
             self.ru_sd = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
-            sim_params = self.ru_sd.sim_params
-            sim_params.follow_allow = True
-            sim_params.verbose = False
-            sim_params.idm_minimum_gap_m = self.initial_gap_m
-            self.ru_sd.sim_params = sim_params
+            self.ru_sd.sim_params = set_nested_values(self.ru_sd.sim_params,
+                verbose=False,
+                follow_allow=True,
+                idm_minimum_gap_m=self.initial_gap_m
+            )
         return super().setUp()
 
-    def tearDown(self) -> None:
-        return super().tearDown()
-    
     def test_that_we_have_a_gap_between_us_and_the_lead_vehicle(self):
         "A positive gap should exist between us and the lead vehicle"
         if USE_PYTHON:
@@ -160,7 +155,6 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue(
                 (gaps_m > (self.initial_gap_m - 1.0)).all(),
                 msg='We cannot get closer than the initial gap distance')
-
 
     def test_that_following_works_over_parameter_sweep(self):
         "We're going to sweep through all of the parameters and see how it goes"
@@ -1089,12 +1083,12 @@ class TestFollowing(unittest.TestCase):
             cyc = fastsim.cycle.Cycle.from_dict(cyc).to_rust()
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             sd = fastsim.simdrive.RustSimDrive(cyc, veh)
-            sim_params = sd.sim_params
-            sim_params.follow_allow = True
-            sim_params.idm_minimum_gap_m = 5.0
-            sim_params.idm_v_desired_m_per_s = 5.0
-            sim_params.verbose = False
-            sd.sim_params = sim_params
+            sd.sim_params = set_nested_values(sd.sim_params,
+                follow_allow=True,
+                idm_minimum_gap_m=5.0,
+                idm_v_desired_m_per_s=5.0,
+                verbose=False
+            )
             sd.sim_drive()
             ts0 = sd.cyc0.time_s
             dds0 = sd.cyc0.dist_m
@@ -1174,3 +1168,5 @@ class TestFollowing(unittest.TestCase):
                 self.assertTrue((np.array(sd.cyc.dist_m) == np.array(sd.dist_m)).all())
                 self.assertTrue((np.array(sd.mps_ach) == np.array(sd.cyc.mps)).all())
 
+if __name__ == '__main__':
+    unittest.main()

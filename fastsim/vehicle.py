@@ -29,33 +29,33 @@ DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
 VEHICLE_DIR = THIS_DIR / 'resources' / 'vehdb'
 
 KEYS_TO_REMOVE = [
-            'large_baseline_eff',
-            'small_baseline_eff',
-            'large_motor_power_kw',
-            'small_motor_power_kw',
-            'charging_on',
-            'no_elec_sys',
-            'no_elec_aux',
-            'max_roadway_chg_kw',
-            'input_kw_out_array',
-            'fc_kw_out_array',
-            'fc_eff_array',
-            'modern_max',
-            'mc_eff_array',
-            'mc_kw_in_array',
-            'mc_kw_out_array',
-            'mc_max_elec_in_kw',
-            'mc_full_eff_array',
-            'veh_kg',
-            'max_trac_mps2',
-            'ess_mass_kg',
-            'mc_mass_kg',
-            'fc_mass_kg',
-            'fs_mass_kg',
-            'fc_perc_out_array',
-            'mc_perc_out_array',
-            'converted_to_rust',
-        ]
+    'large_baseline_eff',
+    'small_baseline_eff',
+    'large_motor_power_kw',
+    'small_motor_power_kw',
+    'charging_on',
+    'no_elec_sys',
+    'no_elec_aux',
+    'max_roadway_chg_kw',
+    'input_kw_out_array',
+    'fc_kw_out_array',
+    'fc_eff_array',
+    'modern_max',
+    'mc_eff_array',
+    'mc_kw_in_array',
+    'mc_kw_out_array',
+    'mc_max_elec_in_kw',
+    'mc_full_eff_array',
+    'veh_kg',
+    'max_trac_mps2',
+    'ess_mass_kg',
+    'mc_mass_kg',
+    'fc_mass_kg',
+    'fs_mass_kg',
+    'fc_perc_out_array',
+    'mc_perc_out_array',
+    'converted_to_rust',
+]
 
 __doc__ += f"""To create a new vehicle model, copy \n`{(THIS_DIR / 'resources/vehdb/template.csv').resolve()}`
 to a working directory not inside \n`{THIS_DIR.resolve()}`
@@ -260,7 +260,7 @@ class Vehicle(object):
     fc_mass_kg: float = field(init=False)
     fs_mass_kg: float = field(init=False)
 
-    # if True, some derived vehicle attributes are not calulated in python 
+    # if True, some derived vehicle attributes are not calulated in python
     # but instead are calculated in Rust
     converted_to_rust: InitVar[bool] = field(default=True)
 
@@ -275,7 +275,7 @@ class Vehicle(object):
             verbose: if True, print out warnings and other info
         """
         vehdf = DEFAULT_VEHDF
-        if veh_file is not None: 
+        if veh_file is not None:
             vehdf = pd.read_csv(veh_file)
         vehdf.set_index('selection', inplace=True, drop=False)
 
@@ -423,7 +423,8 @@ class Vehicle(object):
         # ensure that the column existed and the value in the cell wasn't empty (becomes NaN)
         try:
             # check if mc_pwr_out_perc is provided in vehicle csv file
-            veh_dict['mc_pwr_out_perc'] = np.array(ast.literal_eval(veh_dict['mc_pwr_out_perc']))
+            veh_dict['mc_pwr_out_perc'] = np.array(
+                ast.literal_eval(veh_dict['mc_pwr_out_perc']))
         except:
             if verbose:
                 print(f'No proper mcPwrOutPerc provided; using default values')
@@ -434,20 +435,24 @@ class Vehicle(object):
         mc_pwr_out_len = len(veh_dict['mc_pwr_out_perc'])
         mc_large_eff_len_err = f'len(mcPwrOutPerc) ({mc_pwr_out_len}) is not' +\
             f'equal to given len(largeBaselineEff) ({large_baseline_eff_len})'
-        assert len(veh_dict['mc_pwr_out_perc']) == len(params.large_baseline_eff), mc_large_eff_len_err
+        assert len(veh_dict['mc_pwr_out_perc']) == len(
+            params.large_baseline_eff), mc_large_eff_len_err
 
         try:
             # check if mc_eff_map is provided in vehicle csv file
-            veh_dict['mc_eff_map'] = np.array(ast.literal_eval(veh_dict['mc_eff_map']))
+            veh_dict['mc_eff_map'] = np.array(
+                ast.literal_eval(veh_dict['mc_eff_map']))
             mc_eff_map_len = len(veh_dict['mc_eff_map'])
             mc_eff_map_len_err = f'len(mcEffMap) ({mc_eff_map_len}) is not' +\
-            f'equal to given len(largeBaselineEff) ({large_baseline_eff_len})'
-            assert len(veh_dict['mc_pwr_out_perc']) == len(params.large_baseline_eff), mc_eff_map_len_err
+                f'equal to given len(largeBaselineEff) ({large_baseline_eff_len})'
+            assert len(veh_dict['mc_pwr_out_perc']) == len(
+                params.large_baseline_eff), mc_eff_map_len_err
         except:
             if verbose:
-                print('No proper mcEffMap provided, will used default method to calculate')
+                print(
+                    'No proper mcEffMap provided, will used default method to calculate')
             veh_dict['mc_eff_map'] = None
-        
+
         # set stop_start if not provided
         if 'stop_start' in veh_dict and np.isnan(veh_dict['stop_start']):
             veh_dict['stop_start'] = False
@@ -473,36 +478,40 @@ class Vehicle(object):
 
         if "fc_peak_eff_override" in veh_dict:
             try:
-                veh_dict['fc_peak_eff_override'] = np.float64(veh_dict['fc_peak_eff_override'])
-                assert 0.0 < veh_dict['fc_peak_eff_override'] < 1.0 
+                veh_dict['fc_peak_eff_override'] = np.float64(
+                    veh_dict['fc_peak_eff_override'])
+                assert 0.0 < veh_dict['fc_peak_eff_override'] < 1.0
             except:
                 if verbose:
-                    print('No proper fc peak eff override value provided, will not override fc peak eff')
+                    print(
+                        'No proper fc peak eff override value provided, will not override fc peak eff')
                 veh_dict['fc_peak_eff_override'] = None
         if "mc_peak_eff_override" in veh_dict:
             try:
-                veh_dict['mc_peak_eff_override'] = np.float64(veh_dict['mc_peak_eff_override'])
-                assert 0.0 < veh_dict['mc_peak_eff_override'] < 1.0 
+                veh_dict['mc_peak_eff_override'] = np.float64(
+                    veh_dict['mc_peak_eff_override'])
+                assert 0.0 < veh_dict['mc_peak_eff_override'] < 1.0
             except:
                 if verbose:
-                    print('No proper mc peak eff override value provided, will not override mc peak eff')
+                    print(
+                        'No proper mc peak eff override value provided, will not override mc peak eff')
                 veh_dict['mc_peak_eff_override'] = None
 
         # make sure types are right
         for key, val in veh_dict.items():
             if key != 'props':
-                if key in ['veh_override_kg','mc_eff_map','fc_peak_eff_override', 'mc_peak_eff_override'] and val is None:
+                if key in ['veh_override_kg', 'mc_eff_map', 'fc_peak_eff_override', 'mc_peak_eff_override'] and val is None:
                     pass
                 else:
                     veh_dict[key] = keys_and_types[key](val)
-        
+
         #veh_dict['converted_to_rust'] = to_rust
-        
-        ##for key in KEYS_TO_REMOVE:
+
+        # for key in KEYS_TO_REMOVE:
         #    if key in veh_dict:
         #        del veh_dict[key]
 
-        return cls(**veh_dict,converted_to_rust=to_rust)
+        return cls(**veh_dict, converted_to_rust=to_rust)
 
     def __post_init__(self, converted_to_rust: bool = False):
         """
@@ -546,7 +555,7 @@ class Vehicle(object):
             elif (self.veh_pt_type == CONV) and not(self.stop_start):
                 assert self.mc_max_kw == 0, f'max_mc_kw must be zero for provided Conv powertrain type in {self.scenario_name}'
                 assert self.ess_max_kw == 0, f'max_ess_kw must be zero for provided Conv powertrain type in {self.scenario_name}'
-                assert self.ess_max_kwh == 0, f'max_ess_kwh must be zero for provided Conv powertrain type in {self.scenario_name}'   
+                assert self.ess_max_kwh == 0, f'max_ess_kwh must be zero for provided Conv powertrain type in {self.scenario_name}'
 
         # Checking if a vehicle has any hybrid components
         if (self.ess_max_kwh == 0) or (self.ess_max_kw == 0) or (self.mc_max_kw == 0):
@@ -749,8 +758,10 @@ class LegacyVehicle(object):
         for key, val in NEW_TO_OLD.items():
             self.__setattr__(val, copy.deepcopy(vehicle.__getattribute__(key)))
 
+
 RETURN_TYPES = ['dict', 'vehicle', 'legacy', 'rust']
 DICT, VEHICLE, LEGACY, RUST = RETURN_TYPES
+
 
 def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     """Returns copy of Vehicle.
@@ -774,7 +785,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
             return_type = LEGACY
         else:
             raise NotImplementedError(
-                "Only implemented for rust, vehicle, or legacy.")
+                "Only implemented for rust, dict, vehicle, or legacy.")
 
     for key in keys_and_types.keys():
         if key in KEYS_TO_REMOVE:
@@ -792,10 +803,18 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
             new_pp.fuel_rho_kg__L = pp.fuel_rho_kg__L
             new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
             veh_dict[key] = new_pp
+        elif ((RUST_AVAILABLE) 
+               and (
+                (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayU32)
+                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
+                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayBool)
+                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
+                )
+              ):
+            veh_dict[key] = list(veh.__getattribute__(key))
         else:
-            veh_dict[key] = copy.deepcopy(veh.__getattribute__(
-                key)) if deep else veh.__getattribute__(key)
-
+            veh_dict[key] = copy.deepcopy(
+                veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
 
     if return_type == DICT:
         return veh_dict
@@ -804,7 +823,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     elif return_type == LEGACY:
         return LegacyVehicle(veh_dict)
     elif RUST_AVAILABLE and return_type == RUST:
-        veh_dict['props'] = params.copy_physical_properties(
+        veh_dict['props'] = params.copy_physical_properties( 
             veh_dict['props'], return_type, deep)
         veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [
             "large_baseline_eff", "small_baseline_eff"]}

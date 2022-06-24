@@ -378,3 +378,6 @@ class TestCycle(unittest.TestCase):
         gr = cyc_rust.average_grade_over_range(1035.0, 20.0)
         expected_gr = 0.015
         self.assertAlmostEqual(expected_gr, gr, places=5)
+
+if __name__ == '__main__':
+    unittest.main()
