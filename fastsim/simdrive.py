@@ -343,12 +343,6 @@ class SimDrive(object):
 
         self.hev_sim_count = 0
 
-        if init_soc is not None:
-            if init_soc > 1.0 or init_soc < 0.0:
-                print('Must enter a valid initial SOC between 0.0 and 1.0')
-                print('Running standard initial SOC controls')
-                init_soc = None
-
         if init_soc is None:
             if self.veh.veh_pt_type == CONV:  # Conventional
                 # If no EV / Hybrid components, no SOC considerations.
@@ -383,7 +377,7 @@ class SimDrive(object):
 
         self.sim_drive_walk(init_soc, aux_in_kw_override)
     
-    def init_for_step(self, init_soc: Optional[float] = None, aux_in_kw_override: Optional[np.ndarray] = None):
+    def init_for_step(self, init_soc: float, aux_in_kw_override: Optional[np.ndarray] = None):
         """
         This is a specialty method which should be called prior to using
         sim_drive_step in a loop.
@@ -394,10 +388,8 @@ class SimDrive(object):
         aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
                 Default of None causes veh.aux_kw to be used. 
         """
-        if init_soc is None:
-            init_soc = self.veh.max_soc
-        if init_soc > self.veh.max_soc:
-            print("WARNING! Provided init_soc is greater than max_soc;"
+        if init_soc > self.veh.max_soc or init_soc < self.veh.min_soc:
+            print(f"WARNING! Provided init_soc is outside range of min_soc..max_soc: {self.veh.min_soc}..{self.veh.max_soc};"
                 + " setting init_soc to max_soc")
             init_soc = self.veh.max_soc
 

@@ -381,19 +381,6 @@ impl RustSimDrive {
 
         let init_soc = match init_soc {
             Some(x) => {
-                if !(0.0..=1.0).contains(&x) {
-                    println!("Must enter a valid initial SOC between 0.0 and 1.0");
-                    println!("Running standard initial SOC controls");
-                    None
-                } else {
-                    Some(x)
-                }
-            },
-            None => None,
-        };
-
-        let init_soc = match init_soc {
-            Some(x) => {
                 x
             },
             None => {
@@ -438,18 +425,40 @@ impl RustSimDrive {
         Ok(())
     }
 
-    pub fn init_for_step(&mut self, init_soc:Option<f64>, aux_in_kw_override: Option<Array1<f64>>) -> Result<(), String> {
-        let init_soc = match init_soc {
-            Some(x) => {
-                if !(0.0..=1.0).contains(&x) || x > self.veh.max_soc {
-                    println!("WARNING! Provided init_soc must be in range [0.0, 1.0] and less than max_soc");
-                    println!("Setting init_soc to max_soc");
-                    self.veh.max_soc
-                } else {
-                    x
-                }
-            },
-            None => self.veh.max_soc,
+    /// Receives second-by-second cycle information, vehicle properties,
+    /// and an initial state of charge and runs sim_drive_step to perform a
+    /// backward facing powertrain simulation. Method `sim_drive` runs this
+    /// iteratively to achieve correct SOC initial and final conditions, as
+    /// needed.
+    ///
+    /// Arguments
+    /// ------------
+    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: (Optional) aux_in_kw override.  Array of same length as cyc.time_s.
+    ///         None causes veh.aux_kw to be used. 
+    pub fn walk(&mut self, init_soc:f64, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
+        self.init_for_step(init_soc, aux_in_kw_override)?;
+        while self.i < self.cyc.time_s.len() {
+            self.step()?;
+        }
+
+    // TODO: uncomment and implement
+    //    if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
+    //         if self.sim_params.missed_trace_correction:
+    //             print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
+    //         print("Warning: large time steps affect accuracy significantly.")
+    //         print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
+    //         print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
+        Ok(())
+    }
+
+    pub fn init_for_step(&mut self, init_soc:f64, aux_in_kw_override: Option<Array1<f64>>) -> Result<(), String> {
+        let init_soc = if !(self.veh.min_soc..=self.veh.max_soc).contains(&init_soc) {
+            println!("WARNING! Provided init_soc is outside range of min_soc..max_soc: {}..{};
+            setting init_soc to max_soc", self.veh.min_soc, self.veh.max_soc);
+            self.veh.max_soc
+        } else {
+            init_soc
         };
         self.init_arrays();
 
@@ -472,34 +481,6 @@ impl RustSimDrive {
         self.i = 1; // time step counter
         Ok(())
     }
-
-    /// Receives second-by-second cycle information, vehicle properties,
-    /// and an initial state of charge and runs sim_drive_step to perform a
-    /// backward facing powertrain simulation. Method `sim_drive` runs this
-    /// iteratively to achieve correct SOC initial and final conditions, as
-    /// needed.
-    ///
-    /// Arguments
-    /// ------------
-    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
-    /// aux_in_kw: (Optional) aux_in_kw override.  Array of same length as cyc.time_s.
-    ///         None causes veh.aux_kw to be used. 
-    pub fn walk(&mut self, init_soc:f64, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
-        self.init_for_step(Some(init_soc), aux_in_kw_override)?;
-        while self.i < self.cyc.time_s.len() {
-            self.step()?;
-        }
-
-    // TODO: uncomment and implement
-    //    if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
-    //         if self.sim_params.missed_trace_correction:
-    //             print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
-    //         print("Warning: large time steps affect accuracy significantly.")
-    //         print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
-    //         print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
-        Ok(())
-    }
-
 
     /// Set gap
     /// - i: non-negative integer, the step index

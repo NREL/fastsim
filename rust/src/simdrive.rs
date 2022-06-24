@@ -272,7 +272,7 @@ impl Default for RustSimDriveParams {
     ///         Default of None causes veh.aux_kw to be used.
     pub fn init_for_step_py(
         &mut self,
-        init_soc:Option<f64>,
+        init_soc:f64,
         aux_in_kw_override: Option<Vec<f64>>
     ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
