@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.16.5", features = ["extension-module"] }
-ndarray = { version = "0.15.4"}
+ndarray = { version = "0.15.4", features=["serde"]}
 csv = "1.1"
 proc_macros = { path = "proc_macros" }
 serde_json = { version = "1.0.81" }

@@ -3,7 +3,6 @@ use ndarray::{array, concatenate, s, Array1, Axis};
 use pyo3::exceptions::{PyIndexError, PyNotImplementedError};
 use pyo3::prelude::*;
 use std::collections::HashSet;
-// use numpy::PyArray;
 
 /// Error message for when user attempts to set value in a nested struct.
 pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
@@ -21,6 +20,47 @@ pub fn diff(x: &Array1<f64>) -> Array1<f64> {
     .unwrap()
 }
 
+//pub fn Array1_serialize<T, S>(x: &Array1<T>, serializer: &mut S) -> Result<S::Ok, S::Error>
+//where
+//    T: Clone + Serialize,
+//    S: Serializer,
+//{
+//    serializer.collect_seq(x.into_iter())
+//}
+//
+//pub fn deser_to_Array1<'de, T, D>(deserializer: D) -> Result<Array1<T>, D::Error>
+//    where T: std::str::FromStr + Deserialize<'de>,
+//          D: Deserializer<'de>
+//{
+//    struct VisitorArray<T>(PhantomData<Array1<T>>);
+//
+//    impl<'de, T> de::Visitor<'de> for VisitorArray<T> 
+//        where T: std::str::FromStr + Deserialize<'de>{
+//        type Value = Array1<T>;
+//
+//        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+//            formatter.write_str("list of floats separated by commas")
+//        }
+//
+//        fn visit_seq<S>(self, visitor_seq: S) -> Result<Self::Value, S::Error>
+//        where
+//            S: de::SeqAccess<'de>,
+//        {
+//            let mut vec: Vec<T> = Vec::new();
+//            let mut cur_element = visitor_seq.next_element()?.ok_or_else(||
+//                de::Error::custom("no values provided")
+//            )?;
+//            &vec.push(cur_element);
+//
+//            while let Some(element) = visitor_seq.next_element()? {
+//                &vec.push(element);
+//            }
+//            Ok(Array1::from_vec(vec))
+//        }
+//    }
+//    deserializer.deserialize_seq(VisitorArray(PhantomData))
+//}
+//
 // TODO: check code here -- I'm sure there is a more elegant solution but this works.
 /// Returns a new array with a constant added starting at xs[i] to the end. Values prior to xs[i] are unchanged.
 pub fn add_from(xs: &Array1<f64>, i: usize, val: f64) -> Array1<f64> {

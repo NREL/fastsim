@@ -2,7 +2,7 @@
 extern crate pyo3;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
-
+use serde::{Serialize, Deserialize};
 use crate::proc_macros::add_pyo3_api;
 
 /// Unit conversions
@@ -14,7 +14,7 @@ pub const MODERN_MAX: f64 = 0.95;
 
 /// Struct containing time trace data
 #[pyclass]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
 #[add_pyo3_api(
     #[allow(non_snake_case)]

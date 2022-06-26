@@ -9,9 +9,7 @@ extern crate pyo3;
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-// use numpy::pyo3::Python;
-// use numpy::ndarray::array;
-// use numpy::{ToPyArray, PyArray};
+use serde::{Serialize, Deserialize};
 
 // local
 use crate::params::*;
@@ -125,7 +123,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(

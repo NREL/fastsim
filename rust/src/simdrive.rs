@@ -10,6 +10,7 @@ use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
 use crate::vehicle::*;
+use serde::{Deserialize, Serialize};
 
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     match res {
@@ -19,7 +20,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(
@@ -207,7 +208,7 @@ impl Default for RustSimDriveParams {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
     #[new]
