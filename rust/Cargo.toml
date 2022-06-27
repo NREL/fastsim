@@ -13,8 +13,9 @@ pyo3 = { version = "0.16.5", features = ["extension-module"] }
 ndarray = { version = "0.15.4", features=["serde"]}
 csv = "1.1"
 proc_macros = { path = "proc_macros" }
-serde_json = { version = "1.0.81" }
+serde_json = "1.0.81"
 serde = { version = "1.0.137", features = ["derive"] }
+serde_yaml = "0.8.24"
 
 
 

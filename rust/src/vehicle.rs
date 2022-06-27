@@ -6,7 +6,12 @@ extern crate pyo3;
 use pyo3::prelude::*;
 use pyo3::exceptions::PyAttributeError;
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::path::PathBuf;
+use std::error::Error;
 //use crate::utils::{Array1_serialize, deser_to_Array1};
+
+pub const VEH_RESRC_DEFLT_FOLD: &str = "fastsim/resources/vehdb";
 
 // local
 use crate::proc_macros::add_pyo3_api;
@@ -26,6 +31,11 @@ pub const H2FC: &str = "H2FC";
 pub const HD_DIESEL: &str = "HD_Diesel";
 
 pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
+
+pub fn return_false () -> bool {
+    false
+}
+
 
 #[pyclass]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -435,6 +445,7 @@ pub struct RustVehicle {
     pub val_msrp: f64,
     pub fc_peak_eff_override: Option<f64>,
     pub mc_peak_eff_override: Option<f64>,
+    #[serde(skip, default="return_false")]
     pub orphaned: bool,
 }
 
@@ -905,6 +916,51 @@ impl RustVehicle {
 
         self.set_veh_mass();
     }
+
+    pub fn to_file(&self, filename: &str) -> Result<(),Box<dyn Error>> {
+        let file = PathBuf::from(filename);
+        let c = match file.extension().unwrap().to_str().unwrap() {
+            "json" => {serde_json::to_writer(&File::create(file)?, self)?},
+            "yaml" => {serde_yaml::to_writer(&File::create(file)?, self)?},
+            _ => {serde_json::to_writer(&File::create(file)?, self)?},
+        };
+        Ok(c)
+    }
+
+    fn from_file_parser(filename: &str) -> Result<Self, Box<dyn Error>> {
+        let mut pathbuf = PathBuf::from(filename);
+            if !pathbuf.exists() {
+                // if file doesn't exist, try to find it in the resources folder
+                let mut root =  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap()
+                    .to_path_buf();
+                root.push(VEH_RESRC_DEFLT_FOLD);
+
+                if [root.to_owned().canonicalize()?, pathbuf.clone()]
+                    .iter()
+                    .collect::<PathBuf>()
+                    .exists()
+                {
+                    pathbuf = [root.to_owned(), pathbuf].iter().collect::<PathBuf>();
+                }
+            }
+            let file =  File::open(&pathbuf)?;
+            let c = match pathbuf.extension().unwrap().to_str().unwrap() {
+                "yaml" => {serde_yaml::from_reader(file)?},
+                "json" => {serde_json::from_reader(file)?},
+                _ => {serde_json::from_reader(file)?},
+            };
+
+            Ok(c)
+    }
+
+    pub fn from_file(filename: &str) -> Self {
+        let mut veh = RustVehicle::from_file_parser(filename).unwrap();
+        veh.set_derived();
+        veh
+    }
+
 }
 
 pub fn load_vehicle() -> RustVehicle {

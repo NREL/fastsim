@@ -29,6 +29,7 @@ pub struct RustPhysicalProperties {
     pub kwh_per_gge: f64,           // = 33.7 # kWh per gallon of gasoline
     pub fuel_rho_kg__L: f64, // = 0.75 # gasoline density in kg/L https://inchem.org/documents/icsc/icsc/eics1400.htm
     pub fuel_afr_stoich: f64, // = 14.7 # gasoline stoichiometric air-fuel ratio https://en.wikipedia.org/wiki/Air%E2%80%93fuel_ratio
+    #[serde(skip)]
     pub orphaned: bool,
 }
 
