@@ -92,6 +92,7 @@ in = component input
 out = component output  
 
 # Release Notes
+1.3.2 -- added vehicle model parameter data validation for checking both type and value
 1.3.1 -- `fastsim.simdrive.copy_sim_drive` function can deepcopy jit to non-jit (and back) for pickling
 1.2.6 -- time dilation bug fix for zero speed  
 1.2.4 -- bug fix changing `==` to `=`  

@@ -11,6 +11,7 @@ from pathlib import Path
 from copy import deepcopy
 import ast
 import warnings
+import numbers
 
 # local modules
 from fastsim import parameters as params
@@ -39,7 +40,6 @@ TEMPLATE_VEHDF = get_template_df()
 OPT_INIT_PARAMS = ['fcPeakEffOverride', 'mcPeakEffOverride']
 
 VEH_PT_TYPES = ("Conv", "HEV", "PHEV", "BEV")
-
 CONV = VEH_PT_TYPES[0]
 HEV = VEH_PT_TYPES[1]
 PHEV = VEH_PT_TYPES[2]
@@ -51,7 +51,73 @@ ATKINSON = FC_EFF_TYPES[1]
 DIESEL = FC_EFF_TYPES[2]
 H2FC = FC_EFF_TYPES[3]
 HD_DIESEL = FC_EFF_TYPES[4]
-        
+
+# Model parameter data validation
+# tuple of (type, (min, max) or [acceptable options], is_optional_bool)
+# is_optional_bool=True will ensure the parameter is not nan 
+POSITIVE_FLOAT_REQ = (float, (0, np.inf), False)
+FRACTION_REQ = (float, (0, 1), False)
+DATA_VALIDATION_DICT = {
+    "vehPtType": (str, VEH_PT_TYPES, False),
+    "dragCoef": POSITIVE_FLOAT_REQ,
+    "frontalAreaM2": POSITIVE_FLOAT_REQ,
+    "gliderKg": POSITIVE_FLOAT_REQ,
+    "vehCgM": (float, (-np.inf, np.inf), False),
+    "driveAxleWeightFrac": POSITIVE_FLOAT_REQ,
+    "wheelBaseM": POSITIVE_FLOAT_REQ,
+    "cargoKg": POSITIVE_FLOAT_REQ,
+    "vehOverrideKg": (float, (0, np.inf), True),
+    "compMassMultiplier": POSITIVE_FLOAT_REQ,
+    "maxFuelStorKw": POSITIVE_FLOAT_REQ,
+    "fuelStorSecsToPeakPwr": POSITIVE_FLOAT_REQ,
+    "fuelStorKwh": POSITIVE_FLOAT_REQ,
+    "fuelStorKwhPerKg": POSITIVE_FLOAT_REQ,
+    "maxFuelConvKw": POSITIVE_FLOAT_REQ,
+    "fcPwrOutPerc": (np.ndarray, (0, 1), True),
+    "fcEffMap": (np.ndarray, (0, 1), True),
+    "fcEffType": (str, FC_EFF_TYPES, False),
+        # This could be optional=True, but would allow bad input for H2FC
+    "fuelConvSecsToPeakPwr": POSITIVE_FLOAT_REQ,
+    "fuelConvBaseKg": POSITIVE_FLOAT_REQ,
+    "fuelConvKwPerKg": POSITIVE_FLOAT_REQ,
+    "minFcTimeOn": POSITIVE_FLOAT_REQ,
+    "idleFcKw": POSITIVE_FLOAT_REQ,
+    "maxMotorKw": POSITIVE_FLOAT_REQ,
+    "mcPwrOutPerc": (np.ndarray, (0, 1), True),
+    "mcEffMap": (np.ndarray, (0, 1), True),
+    "motorSecsToPeakPwr": POSITIVE_FLOAT_REQ,
+    "mcPeKgPerKw": POSITIVE_FLOAT_REQ,
+    "mcPeBaseKg": POSITIVE_FLOAT_REQ,
+    "maxEssKw": POSITIVE_FLOAT_REQ,
+    "maxEssKwh": POSITIVE_FLOAT_REQ,
+    "essKgPerKwh": POSITIVE_FLOAT_REQ,
+    "essBaseKg": POSITIVE_FLOAT_REQ,
+    "essRoundTripEff": FRACTION_REQ,
+    "essLifeCoefA": (float, (-np.inf, np.inf), False),
+    "essLifeCoefB": (float, (-np.inf, np.inf), False),
+    "minSoc": FRACTION_REQ,
+    "maxSoc": FRACTION_REQ,
+    "essDischgToFcMaxEffPerc": FRACTION_REQ,
+    "essChgToFcMaxEffPerc": FRACTION_REQ,
+    "wheelInertiaKgM2": POSITIVE_FLOAT_REQ,
+    "numWheels": (int, (0, np.inf), False),
+    "wheelRrCoef": POSITIVE_FLOAT_REQ,
+    "wheelRadiusM": POSITIVE_FLOAT_REQ,
+    "wheelCoefOfFric": POSITIVE_FLOAT_REQ,
+    "maxAccelBufferMph": POSITIVE_FLOAT_REQ,
+    "maxAccelBufferPercOfUseableSoc": FRACTION_REQ,
+    "percHighAccBuf": FRACTION_REQ,
+    "mphFcOn": POSITIVE_FLOAT_REQ,
+    "kwDemandFcOn": POSITIVE_FLOAT_REQ,
+    "maxRegen": FRACTION_REQ,
+    "altEff": FRACTION_REQ,
+    "chgEff": FRACTION_REQ,
+    "auxKw": POSITIVE_FLOAT_REQ,
+    "transKg": POSITIVE_FLOAT_REQ,
+    "transEff": FRACTION_REQ,
+    "essToFuelOkError": POSITIVE_FLOAT_REQ,
+}
+
 class Vehicle(object):
     """Class for loading and contaning vehicle attributes"""
 
@@ -281,8 +347,6 @@ class Vehicle(object):
         
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
-
-        assert self.vehPtType in VEH_PT_TYPES, f"vehPtType {self.vehPtType} not in {VEH_PT_TYPES}"
         
         self.set_init_calcs(
             # provide kwargs for load-time overrides
@@ -290,6 +354,56 @@ class Vehicle(object):
             **{opt_init_param: veh_dict.pop(opt_init_param, -1) for opt_init_param in OPT_INIT_PARAMS}
         )
         self.set_veh_mass()
+
+        # Parameter data validation
+        for key, val_info in DATA_VALIDATION_DICT.items():
+            value = self.__getattribute__(key)
+            target_type = val_info[0]
+        
+            # If value is wrong type
+            if not isinstance(value, target_type):
+                # If value is float and would be converted to int
+                if isinstance(value, (np.floating, float)) and (target_type is int):
+                    assert value.is_integer(), \
+                        f"Non-integer value of {key} '{value}' would be converted to {int(value)}"
+                try:
+                    # Try to convert type
+                    value = target_type(value)
+                    self.__setattr__(key, value)
+                except ValueError:
+                    # Continue and fail assert
+                    pass
+            assert isinstance(value, target_type), \
+                f"Value of {key} '{value}' {type(value)} not of acceptable type {target_type}"
+
+            # Check value
+            if isinstance(value, str):
+                # Check that string is in given options
+                value_options = val_info[1]
+                optional = val_info[2]
+                if np.isnan(value):
+                    assert optional, f"Value of {key} must not be nan"
+                assert value in value_options, \
+                    f"Value of {key} '{value}' not in acceptable options {value_options}"
+            elif isinstance(value, np.ndarray):
+                # Check that each array element is within given range
+                value_min = val_info[1][0]
+                value_max = val_info[1][1]
+                optional = val_info[2]
+                if np.isnan(value).any():
+                    assert optional, f"Elements of {key} {value} must not be nan"
+                assert np.all(value_min <= value) and np.all(value <= value_max), \
+                    f"Element(s) of {key} {value} outside acceptable range [{value_min}, {value_max}]"
+            elif isinstance(value, numbers.Number) and not isinstance(value, bool):
+                # Check that numeric value is within given range
+                value_min = val_info[1][0]
+                value_max = val_info[1][1]
+                optional = val_info[2]
+                if np.isnan(value):
+                    assert optional, f"Value of {key} must not be nan"
+                else:
+                    assert (value_min <= value) and (value <= value_max), \
+                        f"Value of {key} '{value}' outside acceptable range [{value_min}, {value_max}]"
 
         if return_vehdf:
             return vehdf
