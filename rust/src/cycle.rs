@@ -10,11 +10,14 @@ use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use serde::{Serialize, Deserialize};
+use std::error::Error;
 
 // local
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
+
+pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";
 
 #[pyfunction]
 /// Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
@@ -120,6 +123,10 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(speed_for_constant_jerk, m)?)?;
     m.add_function(wrap_pyfunction!(dist_for_constant_jerk, m)?)?;
     Ok(())
+}
+
+pub fn return_false () -> bool {
+    false
 }
 
 #[pyclass]
@@ -262,6 +269,7 @@ pub struct RustCycle {
     /// array of max possible charge rate from roadway
     pub road_type: Array1<f64>,
     pub name: String,
+    #[serde(skip,default="return_false")]
     pub orphaned: bool,
 }
 
@@ -463,7 +471,50 @@ impl RustCycle {
 
     /// elevation change w.r.t. to initial
     pub fn delta_elev_m(&self) -> Array1<f64> {
-        ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+        ndarrcumsum(&(self.dist_m() * self.grade.clone()))   
+    }
+
+    pub fn to_file(&self, filename: &str) -> Result<(),Box<dyn Error>> {
+        let file = PathBuf::from(filename);
+        let c = match file.extension().unwrap().to_str().unwrap() {
+            "json" => {serde_json::to_writer(&File::create(file)?, self)?},
+            "yaml" => {serde_yaml::to_writer(&File::create(file)?, self)?},
+            _ => {serde_json::to_writer(&File::create(file)?, self)?},
+        };
+        Ok(c)
+    }
+
+    fn from_file_parser(filename: &str) -> Result<Self, Box<dyn Error>> {
+        let mut pathbuf = PathBuf::from(filename);
+            if !pathbuf.exists() {
+                // if file doesn't exist, try to find it in the resources folder
+                let mut root =  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap()
+                    .to_path_buf();
+                root.push(CYCLE_RESOURCE_DEFAULT_FOLDER);
+
+                if [root.to_owned().canonicalize()?, pathbuf.clone()]
+                    .iter()
+                    .collect::<PathBuf>()
+                    .exists()
+                {
+                    pathbuf = [root.to_owned(), pathbuf].iter().collect::<PathBuf>();
+                }
+            }
+            let file =  File::open(&pathbuf)?;
+            let c = match pathbuf.extension().unwrap().to_str().unwrap() {
+                "yaml" => {serde_yaml::from_reader(file)?},
+                "json" => {serde_json::from_reader(file)?},
+                _ => {serde_json::from_reader(file)?},
+            };
+
+            Ok(c)
+    }
+
+    pub fn from_serde_file(filename: &str) -> Self {
+        let cyc = RustCycle::from_file_parser(filename).unwrap();
+        cyc
     }
 }
 

@@ -11,6 +11,12 @@ use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
 use crate::vehicle::*;
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::path::PathBuf;
+use std::error::Error;
+
+pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
+
 
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     match res {
@@ -129,7 +135,53 @@ pub struct RustSimDriveParams {
     pub idm_decel_m_per_s2: f64,
     // Other, Misc.
     pub max_epa_adj: f64,
+    #[serde(skip)]
     pub orphaned: bool,
+}
+
+impl RustSimDriveParams {
+    pub fn to_file(&self, filename: &str) -> Result<(),Box<dyn Error>> {
+        let file = PathBuf::from(filename);
+        let c = match file.extension().unwrap().to_str().unwrap() {
+            "json" => {serde_json::to_writer(&File::create(file)?, self)?},
+            "yaml" => {serde_yaml::to_writer(&File::create(file)?, self)?},
+            _ => {serde_json::to_writer(&File::create(file)?, self)?},
+        };
+        Ok(c)
+    }
+
+    fn from_file_parser(filename: &str) -> Result<Self, Box<dyn Error>> {
+        let mut pathbuf = PathBuf::from(filename);
+            if !pathbuf.exists() {
+                // if file doesn't exist, try to find it in the resources folder
+                let mut root =  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap()
+                    .to_path_buf();
+                root.push(SIMDRIVE_PARAMS_DEFAULT_FOLDER);
+
+                if [root.to_owned().canonicalize()?, pathbuf.clone()]
+                    .iter()
+                    .collect::<PathBuf>()
+                    .exists()
+                {
+                    pathbuf = [root.to_owned(), pathbuf].iter().collect::<PathBuf>();
+                }
+            }
+            let file =  File::open(&pathbuf)?;
+            let c = match pathbuf.extension().unwrap().to_str().unwrap() {
+                "yaml" => {serde_yaml::from_reader(file)?},
+                "json" => {serde_json::from_reader(file)?},
+                _ => {serde_json::from_reader(file)?},
+            };
+
+            Ok(c)
+    }
+
+    pub fn from_file(filename: &str) -> Self {
+        let sd_params = RustSimDriveParams::from_file_parser(filename).unwrap();
+        sd_params
+    }
 }
 
 impl Default for RustSimDriveParams {
@@ -396,6 +448,7 @@ pub struct RustSimDrive {
     pub cyc0: RustCycle,
     #[api(has_orphaned)]
     pub sim_params: RustSimDriveParams,
+    #[serde(skip)]
     #[api(has_orphaned)]
     pub props: RustPhysicalProperties,
     pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()

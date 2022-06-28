@@ -11,12 +11,12 @@ use std::path::PathBuf;
 use std::error::Error;
 //use crate::utils::{Array1_serialize, deser_to_Array1};
 
-pub const VEH_RESRC_DEFLT_FOLD: &str = "fastsim/resources/vehdb";
-
 // local
 use crate::proc_macros::add_pyo3_api;
 use crate::params::*;
 use crate::utils::*;
+
+pub const VEH_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/vehdb";
 
 pub const CONV: &str = "Conv";
 pub const HEV: &str = "HEV";
@@ -330,7 +330,7 @@ pub fn return_false () -> bool {
 )]
 /// Struct containing vehicle attributes
 pub struct RustVehicle {
-    #[serde(default)]
+    #[serde(skip)]
     #[api(has_orphaned)]
     pub props: RustPhysicalProperties,
     pub scenario_name: String,
@@ -935,7 +935,7 @@ impl RustVehicle {
                     .parent()
                     .unwrap()
                     .to_path_buf();
-                root.push(VEH_RESRC_DEFLT_FOLD);
+                root.push(VEH_RESOURCE_DEFAULT_FOLDER);
 
                 if [root.to_owned().canonicalize()?, pathbuf.clone()]
                     .iter()
