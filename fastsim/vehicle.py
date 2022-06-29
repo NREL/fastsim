@@ -380,9 +380,6 @@ class Vehicle(object):
             if isinstance(value, str):
                 # Check that string is in given options
                 value_options = val_info[1]
-                optional = val_info[2]
-                if np.isnan(value):
-                    assert optional, f"Value of {key} must not be nan"
                 assert value in value_options, \
                     f"Value of {key} '{value}' not in acceptable options {value_options}"
             elif isinstance(value, np.ndarray):
