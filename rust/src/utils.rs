@@ -5,6 +5,11 @@ use pyo3::prelude::*;
 use std::collections::HashSet;
 // use numpy::PyArray;
 
+/// Error message for when user attempts to set value in a nested struct.
+pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
+Assign nested struct to own variable, run the `reset_orphaned` method, and then 
+modify field value. Then set the nested struct back inside containing struct.";
+
 pub fn diff(x: &Array1<f64>) -> Array1<f64> {
     concatenate(
         Axis(0),
@@ -85,7 +90,7 @@ pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
             return false;
         }
     }
-    return true;
+    true
 }
 
 /// return cumsum <f64> of arr
@@ -119,7 +124,12 @@ pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
 /// interpolation algorithm from http://www.cplusplus.com/forum/general/216928/
 /// Arguments:
 /// x : value at which to interpolate
-pub fn interpolate(x: &f64, x_data_in: &Array1<f64>, y_data_in: &Array1<f64>, extrapolate: bool) -> f64 {
+pub fn interpolate(
+    x: &f64,
+    x_data_in: &Array1<f64>,
+    y_data_in: &Array1<f64>,
+    extrapolate: bool,
+) -> f64 {
     assert!(x_data_in.len() == y_data_in.len());
     let mut new_x_data: Vec<f64> = Vec::new();
     let mut new_y_data: Vec<f64> = Vec::new();
@@ -159,21 +169,6 @@ pub fn interpolate(x: &f64, x_data_in: &Array1<f64>, y_data_in: &Array1<f64>, ex
     yl + dydx * (x - xl)
 }
 
-
-
-/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-#[pyclass]
-pub struct Pyo3ArrayU32(Array1<u32>);
-
-/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-#[pyclass]
-pub struct Pyo3ArrayF64(Array1<f64>);
-
-/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-#[pyclass]
-pub struct Pyo3ArrayBool(Array1<bool>);
-
-#[macro_export]
 macro_rules! impl_pyo3_arr_methods {
     ($arrstruct:ident, $dtype:ident) => {
         #[pymethods]
@@ -184,19 +179,29 @@ macro_rules! impl_pyo3_arr_methods {
             pub fn __str__(&self) -> String {
                 format!("{:?}", self.0)
             }
-            pub fn __getitem__(&self, idx: usize) -> PyResult<$dtype> {
-                if idx >= self.0.len() {
-                    Err(PyIndexError::new_err("Index is out of bounds"))
+            pub fn __getitem__(&self, idx: i32) -> PyResult<$dtype> {
+                if idx >= self.0.len() as i32 {
+                  Err(PyIndexError::new_err("Index is out of bounds"))
+                } else if idx >= 0 {
+                  Ok(self.0[idx as usize])
                 } else {
-                    Ok(self.0[idx])
+                  Ok(self.0[self.0.len() + idx as usize])
                 }
-            }
+              }
             pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
                 Err(PyNotImplementedError::new_err(
-                    "Setting array value at index is not implemented. Set entire array.",
+                    "Setting value at index is not implemented. 
+                    Run `tolist` method, modify value at index, and 
+                    then set entire array.",
                 ))
             }
-            pub fn to_list(&self) -> PyResult<Vec<$dtype>> {
+            pub fn __len__(&self) -> PyResult<usize> {
+                Ok(self.0.len())
+            }
+            pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
+                Ok(self.0.to_vec())
+            }
+            pub fn __list__(&self) -> PyResult<Vec<$dtype>> {
                 Ok(self.0.to_vec())
             }
         }
@@ -208,9 +213,69 @@ macro_rules! impl_pyo3_arr_methods {
     };
 }
 
-impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
-impl_pyo3_arr_methods!(Pyo3ArrayBool, bool);
+macro_rules! impl_pyo3_vec_methods {
+    ($vecstruct:ident, $dtype:ident) => {
+        #[pymethods]
+        impl $vecstruct {
+            pub fn __repr__(&self) -> String {
+                format!("RustArray({:?})", self.0)
+            }
+            pub fn __str__(&self) -> String {
+                format!("{:?}", self.0)
+            }
+            pub fn __getitem__(&self, idx: i32) -> PyResult<$dtype> {
+                if idx >= self.0.len() as i32 {
+                  Err(PyIndexError::new_err("Index is out of bounds"))
+                } else if idx >= 0 {
+                  Ok(self.0[idx as usize])
+                } else {
+                  Ok(self.0[self.0.len() + idx as usize])
+                }
+              }
+            pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
+                Err(PyNotImplementedError::new_err(
+                    "Setting value at index is not implemented. 
+                    Run `tolist` method, modify value at index, and 
+                    then set entire vector.",
+                ))
+            }
+            pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
+                Ok(self.0.clone())
+            }
+            pub fn __list__(&self) -> PyResult<Vec<$dtype>> {
+                Ok(self.0.clone())
+            }
+            pub fn __len__(&self) -> PyResult<usize> {
+                Ok(self.0.len())
+            }
+        }
+        impl $vecstruct {
+            pub fn new(value: Vec<$dtype>) -> Self {
+                Self(value.to_vec())
+            }
+        }
+    };
+}
+
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
+pub struct Pyo3ArrayU32(Array1<u32>);
 impl_pyo3_arr_methods!(Pyo3ArrayU32, u32);
+
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
+pub struct Pyo3ArrayF64(Array1<f64>);
+impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
+
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
+pub struct Pyo3ArrayBool(Array1<bool>);
+impl_pyo3_arr_methods!(Pyo3ArrayBool, bool);
+
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
+pub struct Pyo3VecF64(Vec<f64>);
+impl_pyo3_vec_methods!(Pyo3VecF64, f64);
 
 #[cfg(test)]
 mod tests {
@@ -367,6 +432,6 @@ mod tests {
         let x = 1.0;
         let y_lookup = interpolate(&x, &xs, &ys, false);
         let expected_y_lookup = 10.0;
-        assert_eq!(expected_y_lookup,  y_lookup);
+        assert_eq!(expected_y_lookup, y_lookup);
     }
 }

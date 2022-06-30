@@ -2,13 +2,260 @@ use ndarray::{Array, Array1, array, s};
 use std::cmp;
 use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from, ndarrunique};
 use super::vehicle::*;
-use super::cycle::{calc_constant_jerk_trajectory, accel_array_for_constant_jerk};
+use super::cycle::{calc_constant_jerk_trajectory, accel_array_for_constant_jerk, RustCycle};
 use super::params;
 
-use super::simdrive::RustSimDrive;
+use super::simdrive::{RustSimDrive, RustSimDriveParams};
 
 
 impl RustSimDrive {
+    pub fn new(cyc: RustCycle, veh: RustVehicle) -> Self {
+        let hev_sim_count: usize = 0;
+        let cyc0: RustCycle = cyc.clone();
+        let sim_params = RustSimDriveParams::default();
+        let props = params::RustPhysicalProperties::default();
+        let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
+        let cyc_len = cyc.time_s.len(); //get_len() as usize;
+        let cur_max_fs_kw_out = Array::zeros(cyc_len);
+        let fc_trans_lim_kw = Array::zeros(cyc_len);
+        let fc_fs_lim_kw = Array::zeros(cyc_len);
+        let fc_max_kw_in = Array::zeros(cyc_len);
+        let cur_max_fc_kw_out = Array::zeros(cyc_len);
+        let ess_cap_lim_dischg_kw = Array::zeros(cyc_len);
+        let cur_ess_max_kw_out = Array::zeros(cyc_len);
+        let cur_max_avail_elec_kw = Array::zeros(cyc_len);
+        let ess_cap_lim_chg_kw = Array::zeros(cyc_len);
+        let cur_max_ess_chg_kw = Array::zeros(cyc_len);
+        let cur_max_elec_kw = Array::zeros(cyc_len);
+        let mc_elec_in_lim_kw = Array::zeros(cyc_len);
+        let mc_transi_lim_kw = Array::zeros(cyc_len);
+        let cur_max_mc_kw_out = Array::zeros(cyc_len);
+        let ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len);
+        let ess_lim_mc_regen_kw = Array::zeros(cyc_len);
+        let cur_max_mech_mc_kw_in = Array::zeros(cyc_len);
+        let cur_max_trans_kw_out = Array::zeros(cyc_len);
+        let cyc_trac_kw_req = Array::zeros(cyc_len);
+        let cur_max_trac_kw = Array::zeros(cyc_len);
+        let spare_trac_kw = Array::zeros(cyc_len);
+        let cyc_whl_rad_per_sec = Array::zeros(cyc_len);
+        let cyc_tire_inertia_kw = Array::zeros(cyc_len);
+        let cyc_whl_kw_req = Array::zeros(cyc_len);
+        let regen_contrl_lim_kw_perc = Array::zeros(cyc_len);
+        let cyc_regen_brake_kw = Array::zeros(cyc_len);
+        let cyc_fric_brake_kw = Array::zeros(cyc_len);
+        let cyc_trans_kw_out_req = Array::zeros(cyc_len);
+        let cyc_met = Array::from_vec(vec![false; cyc_len]);
+        let trans_kw_out_ach = Array::zeros(cyc_len);
+        let trans_kw_in_ach = Array::zeros(cyc_len);
+        let cur_soc_target = Array::zeros(cyc_len);
+        let min_mc_kw_2help_fc = Array::zeros(cyc_len);
+        let mc_mech_kw_out_ach = Array::zeros(cyc_len);
+        let mc_elec_kw_in_ach = Array::zeros(cyc_len);
+        let aux_in_kw = Array::zeros(cyc_len);
+        let impose_coast = Array::from_vec(vec![false; cyc_len]);
+        let roadway_chg_kw_out_ach = Array::zeros(cyc_len);
+        let min_ess_kw_2help_fc = Array::zeros(cyc_len);
+        let ess_kw_out_ach = Array::zeros(cyc_len);
+        let fc_kw_out_ach = Array::zeros(cyc_len);
+        let fc_kw_out_ach_pct = Array::zeros(cyc_len);
+        let fc_kw_in_ach = Array::zeros(cyc_len);
+        let fs_kw_out_ach = Array::zeros(cyc_len);
+        let fs_cumu_mj_out_ach = Array::zeros(cyc_len);
+        let fs_kwh_out_ach = Array::zeros(cyc_len);
+        let ess_cur_kwh = Array::zeros(cyc_len);
+        let soc = Array::zeros(cyc_len);
+        let regen_buff_soc = Array::zeros(cyc_len);
+        let ess_regen_buff_dischg_kw = Array::zeros(cyc_len);
+        let max_ess_regen_buff_chg_kw = Array::zeros(cyc_len);
+        let ess_accel_buff_chg_kw = Array::zeros(cyc_len);
+        let accel_buff_soc = Array::zeros(cyc_len);
+        let max_ess_accell_buff_dischg_kw = Array::zeros(cyc_len);
+        let ess_accel_regen_dischg_kw = Array::zeros(cyc_len);
+        let mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len);
+        let elec_kw_req_4ae = Array::zeros(cyc_len);
+        let can_pwr_all_elec = Array::from_vec(vec![false; cyc_len]);
+        let desired_ess_kw_out_for_ae = Array::zeros(cyc_len);
+        let ess_ae_kw_out = Array::zeros(cyc_len);
+        let er_ae_kw_out = Array::zeros(cyc_len);
+        let ess_desired_kw_4fc_eff = Array::zeros(cyc_len);
+        let ess_kw_if_fc_req = Array::zeros(cyc_len);
+        let cur_max_mc_elec_kw_in = Array::zeros(cyc_len);
+        let fc_kw_gap_fr_eff = Array::zeros(cyc_len);
+        let er_kw_if_fc_req = Array::zeros(cyc_len);
+        let mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len);
+        let mc_kw_if_fc_req = Array::zeros(cyc_len);
+        let fc_forced_on = Array::from_vec(vec![false; cyc_len]);
+        let fc_forced_state = Array::zeros(cyc_len);
+        let mc_mech_kw_4forced_fc = Array::zeros(cyc_len);
+        let fc_time_on = Array::zeros(cyc_len);
+        let prev_fc_time_on = Array::zeros(cyc_len);
+        let mps_ach = Array::zeros(cyc_len);
+        let mph_ach = Array::zeros(cyc_len);
+        let dist_m = Array::zeros(cyc_len);
+        let dist_mi = Array::zeros(cyc_len);
+        let high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]);
+        let reached_buff = Array::from_vec(vec![false; cyc_len]);
+        let max_trac_mps = Array::zeros(cyc_len);
+        let add_kwh = Array::zeros(cyc_len);
+        let dod_cycs = Array::zeros(cyc_len);
+        let ess_perc_dead = Array::zeros(cyc_len);
+        let drag_kw = Array::zeros(cyc_len);
+        let ess_loss_kw = Array::zeros(cyc_len);
+        let accel_kw = Array::zeros(cyc_len);
+        let ascent_kw = Array::zeros(cyc_len);
+        let rr_kw = Array::zeros(cyc_len);
+        let cur_max_roadway_chg_kw = Array::zeros(cyc_len);
+        let trace_miss_iters = Array::zeros(cyc_len);
+        let newton_iters = Array::zeros(cyc_len);
+        let fuel_kj: f64 = 0.0;
+        let ess_dischg_kj: f64 = 0.0;
+        let energy_audit_error: f64 = 0.0;
+        let mpgge: f64 = 0.0;
+        let roadway_chg_kj: f64 = 0.0;
+        let battery_kwh_per_mi: f64 = 0.0;
+        let electric_kwh_per_mi: f64 = 0.0;
+        let ess2fuel_kwh: f64 = 0.0;
+        let drag_kj: f64 = 0.0;
+        let ascent_kj: f64 = 0.0;
+        let rr_kj: f64 = 0.0;
+        let brake_kj: f64 = 0.0;
+        let trans_kj: f64 = 0.0;
+        let mc_kj: f64 = 0.0;
+        let ess_eff_kj: f64 = 0.0;
+        let aux_kj: f64 = 0.0;
+        let fc_kj: f64 = 0.0;
+        let net_kj: f64 = 0.0;
+        let ke_kj: f64 = 0.0;
+        let trace_miss = false;
+        let trace_miss_dist_frac: f64 = 0.0;
+        let trace_miss_time_frac: f64 = 0.0;
+        let trace_miss_speed_mps: f64 = 0.0;
+        RustSimDrive {
+            hev_sim_count,
+            veh,
+            cyc,
+            cyc0,
+            sim_params,
+            props,
+            i, // 1 # initialize step counter for possible use outside sim_drive_walk()
+            cur_max_fs_kw_out,
+            fc_trans_lim_kw,
+            fc_fs_lim_kw,
+            fc_max_kw_in,
+            cur_max_fc_kw_out,
+            ess_cap_lim_dischg_kw,
+            cur_ess_max_kw_out,
+            cur_max_avail_elec_kw,
+            ess_cap_lim_chg_kw,
+            cur_max_ess_chg_kw,
+            cur_max_elec_kw,
+            mc_elec_in_lim_kw,
+            mc_transi_lim_kw,
+            cur_max_mc_kw_out,
+            ess_lim_mc_regen_perc_kw,
+            ess_lim_mc_regen_kw,
+            cur_max_mech_mc_kw_in,
+            cur_max_trans_kw_out,
+            cyc_trac_kw_req,
+            cur_max_trac_kw,
+            spare_trac_kw,
+            cyc_whl_rad_per_sec,
+            cyc_tire_inertia_kw,
+            cyc_whl_kw_req,
+            regen_contrl_lim_kw_perc,
+            cyc_regen_brake_kw,
+            cyc_fric_brake_kw,
+            cyc_trans_kw_out_req,
+            cyc_met,
+            trans_kw_out_ach,
+            trans_kw_in_ach,
+            cur_soc_target,
+            min_mc_kw_2help_fc,
+            mc_mech_kw_out_ach,
+            mc_elec_kw_in_ach,
+            aux_in_kw,
+            impose_coast,
+            roadway_chg_kw_out_ach,
+            min_ess_kw_2help_fc,
+            ess_kw_out_ach,
+            fc_kw_out_ach,
+            fc_kw_out_ach_pct,
+            fc_kw_in_ach,
+            fs_kw_out_ach,
+            fs_cumu_mj_out_ach,
+            fs_kwh_out_ach,
+            ess_cur_kwh,
+            soc,
+            regen_buff_soc,
+            ess_regen_buff_dischg_kw,
+            max_ess_regen_buff_chg_kw,
+            ess_accel_buff_chg_kw,
+            accel_buff_soc,
+            max_ess_accell_buff_dischg_kw,
+            ess_accel_regen_dischg_kw,
+            mc_elec_in_kw_for_max_fc_eff,
+            elec_kw_req_4ae,
+            can_pwr_all_elec,
+            desired_ess_kw_out_for_ae,
+            ess_ae_kw_out,
+            er_ae_kw_out,
+            ess_desired_kw_4fc_eff,
+            ess_kw_if_fc_req,
+            cur_max_mc_elec_kw_in,
+            fc_kw_gap_fr_eff,
+            er_kw_if_fc_req,
+            mc_elec_kw_in_if_fc_req,
+            mc_kw_if_fc_req,
+            fc_forced_on,
+            fc_forced_state,
+            mc_mech_kw_4forced_fc,
+            fc_time_on,
+            prev_fc_time_on,
+            mps_ach,
+            mph_ach,
+            dist_m,
+            dist_mi,
+            high_acc_fc_on_tag,
+            reached_buff,
+            max_trac_mps,
+            add_kwh,
+            dod_cycs,
+            ess_perc_dead,
+            drag_kw,
+            ess_loss_kw,
+            accel_kw,
+            ascent_kw,
+            rr_kw,
+            cur_max_roadway_chg_kw,
+            trace_miss_iters,
+            newton_iters,
+            fuel_kj,
+            ess_dischg_kj,
+            energy_audit_error,
+            mpgge,
+            roadway_chg_kj,
+            battery_kwh_per_mi,
+            electric_kwh_per_mi,
+            ess2fuel_kwh,
+            drag_kj,
+            ascent_kj,
+            rr_kj,
+            brake_kj,
+            trans_kj,
+            mc_kj,
+            ess_eff_kj,
+            aux_kj,
+            fc_kj,
+            net_kj,
+            ke_kj,
+            trace_miss,
+            trace_miss_dist_frac,
+            trace_miss_time_frac,
+            trace_miss_speed_mps,
+        }
+    }
+
+
 
     // TODO: probably shouldn't be public...?
     pub fn init_arrays(&mut self) {
@@ -115,7 +362,7 @@ impl RustSimDrive {
     }
 
     /// Provides the gap-with lead vehicle from start to finish
-    pub fn gap_to_lead_vehicle_m_rust(&self) -> Array1<f64> {
+    pub fn gap_to_lead_vehicle_m(&self) -> Array1<f64> {
         let mut gaps_m = ndarrcumsum(&self.cyc0.dist_v2_m()) - ndarrcumsum(&self.cyc.dist_v2_m());
         if self.sim_params.follow_allow {
             gaps_m += self.sim_params.idm_minimum_gap_m;
@@ -129,21 +376,8 @@ impl RustSimDrive {
     /// init_soc: initial SOC for electrified vehicles.  
     /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
     ///     Default of None causes veh.aux_kw to be used. 
-    pub fn sim_drive_rust(&mut self, init_soc:Option<f64>, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
+    pub fn sim_drive(&mut self, init_soc:Option<f64>, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
         self.hev_sim_count = 0;
-
-        let init_soc = match init_soc {
-            Some(x) => {
-                if !(0.0..=1.0).contains(&x) {
-                    println!("Must enter a valid initial SOC between 0.0 and 1.0");
-                    println!("Running standard initial SOC controls");
-                    None
-                } else {
-                    Some(x)
-                }
-            },
-            None => None,
-        };
 
         let init_soc = match init_soc {
             Some(x) => {
@@ -154,9 +388,9 @@ impl RustSimDrive {
                     // If no EV / Hybrid components, no SOC considerations.
                     (self.veh.max_soc + self.veh.min_soc) / 2.0
                 } else if self.veh.veh_pt_type == HEV {  
-                    // #####################################
+                    // ####################################
                     // ### Charge Balancing Vehicle SOC ###
-                    // #####################################
+                    // ####################################
                     // Charge balancing SOC for HEV vehicle types. Iterating init_soc and comparing to final SOC.
                     // Iterating until tolerance met or 30 attempts made.
                     let mut init_soc = (self.veh.max_soc + self.veh.min_soc) / 2.0;
@@ -180,14 +414,14 @@ impl RustSimDrive {
                     // If EV, initializing initial SOC to maximum SOC.
                     self.veh.max_soc
                 } else {
-                    panic!("Failed to properly initialize soc.");
+                    panic!("Failed to properly initialize SOC.");
                 }
             },
         };
 
         self.walk(init_soc, aux_in_kw_override)?;
 
-        self.set_post_scalars_rust()?;
+        self.set_post_scalars()?;
         Ok(())
     }
 
@@ -203,7 +437,38 @@ impl RustSimDrive {
     /// aux_in_kw: (Optional) aux_in_kw override.  Array of same length as cyc.time_s.
     ///         None causes veh.aux_kw to be used. 
     pub fn walk(&mut self, init_soc:f64, aux_in_kw_override:Option<Array1<f64>>) -> Result<(), String> {
+        self.init_for_step(init_soc, aux_in_kw_override)?;
+        while self.i < self.cyc.time_s.len() {
+            self.step()?;
+        }
+
+    // TODO: uncomment and implement
+    //    if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
+    //         if self.sim_params.missed_trace_correction:
+    //             print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
+    //         print("Warning: large time steps affect accuracy significantly.")
+    //         print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
+    //         print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
+        Ok(())
+    }
+
+    /// This is a specialty method which should be called prior to using
+    /// sim_drive_step in a loop.
+    /// Arguments
+    /// ------------
+    /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    ///         Default of None causes veh.aux_kw to be used.
+    pub fn init_for_step(&mut self, init_soc:f64, aux_in_kw_override: Option<Array1<f64>>) -> Result<(), String> {
+        let init_soc = if !(self.veh.min_soc..=self.veh.max_soc).contains(&init_soc) {
+            println!("WARNING! Provided init_soc is outside range [min_soc, max_soc]: [{}, {}]. Setting init_soc to max_soc.",
+                self.veh.min_soc, self.veh.max_soc);
+            self.veh.max_soc
+        } else {
+            init_soc
+        };
         self.init_arrays();
+
         // TODO: implement method for aux_in_kw_override
 
         if let Some(arr) = aux_in_kw_override {
@@ -221,20 +486,8 @@ impl RustSimDrive {
             self.cyc = self.cyc0.clone();  // reset the cycle in case it has been manipulated
         }
         self.i = 1; // time step counter
-        while self.i < self.cyc.time_s.len() {
-            self.step()?;
-        }
-
-    // TODO: uncomment and implement
-    //    if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
-    //         if self.sim_params.missed_trace_correction:
-    //             print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
-    //         print("Warning: large time steps affect accuracy significantly.")
-    //         print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
-    //         print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
         Ok(())
     }
-
 
     /// Set gap
     /// - i: non-negative integer, the step index
@@ -311,15 +564,15 @@ impl RustSimDrive {
         if self.sim_params.follow_allow {
             self.set_speed_for_target_gap(self.i);
         }
-        self.solve_step_rust(self.i)?;
+        self.solve_step(self.i)?;
 
         if self.sim_params.missed_trace_correction && (self.cyc0.dist_m().slice(s![0..self.i]).sum() > 0.0){
-            self.set_time_dilation_rust(self.i)?;
+            self.set_time_dilation(self.i)?;
         }
         // TODO: shouldn't the below code always set cyc? Whether coasting or not?
         if self.sim_params.coast_allow || self.sim_params.follow_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
-            self.cyc.grade[self.i] = self.cyc0.average_grade_over_range_rust(
+            self.cyc.grade[self.i] = self.cyc0.average_grade_over_range(
                 self.cyc.dist_m().slice(s![0..self.i]).sum(),
                 self.cyc.dist_m()[self.i]);
         }
@@ -329,15 +582,15 @@ impl RustSimDrive {
     }
 
     /// Perform all the calculations to solve 1 time step.
-    pub fn solve_step_rust(&mut self, i:usize) -> Result<(), String> {
-        self.set_misc_calcs_rust(i)?;
-        self.set_comp_lims_rust(i)?;
-        self.set_power_calcs_rust(i)?;
-        self.set_ach_speed_rust(i)?;
-        self.set_hybrid_cont_calcs_rust(i)?;
+    pub fn solve_step(&mut self, i:usize) -> Result<(), String> {
+        self.set_misc_calcs(i)?;
+        self.set_comp_lims(i)?;
+        self.set_power_calcs(i)?;
+        self.set_ach_speed(i)?;
+        self.set_hybrid_cont_calcs(i)?;
         self.set_fc_forced_state_rust(i)?;
-        self.set_hybrid_cont_decisions_rust(i)?;
-        self.set_fc_ess_power_rust(i)?;
+        self.set_hybrid_cont_decisions(i)?;
+        self.set_fc_power(i)?;
         Ok(())
     }
 
@@ -346,7 +599,7 @@ impl RustSimDrive {
     /// Arguments:
     /// ----------
     /// i: index of time step
-    pub fn set_misc_calcs_rust(&mut self, i:usize) -> Result<(), String> {
+    pub fn set_misc_calcs(&mut self, i:usize) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
             // if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
             if self.aux_in_kw.slice(s![i..]).iter().all(|&x| x == 0.0) {
@@ -386,7 +639,7 @@ impl RustSimDrive {
     /// ------------
     /// i: index of time step
     /// initSoc: initial SOC for electrified vehicles
-    pub fn set_comp_lims_rust(&mut self, i:usize) -> Result<(), String> {
+    pub fn set_comp_lims(&mut self, i:usize) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
             // max fuel storage power output
             self.cur_max_fs_kw_out[i] = min(
@@ -555,7 +808,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_power_calcs_rust(&mut self, i:usize) -> Result<(), String> {
+    pub fn set_power_calcs(&mut self, i:usize) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
             let mps_ach = if self.newton_iters[i] > 0u32 {
                 self.mps_ach[i]
@@ -564,7 +817,7 @@ impl RustSimDrive {
             };
 
             let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
-            let grade = self.cyc0.average_grade_over_range_rust(
+            let grade = self.cyc0.average_grade_over_range(
                 distance_traveled_m, mps_ach * self.cyc.dt_s()[i]);
 
             self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
@@ -637,7 +890,7 @@ impl RustSimDrive {
     // Arguments
     // ------------
     // i: index of time step
-    pub fn set_ach_speed_rust(&mut self, i:usize) -> Result<(), String> {
+    pub fn set_ach_speed(&mut self, i:usize) -> Result<(), String> {
         let mut res = || -> Result<(), String> {
             // Cycle is met
             if self.cyc_met[i] {
@@ -647,7 +900,7 @@ impl RustSimDrive {
             //Cycle is not met
             else {
                 let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
-                let mut grade_estimate = self.cyc0.average_grade_over_range_rust(
+                let mut grade_estimate = self.cyc0.average_grade_over_range(
                     distance_traveled_m, 0.0);
                 let mut grade: f64;
                 let grade_tol = 1e-4;
@@ -728,14 +981,14 @@ impl RustSimDrive {
                         xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
                         0.0
                     );
-                    grade_estimate = self.cyc0.average_grade_over_range_rust(
+                    grade_estimate = self.cyc0.average_grade_over_range(
                         distance_traveled_m,
                         self.cyc.dt_s()[i] * self.mps_ach[i]);
                     grade_diff = (grade - grade_estimate).abs();
                 }
             }
 
-            if let Err(message) = self.set_power_calcs_rust(i) {
+            if let Err(message) = self.set_power_calcs(i) {
                 Err("call to `set_power_calcs_rust` failed within `set_ach_speed_rust`: ".to_string() + &message)
             } else {
                 self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
@@ -756,7 +1009,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_calcs_rust(&mut self, i:usize) -> Result<(), String> {
+    pub fn set_hybrid_cont_calcs(&mut self, i:usize) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
             if self.veh.no_elec_sys {
                 self.regen_buff_soc[i] = 0.0;
@@ -987,7 +1240,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_decisions_rust(&mut self, i:usize) -> Result<(), String> {
+    pub fn set_hybrid_cont_decisions(&mut self, i:usize) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
             if (-self.mc_elec_in_kw_for_max_fc_eff[i] - self.cur_max_roadway_chg_kw[i]) > 0.0 {
                 self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i] -
@@ -1228,7 +1481,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_fc_ess_power_rust(&mut self, i:usize) -> Result<(), String> {
+    pub fn set_fc_power(&mut self, i:usize) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {    
             if self.veh.fc_max_kw == 0.0 {
                 self.fc_kw_out_ach[i] = 0.0;
@@ -1276,14 +1529,14 @@ impl RustSimDrive {
         };
 
         if let Err(()) = res() {
-            Err("`set_fc_ess_power_rust` failed".to_string())
+            Err("`set_fc_power_rust` failed".to_string())
         } else {
             Ok(())
         }
     }
 
     ///
-    pub fn set_time_dilation_rust(&mut self, i:usize) -> Result<(), String>{
+    pub fn set_time_dilation(&mut self, i:usize) -> Result<(), String>{
         let mut res = || -> Result<(), String> {
             // if prescribed speed is zero, trace is met to avoid div-by-zero errors and other possible wackiness
             let mut trace_met =
@@ -1309,7 +1562,7 @@ impl RustSimDrive {
 
                 // add time dilation factor * step size to current and subsequent times
                 self.cyc.time_s = add_from(&self.cyc.time_s, i, self.cyc.dt_s()[i] * t_dilation[t_dilation.len()-1]);
-                if let Err(message) = self.solve_step_rust(i) {
+                if let Err(message) = self.solve_step(i) {
                     return Err(message);
                 }
 
@@ -1340,9 +1593,9 @@ impl RustSimDrive {
                 );
                 self.cyc.time_s = add_from(&self.cyc.time_s, i, self.cyc.dt_s()[i] * t_dilation[t_dilation.len()-1]);
 
-                self.solve_step_rust(i)?;
+                self.solve_step(i)?;
 
-                if let Err(message) = self.solve_step_rust(i) {
+                if let Err(message) = self.solve_step(i) {
                     return Err(message);
                 }
                 self.trace_miss_iters[i] += 1;
@@ -1461,7 +1714,7 @@ impl RustSimDrive {
                 unique_grades[0]
             } else {
                 // interpolate(&d, &distances_m, &grade_by_distance, true)
-                self.cyc0.average_grade_over_range_rust(d0, d0)
+                self.cyc0.average_grade_over_range(d0, d0)
             };
             let mut k = self.calc_dvdd(v, gr);
             let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
@@ -1514,7 +1767,7 @@ impl RustSimDrive {
                 do_coast = false;
             } else {
                 // distance to next stop (m)
-                let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
+                let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
                 do_coast = dtsc0 >= dts0;
             }
         }
@@ -1564,7 +1817,7 @@ impl RustSimDrive {
         let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
         // a_proposed = (v1 - v0) / dt
         // distance to stop from start of time-step
-        let dts0 = self.cyc0.calc_distance_to_next_stop_from_rust(d0);
+        let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
         if dts0 < 1e-6 {
             // no stop to coast towards or we're there...
             return not_found;
@@ -1667,7 +1920,7 @@ impl RustSimDrive {
             }
         }
         // Solve for the actual coasting speed
-        if let Err(message) = self.solve_step_rust(i) {
+        if let Err(message) = self.solve_step(i) {
             return Err("call to `solve_step_rust` failed within `set_coast_speed`: ".to_string() + &message);
         }
         self.newton_iters[i] = 0; // reset newton iters
@@ -1681,7 +1934,7 @@ impl RustSimDrive {
             let mut adjusted_current_speed = false;
             if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s + tol) {
                 let v1_before = self.cyc.mps[i];
-                self.cyc.modify_with_braking_trajectory_rust(self.sim_params.coast_brake_accel_m_per_s2, i);
+                self.cyc.modify_with_braking_trajectory(self.sim_params.coast_brake_accel_m_per_s2, i);
                 let v1_after = self.cyc.mps[i];
                 assert_ne!(v1_before, v1_after);
                 adjusted_current_speed = true;
@@ -1693,12 +1946,12 @@ impl RustSimDrive {
                 );
                 if traj_found {
                     // adjust cyc to perform the trajectory
-                    let final_speed_m_per_s = self.cyc.modify_by_const_jerk_trajectory_rust(
+                    let final_speed_m_per_s = self.cyc.modify_by_const_jerk_trajectory(
                         i, traj_n, traj_jerk_m_per_s3, traj_accel_m_per_s2);
                     adjusted_current_speed = true;
                     if (final_speed_m_per_s - self.sim_params.coast_brake_start_speed_m_per_s).abs() < 0.1 {
                         let i_for_brake = i + traj_n;
-                        self.cyc.modify_with_braking_trajectory_rust(
+                        self.cyc.modify_with_braking_trajectory(
                             self.sim_params.coast_brake_accel_m_per_s2,
                             i_for_brake,
                         );
@@ -1709,7 +1962,7 @@ impl RustSimDrive {
             if adjusted_current_speed {
                 // TODO: should we have an iterate=True/False, flag on solve_step to
                 // ensure newton iters is reset? vs having to call manually?
-                if let Err(message) = self.solve_step_rust(i) {
+                if let Err(message) = self.solve_step(i) {
                     return Err("call to `solve_step_rust` failed within `set_coast_speed`: ".to_string() + &message);
                 }
                 self.newton_iters[i] = 0; // reset newton iters
@@ -1722,7 +1975,7 @@ impl RustSimDrive {
     /// Sets scalar variables that can be calculated after a cycle is run. 
     /// This includes mpgge, various energy metrics, and others
     /// TODO: finish implementing this
-    pub fn set_post_scalars_rust(& mut self) -> Result<(), String> {
+    pub fn set_post_scalars(& mut self) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
             self.fs_cumu_mj_out_ach = ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3));
 

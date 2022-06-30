@@ -71,13 +71,8 @@ def run_by_step_with_varying_aux_loads(use_rust=False, verbose=False):
         sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
     else:
         sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-    initSoc = 0.7935
-    ess_cur_kwh = sim_drive.ess_cur_kwh
-    ess_cur_kwh[0] = initSoc * sim_drive.veh.ess_max_kwh
-    sim_drive.ess_cur_kwh = ess_cur_kwh
-    soc = sim_drive.soc
-    soc[0] = initSoc
-    sim_drive.soc = soc
+
+    sim_drive.init_for_step(init_soc=0.7935)
 
     while sim_drive.i < len(cyc.time_s):
         # note: we need to copy out and in the entire array to work with the Rust version
@@ -119,7 +114,10 @@ def run_with_aux_override_direct_set(use_rust=False, verbose=False):
     else:
         sim_drive = fsim.simdrive.SimDrive(cyc, veh)
     # by assigning the value directly (this is faster than using positional args)
-    sim_drive.aux_in_kw = np.array(cyc.time_s) / cyc.time_s[-1] * 10 
+    sim_drive.init_for_step(
+        init_soc=veh.max_soc,
+        aux_in_kw_override=np.array(cyc.time_s) / cyc.time_s[-1] * 10
+    )
     while sim_drive.i < len(sim_drive.cyc.time_s):
         sim_drive.sim_drive_step()
     if verbose:
@@ -302,3 +300,6 @@ class TestDemo(unittest.TestCase):
         ru_keys = {k for k in ru_dict}
         ru_keys.add("name") # Rust doesn't provide 'name'
         self.assertEqual(py_keys, ru_keys)
+
+if __name__ == '__main__':
+    unittest.main()
