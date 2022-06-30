@@ -1,5 +1,9 @@
 //! Module for simulating thermal behavior of powertrains
 
+use crate::proc_macros::add_pyo3_api;
+use pyo3::prelude::*;
+
+
 /// Whether FC thermal modeling is handled by FASTSim
 pub enum FcModelTypes {
     /// Thermal modeling of fuel converter is handled inside FASTSim
@@ -64,6 +68,8 @@ impl Default for ComponentModelTypes {
 }
 
 /// Struct for containing vehicle thermal (and related) parameters.
+#[pyclass]
+#[add_pyo3_api]
 #[allow(non_snake_case)]
 pub struct VehicleThermal {
     // fuel converter / engine
@@ -86,10 +92,20 @@ pub struct VehicleThermal {
 
     /// temperature-dependent efficiency
     /// fuel converter (engine or fuel cell) thermal model type
+    #[api(skip_get, skip_set)]
     pub fc_model: FcModelTypes,
+
+    // battery
+    /// battery thermal mass [kJ/K]
+    pub ess_c_kj_k: f64,
+    /// effective (incl. any thermal management system) heat transfer coefficient from battery to ambient
+    pub ess_htc_to_amb: f64,
+    // battery controls
+    // need to flesh this out
 
     // cabin
     /// cabin model internal or external w.r.t. fastsim
+    #[api(skip_get, skip_set)]
     pub cabin_model: ComponentModelTypes,
     /// parameter for cabin thermal mass [kJ/K]
     pub cab_c_kj__k: f64,
@@ -102,10 +118,13 @@ pub struct VehicleThermal {
     /// parameter for heat transfer coeff [W / (m ** 2 * K)] from cabin to ambient during
     /// vehicle stop
     pub cab_h_to_amb_stop: f64,
+    // cabin controls
+    // need to flesh this out
 
     // exhaust port
     /// 'external' (effectively no model) is default
     /// exhaust port model type
+    #[api(skip_get, skip_set)]
     pub exhport_model: ComponentModelTypes,
     /// thermal conductance [W/K] for heat transfer to ambient
     pub exhport_ha_to_amb: f64,
@@ -115,6 +134,7 @@ pub struct VehicleThermal {
     pub exhport_c_kj__k: f64,
 
     // catalytic converter (catalyst)
+    #[api(skip_get, skip_set)]
     pub cat_model: ComponentModelTypes,
     /// diameter [m] of catalyst as sphere for thermal model
     pub cat_l: f64,
@@ -130,5 +150,6 @@ pub struct VehicleThermal {
 
     // model choices
     /// HVAC model type
+    #[api(skip_get, skip_set)]
     pub hvac_model: ComponentModelTypes,
 }

@@ -22,6 +22,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
 #[derive(Debug, Clone)]
 #[add_pyo3_api(
     #[new]
+    #[allow(clippy::too_many_arguments)]
     pub fn __new__(
         missed_trace_correction: bool, // if true, missed trace correction is active, default = false
         max_time_dilation: f64,
@@ -93,7 +94,6 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
         }
     }
 )]
-
 /// Struct containing time trace data
 pub struct RustSimDriveParams {
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
@@ -384,6 +384,12 @@ impl Default for RustSimDriveParams {
     pub fn len(&self) -> usize {
         self.cyc.time_s.len()
     }    
+
+    /// added to make clippy happy
+    /// not sure whether there is any benefit to this or not for our purposes
+    pub fn is_empty(&self) -> bool {
+        self.cyc.time_s.is_empty()
+    }
 )]
 pub struct RustSimDrive {
     pub hev_sim_count: usize,
