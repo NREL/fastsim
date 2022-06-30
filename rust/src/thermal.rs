@@ -101,6 +101,7 @@ pub struct VehicleThermal {
     /// effective (incl. any thermal management system) heat transfer coefficient from battery to ambient
     pub ess_htc_to_amb: f64,
     // battery controls
+    // TODO:
     // need to flesh this out
 
     // cabin
@@ -119,6 +120,7 @@ pub struct VehicleThermal {
     /// vehicle stop
     pub cab_htc_to_amb_stop: f64,
     // cabin controls
+    // TODO
     // need to flesh this out
 
     // exhaust port
