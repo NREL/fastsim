@@ -1,8 +1,8 @@
 //! Module for simulating thermal behavior of powertrains
 
 use crate::proc_macros::add_pyo3_api;
+use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
-
 
 /// Whether FC thermal modeling is handled by FASTSim
 pub enum FcModelTypes {
@@ -117,7 +117,7 @@ pub struct VehicleThermal {
     pub cab_r_to_amb: f64,
     /// parameter for heat transfer coeff [W / (m ** 2 * K)] from cabin to ambient during
     /// vehicle stop
-    pub cab_h_to_amb_stop: f64,
+    pub cab_htc_to_amb_stop: f64,
     // cabin controls
     // need to flesh this out
 
@@ -142,7 +142,7 @@ pub struct VehicleThermal {
     pub cat_c_kj__K: f64,
     /// parameter for heat transfer coeff [W / (m ** 2 * K)] from catalyst to ambient
     /// during vehicle stop
-    pub cat_h_to_amb_stop: f64,
+    pub cat_htc_to_amb_stop: f64,
     /// lightoff temperature to be used when fc_temp_eff_component == 'hybrid'
     pub cat_te_lightoff_deg_c: f64,
     /// cat engine efficiency coeff. to be used when fc_temp_eff_component == 'hybrid'
@@ -152,4 +152,49 @@ pub struct VehicleThermal {
     /// HVAC model type
     #[api(skip_get, skip_set)]
     pub hvac_model: ComponentModelTypes,
+
+    /// for pyo3 api
+    pub orphaned: bool,
+}
+
+impl Default for VehicleThermal {
+    fn default() -> Self {
+        VehicleThermal {
+            fc_c_kj__k: 150.0,
+            fc_l: 1.0,
+            fc_htc_to_amb_stop: 50.0,
+            fc_coeff_from_comb: 1e-4,
+            tstat_te_sto_deg_c: 85.0,
+            tstat_te_delta_deg_c: 5.0,
+            rad_eps: 5.0,
+            fc_model: FcModelTypes::Internal(
+                FcTempEffModel::Exponential {
+                    offset: 0.0,
+                    lag: 25.0,
+                    min: 0.2,
+                },
+                FcTempEffComponent::FuelConverter,
+            ),
+            ess_c_kj_k: 200.0,   // similar size to engine
+            ess_htc_to_amb: 5.0, // typically well insulated from ambient inside cabin
+            cabin_model: ComponentModelTypes::Internal,
+            cab_c_kj__k: 125.0,
+            cab_l_length: 2.0,
+            cab_l_width: 2.0,
+            cab_r_to_amb: 0.02,
+            cab_htc_to_amb_stop: 10.0,
+            exhport_model: ComponentModelTypes::External, // turned off by default
+            exhport_ha_to_amb: 5.0,
+            exhport_ha_int: 100.0,
+            exhport_c_kj__k: 10.0,
+            cat_model: ComponentModelTypes::External, // turned off by default
+            cat_l: 0.50,
+            cat_c_kj__K: 15.0,
+            cat_htc_to_amb_stop: 10.0,
+            cat_te_lightoff_deg_c: 400.0,
+            cat_fc_eta_coeff: 0.3,                     // revisit this
+            hvac_model: ComponentModelTypes::External, // turned off by default
+            orphaned: false,
+        }
+    }
 }
