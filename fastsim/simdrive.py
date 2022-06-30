@@ -1901,10 +1901,11 @@ class SimDrive(object):
             self.roadway_chg_kw_out_ach * self.cyc.dt_s).sum()
         self.ess_dischg_kj = - \
             (self.soc[-1] - self.soc[0]) * self.veh.ess_max_kwh * 3.6e3
+        dist_mi = self.dist_mi.sum()
         self.battery_kwh_per_mi = (
-            self.ess_dischg_kj / 3.6e3) / self.dist_mi.sum()
+            self.ess_dischg_kj / 3.6e3) / dist_mi if dist_mi > 0 else 0.0
         self.electric_kwh_per_mi = (
-            (self.roadway_chg_kj + self.ess_dischg_kj) / 3.6e3) / self.dist_mi.sum()
+            (self.roadway_chg_kj + self.ess_dischg_kj) / 3.6e3) / dist_mi if dist_mi > 0 else 0.0
         self.fuel_kj = (self.fs_kw_out_ach * self.cyc.dt_s).sum()
 
         if (self.fuel_kj + self.roadway_chg_kj) == 0:
@@ -1958,8 +1959,9 @@ class SimDrive(object):
             self.mps_ach[1:] ** 2 - self.mps_ach[:-1] ** 2) / 1_000
 
         self.trace_miss = False
+        dist_m = self.cyc0.dist_m.sum()
         self.trace_miss_dist_frac = abs(
-            self.dist_m.sum() - self.cyc0.dist_m.sum()) / self.cyc0.dist_m.sum()
+            self.dist_m.sum() - self.cyc0.dist_m.sum()) / dist_m if dist_m > 0 else 0.0
         self.trace_miss_time_frac = abs(
             self.cyc.time_s[-1] - self.cyc0.time_s[-1]) / self.cyc0.time_s[-1]
 
