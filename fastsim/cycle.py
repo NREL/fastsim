@@ -233,7 +233,7 @@ class Cycle(object):
             if idx_to_set >= num_samples:
                 break
             v = speed_for_constant_jerk(ni, v0, accel0_m__s2, jerk_m__s3, dt)
-            self.mps[idx_to_set] = v
+            self.mps[idx_to_set] = max(v, 0.0)
         return v
 
     def modify_with_braking_trajectory(self, brake_accel_m__s2, idx):
