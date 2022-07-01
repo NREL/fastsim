@@ -125,9 +125,6 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-pub fn return_false () -> bool {
-    false
-}
 
 #[pyclass]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -155,8 +152,9 @@ pub fn return_false () -> bool {
     }
 
     #[classmethod]
-    pub fn from_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
-        match Self::from_file(&pathstr) {
+    #[pyo3(name = "from_csv_file")]
+    pub fn from_csv_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
+        match Self::from_csv_file(&pathstr) {
             Ok(cyc) => Ok(cyc),
             Err(msg) => Err(PyFileNotFoundError::new_err(msg)),
         }
@@ -269,7 +267,7 @@ pub struct RustCycle {
     /// array of max possible charge rate from roadway
     pub road_type: Array1<f64>,
     pub name: String,
-    #[serde(skip,default="return_false")]
+    #[serde(skip)]
     pub orphaned: bool,
 }
 
@@ -444,7 +442,7 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_file(pathstr: &str) -> Result<Self, String> {
+    pub fn from_csv_file(pathstr: &str) -> Result<Self, String> {
         let pathbuf = PathBuf::from(&pathstr);
         if pathbuf.exists() {
             let mut time_s = Vec::<f64>::new();
@@ -474,48 +472,7 @@ impl RustCycle {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))   
     }
 
-    pub fn to_file(&self, filename: &str) -> Result<(),Box<dyn Error>> {
-        let file = PathBuf::from(filename);
-        let c = match file.extension().unwrap().to_str().unwrap() {
-            "json" => {serde_json::to_writer(&File::create(file)?, self)?},
-            "yaml" => {serde_yaml::to_writer(&File::create(file)?, self)?},
-            _ => {serde_json::to_writer(&File::create(file)?, self)?},
-        };
-        Ok(c)
-    }
-
-    fn from_file_parser(filename: &str) -> Result<Self, Box<dyn Error>> {
-        let mut pathbuf = PathBuf::from(filename);
-            if !pathbuf.exists() {
-                // if file doesn't exist, try to find it in the resources folder
-                let mut root =  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                    .parent()
-                    .unwrap()
-                    .to_path_buf();
-                root.push(CYCLE_RESOURCE_DEFAULT_FOLDER);
-
-                if [root.to_owned().canonicalize()?, pathbuf.clone()]
-                    .iter()
-                    .collect::<PathBuf>()
-                    .exists()
-                {
-                    pathbuf = [root.to_owned(), pathbuf].iter().collect::<PathBuf>();
-                }
-            }
-            let file =  File::open(&pathbuf)?;
-            let c = match pathbuf.extension().unwrap().to_str().unwrap() {
-                "yaml" => {serde_yaml::from_reader(file)?},
-                "json" => {serde_json::from_reader(file)?},
-                _ => {serde_json::from_reader(file)?},
-            };
-
-            Ok(c)
-    }
-
-    pub fn from_serde_file(filename: &str) -> Self {
-        let cyc = RustCycle::from_file_parser(filename).unwrap();
-        cyc
-    }
+    impl_serde!(self, RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
 }
 
 #[cfg(test)]
@@ -554,7 +511,7 @@ mod tests {
     fn test_loading_a_cycle_from_the_filesystem() {
         let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        match RustCycle::from_file(&pathstr) {
+        match RustCycle::from_csv_file(&pathstr) {
             Ok(cyc) => {
                 assert_eq!(cyc.name, String::from("udds"));
                 let num_entries = cyc.time_s.len();
