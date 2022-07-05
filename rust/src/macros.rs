@@ -13,30 +13,31 @@ macro_rules! impl_serde {
     
         fn from_file_parser(filename: &str) -> Result<$component, Box<dyn Error>> {
             let mut pathbuf = PathBuf::from(filename);
-                if !pathbuf.exists() {
-                    // if file doesn't exist, try to find it in the resources folder
-                    let mut root =  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .parent()
-                        .unwrap()
-                        .to_path_buf();
-                    root.push($default_folder);
-    
-                    if [root.to_owned().canonicalize()?, pathbuf.clone()]
-                        .iter()
-                        .collect::<PathBuf>()
-                        .exists()
-                    {
-                        pathbuf = [root.to_owned(), pathbuf].iter().collect::<PathBuf>();
-                    }
+            if !pathbuf.exists() {
+                // if file doesn't exist, try to find it in the resources folder
+                let mut root =  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap()
+                    .to_path_buf();
+                root.push($default_folder);
+
+                if [root.to_owned().canonicalize()?, pathbuf.clone()]
+                    .iter()
+                    .collect::<PathBuf>()
+                    .exists()
+                {
+                    pathbuf = [root.to_owned(), pathbuf].iter().collect::<PathBuf>();
                 }
-                let file =  File::open(&pathbuf)?;
-                let c = match pathbuf.extension().unwrap().to_str().unwrap() {
-                    "yaml" => {serde_yaml::from_reader(file)?},
-                    "json" => {serde_json::from_reader(file)?},
-                    _ => {serde_json::from_reader(file)?},
-                };
-                Ok(c)
             }
+            let file =  File::open(&pathbuf)?;
+            let c = match pathbuf.extension().unwrap().to_str().unwrap() {
+                "yaml" => {serde_yaml::from_reader(file)?},
+                "json" => {serde_json::from_reader(file)?},
+                _ => {serde_json::from_reader(file)?},
+            };
+            Ok(c)
+        }
+
         pub fn from_file(filename: &str) -> Self {
             let mut veh = Self::from_file_parser(filename).unwrap();
             veh.set_derived();
@@ -58,30 +59,31 @@ macro_rules! impl_serde {
     
         fn from_file_parser(filename: &str) -> Result<$component, Box<dyn Error>> {
             let mut pathbuf = PathBuf::from(filename);
-                if !pathbuf.exists() {
-                    // if file doesn't exist, try to find it in the resources folder
-                    let mut root =  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .parent()
-                        .unwrap()
-                        .to_path_buf();
-                    root.push($default_folder);
-    
-                    if [root.to_owned().canonicalize()?, pathbuf.clone()]
-                        .iter()
-                        .collect::<PathBuf>()
-                        .exists()
-                    {
-                        pathbuf = [root.to_owned(), pathbuf].iter().collect::<PathBuf>();
-                    }
+            if !pathbuf.exists() {
+                // if file doesn't exist, try to find it in the resources folder
+                let mut root =  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap()
+                    .to_path_buf();
+                root.push($default_folder);
+
+                if [root.to_owned().canonicalize()?, pathbuf.clone()]
+                    .iter()
+                    .collect::<PathBuf>()
+                    .exists()
+                {
+                    pathbuf = [root.to_owned(), pathbuf].iter().collect::<PathBuf>();
                 }
-                let file =  File::open(&pathbuf)?;
-                let c = match pathbuf.extension().unwrap().to_str().unwrap() {
-                    "yaml" => {serde_yaml::from_reader(file)?},
-                    "json" => {serde_json::from_reader(file)?},
-                    _ => {serde_json::from_reader(file)?},
-                };
-                Ok(c)
             }
+            let file =  File::open(&pathbuf)?;
+            let c = match pathbuf.extension().unwrap().to_str().unwrap() {
+                "yaml" => {serde_yaml::from_reader(file)?},
+                "json" => {serde_json::from_reader(file)?},
+                _ => {serde_json::from_reader(file)?},
+            };
+            Ok(c)
+        }
+
         pub fn from_file(filename: &str) -> Self {
             Self::from_file_parser(filename).unwrap()
         }
