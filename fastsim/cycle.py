@@ -210,7 +210,7 @@ class Cycle(object):
             distance_m + 1e-6)]
         if len(remaining_stops_m) > 0:
             return remaining_stops_m[0] - distance_m
-        return -1.0
+        return distances_of_stops_m[-1] - distance_m
 
     def modify_by_const_jerk_trajectory(self, idx, n, jerk_m__s3, accel0_m__s2):
         """
