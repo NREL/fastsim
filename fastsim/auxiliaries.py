@@ -5,7 +5,7 @@ from fastsim import parameters as params
 from scipy.optimize import minimize, curve_fit
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple
+from typing import Tuple, List
 
 from fastsim.utilities import get_rho_air
 
@@ -83,7 +83,7 @@ def abc_to_drag_coeffs(veh: Vehicle,
             (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) /
                 np.array(sd_coast.mps_ach))[:cutoff],
             (dyno_func_lb(sd_coast.mph_ach) * fsim.params.N_PER_LBF)[:cutoff],
-            cyc.time_s[:cutoff],
+            np.array(cyc.time_s)[:cutoff],
             normalize=False
         )
 
@@ -211,3 +211,8 @@ def drag_coeffs_to_abc(veh,
 
     return a_lbf, b_lbf__mph, c_lbf__mph2
 
+def set_nested_values(nested_struct, **kwargs):
+    nested_struct.reset_orphaned()
+    for key, value in kwargs.items():
+        setattr(nested_struct, key, value)
+    return nested_struct

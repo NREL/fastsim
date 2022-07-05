@@ -51,6 +51,10 @@ TEST_VARS = [
     "fs_kwh_out_ach",
 ]
 
+TEST_VARS = [
+    "mps_ach"
+]
+
 class TestRust(unittest.TestCase):
     def test_run_sim_drive_conv(self):
         if not RUST_AVAILABLE:
@@ -77,7 +81,6 @@ class TestRust(unittest.TestCase):
         """
         Function for testing for Rust/Python discrepancies, both in the vehicle database
         CSV as well as the individual model files. Uses test_vehicle_for_discrepancies as backend.
-        TODO: Does python -m unittest discover fail if this takes arguments?
         Arguments:
             veh_type: type of vehicle to test for discrepancies
                 can be "CONV", "HEV", "PHEV", "BEV", or "ALL"
@@ -119,13 +122,14 @@ class TestRust(unittest.TestCase):
     def test_vehicle_for_discrepancies(self, vnum=1, veh_filename=None, cyc_dict=None, cyc_name="udds"):
         """
         Test for finding discrepancies between Rust and Python for single vehicle.
-        TODO: Does python -m unittest discover fail if this takes arguments?
         Arguments:
             vnum: vehicle database number, optional, default option without any arguments
             veh_filename: vehicle filename from vehdb folder, optional
             cyc_dict: cycle dictionary for custom cycle, optional
             cyc_name: cycle name from cycle database, optional
-        """    
+        """
+        if not RUST_AVAILABLE:
+            raise Exception("Rust unavailable.")
         # Load cycle
         if cyc_dict is not None:
             cyc_python = cycle.Cycle.from_dict(cyc_dict)
@@ -323,3 +327,19 @@ class TestRust(unittest.TestCase):
                 (sd_mps_ach > sd_cyc0_mps).any(),
                 msg=f'Achieved speed is greater than requested speed for {vehid}'
             )
+    
+    def test_grade(self):
+        if not RUST_AVAILABLE:
+            raise Exception("Rust unavailable.")
+        cyc = cycle.Cycle.from_file("udds")
+        # Manually enter grade
+        amplitude = 0.05
+        period = 500  # seconds
+        cyc.grade = amplitude * np.sin((2*np.pi/period) * cyc.time_s)
+        cyc_dict = cyc.get_cyc_dict()
+        
+        self.test_vehicle_for_discrepancies(cyc_dict=cyc_dict)
+
+if __name__ == '__main__':
+    #TestRust().test_grade()
+    unittest.main()

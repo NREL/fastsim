@@ -42,32 +42,32 @@ class TestVehicle(unittest.TestCase):
         """Verify that some of the property variables are working as expected."""
         if USE_PYTHON:
             veh = vehicle.Vehicle.from_vehdb(10, verbose=False)
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
             veh.mc_peak_eff = 0.85
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
             veh.mc_peak_eff += 0.05
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-            veh.mc_full_eff_array *= 1.05
-            veh.mc_eff_array *= 1.05
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
+            veh.mc_full_eff_array = np.array(veh.mc_full_eff_array.tolist()) * 1.05
+            veh.mc_eff_array = np.array(veh.mc_eff_array.tolist()) * 1.05
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
         if RUST_AVAILABLE and USE_RUST:
             veh = vehicle.Vehicle.from_vehdb(10, verbose=False).to_rust()
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
             veh.mc_peak_eff = 0.85
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
             veh.mc_peak_eff += 0.05
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
-            veh.mc_full_eff_array = np.array(veh.mc_full_eff_array) * 1.05
-            veh.mc_eff_array = np.array(veh.mc_eff_array) * 1.05
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array))
-            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
+            veh.mc_full_eff_array = np.array(veh.mc_full_eff_array.tolist()) * 1.05
+            veh.mc_eff_array = np.array(veh.mc_eff_array.tolist()) * 1.05
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
+            self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
 
     def test_fc_efficiency_override(self):
         """Verify that we can scale FC"""
@@ -135,5 +135,4 @@ class TestVehicle(unittest.TestCase):
         self.assertFalse("fc_eff_array" in v1.__dict__)
 
 if __name__ == '__main__':
-    from fastsim import vehicle
-    veh = vehicle.Vehicle.from_vehdb(1)
+    unittest.main()

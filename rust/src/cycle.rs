@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use ndarray::{concatenate, s, Array, Array1, Axis};
 extern crate pyo3;
-use pyo3::exceptions::PyFileNotFoundError;
+use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 // use numpy::pyo3::Python;
@@ -14,8 +14,9 @@ use pyo3::types::PyType;
 // use numpy::{ToPyArray, PyArray};
 
 // local
-use super::params::*;
-use super::utils::*;
+use crate::params::*;
+use crate::proc_macros::add_pyo3_api;
+use crate::utils::*;
 
 #[pyfunction]
 /// Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
@@ -125,28 +126,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
 #[pyclass]
 #[derive(Debug, Clone)]
-/// Struct containing time trace data
-pub struct RustCycle {
-    /// array of time [s]
-    pub time_s: Array1<f64>,
-    /// array of speed [m/s]
-    pub mps: Array1<f64>,
-    /// array of grade [rise/run]
-    pub grade: Array1<f64>,
-    /// array of max possible charge rate from roadway
-    pub road_type: Array1<f64>,
-    #[pyo3(get, set)]
-    name: String,
-}
-
-/// RustCycle class for containing:
-/// -- time_s,
-/// -- mps (speed [m/s])
-/// -- grade [rise/run]
-/// -- road_type (this is legacy and will likely change to road charging capacity [kW])
-#[pymethods]
-#[allow(clippy::len_without_is_empty)]
-impl RustCycle {
+#[add_pyo3_api(
     #[new]
     pub fn __new__(
         time_s: Vec<f64>,
@@ -159,24 +139,25 @@ impl RustCycle {
         let mps = Array::from_vec(mps);
         let grade = Array::from_vec(grade);
         let road_type = Array::from_vec(road_type);
-        RustCycle {
+        Self {
             time_s,
             mps,
             grade,
             road_type,
             name,
+            orphaned: false,
         }
     }
 
     #[classmethod]
-    pub fn from_file_py(_cls: &PyType, pathstr: String) -> PyResult<RustCycle> {
+    pub fn from_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
         match Self::from_file(&pathstr) {
             Ok(cyc) => Ok(cyc),
             Err(msg) => Err(PyFileNotFoundError::new_err(msg)),
         }
     }
 
-    pub fn to_rust(&self) -> PyResult<RustCycle> {
+    pub fn to_rust(&self) -> PyResult<Self> {
         Ok(self.clone())
     }
 
@@ -191,81 +172,42 @@ impl RustCycle {
         Ok(dict)
     }
 
-    pub fn len(&self) -> usize {
-        self.time_s.len()
+    pub fn copy(&self) -> PyResult<Self> {
+        Ok(self.clone())
     }
 
-    pub fn copy(&self) -> PyResult<RustCycle> {
-        let time_s = self.time_s.clone();
-        let mps = self.mps.clone();
-        let grade = self.grade.clone();
-        let road_type = self.road_type.clone();
-        let name = self.name.clone();
-        Ok(RustCycle {
-            time_s,
-            mps,
-            grade,
-            road_type,
-            name,
-        })
-    }
-
-    pub fn modify_by_const_jerk_trajectory(
+    #[pyo3(name = "modify_by_const_jerk_trajectory")]
+    pub fn modify_by_const_jerk_trajectory_py(
         &mut self,
         idx: usize,
         n: usize,
         jerk_m_per_s3: f64,
         accel0_m_per_s2: f64,
     ) -> PyResult<f64> {
-        Ok(self.modify_by_const_jerk_trajectory_rust(idx, n, jerk_m_per_s3, accel0_m_per_s2))
+        Ok(self.modify_by_const_jerk_trajectory(idx, n, jerk_m_per_s3, accel0_m_per_s2))
     }
 
-    pub fn modify_with_braking_trajectory(
+    #[pyo3(name = "modify_with_braking_trajectory")]
+    pub fn modify_with_braking_trajectory_py(
         &mut self,
         brake_accel_m_per_s2: f64,
         idx: usize,
     ) -> PyResult<f64> {
-        Ok(self.modify_with_braking_trajectory_rust(brake_accel_m_per_s2, idx))
+        Ok(self.modify_with_braking_trajectory(brake_accel_m_per_s2, idx))
     }
 
-    pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> PyResult<f64> {
-        Ok(self.calc_distance_to_next_stop_from_rust(distance_m))
+    #[pyo3(name = "calc_distance_to_next_stop_from")]
+    pub fn calc_distance_to_next_stop_from_py(&self, distance_m: f64) -> PyResult<f64> {
+        Ok(self.calc_distance_to_next_stop_from(distance_m))
     }
 
-    pub fn average_grade_over_range(
+    #[pyo3(name = "average_grade_over_range")]
+    pub fn average_grade_over_range_py(
         &self,
         distance_start_m: f64,
         delta_distance_m: f64,
     ) -> PyResult<f64> {
-        Ok(self.average_grade_over_range_rust(distance_start_m, delta_distance_m))
-    }
-
-    #[getter]
-    pub fn get_mps(&self) -> PyResult<Vec<f64>> {
-        Ok((&self.mps).to_vec())
-    }
-    #[setter]
-    pub fn set_mps(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.mps = Array::from_vec(new_value);
-        Ok(())
-    }
-    #[getter]
-    pub fn get_grade(&self) -> PyResult<Vec<f64>> {
-        Ok((&self.grade).to_vec())
-    }
-    #[setter]
-    pub fn set_grade(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.grade = Array::from_vec(new_value);
-        Ok(())
-    }
-    #[getter]
-    pub fn get_road_type(&self) -> PyResult<Vec<f64>> {
-        Ok((&self.road_type).to_vec())
-    }
-    #[setter]
-    pub fn set_road_type(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.road_type = Array::from_vec(new_value);
-        Ok(())
+        Ok(self.average_grade_over_range(distance_start_m, delta_distance_m))
     }
 
     #[getter]
@@ -278,16 +220,6 @@ impl RustCycle {
         Ok(())
     }
     #[getter]
-    /// array of sim time stamps
-    pub fn get_time_s(&self) -> PyResult<Vec<f64>> {
-        Ok(self.time_s.to_vec())
-    }
-    #[setter]
-    pub fn set_time_s(&mut self, new_value: Vec<f64>) -> PyResult<()> {
-        self.time_s = Array::from_vec(new_value);
-        Ok(())
-    }
-    #[getter]
     /// array of time steps
     pub fn get_dt_s(&self) -> PyResult<Vec<f64>> {
         Ok(self.dt_s().to_vec())
@@ -295,12 +227,7 @@ impl RustCycle {
     #[getter]
     /// cycle length
     pub fn get_len(&self) -> PyResult<usize> {
-        Ok(self.time_s.len())
-    }
-    #[getter]
-    /// distance for each time-step in meters
-    pub fn get_dist_m(&self) -> PyResult<Vec<f64>> {
-        Ok(self.dist_m().to_vec())
+        Ok(self.len())
     }
     #[getter]
     /// the average speeds over each step in meters per second
@@ -313,9 +240,31 @@ impl RustCycle {
         Ok(self.dist_v2_m().to_vec())
     }
     #[getter]
+    /// distance for each time step based on final speed
+    pub fn get_dist_m(&self) -> PyResult<Vec<f64>> {
+        Ok(self.dist_m().to_vec())
+    }
+    #[getter]
     pub fn get_delta_elev_m(&self) -> PyResult<Vec<f64>> {
         Ok(self.delta_elev_m().to_vec())
     }
+)]
+/// RustCycle struct for containing:
+/// -- time_s,
+/// -- mps (speed [m/s])
+/// -- grade [rise/run]
+/// -- road_type (this is legacy and will likely change to road charging capacity [kW])
+pub struct RustCycle {
+    /// array of time [s]
+    pub time_s: Array1<f64>,
+    /// array of speed [m/s]
+    pub mps: Array1<f64>,
+    /// array of grade [rise/run]
+    pub grade: Array1<f64>,
+    /// array of max possible charge rate from roadway
+    pub road_type: Array1<f64>,
+    pub name: String,
+    pub orphaned: bool,
 }
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
@@ -331,13 +280,19 @@ impl RustCycle {
         let mps = Array::from_vec(mps);
         let grade = Array::from_vec(grade);
         let road_type = Array::from_vec(road_type);
-        RustCycle {
+        Self {
             time_s,
             mps,
             grade,
             road_type,
             name,
+            orphaned: false,
         }
+    }
+
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.time_s.len()
     }
 
     pub fn test_cyc() -> Self {
@@ -346,14 +301,14 @@ impl RustCycle {
         let grade = Array::zeros(10).to_vec();
         let road_type = Array::zeros(10).to_vec();
         let name = String::from("test");
-        RustCycle::new(time_s, speed_mps, grade, road_type, name)
+        Self::new(time_s, speed_mps, grade, road_type, name)
     }
 
     /// Returns the average grade over the given range of distances
     /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
-    pub fn average_grade_over_range_rust(
+    pub fn average_grade_over_range(
         &self,
         distance_start_m: f64,
         delta_distance_m: f64,
@@ -383,7 +338,7 @@ impl RustCycle {
     /// RETURN: -1 or non-negative-integer
     /// - if there are no more stops ahead, return -1
     /// - else returns the distance to the next stop from distance_m
-    pub fn calc_distance_to_next_stop_from_rust(&self, distance_m: f64) -> f64 {
+    pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> f64 {
         let tol: f64 = 1e-6;
         let not_found: f64 = -1.0;
         let mut d: f64 = 0.0;
@@ -407,7 +362,7 @@ impl RustCycle {
     /// - modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment
     /// - CAUTION: NOT ROBUST AGAINST VARIABLE DURATION TIME-STEPS
     /// RETURN: Number, final modified speed (m/s)
-    pub fn modify_by_const_jerk_trajectory_rust(
+    pub fn modify_by_const_jerk_trajectory(
         &mut self,
         i: usize,
         n: usize,
@@ -434,7 +389,7 @@ impl RustCycle {
     /// - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
     /// RETURN: non-negative-number, the final speed of the modified trajectory (m/s)
     /// - modifies the cycle in place for braking
-    pub fn modify_with_braking_trajectory_rust(
+    pub fn modify_with_braking_trajectory(
         &mut self,
         brake_accel_m_per_s2: f64,
         i: usize,
@@ -451,7 +406,7 @@ impl RustCycle {
         let n: usize = if n < 2 { 2 } else { n }; // need at least 2 steps
         let (jerk_m_per_s3, accel_m_per_s2) =
             calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt);
-        self.modify_by_const_jerk_trajectory_rust(i, n, jerk_m_per_s3, accel_m_per_s2)
+        self.modify_by_const_jerk_trajectory(i, n, jerk_m_per_s3, accel_m_per_s2)
     }
 
     /// rust-internal time steps
@@ -483,7 +438,7 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_file(pathstr: &str) -> Result<RustCycle, String> {
+    pub fn from_file(pathstr: &str) -> Result<Self, String> {
         let pathbuf = PathBuf::from(&pathstr);
         if pathbuf.exists() {
             let mut time_s = Vec::<f64>::new();
@@ -502,9 +457,9 @@ impl RustCycle {
                 grade.push(record[2].parse::<f64>().unwrap());
                 road_type.push(record[3].parse::<f64>().unwrap());
             }
-            Ok(RustCycle::new(time_s, speed_mps, grade, road_type, name))
+            Ok(Self::new(time_s, speed_mps, grade, road_type, name))
         } else {
-            Err(format!("path {pathstr} doesn't exist"))
+            Err(format!("path {} doesn't exist", pathstr))
         }
     }
 

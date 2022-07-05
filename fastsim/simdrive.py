@@ -74,6 +74,7 @@ class SimDriveParams(object):
         self.coast_brake_start_speed_m_per_s = 7.5
         # m/s, if > 0, initiates coast when vehicle hits this speed; mostly for testing
         self.coast_start_speed_m_per_s = 0.0
+        self.coast_verbose = False
         # time-ahead for speed changes to be considered to hit distance mark
         self.coast_time_horizon_for_adjustment_s = 20.0
         self.follow_allow = False
@@ -91,7 +92,10 @@ class SimDriveParams(object):
     def to_rust(self):
         """Change to the Rust version"""
         return copy_sim_params(self, 'rust')
-
+    
+    def reset_orphaned(self):
+        """Dummy method for flexibility between Rust/Python version interfaces"""
+        pass
 
 ref_sim_drive_params = SimDriveParams()
 
@@ -340,12 +344,6 @@ class SimDrive(object):
 
         self.hev_sim_count = 0
 
-        if init_soc is not None:
-            if init_soc > 1.0 or init_soc < 0.0:
-                print('Must enter a valid initial SOC between 0.0 and 1.0')
-                print('Running standard initial SOC controls')
-                init_soc = None
-
         if init_soc is None:
             if self.veh.veh_pt_type == CONV:  # Conventional
                 # If no EV / Hybrid components, no SOC considerations.
@@ -373,14 +371,14 @@ class SimDrive(object):
                     else:
                         ess_2fuel_kwh = 0.0
                     init_soc = min(1.0, max(0.0, self.soc[-1]))
-                    
+
             elif self.veh.veh_pt_type == PHEV or self.veh.veh_pt_type == BEV:  # PHEV and BEV
                 # If EV, initializing initial SOC to maximum SOC.
                 init_soc = self.veh.max_soc
 
         self.sim_drive_walk(init_soc, aux_in_kw_override)
     
-    def init_for_step(self, init_soc: Optional[float] = None, aux_in_kw_override: Optional[np.ndarray] = None):
+    def init_for_step(self, init_soc: float, aux_in_kw_override: Optional[np.ndarray] = None):
         """
         This is a specialty method which should be called prior to using
         sim_drive_step in a loop.
@@ -391,10 +389,8 @@ class SimDrive(object):
         aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
                 Default of None causes veh.aux_kw to be used. 
         """
-        if init_soc is None:
-            init_soc = self.veh.max_soc
-        if init_soc > self.veh.max_soc:
-            print("WARNING! Provided init_soc is greater than max_soc;"
+        if init_soc > self.veh.max_soc or init_soc < self.veh.min_soc:
+            print(f"WARNING! Provided init_soc is outside range of min_soc..max_soc: {self.veh.min_soc}..{self.veh.max_soc};"
                 + " setting init_soc to max_soc")
             init_soc = self.veh.max_soc
 
@@ -454,7 +450,7 @@ class SimDrive(object):
             print(
                 "To suppress this message, view the doc string for simdrive.SimDriveParams.")
             print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
-        
+
         self.set_post_scalars()
 
     def _set_speed_for_target_gap_using_idm(self, i):
@@ -2124,11 +2120,11 @@ def sim_drive_equal(a: SimDrive, b: SimDrive, verbose=False) -> bool:
                 if verbose:
                     print(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
-        elif 'to_list' in a_val.__dir__() + b_val.__dir__():
-            if 'to_list' in a_val.__dir__():
-                a_val = np.array(a_val.to_list())
-            if 'to_list' in b_val.__dir__():
-                b_val = np.array(b_val.to_list())
+        elif 'tolist' in a_val.__dir__() + b_val.__dir__():
+            if 'tolist' in a_val.__dir__():
+                a_val = np.array(a_val.tolist())
+            if 'tolist' in b_val.__dir__():
+                b_val = np.array(b_val.tolist())
             if not (a_val == b_val).all():
                 if verbose:
                     print(f"unequal at key {k}: {a_val} != {b_val}")
@@ -2212,14 +2208,14 @@ class SimDrivePost(object):
             # Assign values to output dict for positive and negative energy variable names
             search = prog.search(var)
             output[search[1] + '_kj' + search[2] +
-                   '_pos'] = np.trapz(tempvars[var + '_pos'], self.cyc.time_s)
+                   '_pos'] = np.trapz(np.array(tempvars[var + '_pos']), np.array(self.cyc.time_s))
             output[search[1] + '_kj' + search[2] +
-                   '_neg'] = np.trapz(tempvars[var + '_neg'], self.cyc.time_s)
+                   '_neg'] = np.trapz(np.array(tempvars[var + '_neg']), np.array(self.cyc.time_s))
 
-        output['dist_miles_final'] = sum(self.dist_mi)
-        if sum(self.fs_kwh_out_ach) > 0:
+        output['dist_miles_final'] = sum(np.array(self.dist_mi))
+        if sum(np.array(self.fs_kwh_out_ach)) > 0:
             output['mpgge'] = sum(
-                self.dist_mi) / sum(self.fs_kwh_out_ach) * self.props.kwh_per_gge
+                np.array(self.dist_mi)) / sum(np.array(self.fs_kwh_out_ach)) * self.props.kwh_per_gge
         else:
             output['mpgge'] = 0
 
@@ -2228,20 +2224,24 @@ class SimDrivePost(object):
     def set_battery_wear(self):
         """Battery wear calcs"""
 
-        self.add_kwh[1:] = np.array([
-            (self.ess_cur_kwh[i] - self.ess_cur_kwh[i-1]) + self.add_kwh[i-1]
+        add_kwh = self.add_kwh if type(self.add_kwh) is np.ndarray else np.array(self.add_kwh)
+        add_kwh[1:] = np.array([
+            (self.ess_cur_kwh[i] - self.ess_cur_kwh[i-1]) + add_kwh[i-1]
             if self.ess_cur_kwh[i] > self.ess_cur_kwh[i-1]
             else 0
             for i in range(1, len(self.ess_cur_kwh))])
+        self.add_kwh = add_kwh
 
+        dod_cycs = self.dod_cycs if type(self.dod_cycs) is np.ndarray else np.array(self.dod_cycs)
         if self.veh.ess_max_kwh == 0:
-            self.dod_cycs[1:] = np.array(
+            dod_cycs[1:] = np.array(
                 [0.0 for i in range(1, len(self.ess_cur_kwh))])
         else:
-            self.dod_cycs[1:] = np.array([
+            dod_cycs[1:] = np.array([
                 self.add_kwh[i-1] / self.veh.ess_max_kwh if self.add_kwh[i] == 0
                 else 0
                 for i in range(1, len(self.ess_cur_kwh))])
+        self.dod_cycs = dod_cycs
 
         self.ess_perc_dead = np.array([
             np.power(self.veh.ess_life_coef_a, 1.0 / self.veh.ess_life_coef_b) / np.power(self.dod_cycs[i],
@@ -2278,15 +2278,15 @@ def estimate_soc_corrected_fuel_kJ(sd: SimDrive) -> float:
     delta_soc = sd.soc[-1] - sd.soc[0]
     ess_eff = np.sqrt(sd.veh.ess_round_trip_eff)
     mc_chg_eff = f(np.array(sd.mc_mech_kw_out_ach) < 0.0,
-                   sd.mc_elec_kw_in_ach, sd.mc_mech_kw_out_ach, sd.veh.mc_peak_eff)
-    mc_dis_eff = f(np.array(sd.mc_mech_kw_out_ach) > 0.0,
-                   sd.mc_mech_kw_out_ach, sd.mc_elec_kw_in_ach, mc_chg_eff)
+                   np.array(sd.mc_elec_kw_in_ach), np.array(sd.mc_mech_kw_out_ach), sd.veh.mc_peak_eff)
+    mc_dis_eff = f(np.array(sd.mc_mech_kw_out_ach)> 0.0,
+                   np.array(sd.mc_mech_kw_out_ach), np.array(sd.mc_elec_kw_in_ach), mc_chg_eff)
     ess_traction_frac = f(np.array(sd.mc_elec_kw_in_ach)
-                          > 0.0, sd.mc_elec_kw_in_ach, sd.ess_kw_out_ach, 1.0)
+                          > 0.0, np.array(sd.mc_elec_kw_in_ach), np.array(sd.ess_kw_out_ach), 1.0)
     fc_eff = f(
         np.array(sd.trans_kw_in_ach) > 0.0,
-        sd.fc_kw_out_ach,
-        sd.fc_kw_in_ach,
+        np.array(sd.fc_kw_out_ach),
+        np.array(sd.fc_kw_in_ach),
         np.array(sd.fc_kw_out_ach).sum() / np.array(sd.fc_kw_in_ach).sum()
     )
     if delta_soc >= 0.0:
