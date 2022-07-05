@@ -1,13 +1,13 @@
 /// module containing parameters that are used in fastsim
 extern crate pyo3;
+use crate::proc_macros::add_pyo3_api;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use serde::{Serialize, Deserialize};
-use crate::proc_macros::add_pyo3_api;
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
-use std::error::Error;
 
 /// Unit conversions
 pub const MPH_PER_MPS: f64 = 2.2369;

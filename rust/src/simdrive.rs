@@ -1,7 +1,7 @@
 extern crate ndarray;
 use ndarray::Array1;
 extern crate pyo3;
-use pyo3::exceptions::{PyAttributeError, PyRuntimeError, PyIOError};
+use pyo3::exceptions::{PyAttributeError, PyRuntimeError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 

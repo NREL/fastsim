@@ -109,14 +109,15 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     });
 
-    // impl_block.extend::<TokenStream2>(quote! {
-    //     #[pyo3(name = "to_file")]
-    //     pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
-    //         self.to_file(filename).map_err()
-    //     }
-    // });
+    impl_block.extend::<TokenStream2>(quote! {
+        #[pyo3(name = "to_file")]
+        pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
+            self.to_file(filename).unwrap();
+            Ok(())
+        }
+    });
 
-   impl_block.extend::<TokenStream2>(quote! {
+    impl_block.extend::<TokenStream2>(quote! {
          #[classmethod]
          #[pyo3(name = "from_file")]
          pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
