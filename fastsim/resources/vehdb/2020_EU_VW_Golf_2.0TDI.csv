@@ -1,5 +1,5 @@
 ,Param Name,Param Value,Param Source / Comments
-Category,Scenario name,2020 VW Golf 1.5TSI ,L4284 W1789 H1456 Wheelbase2636 length:wheelbase = 1.63
+Category,Scenario name,2020 VW Golf 2.0TDI,L4284 W1789 H1456 Wheelbase2636 length:wheelbase = 1.63
 Vehicle,vehPtType,Conv,
 ,dragCoef,0.275,2019 https://www.carfolio.com/volkswagen-golf-2.0-tdi-618530
 ,frontalAreaM2,2.21,"Use 2019 MY data, https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618"

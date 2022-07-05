@@ -46,7 +46,38 @@ class TestVehicle(unittest.TestCase):
         self.assertAlmostEqual(veh.fcPeakEff, 0.9, 3)
         with self.assertRaises(AssertionError):
             vehicle.Vehicle('fail_overrides')
+    
+    def test_mapping(self):
+        skip_keys = ["props", "Selection"]
+        vnums = [27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
+        filenames = [
+            "2010_Mazda_3_i-Stop.csv",
+            "2012_Ford_Focus.csv",
+            "2012_Ford_Fusion.csv",
+            "2017_Toyota_Highlander_3.5_L.csv",
+            "Class_4_Box_Truck.csv",
+            "2020_EU_VW_Golf_1.5TSI.csv",
+            "2020_EU_VW_Golf_2.0TDI.csv",
+            "2022_Renault_Zoe_ZE50_R135.csv",
+            "2022_TOYOTA_Yaris_Hybrid_Mid.csv",
+            "2016_TOYOTA_Prius_Two.csv",
+        ]
+        db_vehicles = [vehicle.Vehicle(vnum, verbose=False) for vnum in vnums]
+        csv_vehicles = [vehicle.Vehicle(filename, verbose=False) for filename in filenames]
+        for db_veh, csv_veh in zip(db_vehicles, csv_vehicles):
+            compare_attrs = db_veh.__dict__
+            for skip_key in skip_keys:
+                compare_attrs.pop(skip_key)
+            for key, db_value in compare_attrs.items():
+                csv_value = csv_veh.__dict__[key]
+                if isinstance(db_value, (list, np.ndarray)):
+                    self.assertListEqual(list(db_value), list(csv_value), f"Key '{key}' not equal")
+                else:
+                    if not isinstance(db_value, str):
+                        if np.isnan(db_value) and np.isnan(csv_value):
+                            continue
+                    self.assertEqual(db_value, csv_value, f"Key '{key}' not equal")
+
 
 if __name__ == '__main__':
-    from fastsim import vehicle 
-    veh = vehicle.Vehicle(1).get_numba_veh()
+    unittest.main()
