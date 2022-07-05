@@ -1,8 +1,7 @@
 extern crate ndarray;
 use ndarray::Array1;
 extern crate pyo3;
-use pyo3::exceptions;
-use pyo3::exceptions::PyAttributeError;
+use pyo3::exceptions::{PyAttributeError, PyRuntimeError, PyIOError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 
@@ -21,10 +20,7 @@ pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
-    match res {
-        Ok(()) => Ok(()),
-        Err(msg) => Err(exceptions::PyRuntimeError::new_err(msg)),
-    }
+    res.map_err(PyRuntimeError::new_err)
 }
 
 #[pyclass]
