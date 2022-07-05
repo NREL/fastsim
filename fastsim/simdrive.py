@@ -322,7 +322,7 @@ class SimDrive(object):
         self.cur_max_roadway_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
         self.trace_miss_iters = np.zeros(self.cyc.len, dtype=np.float64)
         self.newton_iters = np.zeros(self.cyc.len, dtype=np.float64)
-        self.coast_delay_index = 0
+        self.coast_delay_index = np.zeros(self.cyc.len, dtype=np.int32)
 
     @property
     def gap_to_lead_vehicle_m(self):
@@ -452,6 +452,46 @@ class SimDrive(object):
             print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
 
         self.set_post_scalars()
+    
+    def _next_speed_by_idm(self, i, a_m_per_s2, b_m_per_s2, dt_headway_s, s0_m, v_desired_m_per_s, delta=4.0):
+        """
+        Calculate the next speed by the Intelligent Driver Model
+        - i: int, the index
+        - a_m_per_s2: number, max acceleration (m/s2)
+        - b_m_per_s2: number, max deceleration (m/s2)
+        - dt_headway_s: number, the headway between us and the lead vehicle in seconds
+        - s0_m: number, the initial gap between us and the lead vehicle in meters
+        - v_desired_m_per_s: number, the desired speed in (m/s)
+        - delta: number, a shape parameter; typical value is 4.0
+        RETURN: number, the next speed (m/s)
+
+        REFERENCE:
+        Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
+            Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
+            DOI: https://doi.org/10.1007/978-3-642-32460-4.
+        """
+        if (v_desired_m_per_s <= 0.0):
+            return v_desired_m_per_s
+        a_m_per_s2 = abs(a_m_per_s2)  # acceleration (m/s2)
+        b_m_per_s2 = abs(b_m_per_s2)  # deceleration (m/s2)
+        dt_headway_s = 0.0 if dt_headway_s < 0.0 else dt_headway_s
+        # we assume vehicle's start out "minimum gap" apart
+        s0_m = 0.0 if s0_m < 0.0 else s0_m
+        # DERIVED VALUES
+        sqrt_ab = (a_m_per_s2 * b_m_per_s2)**0.5
+        v0_m__s = self.mps_ach[i-1]
+        v0_lead_m_per_s = self.cyc0.mps[i-1]
+        dv0_m_per_s = v0_m__s - v0_lead_m_per_s
+        d0_lead_m = self.cyc0.dist_v2_m[:i].sum() + s0_m
+        d0_m = self.cyc.dist_v2_m[:i].sum()
+        s_m = max(d0_lead_m - d0_m, 0.01)
+        # IDM EQUATIONS
+        s_target_m = s0_m + \
+            max(0.0, (v0_m__s * dt_headway_s) +
+                ((v0_m__s * dv0_m_per_s)/(2.0 * sqrt_ab)))
+        accel_target_m_per_s2 = a_m_per_s2 * \
+            (1.0 - ((v0_m__s / v_desired_m_per_s) ** delta) - ((s_target_m / s_m)**2))
+        return max(v0_m__s + (accel_target_m_per_s2 * self.cyc.dt_s[i]), 0.0)
 
     def _set_speed_for_target_gap_using_idm(self, i):
         """
@@ -464,43 +504,25 @@ class SimDrive(object):
         parameters:
             - v_desired: the desired speed (m/s)
             - delta: number, typical value is 4.0
-            - a:
-            - b:
+            - a: max acceleration, (m/s2)
+            - b: max deceleration, (m/s2)
         s = d_lead - d
         dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
         s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
-        REFERENCE:
-        Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
-            Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
-            DOI: https://doi.org/10.1007/978-3-642-32460-4.
         """
-        # PARAMETERS
-        delta = self.sim_params.idm_delta
-        a_m__s2 = abs(self.sim_params.idm_accel_m_per_s2)  # acceleration (m/s2)
-        b_m__s2 = abs(self.sim_params.idm_decel_m_per_s2)  # deceleration (m/s2)
-        dt_headway_s = self.sim_params.idm_dt_headway_s
-        # we assume vehicle's start out "minimum gap" apart
-        s0_m = self.sim_params.idm_minimum_gap_m
         if self.sim_params.idm_v_desired_m_per_s > 0:
-            v_desired_m__s = self.sim_params.idm_v_desired_m_per_s
+            v_desired_m_per_s = self.sim_params.idm_v_desired_m_per_s
         else:
-            v_desired_m__s = self.cyc0.mps.max()
-        # DERIVED VALUES
-        sqrt_ab = (a_m__s2 * b_m__s2)**0.5
-        v0_m__s = self.mps_ach[i-1]
-        v0_lead_m__s = self.cyc0.mps[i-1]
-        dv0_m__s = v0_m__s - v0_lead_m__s
-        d0_lead_m = self.cyc0.dist_v2_m[:i].sum() + s0_m
-        d0_m = self.cyc.dist_v2_m[:i].sum()
-        s_m = max(d0_lead_m - d0_m, 0.01)
-        # IDM EQUATIONS
-        s_target_m = s0_m + \
-            max(0.0, (v0_m__s * dt_headway_s) +
-                ((v0_m__s * dv0_m__s)/(2.0 * sqrt_ab)))
-        accel_target_m__s2 = a_m__s2 * \
-            (1.0 - ((v0_m__s / v_desired_m__s) ** delta) - ((s_target_m / s_m)**2))
-        self.cyc.mps[i] = max(
-            v0_m__s + (accel_target_m__s2 * self.cyc.dt_s[i]), 0.0)
+            v_desired_m_per_s = self.cyc0.mps.max()
+        self.cyc.mps[i] = self._next_speed_by_idm(
+            i,
+            a_m_per_s2=self.sim_params.idm_accel_m_per_s2,
+            b_m_per_s2=self.sim_params.idm_decel_m_per_s2,
+            dt_headway_s=self.sim_params.idm_dt_headway_s,
+            s0_m=self.sim_params.idm_minimum_gap_m,
+            v_desired_m_per_s=v_desired_m_per_s,
+            delta=self.sim_params.idm_delta,
+        )
 
     def _set_speed_for_target_gap(self, i):
         """
@@ -521,10 +543,6 @@ class SimDrive(object):
             self._set_speed_for_target_gap(self.i)
         if self.sim_params.coast_allow:
             self._set_coast_speed(self.i)
-            max_next_speed_m__s = self._max_next_speed_for_noncollision(self.i)
-            if not self.sim_params.follow_allow:
-                if self.cyc.mps[self.i] > (max_next_speed_m__s + 0.001):
-                    self.cyc.mps[self.i] = max_next_speed_m__s
         self.solve_step(self.i)
         if self.sim_params.missed_trace_correction and (self.cyc0.dist_m[:self.i].sum() > 0):
             self.set_time_dilation(self.i)
@@ -1560,6 +1578,81 @@ class SimDrive(object):
             + (0.5 * rho_CDFA * (1.0/M) * v)
         )
 
+    def _generate_coast_trajectory(self, i, modify_cycle=False):
+        """
+        RETURN: 
+        """
+        NOT_FOUND = -1.0
+        v0 = self.mps_ach[i-1]
+        v_brake = self.sim_params.coast_brake_start_speed_m_per_s
+        a_brake = self.sim_params.coast_brake_accel_m_per_s2
+        assert a_brake <= 0
+        ds = self.cyc0.dist_v2_m.cumsum()
+        gs = self.cyc0.grade
+        d0 = self.cyc.dist_v2_m[:i].sum()
+        ds_mask = ds >= d0
+        if sum(ds_mask) == 0:
+            return 0
+        dt_s = self.cyc0.dt_s[i]
+        distances_m = ds[ds_mask] - d0
+        grade_by_distance = gs[ds_mask]
+        # distance traveled while stopping via friction-braking (i.e., distance to brake)
+        dtb = -0.5 * v_brake * v_brake / a_brake
+        max_items = len(self.cyc.time_s)
+        if v0 <= v_brake:
+            if modify_cycle:
+                _, n = self.cyc.modify_with_braking_trajectory(a_brake, i)
+                self.impose_coast[i:] = False
+                for ni in range(n):
+                    if (i + ni) < max_items:
+                        self.impose_coast[i + ni] = True
+            return -0.5 * v0 * v0 / a_brake
+        d = 0.0
+        d_max = distances_m[-1] - dtb
+        unique_grades = np.unique(grade_by_distance)
+        unique_grade = unique_grades[0] if len(unique_grades) == 1 else None
+        MAX_ITER = 2000
+        ITERS_PER_STEP = 2
+        new_speeds_m_per_s = []
+        v = v0
+        iter = 0
+        while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER:
+            gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
+                d0, d)
+            k = self._calc_dvdd(v, gr)
+            v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
+            vavg = 0.5 * (v + v_next)
+            for _ in range(ITERS_PER_STEP):
+                k = self._calc_dvdd(vavg, gr)
+                v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
+                vavg = 0.5 * (v + v_next)
+            if k >= 0.0 and unique_grade is not None:
+                # there is no solution for coastdown -- speed will never decrease
+                return NOT_FOUND
+            stop = v_next <= v_brake
+            if stop:
+                v_next = v_brake
+            vavg = 0.5 * (v + v_next)
+            dd = vavg * dt_s
+            d += dd
+            new_speeds_m_per_s.append(v_next)
+            v = v_next
+            iter += 1
+            if stop:
+                break
+        if iter < MAX_ITER:
+            dtb = -0.5 * v * v / a_brake
+            if modify_cycle:
+                for idx, new_speed in enumerate(new_speeds_m_per_s):
+                    self.cyc.mps[min(i+idx, len(self.mps_ach) - 1)] = new_speed
+                _, n = self.cyc.modify_with_braking_trajectory(a_brake, i+len(new_speeds_m_per_s))
+                self.impose_coast[i:] = False
+                for idx in range(len(new_speeds_m_per_s) + n):
+                    if (i+idx) < max_items:
+                        self.impose_coast[i+idx] = True
+            return d + dtb
+        return NOT_FOUND
+
     def _calc_distance_to_stop_coast_v2(self, i):
         """
         Calculate the distance to stop via coasting in meters.
@@ -1572,7 +1665,6 @@ class SimDrive(object):
             would freely coast if unobstructed. Accounts for grade between
             the current point and end-point
         """
-        TOL = 1e-6
         NOT_FOUND = -1.0
         v0 = self.cyc.mps[i-1]
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
@@ -1581,21 +1673,17 @@ class SimDrive(object):
         gs = self.cyc0.grade
         d0 = self.cyc.dist_v2_m[:i].sum()
         ds_mask = ds >= d0
-        dt_s = self.cyc0.dt_s[i]
-        distances_m = ds[ds_mask] - d0
         grade_by_distance = gs[ds_mask]
         veh_mass_kg = self.veh.veh_kg
         air_density_kg__m3 = self.props.air_density_kg_per_m3
         CDFA_m2 = self.veh.drag_coef * self.veh.frontal_area_m2
         rrc = self.veh.wheel_rr_coef
         gravity_m__s2 = self.props.a_grav_mps2
-        v = v0
         # distance traveled while stopping via friction-braking (i.e., distance to brake)
         dtb = -0.5 * v_brake * v_brake / a_brake
         if v0 <= v_brake:
             return -0.5 * v0 * v0 / a_brake
         d = 0.0
-        d_max = distances_m[-1]
         unique_grades = np.unique(grade_by_distance)
         unique_grade = unique_grades[0] if len(unique_grades) == 1 else None
         if unique_grade is not None:
@@ -1615,35 +1703,7 @@ class SimDrive(object):
                 d = (1.0 / (2.0 * c2)) * (np.log(a1) - np.log(b1))
             if d != NOT_FOUND:
                 return d + dtb
-        i = 0
-        MAX_ITER = 2000
-        ITERS_PER_STEP = 2
-        while v > v_brake and v >= 0.0 and d <= d_max and i < MAX_ITER:
-            gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
-                d0, d)
-            k = self._calc_dvdd(v, gr)
-            v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
-            vavg = 0.5 * (v + v_next)
-            for i in range(ITERS_PER_STEP):
-                k = self._calc_dvdd(vavg, gr)
-                v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
-                vavg = 0.5 * (v + v_next)
-            if k >= 0.0 and unique_grade is not None:
-                # there is no solution for coastdown -- speed will never decrease
-                return NOT_FOUND
-            stop = v_next <= v_brake
-            if stop:
-                v_next = v_brake
-            vavg = 0.5 * (v + v_next)
-            dd = vavg * dt_s
-            d += dd
-            v = v_next
-            i += 1
-            if stop:
-                break
-        if np.abs(v - v_brake) < TOL:
-            return d + dtb
-        return NOT_FOUND
+        return self._generate_coast_trajectory(i, False)
 
     def _should_impose_coast(self, i):
         """
@@ -1653,9 +1713,12 @@ class SimDrive(object):
         Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
         - if distance to coast from start of step is <= distance to next stop
         - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
+        - ALSO, vehicle must have been at or above the coast brake start speed at beginning of step
         """
         if self.sim_params.coast_start_speed_m_per_s > 0.0:
             return self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s
+        if self.mps_ach[i-1] < self.sim_params.coast_brake_start_speed_m_per_s:
+            return False
         # distance to stop by coasting from start of step (i-1)
         dtsc0 = self._calc_distance_to_stop_coast_v2(i)
         if dtsc0 < 0.0:
@@ -1668,7 +1731,8 @@ class SimDrive(object):
     def _calc_next_rendezvous_trajectory(self, i, min_accel_m__s2, max_accel_m__s2):
         """
         Calculate next rendezvous trajectory.
-        - i: non-negative integer, the index into cyc for the start-of-step
+        - i: non-negative integer, the index into cyc for the end of first step
+            (i.e., the step that may be modified; should be i)
         - min_accel_m__s2: number, the minimum acceleration permitted (m/s2)
         - max_accel_m__s2: number, the maximum acceleration permitted (m/s2)
         RETURN: (Tuple
@@ -1682,16 +1746,21 @@ class SimDrive(object):
         """
         # v0 is where n=0, i.e., idx-1
         v0 = self.cyc.mps[i-1]
-        brake_start_speed_m__s = self.sim_params.coast_brake_start_speed_m_per_s
-        brake_accel_m__s2 = self.sim_params.coast_brake_accel_m_per_s2
-        time_horizon_s = self.sim_params.coast_time_horizon_for_adjustment_s
+        brake_start_speed_m_per_s = self.sim_params.coast_brake_start_speed_m_per_s
+        brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2
+        time_horizon_s = max(self.sim_params.coast_time_horizon_for_adjustment_s, 1.0)
         # distance_horizon_m = 1000.0
         not_found_n = 0
-        not_found_jerk_m__s3 = 0.0
-        not_found_accel_m__s2 = 0.0
-        not_found = (False, not_found_n, not_found_jerk_m__s3,
-                     not_found_accel_m__s2)
-        if v0 < (brake_start_speed_m__s + 1e-6):
+        not_found_jerk_m_per_s3 = 0.0
+        not_found_accel_m_per_s2 = 0.0
+        not_found = (False, not_found_n, not_found_jerk_m_per_s3,
+                     not_found_accel_m_per_s2)
+        if v0 < (brake_start_speed_m_per_s + 1e-6):
+            print("WARNING! Exiting as we don't process braking")
+            print(f"... i = {i}")
+            print(f"... v0 = {v0}")
+            print(f"... self.mps_ach[i-1] = {self.mps_ach[i-1]}")
+            print(f"... brake_start_speed_m_per_s = {brake_start_speed_m_per_s}")
             # don't process braking
             return not_found
         if min_accel_m__s2 > max_accel_m__s2:
@@ -1701,97 +1770,171 @@ class SimDrive(object):
         # a_proposed = (v1 - v0) / dt
         # distance to stop from start of time-step
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
-        if dts0 < 1e-6:
+        if dts0 < 0.0:
             # no stop to coast towards or we're there...
+            print("WARNING! Exiting as there is no stop to coast towards")
+            print(f"... i = {i}")
+            print(f"... v0 = {v0}")
+            print(f"... self.mps_ach[i-1] = {self.mps_ach[i-1]}")
+            print(f"... brake_start_speed_m_per_s = {brake_start_speed_m_per_s}")
+            print(f"... d0 = {d0}")
+            print(f"... dts0 = {dts0}")
             return not_found
         v1 = self.cyc.mps[i]
         dt = self.cyc.dt_s[i]
         # distance to brake from the brake start speed (m/s)
-        dtb = -0.5 * brake_start_speed_m__s * brake_start_speed_m__s / brake_accel_m__s2
+        dtb = -0.5 * brake_start_speed_m_per_s * brake_start_speed_m_per_s / brake_accel_m_per_s2
         # distance to brake initiation from start of time-step (m)
         dtbi0 = dts0 - dtb
+        if dtbi0 < 0.0:
+            return not_found
         # Now, check rendezvous trajectories
-        if time_horizon_s > 0.0:
-            step_idx = i
-            dt_plan = 0.0
-            r_best_found = False
-            r_best_n = 0
-            r_best_jerk_m__s3 = 0.0
-            r_best_accel_m__s2 = 0.0
-            r_best_accel_spread_m__s2 = 0.0
-            while dt_plan <= time_horizon_s and step_idx < num_samples:
-                dt_plan += self.cyc0.dt_s[step_idx]
-                step_ahead = step_idx - (i - 1)
-                if step_ahead == 1:
-                    # for brake init rendezvous
-                    accel = (brake_start_speed_m__s - v0) / dt
-                    v1 = max(0.0, v0 + accel * dt)
-                    dd_proposed = ((v0 + v1) / 2.0) * dt
-                    if np.abs(v1 - brake_start_speed_m__s) < 1e-6 and np.abs(dtbi0 - dd_proposed) < 1e-6:
+        step_idx = i
+        dt_plan = 0.0
+        r_best_found = False
+        r_best_n = 0
+        r_best_jerk_m__s3 = 0.0
+        r_best_accel_m__s2 = 0.0
+        r_best_accel_spread_m__s2 = 0.0
+        while dt_plan <= time_horizon_s and step_idx < num_samples:
+            dt_plan += self.cyc0.dt_s[step_idx]
+            step_ahead = step_idx - (i - 1)
+            if step_ahead == 1:
+                # for brake init rendezvous
+                accel = (brake_start_speed_m_per_s - v0) / dt
+                v1 = max(0.0, v0 + accel * dt)
+                dd_proposed = ((v0 + v1) / 2.0) * dt
+                if np.abs(v1 - brake_start_speed_m_per_s) < 1e-6 and np.abs(dtbi0 - dd_proposed) < 1e-6:
+                    r_best_found = True
+                    r_best_n = 1
+                    r_best_accel_m__s2 = accel
+                    r_best_jerk_m__s3 = 0.0
+                    r_best_accel_spread_m__s2 = 0.0
+                    break
+            else:
+                # rendezvous trajectory for brake-start -- assumes fixed time-steps
+                r_bi_jerk_m__s3, r_bi_accel_m__s2 = cycle.calc_constant_jerk_trajectory(
+                    step_ahead, 0.0, v0, dtbi0, brake_start_speed_m_per_s, dt)
+                if r_bi_accel_m__s2 < max_accel_m__s2 and r_bi_accel_m__s2 > min_accel_m__s2 and r_bi_jerk_m__s3 >= 0.0:
+                    as_bi = np.array([
+                        cycle.accel_for_constant_jerk(
+                            n, r_bi_accel_m__s2, r_bi_jerk_m__s3, dt)
+                        for n in range(step_ahead)
+                    ])
+                    accel_spread = np.abs(as_bi.max() - as_bi.min())
+                    flag = (
+                        (as_bi.max() < (max_accel_m__s2 + 1e-6)
+                            and as_bi.min() > (min_accel_m__s2 - 1e-6))
+                        and
+                        (not r_best_found or (
+                            accel_spread < r_best_accel_spread_m__s2))
+                    )
+                    if flag:
                         r_best_found = True
-                        r_best_n = 1
-                        r_best_accel_m__s2 = accel
-                        r_best_jerk_m__s3 = 0.0
-                        r_best_accel_spread_m__s2 = 0.0
-                        break
-                else:
-                    if dtbi0 > 1e-6:
-                        # rendezvous trajectory for brake-start -- assumes fixed time-steps
-                        r_bi_jerk_m__s3, r_bi_accel_m__s2 = cycle.calc_constant_jerk_trajectory(
-                            step_ahead, 0.0, v0, dtbi0, brake_start_speed_m__s, dt)
-                        if r_bi_accel_m__s2 < max_accel_m__s2 and r_bi_accel_m__s2 > min_accel_m__s2 and r_bi_jerk_m__s3 >= 0.0:
-                            as_bi = np.array([
-                                cycle.accel_for_constant_jerk(
-                                    n, r_bi_accel_m__s2, r_bi_jerk_m__s3, dt)
-                                for n in range(step_ahead)
-                            ])
-                            accel_spread = np.abs(as_bi.max() - as_bi.min())
-                            flag = (
-                                (as_bi.max() < (max_accel_m__s2 + 1e-6)
-                                 and as_bi.min() > (min_accel_m__s2 - 1e-6))
-                                and
-                                (not r_best_found or (
-                                    accel_spread < r_best_accel_spread_m__s2))
-                            )
-                            if flag:
-                                r_best_found = True
-                                r_best_n = step_ahead
-                                r_best_accel_m__s2 = r_bi_accel_m__s2
-                                r_best_jerk_m__s3 = r_bi_jerk_m__s3
-                                r_best_accel_spread_m__s2 = accel_spread
-                step_idx += 1
-            if r_best_found:
-                return (r_best_found, r_best_n, r_best_jerk_m__s3, r_best_accel_m__s2)
+                        r_best_n = step_ahead
+                        r_best_accel_m__s2 = r_bi_accel_m__s2
+                        r_best_jerk_m__s3 = r_bi_jerk_m__s3
+                        r_best_accel_spread_m__s2 = accel_spread
+            step_idx += 1
+        if r_best_found:
+            return (r_best_found, r_best_n, r_best_jerk_m__s3, r_best_accel_m__s2)
         return not_found
 
-    def _max_next_speed_for_noncollision(self, i):
+    def _max_next_speed_for_noncollision(self, i, desired_speed_m_per_s):
         """
         """
-        # distances of lead vehicle (m)
-        ds_lv = self.cyc0.dist_v2_m.cumsum()
-        # conditions at start of step
-        v0 = self.cyc.mps[i-1]
+        TOL_dist_m = 0.2 # distance tolerance for being "joined" to the shadow/lead-vehicle trace
         d0 = self.cyc.dist_v2_m[:i].sum()
-        if (ds_lv[i-1] - d0) <= 0.01:
-            return self.sim_params.coast_max_speed_m_per_s
-        if (i + 1) < len(self.cyc0.time_s) and (ds_lv[i+1] - d0) > 0:
-            (_, a0) = cycle.calc_constant_jerk_trajectory(
-                n=2,
-                D0=0.0,
-                v0=v0,
-                Dr=ds_lv[i+1] - d0,
-                vr=self.cyc0.mps[i+1],
-                dt=0.5 * (self.cyc0.time_s[i+1] - self.cyc0.time_s[i-1])
-            )
-            two_step_max_next_speed_m_per_s = max(0.0, v0 + a0 * self.cyc0.dt_s[i])
-        else:
-            two_step_max_next_speed_m_per_s = self.sim_params.coast_max_speed_m_per_s
-        max_avg_speed_m__s = (ds_lv[i] - d0) / self.cyc0.dt_s[i]
-        one_step_max_next_speed_m_per_s = max(0.0, 2.0 * max_avg_speed_m__s - v0)
-        max_next_speed_m_per_s = min(one_step_max_next_speed_m_per_s, two_step_max_next_speed_m_per_s)
-        if max_next_speed_m_per_s < 0.0:
-            max_next_speed_m_per_s = 0.0
-        return max_next_speed_m_per_s
+        d0_lv = self.cyc0.dist_v2_m[:i].sum()
+        dtlv0 = d0_lv - d0 # distance to lead vehicle at start of step
+        # if the absolute value of the distance to lead vehicle is within TOL_dist_m, we assume we're joined to lead vehicle trace 
+        # otherwise, if we're more than 2 seconds behind at the last speed, we also don't
+        if abs(dtlv0) < TOL_dist_m:
+            return self.cyc0.mps[i]
+        max_accel_m_per_s2 = np.max(np.diff(self.cyc0.mps) / np.diff(self.cyc0.time_s))
+        # max_decel_m_per_s2 = -1.0 * np.min(np.diff(self.cyc0.mps) / np.diff(self.cyc0.time_s))
+        max_next_speed_m__s = self._next_speed_by_idm(
+            i,
+            a_m_per_s2=max(max_accel_m_per_s2, self.sim_params.idm_accel_m_per_s2),
+            b_m_per_s2=self.sim_params.coast_brake_accel_m_per_s2,
+            dt_headway_s=0.0,
+            s0_m=0.0,
+            v_desired_m_per_s=desired_speed_m_per_s,
+            delta=self.sim_params.idm_delta,
+        )
+        v0 = self.mps_ach[i-1]
+        vavg = (v0 + max_next_speed_m__s) / 2.0
+        dd = vavg * self.cyc.dt_s[i]
+        d1 = d0 + dd
+        d1_lv = self.cyc0.dist_v2_m[:i+1].sum()
+        if (d1 > d1_lv):
+            max_avg_speed_m__s = (d1_lv - d0) / self.cyc.dt_s[i]
+            max_next_speed_m__s = min(2.0 * max_avg_speed_m__s - v0, max_next_speed_m__s)
+        return max(0.0, min(desired_speed_m_per_s, max_next_speed_m__s))
+        #if (i + 1) < len(self.cyc0.time_s) and (ds_lv[i+1] - d0) > 0:
+        #    (_, a0) = cycle.calc_constant_jerk_trajectory(
+        #        n=2,
+        #        D0=0.0,
+        #        v0=v0,
+        #        Dr=ds_lv[i+1] - d0,
+        #        vr=self.cyc0.mps[i+1],
+        #        dt=0.5 * (self.cyc0.time_s[i+1] - self.cyc0.time_s[i-1])
+        #    )
+        #    two_step_max_next_speed_m_per_s = max(0.0, v0 + a0 * self.cyc0.dt_s[i])
+        #else:
+        #    two_step_max_next_speed_m_per_s = self.sim_params.coast_max_speed_m_per_s
+        #max_avg_speed_m__s = (ds_lv[i] - d0) / self.cyc0.dt_s[i]
+        #one_step_max_next_speed_m_per_s = max(0.0, 2.0 * max_avg_speed_m__s - v0)
+        #max_next_speed_m_per_s = min(one_step_max_next_speed_m_per_s, two_step_max_next_speed_m_per_s)
+        #if max_next_speed_m_per_s < 0.0:
+        #    max_next_speed_m_per_s = 0.0
+        #return max_next_speed_m_per_s
+
+    def _set_coast_delay(self, i):
+        """
+        Coast Delay allows us to represent coasting to a stop when the lead
+        vehicle has already moved on from that stop.  In this case, the coasting
+        vehicle need not dwell at this or any stop while it is lagging behind
+        the lead vehicle in distance. Instead, the vehicle comes to a stop and
+        resumes mimicing the lead-vehicle trace at the first time-step the
+        lead-vehicle moves past the stop-distance. This index is the "coast delay index".
+        
+        Arguments
+        ---------
+        - i: integer, the step index
+
+        Resets the coast_delay_index to 0 and calculates and sets the next
+        appropriate coast_delay_index if appropriate
+        """
+        SPEED_TOL = 0.01 # m/s
+        DIST_TOL = 0.1 # meters
+        self.coast_delay_index[i:] = 0 # clear all future coast-delays
+        coast_delay = None
+        if not self.sim_params.follow_allow and self.cyc.mps[i] < SPEED_TOL:
+            d0 = self.cyc.dist_v2_m[:i].sum()
+            d0_lv = self.cyc0.dist_v2_m[:i].sum()
+            dtlv0 = d0_lv - d0
+            if np.abs(dtlv0) > DIST_TOL:
+                d_lv = 0.0
+                min_dtlv = None
+                for idx, (dd, v) in enumerate(zip(self.cyc0.dist_v2_m, self.cyc0.mps)):
+                    d_lv += dd
+                    dtlv = np.abs(d_lv - d0)
+                    if v < SPEED_TOL and (min_dtlv is None or dtlv <= min_dtlv):
+                        if min_dtlv is None or dtlv < min_dtlv or (d0 < d0_lv and min_dtlv == dtlv):
+                            coast_delay = i - idx
+                        min_dtlv = dtlv
+                    if min_dtlv is not None and dtlv > min_dtlv:
+                        break
+        if coast_delay is not None:
+            if coast_delay < 0:
+                for idx in range(i, len(self.cyc0.mps)):
+                    self.coast_delay_index[idx] = coast_delay
+                    coast_delay += 1
+                    if coast_delay == 0:
+                        break
+            else:
+                self.coast_delay_index[i:] = coast_delay
 
     def _set_coast_speed(self, i):
         """
@@ -1801,30 +1944,28 @@ class SimDrive(object):
         """
         TOL = 1e-6
         v0 = self.mps_ach[i-1]
-        if v0 < TOL:
-            # TODO: need to determine how to leave coast and rejoin shadow trace
-            self.impose_coast[i] = False
-            self.coast_delay_index = 0
-            if not self.sim_params.follow_allow:
-                d0 = self.cyc.dist_v2_m[:i].sum()
-                d0_lv = self.cyc0.dist_v2_m[:i].sum()
-                if d0_lv > d0:
-                    d_lv = 0.0
-                    for idx, (dd, v) in enumerate(zip(self.cyc0.dist_v2_m, self.cyc0.mps)):
-                        d_lv += dd
-                        if i < idx:
-                            continue
-                        dtlv = d_lv - d0
-                        if dtlv >= 0.0 and v > 0.0:
-                            self.coast_delay_index = i - idx
-                            break
-        else:
-            self.impose_coast[i] = self.impose_coast[i -
-                                                     1] or self._should_impose_coast(i)
+        #if v0 < TOL:
+        #    # TODO: need to determine how to leave coast and rejoin shadow trace
+        #    self.impose_coast[i] = False
+        #    self._set_coast_delay(i)
+        #else:
+        #    self.impose_coast[i] = self.impose_coast[i -
+        #                                             1] or self._should_impose_coast(i)
+        if False and i == 296:
+            import pdb
+            pdb.set_trace()
+        if v0 > TOL and not self.impose_coast[i]:
+            if self._should_impose_coast(i):
+                d = self._generate_coast_trajectory(i, True)
+                if not self.sim_params.coast_allow_passing:
+                    # TODO: Check for collisions and, if they exist, modify the trace
+                    pass
+                # TODO: (stretch) investigate stop avoidance
+                # TODO: add/remove the above by flags
 
         if not self.impose_coast[i]:
             if not self.sim_params.follow_allow:
-                self.cyc.mps[i] = self.cyc0.mps[i - self.coast_delay_index]
+                self.cyc.mps[i] = self.cyc0.mps[min(i - self.coast_delay_index[i], len(self.cyc0.mps) - 1)]
             return
         v1_traj = self.cyc.mps[i]
         if v0 > self.sim_params.coast_brake_start_speed_m_per_s:
@@ -1834,9 +1975,7 @@ class SimDrive(object):
                 # the solver will show us what we can actually achieve
                 self.cyc.mps[i] = self.sim_params.coast_max_speed_m_per_s
             else:
-                max_next_speed_m__s = self._max_next_speed_for_noncollision(i)
-                self.cyc.mps[i] = max(
-                    0, min(max_next_speed_m__s, self.sim_params.coast_max_speed_m_per_s))
+                self.cyc.mps[i] = min(v1_traj, self.sim_params.coast_max_speed_m_per_s)
         # Solve for the actual coasting speed
         self.solve_step(i)
         self.newton_iters[i] = 0  # reset newton iters
@@ -1844,14 +1983,21 @@ class SimDrive(object):
         accel_proposed = (self.cyc.mps[i] -
                           self.cyc.mps[i-1]) / self.cyc.dt_s[i]
         if self.cyc.mps[i] < TOL:
+            self.impose_coast[i:] = False
+            self._set_coast_delay(i)
             self.cyc.mps[i] = 0.0
             return
         if np.abs(self.cyc.mps[i] - v1_traj) > TOL:
+            max_idx = len(self.cyc.time_s) - 1
             adjusted_current_speed = False
             if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s + TOL):
                 v1_before = self.cyc.mps[i]
-                self.cyc.modify_with_braking_trajectory(
+                _, num_steps = self.cyc.modify_with_braking_trajectory(
                     self.sim_params.coast_brake_accel_m_per_s2, i)
+                self.impose_coast[i:] = False
+                for di in range(0, num_steps):
+                    if (i + di) <= max_idx:
+                        self.impose_coast[i + di] = True
                 v1_after = self.cyc.mps[i]
                 assert v1_before != v1_after
                 adjusted_current_speed = True
@@ -1863,16 +2009,29 @@ class SimDrive(object):
                 )
                 if traj_found:
                     # adjust cyc to perform the trajectory
-                    final_speed_m__s = self.cyc.modify_by_const_jerk_trajectory(
+                    final_speed_m_per_s = self.cyc.modify_by_const_jerk_trajectory(
                         i, traj_n, traj_jerk_m__s3, traj_accel_m__s2)
+                    self.impose_coast[i:] = False
+                    for di in range(0, traj_n):
+                        if i + di <= max_idx:
+                            self.impose_coast[i + di] = True
                     adjusted_current_speed = True
-                    if np.abs(final_speed_m__s - self.sim_params.coast_brake_start_speed_m_per_s) < 0.1:
+                    if np.abs(final_speed_m_per_s - self.sim_params.coast_brake_start_speed_m_per_s) < 0.1:
                         i_for_brake = i + traj_n
-                        self.cyc.modify_with_braking_trajectory(
+                        _, num_steps = self.cyc.modify_with_braking_trajectory(
                             self.sim_params.coast_brake_accel_m_per_s2,
                             i_for_brake,
                         )
+                        for di in range(0, num_steps):
+                            if i_for_brake + di <= max_idx:
+                                self.impose_coast[i_for_brake + di] = True
                         adjusted_current_speed = True
+                    else:
+                        print(f"WARNING! final_speed_m_per_s not close to coast_brake_start_speed for i = {i}")
+                        print(f"... final_speed_m_per_s = {final_speed_m_per_s}")
+                        print(f"... self.sim_params.coast_brake_start_speed_m_per_s = {self.sim_params.coast_brake_start_speed_m_per_s}")
+                        print(f"... i_for_brake = {i_for_brake}")
+                        print(f"... traj_n = {traj_n}")
             if adjusted_current_speed:
                 # TODO: should we have an iterate=True/False, flag on solve_step to
                 # ensure newton iters is reset? vs having to call manually?

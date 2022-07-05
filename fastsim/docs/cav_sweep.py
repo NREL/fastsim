@@ -13,6 +13,7 @@ FRACTION_EXTENDED_TIME = 0.1
 ABSOLUTE_EXTENDED_TIME_S = 180.0
 OUTPUT_DIR = Path(__file__).parent.absolute() / 'test_output'
 MIN_ECO_CRUISE_TARGET_SPEED_m_per_s = 8.0
+ECO_COAST_ALLOW_PASSING = True
 
 
 def extend_cycle(cyc, absolute_time_s=0, time_fraction=0):
@@ -53,24 +54,30 @@ def make_distance_by_time_plot(cyc0, cyc, save_file=None, do_show=False):
 def make_debug_plot(sd, save_file=None, do_show=False):
     """
     """
-    if False:
-        (fig, axs) = plt.subplots(nrows=2)
-        axs[0].plot(sd.cyc0.time_s, sd.cyc0.mps, 'gray', label='lead')
-        axs[0].plot(sd.cyc.time_s, sd.cyc.mps, 'b-', lw=2, label='cav')
-        axs[0].plot(sd.cyc.time_s, sd.cyc.mps, 'r.', ms=1)
-        axs[0].set_xlabel('Elapsed Time (s)')
-        axs[0].set_ylabel('Speed (m/s)')
-        axs[0].legend(loc=0)
-        axs[1].plot(sd.cyc.time_s, sd.coast_delay_index, 'b.', lw=2, label='coast delay')
-        axs[1].plot(sd.cyc.time_s, sd.impose_coast, 'r.', ms=1, label='impose coast')
-        axs[1].set_ylabel('Flags')
-        axs[1].legend(loc=0)
-        fig.tight_layout()
-        if save_file is not None:
-            fig.savefig(save_file, dpi=300)
-        if do_show:
-            plt.show()
-        plt.close()
+    (fig, axs) = plt.subplots(nrows=2)
+    axs[0].plot(sd.cyc0.time_s, sd.cyc0.mps, 'gray', lw=2.5, label='lead')
+    axs[0].plot(sd.cyc.time_s, sd.cyc.mps, 'b-', lw=2, label='cav')
+    axs[0].plot(sd.cyc.time_s, sd.cyc.mps, 'r.', ms=1)
+    axs[0].set_xlabel('Elapsed Time (s)')
+    axs[0].set_ylabel('Speed (m/s)')
+    axs[0].legend(loc=0)
+    ax2 = axs[1].twinx()
+    color = 'tab:red'
+    ax2.plot(sd.cyc.time_s, sd.impose_coast, 'r.', ms=1, label='impose coast')
+    ax2.set_ylabel('Impose Coast', color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.grid(False)
+    color = 'tab:blue'
+    axs[1].plot(sd.cyc.time_s, sd.coast_delay_index, 'b.', lw=2, label='coast delay')
+    axs[1].set_ylabel('Coast Delay', color=color)
+    axs[1].tick_params(axis='y', labelcolor=color)
+    axs[1].grid(False)
+    fig.tight_layout()
+    if save_file is not None:
+        fig.savefig(save_file, dpi=300)
+    if do_show:
+        plt.show()
+    plt.close()
 
 
 
@@ -103,7 +110,7 @@ def eco_coast(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sho
     sim = fastsim.simdrive.SimDrive(cyc, veh)
     params = sim.sim_params
     params.coast_allow = True
-    params.coast_allow_passing = False
+    params.coast_allow_passing = ECO_COAST_ALLOW_PASSING
     params.coast_start_speed_m_per_s = -1.0
     params.coast_time_horizon_for_adjustment_s = 20.0
     sim.sim_params = params
@@ -132,16 +139,14 @@ def eco_coast_by_microtrip(veh, init_soc=None, save_dir=None, tag=None, cyc_name
     dist_mi = 0.0
     base_traces = []
     traces = []
-    dt_total_s = sum([mt['time_s'][-1] for mt in cyc_mts])
     for mt in cyc_mts:
-        dt_mt_s = mt['time_s'][-1]
         cyc = fastsim.cycle.Cycle.from_dict(mt)
         base_traces.append(cyc.get_cyc_dict())
         sim = fastsim.simdrive.SimDrive(cyc, veh)
         sim_base = fastsim.simdrive.copy_sim_drive(sim)
         params = sim.sim_params
         params.coast_allow = True
-        params.coast_allow_passing = False
+        params.coast_allow_passing = ECO_COAST_ALLOW_PASSING
         params.coast_start_speed_m_per_s = -1.0
         params.coast_time_horizon_for_adjustment_s = 20.0
         sim.sim_params = params
@@ -226,6 +231,7 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
     params.idm_v_desired_m_per_s = dist_and_avg_speeds[0][1]
     sim.sim_params = params
     # Initialize Electric Drive System
+    init_soc = sim.veh.max_soc if init_soc is None else init_soc
     sim.init_for_step(init_soc=init_soc)
     # Simulate
     current_mt_idx = 0
@@ -272,6 +278,7 @@ def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=N
     params.idm_v_desired_m_per_s = dist_and_avg_speeds[0][1]
     sim.sim_params = params
     # Initialize Electric Drive System
+    init_soc = sim.veh.max_soc if init_soc is None else init_soc
     sim.init_for_step(init_soc=init_soc)
     # Simulate
     current_mt_idx = 0
@@ -302,7 +309,7 @@ def calc_percentage(base, other):
 
 
 def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=None, do_show=None):
-    use_eco_coast_by_mt = True
+    use_eco_coast_by_mt = False
     output = {'powertrain': powertrain, 'cycle': cyc_name, 'veh': veh.scenario_name}
     args = {
         'init_soc': init_soc,
