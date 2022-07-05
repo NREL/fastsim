@@ -47,14 +47,14 @@ macro_rules! impl_serde {
     };
 
     ($self: ident, $component:ident, $default_folder:expr) => {
-        pub fn to_file(&self, filename: &str) -> Result<(),Box<dyn Error>> {
+        pub fn to_file(&self, filename: &str) -> Result<(), Box<dyn Error>> {
             let file = PathBuf::from(filename);
-            let c = match file.extension().unwrap().to_str().unwrap() {
+            let _ = match file.extension().unwrap().to_str().unwrap() {
                 "json" => {serde_json::to_writer(&File::create(file)?, self)?},
                 "yaml" => {serde_yaml::to_writer(&File::create(file)?, self)?},
                 _ => {serde_json::to_writer(&File::create(file)?, self)?},
             };
-            Ok(c)
+            Ok(())
         }
     
         fn from_file_parser(filename: &str) -> Result<$component, Box<dyn Error>> {

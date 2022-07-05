@@ -12,6 +12,7 @@ use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
 use crate::vehicle::*;
 use serde::{Deserialize, Serialize};
+use serde_json;
 use std::fs::File;
 use std::path::PathBuf;
 use std::error::Error;
@@ -30,6 +31,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
+    #[allow(clippy::too_many_arguments)]
     pub fn __new__(
         missed_trace_correction: bool, // if true, missed trace correction is active, default = false
         max_time_dilation: f64,
@@ -397,6 +399,11 @@ impl Default for RustSimDriveParams {
     pub fn len(&self) -> usize {
         self.cyc.time_s.len()
     }    
+
+    /// Return self.cyc.time_is.is_empty()
+    pub fn is_empty(&self) -> bool {
+        self.cyc.time_s.is_empty()
+    }
 )]
 pub struct RustSimDrive {
     pub hev_sim_count: usize,
