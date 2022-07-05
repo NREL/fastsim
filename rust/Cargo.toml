@@ -16,7 +16,8 @@ proc_macros = { path = "proc_macros" }
 serde_json = { version = "1.0.81" }
 serde = { version = "1.0.137", features = ["derive"] }
 
-
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "./src/html/docs-header.html" ]
 
 [profile.release]
 # https://deterministic.space/high-performance-rust.html

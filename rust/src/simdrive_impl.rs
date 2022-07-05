@@ -506,7 +506,7 @@ impl RustSimDrive {
     /// REFERENCE:
     /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
     ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
-    ///     DOI: https://doi.org/10.1007/978-3-642-32460-4.
+    ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>
     pub fn set_speed_for_target_gap_using_idm(&mut self, i:usize){
         // PARAMETERS
         let delta = self.sim_params.idm_delta;
