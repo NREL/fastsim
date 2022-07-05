@@ -60,6 +60,10 @@ impl Default for RustPhysicalProperties {
 
 impl RustPhysicalProperties {
     impl_serde!(self, RustPhysicalProperties, PROPS_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
+    }
 }
 
 // Vehicle model parameters that should be changed only by advanced users

@@ -9,7 +9,7 @@ extern crate pyo3;
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 // local
@@ -124,7 +124,6 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dist_for_constant_jerk, m)?)?;
     Ok(())
 }
-
 
 #[pyclass]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -312,11 +311,7 @@ impl RustCycle {
     /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
-    pub fn average_grade_over_range(
-        &self,
-        distance_start_m: f64,
-        delta_distance_m: f64,
-    ) -> f64 {
+    pub fn average_grade_over_range(&self, distance_start_m: f64, delta_distance_m: f64) -> f64 {
         if ndarrallzeros(&self.grade) {
             // short-circuit for no-grade case
             return 0.0;
@@ -393,11 +388,7 @@ impl RustCycle {
     /// - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
     /// RETURN: non-negative-number, the final speed of the modified trajectory (m/s)
     /// - modifies the cycle in place for braking
-    pub fn modify_with_braking_trajectory(
-        &mut self,
-        brake_accel_m_per_s2: f64,
-        i: usize,
-    ) -> f64 {
+    pub fn modify_with_braking_trajectory(&mut self, brake_accel_m_per_s2: f64, i: usize) -> f64 {
         assert!(brake_accel_m_per_s2 < 0.0);
         let v0 = self.mps[i - 1];
         let dt = self.dt_s()[i];
@@ -469,10 +460,14 @@ impl RustCycle {
 
     /// elevation change w.r.t. to initial
     pub fn delta_elev_m(&self) -> Array1<f64> {
-        ndarrcumsum(&(self.dist_m() * self.grade.clone()))   
+        ndarrcumsum(&(self.dist_m() * self.grade.clone()))
     }
 
     impl_serde!(self, RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
+    }
 }
 
 #[cfg(test)]
