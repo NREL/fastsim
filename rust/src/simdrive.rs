@@ -140,7 +140,7 @@ pub struct RustSimDriveParams {
 }
 
 impl RustSimDriveParams {
-    impl_serde!(self, RustSimDriveParams, SIMDRIVE_PARAMS_DEFAULT_FOLDER);
+    impl_serde!(RustSimDriveParams, SIMDRIVE_PARAMS_DEFAULT_FOLDER);
 
     pub fn from_file(filename: &str) -> Self {
         Self::from_file_parser(filename).unwrap()

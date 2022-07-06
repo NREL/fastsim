@@ -261,7 +261,7 @@ impl RustSimDrive {
         }
     }
 
-    impl_serde!(self, RustSimDrive, SIMDRIVE_DEFAULT_FOLDER);
+    impl_serde!(RustSimDrive, SIMDRIVE_DEFAULT_FOLDER);
     pub fn from_file(filename: &str) -> Self {
         Self::from_file_parser(filename).unwrap()
     }

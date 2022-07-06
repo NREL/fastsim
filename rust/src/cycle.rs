@@ -463,7 +463,7 @@ impl RustCycle {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
     }
 
-    impl_serde!(self, RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
+    impl_serde!(RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
 
     pub fn from_file(filename: &str) -> Self {
         Self::from_file_parser(filename).unwrap()
