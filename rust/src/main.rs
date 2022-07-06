@@ -3,6 +3,8 @@ use clap::{IntoApp, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::process::Command as ProcCommand;
 
+#[macro_use]
+pub mod macros;
 extern crate proc_macros;
 
 pub mod cycle;
@@ -50,9 +52,9 @@ pub fn main() {
     }
 
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
-        RustCycle::from_file(&cyc_file_path).unwrap()
+        RustCycle::from_file(&cyc_file_path)
     } else {
-        RustCycle::from_file("../fastsim/resources/cycles/udds.csv").unwrap()
+        RustCycle::from_file("../fastsim/resources/cycles/udds.csv")
     };
 
     let veh = RustVehicle::mock_vehicle();

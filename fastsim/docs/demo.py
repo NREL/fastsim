@@ -170,7 +170,7 @@ sim_drive.init_for_step(init_soc=0.7935)
 while sim_drive.i < len(cyc.time_s):
     # NOTE: we need to copy out and in the entire array to work with the Rust version
     # that is, we can't set just a specific element of an array in rust via python bindings at this time
-    aux_in_kw = sim_drive.aux_in_kw
+    aux_in_kw = sim_drive.aux_in_kw.tolist()
     aux_in_kw[sim_drive.i] = sim_drive.i / cyc.time_s[-1] * 10 
     sim_drive.aux_in_kw = aux_in_kw
     # above could be a function of some internal sim_drive state
@@ -246,7 +246,9 @@ sim_drive = fsim.simdrive.SimDrive(cyc, veh)
 
 # by assigning the value directly (this is faster than using positional args)
 sim_drive.init_for_step(
-    aux_in_kw_override=cyc.time_s / cyc.time_s[-1] * 10)
+    0.5,
+    aux_in_kw_override=cyc.time_s / cyc.time_s[-1] * 10
+)
 while sim_drive.i < len(sim_drive.cyc.time_s):
     sim_drive.sim_drive_step()
 
