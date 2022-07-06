@@ -257,6 +257,7 @@ impl RustSimDrive {
             trace_miss_dist_frac,
             trace_miss_time_frac,
             trace_miss_speed_mps,
+            orphaned: false,
         }
     }
 

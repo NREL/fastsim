@@ -536,6 +536,7 @@ pub struct RustSimDrive {
     pub trace_miss_dist_frac: f64,
     pub trace_miss_time_frac: f64,
     pub trace_miss_speed_mps: f64,
+    pub orphaned: bool,
 }
 
 // #[cfg(test)]
