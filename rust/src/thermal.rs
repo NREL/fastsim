@@ -9,6 +9,7 @@ use serde_json;
 use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
+use ndarray::Array1;
 
 use crate::simdrive;
 
@@ -240,5 +241,9 @@ impl SimDriveHot {
 
     pub fn from_file(filename: &str) -> Self {
         Self::from_file_parser(filename).unwrap()
+    }
+
+    pub fn walk(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
+        self.sd.walk(init_soc, aux_in_kw_override).unwrap();
     }
 }
