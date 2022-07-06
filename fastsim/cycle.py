@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 from copy import deepcopy
 import types
+from typing import Optional
 
 # local modules
 from . import parameters as params
@@ -620,7 +621,7 @@ def peak_deceleration(cycle):
     return np.min(accelerations(cycle))
 
 
-def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
+def calc_constant_jerk_trajectory(n: int, D0: float, v0: float, Dr: float, vr: float, dt: float) -> tuple:
     """
     Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
     INPUTS:
@@ -633,8 +634,8 @@ def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
     RETURNS: (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
     Returns the constant jerk and acceleration for initial time step.
     """
-    assert n > 1
-    assert Dr > D0
+    assert n > 1, f"n = {n}"
+    assert Dr > D0, f"Dr = {Dr}; D0 = {D0}"
     dDr = Dr - D0
     dvr = vr - v0
     k = (dvr - (2.0 * dDr / (n * dt)) + 2.0 * v0) / (
@@ -706,3 +707,66 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     )
     term2 = 0.5 * dt * dt * ((n * a0) + (0.5 * n * (n - 1) * k * dt))
     return d0 + term1 + term2
+
+
+def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, tol: float=0.1, vmin: Optional[float] = None, dtmax:Optional[float] = None) -> dict:
+    """
+    Reports back information if cyc will pass cyc0, starting at step i until the next stop of cyc.
+    - cyc: fastsim.Cycle, the proposed cycle of the vehicle under simulation
+    - cyc0: fastsim.Cycle, the reference/lead vehicle/shadow cycle to compare with
+    - i: int, the time-step index to consider
+    - tol: float, the distance tolerance away from lead vehicle to be seen as "deviated" from the reference/shadow trace (m)
+    - vmin: float, the minimum speed to consider for re-rendezvous (m/s)
+    - dtmax: float, how far ahead in time to look (s)
+    RETURNS: dict with keys:
+        "has_collision": bool, True if cyc passes cyc0
+        "idx": int, the index where cyc passes cyc0
+        "num_steps": int, the number of time-steps until idx from i
+        "distance_m": float, the distance (m) traveled of cyc0 when cyc passes
+        "speed_m_per_s": float, the speed (m/s) of cyc0 when cyc passes
+    """
+    v0 = cyc.mps[i-1]
+    d0 = cyc.dist_v2_m[:i].sum()
+    v0_lv = cyc0.mps[i-1]
+    d0_lv = cyc0.dist_v2_m[:i].sum()
+    d = d0
+    d_lv = d0_lv
+    dt_total = 0.0
+    rendezvous_idx = None
+    rendezvous_num_steps = 0
+    rendezvous_distance_m = 0
+    rendezvous_speed_m_per_s = 0
+    for di in range(len(cyc.mps) - i):
+        idx = i + di
+        v = cyc.mps[idx]
+        if v == 0.0:
+            break
+        v_lv = cyc0.mps[idx]
+        vavg = (v + v0) * 0.5
+        vavg_lv = (v_lv + v0_lv) * 0.5
+        dd = vavg * cyc.dt_s[idx]
+        dd_lv = vavg_lv * cyc0.dt_s[idx]
+        dt_total += cyc0.dt_s[idx]
+        d += dd
+        d_lv += dd_lv
+        dtlv = d_lv - d
+        v0 = v
+        v0_lv = v_lv
+        if di > 0 and (vmin is None or v_lv >= vmin) and dtlv < -tol:
+            rendezvous_idx = idx
+            rendezvous_num_steps = di + 1
+            rendezvous_distance_m = d_lv
+            rendezvous_speed_m_per_s = v_lv
+            break
+        if dtmax is not None and dt_total > dtmax:
+            break
+    return {
+        "has_collision": rendezvous_idx is not None and rendezvous_distance_m > d0,
+        "idx": rendezvous_idx,
+        "num_steps": rendezvous_num_steps,
+        "start_distance_m": d0,
+        "distance_m": rendezvous_distance_m,
+        "start_speed_m_per_s": cyc.mps[i-1],
+        "time_step_duration_s": cyc.dt_s[i],
+        "speed_m_per_s": rendezvous_speed_m_per_s,
+    }
