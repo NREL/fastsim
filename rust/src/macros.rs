@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! impl_serde {
-    ($self: ident, $component:ident, $default_folder:expr) => {
+    ($component:ident, $default_folder:expr) => {
         pub fn to_file(&self, filename: &str) -> Result<(), Box<dyn Error>> {
             let file = PathBuf::from(filename);
             let c = match file.extension().unwrap().to_str().unwrap() {
