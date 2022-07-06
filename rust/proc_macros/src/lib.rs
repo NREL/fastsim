@@ -96,19 +96,35 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     //     }
     // });
 
-    // impl_block.extend::<TokenStream2>(quote! {
-    //     pub fn to_json(&self) -> PyResult<String> {
-    //         Ok(serde_json::to_string(&self).unwrap())
-    //     }
-    // });
+    impl_block.extend::<TokenStream2>(quote! {
+         pub fn to_json(&self) -> PyResult<String> {
+             Ok(serde_json::to_string(&self).unwrap())
+         }
+    });
 
-    // impl_block.extend::<TokenStream2>(quote! {
-    //     #[classmethod]
-    //     pub fn from_json(_cls: &PyType, json_str:String) -> PyResult<Self> {
-    //         let obj: #ident = serde_json::from_str(&json_str).unwrap();
-    //         Ok(obj)
-    //     }
-    // });
+    impl_block.extend::<TokenStream2>(quote! {
+        #[classmethod]
+        pub fn from_json(_cls: &PyType, json_str: &str) -> PyResult<Self> {
+            Ok(serde_json::from_str(json_str).unwrap())
+        }
+    });
+
+    impl_block.extend::<TokenStream2>(quote! {
+        #[pyo3(name = "to_file")]
+        pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
+            self.to_file(filename).unwrap();
+            Ok(())
+        }
+    });
+
+    impl_block.extend::<TokenStream2>(quote! {
+         #[classmethod]
+         #[pyo3(name = "from_file")]
+         pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
+             let obj: #ident = Self::from_file(&json_str);
+             Ok(obj)
+         }
+    });
 
     let impl_block = quote! {
         #[pymethods]

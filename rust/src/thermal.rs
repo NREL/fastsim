@@ -3,8 +3,15 @@
 use crate::proc_macros::add_pyo3_api;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
+use pyo3::types::PyType;
+use std::error::Error;
+use std::fs::File;
+use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use serde_json;
 
 /// Whether FC thermal modeling is handled by FASTSim
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum FcModelTypes {
     /// Thermal modeling of fuel converter is handled inside FASTSim
     Internal(FcTempEffModel, FcTempEffComponent),
@@ -19,6 +26,7 @@ impl Default for FcModelTypes {
 }
 
 /// Which commponent temperature affects FC efficency
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum FcTempEffComponent {
     /// FC efficiency is purely dependent on cat temp
     Catalyst,
@@ -35,6 +43,7 @@ impl Default for FcTempEffComponent {
 }
 
 /// Model variants for how FC efficiency depends on temperature
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum FcTempEffModel {
     /// Linear temperature dependence
     Linear { offset: f64, slope: f64, min: f64 },
@@ -54,6 +63,7 @@ impl Default for FcTempEffModel {
 }
 
 /// Whether compontent thermal model is handled by FASTSim
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ComponentModelTypes {
     /// Component temperature is handled inside FASTSim
     Internal,
@@ -71,6 +81,7 @@ impl Default for ComponentModelTypes {
 #[pyclass]
 #[add_pyo3_api]
 #[allow(non_snake_case)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct VehicleThermal {
     // fuel converter / engine
     /// parameter fuel converter thermal mass [kJ/K]
@@ -198,5 +209,15 @@ impl Default for VehicleThermal {
             hvac_model: ComponentModelTypes::External, // turned off by default
             orphaned: false,
         }
+    }
+}
+
+pub const VEHICLE_THERMAL_DEFAULT_FOLDER: &str = "fastsim/resources";
+
+impl VehicleThermal {
+    impl_serde!(self, VehicleThermal, VEHICLE_THERMAL_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
     }
 }

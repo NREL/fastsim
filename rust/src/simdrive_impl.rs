@@ -7,6 +7,11 @@ use super::params;
 
 use super::simdrive::{RustSimDrive, RustSimDriveParams};
 
+use std::fs::File;
+use std::path::PathBuf;
+use std::error::Error;
+
+pub const SIMDRIVE_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 impl RustSimDrive {
     pub fn new(cyc: RustCycle, veh: RustVehicle) -> Self {
@@ -255,7 +260,10 @@ impl RustSimDrive {
         }
     }
 
-
+    impl_serde!(self, RustSimDrive, SIMDRIVE_DEFAULT_FOLDER);
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
+    }
 
     // TODO: probably shouldn't be public...?
     pub fn init_arrays(&mut self) {

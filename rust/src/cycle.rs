@@ -9,14 +9,15 @@ extern crate pyo3;
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-// use numpy::pyo3::Python;
-// use numpy::ndarray::array;
-// use numpy::{ToPyArray, PyArray};
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 // local
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
+
+pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";
 
 #[pyfunction]
 /// Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
@@ -125,7 +126,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(
@@ -150,8 +151,9 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[classmethod]
-    pub fn from_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
-        match Self::from_file(&pathstr) {
+    #[pyo3(name = "from_csv_file")]
+    pub fn from_csv_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
+        match Self::from_csv_file(&pathstr) {
             Ok(cyc) => Ok(cyc),
             Err(msg) => Err(PyFileNotFoundError::new_err(msg)),
         }
@@ -264,6 +266,7 @@ pub struct RustCycle {
     /// array of max possible charge rate from roadway
     pub road_type: Array1<f64>,
     pub name: String,
+    #[serde(skip)]
     pub orphaned: bool,
 }
 
@@ -308,11 +311,7 @@ impl RustCycle {
     /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
-    pub fn average_grade_over_range(
-        &self,
-        distance_start_m: f64,
-        delta_distance_m: f64,
-    ) -> f64 {
+    pub fn average_grade_over_range(&self, distance_start_m: f64, delta_distance_m: f64) -> f64 {
         if ndarrallzeros(&self.grade) {
             // short-circuit for no-grade case
             return 0.0;
@@ -389,11 +388,7 @@ impl RustCycle {
     /// - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
     /// RETURN: non-negative-number, the final speed of the modified trajectory (m/s)
     /// - modifies the cycle in place for braking
-    pub fn modify_with_braking_trajectory(
-        &mut self,
-        brake_accel_m_per_s2: f64,
-        i: usize,
-    ) -> f64 {
+    pub fn modify_with_braking_trajectory(&mut self, brake_accel_m_per_s2: f64, i: usize) -> f64 {
         assert!(brake_accel_m_per_s2 < 0.0);
         let v0 = self.mps[i - 1];
         let dt = self.dt_s()[i];
@@ -438,7 +433,7 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_file(pathstr: &str) -> Result<Self, String> {
+    pub fn from_csv_file(pathstr: &str) -> Result<Self, String> {
         let pathbuf = PathBuf::from(&pathstr);
         if pathbuf.exists() {
             let mut time_s = Vec::<f64>::new();
@@ -466,6 +461,12 @@ impl RustCycle {
     /// elevation change w.r.t. to initial
     pub fn delta_elev_m(&self) -> Array1<f64> {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+    }
+
+    impl_serde!(self, RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
     }
 }
 
@@ -505,7 +506,7 @@ mod tests {
     fn test_loading_a_cycle_from_the_filesystem() {
         let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        match RustCycle::from_file(&pathstr) {
+        match RustCycle::from_csv_file(&pathstr) {
             Ok(cyc) => {
                 assert_eq!(cyc.name, String::from("udds"));
                 let num_entries = cyc.time_s.len();
