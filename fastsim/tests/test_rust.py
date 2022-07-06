@@ -51,9 +51,9 @@ TEST_VARS = [
     "fs_kwh_out_ach",
 ]
 
-TEST_VARS = [
+"""TEST_VARS = [
     "mps_ach"
-]
+]"""
 
 class TestRust(unittest.TestCase):
     def test_run_sim_drive_conv(self):

@@ -17,7 +17,8 @@ serde_json = "1.0.81"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_yaml = "0.8.24"
 
-
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "./src/html/docs-header.html" ]
 
 [profile.release]
 # https://deterministic.space/high-performance-rust.html
