@@ -1,6 +1,7 @@
 //! Module for simulating thermal behavior of powertrains
 
 use crate::proc_macros::add_pyo3_api;
+use ndarray::Array1;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
@@ -9,7 +10,6 @@ use serde_json;
 use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
-use ndarray::Array1;
 
 use crate::simdrive;
 
@@ -225,7 +225,28 @@ impl VehicleThermal {
     }
 }
 
-#[add_pyo3_api]
+#[add_pyo3_api(
+    /// Receives second-by-second cycle information, vehicle properties,
+    /// and an initial state of charge and runs sim_drive_step to perform a
+    /// backward facing powertrain simulation. Method 'sim_drive' runs this
+    /// iteratively to achieve correct SOC initial and final conditions, as
+    /// needed.
+    ///
+    /// Arguments
+    /// ------------
+    /// init_soc (optional): initial battery state-of-charge (SOC) for electrified vehicles
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
+    ///         None causes veh.aux_kw to be used.
+    pub fn sim_drive_walk(
+        &mut self,
+        init_soc: f64,
+        aux_in_kw_override: Option<Vec<f64>>,
+    ) -> PyResult<()> {
+        let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
+        self.walk(init_soc, aux_in_kw_override);
+        Ok(())
+    }
+)]
 #[pyclass]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct SimDriveHot {

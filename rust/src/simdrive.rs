@@ -21,8 +21,8 @@ use crate::vehicle::*;
 pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 
-fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
-    res.map_err(PyRuntimeError::new_err)
+pub fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
+    res.map_err(|err_msg| PyRuntimeError::new_err(err_msg))
 }
 
 #[pyclass]
