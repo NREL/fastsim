@@ -217,7 +217,7 @@ impl Default for VehicleThermal {
 pub const VEHICLE_THERMAL_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 impl VehicleThermal {
-    impl_serde!(self, VehicleThermal, VEHICLE_THERMAL_DEFAULT_FOLDER);
+    impl_serde!(VehicleThermal, VEHICLE_THERMAL_DEFAULT_FOLDER);
 
     pub fn from_file(filename: &str) -> Self {
         Self::from_file_parser(filename).unwrap()
@@ -236,7 +236,7 @@ pub struct SimDriveHot {
 pub const SIMDRIVEHOT_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 impl SimDriveHot {
-    impl_serde!(self, SimDriveHot, SIMDRIVEHOT_DEFAULT_FOLDER);
+    impl_serde!(SimDriveHot, SIMDRIVEHOT_DEFAULT_FOLDER);
 
     pub fn from_file(filename: &str) -> Self {
         Self::from_file_parser(filename).unwrap()
