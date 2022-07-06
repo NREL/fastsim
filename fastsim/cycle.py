@@ -711,7 +711,7 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
 
 def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, tol: float=0.1, vmin: Optional[float] = None, dtmax:Optional[float] = None) -> dict:
     """
-    Reports back information if cyc will pass cyc0, starting at step i until the next stop of cyc.
+    Reports back information of the first point where cyc passes cyc0, starting at step i until the next stop of cyc.
     - cyc: fastsim.Cycle, the proposed cycle of the vehicle under simulation
     - cyc0: fastsim.Cycle, the reference/lead vehicle/shadow cycle to compare with
     - i: int, the time-step index to consider
