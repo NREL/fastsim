@@ -1,3 +1,5 @@
+//! Module containing implementations for [simdrive](super::simdrive).
+
 use ndarray::{Array, Array1, array, s};
 use std::cmp;
 use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from, ndarrunique};

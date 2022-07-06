@@ -1,3 +1,5 @@
+//! Module containing vehicle struct and related functions.
+
 extern crate ndarray;
 use ndarray::Array1;
 extern crate pyo3;

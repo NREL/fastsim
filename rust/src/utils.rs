@@ -1,3 +1,5 @@
+//! Module containing miscellaneous utility functions.
+
 extern crate ndarray;
 use ndarray::{array, concatenate, s, Array1, Axis};
 use pyo3::exceptions::{PyIndexError, PyNotImplementedError};

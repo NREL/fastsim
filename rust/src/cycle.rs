@@ -1,3 +1,5 @@
+//! Module containing drive cycle struct and related functions.
+
 extern crate ndarray;
 
 use std::collections::HashMap;
@@ -260,11 +262,13 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 )]
 
-/// RustCycle struct for containing:   
-/// -- time_s,   
-/// -- mps (speed \[m/s\])   
-/// -- grade \[rise/run\]   
-/// -- road_type (this is legacy and will likely change to road charging capacity \[kW\])
+/// Struct for containing:
+/// * time_s, cycle time, $s$  
+/// * mps, vehicle speed, $\frac{m}{s}$  
+/// * grade, road grade/slope, $\frac{rise}{run}$  
+/// * road_type, $kW$  
+/// * legacy, will likely change to road charging capacity
+///    * Another sublist.
 pub struct RustCycle {
     /// array of time [s]
     pub time_s: Array1<f64>,

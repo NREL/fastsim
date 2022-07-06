@@ -1,4 +1,4 @@
-//! Module for vehicle attributes and related functions and structs.
+//! Module containing vehicle struct and related functions.
 
 extern crate ndarray;
 use ndarray::{Array, Array1};
@@ -324,6 +324,14 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
     }
 )]
 /// Struct containing vehicle attributes
+/// # Python Examples
+/// ```python
+/// import fastsim
+///
+/// ## Load drive cycle by name
+/// cyc_py = fastsim.cycle.Cycle.from_file("udds")
+/// cyc_rust = cyc_py.to_rust()
+/// ```
 pub struct RustVehicle {
     #[api(has_orphaned)]
     /// Physical properties, see [RustPhysicalProperties](RustPhysicalProperties)
@@ -365,7 +373,7 @@ pub struct RustVehicle {
     pub fs_kwh_per_kg: f64,
     /// Fuel converter peak continuous power, $kW$
     pub fc_max_kw: f64,
-    /// Fuel converter output power percentage map         TODO
+    /// Fuel converter output power percentage map, x-values of [fc_eff_map](RustVehicle::fc_eff_map)
     pub fc_pwr_out_perc: Array1<f64>,
     /// Fuel converter efficiency map
     pub fc_eff_map: Array1<f64>,
@@ -384,7 +392,7 @@ pub struct RustVehicle {
     pub idle_fc_kw: f64,
     /// Peak continuous electric motor power, $kW$
     pub mc_max_kw: f64,
-    /// Electric motor output power percentage map         TODO
+    /// Electric motor output power percentage map, x-values of [mc_eff_map](RustVehicle::mc_eff_map)
     pub mc_pwr_out_perc: Array1<f64>,
     /// Electric motor efficiency map
     pub mc_eff_map: Array1<f64>,
@@ -404,19 +412,19 @@ pub struct RustVehicle {
     pub ess_base_kg: f64,
     /// Traction battery round-trip efficiency
     pub ess_round_trip_eff: f64,
-    /// Traction battery life coefficient A, $A^{\frac{1}{B}}$         TODO where is the formula from?
+    /// Traction battery cycle life coefficient A, see [reference](https://web.archive.org/web/20090529194442/http://www.ocean.udel.edu/cms/wkempton/Kempton-V2G-pdfFiles/PDF%20format/Duvall-V2G-batteries-June05.pdf)
     pub ess_life_coef_a: f64,
-    /// Traction battery life coefficient B, $A^{\frac{1}{B}}$         TODO where is the formula from?
+    /// Traction battery cycle life coefficient B, see [reference](https://web.archive.org/web/20090529194442/http://www.ocean.udel.edu/cms/wkempton/Kempton-V2G-pdfFiles/PDF%20format/Duvall-V2G-batteries-June05.pdf)
     pub ess_life_coef_b: f64,
     /// Traction battery minimum state of charge
     pub min_soc: f64,
     /// Traction battery maximum state of charge
     pub max_soc: f64,
-    /// 
+    /// ESS discharge effort toward max FC efficiency
     pub ess_dischg_to_fc_max_eff_perc: f64,
-    /// 
+    /// ESS charge effort toward max FC efficiency
     pub ess_chg_to_fc_max_eff_perc: f64,
-    /// Wheel mass moment of inertia, $kg \cdot m^2$
+    /// Mass moment of inertia per wheel, $kg \cdot m^2$
     pub wheel_inertia_kg_m2: f64,
     /// Number of wheels
     pub num_wheels: f64,
@@ -426,15 +434,15 @@ pub struct RustVehicle {
     pub wheel_radius_m: f64,
     /// Wheel coefficient of friction
     pub wheel_coef_of_fric: f64,
-    /// 
+    /// Speed where the battery reserved for accelerating is zero
     pub max_accel_buffer_mph: f64,
-    /// 
+    /// Percent of usable battery energy reserved to help accelerate
     pub max_accel_buffer_perc_of_useable_soc: f64,
-    /// 
+    /// Percent SOC buffer for high accessory loads during cycles with long idle time
     pub perc_high_acc_buf: f64,
     /// Speed at which the fuel converter must turn on, $mph$
     pub mph_fc_on: f64,
-    /// Power above which to demand fuel converter on (HEV, PHEV)
+    /// Power demand above which to require fuel converter on, $kW$
     pub kw_demand_fc_on: f64,
     /// Maximum brake regeneration efficiency
     pub max_regen: f64,
