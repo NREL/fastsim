@@ -913,7 +913,7 @@ impl RustVehicle {
         self.set_veh_mass();
     }
 
-    impl_serde!(self, RustVehicle, VEH_RESOURCE_DEFAULT_FOLDER);
+    impl_serde!(RustVehicle, VEH_RESOURCE_DEFAULT_FOLDER);
     pub fn from_file(filename: &str) -> Self {
         let mut veh = Self::from_file_parser(filename).unwrap();
         veh.set_derived();
