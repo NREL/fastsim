@@ -1,3 +1,6 @@
+// #![doc(html_logo_url = "https://www.nrel.gov/transportation/assets/images/icon-fastsim.jpg")]
+// This needs to be a square logo to avoid stretching, and can have transparency
+
 extern crate ndarray;
 use pyo3::prelude::*;
 
@@ -6,7 +9,7 @@ extern crate proc_macros;
 pub mod params;
 use params::RustPhysicalProperties;
 pub mod utils;
-use utils::{Pyo3ArrayU32,Pyo3ArrayF64, Pyo3ArrayBool, Pyo3VecF64};
+use utils::{Pyo3ArrayBool, Pyo3ArrayF64, Pyo3ArrayU32, Pyo3VecF64};
 pub mod cycle;
 use cycle::RustCycle;
 pub mod vehicle;

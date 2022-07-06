@@ -390,7 +390,7 @@ pub struct RustVehicle {
     pub mc_eff_map: Array1<f64>,
     /// Electric motor time to peak power, $s$
     pub mc_sec_to_peak_pwr: f64,
-    /// Motor power electronics base mass, $kg$
+    /// Motor power electronics mass per power output, $\frac{kg}{kW}$
     pub mc_pe_kg_per_kw: f64,
     /// Motor power electronics base mass, $kg$
     pub mc_pe_base_kg: f64,
@@ -412,8 +412,11 @@ pub struct RustVehicle {
     pub min_soc: f64,
     /// Traction battery maximum state of charge
     pub max_soc: f64,
+    /// 
     pub ess_dischg_to_fc_max_eff_perc: f64,
+    /// 
     pub ess_chg_to_fc_max_eff_perc: f64,
+    /// Wheel mass moment of inertia, $kg \cdot m^2$
     pub wheel_inertia_kg_m2: f64,
     /// Number of wheels
     pub num_wheels: f64,
@@ -423,13 +426,21 @@ pub struct RustVehicle {
     pub wheel_radius_m: f64,
     /// Wheel coefficient of friction
     pub wheel_coef_of_fric: f64,
+    /// 
     pub max_accel_buffer_mph: f64,
+    /// 
     pub max_accel_buffer_perc_of_useable_soc: f64,
+    /// 
     pub perc_high_acc_buf: f64,
+    /// Speed at which the fuel converter must turn on, $mph$
     pub mph_fc_on: f64,
+    /// Power above which to demand fuel converter on (HEV, PHEV)
     pub kw_demand_fc_on: f64,
+    /// Maximum brake regeneration efficiency
     pub max_regen: f64,
+    /// Stop/start micro-HEV flag
     pub stop_start: bool,
+    /// Force auxiliary power load to come from fuel converter
     pub force_aux_on_fc: bool,
     /// Alternator efficiency
     pub alt_eff: f64,
@@ -441,58 +452,103 @@ pub struct RustVehicle {
     pub trans_kg: f64,
     /// Transmission efficiency
     pub trans_eff: f64,
+    /// Maximum acceptable overall change in ESS energy relative to energy from fuel (HEV SOC balancing only), $\frac{\Delta E_{ESS}}{\Delta E_{fuel}}$
     pub ess_to_fuel_ok_error: f64,
+    #[doc(hidden)]
     pub small_motor_power_kw: f64,
+    #[doc(hidden)]
     pub large_motor_power_kw: f64,
     // this and other fixed-size arrays can probably be vectors
     // without any performance penalty with the current implementation
     // of the functions in utils.rs
+    #[doc(hidden)]
     pub fc_perc_out_array: Vec<f64>,
+    #[doc(hidden)]
     pub regen_a: f64,
+    #[doc(hidden)]
     pub regen_b: f64,
+    #[doc(hidden)]
     pub charging_on: bool,
+    #[doc(hidden)]
     pub no_elec_sys: bool,
+    #[doc(hidden)]
     pub no_elec_aux: bool,
+    #[doc(hidden)]
     pub max_roadway_chg_kw: Array1<f64>,
+    #[doc(hidden)]
     pub input_kw_out_array: Array1<f64>,
+    #[doc(hidden)]
     pub fc_kw_out_array: Vec<f64>,
+    #[doc(hidden)]
     pub fc_eff_array: Vec<f64>,
+    #[doc(hidden)]
     pub modern_max: f64,
+    #[doc(hidden)]
     pub mc_eff_array: Array1<f64>,
+    #[doc(hidden)]
     pub mc_kw_in_array: Vec<f64>,
+    #[doc(hidden)]
     pub mc_kw_out_array: Vec<f64>,
+    #[doc(hidden)]
     pub mc_max_elec_in_kw: f64,
+    #[doc(hidden)]
     pub mc_full_eff_array: Vec<f64>,
+    #[doc(hidden)]
     pub veh_kg: f64,
+    #[doc(hidden)]
     pub max_trac_mps2: f64,
+    #[doc(hidden)]
     pub ess_mass_kg: f64,
+    #[doc(hidden)]
     pub mc_mass_kg: f64,
+    #[doc(hidden)]
     pub fc_mass_kg: f64,
+    #[doc(hidden)]
     pub fs_mass_kg: f64,
+    #[doc(hidden)]
     pub mc_perc_out_array: Vec<f64>,
     // these probably don't need to be in rust
+    #[doc(hidden)]
     pub val_udds_mpgge: f64,
+    #[doc(hidden)]
     pub val_hwy_mpgge: f64,
+    #[doc(hidden)]
     pub val_comb_mpgge: f64,
+    #[doc(hidden)]
     pub val_udds_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val_hwy_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val_comb_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val_cd_range_mi: f64,
+    #[doc(hidden)]
     pub val_const65_mph_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val_const60_mph_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val_const55_mph_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val_const45_mph_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val_unadj_udds_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val_unadj_hwy_kwh_per_mile: f64,
+    #[doc(hidden)]
     pub val0_to60_mph: f64,
+    #[doc(hidden)]
     pub val_ess_life_miles: f64,
+    #[doc(hidden)]
     pub val_range_miles: f64,
+    #[doc(hidden)]
     pub val_veh_base_cost: f64,
+    #[doc(hidden)]
     pub val_msrp: f64,
     /// Fuel converter efficiency peak override, scales entire curve
     pub fc_peak_eff_override: Option<f64>,
     /// Motor efficiency peak override, scales entire curve
     pub mc_peak_eff_override: Option<f64>,
+    #[doc(hidden)]
     pub orphaned: bool,
 }
 
