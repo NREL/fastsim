@@ -10,8 +10,10 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
+use crate::simdrive;
+
 /// Whether FC thermal modeling is handled by FASTSim
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum FcModelTypes {
     /// Thermal modeling of fuel converter is handled inside FASTSim
     Internal(FcTempEffModel, FcTempEffComponent),
@@ -26,7 +28,7 @@ impl Default for FcModelTypes {
 }
 
 /// Which commponent temperature affects FC efficency
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum FcTempEffComponent {
     /// FC efficiency is purely dependent on cat temp
     Catalyst,
@@ -43,7 +45,7 @@ impl Default for FcTempEffComponent {
 }
 
 /// Model variants for how FC efficiency depends on temperature
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum FcTempEffModel {
     /// Linear temperature dependence
     Linear { offset: f64, slope: f64, min: f64 },
@@ -63,7 +65,7 @@ impl Default for FcTempEffModel {
 }
 
 /// Whether compontent thermal model is handled by FASTSim
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum ComponentModelTypes {
     /// Component temperature is handled inside FASTSim
     Internal,
@@ -81,7 +83,7 @@ impl Default for ComponentModelTypes {
 #[pyclass]
 #[add_pyo3_api]
 #[allow(non_snake_case)]
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct VehicleThermal {
     // fuel converter / engine
     /// parameter fuel converter thermal mass [kJ/K]
@@ -220,4 +222,9 @@ impl VehicleThermal {
     pub fn from_file(filename: &str) -> Self {
         Self::from_file_parser(filename).unwrap()
     }
+}
+
+
+pub struct SimDriveHot {
+    sd: simdrive::RustSimDrive,
 }

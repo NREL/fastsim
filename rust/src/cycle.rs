@@ -126,7 +126,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyclass]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(

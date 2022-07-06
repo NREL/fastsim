@@ -26,7 +26,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
 }
 
 #[pyclass]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     #[new]
     #[allow(clippy::too_many_arguments)]
@@ -223,7 +223,7 @@ impl Default for RustSimDriveParams {
 }
 
 #[pyclass]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
     #[new]
