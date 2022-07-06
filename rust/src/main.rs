@@ -1,7 +1,6 @@
 extern crate ndarray;
-use clap::{IntoApp, Parser, Subcommand};
+use clap::Parser;
 use serde::{Deserialize, Serialize};
-use std::process::Command as ProcCommand;
 
 #[macro_use]
 pub mod macros;
