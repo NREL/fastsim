@@ -9,11 +9,11 @@ from fastsim.tests.test_coasting import make_coasting_plot
 
 
 DO_SHOW = False
-FRACTION_EXTENDED_TIME = 0.1
-ABSOLUTE_EXTENDED_TIME_S = 180.0
+FRACTION_EXTENDED_TIME = 0.25
+ABSOLUTE_EXTENDED_TIME_S = 20.0 # 180.0
 OUTPUT_DIR = Path(__file__).parent.absolute() / 'test_output'
 MIN_ECO_CRUISE_TARGET_SPEED_m_per_s = 8.0
-ECO_COAST_ALLOW_PASSING = True
+ECO_COAST_ALLOW_PASSING = False
 
 
 def extend_cycle(cyc, absolute_time_s=0, time_fraction=0):
@@ -87,10 +87,55 @@ def make_save_file(prefix, postfix, save_dir=None):
     return None
 
 
+PREMADE_CYCLES = {
+    'trapz': fastsim.cycle.Cycle.from_dict(
+        fastsim.cycle.resample(
+            fastsim.cycle.make_cycle(
+                ts=[0.0, 10.0, 30.0, 34.0, 40.0],
+                vs=[0.0, 10.0, 10.0, 0.0, 0.0],
+            ),
+            new_dt=1.0
+        )
+    ),
+    'trapz-x2': fastsim.cycle.Cycle.from_dict(
+        fastsim.cycle.resample(
+            fastsim.cycle.make_cycle(
+                ts=[0.0, 10.0, 30.0, 34.0, 40.0, 50.0, 70.0, 74.0, 80.0],
+                vs=[0.0, 10.0, 10.0, 0.0, 0.0, 10.0, 10.0, 0.0, 0.0],
+            ),
+            new_dt=1.0
+        )
+    ),
+    'stacked-trapz': fastsim.cycle.Cycle.from_dict(
+        fastsim.cycle.resample(
+            fastsim.cycle.make_cycle(
+                ts=[0.0, 10.0, 20.0, 24.0, 50.0, 54.0, 60.0],
+                vs=[0.0, 20.0, 20.0, 8.0, 8.0, 0.0, 0.0],
+            ),
+            new_dt=1.0
+        )
+    ),
+}
+
+
+def load_cycle(cyc_name: str) -> fastsim.cycle.Cycle:
+    """
+    """
+    if cyc_name in PREMADE_CYCLES:
+        raw_cycle = PREMADE_CYCLES.get(cyc_name)
+    else:
+        raw_cycle = fastsim.cycle.Cycle.from_file(cyc_name)
+    return extend_cycle(
+        raw_cycle,
+        time_fraction=FRACTION_EXTENDED_TIME,
+        absolute_time_s=ABSOLUTE_EXTENDED_TIME_S
+    )
+
+
 def no_eco_driving(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
-    cyc = extend_cycle(fastsim.cycle.Cycle.from_file(cyc_name), time_fraction=FRACTION_EXTENDED_TIME, absolute_time_s=ABSOLUTE_EXTENDED_TIME_S)
+    cyc = load_cycle(cyc_name)
     sim = fastsim.simdrive.SimDrive(cyc, veh)
     sim.sim_drive(init_soc=init_soc)
     print(f"NO ECO-DRIVING: {sim.mpgge:.3f} mpg")
@@ -106,7 +151,7 @@ def no_eco_driving(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, d
 def eco_coast(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
-    cyc = extend_cycle(fastsim.cycle.Cycle.from_file(cyc_name), time_fraction=FRACTION_EXTENDED_TIME, absolute_time_s=ABSOLUTE_EXTENDED_TIME_S)
+    cyc = load_cycle(cyc_name)
     sim = fastsim.simdrive.SimDrive(cyc, veh)
     params = sim.sim_params
     params.coast_allow = True
@@ -129,11 +174,7 @@ def eco_coast_by_microtrip(veh, init_soc=None, save_dir=None, tag=None, cyc_name
     min_gap_threshold = -0.1 # meters
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
-    cyc_mts = fastsim.cycle.to_microtrips(
-            extend_cycle(
-                fastsim.cycle.Cycle.from_file(cyc_name),
-                time_fraction=FRACTION_EXTENDED_TIME,
-                absolute_time_s=ABSOLUTE_EXTENDED_TIME_S).get_cyc_dict())
+    cyc_mts = fastsim.cycle.to_microtrips(load_cycle(cyc_name).get_cyc_dict())
     fuel_kj = 0.0
     ess_dischg_kj = 0.0
     dist_mi = 0.0
@@ -217,7 +258,7 @@ def create_dist_and_avg_speeds_by_microtrip(cyc, use_moving_time=True, verbose=F
 def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
-    cyc = extend_cycle(fastsim.cycle.Cycle.from_file(cyc_name), time_fraction=FRACTION_EXTENDED_TIME, absolute_time_s=ABSOLUTE_EXTENDED_TIME_S)
+    cyc = load_cycle(cyc_name)
     sim = fastsim.simdrive.SimDrive(cyc, veh)
     params = sim.sim_params
     dist_and_avg_speeds = create_dist_and_avg_speeds_by_microtrip(cyc)
@@ -259,7 +300,7 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
 def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
-    cyc = extend_cycle(fastsim.cycle.Cycle.from_file(cyc_name), time_fraction=FRACTION_EXTENDED_TIME, absolute_time_s=ABSOLUTE_EXTENDED_TIME_S)
+    cyc = load_cycle(cyc_name)
     sim = fastsim.simdrive.SimDrive(cyc, veh)
     params = sim.sim_params
     dist_and_avg_speeds = create_dist_and_avg_speeds_by_microtrip(cyc)
@@ -336,9 +377,12 @@ def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=No
 def main(cycle_name=None, powertrain=None, do_show=None):
     save_dir = OUTPUT_DIR
     save_dir.mkdir(parents=True, exist_ok=True)
-    cyc_names = [cycle_name] if cycle_name is not None else ["hwfet", "udds", "us06"]
+    cyc_names = [cycle_name] if cycle_name is not None else [
+        "hwfet", "udds", "us06", "NREL13", "trapz", "trapz-x2", "stacked-trapz"
+    ]
     outputs = []
     for cyc_name in cyc_names:
+        print(f"CYCLE: {cyc_name}")
         if powertrain is None or powertrain == "conv":
             veh_conv = fastsim.vehicle.Vehicle.from_vehdb(1)
             print(f"CONV: {veh_conv.scenario_name}")
