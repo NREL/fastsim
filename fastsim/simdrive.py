@@ -1582,7 +1582,6 @@ class SimDrive(object):
         """
         RETURN: 
         """
-        TOL = 1e-6
         NOT_FOUND = -1.0
         v0 = self.mps_ach[i-1]
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
