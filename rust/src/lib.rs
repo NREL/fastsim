@@ -32,6 +32,8 @@
 extern crate ndarray;
 use pyo3::prelude::*;
 
+#[macro_use]
+pub mod macros;
 extern crate proc_macros;
 
 pub mod params;

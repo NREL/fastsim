@@ -1,10 +1,14 @@
 //! Module containing FASTSim parameters.
 
 extern crate pyo3;
+use crate::proc_macros::add_pyo3_api;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
-
-use crate::proc_macros::add_pyo3_api;
+use pyo3::types::PyType;
+use serde::{Deserialize, Serialize};
+use std::error::Error;
+use std::fs::File;
+use std::path::PathBuf;
 
 /// Unit conversions
 pub const MPH_PER_MPS: f64 = 2.2369;
@@ -13,9 +17,11 @@ pub const M_PER_MI: f64 = 1609.00;
 /// Misc Constants
 pub const MODERN_MAX: f64 = 0.95;
 
+pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
+
 /// Struct containing time trace data
 #[pyclass]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
 #[add_pyo3_api(
     #[allow(non_snake_case)]
@@ -30,6 +36,7 @@ pub struct RustPhysicalProperties {
     pub kwh_per_gge: f64,           // = 33.7 # kWh per gallon of gasoline
     pub fuel_rho_kg__L: f64, // = 0.75 # gasoline density in kg/L https://inchem.org/documents/icsc/icsc/eics1400.htm
     pub fuel_afr_stoich: f64, // = 14.7 # gasoline stoichiometric air-fuel ratio https://en.wikipedia.org/wiki/Air%E2%80%93fuel_ratio
+    #[serde(skip)]
     pub orphaned: bool,
 }
 
@@ -49,6 +56,14 @@ impl Default for RustPhysicalProperties {
             fuel_afr_stoich,
             orphaned: false,
         }
+    }
+}
+
+impl RustPhysicalProperties {
+    impl_serde!(RustPhysicalProperties, PROPS_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
     }
 }
 

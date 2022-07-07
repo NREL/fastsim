@@ -11,14 +11,15 @@ extern crate pyo3;
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-// use numpy::pyo3::Python;
-// use numpy::ndarray::array;
-// use numpy::{ToPyArray, PyArray};
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 // local
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
+
+pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";
 
 #[pyfunction]
 /// # Arguments
@@ -137,7 +138,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(
@@ -162,8 +163,9 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[classmethod]
-    pub fn from_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
-        match Self::from_file(&pathstr) {
+    #[pyo3(name = "from_csv_file")]
+    pub fn from_csv_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
+        match Self::from_csv_file(&pathstr) {
             Ok(cyc) => Ok(cyc),
             Err(msg) => Err(PyFileNotFoundError::new_err(msg)),
         }
@@ -279,6 +281,7 @@ pub struct RustCycle {
     /// array of max possible charge rate from roadway
     pub road_type: Array1<f64>,
     pub name: String,
+    #[serde(skip)]
     pub orphaned: bool,
 }
 
@@ -445,7 +448,7 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_file(pathstr: &str) -> Result<Self, String> {
+    pub fn from_csv_file(pathstr: &str) -> Result<Self, String> {
         let pathbuf = PathBuf::from(&pathstr);
         if pathbuf.exists() {
             let mut time_s = Vec::<f64>::new();
@@ -473,6 +476,12 @@ impl RustCycle {
     /// elevation change w.r.t. to initial
     pub fn delta_elev_m(&self) -> Array1<f64> {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+    }
+
+    impl_serde!(RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
     }
 }
 
@@ -512,7 +521,7 @@ mod tests {
     fn test_loading_a_cycle_from_the_filesystem() {
         let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        match RustCycle::from_file(&pathstr) {
+        match RustCycle::from_csv_file(&pathstr) {
             Ok(cyc) => {
                 assert_eq!(cyc.name, String::from("udds"));
                 let num_entries = cyc.time_s.len();
