@@ -1582,6 +1582,7 @@ class SimDrive(object):
         """
         RETURN: 
         """
+        TOL = 1e-6
         NOT_FOUND = -1.0
         v0 = self.mps_ach[i-1]
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
@@ -1593,7 +1594,6 @@ class SimDrive(object):
         ds_mask = ds >= d0
         if sum(ds_mask) == 0:
             return 0
-        dt_s = self.cyc0.dt_s[i]
         distances_m = ds[ds_mask] - d0
         grade_by_distance = gs[ds_mask]
         # distance traveled while stopping via friction-braking (i.e., distance to brake)
@@ -1616,41 +1616,57 @@ class SimDrive(object):
         new_speeds_m_per_s = []
         v = v0
         iter = 0
-        while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER:
+        idx = i
+        max_idx = len(self.mps_ach)
+        while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx <= max_idx:
+            dt_s = self.cyc0.dt_s[idx]
+            dd = v * dt_s
             gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
-                d0, d)
+                d, d + dd)
             k = self._calc_dvdd(v, gr)
             v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
             vavg = 0.5 * (v + v_next)
+            dd = vavg * dt_s
             for _ in range(ITERS_PER_STEP):
                 k = self._calc_dvdd(vavg, gr)
                 v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
                 vavg = 0.5 * (v + v_next)
+                dd = vavg * dt_s
+                gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
+                    d, d + dd)
             if k >= 0.0 and unique_grade is not None:
                 # there is no solution for coastdown -- speed will never decrease
                 return NOT_FOUND
-            stop = v_next <= v_brake
-            if stop:
-                v_next = v_brake
+            if v_next <= v_brake:
+                break
             vavg = 0.5 * (v + v_next)
             dd = vavg * dt_s
             d += dd
             new_speeds_m_per_s.append(v_next)
             v = v_next
             iter += 1
-            if stop:
-                break
-        if iter < MAX_ITER:
+            idx += 1
+        if iter < MAX_ITER and idx <= max_idx:
             dtb = -0.5 * v * v / a_brake
+            dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
+            dtb_target = max(dts0 - d, dtb)
+            dtsc = d + dtb_target
             if modify_cycle:
-                for idx, new_speed in enumerate(new_speeds_m_per_s):
-                    self.cyc.mps[min(i+idx, len(self.mps_ach) - 1)] = new_speed
-                _, n = self.cyc.modify_with_braking_trajectory(a_brake, i+len(new_speeds_m_per_s))
+                for di, new_speed in enumerate(new_speeds_m_per_s):
+                    idx = min(i + di, len(self.mps_ach) - 1)
+                    self.cyc.mps[idx] = new_speed
+                _, n = self.cyc.modify_with_braking_trajectory(a_brake, i+len(new_speeds_m_per_s), dts_m=dtb_target)
                 self.impose_coast[i:] = False
-                for idx in range(len(new_speeds_m_per_s) + n):
-                    if (i+idx) < max_items:
-                        self.impose_coast[i+idx] = True
-            return d + dtb
+                for di in range(len(new_speeds_m_per_s) + n):
+                    idx = min(i + di, len(self.mps_ach) - 1)
+                    self.impose_coast[idx] = True
+            if True:
+                print(f"_generate_coast_trajectory(i={i}, modify_cycle={modify_cycle}")
+                print(f"... dtb       : {dtb} m")
+                print(f"... dtb_target: {dtb_target} m")
+                print(f"... d         : {d} m")
+                print(f"... dtsc      : {dtsc} m")
+            return dtsc
         return NOT_FOUND
 
     def _calc_distance_to_stop_coast_v2(self, i):
@@ -1730,6 +1746,10 @@ class SimDrive(object):
         v0 = self.mps_ach[i-1]
         brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2
         dtb = -0.5 * v0 * v0 / brake_accel_m_per_s2
+        if dtsc0 >= dts0:
+            print(f"Should impose coast? True")
+            print(f"... dtsc0: {dtsc0} m")
+            print(f"... dts0 : {dts0} m")
         return dtsc0 >= dts0 and dts0 >= 4*dtb
 
     def _calc_next_rendezvous_trajectory(self, i, min_accel_m__s2, max_accel_m__s2):
@@ -2042,6 +2062,15 @@ class SimDrive(object):
         if v0 > TOL and not self.impose_coast[i]:
             if self._should_impose_coast(i):
                 d = self._generate_coast_trajectory(i, True)
+                if True:
+                    print(f"SHOULD IMPOSE COAST AT {i}")
+                    print(f"Coast trajectory generated: distance to stop = {d}")
+                    print("... Before collision prevention")
+                    print(f'... *[{i-1}]: {self.cyc.mps[i-1]} m/s ({self.cyc.dist_v2_m[:i].sum()})')
+                    for idx in range(len(self.mps_ach) - i):
+                        print(f'... [{idx+i}]: {self.cyc.mps[idx+i]} m/s ({self.cyc.dist_v2_m[:idx+i+1].sum()})')
+                        if self.cyc.mps[idx+i] == 0.0:
+                            break
                 if d < 0:
                     # TODO: handle "not found" case
                     self.impose_coast[i:] = False
@@ -2049,6 +2078,13 @@ class SimDrive(object):
                 if not self.sim_params.coast_allow_passing:
                     # TODO: Check for collisions and, if they exist, modify the trace
                     self._prevent_collisions(i)
+                if True:
+                    print("... After collision prevention")
+                    print(f'... *[{i-1}]: {self.cyc.mps[i-1]} m/s ({self.cyc.dist_v2_m[:i].sum()})')
+                    for idx in range(len(self.mps_ach) - i):
+                        print(f'... [{idx+i}]: {self.cyc.mps[idx+i]} m/s ({self.cyc.dist_v2_m[:idx+i+1].sum()})')
+                        if self.cyc.mps[idx+i] == 0.0:
+                            break
                 # TODO: (stretch) investigate stop avoidance
                 # TODO: add/remove the above by flags
 
@@ -2079,17 +2115,30 @@ class SimDrive(object):
         if np.abs(self.cyc.mps[i] - v1_traj) > TOL:
             max_idx = len(self.cyc.time_s) - 1
             adjusted_current_speed = False
-            if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s + TOL):
-                v1_before = self.cyc.mps[i]
-                _, num_steps = self.cyc.modify_with_braking_trajectory(
-                    self.sim_params.coast_brake_accel_m_per_s2, i)
-                self.impose_coast[i:] = False
-                for di in range(0, num_steps):
-                    if (i + di) <= max_idx:
-                        self.impose_coast[i + di] = True
-                v1_after = self.cyc.mps[i]
-                assert v1_before != v1_after
-                adjusted_current_speed = True
+            brake_speed_start_tol_m_per_s = 0.1
+            if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s - brake_speed_start_tol_m_per_s):
+                if True:
+                    print(f"Modifying for braking trajectory at {i}")
+                    v1_before = self.cyc.mps[i]
+                    print(f"... v1_before: {v1_before} m/s")
+                    _, num_steps = self.cyc.modify_with_braking_trajectory(
+                        self.sim_params.coast_brake_accel_m_per_s2, i)
+                    self.impose_coast[i:] = False
+                    for di in range(0, num_steps):
+                        if (i + di) <= max_idx:
+                            self.impose_coast[i + di] = True
+                    v1_after = self.cyc.mps[i]
+                    print(f"... v1_after: {v1_after} m/s")
+                    assert v1_before != v1_after
+                    adjusted_current_speed = True
+                else:
+                    print(f"We would have modified the braking trajectory but we won't ({i})")
+                    print("... After free-coast adjustment")
+                    print(f'... *[{i-1}]: {self.cyc.mps[i-1]} m/s ({self.cyc.dist_v2_m[:i].sum()})')
+                    for idx in range(len(self.mps_ach) - i):
+                        print(f'... [{idx+i}]: {self.cyc.mps[idx+i]} m/s ({self.cyc.dist_v2_m[:idx+i+1].sum()})')
+                        if self.cyc.mps[idx+i] == 0.0:
+                            break
             else:
                 traj_found, traj_n, traj_jerk_m__s3, traj_accel_m__s2 = self._calc_next_rendezvous_trajectory(
                     i,
@@ -2097,9 +2146,11 @@ class SimDrive(object):
                     max_accel_m__s2=min(accel_proposed, 0.0)
                 )
                 if traj_found:
+                    print(f"Adjusting for rendezvous trajectory at ({i})...")
                     # adjust cyc to perform the trajectory
                     final_speed_m_per_s = self.cyc.modify_by_const_jerk_trajectory(
                         i, traj_n, traj_jerk_m__s3, traj_accel_m__s2)
+                    print(f"... final speed: {final_speed_m_per_s} m/s (after {traj_n} steps)")
                     self.impose_coast[i:] = False
                     for di in range(0, traj_n):
                         if i + di <= max_idx:
@@ -2129,6 +2180,13 @@ class SimDrive(object):
                 self.solve_step(i)
                 self.newton_iters[i] = 0  # reset newton iters
                 self.cyc.mps[i] = self.mps_ach[i]
+                if True:
+                    print("... After adjustments and free-coast calculation")
+                    print(f'... *[{i-1}]: {self.cyc.mps[i-1]} m/s ({self.cyc.dist_v2_m[:i].sum()})')
+                    for idx in range(len(self.mps_ach) - i):
+                        print(f'... [{idx+i}]: {self.cyc.mps[idx+i]} m/s ({self.cyc.dist_v2_m[:idx+i+1].sum()})')
+                        if self.cyc.mps[idx+i] == 0.0:
+                            break
 
     def set_post_scalars(self):
         """Sets scalar variables that can be calculated after a cycle is run. 
