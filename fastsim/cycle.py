@@ -237,7 +237,7 @@ class Cycle(object):
             self.mps[idx_to_set] = max(v, 0.0)
         return v
 
-    def modify_with_braking_trajectory(self, brake_accel_m__s2, idx):
+    def modify_with_braking_trajectory(self, brake_accel_m__s2: float, idx: int, dts_m: Optional[float] = None) -> tuple:
         """
         Add a braking trajectory that would cover the same distance as the given constant brake deceleration
         - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
@@ -255,7 +255,7 @@ class Cycle(object):
         v0 = self.mps[i-1]
         dt = self.dt_s[i]
         # distance-to-stop (m)
-        dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
+        dts_m = -0.5 * v0 * v0 / brake_accel_m__s2 if dts_m is None else dts_m
         # time-to-stop (s)
         tts_s = -v0 / brake_accel_m__s2
         # number of steps to take
