@@ -1617,6 +1617,7 @@ class SimDrive(object):
         iter = 0
         idx = i
         max_idx = len(self.mps_ach)
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
         while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx <= max_idx:
             dt_s = self.cyc0.dt_s[idx]
             dd = v * dt_s
@@ -1640,6 +1641,9 @@ class SimDrive(object):
                 break
             vavg = 0.5 * (v + v_next)
             dd = vavg * dt_s
+            dtb = -0.5 * v_next * v_next / a_brake
+            if d + dd + dtb > dts0:
+                break
             d += dd
             new_speeds_m_per_s.append(v_next)
             v = v_next
@@ -1647,7 +1651,6 @@ class SimDrive(object):
             idx += 1
         if iter < MAX_ITER and idx <= max_idx:
             dtb = -0.5 * v * v / a_brake
-            dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
             dtb_target = max(dts0 - d, dtb)
             dtsc = d + dtb_target
             if modify_cycle:
