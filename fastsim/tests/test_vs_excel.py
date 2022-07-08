@@ -277,19 +277,4 @@ class TestExcel(unittest.TestCase):
             self.assertEqual(failed_tests, [])
 
 if __name__ == "__main__":
-    res_python = run(vehicles=[12], verbose=True)
-    res_excel = run_excel(vehicles=[12], prev_res_path=PREV_RES_PATH,
-                            rerun_excel=False)
-    res_comps = compare(res_python, res_excel, verbose=False)
-
-    failed_tests = []
-    for veh_key, veh_val in res_comps.items():
-        if veh_key not in KNOWN_ERROR_LIST:
-            for attr_key, attr_val in veh_val.items():
-                if attr_key == 'netAccel_frac_err':
-                    if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
-                        failed_tests.append(veh_key + '.' + attr_key)
-                elif attr_val != 0:
-                    failed_tests.append(veh_key + '.' + attr_key)    
-
     unittest.main()
