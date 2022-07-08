@@ -8,6 +8,7 @@ import numpy as np
 import fastsim.vehicle_base as fsvb
 from fastsim import cycle, vehicle, simdrive
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
+import fastsimrust
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
@@ -339,6 +340,17 @@ class TestRust(unittest.TestCase):
         cyc_dict = cyc.get_cyc_dict()
         
         self.test_vehicle_for_discrepancies(cyc_dict=cyc_dict)
+
+    def test_serde_json(self):
+        cyc = cycle.Cycle.from_file("udds").to_rust()
+        veh = vehicle.Vehicle.from_vehdb(10).to_rust()
+        sdr = simdrive.RustSimDrive(cyc, veh)
+        _ = fastsimrust.RustCycle.from_json(cyc.to_json())
+        _ = fastsimrust.RustPhysicalProperties.from_json(sdr.props.to_json())
+        # _ = fastsimrust.RustSimDrive.from_json(sdr.to_json()) # this probably fails because vehicle fails
+        _ = fastsimrust.RustSimDriveParams.from_json(sdr.sim_params.to_json())
+        # _ = fastsimrust.RustVehicle.from_json(veh.to_json()) # TODO: figure out why this fails
+
 
 if __name__ == '__main__':
     #TestRust().test_grade()
