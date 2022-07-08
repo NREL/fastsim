@@ -86,12 +86,7 @@ pub fn ndarrmax(arr: &Array1<f64>) -> f64 {
 
 /// return true if the array is all zeros
 pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
-    for idx in 0..arr.len() {
-        if arr[idx] != 0.0 {
-            return false;
-        }
-    }
-    true
+    arr.iter().all(|x| *x == 0.0)
 }
 
 /// return cumsum <f64> of arr
