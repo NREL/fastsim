@@ -739,8 +739,6 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, tol: float=0.1, vmin: Option
     for di in range(len(cyc.mps) - i):
         idx = i + di
         v = cyc.mps[idx]
-        if v == 0.0:
-            break
         v_lv = cyc0.mps[idx]
         vavg = (v + v0) * 0.5
         vavg_lv = (v_lv + v0_lv) * 0.5
@@ -750,13 +748,32 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, tol: float=0.1, vmin: Option
         d += dd
         d_lv += dd_lv
         dtlv = d_lv - d
+        if True:
+            print(f"Checking Rendezvous at [{idx}]")
+            print(f"... v0 = {v0}")
+            print(f"... v = {v}")
+            print(f"... v0_lv = {v0_lv}")
+            print(f"... v_lv = {v_lv}")
+            print(f"... d = {d}")
+            print(f"... d_lv = {d_lv}")
+            print(f"... dtlv = {dtlv}")
         v0 = v
         v0_lv = v_lv
-        if di > 0 and (vmin is None or v_lv >= vmin) and dtlv < -tol:
+        if di > 0 and dtlv < -tol:
+            if True:
+                print(f"Found Rendezvous at [{idx}]")
+                print(f"... idx = {idx}")
+                print(f"... n = {di + 1}")
+                print(f"... d_lv = {d_lv}")
+                print(f"... v_lv = {v_lv}")
             rendezvous_idx = idx
             rendezvous_num_steps = di + 1
             rendezvous_distance_m = d_lv
             rendezvous_speed_m_per_s = v_lv
+            break
+        if v <= tol:
+            break
+        if vmin is not None and v_lv >= vmin:
             break
         if dtmax is not None and dt_total > dtmax:
             break

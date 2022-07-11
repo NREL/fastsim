@@ -1662,8 +1662,8 @@ class SimDrive(object):
                 for di in range(len(new_speeds_m_per_s) + n):
                     idx = min(i + di, len(self.mps_ach) - 1)
                     self.impose_coast[idx] = True
-            if True:
-                print(f"_generate_coast_trajectory(i={i}, modify_cycle={modify_cycle}")
+            if False:
+                print(f"_generate_coast_trajectory(i={i}, modify_cycle={modify_cycle})")
                 print(f"... dtb       : {dtb} m")
                 print(f"... dtb_target: {dtb_target} m")
                 print(f"... d         : {d} m")
@@ -1748,7 +1748,7 @@ class SimDrive(object):
         v0 = self.mps_ach[i-1]
         brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2
         dtb = -0.5 * v0 * v0 / brake_accel_m_per_s2
-        if dtsc0 >= dts0:
+        if False and dtsc0 >= dts0:
             print(f"Should impose coast? True")
             print(f"... dtsc0: {dtsc0} m")
             print(f"... dts0 : {dts0} m")
@@ -1962,61 +1962,86 @@ class SimDrive(object):
             else:
                 self.coast_delay_index[i:] = coast_delay
 
-    def _prevent_collisions(self, i: int) -> bool:
+    def _prevent_collisions(self, i: int, passing_tol_m: Optional[float] = None) -> bool:
         """
         Prevent collision between the vehicle in cyc and the one in cyc0.
         If a collision will take place, reworks the cyc such that a rendezvous occurs instead.
+        Arguments
+        - i: int, index for consideration
+        - passing_tol_m: None | float, tolerance for how far we have to go past the lead vehicle to be considered "passing"
         RETURN: Bool, True if cyc was modified
         """
-        TOL = 10.0 # m
+        passing_tol_m = 1.0 if passing_tol_m is None else passing_tol_m
         best = None
+        collision = cycle.detect_passing(
+            self.cyc, self.cyc0, i, passing_tol_m,
+            vmin = None,
+            dtmax = None
+        )
+        if not collision["has_collision"]:
+            print(f"No collision from i = {i} for {passing_tol_m} m, passing tolerance")
+            return False
         for di in range(len(self.mps_ach) - i):
             idx = i + di
             if not self.impose_coast[idx]:
-                break
-            collision = cycle.detect_passing(
-                self.cyc, self.cyc0, idx, TOL,
-                vmin = None,
-                dtmax = None
-            )
-            if not collision["has_collision"]:
-                if di == 0:
+                if idx == i:
+                    print(f"impose_coast[{idx}] = False; breaking")
                     break
-                continue
-            # Modify the cycle
-            n = collision["num_steps"]
+                else:
+                    continue
+            n = collision["idx"] - idx + 1
+            if n < 2:
+                print(f"n has gotten too small; breaking")
+                break
             dt = collision['time_step_duration_s']
+            d_start = self.cyc.dist_v2_m[:idx].sum()
             jerk_m_per_s3, accel0_m_per_s2 = cycle.calc_constant_jerk_trajectory(
                 n,
-                collision["start_distance_m"],
-                collision["start_speed_m_per_s"],
+                d_start,
+                self.cyc.mps[idx - 1],
                 collision["distance_m"],
                 collision["speed_m_per_s"],
                 dt
             )
             if True:
-                dd_jerk = cycle.dist_for_constant_jerk(n, 0.0, collision["start_speed_m_per_s"], accel0_m_per_s2, jerk_m_per_s3, dt)
-                dd_collision = collision['distance_m'] - collision['start_distance_m']
+                dd_jerk = cycle.dist_for_constant_jerk(n, 0.0, self.cyc.mps[idx - 1], accel0_m_per_s2, jerk_m_per_s3, dt)
+                dd_collision = collision['distance_m'] - d_start
                 if np.abs(dd_jerk - dd_collision) > 0.1:
                     print(f"dd_jerk: {dd_jerk} dd_collision: {dd_collision} m")
                     import pdb
                     pdb.set_trace()
-                v_jerk = cycle.speed_for_constant_jerk(n, collision['start_speed_m_per_s'], accel0_m_per_s2, jerk_m_per_s3, dt)
+                v_jerk = cycle.speed_for_constant_jerk(n, self.cyc.mps[idx - 1], accel0_m_per_s2, jerk_m_per_s3, dt)
                 v_collision = collision["speed_m_per_s"]
                 if np.abs(v_jerk - v_collision) > 0.1:
                     print(f"v_jerk: {v_jerk}; v_collision: {v_collision} m/s")
                     import pdb
                     pdb.set_trace()
             accels_m_per_s2 = np.array(
-                [cycle.accel_for_constant_jerk(ni, accel0_m_per_s2, jerk_m_per_s3, dt) for ni in range(n+1)]
+                [cycle.accel_for_constant_jerk(ni, accel0_m_per_s2, jerk_m_per_s3, dt) for ni in range(n)]
             )
+            trace_accels_m_per_s2 = np.array([
+                (self.cyc.mps[ni + idx] - self.cyc.mps[ni + idx - 1]) / self.cyc.dt_s[ni + idx - 1]
+                for ni in range(n)
+            ])
+            all_sub_coast = (trace_accels_m_per_s2 >= accels_m_per_s2).all()
             min_accel_m_per_s2 = accels_m_per_s2.min()
             max_accel_m_per_s2 = accels_m_per_s2.max()
-            accept = (
-                accel0_m_per_s2 < 0.0
-                and min_accel_m_per_s2 >= self.sim_params.coast_brake_accel_m_per_s2
-                and max_accel_m_per_s2 < 0.0
-            )
+            accept = all_sub_coast
+            if True:
+                print(f"... accept criterion for di = {di}, i = {i}")
+                print(f"... ... accept? = {accept}")
+                print(f"... ... d_collision = {collision['distance_m']} m")
+                print(f"... ... v_collision = {collision['speed_m_per_s']} m")
+                print(f"... ... d_start[{idx - 1}] = {d_start} m")
+                print(f"... ... speed_m_per_s[{idx-1}] = {self.cyc.mps[idx-1]} m/s")
+                print(f"... ... accel0_m_per_s2 = {accel0_m_per_s2} m/s2")
+                print(f"... ... jerk_m_per_s3 = {jerk_m_per_s3} m/s2")
+                print(f"... ... min-accel = {min_accel_m_per_s2} m/s2")
+                print(f"... ... max-accel = {max_accel_m_per_s2} m/s2")
+                print(f"... ... trace_accels_m_per_s2 = {repr(trace_accels_m_per_s2)} m/s2")
+                print(f"... ... all_sub_coast = {all_sub_coast}")
+                print(f"... ... accels = {repr(accels_m_per_s2)}")
+                print(f"... ... best = {repr(best)}")
             accel_spread = np.abs(max_accel_m_per_s2 - min_accel_m_per_s2)
             if accept and (best is None or accel_spread < best['accel_spread']):
                 best = {
@@ -2025,15 +2050,26 @@ class SimDrive(object):
                     'jerk_m_per_s3': jerk_m_per_s3,
                     'accel0_m_per_s2': accel0_m_per_s2,
                     'accel_spread': accel_spread,
+                    'min_accel_m_per_s2': min_accel_m_per_s2,
+                    'max_accel_m_per_s2': max_accel_m_per_s2,
                 }
         if best is None:
-            return False
+            if i > 1000:
+                import pdb
+                pdb.set_trace()
+            new_passing_tol_m = 10.0 if passing_tol_m < 10.0 else passing_tol_m + 5.0
+            if new_passing_tol_m > 60.0:
+                print(f"Unable to find a rendezvous solution for {passing_tol_m} m passing tolerance")
+                print(f"... i: {repr(collision)}")
+                print(f"... collision info: {repr(collision)}")
+                return False
+            return self._prevent_collisions(i, new_passing_tol_m)
         self.cyc.modify_by_const_jerk_trajectory(
             best['idx'], best['n'], best['jerk_m_per_s3'], best['accel0_m_per_s2']
         )
         if False:
             collision = cycle.detect_passing(
-                self.cyc, self.cyc0, idx, TOL,
+                self.cyc, self.cyc0, idx, passing_tol_m,
                 vmin = None,
                 dtmax = None
             )
@@ -2042,8 +2078,8 @@ class SimDrive(object):
             print(f"... idx = {best['idx']}")
             for k, v in collision.items():
                 print(f"... {k} = {v}")
-        self.impose_coast[best['idx']+best['n']:] = False 
-        self.coast_delay_index[best['idx']+best['n']:] = 0
+        self.impose_coast[best['idx'] + best['n']:] = False 
+        self.coast_delay_index[best['idx'] + best['n']:] = 0
         return True
 
     def _set_coast_speed(self, i):
@@ -2064,7 +2100,7 @@ class SimDrive(object):
         if v0 > TOL and not self.impose_coast[i]:
             if self._should_impose_coast(i):
                 d = self._generate_coast_trajectory(i, True)
-                if True:
+                if False:
                     print(f"SHOULD IMPOSE COAST AT {i}")
                     print(f"Coast trajectory generated: distance to stop = {d}")
                     print("... Before collision prevention")
@@ -2080,7 +2116,7 @@ class SimDrive(object):
                 if not self.sim_params.coast_allow_passing:
                     # TODO: Check for collisions and, if they exist, modify the trace
                     self._prevent_collisions(i)
-                if True:
+                if False:
                     print("... After collision prevention")
                     print(f'... *[{i-1}]: {self.cyc.mps[i-1]} m/s ({self.cyc.dist_v2_m[:i].sum()})')
                     for idx in range(len(self.mps_ach) - i):
@@ -2182,7 +2218,7 @@ class SimDrive(object):
                 self.solve_step(i)
                 self.newton_iters[i] = 0  # reset newton iters
                 self.cyc.mps[i] = self.mps_ach[i]
-                if True:
+                if False:
                     print("... After adjustments and free-coast calculation")
                     print(f'... *[{i-1}]: {self.cyc.mps[i-1]} m/s ({self.cyc.dist_v2_m[:i].sum()})')
                     for idx in range(len(self.mps_ach) - i):
