@@ -110,10 +110,10 @@ def abc_to_drag_coeffs(veh: Vehicle,
     if show_plots:
         plt.figure()
         plt.plot(
-            sd_coast.mph_ach[:cutoff_val],
+            np.array(sd_coast.mph_ach)[:cutoff_val],
             (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) / np.array(sd_coast.mps_ach) / fsim.params.N_PER_LBF)[:cutoff_val],
             label='sim_drive simulated road load')
-        plt.plot(sd_coast.mph_ach[:cutoff_val], (dyno_func_lb(sd_coast.mph_ach))[:cutoff_val], label='ABCs calculated road load')
+        plt.plot(np.array(sd_coast.mph_ach)[:cutoff_val], (dyno_func_lb(sd_coast.mph_ach))[:cutoff_val], label='ABCs calculated road load')
         plt.legend()
         plt.xlabel('Speed [mph]')
         plt.ylabel('Road Load [lb]')
@@ -121,12 +121,12 @@ def abc_to_drag_coeffs(veh: Vehicle,
         plt.show()
 
         fig, ax = plt.subplots(2, 1, sharex=True)
-        ax[0].plot(cyc.time_s[:cutoff_val],
+        ax[0].plot(np.array(cyc.time_s)[:cutoff_val],
                    (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) / np.array(sd_coast.mps_ach))[:cutoff_val]
                    )
         ax[0].set_ylabel("Road Load [N]")
 
-        ax[-1].plot(cyc.time_s[:cutoff_val], sd_coast.mph_ach[:cutoff_val])
+        ax[-1].plot(np.array(cyc.time_s)[:cutoff_val], np.array(sd_coast.mph_ach)[:cutoff_val])
         ax[-1].set_ylabel("mph")
         ax[-1].set_xlabel('Time [s]')
         plt.show()

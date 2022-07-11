@@ -274,6 +274,7 @@ sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
 
 # by assigning the value directly (this is faster than using positional args)
 sim_drive.init_for_step(
+    0.5,
     aux_in_kw_override=np.array(cyc.time_s) / cyc.time_s[-1] * 10
 )
 while sim_drive.i < len(sim_drive.cyc.time_s):
@@ -376,13 +377,15 @@ for subdir in veh_dirs:
     dc_csvs = [fn for fn in dc_csvs if not fn.endswith('trips.csv')]
     
     df_i = pd.read_csv(data_path / subdir / 'trips.csv', index_col=False)
-    trips_df = trips_df.append(df_i, ignore_index=True)
+    trips_df = pd.concat([trips_df,df_i],ignore_index=True)
+    #trips_df = trips_df.append(df_i, ignore_index=True)
     
     veh_pnts_df = pd.DataFrame()
     
     for j in dc_csvs:
         df_j = pd.read_csv(data_path / subdir / j, index_col=False)
-        veh_pnts_df = veh_pnts_df.append(df_j, ignore_index=True)
+        veh_pnts_df = pd.concat([veh_pnts_df, df_j],ignore_index=True)
+        #veh_pnts_df = veh_pnts_df.append(df_j, ignore_index=True)
         
     for k in range(len(df_i)):
         start_ts = df_i.start_ts.iloc[k]
@@ -393,7 +396,8 @@ for subdir in veh_dirs:
         unique_tripno += 1
         tripK_df['sampno'] = [sampno] * len(tripK_df)
         tripK_df['vehno'] = [vehno] * len(tripK_df)
-        drive_cycs_df = drive_cycs_df.append(tripK_df, ignore_index=True)
+        drive_cycs_df = pd.concat([drive_cycs_df, tripK_df],ignore_index=True)
+        #drive_cycs_df = drive_cycs_df.append(tripK_df, ignore_index=True)
 t1 = time.time()
 print(f'Time to load cycles: {time.time() - t0:.2e} s')
 
@@ -434,7 +438,8 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
     output['avg_speed_mph'] = sum(
         sim_drive.dist_mi) / (duration_sec / 3600.0)
-    results_df = results_df.append(output, ignore_index=True)
+    #results_df = results_df.append(output, ignore_index=True)
+    results_df = pd.concat([results_df,pd.DataFrame(output,index=[0])],ignore_index=True)
     output['mpgge'] = sim_drive.mpgge
     
 t_end = time.time()
@@ -471,7 +476,8 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     cyc = fsim.cycle.Cycle.from_dict(cyc).to_rust()
     
     sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
-    sim_drive.sim_params.verbose = False # turn off error messages for large time steps
+    sim_drive.sim_params = fsim.auxiliaries.set_nested_values(sim_drive.sim_params,verbose=False)
+    #sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     sim_drive.sim_drive()
 
     output['nrel_trip_id'] = trp
@@ -479,7 +485,8 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
     output['avg_speed_mph'] = sum(
         sim_drive.dist_mi) / (duration_sec / 3600.0)
-    rust_results_df = results_df.append(output, ignore_index=True)
+    rust_results_df = pd.concat([results_df, pd.DataFrame(output,index=[0])],  ignore_index=True)
+    #rust_results_df = results_df.append(output, ignore_index=True)
     output['mpgge'] = sim_drive.mpgge
     
 t_end = time.time()

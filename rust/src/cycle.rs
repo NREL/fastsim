@@ -1,3 +1,5 @@
+//! Module containing drive cycle struct and related functions.
+
 extern crate ndarray;
 
 use std::collections::HashMap;
@@ -20,16 +22,17 @@ use crate::utils::*;
 pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";
 
 #[pyfunction]
-/// Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
-/// INPUTS:
+/// # Arguments
 /// - n: Int, number of time-steps away from rendezvous
-/// - D0: Num, distance of simulated vehicle (m/s)
-/// - v0: Num, speed of simulated vehicle (m/s)
-/// - Dr: Num, distance of rendezvous point (m)
-/// - vr: Num, speed of rendezvous point (m/s)
-/// - dt: Num, step duration (s)
-/// RETURNS: (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
-/// Returns the constant jerk and acceleration for initial time step.
+/// - d0: Num, distance of simulated vehicle, $\frac{m}{s}$
+/// - v0: Num, speed of simulated vehicle, $\frac{m}{s}$
+/// - dr: Num, distance of rendezvous point, $m$
+/// - vr: Num, speed of rendezvous point, $\frac{m}{s}$
+/// - dt: Num, step duration, $s$
+///
+/// # Returns
+/// (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
+/// - Constant jerk and acceleration for initial time step.
 pub fn calc_constant_jerk_trajectory(
     n: usize,
     d0: f64,
@@ -56,6 +59,7 @@ pub fn calc_constant_jerk_trajectory(
 
 #[pyfunction]
 /// Calculate distance (m) after n timesteps
+///
 /// INPUTS:
 /// - n: Int, numer of timesteps away to calculate
 /// - d0: Num, initial distance (m)
@@ -63,6 +67,7 @@ pub fn calc_constant_jerk_trajectory(
 /// - a0: Num, initial acceleration (m/s2)
 /// - k: Num, constant jerk
 /// - dt: Num, duration of a timestep (s)
+///
 /// NOTE:
 /// - this is the distance traveled from start (i.e., n=0) measured at sample point n
 /// RETURN: Num, the distance at n timesteps away (m)
@@ -78,16 +83,19 @@ pub fn dist_for_constant_jerk(n: usize, d0: f64, v0: f64, a0: f64, k: f64, dt: f
 
 #[pyfunction]
 /// Calculate speed (m/s) n timesteps away via a constant-jerk acceleration
-/// INPUTS:
+///
+/// INPUTS:   
 /// - n: Int, numer of timesteps away to calculate
 /// - v0: Num, initial speed (m/s)
 /// - a0: Num, initial acceleration (m/s2)
 /// - k: Num, constant jerk
 /// - dt: Num, duration of a timestep (s)
+///
 /// NOTE:
 /// - this is the speed at sample n
 /// - if n == 0, speed is v0
 /// - if n == 1, speed is v0 + a0*dt, etc.
+///
 /// RETURN: Num, the speed n timesteps away (m/s)
 pub fn speed_for_constant_jerk(n: usize, v0: f64, a0: f64, k: f64, dt: f64) -> f64 {
     let n = n as f64;
@@ -96,19 +104,23 @@ pub fn speed_for_constant_jerk(n: usize, v0: f64, a0: f64, k: f64, dt: f64) -> f
 
 #[pyfunction]
 /// Calculate the acceleration n timesteps away
+///
 /// INPUTS:
 /// - n: Int, number of times steps away to calculate
 /// - a0: Num, initial acceleration (m/s2)
 /// - k: Num, constant jerk (m/s3)
 /// - dt: Num, time-step duration in seconds
+///
 /// NOTE:
 /// - this is the constant acceleration over the time-step from sample n to sample n+1
+///
 /// RETURN: Num, the acceleration n timesteps away (m/s2)
 pub fn accel_for_constant_jerk(n: usize, a0: f64, k: f64, dt: f64) -> f64 {
     let n = n as f64;
     a0 + (n * k * dt)
 }
 
+/// Apply `accel_for_constant_jerk` to full
 pub fn accel_array_for_constant_jerk(nmax: usize, a0: f64, k: f64, dt: f64) -> Array1<f64> {
     let mut accels: Vec<f64> = Vec::new();
     for n in 0..nmax {
@@ -251,11 +263,14 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(self.delta_elev_m().to_vec())
     }
 )]
-/// RustCycle struct for containing:
-/// -- time_s,
-/// -- mps (speed [m/s])
-/// -- grade [rise/run]
-/// -- road_type (this is legacy and will likely change to road charging capacity [kW])
+
+/// Struct for containing:
+/// * time_s, cycle time, $s$  
+/// * mps, vehicle speed, $\frac{m}{s}$  
+/// * grade, road grade/slope, $\frac{rise}{run}$  
+/// * road_type, $kW$  
+/// * legacy, will likely change to road charging capacity
+///    * Another sublist.
 pub struct RustCycle {
     /// array of time [s]
     pub time_s: Array1<f64>,
