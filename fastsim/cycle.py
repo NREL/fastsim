@@ -498,7 +498,7 @@ def concat(cycles, name=None):
 
 
 def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
-             hold_keys=None, rate_keys=None):
+             hold_keys=None, hold_keys_next=None, rate_keys=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
     Resample a cycle with a new delta time from start time to end time.
@@ -516,6 +516,9 @@ def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
     - hold_keys: None or (Set String), if specified, yields values that
                  should be interpolated step-wise, holding their value until
                  an explicit change (i.e., NOT interpolated)
+    - hold_keys_next: None or (Set String), similar to hold_keys but yields
+                 values that should be interpolated step-wise, taking the
+                 NEXT value as the value (vs hold_keys which uses the previous)
     - rate_keys: None or (Set String), if specified, yields values that maintain
                  the interpolated value of the given rate. So, for example,
                  if a speed, will set the speed such that the distance traveled
@@ -537,6 +540,10 @@ def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
             continue
         elif hold_keys is not None and k in hold_keys:
             f = interp1d(cycle['time_s'], cycle[k], 0)
+            new_cycle[k] = f(new_cycle['time_s'])
+            continue
+        elif hold_keys_next is not None and k in hold_keys_next:
+            f = interp1d(cycle['time_s'], cycle[k], 'next')
             new_cycle[k] = f(new_cycle['time_s'])
             continue
         elif rate_keys is not None and k in rate_keys:
