@@ -1781,12 +1781,12 @@ class SimDrive(object):
         not_found = (False, not_found_n, not_found_jerk_m_per_s3,
                      not_found_accel_m_per_s2)
         if v0 < (brake_start_speed_m_per_s + 1e-6):
-            print("WARNING! Exiting as we don't process braking")
-            print(f"... i = {i}")
-            print(f"... v0 = {v0}")
-            print(f"... self.mps_ach[i-1] = {self.mps_ach[i-1]}")
-            print(f"... brake_start_speed_m_per_s = {brake_start_speed_m_per_s}")
-            # don't process braking
+            if False:
+                print("WARNING! Exiting as we don't process braking")
+                print(f"... i = {i}")
+                print(f"... v0 = {v0}")
+                print(f"... self.mps_ach[i-1] = {self.mps_ach[i-1]}")
+                print(f"... brake_start_speed_m_per_s = {brake_start_speed_m_per_s}")
             return not_found
         if min_accel_m__s2 > max_accel_m__s2:
             min_accel_m__s2, max_accel_m__s2 = max_accel_m__s2, min_accel_m__s2
