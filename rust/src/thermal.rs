@@ -558,3 +558,86 @@ impl SimDriveHot {
         self.sd.set_post_scalars().unwrap();
     }
 }
+
+
+#[pyclass]
+#[add_pyo3_api]
+#[allow(non_snake_case)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+/// Struct containing thermal state variables for all thermal components
+pub struct ThermalState {
+    // fuel converter (engine) variables
+    /// fuel converter (engine) temperature [°C]
+    fc_te_degC: f64, 
+    // fuel converter temperature efficiency correction
+    fc_eta_temp_coeff: f64,
+    // fuel converter heat generation per total heat release minus shaft power
+    fc_qdot_per_net_heat: f64,
+    // fuel converter heat generation [kW]
+    fc_qdot_kW: f64,
+    // fuel converter convection to ambient [kW]
+    fc_qdot_to_amb_kW: f64,
+    // fuel converter heat loss to heater core [kW]
+    fc_qdot_to_htr_kW: f64,
+    // heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
+    fc_htc_to_amb: f64,
+    // lambda (air/fuel ratio normalized w.r.t. stoich air/fuel ratio) -- 1 is reasonable default
+    fc_lambda: f64,
+    // lambda-dependent adiabatic flame temperature
+    fc_te_adiabatic_degC: f64,
+
+    // cabin (cab) variables
+    // cabin temperature [°C]
+    cab_te_degC: f64,
+    // cabin solar load [kW]
+    cab_qdot_solar_kW: f64,
+    // cabin convection to ambient [kW]
+    cab_qdot_to_amb_kW: f64, 
+
+    // exhaust variables
+    // exhaust mass flow rate [kg/s]
+    exh_mdot: f64,
+    // exhaust enthalpy flow rate [kW]
+    exh_Hdot_kW: f64,
+
+    // exhaust port (exhport) variables
+    // exhaust temperature at exhaust port inlet 
+    exhport_exh_te_in_degC: f64,
+    // heat transfer from exhport to amb [kW]
+    exhport_qdot_to_amb: f64,
+    // catalyst temperature [°C]
+    exhport_te_degC: f64,
+    // convection from exhaust to exhport [W] 
+    // positive means exhport is receiving heat
+    exhport_qdot_from_exh: f64,
+    // net heat generation in cat [W]
+    exhport_qdot_net: f64,
+
+    // catalyst (cat) variables
+    // catalyst heat generation [W]
+    cat_qdot: f64,
+    // catalytic converter convection coefficient to ambient [W / (m ** 2 * K)]
+    cat_htc_to_amb: f64,
+    // heat transfer from catalyst to ambient [W]
+    cat_qdot_to_amb: f64,
+    // catalyst temperature [°C]
+    cat_te_degC: f64,
+    // exhaust temperature at cat inlet
+    cat_exh_te_in_degC: f64,
+    // catalyst external reynolds number
+    cat_Re_ext: f64,
+    // convection from exhaust to cat [W] 
+    // positive means cat is receiving heat
+    cat_qdot_from_exh: f64,
+    // net heat generation in cat [W]
+    cat_qdot_net: f64,
+}
+
+impl ThermalState {
+    impl_serde!(ThermalState, SIMDRIVEHOT_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
+    }
+
+}
