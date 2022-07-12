@@ -468,6 +468,57 @@ impl SimDriveHot {
         self.sd.solve_step(i).unwrap();
     }
 
+    pub fn set_thermal_calcs(&mut self, i: usize) {
+        // most of the thermal equations are at [i-1] because the various thermally 
+        // sensitive component efficiencies dependent on the [i] temperatures, but 
+        // these are in turn dependent on [i-1] heat transfer processes  
+        // verify that valid option is specified
+
+        if let FcModelTypes::Internal(..) = &self.vehthrm.fc_model {self.set_fc_thermal_calcs(i);}
+
+        if self.vehthrm.hvac_model ==
+            ComponentModelTypes::Internal {
+                todo!()
+                // self.fc_qdot_to_htr_kW[i] = 0.0 // placeholder
+            }
+
+        if self.vehthrm.cabin_model == ComponentModelTypes::Internal {
+                self.set_cab_thermal_calcs(i);
+        }
+
+        if self.vehthrm.exhport_model ==
+            ComponentModelTypes::Internal {
+                self.set_exhport_thermal_calcs(i)
+        }
+
+        if self.vehthrm.cat_model ==
+            ComponentModelTypes::Internal {
+                self.set_cat_thermal_calcs(i)
+        }
+
+        // if self.vehthrm.fc_model == 'internal':
+        //     // Energy balance for fuel converter
+        //     self.fc_te_degC[i] = self.fc_te_degC[i-1] + (
+        //        self.fc_qdot_kW[i] - self.fc_qdot_to_amb_kW[i] - self.fc_qdot_to_htr_kW[i]) / self.vehthrm.fc_C_kJ__K * self.cyc.dt_s[i]
+       
+    }
+
+    pub fn set_fc_thermal_calcs(&mut self, i: usize) {
+        todo!()
+    }
+
+    pub fn set_cab_thermal_calcs(&mut self, i: usize) {
+        todo!()
+    }
+
+    pub fn set_exhport_thermal_calcs(&mut self, i: usize) {
+        todo!()
+    }
+
+    pub fn set_cat_thermal_calcs(&mut self, i: usize) {
+        todo!()
+    }
+
     pub fn set_misc_calcs(&mut self, i: usize) {
         self.sd.set_misc_calcs(i).unwrap();
     }
