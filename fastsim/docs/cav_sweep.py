@@ -215,7 +215,6 @@ def eco_coast_by_microtrip(veh, init_soc=None, save_dir=None, tag=None, cyc_name
     return (fuel_kwh_per_mi, dist_mi)
 
 
-
 def time_spent_moving(cycle):
     """
     Calculates the time in seconds spent moving.
@@ -227,41 +226,65 @@ def time_spent_moving(cycle):
     RETURN: float, the time in seconds spent moving
     """
     t_move_s = 0.0
-    for (dt, vavg) in zip(np.diff(cycle['time_s']), np.array(cycle['mps'][1:] + cycle['mps'][:-1]) / 2.0):
+    for (t1, t0, vavg) in zip(cycle['time_s'][1:], cycle['time_s'][:-1], np.array(cycle['mps'][1:] + cycle['mps'][:-1]) / 2.0):
+        dt = t1 - t0
         if vavg > 0:
             t_move_s += dt
     return t_move_s
 
 
-def create_dist_and_avg_speeds_by_microtrip(cyc, use_moving_time=True, verbose=False):
-    dist_and_avg_speeds = []
+def create_dist_and_target_speeds_by_microtrip(cyc: fastsim.cycle.Cycle, blend_factor: float= 1.0, verbose: bool=False) -> list:
+    """
+    Create distance and target speeds by microtrip
+    This helper function splits a cycle up into microtrips and returns a list of 2-tuples of:
+    (distance from start in meters, target speed in meters/second)
+
+    - cyc: the cycle to operate on
+    - blend_factor: float, from 0 to 1
+        if 0, use average speed of the microtrip
+        if 1, use average speed while moving (i.e., no stopped time)
+        else something in between
+    - verbose: bool, defaults to False; if True, prints out diagnostics
+    RETURN: list of 2-tuple of (float, float) representing the distance of start of
+        each microtrip and target speed for that microtrip
+    NOTE: the target speed per microtrip is not allowed to be below the
+        global value of MIN_ECO_CRUISE_TARGET_SPEED_m_per_s
+    """
+    blend_factor = max(0.0, min(1.0, blend_factor))
+    dist_and_tgt_speeds = []
     # Split cycle into microtrips
     microtrips = fastsim.cycle.to_microtrips(cyc.get_cyc_dict())
     dist_at_start_of_microtrip_m = 0.0
     for mt in microtrips:
         mt_cyc = fastsim.cycle.Cycle.from_dict(mt)
-        mt_dist_m = sum(mt_cyc.dist_m)
-        mt_time_s = time_spent_moving(mt_cyc.get_cyc_dict()) if use_moving_time else mt_cyc.time_s[-1]
+        mt_dist_m = sum(mt_cyc.dist_v2_m)
+        mt_time_s = mt_cyc.time_s[-1] - mt_cyc.time_s[0]
+        mt_moving_time_s = time_spent_moving(mt_cyc.get_cyc_dict())
         mt_avg_spd_m_per_s = mt_dist_m / mt_time_s if mt_time_s > 0.0 else 0.0
+        mt_moving_avg_spd_m_per_s = mt_dist_m / mt_moving_time_s if mt_moving_time_s > 0.0 else 0.0
+        mt_target_spd_m_per_s = blend_factor * (mt_moving_avg_spd_m_per_s - mt_avg_spd_m_per_s) + mt_avg_spd_m_per_s
+        assert mt_moving_avg_spd_m_per_s >= mt_avg_spd_m_per_s, f"mt_moving_avg_spd_m_per_s = {mt_moving_avg_spd_m_per_s} m/s; mt_avg_spd_m_per_s = {mt_avg_spd_m_per_s} m/s"
+        assert mt_target_spd_m_per_s <= mt_moving_avg_spd_m_per_s, f"mt_target_spd_m_per_s = {mt_target_spd_m_per_s} m/s; mt_moving_avg_spd_m_per_s = {mt_moving_avg_spd_m_per_s} m/s"
+        assert mt_target_spd_m_per_s >= mt_avg_spd_m_per_s, f"mt_target_spd_m_per_s = {mt_target_spd_m_per_s} m/s; mt_avg_spd_m_per_s = {mt_avg_spd_m_per_s} m/s"
         if mt_dist_m > 0.0:
-            dist_and_avg_speeds.append(
-                (dist_at_start_of_microtrip_m, max(mt_avg_spd_m_per_s, MIN_ECO_CRUISE_TARGET_SPEED_m_per_s))
+            dist_and_tgt_speeds.append(
+                (dist_at_start_of_microtrip_m, max(mt_target_spd_m_per_s, MIN_ECO_CRUISE_TARGET_SPEED_m_per_s))
             )
             dist_at_start_of_microtrip_m += mt_dist_m
     if verbose:
         print('Microtrip distances and average speeds:')
-        for (d, vavg) in dist_and_avg_speeds:
-            print(f'- dist: {d:.3f} m / vavg: {vavg:.3f}')
-    return dist_and_avg_speeds
+        for (d, v_tgt) in dist_and_tgt_speeds:
+            print(f'- dist: {d:.3f} m | v_target: {v_tgt:.3f} m/s')
+    return dist_and_tgt_speeds
 
 
-def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
+def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, blend_factor=1.0):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
     cyc = load_cycle(cyc_name)
     sim = fastsim.simdrive.SimDrive(cyc, veh)
     params = sim.sim_params
-    dist_and_avg_speeds = create_dist_and_avg_speeds_by_microtrip(cyc)
+    dist_and_avg_speeds = create_dist_and_target_speeds_by_microtrip(cyc, blend_factor=blend_factor)
     # Eco-cruise parameters
     params = sim.sim_params
     params.follow_allow = True
@@ -297,13 +320,13 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
         sim.dist_mi.sum()
     )
 
-def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
+def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, blend_factor=1.0):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
     cyc = load_cycle(cyc_name)
     sim = fastsim.simdrive.SimDrive(cyc, veh)
     params = sim.sim_params
-    dist_and_avg_speeds = create_dist_and_avg_speeds_by_microtrip(cyc)
+    dist_and_avg_speeds = create_dist_and_target_speeds_by_microtrip(cyc, blend_factor=blend_factor)
     params = sim.sim_params
     # Eco-coast parameters
     params.coast_allow = True
