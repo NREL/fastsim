@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, ToTokens}; // ToTokens is implicitly used as a trait
-use syn::Meta;
+use quote::{quote, ToTokens, TokenStreamExt}; // ToTokens is implicitly used as a trait
+use syn::{DeriveInput, Ident, Meta};
 
 mod utilities;
 use utilities::{impl_getters_and_setters, FieldOptions};
@@ -140,4 +140,126 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     //     println!("{}", output.to_string());
     // }
     output.into()
+}
+
+// taken from https://github.com/lumol-org/soa-derive/blob/master/soa-derive-internal/src/input.rs
+pub(crate) trait TokenStreamIterator {
+    fn concat_by(self, f: impl Fn(proc_macro2::TokenStream, proc_macro2::TokenStream) -> proc_macro2::TokenStream) -> proc_macro2::TokenStream;
+    fn concat(self) -> proc_macro2::TokenStream;
+}
+
+impl<T: Iterator<Item = proc_macro2::TokenStream>> TokenStreamIterator for T {
+    fn concat_by(mut self, f: impl Fn(proc_macro2::TokenStream, proc_macro2::TokenStream) -> proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+        match self.next() {
+            Some(first) => {
+                self.fold(first, |current, next| {
+                    f(current, next)
+                })
+            },
+            None => quote!{},
+        }
+    }
+
+    fn concat(self) -> proc_macro2::TokenStream {
+        self.concat_by(|a, b| quote! { #a #b })
+    }
+}
+
+
+#[proc_macro_derive(HistoryVec)]
+pub fn history_vec_derive(input: TokenStream) -> TokenStream {
+    let ast: DeriveInput = syn::parse(input).unwrap();
+    let original_name = &ast.ident;
+    let new_name = Ident::new(
+        &format!("{}HistoryVec", original_name.to_token_stream()),
+        original_name.span(),
+    );
+    let mut fields = Vec::new();
+
+    match ast.data {
+        syn::Data::Struct(s) => {
+            for field in s.fields.iter() {
+                fields.push(field.clone());
+            }
+        }
+        _ => panic!("#[derive(HistoryVec)] only works on structs"),
+    }
+
+    let field_names = fields
+        .iter()
+        .map(|f| f.ident.as_ref().unwrap())
+        .filter(|f| f.to_string() != "orphaned")
+        .collect::<Vec<_>>();
+
+    let first_field = &field_names[0];
+
+    let vec_fields = fields
+        .iter()
+        .map(|f| {
+            let ident = f.ident.as_ref().unwrap();
+            let ty = &f.ty;
+            if ident.to_string() == "orphaned" {
+                quote! {
+                    pub orphaned: #ty,
+                }
+            } else {
+                quote! {
+                    pub #ident: Vec<#ty>,
+                }
+            }
+        })
+        .concat();
+
+    let vec_new = fields
+        .iter()
+        .map(|f| {
+            let ident = f.ident.as_ref().unwrap();
+            if ident.to_string() == "orphaned" {
+                quote! {
+                    orphaned: false,
+                }
+            } else {
+                quote! {
+                    #ident: Vec::new(),
+                }
+            }
+        })
+        .concat();
+
+    let mut generated = TokenStream2::new();
+    generated.append_all(quote! {
+        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+        #[pyclass]
+        #[altrios_api]
+        pub struct #new_name {
+            #vec_fields
+        }
+
+        impl #new_name {
+            pub fn new() -> #new_name {
+                #new_name {
+                    #vec_new
+                }
+            }
+
+            pub fn push(&mut self, value: #original_name) {
+                #(self.#field_names.push(value.#field_names);)*
+            }
+
+            pub fn len(&self) -> usize {
+                self.#first_field.len()
+            }
+
+            pub fn is_empty(&self) -> bool {
+                self.#first_field.is_empty()
+            }
+        }
+
+        impl Default for #new_name {
+            fn default() -> #new_name {
+                #new_name::new()
+            }
+        }
+    });
+    generated.into()
 }
