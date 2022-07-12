@@ -1,9 +1,10 @@
+//! Module containing miscellaneous utility functions.
+
 extern crate ndarray;
 use ndarray::{array, concatenate, s, Array1, Axis};
 use pyo3::exceptions::{PyIndexError, PyNotImplementedError};
 use pyo3::prelude::*;
 use std::collections::HashSet;
-// use numpy::PyArray;
 
 /// Error message for when user attempts to set value in a nested struct.
 pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
@@ -22,7 +23,7 @@ pub fn diff(x: &Array1<f64>) -> Array1<f64> {
 }
 
 // TODO: check code here -- I'm sure there is a more elegant solution but this works.
-/// Returns a new array with a constant added starting at xs[i] to the end. Values prior to xs[i] are unchanged.
+/// Returns a new array with a constant added starting at xs\[i\] to the end. Values prior to xs\[i\] are unchanged.
 pub fn add_from(xs: &Array1<f64>, i: usize, val: f64) -> Array1<f64> {
     let mut ys = Array1::zeros(xs.len());
     for idx in 0..xs.len() {
@@ -44,7 +45,7 @@ pub fn first_grtr(arr: &[f64], cut: f64) -> Option<usize> {
     Some(arr.iter().position(|&x| x > cut).unwrap_or(len - 1)) // unwrap_or allows for default if not found
 }
 
-/// Return first index of `arr` equal to`cut`
+/// Return first index of `arr` equal to `cut`
 pub fn first_eq(arr: &[f64], cut: f64) -> Option<usize> {
     let len = arr.len();
     if len == 0 {
@@ -85,12 +86,7 @@ pub fn ndarrmax(arr: &Array1<f64>) -> f64 {
 
 /// return true if the array is all zeros
 pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
-    for idx in 0..arr.len() {
-        if arr[idx] != 0.0 {
-            return false;
-        }
-    }
-    true
+    arr.iter().all(|x| *x == 0.0)
 }
 
 /// return cumsum <f64> of arr
@@ -121,7 +117,7 @@ pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
 }
 
 // TODO: if interpolation is used at each time step, change it to take native, fixed-size array
-/// interpolation algorithm from http://www.cplusplus.com/forum/general/216928/
+/// interpolation algorithm from <http://www.cplusplus.com/forum/general/216928/>
 /// Arguments:
 /// x : value at which to interpolate
 pub fn interpolate(

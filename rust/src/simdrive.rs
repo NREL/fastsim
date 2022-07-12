@@ -1,27 +1,35 @@
+//! Module containing vehicle struct and related functions.
+
 extern crate ndarray;
 use ndarray::Array1;
 extern crate pyo3;
-use pyo3::exceptions;
-use pyo3::exceptions::PyAttributeError;
+use pyo3::exceptions::{PyAttributeError, PyRuntimeError};
 use pyo3::prelude::*;
+use pyo3::types::PyType;
 
 use crate::cycle::RustCycle;
 use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
 use crate::vehicle::*;
+use serde::{Deserialize, Serialize};
+use serde_json;
+use std::fs::File;
+use std::path::PathBuf;
+use std::error::Error;
+
+pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
+
 
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
-    match res {
-        Ok(()) => Ok(()),
-        Err(msg) => Err(exceptions::PyRuntimeError::new_err(msg)),
-    }
+    res.map_err(PyRuntimeError::new_err)
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
+    #[allow(clippy::too_many_arguments)]
     pub fn __new__(
         missed_trace_correction: bool, // if true, missed trace correction is active, default = false
         max_time_dilation: f64,
@@ -128,7 +136,16 @@ pub struct RustSimDriveParams {
     pub idm_decel_m_per_s2: f64,
     // Other, Misc.
     pub max_epa_adj: f64,
+    #[serde(skip)]
     pub orphaned: bool,
+}
+
+impl RustSimDriveParams {
+    impl_serde!(RustSimDriveParams, SIMDRIVE_PARAMS_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
+    }
 }
 
 impl Default for RustSimDriveParams {
@@ -207,7 +224,7 @@ impl Default for RustSimDriveParams {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
     #[new]
@@ -384,6 +401,11 @@ impl Default for RustSimDriveParams {
     pub fn len(&self) -> usize {
         self.cyc.time_s.len()
     }    
+
+    /// Return self.cyc.time_is.is_empty()
+    pub fn is_empty(&self) -> bool {
+        self.cyc.time_s.is_empty()
+    }
 )]
 pub struct RustSimDrive {
     pub hev_sim_count: usize,
@@ -395,6 +417,7 @@ pub struct RustSimDrive {
     pub cyc0: RustCycle,
     #[api(has_orphaned)]
     pub sim_params: RustSimDriveParams,
+    #[serde(skip)]
     #[api(has_orphaned)]
     pub props: RustPhysicalProperties,
     pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()

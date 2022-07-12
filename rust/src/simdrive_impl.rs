@@ -1,3 +1,5 @@
+//! Module containing implementations for [simdrive](super::simdrive).
+
 use ndarray::{Array, Array1, array, s};
 use std::cmp;
 use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from, ndarrunique};
@@ -7,6 +9,11 @@ use super::params;
 
 use super::simdrive::{RustSimDrive, RustSimDriveParams};
 
+use std::fs::File;
+use std::path::PathBuf;
+use std::error::Error;
+
+pub const SIMDRIVE_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 impl RustSimDrive {
     pub fn new(cyc: RustCycle, veh: RustVehicle) -> Self {
@@ -257,7 +264,10 @@ impl RustSimDrive {
         }
     }
 
-
+    impl_serde!(RustSimDrive, SIMDRIVE_DEFAULT_FOLDER);
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
+    }
 
     // TODO: probably shouldn't be public...?
     pub fn init_arrays(&mut self) {
@@ -508,7 +518,7 @@ impl RustSimDrive {
     /// REFERENCE:
     /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
     ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
-    ///     DOI: https://doi.org/10.1007/978-3-642-32460-4.
+    ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>
     pub fn set_speed_for_target_gap_using_idm(&mut self, i:usize){
         // PARAMETERS
         let delta = self.sim_params.idm_delta;
@@ -818,7 +828,7 @@ impl RustSimDrive {
                 self.cyc.mps[i]
             };
 
-            let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
+            let distance_traveled_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
             let grade = self.cyc0.average_grade_over_range(
                 distance_traveled_m, mps_ach * self.cyc.dt_s()[i]);
 
@@ -901,6 +911,7 @@ impl RustSimDrive {
 
             //Cycle is not met
             else {
+                // TODO: Should this be dist_m or dist_v2_m?
                 let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
                 let mut grade_estimate = self.cyc0.average_grade_over_range(
                     distance_traveled_m, 0.0);

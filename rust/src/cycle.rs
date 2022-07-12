@@ -1,3 +1,5 @@
+//! Module containing drive cycle struct and related functions.
+
 extern crate ndarray;
 
 use std::collections::HashMap;
@@ -9,26 +11,28 @@ extern crate pyo3;
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-// use numpy::pyo3::Python;
-// use numpy::ndarray::array;
-// use numpy::{ToPyArray, PyArray};
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 // local
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
 
+pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";
+
 #[pyfunction]
-/// Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
-/// INPUTS:
+/// # Arguments
 /// - n: Int, number of time-steps away from rendezvous
-/// - D0: Num, distance of simulated vehicle (m/s)
-/// - v0: Num, speed of simulated vehicle (m/s)
-/// - Dr: Num, distance of rendezvous point (m)
-/// - vr: Num, speed of rendezvous point (m/s)
-/// - dt: Num, step duration (s)
-/// RETURNS: (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
-/// Returns the constant jerk and acceleration for initial time step.
+/// - d0: Num, distance of simulated vehicle, $\frac{m}{s}$
+/// - v0: Num, speed of simulated vehicle, $\frac{m}{s}$
+/// - dr: Num, distance of rendezvous point, $m$
+/// - vr: Num, speed of rendezvous point, $\frac{m}{s}$
+/// - dt: Num, step duration, $s$
+///
+/// # Returns
+/// (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
+/// - Constant jerk and acceleration for initial time step.
 pub fn calc_constant_jerk_trajectory(
     n: usize,
     d0: f64,
@@ -55,6 +59,7 @@ pub fn calc_constant_jerk_trajectory(
 
 #[pyfunction]
 /// Calculate distance (m) after n timesteps
+///
 /// INPUTS:
 /// - n: Int, numer of timesteps away to calculate
 /// - d0: Num, initial distance (m)
@@ -62,6 +67,7 @@ pub fn calc_constant_jerk_trajectory(
 /// - a0: Num, initial acceleration (m/s2)
 /// - k: Num, constant jerk
 /// - dt: Num, duration of a timestep (s)
+///
 /// NOTE:
 /// - this is the distance traveled from start (i.e., n=0) measured at sample point n
 /// RETURN: Num, the distance at n timesteps away (m)
@@ -77,16 +83,19 @@ pub fn dist_for_constant_jerk(n: usize, d0: f64, v0: f64, a0: f64, k: f64, dt: f
 
 #[pyfunction]
 /// Calculate speed (m/s) n timesteps away via a constant-jerk acceleration
-/// INPUTS:
+///
+/// INPUTS:   
 /// - n: Int, numer of timesteps away to calculate
 /// - v0: Num, initial speed (m/s)
 /// - a0: Num, initial acceleration (m/s2)
 /// - k: Num, constant jerk
 /// - dt: Num, duration of a timestep (s)
+///
 /// NOTE:
 /// - this is the speed at sample n
 /// - if n == 0, speed is v0
 /// - if n == 1, speed is v0 + a0*dt, etc.
+///
 /// RETURN: Num, the speed n timesteps away (m/s)
 pub fn speed_for_constant_jerk(n: usize, v0: f64, a0: f64, k: f64, dt: f64) -> f64 {
     let n = n as f64;
@@ -95,19 +104,23 @@ pub fn speed_for_constant_jerk(n: usize, v0: f64, a0: f64, k: f64, dt: f64) -> f
 
 #[pyfunction]
 /// Calculate the acceleration n timesteps away
+///
 /// INPUTS:
 /// - n: Int, number of times steps away to calculate
 /// - a0: Num, initial acceleration (m/s2)
 /// - k: Num, constant jerk (m/s3)
 /// - dt: Num, time-step duration in seconds
+///
 /// NOTE:
 /// - this is the constant acceleration over the time-step from sample n to sample n+1
+///
 /// RETURN: Num, the acceleration n timesteps away (m/s2)
 pub fn accel_for_constant_jerk(n: usize, a0: f64, k: f64, dt: f64) -> f64 {
     let n = n as f64;
     a0 + (n * k * dt)
 }
 
+/// Apply `accel_for_constant_jerk` to full
 pub fn accel_array_for_constant_jerk(nmax: usize, a0: f64, k: f64, dt: f64) -> Array1<f64> {
     let mut accels: Vec<f64> = Vec::new();
     for n in 0..nmax {
@@ -125,7 +138,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(
@@ -150,8 +163,9 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[classmethod]
-    pub fn from_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
-        match Self::from_file(&pathstr) {
+    #[pyo3(name = "from_csv_file")]
+    pub fn from_csv_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
+        match Self::from_csv_file(&pathstr) {
             Ok(cyc) => Ok(cyc),
             Err(msg) => Err(PyFileNotFoundError::new_err(msg)),
         }
@@ -249,11 +263,14 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(self.delta_elev_m().to_vec())
     }
 )]
-/// RustCycle struct for containing:
-/// -- time_s,
-/// -- mps (speed [m/s])
-/// -- grade [rise/run]
-/// -- road_type (this is legacy and will likely change to road charging capacity [kW])
+
+/// Struct for containing:
+/// * time_s, cycle time, $s$  
+/// * mps, vehicle speed, $\frac{m}{s}$  
+/// * grade, road grade/slope, $\frac{rise}{run}$  
+/// * road_type, $kW$  
+/// * legacy, will likely change to road charging capacity
+///    * Another sublist.
 pub struct RustCycle {
     /// array of time [s]
     pub time_s: Array1<f64>,
@@ -264,6 +281,7 @@ pub struct RustCycle {
     /// array of max possible charge rate from roadway
     pub road_type: Array1<f64>,
     pub name: String,
+    #[serde(skip)]
     pub orphaned: bool,
 }
 
@@ -308,11 +326,7 @@ impl RustCycle {
     /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
-    pub fn average_grade_over_range(
-        &self,
-        distance_start_m: f64,
-        delta_distance_m: f64,
-    ) -> f64 {
+    pub fn average_grade_over_range(&self, distance_start_m: f64, delta_distance_m: f64) -> f64 {
         if ndarrallzeros(&self.grade) {
             // short-circuit for no-grade case
             return 0.0;
@@ -389,11 +403,7 @@ impl RustCycle {
     /// - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
     /// RETURN: non-negative-number, the final speed of the modified trajectory (m/s)
     /// - modifies the cycle in place for braking
-    pub fn modify_with_braking_trajectory(
-        &mut self,
-        brake_accel_m_per_s2: f64,
-        i: usize,
-    ) -> f64 {
+    pub fn modify_with_braking_trajectory(&mut self, brake_accel_m_per_s2: f64, i: usize) -> f64 {
         assert!(brake_accel_m_per_s2 < 0.0);
         let v0 = self.mps[i - 1];
         let dt = self.dt_s()[i];
@@ -438,7 +448,7 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_file(pathstr: &str) -> Result<Self, String> {
+    pub fn from_csv_file(pathstr: &str) -> Result<Self, String> {
         let pathbuf = PathBuf::from(&pathstr);
         if pathbuf.exists() {
             let mut time_s = Vec::<f64>::new();
@@ -466,6 +476,12 @@ impl RustCycle {
     /// elevation change w.r.t. to initial
     pub fn delta_elev_m(&self) -> Array1<f64> {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+    }
+
+    impl_serde!(RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
     }
 }
 
@@ -505,7 +521,7 @@ mod tests {
     fn test_loading_a_cycle_from_the_filesystem() {
         let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        match RustCycle::from_file(&pathstr) {
+        match RustCycle::from_csv_file(&pathstr) {
             Ok(cyc) => {
                 assert_eq!(cyc.name, String::from("udds"));
                 let num_entries = cyc.time_s.len();

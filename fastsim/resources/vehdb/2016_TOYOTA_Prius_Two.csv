@@ -1,0 +1,80 @@
+,Param Name,Param Value,Param Source / Comments
+Category,Scenario name,2016 Toyota Prius Two FWD,
+Vehicle,veh_year,2016,
+,veh_pt_type,HEV,
+,drag_coef,0.306,EPA target ABC coefficients from https://www.epa.gov/sites/default/files/2016-07/16tstcar.csv
+,frontal_area_m2,2.22,https://www.caranddriver.com/features/a15108689/drag-queens-aerodynamics-compared-comparison-test/
+,glider_kg,1250,
+,veh_cg_m,0.53,FWD
+,drive_axle_weight_frac,0.59,
+,wheel_base_m,2.7,https://web.archive.org/web/20160806041256/http://www.toyota.com/content/ebrochure/2016/prius_ebrochure.pdf
+,cargo_kg,136.8,
+,veh_override_kg,1635,
+,comp_mass_multiplier,1.4,
+Fuel / Fuel Converter / Engine,fs_max_kw,2000,
+,fs_secs_to_peak_pwr,1.1,
+,fs_kwh,386.9,11.3 gal * 3.78541 L/gal * 0.75 kg/L * 12.06 kWh/kg; https://web.archive.org/web/20160806041256/http://www.toyota.com/content/ebrochure/2016/prius_ebrochure.pdf
+,fs_kwh_per_kg,12.06,
+,fc_max_kw,71,https://web.archive.org/web/20160806041256/http://www.toyota.com/content/ebrochure/2016/prius_ebrochure.pdf
+,fc_pwr_out_perc,"[0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00]",
+,fc_eff_map,"[0.08, 0.10, 0.26, 0.33, 0.355, 0.37, 0.38, 0.38, 0.35, 0.34, 0.33, 0.32]",
+,fc_eff_type,Atkinson,https://www.jpauleytoyota.com/blog/what-are-the-differences-in-toyota-prius-models/
+,fc_sec_to_peak_pwr,6.1,
+,fc_base_kg,61.3,
+,fc_kw_per_kg,2.13,
+,min_fc_time_on,60,
+,idle_fc_kw,4.3,
+Motor,mc_max_kw,53,https://web.archive.org/web/20160806041256/http://www.toyota.com/content/ebrochure/2016/prius_ebrochure.pdf
+,mc_pwr_out_perc,"[0.00, 0.02, 0.04, 0.06, 0.08, 0.10, 0.20, 0.40, 0.60, 0.80, 1.00]",
+,mc_eff_map,"[0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92]",
+,mc_sec_to_peak_pwr,4.8,
+,mc_pe_kg_per_kw,0.833,
+,mc_pe_base_kg,21.6,
+ESS / Battery,ess_max_kw,1000,Sufficiently high value so as to not impact calculation
+,ess_max_kwh,0.75,https://www.caranddriver.com/features/g15378194/5-things-you-should-know-about-the-all-new-2016-toyota-prius/?slide=4
+,ess_kg_per_kwh,8.9,
+,ess_base_kg,75.8,
+,ess_round_trip_eff,0.97,
+,ess_life_coef_a,110.8,
+,ess_life_coef_b,-0.6811,
+,min_soc,0.25,https://www.caranddriver.com/features/g15378194/5-things-you-should-know-about-the-all-new-2016-toyota-prius/?slide=4
+,max_soc,0.95,https://www.caranddriver.com/features/g15378194/5-things-you-should-know-about-the-all-new-2016-toyota-prius/?slide=4
+,ess_dischg_to_fc_max_eff_perc,1,
+,ess_chg_to_fc_max_eff_perc,0,
+Wheels,wheel_inertia_kg_m2,0.815,
+,num_wheels,4,
+,wheel_rr_coef,0.0064,EPA target ABC coefficients from https://www.epa.gov/sites/default/files/2016-07/16tstcar.csv
+,wheel_radius_m,0.3175,P195/65R15; 12.5 in * 0.0254 m/in; https://tiresize.com/tiresizes/195-65R15.htm
+,wheel_coef_of_fric,0.7,
+HEV Controls,max_accel_buffer_mph,60,
+,max_accel_buffer_perc_of_useable_soc,0.2,
+,perc_high_acc_buf,0,
+,mph_fc_on,85,
+,kw_demand_fc_on,70,
+,max_regen,0.98,
+,stop_start,FALSE,
+,force_aux_on_fc,FALSE,
+Misc.,alt_eff,1,
+,chg_eff,0.86,
+,aux_kw,1.05,
+,trans_kg,114,
+,trans_eff,0.98,
+,ess_to_fuel_ok_error,0.005,
+Vehicle Performance Specs,val_udds_mpgge,,
+,val_hwy_mpgge,,
+,val_comb_mpgge,,
+,val_udds_kwh_per_mile,,
+,val_hwy_kwh_per_mile,,
+,val_comb_kwh_per_mile,,
+,val_cd_range_mi,,
+,val_const65_mph_kwh_per_mile,,
+,val_const60_mph_kwh_per_mile,,
+,val_const55_mph_kwh_per_mile,,
+,val_const45_mph_kwh_per_mile,,
+,val_unadj_udds_kwh_per_mile,,
+,val_unadj_hwy_kwh_per_mile,,
+,val0_to60_mph,,
+,val_ess_life_miles,,
+,val_range_miles,,
+,val_veh_base_cost,,
+,val_msrp,,
