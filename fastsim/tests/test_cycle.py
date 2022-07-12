@@ -346,21 +346,32 @@ class TestCycle(unittest.TestCase):
                 hold_keys={'grade'},
             )
         )
+        cyc0 = cycle.Cycle.from_dict(
+            cycle.resample(
+                cycle.make_cycle(
+                    ts=[  0.0 ,  10.0 , 110.0 , 111.0 , 210.0 , 220.0 ],
+                    vs=[  0.0 ,  10.0 ,  10.0 ,  10.0 ,  10.0 ,   0.0 ],
+                    gs=[  0.01,   0.01,   0.01,   0.02,   0.02,   0.02],
+                ),
+                new_dt=1.0,
+                hold_keys={'grade'},
+            )
+        )
+        # TODO: rewrite test to be based on sample points; i = 1, dist_m (traveled from start) = 0.5, step_dist_m = 0.5, etc.
         test_conditions = [
-            {'step': 0,   'expected_dist_start_m': 0.0,    'expected_dist_step_m': 0.0,  'expected_average_grade': 0.010},
-            {'step': 10,  'expected_dist_start_m': 45.0,   'expected_dist_step_m': 10.0, 'expected_average_grade': 0.010},
-            {'step': 109, 'expected_dist_start_m': 1035.0, 'expected_dist_step_m': 10.0, 'expected_average_grade': 0.010},
-            {'step': 110, 'expected_dist_start_m': 1045.0, 'expected_dist_step_m': 10.0, 'expected_average_grade': 0.020},
-            {'step': 111, 'expected_dist_start_m': 1055.0, 'expected_dist_step_m': 10.0, 'expected_average_grade': 0.020},
-            {'step': 220, 'expected_dist_start_m': 2100.0, 'expected_dist_step_m': 0.0,  'expected_average_grade': 0.020},
+            {'step': 0,   'dist_m': 0.0, 'expected_dist_start_m': 0.0,    'expected_dist_step_m': 0.0,  'expected_average_grade': 0.010},
+            {'step': 10,  'dist_m': 50.0, 'expected_dist_start_m': 45.0,   'expected_dist_step_m': 10.0, 'expected_average_grade': 0.010},
+            {'step': 109, 'dist_m': 1040.0, 'expected_dist_start_m': 1035.0, 'expected_dist_step_m': 10.0, 'expected_average_grade': 0.010},
+            {'step': 110, 'dist_m': 1050.0, 'expected_dist_start_m': 1045.0, 'expected_dist_step_m': 10.0, 'expected_average_grade': 0.020},
+            {'step': 111, 'dist_m': 1060.0, 'expected_dist_start_m': 1055.0, 'expected_dist_step_m': 10.0, 'expected_average_grade': 0.020},
+            {'step': 220, 'dist_m': 2100.0, 'expected_dist_start_m': 2100.0, 'expected_dist_step_m': 0.0,  'expected_average_grade': 0.020},
         ]
         cyc_rust = cyc.to_rust()
         for cond in test_conditions:
             msg = f"Python: Failed for {cond}"
-            dist_start_m = sum(cyc.dist_m[:cond['step']])
-            dist_step_m = cyc.dist_m[cond['step']]
-            self.assertAlmostEqual(cond['expected_dist_start_m'], dist_start_m, msg=msg)
-            self.assertAlmostEqual(cond['expected_dist_step_m'], dist_step_m, msg=msg)
+            dist_start_m = sum(cyc0.dist_v2_m[:cond['step']])
+            dist_step_m = cyc0.dist_v2_m[cond['step']]
+            self.assertAlmostEqual(cond['dist_m'], dist_start_m + dist_step_m, msg=msg)
             avg_grade = cyc.average_grade_over_range(dist_start_m, dist_step_m)
             self.assertAlmostEqual(cond['expected_average_grade'], avg_grade, places=5, msg=msg)
             # RUST CHECK
@@ -371,9 +382,9 @@ class TestCycle(unittest.TestCase):
             self.assertAlmostEqual(cond['expected_dist_step_m'], dist_step_m, msg=msg)
             avg_grade = cyc_rust.average_grade_over_range(dist_start_m, dist_step_m)
             self.assertAlmostEqual(cond['expected_average_grade'], avg_grade, places=5, msg=msg)
-        gr = cyc.average_grade_over_range(1035.0, 20.0)
+        gr = cyc0.average_grade_over_range(1040.0, 20.0)
         expected_gr = 0.015
-        self.assertAlmostEqual(expected_gr, gr, places=5)
+        self.assertAlmostEqual(expected_gr, gr, places=5, msg="POO!")
 
         gr = cyc_rust.average_grade_over_range(1035.0, 20.0)
         expected_gr = 0.015

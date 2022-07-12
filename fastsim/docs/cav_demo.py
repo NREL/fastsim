@@ -65,7 +65,6 @@ if RUST_AVAILABLE:
     cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
     veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
     sd = fsim.simdrive.RustSimDrive(cyc, veh)
-    params = sd.sim_params
     sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
         coast_allow=True,
         coast_allow_passing=False,
@@ -220,6 +219,7 @@ else:
     veh = fsim.vehicle.Vehicle.from_vehdb(1)
     sd = fsim.simdrive.SimDrive(cyc, veh)
 params = sd.sim_params
+params.reset_orphaned()
 params.coast_allow = True
 params.coast_allow_passing = False
 params.coast_start_speed_m_per_s = -1.0

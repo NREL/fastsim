@@ -130,6 +130,7 @@ impl RustSimDrive {
         let trace_miss_dist_frac: f64 = 0.0;
         let trace_miss_time_frac: f64 = 0.0;
         let trace_miss_speed_mps: f64 = 0.0;
+        let coast_delay_index = Array::zeros(cyc_len);
         RustSimDrive {
             hev_sim_count,
             veh,
@@ -252,6 +253,7 @@ impl RustSimDrive {
             trace_miss_dist_frac,
             trace_miss_time_frac,
             trace_miss_speed_mps,
+            coast_delay_index,
         }
     }
 

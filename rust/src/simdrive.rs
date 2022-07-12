@@ -512,6 +512,7 @@ pub struct RustSimDrive {
     pub trace_miss_dist_frac: f64,
     pub trace_miss_time_frac: f64,
     pub trace_miss_speed_mps: f64,
+    pub coast_delay_index: Array1<u32>,
 }
 
 // #[cfg(test)]

@@ -916,8 +916,8 @@ class TestCoasting(unittest.TestCase):
             # assert we have grade set correctly
             self.assertTrue((sd.cyc0.grade == grade).all())
             self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
-            self.assertAlmostEqual(
-                sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
+            self.assertTrue(
+                np.abs(sd.cyc0.dist_v2_m.sum() - sd.cyc.dist_v2_m.sum()) < 1.0)
             # test with a different vehicle and grade
             grade = 0.02
             trapz = fastsim.cycle.Cycle.from_dict(

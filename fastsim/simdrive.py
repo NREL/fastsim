@@ -550,7 +550,7 @@ class SimDrive(object):
         if self.sim_params.coast_allow or self.sim_params.follow_allow:
             self.cyc.mps[self.i] = self.mps_ach[self.i]
             self.cyc.grade[self.i] = self.cyc0.average_grade_over_range(
-                self.cyc.dist_m[:self.i].sum(), self.cyc.dt_s[self.i] * self.mps_ach[self.i])
+                self.cyc.dist_v2_m[:self.i].sum(), self.cyc.dist_v2_m[self.i])
 
         self.i += 1  # increment time step counter
 
@@ -787,7 +787,7 @@ class SimDrive(object):
         # self.cyc.dist_v2_m.cumsum()[i-1]
         dist_traveled_m = self.cyc.dist_v2_m[:i].sum()
         grade = self.cyc0.average_grade_over_range(
-            dist_traveled_m, mpsAch * self.cyc.dt_s[i])
+            dist_traveled_m, 0.5 * (mpsAch - self.cyc.mps[i - 1]) * self.cyc.dt_s[i])
         self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
             (self.mps_ach[i-1] + mpsAch) / 2.0) ** 3 / 1_000
         self.accel_kw[i] = self.veh.veh_kg / \
@@ -907,7 +907,7 @@ class SimDrive(object):
                 _ys = [abs(y) for y in ys]
                 return max(xs[_ys.index(min(_ys))], 0.0)
 
-            dist_traveled_m = self.cyc.dist_m[:i].sum()
+            dist_traveled_m = self.cyc.dist_v2_m[:i].sum()
             grade_estimate = self.cyc0.average_grade_over_range(
                 dist_traveled_m, 0.0)
             grade_tol = 1e-6
@@ -955,7 +955,7 @@ class SimDrive(object):
                 total = np.array([total3, total2, total1, total0])
                 self.mps_ach[i] = newton_mps_estimate(total)
                 grade_estimate = self.cyc0.average_grade_over_range(
-                    dist_traveled_m, self.cyc.dt_s[i] * self.mps_ach[i])
+                    dist_traveled_m, 0.5 * (self.cyc.mps[i - 1] + self.mps_ach[i]) * self.cyc.dt_s[i])
                 grade_diff = np.abs(grade - grade_estimate)
             self.set_power_calcs(i)
 
@@ -1620,9 +1620,8 @@ class SimDrive(object):
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
         while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx <= max_idx:
             dt_s = self.cyc0.dt_s[idx]
-            dd = v * dt_s
             gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
-                d, d + dd)
+                d, 0)
             k = self._calc_dvdd(v, gr)
             v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
             vavg = 0.5 * (v + v_next)
@@ -1633,7 +1632,7 @@ class SimDrive(object):
                 vavg = 0.5 * (v + v_next)
                 dd = vavg * dt_s
                 gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
-                    d, d + dd)
+                    d, dd)
             if k >= 0.0 and unique_grade is not None:
                 # there is no solution for coastdown -- speed will never decrease
                 return NOT_FOUND

@@ -185,21 +185,28 @@ class Cycle(object):
         - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
         - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
         RETURN: number, the average grade (rise over run) over the given distance range
+        Note: grade is assumed to be constant from just after the previous sample point
+        until the current sample point. That is, grade[i] applies over the range of
+        distances, d, from (d[i - 1], d[i]]
         """
         if ((self.grade == 0.0).all()):
             return 0.0
-        distances_m = self.dist_v2_m.cumsum()
+        distances_m = np.cumsum(self.dist_v2_m)
         if delta_distance_m <= 0.0:
             if distance_start_m <= distances_m[0]:
                 return self.grade[0]
             if distance_start_m >= distances_m[-1]:
                 return self.grade[-1]
-            for (d, d_next, g) in zip(distances_m, distances_m[1:], self.grade):
-                if distance_start_m >= d and distance_start_m < d_next:
+            for (d, d_next, g) in zip(distances_m, distances_m[1:], self.grade[1:]):
+                if distance_start_m > d and distance_start_m <= d_next:
                     return g
         # NOTE: we use the following instead of delta_elev_m in order to use
-        # self.dist_v2_m and in lieu of introducing delta_elev_v2_m
-        elevations_m = (self.dist_v2_m * self.grade).cumsum()
+        # self.dist_v2_m and in lieu of introducing delta_elev_v2_m.
+        # This also uses the fully accurate trig functions in case we have large slope angles.
+        elevations_m = np.cumsum(np.cos(np.arctan(self.grade)) * self.dist_v2_m * self.grade)
+        assert len(elevations_m) == len(distances_m), f"len(elevations_m) = {len(elevations_m)}; len(distances_m) = {len(distances_m)}"
+        assert elevations_m[0] == 0.0
+        assert distances_m[0] == 0.0
         e0 = np.interp(distance_start_m, xp=distances_m, fp=elevations_m)
         e1 = np.interp(distance_start_m + delta_distance_m,
                        xp=distances_m, fp=elevations_m)
