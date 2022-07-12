@@ -12,6 +12,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
     // println!("{}", ast.ident.to_string());
     let ident = &ast.ident;
+    let is_state: bool = ident.to_string().contains("State");
 
     let mut impl_block = TokenStream2::default();
     impl_block.extend::<TokenStream2>(attr.into());
@@ -109,22 +110,24 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     });
 
-    impl_block.extend::<TokenStream2>(quote! {
-        #[pyo3(name = "to_file")]
-        pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
-            self.to_file(filename).unwrap();
-            Ok(())
-        }
-    });
+    if !is_state {
+        impl_block.extend::<TokenStream2>(quote! {
+            #[pyo3(name = "to_file")]
+            pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
+                self.to_file(filename).unwrap();
+                Ok(())
+            }
+        });
+        impl_block.extend::<TokenStream2>(quote! {
+            #[classmethod]
+            #[pyo3(name = "from_file")]
+            pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
+                let obj: #ident = Self::from_file(&json_str);
+                Ok(obj)
+            }
+       });
+    }
 
-    impl_block.extend::<TokenStream2>(quote! {
-         #[classmethod]
-         #[pyo3(name = "from_file")]
-         pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
-             let obj: #ident = Self::from_file(&json_str);
-             Ok(obj)
-         }
-    });
 
     let impl_block = quote! {
         #[pymethods]
@@ -144,19 +147,21 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 // taken from https://github.com/lumol-org/soa-derive/blob/master/soa-derive-internal/src/input.rs
 pub(crate) trait TokenStreamIterator {
-    fn concat_by(self, f: impl Fn(proc_macro2::TokenStream, proc_macro2::TokenStream) -> proc_macro2::TokenStream) -> proc_macro2::TokenStream;
+    fn concat_by(
+        self,
+        f: impl Fn(proc_macro2::TokenStream, proc_macro2::TokenStream) -> proc_macro2::TokenStream,
+    ) -> proc_macro2::TokenStream;
     fn concat(self) -> proc_macro2::TokenStream;
 }
 
 impl<T: Iterator<Item = proc_macro2::TokenStream>> TokenStreamIterator for T {
-    fn concat_by(mut self, f: impl Fn(proc_macro2::TokenStream, proc_macro2::TokenStream) -> proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+    fn concat_by(
+        mut self,
+        f: impl Fn(proc_macro2::TokenStream, proc_macro2::TokenStream) -> proc_macro2::TokenStream,
+    ) -> proc_macro2::TokenStream {
         match self.next() {
-            Some(first) => {
-                self.fold(first, |current, next| {
-                    f(current, next)
-                })
-            },
-            None => quote!{},
+            Some(first) => self.fold(first, |current, next| f(current, next)),
+            None => quote! {},
         }
     }
 
@@ -164,7 +169,6 @@ impl<T: Iterator<Item = proc_macro2::TokenStream>> TokenStreamIterator for T {
         self.concat_by(|a, b| quote! { #a #b })
     }
 }
-
 
 #[proc_macro_derive(HistoryVec)]
 pub fn history_vec_derive(input: TokenStream) -> TokenStream {
@@ -230,7 +234,7 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
     generated.append_all(quote! {
         #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
         #[pyclass]
-        #[altrios_api]
+        #[add_pyo3_api]
         pub struct #new_name {
             #vec_fields
         }
@@ -252,12 +256,6 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
 
             pub fn is_empty(&self) -> bool {
                 self.#first_field.is_empty()
-            }
-        }
-
-        impl Default for #new_name {
-            fn default() -> #new_name {
-                #new_name::new()
             }
         }
     });

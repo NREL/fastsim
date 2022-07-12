@@ -1,6 +1,6 @@
 //! Module for simulating thermal behavior of powertrains
 
-use crate::proc_macros::add_pyo3_api;
+use proc_macros::{add_pyo3_api, HistoryVec};
 use ndarray::Array1;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
@@ -12,6 +12,7 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use crate::simdrive;
+use crate::utils::Pyo3VecF64;
 
 /// Whether FC thermal modeling is handled by FASTSim
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -425,6 +426,8 @@ pub struct SimDriveHot {
     #[api(has_orphaned)]
     sd: simdrive::RustSimDrive,
     vehthrm: VehicleThermal,
+    state: ThermalState,
+    history: ThermalStateHistoryVec,
 }
 
 pub const SIMDRIVEHOT_DEFAULT_FOLDER: &str = "fastsim/resources";
@@ -479,7 +482,7 @@ impl SimDriveHot {
         if self.vehthrm.hvac_model ==
             ComponentModelTypes::Internal {
                 todo!()
-                // self.fc_qdot_to_htr_kW[i] = 0.0 // placeholder
+                // self.fc_qdot_to_htr_kw[i] = 0.0 // placeholder
             }
 
         if self.vehthrm.cabin_model == ComponentModelTypes::Internal {
@@ -499,7 +502,7 @@ impl SimDriveHot {
         // if self.vehthrm.fc_model == 'internal':
         //     // Energy balance for fuel converter
         //     self.fc_te_degC[i] = self.fc_te_degC[i-1] + (
-        //        self.fc_qdot_kW[i] - self.fc_qdot_to_amb_kW[i] - self.fc_qdot_to_htr_kW[i]) / self.vehthrm.fc_C_kJ__K * self.cyc.dt_s[i]
+        //        self.fc_qdot_kw[i] - self.fc_qdot_to_amb_kw[i] - self.fc_qdot_to_htr_kw[i]) / self.vehthrm.fc_C_kJ__K * self.cyc.dt_s[i]
        
     }
 
@@ -563,50 +566,50 @@ impl SimDriveHot {
 #[pyclass]
 #[add_pyo3_api]
 #[allow(non_snake_case)]
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, HistoryVec)]
 /// Struct containing thermal state variables for all thermal components
 pub struct ThermalState {
     // fuel converter (engine) variables
     /// fuel converter (engine) temperature [°C]
-    fc_te_degC: f64, 
+    fc_te_deg_c: f64, 
     /// fuel converter temperature efficiency correction
     fc_eta_temp_coeff: f64,
     /// fuel converter heat generation per total heat release minus shaft power
     fc_qdot_per_net_heat: f64,
     /// fuel converter heat generation [kW]
-    fc_qdot_kW: f64,
+    fc_qdot_kw: f64,
     /// fuel converter convection to ambient [kW]
-    fc_qdot_to_amb_kW: f64,
+    fc_qdot_to_amb_kw: f64,
     /// fuel converter heat loss to heater core [kW]
-    fc_qdot_to_htr_kW: f64,
+    fc_qdot_to_htr_kw: f64,
     /// heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
     fc_htc_to_amb: f64,
     /// lambda (air/fuel ratio normalized w.r.t. stoich air/fuel ratio) -- 1 is reasonable default
     fc_lambda: f64,
     /// lambda-dependent adiabatic flame temperature
-    fc_te_adiabatic_degC: f64,
+    fc_te_adiabatic_deg_c: f64,
 
     // cabin (cab) variables
     /// cabin temperature [°C]
-    cab_te_degC: f64,
-    /// cabin solar load [kW]
-    cab_qdot_solar_kW: f64,
-    /// cabin convection to ambient [kW]
-    cab_qdot_to_amb_kW: f64, 
+    cab_te_deg_c: f64,
+    /// cabin solar load [kw]
+    cab_qdot_solar_kw: f64,
+    /// cabin convection to ambient [kw]
+    cab_qdot_to_amb_kw: f64, 
 
     // exhaust variables
     /// exhaust mass flow rate [kg/s]
     exh_mdot: f64,
-    /// exhaust enthalpy flow rate [kW]
-    exh_Hdot_kW: f64,
+    /// exhaust enthalpy flow rate [kw]
+    exh_hdot_kw: f64,
 
     /// exhaust port (exhport) variables
     /// exhaust temperature at exhaust port inlet 
-    exhport_exh_te_in_degC: f64,
-    /// heat transfer from exhport to amb [kW]
+    exhport_exh_te_in_deg_c: f64,
+    /// heat transfer from exhport to amb [kw]
     exhport_qdot_to_amb: f64,
     /// catalyst temperature [°C]
-    exhport_te_degC: f64,
+    exhport_te_deg_c: f64,
     /// convection from exhaust to exhport [W] 
     /// positive means exhport is receiving heat
     exhport_qdot_from_exh: f64,
@@ -621,25 +624,14 @@ pub struct ThermalState {
     /// heat transfer from catalyst to ambient [W]
     cat_qdot_to_amb: f64,
     /// catalyst temperature [°C]
-    cat_te_degC: f64,
+    cat_te_deg_c: f64,
     /// exhaust temperature at cat inlet
-    cat_exh_te_in_degC: f64,
+    cat_exh_te_in_deg_c: f64,
     /// catalyst external reynolds number
-    cat_Re_ext: f64,
+    cat_re_ext: f64,
     /// convection from exhaust to cat [W] 
     /// positive means cat is receiving heat
     cat_qdot_from_exh: f64,
     /// net heat generation in cat [W]
     cat_qdot_net: f64,
-}
-
-impl ThermalState {
-    // TODO: this should not really have from_file and to_file 
-    // methods so these need to be separated out somehow
-    impl_serde!(ThermalState, SIMDRIVEHOT_DEFAULT_FOLDER);
-
-    pub fn from_file(filename: &str) -> Self {
-        Self::from_file_parser(filename).unwrap()
-    }
-
 }
