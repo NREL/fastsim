@@ -188,10 +188,18 @@ class Cycle(object):
         """
         if ((self.grade == 0.0).all()):
             return 0.0
-        distances_m = self.dist_m.cumsum()
+        distances_m = self.dist_v2_m.cumsum()
         if delta_distance_m <= 0.0:
-            return np.interp(distance_start_m, xp=distances_m, fp=self.grade)
-        elevations_m = self.delta_elev_m
+            if distance_start_m <= distances_m[0]:
+                return self.grade[0]
+            if distance_start_m >= distances_m[-1]:
+                return self.grade[-1]
+            for (d, d_next, g) in zip(distances_m, distances_m[1:], self.grade):
+                if distance_start_m >= d and distance_start_m < d_next:
+                    return g
+        # NOTE: we use the following instead of delta_elev_m in order to use
+        # self.dist_v2_m and in lieu of introducing delta_elev_v2_m
+        elevations_m = (self.dist_v2_m * self.grade).cumsum()
         e0 = np.interp(distance_start_m, xp=distances_m, fp=elevations_m)
         e1 = np.interp(distance_start_m + delta_distance_m,
                        xp=distances_m, fp=elevations_m)
