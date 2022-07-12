@@ -748,7 +748,7 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, tol: float=0.1, vmin: Option
         d += dd
         d_lv += dd_lv
         dtlv = d_lv - d
-        if True:
+        if False:
             print(f"Checking Rendezvous at [{idx}]")
             print(f"... v0 = {v0}")
             print(f"... v = {v}")
@@ -760,7 +760,7 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, tol: float=0.1, vmin: Option
         v0 = v
         v0_lv = v_lv
         if di > 0 and dtlv < -tol:
-            if True:
+            if False:
                 print(f"Found Rendezvous at [{idx}]")
                 print(f"... idx = {idx}")
                 print(f"... n = {di + 1}")
