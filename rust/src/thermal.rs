@@ -455,7 +455,7 @@ impl SimDriveHot {
         self.sd.walk(init_soc, aux_in_kw_override).unwrap();
     }
 
-    pub fn init_for_step(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
+    pub fn init_for_step(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>, amb_te_degC: f64) {
         self.sd.init_for_step(init_soc, aux_in_kw_override).unwrap();
     }
 
@@ -558,8 +558,37 @@ impl SimDriveHot {
 
     }
 
+    /// Solve cabin thermal behavior.
     pub fn set_cab_thermal_calcs(&mut self, i: usize) {
-        todo!()
+        // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
+        // Transfer, 7th Edition
+        let cab_te_film_ext_deg_c: f64 = 0.5 * (self.state.cab_te_deg_c + self.state.amb_te_deg_c);
+        let re_l: f64 = self.air.get_rho(cab_te_film_ext_deg_c, None) * self.sd.mps_ach[i-1] * self.vehthrm.cab_l_length / self.air.get_mu(cab_te_film_ext_deg_c);
+        let re_l_crit: f64 = 5.0e5;  // critical Re for transition to turbulence
+
+        let mut nu_l_bar = 0.0;
+        let a = 0.0;
+        if re_l < re_l_crit {
+            // equation 7.30
+            nu_l_bar = 0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0/3.0);
+        } else {
+            // equation 7.38
+            a = 871.0;  // equation 7.39
+            nu_l_bar = (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c);
+        }
+        
+        if self.sd.mph_ach[i-1] > 2.0 {        
+            self.state.cab_qdot_to_amb_kw = 1e-3 * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width) / (
+                1.0 / (nu_l_bar * self.air.get_k(cab_te_film_ext_deg_c) / self.vehthrm.cab_l_length) + self.vehthrm.cab_r_to_amb
+                ) * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
+        } else {
+            self.state.cab_qdot_to_amb_kw = 1e-3 * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width) / (
+                1.0 / self.vehthrm.cab_htc_to_amb_stop + self.vehthrm.cab_r_to_amb
+                ) * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
+        }
+        
+        self.state.cab_te_deg_c = self.state.cab_te_deg_c + 
+            (self.state.fc_qdot_to_htr_kw - self.state.cab_qdot_to_amb_kw) / self.vehthrm.cab_c_kj__k * self.sd.cyc.dt_s()[i];
     }
 
     pub fn set_exhport_thermal_calcs(&mut self, i: usize) {
