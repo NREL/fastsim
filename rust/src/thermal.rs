@@ -11,6 +11,7 @@ use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
 
+use crate::air::AirProperties;
 use crate::simdrive;
 use crate::utils::Pyo3VecF64;
 
@@ -426,6 +427,9 @@ pub struct SimDriveHot {
     #[api(has_orphaned)]
     sd: simdrive::RustSimDrive,
     vehthrm: VehicleThermal,
+    #[api(skip_get, skip_set)]
+    #[serde(skip)]
+    air: AirProperties,
     state: ThermalState,
     history: ThermalStateHistoryVec,
 }
@@ -465,6 +469,7 @@ impl SimDriveHot {
 
     pub fn step(&mut self) {
         self.sd.step().unwrap();
+        self.history.push(self.state);
     }
 
     pub fn solve_step(&mut self, i: usize) {
@@ -506,8 +511,51 @@ impl SimDriveHot {
        
     }
 
+    /// Solve fuel converter thermal behavior assuming convection parameters of sphere.
     pub fn set_fc_thermal_calcs(&mut self, i: usize) {
-        todo!()
+        // Constitutive equations for fuel converter
+        // calculation of adiabatic flame temperature
+        self.state.fc_te_adiabatic_deg_c = self.air.get_te_from_h(
+            ((1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich) * self.air.get_h(self.state.amb_te_deg_c) + 
+                self.sd.props.get_fuel_lhv_kj_per_kg() * 1e3 * self.state.fc_lambda.min(1.0)
+            ) / (1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich)
+        );
+
+        // limited between 0 and 1, but should really not get near 1
+        self.state.fc_qdot_per_net_heat = 
+            (self.vehthrm.fc_coeff_from_comb * (self.state.fc_te_adiabatic_deg_c - self.state.fc_te_deg_c)).min(1.0).max(0.0);
+
+        // heat generation 
+        self.state.fc_qdot_kw = self.state.fc_qdot_per_net_heat * (self.sd.fc_kw_in_ach[i-1] - self.sd.fc_kw_out_ach[i-1]);
+
+        // film temperature for external convection calculations
+        let fc_air_film_te_deg_c = 0.5 * (self.state.fc_te_deg_c + self.state.amb_te_deg_c);
+    
+        // density * speed * diameter / dynamic viscosity
+        let fc_air_film_re = self.air.get_rho(fc_air_film_te_deg_c, None) * self.mps_ach[i-1] * self.vehthrm.fc_l / 
+            self.air.get_mu(fc_air_film_te_deg_c);
+
+        // calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
+        if self.mps_ach[i-1] < 1.0 {
+            // if stopped, scale based on thermostat opening and constant convection
+            self.state.fc_htc_to_amb = np.interp(self.fc_te_degC[i-1], 
+                [self.vehthrm.tstat_te_sto_degC, self.vehthrm.tstat_te_fo_degC],
+                [self.vehthrm.fc_htc_to_amb_stop, self.vehthrm.fc_htc_to_amb_stop * self.vehthrm.rad_eps])
+        } else {
+            // Calculate heat transfer coefficient for sphere, 
+            // from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
+
+            fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(fc_air_film_Re)
+            fc_htc_to_ambSphere = (fc_sphere_conv_params[0] * fc_air_film_Re ** fc_sphere_conv_params[1]) * \
+                self.air.get_Pr(fc_air_film_te_degC) ** (1 / 3) * \
+                self.air.get_k(fc_air_film_te_degC) / self.vehthrm.fc_L
+            self.fc_htc_to_amb[i] = np.interp(self.fc_te_degC[i-1],
+                [self.vehthrm.tstat_te_sto_degC, self.vehthrm.tstat_te_fo_degC],
+                [fc_htc_to_ambSphere, fc_htc_to_ambSphere * self.vehthrm.rad_eps])}
+
+        self.fc_qdot_to_amb_kW[i] = self.fc_htc_to_amb[i] * 1e-3 * self.vehthrm.fc_area_ext * (self.fc_te_degC[i-1] - self.amb_te_degC[i-1])
+
+
     }
 
     pub fn set_cab_thermal_calcs(&mut self, i: usize) {
@@ -634,4 +682,7 @@ pub struct ThermalState {
     cat_qdot_from_exh: f64,
     /// net heat generation in cat [W]
     cat_qdot_net: f64,
+
+    /// ambient temperature
+    amb_te_deg_c: f64,
 }

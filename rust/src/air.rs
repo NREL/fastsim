@@ -1,4 +1,4 @@
-//! Module containing models for air properties. 
+//! Module containing models for air properties.
 
 use crate::utils::interpolate as interp;
 use ndarray::Array1;
@@ -35,6 +35,7 @@ use ndarray::Array1;
 
 pub const R_AIR: f64 = 287.0; // J/(kg*K)
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct AirProperties {
     /// Private array of temperatures [°C] at which properties are evaluated ()
     te_array_degc: Array1<f64>,
@@ -207,5 +208,3 @@ impl AirProperties {
 //         assert!(true) // todo: update this to actually test something
 //     }
 // }
-
-
