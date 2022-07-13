@@ -10,7 +10,7 @@ use serde_json;
 use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
-use std::f64::consts::PI
+use std::f64::consts::PI;
 
 use crate::air::AirProperties;
 use crate::simdrive;
@@ -564,14 +564,17 @@ impl SimDriveHot {
         } else {
             // Calculate heat transfer coefficient for sphere, 
             // from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-
-            fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(fc_air_film_Re)
-            fc_htc_to_ambSphere = (fc_sphere_conv_params[0] * fc_air_film_Re ** fc_sphere_conv_params[1]) * \
-                self.air.get_pr(fc_air_film_te_deg_c) ** (1 / 3) * \
-                self.air.get_k(fc_air_film_te_deg_c) / self.vehthrm.fc_L
-            self.fc_htc_to_amb[i] = np.interp(self.fc_te_deg_c[i-1],
+            fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(fc_air_film_re);
+            fc_htc_to_ambSphere = (fc_sphere_conv_params[0] * fc_air_film_re ** fc_sphere_conv_params[1]) *
+                self.air.get_pr(fc_air_film_te_deg_c).powf(1.0/3.0) *
+                self.air.get_k(fc_air_film_te_deg_c) / self.vehthrm.fc_l;
+            self.fc_htc_to_amb[i] = interpolate(
+                &self.state.fc_te_deg_c,
                 [self.vehthrm.tstat_te_sto_deg_c, self.vehthrm.tstat_te_fo_deg_c],
-                [fc_htc_to_ambSphere, fc_htc_to_ambSphere * self.vehthrm.rad_eps])}
+                [fc_htc_to_ambSphere, fc_htc_to_ambSphere * self.vehthrm.rad_eps],
+                false
+            )
+        }
 
         self.fc_qdot_to_amb_kW[i] = self.fc_htc_to_amb[i] * 1e-3 * self.vehthrm.fc_area_ext * (self.fc_te_deg_c[i-1] - self.amb_te_deg_c[i-1])
 
