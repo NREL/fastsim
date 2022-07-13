@@ -15,6 +15,8 @@ use crate::air::AirProperties;
 use crate::simdrive;
 use crate::utils::Pyo3VecF64;
 
+use crate::utils::*;
+
 /// Whether FC thermal modeling is handled by FASTSim
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum FcModelTypes {
@@ -566,8 +568,8 @@ impl SimDriveHot {
         let re_l: f64 = self.air.get_rho(cab_te_film_ext_deg_c, None) * self.sd.mps_ach[i-1] * self.vehthrm.cab_l_length / self.air.get_mu(cab_te_film_ext_deg_c);
         let re_l_crit: f64 = 5.0e5;  // critical Re for transition to turbulence
 
-        let mut nu_l_bar = 0.0;
-        let a = 0.0;
+        let mut nu_l_bar: f64 = 0.0;
+        let a: f64 = 0.0;
         if re_l < re_l_crit {
             // equation 7.30
             nu_l_bar = 0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0/3.0);
@@ -591,8 +593,70 @@ impl SimDriveHot {
             (self.state.fc_qdot_to_htr_kw - self.state.cab_qdot_to_amb_kw) / self.vehthrm.cab_c_kj__k * self.sd.cyc.dt_s()[i];
     }
 
+    /// Solve exhport thermal behavior.
     pub fn set_exhport_thermal_calcs(&mut self, i: usize) {
-        todo!()
+        // lambda index may need adjustment, depending on how this ends up being modeled.
+        self.state.exh_mdot = self.sd.fs_kw_out_ach[i-1] / self.sd.props.get_fuel_lhv_kj_per_kg() * (1.0 + self.sd.props.fuel_afr_stoich * self.fc_lambda[i-1])
+        self.state.exh_hdot_kw = (1.0 - self.state.fc_qdot_per_net_heat) * (self.sd.fc_kw_in_ach[i-1] - self.sd.fc_kw_out_ach[i-1])
+        
+        if self.state.exh_mdot > 5e-4 {
+            self.state.exhport_exh_te_in_deg_c = min(
+                self.air.get_te_from_h(self.state.exh_hdot_kw * 1e3 / self.state.exh_mdot),
+                self.state.fc_te_adiabatic_deg_c)
+        } else {
+            // when flow is small, assume inlet temperature is temporally constant
+            self.state.exhport_exh_te_in_deg_c = self.state.exhport_exh_te_in_deg_c
+        }
+
+        // calculate heat transfer coeff. from exhaust port to ambient [W / (m ** 2 * K)]
+
+        if (self.state.exhport_te_deg_c - self.state.fc_te_deg_c) > 0.0 {
+            // if exhaust port is hotter than ambient, make sure heat transfer cannot violate the second law
+            self.state.exhport_qdot_to_amb = min(
+                // nominal heat transfer to amb
+                self.vehthrm.exhport_ha_to_amb * (self.state.exhport_te_deg_c - self.fc_te_deg_c),
+                // max possible heat transfer to amb
+                self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_te_deg_c - self.fc_te_deg_c) / self.cyc.dt_s()[i]
+            )
+        } else {
+            // exhaust port cooler than the ambient
+            self.state.exhport_qdot_to_amb = max(
+                // nominal heat transfer to amb
+                self.vehthrm.exhport_ha_to_amb * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c),
+                // max possible heat transfer to amb
+                self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c) / self.sd.cyc.dt_s()[i]
+            )
+        }
+
+        if (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) > 0.0 {
+            // exhaust hotter than exhaust port
+            self.state.exhport_qdot_from_exh = min(
+                // nominal heat transfer to exhaust port
+                self.vehthrm.exhport_ha_int * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
+                min(
+                    // max possible heat transfer from exhaust
+                    self.state.exh_mdot * (self.air.get_h(self.state.exhport_exh_te_in_deg_c) - self.air.get_h(self.state.exhport_te_deg_c)),
+                    // max possible heat transfer to exhaust port
+                    self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) / self.sd.cyc.dt_s()[i]
+                )
+            )
+        } else {
+            // exhaust cooler than exhaust port
+            self.state.exhport_qdot_from_exh = max(
+                // nominal heat transfer to exhaust port
+                self.vehthrm.exhport_ha_int * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
+                max(
+                    // max possible heat transfer from exhaust
+                    self.state.exh_mdot * (self.air.get_h(self.state.exhport_exh_te_in_deg_c) - self.air.get_h(self.state.exhport_te_deg_c)),
+                    // max possible heat transfer to exhaust port
+                    self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) / self.sd.cyc.dt_s()[i]
+                )
+            )
+        }
+
+        self.state.exhport_qdot_net = self.state.exhport_qdot_from_exh - self.state.exhport_qdot_to_amb;
+        self.state.exhport_te_deg_c = 
+            self.state.exhport_te_deg_c + self.state.exhport_qdot_net / (self.vehthrm.exhport_c_kj__k * 1e3) * self.sd.cyc.dt_s()[i];
     }
 
     pub fn set_cat_thermal_calcs(&mut self, i: usize) {
