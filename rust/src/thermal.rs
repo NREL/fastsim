@@ -552,31 +552,35 @@ impl SimDriveHot {
         let fc_air_film_te_deg_c = 0.5 * (self.state.fc_te_deg_c + self.state.amb_te_deg_c);
     
         // density * speed * diameter / dynamic viscosity
-        let fc_air_film_re = self.air.get_rho(fc_air_film_te_deg_c, None) * self.mps_ach[i-1] * self.vehthrm.fc_l / 
+        let fc_air_film_re = self.air.get_rho(fc_air_film_te_deg_c, None) * self.sd.mps_ach[i-1] * self.vehthrm.fc_l / 
             self.air.get_mu(fc_air_film_te_deg_c);
 
         // calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
         if self.sd.mps_ach[i-1] < 1.0 {
             // if stopped, scale based on thermostat opening and constant convection
-            self.state.fc_htc_to_amb = np.interp(self.fc_te_deg_c[i-1], 
-                [self.vehthrm.tstat_te_sto_deg_c, self.vehthrm.tstat_te_fo_deg_c],
-                [self.vehthrm.fc_htc_to_amb_stop, self.vehthrm.fc_htc_to_amb_stop * self.vehthrm.rad_eps])
+            self.state.fc_htc_to_amb = interpolate(
+                &self.state.fc_te_deg_c,
+                &Array1::from_vec(vec![self.vehthrm.tstat_te_sto_deg_c, self.vehthrm.tstat_te_fo_deg_c()]),
+                &Array1::from_vec(vec![self.vehthrm.fc_htc_to_amb_stop, self.vehthrm.fc_htc_to_amb_stop * self.vehthrm.rad_eps]),
+                false
+            )
         } else {
             // Calculate heat transfer coefficient for sphere, 
             // from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-            fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(fc_air_film_re);
-            fc_htc_to_ambSphere = (fc_sphere_conv_params[0] * fc_air_film_re ** fc_sphere_conv_params[1]) *
+            let fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(fc_air_film_re);
+            let fc_htc_to_ambSphere =
+                (fc_sphere_conv_params[0] * fc_air_film_re.powf(fc_sphere_conv_params[1])) *
                 self.air.get_pr(fc_air_film_te_deg_c).powf(1.0/3.0) *
                 self.air.get_k(fc_air_film_te_deg_c) / self.vehthrm.fc_l;
-            self.fc_htc_to_amb[i] = interpolate(
+            self.state.fc_htc_to_amb = interpolate(
                 &self.state.fc_te_deg_c,
-                [self.vehthrm.tstat_te_sto_deg_c, self.vehthrm.tstat_te_fo_deg_c],
-                [fc_htc_to_ambSphere, fc_htc_to_ambSphere * self.vehthrm.rad_eps],
+                &Array1::from_vec(vec![self.vehthrm.tstat_te_sto_deg_c, self.vehthrm.tstat_te_fo_deg_c()]),
+                &Array1::from_vec(vec![fc_htc_to_ambSphere, fc_htc_to_ambSphere * self.vehthrm.rad_eps]),
                 false
             )
         }
 
-        self.fc_qdot_to_amb_kW[i] = self.fc_htc_to_amb[i] * 1e-3 * self.vehthrm.fc_area_ext * (self.fc_te_deg_c[i-1] - self.amb_te_deg_c[i-1])
+        self.state.fc_qdot_to_amb_kw = self.state.fc_htc_to_amb * 1e-3 * self.vehthrm.fc_area_ext() * (self.state.fc_te_deg_c - self.state.amb_te_deg_c)
 
 
     }
@@ -650,27 +654,27 @@ impl SimDriveHot {
 
         if (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) > 0.0 {
             // exhaust hotter than exhaust port
-            self.state.exhport_qdot_from_exh = min(
-                // nominal heat transfer to exhaust port
-                self.vehthrm.exhport_ha_int * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
-                min(
+            self.state.exhport_qdot_from_exh = arrmin(
+                &[
+                    // nominal heat transfer to exhaust port
+                    self.vehthrm.exhport_ha_int * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
                     // max possible heat transfer from exhaust
                     self.state.exh_mdot * (self.air.get_h(self.state.exhport_exh_te_in_deg_c) - self.air.get_h(self.state.exhport_te_deg_c)),
                     // max possible heat transfer to exhaust port
                     self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) / self.sd.cyc.dt_s()[i]
-                )
+                ]
             );
         } else {
             // exhaust cooler than exhaust port
-            self.state.exhport_qdot_from_exh = max(
-                // nominal heat transfer to exhaust port
-                self.vehthrm.exhport_ha_int * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
-                max(
+            self.state.exhport_qdot_from_exh = arrmax(
+                &[
+                    // nominal heat transfer to exhaust port
+                    self.vehthrm.exhport_ha_int * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
                     // max possible heat transfer from exhaust
                     self.state.exh_mdot * (self.air.get_h(self.state.exhport_exh_te_in_deg_c) - self.air.get_h(self.state.exhport_te_deg_c)),
                     // max possible heat transfer to exhaust port
                     self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) / self.sd.cyc.dt_s()[i]
-                )
+                ]
             );
         }
 
@@ -694,13 +698,13 @@ impl SimDriveHot {
         // calculate heat transfer coeff. from cat to ambient [W / (m ** 2 * K)]
         if self.sd.mps_ach[i-1] < 1.0 {
             // if stopped, scale based on constant convection
-            self.state.cat_htc_to_amb = self.vehthrm.cat_h_to_amb_stop;
+            self.state.cat_htc_to_amb = self.vehthrm.cat_htc_to_amb_stop;
         } else {
             // if moving, scale based on speed dependent convection and thermostat opening
             // Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-            cat_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(self.state.cat_re_ext[i]);
-            cat_htc_to_ambSphere = (cat_sphere_conv_params[0] * self.cat_Re_ext[i].powf(cat_sphere_conv_params[1])
-                ) * self.air.get_Pr(cat_te_ext_film_deg_c).powf(1.0/3.0) * self.air.get_k(cat_te_ext_film_deg_c) / self.vehthrm.cat_l;
+            let cat_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(self.state.cat_re_ext);
+            let cat_htc_to_ambSphere = (cat_sphere_conv_params[0] * self.state.cat_re_ext.powf(cat_sphere_conv_params[1])
+                ) * self.air.get_pr(cat_te_ext_film_deg_c).powf(1.0/3.0) * self.air.get_k(cat_te_ext_film_deg_c) / self.vehthrm.cat_l;
             self.state.fc_htc_to_amb = cat_htc_to_ambSphere
         }
 
@@ -756,7 +760,7 @@ impl SimDriveHot {
         // net heat generetion/transfer in cat
         self.state.cat_qdot_net = self.state.cat_qdot + self.state.cat_qdot_from_exh - self.state.cat_qdot_to_amb;
 
-        self.state.cat_te_deg_c = self.state.cat_te_deg_c + self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__k * self.sd.cyc.dt_s()[i];
+        self.state.cat_te_deg_c = self.state.cat_te_deg_c + self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__K * self.sd.cyc.dt_s()[i];
     }
 
     pub fn set_misc_calcs(&mut self, i: usize) {
