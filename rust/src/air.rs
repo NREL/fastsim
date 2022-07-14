@@ -3,6 +3,9 @@
 use crate::utils::interpolate as interp;
 use ndarray::Array1;
 
+
+pub const R_AIR: f64 = 287.0; // J/(kg*K)
+
 /// Fluid Properties for calculations.  
 ///
 /// Values obtained via (in Python):
@@ -32,9 +35,6 @@ use ndarray::Array1;
 /// >>> pd.set_option('display.float_format', lambda x: '%.3g' % x)
 /// >>> prop_df = prop_df.apply(np.float64)
 /// ```
-
-pub const R_AIR: f64 = 287.0; // J/(kg*K)
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct AirProperties {
     /// Private array of temperatures [°C] at which properties are evaluated ()
