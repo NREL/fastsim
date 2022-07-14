@@ -119,15 +119,14 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         });
         impl_block.extend::<TokenStream2>(quote! {
-            #[classmethod]
-            #[pyo3(name = "from_file")]
-            pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
-                let obj: #ident = Self::from_file(&json_str);
-                Ok(obj)
-            }
-       });
+             #[classmethod]
+             #[pyo3(name = "from_file")]
+             pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
+                 let obj: #ident = Self::from_file(&json_str);
+                 Ok(obj)
+             }
+        });
     }
-
 
     let impl_block = quote! {
         #[pymethods]
@@ -248,6 +247,14 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
 
             pub fn push(&mut self, value: #original_name) {
                 #(self.#field_names.push(value.#field_names);)*
+            }
+
+            pub fn clear(&mut self, value: #original_name) {
+                #(self.#field_names.clear(value.#field_names);)*
+            }
+
+            pub fn pop(&mut self, value: #original_name) {
+                #(self.#field_names.pop(value.#field_names);)*
             }
 
             pub fn len(&self) -> usize {
