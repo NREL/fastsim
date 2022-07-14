@@ -249,13 +249,13 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
                 #(self.#field_names.push(value.#field_names);)*
             }
 
-            pub fn clear(&mut self, value: #original_name) {
-                #(self.#field_names.clear(value.#field_names);)*
+            pub fn clear(&mut self) {
+                #(self.#field_names.clear();)*
             }
 
-            pub fn pop(&mut self, value: #original_name) {
-                #(self.#field_names.pop(value.#field_names);)*
-            }
+            // pub fn remove_last(&mut self, value: #original_name) {
+            //     #(self.#field_names.pop(value.#field_names);)*
+            // }
 
             pub fn len(&self) -> usize {
                 self.#first_field.len()
