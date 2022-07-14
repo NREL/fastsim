@@ -85,6 +85,24 @@ impl Default for ComponentModelTypes {
     }
 }
 
+#[pyfunction]
+/// Given Reynolds number `re`, return C and m to calculate Nusselt number for 
+/// sphere, from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
+pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
+    let (c, m) = if re < 4.0 {
+        (0.989, 0.330)
+    } else if re < 40.0 {
+        (0.911, 0.385)
+    } else if re < 4e3 {
+        (0.683, 0.466)
+    } else if re < 40e3 {
+        (0.193, 0.618)
+    } else {
+        (0.027, 0.805)
+    };
+    (c, m)
+}
+
 /// Struct for containing vehicle thermal (and related) parameters.
 #[pyclass]
 #[add_pyo3_api]
@@ -230,18 +248,18 @@ impl VehicleThermal {
     }
 
     /// derived temperature [ºC] at which thermostat is fully open
-    pub fn tstat_te_fo_deg_c(self) -> f64 {
+    pub fn tstat_te_fo_deg_c(&self) -> f64 {
         self.tstat_te_sto_deg_c + self.tstat_te_delta_deg_c
     }
 
     /// parameter for engine surface area [m**2] for heat transfer calcs
-    pub fn fc_area_ext(self) -> f64
+    pub fn fc_area_ext(&self) -> f64
     {
         PI * self.fc_l.powf(2.0/4.0)
     }
     
     /// parameter for catalyst surface area [m**2] for heat transfer calcs
-    pub fn cat_area_ext(self) -> f64
+    pub fn cat_area_ext(&self) -> f64
     {
         PI * self.cat_l.powf(2.0/4.0)
     }
@@ -489,7 +507,7 @@ impl SimDriveHot {
 
     pub fn step(&mut self) {
         self.sd.step().unwrap();
-        self.history.push(self.state);
+        self.history.push(self.state.clone());
     }
 
     pub fn solve_step(&mut self, i: usize) {
@@ -567,15 +585,15 @@ impl SimDriveHot {
         } else {
             // Calculate heat transfer coefficient for sphere, 
             // from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-            let fc_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(fc_air_film_re);
-            let fc_htc_to_ambSphere =
-                (fc_sphere_conv_params[0] * fc_air_film_re.powf(fc_sphere_conv_params[1])) *
+            let fc_sphere_conv_params = get_sphere_conv_params(fc_air_film_re);
+            let fc_htc_to_amb_sphere =
+                (fc_sphere_conv_params.0 * fc_air_film_re.powf(fc_sphere_conv_params.1)) *
                 self.air.get_pr(fc_air_film_te_deg_c).powf(1.0/3.0) *
                 self.air.get_k(fc_air_film_te_deg_c) / self.vehthrm.fc_l;
             self.state.fc_htc_to_amb = interpolate(
                 &self.state.fc_te_deg_c,
                 &Array1::from_vec(vec![self.vehthrm.tstat_te_sto_deg_c, self.vehthrm.tstat_te_fo_deg_c()]),
-                &Array1::from_vec(vec![fc_htc_to_ambSphere, fc_htc_to_ambSphere * self.vehthrm.rad_eps]),
+                &Array1::from_vec(vec![fc_htc_to_amb_sphere, fc_htc_to_amb_sphere * self.vehthrm.rad_eps]),
                 false
             )
         }
@@ -593,16 +611,14 @@ impl SimDriveHot {
         let re_l: f64 = self.air.get_rho(cab_te_film_ext_deg_c, None) * self.sd.mps_ach[i-1] * self.vehthrm.cab_l_length / self.air.get_mu(cab_te_film_ext_deg_c);
         let re_l_crit: f64 = 5.0e5;  // critical Re for transition to turbulence
 
-        let mut nu_l_bar: f64 = 0.0;
-        let a: f64 = 0.0;
-        if re_l < re_l_crit {
+        let nu_l_bar = if re_l < re_l_crit {
             // equation 7.30
-            nu_l_bar = 0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0/3.0);
+            0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0/3.0)
         } else {
             // equation 7.38
-            a = 871.0;  // equation 7.39
-            nu_l_bar = (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c);
-        }
+            let a = 871.0;  // equation 7.39
+             (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c)
+        };
         
         if self.sd.mph_ach[i-1] > 2.0 {        
             self.state.cab_qdot_to_amb_kw = 1e-3 * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width) / (
@@ -614,7 +630,7 @@ impl SimDriveHot {
                 ) * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
         }
         
-        self.state.cab_te_deg_c = self.state.cab_te_deg_c + 
+        self.state.cab_te_deg_c +=  
             (self.state.fc_qdot_to_htr_kw - self.state.cab_qdot_to_amb_kw) / self.vehthrm.cab_c_kj__k * self.sd.cyc.dt_s()[i];
     }
 
@@ -628,8 +644,8 @@ impl SimDriveHot {
             self.state.exhport_exh_te_in_deg_c = min(
                 self.air.get_te_from_h(self.state.exh_hdot_kw * 1e3 / self.state.exh_mdot),
                 self.state.fc_te_adiabatic_deg_c);
-            // when flow is small, assume inlet temperature is temporally constant and retain previous value
-            // this happens implicitly
+            // when flow is small, assume inlet temperature is temporally constant 
+            // so previous value is not overwritten
         }
 
         // calculate heat transfer coeff. from exhaust port to ambient [W / (m ** 2 * K)]
@@ -678,8 +694,7 @@ impl SimDriveHot {
         }
 
         self.state.exhport_qdot_net = self.state.exhport_qdot_from_exh - self.state.exhport_qdot_to_amb;
-        self.state.exhport_te_deg_c = 
-            self.state.exhport_te_deg_c + self.state.exhport_qdot_net / (self.vehthrm.exhport_c_kj__k * 1e3) * self.sd.cyc.dt_s()[i];
+        self.state.exhport_te_deg_c += self.state.exhport_qdot_net / (self.vehthrm.exhport_c_kj__k * 1e3) * self.sd.cyc.dt_s()[i];
     }
 
     /// Solve catalyst thermal behavior.
@@ -701,10 +716,9 @@ impl SimDriveHot {
         } else {
             // if moving, scale based on speed dependent convection and thermostat opening
             // Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
-            let cat_sphere_conv_params = self.conv_calcs.get_sphere_conv_params(self.state.cat_re_ext);
-            let cat_htc_to_ambSphere = (cat_sphere_conv_params[0] * self.state.cat_re_ext.powf(cat_sphere_conv_params[1])
-                ) * self.air.get_pr(cat_te_ext_film_deg_c).powf(1.0/3.0) * self.air.get_k(cat_te_ext_film_deg_c) / self.vehthrm.cat_l;
-            self.state.fc_htc_to_amb = cat_htc_to_ambSphere
+            let cat_sphere_conv_params = get_sphere_conv_params(self.state.cat_re_ext);
+            self.state.fc_htc_to_amb = (cat_sphere_conv_params.0 * self.state.cat_re_ext.powf(cat_sphere_conv_params.1)
+                ) * self.air.get_pr(cat_te_ext_film_deg_c).powf(1.0 / 3.0) * self.air.get_k(cat_te_ext_film_deg_c) / self.vehthrm.cat_l;
         }
 
         if (self.state.cat_te_deg_c - self.state.amb_te_deg_c) > 0.0 {
@@ -730,9 +744,8 @@ impl SimDriveHot {
                 self.air.get_te_from_h((self.state.exh_hdot_kw * 1e3 - self.state.exhport_qdot_from_exh) / self.state.exh_mdot),
                 self.state.fc_te_adiabatic_deg_c
             );
-        } else {
-            // when flow is small, assume inlet temperature is temporally constant
-            self.state.cat_exh_te_in_deg_c = self.state.cat_exh_te_in_deg_c
+            // when flow is small, assume inlet temperature is temporally constant 
+            // so previous value is not overwritten
         }
 
         if (self.state.cat_exh_te_in_deg_c - self.state.cat_te_deg_c) > 0.0 {
@@ -759,7 +772,7 @@ impl SimDriveHot {
         // net heat generetion/transfer in cat
         self.state.cat_qdot_net = self.state.cat_qdot + self.state.cat_qdot_from_exh - self.state.cat_qdot_to_amb;
 
-        self.state.cat_te_deg_c = self.state.cat_te_deg_c + self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__K * self.sd.cyc.dt_s()[i];
+        self.state.cat_te_deg_c += self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__K * self.sd.cyc.dt_s()[i];
     }
 
     pub fn set_misc_calcs(&mut self, i: usize) {

@@ -36,7 +36,7 @@ pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
     }
 
     #[pyo3(name = "set_fuel_lhv_kj_per_kg")]
-    pub fn set_fuel_lhv_kj_per_kg_py(&self, fuel_lhv_kj_per_kg: f64) {
+    pub fn set_fuel_lhv_kj_per_kg_py(&mut self, fuel_lhv_kj_per_kg: f64) {
         self.set_fuel_lhv_kj_per_kg(fuel_lhv_kj_per_kg);
     }
 )]
@@ -70,12 +70,12 @@ impl Default for RustPhysicalProperties {
 }
 
 impl RustPhysicalProperties {
-    pub fn get_fuel_lhv_kj_per_kg(self) -> f64 {
+    pub fn get_fuel_lhv_kj_per_kg(&self) -> f64 {
         // fuel_lhv_kj_per_kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg_per_L [kg/L] * 3_600 [s/hr] = [kJ/kg]
         self.kwh_per_gge / 3.785 / self.fuel_rho_kg__L * 3.6e3
     }
 
-    pub fn set_fuel_lhv_kj_per_kg(self, fuel_lhv_kj_per_kg: f64) {
+    pub fn set_fuel_lhv_kj_per_kg(&mut self, fuel_lhv_kj_per_kg: f64) {
         // kWhPerGGE = fuel_lhv_kj_per_kg * fuel_rho_kg_per_L [kg/L] * 3.785 [L/gal] / 3_600 [s/hr] = [kJ/kg]
         self.kwh_per_gge = fuel_lhv_kj_per_kg * 3.785 * self.fuel_rho_kg__L / 3.6e3;
     }
