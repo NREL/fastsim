@@ -628,9 +628,8 @@ impl SimDriveHot {
             self.state.exhport_exh_te_in_deg_c = min(
                 self.air.get_te_from_h(self.state.exh_hdot_kw * 1e3 / self.state.exh_mdot),
                 self.state.fc_te_adiabatic_deg_c);
-        } else {
-            // when flow is small, assume inlet temperature is temporally constant
-            self.state.exhport_exh_te_in_deg_c = self.state.exhport_exh_te_in_deg_c;
+            // when flow is small, assume inlet temperature is temporally constant and retain previous value
+            // this happens implicitly
         }
 
         // calculate heat transfer coeff. from exhaust port to ambient [W / (m ** 2 * K)]
