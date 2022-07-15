@@ -64,6 +64,8 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<RustSimDrive>()?;
     m.add_class::<thermal::VehicleThermal>()?;
     m.add_class::<thermal::SimDriveHot>()?;
+    m.add_class::<thermal::ThermalState>()?;
+    m.add_class::<thermal::ThermalStateHistoryVec>()?;
     cycle::register(py, m)?;
     Ok(())
 }
