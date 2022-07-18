@@ -1769,9 +1769,8 @@ impl RustSimDrive {
         let mut v = v0;
         let mut iter = 0;
         let mut idx = i;
-        let max_idx = self.mps_ach.len() - 1;
         let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
-        while v > v_brake && v >= 0.0 && d <= d_max && iter < max_iter && idx <= max_idx {
+        while v > v_brake && v >= 0.0 && d <= d_max && iter < max_iter && idx < self.mps_ach.len() {
             let dt_s = self.cyc0.dt_s()[idx];
             let mut gr = match unique_grade {
                 Some(g) => g,
@@ -1816,7 +1815,7 @@ impl RustSimDrive {
             iter += 1;
             idx += 1;
         }
-        if iter < max_iter && idx <= max_idx {
+        if iter < max_iter && idx < self.mps_ach.len() {
             let dtb = -0.5 * v * v / a_brake;
             let dtb_target = max(dts0 - d, dtb);
             let dtsc = d + dtb_target;

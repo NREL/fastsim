@@ -1629,9 +1629,8 @@ class SimDrive(object):
         v = v0
         iter = 0
         idx = i
-        max_idx = len(self.mps_ach)
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
-        while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx <= max_idx:
+        while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx < len(self.mps_ach):
             dt_s = self.cyc0.dt_s[idx]
             gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
                 d, 0)
@@ -1661,7 +1660,7 @@ class SimDrive(object):
             v = v_next
             iter += 1
             idx += 1
-        if iter < MAX_ITER and idx <= max_idx:
+        if iter < MAX_ITER and idx < len(self.mps_ach):
             dtb = -0.5 * v * v / a_brake
             dtb_target = max(dts0 - d, dtb)
             dtsc = d + dtb_target
