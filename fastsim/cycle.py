@@ -189,17 +189,21 @@ class Cycle(object):
         until the current sample point. That is, grade[i] applies over the range of
         distances, d, from (d[i - 1], d[i]]
         """
+        tol = 1e-6
         if ((self.grade == 0.0).all()):
             return 0.0
         distances_m = np.cumsum(self.dist_v2_m)
-        if delta_distance_m <= 0.0:
+        if delta_distance_m <= tol:
             if distance_start_m <= distances_m[0]:
                 return self.grade[0]
             if distance_start_m >= distances_m[-1]:
                 return self.grade[-1]
+            gr = self.grade[0]
             for (d, d_next, g) in zip(distances_m, distances_m[1:], self.grade[1:]):
                 if distance_start_m > d and distance_start_m <= d_next:
-                    return g
+                    gr = g
+                    break
+            return gr
         # NOTE: we use the following instead of delta_elev_m in order to use
         # self.dist_v2_m and in lieu of introducing delta_elev_v2_m.
         # This also uses the fully accurate trig functions in case we have large slope angles.
@@ -212,21 +216,20 @@ class Cycle(object):
                        xp=distances_m, fp=elevations_m)
         return np.tan(np.arcsin((e1 - e0) / delta_distance_m))
 
-    def calc_distance_to_next_stop_from(self, distance_m):
+    def calc_distance_to_next_stop_from(self, distance_m: float) -> float:
         """
         Calculate the distance to next stop from `distance_m`
         - distance_m: non-negative-number, the current distance from start (m)
-        RETURN: -1 or non-negative-integer
-        - if there are no more stops ahead, return -1
-        - else returns the distance to the next stop from distance_m
+        RETURN: returns the distance to the next stop from distance_m
+        NOTE: distance may be negative if we're beyond the last stop
         """
-        distances_of_stops_m = np.unique(
-            self.dist_v2_m.cumsum()[self.mps < 1e-6])
-        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (
-            distance_m + 1e-6)]
-        if len(remaining_stops_m) > 0:
-            return remaining_stops_m[0] - distance_m
-        return distances_of_stops_m[-1] - distance_m
+        tol = 1e-6
+        d = 0.0
+        for (dd, v) in zip(self.dist_v2_m, self.mps):
+            d += dd
+            if ((v < tol) and (d > (distance_m + tol))):
+                return d - distance_m
+        return d - distance_m
 
     def modify_by_const_jerk_trajectory(self, idx, n, jerk_m__s3, accel0_m__s2):
         """
@@ -257,6 +260,8 @@ class Cycle(object):
         Add a braking trajectory that would cover the same distance as the given constant brake deceleration
         - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
         - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
+        - dts_m: None | float: if given, this is the desired distance-to-stop in meters. If not given, it is
+            calculated based on braking deceleration.
         RETURN: (non-negative-number, positive-integer)
         - the final speed of the modified trajectory (m/s) 
         - the number of time-steps required to complete the braking maneuver
@@ -645,7 +650,7 @@ def peak_deceleration(cycle):
 
 def calc_constant_jerk_trajectory(n: int, D0: float, v0: float, Dr: float, vr: float, dt: float) -> tuple:
     """
-    Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
+    Num Num Num Num Num Int -> (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
     INPUTS:
     - n: Int, number of time-steps away from rendezvous
     - D0: Num, distance of simulated vehicle (m/s)
@@ -730,23 +735,37 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     term2 = 0.5 * dt * dt * ((n * a0) + (0.5 * n * (n - 1) * k * dt))
     return d0 + term1 + term2
 
+@dataclass
+class PassingInfo:
+   # True if first cycle passes the second
+   has_collision: bool
+   # the index where first cycle passes the second
+   idx: int
+   # the number of time-steps until idx from i
+   num_steps: int
+   # the starting distance of the first cycle at i
+   start_distance_m: float
+   # the distance (m) traveled of the second cycle when first passes
+   distance_m: float
+   # the starting speed (m/s) of the first cycle at i
+   start_speed_m_per_s: float
+   # the speed (m/s) of the second cycle when first passes
+   speed_m_per_s: float
+   # the time step duration throught the passing investigation
+   time_step_duration_s: float
 
-def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, tol: float=0.1, vmin: Optional[float] = None, dtmax:Optional[float] = None) -> dict:
+def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> PassingInfo:
     """
-    Reports back information of the first point where cyc passes cyc0, starting at step i until the next stop of cyc.
+    Reports back information of the first point where cyc passes cyc0, starting at
+    step i until the next stop of cyc.
     - cyc: fastsim.Cycle, the proposed cycle of the vehicle under simulation
     - cyc0: fastsim.Cycle, the reference/lead vehicle/shadow cycle to compare with
     - i: int, the time-step index to consider
-    - tol: float, the distance tolerance away from lead vehicle to be seen as "deviated" from the reference/shadow trace (m)
-    - vmin: float, the minimum speed to consider for re-rendezvous (m/s)
-    - dtmax: float, how far ahead in time to look (s)
-    RETURNS: dict with keys:
-        "has_collision": bool, True if cyc passes cyc0
-        "idx": int, the index where cyc passes cyc0
-        "num_steps": int, the number of time-steps until idx from i
-        "distance_m": float, the distance (m) traveled of cyc0 when cyc passes
-        "speed_m_per_s": float, the speed (m/s) of cyc0 when cyc passes
+    - dist_tol_m: float, the distance tolerance away from lead vehicle to be seen as
+        "deviated" from the reference/shadow trace (m)
+    RETURNS: PassingInfo
     """
+    zero_speed_tol_m_per_s = 1e-6
     v0 = cyc.mps[i-1]
     d0 = cyc.dist_v2_m[:i].sum()
     v0_lv = cyc0.mps[i-1]
@@ -770,42 +789,23 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, tol: float=0.1, vmin: Option
         d += dd
         d_lv += dd_lv
         dtlv = d_lv - d
-        if False:
-            print(f"Checking Rendezvous at [{idx}]")
-            print(f"... v0 = {v0}")
-            print(f"... v = {v}")
-            print(f"... v0_lv = {v0_lv}")
-            print(f"... v_lv = {v_lv}")
-            print(f"... d = {d}")
-            print(f"... d_lv = {d_lv}")
-            print(f"... dtlv = {dtlv}")
         v0 = v
         v0_lv = v_lv
-        if di > 0 and dtlv < -tol:
-            if False:
-                print(f"Found Rendezvous at [{idx}]")
-                print(f"... idx = {idx}")
-                print(f"... n = {di + 1}")
-                print(f"... d_lv = {d_lv}")
-                print(f"... v_lv = {v_lv}")
+        if di > 0 and dtlv < -dist_tol_m:
             rendezvous_idx = idx
             rendezvous_num_steps = di + 1
             rendezvous_distance_m = d_lv
             rendezvous_speed_m_per_s = v_lv
             break
-        if v <= tol:
+        if v <= zero_speed_tol_m_per_s:
             break
-        if vmin is not None and v_lv >= vmin:
-            break
-        if dtmax is not None and dt_total > dtmax:
-            break
-    return {
-        "has_collision": rendezvous_idx is not None and rendezvous_distance_m > d0,
-        "idx": rendezvous_idx,
-        "num_steps": rendezvous_num_steps,
-        "start_distance_m": d0,
-        "distance_m": rendezvous_distance_m,
-        "start_speed_m_per_s": cyc.mps[i-1],
-        "time_step_duration_s": cyc.dt_s[i],
-        "speed_m_per_s": rendezvous_speed_m_per_s,
-    }
+    return PassingInfo(
+        has_collision=rendezvous_idx is not None and rendezvous_distance_m > d0,
+        idx=rendezvous_idx,
+        num_steps=rendezvous_num_steps,
+        start_distance_m=d0,
+        distance_m=rendezvous_distance_m,
+        start_speed_m_per_s=cyc.mps[i-1],
+        speed_m_per_s=rendezvous_speed_m_per_s,
+        time_step_duration_s=cyc.dt_s[i],
+    )
