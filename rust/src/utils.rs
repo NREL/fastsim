@@ -260,6 +260,11 @@ impl_pyo3_arr_methods!(Pyo3ArrayU32, u32);
 
 /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
 #[pyclass]
+pub struct Pyo3ArrayI32(Array1<i32>);
+impl_pyo3_arr_methods!(Pyo3ArrayI32, i32);
+
+/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+#[pyclass]
 pub struct Pyo3ArrayF64(Array1<f64>);
 impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
 

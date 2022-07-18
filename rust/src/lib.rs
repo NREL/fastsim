@@ -39,7 +39,7 @@ extern crate proc_macros;
 pub mod params;
 use params::RustPhysicalProperties;
 pub mod utils;
-use utils::{Pyo3ArrayBool, Pyo3ArrayF64, Pyo3ArrayU32, Pyo3VecF64};
+use utils::{Pyo3ArrayBool, Pyo3ArrayF64, Pyo3ArrayU32, Pyo3ArrayI32, Pyo3VecF64};
 pub mod cycle;
 use cycle::RustCycle;
 pub mod vehicle;
@@ -55,6 +55,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<RustVehicle>()?;
     m.add_class::<RustPhysicalProperties>()?;
     m.add_class::<Pyo3ArrayU32>()?;
+    m.add_class::<Pyo3ArrayI32>()?;
     m.add_class::<Pyo3ArrayF64>()?;
     m.add_class::<Pyo3ArrayBool>()?;
     m.add_class::<Pyo3VecF64>()?;
