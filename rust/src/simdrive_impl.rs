@@ -284,16 +284,6 @@ impl RustSimDrive {
         }
     }
 
-    /// Return length of time arrays
-    pub fn len(&self) -> usize {
-        self.cyc.time_s.len()
-    }    
-    
-    /// Return self.cyc.time_is.is_empty()
-    pub fn is_empty(&self) -> bool {
-        self.cyc.time_s.is_empty()
-    }
-
     impl_serde!(RustSimDrive, SIMDRIVE_DEFAULT_FOLDER);
     pub fn from_file(filename: &str) -> Self {
         Self::from_file_parser(filename).unwrap()
