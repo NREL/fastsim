@@ -360,7 +360,7 @@ impl RustCycle {
         // self.dist_v2_m and in lieu of introducing delta_elev_v2_m.
         // This also uses the fully accurate trig functions in case we have large slope angles.
         let elevations_m = ndarrcumsum(
-            &(self.grade.mapv(|g| g.atan().cos()) * self.dist_v2_m() * self.grade)
+            &(self.grade.mapv(|g| g.atan().cos()) * self.dist_v2_m() * self.grade.clone())
         );
         let e0 = interpolate(&distance_start_m, &distances_m, &elevations_m, false);
         let e1 = interpolate(
@@ -552,8 +552,8 @@ pub struct PassingInfo {
 ///     "deviated" from the reference/shadow trace (m)
 /// RETURNS: PassingInfo
 pub fn detect_passing(
-    cyc: RustCycle,
-    cyc0: RustCycle,
+    cyc: &RustCycle,
+    cyc0: &RustCycle,
     i: usize,
     dist_tol_m: Option<f64>
 ) -> PassingInfo {
@@ -568,7 +568,6 @@ pub fn detect_passing(
     let d0_lv: f64 = cyc0.dist_v2_m().slice(s![0..i]).sum();
     let mut d = d0;
     let mut d_lv = d0_lv;
-    let mut dt_total = 0.0;
     let mut rendezvous_idx: Option<usize> = None;
     let mut rendezvous_num_steps: usize = 0;
     let mut rendezvous_distance_m: f64 = 0.0;
@@ -581,12 +580,9 @@ pub fn detect_passing(
         let vavg_lv = (v_lv + v0_lv) * 0.5;
         let dd = vavg * cyc.dt_s()[idx];
         let dd_lv = vavg_lv * cyc0.dt_s()[idx];
-        dt_total += cyc0.dt_s()[idx];
         d += dd;
         d_lv += dd_lv;
         let dtlv = d_lv - d;
-        let v0 = v;
-        let v0_lv = v_lv;
         if di > 0 && dtlv < -dist_tol_m {
             rendezvous_idx = Some(idx);
             rendezvous_num_steps = di + 1;
