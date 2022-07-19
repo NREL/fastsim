@@ -2194,7 +2194,7 @@ impl RustSimDrive {
                 break;
             }
         }
-        if best.found_trajectory {
+        if ! best.found_trajectory {
             let new_passing_tol_m = if passing_tol_m < 10.0 { 10.0 } else { passing_tol_m + 5.0 };
             if new_passing_tol_m > 60.0 {
                 return false;
