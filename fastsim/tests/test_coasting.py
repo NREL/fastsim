@@ -127,8 +127,6 @@ def make_dvdd_plot(
     c1 = None
     c2 = None
     c3 = None
-    if curve_fit:
-        print("FITS:")
     for g in unique_grades:
         grade_pct = g * 100.0 # percentage
         mask = np.logical_and(
@@ -143,6 +141,7 @@ def make_dvdd_plot(
             c1 = Chebyshev.fit(vavgs[mask], ks[mask], deg=1)
             c2 = Chebyshev.fit(vavgs[mask], ks[mask], deg=2)
             c3 = Chebyshev.fit(vavgs[mask], ks[mask], deg=3)
+            print("FITS:")
             print(f"{g}: {c3}")
             colors = ['r', 'k', 'g']
             for deg, c in enumerate([c1, c2, c3]):
