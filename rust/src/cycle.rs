@@ -406,7 +406,16 @@ impl RustCycle {
         jerk_m_per_s3: f64,
         accel0_m_per_s2: f64,
     ) -> f64 {
-        let num_samples = self.time_s.len();
+        if n == 0 {
+            return 0.0;
+        }
+        let num_samples = self.mps.len();
+        if i >= num_samples {
+            if num_samples > 0 {
+                return self.mps[num_samples - 1];
+            }
+            return 0.0;
+        }
         let v0 = self.mps[i - 1];
         let dt = self.dt_s()[i];
         let mut v = v0;
@@ -557,6 +566,18 @@ pub fn detect_passing(
     i: usize,
     dist_tol_m: Option<f64>
 ) -> PassingInfo {
+    if i >= cyc.time_s.len() {
+        return PassingInfo {
+            has_collision: false,
+            idx: 0,
+            num_steps: 0,
+            start_distance_m: 0.0,
+            distance_m: 0.0,
+            start_speed_m_per_s: 0.0,
+            speed_m_per_s: 0.0,
+            time_step_duration_s: 1.0,
+        };
+    }
     let zero_speed_tol_m_per_s = 1e-6;
     let dist_tol_m = match dist_tol_m {
         Some(v) => v,

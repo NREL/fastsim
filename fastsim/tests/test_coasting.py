@@ -2,7 +2,7 @@
 Tests that check the drive cycle modification functionality.
 """
 import unittest
-from typing import Union, List
+from typing import Union, List, Optional
 
 import numpy as np
 from numpy.polynomial import Chebyshev
@@ -25,12 +25,12 @@ def make_coasting_plot(
     cyc0:fastsim.cycle.Cycle,
     cyc:fastsim.cycle.Cycle,
     use_mph:bool=False,
-    title:Union[str, None]=None,
-    save_file:Union[str, None]=None,
+    title:Optional[str]=None,
+    save_file:Optional[str]=None,
     do_show:bool=False,
     verbose:bool=False,
     gap_offset_m:float=0.0,
-    coast_brake_start_speed_m_per_s=None):
+    coast_brake_start_speed_m_per_s:Optional[float]=None):
     """
     - cyc0: Cycle, the reference cycle (the "shadow trace" or "lead vehicle")
     - cyc: Cycle, the actual cycle driven
@@ -1173,7 +1173,7 @@ class TestCoasting(unittest.TestCase):
                 np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_m).sum())
 
     def test_that_coasting_works_with_multiple_stops_and_grades(self):
-        "When going downhill, ensure we can still hit our coasting target"
+        "Ensure coasting hits distance target with multiple stops and both uphill/downhill"
         if USE_PYTHON:
             grade1 = -0.005
             grade2 = 0.005
@@ -1213,7 +1213,8 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="Coasting With Multiple Stops and Grades (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5.png')
+                    save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5.png',
+                    coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertAlmostEqual(
                 sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
@@ -1227,7 +1228,7 @@ class TestCoasting(unittest.TestCase):
                     [grade1]*5,
                 ),
                 new_dt=1.0,
-                hold_keys={'cycGrade'},
+                hold_keys_next={'cycGrade'},
             )
             c2 = fastsim.cycle.resample(
                 fastsim.cycle.make_cycle(
@@ -1236,7 +1237,7 @@ class TestCoasting(unittest.TestCase):
                     [grade2]*5,
                 ),
                 new_dt=1.0,
-                hold_keys={'cycGrade'},
+                hold_keys_next={'cycGrade'},
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2])).to_rust()
@@ -1263,7 +1264,8 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="Coasting With Multiple Stops and Grades (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5-rust.png')
+                    save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5-rust.png',
+                    coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertAlmostEqual(
                 np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())

@@ -1852,10 +1852,14 @@ impl RustSimDrive {
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
         let ds = ndarrcumsum(&self.cyc0.dist_v2_m());
         let gs = self.cyc0.grade.clone();
+        assert!(
+            ds.len() == gs.len(),
+            "Assumed length of ds and gs the same but actually ds.len():{} and gs.len():{}",
+            ds.len(), gs.len());
         let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
         let mut grade_by_distance: Vec<f64> = vec![];
         for idx in 0..ds.len() {
-            if ds[idx] > d0 {
+            if ds[idx] >= d0 {
                 grade_by_distance.push(gs[idx]);
             }
         }
@@ -1913,7 +1917,8 @@ impl RustSimDrive {
         if self.sim_params.coast_start_speed_m_per_s > 0.0 && self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s {
             return true;
         }
-        if self.mps_ach[i - 1] < self.sim_params.coast_brake_start_speed_m_per_s {
+        let v0 = self.mps_ach[i - 1];
+        if v0 < self.sim_params.coast_brake_start_speed_m_per_s {
             return false;
         }
         // distance to stop by coasting from start of step (i-1)
@@ -1924,7 +1929,6 @@ impl RustSimDrive {
         // distance to next stop (m)
         let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
         let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
-        let v0 = self.mps_ach[i - 1];
         let dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2;
         dtsc0 >= dts0 && dts0 >= 4.0 * dtb
     }
@@ -2070,34 +2074,38 @@ impl RustSimDrive {
                 for (idx, (&dd, &v)) in self.cyc0.dist_v2_m().iter().zip(self.cyc0.mps.iter()).enumerate() {
                     d_lv += dd;
                     let dtlv = (d_lv - d0).abs();
-                    if v < speed_tol && (min_dtlv.is_none() || dtlv <= min_dtlv.unwrap()) {}
+                    if v < speed_tol && (min_dtlv.is_none() || dtlv <= min_dtlv.unwrap()) {
                         if min_dtlv.is_none() || dtlv < min_dtlv.unwrap() || (d0 < d0_lv && min_dtlv.unwrap() == dtlv) {
                             let i_i32 = i32::try_from(i).unwrap();
                             let idx_i32 = i32::try_from(idx).unwrap();
                             coast_delay = Some(i_i32 - idx_i32);
                         }
                         min_dtlv = Some(dtlv);
+                    }
                     if min_dtlv.is_some() && dtlv > min_dtlv.unwrap() {
-                        break
+                        break;
                     }
                 }
             }
         }
-        if coast_delay.is_some() {
-            let mut cd = coast_delay.unwrap();
-            if cd < 0 {
-                for idx in i..self.cyc0.mps.len() {
-                    self.coast_delay_index[idx] = cd;
-                    cd += 1;
-                    if cd == 0 {
-                        break;
+        match coast_delay {
+            Some(cd) => {
+                if cd < 0 {
+                    let mut cd = cd;
+                    for idx in i..self.cyc0.mps.len() {
+                        self.coast_delay_index[idx] = cd;
+                        cd += 1;
+                        if cd == 0 {
+                            break;
+                        }
+                    }
+                } else {
+                    for idx in i..self.cyc0.mps.len() {
+                        self.coast_delay_index[idx] = cd;
                     }
                 }
-            } else {
-                for idx in i..self.cyc0.mps.len() {
-                    self.coast_delay_index[idx] = cd;
-                }
-            }
+            },
+            None => ()
         }
     }
 
@@ -2138,6 +2146,9 @@ impl RustSimDrive {
                 if n < 2 {
                     break;
                 }
+                if (idx - 1 + full_brake_steps) >= self.cyc.time_s.len() {
+                    break;
+                }
                 let dt = collision.time_step_duration_s;
                 let v_start_m_per_s = self.cyc.mps[idx - 1];
                 let dt_full_brake = self.cyc.time_s[idx - 1 + full_brake_steps] - self.cyc.time_s[idx - 1];
@@ -2156,12 +2167,15 @@ impl RustSimDrive {
                 let mut accels_m_per_s2: Vec<f64> = vec![];
                 let mut trace_accels_m_per_s2: Vec<f64> = vec![];
                 for ni in 0..n {
+                    if (ni + idx + full_brake_steps) >= self.cyc.time_s.len() {
+                        break;
+                    }
                     accels_m_per_s2.push(
                         accel_for_constant_jerk(ni, accel0_m_per_s2, jerk_m_per_s3, dt)
                     );
                     trace_accels_m_per_s2.push(
                         (self.cyc.mps[ni + idx + full_brake_steps] - self.cyc.mps[ni + idx - 1 + full_brake_steps])
-                        / self.cyc.dt_s()[ni + idx - 1 + full_brake_steps]
+                        / self.cyc.dt_s()[ni + idx + full_brake_steps]
                     );
                 }
                 let all_sub_coast: bool = trace_accels_m_per_s2.clone().into_iter().zip(accels_m_per_s2.clone().into_iter()).fold(
@@ -2202,6 +2216,9 @@ impl RustSimDrive {
             return self.prevent_collisions(i, Some(new_passing_tol_m));
         }
         for fbs in 0..best.full_brake_steps {
+            if (best.idx + fbs) >= self.cyc.time_s.len() {
+                break;
+            }
             let dt = self.cyc.time_s[best.idx + fbs] - self.cyc.time_s[best.idx - 1];
             let dv = a_brake_m_per_s2 * dt;
             let v_start = self.cyc.mps[best.idx - 1];
@@ -2254,8 +2271,8 @@ impl RustSimDrive {
                     None => None,
                 };
                 let target_idx = match target_idx {
-                    Some(ti) => if ti <= 0 {
-                        None
+                    Some(ti) => if ti < 0 {
+                        Some(0)
                     } else {
                         usize::try_from(ti).ok()
                     },
@@ -2334,11 +2351,11 @@ impl RustSimDrive {
                         }
                         adjusted_current_speed = true;
                     } else {
-                        print!("WARNING! final_speed_m_per_s not close to coast_brake_start_speed for i = {}", i);
-                        print!("... final_speed_m_per_s = {}", final_speed_m_per_s);
-                        print!("... self.sim_params.coast_brake_start_speed_m_per_s = {}", self.sim_params.coast_brake_start_speed_m_per_s);
-                        print!("... i_for_brake = {}", i_for_brake);
-                        print!("... traj_n = {}", traj_n);
+                        eprintln!("WARNING! final_speed_m_per_s not close to coast_brake_start_speed for i = {}", i);
+                        eprintln!("... final_speed_m_per_s = {}", final_speed_m_per_s);
+                        eprintln!("... self.sim_params.coast_brake_start_speed_m_per_s = {}", self.sim_params.coast_brake_start_speed_m_per_s);
+                        eprintln!("... i_for_brake = {}", i_for_brake);
+                        eprintln!("... traj_n = {}", traj_n);
                     }
                 }
             }

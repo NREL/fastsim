@@ -1712,7 +1712,6 @@ class SimDrive(object):
         dtb = -0.5 * v_brake * v_brake / a_brake
         if v0 <= v_brake:
             return -0.5 * v0 * v0 / a_brake
-        d = 0.0
         unique_grades = np.unique(grade_by_distance)
         unique_grade = unique_grades[0] if len(unique_grades) == 1 else None
         if unique_grade is not None:
@@ -1747,7 +1746,8 @@ class SimDrive(object):
         """
         if self.sim_params.coast_start_speed_m_per_s > 0.0:
             return self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s
-        if self.mps_ach[i-1] < self.sim_params.coast_brake_start_speed_m_per_s:
+        v0 = self.mps_ach[i-1]
+        if v0 < self.sim_params.coast_brake_start_speed_m_per_s:
             return False
         # distance to stop by coasting from start of step (i-1)
         dtsc0 = self._calc_distance_to_stop_coast_v2(i)
@@ -1756,13 +1756,8 @@ class SimDrive(object):
         # distance to next stop (m)
         d0 = self.cyc.dist_v2_m[:i].sum()
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
-        v0 = self.mps_ach[i-1]
         brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2
         dtb = -0.5 * v0 * v0 / brake_accel_m_per_s2
-        if False and dtsc0 >= dts0:
-            print(f"Should impose coast? True")
-            print(f"... dtsc0: {dtsc0} m")
-            print(f"... dts0 : {dts0} m")
         return dtsc0 >= dts0 and dts0 >= 4*dtb
 
     def _calc_next_rendezvous_trajectory(self, i, min_accel_m__s2, max_accel_m__s2):
