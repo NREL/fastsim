@@ -10,3 +10,4 @@ dist
 *.egg-info
 *.zip
 *venv*
+*/resources/thermal_data/*
