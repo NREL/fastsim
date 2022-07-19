@@ -105,18 +105,21 @@ def make_dvdd_plot(
     additional_xs:Union[None,List[float]]=None,
     additional_ys:Union[None,List[float]]=None):
     """
+    Create a change in speed (dv) by change in distance (dd) plot
     """
     if coast_to_break_speed_m__s is None:
         coast_to_break_speed_m__s = 5.0 # m/s
     TOL = 1e-6
     import matplotlib.pyplot as plt
     dvs = np.array(cyc.mps)[1:] - np.array(cyc.mps)[:-1]
-    vavgs = 0.5 * (np.array(cyc.mps)[1:] + np.array(cyc.mps[:-1]))
+    vavgs = 0.5 * (np.array(cyc.mps)[1:] + np.array(cyc.mps)[:-1])
     grades = np.array(cyc.grade)[:-1]
     unique_grades = np.sort(np.unique(grades))
     dds = vavgs * np.array(cyc.time_s)[1:]
+    mask = dds < TOL
+    dds[mask] = 0.5 * TOL
     ks = dvs / dds
-    ks[dds<TOL] = 0.0
+    ks[mask] = 0.0
 
     fig, ax = plt.subplots()
     m = fastsim.params.MPH_PER_MPS if use_mph else 1.0
@@ -136,7 +139,7 @@ def make_dvdd_plot(
             vavgs >= coast_to_break_speed_m__s
         )
         ax.plot(vavgs[mask] * m, np.abs(ks[mask]), label=f'{grade_pct}%')
-        if curve_fit:
+        if curve_fit and sum(mask) > 3:
             c1 = Chebyshev.fit(vavgs[mask], ks[mask], deg=1)
             c2 = Chebyshev.fit(vavgs[mask], ks[mask], deg=2)
             c3 = Chebyshev.fit(vavgs[mask], ks[mask], deg=3)
@@ -1182,7 +1185,7 @@ class TestCoasting(unittest.TestCase):
                     [grade1]*5,
                 ),
                 new_dt=1.0,
-                hold_keys={'cycGrade'},
+                hold_keys_next={'cycGrade'},
             )
             c2 = fastsim.cycle.resample(
                 fastsim.cycle.make_cycle(
@@ -1191,7 +1194,7 @@ class TestCoasting(unittest.TestCase):
                     [grade2]*5,
                 ),
                 new_dt=1.0,
-                hold_keys={'cycGrade'},
+                hold_keys_next={'cycGrade'},
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2]))
@@ -1247,6 +1250,11 @@ class TestCoasting(unittest.TestCase):
                 coast_brake_accel_m_per_s2=-2.0,
                 coast_verbose=False
             )
+            assert sd.sim_params.coast_allow
+            assert sd.sim_params.coast_start_speed_m_per_s == -1
+            assert sd.sim_params.coast_brake_start_speed_m_per_s == 4.0
+            assert sd.sim_params.coast_brake_accel_m_per_s2 == -2.0
+            assert sd.sim_params.coast_verbose == False
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
