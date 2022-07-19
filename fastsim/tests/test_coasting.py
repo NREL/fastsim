@@ -894,7 +894,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys_next={'cycGrade'},
                 )
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
@@ -903,8 +903,8 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_start_speed_m_per_s = -1
             sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
             sd.sim_params.coast_brake_accel_m_per_s2 = -2.0
-            sd.sim_params.verbose = False
             sd.sim_params.coast_verbose = False
+            sd.sim_params.verbose = False
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -930,7 +930,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys_next={'cycGrade'},
                 )
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(1)
@@ -939,8 +939,8 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_start_speed_m_per_s = -1
             sd.sim_params.coast_brake_start_speed_m_per_s = 7.5
             sd.sim_params.coast_brake_accel_m_per_s2 = -2.5
-            sd.sim_params.verbose = False
             sd.sim_params.coast_verbose = False
+            sd.sim_params.verbose = False
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -963,7 +963,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys_next={'cycGrade'},
                 )
             ).to_rust()
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
@@ -971,11 +971,16 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params = set_nested_values(sd.sim_params,
                 coast_allow=True,
                 coast_start_speed_m_per_s=-1,
-                verbose=False,
                 coast_brake_start_speed_m_per_s=4.0,
                 coast_brake_accel_m_per_s2=-2.0,
-                coast_verbose=False
+                coast_verbose=False,
+                verbose=False,
             )
+            assert sd.sim_params.coast_allow
+            assert sd.sim_params.coast_start_speed_m_per_s == -1
+            assert sd.sim_params.coast_brake_start_speed_m_per_s == 4.0
+            assert sd.sim_params.coast_brake_accel_m_per_s2 == -2.0
+            assert not sd.sim_params.coast_verbose
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
@@ -1001,7 +1006,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys_next={'cycGrade'},
                 )
             ).to_rust()
             veh = fastsim.vehicle.Vehicle.from_vehdb(1).to_rust()
@@ -1009,11 +1014,17 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params = set_nested_values(sd.sim_params,
                 coast_allow=True,
                 coast_start_speed_m_per_s=-1,
-                verbose=False,
                 coast_brake_start_speed_m_per_s=7.5,
                 coast_brake_accel_m_per_s2=-2.5,
-                coast_verbose=False
+                coast_verbose=False,
+                verbose=False,
             )
+            assert sd.sim_params.coast_allow
+            assert sd.sim_params.coast_start_speed_m_per_s == -1
+            assert sd.sim_params.coast_brake_start_speed_m_per_s == 7.5
+            assert sd.sim_params.coast_brake_accel_m_per_s2 == -2.5
+            assert not sd.sim_params.coast_verbose
+            assert not sd.sim_params.verbose
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
             if DO_PLOTS:
