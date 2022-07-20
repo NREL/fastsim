@@ -167,16 +167,35 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     pub fn set_fc_exp_offset(&mut self, new_offset: f64) {
         self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
             if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset: _, lag, minimum }) = fc_temp_eff_model {
-                FcModelTypes::Internal(FcTempEffModel::Exponential (FcTempEffModelExponential{ offset: new_offset, lag: *lag, minimum: *minimum }), fc_temp_eff_comp.clone())
+                FcModelTypes::Internal(FcTempEffModel::Exponential 
+                    (FcTempEffModelExponential{ offset: new_offset, lag: *lag, minimum: *minimum }), 
+                    fc_temp_eff_comp.clone())
             } else {
-                FcModelTypes::Internal(FcTempEffModel::Exponential (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), fc_temp_eff_comp.clone())
+                FcModelTypes::Internal(FcTempEffModel::Exponential 
+                    (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), 
+                    fc_temp_eff_comp.clone())
             }
         }  else {
-            FcModelTypes::Internal(FcTempEffModel::Exponential (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), FcTempEffComponent::default())
+            FcModelTypes::Internal(FcTempEffModel::Exponential 
+                (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), 
+                FcTempEffComponent::default())
         }
     }
 
-    // TODO: make setters for all the other enums
+    #[getter]
+    pub fn get_fc_exp_offset(&mut self) -> PyResult<f64> {
+        if let FcModelTypes::Internal(fc_temp_eff_model, ..) = &self.fc_model {
+            if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, ..}) = fc_temp_eff_model {
+                Ok(*offset)
+            } else {
+                Err(PyAttributeError::new_err("fc_model is not Exponential"))
+            }
+        } else {
+            Err(PyAttributeError::new_err("fc_model is not Exponential"))
+        }
+    }
+
+    // TODO: make setters for lag, minimum, and eventually all the other enum stuff
 )]
 
 
