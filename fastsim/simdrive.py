@@ -1,5 +1,6 @@
 """Module containing classes and methods for simulating vehicle drive
 cycle. For example usage, see ../README.md"""
+import sys
 
 # Import necessary python modules
 from dataclasses import dataclass
@@ -185,8 +186,6 @@ class _RendezvousTrajectory:
     jerk_m_per_s3: float
     accel0_m_per_s2: float
     accel_spread: float
-    min_accel_m_per_s2: float
-    max_accel_m_per_s2: float
 
 class SimDrive(object):
     """Class containing methods for running FASTSim vehicle 
@@ -1591,9 +1590,13 @@ class SimDrive(object):
             + (0.5 * rho_CDFA * (1.0/M) * v)
         )
 
-    def _generate_coast_trajectory(self, i, modify_cycle=False):
+    def _generate_coast_trajectory(self, i:int, modify_cycle:bool=False) -> float:
         """
-        RETURN: 
+        Generate a coast trajectory without actually modifying the cycle.
+        This can be used to calculate the distance to stop via coast using
+        actual time-stepping and dynamically changing grade.
+        RETURN: float, the distance to stop via coast in meters
+        NOTE: if not found, a value of -1.0 is returned
         """
         NOT_FOUND = -1.0
         v0 = self.mps_ach[i-1]
@@ -1609,7 +1612,6 @@ class SimDrive(object):
         distances_m = ds[ds_mask] - d0
         grade_by_distance = gs[ds_mask]
         # distance traveled while stopping via friction-braking (i.e., distance to brake)
-        dtb = -0.5 * v_brake * v_brake / a_brake
         max_items = len(self.cyc.time_s)
         if v0 <= v_brake:
             if modify_cycle:
@@ -1619,6 +1621,7 @@ class SimDrive(object):
                     if (i + ni) < max_items:
                         self.impose_coast[i + ni] = True
             return -0.5 * v0 * v0 / a_brake
+        dtb = -0.5 * v_brake * v_brake / a_brake
         d = 0.0
         d_max = distances_m[-1] - dtb
         unique_grades = np.unique(grade_by_distance)
@@ -1633,7 +1636,7 @@ class SimDrive(object):
         while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx < len(self.mps_ach):
             dt_s = self.cyc0.dt_s[idx]
             gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
-                d, 0)
+                d + d0, 0)
             k = self._calc_dvdd(v, gr)
             v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
             vavg = 0.5 * (v + v_next)
@@ -1644,7 +1647,7 @@ class SimDrive(object):
                 vavg = 0.5 * (v + v_next)
                 dd = vavg * dt_s
                 gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
-                    d, dd)
+                    d + d0, dd)
             if k >= 0.0 and unique_grade is not None:
                 # there is no solution for coastdown -- speed will never decrease
                 return NOT_FOUND
@@ -1673,12 +1676,6 @@ class SimDrive(object):
                 for di in range(len(new_speeds_m_per_s) + n):
                     idx = min(i + di, len(self.mps_ach) - 1)
                     self.impose_coast[idx] = True
-            if False:
-                print(f"_generate_coast_trajectory(i={i}, modify_cycle={modify_cycle})")
-                print(f"... dtb       : {dtb} m")
-                print(f"... dtb_target: {dtb_target} m")
-                print(f"... d         : {d} m")
-                print(f"... dtsc      : {dtsc} m")
             return dtsc
         return NOT_FOUND
 
@@ -1756,9 +1753,8 @@ class SimDrive(object):
         # distance to next stop (m)
         d0 = self.cyc.dist_v2_m[:i].sum()
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
-        brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2
-        dtb = -0.5 * v0 * v0 / brake_accel_m_per_s2
-        return dtsc0 >= dts0 and dts0 >= 4*dtb
+        dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2
+        return dtsc0 >= dts0 and dts0 >= (4.0 * dtb)
 
     def _calc_next_rendezvous_trajectory(self, i, min_accel_m__s2, max_accel_m__s2):
         """
@@ -1788,12 +1784,6 @@ class SimDrive(object):
         not_found = (False, not_found_n, not_found_jerk_m_per_s3,
                      not_found_accel_m_per_s2)
         if v0 < (brake_start_speed_m_per_s + 1e-6):
-            if False:
-                print("WARNING! Exiting as we don't process braking")
-                print(f"... i = {i}")
-                print(f"... v0 = {v0}")
-                print(f"... self.mps_ach[i-1] = {self.mps_ach[i-1]}")
-                print(f"... brake_start_speed_m_per_s = {brake_start_speed_m_per_s}")
             return not_found
         if min_accel_m__s2 > max_accel_m__s2:
             min_accel_m__s2, max_accel_m__s2 = max_accel_m__s2, min_accel_m__s2
@@ -1939,8 +1929,6 @@ class SimDrive(object):
             jerk_m_per_s3=0.0,
             accel0_m_per_s2=0.0,
             accel_spread=0.0,
-            min_accel_m_per_s2=0.0,
-            max_accel_m_per_s2=0.0
         )
         a_brake_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2
         assert a_brake_m_per_s2 < 0.0, f"brake acceleration must be negative; got {a_brake_m_per_s2} m/s2"
@@ -1955,11 +1943,13 @@ class SimDrive(object):
                 n = collision.idx - idx + 1 - full_brake_steps
                 if n < 2:
                     break
+                if (idx - 1 + full_brake_steps) >= len(self.cyc.time_s):
+                    break
                 dt = collision.time_step_duration_s
                 v_start_m_per_s = self.cyc.mps[idx - 1]
                 dt_full_brake = self.cyc.time_s[idx - 1 + full_brake_steps] - self.cyc.time_s[idx - 1]
-                dv_full_brake = max(dt_full_brake * a_brake_m_per_s2, 0.0)
-                v_start_jerk_m_per_s = v_start_m_per_s + dv_full_brake
+                dv_full_brake = dt_full_brake * a_brake_m_per_s2
+                v_start_jerk_m_per_s = max(v_start_m_per_s + dv_full_brake, 0.0)
                 dd_full_brake = 0.5 * (v_start_m_per_s + v_start_jerk_m_per_s) * dt_full_brake
                 d_start_m = self.cyc.dist_v2_m[:idx].sum() + dd_full_brake
                 jerk_m_per_s3, accel0_m_per_s2 = cycle.calc_constant_jerk_trajectory(
@@ -1970,13 +1960,16 @@ class SimDrive(object):
                     collision.speed_m_per_s,
                     dt
                 )
-                accels_m_per_s2 = np.array(
-                    [cycle.accel_for_constant_jerk(ni, accel0_m_per_s2, jerk_m_per_s3, dt) for ni in range(n)]
-                )
+                accels_m_per_s2 = np.array([
+                    cycle.accel_for_constant_jerk(ni, accel0_m_per_s2, jerk_m_per_s3, dt)
+                    for ni in range(n)
+                    if (ni + idx + full_brake_steps) < len(self.cyc.time_s)
+                ])
                 trace_accels_m_per_s2 = np.array([
                     (self.cyc.mps[ni + idx + full_brake_steps] - self.cyc.mps[ni + idx - 1 + full_brake_steps])
                     / self.cyc.dt_s[ni + idx - 1 + full_brake_steps]
                     for ni in range(n)
+                    if (ni + idx + full_brake_steps) < len(self.cyc.time_s)
                 ])
                 all_sub_coast = (trace_accels_m_per_s2 >= accels_m_per_s2).all()
                 min_accel_m_per_s2 = accels_m_per_s2.min()
@@ -1992,8 +1985,6 @@ class SimDrive(object):
                         jerk_m_per_s3=jerk_m_per_s3,
                         accel0_m_per_s2=accel0_m_per_s2,
                         accel_spread=accel_spread,
-                        min_accel_m_per_s2=min_accel_m_per_s2,
-                        max_accel_m_per_s2=max_accel_m_per_s2,
                     )
             if best.found_trajectory:
                 break
@@ -2036,7 +2027,7 @@ class SimDrive(object):
                     self._prevent_collisions(i)
         if not self.impose_coast[i]:
             if not self.sim_params.follow_allow:
-                self.cyc.mps[i] = self.cyc0.mps[min(i - self.coast_delay_index[i], len(self.cyc0.mps) - 1)]
+                self.cyc.mps[i] = self.cyc0.mps[min(max(i - self.coast_delay_index[i], 0), len(self.cyc0.mps) - 1)]
             return
         v1_traj = self.cyc.mps[i]
         if v0 > self.sim_params.coast_brake_start_speed_m_per_s:

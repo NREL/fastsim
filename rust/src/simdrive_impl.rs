@@ -1731,7 +1731,7 @@ impl RustSimDrive {
         let mut distances_m: Vec<f64> = vec![];
         let mut grade_by_distance: Vec<f64> = vec![];
         for idx in 0..ds.len() {
-            if ds[idx] > d0 {
+            if ds[idx] >= d0 {
                 distances_m.push(ds[idx] - d0);
                 grade_by_distance.push(gs[idx])
             }
@@ -1748,7 +1748,6 @@ impl RustSimDrive {
         let distances_m = Array::from_vec(distances_m);
         let grade_by_distance = Array::from_vec(grade_by_distance);
         // distance traveled while stopping via friction-braking (i.e., distance to brake)
-        let dtb = -0.5 * v_brake * v_brake / a_brake;
         if v0 <= v_brake {
             return CoastTrajectory {
                 found_trajectory: true,
@@ -1758,6 +1757,7 @@ impl RustSimDrive {
                 distance_to_brake_m: None,
             };
         }
+        let dtb = -0.5 * v_brake * v_brake / a_brake;
         let mut d = 0.0;
         let d_max = distances_m[distances_m.len() - 1] - dtb;
         let unique_grades = ndarrunique(&grade_by_distance);
@@ -1774,7 +1774,7 @@ impl RustSimDrive {
             let dt_s = self.cyc0.dt_s()[idx];
             let mut gr = match unique_grade {
                 Some(g) => g,
-                None => self.cyc0.average_grade_over_range(d, 0.0)
+                None => self.cyc0.average_grade_over_range(d + d0, 0.0)
             };
             let mut k = self.calc_dvdd(v, gr);
             let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
@@ -1787,7 +1787,7 @@ impl RustSimDrive {
                 dd = vavg * dt_s;
                 gr = match unique_grade {
                     Some(g) => g,
-                    None => self.cyc0.average_grade_over_range(d, dd)
+                    None => self.cyc0.average_grade_over_range(d + d0, dd)
                 };
             }
             if k >= 0.0 && has_unique_grade {
@@ -1914,8 +1914,8 @@ impl RustSimDrive {
     /// - ALSO, vehicle must have been at or above the coast brake start speed at beginning of step
     /// - AND, must be at least 4 x distances-to-break away
     fn should_impose_coast(&self, i:usize) -> bool {
-        if self.sim_params.coast_start_speed_m_per_s > 0.0 && self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s {
-            return true;
+        if self.sim_params.coast_start_speed_m_per_s > 0.0 {
+            return self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s;
         }
         let v0 = self.mps_ach[i - 1];
         if v0 < self.sim_params.coast_brake_start_speed_m_per_s {
@@ -1930,7 +1930,7 @@ impl RustSimDrive {
         let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
         let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
         let dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2;
-        dtsc0 >= dts0 && dts0 >= 4.0 * dtb
+        dtsc0 >= dts0 && dts0 >= (4.0 * dtb)
     }
 
 
@@ -2152,8 +2152,8 @@ impl RustSimDrive {
                 let dt = collision.time_step_duration_s;
                 let v_start_m_per_s = self.cyc.mps[idx - 1];
                 let dt_full_brake = self.cyc.time_s[idx - 1 + full_brake_steps] - self.cyc.time_s[idx - 1];
-                let dv_full_brake = max(dt_full_brake * a_brake_m_per_s2, 0.0);
-                let v_start_jerk_m_per_s = v_start_m_per_s + dv_full_brake;
+                let dv_full_brake = dt_full_brake * a_brake_m_per_s2;
+                let v_start_jerk_m_per_s = max(v_start_m_per_s + dv_full_brake, 0.0);
                 let dd_full_brake = 0.5 * (v_start_m_per_s + v_start_jerk_m_per_s) * dt_full_brake;
                 let d_start_m = self.cyc.dist_v2_m().slice(s![0..idx]).sum() + dd_full_brake;
                 let (jerk_m_per_s3, accel0_m_per_s2) = calc_constant_jerk_trajectory(

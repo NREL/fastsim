@@ -994,8 +994,8 @@ class TestCoasting(unittest.TestCase):
             # assert we have grade set correctly
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
             self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
-            self.assertAlmostEqual(
-                np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())
+            self.assertTrue(
+                np.abs(sum(sd.cyc0.dist_v2_m) - sum(sd.cyc.dist_v2_m)) < 1.0)
             # test with a different vehicle and grade
             grade = 0.02
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1070,7 +1070,8 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Downhill (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5.png')
+                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5.png',
+                    coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertTrue((sd.cyc0.grade == grade).all())
             self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
@@ -1106,7 +1107,8 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Downhill (Veh 1)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1.png')
+                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1.png',
+                    coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             self.assertAlmostEqual(
                 sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_m.sum())
         if RUST_AVAILABLE and USE_RUST:
@@ -1141,7 +1143,8 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Downhill (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5-rust.png')
+                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5-rust.png',
+                    coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
             self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
@@ -1179,7 +1182,8 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Downhill (Veh 1)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1-rust.png')
+                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1-rust.png',
+                    coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             self.assertAlmostEqual(
                 np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_m).sum())
 
