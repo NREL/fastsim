@@ -1,5 +1,6 @@
 from pathlib import Path
 import csv
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +17,7 @@ MIN_ECO_CRUISE_TARGET_SPEED_m_per_s = 8.0
 ECO_COAST_ALLOW_PASSING = False
 
 
-def extend_cycle(cyc, absolute_time_s=0, time_fraction=0):
+def extend_cycle(cyc: fastsim.cycle.Cycle, absolute_time_s:float=0.0, time_fraction:float=0.0, use_rust:bool=False) -> fastsim.cycle.Cycle:
     """
     cyc: fastsim.cycle.Cycle
     absolute_time_s: float, the seconds to extend
@@ -31,16 +32,19 @@ def extend_cycle(cyc, absolute_time_s=0, time_fraction=0):
         fastsim.cycle.make_cycle([0.0, extra_time_s], [0.0, 0.0]),
         new_dt=1.0,
     )
-    return fastsim.cycle.Cycle.from_dict(
+    new_cyc = fastsim.cycle.Cycle.from_dict(
         fastsim.cycle.concat([cyc0, cyc_stop])
     )
+    if use_rust:
+        return new_cyc.to_rust()
+    return new_cyc
 
 
 def make_distance_by_time_plot(cyc0, cyc, save_file=None, do_show=False):
     (fig, ax) = plt.subplots()
-    ax.plot(cyc0.time_s, cyc0.dist_m.cumsum(), 'gray', label='lead')
-    ax.plot(cyc.time_s, cyc.dist_m.cumsum(), 'b-', lw=2, label='cav')
-    ax.plot(cyc.time_s, cyc.dist_m.cumsum(), 'r.', ms=1)
+    ax.plot(cyc0.time_s, np.cumsum(cyc0.dist_m), 'gray', label='lead')
+    ax.plot(cyc.time_s, np.cumsum(cyc.dist_m), 'b-', lw=2, label='cav')
+    ax.plot(cyc.time_s, np.cumsum(cyc.dist_m), 'r.', ms=1)
     ax.set_xlabel('Elapsed Time (s)')
     ax.set_ylabel('Distance (m)')
     ax.legend(loc=0)
@@ -51,7 +55,7 @@ def make_distance_by_time_plot(cyc0, cyc, save_file=None, do_show=False):
         plt.show()
     plt.close()
 
-def make_debug_plot(sd, save_file=None, do_show=False):
+def make_debug_plot(sd: fastsim.simdrive.SimDrive, save_file:Optional[str]=None, do_show:bool=False):
     """
     """
     (fig, axs) = plt.subplots(nrows=2)
@@ -68,7 +72,7 @@ def make_debug_plot(sd, save_file=None, do_show=False):
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.grid(False)
     color = 'tab:blue'
-    axs[1].plot(sd.cyc.time_s, sd.coast_delay_index, 'b.', lw=2, label='coast delay')
+    axs[1].plot(sd.cyc.time_s, sd.coast_delay_index.tolist(), 'b.', lw=2, label='coast delay')
     axs[1].set_ylabel('Coast Delay', color=color)
     axs[1].tick_params(axis='y', labelcolor=color)
     axs[1].grid(False)
@@ -81,9 +85,12 @@ def make_debug_plot(sd, save_file=None, do_show=False):
 
 
 
-def make_save_file(prefix, postfix, save_dir=None):
+def make_save_file(prefix, postfix, save_dir=None, use_rust=False):
     if save_dir is not None:
-        return save_dir / f'{prefix}_{postfix}'
+        prefix_addition = ''
+        if use_rust:
+            prefix_addition = '_rust'
+        return save_dir / f'{prefix}{prefix_addition}_{postfix}'
     return None
 
 
@@ -118,7 +125,7 @@ PREMADE_CYCLES = {
 }
 
 
-def load_cycle(cyc_name: str) -> fastsim.cycle.Cycle:
+def load_cycle(cyc_name: str, use_rust: bool=False) -> fastsim.cycle.Cycle:
     """
     """
     if cyc_name in PREMADE_CYCLES:
@@ -128,32 +135,41 @@ def load_cycle(cyc_name: str) -> fastsim.cycle.Cycle:
     return extend_cycle(
         raw_cycle,
         time_fraction=FRACTION_EXTENDED_TIME,
-        absolute_time_s=ABSOLUTE_EXTENDED_TIME_S
+        absolute_time_s=ABSOLUTE_EXTENDED_TIME_S,
+        use_rust=use_rust
     )
 
 
-def no_eco_driving(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
+def create_simdrive(cyc: fastsim.cycle.Cycle, veh: fastsim.vehicle.Vehicle, use_rust:bool=False) -> fastsim.simdrive.SimDrive:
+    if use_rust:
+        return fastsim.simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
+    return fastsim.simdrive.SimDrive(cyc, veh)
+
+
+def no_eco_driving(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, use_rust=False):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
-    cyc = load_cycle(cyc_name)
-    sim = fastsim.simdrive.SimDrive(cyc, veh)
+    cyc = load_cycle(cyc_name, use_rust=use_rust)
+    sim = create_simdrive(cyc, veh, use_rust=use_rust)
     sim.sim_drive(init_soc=init_soc)
     print(f"NO ECO-DRIVING: {sim.mpgge:.3f} mpg")
-    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
-    make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base_dist_by_time.png', save_dir))
-    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'base_debug.png', save_dir))
+    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
+    make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base_dist_by_time.png', save_dir, use_rust))
+    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'base_debug.png', save_dir, use_rust))
     return (
-        ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sim.dist_mi.sum(),
-        sim.dist_mi.sum()
+        ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sum(sim.dist_mi),
+        sum(sim.dist_mi)
     )
 
 
-def eco_coast(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
+def eco_coast(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, use_rust=False):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
-    cyc = load_cycle(cyc_name)
-    sim = fastsim.simdrive.SimDrive(cyc, veh)
+    cyc = load_cycle(cyc_name, use_rust=use_rust)
+    sim = create_simdrive(cyc, veh, use_rust=use_rust)
     params = sim.sim_params
+    if use_rust:
+        params.reset_orphaned()
     params.coast_allow = True
     params.coast_allow_passing = ECO_COAST_ALLOW_PASSING
     params.coast_start_speed_m_per_s = -1.0
@@ -161,16 +177,16 @@ def eco_coast(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sho
     sim.sim_params = params
     sim.sim_drive(init_soc=init_soc)
     print(f"ECO-COAST: {sim.mpgge:.3f} mpg")
-    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
-    make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_dist_by_time.png', save_dir))
-    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_debug.png', save_dir))
+    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
+    make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_dist_by_time.png', save_dir, use_rust))
+    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_debug.png', save_dir, use_rust))
     return (
-        ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sim.dist_mi.sum(),
-        sim.dist_mi.sum()
+        ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sum(sim.dist_mi),
+        sum(sim.dist_mi)
     )
 
 
-def eco_coast_by_microtrip(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None):
+def eco_coast_by_microtrip(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, use_rust=False):
     min_gap_threshold = -0.1 # meters
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
@@ -183,7 +199,9 @@ def eco_coast_by_microtrip(veh, init_soc=None, save_dir=None, tag=None, cyc_name
     for mt in cyc_mts:
         cyc = fastsim.cycle.Cycle.from_dict(mt)
         base_traces.append(cyc.get_cyc_dict())
-        sim = fastsim.simdrive.SimDrive(cyc, veh)
+        if use_rust:
+            cyc = cyc.to_rust()
+        sim = create_simdrive(cyc, veh, use_rust=use_rust)
         sim_base = fastsim.simdrive.copy_sim_drive(sim)
         params = sim.sim_params
         params.coast_allow = True
@@ -209,8 +227,8 @@ def eco_coast_by_microtrip(veh, init_soc=None, save_dir=None, tag=None, cyc_name
     print(f"ECO-COAST: {mpgge:.3f} mpg")
     cyc0 = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat(base_traces))
     cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat(traces))
-    make_coasting_plot(cyc0, cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
-    make_distance_by_time_plot(cyc0, cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_dist_by_time.png', save_dir))
+    make_coasting_plot(cyc0, cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
+    make_distance_by_time_plot(cyc0, cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_dist_by_time.png', save_dir, use_rust))
     # make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_debug.png', save_dir))
     return (fuel_kwh_per_mi, dist_mi)
 
@@ -278,15 +296,19 @@ def create_dist_and_target_speeds_by_microtrip(cyc: fastsim.cycle.Cycle, blend_f
     return dist_and_tgt_speeds
 
 
-def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, blend_factor=1.0):
+def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, blend_factor=1.0, use_rust=False):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
     cyc = load_cycle(cyc_name)
-    sim = fastsim.simdrive.SimDrive(cyc, veh)
+    sim = create_simdrive(cyc, veh, use_rust=use_rust)
     params = sim.sim_params
     dist_and_avg_speeds = create_dist_and_target_speeds_by_microtrip(cyc, blend_factor=blend_factor)
+    if use_rust:
+        cyc = cyc.to_rust()
     # Eco-cruise parameters
     params = sim.sim_params
+    if use_rust:
+        params.reset_orphaned()
     params.follow_allow = True
     params.idm_accel_m_per_s2 = 0.5
     params.idm_decel_m_per_s2 = 2.5
@@ -312,23 +334,25 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
         sim.sim_drive_step()
     sim.set_post_scalars()
     print(f"ECO-CRUISE: {sim.mpgge:.3f} mpg")
-    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
-    make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise_dist_by_time.png', save_dir))
-    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocruise_debug.png', save_dir))
+    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
+    make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise_dist_by_time.png', save_dir, use_rust))
+    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocruise_debug.png', save_dir, use_rust))
     return (
-        ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sim.dist_mi.sum(),
-        sim.dist_mi.sum()
+        ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sum(sim.dist_mi),
+        sum(sim.dist_mi)
     )
 
-def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, blend_factor=1.0):
+def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_show=None, blend_factor=1.0, use_rust=False):
     do_show = DO_SHOW if do_show is None else do_show
     cyc_name = "udds" if cyc_name is None else cyc_name
-    cyc = load_cycle(cyc_name)
-    sim = fastsim.simdrive.SimDrive(cyc, veh)
+    cyc = load_cycle(cyc_name, use_rust=use_rust)
+    sim = create_simdrive(cyc, veh, use_rust=use_rust)
     params = sim.sim_params
     dist_and_avg_speeds = create_dist_and_target_speeds_by_microtrip(cyc, blend_factor=blend_factor)
     params = sim.sim_params
     # Eco-coast parameters
+    if use_rust:
+        params.reset_orphaned()
     params.coast_allow = True
     params.coast_allow_passing = False
     params.coast_start_speed_m_per_s = -1.0
@@ -359,12 +383,12 @@ def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=N
         sim.sim_drive_step()
     sim.set_post_scalars()
     print(f"ECO-COAST + ECO-CRUISE: {sim.mpgge:.3f} mpg")
-    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco.png', save_dir), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
-    make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco_dist_by_time.png', save_dir))
-    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'alleco_debug.png', save_dir))
+    make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
+    make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco_dist_by_time.png', save_dir, use_rust))
+    make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'alleco_debug.png', save_dir, use_rust))
     return (
-        ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sim.dist_mi.sum(),
-        sim.dist_mi.sum()
+        ((sim.fuel_kj + sim.ess_dischg_kj) / 3.6e3) / sum(sim.dist_mi),
+        sum(sim.dist_mi)
     )
 
 
@@ -372,13 +396,14 @@ def calc_percentage(base, other):
     return (base - other) * 100.0 / base
 
 
-def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=None, do_show=None):
+def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=None, do_show=None, use_rust=False):
     use_eco_coast_by_mt = False
     output = {'powertrain': powertrain, 'cycle': cyc_name, 'veh': veh.scenario_name}
     args = {
         'init_soc': init_soc,
         'cyc_name': cyc_name,
         'do_show': do_show if do_show is not None else DO_SHOW,
+        'use_rust': use_rust,
     }
     tag = f'{cyc_name}_{powertrain}'
     (output['use:base (kWh/mi)'], output['dist:base (mi)']) = no_eco_driving(veh, save_dir=save_dir, tag=tag, **args)
@@ -397,7 +422,9 @@ def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=No
     outputs.append(output)
 
 
-def main(cycle_name=None, powertrain=None, do_show=None):
+def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False):
+    """
+    """
     save_dir = OUTPUT_DIR
     save_dir.mkdir(parents=True, exist_ok=True)
     cyc_names = [cycle_name] if cycle_name is not None else [
@@ -409,22 +436,22 @@ def main(cycle_name=None, powertrain=None, do_show=None):
         if powertrain is None or powertrain == "conv":
             veh_conv = fastsim.vehicle.Vehicle.from_vehdb(1)
             print(f"CONV: {veh_conv.scenario_name}")
-            run_for_powertrain(save_dir, outputs, cyc_name, veh_conv, 'conv', init_soc=None, do_show=do_show)
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_conv, 'conv', init_soc=None, do_show=do_show, use_rust=use_rust)
 
         if powertrain is None or powertrain == "hev":
             veh_hev = fastsim.vehicle.Vehicle.from_vehdb(9)
             print(f"HEV: {veh_hev.scenario_name}")
-            run_for_powertrain(save_dir, outputs, cyc_name, veh_hev, 'hev', init_soc=None, do_show=do_show)
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_hev, 'hev', init_soc=None, do_show=do_show, use_rust=use_rust)
 
         if powertrain is None or powertrain == "phev":
             veh_phev = fastsim.vehicle.Vehicle.from_vehdb(12)
             print(f"PHEV: {veh_phev.scenario_name}")
-            run_for_powertrain(save_dir, outputs, cyc_name, veh_phev, 'phev', init_soc=None, do_show=do_show)
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_phev, 'phev', init_soc=None, do_show=do_show, use_rust=use_rust)
 
         if powertrain is None or powertrain == "bev":
             veh_bev = fastsim.vehicle.Vehicle.from_vehdb(17)
             print(f"BEV: {veh_bev.scenario_name}")
-            run_for_powertrain(save_dir, outputs, cyc_name, veh_bev, 'bev', init_soc=None, do_show=do_show)
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_bev, 'bev', init_soc=None, do_show=do_show, use_rust=use_rust)
 
     keys = [
         'powertrain', 'cycle', 'veh',
@@ -444,7 +471,7 @@ def main(cycle_name=None, powertrain=None, do_show=None):
 if __name__ == "__main__":
     import sys
     cycle_name = None
-    if len(sys.argv) >= 2:
+    if len(sys.argv) >= 2 and sys.argv[1] != 'None':
         cycle_name = sys.argv[1]
     powertrain = None
     if len(sys.argv) >= 3 and sys.argv[2] in ("conv", "hev", "phev", "bev"):
@@ -452,4 +479,11 @@ if __name__ == "__main__":
     do_show = None
     if len(sys.argv) >= 4 and sys.argv[3] == 'show':
         do_show = True
-    main(cycle_name, powertrain=powertrain, do_show=do_show)
+    use_rust = False
+    if len(sys.argv) >= 5 and sys.argv[4] == 'use_rust':
+        use_rust = True
+    if use_rust:
+        print("USING RUST")
+    else:
+        print("USING PYTHON")
+    main(cycle_name, powertrain=powertrain, do_show=do_show, use_rust=use_rust)
