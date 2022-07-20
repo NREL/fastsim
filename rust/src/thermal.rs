@@ -56,18 +56,46 @@ impl Default for FcTempEffComponent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum FcTempEffModel {
     /// Linear temperature dependence
-    Linear { offset: f64, slope: f64, min: f64 },
+    Linear(FcTempEffModelLinear),
     /// Exponential temperature dependence
-    Exponential { offset: f64, lag: f64, min: f64 },
+    Exponential(FcTempEffModelExponential),
 }
 
 impl Default for FcTempEffModel {
     fn default() -> Self {
         // todo: check on reasonableness of default values
-        FcTempEffModel::Exponential {
+        FcTempEffModel::Exponential(FcTempEffModelExponential::default())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct FcTempEffModelLinear {
+    offset: f64, slope: f64, minimum: f64 
+}
+
+impl Default for FcTempEffModelLinear {
+    fn default() -> Self {
+        Self{
+            offset: 0.0,
+            slope: 25.0,
+            minimum: 0.2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct FcTempEffModelExponential {
+    offset: f64,
+    lag: f64,
+    minimum: f64,
+}
+
+impl Default for FcTempEffModelExponential {
+    fn default() -> Self {
+        Self{
             offset: 0.0,
             lag: 25.0,
-            min: 0.2,
+            minimum: 0.2,
         }
     }
 }
@@ -114,6 +142,41 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     pub fn __new__() -> Self {
         Default::default()
     } 
+
+    pub fn set_cabin_model_internal(&mut self) {
+        self.cabin_model = ComponentModelTypes::Internal;
+    }
+
+    pub fn set_cabin_model_external(&mut self) {
+        self.cabin_model = ComponentModelTypes::External;
+    }
+
+    pub fn set_fc_model_internal_exponential(&mut self, offset: f64, lag: f64, minimum: f64, fc_temp_eff_component: String) {
+        let fc_temp_eff_comp = match fc_temp_eff_component.as_str() {
+            "FuelConverter" => FcTempEffComponent::FuelConverter,
+            "Catalyst" => FcTempEffComponent::Catalyst,
+            "Hybrid" => FcTempEffComponent::Hybrid,
+            _ => panic!("Invalid option for fc_temp_eff_component.")
+        };
+        
+        self.fc_model = FcModelTypes::Internal(
+            FcTempEffModel::Exponential (FcTempEffModelExponential{ offset, lag, minimum }), fc_temp_eff_comp)
+    }
+
+    #[setter]
+    pub fn set_fc_exp_offset(&mut self, new_offset: f64) {
+        self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
+            if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset: _, lag, minimum }) = fc_temp_eff_model {
+                FcModelTypes::Internal(FcTempEffModel::Exponential (FcTempEffModelExponential{ offset: new_offset, lag: *lag, minimum: *minimum }), fc_temp_eff_comp.clone())
+            } else {
+                FcModelTypes::Internal(FcTempEffModel::Exponential (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), fc_temp_eff_comp.clone())
+            }
+        }  else {
+            FcModelTypes::Internal(FcTempEffModel::Exponential (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), FcTempEffComponent::default())
+        }
+    }
+
+    // TODO: make setters for all the other enums
 )]
 
 
@@ -215,14 +278,7 @@ impl Default for VehicleThermal {
             tstat_te_sto_deg_c: 85.0,
             tstat_te_delta_deg_c: 5.0,
             rad_eps: 5.0,
-            fc_model: FcModelTypes::Internal(
-                FcTempEffModel::Exponential {
-                    offset: 0.0,
-                    lag: 25.0,
-                    min: 0.2,
-                },
-                FcTempEffComponent::FuelConverter,
-            ),
+            fc_model: FcModelTypes::default(),
             ess_c_kj_k: 200.0,   // similar size to engine
             ess_htc_to_amb: 5.0, // typically well insulated from ambient inside cabin
             cabin_model: ComponentModelTypes::Internal,
