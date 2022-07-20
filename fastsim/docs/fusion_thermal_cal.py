@@ -34,7 +34,8 @@ for sub in trip_dir.iterdir():
                 print(f"loading: ", file.resolve())
                 dfs_raw[file.stem] = pd.read_csv(file)
                 # clip time at zero seconds
-                dfs_raw[file.stem] = dfs_raw[file.stem][dfs_raw[file.stem]['Time[s]'] >= 0.0]
+                dfs_raw[file.stem] = dfs_raw[file.stem][dfs_raw[file.stem]
+                                                        ['Time[s]'] >= 0.0]
                 dfs[file.stem] = fsim.resample(
                     dfs_raw[file.stem],
                     rate_vars=('Eng_FuelFlow_Direct[cc/s]')
@@ -58,10 +59,10 @@ if show_plots:
         ax[1].set_ylabel("Fuel Power [kW]")
         ax[1].legend()
         ax[-1].plot(df['Time[s]'], df["Dyno_Spd[mph]"])
-        ax[-1].set_ylabel("speed [mph]")    
+        ax[-1].set_ylabel("speed [mph]")
         ax[-1].set_xlabel('time [s]')
 
-# %% 
+# %%
 # Separate calibration and validation cycles
 
 cal_cyc_patterns = ("49", "56", "73", "60", "69", "77")
@@ -83,42 +84,64 @@ veh = fsim.vehicle.Vehicle.from_file("2012_Ford_Fusion.csv").to_rust()
 cycs = dict()
 cal_sim_drives = dict()
 val_sim_drives = dict()
-for key in dfs_raw.keys():
+for key in dfs.keys():
     cycs[key] = fsim.cycle.Cycle.from_dict(
         {
-            "time_s": dfs_raw[key]["Time[s]"],
-            "mps": dfs_raw[key]["Dyno_Spd[mph]"] / fsim.params.MPH_PER_MPS
+            "time_s": dfs[key]["Time[s]"],
+            "mps": dfs[key]["Dyno_Spd[mph]"] / fsim.params.MPH_PER_MPS
         }
     ).to_rust()
     if key in list(dfs_cal.keys()):
-        cal_sim_drives[key] = fsr.SimDriveHot(cycs[key], veh)
+        cal_sim_drives[key] = fsr.SimDriveHot(
+            cycs[key],
+            veh,
+            amb_te_deg_c=dfs[key]['Cell_Temp[C]'][0],
+            fc_te_deg_c_init=dfs[key]['CylinderHeadTempC'][0])
     else:
         assert key in list(dfs_val.keys())
-        val_sim_drives[key] = fsr.SimDriveHot(cycs[key], veh)
+        val_sim_drives[key] = fsr.SimDriveHot(
+            cycs[key],
+            veh,
+            amb_te_deg_c=dfs[key]['Cell_Temp[C]'][0],
+            fc_te_deg_c_init=dfs[key]['CylinderHeadTempC'][0])
 
 
 # %%
 
 
 objectives = fsim.calibration.ModelErrors(
-    sim_drives=sim_drives,
+    sim_drives=cal_sim_drives,
     objectives=[
         ("Fuel_Power_Calc[kW]", "fs_kw_out_ach"),
+        ("CylinderHeadTempC", "fc_te_deg_c"),
     ],
     params=[
         ("vehthrm.fc_c_kj__k"),
         ("vehthrm.fc_l"),
         ("vehthrm.fc_htc_to_amb_stop"),
         ("vehthrm.fc_coeff_from_comb"),
+        ("vehthrm.fc_exp_offset"),
+        # ("vehthrm.fc_exp_lag"),
+        # ("vehthrm.fc_exp_minimum"),
     ],
     verbose=False
 )
 
+# Kyle, when you get this running, remind me to show you how to parallelize it.
+
 problem = fsim.calibration.CalibrationProblem(
     err=objectives,
     param_bounds=[
-        (1.5, 3),
+        (50, 200),
+        (0.25, 2),
+        (5, 50),
+        (1e-5, 1e-3),
+        (-10, 30),
+        # (15, 75),
+        # (0.25, 0.45),
     ],
+    # n_max_gen=100,
+    # pop_size=12,
 )
 
 # %%

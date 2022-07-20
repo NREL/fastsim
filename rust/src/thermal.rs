@@ -26,11 +26,11 @@ use crate::vehicle_thermal::*;
     pub fn __new__(
         cyc: cycle::RustCycle,
         veh: vehicle::RustVehicle,
-        amb_te_deg_c: Option<f64>,
-        fc_te_deg_c: Option<f64>,
-        cab_te_deg_c: Option<f64>,
-        exhport_te_deg_c: Option<f64>,
-        cat_te_deg_c: Option<f64>,
+        amb_te_deg_c: Option<f64>,  // need a way to provide a vector optionally, remind Chad to think about this
+        fc_te_deg_c_init: Option<f64>,
+        cab_te_deg_c_init: Option<f64>,
+        exhport_te_deg_c_init: Option<f64>,
+        cat_te_deg_c_init: Option<f64>,
         
     ) -> Self {
         // Initialize objects
@@ -39,10 +39,10 @@ use crate::vehicle_thermal::*;
         let air = AirProperties::default();
         let state = ThermalState::new(
             amb_te_deg_c,
-            fc_te_deg_c,
-            cab_te_deg_c,
-            exhport_te_deg_c,
-            cat_te_deg_c,
+            fc_te_deg_c_init,
+            cab_te_deg_c_init,
+            exhport_te_deg_c_init,
+            cat_te_deg_c_init,
         );
         let history = ThermalStateHistoryVec::default();
 
@@ -682,19 +682,19 @@ pub struct ThermalState {
 impl ThermalState {
     pub fn new(
         amb_te_deg_c: Option<f64>,
-        fc_te_deg_c: Option<f64>,
-        cab_te_deg_c: Option<f64>,
-        exhport_te_deg_c: Option<f64>,
-        cat_te_deg_c: Option<f64>,
+        fc_te_deg_c_init: Option<f64>,
+        cab_te_deg_c_init: Option<f64>,
+        exhport_te_deg_c_init: Option<f64>,
+        cat_te_deg_c_init: Option<f64>,
     ) -> Self {
         // Note default temperature is defined twice, see default()
         let default_te_deg_c: f64 = 22.0;
         Self {
             amb_te_deg_c: amb_te_deg_c.unwrap_or(default_te_deg_c),
-            fc_te_deg_c: fc_te_deg_c.unwrap_or(default_te_deg_c),
-            cab_te_deg_c: cab_te_deg_c.unwrap_or(default_te_deg_c),
-            exhport_te_deg_c: exhport_te_deg_c.unwrap_or(default_te_deg_c),
-            cat_te_deg_c: cat_te_deg_c.unwrap_or(default_te_deg_c),
+            fc_te_deg_c: fc_te_deg_c_init.unwrap_or(default_te_deg_c),
+            cab_te_deg_c: cab_te_deg_c_init.unwrap_or(default_te_deg_c),
+            exhport_te_deg_c: exhport_te_deg_c_init.unwrap_or(default_te_deg_c),
+            cat_te_deg_c: cat_te_deg_c_init.unwrap_or(default_te_deg_c),
             .. Default::default()
         }
     }
@@ -714,7 +714,7 @@ impl Default for ThermalState {
             fc_qdot_to_htr_kw: 0.0,
             fc_htc_to_amb: 0.0,
             fc_lambda: 0.0,
-            fc_te_adiabatic_deg_c: default_te_deg_c,
+            fc_te_adiabatic_deg_c: default_te_deg_c, // this needs to be calculated, get Chad to revisit
 
             cab_te_deg_c: default_te_deg_c,  // overridden by new()
             cab_qdot_solar_kw: 0.0,
