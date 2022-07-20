@@ -944,11 +944,11 @@ impl ThermalState {
         // Note default temperature is defined twice, see default()
         let default_te_deg_c: f64 = 22.0;
         Self {
-            amb_te_deg_c: amb_te_deg_c.unwrap_or_else(|| default_te_deg_c),
-            fc_te_deg_c: fc_te_deg_c.unwrap_or_else(|| default_te_deg_c),
-            cab_te_deg_c: cab_te_deg_c.unwrap_or_else(|| default_te_deg_c),
-            exhport_te_deg_c: exhport_te_deg_c.unwrap_or_else(|| default_te_deg_c),
-            cat_te_deg_c: cat_te_deg_c.unwrap_or_else(|| default_te_deg_c),
+            amb_te_deg_c: amb_te_deg_c.unwrap_or(default_te_deg_c),
+            fc_te_deg_c: fc_te_deg_c.unwrap_or(default_te_deg_c),
+            cab_te_deg_c: cab_te_deg_c.unwrap_or(default_te_deg_c),
+            exhport_te_deg_c: exhport_te_deg_c.unwrap_or(default_te_deg_c),
+            cat_te_deg_c: cat_te_deg_c.unwrap_or(default_te_deg_c),
             .. Default::default()
         }
     }
