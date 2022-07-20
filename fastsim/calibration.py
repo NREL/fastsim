@@ -2,7 +2,7 @@ from dataclasses import dataclass, InitVar
 from typing import Union, Dict, Tuple, List, Any, Union, Optional
 from pathlib import Path
 
-# pymoo 
+# pymoo
 from pymoo.util.display import Display
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling as LHS
 from pymoo.core.sampling import Sampling
@@ -24,6 +24,7 @@ import numpy as np
 import fastsim as fsim
 import fastsimrust as fsr
 
+
 def get_error_val(model, test, time_steps):
     """Returns time-averaged error for model and test signal.
     Arguments:
@@ -32,7 +33,7 @@ def get_error_val(model, test, time_steps):
     test: array of values for signal from test data
     time_steps: array (or scalar for constant) of values for model time steps [s]
     test: array of values for signal from test
-    
+
     Output: 
     -------
     err: integral of absolute value of difference between model and 
@@ -40,31 +41,35 @@ def get_error_val(model, test, time_steps):
 
     return np.trapz(y=abs(model - test), x=time_steps) / (time_steps[-1] - time_steps[0])
 
+
 def set_param_from_path(
-    model: fsr.SimDriveHot, path: Tuple[str], value: float
+    model: fsr.SimDriveHot, path: str, value: float
 ) -> fsr.SimDriveHot:
     """
     Set parameter `value` on `model` for `path` to parameter
 
-    Example usage:
-    todo
+    Arguments:
+    - path: e.g. `"vehthrm.fc_c_kj__k"`
+
     """
 
+    path_list = path.split(".")
+
     containers = [model]
-    for step in path[:-1]:
+    for step in path_list[:-1]:
         containers.append(containers[-1].__getattribute__(step))
 
     # zip it back up
     # innermost container first
     containers[-1].reset_orphaned()
     containers[-1].__setattr__(
-        path[-1], value
+        path_list[-1], value
     )
 
     prev_container = containers[-1]
 
     # iterate through remaining containers, inner to outer
-    for i, (container, path_elem) in enumerate(zip(containers[-2::-1], path[-2::-1])):
+    for i, (container, path_elem) in enumerate(zip(containers[-2::-1], path_list[-2::-1])):
         if i < len(containers) - 2:
             # reset orphaned for everything but the outermost container
             container.reset_orphaned()
@@ -76,6 +81,7 @@ def set_param_from_path(
         prev_container = container
 
     return model
+
 
 @dataclass
 class ModelErrors(object):
