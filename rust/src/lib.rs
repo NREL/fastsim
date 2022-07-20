@@ -49,6 +49,7 @@ use simdrive::{RustSimDrive, RustSimDriveParams};
 pub mod air;
 pub mod simdrive_impl;
 pub mod thermal;
+pub mod vehicle_thermal;
 
 /// Function for adding Rust structs as Python Classes
 #[pymodule]
@@ -62,7 +63,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Pyo3VecF64>()?;
     m.add_class::<RustSimDriveParams>()?;
     m.add_class::<RustSimDrive>()?;
-    m.add_class::<thermal::VehicleThermal>()?;
+    m.add_class::<vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::SimDriveHot>()?;
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<thermal::ThermalStateHistoryVec>()?;
