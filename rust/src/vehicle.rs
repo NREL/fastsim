@@ -323,6 +323,10 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
     pub fn to_rust(&self) -> PyResult<Self> {
         Ok(self.clone())
     }
+
+    pub fn copy(&self) -> PyResult<Self> {
+        Ok(self.clone())
+    }
 )]
 /// Struct containing vehicle attributes
 /// # Python Examples

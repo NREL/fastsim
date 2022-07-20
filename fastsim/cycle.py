@@ -166,6 +166,10 @@ class Cycle(object):
     def to_rust(self):
         return copy_cycle(self, return_type='rust', deep=False)
 
+    def reset_orphaned(self):
+        """Dummy method for flexibility between Rust/Python version interfaces"""
+        pass
+
     def copy(self):
         """
         Return a copy of this Cycle instance.
