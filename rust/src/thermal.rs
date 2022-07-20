@@ -959,71 +959,41 @@ impl Default for ThermalState {
         // Note default temperature is defined twice, see new()
         let default_te_deg_c: f64 = 22.0;
 
-        let fc_te_deg_c: f64 = default_te_deg_c;  // overridden by new()
-        let fc_eta_temp_coeff: f64 = 0.0;
-        let fc_qdot_per_net_heat: f64 = 0.0;
-        let fc_qdot_kw: f64 = 0.0;
-        let fc_qdot_to_amb_kw: f64 = 0.0;
-        let fc_qdot_to_htr_kw: f64 = 0.0;
-        let fc_htc_to_amb: f64 = 0.0;
-        let fc_lambda: f64 = 0.0;
-        let fc_te_adiabatic_deg_c: f64 = default_te_deg_c;
-
-        let cab_te_deg_c: f64 = default_te_deg_c;  // overridden by new()
-        let cab_qdot_solar_kw: f64 = 0.0;
-        let cab_qdot_to_amb_kw: f64 = 0.0; 
-
-        let exh_mdot: f64 = 0.0;
-        let exh_hdot_kw: f64 = 0.0;
-
-        let exhport_exh_te_in_deg_c: f64 = default_te_deg_c;
-        let exhport_qdot_to_amb: f64 = 0.0;
-        let exhport_te_deg_c: f64 = default_te_deg_c;  // overridden by new()
-        let exhport_qdot_from_exh: f64 = 0.0;
-        let exhport_qdot_net: f64 = 0.0;
-
-        let cat_qdot: f64 = 0.0;
-        let cat_htc_to_amb: f64 = 0.0;
-        let cat_qdot_to_amb: f64 = 0.0;
-        let cat_te_deg_c: f64 = default_te_deg_c;  // overridden by new()
-        let cat_exh_te_in_deg_c: f64 = default_te_deg_c;
-        let cat_re_ext: f64 = 0.0;
-        let cat_qdot_from_exh: f64 = 0.0;
-        let cat_qdot_net: f64 = 0.0;
-        let amb_te_deg_c: f64 = default_te_deg_c;  // overridden by new()
-
-        let orphaned: bool = false;
-
         Self {
-            fc_te_deg_c,
-            fc_eta_temp_coeff,
-            fc_qdot_per_net_heat,
-            fc_qdot_kw,
-            fc_qdot_to_amb_kw,
-            fc_qdot_to_htr_kw,
-            fc_htc_to_amb,
-            fc_lambda,
-            fc_te_adiabatic_deg_c,
-            cab_te_deg_c,
-            cab_qdot_solar_kw,
-            cab_qdot_to_amb_kw, 
-            exh_mdot,
-            exh_hdot_kw,
-            exhport_exh_te_in_deg_c,
-            exhport_qdot_to_amb,
-            exhport_te_deg_c,
-            exhport_qdot_from_exh,
-            exhport_qdot_net,
-            cat_qdot,
-            cat_htc_to_amb,
-            cat_qdot_to_amb,
-            cat_te_deg_c,
-            cat_exh_te_in_deg_c,
-            cat_re_ext,
-            cat_qdot_from_exh,
-            cat_qdot_net,
-            amb_te_deg_c,
-            orphaned,
+            fc_te_deg_c: default_te_deg_c,  // overridden by new()
+            fc_eta_temp_coeff: 0.0,
+            fc_qdot_per_net_heat: 0.0,
+            fc_qdot_kw: 0.0,
+            fc_qdot_to_amb_kw: 0.0,
+            fc_qdot_to_htr_kw: 0.0,
+            fc_htc_to_amb: 0.0,
+            fc_lambda: 0.0,
+            fc_te_adiabatic_deg_c: default_te_deg_c,
+
+            cab_te_deg_c: default_te_deg_c,  // overridden by new()
+            cab_qdot_solar_kw: 0.0,
+            cab_qdot_to_amb_kw: 0.0, 
+
+            exh_mdot: 0.0,
+            exh_hdot_kw: 0.0,
+
+            exhport_exh_te_in_deg_c: default_te_deg_c,
+            exhport_qdot_to_amb: 0.0,
+            exhport_te_deg_c: default_te_deg_c,  // overridden by new()
+            exhport_qdot_from_exh: 0.0,
+            exhport_qdot_net: 0.0,
+
+            cat_qdot: 0.0,
+            cat_htc_to_amb: 0.0,
+            cat_qdot_to_amb: 0.0,
+            cat_te_deg_c: default_te_deg_c,  // overridden by new()
+            cat_exh_te_in_deg_c: default_te_deg_c,
+            cat_re_ext: 0.0,
+            cat_qdot_from_exh: 0.0,
+            cat_qdot_net: 0.0,
+            amb_te_deg_c: default_te_deg_c,  // overridden by new()
+
+            orphaned: false,
         }
     }
 }
