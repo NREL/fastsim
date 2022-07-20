@@ -116,13 +116,13 @@ objectives = fsim.calibration.ModelErrors(
         ("CylinderHeadTempC", "fc_te_deg_c"),
     ],
     params=[
-        ("vehthrm.fc_c_kj__k"),
-        ("vehthrm.fc_l"),
-        ("vehthrm.fc_htc_to_amb_stop"),
-        ("vehthrm.fc_coeff_from_comb"),
-        ("vehthrm.fc_exp_offset"),
-        # ("vehthrm.fc_exp_lag"),
-        # ("vehthrm.fc_exp_minimum"),
+        "vehthrm.fc_c_kj__k",
+        "vehthrm.fc_l",
+        "vehthrm.fc_htc_to_amb_stop",
+        "vehthrm.fc_coeff_from_comb",
+        "vehthrm.fc_exp_offset",
+        # "vehthrm.fc_exp_lag",
+        # "vehthrm.fc_exp_minimum",
     ],
     verbose=False
 )
@@ -148,3 +148,5 @@ problem = fsim.calibration.CalibrationProblem(
 problem.minimize()
 
 print(problem.res.X)
+
+# %%
