@@ -184,12 +184,8 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
 
     #[getter]
     pub fn get_fc_exp_offset(&mut self) -> PyResult<f64> {
-        if let FcModelTypes::Internal(fc_temp_eff_model, ..) = &self.fc_model {
-            if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, ..}) = fc_temp_eff_model {
-                Ok(*offset)
-            } else {
-                Err(PyAttributeError::new_err("fc_model is not Exponential"))
-            }
+        if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, ..}), ..) = &self.fc_model {
+            Ok(*offset)
         } else {
             Err(PyAttributeError::new_err("fc_model is not Exponential"))
         }
