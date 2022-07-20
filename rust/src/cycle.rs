@@ -449,9 +449,14 @@ impl RustCycle {
         let dt = self.dt_s()[i];
         // distance-to-stop (m)
         let dts_m = match dts_m {
-            Some(value) => value,
+            Some(value) => if value > 0.0 {
+                value
+            } else {
+                -0.5 * v0 * v0 / brake_accel_m_per_s2
+            },
             None => -0.5 * v0 * v0 / brake_accel_m_per_s2,
         };
+        assert!(dts_m > 0.0);
         // time-to-stop (s)
         let tts_s = -v0 / brake_accel_m_per_s2;
         // number of steps to take
@@ -583,9 +588,9 @@ pub fn detect_passing(
         Some(v) => v,
         None => 0.1,
     };
-    let v0: f64 = cyc.mps[i - 1];
+    let mut v0: f64 = cyc.mps[i - 1];
     let d0: f64 = cyc.dist_v2_m().slice(s![0..i]).sum();
-    let v0_lv: f64 = cyc0.mps[i-1];
+    let mut v0_lv: f64 = cyc0.mps[i-1];
     let d0_lv: f64 = cyc0.dist_v2_m().slice(s![0..i]).sum();
     let mut d = d0;
     let mut d_lv = d0_lv;
@@ -604,6 +609,8 @@ pub fn detect_passing(
         d += dd;
         d_lv += dd_lv;
         let dtlv = d_lv - d;
+        v0 = v;
+        v0_lv = v_lv;
         if di > 0 && dtlv < -dist_tol_m {
             rendezvous_idx = Some(idx);
             rendezvous_num_steps = di + 1;
@@ -621,7 +628,7 @@ pub fn detect_passing(
         num_steps: rendezvous_num_steps,
         start_distance_m: d0,
         distance_m: rendezvous_distance_m,
-        start_speed_m_per_s: v0,
+        start_speed_m_per_s: cyc.mps[i-1],
         speed_m_per_s: rendezvous_speed_m_per_s,
         time_step_duration_s: cyc.dt_s()[i],
     }

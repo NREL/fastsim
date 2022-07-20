@@ -1835,28 +1835,29 @@ class SimDrive(object):
                     break
             else:
                 # rendezvous trajectory for brake-start -- assumes fixed time-steps
-                r_bi_jerk_m__s3, r_bi_accel_m__s2 = cycle.calc_constant_jerk_trajectory(
-                    step_ahead, 0.0, v0, dtbi0, brake_start_speed_m_per_s, dt)
-                if r_bi_accel_m__s2 < max_accel_m__s2 and r_bi_accel_m__s2 > min_accel_m__s2 and r_bi_jerk_m__s3 >= 0.0:
-                    as_bi = np.array([
-                        cycle.accel_for_constant_jerk(
-                            n, r_bi_accel_m__s2, r_bi_jerk_m__s3, dt)
-                        for n in range(step_ahead)
-                    ])
-                    accel_spread = np.abs(as_bi.max() - as_bi.min())
-                    flag = (
-                        (as_bi.max() < (max_accel_m__s2 + 1e-6)
-                            and as_bi.min() > (min_accel_m__s2 - 1e-6))
-                        and
-                        (not r_best_found or (
-                            accel_spread < r_best_accel_spread_m__s2))
-                    )
-                    if flag:
-                        r_best_found = True
-                        r_best_n = step_ahead
-                        r_best_accel_m__s2 = r_bi_accel_m__s2
-                        r_best_jerk_m__s3 = r_bi_jerk_m__s3
-                        r_best_accel_spread_m__s2 = accel_spread
+                if dtbi0 > 0.0:
+                    r_bi_jerk_m__s3, r_bi_accel_m__s2 = cycle.calc_constant_jerk_trajectory(
+                        step_ahead, 0.0, v0, dtbi0, brake_start_speed_m_per_s, dt)
+                    if r_bi_accel_m__s2 < max_accel_m__s2 and r_bi_accel_m__s2 > min_accel_m__s2 and r_bi_jerk_m__s3 >= 0.0:
+                        as_bi = np.array([
+                            cycle.accel_for_constant_jerk(
+                                n, r_bi_accel_m__s2, r_bi_jerk_m__s3, dt)
+                            for n in range(step_ahead)
+                        ])
+                        accel_spread = np.abs(as_bi.max() - as_bi.min())
+                        flag = (
+                            (as_bi.max() < (max_accel_m__s2 + 1e-6)
+                                and as_bi.min() > (min_accel_m__s2 - 1e-6))
+                            and
+                            (not r_best_found or (
+                                accel_spread < r_best_accel_spread_m__s2))
+                        )
+                        if flag:
+                            r_best_found = True
+                            r_best_n = step_ahead
+                            r_best_accel_m__s2 = r_bi_accel_m__s2
+                            r_best_jerk_m__s3 = r_bi_jerk_m__s3
+                            r_best_accel_spread_m__s2 = accel_spread
             step_idx += 1
         if r_best_found:
             return (r_best_found, r_best_n, r_best_jerk_m__s3, r_best_accel_m__s2)
@@ -1952,6 +1953,8 @@ class SimDrive(object):
                 v_start_jerk_m_per_s = max(v_start_m_per_s + dv_full_brake, 0.0)
                 dd_full_brake = 0.5 * (v_start_m_per_s + v_start_jerk_m_per_s) * dt_full_brake
                 d_start_m = self.cyc.dist_v2_m[:idx].sum() + dd_full_brake
+                if collision.distance_m <= d_start_m:
+                    continue
                 jerk_m_per_s3, accel0_m_per_s2 = cycle.calc_constant_jerk_trajectory(
                     n,
                     d_start_m,

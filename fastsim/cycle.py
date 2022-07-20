@@ -276,6 +276,7 @@ class Cycle(object):
         dt = self.dt_s[i]
         # distance-to-stop (m)
         dts_m = -0.5 * v0 * v0 / brake_accel_m__s2 if dts_m is None else dts_m
+        assert dts_m > 0.0
         # time-to-stop (s)
         tts_s = -v0 / brake_accel_m__s2
         # number of steps to take
@@ -765,6 +766,17 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> Pa
         "deviated" from the reference/shadow trace (m)
     RETURNS: PassingInfo
     """
+    if i >= len(cyc.time_s):
+        return PassingInfo(
+            has_collision=False,
+            idx=0,
+            num_steps=0,
+            start_distance_m=0.0,
+            distance_m=0.0,
+            start_speed_m_per_s=0.0,
+            speed_m_per_s=0.0,
+            time_step_duration_s=1.0,
+        )
     zero_speed_tol_m_per_s = 1e-6
     v0 = cyc.mps[i-1]
     d0 = cyc.dist_v2_m[:i].sum()

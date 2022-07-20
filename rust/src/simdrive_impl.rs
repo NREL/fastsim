@@ -391,6 +391,7 @@ impl RustSimDrive {
         self.cur_max_roadway_chg_kw = Array::zeros(cyc_len);
         self.trace_miss_iters = Array::zeros(cyc_len);
         self.newton_iters = Array::zeros(cyc_len);
+        self.coast_delay_index = Array::zeros(cyc_len);
     }
 
     /// Provides the gap-with lead vehicle from start to finish
@@ -2015,24 +2016,26 @@ impl RustSimDrive {
                 }
             } else {
                 // rendezvous trajectory for brake-start -- assumes fixed time-steps
-                let (r_bi_jerk_m_per_s3, r_bi_accel_m_per_s2) = calc_constant_jerk_trajectory(
-                    step_ahead, 0.0, v0, dtbi0, brake_start_speed_m_per_s, dt);
-                if r_bi_accel_m_per_s2 < max_accel_m_per_s2 && r_bi_accel_m_per_s2 > min_accel_m_per_s2 && r_bi_jerk_m_per_s3 >= 0.0 {
-                    let as_bi = accel_array_for_constant_jerk(step_ahead, r_bi_accel_m_per_s2, r_bi_jerk_m_per_s3, dt);
-                    let as_bi_min: f64 = as_bi.to_vec().into_iter().reduce(f64::min).unwrap_or(0.0);
-                    let as_bi_max: f64 = as_bi.to_vec().into_iter().reduce(f64::max).unwrap_or(0.0);
-                    let accel_spread = (as_bi_max - as_bi_min).abs();
-                    let flag =
-                        (as_bi_max < (max_accel_m_per_s2 + 1e-6) && as_bi_min > (min_accel_m_per_s2 - 1e-6))
-                        && 
-                        (!r_best_found || (accel_spread < r_best_accel_spread_m_per_s2))
-                    ;
-                    if flag {
-                        r_best_found = true;
-                        r_best_n = step_ahead;
-                        r_best_accel_m_per_s2 = r_bi_accel_m_per_s2;
-                        r_best_jerk_m_per_s3 = r_bi_jerk_m_per_s3;
-                        r_best_accel_spread_m_per_s2 = accel_spread;
+                if dtbi0 > 0.0 {
+                    let (r_bi_jerk_m_per_s3, r_bi_accel_m_per_s2) = calc_constant_jerk_trajectory(
+                        step_ahead, 0.0, v0, dtbi0, brake_start_speed_m_per_s, dt);
+                    if r_bi_accel_m_per_s2 < max_accel_m_per_s2 && r_bi_accel_m_per_s2 > min_accel_m_per_s2 && r_bi_jerk_m_per_s3 >= 0.0 {
+                        let as_bi = accel_array_for_constant_jerk(step_ahead, r_bi_accel_m_per_s2, r_bi_jerk_m_per_s3, dt);
+                        let as_bi_min: f64 = as_bi.to_vec().into_iter().reduce(f64::min).unwrap_or(0.0);
+                        let as_bi_max: f64 = as_bi.to_vec().into_iter().reduce(f64::max).unwrap_or(0.0);
+                        let accel_spread = (as_bi_max - as_bi_min).abs();
+                        let flag =
+                            (as_bi_max < (max_accel_m_per_s2 + 1e-6) && as_bi_min > (min_accel_m_per_s2 - 1e-6))
+                            && 
+                            (!r_best_found || (accel_spread < r_best_accel_spread_m_per_s2))
+                        ;
+                        if flag {
+                            r_best_found = true;
+                            r_best_n = step_ahead;
+                            r_best_accel_m_per_s2 = r_bi_accel_m_per_s2;
+                            r_best_jerk_m_per_s3 = r_bi_jerk_m_per_s3;
+                            r_best_accel_spread_m_per_s2 = accel_spread;
+                        }
                     }
                 }
             }
@@ -2156,6 +2159,9 @@ impl RustSimDrive {
                 let v_start_jerk_m_per_s = max(v_start_m_per_s + dv_full_brake, 0.0);
                 let dd_full_brake = 0.5 * (v_start_m_per_s + v_start_jerk_m_per_s) * dt_full_brake;
                 let d_start_m = self.cyc.dist_v2_m().slice(s![0..idx]).sum() + dd_full_brake;
+                if collision.distance_m <= d_start_m {
+                    continue;
+                }
                 let (jerk_m_per_s3, accel0_m_per_s2) = calc_constant_jerk_trajectory(
                     n,
                     d_start_m,
