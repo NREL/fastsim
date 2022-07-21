@@ -428,10 +428,11 @@ def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False):
     save_dir = OUTPUT_DIR
     save_dir.mkdir(parents=True, exist_ok=True)
     cyc_names = [cycle_name] if cycle_name is not None else [
-        "hwfet", "udds", "us06", "NREL13", "trapz", "trapz-x2", "stacked-trapz"
+        "hwfet", "udds", "us06", "NREL13", "trapz", "trapz-x2", "stacked-trapz", "TSDC_tripno_42648_cycle",
     ]
     outputs = []
     for cyc_name in cyc_names:
+        print("." * 20)
         print(f"CYCLE: {cyc_name}")
         if powertrain is None or powertrain == "conv":
             veh_conv = fastsim.vehicle.Vehicle.from_vehdb(1)
@@ -480,10 +481,15 @@ if __name__ == "__main__":
     if len(sys.argv) >= 4 and sys.argv[3] == 'show':
         do_show = True
     use_rust = False
-    if len(sys.argv) >= 5 and sys.argv[4] == 'use_rust':
+    if len(sys.argv) >= 5 and sys.argv[4] == 'rust':
         use_rust = True
+    print("** CAV SWEEP **")
+    print("-" * 40)
+    print(f"CYCLE     : {cycle_name if cycle_name is not None else 'all'}")
+    print(f"POWERTRAIN: {powertrain if powertrain is not None else 'all'}")
+    print(f"SHOW FIGS : {do_show if do_show is not None else 'default'}")
     if use_rust:
-        print("USING RUST")
+        print("PLATFORM  : RUST BACKEND")
     else:
-        print("USING PYTHON")
+        print("PLATFORM  : PURE PYTHON")
     main(cycle_name, powertrain=powertrain, do_show=do_show, use_rust=use_rust)
