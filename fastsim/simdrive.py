@@ -967,7 +967,7 @@ class SimDrive(object):
                 total = np.array([total3, total2, total1, total0])
                 self.mps_ach[i] = newton_mps_estimate(total)
                 grade_estimate = self.cyc0.average_grade_over_range(
-                    dist_traveled_m, 0.5 * (self.cyc.mps[i - 1] + self.mps_ach[i]) * self.cyc.dt_s[i])
+                    dist_traveled_m, 0.5 * (self.mps_ach[i - 1] + self.mps_ach[i]) * self.cyc.dt_s[i])
                 grade_diff = np.abs(grade - grade_estimate)
             self.set_power_calcs(i)
 
@@ -1608,7 +1608,7 @@ class SimDrive(object):
         d0 = self.cyc.dist_v2_m[:i].sum()
         ds_mask = ds >= d0
         if sum(ds_mask) == 0:
-            return 0
+            return 0.0
         distances_m = ds[ds_mask] - d0
         grade_by_distance = gs[ds_mask]
         # distance traveled while stopping via friction-braking (i.e., distance to brake)
@@ -1656,16 +1656,16 @@ class SimDrive(object):
             vavg = 0.5 * (v + v_next)
             dd = vavg * dt_s
             dtb = -0.5 * v_next * v_next / a_brake
-            if d + dd + dtb > dts0:
-                break
             d += dd
             new_speeds_m_per_s.append(v_next)
             v = v_next
+            if d + dtb >= dts0:
+                break
             iter += 1
             idx += 1
         if iter < MAX_ITER and idx < len(self.mps_ach):
             dtb = -0.5 * v * v / a_brake
-            dtb_target = max(dts0 - d, dtb)
+            dtb_target = min(max(dts0 - d, 0.5 * dtb), 2.0 * dtb)
             dtsc = d + dtb_target
             if modify_cycle:
                 for di, new_speed in enumerate(new_speeds_m_per_s):

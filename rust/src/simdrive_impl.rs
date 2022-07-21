@@ -1033,7 +1033,7 @@ impl RustSimDrive {
                     );
                     grade_estimate = self.cyc0.average_grade_over_range(
                         distance_traveled_m,
-                        0.5 * (self.cyc.mps[i - 1] + self.mps_ach[i]) * self.cyc.dt_s()[i]);
+                        0.5 * (self.mps_ach[i - 1] + self.mps_ach[i]) * self.cyc.dt_s()[i]);
                     grade_diff = (grade - grade_estimate).abs();
                 }
             }
@@ -1807,18 +1807,18 @@ impl RustSimDrive {
             vavg = 0.5 * (v + v_next);
             dd = vavg * dt_s;
             let dtb = -0.5 * v_next * v_next / a_brake;
-            if d + dd + dtb > dts0 {
-                break;
-            }
             d += dd;
             new_speeds_m_per_s.push(v_next);
             v = v_next;
+            if d + dtb > dts0 {
+                break;
+            }
             iter += 1;
             idx += 1;
         }
         if iter < max_iter && idx < self.mps_ach.len() {
             let dtb = -0.5 * v * v / a_brake;
-            let dtb_target = max(dts0 - d, dtb);
+            let dtb_target = min(max(dts0 - d, 0.5 * dtb), 2.0 * dtb);
             let dtsc = d + dtb_target;
             return CoastTrajectory {
                 found_trajectory: true,
