@@ -409,6 +409,10 @@ impl Default for RustSimDriveParams {
     pub fn is_empty(&self) -> bool {
         self.cyc.time_s.is_empty()
     }
+
+    pub fn copy(&self) -> PyResult<Self> {
+        Ok(self.clone())
+    }
 )]
 pub struct RustSimDrive {
     pub hev_sim_count: usize,

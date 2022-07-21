@@ -742,6 +742,10 @@ class Vehicle(object):
         # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
         return copy_vehicle(self, 'rust')
 
+    def reset_orphaned(self):
+        """Dummy method for flexibility between Rust/Python version interfaces"""
+        pass
+
 
 ref_veh = Vehicle.from_vehdb(5)
 

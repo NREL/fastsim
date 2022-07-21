@@ -827,7 +827,7 @@ impl RustSimDrive {
                 self.cyc.mps[i]
             };
 
-            let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
+            let distance_traveled_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
             let grade = self.cyc0.average_grade_over_range(
                 distance_traveled_m, mps_ach * self.cyc.dt_s()[i]);
 
@@ -910,6 +910,7 @@ impl RustSimDrive {
 
             //Cycle is not met
             else {
+                // TODO: Should this be dist_m or dist_v2_m?
                 let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
                 let mut grade_estimate = self.cyc0.average_grade_over_range(
                     distance_traveled_m, 0.0);
