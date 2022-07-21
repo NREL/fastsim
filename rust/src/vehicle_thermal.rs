@@ -156,18 +156,68 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     #[setter]
     pub fn set_fc_exp_offset(&mut self, new_offset: f64) {
         self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
+            // If model is internal
             if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset: _, lag, minimum }) = fc_temp_eff_model {
+                // If model is exponential
                 FcModelTypes::Internal(FcTempEffModel::Exponential 
                     (FcTempEffModelExponential{ offset: new_offset, lag: *lag, minimum: *minimum }), 
                     fc_temp_eff_comp.clone())
             } else {
+                // If model is not exponential
                 FcModelTypes::Internal(FcTempEffModel::Exponential 
                     (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), 
                     fc_temp_eff_comp.clone())
             }
         }  else {
+            // If model is not internal
             FcModelTypes::Internal(FcTempEffModel::Exponential 
                 (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), 
+                FcTempEffComponent::default())
+        }
+    }
+
+    #[setter]
+    pub fn set_fc_exp_lag(&mut self, new_lag: f64) {
+        self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
+            // If model is internal
+            if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag: _, minimum }) = fc_temp_eff_model {
+                // If model is exponential
+                FcModelTypes::Internal(FcTempEffModel::Exponential 
+                    (FcTempEffModelExponential{ offset: *offset, lag: new_lag, minimum: *minimum }), 
+                    fc_temp_eff_comp.clone())
+            } else {
+                // If model is not exponential
+                FcModelTypes::Internal(FcTempEffModel::Exponential 
+                    (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }), 
+                    fc_temp_eff_comp.clone())
+            }
+        }  else {
+            // If model is not internal
+            FcModelTypes::Internal(FcTempEffModel::Exponential 
+                (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }), 
+                FcTempEffComponent::default())
+        }
+    }
+
+    #[setter]
+    pub fn set_fc_exp_minimum(&mut self, new_minimum: f64) {
+        self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
+            // If model is internal
+            if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag, minimum: _ }) = fc_temp_eff_model {
+                // If model is exponential
+                FcModelTypes::Internal(FcTempEffModel::Exponential 
+                    (FcTempEffModelExponential{ offset: *offset, lag: *lag, minimum: new_minimum }), 
+                    fc_temp_eff_comp.clone())
+            } else {
+                // If model is not exponential
+                FcModelTypes::Internal(FcTempEffModel::Exponential 
+                    (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }), 
+                    fc_temp_eff_comp.clone())
+            }
+        }  else {
+            // If model is not internal
+            FcModelTypes::Internal(FcTempEffModel::Exponential 
+                (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }), 
                 FcTempEffComponent::default())
         }
     }
@@ -181,7 +231,25 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         }
     }
 
-    // TODO: make setters for lag, minimum, and eventually all the other enum stuff
+    #[getter]
+    pub fn get_fc_exp_lag(&mut self) -> PyResult<f64> {
+        if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ lag, ..}), ..) = &self.fc_model {
+            Ok(*lag)
+        } else {
+            Err(PyAttributeError::new_err("fc_model is not Exponential"))
+        }
+    }
+
+    #[getter]
+    pub fn get_fc_exp_minimum(&mut self) -> PyResult<f64> {
+        if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ minimum, ..}), ..) = &self.fc_model {
+            Ok(*minimum)
+        } else {
+            Err(PyAttributeError::new_err("fc_model is not Exponential"))
+        }
+    }
+
+    // TODO: make setters for all the other enum stuff
 )]
 
 
