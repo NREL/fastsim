@@ -342,7 +342,7 @@ impl RustCycle {
                 return self.grade[0];
             }
             if distance_start_m >= distances_m[distances_m.len() - 1] {
-                return distances_m[distances_m.len() - 1];
+                return self.grade[self.grade.len() - 1];
             }
             let mut gr = self.grade[0];
             for idx in 0..(distances_m.len() - 1) {
@@ -456,7 +456,9 @@ impl RustCycle {
             },
             None => -0.5 * v0 * v0 / brake_accel_m_per_s2,
         };
-        assert!(dts_m > 0.0);
+        if dts_m <= 0.0 {
+            return (v0, 0);
+        }
         // time-to-stop (s)
         let tts_s = -v0 / brake_accel_m_per_s2;
         // number of steps to take

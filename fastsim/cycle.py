@@ -279,8 +279,10 @@ class Cycle(object):
         v0 = self.mps[i-1]
         dt = self.dt_s[i]
         # distance-to-stop (m)
-        dts_m = -0.5 * v0 * v0 / brake_accel_m__s2 if dts_m is None else dts_m
-        assert dts_m > 0.0
+        if dts_m is None or dts_m <= 0.0:
+            dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
+        if dts_m <= 0.0:
+            return v0, 0
         # time-to-stop (s)
         tts_s = -v0 / brake_accel_m__s2
         # number of steps to take
