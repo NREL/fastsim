@@ -952,7 +952,7 @@ class TestCoasting(unittest.TestCase):
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1.png')
             self.assertAlmostEqual(
-                sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_m.sum())
+                sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_m.sum(), places=0)
         if RUST_AVAILABLE and USE_RUST:
             grade = 0.01
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1036,7 +1036,7 @@ class TestCoasting(unittest.TestCase):
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1-rust.png')
             self.assertAlmostEqual(
-                np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_m).sum())
+                np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_m).sum(), places=0)
 
     def test_that_coasting_logic_works_going_downhill(self):
         "When going downhill, ensure we can still hit our coasting target"
