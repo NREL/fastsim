@@ -161,4 +161,5 @@ res_df = pd.DataFrame(d)
 res_df["vehthrm.fc_coeff_from_comb"] = res_df["vehthrm.fc_coeff_from_comb"].apply(lambda x: f"{x:.3e}")
 res_df = res_df.round(3)
 display(HTML(res_df.to_html()))
+
 # %%

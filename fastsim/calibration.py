@@ -214,6 +214,7 @@ class ModelErrors(object):
                         ref_sig,
                         sim_drive.sd.cyc.time_s,
                     )
+                # TODO: write else
 
                 if plot or plot_save_dir:
                     # this code needs to be cleaned up
@@ -304,7 +305,8 @@ class ModelErrors(object):
                     containers[0]
                 )
         t1 = time.time()
-        print(f"Time to update params: {t1 - t0:.3g} s")
+        if self.verbose:
+            print(f"Time to update params: {t1 - t0:.3g} s")
 
 
 @dataclass
