@@ -241,6 +241,10 @@ use crate::vehicle_thermal::*;
     pub fn is_empty(&self) -> bool {
         self.sd.cyc.time_s.is_empty()
     }
+
+    pub fn copy(&self) -> Self {
+        self.clone()
+    }
 )]
 #[pyclass]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

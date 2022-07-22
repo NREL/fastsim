@@ -42,34 +42,65 @@ def get_error_val(model, test, time_steps):
     return np.trapz(y=abs(model - test), x=time_steps) / (time_steps[-1] - time_steps[0])
 
 
-def set_param_from_path(
-    model: fsr.SimDriveHot, path: str, value: float
+def get_containers_from_path(
+    model: fsr.SimDriveHot,
+    path: Union[str, list],
+) -> list:
+    """
+    Get all attributes containing another attribute from `model` using `path` to attribute
+    """
+    if isinstance(path, str):
+        path = path.split(".")
+    containers = [getattr(model, path[0])]
+    for subpath in path[1:-1]:
+        container = getattr(containers[-1], subpath)
+        containers.append(container)
+    return containers
+
+def get_attr_from_path(
+    model: fsr.SimDriveHot,
+    path: Union[str, list]
+) -> Any:
+    """
+    Get attribute from `model` using `path` to attribute
+    """
+    if isinstance(path, str):
+        path = path.split(".")
+    containers = get_containers_from_path(model, path)
+    attr = getattr(containers[-1], path[-1])
+    return attr
+
+def set_attr_from_path(
+    model: fsr.SimDriveHot,
+    path: Union[str, list],
+    value: float
 ) -> fsr.SimDriveHot:
     """
-    Set parameter `value` on `model` for `path` to parameter
-
-    Arguments:
-    - path: e.g. `"vehthrm.fc_c_kj__k"`
-
+    Set attribute `value` on `model` for `path` to attribute
     """
+    # TODO: Does this actually work?
+    if isinstance(path, str):
+        path = path.split(".")
+    containers = get_containers_from_path(model, path)
+    containers[-1].reset_orphaned()
+    setattr(containers[-1], path[-1], value)
+    return model
 
-    path_list = path.split(".")
-
-    containers = [model]
-    for step in path_list[:-1]:
+    """containers = [model]
+    for step in path[:-1]:
         containers.append(containers[-1].__getattribute__(step))
 
     # zip it back up
     # innermost container first
     containers[-1].reset_orphaned()
     containers[-1].__setattr__(
-        path_list[-1], value
+        path[-1], value
     )
 
     prev_container = containers[-1]
 
     # iterate through remaining containers, inner to outer
-    for i, (container, path_elem) in enumerate(zip(containers[-2::-1], path_list[-2::-1])):
+    for i, (container, path_elem) in enumerate(zip(containers[-2::-1], path[-2::-1])):
         if i < len(containers) - 2:
             # reset orphaned for everything but the outermost container
             container.reset_orphaned()
@@ -80,7 +111,7 @@ def set_param_from_path(
         )
         prev_container = container
 
-    return model
+    return model"""
 
 
 @dataclass
@@ -91,6 +122,9 @@ class ModelErrors(object):
 
     # dictionary of models to be simulated
     sim_drives: Dict[str, fsim.simdrive.SimDrive]
+
+    # dictionary of test data to calibrate against
+    dfs: Dict[str, pd.DataFrame]
 
     # list of 1- or 2-element tuples of objectives for error calcluation
     # 1 element:
@@ -113,6 +147,9 @@ class ModelErrors(object):
     # if True, prints timing and misc info
     verbose: bool = False
 
+    def __post_init__(self):
+        assert(len(self.dfs) == len(self.sim_drives))
+
     def get_errors(
         self, return_mods: Optional[bool] = False, plot: Optional[bool] = False,
             plot_save_dir: Optional[str] = None,
@@ -123,7 +160,7 @@ class ModelErrors(object):
     ]:
         """
         Calculate model errors w.r.t. test data for each element in dfs/models for each objective.
-        Arugments:
+        Arguments:
         ----------
             - return_mods: if true, also returns dict of solved models
             - plot: if true, plots objectives
@@ -133,13 +170,13 @@ class ModelErrors(object):
         solved_mods = {}
 
         # loop through all the provided trips
-        for key, sim_drive in self.sim_drives.items():
+        for ((key, df_exp), sim_drive) in zip(self.dfs.items(), self.sim_drives.values()):
             t0 = time.time()
-            sim_drive = fsim.simdrive.copy_sim_drive(sim_drive)
+            sim_drive = sim_drive.copy()
             sim_drive.sim_drive()
             objectives[key] = {}
             if return_mods or plot:
-                solved_mods[key] = fsim.simdrive.copy_sim_drive(sim_drive)
+                solved_mods[key] = sim_drive.copy()
 
             if plot or plot_save_dir:
                 _, ax = plt.subplots(
@@ -156,26 +193,27 @@ class ModelErrors(object):
 
             # loop through the objectives for each trip
             for i_obj, obj in enumerate(self.objectives):
-                if isinstance(obj[0], tuple) and isinstance(obj[1], tuple):
-                    mod_path = obj[0]
-                    ref_path = obj[1]
-                else:
-                    mod_path = obj
+                assert len(obj) == 1 or len(obj) == 2
+                if len(obj) == 2:
+                    # If objective attribute path and reference signal passed
+                    mod_path = obj[0]  # str
+                    ref_path = obj[1]  # str, df column name
+                elif len(obj) == 1:
+                    # Minimizing objective attribute
+                    mod_path = obj[0]  # str
+                    ref_path = None
 
-                # extract signal value
-                mod_sig = sim_drive  # placeholder
-                for elem in mod_path:
-                    mod_sig = mod_sig.__getattribute__(elem)
+                # extract model value
+                mod_sig = get_attr_from_path(sim_drive, mod_path)
 
-                # extract signal value
-                ref_sig = sim_drive  # placeholder
-                for elem in ref_path[:-1]:
-                    ref_sig = ref_sig.__getattribute__(elem)
-                objectives[key][obj[0]] = get_error_val(
-                    sim_drive.cyc.time_s,
-                    ref_sig,
-                    mod_sig
-                )
+                if ref_path:
+                    ref_sig = df_exp[ref_path]
+
+                    objectives[key][obj[0]] = get_error_val(
+                        mod_sig,
+                        ref_sig,
+                        sim_drive.sd.cyc.time_s,
+                    )
 
                 if plot or plot_save_dir:
                     # this code needs to be cleaned up
@@ -225,11 +263,12 @@ class ModelErrors(object):
         Updates model parameters based on `x`, which must match length of self.params
         """
         assert(len(xs) == len(self.params))
+        paths = [fullpath.split(".") for fullpath in self.params]
 
         t0 = time.time()
         # first element of each tuple in self.params should be identical
         mod = list(self.sim_drives.values())[0].__getattribute__(
-            self.params[0][0]
+            paths[0][0]
         )
 
         # the idea of this code is to step through the hierarchy
@@ -237,7 +276,7 @@ class ModelErrors(object):
         # new values, and then propagate back up the hierarchy.
         # I'm not convinced it works, but the concept seems sound.  Only the implementation
         # details might be sketchy.
-        for path, x in zip(self.params, xs):
+        for path, x in zip(paths, xs):
             # containers = [mod]
             containers = [
                 self.sim_drives[list(self.sim_drives.keys())[0]].__getattribute__(
@@ -261,7 +300,7 @@ class ModelErrors(object):
 
             for key in self.sim_drives.keys():
                 self.sim_drives[key].__setattr__(
-                    self.params[0][0],
+                    paths[0][0],
                     containers[0]
                 )
         t1 = time.time()

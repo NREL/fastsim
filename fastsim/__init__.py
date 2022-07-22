@@ -18,20 +18,25 @@ __doc__ += f"{Path(__file__).parent / 'docs/README.md'}"
 
 try:
     from fastsimrust import *
+    
+    # Enable np.array() on array structs
     import numpy as np
-
     def _as_numpy_array(self, *args, **kwargs):
         return np.array(list(self), *args, **kwargs)
-    setattr(Pyo3ArrayF64, "__array__", _as_numpy_array)
-    setattr(Pyo3ArrayU32, "__array__", _as_numpy_array)
-    setattr(Pyo3ArrayBool, "__array__", _as_numpy_array)
-    setattr(Pyo3VecF64, "__array__", _as_numpy_array)
-    # Enable copy.copy() and copy.deepcopy()
-    setattr(RustCycle, "__copy__", RustCycle.copy)
-    setattr(RustCycle, "__deepcopy__", lambda self, _memo: RustCycle.copy(self))
-    setattr(RustVehicle, "__copy__", RustVehicle.copy)
-    setattr(RustVehicle, "__deepcopy__", lambda self, _memo: RustVehicle.copy(self))
-    setattr(RustSimDrive, "__copy__", RustSimDrive.copy)
-    setattr(RustSimDrive, "__deepcopy__", lambda self, _memo: RustSimDrive.copy(self))
+    for struct in (Pyo3ArrayF64, Pyo3ArrayU32, Pyo3ArrayBool, Pyo3VecF64):
+        struct.__array__ = _as_numpy_array
+    
+    # Enable setting nested structs attributes more easily (UNFINISHED)
+    """def _set_nested_attr(self, name, value):
+        self.reset_orphaned()  # TODO: doesn't always need to be called, add condition
+        object.__setattr__(self, name, value)  # Call original __setattr__
+    for struct in (RustCycle, RustVehicle, RustSimDrive, SimDriveHot, VehicleThermal):
+        struct.__setattr__ = _set_nested_attr"""
+    
+    # Enable copy.copy() and copy.deepcopy(), order of assignment matters
+    for struct in (RustCycle, RustVehicle, RustSimDrive, VehicleThermal, SimDriveHot):
+        struct.__copy__ = struct.copy
+        struct.__deepcopy__ = lambda self, _memo: struct.copy(self)
+
 except ImportError:
     print("fastsimrust not installed")

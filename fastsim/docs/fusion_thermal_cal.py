@@ -45,7 +45,7 @@ for sub in trip_dir.iterdir():
 
 # %%
 # plot the data
-show_plots = True
+show_plots = False
 
 if show_plots:
     for key, df in dfs_raw.items():
@@ -111,9 +111,10 @@ for key in dfs.keys():
 
 objectives = fsim.calibration.ModelErrors(
     sim_drives=cal_sim_drives,
+    dfs=dfs_cal,
     objectives=[
-        ("Fuel_Power_Calc[kW]", "fs_kw_out_ach"),
-        ("CylinderHeadTempC", "fc_te_deg_c"),
+        ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
+        ("state.fc_te_deg_c", "CylinderHeadTempC"),
     ],
     params=[
         "vehthrm.fc_c_kj__k",

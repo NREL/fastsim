@@ -131,7 +131,11 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     #[new]
     pub fn __new__() -> Self {
         Default::default()
-    } 
+    }
+
+    pub fn copy(&self) -> Self {
+        self.clone()
+    }
 
     pub fn set_cabin_model_internal(&mut self) {
         self.cabin_model = ComponentModelTypes::Internal;
