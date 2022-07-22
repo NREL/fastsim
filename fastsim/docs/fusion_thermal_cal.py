@@ -151,3 +151,14 @@ problem.minimize()
 print(problem.res.X)
 
 # %%
+# Output pretty table
+from IPython.display import display, HTML
+d = {
+    param: result
+        for param, result in zip(objectives.params, problem.res.X.T)
+}
+res_df = pd.DataFrame(d)
+res_df["vehthrm.fc_coeff_from_comb"] = res_df["vehthrm.fc_coeff_from_comb"].apply(lambda x: f"{x:.3e}")
+res_df = res_df.round(3)
+display(HTML(res_df.to_html()))
+# %%

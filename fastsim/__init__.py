@@ -30,7 +30,7 @@ try:
     """def _set_nested_attr(self, name, value):
         self.reset_orphaned()  # TODO: doesn't always need to be called, add condition
         object.__setattr__(self, name, value)  # Call original __setattr__
-    for struct in (RustCycle, RustVehicle, RustSimDrive, SimDriveHot, VehicleThermal):
+    for struct in (RustCycle, RustVehicle, RustSimDrive, VehicleThermal, SimDriveHot):
         struct.__setattr__ = _set_nested_attr"""
     
     # Enable copy.copy() and copy.deepcopy(), order of assignment matters
