@@ -275,11 +275,58 @@ impl SimDriveHot {
     }
 
     pub fn sim_drive(&mut self, init_soc: Option<f64>, aux_in_kw_override: Option<Array1<f64>>) {
-        self.sd.sim_drive(init_soc, aux_in_kw_override).unwrap();
+        self.sd.hev_sim_count = 0;
+
+        let init_soc = match init_soc {
+            Some(x) => {
+                x
+            },
+            None => {
+                if self.sd.veh.veh_pt_type == vehicle::CONV{
+                    // If no EV / Hybrid components, no SOC considerations.
+                    (self.sd.veh.max_soc + self.sd.veh.min_soc) / 2.0
+                } else if self.sd.veh.veh_pt_type == vehicle::HEV {  
+                    // ####################################
+                    // ### Charge Balancing Vehicle SOC ###
+                    // ####################################
+                    // Charge balancing SOC for HEV vehicle types. Iterating init_soc and comparing to final SOC.
+                    // Iterating until tolerance met or 30 attempts made.
+                    let mut init_soc = (self.sd.veh.max_soc + self.sd.veh.min_soc) / 2.0;
+                    let mut ess_2fuel_kwh = 1.0;
+                    while ess_2fuel_kwh > self.sd.veh.ess_to_fuel_ok_error && self.sd.hev_sim_count < self.sd.sim_params.sim_count_max {
+                        self.sd.hev_sim_count += 1;
+                        self.walk(init_soc, aux_in_kw_override.clone());
+                        let fuel_kj = (&self.sd.fs_kw_out_ach * self.sd.cyc.dt_s()).sum();
+                        let roadway_chg_kj = (&self.sd.roadway_chg_kw_out_ach * self.sd.cyc.dt_s()).sum();
+                        if (fuel_kj + roadway_chg_kj) > 0.0 {
+                            ess_2fuel_kwh = (
+                                (self.sd.soc[0] - self.sd.soc[self.len()-1]) * self.sd.veh.ess_max_kwh * 3.6e3 / (fuel_kj + roadway_chg_kj)
+                            ).abs();
+                        } else {
+                            ess_2fuel_kwh = 0.0;
+                        }
+                        init_soc = min(1.0, max(0.0, self.sd.soc[self.len()-1]));
+                    }
+                    init_soc
+                } else if self.sd.veh.veh_pt_type == vehicle::PHEV || self.sd.veh.veh_pt_type == vehicle::BEV { 
+                    // If EV, initializing initial SOC to maximum SOC.
+                    self.sd.veh.max_soc
+                } else {
+                    panic!("Failed to properly initialize SOC.");
+                }
+            },
+        };
+
+        self.walk(init_soc, aux_in_kw_override);
+
+        self.set_post_scalars();
     }
 
     pub fn walk(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
-        self.sd.walk(init_soc, aux_in_kw_override).unwrap();
+        self.init_for_step(init_soc, aux_in_kw_override);
+        while self.sd.i < self.sd.cyc.time_s.len() {
+            self.step();
+        }
     }
 
     pub fn init_for_step(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
@@ -295,7 +342,17 @@ impl SimDriveHot {
     }
 
     pub fn step(&mut self) {
-        self.sd.step().unwrap();
+        self.set_thermal_calcs(self.sd.i);
+        self.set_misc_calcs(self.sd.i);
+        self.set_comp_lims(self.sd.i);
+        self.set_power_calcs(self.sd.i);
+        self.set_ach_speed(self.sd.i);
+        self.set_hybrid_cont_calcs(self.sd.i);
+        self.set_fc_forced_state(self.i);
+        self.set_hybrid_cont_decisions(self.i);
+        self.set_fc_power(self.i);
+
+        self.sd.i += 1; // increment time step counter
         self.history.push(self.state.clone());
     }
 
@@ -593,7 +650,7 @@ impl SimDriveHot {
     }
 
     pub fn set_fc_power(&mut self, i: usize) {
-        self.sd.set_fc_power(i).unwrap();
+        
     }
     pub fn set_time_dilation(&mut self, i: usize) {
         self.sd.set_time_dilation(i).unwrap();
