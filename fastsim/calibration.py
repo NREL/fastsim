@@ -179,11 +179,12 @@ class ModelErrors(object):
                 solved_mods[key] = sim_drive.copy()
 
             if plot or plot_save_dir:
+                time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600
                 _, ax = plt.subplots(
                     len(self.objectives) * 2 + 1, 1, sharex=True, figsize=(12, 8),
                 )
                 ax[-1].plot(
-                    sim_drive.sd.cyc.time_s,
+                    time_hr,
                     sim_drive.sd.mps_ach,
                 )
 
@@ -222,14 +223,13 @@ class ModelErrors(object):
                     # TODO: write else block for objective minimization
 
                 if plot or plot_save_dir:
-                    time_s = np.array(sim_drive.sd.cyc.time_s)
                     # this code needs to be cleaned up
                     # raw signals
                     ax[i_obj * 2].set_title(
                         f"trip: {key}, error: {objectives[key][obj[0]]:.3g}")
-                    ax[i_obj * 2].plot(time_s / 3_600, 
+                    ax[i_obj * 2].plot(time_hr, 
                                         mod_sig, label='mod',)
-                    ax[i_obj * 2].plot(time_s / 3_600,
+                    ax[i_obj * 2].plot(time_hr,
                                        ref_sig,
                                        linestyle='--',
                                        label="exp",
@@ -244,7 +244,7 @@ class ModelErrors(object):
                     # trim off the first few bits of junk
                     perc_err[np.where(perc_err > 500)[0][:]] = 0.0
                     ax[i_obj * 2 + 1].plot(
-                        time_s / 3_600,
+                        time_hr,
                         perc_err
                     )
                     ax[i_obj * 2 + 1].set_ylabel(obj[0] + "\n%Err")
