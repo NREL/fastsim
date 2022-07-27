@@ -542,6 +542,14 @@ impl SimDriveHot {
         self.state.exhport_te_deg_c += self.state.exhport_qdot_net / (self.vehthrm.exhport_c_kj__k * 1e3) * self.sd.cyc.dt_s()[i];
     }
 
+    pub fn thermal_soak_walk(&mut self) {
+        self.sd.i = 1;
+        while self.sd.i < self.sd.cyc.time_s.len() {
+            self.set_thermal_calcs(self.sd.i);
+            self.sd.i += 1;
+        }
+    }
+
     /// Solve catalyst thermal behavior.
     pub fn set_cat_thermal_calcs(&mut self, i: usize) {
         // external or internal model handling catalyst thermal behavior
