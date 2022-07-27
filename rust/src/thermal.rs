@@ -348,9 +348,9 @@ impl SimDriveHot {
         self.set_power_calcs(self.sd.i);
         self.set_ach_speed(self.sd.i);
         self.set_hybrid_cont_calcs(self.sd.i);
-        self.set_fc_forced_state(self.i);
-        self.set_hybrid_cont_decisions(self.i);
-        self.set_fc_power(self.i);
+        self.set_fc_forced_state_rust(self.sd.i);
+        self.set_hybrid_cont_decisions(self.sd.i);
+        self.set_fc_power(self.sd.i);
 
         self.sd.i += 1; // increment time step counter
         self.history.push(self.state.clone());
@@ -370,8 +370,7 @@ impl SimDriveHot {
 
         if self.vehthrm.hvac_model ==
             ComponentModelTypes::Internal {
-                todo!()
-                // self.fc_qdot_to_htr_kw[i] = 0.0 // placeholder
+                self.set_fc_thermal_calcs(i);
             }
 
         if self.vehthrm.cabin_model == ComponentModelTypes::Internal {
@@ -390,7 +389,7 @@ impl SimDriveHot {
 
         // if self.vehthrm.fc_model == 'internal':
         //     // Energy balance for fuel converter
-        //     self.fc_te_degC[i] = self.fc_te_degC[i-1] + (
+        //     self.fc_te_deg_c[i] = self.fc_te_deg_c[i-1] + (
         //        self.fc_qdot_kw[i] - self.fc_qdot_to_amb_kw[i] - self.fc_qdot_to_htr_kw[i]) / self.vehthrm.fc_C_kJ__K * self.cyc.dt_s[i]
        
     }
@@ -649,9 +648,89 @@ impl SimDriveHot {
         self.sd.set_hybrid_cont_decisions(i).unwrap();
     }
 
-    pub fn set_fc_power(&mut self, i: usize) {
-        
+    pub fn set_fc_power(&mut self, i: usize) { 
+        if self.sd.veh.fc_max_kw == 0.0 {
+            self.sd.fc_kw_out_ach[i] = 0.0;
+        } else if self.sd.veh.fc_eff_type == vehicle::H2FC {
+            self.sd.fc_kw_out_ach[i] = min(
+                self.sd.cur_max_fc_kw_out[i], 
+                max(
+                    0.0, 
+                    self.sd.mc_elec_kw_in_ach[i] + self.sd.aux_in_kw[i] - self.sd.ess_kw_out_ach[i] - self.sd.roadway_chg_kw_out_ach[i]
+                )
+            );
+        } else if self.sd.veh.no_elec_sys || self.sd.veh.no_elec_aux || self.sd.high_acc_fc_on_tag[i] {
+            self.sd.fc_kw_out_ach[i] = min(
+                self.sd.cur_max_fc_kw_out[i], 
+                max(
+                    0.0, 
+                    self.sd.trans_kw_in_ach[i] - self.sd.mc_mech_kw_out_ach[i] + self.sd.aux_in_kw[i]
+                )
+            );
+        } else {
+            self.sd.fc_kw_out_ach[i] = min(
+                self.sd.cur_max_fc_kw_out[i],
+                max(
+                    0.0,
+                    self.sd.trans_kw_in_ach[i] - self.sd.mc_mech_kw_out_ach[i]
+                )
+            );
+        }
+
+        if self.sd.veh.fc_max_kw == 0.0 {
+            self.sd.fc_kw_out_ach_pct[i] = 0.0;
+        } else {
+            self.sd.fc_kw_out_ach_pct[i] = self.sd.fc_kw_out_ach[i] / self.sd.veh.fc_max_kw;
+        }
+
+        if self.sd.fc_kw_out_ach[i] == 0.0 {
+            self.sd.fc_kw_in_ach[i] = 0.0;
+            self.sd.fc_kw_out_ach_pct[i] = 0.0;
+        } else {
+            if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.vehthrm.fc_model {
+                if let FcTempEffModel::Linear(FcTempEffModelLinear{ offset, slope, minimum }) = fc_temp_eff_model {
+                    self.state.fc_eta_temp_coeff = max(
+                        *minimum,
+                        min(1.0, offset + slope * self.state.fc_te_deg_c)
+                    );
+                }
+                if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag, minimum }) = fc_temp_eff_model {
+                    self.state.fc_eta_temp_coeff = max(
+                        *minimum,
+                        1.0 - (-max(self.state.fc_te_deg_c - offset, 0.0)).powf(*lag)
+                    );
+
+                    if let FcTempEffComponent::Hybrid = fc_temp_eff_comp {
+                        if self.state.cat_te_deg_c < self.vehthrm.cat_te_lightoff_deg_c {
+                            // reduce efficiency to account for catalyst not being lit off
+                            self.state.fc_eta_temp_coeff = self.state.fc_eta_temp_coeff * self.vehthrm.cat_fc_eta_coeff;
+                        }
+                    }
+                }
+            }
+                
+            if self.sd.fc_kw_out_ach[i] == ndarrmax(&self.sd.veh.input_kw_out_array) {
+                self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i] / (self.sd.veh.fc_eff_array.last().unwrap() * self.state.fc_eta_temp_coeff)
+            } else {
+                self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i] / (
+                    self.sd.veh.fc_eff_array[
+                        max(
+                            1.0,
+                            np.argmax(self.sd.veh.fc_kw_out_array > min(
+                                self.sd.fc_kw_out_ach[i],
+                                ndarrmax(&self.sd.veh.input_kw_out_array) - 0.001
+                            )) - 1
+                        ) as usize
+                    ]
+                ) / self.state.fc_eta_temp_coeff
+            }
+        }
+
+        self.sd.fs_kw_out_ach[i] = self.sd.fc_kw_in_ach[i];
+
+        self.sd.fs_kwh_out_ach[i] = self.sd.fs_kw_out_ach[i] * self.sd.cyc.dt_s()[i] / 3.6e3;
     }
+    
     pub fn set_time_dilation(&mut self, i: usize) {
         self.sd.set_time_dilation(i).unwrap();
     }
