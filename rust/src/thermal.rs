@@ -1,7 +1,6 @@
 //! Module for simulating thermal behavior of powertrains
-
-use proc_macros::{add_pyo3_api, HistoryVec};
 use ndarray::Array1;
+use proc_macros::{add_pyo3_api, HistoryVec};
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
@@ -13,9 +12,9 @@ use std::path::PathBuf;
 
 use crate::air::AirProperties;
 use crate::cycle;
-use crate::vehicle;
 use crate::simdrive;
 use crate::utils::Pyo3VecF64;
+use crate::vehicle;
 
 use crate::utils::*;
 use crate::vehicle_thermal::*;
@@ -31,8 +30,7 @@ use crate::vehicle_thermal::*;
         cab_te_deg_c_init: Option<f64>,
         exhport_te_deg_c_init: Option<f64>,
         cat_te_deg_c_init: Option<f64>,
-        
-    ) -> Self {
+     ) -> Self {
         // Initialize objects
         let sd = simdrive::RustSimDrive::new(cyc, veh);
         let vehthrm = VehicleThermal::default();
@@ -60,8 +58,7 @@ use crate::vehicle_thermal::*;
     pub fn gap_to_lead_vehicle_m_py(&self) -> PyResult<Vec<f64>> {
         Ok(self.gap_to_lead_vehicle_m().to_vec())
     }
-    
-    #[pyo3(name = "sim_drive")]
+     #[pyo3(name = "sim_drive")]
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
     /// Arguments
     /// ------------
@@ -122,8 +119,7 @@ use crate::vehicle_thermal::*;
         self.step();
         Ok(())
     }
-    
-    #[pyo3(name = "solve_step")]
+     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
     pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
         self.solve_step(i);
@@ -233,8 +229,7 @@ use crate::vehicle_thermal::*;
     /// Return length of time arrays
     pub fn len(&self) -> usize {
         self.sd.cyc.time_s.len()
-    }    
-
+    } 
     /// added to make clippy happy
     /// not sure whether there is any benefit to this or not for our purposes
     /// Return self.cyc.time_is.is_empty()
@@ -278,14 +273,12 @@ impl SimDriveHot {
         self.sd.hev_sim_count = 0;
 
         let init_soc = match init_soc {
-            Some(x) => {
-                x
-            },
+            Some(x) => x,
             None => {
-                if self.sd.veh.veh_pt_type == vehicle::CONV{
+                if self.sd.veh.veh_pt_type == vehicle::CONV {
                     // If no EV / Hybrid components, no SOC considerations.
                     (self.sd.veh.max_soc + self.sd.veh.min_soc) / 2.0
-                } else if self.sd.veh.veh_pt_type == vehicle::HEV {  
+                } else if self.sd.veh.veh_pt_type == vehicle::HEV {
                     // ####################################
                     // ### Charge Balancing Vehicle SOC ###
                     // ####################################
@@ -293,28 +286,35 @@ impl SimDriveHot {
                     // Iterating until tolerance met or 30 attempts made.
                     let mut init_soc = (self.sd.veh.max_soc + self.sd.veh.min_soc) / 2.0;
                     let mut ess_2fuel_kwh = 1.0;
-                    while ess_2fuel_kwh > self.sd.veh.ess_to_fuel_ok_error && self.sd.hev_sim_count < self.sd.sim_params.sim_count_max {
+                    while ess_2fuel_kwh > self.sd.veh.ess_to_fuel_ok_error
+                        && self.sd.hev_sim_count < self.sd.sim_params.sim_count_max
+                    {
                         self.sd.hev_sim_count += 1;
                         self.walk(init_soc, aux_in_kw_override.clone());
                         let fuel_kj = (&self.sd.fs_kw_out_ach * self.sd.cyc.dt_s()).sum();
-                        let roadway_chg_kj = (&self.sd.roadway_chg_kw_out_ach * self.sd.cyc.dt_s()).sum();
+                        let roadway_chg_kj =
+                            (&self.sd.roadway_chg_kw_out_ach * self.sd.cyc.dt_s()).sum();
                         if (fuel_kj + roadway_chg_kj) > 0.0 {
-                            ess_2fuel_kwh = (
-                                (self.sd.soc[0] - self.sd.soc[self.len()-1]) * self.sd.veh.ess_max_kwh * 3.6e3 / (fuel_kj + roadway_chg_kj)
-                            ).abs();
+                            ess_2fuel_kwh = ((self.sd.soc[0] - self.sd.soc[self.len() - 1])
+                                * self.sd.veh.ess_max_kwh
+                                * 3.6e3
+                                / (fuel_kj + roadway_chg_kj))
+                                .abs();
                         } else {
                             ess_2fuel_kwh = 0.0;
                         }
-                        init_soc = min(1.0, max(0.0, self.sd.soc[self.len()-1]));
+                        init_soc = min(1.0, max(0.0, self.sd.soc[self.len() - 1]));
                     }
                     init_soc
-                } else if self.sd.veh.veh_pt_type == vehicle::PHEV || self.sd.veh.veh_pt_type == vehicle::BEV { 
+                } else if self.sd.veh.veh_pt_type == vehicle::PHEV
+                    || self.sd.veh.veh_pt_type == vehicle::BEV
+                {
                     // If EV, initializing initial SOC to maximum SOC.
                     self.sd.veh.max_soc
                 } else {
                     panic!("Failed to properly initialize SOC.");
                 }
-            },
+            }
         };
 
         self.walk(init_soc, aux_in_kw_override);
@@ -330,6 +330,7 @@ impl SimDriveHot {
     }
 
     pub fn init_for_step(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
+        self.history.push(self.state.clone());
         self.sd.init_for_step(init_soc, aux_in_kw_override).unwrap();
     }
 
@@ -361,37 +362,39 @@ impl SimDriveHot {
     }
 
     pub fn set_thermal_calcs(&mut self, i: usize) {
-        // most of the thermal equations are at [i-1] because the various thermally 
-        // sensitive component efficiencies dependent on the [i] temperatures, but 
-        // these are in turn dependent on [i-1] heat transfer processes  
+        // most of the thermal equations are at [i-1] because the various thermally
+        // sensitive component efficiencies dependent on the [i] temperatures, but
+        // these are in turn dependent on [i-1] heat transfer processes
         // verify that valid option is specified
 
-        if let FcModelTypes::Internal(..) = &self.vehthrm.fc_model {self.set_fc_thermal_calcs(i);}
+        if let FcModelTypes::Internal(..) = &self.vehthrm.fc_model {
+            self.set_fc_thermal_calcs(i);
+        }
 
-        if self.vehthrm.hvac_model ==
-            ComponentModelTypes::Internal {
-                self.set_fc_thermal_calcs(i);
-            }
+        if self.vehthrm.hvac_model == ComponentModelTypes::Internal {
+            self.set_fc_thermal_calcs(i);
+        }
 
         if self.vehthrm.cabin_model == ComponentModelTypes::Internal {
-                self.set_cab_thermal_calcs(i);
+            self.set_cab_thermal_calcs(i);
         }
 
-        if self.vehthrm.exhport_model ==
-            ComponentModelTypes::Internal {
-                self.set_exhport_thermal_calcs(i)
+        if self.vehthrm.exhport_model == ComponentModelTypes::Internal {
+            self.set_exhport_thermal_calcs(i)
         }
 
-        if self.vehthrm.cat_model ==
-            ComponentModelTypes::Internal {
-                self.set_cat_thermal_calcs(i)
+        if self.vehthrm.cat_model == ComponentModelTypes::Internal {
+            self.set_cat_thermal_calcs(i)
         }
 
-        // if self.vehthrm.fc_model == 'internal':
-        //     // Energy balance for fuel converter
-        //     self.fc_te_deg_c[i] = self.fc_te_deg_c[i-1] + (
-        //        self.fc_qdot_kw[i] - self.fc_qdot_to_amb_kw[i] - self.fc_qdot_to_htr_kw[i]) / self.vehthrm.fc_C_kJ__K * self.cyc.dt_s[i]
-       
+        if self.vehthrm.fc_model != FcModelTypes::External {
+            // Energy balance for fuel converter
+            self.state.fc_te_deg_c = self.state.fc_te_deg_c + (
+                self.state.fc_qdot_kw
+                - self.state.fc_qdot_to_amb_kw
+                - self.state.fc_qdot_to_htr_kw
+            ) / self.vehthrm.fc_c_kj__k * self.sd.cyc.dt_s()[i]
+        }
     }
 
     /// Solve fuel converter thermal behavior assuming convection parameters of sphere.
@@ -399,53 +402,73 @@ impl SimDriveHot {
         // Constitutive equations for fuel converter
         // calculation of adiabatic flame temperature
         self.state.fc_te_adiabatic_deg_c = self.air.get_te_from_h(
-            ((1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich) * self.air.get_h(self.state.amb_te_deg_c) + 
-                self.sd.props.get_fuel_lhv_kj_per_kg() * 1e3 * self.state.fc_lambda.min(1.0)
-            ) / (1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich)
+            ((1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich)
+                * self.air.get_h(self.state.amb_te_deg_c)
+                + self.sd.props.get_fuel_lhv_kj_per_kg() * 1e3 * self.state.fc_lambda.min(1.0))
+                / (1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich),
         );
 
         // limited between 0 and 1, but should really not get near 1
-        self.state.fc_qdot_per_net_heat = 
-            (self.vehthrm.fc_coeff_from_comb * (self.state.fc_te_adiabatic_deg_c - self.state.fc_te_deg_c)).min(1.0).max(0.0);
+        self.state.fc_qdot_per_net_heat = (self.vehthrm.fc_coeff_from_comb
+            * (self.state.fc_te_adiabatic_deg_c - self.state.fc_te_deg_c))
+            .min(1.0)
+            .max(0.0);
 
-        // heat generation 
-        self.state.fc_qdot_kw = self.state.fc_qdot_per_net_heat * (self.sd.fc_kw_in_ach[i-1] - self.sd.fc_kw_out_ach[i-1]);
+        // heat generation
+        self.state.fc_qdot_kw = self.state.fc_qdot_per_net_heat
+            * (self.sd.fc_kw_in_ach[i - 1] - self.sd.fc_kw_out_ach[i - 1]);
 
         // film temperature for external convection calculations
         let fc_air_film_te_deg_c = 0.5 * (self.state.fc_te_deg_c + self.state.amb_te_deg_c);
-    
+
         // density * speed * diameter / dynamic viscosity
-        let fc_air_film_re = self.air.get_rho(fc_air_film_te_deg_c, None) * self.sd.mps_ach[i-1] * self.vehthrm.fc_l / 
-            self.air.get_mu(fc_air_film_te_deg_c);
+        let fc_air_film_re = self.air.get_rho(fc_air_film_te_deg_c, None)
+            * self.sd.mps_ach[i - 1]
+            * self.vehthrm.fc_l
+            / self.air.get_mu(fc_air_film_te_deg_c);
 
         // calculate heat transfer coeff. from engine to ambient [W / (m ** 2 * K)]
-        if self.sd.mps_ach[i-1] < 1.0 {
+        if self.sd.mps_ach[i - 1] < 1.0 {
             // if stopped, scale based on thermostat opening and constant convection
             self.state.fc_htc_to_amb = interpolate(
                 &self.state.fc_te_deg_c,
-                &Array1::from_vec(vec![self.vehthrm.tstat_te_sto_deg_c, self.vehthrm.tstat_te_fo_deg_c()]),
-                &Array1::from_vec(vec![self.vehthrm.fc_htc_to_amb_stop, self.vehthrm.fc_htc_to_amb_stop * self.vehthrm.rad_eps]),
-                false
+                &Array1::from_vec(vec![
+                    self.vehthrm.tstat_te_sto_deg_c,
+                    self.vehthrm.tstat_te_fo_deg_c(),
+                ]),
+                &Array1::from_vec(vec![
+                    self.vehthrm.fc_htc_to_amb_stop,
+                    self.vehthrm.fc_htc_to_amb_stop * self.vehthrm.rad_eps,
+                ]),
+                false,
             )
         } else {
-            // Calculate heat transfer coefficient for sphere, 
+            // Calculate heat transfer coefficient for sphere,
             // from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
             let fc_sphere_conv_params = get_sphere_conv_params(fc_air_film_re);
-            let fc_htc_to_amb_sphere =
-                (fc_sphere_conv_params.0 * fc_air_film_re.powf(fc_sphere_conv_params.1)) *
-                self.air.get_pr(fc_air_film_te_deg_c).powf(1.0/3.0) *
-                self.air.get_k(fc_air_film_te_deg_c) / self.vehthrm.fc_l;
+            let fc_htc_to_amb_sphere = (fc_sphere_conv_params.0
+                * fc_air_film_re.powf(fc_sphere_conv_params.1))
+                * self.air.get_pr(fc_air_film_te_deg_c).powf(1.0 / 3.0)
+                * self.air.get_k(fc_air_film_te_deg_c)
+                / self.vehthrm.fc_l;
             self.state.fc_htc_to_amb = interpolate(
                 &self.state.fc_te_deg_c,
-                &Array1::from_vec(vec![self.vehthrm.tstat_te_sto_deg_c, self.vehthrm.tstat_te_fo_deg_c()]),
-                &Array1::from_vec(vec![fc_htc_to_amb_sphere, fc_htc_to_amb_sphere * self.vehthrm.rad_eps]),
-                false
+                &Array1::from_vec(vec![
+                    self.vehthrm.tstat_te_sto_deg_c,
+                    self.vehthrm.tstat_te_fo_deg_c(),
+                ]),
+                &Array1::from_vec(vec![
+                    fc_htc_to_amb_sphere,
+                    fc_htc_to_amb_sphere * self.vehthrm.rad_eps,
+                ]),
+                false,
             )
         }
 
-        self.state.fc_qdot_to_amb_kw = self.state.fc_htc_to_amb * 1e-3 * self.vehthrm.fc_area_ext() * (self.state.fc_te_deg_c - self.state.amb_te_deg_c)
-
-
+        self.state.fc_qdot_to_amb_kw = self.state.fc_htc_to_amb
+            * 1e-3
+            * self.vehthrm.fc_area_ext()
+            * (self.state.fc_te_deg_c - self.state.amb_te_deg_c)
     }
 
     /// Solve cabin thermal behavior.
@@ -453,43 +476,56 @@ impl SimDriveHot {
         // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
         // Transfer, 7th Edition
         let cab_te_film_ext_deg_c: f64 = 0.5 * (self.state.cab_te_deg_c + self.state.amb_te_deg_c);
-        let re_l: f64 = self.air.get_rho(cab_te_film_ext_deg_c, None) * self.sd.mps_ach[i-1] * self.vehthrm.cab_l_length / self.air.get_mu(cab_te_film_ext_deg_c);
-        let re_l_crit: f64 = 5.0e5;  // critical Re for transition to turbulence
+        let re_l: f64 = self.air.get_rho(cab_te_film_ext_deg_c, None)
+            * self.sd.mps_ach[i - 1]
+            * self.vehthrm.cab_l_length
+            / self.air.get_mu(cab_te_film_ext_deg_c);
+        let re_l_crit: f64 = 5.0e5; // critical Re for transition to turbulence
 
         let nu_l_bar = if re_l < re_l_crit {
             // equation 7.30
-            0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0/3.0)
+            0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0 / 3.0)
         } else {
             // equation 7.38
-            let a = 871.0;  // equation 7.39
-             (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c)
+            let a = 871.0; // equation 7.39
+            (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c)
         };
-        
-        if self.sd.mph_ach[i-1] > 2.0 {        
-            self.state.cab_qdot_to_amb_kw = 1e-3 * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width) / (
-                1.0 / (nu_l_bar * self.air.get_k(cab_te_film_ext_deg_c) / self.vehthrm.cab_l_length) + self.vehthrm.cab_r_to_amb
-                ) * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
+
+        if self.sd.mph_ach[i - 1] > 2.0 {
+            self.state.cab_qdot_to_amb_kw = 1e-3
+                * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
+                / (1.0
+                    / (nu_l_bar * self.air.get_k(cab_te_film_ext_deg_c)
+                        / self.vehthrm.cab_l_length)
+                    + self.vehthrm.cab_r_to_amb)
+                * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
         } else {
-            self.state.cab_qdot_to_amb_kw = 1e-3 * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width) / (
-                1.0 / self.vehthrm.cab_htc_to_amb_stop + self.vehthrm.cab_r_to_amb
-                ) * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
+            self.state.cab_qdot_to_amb_kw = 1e-3
+                * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
+                / (1.0 / self.vehthrm.cab_htc_to_amb_stop + self.vehthrm.cab_r_to_amb)
+                * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
         }
-        
-        self.state.cab_te_deg_c +=  
-            (self.state.fc_qdot_to_htr_kw - self.state.cab_qdot_to_amb_kw) / self.vehthrm.cab_c_kj__k * self.sd.cyc.dt_s()[i];
+
+        self.state.cab_te_deg_c += (self.state.fc_qdot_to_htr_kw - self.state.cab_qdot_to_amb_kw)
+            / self.vehthrm.cab_c_kj__k
+            * self.sd.cyc.dt_s()[i];
     }
 
     /// Solve exhport thermal behavior.
     pub fn set_exhport_thermal_calcs(&mut self, i: usize) {
         // lambda index may need adjustment, depending on how this ends up being modeled.
-        self.state.exh_mdot = self.sd.fs_kw_out_ach[i-1] / self.sd.props.get_fuel_lhv_kj_per_kg() * (1.0 + self.sd.props.fuel_afr_stoich * self.state.fc_lambda);
-        self.state.exh_hdot_kw = (1.0 - self.state.fc_qdot_per_net_heat) * (self.sd.fc_kw_in_ach[i-1] - self.sd.fc_kw_out_ach[i-1]);
-        
+        self.state.exh_mdot = self.sd.fs_kw_out_ach[i - 1] / self.sd.props.get_fuel_lhv_kj_per_kg()
+            * (1.0 + self.sd.props.fuel_afr_stoich * self.state.fc_lambda);
+        self.state.exh_hdot_kw = (1.0 - self.state.fc_qdot_per_net_heat)
+            * (self.sd.fc_kw_in_ach[i - 1] - self.sd.fc_kw_out_ach[i - 1]);
+
         if self.state.exh_mdot > 5e-4 {
             self.state.exhport_exh_te_in_deg_c = min(
-                self.air.get_te_from_h(self.state.exh_hdot_kw * 1e3 / self.state.exh_mdot),
-                self.state.fc_te_adiabatic_deg_c);
-            // when flow is small, assume inlet temperature is temporally constant 
+                self.air
+                    .get_te_from_h(self.state.exh_hdot_kw * 1e3 / self.state.exh_mdot),
+                self.state.fc_te_adiabatic_deg_c,
+            );
+            // when flow is small, assume inlet temperature is temporally constant
             // so previous value is not overwritten
         }
 
@@ -498,48 +534,67 @@ impl SimDriveHot {
             // if exhaust port is hotter than ambient, make sure heat transfer cannot violate the second law
             self.state.exhport_qdot_to_amb = min(
                 // nominal heat transfer to amb
-                self.vehthrm.exhport_ha_to_amb * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c),
+                self.vehthrm.exhport_ha_to_amb
+                    * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c),
                 // max possible heat transfer to amb
-                self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c) / self.sd.cyc.dt_s()[i]
+                self.vehthrm.exhport_c_kj__k
+                    * 1e3
+                    * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c)
+                    / self.sd.cyc.dt_s()[i],
             );
         } else {
             // exhaust port cooler than the ambient
             self.state.exhport_qdot_to_amb = max(
                 // nominal heat transfer to amb
-                self.vehthrm.exhport_ha_to_amb * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c),
+                self.vehthrm.exhport_ha_to_amb
+                    * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c),
                 // max possible heat transfer to amb
-                self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c) / self.sd.cyc.dt_s()[i]
+                self.vehthrm.exhport_c_kj__k
+                    * 1e3
+                    * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c)
+                    / self.sd.cyc.dt_s()[i],
             );
         }
 
         if (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) > 0.0 {
             // exhaust hotter than exhaust port
-            self.state.exhport_qdot_from_exh = arrmin(
-                &[
-                    // nominal heat transfer to exhaust port
-                    self.vehthrm.exhport_ha_int * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
-                    // max possible heat transfer from exhaust
-                    self.state.exh_mdot * (self.air.get_h(self.state.exhport_exh_te_in_deg_c) - self.air.get_h(self.state.exhport_te_deg_c)),
-                    // max possible heat transfer to exhaust port
-                    self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) / self.sd.cyc.dt_s()[i]
-                ]
-            );
+            self.state.exhport_qdot_from_exh = arrmin(&[
+                // nominal heat transfer to exhaust port
+                self.vehthrm.exhport_ha_int
+                    * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
+                // max possible heat transfer from exhaust
+                self.state.exh_mdot
+                    * (self.air.get_h(self.state.exhport_exh_te_in_deg_c)
+                        - self.air.get_h(self.state.exhport_te_deg_c)),
+                // max possible heat transfer to exhaust port
+                self.vehthrm.exhport_c_kj__k
+                    * 1e3
+                    * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c)
+                    / self.sd.cyc.dt_s()[i],
+            ]);
         } else {
             // exhaust cooler than exhaust port
-            self.state.exhport_qdot_from_exh = arrmax(
-                &[
-                    // nominal heat transfer to exhaust port
-                    self.vehthrm.exhport_ha_int * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
-                    // max possible heat transfer from exhaust
-                    self.state.exh_mdot * (self.air.get_h(self.state.exhport_exh_te_in_deg_c) - self.air.get_h(self.state.exhport_te_deg_c)),
-                    // max possible heat transfer to exhaust port
-                    self.vehthrm.exhport_c_kj__k * 1e3 * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c) / self.sd.cyc.dt_s()[i]
-                ]
-            );
+            self.state.exhport_qdot_from_exh = arrmax(&[
+                // nominal heat transfer to exhaust port
+                self.vehthrm.exhport_ha_int
+                    * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c),
+                // max possible heat transfer from exhaust
+                self.state.exh_mdot
+                    * (self.air.get_h(self.state.exhport_exh_te_in_deg_c)
+                        - self.air.get_h(self.state.exhport_te_deg_c)),
+                // max possible heat transfer to exhaust port
+                self.vehthrm.exhport_c_kj__k
+                    * 1e3
+                    * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c)
+                    / self.sd.cyc.dt_s()[i],
+            ]);
         }
 
-        self.state.exhport_qdot_net = self.state.exhport_qdot_from_exh - self.state.exhport_qdot_to_amb;
-        self.state.exhport_te_deg_c += self.state.exhport_qdot_net / (self.vehthrm.exhport_c_kj__k * 1e3) * self.sd.cyc.dt_s()[i];
+        self.state.exhport_qdot_net =
+            self.state.exhport_qdot_from_exh - self.state.exhport_qdot_to_amb;
+        self.state.exhport_te_deg_c += self.state.exhport_qdot_net
+            / (self.vehthrm.exhport_c_kj__k * 1e3)
+            * self.sd.cyc.dt_s()[i];
     }
 
     pub fn thermal_soak_walk(&mut self) {
@@ -558,46 +613,63 @@ impl SimDriveHot {
         // catalyst film temperature for property calculation
         let cat_te_ext_film_deg_c: f64 = 0.5 * (self.state.cat_te_deg_c + self.state.amb_te_deg_c);
         // density * speed * diameter / dynamic viscosity
-        self.state.cat_re_ext =
-            self.air.get_rho(cat_te_ext_film_deg_c, None) * self.sd.mps_ach[i-1] * self.vehthrm.cat_l 
+        self.state.cat_re_ext = self.air.get_rho(cat_te_ext_film_deg_c, None)
+            * self.sd.mps_ach[i - 1]
+            * self.vehthrm.cat_l
             / self.air.get_mu(cat_te_ext_film_deg_c);
 
         // calculate heat transfer coeff. from cat to ambient [W / (m ** 2 * K)]
-        if self.sd.mps_ach[i-1] < 1.0 {
+        if self.sd.mps_ach[i - 1] < 1.0 {
             // if stopped, scale based on constant convection
             self.state.cat_htc_to_amb = self.vehthrm.cat_htc_to_amb_stop;
         } else {
             // if moving, scale based on speed dependent convection and thermostat opening
             // Nusselt number coefficients from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
             let cat_sphere_conv_params = get_sphere_conv_params(self.state.cat_re_ext);
-            self.state.fc_htc_to_amb = (cat_sphere_conv_params.0 * self.state.cat_re_ext.powf(cat_sphere_conv_params.1)
-                ) * self.air.get_pr(cat_te_ext_film_deg_c).powf(1.0 / 3.0) * self.air.get_k(cat_te_ext_film_deg_c) / self.vehthrm.cat_l;
+            self.state.fc_htc_to_amb = (cat_sphere_conv_params.0
+                * self.state.cat_re_ext.powf(cat_sphere_conv_params.1))
+                * self.air.get_pr(cat_te_ext_film_deg_c).powf(1.0 / 3.0)
+                * self.air.get_k(cat_te_ext_film_deg_c)
+                / self.vehthrm.cat_l;
         }
 
         if (self.state.cat_te_deg_c - self.state.amb_te_deg_c) > 0.0 {
             // cat hotter than ambient
             self.state.cat_qdot_to_amb = min(
                 // nominal heat transfer to ambient
-                self.state.cat_htc_to_amb * self.vehthrm.cat_area_ext() * (self.state.cat_te_deg_c - self.state.amb_te_deg_c),
+                self.state.cat_htc_to_amb
+                    * self.vehthrm.cat_area_ext()
+                    * (self.state.cat_te_deg_c - self.state.amb_te_deg_c),
                 // max possible heat transfer to ambient
-                self.vehthrm.cat_c_kj__K * 1e3 * (self.state.cat_te_deg_c - self.state.amb_te_deg_c) / self.sd.cyc.dt_s()[i]
+                self.vehthrm.cat_c_kj__K
+                    * 1e3
+                    * (self.state.cat_te_deg_c - self.state.amb_te_deg_c)
+                    / self.sd.cyc.dt_s()[i],
             );
         } else {
             // ambient hotter than cat (less common)
             self.state.cat_qdot_to_amb = max(
                 // nominal heat transfer to ambient
-                self.state.cat_htc_to_amb * self.vehthrm.cat_area_ext() * (self.state.cat_te_deg_c - self.state.amb_te_deg_c),
+                self.state.cat_htc_to_amb
+                    * self.vehthrm.cat_area_ext()
+                    * (self.state.cat_te_deg_c - self.state.amb_te_deg_c),
                 // max possible heat transfer to ambient
-                self.vehthrm.cat_c_kj__K * 1e3 * (self.state.cat_te_deg_c - self.state.amb_te_deg_c) / self.sd.cyc.dt_s()[i]
+                self.vehthrm.cat_c_kj__K
+                    * 1e3
+                    * (self.state.cat_te_deg_c - self.state.amb_te_deg_c)
+                    / self.sd.cyc.dt_s()[i],
             );
         }
-        
+
         if self.state.exh_mdot > 5e-4 {
             self.state.cat_exh_te_in_deg_c = min(
-                self.air.get_te_from_h((self.state.exh_hdot_kw * 1e3 - self.state.exhport_qdot_from_exh) / self.state.exh_mdot),
-                self.state.fc_te_adiabatic_deg_c
+                self.air.get_te_from_h(
+                    (self.state.exh_hdot_kw * 1e3 - self.state.exhport_qdot_from_exh)
+                        / self.state.exh_mdot,
+                ),
+                self.state.fc_te_adiabatic_deg_c,
             );
-            // when flow is small, assume inlet temperature is temporally constant 
+            // when flow is small, assume inlet temperature is temporally constant
             // so previous value is not overwritten
         }
 
@@ -605,27 +677,39 @@ impl SimDriveHot {
             // exhaust hotter than cat
             self.state.cat_qdot_from_exh = min(
                 // limited by exhaust heat capacitance flow
-                self.state.exh_mdot * (self.air.get_h(self.state.cat_exh_te_in_deg_c) - self.air.get_h(self.state.cat_te_deg_c)),
+                self.state.exh_mdot
+                    * (self.air.get_h(self.state.cat_exh_te_in_deg_c)
+                        - self.air.get_h(self.state.cat_te_deg_c)),
                 // limited by catalyst thermal mass temperature change
-                self.vehthrm.cab_c_kj__k * 1e3 * (self.state.cat_exh_te_in_deg_c - self.state.cat_te_deg_c) / self.sd.cyc.dt_s()[i]
+                self.vehthrm.cab_c_kj__k
+                    * 1e3
+                    * (self.state.cat_exh_te_in_deg_c - self.state.cat_te_deg_c)
+                    / self.sd.cyc.dt_s()[i],
             );
         } else {
             // cat hotter than exhaust (less common)
             self.state.cat_qdot_from_exh = max(
                 // limited by exhaust heat capacitance flow
-                self.state.exh_mdot * (self.air.get_h(self.state.cat_exh_te_in_deg_c) - self.air.get_h(self.state.cat_te_deg_c)),
+                self.state.exh_mdot
+                    * (self.air.get_h(self.state.cat_exh_te_in_deg_c)
+                        - self.air.get_h(self.state.cat_te_deg_c)),
                 // limited by catalyst thermal mass temperature change
-                self.vehthrm.cat_c_kj__K * 1e3 * (self.state.cat_exh_te_in_deg_c - self.state.cat_te_deg_c) / self.sd.cyc.dt_s()[i]
+                self.vehthrm.cat_c_kj__K
+                    * 1e3
+                    * (self.state.cat_exh_te_in_deg_c - self.state.cat_te_deg_c)
+                    / self.sd.cyc.dt_s()[i],
             );
         }
 
         // catalyst heat generation
-        self.state.cat_qdot = 0.0;  // TODO: put something substantive here eventually
+        self.state.cat_qdot = 0.0; // TODO: put something substantive here eventually
 
         // net heat generetion/transfer in cat
-        self.state.cat_qdot_net = self.state.cat_qdot + self.state.cat_qdot_from_exh - self.state.cat_qdot_to_amb;
+        self.state.cat_qdot_net =
+            self.state.cat_qdot + self.state.cat_qdot_from_exh - self.state.cat_qdot_to_amb;
 
-        self.state.cat_te_deg_c += self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__K * self.sd.cyc.dt_s()[i];
+        self.state.cat_te_deg_c +=
+            self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__K * self.sd.cyc.dt_s()[i];
     }
 
     pub fn set_misc_calcs(&mut self, i: usize) {
@@ -656,32 +740,38 @@ impl SimDriveHot {
         self.sd.set_hybrid_cont_decisions(i).unwrap();
     }
 
-    pub fn set_fc_power(&mut self, i: usize) { 
+    pub fn set_fc_power(&mut self, i: usize) {
         if self.sd.veh.fc_max_kw == 0.0 {
             self.sd.fc_kw_out_ach[i] = 0.0;
         } else if self.sd.veh.fc_eff_type == vehicle::H2FC {
             self.sd.fc_kw_out_ach[i] = min(
-                self.sd.cur_max_fc_kw_out[i], 
+                self.sd.cur_max_fc_kw_out[i],
                 max(
-                    0.0, 
-                    self.sd.mc_elec_kw_in_ach[i] + self.sd.aux_in_kw[i] - self.sd.ess_kw_out_ach[i] - self.sd.roadway_chg_kw_out_ach[i]
-                )
+                    0.0,
+                    self.sd.mc_elec_kw_in_ach[i] + self.sd.aux_in_kw[i]
+                        - self.sd.ess_kw_out_ach[i]
+                        - self.sd.roadway_chg_kw_out_ach[i],
+                ),
             );
-        } else if self.sd.veh.no_elec_sys || self.sd.veh.no_elec_aux || self.sd.high_acc_fc_on_tag[i] {
+        } else if self.sd.veh.no_elec_sys
+            || self.sd.veh.no_elec_aux
+            || self.sd.high_acc_fc_on_tag[i]
+        {
             self.sd.fc_kw_out_ach[i] = min(
-                self.sd.cur_max_fc_kw_out[i], 
+                self.sd.cur_max_fc_kw_out[i],
                 max(
-                    0.0, 
-                    self.sd.trans_kw_in_ach[i] - self.sd.mc_mech_kw_out_ach[i] + self.sd.aux_in_kw[i]
-                )
+                    0.0,
+                    self.sd.trans_kw_in_ach[i] - self.sd.mc_mech_kw_out_ach[i]
+                        + self.sd.aux_in_kw[i],
+                ),
             );
         } else {
             self.sd.fc_kw_out_ach[i] = min(
                 self.sd.cur_max_fc_kw_out[i],
                 max(
                     0.0,
-                    self.sd.trans_kw_in_ach[i] - self.sd.mc_mech_kw_out_ach[i]
-                )
+                    self.sd.trans_kw_in_ach[i] - self.sd.mc_mech_kw_out_ach[i],
+                ),
             );
         }
 
@@ -695,42 +785,57 @@ impl SimDriveHot {
             self.sd.fc_kw_in_ach[i] = 0.0;
             self.sd.fc_kw_out_ach_pct[i] = 0.0;
         } else {
-            if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.vehthrm.fc_model {
-                if let FcTempEffModel::Linear(FcTempEffModelLinear{ offset, slope, minimum }) = fc_temp_eff_model {
-                    self.state.fc_eta_temp_coeff = max(
-                        *minimum,
-                        min(1.0, offset + slope * self.state.fc_te_deg_c)
-                    );
+            if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) =
+                &self.vehthrm.fc_model
+            {
+                if let FcTempEffModel::Linear(FcTempEffModelLinear {
+                    offset,
+                    slope,
+                    minimum,
+                }) = fc_temp_eff_model
+                {
+                    self.state.fc_eta_temp_coeff =
+                        max(*minimum, min(1.0, offset + slope * self.state.fc_te_deg_c));
                 }
-                if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag, minimum }) = fc_temp_eff_model {
+                if let FcTempEffModel::Exponential(FcTempEffModelExponential {
+                    offset,
+                    lag,
+                    minimum,
+                }) = fc_temp_eff_model
+                {
                     self.state.fc_eta_temp_coeff = max(
                         *minimum,
-                        1.0 - (-max(self.state.fc_te_deg_c - offset, 0.0)).powf(*lag)
+                        1.0 - (-max(self.state.fc_te_deg_c - offset, 0.0)).powf(*lag),
                     );
 
                     if let FcTempEffComponent::Hybrid = fc_temp_eff_comp {
                         if self.state.cat_te_deg_c < self.vehthrm.cat_te_lightoff_deg_c {
                             // reduce efficiency to account for catalyst not being lit off
-                            self.state.fc_eta_temp_coeff = self.state.fc_eta_temp_coeff * self.vehthrm.cat_fc_eta_coeff;
+                            self.state.fc_eta_temp_coeff =
+                                self.state.fc_eta_temp_coeff * self.vehthrm.cat_fc_eta_coeff;
                         }
                     }
                 }
             }
-                
+
             if self.sd.fc_kw_out_ach[i] == ndarrmax(&self.sd.veh.input_kw_out_array) {
-                self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i] / (self.sd.veh.fc_eff_array.last().unwrap() * self.state.fc_eta_temp_coeff)
+                self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i]
+                    / (self.sd.veh.fc_eff_array.last().unwrap() * self.state.fc_eta_temp_coeff)
             } else {
-                self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i] / (
-                    self.sd.veh.fc_eff_array[
-                        max(
-                            1.0,
-                            (first_grtr(&self.sd.veh.fc_kw_out_array, min(
+                self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i]
+                    / (self.sd.veh.fc_eff_array[max(
+                        1.0,
+                        (first_grtr(
+                            &self.sd.veh.fc_kw_out_array,
+                            min(
                                 self.sd.fc_kw_out_ach[i],
-                                ndarrmax(&self.sd.veh.input_kw_out_array) - 0.001
-                            )).unwrap() - 1) as f64
-                        ) as usize
-                    ]
-                ) / self.state.fc_eta_temp_coeff
+                                ndarrmax(&self.sd.veh.input_kw_out_array) - 0.001,
+                            ),
+                        )
+                        .unwrap()
+                            - 1) as f64,
+                    ) as usize])
+                    / self.state.fc_eta_temp_coeff
             }
         }
 
@@ -738,7 +843,7 @@ impl SimDriveHot {
 
         self.sd.fs_kwh_out_ach[i] = self.sd.fs_kw_out_ach[i] * self.sd.cyc.dt_s()[i] / 3.6e3;
     }
-    
+
     pub fn set_time_dilation(&mut self, i: usize) {
         self.sd.set_time_dilation(i).unwrap();
     }
@@ -748,7 +853,6 @@ impl SimDriveHot {
     }
 }
 
-
 #[pyclass]
 #[add_pyo3_api]
 #[allow(non_snake_case)]
@@ -757,7 +861,7 @@ impl SimDriveHot {
 pub struct ThermalState {
     // fuel converter (engine) variables
     /// fuel converter (engine) temperature [°C]
-    pub fc_te_deg_c: f64, 
+    pub fc_te_deg_c: f64,
     /// fuel converter temperature efficiency correction
     pub fc_eta_temp_coeff: f64,
     /// fuel converter heat generation per total heat release minus shaft power
@@ -781,7 +885,7 @@ pub struct ThermalState {
     /// cabin solar load [kw]
     pub cab_qdot_solar_kw: f64,
     /// cabin convection to ambient [kw]
-    pub cab_qdot_to_amb_kw: f64, 
+    pub cab_qdot_to_amb_kw: f64,
 
     // exhaust variables
     /// exhaust mass flow rate [kg/s]
@@ -790,13 +894,13 @@ pub struct ThermalState {
     pub exh_hdot_kw: f64,
 
     /// exhaust port (exhport) variables
-    /// exhaust temperature at exhaust port inlet 
+    /// exhaust temperature at exhaust port inlet
     pub exhport_exh_te_in_deg_c: f64,
     /// heat transfer from exhport to amb [kw]
     pub exhport_qdot_to_amb: f64,
     /// catalyst temperature [°C]
     pub exhport_te_deg_c: f64,
-    /// convection from exhaust to exhport [W] 
+    /// convection from exhaust to exhport [W]
     /// positive means exhport is receiving heat
     pub exhport_qdot_from_exh: f64,
     /// net heat generation in cat [W]
@@ -815,7 +919,7 @@ pub struct ThermalState {
     pub cat_exh_te_in_deg_c: f64,
     /// catalyst external reynolds number
     pub cat_re_ext: f64,
-    /// convection from exhaust to cat [W] 
+    /// convection from exhaust to cat [W]
     /// positive means cat is receiving heat
     pub cat_qdot_from_exh: f64,
     /// net heat generation in cat [W]
@@ -843,7 +947,7 @@ impl ThermalState {
             cab_te_deg_c: cab_te_deg_c_init.unwrap_or(default_te_deg_c),
             exhport_te_deg_c: exhport_te_deg_c_init.unwrap_or(default_te_deg_c),
             cat_te_deg_c: cat_te_deg_c_init.unwrap_or(default_te_deg_c),
-            .. Default::default()
+            ..Default::default()
         }
     }
 }
@@ -854,7 +958,7 @@ impl Default for ThermalState {
         let default_te_deg_c: f64 = 22.0;
 
         Self {
-            fc_te_deg_c: default_te_deg_c,  // overridden by new()
+            fc_te_deg_c: default_te_deg_c, // overridden by new()
             fc_eta_temp_coeff: 0.0,
             fc_qdot_per_net_heat: 0.0,
             fc_qdot_kw: 0.0,

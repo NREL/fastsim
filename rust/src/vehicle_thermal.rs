@@ -1,14 +1,13 @@
-use proc_macros::{add_pyo3_api};
+use proc_macros::add_pyo3_api;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::error::Error;
+use std::f64::consts::PI;
 use std::fs::File;
 use std::path::PathBuf;
-use std::f64::consts::PI;
-
 
 /// Whether FC thermal modeling is handled by FASTSim
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -62,12 +61,12 @@ impl Default for FcTempEffModel {
 pub struct FcTempEffModelLinear {
     pub offset: f64,
     pub slope: f64,
-    pub minimum: f64 
+    pub minimum: f64,
 }
 
 impl Default for FcTempEffModelLinear {
     fn default() -> Self {
-        Self{
+        Self {
             offset: 0.0,
             slope: 25.0,
             minimum: 0.2,
@@ -84,7 +83,7 @@ pub struct FcTempEffModelExponential {
 
 impl Default for FcTempEffModelExponential {
     fn default() -> Self {
-        Self{
+        Self {
             offset: 0.0,
             lag: 25.0,
             minimum: 0.2,
@@ -108,7 +107,7 @@ impl Default for ComponentModelTypes {
 }
 
 #[pyfunction]
-/// Given Reynolds number `re`, return C and m to calculate Nusselt number for 
+/// Given Reynolds number `re`, return C and m to calculate Nusselt number for
 /// sphere, from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
 pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     let (c, m) = if re < 4.0 {
@@ -154,7 +153,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             "Hybrid" => FcTempEffComponent::Hybrid,
             _ => panic!("Invalid option for fc_temp_eff_component.")
         };
-        
+
         self.fc_model = FcModelTypes::Internal(
             FcTempEffModel::Exponential (FcTempEffModelExponential{ offset, lag, minimum }), fc_temp_eff_comp)
     }
@@ -165,19 +164,19 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             // If model is internal
             if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset: _, lag, minimum }) = fc_temp_eff_model {
                 // If model is exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential 
-                    (FcTempEffModelExponential{ offset: new_offset, lag: *lag, minimum: *minimum }), 
+                FcModelTypes::Internal(FcTempEffModel::Exponential
+                    (FcTempEffModelExponential{ offset: new_offset, lag: *lag, minimum: *minimum }),
                     fc_temp_eff_comp.clone())
             } else {
                 // If model is not exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential 
-                    (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), 
+                FcModelTypes::Internal(FcTempEffModel::Exponential
+                    (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }),
                     fc_temp_eff_comp.clone())
             }
         }  else {
             // If model is not internal
-            FcModelTypes::Internal(FcTempEffModel::Exponential 
-                (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }), 
+            FcModelTypes::Internal(FcTempEffModel::Exponential
+                (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }),
                 FcTempEffComponent::default())
         }
     }
@@ -188,19 +187,19 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             // If model is internal
             if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag: _, minimum }) = fc_temp_eff_model {
                 // If model is exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential 
-                    (FcTempEffModelExponential{ offset: *offset, lag: new_lag, minimum: *minimum }), 
+                FcModelTypes::Internal(FcTempEffModel::Exponential
+                    (FcTempEffModelExponential{ offset: *offset, lag: new_lag, minimum: *minimum }),
                     fc_temp_eff_comp.clone())
             } else {
                 // If model is not exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential 
-                    (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }), 
+                FcModelTypes::Internal(FcTempEffModel::Exponential
+                    (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }),
                     fc_temp_eff_comp.clone())
             }
         }  else {
             // If model is not internal
-            FcModelTypes::Internal(FcTempEffModel::Exponential 
-                (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }), 
+            FcModelTypes::Internal(FcTempEffModel::Exponential
+                (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }),
                 FcTempEffComponent::default())
         }
     }
@@ -211,19 +210,19 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             // If model is internal
             if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag, minimum: _ }) = fc_temp_eff_model {
                 // If model is exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential 
-                    (FcTempEffModelExponential{ offset: *offset, lag: *lag, minimum: new_minimum }), 
+                FcModelTypes::Internal(FcTempEffModel::Exponential
+                    (FcTempEffModelExponential{ offset: *offset, lag: *lag, minimum: new_minimum }),
                     fc_temp_eff_comp.clone())
             } else {
                 // If model is not exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential 
-                    (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }), 
+                FcModelTypes::Internal(FcTempEffModel::Exponential
+                    (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }),
                     fc_temp_eff_comp.clone())
             }
         }  else {
             // If model is not internal
-            FcModelTypes::Internal(FcTempEffModel::Exponential 
-                (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }), 
+            FcModelTypes::Internal(FcTempEffModel::Exponential
+                (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }),
                 FcTempEffComponent::default())
         }
     }
@@ -257,7 +256,6 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
 
     // TODO: make setters for all the other enum stuff
 )]
-
 
 pub struct VehicleThermal {
     // fuel converter / engine
@@ -397,14 +395,12 @@ impl VehicleThermal {
     }
 
     /// parameter for engine surface area [m**2] for heat transfer calcs
-    pub fn fc_area_ext(&self) -> f64
-    {
-        PI * self.fc_l.powf(2.0/4.0)
+    pub fn fc_area_ext(&self) -> f64 {
+        PI * self.fc_l.powf(2.0 / 4.0)
     }
-    
+
     /// parameter for catalyst surface area [m**2] for heat transfer calcs
-    pub fn cat_area_ext(&self) -> f64
-    {
-        PI * self.cat_l.powf(2.0/4.0)
+    pub fn cat_area_ext(&self) -> f64 {
+        PI * self.cat_l.powf(2.0 / 4.0)
     }
 }

@@ -3,18 +3,18 @@
 extern crate ndarray;
 use ndarray::{Array, Array1};
 extern crate pyo3;
-use pyo3::prelude::*;
 use pyo3::exceptions::PyAttributeError;
+use pyo3::prelude::*;
 use pyo3::types::PyType;
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
-use std::error::Error;
 //use crate::utils::{Array1_serialize, deser_to_Array1};
 
 // local
-use crate::proc_macros::add_pyo3_api;
 use crate::params::*;
+use crate::proc_macros::add_pyo3_api;
 use crate::utils::*;
 
 pub const VEH_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/vehdb";
@@ -68,7 +68,7 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
         mc_max_kw: f64,
         mc_pwr_out_perc: Vec<f64>,
         // todo: check how this behaves w.r.t. to being a keyword argument with positional arguments after it
-        mc_eff_map: Option<Vec<f64>>,  
+        mc_eff_map: Option<Vec<f64>>,
         mc_sec_to_peak_pwr: f64,
         mc_pe_kg_per_kw: f64,
         mc_pe_base_kg: f64,
@@ -359,7 +359,7 @@ pub struct RustVehicle {
     /// Vehicle center of mass height, $m$  
     /// **NOTE:** positive for FWD, negative for RWD, AWD, 4WD
     pub veh_cg_m: f64,
-    /// Fraction of weight on the drive axle while stopped 
+    /// Fraction of weight on the drive axle while stopped
     pub drive_axle_weight_frac: f64,
     /// Wheelbase, $m$
     pub wheel_base_m: f64,
@@ -1042,8 +1042,6 @@ impl RustVehicle {
         veh.set_derived();
         veh
     }
-
-
 }
 
 pub fn load_vehicle() -> RustVehicle {

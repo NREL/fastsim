@@ -9,9 +9,9 @@ use pyo3::types::PyType;
 
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
-use std::error::Error;
 
 // crate local
 use crate::cycle::RustCycle;
@@ -21,7 +21,6 @@ use crate::utils::*;
 use crate::vehicle::*;
 
 pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
-    
 
 pub fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     res.map_err(PyRuntimeError::new_err)
@@ -301,7 +300,7 @@ impl Default for RustSimDriveParams {
     pub fn sim_drive_step(&mut self) -> PyResult<()> {
         handle_sd_res(self.step())
     }
-    
+
     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
     pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
@@ -401,7 +400,7 @@ impl Default for RustSimDriveParams {
     /// Return length of time arrays
     pub fn len(&self) -> usize {
         self.cyc.time_s.len()
-    }    
+    }
 
     /// added to make clippy happy
     /// not sure whether there is any benefit to this or not for our purposes
