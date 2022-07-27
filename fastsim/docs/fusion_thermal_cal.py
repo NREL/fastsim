@@ -107,14 +107,12 @@ for key in dfs.keys():
 
 
 # %%
-
-
 objectives = fsim.calibration.ModelErrors(
     sim_drives=cal_sim_drives,
     dfs=dfs_cal,
     objectives=[
         ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
-        ("state.fc_te_deg_c", "CylinderHeadTempC"),
+        ("history.fc_te_deg_c", "CylinderHeadTempC"),
     ],
     params=[
         "vehthrm.fc_c_kj__k",
@@ -146,20 +144,19 @@ problem = fsim.calibration.CalibrationProblem(
 )
 
 # %%
-problem.minimize()
-
-print(problem.res.X)
+from pymoo.util.termination.default import MultiObjectiveDefaultTermination as MODT
+res, res_df = fsim.calibration.run_minimize(
+    problem, 
+    termination=MODT(
+        # max number of generations, default of 10 is very small
+        n_max_gen=2,
+        # evaluate tolerance over this interval of generations every `nth_gen`
+        n_last=10,
+    ),
+)
+res_df
 
 # %%
-# Output pretty table
-from IPython.display import display, HTML
-d = {
-    param: result
-        for param, result in zip(objectives.params, problem.res.X.T)
-}
-res_df = pd.DataFrame(d)
-res_df["vehthrm.fc_coeff_from_comb"] = res_df["vehthrm.fc_coeff_from_comb"].apply(lambda x: f"{x:.3e}")
-res_df = res_df.round(3)
-display(HTML(res_df.to_html()))
+problem.err.get_errors(plot=True)
 
 # %%

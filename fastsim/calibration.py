@@ -183,8 +183,8 @@ class ModelErrors(object):
                     len(self.objectives) * 2 + 1, 1, sharex=True, figsize=(12, 8),
                 )
                 ax[-1].plot(
-                    sim_drive.cyc.time_s,
-                    sim_drive
+                    sim_drive.sd.cyc.time_s,
+                    sim_drive.sd.mps_ach,
                 )
 
             t1 = time.time()
@@ -196,7 +196,7 @@ class ModelErrors(object):
                 assert len(obj) == 1 or len(obj) == 2
                 if len(obj) == 2:
                     # If objective attribute path and reference signal passed
-                    mod_path = obj[0]  # str
+                    mod_path = obj[0]  # str, path to objective
                     ref_path = obj[1]  # str, df column name
                 elif len(obj) == 1:
                     # Minimizing objective attribute
@@ -209,22 +209,28 @@ class ModelErrors(object):
                 if ref_path:
                     ref_sig = df_exp[ref_path]
 
+                    # print(mod_path, mod_sig)
+                    # print(ref_path, ref_sig)
+
                     objectives[key][obj[0]] = get_error_val(
                         mod_sig,
                         ref_sig,
                         sim_drive.sd.cyc.time_s,
                     )
-                # TODO: write else
+                else:
+                    pass
+                    # TODO: write else block for objective minimization
 
                 if plot or plot_save_dir:
+                    time_s = np.array(sim_drive.sd.cyc.time_s)
                     # this code needs to be cleaned up
                     # raw signals
                     ax[i_obj * 2].set_title(
                         f"trip: {key}, error: {objectives[key][obj[0]]:.3g}")
-                    ax[i_obj * 2].plot(results.time_seconds /
-                                       3_600, mod_sig, label='mod',)
-                    ax[i_obj * 2].plot(results.time_seconds / 3_600,
-                                       exp_sig,
+                    ax[i_obj * 2].plot(time_s / 3_600, 
+                                        mod_sig, label='mod',)
+                    ax[i_obj * 2].plot(time_s / 3_600,
+                                       ref_sig,
                                        linestyle='--',
                                        label="exp",
                                        )
@@ -232,13 +238,13 @@ class ModelErrors(object):
                     ax[i_obj * 2].legend()
 
                     # error
-                    perc_err = (mod_sig - exp_sig) / exp_sig * 100
+                    perc_err = (mod_sig - ref_sig) / ref_sig * 100
                     # clean up inf and nan
                     perc_err[np.where(perc_err == np.inf)[0][:]] = 0.0
                     # trim off the first few bits of junk
                     perc_err[np.where(perc_err > 500)[0][:]] = 0.0
                     ax[i_obj * 2 + 1].plot(
-                        results.time_seconds / 3_600,
+                        time_s / 3_600,
                         perc_err
                     )
                     ax[i_obj * 2 + 1].set_ylabel(obj[0] + "\n%Err")
@@ -322,26 +328,8 @@ class CalibrationProblem(ElementwiseProblem):
     # default of None is needed for dataclass inheritance
     # this is actually mandatory!
     param_bounds: List[Tuple[float, float]] = None
-    # max number of generations, default of 10 is very small
-    n_max_gen: Optional[int] = 10
-    # size of each population
-    pop_size: Optional[int] = 10
-    save_history: Optional[bool] = False,
-    copy_algorithm: Optional[bool] = False,
-    copy_termination: Optional[bool] = False,
-    sampling: Optional[Sampling] = LHS()
-    algorithm: InitVar[Optional[GeneticAlgorithm]] = None
 
-    # parameter convergence tolerance
-    x_tol: Optional[float] = 1e-8
-    # objective convergence tolerance
-    f_tol: Optional[float] = 0.0025
-    # evaluate tolerance at this interval of generations
-    nth_gen: Optional[int] = 5
-    # evaluate tolerance over this interval of generations every `nth_gen`
-    n_last: Optional[int] = 10
-
-    def __post_init__(self, algorithm):
+    def __post_init__(self):
         assert(len(self.param_bounds) == len(self.err.params))
         super().__init__(
             n_var=len(self.err.params),
@@ -351,10 +339,6 @@ class CalibrationProblem(ElementwiseProblem):
             xu=[bounds[1]
                 for bounds in self.param_bounds],
         )
-        if algorithm is None:
-            self.algorithm = NSGA2(
-                self.pop_size, eliminate_duplicates=True, sampling=self.sampling
-            )
 
     def _evaluate(self, x, out, *args, **kwargs):
         self.err.update_params(x)
@@ -362,22 +346,54 @@ class CalibrationProblem(ElementwiseProblem):
             val for inner_dict in self.err.get_errors().values() for val in inner_dict.values()
         ]
 
-    def minimize(self):
-        termination = MODT(
-            n_max_gen=self.n_max_gen,
-            x_tol=self.x_tol,
-            f_tol=self.f_tol,
-            nth_gen=self.nth_gen,
-            n_last=self.n_last,
-        )
 
-        self.res = minimize(self,
-                            self.algorithm,
-                            termination=termination,
-                            seed=1,
-                            verbose=True,
-                            #    display=MyDisplay(),
-                            save_history=self.save_history,
-                            copy_algorithm=self.copy_algorithm,
-                            copy_termination=self.copy_termination,
-                            )
+def run_minimize(
+    prob: CalibrationProblem,
+    algorithm: GeneticAlgorithm = NSGA2(
+        # size of each population
+        pop_size=10,
+        eliminate_duplicates=True,
+        sampling=LHS(),
+    ),
+    termination: MODT = MODT(
+        # max number of generations, default of 10 is very small
+        n_max_gen=10,
+        # evaluate tolerance over this interval of generations every `nth_gen`
+        n_last=10,
+    ),
+    copy_algorithm: bool = False,
+    copy_termination: bool = False,
+    save_history: bool = False,
+    save_path: Optional[str] = "pymoo_res",
+):
+    res = minimize(
+        prob,
+        algorithm,
+        termination,
+        copy_algorithm,
+        copy_termination,
+        seed=1,
+        verbose=True,
+        save_history=save_history,
+    )
+
+    f_columns = [
+        f"{key}: {obj[0]}"
+        for key in prob.err.dfs.keys()
+            for obj in prob.err.objectives
+    ]
+    f_df = pd.DataFrame(
+        data=[f for f in res.F.tolist()],
+        columns=f_columns,
+    )
+    
+    x_df = pd.DataFrame(
+        data=[x for x in res.X.tolist()],
+        columns=[param for param in prob.err.params],
+    )
+
+
+    res_df = pd.concat([x_df, f_df], axis=1)
+    res_df.to_csv(str(save_path) + "_df.csv", index=False)
+
+    return res, res_df
