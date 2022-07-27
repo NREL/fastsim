@@ -724,7 +724,7 @@ impl SimDriveHot {
                     self.sd.veh.fc_eff_array[
                         max(
                             1.0,
-                            np.argmax(self.sd.veh.fc_kw_out_array > min(
+                            first_grtr(self.sd.veh.fc_kw_out_array > min(
                                 self.sd.fc_kw_out_ach[i],
                                 ndarrmax(&self.sd.veh.input_kw_out_array) - 0.001
                             )) - 1
