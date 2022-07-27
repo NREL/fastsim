@@ -336,17 +336,6 @@ class TestCycle(unittest.TestCase):
         self.assertEqual(len(expected_distances_m), len(ds))
         for idx in range(len(expected_distances_m)):
             self.assertAlmostEqual(expected_distances_m[idx], ds[idx])
-        cyc = cycle.Cycle.from_dict(
-            cycle.resample(
-                cycle.make_cycle(
-                    ts=[  0.0 ,  10.0 , 110.0 , 210.0 , 220.0 ],
-                    vs=[  0.0 ,  10.0 ,  10.0 ,  10.0 ,   0.0 ],
-                    gs=[  0.01,   0.01,   0.02,   0.02,   0.02],
-                ),
-                new_dt=1.0,
-                hold_keys={'grade'},
-            )
-        )
         cyc0 = cycle.Cycle.from_dict(
             cycle.resample(
                 cycle.make_cycle(
@@ -370,8 +359,8 @@ class TestCycle(unittest.TestCase):
         cyc_rust = cyc0.to_rust()
         for cond in test_conditions:
             msg = f"Python: Failed for {cond}"
-            dist_start_m = sum(cyc0.dist_v2_m[:cond['step']])
-            dist_step_m = cyc0.dist_v2_m[cond['step']]
+            dist_start_m = cycle.trapz_step_start_distance(cyc0, cond['step'])
+            dist_step_m = cycle.trapz_step_distance(cyc0, cond['step'])
             self.assertAlmostEqual(cond['dist_m'], dist_start_m + dist_step_m, msg=msg)
             avg_grade = cyc0.average_grade_over_range(dist_start_m, dist_step_m)
             self.assertAlmostEqual(
@@ -380,8 +369,8 @@ class TestCycle(unittest.TestCase):
             )
             # RUST CHECK
             msg = f"RUST: Failed for {cond}"
-            dist_start_m = sum(cyc_rust.dist_v2_m[:cond['step']])
-            dist_step_m = cyc_rust.dist_v2_m[cond['step']]
+            dist_start_m = cycle.trapz_step_start_distance(cyc_rust, cond['step'])
+            dist_step_m = cycle.trapz_step_distance(cyc_rust, cond['step'])
             self.assertAlmostEqual(cond['dist_m'], dist_start_m + dist_step_m, msg=msg)
             avg_grade = cyc_rust.average_grade_over_range(dist_start_m, dist_step_m)
             self.assertAlmostEqual(

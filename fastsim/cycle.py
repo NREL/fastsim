@@ -828,18 +828,26 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> Pa
         time_step_duration_s=cyc.dt_s[i],
     )
 
-def average_step_speeds_in_m_per_s(cyc: Cycle) -> np.array:
+def average_step_speeds(cyc: Cycle) -> np.array:
     """
     Calculate the average speed per each step in m/s
     """
-    return np.append(0.0, 0.5 * (cyc.mps[1:] + cyc.mps[:-1]))
+    mps = np.array(cyc.mps)
+    return np.append(0.0, 0.5 * (mps[1:] + mps[:-1]))
+
+def average_step_speed_at(cyc: Cycle, i: int) -> np.array:
+    """
+    Calculate the average step speed at step i in m/s
+    (i.e., from sample point i-1 to i)
+    """
+    return 0.5 * (cyc.mps[i] + cyc.mps[i-1])
 
 def trapz_step_distances(cyc: Cycle) -> np.array:
     """
     Sum of the distance traveled over each step using
     trapezoidal integration
     """
-    return average_step_speeds_in_m_per_s(cyc) * cyc.dt_s
+    return average_step_speeds(cyc) * cyc.dt_s
 
 def trapz_cumsum_distances(cyc: Cycle) -> np.array:
     """
@@ -847,3 +855,18 @@ def trapz_cumsum_distances(cyc: Cycle) -> np.array:
     at each sample point using trapezoidal integration.
     """
     return trapz_step_distances(cyc).cumsum()
+
+def trapz_step_start_distance(cyc: Cycle, i: int) -> float:
+    """
+    The distance traveled from start at the beginning of step i
+    (i.e., distance traveled up to sample point i-1)
+    Distance is in meters.
+    """
+    return sum(trapz_step_distances(cyc)[:i])
+
+def trapz_step_distance(cyc: Cycle, i: int) -> float:
+    """
+    The distance traveled during step i in meters
+    (i.e., from sample point i-1 to i)
+    """
+    return average_step_speed_at(cyc, i) * cyc.dt_s[i]
