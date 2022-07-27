@@ -827,3 +827,23 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> Pa
         speed_m_per_s=rendezvous_speed_m_per_s,
         time_step_duration_s=cyc.dt_s[i],
     )
+
+def average_step_speeds_in_m_per_s(cyc: Cycle) -> np.array:
+    """
+    Calculate the average speed per each step in m/s
+    """
+    return np.append(0.0, 0.5 * (cyc.mps[1:] + cyc.mps[:-1]))
+
+def trapz_step_distances(cyc: Cycle) -> np.array:
+    """
+    Sum of the distance traveled over each step using
+    trapezoidal integration
+    """
+    return average_step_speeds_in_m_per_s(cyc) * cyc.dt_s
+
+def trapz_cumsum_distances(cyc: Cycle) -> np.array:
+    """
+    Cumulative sum of distance traveled from start measured
+    at each sample point using trapezoidal integration.
+    """
+    return trapz_step_distances(cyc).cumsum()
