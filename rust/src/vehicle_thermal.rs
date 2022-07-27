@@ -60,7 +60,9 @@ impl Default for FcTempEffModel {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct FcTempEffModelLinear {
-    offset: f64, slope: f64, minimum: f64 
+    pub offset: f64,
+    pub slope: f64,
+    pub minimum: f64 
 }
 
 impl Default for FcTempEffModelLinear {
@@ -75,9 +77,9 @@ impl Default for FcTempEffModelLinear {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct FcTempEffModelExponential {
-    offset: f64,
-    lag: f64,
-    minimum: f64,
+    pub offset: f64,
+    pub lag: f64,
+    pub minimum: f64,
 }
 
 impl Default for FcTempEffModelExponential {
