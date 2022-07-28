@@ -280,10 +280,12 @@ def create_dist_and_target_speeds_by_microtrip(cyc: fastsim.cycle.Cycle, blend_f
         mt_moving_time_s = time_spent_moving(mt_cyc.get_cyc_dict())
         mt_avg_spd_m_per_s = mt_dist_m / mt_time_s if mt_time_s > 0.0 else 0.0
         mt_moving_avg_spd_m_per_s = mt_dist_m / mt_moving_time_s if mt_moving_time_s > 0.0 else 0.0
-        mt_target_spd_m_per_s = blend_factor * (mt_moving_avg_spd_m_per_s - mt_avg_spd_m_per_s) + mt_avg_spd_m_per_s
-        assert mt_moving_avg_spd_m_per_s >= mt_avg_spd_m_per_s, f"mt_moving_avg_spd_m_per_s = {mt_moving_avg_spd_m_per_s} m/s; mt_avg_spd_m_per_s = {mt_avg_spd_m_per_s} m/s"
-        assert mt_target_spd_m_per_s <= mt_moving_avg_spd_m_per_s, f"mt_target_spd_m_per_s = {mt_target_spd_m_per_s} m/s; mt_moving_avg_spd_m_per_s = {mt_moving_avg_spd_m_per_s} m/s"
-        assert mt_target_spd_m_per_s >= mt_avg_spd_m_per_s, f"mt_target_spd_m_per_s = {mt_target_spd_m_per_s} m/s; mt_avg_spd_m_per_s = {mt_avg_spd_m_per_s} m/s"
+        mt_target_spd_m_per_s = max(
+            min(
+                blend_factor * (mt_moving_avg_spd_m_per_s - mt_avg_spd_m_per_s) + mt_avg_spd_m_per_s,
+                mt_moving_avg_spd_m_per_s
+            ),
+            mt_avg_spd_m_per_s)
         if mt_dist_m > 0.0:
             dist_and_tgt_speeds.append(
                 (dist_at_start_of_microtrip_m, max(mt_target_spd_m_per_s, MIN_ECO_CRUISE_TARGET_SPEED_m_per_s))
