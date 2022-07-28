@@ -108,7 +108,7 @@ pub struct HVACModel {
 
 /// Whether HVAC model is handled by FASTSim (internal) or not
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub enum qHvacModelTypes {
+pub enum HvacModelTypes {
     /// HVAC is modeled natively
     Internal(HVACModel),
     External,
