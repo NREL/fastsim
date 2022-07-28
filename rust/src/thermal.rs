@@ -877,6 +877,7 @@ impl SimDriveHot {
             }
         }
 
+        // fs out = fc in
         self.sd.fs_kw_out_ach[i] = self.sd.fc_kw_in_ach[i];
 
         self.sd.fs_kwh_out_ach[i] = self.sd.fs_kw_out_ach[i] * self.sd.cyc.dt_s()[i] / 3.6e3;
@@ -1006,7 +1007,7 @@ impl Default for ThermalState {
             fc_qdot_to_amb_kw: 0.0,
             fc_qdot_to_htr_kw: 0.0,
             fc_htc_to_amb: 0.0,
-            fc_lambda: 0.0,
+            fc_lambda: 1.0,
             fc_te_adiabatic_deg_c: default_te_deg_c, // this needs to be calculated, get Chad to revisit
 
             cab_te_deg_c: default_te_deg_c, // overridden by new()
