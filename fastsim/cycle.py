@@ -811,7 +811,7 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> Pa
             break
     return PassingInfo(
         has_collision=rendezvous_idx is not None and rendezvous_distance_m > d0,
-        idx=rendezvous_idx,
+        idx=rendezvous_idx if not rendezvous_idx is None else 0,
         num_steps=rendezvous_num_steps,
         start_distance_m=d0,
         distance_m=rendezvous_distance_m,
@@ -820,7 +820,7 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> Pa
         time_step_duration_s=cyc.dt_s[i],
     )
 
-def average_step_speeds(cyc: Cycle) -> np.array:
+def average_step_speeds(cyc: Cycle) -> np.ndarray:
     """
     Calculate the average speed per each step in m/s
     """
@@ -834,7 +834,7 @@ def average_step_speed_at(cyc: Cycle, i: int) -> float:
     """
     return 0.5 * (cyc.mps[i] + cyc.mps[i-1])
 
-def trapz_step_distances(cyc: Cycle) -> np.array:
+def trapz_step_distances(cyc: Cycle) -> np.ndarray:
     """
     Sum of the distance traveled over each step using
     trapezoidal integration
@@ -848,7 +848,7 @@ def trapz_total_distance(cyc: Cycle) -> float:
     """
     return trapz_step_distances(cyc).sum()
 
-def trapz_cumsum_distances(cyc: Cycle) -> np.array:
+def trapz_cumsum_distances(cyc: Cycle) -> np.ndarray:
     """
     Cumulative sum of distance traveled from start measured
     at each sample point using trapezoidal integration.
