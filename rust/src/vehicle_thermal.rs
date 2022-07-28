@@ -91,6 +91,29 @@ impl Default for FcTempEffModelExponential {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct HVACModel {
+    /// set temperature for cabin
+    te_set_deg_c: f64,
+    /// proportional control effort [kW / °C]
+    p_cntrl_kw_per_deg_c: f64,
+    /// integral control effort [kW / (°C-seconds)]
+    i_cntrl_kw_per_deg_c_scnds: f64,
+    /// maximum control effort from integral control [kW]
+    i_cntrl_max_kw: f64,
+    /// deadband range.  any cabin temperature within this range of
+    /// `te_set_deg_c` results in no HVAC power draw
+    te_deadband_deg_c: f64,
+}
+
+/// Whether HVAC model is handled by FASTSim (internal) or not
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub enum qHvacModelTypes {
+    /// HVAC is modeled natively
+    Internal(HVACModel),
+    External,
+}
+
 /// Whether compontent thermal model is handled by FASTSim
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum ComponentModelTypes {

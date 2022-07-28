@@ -507,7 +507,9 @@ impl SimDriveHot {
                 * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
         }
 
-        self.state.cab_te_deg_c += (self.state.fc_qdot_to_htr_kw - self.state.cab_qdot_to_amb_kw)
+        self.state.fc_qdot_to_htr_kw = 666.; // chad working here
+
+        self.state.cab_te_deg_c += (self.state.cab_qdot_from_hvac - self.state.cab_qdot_to_amb_kw)
             / self.vehthrm.cab_c_kj__k
             * self.sd.cyc.dt_s()[i];
     }
@@ -887,6 +889,8 @@ pub struct ThermalState {
     pub cab_qdot_solar_kw: f64,
     /// cabin convection to ambient [kw]
     pub cab_qdot_to_amb_kw: f64,
+    /// heat transfer to cabin from hvac system
+    pub cab_qdot_from_hvac: f64,
 
     // exhaust variables
     /// exhaust mass flow rate [kg/s]
@@ -948,6 +952,7 @@ impl ThermalState {
             cab_te_deg_c: cab_te_deg_c_init.unwrap_or(default_te_deg_c),
             exhport_te_deg_c: exhport_te_deg_c_init.unwrap_or(default_te_deg_c),
             cat_te_deg_c: cat_te_deg_c_init.unwrap_or(default_te_deg_c),
+            // fc_te_adiabatic_deg_c // chad is pretty sure 'fc_te_adiabatic_deg_c' gets overridden in first time step
             ..Default::default()
         }
     }
@@ -972,6 +977,7 @@ impl Default for ThermalState {
             cab_te_deg_c: default_te_deg_c, // overridden by new()
             cab_qdot_solar_kw: 0.0,
             cab_qdot_to_amb_kw: 0.0,
+            cab_qdot_from_hvac: 0.0,
 
             exh_mdot: 0.0,
             exh_hdot_kw: 0.0,
