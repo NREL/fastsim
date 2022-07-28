@@ -133,15 +133,6 @@ class Cycle(object):
         return self.mps * self.dt_s
 
     @property
-    def avg_mps(self):
-        return np.append(0.0, 0.5 * (self.mps[1:] + self.mps[:-1]))
-
-    # distance at each time step using average speed of the step
-    @property
-    def dist_v2_m(self):
-        return self.avg_mps * self.dt_s
-
-    @property
     def delta_elev_m(self) -> np.ndarray:
         """
         Cumulative elevation change w.r.t. to initial
@@ -196,7 +187,8 @@ class Cycle(object):
         tol = 1e-6
         if ((self.grade == 0.0).all()):
             return 0.0
-        distances_m = np.cumsum(self.dist_v2_m)
+        delta_dists = trapz_step_distances(self)
+        distances_m = delta_dists.cumsum()
         if delta_distance_m <= tol:
             if distance_start_m <= distances_m[0]:
                 return self.grade[0]
@@ -209,9 +201,9 @@ class Cycle(object):
                     break
             return gr
         # NOTE: we use the following instead of delta_elev_m in order to use
-        # self.dist_v2_m and in lieu of introducing delta_elev_v2_m.
-        # This also uses the fully accurate trig functions in case we have large slope angles.
-        elevations_m = np.cumsum(np.cos(np.arctan(self.grade)) * self.dist_v2_m * self.grade)
+        # a more-accurate trapezoidal integration. This also uses the fully
+        # accurate trig functions in case we have large slope angles.
+        elevations_m = np.cumsum(np.cos(np.arctan(self.grade)) * delta_dists * self.grade)
         assert len(elevations_m) == len(distances_m), f"len(elevations_m) = {len(elevations_m)}; len(distances_m) = {len(distances_m)}"
         assert elevations_m[0] == 0.0
         assert distances_m[0] == 0.0
@@ -229,7 +221,7 @@ class Cycle(object):
         """
         tol = 1e-6
         d = 0.0
-        for (dd, v) in zip(self.dist_v2_m, self.mps):
+        for (dd, v) in zip(trapz_step_distances(self), self.mps):
             d += dd
             if ((v < tol) and (d > (distance_m + tol))):
                 return d - distance_m
@@ -785,9 +777,9 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> Pa
         )
     zero_speed_tol_m_per_s = 1e-6
     v0 = cyc.mps[i-1]
-    d0 = cyc.dist_v2_m[:i].sum()
+    d0 = trapz_step_start_distance(cyc, i)
     v0_lv = cyc0.mps[i-1]
-    d0_lv = cyc0.dist_v2_m[:i].sum()
+    d0_lv = trapz_step_start_distance(cyc0, i)
     d = d0
     d_lv = d0_lv
     dt_total = 0.0
@@ -849,6 +841,13 @@ def trapz_step_distances(cyc: Cycle) -> np.array:
     """
     return average_step_speeds(cyc) * cyc.dt_s
 
+def trapz_total_distance(cyc: Cycle) -> float:
+    """
+    Compute the total distance traveled by trapezoidal
+    integration over average speeds.
+    """
+    return trapz_step_distances(cyc).sum()
+
 def trapz_cumsum_distances(cyc: Cycle) -> np.array:
     """
     Cumulative sum of distance traveled from start measured
@@ -870,3 +869,10 @@ def trapz_step_distance(cyc: Cycle, i: int) -> float:
     (i.e., from sample point i-1 to i)
     """
     return average_step_speed_at(cyc, i) * cyc.dt_s[i]
+
+def trapz_distance_over_range(cyc: Cycle, i_start: int, i_end: int) -> float:
+    """
+    Calculate the distance from step i_start to the start of step i_end
+    (i.e., distance from sample point i_start-1 to i_end-1)
+    """
+    return trapz_step_distances(cyc)[i_start:i_end].sum()

@@ -275,7 +275,7 @@ def create_dist_and_target_speeds_by_microtrip(cyc: fastsim.cycle.Cycle, blend_f
     dist_at_start_of_microtrip_m = 0.0
     for mt in microtrips:
         mt_cyc = fastsim.cycle.Cycle.from_dict(mt)
-        mt_dist_m = sum(mt_cyc.dist_v2_m)
+        mt_dist_m = sum(mt_cyc.dist_m)
         mt_time_s = mt_cyc.time_s[-1] - mt_cyc.time_s[0]
         mt_moving_time_s = time_spent_moving(mt_cyc.get_cyc_dict())
         mt_avg_spd_m_per_s = mt_dist_m / mt_time_s if mt_time_s > 0.0 else 0.0

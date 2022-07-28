@@ -331,7 +331,6 @@ class TestCycle(unittest.TestCase):
                 vs=[  0.0 ,  10.0 ,  10.0 ,  10.0 ,   0.0 ],
                 gs=[  0.01,   0.01,   0.02,   0.02,   0.02],
             ))
-        #ds = cyc.dist_v2_m.cumsum()
         ds = cycle.trapz_cumsum_distances(cyc)
         self.assertEqual(len(expected_distances_m), len(ds))
         for idx in range(len(expected_distances_m)):

@@ -339,7 +339,8 @@ class SimDrive(object):
     @property
     def gap_to_lead_vehicle_m(self):
         "Provides the gap-with lead vehicle from start to finish"
-        gaps_m = self.cyc0.dist_v2_m.cumsum() - self.cyc.dist_v2_m.cumsum()
+        # TODO: consider basing on dist_m?
+        gaps_m = cycle.trapz_cumsum_distances(self.cyc0) - cycle.trapz_cumsum_distances(self.cyc)
         if self.sim_params.follow_allow:
             gaps_m += self.sim_params.idm_minimum_gap_m
         return gaps_m
@@ -494,8 +495,8 @@ class SimDrive(object):
         v0_m__s = self.mps_ach[i-1]
         v0_lead_m_per_s = self.cyc0.mps[i-1]
         dv0_m_per_s = v0_m__s - v0_lead_m_per_s
-        d0_lead_m = self.cyc0.dist_v2_m[:i].sum() + s0_m
-        d0_m = self.cyc.dist_v2_m[:i].sum()
+        d0_lead_m = cycle.trapz_step_start_distance(self.cyc0, i) + s0_m
+        d0_m = cycle.trapz_step_start_distance(self.cyc, i)
         s_m = max(d0_lead_m - d0_m, 0.01)
         # IDM EQUATIONS
         s_target_m = s0_m + \
@@ -562,7 +563,8 @@ class SimDrive(object):
         if self.sim_params.coast_allow or self.sim_params.follow_allow:
             self.cyc.mps[self.i] = self.mps_ach[self.i]
             self.cyc.grade[self.i] = self.cyc0.average_grade_over_range(
-                self.cyc.dist_v2_m[:self.i].sum(), self.cyc.dist_v2_m[self.i])
+                cycle.trapz_step_start_distance(self.cyc, self.i),
+                cycle.trapz_step_distance(self.cyc, self.i))
 
         self.i += 1  # increment time step counter
 
@@ -796,8 +798,7 @@ class SimDrive(object):
 
         # TODO: use of self.cyc.mph[i] in regenContrLimKwPerc[i] calculation seems wrong. Shouldn't it be mpsAch or self.cyc0.mph[i]?
 
-        # self.cyc.dist_v2_m.cumsum()[i-1]
-        dist_traveled_m = self.cyc.dist_v2_m[:i].sum()
+        dist_traveled_m = cycle.trapz_step_start_distance(self.cyc, i)
         grade = self.cyc0.average_grade_over_range(
             dist_traveled_m, 0.5 * (mps_ach + self.cyc.mps[i - 1]) * self.cyc.dt_s[i])
         self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
@@ -919,7 +920,7 @@ class SimDrive(object):
                 _ys = [abs(y) for y in ys]
                 return max(xs[_ys.index(min(_ys))], 0.0)
 
-            dist_traveled_m = self.cyc.dist_v2_m[:i].sum()
+            dist_traveled_m = cycle.trapz_step_start_distance(self.cyc, i)
             grade_estimate = self.cyc0.average_grade_over_range(
                 dist_traveled_m, 0.0)
             grade_tol = 1e-6
@@ -1603,9 +1604,9 @@ class SimDrive(object):
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
         assert a_brake <= 0
-        ds = self.cyc0.dist_v2_m.cumsum()
+        ds = cycle.trapz_cumsum_distances(self.cyc0)
         gs = self.cyc0.grade
-        d0 = self.cyc.dist_v2_m[:i].sum()
+        d0 = cycle.trapz_step_start_distance(self.cyc, i)
         ds_mask = ds >= d0
         if sum(ds_mask) == 0:
             return 0.0
@@ -1695,9 +1696,9 @@ class SimDrive(object):
         v0 = self.cyc.mps[i-1]
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
-        ds = self.cyc0.dist_v2_m.cumsum()
+        ds = cycle.trapz_cumsum_distances(self.cyc0)
         gs = self.cyc0.grade
-        d0 = self.cyc.dist_v2_m[:i].sum()
+        d0 = cycle.trapz_step_start_distance(self.cyc, i)
         ds_mask = ds >= d0
         grade_by_distance = gs[ds_mask]
         veh_mass_kg = self.veh.veh_kg
@@ -1751,7 +1752,7 @@ class SimDrive(object):
         if dtsc0 < 0.0:
             return False
         # distance to next stop (m)
-        d0 = self.cyc.dist_v2_m[:i].sum()
+        d0 = cycle.trapz_step_start_distance(self.cyc, i)
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
         dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2
         return dtsc0 >= dts0 and dts0 >= (4.0 * dtb)
@@ -1788,7 +1789,7 @@ class SimDrive(object):
         if min_accel_m__s2 > max_accel_m__s2:
             min_accel_m__s2, max_accel_m__s2 = max_accel_m__s2, min_accel_m__s2
         num_samples = len(self.cyc.mps)
-        d0 = self.cyc.dist_v2_m[:i].sum()
+        d0 = cycle.trapz_step_start_distance(self.cyc, i)
         # a_proposed = (v1 - v0) / dt
         # distance to stop from start of time-step
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
@@ -1884,13 +1885,13 @@ class SimDrive(object):
         self.coast_delay_index[i:] = 0 # clear all future coast-delays
         coast_delay = None
         if not self.sim_params.follow_allow and self.cyc.mps[i] < SPEED_TOL:
-            d0 = self.cyc.dist_v2_m[:i].sum()
-            d0_lv = self.cyc0.dist_v2_m[:i].sum()
+            d0 = cycle.trapz_step_start_distance(self.cyc, i)
+            d0_lv = cycle.trapz_step_start_distance(self.cyc0, i)
             dtlv0 = d0_lv - d0
             if np.abs(dtlv0) > DIST_TOL:
                 d_lv = 0.0
                 min_dtlv = None
-                for idx, (dd, v) in enumerate(zip(self.cyc0.dist_v2_m, self.cyc0.mps)):
+                for idx, (dd, v) in enumerate(zip(cycle.trapz_step_distances(self.cyc0), self.cyc0.mps)):
                     d_lv += dd
                     dtlv = np.abs(d_lv - d0)
                     if v < SPEED_TOL and (min_dtlv is None or dtlv <= min_dtlv):
@@ -1952,7 +1953,7 @@ class SimDrive(object):
                 dv_full_brake = dt_full_brake * a_brake_m_per_s2
                 v_start_jerk_m_per_s = max(v_start_m_per_s + dv_full_brake, 0.0)
                 dd_full_brake = 0.5 * (v_start_m_per_s + v_start_jerk_m_per_s) * dt_full_brake
-                d_start_m = self.cyc.dist_v2_m[:idx].sum() + dd_full_brake
+                d_start_m = cycle.trapz_step_start_distance(self.cyc, idx) + dd_full_brake
                 if collision.distance_m <= d_start_m:
                     continue
                 jerk_m_per_s3, accel0_m_per_s2 = cycle.calc_constant_jerk_trajectory(

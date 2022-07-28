@@ -48,10 +48,10 @@ def make_coasting_plot(
     ts_orig = np.array(cyc0.time_s)
     vs_orig = np.array(cyc0.mps)
     m = fastsim.params.MPH_PER_MPS if use_mph else 1.0
-    ds_orig = np.array(cyc0.dist_v2_m).cumsum()
+    ds_orig = fastsim.cycle.trapz_cumsum_distances(cyc0)
     ts = np.array(cyc.time_s)
     vs = np.array(cyc.mps)
-    ds = np.array(cyc.dist_v2_m).cumsum()
+    ds = fastsim.cycle.trapz_cumsum_distances(cyc)
     gaps = ds_orig - ds
     speed_units = "mph" if use_mph else "m/s"
     fontsize=10
@@ -86,8 +86,8 @@ def make_coasting_plot(
         ax.set_title(title)
     fig.tight_layout()
     if verbose:
-        print(f'Distance Traveled for Coasting Vehicle: {cyc.dist_v2_m.sum()} m')
-        print(f'Distance Traveled for Cycle           : {cyc0.dist_v2_m.sum()} m')
+        print(f'Distance Traveled for Coasting Vehicle: {cyc.dist_m.sum()} m')
+        print(f'Distance Traveled for Cycle           : {cyc0.dist_m.sum()} m')
     if save_file is not None:
         fig.savefig(save_file, dpi=300)
     if do_show:
@@ -211,7 +211,7 @@ class TestCoasting(unittest.TestCase):
             t = self.trapz.time_s[idx]
             self.assertAlmostEqual(expected_time_s, t)
             expected_distance_m = 100.0
-            dist_m = self.trapz.dist_v2_m[:(idx + 1)].sum()
+            dist_m = fastsim.cycle.trapz_step_start_distance(self.trapz, idx+1)
             self.assertAlmostEqual(expected_distance_m, dist_m)
             # At t=20s
             idx = 20
@@ -219,7 +219,7 @@ class TestCoasting(unittest.TestCase):
             t = self.trapz.time_s[idx]
             self.assertAlmostEqual(expected_time_s, t)
             expected_distance_m = 300.0 # 100m + (20s - 10s) * 20m/s
-            dist_m = self.trapz.dist_v2_m[:(idx + 1)].sum()
+            dist_m = fastsim.cycle.trapz_step_start_distance(self.trapz, idx + 1)
             self.assertAlmostEqual(expected_distance_m, dist_m)
             dds = self.trapz.calc_distance_to_next_stop_from(dist_m)
             dds_expected_m = 900 - dist_m
@@ -230,17 +230,17 @@ class TestCoasting(unittest.TestCase):
             t = self.ru_trapz.time_s[idx]
             self.assertAlmostEqual(expected_time_s, t)
             expected_distance_m = 100.0
-            dist_m = np.array(self.ru_trapz.dist_v2_m)[:(idx + 1)].sum()
+            dist_m = fastsim.cycle.trapz_step_start_distance(self.ru_trapz, idx + 1)
             self.assertAlmostEqual(
                 expected_distance_m, dist_m,
-                msg=f"Error in Rust version, Python dist: {self.trapz.dist_v2_m[:idx+1].sum()}")
+                msg=f"Error in Rust version, Rust dist: {dist_m}")
             # At t=20s
             idx = 20
             expected_time_s = 20.0
             t = self.ru_trapz.time_s[idx]
             self.assertAlmostEqual(expected_time_s, t)
             expected_distance_m = 300.0 # 100m + (20s - 10s) * 20m/s
-            dist_m = np.array(self.trapz.dist_v2_m)[:(idx + 1)].sum()
+            dist_m = fastsim.cycle.trapz_step_start_distance(self.trapz, idx + 1)
             self.assertAlmostEqual(expected_distance_m, dist_m, msg="Error in Rust version")
             dds = self.trapz.calc_distance_to_next_stop_from(dist_m)
             dds_expected_m = 900 - dist_m
@@ -520,26 +520,26 @@ class TestCoasting(unittest.TestCase):
             # total distance
             d_expected = 900.0
             d_v1 = self.trapz.dist_m.sum()
-            d_v2 = self.trapz.dist_v2_m.sum()
+            d_v2 = fastsim.cycle.trapz_step_distances(self.trapz).sum()
             self.assertAlmostEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
             # distance traveled between 0 s and 10 s
             d_expected = 100.0 # 0.5 * (0s - 10s) * 20m/s = 100m
             d_v1 = self.trapz.dist_m[:11].sum()
-            d_v2 = self.trapz.dist_v2_m[:11].sum()
+            d_v2 = fastsim.cycle.trapz_step_start_distance(self.trapz, 11)
             # TODO: is there a way to get the distance from 0 to 10s using existing cycDistMeters system?
             self.assertNotEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
             # distance traveled between 10 s and 45 s
             d_expected = 700.0 # (45s - 10s) * 20m/s = 700m
             d_v1 = self.trapz.dist_m[11:46].sum()
-            d_v2 = self.trapz.dist_v2_m[11:46].sum()
+            d_v2 = fastsim.cycle.trapz_distance_over_range(self.trapz, 11, 46)
             self.assertAlmostEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
             # distance traveled between 45 s and 55 s
             d_expected = 100.0 # 0.5 * (45s - 55s) * 20m/s = 100m
             d_v1 = self.trapz.dist_m[45:56].sum()
-            d_v2 = self.trapz.dist_v2_m[46:56].sum()
+            d_v2 = fastsim.cycle.trapz_distance_over_range(self.trapz, 46, 56)
             # TODO: is there a way to get the distance from 45 to 55s using existing cycDistMeters system?
             self.assertNotEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
@@ -554,32 +554,32 @@ class TestCoasting(unittest.TestCase):
                 )
             )
             expected_dist_m = 200.0 # 0.5 * 20m/s x 20s = 200m
-            self.assertAlmostEqual(expected_dist_m, const_spd_cyc.dist_v2_m.sum())
+            self.assertAlmostEqual(expected_dist_m, fastsim.cycle.trapz_total_distance(const_spd_cyc))
             self.assertNotEqual(expected_dist_m, const_spd_cyc.dist_m.sum())
         if RUST_AVAILABLE and USE_RUST:
             # total distance
             d_expected = 900.0
             d_v1 = np.array(self.ru_trapz.dist_m).sum()
-            d_v2 = np.array(self.ru_trapz.dist_v2_m).sum()
+            d_v2 = fastsim.cycle.trapz_total_distance(self.ru_trapz)
             self.assertAlmostEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
             # distance traveled between 0 s and 10 s
             d_expected = 100.0 # 0.5 * (0s - 10s) * 20m/s = 100m
             d_v1 = np.array(self.ru_trapz.dist_m)[:11].sum()
-            d_v2 = np.array(self.ru_trapz.dist_v2_m)[:11].sum()
+            d_v2 = fastsim.cycle.trapz_step_start_distance(self.ru_trapz, 11)
             # TODO: is there a way to get the distance from 0 to 10s using existing cycDistMeters system?
             self.assertNotEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
             # distance traveled between 10 s and 45 s
             d_expected = 700.0 # (45s - 10s) * 20m/s = 700m
             d_v1 = np.array(self.ru_trapz.dist_m)[11:46].sum()
-            d_v2 = np.array(self.ru_trapz.dist_v2_m)[11:46].sum()
+            d_v2 = fastsim.cycle.trapz_distance_over_range(self.ru_trapz, 11, 46)
             self.assertAlmostEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
             # distance traveled between 45 s and 55 s
             d_expected = 100.0 # 0.5 * (45s - 55s) * 20m/s = 100m
             d_v1 = np.array(self.trapz.dist_m)[45:56].sum()
-            d_v2 = np.array(self.trapz.dist_v2_m)[46:56].sum()
+            d_v2 = fastsim.cycle.trapz_distance_over_range(self.trapz, 46, 56)
             # TODO: is there a way to get the distance from 45 to 55s using existing cycDistMeters system?
             self.assertNotEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
@@ -594,7 +594,7 @@ class TestCoasting(unittest.TestCase):
                 )
             ).to_rust()
             expected_dist_m = 200.0 # 0.5 * 20m/s x 20s = 200m
-            self.assertAlmostEqual(expected_dist_m, np.array(const_spd_cyc.dist_v2_m).sum())
+            self.assertAlmostEqual(expected_dist_m, fastsim.cycle.trapz_total_distance(const_spd_cyc))
             self.assertNotEqual(expected_dist_m, np.array(const_spd_cyc.dist_m).sum())
 
     def test_brake_trajectory(self):
@@ -623,7 +623,7 @@ class TestCoasting(unittest.TestCase):
             self.assertAlmostEqual(v0 + brake_accel_m__s2*10*dt, trapz.mps[idx+10])
             self.assertEqual(10, n)
             self.assertAlmostEqual(20.0, trapz.mps[idx+11])
-            dts_m = trapz.dist_v2_m[idx+1:idx+n+1].sum()
+            dts_m = fastsim.cycle.trapz_distance_over_range(trapz, idx+1, idx+n+1)
             self.assertAlmostEqual(expected_dts_m, dts_m)
             # Now try with a brake deceleration that doesn't devide evenly by time-steps
             trapz = self.trapz.copy()
@@ -638,7 +638,7 @@ class TestCoasting(unittest.TestCase):
             trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
             self.assertAlmostEqual(v0, trapz.mps[idx])
             self.assertEqual(11, n)
-            dts_m = trapz.dist_v2_m[idx+1:idx+n+1].sum()
+            dts_m = fastsim.cycle.trapz_distance_over_range(trapz, idx+1, idx+n+1)
             self.assertAlmostEqual(expected_dts_m, dts_m)
         if RUST_AVAILABLE and USE_RUST:
             trapz = self.ru_trapz.copy()
@@ -664,7 +664,7 @@ class TestCoasting(unittest.TestCase):
             self.assertAlmostEqual(v0 + brake_accel_m__s2*10*dt, trapz.mps[idx+10])
             self.assertEqual(10, n)
             self.assertAlmostEqual(20.0, trapz.mps[idx+11])
-            dts_m = np.array(trapz.dist_v2_m)[idx+1:idx+n+1].sum()
+            dts_m = fastsim.cycle.trapz_distance_over_range(trapz, idx+1, idx+n+1)
             self.assertAlmostEqual(expected_dts_m, dts_m)
             # Now try with a brake deceleration that doesn't devide evenly by time-steps
             trapz = self.trapz.copy()
@@ -679,7 +679,7 @@ class TestCoasting(unittest.TestCase):
             trapz.modify_with_braking_trajectory(brake_accel_m__s2, idx+1)
             self.assertAlmostEqual(v0, trapz.mps[idx])
             self.assertEqual(11, n)
-            dts_m = np.array(trapz.dist_v2_m[idx+1:idx+n+1]).sum()
+            dts_m = fastsim.cycle.trapz_distance_over_range(trapz, idx+1, idx+n+1)
             self.assertAlmostEqual(expected_dts_m, dts_m)
     
     def test_logic_to_enter_eco_approach_automatically(self):
@@ -919,7 +919,7 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue((sd.cyc0.grade == grade).all())
             self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
             self.assertTrue(
-                np.abs(sd.cyc0.dist_v2_m.sum() - sd.cyc.dist_v2_m.sum()) < 1.0)
+                np.abs(fastsim.cycle.trapz_total_distance(sd.cyc0) - fastsim.cycle.trapz_total_distance(sd.cyc)) < 1.0)
             # test with a different vehicle and grade
             grade = 0.02
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -951,8 +951,11 @@ class TestCoasting(unittest.TestCase):
                     title="That Coasting Logic Works Going Uphill (Veh 1)",
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1.png')
+            # TODO: should we use sd.cyc.dist_m or fatsim.cycle.trapz_total_distance for sd.cyc below?
             self.assertAlmostEqual(
-                sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_m.sum(), places=0)
+                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                sd.cyc.dist_m.sum(),
+                places=0)
         if RUST_AVAILABLE and USE_RUST:
             grade = 0.01
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -995,7 +998,7 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
             self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
             self.assertTrue(
-                np.abs(sum(sd.cyc0.dist_v2_m) - sum(sd.cyc.dist_v2_m)) < 1.0)
+                np.abs(fastsim.cycle.trapz_total_distance(sd.cyc0) - fastsim.cycle.trapz_total_distance(sd.cyc)) < 1.0)
             # test with a different vehicle and grade
             grade = 0.02
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1035,8 +1038,11 @@ class TestCoasting(unittest.TestCase):
                     title="That Coasting Logic Works Going Uphill (Veh 1)",
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1-rust.png')
+            # TODO: should we use sd.cyc.dist_m or fatsim.cycle.trapz_total_distance for sd.cyc below?
             self.assertAlmostEqual(
-                np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_m).sum(), places=0)
+                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                np.array(sd.cyc.dist_m).sum(),
+                places=0)
 
     def test_that_coasting_logic_works_going_downhill(self):
         "When going downhill, ensure we can still hit our coasting target"
@@ -1076,7 +1082,8 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue((sd.cyc0.grade == grade).all())
             self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
             self.assertAlmostEqual(
-                sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
+                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                fastsim.cycle.trapz_total_distance(sd.cyc))
             # test with a different vehicle and grade
             grade = -0.005
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1109,8 +1116,10 @@ class TestCoasting(unittest.TestCase):
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1.png',
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
+            # TODO: should we use sd.cyc.dist_m or fatsim.cycle.trapz_total_distance for sd.cyc below?
             self.assertAlmostEqual(
-                sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_m.sum())
+                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                sd.cyc.dist_m.sum())
         if RUST_AVAILABLE and USE_RUST:
             grade = -0.0025
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1149,7 +1158,8 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
             self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
             self.assertAlmostEqual(
-                np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())
+                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                fastsim.cycle.trapz_total_distance(sd.cyc))
             # test with a different vehicle and grade
             grade = -0.005
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1184,8 +1194,10 @@ class TestCoasting(unittest.TestCase):
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1-rust.png',
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
+            # TODO: should we use sd.cyc.dist_m or fatsim.cycle.trapz_total_distance for sd.cyc below?
             self.assertAlmostEqual(
-                np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_m).sum())
+                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                np.array(sd.cyc.dist_m).sum())
 
     def test_that_coasting_works_with_multiple_stops_and_grades(self):
         "Ensure coasting hits distance target with multiple stops and both uphill/downhill"
@@ -1232,7 +1244,8 @@ class TestCoasting(unittest.TestCase):
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertAlmostEqual(
-                sd.cyc0.dist_v2_m.sum(), sd.cyc.dist_v2_m.sum())
+                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                fastsim.cycle.trapz_total_distance(sd.cyc))
         if RUST_AVAILABLE and USE_RUST:
             grade1 = -0.005
             grade2 = 0.005
@@ -1283,7 +1296,8 @@ class TestCoasting(unittest.TestCase):
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertAlmostEqual(
-                np.array(sd.cyc0.dist_v2_m).sum(), np.array(sd.cyc.dist_v2_m).sum())
+                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                fastsim.cycle.trapz_total_distance(sd.cyc))
 
 if __name__ == '__main__':
     unittest.main()
