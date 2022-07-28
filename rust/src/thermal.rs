@@ -375,7 +375,7 @@ impl SimDriveHot {
             self.set_fc_thermal_calcs(i);
         }
 
-        if self.vehthrm.cabin_model == ComponentModelTypes::Internal {
+        if let HvacModelTypes::Internal(_) = &self.vehthrm.cabin_model {
             self.set_cab_thermal_calcs(i);
         }
 
@@ -473,44 +473,81 @@ impl SimDriveHot {
 
     /// Solve cabin thermal behavior.
     pub fn set_cab_thermal_calcs(&mut self, i: usize) {
-        // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
-        // Transfer, 7th Edition
-        let cab_te_film_ext_deg_c: f64 = 0.5 * (self.state.cab_te_deg_c + self.state.amb_te_deg_c);
-        let re_l: f64 = self.air.get_rho(cab_te_film_ext_deg_c, None)
-            * self.sd.mps_ach[i - 1]
-            * self.vehthrm.cab_l_length
-            / self.air.get_mu(cab_te_film_ext_deg_c);
-        let re_l_crit: f64 = 5.0e5; // critical Re for transition to turbulence
+        if let HvacModelTypes::Internal(hvac_model) = &mut self.vehthrm.cabin_model {
+            // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
+            // Transfer, 7th Edition
+            let cab_te_film_ext_deg_c: f64 =
+                0.5 * (self.state.cab_te_deg_c + self.state.amb_te_deg_c);
+            let re_l: f64 = self.air.get_rho(cab_te_film_ext_deg_c, None)
+                * self.sd.mps_ach[i - 1]
+                * self.vehthrm.cab_l_length
+                / self.air.get_mu(cab_te_film_ext_deg_c);
+            let re_l_crit: f64 = 5.0e5; // critical Re for transition to turbulence
 
-        let nu_l_bar = if re_l < re_l_crit {
-            // equation 7.30
-            0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0 / 3.0)
-        } else {
-            // equation 7.38
-            let a = 871.0; // equation 7.39
-            (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c)
-        };
+            let nu_l_bar = if re_l < re_l_crit {
+                // equation 7.30
+                0.664 * re_l.powf(0.5) * self.air.get_pr(cab_te_film_ext_deg_c).powf(1.0 / 3.0)
+            } else {
+                // equation 7.38
+                let a = 871.0; // equation 7.39
+                (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c)
+            };
 
-        if self.sd.mph_ach[i - 1] > 2.0 {
-            self.state.cab_qdot_to_amb_kw = 1e-3
-                * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
-                / (1.0
-                    / (nu_l_bar * self.air.get_k(cab_te_film_ext_deg_c)
-                        / self.vehthrm.cab_l_length)
-                    + self.vehthrm.cab_r_to_amb)
-                * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
-        } else {
-            self.state.cab_qdot_to_amb_kw = 1e-3
-                * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
-                / (1.0 / self.vehthrm.cab_htc_to_amb_stop + self.vehthrm.cab_r_to_amb)
-                * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
+            if self.sd.mph_ach[i - 1] > 2.0 {
+                self.state.cab_qdot_to_amb_kw = 1e-3
+                    * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
+                    / (1.0
+                        / (nu_l_bar * self.air.get_k(cab_te_film_ext_deg_c)
+                            / self.vehthrm.cab_l_length)
+                        + self.vehthrm.cab_r_to_amb)
+                    * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
+            } else {
+                self.state.cab_qdot_to_amb_kw = 1e-3
+                    * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
+                    / (1.0 / self.vehthrm.cab_htc_to_amb_stop + self.vehthrm.cab_r_to_amb)
+                    * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
+            }
+
+            self.state.fc_qdot_to_htr_kw = 666.; // chad working here
+
+            if self.state.cab_te_deg_c <= hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
+                && self.state.cab_te_deg_c >= hvac_model.te_set_deg_c - hvac_model.te_deadband_deg_c
+            {
+                // no hvac power is needed
+                self.state.cab_qdot_from_hvac = 0.0;
+                hvac_model.i_cntrl_kw = 0.0; // reset to 0.0
+            } else if self.state.cab_te_deg_c
+                > hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
+            {
+                // cabin is too hot
+                // integral control effort increases in magnitude by
+                // 1 time step worth of error
+                hvac_model.i_cntrl_kw += (hvac_model.i_cntrl_kw_per_deg_c_scnds
+                    * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
+                    * self.sd.cyc.dt_s()[i])
+                    .max(-hvac_model.i_cntrl_max_kw);
+                self.state.cab_qdot_from_hvac = hvac_model.p_cntrl_kw_per_deg_c
+                    * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
+                    + hvac_model.i_cntrl_kw;
+            } else {
+                // cabin is too cold
+                // integral control effort increases in magnitude by
+                // 1 time step worth of error
+                hvac_model.i_cntrl_kw += (hvac_model.i_cntrl_kw_per_deg_c_scnds
+                    * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
+                    * self.sd.cyc.dt_s()[i])
+                    .min(-hvac_model.i_cntrl_max_kw);
+                self.state.cab_qdot_from_hvac = hvac_model.p_cntrl_kw_per_deg_c
+                    * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
+                    + hvac_model.i_cntrl_kw;
+            }
+
+            self.state.cab_te_deg_c += (self.state.cab_qdot_from_hvac
+                - self.state.cab_qdot_to_amb_kw)
+                / self.vehthrm.cab_c_kj__k
+                * self.sd.cyc.dt_s()[i];
         }
-
-        self.state.fc_qdot_to_htr_kw = 666.; // chad working here
-
-        self.state.cab_te_deg_c += (self.state.cab_qdot_from_hvac - self.state.cab_qdot_to_amb_kw)
-            / self.vehthrm.cab_c_kj__k
-            * self.sd.cyc.dt_s()[i];
+        // TODO: add in aux load penalty
     }
 
     /// Solve exhport thermal behavior.

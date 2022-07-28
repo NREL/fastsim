@@ -75,3 +75,15 @@ macro_rules! print_to_py {
         };
     }
 }
+
+#[macro_export]
+macro_rules! check_orphaned_and_set {
+    ($struct_self: ident, $field: ident, $value: expr) => {
+        if !$struct_self.orphaned {
+            $struct_self.$field = $value;
+            Ok(())
+        } else {
+            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+        }
+    };
+}

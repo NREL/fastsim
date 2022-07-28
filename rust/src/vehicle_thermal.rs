@@ -1,3 +1,4 @@
+use crate::utils;
 use proc_macros::add_pyo3_api;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
@@ -94,16 +95,32 @@ impl Default for FcTempEffModelExponential {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct HVACModel {
     /// set temperature for cabin
-    te_set_deg_c: f64,
+    pub te_set_deg_c: f64,
     /// proportional control effort [kW / °C]
-    p_cntrl_kw_per_deg_c: f64,
+    pub p_cntrl_kw_per_deg_c: f64,
     /// integral control effort [kW / (°C-seconds)]
-    i_cntrl_kw_per_deg_c_scnds: f64,
-    /// maximum control effort from integral control [kW]
-    i_cntrl_max_kw: f64,
+    pub i_cntrl_kw_per_deg_c_scnds: f64,
+    /// Saturation value for integral control [kW].
+    /// Whenever `i_cntrl_kw` hit this value, it stops accumulating
+    pub i_cntrl_max_kw: f64,
     /// deadband range.  any cabin temperature within this range of
     /// `te_set_deg_c` results in no HVAC power draw
-    te_deadband_deg_c: f64,
+    pub te_deadband_deg_c: f64,
+    /// current integral control amount
+    pub i_cntrl_kw: f64,
+}
+
+impl Default for HVACModel {
+    fn default() -> Self {
+        Self {
+            te_set_deg_c: 22.0,
+            p_cntrl_kw_per_deg_c: 0.5,
+            i_cntrl_kw_per_deg_c_scnds: 0.01,
+            i_cntrl_max_kw: 5.0,
+            te_deadband_deg_c: 1.0,
+            i_cntrl_kw: 0.0,
+        }
+    }
 }
 
 /// Whether HVAC model is handled by FASTSim (internal) or not
@@ -148,12 +165,13 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
 }
 
 /// Struct for containing vehicle thermal (and related) parameters.
-#[pyclass]
 #[allow(non_snake_case)]
+#[pyclass]
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[add_pyo3_api(
-    #[new]
-    pub fn __new__() -> Self {
+    #[classmethod]
+    #[pyo3(name = "default")]
+    pub fn default_py(_cls: &PyType) -> Self {
         Default::default()
     }
 
@@ -161,15 +179,35 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         self.clone()
     }
 
-    pub fn set_cabin_model_internal(&mut self) {
-        self.cabin_model = ComponentModelTypes::Internal;
+    pub fn set_cabin_model_internal(
+        &mut self, te_set_deg_c: f64,
+        p_cntrl_kw_per_deg_c: f64,
+        i_cntrl_kw_per_deg_c_scnds: f64,
+        i_cntrl_max_kw: f64,
+        te_deadband_deg_c: f64,
+    ) -> PyResult<()>{
+        let hvac_model = HVACModel{
+            te_set_deg_c,
+            p_cntrl_kw_per_deg_c,
+            i_cntrl_kw_per_deg_c_scnds,
+            i_cntrl_max_kw,
+            te_deadband_deg_c,
+            i_cntrl_kw: 0.0,
+        };
+        check_orphaned_and_set!(self, cabin_model, HvacModelTypes::Internal(hvac_model))
     }
 
-    pub fn set_cabin_model_external(&mut self) {
-        self.cabin_model = ComponentModelTypes::External;
+    pub fn set_cabin_model_external(&mut self, ) -> PyResult<()> {
+        check_orphaned_and_set!(self, cabin_model, HvacModelTypes::External)
     }
 
-    pub fn set_fc_model_internal_exponential(&mut self, offset: f64, lag: f64, minimum: f64, fc_temp_eff_component: String) {
+    pub fn set_fc_model_internal_exponential(
+        &mut self, 
+        offset: f64, 
+        lag: f64, 
+        minimum: f64, 
+        fc_temp_eff_component: String
+    ) -> PyResult<()>{
         let fc_temp_eff_comp = match fc_temp_eff_component.as_str() {
             "FuelConverter" => FcTempEffComponent::FuelConverter,
             "Catalyst" => FcTempEffComponent::Catalyst,
@@ -177,30 +215,42 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             _ => panic!("Invalid option for fc_temp_eff_component.")
         };
 
-        self.fc_model = FcModelTypes::Internal(
-            FcTempEffModel::Exponential (FcTempEffModelExponential{ offset, lag, minimum }), fc_temp_eff_comp)
+        check_orphaned_and_set!(
+            self, 
+            fc_model, 
+            FcModelTypes::Internal(
+                FcTempEffModel::Exponential(
+                    FcTempEffModelExponential{ offset, lag, minimum }), 
+                    fc_temp_eff_comp
+            )
+        )
     }
 
     #[setter]
-    pub fn set_fc_exp_offset(&mut self, new_offset: f64) {
-        self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
-            // If model is internal
-            if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset: _, lag, minimum }) = fc_temp_eff_model {
-                // If model is exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential
-                    (FcTempEffModelExponential{ offset: new_offset, lag: *lag, minimum: *minimum }),
-                    fc_temp_eff_comp.clone())
-            } else {
-                // If model is not exponential
+    pub fn set_fc_exp_offset(&mut self, new_offset: f64) -> PyResult<()> {
+        if !self.orphaned {
+            self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
+                // If model is internal
+                if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset: _, lag, minimum }) = fc_temp_eff_model {
+                    // If model is exponential
+                    FcModelTypes::Internal(FcTempEffModel::Exponential
+                        (FcTempEffModelExponential{ offset: new_offset, lag: *lag, minimum: *minimum }),
+                        fc_temp_eff_comp.clone())
+                } else {
+                    // If model is not exponential
+                    FcModelTypes::Internal(FcTempEffModel::Exponential
+                        (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }),
+                        fc_temp_eff_comp.clone())
+                }
+            }  else {
+                // If model is not internal
                 FcModelTypes::Internal(FcTempEffModel::Exponential
                     (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }),
-                    fc_temp_eff_comp.clone())
-            }
-        }  else {
-            // If model is not internal
-            FcModelTypes::Internal(FcTempEffModel::Exponential
-                (FcTempEffModelExponential{ offset: new_offset, ..FcTempEffModelExponential::default() }),
-                FcTempEffComponent::default())
+                    FcTempEffComponent::default())
+            };
+            Ok(())
+        } else {
+            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 
@@ -279,7 +329,6 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
 
     // TODO: make setters for all the other enum stuff
 )]
-
 pub struct VehicleThermal {
     // fuel converter / engine
     /// parameter fuel converter thermal mass [kJ/K]
@@ -316,7 +365,7 @@ pub struct VehicleThermal {
     // cabin
     /// cabin model internal or external w.r.t. fastsim
     #[api(skip_get, skip_set)]
-    pub cabin_model: ComponentModelTypes,
+    pub cabin_model: HvacModelTypes,
     /// parameter for cabin thermal mass [kJ/K]
     pub cab_c_kj__k: f64,
     /// cabin length [m], modeled as a flat plate
@@ -381,7 +430,7 @@ impl Default for VehicleThermal {
             fc_model: FcModelTypes::default(),
             ess_c_kj_k: 200.0,   // similar size to engine
             ess_htc_to_amb: 5.0, // typically well insulated from ambient inside cabin
-            cabin_model: ComponentModelTypes::Internal,
+            cabin_model: HvacModelTypes::External,
             cab_c_kj__k: 125.0,
             cab_l_length: 2.0,
             cab_l_width: 2.0,
