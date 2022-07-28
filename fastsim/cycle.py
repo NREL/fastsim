@@ -827,7 +827,7 @@ def average_step_speeds(cyc: Cycle) -> np.array:
     mps = np.array(cyc.mps)
     return np.append(0.0, 0.5 * (mps[1:] + mps[:-1]))
 
-def average_step_speed_at(cyc: Cycle, i: int) -> np.array:
+def average_step_speed_at(cyc: Cycle, i: int) -> float:
     """
     Calculate the average step speed at step i in m/s
     (i.e., from sample point i-1 to i)
