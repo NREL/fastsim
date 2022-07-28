@@ -545,6 +545,46 @@ class SimDrive(object):
         - sets the next speed (m/s)
         """
         self._set_speed_for_target_gap_using_idm(i)
+    
+    def _estimate_grade_for_step(self, i: int) -> float:
+        """
+        Provides a quick estimate for grade based only on the distance traveled
+        at the start of the current step. If the grade is constant over the
+        step, this is both quick and accurate.
+
+        NOTE:
+            If not allowing coasting (i.e., sim_params.coast_allow == False)
+            and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+            then returns self.cyc.grade[i]
+        """
+        if not self.sim_params.coast_allow and not self.sim_params.follow_allow:
+            return self.cyc.grade[i]
+        return self.cyc0.average_grade_over_range(
+            cycle.trapz_step_start_distance(self.cyc, i), 0.0)
+    
+    def _lookup_grade_for_step(self, i: int, mps_ach: Optional[float] = None) -> float:
+        """
+        For situations where cyc can deviate from cyc0, this method
+        looks up and accurately interpolates what the average grade over
+        the step should be.
+
+        If mps_ach is not None, the mps_ach value is used to predict the
+        distance traveled over the step.
+
+        NOTE:
+            If not allowing coasting (i.e., sim_params.coast_allow == False)
+            and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+            then returns self.cyc.grade[i]
+        """
+        if not self.sim_params.coast_allow and not self.sim_params.follow_allow:
+            return self.cyc.grade[i]
+        if mps_ach is not None:
+            return self.cyc0.average_grade_over_range(
+                cycle.trapz_step_start_distance(self.cyc, i),
+                0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s[i])
+        return self.cyc0.average_grade_over_range(
+                cycle.trapz_step_start_distance(self.cyc, i),
+                cycle.trapz_step_distance(self.cyc, i))
 
     def sim_drive_step(self):
         """
@@ -562,9 +602,7 @@ class SimDrive(object):
         # TODO: shouldn't this below always get set whether we're coasting or following or not?
         if self.sim_params.coast_allow or self.sim_params.follow_allow:
             self.cyc.mps[self.i] = self.mps_ach[self.i]
-            self.cyc.grade[self.i] = self.cyc0.average_grade_over_range(
-                cycle.trapz_step_start_distance(self.cyc, self.i),
-                cycle.trapz_step_distance(self.cyc, self.i))
+            self.cyc.grade[self.i] = self._lookup_grade_for_step(self.i)
 
         self.i += 1  # increment time step counter
 
@@ -798,9 +836,7 @@ class SimDrive(object):
 
         # TODO: use of self.cyc.mph[i] in regenContrLimKwPerc[i] calculation seems wrong. Shouldn't it be mpsAch or self.cyc0.mph[i]?
 
-        dist_traveled_m = cycle.trapz_step_start_distance(self.cyc, i)
-        grade = self.cyc0.average_grade_over_range(
-            dist_traveled_m, 0.5 * (mps_ach + self.cyc.mps[i - 1]) * self.cyc.dt_s[i])
+        grade = self._lookup_grade_for_step(i, mps_ach=mps_ach)
         self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
             (self.mps_ach[i-1] + mps_ach) / 2.0) ** 3 / 1_000
         self.accel_kw[i] = self.veh.veh_kg / \
@@ -920,9 +956,7 @@ class SimDrive(object):
                 _ys = [abs(y) for y in ys]
                 return max(xs[_ys.index(min(_ys))], 0.0)
 
-            dist_traveled_m = cycle.trapz_step_start_distance(self.cyc, i)
-            grade_estimate = self.cyc0.average_grade_over_range(
-                dist_traveled_m, 0.0)
+            grade_estimate = self._estimate_grade_for_step(i)
             grade_tol = 1e-6
             grade_diff = grade_tol + 1.0
             max_grade_iter = 3
@@ -967,8 +1001,7 @@ class SimDrive(object):
 
                 total = np.array([total3, total2, total1, total0])
                 self.mps_ach[i] = newton_mps_estimate(total)
-                grade_estimate = self.cyc0.average_grade_over_range(
-                    dist_traveled_m, 0.5 * (self.mps_ach[i - 1] + self.mps_ach[i]) * self.cyc.dt_s[i])
+                grade_estimate = self._lookup_grade_for_step(i, mps_ach=self.mps_ach[i])
                 grade_diff = np.abs(grade - grade_estimate)
             self.set_power_calcs(i)
 
