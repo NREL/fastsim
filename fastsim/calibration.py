@@ -57,6 +57,7 @@ def get_containers_from_path(
         containers.append(container)
     return containers
 
+
 def get_attr_from_path(
     model: fsr.SimDriveHot,
     path: Union[str, list]
@@ -69,6 +70,7 @@ def get_attr_from_path(
     containers = get_containers_from_path(model, path)
     attr = getattr(containers[-1], path[-1])
     return attr
+
 
 def set_attr_from_path(
     model: fsr.SimDriveHot,
@@ -227,8 +229,8 @@ class ModelErrors(object):
                     # raw signals
                     ax[i_obj * 2].set_title(
                         f"trip: {key}, error: {objectives[key][obj[0]]:.3g}")
-                    ax[i_obj * 2].plot(time_hr, 
-                                        mod_sig, label='mod',)
+                    ax[i_obj * 2].plot(time_hr,
+                                       mod_sig, label='mod',)
                     ax[i_obj * 2].plot(time_hr,
                                        ref_sig,
                                        linestyle='--',
@@ -380,18 +382,17 @@ def run_minimize(
     f_columns = [
         f"{key}: {obj[0]}"
         for key in prob.err.dfs.keys()
-            for obj in prob.err.objectives
+        for obj in prob.err.objectives
     ]
     f_df = pd.DataFrame(
         data=[f for f in res.F.tolist()],
         columns=f_columns,
     )
-    
+
     x_df = pd.DataFrame(
         data=[x for x in res.X.tolist()],
         columns=[param for param in prob.err.params],
     )
-
 
     res_df = pd.concat([x_df, f_df], axis=1)
     res_df.to_csv(str(save_path) + "_df.csv", index=False)

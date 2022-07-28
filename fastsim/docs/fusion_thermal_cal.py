@@ -157,6 +157,11 @@ res, res_df = fsim.calibration.run_minimize(
 res_df
 
 # %%
-problem.err.get_errors(plot=True)
+
+plot_save_dir = Path("plots")
+plot_save_dir.mkdir()
+
+
+problem.err.get_errors(plot=True, plot_save_dir=plot_save_dir)
 
 # %%

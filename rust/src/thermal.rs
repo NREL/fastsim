@@ -62,8 +62,8 @@ use crate::vehicle_thermal::*;
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
     /// Arguments
     /// ------------
-    /// init_soc: initial SOC for electrified vehicles.  
-    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    /// init_soc: initial SOC for electrified vehicles.
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
     ///     Default of None causes veh.aux_kw to be used.
     pub fn sim_drive_py(
         &mut self,
@@ -102,7 +102,7 @@ use crate::vehicle_thermal::*;
     /// Arguments
     /// ------------
     /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
-    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
     ///         Default of None causes veh.aux_kw to be used.
     pub fn init_for_step_py(
         &mut self,
@@ -229,7 +229,7 @@ use crate::vehicle_thermal::*;
     /// Return length of time arrays
     pub fn len(&self) -> usize {
         self.sd.cyc.time_s.len()
-    } 
+    }
     /// added to make clippy happy
     /// not sure whether there is any benefit to this or not for our purposes
     /// Return self.cyc.time_is.is_empty()
@@ -389,11 +389,12 @@ impl SimDriveHot {
 
         if self.vehthrm.fc_model != FcModelTypes::External {
             // Energy balance for fuel converter
-            self.state.fc_te_deg_c = self.state.fc_te_deg_c + (
-                self.state.fc_qdot_kw
-                - self.state.fc_qdot_to_amb_kw
-                - self.state.fc_qdot_to_htr_kw
-            ) / self.vehthrm.fc_c_kj__k * self.sd.cyc.dt_s()[i]
+            self.state.fc_te_deg_c = self.state.fc_te_deg_c
+                + (self.state.fc_qdot_kw
+                    - self.state.fc_qdot_to_amb_kw
+                    - self.state.fc_qdot_to_htr_kw)
+                    / self.vehthrm.fc_c_kj__k
+                    * self.sd.cyc.dt_s()[i]
         }
     }
 
@@ -968,28 +969,28 @@ impl Default for ThermalState {
             fc_lambda: 0.0,
             fc_te_adiabatic_deg_c: default_te_deg_c, // this needs to be calculated, get Chad to revisit
 
-            cab_te_deg_c: default_te_deg_c,  // overridden by new()
+            cab_te_deg_c: default_te_deg_c, // overridden by new()
             cab_qdot_solar_kw: 0.0,
-            cab_qdot_to_amb_kw: 0.0, 
+            cab_qdot_to_amb_kw: 0.0,
 
             exh_mdot: 0.0,
             exh_hdot_kw: 0.0,
 
             exhport_exh_te_in_deg_c: default_te_deg_c,
             exhport_qdot_to_amb: 0.0,
-            exhport_te_deg_c: default_te_deg_c,  // overridden by new()
+            exhport_te_deg_c: default_te_deg_c, // overridden by new()
             exhport_qdot_from_exh: 0.0,
             exhport_qdot_net: 0.0,
 
             cat_qdot: 0.0,
             cat_htc_to_amb: 0.0,
             cat_qdot_to_amb: 0.0,
-            cat_te_deg_c: default_te_deg_c,  // overridden by new()
+            cat_te_deg_c: default_te_deg_c, // overridden by new()
             cat_exh_te_in_deg_c: default_te_deg_c,
             cat_re_ext: 0.0,
             cat_qdot_from_exh: 0.0,
             cat_qdot_net: 0.0,
-            amb_te_deg_c: default_te_deg_c,  // overridden by new()
+            amb_te_deg_c: default_te_deg_c, // overridden by new()
 
             orphaned: false,
         }
