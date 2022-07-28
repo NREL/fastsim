@@ -255,48 +255,58 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     }
 
     #[setter]
-    pub fn set_fc_exp_lag(&mut self, new_lag: f64) {
-        self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
-            // If model is internal
-            if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag: _, minimum }) = fc_temp_eff_model {
-                // If model is exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential
-                    (FcTempEffModelExponential{ offset: *offset, lag: new_lag, minimum: *minimum }),
-                    fc_temp_eff_comp.clone())
-            } else {
-                // If model is not exponential
+    pub fn set_fc_exp_lag(&mut self, new_lag: f64) -> PyResult<()>{
+        if !self.orphaned {
+            self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
+                // If model is internal
+                if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag: _, minimum }) = fc_temp_eff_model {
+                    // If model is exponential
+                    FcModelTypes::Internal(FcTempEffModel::Exponential
+                        (FcTempEffModelExponential{ offset: *offset, lag: new_lag, minimum: *minimum }),
+                        fc_temp_eff_comp.clone())
+                } else {
+                    // If model is not exponential
+                    FcModelTypes::Internal(FcTempEffModel::Exponential
+                        (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }),
+                        fc_temp_eff_comp.clone())
+                }
+            }  else {
+                // If model is not internal
                 FcModelTypes::Internal(FcTempEffModel::Exponential
                     (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }),
-                    fc_temp_eff_comp.clone())
-            }
-        }  else {
-            // If model is not internal
-            FcModelTypes::Internal(FcTempEffModel::Exponential
-                (FcTempEffModelExponential{ lag: new_lag, ..FcTempEffModelExponential::default() }),
-                FcTempEffComponent::default())
+                    FcTempEffComponent::default())
+            };
+            Ok(())
+        } else {
+            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 
     #[setter]
-    pub fn set_fc_exp_minimum(&mut self, new_minimum: f64) {
-        self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
-            // If model is internal
-            if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag, minimum: _ }) = fc_temp_eff_model {
-                // If model is exponential
-                FcModelTypes::Internal(FcTempEffModel::Exponential
-                    (FcTempEffModelExponential{ offset: *offset, lag: *lag, minimum: new_minimum }),
-                    fc_temp_eff_comp.clone())
-            } else {
-                // If model is not exponential
+    pub fn set_fc_exp_minimum(&mut self, new_minimum: f64) -> PyResult<()> {
+        if !self.orphaned {
+            self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
+                // If model is internal
+                if let FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, lag, minimum: _ }) = fc_temp_eff_model {
+                    // If model is exponential
+                    FcModelTypes::Internal(FcTempEffModel::Exponential
+                        (FcTempEffModelExponential{ offset: *offset, lag: *lag, minimum: new_minimum }),
+                        fc_temp_eff_comp.clone())
+                } else {
+                    // If model is not exponential
+                    FcModelTypes::Internal(FcTempEffModel::Exponential
+                        (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }),
+                        fc_temp_eff_comp.clone())
+                }
+            }  else {
+                // If model is not internal
                 FcModelTypes::Internal(FcTempEffModel::Exponential
                     (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }),
-                    fc_temp_eff_comp.clone())
-            }
-        }  else {
-            // If model is not internal
-            FcModelTypes::Internal(FcTempEffModel::Exponential
-                (FcTempEffModelExponential{ minimum: new_minimum, ..FcTempEffModelExponential::default() }),
-                FcTempEffComponent::default())
+                    FcTempEffComponent::default())
+            };
+            Ok(())
+        } else {
+            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))            
         }
     }
 
