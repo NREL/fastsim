@@ -389,12 +389,11 @@ impl SimDriveHot {
 
         if self.vehthrm.fc_model != FcModelTypes::External {
             // Energy balance for fuel converter
-            self.state.fc_te_deg_c = self.state.fc_te_deg_c
-                + (self.state.fc_qdot_kw
-                    - self.state.fc_qdot_to_amb_kw
-                    - self.state.fc_qdot_to_htr_kw)
-                    / self.vehthrm.fc_c_kj__k
-                    * self.sd.cyc.dt_s()[i]
+            self.state.fc_te_deg_c += (self.state.fc_qdot_kw
+                - self.state.fc_qdot_to_amb_kw
+                - self.state.fc_qdot_to_htr_kw)
+                / self.vehthrm.fc_c_kj__k
+                * self.sd.cyc.dt_s()[i]
         }
     }
 
@@ -814,8 +813,7 @@ impl SimDriveHot {
                     if let FcTempEffComponent::Hybrid = fc_temp_eff_comp {
                         if self.state.cat_te_deg_c < self.vehthrm.cat_te_lightoff_deg_c {
                             // reduce efficiency to account for catalyst not being lit off
-                            self.state.fc_eta_temp_coeff =
-                                self.state.fc_eta_temp_coeff * self.vehthrm.cat_fc_eta_coeff;
+                            self.state.fc_eta_temp_coeff *= self.vehthrm.cat_fc_eta_coeff;
                         }
                     }
                 }
