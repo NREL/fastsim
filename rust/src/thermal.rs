@@ -842,10 +842,9 @@ impl SimDriveHot {
                     minimum,
                 }) = fc_temp_eff_model
                 {
-                    self.state.fc_eta_temp_coeff = max(
-                        *minimum,
-                        1.0 - (-max(self.state.fc_te_deg_c - offset, 0.0)).powf(*lag),
-                    );
+                    self.state.fc_eta_temp_coeff = (1.0
+                        + -1.0 * f64::exp(-1.0 / lag * (self.state.fc_te_deg_c - offset)))
+                    .max(*minimum);
 
                     if let FcTempEffComponent::Hybrid = fc_temp_eff_comp {
                         if self.state.cat_te_deg_c < self.vehthrm.cat_te_lightoff_deg_c {
