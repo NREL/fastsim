@@ -1,8 +1,10 @@
 # %%
+from pymoo.util.termination.default import MultiObjectiveDefaultTermination as MODT
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 import re
+import numpy as np
 
 import fastsim as fsim
 import fastsimrust as fsr
@@ -91,19 +93,29 @@ for key in dfs.keys():
             "mps": dfs[key]["Dyno_Spd[mph]"] / fsim.params.MPH_PER_MPS
         }
     ).to_rust()
+    sdh = fsr.SimDriveHot(
+        cycs[key],
+        veh,
+        amb_te_deg_c=dfs[key]['Cell_Temp[C]'][0],
+        fc_te_deg_c_init=dfs[key]['CylinderHeadTempC'][0])
+    sim_params = sdh.sd.sim_params
+    sim_params.reset_orphaned()
+    # make tolerances big since runs may print lots of warnings before final design is selected
+    sim_params.trace_miss_speed_mps_tol = 1e9
+    sim_params.trace_miss_time_tol = 1e9
+    sim_params.trace_miss_dist_tol = 1e9
+    sim_params.energy_audit_error_tol = 1e9
+    sim_params.verbose = False
+    sd = sdh.sd
+    sd.reset_orphaned()
+    sd.sim_params = sim_params
+    sdh.sd = sd
+
     if key in list(dfs_cal.keys()):
-        cal_sim_drives[key] = fsr.SimDriveHot(
-            cycs[key],
-            veh,
-            amb_te_deg_c=dfs[key]['Cell_Temp[C]'][0],
-            fc_te_deg_c_init=dfs[key]['CylinderHeadTempC'][0])
+        cal_sim_drives[key] = sdh
     else:
         assert key in list(dfs_val.keys())
-        val_sim_drives[key] = fsr.SimDriveHot(
-            cycs[key],
-            veh,
-            amb_te_deg_c=dfs[key]['Cell_Temp[C]'][0],
-            fc_te_deg_c_init=dfs[key]['CylinderHeadTempC'][0])
+        val_sim_drives[key] = sdh
 
 
 # %%
@@ -120,8 +132,9 @@ objectives = fsim.calibration.ModelErrors(
         "vehthrm.fc_htc_to_amb_stop",
         "vehthrm.fc_coeff_from_comb",
         "vehthrm.fc_exp_offset",
-        # "vehthrm.fc_exp_lag",
-        # "vehthrm.fc_exp_minimum",
+        "vehthrm.fc_exp_lag",
+        "vehthrm.fc_exp_minimum",
+        "vehthrm.rad_eps",
     ],
     verbose=False
 )
@@ -136,32 +149,85 @@ problem = fsim.calibration.CalibrationProblem(
         (5, 50),
         (1e-5, 1e-3),
         (-10, 30),
-        # (15, 75),
-        # (0.25, 0.45),
+        (15, 75),
+        (0.25, 0.45),
+        (5, 50),
     ],
     # n_max_gen=100,
     # pop_size=12,
 )
 
 # %%
-from pymoo.util.termination.default import MultiObjectiveDefaultTermination as MODT
-res, res_df = fsim.calibration.run_minimize(
-    problem, 
-    termination=MODT(
-        # max number of generations, default of 10 is very small
-        n_max_gen=2,
-        # evaluate tolerance over this interval of generations every `nth_gen`
-        n_last=10,
-    ),
-)
-res_df
+
+b_run_min = False
+
+res_save_path = "pymoo_res_df.csv"
+
+if b_run_min:
+    res, res_df = fsim.calibration.run_minimize(
+        problem,
+        termination=MODT(
+            # max number of generations, default of 10 is very small
+            n_max_gen=500,
+            # evaluate tolerance over this interval of generations every `nth_gen`
+            n_last=10,
+        ),
+    )
+    res_df
+else:
+    res_df = pd.read_csv(res_save_path)
+
+res_df['euclidean'] = (
+    res_df.iloc[:, len(objectives.params):] ** 2).sum(1).pow(1/2)
+best_row = res_df['euclidean'].argmin()
+best_df = res_df.iloc[best_row, :]
+param_vals = res_df.iloc[0, :len(objectives.params)].to_numpy()
 
 # %%
+
+# params_and_vals = {
+#     'vehthrm.fc_c_kj__k': 125.0,
+#     'vehthrm.fc_l': 1.3,
+#     'vehthrm.fc_htc_to_amb_stop': 100.0,
+#     'vehthrm.fc_coeff_from_comb': 0.00030721481819805005,
+#     'vehthrm.fc_exp_offset': -9.438669088889137,
+#     'vehthrm.fc_exp_lag': 30.0,
+#     'vehthrm.fc_exp_minimum': 0.2500008623533276,
+#     'vehthrm.rad_eps': 20
+#  }
 
 plot_save_dir = Path("plots")
-plot_save_dir.mkdir()
+plot_save_dir.mkdir(exist_ok=True)
 
+# problem.err.update_params(params_and_vals.values())
+problem.err.update_params(param_vals)
+problem.err.get_errors(plot=True, plot_save_dir=plot_save_dir, plot_perc_err=False)
 
-problem.err.get_errors(plot=True, plot_save_dir=plot_save_dir)
 
 # %%
+
+# Demonstrate with model showing fuel usage impact
+
+te_amb_deg_c_arr = np.arange(-10, 51)
+mpg_arr = np.zeros(len(te_amb_deg_c_arr))
+
+for i, te_amb_deg_c in enumerate(te_amb_deg_c_arr):
+    sdh = fsr.SimDriveHot(
+        fsim.cycle.Cycle.from_file("udds").to_rust(),
+        veh,
+        amb_te_deg_c=te_amb_deg_c,
+        fc_te_deg_c_init=te_amb_deg_c
+    )
+    sdh.sim_drive()
+    mpg_arr[i] = sdh.sd.mpgge
+
+# %%
+fig, ax = plt.subplots()
+ax.scatter(te_amb_deg_c_arr, mpg_arr)
+ax.set_xlabel("Ambient/Cold Start Temperature [°C]")
+ax.set_ylabel("Fuel Economy [mpg]")
+ax.set_title("2012 Ford Fusion V6")
+plt.tight_layout()
+plt.savefig("plots/fe v amb temp.svg")
+plt.savefig("plots/fe v amb temp.png")
+

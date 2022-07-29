@@ -154,7 +154,7 @@ class ModelErrors(object):
 
     def get_errors(
         self, return_mods: Optional[bool] = False, plot: Optional[bool] = False,
-            plot_save_dir: Optional[str] = None,
+            plot_save_dir: Optional[str] = None, plot_perc_err: Optional[bool] = True,
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
@@ -182,13 +182,16 @@ class ModelErrors(object):
 
             if plot or plot_save_dir:
                 time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600
-                _, ax = plt.subplots(
-                    len(self.objectives) * 2 + 1, 1, sharex=True, figsize=(12, 8),
+                ax_multiplier = 2 if plot_perc_err else 1
+                fig, ax = plt.subplots(
+                    len(self.objectives) * ax_multiplier + 1, 1, sharex=True, figsize=(12, 8),
                 )
                 ax[-1].plot(
                     time_hr,
-                    sim_drive.sd.mps_ach,
+                    sim_drive.sd.mph_ach,
                 )
+                ax[-1].set_xlabel('Time [hr]')
+                ax[-1].set_ylabel('Speed [mph]')
 
             t1 = time.time()
             if self.verbose:
@@ -227,29 +230,32 @@ class ModelErrors(object):
                 if plot or plot_save_dir:
                     # this code needs to be cleaned up
                     # raw signals
-                    ax[i_obj * 2].set_title(
+                    ax[i_obj * ax_multiplier].set_title(
                         f"trip: {key}, error: {objectives[key][obj[0]]:.3g}")
-                    ax[i_obj * 2].plot(time_hr,
-                                       mod_sig, label='mod',)
-                    ax[i_obj * 2].plot(time_hr,
-                                       ref_sig,
-                                       linestyle='--',
-                                       label="exp",
-                                       )
-                    ax[i_obj * 2].set_ylabel(obj[0])
-                    ax[i_obj * 2].legend()
+                    ax[i_obj * ax_multiplier].plot(time_hr,
+                                                   mod_sig, label='mod',)
+                    ax[i_obj * ax_multiplier].plot(time_hr,
+                                                   ref_sig,
+                                                   linestyle='--',
+                                                   label="exp",
+                                                   )
+                    ax[i_obj * ax_multiplier].set_ylabel(obj[0])
+                    ax[i_obj * ax_multiplier].legend()
 
-                    # error
-                    perc_err = (mod_sig - ref_sig) / ref_sig * 100
-                    # clean up inf and nan
-                    perc_err[np.where(perc_err == np.inf)[0][:]] = 0.0
-                    # trim off the first few bits of junk
-                    perc_err[np.where(perc_err > 500)[0][:]] = 0.0
-                    ax[i_obj * 2 + 1].plot(
-                        time_hr,
-                        perc_err
-                    )
-                    ax[i_obj * 2 + 1].set_ylabel(obj[0] + "\n%Err")
+                    if plot_perc_err:
+                        # error
+                        perc_err = (mod_sig - ref_sig) / ref_sig * 100
+                        # clean up inf and nan
+                        perc_err[np.where(perc_err == np.inf)[0][:]] = 0.0
+                        # trim off the first few bits of junk
+                        perc_err[np.where(perc_err > 500)[0][:]] = 0.0
+                        ax[i_obj * ax_multiplier + 1].plot(
+                            time_hr,
+                            perc_err
+                        )
+                        ax[i_obj * ax_multiplier +
+                            1].set_ylabel(obj[0] + "\n%Err")
+                        ax[i_obj * ax_multiplier + 1].set_ylim([-20, 20])
 
                 if plot_save_dir:
                     if not Path(plot_save_dir).exists():
