@@ -1,4 +1,4 @@
-use crate::utils;
+ use crate::utils;
 use proc_macros::add_pyo3_api;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
@@ -29,7 +29,7 @@ impl Default for FcModelTypes {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum FcTempEffComponent {
     /// FC efficiency is purely dependent on cat temp
-    Catalyst,
+    Catalyst, // todo: make sure this gets used!!!
     /// FC efficency is dependent on both cat and FC temp
     Hybrid,
     /// FC efficiency is dependent on FC temp only
