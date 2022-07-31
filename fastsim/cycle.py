@@ -289,7 +289,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
     return_type: 
         default: infer from type of cyc
         'dict': dict
-        'cycle': Cycle 
+        'python': Cycle 
         'legacy': LegacyCycle
         'rust': RustCycle
     deep: if True, uses deepcopy on everything
@@ -311,7 +311,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
         if RUST_AVAILABLE and type(cyc) == fsr.RustCycle:
             return_type = 'rust'
         elif type(cyc) == Cycle:
-            return_type = 'cycle'
+            return_type = 'python'
         elif type(cyc) == LegacyCycle:
             return_type = "legacy"
         else:
@@ -320,7 +320,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
 
     if return_type == 'dict':
         return cyc_dict
-    elif return_type == 'cycle':
+    elif return_type == 'python':
         return Cycle.from_dict(cyc_dict)
     elif return_type == 'legacy':
         return LegacyCycle(cyc_dict)
