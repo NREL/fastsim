@@ -90,7 +90,6 @@ def abc_to_drag_coeffs(veh: Vehicle,
                 np.array(sd_coast.mps_ach))[:cutoff],
             (dyno_func_lb(sd_coast.mph_ach) * fsim.params.N_PER_LBF)[:cutoff],
             np.array(cyc.time_s)[:cutoff],
-            normalize=False
         )
 
         return err
