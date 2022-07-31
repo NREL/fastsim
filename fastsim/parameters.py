@@ -76,7 +76,7 @@ def copy_physical_properties(p: PhysicalProperties, return_type: str = None, dee
     return_type: 
         default: infer from type of p
         'dict': dict
-        'physical_properties': PhysicalProperties 
+        'python': PhysicalProperties 
         'legacy': LegacyPhysicalProperties -- NOT IMPLEMENTED YET; is it needed?
         'rust': RustPhysicalProperties
     deep: if True, uses deepcopy on everything
@@ -91,14 +91,14 @@ def copy_physical_properties(p: PhysicalProperties, return_type: str = None, dee
         if RUST_AVAILABLE and type(p) == fsr.RustPhysicalProperties:
             return_type = 'rust'
         elif type(p) == PhysicalProperties:
-            return_type = 'physical_properties'
+            return_type = 'python'
         else:
             raise NotImplementedError(
-                "Only implemented for rust and physical_properties")
+                "Only implemented for rust and python")
 
     if return_type == 'dict':
         return p_dict
-    elif return_type == 'physical_properties':
+    elif return_type == 'python':
         return PhysicalProperties.from_dict(p_dict)
     elif RUST_AVAILABLE and return_type == 'rust':
         return fsr.RustPhysicalProperties(**p_dict)
