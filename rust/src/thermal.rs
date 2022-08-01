@@ -26,31 +26,9 @@ use crate::vehicle_thermal::*;
         cyc: cycle::RustCycle,
         veh: vehicle::RustVehicle,
         vehthrm: VehicleThermal,
-        amb_te_deg_c: Option<f64>,  // need a way to provide a vector optionally, remind Chad to think about this
-        fc_te_deg_c_init: Option<f64>,
-        cab_te_deg_c_init: Option<f64>,
-        exhport_te_deg_c_init: Option<f64>,
-        cat_te_deg_c_init: Option<f64>,
+        init_state: Option<ThermalState>,
      ) -> Self {
-        // Initialize objects
-        let sd = simdrive::RustSimDrive::new(cyc, veh);
-        let air = AirProperties::default();
-        let state = ThermalState::new(
-            amb_te_deg_c,
-            fc_te_deg_c_init,
-            cab_te_deg_c_init,
-            exhport_te_deg_c_init,
-            cat_te_deg_c_init,
-        );
-        let history = ThermalStateHistoryVec::default();
-
-        Self {
-            sd,
-            vehthrm,
-            air,
-            state,
-            history,
-        }
+        Self::new(cyc, veh, vehthrm, init_state)
     }
 
     #[pyo3(name = "gap_to_lead_vehicle_m")]
@@ -259,6 +237,25 @@ pub struct SimDriveHot {
 pub const SIMDRIVEHOT_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 impl SimDriveHot {
+    pub fn new(
+        cyc: cycle::RustCycle,
+        veh: vehicle::RustVehicle,
+        vehthrm: VehicleThermal,
+        init_state: Option<ThermalState>,
+    ) -> Self {
+        let sd = simdrive::RustSimDrive::new(cyc, veh);
+        let air = AirProperties::default();
+        let history = ThermalStateHistoryVec::default();
+
+        Self {
+            sd,
+            vehthrm,
+            air,
+            state: init_state.unwrap_or_default(),
+            history,
+        }
+    }
+
     impl_serde!(SimDriveHot, SIMDRIVEHOT_DEFAULT_FOLDER);
 
     pub fn from_file(filename: &str) -> Self {
@@ -843,7 +840,7 @@ impl SimDriveHot {
                 }) = fc_temp_eff_model
                 {
                     self.state.fc_eta_temp_coeff = (1.0
-                        + -1.0 * f64::exp(-1.0 / lag * (self.state.fc_te_deg_c - offset)))
+                        - f64::exp(-1.0 / lag * (self.state.fc_te_deg_c - offset)))
                     .max(*minimum);
 
                     if let FcTempEffComponent::Hybrid = fc_temp_eff_comp {
@@ -892,7 +889,24 @@ impl SimDriveHot {
 }
 
 #[pyclass]
-#[add_pyo3_api]
+#[add_pyo3_api(
+    #[new]
+    pub fn __new__(
+        amb_te_deg_c: Option<f64>,
+        fc_te_deg_c_init: Option<f64>,
+        cab_te_deg_c_init: Option<f64>,
+        exhport_te_deg_c_init: Option<f64>,
+        cat_te_deg_c_init: Option<f64>,
+    ) -> Self {
+        Self::new(
+            amb_te_deg_c,
+            fc_te_deg_c_init,
+            cab_te_deg_c_init,
+            exhport_te_deg_c_init,
+            cat_te_deg_c_init,
+        )
+    }
+)]
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, HistoryVec)]
 /// Struct containing thermal state variables for all thermal components

@@ -77,8 +77,11 @@ impl Default for FcTempEffModelLinear {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct FcTempEffModelExponential {
+    /// temperature at which `fc_eta_temp_coeff` begins to grow
     pub offset: f64,
+    /// exponential lag parameter
     pub lag: f64,
+    /// minimum value that `fc_eta_temp_coeff` can take
     pub minimum: f64,
 }
 
