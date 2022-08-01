@@ -25,3 +25,6 @@ rustdoc-args = [ "--html-in-header", "./src/html/docs-header.html" ]
 opt-level = 3               # Use better optimizations.
 lto = "fat"  # aggressively optimize inter-crate linking
 codegen-units = 1  # optimize connection between modules
+
+[package.metadata.maturin]
+python-source = "python"
