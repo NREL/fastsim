@@ -25,6 +25,7 @@ use crate::vehicle_thermal::*;
     pub fn __new__(
         cyc: cycle::RustCycle,
         veh: vehicle::RustVehicle,
+        vehthrm: VehicleThermal,
         amb_te_deg_c: Option<f64>,  // need a way to provide a vector optionally, remind Chad to think about this
         fc_te_deg_c_init: Option<f64>,
         cab_te_deg_c_init: Option<f64>,
@@ -33,7 +34,6 @@ use crate::vehicle_thermal::*;
      ) -> Self {
         // Initialize objects
         let sd = simdrive::RustSimDrive::new(cyc, veh);
-        let vehthrm = VehicleThermal::default();
         let air = AirProperties::default();
         let state = ThermalState::new(
             amb_te_deg_c,
@@ -245,15 +245,15 @@ use crate::vehicle_thermal::*;
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct SimDriveHot {
     #[api(has_orphaned)]
-    sd: simdrive::RustSimDrive,
+    pub sd: simdrive::RustSimDrive,
     #[api(has_orphaned)]
-    vehthrm: VehicleThermal,
+    pub vehthrm: VehicleThermal,
     #[api(skip_get, skip_set)]
     #[serde(skip)]
     air: AirProperties,
     #[api(has_orphaned)]
-    state: ThermalState,
-    history: ThermalStateHistoryVec,
+    pub state: ThermalState,
+    pub history: ThermalStateHistoryVec,
 }
 
 pub const SIMDRIVEHOT_DEFAULT_FOLDER: &str = "fastsim/resources";

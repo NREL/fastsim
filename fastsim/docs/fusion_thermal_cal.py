@@ -1,4 +1,4 @@
-# %%
+# %% imports
 from pymoo.util.termination.default import MultiObjectiveDefaultTermination as MODT
 from pathlib import Path
 import pandas as pd
@@ -9,6 +9,7 @@ import numpy as np
 import fastsim as fsim
 import fastsimrust as fsr
 
+# %% load the dyno test data
 # load test data which can be obtained at
 # https://www.anl.gov/taps/d3-2012-ford-fusion-v6
 possible_trip_dirs = (
@@ -82,7 +83,9 @@ dfs_val = {key: dfs[key] for key in dfs_val_keys}
 # create cycles and sim_drives
 
 veh = fsim.vehicle.Vehicle.from_file("2012_Ford_Fusion.csv").to_rust()
+vehthrm = fsr.VehicleThermal.default()
 
+# %% create sim_drives
 cycs = dict()
 cal_sim_drives = dict()
 val_sim_drives = dict()
