@@ -96,11 +96,16 @@ for key in dfs.keys():
             "mps": dfs[key]["Dyno_Spd[mph]"] / fsim.params.MPH_PER_MPS
         }
     ).to_rust()
+    init_state = fsr.ThermalState(
+        amb_te_deg_c=dfs[key]['Cell_Temp[C]'][0],
+        fc_te_deg_c_init=dfs[key]['CylinderHeadTempC'][0],
+    )
     sdh = fsr.SimDriveHot(
         cycs[key],
         veh,
-        amb_te_deg_c=dfs[key]['Cell_Temp[C]'][0],
-        fc_te_deg_c_init=dfs[key]['CylinderHeadTempC'][0])
+        vehthrm,
+        init_state,
+    )
     sim_params = sdh.sd.sim_params
     sim_params.reset_orphaned()
     # make tolerances big since runs may print lots of warnings before final design is selected
@@ -127,6 +132,8 @@ objectives = fsim.calibration.ModelErrors(
     dfs=dfs_cal,
     objectives=[
         ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
+        # TODO: add property/getter to enable the following:
+        # ("sd.fs_mj_out_ach", "Fuel_Power_Calc[MJ]"),
         ("history.fc_te_deg_c", "CylinderHeadTempC"),
     ],
     params=[
@@ -177,6 +184,7 @@ if b_run_min:
         ),
     )
     res_df
+    res_df.to_csv(res_save_path)
 else:
     res_df = pd.read_csv(res_save_path)
 
@@ -204,33 +212,61 @@ plot_save_dir.mkdir(exist_ok=True)
 
 # problem.err.update_params(params_and_vals.values())
 problem.err.update_params(param_vals)
-problem.err.get_errors(plot=True, plot_save_dir=plot_save_dir, plot_perc_err=False)
+problem.err.get_errors(
+    plot=True, plot_save_dir=plot_save_dir, plot_perc_err=False)
 
 
 # %%
 
 # Demonstrate with model showing fuel usage impact
 
-te_amb_deg_c_arr = np.arange(-10, 51)
+# get the optimal vehthrm
+vehthrm = problem.err.sim_drives[
+    list(problem.err.sim_drives.keys())[0]
+].vehthrm
+
+# manual adjustment of parameters, should be turned off when
+# checking new run
+# vehthrm = fsim.auxiliaries.set_nested_values(
+#     vehthrm, fc_exp_lag=17.0
+# )
+
+te_amb_deg_c_arr = np.arange(-10, 101)
 mpg_arr = np.zeros(len(te_amb_deg_c_arr))
 
 for i, te_amb_deg_c in enumerate(te_amb_deg_c_arr):
     sdh = fsr.SimDriveHot(
         fsim.cycle.Cycle.from_file("udds").to_rust(),
         veh,
-        amb_te_deg_c=te_amb_deg_c,
-        fc_te_deg_c_init=te_amb_deg_c
+        vehthrm,
+        fsr.ThermalState(
+            amb_te_deg_c=min(te_amb_deg_c, 50),
+            fc_te_deg_c_init=te_amb_deg_c
+        )
     )
     sdh.sim_drive()
     mpg_arr[i] = sdh.sd.mpgge
 
+sd = fsim.simdrive.RustSimDrive(
+    fsim.cycle.Cycle.from_file("udds").to_rust(),
+    veh,
+)
+sd.sim_drive()
+
+
 # %%
+
+# by about 90°C, 'with thermal' should be nearly the same as 'no thermal'
+
 fig, ax = plt.subplots()
-ax.scatter(te_amb_deg_c_arr, mpg_arr)
+ax.scatter(te_amb_deg_c_arr, mpg_arr, label='with thermal')
+ax.axhline(y=sd.mpgge, label='no thermal', color='red')
 ax.set_xlabel("Ambient/Cold Start Temperature [°C]")
 ax.set_ylabel("Fuel Economy [mpg]")
 ax.set_title("2012 Ford Fusion V6")
+ax.legend()
 plt.tight_layout()
 plt.savefig("plots/fe v amb temp.svg")
 plt.savefig("plots/fe v amb temp.png")
 
+# %%
