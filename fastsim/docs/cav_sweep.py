@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 import csv
 from typing import Optional
@@ -152,7 +153,8 @@ def no_eco_driving(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, d
     cyc = load_cycle(cyc_name, use_rust=use_rust)
     sim = create_simdrive(cyc, veh, use_rust=use_rust)
     sim.sim_drive(init_soc=init_soc)
-    print(f"NO ECO-DRIVING: {sim.mpgge:.3f} mpg")
+    print(f"NO ECO-DRIVING: {sim.mpgge:.3f} mpg", flush=True)
+
     make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
     make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'base_dist_by_time.png', save_dir, use_rust))
     make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'base_debug.png', save_dir, use_rust))
@@ -176,7 +178,7 @@ def eco_coast(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sho
     params.coast_time_horizon_for_adjustment_s = 20.0
     sim.sim_params = params
     sim.sim_drive(init_soc=init_soc)
-    print(f"ECO-COAST: {sim.mpgge:.3f} mpg")
+    print(f"ECO-COAST: {sim.mpgge:.3f} mpg", flush=True)
     make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
     make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_dist_by_time.png', save_dir, use_rust))
     make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocoast_debug.png', save_dir, use_rust))
@@ -224,7 +226,7 @@ def eco_coast_by_microtrip(veh, init_soc=None, save_dir=None, tag=None, cyc_name
         dist_mi += sim.dist_mi.sum()
     fuel_kwh_per_mi = ((fuel_kj + ess_dischg_kj) / 3.6e3) / dist_mi
     mpgge = 1.0 / (fuel_kwh_per_mi / sim.props.kwh_per_gge)
-    print(f"ECO-COAST: {mpgge:.3f} mpg")
+    print(f"ECO-COAST: {mpgge:.3f} mpg", flush=True)
     cyc0 = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat(base_traces))
     cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat(traces))
     make_coasting_plot(cyc0, cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocoast.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
@@ -295,6 +297,7 @@ def create_dist_and_target_speeds_by_microtrip(cyc: fastsim.cycle.Cycle, blend_f
         print('Microtrip distances and average speeds:')
         for (d, v_tgt) in dist_and_tgt_speeds:
             print(f'- dist: {d:.3f} m | v_target: {v_tgt:.3f} m/s')
+        sys.stdout.flush()
     return dist_and_tgt_speeds
 
 
@@ -335,7 +338,7 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
                 current_mt_idx += 1
         sim.sim_drive_step()
     sim.set_post_scalars()
-    print(f"ECO-CRUISE: {sim.mpgge:.3f} mpg")
+    print(f"ECO-CRUISE: {sim.mpgge:.3f} mpg", flush=True)
     make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
     make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'ecocruise_dist_by_time.png', save_dir, use_rust))
     make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'ecocruise_debug.png', save_dir, use_rust))
@@ -384,7 +387,7 @@ def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=N
                 current_mt_idx += 1
         sim.sim_drive_step()
     sim.set_post_scalars()
-    print(f"ECO-COAST + ECO-CRUISE: {sim.mpgge:.3f} mpg")
+    print(f"ECO-COAST + ECO-CRUISE: {sim.mpgge:.3f} mpg", flush=True)
     make_coasting_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco.png', save_dir, use_rust), coast_brake_start_speed_m_per_s=sim.sim_params.coast_brake_start_speed_m_per_s)
     make_distance_by_time_plot(sim.cyc0, sim.cyc, do_show=do_show, save_file=make_save_file(tag, 'alleco_dist_by_time.png', save_dir, use_rust))
     make_debug_plot(sim, do_show=do_show, save_file=make_save_file(tag, 'alleco_debug.png', save_dir, use_rust))
@@ -438,22 +441,22 @@ def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False):
         print(f"CYCLE: {cyc_name}")
         if powertrain is None or powertrain == "conv":
             veh_conv = fastsim.vehicle.Vehicle.from_vehdb(1)
-            print(f"CONV: {veh_conv.scenario_name}")
+            print(f"CONV: {veh_conv.scenario_name}", flush=True)
             run_for_powertrain(save_dir, outputs, cyc_name, veh_conv, 'conv', init_soc=None, do_show=do_show, use_rust=use_rust)
 
         if powertrain is None or powertrain == "hev":
             veh_hev = fastsim.vehicle.Vehicle.from_vehdb(9)
-            print(f"HEV: {veh_hev.scenario_name}")
+            print(f"HEV: {veh_hev.scenario_name}", flush=True)
             run_for_powertrain(save_dir, outputs, cyc_name, veh_hev, 'hev', init_soc=None, do_show=do_show, use_rust=use_rust)
 
         if powertrain is None or powertrain == "phev":
             veh_phev = fastsim.vehicle.Vehicle.from_vehdb(12)
-            print(f"PHEV: {veh_phev.scenario_name}")
+            print(f"PHEV: {veh_phev.scenario_name}", flush=True)
             run_for_powertrain(save_dir, outputs, cyc_name, veh_phev, 'phev', init_soc=None, do_show=do_show, use_rust=use_rust)
 
         if powertrain is None or powertrain == "bev":
             veh_bev = fastsim.vehicle.Vehicle.from_vehdb(17)
-            print(f"BEV: {veh_bev.scenario_name}")
+            print(f"BEV: {veh_bev.scenario_name}", flush=True)
             run_for_powertrain(save_dir, outputs, cyc_name, veh_bev, 'bev', init_soc=None, do_show=do_show, use_rust=use_rust)
 
     keys = [
@@ -468,11 +471,10 @@ def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False):
         writer.writerow(keys)
         for item in outputs:
             writer.writerow([str(item[k]) for k in keys])
-    print("Done!")
+    print("Done!", flush=True)
 
 
 if __name__ == "__main__":
-    import sys
     cycle_name = None
     if len(sys.argv) >= 2 and sys.argv[1] != 'None':
         cycle_name = sys.argv[1]
@@ -494,4 +496,5 @@ if __name__ == "__main__":
         print("PLATFORM  : RUST BACKEND")
     else:
         print("PLATFORM  : PURE PYTHON")
+    sys.stdout.flush()
     main(cycle_name, powertrain=powertrain, do_show=do_show, use_rust=use_rust)
