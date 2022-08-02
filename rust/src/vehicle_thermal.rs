@@ -97,7 +97,7 @@ impl Default for FcTempEffModelExponential {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct HVACModel {
-    /// set temperature for cabin
+    /// set temperature for component (e.g. cabin, ESS)
     pub te_set_deg_c: f64,
     /// proportional control effort [kW / °C]
     pub p_cntrl_kw_per_deg_c: f64,

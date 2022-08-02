@@ -516,6 +516,7 @@ impl SimDriveHot {
             } else if self.state.cab_te_deg_c
                 > hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
             {
+                // TODO: provision for skipping over the deadband
                 // cabin is too hot
                 // integral control effort increases in magnitude by
                 // 1 time step worth of error
@@ -526,6 +527,7 @@ impl SimDriveHot {
                 self.state.cab_qdot_from_hvac = hvac_model.p_cntrl_kw_per_deg_c
                     * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
                     + hvac_model.i_cntrl_kw;
+                // TODO: add in aux load penalty 
             } else {
                 // cabin is too cold
                 // integral control effort increases in magnitude by
@@ -537,6 +539,7 @@ impl SimDriveHot {
                 self.state.cab_qdot_from_hvac = hvac_model.p_cntrl_kw_per_deg_c
                     * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
                     + hvac_model.i_cntrl_kw;
+                // TODO: make sure that `self.state.cab_qdot_from_hvac` is coming from the engine for conv or HEV
             }
 
             self.state.cab_te_deg_c += (self.state.cab_qdot_from_hvac
@@ -544,7 +547,6 @@ impl SimDriveHot {
                 / self.vehthrm.cab_c_kj__k
                 * self.sd.cyc.dt_s()[i];
         }
-        // TODO: add in aux load penalty
     }
 
     /// Solve exhport thermal behavior.
