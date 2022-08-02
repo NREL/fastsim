@@ -5,7 +5,8 @@ use std::cmp;
 use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from, ndarrunique};
 use super::vehicle::*;
 use super::cycle::{
-    calc_constant_jerk_trajectory, accel_array_for_constant_jerk, RustCycle, detect_passing, PassingInfo, accel_for_constant_jerk
+    calc_constant_jerk_trajectory, accel_array_for_constant_jerk, RustCycle, detect_passing, PassingInfo, accel_for_constant_jerk,
+    trapz_cumsum_distances, trapz_step_start_distance, trapz_step_distances, trapz_step_distance
 };
 use super::params;
 
@@ -392,11 +393,13 @@ impl RustSimDrive {
         self.trace_miss_iters = Array::zeros(cyc_len);
         self.newton_iters = Array::zeros(cyc_len);
         self.coast_delay_index = Array::zeros(cyc_len);
+        self.impose_coast = Array::from_vec(vec![false; cyc_len]);
     }
 
     /// Provides the gap-with lead vehicle from start to finish
     pub fn gap_to_lead_vehicle_m(&self) -> Array1<f64> {
-        let mut gaps_m = ndarrcumsum(&self.cyc0.dist_v2_m()) - ndarrcumsum(&self.cyc.dist_v2_m());
+        // TODO: consider basing on dist_m?
+        let mut gaps_m = trapz_cumsum_distances(&self.cyc0) - trapz_cumsum_distances(&self.cyc);
         if self.sim_params.follow_allow {
             gaps_m += self.sim_params.idm_minimum_gap_m;
         }
@@ -515,7 +518,7 @@ impl RustSimDrive {
         self.mps_ach[0] = self.cyc0.mps[0];
         self.mph_ach[0] = self.cyc0.mph()[0];
 
-        if self.sim_params.missed_trace_correction {
+        if self.sim_params.missed_trace_correction || self.sim_params.follow_allow || self.sim_params.coast_allow {
             self.cyc = self.cyc0.clone();  // reset the cycle in case it has been manipulated
         }
         self.i = 1; // time step counter
@@ -549,8 +552,8 @@ impl RustSimDrive {
         let v0_m_per_s = self.mps_ach[i-1];
         let v0_lead_m_per_s = self.cyc0.mps[i-1];
         let dv0_m_per_s = v0_m_per_s - v0_lead_m_per_s;
-        let d0_lead_m: f64 = self.cyc0.dist_v2_m().slice(s![0..i]).sum() + s0_m;
-        let d0_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let d0_lead_m: f64 = trapz_step_start_distance(&self.cyc0, i) + s0_m;
+        let d0_m = trapz_step_start_distance(&self.cyc, i);
         let s_m = max(d0_lead_m - d0_m, 0.01);
         // IDM EQUATIONS
         let s_target_m = s0_m +
@@ -605,6 +608,45 @@ impl RustSimDrive {
     pub fn set_speed_for_target_gap(&mut self, i:usize){
         self.set_speed_for_target_gap_using_idm(i);
     }
+    
+    /// Provides a quick estimate for grade based only on the distance traveled
+    /// at the start of the current step. If the grade is constant over the
+    /// step, this is both quick and accurate.
+    /// NOTE:
+    ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
+    ///     and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+    ///     then returns self.cyc.grade[i]
+    pub fn estimate_grade_for_step(&self, i: usize) -> f64 {
+        if !self.sim_params.coast_allow && !self.sim_params.follow_allow {
+            return self.cyc.grade[i];
+        }
+        self.cyc0.average_grade_over_range(
+            trapz_step_start_distance(&self.cyc, i), 0.0)
+    }
+    
+    /// For situations where cyc can deviate from cyc0, this method
+    /// looks up and accurately interpolates what the average grade over
+    /// the step should be.
+    /// If mps_ach is not None, the mps_ach value is used to predict the
+    /// distance traveled over the step.
+    /// NOTE:
+    ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
+    ///     and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+    ///     then returns self.cyc.grade[i]
+    pub fn lookup_grade_for_step(&self, i: usize, mps_ach: Option<f64>) -> f64 {
+        if !self.sim_params.coast_allow && !self.sim_params.follow_allow {
+            return self.cyc.grade[i];
+        }
+        match mps_ach {
+            Some(mps_ach) => self.cyc0.average_grade_over_range(
+                trapz_step_start_distance(&self.cyc, i),
+                0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s()[i])
+            ,
+            None => self.cyc0.average_grade_over_range(
+                trapz_step_start_distance(&self.cyc, i),
+                trapz_step_distance(&self.cyc, i))
+        }
+    }
 
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
@@ -622,9 +664,7 @@ impl RustSimDrive {
         // TODO: shouldn't the below code always set cyc? Whether coasting or not?
         if self.sim_params.coast_allow || self.sim_params.follow_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
-            self.cyc.grade[self.i] = self.cyc0.average_grade_over_range(
-                self.cyc.dist_v2_m().slice(s![0..self.i]).sum(),
-                self.cyc.dist_v2_m()[self.i]);
+            self.cyc.grade[self.i] = self.lookup_grade_for_step(self.i, None);
         }
 
         self.i += 1;  // increment time step counter
@@ -866,9 +906,7 @@ impl RustSimDrive {
                 self.cyc.mps[i]
             };
 
-            let distance_traveled_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
-            let grade = self.cyc0.average_grade_over_range(
-                distance_traveled_m, 0.5 * (mps_ach + self.cyc.mps[i - 1]) * self.cyc.dt_s()[i]);
+            let grade = self.lookup_grade_for_step(i, Some(mps_ach));
 
             self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
                 (self.mps_ach[i-1] + mps_ach) / 2.0).powf(3.0) / 1e3;
@@ -949,9 +987,7 @@ impl RustSimDrive {
 
             //Cycle is not met
             else {
-                let distance_traveled_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
-                let mut grade_estimate = self.cyc0.average_grade_over_range(
-                    distance_traveled_m, 0.0);
+                let mut grade_estimate = self.estimate_grade_for_step(i);
                 let mut grade: f64;
                 let grade_tol = 1e-4;
                 let mut grade_diff = grade_tol + 1.0;
@@ -1031,9 +1067,7 @@ impl RustSimDrive {
                         xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
                         0.0
                     );
-                    grade_estimate = self.cyc0.average_grade_over_range(
-                        distance_traveled_m,
-                        0.5 * (self.mps_ach[i - 1] + self.mps_ach[i]) * self.cyc.dt_s()[i]);
+                    grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]));
                     grade_diff = (grade - grade_estimate).abs();
                 }
             }
@@ -1722,13 +1756,13 @@ impl RustSimDrive {
     /// This can be used to calculate the distance to stop via coast using
     /// actual time-stepping and dynamically changing grade.
     fn generate_coast_trajectory(&self, i: usize) -> CoastTrajectory {
-        let v0 = self.cyc.mps[i-1];
+        let v0 = self.mps_ach[i-1];
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
         assert![a_brake <= 0.0];
-        let ds = ndarrcumsum(&self.cyc0.dist_v2_m());
+        let ds = trapz_cumsum_distances(&self.cyc0);
         let gs = self.cyc0.grade.clone();
-        let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let d0 = trapz_step_start_distance(&self.cyc, i);
         let mut distances_m: Vec<f64> = vec![];
         let mut grade_by_distance: Vec<f64> = vec![];
         for idx in 0..ds.len() {
@@ -1851,13 +1885,13 @@ impl RustSimDrive {
         let v0 = self.cyc.mps[i-1];
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
-        let ds = ndarrcumsum(&self.cyc0.dist_v2_m());
+        let ds = trapz_cumsum_distances(&self.cyc0);
         let gs = self.cyc0.grade.clone();
         assert!(
             ds.len() == gs.len(),
             "Assumed length of ds and gs the same but actually ds.len():{} and gs.len():{}",
             ds.len(), gs.len());
-        let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let d0 = trapz_step_start_distance(&self.cyc, i);
         let mut grade_by_distance: Vec<f64> = vec![];
         for idx in 0..ds.len() {
             if ds[idx] >= d0 {
@@ -1928,7 +1962,7 @@ impl RustSimDrive {
             return false;
         }
         // distance to next stop (m)
-        let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let d0 = trapz_step_start_distance(&self.cyc, i);
         let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
         let dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2;
         dtsc0 >= dts0 && dts0 >= (4.0 * dtb)
@@ -1975,7 +2009,7 @@ impl RustSimDrive {
             (min_accel_m_per_s2, max_accel_m_per_s2)
         };
         let num_samples = self.cyc.mps.len();
-        let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let d0 = trapz_step_start_distance(&self.cyc, i);
         // a_proposed = (v1 - v0) / dt
         // distance to stop from start of time-step
         let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
@@ -2068,13 +2102,13 @@ impl RustSimDrive {
         }
         let mut coast_delay: Option<i32> = None;
         if !self.sim_params.follow_allow && self.cyc.mps[i] < speed_tol {
-            let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
-            let d0_lv = self.cyc0.dist_v2_m().slice(s![0..i]).sum();
+            let d0 = trapz_step_start_distance(&self.cyc, i);
+            let d0_lv = trapz_step_start_distance(&self.cyc0, i);
             let dtlv0 = d0_lv - d0;
             if dtlv0.abs() > dist_tol {
                 let mut d_lv = 0.0;
                 let mut min_dtlv: Option<f64> = None;
-                for (idx, (&dd, &v)) in self.cyc0.dist_v2_m().iter().zip(self.cyc0.mps.iter()).enumerate() {
+                for (idx, (&dd, &v)) in trapz_step_distances(&self.cyc0).iter().zip(self.cyc0.mps.iter()).enumerate() {
                     d_lv += dd;
                     let dtlv = (d_lv - d0).abs();
                     if v < speed_tol && (min_dtlv.is_none() || dtlv <= min_dtlv.unwrap()) {
@@ -2094,11 +2128,11 @@ impl RustSimDrive {
         match coast_delay {
             Some(cd) => {
                 if cd < 0 {
-                    let mut cd = cd;
+                    let mut new_cd = cd;
                     for idx in i..self.cyc0.mps.len() {
-                        self.coast_delay_index[idx] = cd;
-                        cd += 1;
-                        if cd == 0 {
+                        self.coast_delay_index[idx] = new_cd;
+                        new_cd += 1;
+                        if new_cd == 0 {
                             break;
                         }
                     }
@@ -2158,7 +2192,7 @@ impl RustSimDrive {
                 let dv_full_brake = dt_full_brake * a_brake_m_per_s2;
                 let v_start_jerk_m_per_s = max(v_start_m_per_s + dv_full_brake, 0.0);
                 let dd_full_brake = 0.5 * (v_start_m_per_s + v_start_jerk_m_per_s) * dt_full_brake;
-                let d_start_m = self.cyc.dist_v2_m().slice(s![0..idx]).sum() + dd_full_brake;
+                let d_start_m = trapz_step_start_distance(&self.cyc, idx) + dd_full_brake;
                 if collision.distance_m <= d_start_m {
                     continue;
                 }

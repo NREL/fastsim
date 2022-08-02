@@ -335,6 +335,7 @@ class SimDrive(object):
         self.trace_miss_iters = np.zeros(self.cyc.len, dtype=np.float64)
         self.newton_iters = np.zeros(self.cyc.len, dtype=np.float64)
         self.coast_delay_index = np.zeros(self.cyc.len, dtype=np.int32)
+        self.impose_coast = np.array([False] * self.cyc.len, dtype=np.bool_)
 
     @property
     def gap_to_lead_vehicle_m(self):
@@ -430,7 +431,7 @@ class SimDrive(object):
         self.mps_ach[0] = self.cyc0.mps[0]
         self.mph_ach[0] = self.cyc0.mph[0]
 
-        if self.sim_params.missed_trace_correction:
+        if self.sim_params.missed_trace_correction or self.sim_params.follow_allow or self.sim_params.coast_allow:
             # reset the cycle in case it has been manipulated
             self.cyc = cycle.copy_cycle(self.cyc0)
 

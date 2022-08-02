@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 
-use ndarray::{concatenate, s, Array, Array1, Axis};
+use ndarray::{s, Array, Array1};
 extern crate pyo3;
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
@@ -129,6 +129,59 @@ pub fn accel_array_for_constant_jerk(nmax: usize, a0: f64, k: f64, dt: f64) -> A
     Array1::from_vec(accels)
 }
 
+/// Calculate the average speed per each step in m/s
+pub fn average_step_speeds(cyc: &RustCycle) -> Array1<f64> {
+    let mut result: Vec<f64> = vec![0.0];
+    for i in 1..cyc.mps.len() {
+        result.push(0.5 * (cyc.mps[i] + cyc.mps[i - 1]));
+    }
+    Array1::from_vec(result)
+}
+
+/// Calculate the average step speed at step i in m/s
+/// (i.e., from sample point i-1 to i)
+pub fn average_step_speed_at(cyc: &RustCycle, i: usize) -> f64 {
+    0.5 * (cyc.mps[i] + cyc.mps[i-1])
+}
+
+/// Sum of the distance traveled over each step using
+/// trapezoidal integration
+pub fn trapz_step_distances(cyc: &RustCycle) -> Array1<f64> {
+    average_step_speeds(cyc) * cyc.dt_s()
+}
+
+/// Compute the total distance traveled by trapezoidal
+/// integration over average speeds.
+pub fn trapz_total_distance(cyc: &RustCycle) -> f64 {
+    trapz_step_distances(cyc).sum()
+}
+
+/// Cumulative sum of distance traveled from start measured
+/// at each sample point using trapezoidal integration.
+pub fn trapz_cumsum_distances(cyc: &RustCycle) -> Array1<f64> {
+    let distances = trapz_step_distances(cyc);
+    ndarrcumsum(&distances)
+}
+
+/// The distance traveled from start at the beginning of step i
+/// (i.e., distance traveled up to sample point i-1)
+/// Distance is in meters.
+pub fn trapz_step_start_distance(cyc: &RustCycle, i: usize) -> f64 {
+    trapz_step_distances(cyc).slice(s![0..i]).sum()
+}
+
+/// The distance traveled during step i in meters
+/// (i.e., from sample point i-1 to i)
+pub fn trapz_step_distance(cyc: &RustCycle, i: usize) -> f64 {
+    average_step_speed_at(cyc, i) * cyc.dt_s()[i]
+}
+
+/// Calculate the distance from step i_start to the start of step i_end
+/// (i.e., distance from sample point i_start-1 to i_end-1)
+pub fn trapz_distance_over_range(cyc: &RustCycle, i_start: usize, i_end: usize) -> f64 {
+    trapz_step_distances(cyc).slice(s![i_start..i_end]).sum()
+}
+
 pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(accel_for_constant_jerk, m)?)?;
@@ -245,16 +298,6 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(self.len())
     }
     #[getter]
-    /// the average speeds over each step in meters per second
-    pub fn get_avg_mps(&self) -> PyResult<Vec<f64>> {
-        Ok(self.avg_mps().to_vec())
-    }
-    #[getter]
-    /// distance for each time-step in meters based on step-average speed
-    pub fn get_dist_v2_m(&self) -> PyResult<Vec<f64>> {
-        Ok(self.dist_v2_m().to_vec())
-    }
-    #[getter]
     /// distance for each time step based on final speed
     pub fn get_dist_m(&self) -> PyResult<Vec<f64>> {
         Ok(self.dist_m().to_vec())
@@ -336,7 +379,8 @@ impl RustCycle {
             // short-circuit for no-grade case
             return 0.0;
         }
-        let distances_m = ndarrcumsum(&self.dist_v2_m());
+        let delta_dists = trapz_step_distances(&self);
+        let distances_m = ndarrcumsum(&delta_dists);
         if delta_distance_m <= tol {
             if distance_start_m <= distances_m[0] {
                 return self.grade[0];
@@ -357,10 +401,10 @@ impl RustCycle {
             return gr;
         }
         // NOTE: we use the following instead of delta_elev_m in order to use
-        // self.dist_v2_m and in lieu of introducing delta_elev_v2_m.
+        // more precise trapezoidal distance and elevation at sample points.
         // This also uses the fully accurate trig functions in case we have large slope angles.
         let elevations_m = ndarrcumsum(
-            &(self.grade.mapv(|g| g.atan().cos()) * self.dist_v2_m() * self.grade.clone())
+            &(self.grade.mapv(|g| g.atan().cos()) * &delta_dists * self.grade.clone())
         );
         let e0 = interpolate(&distance_start_m, &distances_m, &elevations_m, false);
         let e1 = interpolate(
@@ -379,7 +423,7 @@ impl RustCycle {
     pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> f64 {
         let tol: f64 = 1e-6;
         let mut d: f64 = 0.0;
-        for (&dd, &v) in self.dist_v2_m().iter().zip(self.mps.iter()) {
+        for (&dd, &v) in trapz_step_distances(&self).iter().zip(self.mps.iter()) {
             d += dd;
             if (v < tol) && (d > (distance_m + tol)) {
                 return d - distance_m;
@@ -476,23 +520,10 @@ impl RustCycle {
     pub fn dt_s(&self) -> Array1<f64> {
         diff(&self.time_s)
     }
+
     /// distance covered in each time step
     pub fn dist_m(&self) -> Array1<f64> {
         &self.mps * self.dt_s()
-    }
-    pub fn avg_mps(&self) -> Array1<f64> {
-        let num_items = self.mps.len();
-        if num_items < 1 {
-            Array::zeros(1)
-        } else {
-            let vavgs =
-                0.5 * (&self.mps.slice(s![1..num_items]) + &self.mps.slice(s![0..(num_items - 1)]));
-            concatenate![Axis(0), Array::zeros(1), vavgs]
-        }
-    }
-    /// distance covered in each time step that is based on the average time of each step
-    pub fn dist_v2_m(&self) -> Array1<f64> {
-        &self.avg_mps() * &self.dt_s()
     }
 
     /// get mph from self.mps
@@ -591,9 +622,9 @@ pub fn detect_passing(
         None => 0.1,
     };
     let mut v0: f64 = cyc.mps[i - 1];
-    let d0: f64 = cyc.dist_v2_m().slice(s![0..i]).sum();
+    let d0: f64 = trapz_step_start_distance(&cyc, i);
     let mut v0_lv: f64 = cyc0.mps[i-1];
-    let d0_lv: f64 = cyc0.dist_v2_m().slice(s![0..i]).sum();
+    let d0_lv: f64 = trapz_step_start_distance(&cyc0, i);
     let mut d = d0;
     let mut d_lv = d0_lv;
     let mut rendezvous_idx: Option<usize> = None;
@@ -655,13 +686,13 @@ mod tests {
         let road_type = Array::zeros(5).to_vec();
         let name = String::from("test");
         let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
-        let avg_mps = cyc.avg_mps();
+        let avg_mps = average_step_speeds(&cyc);
         let expected_avg_mps = Array::from_vec(vec![0.0, 5.0, 10.0, 5.0, 0.0]);
         assert_eq!(expected_avg_mps.len(), avg_mps.len());
         for (expected, actual) in expected_avg_mps.iter().zip(avg_mps.iter()) {
             assert_eq!(expected, actual);
         }
-        let dist_m = cyc.dist_v2_m();
+        let dist_m = trapz_step_distances(&cyc);
         let expected_dist_m = Array::from_vec(vec![0.0, 50.0, 200.0, 20.0, 0.0]);
         assert_eq!(expected_dist_m.len(), dist_m.len());
         for (expected, actual) in expected_dist_m.iter().zip(dist_m.iter()) {
