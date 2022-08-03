@@ -3,14 +3,13 @@ import ast
 import shutil
 import sys
 import os
-from typing import *
 
 # NOTE: REQUIRES PYTHON 3.9 OR NEWER!
 # https://docs.python.org/3/library/ast.html#ast.unparse
 
 class DocCopier(ast.NodeTransformer):    
     @staticmethod
-    def make_docstring(node: ast.AST, docstring: str):
+    def make_docstring(node: ast.AST, docstring: str) -> ast.AST:
         # Only make docstring if not already present
         if ast.get_docstring(node) is None:
             docstring_node = ast.Expr(value=ast.Str(docstring))
@@ -52,9 +51,8 @@ if __name__ == "__main__":
 
     # Read .pyi file as AST tree
     with open(PYI_FILEPATH) as f:
-        code_str = f.read()
-        code_lines = code_str.splitlines(keepends=True)
-    tree = ast.parse(code_str)
+        code = f.read()
+    tree = ast.parse(code)
 
     # Magical bits
     ast.fix_missing_locations(DocCopier().visit(tree))
