@@ -554,13 +554,13 @@ class TestCoasting(unittest.TestCase):
                 )
             )
             expected_dist_m = 200.0 # 0.5 * 20m/s x 20s = 200m
-            self.assertAlmostEqual(expected_dist_m, fastsim.cycle.trapz_total_distance(const_spd_cyc))
+            self.assertAlmostEqual(expected_dist_m, fastsim.cycle.trapz_step_distances(const_spd_cyc).sum())
             self.assertNotEqual(expected_dist_m, const_spd_cyc.dist_m.sum())
         if RUST_AVAILABLE and USE_RUST:
             # total distance
             d_expected = 900.0
             d_v1 = np.array(self.ru_trapz.dist_m).sum()
-            d_v2 = fastsim.cycle.trapz_total_distance(self.ru_trapz)
+            d_v2 = fastsim.cycle.trapz_step_distances(self.ru_trapz).sum()
             self.assertAlmostEqual(d_expected, d_v1)
             self.assertAlmostEqual(d_expected, d_v2)
             # distance traveled between 0 s and 10 s
@@ -594,7 +594,7 @@ class TestCoasting(unittest.TestCase):
                 )
             ).to_rust()
             expected_dist_m = 200.0 # 0.5 * 20m/s x 20s = 200m
-            self.assertAlmostEqual(expected_dist_m, fastsim.cycle.trapz_total_distance(const_spd_cyc))
+            self.assertAlmostEqual(expected_dist_m, fastsim.cycle.trapz_step_distances(const_spd_cyc).sum())
             self.assertNotEqual(expected_dist_m, np.array(const_spd_cyc.dist_m).sum())
 
     def test_brake_trajectory(self):
@@ -919,7 +919,7 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue((sd.cyc0.grade == grade).all())
             self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
             self.assertTrue(
-                np.abs(fastsim.cycle.trapz_total_distance(sd.cyc0) - fastsim.cycle.trapz_total_distance(sd.cyc)) < 1.0)
+                np.abs(fastsim.cycle.trapz_step_distances(sd.cyc0).sum() - fastsim.cycle.trapz_step_distances(sd.cyc).sum()) < 1.0)
             # test with a different vehicle and grade
             grade = 0.02
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -951,9 +951,9 @@ class TestCoasting(unittest.TestCase):
                     title="That Coasting Logic Works Going Uphill (Veh 1)",
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1.png')
-            # TODO: should we use sd.cyc.dist_m or fatsim.cycle.trapz_total_distance for sd.cyc below?
+            # TODO: should we use sd.cyc.dist_m or fastsim.cycle.trapz_step_distances().sum() for sd.cyc below?
             self.assertAlmostEqual(
-                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 sd.cyc.dist_m.sum(),
                 places=0)
         if RUST_AVAILABLE and USE_RUST:
@@ -998,7 +998,7 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
             self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
             self.assertTrue(
-                np.abs(fastsim.cycle.trapz_total_distance(sd.cyc0) - fastsim.cycle.trapz_total_distance(sd.cyc)) < 1.0)
+                np.abs(fastsim.cycle.trapz_step_distances(sd.cyc0).sum() - fastsim.cycle.trapz_step_distances(sd.cyc).sum()) < 1.0)
             # test with a different vehicle and grade
             grade = 0.02
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1038,9 +1038,9 @@ class TestCoasting(unittest.TestCase):
                     title="That Coasting Logic Works Going Uphill (Veh 1)",
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1-rust.png')
-            # TODO: should we use sd.cyc.dist_m or fatsim.cycle.trapz_total_distance for sd.cyc below?
+            # TODO: should we use sd.cyc.dist_m or fastsim.cycle.trapz_step_distances().sum() for sd.cyc below?
             self.assertAlmostEqual(
-                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 np.array(sd.cyc.dist_m).sum(),
                 places=0)
 
@@ -1082,8 +1082,8 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue((sd.cyc0.grade == grade).all())
             self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
             self.assertAlmostEqual(
-                fastsim.cycle.trapz_total_distance(sd.cyc0),
-                fastsim.cycle.trapz_total_distance(sd.cyc))
+                fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(sd.cyc).sum())
             # test with a different vehicle and grade
             grade = -0.005
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1116,9 +1116,9 @@ class TestCoasting(unittest.TestCase):
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1.png',
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
-            # TODO: should we use sd.cyc.dist_m or fatsim.cycle.trapz_total_distance for sd.cyc below?
+            # TODO: should we use sd.cyc.dist_m or fastsim.cycle.trapz_step_distances().sum() for sd.cyc below?
             self.assertAlmostEqual(
-                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 sd.cyc.dist_m.sum())
         if RUST_AVAILABLE and USE_RUST:
             grade = -0.0025
@@ -1158,8 +1158,8 @@ class TestCoasting(unittest.TestCase):
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
             self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
             self.assertAlmostEqual(
-                fastsim.cycle.trapz_total_distance(sd.cyc0),
-                fastsim.cycle.trapz_total_distance(sd.cyc))
+                fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(sd.cyc).sum())
             # test with a different vehicle and grade
             grade = -0.005
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1194,9 +1194,9 @@ class TestCoasting(unittest.TestCase):
                     do_show=False,
                     save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1-rust.png',
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
-            # TODO: should we use sd.cyc.dist_m or fatsim.cycle.trapz_total_distance for sd.cyc below?
+            # TODO: should we use sd.cyc.dist_m or fastsim.cycle.trapz_step_distances().sum() for sd.cyc below?
             self.assertAlmostEqual(
-                fastsim.cycle.trapz_total_distance(sd.cyc0),
+                fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 np.array(sd.cyc.dist_m).sum())
 
     def test_that_coasting_works_with_multiple_stops_and_grades(self):
@@ -1244,8 +1244,8 @@ class TestCoasting(unittest.TestCase):
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertAlmostEqual(
-                fastsim.cycle.trapz_total_distance(sd.cyc0),
-                fastsim.cycle.trapz_total_distance(sd.cyc))
+                fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(sd.cyc).sum())
         if RUST_AVAILABLE and USE_RUST:
             grade1 = -0.005
             grade2 = 0.005
@@ -1296,8 +1296,8 @@ class TestCoasting(unittest.TestCase):
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertAlmostEqual(
-                fastsim.cycle.trapz_total_distance(sd.cyc0),
-                fastsim.cycle.trapz_total_distance(sd.cyc))
+                fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(sd.cyc).sum())
 
 if __name__ == '__main__':
     unittest.main()

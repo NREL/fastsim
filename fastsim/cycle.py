@@ -841,13 +841,6 @@ def trapz_step_distances(cyc: Cycle) -> np.ndarray:
     """
     return average_step_speeds(cyc) * cyc.dt_s
 
-def trapz_total_distance(cyc: Cycle) -> float:
-    """
-    Compute the total distance traveled by trapezoidal
-    integration over average speeds.
-    """
-    return trapz_step_distances(cyc).sum()
-
 def trapz_cumsum_distances(cyc: Cycle) -> np.ndarray:
     """
     Cumulative sum of distance traveled from start measured

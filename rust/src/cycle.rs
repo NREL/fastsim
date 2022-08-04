@@ -150,12 +150,6 @@ pub fn trapz_step_distances(cyc: &RustCycle) -> Array1<f64> {
     average_step_speeds(cyc) * cyc.dt_s()
 }
 
-/// Compute the total distance traveled by trapezoidal
-/// integration over average speeds.
-pub fn trapz_total_distance(cyc: &RustCycle) -> f64 {
-    trapz_step_distances(cyc).sum()
-}
-
 /// Cumulative sum of distance traveled from start measured
 /// at each sample point using trapezoidal integration.
 pub fn trapz_cumsum_distances(cyc: &RustCycle) -> Array1<f64> {
