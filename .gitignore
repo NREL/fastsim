@@ -10,3 +10,5 @@ dist
 *.egg-info
 *.zip
 *venv*
+*.so
+*.pyd
