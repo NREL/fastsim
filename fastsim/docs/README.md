@@ -7,25 +7,40 @@ All classes and methods are self-documented.
 
 # Installation
 
-## From the git repository
+First, clone the repository from GitHub:
 
-For both the Standard and Developers installation procedures, you need to make sure you have the [rust toolchain installed](https://www.rust-lang.org/tools/install).
+    git clone git@github.nrel.gov:MBAP/fastsim.git
 
-### Standard git 
-First, clone the repository from GitHub if you don't already have a local copy of the FASTSim package files:
+Next, install the Rust toolchain, and create and activate an environment for the project if necessary. There are two ways to do this:
 
-    git clone git@github.nrel.gov:MBAP/fastsim.git  
+- Manually install the [rust toolchain](https://www.rust-lang.org/tools/install). Then, using a virtual environment, and making sure to use Python >= 3.8:
     
-FASTSim depends on python >= 3.7. One way to satisfy this is to use conda (we recommend Anaconda Powershell Prompt for Windows OS):
+  PowerShell:
 
-    conda create -n fastsim python=3.8
-    conda activate fastsim
+      python -m venv .venv
+      .venv/Scripts/Activate.ps1
+
+  Bash:
+
+      python -m venv .venv
+      source .venv/bin/activate
+
+  Command Prompt:
+
+      python -m venv .venv
+      .venv/Scripts/activate.bat
+
+- OR: using a conda environment:
+
+      conda create -n fastsim python=3.8
+      conda activate fastsim
+      conda install -c conda-forge "rust>=1.62.1"
     
 Then, from within the top level of the FASTSim folder, run a pip install:
 
     pip install .
-    
-This will install FASTSim with the included rust extensions. 
+
+This will install FASTSim with the included rust extensions.
 
 ### Developers
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
