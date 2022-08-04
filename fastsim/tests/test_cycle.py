@@ -359,7 +359,7 @@ class TestCycle(unittest.TestCase):
         for cond in test_conditions:
             msg = f"Python: Failed for {cond}"
             dist_start_m = cycle.trapz_step_start_distance(cyc0, cond['step'])
-            dist_step_m = cycle.trapz_step_distance(cyc0, cond['step'])
+            dist_step_m = cycle.trapz_distance_for_step(cyc0, cond['step'])
             self.assertAlmostEqual(cond['dist_m'], dist_start_m + dist_step_m, msg=msg)
             avg_grade = cyc0.average_grade_over_range(dist_start_m, dist_step_m)
             self.assertAlmostEqual(
@@ -369,7 +369,7 @@ class TestCycle(unittest.TestCase):
             # RUST CHECK
             msg = f"RUST: Failed for {cond}"
             dist_start_m = cycle.trapz_step_start_distance(cyc_rust, cond['step'])
-            dist_step_m = cycle.trapz_step_distance(cyc_rust, cond['step'])
+            dist_step_m = cycle.trapz_distance_for_step(cyc_rust, cond['step'])
             self.assertAlmostEqual(cond['dist_m'], dist_start_m + dist_step_m, msg=msg)
             avg_grade = cyc_rust.average_grade_over_range(dist_start_m, dist_step_m)
             self.assertAlmostEqual(

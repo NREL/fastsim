@@ -585,7 +585,7 @@ class SimDrive(object):
                 0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s[i])
         return self.cyc0.average_grade_over_range(
                 cycle.trapz_step_start_distance(self.cyc, i),
-                cycle.trapz_step_distance(self.cyc, i))
+                cycle.trapz_distance_for_step(self.cyc, i))
 
     def sim_drive_step(self):
         """
