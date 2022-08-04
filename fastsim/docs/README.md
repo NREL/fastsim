@@ -68,17 +68,6 @@ To compare FASTSim back to the master branch version from 17 December 2019, run 
 ## Against Excel FASTSim
 To compare Python FASTSim results to Excel FASTSim, you can run `tests.test_vs_excel.main()` to do an experimental (i.e. beta) comparison against saved Excel results. If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can specify `rerun_excel=True` to do a live run of the Excel version.
 
-# numba
-To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim.simdrive`, `fastsim.cycle`, and `fastsim/vehicle`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
-
-*notes on numba*
-- `numba` caches compiled classes for you in `__pycache__`
-- should usually automatically register source code changes and recompile, even if `__pycache__` isn't deleted first
-
-## numba pitfalls
-- `numba` does not always work well with `numpy`, although this happens in rare occassions and has completely been resolved in this code base, as far as we know.
-- Some users have reported Python __zombie__ processes that crop up when using the `numba` extended code. This has been a difficult to reproduce bug and may have been user platform specific, it also involved heavy use of `xlwings` calling the code via Excel. These zombies can be seen in the Task Manager as latent Pythonw processes, they will prevent `numba` from recompiling, even if you delete the `__pycache__` folders.
-
 # List of Abbreviations
 cur = current time step  
 prev = previous time step  
