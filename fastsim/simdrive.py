@@ -341,7 +341,7 @@ class SimDrive(object):
     def gap_to_lead_vehicle_m(self):
         "Provides the gap-with lead vehicle from start to finish"
         # TODO: consider basing on dist_m?
-        gaps_m = cycle.trapz_cumsum_distances(self.cyc0) - cycle.trapz_cumsum_distances(self.cyc)
+        gaps_m = cycle.trapz_step_distances(self.cyc0).cumsum() - cycle.trapz_step_distances(self.cyc).cumsum()
         if self.sim_params.follow_allow:
             gaps_m += self.sim_params.idm_minimum_gap_m
         return gaps_m
@@ -1638,7 +1638,7 @@ class SimDrive(object):
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
         assert a_brake <= 0
-        ds = cycle.trapz_cumsum_distances(self.cyc0)
+        ds = cycle.trapz_step_distances(self.cyc0).cumsum()
         gs = self.cyc0.grade
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
         ds_mask = ds >= d0
@@ -1730,7 +1730,7 @@ class SimDrive(object):
         v0 = self.cyc.mps[i-1]
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
-        ds = cycle.trapz_cumsum_distances(self.cyc0)
+        ds = cycle.trapz_step_distances(self.cyc0).cumsum()
         gs = self.cyc0.grade
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
         ds_mask = ds >= d0

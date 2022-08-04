@@ -331,7 +331,7 @@ class TestCycle(unittest.TestCase):
                 vs=[  0.0 ,  10.0 ,  10.0 ,  10.0 ,   0.0 ],
                 gs=[  0.01,   0.01,   0.02,   0.02,   0.02],
             ))
-        ds = cycle.trapz_cumsum_distances(cyc)
+        ds = cycle.trapz_step_distances(cyc).cumsum()
         self.assertEqual(len(expected_distances_m), len(ds))
         for idx in range(len(expected_distances_m)):
             self.assertAlmostEqual(expected_distances_m[idx], ds[idx])

@@ -6,7 +6,7 @@ use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum
 use super::vehicle::*;
 use super::cycle::{
     calc_constant_jerk_trajectory, accel_array_for_constant_jerk, RustCycle, detect_passing, PassingInfo, accel_for_constant_jerk,
-    trapz_cumsum_distances, trapz_step_start_distance, trapz_step_distances, trapz_distance_for_step
+    trapz_step_start_distance, trapz_step_distances, trapz_distance_for_step
 };
 use super::params;
 
@@ -399,7 +399,9 @@ impl RustSimDrive {
     /// Provides the gap-with lead vehicle from start to finish
     pub fn gap_to_lead_vehicle_m(&self) -> Array1<f64> {
         // TODO: consider basing on dist_m?
-        let mut gaps_m = trapz_cumsum_distances(&self.cyc0) - trapz_cumsum_distances(&self.cyc);
+        let mut gaps_m =
+            ndarrcumsum(&trapz_step_distances(&self.cyc0))
+            - ndarrcumsum(&trapz_step_distances(&self.cyc));
         if self.sim_params.follow_allow {
             gaps_m += self.sim_params.idm_minimum_gap_m;
         }
@@ -1760,7 +1762,7 @@ impl RustSimDrive {
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
         assert![a_brake <= 0.0];
-        let ds = trapz_cumsum_distances(&self.cyc0);
+        let ds = ndarrcumsum(&trapz_step_distances(&self.cyc0));
         let gs = self.cyc0.grade.clone();
         let d0 = trapz_step_start_distance(&self.cyc, i);
         let mut distances_m: Vec<f64> = vec![];
@@ -1885,7 +1887,7 @@ impl RustSimDrive {
         let v0 = self.cyc.mps[i-1];
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
-        let ds = trapz_cumsum_distances(&self.cyc0);
+        let ds = ndarrcumsum(&trapz_step_distances(&self.cyc0));
         let gs = self.cyc0.grade.clone();
         assert!(
             ds.len() == gs.len(),

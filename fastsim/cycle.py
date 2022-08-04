@@ -841,13 +841,6 @@ def trapz_step_distances(cyc: Cycle) -> np.ndarray:
     """
     return average_step_speeds(cyc) * cyc.dt_s
 
-def trapz_cumsum_distances(cyc: Cycle) -> np.ndarray:
-    """
-    Cumulative sum of distance traveled from start measured
-    at each sample point using trapezoidal integration.
-    """
-    return trapz_step_distances(cyc).cumsum()
-
 def trapz_step_start_distance(cyc: Cycle, i: int) -> float:
     """
     The distance traveled from start at the beginning of step i

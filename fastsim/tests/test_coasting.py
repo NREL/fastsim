@@ -48,10 +48,10 @@ def make_coasting_plot(
     ts_orig = np.array(cyc0.time_s)
     vs_orig = np.array(cyc0.mps)
     m = fastsim.params.MPH_PER_MPS if use_mph else 1.0
-    ds_orig = fastsim.cycle.trapz_cumsum_distances(cyc0)
+    ds_orig = fastsim.cycle.trapz_step_distances(cyc0).cumsum()
     ts = np.array(cyc.time_s)
     vs = np.array(cyc.mps)
-    ds = fastsim.cycle.trapz_cumsum_distances(cyc)
+    ds = fastsim.cycle.trapz_step_distances(cyc).cumsum()
     gaps = ds_orig - ds
     speed_units = "mph" if use_mph else "m/s"
     fontsize=10
