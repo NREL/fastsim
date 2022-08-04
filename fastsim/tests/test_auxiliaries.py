@@ -15,9 +15,9 @@ class test_auxiliaries(unittest.TestCase):
                                                                    custom_rho=False,
                                                                    simdrive_optimize=True,
                                                                    show_plots=False,
-                                                                   use_rust=True)
-        self.assertAlmostEqual(0.29852841290057, drag_coeff)
-        self.assertAlmostEqual(0.00805627626436443, wheel_rr_coef)
+                                                                   use_rust=False)
+        self.assertAlmostEqual(0.29852841290057, drag_coeff, places=3)
+        self.assertAlmostEqual(0.00805627626436443, wheel_rr_coef, places=5)
 
     def test_drag_coeffs_to_abc(self):
         veh = Vehicle.from_vehdb(1).to_rust()
