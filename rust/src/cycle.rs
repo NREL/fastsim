@@ -172,7 +172,7 @@ pub fn trapz_step_start_distance(cyc: &RustCycle, i: usize) -> f64 {
 
 /// The distance traveled during step i in meters
 /// (i.e., from sample point i-1 to i)
-pub fn trapz_step_distance(cyc: &RustCycle, i: usize) -> f64 {
+pub fn trapz_distance_for_step(cyc: &RustCycle, i: usize) -> f64 {
     average_step_speed_at(cyc, i) * cyc.dt_s()[i]
 }
 

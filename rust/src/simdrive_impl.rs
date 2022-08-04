@@ -6,7 +6,7 @@ use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum
 use super::vehicle::*;
 use super::cycle::{
     calc_constant_jerk_trajectory, accel_array_for_constant_jerk, RustCycle, detect_passing, PassingInfo, accel_for_constant_jerk,
-    trapz_cumsum_distances, trapz_step_start_distance, trapz_step_distances, trapz_step_distance
+    trapz_cumsum_distances, trapz_step_start_distance, trapz_step_distances, trapz_distance_for_step
 };
 use super::params;
 
@@ -644,7 +644,7 @@ impl RustSimDrive {
             ,
             None => self.cyc0.average_grade_over_range(
                 trapz_step_start_distance(&self.cyc, i),
-                trapz_step_distance(&self.cyc, i))
+                trapz_distance_for_step(&self.cyc, i))
         }
     }
 
