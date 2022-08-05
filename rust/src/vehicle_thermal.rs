@@ -1,4 +1,4 @@
- use crate::utils;
+use crate::utils;
 use proc_macros::add_pyo3_api;
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
@@ -205,10 +205,10 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     }
 
     pub fn set_fc_model_internal_exponential(
-        &mut self, 
-        offset: f64, 
-        lag: f64, 
-        minimum: f64, 
+        &mut self,
+        offset: f64,
+        lag: f64,
+        minimum: f64,
         fc_temp_eff_component: String
     ) -> PyResult<()>{
         let fc_temp_eff_comp = match fc_temp_eff_component.as_str() {
@@ -219,11 +219,11 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         };
 
         check_orphaned_and_set!(
-            self, 
-            fc_model, 
+            self,
+            fc_model,
             FcModelTypes::Internal(
                 FcTempEffModel::Exponential(
-                    FcTempEffModelExponential{ offset, lag, minimum }), 
+                    FcTempEffModelExponential{ offset, lag, minimum }),
                     fc_temp_eff_comp
             )
         )
@@ -309,7 +309,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             };
             Ok(())
         } else {
-            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))            
+            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 

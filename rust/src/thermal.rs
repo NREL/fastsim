@@ -527,7 +527,7 @@ impl SimDriveHot {
                 self.state.cab_qdot_from_hvac = hvac_model.p_cntrl_kw_per_deg_c
                     * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
                     + hvac_model.i_cntrl_kw;
-                // TODO: add in aux load penalty 
+                // TODO: add in aux load penalty
             } else {
                 // cabin is too cold
                 // integral control effort increases in magnitude by

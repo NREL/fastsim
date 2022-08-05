@@ -153,8 +153,11 @@ class ModelErrors(object):
         assert(len(self.dfs) == len(self.sim_drives))
 
     def get_errors(
-        self, return_mods: Optional[bool] = False, plot: Optional[bool] = False,
-            plot_save_dir: Optional[str] = None, plot_perc_err: Optional[bool] = True,
+        self, 
+        return_mods: Optional[bool] = False, 
+        plot: Optional[bool] = False,
+        plot_save_dir: Optional[str] = None, 
+        plot_perc_err: Optional[bool] = True,
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
