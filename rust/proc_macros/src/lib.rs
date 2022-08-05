@@ -40,7 +40,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             let keep: Vec<bool> = field
                 .attrs
                 .iter()
-                .map(|x| match x.path.segments[0].ident.to_string().as_str() { // todo: check length of segments for robustness
+                .map(|x| match x.path.segments[0].ident.to_string().as_str() { 
                     "api" => {
                         let meta = x.parse_meta().unwrap();
                         if let Meta::List(list) = meta {

@@ -34,9 +34,9 @@ def get_error_val(model, test, time_steps):
     time_steps: array (or scalar for constant) of values for model time steps [s]
     test: array of values for signal from test
 
-    Output: 
+    Output:
     -------
-    err: integral of absolute value of difference between model and 
+    err: integral of absolute value of difference between model and
     test per time"""
 
     return np.trapz(y=abs(model - test), x=time_steps) / (time_steps[-1] - time_steps[0])
@@ -153,10 +153,10 @@ class ModelErrors(object):
         assert(len(self.dfs) == len(self.sim_drives))
 
     def get_errors(
-        self, 
-        return_mods: Optional[bool] = False, 
+        self,
+        return_mods: Optional[bool] = False,
         plot: Optional[bool] = False,
-        plot_save_dir: Optional[str] = None, 
+        plot_save_dir: Optional[str] = None,
         plot_perc_err: Optional[bool] = True,
     ) -> Union[
         Dict[str, Dict[str, float]],
