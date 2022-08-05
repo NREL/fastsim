@@ -29,9 +29,9 @@ impl Default for FcModelTypes {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum FcTempEffComponent {
     /// FC efficiency is purely dependent on cat temp
-    Catalyst, // todo: make sure this gets used!!!
+    Catalyst,
     /// FC efficency is dependent on both cat and FC temp
-    Hybrid,
+    CatAndFC,
     /// FC efficiency is dependent on FC temp only
     FuelConverter,
 }
@@ -213,7 +213,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         let fc_temp_eff_comp = match fc_temp_eff_component.as_str() {
             "FuelConverter" => FcTempEffComponent::FuelConverter,
             "Catalyst" => FcTempEffComponent::Catalyst,
-            "Hybrid" => FcTempEffComponent::Hybrid,
+            "CatAndFC" => FcTempEffComponent::CatAndFC,
             _ => panic!("Invalid option for fc_temp_eff_component.")
         };
 
