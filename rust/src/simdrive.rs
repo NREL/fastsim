@@ -233,9 +233,6 @@ impl Default for RustSimDriveParams {
     }
 
     // wrappers for core methods
-    // TODO, put doc strings on these and all structs
-    // comments preceding a struct, method, or function definition with `///` instead of `\\`
-    // get interpreted as doc strings in python
 
     #[pyo3(name = "gap_to_lead_vehicle_m")]
     /// Provides the gap-with lead vehicle from start to finish

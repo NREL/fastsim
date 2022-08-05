@@ -53,7 +53,6 @@ pub enum FcTempEffModel {
 
 impl Default for FcTempEffModel {
     fn default() -> Self {
-        // todo: check on reasonableness of default values
         FcTempEffModel::Exponential(FcTempEffModelExponential::default())
     }
 }
