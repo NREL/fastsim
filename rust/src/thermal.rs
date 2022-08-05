@@ -1,5 +1,5 @@
 //! Module for simulating thermal behavior of powertrains
-use ndarray::Array1;
+use ndarray::{s, Array1};
 use proc_macros::{add_pyo3_api, HistoryVec};
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
@@ -505,41 +505,86 @@ impl SimDriveHot {
                     * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
             }
 
-            self.state.fc_qdot_to_htr_kw = 666.; // chad working here
+            let te_delta_vs_set_deg_c = self.state.cab_te_deg_c - hvac_model.te_set_deg_c;
+            let te_delta_vs_amb_deg_c = self.state.cab_te_deg_c - self.state.amb_te_deg_c;
 
             if self.state.cab_te_deg_c <= hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
                 && self.state.cab_te_deg_c >= hvac_model.te_set_deg_c - hvac_model.te_deadband_deg_c
             {
-                // no hvac power is needed
+                // inside deadband; no hvac power is needed
+
                 self.state.cab_qdot_from_hvac = 0.0;
                 hvac_model.i_cntrl_kw = 0.0; // reset to 0.0
             } else if self.state.cab_te_deg_c
                 > hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
             {
-                // TODO: provision for skipping over the deadband
-                // cabin is too hot
+                // cooling mode; cabin is hotter than set point
+
+                if hvac_model.i_cntrl_kw < 0.0 {
+                    // reset to switch from heating to cooling
+                    hvac_model.i_cntrl_kw = 0.0;
+                }
                 // integral control effort increases in magnitude by
                 // 1 time step worth of error
-                hvac_model.i_cntrl_kw += (hvac_model.i_cntrl_kw_per_deg_c_scnds
-                    * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
-                    * self.sd.cyc.dt_s()[i])
-                    .max(-hvac_model.i_cntrl_max_kw);
-                self.state.cab_qdot_from_hvac = hvac_model.p_cntrl_kw_per_deg_c
-                    * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
-                    + hvac_model.i_cntrl_kw;
-                // TODO: add in aux load penalty
+                hvac_model.i_cntrl_kw += hvac_model.i_cntrl_kw_per_deg_c_scnds
+                    * te_delta_vs_set_deg_c
+                    * self.sd.cyc.dt_s()[i];
+                hvac_model.i_cntrl_kw = hvac_model.i_cntrl_kw.min(hvac_model.cntrl_max_kw);
+                self.state.cab_qdot_from_hvac =
+                    (-1.0 * hvac_model.p_cntrl_kw_per_deg_c * te_delta_vs_set_deg_c
+                        - hvac_model.i_cntrl_kw)
+                        .max(-hvac_model.cntrl_max_kw);
+                // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
+                // cop_ideal is t_c / (t_h - t_c)
+                let cop_ideal = if te_delta_vs_amb_deg_c > -0.1 {
+                    // cabin is hotter than ambient
+                    5.0
+                } else {
+                    (self.state.cab_te_deg_c + 273.15) / -te_delta_vs_amb_deg_c
+                };
+                let cop = cop_ideal * hvac_model.frac_of_ideal_cop;
+                assert!(cop > 0.0);
+                self.state.cab_hvac_pwr_aux_kw = cop * -self.state.cab_qdot_from_hvac;
             } else {
-                // cabin is too cold
+                // heating mode; cabin is colder than set point
+                // TODO: for case when engine is used as heat source, limit heat draw from the engine so it doesn't get colder than cabin
+
+                if hvac_model.i_cntrl_kw > 0.0 {
+                    // reset to switch from cooling to heating
+                    hvac_model.i_cntrl_kw = 0.0;
+                }
                 // integral control effort increases in magnitude by
                 // 1 time step worth of error
-                hvac_model.i_cntrl_kw += (hvac_model.i_cntrl_kw_per_deg_c_scnds
-                    * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
-                    * self.sd.cyc.dt_s()[i])
-                    .min(-hvac_model.i_cntrl_max_kw);
-                self.state.cab_qdot_from_hvac = hvac_model.p_cntrl_kw_per_deg_c
-                    * (hvac_model.te_set_deg_c - self.state.cab_te_deg_c)
-                    + hvac_model.i_cntrl_kw;
-                // TODO: make sure that `self.state.cab_qdot_from_hvac` is coming from the engine for conv or HEV
+                hvac_model.i_cntrl_kw += hvac_model.i_cntrl_kw_per_deg_c_scnds
+                    * te_delta_vs_set_deg_c
+                    * self.sd.cyc.dt_s()[i];
+                hvac_model.i_cntrl_kw = hvac_model.i_cntrl_kw.max(-hvac_model.cntrl_max_kw);
+                self.state.cab_qdot_from_hvac = (-hvac_model.p_cntrl_kw_per_deg_c
+                    * te_delta_vs_set_deg_c
+                    - hvac_model.i_cntrl_kw)
+                    .min(hvac_model.cntrl_max_kw);
+
+                if hvac_model.use_fc_waste_heat {
+                    self.state.fc_qdot_to_htr_kw = self.state.cab_qdot_from_hvac;
+                    // TODO: think about what to do for PHEV, which needs careful consideration here
+                    // HEV probably also needs careful consideration
+                    assert!(self.sd.veh.veh_pt_type != "BEV");
+                    // assume blower has negligible impact on aux load, may want to revise later
+                } else {
+                    // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
+                    // cop_ideal is t_c / (t_h - t_c)
+
+                    let cop_ideal = if te_delta_vs_amb_deg_c < 0.1 {
+                        // cabin is cooler than ambient
+                        5.0
+                    } else {
+                        (self.state.amb_te_deg_c + 273.15) / te_delta_vs_amb_deg_c
+                    };
+
+                    let cop = cop_ideal * hvac_model.frac_of_ideal_cop;
+                    assert!(cop > 0.0);
+                    self.state.cab_hvac_pwr_aux_kw = cop * self.state.cab_qdot_from_hvac;
+                }
             }
 
             self.state.cab_te_deg_c += (self.state.cab_qdot_from_hvac
@@ -751,7 +796,35 @@ impl SimDriveHot {
     }
 
     pub fn set_misc_calcs(&mut self, i: usize) {
-        self.sd.set_misc_calcs(i).unwrap();
+        // if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
+        // TODO: this is probably computationally expensive and was probably a workaround for numba
+        // figure out a way to not need this
+        if self.sd.aux_in_kw.slice(s![i..]).iter().all(|&x| x == 0.0) {
+            // if all elements after i-1 are zero, trigger default behavior; otherwise, use override value
+            if self.sd.veh.no_elec_aux {
+                self.sd.aux_in_kw[i] = self.sd.veh.aux_kw / self.sd.veh.alt_eff;
+            } else {
+                self.sd.aux_in_kw[i] = self.sd.veh.aux_kw;
+            }
+        }
+        self.sd.aux_in_kw[i] += self.state.cab_hvac_pwr_aux_kw;
+        // Is SOC below min threshold?
+        if self.sd.soc[i - 1] < (self.sd.veh.min_soc + self.sd.veh.perc_high_acc_buf) {
+            self.sd.reached_buff[i] = false;
+        } else {
+            self.sd.reached_buff[i] = true;
+        }
+
+        // Does the engine need to be on for low SOC or high acceleration
+        if self.sd.soc[i - 1] < self.sd.veh.min_soc
+            || (self.sd.high_acc_fc_on_tag[i - 1] && !(self.sd.reached_buff[i]))
+        {
+            self.sd.high_acc_fc_on_tag[i] = true
+        } else {
+            self.sd.high_acc_fc_on_tag[i] = false
+        }
+        self.sd.max_trac_mps[i] =
+            self.sd.mps_ach[i - 1] + (self.sd.veh.max_trac_mps2 * self.sd.cyc.dt_s()[i]);
     }
 
     pub fn set_comp_lims(&mut self, i: usize) {
@@ -954,6 +1027,8 @@ pub struct ThermalState {
     pub cab_qdot_to_amb_kw: f64,
     /// heat transfer to cabin from hvac system
     pub cab_qdot_from_hvac: f64,
+    /// aux load from hvac
+    pub cab_hvac_pwr_aux_kw: f64,
 
     // exhaust variables
     /// exhaust mass flow rate [kg/s]
@@ -1041,6 +1116,7 @@ impl Default for ThermalState {
             cab_qdot_solar_kw: 0.0,
             cab_qdot_to_amb_kw: 0.0,
             cab_qdot_from_hvac: 0.0,
+            cab_hvac_pwr_aux_kw: 0.0,
 
             exh_mdot: 0.0,
             exh_hdot_kw: 0.0,

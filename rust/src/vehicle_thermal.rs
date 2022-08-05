@@ -104,12 +104,17 @@ pub struct HVACModel {
     pub i_cntrl_kw_per_deg_c_scnds: f64,
     /// Saturation value for integral control [kW].
     /// Whenever `i_cntrl_kw` hit this value, it stops accumulating
-    pub i_cntrl_max_kw: f64,
+    pub cntrl_max_kw: f64,
     /// deadband range.  any cabin temperature within this range of
     /// `te_set_deg_c` results in no HVAC power draw
     pub te_deadband_deg_c: f64,
     /// current integral control amount
     pub i_cntrl_kw: f64,
+    /// coefficient between 0 and 1 to calculate HVAC efficiency by multiplying by
+    /// coefficient of performance (COP)
+    pub frac_of_ideal_cop: f64,
+    /// whether heat comes from fuel converter
+    pub use_fc_waste_heat: bool,
 }
 
 impl Default for HVACModel {
@@ -118,9 +123,11 @@ impl Default for HVACModel {
             te_set_deg_c: 22.0,
             p_cntrl_kw_per_deg_c: 0.5,
             i_cntrl_kw_per_deg_c_scnds: 0.01,
-            i_cntrl_max_kw: 5.0,
+            cntrl_max_kw: 5.0,
             te_deadband_deg_c: 1.0,
             i_cntrl_kw: 0.0,
+            frac_of_ideal_cop: 0.8, // this is based on Chad's engineering judgment
+            use_fc_waste_heat: true,
         }
     }
 }
@@ -185,16 +192,20 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         &mut self, te_set_deg_c: f64,
         p_cntrl_kw_per_deg_c: f64,
         i_cntrl_kw_per_deg_c_scnds: f64,
-        i_cntrl_max_kw: f64,
+        cntrl_max_kw: f64,
         te_deadband_deg_c: f64,
+        frac_of_ideal_cop: f64,
+        use_fc_waste_heat: bool,
     ) -> PyResult<()>{
         let hvac_model = HVACModel{
             te_set_deg_c,
             p_cntrl_kw_per_deg_c,
             i_cntrl_kw_per_deg_c_scnds,
-            i_cntrl_max_kw,
+            cntrl_max_kw,
             te_deadband_deg_c,
             i_cntrl_kw: 0.0,
+            frac_of_ideal_cop,
+            use_fc_waste_heat,
         };
         check_orphaned_and_set!(self, cabin_model, HvacModelTypes::Internal(hvac_model))
     }
@@ -389,9 +400,6 @@ pub struct VehicleThermal {
     /// parameter for heat transfer coeff [W / (m ** 2 * K)] from cabin to ambient during
     /// vehicle stop
     pub cab_htc_to_amb_stop: f64,
-    // cabin controls
-    // TODO
-    // need to flesh this out
 
     // exhaust port
     /// 'external' (effectively no model) is default

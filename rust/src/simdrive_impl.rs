@@ -623,6 +623,8 @@ impl RustSimDrive {
     pub fn set_misc_calcs(&mut self, i: usize) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
             // if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
+            // TODO: this is probably computationally expensive and was probably a workaround for numba
+            // figure out a way to not need this
             if self.aux_in_kw.slice(s![i..]).iter().all(|&x| x == 0.0) {
                 // if all elements after i-1 are zero, trigger default behavior; otherwise, use override value
                 if self.veh.no_elec_aux {
