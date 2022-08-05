@@ -186,9 +186,6 @@ pub fn impl_getters_and_setters(
         }
         "Vec < f64 >" => {
             impl_vec_get_set!(opts, ident, impl_block, f64, Pyo3VecF64, has_orphaned);
-    // type_str if type_str.contains("Vec") => {
-        //     todo!();00
-        // }
         }
         _ => match ident.to_string().as_str() {
             "orphaned" => {

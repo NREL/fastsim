@@ -270,7 +270,6 @@ impl RustSimDrive {
         Self::from_file_parser(filename).unwrap()
     }
 
-    // TODO: probably shouldn't be public...?
     pub fn init_arrays(&mut self) {
         self.i = 1; // initialize step counter for possible use outside sim_drive_walk()
         let cyc_len = self.cyc0.time_s.len(); //get_len() as usize;
@@ -495,8 +494,6 @@ impl RustSimDrive {
             init_soc
         };
         self.init_arrays();
-
-        // TODO: implement method for aux_in_kw_override
 
         if let Some(arr) = aux_in_kw_override {
             self.aux_in_kw = arr;
@@ -2305,7 +2302,6 @@ impl RustSimDrive {
 
     /// Sets scalar variables that can be calculated after a cycle is run.
     /// This includes mpgge, various energy metrics, and others
-    /// TODO: finish implementing this
     pub fn set_post_scalars(&mut self) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
             self.fs_cumu_mj_out_ach =
@@ -2331,10 +2327,6 @@ impl RustSimDrive {
             } else {
                 self.ess2fuel_kwh = self.ess_dischg_kj / (self.fuel_kj + self.roadway_chg_kj);
             }
-
-            // TODO: where "\w+_kw" and "cyc_\w+_kw" are identical remove the "cyc_\w+_kw" variant
-            // for "cyc_\w+_kw" that don't have a corresponding "\w+_kw", remove the cyc_ prefix, as it
-            // provides no value
 
             // energy audit calcs
             self.drag_kj = (self.drag_kw.clone() * self.cyc.dt_s()).sum();
