@@ -94,7 +94,16 @@ impl Default for FcTempEffModelExponential {
     }
 }
 
+/// Struct containing parameters and one time-varying variable for HVAC model
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[pyclass]
+#[add_pyo3_api(
+    #[classmethod]
+    #[pyo3(name = "default")]
+    pub fn default_py(_cls: &PyType) -> PyResult<Self> {
+        Ok(Self::default())
+    }
+)]
 pub struct HVACModel {
     /// set temperature for component (e.g. cabin, ESS)
     pub te_set_deg_c: f64,
@@ -129,6 +138,14 @@ impl Default for HVACModel {
             frac_of_ideal_cop: 0.8, // this is based on Chad's engineering judgment
             use_fc_waste_heat: true,
         }
+    }
+}
+
+impl HVACModel {
+    impl_serde!(HVACModel, VEHICLE_THERMAL_DEFAULT_FOLDER);
+
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_file_parser(filename).unwrap()
     }
 }
 
@@ -189,25 +206,18 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     }
 
     pub fn set_cabin_model_internal(
-        &mut self, te_set_deg_c: f64,
-        p_cntrl_kw_per_deg_c: f64,
-        i_cntrl_kw_per_deg_c_scnds: f64,
-        cntrl_max_kw: f64,
-        te_deadband_deg_c: f64,
-        frac_of_ideal_cop: f64,
-        use_fc_waste_heat: bool,
+        &mut self,
+        hvac_model: HVACModel
     ) -> PyResult<()>{
-        let hvac_model = HVACModel{
-            te_set_deg_c,
-            p_cntrl_kw_per_deg_c,
-            i_cntrl_kw_per_deg_c_scnds,
-            cntrl_max_kw,
-            te_deadband_deg_c,
-            i_cntrl_kw: 0.0,
-            frac_of_ideal_cop,
-            use_fc_waste_heat,
-        };
         check_orphaned_and_set!(self, cabin_model, HvacModelTypes::Internal(hvac_model))
+    }
+
+    pub fn get_cabin_model_internal(&self, ) -> PyResult<HVACModel> {
+        if let HvacModelTypes::Internal(hvac_model) = &self.cabin_model {
+            Ok(hvac_model.clone())
+        } else {
+            Err(PyAttributeError::new_err("HvacModelTypes::External variant currently used."))
+        }
     }
 
     pub fn set_cabin_model_external(&mut self, ) -> PyResult<()> {

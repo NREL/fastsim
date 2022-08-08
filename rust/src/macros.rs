@@ -1,3 +1,4 @@
+/// Generates `to_file` and `from_file_parser` methods for `$component` with `$default_folder`.
 #[macro_export]
 macro_rules! impl_serde {
     ($component:ident, $default_folder:expr) => {
