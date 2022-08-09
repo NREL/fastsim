@@ -1,7 +1,7 @@
 """Various optional utilities that may support some applications of FASTSim."""
 
-from typing import Callable
-import inspect
+from __future__ import annotations
+from typing import *
 import numpy as np
 from fastsim import parameters as params
 import seaborn as sns
@@ -79,3 +79,122 @@ def camel_to_snake(name):
     name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
 
+
+def get_containers_with_path(
+    struct: Any,
+    path: str | list,
+) -> list:
+    """
+    Get all attributes containers from nested struct using `path` to attribute.
+
+    Parameters
+    ----------
+    struct: Any
+        Outermost struct where first name in `path` is an attribute
+    path: str | list
+        Dot-separated path, e.g. `"sd.veh.drag_coef"` or `["sd", "veh", "drag_coef"]`
+
+    Returns
+    -------
+    List[Any]
+        Ordered list of containers, from outermost to innermost
+    """
+    if isinstance(path, str):
+        path = path.split(".")
+    containers = [getattr(struct, path[0])]
+    for subpath in path[1:-1]:
+        container = getattr(containers[-1], subpath)
+        containers.append(container)
+    return containers
+
+def get_attr_with_path(
+    struct: Any,
+    path: str | list,
+) -> Any:
+    """
+    Get attribute from nested struct using `path` to attribute.
+
+    Parameters
+    ----------
+    struct: Any
+        Outermost struct where first name in `path` is an attribute
+    path: str | list
+        Dot-separated path, e.g. `"sd.veh.drag_coef"` or `["sd", "veh", "drag_coef"]`
+
+    Returns
+    -------
+    Any
+        Requested attribute
+    """
+    if isinstance(path, str):
+        path = path.split(".")
+    containers = get_containers_with_path(struct, path)
+    attr = getattr(containers[-1], path[-1])
+    return attr
+
+def set_attr_with_path(
+    struct: Any,
+    path: str | list,
+    value: Any,
+) -> Any:
+    """
+    Set attribute on nested struct using `path` to attribute.
+
+    Parameters
+    ----------
+    struct: Any
+        Outermost struct where first name in `path` is an attribute
+    path: str | list
+        Dot-separated path, e.g. `"sd.veh.drag_coef"` or `["sd", "veh", "drag_coef"]`
+    value: Any
+    
+    Returns
+    -------
+    Any
+        `struct` with nested value set 
+    """
+    containers = [struct]
+    if isinstance(path, str):
+        assert "." in path, "provide dot-separated path to struct, otherwise use `set_nested_values`"
+        path = path.split(".")
+    containers += get_containers_with_path(struct, path)
+    # Set innermost value
+    innermost_container = containers[-1]
+    innermost_container.reset_orphaned()
+    setattr(innermost_container, path[-1], value)
+    # Convert containers back into nested structs
+    nested_container = containers[-1]
+    for container, nested_name in zip(containers[-2::-1], path[-2::-1]):
+        if not container is struct:
+            # Don't reset orphaned if `container` is outermost container
+            container.reset_orphaned()
+        setattr(container, nested_name, nested_container)
+        nested_container = container
+    # Return outermost container
+    return container
+
+def set_attrs_with_path(
+    struct: Any,
+    paths_and_values: Dict[str, Any]
+) -> Any:
+    """
+    Set multiple attributes on nested struct using `path`: `value` pairs.
+
+    Parameters
+    ----------
+    struct: Any
+        Outermost struct where first name in `path` is an attribute
+    paths_and_values: Dict[str | list, Any]
+        Mapping of dot-separated path (e.g. `sd.veh.drag_coef` or `["sd", "veh", "drag_coef"]`)
+        to values (e.g. `0.32`)
+    
+    Returns
+    -------
+    Any
+        `struct` with nested values set
+    """
+    # TODO: make this smarter by reusing common paths
+    # e.g. if setting `sd.veh.drag_coef` and `sd.veh.frontal_area_m2`, get sd.veh only once
+    for path, value in paths_and_values.items():
+        struct = set_attr_with_path(struct, path, value)
+    return struct
