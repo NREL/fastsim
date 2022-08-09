@@ -1,12 +1,14 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens, TokenStreamExt}; // ToTokens is implicitly used as a trait
-use syn::{DeriveInput, Ident, Meta};
+use syn::{DeriveInput, Ident, Meta, spanned::Spanned};
+use proc_macro_error::{abort, proc_macro_error};
 
 mod utilities;
 use utilities::{impl_getters_and_setters, FieldOptions};
 
 /// macro for creating appropriate setters and getters for pyo3 struct attributes
+#[proc_macro_error]
 #[proc_macro_attribute]
 pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
@@ -47,13 +49,22 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             for nested in list.nested {
                                 if let syn::NestedMeta::Meta(opt) = nested {
                                     // println!("opt_path{:?}", opt.path().segments[0].ident.to_string().as_str());;
-                                    match opt.path().segments[0].ident.to_string().as_str() {
+                                    let opt_name = opt.path().segments[0].ident.to_string();
+                                    match opt_name.as_str() {
                                         "skip_get" => opts.skip_get = true,
                                         "skip_set" => opts.skip_set = true,
                                         "has_orphaned" => opts.field_has_orphaned = true,
                                         // todo: figure out how to use span to have rust-analyzer highlight the exact code
                                         // where this gets messed up
-                                        _ => {panic!("Invalid api option. Valid options are: `skip_get`, `skip_set`, and `has_orphaned`")}
+                                        _ => {
+                                            abort!(
+                                                x.span(), 
+                                                format!(
+                                                    "Invalid api option: {}.\nValid options are: `skip_get`, `skip_set`, and `has_orphaned`.",
+                                                    opt_name
+                                                )
+                                            )
+                                        }
                                     }
                                 }
                             }
