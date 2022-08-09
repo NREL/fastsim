@@ -1,5 +1,5 @@
 from dataclasses import dataclass, InitVar
-from typing import Union, Dict, Tuple, List, Any, Union, Optional
+from typing import *
 from pathlib import Path
 
 # pymoo
@@ -11,6 +11,7 @@ from pymoo.core.problem import Problem, ElementwiseProblem
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.algorithms.base.genetic import GeneticAlgorithm
 from pymoo.optimize import minimize
+from pymoo.core.problem import starmap_parallelized_eval, looped_eval
 
 # misc
 import pandas as pd
@@ -42,88 +43,14 @@ def get_error_val(model, test, time_steps):
     return np.trapz(y=abs(model - test), x=time_steps) / (time_steps[-1] - time_steps[0])
 
 
-def get_containers_from_path(
-    model: fsr.SimDriveHot,
-    path: Union[str, list],
-) -> list:
-    """
-    Get all attributes containing another attribute from `model` using `path` to attribute
-    """
-    if isinstance(path, str):
-        path = path.split(".")
-    containers = [getattr(model, path[0])]
-    for subpath in path[1:-1]:
-        container = getattr(containers[-1], subpath)
-        containers.append(container)
-    return containers
-
-
-def get_attr_from_path(
-    model: fsr.SimDriveHot,
-    path: Union[str, list]
-) -> Any:
-    """
-    Get attribute from `model` using `path` to attribute
-    """
-    if isinstance(path, str):
-        path = path.split(".")
-    containers = get_containers_from_path(model, path)
-    attr = getattr(containers[-1], path[-1])
-    return attr
-
-
-def set_attr_from_path(
-    model: fsr.SimDriveHot,
-    path: Union[str, list],
-    value: float
-) -> fsr.SimDriveHot:
-    """
-    Set attribute `value` on `model` for `path` to attribute
-    """
-    # TODO: Does this actually work?
-    if isinstance(path, str):
-        path = path.split(".")
-    containers = get_containers_from_path(model, path)
-    containers[-1].reset_orphaned()
-    setattr(containers[-1], path[-1], value)
-    return model
-
-    """containers = [model]
-    for step in path[:-1]:
-        containers.append(containers[-1].__getattribute__(step))
-
-    # zip it back up
-    # innermost container first
-    containers[-1].reset_orphaned()
-    containers[-1].__setattr__(
-        path[-1], value
-    )
-
-    prev_container = containers[-1]
-
-    # iterate through remaining containers, inner to outer
-    for i, (container, path_elem) in enumerate(zip(containers[-2::-1], path[-2::-1])):
-        if i < len(containers) - 2:
-            # reset orphaned for everything but the outermost container
-            container.reset_orphaned()
-        setattr(
-            container,
-            path_elem,
-            prev_container
-        )
-        prev_container = container
-
-    return model"""
-
-
 @dataclass
 class ModelErrors(object):
     """
     Class for calculating eco-driving objectives
     """
 
-    # dictionary of models to be simulated
-    sim_drives: Dict[str, fsim.simdrive.SimDrive]
+    # dictionary of YAML models to be simulated
+    models: Dict[str, str]
 
     # dictionary of test data to calibrate against
     dfs: Dict[str, pd.DataFrame]
@@ -150,10 +77,11 @@ class ModelErrors(object):
     verbose: bool = False
 
     def __post_init__(self):
-        assert(len(self.dfs) == len(self.sim_drives))
+        assert(len(self.dfs) == len(self.models))
 
     def get_errors(
         self,
+        sim_drives: Dict[str, fsr.SimDriveHot],
         return_mods: Optional[bool] = False,
         plot: Optional[bool] = False,
         plot_save_dir: Optional[str] = None,
@@ -175,9 +103,9 @@ class ModelErrors(object):
         solved_mods = {}
 
         # loop through all the provided trips
-        for ((key, df_exp), sim_drive) in zip(self.dfs.items(), self.sim_drives.values()):
+        for ((key, df_exp), sim_drive) in zip(self.dfs.items(), sim_drives.values()):
             t0 = time.time()
-            sim_drive = sim_drive.copy()
+            sim_drive = sim_drive.copy()  # TODO: do we need this?
             sim_drive.sim_drive()
             objectives[key] = {}
             if return_mods or plot:
@@ -213,14 +141,10 @@ class ModelErrors(object):
                     ref_path = None
 
                 # extract model value
-                mod_sig = get_attr_from_path(sim_drive, mod_path)
+                mod_sig = fsim.utils.get_attr_with_path(sim_drive, mod_path)
 
                 if ref_path:
                     ref_sig = df_exp[ref_path]
-
-                    # print(mod_path, mod_sig)
-                    # print(ref_path, ref_sig)
-
                     objectives[key][obj[0]] = get_error_val(
                         mod_sig,
                         ref_sig,
@@ -282,48 +206,19 @@ class ModelErrors(object):
         """
         assert(len(xs) == len(self.params))
         paths = [fullpath.split(".") for fullpath in self.params]
-
         t0 = time.time()
-        # first element of each tuple in self.params should be identical
-        mod = list(self.sim_drives.values())[0].__getattribute__(
-            paths[0][0]
-        )
-
-        # the idea of this code is to step through the hierarchy
-        # to collect the different levels in a list, reset orphaned, set
-        # new values, and then propagate back up the hierarchy.
-        # I'm not convinced it works, but the concept seems sound.  Only the implementation
-        # details might be sketchy.
-        for path, x in zip(paths, xs):
-            # containers = [mod]
-            containers = [
-                self.sim_drives[list(self.sim_drives.keys())[0]].__getattribute__(
-                    path[0]
-                )
-            ]
-
-            for step in path[1:-1]:
-                containers.append(containers[-1].__getattribute__(step))
-            # zip it back up
-            containers[-1].reset_orphaned()
-            containers[-1].__setattr__(
-                path[-1], x
+        # Load SimDriveHot instances from YAML strings
+        sim_drives = {key: fsr.SimDriveHot.from_yaml(model_yaml) for key, model_yaml in self.models.items()}
+        # Update all model parameters
+        for key in sim_drives.keys():
+            sim_drives[key] = fsim.utils.set_attrs_with_path(
+                sim_drives[key],
+                dict(zip(self.params, xs)),
             )
-            for i, container in enumerate(list(reversed(containers))[1:]):
-                container.reset_orphaned()  # seems like this should be necessary
-                containers[-2-i].__setattr__(
-                    path[-2-i],
-                    containers[-1-i]
-                )
-
-            for key in self.sim_drives.keys():
-                self.sim_drives[key].__setattr__(
-                    paths[0][0],
-                    containers[0]
-                )
         t1 = time.time()
         if self.verbose:
             print(f"Time to update params: {t1 - t0:.3g} s")
+        return sim_drives
 
 
 @dataclass
@@ -332,30 +227,54 @@ class CalibrationProblem(ElementwiseProblem):
     Problem for calibrating models to match test data
     """
 
-    # default of None is needed for dataclass inheritance
-    # this is actually mandatory!
-    err: ModelErrors = None
-    # parameter lower and upper bounds
-    # default of None is needed for dataclass inheritance
-    # this is actually mandatory!
-    param_bounds: List[Tuple[float, float]] = None
+    def __init__(
+        self,
+        err: ModelErrors,
+        param_bounds: List[Tuple[float, float]],
+        runner = None,
+        func_eval: Callable = looped_eval,
+    ):
+        self.err = err
+        # parameter lower and upper bounds
+        self.param_bounds = param_bounds
 
-    def __post_init__(self):
         assert(len(self.param_bounds) == len(self.err.params))
         super().__init__(
             n_var=len(self.err.params),
-            n_obj=len(self.err.sim_drives) * len(self.err.objectives),
+            n_obj=len(self.err.models) * len(self.err.objectives),
             xl=[bounds[0]
                 for bounds in self.param_bounds],
             xu=[bounds[1]
                 for bounds in self.param_bounds],
+            runner=runner,
+            func_eval=func_eval,
         )
 
     def _evaluate(self, x, out, *args, **kwargs):
-        self.err.update_params(x)
+        sim_drives = self.err.update_params(x)
         out['F'] = [
-            val for inner_dict in self.err.get_errors().values() for val in inner_dict.values()
+            val for inner_dict in self.err.get_errors(sim_drives).values() for val in inner_dict.values()
         ]
+
+
+class MyDisplay(Display):
+    def __init__(self):
+        super().__init__()
+        self.term = MODT()
+        self.t_gen_start = time.time()
+
+    def _do(self, problem, evaluator, algorithm):
+        super()._do(problem, evaluator, algorithm)
+        self.output.append("n_nds", len(algorithm.opt), width=7)
+        self.output.append(
+            'dt [s]', f"{time.time() - self.t_gen_start:.3g}", width=7)
+        self.t_gen_start = time.time()
+        f = algorithm.pop.get('F')
+        euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
+        self.output.append(
+            "euclid min", f"{euclid_min:.3g}", width=8)
+
+        self.term.do_continue(algorithm)
 
 
 def run_minimize(
@@ -386,6 +305,7 @@ def run_minimize(
         seed=1,
         verbose=True,
         save_history=save_history,
+        display = MyDisplay(),
     )
 
     f_columns = [
