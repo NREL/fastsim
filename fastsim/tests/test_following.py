@@ -67,7 +67,10 @@ class TestFollowing(unittest.TestCase):
                 fig.savefig(save_file, dpi=300)
                 plt.close()
             self.assertTrue((gaps_m > 0.0).any())
-            self.assertAlmostEqual(self.sd.cyc0.dist_v2_m.sum(), self.sd.cyc.dist_v2_m.sum(), places=-1)
+            self.assertAlmostEqual(
+                fastsim.cycle.trapz_step_distances(self.sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(self.sd.cyc).sum(),
+                places=-1)
         if RUST_AVAILABLE and USE_RUST:
             self.assertTrue(self.ru_sd.sim_params.follow_allow)
             self.ru_sd.sim_drive()
@@ -85,8 +88,8 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
             self.assertTrue((gaps_m > 0.0).any())
             self.assertAlmostEqual(
-                np.array(self.ru_sd.cyc0.dist_v2_m).sum(),
-                np.array(self.ru_sd.cyc.dist_v2_m).sum(),
+                fastsim.cycle.trapz_step_distances(self.ru_sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(self.ru_sd.cyc).sum(),
                 places=-1)
 
     def test_that_the_gap_changes_over_the_cycle(self):
@@ -118,8 +121,8 @@ class TestFollowing(unittest.TestCase):
                 )
             self.assertFalse((gaps_m == 5.0).all())
             self.assertAlmostEqual(
-                self.sd.cyc0.dist_v2_m.sum(),
-                self.sd.cyc.dist_v2_m.sum(),
+                fastsim.cycle.trapz_step_distances(self.sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(self.sd.cyc).sum(),
                 places=-1,
                 msg='Distance should be about the same')
             self.assertTrue((gaps_m > 0.0).all(), msg='We cannot pass the lead vehicle')
@@ -147,8 +150,8 @@ class TestFollowing(unittest.TestCase):
                 )
             self.assertFalse((gaps_m == 5.0).all())
             self.assertAlmostEqual(
-                np.array(self.ru_sd.cyc0.dist_v2_m).sum(),
-                np.array(self.ru_sd.cyc.dist_v2_m).sum(),
+                fastsim.cycle.trapz_step_distances(self.ru_sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(self.ru_sd.cyc).sum(),
                 places=-1,
                 msg='Distance should be about the same')
             self.assertTrue((gaps_m > 0.0).all(), msg='We cannot pass the lead vehicle')
@@ -172,7 +175,7 @@ class TestFollowing(unittest.TestCase):
                 veh = fastsim.vehicle.Vehicle.from_vehdb(5)
                 sd = fastsim.simdrive.SimDrive(udds, veh)
                 sd.sim_drive()
-                base_distance_m = sd.cyc.dist_v2_m.sum()
+                base_distance_m = fastsim.cycle.trapz_step_distances(sd.cyc).sum()
                 base_fuel_consumption_gal__100mi = 100.0 / sd.mpgge
                 results = {
                     'accel_coef_s2': [0.0],
@@ -200,7 +203,7 @@ class TestFollowing(unittest.TestCase):
                             results['init_offset_m'].append(initial_offset_m)
                             results['fuel_economy_mpgge'].append(sd.mpgge)
                             results['fuel_consumption_gal__100mi'].append(100.0 / sd.mpgge)
-                            dist_m = sd.cyc.dist_v2_m.sum()
+                            dist_m = fastsim.cycle.trapz_step_distances(sd.cyc).sum()
                             results['distance_m'].append(dist_m)
                             results['distance_short_m'].append(base_distance_m - dist_m)
                 results = pd.DataFrame(results)
@@ -276,7 +279,7 @@ class TestFollowing(unittest.TestCase):
                 veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
                 sd = fastsim.simdrive.RustSimDrive(udds, veh)
                 sd.sim_drive()
-                base_distance_m = np.array(sd.cyc.dist_v2_m).sum()
+                base_distance_m = fastsim.cycle.trapz_step_distances(sd.cyc).sum()
                 base_fuel_consumption_gal__100mi = 100.0 / sd.mpgge
                 results = {
                     'accel_coef_s2': [0.0],
@@ -306,7 +309,7 @@ class TestFollowing(unittest.TestCase):
                             results['init_offset_m'].append(initial_offset_m)
                             results['fuel_economy_mpgge'].append(sd.mpgge)
                             results['fuel_consumption_gal__100mi'].append(100.0 / sd.mpgge)
-                            dist_m = np.array(sd.cyc.dist_v2_m).sum()
+                            dist_m = fastsim.cycle.trapz_step_distances(sd.cyc).sum()
                             results['distance_m'].append(dist_m)
                             results['distance_short_m'].append(base_distance_m - dist_m)
                 results = pd.DataFrame(results)
@@ -383,8 +386,8 @@ class TestFollowing(unittest.TestCase):
                     title='test_that_we_can_use_the_idm__1.png',
                     save_file="test_that_we_can_use_the_idm__1.png")
             self.assertAlmostEqual(
-                self.sd.cyc0.dist_v2_m.sum(),
-                self.sd.cyc.dist_v2_m.sum(),
+                fastsim.cycle.trapz_step_distances(self.sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(self.sd.cyc).sum(),
                 places=-1,
                 msg='Distance traveled should be fairly close')
         if RUST_AVAILABLE and USE_RUST:
@@ -398,8 +401,8 @@ class TestFollowing(unittest.TestCase):
                     title='Test That We Can use the IDM (RUST)',
                     save_file="test_that_we_can_use_the_idm__1-rust.png")
             self.assertAlmostEqual(
-                np.array(self.ru_sd.cyc0.dist_v2_m).sum(),
-                np.array(self.ru_sd.cyc.dist_v2_m).sum(),
+                fastsim.cycle.trapz_step_distances(self.ru_sd.cyc0).sum(),
+                fastsim.cycle.trapz_step_distances(self.ru_sd.cyc).sum(),
                 places=-1,
                 msg='Distance traveled should be fairly close')
 
@@ -437,8 +440,8 @@ class TestFollowing(unittest.TestCase):
                     'HEV': 10,
                     'BEV': 19,
                 }
-                mask = udds.dist_v2_m > 0
-                avg_speed_when_moving_m__s = udds.dist_v2_m[mask].sum() / udds.dt_s[mask].sum()
+                mask = fastsim.cycle.trapz_step_distances(udds) > 0
+                avg_speed_when_moving_m__s = fastsim.cycle.trapz_step_distances(udds)[mask].sum() / udds.dt_s[mask].sum()
                 # DESIGN VARIABLES
                 veh_pt_types = ['CONV', 'HEV', 'BEV']
                 dt_headways = [0.5, 1.0, 4.0, 5.0, 10.0]
@@ -476,7 +479,7 @@ class TestFollowing(unittest.TestCase):
                         veh = fastsim.vehicle.Vehicle.from_vehdb(id_by_pt_type[pt_type])
                         sd = fastsim.simdrive.SimDrive(udds, veh)
                         sd.sim_drive()
-                        base_distance_m = sd.cyc.dist_v2_m.sum()
+                        base_distance_m = fastsim.cycle.trapz_step_distances(sd.cyc).sum()
                         if sd.mpgge == 0.0 or np.isnan(sd.mpgge):
                             base_fuel_consumption_gal__100mi = 0.0
                         else: 
@@ -544,7 +547,7 @@ class TestFollowing(unittest.TestCase):
                                                     results['fuel_consumption_gal__100mi'].append(100.0 * gge__mi)
                                                 else:
                                                     results['fuel_consumption_gal__100mi'].append(-1.0)
-                                                dist_m = sd.cyc.dist_v2_m.sum()
+                                                dist_m = fastsim.cycle.trapz_step_distances(sd.cyc).sum()
                                                 results['distance_m'].append(dist_m)
                                                 results['distance_short_m'].append(base_distance_m - dist_m)
                                                 # create a plot by key and save it
@@ -722,8 +725,8 @@ class TestFollowing(unittest.TestCase):
                     'HEV': 10,
                     'BEV': 19,
                 }
-                mask = np.array(udds.dist_v2_m) > 0
-                avg_speed_when_moving_m__s = np.array(udds.dist_v2_m)[mask].sum() / np.array(udds.dt_s)[mask].sum()
+                mask = fastsim.cycle.trapz_step_distances(udds) > 0
+                avg_speed_when_moving_m__s = fastsim.cycle.trapz_step_distances(udds)[mask].sum() / np.array(udds.dt_s)[mask].sum()
                 # DESIGN VARIABLES
                 veh_pt_types = ['CONV', 'HEV', 'BEV']
                 dt_headways = [0.5, 1.0, 4.0, 5.0, 10.0]
@@ -761,7 +764,7 @@ class TestFollowing(unittest.TestCase):
                         veh = fastsim.vehicle.Vehicle.from_vehdb(id_by_pt_type[pt_type]).to_rust()
                         sd = fastsim.simdrive.RustSimDrive(udds, veh)
                         sd.sim_drive()
-                        base_distance_m = np.array(sd.cyc.dist_v2_m).sum()
+                        base_distance_m = fastsim.cycle.trapz_step_distances(sd.cyc).sum()
                         if sd.mpgge == 0.0 or np.isnan(sd.mpgge):
                             base_fuel_consumption_gal__100mi = 0.0
                         else: 
@@ -831,7 +834,7 @@ class TestFollowing(unittest.TestCase):
                                                     results['fuel_consumption_gal__100mi'].append(100.0 * gge__mi)
                                                 else:
                                                     results['fuel_consumption_gal__100mi'].append(-1.0)
-                                                dist_m = np.array(sd.cyc.dist_v2_m).sum()
+                                                dist_m = fastsim.cycle.trapz_step_distances(sd.cyc).sum()
                                                 results['distance_m'].append(dist_m)
                                                 results['distance_short_m'].append(base_distance_m - dist_m)
                                                 # create a plot by key and save it
@@ -985,9 +988,9 @@ class TestFollowing(unittest.TestCase):
             cyc = fastsim.cycle.make_cycle(
                 [0.0 , 10.0 , 20.0 , 30.0 , 40.0 , 50.0 , 99.0],
                 [0.0 , 10.0 , 10.0 , 10.0 , 10.0 ,  0.0 ,  0.0],
-                [0.01,  0.01,  0.0 , -0.01, -0.01,  0.0 ,  0.0],
+                [0.00,  0.00,  0.01, 0.00, -0.01 ,  0.0 ,  0.0],
             )
-            cyc = fastsim.cycle.resample(cyc, new_dt=0.1, hold_keys={'grade'})
+            cyc = fastsim.cycle.resample(cyc, new_dt=0.1, hold_keys_next={'grade'})
             cyc = fastsim.cycle.Cycle.from_dict(cyc)
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             sd = fastsim.simdrive.SimDrive(cyc, veh)
@@ -998,10 +1001,12 @@ class TestFollowing(unittest.TestCase):
             sd.sim_drive()
             ts0 = sd.cyc0.time_s
             dds0 = sd.cyc0.dist_m
-            hs0 = sd.cyc0.delta_elev_m
+            # TODO: should use sd.cyc0.delta_elev_m but that currently is not as accurate
+            hs0 = np.cumsum(np.cos(np.arctan(sd.cyc0.grade)) * fastsim.cycle.trapz_step_distances(sd.cyc0) * sd.cyc0.grade)
             ts1 = sd.cyc.time_s
             dds1 = sd.cyc.dist_m
-            hs1 = sd.cyc.delta_elev_m
+            # TODO: should use sd.cyc0.delta_elev_m but that currently is not as accurate
+            hs1 = np.cumsum(np.cos(np.arctan(sd.cyc.grade)) * fastsim.cycle.trapz_step_distances(sd.cyc) * sd.cyc.grade)
             self.assertAlmostEqual(sum(dds0), sum(dds1), places=-1)
             self.assertAlmostEqual(hs0[-1], hs1[-1], places=6)
             def calc_dist_of_peak_elev(dds, hs):
@@ -1092,10 +1097,12 @@ class TestFollowing(unittest.TestCase):
             sd.sim_drive()
             ts0 = sd.cyc0.time_s
             dds0 = sd.cyc0.dist_m
-            hs0 = sd.cyc0.delta_elev_m
+            # TODO: should use sd.cyc0.delta_elev_m but that currently is not as accurate
+            hs0 = np.cumsum(np.cos(np.arctan(sd.cyc0.grade)) * fastsim.cycle.trapz_step_distances(sd.cyc0) * sd.cyc0.grade)
             ts1 = sd.cyc.time_s
             dds1 = sd.cyc.dist_m
-            hs1 = sd.cyc.delta_elev_m
+            # TODO: should use sd.cyc0.delta_elev_m but that currently is not as accurate
+            hs1 = np.cumsum(np.cos(np.arctan(sd.cyc.grade)) * fastsim.cycle.trapz_step_distances(sd.cyc) * sd.cyc.grade)
             self.assertAlmostEqual(sum(dds0), sum(dds1), places=-1)
             self.assertAlmostEqual(hs0[-1], hs1[-1], places=6)
             def calc_dist_of_peak_elev(dds, hs):
