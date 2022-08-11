@@ -10,7 +10,7 @@ use ndarray::{s, Array, Array1};
 extern crate pyo3;
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
-use pyo3::types::PyType;
+use pyo3::types::{PyDict, PyType};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
@@ -141,7 +141,7 @@ pub fn average_step_speeds(cyc: &RustCycle) -> Array1<f64> {
 /// Calculate the average step speed at step i in m/s
 /// (i.e., from sample point i-1 to i)
 pub fn average_step_speed_at(cyc: &RustCycle, i: usize) -> f64 {
-    0.5 * (cyc.mps[i] + cyc.mps[i-1])
+    0.5 * (cyc.mps[i] + cyc.mps[i - 1])
 }
 
 /// Sum of the distance traveled over each step using
@@ -224,10 +224,6 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             ("road_type".to_string(), self.road_type.to_vec()),
         ]);
         Ok(dict)
-    }
-
-    pub fn copy(&self) -> PyResult<Self> {
-        Ok(self.clone())
     }
 
     #[pyo3(name = "modify_by_const_jerk_trajectory")]
@@ -390,9 +386,8 @@ impl RustCycle {
         // NOTE: we use the following instead of delta_elev_m in order to use
         // more precise trapezoidal distance and elevation at sample points.
         // This also uses the fully accurate trig functions in case we have large slope angles.
-        let elevations_m = ndarrcumsum(
-            &(self.grade.mapv(|g| g.atan().cos()) * &delta_dists * self.grade.clone())
-        );
+        let elevations_m =
+            ndarrcumsum(&(self.grade.mapv(|g| g.atan().cos()) * &delta_dists * self.grade.clone()));
         let e0 = interpolate(&distance_start_m, &distances_m, &elevations_m, false);
         let e1 = interpolate(
             &(distance_start_m + delta_distance_m),
@@ -467,11 +462,16 @@ impl RustCycle {
     /// - dts_m: None | float: if given, this is the desired distance-to-stop in meters. If not given, it is
     ///     calculated based on braking deceleration.
     /// RETURN: (non-negative-number, positive-integer)
-    /// - the final speed of the modified trajectory (m/s) 
+    /// - the final speed of the modified trajectory (m/s)
     /// - the number of time-steps required to complete the braking maneuver
     /// NOTE:
     /// - modifies the cycle in place for the braking trajectory
-    pub fn modify_with_braking_trajectory(&mut self, brake_accel_m_per_s2: f64, i: usize, dts_m: Option<f64>) -> (f64, usize) {
+    pub fn modify_with_braking_trajectory(
+        &mut self,
+        brake_accel_m_per_s2: f64,
+        i: usize,
+        dts_m: Option<f64>,
+    ) -> (f64, usize) {
         assert!(brake_accel_m_per_s2 < 0.0);
         if i >= self.time_s.len() {
             return (self.mps[self.mps.len() - 1], 0);
@@ -480,11 +480,13 @@ impl RustCycle {
         let dt = self.dt_s()[i];
         // distance-to-stop (m)
         let dts_m = match dts_m {
-            Some(value) => if value > 0.0 {
-                value
-            } else {
-                -0.5 * v0 * v0 / brake_accel_m_per_s2
-            },
+            Some(value) => {
+                if value > 0.0 {
+                    value
+                } else {
+                    -0.5 * v0 * v0 / brake_accel_m_per_s2
+                }
+            }
             None => -0.5 * v0 * v0 / brake_accel_m_per_s2,
         };
         if dts_m <= 0.0 {
@@ -499,7 +501,7 @@ impl RustCycle {
             calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt);
         (
             self.modify_by_const_jerk_trajectory(i, n, jerk_m_per_s3, accel_m_per_s2),
-            n
+            n,
         )
     }
 
@@ -556,26 +558,24 @@ impl RustCycle {
     }
 }
 
-
 pub struct PassingInfo {
     /// True if first cycle passes the second
-   pub has_collision: bool,
-   /// the index where first cycle passes the second
-   pub idx: usize,
-   /// the number of time-steps until idx from i
-   pub num_steps: usize, 
-   /// the starting distance of the first cycle at i
-   pub start_distance_m: f64,
-   /// the distance (m) traveled of the second cycle when first passes
-   pub distance_m: f64,
-   /// the starting speed (m/s) of the first cycle at i
-   pub start_speed_m_per_s: f64,
-   /// the speed (m/s) of the second cycle when first passes
-   pub speed_m_per_s: f64,
-   /// the time step duration throught the passing investigation
-   pub time_step_duration_s: f64,
+    pub has_collision: bool,
+    /// the index where first cycle passes the second
+    pub idx: usize,
+    /// the number of time-steps until idx from i
+    pub num_steps: usize,
+    /// the starting distance of the first cycle at i
+    pub start_distance_m: f64,
+    /// the distance (m) traveled of the second cycle when first passes
+    pub distance_m: f64,
+    /// the starting speed (m/s) of the first cycle at i
+    pub start_speed_m_per_s: f64,
+    /// the speed (m/s) of the second cycle when first passes
+    pub speed_m_per_s: f64,
+    /// the time step duration throught the passing investigation
+    pub time_step_duration_s: f64,
 }
-
 
 /// Reports back information of the first point where cyc passes cyc0, starting at
 /// step i until the next stop of cyc.
@@ -589,7 +589,7 @@ pub fn detect_passing(
     cyc: &RustCycle,
     cyc0: &RustCycle,
     i: usize,
-    dist_tol_m: Option<f64>
+    dist_tol_m: Option<f64>,
 ) -> PassingInfo {
     if i >= cyc.time_s.len() {
         return PassingInfo {
@@ -610,7 +610,7 @@ pub fn detect_passing(
     };
     let mut v0: f64 = cyc.mps[i - 1];
     let d0: f64 = trapz_step_start_distance(&cyc, i);
-    let mut v0_lv: f64 = cyc0.mps[i-1];
+    let mut v0_lv: f64 = cyc0.mps[i - 1];
     let d0_lv: f64 = trapz_step_start_distance(&cyc0, i);
     let mut d = d0;
     let mut d_lv = d0_lv;
@@ -643,17 +643,22 @@ pub fn detect_passing(
         }
     }
     PassingInfo {
-        has_collision: match rendezvous_idx { Some(_) => true, None => false },
-        idx: match rendezvous_idx { Some(idx) => idx, None => 0 },
+        has_collision: match rendezvous_idx {
+            Some(_) => true,
+            None => false,
+        },
+        idx: match rendezvous_idx {
+            Some(idx) => idx,
+            None => 0,
+        },
         num_steps: rendezvous_num_steps,
         start_distance_m: d0,
         distance_m: rendezvous_distance_m,
-        start_speed_m_per_s: cyc.mps[i-1],
+        start_speed_m_per_s: cyc.mps[i - 1],
         speed_m_per_s: rendezvous_speed_m_per_s,
         time_step_duration_s: cyc.dt_s()[i],
     }
 }
-
 
 #[cfg(test)]
 mod tests {

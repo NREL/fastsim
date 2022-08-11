@@ -1,6 +1,9 @@
 """Module containing classes and methods for 
 cycle data. For example usage, see ../README.md"""
 
+from __future__ import annotations
+from typing_extensions import Self
+from typing import *
 # Import necessary python modules
 from dataclasses import dataclass
 import copy
@@ -14,7 +17,6 @@ import sys
 from pathlib import Path
 from copy import deepcopy
 import types
-from typing import Optional
 
 # local modules
 from . import parameters as params
@@ -23,6 +25,7 @@ from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
+    from fastsimrust import RustCycle
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
@@ -52,7 +55,7 @@ class Cycle(object):
     name: str
 
     @classmethod
-    def from_file(cls, filename: str):
+    def from_file(cls, filename: str) -> Self:
         """
         Load cycle from filename (str).
         Can be absolute or relative path.  If relative, looks in working dir first
@@ -84,7 +87,7 @@ class Cycle(object):
         return cls.from_dict(cyc_dict)
 
     @classmethod
-    def from_dict(cls, cyc_dict: dict):
+    def from_dict(cls, cyc_dict: dict) -> Self:
         """
         Load cycle from dict, which must contain keys for:
         -- `cycSecs` or `time_s`
@@ -144,7 +147,7 @@ class Cycle(object):
         "return cycle length"
         return len(self.time_s)
 
-    def get_cyc_dict(self) -> dict:
+    def get_cyc_dict(self) -> Dict[str, np.ndarray]:
         """Returns cycle as dict rather than class instance."""
         keys = STANDARD_CYCLE_KEYS
 
@@ -154,25 +157,18 @@ class Cycle(object):
 
         return cyc
 
-    def to_rust(self):
+    def to_rust(self) -> RustCycle:
         return copy_cycle(self, return_type='rust', deep=False)
 
     def reset_orphaned(self):
         """Dummy method for flexibility between Rust/Python version interfaces"""
         pass
 
-    def copy(self):
+    def copy(self) -> Self:
         """
         Return a copy of this Cycle instance.
         """
-        cyc_dict = {
-            'time_s': self.time_s.copy(),
-            'mps': self.mps.copy(),
-            'cycGrade': self.grade.copy(),
-            'cycRoadType': self.road_type.copy(),
-            'name': self.name,
-        }
-        return Cycle.from_dict(cyc_dict)
+        return copy.deepcopy(self)
 
     def average_grade_over_range(self, distance_start_m, delta_distance_m):
         """

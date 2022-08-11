@@ -109,9 +109,15 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     // });
 
     impl_block.extend::<TokenStream2>(quote! {
-         pub fn to_json(&self) -> PyResult<String> {
-             Ok(serde_json::to_string(&self).unwrap())
-         }
+        pub fn copy(&self) -> Self {self.clone()}
+        pub fn __copy__(&self) -> Self {self.clone()}
+        pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
+    });
+
+    impl_block.extend::<TokenStream2>(quote! {
+        pub fn to_json(&self) -> PyResult<String> {
+            Ok(serde_json::to_string(&self).unwrap())
+        }
     });
 
     impl_block.extend::<TokenStream2>(quote! {
@@ -132,10 +138,10 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     impl_block.extend::<TokenStream2>(quote! {
          #[classmethod]
          #[pyo3(name = "from_file")]
-         pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
-             let obj: #ident = Self::from_file(&json_str);
-             Ok(obj)
-         }
+         pub fn from_file_py(_cls: &PyType, filename: &str) -> PyResult<Self> {
+            let obj: #ident = Self::from_file(filename);
+            Ok(obj)
+        }
     });
 
     let impl_block = quote! {

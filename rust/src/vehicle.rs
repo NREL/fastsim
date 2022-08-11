@@ -5,7 +5,7 @@ use ndarray::{Array, Array1};
 extern crate pyo3;
 use pyo3::prelude::*;
 use pyo3::exceptions::PyAttributeError;
-use pyo3::types::PyType;
+use pyo3::types::{PyType, PyDict};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::PathBuf;
@@ -321,10 +321,6 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
     pub fn to_rust(&self) -> PyResult<Self> {
-        Ok(self.clone())
-    }
-
-    pub fn copy(&self) -> PyResult<Self> {
         Ok(self.clone())
     }
 )]

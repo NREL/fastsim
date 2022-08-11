@@ -5,7 +5,7 @@ use ndarray::Array1;
 extern crate pyo3;
 use pyo3::exceptions::{PyAttributeError, PyRuntimeError};
 use pyo3::prelude::*;
-use pyo3::types::PyType;
+use pyo3::types::{PyType, PyDict};
 
 use crate::cycle::RustCycle;
 use crate::params::RustPhysicalProperties;
@@ -405,10 +405,6 @@ impl Default for RustSimDriveParams {
     /// Return self.cyc.time_is.is_empty()
     pub fn is_empty(&self) -> bool {
         self.cyc.time_s.is_empty()
-    }
-
-    pub fn copy(&self) -> PyResult<Self> {
-        Ok(self.clone())
     }
 )]
 pub struct RustSimDrive {
