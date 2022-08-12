@@ -479,14 +479,14 @@ impl RustCycle {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
     }
 
-     impl_serde!(RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
+    impl_serde!(RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
 
     pub fn from_file(filename: &str) -> Self {
         // check if the extension is csv, and if it is, then call Self::from_csv_file
         let pathbuf = PathBuf::from(filename);
         match pathbuf.extension().unwrap().to_str().unwrap() {
             "csv" => Self::from_csv_file(filename).unwrap(),
-            _ => Self::from_file_parser(filename).unwrap()
+            _ => Self::from_file_parser(filename).unwrap(),
         }
     }
 }
@@ -525,7 +525,7 @@ mod tests {
 
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
-        let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
+        let pathstr = String::from("../../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
         match RustCycle::from_csv_file(&pathstr) {
             Ok(cyc) => {
