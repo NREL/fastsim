@@ -1,4 +1,5 @@
-/// module containing parameters that are used in fastsim
+//! Module containing FASTSim parameters.
+
 extern crate pyo3;
 use crate::proc_macros::add_pyo3_api;
 use pyo3::exceptions::PyAttributeError;

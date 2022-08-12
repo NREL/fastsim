@@ -24,5 +24,12 @@ try:
     setattr(Pyo3ArrayU32, "__array__", _as_numpy_array)
     setattr(Pyo3ArrayBool, "__array__", _as_numpy_array)
     setattr(Pyo3VecF64, "__array__", _as_numpy_array)
+    # Enable copy.copy() and copy.deepcopy()
+    setattr(RustCycle, "__copy__", RustCycle.copy)
+    setattr(RustCycle, "__deepcopy__", lambda self, _memo: RustCycle.copy(self))
+    setattr(RustVehicle, "__copy__", RustVehicle.copy)
+    setattr(RustVehicle, "__deepcopy__", lambda self, _memo: RustVehicle.copy(self))
+    setattr(RustSimDrive, "__copy__", RustSimDrive.copy)
+    setattr(RustSimDrive, "__deepcopy__", lambda self, _memo: RustSimDrive.copy(self))
 except ImportError:
     print("fastsimrust not installed")

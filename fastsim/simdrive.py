@@ -755,30 +755,30 @@ class SimDrive(object):
         """
 
         if self.newton_iters[i] > 0:
-            mpsAch = self.mps_ach[i]
+            mps_ach = self.mps_ach[i]
         else:
-            mpsAch = self.cyc.mps[i]
+            mps_ach = self.cyc.mps[i]
 
         # TODO: use of self.cyc.mph[i] in regenContrLimKwPerc[i] calculation seems wrong. Shouldn't it be mpsAch or self.cyc0.mph[i]?
 
         # self.cyc.dist_v2_m.cumsum()[i-1]
         dist_traveled_m = self.cyc.dist_v2_m[:i].sum()
         grade = self.cyc0.average_grade_over_range(
-            dist_traveled_m, mpsAch * self.cyc.dt_s[i])
+            dist_traveled_m, mps_ach * self.cyc.dt_s[i])
         self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
-            (self.mps_ach[i-1] + mpsAch) / 2.0) ** 3 / 1_000
+            (self.mps_ach[i-1] + mps_ach) / 2.0) ** 3 / 1_000
         self.accel_kw[i] = self.veh.veh_kg / \
             (2.0 * self.cyc.dt_s[i]) * \
-            (mpsAch ** 2 - self.mps_ach[i-1] ** 2) / 1_000
+            (mps_ach ** 2 - self.mps_ach[i-1] ** 2) / 1_000
         self.ascent_kw[i] = self.props.a_grav_mps2 * np.sin(np.arctan(
-            grade)) * self.veh.veh_kg * ((self.mps_ach[i-1] + mpsAch) / 2.0) / 1_000
+            grade)) * self.veh.veh_kg * ((self.mps_ach[i-1] + mps_ach) / 2.0) / 1_000
         self.cyc_trac_kw_req[i] = self.drag_kw[i] + \
             self.accel_kw[i] + self.ascent_kw[i]
         self.spare_trac_kw[i] = self.cur_max_trac_kw[i] - \
             self.cyc_trac_kw_req[i]
         self.rr_kw[i] = self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef * np.cos(
-            np.arctan(grade)) * (self.mps_ach[i-1] + mpsAch) / 2.0 / 1_000
-        self.cyc_whl_rad_per_sec[i] = mpsAch / self.veh.wheel_radius_m
+            np.arctan(grade)) * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1_000
+        self.cyc_whl_rad_per_sec[i] = mps_ach / self.veh.wheel_radius_m
         self.cyc_tire_inertia_kw[i] = (
             0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * self.cyc_whl_rad_per_sec[i] ** 2.0 / self.cyc.dt_s[i] -
             0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels *
@@ -884,6 +884,7 @@ class SimDrive(object):
                 _ys = [abs(y) for y in ys]
                 return max(xs[_ys.index(min(_ys))], 0.0)
 
+            # TODO: Should this be dist_m or dist_v2_m?
             dist_traveled_m = self.cyc.dist_m[:i].sum()
             grade_estimate = self.cyc0.average_grade_over_range(
                 dist_traveled_m, 0.0)

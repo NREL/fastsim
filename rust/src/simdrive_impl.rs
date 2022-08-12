@@ -1,3 +1,5 @@
+//! Module containing implementations for [simdrive](super::simdrive).
+
 use ndarray::{Array, Array1, array, s};
 use std::cmp;
 use super::utils::{arrmax, first_grtr, min, max, ndarrmin, ndarrmax, ndarrcumsum, add_from, ndarrunique};
@@ -514,7 +516,7 @@ impl RustSimDrive {
     /// REFERENCE:
     /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
     ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
-    ///     DOI: https://doi.org/10.1007/978-3-642-32460-4.
+    ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>
     pub fn set_speed_for_target_gap_using_idm(&mut self, i:usize){
         // PARAMETERS
         let delta = self.sim_params.idm_delta;
@@ -824,7 +826,7 @@ impl RustSimDrive {
                 self.cyc.mps[i]
             };
 
-            let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
+            let distance_traveled_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
             let grade = self.cyc0.average_grade_over_range(
                 distance_traveled_m, mps_ach * self.cyc.dt_s()[i]);
 
@@ -907,6 +909,7 @@ impl RustSimDrive {
 
             //Cycle is not met
             else {
+                // TODO: Should this be dist_m or dist_v2_m?
                 let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
                 let mut grade_estimate = self.cyc0.average_grade_over_range(
                     distance_traveled_m, 0.0);

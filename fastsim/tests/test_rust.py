@@ -8,6 +8,7 @@ import numpy as np
 import fastsim.vehicle_base as fsvb
 from fastsim import cycle, vehicle, simdrive
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
+import fastsimrust
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
@@ -49,10 +50,6 @@ TEST_VARS = [
     "fc_time_on",
     "fc_kw_out_ach",
     "fs_kwh_out_ach",
-]
-
-TEST_VARS = [
-    "mps_ach"
 ]
 
 class TestRust(unittest.TestCase):
@@ -177,10 +174,12 @@ class TestRust(unittest.TestCase):
         for v in TEST_VARS:
             py[v] = sim_python.__getattribute__(v)
             ru[v] = sim_rust.__getattribute__(v)
+        discrepancy = False
         for i in range(1, len(cyc_python.time_s)):
             for v in TEST_VARS:
                 if type(py[v][i]) is bool or type(py[v][i]) is np.bool_:
                     if py[v][i] != ru[v][i]:
+                        discrepancy = True
                         if not printed_vehicle:
                             printed_vehicle = True
                             print(f'DISCREPANCY FOR VEHICLE {veh_name}')
@@ -188,11 +187,13 @@ class TestRust(unittest.TestCase):
                             f"BOOL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
                 else:
                     if abs(py[v][i] - ru[v][i]) > 1e-6:
+                        discrepancy = True
                         if not printed_vehicle:
                             printed_vehicle = True
                             print(f'DISCREPANCY FOR VEHICLE {veh_name}')
                         print(
                             f"REAL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
+        self.assertFalse(discrepancy, "Discrepancy detected")
     
     def test_step_by_step(self):
         if not RUST_AVAILABLE:
@@ -204,9 +205,8 @@ class TestRust(unittest.TestCase):
             'cycGrade': np.array([0.0] * 11),
         }
         cyc_name = "udds"
-        has_any_errors = False
+        discrepancy = False
         for vehid in [1, 9, 14, 17, 24]:
-            has_errors = False
             printed_vehicle = False
             if use_dict:
                 py_cyc = cycle.Cycle.from_dict(cyc_dict)
@@ -262,7 +262,7 @@ class TestRust(unittest.TestCase):
                 for v in TEST_VARS:
                     if type(py[v][i]) is bool or type(py[v][i]) is np.bool_:
                         if py[v][i] != ru[v][i]:
-                            has_errors = True
+                            discrepancy = True
                             if not printed_vehicle:
                                 printed_vehicle = True
                                 print(f'DISCREPANCY FOR VEHICLE {vehid}')
@@ -270,16 +270,13 @@ class TestRust(unittest.TestCase):
                                 f"BOOL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
                     else:
                         if abs(py[v][i] - ru[v][i]) > 1e-6:
-                            has_errors = True
+                            discrepancy = True
                             if not printed_vehicle:
                                 printed_vehicle = True
                                 print(f'DISCREPANCY FOR VEHICLE {vehid}')
                             print(
                                 f"REAL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
-                if has_errors:
-                    has_any_errors = True
-                    break
-        self.assertFalse(has_any_errors)
+        self.assertFalse(discrepancy, "Discrepancy detected")
 
     def test_fueling_prediction_for_multiple_vehicle(self):
         """
@@ -340,6 +337,17 @@ class TestRust(unittest.TestCase):
         
         self.test_vehicle_for_discrepancies(cyc_dict=cyc_dict)
 
+    def test_serde_json(self):
+        cyc = cycle.Cycle.from_file("udds").to_rust()
+        veh = vehicle.Vehicle.from_vehdb(10).to_rust()
+        sdr = simdrive.RustSimDrive(cyc, veh)
+        _ = fastsimrust.RustCycle.from_json(cyc.to_json())
+        _ = fastsimrust.RustPhysicalProperties.from_json(sdr.props.to_json())
+        # _ = fastsimrust.RustSimDrive.from_json(sdr.to_json()) # this probably fails because vehicle fails
+        _ = fastsimrust.RustSimDriveParams.from_json(sdr.sim_params.to_json())
+        # _ = fastsimrust.RustVehicle.from_json(veh.to_json()) # TODO: figure out why this fails
+
+
 if __name__ == '__main__':
-    #TestRust().test_grade()
     unittest.main()
+    

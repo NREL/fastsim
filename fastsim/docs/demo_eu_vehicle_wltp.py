@@ -103,9 +103,9 @@ def hybrid_eu_veh_wltp_fe_test():
         '''
         fe_liter__100km_list = []
         for cur_phase_slice in phase_slice_list:
-            cur_dist_miles = sum(raw_simdrive.dist_mi[cur_phase_slice])
+            cur_dist_miles = sum(np.array(raw_simdrive.dist_mi)[cur_phase_slice])
             cur_dist_km = cur_dist_miles * params.M_PER_MI / 1000 
-            cur_energy_consumption_kwh = sum(sim.fs_kwh_out_ach[cur_phase_slice])
+            cur_energy_consumption_kwh = sum(np.array(sim.fs_kwh_out_ach)[cur_phase_slice])
             cur_fe_mpgge = cur_dist_miles / (cur_energy_consumption_kwh/sim.props.kwh_per_gge)
             cur_fe_liter__100km = utils.mpg_to_l__100km(cur_fe_mpgge)
             cur_dSOC = sim.soc[cur_phase_slice][-1] - sim.soc[cur_phase_slice][0]

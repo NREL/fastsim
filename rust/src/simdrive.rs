@@ -1,3 +1,5 @@
+//! Module containing vehicle struct and related functions.
+
 extern crate ndarray;
 use ndarray::Array1;
 extern crate pyo3;
@@ -403,6 +405,10 @@ impl Default for RustSimDriveParams {
     /// Return self.cyc.time_is.is_empty()
     pub fn is_empty(&self) -> bool {
         self.cyc.time_s.is_empty()
+    }
+
+    pub fn copy(&self) -> PyResult<Self> {
+        Ok(self.clone())
     }
 )]
 pub struct RustSimDrive {

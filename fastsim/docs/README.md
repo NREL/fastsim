@@ -7,25 +7,40 @@ All classes and methods are self-documented.
 
 # Installation
 
-## From the git repository
+First, clone the repository from GitHub:
 
-For both the Standard and Developers installation procedures, you need to make sure you have the [rust toolchain installed](https://www.rust-lang.org/tools/install).
+    git clone git@github.nrel.gov:MBAP/fastsim.git
 
-### Standard git 
-First, clone the repository from GitHub if you don't already have a local copy of the FASTSim package files:
+Next, install the Rust toolchain, and create and activate an environment for the project if necessary. There are two ways to do this:
 
-    git clone git@github.nrel.gov:MBAP/fastsim.git  
+- Manually install the [rust toolchain](https://www.rust-lang.org/tools/install). Then, using a virtual environment, and making sure to use Python >= 3.8:
     
-FASTSim depends on python >= 3.7. One way to satisfy this is to use conda (we recommend Anaconda Powershell Prompt for Windows OS):
+  PowerShell:
 
-    conda create -n fastsim python=3.8
-    conda activate fastsim
+      python -m venv .venv
+      .venv/Scripts/Activate.ps1
+
+  Bash:
+
+      python -m venv .venv
+      source .venv/bin/activate
+
+  Command Prompt:
+
+      python -m venv .venv
+      .venv/Scripts/activate.bat
+
+- OR: using a conda environment:
+
+      conda create -n fastsim python=3.8
+      conda activate fastsim
+      conda install -c conda-forge "rust>=1.62.1"
     
 Then, from within the top level of the FASTSim folder, run a pip install:
 
     pip install .
-    
-This will install FASTSim with the included rust extensions. 
+
+This will install FASTSim with the included rust extensions.
 
 ### Developers
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
@@ -67,17 +82,6 @@ To compare FASTSim back to the master branch version from 17 December 2019, run 
 
 ## Against Excel FASTSim
 To compare Python FASTSim results to Excel FASTSim, you can run `tests.test_vs_excel.main()` to do an experimental (i.e. beta) comparison against saved Excel results. If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can specify `rerun_excel=True` to do a live run of the Excel version.
-
-# numba
-To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim.simdrive`, `fastsim.cycle`, and `fastsim/vehicle`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
-
-*notes on numba*
-- `numba` caches compiled classes for you in `__pycache__`
-- should usually automatically register source code changes and recompile, even if `__pycache__` isn't deleted first
-
-## numba pitfalls
-- `numba` does not always work well with `numpy`, although this happens in rare occassions and has completely been resolved in this code base, as far as we know.
-- Some users have reported Python __zombie__ processes that crop up when using the `numba` extended code. This has been a difficult to reproduce bug and may have been user platform specific, it also involved heavy use of `xlwings` calling the code via Excel. These zombies can be seen in the Task Manager as latent Pythonw processes, they will prevent `numba` from recompiling, even if you delete the `__pycache__` folders.
 
 # List of Abbreviations
 cur = current time step  
