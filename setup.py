@@ -49,6 +49,7 @@ setuptools.setup(
         "matplotlib>=3.3",
         "numpy>=1.18",
         "seaborn>=0.10",
+        "typing_extensions",
     ],
     # rust extension
     zip_safe=False,
