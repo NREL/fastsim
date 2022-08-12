@@ -38,7 +38,7 @@ setuptools.setup(
         "License :: Other/Proprietary License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7,<3.9',
+    python_requires='>=3.7,<3.11',
     include_package_data=True,
     package_data={
         "fastsim.resources": ["*"],
