@@ -2,9 +2,9 @@
 
 extern crate ndarray;
 use ndarray::{array, concatenate, s, Array1, Axis};
-use pyo3::exceptions::{PyIndexError, PyNotImplementedError};
-use pyo3::prelude::*;
 use std::collections::HashSet;
+
+use crate::pyo3imports::*;
 
 /// Error message for when user attempts to set value in a nested struct.
 pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.

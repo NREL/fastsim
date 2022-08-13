@@ -7,7 +7,6 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use ndarray::{concatenate, s, Array, Array1, Axis};
-extern crate pyo3;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
