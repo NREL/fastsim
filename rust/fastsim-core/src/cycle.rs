@@ -8,15 +8,13 @@ use std::path::PathBuf;
 
 use ndarray::{concatenate, s, Array, Array1, Axis};
 extern crate pyo3;
-use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
-use pyo3::prelude::*;
-use pyo3::types::PyType;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 // local
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
+use crate::pyo3imports::*;
 use crate::utils::*;
 
 pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";

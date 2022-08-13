@@ -34,9 +34,10 @@ extern crate ndarray;
 #[macro_use]
 pub mod macros;
 extern crate proc_macros;
-pub mod params;
-pub mod utils;
 pub mod cycle;
-pub mod vehicle;
+pub mod params;
+pub mod pyo3imports;
 pub mod simdrive;
 pub mod simdrive_impl;
+pub mod utils;
+pub mod vehicle;
