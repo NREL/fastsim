@@ -9,6 +9,7 @@ use std::error::Error;
 
 // local
 use crate::proc_macros::add_pyo3_api;
+#[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::params::*;
 use crate::utils::*;
@@ -29,7 +30,6 @@ pub const HD_DIESEL: &str = "HD_Diesel";
 
 pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 
-#[pyclass]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[add_pyo3_api(
     #[allow(clippy::too_many_arguments)]
@@ -1008,10 +1008,12 @@ impl RustVehicle {
 
         self.mc_max_elec_in_kw = arrmax(&self.mc_kw_in_array);
 
+        #[cfg(feature = "pyo3")]
         if let Some(new_fc_peak) = self.fc_peak_eff_override {
             self.set_fc_peak_eff(new_fc_peak);
             self.fc_peak_eff_override = None;
         }
+        #[cfg(feature = "pyo3")]
         if let Some(new_mc_peak) = self.mc_peak_eff_override {
             self.set_mc_peak_eff(new_mc_peak);
             self.mc_peak_eff_override = None;
@@ -1119,7 +1121,7 @@ impl RustVehicle {
         let val_range_miles: f64 = f64::NAN;
         let val_veh_base_cost: f64 = f64::NAN;
         let val_msrp: f64 = f64::NAN;
-        let props = RustPhysicalProperties::__new__();
+        let props = RustPhysicalProperties::default();
         //let small_motor_power_kw: f64 = 7.5;
         //let large_motor_power_kw: f64 = 75.0;
         // TODO: make this look more like:

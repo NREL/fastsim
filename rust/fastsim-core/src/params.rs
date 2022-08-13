@@ -6,6 +6,7 @@ use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
 
+#[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
 /// Unit conversions
@@ -18,7 +19,6 @@ pub const MODERN_MAX: f64 = 0.95;
 pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 /// Struct containing time trace data
-#[pyclass]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
 #[add_pyo3_api(

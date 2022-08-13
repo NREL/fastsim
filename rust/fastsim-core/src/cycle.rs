@@ -2,6 +2,7 @@
 
 extern crate ndarray;
 
+#[cfg(feature = "pyo3")]
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
@@ -13,12 +14,13 @@ use std::error::Error;
 // local
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
+#[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::utils::*;
 
 pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// # Arguments
 /// - n: Int, number of time-steps away from rendezvous
 /// - d0: Num, distance of simulated vehicle, $\frac{m}{s}$
@@ -54,7 +56,7 @@ pub fn calc_constant_jerk_trajectory(
     (k, a0)
 }
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// Calculate distance (m) after n timesteps
 ///
 /// INPUTS:
@@ -78,7 +80,7 @@ pub fn dist_for_constant_jerk(n: usize, d0: f64, v0: f64, a0: f64, k: f64, dt: f
     d0 + term1 + term2
 }
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// Calculate speed (m/s) n timesteps away via a constant-jerk acceleration
 ///
 /// INPUTS:   
@@ -99,7 +101,7 @@ pub fn speed_for_constant_jerk(n: usize, v0: f64, a0: f64, k: f64, dt: f64) -> f
     v0 + (n * a0 * dt) + (0.5 * n * (n - 1.0) * k * dt)
 }
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// Calculate the acceleration n timesteps away
 ///
 /// INPUTS:
@@ -126,6 +128,7 @@ pub fn accel_array_for_constant_jerk(nmax: usize, a0: f64, k: f64, dt: f64) -> A
     Array1::from_vec(accels)
 }
 
+#[cfg(feature = "pyo3")]
 #[allow(unused)] // not sure what this is doing, may get used in proc macro???
 pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
@@ -135,7 +138,6 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-#[pyclass]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]

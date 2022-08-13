@@ -140,16 +140,19 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let impl_block = quote! {
         #[pymethods]
+        #[cfg(feature="pyo3")]
         impl #ident {
             #impl_block
         }
     };
 
+    let mut final_output = TokenStream2::default();
+    // add pyclass attribute
+    final_output.extend::<TokenStream2>(quote! {
+        #[cfg_attr(feature="pyo3", pyclass)]
+    });
     let mut output: TokenStream2 = ast.to_token_stream();
-
     output.extend(impl_block);
-    // if ast.ident.to_string() == "RustSimDrive" {
-    //     println!("{}", output.to_string());
-    // }
-    output.into()
-}
+    // println!("{}", output.to_string());
+    final_output.extend::<TokenStream2>(output);
+    final_output.into()}

@@ -9,7 +9,7 @@ name = "fastsimrust"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.16.5", features = ["extension-module"] }
+pyo3 = { version = "0.16.5", features = ["extension-module"], optional = true }
 ndarray = { version = "0.15.4", features=["serde"]}
 csv = "1.1"
 proc_macros = { path = "proc_macros" }
@@ -27,3 +27,6 @@ rustdoc-args = [ "--html-in-header", "./src/html/docs-header.html" ]
 opt-level = 3               # Use better optimizations.
 lto = "fat"  # aggressively optimize inter-crate linking
 codegen-units = 1  # optimize connection between modules
+
+[features]
+pyo3 = ["dep:pyo3"]

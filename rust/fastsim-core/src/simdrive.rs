@@ -3,6 +3,7 @@
 extern crate ndarray;
 use ndarray::Array1;
 
+#[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::cycle::RustCycle;
 use crate::params::RustPhysicalProperties;
@@ -17,12 +18,11 @@ use std::error::Error;
 
 pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
-
+#[cfg(feature = "pyo3")]
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     res.map_err(PyRuntimeError::new_err)
 }
 
-#[pyclass]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
@@ -220,7 +220,6 @@ impl Default for RustSimDriveParams {
     }
 }
 
-#[pyclass]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
@@ -395,8 +394,9 @@ impl Default for RustSimDriveParams {
     }
 
     /// Return length of time arrays
-    pub fn len(&self) -> usize {
-        self.cyc.time_s.len()
+    #[pyo3(name = "len")]
+    pub fn len_py(&self) -> usize {
+        self.len()
     }    
 
     /// Return self.cyc.time_is.is_empty()

@@ -36,6 +36,7 @@ pub mod macros;
 extern crate proc_macros;
 pub mod cycle;
 pub mod params;
+#[cfg(feature = "pyo3")]
 pub mod pyo3imports;
 pub mod simdrive;
 pub mod simdrive_impl;

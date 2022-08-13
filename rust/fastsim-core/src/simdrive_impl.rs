@@ -267,6 +267,11 @@ impl RustSimDrive {
         Self::from_file_parser(filename).unwrap()
     }
 
+    /// Return length of time arrays
+    pub fn len(&self) -> usize {
+        self.cyc.time_s.len()
+    }    
+
     // TODO: probably shouldn't be public...?
     pub fn init_arrays(&mut self) {
         self.i = 1; // initialize step counter for possible use outside sim_drive_walk()
