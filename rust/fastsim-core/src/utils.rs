@@ -257,7 +257,8 @@ macro_rules! impl_pyo3_vec_methods {
 }
 
 #[cfg(feature = "pyo3")]
-pub mod ArrayWrappers {
+pub mod array_wrappers {
+    use super::*;
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[pyclass]
     pub struct Pyo3ArrayU32(Array1<u32>);
@@ -280,7 +281,7 @@ pub mod ArrayWrappers {
 }
 
 #[cfg(feature = "pyo3")]
-pub use ArrayWrappers::*;
+pub use array_wrappers::*;
 
 #[cfg(test)]
 mod tests {
