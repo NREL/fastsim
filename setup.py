@@ -13,7 +13,7 @@ else:
     rust_extensions = [
         RustExtension(
             "fastsimrust",
-            "rust/Cargo.toml",
+            "rust/fastsim-py/Cargo.toml",
             binding=Binding.PyO3,
             py_limited_api=True,
         ),
