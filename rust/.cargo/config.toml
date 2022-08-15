@@ -1,2 +1,2 @@
 [build]
-rustdocflags = [ "--html-in-header", "./src/html/docs-header.html" ]
+rustdocflags = [ "--html-in-header", "fastsim-core/src/html/docs-header.html" ]
