@@ -16,6 +16,7 @@ ABSOLUTE_EXTENDED_TIME_S = 20.0 # 180.0
 OUTPUT_DIR = Path(__file__).parent.absolute() / 'test_output'
 MIN_ECO_CRUISE_TARGET_SPEED_m_per_s = 8.0
 ECO_COAST_ALLOW_PASSING = False
+RESAMPLE_TO_1HZ = True
 
 
 def extend_cycle(cyc: fastsim.cycle.Cycle, absolute_time_s:float=0.0, time_fraction:float=0.0, use_rust:bool=False) -> fastsim.cycle.Cycle:
@@ -128,11 +129,20 @@ PREMADE_CYCLES = {
 
 def load_cycle(cyc_name: str, use_rust: bool=False) -> fastsim.cycle.Cycle:
     """
+    Load the given cycle and return
     """
     if cyc_name in PREMADE_CYCLES:
         raw_cycle = PREMADE_CYCLES.get(cyc_name)
     else:
         raw_cycle = fastsim.cycle.Cycle.from_file(cyc_name)
+        if RESAMPLE_TO_1HZ:
+            raw_cycle = fastsim.cycle.Cycle.from_dict(
+                fastsim.cycle.resample(
+                    raw_cycle.get_cyc_dict(),
+                    new_dt=1.0,
+                    hold_keys_next={'grade'},
+                )
+            )
     return extend_cycle(
         raw_cycle,
         time_fraction=FRACTION_EXTENDED_TIME,
