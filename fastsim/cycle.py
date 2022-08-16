@@ -497,8 +497,8 @@ def concat(cycles, name=None):
     return final_cycle
 
 
-def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
-             hold_keys=None, hold_keys_next=None, rate_keys=None):
+def resample(cycle: Dict[str, Any], new_dt: Optional[float]=None, start_time: Optional[float]=None, end_time: Optional[float]=None,
+             hold_keys:Optional[Set[str]]=None, hold_keys_next:Optional[Set[str]]=None, rate_keys:Optional[Set[str]]=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
     Resample a cycle with a new delta time from start time to end time.
@@ -526,6 +526,16 @@ def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
                  non-zero starting and ending speeds
     Resamples all non-time metrics by the new sample time.
     """
+    def check_keys(set_name, the_set):
+        the_set = set(the_set) if the_set is not None else None
+        if the_set is not None:
+            for k in the_set:
+                if k not in STANDARD_CYCLE_KEYS and k not in cycle.keys():
+                    raise Exception(f"invalid {set_name} value '{k}'; this key is not in {sorted(STANDARD_CYCLE_KEYS)} or the cycle")
+        return the_set
+    hold_keys = check_keys('hold_keys', hold_keys)
+    hold_keys_next = check_keys('hold_keys_next', hold_keys_next)
+    rate_keys = check_keys('rate_keys', rate_keys)
     if new_dt is None:
         new_dt = cycle['time_s'][1] - cycle['time_s'][0]
     if start_time is None:
