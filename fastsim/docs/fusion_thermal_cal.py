@@ -7,6 +7,7 @@ import fastsimrust as fsr
 
 DATA_DIR = Path().home() / "Documents/DynoTestData/FordFusionTestData/"
 
+
 def load_data() -> Dict[str, pd.DataFrame]:
     # full data
     dfs_raw = dict()
@@ -29,19 +30,25 @@ def load_data() -> Dict[str, pd.DataFrame]:
                         file.stem]["Eng_FuelFlow_Direct[cc/s]"] * rho_fuel_kg_per_ml * lhv_fuel_kj_per_kg
     return dfs
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='...')
-    parser.add_argument('-p', '--processes', type=int, default=4)
-    parser.add_argument('--n-max-gen', type=int, default=500)
-    parser.add_argument('--pop-size', type=int, default=12)
-    parser.add_argument('--run-minimize', action="store_true")
-    parser.add_argument('--save-path', type=str, default="pymoo_res_df.csv")
+    parser.add_argument('-p', '--processes', type=int,
+                        default=4, help="Number of pool processes.")
+    parser.add_argument('--n-max-gen', type=int, default=500,
+                        help="PyMOO termination criterion: n_max_gen.")
+    parser.add_argument('--pop-size', type=int, default=12,
+                        help="PyMOO population size in each generation.")
+    parser.add_argument('--skip-minimize', action="store_true",
+                        help="If provided, load previous results.")
+    parser.add_argument('--save-path', type=str, default="pymoo_res_df.csv",
+                        help="File location to save results.")
     args = parser.parse_args()
 
     n_processes = args.processes
     n_max_gen = args.n_max_gen
     pop_size = args.pop_size
-    run_minimize = args.run_minimize
+    run_minimize = not(args.skip_minimize)
     save_path = args.save_path
 
     # load test data which can be obtained at
@@ -74,7 +81,8 @@ if __name__ == "__main__":
     dfs_val = {key: dfs[key] for key in dfs_val_keys}
 
     # create cycles and sim_drives
-    veh = fsim.vehicle.Vehicle.from_file("2012_Ford_Fusion.csv", to_rust=True).to_rust()
+    veh = fsim.vehicle.Vehicle.from_file(
+        "2012_Ford_Fusion.csv", to_rust=True).to_rust()
     vehthrm = fsr.VehicleThermal.default()
 
     cycs = dict()
@@ -118,6 +126,29 @@ if __name__ == "__main__":
 
     # Simulate
     if run_minimize:
+
+        params = [
+            "vehthrm.fc_c_kj__k",
+            "vehthrm.fc_l",
+            "vehthrm.fc_htc_to_amb_stop",
+            "vehthrm.fc_coeff_from_comb",
+            "vehthrm.fc_exp_offset",
+            "vehthrm.fc_exp_lag",
+            "vehthrm.fc_exp_minimum",
+            "vehthrm.rad_eps",
+        ]
+
+        params_bounds = [
+            (50, 200),
+            (0.25, 2),
+            (5, 50),
+            (1e-5, 1e-3),
+            (-10, 30),
+            (15, 75),
+            (0.25, 0.45),
+            (5, 50),
+        ]
+
         objectives = fsim.calibration.ModelErrors(
             models=cal_sim_drives,
             dfs=dfs_cal,
@@ -127,45 +158,32 @@ if __name__ == "__main__":
                 # ("sd.fs_mj_out_ach", "Fuel_Power_Calc[MJ]"),
                 ("history.fc_te_deg_c", "CylinderHeadTempC"),
             ],
-            params=[
-                "vehthrm.fc_c_kj__k",
-                "vehthrm.fc_l",
-                "vehthrm.fc_htc_to_amb_stop",
-                "vehthrm.fc_coeff_from_comb",
-                "vehthrm.fc_exp_offset",
-                "vehthrm.fc_exp_lag",
-                "vehthrm.fc_exp_minimum",
-                "vehthrm.rad_eps",
-            ],
+            params=params,
             verbose=False
         )
+        print("Starting calibration.")
+
+        algorithm = fsim.calibration.NSGA2(
+            # size of each population
+            pop_size=pop_size,
+            sampling=fsim.calibration.LHS(),
+        )
+        termination = fsim.calibration.MODT(
+            # max number of generations, default of 10 is very small
+            n_max_gen=n_max_gen,
+            # evaluate tolerance over this interval of generations every `nth_gen`
+            n_last=10,
+        )
+
         if n_processes == 1:
             problem = fsim.calibration.CalibrationProblem(
                 err=objectives,
-                param_bounds=[
-                    (50, 200),
-                    (0.25, 2),
-                    (5, 50),
-                    (1e-5, 1e-3),
-                    (-10, 30),
-                    (15, 75),
-                    (0.25, 0.45),
-                    (5, 50),
-                ],
+                param_bounds=params_bounds,
             )
             res, res_df = fsim.calibration.run_minimize(
                 problem,
-                algorithm=fsim.calibration.NSGA2(
-                    # size of each population
-                    pop_size=pop_size,
-                    sampling=fsim.calibration.LHS(),
-                ),
-                termination=fsim.calibration.MODT(
-                    # max number of generations, default of 10 is very small
-                    n_max_gen=n_max_gen,
-                    # evaluate tolerance over this interval of generations every `nth_gen`
-                    n_last=10,
-                ),
+                algorithm=algorithm,
+                termination=termination,
                 save_path=save_path,
             )
         else:
@@ -174,22 +192,14 @@ if __name__ == "__main__":
                 with multiprocessing.Pool(n_processes) as pool:
                     problem = fsim.calibration.CalibrationProblem(
                         err=objectives,
-                        param_bounds=[
-                            (50, 200),
-                            (0.25, 2),
-                            (5, 50),
-                            (1e-5, 1e-3),
-                            (-10, 30),
-                            (15, 75),
-                            (0.25, 0.45),
-                            (5, 50),
-                        ],
+                        param_bounds=params_bounds,
                         runner=pool.starmap,
                         func_eval=fsim.calibration.starmap_parallelized_eval,
                     )
                     res, res_df = fsim.calibration.run_minimize(
                         problem,
-                        termination=fsim.calibration.MODT(n_max_gen=n_max_gen),
+                        algorithm,
+                        termination=termination,
                     )
     else:
         res_df = pd.read_csv(save_path)

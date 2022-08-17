@@ -1,6 +1,7 @@
 from dataclasses import dataclass, InitVar
 from typing import *
 from pathlib import Path
+import pickle
 
 # pymoo
 from pymoo.util.display import Display
@@ -77,7 +78,8 @@ class ModelErrors(object):
     verbose: bool = False
 
     def __post_init__(self):
-        assert(len(self.dfs) == len(self.models))
+        assert len(self.dfs) == len(
+            self.models), f"{len(self.dfs)} != {len(self.models)}"
 
     def get_errors(
         self,
@@ -104,7 +106,7 @@ class ModelErrors(object):
 
         # loop through all the provided trips
         for ((key, df_exp), sim_drive) in zip(self.dfs.items(), sim_drives.values()):
-            t0 = time.time()
+            t0 = time.perf_counter()
             sim_drive = sim_drive.copy()  # TODO: do we need this?
             sim_drive.sim_drive()
             objectives[key] = {}
@@ -124,7 +126,7 @@ class ModelErrors(object):
                 ax[-1].set_xlabel('Time [hr]')
                 ax[-1].set_ylabel('Speed [mph]')
 
-            t1 = time.time()
+            t1 = time.perf_counter()
             if self.verbose:
                 print(f"Time to simulate {key}: {t1 - t0:.3g}")
 
@@ -191,7 +193,7 @@ class ModelErrors(object):
                     plt.savefig(Path(plot_save_dir) / f"{key}.svg")
                     plt.savefig(Path(plot_save_dir) / f"{key}.png")
 
-            t2 = time.time()
+            t2 = time.perf_counter()
             if self.verbose:
                 print(f"Time to postprocess: {t2 - t1:.3g} s")
 
@@ -204,18 +206,19 @@ class ModelErrors(object):
         """
         Updates model parameters based on `x`, which must match length of self.params
         """
-        assert(len(xs) == len(self.params))
+        assert len(xs) == len(self.params), f"({len(xs)} != {len(self.params)}"
         paths = [fullpath.split(".") for fullpath in self.params]
-        t0 = time.time()
+        t0 = time.perf_counter()
         # Load SimDriveHot instances from YAML strings
-        sim_drives = {key: fsr.SimDriveHot.from_yaml(model_yaml) for key, model_yaml in self.models.items()}
+        sim_drives = {key: fsr.SimDriveHot.from_yaml(
+            model_yaml) for key, model_yaml in self.models.items()}
         # Update all model parameters
         for key in sim_drives.keys():
             sim_drives[key] = fsim.utils.set_attrs_with_path(
                 sim_drives[key],
                 dict(zip(self.params, xs)),
             )
-        t1 = time.time()
+        t1 = time.perf_counter()
         if self.verbose:
             print(f"Time to update params: {t1 - t0:.3g} s")
         return sim_drives
@@ -231,14 +234,15 @@ class CalibrationProblem(ElementwiseProblem):
         self,
         err: ModelErrors,
         param_bounds: List[Tuple[float, float]],
-        runner = None,
+        runner=None,
         func_eval: Callable = looped_eval,
     ):
         self.err = err
         # parameter lower and upper bounds
         self.param_bounds = param_bounds
 
-        assert(len(self.param_bounds) == len(self.err.params))
+        assert len(self.param_bounds) == len(
+            self.err.params), f"{len(self.param_bounds)} != {len(self.err.params)}"
         super().__init__(
             n_var=len(self.err.params),
             n_obj=len(self.err.models) * len(self.err.objectives),
@@ -257,18 +261,18 @@ class CalibrationProblem(ElementwiseProblem):
         ]
 
 
-class MyDisplay(Display):
+class CustomDisplay(Display):
     def __init__(self):
         super().__init__()
         self.term = MODT()
-        self.t_gen_start = time.time()
+        self.t_gen_start = time.perf_counter()
 
     def _do(self, problem, evaluator, algorithm):
         super()._do(problem, evaluator, algorithm)
         self.output.append("n_nds", len(algorithm.opt), width=7)
         self.output.append(
-            'dt [s]', f"{time.time() - self.t_gen_start:.3g}", width=7)
-        self.t_gen_start = time.time()
+            'dt [s]', f"{time.perf_counter() - self.t_gen_start:.3g}", width=7)
+        self.t_gen_start = time.perf_counter()
         f = algorithm.pop.get('F')
         euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
         self.output.append(
@@ -279,23 +283,14 @@ class MyDisplay(Display):
 
 def run_minimize(
     prob: CalibrationProblem,
-    algorithm: GeneticAlgorithm = NSGA2(
-        # size of each population
-        pop_size=10,
-        eliminate_duplicates=True,
-        sampling=LHS(),
-    ),
-    termination: MODT = MODT(
-        # max number of generations, default of 10 is very small
-        n_max_gen=10,
-        # evaluate tolerance over this interval of generations every `nth_gen`
-        n_last=10,
-    ),
+    algorithm: GeneticAlgorithm,
+    termination: MODT,
     copy_algorithm: bool = False,
     copy_termination: bool = False,
     save_history: bool = False,
-    save_path: Optional[str] = "pymoo_res",
+    save_path: Optional[str] = Path("pymoo_res/"),
 ):
+    t0 = time.perf_counter()
     res = minimize(
         prob,
         algorithm,
@@ -305,7 +300,7 @@ def run_minimize(
         seed=1,
         verbose=True,
         save_history=save_history,
-        display = MyDisplay(),
+        display=CustomDisplay(),
     )
 
     f_columns = [
@@ -323,7 +318,13 @@ def run_minimize(
         columns=[param for param in prob.err.params],
     )
 
+    Path(save_path).mkdir(exist_ok=True, parents=True)
+    with open(Path(save_path) / "pymoo_res.pickle", 'wb') as file:
+        pickle.dump(res, file)
     res_df = pd.concat([x_df, f_df], axis=1)
-    res_df.to_csv(str(save_path) + "_df.csv", index=False)
+    res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
+
+    t1 = time.perf_counter()
+    print(f"Elapsed time to run minimization: {t1-t0:.5g} s")
 
     return res, res_df
