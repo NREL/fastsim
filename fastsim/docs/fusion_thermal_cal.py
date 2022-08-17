@@ -24,12 +24,17 @@ def load_data() -> Dict[str, pd.DataFrame]:
                     # clip time at zero seconds
                     dfs_raw[file.stem] = dfs_raw[file.stem][dfs_raw[file.stem]
                                                             ['Time[s]'] >= 0.0]
+
+                    dfs_raw[file.stem]['Fuel_Power_Calc[kW]'] = dfs_raw[
+                        file.stem]["Eng_FuelFlow_Direct[cc/s]"] * rho_fuel_kg_per_ml * lhv_fuel_kj_per_kg
+
+                    dfs_raw[file.stem]['Fuel_Energy_Calc[MJ]'] = (
+                        dfs_raw[file.stem]['Fuel_Power_Calc[kW]'] * dfs_raw[file.stem]['Time[s]'].diff().fillna(0.0)).cumsum() / 1e3
+
                     dfs[file.stem] = fsim.resample(
                         dfs_raw[file.stem],
                         rate_vars=('Eng_FuelFlow_Direct[cc/s]')
                     )
-                    dfs[file.stem]['Fuel_Power_Calc[kW]'] = dfs[
-                        file.stem]["Eng_FuelFlow_Direct[cc/s]"] * rho_fuel_kg_per_ml * lhv_fuel_kj_per_kg
     return dfs
 
 
@@ -51,7 +56,7 @@ if __name__ == "__main__":
     n_max_gen = args.n_max_gen
     pop_size = args.pop_size
     run_minimize = not(args.skip_minimize)
-    save_path = args.save_path
+    save_path = "fusion_pymoo_res"  # args.save_path
 
     # load test data which can be obtained at
     # https://www.anl.gov/taps/d3-2012-ford-fusion-v6
@@ -150,9 +155,8 @@ if __name__ == "__main__":
     ]
 
     obj_names = [
-        ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
-        # TODO: add property/getter to enable the following:
-        # ("sd.fs_mj_out_ach", "Fuel_Power_Calc[MJ]"),
+        # ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
+        ("sd.fs_cumu_mj_out_ach", "Fuel_Energy_Calc[MJ]"),
         ("history.fc_te_deg_c", "CylinderHeadTempC"),
     ]
 

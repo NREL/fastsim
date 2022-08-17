@@ -69,7 +69,6 @@ impl RustSimDrive {
         let fc_kw_out_ach_pct = Array::zeros(cyc_len);
         let fc_kw_in_ach = Array::zeros(cyc_len);
         let fs_kw_out_ach = Array::zeros(cyc_len);
-        let fs_cumu_mj_out_ach = Array::zeros(cyc_len);
         let fs_kwh_out_ach = Array::zeros(cyc_len);
         let ess_cur_kwh = Array::zeros(cyc_len);
         let soc = Array::zeros(cyc_len);
@@ -191,7 +190,6 @@ impl RustSimDrive {
             fc_kw_out_ach_pct,
             fc_kw_in_ach,
             fs_kw_out_ach,
-            fs_cumu_mj_out_ach,
             fs_kwh_out_ach,
             ess_cur_kwh,
             soc,
@@ -273,7 +271,7 @@ impl RustSimDrive {
     /// Return length of time arrays
     pub fn len(&self) -> usize {
         self.cyc.time_s.len()
-    }    
+    }
 
     // TODO: probably shouldn't be public...?
     pub fn init_arrays(&mut self) {
@@ -326,7 +324,6 @@ impl RustSimDrive {
         self.fc_kw_out_ach_pct = Array::zeros(cyc_len);
         self.fc_kw_in_ach = Array::zeros(cyc_len);
         self.fs_kw_out_ach = Array::zeros(cyc_len);
-        self.fs_cumu_mj_out_ach = Array::zeros(cyc_len);
         self.fs_kwh_out_ach = Array::zeros(cyc_len);
         self.ess_cur_kwh = Array::zeros(cyc_len);
         self.soc = Array::zeros(cyc_len);
@@ -2312,9 +2309,6 @@ impl RustSimDrive {
     /// This includes mpgge, various energy metrics, and others
     pub fn set_post_scalars(&mut self) -> Result<(), String> {
         let mut res = || -> Result<(), ()> {
-            self.fs_cumu_mj_out_ach =
-                ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3));
-
             if self.fs_kwh_out_ach.sum() == 0.0 {
                 self.mpgge = 0.0;
             } else {

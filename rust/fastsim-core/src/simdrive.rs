@@ -406,6 +406,13 @@ impl Default for RustSimDriveParams {
     pub fn copy(&self) -> PyResult<Self> {
         Ok(self.clone())
     }
+
+    #[getter]
+    pub fn get_fs_cumu_mj_out_ach(&self) -> PyResult<Pyo3ArrayF64> {
+        Ok(
+            Pyo3ArrayF64::new(ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
+        )
+    }
 )]
 pub struct RustSimDrive {
     pub hev_sim_count: usize,
@@ -465,7 +472,6 @@ pub struct RustSimDrive {
     pub fc_kw_out_ach_pct: Array1<f64>,
     pub fc_kw_in_ach: Array1<f64>,
     pub fs_kw_out_ach: Array1<f64>,
-    pub fs_cumu_mj_out_ach: Array1<f64>,
     pub fs_kwh_out_ach: Array1<f64>,
     pub ess_cur_kwh: Array1<f64>,
     pub soc: Array1<f64>,

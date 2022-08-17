@@ -275,7 +275,7 @@ class CustomDisplay(Display):
         self.output.append("n_nds", len(algorithm.opt), width=7)
         self.t_elapsed = time.perf_counter() - self.t_gen_start
         self.output.append(
-            'dt [s]', f"{self.t_elapsed:.3g}", width=7)
+            't [s]', f"{self.t_elapsed:.3g}", width=7)
         f = algorithm.pop.get('F')
         euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
         self.output.append(
