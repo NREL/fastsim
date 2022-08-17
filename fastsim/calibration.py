@@ -41,6 +41,9 @@ def get_error_val(model, test, time_steps):
     err: integral of absolute value of difference between model and
     test per time"""
 
+    assert len(model) == len(test) == len(
+        time_steps), f"{len(model)}, {len(test)}, {len(time_steps)}"
+
     return np.trapz(y=abs(model - test), x=time_steps) / (time_steps[-1] - time_steps[0])
 
 
@@ -67,8 +70,7 @@ class ModelErrors(object):
     #   (("sim_drive", "cyc", "time_s", -1), ("sim_drive", "cyc0", "time_s", -1)),
     #   ("sim_drive", "mpgge"),
     # ]`
-
-    objectives: List[Tuple[str, Optional[Tuple[str]]]]
+    obj_names: List[Tuple[str, Optional[Tuple[str]]]]
 
     # list of tuples hierarchical paths to parameters to manipulate
     # example - `[('sim_drive', 'sim_params', 'idm_accel_m_per_s2')]`
@@ -114,10 +116,11 @@ class ModelErrors(object):
                 solved_mods[key] = sim_drive.copy()
 
             if plot or plot_save_dir:
+                Path(plot_save_dir).mkdir(exist_ok=True, parents=True)
                 time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600
                 ax_multiplier = 2 if plot_perc_err else 1
                 fig, ax = plt.subplots(
-                    len(self.objectives) * ax_multiplier + 1, 1, sharex=True, figsize=(12, 8),
+                    len(self.obj_names) * ax_multiplier + 1, 1, sharex=True, figsize=(12, 8),
                 )
                 ax[-1].plot(
                     time_hr,
@@ -131,7 +134,7 @@ class ModelErrors(object):
                 print(f"Time to simulate {key}: {t1 - t0:.3g}")
 
             # loop through the objectives for each trip
-            for i_obj, obj in enumerate(self.objectives):
+            for i_obj, obj in enumerate(self.obj_names):
                 assert len(obj) == 1 or len(obj) == 2
                 if len(obj) == 2:
                     # If objective attribute path and reference signal passed
@@ -245,7 +248,7 @@ class CalibrationProblem(ElementwiseProblem):
             self.err.params), f"{len(self.param_bounds)} != {len(self.err.params)}"
         super().__init__(
             n_var=len(self.err.params),
-            n_obj=len(self.err.models) * len(self.err.objectives),
+            n_obj=len(self.err.models) * len(self.err.obj_names),
             xl=[bounds[0]
                 for bounds in self.param_bounds],
             xu=[bounds[1]
@@ -306,7 +309,7 @@ def run_minimize(
     f_columns = [
         f"{key}: {obj[0]}"
         for key in prob.err.dfs.keys()
-        for obj in prob.err.objectives
+        for obj in prob.err.obj_names
     ]
     f_df = pd.DataFrame(
         data=[f for f in res.F.tolist()],

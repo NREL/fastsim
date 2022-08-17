@@ -149,15 +149,27 @@ if __name__ == "__main__":
         (5, 50),
     ]
 
-    objectives = fsim.calibration.ModelErrors(
+    obj_names = [
+        ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
+        # TODO: add property/getter to enable the following:
+        # ("sd.fs_mj_out_ach", "Fuel_Power_Calc[MJ]"),
+        ("history.fc_te_deg_c", "CylinderHeadTempC"),
+    ]
+
+    cal_objectives = fsim.calibration.ModelErrors(
         models=cal_sim_drives,
         dfs=dfs_cal,
-        objectives=[
-            ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
-            # TODO: add property/getter to enable the following:
-            # ("sd.fs_mj_out_ach", "Fuel_Power_Calc[MJ]"),
-            ("history.fc_te_deg_c", "CylinderHeadTempC"),
-        ],
+        obj_names=obj_names,
+        params=params,
+        verbose=False
+    )
+
+    # to ensure correct key order
+    val_sim_drives = {key: val_sim_drives[key] for key in dfs_val.keys()}
+    val_objectives = fsim.calibration.ModelErrors(
+        models=val_sim_drives,
+        dfs=dfs_val,
+        obj_names=obj_names,
         params=params,
         verbose=False
     )
@@ -179,7 +191,7 @@ if __name__ == "__main__":
 
         if n_processes == 1:
             problem = fsim.calibration.CalibrationProblem(
-                err=objectives,
+                err=cal_objectives,
                 param_bounds=params_bounds,
             )
             res, res_df = fsim.calibration.run_minimize(
@@ -193,7 +205,7 @@ if __name__ == "__main__":
             with multiprocessing.Pool(n_processes) as pool:
                 with multiprocessing.Pool(n_processes) as pool:
                     problem = fsim.calibration.CalibrationProblem(
-                        err=objectives,
+                        err=cal_objectives,
                         param_bounds=params_bounds,
                         runner=pool.starmap,
                         func_eval=fsim.calibration.starmap_parallelized_eval,
@@ -212,7 +224,24 @@ if __name__ == "__main__":
         res_df.iloc[:, len(params):] ** 2).sum(1).pow(1/2)
     best_row = res_df['euclidean'].argmin()
     best_df = res_df.iloc[best_row, :]
-    param_vals = res_df.iloc[0, :len(objectives.params)].to_numpy()
+    param_vals = res_df.iloc[0, :len(cal_objectives.params)].to_numpy()
+
+    cal_objectives.get_errors(
+        cal_objectives.update_params(param_vals),
+        plot_save_dir=Path("plots/fusion/cal/")
+    )
+    val_objectives.get_errors(
+        val_objectives.update_params(param_vals),
+        plot_save_dir=Path("plots/fusion/val/")
+    )
+
+    # save calibrated vehicle to file
+    veh_save_dir = Path("../resources/vehdb/thermal/")
+    veh_save_dir.mkdir(exist_ok=True)
+    sdh = fsr.SimDriveHot.from_yaml(
+        cal_objectives.models[list(cal_objectives.models.keys())[0]])
+    sdh.vehthrm.to_file(str(veh_save_dir / "2012_Ford_Fusion_thrml.yaml"))
+
 
 # # %%
 
