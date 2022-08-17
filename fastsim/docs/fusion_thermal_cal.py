@@ -2,6 +2,8 @@ from typing import *
 from pathlib import Path
 import argparse
 import pandas as pd
+import pickle
+
 import fastsim as fsim
 import fastsimrust as fsr
 
@@ -41,7 +43,7 @@ if __name__ == "__main__":
                         help="PyMOO population size in each generation.")
     parser.add_argument('--skip-minimize', action="store_true",
                         help="If provided, load previous results.")
-    parser.add_argument('--save-path', type=str, default="pymoo_res_df.csv",
+    parser.add_argument('--save-path', type=str, default="pymoo_res",
                         help="File location to save results.")
     args = parser.parse_args()
 
@@ -125,42 +127,42 @@ if __name__ == "__main__":
             val_sim_drives[key] = sdh.to_yaml()
 
     # Simulate
+    params = [
+        "vehthrm.fc_c_kj__k",
+        "vehthrm.fc_l",
+        "vehthrm.fc_htc_to_amb_stop",
+        "vehthrm.fc_coeff_from_comb",
+        "vehthrm.fc_exp_offset",
+        "vehthrm.fc_exp_lag",
+        "vehthrm.fc_exp_minimum",
+        "vehthrm.rad_eps",
+    ]
+
+    params_bounds = [
+        (50, 200),
+        (0.25, 2),
+        (5, 50),
+        (1e-5, 1e-3),
+        (-10, 30),
+        (15, 75),
+        (0.25, 0.45),
+        (5, 50),
+    ]
+
+    objectives = fsim.calibration.ModelErrors(
+        models=cal_sim_drives,
+        dfs=dfs_cal,
+        objectives=[
+            ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
+            # TODO: add property/getter to enable the following:
+            # ("sd.fs_mj_out_ach", "Fuel_Power_Calc[MJ]"),
+            ("history.fc_te_deg_c", "CylinderHeadTempC"),
+        ],
+        params=params,
+        verbose=False
+    )
+
     if run_minimize:
-
-        params = [
-            "vehthrm.fc_c_kj__k",
-            "vehthrm.fc_l",
-            "vehthrm.fc_htc_to_amb_stop",
-            "vehthrm.fc_coeff_from_comb",
-            "vehthrm.fc_exp_offset",
-            "vehthrm.fc_exp_lag",
-            "vehthrm.fc_exp_minimum",
-            "vehthrm.rad_eps",
-        ]
-
-        params_bounds = [
-            (50, 200),
-            (0.25, 2),
-            (5, 50),
-            (1e-5, 1e-3),
-            (-10, 30),
-            (15, 75),
-            (0.25, 0.45),
-            (5, 50),
-        ]
-
-        objectives = fsim.calibration.ModelErrors(
-            models=cal_sim_drives,
-            dfs=dfs_cal,
-            objectives=[
-                ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
-                # TODO: add property/getter to enable the following:
-                # ("sd.fs_mj_out_ach", "Fuel_Power_Calc[MJ]"),
-                ("history.fc_te_deg_c", "CylinderHeadTempC"),
-            ],
-            params=params,
-            verbose=False
-        )
         print("Starting calibration.")
 
         algorithm = fsim.calibration.NSGA2(
@@ -202,10 +204,12 @@ if __name__ == "__main__":
                         termination=termination,
                     )
     else:
-        res_df = pd.read_csv(save_path)
+        res_df = pd.read_csv(Path(save_path) / "pymoo_res_df.csv")
+        with open(Path(save_path) / "pymoo_res.pickle", 'rb') as file:
+            res = pickle.load(file)
 
     res_df['euclidean'] = (
-        res_df.iloc[:, len(objectives.params):] ** 2).sum(1).pow(1/2)
+        res_df.iloc[:, len(params):] ** 2).sum(1).pow(1/2)
     best_row = res_df['euclidean'].argmin()
     best_df = res_df.iloc[best_row, :]
     param_vals = res_df.iloc[0, :len(objectives.params)].to_numpy()
