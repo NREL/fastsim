@@ -1,0 +1,12 @@
+[package]
+name = "fastsim-cli"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fastsim-core = { path = "../fastsim-core" }
+clap = { version = "3.2.6", features = ["derive"] }
+serde = "1.0.143"
+serde_json = "1.0.83"

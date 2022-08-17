@@ -2,9 +2,10 @@
 
 extern crate ndarray;
 use ndarray::{array, concatenate, s, Array1, Axis};
-use pyo3::exceptions::{PyIndexError, PyNotImplementedError};
-use pyo3::prelude::*;
 use std::collections::HashSet;
+
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 
 /// Error message for when user attempts to set value in a nested struct.
 pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
@@ -163,6 +164,7 @@ pub fn interpolate(
     yl + dydx * (x - xl)
 }
 
+#[cfg(feature = "pyo3")]
 macro_rules! impl_pyo3_arr_methods {
     ($arrstruct:ident, $dtype:ident) => {
         #[pymethods]
@@ -207,6 +209,7 @@ macro_rules! impl_pyo3_arr_methods {
     };
 }
 
+#[cfg(feature = "pyo3")]
 macro_rules! impl_pyo3_vec_methods {
     ($vecstruct:ident, $dtype:ident) => {
         #[pymethods]
@@ -251,25 +254,32 @@ macro_rules! impl_pyo3_vec_methods {
     };
 }
 
-/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-#[pyclass]
-pub struct Pyo3ArrayU32(Array1<u32>);
-impl_pyo3_arr_methods!(Pyo3ArrayU32, u32);
+#[cfg(feature = "pyo3")]
+pub mod array_wrappers {
+    use super::*;
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    #[pyclass]
+    pub struct Pyo3ArrayU32(Array1<u32>);
+    impl_pyo3_arr_methods!(Pyo3ArrayU32, u32);
 
-/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-#[pyclass]
-pub struct Pyo3ArrayF64(Array1<f64>);
-impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    #[pyclass]
+    pub struct Pyo3ArrayF64(Array1<f64>);
+    impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
 
-/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-#[pyclass]
-pub struct Pyo3ArrayBool(Array1<bool>);
-impl_pyo3_arr_methods!(Pyo3ArrayBool, bool);
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    #[pyclass]
+    pub struct Pyo3ArrayBool(Array1<bool>);
+    impl_pyo3_arr_methods!(Pyo3ArrayBool, bool);
 
-/// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-#[pyclass]
-pub struct Pyo3VecF64(Vec<f64>);
-impl_pyo3_vec_methods!(Pyo3VecF64, f64);
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    #[pyclass]
+    pub struct Pyo3VecF64(Vec<f64>);
+    impl_pyo3_vec_methods!(Pyo3VecF64, f64);
+}
+
+#[cfg(feature = "pyo3")]
+pub use array_wrappers::*;
 
 #[cfg(test)]
 mod tests {

@@ -12,3 +12,4 @@ dist
 *venv*
 *.so
 *.pyd
+*pymoo_res*

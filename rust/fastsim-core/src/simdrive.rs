@@ -2,10 +2,6 @@
 
 extern crate ndarray;
 use ndarray::Array1;
-extern crate pyo3;
-use pyo3::exceptions::{PyAttributeError, PyRuntimeError};
-use pyo3::prelude::*;
-use pyo3::types::PyType;
 
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -14,6 +10,8 @@ use std::fs::File;
 use std::path::PathBuf;
 
 // crate local
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 use crate::cycle::RustCycle;
 use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
@@ -22,11 +20,11 @@ use crate::vehicle::*;
 
 pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
-pub fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
+#[cfg(feature = "pyo3")]
+fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     res.map_err(PyRuntimeError::new_err)
 }
 
-#[pyclass]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     #[new]
@@ -223,7 +221,6 @@ impl Default for RustSimDriveParams {
     }
 }
 
-#[pyclass]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
@@ -394,10 +391,10 @@ impl Default for RustSimDriveParams {
         handle_sd_res(self.set_post_scalars())
     }
 
-    /// Return length of time arrays
-    pub fn len(&self) -> usize {
-        self.cyc.time_s.len()
-    }
+    #[pyo3(name = "len")]
+    pub fn len_py(&self) -> usize {
+        self.len()
+    }    
 
     /// added to make clippy happy
     /// not sure whether there is any benefit to this or not for our purposes

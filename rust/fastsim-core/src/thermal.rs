@@ -219,7 +219,6 @@ use crate::vehicle_thermal::*;
         self.clone()
     }
 )]
-#[pyclass]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct SimDriveHot {
     #[api(has_orphaned)]
@@ -975,7 +974,6 @@ impl SimDriveHot {
     }
 }
 
-#[pyclass]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(

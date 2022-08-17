@@ -109,29 +109,23 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     // });
 
     impl_block.extend::<TokenStream2>(quote! {
-         pub fn to_json(&self) -> PyResult<String> {
-             Ok(serde_json::to_string(&self).unwrap())
-         }
-    });
+        pub fn to_json(&self) -> PyResult<String> {
+            Ok(serde_json::to_string(&self).unwrap())
+        }
 
-    impl_block.extend::<TokenStream2>(quote! {
         #[classmethod]
         pub fn from_json(_cls: &PyType, json_str: &str) -> PyResult<Self> {
             Ok(serde_json::from_str(json_str).unwrap())
         }
-    });
 
-    impl_block.extend::<TokenStream2>(quote! {
         pub fn to_yaml(&self) -> PyResult<String> {
             Ok(serde_yaml::to_string(&self).unwrap())
         }
-    });
 
-    impl_block.extend::<TokenStream2>(quote! {
-       #[classmethod]
-       pub fn from_yaml(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
+        #[classmethod]
+        pub fn from_yaml(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
            Ok(serde_yaml::from_str(yaml_str).unwrap())
-       }
+        }
     });
 
     if !is_state {
@@ -154,18 +148,25 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let impl_block = quote! {
         #[pymethods]
+        #[cfg(feature="pyo3")]
         impl #ident {
             #impl_block
         }
     };
 
+    let mut final_output = TokenStream2::default();
+    // add pyclass attribute
+    final_output.extend::<TokenStream2>(quote! {
+        #[cfg_attr(feature="pyo3", pyclass)]
+    });
     let mut output: TokenStream2 = ast.to_token_stream();
-
     output.extend(impl_block);
     // if ast.ident.to_string() == "RustSimDrive" {
     //     println!("{}", output.to_string());
     // }
-    output.into()
+    // println!("{}", output.to_string());
+    final_output.extend::<TokenStream2>(output);
+    final_output.into()
 }
 
 // taken from https://github.com/lumol-org/soa-derive/blob/master/soa-derive-internal/src/input.rs
@@ -183,7 +184,7 @@ impl<T: Iterator<Item = proc_macro2::TokenStream>> TokenStreamIterator for T {
         f: impl Fn(proc_macro2::TokenStream, proc_macro2::TokenStream) -> proc_macro2::TokenStream,
     ) -> proc_macro2::TokenStream {
         match self.next() {
-            Some(first) => self.fold(first, |current, next| f(current, next)),
+            Some(first) => self.fold(first, f),
             None => quote! {},
         }
     }
@@ -228,7 +229,7 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
         .map(|f| {
             let ident = f.ident.as_ref().unwrap();
             let ty = &f.ty;
-            if ident.to_string() == "orphaned" {
+            if *ident == "orphaned" {
                 quote! {
                     pub orphaned: #ty,
                 }
@@ -244,7 +245,7 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
         .iter()
         .map(|f| {
             let ident = f.ident.as_ref().unwrap();
-            if ident.to_string() == "orphaned" {
+            if *ident == "orphaned" {
                 quote! {
                     orphaned: false,
                 }
@@ -259,7 +260,6 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
     let mut generated = TokenStream2::new();
     generated.append_all(quote! {
         #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-        #[pyclass]
         #[add_pyo3_api]
         pub struct #new_name {
             #vec_fields

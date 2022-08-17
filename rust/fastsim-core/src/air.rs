@@ -89,8 +89,8 @@ impl AirProperties {
     /// Returns specific enthalpy [J/kg] of air  
     /// Arguments:  
     /// ----------
+    /// te_air: f64
     ///     temperature [°C] of air
-    /// te_air: Float
     pub fn get_h(&self, te_air: f64) -> f64 {
         interp(&te_air, &self.te_array_degc, &self.h_array, false)
     }
