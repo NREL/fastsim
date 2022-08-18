@@ -11,6 +11,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::error::Error;
 //use crate::utils::{Array1_serialize, deser_to_Array1};
+use bincode::{deserialize, serialize};
 
 // local
 use crate::proc_macros::add_pyo3_api;
@@ -33,7 +34,7 @@ pub const HD_DIESEL: &str = "HD_Diesel";
 
 pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 
-#[pyclass]
+#[pyclass(module = "fastsimrust")]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[add_pyo3_api(
     #[allow(clippy::too_many_arguments)]
@@ -259,6 +260,10 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
             fc_peak_eff_override,
             mc_peak_eff_override,
         )
+    }
+
+    pub fn __getnewargs__(&self) {
+        todo!();
     }
 
     #[pyo3(name = "set_veh_mass")]

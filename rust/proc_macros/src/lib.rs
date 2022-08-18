@@ -4,7 +4,6 @@ use quote::{quote, ToTokens}; // ToTokens is implicitly used as a trait
 use syn::{Meta, spanned::Spanned};
 use proc_macro_error::{abort, proc_macro_error};
 
-
 mod utilities;
 use utilities::{impl_getters_and_setters, FieldOptions};
 
@@ -112,46 +111,40 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn copy(&self) -> Self {self.clone()}
         pub fn __copy__(&self) -> Self {self.clone()}
         pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
-    });
 
-    impl_block.extend::<TokenStream2>(quote! {
+        // Enable pickling, requires __getnewargs__ method in each struct
+        pub fn __setstate__(&mut self, state: Vec<u8>) -> PyResult<()> {
+            *self = deserialize(&state).unwrap();
+            Ok(())
+        }
+        pub fn __getstate__(&self) -> PyResult<Vec<u8>> {
+            Ok(serialize(self).unwrap())
+        }
+        
         pub fn to_json(&self) -> PyResult<String> {
             Ok(serde_json::to_string(&self).unwrap())
         }
-    });
-
-    impl_block.extend::<TokenStream2>(quote! {
         #[classmethod]
         pub fn from_json(_cls: &PyType, json_str: &str) -> PyResult<Self> {
             Ok(serde_json::from_str(json_str).unwrap())
         }
-    });
-
-    impl_block.extend::<TokenStream2>(quote! {
+    
         pub fn to_yaml(&self) -> PyResult<String> {
             Ok(serde_yaml::to_string(&self).unwrap())
         }
-    });
-
-    impl_block.extend::<TokenStream2>(quote! {
-       #[classmethod]
-       pub fn from_yaml(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
-           Ok(serde_yaml::from_str(yaml_str).unwrap())
-       }
-    });
-
-    impl_block.extend::<TokenStream2>(quote! {
+        #[classmethod]
+        pub fn from_yaml(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
+            Ok(serde_yaml::from_str(yaml_str).unwrap())
+        }
+        
         #[pyo3(name = "to_file")]
         pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
             self.to_file(filename).unwrap();
             Ok(())
         }
-    });
-
-    impl_block.extend::<TokenStream2>(quote! {
-         #[classmethod]
-         #[pyo3(name = "from_file")]
-         pub fn from_file_py(_cls: &PyType, filename: &str) -> PyResult<Self> {
+        #[classmethod]
+        #[pyo3(name = "from_file")]
+        pub fn from_file_py(_cls: &PyType, filename: &str) -> PyResult<Self> {
             let obj: #ident = Self::from_file(filename);
             Ok(obj)
         }

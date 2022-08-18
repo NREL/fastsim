@@ -17,6 +17,7 @@ use serde_json;
 use std::fs::File;
 use std::path::PathBuf;
 use std::error::Error;
+use bincode::{deserialize, serialize};
 
 pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
@@ -25,7 +26,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     res.map_err(PyRuntimeError::new_err)
 }
 
-#[pyclass]
+#[pyclass(module = "fastsimrust")]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
@@ -99,6 +100,9 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
             max_epa_adj,
             orphaned: false
         }
+    }
+    pub fn __getnewargs__(&self) {
+        todo!();
     }
 )]
 
@@ -223,13 +227,17 @@ impl Default for RustSimDriveParams {
     }
 }
 
-#[pyclass]
+#[pyclass(module = "fastsimrust")]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
     #[new]
     pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self {
         Self::new(cyc, veh)
+    }
+
+    pub fn __getnewargs__(&self) {
+        todo!();
     }
 
     // wrappers for core methods

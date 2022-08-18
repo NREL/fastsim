@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
+use bincode::{deserialize, serialize};
 
 /// Unit conversions
 pub const MPH_PER_MPS: f64 = 2.2369;
@@ -20,7 +21,7 @@ pub const MODERN_MAX: f64 = 0.95;
 pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 /// Struct containing time trace data
-#[pyclass]
+#[pyclass(module = "fastsimrust")]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
 #[add_pyo3_api(
@@ -28,6 +29,10 @@ pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
     #[new]
     pub fn __new__() -> Self {
         Self::default()
+    }
+    
+    pub fn __getnewargs__(&self) {
+        todo!();
     }
 )]
 pub struct RustPhysicalProperties {

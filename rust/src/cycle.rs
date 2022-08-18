@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use ndarray::{s, Array, Array1};
 extern crate pyo3;
+use bincode::{deserialize, serialize};
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyType};
@@ -177,7 +178,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-#[pyclass]
+#[pyclass(module = "fastsimrust")]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[add_pyo3_api(
     #[new]
@@ -200,6 +201,10 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             name,
             orphaned: false,
         }
+    }
+
+    pub fn __getnewargs__(&self) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
+        Ok((self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name))
     }
 
     #[classmethod]
