@@ -38,11 +38,7 @@ setuptools.setup(
         "License :: Other/Proprietary License",
         "Operating System :: OS Independent",
     ],
-<<<<<<< HEAD
-    python_requires='>=3.7,<3.11 ',
-=======
     python_requires='>=3.8,<3.11',
->>>>>>> feature/fastsim-as-cli-app
     include_package_data=True,
     package_data={
         "fastsim.resources": ["*"],
