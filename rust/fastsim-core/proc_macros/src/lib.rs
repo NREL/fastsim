@@ -126,6 +126,15 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn from_yaml(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
            Ok(serde_yaml::from_str(yaml_str).unwrap())
         }
+
+        pub fn to_bincode(&self) -> PyResult<Vec<u8>> {
+            Ok(bincode::serialize(&self).unwrap())
+        }
+
+        #[classmethod]
+        pub fn from_bincode(_cls: &PyType, bytes_vec: Vec<u8>) -> PyResult<Self> {
+           Ok(bincode::deserialize(&bytes_vec).unwrap())
+        }
     });
 
     if !is_state {

@@ -53,7 +53,7 @@ class ModelErrors(object):
     Class for calculating eco-driving objectives
     """
 
-    # dictionary of YAML models to be simulated
+    # dictionary of bincode models to be simulated
     models: Dict[str, str]
 
     # dictionary of test data to calibrate against
@@ -216,9 +216,9 @@ class ModelErrors(object):
         assert len(xs) == len(self.params), f"({len(xs)} != {len(self.params)}"
         paths = [fullpath.split(".") for fullpath in self.params]
         t0 = time.perf_counter()
-        # Load SimDriveHot instances from YAML strings
-        sim_drives = {key: fsr.SimDriveHot.from_yaml(
-            model_yaml) for key, model_yaml in self.models.items()}
+        # Load SimDriveHot instances from bincode strings
+        sim_drives = {key: fsr.SimDriveHot.from_bincode(
+            model_bincode) for key, model_bincode in self.models.items()}
         # Update all model parameters
         for key in sim_drives.keys():
             sim_drives[key] = fsim.utils.set_attrs_with_path(
@@ -276,7 +276,7 @@ class CustomOutput(Output):
 
     def update(self, algorithm):
         super().update(algorithm)
-        self.t_s.set(time.perf_counter() - self.t_gen_start)
+        self.t_s.set(f"{(time.perf_counter() - self.t_gen_start):.3f}")
         f = algorithm.pop.get('F')
         euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
         self.euclid_min.set(euclid_min)

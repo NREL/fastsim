@@ -126,10 +126,10 @@ if __name__ == "__main__":
         )
 
         if key in list(dfs_cal.keys()):
-            cal_sim_drives[key] = sdh.to_yaml()
+            cal_sim_drives[key] = sdh.to_bincode()
         else:
             assert key in list(dfs_val.keys())
-            val_sim_drives[key] = sdh.to_yaml()
+            val_sim_drives[key] = sdh.to_bincode()
 
     params_bounds = (
         ("vehthrm.fc_c_kj__k", (50, 200), ),
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         ("vehthrm.fc_coeff_from_comb", (1e-5, 1e-3), ),
         ("vehthrm.fc_exp_offset", (-10, 30), ),
         ("vehthrm.fc_exp_lag", (15, 75), ),
-        ("vehthrm.fc_exp_minimum", (0.25, 0.45), ),
+        ("vehthrm.fc_exp_minimum", (0.15, 0.45), ),
         ("vehthrm.rad_eps", (5, 50), ),
     )
     params = [pb[0] for pb in params_bounds]
@@ -217,8 +217,8 @@ if __name__ == "__main__":
                 )
     else:
         res_df = pd.read_csv(Path(save_path) / "pymoo_res_df.csv")
-        with open(Path(save_path) / "pymoo_res.pickle", 'rb') as file:
-            res = pickle.load(file)
+        # with open(Path(save_path) / "pymoo_res.pickle", 'rb') as file:
+        #     res = pickle.load(file)
 
     res_df['euclidean'] = (
         res_df.iloc[:, len(params):] ** 2).sum(1).pow(1/2)
@@ -242,6 +242,6 @@ if __name__ == "__main__":
     # save calibrated vehicle to file
     veh_save_dir = Path("../resources/vehdb/thermal/")
     veh_save_dir.mkdir(exist_ok=True)
-    sdh = fsr.SimDriveHot.from_yaml(
+    sdh = fsr.SimDriveHot.from_bincode(
         cal_objectives.models[list(cal_objectives.models.keys())[0]])
-    sdh.vehthrm.to_file(str(veh_save_dir / "2012_Ford_Fusion_thrml.yaml"))
+    sdh.vehthrm.to_file(str(veh_save_dir / "2012_Ford_Fusion_thrml.bincode"))
