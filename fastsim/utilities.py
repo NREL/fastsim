@@ -6,6 +6,7 @@ import numpy as np
 from fastsim import parameters as params
 import seaborn as sns
 import re
+import datetime
 
 sns.set()
 
@@ -28,6 +29,7 @@ def get_rho_air(temperature_degC, elevation_m=180):
     rho = p / (R_air * (temperature_degC + 273.15))  # [kg/m**3]
 
     return rho
+
 
 def l__100km_to_mpg(l__100km):
     """Given fuel economy in L/100km, returns mpg."""
@@ -107,6 +109,7 @@ def get_containers_with_path(
         containers.append(container)
     return containers
 
+
 def get_attr_with_path(
     struct: Any,
     path: str | list,
@@ -132,6 +135,7 @@ def get_attr_with_path(
     attr = getattr(containers[-1], path[-1])
     return attr
 
+
 def set_attr_with_path(
     struct: Any,
     path: str | list,
@@ -147,7 +151,7 @@ def set_attr_with_path(
     path: str | list
         Dot-separated path, e.g. `"sd.veh.drag_coef"` or `["sd", "veh", "drag_coef"]`
     value: Any
-    
+
     Returns
     -------
     Any
@@ -173,6 +177,7 @@ def set_attr_with_path(
     # Return outermost container
     return container
 
+
 def set_attrs_with_path(
     struct: Any,
     paths_and_values: Dict[str, Any]
@@ -187,7 +192,7 @@ def set_attrs_with_path(
     paths_and_values: Dict[str | list, Any]
         Mapping of dot-separated path (e.g. `sd.veh.drag_coef` or `["sd", "veh", "drag_coef"]`)
         to values (e.g. `0.32`)
-    
+
     Returns
     -------
     Any
@@ -198,3 +203,7 @@ def set_attrs_with_path(
     for path, value in paths_and_values.items():
         struct = set_attr_with_path(struct, path, value)
     return struct
+
+
+def print_dt():
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))

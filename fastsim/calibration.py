@@ -4,15 +4,15 @@ from pathlib import Path
 import pickle
 
 # pymoo
-from pymoo.util.display import Display
+from pymoo.util.display.output import Output
+from pymoo.util.display.column import Column
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling as LHS
-from pymoo.core.sampling import Sampling
-from pymoo.util.termination.default import MultiObjectiveDefaultTermination as MODT
-from pymoo.core.problem import Problem, ElementwiseProblem
-from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.termination.default import DefaultMultiObjectiveTermination as DMOT
+from pymoo.core.problem import Problem, ElementwiseProblem, LoopedElementwiseEvaluation, StarmapParallelization
+from pymoo.algorithms.moo.nsga3 import NSGA3
+from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.algorithms.base.genetic import GeneticAlgorithm
 from pymoo.optimize import minimize
-from pymoo.core.problem import starmap_parallelized_eval, looped_eval
 
 # misc
 import pandas as pd
@@ -79,9 +79,13 @@ class ModelErrors(object):
     # if True, prints timing and misc info
     verbose: bool = False
 
+    # calculated in __post_init__
+    n_obj: int = None
+
     def __post_init__(self):
         assert len(self.dfs) == len(
             self.models), f"{len(self.dfs)} != {len(self.models)}"
+        self.n_obj = len(self.models) * len(self.obj_names)
 
     def get_errors(
         self,
@@ -237,8 +241,7 @@ class CalibrationProblem(ElementwiseProblem):
         self,
         err: ModelErrors,
         param_bounds: List[Tuple[float, float]],
-        runner=None,
-        func_eval: Callable = looped_eval,
+        elementwise_runner=LoopedElementwiseEvaluation(),
     ):
         self.err = err
         # parameter lower and upper bounds
@@ -248,13 +251,12 @@ class CalibrationProblem(ElementwiseProblem):
             self.err.params), f"{len(self.param_bounds)} != {len(self.err.params)}"
         super().__init__(
             n_var=len(self.err.params),
-            n_obj=len(self.err.models) * len(self.err.obj_names),
+            n_obj=self.err.n_obj,
             xl=[bounds[0]
                 for bounds in self.param_bounds],
             xu=[bounds[1]
                 for bounds in self.param_bounds],
-            runner=runner,
-            func_eval=func_eval,
+            elementwise_runner=elementwise_runner,
         )
 
     def _evaluate(self, x, out, *args, **kwargs):
@@ -264,38 +266,37 @@ class CalibrationProblem(ElementwiseProblem):
         ]
 
 
-class CustomDisplay(Display):
+class CustomOutput(Output):
     def __init__(self):
         super().__init__()
-        self.term = MODT()
         self.t_gen_start = time.perf_counter()
+        self.t_s = Column("t [s]", width=13)
+        self.euclid_min = Column("euclid min", width=13)
+        self.columns += [self.t_s, self.euclid_min]
 
-    def _do(self, problem, evaluator, algorithm):
-        super()._do(problem, evaluator, algorithm)
-        self.output.append("n_nds", len(algorithm.opt), width=7)
-        self.t_elapsed = time.perf_counter() - self.t_gen_start
-        self.output.append(
-            't [s]', f"{self.t_elapsed:.3g}", width=7)
+    def update(self, algorithm):
+        super().update(algorithm)
+        self.t_s.set(time.perf_counter() - self.t_gen_start)
         f = algorithm.pop.get('F')
         euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
-        self.output.append(
-            "euclid min", f"{euclid_min:.3g}", width=8)
-
-        self.term.do_continue(algorithm)
+        self.euclid_min.set(euclid_min)
 
 
 def run_minimize(
-    prob: CalibrationProblem,
+    problem: CalibrationProblem,
     algorithm: GeneticAlgorithm,
-    termination: MODT,
+    termination: DMOT,
     copy_algorithm: bool = False,
     copy_termination: bool = False,
     save_history: bool = False,
     save_path: Optional[str] = Path("pymoo_res/"),
 ):
+    print("`run_minimize` starting at")
+    fsim.utils.print_dt()
+
     t0 = time.perf_counter()
     res = minimize(
-        prob,
+        problem,
         algorithm,
         termination,
         copy_algorithm,
@@ -303,13 +304,13 @@ def run_minimize(
         seed=1,
         verbose=True,
         save_history=save_history,
-        display=CustomDisplay(),
+        output=CustomOutput(),
     )
 
     f_columns = [
         f"{key}: {obj[0]}"
-        for key in prob.err.dfs.keys()
-        for obj in prob.err.obj_names
+        for key in problem.err.dfs.keys()
+        for obj in problem.err.obj_names
     ]
     f_df = pd.DataFrame(
         data=[f for f in res.F.tolist()],
@@ -318,7 +319,7 @@ def run_minimize(
 
     x_df = pd.DataFrame(
         data=[x for x in res.X.tolist()],
-        columns=[param for param in prob.err.params],
+        columns=[param for param in problem.err.params],
     )
 
     Path(save_path).mkdir(exist_ok=True, parents=True)

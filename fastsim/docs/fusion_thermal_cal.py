@@ -48,8 +48,8 @@ if __name__ == "__main__":
                         help="PyMOO population size in each generation.")
     parser.add_argument('--skip-minimize', action="store_true",
                         help="If provided, load previous results.")
-    parser.add_argument('--save-path', type=str, default="pymoo_res",
-                        help="File location to save results.")
+    # parser.add_argument('--save-path', type=str, default="fusion_pymoo_res",
+    #                     help="File location to save results.")
     args = parser.parse_args()
 
     n_processes = args.processes
@@ -131,29 +131,18 @@ if __name__ == "__main__":
             assert key in list(dfs_val.keys())
             val_sim_drives[key] = sdh.to_yaml()
 
-    # Simulate
-    params = [
-        "vehthrm.fc_c_kj__k",
-        "vehthrm.fc_l",
-        "vehthrm.fc_htc_to_amb_stop",
-        "vehthrm.fc_coeff_from_comb",
-        "vehthrm.fc_exp_offset",
-        "vehthrm.fc_exp_lag",
-        "vehthrm.fc_exp_minimum",
-        "vehthrm.rad_eps",
-    ]
-
-    params_bounds = [
-        (50, 200),
-        (0.25, 2),
-        (5, 50),
-        (1e-5, 1e-3),
-        (-10, 30),
-        (15, 75),
-        (0.25, 0.45),
-        (5, 50),
-    ]
-
+    params_bounds = (
+        ("vehthrm.fc_c_kj__k", (50, 200), ),
+        ("vehthrm.fc_l", (0.25, 2), ),
+        ("vehthrm.fc_htc_to_amb_stop", (5, 50), ),
+        ("vehthrm.fc_coeff_from_comb", (1e-5, 1e-3), ),
+        ("vehthrm.fc_exp_offset", (-10, 30), ),
+        ("vehthrm.fc_exp_lag", (15, 75), ),
+        ("vehthrm.fc_exp_minimum", (0.25, 0.45), ),
+        ("vehthrm.rad_eps", (5, 50), ),
+    )
+    params = [pb[0] for pb in params_bounds]
+    params_bounds = [pb[1] for pb in params_bounds]
     obj_names = [
         # ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
         ("sd.fs_cumu_mj_out_ach", "Fuel_Energy_Calc[MJ]"),
@@ -181,44 +170,51 @@ if __name__ == "__main__":
     if run_minimize:
         print("Starting calibration.")
 
-        algorithm = fsim.calibration.NSGA2(
+        algorithm = fsim.calibration.NSGA3(
+            ref_dirs=fsim.calibration.get_reference_directions(
+                "energy",
+                n_dim=cal_objectives.n_obj,  # must be at least cal_objectives.n_obj
+                n_points=pop_size,  # must be at least pop_size
+            ),
             # size of each population
             pop_size=pop_size,
             sampling=fsim.calibration.LHS(),
         )
-        termination = fsim.calibration.MODT(
+        termination = fsim.calibration.DMOT(
             # max number of generations, default of 10 is very small
             n_max_gen=n_max_gen,
-            # evaluate tolerance over this interval of generations every `nth_gen`
-            n_last=10,
+            # evaluate tolerance over this interval of generations every
+            period=5,
         )
 
         if n_processes == 1:
+            # series evaluation
             problem = fsim.calibration.CalibrationProblem(
                 err=cal_objectives,
                 param_bounds=params_bounds,
             )
             res, res_df = fsim.calibration.run_minimize(
-                problem,
+                problem=problem,
                 algorithm=algorithm,
                 termination=termination,
                 save_path=save_path,
             )
         else:
-            import multiprocessing
-            with multiprocessing.Pool(n_processes) as pool:
-                with multiprocessing.Pool(n_processes) as pool:
-                    problem = fsim.calibration.CalibrationProblem(
-                        err=cal_objectives,
-                        param_bounds=params_bounds,
-                        runner=pool.starmap,
-                        func_eval=fsim.calibration.starmap_parallelized_eval,
-                    )
-                    res, res_df = fsim.calibration.run_minimize(
-                        problem,
-                        algorithm,
-                        termination=termination,
-                    )
+            # parallel evaluation
+            from multiprocessing.pool import ThreadPool
+            with ThreadPool(n_processes) as pool:
+                problem = fsim.calibration.CalibrationProblem(
+                    err=cal_objectives,
+                    param_bounds=params_bounds,
+                    elementwise_runner=fsim.cal.StarmapParallelization(
+                        pool.starmap),
+                    # func_eval=fsim.cal.starmap_parallelized_eval,
+                )
+                res, res_df = fsim.calibration.run_minimize(
+                    problem=problem,
+                    algorithm=algorithm,
+                    termination=termination,
+                )
     else:
         res_df = pd.read_csv(Path(save_path) / "pymoo_res_df.csv")
         with open(Path(save_path) / "pymoo_res.pickle", 'rb') as file:
@@ -228,6 +224,10 @@ if __name__ == "__main__":
         res_df.iloc[:, len(params):] ** 2).sum(1).pow(1/2)
     best_row = res_df['euclidean'].argmin()
     best_df = res_df.iloc[best_row, :]
+    res_df['fuel euclidean'] = (res_df.filter(
+        like="fs_cumu") ** 2).sum(1) ** (1 / 2)
+    res_df['temp euclidean'] = (res_df.filter(
+        like="fc_te") ** 2).sum(1) ** (1 / 2)
     param_vals = res_df.iloc[0, :len(cal_objectives.params)].to_numpy()
 
     cal_objectives.get_errors(
@@ -245,81 +245,3 @@ if __name__ == "__main__":
     sdh = fsr.SimDriveHot.from_yaml(
         cal_objectives.models[list(cal_objectives.models.keys())[0]])
     sdh.vehthrm.to_file(str(veh_save_dir / "2012_Ford_Fusion_thrml.yaml"))
-
-
-# # %%
-
-# # params_and_vals = {
-# #     'vehthrm.fc_c_kj__k': 125.0,
-# #     'vehthrm.fc_l': 1.3,
-# #     'vehthrm.fc_htc_to_amb_stop': 100.0,
-# #     'vehthrm.fc_coeff_from_comb': 0.00030721481819805005,
-# #     'vehthrm.fc_exp_offset': -9.438669088889137,
-# #     'vehthrm.fc_exp_lag': 30.0,
-# #     'vehthrm.fc_exp_minimum': 0.2500008623533276,
-# #     'vehthrm.rad_eps': 20
-# #  }
-
-# plot_save_dir = Path("plots")
-# plot_save_dir.mkdir(exist_ok=True)
-
-# # problem.err.update_params(params_and_vals.values())
-# problem.err.update_params(param_vals)
-# problem.err.get_errors(
-#     plot=True, plot_save_dir=plot_save_dir, plot_perc_err=False)
-
-
-# # %%
-
-# # Demonstrate with model showing fuel usage impact
-
-# # get the optimal vehthrm
-# vehthrm = problem.err.sim_drives[
-#     list(problem.err.sim_drives.keys())[0]
-# ].vehthrm
-
-# # manual adjustment of parameters, should be turned off when
-# # checking new run
-# # vehthrm = fsim.auxiliaries.set_nested_values(
-# #     vehthrm, fc_exp_lag=17.0
-# # )
-
-# te_amb_deg_c_arr = np.arange(-10, 101)
-# mpg_arr = np.zeros(len(te_amb_deg_c_arr))
-
-# for i, te_amb_deg_c in enumerate(te_amb_deg_c_arr):
-#     sdh = fsr.SimDriveHot(
-#         fsim.cycle.Cycle.from_file("udds").to_rust(),
-#         veh,
-#         vehthrm,
-#         fsr.ThermalState(
-#             amb_te_deg_c=min(te_amb_deg_c, 50),
-#             fc_te_deg_c_init=te_amb_deg_c
-#         )
-#     )
-#     sdh.sim_drive()
-#     mpg_arr[i] = sdh.sd.mpgge
-
-# sd = fsim.simdrive.RustSimDrive(
-#     fsim.cycle.Cycle.from_file("udds").to_rust(),
-#     veh,
-# )
-# sd.sim_drive()
-
-
-# # %%
-
-# # by about 90°C, 'with thermal' should be nearly the same as 'no thermal'
-
-# fig, ax = plt.subplots()
-# ax.scatter(te_amb_deg_c_arr, mpg_arr, label='with thermal')
-# ax.axhline(y=sd.mpgge, label='no thermal', color='red')
-# ax.set_xlabel("Ambient/Cold Start Temperature [°C]")
-# ax.set_ylabel("Fuel Economy [mpg]")
-# ax.set_title("2012 Ford Fusion V6")
-# ax.legend()
-# plt.tight_layout()
-# plt.savefig("plots/fe v amb temp.svg")
-# plt.savefig("plots/fe v amb temp.png")
-
-# # %%
