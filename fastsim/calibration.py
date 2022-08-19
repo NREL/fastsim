@@ -331,9 +331,9 @@ def run_minimize(
     # with open(Path(save_path) / "pymoo_res.pickle", 'wb') as file:
     #     pickle.dump(res, file)
 
+    res_df = pd.concat([x_df, f_df], axis=1)
     res_df['euclidean'] = (
         res_df.iloc[:, len(problem.mod_obj.params):] ** 2).sum(1).pow(1/2)
-    res_df = pd.concat([x_df, f_df], axis=1)
     res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
 
     t1 = time.perf_counter()
