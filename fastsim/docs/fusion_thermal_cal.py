@@ -1,6 +1,6 @@
 from typing import *
 from pathlib import Path
-import argparse
+import matplotlib.pyplot as plt
 import pandas as pd
 import pickle
 
@@ -38,42 +38,7 @@ def load_data() -> Dict[str, pd.DataFrame]:
     return dfs
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='...')
-    parser.add_argument('-p', '--processes', type=int,
-                        default=4, help="Number of pool processes.")
-    parser.add_argument('--n-max-gen', type=int, default=500,
-                        help="PyMOO termination criterion: n_max_gen.")
-    parser.add_argument('--pop-size', type=int, default=12,
-                        help="PyMOO population size in each generation.")
-    parser.add_argument('--skip-minimize', action="store_true",
-                        help="If provided, load previous results.")
-    # parser.add_argument('--save-path', type=str, default="fusion_pymoo_res",
-    #                     help="File location to save results.")
-    args = parser.parse_args()
-
-    n_processes = args.processes
-    n_max_gen = args.n_max_gen
-    pop_size = args.pop_size
-    run_minimize = not(args.skip_minimize)
-    save_path = "fusion_pymoo_res"  # args.save_path
-
-    # load test data which can be obtained at
-    # https://www.anl.gov/taps/d3-2012-ford-fusion-v6
-    possible_trip_dirs = (
-        DATA_DIR,
-    )
-
-    for trip_dir in possible_trip_dirs:
-        if trip_dir.exists():
-            break
-
-    rho_fuel_kg_per_ml = 0.743e-3
-    lhv_fuel_btu_per_lbm = 18_344
-    lbm_per_kg = 2.2
-    btu_per_kj = 0.948
-    lhv_fuel_kj_per_kg = lhv_fuel_btu_per_lbm * lbm_per_kg / btu_per_kj
-
+def get_cal_and_val_objs():
     dfs = load_data()
 
     # Separate calibration and validation cycles
@@ -131,7 +96,7 @@ if __name__ == "__main__":
             assert key in list(dfs_val.keys())
             val_sim_drives[key] = sdh.to_bincode()
 
-    params_bounds = (
+    params_and_bounds = (
         ("vehthrm.fc_c_kj__k", (50, 200), ),
         ("vehthrm.fc_l", (0.25, 2), ),
         ("vehthrm.fc_htc_to_amb_stop", (5, 50), ),
@@ -141,15 +106,15 @@ if __name__ == "__main__":
         ("vehthrm.fc_exp_minimum", (0.15, 0.45), ),
         ("vehthrm.rad_eps", (5, 50), ),
     )
-    params = [pb[0] for pb in params_bounds]
-    params_bounds = [pb[1] for pb in params_bounds]
+    params = [pb[0] for pb in params_and_bounds]
+    params_bounds = [pb[1] for pb in params_and_bounds]
     obj_names = [
         # ("sd.fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
         ("sd.fs_cumu_mj_out_ach", "Fuel_Energy_Calc[MJ]"),
         ("history.fc_te_deg_c", "CylinderHeadTempC"),
     ]
 
-    cal_objectives = fsim.calibration.ModelErrors(
+    cal_objectives = fsim.calibration.ModelObjectives(
         models=cal_sim_drives,
         dfs=dfs_cal,
         obj_names=obj_names,
@@ -159,13 +124,45 @@ if __name__ == "__main__":
 
     # to ensure correct key order
     val_sim_drives = {key: val_sim_drives[key] for key in dfs_val.keys()}
-    val_objectives = fsim.calibration.ModelErrors(
+    val_objectives = fsim.calibration.ModelObjectives(
         models=val_sim_drives,
         dfs=dfs_val,
         obj_names=obj_names,
         params=params,
         verbose=False
     )
+
+    return cal_objectives, val_objectives, params_bounds
+
+
+if __name__ == "__main__":
+    parser = fsim.cal.get_parser()
+    args = parser.parse_args()
+
+    n_processes = args.processes
+    n_max_gen = args.n_max_gen
+    pop_size = args.pop_size
+    run_minimize = not(args.skip_minimize)
+    save_path = args.save_path
+    show_plots = args.show
+
+    # load test data which can be obtained at
+    # https://www.anl.gov/taps/d3-2012-ford-fusion-v6
+    possible_trip_dirs = (
+        DATA_DIR,
+    )
+
+    for trip_dir in possible_trip_dirs:
+        if trip_dir.exists():
+            break
+
+    rho_fuel_kg_per_ml = 0.743e-3
+    lhv_fuel_btu_per_lbm = 18_344
+    lbm_per_kg = 2.2
+    btu_per_kj = 0.948
+    lhv_fuel_kj_per_kg = lhv_fuel_btu_per_lbm * lbm_per_kg / btu_per_kj
+
+    cal_objectives, val_objectives, params_bounds = get_cal_and_val_objs()
 
     if run_minimize:
         print("Starting calibration.")
@@ -190,7 +187,7 @@ if __name__ == "__main__":
         if n_processes == 1:
             # series evaluation
             problem = fsim.calibration.CalibrationProblem(
-                err=cal_objectives,
+                mod_obj=cal_objectives,
                 param_bounds=params_bounds,
             )
             res, res_df = fsim.calibration.run_minimize(
@@ -204,7 +201,7 @@ if __name__ == "__main__":
             from multiprocessing.pool import ThreadPool
             with ThreadPool(n_processes) as pool:
                 problem = fsim.calibration.CalibrationProblem(
-                    err=cal_objectives,
+                    mod_obj=cal_objectives,
                     param_bounds=params_bounds,
                     elementwise_runner=fsim.cal.StarmapParallelization(
                         pool.starmap),
@@ -221,7 +218,8 @@ if __name__ == "__main__":
         #     res = pickle.load(file)
 
     res_df['euclidean'] = (
-        res_df.iloc[:, len(params):] ** 2).sum(1).pow(1/2)
+        res_df.iloc[:, len(cal_objectives.params):] ** 2).sum(1).pow(1/2)
+
     best_row = res_df['euclidean'].argmin()
     best_df = res_df.iloc[best_row, :]
     res_df['fuel euclidean'] = (res_df.filter(
@@ -232,11 +230,13 @@ if __name__ == "__main__":
 
     cal_objectives.get_errors(
         cal_objectives.update_params(param_vals),
-        plot_save_dir=Path("plots/fusion/cal/")
+        plot_save_dir=Path(save_path),
+        show=show_plots,
     )
     val_objectives.get_errors(
         val_objectives.update_params(param_vals),
-        plot_save_dir=Path("plots/fusion/val/")
+        plot_save_dir=Path(save_path),
+        show=show_plots,
     )
 
     # save calibrated vehicle to file

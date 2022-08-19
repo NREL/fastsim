@@ -2,6 +2,7 @@ from dataclasses import dataclass, InitVar
 from typing import *
 from pathlib import Path
 import pickle
+import argparse
 
 # pymoo
 from pymoo.util.display.output import Output
@@ -48,7 +49,7 @@ def get_error_val(model, test, time_steps):
 
 
 @dataclass
-class ModelErrors(object):
+class ModelObjectives(object):
     """
     Class for calculating eco-driving objectives
     """
@@ -94,6 +95,7 @@ class ModelErrors(object):
         plot: Optional[bool] = False,
         plot_save_dir: Optional[str] = None,
         plot_perc_err: Optional[bool] = True,
+        show: Optional[bool] = False,
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
@@ -193,6 +195,9 @@ class ModelErrors(object):
                             1].set_ylabel(obj[0] + "\n%Err")
                         ax[i_obj * ax_multiplier + 1].set_ylim([-20, 20])
 
+                    if show:
+                        plt.show()
+
                 if plot_save_dir:
                     if not Path(plot_save_dir).exists():
                         Path(plot_save_dir).mkdir()
@@ -239,19 +244,19 @@ class CalibrationProblem(ElementwiseProblem):
 
     def __init__(
         self,
-        err: ModelErrors,
+        mod_obj: ModelObjectives,
         param_bounds: List[Tuple[float, float]],
         elementwise_runner=LoopedElementwiseEvaluation(),
     ):
-        self.err = err
+        self.mod_obj = mod_obj
         # parameter lower and upper bounds
         self.param_bounds = param_bounds
 
         assert len(self.param_bounds) == len(
-            self.err.params), f"{len(self.param_bounds)} != {len(self.err.params)}"
+            self.mod_obj.params), f"{len(self.param_bounds)} != {len(self.mod_obj.params)}"
         super().__init__(
-            n_var=len(self.err.params),
-            n_obj=self.err.n_obj,
+            n_var=len(self.mod_obj.params),
+            n_obj=self.mod_obj.n_obj,
             xl=[bounds[0]
                 for bounds in self.param_bounds],
             xu=[bounds[1]
@@ -260,9 +265,9 @@ class CalibrationProblem(ElementwiseProblem):
         )
 
     def _evaluate(self, x, out, *args, **kwargs):
-        sim_drives = self.err.update_params(x)
+        sim_drives = self.mod_obj.update_params(x)
         out['F'] = [
-            val for inner_dict in self.err.get_errors(sim_drives).values() for val in inner_dict.values()
+            val for inner_dict in self.mod_obj.get_errors(sim_drives).values() for val in inner_dict.values()
         ]
 
 
@@ -309,8 +314,8 @@ def run_minimize(
 
     f_columns = [
         f"{key}: {obj[0]}"
-        for key in problem.err.dfs.keys()
-        for obj in problem.err.obj_names
+        for key in problem.mod_obj.dfs.keys()
+        for obj in problem.mod_obj.obj_names
     ]
     f_df = pd.DataFrame(
         data=[f for f in res.F.tolist()],
@@ -319,12 +324,15 @@ def run_minimize(
 
     x_df = pd.DataFrame(
         data=[x for x in res.X.tolist()],
-        columns=[param for param in problem.err.params],
+        columns=[param for param in problem.mod_obj.params],
     )
 
     Path(save_path).mkdir(exist_ok=True, parents=True)
-    with open(Path(save_path) / "pymoo_res.pickle", 'wb') as file:
-        pickle.dump(res, file)
+    # with open(Path(save_path) / "pymoo_res.pickle", 'wb') as file:
+    #     pickle.dump(res, file)
+
+    res_df['euclidean'] = (
+        res_df.iloc[:, len(problem.mod_obj.params):] ** 2).sum(1).pow(1/2)
     res_df = pd.concat([x_df, f_df], axis=1)
     res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
 
@@ -332,3 +340,23 @@ def run_minimize(
     print(f"Elapsed time to run minimization: {t1-t0:.5g} s")
 
     return res, res_df
+
+
+def get_parser() -> argparse.ArgumentParser:
+    """
+    Generate parser for optimization hyper params and misc. other params
+    """
+    parser = argparse.ArgumentParser(description='...')
+    parser.add_argument('-p', '--processes', type=int,
+                        default=4, help="Number of pool processes.")
+    parser.add_argument('--n-max-gen', type=int, default=500,
+                        help="PyMOO termination criterion: n_max_gen.")
+    parser.add_argument('--pop-size', type=int, default=12,
+                        help="PyMOO population size in each generation.")
+    parser.add_argument('--skip-minimize', action="store_true",
+                        help="If provided, load previous results.")
+    parser.add_argument('--save-path', type=str, default="pymoo_res",
+                        help="File location to save results.")
+    parser.add_argument('--show', action="store_true",
+                        help="If provided, shows plots.")
+    return parser
