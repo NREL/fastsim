@@ -2,12 +2,12 @@ from typing import *
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import pickle
+from cycler import cycler
 
 import fastsim as fsim
 import fastsimrust as fsr
-
-DATA_DIR = Path().home() / "Documents/DynoTestData/FordFusionTestData/"
 
 
 def load_data() -> Dict[str, pd.DataFrame]:
@@ -134,6 +134,22 @@ def get_cal_and_val_objs():
 
     return cal_objectives, val_objectives, params_bounds
 
+# load test data which can be obtained at
+# https://www.anl.gov/taps/d3-2012-ford-fusion-v6
+possible_trip_dirs = (
+    Path().home() / "Documents/DynoTestData/FordFusionTestData/",
+)
+
+for trip_dir in possible_trip_dirs:
+    if trip_dir.exists():
+        break
+
+rho_fuel_kg_per_ml = 0.743e-3
+lhv_fuel_btu_per_lbm = 18_344
+lbm_per_kg = 2.2
+btu_per_kj = 0.948
+lhv_fuel_kj_per_kg = lhv_fuel_btu_per_lbm * lbm_per_kg / btu_per_kj
+
 
 if __name__ == "__main__":
     parser = fsim.cal.get_parser()
@@ -145,22 +161,6 @@ if __name__ == "__main__":
     run_minimize = not(args.skip_minimize)
     save_path = args.save_path
     show_plots = args.show
-
-    # load test data which can be obtained at
-    # https://www.anl.gov/taps/d3-2012-ford-fusion-v6
-    possible_trip_dirs = (
-        DATA_DIR,
-    )
-
-    for trip_dir in possible_trip_dirs:
-        if trip_dir.exists():
-            break
-
-    rho_fuel_kg_per_ml = 0.743e-3
-    lhv_fuel_btu_per_lbm = 18_344
-    lbm_per_kg = 2.2
-    btu_per_kj = 0.948
-    lhv_fuel_kj_per_kg = lhv_fuel_btu_per_lbm * lbm_per_kg / btu_per_kj
 
     cal_objectives, val_objectives, params_bounds = get_cal_and_val_objs()
 
@@ -244,4 +244,4 @@ if __name__ == "__main__":
     veh_save_dir.mkdir(exist_ok=True)
     sdh = fsr.SimDriveHot.from_bincode(
         cal_objectives.models[list(cal_objectives.models.keys())[0]])
-    sdh.vehthrm.to_file(str(veh_save_dir / "2012_Ford_Fusion_thrml.bincode"))
+    sdh.vehthrm.to_file(str(veh_save_dir / "2012_Ford_Fusion_thrml.yaml"))
