@@ -102,7 +102,7 @@ def get_cal_and_val_objs():
         ("vehthrm.fc_htc_to_amb_stop", (5, 50), ),
         ("vehthrm.fc_coeff_from_comb", (1e-5, 1e-3), ),
         ("vehthrm.fc_exp_offset", (-10, 30), ),
-        ("vehthrm.fc_exp_lag", (15, 75), ),
+        ("vehthrm.fc_exp_lag", (15, 100), ),
         ("vehthrm.fc_exp_minimum", (0.15, 0.45), ),
         ("vehthrm.rad_eps", (5, 50), ),
     )
@@ -133,6 +133,7 @@ def get_cal_and_val_objs():
     )
 
     return cal_objectives, val_objectives, params_bounds
+
 
 # load test data which can be obtained at
 # https://www.anl.gov/taps/d3-2012-ford-fusion-v6
