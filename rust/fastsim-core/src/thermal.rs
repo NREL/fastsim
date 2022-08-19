@@ -27,8 +27,9 @@ use crate::vehicle_thermal::*;
         veh: vehicle::RustVehicle,
         vehthrm: VehicleThermal,
         init_state: Option<ThermalState>,
+        amb_te_deg_c: Option<Vec<f64>>,
      ) -> Self {
-        Self::new(cyc, veh, vehthrm, init_state)
+        Self::new(cyc, veh, vehthrm, init_state, amb_te_deg_c.map(Array1::from))
     }
 
     #[pyo3(name = "gap_to_lead_vehicle_m")]
@@ -231,6 +232,8 @@ pub struct SimDriveHot {
     #[api(has_orphaned)]
     pub state: ThermalState,
     pub history: ThermalStateHistoryVec,
+    #[api(skip_get, skip_set)]
+    amb_te_deg_c: Option<Array1<f64>>,
 }
 
 pub const SIMDRIVEHOT_DEFAULT_FOLDER: &str = "fastsim/resources";
@@ -241,17 +244,40 @@ impl SimDriveHot {
         veh: vehicle::RustVehicle,
         vehthrm: VehicleThermal,
         init_state: Option<ThermalState>,
+        amb_te_deg_c: Option<Array1<f64>>,
     ) -> Self {
-        let sd = simdrive::RustSimDrive::new(cyc, veh);
+        let sd = simdrive::RustSimDrive::new(cyc.clone(), veh);
         let air = AirProperties::default();
         let history = ThermalStateHistoryVec::default();
+
+        let (amb_te_deg_c, state) = match amb_te_deg_c {
+            Some(amb_te_deg_c_arr) => match init_state {
+                Some(state) => {
+                    assert_eq!(state.amb_te_deg_c, amb_te_deg_c_arr[0]);
+                    (Some(amb_te_deg_c_arr), state)
+                }
+                None => {
+                    let mut state = ThermalState::default();
+                    state.amb_te_deg_c = amb_te_deg_c_arr[0];
+                    (Some(amb_te_deg_c_arr), state)
+                }
+            },
+            None => (
+                Some(Array1::zeros(cyc.len())), // 1st return element
+                match init_state {
+                    Some(state) => state, // 2nd return element
+                    None => ThermalState::default(),
+                },
+            ),
+        };
 
         Self {
             sd,
             vehthrm,
             air,
-            state: init_state.unwrap_or_default(),
+            state,
             history,
+            amb_te_deg_c,
         }
     }
 
@@ -362,6 +388,10 @@ impl SimDriveHot {
         // sensitive component efficiencies dependent on the [i] temperatures, but
         // these are in turn dependent on [i-1] heat transfer processes
         // verify that valid option is specified
+
+        if let Some(amb_te_deg_c) = &self.amb_te_deg_c {
+            self.state.amb_te_deg_c = amb_te_deg_c[i];
+        }
 
         if let FcModelTypes::Internal(..) = &self.vehthrm.fc_model {
             self.set_fc_thermal_calcs(i);

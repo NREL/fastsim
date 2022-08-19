@@ -10,11 +10,11 @@ use std::fs::File;
 use std::path::PathBuf;
 
 // crate local
-#[cfg(feature = "pyo3")]
-use crate::pyo3imports::*;
 use crate::cycle::RustCycle;
 use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 use crate::utils::*;
 use crate::vehicle::*;
 
@@ -241,8 +241,8 @@ impl Default for RustSimDriveParams {
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
     /// Arguments
     /// ------------
-    /// init_soc: initial SOC for electrified vehicles.  
-    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    /// init_soc: initial SOC for electrified vehicles.
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
     ///     Default of None causes veh.aux_kw to be used.
     pub fn sim_drive_py(
         &mut self,
@@ -279,7 +279,7 @@ impl Default for RustSimDriveParams {
     /// Arguments
     /// ------------
     /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
-    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
     ///         Default of None causes veh.aux_kw to be used.
     pub fn init_for_step_py(
         &mut self,
@@ -394,7 +394,7 @@ impl Default for RustSimDriveParams {
     #[pyo3(name = "len")]
     pub fn len_py(&self) -> usize {
         self.len()
-    }    
+    }
 
     /// added to make clippy happy
     /// not sure whether there is any benefit to this or not for our purposes
