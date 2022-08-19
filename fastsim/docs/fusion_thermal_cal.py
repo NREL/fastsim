@@ -228,7 +228,7 @@ if __name__ == "__main__":
         like="fs_cumu") ** 2).sum(1) ** (1 / 2)
     res_df['temp euclidean'] = (res_df.filter(
         like="fc_te") ** 2).sum(1) ** (1 / 2)
-    param_vals = res_df.iloc[0, :len(cal_objectives.params)].to_numpy()
+    param_vals = res_df.iloc[best_row, :len(cal_objectives.params)].to_numpy()
 
     cal_objectives.get_errors(
         cal_objectives.update_params(param_vals),
