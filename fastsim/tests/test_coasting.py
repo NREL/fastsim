@@ -794,7 +794,7 @@ class TestCoasting(unittest.TestCase):
                         [0.01, 0.01, 0.01, 0.01, 0.01],
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys={'grade'},
                 )
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
@@ -841,7 +841,7 @@ class TestCoasting(unittest.TestCase):
                         [0.01, 0.01, 0.01, 0.01, 0.01],
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys={'grade'},
                 )
             ).to_rust()
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
@@ -894,7 +894,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys_next={'cycGrade'},
+                    hold_keys_next={'grade'},
                 )
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
@@ -930,7 +930,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys_next={'cycGrade'},
+                    hold_keys_next={'grade'},
                 )
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(1)
@@ -966,7 +966,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys_next={'cycGrade'},
+                    hold_keys_next={'grade'},
                 )
             ).to_rust()
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
@@ -1009,7 +1009,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys_next={'cycGrade'},
+                    hold_keys_next={'grade'},
                 )
             ).to_rust()
             veh = fastsim.vehicle.Vehicle.from_vehdb(1).to_rust()
@@ -1056,7 +1056,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys={'grade'},
                 )
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
@@ -1094,7 +1094,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys={'grade'},
                 )
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(1)
@@ -1130,7 +1130,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys={'grade'},
                 )
             ).to_rust()
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
@@ -1170,7 +1170,7 @@ class TestCoasting(unittest.TestCase):
                         [grade]*5,
                     ),
                     new_dt=1.0,
-                    hold_keys={'cycGrade'},
+                    hold_keys={'grade'},
                 )
             ).to_rust()
             veh = fastsim.vehicle.Vehicle.from_vehdb(1).to_rust()
@@ -1211,7 +1211,7 @@ class TestCoasting(unittest.TestCase):
                     [grade1]*5,
                 ),
                 new_dt=1.0,
-                hold_keys_next={'cycGrade'},
+                hold_keys_next={'grade'},
             )
             c2 = fastsim.cycle.resample(
                 fastsim.cycle.make_cycle(
@@ -1220,7 +1220,7 @@ class TestCoasting(unittest.TestCase):
                     [grade2]*5,
                 ),
                 new_dt=1.0,
-                hold_keys_next={'cycGrade'},
+                hold_keys_next={'grade'},
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2]))
@@ -1256,7 +1256,7 @@ class TestCoasting(unittest.TestCase):
                     [grade1]*5,
                 ),
                 new_dt=1.0,
-                hold_keys_next={'cycGrade'},
+                hold_keys_next={'grade'},
             )
             c2 = fastsim.cycle.resample(
                 fastsim.cycle.make_cycle(
@@ -1265,7 +1265,7 @@ class TestCoasting(unittest.TestCase):
                     [grade2]*5,
                 ),
                 new_dt=1.0,
-                hold_keys_next={'cycGrade'},
+                hold_keys_next={'grade'},
             )
             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             cyc = fastsim.cycle.Cycle.from_dict(fastsim.cycle.concat([c1, c2])).to_rust()
