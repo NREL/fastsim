@@ -112,15 +112,24 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn __copy__(&self) -> Self {self.clone()}
         pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
 
-        // Enable pickling, requires __getnewargs__ method in each struct
-        pub fn __setstate__(&mut self, state: Vec<u8>) -> PyResult<()> {
-            *self = deserialize(&state).unwrap();
-            Ok(())
-        }
-        pub fn __getstate__(&self) -> PyResult<Vec<u8>> {
-            Ok(serialize(self).unwrap())
-        }
+        // // Enable pickling, requires __getnewargs__ method in each struct
+        // pub fn __setstate__(&mut self, state: Vec<u8>) -> PyResult<()> {
+        //     *self = deserialize(&state).unwrap();
+        //     Ok(())
+        // }
+        // pub fn __getstate__(&self) -> PyResult<Vec<u8>> {
+        //     // Ok(serialize(&self).unwrap())
+        //     Ok(PyBytes::new(py, &serialize(&self).unwrap()))
+        // }
         
+        pub fn to_bincode<'py>(&self, py: Python<'py>) -> PyResult<&'py PyBytes> {
+            Ok(PyBytes::new(py, &serialize(&self).unwrap()))
+        }
+        #[classmethod]
+        pub fn from_bincode(_cls: &PyType, encoded: &PyBytes) -> PyResult<Self> {
+            Ok(deserialize(encoded.as_bytes()).unwrap())
+        }
+
         pub fn to_json(&self) -> PyResult<String> {
             Ok(serde_json::to_string(&self).unwrap())
         }

@@ -5,7 +5,7 @@ use ndarray::{Array, Array1};
 extern crate pyo3;
 use pyo3::prelude::*;
 use pyo3::exceptions::PyAttributeError;
-use pyo3::types::{PyType, PyDict};
+use pyo3::types::{PyType, PyDict, PyBytes};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::PathBuf;

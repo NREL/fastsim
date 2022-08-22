@@ -2,14 +2,14 @@
 
 extern crate pyo3;
 use crate::proc_macros::add_pyo3_api;
+use bincode::{deserialize, serialize};
 use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyType};
+use pyo3::types::{PyBytes, PyDict, PyType};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
-use bincode::{deserialize, serialize};
 
 /// Unit conversions
 pub const MPH_PER_MPS: f64 = 2.2369;
@@ -30,7 +30,7 @@ pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
     pub fn __new__() -> Self {
         Self::default()
     }
-    
+
     pub fn __getnewargs__(&self) {
         todo!();
     }

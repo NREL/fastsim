@@ -11,7 +11,7 @@ extern crate pyo3;
 use bincode::{deserialize, serialize};
 use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyType};
+use pyo3::types::{PyBytes, PyDict, PyType};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
