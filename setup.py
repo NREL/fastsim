@@ -25,7 +25,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fastsim",
-    version="2.0.5",
+    version="2.0.6",
     author="MBAP Group",
     author_email="fastsim@nrel.gov",
     description="Tool for modeling vehicle powertrains",
@@ -49,7 +49,8 @@ setuptools.setup(
         "matplotlib>=3.3",
         "numpy>=1.18",
         "seaborn>=0.10",
-        "pymoo==0.6"
+        "pymoo==0.6",
+        "typing_extensions",
     ],
     # rust extension
     zip_safe=False,

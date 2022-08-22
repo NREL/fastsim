@@ -1,11 +1,7 @@
 //! Module containing FASTSim parameters.
 
 use crate::proc_macros::add_pyo3_api;
-use serde::{Deserialize, Serialize};
-use std::error::Error;
-use std::fs::File;
-use std::path::PathBuf;
-
+use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
@@ -36,6 +32,10 @@ pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
     #[pyo3(name = "set_fuel_lhv_kj_per_kg")]
     pub fn set_fuel_lhv_kj_per_kg_py(&mut self, fuel_lhv_kj_per_kg: f64) {
         self.set_fuel_lhv_kj_per_kg(fuel_lhv_kj_per_kg);
+    }
+    
+    pub fn __getnewargs__(&self) {
+        todo!();
     }
 )]
 pub struct RustPhysicalProperties {

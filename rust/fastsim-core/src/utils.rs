@@ -1,9 +1,8 @@
 //! Module containing miscellaneous utility functions.
 
-extern crate ndarray;
-use ndarray::{array, concatenate, s, Array1, Axis};
 use std::collections::HashSet;
 
+use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
@@ -165,117 +164,34 @@ pub fn interpolate(
 }
 
 #[cfg(feature = "pyo3")]
-macro_rules! impl_pyo3_arr_methods {
-    ($arrstruct:ident, $dtype:ident) => {
-        #[pymethods]
-        impl $arrstruct {
-            pub fn __repr__(&self) -> String {
-                format!("RustArray({:?})", self.0)
-            }
-            pub fn __str__(&self) -> String {
-                format!("{:?}", self.0)
-            }
-            pub fn __getitem__(&self, idx: i32) -> PyResult<$dtype> {
-                if idx >= self.0.len() as i32 {
-                  Err(PyIndexError::new_err("Index is out of bounds"))
-                } else if idx >= 0 {
-                  Ok(self.0[idx as usize])
-                } else {
-                  Ok(self.0[self.0.len() + idx as usize])
-                }
-              }
-            pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
-                Err(PyNotImplementedError::new_err(
-                    "Setting value at index is not implemented. 
-                    Run `tolist` method, modify value at index, and 
-                    then set entire array.",
-                ))
-            }
-            pub fn __len__(&self) -> PyResult<usize> {
-                Ok(self.0.len())
-            }
-            pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
-                Ok(self.0.to_vec())
-            }
-            pub fn __list__(&self) -> PyResult<Vec<$dtype>> {
-                Ok(self.0.to_vec())
-            }
-        }
-        impl $arrstruct {
-            pub fn new(value: Array1<$dtype>) -> Self {
-                Self(value)
-            }
-        }
-    };
-}
-
-#[cfg(feature = "pyo3")]
-macro_rules! impl_pyo3_vec_methods {
-    ($vecstruct:ident, $dtype:ident) => {
-        #[pymethods]
-        impl $vecstruct {
-            pub fn __repr__(&self) -> String {
-                format!("RustArray({:?})", self.0)
-            }
-            pub fn __str__(&self) -> String {
-                format!("{:?}", self.0)
-            }
-            pub fn __getitem__(&self, idx: i32) -> PyResult<$dtype> {
-                if idx >= self.0.len() as i32 {
-                  Err(PyIndexError::new_err("Index is out of bounds"))
-                } else if idx >= 0 {
-                  Ok(self.0[idx as usize])
-                } else {
-                  Ok(self.0[self.0.len() + idx as usize])
-                }
-              }
-            pub fn __setitem__(&mut self, _idx: usize, _new_value: $dtype) -> PyResult<()> {
-                Err(PyNotImplementedError::new_err(
-                    "Setting value at index is not implemented. 
-                    Run `tolist` method, modify value at index, and 
-                    then set entire vector.",
-                ))
-            }
-            pub fn tolist(&self) -> PyResult<Vec<$dtype>> {
-                Ok(self.0.clone())
-            }
-            pub fn __list__(&self) -> PyResult<Vec<$dtype>> {
-                Ok(self.0.clone())
-            }
-            pub fn __len__(&self) -> PyResult<usize> {
-                Ok(self.0.len())
-            }
-        }
-        impl $vecstruct {
-            pub fn new(value: Vec<$dtype>) -> Self {
-                Self(value.to_vec())
-            }
-        }
-    };
-}
-
-#[cfg(feature = "pyo3")]
 pub mod array_wrappers {
+    use proc_macros::add_pyo3_api;
+
     use super::*;
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[pyclass]
+    #[add_pyo3_api]
+    #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayU32(Array1<u32>);
-    impl_pyo3_arr_methods!(Pyo3ArrayU32, u32);
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[pyclass]
+    #[add_pyo3_api]
+    #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
+    pub struct Pyo3ArrayI32(Array1<i32>);
+
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    #[add_pyo3_api]
+    #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3ArrayF64(Array1<f64>);
-    impl_pyo3_arr_methods!(Pyo3ArrayF64, f64);
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[pyclass]
+    #[add_pyo3_api]
+    #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayBool(Array1<bool>);
-    impl_pyo3_arr_methods!(Pyo3ArrayBool, bool);
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[pyclass]
+    #[add_pyo3_api]
+    #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3VecF64(Vec<f64>);
-    impl_pyo3_vec_methods!(Pyo3VecF64, f64);
 }
 
 #[cfg(feature = "pyo3")]

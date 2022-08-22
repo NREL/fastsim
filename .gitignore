@@ -13,3 +13,4 @@ dist
 *.so
 *.pyd
 *pymoo_res*
+*env/

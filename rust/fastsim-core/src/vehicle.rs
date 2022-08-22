@@ -1,15 +1,7 @@
 //! Module containing vehicle struct and related functions.
 
-extern crate ndarray;
-use ndarray::{Array, Array1};
-use serde::{Deserialize, Serialize};
-use std::error::Error;
-use std::fs::File;
-use std::path::PathBuf;
-
-//use crate::utils::{Array1_serialize, deser_to_Array1};
-
 // local
+use crate::imports::*;
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
@@ -259,6 +251,10 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
         )
     }
 
+    pub fn __getnewargs__(&self) {
+        todo!();
+    }
+
     #[pyo3(name = "set_veh_mass")]
     pub fn set_veh_mass_py(&mut self) {
         self.set_veh_mass()
@@ -319,10 +315,6 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
     pub fn to_rust(&self) -> PyResult<Self> {
-        Ok(self.clone())
-    }
-
-    pub fn copy(&self) -> PyResult<Self> {
         Ok(self.clone())
     }
 )]

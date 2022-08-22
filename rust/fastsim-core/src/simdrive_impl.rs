@@ -1,6 +1,10 @@
 //! Module containing implementations for [simdrive](super::simdrive).
 
-use super::cycle::{accel_array_for_constant_jerk, calc_constant_jerk_trajectory, RustCycle};
+use super::cycle::{
+    accel_array_for_constant_jerk, accel_for_constant_jerk, calc_constant_jerk_trajectory,
+    detect_passing, trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance,
+    PassingInfo, RustCycle,
+};
 use super::params;
 use super::utils::{
     add_from, arrmax, first_grtr, max, min, ndarrcumsum, ndarrmax, ndarrmin, ndarrunique,
@@ -16,6 +20,24 @@ use std::fs::File;
 use std::path::PathBuf;
 
 pub const SIMDRIVE_DEFAULT_FOLDER: &str = "fastsim/resources";
+
+struct RendezvousTrajectory {
+    pub found_trajectory: bool,
+    pub idx: usize,
+    pub n: usize,
+    pub full_brake_steps: usize,
+    pub jerk_m_per_s3: f64,
+    pub accel0_m_per_s2: f64,
+    pub accel_spread: f64,
+}
+
+struct CoastTrajectory {
+    pub found_trajectory: bool,
+    pub distance_to_stop_via_coast_m: f64,
+    pub start_idx: usize,
+    pub speeds_m_per_s: Option<Vec<f64>>,
+    pub distance_to_brake_m: Option<f64>,
+}
 
 impl RustSimDrive {
     pub fn new(cyc: RustCycle, veh: RustVehicle) -> Self {
@@ -138,6 +160,7 @@ impl RustSimDrive {
         let trace_miss_dist_frac: f64 = 0.0;
         let trace_miss_time_frac: f64 = 0.0;
         let trace_miss_speed_mps: f64 = 0.0;
+        let coast_delay_index = Array::zeros(cyc_len);
         RustSimDrive {
             hev_sim_count,
             veh,
@@ -260,6 +283,7 @@ impl RustSimDrive {
             trace_miss_time_frac,
             trace_miss_speed_mps,
             orphaned: false,
+            coast_delay_index,
         }
     }
 
@@ -374,11 +398,15 @@ impl RustSimDrive {
         self.cur_max_roadway_chg_kw = Array::zeros(cyc_len);
         self.trace_miss_iters = Array::zeros(cyc_len);
         self.newton_iters = Array::zeros(cyc_len);
+        self.coast_delay_index = Array::zeros(cyc_len);
+        self.impose_coast = Array::from_vec(vec![false; cyc_len]);
     }
 
     /// Provides the gap-with lead vehicle from start to finish
     pub fn gap_to_lead_vehicle_m(&self) -> Array1<f64> {
-        let mut gaps_m = ndarrcumsum(&self.cyc0.dist_v2_m()) - ndarrcumsum(&self.cyc.dist_v2_m());
+        // TODO: consider basing on dist_m?
+        let mut gaps_m = ndarrcumsum(&trapz_step_distances(&self.cyc0))
+            - ndarrcumsum(&trapz_step_distances(&self.cyc));
         if self.sim_params.follow_allow {
             gaps_m += self.sim_params.idm_minimum_gap_m;
         }
@@ -509,11 +537,67 @@ impl RustSimDrive {
         self.mps_ach[0] = self.cyc0.mps[0];
         self.mph_ach[0] = self.cyc0.mph()[0];
 
-        if self.sim_params.missed_trace_correction {
+        if self.sim_params.missed_trace_correction
+            || self.sim_params.follow_allow
+            || self.sim_params.coast_allow
+        {
             self.cyc = self.cyc0.clone(); // reset the cycle in case it has been manipulated
         }
         self.i = 1; // time step counter
         Ok(())
+    }
+
+    /// Calculate the next speed by the Intelligent Driver Model
+    /// - i: int, the index
+    /// - a_m_per_s2: number, max acceleration (m/s2)
+    /// - b_m_per_s2: number, max deceleration (m/s2)
+    /// - dt_headway_s: number, the headway between us and the lead vehicle in seconds
+    /// - s0_m: number, the initial gap between us and the lead vehicle in meters
+    /// - v_desired_m_per_s: number, the desired speed in (m/s)
+    /// - delta: number, a shape parameter; typical value is 4.0
+    /// RETURN: number, the next speed (m/s)
+    /// REFERENCE:
+    /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
+    ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
+    ///     DOI: https://doi.org/10.1007/978-3-642-32460-4.
+    pub fn next_speed_by_idm(
+        &mut self,
+        i: usize,
+        a_m_per_s2: f64,
+        b_m_per_s2: f64,
+        dt_headway_s: f64,
+        s0_m: f64,
+        v_desired_m_per_s: f64,
+        delta: f64,
+    ) -> f64 {
+        if v_desired_m_per_s <= 0.0 {
+            return 0.0;
+        }
+        let a_m_per_s2 = a_m_per_s2.abs();
+        let b_m_per_s2 = b_m_per_s2.abs();
+        let dt_headway_s = max(dt_headway_s, 0.0);
+        // we assume the vehicles start out a "minimum gap" apart
+        let s0_m = max(0.0, s0_m);
+        // DERIVED VALUES
+        let sqrt_ab = (a_m_per_s2 * b_m_per_s2).powf(0.5);
+        let v0_m_per_s = self.mps_ach[i - 1];
+        let v0_lead_m_per_s = self.cyc0.mps[i - 1];
+        let dv0_m_per_s = v0_m_per_s - v0_lead_m_per_s;
+        let d0_lead_m: f64 = trapz_step_start_distance(&self.cyc0, i) + s0_m;
+        let d0_m = trapz_step_start_distance(&self.cyc, i);
+        let s_m = max(d0_lead_m - d0_m, 0.01);
+        // IDM EQUATIONS
+        let s_target_m = s0_m
+            + max(
+                0.0,
+                (v0_m_per_s * dt_headway_s) + ((v0_m_per_s * dv0_m_per_s) / (2.0 * sqrt_ab)),
+            );
+        let accel_target_m_per_s2 = a_m_per_s2
+            * (1.0 - ((v0_m_per_s / v_desired_m_per_s).powf(delta)) - ((s_target_m / s_m).powi(2)));
+        max(
+            v0_m_per_s + (accel_target_m_per_s2 * self.cyc.dt_s()[i]),
+            0.0,
+        )
     }
 
     /// Set gap
@@ -525,8 +609,8 @@ impl RustSimDrive {
     /// parameters:
     ///     - v_desired: the desired speed (m/s)
     ///     - delta: number, typical value is 4.0
-    ///     - a:
-    ///     - b:
+    ///     - a: max acceleration, (m/s2)
+    ///     - b: max deceleration, (m/s2)
     /// s = d_lead - d
     /// dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
     /// s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
@@ -536,37 +620,20 @@ impl RustSimDrive {
     ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>
     pub fn set_speed_for_target_gap_using_idm(&mut self, i: usize) {
         // PARAMETERS
-        let delta = self.sim_params.idm_delta;
-        let a_m_per_s2 = self.sim_params.idm_accel_m_per_s2; // acceleration (m/s2)
-        let b_m_per_s2 = self.sim_params.idm_decel_m_per_s2; // deceleration (m/s2)
-        let dt_headway_s = self.sim_params.idm_dt_headway_s;
-        let s0_m = self.sim_params.idm_minimum_gap_m; // we assume vehicle's start out "minimum gap" apart
         let v_desired_m_per_s = if self.sim_params.idm_v_desired_m_per_s > 0.0 {
             self.sim_params.idm_v_desired_m_per_s
         } else {
             ndarrmax(&self.cyc0.mps)
         };
         // DERIVED VALUES
-        let sqrt_ab = (a_m_per_s2 * b_m_per_s2).sqrt();
-        let v0_m_per_s = self.mps_ach[i - 1];
-        let v0_lead_m_per_s = self.cyc0.mps[i - 1];
-        let dv0_m_per_s = v0_m_per_s - v0_lead_m_per_s;
-        let d0_lead_m = self.cyc0.dist_v2_m().slice(s![0..i]).sum() + s0_m;
-        let d0_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
-        let s_m = max(d0_lead_m - d0_m, 0.01);
-        // IDM EQUATIONS
-        let s_target_m = s0_m
-            + max(
-                0.0,
-                (v0_m_per_s * dt_headway_s) + ((v0_m_per_s * dv0_m_per_s) / (2.0 * sqrt_ab)),
-            );
-        let accel_target_m_per_s2 = a_m_per_s2
-            * (1.0
-                - ((v0_m_per_s / v_desired_m_per_s).powf(delta))
-                - ((s_target_m / s_m).powf(2.0)));
-        self.cyc.mps[i] = max(
-            v0_m_per_s + (accel_target_m_per_s2 * self.cyc.dt_s()[i]),
-            0.0,
+        self.cyc.mps[i] = self.next_speed_by_idm(
+            i,
+            self.sim_params.idm_accel_m_per_s2,
+            self.sim_params.idm_decel_m_per_s2,
+            self.sim_params.idm_dt_headway_s,
+            self.sim_params.idm_minimum_gap_m,
+            v_desired_m_per_s,
+            self.sim_params.idm_delta,
         );
     }
 
@@ -578,13 +645,53 @@ impl RustSimDrive {
         self.set_speed_for_target_gap_using_idm(i);
     }
 
+    /// Provides a quick estimate for grade based only on the distance traveled
+    /// at the start of the current step. If the grade is constant over the
+    /// step, this is both quick and accurate.
+    /// NOTE:
+    ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
+    ///     and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+    ///     then returns self.cyc.grade[i]
+    pub fn estimate_grade_for_step(&self, i: usize) -> f64 {
+        if !self.sim_params.coast_allow && !self.sim_params.follow_allow {
+            return self.cyc.grade[i];
+        }
+        self.cyc0
+            .average_grade_over_range(trapz_step_start_distance(&self.cyc, i), 0.0)
+    }
+
+    /// For situations where cyc can deviate from cyc0, this method
+    /// looks up and accurately interpolates what the average grade over
+    /// the step should be.
+    /// If mps_ach is not None, the mps_ach value is used to predict the
+    /// distance traveled over the step.
+    /// NOTE:
+    ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
+    ///     and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+    ///     then returns self.cyc.grade[i]
+    pub fn lookup_grade_for_step(&self, i: usize, mps_ach: Option<f64>) -> f64 {
+        if !self.sim_params.coast_allow && !self.sim_params.follow_allow {
+            return self.cyc.grade[i];
+        }
+        match mps_ach {
+            Some(mps_ach) => self.cyc0.average_grade_over_range(
+                trapz_step_start_distance(&self.cyc, i),
+                0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s()[i],
+            ),
+            None => self.cyc0.average_grade_over_range(
+                trapz_step_start_distance(&self.cyc, i),
+                trapz_distance_for_step(&self.cyc, i),
+            ),
+        }
+    }
+
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
-        if self.sim_params.coast_allow {
-            self.set_coast_speed(self.i)?;
-        }
         if self.sim_params.follow_allow {
             self.set_speed_for_target_gap(self.i);
+        }
+        if self.sim_params.coast_allow {
+            self.set_coast_speed(self.i)?;
         }
         self.solve_step(self.i)?;
 
@@ -596,10 +703,7 @@ impl RustSimDrive {
         // TODO: shouldn't the below code always set cyc? Whether coasting or not?
         if self.sim_params.coast_allow || self.sim_params.follow_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
-            self.cyc.grade[self.i] = self.cyc0.average_grade_over_range(
-                self.cyc.dist_m().slice(s![0..self.i]).sum(),
-                self.cyc.dist_m()[self.i],
-            );
+            self.cyc.grade[self.i] = self.lookup_grade_for_step(self.i, None);
         }
 
         self.i += 1; // increment time step counter
@@ -880,10 +984,7 @@ impl RustSimDrive {
                 self.cyc.mps[i]
             };
 
-            let distance_traveled_m = self.cyc.dist_v2_m().slice(s![0..i]).sum();
-            let grade = self
-                .cyc0
-                .average_grade_over_range(distance_traveled_m, mps_ach * self.cyc.dt_s()[i]);
+            let grade = self.lookup_grade_for_step(i, Some(mps_ach));
 
             self.drag_kw[i] = 0.5
                 * self.props.air_density_kg_per_m3
@@ -993,10 +1094,7 @@ impl RustSimDrive {
             }
             //Cycle is not met
             else {
-                // TODO: Should this be dist_m or dist_v2_m?
-                let distance_traveled_m = self.cyc.dist_m().slice(s![0..i]).sum();
-                let mut grade_estimate =
-                    self.cyc0.average_grade_over_range(distance_traveled_m, 0.0);
+                let mut grade_estimate = self.estimate_grade_for_step(i);
                 let mut grade: f64;
                 let grade_tol = 1e-4;
                 let mut grade_diff = grade_tol + 1.0;
@@ -1105,10 +1203,7 @@ impl RustSimDrive {
                         xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
                         0.0,
                     );
-                    grade_estimate = self.cyc0.average_grade_over_range(
-                        distance_traveled_m,
-                        self.cyc.dt_s()[i] * self.mps_ach[i],
-                    );
+                    grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]));
                     grade_diff = (grade - grade_estimate).abs();
                 }
             }
@@ -1928,6 +2023,156 @@ impl RustSimDrive {
         }
     }
 
+    fn apply_coast_trajectory(&mut self, coast_traj: CoastTrajectory) {
+        if coast_traj.found_trajectory {
+            let num_speeds = match coast_traj.speeds_m_per_s {
+                Some(speeds_m_per_s) => {
+                    for (di, &new_speed) in speeds_m_per_s.iter().enumerate() {
+                        let idx = coast_traj.start_idx + di;
+                        if idx >= self.mps_ach.len() {
+                            break;
+                        }
+                        self.cyc.mps[idx] = new_speed;
+                    }
+                    speeds_m_per_s.len()
+                }
+                None => 0,
+            };
+            let (_, n) = self.cyc.modify_with_braking_trajectory(
+                self.sim_params.coast_brake_accel_m_per_s2,
+                coast_traj.start_idx + num_speeds,
+                coast_traj.distance_to_brake_m,
+            );
+            for di in 0..(self.cyc0.mps.len() - coast_traj.start_idx) {
+                let idx = coast_traj.start_idx + di;
+                self.impose_coast[idx] = di < num_speeds + n;
+            }
+        }
+    }
+
+    /// Generate a coast trajectory without actually modifying the cycle.
+    /// This can be used to calculate the distance to stop via coast using
+    /// actual time-stepping and dynamically changing grade.
+    fn generate_coast_trajectory(&self, i: usize) -> CoastTrajectory {
+        let v0 = self.mps_ach[i - 1];
+        let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
+        let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
+        assert![a_brake <= 0.0];
+        let ds = ndarrcumsum(&trapz_step_distances(&self.cyc0));
+        let gs = self.cyc0.grade.clone();
+        let d0 = trapz_step_start_distance(&self.cyc, i);
+        let mut distances_m: Vec<f64> = vec![];
+        let mut grade_by_distance: Vec<f64> = vec![];
+        for idx in 0..ds.len() {
+            if ds[idx] >= d0 {
+                distances_m.push(ds[idx] - d0);
+                grade_by_distance.push(gs[idx])
+            }
+        }
+        if distances_m.is_empty() {
+            return CoastTrajectory {
+                found_trajectory: false,
+                distance_to_stop_via_coast_m: 0.0,
+                start_idx: 0,
+                speeds_m_per_s: None,
+                distance_to_brake_m: None,
+            };
+        }
+        let distances_m = Array::from_vec(distances_m);
+        let grade_by_distance = Array::from_vec(grade_by_distance);
+        // distance traveled while stopping via friction-braking (i.e., distance to brake)
+        if v0 <= v_brake {
+            return CoastTrajectory {
+                found_trajectory: true,
+                distance_to_stop_via_coast_m: -0.5 * v0 * v0 / a_brake,
+                start_idx: i,
+                speeds_m_per_s: None,
+                distance_to_brake_m: None,
+            };
+        }
+        let dtb = -0.5 * v_brake * v_brake / a_brake;
+        let mut d = 0.0;
+        let d_max = distances_m[distances_m.len() - 1] - dtb;
+        let unique_grades = ndarrunique(&grade_by_distance);
+        let unique_grade: Option<f64> = if unique_grades.len() == 1 {
+            Some(unique_grades[0])
+        } else {
+            None
+        };
+        let has_unique_grade: bool = unique_grade.is_some();
+        let max_iter = 2000;
+        let iters_per_step = 2;
+        let mut new_speeds_m_per_s: Vec<f64> = vec![];
+        let mut v = v0;
+        let mut iter = 0;
+        let mut idx = i;
+        let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
+        while v > v_brake && v >= 0.0 && d <= d_max && iter < max_iter && idx < self.mps_ach.len() {
+            let dt_s = self.cyc0.dt_s()[idx];
+            let mut gr = match unique_grade {
+                Some(g) => g,
+                None => self.cyc0.average_grade_over_range(d + d0, 0.0),
+            };
+            let mut k = self.calc_dvdd(v, gr);
+            let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
+            let mut vavg = 0.5 * (v + v_next);
+            let mut dd: f64;
+            for _ in 0..iters_per_step {
+                k = self.calc_dvdd(vavg, gr);
+                v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
+                vavg = 0.5 * (v + v_next);
+                dd = vavg * dt_s;
+                gr = match unique_grade {
+                    Some(g) => g,
+                    None => self.cyc0.average_grade_over_range(d + d0, dd),
+                };
+            }
+            if k >= 0.0 && has_unique_grade {
+                // there is no solution for coastdown -- speed will never decrease
+                return CoastTrajectory {
+                    found_trajectory: false,
+                    distance_to_stop_via_coast_m: 0.0,
+                    start_idx: 0,
+                    speeds_m_per_s: None,
+                    distance_to_brake_m: None,
+                };
+            }
+            if v_next <= v_brake {
+                break;
+            }
+            vavg = 0.5 * (v + v_next);
+            dd = vavg * dt_s;
+            let dtb = -0.5 * v_next * v_next / a_brake;
+            d += dd;
+            new_speeds_m_per_s.push(v_next);
+            v = v_next;
+            if d + dtb > dts0 {
+                break;
+            }
+            iter += 1;
+            idx += 1;
+        }
+        if iter < max_iter && idx < self.mps_ach.len() {
+            let dtb = -0.5 * v * v / a_brake;
+            let dtb_target = min(max(dts0 - d, 0.5 * dtb), 2.0 * dtb);
+            let dtsc = d + dtb_target;
+            return CoastTrajectory {
+                found_trajectory: true,
+                distance_to_stop_via_coast_m: dtsc,
+                start_idx: i,
+                speeds_m_per_s: Some(new_speeds_m_per_s),
+                distance_to_brake_m: Some(dtb_target),
+            };
+        }
+        CoastTrajectory {
+            found_trajectory: false,
+            distance_to_stop_via_coast_m: 0.0,
+            start_idx: 0,
+            speeds_m_per_s: None,
+            distance_to_brake_m: None,
+        }
+    }
+
     /// Calculate the distance to stop via coasting in meters.
     /// - i: non-negative-integer, the current index
     /// RETURN: non-negative-number or -1.0
@@ -1938,40 +2183,38 @@ impl RustSimDrive {
     ///     would freely coast if unobstructed. Accounts for grade between
     ///     the current point and end-point
     fn calc_distance_to_stop_coast_v2(&self, i: usize) -> f64 {
-        let tol = 1e-6;
         let not_found = -1.0;
         let v0 = self.cyc.mps[i - 1];
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
-        let ds = ndarrcumsum(&self.cyc0.dist_v2_m());
+        let ds = ndarrcumsum(&trapz_step_distances(&self.cyc0));
         let gs = self.cyc0.grade.clone();
-        let d0 = ds[i - 1];
-        let dt_s = self.cyc0.dt_s()[i];
-        let mut distances_m = vec![];
-        let mut grade_by_distance = vec![];
+        assert!(
+            ds.len() == gs.len(),
+            "Assumed length of ds and gs the same but actually ds.len():{} and gs.len():{}",
+            ds.len(),
+            gs.len()
+        );
+        let d0 = trapz_step_start_distance(&self.cyc, i);
+        let mut grade_by_distance: Vec<f64> = vec![];
         for idx in 0..ds.len() {
-            if ds[idx] > d0 {
-                distances_m.push(ds[idx] - d0);
-                grade_by_distance.push(gs[idx])
+            if ds[idx] >= d0 {
+                grade_by_distance.push(gs[idx]);
             }
         }
-        let distances_m = Array::from_vec(distances_m);
         let grade_by_distance = Array::from_vec(grade_by_distance);
         let veh_mass_kg = self.veh.veh_kg;
         let air_density_kg_per_m3 = self.props.air_density_kg_per_m3;
         let cdfa_m2 = self.veh.drag_coef * self.veh.frontal_area_m2;
         let rrc = self.veh.wheel_rr_coef;
         let gravity_m_per_s2 = self.props.a_grav_mps2;
-        let mut v = v0;
         // distance traveled while stopping via friction-braking (i.e., distance to brake)
         let dtb = -0.5 * v_brake * v_brake / a_brake;
         if v0 <= v_brake {
             return -0.5 * v0 * v0 / a_brake;
         }
-        let mut d = 0.0;
-        let d_max = distances_m[distances_m.len() - 1];
         let unique_grades = ndarrunique(&grade_by_distance);
-        if !unique_grades.is_empty() {
+        if unique_grades.len() == 1 {
             // if there is only one grade, there may be a closed-form solution
             let unique_grade = unique_grades[0];
             let theta = unique_grade.atan();
@@ -1993,43 +2236,9 @@ impl RustSimDrive {
                 return d + dtb;
             }
         }
-        let mut iter = 0;
-        let max_iter = 2000;
-        let iters_per_step = 2;
-        while v > v_brake && v >= 0.0 && d <= d_max && iter < max_iter {
-            let gr = if !unique_grades.is_empty() {
-                unique_grades[0]
-            } else {
-                // interpolate(&d, &distances_m, &grade_by_distance, true)
-                self.cyc0.average_grade_over_range(d0, d0)
-            };
-            let mut k = self.calc_dvdd(v, gr);
-            let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
-            let mut vavg = 0.5 * (v + v_next);
-            for _j in 0..iters_per_step {
-                k = self.calc_dvdd(vavg, gr);
-                v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
-                vavg = 0.5 * (v + v_next);
-            }
-            if k >= 0.0 && !unique_grades.is_empty() {
-                // there is no solution for coastdown -- speed will never decrease
-                return not_found;
-            }
-            let stop = v_next <= v_brake;
-            if stop {
-                v_next = v_brake;
-            }
-            vavg = 0.5 * (v + v_next);
-            let dd = vavg * dt_s;
-            d += dd;
-            v = v_next;
-            iter += 1;
-            if stop {
-                break;
-            }
-        }
-        if (v - v_brake).abs() < tol {
-            d + dtb
+        let ct = self.generate_coast_trajectory(i);
+        if ct.found_trajectory {
+            ct.distance_to_stop_via_coast_m
         } else {
             not_found
         }
@@ -2041,28 +2250,31 @@ impl RustSimDrive {
     /// Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
     /// - if distance to coast from start of step is <= distance to next stop
     /// - AND distance to coast from end of step (using prescribed speed) is > distance to next stop
+    /// - ALSO, vehicle must have been at or above the coast brake start speed at beginning of step
+    /// - AND, must be at least 4 x distances-to-break away
     fn should_impose_coast(&self, i: usize) -> bool {
-        let do_coast: bool;
         if self.sim_params.coast_start_speed_m_per_s > 0.0 {
-            do_coast = self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s;
-        } else {
-            let d0 = self.cyc0.dist_v2_m().slice(s![0..i]).sum();
-            // distance to stop by coasting from start of step (i-1)
-            // dtsc0 = calc_distance_to_stop_coast(v0, dvdd, brake_start_speed_m__s, brake_accel_m__s2)
-            let dtsc0 = self.calc_distance_to_stop_coast_v2(i);
-            if dtsc0 < 0.0 {
-                do_coast = false;
-            } else {
-                // distance to next stop (m)
-                let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
-                do_coast = dtsc0 >= dts0;
-            }
+            return self.cyc.mps[i] >= self.sim_params.coast_start_speed_m_per_s;
         }
-        do_coast
+        let v0 = self.mps_ach[i - 1];
+        if v0 < self.sim_params.coast_brake_start_speed_m_per_s {
+            return false;
+        }
+        // distance to stop by coasting from start of step (i-1)
+        let dtsc0 = self.calc_distance_to_stop_coast_v2(i);
+        if dtsc0 < 0.0 {
+            return false;
+        }
+        // distance to next stop (m)
+        let d0 = trapz_step_start_distance(&self.cyc, i);
+        let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
+        let dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2;
+        dtsc0 >= dts0 && dts0 >= (4.0 * dtb)
     }
 
-    /// Calculate next rendezvous trajectory.
-    /// - i: non-negative integer, the index into cyc for the start-of-step
+    /// Calculate next rendezvous trajectory for eco-coasting
+    /// - i: non-negative integer, the index into cyc for the end of start-of-step
+    ///     (i.e., the step that may be modified; should be i)
     /// - min_accel_m__s2: number, the minimum acceleration permitted (m/s2)
     /// - max_accel_m__s2: number, the maximum acceleration permitted (m/s2)
     /// RETURN: (Tuple
@@ -2084,7 +2296,7 @@ impl RustSimDrive {
         let v0 = self.cyc.mps[i - 1];
         let brake_start_speed_m_per_s = self.sim_params.coast_brake_start_speed_m_per_s;
         let brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2;
-        let time_horizon_s = self.sim_params.coast_time_horizon_for_adjustment_s;
+        let time_horizon_s = max(self.sim_params.coast_time_horizon_for_adjustment_s, 1.0);
         // distance_horizon_m = 1000.0
         let not_found_n: usize = 0;
         let not_found_jerk_m_per_s3: f64 = 0.0;
@@ -2105,11 +2317,11 @@ impl RustSimDrive {
             (min_accel_m_per_s2, max_accel_m_per_s2)
         };
         let num_samples = self.cyc.mps.len();
-        let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum();
+        let d0 = trapz_step_start_distance(&self.cyc, i);
         // a_proposed = (v1 - v0) / dt
         // distance to stop from start of time-step
         let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
-        if dts0 < 1e-6 {
+        if dts0 < 0.0 {
             // no stop to coast towards or we're there...
             return not_found;
         }
@@ -2119,34 +2331,36 @@ impl RustSimDrive {
             -0.5 * brake_start_speed_m_per_s * brake_start_speed_m_per_s / brake_accel_m_per_s2;
         // distance to brake initiation from start of time-step (m)
         let dtbi0 = dts0 - dtb;
+        if dtbi0 < 0.0 {
+            return not_found;
+        }
         // Now, check rendezvous trajectories
-        if time_horizon_s > 0.0 {
-            let mut step_idx = i;
-            let mut dt_plan = 0.0;
-            let mut r_best_found = false;
-            let mut r_best_n = 0;
-            let mut r_best_jerk_m_per_s3 = 0.0;
-            let mut r_best_accel_m_per_s2 = 0.0;
-            let mut r_best_accel_spread_m_per_s2 = 0.0;
-            while dt_plan <= time_horizon_s && step_idx < num_samples {
-                dt_plan += self.cyc0.dt_s()[step_idx];
-                let step_ahead = step_idx - (i - 1);
-                if step_ahead == 1 {
-                    // for brake init rendezvous
-                    let accel = (brake_start_speed_m_per_s - v0) / dt;
-                    let v1 = max(0.0, v0 + accel * dt);
-                    let dd_proposed = ((v0 + v1) / 2.0) * dt;
-                    if (v1 - brake_start_speed_m_per_s).abs() < tol
-                        && (dtbi0 - dd_proposed).abs() < tol
-                    {
-                        r_best_found = true;
-                        r_best_n = 1;
-                        r_best_jerk_m_per_s3 = 0.0;
-                        r_best_accel_m_per_s2 = accel;
-                        break;
-                    }
-                } else if dtbi0 >= tol {
-                    // rendezvous trajectory for brake-start -- assumes fixed time-steps
+        let mut step_idx = i;
+        let mut dt_plan = 0.0;
+        let mut r_best_found = false;
+        let mut r_best_n = 0;
+        let mut r_best_jerk_m_per_s3 = 0.0;
+        let mut r_best_accel_m_per_s2 = 0.0;
+        let mut r_best_accel_spread_m_per_s2 = 0.0;
+        while dt_plan <= time_horizon_s && step_idx < num_samples {
+            dt_plan += self.cyc0.dt_s()[step_idx];
+            let step_ahead = step_idx - (i - 1);
+            if step_ahead == 1 {
+                // for brake init rendezvous
+                let accel = (brake_start_speed_m_per_s - v0) / dt;
+                let v1 = max(0.0, v0 + accel * dt);
+                let dd_proposed = ((v0 + v1) / 2.0) * dt;
+                if (v1 - brake_start_speed_m_per_s).abs() < tol && (dtbi0 - dd_proposed).abs() < tol
+                {
+                    r_best_found = true;
+                    r_best_n = 1;
+                    r_best_jerk_m_per_s3 = 0.0;
+                    r_best_accel_m_per_s2 = accel;
+                    break;
+                }
+            } else {
+                // rendezvous trajectory for brake-start -- assumes fixed time-steps
+                if dtbi0 > 0.0 {
                     let (r_bi_jerk_m_per_s3, r_bi_accel_m_per_s2) = calc_constant_jerk_trajectory(
                         step_ahead,
                         0.0,
@@ -2182,18 +2396,239 @@ impl RustSimDrive {
                         }
                     }
                 }
-                step_idx += 1;
             }
-            if r_best_found {
-                return (
-                    r_best_found,
-                    r_best_n,
-                    r_best_jerk_m_per_s3,
-                    r_best_accel_m_per_s2,
-                );
-            }
+            step_idx += 1;
+        }
+        if r_best_found {
+            return (
+                r_best_found,
+                r_best_n,
+                r_best_jerk_m_per_s3,
+                r_best_accel_m_per_s2,
+            );
         }
         not_found
+    }
+
+    /// Coast Delay allows us to represent coasting to a stop when the lead
+    /// vehicle has already moved on from that stop.  In this case, the coasting
+    /// vehicle need not dwell at this or any stop while it is lagging behind
+    /// the lead vehicle in distance. Instead, the vehicle comes to a stop and
+    /// resumes mimicing the lead-vehicle trace at the first time-step the
+    /// lead-vehicle moves past the stop-distance. This index is the "coast delay index".
+    ///
+    /// Arguments
+    /// ---------
+    /// - i: integer, the step index
+    /// NOTE: Resets the coast_delay_index to 0 and calculates and sets the next
+    /// appropriate coast_delay_index if appropriate
+    fn set_coast_delay(&mut self, i: usize) {
+        let speed_tol = 0.01; // m/s
+        let dist_tol = 0.1; // meters
+        for idx in i..self.cyc.time_s.len() {
+            self.coast_delay_index[idx] = 0; // clear all future coast-delays
+        }
+        let mut coast_delay: Option<i32> = None;
+        if !self.sim_params.follow_allow && self.cyc.mps[i] < speed_tol {
+            let d0 = trapz_step_start_distance(&self.cyc, i);
+            let d0_lv = trapz_step_start_distance(&self.cyc0, i);
+            let dtlv0 = d0_lv - d0;
+            if dtlv0.abs() > dist_tol {
+                let mut d_lv = 0.0;
+                let mut min_dtlv: Option<f64> = None;
+                for (idx, (&dd, &v)) in trapz_step_distances(&self.cyc0)
+                    .iter()
+                    .zip(self.cyc0.mps.iter())
+                    .enumerate()
+                {
+                    d_lv += dd;
+                    let dtlv = (d_lv - d0).abs();
+                    if v < speed_tol && (min_dtlv.is_none() || dtlv <= min_dtlv.unwrap()) {
+                        if min_dtlv.is_none()
+                            || dtlv < min_dtlv.unwrap()
+                            || (d0 < d0_lv && min_dtlv.unwrap() == dtlv)
+                        {
+                            let i_i32 = i32::try_from(i).unwrap();
+                            let idx_i32 = i32::try_from(idx).unwrap();
+                            coast_delay = Some(i_i32 - idx_i32);
+                        }
+                        min_dtlv = Some(dtlv);
+                    }
+                    if min_dtlv.is_some() && dtlv > min_dtlv.unwrap() {
+                        break;
+                    }
+                }
+            }
+        }
+        match coast_delay {
+            Some(cd) => {
+                if cd < 0 {
+                    let mut new_cd = cd;
+                    for idx in i..self.cyc0.mps.len() {
+                        self.coast_delay_index[idx] = new_cd;
+                        new_cd += 1;
+                        if new_cd == 0 {
+                            break;
+                        }
+                    }
+                } else {
+                    for idx in i..self.cyc0.mps.len() {
+                        self.coast_delay_index[idx] = cd;
+                    }
+                }
+            }
+            None => (),
+        }
+    }
+
+    /// Prevent collision between the vehicle in cyc and the one in cyc0.
+    /// If a collision will take place, reworks the cyc such that a rendezvous occurs instead.
+    /// Arguments
+    /// - i: int, index for consideration
+    /// - passing_tol_m: None | float, tolerance for how far we have to go past the lead vehicle to be considered "passing"
+    /// RETURN: Bool, True if cyc was modified
+    fn prevent_collisions(&mut self, i: usize, passing_tol_m: Option<f64>) -> bool {
+        let passing_tol_m = passing_tol_m.unwrap_or(1.0);
+        let collision: PassingInfo = detect_passing(&self.cyc, &self.cyc0, i, Some(passing_tol_m));
+        if !collision.has_collision {
+            return false;
+        }
+        let mut best: RendezvousTrajectory = RendezvousTrajectory {
+            found_trajectory: false,
+            idx: 0,
+            n: 0,
+            full_brake_steps: 0,
+            jerk_m_per_s3: 0.0,
+            accel0_m_per_s2: 0.0,
+            accel_spread: 0.0,
+        };
+        let a_brake_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2;
+        assert!(
+            a_brake_m_per_s2 < 0.0,
+            "brake acceleration must be negative; got {} m/s2",
+            a_brake_m_per_s2
+        );
+        for full_brake_steps in 0..4 {
+            for di in 0..(self.mps_ach.len() - i) {
+                let idx = i + di;
+                if !self.impose_coast[idx] {
+                    if idx == i {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
+                let n = collision.idx - idx + 1 - full_brake_steps;
+                if n < 2 {
+                    break;
+                }
+                if (idx - 1 + full_brake_steps) >= self.cyc.time_s.len() {
+                    break;
+                }
+                let dt = collision.time_step_duration_s;
+                let v_start_m_per_s = self.cyc.mps[idx - 1];
+                let dt_full_brake =
+                    self.cyc.time_s[idx - 1 + full_brake_steps] - self.cyc.time_s[idx - 1];
+                let dv_full_brake = dt_full_brake * a_brake_m_per_s2;
+                let v_start_jerk_m_per_s = max(v_start_m_per_s + dv_full_brake, 0.0);
+                let dd_full_brake = 0.5 * (v_start_m_per_s + v_start_jerk_m_per_s) * dt_full_brake;
+                let d_start_m = trapz_step_start_distance(&self.cyc, idx) + dd_full_brake;
+                if collision.distance_m <= d_start_m {
+                    continue;
+                }
+                let (jerk_m_per_s3, accel0_m_per_s2) = calc_constant_jerk_trajectory(
+                    n,
+                    d_start_m,
+                    v_start_jerk_m_per_s,
+                    collision.distance_m,
+                    collision.speed_m_per_s,
+                    dt,
+                );
+                let mut accels_m_per_s2: Vec<f64> = vec![];
+                let mut trace_accels_m_per_s2: Vec<f64> = vec![];
+                for ni in 0..n {
+                    if (ni + idx + full_brake_steps) >= self.cyc.time_s.len() {
+                        break;
+                    }
+                    accels_m_per_s2.push(accel_for_constant_jerk(
+                        ni,
+                        accel0_m_per_s2,
+                        jerk_m_per_s3,
+                        dt,
+                    ));
+                    trace_accels_m_per_s2.push(
+                        (self.cyc.mps[ni + idx + full_brake_steps]
+                            - self.cyc.mps[ni + idx - 1 + full_brake_steps])
+                            / self.cyc.dt_s()[ni + idx + full_brake_steps],
+                    );
+                }
+                let all_sub_coast: bool = trace_accels_m_per_s2
+                    .clone()
+                    .into_iter()
+                    .zip(accels_m_per_s2.clone().into_iter())
+                    .fold(
+                        true,
+                        |all_sc_flag: bool, (trace_accel, accel): (f64, f64)| {
+                            if !all_sc_flag {
+                                return all_sc_flag;
+                            }
+                            trace_accel >= accel
+                        },
+                    );
+                let accels_ndarr = Array1::from(accels_m_per_s2.clone());
+                let min_accel_m_per_s2 = ndarrmin(&accels_ndarr);
+                let max_accel_m_per_s2 = ndarrmax(&accels_ndarr);
+                let accept = all_sub_coast;
+                let accel_spread = (max_accel_m_per_s2 - min_accel_m_per_s2).abs();
+                if accept && (!best.found_trajectory || accel_spread < best.accel_spread) {
+                    best = RendezvousTrajectory {
+                        found_trajectory: true,
+                        idx,
+                        n,
+                        full_brake_steps,
+                        jerk_m_per_s3,
+                        accel0_m_per_s2,
+                        accel_spread,
+                    };
+                }
+            }
+            if best.found_trajectory {
+                break;
+            }
+        }
+        if !best.found_trajectory {
+            let new_passing_tol_m = if passing_tol_m < 10.0 {
+                10.0
+            } else {
+                passing_tol_m + 5.0
+            };
+            if new_passing_tol_m > 60.0 {
+                return false;
+            }
+            return self.prevent_collisions(i, Some(new_passing_tol_m));
+        }
+        for fbs in 0..best.full_brake_steps {
+            if (best.idx + fbs) >= self.cyc.time_s.len() {
+                break;
+            }
+            let dt = self.cyc.time_s[best.idx + fbs] - self.cyc.time_s[best.idx - 1];
+            let dv = a_brake_m_per_s2 * dt;
+            let v_start = self.cyc.mps[best.idx - 1];
+            self.cyc.mps[best.idx + fbs] = max(v_start + dv, 0.0);
+            self.impose_coast[best.idx + fbs] = true;
+            self.coast_delay_index[best.idx + fbs] = 0;
+        }
+        self.cyc.modify_by_const_jerk_trajectory(
+            best.idx + best.full_brake_steps,
+            best.n,
+            best.jerk_m_per_s3,
+            best.accel0_m_per_s2,
+        );
+        for idx in (best.idx + best.n)..self.cyc0.mps.len() {
+            self.impose_coast[idx] = false;
+            self.coast_delay_index[idx] = 0;
+        }
+        true
     }
 
     /// Placeholder for method to impose coasting.
@@ -2202,40 +2637,57 @@ impl RustSimDrive {
     fn set_coast_speed(&mut self, i: usize) -> Result<(), String> {
         let tol = 1e-6;
         let v0 = self.mps_ach[i - 1];
-        if v0 < tol {
-            // TODO: need to determine how to leave coast and rejoin shadow trace
-            // self.impose_coast[i] = False
-        } else {
-            self.impose_coast[i] = self.impose_coast[i - 1] || self.should_impose_coast(i);
+        if v0 > tol && !self.impose_coast[i] && self.should_impose_coast(i) {
+            let ct = self.generate_coast_trajectory(i);
+            if ct.found_trajectory {
+                let d = ct.distance_to_stop_via_coast_m;
+                if d < 0.0 {
+                    for idx in i..self.cyc0.mps.len() {
+                        self.impose_coast[idx] = false;
+                    }
+                } else {
+                    self.apply_coast_trajectory(ct);
+                }
+                if !self.sim_params.coast_allow_passing {
+                    self.prevent_collisions(i, None);
+                }
+            }
         }
         if !self.impose_coast[i] {
+            if !self.sim_params.follow_allow {
+                let i_i32 = i32::try_from(i).ok();
+                let target_idx = match i_i32 {
+                    Some(v) => Some(v - self.coast_delay_index[i]),
+                    None => None,
+                };
+                let target_idx = match target_idx {
+                    Some(ti) => {
+                        if ti < 0 {
+                            Some(0)
+                        } else {
+                            usize::try_from(ti).ok()
+                        }
+                    }
+                    None => None,
+                };
+                match target_idx {
+                    Some(ti) => {
+                        self.cyc.mps[i] = self.cyc0.mps[cmp::min(ti, self.cyc0.mps.len() - 1)];
+                    }
+                    None => (),
+                }
+            }
             return Ok(());
         }
         let v1_traj = self.cyc.mps[i];
-        if self.cyc.mps[i] == self.cyc0.mps[i]
-            && v0 > self.sim_params.coast_brake_start_speed_m_per_s
-        {
+        if v0 > self.sim_params.coast_brake_start_speed_m_per_s {
             if self.sim_params.coast_allow_passing {
                 // we could be coasting downhill so could in theory go to a higher speed
                 // since we can pass, allow vehicle to go up to max coasting speed (m/s)
                 // the solver will show us what we can actually achieve
                 self.cyc.mps[i] = self.sim_params.coast_max_speed_m_per_s;
             } else {
-                // distances of lead vehicle (m)
-                let ds_lv = ndarrcumsum(&self.cyc0.dist_m());
-                let d0 = self.cyc.dist_v2_m().slice(s![0..i]).sum(); // current distance traveled at start of step
-                let d1_lv = ds_lv[i];
-                assert!(d1_lv >= d0);
-                let max_step_distance_m = d1_lv - d0;
-                let max_avg_speed_m_per_s = max_step_distance_m / self.cyc0.dt_s()[i];
-                let max_next_speed_m_per_s = 2.0 * max_avg_speed_m_per_s - v0;
-                self.cyc.mps[i] = max(
-                    0.0,
-                    min(
-                        max_next_speed_m_per_s,
-                        self.sim_params.coast_max_speed_m_per_s,
-                    ),
-                );
+                self.cyc.mps[i] = min(v1_traj, self.sim_params.coast_max_speed_m_per_s);
             }
         }
         // Solve for the actual coasting speed
@@ -2249,15 +2701,28 @@ impl RustSimDrive {
         self.cyc.mps[i] = self.mps_ach[i];
         let accel_proposed = (self.cyc.mps[i] - self.cyc.mps[i - 1]) / self.cyc.dt_s()[i];
         if self.cyc.mps[i] < tol {
+            for idx in i..self.cyc0.mps.len() {
+                self.impose_coast[idx] = false;
+            }
+            self.set_coast_delay(i);
             self.cyc.mps[i] = 0.0;
             return Ok(());
         }
         if (self.cyc.mps[i] - v1_traj).abs() > tol {
             let mut adjusted_current_speed = false;
-            if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s + tol) {
+            let brake_speed_start_tol_m_per_s = 0.1;
+            if self.cyc.mps[i]
+                < (self.sim_params.coast_brake_start_speed_m_per_s - brake_speed_start_tol_m_per_s)
+            {
                 let v1_before = self.cyc.mps[i];
-                self.cyc
-                    .modify_with_braking_trajectory(self.sim_params.coast_brake_accel_m_per_s2, i);
+                let (_, num_steps) = self.cyc.modify_with_braking_trajectory(
+                    self.sim_params.coast_brake_accel_m_per_s2,
+                    i,
+                    None,
+                );
+                for idx in i..self.cyc.time_s.len() {
+                    self.impose_coast[idx] = idx < (i + num_steps);
+                }
                 let v1_after = self.cyc.mps[i];
                 assert_ne!(v1_before, v1_after);
                 adjusted_current_speed = true;
@@ -2276,22 +2741,39 @@ impl RustSimDrive {
                         traj_jerk_m_per_s3,
                         traj_accel_m_per_s2,
                     );
+                    for idx in i..self.cyc0.mps.len() {
+                        self.impose_coast[idx] = idx < (i + traj_n);
+                    }
                     adjusted_current_speed = true;
+                    let i_for_brake = i + traj_n;
                     if (final_speed_m_per_s - self.sim_params.coast_brake_start_speed_m_per_s).abs()
                         < 0.1
                     {
-                        let i_for_brake = i + traj_n;
-                        self.cyc.modify_with_braking_trajectory(
+                        let (_, num_steps) = self.cyc.modify_with_braking_trajectory(
                             self.sim_params.coast_brake_accel_m_per_s2,
                             i_for_brake,
+                            None,
                         );
+                        for idx in i_for_brake..self.cyc0.mps.len() {
+                            self.impose_coast[idx] = idx < i_for_brake + num_steps;
+                        }
                         adjusted_current_speed = true;
+                    } else {
+                        eprintln!("WARNING! final_speed_m_per_s not close to coast_brake_start_speed for i = {}", i);
+                        eprintln!("... final_speed_m_per_s = {}", final_speed_m_per_s);
+                        eprintln!(
+                            "... self.sim_params.coast_brake_start_speed_m_per_s = {}",
+                            self.sim_params.coast_brake_start_speed_m_per_s
+                        );
+                        eprintln!("... i_for_brake = {}", i_for_brake);
+                        eprintln!("... traj_n = {}", traj_n);
                     }
                 }
             }
             if adjusted_current_speed {
-                // TODO: should we have an iterate=True/False, flag on solve_step to
-                // ensure newton iters is reset? vs having to call manually?
+                if !self.sim_params.coast_allow_passing {
+                    self.prevent_collisions(i, None);
+                }
                 if let Err(message) = self.solve_step(i) {
                     return Err(
                         "call to `solve_step_rust` failed within `set_coast_speed`: ".to_string()
@@ -2319,9 +2801,17 @@ impl RustSimDrive {
             self.roadway_chg_kj = (self.roadway_chg_kw_out_ach.clone() * self.cyc.dt_s()).sum();
             self.ess_dischg_kj =
                 -1.0 * (self.soc[self.soc.len() - 1] - self.soc[0]) * self.veh.ess_max_kwh * 3.6e3;
-            self.battery_kwh_per_mi = (self.ess_dischg_kj / 3.6e3) / self.dist_mi.sum();
-            self.electric_kwh_per_mi =
-                ((self.roadway_chg_kj + self.ess_dischg_kj) / 3.6e3) / self.dist_mi.sum();
+            let dist_mi = self.dist_mi.sum();
+            self.battery_kwh_per_mi = if dist_mi > 0.0 {
+                (self.ess_dischg_kj / 3.6e3) / dist_mi
+            } else {
+                0.0
+            };
+            self.electric_kwh_per_mi = if dist_mi > 0.0 {
+                ((self.roadway_chg_kj + self.ess_dischg_kj) / 3.6e3) / dist_mi
+            } else {
+                0.0
+            };
             self.fuel_kj = (self.fs_kw_out_ach.clone() * self.cyc.dt_s()).sum();
 
             if (self.fuel_kj + self.roadway_chg_kj) == 0.0 {
@@ -2393,8 +2883,12 @@ impl RustSimDrive {
             }
 
             self.trace_miss = false;
-            self.trace_miss_dist_frac =
-                (self.dist_m.sum() - self.cyc0.dist_m().sum()).abs() / self.cyc0.dist_m().sum();
+            let dist_m = self.cyc0.dist_m().sum();
+            self.trace_miss_dist_frac = if dist_m > 0.0 {
+                (self.dist_m.sum() - self.cyc0.dist_m().sum()).abs() / dist_m
+            } else {
+                0.0
+            };
             self.trace_miss_time_frac = (self.cyc.time_s[self.cyc.time_s.len() - 1]
                 - self.cyc0.time_s[self.cyc0.time_s.len() - 1])
                 / self.cyc0.time_s[self.cyc0.time_s.len() - 1];

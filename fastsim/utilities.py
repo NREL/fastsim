@@ -49,7 +49,7 @@ def mpg_to_l__100km(mpg):
 
 def rollav(x, y, width=10):
     """
-    Returns x-weighted backward-looking rolling average of y.  
+    Returns x-weighted backward-looking rolling average of y.
     Good for resampling data that needs to preserve cumulative information.
     Arguments:
     ----------
@@ -131,6 +131,10 @@ def get_attr_with_path(
     """
     if isinstance(path, str):
         path = path.split(".")
+
+    if len(path) == 1:
+        return getattr(struct, path[0])
+
     containers = get_containers_with_path(struct, path)
     attr = getattr(containers[-1], path[-1])
     return attr
@@ -155,12 +159,15 @@ def set_attr_with_path(
     Returns
     -------
     Any
-        `struct` with nested value set 
+        `struct` with nested value set
     """
     containers = [struct]
     if isinstance(path, str):
         assert "." in path, "provide dot-separated path to struct, otherwise use `set_nested_values`"
         path = path.split(".")
+    if len(path) == 1:
+        setattr(struct, path[0], value)
+        return struct
     containers += get_containers_with_path(struct, path)
     # Set innermost value
     innermost_container = containers[-1]

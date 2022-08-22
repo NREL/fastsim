@@ -1,6 +1,9 @@
 """Module containing classes and methods for 
 cycle data. For example usage, see ../README.md"""
 
+from __future__ import annotations
+from typing_extensions import Self
+from typing import *
 # Import necessary python modules
 from dataclasses import dataclass
 import copy
@@ -22,6 +25,7 @@ from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
+    from fastsimrust import RustCycle
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
@@ -51,7 +55,7 @@ class Cycle(object):
     name: str
 
     @classmethod
-    def from_file(cls, filename: str):
+    def from_file(cls, filename: str) -> Self:
         """
         Load cycle from filename (str).
         Can be absolute or relative path.  If relative, looks in working dir first
@@ -83,7 +87,7 @@ class Cycle(object):
         return cls.from_dict(cyc_dict)
 
     @classmethod
-    def from_dict(cls, cyc_dict: dict):
+    def from_dict(cls, cyc_dict: dict) -> Self:
         """
         Load cycle from dict, which must contain keys for:
         -- `cycSecs` or `time_s`
@@ -132,15 +136,6 @@ class Cycle(object):
         return self.mps * self.dt_s
 
     @property
-    def avg_mps(self):
-        return np.append(0.0, 0.5 * (self.mps[1:] + self.mps[:-1]))
-
-    # distance at each time step using average speed of the step
-    @property
-    def dist_v2_m(self):
-        return self.avg_mps * self.dt_s
-
-    @property
     def delta_elev_m(self) -> np.ndarray:
         """
         Cumulative elevation change w.r.t. to initial
@@ -152,7 +147,7 @@ class Cycle(object):
         "return cycle length"
         return len(self.time_s)
 
-    def get_cyc_dict(self) -> dict:
+    def get_cyc_dict(self) -> Dict[str, np.ndarray]:
         """Returns cycle as dict rather than class instance."""
         keys = STANDARD_CYCLE_KEYS
 
@@ -162,25 +157,18 @@ class Cycle(object):
 
         return cyc
 
-    def to_rust(self):
+    def to_rust(self) -> RustCycle:
         return copy_cycle(self, return_type='rust', deep=False)
 
     def reset_orphaned(self):
         """Dummy method for flexibility between Rust/Python version interfaces"""
         pass
 
-    def copy(self):
+    def copy(self) -> Self:
         """
         Return a copy of this Cycle instance.
         """
-        cyc_dict = {
-            'time_s': self.time_s.copy(),
-            'mps': self.mps.copy(),
-            'cycGrade': self.grade.copy(),
-            'cycRoadType': self.road_type.copy(),
-            'name': self.name,
-        }
-        return Cycle.from_dict(cyc_dict)
+        return copy.deepcopy(self)
 
     def average_grade_over_range(self, distance_start_m, delta_distance_m):
         """
@@ -188,33 +176,52 @@ class Cycle(object):
         - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
         - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
         RETURN: number, the average grade (rise over run) over the given distance range
+        Note: grade is assumed to be constant from just after the previous sample point
+        until the current sample point. That is, grade[i] applies over the range of
+        distances, d, from (d[i - 1], d[i]]
         """
+        tol = 1e-6
         if ((self.grade == 0.0).all()):
             return 0.0
-        distances_m = self.dist_m.cumsum()
-        if delta_distance_m <= 0.0:
-            return np.interp(distance_start_m, xp=distances_m, fp=self.grade)
-        elevations_m = self.delta_elev_m
+        delta_dists = trapz_step_distances(self)
+        distances_m = delta_dists.cumsum()
+        if delta_distance_m <= tol:
+            if distance_start_m <= distances_m[0]:
+                return self.grade[0]
+            if distance_start_m >= distances_m[-1]:
+                return self.grade[-1]
+            gr = self.grade[0]
+            for (d, d_next, g) in zip(distances_m, distances_m[1:], self.grade[1:]):
+                if distance_start_m > d and distance_start_m <= d_next:
+                    gr = g
+                    break
+            return gr
+        # NOTE: we use the following instead of delta_elev_m in order to use
+        # a more-accurate trapezoidal integration. This also uses the fully
+        # accurate trig functions in case we have large slope angles.
+        elevations_m = np.cumsum(np.cos(np.arctan(self.grade)) * delta_dists * self.grade)
+        assert len(elevations_m) == len(distances_m), f"len(elevations_m) = {len(elevations_m)}; len(distances_m) = {len(distances_m)}"
+        assert elevations_m[0] == 0.0
+        assert distances_m[0] == 0.0
         e0 = np.interp(distance_start_m, xp=distances_m, fp=elevations_m)
         e1 = np.interp(distance_start_m + delta_distance_m,
                        xp=distances_m, fp=elevations_m)
         return np.tan(np.arcsin((e1 - e0) / delta_distance_m))
 
-    def calc_distance_to_next_stop_from(self, distance_m):
+    def calc_distance_to_next_stop_from(self, distance_m: float) -> float:
         """
         Calculate the distance to next stop from `distance_m`
         - distance_m: non-negative-number, the current distance from start (m)
-        RETURN: -1 or non-negative-integer
-        - if there are no more stops ahead, return -1
-        - else returns the distance to the next stop from distance_m
+        RETURN: returns the distance to the next stop from distance_m
+        NOTE: distance may be negative if we're beyond the last stop
         """
-        distances_of_stops_m = np.unique(
-            self.dist_v2_m.cumsum()[self.mps < 1e-6])
-        remaining_stops_m = distances_of_stops_m[distances_of_stops_m > (
-            distance_m + 1e-6)]
-        if len(remaining_stops_m) > 0:
-            return remaining_stops_m[0] - distance_m
-        return -1.0
+        tol = 1e-6
+        d = 0.0
+        for (dd, v) in zip(trapz_step_distances(self), self.mps):
+            d += dd
+            if ((v < tol) and (d > (distance_m + tol))):
+                return d - distance_m
+        return d - distance_m
 
     def modify_by_const_jerk_trajectory(self, idx, n, jerk_m__s3, accel0_m__s2):
         """
@@ -237,23 +244,33 @@ class Cycle(object):
             if idx_to_set >= num_samples:
                 break
             v = speed_for_constant_jerk(ni, v0, accel0_m__s2, jerk_m__s3, dt)
-            self.mps[idx_to_set] = v
+            self.mps[idx_to_set] = max(v, 0.0)
         return v
 
-    def modify_with_braking_trajectory(self, brake_accel_m__s2, idx):
+    def modify_with_braking_trajectory(self, brake_accel_m__s2: float, idx: int, dts_m: Optional[float] = None) -> tuple:
         """
         Add a braking trajectory that would cover the same distance as the given constant brake deceleration
         - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
         - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
-        RETURN: non-negative-number, the final speed of the modified trajectory (m/s) 
-        - modifies the cycle in place for braking
+        - dts_m: None | float: if given, this is the desired distance-to-stop in meters. If not given, it is
+            calculated based on braking deceleration.
+        RETURN: (non-negative-number, positive-integer)
+        - the final speed of the modified trajectory (m/s) 
+        - the number of time-steps required to complete the braking maneuver
+        NOTE:
+        - modifies the cycle in place for the braking trajectory
         """
         assert brake_accel_m__s2 < 0.0
         i = int(idx)
+        if i >= len(self.time_s):
+            return self.mps[-1], 0
         v0 = self.mps[i-1]
         dt = self.dt_s[i]
         # distance-to-stop (m)
-        dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
+        if dts_m is None or dts_m <= 0.0:
+            dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
+        if dts_m <= 0.0:
+            return v0, 0
         # time-to-stop (s)
         tts_s = -v0 / brake_accel_m__s2
         # number of steps to take
@@ -263,7 +280,7 @@ class Cycle(object):
             n = 2
         jerk_m__s3, accel_m__s2 = calc_constant_jerk_trajectory(
             n, 0.0, v0, dts_m, 0.0, dt)
-        return self.modify_by_const_jerk_trajectory(i, n, jerk_m__s3, accel_m__s2)
+        return self.modify_by_const_jerk_trajectory(i, n, jerk_m__s3, accel_m__s2), n
 
 
 class LegacyCycle(object):
@@ -482,7 +499,7 @@ def concat(cycles, name=None):
 
 
 def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
-             hold_keys=None, rate_keys=None):
+             hold_keys=None, hold_keys_next=None, rate_keys=None):
     """
     Cycle new_dt=?Real start_time=?Real end_time=?Real -> Cycle
     Resample a cycle with a new delta time from start time to end time.
@@ -500,6 +517,9 @@ def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
     - hold_keys: None or (Set String), if specified, yields values that
                  should be interpolated step-wise, holding their value until
                  an explicit change (i.e., NOT interpolated)
+    - hold_keys_next: None or (Set String), similar to hold_keys but yields
+                 values that should be interpolated step-wise, taking the
+                 NEXT value as the value (vs hold_keys which uses the previous)
     - rate_keys: None or (Set String), if specified, yields values that maintain
                  the interpolated value of the given rate. So, for example,
                  if a speed, will set the speed such that the distance traveled
@@ -521,6 +541,10 @@ def resample(cycle: Cycle, new_dt=None, start_time=None, end_time=None,
             continue
         elif hold_keys is not None and k in hold_keys:
             f = interp1d(cycle['time_s'], cycle[k], 0)
+            new_cycle[k] = f(new_cycle['time_s'])
+            continue
+        elif hold_keys_next is not None and k in hold_keys_next:
+            f = interp1d(cycle['time_s'], cycle[k], 'next')
             new_cycle[k] = f(new_cycle['time_s'])
             continue
         elif rate_keys is not None and k in rate_keys:
@@ -620,9 +644,9 @@ def peak_deceleration(cycle):
     return np.min(accelerations(cycle))
 
 
-def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
+def calc_constant_jerk_trajectory(n: int, D0: float, v0: float, Dr: float, vr: float, dt: float) -> tuple:
     """
-    Num Num Num Num Num Int -> (Dict 'jerk_m__s3' Num 'accel_m__s2' Num)
+    Num Num Num Num Num Int -> (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
     INPUTS:
     - n: Int, number of time-steps away from rendezvous
     - D0: Num, distance of simulated vehicle (m/s)
@@ -633,8 +657,8 @@ def calc_constant_jerk_trajectory(n, D0, v0, Dr, vr, dt):
     RETURNS: (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
     Returns the constant jerk and acceleration for initial time step.
     """
-    assert n > 1
-    assert Dr > D0
+    assert n > 1, f"n = {n}"
+    assert Dr > D0, f"Dr = {Dr}; D0 = {D0}"
     dDr = Dr - D0
     dvr = vr - v0
     k = (dvr - (2.0 * dDr / (n * dt)) + 2.0 * v0) / (
@@ -706,3 +730,132 @@ def dist_for_constant_jerk(n, d0, v0, a0, k, dt):
     )
     term2 = 0.5 * dt * dt * ((n * a0) + (0.5 * n * (n - 1) * k * dt))
     return d0 + term1 + term2
+
+@dataclass
+class PassingInfo:
+   # True if first cycle passes the second
+   has_collision: bool
+   # the index where first cycle passes the second
+   idx: int
+   # the number of time-steps until idx from i
+   num_steps: int
+   # the starting distance of the first cycle at i
+   start_distance_m: float
+   # the distance (m) traveled of the second cycle when first passes
+   distance_m: float
+   # the starting speed (m/s) of the first cycle at i
+   start_speed_m_per_s: float
+   # the speed (m/s) of the second cycle when first passes
+   speed_m_per_s: float
+   # the time step duration throught the passing investigation
+   time_step_duration_s: float
+
+def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> PassingInfo:
+    """
+    Reports back information of the first point where cyc passes cyc0, starting at
+    step i until the next stop of cyc.
+    - cyc: fastsim.Cycle, the proposed cycle of the vehicle under simulation
+    - cyc0: fastsim.Cycle, the reference/lead vehicle/shadow cycle to compare with
+    - i: int, the time-step index to consider
+    - dist_tol_m: float, the distance tolerance away from lead vehicle to be seen as
+        "deviated" from the reference/shadow trace (m)
+    RETURNS: PassingInfo
+    """
+    if i >= len(cyc.time_s):
+        return PassingInfo(
+            has_collision=False,
+            idx=0,
+            num_steps=0,
+            start_distance_m=0.0,
+            distance_m=0.0,
+            start_speed_m_per_s=0.0,
+            speed_m_per_s=0.0,
+            time_step_duration_s=1.0,
+        )
+    zero_speed_tol_m_per_s = 1e-6
+    v0 = cyc.mps[i-1]
+    d0 = trapz_step_start_distance(cyc, i)
+    v0_lv = cyc0.mps[i-1]
+    d0_lv = trapz_step_start_distance(cyc0, i)
+    d = d0
+    d_lv = d0_lv
+    dt_total = 0.0
+    rendezvous_idx = None
+    rendezvous_num_steps = 0
+    rendezvous_distance_m = 0
+    rendezvous_speed_m_per_s = 0
+    for di in range(len(cyc.mps) - i):
+        idx = i + di
+        v = cyc.mps[idx]
+        v_lv = cyc0.mps[idx]
+        vavg = (v + v0) * 0.5
+        vavg_lv = (v_lv + v0_lv) * 0.5
+        dd = vavg * cyc.dt_s[idx]
+        dd_lv = vavg_lv * cyc0.dt_s[idx]
+        dt_total += cyc0.dt_s[idx]
+        d += dd
+        d_lv += dd_lv
+        dtlv = d_lv - d
+        v0 = v
+        v0_lv = v_lv
+        if di > 0 and dtlv < -dist_tol_m:
+            rendezvous_idx = idx
+            rendezvous_num_steps = di + 1
+            rendezvous_distance_m = d_lv
+            rendezvous_speed_m_per_s = v_lv
+            break
+        if v <= zero_speed_tol_m_per_s:
+            break
+    return PassingInfo(
+        has_collision=rendezvous_idx is not None and rendezvous_distance_m > d0,
+        idx=rendezvous_idx if not rendezvous_idx is None else 0,
+        num_steps=rendezvous_num_steps,
+        start_distance_m=d0,
+        distance_m=rendezvous_distance_m,
+        start_speed_m_per_s=cyc.mps[i-1],
+        speed_m_per_s=rendezvous_speed_m_per_s,
+        time_step_duration_s=cyc.dt_s[i],
+    )
+
+def average_step_speeds(cyc: Cycle) -> np.ndarray:
+    """
+    Calculate the average speed per each step in m/s
+    """
+    mps = np.array(cyc.mps)
+    return np.append(0.0, 0.5 * (mps[1:] + mps[:-1]))
+
+def average_step_speed_at(cyc: Cycle, i: int) -> float:
+    """
+    Calculate the average step speed at step i in m/s
+    (i.e., from sample point i-1 to i)
+    """
+    return 0.5 * (cyc.mps[i] + cyc.mps[i-1])
+
+def trapz_step_distances(cyc: Cycle) -> np.ndarray:
+    """
+    Sum of the distance traveled over each step using
+    trapezoidal integration
+    """
+    return average_step_speeds(cyc) * cyc.dt_s
+
+def trapz_step_start_distance(cyc: Cycle, i: int) -> float:
+    """
+    The distance traveled from start at the beginning of step i
+    (i.e., distance traveled up to sample point i-1)
+    Distance is in meters.
+    """
+    return trapz_step_distances(cyc)[:i].sum()
+
+def trapz_distance_for_step(cyc: Cycle, i: int) -> float:
+    """
+    The distance traveled during step i in meters
+    (i.e., from sample point i-1 to i)
+    """
+    return average_step_speed_at(cyc, i) * cyc.dt_s[i]
+
+def trapz_distance_over_range(cyc: Cycle, i_start: int, i_end: int) -> float:
+    """
+    Calculate the distance from step i_start to the start of step i_end
+    (i.e., distance from sample point i_start-1 to i_end-1)
+    """
+    return trapz_step_distances(cyc)[i_start:i_end].sum()

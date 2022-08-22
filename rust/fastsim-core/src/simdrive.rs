@@ -1,15 +1,6 @@
 //! Module containing vehicle struct and related functions.
-
-extern crate ndarray;
-use ndarray::Array1;
-
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::error::Error;
-use std::fs::File;
-use std::path::PathBuf;
-
 // crate local
+use crate::imports::*;
 use crate::cycle::RustCycle;
 use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
@@ -98,6 +89,9 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
             max_epa_adj,
             orphaned: false
         }
+    }
+    pub fn __getnewargs__(&self) {
+        todo!();
     }
 )]
 /// Struct containing time trace data
@@ -227,6 +221,10 @@ impl Default for RustSimDriveParams {
     #[new]
     pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self {
         Self::new(cyc, veh)
+    }
+
+    pub fn __getnewargs__(&self) {
+        todo!();
     }
 
     // wrappers for core methods
@@ -403,10 +401,6 @@ impl Default for RustSimDriveParams {
         self.cyc.time_s.is_empty()
     }
 
-    pub fn copy(&self) -> PyResult<Self> {
-        Ok(self.clone())
-    }
-
     #[getter]
     pub fn get_fs_cumu_mj_out_ach(&self) -> PyResult<Pyo3ArrayF64> {
         Ok(
@@ -542,6 +536,7 @@ pub struct RustSimDrive {
     pub trace_miss_time_frac: f64,
     pub trace_miss_speed_mps: f64,
     pub orphaned: bool,
+    pub coast_delay_index: Array1<i32>,
 }
 
 // #[cfg(test)]

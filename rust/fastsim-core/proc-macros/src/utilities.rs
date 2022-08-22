@@ -181,6 +181,9 @@ pub fn impl_getters_and_setters(
         "Array1 < u32 >" => {
             impl_vec_get_set!(opts, ident, impl_block, u32, Pyo3ArrayU32, has_orphaned);
         }
+        "Array1 < i32 >" => {
+            impl_vec_get_set!(opts, ident, impl_block, i32, Pyo3ArrayI32, has_orphaned);
+        }
         "Array1 < bool >" => {
             impl_vec_get_set!(opts, ident, impl_block, bool, Pyo3ArrayBool, has_orphaned);
         }

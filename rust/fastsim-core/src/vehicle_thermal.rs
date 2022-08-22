@@ -1,14 +1,9 @@
+use crate::imports::*;
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 use crate::utils;
 use proc_macros::add_pyo3_api;
-use pyo3::exceptions::PyAttributeError;
-use pyo3::prelude::*;
-use pyo3::types::PyType;
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::error::Error;
 use std::f64::consts::PI;
-use std::fs::File;
-use std::path::PathBuf;
 
 /// Whether FC thermal modeling is handled by FASTSim
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -26,7 +21,7 @@ impl Default for FcModelTypes {
 }
 
 /// Which commponent temperature affects FC efficency
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum FcTempEffComponent {
     /// FC efficiency is purely dependent on cat temp
     Catalyst,
@@ -157,7 +152,7 @@ pub enum HvacModelTypes {
 }
 
 /// Whether compontent thermal model is handled by FASTSim
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ComponentModelTypes {
     /// Component temperature is handled inside FASTSim
     Internal,
@@ -197,10 +192,6 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     #[pyo3(name = "default")]
     pub fn default_py(_cls: &PyType) -> Self {
         Default::default()
-    }
-
-    pub fn copy(&self) -> Self {
-        self.clone()
     }
 
     pub fn set_cabin_model_internal(

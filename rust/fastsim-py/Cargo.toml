@@ -13,3 +13,6 @@ pyo3 = { version = "0.16.5", features = ["extension-module"] }
 [lib]
 name = "fastsimrust"
 crate-type = ["cdylib"]
+
+[package.metadata.maturin]
+python-source = "python"

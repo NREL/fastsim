@@ -2,16 +2,12 @@
 
 extern crate ndarray;
 
-#[cfg(feature = "pyo3")]
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 
-use ndarray::{concatenate, s, Array, Array1, Axis};
-use serde::{Deserialize, Serialize};
-use std::error::Error;
-
 // local
+use crate::imports::*;
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
@@ -128,6 +124,46 @@ pub fn accel_array_for_constant_jerk(nmax: usize, a0: f64, k: f64, dt: f64) -> A
     Array1::from_vec(accels)
 }
 
+/// Calculate the average speed per each step in m/s
+pub fn average_step_speeds(cyc: &RustCycle) -> Array1<f64> {
+    let mut result: Vec<f64> = vec![0.0];
+    for i in 1..cyc.mps.len() {
+        result.push(0.5 * (cyc.mps[i] + cyc.mps[i - 1]));
+    }
+    Array1::from_vec(result)
+}
+
+/// Calculate the average step speed at step i in m/s
+/// (i.e., from sample point i-1 to i)
+pub fn average_step_speed_at(cyc: &RustCycle, i: usize) -> f64 {
+    0.5 * (cyc.mps[i] + cyc.mps[i - 1])
+}
+
+/// Sum of the distance traveled over each step using
+/// trapezoidal integration
+pub fn trapz_step_distances(cyc: &RustCycle) -> Array1<f64> {
+    average_step_speeds(cyc) * cyc.dt_s()
+}
+
+/// The distance traveled from start at the beginning of step i
+/// (i.e., distance traveled up to sample point i-1)
+/// Distance is in meters.
+pub fn trapz_step_start_distance(cyc: &RustCycle, i: usize) -> f64 {
+    trapz_step_distances(cyc).slice(s![0..i]).sum()
+}
+
+/// The distance traveled during step i in meters
+/// (i.e., from sample point i-1 to i)
+pub fn trapz_distance_for_step(cyc: &RustCycle, i: usize) -> f64 {
+    average_step_speed_at(cyc, i) * cyc.dt_s()[i]
+}
+
+/// Calculate the distance from step i_start to the start of step i_end
+/// (i.e., distance from sample point i_start-1 to i_end-1)
+pub fn trapz_distance_over_range(cyc: &RustCycle, i_start: usize, i_end: usize) -> f64 {
+    trapz_step_distances(cyc).slice(s![i_start..i_end]).sum()
+}
+
 #[cfg(feature = "pyo3")]
 #[allow(unused)] // not sure what this is doing, may get used in proc macro???
 pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
@@ -162,6 +198,10 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         }
     }
 
+    pub fn __getnewargs__(&self) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
+        Ok((self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name))
+    }
+
     #[classmethod]
     #[pyo3(name = "from_csv_file")]
     pub fn from_csv_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
@@ -186,10 +226,6 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(dict)
     }
 
-    pub fn copy(&self) -> PyResult<Self> {
-        Ok(self.clone())
-    }
-
     #[pyo3(name = "modify_by_const_jerk_trajectory")]
     pub fn modify_by_const_jerk_trajectory_py(
         &mut self,
@@ -206,8 +242,9 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         &mut self,
         brake_accel_m_per_s2: f64,
         idx: usize,
-    ) -> PyResult<f64> {
-        Ok(self.modify_with_braking_trajectory(brake_accel_m_per_s2, idx))
+        dts_m: Option<f64>
+    ) -> PyResult<(f64, usize)> {
+        Ok(self.modify_with_braking_trajectory(brake_accel_m_per_s2, idx, dts_m))
     }
 
     #[pyo3(name = "calc_distance_to_next_stop_from")]
@@ -226,7 +263,7 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[getter]
     pub fn get_mph(&self) -> PyResult<Vec<f64>> {
-        Ok((&self.mps * MPH_PER_MPS).to_vec())
+        Ok((&self.mps * crate::params::MPH_PER_MPS).to_vec())
     }
     #[setter]
     pub fn set_mph(&mut self, new_value: Vec<f64>) -> PyResult<()> {
@@ -244,16 +281,6 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(self.len())
     }
     #[getter]
-    /// the average speeds over each step in meters per second
-    pub fn get_avg_mps(&self) -> PyResult<Vec<f64>> {
-        Ok(self.avg_mps().to_vec())
-    }
-    #[getter]
-    /// distance for each time-step in meters based on step-average speed
-    pub fn get_dist_v2_m(&self) -> PyResult<Vec<f64>> {
-        Ok(self.dist_v2_m().to_vec())
-    }
-    #[getter]
     /// distance for each time step based on final speed
     pub fn get_dist_m(&self) -> PyResult<Vec<f64>> {
         Ok(self.dist_m().to_vec())
@@ -263,7 +290,6 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(self.delta_elev_m().to_vec())
     }
 )]
-
 /// Struct for containing:
 /// * time_s, cycle time, $s$  
 /// * mps, vehicle speed, $\frac{m}{s}$  
@@ -326,17 +352,41 @@ impl RustCycle {
     /// - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
+    /// Note: grade is assumed to be constant from just after the previous sample point
+    /// until the current sample point. That is, grade[i] applies over the range of
+    /// distances, d, from (d[i - 1], d[i]]
     pub fn average_grade_over_range(&self, distance_start_m: f64, delta_distance_m: f64) -> f64 {
+        let tol = 1e-6;
         if ndarrallzeros(&self.grade) {
             // short-circuit for no-grade case
             return 0.0;
         }
-        let distances_m = ndarrcumsum(&self.dist_m());
-        if delta_distance_m <= 1e-6 {
-            // (x: &f64, x_data: &Array1<f64>, y_data: &Array1<f64>, extrapolate: bool)
-            return interpolate(&distance_start_m, &distances_m, &self.grade, false);
+        let delta_dists = trapz_step_distances(&self);
+        let distances_m = ndarrcumsum(&delta_dists);
+        if delta_distance_m <= tol {
+            if distance_start_m <= distances_m[0] {
+                return self.grade[0];
+            }
+            if distance_start_m >= distances_m[distances_m.len() - 1] {
+                return self.grade[self.grade.len() - 1];
+            }
+            let mut gr = self.grade[0];
+            for idx in 0..(distances_m.len() - 1) {
+                let d = distances_m[idx];
+                let d_next = distances_m[idx + 1];
+                let g = self.grade[idx + 1];
+                if distance_start_m > d && distance_start_m <= d_next {
+                    gr = g;
+                    break;
+                }
+            }
+            return gr;
         }
-        let elevations_m = self.delta_elev_m();
+        // NOTE: we use the following instead of delta_elev_m in order to use
+        // more precise trapezoidal distance and elevation at sample points.
+        // This also uses the fully accurate trig functions in case we have large slope angles.
+        let elevations_m =
+            ndarrcumsum(&(self.grade.mapv(|g| g.atan().cos()) * &delta_dists * self.grade.clone()));
         let e0 = interpolate(&distance_start_m, &distances_m, &elevations_m, false);
         let e1 = interpolate(
             &(distance_start_m + delta_distance_m),
@@ -349,20 +399,18 @@ impl RustCycle {
 
     /// Calculate the distance to next stop from `distance_m`
     /// - distance_m: non-negative-number, the current distance from start (m)
-    /// RETURN: -1 or non-negative-integer
-    /// - if there are no more stops ahead, return -1
-    /// - else returns the distance to the next stop from distance_m
+    /// RETURN: returns the distance to the next stop from distance_m
+    /// NOTE: distance may be negative if we're beyond the last stop
     pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> f64 {
         let tol: f64 = 1e-6;
-        let not_found: f64 = -1.0;
         let mut d: f64 = 0.0;
-        for (&dd, &v) in self.dist_v2_m().iter().zip(self.mps.iter()) {
+        for (&dd, &v) in trapz_step_distances(&self).iter().zip(self.mps.iter()) {
             d += dd;
             if (v < tol) && (d > (distance_m + tol)) {
                 return d - distance_m;
             }
         }
-        not_found
+        return d - distance_m;
     }
 
     /// Modifies the cycle using the given constant-jerk trajectory parameters
@@ -383,7 +431,16 @@ impl RustCycle {
         jerk_m_per_s3: f64,
         accel0_m_per_s2: f64,
     ) -> f64 {
-        let num_samples = self.time_s.len();
+        if n == 0 {
+            return 0.0;
+        }
+        let num_samples = self.mps.len();
+        if i >= num_samples {
+            if num_samples > 0 {
+                return self.mps[num_samples - 1];
+            }
+            return 0.0;
+        }
         let v0 = self.mps[i - 1];
         let dt = self.dt_s()[i];
         let mut v = v0;
@@ -393,7 +450,7 @@ impl RustCycle {
                 break;
             }
             v = speed_for_constant_jerk(ni, v0, accel0_m_per_s2, jerk_m_per_s3, dt);
-            self.mps[idx_to_set] = v;
+            self.mps[idx_to_set] = max(v, 0.0);
         }
         v
     }
@@ -401,14 +458,39 @@ impl RustCycle {
     /// Add a braking trajectory that would cover the same distance as the given constant brake deceleration
     /// - brake_accel_m__s2: negative number, the braking acceleration (m/s2)
     /// - idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)
-    /// RETURN: non-negative-number, the final speed of the modified trajectory (m/s)
-    /// - modifies the cycle in place for braking
-    pub fn modify_with_braking_trajectory(&mut self, brake_accel_m_per_s2: f64, i: usize) -> f64 {
+    /// - dts_m: None | float: if given, this is the desired distance-to-stop in meters. If not given, it is
+    ///     calculated based on braking deceleration.
+    /// RETURN: (non-negative-number, positive-integer)
+    /// - the final speed of the modified trajectory (m/s)
+    /// - the number of time-steps required to complete the braking maneuver
+    /// NOTE:
+    /// - modifies the cycle in place for the braking trajectory
+    pub fn modify_with_braking_trajectory(
+        &mut self,
+        brake_accel_m_per_s2: f64,
+        i: usize,
+        dts_m: Option<f64>,
+    ) -> (f64, usize) {
         assert!(brake_accel_m_per_s2 < 0.0);
+        if i >= self.time_s.len() {
+            return (self.mps[self.mps.len() - 1], 0);
+        }
         let v0 = self.mps[i - 1];
         let dt = self.dt_s()[i];
         // distance-to-stop (m)
-        let dts_m = -0.5 * v0 * v0 / brake_accel_m_per_s2;
+        let dts_m = match dts_m {
+            Some(value) => {
+                if value > 0.0 {
+                    value
+                } else {
+                    -0.5 * v0 * v0 / brake_accel_m_per_s2
+                }
+            }
+            None => -0.5 * v0 * v0 / brake_accel_m_per_s2,
+        };
+        if dts_m <= 0.0 {
+            return (v0, 0);
+        }
         // time-to-stop (s)
         let tts_s = -v0 / brake_accel_m_per_s2;
         // number of steps to take
@@ -416,30 +498,20 @@ impl RustCycle {
         let n: usize = if n < 2 { 2 } else { n }; // need at least 2 steps
         let (jerk_m_per_s3, accel_m_per_s2) =
             calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt);
-        self.modify_by_const_jerk_trajectory(i, n, jerk_m_per_s3, accel_m_per_s2)
+        (
+            self.modify_by_const_jerk_trajectory(i, n, jerk_m_per_s3, accel_m_per_s2),
+            n,
+        )
     }
 
     /// rust-internal time steps
     pub fn dt_s(&self) -> Array1<f64> {
         diff(&self.time_s)
     }
+
     /// distance covered in each time step
     pub fn dist_m(&self) -> Array1<f64> {
         &self.mps * self.dt_s()
-    }
-    pub fn avg_mps(&self) -> Array1<f64> {
-        let num_items = self.mps.len();
-        if num_items < 1 {
-            Array::zeros(1)
-        } else {
-            let vavgs =
-                0.5 * (&self.mps.slice(s![1..num_items]) + &self.mps.slice(s![0..(num_items - 1)]));
-            concatenate![Axis(0), Array::zeros(1), vavgs]
-        }
-    }
-    /// distance covered in each time step that is based on the average time of each step
-    pub fn dist_v2_m(&self) -> Array1<f64> {
-        &self.avg_mps() * &self.dt_s()
     }
 
     /// get mph from self.mps
@@ -490,6 +562,108 @@ impl RustCycle {
     }
 }
 
+pub struct PassingInfo {
+    /// True if first cycle passes the second
+    pub has_collision: bool,
+    /// the index where first cycle passes the second
+    pub idx: usize,
+    /// the number of time-steps until idx from i
+    pub num_steps: usize,
+    /// the starting distance of the first cycle at i
+    pub start_distance_m: f64,
+    /// the distance (m) traveled of the second cycle when first passes
+    pub distance_m: f64,
+    /// the starting speed (m/s) of the first cycle at i
+    pub start_speed_m_per_s: f64,
+    /// the speed (m/s) of the second cycle when first passes
+    pub speed_m_per_s: f64,
+    /// the time step duration throught the passing investigation
+    pub time_step_duration_s: f64,
+}
+
+/// Reports back information of the first point where cyc passes cyc0, starting at
+/// step i until the next stop of cyc.
+/// - cyc: fastsim.Cycle, the proposed cycle of the vehicle under simulation
+/// - cyc0: fastsim.Cycle, the reference/lead vehicle/shadow cycle to compare with
+/// - i: int, the time-step index to consider
+/// - dist_tol_m: float, the distance tolerance away from lead vehicle to be seen as
+///     "deviated" from the reference/shadow trace (m)
+/// RETURNS: PassingInfo
+pub fn detect_passing(
+    cyc: &RustCycle,
+    cyc0: &RustCycle,
+    i: usize,
+    dist_tol_m: Option<f64>,
+) -> PassingInfo {
+    if i >= cyc.time_s.len() {
+        return PassingInfo {
+            has_collision: false,
+            idx: 0,
+            num_steps: 0,
+            start_distance_m: 0.0,
+            distance_m: 0.0,
+            start_speed_m_per_s: 0.0,
+            speed_m_per_s: 0.0,
+            time_step_duration_s: 1.0,
+        };
+    }
+    let zero_speed_tol_m_per_s = 1e-6;
+    let dist_tol_m = match dist_tol_m {
+        Some(v) => v,
+        None => 0.1,
+    };
+    let mut v0: f64 = cyc.mps[i - 1];
+    let d0: f64 = trapz_step_start_distance(&cyc, i);
+    let mut v0_lv: f64 = cyc0.mps[i - 1];
+    let d0_lv: f64 = trapz_step_start_distance(&cyc0, i);
+    let mut d = d0;
+    let mut d_lv = d0_lv;
+    let mut rendezvous_idx: Option<usize> = None;
+    let mut rendezvous_num_steps: usize = 0;
+    let mut rendezvous_distance_m: f64 = 0.0;
+    let mut rendezvous_speed_m_per_s: f64 = 0.0;
+    for di in 0..(cyc.mps.len() - i) {
+        let idx = i + di;
+        let v = cyc.mps[idx];
+        let v_lv = cyc0.mps[idx];
+        let vavg = (v + v0) * 0.5;
+        let vavg_lv = (v_lv + v0_lv) * 0.5;
+        let dd = vavg * cyc.dt_s()[idx];
+        let dd_lv = vavg_lv * cyc0.dt_s()[idx];
+        d += dd;
+        d_lv += dd_lv;
+        let dtlv = d_lv - d;
+        v0 = v;
+        v0_lv = v_lv;
+        if di > 0 && dtlv < -dist_tol_m {
+            rendezvous_idx = Some(idx);
+            rendezvous_num_steps = di + 1;
+            rendezvous_distance_m = d_lv;
+            rendezvous_speed_m_per_s = v_lv;
+            break;
+        }
+        if v <= zero_speed_tol_m_per_s {
+            break;
+        }
+    }
+    PassingInfo {
+        has_collision: match rendezvous_idx {
+            Some(_) => true,
+            None => false,
+        },
+        idx: match rendezvous_idx {
+            Some(idx) => idx,
+            None => 0,
+        },
+        num_steps: rendezvous_num_steps,
+        start_distance_m: d0,
+        distance_m: rendezvous_distance_m,
+        start_speed_m_per_s: cyc.mps[i - 1],
+        speed_m_per_s: rendezvous_speed_m_per_s,
+        time_step_duration_s: cyc.dt_s()[i],
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -508,13 +682,13 @@ mod tests {
         let road_type = Array::zeros(5).to_vec();
         let name = String::from("test");
         let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
-        let avg_mps = cyc.avg_mps();
+        let avg_mps = average_step_speeds(&cyc);
         let expected_avg_mps = Array::from_vec(vec![0.0, 5.0, 10.0, 5.0, 0.0]);
         assert_eq!(expected_avg_mps.len(), avg_mps.len());
         for (expected, actual) in expected_avg_mps.iter().zip(avg_mps.iter()) {
             assert_eq!(expected, actual);
         }
-        let dist_m = cyc.dist_v2_m();
+        let dist_m = trapz_step_distances(&cyc);
         let expected_dist_m = Array::from_vec(vec![0.0, 50.0, 200.0, 20.0, 0.0]);
         assert_eq!(expected_dist_m.len(), dist_m.len());
         for (expected, actual) in expected_dist_m.iter().zip(dist_m.iter()) {

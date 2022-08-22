@@ -3,6 +3,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens, TokenStreamExt}; // ToTokens is implicitly used as a trait
 use syn::{DeriveInput, Ident, Meta, spanned::Spanned};
 use proc_macro_error::{abort, proc_macro_error};
+use regex::Regex;
 
 mod utilities;
 use utilities::{impl_getters_and_setters, FieldOptions};
@@ -17,7 +18,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let is_state: bool = ident.to_string().contains("State");
 
     let mut impl_block = TokenStream2::default();
-    impl_block.extend::<TokenStream2>(attr.into());
+    let mut py_impl_block = TokenStream2::default();
+    py_impl_block.extend::<TokenStream2>(attr.into());
 
     if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &mut ast.fields {
         let field_names: Vec<String> = named
@@ -88,7 +90,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 // );
                 impl_getters_and_setters(
                     type_path,
-                    &mut impl_block,
+                    &mut py_impl_block,
                     ident,
                     opts,
                     has_orphaned,
@@ -96,11 +98,113 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 );
             }
         }
+
+        if !is_state {
+            py_impl_block.extend::<TokenStream2>(quote! {
+                #[pyo3(name = "to_file")]
+                pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
+                    self.to_file(filename).unwrap();
+                    Ok(())
+                }
+               
+                #[classmethod]
+                #[pyo3(name = "from_file")]
+                pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
+                    let obj: #ident = Self::from_file(&json_str);
+                    Ok(obj)
+                }
+            });
+        }
+    } else if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast.fields { 
+        // tuple struct
+        if ast.ident.to_string().contains("Vec") || ast.ident.to_string().contains("Array") {
+            assert!(unnamed.len() == 1);
+            for field in unnamed.iter() {
+                let ftype = field.ty.clone();
+                if let syn::Type::Path(type_path) = ftype.clone() {
+                    let type_str = type_path.clone().into_token_stream().to_string();
+                    let (re, container, py_new_body, tolist_body) = if type_str.contains("Vec") {
+                        (
+                            Regex::new(r"Vec < (.+) >").unwrap(), 
+                            "Vec".parse::<TokenStream2>().unwrap(),
+                            "Self(v)".parse::<TokenStream2>().unwrap(),
+                            "self.0.clone()".parse::<TokenStream2>().unwrap(),
+                        )
+                    } else if type_str.contains("Array1") {
+                        (
+                            Regex::new(r"Array1 < (.+) >").unwrap(), 
+                            "Array1".parse::<TokenStream2>().unwrap(),
+                            "Self(Array1::from_vec(v))".parse::<TokenStream2>().unwrap(),
+                            "self.0.to_vec()".parse::<TokenStream2>().unwrap(),
+                        )
+                    } else {
+                        panic!("Invalid container type.  Must be Array1 or Vec.")  // replace with proc_macro_error::abort macro
+                    };
+
+                    // println!("{}", type_str);
+                    // println!("{}", &re.captures(&type_str).unwrap()[1]);
+                    let contained_dtype: TokenStream2 = (&re.captures(&type_str).unwrap()[1]).to_string().parse().unwrap();
+                    py_impl_block.extend::<TokenStream2>(
+                        quote! {
+                            #[new]
+                            pub fn __new__(v: Vec<#contained_dtype>) -> Self {
+                                #py_new_body
+                            }
+                            
+                            pub fn __repr__(&self) -> String {
+                                format!("RustArray({:?})", self.0)
+                            }
+                            pub fn __str__(&self) -> String {
+                                format!("{:?}", self.0)
+                            }
+                            pub fn __getitem__(&self, idx: i32) -> PyResult<#contained_dtype> {
+                                if idx >= self.0.len() as i32 {
+                                    Err(PyIndexError::new_err("Index is out of bounds"))
+                                } else if idx >= 0 {
+                                    Ok(self.0[idx as usize])
+                                } else {
+                                    Ok(self.0[self.0.len() + idx as usize])
+                                }
+                            }                               
+                            pub fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype
+                                ) -> PyResult<()> {
+                                Err(PyNotImplementedError::new_err(
+                                    "Setting value at index is not implemented. 
+                                    Run `tolist` method, modify value at index, and 
+                                    then set entire vector.",
+                                ))
+                            }
+                            pub fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
+                                Ok(#tolist_body)
+                            }
+                            pub fn __list__(&self) -> PyResult<Vec<#contained_dtype>> {
+                                Ok(#tolist_body)
+                            }
+                            pub fn __len__(&self) -> usize {
+                                self.0.len()
+                            }
+                            pub fn is_empty(&self) -> bool {
+                                self.0.is_empty()
+                            }
+                        }
+                    );
+                    impl_block.extend::<TokenStream2>(
+                        quote! {
+                            pub fn new(value: #container<#contained_dtype>) -> Self {
+                                Self(value)
+                            }
+                        }
+                    );
+                }
+            }
+        } else {
+            panic!("Likely invalid use of `add_pyo3_api` macro.");
+        }
     } else {
-        panic!("Invalid use of `add_pyo3_api` macro.  Works on structs with named fields only.")
+        panic!("Likely invalid use of `add_pyo3_api` macro.");
     };
 
-    // impl_block.extend::<TokenStream2>(quote! {
+    // py_impl_block.extend::<TokenStream2>(quote! {
     //     #[classmethod]
     //     #[pyo3(name = "default")]
     //     pub fn default_py(_cls: &PyType) -> PyResult<Self> {
@@ -108,65 +212,52 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     //     }
     // });
 
-    impl_block.extend::<TokenStream2>(quote! {
+    py_impl_block.extend::<TokenStream2>(quote! {
+        pub fn copy(&self) -> Self {self.clone()}
+        pub fn __copy__(&self) -> Self {self.clone()}
+        pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
+
+        pub fn to_bincode<'py>(&self, py: Python<'py>) -> PyResult<&'py PyBytes> {
+            Ok(PyBytes::new(py, &serialize(&self).unwrap()))
+        }
+        #[classmethod]
+        pub fn from_bincode(_cls: &PyType, encoded: &PyBytes) -> PyResult<Self> {
+            Ok(deserialize(encoded.as_bytes()).unwrap())
+        }
+
         pub fn to_json(&self) -> PyResult<String> {
             Ok(serde_json::to_string(&self).unwrap())
         }
-
         #[classmethod]
         pub fn from_json(_cls: &PyType, json_str: &str) -> PyResult<Self> {
             Ok(serde_json::from_str(json_str).unwrap())
         }
-
+    
         pub fn to_yaml(&self) -> PyResult<String> {
             Ok(serde_yaml::to_string(&self).unwrap())
         }
-
         #[classmethod]
         pub fn from_yaml(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
-           Ok(serde_yaml::from_str(yaml_str).unwrap())
-        }
-
-        pub fn to_bincode(&self) -> PyResult<Vec<u8>> {
-            Ok(bincode::serialize(&self).unwrap())
-        }
-
-        #[classmethod]
-        pub fn from_bincode(_cls: &PyType, bytes_vec: Vec<u8>) -> PyResult<Self> {
-           Ok(bincode::deserialize(&bytes_vec).unwrap())
+            Ok(serde_yaml::from_str(yaml_str).unwrap())
         }
     });
 
-    if !is_state {
-        impl_block.extend::<TokenStream2>(quote! {
-            #[pyo3(name = "to_file")]
-            pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
-                self.to_file(filename).unwrap();
-                Ok(())
-            }
-        });
-        impl_block.extend::<TokenStream2>(quote! {
-             #[classmethod]
-             #[pyo3(name = "from_file")]
-             pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
-                 let obj: #ident = Self::from_file(&json_str);
-                 Ok(obj)
-             }
-        });
-    }
-
     let impl_block = quote! {
+        impl #ident {
+            #impl_block
+        }
+
         #[pymethods]
         #[cfg(feature="pyo3")]
         impl #ident {
-            #impl_block
+            #py_impl_block
         }
     };
 
     let mut final_output = TokenStream2::default();
     // add pyclass attribute
     final_output.extend::<TokenStream2>(quote! {
-        #[cfg_attr(feature="pyo3", pyclass)]
+        #[cfg_attr(feature="pyo3", pyclass(module = "fastsimrust"))]
     });
     let mut output: TokenStream2 = ast.to_token_stream();
     output.extend(impl_block);

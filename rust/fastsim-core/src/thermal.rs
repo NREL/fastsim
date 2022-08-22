@@ -1,22 +1,15 @@
 //! Module for simulating thermal behavior of powertrains
-use ndarray::{s, Array1};
 use proc_macros::{add_pyo3_api, HistoryVec};
-use pyo3::exceptions::PyAttributeError;
-use pyo3::prelude::*;
-use pyo3::types::PyType;
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::error::Error;
-use std::fs::File;
-use std::path::PathBuf;
 
 use crate::air::AirProperties;
 use crate::cycle;
+use crate::imports::*;
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 use crate::simdrive;
 use crate::utils::Pyo3VecF64;
-use crate::vehicle;
-
 use crate::utils::*;
+use crate::vehicle;
 use crate::vehicle_thermal::*;
 
 #[add_pyo3_api(
@@ -214,10 +207,6 @@ use crate::vehicle_thermal::*;
     /// Return self.cyc.time_is.is_empty()
     pub fn is_empty(&self) -> bool {
         self.sd.cyc.time_s.is_empty()
-    }
-
-    pub fn copy(&self) -> Self {
-        self.clone()
     }
 )]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
