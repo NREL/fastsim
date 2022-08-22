@@ -128,6 +128,7 @@ class ModelObjectives(object):
                 fig, ax = plt.subplots(
                     len(self.obj_names) * ax_multiplier + 1, 1, sharex=True, figsize=(12, 8),
                 )
+                plt.suptitle(f"trip: {key}")
                 ax[-1].plot(
                     time_hr,
                     sim_drive.sd.mph_ach,
@@ -169,7 +170,7 @@ class ModelObjectives(object):
                     # this code needs to be cleaned up
                     # raw signals
                     ax[i_obj * ax_multiplier].set_title(
-                        f"trip: {key}, error: {objectives[key][obj[0]]:.3g}")
+                        f"error: {objectives[key][obj[0]]:.3g}")
                     ax[i_obj * ax_multiplier].plot(time_hr,
                                                    mod_sig, label='mod',)
                     ax[i_obj * ax_multiplier].plot(time_hr,
@@ -359,4 +360,5 @@ def get_parser() -> argparse.ArgumentParser:
                         help="File location to save results.")
     parser.add_argument('--show', action="store_true",
                         help="If provided, shows plots.")
+    parser.add_argument("--make-plots", help="Generates plots, if provided.")
     return parser

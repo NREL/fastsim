@@ -158,10 +158,12 @@ if __name__ == "__main__":
 
     n_processes = args.processes
     n_max_gen = args.n_max_gen
-    pop_size = args.pop_size
+    # should be at least as big as n_processes
+    pop_size = max(args.pop_size, n_processes)
     run_minimize = not(args.skip_minimize)
     save_path = args.save_path
     show_plots = args.show
+    make_plots = args.make_plots
 
     cal_objectives, val_objectives, params_bounds = get_cal_and_val_objs()
 
@@ -232,7 +234,8 @@ if __name__ == "__main__":
     cal_objectives.get_errors(
         cal_objectives.update_params(param_vals),
         plot_save_dir=Path(save_path),
-        show=show_plots,
+        show=show_plots and make_plots,
+        plot=make_plots,
     )
     val_objectives.get_errors(
         val_objectives.update_params(param_vals),

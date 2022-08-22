@@ -14,7 +14,8 @@ import fusion_thermal_cal as ftc
 trip_dir = ftc.trip_dir
 
 cal_objectives, val_objectives, params_bounds = ftc.get_cal_and_val_objs()
-save_path = "fusion_pymoo_res_2022_08_18"
+# save_path = "fusion_pymoo_res_2022_08_18"
+save_path = "pymoo_res"
 
 res_df = pd.read_csv(Path(save_path) / "pymoo_res_df.csv")
 # with open(Path(save_path) / "pymoo_res.pickle", 'rb') as file:
@@ -35,15 +36,17 @@ param_vals = res_df.iloc[best_row, :len(cal_objectives.params)].to_numpy()
 
 show_plots = False
 
-cal_objectives.get_errors(
+cal_errs, cal_mods = cal_objectives.get_errors(
     cal_objectives.update_params(param_vals),
     plot_save_dir=Path(save_path),
     show=show_plots,
+    return_mods=True,
 )
-val_objectives.get_errors(
+val_errs, val_mods = val_objectives.get_errors(
     val_objectives.update_params(param_vals),
     plot_save_dir=Path(save_path),
     show=show_plots,
+    return_mods=True,
 )
 
 # generate data for scatter plot
@@ -52,21 +55,21 @@ l_per_cc = 1e-3
 gal_per_l = 1 / 3.79
 gal_per_ml = gal_per_l / 1_000
 
+
 def get_mgp_from_sdh(sdh: fsr.SimDriveHot) -> float:
     fuel_gal_mod = (
-    (np.array(sdh.sd.fs_kw_out_ach) * np.diff(np.array(sdh.sd.cyc.time_s), prepend=0)
-        ).sum() / ftc.lhv_fuel_kj_per_kg / ftc.rho_fuel_kg_per_ml * gal_per_ml)
+        (np.array(sdh.sd.fs_kw_out_ach) * np.diff(np.array(sdh.sd.cyc.time_s), prepend=0)
+         ).sum() / ftc.lhv_fuel_kj_per_kg / ftc.rho_fuel_kg_per_ml * gal_per_ml)
     dist_mi_mod = np.array(sdh.sd.dist_mi).sum()
     return dist_mi_mod / fuel_gal_mod
+
 
 cal_mod_mpg = []
 cal_exp_mpg = []
 cal_te_amb_degc = []
 
-for key in cal_objectives.models.keys():
-    sdh = fsr.SimDriveHot.from_bincode(
-        cal_objectives.models[key])
-    sdh.sim_drive()
+for key in cal_mods.keys():
+    sdh = cal_mods[key]
     cal_te_amb_degc.append(np.array(sdh.state.amb_te_deg_c).mean())
     mpg = get_mgp_from_sdh(sdh)
     cal_mod_mpg.append(mpg)
@@ -82,9 +85,7 @@ val_exp_mpg = []
 val_te_amb_degc = []
 
 for key in val_objectives.models.keys():
-    sdh = fsr.SimDriveHot.from_bincode(
-        val_objectives.models[key])
-    sdh.sim_drive()
+    sdh = val_mods[key]
     val_te_amb_degc.append(np.array(sdh.state.amb_te_deg_c).mean())
     mpg = get_mgp_from_sdh(sdh)
     val_mod_mpg.append(mpg)
@@ -95,17 +96,23 @@ for key in val_objectives.models.keys():
                    df['Time[s]'].diff().fillna(0)).sum()
     val_exp_mpg.append(dist_mi_exp / fuel_gal_exp)
 
-custom_cycler = (cycler(color=['c', 'c', 'm', 'm']) +
-                 cycler(linestyle=[""] * 4) +
-                 cycler(marker=["x", "o", "x", "o"])
-                 )
+markers = ("x", "o", "x", "o")
+colors = ("#7fc97f", "#7fc97f", "#beaed4", "#beaed4")
+
+# ***************************************
+# WARNING! The plot below is using default param values
+# rather than the best param values
 
 fig, ax = plt.subplots()
-ax.set_prop_cycle(custom_cycler)
-ax.plot(cal_te_amb_degc, cal_mod_mpg, label='cal mod')
-ax.plot(cal_te_amb_degc, cal_exp_mpg, label='cal exp')
-ax.plot(val_te_amb_degc, val_mod_mpg, label='val mod')
-ax.plot(val_te_amb_degc, val_exp_mpg, label='val exp')
+ax.scatter(cal_te_amb_degc, cal_mod_mpg, label='cal mod',
+           marker=markers[0], color=colors[0])
+ax.scatter(cal_te_amb_degc, cal_exp_mpg, label='cal exp',
+           marker=markers[1], color=colors[1], facecolors='none')
+ax.scatter(val_te_amb_degc, val_mod_mpg,
+           marker=markers[2], color=colors[2], label='val mod')
+ax.scatter(val_te_amb_degc, val_exp_mpg, label='val exp',
+           marker=markers[3], color=colors[3], facecolors='none')
+ax.set_ylim([0, ax.get_ylim()[1]])
 ax.set_xlabel("Ambient Temp. [°C]")
 ax.set_ylabel("Fuel Economy [mpg]")
 ax.legend()
