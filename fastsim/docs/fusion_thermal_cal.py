@@ -29,7 +29,9 @@ def load_data() -> Dict[str, pd.DataFrame]:
                         file.stem]["Eng_FuelFlow_Direct[cc/s]"] * rho_fuel_kg_per_ml * lhv_fuel_kj_per_kg
 
                     dfs_raw[file.stem]['Fuel_Energy_Calc[MJ]'] = (
-                        dfs_raw[file.stem]['Fuel_Power_Calc[kW]'] * dfs_raw[file.stem]['Time[s]'].diff().fillna(0.0)).cumsum() / 1e3
+                        dfs_raw[file.stem]['Fuel_Power_Calc[kW]'] *
+                        dfs_raw[file.stem]['Time[s]'].diff().fillna(0.0)
+                    ).cumsum() / 1e3
 
                     dfs[file.stem] = fsim.resample(
                         dfs_raw[file.stem],
@@ -147,7 +149,7 @@ for trip_dir in possible_trip_dirs:
         break
 
 rho_fuel_kg_per_ml = 0.743e-3
-lhv_fuel_btu_per_lbm = 18_344
+lhv_fuel_btu_per_lbm = 18_344  # from "2012FordFusionV6Overview V5.pdf"
 lbm_per_kg = 2.2
 btu_per_kj = 0.948
 lhv_fuel_kj_per_kg = lhv_fuel_btu_per_lbm * lbm_per_kg / btu_per_kj
