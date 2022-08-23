@@ -76,6 +76,7 @@ def get_cal_and_val_objs():
             veh,
             vehthrm,
             init_state,
+            amb_te_deg_c=dfs[key]["Cell_Temp[C]"]
         )
 
         # make tolerances big since runs may print lots of warnings before final design is selected
