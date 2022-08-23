@@ -275,16 +275,18 @@ class CustomOutput(Output):
     def __init__(self):
         super().__init__()
         self.t_gen_start = time.perf_counter()
-        self.t_s = Column("t [s]", width=13)
+        self.n_nds = Column("n_nds", width=8)
+        self.t_s = Column("t [s]", width=10)
         self.euclid_min = Column("euclid min", width=13)
-        self.columns += [self.t_s, self.euclid_min]
+        self.columns += [self.n_nds, self.t_s, self.euclid_min]
 
     def update(self, algorithm):
         super().update(algorithm)
-        self.t_s.set(f"{(time.perf_counter() - self.t_gen_start):.3f}")
+        self.n_nds.set(len(algorithm.opt))
+        self.t_s.set(f"{(time.perf_counter() - self.t_gen_start):.3g}")
         f = algorithm.pop.get('F')
         euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
-        self.euclid_min.set(euclid_min)
+        self.euclid_min.set(f"{euclid_min:.3g}")
 
 
 def run_minimize(
