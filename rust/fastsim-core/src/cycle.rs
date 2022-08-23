@@ -197,7 +197,8 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             orphaned: false,
         }
     }
-
+    
+    #[allow(clippy::type_complexity)]
     pub fn __getnewargs__(&self) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
         Ok((self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name))
     }
@@ -361,7 +362,7 @@ impl RustCycle {
             // short-circuit for no-grade case
             return 0.0;
         }
-        let delta_dists = trapz_step_distances(&self);
+        let delta_dists = trapz_step_distances(self);
         let distances_m = ndarrcumsum(&delta_dists);
         if delta_distance_m <= tol {
             if distance_start_m <= distances_m[0] {
@@ -404,13 +405,13 @@ impl RustCycle {
     pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> f64 {
         let tol: f64 = 1e-6;
         let mut d: f64 = 0.0;
-        for (&dd, &v) in trapz_step_distances(&self).iter().zip(self.mps.iter()) {
+        for (&dd, &v) in trapz_step_distances(self).iter().zip(self.mps.iter()) {
             d += dd;
             if (v < tol) && (d > (distance_m + tol)) {
                 return d - distance_m;
             }
         }
-        return d - distance_m;
+        d - distance_m
     }
 
     /// Modifies the cycle using the given constant-jerk trajectory parameters
@@ -608,14 +609,11 @@ pub fn detect_passing(
         };
     }
     let zero_speed_tol_m_per_s = 1e-6;
-    let dist_tol_m = match dist_tol_m {
-        Some(v) => v,
-        None => 0.1,
-    };
+    let dist_tol_m = dist_tol_m.unwrap_or(0.1);
     let mut v0: f64 = cyc.mps[i - 1];
-    let d0: f64 = trapz_step_start_distance(&cyc, i);
+    let d0: f64 = trapz_step_start_distance(cyc, i);
     let mut v0_lv: f64 = cyc0.mps[i - 1];
-    let d0_lv: f64 = trapz_step_start_distance(&cyc0, i);
+    let d0_lv: f64 = trapz_step_start_distance(cyc0, i);
     let mut d = d0;
     let mut d_lv = d0_lv;
     let mut rendezvous_idx: Option<usize> = None;
@@ -647,14 +645,8 @@ pub fn detect_passing(
         }
     }
     PassingInfo {
-        has_collision: match rendezvous_idx {
-            Some(_) => true,
-            None => false,
-        },
-        idx: match rendezvous_idx {
-            Some(idx) => idx,
-            None => 0,
-        },
+        has_collision: rendezvous_idx.is_some(),
+        idx: rendezvous_idx.unwrap_or(0),
         num_steps: rendezvous_num_steps,
         start_distance_m: d0,
         distance_m: rendezvous_distance_m,
