@@ -360,5 +360,6 @@ def get_parser() -> argparse.ArgumentParser:
                         help="File location to save results.")
     parser.add_argument('--show', action="store_true",
                         help="If provided, shows plots.")
-    parser.add_argument("--make-plots", help="Generates plots, if provided.")
+    parser.add_argument("--make-plots", action="store_true",
+                        help="Generates plots, if provided.")
     return parser
