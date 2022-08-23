@@ -161,7 +161,8 @@ if __name__ == "__main__":
     # should be at least as big as n_processes
     pop_size = args.pop_size
     run_minimize = not(args.skip_minimize)
-    save_path = args.save_path
+    save_path = Path(args.save_path)
+    save_path.mkdir(exist_ok=True)
     show_plots = args.show
     make_plots = args.make_plots
 
@@ -221,8 +222,8 @@ if __name__ == "__main__":
                     save_path=save_path,
                 )
     else:
-        res_df = pd.read_csv(Path(save_path) / "pymoo_res_df.csv")
-        # with open(Path(save_path) / "pymoo_res.pickle", 'rb') as file:
+        res_df = pd.read_csv(save_path / "pymoo_res_df.csv")
+        # with open(save_path / "pymoo_res.pickle", 'rb') as file:
         #     res = pickle.load(file)
 
     res_df['euclidean'] = (
@@ -238,19 +239,17 @@ if __name__ == "__main__":
 
     _, sdhots = cal_objectives.get_errors(
         cal_objectives.update_params(param_vals),
-        plot_save_dir=Path(save_path),
+        plot_save_dir=save_path,
         show=show_plots and make_plots,
         plot=make_plots,
         return_mods=True,
     )
     val_objectives.get_errors(
         val_objectives.update_params(param_vals),
-        plot_save_dir=Path(save_path),
+        plot_save_dir=save_path,
         show=show_plots,
     )
 
     # save calibrated vehicle to file
-    veh_save_dir = Path("../resources/vehdb/thermal/")
-    veh_save_dir.mkdir(exist_ok=True)
     sdhots[list(sdhots.keys())[0]].vehthrm.to_file(
-        str(veh_save_dir / "2012_Ford_Fusion_thrml.yaml"))
+        str(save_path / "2012_Ford_Fusion_thrml.yaml"))
