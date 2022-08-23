@@ -252,7 +252,6 @@ class CalibrationProblem(ElementwiseProblem):
         self.mod_obj = mod_obj
         # parameter lower and upper bounds
         self.param_bounds = param_bounds
-
         assert len(self.param_bounds) == len(
             self.mod_obj.params), f"{len(self.param_bounds)} != {len(self.mod_obj.params)}"
         super().__init__(

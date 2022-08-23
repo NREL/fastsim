@@ -205,8 +205,8 @@ if __name__ == "__main__":
                 f"Running parallel evaluation with n_processes: {n_processes}.")
             assert n_processes > 1
             # parallel evaluation
-            from multiprocessing.pool import ThreadPool
-            with ThreadPool(n_processes) as pool:
+            import multiprocessing
+            with multiprocessing.Pool(n_processes) as pool:
                 problem = fsim.calibration.CalibrationProblem(
                     mod_obj=cal_objectives,
                     param_bounds=params_bounds,
