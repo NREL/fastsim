@@ -200,6 +200,7 @@ if __name__ == "__main__":
                 save_path=save_path,
             )
         else:
+            assert n_processes > 1
             # parallel evaluation
             from multiprocessing.pool import ThreadPool
             with ThreadPool(n_processes) as pool:
@@ -214,6 +215,7 @@ if __name__ == "__main__":
                     problem=problem,
                     algorithm=algorithm,
                     termination=termination,
+                    save_path=save_path,
                 )
     else:
         res_df = pd.read_csv(Path(save_path) / "pymoo_res_df.csv")
