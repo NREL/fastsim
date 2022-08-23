@@ -159,7 +159,7 @@ if __name__ == "__main__":
     n_processes = args.processes
     n_max_gen = args.n_max_gen
     # should be at least as big as n_processes
-    pop_size = max(args.pop_size, n_processes)
+    pop_size = args.pop_size
     run_minimize = not(args.skip_minimize)
     save_path = args.save_path
     show_plots = args.show
@@ -188,6 +188,7 @@ if __name__ == "__main__":
         )
 
         if n_processes == 1:
+            print("Running serial evaluation.")
             # series evaluation
             problem = fsim.calibration.CalibrationProblem(
                 mod_obj=cal_objectives,
@@ -200,6 +201,8 @@ if __name__ == "__main__":
                 save_path=save_path,
             )
         else:
+            print(
+                f"Running parallel evaluation with n_processes: {n_processes}.")
             assert n_processes > 1
             # parallel evaluation
             from multiprocessing.pool import ThreadPool
@@ -233,11 +236,12 @@ if __name__ == "__main__":
         like="fc_te") ** 2).sum(1) ** (1 / 2)
     param_vals = res_df.iloc[best_row, :len(cal_objectives.params)].to_numpy()
 
-    cal_objectives.get_errors(
+    _, sdhots = cal_objectives.get_errors(
         cal_objectives.update_params(param_vals),
         plot_save_dir=Path(save_path),
         show=show_plots and make_plots,
         plot=make_plots,
+        return_mods=True,
     )
     val_objectives.get_errors(
         val_objectives.update_params(param_vals),
@@ -248,6 +252,5 @@ if __name__ == "__main__":
     # save calibrated vehicle to file
     veh_save_dir = Path("../resources/vehdb/thermal/")
     veh_save_dir.mkdir(exist_ok=True)
-    sdh = fsr.SimDriveHot.from_bincode(
-        cal_objectives.models[list(cal_objectives.models.keys())[0]])
-    sdh.vehthrm.to_file(str(veh_save_dir / "2012_Ford_Fusion_thrml.yaml"))
+    sdhots[list(sdhots.keys())[0]].vehthrm.to_file(
+        str(veh_save_dir / "2012_Ford_Fusion_thrml.yaml"))
