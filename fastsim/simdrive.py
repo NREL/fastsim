@@ -110,8 +110,7 @@ def copy_sim_params(sdp: SimDriveParams, return_type: str = None):
     return_type: 
         default: infer from type of sdp
         'dict': dict
-        'sim_params': SimDriveParams 
-        TODO: 'legacy', NOT IMPLEMENTED - do we need it? 'legacy': LegacySimDriveParams 
+        'python': SimDriveParams 
         'rust': RustSimDriveParams
     deep: if True, uses deepcopy on everything
     """
@@ -124,22 +123,14 @@ def copy_sim_params(sdp: SimDriveParams, return_type: str = None):
         if RUST_AVAILABLE and type(sdp) == fsr.RustSimDriveParams:
             return_type = 'rust'
         elif type(sdp) == SimDriveParams:
-            return_type = 'sim_params'
-        # elif type(cyc) == LegacyCycle:
-        #    return_type = "legacy"
+            return_type = 'python'
         else:
             raise NotImplementedError(
-                "Only implemented for rust, cycle, or legacy.")
+                "Only implemented for rust, python, or legacy.")
 
-    # if return_type == 'dict':
-    #    return sdp_dict
-    # elif return_type == 'sim_params':
-    #    return SimDriveParams.from_dict(sdp_dict)
-    # elif return_type == 'legacy':
-    #    return LegacyCycle(cyc_dict)
     if return_type == 'dict':
         return sdp_dict
-    elif return_type == 'sim_params':
+    elif return_type == 'python':
         return SimDriveParams.from_dict(sdp_dict)
     elif RUST_AVAILABLE and return_type == 'rust':
         return fsr.RustSimDriveParams(**sdp_dict)
@@ -2296,7 +2287,7 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
     sd: instantiated SimDriveClassic or SimDriveJit
     return_type: 
         default: infer from type of sd
-        'sim_drive': Cycle 
+        'python': Cycle 
         'legacy': LegacyCycle
         'rust': RustCycle
     deep: if True, uses deepcopy on everything
@@ -2309,17 +2300,17 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
         # if type(sd) == fsr.RustSimDrive:
         #    return_type = 'rust'
         if type(sd) == SimDrive:
-            return_type = 'sim_drive'
+            return_type = 'python'
         elif type(sd) == fsr.RustSimDrive:
             return_type = 'rust'
         elif type(sd) == LegacySimDrive:
             return_type = "legacy"
         else:
             raise NotImplementedError(
-                "Only implemented for rust, sim_drive, or legacy.")
+                "Only implemented for rust, python, or legacy.")
 
-    cyc_return_type = 'cycle' if return_type == 'sim_drive' else return_type
-    veh_return_type = 'vehicle' if return_type == 'sim_drive' else return_type
+    cyc_return_type = 'python' if return_type == 'python' else return_type
+    veh_return_type = 'vehicle' if return_type == 'python' else return_type
     cyc = cycle.copy_cycle(sd.cyc0, cyc_return_type, deep)
     veh = vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
 
@@ -2337,12 +2328,12 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
         elif key == 'veh':
             pass
         elif key == 'sim_params':
-            sp_return_type = 'sim_params' if (
-                return_type == 'sim_drive' or return_type == 'legacy') else return_type
+            sp_return_type = 'python' if (
+                return_type == 'python' or return_type == 'legacy') else return_type
             sd_copy.sim_params = copy_sim_params(sd.sim_params, sp_return_type)
         elif key == 'props':
-            pp_return_type = 'physical_properties' if (
-                return_type == 'sim_drive' or return_type == 'legacy') else return_type
+            pp_return_type = 'python' if (
+                return_type == 'python' or return_type == 'legacy') else return_type
             sd_copy.props = params.copy_physical_properties(
                 sd.props, pp_return_type)
         else:

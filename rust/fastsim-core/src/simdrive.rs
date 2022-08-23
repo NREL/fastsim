@@ -1,34 +1,22 @@
 //! Module containing vehicle struct and related functions.
-
-extern crate ndarray;
-use ndarray::Array1;
-extern crate pyo3;
-use pyo3::exceptions::{PyAttributeError, PyRuntimeError};
-use pyo3::prelude::*;
-use pyo3::types::{PyType, PyDict, PyBytes};
-
-
+// crate local
+use crate::imports::*;
 use crate::cycle::RustCycle;
 use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 use crate::utils::*;
 use crate::vehicle::*;
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::fs::File;
-use std::path::PathBuf;
-use std::error::Error;
-use bincode::{deserialize, serialize};
 
 pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
-
+#[cfg(feature = "pyo3")]
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     res.map_err(PyRuntimeError::new_err)
 }
 
-#[pyclass(module = "fastsimrust")]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     #[new]
     #[allow(clippy::too_many_arguments)]
@@ -106,7 +94,6 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
         todo!();
     }
 )]
-
 /// Struct containing time trace data
 pub struct RustSimDriveParams {
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
@@ -228,8 +215,7 @@ impl Default for RustSimDriveParams {
     }
 }
 
-#[pyclass(module = "fastsimrust")]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
     #[new]
@@ -242,9 +228,6 @@ impl Default for RustSimDriveParams {
     }
 
     // wrappers for core methods
-    // TODO, put doc strings on these and all structs
-    // comments preceding a struct, method, or function definition with `///` instead of `\\`
-    // get interpreted as doc strings in python
 
     #[pyo3(name = "gap_to_lead_vehicle_m")]
     /// Provides the gap-with lead vehicle from start to finish
@@ -256,8 +239,8 @@ impl Default for RustSimDriveParams {
     /// Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
     /// Arguments
     /// ------------
-    /// init_soc: initial SOC for electrified vehicles.  
-    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    /// init_soc: initial SOC for electrified vehicles.
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
     ///     Default of None causes veh.aux_kw to be used.
     pub fn sim_drive_py(
         &mut self,
@@ -294,7 +277,7 @@ impl Default for RustSimDriveParams {
     /// Arguments
     /// ------------
     /// init_soc: initial battery state-of-charge (SOC) for electrified vehicles
-    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
+    /// aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.
     ///         Default of None causes veh.aux_kw to be used.
     pub fn init_for_step_py(
         &mut self,
@@ -309,7 +292,7 @@ impl Default for RustSimDriveParams {
     pub fn sim_drive_step(&mut self) -> PyResult<()> {
         handle_sd_res(self.step())
     }
-    
+
     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
     pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
@@ -406,14 +389,23 @@ impl Default for RustSimDriveParams {
         handle_sd_res(self.set_post_scalars())
     }
 
-    /// Return length of time arrays
-    pub fn len(&self) -> usize {
-        self.cyc.time_s.len()
-    }    
+    #[pyo3(name = "len")]
+    pub fn len_py(&self) -> usize {
+        self.len()
+    }
 
+    /// added to make clippy happy
+    /// not sure whether there is any benefit to this or not for our purposes
     /// Return self.cyc.time_is.is_empty()
     pub fn is_empty(&self) -> bool {
         self.cyc.time_s.is_empty()
+    }
+
+    #[getter]
+    pub fn get_fs_cumu_mj_out_ach(&self) -> PyResult<Pyo3ArrayF64> {
+        Ok(
+            Pyo3ArrayF64::new(ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
+        )
     }
 )]
 pub struct RustSimDrive {
@@ -474,7 +466,6 @@ pub struct RustSimDrive {
     pub fc_kw_out_ach_pct: Array1<f64>,
     pub fc_kw_in_ach: Array1<f64>,
     pub fs_kw_out_ach: Array1<f64>,
-    pub fs_cumu_mj_out_ach: Array1<f64>,
     pub fs_kwh_out_ach: Array1<f64>,
     pub ess_cur_kwh: Array1<f64>,
     pub soc: Array1<f64>,
@@ -544,6 +535,7 @@ pub struct RustSimDrive {
     pub trace_miss_dist_frac: f64,
     pub trace_miss_time_frac: f64,
     pub trace_miss_speed_mps: f64,
+    pub orphaned: bool,
     pub coast_delay_index: Array1<i32>,
 }
 

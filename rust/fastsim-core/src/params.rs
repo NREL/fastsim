@@ -1,15 +1,9 @@
 //! Module containing FASTSim parameters.
 
-extern crate pyo3;
 use crate::proc_macros::add_pyo3_api;
-use bincode::{deserialize, serialize};
-use pyo3::exceptions::PyAttributeError;
-use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyType};
-use serde::{Deserialize, Serialize};
-use std::error::Error;
-use std::fs::File;
-use std::path::PathBuf;
+use crate::imports::*;
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 
 /// Unit conversions
 pub const MPH_PER_MPS: f64 = 2.2369;
@@ -21,7 +15,6 @@ pub const MODERN_MAX: f64 = 0.95;
 pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 /// Struct containing time trace data
-#[pyclass(module = "fastsimrust")]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
 #[add_pyo3_api(
@@ -31,6 +24,16 @@ pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
         Self::default()
     }
 
+    #[pyo3(name = "get_fuel_lhv_kj_per_kg")]
+    pub fn get_fuel_lhv_kj_per_kg_py(&self) -> f64 {
+        self.get_fuel_lhv_kj_per_kg()
+    }
+
+    #[pyo3(name = "set_fuel_lhv_kj_per_kg")]
+    pub fn set_fuel_lhv_kj_per_kg_py(&mut self, fuel_lhv_kj_per_kg: f64) {
+        self.set_fuel_lhv_kj_per_kg(fuel_lhv_kj_per_kg);
+    }
+    
     pub fn __getnewargs__(&self) {
         todo!();
     }
@@ -65,6 +68,16 @@ impl Default for RustPhysicalProperties {
 }
 
 impl RustPhysicalProperties {
+    pub fn get_fuel_lhv_kj_per_kg(&self) -> f64 {
+        // fuel_lhv_kj_per_kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg_per_L [kg/L] * 3_600 [s/hr] = [kJ/kg]
+        self.kwh_per_gge / 3.785 / self.fuel_rho_kg__L * 3.6e3
+    }
+
+    pub fn set_fuel_lhv_kj_per_kg(&mut self, fuel_lhv_kj_per_kg: f64) {
+        // kWhPerGGE = fuel_lhv_kj_per_kg * fuel_rho_kg_per_L [kg/L] * 3.785 [L/gal] / 3_600 [s/hr] = [kJ/kg]
+        self.kwh_per_gge = fuel_lhv_kj_per_kg * 3.785 * self.fuel_rho_kg__L / 3.6e3;
+    }
+
     impl_serde!(RustPhysicalProperties, PROPS_DEFAULT_FOLDER);
 
     pub fn from_file(filename: &str) -> Self {

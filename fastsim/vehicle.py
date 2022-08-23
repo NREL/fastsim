@@ -735,7 +735,7 @@ class Vehicle(object):
     def get_numba_veh(self):
         """Deprecated."""
         raise NotImplementedError(
-            "This method has been deprecated.  Use get_rust_veh instead.")
+            "This method has been deprecated")
 
     def to_rust(self):
         """Return a Rust version of the vehicle"""
@@ -807,14 +807,14 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
             new_pp.fuel_rho_kg__L = pp.fuel_rho_kg__L
             new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
             veh_dict[key] = new_pp
-        elif ((RUST_AVAILABLE) 
-               and (
+        elif ((RUST_AVAILABLE)
+              and (
                 (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayU32)
                 or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
                 or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayBool)
                 or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
-                )
-              ):
+        )
+        ):
             veh_dict[key] = list(veh.__getattribute__(key))
         else:
             veh_dict[key] = copy.deepcopy(
@@ -827,7 +827,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     elif return_type == LEGACY:
         return LegacyVehicle(veh_dict)
     elif RUST_AVAILABLE and return_type == RUST:
-        veh_dict['props'] = params.copy_physical_properties( 
+        veh_dict['props'] = params.copy_physical_properties(
             veh_dict['props'], return_type, deep)
         veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [
             "large_baseline_eff", "small_baseline_eff"]}

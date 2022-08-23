@@ -6,23 +6,17 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 
-use ndarray::{s, Array, Array1};
-extern crate pyo3;
-use bincode::{deserialize, serialize};
-use pyo3::exceptions::{PyAttributeError, PyFileNotFoundError};
-use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyType};
-use serde::{Deserialize, Serialize};
-use std::error::Error;
-
 // local
+use crate::imports::*;
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 use crate::utils::*;
 
 pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// # Arguments
 /// - n: Int, number of time-steps away from rendezvous
 /// - d0: Num, distance of simulated vehicle, $\frac{m}{s}$
@@ -58,7 +52,7 @@ pub fn calc_constant_jerk_trajectory(
     (k, a0)
 }
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// Calculate distance (m) after n timesteps
 ///
 /// INPUTS:
@@ -82,7 +76,7 @@ pub fn dist_for_constant_jerk(n: usize, d0: f64, v0: f64, a0: f64, k: f64, dt: f
     d0 + term1 + term2
 }
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// Calculate speed (m/s) n timesteps away via a constant-jerk acceleration
 ///
 /// INPUTS:   
@@ -103,7 +97,7 @@ pub fn speed_for_constant_jerk(n: usize, v0: f64, a0: f64, k: f64, dt: f64) -> f
     v0 + (n * a0 * dt) + (0.5 * n * (n - 1.0) * k * dt)
 }
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// Calculate the acceleration n timesteps away
 ///
 /// INPUTS:
@@ -170,7 +164,9 @@ pub fn trapz_distance_over_range(cyc: &RustCycle, i_start: usize, i_end: usize) 
     trapz_step_distances(cyc).slice(s![i_start..i_end]).sum()
 }
 
-pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+#[cfg(feature = "pyo3")]
+#[allow(unused)] // not sure what this is doing, may get used in proc macro???
+pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(accel_for_constant_jerk, m)?)?;
     m.add_function(wrap_pyfunction!(speed_for_constant_jerk, m)?)?;
@@ -178,8 +174,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-#[pyclass(module = "fastsimrust")]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(
@@ -202,7 +197,8 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             orphaned: false,
         }
     }
-
+    
+    #[allow(clippy::type_complexity)]
     pub fn __getnewargs__(&self) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
         Ok((self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name))
     }
@@ -268,7 +264,7 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[getter]
     pub fn get_mph(&self) -> PyResult<Vec<f64>> {
-        Ok((&self.mps * MPH_PER_MPS).to_vec())
+        Ok((&self.mps * crate::params::MPH_PER_MPS).to_vec())
     }
     #[setter]
     pub fn set_mph(&mut self, new_value: Vec<f64>) -> PyResult<()> {
@@ -295,7 +291,6 @@ pub(crate) fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(self.delta_elev_m().to_vec())
     }
 )]
-
 /// Struct for containing:
 /// * time_s, cycle time, $s$  
 /// * mps, vehicle speed, $\frac{m}{s}$  
@@ -367,7 +362,7 @@ impl RustCycle {
             // short-circuit for no-grade case
             return 0.0;
         }
-        let delta_dists = trapz_step_distances(&self);
+        let delta_dists = trapz_step_distances(self);
         let distances_m = ndarrcumsum(&delta_dists);
         if delta_distance_m <= tol {
             if distance_start_m <= distances_m[0] {
@@ -410,13 +405,13 @@ impl RustCycle {
     pub fn calc_distance_to_next_stop_from(&self, distance_m: f64) -> f64 {
         let tol: f64 = 1e-6;
         let mut d: f64 = 0.0;
-        for (&dd, &v) in trapz_step_distances(&self).iter().zip(self.mps.iter()) {
+        for (&dd, &v) in trapz_step_distances(self).iter().zip(self.mps.iter()) {
             d += dd;
             if (v < tol) && (d > (distance_m + tol)) {
                 return d - distance_m;
             }
         }
-        return d - distance_m;
+        d - distance_m
     }
 
     /// Modifies the cycle using the given constant-jerk trajectory parameters
@@ -559,7 +554,12 @@ impl RustCycle {
     impl_serde!(RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
 
     pub fn from_file(filename: &str) -> Self {
-        Self::from_file_parser(filename).unwrap()
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        match pathbuf.extension().unwrap().to_str().unwrap() {
+            "csv" => Self::from_csv_file(filename).unwrap(),
+            _ => Self::from_file_parser(filename).unwrap(),
+        }
     }
 }
 
@@ -609,14 +609,11 @@ pub fn detect_passing(
         };
     }
     let zero_speed_tol_m_per_s = 1e-6;
-    let dist_tol_m = match dist_tol_m {
-        Some(v) => v,
-        None => 0.1,
-    };
+    let dist_tol_m = dist_tol_m.unwrap_or(0.1);
     let mut v0: f64 = cyc.mps[i - 1];
-    let d0: f64 = trapz_step_start_distance(&cyc, i);
+    let d0: f64 = trapz_step_start_distance(cyc, i);
     let mut v0_lv: f64 = cyc0.mps[i - 1];
-    let d0_lv: f64 = trapz_step_start_distance(&cyc0, i);
+    let d0_lv: f64 = trapz_step_start_distance(cyc0, i);
     let mut d = d0;
     let mut d_lv = d0_lv;
     let mut rendezvous_idx: Option<usize> = None;
@@ -648,14 +645,8 @@ pub fn detect_passing(
         }
     }
     PassingInfo {
-        has_collision: match rendezvous_idx {
-            Some(_) => true,
-            None => false,
-        },
-        idx: match rendezvous_idx {
-            Some(idx) => idx,
-            None => 0,
-        },
+        has_collision: rendezvous_idx.is_some(),
+        idx: rendezvous_idx.unwrap_or(0),
         num_steps: rendezvous_num_steps,
         start_distance_m: d0,
         distance_m: rendezvous_distance_m,
@@ -699,7 +690,7 @@ mod tests {
 
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
-        let pathstr = String::from("../fastsim/resources/cycles/udds.csv");
+        let pathstr = String::from("../../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
         match RustCycle::from_csv_file(&pathstr) {
             Ok(cyc) => {

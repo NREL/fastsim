@@ -113,7 +113,7 @@ class Cycle(object):
     def get_numba_cyc(self):
         """Deprecated."""
         raise NotImplementedError(
-            "This method has been deprecated.  Use get_rust_cyc instead.")
+            "This method has been deprecated.")
 
     # Properties
 
@@ -306,7 +306,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
     return_type: 
         default: infer from type of cyc
         'dict': dict
-        'cycle': Cycle 
+        'python': Cycle 
         'legacy': LegacyCycle
         'rust': RustCycle
     deep: if True, uses deepcopy on everything
@@ -316,7 +316,8 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
 
     for key in inspect_utils.get_attrs(ref_cyc):
         val_to_copy = cyc.__getattribute__(key)
-        array_types = [np.ndarray] if not RUST_AVAILABLE else [np.ndarray, fsr.Pyo3ArrayF64]
+        array_types = [np.ndarray] if not RUST_AVAILABLE else [
+            np.ndarray, fsr.Pyo3ArrayF64]
         if type(val_to_copy) in array_types:
             # has to be float or time_s will get converted to int
             cyc_dict[key] = copy.deepcopy(np.array(
@@ -328,16 +329,16 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
         if RUST_AVAILABLE and type(cyc) == fsr.RustCycle:
             return_type = 'rust'
         elif type(cyc) == Cycle:
-            return_type = 'cycle'
+            return_type = 'python'
         elif type(cyc) == LegacyCycle:
             return_type = "legacy"
         else:
             raise NotImplementedError(
-                "Only implemented for rust, cycle, or legacy.")
+                "Only implemented for rust, python, or legacy.")
 
     if return_type == 'dict':
         return cyc_dict
-    elif return_type == 'cycle':
+    elif return_type == 'python':
         return Cycle.from_dict(cyc_dict)
     elif return_type == 'legacy':
         return LegacyCycle(cyc_dict)

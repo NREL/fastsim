@@ -13,7 +13,7 @@ else:
     rust_extensions = [
         RustExtension(
             "fastsimrust",
-            "rust/Cargo.toml",
+            "rust/fastsim-py/Cargo.toml",
             binding=Binding.PyO3,
             py_limited_api=True,
         ),
@@ -38,7 +38,7 @@ setuptools.setup(
         "License :: Other/Proprietary License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7,<3.11',
+    python_requires='>=3.8,<3.11',
     include_package_data=True,
     package_data={
         "fastsim.resources": ["*"],
@@ -49,6 +49,7 @@ setuptools.setup(
         "matplotlib>=3.3",
         "numpy>=1.18",
         "seaborn>=0.10",
+        "pymoo==0.6",
         "typing_extensions",
     ],
     # rust extension

@@ -173,7 +173,7 @@ pub fn impl_getters_and_setters(
     has_orphaned: bool,
     ftype: syn::Type,
 ) {
-    let type_str = type_path.clone().into_token_stream().to_string();
+    let type_str = type_path.into_token_stream().to_string();
     match type_str.as_str() {
         "Array1 < f64 >" => {
             impl_vec_get_set!(opts, ident, impl_block, f64, Pyo3ArrayF64, has_orphaned);
@@ -189,9 +189,6 @@ pub fn impl_getters_and_setters(
         }
         "Vec < f64 >" => {
             impl_vec_get_set!(opts, ident, impl_block, f64, Pyo3VecF64, has_orphaned);
-    // type_str if type_str.contains("Vec") => {
-        //     todo!();00
-        // }
         }
         _ => match ident.to_string().as_str() {
             "orphaned" => {

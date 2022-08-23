@@ -1,3 +1,4 @@
+/// Generates `to_file` and `from_file_parser` methods for `$component` with `$default_folder`.
 #[macro_export]
 macro_rules! impl_serde {
     ($component:ident, $default_folder:expr) => {
@@ -74,4 +75,16 @@ macro_rules! print_to_py {
             });
         };
     }
+}
+
+#[macro_export]
+macro_rules! check_orphaned_and_set {
+    ($struct_self: ident, $field: ident, $value: expr) => {
+        if !$struct_self.orphaned {
+            $struct_self.$field = $value;
+            Ok(())
+        } else {
+            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+        }
+    };
 }

@@ -6,6 +6,7 @@ import numpy as np
 from fastsim import parameters as params
 import seaborn as sns
 import re
+import datetime
 
 sns.set()
 
@@ -29,6 +30,7 @@ def get_rho_air(temperature_degC, elevation_m=180):
 
     return rho
 
+
 def l__100km_to_mpg(l__100km):
     """Given fuel economy in L/100km, returns mpg."""
 
@@ -47,7 +49,7 @@ def mpg_to_l__100km(mpg):
 
 def rollav(x, y, width=10):
     """
-    Returns x-weighted backward-looking rolling average of y.  
+    Returns x-weighted backward-looking rolling average of y.
     Good for resampling data that needs to preserve cumulative information.
     Arguments:
     ----------
@@ -86,12 +88,14 @@ def get_containers_with_path(
 ) -> list:
     """
     Get all attributes containers from nested struct using `path` to attribute.
+
     Parameters
     ----------
     struct: Any
         Outermost struct where first name in `path` is an attribute
     path: str | list
         Dot-separated path, e.g. `"sd.veh.drag_coef"` or `["sd", "veh", "drag_coef"]`
+
     Returns
     -------
     List[Any]
@@ -105,18 +109,21 @@ def get_containers_with_path(
         containers.append(container)
     return containers
 
+
 def get_attr_with_path(
     struct: Any,
     path: str | list,
 ) -> Any:
     """
     Get attribute from nested struct using `path` to attribute.
+
     Parameters
     ----------
     struct: Any
         Outermost struct where first name in `path` is an attribute
     path: str | list
         Dot-separated path, e.g. `"sd.veh.drag_coef"` or `["sd", "veh", "drag_coef"]`
+
     Returns
     -------
     Any
@@ -124,11 +131,14 @@ def get_attr_with_path(
     """
     if isinstance(path, str):
         path = path.split(".")
+
     if len(path) == 1:
         return getattr(struct, path[0])
+
     containers = get_containers_with_path(struct, path)
     attr = getattr(containers[-1], path[-1])
     return attr
+
 
 def set_attr_with_path(
     struct: Any,
@@ -137,6 +147,7 @@ def set_attr_with_path(
 ) -> Any:
     """
     Set attribute on nested struct using `path` to attribute.
+
     Parameters
     ----------
     struct: Any
@@ -144,14 +155,15 @@ def set_attr_with_path(
     path: str | list
         Dot-separated path, e.g. `"sd.veh.drag_coef"` or `["sd", "veh", "drag_coef"]`
     value: Any
-    
+
     Returns
     -------
     Any
-        `struct` with nested value set 
+        `struct` with nested value set
     """
     containers = [struct]
     if isinstance(path, str):
+        assert "." in path, "provide dot-separated path to struct, otherwise use `set_nested_values`"
         path = path.split(".")
     if len(path) == 1:
         setattr(struct, path[0], value)
@@ -172,12 +184,14 @@ def set_attr_with_path(
     # Return outermost container
     return container
 
+
 def set_attrs_with_path(
     struct: Any,
     paths_and_values: Dict[str, Any]
 ) -> Any:
     """
     Set multiple attributes on nested struct using `path`: `value` pairs.
+
     Parameters
     ----------
     struct: Any
@@ -185,7 +199,7 @@ def set_attrs_with_path(
     paths_and_values: Dict[str | list, Any]
         Mapping of dot-separated path (e.g. `sd.veh.drag_coef` or `["sd", "veh", "drag_coef"]`)
         to values (e.g. `0.32`)
-    
+
     Returns
     -------
     Any
@@ -196,4 +210,7 @@ def set_attrs_with_path(
     for path, value in paths_and_values.items():
         struct = set_attr_with_path(struct, path, value)
     return struct
-    
+
+
+def print_dt():
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))

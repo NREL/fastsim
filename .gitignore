@@ -9,4 +9,8 @@ build
 dist
 *.egg-info
 *.zip
+*venv*
+*.so
+*.pyd
+*pymoo_res*
 *env/
