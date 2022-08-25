@@ -567,7 +567,10 @@ impl SimDriveHot {
                 };
                 let cop = cop_ideal * hvac_model.frac_of_ideal_cop;
                 assert!(cop > 0.0);
-                self.state.cab_hvac_pwr_aux_kw = cop * -self.state.cab_qdot_from_hvac_kw;
+                self.state.cab_hvac_pwr_aux_kw = (-self.state.cab_qdot_from_hvac_kw / cop)
+                    .min(hvac_model.pwr_max_aux_load_for_cooling)
+                    .max(0.0);
+                self.state.cab_qdot_from_hvac_kw = -self.state.cab_hvac_pwr_aux_kw * cop;
             } else {
                 // HEATING MODE; cabin is colder than set point
 
@@ -621,7 +624,10 @@ impl SimDriveHot {
 
                     let cop = cop_ideal * hvac_model.frac_of_ideal_cop;
                     assert!(cop > 0.0);
-                    self.state.cab_hvac_pwr_aux_kw = cop * self.state.cab_qdot_from_hvac_kw;
+                    self.state.cab_hvac_pwr_aux_kw = (self.state.cab_qdot_from_hvac_kw / cop)
+                        .min(hvac_model.pwr_max_aux_load_for_cooling)
+                        .max(0.0);
+                    self.state.cab_qdot_from_hvac_kw = self.state.cab_hvac_pwr_aux_kw * cop;
                 }
             }
 
