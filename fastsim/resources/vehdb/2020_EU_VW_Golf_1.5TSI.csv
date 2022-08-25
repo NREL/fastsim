@@ -1,20 +1,20 @@
 ,Param Name,Param Value,Param Source / Comments
-Category,Scenario name,2020 VW Golf 1.5TSI ,L4284 W1789 H1456 Wheelbase2636 length:wheelbase = 1.63 https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618
+Category,Scenario name,2020 VW Golf 1.5TSI,L4284 W1789 H1456 Wheelbase2636 length:wheelbase = 1.63 https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618
 Vehicle,vehPtType,Conv,
 ,dragCoef,0.275,"# previous 0.275 Use 2019 MY data, https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618"
 ,frontalAreaM2,2.21,"Use 2019 MY data, https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618"
 ,gliderKg,1045.636,
 ,vehCgM,0.53,
 ,driveAxleWeightFrac,0.61,
-,wheelBaseM,300,
+,wheelBaseM,2.636,
 ,cargoKg,136,
 ,vehOverrideKg,1416,auto-data.net/en/volkswagen-golf-vii-5-door-1.4-tsi-125hp-20420
 Fuel / Fuel Converter,maxFuelStorKw,2000,Fuel Storage tank 50 liters
 ,fuelStorSecsToPeakPwr,1,
-,fuelStorKwh,245,50 liter of gasoline using 0.75 SG and 12.06kwh/kg LHV
+,fuelStorKwh,441.695609,50 L * 8.83391218 kWh/L; https://afdc.energy.gov/fuels/properties?fuels=GS
 ,fuelStorKwhPerKg,12.06,
 ,maxFuelConvKw,96,
-,fcEffMap,"[0.1, 0.13, 0.18, 0.25, 0.33, 0.37, 0.4, 0.42, 0.4, 0.37, 0.32, 0.30]","[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]"
+,fcEffMap,"[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]",
 ,fcEffType,SI,
 ,fuelConvSecsToPeakPwr,6,
 ,fuelConvBaseKg,61,
@@ -34,7 +34,7 @@ ESS,maxEssKw,0,
 ,essLifeCoefB,-0.6811,
 Wheels,wheelInertiaKgM2,0.823,
 ,numWheels,4,
-,wheelRrCoef,0.006,preivous 0.009 theicct.org/sites/default/files/publications/ICCT_LDV-Driving-Resistances-EU_121516.pdf
+,wheelRrCoef,0.009,
 ,wheelRadiusM,0.316,bndtechsource.wixsite.com/home/rotational-inertia-calculator
 ,wheelCoefOfFric,0.8,
 "SOC, ESS Discharch / Charge",minSoc,0.1,
@@ -48,7 +48,7 @@ Wheels,wheelInertiaKgM2,0.823,
 ,kwDemandFcOn,100,
 ,altEff,1,
 ,chgEff,0.86,
-,auxKw,0.7,
+,auxKw,0.75,
 ,forceAuxOnFC,FALSE,
 ,transKg,114,
 ,transEff,0.98,

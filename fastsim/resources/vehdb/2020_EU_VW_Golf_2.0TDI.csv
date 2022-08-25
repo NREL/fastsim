@@ -2,19 +2,19 @@
 Category,Scenario name,2020 VW Golf 2.0TDI,L4284 W1789 H1456 Wheelbase2636 length:wheelbase = 1.63
 Vehicle,vehPtType,Conv,
 ,dragCoef,0.275,2019 https://www.carfolio.com/volkswagen-golf-2.0-tdi-618530
-,frontalAreaM2,2.21,"Use 2019 MY data, https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618"
+,frontalAreaM2,2.21,2019 https://www.carfolio.com/volkswagen-golf-2.0-tdi-618530
 ,gliderKg,1045.636,
 ,vehCgM,0.53,
 ,driveAxleWeightFrac,0.61,
-,wheelBaseM,2.636,https://www.carfolio.com/volkswagen-golf-1.5-tsi-618618
+,wheelBaseM,2.636,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
 ,cargoKg,136,
 ,vehOverrideKg,1390,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
 Fuel / Fuel Converter,maxFuelStorKw,2000,Fuel Storage tank 50 liters
 ,fuelStorSecsToPeakPwr,1,
-,fuelStorKwh,245,50 liter of gasoline using 0.75 SG and 12.06kwh/kg LHV
-,fuelStorKwhPerKg,12.06,
+,fuelStorKwh,497.384668,50 L * 9.94769336 kWh/L; https://afdc.energy.gov/fuels/properties?fuels=DS
+,fuelStorKwhPerKg,11.83,
 ,maxFuelConvKw,110,
-,fcEffMap,"[0.214,0.242,0.284,0.37,0.4,0.435,0.445,0.48,0.445,0.43,0.42,0.41]",
+,fcEffMap,"[0.13, 0.17, 0.23, 0.28, 0.32, 0.37, 0.4, 0.4, 0.36, 0.34, 0.32, 0.3]",
 ,fcEffType,Diesel,
 ,fuelConvSecsToPeakPwr,6,
 ,fuelConvBaseKg,61,
@@ -34,7 +34,7 @@ ESS,maxEssKw,0,
 ,essLifeCoefB,-0.6811,
 Wheels,wheelInertiaKgM2,0.823,
 ,numWheels,4,
-,wheelRrCoef,0.006,preivous 0.009 theicct.org/sites/default/files/publications/ICCT_LDV-Driving-Resistances-EU_121516.pdf
+,wheelRrCoef,0.009,
 ,wheelRadiusM,0.316,bndtechsource.wixsite.com/home/rotational-inertia-calculator
 ,wheelCoefOfFric,0.8,
 "SOC, ESS Discharch / Charge",minSoc,0.1,
@@ -48,16 +48,16 @@ Wheels,wheelInertiaKgM2,0.823,
 ,kwDemandFcOn,100,
 ,altEff,1,
 ,chgEff,0.86,
-,auxKw,0.7,
+,auxKw,1,
 ,forceAuxOnFC,FALSE,
 ,transKg,114,
 ,transEff,0.98,
 ,compMassMultiplier,1.4,
 ,essToFuelOkError,0.005,
 ,maxRegen,0.98,
-"Val: MPGGE, KwhPM, 0 to 60, etc",valUddsMpgge,53.46,https://www.ultimatespecs.com/car-specs/Volkswagen/118818/Volkswagen-Golf-8-15-TSI-130HP.html
-,valHwyMpgge,71.28,L38.2 M54.3 H61.4 EH53.3 Comb53.3 Source: https://www.encycarpedia.com/volkswagen/20-golf-1-5-tsi-130-hatch 
-,valCombMpgge,63.57,https://www.auto-data.net/en/volkswagen-golf-viii-1.5-tsi-130hp-38151
+"Val: MPGGE, KwhPM, 0 to 60, etc",valUddsMpgge,53.46,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
+,valHwyMpgge,69,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
+,valCombMpgge,63.57,https://www.auto-data.net/en/volkswagen-golf-viii-2.0-tdi-150hp-dsg-38155
 ,valUddsKwhPerMile,,
 ,valHwyKwhPerMile,,
 ,valCombKwhPerMile,,
@@ -68,7 +68,7 @@ Wheels,wheelInertiaKgM2,0.823,
 ,valConst45MphKwhPerMile,,
 ,valUnadjUddsKwhPerMile,,
 ,valUnadjHwyKwhPerMile,,
-,val0To60Mph,8.4,https://www.auto-data.net/en/volkswagen-golf-viii-1.5-tsi-130hp-38151
+,val0To60Mph,8.4,
 ,valEssLifeMiles,,
 ,valRangeMiles,,
 ,valVehBaseCost,,
