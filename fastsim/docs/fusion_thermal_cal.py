@@ -142,6 +142,7 @@ def get_cal_and_val_objs():
 # https://www.anl.gov/taps/d3-2012-ford-fusion-v6
 possible_trip_dirs = (
     Path().home() / "Documents/DynoTestData/FordFusionTestData/",
+    Path().home() / "scratch/FordFusionTestData/",    
 )
 
 for trip_dir in possible_trip_dirs:
