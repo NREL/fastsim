@@ -105,6 +105,8 @@ pub struct HVACModel {
     pub p_cntrl_kw_per_deg_c: f64,
     /// integral control effort [kW / (°C-seconds)]
     pub i_cntrl_kw_per_deg_c_scnds: f64,
+    /// derivative control effort [kW / (°C/second) = kJ / °C]
+    pub d_cntrl_kj_per_deg_c: f64,
     /// Saturation value for integral control [kW].
     /// Whenever `i_cntrl_kw` hit this value, it stops accumulating
     pub cntrl_max_kw: f64,
@@ -118,19 +120,23 @@ pub struct HVACModel {
     pub frac_of_ideal_cop: f64,
     /// whether heat comes from fuel converter
     pub use_fc_waste_heat: bool,
+    /// max cooling aux load
+    pub pwr_max_aux_load_for_cooling: f64,
 }
 
 impl Default for HVACModel {
     fn default() -> Self {
         Self {
             te_set_deg_c: 22.0,
-            p_cntrl_kw_per_deg_c: 0.5,
+            p_cntrl_kw_per_deg_c: 0.1,
             i_cntrl_kw_per_deg_c_scnds: 0.01,
+            d_cntrl_kj_per_deg_c: 0.01,
             cntrl_max_kw: 5.0,
             te_deadband_deg_c: 1.0,
             i_cntrl_kw: 0.0,
-            frac_of_ideal_cop: 0.8, // this is based on Chad's engineering judgment
+            frac_of_ideal_cop: 0.15, // this is based on Chad's engineering judgment
             use_fc_waste_heat: true,
+            pwr_max_aux_load_for_cooling: 5.0,
         }
     }
 }
@@ -433,6 +439,7 @@ pub struct VehicleThermal {
     pub hvac_model: ComponentModelTypes,
 
     /// for pyo3 api
+    #[serde(skip)]
     pub orphaned: bool,
 }
 

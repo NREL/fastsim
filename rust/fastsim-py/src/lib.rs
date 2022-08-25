@@ -17,6 +17,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<thermal::SimDriveHot>()?;
     m.add_class::<vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::ThermalState>()?;
+    m.add_class::<vehicle_thermal::HVACModel>()?;
     cycle::register(py, m)?;
     Ok(())
 }

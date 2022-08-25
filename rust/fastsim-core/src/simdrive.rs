@@ -1,7 +1,7 @@
 //! Module containing vehicle struct and related functions.
 // crate local
-use crate::imports::*;
 use crate::cycle::RustCycle;
+use crate::imports::*;
 use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
@@ -535,6 +535,7 @@ pub struct RustSimDrive {
     pub trace_miss_dist_frac: f64,
     pub trace_miss_time_frac: f64,
     pub trace_miss_speed_mps: f64,
+    #[serde(skip)]
     pub orphaned: bool,
     pub coast_delay_index: Array1<i32>,
 }

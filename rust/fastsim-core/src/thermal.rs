@@ -235,24 +235,26 @@ impl SimDriveHot {
         init_state: Option<ThermalState>,
         amb_te_deg_c: Option<Array1<f64>>,
     ) -> Self {
-        let sd = simdrive::RustSimDrive::new(cyc.clone(), veh);
+        let sd = simdrive::RustSimDrive::new(cyc, veh);
         let air = AirProperties::default();
         let history = ThermalStateHistoryVec::default();
 
-        let (amb_te_deg_c, state) = match amb_te_deg_c {
+        let (amb_te_deg_c_arr, state) = match amb_te_deg_c {
             Some(amb_te_deg_c_arr) => match init_state {
                 Some(state) => {
                     assert_eq!(state.amb_te_deg_c, amb_te_deg_c_arr[0]);
                     (Some(amb_te_deg_c_arr), state)
                 }
                 None => {
-                    let mut state = ThermalState::default();
-                    state.amb_te_deg_c = amb_te_deg_c_arr[0];
+                    let state = ThermalState {
+                        amb_te_deg_c: amb_te_deg_c_arr[0],
+                        ..ThermalState::default()
+                    };
                     (Some(amb_te_deg_c_arr), state)
                 }
             },
             None => (
-                Some(Array1::zeros(cyc.len())), // 1st return element
+                None, // 1st return element
                 match init_state {
                     Some(state) => state, // 2nd return element
                     None => ThermalState::default(),
@@ -266,7 +268,7 @@ impl SimDriveHot {
             air,
             state,
             history,
-            amb_te_deg_c,
+            amb_te_deg_c: amb_te_deg_c_arr,
         }
     }
 
@@ -408,7 +410,7 @@ impl SimDriveHot {
                 - self.state.fc_qdot_to_amb_kw
                 - self.state.fc_qdot_to_htr_kw)
                 / self.vehthrm.fc_c_kj__k
-                * self.sd.cyc.dt_s()[i]
+                * self.sd.cyc.dt_s_at_i(i)
         }
     }
 
@@ -531,12 +533,12 @@ impl SimDriveHot {
             {
                 // inside deadband; no hvac power is needed
 
-                self.state.cab_qdot_from_hvac = 0.0;
+                self.state.cab_qdot_from_hvac_kw = 0.0;
                 hvac_model.i_cntrl_kw = 0.0; // reset to 0.0
             } else if self.state.cab_te_deg_c
                 > hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
             {
-                // cooling mode; cabin is hotter than set point
+                // COOLING MODE; cabin is hotter than set point
 
                 if hvac_model.i_cntrl_kw < 0.0 {
                     // reset to switch from heating to cooling
@@ -546,12 +548,15 @@ impl SimDriveHot {
                 // 1 time step worth of error
                 hvac_model.i_cntrl_kw += hvac_model.i_cntrl_kw_per_deg_c_scnds
                     * te_delta_vs_set_deg_c
-                    * self.sd.cyc.dt_s()[i];
+                    * self.sd.cyc.dt_s_at_i(i);
                 hvac_model.i_cntrl_kw = hvac_model.i_cntrl_kw.min(hvac_model.cntrl_max_kw);
-                self.state.cab_qdot_from_hvac =
-                    (-1.0 * hvac_model.p_cntrl_kw_per_deg_c * te_delta_vs_set_deg_c
-                        - hvac_model.i_cntrl_kw)
-                        .max(-hvac_model.cntrl_max_kw);
+                let d_cntrl_kw = hvac_model.d_cntrl_kj_per_deg_c
+                    * (self.state.cab_te_deg_c / self.sd.cyc.dt_s_at_i(i));
+                self.state.cab_qdot_from_hvac_kw = (-hvac_model.p_cntrl_kw_per_deg_c
+                    * te_delta_vs_set_deg_c
+                    - hvac_model.i_cntrl_kw
+                    - d_cntrl_kw)
+                    .max(-hvac_model.cntrl_max_kw);
                 // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
                 // cop_ideal is t_c / (t_h - t_c)
                 let cop_ideal = if te_delta_vs_amb_deg_c > -0.1 {
@@ -562,10 +567,12 @@ impl SimDriveHot {
                 };
                 let cop = cop_ideal * hvac_model.frac_of_ideal_cop;
                 assert!(cop > 0.0);
-                self.state.cab_hvac_pwr_aux_kw = cop * -self.state.cab_qdot_from_hvac;
+                self.state.cab_hvac_pwr_aux_kw = (-self.state.cab_qdot_from_hvac_kw / cop)
+                    .min(hvac_model.pwr_max_aux_load_for_cooling)
+                    .max(0.0);
+                self.state.cab_qdot_from_hvac_kw = -self.state.cab_hvac_pwr_aux_kw * cop;
             } else {
-                // heating mode; cabin is colder than set point
-                // TODO: for case when engine is used as heat source, limit heat draw from the engine so it doesn't get colder than cabin
+                // HEATING MODE; cabin is colder than set point
 
                 if hvac_model.i_cntrl_kw > 0.0 {
                     // reset to switch from cooling to heating
@@ -575,17 +582,33 @@ impl SimDriveHot {
                 // 1 time step worth of error
                 hvac_model.i_cntrl_kw += hvac_model.i_cntrl_kw_per_deg_c_scnds
                     * te_delta_vs_set_deg_c
-                    * self.sd.cyc.dt_s()[i];
+                    * self.sd.cyc.dt_s_at_i(i);
                 hvac_model.i_cntrl_kw = hvac_model.i_cntrl_kw.max(-hvac_model.cntrl_max_kw);
-                self.state.cab_qdot_from_hvac = (-hvac_model.p_cntrl_kw_per_deg_c
+                let d_cntrl_kw = hvac_model.d_cntrl_kj_per_deg_c
+                    * (self.state.cab_te_deg_c / self.sd.cyc.dt_s_at_i(i));
+                self.state.cab_qdot_from_hvac_kw = (-hvac_model.p_cntrl_kw_per_deg_c
                     * te_delta_vs_set_deg_c
-                    - hvac_model.i_cntrl_kw)
+                    - hvac_model.i_cntrl_kw
+                    - d_cntrl_kw)
                     .min(hvac_model.cntrl_max_kw);
 
                 if hvac_model.use_fc_waste_heat {
-                    self.state.fc_qdot_to_htr_kw = self.state.cab_qdot_from_hvac;
+                    // limit heat transfer to be substantially less than what is physically possible
+                    // i.e. the engine can't drop below cabin temperature to heat the cabin
+                    self.state.cab_qdot_from_hvac_kw = self
+                        .state
+                        .cab_qdot_from_hvac_kw
+                        .min(
+                            (self.state.fc_te_deg_c - self.state.cab_te_deg_c)
+                                * 0.1 // so that it's substantially less
+                                * self.vehthrm.cab_c_kj__k
+                                / self.sd.cyc.dt_s_at_i(i),
+                        )
+                        .max(0.0);
+                    self.state.fc_qdot_to_htr_kw = self.state.cab_qdot_from_hvac_kw;
                     // TODO: think about what to do for PHEV, which needs careful consideration here
                     // HEV probably also needs careful consideration
+                    // There needs to be an engine temperature (e.g. 60°C) below which the engine is forced on
                     assert!(self.sd.veh.veh_pt_type != "BEV");
                     // assume blower has negligible impact on aux load, may want to revise later
                 } else {
@@ -601,14 +624,17 @@ impl SimDriveHot {
 
                     let cop = cop_ideal * hvac_model.frac_of_ideal_cop;
                     assert!(cop > 0.0);
-                    self.state.cab_hvac_pwr_aux_kw = cop * self.state.cab_qdot_from_hvac;
+                    self.state.cab_hvac_pwr_aux_kw = (self.state.cab_qdot_from_hvac_kw / cop)
+                        .min(hvac_model.pwr_max_aux_load_for_cooling)
+                        .max(0.0);
+                    self.state.cab_qdot_from_hvac_kw = self.state.cab_hvac_pwr_aux_kw * cop;
                 }
             }
 
-            self.state.cab_te_deg_c += (self.state.cab_qdot_from_hvac
+            self.state.cab_te_deg_c += (self.state.cab_qdot_from_hvac_kw
                 - self.state.cab_qdot_to_amb_kw)
                 / self.vehthrm.cab_c_kj__k
-                * self.sd.cyc.dt_s()[i];
+                * self.sd.cyc.dt_s_at_i(i);
         }
     }
 
@@ -641,7 +667,7 @@ impl SimDriveHot {
                 self.vehthrm.exhport_c_kj__k
                     * 1e3
                     * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c)
-                    / self.sd.cyc.dt_s()[i],
+                    / self.sd.cyc.dt_s_at_i(i),
             );
         } else {
             // exhaust port cooler than the ambient
@@ -653,7 +679,7 @@ impl SimDriveHot {
                 self.vehthrm.exhport_c_kj__k
                     * 1e3
                     * (self.state.exhport_te_deg_c - self.state.fc_te_deg_c)
-                    / self.sd.cyc.dt_s()[i],
+                    / self.sd.cyc.dt_s_at_i(i),
             );
         }
 
@@ -671,7 +697,7 @@ impl SimDriveHot {
                 self.vehthrm.exhport_c_kj__k
                     * 1e3
                     * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c)
-                    / self.sd.cyc.dt_s()[i],
+                    / self.sd.cyc.dt_s_at_i(i),
             ]);
         } else {
             // exhaust cooler than exhaust port
@@ -687,7 +713,7 @@ impl SimDriveHot {
                 self.vehthrm.exhport_c_kj__k
                     * 1e3
                     * (self.state.exhport_exh_te_in_deg_c - self.state.exhport_te_deg_c)
-                    / self.sd.cyc.dt_s()[i],
+                    / self.sd.cyc.dt_s_at_i(i),
             ]);
         }
 
@@ -695,7 +721,7 @@ impl SimDriveHot {
             self.state.exhport_qdot_from_exh - self.state.exhport_qdot_to_amb;
         self.state.exhport_te_deg_c += self.state.exhport_qdot_net
             / (self.vehthrm.exhport_c_kj__k * 1e3)
-            * self.sd.cyc.dt_s()[i];
+            * self.sd.cyc.dt_s_at_i(i);
     }
 
     pub fn thermal_soak_walk(&mut self) {
@@ -745,7 +771,7 @@ impl SimDriveHot {
                 self.vehthrm.cat_c_kj__K
                     * 1e3
                     * (self.state.cat_te_deg_c - self.state.amb_te_deg_c)
-                    / self.sd.cyc.dt_s()[i],
+                    / self.sd.cyc.dt_s_at_i(i),
             );
         } else {
             // ambient hotter than cat (less common)
@@ -758,7 +784,7 @@ impl SimDriveHot {
                 self.vehthrm.cat_c_kj__K
                     * 1e3
                     * (self.state.cat_te_deg_c - self.state.amb_te_deg_c)
-                    / self.sd.cyc.dt_s()[i],
+                    / self.sd.cyc.dt_s_at_i(i),
             );
         }
 
@@ -785,7 +811,7 @@ impl SimDriveHot {
                 self.vehthrm.cab_c_kj__k
                     * 1e3
                     * (self.state.cat_exh_te_in_deg_c - self.state.cat_te_deg_c)
-                    / self.sd.cyc.dt_s()[i],
+                    / self.sd.cyc.dt_s_at_i(i),
             );
         } else {
             // cat hotter than exhaust (less common)
@@ -798,7 +824,7 @@ impl SimDriveHot {
                 self.vehthrm.cat_c_kj__K
                     * 1e3
                     * (self.state.cat_exh_te_in_deg_c - self.state.cat_te_deg_c)
-                    / self.sd.cyc.dt_s()[i],
+                    / self.sd.cyc.dt_s_at_i(i),
             );
         }
 
@@ -810,7 +836,7 @@ impl SimDriveHot {
             self.state.cat_qdot + self.state.cat_qdot_from_exh - self.state.cat_qdot_to_amb;
 
         self.state.cat_te_deg_c +=
-            self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__K * self.sd.cyc.dt_s()[i];
+            self.state.cat_qdot_net * 1e-3 / self.vehthrm.cat_c_kj__K * self.sd.cyc.dt_s_at_i(i);
     }
 
     pub fn set_misc_calcs(&mut self, i: usize) {
@@ -842,7 +868,7 @@ impl SimDriveHot {
             self.sd.high_acc_fc_on_tag[i] = false
         }
         self.sd.max_trac_mps[i] =
-            self.sd.mps_ach[i - 1] + (self.sd.veh.max_trac_mps2 * self.sd.cyc.dt_s()[i]);
+            self.sd.mps_ach[i - 1] + (self.sd.veh.max_trac_mps2 * self.sd.cyc.dt_s_at_i(i));
     }
 
     pub fn set_comp_lims(&mut self, i: usize) {
@@ -981,7 +1007,7 @@ impl SimDriveHot {
         // fs out = fc in
         self.sd.fs_kw_out_ach[i] = self.sd.fc_kw_in_ach[i];
 
-        self.sd.fs_kwh_out_ach[i] = self.sd.fs_kw_out_ach[i] * self.sd.cyc.dt_s()[i] / 3.6e3;
+        self.sd.fs_kwh_out_ach[i] = self.sd.fs_kw_out_ach[i] * self.sd.cyc.dt_s_at_i(i) / 3.6e3;
     }
 
     pub fn set_time_dilation(&mut self, i: usize) {
@@ -1043,7 +1069,7 @@ pub struct ThermalState {
     /// cabin convection to ambient [kw]
     pub cab_qdot_to_amb_kw: f64,
     /// heat transfer to cabin from hvac system
-    pub cab_qdot_from_hvac: f64,
+    pub cab_qdot_from_hvac_kw: f64,
     /// aux load from hvac
     pub cab_hvac_pwr_aux_kw: f64,
 
@@ -1087,7 +1113,7 @@ pub struct ThermalState {
 
     /// ambient temperature
     pub amb_te_deg_c: f64,
-
+    #[serde(skip)]
     pub orphaned: bool,
 }
 
@@ -1101,12 +1127,13 @@ impl ThermalState {
     ) -> Self {
         // Note default temperature is defined twice, see default()
         let default_te_deg_c: f64 = 22.0;
+        let amb_te_deg_c = amb_te_deg_c.unwrap_or(default_te_deg_c);
         Self {
-            amb_te_deg_c: amb_te_deg_c.unwrap_or(default_te_deg_c),
-            fc_te_deg_c: fc_te_deg_c_init.unwrap_or(default_te_deg_c),
-            cab_te_deg_c: cab_te_deg_c_init.unwrap_or(default_te_deg_c),
-            exhport_te_deg_c: exhport_te_deg_c_init.unwrap_or(default_te_deg_c),
-            cat_te_deg_c: cat_te_deg_c_init.unwrap_or(default_te_deg_c),
+            amb_te_deg_c,
+            fc_te_deg_c: fc_te_deg_c_init.unwrap_or(amb_te_deg_c),
+            cab_te_deg_c: cab_te_deg_c_init.unwrap_or(amb_te_deg_c),
+            exhport_te_deg_c: exhport_te_deg_c_init.unwrap_or(amb_te_deg_c),
+            cat_te_deg_c: cat_te_deg_c_init.unwrap_or(amb_te_deg_c),
             // fc_te_adiabatic_deg_c // chad is pretty sure 'fc_te_adiabatic_deg_c' gets overridden in first time step
             ..Default::default()
         }
@@ -1132,7 +1159,7 @@ impl Default for ThermalState {
             cab_te_deg_c: default_te_deg_c, // overridden by new()
             cab_qdot_solar_kw: 0.0,
             cab_qdot_to_amb_kw: 0.0,
-            cab_qdot_from_hvac: 0.0,
+            cab_qdot_from_hvac_kw: 0.0,
             cab_hvac_pwr_aux_kw: 0.0,
 
             exh_mdot: 0.0,

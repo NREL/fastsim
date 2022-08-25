@@ -155,7 +155,7 @@ pub fn trapz_step_start_distance(cyc: &RustCycle, i: usize) -> f64 {
 /// The distance traveled during step i in meters
 /// (i.e., from sample point i-1 to i)
 pub fn trapz_distance_for_step(cyc: &RustCycle, i: usize) -> f64 {
-    average_step_speed_at(cyc, i) * cyc.dt_s()[i]
+    average_step_speed_at(cyc, i) * cyc.dt_s_at_i(i)
 }
 
 /// Calculate the distance from step i_start to the start of step i_end
@@ -443,7 +443,7 @@ impl RustCycle {
             return 0.0;
         }
         let v0 = self.mps[i - 1];
-        let dt = self.dt_s()[i];
+        let dt = self.dt_s_at_i(i);
         let mut v = v0;
         for ni in 1..(n + 1) {
             let idx_to_set = (i - 1) + ni;
@@ -477,7 +477,7 @@ impl RustCycle {
             return (self.mps[self.mps.len() - 1], 0);
         }
         let v0 = self.mps[i - 1];
-        let dt = self.dt_s()[i];
+        let dt = self.dt_s_at_i(i);
         // distance-to-stop (m)
         let dts_m = match dts_m {
             Some(value) => {
@@ -508,6 +508,11 @@ impl RustCycle {
     /// rust-internal time steps
     pub fn dt_s(&self) -> Array1<f64> {
         diff(&self.time_s)
+    }
+
+    /// rust-internal time steps at i
+    pub fn dt_s_at_i(&self, i: usize) -> f64 {
+        self.time_s[i] - self.time_s[i-1]
     }
 
     /// distance covered in each time step
@@ -626,8 +631,8 @@ pub fn detect_passing(
         let v_lv = cyc0.mps[idx];
         let vavg = (v + v0) * 0.5;
         let vavg_lv = (v_lv + v0_lv) * 0.5;
-        let dd = vavg * cyc.dt_s()[idx];
-        let dd_lv = vavg_lv * cyc0.dt_s()[idx];
+        let dd = vavg * cyc.dt_s_at_i(idx);
+        let dd_lv = vavg_lv * cyc0.dt_s_at_i(idx);
         d += dd;
         d_lv += dd_lv;
         let dtlv = d_lv - d;
@@ -652,7 +657,7 @@ pub fn detect_passing(
         distance_m: rendezvous_distance_m,
         start_speed_m_per_s: cyc.mps[i - 1],
         speed_m_per_s: rendezvous_speed_m_per_s,
-        time_step_duration_s: cyc.dt_s()[i],
+        time_step_duration_s: cyc.dt_s_at_i(i),
     }
 }
 

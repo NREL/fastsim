@@ -1,31 +1,33 @@
 # To add a new cell, type '# %%'
 # To add a new markdown cell, type '# %% [markdown]'
 # %%
+import fastsimrust as fsr
+import fastsim as fsim
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+import time
+import numpy as np
+from pathlib import Path
+import os
+import sys
 from IPython import get_ipython
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # %%
-import sys
-import os
-from pathlib import Path
-import numpy as np
-import time
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 sns.set()
 
 
 # local modules
-import fastsim as fsim
-import fastsimrust as fsr
 
 
 # %% Case with no cabin thermal modeling or HVAC
 
-fusion = fsr.RustVehicle.from_file(str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml"))
-fusion_thermal = fsr.VehicleThermal.from_file(str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml"))
+fusion = fsr.RustVehicle.from_file(
+    str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml"))
+fusion_thermal = fsr.VehicleThermal.from_file(
+    str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml"))
 cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
 
 # no arguments use default of 22°C
@@ -39,7 +41,7 @@ t1 = time.perf_counter()
 
 print(f"Elapsed time: {t1 - t0:.3g} s")
 
-# %% 
+# %%
 
 fig, ax = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
 
@@ -54,3 +56,101 @@ ax[1].set_ylabel("Fuel Power [kW]")
 ax[-1].plot(sdh.sd.cyc.time_s, sdh.sd.mph_ach)
 ax[-1].set_xlabel("Time")
 ax[-1].set_ylabel("Speed [mph]")
+
+# %% Case with cabin heating
+
+fusion = fsr.RustVehicle.from_file(
+    str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml"))
+fusion_thermal = fsr.VehicleThermal.from_file(
+    str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml"))
+hvac_model = fsr.HVACModel.default()
+fusion_thermal.set_cabin_model_internal(hvac_model)
+cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+
+init_thermal_state = fsr.ThermalState(amb_te_deg_c=-5.0)
+
+sdh = fsr.SimDriveHot(cyc, fusion, fusion_thermal, init_thermal_state)
+
+t0 = time.perf_counter()
+sdh.sim_drive()
+t1 = time.perf_counter()
+
+print(f"Elapsed time: {t1 - t0:.3g} s")
+
+# %%
+
+fig, ax = plt.subplots(5, 1, figsize=(10, 10), sharex=True)
+
+plt.suptitle('Cold Start, Cold Ambient')
+ax[0].plot(sdh.sd.cyc.time_s, sdh.history.fc_te_deg_c)
+ax[0].set_xlabel("Time")
+ax[0].set_ylabel("Engine\nTemp. [°C]")
+
+ax[1].plot(sdh.sd.cyc.time_s, sdh.sd.fs_kw_out_ach)
+ax[1].set_xlabel("Time")
+ax[1].set_ylabel("Fuel Power [kW]")
+
+ax[2].plot(sdh.sd.cyc.time_s, sdh.history.cab_te_deg_c)
+ax[2].set_xlabel("Time")
+ax[2].set_ylabel("Cabin\nTemp. [°C]")
+
+ax[3].plot(sdh.sd.cyc.time_s,
+           sdh.history.cab_qdot_from_hvac_kw, label='to cabin')
+ax[3].plot(sdh.sd.cyc.time_s, sdh.sd.aux_in_kw, label='aux')
+ax[3].legend()
+ax[3].set_xlabel("Time")
+ax[3].set_ylabel("Climate Power [kW]")
+
+ax[-1].plot(sdh.sd.cyc.time_s, sdh.sd.mph_ach)
+ax[-1].set_xlabel("Time")
+ax[-1].set_ylabel("Speed [mph]")
+
+# %% Case with cabin cooling
+
+fusion = fsr.RustVehicle.from_file(
+    str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml"))
+fusion_thermal = fsr.VehicleThermal.from_file(
+    str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml"))
+hvac_model = fsr.HVACModel.default()
+fusion_thermal.set_cabin_model_internal(hvac_model)
+cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+
+init_thermal_state = fsr.ThermalState(amb_te_deg_c=40.0)
+
+sdh = fsr.SimDriveHot(cyc, fusion, fusion_thermal, init_thermal_state)
+
+t0 = time.perf_counter()
+sdh.sim_drive()
+t1 = time.perf_counter()
+
+print(f"Elapsed time: {t1 - t0:.3g} s")
+
+# %%
+
+fig, ax = plt.subplots(5, 1, figsize=(10, 10), sharex=True)
+
+plt.suptitle('Hot Start, Hot Ambient')
+ax[0].plot(sdh.sd.cyc.time_s, sdh.history.fc_te_deg_c)
+ax[0].set_xlabel("Time")
+ax[0].set_ylabel("Engine\nTemp. [°C]")
+
+ax[1].plot(sdh.sd.cyc.time_s, sdh.sd.fs_kw_out_ach)
+ax[1].set_xlabel("Time")
+ax[1].set_ylabel("Fuel Power [kW]")
+
+ax[2].plot(sdh.sd.cyc.time_s, sdh.history.cab_te_deg_c)
+ax[2].set_xlabel("Time")
+ax[2].set_ylabel("Cabin\nTemp. [°C]")
+
+ax[3].plot(sdh.sd.cyc.time_s,
+           sdh.history.cab_qdot_from_hvac_kw, label='to cabin')
+ax[3].plot(sdh.sd.cyc.time_s, sdh.sd.aux_in_kw, label='aux')
+ax[3].legend()
+ax[3].set_xlabel("Time")
+ax[3].set_ylabel("Climate Power [kW]")
+
+ax[-1].plot(sdh.sd.cyc.time_s, sdh.sd.mph_ach)
+ax[-1].set_xlabel("Time")
+ax[-1].set_ylabel("Speed [mph]")
+
+# %%
