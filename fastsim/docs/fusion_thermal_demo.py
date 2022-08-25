@@ -69,7 +69,7 @@ cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
 
 # no arguments use default of 22°C
 init_thermal_state = fsr.ThermalState(fc_te_deg_c_init=-20.0,
-                                      cab_te_deg_c_init=-20.0, amb_te_deg_c=-20.0, fart="knocker")
+                                      cab_te_deg_c_init=-20.0, amb_te_deg_c=-20.0)
 
 sdh = fsr.SimDriveHot(cyc, fusion, fusion_thermal, init_thermal_state)
 
