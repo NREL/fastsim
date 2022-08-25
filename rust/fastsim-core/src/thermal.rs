@@ -538,7 +538,7 @@ impl SimDriveHot {
             } else if self.state.cab_te_deg_c
                 > hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
             {
-                // cooling mode; cabin is hotter than set point
+                // COOLING MODE; cabin is hotter than set point
 
                 if hvac_model.i_cntrl_kw < 0.0 {
                     // reset to switch from heating to cooling
@@ -569,8 +569,7 @@ impl SimDriveHot {
                 assert!(cop > 0.0);
                 self.state.cab_hvac_pwr_aux_kw = cop * -self.state.cab_qdot_from_hvac_kw;
             } else {
-                // heating mode; cabin is colder than set point
-                // TODO: for case when engine is used as heat source, limit heat draw from the engine so it doesn't get colder than cabin
+                // HEATING MODE; cabin is colder than set point
 
                 if hvac_model.i_cntrl_kw > 0.0 {
                     // reset to switch from cooling to heating
@@ -592,11 +591,13 @@ impl SimDriveHot {
 
                 if hvac_model.use_fc_waste_heat {
                     // limit heat transfer to be substantially less than what is physically possible
+                    // i.e. the engine can't drop below cabin temperature to heat the cabin
                     self.state.cab_qdot_from_hvac_kw = self
                         .state
                         .cab_qdot_from_hvac_kw
                         .min(
                             (self.state.fc_te_deg_c - self.state.cab_te_deg_c)
+                                * 0.1 // so that it's substantially less
                                 * self.vehthrm.cab_c_kj__k
                                 / self.sd.cyc.dt_s_at_i(i),
                         )
@@ -1120,12 +1121,13 @@ impl ThermalState {
     ) -> Self {
         // Note default temperature is defined twice, see default()
         let default_te_deg_c: f64 = 22.0;
+        let amb_te_deg_c = amb_te_deg_c.unwrap_or(default_te_deg_c);
         Self {
-            amb_te_deg_c: amb_te_deg_c.unwrap_or(default_te_deg_c),
-            fc_te_deg_c: fc_te_deg_c_init.unwrap_or(default_te_deg_c),
-            cab_te_deg_c: cab_te_deg_c_init.unwrap_or(default_te_deg_c),
-            exhport_te_deg_c: exhport_te_deg_c_init.unwrap_or(default_te_deg_c),
-            cat_te_deg_c: cat_te_deg_c_init.unwrap_or(default_te_deg_c),
+            amb_te_deg_c,
+            fc_te_deg_c: fc_te_deg_c_init.unwrap_or(amb_te_deg_c),
+            cab_te_deg_c: cab_te_deg_c_init.unwrap_or(amb_te_deg_c),
+            exhport_te_deg_c: exhport_te_deg_c_init.unwrap_or(amb_te_deg_c),
+            cat_te_deg_c: cat_te_deg_c_init.unwrap_or(amb_te_deg_c),
             // fc_te_adiabatic_deg_c // chad is pretty sure 'fc_te_adiabatic_deg_c' gets overridden in first time step
             ..Default::default()
         }

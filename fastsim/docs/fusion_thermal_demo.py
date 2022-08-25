@@ -68,8 +68,8 @@ fusion_thermal.set_cabin_model_internal(hvac_model)
 cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
 
 # no arguments use default of 22°C
-init_thermal_state = fsr.ThermalState(fc_te_deg_c_init=-20.0,
-                                      cab_te_deg_c_init=-20.0, amb_te_deg_c=-20.0)
+init_thermal_state = fsr.ThermalState(fc_te_deg_c_init=-5.0,
+                                      cab_te_deg_c_init=-5.0, amb_te_deg_c=-5.0)
 
 sdh = fsr.SimDriveHot(cyc, fusion, fusion_thermal, init_thermal_state)
 
@@ -81,16 +81,27 @@ print(f"Elapsed time: {t1 - t0:.3g} s")
 
 # %%
 
-fig, ax = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
+fig, ax = plt.subplots(5, 1, figsize=(10, 10), sharex=True)
 
 ax[0].plot(sdh.sd.cyc.time_s, sdh.history.fc_te_deg_c)
 ax[0].set_xlabel("Time")
-ax[0].set_ylabel("Engine Temp. [°C]")
+ax[0].set_ylabel("Engine\nTemp. [°C]")
 
 ax[1].plot(sdh.sd.cyc.time_s, sdh.sd.fs_kw_out_ach)
 ax[1].set_xlabel("Time")
 ax[1].set_ylabel("Fuel Power [kW]")
 
+ax[2].plot(sdh.sd.cyc.time_s, sdh.history.cab_te_deg_c)
+ax[2].set_xlabel("Time")
+ax[2].set_ylabel("Cabin\nTemp. [°C]")
+
+ax[3].plot(sdh.sd.cyc.time_s, sdh.history.cab_qdot_from_hvac_kw, label='to cabin')
+ax[3].plot(sdh.sd.cyc.time_s, sdh.sd.aux_in_kw, label='aux')
+ax[3].set_xlabel("Time")
+ax[3].set_ylabel("Climate Power [kW]")
+
 ax[-1].plot(sdh.sd.cyc.time_s, sdh.sd.mph_ach)
 ax[-1].set_xlabel("Time")
 ax[-1].set_ylabel("Speed [mph]")
+
+# %%
