@@ -1,0 +1,34 @@
+---
+fc_c_kj__k: 193.69486619753152
+fc_l: 0.450478282636549
+fc_htc_to_amb_stop: 42.84523500170292
+fc_coeff_from_comb: 0.0005456114064024394
+tstat_te_sto_deg_c: 85.0
+tstat_te_delta_deg_c: 5.0
+rad_eps: 5.0
+fc_model:
+  Internal:
+    - Exponential:
+        offset: 11.30604682671429
+        lag: 54.61215286370681
+        minimum: 0.42421942573640326
+    - FuelConverter
+ess_c_kj_k: 200.0
+ess_htc_to_amb: 5.0
+cabin_model: External
+cab_c_kj__k: 125.0
+cab_l_length: 2.0
+cab_l_width: 2.0
+cab_r_to_amb: 0.02
+cab_htc_to_amb_stop: 10.0
+exhport_model: External
+exhport_ha_to_amb: 5.0
+exhport_ha_int: 100.0
+exhport_c_kj__k: 10.0
+cat_model: External
+cat_l: 0.5
+cat_c_kj__K: 15.0
+cat_htc_to_amb_stop: 10.0
+cat_te_lightoff_deg_c: 400.0
+cat_fc_eta_coeff: 0.3
+hvac_model: External
