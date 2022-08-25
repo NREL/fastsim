@@ -1,0 +1,44 @@
+name: tests 
+
+on:
+  push:
+      branches: [ rust-port ]
+  pull_request:
+
+jobs:
+  test:
+      runs-on: ubuntu-latest
+
+      strategy:
+        fail-fast: false
+        matrix:
+          python-version: ['3.8', '3.9', '3.10']
+
+      env:
+        PYTHON: ${{ matrix.python-version }}
+
+      steps:
+      - uses: actions/checkout@v2
+
+      - name: set up python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Rust unit tests
+        run: |
+          cd rust/
+          cargo test
+
+      - name: Python unit tests 
+        run: |
+          pip install setuptools_rust pytest
+          pip install . 
+          pytest tests/ -v
