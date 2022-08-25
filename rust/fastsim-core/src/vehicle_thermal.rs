@@ -436,6 +436,7 @@ pub struct VehicleThermal {
     pub hvac_model: ComponentModelTypes,
 
     /// for pyo3 api
+    #[serde(skip)]
     pub orphaned: bool,
 }
 

@@ -1106,7 +1106,7 @@ pub struct ThermalState {
 
     /// ambient temperature
     pub amb_te_deg_c: f64,
-
+    #[serde(skip)]
     pub orphaned: bool,
 }
 
