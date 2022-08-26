@@ -60,7 +60,7 @@ ax[-1].set_ylabel("Speed [mph]")
 # %% Case with cabin heating
 
 hvac_model = fsr.HVACModel.default()
-fusion_thermal.set_cabin_model_internal(hvac_model)
+fusion_thermal.set_cabin_hvac_model_internal(hvac_model)
 cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
 
 init_thermal_state = fsr.ThermalState(amb_te_deg_c=-5.0)
