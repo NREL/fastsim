@@ -127,6 +127,8 @@ pub struct HVACModel {
     pub use_fc_waste_heat: bool,
     /// max cooling aux load
     pub pwr_max_aux_load_for_cooling_kw: f64,
+    /// coefficient of performance of vapor compression cycle
+    pub cop: f64,
     #[serde(skip)]
     orphaned: bool,
 }
@@ -137,15 +139,16 @@ impl Default for HVACModel {
             te_set_deg_c: 22.0,
             p_cntrl_kw_per_deg_c: 0.1,
             i_cntrl_kw_per_deg_c_scnds: 0.01,
-            d_cntrl_kj_per_deg_c: 0.01,
+            d_cntrl_kj_per_deg_c: 0.1,
             cntrl_max_kw: 5.0,
             te_deadband_deg_c: 1.0,
             p_cntrl_kw: 0.0,
             i_cntrl_kw: 0.0,
             d_cntrl_kw: 0.0,
-            frac_of_ideal_cop: 0.15, // this is based on Chad's engineering judgment
+            frac_of_ideal_cop: 0.075, // this is based on Chad's engineering judgment
             use_fc_waste_heat: true,
             pwr_max_aux_load_for_cooling_kw: 5.0,
+            cop: 0.0,
             orphaned: Default::default(),
         }
     }

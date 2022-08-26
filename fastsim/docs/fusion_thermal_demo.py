@@ -104,7 +104,7 @@ ax[-1].set_ylabel("Speed [mph]")
 # %% Case with cabin cooling
 
 hvac_model = fsr.HVACModel.default()
-fusion_thermal.set_cabin_model_internal(hvac_model)
+fusion_thermal.set_cabin_hvac_model_internal(hvac_model)
 cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
 
 init_thermal_state = fsr.ThermalState(amb_te_deg_c=40.0)
@@ -145,4 +145,31 @@ ax[-1].plot(sdh.sd.cyc.time_s, sdh.sd.mph_ach)
 ax[-1].set_xlabel("Time")
 ax[-1].set_ylabel("Speed [mph]")
 
+# %% sweep ambient
+
+hvac_model = fsr.HVACModel.default()
+fusion_thermal.set_cabin_hvac_model_internal(hvac_model)
+cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+
+mpg = []
+amb_te_deg_c_arr = np.linspace(-15, 40, 100)
+
+t0 = time.perf_counter()
+for amb_te_deg_c in amb_te_deg_c_arr:
+    init_thermal_state = fsr.ThermalState(amb_te_deg_c=amb_te_deg_c)
+    sdh = fsr.SimDriveHot(cyc, fusion, fusion_thermal, init_thermal_state)
+    sdh.sim_drive()
+    mpg.append(sdh.sd.mpgge)
+
+t1 = time.perf_counter()
+
+print(f"Elapsed time: {t1 - t0:.3g} s")
+
+# %%
+
+fig, ax = plt.subplots()
+plt.suptitle('2012 Ford Fusion V6 FE v. Ambient/Init. Temp.')
+ax.plot(amb_te_deg_c_arr, mpg)
+ax.set_xlabel('Ambient/Init. Temp [°C]')
+ax.set_ylabel('Fuel Economy [mpg]')
 # %%
