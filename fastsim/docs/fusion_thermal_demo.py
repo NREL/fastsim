@@ -59,10 +59,6 @@ ax[-1].set_ylabel("Speed [mph]")
 
 # %% Case with cabin heating
 
-fusion = fsr.RustVehicle.from_file(
-    str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml"))
-fusion_thermal = fsr.VehicleThermal.from_file(
-    str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml"))
 hvac_model = fsr.HVACModel.default()
 fusion_thermal.set_cabin_model_internal(hvac_model)
 cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
@@ -107,10 +103,6 @@ ax[-1].set_ylabel("Speed [mph]")
 
 # %% Case with cabin cooling
 
-fusion = fsr.RustVehicle.from_file(
-    str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml"))
-fusion_thermal = fsr.VehicleThermal.from_file(
-    str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml"))
 hvac_model = fsr.HVACModel.default()
 fusion_thermal.set_cabin_model_internal(hvac_model)
 cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))

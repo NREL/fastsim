@@ -114,15 +114,19 @@ pub struct HVACModel {
     /// deadband range.  any cabin temperature within this range of
     /// `te_set_deg_c` results in no HVAC power draw
     pub te_deadband_deg_c: f64,
+    /// current proportional control amount
+    pub p_cntrl_kw: f64,
     /// current integral control amount
     pub i_cntrl_kw: f64,
+    /// current derivative control amount
+    pub d_cntrl_kw: f64,
     /// coefficient between 0 and 1 to calculate HVAC efficiency by multiplying by
     /// coefficient of performance (COP)
     pub frac_of_ideal_cop: f64,
     /// whether heat comes from fuel converter
     pub use_fc_waste_heat: bool,
     /// max cooling aux load
-    pub pwr_max_aux_load_for_cooling: f64,
+    pub pwr_max_aux_load_for_cooling_kw: f64,
     #[serde(skip)]
     orphaned: bool,
 }
@@ -136,10 +140,12 @@ impl Default for HVACModel {
             d_cntrl_kj_per_deg_c: 0.01,
             cntrl_max_kw: 5.0,
             te_deadband_deg_c: 1.0,
+            p_cntrl_kw: 0.0,
             i_cntrl_kw: 0.0,
+            d_cntrl_kw: 0.0,
             frac_of_ideal_cop: 0.15, // this is based on Chad's engineering judgment
             use_fc_waste_heat: true,
-            pwr_max_aux_load_for_cooling: 5.0,
+            pwr_max_aux_load_for_cooling_kw: 5.0,
             orphaned: Default::default(),
         }
     }
@@ -204,7 +210,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         Default::default()
     }
 
-    pub fn set_cabin_model_internal(
+    pub fn set_cabin_hvac_model_internal(
         &mut self,
         hvac_model: HVACModel
     ) -> PyResult<()>{
@@ -219,7 +225,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         }
     }
 
-    pub fn set_cabin_model_external(&mut self, ) -> PyResult<()> {
+    pub fn set_cabin_hvac_model_external(&mut self, ) -> PyResult<()> {
         check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)
     }
 
@@ -470,7 +476,7 @@ impl Default for VehicleThermal {
             cat_c_kj__K: 15.0,
             cat_htc_to_amb_stop: 10.0,
             cat_te_lightoff_deg_c: 400.0,
-            cat_fc_eta_coeff: 0.3,                     // revisit this
+            cat_fc_eta_coeff: 0.3, // revisit this
             orphaned: false,
         }
     }
