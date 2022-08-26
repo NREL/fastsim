@@ -15,7 +15,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
     // println!("{}", ast.ident.to_string());
     let ident = &ast.ident;
-    let is_state: bool = ident.to_string().contains("State");
+    let is_state_or_history: bool = ident.to_string().contains("State") || ident.to_string().contains("HistoryVec");
 
     let mut impl_block = TokenStream2::default();
     let mut py_impl_block = TokenStream2::default();
@@ -24,7 +24,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &mut ast.fields {
         let field_names: Vec<String> = named
             .iter()
-            .map(|f| f.ident.clone().unwrap().to_string())
+            .map(|f| f.ident.as_ref().unwrap().to_string())
             .collect();
         let has_orphaned: bool = field_names.iter().any(|f| f == "orphaned");
 
@@ -99,7 +99,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
 
-        if !is_state {
+        if !is_state_or_history {
             py_impl_block.extend::<TokenStream2>(quote! {
                 #[pyo3(name = "to_file")]
                 pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
@@ -303,7 +303,6 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
         original_name.span(),
     );
     let mut fields = Vec::new();
-
     match ast.data {
         syn::Data::Struct(s) => {
             for field in s.fields.iter() {

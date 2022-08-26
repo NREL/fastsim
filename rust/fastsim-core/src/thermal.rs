@@ -221,6 +221,7 @@ pub struct SimDriveHot {
     #[api(has_orphaned)]
     pub state: ThermalState,
     pub history: ThermalStateHistoryVec,
+    pub hvac_model_history: HVACModelHistoryVec,
     #[api(skip_get, skip_set)]
     amb_te_deg_c: Option<Array1<f64>>,
 }
@@ -268,6 +269,7 @@ impl SimDriveHot {
             air,
             state,
             history,
+            hvac_model_history: HVACModelHistoryVec::default(),
             amb_te_deg_c: amb_te_deg_c_arr,
         }
     }
@@ -343,7 +345,13 @@ impl SimDriveHot {
     }
 
     pub fn init_for_step(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
-        self.history.push(self.state.clone());
+        self.history.push(self.state.clone()); // TODO: eventually make this dependent on `save_interval` usize per ALTRIOS
+        match &self.vehthrm.cabin_hvac_model {
+            CabinHvacModelTypes::Internal(hvac_mod) => {
+                self.hvac_model_history.push(hvac_mod.clone())
+            }
+            CabinHvacModelTypes::External => {}
+        }
         self.sd.init_for_step(init_soc, aux_in_kw_override).unwrap();
     }
 
@@ -368,6 +376,12 @@ impl SimDriveHot {
 
         self.sd.i += 1; // increment time step counter
         self.history.push(self.state.clone());
+        match &self.vehthrm.cabin_hvac_model {
+            CabinHvacModelTypes::Internal(hvac_mod) => {
+                self.hvac_model_history.push(hvac_mod.clone())
+            }
+            CabinHvacModelTypes::External => {}
+        }
     }
 
     pub fn solve_step(&mut self, i: usize) {
@@ -388,11 +402,7 @@ impl SimDriveHot {
             self.set_fc_thermal_calcs(i);
         }
 
-        if self.vehthrm.hvac_model == ComponentModelTypes::Internal {
-            self.set_fc_thermal_calcs(i);
-        }
-
-        if let HvacModelTypes::Internal(_) = &self.vehthrm.cabin_model {
+        if let CabinHvacModelTypes::Internal(_) = &self.vehthrm.cabin_hvac_model {
             self.set_cab_thermal_calcs(i);
         }
 
@@ -490,7 +500,7 @@ impl SimDriveHot {
 
     /// Solve cabin thermal behavior.
     pub fn set_cab_thermal_calcs(&mut self, i: usize) {
-        if let HvacModelTypes::Internal(hvac_model) = &mut self.vehthrm.cabin_model {
+        if let CabinHvacModelTypes::Internal(hvac_model) = &mut self.vehthrm.cabin_hvac_model {
             // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
             // Transfer, 7th Edition
             let cab_te_film_ext_deg_c: f64 =

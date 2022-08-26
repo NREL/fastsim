@@ -2,7 +2,8 @@ use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::utils;
-use proc_macros::add_pyo3_api;
+use crate::utils::Pyo3VecF64;
+use proc_macros::{add_pyo3_api, HistoryVec};
 use std::f64::consts::PI;
 
 /// Whether FC thermal modeling is handled by FASTSim
@@ -90,7 +91,7 @@ impl Default for FcTempEffModelExponential {
 }
 
 /// Struct containing parameters and one time-varying variable for HVAC model
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, HistoryVec)]
 #[add_pyo3_api(
     #[classmethod]
     #[pyo3(name = "default")]
@@ -122,6 +123,8 @@ pub struct HVACModel {
     pub use_fc_waste_heat: bool,
     /// max cooling aux load
     pub pwr_max_aux_load_for_cooling: f64,
+    #[serde(skip)]
+    orphaned: bool,
 }
 
 impl Default for HVACModel {
@@ -137,6 +140,7 @@ impl Default for HVACModel {
             frac_of_ideal_cop: 0.15, // this is based on Chad's engineering judgment
             use_fc_waste_heat: true,
             pwr_max_aux_load_for_cooling: 5.0,
+            orphaned: Default::default(),
         }
     }
 }
@@ -151,7 +155,7 @@ impl HVACModel {
 
 /// Whether HVAC model is handled by FASTSim (internal) or not
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub enum HvacModelTypes {
+pub enum CabinHvacModelTypes {
     /// HVAC is modeled natively
     Internal(HVACModel),
     External,
@@ -204,11 +208,11 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         &mut self,
         hvac_model: HVACModel
     ) -> PyResult<()>{
-        check_orphaned_and_set!(self, cabin_model, HvacModelTypes::Internal(hvac_model))
+        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))
     }
 
     pub fn get_cabin_model_internal(&self, ) -> PyResult<HVACModel> {
-        if let HvacModelTypes::Internal(hvac_model) = &self.cabin_model {
+        if let CabinHvacModelTypes::Internal(hvac_model) = &self.cabin_hvac_model {
             Ok(hvac_model.clone())
         } else {
             Err(PyAttributeError::new_err("HvacModelTypes::External variant currently used."))
@@ -216,7 +220,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     }
 
     pub fn set_cabin_model_external(&mut self, ) -> PyResult<()> {
-        check_orphaned_and_set!(self, cabin_model, HvacModelTypes::External)
+        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)
     }
 
     pub fn set_fc_model_internal_exponential(
@@ -393,7 +397,7 @@ pub struct VehicleThermal {
     // cabin
     /// cabin model internal or external w.r.t. fastsim
     #[api(skip_get, skip_set)]
-    pub cabin_model: HvacModelTypes,
+    pub cabin_hvac_model: CabinHvacModelTypes,
     /// parameter for cabin thermal mass [kJ/K]
     pub cab_c_kj__k: f64,
     /// cabin length [m], modeled as a flat plate
@@ -433,11 +437,6 @@ pub struct VehicleThermal {
     /// cat engine efficiency coeff. to be used when fc_temp_eff_component == 'hybrid'
     pub cat_fc_eta_coeff: f64,
 
-    // model choices
-    /// HVAC model type
-    #[api(skip_get, skip_set)]
-    pub hvac_model: ComponentModelTypes,
-
     /// for pyo3 api
     #[serde(skip)]
     pub orphaned: bool,
@@ -456,7 +455,7 @@ impl Default for VehicleThermal {
             fc_model: FcModelTypes::default(),
             ess_c_kj_k: 200.0,   // similar size to engine
             ess_htc_to_amb: 5.0, // typically well insulated from ambient inside cabin
-            cabin_model: HvacModelTypes::External,
+            cabin_hvac_model: CabinHvacModelTypes::External, // turned off by default
             cab_c_kj__k: 125.0,
             cab_l_length: 2.0,
             cab_l_width: 2.0,
@@ -472,7 +471,6 @@ impl Default for VehicleThermal {
             cat_htc_to_amb_stop: 10.0,
             cat_te_lightoff_deg_c: 400.0,
             cat_fc_eta_coeff: 0.3,                     // revisit this
-            hvac_model: ComponentModelTypes::External, // turned off by default
             orphaned: false,
         }
     }
