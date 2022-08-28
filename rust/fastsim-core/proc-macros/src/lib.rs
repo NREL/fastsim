@@ -257,7 +257,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut final_output = TokenStream2::default();
     // add pyclass attribute
     final_output.extend::<TokenStream2>(quote! {
-        #[cfg_attr(feature="pyo3", pyclass(module = "fastsimrust"))]
+        #[cfg_attr(feature="pyo3", pyclass(module = "fastsimrust", subclass))]
     });
     let mut output: TokenStream2 = ast.to_token_stream();
     output.extend(impl_block);
