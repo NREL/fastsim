@@ -1,7 +1,7 @@
 //! Module containing FASTSim parameters.
 
-use crate::proc_macros::add_pyo3_api;
 use crate::imports::*;
+use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
