@@ -2,6 +2,7 @@
 
 extern crate ndarray;
 
+#[cfg(feature = "pyo3")]
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Deref;

@@ -2,6 +2,7 @@ use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::utils;
+#[cfg(feature = "pyo3")]
 use crate::utils::Pyo3VecF64;
 use proc_macros::{add_pyo3_api, HistoryVec};
 use std::f64::consts::PI;
