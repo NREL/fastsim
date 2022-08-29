@@ -67,8 +67,6 @@ macro_rules! impl_vec_get_set {
     };
 }
 
-
-
 /// Generates pyo3 getter methods  
 ///
 /// general match arguments:  
@@ -164,7 +162,6 @@ pub struct FieldOptions {
     pub field_has_orphaned: bool,
 }
 
-
 pub fn impl_getters_and_setters(
     type_path: syn::TypePath,
     impl_block: &mut TokenStream2,
@@ -177,7 +174,7 @@ pub fn impl_getters_and_setters(
     match type_str.as_str() {
         "Array1 < f64 >" => {
             impl_vec_get_set!(opts, ident, impl_block, f64, Pyo3ArrayF64, has_orphaned);
-        }      
+        }
         "Array1 < u32 >" => {
             impl_vec_get_set!(opts, ident, impl_block, u32, Pyo3ArrayU32, has_orphaned);
         }
@@ -211,4 +208,3 @@ pub fn impl_getters_and_setters(
         },
     }
 }
-

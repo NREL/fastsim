@@ -2,8 +2,10 @@
 
 extern crate ndarray;
 
+#[cfg(feature = "pyo3")]
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Deref;
 use std::path::PathBuf;
 
 // local
@@ -79,7 +81,7 @@ pub fn dist_for_constant_jerk(n: usize, d0: f64, v0: f64, a0: f64, k: f64, dt: f
 #[cfg_attr(feature = "pyo3", pyfunction)]
 /// Calculate speed (m/s) n timesteps away via a constant-jerk acceleration
 ///
-/// INPUTS:   
+/// INPUTS:
 /// - n: Int, numer of timesteps away to calculate
 /// - v0: Num, initial speed (m/s)
 /// - a0: Num, initial acceleration (m/s2)
@@ -197,7 +199,7 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             orphaned: false,
         }
     }
-    
+
     #[allow(clippy::type_complexity)]
     pub fn __getnewargs__(&self) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
         Ok((self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name))
@@ -292,10 +294,10 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 )]
 /// Struct for containing:
-/// * time_s, cycle time, $s$  
-/// * mps, vehicle speed, $\frac{m}{s}$  
-/// * grade, road grade/slope, $\frac{rise}{run}$  
-/// * road_type, $kW$  
+/// * time_s, cycle time, $s$
+/// * mps, vehicle speed, $\frac{m}{s}$
+/// * grade, road grade/slope, $\frac{rise}{run}$
+/// * road_type, $kW$
 /// * legacy, will likely change to road charging capacity
 ///    * Another sublist.
 pub struct RustCycle {
@@ -512,7 +514,7 @@ impl RustCycle {
 
     /// rust-internal time steps at i
     pub fn dt_s_at_i(&self, i: usize) -> f64 {
-        self.time_s[i] - self.time_s[i-1]
+        self.time_s[i] - self.time_s[i - 1]
     }
 
     /// distance covered in each time step
@@ -564,6 +566,35 @@ impl RustCycle {
         match pathbuf.extension().unwrap().to_str().unwrap() {
             "csv" => Self::from_csv_file(filename).unwrap(),
             _ => Self::from_file_parser(filename).unwrap(),
+        }
+    }
+}
+
+impl Default for RustCycle {
+    fn default() -> Self {
+        let mut mps: Vec<f64> = (0..20)
+            .collect::<Vec<i64>>()
+            .iter()
+            .map(|x| (*x as f64))
+            .collect(); // ramp up
+                        // steady speed
+        mps.extend(vec![20.0; 20]);
+        // ramp down
+        let mut ramp_down: Vec<f64> = (0..=19)
+            .collect::<Vec<i64>>()
+            .iter()
+            .map(|x| (*x as f64))
+            .collect();
+        // reverse in place
+        ramp_down.reverse();
+        mps.extend(ramp_down);
+        Self {
+            time_s: Array1::linspace(0.0, *mps.iter().last().unwrap(), mps.len()),
+            mps: Array1::from_vec(mps.deref().to_vec()),
+            grade: Array1::zeros(mps.len()),
+            road_type: Array1::zeros(mps.len()),
+            name: "default".into(),
+            orphaned: false,
         }
     }
 }

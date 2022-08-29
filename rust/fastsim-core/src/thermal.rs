@@ -1,4 +1,5 @@
 //! Module for simulating thermal behavior of powertrains
+
 use proc_macros::{add_pyo3_api, HistoryVec};
 
 use crate::air::AirProperties;
@@ -209,6 +210,7 @@ pub struct SimDriveHot {
     #[api(has_orphaned)]
     pub state: ThermalState,
     pub history: ThermalStateHistoryVec,
+    pub hvac_model_history: HVACModelHistoryVec,
     #[api(skip_get, skip_set)]
     amb_te_deg_c: Option<Array1<f64>>,
 }
@@ -256,6 +258,7 @@ impl SimDriveHot {
             air,
             state,
             history,
+            hvac_model_history: HVACModelHistoryVec::default(),
             amb_te_deg_c: amb_te_deg_c_arr,
         }
     }
@@ -331,7 +334,13 @@ impl SimDriveHot {
     }
 
     pub fn init_for_step(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
-        self.history.push(self.state.clone());
+        self.history.push(self.state.clone()); // TODO: eventually make this dependent on `save_interval` usize per ALTRIOS
+        match &self.vehthrm.cabin_hvac_model {
+            CabinHvacModelTypes::Internal(hvac_mod) => {
+                self.hvac_model_history.push(hvac_mod.clone())
+            }
+            CabinHvacModelTypes::External => {}
+        }
         self.sd.init_for_step(init_soc, aux_in_kw_override).unwrap();
     }
 
@@ -356,6 +365,12 @@ impl SimDriveHot {
 
         self.sd.i += 1; // increment time step counter
         self.history.push(self.state.clone());
+        match &self.vehthrm.cabin_hvac_model {
+            CabinHvacModelTypes::Internal(hvac_mod) => {
+                self.hvac_model_history.push(hvac_mod.clone())
+            }
+            CabinHvacModelTypes::External => {}
+        }
     }
 
     pub fn solve_step(&mut self, i: usize) {
@@ -376,11 +391,7 @@ impl SimDriveHot {
             self.set_fc_thermal_calcs(i);
         }
 
-        if self.vehthrm.hvac_model == ComponentModelTypes::Internal {
-            self.set_fc_thermal_calcs(i);
-        }
-
-        if let HvacModelTypes::Internal(_) = &self.vehthrm.cabin_model {
+        if let CabinHvacModelTypes::Internal(_) = &self.vehthrm.cabin_hvac_model {
             self.set_cab_thermal_calcs(i);
         }
 
@@ -478,7 +489,7 @@ impl SimDriveHot {
 
     /// Solve cabin thermal behavior.
     pub fn set_cab_thermal_calcs(&mut self, i: usize) {
-        if let HvacModelTypes::Internal(hvac_model) = &mut self.vehthrm.cabin_model {
+        if let CabinHvacModelTypes::Internal(hvac_model) = &mut self.vehthrm.cabin_hvac_model {
             // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
             // Transfer, 7th Edition
             let cab_te_film_ext_deg_c: f64 =
@@ -523,102 +534,96 @@ impl SimDriveHot {
 
                 self.state.cab_qdot_from_hvac_kw = 0.0;
                 hvac_model.i_cntrl_kw = 0.0; // reset to 0.0
-            } else if self.state.cab_te_deg_c
-                > hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
-            {
-                // COOLING MODE; cabin is hotter than set point
-
-                if hvac_model.i_cntrl_kw < 0.0 {
-                    // reset to switch from heating to cooling
-                    hvac_model.i_cntrl_kw = 0.0;
-                }
-                // integral control effort increases in magnitude by
-                // 1 time step worth of error
-                hvac_model.i_cntrl_kw += hvac_model.i_cntrl_kw_per_deg_c_scnds
-                    * te_delta_vs_set_deg_c
-                    * self.sd.cyc.dt_s_at_i(i);
-                hvac_model.i_cntrl_kw = hvac_model.i_cntrl_kw.min(hvac_model.cntrl_max_kw);
-                let d_cntrl_kw = hvac_model.d_cntrl_kj_per_deg_c
-                    * (self.state.cab_te_deg_c / self.sd.cyc.dt_s_at_i(i));
-                self.state.cab_qdot_from_hvac_kw = (-hvac_model.p_cntrl_kw_per_deg_c
-                    * te_delta_vs_set_deg_c
-                    - hvac_model.i_cntrl_kw
-                    - d_cntrl_kw)
-                    .max(-hvac_model.cntrl_max_kw);
-                // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
-                // cop_ideal is t_c / (t_h - t_c)
-                let cop_ideal = if te_delta_vs_amb_deg_c > -0.1 {
-                    // cabin is hotter than ambient
-                    5.0
-                } else {
-                    (self.state.cab_te_deg_c + 273.15) / -te_delta_vs_amb_deg_c
-                };
-                let cop = cop_ideal * hvac_model.frac_of_ideal_cop;
-                assert!(cop > 0.0);
-                self.state.cab_hvac_pwr_aux_kw = (-self.state.cab_qdot_from_hvac_kw / cop)
-                    .min(hvac_model.pwr_max_aux_load_for_cooling)
-                    .max(0.0);
-                self.state.cab_qdot_from_hvac_kw = -self.state.cab_hvac_pwr_aux_kw * cop;
             } else {
-                // HEATING MODE; cabin is colder than set point
-
-                if hvac_model.i_cntrl_kw > 0.0 {
-                    // reset to switch from cooling to heating
-                    hvac_model.i_cntrl_kw = 0.0;
-                }
+                hvac_model.p_cntrl_kw = hvac_model.p_cntrl_kw_per_deg_c * te_delta_vs_set_deg_c;
                 // integral control effort increases in magnitude by
                 // 1 time step worth of error
                 hvac_model.i_cntrl_kw += hvac_model.i_cntrl_kw_per_deg_c_scnds
                     * te_delta_vs_set_deg_c
                     * self.sd.cyc.dt_s_at_i(i);
-                hvac_model.i_cntrl_kw = hvac_model.i_cntrl_kw.max(-hvac_model.cntrl_max_kw);
-                let d_cntrl_kw = hvac_model.d_cntrl_kj_per_deg_c
-                    * (self.state.cab_te_deg_c / self.sd.cyc.dt_s_at_i(i));
-                self.state.cab_qdot_from_hvac_kw = (-hvac_model.p_cntrl_kw_per_deg_c
-                    * te_delta_vs_set_deg_c
-                    - hvac_model.i_cntrl_kw
-                    - d_cntrl_kw)
-                    .min(hvac_model.cntrl_max_kw);
 
-                if hvac_model.use_fc_waste_heat {
-                    // limit heat transfer to be substantially less than what is physically possible
-                    // i.e. the engine can't drop below cabin temperature to heat the cabin
-                    self.state.cab_qdot_from_hvac_kw = self
-                        .state
-                        .cab_qdot_from_hvac_kw
-                        .min(
-                            (self.state.fc_te_deg_c - self.state.cab_te_deg_c)
+                hvac_model.d_cntrl_kw = hvac_model.d_cntrl_kj_per_deg_c
+                    * ((self.state.cab_te_deg_c - self.state.cab_prev_te_deg_c)
+                        / self.sd.cyc.dt_s_at_i(i));
+
+                // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
+                // cop_ideal is t_h / (t_h - t_c) for heating
+                // cop_ideal is t_c / (t_h - t_c) for cooling
+
+                // divide-by-zero protection and realistic limit on COP
+                let cop_ideal = if te_delta_vs_amb_deg_c.abs() < 5.0 {
+                    // cabin is cooler than ambient + threshold
+                    (self.state.cab_te_deg_c + 273.15) / 5.0
+                } else {
+                    (self.state.cab_te_deg_c + 273.15) / te_delta_vs_amb_deg_c.abs()
+                };
+                hvac_model.cop = cop_ideal * hvac_model.frac_of_ideal_cop;
+                assert!(hvac_model.cop > 0.0);
+
+                if self.state.cab_te_deg_c > hvac_model.te_set_deg_c + hvac_model.te_deadband_deg_c
+                {
+                    // COOLING MODE; cabin is hotter than set point
+
+                    if hvac_model.i_cntrl_kw < 0.0 {
+                        // reset to switch from heating to cooling
+                        hvac_model.i_cntrl_kw = 0.0;
+                    }
+                    hvac_model.i_cntrl_kw = hvac_model.i_cntrl_kw.min(hvac_model.cntrl_max_kw);
+                    self.state.cab_qdot_from_hvac_kw =
+                        (-hvac_model.p_cntrl_kw - hvac_model.i_cntrl_kw - hvac_model.d_cntrl_kw)
+                            .max(-hvac_model.cntrl_max_kw);
+
+                    self.state.cab_hvac_pwr_aux_kw = (-self.state.cab_qdot_from_hvac_kw
+                        / hvac_model.cop)
+                        .min(hvac_model.pwr_max_aux_load_for_cooling_kw)
+                        .max(0.0);
+                    // correct if limit is exceeded
+                    self.state.cab_qdot_from_hvac_kw =
+                        -self.state.cab_hvac_pwr_aux_kw * hvac_model.cop;
+                } else {
+                    // HEATING MODE; cabin is colder than set point
+
+                    if hvac_model.i_cntrl_kw > 0.0 {
+                        // reset to switch from cooling to heating
+                        hvac_model.i_cntrl_kw = 0.0;
+                    }
+                    hvac_model.i_cntrl_kw = hvac_model.i_cntrl_kw.max(-hvac_model.cntrl_max_kw);
+
+                    self.state.cab_qdot_from_hvac_kw =
+                        (-hvac_model.p_cntrl_kw - hvac_model.i_cntrl_kw - hvac_model.d_cntrl_kw)
+                            .min(hvac_model.cntrl_max_kw);
+
+                    if hvac_model.use_fc_waste_heat {
+                        // limit heat transfer to be substantially less than what is physically possible
+                        // i.e. the engine can't drop below cabin temperature to heat the cabin
+                        self.state.cab_qdot_from_hvac_kw = self
+                            .state
+                            .cab_qdot_from_hvac_kw
+                            .min(
+                                (self.state.fc_te_deg_c - self.state.cab_te_deg_c)
                                 * 0.1 // so that it's substantially less
                                 * self.vehthrm.cab_c_kj__k
-                                / self.sd.cyc.dt_s_at_i(i),
-                        )
-                        .max(0.0);
-                    self.state.fc_qdot_to_htr_kw = self.state.cab_qdot_from_hvac_kw;
-                    // TODO: think about what to do for PHEV, which needs careful consideration here
-                    // HEV probably also needs careful consideration
-                    // There needs to be an engine temperature (e.g. 60°C) below which the engine is forced on
-                    assert!(self.sd.veh.veh_pt_type != "BEV");
-                    // assume blower has negligible impact on aux load, may want to revise later
-                } else {
-                    // https://en.wikipedia.org/wiki/Coefficient_of_performance#Theoretical_performance_limits
-                    // cop_ideal is t_c / (t_h - t_c)
-
-                    let cop_ideal = if te_delta_vs_amb_deg_c < 0.1 {
-                        // cabin is cooler than ambient
-                        5.0
+                                    / self.sd.cyc.dt_s_at_i(i),
+                            )
+                            .max(0.0);
+                        self.state.fc_qdot_to_htr_kw = self.state.cab_qdot_from_hvac_kw;
+                        // TODO: think about what to do for PHEV, which needs careful consideration here
+                        // HEV probably also needs careful consideration
+                        // There needs to be an engine temperature (e.g. 60°C) below which the engine is forced on
+                        assert!(self.sd.veh.veh_pt_type != "BEV");
+                        // assume blower has negligible impact on aux load, may want to revise later
                     } else {
-                        (self.state.amb_te_deg_c + 273.15) / te_delta_vs_amb_deg_c
-                    };
-
-                    let cop = cop_ideal * hvac_model.frac_of_ideal_cop;
-                    assert!(cop > 0.0);
-                    self.state.cab_hvac_pwr_aux_kw = (self.state.cab_qdot_from_hvac_kw / cop)
-                        .min(hvac_model.pwr_max_aux_load_for_cooling)
-                        .max(0.0);
-                    self.state.cab_qdot_from_hvac_kw = self.state.cab_hvac_pwr_aux_kw * cop;
+                        self.state.cab_hvac_pwr_aux_kw = (self.state.cab_qdot_from_hvac_kw
+                            / hvac_model.cop)
+                            .min(hvac_model.pwr_max_aux_load_for_cooling_kw)
+                            .max(0.0);
+                        self.state.cab_qdot_from_hvac_kw =
+                            self.state.cab_hvac_pwr_aux_kw * hvac_model.cop;
+                    }
                 }
             }
 
+            self.state.cab_prev_te_deg_c = self.state.cab_te_deg_c;
             self.state.cab_te_deg_c += (self.state.cab_qdot_from_hvac_kw
                 - self.state.cab_qdot_to_amb_kw)
                 / self.vehthrm.cab_c_kj__k
@@ -1052,6 +1057,8 @@ pub struct ThermalState {
     // cabin (cab) variables
     /// cabin temperature [°C]
     pub cab_te_deg_c: f64,
+    /// previous cabin temperature [°C]
+    pub cab_prev_te_deg_c: f64,
     /// cabin solar load [kw]
     pub cab_qdot_solar_kw: f64,
     /// cabin convection to ambient [kw]
@@ -1120,6 +1127,7 @@ impl ThermalState {
             amb_te_deg_c,
             fc_te_deg_c: fc_te_deg_c_init.unwrap_or(amb_te_deg_c),
             cab_te_deg_c: cab_te_deg_c_init.unwrap_or(amb_te_deg_c),
+            cab_prev_te_deg_c: cab_te_deg_c_init.unwrap_or(amb_te_deg_c),
             exhport_te_deg_c: exhport_te_deg_c_init.unwrap_or(amb_te_deg_c),
             cat_te_deg_c: cat_te_deg_c_init.unwrap_or(amb_te_deg_c),
             // fc_te_adiabatic_deg_c // chad is pretty sure 'fc_te_adiabatic_deg_c' gets overridden in first time step
@@ -1145,6 +1153,7 @@ impl Default for ThermalState {
             fc_te_adiabatic_deg_c: default_te_deg_c, // this needs to be calculated, get Chad to revisit
 
             cab_te_deg_c: default_te_deg_c, // overridden by new()
+            cab_prev_te_deg_c: default_te_deg_c,
             cab_qdot_solar_kw: 0.0,
             cab_qdot_to_amb_kw: 0.0,
             cab_qdot_from_hvac_kw: 0.0,

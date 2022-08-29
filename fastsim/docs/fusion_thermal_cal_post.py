@@ -15,7 +15,7 @@ trip_dir = ftc.trip_dir
 
 cal_objectives, val_objectives, params_bounds = ftc.get_cal_and_val_objs()
 # save_path = "fusion_pymoo_res_2022_08_18"
-save_path = "fusion_pymoo_res_2022_08_23"
+save_path = "fusion_pymoo_res_2022_08_26"
 # save_path = "pymoo_res"
 
 res_df = pd.read_csv(Path(save_path) / "pymoo_res_df.csv")
