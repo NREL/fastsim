@@ -10,7 +10,8 @@ import re
 import fastsim as fsim
 import fastsimrust as fsr
 
-# TODO: check whether 4wd is engaged
+# 4wd is assumed to be not engaged on cycles used because
+# "Veh_4WD_engaged_CAN[]" and "Veh_4WD_L_engaged_CAN[]" are always zero
 
 f150_resampled_data_dir = Path(
     fsim.__file__).parent / "resources/DownloadableDynamometerDatabase/2017_Ford_F150_Ecoboost"
@@ -95,8 +96,8 @@ f_150 = fsim.vehicle.Vehicle.from_file(
     "2017_Ford_F-150_Ecoboost.csv").to_rust()
 fusion_thermal = fsr.VehicleThermal.from_file(
     str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml"))
-f_150_thermal = fusion_thermal
-f_150_thermal.fc_c_kj__k *= 3.5 / 3.5  # fusion is a 3.5 L v6!
+f_150_thermal_base = fusion_thermal
+f_150_thermal_base.fc_c_kj__k *= 3.5 / 3.5  # fusion is a 3.5 L v6!
 
 sdh_dict = {}
 fc_init_te_deg_c_arr = {}
@@ -117,11 +118,16 @@ for key, df in dfs.items():
         "mps": df[SPEED_MPH_KEY] * mps_per_mph,
     }).to_rust()
 
+    f_150_thermal = f_150_thermal_base.copy()
+    if CYCLES_TO_USE[key]["hvac_on"]:
+        hvac_model = fsr.HVACModel.default()
+        f_150_thermal.set_cabin_hvac_model_internal(hvac_model)
+
     sdh = fsr.SimDriveHot(
-        cyc, 
-        f_150, 
+        cyc,
+        f_150,
         f_150_thermal,
-        init_thermal_state, 
+        init_thermal_state,
         amb_te_deg_c=df[AMB_TE_DEG_C_KEY]
     )
     sdh.sim_drive()
