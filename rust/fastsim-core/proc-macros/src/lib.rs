@@ -1,9 +1,9 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, ToTokens, TokenStreamExt}; // ToTokens is implicitly used as a trait
-use syn::{DeriveInput, Ident, Meta, spanned::Spanned};
 use proc_macro_error::{abort, proc_macro_error};
+use quote::{quote, ToTokens, TokenStreamExt}; // ToTokens is implicitly used as a trait
 use regex::Regex;
+use syn::{spanned::Spanned, DeriveInput, Ident, Meta};
 
 mod utilities;
 use utilities::{impl_getters_and_setters, FieldOptions};
@@ -106,7 +106,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                     self.to_file(filename).unwrap();
                     Ok(())
                 }
-               
+
                 #[classmethod]
                 #[pyo3(name = "from_file")]
                 pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
@@ -115,7 +115,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             });
         }
-    } else if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast.fields { 
+    } else if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast.fields {
         // tuple struct
         if ast.ident.to_string().contains("Vec") || ast.ident.to_string().contains("Array") {
             assert!(unnamed.len() == 1);
@@ -125,76 +125,76 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                     let type_str = type_path.clone().into_token_stream().to_string();
                     let (re, container, py_new_body, tolist_body) = if type_str.contains("Vec") {
                         (
-                            Regex::new(r"Vec < (.+) >").unwrap(), 
+                            Regex::new(r"Vec < (.+) >").unwrap(),
                             "Vec".parse::<TokenStream2>().unwrap(),
                             "Self(v)".parse::<TokenStream2>().unwrap(),
                             "self.0.clone()".parse::<TokenStream2>().unwrap(),
                         )
                     } else if type_str.contains("Array1") {
                         (
-                            Regex::new(r"Array1 < (.+) >").unwrap(), 
+                            Regex::new(r"Array1 < (.+) >").unwrap(),
                             "Array1".parse::<TokenStream2>().unwrap(),
                             "Self(Array1::from_vec(v))".parse::<TokenStream2>().unwrap(),
                             "self.0.to_vec()".parse::<TokenStream2>().unwrap(),
                         )
                     } else {
-                        panic!("Invalid container type.  Must be Array1 or Vec.")  // replace with proc_macro_error::abort macro
+                        panic!("Invalid container type.  Must be Array1 or Vec.")
+                        // replace with proc_macro_error::abort macro
                     };
 
                     // println!("{}", type_str);
                     // println!("{}", &re.captures(&type_str).unwrap()[1]);
-                    let contained_dtype: TokenStream2 = (&re.captures(&type_str).unwrap()[1]).to_string().parse().unwrap();
-                    py_impl_block.extend::<TokenStream2>(
-                        quote! {
-                            #[new]
-                            pub fn __new__(v: Vec<#contained_dtype>) -> Self {
-                                #py_new_body
+                    let contained_dtype: TokenStream2 = (&re.captures(&type_str).unwrap()[1])
+                        .to_string()
+                        .parse()
+                        .unwrap();
+                    py_impl_block.extend::<TokenStream2>(quote! {
+                        #[new]
+                        pub fn __new__(v: Vec<#contained_dtype>) -> Self {
+                            #py_new_body
+                        }
+
+                        pub fn __repr__(&self) -> String {
+                            format!("RustArray({:?})", self.0)
+                        }
+                        pub fn __str__(&self) -> String {
+                            format!("{:?}", self.0)
+                        }
+                        pub fn __getitem__(&self, idx: i32) -> PyResult<#contained_dtype> {
+                            if idx >= self.0.len() as i32 {
+                                Err(PyIndexError::new_err("Index is out of bounds"))
+                            } else if idx >= 0 {
+                                Ok(self.0[idx as usize])
+                            } else {
+                                Ok(self.0[self.0.len() + idx as usize])
                             }
-                            
-                            pub fn __repr__(&self) -> String {
-                                format!("RustArray({:?})", self.0)
-                            }
-                            pub fn __str__(&self) -> String {
-                                format!("{:?}", self.0)
-                            }
-                            pub fn __getitem__(&self, idx: i32) -> PyResult<#contained_dtype> {
-                                if idx >= self.0.len() as i32 {
-                                    Err(PyIndexError::new_err("Index is out of bounds"))
-                                } else if idx >= 0 {
-                                    Ok(self.0[idx as usize])
-                                } else {
-                                    Ok(self.0[self.0.len() + idx as usize])
-                                }
-                            }                               
-                            pub fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype
-                                ) -> PyResult<()> {
-                                Err(PyNotImplementedError::new_err(
-                                    "Setting value at index is not implemented. 
+                        }
+                        pub fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype
+                            ) -> PyResult<()> {
+                            Err(PyNotImplementedError::new_err(
+                                "Setting value at index is not implemented.
                                     Run `tolist` method, modify value at index, and 
                                     then set entire vector.",
-                                ))
-                            }
-                            pub fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
-                                Ok(#tolist_body)
-                            }
-                            pub fn __list__(&self) -> PyResult<Vec<#contained_dtype>> {
-                                Ok(#tolist_body)
-                            }
-                            pub fn __len__(&self) -> usize {
-                                self.0.len()
-                            }
-                            pub fn is_empty(&self) -> bool {
-                                self.0.is_empty()
-                            }
+                            ))
                         }
-                    );
-                    impl_block.extend::<TokenStream2>(
-                        quote! {
-                            pub fn new(value: #container<#contained_dtype>) -> Self {
-                                Self(value)
-                            }
+                        pub fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
+                            Ok(#tolist_body)
                         }
-                    );
+                        pub fn __list__(&self) -> PyResult<Vec<#contained_dtype>> {
+                            Ok(#tolist_body)
+                        }
+                        pub fn __len__(&self) -> usize {
+                            self.0.len()
+                        }
+                        pub fn is_empty(&self) -> bool {
+                            self.0.is_empty()
+                        }
+                    });
+                    impl_block.extend::<TokenStream2>(quote! {
+                        pub fn new(value: #container<#contained_dtype>) -> Self {
+                            Self(value)
+                        }
+                    });
                 }
             }
         } else {
@@ -232,7 +232,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn from_json(_cls: &PyType, json_str: &str) -> PyResult<Self> {
             Ok(serde_json::from_str(json_str).unwrap())
         }
-    
+
         pub fn to_yaml(&self) -> PyResult<String> {
             Ok(serde_yaml::to_string(&self).unwrap())
         }
