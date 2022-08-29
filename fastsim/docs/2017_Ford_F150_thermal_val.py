@@ -1,8 +1,11 @@
+# %%
+
 from typing import *
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import time
 import pickle
 import argparse
 import re
@@ -88,9 +91,11 @@ def load_resampled_data() -> Dict[str, pd.DataFrame]:
         dfs[key] = df.copy()
 
     return dfs
-
+# %%
 
 dfs = load_resampled_data()
+
+# %%
 
 f_150 = fsim.vehicle.Vehicle.from_file(
     "2017_Ford_F-150_Ecoboost.csv").to_rust()
@@ -158,11 +163,77 @@ for key, df in dfs.items():
     ax[-1].set_ylabel("Speed [mph]")
     ax[-1].legend()
 
+# %%
 
 fig, ax = plt.subplots(figsize=(10, 6))
 ax.scatter(fc_init_te_deg_c_arr.values(), [
-           sdh.sd.mpgge for sdh in sdh_dict.values()], marker='x')
+           sdh.sd.mpgge for sdh in sdh_dict.values()], marker='x', label="model")
 ax.scatter(fc_init_te_deg_c_arr.values(), [
-           mpg_test for mpg_test in mpg_test_dict.values()])
+           mpg_test for mpg_test in mpg_test_dict.values()], label='dyno')
 ax.set_xlabel("Engine Init Temp. [°C]")
 ax.set_ylabel("Fuel Economy [mpg]")
+ax.legend(loc='upper left')
+plt.savefig("plots/f-150 fe v init temp.png")
+plt.savefig("plots/f-150 fe v init temp.svg")
+
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.scatter(amb_te_deg_c_arr.values(), [
+           sdh.sd.mpgge for sdh in sdh_dict.values()], marker='x', label="model")
+ax.scatter(amb_te_deg_c_arr.values(), [
+           mpg_test for mpg_test in mpg_test_dict.values()], label='dyno')
+ax.set_xlabel("Ambient Temp. [°C]")
+ax.set_ylabel("Fuel Economy [mpg]")
+ax.legend()
+plt.savefig("plots/f-150 fe v amb temp.png")
+plt.savefig("plots/f-150 fe v amb temp.svg")
+
+
+# %% Temperature sweep to see FE impact
+
+
+cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+
+mpg = []
+mpg_no_hvac = []
+amb_te_deg_c_arr = np.linspace(-15, 40, 100)
+
+f_150_thermal = f_150_thermal_base.copy()
+f_150_thermal_hvac = f_150_thermal_base.copy()
+f_150_thermal_hvac.set_cabin_hvac_model_internal(hvac_model)
+
+
+t0 = time.perf_counter()
+for amb_te_deg_c in amb_te_deg_c_arr:
+    init_thermal_state = fsr.ThermalState(amb_te_deg_c=amb_te_deg_c)
+    sdh = fsr.SimDriveHot(cyc, f_150, f_150_thermal_hvac, init_thermal_state)
+    sdh.sim_drive()
+    mpg.append(sdh.sd.mpgge)
+    sdh_no_hvac = fsr.SimDriveHot(cyc, f_150, f_150_thermal, init_thermal_state)
+    sdh_no_hvac.sim_drive()
+    mpg_no_hvac.append(sdh_no_hvac.sd.mpgge)
+
+sdh_no_thrml = fsr.RustSimDrive(cyc, f_150)
+sdh_no_thrml.sim_drive()
+
+
+t1 = time.perf_counter()
+
+print(f"Elapsed time: {t1 - t0:.3g} s")
+
+# %%
+
+colors = ['#7fc97f', '#beaed4', '#fdc086']
+
+fig, ax = plt.subplots()
+plt.suptitle('2017 F-150 Ecoboost FE v. Ambient/Init. Temp.')
+ax.plot(amb_te_deg_c_arr, mpg, color=colors[0], label='w/ HVAC')
+ax.plot(amb_te_deg_c_arr, mpg_no_hvac, color=colors[1], label='w/o HVAC')
+ax.axhline(sdh_no_thrml.mpgge, color=colors[2], label='no thermal')
+ax.legend()
+ax.set_xlabel('Ambient/Init. Temp [°C]')
+ax.set_ylabel('Fuel Economy [mpg]')
+plt.tight_layout()
+plt.savefig("plots/f-150 FE vs temp sweep.png")
+plt.savefig("plots/f-150 FE vs temp sweep.svg")
+
+# %%
