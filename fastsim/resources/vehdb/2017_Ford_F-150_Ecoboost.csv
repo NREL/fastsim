@@ -34,7 +34,7 @@ ESS,ess_max_kw,0,
 ,ess_life_coef_b,-0.68,
 Wheels,wheel_inertia_kg_m2,0.82,assumed same as 2017 Toyota Highlander
 ,num_wheels,4,
-,wheel_rr_coef,0.007162,calculated from ABCs in https://www.anl.gov/taps/d3-2017-ford-f150
+,wheel_rr_coef,0.006828,calculated from ABCs in https://www.anl.gov/taps/d3-2017-ford-f150
 ,wheel_radius_m,0.326,legacy
 ,wheel_coef_of_fric,0.7,
 "SOC, ESS Discharch / Charge",min_soc,0.4,
