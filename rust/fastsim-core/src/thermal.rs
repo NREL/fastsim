@@ -7,7 +7,6 @@ use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::simdrive;
-use crate::utils::Pyo3VecF64;
 use crate::utils::*;
 use crate::vehicle;
 use crate::vehicle_thermal::*;
@@ -197,17 +196,6 @@ use crate::vehicle_thermal::*;
         self.set_post_scalars();
         Ok(())
     }
-
-    /// Return length of time arrays
-    pub fn len(&self) -> usize {
-        self.sd.cyc.time_s.len()
-    }
-    /// added to make clippy happy
-    /// not sure whether there is any benefit to this or not for our purposes
-    /// Return self.cyc.time_is.is_empty()
-    pub fn is_empty(&self) -> bool {
-        self.sd.cyc.time_s.is_empty()
-    }
 )]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct SimDriveHot {
@@ -308,7 +296,7 @@ impl SimDriveHot {
                         let roadway_chg_kj =
                             (&self.sd.roadway_chg_kw_out_ach * self.sd.cyc.dt_s()).sum();
                         if (fuel_kj + roadway_chg_kj) > 0.0 {
-                            ess_2fuel_kwh = ((self.sd.soc[0] - self.sd.soc[self.len() - 1])
+                            ess_2fuel_kwh = ((self.sd.soc[0] - self.sd.soc[self.sd.len() - 1])
                                 * self.sd.veh.ess_max_kwh
                                 * 3.6e3
                                 / (fuel_kj + roadway_chg_kj))
@@ -316,7 +304,7 @@ impl SimDriveHot {
                         } else {
                             ess_2fuel_kwh = 0.0;
                         }
-                        init_soc = min(1.0, max(0.0, self.sd.soc[self.len() - 1]));
+                        init_soc = min(1.0, max(0.0, self.sd.soc[self.sd.len() - 1]));
                     }
                     init_soc
                 } else if self.sd.veh.veh_pt_type == vehicle::PHEV

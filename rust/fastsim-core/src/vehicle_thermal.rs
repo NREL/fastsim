@@ -172,7 +172,7 @@ impl Default for ComponentModelTypes {
     }
 }
 
-#[pyfunction]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// Given Reynolds number `re`, return C and m to calculate Nusselt number for
 /// sphere, from Incropera's Intro to Heat Transfer, 5th Ed., eq. 7.44
 pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
