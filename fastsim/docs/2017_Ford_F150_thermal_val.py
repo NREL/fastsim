@@ -93,6 +93,7 @@ def load_resampled_data() -> Dict[str, pd.DataFrame]:
     return dfs
 # %%
 
+
 dfs = load_resampled_data()
 
 # %%
@@ -108,6 +109,7 @@ sdh_dict = {}
 fc_init_te_deg_c_arr = {}
 amb_te_deg_c_arr = {}
 mpg_test_dict = {}
+mpg_sim_dict = {}
 
 for key, df in dfs.items():
     fc_init_te_deg_c_arr[key] = df.iloc[0][FC_TE_DEG_C_KEY]
@@ -137,6 +139,7 @@ for key, df in dfs.items():
     )
     sdh.sim_drive()
     sdh_dict[key] = sdh
+    mpg_sim_dict[key] = sdh.sd.mpgge
 
     mpg_test_dict[key] = df.iloc[-1]['Distance[mi]'] / \
         df.iloc[-1]['Fuel Cumu. [Gal.]']
@@ -208,7 +211,8 @@ for amb_te_deg_c in amb_te_deg_c_arr:
     sdh = fsr.SimDriveHot(cyc, f_150, f_150_thermal_hvac, init_thermal_state)
     sdh.sim_drive()
     mpg.append(sdh.sd.mpgge)
-    sdh_no_hvac = fsr.SimDriveHot(cyc, f_150, f_150_thermal, init_thermal_state)
+    sdh_no_hvac = fsr.SimDriveHot(
+        cyc, f_150, f_150_thermal, init_thermal_state)
     sdh_no_hvac.sim_drive()
     mpg_no_hvac.append(sdh_no_hvac.sd.mpgge)
 
@@ -235,5 +239,33 @@ ax.set_ylabel('Fuel Economy [mpg]')
 plt.tight_layout()
 plt.savefig("plots/f-150 FE vs temp sweep.png")
 plt.savefig("plots/f-150 FE vs temp sweep.svg")
+
+# %%
+
+
+mpg_sweep = np.linspace(0, max(mpg_test_dict.values()), 50)
+err_p05 = mpg_sweep * 1.05
+err_p10 = mpg_sweep * 1.10
+err_n05 = mpg_sweep * 0.95
+err_n10 = mpg_sweep * 0.90
+
+fig, ax = plt.subplots()
+ax.set_title("2017 Ford F-150 Ecoboost Accuracy")
+ax.scatter(mpg_test_dict.values(), mpg_sim_dict.values(),
+           color=colors[0])
+plt.plot(mpg_sweep, err_p05, linestyle='-.',
+         label='+/- 5%', color='black', alpha=0.5)
+plt.plot(mpg_sweep, err_p10, linestyle='--',
+         label='+/- 10%', color='black', alpha=0.5)
+plt.plot(mpg_sweep, err_n05, linestyle='-.', color='black', alpha=0.5)
+plt.plot(mpg_sweep, err_n10, linestyle='--', color='black', alpha=0.5)
+# ax.set_ylim([0, ax.get_ylim()[1] * 1.1])
+# ax.set_xlim([0, ax.get_xlim()[1] * 1.1])
+ax.set_xlabel("Experiment FE [mpg]")
+ax.set_ylabel("Model FE [mpg]")
+ax.legend()
+plt.tight_layout()
+plt.savefig("plots/f-150 mpg scatter.png")
+plt.savefig("plots/f-150 mpg scatter.svg")
 
 # %%

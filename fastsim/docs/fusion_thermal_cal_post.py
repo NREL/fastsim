@@ -1,3 +1,4 @@
+# %%
 from typing import *
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -15,7 +16,8 @@ trip_dir = ftc.trip_dir
 
 cal_objectives, val_objectives, params_bounds = ftc.get_cal_and_val_objs()
 # save_path = "fusion_pymoo_res_2022_08_18"
-save_path = "fusion_pymoo_res_2022_08_26"
+save_path = "fusion_pymoo_res_2022_08_26"  # seems to be best
+# save_path = "fusion_pymoo_res_2022_08_29"
 # save_path = "pymoo_res"
 
 res_df = pd.read_csv(Path(save_path) / "pymoo_res_df.csv")
@@ -35,6 +37,8 @@ res_df['temp euclidean'] = (res_df.filter(
     like="fc_te") ** 2).sum(1) ** (1 / 2)
 param_vals = res_df.iloc[best_row, :len(cal_objectives.params)].to_numpy()
 
+# %%
+
 show_plots = False
 
 cal_errs, cal_mods = cal_objectives.get_errors(
@@ -49,6 +53,8 @@ val_errs, val_mods = val_objectives.get_errors(
     show=show_plots,
     return_mods=True,
 )
+
+# %%
 
 # generate data for scatter plot
 
@@ -97,12 +103,11 @@ for key in val_objectives.models.keys():
                    df['Time[s]'].diff().fillna(0)).sum()
     val_exp_mpg.append(dist_mi_exp / fuel_gal_exp)
 
+
+# %%
+
 markers = ("x", "o", "x", "o")
 colors = ("#7fc97f", "#7fc97f", "#beaed4", "#beaed4")
-
-# ***************************************
-# WARNING! The plot below is using default param values
-# rather than the best param values
 
 fig, ax = plt.subplots()
 ax.scatter(cal_te_amb_degc, cal_mod_mpg, label='cal mod',
@@ -118,5 +123,33 @@ ax.set_xlabel("Ambient Temp. [°C]")
 ax.set_ylabel("Fuel Economy [mpg]")
 ax.legend()
 plt.tight_layout()
+plt.savefig(Path(save_path) / "mpg v amb scatter.png")
+plt.savefig(Path(save_path) / "mpg v amb scatter.svg")
+
+# %%
+mpg_sweep = np.linspace(0, max(max(cal_exp_mpg), max(val_exp_mpg)), 50)
+err_p05 = mpg_sweep * 1.05
+err_p10 = mpg_sweep * 1.10
+err_n05 = mpg_sweep * 0.95
+err_n10 = mpg_sweep * 0.90
+
+fig, ax = plt.subplots()
+ax.set_title("2012 Ford Fusion V6 Model Accuracy")
+ax.scatter(cal_exp_mpg, cal_mod_mpg, label='calibration',
+           color=colors[0])
+ax.scatter(val_exp_mpg, val_mod_mpg,
+           color=colors[2], label='validation')
+plt.plot(mpg_sweep, err_p05, linestyle='-.', label='+/- 5%', color='black')
+plt.plot(mpg_sweep, err_p10, linestyle='--', label='+/- 10%', color='black')
+plt.plot(mpg_sweep, err_n05, linestyle='-.', color='black')
+plt.plot(mpg_sweep, err_n10, linestyle='--', color='black')
+# ax.set_ylim([0, ax.get_ylim()[1] * 1.1])
+# ax.set_xlim([0, ax.get_xlim()[1] * 1.1])
+ax.set_xlabel("Experiment FE [mpg]")
+ax.set_ylabel("Model FE [mpg]")
+ax.legend()
+plt.tight_layout()
 plt.savefig(Path(save_path) / "mpg scatter.png")
 plt.savefig(Path(save_path) / "mpg scatter.svg")
+
+# %%
