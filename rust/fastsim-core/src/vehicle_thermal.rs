@@ -157,10 +157,7 @@ impl Default for HVACModel {
 
 impl HVACModel {
     impl_serde!(HVACModel, VEHICLE_THERMAL_DEFAULT_FOLDER);
-
-    pub fn from_file(filename: &str) -> Self {
-        Self::from_file_parser(filename).unwrap()
-    }
+    impl_from_file!();
 }
 
 /// Whether HVAC model is handled by FASTSim (internal) or not
@@ -490,10 +487,7 @@ pub const VEHICLE_THERMAL_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 impl VehicleThermal {
     impl_serde!(VehicleThermal, VEHICLE_THERMAL_DEFAULT_FOLDER);
-
-    pub fn from_file(filename: &str) -> Self {
-        Self::from_file_parser(filename).unwrap()
-    }
+    impl_from_file!();
 
     /// derived temperature [ºC] at which thermostat is fully open
     pub fn tstat_te_fo_deg_c(&self) -> f64 {

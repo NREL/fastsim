@@ -15,7 +15,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
     // println!("{}", ast.ident.to_string());
     let ident = &ast.ident;
-    let is_state_or_history: bool = ident.to_string().contains("State") || ident.to_string().contains("HistoryVec");
+    let is_state_or_history: bool =
+        ident.to_string().contains("State") || ident.to_string().contains("HistoryVec");
 
     let mut impl_block = TokenStream2::default();
     let mut py_impl_block = TokenStream2::default();
@@ -44,7 +45,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             let keep: Vec<bool> = field
                 .attrs
                 .iter()
-                .map(|x| match x.path.segments[0].ident.to_string().as_str() { 
+                .map(|x| match x.path.segments[0].ident.to_string().as_str() {
                     "api" => {
                         let meta = x.parse_meta().unwrap();
                         if let Meta::List(list) = meta {
@@ -60,7 +61,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         // where this gets messed up
                                         _ => {
                                             abort!(
-                                                x.span(), 
+                                                x.span(),
                                                 format!(
                                                     "Invalid api option: {}.\nValid options are: `skip_get`, `skip_set`, and `has_orphaned`.",
                                                     opt_name
@@ -110,7 +111,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #[classmethod]
                 #[pyo3(name = "from_file")]
                 pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
-                    let obj: #ident = Self::from_file(&json_str);
+                    // unwrap is ok here because it makes sense to stop execution if a file is not loadable
+                    let obj: #ident = Self::from_file(&json_str).unwrap();
                     Ok(obj)
                 }
             });
@@ -173,7 +175,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             ) -> PyResult<()> {
                             Err(PyNotImplementedError::new_err(
                                 "Setting value at index is not implemented.
-                                    Run `tolist` method, modify value at index, and 
+                                    Run `tolist` method, modify value at index, and
                                     then set entire vector.",
                             ))
                         }

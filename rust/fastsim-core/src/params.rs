@@ -33,7 +33,7 @@ pub const PROPS_DEFAULT_FOLDER: &str = "fastsim/resources";
     pub fn set_fuel_lhv_kj_per_kg_py(&mut self, fuel_lhv_kj_per_kg: f64) {
         self.set_fuel_lhv_kj_per_kg(fuel_lhv_kj_per_kg);
     }
-    
+
     pub fn __getnewargs__(&self) {
         todo!();
     }
@@ -79,10 +79,7 @@ impl RustPhysicalProperties {
     }
 
     impl_serde!(RustPhysicalProperties, PROPS_DEFAULT_FOLDER);
-
-    pub fn from_file(filename: &str) -> Self {
-        Self::from_file_parser(filename).unwrap()
-    }
+    impl_from_file!();
 }
 
 // Vehicle model parameters that should be changed only by advanced users

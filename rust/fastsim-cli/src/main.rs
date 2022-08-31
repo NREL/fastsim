@@ -53,7 +53,8 @@ pub fn main() {
         RustCycle::from_file(&cyc_file_path)
     } else {
         RustCycle::from_file("../fastsim/resources/cycles/udds.csv")
-    };
+    }
+    .unwrap();
 
     let veh = RustVehicle::mock_vehicle();
     let mut sim_drive = RustSimDrive::new(cyc, veh);
@@ -75,6 +76,7 @@ pub fn main() {
 
 #[cfg(test)]
 pub mod tests {
+    use std::path::PathBuf;
     use std::process::Command;
 
     use assert_cmd::prelude::{CommandCargoExt, OutputAssertExt};
@@ -84,10 +86,12 @@ pub mod tests {
     fn test_that_cli_app_produces_result() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = Command::cargo_bin("fastsim-cli")?;
         let mut cyc_file = project_root::get_project_root().unwrap();
-        cyc_file.push("../fastsim/resources/cycles/udds.csv");
+        cyc_file.push(PathBuf::from("../fastsim/resources/cycles/udds.csv"));
         assert!(cyc_file.exists());
         let mut veh_file = project_root::get_project_root().unwrap();
-        veh_file.push("../fastsim/resources/vehdb/2012_Ford_Fusion.yaml");
+        veh_file.push(PathBuf::from(
+            "../fastsim/resources/vehdb/2012_Ford_Fusion.yaml",
+        ));
         assert!(veh_file.exists());
 
         cmd.args([
