@@ -523,8 +523,8 @@ impl RustCycle {
     }
 
     /// get mph from self.mps
-    pub fn mph(&self) -> Array1<f64> {
-        &self.mps * MPH_PER_MPS
+    pub fn mph_at_i(&self, i: usize) -> f64 {
+        self.mps[i] * MPH_PER_MPS
     }
 
     /// Load cycle from csv file
