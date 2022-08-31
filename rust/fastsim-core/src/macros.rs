@@ -41,6 +41,16 @@ macro_rules! impl_serde {
     };
 }
 
+/// Generates `from_file` method
+#[macro_export]
+macro_rules! impl_from_file {
+    () => {
+        pub fn from_file(filename: &str) -> Result<Self, Box<dyn Error>> {
+            Ok(Self::from_file_parser(filename)?)
+        }
+    };
+}
+
 /// Given pairs of arbitrary keys and values, prints "key: value" to python intepreter.  
 /// Given str, prints str.  
 /// Using this will break `cargo test` but work with `maturin develop`.  

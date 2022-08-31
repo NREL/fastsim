@@ -264,10 +264,7 @@ impl SimDriveHot {
     }
 
     impl_serde!(SimDriveHot, SIMDRIVEHOT_DEFAULT_FOLDER);
-
-    pub fn from_file(filename: &str) -> Self {
-        Self::from_file_parser(filename).unwrap()
-    }
+    impl_from_file!();
 
     pub fn gap_to_lead_vehicle_m(&self) -> Array1<f64> {
         self.sd.gap_to_lead_vehicle_m()

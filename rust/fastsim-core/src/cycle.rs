@@ -560,12 +560,12 @@ impl RustCycle {
 
     impl_serde!(RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
 
-    pub fn from_file(filename: &str) -> Self {
+    pub fn from_file(filename: &str) -> Result<Self, Box<dyn Error>> {
         // check if the extension is csv, and if it is, then call Self::from_csv_file
         let pathbuf = PathBuf::from(filename);
         match pathbuf.extension().unwrap().to_str().unwrap() {
-            "csv" => Self::from_csv_file(filename).unwrap(),
-            _ => Self::from_file_parser(filename).unwrap(),
+            "csv" => Ok(Self::from_csv_file(filename)?),
+            _ => Ok(Self::from_file_parser(filename)?),
         }
     }
 }

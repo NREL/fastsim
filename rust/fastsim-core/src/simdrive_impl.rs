@@ -288,9 +288,7 @@ impl RustSimDrive {
     }
 
     impl_serde!(RustSimDrive, SIMDRIVE_DEFAULT_FOLDER);
-    pub fn from_file(filename: &str) -> Self {
-        Self::from_file_parser(filename).unwrap()
-    }
+    impl_from_file!();
 
     /// Return length of time arrays
     pub fn len(&self) -> usize {

@@ -110,7 +110,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #[classmethod]
                 #[pyo3(name = "from_file")]
                 pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
-                    let obj: #ident = Self::from_file(&json_str);
+                    // unwrap is ok here because it makes sense to stop execution if a file is not loadable
+                    let obj: #ident = Self::from_file(&json_str).unwrap();
                     Ok(obj)
                 }
             });
