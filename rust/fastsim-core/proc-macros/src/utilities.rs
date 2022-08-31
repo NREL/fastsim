@@ -67,15 +67,15 @@ macro_rules! impl_vec_get_set {
     };
 }
 
-/// Generates pyo3 getter methods  
+/// Generates pyo3 getter methods
 ///
-/// general match arguments:  
+/// general match arguments:
 /// - type: type of variable (e.g. `f64`)
 /// - field: struct field
 /// - impl_block: TokenStream2
 /// - opts: FieldOptions struct instance
 macro_rules! impl_get_body {
-    ( 
+    (
         $type: ident, $field: ident, $impl_block: ident, $opts: ident
     ) => {
         if !$opts.skip_get {
