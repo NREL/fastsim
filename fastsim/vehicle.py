@@ -36,7 +36,7 @@ def get_template_df():
 
 TEMPLATE_VEHDF = get_template_df()
 
-# list of optional parameters that do not get assigned as vehicle attributes
+# list of optional parameters
 OPT_INIT_PARAMS = ['fcPeakEffOverride', 'mcPeakEffOverride']
 
 VEH_PT_TYPES = ("Conv", "HEV", "PHEV", "BEV")
@@ -243,9 +243,8 @@ class Vehicle(object):
         # set columns and values as instance attributes and values
         for col in vehdf.columns:
             col1 = col.replace(' ', '_')
-            if col not in OPT_INIT_PARAMS:
-                # assign dataframe columns to vehicle
-                self.__setattr__(col1, vehdf.loc[vnum, col])
+            # assign dataframe columns to vehicle
+            self.__setattr__(col1, vehdf.loc[vnum, col])
 
         # make sure all the attributes needed by CycleJit are set
         # this could potentially cause unexpected behaviors
@@ -348,11 +347,7 @@ class Vehicle(object):
         # in case vehYear gets loaded from file as float
         self.vehYear = np.int32(self.vehYear)
         
-        self.set_init_calcs(
-            # provide kwargs for load-time overrides
-            # -1 is used as a surrogate for None, which is not an option in numba
-            **{opt_init_param: veh_dict.pop(opt_init_param, -1) for opt_init_param in OPT_INIT_PARAMS}
-        )
+        self.set_init_calcs()
         self.set_veh_mass()
 
         # Parameter data validation
@@ -423,22 +418,16 @@ class Vehicle(object):
             
         return numba_veh
     
-    def set_init_calcs(self, fcPeakEffOverride=-1, mcPeakEffOverride=-1):
+    def set_init_calcs(self):
         """
         Legacy method for calling set_dependents.
         """
 
-        self.set_dependents(fcPeakEffOverride, mcPeakEffOverride)
+        self.set_dependents()
 
-    def set_dependents(self, fcPeakEffOverride=-1, mcPeakEffOverride=-1):
+    def set_dependents(self):
         """
         Sets derived parameters.
-        Arguments:
-        ----------
-        fcPeakEffOverride: float (0, 1), if provided, overrides fuel converter peak 
-            efficiency with proportional scaling.  Default of -1 has no effect.
-        mcPeakEffOverride: float (0, 1), if provided, overrides motor peak efficiency
-            with proportional scaling.  Default of -1 has no effect.  
         """
         
         if self.Scenario_name != 'Template Vehicle for setting up data types':
@@ -517,11 +506,11 @@ class Vehicle(object):
         self.regenA = 500.0  # hardcoded
         self.regenB = 0.99  # hardcoded
 
-        if fcPeakEffOverride != -1:
-            self.fcPeakEff = fcPeakEffOverride
+        if hasattr(self, "fcPeakEffOverride") and self.fcPeakEffOverride != -1:
+            self.fcPeakEff = self.fcPeakEffOverride
             print("fcPeakEffOverride is modifying efficiency curve.")
-        if mcPeakEffOverride != -1:
-            self.mcPeakEff = mcPeakEffOverride
+        if hasattr(self, "mcPeakEffOverride") and self.mcPeakEffOverride != -1:
+            self.mcPeakEff = self.mcPeakEffOverride
             print("mcPeakEffOverride is modifying efficiency curve.")
 
         # check that efficiencies are not violating the first law of thermo
