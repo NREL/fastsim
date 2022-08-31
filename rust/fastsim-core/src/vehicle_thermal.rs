@@ -1,6 +1,7 @@
 use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
+#[cfg(feature = "pyo3")]
 use crate::utils;
 #[cfg(feature = "pyo3")]
 use crate::utils::Pyo3VecF64;

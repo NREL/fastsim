@@ -8,6 +8,7 @@ use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::simdrive;
+#[cfg(feature = "pyo3")]
 use crate::utils::*;
 use crate::vehicle;
 use crate::vehicle_thermal::*;
