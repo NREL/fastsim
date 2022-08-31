@@ -1290,10 +1290,10 @@ impl RustVehicle {
     }
 
     impl_serde!(RustVehicle, VEH_RESOURCE_DEFAULT_FOLDER);
-    pub fn from_file(filename: &str) -> Self {
-        let mut veh = Self::from_file_parser(filename).unwrap();
+    pub fn from_file(filename: &str) -> Result<Self, Box<dyn Error>> {
+        let mut veh = Self::from_file_parser(filename)?;
         veh.set_derived();
-        veh
+        Ok(veh)
     }
 }
 

@@ -53,7 +53,8 @@ pub fn main() {
         RustCycle::from_file(&cyc_file_path)
     } else {
         RustCycle::from_file("../fastsim/resources/cycles/udds.csv")
-    };
+    }
+    .unwrap();
 
     let veh = RustVehicle::mock_vehicle();
     let mut sim_drive = RustSimDrive::new(cyc, veh);

@@ -288,9 +288,7 @@ impl RustSimDrive {
     }
 
     impl_serde!(RustSimDrive, SIMDRIVE_DEFAULT_FOLDER);
-    pub fn from_file(filename: &str) -> Self {
-        Self::from_file_parser(filename).unwrap()
-    }
+    impl_from_file!();
 
     /// Return length of time arrays
     pub fn len(&self) -> usize {
@@ -535,7 +533,7 @@ impl RustSimDrive {
         self.ess_cur_kwh[0] = init_soc * self.veh.ess_max_kwh;
         self.soc[0] = init_soc;
         self.mps_ach[0] = self.cyc0.mps[0];
-        self.mph_ach[0] = self.cyc0.mph()[0];
+        self.mph_ach[0] = self.cyc0.mph_at_i(0);
 
         if self.sim_params.missed_trace_correction
             || self.sim_params.follow_allow
@@ -1030,7 +1028,8 @@ impl RustSimDrive {
                 / (1.0
                     + self.veh.regen_a
                         * (-self.veh.regen_b
-                            * ((self.cyc.mph()[i] + self.mps_ach[i - 1] * params::MPH_PER_MPS)
+                            * ((self.cyc.mph_at_i(i)
+                                + self.mps_ach[i - 1] * params::MPH_PER_MPS)
                                 / 2.0
                                 + 1.0))
                             .exp());
@@ -1408,7 +1407,8 @@ impl RustSimDrive {
                     && (self.trans_kw_in_ach[i] - 1e-6) <= self.cur_max_mc_kw_out[i]
                     && (self.elec_kw_req_4ae[i] < self.cur_max_elec_kw[i]
                         || self.veh.fc_max_kw == 0.0)
-                    && ((self.cyc.mph()[i] - 1e-6) <= self.veh.mph_fc_on || self.veh.charging_on)
+                    && ((self.cyc.mph_at_i(i) - 1e-6) <= self.veh.mph_fc_on
+                        || self.veh.charging_on)
                     && self.elec_kw_req_4ae[i] <= self.veh.kw_demand_fc_on;
             }
             if self.can_pwr_all_elec[i] {
