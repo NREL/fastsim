@@ -458,6 +458,28 @@ class SimDrive(object):
 
         self.set_post_scalars()
     
+    def activate_eco_cruise(self, target_speed_control: str='cycle-average', extend_fraction: float=0.1):
+        """
+        Sets the intelligent driver model parameters for an eco-cruise driving trajectory.
+        This is a convenience method instead of setting the sim_params.idm* parameters yourself.
+
+        - target_speed_control: one of {'cycle-average', 'microtrip-average', 'microtrip-moving-average'}
+        """
+        possible_speed_controls = {'cycle-average', 'microtrip-average', 'microtrip-moving-average'}
+        if target_speed_control not in possible_speed_controls:
+            raise TypeError(f'target_speed_control must be in {possible_speed_controls} but got {target_speed_control}')
+        params = self.sim_params
+        params.follow_allow = True
+        if target_speed_control == 'cycle-average':
+            if self.cyc0.time_s[-1] > 0.0:
+                params.idm_v_desired_m_per_s = self.cyc0.dist_m.sum() / self.cyc0.time_s[-1]
+            else:
+                params.idm_v_desired_m_per_s = 0.0
+        self.sim_params = params
+        # Extend the duration of the base cycle
+        self.cyc0 = cycle.extend_cycle(self.cyc0, time_fraction=extend_fraction)
+        self.cyc = self.cyc0.copy()
+    
     def _next_speed_by_idm(self, i, a_m_per_s2, b_m_per_s2, dt_headway_s, s0_m, v_desired_m_per_s, delta=4.0):
         """
         Calculate the next speed by the Intelligent Driver Model

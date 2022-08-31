@@ -869,3 +869,24 @@ def trapz_distance_over_range(cyc: Cycle, i_start: int, i_end: int) -> float:
     (i.e., distance from sample point i_start-1 to i_end-1)
     """
     return trapz_step_distances(cyc)[i_start:i_end].sum()
+
+def extend_cycle(cyc: Cycle, absolute_time_s:float=0.0, time_fraction:float=0.0, use_rust:bool=False) -> Cycle:
+    """
+    - cyc: fastsim.cycle.Cycle
+    - absolute_time_s: float, the seconds to extend
+    - time_fraction: float, the fraction of the original cycle time to add on
+    - use_rust: bool, if True, return a RustCycle instance, else a normal Python Cycle
+    RETURNS: fastsim.cycle.Cycle (or fastsimrust.RustCycle), the new cycle with stopped time appended
+    NOTE: additional time is rounded to the nearest second
+    """
+    cyc0 = cyc.get_cyc_dict()
+    extra_time_s = absolute_time_s + float(int(round(time_fraction * cyc.time_s[-1])))
+    # Zero-velocity cycle segment so simulation doesn't end while moving
+    cyc_stop = resample(
+        make_cycle([0.0, extra_time_s], [0.0, 0.0]),
+        new_dt=1.0,
+    )
+    new_cyc = Cycle.from_dict(concat([cyc0, cyc_stop]))
+    if use_rust:
+        return new_cyc.to_rust()
+    return new_cyc
