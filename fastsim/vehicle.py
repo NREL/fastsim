@@ -245,6 +245,10 @@ class Vehicle(object):
             col1 = col.replace(' ', '_')
             # assign dataframe columns to vehicle
             self.__setattr__(col1, vehdf.loc[vnum, col])
+        if not hasattr(self, "fcPeakEffOverride"):
+            self.fcPeakEffOverride = -1
+        if not hasattr(self, "mcPeakEffOverride"):
+            self.mcPeakEffOverride = -1
 
         # make sure all the attributes needed by CycleJit are set
         # this could potentially cause unexpected behaviors
@@ -506,10 +510,10 @@ class Vehicle(object):
         self.regenA = 500.0  # hardcoded
         self.regenB = 0.99  # hardcoded
 
-        if hasattr(self, "fcPeakEffOverride") and self.fcPeakEffOverride != -1:
+        if self.fcPeakEffOverride != -1:
             self.fcPeakEff = self.fcPeakEffOverride
             print("fcPeakEffOverride is modifying efficiency curve.")
-        if hasattr(self, "mcPeakEffOverride") and self.mcPeakEffOverride != -1:
+        if self.mcPeakEffOverride != -1:
             self.mcPeakEff = self.mcPeakEffOverride
             print("mcPeakEffOverride is modifying efficiency curve.")
 
