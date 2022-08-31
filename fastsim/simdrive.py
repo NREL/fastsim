@@ -5,7 +5,7 @@ import sys
 # Import necessary python modules
 from dataclasses import dataclass
 from logging import debug
-from typing import Optional
+from typing import Optional, List, Tuple
 import numpy as np
 import re
 import copy
@@ -87,6 +87,7 @@ class SimDriveParams(object):
         self.idm_delta: float = 4.0
         self.idm_accel_m_per_s2: float = 1.0
         self.idm_decel_m_per_s2: float = 1.5
+        self.idm_v_desired_in_m_per_s_by_distance_m: Optional[List[Tuple[float, float]]] = None
 
         # EPA fuel economy adjustment parameters
         self.max_epa_adj = 0.3  # maximum EPA adjustment factor
@@ -327,6 +328,7 @@ class SimDrive(object):
         self.newton_iters = np.zeros(self.cyc.len, dtype=np.float64)
         self.coast_delay_index = np.zeros(self.cyc.len, dtype=np.int32)
         self.impose_coast = np.array([False] * self.cyc.len, dtype=np.bool_)
+        self.idm_target_speed_m_per_s = np.zeros(self.cyc.len, dtype=np.float64)
 
     @property
     def gap_to_lead_vehicle_m(self):
@@ -458,23 +460,37 @@ class SimDrive(object):
 
         self.set_post_scalars()
     
-    def activate_eco_cruise(self, target_speed_control: str='cycle-average', extend_fraction: float=0.1):
+    def activate_eco_cruise(
+        self,
+        by_microtrip: bool=False,
+        extend_fraction: float=0.1,
+        blend_factor: float=0.0,
+        min_target_speed_m_per_s: float=8.0
+    ):
         """
         Sets the intelligent driver model parameters for an eco-cruise driving trajectory.
         This is a convenience method instead of setting the sim_params.idm* parameters yourself.
 
-        - target_speed_control: one of {'cycle-average', 'microtrip-average', 'microtrip-moving-average'}
+        - by_microtrip: bool, if True, target speed is set by microtrip, else by cycle
+        - extend_fraction: float, the fraction of time to extend the cycle to allow for catch-up
+            of the following vehicle
+        - blend_factor: float, a value between 0 and 1; only used of by_microtrip is True, blends
+            between microtrip average speed and microtrip average speed when moving. Must be
+            between 0 and 1 inclusive
         """
-        possible_speed_controls = {'cycle-average', 'microtrip-average', 'microtrip-moving-average'}
-        if target_speed_control not in possible_speed_controls:
-            raise TypeError(f'target_speed_control must be in {possible_speed_controls} but got {target_speed_control}')
         params = self.sim_params
         params.follow_allow = True
-        if target_speed_control == 'cycle-average':
+        if not by_microtrip:
             if self.cyc0.time_s[-1] > 0.0:
                 params.idm_v_desired_m_per_s = self.cyc0.dist_m.sum() / self.cyc0.time_s[-1]
             else:
                 params.idm_v_desired_m_per_s = 0.0
+        else:
+            if blend_factor > 1.0 or blend_factor < 0.0:
+                raise TypeError(f"blend_factor must be between 0 and 1 but got {blend_factor}")
+            params.idm_v_desired_in_m_per_s_by_distance_m = cycle.create_dist_and_target_speeds_by_microtrip(
+                self.cyc0, blend_factor=blend_factor, min_target_speed_mps=min_target_speed_m_per_s
+            )
         self.sim_params = params
         # Extend the duration of the base cycle
         self.cyc0 = cycle.extend_cycle(self.cyc0, time_fraction=extend_fraction)
@@ -537,8 +553,8 @@ class SimDrive(object):
         dv/dt = a * (1 - (v/v_desired)**delta - (s_desired(v,v-v_lead)/s)**2)
         s_desired(v, dv) = s0 + max(0, v*dt_headway + (v * dv)/(2.0 * sqrt(a*b)))
         """
-        if self.sim_params.idm_v_desired_m_per_s > 0:
-            v_desired_m_per_s = self.sim_params.idm_v_desired_m_per_s
+        if self.idm_target_speed_m_per_s[i] > 0:
+            v_desired_m_per_s = self.idm_target_speed_m_per_s[i]
         else:
             v_desired_m_per_s = self.cyc0.mps.max()
         self.cyc.mps[i] = self._next_speed_by_idm(
@@ -607,6 +623,16 @@ class SimDrive(object):
         TODO: consider implementing for battery SOC dependence
         """
         if self.sim_params.follow_allow:
+            if self.sim_params.idm_v_desired_in_m_per_s_by_distance_m is not None:
+                found_v_target = self.sim_params.idm_v_desired_m_per_s
+                current_d = self.cyc.dist_m[:self.i].sum()
+                for d, v_target in self.sim_params.idm_v_desired_in_m_per_s_by_distance_m:
+                    if d >= current_d:
+                        found_v_target = v_target
+                        break
+                self.idm_target_speed_m_per_s[self.i] = found_v_target
+            else:
+                self.idm_target_speed_m_per_s[self.i] = self.sim_params.idm_v_desired_m_per_s
             self._set_speed_for_target_gap(self.i)
         if self.sim_params.coast_allow:
             self._set_coast_speed(self.i)

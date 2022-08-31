@@ -23,12 +23,24 @@ class TestEcoCruise(unittest.TestCase):
             if abs(sd.cyc0.grade[idx] - sd.cyc.grade[idx]) > 0.01:
                 return True
         return False
-
-    def test_that_eco_cruise_interface_works(self):
+    
+    def test_that_eco_cruise_interface_works_for_cycle_average_speed(self):
         cyc = fs.cycle.Cycle.from_file('udds')
+        expected_idm_target_speed_m_per_s = cyc.dist_m.sum() / cyc.time_s[-1]
         veh = fs.vehicle.Vehicle.from_vehdb(1)
         sd = fs.simdrive.SimDrive(cyc, veh)
         sd.activate_eco_cruise()
         sd.sim_drive()
         self.assertTrue(self.cycles_differ(sd), "Cycles should differ when running with eco-cruise")
         self.assertTrue(abs(self.percent_distance_error(sd)) < 1.0, "Error in distance shouldn't be high; less than 1%")
+        idm_target_speed_m_per_s = sd.idm_target_speed_m_per_s[1:].mean()
+        self.assertAlmostEqual(expected_idm_target_speed_m_per_s, idm_target_speed_m_per_s)
+
+    #def test_that_eco_cruise_interface_works_for_microtrip_average_speed(self):
+    #    cyc = fs.cycle.Cycle.from_file('udds')
+    #    veh = fs.vehicle.Vehicle.from_vehdb(1)
+    #    sd = fs.simdrive.SimDrive(cyc, veh)
+    #    sd.activate_eco_cruise(by_microtrip=True)
+    #    sd.sim_drive()
+    #    self.assertTrue(self.cycles_differ(sd), "Cycles should differ when running with eco-cruise")
+    #    self.assertTrue(abs(self.percent_distance_error(sd)) < 1.0, "Error in distance shouldn't be high; less than 1%")
