@@ -299,7 +299,7 @@ class LegacyCycle(object):
 ref_cyc = Cycle.from_file('udds')
 
 
-def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
+def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Dict[str, np.ndarray] | Cycle | LegacyCycle | RustCycle:
     """Returns copy of Cycle.
     Arguments:
     cyc: instantianed Cycle or CycleJit
@@ -326,11 +326,11 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
             cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
     if return_type is None:
-        if RUST_AVAILABLE and type(cyc) == fsr.RustCycle:
+        if RUST_AVAILABLE and isinstance(cyc, RustCycle):
             return_type = 'rust'
-        elif type(cyc) == Cycle:
+        elif isinstance(cyc, Cycle):
             return_type = 'python'
-        elif type(cyc) == LegacyCycle:
+        elif isinstance(cyc, LegacyCycle):
             return_type = "legacy"
         else:
             raise NotImplementedError(
@@ -343,7 +343,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
     elif return_type == 'legacy':
         return LegacyCycle(cyc_dict)
     elif RUST_AVAILABLE and return_type == 'rust':
-        return fsr.RustCycle(**cyc_dict)
+        return RustCycle(**cyc_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 

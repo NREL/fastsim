@@ -14,6 +14,7 @@ from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
+    from fastsimrust import RustSimDrive
 from . import params, cycle, vehicle, inspect_utils
 
 # these imports are needed for numba to type these correctly
@@ -2246,32 +2247,6 @@ class SimDrive(object):
         return copy_sim_drive(self, 'rust', True)
 
 
-if RUST_AVAILABLE:
-
-    def RustSimDrive(cyc: fsr.RustCycle, veh: fsr.RustVehicle) -> SimDrive:
-        """
-        Wrapper function to make SimDriveRust look like SimDrive for language server.
-        Arguments:
-        ----------
-        cyc: cycle.Cycle instance
-        veh: vehicle.Vehicle instance"""
-        return fsr.RustSimDrive(cyc, veh)
-
-else:
-
-    def RustSimDrive(cyc: cycle.Cycle, veh: vehicle.Vehicle) -> SimDrive:
-        """
-        Wrapper function to make SimDriveRust look like SimDrive for language server.
-        Arguments:
-        ----------
-        cyc: cycle.Cycle instance
-        veh: vehicle.Vehicle instance"""
-        raise ImportError(
-            "FASTSimRust does not seem to be available. Cannot instantiate RustSimDrive..."
-        )
-        return SimDrive(cyc, veh)
-
-
 class LegacySimDrive(object):
     pass
 
@@ -2297,11 +2272,11 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
     # TODO: no need to implement dict for copy_sim_drive, but please do for the subordinate classes
 
     if return_type is None:
-        # if type(sd) == fsr.RustSimDrive:
+        # if type(sd) == RustSimDrive:
         #    return_type = 'rust'
         if type(sd) == SimDrive:
             return_type = 'python'
-        elif type(sd) == fsr.RustSimDrive:
+        elif type(sd) == RustSimDrive:
             return_type = 'rust'
         elif type(sd) == LegacySimDrive:
             return_type = "legacy"
@@ -2315,7 +2290,7 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
     veh = vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
 
     if return_type == 'rust':
-        return fsr.RustSimDrive(cyc, veh)
+        return RustSimDrive(cyc, veh)
 
     sd_copy = SimDrive(cyc, veh)
     for key in inspect_utils.get_attrs(sd):

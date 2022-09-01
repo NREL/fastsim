@@ -2,6 +2,11 @@
 Module containing classes and methods for for loading vehicle data. For example usage, see ../README.md
 """
 
+# Typing
+from __future__ import annotations
+from typing import Dict, Optional
+from typing_extensions import Self
+
 # Import necessary python modules
 import numpy as np
 from dataclasses import dataclass, field, InitVar
@@ -12,7 +17,6 @@ from pathlib import Path
 from copy import deepcopy
 import ast
 import copy
-from typing import Optional
 
 # local modules
 from fastsim import parameters as params
@@ -22,6 +26,7 @@ from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
+    from fastsimrust import RustVehicle
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -265,7 +270,7 @@ class Vehicle(object):
     converted_to_rust: InitVar[bool] = field(default=True)
 
     @classmethod
-    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False, verbose: bool = False):
+    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False, verbose: bool = False) -> Self:
         """
         Load vehicle `vnum` from default vehdb or `veh_file`.
         Arguments:
@@ -282,7 +287,7 @@ class Vehicle(object):
         return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
 
     @classmethod
-    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = False, verbose: bool = False):
+    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = False, verbose: bool = False) -> Self:
         """
         Loads vehicle from file `filename` (str).  Looks in working dir and then 
         fastsim/resources/vehdb, which also contains numerous examples of vehicle csv files.
@@ -320,7 +325,7 @@ class Vehicle(object):
         return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
 
     @classmethod
-    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = False, verbose: bool = False):
+    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = False, verbose: bool = False) -> Self:
         """
         Given vehdf, generates dict to feed to `from_dict`.
         Arguments:
@@ -357,7 +362,7 @@ class Vehicle(object):
         return cls.from_dict(veh_dict, to_rust, verbose)
 
     @classmethod
-    def from_dict(cls, veh_dict: dict, to_rust: bool = False, verbose: bool = False):
+    def from_dict(cls, veh_dict: dict, to_rust: bool = False, verbose: bool = False) -> Self:
         """
         Load vehicle from dict with snake_case key names.  
         Arguments:
@@ -690,14 +695,14 @@ class Vehicle(object):
     def max_regen_kwh(self): return 0.5 * self.veh_kg * (27**2) / (3600 * 1000)
 
     @property
-    def veh_type_selection(self):
+    def veh_type_selection(self) -> str:
         """
         Copying veh_pt_type to additional key
         to be consistent with Excel version but not used in Python version
         """
         return self.veh_pt_type
 
-    def get_mcPeakEff(self):
+    def get_mcPeakEff(self) -> float:
         "Return `np.max(self.mc_eff_array)`"
         assert np.max(self.mc_full_eff_array) == np.max(self.mc_eff_array)
         return np.max(self.mc_full_eff_array)
@@ -715,7 +720,7 @@ class Vehicle(object):
 
     mc_peak_eff = property(get_mcPeakEff, set_mcPeakEff)
 
-    def get_fcPeakEff(self):
+    def get_fcPeakEff(self) -> float:
         "Return `np.max(self.fc_eff_array)`"
         return np.max(self.fc_eff_array)
 
@@ -737,7 +742,7 @@ class Vehicle(object):
         raise NotImplementedError(
             "This method has been deprecated")
 
-    def to_rust(self):
+    def to_rust(self) -> RustVehicle:
         """Return a Rust version of the vehicle"""
         # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
         return copy_vehicle(self, 'rust')
@@ -767,7 +772,7 @@ RETURN_TYPES = ['dict', 'vehicle', 'legacy', 'rust']
 DICT, VEHICLE, LEGACY, RUST = RETURN_TYPES
 
 
-def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
+def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Dict[str, np.ndarray] | Vehicle | LegacyVehicle | RustVehicle:
     """Returns copy of Vehicle.
     Arguments:
     veh: instantiated Vehicle or RustVehicle
@@ -781,11 +786,11 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     veh_dict = {}
 
     if return_type is None:
-        if RUST_AVAILABLE and type(veh) == fsr.RustVehicle:
+        if RUST_AVAILABLE and isinstance(veh, RustVehicle):
             return_type = RUST
-        elif type(veh) == Vehicle:
+        elif isinstance(veh, Vehicle):
             return_type = VEHICLE
-        elif type(veh) == LegacyVehicle:
+        elif isinstance(veh, LegacyVehicle):
             return_type = LEGACY
         else:
             raise NotImplementedError(
@@ -831,7 +836,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
             veh_dict['props'], return_type, deep)
         veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [
             "large_baseline_eff", "small_baseline_eff"]}
-        return fsr.RustVehicle(**veh_dict)
+        return RustVehicle(**veh_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 
