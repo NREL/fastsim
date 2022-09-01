@@ -3,10 +3,12 @@
 from __future__ import annotations
 from typing import *
 import numpy as np
+from fastsim.rustext import RUST_AVAILABLE
 from fastsim import parameters as params
 import seaborn as sns
 import re
 import datetime
+import logging
 
 sns.set()
 
@@ -80,6 +82,33 @@ def camel_to_snake(name):
     "Given camelCase, returns snake_case."
     name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
+
+
+def set_log_level(level: str | int):
+    """
+    Sets logging level for both Python and Rust FASTSim.
+    The default logging level is WARNING.
+
+    Parameters
+    ----------
+    level: str | int
+        Logging level to set. `str` of name from
+        https://docs.python.org/3/library/logging.html#logging-levels
+        or `int` logging level
+    """
+    # Map string name to logging level
+    if isinstance(level, str):
+        level = logging._nameToLevel[level]
+    # Set logging level
+    logging.getLogger("fastsim").setLevel(level)
+    if RUST_AVAILABLE:
+        logging.getLogger("fastsimrust").setLevel(level)
+
+def disable_logging():
+    set_log_level(logging.CRITICAL + 1)
+
+def enable_logging():
+    set_log_level(logging.WARNING)
 
 
 def get_containers_with_path(

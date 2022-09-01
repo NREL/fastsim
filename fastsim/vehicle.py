@@ -28,6 +28,10 @@ if RUST_AVAILABLE:
     import fastsimrust as fsr
     from fastsimrust import RustVehicle
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
 DEFAULT_VEHDF = pd.read_csv(DEFAULT_VEH_DB)
@@ -270,24 +274,23 @@ class Vehicle(object):
     converted_to_rust: InitVar[bool] = field(default=True)
 
     @classmethod
-    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False, verbose: bool = False) -> Self:
+    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False) -> Self:
         """
         Load vehicle `vnum` from default vehdb or `veh_file`.
         Arguments:
             vnum: vehicle number
             veh_file: path to vehicle database file
             to_rust: if True, convert to rust-compatible vehicle
-            verbose: if True, print out warnings and other info
         """
         vehdf = DEFAULT_VEHDF
         if veh_file is not None:
             vehdf = pd.read_csv(veh_file)
         vehdf.set_index('selection', inplace=True, drop=False)
 
-        return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
+        return cls.from_df(vehdf, vnum, veh_file, to_rust)
 
     @classmethod
-    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = False, verbose: bool = False) -> Self:
+    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = False) -> Self:
         """
         Loads vehicle from file `filename` (str).  Looks in working dir and then 
         fastsim/resources/vehdb, which also contains numerous examples of vehicle csv files.
@@ -296,7 +299,6 @@ class Vehicle(object):
             filename: path to vehicle database file
             vnum: vehicle number
             to_rust: if True, convert to rust-compatible vehicle
-            verbose: if True, print out warnings and other info
         """
         filename = str(filename)
         if not(str(filename).endswith('.csv')):
@@ -322,10 +324,10 @@ class Vehicle(object):
 
         veh_file = filename
 
-        return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
+        return cls.from_df(vehdf, vnum, veh_file, to_rust)
 
     @classmethod
-    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = False, verbose: bool = False) -> Self:
+    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = False) -> Self:
         """
         Given vehdf, generates dict to feed to `from_dict`.
         Arguments:
@@ -333,7 +335,6 @@ class Vehicle(object):
             vnum: vehicle number
             veh_file: path to vehicle database file
             to_rust: if True, convert to rust-compatible vehicle
-            verbose: if True, print out warnings and other info
         """
         # verify that only allowed columns have been provided
         for col in vehdf.columns:
@@ -351,6 +352,7 @@ class Vehicle(object):
             # assign dataframe columns to vehicle
             veh_dict[col1] = vehdf.loc[vnum, col]
 
+        # TODO: should this block be uncommented and converted to use logging?
         # missing_cols = set(TEMPLATE_VEHDF.columns) - set(veh_dict.keys())
         # if len(missing_cols) > 0:
         #     if verbose:
@@ -359,16 +361,15 @@ class Vehicle(object):
         #     for col in missing_cols:
         #         veh_dict[col] = 0.0
 
-        return cls.from_dict(veh_dict, to_rust, verbose)
+        return cls.from_dict(veh_dict, to_rust)
 
     @classmethod
-    def from_dict(cls, veh_dict: dict, to_rust: bool = False, verbose: bool = False) -> Self:
+    def from_dict(cls, veh_dict: dict, to_rust: bool = False) -> Self:
         """
         Load vehicle from dict with snake_case key names.  
         Arguments:
             veh_dict: dict of vehicle attributes
             to_rust: if True, convert to rust-compatible vehicle
-            verbose: if True, print out warnings and other info
         """
         # Power and efficiency arrays are defined in parameters.py
         # Can also be input in CSV as array under column fc_eff_map of form
@@ -380,8 +381,7 @@ class Vehicle(object):
             # check if optional parameter fc_eff_map is provided in vehicle csv file
             veh_dict['fc_eff_map'] = np.array(ast.literal_eval(
                 veh_dict['fc_eff_map']))
-            if verbose:
-                print(f"reading in fc_eff_map, and it is overriding fc_eff_type")
+            logger.info("fc_eff_map is overriding fc_eff_type")
 
         except:
             warn_str = f"""fc_eff_type {
@@ -431,8 +431,7 @@ class Vehicle(object):
             veh_dict['mc_pwr_out_perc'] = np.array(
                 ast.literal_eval(veh_dict['mc_pwr_out_perc']))
         except:
-            if verbose:
-                print(f'No proper mcPwrOutPerc provided; using default values')
+            logger.info("no proper mc_pwr_out_perc provided; using default values")
             veh_dict['mc_pwr_out_perc'] = params.mc_pwr_out_perc
 
         # check if self-provided mc_pwr_out_perc has the required length
@@ -453,9 +452,7 @@ class Vehicle(object):
             assert len(veh_dict['mc_pwr_out_perc']) == len(
                 params.large_baseline_eff), mc_eff_map_len_err
         except:
-            if verbose:
-                print(
-                    'No proper mcEffMap provided, will used default method to calculate')
+            logger.info("no proper mc_eff_map provided; using default method to calculate")
             veh_dict['mc_eff_map'] = None
 
         # set stop_start if not provided
@@ -487,9 +484,7 @@ class Vehicle(object):
                     veh_dict['fc_peak_eff_override'])
                 assert 0.0 < veh_dict['fc_peak_eff_override'] < 1.0
             except:
-                if verbose:
-                    print(
-                        'No proper fc peak eff override value provided, will not override fc peak eff')
+                logger.info("no proper fc_peak_eff_override provided; will not override fc_peak_eff")
                 veh_dict['fc_peak_eff_override'] = None
         if "mc_peak_eff_override" in veh_dict:
             try:
@@ -497,9 +492,7 @@ class Vehicle(object):
                     veh_dict['mc_peak_eff_override'])
                 assert 0.0 < veh_dict['mc_peak_eff_override'] < 1.0
             except:
-                if verbose:
-                    print(
-                        'No proper mc peak eff override value provided, will not override mc peak eff')
+                logger.info("no proper mc_peak_eff_override provided; will not override mc_peak_eff")
                 veh_dict['mc_peak_eff_override'] = None
 
         # make sure types are right
@@ -624,10 +617,10 @@ class Vehicle(object):
 
         if self.fc_peak_eff_override is not None:
             self.fc_peak_eff = self.fc_peak_eff_override
-            print("fc_peak_eff_override is modifying efficiency curve")
+            logger.info("fc_peak_eff_override is modifying fc efficiency curve")
         if self.mc_peak_eff_override is not None:
             self.mc_peak_eff = self.mc_peak_eff_override
-            print("mc_peak_eff_override is modifying efficiency curve")
+            logger.info("mc_peak_eff_override is modifying mc efficiency curve")
 
         # check that efficiencies are not violating the first law of thermo
         assert self.fc_eff_array.min() >= 0, f"min MC eff < 0 is not allowed"

@@ -430,7 +430,6 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     cyc = fsim.cycle.Cycle.from_dict(cyc)
     
     sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-    sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     sim_drive.sim_drive()
 
     output['nrel_trip_id'] = trp
@@ -476,8 +475,6 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     cyc = fsim.cycle.Cycle.from_dict(cyc).to_rust()
     
     sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
-    sim_drive.sim_params = fsim.auxiliaries.set_nested_values(sim_drive.sim_params,verbose=False)
-    #sim_drive.sim_params.verbose = False # turn off error messages for large time steps
     sim_drive.sim_drive()
 
     output['nrel_trip_id'] = trp

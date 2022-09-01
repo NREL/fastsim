@@ -2,6 +2,10 @@
 Utility functions to deal with the Rust extension
 """
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 RUST_AVAILABLE = None
 try:
     import fastsimrust as fsr
@@ -11,6 +15,6 @@ except ImportError:
 
 def warn_rust_unavailable(context=None):
     if not RUST_AVAILABLE:
-        print("Warning! FASTSimRust was requested but it is unavailable.")
+        logger.warn("fastsimrust was requested but it is unavailable")
         if context is not None:
             print(f"- context: {context}")

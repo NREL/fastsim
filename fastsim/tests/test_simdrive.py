@@ -26,7 +26,7 @@ class TestSimDriveClassic(unittest.TestCase):
         if USE_PYTHON:
             print(f"Running {type(self)}.test_sim_drive_step.")
             cyc = cycle.Cycle.from_file('udds')
-            veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+            veh = vehicle.Vehicle.from_vehdb(1)
             sim_drive = simdrive.SimDrive(cyc, veh)
             sim_drive.init_for_step()
 
@@ -38,7 +38,7 @@ class TestSimDriveClassic(unittest.TestCase):
         if RUST_AVAILABLE and USE_RUST:
             msg = f"Issue Running {type(self)}.test_sim_drive_step. Rust"
             cyc = cycle.Cycle.from_file('udds').to_rust()
-            veh = vehicle.Vehicle.from_vehdb(1, verbose=False).to_rust()
+            veh = vehicle.Vehicle.from_vehdb(1).to_rust()
             sim_drive = simdrive.RustSimDrive(cyc, veh)
             sim_drive.init_for_step(init_soc=veh.max_soc)
 
@@ -54,7 +54,7 @@ class TestSimDriveClassic(unittest.TestCase):
         if USE_PYTHON:
             print(f"Running {type(self)}.test_sim_drive_walk. Python")
             cyc = cycle.Cycle.from_file('udds')
-            veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+            veh = vehicle.Vehicle.from_vehdb(1)
             sim_drive = simdrive.SimDrive(cyc, veh)
             sim_drive.sim_drive_walk(init_soc=1)
 
@@ -64,7 +64,7 @@ class TestSimDriveClassic(unittest.TestCase):
         if RUST_AVAILABLE and USE_RUST:
             msg = f"Issue Running {type(self)}.test_sim_drive_walk. Rust"
             cyc = cycle.Cycle.from_file('udds')
-            veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+            veh = vehicle.Vehicle.from_vehdb(1)
             sim_drive = simdrive.SimDrive(cyc, veh)
             sim_drive.sim_drive_walk(init_soc=1)
 
@@ -85,7 +85,7 @@ class TestSimDriveClassic(unittest.TestCase):
                                               t_start=t_clip, t_end=t_end))
             )
 
-            veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+            veh = vehicle.Vehicle.from_vehdb(1)
 
             sd1 = simdrive.SimDrive(cyc1, veh)
             sd1.sim_drive()
@@ -117,7 +117,7 @@ class TestSimDriveClassic(unittest.TestCase):
                                               t_start=t_clip, t_end=t_end))
             ).to_rust()
 
-            veh = vehicle.Vehicle.from_vehdb(1, verbose=False).to_rust()
+            veh = vehicle.Vehicle.from_vehdb(1).to_rust()
 
             sd1 = simdrive.RustSimDrive(cyc1, veh)
             sd1.sim_drive()

@@ -679,7 +679,6 @@ class RustSimDriveParams:
     coast_max_speed_m_per_s: float
     coast_start_speed_m_per_s: float
     coast_time_horizon_for_adjustment_s: float
-    coast_verbose: bool
     energy_audit_error_tol: float
     follow_allow: bool
     idm_accel_m_per_s2: float
@@ -702,7 +701,6 @@ class RustSimDriveParams:
     trace_miss_dist_tol: float
     trace_miss_speed_mps_tol: float
     trace_miss_time_tol: float
-    verbose: bool
 
     @classmethod
     def from_bincode(cls, encoded: ByteString) -> Self:

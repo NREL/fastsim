@@ -30,20 +30,17 @@ class TestFollowing(unittest.TestCase):
             self.veh = fastsim.vehicle.Vehicle.from_vehdb(5)
             # sd0 is for reference to an unchanged, no-following simdrive
             self.sd0 = fastsim.simdrive.SimDrive(self.trapz, self.veh)
-            self.sd0.sim_params.verbose = False
             self.sd = fastsim.simdrive.SimDrive(self.trapz, self.veh)
             self.sd.sim_params.follow_allow = True
             self.sd.sim_params.idm_minimum_gap_m = self.initial_gap_m
-            self.sd.sim_params.verbose = False
         if RUST_AVAILABLE and USE_RUST:
             self.ru_trapz = fastsim.cycle.Cycle.from_dict(trapz).to_rust()
             self.ru_veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             # sd0 is for reference to an unchanged, no-following simdrive
             self.ru_sd0 = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
-            self.ru_sd0.sim_params = set_nested_values(self.ru_sd0.sim_params, verbose=False)
+            self.ru_sd0.sim_params = set_nested_values(self.ru_sd0.sim_params)
             self.ru_sd = fastsim.simdrive.RustSimDrive(self.ru_trapz, self.ru_veh)
             self.ru_sd.sim_params = set_nested_values(self.ru_sd.sim_params,
-                verbose=False,
                 follow_allow=True,
                 idm_minimum_gap_m=self.initial_gap_m
             )
@@ -561,7 +558,6 @@ class TestFollowing(unittest.TestCase):
                                                         title=key,
                                                         save_file=save_path,
                                                         do_show=False,
-                                                        verbose=False,
                                                         gap_offset_m=s_min_m,
                                                     )
                                                 except Exception as err: 
@@ -848,7 +844,6 @@ class TestFollowing(unittest.TestCase):
                                                         title=key,
                                                         save_file=save_path,
                                                         do_show=False,
-                                                        verbose=False,
                                                         gap_offset_m=s_min_m,
                                                     )
                                                 except Exception as err: 
@@ -997,7 +992,6 @@ class TestFollowing(unittest.TestCase):
             sd.sim_params.follow_allow = True
             sd.sim_params.idm_minimum_gap_m = 5.0
             sd.sim_params.idm_v_desired_m_per_s = 5.0
-            sd.sim_params.verbose = False
             sd.sim_drive()
             ts0 = sd.cyc0.time_s
             dds0 = sd.cyc0.dist_m
@@ -1092,7 +1086,6 @@ class TestFollowing(unittest.TestCase):
                 follow_allow=True,
                 idm_minimum_gap_m=5.0,
                 idm_v_desired_m_per_s=5.0,
-                verbose=False
             )
             sd.sim_drive()
             ts0 = sd.cyc0.time_s
