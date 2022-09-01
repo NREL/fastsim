@@ -161,6 +161,7 @@ impl RustSimDrive {
         let trace_miss_time_frac: f64 = 0.0;
         let trace_miss_speed_mps: f64 = 0.0;
         let coast_delay_index = Array::zeros(cyc_len);
+        let idm_target_speed_m_per_s = Array::zeros(cyc_len);
         RustSimDrive {
             hev_sim_count,
             veh,
@@ -284,6 +285,7 @@ impl RustSimDrive {
             trace_miss_speed_mps,
             orphaned: false,
             coast_delay_index,
+            idm_target_speed_m_per_s,
         }
     }
 
@@ -397,6 +399,7 @@ impl RustSimDrive {
         self.trace_miss_iters = Array::zeros(cyc_len);
         self.newton_iters = Array::zeros(cyc_len);
         self.coast_delay_index = Array::zeros(cyc_len);
+        self.idm_target_speed_m_per_s = Array::zeros(cyc_len);
         self.impose_coast = Array::from_vec(vec![false; cyc_len]);
     }
 

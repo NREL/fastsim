@@ -51,6 +51,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
         idm_delta: f64,
         idm_accel_m_per_s2: f64,
         idm_decel_m_per_s2: f64,
+        idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
         // Other, Misc.
         max_epa_adj: f64,
     ) -> Self {
@@ -85,6 +86,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
             idm_delta,
             idm_accel_m_per_s2,
             idm_decel_m_per_s2,
+            idm_v_desired_in_m_per_s_by_distance_m,
             // Other, Misc.
             max_epa_adj,
             orphaned: false
@@ -126,6 +128,7 @@ pub struct RustSimDriveParams {
     pub idm_delta: f64,
     pub idm_accel_m_per_s2: f64,
     pub idm_decel_m_per_s2: f64,
+    pub idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
     // Other, Misc.
     pub max_epa_adj: f64,
     #[serde(skip)]
@@ -174,6 +177,7 @@ impl Default for RustSimDriveParams {
         let idm_delta = 4.0;
         let idm_accel_m_per_s2 = 1.0;
         let idm_decel_m_per_s2 = 1.5;
+        let idm_v_desired_in_m_per_s_by_distance_m = None;
         // EPA fuel economy adjustment parameters
         let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
         Self {
@@ -206,6 +210,7 @@ impl Default for RustSimDriveParams {
             idm_delta,
             idm_accel_m_per_s2,
             idm_decel_m_per_s2,
+            idm_v_desired_in_m_per_s_by_distance_m,
             max_epa_adj,
             orphaned: false,
         }
@@ -535,6 +540,7 @@ pub struct RustSimDrive {
     #[serde(skip)]
     pub orphaned: bool,
     pub coast_delay_index: Array1<i32>,
+    pub idm_target_speed_m_per_s: Array1<f64>,
 }
 
 // #[cfg(test)]
