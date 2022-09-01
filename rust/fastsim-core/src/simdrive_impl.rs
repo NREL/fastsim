@@ -3,7 +3,7 @@
 use super::cycle::{
     accel_array_for_constant_jerk, accel_for_constant_jerk, calc_constant_jerk_trajectory,
     detect_passing, trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance,
-    PassingInfo, RustCycle,
+    create_dist_and_target_speeds_by_microtrip, extend_cycle, PassingInfo, RustCycle,
 };
 use super::params;
 use super::utils::{
@@ -506,6 +506,51 @@ impl RustSimDrive {
         Ok(())
     }
 
+    /// Sets the intelligent driver model parameters for an eco-cruise driving trajectory.
+    /// This is a convenience method instead of setting the sim_params.idm* parameters yourself.
+    /// - by_microtrip: bool, if True, target speed is set by microtrip, else by cycle
+    /// - extend_fraction: float, the fraction of time to extend the cycle to allow for catch-up
+    ///     of the following vehicle
+    /// - blend_factor: float, a value between 0 and 1; only used of by_microtrip is True, blends
+    ///     between microtrip average speed and microtrip average speed when moving. Must be
+    ///     between 0 and 1 inclusive
+    /// - min_target_speed_m_per_s: float, the minimum speed allowed by the eco-cruise algorithm
+    /// Mutates the current SimDrive object for eco-cruise.
+    pub fn activate_eco_cruise_rust(
+        &mut self,
+        by_microtrip: bool, // False
+        extend_fraction: f64, // 0.1
+        blend_factor: f64, // 0.0
+        min_target_speed_m_per_s: f64, // 8.0
+    ) -> Result<(), String> {
+        self.sim_params.follow_allow = true;
+        if !by_microtrip {
+            if self.cyc0.time_s.len() > 0 && self.cyc0.time_s[self.cyc0.time_s.len()-1] > 0.0 {
+                self.sim_params.idm_v_desired_m_per_s =
+                    self.cyc0.dist_m().slice(s![0..self.cyc0.time_s.len()]).sum()
+                    / self.cyc0.time_s[self.cyc0.time_s.len()-1];
+            } else {
+                self.sim_params.idm_v_desired_m_per_s = 0.0;
+            }
+        } else {
+            if blend_factor > 1.0 || blend_factor < 0.0 {
+                return Err(format!("blend_factor must be between 0 and 1 but got {}", blend_factor));
+            }
+            self.sim_params.idm_v_desired_in_m_per_s_by_distance_m =
+                Some(
+                    create_dist_and_target_speeds_by_microtrip(
+                        &self.cyc0, blend_factor, min_target_speed_m_per_s));
+        }
+        // Extend the duration of the base cycle
+        if extend_fraction < 0.0 {
+            return Err(format!("extend_fraction must be >= 0.0 but got {}", extend_fraction));
+        }
+        self.cyc0 = extend_cycle(&self.cyc0, None, Some(extend_fraction));
+        self.cyc = self.cyc0.clone();
+        Ok(())
+    }
+
+
     /// This is a specialty method which should be called prior to using
     /// sim_drive_step in a loop.
     /// Arguments
@@ -622,8 +667,8 @@ impl RustSimDrive {
     ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>
     pub fn set_speed_for_target_gap_using_idm(&mut self, i: usize) {
         // PARAMETERS
-        let v_desired_m_per_s = if self.sim_params.idm_v_desired_m_per_s > 0.0 {
-            self.sim_params.idm_v_desired_m_per_s
+        let v_desired_m_per_s = if self.idm_target_speed_m_per_s[i] > 0.0 {
+            self.idm_target_speed_m_per_s[i]
         } else {
             ndarrmax(&self.cyc0.mps)
         };
@@ -690,6 +735,20 @@ impl RustSimDrive {
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
         if self.sim_params.follow_allow {
+            self.idm_target_speed_m_per_s[self.i] = match &self.sim_params.idm_v_desired_in_m_per_s_by_distance_m {
+                Some(vtgt_by_dist) => {
+                    let mut found_v_target = self.sim_params.idm_v_desired_m_per_s;
+                    let current_d = self.cyc.dist_m().slice(s![0..self.i]).sum();
+                    for (d, v_target) in vtgt_by_dist {
+                        if d >= &current_d {
+                            found_v_target = *v_target;
+                            break;
+                        }
+                    }
+                    found_v_target
+                },
+                None => self.sim_params.idm_v_desired_m_per_s
+            };
             self.set_speed_for_target_gap(self.i);
         }
         if self.sim_params.coast_allow {

@@ -273,6 +273,30 @@ impl Default for RustSimDriveParams {
         handle_sd_res(self.walk(init_soc, aux_in_kw_override))
     }
 
+    /// Sets the intelligent driver model parameters for an eco-cruise driving trajectory.
+    /// This is a convenience method instead of setting the sim_params.idm* parameters yourself.
+    /// - by_microtrip: bool, if True, target speed is set by microtrip, else by cycle
+    /// - extend_fraction: float, the fraction of time to extend the cycle to allow for catch-up
+    ///     of the following vehicle
+    /// - blend_factor: float, a value between 0 and 1; only used of by_microtrip is True, blends
+    ///     between microtrip average speed and microtrip average speed when moving. Must be
+    ///     between 0 and 1 inclusive
+    pub fn activate_eco_cruise(
+        &mut self,
+        by_microtrip: Option<bool>,
+        extend_fraction: Option<f64>,
+        blend_factor: Option<f64>,
+        min_target_speed_m_per_s: Option<f64>,
+    ) -> PyResult<()> {
+        let by_microtrip: bool = by_microtrip.unwrap_or(false);
+        let extend_fraction: f64 = extend_fraction.unwrap_or(0.1);
+        let blend_factor: f64 = blend_factor.unwrap_or(0.0);
+        let min_target_speed_m_per_s = min_target_speed_m_per_s.unwrap_or(8.0);
+        handle_sd_res(
+            self.activate_eco_cruise_rust(
+                by_microtrip, extend_fraction, blend_factor, min_target_speed_m_per_s))
+    }
+
     #[pyo3(name = "init_for_step")]
     /// This is a specialty method which should be called prior to using
     /// sim_drive_step in a loop.
