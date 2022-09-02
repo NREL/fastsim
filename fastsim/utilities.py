@@ -9,6 +9,7 @@ import seaborn as sns
 import re
 import datetime
 import logging
+from pathlib import Path
 
 sns.set()
 
@@ -88,13 +89,22 @@ def set_log_level(level: str | int):
     """
     Sets logging level for both Python and Rust FASTSim.
     The default logging level is WARNING.
+    https://docs.python.org/3/library/logging.html#logging-levels
 
     Parameters
     ----------
     level: str | int
-        Logging level to set. `str` of name from
-        https://docs.python.org/3/library/logging.html#logging-levels
-        or `int` logging level
+        Logging level to set. `str` level name or `int` logging level
+        
+        =========== ================
+        Level       Numeric value
+        =========== ================
+        CRITICAL    50
+        ERROR       40
+        WARNING     30
+        INFO        20
+        DEBUG       10
+        NOTSET      0        
     """
     # Map string name to logging level
     if isinstance(level, str):
@@ -105,10 +115,21 @@ def set_log_level(level: str | int):
         logging.getLogger("fastsimrust").setLevel(level)
 
 def disable_logging():
-    set_log_level(logging.CRITICAL + 1)
+    logging.getLogger("fastsim").disabled = True
+    if RUST_AVAILABLE:
+        logging.getLogger("fastsimrust").disabled = True
 
 def enable_logging():
-    set_log_level(logging.WARNING)
+    logging.getLogger("fastsim").disabled = False
+    if RUST_AVAILABLE:
+        logging.getLogger("fastsimrust").disabled = False
+
+def set_log_filename(filename: str | Path):
+    handler = logging.FileHandler(filename)
+    handler.setFormatter(logging.root.handlers[0].formatter)
+    logging.getLogger("fastsim").addHandler(handler)
+    if RUST_AVAILABLE:
+        logging.getLogger("fastsimrust").addHandler(handler)
 
 
 def get_containers_with_path(
