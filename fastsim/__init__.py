@@ -23,7 +23,7 @@ __doc__ += f"{Path(__file__).parent / 'docs/README.md'}"
 
 # Set up logging
 logging.basicConfig(
-    format="%(asctime)s.%(msecs)03d | %(filename)s#%(lineno)s | %(levelname)s: %(message)s",
+    format="%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 logger = logging.getLogger(__name__)

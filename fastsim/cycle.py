@@ -3,7 +3,7 @@ cycle data. For example usage, see ../README.md"""
 
 from __future__ import annotations
 from typing_extensions import Self
-from typing import *
+from typing import Dict, Set, Optional, Any
 # Import necessary python modules
 from dataclasses import dataclass
 import copy
@@ -12,11 +12,8 @@ import os
 import numpy as np
 from scipy.interpolate import interp1d
 import pandas as pd
-import re
-import sys
 from pathlib import Path
 from copy import deepcopy
-import types
 
 # local modules
 from . import parameters as params

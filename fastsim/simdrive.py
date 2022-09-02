@@ -4,7 +4,6 @@ import sys
 
 # Import necessary python modules
 from dataclasses import dataclass
-from logging import debug
 from typing import Optional
 import numpy as np
 import re
@@ -139,7 +138,7 @@ def copy_sim_params(sdp: SimDriveParams, return_type: str = None):
         raise ValueError(f"Invalid return_type: '{return_type}'")
 
 
-def sim_params_equal(a: SimDriveParams, b: SimDriveParams):
+def sim_params_equal(a: SimDriveParams, b: SimDriveParams) -> bool:
     """
     Returns True if objects are structurally equal (i.e., equal by value), else false.
     Arguments:
@@ -2169,11 +2168,8 @@ class SimDrive(object):
                 (self.fuel_kj + self.roadway_chg_kj)
 
         # energy audit calcs
-        self.drag_kw = self.drag_kw
         self.drag_kj = (self.drag_kw * self.cyc.dt_s).sum()
-        self.ascent_kw = self.ascent_kw
         self.ascent_kj = (self.ascent_kw * self.cyc.dt_s).sum()
-        self.rr_kw = self.rr_kw
         self.rr_kj = (self.rr_kw * self.cyc.dt_s).sum()
 
         self.ess_loss_kw[1:] = np.array(

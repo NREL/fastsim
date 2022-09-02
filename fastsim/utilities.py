@@ -1,7 +1,7 @@
 """Various optional utilities that may support some applications of FASTSim."""
 
 from __future__ import annotations
-from typing import *
+from typing import Dict, Any
 import numpy as np
 from fastsim.rustext import RUST_AVAILABLE
 from fastsim import parameters as params

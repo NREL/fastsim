@@ -1,5 +1,5 @@
 from dataclasses import dataclass, InitVar
-from typing import *
+from typing import Dict, List, Tuple, Optional, Any, Union
 from pathlib import Path
 import pickle
 import argparse
@@ -101,6 +101,8 @@ class ModelObjectives(object):
         # or if return_mods is True
         Dict[str, fsim.simdrive.SimDrive],
     ]:
+        # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
+        # This would make `from typing import Union` unnecessary
         """
         Calculate model errors w.r.t. test data for each element in dfs/models for each objective.
         Arguments:
