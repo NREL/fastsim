@@ -1490,21 +1490,35 @@ impl RustSimDrive {
             }
 
             if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
+                // fc forced on because:
+                // - it was on in the previous time step and hasn't been on long enough
+                // - it can't power everything on it's own
                 self.fc_forced_state[i] = 1;
                 self.mc_mech_kw_4forced_fc[i] = 0.0;
             } else if self.trans_kw_in_ach[i] < 0.0 {
+                // not forced on.  transmission needs negative power (i.e. regen)
                 self.fc_forced_state[i] = 2;
                 self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i];
             } else if self.veh.max_fc_eff_kw() == self.trans_kw_in_ach[i] {
+                // if fc power at which maximum efficiency is achieved equals the transmission input power
+                // fc possibly (???) forced on to be more efficient
+                // this seems unlikely to ever happen
                 self.fc_forced_state[i] = 3;
                 self.mc_mech_kw_4forced_fc[i] = 0.0;
             } else if self.veh.idle_fc_kw > self.trans_kw_in_ach[i] && self.accel_kw[i] >= 0.0 {
+                // accelerating but idle power is greater than accel power needed by trans
                 self.fc_forced_state[i] = 4;
                 self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.idle_fc_kw;
             } else if self.veh.max_fc_eff_kw() > self.trans_kw_in_ach[i] {
+                // if fc power at which maximum efficiency is achieved exceeds the transmission input power
                 self.fc_forced_state[i] = 5;
                 self.mc_mech_kw_4forced_fc[i] = 0.0;
             } else {
+                // fc not forced on in previous time step or
+                // transmission is not in braking state or
+                // transmission input power is not exactly most efficient point on fc map or
+                // acceleration is not >= 0 and/or idle power is not > trans input power or
+                // fc peak eff point in map is <= trans input power
                 self.fc_forced_state[i] = 6;
                 self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.max_fc_eff_kw();
             }
