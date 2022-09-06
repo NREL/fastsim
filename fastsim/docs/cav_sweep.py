@@ -329,11 +329,16 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
     cyc_name = "udds" if cyc_name is None else cyc_name
     cyc = load_cycle(cyc_name)
     sim = create_simdrive(cyc, veh, use_rust=use_rust)
-    params = sim.sim_params
-    dist_and_avg_speeds = create_dist_and_target_speeds_by_microtrip(cyc, blend_factor=blend_factor)
-    if use_rust:
-        cyc = cyc.to_rust()
+    # NOTE: load_cycle already extends the cycle in time so extend_fraction is not needed
+    sim.activate_eco_cruise(
+        by_microtrip=True,
+        extend_fraction=0.0,
+        blend_factor=blend_factor,
+        min_target_speed_m_per_s=MIN_ECO_CRUISE_TARGET_SPEED_m_per_s)
     # Eco-cruise parameters
+    # NOTE: activate_eco_cruise() already sets idm params. To set
+    # them to values # other than the default, they must be modified
+    # AFTER a call # to activate_eco_cruise()
     params = sim.sim_params
     if use_rust:
         params.reset_orphaned()
@@ -342,25 +347,10 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
     params.idm_decel_m_per_s2 = 2.5
     params.idm_dt_headway_s = 2.0
     params.idm_minimum_gap_m = 10.0
-    params.idm_v_desired_m_per_s = dist_and_avg_speeds[0][1]
     sim.sim_params = params
     # Initialize Electric Drive System
     init_soc = sim.veh.max_soc if init_soc is None else init_soc
-    sim.init_for_step(init_soc=init_soc)
-    # Simulate
-    current_mt_idx = 0
-    dist_traveled_m = 0.0
-    while sim.i < len(cyc.time_s):
-        idx = max(0, sim.i - 1)
-        dist_traveled_m += sim.cyc.dist_m[idx]
-        if current_mt_idx < len(dist_and_avg_speeds):
-            mt_start_dist_m, mt_avg_spd_m_per_s = dist_and_avg_speeds[current_mt_idx]
-            if dist_traveled_m >= mt_start_dist_m:
-                params.idm_v_desired_m_per_s = mt_avg_spd_m_per_s
-                sim.sim_params = params
-                current_mt_idx += 1
-        sim.sim_drive_step()
-    sim.set_post_scalars()
+    sim.sim_drive(init_soc=init_soc)
     if verbose:
         print(f"ECO-CRUISE: {sim.mpgge:.3f} mpg", flush=True)
     if save_dir is not None:
@@ -377,41 +367,33 @@ def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=N
     cyc_name = "udds" if cyc_name is None else cyc_name
     cyc = load_cycle(cyc_name, use_rust=use_rust)
     sim = create_simdrive(cyc, veh, use_rust=use_rust)
+    # NOTE: load_cycle already extends the cycle in time so extend_fraction is not needed
+    sim.activate_eco_cruise(
+        by_microtrip=True,
+        extend_fraction=0.0,
+        blend_factor=blend_factor,
+        min_target_speed_m_per_s=MIN_ECO_CRUISE_TARGET_SPEED_m_per_s)
     params = sim.sim_params
-    dist_and_avg_speeds = create_dist_and_target_speeds_by_microtrip(cyc, blend_factor=blend_factor)
-    params = sim.sim_params
-    # Eco-coast parameters
     if use_rust:
         params.reset_orphaned()
+    # Eco-coast parameters
     params.coast_allow = True
     params.coast_allow_passing = False
     params.coast_start_speed_m_per_s = -1.0
     params.coast_time_horizon_for_adjustment_s = 20.0
     # Eco-cruise parameters
+    # NOTE: activate_eco_cruise() already sets idm params. To set
+    # them to values # other than the default, they must be modified
+    # AFTER a call # to activate_eco_cruise()
     params.follow_allow = True
     params.idm_accel_m_per_s2 = 0.5
     params.idm_decel_m_per_s2 = 2.5
     params.idm_dt_headway_s = 2.0
     params.idm_minimum_gap_m = 10.0
-    params.idm_v_desired_m_per_s = dist_and_avg_speeds[0][1]
     sim.sim_params = params
     # Initialize Electric Drive System
     init_soc = sim.veh.max_soc if init_soc is None else init_soc
-    sim.init_for_step(init_soc=init_soc)
-    # Simulate
-    current_mt_idx = 0
-    dist_traveled_m = 0.0
-    while sim.i < len(cyc.time_s):
-        idx = max(0, sim.i - 1)
-        dist_traveled_m += sim.cyc.dist_m[idx]
-        if current_mt_idx < len(dist_and_avg_speeds):
-            mt_start_dist_m, mt_avg_spd_m_per_s = dist_and_avg_speeds[current_mt_idx]
-            if dist_traveled_m >= mt_start_dist_m:
-                params.idm_v_desired_m_per_s = mt_avg_spd_m_per_s
-                sim.sim_params = params
-                current_mt_idx += 1
-        sim.sim_drive_step()
-    sim.set_post_scalars()
+    sim.sim_drive(init_soc=init_soc)
     if verbose:
         print(f"ECO-COAST + ECO-CRUISE: {sim.mpgge:.3f} mpg", flush=True)
     if save_dir is not None:

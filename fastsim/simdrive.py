@@ -504,8 +504,9 @@ class SimDrive(object):
         # Extend the duration of the base cycle
         if extend_fraction < 0.0:
             raise TypeError(f"extend_fraction must be >= 0.0 but got {extend_fraction}")
-        self.cyc0 = cycle.extend_cycle(self.cyc0, time_fraction=extend_fraction)
-        self.cyc = self.cyc0.copy()
+        if extend_fraction > 0.0:
+            self.cyc0 = cycle.extend_cycle(self.cyc0, time_fraction=extend_fraction)
+            self.cyc = self.cyc0.copy()
     
     def _next_speed_by_idm(self, i, a_m_per_s2, b_m_per_s2, dt_headway_s, s0_m, v_desired_m_per_s, delta=4.0):
         """
@@ -635,11 +636,12 @@ class SimDrive(object):
         """
         if self.sim_params.follow_allow:
             if self.sim_params.idm_v_desired_in_m_per_s_by_distance_m is not None:
-                found_v_target = self.sim_params.idm_v_desired_m_per_s
+                found_v_target = self.sim_params.idm_v_desired_in_m_per_s_by_distance_m[0][1]
                 current_d = self.cyc.dist_m[:self.i].sum()
                 for d, v_target in self.sim_params.idm_v_desired_in_m_per_s_by_distance_m:
-                    if d >= current_d:
+                    if current_d >= d:
                         found_v_target = v_target
+                    else:
                         break
                 self.idm_target_speed_m_per_s[self.i] = found_v_target
             else:

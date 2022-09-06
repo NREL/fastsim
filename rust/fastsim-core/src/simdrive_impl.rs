@@ -550,8 +550,10 @@ impl RustSimDrive {
         if extend_fraction < 0.0 {
             return Err(format!("extend_fraction must be >= 0.0 but got {}", extend_fraction));
         }
-        self.cyc0 = extend_cycle(&self.cyc0, None, Some(extend_fraction));
-        self.cyc = self.cyc0.clone();
+        if extend_fraction > 0.0 {
+            self.cyc0 = extend_cycle(&self.cyc0, None, Some(extend_fraction));
+            self.cyc = self.cyc0.clone();
+        }
         Ok(())
     }
 
@@ -746,11 +748,12 @@ impl RustSimDrive {
         if self.sim_params.follow_allow {
             self.idm_target_speed_m_per_s[self.i] = match &self.sim_params.idm_v_desired_in_m_per_s_by_distance_m {
                 Some(vtgt_by_dist) => {
-                    let mut found_v_target = self.sim_params.idm_v_desired_m_per_s;
+                    let mut found_v_target = vtgt_by_dist[0].1;
                     let current_d = self.cyc.dist_m().slice(s![0..self.i]).sum();
                     for (d, v_target) in vtgt_by_dist {
-                        if d >= &current_d {
+                        if &current_d >= d {
                             found_v_target = *v_target;
+                        } else {
                             break;
                         }
                     }
