@@ -187,7 +187,11 @@ class ModelObjectives(object):
 
                     if plot_perc_err:
                         # error
-                        perc_err = (mod_sig - ref_sig) / ref_sig * 100
+                        if "deg_c" in mod_path:
+                            perc_err = (mod_sig - ref_sig) / \
+                                (ref_sig + 273.15) * 100
+                        else:
+                            perc_err = (mod_sig - ref_sig) / ref_sig * 100
                         # clean up inf and nan
                         perc_err[np.where(perc_err == np.inf)[0][:]] = 0.0
                         # trim off the first few bits of junk
