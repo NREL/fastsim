@@ -40,7 +40,8 @@ class TestEcoCruise(unittest.TestCase):
     def do_standard_checks(self, sd, msg=None):
         m = msg + ': ' if msg is not None else ''
         self.assertTrue(self.cycles_differ(sd), f"{m}Cycles should differ when running with eco-cruise")
-        self.assertTrue(abs(self.percent_distance_error(sd)) < 1.0, f"{m}Error in distance shouldn't be high; less than 1%")
+        pct_dist_err = abs(self.percent_distance_error(sd))
+        self.assertTrue(pct_dist_err < 1.0, f"{m}Error in distance should be less than 1% but got {pct_dist_err}")
     
     def test_that_eco_cruise_interface_works_for_cycle_average_speed(self):
         for use_rust in [False, True]:
@@ -55,10 +56,22 @@ class TestEcoCruise(unittest.TestCase):
             self.assertAlmostEqual(expected_idm_target_speed_m_per_s, idm_target_speed_m_per_s, msg=msg)
 
     def test_that_eco_cruise_interface_works_for_microtrip_average_speed(self):
-        sd, _, _ = self.make_simdrive()
-        sd.activate_eco_cruise(by_microtrip=True)
-        sd.sim_drive()
-        self.do_standard_checks(sd)
+        vs_by_dist = {}
+        for use_rust in [False, True]:
+            msg = f"Failed using {'Rust' if use_rust else 'Python'}"
+            sd, _, _ = self.make_simdrive(use_rust=use_rust)
+            sd.activate_eco_cruise(by_microtrip=True)
+            sd.sim_drive()
+            vs_by_dist[use_rust] = sd.cyc.dist_m[-1]
+            self.do_standard_checks(sd, msg=msg)
+        self.assertAlmostEqual(
+            vs_by_dist[False],
+            vs_by_dist[True],
+            msg=(
+                "Expected distance traveled to equal: " +
+                f"(Rust: {vs_by_dist[True]} m vs Py: {vs_by_dist[False]} m)"
+            )
+        )
 
     def test_that_eco_cruise_works_with_blend_factor(self):
         sd, _, _ = self.make_simdrive()
@@ -67,10 +80,12 @@ class TestEcoCruise(unittest.TestCase):
         self.do_standard_checks(sd)
 
     def test_that_extra_stopped_time_is_added_to_a_cycle_for_eco_cruise(self):
-        sd, cyc, _ = self.make_simdrive()
-        original_total_time_s = cyc.time_s[-1]
-        extend_factor = 0.1
-        expected_new_total_time_s = int(round(original_total_time_s * (1 + extend_factor)))
-        sd.activate_eco_cruise(by_microtrip=True, extend_fraction=0.1)
-        actual_new_total_time_s = sd.cyc0.time_s[-1]
-        self.assertEqual(expected_new_total_time_s, actual_new_total_time_s)
+        for use_rust in [False, True]:
+            msg = f"Failed using {'Rust' if use_rust else 'Python'}"
+            sd, cyc, _ = self.make_simdrive(use_rust=use_rust)
+            original_total_time_s = cyc.time_s[-1]
+            extend_factor = 0.1
+            expected_new_total_time_s = int(round(original_total_time_s * (1 + extend_factor)))
+            sd.activate_eco_cruise(by_microtrip=True, extend_fraction=0.1)
+            actual_new_total_time_s = sd.cyc0.time_s[-1]
+            self.assertEqual(expected_new_total_time_s, actual_new_total_time_s, msg=msg)

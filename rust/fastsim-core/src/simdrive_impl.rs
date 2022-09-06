@@ -525,16 +525,19 @@ impl RustSimDrive {
     ) -> Result<(), String> {
         self.sim_params.follow_allow = true;
         if !by_microtrip {
-            if self.cyc0.time_s.len() > 0 && self.cyc0.time_s[self.cyc0.time_s.len()-1] > 0.0 {
-                self.sim_params.idm_v_desired_m_per_s =
+            self.sim_params.idm_v_desired_m_per_s =
+                if self.cyc0.time_s.len() > 0 && self.cyc0.time_s[self.cyc0.time_s.len()-1] > 0.0 {
                     self.cyc0.dist_m().slice(s![0..self.cyc0.time_s.len()]).sum()
-                    / self.cyc0.time_s[self.cyc0.time_s.len()-1];
-            } else {
-                self.sim_params.idm_v_desired_m_per_s = 0.0;
-            }
+                    / self.cyc0.time_s[self.cyc0.time_s.len()-1]
+                } else {
+                    0.0
+                };
         } else {
             if blend_factor > 1.0 || blend_factor < 0.0 {
                 return Err(format!("blend_factor must be between 0 and 1 but got {}", blend_factor));
+            }
+            if min_target_speed_m_per_s < 0.0 {
+                return Err(format!("min_target_speed_m_per_s must be >= 0 but got {}", min_target_speed_m_per_s));
             }
             self.sim_params.idm_v_desired_in_m_per_s_by_distance_m =
                 Some(

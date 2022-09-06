@@ -481,18 +481,22 @@ class SimDrive(object):
         params = self.sim_params
         params.follow_allow = True
         if not by_microtrip:
-            if self.cyc0.time_s[-1] > 0.0:
+            if self.cyc0.len > 0 and self.cyc0.time_s[-1] > 0.0:
                 params.idm_v_desired_m_per_s = self.cyc0.dist_m.sum() / self.cyc0.time_s[-1]
             else:
                 params.idm_v_desired_m_per_s = 0.0
         else:
             if blend_factor > 1.0 or blend_factor < 0.0:
                 raise TypeError(f"blend_factor must be between 0 and 1 but got {blend_factor}")
+            if min_target_speed_m_per_s < 0.0:
+                raise TypeError(f"min_target_speed_m_per_s must be >= 0 but got {min_target_speed_m_per_s}")
             params.idm_v_desired_in_m_per_s_by_distance_m = cycle.create_dist_and_target_speeds_by_microtrip(
                 self.cyc0, blend_factor=blend_factor, min_target_speed_mps=min_target_speed_m_per_s
             )
         self.sim_params = params
         # Extend the duration of the base cycle
+        if extend_fraction < 0.0:
+            raise TypeError(f"extend_fraction must be >= 0.0 but got {extend_fraction}")
         self.cyc0 = cycle.extend_cycle(self.cyc0, time_fraction=extend_fraction)
         self.cyc = self.cyc0.copy()
     

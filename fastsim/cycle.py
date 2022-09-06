@@ -896,7 +896,7 @@ def extend_cycle(
         return new_cyc.to_rust()
     return new_cyc
 
-def create_dist_and_target_speeds_by_microtrip(cyc: Cycle, blend_factor: float=1.0, min_target_speed_mps: float=8.0) -> list:
+def create_dist_and_target_speeds_by_microtrip(cyc: Cycle, blend_factor: float=0.0, min_target_speed_mps: float=8.0) -> list:
     """
     Create distance and target speeds by microtrip
     This helper function splits a cycle up into microtrips and returns a list of 2-tuples of:

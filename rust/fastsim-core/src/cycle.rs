@@ -213,6 +213,11 @@ pub fn to_microtrips(
         let r = rs[idx];
         if v > stop_speed_m_per_s && !moving {
             if mt_ts.len() > 1 {
+                let last_idx = mt_ts.len() - 1;
+                let last_t = mt_ts[last_idx];
+                let last_v = mt_vs[last_idx];
+                let last_g = mt_gs[last_idx];
+                let last_r = mt_rs[last_idx];
                 mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
                 microtrips.push(RustCycle {
                     time_s: Array::from_vec(mt_ts.clone()),
@@ -222,11 +227,10 @@ pub fn to_microtrips(
                     name: cycle.name.clone(),
                     orphaned: false
                 });
-                let last_idx = mt_ts.len() - 1;
-                mt_ts = vec![mt_ts[last_idx]];
-                mt_vs = vec![mt_vs[last_idx]];
-                mt_gs = vec![mt_gs[last_idx]];
-                mt_rs = vec![mt_rs[last_idx]];
+                mt_ts = vec![last_t];
+                mt_vs = vec![last_v];
+                mt_gs = vec![last_g];
+                mt_rs = vec![last_r];
             }
         }
         mt_ts.push(t);
