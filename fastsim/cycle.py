@@ -3,7 +3,7 @@ cycle data. For example usage, see ../README.md"""
 
 from __future__ import annotations
 from typing_extensions import Self
-from typing import *
+from typing import Dict, Set, Optional, Any
 # Import necessary python modules
 from dataclasses import dataclass
 import copy
@@ -12,11 +12,8 @@ import os
 import numpy as np
 from scipy.interpolate import interp1d
 import pandas as pd
-import re
-import sys
 from pathlib import Path
 from copy import deepcopy
-import types
 
 # local modules
 from . import parameters as params
@@ -26,6 +23,10 @@ from .rustext import RUST_AVAILABLE
 if RUST_AVAILABLE:
     import fastsimrust as fsr
     from fastsimrust import RustCycle
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 THIS_DIR = Path(__file__).parent
 CYCLES_DIR = THIS_DIR / 'resources' / 'cycles'
@@ -299,7 +300,7 @@ class LegacyCycle(object):
 ref_cyc = Cycle.from_file('udds')
 
 
-def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
+def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Dict[str, np.ndarray] | Cycle | LegacyCycle | RustCycle:
     """Returns copy of Cycle.
     Arguments:
     cyc: instantianed Cycle or CycleJit
@@ -326,11 +327,11 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
             cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
     if return_type is None:
-        if RUST_AVAILABLE and type(cyc) == fsr.RustCycle:
+        if RUST_AVAILABLE and isinstance(cyc, RustCycle):
             return_type = 'rust'
-        elif type(cyc) == Cycle:
+        elif isinstance(cyc, Cycle):
             return_type = 'python'
-        elif type(cyc) == LegacyCycle:
+        elif isinstance(cyc, LegacyCycle):
             return_type = "legacy"
         else:
             raise NotImplementedError(
@@ -343,7 +344,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Cycle:
     elif return_type == 'legacy':
         return LegacyCycle(cyc_dict)
     elif RUST_AVAILABLE and return_type == 'rust':
-        return fsr.RustCycle(**cyc_dict)
+        return RustCycle(**cyc_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 
@@ -354,7 +355,7 @@ def cyc_equal(a: Cycle, b: Cycle) -> bool:
         return True
     a_dict = copy_cycle(a, 'dict')
     b_dict = copy_cycle(b, 'dict')
-    return equals(a_dict, b_dict, verbose=False)
+    return equals(a_dict, b_dict)
 
 
 def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
@@ -431,7 +432,7 @@ def make_cycle(ts, vs, gs=None, rs=None) -> dict:
             'road_type': np.array(rs)}
 
 
-def equals(c1, c2, verbose=True) -> bool:
+def equals(c1, c2) -> bool:
     """
     Dict Dict -> Bool
     Returns true if the two cycles are equal, false otherwise
@@ -439,25 +440,21 @@ def equals(c1, c2, verbose=True) -> bool:
     ----------
     c1: cycle as dictionary from get_cyc_dict()
     c2: cycle as dictionary from get_cyc_dict()
-    verbose: Bool, optional (default: True), if True, prints why not equal
     """
     if c1.keys() != c2.keys():
-        if verbose:
-            c2missing = set(c1.keys()) - set(c2.keys())
-            c1missing = set(c2.keys()) - set(c1.keys())
-            if len(c1missing) > 0:
-                print('c2 keys not contained in c1: {}'.format(c1missing))
-            if len(c2missing) > 0:
-                print('c1 keys not contained in c2: {}'.format(c2missing))
+        c2missing = set(c1.keys()) - set(c2.keys())
+        c1missing = set(c2.keys()) - set(c1.keys())
+        if len(c1missing) > 0:
+            logger.debug(f"c2 keys not contained in c1: {c1missing}")
+        if len(c2missing) > 0:
+            logger.debug(f"c1 keys not contained in c2: {c2missing}")
         return False
     for k in c1.keys():
         if len(c1[k]) != len(c2[k]):
-            if verbose:
-                print(k + ' has a length discrepancy.')
+            logger.debug(f"{k} has a length discrepancy")
             return False
         if np.any(np.array(c1[k]) != np.array(c2[k])):
-            if verbose:
-                print(k + ' has a value discrepancy.')
+            logger.debug(f"{k} has a value discrepancy")
             return False
     return True
 

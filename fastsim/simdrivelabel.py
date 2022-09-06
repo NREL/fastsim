@@ -14,7 +14,7 @@ cyc_hwfet = cycle.Cycle.from_file('hwfet')
 sim_params = simdrive.SimDriveParams()
 props = params.PhysicalProperties()
 
-def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False, sim_drive_verbose:bool=False, chg_eff:float=None, use_rust=False):
+def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False, chg_eff:float=None, use_rust=False):
     """Generates label fuel economy (FE) values for a provided vehicle.
     
     Arguments:
@@ -24,8 +24,6 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
         If True, sim_drive objects for each cycle are also returned.  
     verbose : boolean, default false
         If true, print out key results
-    sim_drive_verbose: boolean, default False,
-        if True, prints warnings about trace miss and similar
     chg_eff : float between 0 and 1
         Override for chg_eff -- currently not functional
     use_rust: bool, if True, use rust version of classes, else Python
@@ -62,9 +60,9 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
     sd['hwy'] = make_simdrive(cyc['hwy'], veh)
 
     # run simdrive for non-phev powertrains
-    sd['udds'].sim_params = set_nested_values(sd['udds'].sim_params, verbose=sim_drive_verbose)
+    sd['udds'].sim_params = set_nested_values(sd['udds'].sim_params)
     sd['udds'].sim_drive()
-    sd['hwy'].sim_params = set_nested_values(sd['hwy'].sim_params, verbose=sim_drive_verbose)
+    sd['hwy'].sim_params = set_nested_values(sd['hwy'].sim_params)
     sd['hwy'].sim_drive()
     
     # find year-based adjustment parameters
@@ -164,9 +162,9 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
             # This runs 1 cycle starting at max SOC then runs 1 cycle starting at min SOC.
             # By assuming that the battery SOC depletion per mile is constant across cycles,
             # the first cycle can be extrapolated until charge sustaining kicks in.
-            sd['udds'].sim_params = set_nested_values(sd['udds'].sim_params, verbose=sim_drive_verbose) 
+            sd['udds'].sim_params = set_nested_values(sd['udds'].sim_params) 
             sd['udds'].sim_drive(veh.max_soc)
-            sd['hwy'].sim_params = set_nested_values(sd['hwy'].sim_params, verbose=sim_drive_verbose)
+            sd['hwy'].sim_params = set_nested_values(sd['hwy'].sim_params)
             sd['hwy'].sim_drive(veh.max_soc)
 
             phev_calcs = {} # init dict for phev calcs
@@ -215,7 +213,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 phev_calc['transInitSoc'] = veh.max_soc - np.floor(phev_calc['cdCycs']) * phev_calc['deltaSoc']
                 
                 # run the transition cycle
-                sd[key].sim_params = set_nested_values(sd[key].sim_params, verbose=sim_drive_verbose) 
+                sd[key].sim_params = set_nested_values(sd[key].sim_params) 
                 sd[key].sim_drive(phev_calc['transInitSoc'])
                 # charge depletion battery kW-hr
                 phev_calc['transEssKwh'] = (phev_calc['cd_ess_kWh__mi'] * np.array(sd[key].dist_mi).sum() * 
@@ -235,7 +233,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
                 # charge sustaining
                 # the 0.01 is here to be consistent with Excel
                 initSoc = sd[key].veh.min_soc + 0.01
-                sd[key].sim_params = set_nested_values(sd[key].sim_params, verbose=sim_drive_verbose) 
+                sd[key].sim_params = set_nested_values(sd[key].sim_params) 
                 sd[key].sim_drive(initSoc)
                 # charge sustaining battery kW-hr
                 phev_calc['csEssKwh'] = 0 # (sd[key].soc[0] - sd[key].soc[-1]) * veh.ess_max_kwh
@@ -447,7 +445,7 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
         sd['accel'] = simdrive.RustSimDrive(cyc['accel'], veh)
     else:
         sd['accel'] = simdrive.SimDrive(cyc['accel'], veh)
-    sd['accel'].sim_params = set_nested_values(sd['accel'].sim_params, verbose=sim_drive_verbose)
+    sd['accel'].sim_params = set_nested_values(sd['accel'].sim_params)
     simdrive.run_simdrive_for_accel_test(sd['accel'])
     if (np.array(sd['accel'].mph_ach) >= 60).any():
         out['netAccel'] = np.interp(

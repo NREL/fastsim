@@ -3,9 +3,6 @@ Boiler plate stuff needed for vehicle.py
 """
 
 import numpy as np
-from dataclasses import dataclass
-from typing import Optional
-
 from fastsim import params
 
 

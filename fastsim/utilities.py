@@ -1,12 +1,15 @@
 """Various optional utilities that may support some applications of FASTSim."""
 
 from __future__ import annotations
-from typing import *
+from typing import Dict, Any
 import numpy as np
+from fastsim.rustext import RUST_AVAILABLE
 from fastsim import parameters as params
 import seaborn as sns
 import re
 import datetime
+import logging
+from pathlib import Path
 
 sns.set()
 
@@ -80,6 +83,53 @@ def camel_to_snake(name):
     "Given camelCase, returns snake_case."
     name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
+
+
+def set_log_level(level: str | int):
+    """
+    Sets logging level for both Python and Rust FASTSim.
+    The default logging level is WARNING.
+    https://docs.python.org/3/library/logging.html#logging-levels
+
+    Parameters
+    ----------
+    level: str | int
+        Logging level to set. `str` level name or `int` logging level
+        
+        =========== ================
+        Level       Numeric value
+        =========== ================
+        CRITICAL    50
+        ERROR       40
+        WARNING     30
+        INFO        20
+        DEBUG       10
+        NOTSET      0        
+    """
+    # Map string name to logging level
+    if isinstance(level, str):
+        level = logging._nameToLevel[level]
+    # Set logging level
+    logging.getLogger("fastsim").setLevel(level)
+    if RUST_AVAILABLE:
+        logging.getLogger("fastsimrust").setLevel(level)
+
+def disable_logging():
+    logging.getLogger("fastsim").disabled = True
+    if RUST_AVAILABLE:
+        logging.getLogger("fastsimrust").disabled = True
+
+def enable_logging():
+    logging.getLogger("fastsim").disabled = False
+    if RUST_AVAILABLE:
+        logging.getLogger("fastsimrust").disabled = False
+
+def set_log_filename(filename: str | Path):
+    handler = logging.FileHandler(filename)
+    handler.setFormatter(logging.root.handlers[0].formatter)
+    logging.getLogger("fastsim").addHandler(handler)
+    if RUST_AVAILABLE:
+        logging.getLogger("fastsimrust").addHandler(handler)
 
 
 def get_containers_with_path(

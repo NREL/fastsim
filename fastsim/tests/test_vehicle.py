@@ -22,11 +22,11 @@ class TestVehicle(unittest.TestCase):
     def test_equal(self):
         """Verify that a copied Vehicle and original are equal."""
         if USE_PYTHON:
-            veh = vehicle.Vehicle.from_vehdb(1, verbose=False)
+            veh = vehicle.Vehicle.from_vehdb(1)
             veh_copy = vehicle.copy_vehicle(veh)
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
         if RUST_AVAILABLE and USE_RUST:
-            py_veh = vehicle.Vehicle.from_vehdb(1, to_rust=True, verbose=False)
+            py_veh = vehicle.Vehicle.from_vehdb(1, to_rust=True)
             import fastsimrust as fsr
             data = {**py_veh.__dict__}
             data['props'] = parameters.copy_physical_properties(
@@ -41,7 +41,7 @@ class TestVehicle(unittest.TestCase):
     def test_properties(self):
         """Verify that some of the property variables are working as expected."""
         if USE_PYTHON:
-            veh = vehicle.Vehicle.from_vehdb(10, verbose=False)
+            veh = vehicle.Vehicle.from_vehdb(10)
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
             veh.mc_peak_eff = 0.85
@@ -55,7 +55,7 @@ class TestVehicle(unittest.TestCase):
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
         if RUST_AVAILABLE and USE_RUST:
-            veh = vehicle.Vehicle.from_vehdb(10, verbose=False).to_rust()
+            veh = vehicle.Vehicle.from_vehdb(10).to_rust()
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
             veh.mc_peak_eff = 0.85

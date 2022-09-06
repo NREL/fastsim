@@ -1,4 +1,4 @@
-/target
+*target/
 *.pyc
 .ipynb_checkpoints
 .vscode
@@ -9,8 +9,8 @@ build
 dist
 *.egg-info
 *.zip
-*venv*
 *.so
 *.pyd
 *pymoo_res*
-*env/
+*env*/
+*Cargo.lock

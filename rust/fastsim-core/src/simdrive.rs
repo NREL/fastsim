@@ -30,7 +30,6 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
         trace_miss_time_tol: f64,
         trace_miss_dist_tol: f64,
         sim_count_max: usize,
-        verbose: bool,
         newton_gain: f64,
         newton_max_iter: u32,
         newton_xtol: f64,
@@ -41,7 +40,6 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
         coast_brake_accel_m_per_s2: f64,
         coast_brake_start_speed_m_per_s: f64,
         coast_start_speed_m_per_s: f64,
-        coast_verbose: bool,
         coast_time_horizon_for_adjustment_s: f64,
         follow_allow: bool,
         // IDM - Intelligent Driver Model, Adaptive Cruise Control version
@@ -65,7 +63,6 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
             trace_miss_time_tol,
             trace_miss_dist_tol,
             sim_count_max,
-            verbose,
             newton_gain,
             newton_max_iter,
             newton_xtol,
@@ -76,7 +73,6 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
             coast_brake_accel_m_per_s2,
             coast_brake_start_speed_m_per_s,
             coast_start_speed_m_per_s,
-            coast_verbose,
             coast_time_horizon_for_adjustment_s,
             follow_allow,
             // IDM - Intelligent Driver Model, Adaptive Cruise Control version
@@ -107,7 +103,6 @@ pub struct RustSimDriveParams {
     pub trace_miss_time_tol: f64,
     pub trace_miss_dist_tol: f64,
     pub sim_count_max: usize,
-    pub verbose: bool,
     pub newton_gain: f64,
     pub newton_max_iter: u32,
     pub newton_xtol: f64,
@@ -118,7 +113,6 @@ pub struct RustSimDriveParams {
     pub coast_brake_accel_m_per_s2: f64,
     pub coast_brake_start_speed_m_per_s: f64,
     pub coast_start_speed_m_per_s: f64,
-    pub coast_verbose: bool,
     pub coast_time_horizon_for_adjustment_s: f64,
     pub follow_allow: bool,
     // IDM - Intelligent Driver Model, Adaptive Cruise Control version
@@ -154,7 +148,6 @@ impl Default for RustSimDriveParams {
         let trace_miss_time_tol: f64 = 1e-3; // threshold for printing warning when time dilation is active
         let trace_miss_dist_tol: f64 = 1e-3; // threshold of fractional eror in distance that triggers warning
         let sim_count_max: usize = 30; // max allowable number of HEV SOC iterations
-        let verbose = true; // show warning and other messages
         let newton_gain: f64 = 0.9; // newton solver gain
         let newton_max_iter: u32 = 100; // newton solver max iterations
         let newton_xtol: f64 = 1e-9; // newton solver tolerance
@@ -166,7 +159,6 @@ impl Default for RustSimDriveParams {
         let coast_brake_accel_m_per_s2 = -2.5;
         let coast_brake_start_speed_m_per_s = 7.5;
         let coast_start_speed_m_per_s = 0.0; // m/s, if > 0, initiates coast when vehicle hits this speed; mostly for testing
-        let coast_verbose = false;
         let coast_time_horizon_for_adjustment_s = 20.0;
         // Following
         let follow_allow = false;
@@ -190,7 +182,6 @@ impl Default for RustSimDriveParams {
             trace_miss_time_tol,
             trace_miss_dist_tol,
             sim_count_max,
-            verbose,
             newton_gain,
             newton_max_iter,
             newton_xtol,
@@ -201,7 +192,6 @@ impl Default for RustSimDriveParams {
             coast_brake_accel_m_per_s2,
             coast_brake_start_speed_m_per_s,
             coast_start_speed_m_per_s,
-            coast_verbose,
             coast_time_horizon_for_adjustment_s,
             follow_allow,
             idm_v_desired_m_per_s,

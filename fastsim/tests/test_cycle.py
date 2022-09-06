@@ -152,12 +152,12 @@ class TestCycle(unittest.TestCase):
         "Test structural equality of driving cycles"
         udds = cycle.Cycle.from_file("udds")
         us06 = cycle.Cycle.from_file("us06")
-        self.assertFalse(cycle.equals(udds.get_cyc_dict(), us06.get_cyc_dict(), verbose=False))
+        self.assertFalse(cycle.equals(udds.get_cyc_dict(), us06.get_cyc_dict()))
         udds_2 = cycle.Cycle.from_file("udds")
-        self.assertTrue(cycle.equals(udds.get_cyc_dict(), udds_2.get_cyc_dict(), verbose=False))
+        self.assertTrue(cycle.equals(udds.get_cyc_dict(), udds_2.get_cyc_dict()))
         cyc2dict = udds_2.get_cyc_dict()
         cyc2dict['extra key'] = None
-        self.assertFalse(cycle.equals(udds.get_cyc_dict(), cyc2dict, verbose=False))
+        self.assertFalse(cycle.equals(udds.get_cyc_dict(), cyc2dict))
     
     def test_that_cycle_resampling_works_as_expected(self):
         "Test resampling the values of a cycle"
@@ -187,7 +187,7 @@ class TestCycle(unittest.TestCase):
             cycle.concat([udds_10Hz.get_cyc_dict(), us06.get_cyc_dict()]),
             new_dt=1)
         combo = cycle.concat([udds.get_cyc_dict(), us06.get_cyc_dict()])
-        self.assertTrue(cycle.equals(combo, combo_resampled, verbose=False))
+        self.assertTrue(cycle.equals(combo, combo_resampled))
     
     def test_resampling_with_hold_keys(self):
         "Test that 'hold_keys' works with resampling"
@@ -264,7 +264,7 @@ class TestCycle(unittest.TestCase):
         self.assertTrue(udds_end['time_s'][-1] == udds["time_s"][-1] - 300.0)
         self.assertTrue(udds_end['time_s'][0] == 0.0)
         udds_reconstruct = cycle.concat([udds_start, udds_end], name=udds["name"])
-        self.assertTrue(cycle.equals(udds, udds_reconstruct, verbose=False))
+        self.assertTrue(cycle.equals(udds, udds_reconstruct))
 
     def test_get_accelerations(self):
         "Test getting and processing accelerations"

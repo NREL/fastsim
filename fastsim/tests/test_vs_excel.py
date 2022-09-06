@@ -62,7 +62,7 @@ def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
         return obj
 
     for vehno in vehicles:
-        veh = to_rust(vehicle.Vehicle.from_vehdb(vehno, verbose=False))
+        veh = to_rust(vehicle.Vehicle.from_vehdb(vehno))
         if verbose:
             print('Running ' + veh.scenario_name)
         res_python[veh.scenario_name] = simdrivelabel.get_label_fe(veh, verbose=False, use_rust=use_rust)

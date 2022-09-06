@@ -13,7 +13,7 @@ import argparse
 
 import fastsim as fsim
 
-veh = fsim.vehicle.Vehicle.from_vehdb(11, verbose=False)
+veh = fsim.vehicle.Vehicle.from_vehdb(11)
 # contrived cycles for this example
 cycs = [fsim.cycle.Cycle.from_file('udds')] * 1_000
 

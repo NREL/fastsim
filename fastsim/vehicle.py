@@ -2,6 +2,11 @@
 Module containing classes and methods for for loading vehicle data. For example usage, see ../README.md
 """
 
+# Typing
+from __future__ import annotations
+from typing import Dict, Optional
+from typing_extensions import Self
+
 # Import necessary python modules
 import numpy as np
 from dataclasses import dataclass, field, InitVar
@@ -12,7 +17,6 @@ from pathlib import Path
 from copy import deepcopy
 import ast
 import copy
-from typing import Optional
 
 # local modules
 from fastsim import parameters as params
@@ -22,6 +26,11 @@ from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
+    from fastsimrust import RustVehicle
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_VEH_DB = THIS_DIR / 'resources' / 'FASTSim_py_veh_db.csv'
@@ -265,24 +274,23 @@ class Vehicle(object):
     converted_to_rust: InitVar[bool] = field(default=True)
 
     @classmethod
-    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False, verbose: bool = False):
+    def from_vehdb(cls, vnum: int, veh_file: str = None, to_rust: bool = False) -> Self:
         """
         Load vehicle `vnum` from default vehdb or `veh_file`.
         Arguments:
             vnum: vehicle number
             veh_file: path to vehicle database file
             to_rust: if True, convert to rust-compatible vehicle
-            verbose: if True, print out warnings and other info
         """
         vehdf = DEFAULT_VEHDF
         if veh_file is not None:
             vehdf = pd.read_csv(veh_file)
         vehdf.set_index('selection', inplace=True, drop=False)
 
-        return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
+        return cls.from_df(vehdf, vnum, veh_file, to_rust)
 
     @classmethod
-    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = False, verbose: bool = False):
+    def from_file(cls, filename: str, vnum: int = None, to_rust: bool = False) -> Self:
         """
         Loads vehicle from file `filename` (str).  Looks in working dir and then 
         fastsim/resources/vehdb, which also contains numerous examples of vehicle csv files.
@@ -291,7 +299,6 @@ class Vehicle(object):
             filename: path to vehicle database file
             vnum: vehicle number
             to_rust: if True, convert to rust-compatible vehicle
-            verbose: if True, print out warnings and other info
         """
         filename = str(filename)
         if not(str(filename).endswith('.csv')):
@@ -317,10 +324,10 @@ class Vehicle(object):
 
         veh_file = filename
 
-        return cls.from_df(vehdf, vnum, veh_file, to_rust, verbose)
+        return cls.from_df(vehdf, vnum, veh_file, to_rust)
 
     @classmethod
-    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = False, verbose: bool = False):
+    def from_df(cls, vehdf: pd.DataFrame, vnum: int, veh_file: Path, to_rust: bool = False) -> Self:
         """
         Given vehdf, generates dict to feed to `from_dict`.
         Arguments:
@@ -328,7 +335,6 @@ class Vehicle(object):
             vnum: vehicle number
             veh_file: path to vehicle database file
             to_rust: if True, convert to rust-compatible vehicle
-            verbose: if True, print out warnings and other info
         """
         # verify that only allowed columns have been provided
         for col in vehdf.columns:
@@ -346,6 +352,7 @@ class Vehicle(object):
             # assign dataframe columns to vehicle
             veh_dict[col1] = vehdf.loc[vnum, col]
 
+        # TODO: should this block be uncommented and converted to use logging?
         # missing_cols = set(TEMPLATE_VEHDF.columns) - set(veh_dict.keys())
         # if len(missing_cols) > 0:
         #     if verbose:
@@ -354,16 +361,15 @@ class Vehicle(object):
         #     for col in missing_cols:
         #         veh_dict[col] = 0.0
 
-        return cls.from_dict(veh_dict, to_rust, verbose)
+        return cls.from_dict(veh_dict, to_rust)
 
     @classmethod
-    def from_dict(cls, veh_dict: dict, to_rust: bool = False, verbose: bool = False):
+    def from_dict(cls, veh_dict: dict, to_rust: bool = False) -> Self:
         """
         Load vehicle from dict with snake_case key names.  
         Arguments:
             veh_dict: dict of vehicle attributes
             to_rust: if True, convert to rust-compatible vehicle
-            verbose: if True, print out warnings and other info
         """
         # Power and efficiency arrays are defined in parameters.py
         # Can also be input in CSV as array under column fc_eff_map of form
@@ -375,8 +381,7 @@ class Vehicle(object):
             # check if optional parameter fc_eff_map is provided in vehicle csv file
             veh_dict['fc_eff_map'] = np.array(ast.literal_eval(
                 veh_dict['fc_eff_map']))
-            if verbose:
-                print(f"reading in fc_eff_map, and it is overriding fc_eff_type")
+            logger.info("fc_eff_map is overriding fc_eff_type")
 
         except:
             warn_str = f"""fc_eff_type {
@@ -426,8 +431,7 @@ class Vehicle(object):
             veh_dict['mc_pwr_out_perc'] = np.array(
                 ast.literal_eval(veh_dict['mc_pwr_out_perc']))
         except:
-            if verbose:
-                print(f'No proper mcPwrOutPerc provided; using default values')
+            logger.info("no proper mc_pwr_out_perc provided; using default values")
             veh_dict['mc_pwr_out_perc'] = params.mc_pwr_out_perc
 
         # check if self-provided mc_pwr_out_perc has the required length
@@ -448,9 +452,7 @@ class Vehicle(object):
             assert len(veh_dict['mc_pwr_out_perc']) == len(
                 params.large_baseline_eff), mc_eff_map_len_err
         except:
-            if verbose:
-                print(
-                    'No proper mcEffMap provided, will used default method to calculate')
+            logger.info("no proper mc_eff_map provided; using default method to calculate")
             veh_dict['mc_eff_map'] = None
 
         # set stop_start if not provided
@@ -482,9 +484,7 @@ class Vehicle(object):
                     veh_dict['fc_peak_eff_override'])
                 assert 0.0 < veh_dict['fc_peak_eff_override'] < 1.0
             except:
-                if verbose:
-                    print(
-                        'No proper fc peak eff override value provided, will not override fc peak eff')
+                logger.info("no proper fc_peak_eff_override provided; will not override fc_peak_eff")
                 veh_dict['fc_peak_eff_override'] = None
         if "mc_peak_eff_override" in veh_dict:
             try:
@@ -492,9 +492,7 @@ class Vehicle(object):
                     veh_dict['mc_peak_eff_override'])
                 assert 0.0 < veh_dict['mc_peak_eff_override'] < 1.0
             except:
-                if verbose:
-                    print(
-                        'No proper mc peak eff override value provided, will not override mc peak eff')
+                logger.info("no proper mc_peak_eff_override provided; will not override mc_peak_eff")
                 veh_dict['mc_peak_eff_override'] = None
 
         # make sure types are right
@@ -619,10 +617,10 @@ class Vehicle(object):
 
         if self.fc_peak_eff_override is not None:
             self.fc_peak_eff = self.fc_peak_eff_override
-            print("fc_peak_eff_override is modifying efficiency curve")
+            logger.info("fc_peak_eff_override is modifying fc efficiency curve")
         if self.mc_peak_eff_override is not None:
             self.mc_peak_eff = self.mc_peak_eff_override
-            print("mc_peak_eff_override is modifying efficiency curve")
+            logger.info("mc_peak_eff_override is modifying mc efficiency curve")
 
         # check that efficiencies are not violating the first law of thermo
         assert self.fc_eff_array.min() >= 0, f"min MC eff < 0 is not allowed"
@@ -690,14 +688,14 @@ class Vehicle(object):
     def max_regen_kwh(self): return 0.5 * self.veh_kg * (27**2) / (3600 * 1000)
 
     @property
-    def veh_type_selection(self):
+    def veh_type_selection(self) -> str:
         """
         Copying veh_pt_type to additional key
         to be consistent with Excel version but not used in Python version
         """
         return self.veh_pt_type
 
-    def get_mcPeakEff(self):
+    def get_mcPeakEff(self) -> float:
         "Return `np.max(self.mc_eff_array)`"
         assert np.max(self.mc_full_eff_array) == np.max(self.mc_eff_array)
         return np.max(self.mc_full_eff_array)
@@ -715,7 +713,7 @@ class Vehicle(object):
 
     mc_peak_eff = property(get_mcPeakEff, set_mcPeakEff)
 
-    def get_fcPeakEff(self):
+    def get_fcPeakEff(self) -> float:
         "Return `np.max(self.fc_eff_array)`"
         return np.max(self.fc_eff_array)
 
@@ -737,7 +735,7 @@ class Vehicle(object):
         raise NotImplementedError(
             "This method has been deprecated")
 
-    def to_rust(self):
+    def to_rust(self) -> RustVehicle:
         """Return a Rust version of the vehicle"""
         # NOTE: copying calls the constructor again which calls RustVehicle's post_init()
         return copy_vehicle(self, 'rust')
@@ -767,7 +765,7 @@ RETURN_TYPES = ['dict', 'vehicle', 'legacy', 'rust']
 DICT, VEHICLE, LEGACY, RUST = RETURN_TYPES
 
 
-def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
+def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Dict[str, np.ndarray] | Vehicle | LegacyVehicle | RustVehicle:
     """Returns copy of Vehicle.
     Arguments:
     veh: instantiated Vehicle or RustVehicle
@@ -781,11 +779,11 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
     veh_dict = {}
 
     if return_type is None:
-        if RUST_AVAILABLE and type(veh) == fsr.RustVehicle:
+        if RUST_AVAILABLE and isinstance(veh, RustVehicle):
             return_type = RUST
-        elif type(veh) == Vehicle:
+        elif isinstance(veh, Vehicle):
             return_type = VEHICLE
-        elif type(veh) == LegacyVehicle:
+        elif isinstance(veh, LegacyVehicle):
             return_type = LEGACY
         else:
             raise NotImplementedError(
@@ -831,7 +829,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True):
             veh_dict['props'], return_type, deep)
         veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [
             "large_baseline_eff", "small_baseline_eff"]}
-        return fsr.RustVehicle(**veh_dict)
+        return RustVehicle(**veh_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 

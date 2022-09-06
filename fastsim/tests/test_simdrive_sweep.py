@@ -4,8 +4,6 @@ From command line, pass True (default if left blank) or False argument to use JI
 import pandas as pd
 import time
 import numpy as np
-import re
-from typing import Tuple
 from pathlib import Path
 import unittest
 from fastsim.auxiliaries import set_nested_values
@@ -24,7 +22,7 @@ if RUN_RUST and not RUST_AVAILABLE:
     warn_rust_unavailable(__file__)
 
 
-def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
+def main(err_tol=1e-4, verbose=True, use_rust=False):
     """Runs test test for 26 vehicles and 3 cycles.  
     Test compares cumulative positive and negative energy 
     values to a benchmark from earlier.
@@ -36,7 +34,6 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
         As of 31 December 2020, a recent python update caused errors that 
         are smaller than this and therefore ok to neglect.
     verbose: if True, prints progress
-    sim_drive_verbose: if True, prints warnings about trace miss and similar
     use_rust: Boolean, if True, use Rust version of classes, else python version
 
     Returns:
@@ -71,7 +68,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
 
     vehnos = np.arange(1, 27)
 
-    veh = to_rust(vehicle.Vehicle.from_vehdb(1, verbose=False))
+    veh = to_rust(vehicle.Vehicle.from_vehdb(1))
     energyAuditErrors = []
 
     dict_diag = {}
@@ -84,7 +81,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
             t0a = time.time()
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
-                veh = to_rust(vehicle.Vehicle.from_vehdb(vehno, verbose=False))
+                veh = to_rust(vehicle.Vehicle.from_vehdb(vehno))
             if RUST_AVAILABLE and use_rust:
                 assert type(cyc) == fsr.RustCycle
                 assert type(veh) == fsr.RustVehicle
@@ -94,7 +91,7 @@ def main(err_tol=1e-4, verbose=True, sim_drive_verbose=False, use_rust=False):
             # US06 is known to cause substantial trace miss.
             # This should probably be addressed at some point, but for now,
             # the tolerances are set high to avoid lots of printed warnings.
-            sim_drive.sim_params = set_nested_values(sim_drive.sim_params, verbose=sim_drive_verbose)
+            sim_drive.sim_params = set_nested_values(sim_drive.sim_params)
             sim_drive.sim_drive()
 
             sim_drive_post = simdrive.SimDrivePost(sim_drive)

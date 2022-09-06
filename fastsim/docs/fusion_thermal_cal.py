@@ -1,4 +1,4 @@
-from typing import *
+from typing import Dict
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -89,7 +89,6 @@ def get_cal_and_val_objs():
                 "sd.sim_params.trace_miss_time_tol": 1e9,
                 "sd.sim_params.trace_miss_dist_tol": 1e9,
                 "sd.sim_params.energy_audit_error_tol": 1e9,
-                "sd.sim_params.verbose": False,
             },
         )
 

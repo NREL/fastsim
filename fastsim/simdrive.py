@@ -14,11 +14,16 @@ from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
+    from fastsimrust import RustSimDrive
 from . import params, cycle, vehicle, inspect_utils
 
 # these imports are needed for numba to type these correctly
 from .vehicle import CONV, HEV, PHEV, BEV
 from .vehicle import SI, ATKINSON, DIESEL, H2FC, HD_DIESEL
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SimDriveParams(object):
@@ -29,11 +34,9 @@ class SimDriveParams(object):
     affect simulation behavior. If, for example, you want to suppress
     warning messages, use the following pastable code EXAMPLE:
 
-    >>> cyc = cycle.Cycle.from_file('udds')
-    >>> veh = vehicle.Vehicle.from_vehdb(1)
-    >>> sim_drive = simdrive.SimDriveClassic(cyc, veh)
-    >>> sim_drive.sim_params.verbose = False # turn off error messages for large time steps
-    >>> sim_drive.sim_drive()"""
+    >>> import logging
+    >>> logging.getLogger("fastsim").setLevel(logging.DEBUG)
+    """
 
     @classmethod
     def from_dict(cls, sdp_dict):
@@ -61,7 +64,6 @@ class SimDriveParams(object):
         # threshold of fractional eror in distance that triggers warning
         self.trace_miss_dist_tol = 1e-3
         self.sim_count_max = 30  # max allowable number of HEV SOC iterations
-        self.verbose = True  # show warning and other messages
         self.newton_gain = 0.9  # newton solver gain
         self.newton_max_iter = 100  # newton solver max iterations
         self.newton_xtol = 1e-9  # newton solver tolerance
@@ -76,7 +78,6 @@ class SimDriveParams(object):
         self.coast_brake_start_speed_m_per_s = 7.5
         # m/s, if > 0, initiates coast when vehicle hits this speed; mostly for testing
         self.coast_start_speed_m_per_s = 0.0
-        self.coast_verbose = False
         # time-ahead for speed changes to be considered to hit distance mark
         self.coast_time_horizon_for_adjustment_s = 20.0
         self.follow_allow = False
@@ -139,32 +140,33 @@ def copy_sim_params(sdp: SimDriveParams, return_type: str = None):
         raise ValueError(f"Invalid return_type: '{return_type}'")
 
 
-def sim_params_equal(a: SimDriveParams, b: SimDriveParams, verbose: bool = False):
+def sim_params_equal(a: SimDriveParams, b: SimDriveParams) -> bool:
     """
     Returns True if objects are structurally equal (i.e., equal by value), else false.
     Arguments:
     a: instantiated SimDriveParams object
     b: instantiated SimDriveParams object
-    verbose: bool, (optional, default: False), if True, prints out why not equal
     """
     if a is b:
         return True
     a_dict = copy_sim_params(a, 'dict')
     b_dict = copy_sim_params(b, 'dict')
     if len(a_dict) != len(b_dict):
-        if verbose:
-            a_keyset = {k for k in a.keys()}
-            b_keyset = {k for k in b.keys()}
-            print("KEY SETs NOT EQUAL")
-            print(f"in a but not b: {a_keyset - b_keyset}")
-            print(f"in b but not a: {b_keyset - a_keyset}")
+        a_keyset = {k for k in a.keys()}
+        b_keyset = {k for k in b.keys()}
+        logger.debug(
+            "key sets not equal:\n" +
+            f"in a but not b: {a_keyset - b_keyset}\n" +
+            f"in b but not a: {b_keyset - a_keyset}"
+        )
         return False
     for k in a_dict.keys():
         if a_dict[k] != b_dict[k]:
-            if verbose:
-                print(f"UNEQUAL FOR KEY \"{k}\"")
-                print(f"a['{k}'] = {repr(a_dict[k])}")
-                print(f"b['{k}'] = {repr(b_dict[k])}")
+            logger.debug(
+                f'unequal for key "{k}"\n' +
+                f"a['{k}'] = {repr(a_dict[k])}\n" +
+                f"b['{k}'] = {repr(b_dict[k])}"
+            )
             return False
     return True
 
@@ -397,8 +399,10 @@ class SimDrive(object):
                 Default of None causes veh.aux_kw to be used. 
         """
         if init_soc > self.veh.max_soc or init_soc < self.veh.min_soc:
-            print(f"WARNING! Provided init_soc is outside range of min_soc..max_soc: {self.veh.min_soc}..{self.veh.max_soc};"
-                + " setting init_soc to max_soc")
+            logger.warning(
+                f"provided init_soc={init_soc} is outside range min_soc={self.veh.min_soc} to max_soc={self.veh.max_soc}; "
+                + "setting init_soc to max_soc"
+            )
             init_soc = self.veh.max_soc
 
         ############################
@@ -413,9 +417,10 @@ class SimDrive(object):
             if len(aux_in_kw_override) == len(self.aux_in_kw):
                 self.aux_in_kw = aux_in_kw_override
             else:
-                print("WARNING! Provided aux_in_kw_override "
-                      + "is not the right length; needs "
-                      + f"{len(self.aux_in_kw)} elements")
+                logger.warning(
+                    f"provided aux_in_kw_override is not the right length; "
+                    + f"needs {len(self.aux_in_kw)} elements"
+                )
 
         self.cyc_met[0] = True
         self.cur_soc_target[0] = self.veh.max_soc
@@ -449,14 +454,16 @@ class SimDrive(object):
         while self.i < len(self.cyc.time_s):
             self.sim_drive_step()
 
-        if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
+        if (self.cyc.dt_s > 5).any():
             if self.sim_params.missed_trace_correction:
-                print('Max time dilation factor =',
-                      (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
-            print("Warning: large time steps affect accuracy significantly.")
-            print(
-                "To suppress this message, view the doc string for simdrive.SimDriveParams.")
-            print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
+                logger.info(
+                    f"max time dilation factor = " +
+                    f"{round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)}"
+                )
+            logger.warning(
+                "large time steps affect accuracy significantly; " +
+                f"max time step = {round(self.cyc.dt_s.max(), 3)}"
+            )
 
         self.set_post_scalars()
     
@@ -1811,7 +1818,6 @@ class SimDrive(object):
     def _should_impose_coast(self, i):
         """
         - i: non-negative integer, the current position in cyc
-        - verbose: Bool, if True, prints out debug information
         RETURN: Bool if vehicle should initiate coasting
         Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
         - if distance to coast from start of step is <= distance to next stop
@@ -2215,11 +2221,8 @@ class SimDrive(object):
                 (self.fuel_kj + self.roadway_chg_kj)
 
         # energy audit calcs
-        self.drag_kw = self.drag_kw
         self.drag_kj = (self.drag_kw * self.cyc.dt_s).sum()
-        self.ascent_kw = self.ascent_kw
         self.ascent_kj = (self.ascent_kw * self.cyc.dt_s).sum()
-        self.rr_kw = self.rr_kw
         self.rr_kj = (self.rr_kw * self.cyc.dt_s).sum()
 
         self.ess_loss_kw[1:] = np.array(
@@ -2249,10 +2252,11 @@ class SimDrive(object):
         self.energy_audit_error = ((self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj) - self.net_kj
                                    ) / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj)
 
-        if (np.abs(self.energy_audit_error) > self.sim_params.energy_audit_error_tol) and \
-                self.sim_params.verbose:
-            print('Warning: There is a problem with conservation of energy.')
-            print('Energy Audit Error:', np.round(self.energy_audit_error, 5))
+        if (np.abs(self.energy_audit_error) > self.sim_params.energy_audit_error_tol):
+            logger.warning(
+                "problem detected with conservation of energy; " +
+                f"energy audit error: {np.round(self.energy_audit_error, 5)}"
+            )
 
         self.accel_kw[1:] = (self.veh.veh_kg / (2.0 * (self.cyc.dt_s[1:]))) * (
             self.mps_ach[1:] ** 2 - self.mps_ach[:-1] ** 2) / 1_000
@@ -2267,19 +2271,17 @@ class SimDrive(object):
         if not(self.sim_params.missed_trace_correction):
             if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol:
                 self.trace_miss = True
-                if self.sim_params.verbose:
-                    print('Warning: Trace miss distance fraction:',
-                          np.round(self.trace_miss_dist_frac, 5))
-                    print('exceeds tolerance of: ', np.round(
-                        self.sim_params.trace_miss_dist_tol, 5))
+                logger.warning(
+                    f"trace miss distance fraction {np.round(self.trace_miss_dist_frac, 5)} " +
+                    f"exceeds tolerance of {np.round(self.sim_params.trace_miss_dist_tol, 5)}"
+                )
         else:
             if self.trace_miss_time_frac > self.sim_params.trace_miss_time_tol:
                 self.trace_miss = True
-                if self.sim_params.verbose:
-                    print('Warning: Trace miss time fraction:',
-                          np.round(self.trace_miss_time_frac, 5))
-                    print('exceeds tolerance of: ', np.round(
-                        self.sim_params.trace_miss_time_tol, 5))
+                logger.warning(
+                    f"trace miss time fraction {np.round(self.trace_miss_time_frac, 5)} " +
+                    f"exceeds tolerance of {np.round(self.sim_params.trace_miss_time_tol, 5)}"
+                )
 
         # NOTE: I believe this should be accessing self.cyc0.mps[i] instead of self.cyc.mps[i]; self.cyc may be modified...
         self.trace_miss_speed_mps = max([
@@ -2287,41 +2289,15 @@ class SimDrive(object):
         ])
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol:
             self.trace_miss = True
-            if self.sim_params.verbose:
-                print('Warning: Trace miss speed [m/s]:',
-                      np.round(self.trace_miss_speed_mps, 5))
-                print('exceeds tolerance of: ', np.round(
-                    self.sim_params.trace_miss_speed_mps_tol, 5))
+            logger.warning(
+                f"trace miss speed {np.round(self.trace_miss_speed_mps, 5)} m/s " +
+                f"exceeds tolerance of {np.round(self.sim_params.trace_miss_speed_mps_tol, 5)} m/s"
+            )
+
 
     def to_rust(self):
         "Create a rust version of SimDrive"
         return copy_sim_drive(self, 'rust', True)
-
-
-if RUST_AVAILABLE:
-
-    def RustSimDrive(cyc: fsr.RustCycle, veh: fsr.RustVehicle) -> SimDrive:
-        """
-        Wrapper function to make SimDriveRust look like SimDrive for language server.
-        Arguments:
-        ----------
-        cyc: cycle.Cycle instance
-        veh: vehicle.Vehicle instance"""
-        return fsr.RustSimDrive(cyc, veh)
-
-else:
-
-    def RustSimDrive(cyc: cycle.Cycle, veh: vehicle.Vehicle) -> SimDrive:
-        """
-        Wrapper function to make SimDriveRust look like SimDrive for language server.
-        Arguments:
-        ----------
-        cyc: cycle.Cycle instance
-        veh: vehicle.Vehicle instance"""
-        raise ImportError(
-            "FASTSimRust does not seem to be available. Cannot instantiate RustSimDrive..."
-        )
-        return SimDrive(cyc, veh)
 
 
 class LegacySimDrive(object):
@@ -2349,11 +2325,11 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
     # TODO: no need to implement dict for copy_sim_drive, but please do for the subordinate classes
 
     if return_type is None:
-        # if type(sd) == fsr.RustSimDrive:
+        # if type(sd) == RustSimDrive:
         #    return_type = 'rust'
         if type(sd) == SimDrive:
             return_type = 'python'
-        elif type(sd) == fsr.RustSimDrive:
+        elif type(sd) == RustSimDrive:
             return_type = 'rust'
         elif type(sd) == LegacySimDrive:
             return_type = "legacy"
@@ -2367,7 +2343,7 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
     veh = vehicle.copy_vehicle(sd.veh, veh_return_type, deep)
 
     if return_type == 'rust':
-        return fsr.RustSimDrive(cyc, veh)
+        return RustSimDrive(cyc, veh)
 
     sd_copy = SimDrive(cyc, veh)
     for key in inspect_utils.get_attrs(sd):
@@ -2396,7 +2372,7 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
     return sd_copy
 
 
-def sim_drive_equal(a: SimDrive, b: SimDrive, verbose=False) -> bool:
+def sim_drive_equal(a: SimDrive, b: SimDrive) -> bool:
     ""
     if a is b:
         return True
@@ -2405,23 +2381,19 @@ def sim_drive_equal(a: SimDrive, b: SimDrive, verbose=False) -> bool:
         b_val = b.__getattribute__(k)
         if k == 'cyc' or k == 'cyc0':
             if not cycle.cyc_equal(a_val, b_val):
-                if verbose:
-                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                logger.debug(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
         elif k == 'veh':
             if not vehicle.veh_equal(a_val, b_val):
-                if verbose:
-                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                logger.debug(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
         elif k == 'props':
             if not params.physical_properties_equal(a_val, b_val):
-                if verbose:
-                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                logger.debug(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
         elif k == 'sim_params':
             if not sim_params_equal(a_val, b_val):
-                if verbose:
-                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                logger.debug(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
         elif 'tolist' in a_val.__dir__() + b_val.__dir__():
             if 'tolist' in a_val.__dir__():
@@ -2429,23 +2401,18 @@ def sim_drive_equal(a: SimDrive, b: SimDrive, verbose=False) -> bool:
             if 'tolist' in b_val.__dir__():
                 b_val = np.array(b_val.tolist())
             if not (a_val == b_val).all():
-                if verbose:
-                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                logger.debug(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
         elif type(a_val) == np.ndarray or type(b_val) == np.ndarray:
             if not (a_val == b_val).all():
-                if verbose:
-                    print(f"unequal at key {k}: {a_val} != {b_val}")
-                print('got here')
+                logger.debug(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
         elif type(a_val) == list and type(b_val) == list:
             if not a_val == b_val:
-                if verbose:
-                    print(f"unequal at key {k}: {a_val} != {b_val}")
+                logger.debug(f"unequal at key {k}: {a_val} != {b_val}")
                 return False
         elif a_val != b_val:
-            if verbose:
-                print(f"unequal at key {k}: {a_val} != {b_val}")
+            logger.debug(f"unequal at key {k}: {a_val} != {b_val}")
             return False
     return True
 

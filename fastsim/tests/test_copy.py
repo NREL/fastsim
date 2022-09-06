@@ -89,7 +89,7 @@ class TestCopy(unittest.TestCase):
             rust_sdp = simdrive.copy_sim_params(sdp, 'rust')
             self.assertEqual(fsr.RustSimDriveParams, type(rust_sdp))
             self.assertTrue(
-                simdrive.sim_params_equal(sdp, rust_sdp, verbose=True),
+                simdrive.sim_params_equal(sdp, rust_sdp),
                 msg="Assert that values equal")
             rust_sdp2 = simdrive.copy_sim_params(rust_sdp)
             self.assertEqual(type(rust_sdp2), fsr.RustSimDriveParams)
@@ -113,7 +113,7 @@ class TestCopy(unittest.TestCase):
             self.assertEqual(type(rust_sd), fsr.RustSimDrive)
             rust_sd2 = simdrive.copy_sim_drive(rust_sd)
             self.assertEqual(type(rust_sd2), fsr.RustSimDrive)
-            self.assertTrue(simdrive.sim_drive_equal(sd, rust_sd, verbose=True))
+            self.assertTrue(simdrive.sim_drive_equal(sd, rust_sd))
             original_i = sd.i
             sd.i = original_i + 1
             self.assertFalse(simdrive.sim_drive_equal(sd, rust_sd))

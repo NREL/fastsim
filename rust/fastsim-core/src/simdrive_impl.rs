@@ -19,6 +19,8 @@ use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
 
+use log;
+
 pub const SIMDRIVE_DEFAULT_FOLDER: &str = "fastsim/resources";
 
 struct RendezvousTrajectory {
@@ -496,7 +498,7 @@ impl RustSimDrive {
             self.step()?;
         }
 
-        // TODO: uncomment and implement
+        // TODO: uncomment and implement logging
         //    if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
         //         if self.sim_params.missed_trace_correction:
         //             print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
@@ -567,8 +569,12 @@ impl RustSimDrive {
         aux_in_kw_override: Option<Array1<f64>>,
     ) -> Result<(), String> {
         let init_soc = if !(self.veh.min_soc..=self.veh.max_soc).contains(&init_soc) {
-            println!("WARNING! Provided init_soc is outside range [min_soc, max_soc]: [{}, {}]. Setting init_soc to max_soc.",
-                self.veh.min_soc, self.veh.max_soc);
+            log::warn!(
+                "provided init_soc={} is outside range min_soc={} to max_soc={}; setting init_soc to max_soc",
+                init_soc,
+                self.veh.min_soc,
+                self.veh.max_soc
+            );
             self.veh.max_soc
         } else {
             init_soc
@@ -1549,21 +1555,35 @@ impl RustSimDrive {
             }
 
             if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
+                // fc forced on because:
+                // - it was on in the previous time step and hasn't been on long enough
+                // - it can't power everything on it's own
                 self.fc_forced_state[i] = 1;
                 self.mc_mech_kw_4forced_fc[i] = 0.0;
             } else if self.trans_kw_in_ach[i] < 0.0 {
+                // not forced on.  transmission needs negative power (i.e. regen)
                 self.fc_forced_state[i] = 2;
                 self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i];
             } else if self.veh.max_fc_eff_kw() == self.trans_kw_in_ach[i] {
+                // if fc power at which maximum efficiency is achieved equals the transmission input power
+                // fc possibly (???) forced on to be more efficient
+                // this seems unlikely to ever happen
                 self.fc_forced_state[i] = 3;
                 self.mc_mech_kw_4forced_fc[i] = 0.0;
             } else if self.veh.idle_fc_kw > self.trans_kw_in_ach[i] && self.accel_kw[i] >= 0.0 {
+                // accelerating but idle power is greater than accel power needed by trans
                 self.fc_forced_state[i] = 4;
                 self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.idle_fc_kw;
             } else if self.veh.max_fc_eff_kw() > self.trans_kw_in_ach[i] {
+                // if fc power at which maximum efficiency is achieved exceeds the transmission input power
                 self.fc_forced_state[i] = 5;
                 self.mc_mech_kw_4forced_fc[i] = 0.0;
             } else {
+                // fc not forced on in previous time step or
+                // transmission is not in braking state or
+                // transmission input power is not exactly most efficient point on fc map or
+                // acceleration is not >= 0 and/or idle power is not > trans input power or
+                // fc peak eff point in map is <= trans input power
                 self.fc_forced_state[i] = 6;
                 self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.max_fc_eff_kw();
             }
@@ -2311,7 +2331,6 @@ impl RustSimDrive {
     }
 
     /// - i: non-negative integer, the current position in cyc
-    /// - verbose: Bool, if True, prints out debug information
     /// RETURN: Bool if vehicle should initiate coasting
     /// Coast logic is that the vehicle should coast if it is within coasting distance of a stop:
     /// - if distance to coast from start of step is <= distance to next stop
@@ -2936,11 +2955,12 @@ impl RustSimDrive {
                     - self.net_kj)
                     / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj);
 
-            if (self.energy_audit_error.abs() > self.sim_params.energy_audit_error_tol)
-                && self.sim_params.verbose
-            {
-                println!("Warning: There is a problem with conservation of energy.");
-                println!("Energy Audit Error: {:.5}", self.energy_audit_error);
+            if self.energy_audit_error.abs() > self.sim_params.energy_audit_error_tol {
+                log::warn!(
+                    "problem detected with conservation of energy; \
+                    energy audit error: {:.5}",
+                    self.energy_audit_error
+                );
             }
             for i in 1..self.cyc.dt_s().len() {
                 self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s_at_i(i))
@@ -2962,45 +2982,30 @@ impl RustSimDrive {
             if !self.sim_params.missed_trace_correction {
                 if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol {
                     self.trace_miss = true;
-                    if self.sim_params.verbose {
-                        println!(
-                            "Warning: Trace miss distance fraction: {:.5}",
-                            self.trace_miss_dist_frac
-                        );
-                        println!(
-                            "exceeds tolerance of: {:.5}",
-                            self.sim_params.trace_miss_dist_tol
-                        );
-                    }
+                    log::warn!(
+                        "trace miss distance fraction {:.5} exceeds tolerance of {:.5}",
+                        self.trace_miss_dist_frac,
+                        self.sim_params.trace_miss_dist_tol
+                    );
                 }
             } else if self.trace_miss_time_frac > self.sim_params.trace_miss_time_tol {
                 self.trace_miss = true;
-                if self.sim_params.verbose {
-                    println!(
-                        "Warning: Trace miss time fraction: {:.5}",
-                        self.trace_miss_time_frac
-                    );
-                    println!(
-                        "exceeds tolerance of: {:.5}",
-                        self.sim_params.trace_miss_time_tol
-                    );
-                }
+                log::warn!(
+                    "trace miss time fraction {:.5} exceeds tolerance of {:.5}",
+                    self.trace_miss_time_frac,
+                    self.sim_params.trace_miss_time_tol
+                );
             }
 
             self.trace_miss_speed_mps =
                 ndarrmax(&(self.mps_ach.clone() - self.cyc.mps.clone()).map(|x| x.abs()));
             if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol {
                 self.trace_miss = true;
-                if self.sim_params.verbose {
-                    println!(
-                        "Warning: Trace miss speed [m/s]: {:.5}",
-                        self.trace_miss_speed_mps
-                    );
-                    println!(
-                        "exceeds tolerance of: {:.5}",
-                        self.sim_params.trace_miss_speed_mps_tol
-                    );
-                }
+                log::warn!(
+                    "trace miss speed {:.5} m/s exceeds tolerance of {:.5} m/s",
+                    self.trace_miss_speed_mps,
+                    self.sim_params.trace_miss_speed_mps_tol
+                );
             }
             Ok(())
         };
