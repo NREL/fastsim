@@ -1,22 +1,22 @@
 ---
-scenario_name: 2012 Ford Fusion
+scenario_name: 2017 Ford F-150 Ecoboost
 selection: 0
-veh_year: 2012
+veh_year: 2017
 veh_pt_type: Conv
-drag_coef: 0.393
-frontal_area_m2: 2.12
+drag_coef: 0.3754
+frontal_area_m2: 3.93
 glider_kg: 791.0702892
 veh_cg_m: 0.53
 drive_axle_weight_frac: 0.59
-wheel_base_m: 2.72
-cargo_kg: 136.0
-veh_override_kg: 0.0
+wheel_base_m: 3.633
+cargo_kg: 0.0
+veh_override_kg: 2380.0
 comp_mass_multiplier: 1.4
 fs_max_kw: 1000.0
 fs_secs_to_peak_pwr: 1.0
 fs_kwh: 590.0
 fs_kwh_per_kg: 9.89473291
-fc_max_kw: 130.5
+fc_max_kw: 280.0
 fc_pwr_out_perc:
   v: 1
   dim:
@@ -41,17 +41,17 @@ fc_eff_map:
   data:
     - 0.1
     - 0.12
-    - 0.16
-    - 0.22
     - 0.28
-    - 0.33
     - 0.35
+    - 0.375
+    - 0.39
+    - 0.4
+    - 0.4
+    - 0.38
+    - 0.37
     - 0.36
     - 0.35
-    - 0.34
-    - 0.32
-    - 0.3
-fc_eff_type: SI
+fc_eff_type: Atkinson
 fc_sec_to_peak_pwr: 6.0
 fc_base_kg: 61.0
 fc_kw_per_kg: 0.47
@@ -106,7 +106,7 @@ ess_dischg_to_fc_max_eff_perc: 0.0
 ess_chg_to_fc_max_eff_perc: 0.0
 wheel_inertia_kg_m2: 0.82
 num_wheels: 4.0
-wheel_rr_coef: 0.007
+wheel_rr_coef: 0.006828
 wheel_radius_m: 0.326
 wheel_coef_of_fric: 0.7
 max_accel_buffer_mph: 60.0
@@ -140,12 +140,12 @@ max_roadway_chg_kw:
     - 0.0
     - 0.0
 modern_max: 0.95
-veh_kg: 1644.2724500334996
-max_trac_mps2: 3.565241539954707
+veh_kg: 2380.0
+max_trac_mps2: 3.676125996503496
 ess_mass_kg: 0.0
 mc_mass_kg: 0.0
-fc_mass_kg: 474.12340425531914
-fs_mass_kg: 83.47875657818034
+fc_mass_kg: 0.0
+fs_mass_kg: 0.0
 val_udds_mpgge: 22.0
 val_hwy_mpgge: 32.0
 val_comb_mpgge: 25.6

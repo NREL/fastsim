@@ -1,22 +1,22 @@
 ---
-scenario_name: 2012 Ford Fusion
+scenario_name: 2017 Toyota Highlander 3.5 L
 selection: 0
-veh_year: 2012
+veh_year: 2017
 veh_pt_type: Conv
-drag_coef: 0.393
-frontal_area_m2: 2.12
+drag_coef: 0.1966
+frontal_area_m2: 6.0
 glider_kg: 791.0702892
 veh_cg_m: 0.53
 drive_axle_weight_frac: 0.59
 wheel_base_m: 2.72
 cargo_kg: 136.0
-veh_override_kg: 0.0
+veh_override_kg: 2270.0
 comp_mass_multiplier: 1.4
 fs_max_kw: 1000.0
 fs_secs_to_peak_pwr: 1.0
 fs_kwh: 590.0
 fs_kwh_per_kg: 9.89473291
-fc_max_kw: 130.5
+fc_max_kw: 220.0
 fc_pwr_out_perc:
   v: 1
   dim:
@@ -106,7 +106,7 @@ ess_dischg_to_fc_max_eff_perc: 0.0
 ess_chg_to_fc_max_eff_perc: 0.0
 wheel_inertia_kg_m2: 0.82
 num_wheels: 4.0
-wheel_rr_coef: 0.007
+wheel_rr_coef: 0.009449
 wheel_radius_m: 0.326
 wheel_coef_of_fric: 0.7
 max_accel_buffer_mph: 60.0
@@ -140,12 +140,12 @@ max_roadway_chg_kw:
     - 0.0
     - 0.0
 modern_max: 0.95
-veh_kg: 1644.2724500334996
-max_trac_mps2: 3.565241539954707
+veh_kg: 2270.0
+max_trac_mps2: 3.5652415399547075
 ess_mass_kg: 0.0
 mc_mass_kg: 0.0
-fc_mass_kg: 474.12340425531914
-fs_mass_kg: 83.47875657818034
+fc_mass_kg: 0.0
+fs_mass_kg: 0.0
 val_udds_mpgge: 22.0
 val_hwy_mpgge: 32.0
 val_comb_mpgge: 25.6
