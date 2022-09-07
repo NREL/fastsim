@@ -466,6 +466,7 @@ pub struct RustVehicle {
     // without any performance penalty with the current implementation
     // of the functions in utils.rs
     #[doc(hidden)]
+    #[serde(skip)]
     pub fc_perc_out_array: Vec<f64>,
     #[doc(hidden)]
     pub regen_a: f64,
@@ -521,6 +522,7 @@ pub struct RustVehicle {
     #[doc(hidden)]
     pub fs_mass_kg: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub mc_perc_out_array: Vec<f64>,
     // these probably don't need to be in rust
     #[doc(hidden)]
@@ -750,7 +752,7 @@ impl RustVehicle {
             props,
             small_motor_power_kw: 7.5,
             large_motor_power_kw: 75.0,
-            fc_perc_out_array: FC_PERC_OUT_ARRAY.clone().to_vec(),
+            fc_perc_out_array: Default::default(),
             regen_a,
             regen_b,
             charging_on: false,
@@ -772,7 +774,7 @@ impl RustVehicle {
             mc_mass_kg: 0.0,
             fc_mass_kg: 0.0,
             fs_mass_kg: 0.0,
-            mc_perc_out_array: MC_PERC_OUT_ARRAY.clone().to_vec(),
+            mc_perc_out_array: Default::default(),
             fc_peak_eff_override,
             mc_peak_eff_override,
             orphaned: false,
@@ -918,6 +920,8 @@ impl RustVehicle {
             self.no_elec_aux = false;
         }
 
+        self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
+
         // # discrete array of possible engine power outputs
         self.input_kw_out_array = self.fc_pwr_out_perc.clone() * self.fc_max_kw;
         // # Relatively continuous array of possible engine power outputs
@@ -977,6 +981,8 @@ impl RustVehicle {
         // self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
         //     + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
         // self.mc_eff_map = self.mc_eff_array.clone();
+
+        self.mc_perc_out_array = MC_PERC_OUT_ARRAY.clone().to_vec();
 
         let mc_kw_out_array: Vec<f64> =
             (Array::linspace(0.0, 1.0, self.mc_perc_out_array.len()) * self.mc_max_kw).to_vec();
