@@ -10,6 +10,11 @@ from fastsim.docs.cav_sweep import main, CSV_KEYS
 
 THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 REGRESSION_DATA = Path(THIS_DIR) / 'test_cav_sweep.csv'
+def env_to_bool(var):
+    if var is None:
+        return False
+    return var.strip().lower() == 'true'
+FASTSIM_TEST_EXTENSIVE = env_to_bool(os.getenv('FASTSIM_TEST_EXTENSIVE'))
 
 class TestCavSweep(unittest.TestCase):
     def load_regression_data(self):
@@ -58,11 +63,27 @@ class TestCavSweep(unittest.TestCase):
                 self.assertAlmostEqual(known_good_case[k], current_case[k], places=1, msg=new_msg)
             else:
                 self.assertEqual(known_good_case[k], current_case[k], msg=new_msg)
+    
+    def _make_key(self, the_case):
+        return f"{the_case['powertrain']}:{the_case['cycle']}:{the_case['veh']}"
+    
+    def _env_as_str(self, use_rust):
+        return 'Rust' if use_rust else 'Py'
 
     def compare_for_regressions(self, known_good_data, outputs, use_rust):
-        self.assertTrue(len(known_good_data) == len(outputs), f"{'Rust' if use_rust else 'Py'} Expected {len(known_good_data)} cases; got {len(outputs)}")
-        for kg, out in zip(known_good_data, outputs):
-            self.compare_one_case(kg, out, use_rust)
+        if FASTSIM_TEST_EXTENSIVE:
+            self.assertTrue(len(known_good_data) == len(outputs), f"{self._env_as_str(use_rust)} Expected {len(known_good_data)} cases; got {len(outputs)}")
+        else:
+            self.assertTrue(len(outputs) <= len(known_good_data), f"{self._env_as_str(use_rust)} Expected {len(outputs)} to be <= {len(known_good_data)}")
+        for out in outputs:
+            out_key = self._make_key(out)
+            found_key = False
+            for kg in known_good_data:
+                kg_key = self._make_key(kg)
+                if out_key == kg_key:
+                    found_key = True
+                    self.compare_one_case(kg, out, use_rust)
+            self.assertTrue(found_key, msg=f"{self._env_as_str(use_rust)} Could not find key {out_key} in known good data")
 
     def test_demo_for_regressions(self):
         known_good_data = self.load_regression_data()
@@ -70,7 +91,15 @@ class TestCavSweep(unittest.TestCase):
             self.save_regression_data(main(do_show=False, use_rust=False, verbose=False))
             known_good_data = self.load_regression_data()
         for use_rust in [False, True]:
-            outputs = main(do_show=False, use_rust=use_rust, verbose=False)
+            if FASTSIM_TEST_EXTENSIVE:
+                outputs = main(do_show=False, use_rust=use_rust, verbose=False)
+            else:
+                outputs = main(
+                    powertrain='hev',
+                    cycle_name="TSDC_tripno_42648_cycle",
+                    do_show=False,
+                    use_rust=use_rust,
+                    verbose=False)
             self.compare_for_regressions(known_good_data, outputs, use_rust)
 
 if __name__ == '__main__':
