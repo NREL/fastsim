@@ -80,7 +80,7 @@ class SimDriveParams(object):
         self.coast_start_speed_m_per_s = 0.0
         # time-ahead for speed changes to be considered to hit distance mark
         self.coast_time_horizon_for_adjustment_s = 20.0
-        self.follow_allow = False
+        self.idm_allow = False
         # IDM - Intelligent Driver Model, Adaptive Cruise Control version
         self.idm_v_desired_m_per_s: float = 33.33
         self.idm_dt_headway_s: float = 1.0
@@ -337,7 +337,7 @@ class SimDrive(object):
         "Provides the gap-with lead vehicle from start to finish"
         # TODO: consider basing on dist_m?
         gaps_m = cycle.trapz_step_distances(self.cyc0).cumsum() - cycle.trapz_step_distances(self.cyc).cumsum()
-        if self.sim_params.follow_allow:
+        if self.sim_params.idm_allow:
             gaps_m += self.sim_params.idm_minimum_gap_m
         return gaps_m
 
@@ -429,7 +429,7 @@ class SimDrive(object):
         self.mps_ach[0] = self.cyc0.mps[0]
         self.mph_ach[0] = self.cyc0.mph[0]
 
-        if self.sim_params.missed_trace_correction or self.sim_params.follow_allow or self.sim_params.coast_allow:
+        if self.sim_params.missed_trace_correction or self.sim_params.idm_allow or self.sim_params.coast_allow:
             # reset the cycle in case it has been manipulated
             self.cyc = cycle.copy_cycle(self.cyc0)
 
@@ -486,7 +486,7 @@ class SimDrive(object):
             between 0 and 1 inclusive
         """
         params = self.sim_params
-        params.follow_allow = True
+        params.idm_allow = True
         if not by_microtrip:
             if self.cyc0.len > 0 and self.cyc0.time_s[-1] > 0.0:
                 params.idm_v_desired_m_per_s = self.cyc0.dist_m.sum() / self.cyc0.time_s[-1]
@@ -596,10 +596,10 @@ class SimDrive(object):
 
         NOTE:
             If not allowing coasting (i.e., sim_params.coast_allow == False)
-            and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+            and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
             then returns self.cyc.grade[i]
         """
-        if not self.sim_params.coast_allow and not self.sim_params.follow_allow:
+        if not self.sim_params.coast_allow and not self.sim_params.idm_allow:
             return self.cyc.grade[i]
         return self.cyc0.average_grade_over_range(
             cycle.trapz_step_start_distance(self.cyc, i), 0.0)
@@ -615,10 +615,10 @@ class SimDrive(object):
 
         NOTE:
             If not allowing coasting (i.e., sim_params.coast_allow == False)
-            and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+            and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
             then returns self.cyc.grade[i]
         """
-        if not self.sim_params.coast_allow and not self.sim_params.follow_allow:
+        if not self.sim_params.coast_allow and not self.sim_params.idm_allow:
             return self.cyc.grade[i]
         if mps_ach is not None:
             return self.cyc0.average_grade_over_range(
@@ -634,7 +634,7 @@ class SimDrive(object):
         TODO: create self.set_speed_for_target_gap(self.i):
         TODO: consider implementing for battery SOC dependence
         """
-        if self.sim_params.follow_allow:
+        if self.sim_params.idm_allow:
             if self.sim_params.idm_v_desired_in_m_per_s_by_distance_m is not None:
                 found_v_target = self.sim_params.idm_v_desired_in_m_per_s_by_distance_m[0][1]
                 current_d = self.cyc.dist_m[:self.i].sum()
@@ -653,7 +653,7 @@ class SimDrive(object):
         if self.sim_params.missed_trace_correction and (self.cyc0.dist_m[:self.i].sum() > 0):
             self.set_time_dilation(self.i)
         # TODO: shouldn't this below always get set whether we're coasting or following or not?
-        if self.sim_params.coast_allow or self.sim_params.follow_allow:
+        if self.sim_params.coast_allow or self.sim_params.idm_allow:
             self.cyc.mps[self.i] = self.mps_ach[self.i]
             self.cyc.grade[self.i] = self._lookup_grade_for_step(self.i)
 
@@ -1969,7 +1969,7 @@ class SimDrive(object):
         DIST_TOL = 0.1 # meters
         self.coast_delay_index[i:] = 0 # clear all future coast-delays
         coast_delay = None
-        if not self.sim_params.follow_allow and self.cyc.mps[i] < SPEED_TOL:
+        if not self.sim_params.idm_allow and self.cyc.mps[i] < SPEED_TOL:
             d0 = cycle.trapz_step_start_distance(self.cyc, i)
             d0_lv = cycle.trapz_step_start_distance(self.cyc0, i)
             dtlv0 = d0_lv - d0
@@ -2115,7 +2115,7 @@ class SimDrive(object):
                 if not self.sim_params.coast_allow_passing:
                     self._prevent_collisions(i)
         if not self.impose_coast[i]:
-            if not self.sim_params.follow_allow:
+            if not self.sim_params.idm_allow:
                 self.cyc.mps[i] = self.cyc0.mps[min(max(i - self.coast_delay_index[i], 0), len(self.cyc0.mps) - 1)]
             return
         v1_traj = self.cyc.mps[i]

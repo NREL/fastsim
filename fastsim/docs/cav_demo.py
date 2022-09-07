@@ -102,7 +102,7 @@ else:
     veh = fsim.vehicle.Vehicle.from_vehdb(1)
     sd = fsim.simdrive.SimDrive(cyc, veh)
 sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
-    follow_allow=True,
+    idm_allow=True,
     idm_accel_m_per_s2=1.0,
     idm_decel_m_per_s2=-2.5,
     idm_dt_headway_s=2.0,
@@ -164,7 +164,7 @@ for mt in microtrips:
 if IS_INTERACTIVE:
     print(f"Found speeds for {len(dist_and_avg_speeds)} microtrips")
 sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
-    follow_allow=True,
+    idm_allow=True,
     idm_accel_m_per_s2=0.5,
     idm_decel_m_per_s2=-2.5,
     idm_dt_headway_s=2.0,
@@ -223,7 +223,7 @@ params.reset_orphaned()
 params.coast_allow = True
 params.coast_allow_passing = False
 params.coast_start_speed_m_per_s = -1.0
-params.follow_allow = True
+params.idm_allow = True
 params.idm_accel_m_per_s2 = 0.5
 params.idm_decel_m_per_s2 = -2.5
 params.idm_dt_headway_s = 2.0

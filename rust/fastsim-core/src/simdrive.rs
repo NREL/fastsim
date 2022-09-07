@@ -41,7 +41,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
         coast_brake_start_speed_m_per_s: f64,
         coast_start_speed_m_per_s: f64,
         coast_time_horizon_for_adjustment_s: f64,
-        follow_allow: bool,
+        idm_allow: bool,
         // IDM - Intelligent Driver Model, Adaptive Cruise Control version
         idm_v_desired_m_per_s: f64,
         idm_dt_headway_s: f64,
@@ -74,7 +74,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
             coast_brake_start_speed_m_per_s,
             coast_start_speed_m_per_s,
             coast_time_horizon_for_adjustment_s,
-            follow_allow,
+            idm_allow,
             // IDM - Intelligent Driver Model, Adaptive Cruise Control version
             idm_v_desired_m_per_s,
             idm_dt_headway_s,
@@ -114,7 +114,7 @@ pub struct RustSimDriveParams {
     pub coast_brake_start_speed_m_per_s: f64,
     pub coast_start_speed_m_per_s: f64,
     pub coast_time_horizon_for_adjustment_s: f64,
-    pub follow_allow: bool,
+    pub idm_allow: bool,
     // IDM - Intelligent Driver Model, Adaptive Cruise Control version
     pub idm_v_desired_m_per_s: f64,
     pub idm_dt_headway_s: f64,
@@ -161,7 +161,7 @@ impl Default for RustSimDriveParams {
         let coast_start_speed_m_per_s = 0.0; // m/s, if > 0, initiates coast when vehicle hits this speed; mostly for testing
         let coast_time_horizon_for_adjustment_s = 20.0;
         // Following
-        let follow_allow = false;
+        let idm_allow = false;
         // IDM - Intelligent Driver Model, Adaptive Cruise Control version
         let idm_v_desired_m_per_s = 33.33;
         let idm_dt_headway_s = 1.0;
@@ -193,7 +193,7 @@ impl Default for RustSimDriveParams {
             coast_brake_start_speed_m_per_s,
             coast_start_speed_m_per_s,
             coast_time_horizon_for_adjustment_s,
-            follow_allow,
+            idm_allow,
             idm_v_desired_m_per_s,
             idm_dt_headway_s,
             idm_minimum_gap_m,

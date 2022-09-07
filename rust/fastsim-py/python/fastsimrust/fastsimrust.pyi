@@ -680,7 +680,7 @@ class RustSimDriveParams:
     coast_start_speed_m_per_s: float
     coast_time_horizon_for_adjustment_s: float
     energy_audit_error_tol: float
-    follow_allow: bool
+    idm_allow: bool
     idm_accel_m_per_s2: float
     idm_decel_m_per_s2: float
     idm_delta: float
