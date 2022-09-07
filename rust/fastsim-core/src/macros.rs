@@ -46,7 +46,7 @@ macro_rules! impl_serde {
 macro_rules! impl_from_file {
     () => {
         pub fn from_file(filename: &str) -> Result<Self, Box<dyn Error>> {
-            Ok(Self::from_file_parser(filename)?)
+            Self::from_file_parser(filename)
         }
     };
 }

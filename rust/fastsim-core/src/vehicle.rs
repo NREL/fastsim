@@ -474,28 +474,39 @@ pub struct RustVehicle {
     #[doc(hidden)]
     pub charging_on: bool,
     #[doc(hidden)]
+    #[serde(skip)]
     pub no_elec_sys: bool,
     #[doc(hidden)]
+    // all of the parameters that are set in `set_derived` should be skipped by serde
+    #[serde(skip)]
     pub no_elec_aux: bool,
     #[doc(hidden)]
     pub max_roadway_chg_kw: Array1<f64>,
     #[doc(hidden)]
+    #[serde(skip)]
     pub input_kw_out_array: Array1<f64>,
     #[doc(hidden)]
+    #[serde(skip)]
     pub fc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[serde(skip)]
     pub fc_eff_array: Vec<f64>,
     #[doc(hidden)]
     pub modern_max: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub mc_eff_array: Array1<f64>,
     #[doc(hidden)]
+    #[serde(skip)]
     pub mc_kw_in_array: Vec<f64>,
     #[doc(hidden)]
+    #[serde(skip)]
     pub mc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[serde(skip)]
     pub mc_max_elec_in_kw: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub mc_full_eff_array: Vec<f64>,
     #[doc(hidden)]
     pub veh_kg: f64,
