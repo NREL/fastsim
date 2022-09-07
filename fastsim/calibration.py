@@ -96,6 +96,7 @@ class ModelObjectives(object):
         plot_save_dir: Optional[str] = None,
         plot_perc_err: Optional[bool] = True,
         show: Optional[bool] = False,
+        fontsize: Optional[float] = 12,
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
@@ -130,13 +131,13 @@ class ModelObjectives(object):
                 fig, ax = plt.subplots(
                     len(self.obj_names) * ax_multiplier + 1, 1, sharex=True, figsize=(12, 8),
                 )
-                plt.suptitle(f"trip: {key}")
+                plt.suptitle(f"trip: {key}", fontsize=fontsize)
                 ax[-1].plot(
                     time_hr,
                     sim_drive.sd.mph_ach,
                 )
-                ax[-1].set_xlabel('Time [hr]')
-                ax[-1].set_ylabel('Speed [mph]')
+                ax[-1].set_xlabel('Time [hr]', fontsize=fontsize)
+                ax[-1].set_ylabel('Speed [mph]', fontsize=fontsize)
 
             t1 = time.perf_counter()
             if self.verbose:
@@ -172,20 +173,25 @@ class ModelObjectives(object):
                     # this code needs to be cleaned up
                     # raw signals
                     ax[i_obj * ax_multiplier].set_title(
-                        f"error: {objectives[key][obj[0]]:.3g}")
+                        f"error: {objectives[key][obj[0]]:.3g}", fontsize=fontsize)
                     ax[i_obj * ax_multiplier].plot(time_hr,
-                                                   mod_sig, label='mod',)
+                                                   mod_sig, label='mod')
                     ax[i_obj * ax_multiplier].plot(time_hr,
                                                    ref_sig,
                                                    linestyle='--',
                                                    label="exp",
                                                    )
-                    ax[i_obj * ax_multiplier].set_ylabel(obj[0])
-                    ax[i_obj * ax_multiplier].legend()
+                    ax[i_obj *
+                        ax_multiplier].set_ylabel(obj[0], fontsize=fontsize)
+                    ax[i_obj * ax_multiplier].legend(fontsize=fontsize)
 
                     if plot_perc_err:
                         # error
-                        perc_err = (mod_sig - ref_sig) / ref_sig * 100
+                        if "deg_c" in mod_path:
+                            perc_err = (mod_sig - ref_sig) / \
+                                (ref_sig + 273.15) * 100
+                        else:
+                            perc_err = (mod_sig - ref_sig) / ref_sig * 100
                         # clean up inf and nan
                         perc_err[np.where(perc_err == np.inf)[0][:]] = 0.0
                         # trim off the first few bits of junk
@@ -195,7 +201,7 @@ class ModelObjectives(object):
                             perc_err
                         )
                         ax[i_obj * ax_multiplier +
-                            1].set_ylabel(obj[0] + "\n%Err")
+                            1].set_ylabel(obj[0] + "\n%Err", fontsize=fontsize)
                         ax[i_obj * ax_multiplier + 1].set_ylim([-20, 20])
 
                     if show:
