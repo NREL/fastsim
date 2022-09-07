@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
 
 extern crate fastsim_core;
@@ -11,15 +11,25 @@ use fastsim_core::{cycle::RustCycle, simdrive::RustSimDrive, vehicle::RustVehicl
 /// ```
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
+#[clap(group(
+    ArgGroup::new("cycle")
+    .required(true)
+    .args(&["cyc", "cyc-file"])
+))]
+#[clap(group(
+    ArgGroup::new("vehicle")
+    .required(true)
+    .args(&["veh", "veh-file"])
+))]
 struct FastSimApi {
     // `conflicts_with` tells rust one or the other, not both, can be provided
     /// Cycle as json string
-    #[clap(long, value_parser, conflicts_with = "cyc_file")]
+    #[clap(long, value_parser)]
     cyc: Option<String>,
     #[clap(long, value_parser)]
     /// Path to cycle file (csv or yaml)
     cyc_file: Option<String>,
-    #[clap(value_parser, long, conflicts_with = "veh_file")]
+    #[clap(value_parser, long)]
     /// Vehicle as json string
     veh: Option<String>,
     #[clap(long, value_parser)]
@@ -71,39 +81,5 @@ pub fn main() {
         println!("{}", sim_drive.mpgge);
     } else {
         println!("Invalid option `{}` for `--res-fmt`", res_fmt);
-    }
-}
-
-#[cfg(test)]
-pub mod tests {
-    use std::path::PathBuf;
-    use std::process::Command;
-
-    use assert_cmd::prelude::{CommandCargoExt, OutputAssertExt};
-    use predicates::prelude::predicate;
-
-    #[test]
-    fn test_that_cli_app_produces_result() -> Result<(), Box<dyn std::error::Error>> {
-        let mut cmd = Command::cargo_bin("fastsim-cli")?;
-        let mut cyc_file = project_root::get_project_root().unwrap();
-        cyc_file.push(PathBuf::from("../fastsim/resources/cycles/udds.csv"));
-        assert!(cyc_file.exists());
-        let mut veh_file = project_root::get_project_root().unwrap();
-        veh_file.push(PathBuf::from(
-            "../fastsim/resources/vehdb/2012_Ford_Fusion.yaml",
-        ));
-        assert!(veh_file.exists());
-
-        cmd.args([
-            "--cyc-file",
-            cyc_file.to_str().unwrap(),
-            "--veh-file",
-            veh_file.to_str().unwrap(),
-        ]);
-        cmd.assert()
-            .success()
-            .stdout(predicate::str::contains("32.4"));
-
-        Ok(())
     }
 }
