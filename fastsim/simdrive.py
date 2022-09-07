@@ -80,8 +80,8 @@ class SimDriveParams(object):
         self.coast_start_speed_m_per_s = 0.0
         # time-ahead for speed changes to be considered to hit distance mark
         self.coast_time_horizon_for_adjustment_s = 20.0
-        self.idm_allow = False
         # IDM - Intelligent Driver Model, Adaptive Cruise Control version
+        self.idm_allow = False
         self.idm_v_desired_m_per_s: float = 33.33
         self.idm_dt_headway_s: float = 1.0
         self.idm_minimum_gap_m: float = 2.0

@@ -206,7 +206,6 @@ def eco_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=None, do_sh
     params = sim.sim_params
     if use_rust:
         params.reset_orphaned()
-    params.idm_allow = True
     params.idm_accel_m_per_s2 = 0.5
     params.idm_decel_m_per_s2 = 2.5
     params.idm_dt_headway_s = 2.0
@@ -249,7 +248,6 @@ def eco_coast_and_cruise(veh, init_soc=None, save_dir=None, tag=None, cyc_name=N
     # NOTE: activate_eco_cruise() already sets idm params. To set
     # them to values # other than the default, they must be modified
     # AFTER a call # to activate_eco_cruise()
-    params.idm_allow = True
     params.idm_accel_m_per_s2 = 0.5
     params.idm_decel_m_per_s2 = 2.5
     params.idm_dt_headway_s = 2.0
