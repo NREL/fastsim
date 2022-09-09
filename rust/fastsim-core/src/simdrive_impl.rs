@@ -3,7 +3,7 @@
 use super::cycle::{
     accel_array_for_constant_jerk, accel_for_constant_jerk, calc_constant_jerk_trajectory,
     detect_passing, trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance,
-    PassingInfo, RustCycle,
+    create_dist_and_target_speeds_by_microtrip, extend_cycle, PassingInfo, RustCycle,
 };
 use super::params;
 use super::utils::{
@@ -163,6 +163,7 @@ impl RustSimDrive {
         let trace_miss_time_frac: f64 = 0.0;
         let trace_miss_speed_mps: f64 = 0.0;
         let coast_delay_index = Array::zeros(cyc_len);
+        let idm_target_speed_m_per_s = Array::zeros(cyc_len);
         RustSimDrive {
             hev_sim_count,
             veh,
@@ -286,6 +287,7 @@ impl RustSimDrive {
             trace_miss_speed_mps,
             orphaned: false,
             coast_delay_index,
+            idm_target_speed_m_per_s,
         }
     }
 
@@ -399,6 +401,7 @@ impl RustSimDrive {
         self.trace_miss_iters = Array::zeros(cyc_len);
         self.newton_iters = Array::zeros(cyc_len);
         self.coast_delay_index = Array::zeros(cyc_len);
+        self.idm_target_speed_m_per_s = Array::zeros(cyc_len);
         self.impose_coast = Array::from_vec(vec![false; cyc_len]);
     }
 
@@ -407,7 +410,7 @@ impl RustSimDrive {
         // TODO: consider basing on dist_m?
         let mut gaps_m = ndarrcumsum(&trapz_step_distances(&self.cyc0))
             - ndarrcumsum(&trapz_step_distances(&self.cyc));
-        if self.sim_params.follow_allow {
+        if self.sim_params.idm_allow {
             gaps_m += self.sim_params.idm_minimum_gap_m;
         }
         gaps_m
@@ -505,6 +508,56 @@ impl RustSimDrive {
         Ok(())
     }
 
+    /// Sets the intelligent driver model parameters for an eco-cruise driving trajectory.
+    /// This is a convenience method instead of setting the sim_params.idm* parameters yourself.
+    /// - by_microtrip: bool, if True, target speed is set by microtrip, else by cycle
+    /// - extend_fraction: float, the fraction of time to extend the cycle to allow for catch-up
+    ///     of the following vehicle
+    /// - blend_factor: float, a value between 0 and 1; only used of by_microtrip is True, blends
+    ///     between microtrip average speed and microtrip average speed when moving. Must be
+    ///     between 0 and 1 inclusive
+    /// - min_target_speed_m_per_s: float, the minimum speed allowed by the eco-cruise algorithm
+    /// Mutates the current SimDrive object for eco-cruise.
+    pub fn activate_eco_cruise_rust(
+        &mut self,
+        by_microtrip: bool, // False
+        extend_fraction: f64, // 0.1
+        blend_factor: f64, // 0.0
+        min_target_speed_m_per_s: f64, // 8.0
+    ) -> Result<(), String> {
+        self.sim_params.idm_allow = true;
+        if !by_microtrip {
+            self.sim_params.idm_v_desired_m_per_s =
+                if self.cyc0.time_s.len() > 0 && self.cyc0.time_s[self.cyc0.time_s.len()-1] > 0.0 {
+                    self.cyc0.dist_m().slice(s![0..self.cyc0.time_s.len()]).sum()
+                    / self.cyc0.time_s[self.cyc0.time_s.len()-1]
+                } else {
+                    0.0
+                };
+        } else {
+            if blend_factor > 1.0 || blend_factor < 0.0 {
+                return Err(format!("blend_factor must be between 0 and 1 but got {}", blend_factor));
+            }
+            if min_target_speed_m_per_s < 0.0 {
+                return Err(format!("min_target_speed_m_per_s must be >= 0 but got {}", min_target_speed_m_per_s));
+            }
+            self.sim_params.idm_v_desired_in_m_per_s_by_distance_m =
+                Some(
+                    create_dist_and_target_speeds_by_microtrip(
+                        &self.cyc0, blend_factor, min_target_speed_m_per_s));
+        }
+        // Extend the duration of the base cycle
+        if extend_fraction < 0.0 {
+            return Err(format!("extend_fraction must be >= 0.0 but got {}", extend_fraction));
+        }
+        if extend_fraction > 0.0 {
+            self.cyc0 = extend_cycle(&self.cyc0, None, Some(extend_fraction));
+            self.cyc = self.cyc0.clone();
+        }
+        Ok(())
+    }
+
+
     /// This is a specialty method which should be called prior to using
     /// sim_drive_step in a loop.
     /// Arguments
@@ -542,7 +595,7 @@ impl RustSimDrive {
         self.mph_ach[0] = self.cyc0.mph_at_i(0);
 
         if self.sim_params.missed_trace_correction
-            || self.sim_params.follow_allow
+            || self.sim_params.idm_allow
             || self.sim_params.coast_allow
         {
             self.cyc = self.cyc0.clone(); // reset the cycle in case it has been manipulated
@@ -625,8 +678,8 @@ impl RustSimDrive {
     ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>
     pub fn set_speed_for_target_gap_using_idm(&mut self, i: usize) {
         // PARAMETERS
-        let v_desired_m_per_s = if self.sim_params.idm_v_desired_m_per_s > 0.0 {
-            self.sim_params.idm_v_desired_m_per_s
+        let v_desired_m_per_s = if self.idm_target_speed_m_per_s[i] > 0.0 {
+            self.idm_target_speed_m_per_s[i]
         } else {
             ndarrmax(&self.cyc0.mps)
         };
@@ -655,10 +708,10 @@ impl RustSimDrive {
     /// step, this is both quick and accurate.
     /// NOTE:
     ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
-    ///     and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+    ///     and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
     ///     then returns self.cyc.grade[i]
     pub fn estimate_grade_for_step(&self, i: usize) -> f64 {
-        if !self.sim_params.coast_allow && !self.sim_params.follow_allow {
+        if !self.sim_params.coast_allow && !self.sim_params.idm_allow {
             return self.cyc.grade[i];
         }
         self.cyc0
@@ -672,10 +725,10 @@ impl RustSimDrive {
     /// distance traveled over the step.
     /// NOTE:
     ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
-    ///     and not allowing IDM/following (i.e., self.sim_params.follow_allow == False)
+    ///     and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
     ///     then returns self.cyc.grade[i]
     pub fn lookup_grade_for_step(&self, i: usize, mps_ach: Option<f64>) -> f64 {
-        if !self.sim_params.coast_allow && !self.sim_params.follow_allow {
+        if !self.sim_params.coast_allow && !self.sim_params.idm_allow {
             return self.cyc.grade[i];
         }
         match mps_ach {
@@ -692,7 +745,22 @@ impl RustSimDrive {
 
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
-        if self.sim_params.follow_allow {
+        if self.sim_params.idm_allow {
+            self.idm_target_speed_m_per_s[self.i] = match &self.sim_params.idm_v_desired_in_m_per_s_by_distance_m {
+                Some(vtgt_by_dist) => {
+                    let mut found_v_target = vtgt_by_dist[0].1;
+                    let current_d = self.cyc.dist_m().slice(s![0..self.i]).sum();
+                    for (d, v_target) in vtgt_by_dist {
+                        if &current_d >= d {
+                            found_v_target = *v_target;
+                        } else {
+                            break;
+                        }
+                    }
+                    found_v_target
+                },
+                None => self.sim_params.idm_v_desired_m_per_s
+            };
             self.set_speed_for_target_gap(self.i);
         }
         if self.sim_params.coast_allow {
@@ -706,7 +774,7 @@ impl RustSimDrive {
             self.set_time_dilation(self.i)?;
         }
         // TODO: shouldn't the below code always set cyc? Whether coasting or not?
-        if self.sim_params.coast_allow || self.sim_params.follow_allow {
+        if self.sim_params.coast_allow || self.sim_params.idm_allow {
             self.cyc.mps[self.i] = self.mps_ach[self.i];
             self.cyc.grade[self.i] = self.lookup_grade_for_step(self.i, None);
         }
@@ -2449,7 +2517,7 @@ impl RustSimDrive {
             self.coast_delay_index[idx] = 0; // clear all future coast-delays
         }
         let mut coast_delay: Option<i32> = None;
-        if !self.sim_params.follow_allow && self.cyc.mps[i] < speed_tol {
+        if !self.sim_params.idm_allow && self.cyc.mps[i] < speed_tol {
             let d0 = trapz_step_start_distance(&self.cyc, i);
             let d0_lv = trapz_step_start_distance(&self.cyc0, i);
             let dtlv0 = d0_lv - d0;
@@ -2674,7 +2742,7 @@ impl RustSimDrive {
             }
         }
         if !self.impose_coast[i] {
-            if !self.sim_params.follow_allow {
+            if !self.sim_params.idm_allow {
                 let i_i32 = i32::try_from(i).ok();
                 let target_idx = match i_i32 {
                     Some(v) => Some(v - self.coast_delay_index[i]),

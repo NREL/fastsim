@@ -166,6 +166,187 @@ pub fn trapz_distance_over_range(cyc: &RustCycle, i_start: usize, i_end: usize) 
     trapz_step_distances(cyc).slice(s![i_start..i_end]).sum()
 }
 
+/// Calculate the time in a cycle spent moving
+/// - stopped_speed_m_per_s: the speed above which we are considered to be moving
+/// RETURN: the time spent moving in seconds
+pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) -> f64 {
+    let mut t_move_s = 0.0;
+    let stopped_speed_m_per_s = stopped_speed_m_per_s.unwrap_or(0.0);
+    for idx in 1..cyc.time_s.len() {
+        let dt = cyc.time_s[idx] - cyc.time_s[idx - 1];
+        let vavg = (cyc.mps[idx] + cyc.mps[idx - 1]) / 2.0;
+        if vavg > stopped_speed_m_per_s {
+            t_move_s += dt;
+        }
+    } 
+    t_move_s
+}
+
+/// Split a cycle into an array of microtrips with one microtrip being a start
+/// to subsequent stop plus any idle (stopped time).
+/// Arguments:
+/// ----------
+/// cycle: drive cycle converted to dictionary by cycle.get_cyc_dict()
+/// stop_speed_m__s: speed at which vehicle is considered stopped for trip
+///     separation
+/// keep_name: (optional) bool, if True and cycle contains "name", adds
+///     that name to all microtrips
+pub fn to_microtrips(
+    cycle: &RustCycle,
+    stop_speed_m_per_s: Option<f64>,
+) -> Vec<RustCycle> {
+    let stop_speed_m_per_s = stop_speed_m_per_s.unwrap_or(1e-6);
+    let mut microtrips: Vec<RustCycle> = Vec::new();
+    let ts = cycle.time_s.to_vec();
+    let vs = cycle.mps.to_vec();
+    let gs = cycle.grade.to_vec();
+    let rs = cycle.road_type.to_vec();
+    let mut mt_ts: Vec<f64> = Vec::new();
+    let mut mt_vs: Vec<f64> = Vec::new();
+    let mut mt_gs: Vec<f64> = Vec::new();
+    let mut mt_rs: Vec<f64> = Vec::new();
+    let mut moving = false;
+    for idx in 0..ts.len() {
+        let t = ts[idx];
+        let v = vs[idx];
+        let g = gs[idx];
+        let r = rs[idx];
+        if v > stop_speed_m_per_s && !moving {
+            if mt_ts.len() > 1 {
+                let last_idx = mt_ts.len() - 1;
+                let last_t = mt_ts[last_idx];
+                let last_v = mt_vs[last_idx];
+                let last_g = mt_gs[last_idx];
+                let last_r = mt_rs[last_idx];
+                mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
+                microtrips.push(RustCycle {
+                    time_s: Array::from_vec(mt_ts.clone()),
+                    mps: Array::from_vec(mt_vs.clone()),
+                    grade: Array::from_vec(mt_gs.clone()),
+                    road_type: Array::from_vec(mt_rs.clone()),
+                    name: cycle.name.clone(),
+                    orphaned: false
+                });
+                mt_ts = vec![last_t];
+                mt_vs = vec![last_v];
+                mt_gs = vec![last_g];
+                mt_rs = vec![last_r];
+            }
+        }
+        mt_ts.push(t);
+        mt_vs.push(v);
+        mt_gs.push(g);
+        mt_rs.push(r);
+        moving = v > stop_speed_m_per_s;
+    }
+    if mt_ts.len() > 0 {
+        mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
+        microtrips.push(
+            RustCycle {
+                time_s: Array::from_vec(mt_ts),
+                mps: Array::from_vec(mt_vs),
+                grade: Array::from_vec(mt_gs),
+                road_type: Array::from_vec(mt_rs),
+                name: cycle.name.clone(),
+                orphaned: false
+            }
+        );
+    }
+    microtrips
+}
+
+/// Create distance and target speeds by microtrip
+/// This helper function splits a cycle up into microtrips and returns a list of 2-tuples of:
+/// (distance from start in meters, target speed in meters/second)
+/// - cyc: the cycle to operate on
+/// - blend_factor: float, from 0 to 1
+///     if 0, use average speed of the microtrip
+///     if 1, use average speed while moving (i.e., no stopped time)
+///     else something in between
+/// - min_target_speed_mps: float, the minimum target speed allowed (m/s)
+/// RETURN: list of 2-tuple of (float, float) representing the distance of start of
+///     each microtrip and target speed for that microtrip
+/// NOTE: target speed per microtrip is not allowed to be below min_target_speed_mps
+pub fn create_dist_and_target_speeds_by_microtrip(
+    cyc: &RustCycle,
+    blend_factor: f64,
+    min_target_speed_mps: f64
+) -> Vec<(f64, f64)> {
+    let blend_factor = if blend_factor < 0.0 {
+        0.0
+    } else if blend_factor > 1.0 {
+        1.0
+    } else {
+        blend_factor
+    };
+    let mut dist_and_tgt_speeds: Vec<(f64, f64)> = Vec::new();
+    // Split cycle into microtrips
+    let microtrips = to_microtrips(&cyc, None);
+    let mut dist_at_start_of_microtrip_m = 0.0;
+    for mt_cyc in microtrips {
+        let mt_dist_m = mt_cyc.dist_m().sum();
+        let mt_time_s = mt_cyc.time_s[mt_cyc.time_s.len()-1] - mt_cyc.time_s[0];
+        let mt_moving_time_s = time_spent_moving(&mt_cyc, None);
+        let mt_avg_spd_m_per_s = if mt_time_s > 0.0 { mt_dist_m / mt_time_s } else { 0.0 };
+        let mt_moving_avg_spd_m_per_s = if mt_moving_time_s > 0.0 { mt_dist_m / mt_moving_time_s } else { 0.0 };
+        let mt_target_spd_m_per_s =
+            (blend_factor * (mt_moving_avg_spd_m_per_s - mt_avg_spd_m_per_s) + mt_avg_spd_m_per_s)
+            .min(mt_moving_avg_spd_m_per_s).max(mt_avg_spd_m_per_s);
+        if mt_dist_m > 0.0 {
+            dist_and_tgt_speeds.push(
+                (dist_at_start_of_microtrip_m, mt_target_spd_m_per_s.max(min_target_speed_mps))
+            );
+            dist_at_start_of_microtrip_m += mt_dist_m;
+        }
+    }
+    dist_and_tgt_speeds
+}
+
+/// - cyc: fastsim.cycle.Cycle
+/// - absolute_time_s: float, the seconds to extend
+/// - time_fraction: float, the fraction of the original cycle time to add on
+/// - use_rust: bool, if True, return a RustCycle instance, else a normal Python Cycle
+/// RETURNS: fastsim.cycle.Cycle (or fastsimrust.RustCycle), the new cycle with stopped time appended
+/// NOTE: additional time is rounded to the nearest second
+pub fn extend_cycle(
+    cyc: &RustCycle,
+    absolute_time_s: Option<f64>, // =0.0,
+    time_fraction: Option<f64> // =0.0,
+) -> RustCycle {
+    let absolute_time_s = absolute_time_s.unwrap_or(0.0);
+    let time_fraction = time_fraction.unwrap_or(0.0);
+    let mut ts = cyc.time_s.to_vec();
+    let mut vs = cyc.mps.to_vec();
+    let mut gs = cyc.grade.to_vec();
+    let mut rs = cyc.road_type.to_vec();
+    let extra_time_s =
+        (absolute_time_s
+        + (time_fraction * ts[ts.len() - 1])).round() as i32;
+    if extra_time_s == 0 {
+        return cyc.clone();
+    }
+    let dt = 1;
+    let t_end = ts[ts.len()-1];
+    let mut idx = 1;
+    while dt * idx <= extra_time_s {
+        let dt_extra = (dt * idx) as f64;
+        ts.push(t_end + dt_extra);
+        vs.push(0.0);
+        gs.push(0.0);
+        rs.push(0.0);
+        idx += 1;
+    }
+    RustCycle {
+        time_s: Array::from_vec(ts),
+        mps: Array::from_vec(vs),
+        grade: Array::from_vec(gs),
+        road_type: Array::from_vec(rs),
+        name: cyc.name.clone(),
+        orphaned: false
+    }
+}
+
+
 #[cfg(feature = "pyo3")]
 #[allow(unused)] // not sure what this is doing, may get used in proc macro???
 pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {

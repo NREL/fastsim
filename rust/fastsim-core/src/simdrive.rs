@@ -41,7 +41,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
         coast_brake_start_speed_m_per_s: f64,
         coast_start_speed_m_per_s: f64,
         coast_time_horizon_for_adjustment_s: f64,
-        follow_allow: bool,
+        idm_allow: bool,
         // IDM - Intelligent Driver Model, Adaptive Cruise Control version
         idm_v_desired_m_per_s: f64,
         idm_dt_headway_s: f64,
@@ -49,6 +49,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
         idm_delta: f64,
         idm_accel_m_per_s2: f64,
         idm_decel_m_per_s2: f64,
+        idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
         // Other, Misc.
         max_epa_adj: f64,
     ) -> Self {
@@ -73,7 +74,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
             coast_brake_start_speed_m_per_s,
             coast_start_speed_m_per_s,
             coast_time_horizon_for_adjustment_s,
-            follow_allow,
+            idm_allow,
             // IDM - Intelligent Driver Model, Adaptive Cruise Control version
             idm_v_desired_m_per_s,
             idm_dt_headway_s,
@@ -81,6 +82,7 @@ fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
             idm_delta,
             idm_accel_m_per_s2,
             idm_decel_m_per_s2,
+            idm_v_desired_in_m_per_s_by_distance_m,
             // Other, Misc.
             max_epa_adj,
             orphaned: false
@@ -112,7 +114,7 @@ pub struct RustSimDriveParams {
     pub coast_brake_start_speed_m_per_s: f64,
     pub coast_start_speed_m_per_s: f64,
     pub coast_time_horizon_for_adjustment_s: f64,
-    pub follow_allow: bool,
+    pub idm_allow: bool,
     // IDM - Intelligent Driver Model, Adaptive Cruise Control version
     pub idm_v_desired_m_per_s: f64,
     pub idm_dt_headway_s: f64,
@@ -120,6 +122,7 @@ pub struct RustSimDriveParams {
     pub idm_delta: f64,
     pub idm_accel_m_per_s2: f64,
     pub idm_decel_m_per_s2: f64,
+    pub idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
     // Other, Misc.
     pub max_epa_adj: f64,
     #[serde(skip)]
@@ -158,7 +161,7 @@ impl Default for RustSimDriveParams {
         let coast_start_speed_m_per_s = 0.0; // m/s, if > 0, initiates coast when vehicle hits this speed; mostly for testing
         let coast_time_horizon_for_adjustment_s = 20.0;
         // Following
-        let follow_allow = false;
+        let idm_allow = false;
         // IDM - Intelligent Driver Model, Adaptive Cruise Control version
         let idm_v_desired_m_per_s = 33.33;
         let idm_dt_headway_s = 1.0;
@@ -166,6 +169,7 @@ impl Default for RustSimDriveParams {
         let idm_delta = 4.0;
         let idm_accel_m_per_s2 = 1.0;
         let idm_decel_m_per_s2 = 1.5;
+        let idm_v_desired_in_m_per_s_by_distance_m = None;
         // EPA fuel economy adjustment parameters
         let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
         Self {
@@ -189,13 +193,14 @@ impl Default for RustSimDriveParams {
             coast_brake_start_speed_m_per_s,
             coast_start_speed_m_per_s,
             coast_time_horizon_for_adjustment_s,
-            follow_allow,
+            idm_allow,
             idm_v_desired_m_per_s,
             idm_dt_headway_s,
             idm_minimum_gap_m,
             idm_delta,
             idm_accel_m_per_s2,
             idm_decel_m_per_s2,
+            idm_v_desired_in_m_per_s_by_distance_m,
             max_epa_adj,
             orphaned: false,
         }
@@ -256,6 +261,30 @@ impl Default for RustSimDriveParams {
     ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
         handle_sd_res(self.walk(init_soc, aux_in_kw_override))
+    }
+
+    /// Sets the intelligent driver model parameters for an eco-cruise driving trajectory.
+    /// This is a convenience method instead of setting the sim_params.idm* parameters yourself.
+    /// - by_microtrip: bool, if True, target speed is set by microtrip, else by cycle
+    /// - extend_fraction: float, the fraction of time to extend the cycle to allow for catch-up
+    ///     of the following vehicle
+    /// - blend_factor: float, a value between 0 and 1; only used of by_microtrip is True, blends
+    ///     between microtrip average speed and microtrip average speed when moving. Must be
+    ///     between 0 and 1 inclusive
+    pub fn activate_eco_cruise(
+        &mut self,
+        by_microtrip: Option<bool>,
+        extend_fraction: Option<f64>,
+        blend_factor: Option<f64>,
+        min_target_speed_m_per_s: Option<f64>,
+    ) -> PyResult<()> {
+        let by_microtrip: bool = by_microtrip.unwrap_or(false);
+        let extend_fraction: f64 = extend_fraction.unwrap_or(0.1);
+        let blend_factor: f64 = blend_factor.unwrap_or(0.0);
+        let min_target_speed_m_per_s = min_target_speed_m_per_s.unwrap_or(8.0);
+        handle_sd_res(
+            self.activate_eco_cruise_rust(
+                by_microtrip, extend_fraction, blend_factor, min_target_speed_m_per_s))
     }
 
     #[pyo3(name = "init_for_step")]
@@ -525,6 +554,7 @@ pub struct RustSimDrive {
     #[serde(skip)]
     pub orphaned: bool,
     pub coast_delay_index: Array1<i32>,
+    pub idm_target_speed_m_per_s: Array1<f64>,
 }
 
 // #[cfg(test)]

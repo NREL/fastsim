@@ -866,3 +866,77 @@ def trapz_distance_over_range(cyc: Cycle, i_start: int, i_end: int) -> float:
     (i.e., distance from sample point i_start-1 to i_end-1)
     """
     return trapz_step_distances(cyc)[i_start:i_end].sum()
+
+def extend_cycle(
+    cyc: Cycle,
+    absolute_time_s:float=0.0,
+    time_fraction:float=0.0,
+    use_rust:bool=False
+) -> Cycle:
+    """
+    - cyc: fastsim.cycle.Cycle
+    - absolute_time_s: float, the seconds to extend
+    - time_fraction: float, the fraction of the original cycle time to add on
+    - use_rust: bool, if True, return a RustCycle instance, else a normal Python Cycle
+    RETURNS: fastsim.cycle.Cycle (or fastsimrust.RustCycle), the new cycle with stopped time appended
+    NOTE: additional time is rounded to the nearest second
+    """
+    cyc0 = cyc.get_cyc_dict()
+    extra_time_s = absolute_time_s + float(int(round(time_fraction * cyc.time_s[-1])))
+    # Zero-velocity cycle segment so simulation doesn't end while moving
+    cyc_stop = resample(
+        make_cycle([0.0, extra_time_s], [0.0, 0.0]),
+        new_dt=1.0,
+    )
+    new_cyc = Cycle.from_dict(concat([cyc0, cyc_stop]))
+    if use_rust:
+        return new_cyc.to_rust()
+    return new_cyc
+
+def create_dist_and_target_speeds_by_microtrip(cyc: Cycle, blend_factor: float=0.0, min_target_speed_mps: float=8.0) -> list:
+    """
+    Create distance and target speeds by microtrip
+    This helper function splits a cycle up into microtrips and returns a list of 2-tuples of:
+    (distance from start in meters, target speed in meters/second)
+
+    - cyc: the cycle to operate on
+    - blend_factor: float, from 0 to 1
+        if 0, use average speed of the microtrip
+        if 1, use average speed while moving (i.e., no stopped time)
+        else something in between
+    - min_target_speed_mps: float, the minimum target speed allowed (m/s)
+    RETURN: list of 2-tuple of (float, float) representing the distance of start of
+        each microtrip and target speed for that microtrip
+    NOTE: target speed per microtrip is not allowed to be below min_target_speed_mps
+    """
+    def time_spent_moving(cycle):
+        t_move_s = 0.0
+        for (t1, t0, vavg) in zip(cycle['time_s'][1:], cycle['time_s'][:-1], np.array(cycle['mps'][1:] + cycle['mps'][:-1]) / 2.0):
+            dt = t1 - t0
+            if vavg > 0:
+                t_move_s += dt
+        return t_move_s
+    blend_factor = max(0.0, min(1.0, blend_factor))
+    dist_and_tgt_speeds = []
+    # Split cycle into microtrips
+    microtrips = to_microtrips(cyc.get_cyc_dict())
+    dist_at_start_of_microtrip_m = 0.0
+    for mt in microtrips:
+        mt_cyc = Cycle.from_dict(mt)
+        mt_dist_m = sum(mt_cyc.dist_m)
+        mt_time_s = mt_cyc.time_s[-1] - mt_cyc.time_s[0]
+        mt_moving_time_s = time_spent_moving(mt_cyc.get_cyc_dict())
+        mt_avg_spd_m_per_s = mt_dist_m / mt_time_s if mt_time_s > 0.0 else 0.0
+        mt_moving_avg_spd_m_per_s = mt_dist_m / mt_moving_time_s if mt_moving_time_s > 0.0 else 0.0
+        mt_target_spd_m_per_s = max(
+            min(
+                blend_factor * (mt_moving_avg_spd_m_per_s - mt_avg_spd_m_per_s) + mt_avg_spd_m_per_s,
+                mt_moving_avg_spd_m_per_s
+            ),
+            mt_avg_spd_m_per_s)
+        if mt_dist_m > 0.0:
+            dist_and_tgt_speeds.append(
+                (dist_at_start_of_microtrip_m, max(mt_target_spd_m_per_s, min_target_speed_mps))
+            )
+            dist_at_start_of_microtrip_m += mt_dist_m
+    return dist_and_tgt_speeds
