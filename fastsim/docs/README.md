@@ -49,7 +49,7 @@ To do this, a couple of extra steps are required:
 
 1. First install the python code in place `DEVELOP_MODE=True pip install -e .` if on Mac OS or Linux.  On Windows, run `set DEVELOP_MODE=True` then `pip install -e .`.
 1. Within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`
-1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo build --release` and then `cargo test --release` to build and run the tests.
+1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.
 1. In `rust/fastsim-py`, you should now be able to run `maturin develop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py`.
 
 # Users with NREL VPN Access
