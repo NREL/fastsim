@@ -1,7 +1,47 @@
 [build-system]
 requires = [
-    "setuptools>=40.6.0",
-    "wheel",
-    "setuptools-rust>=0.11.4",
+"setuptools>=40.6.0",
+"wheel",
+"setuptools-rust>=0.11.4",
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastsim"
+version = "2.0.7"
+authors = [{ name = "MBAP Group", email = "fastsim@nrel.gov" }]
+description = "Tool for modeling vehicle powertrains"
+readme = "README.md"
+requires-python = ">=3.8,<3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: Other/Proprietary License",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+]
+dependencies = [
+    "pandas>=1",
+    "matplotlib>=3.3",
+    "numpy>=1.18",
+    "seaborn>=0.10",
+    "pymoo==0.6",
+    "typing_extensions",
+]
+
+[project.urls]
+"Homepage" = "https://www.nrel.gov/transportation/fastsim.html" 
+
+[project.optional-dependencies]
+dev = ["black", "pytest", "maturin"]
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["."]  # list of folders that contain the packages (["."] by default)
+include = ["fastsim*"]  # package names should match these glob patterns (["*"] by default)
+namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+
+
+
