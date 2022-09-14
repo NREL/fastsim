@@ -41,4 +41,4 @@ jobs:
         run: |
           pip install setuptools_rust pytest
           pip install . 
-          pytest tests/ -v
+          pytest fastsim/tests/ -v
