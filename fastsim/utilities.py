@@ -115,14 +115,10 @@ def set_log_level(level: str | int):
         logging.getLogger("fastsimrust").setLevel(level)
 
 def disable_logging():
-    logging.getLogger("fastsim").disabled = True
-    if RUST_AVAILABLE:
-        logging.getLogger("fastsimrust").disabled = True
+    set_log_level(logging.CRITICAL + 1)
 
 def enable_logging():
-    logging.getLogger("fastsim").disabled = False
-    if RUST_AVAILABLE:
-        logging.getLogger("fastsimrust").disabled = False
+    set_log_level(logging.WARNING)
 
 def set_log_filename(filename: str | Path):
     handler = logging.FileHandler(filename)
