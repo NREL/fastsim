@@ -1,8 +1,12 @@
 import unittest
 from fastsim import auxiliaries
 from fastsim.vehicle import Vehicle
+from fastsim import utils
 
 class test_auxiliaries(unittest.TestCase):
+    def setUp(self):
+        utils.disable_logging()
+    
     def test_abc_to_drag_coeffs(self):
         veh = Vehicle.from_vehdb(1).to_rust()
         a = 25.91

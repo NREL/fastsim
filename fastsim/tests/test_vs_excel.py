@@ -16,6 +16,7 @@ from math import isclose
 import importlib
 import unittest
 
+import fastsim as fsim
 from fastsim import simdrive, vehicle, cycle, simdrivelabel
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 importlib.reload(simdrivelabel) # useful for debugging
@@ -255,6 +256,9 @@ def main(err_tol=0.001, prev_res_path=PREV_RES_PATH, rerun_excel=False, verbose=
 ACCEL_ERR_TOL = 0.022 
 
 class TestExcel(unittest.TestCase):
+    def setUp(self):
+        fsim.utils.disable_logging()
+    
     def test_vs_excel(self):
         "Compares results against archived Excel results."
         for use_rust in _USE_RUST_LIST:

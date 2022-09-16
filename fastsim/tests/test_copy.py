@@ -4,6 +4,7 @@ import unittest
 
 import numpy as np
 
+import fastsim as fsim
 import fastsim.vehicle_base as fsvb
 from fastsim import cycle, params, utils, vehicle, simdrive
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
@@ -14,6 +15,9 @@ else:
 
 
 class TestCopy(unittest.TestCase):
+    def setUp(self):
+        fsim.utils.disable_logging()
+    
     def test_copy_cycle(self):
         "Test that cycle_copy works as expected"
         cyc = cycle.Cycle.from_file('udds')

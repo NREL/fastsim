@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+import fastsim as fsim
 from fastsim import cycle, vehicle, simdrive
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 from fastsim.auxiliaries import set_nested_values
@@ -19,6 +20,9 @@ if USE_RUST and not RUST_AVAILABLE:
 
 class TestSimDriveClassic(unittest.TestCase):
     """Tests for fastsim.simdrive.SimDriveClassic methods"""
+
+    def setUp(self):
+        fsim.utils.disable_logging()
 
     def test_sim_drive_step(self):
         "Verify that sim_drive_step produces an expected result."

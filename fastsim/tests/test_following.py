@@ -19,6 +19,8 @@ if USE_RUST and not RUST_AVAILABLE:
 
 class TestFollowing(unittest.TestCase):
     def setUp(self) -> None:
+        fastsim.utils.disable_logging()
+
         self.initial_gap_m = 5.0
         trapz = fastsim.cycle.make_cycle(
             [0.0, 10.0, 45.0, 55.0, 150.0],

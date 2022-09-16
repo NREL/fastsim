@@ -172,6 +172,7 @@ def make_dvdd_plot(
 
 class TestCoasting(unittest.TestCase):
     def setUp(self) -> None:
+        fastsim.utils.disable_logging()
         # create a trapezoidal trip shape
         # initial ramp: d(t=10s) = 100 meters distance
         # distance by time in constant speed region = d(t) = 100m + (t - 10s) * 20m/s 

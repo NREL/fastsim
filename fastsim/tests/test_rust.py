@@ -5,10 +5,10 @@ import unittest
 
 import numpy as np
 
+import fastsim as fsim
 import fastsim.vehicle_base as fsvb
 from fastsim import cycle, vehicle, simdrive
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
-import fastsimrust
 
 if RUST_AVAILABLE:
     import fastsimrust as fsr
@@ -53,6 +53,9 @@ TEST_VARS = [
 ]
 
 class TestRust(unittest.TestCase):
+    def setUp(self):
+        fsim.utils.disable_logging()
+    
     def test_run_sim_drive_conv(self):
         if not RUST_AVAILABLE:
             return
@@ -341,10 +344,10 @@ class TestRust(unittest.TestCase):
         cyc = cycle.Cycle.from_file("udds").to_rust()
         veh = vehicle.Vehicle.from_vehdb(10).to_rust()
         sdr = simdrive.RustSimDrive(cyc, veh)
-        _ = fastsimrust.RustCycle.from_json(cyc.to_json())
-        _ = fastsimrust.RustPhysicalProperties.from_json(sdr.props.to_json())
+        _ = fsr.RustCycle.from_json(cyc.to_json())
+        _ = fsr.RustPhysicalProperties.from_json(sdr.props.to_json())
         # _ = fastsimrust.RustSimDrive.from_json(sdr.to_json()) # this probably fails because vehicle fails
-        _ = fastsimrust.RustSimDriveParams.from_json(sdr.sim_params.to_json())
+        _ = fsr.RustSimDriveParams.from_json(sdr.sim_params.to_json())
         # _ = fastsimrust.RustVehicle.from_json(veh.to_json()) # TODO: figure out why this fails
 
 

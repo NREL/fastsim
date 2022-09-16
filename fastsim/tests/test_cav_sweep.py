@@ -7,6 +7,7 @@ import csv
 from pathlib import Path
 
 from fastsim.docs.cav_sweep import main, CSV_KEYS
+import fastsim as fsim
 
 THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 REGRESSION_DATA = Path(THIS_DIR) / 'test_cav_sweep.csv'
@@ -17,6 +18,9 @@ def env_to_bool(var):
 FASTSIM_TEST_EXTENSIVE = env_to_bool(os.getenv('FASTSIM_TEST_EXTENSIVE'))
 
 class TestCavSweep(unittest.TestCase):
+    def setUp(self):
+        fsim.utils.disable_logging()
+    
     def load_regression_data(self):
         if REGRESSION_DATA.exists():
             data = []

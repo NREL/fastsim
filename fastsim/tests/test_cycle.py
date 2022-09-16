@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+import fastsim as fsim
 from fastsim import cycle, params, inspect_utils
 
 
@@ -72,6 +73,9 @@ def dicts_are_equal(d1, d2, d1_name=None, d2_name=None):
     return (are_equal, issues)
 
 class TestCycle(unittest.TestCase):
+    def setUp(self):
+        fsim.utils.disable_logging()
+    
     def test_monotonicity(self):
         "checks that time is monotonically increasing"
         print(f"Running {type(self)}.test_monotonicity.")

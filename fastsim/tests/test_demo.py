@@ -162,6 +162,9 @@ def use_simdrive_post(use_rust=False, verbose=False):
 
 
 class TestDemo(unittest.TestCase):
+    def setUp(self):
+        fsim.utils.disable_logging()
+
     def test_load_cycle(self):
         for use_rust in [False, True]:
             if use_rust and not RUST_AVAILABLE:

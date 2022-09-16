@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+import fastsim as fsim
 from fastsim import parameters, vehicle
 from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 
@@ -19,6 +20,9 @@ if USE_RUST and not RUST_AVAILABLE:
 
 
 class TestVehicle(unittest.TestCase):
+    def setUp(self):
+        fsim.utils.disable_logging()
+    
     def test_equal(self):
         """Verify that a copied Vehicle and original are equal."""
         if USE_PYTHON:

@@ -9,6 +9,9 @@ import fastsim as fs
 
 
 class TestEcoCruise(unittest.TestCase):
+    def setUp(self):
+        fs.utils.disable_logging()
+    
     def percent_distance_error(self, sd: fs.simdrive.SimDrive) -> float:
         d0 = np.array(sd.cyc0.dist_m).sum()
         d = np.array(sd.cyc.dist_m).sum()

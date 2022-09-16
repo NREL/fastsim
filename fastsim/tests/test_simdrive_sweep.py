@@ -165,6 +165,9 @@ def main(err_tol=1e-4, verbose=True, use_rust=False):
 
 
 class TestSimDriveSweep(unittest.TestCase):
+    def setUp(self):
+        utils.disable_logging()
+
     def test_sweep(self):
         "Compares results against benchmark."
         print(f"Running {type(self)}.")

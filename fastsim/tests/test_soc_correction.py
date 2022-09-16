@@ -60,6 +60,9 @@ def make_plots(cyc_names, results, lang):
 
 
 class TestSocCorrection(unittest.TestCase):
+    def setUp(self):
+        fastsim.utils.disable_logging()
+    
     def test_that_soc_correction_method_works(self):
         "Test using an SOC equivalency method versus other techniques"
         if USE_PYTHON:
