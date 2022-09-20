@@ -5,6 +5,7 @@ on:
     types: [ labeled ]
   push:
     tags:
+      - *
 
 jobs:
   build:
