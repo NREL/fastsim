@@ -22,7 +22,6 @@ use fastsim_core::{cycle::RustCycle, simdrive::RustSimDrive, vehicle::RustVehicl
     .args(&["veh", "veh-file"])
 ))]
 struct FastSimApi {
-    // `conflicts_with` tells rust one or the other, not both, can be provided
     /// Cycle as json string
     #[clap(long, value_parser)]
     cyc: Option<String>,
@@ -68,7 +67,8 @@ pub fn main() {
 
     let veh = RustVehicle::mock_vehicle();
     let mut sim_drive = RustSimDrive::new(cyc, veh);
-    sim_drive.sim_drive(None, None).unwrap();
+    // this does nothing if it has already been called for the constructed `sim_drive`
+    sim_drive.sim_drive(None, None).unwrap(); 
 
     let res_fmt = fastsim_api.res_fmt.unwrap_or_else(|| String::from("mpgge"));
 
