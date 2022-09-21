@@ -3,11 +3,10 @@ name: wheels
 on:
   push:
     tags:
-      - '*'
+      - *
 
 jobs:
   build:
-    if: ${{ github.event.label.name == 'release' }}
     name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os }}
     strategy:
       fail-fast: false
