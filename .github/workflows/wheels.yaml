@@ -1,11 +1,9 @@
 name: wheels 
 
 on:
-  pull_request:
-    types: [ labeled ]
   push:
     tags:
-      - **
+      - *
 
 jobs:
   build:
