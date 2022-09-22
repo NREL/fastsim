@@ -2,8 +2,12 @@ name: wheels
 
 on:
   push:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'  # '[0-9]+.[0-9]+.[0-9]+' to match e.g. 2.0.8
+      branches: [ ndr/test-m1-wheel ]
+
+# on:
+#   push:
+#     tags:
+#       - '[0-9]+.[0-9]+.[0-9]+'  # '[0-9]+.[0-9]+.[0-9]+' to match e.g. 2.0.8
 
 jobs:
   build:
@@ -12,18 +16,18 @@ jobs:
       fail-fast: false
       matrix:
         os:
-        - ubuntu
+        # - ubuntu
         - macos
-        - windows
+        # - windows
         python-version:
         - '8'
         - '9'
         - '10'
-        include:
-        - os: ubuntu
-          platform: linux
-        - os: windows
-          ls: dir
+        # include:
+        # - os: ubuntu
+        #   platform: linux
+        # - os: windows
+        #   ls: dir
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
@@ -45,18 +49,17 @@ jobs:
     - name: install python dependencies
       run: pip install -U setuptools wheel twine cibuildwheel
 
-    - name: build sdist
-      if: matrix.os == 'ubuntu' && matrix.python-version == '8'
-      run: |
-        pip install -U setuptools-rust
-        python setup.py sdist
+    # - name: build sdist
+    #   if: matrix.os == 'ubuntu' && matrix.python-version == '8'
+    #   run: |
+    #     pip install -U setuptools-rust
+    #     python setup.py sdist
     - name: build ${{ matrix.platform || matrix.os }} binaries
       run: cibuildwheel --output-dir dist
       env:
         CIBW_BUILD: 'cp3${{ matrix.python-version }}-*'
         CIBW_SKIP: '*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64'
         CIBW_PLATFORM: ${{ matrix.platform || matrix.os }}
-#         CIBW_TEST_REQUIRES: 'pytest'
         CIBW_TEST_COMMAND: 'python -m unittest discover {project}'
         CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
         CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
@@ -65,6 +68,7 @@ jobs:
         CIBW_BEFORE_BUILD: >
           pip install -U setuptools-rust &&
           rustup default nightly &&
+          rustup target add aarch64-apple-darwin
           rustup show
         CIBW_BEFORE_BUILD_LINUX: >
           pip install -U setuptools-rust &&
