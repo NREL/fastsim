@@ -48,7 +48,7 @@ Developers might want to install the code in place so that FASTSim files can be 
 To do this, a couple of extra steps are required:
 
 1. First install the python code in place `DEVELOP_MODE=True pip install -e ".[dev]"` if on Mac OS, Linux, or Windows Bash (e.g. git bash, VSCode bash).  On Windows, run `set DEVELOP_MODE=True` then `pip install -e ".[dev]"`.
-1. Within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`
+1. Within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`.
 1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.
 1. In `rust/fastsim-py`, you should now be able to run `maturin develop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py`.
 
@@ -110,6 +110,7 @@ in = component input
 out = component output  
 
 # Release Notes
+2.0.9 -- support for mac ARM/RISC architecture
 2.0.8 -- performance improvements
 2.0.6 -- `dist_v2_m` fixes and preliminary CAV functionality
 2.0.5 -- added `to_rust` method for cycle  

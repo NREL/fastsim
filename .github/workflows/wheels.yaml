@@ -1,9 +1,9 @@
-name: wheels 
+name: wheels
 
 on:
   push:
     tags:
-      - '[0-9]+.[0-9]+.[0-9]+'  # '[0-9]+.[0-9]+.[0-9]+' to match e.g. 2.0.8
+      - "[0-9]+.[0-9]+.[0-9]+" # '[0-9]+.[0-9]+.[0-9]+' to match e.g. 2.0.8
 
 jobs:
   build:
@@ -12,35 +12,35 @@ jobs:
       fail-fast: false
       matrix:
         os:
-        - ubuntu
-        - macos
-        - windows
+          - ubuntu
+          - macos
+          - windows
         python-version:
-        - '8'
-        - '9'
-        - '10'
+          - "8"
+          - "9"
+          - "10"
         include:
-        - os: ubuntu
-          platform: linux
-        - os: windows
-          ls: dir
+          - os: ubuntu
+            platform: linux
+          - os: windows
+            ls: dir
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: set up python
-      uses: actions/setup-python@v1
-      with:
-        python-version: '3.8'
+      - name: set up python
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.8"
 
-    - name: set up rust
-      if: matrix.os != 'ubuntu'
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: nightly
-        override: true
+      - name: set up rust
+        if: matrix.os != 'ubuntu'
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
 
     - run: rustup target add aarch64-apple-darwin
       if: matrix.os == 'macos'
@@ -79,6 +79,6 @@ jobs:
     - name: list dist files
       run: ${{ matrix.ls || 'ls -lh' }} dist/
 
-    - uses: actions/upload-artifact@v3
-      with:
-        path: ./dist/*
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./dist/*
