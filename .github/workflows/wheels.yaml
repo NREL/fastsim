@@ -16,18 +16,18 @@ jobs:
       fail-fast: false
       matrix:
         os:
-        # - ubuntu
+        - ubuntu
         - macos
-        # - windows
+        - windows
         python-version:
         - '8'
         - '9'
         - '10'
-        # include:
-        # - os: ubuntu
-        #   platform: linux
-        # - os: windows
-        #   ls: dir
+        include:
+        - os: ubuntu
+          platform: linux
+        - os: windows
+          ls: dir
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
@@ -65,7 +65,7 @@ jobs:
         CIBW_PLATFORM: ${{ matrix.platform || matrix.os }}
         CIBW_TEST_COMMAND: 'python -m unittest discover {project}'
         CIBW_ARCHS_MACOS: 'universal2'
-        # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2, tests can run on cross-compiled binaries
+        # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
         CIBW_TEST_SKIP: '*_universal2:arm64'
         CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
         CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
@@ -79,21 +79,7 @@ jobs:
           pip install -U setuptools-rust &&
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
           rustup show
-    # - name: build windows 32bit binaries
-    #   if: matrix.os == 'windows'
-    #   run: cibuildwheel --output-dir dist
-    #   env:
-    #     CIBW_BUILD: 'cp3${{ matrix.python-version }}-win32'
-    #     CIBW_PLATFORM: windows
-    #     CIBW_TEST_REQUIRES: 'pytest'
-    #     CIBW_TEST_COMMAND: 'pytest {project}/tests -s'
-    #     CIBW_ENVIRONMENT: 'PATH="$UserProfile\.cargo\bin;$PATH"'
-    #     CIBW_BEFORE_BUILD: >
-    #       pip install -U setuptools-rust &&
-    #       rustup toolchain install nightly-i686-pc-windows-msvc &&
-    #       rustup default nightly-i686-pc-windows-msvc &&
-    #       rustup override set nightly-i686-pc-windows-msvc &&
-    #       rustup show
+
     - name: list dist files
       run: ${{ matrix.ls || 'ls -lh' }} dist/
 
