@@ -69,6 +69,7 @@ jobs:
           pip install -U setuptools-rust &&
           rustup default nightly &&
           rustup target add aarch64-apple-darwin
+          cargo build -Zbuild-std
           rustup show
         CIBW_BEFORE_BUILD_LINUX: >
           pip install -U setuptools-rust &&
