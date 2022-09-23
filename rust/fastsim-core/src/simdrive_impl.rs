@@ -2,8 +2,9 @@
 
 use super::cycle::{
     accel_array_for_constant_jerk, accel_for_constant_jerk, calc_constant_jerk_trajectory,
-    detect_passing, trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance,
-    create_dist_and_target_speeds_by_microtrip, extend_cycle, PassingInfo, RustCycle,
+    create_dist_and_target_speeds_by_microtrip, detect_passing, extend_cycle,
+    trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance, PassingInfo,
+    RustCycle,
 };
 use super::params;
 use super::utils::{
@@ -520,35 +521,50 @@ impl RustSimDrive {
     /// Mutates the current SimDrive object for eco-cruise.
     pub fn activate_eco_cruise_rust(
         &mut self,
-        by_microtrip: bool, // False
-        extend_fraction: f64, // 0.1
-        blend_factor: f64, // 0.0
+        by_microtrip: bool,            // False
+        extend_fraction: f64,          // 0.1
+        blend_factor: f64,             // 0.0
         min_target_speed_m_per_s: f64, // 8.0
     ) -> Result<(), String> {
         self.sim_params.idm_allow = true;
         if !by_microtrip {
-            self.sim_params.idm_v_desired_m_per_s =
-                if self.cyc0.time_s.len() > 0 && self.cyc0.time_s[self.cyc0.time_s.len()-1] > 0.0 {
-                    self.cyc0.dist_m().slice(s![0..self.cyc0.time_s.len()]).sum()
-                    / self.cyc0.time_s[self.cyc0.time_s.len()-1]
-                } else {
-                    0.0
-                };
+            self.sim_params.idm_v_desired_m_per_s = if self.cyc0.time_s.len() > 0
+                && self.cyc0.time_s[self.cyc0.time_s.len() - 1] > 0.0
+            {
+                self.cyc0
+                    .dist_m()
+                    .slice(s![0..self.cyc0.time_s.len()])
+                    .sum()
+                    / self.cyc0.time_s[self.cyc0.time_s.len() - 1]
+            } else {
+                0.0
+            };
         } else {
             if blend_factor > 1.0 || blend_factor < 0.0 {
-                return Err(format!("blend_factor must be between 0 and 1 but got {}", blend_factor));
+                return Err(format!(
+                    "blend_factor must be between 0 and 1 but got {}",
+                    blend_factor
+                ));
             }
             if min_target_speed_m_per_s < 0.0 {
-                return Err(format!("min_target_speed_m_per_s must be >= 0 but got {}", min_target_speed_m_per_s));
+                return Err(format!(
+                    "min_target_speed_m_per_s must be >= 0 but got {}",
+                    min_target_speed_m_per_s
+                ));
             }
             self.sim_params.idm_v_desired_in_m_per_s_by_distance_m =
-                Some(
-                    create_dist_and_target_speeds_by_microtrip(
-                        &self.cyc0, blend_factor, min_target_speed_m_per_s));
+                Some(create_dist_and_target_speeds_by_microtrip(
+                    &self.cyc0,
+                    blend_factor,
+                    min_target_speed_m_per_s,
+                ));
         }
         // Extend the duration of the base cycle
         if extend_fraction < 0.0 {
-            return Err(format!("extend_fraction must be >= 0.0 but got {}", extend_fraction));
+            return Err(format!(
+                "extend_fraction must be >= 0.0 but got {}",
+                extend_fraction
+            ));
         }
         if extend_fraction > 0.0 {
             self.cyc0 = extend_cycle(&self.cyc0, None, Some(extend_fraction));
@@ -556,7 +572,6 @@ impl RustSimDrive {
         }
         Ok(())
     }
-
 
     /// This is a specialty method which should be called prior to using
     /// sim_drive_step in a loop.
@@ -746,21 +761,22 @@ impl RustSimDrive {
     /// Step through 1 time step.
     pub fn step(&mut self) -> Result<(), String> {
         if self.sim_params.idm_allow {
-            self.idm_target_speed_m_per_s[self.i] = match &self.sim_params.idm_v_desired_in_m_per_s_by_distance_m {
-                Some(vtgt_by_dist) => {
-                    let mut found_v_target = vtgt_by_dist[0].1;
-                    let current_d = self.cyc.dist_m().slice(s![0..self.i]).sum();
-                    for (d, v_target) in vtgt_by_dist {
-                        if &current_d >= d {
-                            found_v_target = *v_target;
-                        } else {
-                            break;
+            self.idm_target_speed_m_per_s[self.i] =
+                match &self.sim_params.idm_v_desired_in_m_per_s_by_distance_m {
+                    Some(vtgt_by_dist) => {
+                        let mut found_v_target = vtgt_by_dist[0].1;
+                        let current_d = self.cyc.dist_m().slice(s![0..self.i]).sum();
+                        for (d, v_target) in vtgt_by_dist {
+                            if &current_d >= d {
+                                found_v_target = *v_target;
+                            } else {
+                                break;
+                            }
                         }
+                        found_v_target
                     }
-                    found_v_target
-                },
-                None => self.sim_params.idm_v_desired_m_per_s
-            };
+                    None => self.sim_params.idm_v_desired_m_per_s,
+                };
             self.set_speed_for_target_gap(self.i);
         }
         if self.sim_params.coast_allow {
@@ -2802,7 +2818,6 @@ impl RustSimDrive {
             if self.cyc.mps[i]
                 < (self.sim_params.coast_brake_start_speed_m_per_s - brake_speed_start_tol_m_per_s)
             {
-                let v1_before = self.cyc.mps[i];
                 let (_, num_steps) = self.cyc.modify_with_braking_trajectory(
                     self.sim_params.coast_brake_accel_m_per_s2,
                     i,
@@ -2811,8 +2826,6 @@ impl RustSimDrive {
                 for idx in i..self.cyc.time_s.len() {
                     self.impose_coast[idx] = idx < (i + num_steps);
                 }
-                let v1_after = self.cyc.mps[i];
-                assert_ne!(v1_before, v1_after);
                 adjusted_current_speed = true;
             } else {
                 let (traj_found, traj_n, traj_jerk_m_per_s3, traj_accel_m_per_s2) = self

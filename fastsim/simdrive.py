@@ -2143,15 +2143,12 @@ class SimDrive(object):
             adjusted_current_speed = False
             brake_speed_start_tol_m_per_s = 0.1
             if self.cyc.mps[i] < (self.sim_params.coast_brake_start_speed_m_per_s - brake_speed_start_tol_m_per_s):
-                v1_before = self.cyc.mps[i]
                 _, num_steps = self.cyc.modify_with_braking_trajectory(
                     self.sim_params.coast_brake_accel_m_per_s2, i)
                 self.impose_coast[i:] = False
                 for di in range(0, num_steps):
                     if (i + di) <= max_idx:
                         self.impose_coast[i + di] = True
-                v1_after = self.cyc.mps[i]
-                assert v1_before != v1_after
                 adjusted_current_speed = True
             else:
                 traj_found, traj_n, traj_jerk_m__s3, traj_accel_m__s2 = self._calc_next_rendezvous_trajectory(
