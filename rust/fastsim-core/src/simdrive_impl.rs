@@ -2807,7 +2807,6 @@ impl RustSimDrive {
             if self.cyc.mps[i]
                 < (self.sim_params.coast_brake_start_speed_m_per_s - brake_speed_start_tol_m_per_s)
             {
-                let v1_before = self.cyc.mps[i];
                 let (_, num_steps) = self.cyc.modify_with_braking_trajectory(
                     self.sim_params.coast_brake_accel_m_per_s2,
                     i,
@@ -2816,8 +2815,6 @@ impl RustSimDrive {
                 for idx in i..self.cyc.time_s.len() {
                     self.impose_coast[idx] = idx < (i + num_steps);
                 }
-                let v1_after = self.cyc.mps[i];
-                assert_ne!(v1_before, v1_after);
                 adjusted_current_speed = true;
             } else {
                 let (traj_found, traj_n, traj_jerk_m_per_s3, traj_accel_m_per_s2) = self
