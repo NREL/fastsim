@@ -528,7 +528,7 @@ impl RustSimDrive {
     ) -> Result<(), String> {
         self.sim_params.idm_allow = true;
         if !by_microtrip {
-            self.sim_params.idm_v_desired_m_per_s = if self.cyc0.time_s.len() > 0
+            self.sim_params.idm_v_desired_m_per_s = if !self.cyc0.time_s.is_empty()
                 && self.cyc0.time_s[self.cyc0.time_s.len() - 1] > 0.0
             {
                 self.cyc0
@@ -540,7 +540,7 @@ impl RustSimDrive {
                 0.0
             };
         } else {
-            if blend_factor > 1.0 || blend_factor < 0.0 {
+            if !(0.0..=1.0).contains(&blend_factor) {
                 return Err(format!(
                     "blend_factor must be between 0 and 1 but got {}",
                     blend_factor
@@ -2044,9 +2044,7 @@ impl RustSimDrive {
                     i,
                     self.cyc.dt_s_at_i(i) * t_dilation[t_dilation.len() - 1],
                 );
-                if let Err(message) = self.solve_step(i) {
-                    return Err(message);
-                }
+                self.solve_step(i)?;
 
                 trace_met =
                     // convergence criteria
@@ -2083,9 +2081,6 @@ impl RustSimDrive {
 
                 self.solve_step(i)?;
 
-                if let Err(message) = self.solve_step(i) {
-                    return Err(message);
-                }
                 self.trace_miss_iters[i] += 1;
 
                 trace_met =
@@ -2564,24 +2559,21 @@ impl RustSimDrive {
                 }
             }
         }
-        match coast_delay {
-            Some(cd) => {
-                if cd < 0 {
-                    let mut new_cd = cd;
-                    for idx in i..self.cyc0.mps.len() {
-                        self.coast_delay_index[idx] = new_cd;
-                        new_cd += 1;
-                        if new_cd == 0 {
-                            break;
-                        }
-                    }
-                } else {
-                    for idx in i..self.cyc0.mps.len() {
-                        self.coast_delay_index[idx] = cd;
+        if let Some(cd) = coast_delay {
+            if cd < 0 {
+                let mut new_cd = cd;
+                for idx in i..self.cyc0.mps.len() {
+                    self.coast_delay_index[idx] = new_cd;
+                    new_cd += 1;
+                    if new_cd == 0 {
+                        break;
                     }
                 }
+            } else {
+                for idx in i..self.cyc0.mps.len() {
+                    self.coast_delay_index[idx] = cd;
+                }
             }
-            None => (),
         }
     }
 
@@ -2774,11 +2766,8 @@ impl RustSimDrive {
                     }
                     None => None,
                 };
-                match target_idx {
-                    Some(ti) => {
-                        self.cyc.mps[i] = self.cyc0.mps[cmp::min(ti, self.cyc0.mps.len() - 1)];
-                    }
-                    None => (),
+                if let Some(ti) = target_idx {
+                    self.cyc.mps[i] = self.cyc0.mps[cmp::min(ti, self.cyc0.mps.len() - 1)];
                 }
             }
             return Ok(());

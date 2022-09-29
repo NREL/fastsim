@@ -1,5 +1,5 @@
 pub use bincode::{deserialize, serialize};
-pub use ndarray::{array, concatenate, s, Array, Array1, Axis};
+pub use ndarray::{array, concatenate, s, Array, Array1, Axis, ArrayView1};
 pub use serde::{Deserialize, Serialize};
 pub use serde_json;
 pub use std::error::Error;

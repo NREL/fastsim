@@ -146,7 +146,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
 
                     // println!("{}", type_str);
                     // println!("{}", &re.captures(&type_str).unwrap()[1]);
-                    let contained_dtype: TokenStream2 = (&re.captures(&type_str).unwrap()[1])
+                    let contained_dtype: TokenStream2 = re.captures(&type_str).unwrap()[1]
                         .to_string()
                         .parse()
                         .unwrap();
