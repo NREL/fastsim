@@ -5,7 +5,6 @@ extern crate ndarray;
 #[cfg(feature = "pyo3")]
 use std::collections::HashMap;
 use std::fs::File;
-use std::ops::Deref;
 use std::path::PathBuf;
 
 // local
@@ -178,7 +177,7 @@ pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) ->
         if vavg > stopped_speed_m_per_s {
             t_move_s += dt;
         }
-    } 
+    }
     t_move_s
 }
 
@@ -191,10 +190,7 @@ pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) ->
 ///     separation
 /// keep_name: (optional) bool, if True and cycle contains "name", adds
 ///     that name to all microtrips
-pub fn to_microtrips(
-    cycle: &RustCycle,
-    stop_speed_m_per_s: Option<f64>,
-) -> Vec<RustCycle> {
+pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<RustCycle> {
     let stop_speed_m_per_s = stop_speed_m_per_s.unwrap_or(1e-6);
     let mut microtrips: Vec<RustCycle> = Vec::new();
     let ts = cycle.time_s.to_vec();
@@ -211,27 +207,25 @@ pub fn to_microtrips(
         let v = vs[idx];
         let g = gs[idx];
         let r = rs[idx];
-        if v > stop_speed_m_per_s && !moving {
-            if mt_ts.len() > 1 {
-                let last_idx = mt_ts.len() - 1;
-                let last_t = mt_ts[last_idx];
-                let last_v = mt_vs[last_idx];
-                let last_g = mt_gs[last_idx];
-                let last_r = mt_rs[last_idx];
-                mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
-                microtrips.push(RustCycle {
-                    time_s: Array::from_vec(mt_ts.clone()),
-                    mps: Array::from_vec(mt_vs.clone()),
-                    grade: Array::from_vec(mt_gs.clone()),
-                    road_type: Array::from_vec(mt_rs.clone()),
-                    name: cycle.name.clone(),
-                    orphaned: false
-                });
-                mt_ts = vec![last_t];
-                mt_vs = vec![last_v];
-                mt_gs = vec![last_g];
-                mt_rs = vec![last_r];
-            }
+        if v > stop_speed_m_per_s && !moving && mt_ts.len() > 1 {
+            let last_idx = mt_ts.len() - 1;
+            let last_t = mt_ts[last_idx];
+            let last_v = mt_vs[last_idx];
+            let last_g = mt_gs[last_idx];
+            let last_r = mt_rs[last_idx];
+            mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
+            microtrips.push(RustCycle {
+                time_s: Array::from_vec(mt_ts.clone()),
+                mps: Array::from_vec(mt_vs.clone()),
+                grade: Array::from_vec(mt_gs.clone()),
+                road_type: Array::from_vec(mt_rs.clone()),
+                name: cycle.name.clone(),
+                orphaned: false,
+            });
+            mt_ts = vec![last_t];
+            mt_vs = vec![last_v];
+            mt_gs = vec![last_g];
+            mt_rs = vec![last_r];
         }
         mt_ts.push(t);
         mt_vs.push(v);
@@ -239,18 +233,16 @@ pub fn to_microtrips(
         mt_rs.push(r);
         moving = v > stop_speed_m_per_s;
     }
-    if mt_ts.len() > 0 {
+    if !mt_ts.is_empty() {
         mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
-        microtrips.push(
-            RustCycle {
-                time_s: Array::from_vec(mt_ts),
-                mps: Array::from_vec(mt_vs),
-                grade: Array::from_vec(mt_gs),
-                road_type: Array::from_vec(mt_rs),
-                name: cycle.name.clone(),
-                orphaned: false
-            }
-        );
+        microtrips.push(RustCycle {
+            time_s: Array::from_vec(mt_ts),
+            mps: Array::from_vec(mt_vs),
+            grade: Array::from_vec(mt_gs),
+            road_type: Array::from_vec(mt_rs),
+            name: cycle.name.clone(),
+            orphaned: false,
+        });
     }
     microtrips
 }
@@ -270,7 +262,7 @@ pub fn to_microtrips(
 pub fn create_dist_and_target_speeds_by_microtrip(
     cyc: &RustCycle,
     blend_factor: f64,
-    min_target_speed_mps: f64
+    min_target_speed_mps: f64,
 ) -> Vec<(f64, f64)> {
     let blend_factor = if blend_factor < 0.0 {
         0.0
@@ -281,21 +273,31 @@ pub fn create_dist_and_target_speeds_by_microtrip(
     };
     let mut dist_and_tgt_speeds: Vec<(f64, f64)> = Vec::new();
     // Split cycle into microtrips
-    let microtrips = to_microtrips(&cyc, None);
+    let microtrips = to_microtrips(cyc, None);
     let mut dist_at_start_of_microtrip_m = 0.0;
     for mt_cyc in microtrips {
         let mt_dist_m = mt_cyc.dist_m().sum();
-        let mt_time_s = mt_cyc.time_s[mt_cyc.time_s.len()-1] - mt_cyc.time_s[0];
+        let mt_time_s = mt_cyc.time_s[mt_cyc.time_s.len() - 1] - mt_cyc.time_s[0];
         let mt_moving_time_s = time_spent_moving(&mt_cyc, None);
-        let mt_avg_spd_m_per_s = if mt_time_s > 0.0 { mt_dist_m / mt_time_s } else { 0.0 };
-        let mt_moving_avg_spd_m_per_s = if mt_moving_time_s > 0.0 { mt_dist_m / mt_moving_time_s } else { 0.0 };
+        let mt_avg_spd_m_per_s = if mt_time_s > 0.0 {
+            mt_dist_m / mt_time_s
+        } else {
+            0.0
+        };
+        let mt_moving_avg_spd_m_per_s = if mt_moving_time_s > 0.0 {
+            mt_dist_m / mt_moving_time_s
+        } else {
+            0.0
+        };
         let mt_target_spd_m_per_s =
             (blend_factor * (mt_moving_avg_spd_m_per_s - mt_avg_spd_m_per_s) + mt_avg_spd_m_per_s)
-            .min(mt_moving_avg_spd_m_per_s).max(mt_avg_spd_m_per_s);
+                .min(mt_moving_avg_spd_m_per_s)
+                .max(mt_avg_spd_m_per_s);
         if mt_dist_m > 0.0 {
-            dist_and_tgt_speeds.push(
-                (dist_at_start_of_microtrip_m, mt_target_spd_m_per_s.max(min_target_speed_mps))
-            );
+            dist_and_tgt_speeds.push((
+                dist_at_start_of_microtrip_m,
+                mt_target_spd_m_per_s.max(min_target_speed_mps),
+            ));
             dist_at_start_of_microtrip_m += mt_dist_m;
         }
     }
@@ -311,7 +313,7 @@ pub fn create_dist_and_target_speeds_by_microtrip(
 pub fn extend_cycle(
     cyc: &RustCycle,
     absolute_time_s: Option<f64>, // =0.0,
-    time_fraction: Option<f64> // =0.0,
+    time_fraction: Option<f64>,   // =0.0,
 ) -> RustCycle {
     let absolute_time_s = absolute_time_s.unwrap_or(0.0);
     let time_fraction = time_fraction.unwrap_or(0.0);
@@ -319,14 +321,12 @@ pub fn extend_cycle(
     let mut vs = cyc.mps.to_vec();
     let mut gs = cyc.grade.to_vec();
     let mut rs = cyc.road_type.to_vec();
-    let extra_time_s =
-        (absolute_time_s
-        + (time_fraction * ts[ts.len() - 1])).round() as i32;
+    let extra_time_s = (absolute_time_s + (time_fraction * ts[ts.len() - 1])).round() as i32;
     if extra_time_s == 0 {
         return cyc.clone();
     }
     let dt = 1;
-    let t_end = ts[ts.len()-1];
+    let t_end = ts[ts.len() - 1];
     let mut idx = 1;
     while dt * idx <= extra_time_s {
         let dt_extra = (dt * idx) as f64;
@@ -342,10 +342,9 @@ pub fn extend_cycle(
         grade: Array::from_vec(gs),
         road_type: Array::from_vec(rs),
         name: cyc.name.clone(),
-        orphaned: false
+        orphaned: false,
     }
 }
-
 
 #[cfg(feature = "pyo3")]
 #[allow(unused)] // not sure what this is doing, may get used in proc macro???
@@ -357,7 +356,23 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Default, PartialEq, Clone, Debug, Deserialize, Serialize)]
+pub struct RustCycleElement {
+    /// time [s]
+    #[serde(alias = "cycSecs")]
+    pub time_s: f64,
+    /// speed [m/s]
+    #[serde(alias = "cycMps")]
+    pub mps: f64,
+    /// grade [rise/run]
+    #[serde(alias = "cycGrade")]
+    pub grade: f64,
+    /// max possible charge rate from roadway
+    #[serde(alias = "cycRoadType")]
+    pub road_type: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[add_pyo3_api(
     #[new]
     pub fn __new__(
@@ -483,12 +498,16 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 ///    * Another sublist.
 pub struct RustCycle {
     /// array of time [s]
+    #[serde(alias = "cycSecs")]
     pub time_s: Array1<f64>,
     /// array of speed [m/s]
+    #[serde(alias = "cycMps")]
     pub mps: Array1<f64>,
     /// array of grade [rise/run]
+    #[serde(alias = "cycGrade")]
     pub grade: Array1<f64>,
     /// array of max possible charge rate from roadway
+    #[serde(alias = "cycRoadType")]
     pub road_type: Array1<f64>,
     pub name: String,
     #[serde(skip)]
@@ -516,6 +535,21 @@ impl RustCycle {
             name,
             orphaned: false,
         }
+    }
+
+    pub fn push(&mut self, cyc_elem: RustCycleElement) {
+        self.time_s
+            .append(Axis(0), array![cyc_elem.time_s].view())
+            .unwrap();
+        self.mps
+            .append(Axis(0), array![cyc_elem.mps].view())
+            .unwrap();
+        self.grade
+            .append(Axis(0), array![cyc_elem.grade].view())
+            .unwrap();
+        self.road_type
+            .append(Axis(0), array![cyc_elem.road_type].view())
+            .unwrap();
     }
 
     #[allow(clippy::len_without_is_empty)]
@@ -711,24 +745,25 @@ impl RustCycle {
     /// Load cycle from csv file
     pub fn from_csv_file(pathstr: &str) -> Result<Self, String> {
         let pathbuf = PathBuf::from(&pathstr);
+
+        // create empty cycle to be populated
+        let mut cyc = Self::default();
+
         if pathbuf.exists() {
-            let mut time_s = Vec::<f64>::new();
-            let mut speed_mps = Vec::<f64>::new();
-            let mut grade = Vec::<f64>::new();
-            let mut road_type = Vec::<f64>::new();
+            // unrwap is ok because if statement checks existence
+            let file = File::open(&pathbuf).unwrap();
             let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
-            let file = File::open(pathbuf).expect("Cycle file not found.");
+            cyc.name = name;
             let mut rdr = csv::ReaderBuilder::new()
                 .has_headers(true)
                 .from_reader(file);
-            for result in rdr.records() {
-                let record = result.expect("Row not able to load.");
-                time_s.push(record[0].parse::<f64>().unwrap());
-                speed_mps.push(record[1].parse::<f64>().unwrap());
-                grade.push(record[2].parse::<f64>().unwrap());
-                road_type.push(record[3].parse::<f64>().unwrap());
+            for result in rdr.deserialize() {
+                // TODO: make this more elegant than unwrap
+                let cyc_elem: RustCycleElement = result.unwrap();
+                cyc.push(cyc_elem);
             }
-            Ok(Self::new(time_s, speed_mps, grade, road_type, name))
+
+            Ok(cyc)
         } else {
             Err(format!("path {} doesn't exist", pathstr))
         }
@@ -747,35 +782,6 @@ impl RustCycle {
         match pathbuf.extension().unwrap().to_str().unwrap() {
             "csv" => Ok(Self::from_csv_file(filename)?),
             _ => Ok(Self::from_file_parser(filename)?),
-        }
-    }
-}
-
-impl Default for RustCycle {
-    fn default() -> Self {
-        let mut mps: Vec<f64> = (0..20)
-            .collect::<Vec<i64>>()
-            .iter()
-            .map(|x| (*x as f64))
-            .collect(); // ramp up
-                        // steady speed
-        mps.extend(vec![20.0; 20]);
-        // ramp down
-        let mut ramp_down: Vec<f64> = (0..=19)
-            .collect::<Vec<i64>>()
-            .iter()
-            .map(|x| (*x as f64))
-            .collect();
-        // reverse in place
-        ramp_down.reverse();
-        mps.extend(ramp_down);
-        Self {
-            time_s: Array1::linspace(0.0, *mps.iter().last().unwrap(), mps.len()),
-            mps: Array1::from_vec(mps.deref().to_vec()),
-            grade: Array1::zeros(mps.len()),
-            road_type: Array1::zeros(mps.len()),
-            name: "default".into(),
-            orphaned: false,
         }
     }
 }
