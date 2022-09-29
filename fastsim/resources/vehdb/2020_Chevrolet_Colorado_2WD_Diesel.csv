@@ -1,0 +1,77 @@
+,Param Name,Param Value,Param Source / Comments
+Category,Scenario name,2020 Chevrolet Colorado 2WD Diesel,"2.8L Turbo Diesel, Crew Cab w/ 5'2"" bed"
+Vehicle,veh_pt_type,Conv,
+,drag_coef,0.4,"from a,b,c targets"
+,frontal_area_m2,2.88,"H=1.795m, W=1.886m, FA=H*W*0.85, https://media.chevrolet.com/content/media/us/en/chevrolet/vehicles/colorado/2020/_jcr_content/iconrow/textfile/file.res/2020%20Chevrolet%20Colorado%20Product%20Guide.pdf"
+,glider_kg,,
+,veh_cg_m,0.53,
+,drive_axle_weight_frac,0.61,
+,wheel_base_m,3.26,https://media.chevrolet.com/content/media/us/en/chevrolet/vehicles/colorado/2020/_jcr_content/iconrow/textfile/file.res/2020%20Chevrolet%20Colorado%20Product%20Guide.pdf
+,cargo_kg,,
+,veh_override_kg,2325,EPA Test Data
+Fuel / Fuel Converter,fs_max_kw,2000,
+,fs_secs_to_peak_pwr,1,
+,fs_kwh,700,21 gal tank
+,fs_kwh_per_kg,11.83,
+,fc_max_kw,135,https://media.chevrolet.com/content/media/us/en/chevrolet/vehicles/colorado/2020/_jcr_content/iconrow/textfile/file.res/2020%20Chevrolet%20Colorado%20Product%20Guide.pdf
+,fc_eff_map,"[0.08, 0.10, 0.14, 0.20, 0.24, 0.32, 0.40, 0.42, 0.41, 0.38, 0.36, 0.34]",Adjusted from standard diesel map
+,fc_eff_type,Diesel,
+,fc_sec_to_peak_pwr,6,
+,fc_base_kg,61,
+,fc_kw_per_kg,2.13,
+,mc_pwr_out_perc,,
+,mc_max_kw,0,
+,mc_sec_to_peak_pwr,4,
+,stop_start,FALSE,
+,mc_pe_kg_per_kw,0.833,
+,mc_pe_base_kg,21.6,
+ESS,ess_max_kw,0,
+,ess_max_kwh,0,
+,ess_kg_per_kwh,8,
+,ess_base_kg,75,
+,ess_round_trip_eff,0.97,
+,ess_life_coef_a,110,
+,ess_life_coef_b,-0.6811,
+Wheels,wheel_inertia_kg_m2,2.38,bndtechsource.wixsite.com/home/rotational-inertia-calculator
+,num_wheels,4,
+,wheel_rr_coef,0.009,
+,wheel_radius_m,0.4064,P265/70R16
+,wheel_coef_of_fric,0.7,
+"SOC, ESS Discharch / Charge",min_soc,,
+,max_soc,,
+,ess_dischg_to_fc_max_eff_perc,,
+,ess_chg_to_fc_max_eff_perc,,
+"Acceleration, FC, Efficiency, Mass, Regen, etc",max_accel_buffer_mph,,
+,max_accel_buffer_perc_of_useable_soc,,
+,perc_high_acc_buf,,
+,mph_fc_on,,
+,kw_demand_fc_on,,
+,alt_eff,1,
+,chg_eff,0.86,
+,aux_kw,1.5,
+,force_aux_on_fc,FALSE,
+,trans_kg,114,
+,trans_eff,0.92,
+,comp_mass_multiplier,1.4,
+,ess_to_fuel_ok_error,0.005,
+,max_regen,0.98,
+"Val: MPGGE, KwhPM, 0 to 60, etc",val_udds_mpgge,20,https://www.fueleconomy.gov/feg/Find.do?action=sbs&id=41615
+,val_hwy_mpgge,30,https://www.fueleconomy.gov/feg/Find.do?action=sbs&id=41615
+,val_comb_mpgge,23,https://www.fueleconomy.gov/feg/Find.do?action=sbs&id=41615
+,val_udds_kwh_per_mile,,
+,val_hwy_kwh_per_mile,,
+,val_comb_kwh_per_mile,,
+,val_cd_range_mi,,
+,val_const65_mph_kwh_per_mile,,
+,val_const60_mph_kwh_per_mile,,
+,val_const55_mph_kwh_per_mile,,
+,val_const45_mph_kwh_per_mile,,
+,val_unadj_udds_kwh_per_mile,,
+,val_unadj_hwy_kwh_per_mile,,
+,val0_to60_mph,,
+,val_ess_life_miles,,
+,val_range_miles,,
+,val_veh_base_cost,,
+,val_msrp,,
+,min_fc_time_on,30,
+,idle_fc_kw,1.96,
