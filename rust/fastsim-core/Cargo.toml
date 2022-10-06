@@ -14,6 +14,9 @@ serde_yaml = "0.8.24"
 bincode = "1.3.3"
 log = "0.4.17"
 anyhow = { workspace = true }
+polynomial = "0.2.4"
+argmin = "0.7.0"
+argmin-math = { version = "0.2.1", features = ["ndarray_latest-nolinalg-serde"] }
 
 
 [package.metadata.docs.rs]
