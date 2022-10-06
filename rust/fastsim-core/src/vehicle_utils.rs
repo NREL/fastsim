@@ -64,3 +64,30 @@ pub fn abc_to_drag_coeffs(veh: &mut RustVehicle,
 
     return (drag_coef, wheel_rr_coef);
 }
+
+pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f64>) -> f64 {
+    // Returns time-averaged error for model and test signal.
+    // Arguments:
+    // ----------
+    // model: array of values for signal from model
+    // test: array of values for signal from test data
+    // time_steps: array (or scalar for constant) of values for model time steps [s]
+    // test: array of values for signal from test
+
+    // Output:
+    // -------
+    // err: integral of absolute value of difference between model and
+    // test per time
+
+    assert!(model.len() == test.len() && test.len() == time_steps.len(),
+        "{}, {}, {}", model.len(), test.len(), time_steps.len());
+
+    let mut err: f64 = 0.0;
+    let y: Array1<f64> = (model - test).mapv(f64::abs);
+
+    for index in 1..time_steps.len()-1 {
+        err += 0.5 * (time_steps[index + 1] - time_steps[index]) * (y[index] + y[index + 1]);
+    }
+
+    return err / (time_steps[time_steps.len() - 1] - time_steps[0]);
+}
