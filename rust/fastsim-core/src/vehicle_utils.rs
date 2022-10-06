@@ -1,5 +1,8 @@
 //! Module for utility functions that support the vehicle struct.
 
+use argmin::core::{CostFunction, Error, Executor, OptimizationResult, State};
+use argmin::solver::neldermead::NelderMead;
+use ndarray::{array, Array1};
 use polynomial::Polynomial;
 
 use crate::imports::*;
@@ -56,8 +59,24 @@ pub fn abc_to_drag_coeffs(veh: &mut RustVehicle,
     let drag_coef: f64;
     let wheel_rr_coef: f64;
 
-    drag_coef = c_newton__mps2 / (0.5 * veh.frontal_area_m2 * cur_ambient_air_density_kg__m3);
-    wheel_rr_coef = a_newton / veh.veh_kg / props.a_grav_mps2;
+    if simdrive_optimize.unwrap_or(true) {
+        let cost: GetError = GetError { cycle: &cyc, vehicle: &veh, dyno_func_lb: &dyno_func_lb };
+        let solver: NelderMead<Array1<f64>, f64> = NelderMead::new(vec![
+            array![0.0, 0.0],
+            array![1.0, 0.0],
+            array![1.0, 1.0],
+        ]);
+        let res: OptimizationResult<_, _, _> = Executor::new(cost, solver)
+            .configure(|state| state.max_iters(100))
+            .run()
+            .unwrap();
+        let best_param: &Array1<f64> = res.state().get_best_param().unwrap();
+        drag_coef = best_param[0];
+        wheel_rr_coef = best_param[1];
+    } else {
+        drag_coef = c_newton__mps2 / (0.5 * veh.frontal_area_m2 * cur_ambient_air_density_kg__m3);
+        wheel_rr_coef = a_newton / veh.veh_kg / props.a_grav_mps2;
+    }
 
     veh.drag_coef = drag_coef;
     veh.wheel_rr_coef = wheel_rr_coef;
@@ -90,4 +109,44 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
     }
 
     return err / (time_steps[time_steps.len() - 1] - time_steps[0]);
+}
+
+struct GetError<'a> {
+    cycle: &'a RustCycle,
+    vehicle: &'a RustVehicle,
+    dyno_func_lb: &'a Polynomial<f64>,
+}
+
+impl CostFunction for GetError<'_> {
+    type Param = Array1<f64>;
+    type Output = f64;
+
+    fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+        let mut veh: RustVehicle = self.vehicle.clone();
+        let cyc: RustCycle = self.cycle.clone();
+        let dyno_func_lb: Polynomial<f64> = self.dyno_func_lb.clone();
+
+        veh.drag_coef = x[0];
+        veh.wheel_rr_coef = x[1];
+        
+        let mut sd_coast: RustSimDrive = RustSimDrive::new(self.cycle.clone(), veh);
+        sd_coast.impose_coast = Array::from_vec(vec![true; sd_coast.impose_coast.len()]);
+        let _sim_drive_result: Result<_, _> = sd_coast.sim_drive(None, None);
+        
+        let cutoff_vec: Vec<usize> = sd_coast.mps_ach.indexed_iter()
+            .filter_map(|(index, &item)| (item < 0.1).then(|| index))
+            .collect();
+        let cutoff: usize;
+        if cutoff_vec.len() == 0 {
+            cutoff = sd_coast.mps_ach.len();
+        } else {
+            cutoff = cutoff_vec[0];
+        }
+        
+        return Ok(get_error_val(
+            (Array::from_vec(vec![1000.0; sd_coast.mps_ach.len()]) * (sd_coast.drag_kw + sd_coast.rr_kw) / sd_coast.mps_ach).slice_move(s![0..cutoff]),
+            (sd_coast.mph_ach.map(|x| dyno_func_lb.eval(*x)) * Array::from_vec(vec![super::params::N_PER_LBF; sd_coast.mph_ach.len()])).slice_move(s![0..cutoff]),
+            cyc.time_s.slice_move(s![0..cutoff])
+        ));
+    }
 }
