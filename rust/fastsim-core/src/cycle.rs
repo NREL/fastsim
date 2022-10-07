@@ -15,8 +15,6 @@ use crate::proc_macros::add_pyo3_api;
 use crate::pyo3imports::*;
 use crate::utils::*;
 
-pub const CYCLE_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/cycles";
-
 #[cfg_attr(feature = "pyo3", pyfunction)]
 /// # Arguments
 /// - n: Int, number of time-steps away from rendezvous
@@ -743,30 +741,26 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_csv_file(pathstr: &str) -> Result<Self, String> {
+    pub fn from_csv_file(pathstr: &str) -> Result<Self, anyhow::Error> {
         let pathbuf = PathBuf::from(&pathstr);
 
         // create empty cycle to be populated
         let mut cyc = Self::default();
 
-        if pathbuf.exists() {
-            // unrwap is ok because if statement checks existence
-            let file = File::open(&pathbuf).unwrap();
-            let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
-            cyc.name = name;
-            let mut rdr = csv::ReaderBuilder::new()
-                .has_headers(true)
-                .from_reader(file);
-            for result in rdr.deserialize() {
-                // TODO: make this more elegant than unwrap
-                let cyc_elem: RustCycleElement = result.unwrap();
-                cyc.push(cyc_elem);
-            }
-
-            Ok(cyc)
-        } else {
-            Err(format!("path {} doesn't exist", pathstr))
+        // unrwap is ok because if statement checks existence
+        let file = File::open(&pathbuf).unwrap();
+        let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
+        cyc.name = name;
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(file);
+        for result in rdr.deserialize() {
+            // TODO: make this more elegant than unwrap
+            let cyc_elem: RustCycleElement = result?;
+            cyc.push(cyc_elem);
         }
+
+        Ok(cyc)
     }
 
     /// elevation change w.r.t. to initial
@@ -774,14 +768,16 @@ impl RustCycle {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
     }
 
-    impl_serde!(RustCycle, CYCLE_RESOURCE_DEFAULT_FOLDER);
-
-    pub fn from_file(filename: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
         // check if the extension is csv, and if it is, then call Self::from_csv_file
         let pathbuf = PathBuf::from(filename);
-        match pathbuf.extension().unwrap().to_str().unwrap() {
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
             "csv" => Ok(Self::from_csv_file(filename)?),
-            _ => Ok(Self::from_file_parser(filename)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
         }
     }
 }
@@ -915,18 +911,14 @@ mod tests {
     fn test_loading_a_cycle_from_the_filesystem() {
         let pathstr = String::from("../../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        match RustCycle::from_csv_file(&pathstr) {
-            Ok(cyc) => {
-                assert_eq!(cyc.name, String::from("udds"));
-                let num_entries = cyc.time_s.len();
-                assert!(num_entries > 0);
-                assert_eq!(num_entries, cyc.time_s.len());
-                assert_eq!(num_entries, cyc.mps.len());
-                assert_eq!(num_entries, cyc.grade.len());
-                assert_eq!(num_entries, cyc.road_type.len());
-                assert_eq!(num_entries, expected_udds_length);
-            }
-            Err(s) => panic!("{}", s),
-        }
+        let cyc = RustCycle::from_csv_file(&pathstr).unwrap();
+        assert_eq!(cyc.name, String::from("udds"));
+        let num_entries = cyc.time_s.len();
+        assert!(num_entries > 0);
+        assert_eq!(num_entries, cyc.time_s.len());
+        assert_eq!(num_entries, cyc.mps.len());
+        assert_eq!(num_entries, cyc.grade.len());
+        assert_eq!(num_entries, cyc.road_type.len());
+        assert_eq!(num_entries, expected_udds_length);
     }
 }

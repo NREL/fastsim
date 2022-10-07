@@ -114,8 +114,7 @@ use crate::vehicle_thermal::*;
     // ------------
     // i: index of time step
     pub fn set_comp_lims_py(&mut self, i: usize) -> PyResult<()> {
-        self.set_comp_lims(i);
-        Ok(())
+        Ok(self.set_comp_lims(i)?)
     }
 
     #[pyo3(name = "set_power_calcs")]
@@ -126,7 +125,6 @@ use crate::vehicle_thermal::*;
     /// i: index of time step
     pub fn set_power_calcs_py(&mut self, i: usize) -> PyResult<()> {
         self.set_power_calcs(i);
-        Ok(())
     }
 
     #[pyo3(name = "set_ach_speed")]
@@ -215,8 +213,6 @@ pub struct SimDriveHot {
     amb_te_deg_c: Option<Array1<f64>>,
 }
 
-pub const SIMDRIVEHOT_DEFAULT_FOLDER: &str = "fastsim/resources";
-
 impl SimDriveHot {
     pub fn new(
         cyc: cycle::RustCycle,
@@ -263,14 +259,15 @@ impl SimDriveHot {
         }
     }
 
-    impl_serde!(SimDriveHot, SIMDRIVEHOT_DEFAULT_FOLDER);
-    impl_from_file!();
-
     pub fn gap_to_lead_vehicle_m(&self) -> Array1<f64> {
         self.sd.gap_to_lead_vehicle_m()
     }
 
-    pub fn sim_drive(&mut self, init_soc: Option<f64>, aux_in_kw_override: Option<Array1<f64>>) {
+    pub fn sim_drive(
+        &mut self,
+        init_soc: Option<f64>,
+        aux_in_kw_override: Option<Array1<f64>>,
+    ) -> Result<(), anyhow::Error> {
         self.sd.hev_sim_count = 0;
 
         let init_soc = match init_soc {
@@ -321,6 +318,7 @@ impl SimDriveHot {
         self.walk(init_soc, aux_in_kw_override);
 
         self.set_post_scalars();
+        Ok(())
     }
 
     pub fn walk(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
@@ -861,11 +859,11 @@ impl SimDriveHot {
             self.sd.mps_ach[i - 1] + (self.sd.veh.max_trac_mps2 * self.sd.cyc.dt_s_at_i(i));
     }
 
-    pub fn set_comp_lims(&mut self, i: usize) {
-        self.sd.set_comp_lims(i).unwrap();
+    pub fn set_comp_lims(&mut self, i: usize) -> Result<(), anyhow::Error> {
+        self.sd.set_comp_lims(i)
     }
 
-    pub fn set_power_calcs(&mut self, i: usize) {
+    pub fn set_power_calcs(&mut self, i: usize) -> Result<(), anyhow::Error> {
         self.sd.set_power_calcs(i).unwrap();
     }
 

@@ -46,3 +46,4 @@ pub mod thermal;
 pub mod utils;
 pub mod vehicle;
 pub mod vehicle_thermal;
+pub mod traits;

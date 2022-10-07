@@ -155,11 +155,6 @@ impl Default for HVACModel {
     }
 }
 
-impl HVACModel {
-    impl_serde!(HVACModel, VEHICLE_THERMAL_DEFAULT_FOLDER);
-    impl_from_file!();
-}
-
 /// Whether HVAC model is handled by FASTSim (internal) or not
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum CabinHvacModelTypes {
@@ -483,12 +478,7 @@ impl Default for VehicleThermal {
     }
 }
 
-pub const VEHICLE_THERMAL_DEFAULT_FOLDER: &str = "fastsim/resources";
-
 impl VehicleThermal {
-    impl_serde!(VehicleThermal, VEHICLE_THERMAL_DEFAULT_FOLDER);
-    impl_from_file!();
-
     /// derived temperature [ºC] at which thermostat is fully open
     pub fn tstat_te_fo_deg_c(&self) -> f64 {
         self.tstat_te_sto_deg_c + self.tstat_te_delta_deg_c

@@ -9,8 +9,6 @@ use crate::pyo3imports::*;
 use crate::utils::*;
 use crate::vehicle::*;
 
-pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
-
 #[cfg(feature = "pyo3")]
 fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
     res.map_err(PyRuntimeError::new_err)
@@ -127,11 +125,6 @@ pub struct RustSimDriveParams {
     pub max_epa_adj: f64,
     #[serde(skip)]
     pub orphaned: bool,
-}
-
-impl RustSimDriveParams {
-    impl_serde!(RustSimDriveParams, SIMDRIVE_PARAMS_DEFAULT_FOLDER);
-    impl_from_file!();
 }
 
 impl Default for RustSimDriveParams {

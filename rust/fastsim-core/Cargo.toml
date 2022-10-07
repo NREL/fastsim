@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pyo3 = { version = "0.16.5", features = ["extension-module"], optional = true }
+pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 ndarray = { version = "0.15.4", features=["serde"]}
 csv = "1.1"
 proc-macros = { path = "proc-macros" }
@@ -13,6 +13,8 @@ serde = { version = "1.0.137", features = ["derive"] }
 serde_yaml = "0.8.24"
 bincode = "1.3.3"
 log = "0.4.17"
+anyhow = { workspace = true }
+
 
 [package.metadata.docs.rs]
 rustdoc-args = [ "--html-in-header", "./src/html/docs-header.html" ]
