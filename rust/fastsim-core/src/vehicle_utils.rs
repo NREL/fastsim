@@ -19,7 +19,7 @@ pub fn abc_to_drag_coeffs(veh: &mut RustVehicle,
                           custom_rho_temp_degC: Option<f64>,
                           custom_rho_elevation_m: Option<f64>,
                           simdrive_optimize: Option<bool>,
-                          show_plots: Option<bool>) -> (f64, f64) {
+                          _show_plots: Option<bool>) -> (f64, f64) {
     // For a given vehicle and target A, B, and C coefficients;
     // calculate and return drag and rolling resistance coefficients.
     //
@@ -63,8 +63,8 @@ pub fn abc_to_drag_coeffs(veh: &mut RustVehicle,
         let cost: GetError = GetError { cycle: &cyc, vehicle: &veh, dyno_func_lb: &dyno_func_lb };
         let solver: NelderMead<Array1<f64>, f64> = NelderMead::new(vec![
             array![0.0, 0.0],
-            array![1.0, 0.0],
-            array![1.0, 1.0],
+            array![0.5, 0.0],
+            array![0.5, 0.1],
         ]);
         let res: OptimizationResult<_, _, _> = Executor::new(cost, solver)
             .configure(|state| state.max_iters(100))
@@ -104,7 +104,7 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
     let mut err: f64 = 0.0;
     let y: Array1<f64> = (model - test).mapv(f64::abs);
 
-    for index in 1..time_steps.len()-1 {
+    for index in 0..time_steps.len()-1 {
         err += 0.5 * (time_steps[index + 1] - time_steps[index]) * (y[index] + y[index + 1]);
     }
 
@@ -148,5 +148,40 @@ impl CostFunction for GetError<'_> {
             (sd_coast.mph_ach.map(|x| dyno_func_lb.eval(*x)) * Array::from_vec(vec![super::params::N_PER_LBF; sd_coast.mph_ach.len()])).slice_move(s![0..cutoff]),
             cyc.time_s.slice_move(s![0..cutoff])
         ));
+    }
+}
+
+#[cfg(test)]
+mod vehicle_utils_tests {
+    use super::*;
+
+    #[test]
+    fn test_get_error_val() {
+        let time_steps: Array1<f64> = array![0.0, 1.0, 2.0, 3.0, 4.0];
+        let model: Array1<f64> = array![1.1, 4.6, 2.5, 3.7, 5.0];
+        let test: Array1<f64> = array![2.1, 4.5, 3.4, 4.8, 6.3];
+
+        let error_val: f64 = get_error_val(model, test, time_steps);
+        println!("Error Value: {}", error_val);
+
+        assert_eq!(error_val, 0.8124999999999998);
+    }
+
+    #[test]
+    fn test_abc_to_drag_coeffs() {
+        let mut veh: RustVehicle = RustVehicle::mock_vehicle();
+        let a: f64 = 25.91;
+        let b: f64 = 0.1943;
+        let c: f64 = 0.01796;
+
+        let (drag_coef, wheel_rr_coef): (f64, f64) = abc_to_drag_coeffs(&mut veh, a, b, c,
+            Some(false), None, None, Some(true), Some(false));        
+        println!("Drag Coef: {}", drag_coef);
+        println!("Wheel RR Coef: {}", wheel_rr_coef);
+
+        assert!((0.24676817210529464 - drag_coef).abs() < 1e-5);
+        assert!((0.0068603812443132645 - wheel_rr_coef).abs() < 1e-6);
+        assert_eq!(drag_coef, veh.drag_coef);
+        assert_eq!(wheel_rr_coef, veh.wheel_rr_coef);
     }
 }
