@@ -8,7 +8,6 @@ use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::simdrive;
-use crate::utils::*;
 use crate::vehicle;
 use crate::vehicle_thermal::*;
 
@@ -43,8 +42,7 @@ use crate::vehicle_thermal::*;
         aux_in_kw_override: Option<Vec<f64>>,
     ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
-        self.sim_drive(init_soc, aux_in_kw_override);
-        Ok(())
+        Ok(self.sim_drive(init_soc, aux_in_kw_override)?)
     }
 
     /// Receives second-by-second cycle information, vehicle properties,
@@ -88,10 +86,9 @@ use crate::vehicle_thermal::*;
 
     /// Step through 1 time step.
     pub fn sim_drive_step(&mut self) -> PyResult<()> {
-        self.step();
-        Ok(())
+        Ok(self.step()?)
     }
-     #[pyo3(name = "solve_step")]
+    #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
     pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
         self.solve_step(i);
@@ -124,7 +121,7 @@ use crate::vehicle_thermal::*;
     /// ------------
     /// i: index of time step
     pub fn set_power_calcs_py(&mut self, i: usize) -> PyResult<()> {
-        self.set_power_calcs(i);
+        Ok(self.set_power_calcs(i)?)
     }
 
     #[pyo3(name = "set_ach_speed")]
@@ -133,8 +130,7 @@ use crate::vehicle_thermal::*;
     // ------------
     // i: index of time step
     pub fn set_ach_speed_py(&mut self, i: usize) -> PyResult<()> {
-        self.set_ach_speed(i);
-        Ok(())
+        Ok(self.set_ach_speed(i)?)
     }
 
     #[pyo3(name = "set_hybrid_cont_calcs")]
@@ -143,8 +139,7 @@ use crate::vehicle_thermal::*;
     /// ------------
     /// i: index of time step
     pub fn set_hybrid_cont_calcs_py(&mut self, i: usize) -> PyResult<()> {
-        self.set_hybrid_cont_calcs(i);
-        Ok(())
+        Ok(self.set_hybrid_cont_calcs(i)?)
     }
 
     #[pyo3(name = "set_fc_forced_state")]
@@ -154,8 +149,7 @@ use crate::vehicle_thermal::*;
     /// i: index of time step
     /// `_py` extension is needed to avoid name collision with getter/setter methods
     pub fn set_fc_forced_state_py(&mut self, i: usize) -> PyResult<()> {
-        self.set_fc_forced_state_rust(i);
-        Ok(())
+        Ok(self.set_fc_forced_state_rust(i)?)
     }
 
     #[pyo3(name = "set_hybrid_cont_decisions")]
@@ -164,8 +158,7 @@ use crate::vehicle_thermal::*;
     /// ------------
     /// i: index of time step
     pub fn set_hybrid_cont_decisions_py(&mut self, i: usize) -> PyResult<()> {
-        self.set_hybrid_cont_decisions(i);
-        Ok(())
+        Ok(self.set_hybrid_cont_decisions(i)?)
     }
 
     #[pyo3(name = "set_fc_power")]
@@ -174,8 +167,7 @@ use crate::vehicle_thermal::*;
     /// ------------
     /// i: index of time step
     pub fn set_fc_power_py(&mut self, i: usize) -> PyResult<()> {
-        self.set_fc_power(i);
-        Ok(())
+        Ok(self.set_fc_power(i)?)
     }
 
     #[pyo3(name = "set_time_dilation")]
@@ -184,16 +176,14 @@ use crate::vehicle_thermal::*;
     /// ------------
     /// i: index of time step
     pub fn set_time_dilation_py(&mut self, i: usize) -> PyResult<()> {
-        self.set_time_dilation(i);
-        Ok(())
+        Ok(self.set_time_dilation(i)?)
     }
 
     #[pyo3(name = "set_post_scalars")]
     /// Sets scalar variables that can be calculated after a cycle is run.
     /// This includes mpgge, various energy metrics, and others
     pub fn set_post_scalars_py(&mut self) -> PyResult<()> {
-        self.set_post_scalars();
-        Ok(())
+        Ok(self.set_post_scalars()?)
     }
 )]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -317,14 +307,14 @@ impl SimDriveHot {
 
         self.walk(init_soc, aux_in_kw_override);
 
-        self.set_post_scalars();
+        self.set_post_scalars()?;
         Ok(())
     }
 
     pub fn walk(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
         self.init_for_step(init_soc, aux_in_kw_override);
         while self.sd.i < self.sd.cyc.time_s.len() {
-            self.step();
+            self.step().unwrap();
         }
     }
 
@@ -347,25 +337,26 @@ impl SimDriveHot {
         self.sd.set_speed_for_target_gap(i);
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> Result<(), anyhow::Error> {
         self.set_thermal_calcs(self.sd.i);
         self.set_misc_calcs(self.sd.i);
-        self.set_comp_lims(self.sd.i);
-        self.set_power_calcs(self.sd.i);
-        self.set_ach_speed(self.sd.i);
-        self.set_hybrid_cont_calcs(self.sd.i);
-        self.set_fc_forced_state_rust(self.sd.i);
-        self.set_hybrid_cont_decisions(self.sd.i);
-        self.set_fc_power(self.sd.i);
+        self.set_comp_lims(self.sd.i)?;
+        self.set_power_calcs(self.sd.i)?;
+        self.set_ach_speed(self.sd.i)?;
+        self.set_hybrid_cont_calcs(self.sd.i)?;
+        self.set_fc_forced_state_rust(self.sd.i)?;
+        self.set_hybrid_cont_decisions(self.sd.i)?;
+        self.set_fc_power(self.sd.i)?;
 
         self.sd.i += 1; // increment time step counter
         self.history.push(self.state.clone());
         match &self.vehthrm.cabin_hvac_model {
             CabinHvacModelTypes::Internal(hvac_mod) => {
-                self.hvac_model_history.push(hvac_mod.clone())
+                self.hvac_model_history.push(hvac_mod.clone());
             }
             CabinHvacModelTypes::External => {}
         }
+        Ok(())
     }
 
     pub fn solve_step(&mut self, i: usize) {
@@ -864,26 +855,26 @@ impl SimDriveHot {
     }
 
     pub fn set_power_calcs(&mut self, i: usize) -> Result<(), anyhow::Error> {
-        self.sd.set_power_calcs(i).unwrap();
+        self.sd.set_power_calcs(i)
     }
 
-    pub fn set_ach_speed(&mut self, i: usize) {
-        self.sd.set_ach_speed(i).unwrap();
+    pub fn set_ach_speed(&mut self, i: usize) -> Result<(), anyhow::Error> {
+        self.sd.set_ach_speed(i)
     }
 
-    pub fn set_hybrid_cont_calcs(&mut self, i: usize) {
-        self.sd.set_hybrid_cont_calcs(i).unwrap();
+    pub fn set_hybrid_cont_calcs(&mut self, i: usize) -> Result<(), anyhow::Error> {
+        self.sd.set_hybrid_cont_calcs(i)
     }
 
-    pub fn set_fc_forced_state_rust(&mut self, i: usize) {
-        self.sd.set_fc_forced_state_rust(i).unwrap();
+    pub fn set_fc_forced_state_rust(&mut self, i: usize) -> Result<(), anyhow::Error> {
+        self.sd.set_fc_forced_state_rust(i)
     }
 
-    pub fn set_hybrid_cont_decisions(&mut self, i: usize) {
-        self.sd.set_hybrid_cont_decisions(i).unwrap();
+    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> Result<(), anyhow::Error> {
+        self.sd.set_hybrid_cont_decisions(i)
     }
 
-    pub fn set_fc_power(&mut self, i: usize) {
+    pub fn set_fc_power(&mut self, i: usize) -> Result<(), anyhow::Error> {
         if self.sd.veh.fc_max_kw == 0.0 {
             self.sd.fc_kw_out_ach[i] = 0.0;
         } else if self.sd.veh.fc_eff_type == vehicle::H2FC {
@@ -996,14 +987,15 @@ impl SimDriveHot {
         self.sd.fs_kw_out_ach[i] = self.sd.fc_kw_in_ach[i];
 
         self.sd.fs_kwh_out_ach[i] = self.sd.fs_kw_out_ach[i] * self.sd.cyc.dt_s_at_i(i) / 3.6e3;
+        Ok(())
     }
 
-    pub fn set_time_dilation(&mut self, i: usize) {
-        self.sd.set_time_dilation(i).unwrap();
+    pub fn set_time_dilation(&mut self, i: usize) -> Result<(), anyhow::Error> {
+        self.sd.set_time_dilation(i)
     }
 
-    pub fn set_post_scalars(&mut self) {
-        self.sd.set_post_scalars().unwrap();
+    pub fn set_post_scalars(&mut self) -> Result<(), anyhow::Error> {
+        self.sd.set_post_scalars()
     }
 }
 

@@ -528,13 +528,13 @@ impl RustSimDrive {
             };
         } else {
             if !(0.0..=1.0).contains(&blend_factor) {
-                return Err(format!(
+                return Err(anyhow!(
                     "blend_factor must be between 0 and 1 but got {}",
                     blend_factor
                 ));
             }
             if min_target_speed_m_per_s < 0.0 {
-                return Err(format!(
+                return Err(anyhow!(
                     "min_target_speed_m_per_s must be >= 0 but got {}",
                     min_target_speed_m_per_s
                 ));
@@ -548,7 +548,7 @@ impl RustSimDrive {
         }
         // Extend the duration of the base cycle
         if extend_fraction < 0.0 {
-            return Err(format!(
+            return Err(anyhow!(
                 "extend_fraction must be >= 0.0 but got {}",
                 extend_fraction
             ));
@@ -1254,17 +1254,11 @@ impl RustSimDrive {
             }
         }
 
-        if let Err(message) = self.set_power_calcs(i) {
-            Err(
-                "call to `set_power_calcs_rust` failed within `set_ach_speed_rust`: ".to_string()
-                    + &message,
-            )
-        } else {
-            self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
-            self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s_at_i(i);
-            self.dist_mi[i] = self.dist_m[i] * 1.0 / params::M_PER_MI;
-            Ok(())
-        }
+        self.set_power_calcs(i)?;
+        self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
+        self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s_at_i(i);
+        self.dist_mi[i] = self.dist_m[i] * 1.0 / params::M_PER_MI;
+        Ok(())
     }
 
     /// Hybrid control calculations.
@@ -2688,12 +2682,7 @@ impl RustSimDrive {
             }
         }
         // Solve for the actual coasting speed
-        if let Err(message) = self.solve_step(i) {
-            return Err(
-                "call to `solve_step_rust` failed within `set_coast_speed`: ".to_string()
-                    + &message,
-            );
-        }
+        self.solve_step(i)?;
         self.newton_iters[i] = 0; // reset newton iters
         self.cyc.mps[i] = self.mps_ach[i];
         let accel_proposed = (self.cyc.mps[i] - self.cyc.mps[i - 1]) / self.cyc.dt_s_at_i(i);
@@ -2768,12 +2757,7 @@ impl RustSimDrive {
                 if !self.sim_params.coast_allow_passing {
                     self.prevent_collisions(i, None);
                 }
-                if let Err(message) = self.solve_step(i) {
-                    return Err(
-                        "call to `solve_step_rust` failed within `set_coast_speed`: ".to_string()
-                            + &message,
-                    );
-                }
+                self.solve_step(i)?;
                 self.newton_iters[i] = 0; // reset newton iters
                 self.cyc.mps[i] = self.mps_ach[i];
             }

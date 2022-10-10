@@ -346,7 +346,7 @@ pub fn extend_cycle(
 
 #[cfg(feature = "pyo3")]
 #[allow(unused)] // not sure what this is doing, may get used in proc macro???
-pub fn register(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
     m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(accel_for_constant_jerk, m)?)?;
     m.add_function(wrap_pyfunction!(speed_for_constant_jerk, m)?)?;
@@ -401,19 +401,16 @@ pub struct RustCycleElement {
 
     #[classmethod]
     #[pyo3(name = "from_csv_file")]
-    pub fn from_csv_file_py(_cls: &PyType, pathstr: String) -> PyResult<Self> {
-        match Self::from_csv_file(&pathstr) {
-            Ok(cyc) => Ok(cyc),
-            Err(msg) => Err(PyFileNotFoundError::new_err(msg)),
-        }
+    pub fn from_csv_file_py(_cls: &PyType, pathstr: String) -> anyhow::Result<Self> {
+        Self::from_csv_file(&pathstr)
     }
 
-    pub fn to_rust(&self) -> PyResult<Self> {
+    pub fn to_rust(&self) -> anyhow::Result<Self> {
         Ok(self.clone())
     }
 
     /// Return a HashMap representing the cycle
-    pub fn get_cyc_dict(&self) -> PyResult<HashMap<String, Vec<f64>>> {
+    pub fn get_cyc_dict(&self) -> anyhow::Result<HashMap<String, Vec<f64>>> {
         let dict: HashMap<String, Vec<f64>> = HashMap::from([
             ("time_s".to_string(), self.time_s.to_vec()),
             ("mps".to_string(), self.mps.to_vec()),

@@ -41,7 +41,7 @@ macro_rules! check_orphaned_and_set {
             $struct_self.$field = $value;
             Ok(())
         } else {
-            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+            Err(anyhow!(utils::NESTED_STRUCT_ERR))
         }
     };
 }

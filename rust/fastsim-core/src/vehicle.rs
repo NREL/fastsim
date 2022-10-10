@@ -6,7 +6,6 @@ use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
-use crate::utils::*;
 
 pub const CONV: &str = "Conv";
 pub const HEV: &str = "HEV";
@@ -1311,7 +1310,7 @@ impl RustVehicle {
             .unwrap_or("");
 
         let file = File::open(filename)?;
-        let mut veh_res = match extension {
+        let mut veh_res: Result<RustVehicle, anyhow::Error> = match extension {
             "yaml" => Ok(serde_yaml::from_reader(file)?),
             "json" => Ok(serde_json::from_reader(file)?),
             _ => Err(anyhow!("Unsupported file extension {}", extension)),

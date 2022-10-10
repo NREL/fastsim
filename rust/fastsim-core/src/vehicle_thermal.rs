@@ -210,7 +210,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         &mut self,
         hvac_model: HVACModel
     ) -> PyResult<()>{
-        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))
+        Ok(check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))?)
     }
 
     pub fn get_cabin_model_internal(&self, ) -> PyResult<HVACModel> {
@@ -222,7 +222,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     }
 
     pub fn set_cabin_hvac_model_external(&mut self, ) -> PyResult<()> {
-        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)
+        Ok(check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)?)
     }
 
     pub fn set_fc_model_internal_exponential(
@@ -239,7 +239,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             _ => panic!("Invalid option for fc_temp_eff_component.")
         };
 
-        check_orphaned_and_set!(
+        Ok(check_orphaned_and_set!(
             self,
             fc_model,
             FcModelTypes::Internal(
@@ -247,7 +247,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
                     FcTempEffModelExponential{ offset, lag, minimum }),
                     fc_temp_eff_comp
             )
-        )
+        )?)
     }
 
     #[setter]

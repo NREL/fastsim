@@ -1,13 +1,14 @@
 use crate::imports::*;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    fn to_file(&self, filename: &str) {
+    fn to_file(&self, filename: &str) -> anyhow::Result<()> {
         let file = PathBuf::from(filename);
-        let c = match file.extension().unwrap().to_str().unwrap() {
-            "json" => serde_json::to_writer(&File::create(file).unwrap(), self).unwrap(),
-            "yaml" => serde_yaml::to_writer(&File::create(file).unwrap(), self).unwrap(),
-            _ => serde_json::to_writer(&File::create(file).unwrap(), self).unwrap(),
+        match file.extension().unwrap().to_str().unwrap() {
+            "json" => serde_json::to_writer(&File::create(file)?, self)?,
+            "yaml" => serde_yaml::to_writer(&File::create(file)?, self)?,
+            _ => serde_json::to_writer(&File::create(file)?, self)?,
         };
+        Ok(())
     }
 
     fn from_file(filename: &str) -> Result<Self, anyhow::Error>

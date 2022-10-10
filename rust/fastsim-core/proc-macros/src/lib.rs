@@ -104,16 +104,14 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             py_impl_block.extend::<TokenStream2>(quote! {
                 #[pyo3(name = "to_file")]
                 pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
-                    self.to_file(filename).unwrap();
-                    Ok(())
+                   Ok(self.to_file(filename)?)
                 }
 
                 #[classmethod]
                 #[pyo3(name = "from_file")]
                 pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
                     // unwrap is ok here because it makes sense to stop execution if a file is not loadable
-                    let obj: #ident = Self::from_file(&json_str).unwrap();
-                    Ok(obj)
+                    Ok(Self::from_file(&json_str)?)
                 }
             });
         }
@@ -175,8 +173,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             ) -> PyResult<()> {
                             Err(PyNotImplementedError::new_err(
                                 "Setting value at index is not implemented.
-                                    Run `tolist` method, modify value at index, and
-                                    then set entire vector.",
+                                Run `tolist` method, modify value at index, and
+                                then set entire vector.",
                             ))
                         }
                         pub fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
