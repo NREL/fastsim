@@ -9,10 +9,13 @@ use crate::air::*;
 use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
 use crate::simdrive::RustSimDrive;
 use crate::vehicle::RustVehicle;
 
 #[allow(non_snake_case)]
+#[cfg_attr(feature = "pyo3", pyfunction)]
 pub fn abc_to_drag_coeffs(
     veh: &mut RustVehicle,
     a_lbf: f64,

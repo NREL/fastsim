@@ -1033,3 +1033,16 @@ class SimDriveHot:
 
     def to_file(self, filename: str) -> Self:
         ...
+
+def abc_to_drag_coeffs(
+    veh: RustVehicle,
+    a_lbf: float,
+    b_lbf__mph: float,
+    c_lbf__mph2: float,
+    custom_rho: Optional[bool],
+    custom_rho_temp_degC: Optional[float],
+    custom_rho_elevation_m: Optional[float],
+    simdrive_optimize: Optional[bool],
+    _show_plots: Optional[bool],
+) -> Tuple[float, float]:
+    ...
