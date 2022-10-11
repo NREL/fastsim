@@ -6,9 +6,6 @@ use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
-use crate::utils::*;
-
-pub const VEH_RESOURCE_DEFAULT_FOLDER: &str = "fastsim/resources/vehdb";
 
 pub const CONV: &str = "Conv";
 pub const HEV: &str = "HEV";
@@ -1306,11 +1303,20 @@ impl RustVehicle {
         )
     }
 
-    impl_serde!(RustVehicle, VEH_RESOURCE_DEFAULT_FOLDER);
-    pub fn from_file(filename: &str) -> Result<Self, Box<dyn Error>> {
-        let mut veh = Self::from_file_parser(filename)?;
-        veh.set_derived();
-        Ok(veh)
+    pub fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        let extension = Path::new(filename)
+            .extension()
+            .and_then(OsStr::to_str)
+            .unwrap_or("");
+
+        let file = File::open(filename)?;
+        let mut veh_res: Result<RustVehicle, anyhow::Error> = match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        };
+        veh_res.as_mut().unwrap().set_derived();
+        veh_res
     }
 }
 

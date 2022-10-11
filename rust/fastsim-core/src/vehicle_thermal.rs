@@ -155,11 +155,6 @@ impl Default for HVACModel {
     }
 }
 
-impl HVACModel {
-    impl_serde!(HVACModel, VEHICLE_THERMAL_DEFAULT_FOLDER);
-    impl_from_file!();
-}
-
 /// Whether HVAC model is handled by FASTSim (internal) or not
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum CabinHvacModelTypes {
@@ -215,7 +210,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         &mut self,
         hvac_model: HVACModel
     ) -> PyResult<()>{
-        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))
+        Ok(check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))?)
     }
 
     pub fn get_cabin_model_internal(&self, ) -> PyResult<HVACModel> {
@@ -227,7 +222,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
     }
 
     pub fn set_cabin_hvac_model_external(&mut self, ) -> PyResult<()> {
-        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)
+        Ok(check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)?)
     }
 
     pub fn set_fc_model_internal_exponential(
@@ -244,7 +239,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             _ => panic!("Invalid option for fc_temp_eff_component.")
         };
 
-        check_orphaned_and_set!(
+        Ok(check_orphaned_and_set!(
             self,
             fc_model,
             FcModelTypes::Internal(
@@ -252,7 +247,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
                     FcTempEffModelExponential{ offset, lag, minimum }),
                     fc_temp_eff_comp
             )
-        )
+        )?)
     }
 
     #[setter]
@@ -483,12 +478,7 @@ impl Default for VehicleThermal {
     }
 }
 
-pub const VEHICLE_THERMAL_DEFAULT_FOLDER: &str = "fastsim/resources";
-
 impl VehicleThermal {
-    impl_serde!(VehicleThermal, VEHICLE_THERMAL_DEFAULT_FOLDER);
-    impl_from_file!();
-
     /// derived temperature [ºC] at which thermostat is fully open
     pub fn tstat_te_fo_deg_c(&self) -> f64 {
         self.tstat_te_sto_deg_c + self.tstat_te_delta_deg_c

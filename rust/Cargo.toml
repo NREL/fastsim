@@ -11,3 +11,8 @@ members = [
 opt-level = 3               # Use better optimizations.
 lto = "fat"  # aggressively optimize inter-crate linking
 codegen-units = 1  # optimize connection between modules
+
+[workspace.dependencies]
+anyhow = "1.0.57"
+pyo3 = "0.17.2"
+pyo3-log = "*"

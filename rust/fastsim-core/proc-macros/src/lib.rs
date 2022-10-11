@@ -104,16 +104,14 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             py_impl_block.extend::<TokenStream2>(quote! {
                 #[pyo3(name = "to_file")]
                 pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
-                    self.to_file(filename).unwrap();
-                    Ok(())
+                   Ok(self.to_file(filename)?)
                 }
 
                 #[classmethod]
                 #[pyo3(name = "from_file")]
                 pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
                     // unwrap is ok here because it makes sense to stop execution if a file is not loadable
-                    let obj: #ident = Self::from_file(&json_str).unwrap();
-                    Ok(obj)
+                    Ok(Self::from_file(&json_str)?)
                 }
             });
         }
@@ -175,8 +173,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             ) -> PyResult<()> {
                             Err(PyNotImplementedError::new_err(
                                 "Setting value at index is not implemented.
-                                    Run `tolist` method, modify value at index, and
-                                    then set entire vector.",
+                                Run `tolist` method, modify value at index, and
+                                then set entire vector.",
                             ))
                         }
                         pub fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
@@ -219,29 +217,45 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn __copy__(&self) -> Self {self.clone()}
         pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
 
-        pub fn to_bincode<'py>(&self, py: Python<'py>) -> PyResult<&'py PyBytes> {
-            Ok(PyBytes::new(py, &serialize(&self).unwrap()))
-        }
-        #[classmethod]
-        pub fn from_bincode(_cls: &PyType, encoded: &PyBytes) -> PyResult<Self> {
-            Ok(deserialize(encoded.as_bytes()).unwrap())
+        /// json serialization method.
+        #[pyo3(name = "to_json")]
+        pub fn to_json_py(&self) -> PyResult<String> {
+            Ok(self.to_json())
         }
 
-        pub fn to_json(&self) -> PyResult<String> {
-            Ok(serde_json::to_string(&self).unwrap())
-        }
         #[classmethod]
-        pub fn from_json(_cls: &PyType, json_str: &str) -> PyResult<Self> {
-            Ok(serde_json::from_str(json_str).unwrap())
+        /// json deserialization method.
+        #[pyo3(name = "from_json")]
+        pub fn from_json_py(_cls: &PyType, json_str: &str) -> PyResult<Self> {
+            Ok(Self::from_json(json_str)?)
         }
 
-        pub fn to_yaml(&self) -> PyResult<String> {
-            Ok(serde_yaml::to_string(&self).unwrap())
+        /// yaml serialization method.
+        #[pyo3(name = "to_yaml")]
+        pub fn to_yaml_py(&self) -> PyResult<String> {
+            Ok(self.to_yaml())
         }
+
         #[classmethod]
-        pub fn from_yaml(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
-            Ok(serde_yaml::from_str(yaml_str).unwrap())
+        /// yaml deserialization method.
+        #[pyo3(name = "from_yaml")]
+        pub fn from_yaml_py(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
+            Ok(Self::from_yaml(yaml_str)?)
         }
+
+        /// bincode serialization method.
+        #[pyo3(name = "to_bincode")]
+        pub fn to_bincode_py<'py>(&self, py: Python<'py>) -> PyResult<&'py PyBytes> {
+            Ok(PyBytes::new(py, &self.to_bincode()))
+        }
+
+        #[classmethod]
+        /// bincode deserialization method.
+        #[pyo3(name = "from_bincode")]
+        pub fn from_bincode_py(_cls: &PyType, encoded: &PyBytes) -> PyResult<Self> {
+            Ok(Self::from_bincode(encoded.as_bytes())?)
+        }
+
     });
 
     let impl_block = quote! {

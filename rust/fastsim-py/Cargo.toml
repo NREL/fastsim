@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 fastsim-core = { path = "../fastsim-core", features = ["pyo3"] }
 log = "0.4.17"
-pyo3 = { version = "0.16.5", features = ["extension-module"] }
-pyo3-log = "0.6.0"
+pyo3 = { workspace = true, features = ["extension-module", "anyhow"] }
+pyo3-log = { workspace = true}
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]

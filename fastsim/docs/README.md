@@ -1,7 +1,7 @@
 ![FASTSim Logo](fastsim-icon-web-131x172.jpg)
 
 # Description
-This is the python/rust flavor of FASTSim which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. Other FASTSim flavors may spin off as variations on this core functionality, but these should integrated back into master if there is any intent of persistence.
+This is the python/rust flavor of FASTSim which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. Other FASTSim flavors may spin off as variations on this core functionality, but these should integrated back into `main` if there is any intent of persistence.
 
 All classes and methods are self-documented.  
 
@@ -42,15 +42,17 @@ Then, from within the top level of the FASTSim folder, run a pip install:
 
 This will install FASTSim with the included rust extensions.
 
-### Developers
+## Developers
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
 
 To do this, a couple of extra steps are required:
 
-1. First install the python code in place `DEVELOP_MODE=True pip install -e ".[dev]"` if on Mac OS, Linux, or Windows Bash (e.g. git bash, VSCode bash).  On Windows, run `set DEVELOP_MODE=True` then `pip install -e ".[dev]"`.
+1. First install the python code in place `DEVELOP_MODE=True pip install -e ".[dev]"` if on Mac OS, Linux, or Windows Bash (e.g. git bash, VSCode bash).  On Windows in Power Shell or Command Prompt, run `set DEVELOP_MODE=True` then `pip install -e ".[dev]"`.
 1. Within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`.
 1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.
-1. In `rust/fastsim-py`, you should now be able to run `maturin develop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/docs/demo.py`.
+1. In `fastsim/rust/fastsim-py`, you should now be able to run `maturin develop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/fastsim/docs/demo.py`.
+
+After FASTSim has been installed as editable per the above instructions, you can rebuild and test everything with `sh build_and_test.sh` in Windows bash or `./build_and_test.sh` in Linux/Unix in the `fastsim/` dir.  
 
 # Users with NREL VPN Access
 Note: the following instructions work only if you are inside NREL VPN:  

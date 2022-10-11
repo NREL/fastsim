@@ -6,15 +6,7 @@ use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
-use crate::utils::*;
 use crate::vehicle::*;
-
-pub const SIMDRIVE_PARAMS_DEFAULT_FOLDER: &str = "fastsim/resources";
-
-#[cfg(feature = "pyo3")]
-fn handle_sd_res(res: Result<(), String>) -> PyResult<()> {
-    res.map_err(PyRuntimeError::new_err)
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
@@ -129,11 +121,6 @@ pub struct RustSimDriveParams {
     pub orphaned: bool,
 }
 
-impl RustSimDriveParams {
-    impl_serde!(RustSimDriveParams, SIMDRIVE_PARAMS_DEFAULT_FOLDER);
-    impl_from_file!();
-}
-
 impl Default for RustSimDriveParams {
     fn default() -> Self {
         // if true, missed trace correction is active, default = false
@@ -240,7 +227,7 @@ impl Default for RustSimDriveParams {
         aux_in_kw_override: Option<Vec<f64>>,
     ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
-        handle_sd_res(self.sim_drive(init_soc, aux_in_kw_override))
+        Ok(self.sim_drive(init_soc, aux_in_kw_override)?)
     }
 
     /// Receives second-by-second cycle information, vehicle properties,
@@ -260,7 +247,7 @@ impl Default for RustSimDriveParams {
         aux_in_kw_override: Option<Vec<f64>>,
     ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
-        handle_sd_res(self.walk(init_soc, aux_in_kw_override))
+        Ok(self.walk(init_soc, aux_in_kw_override)?)
     }
 
     /// Sets the intelligent driver model parameters for an eco-cruise driving trajectory.
@@ -282,9 +269,8 @@ impl Default for RustSimDriveParams {
         let extend_fraction: f64 = extend_fraction.unwrap_or(0.1);
         let blend_factor: f64 = blend_factor.unwrap_or(0.0);
         let min_target_speed_m_per_s = min_target_speed_m_per_s.unwrap_or(8.0);
-        handle_sd_res(
-            self.activate_eco_cruise_rust(
-                by_microtrip, extend_fraction, blend_factor, min_target_speed_m_per_s))
+            Ok(self.activate_eco_cruise_rust(
+                by_microtrip, extend_fraction, blend_factor, min_target_speed_m_per_s)?)
     }
 
     #[pyo3(name = "init_for_step")]
@@ -301,18 +287,18 @@ impl Default for RustSimDriveParams {
         aux_in_kw_override: Option<Vec<f64>>
     ) -> PyResult<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
-        handle_sd_res(self.init_for_step(init_soc, aux_in_kw_override))
+        Ok(self.init_for_step(init_soc, aux_in_kw_override)?)
     }
 
     /// Step through 1 time step.
     pub fn sim_drive_step(&mut self) -> PyResult<()> {
-        handle_sd_res(self.step())
+        Ok(self.step()?)
     }
 
     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
     pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.solve_step(i))
+        Ok(self.solve_step(i)?)
     }
 
     #[pyo3(name = "set_misc_calcs")]
@@ -321,7 +307,7 @@ impl Default for RustSimDriveParams {
     /// ----------
     /// i: index of time step
     pub fn set_misc_calcs_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_misc_calcs(i))
+        Ok(self.set_misc_calcs(i)?)
     }
 
     #[pyo3(name = "set_comp_lims")]
@@ -330,7 +316,7 @@ impl Default for RustSimDriveParams {
     // ------------
     // i: index of time step
     pub fn set_comp_lims_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_comp_lims(i))
+        Ok(self.set_comp_lims(i)?)
     }
 
     #[pyo3(name = "set_power_calcs")]
@@ -340,7 +326,7 @@ impl Default for RustSimDriveParams {
     /// ------------
     /// i: index of time step
     pub fn set_power_calcs_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_power_calcs(i))
+        Ok(self.set_power_calcs(i)?)
     }
 
     #[pyo3(name = "set_ach_speed")]
@@ -349,7 +335,7 @@ impl Default for RustSimDriveParams {
     // ------------
     // i: index of time step
     pub fn set_ach_speed_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_ach_speed(i))
+        Ok(self.set_ach_speed(i)?)
     }
 
     #[pyo3(name = "set_hybrid_cont_calcs")]
@@ -358,7 +344,7 @@ impl Default for RustSimDriveParams {
     /// ------------
     /// i: index of time step
     pub fn set_hybrid_cont_calcs_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_hybrid_cont_calcs(i))
+        Ok(self.set_hybrid_cont_calcs(i)?)
     }
 
     #[pyo3(name = "set_fc_forced_state")]
@@ -368,7 +354,7 @@ impl Default for RustSimDriveParams {
     /// i: index of time step
     /// `_py` extension is needed to avoid name collision with getter/setter methods
     pub fn set_fc_forced_state_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_fc_forced_state_rust(i))
+        Ok(self.set_fc_forced_state_rust(i)?)
     }
 
     #[pyo3(name = "set_hybrid_cont_decisions")]
@@ -377,7 +363,7 @@ impl Default for RustSimDriveParams {
     /// ------------
     /// i: index of time step
     pub fn set_hybrid_cont_decisions_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_hybrid_cont_decisions(i))
+        Ok(self.set_hybrid_cont_decisions(i)?)
     }
 
     #[pyo3(name = "set_fc_power")]
@@ -386,7 +372,7 @@ impl Default for RustSimDriveParams {
     /// ------------
     /// i: index of time step
     pub fn set_fc_power_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_fc_power(i))
+        Ok(self.set_fc_power(i)?)
     }
 
     #[pyo3(name = "set_time_dilation")]
@@ -395,14 +381,14 @@ impl Default for RustSimDriveParams {
     /// ------------
     /// i: index of time step
     pub fn set_time_dilation_py(&mut self, i: usize) -> PyResult<()> {
-        handle_sd_res(self.set_time_dilation(i))
+        Ok(self.set_time_dilation(i)?)
     }
 
     #[pyo3(name = "set_post_scalars")]
     /// Sets scalar variables that can be calculated after a cycle is run.
     /// This includes mpgge, various energy metrics, and others
     pub fn set_post_scalars_py(&mut self) -> PyResult<()> {
-        handle_sd_res(self.set_post_scalars())
+        Ok(self.set_post_scalars()?)
     }
 
     #[pyo3(name = "len")]
