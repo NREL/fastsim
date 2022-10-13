@@ -77,8 +77,8 @@ pub fn main() {
     }
 
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
-        if cyc_file_path == String::from("coastdown") {
-            if !fastsim_api.a.is_none() && !fastsim_api.b.is_none() && !fastsim_api.c.is_none() {
+        if cyc_file_path == *"coastdown" {
+            if fastsim_api.a.is_some() && fastsim_api.b.is_some() && fastsim_api.c.is_some() {
                 let (drag_coeff, wheel_rr_coeff) = abc_to_drag_coeffs(
                     &mut veh,
                     fastsim_api.a.unwrap(),
