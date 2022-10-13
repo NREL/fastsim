@@ -5,9 +5,12 @@ use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
-/// Unit conversions
+/// Unit conversions that should NEVER change
 pub const MPH_PER_MPS: f64 = 2.2369;
 pub const M_PER_MI: f64 = 1609.00;
+// Newtons per pound-force
+pub const N_PER_LBF: f64 = 4.448;
+pub const L_PER_GAL: f64 = 3.78541;
 
 /// Misc Constants
 pub const MODERN_MAX: f64 = 0.95;

@@ -7,22 +7,23 @@ from IPython import get_ipython
 # # FASTSim Demonstration
 # |
 # ![fastsim icon](fastsim-icon-web-131x172.jpg)
-# 
+#
 # Developed by NREL, the Future Automotive Systems Technology Simulator (FASTSim) evaluates the impact of technology improvements on efficiency, performance, cost, and battery life in conventional vehicles, hybrid electric vehicles (HEVs), plug-in hybrid electric vehicles (PHEVs), and all-electric vehicles (EVs).
-# 
+#
 # FASTSim answers questions such as:
 # - Which battery sizes are most cost effective for a PHEV or EV?
 # - At what battery prices do PHEVs and EVs become cost effective?
 # - On average, how much fuel does a PHEV with a 30-mile electric range save?
 # - How much fuel savings does an HEV provide for a given drive cycle?
 # - How do lifetime costs and petroleum use compare for conventional vehicles, HEVs, PHEVs, and EVs?
-# 
+#
 # FASTSim was originally implemented in Microsoft Excel. The pythonic implementation of FASTSim, demonstrated here, captures the drive cycle energy consumption simulation component of the software. The python version of FASTSim is more convenient than the Excel version when very high computational speed is desired, such as for simulating a large batch of drive cycles.
 
 # %%
 import sys
 import os
 from pathlib import Path
+from fastsimrust import abc_to_drag_coeffs
 import numpy as np
 import time
 import pandas as pd
@@ -31,7 +32,8 @@ import importlib
 # import seaborn as sns
 # sns.set(font_scale=2, style='whitegrid')
 
-get_ipython().run_line_magic('matplotlib', 'inline')
+if not __name__ == "__main__":
+    get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # local modules
@@ -812,4 +814,14 @@ ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
 plt.show()
 
+# %% [markdown]
+# ### Test Coefficients Calculation
+# 
+# Test drag and wheel rolling resistance calculation from coastdown test values.
+
+# %%
+test_veh = fsim.vehicle.Vehicle.from_vehdb(5, to_rust=True).to_rust()
+(drag_coef, wheel_rr_coef) = abc_to_drag_coeffs(test_veh, 25.91, 0.1943, 0.01796, simdrive_optimize=True)
+print(f'Drag Coefficient: {drag_coef}')
+print(f'Wheel Rolling Resistance Coefficient: {wheel_rr_coef}')
 # %%
