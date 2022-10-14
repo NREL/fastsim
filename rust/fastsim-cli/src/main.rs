@@ -11,6 +11,10 @@ use fastsim_core::{
 /// After running `cargo build --release`, run with
 /// ```bash
 /// ./target/release/fastsim-cli --veh-file ~/Documents/GitHub/fastsim/fastsim/resources/vehdb/2012_Ford_Fusion.yaml --cyc-file ~/Documents/GitHub/fastsim/fastsim/resources/cycles/udds.csv
+/// ```.
+/// For calculation of drag and wheel rr coefficients from coastdown test, run with
+/// ```bash
+/// ./target/release/fastsim-cli --veh-file ~/Documents/GitHub/fastsim/fastsim/resources/vehdb/2012_Ford_Fusion.yaml --cyc-file coastdown --a 25.91 --b 0.1943 --c 0.01796
 /// ```
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
