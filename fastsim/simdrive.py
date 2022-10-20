@@ -622,7 +622,8 @@ class SimDrive(object):
             return self.cyc.grade[i]
         if mps_ach is not None:
             return self.cyc0.average_grade_over_range(
-                0.5 * (mps_ach + self.mps_ach[i - 2]) * self.cyc.dt_s_at_i(i))
+                cycle.trapz_step_start_distance(self.cyc, i),
+                0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s_at_i(i))
         return self.cyc0.average_grade_over_range(
                 cycle.trapz_step_start_distance(self.cyc, i),
                 cycle.trapz_distance_for_step(self.cyc, i))
