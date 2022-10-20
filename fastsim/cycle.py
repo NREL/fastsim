@@ -136,6 +136,8 @@ class Cycle(object):
         Calculate the time-step duration for time-step `i`.
         Returns: the time-step duration in seconds
         """
+        if i < 1:
+            return 0.0
         return self.time_s[i] - self.time_s[i - 1]
 
     # distance at each time step

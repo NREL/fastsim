@@ -457,7 +457,11 @@ pub struct RustCycleElement {
 
     #[pyo3(name = "dt_s_at_i")]
     pub fn dt_s_at_i_py(&self, i: usize) -> PyResult<f64> {
-        Ok(self.dt_s_at_i(i))
+        if i == 0 {
+            Ok(0.0)
+        } else {
+            Ok(self.dt_s_at_i(i))
+        }
     }
 
     #[getter]
