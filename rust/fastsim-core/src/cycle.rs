@@ -455,6 +455,11 @@ pub struct RustCycleElement {
         Ok(self.average_grade_over_range(distance_start_m, delta_distance_m))
     }
 
+    #[pyo3(name = "dt_s_at_i")]
+    pub fn dt_s_at_i_py(&self, i: usize) -> PyResult<f64> {
+        Ok(self.dt_s_at_i(i))
+    }
+
     #[getter]
     pub fn get_mph(&self) -> PyResult<Vec<f64>> {
         Ok((&self.mps * crate::params::MPH_PER_MPS).to_vec())
