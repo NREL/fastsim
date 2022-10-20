@@ -129,6 +129,8 @@ class Cycle(object):
     # time step deltas
     @property
     def dt_s(self) -> np.ndarray:
+        return np.array(np.diff(self.time_s, prepend=0), dtype=float)
+
     def dt_s_at_i(self, i: int) -> float:
         """
         Calculate the time-step duration for time-step `i`.
