@@ -129,7 +129,12 @@ class Cycle(object):
     # time step deltas
     @property
     def dt_s(self) -> np.ndarray:
-        return np.array(np.diff(self.time_s, prepend=0), dtype=float)
+    def dt_s_at_i(self, i: int) -> float:
+        """
+        Calculate the time-step duration for time-step `i`.
+        Returns: the time-step duration in seconds
+        """
+        return self.time_s[i] - self.time_s[i - 1]
 
     # distance at each time step
     @property
@@ -238,7 +243,7 @@ class Cycle(object):
         """
         num_samples = len(self.time_s)
         v0 = self.mps[idx-1]
-        dt = self.dt_s[idx]
+        dt = self.dt_s_at_i(idx)
         v = v0
         for ni in range(1, int(n)+1):
             idx_to_set = (int(idx) - 1) + ni
@@ -266,7 +271,7 @@ class Cycle(object):
         if i >= len(self.time_s):
             return self.mps[-1], 0
         v0 = self.mps[i-1]
-        dt = self.dt_s[i]
+        dt = self.dt_s_at_i(i)
         # distance-to-stop (m)
         if dts_m is None or dts_m <= 0.0:
             dts_m = -0.5 * v0 * v0 / brake_accel_m__s2
@@ -797,9 +802,9 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> Pa
         v_lv = cyc0.mps[idx]
         vavg = (v + v0) * 0.5
         vavg_lv = (v_lv + v0_lv) * 0.5
-        dd = vavg * cyc.dt_s[idx]
-        dd_lv = vavg_lv * cyc0.dt_s[idx]
-        dt_total += cyc0.dt_s[idx]
+        dd = vavg * cyc.dt_s_at_i(idx)
+        dd_lv = vavg_lv * cyc0.dt_s_at_i(idx)
+        dt_total += cyc0.dt_s_at_i(idx)
         d += dd
         d_lv += dd_lv
         dtlv = d_lv - d
@@ -821,7 +826,7 @@ def detect_passing(cyc: Cycle, cyc0: Cycle, i: int, dist_tol_m: float=0.1) -> Pa
         distance_m=rendezvous_distance_m,
         start_speed_m_per_s=cyc.mps[i-1],
         speed_m_per_s=rendezvous_speed_m_per_s,
-        time_step_duration_s=cyc.dt_s[i],
+        time_step_duration_s=cyc.dt_s_at_i(i),
     )
 
 def average_step_speeds(cyc: Cycle) -> np.ndarray:
@@ -858,7 +863,7 @@ def trapz_distance_for_step(cyc: Cycle, i: int) -> float:
     The distance traveled during step i in meters
     (i.e., from sample point i-1 to i)
     """
-    return average_step_speed_at(cyc, i) * cyc.dt_s[i]
+    return average_step_speed_at(cyc, i) * cyc.dt_s_at_i(i)
 
 def trapz_distance_over_range(cyc: Cycle, i_start: int, i_end: int) -> float:
     """
