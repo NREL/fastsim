@@ -266,7 +266,7 @@ class TestCoasting(unittest.TestCase):
                 if i < idx or i >= idx+n:
                     self.assertEqual(self.trapz.mps[i], trapz.mps[i], msg)
                 else:
-                    dt = trapz.dt_s[idx]
+                    dt = trapz.dt_s_at_i(idx)
                     a_expected = fastsim.cycle.accel_for_constant_jerk(i - idx, accel, jerk, dt)
                     a = accel + (i - idx) * jerk * dt
                     v += a * dt
@@ -292,7 +292,7 @@ class TestCoasting(unittest.TestCase):
                 if i < idx or i >= idx+n:
                     self.assertEqual(self.trapz.mps[i], trapz.mps[i], msg)
                 else:
-                    dt = trapz.dt_s[idx]
+                    dt = trapz.dt_s_at_i(idx)
                     a_expected = fastsim.cycle.accel_for_constant_jerk(i - idx, accel, jerk, dt)
                     a = accel + (i - idx) * jerk * dt
                     v += a * dt
@@ -476,7 +476,7 @@ class TestCoasting(unittest.TestCase):
             n = 20
             d0 = self.trapz.dist_m[:idx].sum()
             v0 = self.trapz.mps[idx-1]
-            dt = self.trapz.dt_s[idx]
+            dt = self.trapz.dt_s_at_i(idx)
             brake_decel_m__s2 = 2.5
             dts0 = trapz.calc_distance_to_next_stop_from(d0)
             # speed at which friction braking initiates (m/s)
@@ -497,7 +497,7 @@ class TestCoasting(unittest.TestCase):
             n = 20
             d0 = np.array(self.ru_trapz.dist_m)[:idx].sum()
             v0 = self.ru_trapz.mps[idx-1]
-            dt = self.ru_trapz.dt_s[idx]
+            dt = self.ru_trapz.dt_s_at_i(idx)
             brake_decel_m__s2 = 2.5
             dts0 = trapz.calc_distance_to_next_stop_from(d0)
             # speed at which friction braking initiates (m/s)
