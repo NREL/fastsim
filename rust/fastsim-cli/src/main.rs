@@ -11,6 +11,10 @@ use fastsim_core::{
 /// After running `cargo build --release`, run with
 /// ```bash
 /// ./target/release/fastsim-cli --veh-file ~/Documents/GitHub/fastsim/fastsim/resources/vehdb/2012_Ford_Fusion.yaml --cyc-file ~/Documents/GitHub/fastsim/fastsim/resources/cycles/udds.csv
+/// ```.
+/// For calculation of drag and wheel rr coefficients from coastdown test, run with
+/// ```bash
+/// ./target/release/fastsim-cli --veh-file ~/Documents/GitHub/fastsim/fastsim/resources/vehdb/2012_Ford_Fusion.yaml --cyc-file coastdown --a 25.91 --b 0.1943 --c 0.01796
 /// ```
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -77,8 +81,8 @@ pub fn main() {
     }
 
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
-        if cyc_file_path == String::from("coastdown") {
-            if !fastsim_api.a.is_none() && !fastsim_api.b.is_none() && !fastsim_api.c.is_none() {
+        if cyc_file_path == *"coastdown" {
+            if fastsim_api.a.is_some() && fastsim_api.b.is_some() && fastsim_api.c.is_some() {
                 let (drag_coeff, wheel_rr_coeff) = abc_to_drag_coeffs(
                     &mut veh,
                     fastsim_api.a.unwrap(),
