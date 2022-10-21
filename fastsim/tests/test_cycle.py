@@ -387,6 +387,17 @@ class TestCycle(unittest.TestCase):
         gr = cyc_rust.average_grade_over_range(1040.0, 20.0)
         expected_gr = 0.015
         self.assertAlmostEqual(expected_gr, gr, places=5)
+    
+    def test_dt_s_vs_dt_s_at_i(self):
+        """
+        Test that dt_s_at_i is a true replacement for dt_s[i]
+        """
+        cyc = cycle.Cycle.from_file('udds')
+        ru_cyc = cyc.to_rust()
+        dt_s = cyc.dt_s
+        for i in range(len(cyc.time_s)):
+            self.assertAlmostEqual(dt_s[i], cyc.dt_s_at_i(i))
+            self.assertAlmostEqual(dt_s[i], ru_cyc.dt_s_at_i(i))
 
 if __name__ == '__main__':
     unittest.main()

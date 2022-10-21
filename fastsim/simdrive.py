@@ -546,7 +546,7 @@ class SimDrive(object):
                 ((v0_m__s * dv0_m_per_s)/(2.0 * sqrt_ab)))
         accel_target_m_per_s2 = a_m_per_s2 * \
             (1.0 - ((v0_m__s / v_desired_m_per_s) ** delta) - ((s_target_m / s_m)**2))
-        return max(v0_m__s + (accel_target_m_per_s2 * self.cyc.dt_s[i]), 0.0)
+        return max(v0_m__s + (accel_target_m_per_s2 * self.cyc.dt_s_at_i(i)), 0.0)
 
     def _set_speed_for_target_gap_using_idm(self, i):
         """
@@ -623,7 +623,7 @@ class SimDrive(object):
         if mps_ach is not None:
             return self.cyc0.average_grade_over_range(
                 cycle.trapz_step_start_distance(self.cyc, i),
-                0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s[i])
+                0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s_at_i(i))
         return self.cyc0.average_grade_over_range(
                 cycle.trapz_step_start_distance(self.cyc, i),
                 cycle.trapz_distance_for_step(self.cyc, i))
@@ -695,7 +695,7 @@ class SimDrive(object):
         else:
             self.high_acc_fc_on_tag[i] = False
         self.max_trac_mps[i] = self.mps_ach[i-1] + \
-            (self.veh.max_trac_mps2 * self.cyc.dt_s[i])
+            (self.veh.max_trac_mps2 * self.cyc.dt_s_at_i(i))
 
     def set_comp_lims(self, i):
         """
@@ -710,10 +710,10 @@ class SimDrive(object):
         self.cur_max_fs_kw_out[i] = min(
             self.veh.fs_max_kw,
             self.fs_kw_out_ach[i-1] + (
-                (self.veh.fs_max_kw / self.veh.fs_secs_to_peak_pwr) * (self.cyc.dt_s[i])))
+                (self.veh.fs_max_kw / self.veh.fs_secs_to_peak_pwr) * (self.cyc.dt_s_at_i(i))))
         # maximum fuel storage power output rate of change
         self.fc_trans_lim_kw[i] = self.fc_kw_out_ach[i-1] + (
-            self.veh.fc_max_kw / self.veh.fc_sec_to_peak_pwr * self.cyc.dt_s[i]
+            self.veh.fc_max_kw / self.veh.fc_sec_to_peak_pwr * self.cyc.dt_s_at_i(i)
         )
 
         self.fc_max_kw_in[i] = min(
@@ -727,7 +727,7 @@ class SimDrive(object):
 
         else:
             self.ess_cap_lim_dischg_kw[i] = self.veh.ess_max_kwh * np.sqrt(self.veh.ess_round_trip_eff) * 3.6e3 * (
-                self.soc[i-1] - self.veh.min_soc) / self.cyc.dt_s[i]
+                self.soc[i-1] - self.veh.min_soc) / self.cyc.dt_s_at_i(i)
         self.cur_ess_max_kw_out[i] = min(
             self.veh.ess_max_kw, self.ess_cap_lim_dischg_kw[i])
 
@@ -737,7 +737,7 @@ class SimDrive(object):
         else:
             self.ess_cap_lim_chg_kw[i] = max(
                 (self.veh.max_soc - self.soc[i-1]) * self.veh.ess_max_kwh * 1 / np.sqrt(self.veh.ess_round_trip_eff) /
-                (self.cyc.dt_s[i] * 1 / 3.6e3),
+                (self.cyc.dt_s_at_i(i) * 1 / 3.6e3),
                 0
             )
 
@@ -776,7 +776,7 @@ class SimDrive(object):
 
         # Motor transient power limit
         self.mc_transi_lim_kw[i] = abs(
-            self.mc_mech_kw_out_ach[i-1]) + self.veh.mc_max_kw / self.veh.mc_sec_to_peak_pwr * self.cyc.dt_s[i]
+            self.mc_mech_kw_out_ach[i-1]) + self.veh.mc_max_kw / self.veh.mc_sec_to_peak_pwr * self.cyc.dt_s_at_i(i)
 
         self.cur_max_mc_kw_out[i] = max(
             min(
@@ -893,7 +893,7 @@ class SimDrive(object):
         self.drag_kw[i] = 0.5 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2 * (
             (self.mps_ach[i-1] + mps_ach) / 2.0) ** 3 / 1_000
         self.accel_kw[i] = self.veh.veh_kg / \
-            (2.0 * self.cyc.dt_s[i]) * \
+            (2.0 * self.cyc.dt_s_at_i(i)) * \
             (mps_ach ** 2 - self.mps_ach[i-1] ** 2) / 1_000
         self.ascent_kw[i] = self.props.a_grav_mps2 * np.sin(np.arctan(
             grade)) * self.veh.veh_kg * ((self.mps_ach[i-1] + mps_ach) / 2.0) / 1_000
@@ -905,10 +905,10 @@ class SimDrive(object):
             np.arctan(grade)) * (self.mps_ach[i-1] + mps_ach) / 2.0 / 1_000
         self.cyc_whl_rad_per_sec[i] = mps_ach / self.veh.wheel_radius_m
         self.cyc_tire_inertia_kw[i] = (
-            0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * self.cyc_whl_rad_per_sec[i] ** 2.0 / self.cyc.dt_s[i] -
+            0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * self.cyc_whl_rad_per_sec[i] ** 2.0 / self.cyc.dt_s_at_i(i) -
             0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels *
             (self.mps_ach[i-1] /
-             self.veh.wheel_radius_m) ** 2.0 / self.cyc.dt_s[i]
+             self.veh.wheel_radius_m) ** 2.0 / self.cyc.dt_s_at_i(i)
         ) / 1_000
 
         self.cyc_whl_kw_req[i] = self.cyc_trac_kw_req[i] + \
@@ -1020,13 +1020,13 @@ class SimDrive(object):
 
                 drag3 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * \
                     self.veh.drag_coef * self.veh.frontal_area_m2
-                accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s[i]
+                accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s_at_i(i)
                 drag2 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * \
                     self.veh.drag_coef * \
                     self.veh.frontal_area_m2 * self.mps_ach[i-1]
                 wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 * \
                     self.veh.num_wheels / \
-                    (self.cyc.dt_s[i] * self.veh.wheel_radius_m ** 2)
+                    (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m ** 2)
                 drag1 = 3.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * \
                     self.veh.frontal_area_m2 * self.mps_ach[i-1] ** 2
                 roll1 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * self.veh.wheel_rr_coef \
@@ -1034,7 +1034,7 @@ class SimDrive(object):
                 ascent1 = 0.5 * self.props.a_grav_mps2 * \
                     np.sin(np.arctan(grade)) * self.veh.veh_kg
                 accel0 = -0.5 * self.veh.veh_kg * \
-                    self.mps_ach[i-1] ** 2 / self.cyc.dt_s[i]
+                    self.mps_ach[i-1] ** 2 / self.cyc.dt_s_at_i(i)
                 drag0 = 1.0 / 16.0 * self.props.air_density_kg_per_m3 * self.veh.drag_coef * \
                     self.veh.frontal_area_m2 * self.mps_ach[i-1] ** 3
                 roll0 = 0.5 * self.veh.veh_kg * self.props.a_grav_mps2 * \
@@ -1044,7 +1044,7 @@ class SimDrive(object):
                     * self.veh.veh_kg * self.mps_ach[i-1]
                 wheel0 = -0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels * \
                     self.mps_ach[i-1] ** 2 / \
-                    (self.cyc.dt_s[i] * self.veh.wheel_radius_m ** 2)
+                    (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m ** 2)
 
                 total3 = drag3 / 1_000
                 total2 = (accel2 + drag2 + wheel2) / 1_000
@@ -1059,7 +1059,7 @@ class SimDrive(object):
             self.set_power_calcs(i)
 
         self.mph_ach[i] = self.mps_ach[i] * params.MPH_PER_MPS
-        self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s[i]
+        self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s_at_i(i)
         self.dist_mi[i] = self.dist_m[i] * (1.0 / params.M_PER_MI)
 
     def set_hybrid_cont_calcs(self, i):
@@ -1084,11 +1084,11 @@ class SimDrive(object):
             )
 
             self.ess_regen_buff_dischg_kw[i] = min(self.cur_ess_max_kw_out[i], max(
-                0, (self.soc[i-1] - self.regen_buff_soc[i]) * self.veh.ess_max_kwh * 3_600 / self.cyc.dt_s[i]))
+                0, (self.soc[i-1] - self.regen_buff_soc[i]) * self.veh.ess_max_kwh * 3_600 / self.cyc.dt_s_at_i(i)))
 
             self.max_ess_regen_buff_chg_kw[i] = min(max(
                 0,
-                (self.regen_buff_soc[i] - self.soc[i-1]) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s[i]),
+                (self.regen_buff_soc[i] - self.soc[i-1]) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s_at_i(i)),
                 self.cur_max_ess_chg_kw[i]
             )
 
@@ -1110,11 +1110,11 @@ class SimDrive(object):
             )
 
             self.ess_accel_buff_chg_kw[i] = max(
-                0, (self.accel_buff_soc[i] - self.soc[i-1]) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s[i])
+                0, (self.accel_buff_soc[i] - self.soc[i-1]) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s_at_i(i))
             self.max_ess_accell_buff_dischg_kw[i] = min(
                 max(
                     0,
-                    (self.soc[i-1] - self.accel_buff_soc[i]) * self.veh.ess_max_kwh * 3_600 / self.cyc.dt_s[i]),
+                    (self.soc[i-1] - self.accel_buff_soc[i]) * self.veh.ess_max_kwh * 3_600 / self.cyc.dt_s_at_i(i)),
                 self.cur_ess_max_kw_out[i]
             )
 
@@ -1122,7 +1122,7 @@ class SimDrive(object):
             self.ess_accel_regen_dischg_kw[i] = max(
                 min(
                     (self.soc[i-1] - (self.regen_buff_soc[i] + self.accel_buff_soc[i]
-                                      ) / 2) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s[i],
+                                      ) / 2) * self.veh.ess_max_kwh * 3.6e3 / self.cyc.dt_s_at_i(i),
                     self.cur_ess_max_kw_out[i]
                 ),
                 -self.cur_max_ess_chg_kw[i]
@@ -1250,7 +1250,7 @@ class SimDrive(object):
         """
         # force fuel converter on if it was on in the previous time step, but only if fc
         # has not been on longer than minFcTimeOn
-        if self.prev_fc_time_on[i] > 0 and self.prev_fc_time_on[i] < self.veh.min_fc_time_on - self.cyc.dt_s[i]:
+        if self.prev_fc_time_on[i] > 0 and self.prev_fc_time_on[i] < self.veh.min_fc_time_on - self.cyc.dt_s_at_i(i):
             self.fc_forced_on[i] = True
         else:
             self.fc_forced_on[i] = False
@@ -1512,11 +1512,11 @@ class SimDrive(object):
             self.ess_cur_kwh[i] = 0
 
         elif self.ess_kw_out_ach[i] < 0:
-            self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s[i] /\
+            self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s_at_i(i) /\
                 3.6e3 * np.sqrt(self.veh.ess_round_trip_eff)
 
         else:
-            self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s[i] / \
+            self.ess_cur_kwh[i] = self.ess_cur_kwh[i-1] - self.ess_kw_out_ach[i] * self.cyc.dt_s_at_i(i) / \
                 3.6e3 * (1 / np.sqrt(self.veh.ess_round_trip_eff))
 
         if self.veh.ess_max_kwh == 0:
@@ -1528,7 +1528,7 @@ class SimDrive(object):
         if self.can_pwr_all_elec[i] and not(self.fc_forced_on[i]) and self.fc_kw_out_ach[i] == 0.0:
             self.fc_time_on[i] = 0
         else:
-            self.fc_time_on[i] = self.fc_time_on[i-1] + self.cyc.dt_s[i]
+            self.fc_time_on[i] = self.fc_time_on[i-1] + self.cyc.dt_s_at_i(i)
 
     def set_fc_power(self, i):
         """
@@ -1585,7 +1585,7 @@ class SimDrive(object):
         self.fs_kw_out_ach[i] = self.fc_kw_in_ach[i]
 
         self.fs_kwh_out_ach[i] = self.fs_kw_out_ach[i] * \
-            self.cyc.dt_s[i] * (1 / 3.6e3)
+            self.cyc.dt_s_at_i(i) * (1 / 3.6e3)
 
     def set_time_dilation(self, i):
         trace_met = (
@@ -1604,7 +1604,7 @@ class SimDrive(object):
                 0.0,  # no time dilation initially
                 min(max(
                     # initial guess, speed that needed to be achived per speed that was achieved
-                    d_short[-1] / self.cyc0.dt_s[i] / self.mps_ach[i],
+                    d_short[-1] / self.cyc0.dt_s_at_i(i) / self.mps_ach[i],
                     self.sim_params.min_time_dilation
                 ),
                     self.sim_params.max_time_dilation
@@ -1612,7 +1612,7 @@ class SimDrive(object):
             ]
 
             # add time dilation factor * step size to current and subsequent times
-            self.cyc.time_s[i:] += self.cyc.dt_s[i] * t_dilation[-1]
+            self.cyc.time_s[i:] += self.cyc.dt_s_at_i(i) * t_dilation[-1]
             self.solve_step(i)
             trace_met = (
                 # convergence criteria
@@ -1640,7 +1640,7 @@ class SimDrive(object):
                     self.sim_params.max_time_dilation
                 )
             )
-            self.cyc.time_s[i:] += self.cyc.dt_s[i] * t_dilation[-1]
+            self.cyc.time_s[i:] += self.cyc.dt_s_at_i(i) * t_dilation[-1]
 
             self.solve_step(i)
             self.trace_miss_iters[i] += 1
@@ -1721,7 +1721,7 @@ class SimDrive(object):
         idx = i
         dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
         while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx < len(self.mps_ach):
-            dt_s = self.cyc0.dt_s[idx]
+            dt_s = self.cyc0.dt_s_at_i(idx)
             gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
                 d + d0, 0)
             k = self._calc_dvdd(v, gr)
@@ -1889,7 +1889,7 @@ class SimDrive(object):
             print(f"... dts0 = {dts0}")
             return not_found
         v1 = self.cyc.mps[i]
-        dt = self.cyc.dt_s[i]
+        dt = self.cyc.dt_s_at_i(i)
         # distance to brake from the brake start speed (m/s)
         dtb = -0.5 * brake_start_speed_m_per_s * brake_start_speed_m_per_s / brake_accel_m_per_s2
         # distance to brake initiation from start of time-step (m)
@@ -1905,7 +1905,7 @@ class SimDrive(object):
         r_best_accel_m__s2 = 0.0
         r_best_accel_spread_m__s2 = 0.0
         while dt_plan <= time_horizon_s and step_idx < num_samples:
-            dt_plan += self.cyc0.dt_s[step_idx]
+            dt_plan += self.cyc0.dt_s_at_i(step_idx)
             step_ahead = step_idx - (i - 1)
             if step_ahead == 1:
                 # for brake init rendezvous
@@ -2056,7 +2056,7 @@ class SimDrive(object):
                 ])
                 trace_accels_m_per_s2 = np.array([
                     (self.cyc.mps[ni + idx + full_brake_steps] - self.cyc.mps[ni + idx - 1 + full_brake_steps])
-                    / self.cyc.dt_s[ni + idx - 1 + full_brake_steps]
+                    / self.cyc.dt_s_at_i(ni + idx - 1 + full_brake_steps)
                     for ni in range(n)
                     if (ni + idx + full_brake_steps) < len(self.cyc.time_s)
                 ])
@@ -2132,7 +2132,7 @@ class SimDrive(object):
         self.newton_iters[i] = 0  # reset newton iters
         self.cyc.mps[i] = self.mps_ach[i]
         accel_proposed = (self.cyc.mps[i] -
-                          self.cyc.mps[i-1]) / self.cyc.dt_s[i]
+                          self.cyc.mps[i-1]) / self.cyc.dt_s_at_i(i)
         if self.cyc.mps[i] < TOL:
             self.impose_coast[i:] = False
             self._set_coast_delay(i)
