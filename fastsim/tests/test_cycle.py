@@ -1,4 +1,5 @@
 """Test suite for cycle instantiation and manipulation."""
+import time
 
 import unittest
 from pathlib import Path
@@ -398,6 +399,29 @@ class TestCycle(unittest.TestCase):
         for i in range(len(cyc.time_s)):
             self.assertAlmostEqual(dt_s[i], cyc.dt_s_at_i(i))
             self.assertAlmostEqual(dt_s[i], ru_cyc.dt_s_at_i(i))
+    
+    def test_trapz_step_start_distance(self):
+        """
+        Test the implementation of trapz_step_start_distance
+        """
+        verbose = False
+        cyc = cycle.Cycle.from_file('udds')
+        num_samples = len(cyc.time_s)
+        if verbose:
+            start_t = time.time()
+        ds_test = [cycle.trapz_step_start_distance(cyc, i) for i in range(num_samples)]
+        if verbose:
+            end_t = time.time()
+            print(f"cycle.trapz_step_start_distance(...) took {end_t - start_t:6.3f} s")
+        if verbose:
+            start_t = time.time()
+        ds_good = [cycle.trapz_step_distances(cyc)[:i].sum() for i in range(num_samples)]
+        if verbose:
+            end_t = time.time()
+            print(f"cycle.trapz_step_distances(cyc)[:i].sum() took {end_t - start_t:6.3f} s")
+        self.assertEqual(len(ds_test), len(ds_good))
+        for (d_test, d_good) in zip(ds_test, ds_good):
+            self.assertAlmostEqual(d_test, d_good)
 
 if __name__ == '__main__':
     unittest.main()
