@@ -860,7 +860,7 @@ def trapz_step_start_distance(cyc: Cycle, i: int) -> float:
     (i.e., distance traveled up to sample point i-1)
     Distance is in meters.
     """
-    return trapz_step_distances(cyc)[:i].sum()
+    return (np.diff(cyc.time_s[:i]) * (0.5 * (cyc.mps[:max(i-1,0)] + cyc.mps[1:i]))).sum()
 
 def trapz_distance_for_step(cyc: Cycle, i: int) -> float:
     """
