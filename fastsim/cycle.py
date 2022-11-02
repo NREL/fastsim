@@ -42,6 +42,62 @@ OLD_TO_NEW = {
 NEW_TO_OLD = {val: key for key, val in OLD_TO_NEW.items()}
 STANDARD_CYCLE_KEYS = OLD_TO_NEW.values()
 
+class CycleCache:
+    grade_all_zero: bool
+    trapz_step_distances_m: np.ndarray(1, dtype=float)
+    trapz_distances_m: np.ndarray(1, dtype=float)
+    trapz_elevations_m: np.ndarray(1, dtype=float)
+    stops: np.ndarray(False, dtype=bool)
+    _interp_ds: np.ndarray(1, dtype=float)
+    _interp_is: np.ndarray(1, dtype=float)
+    _grades: np.ndarray(1, dtype=float)
+    _interp_hs: np.ndarray(1, dtype=float)
+
+    def __init__(self, cyc: Cycle):
+        tol = 1e-6
+        self.grade_all_zero = (np.array(cyc.grade) == 0.0).all()
+        self.trapz_step_distances_m = trapz_step_distances(cyc)
+        self.trapz_distances_m = self.trapz_step_distances_m.cumsum()
+        if (self.grade_all_zero):
+            self.trapz_elevations_m = np.zeros(len(cyc.time_s))
+        else:
+            self.trapz_elevations_m = np.cumsum(np.cos(np.arctan(cyc.grade)) * self.trapz_step_distances_m * np.array(cyc.grade))
+        self.stops = np.array(cyc.mps) <= tol
+        interp_ds = []
+        interp_is = []
+        interp_hs = []
+        for (idx, d) in enumerate(self.trapz_distances_m):
+            if len(interp_ds) == 0 or d > interp_ds[-1]:
+                interp_ds.append(d)
+                interp_is.append(idx)
+                interp_hs.append(self.trapz_elevations_m[idx])
+        self._interp_ds = np.array(interp_ds, dtype=float)
+        self._interp_is = np.array(interp_is, dtype=float)
+        self._interp_hs = np.array(interp_hs, dtype=float)
+        self._grades = np.copy(cyc.grade)
+
+    def interp_grade(self, dist: float):
+        """
+        Interpolate the single-point grade at the given distance.
+        Assumes that the grade at i applies from sample point (i-1, i]
+        """
+        if self.grade_all_zero:
+            return 0.0
+        if dist <= self._interp_ds[0]:
+            return self._grades[0]
+        if dist > self._interp_ds[-1]:
+            return self._grades[-1]
+        idx = int(np.ceil(np.interp(dist, self._interp_ds, self._interp_is)))
+        return self._grades[idx]
+    
+    def interp_elevation(self, dist: float):
+        """
+        Interpolate the elevation at the given distance
+        """
+        if self.grade_all_zero:
+            return 0.0
+        return np.interp(dist, self._interp_ds, self._interp_hs)
+
 
 @dataclass
 class Cycle(object):
@@ -99,7 +155,15 @@ class Cycle(object):
         new_cyc_dict = {}
         for key, val in cyc_dict.items():
             # generate keys from legacy or current mapping
-            new_cyc_dict[OLD_TO_NEW.get(key, key)] = val
+            new_key = OLD_TO_NEW.get(key, key)
+            if new_key == 'name':
+                aval = val
+            else:
+                try:
+                    aval = np.array(val, dtype=float)
+                except Exception:
+                    aval = val
+            new_cyc_dict[new_key] = aval
         new_cyc_dict['name'] = cyc_dict.get('name', '')
         # set zeros if not provided
         new_cyc_dict['grade'] = new_cyc_dict.get(
@@ -115,6 +179,15 @@ class Cycle(object):
         """Deprecated."""
         raise NotImplementedError(
             "This method has been deprecated.")
+
+    def build_cache(self) -> CycleCache:
+        """
+        Calculates a dataclass containing expensive-to-calculate items. The data created
+        can persist between calls and optionally be passed into methods that can use
+        it which will result in a performance enhancement.
+        RETURN: CycleCache
+        """
+        return CycleCache(self)
 
     # Properties
 
@@ -180,7 +253,7 @@ class Cycle(object):
         """
         return copy.deepcopy(self)
 
-    def average_grade_over_range(self, distance_start_m, delta_distance_m):
+    def average_grade_over_range(self, distance_start_m, delta_distance_m, cache:Optional[CycleCache]=None):
         """
         Returns the average grade over the given range of distances
         - distance_start_m: non-negative-number, the distance at start of evaluation area (m)
@@ -191,34 +264,38 @@ class Cycle(object):
         distances, d, from (d[i - 1], d[i]]
         """
         tol = 1e-6
-        if ((self.grade == 0.0).all()):
-            return 0.0
-        delta_dists = trapz_step_distances(self)
-        distances_m = delta_dists.cumsum()
-        if delta_distance_m <= tol:
-            if distance_start_m <= distances_m[0]:
-                return self.grade[0]
-            if distance_start_m >= distances_m[-1]:
+        if cache is None:
+            grade_all_zero = (self.grade == 0.0).all()
+            if grade_all_zero:
+                return 0.0
+            delta_dists = trapz_step_distances(self)
+            trapz_distances_m = delta_dists.cumsum()
+            if delta_distance_m <= tol:
+                if distance_start_m <= trapz_distances_m[0]:
+                    return self.grade[0]
+                if distance_start_m > trapz_distances_m[-1]:
+                    return self.grade[-1]
+                for idx in range(1, len(self.time_s)):
+                    if distance_start_m > trapz_distances_m[idx-1] and distance_start_m <= trapz_distances_m[idx]:
+                        return self.grade[idx]
                 return self.grade[-1]
-            gr = self.grade[0]
-            for (d, d_next, g) in zip(distances_m, distances_m[1:], self.grade[1:]):
-                if distance_start_m > d and distance_start_m <= d_next:
-                    gr = g
-                    break
-            return gr
-        # NOTE: we use the following instead of delta_elev_m in order to use
-        # a more-accurate trapezoidal integration. This also uses the fully
-        # accurate trig functions in case we have large slope angles.
-        elevations_m = np.cumsum(np.cos(np.arctan(self.grade)) * delta_dists * self.grade)
-        assert len(elevations_m) == len(distances_m), f"len(elevations_m) = {len(elevations_m)}; len(distances_m) = {len(distances_m)}"
-        assert elevations_m[0] == 0.0
-        assert distances_m[0] == 0.0
-        e0 = np.interp(distance_start_m, xp=distances_m, fp=elevations_m)
-        e1 = np.interp(distance_start_m + delta_distance_m,
-                       xp=distances_m, fp=elevations_m)
+            # NOTE: we use the following instead of delta_elev_m in order to use
+            # a more-accurate trapezoidal integration. This also uses the fully
+            # accurate trig functions in case we have large slope angles.
+            trapz_elevations_m = np.cumsum(np.cos(np.arctan(self.grade)) * delta_dists * self.grade)
+            e0 = np.interp(distance_start_m, xp=trapz_distances_m, fp=trapz_elevations_m)
+            e1 = np.interp(distance_start_m + delta_distance_m,
+                        xp=trapz_distances_m, fp=trapz_elevations_m)
+        else:
+            if cache.grade_all_zero:
+                return 0.0
+            if delta_distance_m <= tol:
+                return cache.interp_grade(distance_start_m)
+            e0 = cache.interp_elevation(distance_start_m)
+            e1 = cache.interp_elevation(distance_start_m + delta_distance_m)
         return np.tan(np.arcsin((e1 - e0) / delta_distance_m))
 
-    def calc_distance_to_next_stop_from(self, distance_m: float) -> float:
+    def calc_distance_to_next_stop_from(self, distance_m: float, cache: Optional[CycleCache]=None) -> float:
         """
         Calculate the distance to next stop from `distance_m`
         - distance_m: non-negative-number, the current distance from start (m)
@@ -226,12 +303,15 @@ class Cycle(object):
         NOTE: distance may be negative if we're beyond the last stop
         """
         tol = 1e-6
-        d = 0.0
-        for (dd, v) in zip(trapz_step_distances(self), self.mps):
-            d += dd
-            if ((v < tol) and (d > (distance_m + tol))):
-                return d - distance_m
-        return d - distance_m
+        #d = 0.0
+        if cache:
+            ds = cache.trapz_distances_m
+            stops = cache.stops
+        else:
+            ds = trapz_step_distances(self).cumsum()
+            stops = self.mps <= tol
+        argmax = np.argmax(np.logical_and(ds > distance_m, stops))
+        return ds[argmax] - distance_m
 
     def modify_by_const_jerk_trajectory(self, idx, n, jerk_m__s3, accel0_m__s2):
         """
@@ -304,58 +384,6 @@ class LegacyCycle(object):
         """
         for key, val in NEW_TO_OLD.items():
             self.__setattr__(val, copy.deepcopy(cycle.__getattribute__(key)))
-
-
-ref_cyc = Cycle.from_file('udds')
-
-
-def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Dict[str, np.ndarray] | Cycle | LegacyCycle | RustCycle:
-    """Returns copy of Cycle.
-    Arguments:
-    cyc: instantianed Cycle or CycleJit
-    return_type: 
-        default: infer from type of cyc
-        'dict': dict
-        'python': Cycle 
-        'legacy': LegacyCycle
-        'rust': RustCycle
-    deep: if True, uses deepcopy on everything
-    """
-
-    cyc_dict = {}
-
-    for key in inspect_utils.get_attrs(ref_cyc):
-        val_to_copy = cyc.__getattribute__(key)
-        array_types = [np.ndarray] if not RUST_AVAILABLE else [
-            np.ndarray, fsr.Pyo3ArrayF64]
-        if type(val_to_copy) in array_types:
-            # has to be float or time_s will get converted to int
-            cyc_dict[key] = copy.deepcopy(np.array(
-                val_to_copy, dtype=float) if deep else val_to_copy)
-        else:
-            cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
-
-    if return_type is None:
-        if RUST_AVAILABLE and isinstance(cyc, RustCycle):
-            return_type = 'rust'
-        elif isinstance(cyc, Cycle):
-            return_type = 'python'
-        elif isinstance(cyc, LegacyCycle):
-            return_type = "legacy"
-        else:
-            raise NotImplementedError(
-                "Only implemented for rust, python, or legacy.")
-
-    if return_type == 'dict':
-        return cyc_dict
-    elif return_type == 'python':
-        return Cycle.from_dict(cyc_dict)
-    elif return_type == 'legacy':
-        return LegacyCycle(cyc_dict)
-    elif RUST_AVAILABLE and return_type == 'rust':
-        return RustCycle(**cyc_dict)
-    else:
-        raise ValueError(f"Invalid return_type: '{return_type}'")
 
 
 def cyc_equal(a: Cycle, b: Cycle) -> bool:
@@ -860,7 +888,9 @@ def trapz_step_start_distance(cyc: Cycle, i: int) -> float:
     (i.e., distance traveled up to sample point i-1)
     Distance is in meters.
     """
-    return (np.diff(cyc.time_s[:i]) * (0.5 * (cyc.mps[:max(i-1,0)] + cyc.mps[1:i]))).sum()
+    time_s = np.array(cyc.time_s)
+    mps = np.array(cyc.mps)
+    return (np.diff(time_s[:i]) * (0.5 * (mps[:max(i-1,0)] + mps[1:i]))).sum()
 
 def trapz_distance_for_step(cyc: Cycle, i: int) -> float:
     """
@@ -949,3 +979,56 @@ def create_dist_and_target_speeds_by_microtrip(cyc: Cycle, blend_factor: float=0
             )
             dist_at_start_of_microtrip_m += mt_dist_m
     return dist_and_tgt_speeds
+
+
+ref_cyc = Cycle.from_file('udds')
+
+
+def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Dict[str, np.ndarray] | Cycle | LegacyCycle | RustCycle:
+    """Returns copy of Cycle.
+    Arguments:
+    cyc: instantianed Cycle or CycleJit
+    return_type: 
+        default: infer from type of cyc
+        'dict': dict
+        'python': Cycle 
+        'legacy': LegacyCycle
+        'rust': RustCycle
+    deep: if True, uses deepcopy on everything
+    """
+
+    cyc_dict = {}
+
+    for key in inspect_utils.get_attrs(ref_cyc):
+        val_to_copy = cyc.__getattribute__(key)
+        array_types = [np.ndarray] if not RUST_AVAILABLE else [
+            np.ndarray, fsr.Pyo3ArrayF64]
+        if type(val_to_copy) in array_types:
+            # has to be float or time_s will get converted to int
+            cyc_dict[key] = copy.deepcopy(np.array(
+                val_to_copy, dtype=float) if deep else val_to_copy)
+        else:
+            cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
+
+    if return_type is None:
+        if RUST_AVAILABLE and isinstance(cyc, RustCycle):
+            return_type = 'rust'
+        elif isinstance(cyc, Cycle):
+            return_type = 'python'
+        elif isinstance(cyc, LegacyCycle):
+            return_type = "legacy"
+        else:
+            raise NotImplementedError(
+                "Only implemented for rust, python, or legacy.")
+
+    if return_type == 'dict':
+        return cyc_dict
+    elif return_type == 'python':
+        return Cycle.from_dict(cyc_dict)
+    elif return_type == 'legacy':
+        return LegacyCycle(cyc_dict)
+    elif RUST_AVAILABLE and return_type == 'rust':
+        return RustCycle(**cyc_dict)
+    else:
+        raise ValueError(f"Invalid return_type: '{return_type}'")
+
