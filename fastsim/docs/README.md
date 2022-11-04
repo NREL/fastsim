@@ -34,7 +34,7 @@ Next, install the Rust toolchain, and create and activate an environment for the
 
       conda create -n fastsim python=3.8
       conda activate fastsim
-      conda install -c conda-forge "rust>=1.62.1"
+      conda install -c conda-forge "rust>=1.64"
     
 Then, from within the top level of the FASTSim folder, run a pip install:
 
