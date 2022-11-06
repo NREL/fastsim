@@ -14,6 +14,145 @@ use crate::pyo3imports::*;
 use crate::simdrive::RustSimDrive;
 use crate::vehicle::RustVehicle;
 
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Struct containing list of transmission options for vehicle from fueleconomy.gov
+struct VehicleOptionsFE {
+    #[serde(rename = "menuItem")]
+    /// List of vehicle options (transmission and id)
+    options: Vec<OptionFE>
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Struct containing transmission and id of a vehicle option from fueleconomy.gov
+struct OptionFE {
+    #[serde(rename = "text")]
+    /// Transmission of vehicle
+    transmission: String,
+    #[serde(rename = "value")]
+    /// ID of vehicle on fueleconomy.gov
+    id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Struct containing vehicle data from fueleconomy.gov
+pub struct VehicleDataFE {
+    #[serde(default, rename = "atvType")]
+    /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
+    alt_veh_type: String,
+    #[serde(rename = "city08")]
+    /// City MPG for fuel 1
+    city_mpg_fuel1: f64,
+    #[serde(rename = "cityA08")]
+    /// City MPG for fuel 2
+    city_mpg_fuel2: f64,
+    #[serde(rename = "co2")]
+    /// Tailpipe CO2 emissions in grams/mile
+    co2_g_per_mi: f64,
+    #[serde(rename = "comb08")]
+    /// Combined MPG for fuel 1
+    comb_mpg_fuel1: f64,
+    #[serde(rename = "combA08")]
+    /// Combined MPG for fuel 2
+    comb_mpg_fuel2: f64,
+    #[serde(default)]
+    /// Number of engine cylinders
+    cylinders: String,
+    #[serde(default)]
+    /// Engine displacement in liters
+    displ: String,
+    /// Drive axle type (FWD, RWD, AWD, 4WD)
+    drive: String,
+    #[serde(rename = "emissionsList")]
+    /// List of emissions tests
+    emissions_list: EmissionsListFE,
+    #[serde(default)]
+    /// Description of engine
+    eng_dscr: String,
+    #[serde(default, rename = "evMotor")]
+    /// Electric motor power (kW)
+    ev_motor_kw: String,
+    #[serde(rename = "feScore")]
+    /// EPA fuel economy score
+    fe_score: f64,
+    #[serde(rename = "fuelType")]
+    /// Combined vehicle fuel type (fuel 1 and fuel 2)
+    fuel_type: String,
+    #[serde(rename = "fuelType1")]
+    /// Fuel type 1
+    fuel1: String,
+    #[serde(rename = "fuelType2")]
+    /// Fuel type 2
+    fuel2: String,
+    #[serde(rename = "ghgScore")]
+    /// EPA GHG Score
+    ghg_score: f64,
+    #[serde(rename = "highway08")]
+    /// Highway MPG for fuel 1
+    highway_mpg_fuel1: f64,
+    #[serde(rename = "highwayA08")]
+    /// Highway MPG for fuel 2
+    highway_mpg_fuel2: f64,
+    /// Manufacturer
+    make: String,
+    #[serde(rename = "mfrCode")]
+    /// Manufacturer code
+    mfr_code: String,
+    /// Model name
+    model: String,
+    #[serde(rename = "phevBlended")]
+    /// Vehicle operates on blend of gasoline and electricity
+    phev_blended: bool,
+    #[serde(rename = "phevCity")]
+    /// EPA composite gasoline-electricity city MPGe
+    phev_city_mpge: f64,
+    #[serde(rename = "phevComb")]
+    /// EPA composite gasoline-electricity combined MPGe
+    phev_comb_mpge: f64,
+    #[serde(rename = "phevHwy")]
+    /// EPA composite gasoline-electricity highway MPGe
+    phev_hwy_mpge: f64,
+    #[serde(rename = "startStop")]
+    /// Stop-start technology
+    start_stop: String,
+    /// transmission
+    trany: String,
+    #[serde(rename = "VClass")]
+    /// EPA vehicle size class
+    veh_class: String,
+    /// Model year
+    year: u32,
+    #[serde(default, rename = "sCharger")]
+    /// Vehicle is supercharged
+    super_charge: String,
+    #[serde(default, rename = "tCharger")]
+    /// Vehicle is turbocharged
+    turbo_charge: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+/// Struct containing list of emissions tests from fueleconomy.gov
+struct EmissionsListFE {
+    /// 
+    emissions_info: Vec<EmissionsInfoFE>
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+/// Struct containing emissions test results from fueleconomy.gov
+struct EmissionsInfoFE {
+    /// Engine family id / EPA test group
+    efid: String,
+    /// EPA smog rating
+    score: f64,
+    /// SmartWay score
+    smartway_score: f64,
+    /// Vehicle emission standard code
+    standard: String,
+    /// Vehicle emission standard
+    std_text: String,
+}
+
 #[allow(non_snake_case)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 pub fn abc_to_drag_coeffs(
