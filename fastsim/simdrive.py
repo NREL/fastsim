@@ -404,7 +404,7 @@ class SimDrive(object):
         aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
                 Default of None causes veh.aux_kw to be used. 
         """
-        if init_soc > self.veh.max_soc or init_soc < self.veh.min_soc:
+        if self.veh.veh_pt_type in [HEV, CONV, BEV] and (init_soc > self.veh.max_soc or init_soc < self.veh.min_soc):
             logger.warning(
                 f"provided init_soc={init_soc} is outside range min_soc={self.veh.min_soc} to max_soc={self.veh.max_soc}; "
                 + "setting init_soc to max_soc"
