@@ -17,6 +17,8 @@ log = "0.4.17"
 polynomial = "0.2.4"
 argmin = "0.7.0"
 argmin-math = { version = "0.2.1", features = ["ndarray_latest-nolinalg-serde"] }
+curl = "0.4.44"
+serde-xml-rs = "0.6.0"
 
 
 [package.metadata.docs.rs]
