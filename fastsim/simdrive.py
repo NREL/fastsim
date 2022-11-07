@@ -336,7 +336,7 @@ class SimDrive(object):
         self.coast_delay_index = np.zeros(self.cyc.len, dtype=np.int32)
         self.impose_coast = np.array([False] * self.cyc.len, dtype=np.bool_)
         self.idm_target_speed_m_per_s = np.zeros(self.cyc.len, dtype=np.float64)
-        self._cyc0_cache = self.cyc0.build_cache()
+        self.cyc0_cache = self.cyc0.build_cache()
 
     @property
     def gap_to_lead_vehicle_m(self):
@@ -543,7 +543,7 @@ class SimDrive(object):
         v0_m__s = self.mps_ach[i-1]
         v0_lead_m_per_s = self.cyc0.mps[i-1]
         dv0_m_per_s = v0_m__s - v0_lead_m_per_s
-        d0_lead_m = self._cyc0_cache.trapz_distances_m[max(i-1, 0)] + s0_m
+        d0_lead_m = self.cyc0_cache.trapz_distances_m[max(i-1, 0)] + s0_m
         d0_m = cycle.trapz_step_start_distance(self.cyc, i)
         s_m = max(d0_lead_m - d0_m, 0.01)
         # IDM EQUATIONS
@@ -605,11 +605,11 @@ class SimDrive(object):
             and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
             then returns self.cyc.grade[i]
         """
-        if self._cyc0_cache.grade_all_zero:
+        if self.cyc0_cache.grade_all_zero:
             return 0.0
         if not self.sim_params.coast_allow and not self.sim_params.idm_allow:
             return self.cyc.grade[i]
-        return self._cyc0_cache.interp_grade(cycle.trapz_step_start_distance(self.cyc, i))
+        return self.cyc0_cache.interp_grade(cycle.trapz_step_start_distance(self.cyc, i))
     
     def _lookup_grade_for_step(self, i: int, mps_ach: Optional[float] = None) -> float:
         """
@@ -625,7 +625,7 @@ class SimDrive(object):
             and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
             then returns self.cyc.grade[i]
         """
-        if self._cyc0_cache.grade_all_zero:
+        if self.cyc0_cache.grade_all_zero:
             return 0.0
         if not self.sim_params.coast_allow and not self.sim_params.idm_allow:
             return self.cyc.grade[i]
@@ -633,11 +633,11 @@ class SimDrive(object):
             return self.cyc0.average_grade_over_range(
                 cycle.trapz_step_start_distance(self.cyc, i),
                 0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s_at_i(i),
-                cache=self._cyc0_cache)
+                cache=self.cyc0_cache)
         return self.cyc0.average_grade_over_range(
                 cycle.trapz_step_start_distance(self.cyc, i),
                 cycle.trapz_distance_for_step(self.cyc, i),
-                cache=self._cyc0_cache)
+                cache=self.cyc0_cache)
 
     def sim_drive_step(self):
         """
@@ -1706,7 +1706,7 @@ class SimDrive(object):
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
         assert a_brake <= 0
-        ds = self._cyc0_cache.trapz_distances_m
+        ds = self.cyc0_cache.trapz_distances_m
         gs = self.cyc0.grade
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
         ds_mask = ds >= d0
@@ -1735,10 +1735,10 @@ class SimDrive(object):
         v = v0
         iter = 0
         idx = i
-        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self._cyc0_cache)
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self.cyc0_cache)
         while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx < len(self.mps_ach):
             dt_s = self.cyc0.dt_s_at_i(idx)
-            gr = unique_grade if unique_grade is not None else self._cyc0_cache.interp_grade(d + d0)
+            gr = unique_grade if unique_grade is not None else self.cyc0_cache.interp_grade(d + d0)
             k = self._calc_dvdd(v, gr)
             v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
             vavg = 0.5 * (v + v_next)
@@ -1749,7 +1749,7 @@ class SimDrive(object):
                 vavg = 0.5 * (v + v_next)
                 dd = vavg * dt_s
                 if self.sim_params.favor_grade_accuracy:
-                    gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(d + d0, dd, cache=self._cyc0_cache)
+                    gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(d + d0, dd, cache=self.cyc0_cache)
             if k >= 0.0 and unique_grade is not None:
                 # there is no solution for coastdown -- speed will never decrease
                 return NOT_FOUND
@@ -1797,7 +1797,7 @@ class SimDrive(object):
         v0 = self.cyc.mps[i-1]
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
-        ds = self._cyc0_cache.trapz_distances_m
+        ds = self.cyc0_cache.trapz_distances_m
         gs = self.cyc0.grade
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
         ds_mask = ds >= d0
@@ -1853,7 +1853,7 @@ class SimDrive(object):
             return False
         # distance to next stop (m)
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
-        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self._cyc0_cache)
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self.cyc0_cache)
         dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2
         return dtsc0 >= dts0 and dts0 >= (4.0 * dtb)
 
@@ -1892,7 +1892,7 @@ class SimDrive(object):
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
         # a_proposed = (v1 - v0) / dt
         # distance to stop from start of time-step
-        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self._cyc0_cache)
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self.cyc0_cache)
         if dts0 < 0.0:
             # no stop to coast towards or we're there...
             print("WARNING! Exiting as there is no stop to coast towards")
@@ -1986,7 +1986,7 @@ class SimDrive(object):
         coast_delay = None
         if not self.sim_params.idm_allow and self.cyc.mps[i] < SPEED_TOL:
             d0 = cycle.trapz_step_start_distance(self.cyc, i)
-            d0_lv = self._cyc0_cache.trapz_distances_m[i-1]
+            d0_lv = self.cyc0_cache.trapz_distances_m[i-1]
             dtlv0 = d0_lv - d0
             if np.abs(dtlv0) > DIST_TOL:
                 d_lv = 0.0
@@ -2391,6 +2391,8 @@ def sim_drive_equal(a: SimDrive, b: SimDrive) -> bool:
     if a is b:
         return True
     for k in ref_sim_drive.__dict__.keys():
+        if k == 'cyc0_cache':
+            continue
         a_val = a.__getattribute__(k)
         b_val = b.__getattribute__(k)
         if k == 'cyc' or k == 'cyc0':
