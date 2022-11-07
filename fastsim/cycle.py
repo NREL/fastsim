@@ -50,8 +50,8 @@ class CycleCache:
     stops: np.ndarray(False, dtype=bool)
     _interp_ds: np.ndarray(1, dtype=float)
     _interp_is: np.ndarray(1, dtype=float)
-    _grades: np.ndarray(1, dtype=float)
     _interp_hs: np.ndarray(1, dtype=float)
+    _grades: np.ndarray(1, dtype=float)
 
     def __init__(self, cyc: Cycle):
         tol = 1e-6
