@@ -6,6 +6,9 @@ use curl::easy::Easy;
 use ndarray::{array, Array1};
 use polynomial::Polynomial;
 use serde_xml_rs::from_str;
+use std::collections::HashMap;
+use std::fs::File;
+use std::path::PathBuf;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -155,6 +158,62 @@ struct EmissionsInfoFE {
     std_text: String,
 }
 
+#[derive(Default, PartialEq, Clone, Debug, Deserialize, Serialize)]
+/// Struct containing vehicle data from EPA database
+struct VehicleDataEPA {
+    #[serde(rename = "Model Year")]
+    /// Model year
+    year: u32,
+    #[serde(rename = "Veh Mfr Code")]
+    /// Vehicle manufacturer code
+    mfr_code: String,
+    #[serde(rename = "Represented Test Veh Make")]
+    /// Vehicle make
+    make: String,
+    #[serde(rename = "Represented Test Veh Model")]
+    /// Vehicle model
+    model: String,
+    #[serde(rename = "Actual Tested Testgroup")]
+    /// Vehicle test group
+    test_id: String,
+    #[serde(rename = "Test Veh Displacement (L)")]
+    /// Engine displacement
+    displ: String,
+    #[serde(rename = "Rated Horsepower")]
+    /// Engine power in hp
+    eng_pwr_hp: u32,
+    #[serde(rename = "# of Cylinders and Rotors")]
+    /// Number of cylinders
+    cylinders: String,
+    #[serde(rename = "Tested Transmission Type Code")]
+    /// Transmission type code
+    trany_code: String,
+    #[serde(rename = "Tested Transmission Type")]
+    /// Transmission type
+    trany_type: String,
+    #[serde(rename = "# of Gears")]
+    /// Number of gears
+    gears: u32,
+    #[serde(rename = "Drive System Code")]
+    /// Drive system code
+    drive_code: String,
+    #[serde(rename = "Drive System Description")]
+    /// Drive system type
+    drive: String,
+    #[serde(rename = "Equivalent Test Weight (lbs.)")]
+    /// Test weight in lbs
+    test_weight_lbs: f64,
+    #[serde(rename = "Target Coef A (lbf)")]
+    /// Dyno coefficient a in lbf
+    a_lbf: f64,
+    #[serde(rename = "Target Coef B (lbf/mph)")]
+    /// Dyno coefficient b in lbf/mph
+    b_lbf_per_mph: f64,
+    #[serde(rename = "Target Coef C (lbf/mph**2)")]
+    /// Dyno coefficient c in lbf/mph^2
+    c_lbf_per_mph2: f64,
+}
+
 pub fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<VehicleDataFE, Error> {
     // Gets data from fueleconomy.gov for the given vehicle
     //
@@ -205,6 +264,99 @@ pub fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<
 
     let vehicle_data_fe: VehicleDataFE = from_str(&veh_buf)?;
     return Ok(vehicle_data_fe);
+}
+
+pub fn get_epa_data(fe_gov_vehicle_data: &VehicleDataFE) -> Result<(), Error> {
+    let pathbuf: PathBuf = PathBuf::from("../../fastsim/resources/epa_vehdb/22-tstcar-2022-04-15.csv"); 
+    let file: File = File::open(&pathbuf).unwrap();
+    let name: String = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
+    let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_reader(file);
+
+    let mut veh_list_overall: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
+    let mut veh_list_efid: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
+    let mut best_match_percent_efid: f64 = 0.0;
+    let mut best_match_model_efid: String = String::new();
+    let mut best_match_percent_overall: f64 = 0.0;
+    let mut best_match_model_overall: String = String::new();
+
+    let fe_model_upper: String = fe_gov_vehicle_data.model.to_uppercase().replace("4WD", "AWD");
+    let fe_model_words: Vec<&str> = fe_model_upper.split(' ').collect();
+    let efid: &String = &fe_gov_vehicle_data.emissions_list.emissions_info[0].efid;
+
+    for result in rdr.deserialize() {
+        let veh_epa: VehicleDataEPA = result?;
+
+        let mut match_count: i64 = 0;
+        let epa_model_upper = veh_epa.model.to_uppercase().replace("4WD", "AWD");
+        let epa_model_words: Vec<&str> = epa_model_upper.split(' ').collect();
+        for word in &epa_model_words {
+            // let match_list: Vec<&str> = model.matches(word).collect();
+            // match_count += match_list.len();
+            match_count += fe_model_words.contains(word) as i64;
+        }
+        let match_percent: f64 = (match_count as f64 * match_count as f64) / (epa_model_words.len() as f64 * fe_model_words.len() as f64);
+
+        if veh_list_overall.contains_key(&veh_epa.model) {
+            if let Some(x) = veh_list_overall.get_mut(&veh_epa.model) {
+                (*x).push(veh_epa.clone());
+            }
+        } else {
+            veh_list_overall.insert(veh_epa.model.clone(), vec![veh_epa.clone()]);
+             
+            // let mut match_count: i64 = 0;
+            // let epa_model_upper = veh_epa.model.to_uppercase().replace("4WD", "AWD");
+            // let epa_model_words: Vec<&str> = epa_model_upper.split(' ').collect();
+            // for word in &epa_model_words {
+            //     // let match_list: Vec<&str> = model.matches(word).collect();
+            //     // match_count += match_list.len();
+            //     match_count += fe_model_words.contains(word) as i64;
+            // }
+            // let match_percent: f64 = (match_count as f64 * match_count as f64) / (epa_model_words.len() as f64 * fe_model_words.len() as f64);
+            // println!("Matches: {} {} {} {match_percent}", veh_epa.year, veh_epa.make, veh_epa.model);
+            if match_percent > best_match_percent_overall {
+                best_match_percent_overall = match_percent;
+                best_match_model_overall = veh_epa.model.clone();
+            }
+            // if veh_epa.test_id.ends_with(&efid[1..efid.len()]) {
+            //     veh_list_efid.insert(veh_epa.model.clone(), vec![veh_epa.clone()]);
+            //     if match_percent > best_match_percent_efid { //&& (model.to_uppercase().contains(&veh_epa.model.to_uppercase()) || veh_epa.model.to_uppercase().contains(&model.to_uppercase())) {
+            //     // println!("{} {} {}", veh_epa.year, veh_epa.make, veh_epa.model);
+            //     // println!("{}", model.to_uppercase().ends_with(&veh_epa.model.to_uppercase()));
+            //     // println!("{}", veh_epa.model.to_uppercase().ends_with(&model.to_uppercase()));
+            //     // veh_list.push(veh_epa);
+            //         best_match_percent_efid = match_percent;
+            //         best_match_model_efid = veh_epa.model.clone();
+            //     }
+            // }
+        }
+
+        if veh_epa.test_id.ends_with(&efid[1..efid.len()]) {
+            if veh_list_efid.contains_key(&veh_epa.model) {
+                if let Some(x) = veh_list_efid.get_mut(&veh_epa.model) {
+                    (*x).push(veh_epa.clone());
+                }
+            } else {
+                veh_list_efid.insert(veh_epa.model.clone(), vec![veh_epa.clone()]);
+                if match_percent > best_match_percent_efid { //&& (model.to_uppercase().contains(&veh_epa.model.to_uppercase()) || veh_epa.model.to_uppercase().contains(&model.to_uppercase())) {
+                // println!("{} {} {}", veh_epa.year, veh_epa.make, veh_epa.model);
+                // println!("{}", model.to_uppercase().ends_with(&veh_epa.model.to_uppercase()));
+                // println!("{}", veh_epa.model.to_uppercase().ends_with(&model.to_uppercase()));
+                // veh_list.push(veh_epa);
+                    best_match_percent_efid = match_percent;
+                    best_match_model_efid = veh_epa.model.clone();
+                }
+            }
+        }
+    }
+    println!("Best Match Overall: {best_match_model_overall} {best_match_percent_overall}");
+    println!("Best Match efid: {best_match_model_efid} {best_match_percent_efid}");
+    if best_match_model_efid == best_match_model_overall {
+        println!("EPA: {} {} {} {}", veh_list_efid.get(&best_match_model_efid).unwrap()[0].year, veh_list_efid.get(&best_match_model_efid).unwrap()[0].make, veh_list_efid.get(&best_match_model_efid).unwrap()[0].model, veh_list_efid.get(&best_match_model_efid).unwrap()[0].test_id);
+    } else {
+        println!("EPA: {} {} {} {}", veh_list_overall.get(&best_match_model_overall).unwrap()[0].year, veh_list_overall.get(&best_match_model_overall).unwrap()[0].make, veh_list_overall.get(&best_match_model_overall).unwrap()[0].model, veh_list_overall.get(&best_match_model_overall).unwrap()[0].test_id);
+    }
+
+    return Ok(());
 }
 
 #[allow(non_snake_case)]
@@ -471,7 +623,58 @@ mod vehicle_utils_tests {
             super_charge: String::new(),
             turbo_charge: String::new(),
         };
-        
+
         assert_eq!(prius_prime_fe_gov_data, prius_prime_fe_truth);
+    }
+
+    #[test]
+    fn test_get_epa_data() {
+        let emissions_info: EmissionsInfoFE = EmissionsInfoFE {
+            efid: String::from("NVVXJ02.0U73"),
+            score: 5.0,
+            smartway_score: -1,
+            standard: String::from("T3B70"),
+            std_text: String::from("Federal Tier 3 Bin 70")
+        };
+        let volvo_s60_b5_awd_fe_truth: VehicleDataFE = VehicleDataFE {
+            alt_veh_type: String::new(),
+            city_mpg_fuel1: 25,
+            city_mpg_fuel2: 0,
+            co2_g_per_mi: 316,
+            comb_mpg_fuel1: 28,
+            comb_mpg_fuel2: 0,
+            cylinders: String::from("4"),
+            displ: String::from("2.0"),
+            drive: String::from("All-Wheel Drive"),
+            emissions_list: EmissionsListFE { emissions_info: vec![emissions_info] },
+            eng_dscr: String::from("SIDI"),
+            ev_motor_kw: String::new(),
+            fe_score: 6,
+            fuel_type: String::from("Premium"),
+            fuel1: String::from("Premium Gasoline"),
+            fuel2: String::new(),
+            ghg_score: 6,
+            highway_mpg_fuel1: 33,
+            highway_mpg_fuel2: 0,
+            make: String::from("Volvo"),
+            mfr_code: String::from("VVX"),
+            model: String::from("S60 B5 AWD"),
+            phev_blended: false,
+            phev_city_mpge: 0,
+            phev_comb_mpge: 0,
+            phev_hwy_mpge: 0,
+            start_stop: String::from("Y"),
+            trany: String::from("Automatic (S8)"),
+            veh_class: String::from("Compact Cars"),
+            year: 2022,
+            super_charge: String::new(),
+            turbo_charge: String::from("T"),
+        };
+
+        let value = get_epa_data(&volvo_s60_b5_awd_fe_truth);
+        match value {
+            Ok(v) => println!("Success"),
+            Err(e) => println!("error parsing header: {e:?}"),
+        };
     }
 }
