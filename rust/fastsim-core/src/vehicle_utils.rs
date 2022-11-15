@@ -450,55 +450,79 @@ fn get_epa_data(fe_gov_vehicle_data: &VehicleDataFE) -> Result<VehicleDataEPA, E
                 .unwrap();
     }
 
-    let mut most_common_veh: VehicleDataEPA = veh_list[0].clone();
+    let mut most_common_veh: VehicleDataEPA = VehicleDataEPA::default();
     let mut most_common_count: i32 = 0;
-    let mut current_veh: VehicleDataEPA = veh_list[0].clone();
+    let mut current_veh: VehicleDataEPA = VehicleDataEPA::default();
     let mut current_count: i32 = 0;
     for mut veh_epa in veh_list {
         if veh_epa.model.contains("4WD") || veh_epa.model.contains("AWD") {
             veh_epa.drive_code = String::from("A");
             veh_epa.drive = String::from("All Wheel Drive");
         }
-        if fe_gov_vehicle_data.alt_veh_type == String::from("EV") {
-            if (veh_epa.displ.round() == 0.0)
-                && (veh_epa.cylinders == String::new())
-                && (veh_epa.trany_code == transmission_fe_gov)
-                && (veh_epa.gears == num_gears_fe_gov)
-                && (veh_epa.drive_code == fe_gov_vehicle_data.drive[0..1])
-            {
-                if veh_epa == current_veh {
-                    current_count += 1;
-                } else {
-                    if current_count > most_common_count {
-                        most_common_veh = current_veh.clone();
-                        most_common_count = current_count;
-                    }
-                    current_veh = veh_epa.clone();
-                    current_count = 1;
+        if !veh_epa.test_fuel_type.contains("Cold CO")
+            && veh_epa.trany_code == transmission_fe_gov
+            && veh_epa.gears == num_gears_fe_gov
+            && veh_epa.drive_code == fe_gov_vehicle_data.drive[0..1]
+            && ((fe_gov_vehicle_data.alt_veh_type == String::from("EV")
+                && veh_epa.displ.round() == 0.0
+                && veh_epa.cylinders == String::new())
+                || (veh_epa.displ.round() == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap())
+                    && veh_epa.cylinders == fe_gov_vehicle_data.cylinders))
+        {
+            if veh_epa == current_veh {
+                current_count += 1;
+            } else {
+                if current_count > most_common_count {
+                    most_common_veh = current_veh.clone();
+                    most_common_count = current_count;
                 }
-            }
-        } else {
-            if (veh_epa.displ.round() == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap()))
-                && (veh_epa.cylinders == fe_gov_vehicle_data.cylinders)
-                && (veh_epa.trany_code == transmission_fe_gov)
-                && (veh_epa.gears == num_gears_fe_gov)
-                && (veh_epa.drive_code == fe_gov_vehicle_data.drive[0..1])
-            {
-                if veh_epa == current_veh {
-                    current_count += 1;
-                } else {
-                    if current_count > most_common_count {
-                        most_common_veh = current_veh.clone();
-                        most_common_count = current_count;
-                    }
-                    current_veh = veh_epa.clone();
-                    current_count = 1;
-                }
+                current_veh = veh_epa.clone();
+                current_count = 1;
             }
         }
+        // if fe_gov_vehicle_data.alt_veh_type == String::from("EV") {
+        //     if (veh_epa.displ.round() == 0.0)
+        //         && (veh_epa.cylinders == String::new())
+        //         && (veh_epa.trany_code == transmission_fe_gov)
+        //         && (veh_epa.gears == num_gears_fe_gov)
+        //         && (veh_epa.drive_code == fe_gov_vehicle_data.drive[0..1])
+        //     {
+        //         if veh_epa == current_veh {
+        //             current_count += 1;
+        //         } else {
+        //             if current_count > most_common_count {
+        //                 most_common_veh = current_veh.clone();
+        //                 most_common_count = current_count;
+        //             }
+        //             current_veh = veh_epa.clone();
+        //             current_count = 1;
+        //         }
+        //     }
+        // } else {
+        //     if (veh_epa.displ.round() == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap()))
+        //         && (veh_epa.cylinders == fe_gov_vehicle_data.cylinders)
+        //         && (veh_epa.trany_code == transmission_fe_gov)
+        //         && (veh_epa.gears == num_gears_fe_gov)
+        //         && (veh_epa.drive_code == fe_gov_vehicle_data.drive[0..1])
+        //     {
+        //         if veh_epa == current_veh {
+        //             current_count += 1;
+        //         } else {
+        //             if current_count > most_common_count {
+        //                 most_common_veh = current_veh.clone();
+        //                 most_common_count = current_count;
+        //             }
+        //             current_veh = veh_epa.clone();
+        //             current_count = 1;
+        //         }
+        //     }
+        // }
     }
-
-    return Ok(most_common_veh);
+    if current_count > most_common_count {
+        return Ok(current_veh);
+    } else {
+        return Ok(most_common_veh);
+    }
 }
 
 #[allow(non_snake_case)]
@@ -778,7 +802,7 @@ mod vehicle_utils_tests {
     }
 
     #[test]
-    fn test_get_epa_data() {
+    fn test_get_epa_data_awd_veh() {
         let emissions_info: EmissionsInfoFE = EmissionsInfoFE {
             efid: String::from("NVVXJ02.0U73"),
             score: 5.0,
@@ -830,10 +854,184 @@ mod vehicle_utils_tests {
             volvo_s60_b5_awd_epa_data.make,
             volvo_s60_b5_awd_epa_data.model,
             volvo_s60_b5_awd_epa_data.test_id
-        )
-        // match value {
-        //     Ok(v) => println!("Output: {} {} {} {}", v.year, v.make, v.model, v.test_id),
-        //     Err(e) => println!("error parsing header: {e:?}"),
-        // };
+        );
+
+        let volvo_s60_b5_awd_epa_truth: VehicleDataEPA = VehicleDataEPA {
+            year: 2022,
+            mfr_code: String::from("VVX"),
+            make: String::from("Volvo"),
+            model: String::from("S60 B5 AWD"),
+            test_id: String::from("NVVXJ02.0U73"),
+            displ: 1.969,
+            eng_pwr_hp: 247,
+            cylinders: String::from("4"),
+            trany_code: String::from("SA"),
+            trany_type: String::from("Semi-Automatic"),
+            gears: 8,
+            drive_code: String::from("A"),
+            drive: String::from("All Wheel Drive"),
+            test_weight_lbs: 4250.0,
+            test_fuel_type: String::from("Tier 2 Cert Gasoline"),
+            a_lbf: 33.920,
+            b_lbf_per_mph: 0.15910,
+            c_lbf_per_mph2: 0.017960,
+        };
+        assert_eq!(volvo_s60_b5_awd_epa_data, volvo_s60_b5_awd_epa_truth)
+    }
+
+    #[test]
+    fn test_get_epa_data_diff_test_id() {
+        let emissions_info: EmissionsInfoFE = EmissionsInfoFE {
+            efid: String::from("NTYXV02.0P3A"),
+            score: 5.0,
+            smartway_score: -1,
+            standard: String::from("T3B30"),
+            std_text: String::from("Federal Tier 3 Bin 30"),
+        };
+        let corolla_manual_fe_truth: VehicleDataFE = VehicleDataFE {
+            alt_veh_type: String::new(),
+            city_mpg_fuel1: 29,
+            city_mpg_fuel2: 0,
+            co2_g_per_mi: 277,
+            comb_mpg_fuel1: 32,
+            comb_mpg_fuel2: 0,
+            cylinders: String::from("4"),
+            displ: String::from("2.0"),
+            drive: String::from("Front-Wheel Drive"),
+            emissions_list: EmissionsListFE {
+                emissions_info: vec![emissions_info],
+            },
+            eng_dscr: String::from("SIDI & PFI"),
+            ev_motor_kw: String::new(),
+            fe_score: 7,
+            fuel_type: String::from("Regular"),
+            fuel1: String::from("Regular Gasoline"),
+            fuel2: String::new(),
+            ghg_score: 7,
+            highway_mpg_fuel1: 36,
+            highway_mpg_fuel2: 0,
+            make: String::from("Toyota"),
+            mfr_code: String::from("TYX"),
+            model: String::from("Corolla"),
+            phev_blended: false,
+            phev_city_mpge: 0,
+            phev_comb_mpge: 0,
+            phev_hwy_mpge: 0,
+            start_stop: String::from("N"),
+            trany: String::from("Manual 6-spd"),
+            veh_class: String::from("Compact Cars"),
+            year: 2022,
+            super_charge: String::new(),
+            turbo_charge: String::new(),
+        };
+
+        let corolla_manual_epa_data = get_epa_data(&corolla_manual_fe_truth).unwrap();
+        println!(
+            "Output: {} {} {} {}",
+            corolla_manual_epa_data.year,
+            corolla_manual_epa_data.make,
+            corolla_manual_epa_data.model,
+            corolla_manual_epa_data.test_id
+        );
+
+        let corolla_manual_epa_truth: VehicleDataEPA = VehicleDataEPA {
+            year: 2022,
+            mfr_code: String::from("TYX"),
+            make: String::from("TOYOTA"),
+            model: String::from("COROLLA"),
+            test_id: String::from("LTYXV02.0N4B"),
+            displ: 1.987,
+            eng_pwr_hp: 169,
+            cylinders: String::from("4"),
+            trany_code: String::from("M"),
+            trany_type: String::from("Manual"),
+            gears: 6,
+            drive_code: String::from("F"),
+            drive: String::from("2-Wheel Drive, Front"),
+            test_weight_lbs: 3375.0,
+            test_fuel_type: String::from("Tier 2 Cert Gasoline"),
+            a_lbf: 27.071,
+            b_lbf_per_mph: 0.26485,
+            c_lbf_per_mph2: 0.017466,
+        };
+        assert_eq!(corolla_manual_epa_data, corolla_manual_epa_truth)
+    }
+
+    #[test]
+    fn test_get_epa_data_ev() {
+        let emissions_info: EmissionsInfoFE = EmissionsInfoFE {
+            efid: String::from("NKMXV00.0102"),
+            score: 5.0,
+            smartway_score: -1,
+            standard: String::from("ZEV"),
+            std_text: String::from("California ZEV"),
+        };
+        let ev6_rwd_long_range_fe_truth: VehicleDataFE = VehicleDataFE {
+            alt_veh_type: String::from("EV"),
+            city_mpg_fuel1: 134,
+            city_mpg_fuel2: 0,
+            co2_g_per_mi: 0,
+            comb_mpg_fuel1: 117,
+            comb_mpg_fuel2: 0,
+            cylinders: String::new(),
+            displ: String::new(),
+            drive: String::from("Rear-Wheel Drive"),
+            emissions_list: EmissionsListFE {
+                emissions_info: vec![emissions_info],
+            },
+            eng_dscr: String::new(),
+            ev_motor_kw: String::from("168 kW PMSM"),
+            fe_score: 10,
+            fuel_type: String::from("Electricity"),
+            fuel1: String::from("Electricity"),
+            fuel2: String::new(),
+            ghg_score: 10,
+            highway_mpg_fuel1: 101,
+            highway_mpg_fuel2: 0,
+            make: String::from("Kia"),
+            mfr_code: String::from("KMX"),
+            model: String::from("EV6 RWD (Long Range)"),
+            phev_blended: false,
+            phev_city_mpge: 0,
+            phev_comb_mpge: 0,
+            phev_hwy_mpge: 0,
+            start_stop: String::from("N"),
+            trany: String::from("Automatic (A1)"),
+            veh_class: String::from("Small Station Wagons"),
+            year: 2022,
+            super_charge: String::new(),
+            turbo_charge: String::new(),
+        };
+
+        let ev6_rwd_long_range_epa_data = get_epa_data(&ev6_rwd_long_range_fe_truth).unwrap();
+        println!(
+            "Output: {} {} {} {}",
+            ev6_rwd_long_range_epa_data.year,
+            ev6_rwd_long_range_epa_data.make,
+            ev6_rwd_long_range_epa_data.model,
+            ev6_rwd_long_range_epa_data.test_id
+        );
+
+        let ev6_rwd_long_range_epa_truth: VehicleDataEPA = VehicleDataEPA {
+            year: 2022,
+            mfr_code: String::from("KMX"),
+            make: String::from("KIA"),
+            model: String::from("EV6"),
+            test_id: String::from("NKMXV00.0102"),
+            displ: 0.001,
+            eng_pwr_hp: 225,
+            cylinders: String::new(),
+            trany_code: String::from("A"),
+            trany_type: String::from("Automatic"),
+            gears: 1,
+            drive_code: String::from("R"),
+            drive: String::from("2-Wheel Drive, Rear"),
+            test_weight_lbs: 4500.0,
+            test_fuel_type: String::from("Electricity"),
+            a_lbf: 23.313,
+            b_lbf_per_mph: 0.11939,
+            c_lbf_per_mph2: 0.022206,
+        };
+        assert_eq!(ev6_rwd_long_range_epa_data, ev6_rwd_long_range_epa_truth)
     }
 }
