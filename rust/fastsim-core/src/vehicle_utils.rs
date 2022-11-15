@@ -290,6 +290,8 @@ fn get_epa_data(
     // Returns:
     // --------
     // vehicle_data_epa: Data for the given vehicle from EPA vehicle database
+
+    // Open EPA vehicle database csv file
     let file_path: String = epa_veh_db_path.unwrap_or(format!(
         "../../fastsim/resources/epa_vehdb/{}-tstcar.csv",
         fe_gov_vehicle_data.year % 100
@@ -301,6 +303,7 @@ fn get_epa_data(
         .has_headers(true)
         .from_reader(file);
 
+    // Keep track of best match to fueleconomy.gov model name for all vehicles and vehicles with matching efid/test id
     let mut veh_list_overall: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
     let mut veh_list_efid: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
     let mut best_match_percent_efid: f64 = 0.0;
@@ -318,17 +321,18 @@ fn get_epa_data(
     for result in rdr.deserialize() {
         let veh_epa: VehicleDataEPA = result?;
 
+        // Find matches between EPA vehicle model name and fe.gov vehicle model name
         let mut match_count: i64 = 0;
         let epa_model_upper = veh_epa.model.to_uppercase().replace("4WD", "AWD");
         let epa_model_words: Vec<&str> = epa_model_upper.split(' ').collect();
         for word in &epa_model_words {
-            // let match_list: Vec<&str> = model.matches(word).collect();
-            // match_count += match_list.len();
             match_count += fe_model_words.contains(word) as i64;
         }
+        // Calculate composite match percentage
         let match_percent: f64 = (match_count as f64 * match_count as f64)
             / (epa_model_words.len() as f64 * fe_model_words.len() as f64);
 
+        // Update overall hashmap with new entry
         if veh_list_overall.contains_key(&veh_epa.model) {
             if let Some(x) = veh_list_overall.get_mut(&veh_epa.model) {
                 (*x).push(veh_epa.clone());
@@ -336,33 +340,14 @@ fn get_epa_data(
         } else {
             veh_list_overall.insert(veh_epa.model.clone(), vec![veh_epa.clone()]);
 
-            // let mut match_count: i64 = 0;
-            // let epa_model_upper = veh_epa.model.to_uppercase().replace("4WD", "AWD");
-            // let epa_model_words: Vec<&str> = epa_model_upper.split(' ').collect();
-            // for word in &epa_model_words {
-            //     // let match_list: Vec<&str> = model.matches(word).collect();
-            //     // match_count += match_list.len();
-            //     match_count += fe_model_words.contains(word) as i64;
-            // }
-            // let match_percent: f64 = (match_count as f64 * match_count as f64) / (epa_model_words.len() as f64 * fe_model_words.len() as f64);
-            // println!("Matches: {} {} {} {match_percent}", veh_epa.year, veh_epa.make, veh_epa.model);
             if match_percent > best_match_percent_overall {
                 best_match_percent_overall = match_percent;
                 best_match_model_overall = veh_epa.model.clone();
             }
-            // if veh_epa.test_id.ends_with(&efid[1..efid.len()]) {
-            //     veh_list_efid.insert(veh_epa.model.clone(), vec![veh_epa.clone()]);
-            //     if match_percent > best_match_percent_efid { //&& (model.to_uppercase().contains(&veh_epa.model.to_uppercase()) || veh_epa.model.to_uppercase().contains(&model.to_uppercase())) {
-            //     // println!("{} {} {}", veh_epa.year, veh_epa.make, veh_epa.model);
-            //     // println!("{}", model.to_uppercase().ends_with(&veh_epa.model.to_uppercase()));
-            //     // println!("{}", veh_epa.model.to_uppercase().ends_with(&model.to_uppercase()));
-            //     // veh_list.push(veh_epa);
-            //         best_match_percent_efid = match_percent;
-            //         best_match_model_efid = veh_epa.model.clone();
-            //     }
-            // }
         }
 
+        // Update efid hashmap if fe.gov efid matches EPA test id
+        // (for some reason first character in id is almost always different)
         if veh_epa.test_id.ends_with(&efid[1..efid.len()]) {
             if veh_list_efid.contains_key(&veh_epa.model) {
                 if let Some(x) = veh_list_efid.get_mut(&veh_epa.model) {
@@ -371,42 +356,24 @@ fn get_epa_data(
             } else {
                 veh_list_efid.insert(veh_epa.model.clone(), vec![veh_epa.clone()]);
                 if match_percent > best_match_percent_efid {
-                    //&& (model.to_uppercase().contains(&veh_epa.model.to_uppercase()) || veh_epa.model.to_uppercase().contains(&model.to_uppercase())) {
-                    // println!("{} {} {}", veh_epa.year, veh_epa.make, veh_epa.model);
-                    // println!("{}", model.to_uppercase().ends_with(&veh_epa.model.to_uppercase()));
-                    // println!("{}", veh_epa.model.to_uppercase().ends_with(&model.to_uppercase()));
-                    // veh_list.push(veh_epa);
                     best_match_percent_efid = match_percent;
                     best_match_model_efid = veh_epa.model.clone();
                 }
             }
         }
     }
-    println!("Best Match Overall: {best_match_model_overall} {best_match_percent_overall}");
-    println!("Best Match efid: {best_match_model_efid} {best_match_percent_efid}");
+
+    // Get EPA vehicle model that is best match to fe.gov vehicle
     let veh_list: Vec<VehicleDataEPA> = if best_match_model_efid == best_match_model_overall {
-        println!(
-            "EPA: {} {} {} {}",
-            veh_list_efid.get(&best_match_model_efid).unwrap()[0].year,
-            veh_list_efid.get(&best_match_model_efid).unwrap()[0].make,
-            veh_list_efid.get(&best_match_model_efid).unwrap()[0].model,
-            veh_list_efid.get(&best_match_model_efid).unwrap()[0].test_id
-        );
         veh_list_efid.get(&best_match_model_efid).unwrap().to_vec()
     } else {
-        println!(
-            "EPA: {} {} {} {}",
-            veh_list_overall.get(&best_match_model_overall).unwrap()[0].year,
-            veh_list_overall.get(&best_match_model_overall).unwrap()[0].make,
-            veh_list_overall.get(&best_match_model_overall).unwrap()[0].model,
-            veh_list_overall.get(&best_match_model_overall).unwrap()[0].test_id
-        );
         veh_list_overall
             .get(&best_match_model_overall)
             .unwrap()
             .to_vec()
     };
 
+    // Get number of gears and convert fe.gov transmission description to EPA transmission description
     let num_gears_fe_gov: u32;
     let transmission_fe_gov: String;
     if fe_gov_vehicle_data.trany.contains("Manual") {
@@ -456,6 +423,8 @@ fn get_epa_data(
                 .unwrap();
     }
 
+    // Find EPA vehicle entry that matches fe.gov vehicle data
+    // If same vehicle model has multiple configurations, get most common configuration
     let mut most_common_veh: VehicleDataEPA = VehicleDataEPA::default();
     let mut most_common_count: i32 = 0;
     let mut current_veh: VehicleDataEPA = VehicleDataEPA::default();
@@ -486,43 +455,6 @@ fn get_epa_data(
                 current_count = 1;
             }
         }
-        // if fe_gov_vehicle_data.alt_veh_type == String::from("EV") {
-        //     if (veh_epa.displ.round() == 0.0)
-        //         && (veh_epa.cylinders == String::new())
-        //         && (veh_epa.trany_code == transmission_fe_gov)
-        //         && (veh_epa.gears == num_gears_fe_gov)
-        //         && (veh_epa.drive_code == fe_gov_vehicle_data.drive[0..1])
-        //     {
-        //         if veh_epa == current_veh {
-        //             current_count += 1;
-        //         } else {
-        //             if current_count > most_common_count {
-        //                 most_common_veh = current_veh.clone();
-        //                 most_common_count = current_count;
-        //             }
-        //             current_veh = veh_epa.clone();
-        //             current_count = 1;
-        //         }
-        //     }
-        // } else {
-        //     if (veh_epa.displ.round() == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap()))
-        //         && (veh_epa.cylinders == fe_gov_vehicle_data.cylinders)
-        //         && (veh_epa.trany_code == transmission_fe_gov)
-        //         && (veh_epa.gears == num_gears_fe_gov)
-        //         && (veh_epa.drive_code == fe_gov_vehicle_data.drive[0..1])
-        //     {
-        //         if veh_epa == current_veh {
-        //             current_count += 1;
-        //         } else {
-        //             if current_count > most_common_count {
-        //                 most_common_veh = current_veh.clone();
-        //                 most_common_count = current_count;
-        //             }
-        //             current_veh = veh_epa.clone();
-        //             current_count = 1;
-        //         }
-        //     }
-        // }
     }
     if current_count > most_common_count {
         return Ok(current_veh);
@@ -931,7 +863,13 @@ mod vehicle_utils_tests {
             turbo_charge: String::new(),
         };
 
-        let corolla_manual_epa_data = get_epa_data(&corolla_manual_fe_truth, Some(String::from("C:/Users/vpuligun/Documents/fastsim/fastsim/resources/epa_vehdb/22-tstcar.csv"))).unwrap();
+        let corolla_manual_epa_data = get_epa_data(
+            &corolla_manual_fe_truth,
+            Some(String::from(
+                "C:/Users/vpuligun/Documents/fastsim/fastsim/resources/epa_vehdb/22-tstcar.csv",
+            )),
+        )
+        .unwrap();
         println!(
             "Output: {} {} {} {}",
             corolla_manual_epa_data.year,
