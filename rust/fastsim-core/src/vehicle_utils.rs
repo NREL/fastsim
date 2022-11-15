@@ -277,7 +277,10 @@ fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<Vehi
     return Ok(vehicle_data_fe);
 }
 
-fn get_epa_data(fe_gov_vehicle_data: &VehicleDataFE) -> Result<VehicleDataEPA, Error> {
+fn get_epa_data(
+    fe_gov_vehicle_data: &VehicleDataFE,
+    epa_veh_db_path: Option<String>,
+) -> Result<VehicleDataEPA, Error> {
     // Gets data from EPA vehicle database for the given vehicle
     //
     // Arguments:
@@ -287,8 +290,11 @@ fn get_epa_data(fe_gov_vehicle_data: &VehicleDataFE) -> Result<VehicleDataEPA, E
     // Returns:
     // --------
     // vehicle_data_epa: Data for the given vehicle from EPA vehicle database
-    let pathbuf: PathBuf =
-        PathBuf::from("../../fastsim/resources/epa_vehdb/22-tstcar-2022-04-15.csv");
+    let file_path: String = epa_veh_db_path.unwrap_or(format!(
+        "../../fastsim/resources/epa_vehdb/{}-tstcar.csv",
+        fe_gov_vehicle_data.year % 100
+    ));
+    let pathbuf: PathBuf = PathBuf::from(file_path);
     let file: File = File::open(&pathbuf).unwrap();
     let _name: String = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
     let mut rdr = csv::ReaderBuilder::new()
@@ -847,7 +853,7 @@ mod vehicle_utils_tests {
             turbo_charge: String::from("T"),
         };
 
-        let volvo_s60_b5_awd_epa_data = get_epa_data(&volvo_s60_b5_awd_fe_truth).unwrap();
+        let volvo_s60_b5_awd_epa_data = get_epa_data(&volvo_s60_b5_awd_fe_truth, None).unwrap();
         println!(
             "Output: {} {} {} {}",
             volvo_s60_b5_awd_epa_data.year,
@@ -925,7 +931,7 @@ mod vehicle_utils_tests {
             turbo_charge: String::new(),
         };
 
-        let corolla_manual_epa_data = get_epa_data(&corolla_manual_fe_truth).unwrap();
+        let corolla_manual_epa_data = get_epa_data(&corolla_manual_fe_truth, Some(String::from("C:/Users/vpuligun/Documents/fastsim/fastsim/resources/epa_vehdb/22-tstcar.csv"))).unwrap();
         println!(
             "Output: {} {} {} {}",
             corolla_manual_epa_data.year,
@@ -1003,7 +1009,7 @@ mod vehicle_utils_tests {
             turbo_charge: String::new(),
         };
 
-        let ev6_rwd_long_range_epa_data = get_epa_data(&ev6_rwd_long_range_fe_truth).unwrap();
+        let ev6_rwd_long_range_epa_data = get_epa_data(&ev6_rwd_long_range_fe_truth, None).unwrap();
         println!(
             "Output: {} {} {} {}",
             ev6_rwd_long_range_epa_data.year,
