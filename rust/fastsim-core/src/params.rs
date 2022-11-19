@@ -5,6 +5,9 @@ use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
+use serde_json::from_str;
+use std::collections::HashMap;
+
 /// Unit conversions that should NEVER change
 pub const MPH_PER_MPS: f64 = 2.2369;
 pub const M_PER_MI: f64 = 1609.00;
@@ -113,3 +116,70 @@ pub const LARGE_BASELINE_EFF: [f64; 11] = [
 pub const SMALL_BASELINE_EFF: [f64; 11] = [
     0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92,
 ];
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct RustLongParams {
+    #[serde(rename = "rechgFreqMiles")]
+    pub rechg_freq_miles: Vec<f64>,
+    #[serde(rename = "ufArray")]
+    pub uf_array: Vec<f64>,
+    #[serde(rename = "LD_FE_Adj_Coef")]
+    pub ld_fe_adj_coef: AdjCoefMap,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct AdjCoefMap {
+    #[serde(flatten)]
+    pub adj_coef_map: HashMap<String, AdjCoef>,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AdjCoef {
+    #[serde(rename = "City Intercept")]
+    pub city_intercept: f64,
+    #[serde(rename = "City Slope")]
+    pub city_slope: f64,
+    #[serde(rename = "Highway Intercept")]
+    pub hwy_intercept: f64,
+    #[serde(rename = "Highway Slope")]
+    pub hwy_slope: f64,
+}
+
+impl Default for RustLongParams {
+    fn default() -> Self {
+        let long_params_str: &str = include_str!(r"..\..\..\fastsim\resources\longparams.json");
+        let long_params: Self = from_str(long_params_str).unwrap();
+        return long_params;
+    }
+}
+
+#[cfg(test)]
+mod params_test {
+    use super::*;
+
+    #[test]
+    fn test_get_long_params() {
+        let long_params: RustLongParams = RustLongParams::default();
+
+        let adj_coef_2008: AdjCoef = AdjCoef {
+            city_intercept: 0.003259,
+            city_slope: 1.1805,
+            hwy_intercept: 0.001376,
+            hwy_slope: 1.3466,
+        };
+        let adj_coef_2017: AdjCoef = AdjCoef {
+            city_intercept: 0.004091,
+            city_slope: 1.1601,
+            hwy_intercept: 0.003191,
+            hwy_slope: 1.2945,
+        };
+
+        let mut adj_coef_map: HashMap<String, AdjCoef> = HashMap::new();
+        adj_coef_map.insert(String::from("2008"), adj_coef_2008);
+        adj_coef_map.insert(String::from("2017"), adj_coef_2017);
+
+        assert_eq!(long_params.rechg_freq_miles.len(), 602);
+        assert_eq!(long_params.uf_array.len(), 602);
+        assert_eq!(long_params.ld_fe_adj_coef.adj_coef_map, adj_coef_map);
+    }
+}

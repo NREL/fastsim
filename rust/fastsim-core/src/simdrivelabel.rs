@@ -16,6 +16,7 @@ use crate::vehicle::*;
 /// Label fuel economy values
 pub struct LabelFe {
     veh: RustVehicle,
+    adj_params: AdjCoef,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -50,6 +51,7 @@ pub fn get_label_fe(
 
     let sim_params: RustSimDriveParams = RustSimDriveParams::default();
     let props: RustPhysicalProperties = RustPhysicalProperties::default();
+    let long_params: RustLongParams = RustLongParams::default();
 
     let mut cyc: HashMap<&str, RustCycle> = HashMap::new();
     let mut sd: HashMap<&str, RustSimDrive> = HashMap::new();
@@ -83,12 +85,22 @@ pub fn get_label_fe(
         val.sim_drive(None, None);
     }
 
+    // find year-based adjustment parameters
+    let adj_params: &AdjCoef = if veh.veh_year < 2017 {
+        &long_params.ld_fe_adj_coef.adj_coef_map["2008"]
+    } else {
+        // assume 2017 coefficients are valid
+        &long_params.ld_fe_adj_coef.adj_coef_map["2017"]
+    };
+    out.adj_params = adj_params.clone();
+
     return Ok((out, None));
 }
 
 pub fn get_label_fe_phev(
     veh: &RustVehicle,
     sd: &HashMap<String, RustSimDrive>,
+    long_params: &RustLongParams,
 ) -> Result<LabelFePHEV, anyhow::Error> {
     let mut phev_calc: LabelFePHEV = LabelFePHEV::default();
     return Ok(phev_calc);
