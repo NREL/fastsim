@@ -117,6 +117,8 @@ pub const SMALL_BASELINE_EFF: [f64; 11] = [
     0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92,
 ];
 
+pub const CHG_EFF: f64 = 0.86; // charger efficiency for PEVs, this should probably not be hard coded long term
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct RustLongParams {
     #[serde(rename = "rechgFreqMiles")]
