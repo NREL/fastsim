@@ -56,7 +56,7 @@ pub fn get_label_fe(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
     verbose: Option<bool>,
-) -> Result<(LabelFe, Option<HashMap<String, RustSimDrive>>), anyhow::Error> {
+) -> Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>), anyhow::Error> {
     // Generates label fuel economy (FE) values for a provided vehicle.
     //
     // Arguments:
@@ -216,7 +216,17 @@ pub fn get_label_fe(
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true
 
-    return Ok((out, None));
+    if full_detail.unwrap_or(false) && verbose.unwrap_or(false) {
+        println!("{:?}", out);
+        return Ok((out, Some(sd)));
+    } else if full_detail.unwrap_or(false) {
+        return Ok((out, Some(sd)));
+    } else if verbose.unwrap_or(false) {
+        println!("{:?}", out);
+        return Ok((out, None));
+    } else {
+        return Ok((out, None));
+    }
 }
 
 pub fn get_label_fe_phev(
