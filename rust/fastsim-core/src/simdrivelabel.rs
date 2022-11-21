@@ -36,6 +36,8 @@ pub struct LabelFe {
     net_range_mi: f64,
     /// Utility factor
     uf: f64,
+    net_accel: f64,
+    res_found: String,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -194,6 +196,25 @@ pub fn get_label_fe(
         // utility factor (percent driving in PHEV charge depletion mode)
         out.uf = 0.;
     }
+
+    // run accelerating sim_drive
+    sd.insert(
+        "accel",
+        RustSimDrive::new(cyc["accel"].clone(), veh.clone()),
+    );
+    if let Some(sd_accel) = sd.get_mut("accel") {
+        sd_accel.sim_drive(None, None)?;
+    }
+    if sd["accel"].mph_ach.iter().any(|&x| x >= 60.) {
+        out.net_accel = interpolate(&60., &sd["accel"].mph_ach, &cyc["accel"].time_s, false);
+    } else {
+        // in case vehicle never exceeds 60 mph, penalize it a lot with a high number
+        println!("{} never achieves 60 mph.", veh.scenario_name);
+        out.net_accel = 1e3;
+    }
+
+    // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
+    out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true
 
     return Ok((out, None));
 }
