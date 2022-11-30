@@ -38,6 +38,10 @@ pub struct LabelFe {
     uf: f64,
     net_accel: f64,
     res_found: String,
+    phev_calcs: Option<LabelFePHEV>,
+    adj_cs_comb_mpgge: Option<f64>,
+    adj_cd_comb_mpgge: Option<f64>,
+    net_phev_cd_miles: Option<f64>,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -257,6 +261,61 @@ pub fn get_label_fe(
 
         // utility factor (percent driving in PHEV charge depletion mode)
         out.uf = 0.;
+    } else {
+        // PHEV
+        let phev_calcs: LabelFePHEV =
+            get_label_fe_phev(veh, &mut sd, &long_params, adj_params, &sim_params, &props)?;
+        out.phev_calcs = Some(phev_calcs.clone());
+
+        // efficiency-related calculations
+        // lab
+        out.lab_udds_mpgge = phev_calcs.udds.lab_mpgge;
+        out.lab_hwy_mpgge = phev_calcs.hwy.lab_mpgge;
+        out.lab_comb_mpgge =
+            1.0 / (0.55 / phev_calcs.udds.lab_mpgge + 0.45 / phev_calcs.hwy.lab_mpgge);
+
+        out.lab_udds_kwh_per_mi = phev_calcs.udds.lab_kwh_per_mi;
+        out.lab_hwy_kwh_per_mi = phev_calcs.hwy.lab_kwh_per_mi;
+        out.lab_comb_kwh_per_mi =
+            0.55 * phev_calcs.udds.lab_kwh_per_mi + 0.45 * phev_calcs.hwy.lab_kwh_per_mi;
+
+        // adjusted
+        out.adj_udds_mpgge = phev_calcs.udds.adj_mpgge;
+        out.adj_hwy_mpgge = phev_calcs.hwy.adj_mpgge;
+        out.adj_comb_mpgge =
+            1.0 / (0.55 / phev_calcs.udds.adj_mpgge + 0.45 / phev_calcs.hwy.adj_mpgge);
+
+        out.adj_cs_comb_mpgge =
+            Some(1.0 / (0.55 / phev_calcs.udds.adj_cs_mpgge + 0.45 / phev_calcs.hwy.adj_cs_mpgge));
+        out.adj_cd_comb_mpgge =
+            Some(1.0 / (0.55 / phev_calcs.udds.adj_cd_mpgge + 0.45 / phev_calcs.hwy.adj_cd_mpgge));
+
+        out.adj_udds_kwh_per_mi = phev_calcs.udds.adj_kwh_per_mi;
+        out.adj_hwy_kwh_per_mi = phev_calcs.hwy.adj_kwh_per_mi;
+        out.adj_comb_kwh_per_mi =
+            0.55 * phev_calcs.udds.adj_kwh_per_mi + 0.45 * phev_calcs.hwy.adj_kwh_per_mi;
+
+        out.adj_udds_ess_kwh_per_mi = phev_calcs.udds.adj_ess_kwh_per_mi;
+        out.adj_hwy_ess_kwh_per_mi = phev_calcs.hwy.adj_ess_kwh_per_mi;
+        out.adj_comb_ess_kwh_per_mi =
+            0.55 * phev_calcs.udds.adj_ess_kwh_per_mi + 0.45 * phev_calcs.hwy.adj_ess_kwh_per_mi;
+
+        // range for combined city/highway
+        // utility factor (percent driving in charge depletion mode)
+        out.uf = interpolate(
+            &(0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles),
+            &Array::from_vec(long_params.rechg_freq_miles.clone()),
+            &Array::from_vec(long_params.uf_array.clone()),
+            false,
+        );
+
+        out.net_phev_cd_miles =
+            Some(0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles);
+
+        out.net_range_mi = (veh.fs_kwh / props.kwh_per_gge
+            - out.net_phev_cd_miles.unwrap() / out.adj_cd_comb_mpgge.unwrap())
+            * out.adj_cs_comb_mpgge.unwrap()
+            + out.net_phev_cd_miles.unwrap();
     }
 
     // run accelerating sim_drive
@@ -293,7 +352,7 @@ pub fn get_label_fe(
 
 pub fn get_label_fe_phev(
     veh: &vehicle::RustVehicle,
-    sd: &mut HashMap<String, RustSimDrive>,
+    sd: &mut HashMap<&str, RustSimDrive>,
     long_params: &RustLongParams,
     adj_params: &AdjCoef,
     sim_params: &RustSimDriveParams,
@@ -454,7 +513,7 @@ pub fn get_label_fe_phev(
 
         let mut adj_iter_mpgge_vals: Vec<f64> = vec![0.0; phev_calc.cd_cycs.floor() as usize];
         let mut adj_iter_kwh_per_mi_vals: Vec<f64> = vec![0.0; phev_calc.lab_iter_kwh_per_mi.len()];
-        if key == "udds" {
+        if *key == "udds" {
             adj_iter_mpgge_vals.push(max(
                 1.0 / (adj_params.city_intercept
                     + (adj_params.city_slope
@@ -598,11 +657,11 @@ pub fn get_label_fe_phev(
         phev_calc.adj_ess_kwh_per_mi =
             phev_calc.adj_iter_uf_kwh_per_mi.sum() / ndarrmax(&phev_calc.adj_iter_uf);
 
-        if key == "udds" {
-            phev_calcs.udds = phev_calc.clone();
-        } else if key == "hwy" {
-            phev_calcs.hwy = phev_calc.clone();
-        }
+        match *key {
+            "udds" => phev_calcs.udds = phev_calc.clone(),
+            "hwy" => phev_calcs.hwy = phev_calc.clone(),
+            &_ => return Err(anyhow!("No field for cycle {}", key)),
+        };
     }
 
     return Ok(phev_calcs);
@@ -650,6 +709,10 @@ mod simdrivelabel_tests {
             // net_accel: 9.451683946821882, <- Correct accel value
             net_accel: 1000.,
             res_found: String::from("model needs to be implemented for this"),
+            phev_calcs: None,
+            adj_cs_comb_mpgge: None,
+            adj_cd_comb_mpgge: None,
+            net_phev_cd_miles: None,
         };
 
         assert_eq!(label_fe_truth, label_fe)
