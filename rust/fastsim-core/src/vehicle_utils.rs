@@ -193,7 +193,7 @@ mod vehicle_utils_tests {
         let error_val: f64 = get_error_val(model, test, time_steps);
         println!("Error Value: {}", error_val);
 
-        assert_eq!(error_val, 0.8124999999999998);
+        assert!(error_val.approx_eq(&0.8124999999999998, 1e-10));
     }
 
     #[test]
@@ -217,8 +217,8 @@ mod vehicle_utils_tests {
         println!("Drag Coef: {}", drag_coef);
         println!("Wheel RR Coef: {}", wheel_rr_coef);
 
-        assert!((0.24676817210529464 - drag_coef).abs() < 1e-5);
-        assert!((0.0068603812443132645 - wheel_rr_coef).abs() < 1e-6);
+        assert!(drag_coef.approx_eq(&0.24676817210529464, 1e-5));
+        assert!(wheel_rr_coef.approx_eq(&0.0068603812443132645, 1e-6));
         assert_eq!(drag_coef, veh.drag_coef);
         assert_eq!(wheel_rr_coef, veh.wheel_rr_coef);
     }

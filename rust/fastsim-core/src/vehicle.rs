@@ -3,7 +3,7 @@
 // local
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::add_pyo3_api;
+use crate::proc_macros::{add_pyo3_api, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
@@ -21,7 +21,7 @@ pub const HD_DIESEL: &str = "HD_Diesel";
 
 pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 #[add_pyo3_api(
     #[allow(clippy::too_many_arguments)]
     #[new]

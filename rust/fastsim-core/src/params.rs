@@ -1,7 +1,7 @@
 //! Module containing FASTSim parameters.
 
 use crate::imports::*;
-use crate::proc_macros::add_pyo3_api;
+use crate::proc_macros::{add_pyo3_api, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
@@ -19,7 +19,7 @@ pub const L_PER_GAL: f64 = 3.78541;
 pub const MODERN_MAX: f64 = 0.95;
 
 /// Struct containing time trace data
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, ApproxEq)]
 #[allow(non_snake_case)]
 #[add_pyo3_api(
     #[allow(non_snake_case)]
@@ -119,7 +119,7 @@ pub const SMALL_BASELINE_EFF: [f64; 11] = [
 
 pub const CHG_EFF: f64 = 0.86; // charger efficiency for PEVs, this should probably not be hard coded long term
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, ApproxEq)]
 pub struct RustLongParams {
     #[serde(rename = "rechgFreqMiles")]
     pub rechg_freq_miles: Vec<f64>,
@@ -129,13 +129,13 @@ pub struct RustLongParams {
     pub ld_fe_adj_coef: AdjCoefMap,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, ApproxEq)]
 pub struct AdjCoefMap {
     #[serde(flatten)]
     pub adj_coef_map: HashMap<String, AdjCoef>,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct AdjCoef {
     #[serde(rename = "City Intercept")]
     pub city_intercept: f64,

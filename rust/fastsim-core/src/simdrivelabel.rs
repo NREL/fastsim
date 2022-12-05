@@ -8,11 +8,12 @@ use std::collections::HashMap;
 use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
+use crate::proc_macros::{add_pyo3_api, ApproxEq};
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
 use crate::utils::*;
 use crate::vehicle;
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 /// Label fuel economy values
 pub struct LabelFe {
     pub veh: vehicle::RustVehicle,
@@ -44,7 +45,7 @@ pub struct LabelFe {
     pub net_phev_cd_miles: Option<f64>,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 /// Label fuel economy values for a PHEV vehicle
 pub struct LabelFePHEV {
     pub regen_soc_buffer: f64,
@@ -52,7 +53,7 @@ pub struct LabelFePHEV {
     pub hwy: PHEVCycleCalc,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 /// Label fuel economy calculations for a specific cycle of a PHEV vehicle
 pub struct PHEVCycleCalc {
     /// Charge depletion battery kW-hr
@@ -138,6 +139,7 @@ pub fn get_label_fe(
 
     // load the cycles and intstantiate simdrive objects
     let accel_cyc_secs = Array::range(0., 300., 0.1);
+    // println!("{accel_cyc_secs}");
     let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
     accel_cyc_mps[0] = 0.0;
 
@@ -302,12 +304,6 @@ pub fn get_label_fe(
 
         // range for combined city/highway
         // utility factor (percent driving in charge depletion mode)
-        // out.uf = interpolate(
-        //     &(0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles),
-        //     &Array::from_vec(long_params.rechg_freq_miles.clone()),
-        //     &Array::from_vec(long_params.uf_array.clone()),
-        //     false,
-        // );
         out.uf = long_params.uf_array[first_grtr(
             &long_params.rechg_freq_miles,
             0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles,
@@ -334,6 +330,8 @@ pub fn get_label_fe(
     }
     if sd["accel"].mph_ach.iter().any(|&x| x >= 60.) {
         out.net_accel = interpolate(&60., &sd["accel"].mph_ach, &cyc["accel"].time_s, false);
+        // println!("MPH Ach: {}", &sd["accel"].mph_ach);
+        // println!("Time sec: {}", &cyc["accel"].time_s);
     } else {
         // in case vehicle never exceeds 60 mph, penalize it a lot with a high number
         println!("{} never achieves 60 mph.", veh.scenario_name);
@@ -425,12 +423,6 @@ pub fn get_label_fe_phev(
             .iter()
             .map(|x: &f64| -> f64 {
                 long_params.uf_array[first_grtr(&long_params.rechg_freq_miles, *x).unwrap() - 1]
-                // interpolate(
-                //     x,
-                //     &Array::from_vec(long_params.rechg_freq_miles.clone()),
-                //     &Array::from_vec(long_params.uf_array.clone()),
-                //     false,
-                // )
             })
             .collect();
 
@@ -479,13 +471,8 @@ pub fn get_label_fe_phev(
         // charge sustaining
         phev_calc.cs_mpg = sd_val.dist_mi.sum() / phev_calc.cs_fs_gal;
 
-        // phev_calc.lab_uf = interpolate(
-        //     &phev_calc.cd_miles,
-        //     &Array::from_vec(long_params.rechg_freq_miles.clone()),
-        //     &Array::from_vec(long_params.uf_array.clone()),
-        //     false,
-        // );
-        phev_calc.lab_uf = long_params.uf_array[first_grtr(&long_params.rechg_freq_miles, phev_calc.cd_miles).unwrap() - 1];
+        phev_calc.lab_uf = long_params.uf_array
+            [first_grtr(&long_params.rechg_freq_miles, phev_calc.cd_miles).unwrap() - 1];
 
         // labCombMpgge
         phev_calc.cd_MPG =
@@ -629,12 +616,6 @@ pub fn get_label_fe_phev(
             .adj_iter_cd_miles
             .iter()
             .map(|x: &f64| -> f64 {
-                // interpolate(
-                //     x,
-                //     &Array::from_vec(long_params.rechg_freq_miles.clone()),
-                //     &Array::from_vec(long_params.uf_array.clone()),
-                //     false,
-                // )
                 long_params.uf_array[first_grtr(&long_params.rechg_freq_miles, *x).unwrap() - 1]
             })
             .collect();
@@ -660,13 +641,8 @@ pub fn get_label_fe_phev(
             / phev_calc.adj_iter_uf_gpm[phev_calc.adj_iter_uf_gpm.len() - 1]
             * (1.0 - ndarrmax(&phev_calc.adj_iter_uf));
 
-        // phev_calc.adj_uf = interpolate(
-        //     &phev_calc.adj_cd_miles,
-        //     &Array::from_vec(long_params.rechg_freq_miles.clone()),
-        //     &Array::from_vec(long_params.uf_array.clone()),
-        //     false,
-        // );
-        phev_calc.adj_uf = long_params.uf_array[first_grtr(&long_params.rechg_freq_miles, phev_calc.adj_cd_miles).unwrap() - 1];
+        phev_calc.adj_uf = long_params.uf_array
+            [first_grtr(&long_params.rechg_freq_miles, phev_calc.adj_cd_miles).unwrap() - 1];
 
         phev_calc.adj_mpgge = 1.0
             / (phev_calc.adj_uf / phev_calc.adj_cd_mpgge
@@ -736,7 +712,7 @@ mod simdrivelabel_tests {
             net_phev_cd_miles: None,
         };
 
-        assert_eq!(label_fe_truth, label_fe)
+        assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
     }
 
     #[test]
@@ -1047,6 +1023,6 @@ mod simdrivelabel_tests {
             net_phev_cd_miles: Some(57.04992781503185),
         };
 
-        assert_eq!(label_fe_truth, label_fe)
+        assert!(label_fe.approx_eq(&label_fe_truth, 1e-8));
     }
 }
