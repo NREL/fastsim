@@ -143,20 +143,22 @@ pub fn get_label_fe(
     let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
     accel_cyc_mps[0] = 0.0;
 
-    // cyc.insert(
-    //     "accel",
-    //     RustCycle::new(
-    //         accel_cyc_secs.to_vec(),
-    //         accel_cyc_mps.to_vec(),
-    //         Array::ones(accel_cyc_secs.len()).to_vec(),
-    //         Array::ones(accel_cyc_secs.len()).to_vec(),
-    //         String::from("accel"),
-    //     ),
-    // );
     cyc.insert(
         "accel",
-        RustCycle::from_file("../../fastsim/resources/cycles/accel.csv")?,
+        RustCycle::new(
+            accel_cyc_secs.to_vec(),
+            accel_cyc_mps.to_vec(),
+            Array::ones(accel_cyc_secs.len()).to_vec(),
+            Array::ones(accel_cyc_secs.len()).to_vec(),
+            String::from("accel"),
+        ),
     );
+    // println!("Time (sec): {}", cyc["accel"].time_s);
+    // println!("MPS: {}", cyc["accel"].mps);
+    // cyc.insert(
+    //     "accel",
+    //     RustCycle::from_file("../../fastsim/resources/cycles/accel.csv")?,
+    // );
     cyc.insert(
         "udds",
         RustCycle::from_file("../../fastsim/resources/cycles/udds.csv")?,
@@ -330,13 +332,13 @@ pub fn get_label_fe(
     }
     if sd["accel"].mph_ach.iter().any(|&x| x >= 60.) {
         out.net_accel = interpolate(&60., &sd["accel"].mph_ach, &cyc["accel"].time_s, false);
-        // println!("MPH Ach: {}", &sd["accel"].mph_ach);
-        // println!("Time sec: {}", &cyc["accel"].time_s);
     } else {
         // in case vehicle never exceeds 60 mph, penalize it a lot with a high number
         println!("{} never achieves 60 mph.", veh.scenario_name);
         out.net_accel = 1e3;
     }
+    // println!("MPH Ach: {}", &sd["accel"].mph_ach);
+    // println!("Time sec: {}", &cyc["accel"].time_s);
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true
@@ -488,20 +490,6 @@ pub fn get_label_fe_phev(
         lab_iter_kwh_per_mi_vals.push(phev_calc.trans_ess_kwh_per_mi);
         lab_iter_kwh_per_mi_vals.push(0.0);
         phev_calc.lab_iter_kwh_per_mi = Array::from_vec(lab_iter_kwh_per_mi_vals);
-        // phev_calc.lab_iter_kwh_per_mi = Array::from_vec(vec![
-        //     0.0,
-        //     phev_calc.cd_ess_kwh_per_mi * phev_calc.cd_cycs.floor(), // repeat cd_ess_kwh_per_mi cd_cycs.floor number of times
-        //     phev_calc.trans_ess_kwh_per_mi,
-        //     0.0,
-        // ]);
-
-        // println!("{}", &phev_calc.lab_iter_kwh_per_mi);
-        // println!("{}", phev_calc.lab_iter_uf);
-        // println!("{}", diff(&phev_calc.lab_iter_uf));
-        // println!("{}", (&phev_calc
-        //     .lab_iter_kwh_per_mi
-        //     .slice(s![1..phev_calc.lab_iter_kwh_per_mi.len() - 1])
-        //     * &diff(&phev_calc.lab_iter_uf).slice(s![1..])));
         let mut vals: Vec<f64> = Vec::new();
         vals.push(0.0);
         vals.extend(
