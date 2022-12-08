@@ -463,6 +463,49 @@ fn get_epa_data(
     }
 }
 
+fn vehicle_import(year: &str, make: &str, model: &str) -> Result<(), Error> {
+    let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(year, make, model)?;
+    let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
+
+    println!("Please enter vehicle width in inches:");
+    let mut input: String = String::new();
+    let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+    let width_in: f64 = input.trim().parse()?;
+    println!("Please enter vehicle height in inches:");
+    let mut input: String = String::new();
+    let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+    let height_in: f64 = input.trim().parse()?;
+
+    let veh_pt_type: &str = match fe_gov_data.alt_veh_type.as_str() {
+        "Hybrid" => crate::vehicle::HEV,
+        "Plug-in Hybrid" => crate::vehicle::PHEV,
+        "EV" => crate::vehicle::BEV,
+        _ => crate::vehicle::CONV,
+    };
+
+    let battery_energy_kwh: f64 = 0.0;
+    let fuel_tank_gal: f64 = 0.0;
+    if veh_pt_type != crate::vehicle::BEV {
+        println!("Please enter vehicle's fuel tank capacity in gallons:");
+        let mut input: String = String::new();
+        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        fuel_tank_gal = input.trim().parse()?;
+    }
+    if veh_pt_type == crate::vehicle::BEV || veh_pt_type == crate::vehicle::PHEV {
+        println!("Please enter vehicle's battery energy in kWh:");
+        let mut input: String = String::new();
+        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        battery_energy_kwh = input.trim().parse()?;
+    }
+
+    let veh_cg_m: f64 = match fe_gov_data.drive.as_str() {
+        "Front-Wheel Drive" => 0.53,
+        _ => -0.53,
+    };
+
+    return Ok(());
+}
+
 #[allow(non_snake_case)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 pub fn abc_to_drag_coeffs(
@@ -977,5 +1020,10 @@ mod vehicle_utils_tests {
             c_lbf_per_mph2: 0.022206,
         };
         assert_eq!(ev6_rwd_long_range_epa_data, ev6_rwd_long_range_epa_truth)
+    }
+
+    #[test]
+    fn test_vehicle_import() {
+        vehicle_import("2022", "Toyota", "Prius Prime").unwrap();
     }
 }
