@@ -465,6 +465,23 @@ impl RustSimDrive {
         Ok(())
     }
 
+    pub fn sim_drive_accel(
+        &mut self,
+        init_soc: Option<f64>,
+        aux_in_kw_override: Option<Array1<f64>>,
+    ) -> Result<(), anyhow::Error> {
+        // Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+        let init_soc: f64 = match self.veh.veh_pt_type.as_str() {
+            // If no EV / Hybrid components, no SOC considerations.
+            CONV => (self.veh.max_soc + self.veh.min_soc) / 2.0,
+            HEV => (self.veh.max_soc + self.veh.min_soc) / 2.0,
+            // If EV, initializing initial SOC to maximum SOC.
+            _ => self.veh.max_soc,
+        };
+        self.walk(init_soc, aux_in_kw_override);
+        self.set_post_scalars()
+    }
+
     /// Receives second-by-second cycle information, vehicle properties,
     /// and an initial state of charge and runs sim_drive_step to perform a
     /// backward facing powertrain simulation. Method `sim_drive` runs this
