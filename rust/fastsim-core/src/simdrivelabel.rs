@@ -8,9 +8,8 @@ use std::collections::HashMap;
 use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::{add_pyo3_api, ApproxEq};
+use crate::proc_macros::ApproxEq;
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
-use crate::utils::*;
 use crate::vehicle;
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
