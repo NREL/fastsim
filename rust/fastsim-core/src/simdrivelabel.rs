@@ -66,7 +66,7 @@ pub struct PHEVCycleCalc {
     pub cd_cycs: f64,
     pub cd_miles: f64,
     pub cd_lab_mpg: f64,
-    pub cd_MPG: f64,
+    pub cd_MPG: f64, // chad proposes changing this to cd_cyc_mpg
     /// Fraction of transition cycles spent in charge depletion
     pub cd_frac_in_trans: f64,
     /// SOC change during 1 cycle

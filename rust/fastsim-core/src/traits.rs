@@ -80,7 +80,7 @@ macro_rules! impl_approx_eq_for_strict_eq_types {
     ($($strict_eq_type: ty),*) => {
         $(
             impl ApproxEq for $strict_eq_type {
-                fn approx_eq(&self, other: &$strict_eq_type, tol: f64) -> bool {
+                fn approx_eq(&self, other: &$strict_eq_type, _tol: f64) -> bool {
                     return self == other;
                 }
             }
