@@ -153,7 +153,7 @@ pub fn get_label_fe(
         ),
     );
     // println!("Time (sec): {}", cyc["accel"].time_s);
-    // println!("MPS: {}", cyc["accel"].mps);
+    // println!("mps: {}", cyc["accel"].mps);
     // cyc.insert(
     //     "accel",
     //     RustCycle::from_file("../../fastsim/resources/cycles/accel.csv")?,
@@ -327,7 +327,11 @@ pub fn get_label_fe(
         RustSimDrive::new(cyc["accel"].clone(), veh.clone()),
     );
     if let Some(sd_accel) = sd.get_mut("accel") {
-        sd_accel.sim_drive(None, None)?;
+        sd_accel.sim_drive_accel(None, None)?;
+        // println!("mps init: {}", &sd["accel"].cyc0.mps);
+        // println!("mps: {}", &sd["accel"].cyc.mps);
+        // println!("mps Ach: {}", &sd["accel"].mps_ach);
+        // println!("Time sec: {}", &cyc["accel"].time_s);
     }
     if sd["accel"].mph_ach.iter().any(|&x| x >= 60.) {
         out.net_accel = interpolate(&60., &sd["accel"].mph_ach, &cyc["accel"].time_s, false);
@@ -336,8 +340,6 @@ pub fn get_label_fe(
         println!("{} never achieves 60 mph.", veh.scenario_name);
         out.net_accel = 1e3;
     }
-    // println!("MPH Ach: {}", &sd["accel"].mph_ach);
-    // println!("Time sec: {}", &cyc["accel"].time_s);
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true
