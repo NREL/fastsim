@@ -116,6 +116,12 @@ pub struct VehicleDataFE {
     #[serde(rename = "phevHwy")]
     /// EPA composite gasoline-electricity highway MPGe
     phev_hwy_mpge: i32,
+    #[serde(rename = "range")]
+    /// Range for EV
+    range_ev: i32,
+    #[serde(rename = "rangeA")]
+    /// Range for PHEV
+    range_phev: i32,
     #[serde(rename = "startStop")]
     /// Stop-start technology
     start_stop: String,
@@ -483,25 +489,104 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<(), Error> {
         _ => crate::vehicle::CONV,
     };
 
-    let battery_energy_kwh: f64 = 0.0;
-    let fuel_tank_gal: f64 = 0.0;
-    if veh_pt_type != crate::vehicle::BEV {
+    let mut battery_energy_kwh: f64 = 0.0;
+    let fuel_tank_gal: f64 = if veh_pt_type != crate::vehicle::BEV {
         println!("Please enter vehicle's fuel tank capacity in gallons:");
         let mut input: String = String::new();
         let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
-        fuel_tank_gal = input.trim().parse()?;
-    }
-    if veh_pt_type == crate::vehicle::BEV || veh_pt_type == crate::vehicle::PHEV {
+        input.trim().parse()?
+    } else {
+        0.0
+    };
+
+    let ess_max_kwh: f64 = if veh_pt_type != crate::vehicle::CONV {
         println!("Please enter vehicle's battery energy in kWh:");
         let mut input: String = String::new();
         let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
-        battery_energy_kwh = input.trim().parse()?;
-    }
+        input.trim().parse()?
+    } else {
+        0.0
+    };
 
     let veh_cg_m: f64 = match fe_gov_data.drive.as_str() {
         "Front-Wheel Drive" => 0.53,
         _ => -0.53,
     };
+
+    let fs_max_kw: f64;
+    let fc_max_kw: f64;
+    let fc_eff_type: String;
+    let fc_eff_map: Vec<f64>;
+    let mc_max_kw: f64;
+    let min_soc: f64;
+    let max_soc: f64;
+    let ess_dischg_to_fc_max_eff_perc: f64;
+    let mph_fc_on: f64;
+    let kw_demand_fc_on: f64;
+    let aux_kw: f64;
+    let trans_eff: f64;
+
+    if veh_pt_type == crate::vehicle::CONV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        fc_eff_type = String::from(crate::vehicle::SI);
+        fc_eff_map = vec![
+            0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
+        ];
+        mc_max_kw = 0.0;
+        min_soc = 0.1;
+        max_soc = 0.95;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+        mph_fc_on = 55.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.7;
+        trans_eff = 0.92;
+    } else if veh_pt_type == crate::vehicle::HEV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        fc_eff_type = String::from(crate::vehicle::ATKINSON);
+        fc_eff_map = vec![
+            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+        ];
+        mc_max_kw = 1.0; // TODO: Use correct motor power
+        min_soc = 0.4;
+        max_soc = 0.8;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+        mph_fc_on = 1.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.5;
+        trans_eff = 0.95;
+    } else if veh_pt_type == crate::vehicle::PHEV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        fc_eff_type = String::from(crate::vehicle::ATKINSON);
+        fc_eff_map = vec![
+            0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
+        ];
+        mc_max_kw = 1.0; // TODO: Use correct motor power
+        min_soc = 0.15;
+        max_soc = 0.9;
+        ess_dischg_to_fc_max_eff_perc = 1.0;
+        mph_fc_on = 85.0;
+        kw_demand_fc_on = 120.0;
+        aux_kw = 0.3;
+        trans_eff = 0.98;
+    } else if veh_pt_type == crate::vehicle::BEV {
+        fs_max_kw = 0.0;
+        fc_max_kw = 0.0;
+        fc_eff_type = String::from(crate::vehicle::SI);
+        fc_eff_map = vec![
+            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+        ];
+        mc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        min_soc = 0.05;
+        max_soc = 0.98;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+        mph_fc_on = 1.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.25;
+        trans_eff = 0.98;
+    }
 
     return Ok(());
 }
@@ -771,6 +856,8 @@ mod vehicle_utils_tests {
             phev_city_mpge: 83,
             phev_comb_mpge: 78,
             phev_hwy_mpge: 72,
+            range_ev: 0,
+            range_phev: 25,
             start_stop: String::from("Y"),
             trany: String::from("Automatic (variable gear ratios)"),
             veh_class: String::from("Midsize Cars"),
@@ -820,6 +907,8 @@ mod vehicle_utils_tests {
             phev_city_mpge: 0,
             phev_comb_mpge: 0,
             phev_hwy_mpge: 0,
+            range_ev: 0,
+            range_phev: 0,
             start_stop: String::from("Y"),
             trany: String::from("Automatic (S8)"),
             veh_class: String::from("Compact Cars"),
@@ -898,6 +987,8 @@ mod vehicle_utils_tests {
             phev_city_mpge: 0,
             phev_comb_mpge: 0,
             phev_hwy_mpge: 0,
+            range_ev: 0,
+            range_phev: 0,
             start_stop: String::from("N"),
             trany: String::from("Manual 6-spd"),
             veh_class: String::from("Compact Cars"),
@@ -982,6 +1073,8 @@ mod vehicle_utils_tests {
             phev_city_mpge: 0,
             phev_comb_mpge: 0,
             phev_hwy_mpge: 0,
+            range_ev: 310,
+            range_phev: 0,
             start_stop: String::from("N"),
             trany: String::from("Automatic (A1)"),
             veh_class: String::from("Small Station Wagons"),

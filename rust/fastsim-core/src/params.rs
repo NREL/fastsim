@@ -11,6 +11,7 @@ pub const M_PER_MI: f64 = 1609.00;
 // Newtons per pound-force
 pub const N_PER_LBF: f64 = 4.448;
 pub const L_PER_GAL: f64 = 3.78541;
+pub const HP_PER_KW: f64 = 1.34102;
 
 /// Misc Constants
 pub const MODERN_MAX: f64 = 0.95;
