@@ -85,7 +85,7 @@ pub struct VehicleDataFE {
     #[serde(rename = "fuelType1")]
     /// Fuel type 1
     fuel1: String,
-    #[serde(rename = "fuelType2")]
+    #[serde(default, rename = "fuelType2")]
     /// Fuel type 2
     fuel2: String,
     #[serde(rename = "ghgScore")]
@@ -119,7 +119,7 @@ pub struct VehicleDataFE {
     #[serde(rename = "range")]
     /// Range for EV
     range_ev: i32,
-    #[serde(rename = "rangeA")]
+    #[serde(default, rename = "rangeA")]
     /// Range for PHEV
     range_phev: i32,
     #[serde(rename = "startStop")]
@@ -148,7 +148,7 @@ struct EmissionsListFE {
     emissions_info: Vec<EmissionsInfoFE>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 /// Struct containing emissions test results from fueleconomy.gov
 struct EmissionsInfoFE {
@@ -469,9 +469,10 @@ fn get_epa_data(
     }
 }
 
-fn vehicle_import(year: &str, make: &str, model: &str) -> Result<(), Error> {
+fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Error> {
     let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(year, make, model)?;
     let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
+    println!("Got FE and EPA data");
 
     println!("Please enter vehicle width in inches:");
     let mut input: String = String::new();
@@ -489,7 +490,6 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<(), Error> {
         _ => crate::vehicle::CONV,
     };
 
-    let mut battery_energy_kwh: f64 = 0.0;
     let fuel_tank_gal: f64 = if veh_pt_type != crate::vehicle::BEV {
         println!("Please enter vehicle's fuel tank capacity in gallons:");
         let mut input: String = String::new();
@@ -586,9 +586,126 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<(), Error> {
         kw_demand_fc_on = 100.0;
         aux_kw = 0.25;
         trans_eff = 0.98;
+    } else {
+        return Err(anyhow!("Unknown powertrain type: {veh_pt_type}"));
     }
 
-    return Ok(());
+    let props: RustPhysicalProperties = RustPhysicalProperties::default();
+
+    let mut veh: RustVehicle = RustVehicle::new(
+        format!("{year} {make} {model}"),
+        0,
+        fe_gov_data.year,
+        String::from(veh_pt_type),
+        0.0,
+        (width_in * height_in) / (IN_PER_M * IN_PER_M),
+        0.0,
+        veh_cg_m,
+        0.59,
+        2.6,
+        136.0,
+        Some(epa_data.test_weight_lbs / LBS_PER_KG), // TODO: Allow vehicle mass override
+        1.4,
+        fs_max_kw,
+        1.0,
+        fuel_tank_gal * props.kwh_per_gge,
+        9.89,
+        fc_max_kw,
+        vec![
+            0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
+        ],
+        fc_eff_map,
+        fc_eff_type,
+        6.0,
+        61.0,
+        2.13,
+        30.0,
+        0.0, // TODO: Where does this value come from
+        mc_max_kw,
+        vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0],
+        Some(vec![
+            0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
+        ]),
+        4.0,
+        0.833,
+        21.6,
+        1.05 * mc_max_kw, // TODO: Figure out correct efficiency factor from battery to motor
+        ess_max_kwh,
+        8.0,
+        75.0,
+        0.97,
+        110.0,
+        -0.6811,
+        min_soc,
+        max_soc,
+        ess_dischg_to_fc_max_eff_perc,
+        0.0,
+        0.815,
+        4.0,
+        0.0,
+        0.336,
+        0.7,
+        60.0,
+        0.2,
+        0.0,
+        mph_fc_on,
+        kw_demand_fc_on,
+        0.98,
+        fe_gov_data.start_stop == "Y",
+        false,
+        1.0,
+        0.86,
+        aux_kw,
+        114.0,
+        trans_eff,
+        0.005,
+        fe_gov_data.city_mpg_fuel1 as f64,
+        fe_gov_data.highway_mpg_fuel1 as f64,
+        fe_gov_data.comb_mpg_fuel1 as f64,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN, // TODO: Is this total battery life or range on single charge?
+        f64::NAN, // TODO: This is total vehicle range, correct?
+        f64::NAN,
+        f64::NAN,
+        props,
+        500.0,
+        0.99,
+        None,
+        Some(0.95),
+    );
+
+    veh.glider_kg = veh.veh_override_kg
+        - veh.cargo_kg
+        - veh.trans_kg
+        - veh.comp_mass_multiplier
+            * ((veh.fs_max_kw / veh.fs_kwh_per_kg)
+                + (veh.fc_base_kg + veh.fc_max_kw / veh.fc_kw_per_kg)
+                + (veh.mc_pe_base_kg + veh.mc_max_kw * veh.mc_pe_kg_per_kw)
+                + (veh.ess_base_kg + veh.ess_max_kwh * veh.ess_kg_per_kwh));
+
+    abc_to_drag_coeffs(
+        &mut veh,
+        epa_data.a_lbf,
+        epa_data.b_lbf_per_mph,
+        epa_data.c_lbf_per_mph2,
+        Some(false),
+        None,
+        None,
+        Some(true),
+        Some(false),
+    );
+
+    return Ok(veh);
 }
 
 #[allow(non_snake_case)]
@@ -1117,6 +1234,6 @@ mod vehicle_utils_tests {
 
     #[test]
     fn test_vehicle_import() {
-        vehicle_import("2022", "Toyota", "Prius Prime").unwrap();
+        let veh: RustVehicle = vehicle_import("2022", "Kia", "EV6 RWD (Long Range)").unwrap();
     }
 }
