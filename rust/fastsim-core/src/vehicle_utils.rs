@@ -220,18 +220,20 @@ struct VehicleDataEPA {
     c_lbf_per_mph2: f64,
 }
 
+/// Gets data from fueleconomy.gov for the given vehicle
+///
+/// Arguments:
+/// ----------
+/// year: Vehicle year
+/// make: Vehicle make
+/// model: Vehicle model
+///
+/// Returns:
+/// --------
+/// vehicle_data_fe: Data for the given vehicle from fueleconomy.gov
 fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<VehicleDataFE, Error> {
-    // Gets data from fueleconomy.gov for the given vehicle
-    //
-    // Arguments:
-    // ----------
-    // year: Vehicle year
-    // make: Vehicle make
-    // model: Vehicle model
-    //
-    // Returns:
-    // --------
-    // vehicle_data_fe: Data for the given vehicle from fueleconomy.gov
+    
+    // TODO: See if there is a way to detect SSL connect error and tell user to disconnect from VPN
     let mut handle: Easy = Easy::new();
     let url: String = format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year={year}&make={make}&model={model}").replace(' ', "%20");
     handle.url(&url)?;
@@ -247,6 +249,7 @@ fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<Vehi
 
     let vehicle_options: VehicleOptionsFE = from_str(&buf)?;
     let mut index: usize = 0;
+    // TODO: See if there is a more elegant way to handle this
     if vehicle_options.options.len() > 1 {
         println!(
             "Multiple engine configurations found. Please enter the index of the correct one."
@@ -280,19 +283,19 @@ fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<Vehi
     return Ok(vehicle_data_fe);
 }
 
+/// Gets data from EPA vehicle database for the given vehicle
+///
+/// Arguments:
+/// ----------
+/// fe_gov_vehicle_data: Vehicle data from fueleconomy.gov
+///
+/// Returns:
+/// --------
+/// vehicle_data_epa: Data for the given vehicle from EPA vehicle database
 fn get_epa_data(
     fe_gov_vehicle_data: &VehicleDataFE,
     epa_veh_db_path: Option<String>,
 ) -> Result<VehicleDataEPA, Error> {
-    // Gets data from EPA vehicle database for the given vehicle
-    //
-    // Arguments:
-    // ----------
-    // fe_gov_vehicle_data: Vehicle data from fueleconomy.gov
-    //
-    // Returns:
-    // --------
-    // vehicle_data_epa: Data for the given vehicle from EPA vehicle database
 
     // Open EPA vehicle database csv file
     let file_path: String = epa_veh_db_path.unwrap_or(format!(
@@ -379,6 +382,7 @@ fn get_epa_data(
     // Get number of gears and convert fe.gov transmission description to EPA transmission description
     let num_gears_fe_gov: u32;
     let transmission_fe_gov: String;
+    // Based on reference: https://www.fueleconomy.gov/feg/findacarhelp.shtml#engine
     if fe_gov_vehicle_data.trany.contains("Manual") {
         transmission_fe_gov = String::from('M');
         num_gears_fe_gov =
@@ -467,9 +471,13 @@ fn get_epa_data(
 }
 
 fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Error> {
+    // TODO: Aaron wanted custom scenario name option
     let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(year, make, model)?;
     let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
-    
+    // TODO: Compare epa_data to VehicleDataEPA::default() and if they match panic
+
+    // TODO: Verify user input works with python and cli interfaces
+    // Could replace user input with arguments in function and have python/CLI handle user input
     println!("Please enter vehicle width in inches:");
     let mut input: String = String::new();
     let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
@@ -753,10 +761,9 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         Some(false),
     );
 
+    // TODO: Allow optional argument for file location
     let file_name: String = veh.scenario_name.replace(" ", "_");
-    // let write_file = std::fs::OpenOptions::new().write(true).create(true).open(format!("../../../fastsim/resources/vehdb/{}.yaml", file_name)).expect("Couldn't open file");
-    // serde_yaml::to_writer
-    veh.to_file(format!("../../fastsim/resources/vehdb/{}.yaml", file_name).as_str());
+    veh.to_file(format!("../../fastsim/resources/vehdb/{}.yaml", file_name).as_str())?;
 
     return Ok(veh);
 }
@@ -970,6 +977,7 @@ mod vehicle_utils_tests {
     }
 
     #[test]
+    // Need to disconnect from VPN to access fueleconomy.gov
     fn test_get_fuel_economy_gov_data() {
         let year = "2022";
         let make = "Toyota";
@@ -1282,17 +1290,22 @@ mod vehicle_utils_tests {
     }
 
     #[test]
+    // Need to disconnect from VPN to access fueleconomy.gov
     fn test_vehicle_import_phev() {
         let veh: RustVehicle = vehicle_import("2022", "Toyota", "Prius Prime").unwrap();
     }
 
     #[test]
+    // Need to disconnect from VPN to access fueleconomy.gov
     fn test_vehicle_import_ev() {
         let veh: RustVehicle = vehicle_import("2022", "Kia", "EV6 RWD (Long Range)").unwrap();
     }
 
     #[test]
+    // Need to disconnect from VPN to access fueleconomy.gov
     fn test_vehicle_import_conv() {
         let veh: RustVehicle = vehicle_import("2022", "Volvo", "S60 B5 AWD").unwrap();
     }
+
+    // TODO: Add failing test
 }
