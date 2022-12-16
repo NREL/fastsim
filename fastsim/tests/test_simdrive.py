@@ -169,10 +169,10 @@ class TestSimDriveClassic(unittest.TestCase):
             veh = veh.to_rust()
             cyc = cyc.to_rust()
             sd = simdrive.RustSimDrive(cyc, veh)
-            sd.sim_params = set_nested_values(sd.sim_params, 
-                missed_trace_correction=True,
-                max_time_dilation=0.1
-            )
+            sd.sim_params = set_nested_values(sd.sim_params,
+                                              missed_trace_correction=True,
+                                              max_time_dilation=0.1
+                                              )
             sd.sim_drive()
 
             dist_err = np.abs(np.array(sd.dist_m).sum(
@@ -232,8 +232,7 @@ class TestSimDriveClassic(unittest.TestCase):
                 veh = vehicle.Vehicle.from_vehdb(vehid)
                 cyc = cycle.Cycle.from_file('udds')
                 sd = simdrive.SimDrive(cyc, veh)
-                sd.sim_drive_walk(0.1)
-                sd.set_post_scalars()
+                sd.sim_drive()
                 self.assertFalse(
                     (sd.mps_ach < 0.0).any(),
                     msg=f'Achieved speed contains negative values for vehicle {vehid}'
@@ -247,8 +246,7 @@ class TestSimDriveClassic(unittest.TestCase):
                 veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
                 cyc = cycle.Cycle.from_file('udds').to_rust()
                 sd = simdrive.RustSimDrive(cyc, veh)
-                sd.sim_drive_walk(0.1)
-                sd.set_post_scalars()
+                sd.sim_drive()
                 self.assertFalse(
                     (np.array(sd.mps_ach) < 0.0).any(),
                     msg=f'Achieved speed contains negative values for vehicle {vehid}'
@@ -275,6 +273,7 @@ class TestSimDriveClassic(unittest.TestCase):
             sd = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
             sd.sim_drive()
             self.assertEqual(sd.i, sd.cyc0.len)
+
 
 if __name__ == '__main__':
     unittest.main()
