@@ -20,6 +20,22 @@ use crate::simdrive::RustSimDrive;
 use crate::vehicle::RustVehicle;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Struct containing list of makes for a year from fueleconomy.gov
+struct VehicleMakesFE {
+    #[serde(rename = "menuItem")]
+    /// List of vehicle makes
+    makes: Vec<MakeFE>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Struct containing make information for a year fueleconomy.gov
+struct MakeFE {
+    #[serde(rename = "text")]
+    /// Transmission of vehicle
+    make_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 /// Struct containing list of models for a year and make from fueleconomy.gov
 struct VehicleModelsFE {
     #[serde(rename = "menuItem")]
@@ -842,8 +858,43 @@ where
 
     for model in model_list.models {
         println!("{year} {make} {}", model.model_name);
-        let _veh: RustVehicle =
-            vehicle_import(year, make, model.model_name.as_str(), &mut writer, &mut reader)?;
+        // let _veh: RustVehicle =
+        //     vehicle_import(year, make, model.model_name.as_str(), &mut writer, &mut reader)?;
+    }
+
+    return Ok(());
+}
+
+fn multiple_vehicle_import_year<R, W>(
+    year: &str,
+    mut writer: W,
+    mut reader: R,
+) -> Result<(), Error>
+where
+    W: std::io::Write,
+    R: std::io::BufRead,
+{
+    let mut handle: Easy = Easy::new();
+    let url: String =
+        format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year={year}")
+            .replace(' ', "%20");
+    handle.url(&url)?;
+    let mut buf: String = String::new();
+    {
+        let mut transfer = handle.transfer();
+        transfer.write_function(|data| {
+            buf.push_str(std::str::from_utf8(data).unwrap());
+            Ok(data.len())
+        })?;
+        transfer.perform()?;
+    }
+
+    let make_list: VehicleMakesFE = from_str(&buf)?;
+
+    for make in make_list.makes {
+        println!("{year} {}", make.make_name);
+        // let _veh: RustVehicle =
+        //     multiple_vehicle_import_make(year, make.make_name.as_str(), &mut writer, &mut reader)?;
     }
 
     return Ok(());
@@ -1415,5 +1466,15 @@ mod vehicle_utils_tests {
             std::io::stdin().lock(),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_multiple_vehicle_import_make() {
+        multiple_vehicle_import_make("2022", "Rivian", std::io::stdout(), std::io::stdin().lock()).unwrap();
+    }
+
+    #[test]
+    fn test_multiple_vehicle_import_year() {
+        multiple_vehicle_import_year("2022", std::io::stdout(), std::io::stdin().lock()).unwrap();
     }
 }
