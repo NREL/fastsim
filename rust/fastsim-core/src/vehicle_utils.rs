@@ -20,6 +20,22 @@ use crate::simdrive::RustSimDrive;
 use crate::vehicle::RustVehicle;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Struct containing list of models for a year and make from fueleconomy.gov
+struct VehicleModelsFE {
+    #[serde(rename = "menuItem")]
+    /// List of vehicle models
+    models: Vec<ModelFE>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Struct containing model information for a year and make from fueleconomy.gov
+struct ModelFE {
+    #[serde(rename = "text")]
+    /// Transmission of vehicle
+    model_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 /// Struct containing list of transmission options for vehicle from fueleconomy.gov
 struct VehicleOptionsFE {
     #[serde(rename = "menuItem")]
@@ -435,7 +451,7 @@ fn get_epa_data(
     let mut current_veh: VehicleDataEPA = VehicleDataEPA::default();
     let mut current_count: i32 = 0;
     for mut veh_epa in veh_list {
-        if veh_epa.model.contains("4WD") || veh_epa.model.contains("AWD") {
+        if veh_epa.model.contains("4WD") || veh_epa.model.contains("AWD") || veh_epa.drive.contains("4-Wheel Drive") {
             veh_epa.drive_code = String::from("A");
             veh_epa.drive = String::from("All Wheel Drive");
         }
@@ -795,6 +811,42 @@ where
     veh.to_file(format!("../../fastsim/resources/vehdb/{}.yaml", file_name).as_str())?;
 
     return Ok(veh);
+}
+
+fn multiple_vehicle_import_make<R, W>(
+    year: &str,
+    make: &str,
+    mut writer: W,
+    mut reader: R,
+) -> Result<(), Error>
+where
+    W: std::io::Write,
+    R: std::io::BufRead,
+{
+    let mut handle: Easy = Easy::new();
+    let url: String =
+        format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year={year}&make={make}")
+            .replace(' ', "%20");
+    handle.url(&url)?;
+    let mut buf: String = String::new();
+    {
+        let mut transfer = handle.transfer();
+        transfer.write_function(|data| {
+            buf.push_str(std::str::from_utf8(data).unwrap());
+            Ok(data.len())
+        })?;
+        transfer.perform()?;
+    }
+
+    let model_list: VehicleModelsFE = from_str(&buf)?;
+
+    for model in model_list.models {
+        println!("{year} {make} {}", model.model_name);
+        let _veh: RustVehicle =
+            vehicle_import(year, make, model.model_name.as_str(), &mut writer, &mut reader)?;
+    }
+
+    return Ok(());
 }
 
 #[allow(non_snake_case)]
