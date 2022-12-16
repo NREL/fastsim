@@ -327,7 +327,27 @@ pub fn get_label_fe(
         RustSimDrive::new(cyc["accel"].clone(), veh.clone()),
     );
     if let Some(sd_accel) = sd.get_mut("accel") {
+        println!("Running `sim_drive_accel`");
         sd_accel.sim_drive_accel(None, None)?;
+        println!(
+            "tail of mps_ach: {:?}",
+            sd_accel
+                .mps_ach
+                .slice(s![sd_accel.len() - 4..sd_accel.len()])
+        );
+        println!(
+            "tail of time_s: {:?}",
+            sd_accel
+                .cyc
+                .time_s
+                .slice(s![sd_accel.len() - 4..sd_accel.len()])
+        );
+        println!(
+            "tail of cyc_met: {:?}",
+            sd_accel
+                .cyc_met
+                .slice(s![sd_accel.len() - 4..sd_accel.len()])
+        );
         // println!("mps init: {}", &sd["accel"].cyc0.mps);
         // println!("mps: {}", &sd["accel"].cyc.mps);
         // println!("mps Ach: {}", &sd["accel"].mps_ach);
