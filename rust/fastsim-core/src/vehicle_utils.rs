@@ -444,7 +444,7 @@ fn get_epa_data(
             && ((fe_gov_vehicle_data.alt_veh_type == String::from("EV")
                 && veh_epa.displ.round() == 0.0
                 && veh_epa.cylinders == String::new())
-                || (veh_epa.displ.round() == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap())
+                || ((veh_epa.displ * 10.0).round() / 10.0 == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap())
                     && veh_epa.cylinders == fe_gov_vehicle_data.cylinders))
         {
             if veh_epa == current_veh {
@@ -469,7 +469,7 @@ fn get_epa_data(
 fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Error> {
     let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(year, make, model)?;
     let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
-
+    
     println!("Please enter vehicle width in inches:");
     let mut input: String = String::new();
     let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
@@ -516,6 +516,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
     let mc_max_kw: f64;
     let min_soc: f64;
     let max_soc: f64;
+    let ess_max_kw: f64;
     let ess_dischg_to_fc_max_eff_perc: f64;
     let mph_fc_on: f64;
     let kw_demand_fc_on: f64;
@@ -533,6 +534,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         mc_max_kw = 0.0;
         min_soc = 0.1;
         max_soc = 0.95;
+        ess_max_kw = 0.0;
         ess_dischg_to_fc_max_eff_perc = 0.0;
         mph_fc_on = 55.0;
         kw_demand_fc_on = 100.0;
@@ -541,14 +543,31 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         val_range_miles = 0.0;
     } else if veh_pt_type == crate::vehicle::HEV {
         fs_max_kw = 2000.0;
-        fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+
+        println!("Rated vehicle power in kW from epa database is {}", epa_data.eng_pwr_hp as f64 / HP_PER_KW);
+        println!("Please enter fuel converter power in kW:");
+        let mut input: String = String::new();
+        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        fc_max_kw = input.trim().parse()?;
+
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
         fc_eff_map = vec![
             0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
         ];
-        mc_max_kw = 1.0; // TODO: Use correct motor power
+
+        println!("Please enter motor power in kW:");
+        let mut input: String = String::new();
+        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        mc_max_kw = input.trim().parse()?;
+        
         min_soc = 0.4;
         max_soc = 0.8;
+
+        println!("Please enter battery power in kW:");
+        let mut input: String = String::new();
+        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        ess_max_kw = input.trim().parse()?;
+
         ess_dischg_to_fc_max_eff_perc = 0.0;
         mph_fc_on = 1.0;
         kw_demand_fc_on = 100.0;
@@ -557,14 +576,31 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         val_range_miles = 0.0;
     } else if veh_pt_type == crate::vehicle::PHEV {
         fs_max_kw = 2000.0;
-        fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        
+        println!("Rated vehicle power in kW from epa database is {}", epa_data.eng_pwr_hp as f64 / HP_PER_KW);
+        println!("Please enter fuel converter power in kW:");
+        let mut input: String = String::new();
+        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        fc_max_kw = input.trim().parse()?;
+
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
         fc_eff_map = vec![
             0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
         ];
-        mc_max_kw = 1.0; // TODO: Use correct motor power
+
+        println!("Please enter motor power in kW:");
+        let mut input: String = String::new();
+        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        mc_max_kw = input.trim().parse()?;
+        
         min_soc = 0.15;
         max_soc = 0.9;
+
+        println!("Please enter battery power in kW:");
+        let mut input: String = String::new();
+        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        ess_max_kw = input.trim().parse()?;
+
         ess_dischg_to_fc_max_eff_perc = 1.0;
         mph_fc_on = 85.0;
         kw_demand_fc_on = 120.0;
@@ -581,6 +617,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         mc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
         min_soc = 0.05;
         max_soc = 0.98;
+        ess_max_kw = 1.05 * mc_max_kw;
         ess_dischg_to_fc_max_eff_perc = 0.0;
         mph_fc_on = 1.0;
         kw_demand_fc_on = 100.0;
@@ -649,7 +686,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         4.0,
         mc_pe_kg_per_kw,
         mc_pe_base_kg,
-        1.05 * mc_max_kw, // TODO: Figure out correct efficiency factor from battery to motor
+        ess_max_kw,
         ess_max_kwh,
         ess_kg_per_kwh,
         ess_base_kg,
@@ -1240,7 +1277,17 @@ mod vehicle_utils_tests {
     }
 
     #[test]
-    fn test_vehicle_import() {
+    fn test_vehicle_import_phev() {
+        let veh: RustVehicle = vehicle_import("2022", "Toyota", "Prius Prime").unwrap();
+    }
+
+    #[test]
+    fn test_vehicle_import_ev() {
         let veh: RustVehicle = vehicle_import("2022", "Kia", "EV6 RWD (Long Range)").unwrap();
+    }
+
+    #[test]
+    fn test_vehicle_import_conv() {
+        let veh: RustVehicle = vehicle_import("2022", "Volvo", "S60 B5 AWD").unwrap();
     }
 }
