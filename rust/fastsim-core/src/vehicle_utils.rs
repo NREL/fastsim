@@ -474,7 +474,10 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
     // TODO: Aaron wanted custom scenario name option
     let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(year, make, model)?;
     let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
-    // TODO: Compare epa_data to VehicleDataEPA::default() and if they match panic
+    
+    if epa_data == VehicleDataEPA::default() {
+        return Err(anyhow!("Matching EPA data not found for {year} {make} {model}"));
+    }
 
     // TODO: Verify user input works with python and cli interfaces
     // Could replace user input with arguments in function and have python/CLI handle user input
@@ -1307,5 +1310,9 @@ mod vehicle_utils_tests {
         let veh: RustVehicle = vehicle_import("2022", "Volvo", "S60 B5 AWD").unwrap();
     }
 
-    // TODO: Add failing test
+    #[test]
+    #[should_panic]
+    fn test_vehicle_import_incorrect_vehicle() {
+        let veh: RustVehicle = vehicle_import("2022", "Buzz", "Lightyear").unwrap();
+    }
 }
