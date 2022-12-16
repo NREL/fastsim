@@ -753,6 +753,11 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         Some(false),
     );
 
+    let file_name: String = veh.scenario_name.replace(" ", "_");
+    // let write_file = std::fs::OpenOptions::new().write(true).create(true).open(format!("../../../fastsim/resources/vehdb/{}.yaml", file_name)).expect("Couldn't open file");
+    // serde_yaml::to_writer
+    veh.to_file(format!("../../fastsim/resources/vehdb/{}.yaml", file_name).as_str());
+
     return Ok(veh);
 }
 
