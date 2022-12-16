@@ -38,7 +38,7 @@ struct OptionFE {
     id: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 /// Struct containing vehicle data from fueleconomy.gov
 pub struct VehicleDataFE {
     #[serde(default, rename = "atvType")]
@@ -119,9 +119,6 @@ pub struct VehicleDataFE {
     #[serde(rename = "range")]
     /// Range for EV
     range_ev: i32,
-    #[serde(default, rename = "rangeA")]
-    /// Range for PHEV
-    range_phev: i32,
     #[serde(rename = "startStop")]
     /// Stop-start technology
     start_stop: String,
@@ -140,7 +137,7 @@ pub struct VehicleDataFE {
     turbo_charge: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 /// Struct containing list of emissions tests from fueleconomy.gov
 struct EmissionsListFE {
@@ -472,7 +469,6 @@ fn get_epa_data(
 fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Error> {
     let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(year, make, model)?;
     let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
-    println!("Got FE and EPA data");
 
     println!("Please enter vehicle width in inches:");
     let mut input: String = String::new();
@@ -525,6 +521,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
     let kw_demand_fc_on: f64;
     let aux_kw: f64;
     let trans_eff: f64;
+    let val_range_miles: f64;
 
     if veh_pt_type == crate::vehicle::CONV {
         fs_max_kw = 2000.0;
@@ -541,6 +538,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         kw_demand_fc_on = 100.0;
         aux_kw = 0.7;
         trans_eff = 0.92;
+        val_range_miles = 0.0;
     } else if veh_pt_type == crate::vehicle::HEV {
         fs_max_kw = 2000.0;
         fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
@@ -556,6 +554,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         kw_demand_fc_on = 100.0;
         aux_kw = 0.5;
         trans_eff = 0.95;
+        val_range_miles = 0.0;
     } else if veh_pt_type == crate::vehicle::PHEV {
         fs_max_kw = 2000.0;
         fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
@@ -571,6 +570,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         kw_demand_fc_on = 120.0;
         aux_kw = 0.3;
         trans_eff = 0.98;
+        val_range_miles = 0.0;
     } else if veh_pt_type == crate::vehicle::BEV {
         fs_max_kw = 0.0;
         fc_max_kw = 0.0;
@@ -586,11 +586,31 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         kw_demand_fc_on = 100.0;
         aux_kw = 0.25;
         trans_eff = 0.98;
+        val_range_miles = fe_gov_data.range_ev as f64;
     } else {
         return Err(anyhow!("Unknown powertrain type: {veh_pt_type}"));
     }
 
     let props: RustPhysicalProperties = RustPhysicalProperties::default();
+
+    let cargo_kg: f64 = 136.0;
+    let trans_kg: f64 = 114.0;
+    let comp_mass_multiplier: f64 = 1.4;
+    let fs_kwh_per_kg: f64 = 9.89;
+    let fc_base_kg: f64 = 61.0;
+    let fc_kw_per_kg: f64 = 2.13;
+    let mc_pe_base_kg: f64 = 21.6;
+    let mc_pe_kg_per_kw: f64 = 0.833;
+    let ess_base_kg: f64 = 75.0;
+    let ess_kg_per_kwh: f64 = 8.0;
+    let glider_kg: f64 = (epa_data.test_weight_lbs / LBS_PER_KG)
+        - cargo_kg
+        - trans_kg
+        - comp_mass_multiplier
+            * ((fs_max_kw / fs_kwh_per_kg)
+                + (fc_base_kg + fc_max_kw / fc_kw_per_kg)
+                + (mc_pe_base_kg + mc_max_kw * mc_pe_kg_per_kw)
+                + (ess_base_kg + ess_max_kwh * ess_kg_per_kwh));
 
     let mut veh: RustVehicle = RustVehicle::new(
         format!("{year} {make} {model}"),
@@ -599,17 +619,17 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         String::from(veh_pt_type),
         0.0,
         (width_in * height_in) / (IN_PER_M * IN_PER_M),
-        0.0,
+        glider_kg,
         veh_cg_m,
         0.59,
         2.6,
         136.0,
-        Some(epa_data.test_weight_lbs / LBS_PER_KG), // TODO: Allow vehicle mass override
-        1.4,
+        None,
+        comp_mass_multiplier,
         fs_max_kw,
         1.0,
         fuel_tank_gal * props.kwh_per_gge,
-        9.89,
+        fs_kwh_per_kg,
         fc_max_kw,
         vec![
             0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
@@ -617,22 +637,22 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         fc_eff_map,
         fc_eff_type,
         6.0,
-        61.0,
-        2.13,
+        fc_base_kg,
+        fc_kw_per_kg,
         30.0,
-        0.0, // TODO: Where does this value come from
+        fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
         mc_max_kw,
         vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0],
         Some(vec![
             0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
         ]),
         4.0,
-        0.833,
-        21.6,
+        mc_pe_kg_per_kw,
+        mc_pe_base_kg,
         1.05 * mc_max_kw, // TODO: Figure out correct efficiency factor from battery to motor
         ess_max_kwh,
-        8.0,
-        75.0,
+        ess_kg_per_kwh,
+        ess_base_kg,
         0.97,
         110.0,
         -0.6811,
@@ -656,7 +676,7 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         1.0,
         0.86,
         aux_kw,
-        114.0,
+        trans_kg,
         trans_eff,
         0.005,
         fe_gov_data.city_mpg_fuel1 as f64,
@@ -673,8 +693,8 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         f64::NAN,
         f64::NAN,
         f64::NAN,
-        f64::NAN, // TODO: Is this total battery life or range on single charge?
-        f64::NAN, // TODO: This is total vehicle range, correct?
+        f64::NAN,
+        val_range_miles,
         f64::NAN,
         f64::NAN,
         props,
@@ -683,15 +703,6 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         None,
         Some(0.95),
     );
-
-    veh.glider_kg = veh.veh_override_kg
-        - veh.cargo_kg
-        - veh.trans_kg
-        - veh.comp_mass_multiplier
-            * ((veh.fs_max_kw / veh.fs_kwh_per_kg)
-                + (veh.fc_base_kg + veh.fc_max_kw / veh.fc_kw_per_kg)
-                + (veh.mc_pe_base_kg + veh.mc_max_kw * veh.mc_pe_kg_per_kw)
-                + (veh.ess_base_kg + veh.ess_max_kwh * veh.ess_kg_per_kwh));
 
     abc_to_drag_coeffs(
         &mut veh,
@@ -974,7 +985,6 @@ mod vehicle_utils_tests {
             phev_comb_mpge: 78,
             phev_hwy_mpge: 72,
             range_ev: 0,
-            range_phev: 25,
             start_stop: String::from("Y"),
             trany: String::from("Automatic (variable gear ratios)"),
             veh_class: String::from("Midsize Cars"),
@@ -1025,7 +1035,6 @@ mod vehicle_utils_tests {
             phev_comb_mpge: 0,
             phev_hwy_mpge: 0,
             range_ev: 0,
-            range_phev: 0,
             start_stop: String::from("Y"),
             trany: String::from("Automatic (S8)"),
             veh_class: String::from("Compact Cars"),
@@ -1105,7 +1114,6 @@ mod vehicle_utils_tests {
             phev_comb_mpge: 0,
             phev_hwy_mpge: 0,
             range_ev: 0,
-            range_phev: 0,
             start_stop: String::from("N"),
             trany: String::from("Manual 6-spd"),
             veh_class: String::from("Compact Cars"),
@@ -1191,7 +1199,6 @@ mod vehicle_utils_tests {
             phev_comb_mpge: 0,
             phev_hwy_mpge: 0,
             range_ev: 310,
-            range_phev: 0,
             start_stop: String::from("N"),
             trany: String::from("Automatic (A1)"),
             veh_class: String::from("Small Station Wagons"),
