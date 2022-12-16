@@ -589,38 +589,38 @@ impl RustSimDrive {
         init_soc: f64,
         aux_in_kw_override: Option<Array1<f64>>,
     ) -> Result<(), anyhow::Error> {
-        let init_soc = if !(self.veh.min_soc..=self.veh.max_soc).contains(&init_soc) {
-            log::warn!(
-                "provided init_soc={} is outside range min_soc={} to max_soc={}; setting init_soc to max_soc",
+        if self.veh.veh_pt_type != CONV
+            && !(self.veh.min_soc..=self.veh.max_soc).contains(&init_soc)
+        {
+            Err(anyhow!(
+                "provided init_soc={} is outside range min_soc={} to max_soc={}",
                 init_soc,
                 self.veh.min_soc,
                 self.veh.max_soc
-            );
-            self.veh.max_soc
+            ))
         } else {
-            init_soc
-        };
-        self.init_arrays();
+            self.init_arrays();
 
-        if let Some(arr) = aux_in_kw_override {
-            self.aux_in_kw = arr;
+            if let Some(arr) = aux_in_kw_override {
+                self.aux_in_kw = arr;
+            }
+
+            self.cyc_met[0] = true;
+            self.cur_soc_target[0] = self.veh.max_soc;
+            self.ess_cur_kwh[0] = init_soc * self.veh.ess_max_kwh;
+            self.soc[0] = init_soc;
+            self.mps_ach[0] = self.cyc0.mps[0];
+            self.mph_ach[0] = self.cyc0.mph_at_i(0);
+
+            if self.sim_params.missed_trace_correction
+                || self.sim_params.idm_allow
+                || self.sim_params.coast_allow
+            {
+                self.cyc = self.cyc0.clone(); // reset the cycle in case it has been manipulated
+            }
+            self.i = 1; // time step counter
+            Ok(())
         }
-
-        self.cyc_met[0] = true;
-        self.cur_soc_target[0] = self.veh.max_soc;
-        self.ess_cur_kwh[0] = init_soc * self.veh.ess_max_kwh;
-        self.soc[0] = init_soc;
-        self.mps_ach[0] = self.cyc0.mps[0];
-        self.mph_ach[0] = self.cyc0.mph_at_i(0);
-
-        if self.sim_params.missed_trace_correction
-            || self.sim_params.idm_allow
-            || self.sim_params.coast_allow
-        {
-            self.cyc = self.cyc0.clone(); // reset the cycle in case it has been manipulated
-        }
-        self.i = 1; // time step counter
-        Ok(())
     }
 
     /// Calculate the next speed by the Intelligent Driver Model
@@ -2863,7 +2863,7 @@ impl RustSimDrive {
                 / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj);
 
         if self.energy_audit_error.abs() > self.sim_params.energy_audit_error_tol {
-            log::warn!(
+            log::warn!(target: "fastsimrust",
                 "problem detected with conservation of energy; \
                     energy audit error: {:.5}",
                 self.energy_audit_error
@@ -2889,7 +2889,7 @@ impl RustSimDrive {
         if !self.sim_params.missed_trace_correction {
             if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol {
                 self.trace_miss = true;
-                log::warn!(
+                log::warn!(target: "fastsimrust",
                     "trace miss distance fraction {:.5} exceeds tolerance of {:.5}",
                     self.trace_miss_dist_frac,
                     self.sim_params.trace_miss_dist_tol
@@ -2897,7 +2897,7 @@ impl RustSimDrive {
             }
         } else if self.trace_miss_time_frac > self.sim_params.trace_miss_time_tol {
             self.trace_miss = true;
-            log::warn!(
+            log::warn!(target: "fastsimrust",
                 "trace miss time fraction {:.5} exceeds tolerance of {:.5}",
                 self.trace_miss_time_frac,
                 self.sim_params.trace_miss_time_tol
@@ -2908,7 +2908,7 @@ impl RustSimDrive {
             ndarrmax(&(self.mps_ach.clone() - self.cyc.mps.clone()).map(|x| x.abs()));
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol {
             self.trace_miss = true;
-            log::warn!(
+            log::warn!(target: "fastsimrust",
                 "trace miss speed {:.5} m/s exceeds tolerance of {:.5} m/s",
                 self.trace_miss_speed_mps,
                 self.sim_params.trace_miss_speed_mps_tol
