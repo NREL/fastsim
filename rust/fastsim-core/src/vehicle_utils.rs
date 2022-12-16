@@ -258,12 +258,24 @@ struct VehicleDataEPA {
 /// ----------
 /// year: Vehicle year
 /// make: Vehicle make
-/// model: Vehicle model
+/// model: Vehicle model (must match model on fueleconomy.gov)
+/// writer: Writer for printing to console or vector for tests (for user input, writer = std::io::stdout())
+/// reader: Reader for reading from console or string for tests (for user input, reader = std::io::stdin().lock())
 ///
 /// Returns:
 /// --------
 /// vehicle_data_fe: Data for the given vehicle from fueleconomy.gov
-fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<VehicleDataFE, Error> {
+fn get_fuel_economy_gov_data<R, W>(
+    year: &str,
+    make: &str,
+    model: &str,
+    mut writer: W,
+    mut reader: R,
+) -> Result<VehicleDataFE, Error>
+where
+    W: std::io::Write,
+    R: std::io::BufRead,
+{
     // TODO: See if there is a way to detect SSL connect error and tell user to disconnect from VPN
     let mut handle: Easy = Easy::new();
     let url: String = format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year={year}&make={make}&model={model}").replace(' ', "%20");
@@ -282,14 +294,15 @@ fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<Vehi
     let mut index: usize = 0;
     // TODO: See if there is a more elegant way to handle this
     if vehicle_options.options.len() > 1 {
-        println!(
+        writeln!(
+            writer,
             "Multiple engine configurations found. Please enter the index of the correct one."
-        );
+        )?;
         for i in 0..vehicle_options.options.len() {
-            println!("{i}: {}", vehicle_options.options[i].transmission);
+            writeln!(writer, "{i}: {}", vehicle_options.options[i].transmission)?;
         }
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         index = input.trim().parse()?;
     }
 
@@ -534,7 +547,8 @@ where
     // let reader: R = reader_arg.unwrap_or(std::io::stdin().lock());
 
     // TODO: Aaron wanted custom scenario name option
-    let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(year, make, model)?;
+    let fe_gov_data: VehicleDataFE =
+        get_fuel_economy_gov_data(year, make, model, &mut writer, &mut reader)?;
     let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
 
     if epa_data == VehicleDataEPA::default() {
@@ -884,8 +898,13 @@ where
 
     for model in model_list.models {
         println!("{year} {make} {}", model.model_name);
-        // let _veh: RustVehicle =
-        //     vehicle_import(year, make, model.model_name.as_str(), &mut writer, &mut reader)?;
+        let _veh: RustVehicle = vehicle_import(
+            year,
+            make,
+            model.model_name.as_str(),
+            &mut writer,
+            &mut reader,
+        )?;
     }
 
     return Ok(());
@@ -922,8 +941,7 @@ where
 
     for make in make_list.makes {
         println!("{year} {}", make.make_name);
-        // let _veh: RustVehicle =
-        //     multiple_vehicle_import_make(year, make.make_name.as_str(), &mut writer, &mut reader)?;
+        multiple_vehicle_import_make(year, make.make_name.as_str(), &mut writer, &mut reader)?;
     }
 
     return Ok(());
@@ -1143,8 +1161,14 @@ mod vehicle_utils_tests {
         let year = "2022";
         let make = "Toyota";
         let model = "Prius Prime";
-        let prius_prime_fe_gov_data: VehicleDataFE =
-            get_fuel_economy_gov_data(year, make, model).unwrap();
+        let prius_prime_fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(
+            year,
+            make,
+            model,
+            std::io::stdout(),
+            std::io::stdin().lock(),
+        )
+        .unwrap();
         println!(
             "FuelEconomy.gov: {} {} {}",
             prius_prime_fe_gov_data.year,
@@ -1205,6 +1229,79 @@ mod vehicle_utils_tests {
         };
 
         assert_eq!(prius_prime_fe_gov_data, prius_prime_fe_truth);
+    }
+
+    #[test]
+    // Need to disconnect from VPN to access fueleconomy.gov
+    fn test_get_fuel_economy_gov_data_multiple_options() {
+        let year = "2022";
+        let make = "Toyota";
+        let model = "Corolla";
+        let input = b"2\n";
+        let mut output = Vec::new();
+        let corolla_manual_fe_gov_data: VehicleDataFE =
+            get_fuel_economy_gov_data(year, make, model, &mut output, &input[..]).unwrap();
+        
+        println!(
+            "FuelEconomy.gov: {} {} {}",
+            corolla_manual_fe_gov_data.year,
+            corolla_manual_fe_gov_data.make,
+            corolla_manual_fe_gov_data.model
+        );
+
+        let emissions_info1: EmissionsInfoFE = EmissionsInfoFE {
+            efid: String::from("NTYXV02.0P3A"),
+            score: 7.0,
+            smartway_score: 1,
+            standard: String::from("L3SULEV30"),
+            std_text: String::from("California LEV-III SULEV30"),
+        };
+        let emissions_info2: EmissionsInfoFE = EmissionsInfoFE {
+            efid: String::from("NTYXV02.0P3A"),
+            score: 7.0,
+            smartway_score: 1,
+            standard: String::from("T3B30"),
+            std_text: String::from("Federal Tier 3 Bin 30"),
+        };
+        let corolla_manual_fe_truth: VehicleDataFE = VehicleDataFE {
+            alt_veh_type: String::new(),
+            city_mpg_fuel1: 29,
+            city_mpg_fuel2: 0,
+            co2_g_per_mi: 277,
+            comb_mpg_fuel1: 32,
+            comb_mpg_fuel2: 0,
+            cylinders: String::from("4"),
+            displ: String::from("2.0"),
+            drive: String::from("Front-Wheel Drive"),
+            emissions_list: EmissionsListFE {
+                emissions_info: vec![emissions_info1, emissions_info2],
+            },
+            eng_dscr: String::from("SIDI & PFI"),
+            ev_motor_kw: String::new(),
+            fe_score: 7,
+            fuel_type: String::from("Regular"),
+            fuel1: String::from("Regular Gasoline"),
+            fuel2: String::new(),
+            ghg_score: 7,
+            highway_mpg_fuel1: 36,
+            highway_mpg_fuel2: 0,
+            make: String::from("Toyota"),
+            mfr_code: String::from("TYX"),
+            model: String::from("Corolla"),
+            phev_blended: false,
+            phev_city_mpge: 0,
+            phev_comb_mpge: 0,
+            phev_hwy_mpge: 0,
+            range_ev: 0,
+            start_stop: String::from("N"),
+            trany: String::from("Manual 6-spd"),
+            veh_class: String::from("Compact Cars"),
+            year: 2022,
+            super_charge: String::new(),
+            turbo_charge: String::new(),
+        };
+
+        assert_eq!(corolla_manual_fe_gov_data, corolla_manual_fe_truth);
     }
 
     #[test]
@@ -1495,16 +1592,5 @@ mod vehicle_utils_tests {
             std::io::stdin().lock(),
         )
         .unwrap();
-    }
-
-    #[test]
-    fn test_multiple_vehicle_import_make() {
-        multiple_vehicle_import_make("2022", "Rivian", std::io::stdout(), std::io::stdin().lock())
-            .unwrap();
-    }
-
-    #[test]
-    fn test_multiple_vehicle_import_year() {
-        multiple_vehicle_import_year("2022", std::io::stdout(), std::io::stdin().lock()).unwrap();
     }
 }
