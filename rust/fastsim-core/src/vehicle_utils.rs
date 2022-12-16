@@ -467,7 +467,10 @@ fn get_epa_data(
     let mut current_veh: VehicleDataEPA = VehicleDataEPA::default();
     let mut current_count: i32 = 0;
     for mut veh_epa in veh_list {
-        if veh_epa.model.contains("4WD") || veh_epa.model.contains("AWD") || veh_epa.drive.contains("4-Wheel Drive") {
+        if veh_epa.model.contains("4WD")
+            || veh_epa.model.contains("AWD")
+            || veh_epa.drive.contains("4-Wheel Drive")
+        {
             veh_epa.drive_code = String::from("A");
             veh_epa.drive = String::from("All Wheel Drive");
         }
@@ -501,7 +504,21 @@ fn get_epa_data(
     }
 }
 
-// TODO: Make writer and reader optional arguments
+/// Creates RustVehicle for the given vehicle using data from fueleconomy.gov and EPA databases
+/// The created RustVehicle is also written as a yaml file
+///
+/// Arguments:
+/// ----------
+/// year: Vehicle year
+/// make: Vehicle make
+/// model: Vehicle model (must match model on fueleconomy.gov)
+/// writer: Writer for printing to console or vector for tests (for user input, writer = std::io::stdout())
+/// reader: Reader for reading from console or string for tests (for user input, reader = std::io::stdin().lock())
+///
+/// Returns:
+/// --------
+/// veh: RustVehicle for specificed vehicle
+// TODO: Make writer and reader optional arguments and add optional file path for yaml file
 fn vehicle_import<R, W>(
     year: &str,
     make: &str,
@@ -528,11 +545,11 @@ where
 
     // TODO: Verify user input works with python and cli interfaces
     // Could replace user input with arguments in function and have python/CLI handle user input
-    writeln!(writer, "Please enter vehicle width in inches:");
+    writeln!(writer, "Please enter vehicle width in inches:")?;
     let mut input: String = String::new();
     let _num_bytes: usize = reader.read_line(&mut input)?;
     let width_in: f64 = input.trim().parse()?;
-    writeln!(writer, "Please enter vehicle height in inches:");
+    writeln!(writer, "Please enter vehicle height in inches:")?;
     let mut input: String = String::new();
     let _num_bytes: usize = reader.read_line(&mut input)?;
     let height_in: f64 = input.trim().parse()?;
@@ -548,7 +565,7 @@ where
         writeln!(
             writer,
             "Please enter vehicle's fuel tank capacity in gallons:"
-        );
+        )?;
         let mut input: String = String::new();
         let _num_bytes: usize = reader.read_line(&mut input)?;
         input.trim().parse()?
@@ -557,7 +574,7 @@ where
     };
 
     let ess_max_kwh: f64 = if veh_pt_type != crate::vehicle::CONV {
-        writeln!(writer, "Please enter vehicle's battery energy in kWh:");
+        writeln!(writer, "Please enter vehicle's battery energy in kWh:")?;
         let mut input: String = String::new();
         let _num_bytes: usize = reader.read_line(&mut input)?;
         input.trim().parse()?
@@ -609,8 +626,8 @@ where
             writer,
             "Rated vehicle power in kW from epa database is {}",
             epa_data.eng_pwr_hp as f64 / HP_PER_KW
-        );
-        writeln!(writer, "Please enter fuel converter power in kW:");
+        )?;
+        writeln!(writer, "Please enter fuel converter power in kW:")?;
         let mut input: String = String::new();
         let _num_bytes: usize = reader.read_line(&mut input)?;
         fc_max_kw = input.trim().parse()?;
@@ -620,7 +637,7 @@ where
             0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
         ];
 
-        writeln!(writer, "Please enter motor power in kW:");
+        writeln!(writer, "Please enter motor power in kW:")?;
         let mut input: String = String::new();
         let _num_bytes: usize = reader.read_line(&mut input)?;
         mc_max_kw = input.trim().parse()?;
@@ -628,7 +645,7 @@ where
         min_soc = 0.4;
         max_soc = 0.8;
 
-        writeln!(writer, "Please enter battery power in kW:");
+        writeln!(writer, "Please enter battery power in kW:")?;
         let mut input: String = String::new();
         let _num_bytes: usize = reader.read_line(&mut input)?;
         ess_max_kw = input.trim().parse()?;
@@ -646,8 +663,8 @@ where
             writer,
             "Rated vehicle power in kW from epa database is {}",
             epa_data.eng_pwr_hp as f64 / HP_PER_KW
-        );
-        writeln!(writer, "Please enter fuel converter power in kW:");
+        )?;
+        writeln!(writer, "Please enter fuel converter power in kW:")?;
         let mut input: String = String::new();
         let _num_bytes: usize = reader.read_line(&mut input)?;
         fc_max_kw = input.trim().parse()?;
@@ -657,7 +674,7 @@ where
             0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
         ];
 
-        writeln!(writer, "Please enter motor power in kW:");
+        writeln!(writer, "Please enter motor power in kW:")?;
         let mut input: String = String::new();
         let _num_bytes: usize = reader.read_line(&mut input)?;
         mc_max_kw = input.trim().parse()?;
@@ -665,7 +682,7 @@ where
         min_soc = 0.15;
         max_soc = 0.9;
 
-        writeln!(writer, "Please enter battery power in kW:");
+        writeln!(writer, "Please enter battery power in kW:")?;
         let mut input: String = String::new();
         let _num_bytes: usize = reader.read_line(&mut input)?;
         ess_max_kw = input.trim().parse()?;
@@ -829,6 +846,15 @@ where
     return Ok(veh);
 }
 
+/// Creates RustVehicles for all models for a given make in given year
+/// The created RustVehicles are also written as a yaml file
+///
+/// Arguments:
+/// ----------
+/// year: Vehicle year
+/// make: Vehicle make
+/// writer: Writer for printing to console or vector for tests (for user input, writer = std::io::stdout())
+/// reader: Reader for reading from console or string for tests (for user input, reader = std::io::stdin().lock())
 fn multiple_vehicle_import_make<R, W>(
     year: &str,
     make: &str,
@@ -865,19 +891,22 @@ where
     return Ok(());
 }
 
-fn multiple_vehicle_import_year<R, W>(
-    year: &str,
-    mut writer: W,
-    mut reader: R,
-) -> Result<(), Error>
+/// Creates RustVehicles for all models for a given year
+/// The created RustVehicles are also written as a yaml file
+///
+/// Arguments:
+/// ----------
+/// year: Vehicle year
+/// writer: Writer for printing to console or vector for tests (for user input, writer = std::io::stdout())
+/// reader: Reader for reading from console or string for tests (for user input, reader = std::io::stdin().lock())
+fn multiple_vehicle_import_year<R, W>(year: &str, mut writer: W, mut reader: R) -> Result<(), Error>
 where
     W: std::io::Write,
     R: std::io::BufRead,
 {
     let mut handle: Easy = Easy::new();
-    let url: String =
-        format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year={year}")
-            .replace(' ', "%20");
+    let url: String = format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year={year}")
+        .replace(' ', "%20");
     handle.url(&url)?;
     let mut buf: String = String::new();
     {
@@ -1426,7 +1455,7 @@ mod vehicle_utils_tests {
     fn test_vehicle_import_phev() {
         let input = b"69.3\n57.9\n11.4\n8.8\n71\n19\n19.95\n";
         let mut output = Vec::new();
-        let veh: RustVehicle =
+        let _veh: RustVehicle =
             vehicle_import("2022", "Toyota", "Prius Prime", &mut output, &input[..]).unwrap();
     }
 
@@ -1435,7 +1464,7 @@ mod vehicle_utils_tests {
     fn test_vehicle_import_ev() {
         let input = b"74\n61\n77.4\n";
         let mut output = Vec::new();
-        let veh: RustVehicle = vehicle_import(
+        let _veh: RustVehicle = vehicle_import(
             "2022",
             "Kia",
             "EV6 RWD (Long Range)",
@@ -1450,7 +1479,7 @@ mod vehicle_utils_tests {
     fn test_vehicle_import_conv() {
         let input = b"72.8\n56.3\n15.9\n";
         let mut output = Vec::new();
-        let veh: RustVehicle =
+        let _veh: RustVehicle =
             vehicle_import("2022", "Volvo", "S60 B5 AWD", &mut output, &input[..]).unwrap();
     }
 
@@ -1458,7 +1487,7 @@ mod vehicle_utils_tests {
     #[should_panic]
     fn test_vehicle_import_incorrect_vehicle() {
         // vehicle_import should be run as shown below to take user input
-        let veh: RustVehicle = vehicle_import(
+        let _veh: RustVehicle = vehicle_import(
             "2022",
             "Buzz",
             "Lightyear",
@@ -1470,7 +1499,8 @@ mod vehicle_utils_tests {
 
     #[test]
     fn test_multiple_vehicle_import_make() {
-        multiple_vehicle_import_make("2022", "Rivian", std::io::stdout(), std::io::stdin().lock()).unwrap();
+        multiple_vehicle_import_make("2022", "Rivian", std::io::stdout(), std::io::stdin().lock())
+            .unwrap();
     }
 
     #[test]
