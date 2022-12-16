@@ -232,7 +232,6 @@ struct VehicleDataEPA {
 /// --------
 /// vehicle_data_fe: Data for the given vehicle from fueleconomy.gov
 fn get_fuel_economy_gov_data(year: &str, make: &str, model: &str) -> Result<VehicleDataFE, Error> {
-    
     // TODO: See if there is a way to detect SSL connect error and tell user to disconnect from VPN
     let mut handle: Easy = Easy::new();
     let url: String = format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year={year}&make={make}&model={model}").replace(' ', "%20");
@@ -296,7 +295,6 @@ fn get_epa_data(
     fe_gov_vehicle_data: &VehicleDataFE,
     epa_veh_db_path: Option<String>,
 ) -> Result<VehicleDataEPA, Error> {
-
     // Open EPA vehicle database csv file
     let file_path: String = epa_veh_db_path.unwrap_or(format!(
         "../../fastsim/resources/epa_vehdb/{}-tstcar.csv",
@@ -448,7 +446,8 @@ fn get_epa_data(
             && ((fe_gov_vehicle_data.alt_veh_type == String::from("EV")
                 && veh_epa.displ.round() == 0.0
                 && veh_epa.cylinders == String::new())
-                || ((veh_epa.displ * 10.0).round() / 10.0 == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap())
+                || ((veh_epa.displ * 10.0).round() / 10.0
+                    == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap())
                     && veh_epa.cylinders == fe_gov_vehicle_data.cylinders))
         {
             if veh_epa == current_veh {
@@ -470,24 +469,40 @@ fn get_epa_data(
     }
 }
 
-fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Error> {
+// TODO: Make writer and reader optional arguments
+fn vehicle_import<R, W>(
+    year: &str,
+    make: &str,
+    model: &str,
+    mut writer: W,
+    mut reader: R,
+) -> Result<RustVehicle, Error>
+where
+    W: std::io::Write,
+    R: std::io::BufRead,
+{
+    // let writer: W = writer_arg.unwrap_or(std::io::stdout);
+    // let reader: R = reader_arg.unwrap_or(std::io::stdin().lock());
+
     // TODO: Aaron wanted custom scenario name option
     let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data(year, make, model)?;
     let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
-    
+
     if epa_data == VehicleDataEPA::default() {
-        return Err(anyhow!("Matching EPA data not found for {year} {make} {model}"));
+        return Err(anyhow!(
+            "Matching EPA data not found for {year} {make} {model}"
+        ));
     }
 
     // TODO: Verify user input works with python and cli interfaces
     // Could replace user input with arguments in function and have python/CLI handle user input
-    println!("Please enter vehicle width in inches:");
+    writeln!(writer, "Please enter vehicle width in inches:");
     let mut input: String = String::new();
-    let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+    let _num_bytes: usize = reader.read_line(&mut input)?;
     let width_in: f64 = input.trim().parse()?;
-    println!("Please enter vehicle height in inches:");
+    writeln!(writer, "Please enter vehicle height in inches:");
     let mut input: String = String::new();
-    let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+    let _num_bytes: usize = reader.read_line(&mut input)?;
     let height_in: f64 = input.trim().parse()?;
 
     let veh_pt_type: &str = match fe_gov_data.alt_veh_type.as_str() {
@@ -498,18 +513,21 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
     };
 
     let fuel_tank_gal: f64 = if veh_pt_type != crate::vehicle::BEV {
-        println!("Please enter vehicle's fuel tank capacity in gallons:");
+        writeln!(
+            writer,
+            "Please enter vehicle's fuel tank capacity in gallons:"
+        );
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         input.trim().parse()?
     } else {
         0.0
     };
 
     let ess_max_kwh: f64 = if veh_pt_type != crate::vehicle::CONV {
-        println!("Please enter vehicle's battery energy in kWh:");
+        writeln!(writer, "Please enter vehicle's battery energy in kWh:");
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         input.trim().parse()?
     } else {
         0.0
@@ -555,10 +573,14 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
     } else if veh_pt_type == crate::vehicle::HEV {
         fs_max_kw = 2000.0;
 
-        println!("Rated vehicle power in kW from epa database is {}", epa_data.eng_pwr_hp as f64 / HP_PER_KW);
-        println!("Please enter fuel converter power in kW:");
+        writeln!(
+            writer,
+            "Rated vehicle power in kW from epa database is {}",
+            epa_data.eng_pwr_hp as f64 / HP_PER_KW
+        );
+        writeln!(writer, "Please enter fuel converter power in kW:");
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         fc_max_kw = input.trim().parse()?;
 
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
@@ -566,17 +588,17 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
             0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
         ];
 
-        println!("Please enter motor power in kW:");
+        writeln!(writer, "Please enter motor power in kW:");
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         mc_max_kw = input.trim().parse()?;
-        
+
         min_soc = 0.4;
         max_soc = 0.8;
 
-        println!("Please enter battery power in kW:");
+        writeln!(writer, "Please enter battery power in kW:");
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         ess_max_kw = input.trim().parse()?;
 
         ess_dischg_to_fc_max_eff_perc = 0.0;
@@ -587,11 +609,15 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
         val_range_miles = 0.0;
     } else if veh_pt_type == crate::vehicle::PHEV {
         fs_max_kw = 2000.0;
-        
-        println!("Rated vehicle power in kW from epa database is {}", epa_data.eng_pwr_hp as f64 / HP_PER_KW);
-        println!("Please enter fuel converter power in kW:");
+
+        writeln!(
+            writer,
+            "Rated vehicle power in kW from epa database is {}",
+            epa_data.eng_pwr_hp as f64 / HP_PER_KW
+        );
+        writeln!(writer, "Please enter fuel converter power in kW:");
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         fc_max_kw = input.trim().parse()?;
 
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
@@ -599,17 +625,17 @@ fn vehicle_import(year: &str, make: &str, model: &str) -> Result<RustVehicle, Er
             0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
         ];
 
-        println!("Please enter motor power in kW:");
+        writeln!(writer, "Please enter motor power in kW:");
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         mc_max_kw = input.trim().parse()?;
-        
+
         min_soc = 0.15;
         max_soc = 0.9;
 
-        println!("Please enter battery power in kW:");
+        writeln!(writer, "Please enter battery power in kW:");
         let mut input: String = String::new();
-        let _num_bytes: usize = std::io::stdin().read_line(&mut input)?;
+        let _num_bytes: usize = reader.read_line(&mut input)?;
         ess_max_kw = input.trim().parse()?;
 
         ess_dischg_to_fc_max_eff_perc = 1.0;
@@ -1295,24 +1321,47 @@ mod vehicle_utils_tests {
     #[test]
     // Need to disconnect from VPN to access fueleconomy.gov
     fn test_vehicle_import_phev() {
-        let veh: RustVehicle = vehicle_import("2022", "Toyota", "Prius Prime").unwrap();
+        let input = b"69.3\n57.9\n11.4\n8.8\n71\n19\n19.95\n";
+        let mut output = Vec::new();
+        let veh: RustVehicle =
+            vehicle_import("2022", "Toyota", "Prius Prime", &mut output, &input[..]).unwrap();
     }
 
     #[test]
     // Need to disconnect from VPN to access fueleconomy.gov
     fn test_vehicle_import_ev() {
-        let veh: RustVehicle = vehicle_import("2022", "Kia", "EV6 RWD (Long Range)").unwrap();
+        let input = b"74\n61\n77.4\n";
+        let mut output = Vec::new();
+        let veh: RustVehicle = vehicle_import(
+            "2022",
+            "Kia",
+            "EV6 RWD (Long Range)",
+            &mut output,
+            &input[..],
+        )
+        .unwrap();
     }
 
     #[test]
     // Need to disconnect from VPN to access fueleconomy.gov
     fn test_vehicle_import_conv() {
-        let veh: RustVehicle = vehicle_import("2022", "Volvo", "S60 B5 AWD").unwrap();
+        let input = b"72.8\n56.3\n15.9\n";
+        let mut output = Vec::new();
+        let veh: RustVehicle =
+            vehicle_import("2022", "Volvo", "S60 B5 AWD", &mut output, &input[..]).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn test_vehicle_import_incorrect_vehicle() {
-        let veh: RustVehicle = vehicle_import("2022", "Buzz", "Lightyear").unwrap();
+        // vehicle_import should be run as shown below to take user input
+        let veh: RustVehicle = vehicle_import(
+            "2022",
+            "Buzz",
+            "Lightyear",
+            std::io::stdout(),
+            std::io::stdin().lock(),
+        )
+        .unwrap();
     }
 }
