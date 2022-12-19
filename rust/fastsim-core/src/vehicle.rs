@@ -330,134 +330,197 @@ pub struct RustVehicle {
     /// Physical properties, see [RustPhysicalProperties](RustPhysicalProperties)
     pub props: RustPhysicalProperties,
     /// Vehicle name
+    #[serde(alias = "name")]
     pub scenario_name: String,
     /// Vehicle database ID
+    #[serde(skip)]
     pub selection: u32,
     /// Vehicle year
+    #[serde(alias = "vehModelYear")]
     pub veh_year: u32,
     /// Vehicle powertrain type, one of \[[CONV](CONV), [HEV](HEV), [PHEV](PHEV), [BEV](BEV)\]
+    #[serde(alias = "vehPtType")]
     pub veh_pt_type: String,
     /// Aerodynamic drag coefficient
+    #[serde(alias = "dragCoef")]
     pub drag_coef: f64,
     /// Frontal area, $m^2$
+    #[serde(alias = "frontalAreaM2")]
     pub frontal_area_m2: f64,
     /// Vehicle mass excluding cargo, passengers, and powertrain components, $kg$
+    #[serde(alias = "gliderKg")]
     pub glider_kg: f64,
     /// Vehicle center of mass height, $m$  
     /// **NOTE:** positive for FWD, negative for RWD, AWD, 4WD
+    #[serde(alias = "vehCgM")]
     pub veh_cg_m: f64,
     /// Fraction of weight on the drive axle while stopped
+    #[serde(alias = "driveAxleWeightFrac")]
     pub drive_axle_weight_frac: f64,
     /// Wheelbase, $m$
+    #[serde(alias = "wheelBaseM")]
     pub wheel_base_m: f64,
     /// Cargo mass including passengers, $kg$
+    #[serde(alias = "cargoKg")]
     pub cargo_kg: f64,
     /// Total vehicle mass, overrides mass calculation, $kg$
+    #[serde(alias = "vehOverrideKg")]
     pub veh_override_kg: f64,
     /// Component mass multiplier for vehicle mass calculation
+    #[serde(alias = "compMassMultiplier")]
     pub comp_mass_multiplier: f64,
     /// Fuel storage max power output, $kW$
+    #[serde(alias = "maxFuelStorKw")]
     pub fs_max_kw: f64,
     /// Fuel storage time to peak power, $s$
+    #[serde(alias ="fuelStorSecsToPeakPwr")]
     pub fs_secs_to_peak_pwr: f64,
     /// Fuel storage energy capacity, $kWh$
+    #[serde(alias ="fuelStorKwh")]
     pub fs_kwh: f64,
     /// Fuel specific energy, $\frac{kWh}{kg}$
+    #[serde(alias ="fuelStorKwhPerKg")]
     pub fs_kwh_per_kg: f64,
     /// Fuel converter peak continuous power, $kW$
+    #[serde(alias ="maxFuelConvKw")]
     pub fc_max_kw: f64,
     /// Fuel converter output power percentage map, x-values of [fc_eff_map](RustVehicle::fc_eff_map)
+    #[serde(alias ="fcPwrOutPerc")]
     pub fc_pwr_out_perc: Array1<f64>,
     /// Fuel converter efficiency map
+    #[serde(default)]
     pub fc_eff_map: Array1<f64>,
     /// Fuel converter efficiency type, one of \[[SI](SI), [ATKINSON](ATKINSON), [DIESEL](DIESEL), [H2FC](H2FC), [HD_DIESEL](HD_DIESEL)\]  
     /// Used for calculating [fc_eff_map](RustVehicle::fc_eff_map), and other calculations if H2FC
+    #[serde(alias = "fcEffType")]
     pub fc_eff_type: String,
     /// Fuel converter time to peak power, $s$
+    #[serde(alias = "fuelConvSecsToPeakPwr")]
     pub fc_sec_to_peak_pwr: f64,
     /// Fuel converter base mass, $kg$
+    #[serde(alias = "fuelConvBaseKg")]
     pub fc_base_kg: f64,
     /// Fuel converter specific power (power-to-weight ratio), $\frac{kW}{kg}$
+    #[serde(alias = "fuelConvKwPerKg")]
     pub fc_kw_per_kg: f64,
     /// Minimum time fuel converter must be on before shutoff (for HEV, PHEV)
+    #[serde(alias = "minFcTimeOn")]
     pub min_fc_time_on: f64,
     /// Fuel converter idle power, $kW$
+    #[serde(alias = "idleFcKw")]
     pub idle_fc_kw: f64,
     /// Peak continuous electric motor power, $kW$
+    #[serde(alias = "mcMaxElecInKw")]
     pub mc_max_kw: f64,
     /// Electric motor output power percentage map, x-values of [mc_eff_map](RustVehicle::mc_eff_map)
+    #[serde(alias = "mcPwrOutPerc")]
     pub mc_pwr_out_perc: Array1<f64>,
     /// Electric motor efficiency map
+    #[serde(alias = "mcEffArray")]
     pub mc_eff_map: Array1<f64>,
     /// Electric motor time to peak power, $s$
+    #[serde(alias = "motorSecsToPeakPwr")]
     pub mc_sec_to_peak_pwr: f64,
     /// Motor power electronics mass per power output, $\frac{kg}{kW}$
+    #[serde(alias = "mcPeKgPerKw")]
     pub mc_pe_kg_per_kw: f64,
     /// Motor power electronics base mass, $kg$
+    #[serde(alias = "mcPeBaseKg")]
     pub mc_pe_base_kg: f64,
     /// Traction battery maximum power output, $kW$
+    #[serde(alias = "maxEssKw")]
     pub ess_max_kw: f64,
     /// Traction battery energy capacity, $kWh$
+    #[serde(alias = "maxEssKwh")]
     pub ess_max_kwh: f64,
     /// Traction battery mass per energy, $\frac{kg}{kWh}$
+    #[serde(alias = "essKgPerKwh")]
     pub ess_kg_per_kwh: f64,
     /// Traction battery base mass, $kg$
+    #[serde(alias = "essBaseKg")]
     pub ess_base_kg: f64,
     /// Traction battery round-trip efficiency
+    #[serde(alias = "essRoundTripEff")]
     pub ess_round_trip_eff: f64,
     /// Traction battery cycle life coefficient A, see [reference](https://web.archive.org/web/20090529194442/http://www.ocean.udel.edu/cms/wkempton/Kempton-V2G-pdfFiles/PDF%20format/Duvall-V2G-batteries-June05.pdf)
+    #[serde(alias = "essLifeCoefA")]
     pub ess_life_coef_a: f64,
     /// Traction battery cycle life coefficient B, see [reference](https://web.archive.org/web/20090529194442/http://www.ocean.udel.edu/cms/wkempton/Kempton-V2G-pdfFiles/PDF%20format/Duvall-V2G-batteries-June05.pdf)
+    #[serde(alias = "essLifeCoefB")]
     pub ess_life_coef_b: f64,
     /// Traction battery minimum state of charge
+    #[serde(alias = "minSoc")]
     pub min_soc: f64,
     /// Traction battery maximum state of charge
+    #[serde(alias = "maxSoc")]
     pub max_soc: f64,
     /// ESS discharge effort toward max FC efficiency
+    #[serde(alias = "essDischgToFcMaxEffPerc")]
     pub ess_dischg_to_fc_max_eff_perc: f64,
     /// ESS charge effort toward max FC efficiency
+    #[serde(alias = "essChgToFcMaxEffPerc")]
     pub ess_chg_to_fc_max_eff_perc: f64,
     /// Mass moment of inertia per wheel, $kg \cdot m^2$
+    #[serde(alias = "wheelInertiaKgM2")]
     pub wheel_inertia_kg_m2: f64,
     /// Number of wheels
+    #[serde(alias = "numWheels")]
     pub num_wheels: f64,
     /// Rolling resistance coefficient
+    #[serde(alias = "wheelRrCoef")]
     pub wheel_rr_coef: f64,
     /// Wheel radius, $m$
+    #[serde(alias = "wheelRadiusM")]
     pub wheel_radius_m: f64,
     /// Wheel coefficient of friction
+    #[serde(alias = "wheelCoefOfFric")]
     pub wheel_coef_of_fric: f64,
     /// Speed where the battery reserved for accelerating is zero
+    #[serde(alias = "maxAccelBufferMph")]
     pub max_accel_buffer_mph: f64,
     /// Percent of usable battery energy reserved to help accelerate
+    #[serde(alias = "maxAccelBufferPercOfUseableSoc")]
     pub max_accel_buffer_perc_of_useable_soc: f64,
     /// Percent SOC buffer for high accessory loads during cycles with long idle time
+    #[serde(alias = "percHighAccBuf")]
     pub perc_high_acc_buf: f64,
     /// Speed at which the fuel converter must turn on, $mph$
+    #[serde(alias = "mphFcOn")]
     pub mph_fc_on: f64,
     /// Power demand above which to require fuel converter on, $kW$
+    #[serde(alias = "kwDemandFcOn")]
     pub kw_demand_fc_on: f64,
     /// Maximum brake regeneration efficiency
+    #[serde(alias = "maxRegen")]
     pub max_regen: f64,
     /// Stop/start micro-HEV flag
     pub stop_start: bool,
     /// Force auxiliary power load to come from fuel converter
+    #[serde(alias = "forceAuxOnFC")]
     pub force_aux_on_fc: bool,
     /// Alternator efficiency
+    #[serde(alias = "altEff")]
     pub alt_eff: f64,
     /// Charger efficiency
+    #[serde(alias = "chgEff")]
     pub chg_eff: f64,
     /// Auxiliary load power, $kW$
+    #[serde(alias = "auxKw")]
     pub aux_kw: f64,
     /// Transmission mass, $kg$
+    #[serde(alias = "transKg")]
     pub trans_kg: f64,
     /// Transmission efficiency
+    #[serde(alias = "transEff")]
     pub trans_eff: f64,
     /// Maximum acceptable overall change in ESS energy relative to energy from fuel (HEV SOC balancing only), $\frac{\Delta E_{ESS}}{\Delta E_{fuel}}$
+    #[serde(alias = "essToFuelOkError")]
     pub ess_to_fuel_ok_error: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub small_motor_power_kw: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub large_motor_power_kw: f64,
     // this and other fixed-size arrays can probably be vectors
     // without any performance penalty with the current implementation
@@ -466,10 +529,13 @@ pub struct RustVehicle {
     #[serde(skip)]
     pub fc_perc_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[serde(skip)]
     pub regen_a: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub regen_b: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub charging_on: bool,
     #[doc(hidden)]
     #[serde(skip)]
@@ -479,6 +545,7 @@ pub struct RustVehicle {
     #[serde(skip)]
     pub no_elec_aux: bool,
     #[doc(hidden)]
+    #[serde(skip)]
     pub max_roadway_chg_kw: Array1<f64>,
     #[doc(hidden)]
     #[serde(skip)]
@@ -487,9 +554,11 @@ pub struct RustVehicle {
     #[serde(skip)]
     pub fc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
-    #[serde(skip)]
+    #[serde(default)]
+    #[serde(alias = "fcEffArray")]
     pub fc_eff_array: Vec<f64>,
     #[doc(hidden)]
+    #[serde(skip)]
     pub modern_max: f64,
     #[doc(hidden)]
     #[serde(skip)]
@@ -507,60 +576,86 @@ pub struct RustVehicle {
     #[serde(skip)]
     pub mc_full_eff_array: Vec<f64>,
     #[doc(hidden)]
+    #[serde(alias = "vehKg")]
     pub veh_kg: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub max_trac_mps2: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub ess_mass_kg: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub mc_mass_kg: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub fc_mass_kg: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub fs_mass_kg: f64,
     #[doc(hidden)]
     #[serde(skip)]
     pub mc_perc_out_array: Vec<f64>,
     // these probably don't need to be in rust
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_udds_mpgge: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_hwy_mpgge: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_comb_mpgge: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_udds_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_hwy_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_comb_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_cd_range_mi: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_const65_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_const60_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_const55_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_const45_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_unadj_udds_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_unadj_hwy_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val0_to60_mph: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_ess_life_miles: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_range_miles: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_veh_base_cost: f64,
     #[doc(hidden)]
+    #[serde(skip)]
     pub val_msrp: f64,
     /// Fuel converter efficiency peak override, scales entire curve
+    #[serde(skip)]
     pub fc_peak_eff_override: Option<f64>,
     /// Motor efficiency peak override, scales entire curve
+    #[serde(skip)]
     pub mc_peak_eff_override: Option<f64>,
     #[serde(skip)]
     #[doc(hidden)]
@@ -928,19 +1023,20 @@ impl RustVehicle {
             .map(|n| n * self.fc_max_kw)
             .collect();
         // # Creates relatively continuous array for fc_eff
-        self.fc_eff_array = self
-            .fc_perc_out_array
-            .iter()
-            .map(|x: &f64| -> f64 {
-                interpolate(
-                    x,
-                    &Array1::from(self.fc_pwr_out_perc.to_vec()),
-                    &self.fc_eff_map,
-                    false,
-                )
-            })
-            .collect();
-
+        if self.fc_eff_array.is_empty() {
+            self.fc_eff_array = self
+                .fc_perc_out_array
+                .iter()
+                .map(|x: &f64| -> f64 {
+                    interpolate(
+                        x,
+                        &Array1::from(self.fc_pwr_out_perc.to_vec()),
+                        &self.fc_eff_map,
+                        false,
+                    )
+                })
+                .collect();
+        }
         //self.modern_max = MODERN_MAX;
 
         // NOTE: unused because the first part of if/else commented below is unused
@@ -1315,6 +1411,11 @@ impl RustVehicle {
             "json" => Ok(serde_json::from_reader(file)?),
             _ => Err(anyhow!("Unsupported file extension {}", extension)),
         };
+        veh_res.as_mut().unwrap().set_derived();
+        veh_res
+    }
+    pub fn from_str(filename: &str) -> Result<Self, anyhow::Error> {
+        let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
         veh_res.as_mut().unwrap().set_derived();
         veh_res
     }

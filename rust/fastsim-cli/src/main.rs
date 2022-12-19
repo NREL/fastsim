@@ -1,6 +1,9 @@
 use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
 
+use std::env;
+use std::fs;
+
 extern crate fastsim_core;
 use fastsim_core::{
     cycle::RustCycle, simdrive::RustSimDrive, vehicle::RustVehicle,
@@ -21,7 +24,7 @@ use fastsim_core::{
 #[clap(group(
     ArgGroup::new("cycle")
     .required(true)
-    .args(&["cyc", "cyc-file"])
+    .args(&["cyc", "cyc-file", "adopt"])
 ))]
 #[clap(group(
     ArgGroup::new("vehicle")
@@ -33,6 +36,11 @@ use fastsim_core::{
     .multiple(true)
     .args(&["a", "b", "c"])
 ))]
+// #[clap(author, version, about, long_about = None)]
+// struct Args {
+//     #[clap(long, short, action)]
+//     it_works: bool,
+// }
 struct FastSimApi {
     /// Cycle as json string
     #[clap(long, value_parser)]
@@ -41,6 +49,8 @@ struct FastSimApi {
     /// Path to cycle file (csv or yaml) or "coastdown" for coefficient calculation from coastdown test
     cyc_file: Option<String>,
     #[clap(value_parser, long)]
+    //adopt flag
+    adopt: Option<bool>,
     /// Vehicle as json string
     veh: Option<String>,
     #[clap(long, value_parser)]
@@ -104,7 +114,23 @@ pub fn main() {
             RustCycle::from_file(&cyc_file_path)
         }
     } else {
-        RustCycle::from_file("../fastsim/resources/cycles/udds.csv")
+        //TODO? use pathbuff to string, for robustness
+        RustCycle::from_file("../../../fastsim/resources/cycles/udds.csv")
+    }
+    .unwrap();
+
+    // let veh = RustVehicle::mock_vehicle();
+
+    let veh:RustVehicle = if let Some(veh_file_path) = fastsim_api.veh_file {
+        let vehstring = fs::read_to_string(veh_file_path).unwrap();
+        if fastsim_api.adopt != None {
+            let vehstring = json_regex(vehstring);
+            RustVehicle::from_str(&vehstring)
+        }else {
+            RustVehicle::from_str(&vehstring)
+        }
+    } else {
+        Ok(RustVehicle::mock_vehicle())
     }
     .unwrap();
 
@@ -124,4 +150,88 @@ pub fn main() {
     } else {
         println!("Invalid option `{}` for `--res-fmt`", res_fmt);
     }
+}
+
+
+fn translateVehPtType(x:&str)->&str {
+    if x.eq("1") {
+        r#""Conv""#
+    } else if x.eq("2") {
+        r#""HEV""#
+    } else if x.eq("3") {
+        r#""PHEV""#
+    } else if x.eq("4") {
+        r#""BEV""#
+    } else {
+        "other"
+    }
+}
+
+fn translatefcEffType(x:&str)->&str {
+    if x.eq("1") {
+        r#""SI""#
+    } else if x.eq("2"){
+        r#""ATKINSON""#
+    } else if x.eq("3"){
+        r#""DIESEL""#
+    } else if x.eq("4"){
+        r#""H2FC""#
+    } else if x.eq("5"){
+        r#""HD_DIESEL""#
+    } else {
+        "other"
+    }
+}
+
+fn translateforceAuxOnFC(x:&str)->bool {
+    if x.eq("0") {
+        false
+    } else {
+        true
+    }
+}
+
+fn countCommas(x:&str)->usize {
+    x.matches(",").count()+1
+}
+
+fn arrToVec(x:&str)->String {
+    format!("{{\"v\":1,\"dim\":[{}],\"data\":{}}}",countCommas(x),x)
+}
+
+fn json_regex(x:String)->String {
+    use regex::Regex;    
+    let adoptstring = x;
+
+    let re = Regex::new(r#""vehPtType":(?P<a>\d)"#).unwrap();
+    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| format!("\"vehPtType\":{}",translateVehPtType(&caps["a"])));
+    
+    let re = Regex::new(r#""fcEffType":(?P<a>\d)"#).unwrap();
+    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| format!("\"fcEffType\":{}",translatefcEffType(&caps["a"])));
+
+    let re = Regex::new(r#""forceAuxOnFC":(?P<a>\d)"#).unwrap();
+    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| format!("\"forceAuxOnFC\":{}",translateforceAuxOnFC(&caps["a"])));
+
+    let re = Regex::new(r#""fcPwrOutPerc":(?P<a>\[.*?\])"#).unwrap();
+    let arr1 = format!("\"fcPwrOutPerc\":{}", arrToVec(&re.captures(&adoptstring).unwrap()["a"]));
+
+    let re = Regex::new(r#""fcEffArray":(?P<a>\[.*?\])"#).unwrap();
+    let arr2 = format!("\"fcEffArray\":{}", &re.captures(&adoptstring).unwrap()["a"]);
+
+    let re = Regex::new(r#""mcEffArray":(?P<a>\[.*?\])"#).unwrap();
+    let arr3 = format!("\"mcEffArray\":{}", arrToVec(&re.captures(&adoptstring).unwrap()["a"]));
+
+    let re = Regex::new(r#""mcPwrOutPerc":(?P<a>\[.*?\])"#).unwrap();
+    let arr4 = format!("\"mcPwrOutPerc\":{}", arrToVec(&re.captures(&adoptstring).unwrap()["a"]));
+
+    let re = Regex::new(r#"(?P<a>"idleFcKw":.*?)[,}]"#).unwrap();
+    let cap1 = &re.captures(&adoptstring).unwrap()["a"];
+
+    let re = Regex::new(r#"(?P<a>"mcMaxElecInKw":.*?)[,}]"#).unwrap();
+    let cap2 = &re.captures(&adoptstring).unwrap()["a"];
+
+    let s_s = "\"stop_start\": false";
+
+    return format!("{},{},{},{},{},{},{},{}}}",&adoptstring[0..adoptstring.len()-1],cap1,cap2,arr1,arr2,arr3,arr4,s_s)
+
 }
