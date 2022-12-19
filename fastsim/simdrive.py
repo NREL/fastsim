@@ -836,11 +836,11 @@ class SimDrive(object):
         self.cur_max_trac_kw[i] = (
             self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac *
             self.veh.veh_kg * self.props.a_grav_mps2
-            / (1 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1_000 * self.max_trac_mps[i]
+            / (1 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m
+            ) / 1_000 * self.max_trac_mps[i]
         )
 
         if self.veh.fc_eff_type == H2FC:
-
             if self.veh.no_elec_sys or self.veh.no_elec_aux or self.high_acc_fc_on_tag[i]:
                 self.cur_max_trans_kw_out[i] = min(
                     (self.cur_max_mc_kw_out[i] -
@@ -856,7 +856,6 @@ class SimDrive(object):
                 )
 
         else:
-
             if self.veh.no_elec_sys or self.veh.no_elec_aux or self.high_acc_fc_on_tag[i]:
                 self.cur_max_trans_kw_out[i] = min(
                     (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] -
