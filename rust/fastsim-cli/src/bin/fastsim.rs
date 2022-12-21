@@ -1,5 +1,6 @@
 use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
+use fastsim_core::traits::SerdeAPI;
 
 use std::env;
 use std::fs;
@@ -7,7 +8,7 @@ use std::fs;
 extern crate fastsim_core;
 use fastsim_core::{
     cycle::RustCycle, simdrive::RustSimDrive, vehicle::RustVehicle,
-    vehicle_utils::abc_to_drag_coeffs,
+    vehicle_utils::abc_to_drag_coeffs, simdrivelabel::get_label_fe
 };
 
 /// Wrapper for fastsim.
@@ -72,7 +73,11 @@ struct FastSimApi {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct AdoptResults {
-    mpgge: f64,
+    adjCombMpgge: f64,
+    rangeMiles: f64,
+    UF: f64,
+    adjCombKwhPerMile: f64,
+    accel: f64,
     // add more results here
 }
 
@@ -115,41 +120,51 @@ pub fn main() {
         }
     } else {
         //TODO? use pathbuff to string, for robustness
-        RustCycle::from_file("../../../fastsim/resources/cycles/udds.csv")
+        Ok(RustCycle::new(vec![0.0],vec![0.0],vec![0.0],vec![0.0],"".to_string()))
     }
     .unwrap();
 
     // let veh = RustVehicle::mock_vehicle();
 
     let veh:RustVehicle = if let Some(veh_file_path) = fastsim_api.veh_file {
-        let vehstring = fs::read_to_string(veh_file_path).unwrap();
         if fastsim_api.adopt != None {
+            let vehstring = fs::read_to_string(veh_file_path).unwrap();
             let vehstring = json_regex(vehstring);
             RustVehicle::from_str(&vehstring)
         }else {
-            RustVehicle::from_str(&vehstring)
+            RustVehicle::from_file(&veh_file_path)
         }
     } else {
         Ok(RustVehicle::mock_vehicle())
     }
     .unwrap();
 
-    let mut sim_drive = RustSimDrive::new(cyc, veh);
-    // this does nothing if it has already been called for the constructed `sim_drive`
-    sim_drive.sim_drive(None, None).unwrap();
+    // let vehcopy = veh.clone();
+    // let mut sim_drive = RustSimDrive::new(cyc, veh);
+    // // this does nothing if it has already been called for the constructed `sim_drive`
+    // sim_drive.sim_drive(None, None).unwrap();
 
-    let res_fmt = fastsim_api.res_fmt.unwrap_or_else(|| String::from("mpgge"));
+    // let res_fmt = fastsim_api.res_fmt.unwrap_or_else(|| String::from("adopt_json"));
 
-    if res_fmt == "adopt_json" {
+    if fastsim_api.adopt != None {
+        let sdl = get_label_fe(&veh, Some(true), Some(false)).unwrap();
         let res = AdoptResults {
-            mpgge: sim_drive.mpgge,
+            adjCombMpgge: sdl.0.adj_comb_mpgge,
+            rangeMiles: sdl.0.net_range_miles,
+            UF: sdl.0.uf,
+            adjCombKwhPerMile: sdl.0.adj_comb_kwh_per_mi,
+            accel: sdl.0.net_accel,
         };
         println!("{}", res.to_json());
-    } else if res_fmt == "mpgge" {
-        println!("{}", sim_drive.mpgge);
     } else {
-        println!("Invalid option `{}` for `--res-fmt`", res_fmt);
-    }
+        let mut sim_drive = RustSimDrive::new(cyc, veh);
+        // // this does nothing if it has already been called for the constructed `sim_drive`
+        sim_drive.sim_drive(None, None).unwrap();
+        println!("{}", sim_drive.mpgge);
+    } 
+    // else {
+    //     println!("Invalid option `{}` for `--res-fmt`", res_fmt);
+    // }
 }
 
 
