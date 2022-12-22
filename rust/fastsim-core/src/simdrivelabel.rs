@@ -320,14 +320,18 @@ pub fn get_label_fe(
         RustSimDrive::new(cyc["accel"].clone(), veh.clone()),
     );
     if let Some(sd_accel) = sd.get_mut("accel") {
-        println!("Running `sim_drive_accel`");
+        log::debug!(target: "fastsimrust",
+            "running `sim_drive_accel`"
+        );
         sd_accel.sim_drive_accel(None, None)?;
     }
     if sd["accel"].mph_ach.iter().any(|&x| x >= 60.) {
         out.net_accel = interpolate(&60., &sd["accel"].mph_ach, &cyc["accel"].time_s, false);
     } else {
         // in case vehicle never exceeds 60 mph, penalize it a lot with a high number
-        println!("{} never achieves 60 mph.", veh.scenario_name);
+        log::warn!(target: "fastsimrust",
+            "vehicle '{}' never achieves 60 mph", veh.scenario_name
+        );
         out.net_accel = 1e3;
     }
 
