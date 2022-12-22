@@ -656,11 +656,6 @@ mod simdrivelabel_tests {
         // Therefore, veh field in both structs replaced with Default for comparison purposes
         label_fe.veh = vehicle::RustVehicle::default();
         println!("Calculated net accel: {}", label_fe.net_accel);
-        println!(
-            "Percent diff to Python calc: {:.3}%",
-            100. * (9.451683946821882 - label_fe.net_accel) / 9.451683946821882
-        );
-        label_fe.net_accel = 1000.;
 
         let label_fe_truth: LabelFe = LabelFe {
             veh: vehicle::RustVehicle::default(),
@@ -682,14 +677,18 @@ mod simdrivelabel_tests {
             adj_comb_ess_kwh_per_mi: 0.,
             net_range_miles: 0.,
             uf: 0.,
-            // net_accel: 9.451683946821882, <- Correct accel value
-            net_accel: 1000.,
+            net_accel: 9.451683946821882,
             res_found: String::from("model needs to be implemented for this"),
             phev_calcs: None,
             adj_cs_comb_mpgge: None,
             adj_cd_comb_mpgge: None,
             net_phev_cd_miles: None,
         };
+
+        println!(
+            "Percent diff to Python calc: {:.3}%",
+            100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
+        );
 
         assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
     }
