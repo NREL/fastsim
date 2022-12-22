@@ -471,14 +471,15 @@ impl RustSimDrive {
         aux_in_kw_override: Option<Array1<f64>>,
     ) -> Result<(), anyhow::Error> {
         // Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        let init_soc: f64 = match self.veh.veh_pt_type.as_str() {
+        let init_soc_auto: f64 = match self.veh.veh_pt_type.as_str() {
             // If no EV / Hybrid components, no SOC considerations.
             CONV => (self.veh.max_soc + self.veh.min_soc) / 2.0,
             HEV => (self.veh.max_soc + self.veh.min_soc) / 2.0,
             // If EV, initializing initial SOC to maximum SOC.
             _ => self.veh.max_soc,
         };
-        self.walk(init_soc, aux_in_kw_override);
+        let init_soc = init_soc.unwrap_or(init_soc_auto);
+        self.walk(init_soc, aux_in_kw_override)?;
         self.set_post_scalars()
     }
 
@@ -1043,15 +1044,6 @@ impl RustSimDrive {
         if self.impose_coast[i] {
             self.cur_max_trans_kw_out[i] = 0.0;
         }
-
-        if i > 2990 {
-            println!("cur_max_mc_kw_out: {}", self.cur_max_mc_kw_out[i]);
-            println!("cur_max_fc_kw_out: {}", self.cur_max_fc_kw_out[i]);
-            println!("cur_max_trac_kw: {}", self.cur_max_trac_kw[i]);
-            println!("aux_in_kw: {}", self.aux_in_kw[i]);
-            println!("trans_eff: {}", self.veh.trans_eff);
-        }
-
         Ok(())
     }
 
@@ -1126,11 +1118,6 @@ impl RustSimDrive {
         self.cyc_fric_brake_kw[i] = -min(self.cyc_regen_brake_kw[i] + self.cyc_whl_kw_req[i], 0.0);
         self.cyc_trans_kw_out_req[i] = self.cyc_whl_kw_req[i] + self.cyc_fric_brake_kw[i];
 
-        if i > 2990 {
-            println!("i: {}", i);
-            println!("cyc_trans_kw_out_req: {}", self.cyc_trans_kw_out_req[i]);
-            println!("cur_max_trans_kw_out: {}", self.cur_max_trans_kw_out[i]);
-        }
         if self.cyc_trans_kw_out_req[i] <= self.cur_max_trans_kw_out[i] {
             self.cyc_met[i] = true;
             self.trans_kw_out_ach[i] = self.cyc_trans_kw_out_req[i];
@@ -1280,15 +1267,12 @@ impl RustSimDrive {
                     xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
                     0.0,
                 );
-                if i > 2990 {
-                    println!("xs: {:?}", xs);
-                }
                 grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]));
                 grade_diff = (grade - grade_estimate).abs();
             }
-            self.set_power_calcs(i)?;
         }
 
+        self.set_power_calcs(i)?;
         self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
         self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s_at_i(i);
         self.dist_mi[i] = self.dist_m[i] * 1.0 / params::M_PER_MI;
