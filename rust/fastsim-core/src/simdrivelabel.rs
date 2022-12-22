@@ -138,7 +138,6 @@ pub fn get_label_fe(
 
     // load the cycles and intstantiate simdrive objects
     let accel_cyc_secs = Array::range(0., 300., 0.1);
-    // println!("{accel_cyc_secs}");
     let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
     accel_cyc_mps[0] = 0.0;
 
@@ -323,9 +322,6 @@ pub fn get_label_fe(
     if let Some(sd_accel) = sd.get_mut("accel") {
         println!("Running `sim_drive_accel`");
         sd_accel.sim_drive_accel(None, None)?;
-        // println!("head of mps_ach: {:?}", sd_accel.mps_ach.slice(s![..5]));
-        // println!("head of time_s: {:?}", sd_accel.cyc.time_s.slice(s![..5]));
-        // println!("head of cyc_met: {:?}", sd_accel.cyc_met.slice(s![..5]));
     }
     if sd["accel"].mph_ach.iter().any(|&x| x >= 60.) {
         out.net_accel = interpolate(&60., &sd["accel"].mph_ach, &cyc["accel"].time_s, false);
