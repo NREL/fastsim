@@ -42,6 +42,7 @@ pub mod params;
 pub mod pyo3imports;
 pub mod simdrive;
 pub mod simdrive_impl;
+pub mod simdrivelabel;
 pub mod thermal;
 pub mod traits;
 pub mod utils;

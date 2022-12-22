@@ -480,9 +480,9 @@ def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False
 
 
 if __name__ == '__main__':
-    veh = vehicle.Vehicle.from_vehdb(1).to_rust() # load default vehicle
+    veh = vehicle.Vehicle.from_vehdb(5).to_rust() # load default vehicle
 
-    out = get_label_fe(veh,use_rust=True)
+    out, sds = get_label_fe(veh, use_rust=True, full_detail=True)
     for key in out.keys():
         try:
             print(key + f': {out[key]:.5g}')
