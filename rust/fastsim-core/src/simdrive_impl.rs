@@ -1270,9 +1270,9 @@ impl RustSimDrive {
                 grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]));
                 grade_diff = (grade - grade_estimate).abs();
             }
+            self.set_power_calcs(i)?;
         }
 
-        self.set_power_calcs(i)?;
         self.mph_ach[i] = self.mps_ach[i] * params::MPH_PER_MPS;
         self.dist_m[i] = self.mps_ach[i] * self.cyc.dt_s_at_i(i);
         self.dist_mi[i] = self.dist_m[i] * 1.0 / params::M_PER_MI;
