@@ -272,7 +272,7 @@ def calc_percentage(base, other):
     return (base - other) * 100.0 / base
 
 
-def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=None, do_show=None, use_rust=False, verbose=True):
+def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=None, do_show=None, use_rust=False, verbose=True, maneuver=None):
     output = {'powertrain': powertrain, 'cycle': cyc_name, 'veh': veh.scenario_name}
     args = {
         'init_soc': init_soc,
@@ -282,20 +282,25 @@ def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=No
         'verbose': verbose,
     }
     tag = f'{cyc_name}_{powertrain}'
-    (output['use:base (kWh/mi)'], output['dist:base (mi)'], output['soc-delta:base']) = no_eco_driving(veh, save_dir=save_dir, tag=tag, **args)
-    (output['use:eco-coast (kWh/mi)'], output['dist:eco-coast (mi)'], output['soc-delta:eco-coast']) = eco_coast(veh, save_dir=save_dir, tag=tag, **args)
-    (output['use:eco-cruise (kWh/mi)'], output['dist:eco-cruise (mi)'], output['soc-delta:eco-cruise']) = eco_cruise(veh, save_dir=save_dir, tag=tag, **args)
-    (output['use:all-eco (kWh/mi)'], output['dist:all-eco (mi)'], output['soc-delta:all-eco']) = eco_coast_and_cruise(veh, save_dir=save_dir, tag=tag, **args)
-    output['savings:eco-coast (%)'] = calc_percentage(output['use:base (kWh/mi)'], output['use:eco-coast (kWh/mi)'])
-    output['savings:eco-cruise (%)'] = calc_percentage(output['use:base (kWh/mi)'], output['use:eco-cruise (kWh/mi)'])
-    output['savings:all-eco (%)'] = calc_percentage(output['use:base (kWh/mi)'], output['use:all-eco (kWh/mi)'])
-    output['dist-short:eco-coast (%)'] = calc_percentage(output['dist:base (mi)'], output['dist:eco-coast (mi)'])
-    output['dist-short:eco-cruise (%)'] = calc_percentage(output['dist:base (mi)'], output['dist:eco-cruise (mi)'])
-    output['dist-short:all-eco (%)'] = calc_percentage(output['dist:base (mi)'], output['dist:all-eco (mi)'])
+    if maneuver is None or maneuver == "base":
+        (output['use:base (kWh/mi)'], output['dist:base (mi)'], output['soc-delta:base']) = no_eco_driving(veh, save_dir=save_dir, tag=tag, **args)
+    if maneuver is None or maneuver == "eco-approach" or maneuver == "eco-coast":
+        (output['use:eco-coast (kWh/mi)'], output['dist:eco-coast (mi)'], output['soc-delta:eco-coast']) = eco_coast(veh, save_dir=save_dir, tag=tag, **args)
+    if maneuver is None or maneuver == "eco-cruise":
+        (output['use:eco-cruise (kWh/mi)'], output['dist:eco-cruise (mi)'], output['soc-delta:eco-cruise']) = eco_cruise(veh, save_dir=save_dir, tag=tag, **args)
+    if maneuver is None or maneuver == "all-eco":
+        (output['use:all-eco (kWh/mi)'], output['dist:all-eco (mi)'], output['soc-delta:all-eco']) = eco_coast_and_cruise(veh, save_dir=save_dir, tag=tag, **args)
+    if maneuver is None:
+        output['savings:eco-coast (%)'] = calc_percentage(output['use:base (kWh/mi)'], output['use:eco-coast (kWh/mi)'])
+        output['savings:eco-cruise (%)'] = calc_percentage(output['use:base (kWh/mi)'], output['use:eco-cruise (kWh/mi)'])
+        output['savings:all-eco (%)'] = calc_percentage(output['use:base (kWh/mi)'], output['use:all-eco (kWh/mi)'])
+        output['dist-short:eco-coast (%)'] = calc_percentage(output['dist:base (mi)'], output['dist:eco-coast (mi)'])
+        output['dist-short:eco-cruise (%)'] = calc_percentage(output['dist:base (mi)'], output['dist:eco-cruise (mi)'])
+        output['dist-short:all-eco (%)'] = calc_percentage(output['dist:base (mi)'], output['dist:all-eco (mi)'])
     outputs.append(output)
 
 
-def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False, verbose=True, save_dir=None):
+def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False, verbose=True, save_dir=None, maneuver=None):
     """
     """
     if save_dir is not None:
@@ -312,25 +317,25 @@ def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False, verbose
             veh_conv = fastsim.vehicle.Vehicle.from_vehdb(1)
             if verbose:
                 print(f"CONV: {veh_conv.scenario_name}", flush=True)
-            run_for_powertrain(save_dir, outputs, cyc_name, veh_conv, 'conv', init_soc=None, do_show=do_show, use_rust=use_rust, verbose=verbose)
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_conv, 'conv', init_soc=None, do_show=do_show, use_rust=use_rust, verbose=verbose, maneuver=maneuver)
 
         if powertrain is None or powertrain == "hev":
             veh_hev = fastsim.vehicle.Vehicle.from_vehdb(9)
             if verbose:
                 print(f"HEV: {veh_hev.scenario_name}", flush=True)
-            run_for_powertrain(save_dir, outputs, cyc_name, veh_hev, 'hev', init_soc=None, do_show=do_show, use_rust=use_rust, verbose=verbose)
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_hev, 'hev', init_soc=None, do_show=do_show, use_rust=use_rust, verbose=verbose, maneuver=maneuver)
 
         if powertrain is None or powertrain == "phev":
             veh_phev = fastsim.vehicle.Vehicle.from_vehdb(12)
             if verbose:
                 print(f"PHEV: {veh_phev.scenario_name}", flush=True)
-            run_for_powertrain(save_dir, outputs, cyc_name, veh_phev, 'phev', init_soc=None, do_show=do_show, use_rust=use_rust, verbose=verbose)
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_phev, 'phev', init_soc=None, do_show=do_show, use_rust=use_rust, verbose=verbose, maneuver=maneuver)
 
         if powertrain is None or powertrain == "bev":
             veh_bev = fastsim.vehicle.Vehicle.from_vehdb(17)
             if verbose:
                 print(f"BEV: {veh_bev.scenario_name}", flush=True)
-            run_for_powertrain(save_dir, outputs, cyc_name, veh_bev, 'bev', init_soc=None, do_show=do_show, use_rust=use_rust, verbose=verbose)
+            run_for_powertrain(save_dir, outputs, cyc_name, veh_bev, 'bev', init_soc=None, do_show=do_show, use_rust=use_rust, verbose=verbose, maneuver=maneuver)
 
     keys = CSV_KEYS
     if save_dir is not None:
@@ -338,7 +343,7 @@ def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False, verbose
             writer = csv.writer(csvfile)
             writer.writerow(keys)
             for item in outputs:
-                writer.writerow([str(item[k]) for k in keys])
+                writer.writerow([str(item.get(k, '--')) for k in keys])
     if verbose:
         print("Done!", flush=True)
     return outputs
