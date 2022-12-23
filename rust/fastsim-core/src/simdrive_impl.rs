@@ -4,7 +4,7 @@ use super::cycle::{
     accel_array_for_constant_jerk, accel_for_constant_jerk, calc_constant_jerk_trajectory,
     create_dist_and_target_speeds_by_microtrip, detect_passing, extend_cycle,
     trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance, PassingInfo,
-    RustCycle,
+    RustCycle, RustCycleCache,
 };
 use super::params;
 use super::simdrive::{RustSimDrive, RustSimDriveParams};
@@ -155,6 +155,7 @@ impl RustSimDrive {
         let trace_miss_speed_mps: f64 = 0.0;
         let coast_delay_index = Array::zeros(cyc_len);
         let idm_target_speed_m_per_s = Array::zeros(cyc_len);
+        let cyc0_cache = RustCycleCache::new(&cyc0);
         RustSimDrive {
             hev_sim_count,
             veh,
@@ -279,6 +280,7 @@ impl RustSimDrive {
             orphaned: false,
             coast_delay_index,
             idm_target_speed_m_per_s,
+            cyc0_cache,
         }
     }
 
@@ -389,8 +391,9 @@ impl RustSimDrive {
         self.trace_miss_iters = Array::zeros(cyc_len);
         self.newton_iters = Array::zeros(cyc_len);
         self.coast_delay_index = Array::zeros(cyc_len);
-        self.idm_target_speed_m_per_s = Array::zeros(cyc_len);
         self.impose_coast = Array::from_vec(vec![false; cyc_len]);
+        self.idm_target_speed_m_per_s = Array::zeros(cyc_len);
+        self.cyc0_cache = self.cyc0.build_cache();
     }
 
     /// Provides the gap-with lead vehicle from start to finish
@@ -471,14 +474,15 @@ impl RustSimDrive {
         aux_in_kw_override: Option<Array1<f64>>,
     ) -> Result<(), anyhow::Error> {
         // Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        let init_soc: f64 = match self.veh.veh_pt_type.as_str() {
+        let init_soc_auto: f64 = match self.veh.veh_pt_type.as_str() {
             // If no EV / Hybrid components, no SOC considerations.
             CONV => (self.veh.max_soc + self.veh.min_soc) / 2.0,
             HEV => (self.veh.max_soc + self.veh.min_soc) / 2.0,
             // If EV, initializing initial SOC to maximum SOC.
             _ => self.veh.max_soc,
         };
-        self.walk(init_soc, aux_in_kw_override);
+        let init_soc = init_soc.unwrap_or(init_soc_auto);
+        self.walk(init_soc, aux_in_kw_override)?;
         self.set_post_scalars()
     }
 
@@ -660,7 +664,7 @@ impl RustSimDrive {
         let v0_m_per_s = self.mps_ach[i - 1];
         let v0_lead_m_per_s = self.cyc0.mps[i - 1];
         let dv0_m_per_s = v0_m_per_s - v0_lead_m_per_s;
-        let d0_lead_m: f64 = trapz_step_start_distance(&self.cyc0, i) + s0_m;
+        let d0_lead_m: f64 = self.cyc0_cache.trapz_distances_m[(i - 1).max(0)] + s0_m;
         let d0_m = trapz_step_start_distance(&self.cyc, i);
         let s_m = max(d0_lead_m - d0_m, 0.01);
         // IDM EQUATIONS
@@ -730,11 +734,14 @@ impl RustSimDrive {
     ///     and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
     ///     then returns self.cyc.grade[i]
     pub fn estimate_grade_for_step(&self, i: usize) -> f64 {
+        if self.cyc0_cache.grade_all_zero {
+            return 0.0;
+        }
         if !self.sim_params.coast_allow && !self.sim_params.idm_allow {
             return self.cyc.grade[i];
         }
-        self.cyc0
-            .average_grade_over_range(trapz_step_start_distance(&self.cyc, i), 0.0)
+        self.cyc0_cache
+            .interp_grade(trapz_step_start_distance(&self.cyc, i))
     }
 
     /// For situations where cyc can deviate from cyc0, this method
@@ -747,6 +754,9 @@ impl RustSimDrive {
     ///     and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
     ///     then returns self.cyc.grade[i]
     pub fn lookup_grade_for_step(&self, i: usize, mps_ach: Option<f64>) -> f64 {
+        if self.cyc0_cache.grade_all_zero {
+            return 0.0;
+        }
         if !self.sim_params.coast_allow && !self.sim_params.idm_allow {
             return self.cyc.grade[i];
         }
@@ -754,10 +764,12 @@ impl RustSimDrive {
             Some(mps_ach) => self.cyc0.average_grade_over_range(
                 trapz_step_start_distance(&self.cyc, i),
                 0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s_at_i(i),
+                Some(&self.cyc0_cache),
             ),
             None => self.cyc0.average_grade_over_range(
                 trapz_step_start_distance(&self.cyc, i),
                 trapz_distance_for_step(&self.cyc, i),
+                Some(&self.cyc0_cache),
             ),
         }
     }
@@ -1043,15 +1055,6 @@ impl RustSimDrive {
         if self.impose_coast[i] {
             self.cur_max_trans_kw_out[i] = 0.0;
         }
-
-        if i > 2990 {
-            println!("cur_max_mc_kw_out: {}", self.cur_max_mc_kw_out[i]);
-            println!("cur_max_fc_kw_out: {}", self.cur_max_fc_kw_out[i]);
-            println!("cur_max_trac_kw: {}", self.cur_max_trac_kw[i]);
-            println!("aux_in_kw: {}", self.aux_in_kw[i]);
-            println!("trans_eff: {}", self.veh.trans_eff);
-        }
-
         Ok(())
     }
 
@@ -1126,11 +1129,6 @@ impl RustSimDrive {
         self.cyc_fric_brake_kw[i] = -min(self.cyc_regen_brake_kw[i] + self.cyc_whl_kw_req[i], 0.0);
         self.cyc_trans_kw_out_req[i] = self.cyc_whl_kw_req[i] + self.cyc_fric_brake_kw[i];
 
-        if i > 2990 {
-            println!("i: {}", i);
-            println!("cyc_trans_kw_out_req: {}", self.cyc_trans_kw_out_req[i]);
-            println!("cur_max_trans_kw_out: {}", self.cur_max_trans_kw_out[i]);
-        }
         if self.cyc_trans_kw_out_req[i] <= self.cur_max_trans_kw_out[i] {
             self.cyc_met[i] = true;
             self.trans_kw_out_ach[i] = self.cyc_trans_kw_out_req[i];
@@ -1280,9 +1278,6 @@ impl RustSimDrive {
                     xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
                     0.0,
                 );
-                if i > 2990 {
-                    println!("xs: {:?}", xs);
-                }
                 grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]));
                 grade_diff = (grade - grade_estimate).abs();
             }
@@ -2044,13 +2039,18 @@ impl RustSimDrive {
         if v <= 0.0 {
             0.0
         } else {
-            let atan_grade = grade.atan(); // float(np.arctan(grade))
+            let (atan_grade_sin, atan_grade_cos) = if grade == 0.0 {
+                (0.0, 1.0)
+            } else {
+                let atan_g = grade.atan();
+                (atan_g.sin(), atan_g.cos())
+            };
             let g = self.props.a_grav_mps2;
             let m = self.veh.veh_kg;
             let rho_cdfa =
                 self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2;
             let rrc = self.veh.wheel_rr_coef;
-            -1.0 * ((g / v) * (atan_grade.sin() + rrc * atan_grade.cos())
+            -1.0 * ((g / v) * (atan_grade_sin + rrc * atan_grade_cos)
                 + (0.5 * rho_cdfa * (1.0 / m) * v))
         }
     }
@@ -2090,11 +2090,11 @@ impl RustSimDrive {
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
         assert![a_brake <= 0.0];
-        let ds = ndarrcumsum(&trapz_step_distances(&self.cyc0));
+        let ds = &self.cyc0_cache.trapz_distances_m;
         let gs = self.cyc0.grade.clone();
         let d0 = trapz_step_start_distance(&self.cyc, i);
-        let mut distances_m: Vec<f64> = vec![];
-        let mut grade_by_distance: Vec<f64> = vec![];
+        let mut distances_m: Vec<f64> = Vec::with_capacity(ds.len());
+        let mut grade_by_distance: Vec<f64> = Vec::with_capacity(ds.len());
         for idx in 0..ds.len() {
             if ds[idx] >= d0 {
                 distances_m.push(ds[idx] - d0);
@@ -2132,18 +2132,24 @@ impl RustSimDrive {
             None
         };
         let has_unique_grade: bool = unique_grade.is_some();
-        let max_iter = 2000;
-        let iters_per_step = 2;
-        let mut new_speeds_m_per_s: Vec<f64> = vec![];
+        let max_iter = 180;
+        let iters_per_step = if self.sim_params.favor_grade_accuracy {
+            2
+        } else {
+            1
+        };
+        let mut new_speeds_m_per_s: Vec<f64> = Vec::with_capacity(max_iter as usize);
         let mut v = v0;
         let mut iter = 0;
         let mut idx = i;
-        let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
+        let dts0 = self
+            .cyc0
+            .calc_distance_to_next_stop_from(d0, Some(&self.cyc0_cache));
         while v > v_brake && v >= 0.0 && d <= d_max && iter < max_iter && idx < self.mps_ach.len() {
             let dt_s = self.cyc0.dt_s_at_i(idx);
             let mut gr = match unique_grade {
                 Some(g) => g,
-                None => self.cyc0.average_grade_over_range(d + d0, 0.0),
+                None => self.cyc0_cache.interp_grade(d + d0),
             };
             let mut k = self.calc_dvdd(v, gr);
             let mut v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
@@ -2154,10 +2160,15 @@ impl RustSimDrive {
                 v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s);
                 vavg = 0.5 * (v + v_next);
                 dd = vavg * dt_s;
-                gr = match unique_grade {
-                    Some(g) => g,
-                    None => self.cyc0.average_grade_over_range(d + d0, dd),
-                };
+                if self.sim_params.favor_grade_accuracy {
+                    gr = match unique_grade {
+                        Some(g) => g,
+                        None => {
+                            self.cyc0
+                                .average_grade_over_range(d + d0, dd, Some(&self.cyc0_cache))
+                        }
+                    };
+                }
             }
             if k >= 0.0 && has_unique_grade {
                 // there is no solution for coastdown -- speed will never decrease
@@ -2219,8 +2230,8 @@ impl RustSimDrive {
         let v0 = self.cyc.mps[i - 1];
         let v_brake = self.sim_params.coast_brake_start_speed_m_per_s;
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
-        let ds = ndarrcumsum(&trapz_step_distances(&self.cyc0));
-        let gs = self.cyc0.grade.clone();
+        let ds = &self.cyc0_cache.trapz_distances_m;
+        let gs = &self.cyc0.grade;
         assert!(
             ds.len() == gs.len(),
             "Assumed length of ds and gs the same but actually ds.len():{} and gs.len():{}",
@@ -2228,7 +2239,7 @@ impl RustSimDrive {
             gs.len()
         );
         let d0 = trapz_step_start_distance(&self.cyc, i);
-        let mut grade_by_distance: Vec<f64> = vec![];
+        let mut grade_by_distance: Vec<f64> = Vec::with_capacity(ds.len());
         for idx in 0..ds.len() {
             if ds[idx] >= d0 {
                 grade_by_distance.push(gs[idx]);
@@ -2298,7 +2309,9 @@ impl RustSimDrive {
         }
         // distance to next stop (m)
         let d0 = trapz_step_start_distance(&self.cyc, i);
-        let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
+        let dts0 = self
+            .cyc0
+            .calc_distance_to_next_stop_from(d0, Some(&self.cyc0_cache));
         let dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2;
         dtsc0 >= dts0 && dts0 >= (4.0 * dtb)
     }
@@ -2351,7 +2364,9 @@ impl RustSimDrive {
         let d0 = trapz_step_start_distance(&self.cyc, i);
         // a_proposed = (v1 - v0) / dt
         // distance to stop from start of time-step
-        let dts0 = self.cyc0.calc_distance_to_next_stop_from(d0);
+        let dts0 = self
+            .cyc0
+            .calc_distance_to_next_stop_from(d0, Some(&self.cyc0_cache));
         if dts0 < 0.0 {
             // no stop to coast towards or we're there...
             return not_found;
@@ -2462,7 +2477,7 @@ impl RustSimDrive {
         let mut coast_delay: Option<i32> = None;
         if !self.sim_params.idm_allow && self.cyc.mps[i] < speed_tol {
             let d0 = trapz_step_start_distance(&self.cyc, i);
-            let d0_lv = trapz_step_start_distance(&self.cyc0, i);
+            let d0_lv = self.cyc0_cache.trapz_distances_m[i - 1];
             let dtlv0 = d0_lv - d0;
             if dtlv0.abs() > dist_tol {
                 let mut d_lv = 0.0;
@@ -2776,14 +2791,14 @@ impl RustSimDrive {
                         }
                         adjusted_current_speed = true;
                     } else {
-                        eprintln!("WARNING! final_speed_m_per_s not close to coast_brake_start_speed for i = {}", i);
-                        eprintln!("... final_speed_m_per_s = {}", final_speed_m_per_s);
-                        eprintln!(
-                            "... self.sim_params.coast_brake_start_speed_m_per_s = {}",
-                            self.sim_params.coast_brake_start_speed_m_per_s
+                        log::warn!(target: "fastsimrust",
+                            "final_speed_m_per_s={} not close to coast_brake_start_speed={} for i={}; i_for_brake={}, traj_n={}",
+                            final_speed_m_per_s,
+                            self.sim_params.coast_brake_start_speed_m_per_s,
+                            i,
+                            i_for_brake,
+                            traj_n
                         );
-                        eprintln!("... i_for_brake = {}", i_for_brake);
-                        eprintln!("... traj_n = {}", traj_n);
                     }
                 }
             }
@@ -2886,7 +2901,7 @@ impl RustSimDrive {
                 self.energy_audit_error
             );
         }
-        for i in 1..self.cyc.dt_s().len() {
+        for i in 1..self.cyc.len() {
             self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s_at_i(i))
                 * (self.mps_ach[i].powf(2.0) - self.mps_ach[i - 1].powf(2.0))
                 / 1_000.0;

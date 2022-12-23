@@ -1,4 +1,5 @@
 """Test suite for cycle instantiation and manipulation."""
+import time
 
 import unittest
 from pathlib import Path
@@ -398,6 +399,144 @@ class TestCycle(unittest.TestCase):
         for i in range(len(cyc.time_s)):
             self.assertAlmostEqual(dt_s[i], cyc.dt_s_at_i(i))
             self.assertAlmostEqual(dt_s[i], ru_cyc.dt_s_at_i(i))
+    
+    def test_trapz_step_start_distance(self):
+        """
+        Test the implementation of trapz_step_start_distance
+        """
+        verbose = False
+        cyc = cycle.Cycle.from_file('udds')
+        num_samples = len(cyc.time_s)
+        if verbose:
+            start_t = time.time()
+        ds_test = [cycle.trapz_step_start_distance(cyc, i) for i in range(num_samples)]
+        if verbose:
+            end_t = time.time()
+            print(f"cycle.trapz_step_start_distance(...) took {end_t - start_t:6.3f} s")
+        if verbose:
+            start_t = time.time()
+        ds_good = [cycle.trapz_step_distances(cyc)[:i].sum() for i in range(num_samples)]
+        if verbose:
+            end_t = time.time()
+            print(f"cycle.trapz_step_distances(cyc)[:i].sum() took {end_t - start_t:6.3f} s")
+        self.assertEqual(len(ds_test), len(ds_good))
+        for (d_test, d_good) in zip(ds_test, ds_good):
+            self.assertAlmostEqual(d_test, d_good)
+    
+    def test_that_cycle_cache_interp_grade_substitutes_for_average_grade_over_range(self):
+        """
+        Ensure that CycleCache.interp_grade actually predicts the same values as
+        Cycle.average_grade_over_range(d, 0.0, cache=None|CycleCache) with and without
+        using CycleCache
+        """
+        cycles = [
+            cycle.Cycle.from_dict({
+                'time_s': [0.0, 1.0, 2.0, 3.0, 4.0],
+                'mps': [0.0, 1.0, 1.0, 1.0, 0.0],
+                'grade': [1.0, 1.0, 1.0, -1.0, -1.0],
+                'road_type': [0, 0, 0, 0, 0],
+                'name': "triangle hill",
+            }),
+            cycle.Cycle.from_file('udds'),
+            cycle.Cycle.from_file('TSDC_tripno_42648_cycle'),
+        ]
+        for cyc in cycles:
+            trapz_distances = cycle.trapz_step_distances(cyc).cumsum()
+            self.assertEqual(len(trapz_distances), len(cyc.time_s))
+            cache = cyc.build_cache()
+            max_idx = len(cyc.grade) - 1
+            def make_msg(idx, dd=0.0):
+                name = cyc.name
+                i0 = max(idx-1,0)
+                i1 = min(idx+1,max_idx)
+                d = trapz_distances[idx]
+                d0 = trapz_distances[i0]
+                d1 = trapz_distances[i1]
+                v = cyc.mps[idx]
+                v0 = cyc.mps[i0]
+                v1 = cyc.mps[i1]
+                g =  cyc.grade[idx]
+                g0 = cyc.grade[i0]
+                g1 = cyc.grade[i1]
+                return (
+                    f"issue at index {idx} for {name} (dd={dd}) looking up {d + dd}:\n"
+                    + f"d[{i0}]={d0}; d[{idx}]={d}; d[{i1}]={d1}\n"
+                    + f"g[{i0}]={g0}; g[{idx}]={g}; g[{i1}]={g1}\n"
+                    + f"v[{i0}]={v0}; v[{idx}]={v}; v[{i1}]={v1}\n"
+                )
+
+            for idx, d in enumerate(trapz_distances):
+                g0 = cyc.average_grade_over_range(d, 0.0)
+                g1 = cyc.average_grade_over_range(d, 0.0, cache=cache)
+                g2 = cache.interp_grade(d)
+                msg = make_msg(idx)
+                self.assertEqual(g0, g1, msg=msg)
+                self.assertEqual(g1, g2, msg=msg)
+                if cyc.name == "triangle hill":
+                    self.assertEqual(g2, 1.0 if d <= 2.0 else -1.0, msg=msg)
+                dd = 0.1
+                g3 = cyc.average_grade_over_range(d + dd, 0.0)
+                g4 = cyc.average_grade_over_range(d + dd, 0.0, cache=cache)
+                g5 = cache.interp_grade(d + dd)
+                msg = make_msg(idx, dd)
+                self.assertEqual(g3, g4, msg=msg)
+                self.assertEqual(g4, g5, msg=msg)
+                dd = -0.1
+                g6 = cyc.average_grade_over_range(d + dd, 0.0)
+                g7 = cyc.average_grade_over_range(d + dd, 0.0, cache=cache)
+                g8 = cache.interp_grade(d + dd)
+                msg = make_msg(idx, dd)
+                self.assertEqual(g6, g7, msg=msg)
+                self.assertEqual(g7, g8, msg=msg)
+    
+    def test_that_trapz_step_start_distance_equals_cache_trapz_distances(self):
+        """
+        Test that cycle.trapz_step_start_distance(self.cyc0, i) == self._cyc0_cache.trapz_distances_m[i-1]
+        """
+        cycles = [
+            cycle.Cycle.from_dict({
+                'time_s': [0.0, 1.0, 2.0, 3.0, 4.0],
+                'mps': [0.0, 1.0, 1.0, 1.0, 0.0],
+                'grade': [1.0, 1.0, 1.0, -1.0, -1.0],
+                'road_type': [0, 0, 0, 0, 0],
+                'name': "triangle hill",
+            }),
+            cycle.Cycle.from_file('udds'),
+            cycle.Cycle.from_file('TSDC_tripno_42648_cycle'),
+            cycle.Cycle.from_file('us06'),
+        ]
+        for cyc in cycles:
+            cache = cyc.build_cache()
+            for i in range(len(cyc.time_s)):
+                d0 = cycle.trapz_step_start_distance(cyc, i)
+                d1 = cache.trapz_distances_m[max(i-1, 0)]
+                self.assertAlmostEqual(d0, d1)
+    
+    def test_average_grade_over_range_with_and_without_cache(self):
+        """
+        Ensure that CycleCache usage only speeds things up; doesn't change values...
+        """
+        dist_deltas_m = [1.0, 10.0, 100.0]
+        cycles = [
+            cycle.Cycle.from_dict({
+                'time_s': [0.0, 1.0, 2.0, 3.0, 4.0],
+                'mps': [0.0, 1.0, 1.0, 1.0, 0.0],
+                'grade': [1.0, 1.0, 1.0, -1.0, -1.0],
+                'road_type': [0, 0, 0, 0, 0],
+                'name': "triangle hill",
+            }),
+            cycle.Cycle.from_file('TSDC_tripno_42648_cycle'),
+        ]
+        for cyc in cycles:
+            cache = cyc.build_cache()
+            for dd in dist_deltas_m:
+                for i in range(len(cyc.time_s)):
+                    d = cycle.trapz_step_start_distance(cyc, i)
+                    g0 = cyc.average_grade_over_range(d, dd)
+                    g1 = cyc.average_grade_over_range(d, dd, cache=cache)
+                    msg = f"issue for {cyc.name} for i={i} and dd={dd} and d={d}"
+                    self.assertAlmostEqual(g0, g1, msg=msg)
+
 
 if __name__ == '__main__':
     unittest.main()

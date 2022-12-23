@@ -66,7 +66,7 @@ pub struct PHEVCycleCalc {
     pub cd_cycs: f64,
     pub cd_miles: f64,
     pub cd_lab_mpg: f64,
-    pub cd_MPG: f64, // chad proposes changing this to cd_cyc_mpg
+    pub cd_adj_mpg: f64,
     /// Fraction of transition cycles spent in charge depletion
     pub cd_frac_in_trans: f64,
     /// SOC change during 1 cycle
@@ -138,7 +138,6 @@ pub fn get_label_fe(
 
     // load the cycles and intstantiate simdrive objects
     let accel_cyc_secs = Array::range(0., 300., 0.1);
-    // println!("{accel_cyc_secs}");
     let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
     accel_cyc_mps[0] = 0.0;
 
@@ -147,17 +146,12 @@ pub fn get_label_fe(
         RustCycle::new(
             accel_cyc_secs.to_vec(),
             accel_cyc_mps.to_vec(),
-            Array::ones(accel_cyc_secs.len()).to_vec(),
-            Array::ones(accel_cyc_secs.len()).to_vec(),
+            Array::zeros(accel_cyc_secs.len()).to_vec(),
+            Array::zeros(accel_cyc_secs.len()).to_vec(),
             String::from("accel"),
         ),
     );
-    // println!("Time (sec): {}", cyc["accel"].time_s);
-    // println!("mps: {}", cyc["accel"].mps);
-    // cyc.insert(
-    //     "accel",
-    //     RustCycle::from_file("../../fastsim/resources/cycles/accel.csv")?,
-    // );
+
 
     let udds_filestring = include_str!("../../../fastsim/resources/cycles/udds.csv");
     let hwy_filestring = include_str!("../../../fastsim/resources/cycles/hwfet.csv");
@@ -331,37 +325,18 @@ pub fn get_label_fe(
         RustSimDrive::new(cyc["accel"].clone(), veh.clone()),
     );
     if let Some(sd_accel) = sd.get_mut("accel") {
-        println!("Running `sim_drive_accel`");
+        log::debug!(target: "fastsimrust",
+            "running `sim_drive_accel`"
+        );
         sd_accel.sim_drive_accel(None, None)?;
-        println!(
-            "tail of mps_ach: {:?}",
-            sd_accel
-                .mps_ach
-                .slice(s![sd_accel.len() - 4..sd_accel.len()])
-        );
-        println!(
-            "tail of time_s: {:?}",
-            sd_accel
-                .cyc
-                .time_s
-                .slice(s![sd_accel.len() - 4..sd_accel.len()])
-        );
-        println!(
-            "tail of cyc_met: {:?}",
-            sd_accel
-                .cyc_met
-                .slice(s![sd_accel.len() - 4..sd_accel.len()])
-        );
-        // println!("mps init: {}", &sd["accel"].cyc0.mps);
-        // println!("mps: {}", &sd["accel"].cyc.mps);
-        // println!("mps Ach: {}", &sd["accel"].mps_ach);
-        // println!("Time sec: {}", &cyc["accel"].time_s);
     }
     if sd["accel"].mph_ach.iter().any(|&x| x >= 60.) {
         out.net_accel = interpolate(&60., &sd["accel"].mph_ach, &cyc["accel"].time_s, false);
     } else {
         // in case vehicle never exceeds 60 mph, penalize it a lot with a high number
-        println!("{} never achieves 60 mph.", veh.scenario_name);
+        log::warn!(target: "fastsimrust",
+            "vehicle '{}' never achieves 60 mph", veh.scenario_name
+        );
         out.net_accel = 1e3;
     }
     //HACK!!!! The accel value is wrong, hard code reasonable value for now
@@ -504,11 +479,12 @@ pub fn get_label_fe_phev(
             [first_grtr(&long_params.rechg_freq_miles, phev_calc.cd_miles).unwrap() - 1];
 
         // labCombMpgge
-        phev_calc.cd_MPG =
+        phev_calc.cd_adj_mpg =
             ndarrmax(&phev_calc.lab_iter_uf) / phev_calc.lab_uf_gpm[phev_calc.lab_uf_gpm.len() - 2];
 
         phev_calc.lab_mpgge = 1.0
-            / (phev_calc.lab_uf / phev_calc.cd_MPG + (1.0 - phev_calc.lab_uf) / phev_calc.cs_mpg);
+            / (phev_calc.lab_uf / phev_calc.cd_adj_mpg
+                + (1.0 - phev_calc.lab_uf) / phev_calc.cs_mpg);
 
         let mut lab_iter_kwh_per_mi_vals: Vec<f64> = Vec::new();
         lab_iter_kwh_per_mi_vals.push(0.0);
@@ -690,13 +666,7 @@ mod simdrivelabel_tests {
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
         label_fe.veh = vehicle::RustVehicle::default();
-        // TODO: Figure out why net_accel values are different
         println!("Calculated net accel: {}", label_fe.net_accel);
-        println!(
-            "Percent diff to Python calc: {:.3}%",
-            100. * (9.451683946821882 - label_fe.net_accel) / 9.451683946821882
-        );
-        label_fe.net_accel = 1000.;
 
         let label_fe_truth: LabelFe = LabelFe {
             veh: vehicle::RustVehicle::default(),
@@ -718,14 +688,18 @@ mod simdrivelabel_tests {
             adj_comb_ess_kwh_per_mi: 0.,
             net_range_miles: 0.,
             uf: 0.,
-            // net_accel: 9.451683946821882, <- Correct accel value
-            net_accel: 1000.,
+            net_accel: 9.451683946821882,
             res_found: String::from("model needs to be implemented for this"),
             phev_calcs: None,
             adj_cs_comb_mpgge: None,
             adj_cd_comb_mpgge: None,
             net_phev_cd_miles: None,
         };
+
+        println!(
+            "Percent diff to Python calc: {:.3}%",
+            100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
+        );
 
         assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
     }
@@ -847,7 +821,7 @@ mod simdrivelabel_tests {
             cd_cycs: 11.083418864860784,
             cd_miles: 89.42523198551896,
             cd_lab_mpg: 59.77814990568397,
-            cd_MPG: 2968.1305812156647,
+            cd_adj_mpg: 2968.1305812156647,
             cd_frac_in_trans: 0.08341886486078387,
             trans_init_soc: 0.15564484203010176,
             trans_ess_kwh: 0.10386509335387073,
@@ -941,7 +915,7 @@ mod simdrivelabel_tests {
             cd_cycs: 6.75533367335913,
             cd_miles: 71.81337619240335,
             cd_lab_mpg: 199.76659107309018,
-            cd_MPG: 4975.506626976092,
+            cd_adj_mpg: 4975.506626976092,
             cd_frac_in_trans: 0.7553336733591296,
             trans_init_soc: 0.23385969996618272,
             trans_ess_kwh: 1.5430184793777608,
