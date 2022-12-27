@@ -147,7 +147,7 @@ pub fn main() {
     // let res_fmt = fastsim_api.res_fmt.unwrap_or_else(|| String::from("adopt_json"));
 
     if fastsim_api.adopt != None {
-        let sdl = get_label_fe(&veh, Some(true), Some(false)).unwrap();
+        let sdl = get_label_fe(&veh, Some(false), Some(false)).unwrap();
         let res = AdoptResults {
             adjCombMpgge: sdl.0.adj_comb_mpgge,
             rangeMiles: sdl.0.net_range_miles,
