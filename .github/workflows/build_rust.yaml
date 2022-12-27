@@ -57,6 +57,7 @@ jobs:
 
     - name: Package artifacts
       run: |
+        cd rust
         src=$(pwd)
         stage=
         case $RUNNER_OS in
