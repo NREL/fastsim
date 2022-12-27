@@ -40,8 +40,8 @@ jobs:
     - name: Package artifacts
       run: |
         $RELEASE_VERSION=${env:GITHUB_REF_NAME}
-        $ASSET_NAME="rust/reg-${RELEASE_VERSION}-x86_64-pc-windows-gnu.zip"
-        Compress-Archive rust/target/x86_64-pc-windows-gnu/release/reg.exe $ASSET_NAME
+        $ASSET_NAME="rust/fastsim-cli-${RELEASE_VERSION}-x86_64-pc-windows-gnu.zip"
+        Compress-Archive rust/target/x86_64-pc-windows-gnu/release/fastsim-cli.exe $ASSET_NAME
         echo "ASSET_NAME=${ASSET_NAME}" >> $env:GITHUB_ENV
 
         $CHECKSUM_NAME="${ASSET_NAME}.sha256"
