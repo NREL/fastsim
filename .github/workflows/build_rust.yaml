@@ -52,6 +52,7 @@ jobs:
 
     - name: Build
       run : |
+        cd rust
         cargo build --release --target ${{ matrix.target }}
 
     - name: Package artifacts
