@@ -53,6 +53,7 @@ jobs:
     - name: Build
       run : |
         cd rust
+        printf "[target.x86_64-apple-darwin]\nrustflags = [\"-C\", \"link-arg=-undefined\", \"-C\", \"link-arg=dynamic_lookup\"]\n" > ~/.cargo/config.toml
         cargo build --release --target ${{ matrix.target }}
 
     - name: Package artifacts
