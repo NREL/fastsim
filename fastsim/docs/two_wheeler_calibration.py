@@ -22,4 +22,5 @@ simulated_gCO2__km = simulated_L__100km / L__USgal / 100 * gCO2__USgal
 print(f"SIMULATED: {simulated_L__100km:.3f} L/100km ({simulated_gCO2__km:.3f} gCO2/km)")
 error = (simulated_L__100km - measured_L__100km)/measured_L__100km * 100
 print(f"ERROR: {error:.3f}%")
+
 # %%

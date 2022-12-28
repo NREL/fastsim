@@ -1,8 +1,8 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,2020 Hero Splendor+ 100cc,
 Vehicle,veh_pt_type,Conv,
-,drag_coef,0.84,https://www.researchgate.net/publication/326408306_The_Optimal_Position_of_a_Motorcyclist_-_CFD_and_Experimental_Approach
-,frontal_area_m2,0.72,https://www.researchgate.net/publication/326408306_The_Optimal_Position_of_a_Motorcyclist_-_CFD_and_Experimental_Approach
+,drag_coef,0.78,https://www.researchgate.net/publication/326408306_The_Optimal_Position_of_a_Motorcyclist_-_CFD_and_Experimental_Approach
+,frontal_area_m2,0.68,https://www.researchgate.net/publication/326408306_The_Optimal_Position_of_a_Motorcyclist_-_CFD_and_Experimental_Approach
 ,glider_kg,0,
 ,veh_cg_m,0.53,
 ,drive_axle_weight_frac,0.61,
@@ -23,7 +23,7 @@ Fuel / Fuel Converter,fs_max_kw,1000,
 ,mc_max_kw,0,
 ,mc_sec_to_peak_pwr,4,
 ,stop_start,FALSE,
-,mc_pe_kg_per_kw,0.833,
+,mc_pe_kg_per_kw,0,
 ,mc_pe_base_kg,0,
 ESS,ess_max_kw,0,
 ,ess_max_kwh,0,
@@ -34,7 +34,7 @@ ESS,ess_max_kw,0,
 ,ess_life_coef_b,0,
 Wheels,wheel_inertia_kg_m2,0.6,
 ,num_wheels,2,
-,wheel_rr_coef,0.008,
+,wheel_rr_coef,0.01,
 ,wheel_radius_m,0.3086,rear tire 80/100-18; https://www.bikedekho.com/hero/splendor/specifications
 ,wheel_coef_of_fric,0.8,
 "SOC, ESS Discharch / Charge",min_soc,0,
