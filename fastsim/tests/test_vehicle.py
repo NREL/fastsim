@@ -61,6 +61,7 @@ class TestVehicle(unittest.TestCase):
             "2022_Renault_Zoe_ZE50_R135.csv",
             "2022_TOYOTA_Yaris_Hybrid_Mid.csv",
             "2016_TOYOTA_Prius_Two.csv",
+            "2020_Hero_Splendor+_100cc_2W.csv",
         ]
         db_vehicles = [vehicle.Vehicle(vnum, verbose=False) for vnum in vnums]
         csv_vehicles = [vehicle.Vehicle(filename, verbose=False) for filename in filenames]

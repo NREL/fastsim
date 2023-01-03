@@ -1,11 +1,11 @@
 """Various optional utilities that may support some applications of FASTSim."""
-
+from __future__ import annotations
 from scipy.optimize import curve_fit
 import numpy as np
 from fastsim import parameters as params
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+from pathlib import Path
 from fastsim import parameters
 
 sns.set()
@@ -173,3 +173,23 @@ def rollav(x, y, width=10):
                 dx[i-width:i] * y[i-width:i]).sum() / (
                     x[i] - x[i-width])
     return yroll
+
+
+def model_file_to_vehdb(model_filename: str | Path):
+    # Imports
+    import pandas as pd
+    from fastsim.vehicle import THIS_DIR, DEFAULT_VEH_DB, DEFAULT_VEHDF
+    # Find last selection in database
+    last_selection = DEFAULT_VEHDF.iloc[-1].Selection
+    # Generate new row from CSV model file
+    new_veh = pd.read_csv(
+        THIS_DIR / Path("resources/vehdb") / model_filename,
+        usecols = ["Param Name", "Param Value"],
+        index_col="Param Name",
+    )
+    new_row = pd.DataFrame({k: [new_veh.loc[k]["Param Value"]] for k in new_veh.index})
+    new_row["Selection"] = last_selection + 1
+    # Append new row to vehicle database
+    DEFAULT_VEHDF = pd.concat([DEFAULT_VEHDF, new_row])
+    # Save changes
+    DEFAULT_VEHDF.to_csv(DEFAULT_VEH_DB, index=False)
