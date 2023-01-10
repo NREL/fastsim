@@ -397,7 +397,7 @@ pub fn get_label_fe_phev(
         phev_calc.cd_ess_kwh = (veh.max_soc - veh.min_soc) * veh.ess_max_kwh;
 
         // SOC change during 1 cycle
-        phev_calc.delta_soc = sd_val.soc[0] - sd_val.soc[sd_val.len() - 1];
+        phev_calc.delta_soc = sd_val.soc[0] - sd_val.soc.last().unwrap();
         // total number of miles in charge depletion mode, assuming constant kWh_per_mi
         phev_calc.total_cd_miles =
             (veh.max_soc - veh.min_soc) * sd_val.veh.ess_max_kwh / sd_val.battery_kwh_per_mi;
@@ -449,8 +449,8 @@ pub fn get_label_fe_phev(
 
         let lab_iter_uf_diff: Array1<f64> = diff(&phev_calc.lab_iter_uf);
         phev_calc.lab_uf_gpm = Array::from_vec(vec![
-            phev_calc.trans_fs_gal * lab_iter_uf_diff[lab_iter_uf_diff.len() - 1],
-            phev_calc.cs_fs_gal * (1.0 - phev_calc.lab_iter_uf[phev_calc.lab_iter_uf.len() - 1]),
+            phev_calc.trans_fs_gal * lab_iter_uf_diff.last().unwrap(),
+            phev_calc.cs_fs_gal * (1.0 - phev_calc.lab_iter_uf.last().unwrap()),
         ]) / sd_val.dist_mi.sum();
 
         phev_calc.cd_mpg = sd_val.mpgge;
@@ -462,8 +462,8 @@ pub fn get_label_fe_phev(
             } else {
                 phev_calc.cd_cycs.ceil() * sd_val.dist_mi.sum()
             };
-        phev_calc.cd_lab_mpg = phev_calc.lab_iter_uf[phev_calc.lab_iter_uf.len() - 1]
-            / (phev_calc.trans_fs_gal / sd_val.dist_mi.sum());
+        phev_calc.cd_lab_mpg =
+            phev_calc.lab_iter_uf.last().unwrap() / (phev_calc.trans_fs_gal / sd_val.dist_mi.sum());
 
         // charge sustaining
         phev_calc.cs_mpg = sd_val.dist_mi.sum() / phev_calc.cs_fs_gal;
@@ -611,7 +611,7 @@ pub fn get_label_fe_phev(
                 * adj_iter_uf_diff[adj_iter_uf_diff.len() - 2],
         );
         phev_calc.adj_iter_uf_gpm.push(
-            (1.0 / phev_calc.adj_iter_mpgge[phev_calc.adj_iter_mpgge.len() - 1])
+            (1.0 / phev_calc.adj_iter_mpgge.last().unwrap())
                 * (1.0 - phev_calc.adj_iter_uf[phev_calc.adj_iter_uf.len() - 2]),
         );
 
@@ -621,8 +621,7 @@ pub fn get_label_fe_phev(
         phev_calc.adj_cd_mpgge = 1.0
             / phev_calc.adj_iter_uf_gpm[phev_calc.adj_iter_uf_gpm.len() - 2]
             * ndarrmax(&phev_calc.adj_iter_uf);
-        phev_calc.adj_cs_mpgge = 1.0
-            / phev_calc.adj_iter_uf_gpm[phev_calc.adj_iter_uf_gpm.len() - 1]
+        phev_calc.adj_cs_mpgge = 1.0 / phev_calc.adj_iter_uf_gpm.last().unwrap()
             * (1.0 - ndarrmax(&phev_calc.adj_iter_uf));
 
         phev_calc.adj_uf = long_params.uf_array

@@ -442,7 +442,7 @@ impl RustSimDrive {
                         let fuel_kj = (&self.fs_kw_out_ach * self.cyc.dt_s()).sum();
                         let roadway_chg_kj = (&self.roadway_chg_kw_out_ach * self.cyc.dt_s()).sum();
                         if (fuel_kj + roadway_chg_kj) > 0.0 {
-                            ess_2fuel_kwh = ((self.soc[0] - self.soc[self.len() - 1])
+                            ess_2fuel_kwh = ((self.soc[0] - self.soc.last().unwrap())
                                 * self.veh.ess_max_kwh
                                 * 3.6e3
                                 / (fuel_kj + roadway_chg_kj))
@@ -450,7 +450,7 @@ impl RustSimDrive {
                         } else {
                             ess_2fuel_kwh = 0.0;
                         }
-                        init_soc = min(1.0, max(0.0, self.soc[self.len() - 1]));
+                        init_soc = min(1.0, max(0.0, *self.soc.last().unwrap()));
                     }
                     init_soc
                 } else if self.veh.veh_pt_type == PHEV || self.veh.veh_pt_type == BEV {
@@ -536,17 +536,16 @@ impl RustSimDrive {
     ) -> Result<(), anyhow::Error> {
         self.sim_params.idm_allow = true;
         if !by_microtrip {
-            self.sim_params.idm_v_desired_m_per_s = if !self.cyc0.time_s.is_empty()
-                && self.cyc0.time_s[self.cyc0.time_s.len() - 1] > 0.0
-            {
-                self.cyc0
-                    .dist_m()
-                    .slice(s![0..self.cyc0.time_s.len()])
-                    .sum()
-                    / self.cyc0.time_s[self.cyc0.time_s.len() - 1]
-            } else {
-                0.0
-            };
+            self.sim_params.idm_v_desired_m_per_s =
+                if !self.cyc0.time_s.is_empty() && self.cyc0.time_s.last().unwrap() > &0.0 {
+                    self.cyc0
+                        .dist_m()
+                        .slice(s![0..self.cyc0.time_s.len()])
+                        .sum()
+                        / self.cyc0.time_s.last().unwrap()
+                } else {
+                    0.0
+                };
         } else {
             if !(0.0..=1.0).contains(&blend_factor) {
                 return Err(anyhow!(
@@ -929,7 +928,7 @@ impl RustSimDrive {
             // limit power going into e-machine controller to
             if self.cur_max_avail_elec_kw[i] == arrmax(&self.veh.mc_kw_in_array) {
                 self.mc_elec_in_lim_kw[i] = min(
-                    self.veh.mc_kw_out_array[self.veh.mc_kw_out_array.len() - 1],
+                    *self.veh.mc_kw_out_array.last().unwrap(),
                     self.veh.mc_max_kw,
                 );
             } else {
@@ -965,8 +964,8 @@ impl RustSimDrive {
         if self.cur_max_mc_kw_out[i] == 0.0 {
             self.cur_max_mc_elec_kw_in[i] = 0.0;
         } else if self.cur_max_mc_kw_out[i] == self.veh.mc_max_kw {
-            self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i]
-                / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1];
+            self.cur_max_mc_elec_kw_in[i] =
+                self.cur_max_mc_kw_out[i] / self.veh.mc_full_eff_array.last().unwrap();
         } else {
             self.cur_max_mc_elec_kw_in[i] = self.cur_max_mc_kw_out[i]
                 / self.veh.mc_full_eff_array[cmp::max(
@@ -994,8 +993,7 @@ impl RustSimDrive {
         {
             self.ess_lim_mc_regen_kw[i] = min(
                 self.veh.mc_max_kw,
-                self.cur_max_ess_chg_kw[i]
-                    / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1],
+                self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array.last().unwrap(),
             );
         } else {
             self.ess_lim_mc_regen_kw[i] = min(
@@ -1257,7 +1255,6 @@ impl RustSimDrive {
                 let mut iterate = 1;
                 let mut converged = false;
                 while iterate < max_iter && !converged {
-                    // let end = ;
                     let xi = xs[xs.len() - 1] * (1.0 - g) - g * bs[xs.len() - 1] / ms[xs.len() - 1];
                     let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
                     let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
@@ -1405,8 +1402,8 @@ impl RustSimDrive {
             self.mc_elec_in_kw_for_max_fc_eff[i] = 0.0;
         } else if self.trans_kw_out_ach[i] < self.veh.max_fc_eff_kw() {
             if self.fc_kw_gap_fr_eff[i] == self.veh.mc_max_kw {
-                self.mc_elec_in_kw_for_max_fc_eff[i] = -self.fc_kw_gap_fr_eff[i]
-                    / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1];
+                self.mc_elec_in_kw_for_max_fc_eff[i] =
+                    -self.fc_kw_gap_fr_eff[i] / self.veh.mc_full_eff_array.last().unwrap();
             } else {
                 self.mc_elec_in_kw_for_max_fc_eff[i] = -self.fc_kw_gap_fr_eff[i]
                     / self.veh.mc_full_eff_array[cmp::max(
@@ -1420,8 +1417,7 @@ impl RustSimDrive {
                     )];
             }
         } else if self.fc_kw_gap_fr_eff[i] == self.veh.mc_max_kw {
-            self.mc_elec_in_kw_for_max_fc_eff[i] =
-                self.veh.mc_kw_in_array[self.veh.mc_kw_in_array.len() - 1];
+            self.mc_elec_in_kw_for_max_fc_eff[i] = *self.veh.mc_kw_in_array.last().unwrap();
         } else {
             self.mc_elec_in_kw_for_max_fc_eff[i] = self.veh.mc_kw_in_array[first_grtr(
                 &self.veh.mc_kw_out_array,
@@ -1435,7 +1431,7 @@ impl RustSimDrive {
         } else if self.trans_kw_in_ach[i] > 0.0 {
             if self.trans_kw_in_ach[i] == self.veh.mc_max_kw {
                 self.elec_kw_req_4ae[i] = self.trans_kw_in_ach[i]
-                    / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1]
+                    / self.veh.mc_full_eff_array.last().unwrap()
                     + self.aux_in_kw[i];
             } else {
                 self.elec_kw_req_4ae[i] = self.trans_kw_in_ach[i]
@@ -1694,8 +1690,8 @@ impl RustSimDrive {
             self.mc_kw_if_fc_req[i] = 0.0;
         } else if self.mc_elec_kw_in_if_fc_req[i] > 0.0 {
             if self.mc_elec_kw_in_if_fc_req[i] == arrmax(&self.veh.mc_kw_in_array) {
-                self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i]
-                    * self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1];
+                self.mc_kw_if_fc_req[i] =
+                    self.mc_elec_kw_in_if_fc_req[i] * self.veh.mc_full_eff_array.last().unwrap();
             } else {
                 self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i]
                     * self.veh.mc_full_eff_array[cmp::max(
@@ -1712,8 +1708,8 @@ impl RustSimDrive {
                     )]
             }
         } else if -self.mc_elec_kw_in_if_fc_req[i] == arrmax(&self.veh.mc_kw_in_array) {
-            self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i]
-                / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1];
+            self.mc_kw_if_fc_req[i] =
+                self.mc_elec_kw_in_if_fc_req[i] / self.veh.mc_full_eff_array.last().unwrap();
         } else {
             self.mc_kw_if_fc_req[i] = self.mc_elec_kw_in_if_fc_req[i]
                 / self.veh.mc_full_eff_array[cmp::max(
@@ -1765,8 +1761,8 @@ impl RustSimDrive {
             self.mc_elec_kw_in_ach[i] = 0.0;
         } else if self.mc_mech_kw_out_ach[i] < 0.0 {
             if -self.mc_mech_kw_out_ach[i] == arrmax(&self.veh.mc_kw_in_array) {
-                self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i]
-                    * self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1]
+                self.mc_elec_kw_in_ach[i] =
+                    self.mc_mech_kw_out_ach[i] * self.veh.mc_full_eff_array.last().unwrap()
             } else {
                 self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i]
                     * self.veh.mc_full_eff_array[cmp::max(
@@ -1783,8 +1779,8 @@ impl RustSimDrive {
                     )];
             }
         } else if self.veh.mc_max_kw == self.mc_mech_kw_out_ach[i] {
-            self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i]
-                / self.veh.mc_full_eff_array[self.veh.mc_full_eff_array.len() - 1]
+            self.mc_elec_kw_in_ach[i] =
+                self.mc_mech_kw_out_ach[i] / self.veh.mc_full_eff_array.last().unwrap()
         } else {
             self.mc_elec_kw_in_ach[i] = self.mc_mech_kw_out_ach[i]
                 / self.veh.mc_full_eff_array[cmp::max(
@@ -1966,7 +1962,7 @@ impl RustSimDrive {
             ); // positive if behind trace
             t_dilation.push(min(
                 max(
-                    d_short[d_short.len() - 1] / self.cyc0.dt_s_at_i(i) / self.mps_ach[i], // initial guess, speed that needed to be achived per speed that was achieved
+                    d_short.last().unwrap() / self.cyc0.dt_s_at_i(i) / self.mps_ach[i], // initial guess, speed that needed to be achived per speed that was achieved
                     self.sim_params.min_time_dilation,
                 ),
                 self.sim_params.max_time_dilation,
@@ -1976,7 +1972,7 @@ impl RustSimDrive {
             self.cyc.time_s = add_from(
                 &self.cyc.time_s,
                 i,
-                self.cyc.dt_s_at_i(i) * t_dilation[t_dilation.len() - 1],
+                self.cyc.dt_s_at_i(i) * t_dilation.last().unwrap(),
             );
             self.solve_step(i)?;
 
@@ -1985,9 +1981,9 @@ impl RustSimDrive {
                     (self.cyc0.dist_m().slice(s![0..i+1]).sum() - self.dist_m.slice(s![0..i+1]).sum()).abs() / self.cyc0.dist_m().slice(s![0..i+1]).sum()
                     < self.sim_params.time_dilation_tol
                     // exceeding max time dilation
-                    || t_dilation[t_dilation.len()-1] >= self.sim_params.max_time_dilation
+                    || t_dilation.last().unwrap() >= &self.sim_params.max_time_dilation
                     // lower than min time dilation
-                    || t_dilation[t_dilation.len()-1] <= self.sim_params.min_time_dilation;
+                    || t_dilation.last().unwrap() <= &self.sim_params.min_time_dilation;
         }
         while !trace_met {
             // iterate newton's method until time dilation has converged or other exit criteria trigger trace_met == True
@@ -1999,10 +1995,10 @@ impl RustSimDrive {
             );
             t_dilation.push(min(
                 max(
-                    t_dilation[t_dilation.len() - 1]
-                        - (t_dilation[t_dilation.len() - 1] - t_dilation[t_dilation.len() - 2])
-                            / (d_short[d_short.len() - 1] - d_short[d_short.len() - 2])
-                            * d_short[d_short.len() - 1],
+                    t_dilation.last().unwrap()
+                        - (t_dilation.last().unwrap() - t_dilation[t_dilation.len() - 2])
+                            / (d_short.last().unwrap() - d_short[d_short.len() - 2])
+                            * d_short.last().unwrap(),
                     self.sim_params.min_time_dilation,
                 ),
                 self.sim_params.max_time_dilation,
@@ -2010,7 +2006,7 @@ impl RustSimDrive {
             self.cyc.time_s = add_from(
                 &self.cyc.time_s,
                 i,
-                self.cyc.dt_s_at_i(i) * t_dilation[t_dilation.len() - 1],
+                self.cyc.dt_s_at_i(i) * t_dilation.last().unwrap(),
             );
 
             self.solve_step(i)?;
@@ -2024,9 +2020,9 @@ impl RustSimDrive {
                     // max iterations
                     || self.trace_miss_iters[i] >= self.sim_params.max_trace_miss_iters
                     // exceeding max time dilation
-                    || t_dilation[t_dilation.len()-1] >= self.sim_params.max_time_dilation
+                    || t_dilation.last().unwrap() >= &self.sim_params.max_time_dilation
                     // lower than min time dilation
-                    || t_dilation[t_dilation.len()-1] <= self.sim_params.min_time_dilation;
+                    || t_dilation.last().unwrap() <= &self.sim_params.min_time_dilation;
         }
         Ok(())
     }
@@ -2124,7 +2120,7 @@ impl RustSimDrive {
         }
         let dtb = -0.5 * v_brake * v_brake / a_brake;
         let mut d = 0.0;
-        let d_max = distances_m[distances_m.len() - 1] - dtb;
+        let d_max = distances_m.last().unwrap() - dtb;
         let unique_grades = ndarrunique(&grade_by_distance);
         let unique_grade: Option<f64> = if unique_grades.len() == 1 {
             Some(unique_grades[0])
@@ -2825,7 +2821,7 @@ impl RustSimDrive {
 
         self.roadway_chg_kj = (self.roadway_chg_kw_out_ach.clone() * self.cyc.dt_s()).sum();
         self.ess_dischg_kj =
-            -1.0 * (self.soc[self.soc.len() - 1] - self.soc[0]) * self.veh.ess_max_kwh * 3.6e3;
+            -1.0 * (self.soc.last().unwrap() - self.soc[0]) * self.veh.ess_max_kwh * 3.6e3;
         let dist_mi = self.dist_mi.sum();
         self.battery_kwh_per_mi = if dist_mi > 0.0 {
             (self.ess_dischg_kj / 3.6e3) / dist_mi
@@ -2887,7 +2883,7 @@ impl RustSimDrive {
 
         self.ke_kj = 0.5
             * self.veh.veh_kg
-            * (self.mps_ach[0].powf(2.0) - self.mps_ach[self.mps_ach.len() - 1].powf(2.0))
+            * (self.mps_ach.first().unwrap().powf(2.0) - self.mps_ach.last().unwrap().powf(2.0))
             / 1_000.0;
 
         self.energy_audit_error =
@@ -2914,9 +2910,9 @@ impl RustSimDrive {
         } else {
             0.0
         };
-        self.trace_miss_time_frac = (self.cyc.time_s[self.cyc.time_s.len() - 1]
-            - self.cyc0.time_s[self.cyc0.time_s.len() - 1])
-            / self.cyc0.time_s[self.cyc0.time_s.len() - 1];
+        self.trace_miss_time_frac = (self.cyc.time_s.last().unwrap()
+            - self.cyc0.time_s.last().unwrap())
+            / self.cyc0.time_s.last().unwrap();
 
         if !self.sim_params.missed_trace_correction {
             if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol {
