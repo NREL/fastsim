@@ -915,7 +915,7 @@ impl RustCycle {
     }
 
     // load a cycle from a string representation of a csv file
-    pub fn from_string(data: &str, name: String) -> Result<Self, anyhow::Error> {
+    pub fn from_csv_string(data: &str, name: String) -> Result<Self, anyhow::Error> {
         let mut cyc = Self::default();
 
         cyc.name = name;
@@ -923,7 +923,6 @@ impl RustCycle {
             .has_headers(true)
             .from_reader(data.as_bytes());
         for result in rdr.deserialize() {
-            // TODO: make this more elegant than unwrap
             let cyc_elem: RustCycleElement = result?;
             cyc.push(cyc_elem);
         }

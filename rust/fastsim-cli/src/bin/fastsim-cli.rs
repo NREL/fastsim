@@ -53,6 +53,7 @@ struct FastSimApi {
     //adopt flag
     adopt: Option<bool>,
     /// Vehicle as json string
+    #[clap(value_parser, long)]
     veh: Option<String>,
     #[clap(long, value_parser)]
     /// Path to vehicle file (yaml)
@@ -126,25 +127,25 @@ pub fn main() {
 
     // let veh = RustVehicle::mock_vehicle();
 
-    let veh:RustVehicle = if let Some(veh_file_path) = fastsim_api.veh_file {
+    let veh:RustVehicle = if let Some(veh_string) = fastsim_api.veh {
+        if fastsim_api.adopt != None{
+            let veh_string = json_regex(veh_string);
+            RustVehicle::from_str(&veh_string)
+        } else {
+            RustVehicle::from_str(&veh_string)
+        }
+    } else if let Some(veh_file_path) = fastsim_api.veh_file {
         if fastsim_api.adopt != None {
             let vehstring = fs::read_to_string(veh_file_path).unwrap();
             let vehstring = json_regex(vehstring);
             RustVehicle::from_str(&vehstring)
-        }else {
+        } else {
             RustVehicle::from_file(&veh_file_path)
         }
     } else {
         Ok(RustVehicle::mock_vehicle())
     }
     .unwrap();
-
-    // let vehcopy = veh.clone();
-    // let mut sim_drive = RustSimDrive::new(cyc, veh);
-    // // this does nothing if it has already been called for the constructed `sim_drive`
-    // sim_drive.sim_drive(None, None).unwrap();
-
-    // let res_fmt = fastsim_api.res_fmt.unwrap_or_else(|| String::from("adopt_json"));
 
     if fastsim_api.adopt != None {
         let sdl = get_label_fe(&veh, Some(false), Some(false)).unwrap();

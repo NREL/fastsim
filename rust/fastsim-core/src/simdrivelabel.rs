@@ -167,11 +167,11 @@ pub fn get_label_fe(
 
     cyc.insert(
         "udds",
-        RustCycle::from_string(udds_filestring, "udds".to_string())?,
+        RustCycle::from_csv_string(udds_filestring, "udds".to_string())?,
     );
     cyc.insert(
         "hwy",
-        RustCycle::from_string(hwy_filestring, "hwfet".to_string())?,
+        RustCycle::from_csv_string(hwy_filestring, "hwfet".to_string())?,
     );
 
     // run simdrive for non-phev powertrains
