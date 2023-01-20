@@ -104,7 +104,7 @@ pub fn main() {
             RustCycle::from_file(&cyc_file_path)
         }
     } else {
-        RustCycle::from_file("../fastsim/resources/cycles/udds.csv")
+        unreachable!();
     }
     .unwrap();
 
