@@ -1,14 +1,12 @@
 use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
-use fastsim_core::traits::SerdeAPI;
 
-use std::env;
 use std::fs;
 
 extern crate fastsim_core;
 use fastsim_core::{
-    cycle::RustCycle, simdrive::RustSimDrive, vehicle::RustVehicle,
-    vehicle_utils::abc_to_drag_coeffs, simdrivelabel::get_label_fe
+    cycle::RustCycle, simdrive::RustSimDrive, simdrivelabel::get_label_fe, vehicle::RustVehicle,
+    vehicle_utils::abc_to_drag_coeffs,
 };
 
 /// Wrapper for fastsim.
@@ -73,6 +71,7 @@ struct FastSimApi {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(non_snake_case)]
 struct AdoptResults {
     adjCombMpgge: f64,
     rangeMiles: f64,
@@ -127,8 +126,8 @@ pub fn main() {
 
     // let veh = RustVehicle::mock_vehicle();
 
-    let veh:RustVehicle = if let Some(veh_string) = fastsim_api.veh {
-        if fastsim_api.adopt != None{
+    let veh: RustVehicle = if let Some(veh_string) = fastsim_api.veh {
+        if fastsim_api.adopt != None {
             let veh_string = json_regex(veh_string);
             RustVehicle::from_str(&veh_string)
         } else {
@@ -162,14 +161,14 @@ pub fn main() {
         // // this does nothing if it has already been called for the constructed `sim_drive`
         sim_drive.sim_drive(None, None).unwrap();
         println!("{}", sim_drive.mpgge);
-    } 
+    }
     // else {
     //     println!("Invalid option `{}` for `--res-fmt`", res_fmt);
     // }
 }
 
-
-fn translateVehPtType(x:&str)->&str {
+#[allow(non_snake_case)]
+fn translateVehPtType(x: &str) -> &str {
     if x.eq("1") {
         r#""Conv""#
     } else if x.eq("2") {
@@ -183,23 +182,25 @@ fn translateVehPtType(x:&str)->&str {
     }
 }
 
-fn translatefcEffType(x:&str)->&str {
+#[allow(non_snake_case)]
+fn translatefcEffType(x: &str) -> &str {
     if x.eq("1") {
         r#""SI""#
-    } else if x.eq("2"){
+    } else if x.eq("2") {
         r#""ATKINSON""#
-    } else if x.eq("3"){
+    } else if x.eq("3") {
         r#""DIESEL""#
-    } else if x.eq("4"){
+    } else if x.eq("4") {
         r#""H2FC""#
-    } else if x.eq("5"){
+    } else if x.eq("5") {
         r#""HD_DIESEL""#
     } else {
         "other"
     }
 }
 
-fn translateforceAuxOnFC(x:&str)->bool {
+#[allow(non_snake_case)]
+fn translateforceAuxOnFC(x: &str) -> bool {
     if x.eq("0") {
         false
     } else {
@@ -207,38 +208,58 @@ fn translateforceAuxOnFC(x:&str)->bool {
     }
 }
 
-fn countCommas(x:&str)->usize {
-    x.matches(",").count()+1
+#[allow(non_snake_case)]
+fn countCommas(x: &str) -> usize {
+    x.matches(",").count() + 1
 }
 
-fn arrToVec(x:&str)->String {
-    format!("{{\"v\":1,\"dim\":[{}],\"data\":{}}}",countCommas(x),x)
+#[allow(non_snake_case)]
+fn arrToVec(x: &str) -> String {
+    format!("{{\"v\":1,\"dim\":[{}],\"data\":{}}}", countCommas(x), x)
 }
 
-fn json_regex(x:String)->String {
-    use regex::Regex;    
+fn json_regex(x: String) -> String {
+    use regex::Regex;
     let adoptstring = x;
 
     let re = Regex::new(r#""vehPtType":(?P<a>\d)"#).unwrap();
-    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| format!("\"vehPtType\":{}",translateVehPtType(&caps["a"])));
-    
+    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
+        format!("\"vehPtType\":{}", translateVehPtType(&caps["a"]))
+    });
+
     let re = Regex::new(r#""fcEffType":(?P<a>\d)"#).unwrap();
-    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| format!("\"fcEffType\":{}",translatefcEffType(&caps["a"])));
+    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
+        format!("\"fcEffType\":{}", translatefcEffType(&caps["a"]))
+    });
 
     let re = Regex::new(r#""forceAuxOnFC":(?P<a>\d)"#).unwrap();
-    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| format!("\"forceAuxOnFC\":{}",translateforceAuxOnFC(&caps["a"])));
+    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
+        format!("\"forceAuxOnFC\":{}", translateforceAuxOnFC(&caps["a"]))
+    });
 
     let re = Regex::new(r#""fcPwrOutPerc":(?P<a>\[.*?\])"#).unwrap();
-    let arr1 = format!("\"fcPwrOutPerc\":{}", arrToVec(&re.captures(&adoptstring).unwrap()["a"]));
+    let arr1 = format!(
+        "\"fcPwrOutPerc\":{}",
+        arrToVec(&re.captures(&adoptstring).unwrap()["a"])
+    );
 
     let re = Regex::new(r#""fcEffArray":(?P<a>\[.*?\])"#).unwrap();
-    let arr2 = format!("\"fcEffArray\":{}", &re.captures(&adoptstring).unwrap()["a"]);
+    let arr2 = format!(
+        "\"fcEffArray\":{}",
+        &re.captures(&adoptstring).unwrap()["a"]
+    );
 
     let re = Regex::new(r#""mcEffArray":(?P<a>\[.*?\])"#).unwrap();
-    let arr3 = format!("\"mcEffArray\":{}", arrToVec(&re.captures(&adoptstring).unwrap()["a"]));
+    let arr3 = format!(
+        "\"mcEffArray\":{}",
+        arrToVec(&re.captures(&adoptstring).unwrap()["a"])
+    );
 
     let re = Regex::new(r#""mcPwrOutPerc":(?P<a>\[.*?\])"#).unwrap();
-    let arr4 = format!("\"mcPwrOutPerc\":{}", arrToVec(&re.captures(&adoptstring).unwrap()["a"]));
+    let arr4 = format!(
+        "\"mcPwrOutPerc\":{}",
+        arrToVec(&re.captures(&adoptstring).unwrap()["a"])
+    );
 
     let re = Regex::new(r#"(?P<a>"idleFcKw":.*?)[,}]"#).unwrap();
     let cap1 = &re.captures(&adoptstring).unwrap()["a"];
@@ -248,6 +269,15 @@ fn json_regex(x:String)->String {
 
     let s_s = "\"stop_start\": false";
 
-    return format!("{},{},{},{},{},{},{},{}}}",&adoptstring[0..adoptstring.len()-1],cap1,cap2,arr1,arr2,arr3,arr4,s_s)
-
+    return format!(
+        "{},{},{},{},{},{},{},{}}}",
+        &adoptstring[0..adoptstring.len() - 1],
+        cap1,
+        cap2,
+        arr1,
+        arr2,
+        arr3,
+        arr4,
+        s_s
+    );
 }
