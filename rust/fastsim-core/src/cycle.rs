@@ -149,7 +149,7 @@ pub fn trapz_step_distances_primitive(time_s: &Array1<f64>, mps: &Array1<f64>) -
     let mut delta_dists_m: Vec<f64> = Vec::with_capacity(time_s.len());
     delta_dists_m.push(0.0);
     for i in 1..time_s.len() {
-        delta_dists_m.push((time_s[i] - time_s[i-1]) * 0.5 * (mps[i] + mps[i-1]));
+        delta_dists_m.push((time_s[i] - time_s[i - 1]) * 0.5 * (mps[i] + mps[i - 1]));
     }
     Array1::from_vec(delta_dists_m)
 }
@@ -158,7 +158,7 @@ pub fn trapz_step_distances_primitive(time_s: &Array1<f64>, mps: &Array1<f64>) -
 /// (i.e., distance traveled up to sample point i-1)
 /// Distance is in meters.
 pub fn trapz_step_start_distance(cyc: &RustCycle, i: usize) -> f64 {
-    let mut dist_m:f64 = 0.0;
+    let mut dist_m: f64 = 0.0;
     for i in 1..i {
         dist_m += (cyc.time_s[i] - cyc.time_s[i - 1]) * 0.5 * (cyc.mps[i] + cyc.mps[i - 1]);
     }
@@ -231,7 +231,7 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
                 mt_vs.clone(),
                 mt_gs.clone(),
                 mt_rs.clone(),
-                cycle.name.clone()
+                cycle.name.clone(),
             ));
             mt_ts = vec![last_t];
             mt_vs = vec![last_v];
@@ -251,7 +251,7 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
             mt_vs,
             mt_gs,
             mt_rs,
-            cycle.name.clone()
+            cycle.name.clone(),
         ));
     }
     microtrips
@@ -287,7 +287,7 @@ pub fn create_dist_and_target_speeds_by_microtrip(
     let mut dist_at_start_of_microtrip_m = 0.0;
     for mt_cyc in microtrips {
         let mt_dist_m = mt_cyc.dist_m().sum();
-        let mt_time_s = mt_cyc.time_s[mt_cyc.time_s.len() - 1] - mt_cyc.time_s[0];
+        let mt_time_s = mt_cyc.time_s.last().unwrap() - mt_cyc.time_s.first().unwrap();
         let mt_moving_time_s = time_spent_moving(&mt_cyc, None);
         let mt_avg_spd_m_per_s = if mt_time_s > 0.0 {
             mt_dist_m / mt_time_s
@@ -331,12 +331,12 @@ pub fn extend_cycle(
     let mut vs = cyc.mps.to_vec();
     let mut gs = cyc.grade.to_vec();
     let mut rs = cyc.road_type.to_vec();
-    let extra_time_s = (absolute_time_s + (time_fraction * ts[ts.len() - 1])).round() as i32;
+    let extra_time_s = (absolute_time_s + (time_fraction * ts.last().unwrap())).round() as i32;
     if extra_time_s == 0 {
         return cyc.clone();
     }
     let dt = 1;
-    let t_end = ts[ts.len() - 1];
+    let t_end = *ts.last().unwrap();
     let mut idx = 1;
     while dt * idx <= extra_time_s {
         let dt_extra = (dt * idx) as f64;
@@ -400,26 +400,27 @@ impl RustCycleCache {
     pub fn new(cyc: &RustCycle) -> Self {
         let tol = 1e-6;
         let num_items = cyc.time_s.len();
-        let grade_all_zero = cyc.grade.iter().fold(true, |flag, &g| {flag && g==0.0});
+        let grade_all_zero = cyc.grade.iter().fold(true, |flag, &g| flag && g == 0.0);
         let trapz_step_distances_m = trapz_step_distances(cyc);
         let trapz_distances_m = ndarrcumsum(&trapz_step_distances_m);
         let trapz_elevations_m = if grade_all_zero {
             Array::zeros(num_items)
         } else {
             let xs = Array::from_iter(
-                cyc.grade.iter().zip(&trapz_step_distances_m).map(|(g, dd)| {
-                    g.atan().cos() * dd * g
-                })
+                cyc.grade
+                    .iter()
+                    .zip(&trapz_step_distances_m)
+                    .map(|(g, dd)| g.atan().cos() * dd * g),
             );
             ndarrcumsum(&xs)
         };
-        let stops = Array::from_iter(cyc.mps.iter().map(|v| {v <= &tol}));
-        let mut interp_ds:Vec<f64> = Vec::with_capacity(num_items);
-        let mut interp_is:Vec<f64> = Vec::with_capacity(num_items);
-        let mut interp_hs:Vec<f64> = Vec::with_capacity(num_items);
+        let stops = Array::from_iter(cyc.mps.iter().map(|v| v <= &tol));
+        let mut interp_ds: Vec<f64> = Vec::with_capacity(num_items);
+        let mut interp_is: Vec<f64> = Vec::with_capacity(num_items);
+        let mut interp_hs: Vec<f64> = Vec::with_capacity(num_items);
         for idx in 0..num_items {
             let d = trapz_distances_m[idx];
-            if interp_ds.len() == 0 || d > interp_ds[interp_ds.len()-1] {
+            if interp_ds.len() == 0 || d > *interp_ds.last().unwrap() {
                 interp_ds.push(d);
                 interp_is.push(idx as f64);
                 interp_hs.push(trapz_elevations_m[idx]);
@@ -448,8 +449,8 @@ impl RustCycleCache {
             0.0
         } else if dist_m <= self.interp_ds[0] {
             self.grades[0]
-        } else if dist_m > self.interp_ds[self.interp_ds.len()-1] {
-            self.grades[self.interp_ds.len()-1]
+        } else if dist_m > *self.interp_ds.last().unwrap() {
+            *self.grades.last().unwrap()
         } else {
             let raw_idx = interpolate(&dist_m, &self.interp_ds, &self.interp_is, false);
             let idx = raw_idx.ceil() as usize;
@@ -667,7 +668,12 @@ impl RustCycle {
     /// Note: grade is assumed to be constant from just after the previous sample point
     /// until the current sample point. That is, grade[i] applies over the range of
     /// distances, d, from (d[i - 1], d[i]]
-    pub fn average_grade_over_range(&self, distance_start_m: f64, delta_distance_m: f64, cache: Option<&RustCycleCache>) -> f64 {
+    pub fn average_grade_over_range(
+        &self,
+        distance_start_m: f64,
+        delta_distance_m: f64,
+        cache: Option<&RustCycleCache>,
+    ) -> f64 {
         let tol = 1e-6;
         match &cache {
             Some(rcc) => {
@@ -680,7 +686,7 @@ impl RustCycle {
                     let e1 = rcc.interp_elevation(distance_start_m + delta_distance_m);
                     ((e1 - e0) / delta_distance_m).asin().tan()
                 }
-            },
+            }
             None => {
                 let grade_all_zero = {
                     let mut all0 = true;
@@ -706,7 +712,9 @@ impl RustCycle {
                             return self.grade[max_idx];
                         }
                         for idx in 1..self.time_s.len() {
-                            if distance_start_m > trapz_distances_m[idx - 1] && distance_start_m <= trapz_distances_m[idx] {
+                            if distance_start_m > trapz_distances_m[idx - 1]
+                                && distance_start_m <= trapz_distances_m[idx]
+                            {
                                 return self.grade[idx];
                             }
                         }
@@ -716,12 +724,14 @@ impl RustCycle {
                         // more precise trapezoidal distance and elevation at sample points.
                         // This also uses the fully accurate trig functions in case we have large slope angles.
                         let trapz_elevations_m = ndarrcumsum(
-                            &(self.grade.mapv(|g| g.atan().cos()) * delta_dists * &self.grade));
+                            &(self.grade.mapv(|g| g.atan().cos()) * delta_dists * &self.grade),
+                        );
                         let e0 = interpolate(
                             &distance_start_m,
                             &trapz_distances_m,
                             &trapz_elevations_m,
-                            false);
+                            false,
+                        );
                         let e1 = interpolate(
                             &(distance_start_m + delta_distance_m),
                             &trapz_distances_m,
@@ -739,7 +749,11 @@ impl RustCycle {
     /// - distance_m: non-negative-number, the current distance from start (m)
     /// RETURN: returns the distance to the next stop from distance_m
     /// NOTE: distance may be negative if we're beyond the last stop
-    pub fn calc_distance_to_next_stop_from(&self, distance_m: f64, cache: Option<&RustCycleCache>) -> f64 {
+    pub fn calc_distance_to_next_stop_from(
+        &self,
+        distance_m: f64,
+        cache: Option<&RustCycleCache>,
+    ) -> f64 {
         let tol: f64 = 1e-6;
         match cache {
             Some(rcc) => {
@@ -748,8 +762,8 @@ impl RustCycle {
                         return dist - distance_m;
                     }
                 }
-                rcc.trapz_distances_m[rcc.trapz_distances_m.len()-1] - distance_m
-            },
+                rcc.trapz_distances_m.last().unwrap() - distance_m
+            }
             None => {
                 let ds = ndarrcumsum(&trapz_step_distances(self));
                 for (&dist, &v) in ds.iter().zip(self.mps.iter()) {
@@ -757,7 +771,7 @@ impl RustCycle {
                         return dist - distance_m;
                     }
                 }
-                ds[self.len() - 1] - distance_m
+                ds.last().unwrap() - distance_m
             }
         }
     }
@@ -822,7 +836,7 @@ impl RustCycle {
     ) -> (f64, usize) {
         assert!(brake_accel_m_per_s2 < 0.0);
         if i >= self.time_s.len() {
-            return (self.mps[self.mps.len() - 1], 0);
+            return (*self.mps.last().unwrap(), 0);
         }
         let v0 = self.mps[i - 1];
         let dt = self.dt_s_at_i(i);
@@ -880,7 +894,7 @@ impl RustCycle {
         // create empty cycle to be populated
         let mut cyc = Self::default();
 
-        // unrwap is ok because if statement checks existence
+        // unwrap is ok because if statement checks existence
         let file = File::open(&pathbuf).unwrap();
         let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
         cyc.name = name;

@@ -121,6 +121,7 @@ pub fn main() {
         }
     } else {
         //TODO? use pathbuff to string, for robustness
+        println!("here");
         Ok(RustCycle::new(vec![0.0],vec![0.0],vec![0.0],vec![0.0],"".to_string()))
     }
     .unwrap();

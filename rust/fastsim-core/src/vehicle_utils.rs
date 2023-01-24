@@ -130,7 +130,7 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
         err += 0.5 * (time_steps[index + 1] - time_steps[index]) * (y[index] + y[index + 1]);
     }
 
-    return err / (time_steps[time_steps.len() - 1] - time_steps[0]);
+    return err / (time_steps.last().unwrap() - time_steps[0]);
 }
 
 struct GetError<'a> {

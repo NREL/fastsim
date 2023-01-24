@@ -283,7 +283,7 @@ impl SimDriveHot {
                         let roadway_chg_kj =
                             (&self.sd.roadway_chg_kw_out_ach * self.sd.cyc.dt_s()).sum();
                         if (fuel_kj + roadway_chg_kj) > 0.0 {
-                            ess_2fuel_kwh = ((self.sd.soc[0] - self.sd.soc[self.sd.len() - 1])
+                            ess_2fuel_kwh = ((self.sd.soc[0] - self.sd.soc.last().unwrap())
                                 * self.sd.veh.ess_max_kwh
                                 * 3.6e3
                                 / (fuel_kj + roadway_chg_kj))
@@ -291,7 +291,7 @@ impl SimDriveHot {
                         } else {
                             ess_2fuel_kwh = 0.0;
                         }
-                        init_soc = min(1.0, max(0.0, self.sd.soc[self.sd.len() - 1]));
+                        init_soc = min(1.0, max(0.0, *self.sd.soc.last().unwrap()));
                     }
                     init_soc
                 } else if self.sd.veh.veh_pt_type == vehicle::PHEV

@@ -310,3 +310,23 @@ def set_attrs_with_path(
 
 def print_dt():
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+
+def model_file_to_vehdb(model_filename: str | Path):
+    # Imports
+    import pandas as pd
+    from fastsim.vehicle import VEHICLE_DIR, DEFAULT_VEH_DB, DEFAULT_VEHDF
+    # Find last selection in database
+    last_selection = DEFAULT_VEHDF.iloc[-1].selection
+    # Generate new row from CSV model file
+    new_veh = pd.read_csv(
+        VEHICLE_DIR / model_filename,
+        usecols = ["Param Name", "Param Value"],
+        index_col="Param Name",
+    )
+    new_row = pd.DataFrame({k: [new_veh.loc[k]["Param Value"]] for k in new_veh.index})
+    new_row["selection"] = last_selection + 1
+    # Append new row to vehicle database
+    DEFAULT_VEHDF = pd.concat([DEFAULT_VEHDF, new_row])
+    # Save changes
+    DEFAULT_VEHDF.to_csv(DEFAULT_VEH_DB, index=False)

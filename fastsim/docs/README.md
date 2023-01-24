@@ -112,6 +112,7 @@ in = component input
 out = component output  
 
 # Release Notes
+2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes
 2.0.9 -- support for mac ARM/RISC architecture
 2.0.8 -- performance improvements
 2.0.6 -- `dist_v2_m` fixes and preliminary CAV functionality
