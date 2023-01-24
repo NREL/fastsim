@@ -373,19 +373,19 @@ pub struct RustVehicle {
     #[serde(alias = "maxFuelStorKw")]
     pub fs_max_kw: f64,
     /// Fuel storage time to peak power, $s$
-    #[serde(alias ="fuelStorSecsToPeakPwr")]
+    #[serde(alias = "fuelStorSecsToPeakPwr")]
     pub fs_secs_to_peak_pwr: f64,
     /// Fuel storage energy capacity, $kWh$
-    #[serde(alias ="fuelStorKwh")]
+    #[serde(alias = "fuelStorKwh")]
     pub fs_kwh: f64,
     /// Fuel specific energy, $\frac{kWh}{kg}$
-    #[serde(alias ="fuelStorKwhPerKg")]
+    #[serde(alias = "fuelStorKwhPerKg")]
     pub fs_kwh_per_kg: f64,
     /// Fuel converter peak continuous power, $kW$
-    #[serde(alias ="maxFuelConvKw")]
+    #[serde(alias = "maxFuelConvKw")]
     pub fc_max_kw: f64,
     /// Fuel converter output power percentage map, x-values of [fc_eff_map](RustVehicle::fc_eff_map)
-    #[serde(alias ="fcPwrOutPerc")]
+    #[serde(alias = "fcPwrOutPerc")]
     pub fc_pwr_out_perc: Array1<f64>,
     /// Fuel converter efficiency map
     #[serde(default)]

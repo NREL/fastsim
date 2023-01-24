@@ -153,17 +153,49 @@ pub fn get_label_fe(
     );
 
     #[cfg(not(windows))]
-    macro_rules! main_separator{
-        ()=>{"/"}
-    }
-    
-    #[cfg(windows)]
-    macro_rules! main_separator{
-        ()=>{r#"\"#}
+    macro_rules! main_separator {
+        () => {
+            "/"
+        };
     }
 
-    let udds_filestring = include_str!(concat!("..", main_separator!(), "..", main_separator!(), "..", main_separator!(), "fastsim", main_separator!(), "resources", main_separator!(), "cycles", main_separator!(), "udds.csv"));
-    let hwy_filestring = include_str!(concat!("..", main_separator!(), "..", main_separator!(), "..", main_separator!(), "fastsim", main_separator!(), "resources", main_separator!(), "cycles", main_separator!(), "hwfet.csv"));
+    #[cfg(windows)]
+    macro_rules! main_separator {
+        () => {
+            r#"\"#
+        };
+    }
+
+    let udds_filestring = include_str!(concat!(
+        "..",
+        main_separator!(),
+        "..",
+        main_separator!(),
+        "..",
+        main_separator!(),
+        "fastsim",
+        main_separator!(),
+        "resources",
+        main_separator!(),
+        "cycles",
+        main_separator!(),
+        "udds.csv"
+    ));
+    let hwy_filestring = include_str!(concat!(
+        "..",
+        main_separator!(),
+        "..",
+        main_separator!(),
+        "..",
+        main_separator!(),
+        "fastsim",
+        main_separator!(),
+        "resources",
+        main_separator!(),
+        "cycles",
+        main_separator!(),
+        "hwfet.csv"
+    ));
 
     cyc.insert(
         "udds",
@@ -348,7 +380,7 @@ pub fn get_label_fe(
         );
         out.net_accel = 1e3;
     }
-    
+
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true
 
