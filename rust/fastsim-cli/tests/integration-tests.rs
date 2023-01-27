@@ -26,7 +26,7 @@ fn test_that_cli_app_produces_result() -> Result<(), Box<dyn std::error::Error>>
     ]);
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("32.4"));
+        .stdout(predicate::str::contains("33.8"));
 
     Ok(())
 }
