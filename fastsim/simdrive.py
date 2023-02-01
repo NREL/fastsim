@@ -213,129 +213,130 @@ class SimDrive(object):
 
     def init_arrays(self):
         self.i = 1  # initialize step counter for possible use outside sim_drive_walk()
+        cyc_len = self.cyc.len
 
         # Component Limits -- calculated dynamically
-        self.cur_max_fs_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_trans_lim_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_fs_lim_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_max_kw_in = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_fc_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_cap_lim_dischg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_ess_max_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_avail_elec_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_cap_lim_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_ess_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_elec_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mc_elec_in_lim_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mc_transi_lim_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_mc_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
+        self.cur_max_fs_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_trans_lim_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_fs_lim_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_max_kw_in = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_fc_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_cap_lim_dischg_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_ess_max_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_avail_elec_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_cap_lim_chg_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_ess_chg_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_elec_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.mc_elec_in_lim_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.mc_transi_lim_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_mc_kw_out = np.zeros(cyc_len, dtype=np.float64)
         self.ess_lim_mc_regen_perc_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)
-        self.ess_lim_mc_regen_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_mech_mc_kw_in = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_trans_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
+        self.ess_lim_mc_regen_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_mech_mc_kw_in = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_trans_kw_out = np.zeros(cyc_len, dtype=np.float64)
 
         # Drive Train
-        self.cyc_trac_kw_req = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_trac_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.spare_trac_kw = np.zeros(self.cyc.len, dtype=np.float64)
+        self.cyc_trac_kw_req = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_trac_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.spare_trac_kw = np.zeros(cyc_len, dtype=np.float64)
         self.cyc_whl_rad_per_sec = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
-        self.cyc_tire_inertia_kw = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)  # oddball
+        self.cyc_tire_inertia_kw = np.zeros(cyc_len, dtype=np.float64)
         self.cyc_whl_kw_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.regen_contrl_lim_kw_perc = np.zeros(
-            self.cyc.len, dtype=np.float64)
-        self.cyc_regen_brake_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_fric_brake_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_trans_kw_out_req = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_met = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.trans_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.trans_kw_in_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_soc_target = np.zeros(self.cyc.len, dtype=np.float64)
-        self.min_mc_kw_2help_fc = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mc_mech_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mc_elec_kw_in_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.aux_in_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.impose_coast = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.roadway_chg_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.min_ess_kw_2help_fc = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_kw_out_ach_pct = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_kw_in_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fs_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fs_cumu_mj_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fs_kwh_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_cur_kwh = np.zeros(self.cyc.len, dtype=np.float64)
-        self.soc = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
+        self.cyc_regen_brake_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cyc_fric_brake_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cyc_trans_kw_out_req = np.zeros(cyc_len, dtype=np.float64)
+        self.cyc_met = np.array([False] * cyc_len, dtype=np.bool_)
+        self.trans_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.trans_kw_in_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_soc_target = np.zeros(cyc_len, dtype=np.float64)
+        self.min_mc_kw_2help_fc = np.zeros(cyc_len, dtype=np.float64)
+        self.mc_mech_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.mc_elec_kw_in_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.aux_in_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.impose_coast = np.array([False] * cyc_len, dtype=np.bool_)
+        self.roadway_chg_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.min_ess_kw_2help_fc = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_kw_out_ach_pct = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_kw_in_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fs_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fs_cumu_mj_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fs_kwh_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_cur_kwh = np.zeros(cyc_len, dtype=np.float64)
+        self.soc = np.zeros(cyc_len, dtype=np.float64)
 
         # Vehicle Attributes, Control Variables
         self.regen_buff_soc = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.ess_regen_buff_dischg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.max_ess_regen_buff_chg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.ess_accel_buff_chg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.accel_buff_soc = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.max_ess_accell_buff_dischg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.ess_accel_regen_dischg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
         self.mc_elec_in_kw_for_max_fc_eff = np.zeros(
-            self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
         self.elec_kw_req_4ae = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.can_pwr_all_elec = np.array(  # oddball
-            [False] * self.cyc.len, dtype=np.bool_)
+            [False] * cyc_len, dtype=np.bool_)
         self.desired_ess_kw_out_for_ae = np.zeros(
-            self.cyc.len, dtype=np.float64)
-        self.ess_ae_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.er_ae_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_desired_kw_4fc_eff = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
+        self.ess_ae_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.er_ae_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_desired_kw_4fc_eff = np.zeros(cyc_len, dtype=np.float64)
         self.ess_kw_if_fc_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
-        self.cur_max_mc_elec_kw_in = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_kw_gap_fr_eff = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)  # oddball
+        self.cur_max_mc_elec_kw_in = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_kw_gap_fr_eff = np.zeros(cyc_len, dtype=np.float64)
         self.er_kw_if_fc_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.mc_elec_kw_in_if_fc_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.mc_kw_if_fc_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
-        self.fc_forced_on = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.fc_forced_state = np.zeros(self.cyc.len, dtype=np.int32)
-        self.mc_mech_kw_4forced_fc = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_time_on = np.zeros(self.cyc.len, dtype=np.float64)
-        self.prev_fc_time_on = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)  # oddball
+        self.fc_forced_on = np.array([False] * cyc_len, dtype=np.bool_)
+        self.fc_forced_state = np.zeros(cyc_len, dtype=np.int32)
+        self.mc_mech_kw_4forced_fc = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_time_on = np.zeros(cyc_len, dtype=np.float64)
+        self.prev_fc_time_on = np.zeros(cyc_len, dtype=np.float64)
 
         # Additional Variables
-        self.mps_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mph_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.dist_m = np.zeros(self.cyc.len, dtype=np.float64)  # oddbal
-        self.dist_mi = np.zeros(self.cyc.len, dtype=np.float64)  # oddball
+        self.mps_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.mph_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.dist_m = np.zeros(cyc_len, dtype=np.float64)  # oddbal
+        self.dist_mi = np.zeros(cyc_len, dtype=np.float64)  # oddball
         self.high_acc_fc_on_tag = np.array(
-            [False] * self.cyc.len, dtype=np.bool_)
-        self.reached_buff = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.max_trac_mps = np.zeros(self.cyc.len, dtype=np.float64)
-        self.add_kwh = np.zeros(self.cyc.len, dtype=np.float64)
-        self.dod_cycs = np.zeros(self.cyc.len, dtype=np.float64)
+            [False] * cyc_len, dtype=np.bool_)
+        self.reached_buff = np.array([False] * cyc_len, dtype=np.bool_)
+        self.max_trac_mps = np.zeros(cyc_len, dtype=np.float64)
+        self.add_kwh = np.zeros(cyc_len, dtype=np.float64)
+        self.dod_cycs = np.zeros(cyc_len, dtype=np.float64)
         self.ess_perc_dead = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
-        self.drag_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_loss_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.accel_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ascent_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.rr_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_roadway_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.trace_miss_iters = np.zeros(self.cyc.len, dtype=np.float64)
-        self.newton_iters = np.zeros(self.cyc.len, dtype=np.float64)
-        self.coast_delay_index = np.zeros(self.cyc.len, dtype=np.int32)
-        self.impose_coast = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.idm_target_speed_m_per_s = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)  # oddball
+        self.drag_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_loss_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.accel_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.ascent_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.rr_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_roadway_chg_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.trace_miss_iters = np.zeros(cyc_len, dtype=np.float64)
+        self.newton_iters = np.zeros(cyc_len, dtype=np.float64)
+        self.coast_delay_index = np.zeros(cyc_len, dtype=np.int32)
+        self.impose_coast = np.array([False] * cyc_len, dtype=np.bool_)
+        self.idm_target_speed_m_per_s = np.zeros(cyc_len, dtype=np.float64)
         self.cyc0_cache = self.cyc0.build_cache()
 
     @property
