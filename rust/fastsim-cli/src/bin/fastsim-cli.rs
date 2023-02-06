@@ -23,7 +23,7 @@ use fastsim_core::{
 #[clap(group(
     ArgGroup::new("cycle")
     .required(true)
-    .args(&["cyc", "cyc-file", "adopt"])
+    .args(&["cyc", "cyc-file", "adopt", "adopt-hd"])
 ))]
 #[clap(group(
     ArgGroup::new("vehicle")
@@ -50,6 +50,9 @@ struct FastSimApi {
     #[clap(value_parser, long)]
     //adopt flag
     adopt: Option<bool>,
+    #[clap(value_parser, long)]
+    //adopt HD flag
+    adopt_hd: Option<bool>,
     /// Vehicle as json string
     #[clap(value_parser, long)]
     veh: Option<String>,
@@ -146,6 +149,21 @@ pub fn main() {
     }
     .unwrap();
 
+
+    #[cfg(not(windows))]
+    macro_rules! main_separator {
+        () => {
+            "/"
+        };
+    }
+
+    #[cfg(windows)]
+    macro_rules! main_separator {
+        () => {
+            r#"\"#
+        };
+    }
+
     if fastsim_api.adopt != None {
         let sdl = get_label_fe(&veh, Some(false), Some(false)).unwrap();
         let res = AdoptResults {
@@ -156,7 +174,31 @@ pub fn main() {
             accel: sdl.0.net_accel,
         };
         println!("{}", res.to_json());
-    } else {
+    } else if fastsim_api.adopt_hd != None {
+        let hd_cyc_filestring = include_str!(concat!(
+            "..",
+            main_separator!(),
+            "..",
+            main_separator!(),
+            "..",
+            main_separator!(),
+            "..",
+            main_separator!(),
+            "fastsim",
+            main_separator!(),
+            "resources",
+            main_separator!(),
+            "cycles",
+            main_separator!(),
+            "HHDDTCruiseSmooth.csv"
+        ));
+        let cyc = RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap();
+        let mut sim_drive = RustSimDrive::new(cyc, veh);
+        // // this does nothing if it has already been called for the constructed `sim_drive`
+        sim_drive.sim_drive(None, None).unwrap();
+        println!("{}", sim_drive.mpgge);
+    }
+    else {
         let mut sim_drive = RustSimDrive::new(cyc, veh);
         // // this does nothing if it has already been called for the constructed `sim_drive`
         sim_drive.sim_drive(None, None).unwrap();
