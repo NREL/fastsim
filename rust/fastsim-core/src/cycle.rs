@@ -350,7 +350,7 @@ pub fn extend_cycle(
 }
 
 #[cfg(feature = "pyo3")]
-#[allow(unused)] // not sure what this is doing, may get used in proc macro???
+#[allow(unused)]
 pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
     m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(accel_for_constant_jerk, m)?)?;
