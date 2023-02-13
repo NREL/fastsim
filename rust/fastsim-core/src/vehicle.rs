@@ -849,7 +849,7 @@ impl RustVehicle {
         veh.set_derived();
         match veh.validate() {
             Ok(_) => (),
-            Err(e) => return Err(anyhow!(e)),
+            Err(e) => bail!(e),
         };
         Ok(veh)
     }
