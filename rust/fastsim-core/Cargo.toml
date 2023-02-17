@@ -18,7 +18,6 @@ polynomial = "0.2.4"
 argmin = "0.7.0"
 argmin-math = { version = "0.2.1", features = ["ndarray_latest-nolinalg-serde"] }
 
-
 [package.metadata.docs.rs]
 rustdoc-args = [ "--html-in-header", "./src/html/docs-header.html" ]
 

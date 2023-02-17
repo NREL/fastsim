@@ -927,6 +927,22 @@ impl RustCycle {
             _ => Err(anyhow!("Unsupported file extension {}", extension)),
         }
     }
+
+    // load a cycle from a string representation of a csv file
+    pub fn from_csv_string(data: &str, name: String) -> Result<Self, anyhow::Error> {
+        let mut cyc = Self::default();
+
+        cyc.name = name;
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+        for result in rdr.deserialize() {
+            let cyc_elem: RustCycleElement = result?;
+            cyc.push(cyc_elem);
+        }
+
+        Ok(cyc)
+    }
 }
 
 pub struct PassingInfo {
