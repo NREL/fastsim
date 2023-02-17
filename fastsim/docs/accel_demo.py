@@ -17,39 +17,37 @@ def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10):
     grade @ 0 and hz @ 10 also matches XL version settings
     """
 
-    cycMps = np.array([(1 / params.mphPerMps) * float(spd_mph)] * (length_in_seconds * hz))
-    cycMps[0] = 0.
-    cycMps = np.array(cycMps)
-    cycSecs = np.arange(0, length_in_seconds, 1. / hz)
-    cycGrade = np.array([float(grade)] * (length_in_seconds * hz))
-    cycRoadType = np.zeros(length_in_seconds * hz)
-    cyc = {'cycMps': cycMps, 'cycSecs': cycSecs, 'cycGrade': cycGrade, 'cycRoadType':cycRoadType}
+    mps = np.array([(1 / params.MPH_PER_MPS) * float(spd_mph)] * (length_in_seconds * hz))
+    mps[0] = 0.
+    mps = np.array(mps)
+    time_s = np.arange(0, length_in_seconds, 1. / hz)
+    grade = np.array([float(grade)] * (length_in_seconds * hz))
+    road_type = np.zeros(length_in_seconds * hz)
+    cyc = {'mps': mps, 'time_s': time_s, 'grade': grade, 'road_type':road_type}
     return cyc
 
-def main(use_jitclass=True):
+def main():
     """
     Arguments:
     ----------
-    use_jitclass : Boolean
-        if True, use numba jitclass"""
+    """
 
     # just use first vehicle in default database
     for i in range(1,27):
-        if use_jitclass:
-            veh = vehicle.Vehicle(i).get_numba_veh()
-            accel_cyc = cycle.Cycle(std_cyc_name=None,
-                cyc_dict=create_accel_cyc()).get_numba_cyc()
-            accel_out = simdrive.SimAccelTestJit(accel_cyc, veh)
-
-        else:
-            veh = vehicle.Vehicle(i)
-            accel_cyc = cycle.Cycle(std_cyc_name=None,
-                cyc_dict=create_accel_cyc())
-            accel_out = simdrive.SimAccelTest(accel_cyc, veh)
+        veh = vehicle.Vehicle.from_vehdb(i).to_rust()
+        accel_cyc = cycle.Cycle.from_dict(cyc_dict=create_accel_cyc()).to_rust()
+        sd_accel = simdrive.RustSimDrive(accel_cyc, veh)
         
-        accel_out.sim_drive()
-        acvhd_0_to_acc_speed_secs = simdrive.SimDrivePost(accel_out).get_output()['ZeroToSixtyTime_secs']
-        print('vehicle {}: acceleration [s] {:.3f}'.format(i, acvhd_0_to_acc_speed_secs))
+        simdrive.run_simdrive_for_accel_test(sd_accel)
+        if (np.array(sd_accel.mph_ach) >= 60).any():
+                net_accel = np.interp(
+                    x=60, xp=sd_accel.mph_ach, fp=sd_accel.cyc.time_s)
+        else:
+            # in case vehicle never exceeds 60 mph, penalize it a lot with a high number
+            print(veh.scenario_name + ' never achieves 60 mph.')
+            net_accel = 1e3        
+        
+        print('vehicle {}: acceleration [s] {:.3f}'.format(i, net_accel))
 
 if __name__=='__main__':
     main()

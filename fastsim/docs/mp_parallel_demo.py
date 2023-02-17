@@ -7,38 +7,39 @@ Optional positional arguments:
 import multiprocessing as mp
 import time
 import datetime
-import sys
+import warnings
 import numpy as np
+import argparse
 
 import fastsim as fsim
 
-veh = fsim.vehicle.Vehicle(11, verbose=False)
+veh = fsim.vehicle.Vehicle.from_vehdb(11)
 # contrived cycles for this example
-cycs = [fsim.cycle.Cycle('udds')] * 1_000
+cycs = [fsim.cycle.Cycle.from_file('udds')] * 1_000
 
 def run_sd(cyc_num: int):
-    # convert to jit inside the parallelized function to allow for pickling
-    cyc_jit = cycs[cyc_num].get_numba_cyc()
-    veh_jit = veh.get_numba_veh()
-    sd = fsim.simdrive.SimDriveJit(cyc_jit, veh_jit)
+    # convert to compiled version inside the parallelized function to allow for pickling
+    cyc = cycs[cyc_num]
+    sd = fsim.simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
     sd.sim_drive()
     if cyc_num % 100 == 0:
         print(f"Finished cycle {cyc_num}")
     
     return sd.mpgge
 
+parser = argparse.ArgumentParser(description='Parallelized FASTSim demo')
+parser.add_argument('-p', '--processes', type=int, default=4)
+
 if __name__ == '__main__':
     print(datetime.datetime.now())
     t0 = time.time()
 
-    assert len(sys.argv) <= 2, 'Expected at most 2 arguments.'
-
-    if len(sys.argv) == 2:
-        processes = int(sys.argv[1])
-    else:
-        # processes = 4 results in 250 runs of udds per process, which appears to be optimal
-        # this is equivalent to 250 runs * 1,400 s / run = 350,000 s per process
-        processes = 4 
+    # processes = 4 results in 250 runs of udds per process, which appears to be optimal
+    # this is equivalent to 250 runs * 1,400 s / run = 350,000 s per process
+    args, unknown = parser.parse_known_args()
+    processes = args.processes
+    if len(unknown) > 0:
+        warnings.warn(f"Unknown arguments: {unknown}")
 
     print(f"Running with {processes} pool processes.")
     with mp.Pool(processes=processes) as pool:

@@ -1,0 +1,168 @@
+---
+scenario_name: Line Haul Conv
+selection: 0
+veh_year: 0
+veh_pt_type: Conv
+drag_coef: 0.546
+frontal_area_m2: 10.4
+glider_kg: 11776.0
+veh_cg_m: 0.46
+drive_axle_weight_frac: 0.8
+wheel_base_m: 2.26
+cargo_kg: 17236.0
+veh_override_kg: 0.0
+comp_mass_multiplier: 1.2
+fs_max_kw: 5000.0
+fs_secs_to_peak_pwr: 1.0
+fs_kwh: 11385.0
+fs_kwh_per_kg: 12.67
+fc_max_kw: 331.0
+fc_pwr_out_perc:
+  v: 1
+  dim:
+    - 12
+  data:
+    - 0.0
+    - 0.005
+    - 0.015
+    - 0.04
+    - 0.06
+    - 0.1
+    - 0.14
+    - 0.2
+    - 0.4
+    - 0.6
+    - 0.8
+    - 1.0
+fc_eff_map:
+  v: 1
+  dim:
+    - 12
+  data:
+    - 0.1
+    - 0.12
+    - 0.28
+    - 0.35
+    - 0.375
+    - 0.39
+    - 0.4
+    - 0.4
+    - 0.38
+    - 0.37
+    - 0.36
+    - 0.35
+fc_eff_type: Atkinson
+fc_sec_to_peak_pwr: 6.0
+fc_base_kg: 0.0
+fc_kw_per_kg: 0.26
+min_fc_time_on: 30.0
+idle_fc_kw: 0.5
+mc_max_kw: 0.0
+mc_pwr_out_perc:
+  v: 1
+  dim:
+    - 11
+  data:
+    - 0.0
+    - 0.02
+    - 0.04
+    - 0.06
+    - 0.08
+    - 0.1
+    - 0.2
+    - 0.4
+    - 0.6
+    - 0.8
+    - 1.0
+mc_eff_map:
+  v: 1
+  dim:
+    - 11
+  data:
+    - 0.12
+    - 0.16
+    - 0.21
+    - 0.29
+    - 0.35
+    - 0.42
+    - 0.75
+    - 0.92
+    - 0.93
+    - 0.93
+    - 0.92
+mc_sec_to_peak_pwr: 4.0
+mc_pe_kg_per_kw: 0.833
+mc_pe_base_kg: 21.6
+ess_max_kw: 0.0
+ess_max_kwh: 0.0
+ess_kg_per_kwh: 44.0
+ess_base_kg: 0.0
+ess_round_trip_eff: 0.97
+ess_life_coef_a: 135.0
+ess_life_coef_b: -0.6844
+min_soc: 0.4
+max_soc: 0.8
+ess_dischg_to_fc_max_eff_perc: 1.0
+ess_chg_to_fc_max_eff_perc: 0.1
+wheel_inertia_kg_m2: 10.0
+num_wheels: 18.0
+wheel_rr_coef: 0.0061
+wheel_radius_m: 0.506
+wheel_coef_of_fric: 0.6
+max_accel_buffer_mph: 60.0
+max_accel_buffer_perc_of_useable_soc: 0.5
+perc_high_acc_buf: 0.0
+mph_fc_on: 1.0
+kw_demand_fc_on: 100.0
+max_regen: 0.9
+stop_start: false
+force_aux_on_fc: false
+alt_eff: 1.0
+chg_eff: 0.86
+aux_kw: 3.5
+trans_kg: 300.0
+trans_eff: 0.97
+ess_to_fuel_ok_error: 0.005
+small_motor_power_kw: 7.5
+large_motor_power_kw: 75.0
+regen_a: 500.0
+regen_b: 0.99
+charging_on: false
+max_roadway_chg_kw:
+  v: 1
+  dim:
+    - 6
+  data:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+modern_max: 0.95
+veh_kg: 31977.987493169814
+max_trac_mps2: 4.196328075709779
+ess_mass_kg: 0.0
+mc_mass_kg: 0.0
+fc_mass_kg: 1527.6923076923074
+fs_mass_kg: 1078.295185477506
+val_udds_mpgge: .nan
+val_hwy_mpgge: .nan
+val_comb_mpgge: .nan
+val_udds_kwh_per_mile: .nan
+val_hwy_kwh_per_mile: .nan
+val_comb_kwh_per_mile: .nan
+val_cd_range_mi: .nan
+val_const65_mph_kwh_per_mile: .nan
+val_const60_mph_kwh_per_mile: .nan
+val_const55_mph_kwh_per_mile: .nan
+val_const45_mph_kwh_per_mile: .nan
+val_unadj_udds_kwh_per_mile: .nan
+val_unadj_hwy_kwh_per_mile: .nan
+val0_to60_mph: .nan
+val_ess_life_miles: .nan
+val_range_miles: .nan
+val_veh_base_cost: .nan
+val_msrp: .nan
+fc_peak_eff_override: ~
+mc_peak_eff_override: ~

@@ -1,34 +1,71 @@
 ![FASTSim Logo](fastsim-icon-web-131x172.jpg)
 
 # Description
-This is the pythonic flavor of FASTSim which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. Other FASTSim flavors may spin off as variations on this core functionality, but these should integrated back into master if there is any intent of persistence.
+This is the python/rust flavor of FASTSim which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. Other FASTSim flavors may spin off as variations on this core functionality, but these should integrated back into `main` if there is any intent of persistence.
 
 All classes and methods are self-documented.  
 
 # Installation
-First, clone the repository from GitHub if you don't already have a local copy of the FASTSim package files:
 
-    git clone git@github.nrel.gov:MBAP/fastsim.git  
+First, clone the repository from GitHub:
+
+    git clone git@github.nrel.gov:MBAP/fastsim.git
+
+Next, install the Rust toolchain, and create and activate an environment for the project if necessary. There are two ways to do this:
+
+- Manually install the [rust toolchain](https://www.rust-lang.org/tools/install). Then, using a virtual environment, and making sure to use Python >= 3.8:
     
-FASTSim depends on python 3.8. One way to satisfy this is to use conda (we recommend Anaconda Powershell Prompt for Windows OS):
+  PowerShell:
 
-    conda create -n fastsim python=3.8
-    conda activate fastsim
+      python -m venv .venv
+      .venv/Scripts/Activate.ps1
+
+  Bash:
+
+      python -m venv .venv
+      source .venv/bin/activate
+
+  Command Prompt:
+
+      python -m venv .venv
+      .venv/Scripts/activate.bat
+
+- OR: using a conda environment:
+
+      conda create -n fastsim python=3.8
+      conda activate fastsim
+      conda install -c conda-forge "rust>=1.64"
     
 Then, from within the top level of the FASTSim folder, run a pip install:
 
-    pip install -e .
-    
-This will install FASTSim with minimal dependencies in place so that FASTSim files can be editable (`-e` provides this behavior). Developers will find this option handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
+    pip install .
 
-For users who are not developers, FASTSim can also be installed without the `-e` option (i.e. `pip install .`), and package files will be copied to the python site-packages folder.   
+This will install FASTSim with the included rust extensions.
 
-# Update
+## Developers
+Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
+
+To do this, a couple of extra steps are required:
+
+1. First install the python code in place `DEVELOP_MODE=True pip install -e ".[dev]"` if on Mac OS, Linux, or Windows Bash (e.g. git bash, VSCode bash).  On Windows in Power Shell or Command Prompt, run `set DEVELOP_MODE=True` then `pip install -e ".[dev]"`.
+1. Within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`.
+1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.
+1. In `fastsim/rust/fastsim-py`, you should now be able to run `maturin develop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/fastsim/docs/demo.py`.
+
+After FASTSim has been installed as editable per the above instructions, you can rebuild and test everything with `sh build_and_test.sh` in Windows bash or `./build_and_test.sh` in Linux/Unix in the `fastsim/` dir.  
+
+# Users with NREL VPN Access
+## Installation as PyPi Package
 Note: the following instructions work only if you are inside NREL VPN:  
-To update, run
+To install and/or update, run
 ```
 pip install fastsim --upgrade --extra-index-url=https://github.nrel.gov/pages/MBAP/mbap-pypi/
 ```
+
+## Adding FASTSim as a Depency in Rust
+Add this line:  
+`fastsim-core = { git = "https://github.nrel.gov/MBAP/fastsim", branch = "rust-port" }`  
+to your Cargo.toml file, modifying the `branch` key as appropriate.  
 
 # Usage
 To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
@@ -53,17 +90,6 @@ To compare FASTSim back to the master branch version from 17 December 2019, run 
 
 ## Against Excel FASTSim
 To compare Python FASTSim results to Excel FASTSim, you can run `tests.test_vs_excel.main()` to do an experimental (i.e. beta) comparison against saved Excel results. If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can specify `rerun_excel=True` to do a live run of the Excel version.
-
-# numba
-To significantly speed up the simulations `numba` has been used extensively to augment every class in `fastsim.simdrive`, `fastsim.cycle`, and `fastsim/vehicle`. Classes that are "just in time compiled", as well as variables needed for datatype declaration, are preceeded by the `numba` decorator `@jitclass` or defined by numba types `float64, int32, bool_, types`, respectively.
-
-*notes on numba*
-- `numba` caches compiled classes for you in `__pycache__`
-- should usually automatically register source code changes and recompile, even if `__pycache__` isn't deleted first
-
-## numba pitfalls
-- `numba` does not always work well with `numpy`, although this happens in rare occassions and has completely been resolved in this code base, as far as we know.
-- Some users have reported Python __zombie__ processes that crop up when using the `numba` extended code. This has been a difficult to reproduce bug and may have been user platform specific, it also involved heavy use of `xlwings` calling the code via Excel. These zombies can be seen in the Task Manager as latent Pythonw processes, they will prevent `numba` from recompiling, even if you delete the `__pycache__` folders.
 
 # List of Abbreviations
 cur = current time step  
@@ -92,33 +118,51 @@ in = component input
 out = component output  
 
 # Release Notes
-1.1.7 -- get_numba_veh() and get_numba_cyc() can now be called from already jitted objects
-1.1.6 -- another bug fix for numba compatibility with corresponding unit test
-1.1.5 -- bug fix for numba compatibility of fcPeakEffOverride and mcPeakEffOverride
-1.1.4 -- nan bug fix for fcPeakEffOverride and mcPeakEffOverride
-1.1.3 -- provisioned for optional load time motor and engine peak overrides
-1.1.2 -- made vehicle loading _more_ more robust
-1.1.1 -- made vehicle loading more robust
-1.1.0 -- separated jitclasses into own module, made vehicle engine and motor efficiency setting more robust
-1.0.4 -- bug fix with custom engine curve
-1.0.3 -- bug fixes, faster testing
-1.0.2 -- forced type np.float64 on vehicle mass attributes
-1.0.1 -- Added `vehYear` attribute to vehicle and other minor changes.  
-1.0.0 -- Implemented unittest package.  Fixed energy audit calculations to be based on achieved speed.  Updated this file.  Improved documentation.  Vehicle can be instantiated as dict.  
-0.1.5 -- Updated to be compatible with ADOPT  
-0.1.4 -- Bug fix: `mcEffMap` is now robust to having zero as first element  
-0.1.3 -- Bug fix: `fastsim.vehicle.Vehicle` method `set_init_calcs` no longer overrides `fcEffMap`.  
-0.1.2 -- Fixes os-dependency of xlwings by not running stuff that needs xlwings.  Improvements in functional test.  Refinment utomated typying of jitclass objects.  
-0.1.1 -- Now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.  
+2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes
+2.0.9 -- support for mac ARM/RISC architecture
+2.0.8 -- performance improvements
+2.0.6 -- `dist_v2_m` fixes and preliminary CAV functionality
+2.0.5 -- added `to_rust` method for cycle  
+2.0.4 -- exposed `veh.set_veh_mass`  
+2.0.3 -- exposed `veh.__post_init__`  
+2.0.2 -- provisioned for non-default vehdb path  
+2.0.1 -- bug fix  
+2.0.0 -- All second-by-second calculations are now implemented in both rust and python.  Rust provides a ~30x speedup  
+1.3.1 -- `fastsim.simdrive.copy_sim_drive` function can deepcopy jit to non-jit (and back) for pickling  
+1.2.6 -- time dilation bug fix for zero speed  
+1.2.4 -- bug fix changing `==` to `=`  
+1.2.3 -- `veh_file` can be passed as standalone argument.  `fcEffType` can be anything if `fcEffMap` is provided, but typing is otherwise enforced.  
+1.2.2 -- added checks for some conflicting vehicle parameters.  Vehicle parameters `fcEffType` and `vehPtType` must now be str type.  
+1.2.1 -- improved time dilation and added test for it  
+1.1.7 -- get_numba_veh() and get_numba_cyc() can now be called from already jitted objects  
+1.1.6 -- another bug fix for numba compatibility with corresponding unit test  
+1.1.5 -- bug fix for numba compatibility of fcPeakEffOverride and mcPeakEffOverride  
+1.1.4 -- nan bug fix for fcPeakEffOverride and mcPeakEffOverride  
+1.1.3 -- provisioned for optional load time motor and engine peak overrides  
+1.1.2 -- made vehicle loading _more_ more robust  
+1.1.1 -- made vehicle loading more robust  
+1.1.0 -- separated jitclasses into own module, made vehicle engine and motor efficiency setting more robust  
+1.0.4 -- bug fix with custom engine curve  
+1.0.3 -- bug fixes, faster testing  
+1.0.2 -- forced type np.float64 on vehicle mass attributes  
+1.0.1 -- Added `vehYear` attribute to vehicle and other minor changes.    
+1.0.0 -- Implemented unittest package.  Fixed energy audit calculations to be based on achieved speed.  Updated this file.  Improved documentation.  Vehicle can be instantiated as dict.   
+0.1.5 -- Updated to be compatible with ADOPT    
+0.1.4 -- Bug fix: `mcEffMap` is now robust to having zero as first element    
+0.1.3 -- Bug fix: `fastsim.vehicle.Vehicle` method `set_init_calcs` no longer overrides `fcEffMap`.    
+0.1.2 -- Fixes os-dependency of xlwings by not running stuff that needs xlwings.  Improvements in functional test.  Refinment utomated typying of jitclass objects.    
+0.1.1 -- Now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.   
 
 # Contributors
-Aaron Brooker -- Aaron.Brooker@nrel.gov  
-Jeffrey Gonder -- Jeff.Gonder@nrel.gov  
 Chad Baker -- Chad.Baker@nrel.gov  
-Eric Wood -- Eric.Wood@nrel.gov  
+Aaron Brooker -- Aaron.Brooker@nrel.gov  
+Kyle Carow -- Kyle.Carow@nrel.gov
+Jeffrey Gonder -- Jeff.Gonder@nrel.gov  
 Jacob Holden -- Jacob.Holden@nrel.gov  
-Grant Payne -- Grant.Payne@nrel.gov  
-Matthew Moniot -- Matthew.Moniot@nrel.gov  
+Jinghu Hu -- Jinghu.Hu@nrel.gov
 Jason Lustbader -- Jason.Lustbader@nrel.gov  
 Sean Lopp -- sean@rstudio.com  
+Matthew Moniot -- Matthew.Moniot@nrel.gov  
+Grant Payne -- Grant.Payne@nrel.gov  
 Laurie Ramroth -- lramroth@ford.com  
+Eric Wood -- Eric.Wood@nrel.gov  

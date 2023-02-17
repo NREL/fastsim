@@ -16,10 +16,19 @@ from math import isclose
 import importlib
 import unittest
 
-
+import fastsim as fsim
 from fastsim import simdrive, vehicle, cycle, simdrivelabel
+from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 importlib.reload(simdrivelabel) # useful for debugging
 
+
+RUN_PYTHON = False
+RUN_RUST = True
+_USE_RUST_LIST = []
+if RUN_PYTHON:
+    _USE_RUST_LIST.append(False)
+if RUN_RUST and RUST_AVAILABLE:
+    _USE_RUST_LIST.append(True)
 
 if 'xlwings' in sys.modules:
     xw_success = True
@@ -28,35 +37,36 @@ else:
     xw_success = False
 
 
-def run_python(use_jit=False, verbose=True):
-    """Runs python fastsim through 26 vehicles and returns list of dictionaries 
+def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
+    """
+    Runs python fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
     
     Arguments:
     **********
-    use_jit : Boolean
-        if True, use numba jitclass
     verbose : Boolean
         if True, print progress
+    use_rust: Boolean, if True, use Rust versions of classes
     """
+    if use_rust and not RUST_AVAILABLE:
+        warn_rust_unavailable(__file__)
 
     t0 = time.time()
-
-    vehicles = np.arange(1, 27)
 
     print('Running vehicle sweep.')
     print()
 
     res_python = {}
+    def to_rust(obj):
+        if use_rust and RUST_AVAILABLE:
+            return obj.to_rust()
+        return obj
 
     for vehno in vehicles:
-        if use_jit:
-            veh = vehicle.Vehicle(vehno, verbose=verbose).get_numba_veh()
-        else:
-            veh = vehicle.Vehicle(vehno, verbose=verbose)
+        veh = to_rust(vehicle.Vehicle.from_vehdb(vehno))
         if verbose:
-            print('Running ' + veh.Scenario_name)
-        res_python[veh.Scenario_name] = simdrivelabel.get_label_fe(veh)
+            print('Running ' + veh.scenario_name)
+        res_python[veh.scenario_name] = simdrivelabel.get_label_fe(veh, verbose=False, use_rust=use_rust)
 
     t1 = time.time()
     print()
@@ -68,14 +78,15 @@ def run_python(use_jit=False, verbose=True):
 PREV_RES_PATH = Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.json'
 
 
-def run_excel(prev_res_path=PREV_RES_PATH, 
-    rerun_excel=False):
-    """Runs excel fastsim through 26 vehicles and returns list of dictionaries 
+def run_excel(vehicles=np.arange(1, 28), prev_res_path=PREV_RES_PATH, rerun_excel=False):
+    """
+    Runs excel fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
     Arguments: 
     -----------
     prev_res_path : path (str) to prevous results in pickle (*.p) file
-    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
+    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open
+    """
 
     if not(rerun_excel) and prev_res_path:
         print("Loading archived Excel results.")
@@ -95,7 +106,6 @@ def run_excel(prev_res_path=PREV_RES_PATH,
         load_veh_macro = app.macro("FASTSim.xlsm!reloadVehInfo")
         run_macro = app.macro("FASTSim.xlsm!run.run")
 
-        vehicles = np.arange(1, 28)
         res_excel = {}
 
         for vehno in vehicles:
@@ -156,7 +166,8 @@ KNOWN_ERROR_LIST = ['Regional Delivery Class 8 Truck']
 
 
 def compare(res_python, res_excel, err_tol=0.001, verbose=True):
-    """Finds common vehicle names in both excel and python 
+    """
+    Finds common vehicle names in both excel and python 
     (hypothetically all of them, but there may be discrepancies) and then compares
     fuel economy results.  
     Arguments: results from run_python and run_excel
@@ -166,7 +177,10 @@ def compare(res_python, res_excel, err_tol=0.001, verbose=True):
     ----------
     res_python : output of run_python
     res_excel : output of run_excel
-    err_tol : (float) error tolerance, default=1e-3"""
+    err_tol : (float) error tolerance, default=1e-3
+    verbose : Boolean
+        if True, print progress
+    """
 
     common_names = set(res_python.keys()) & set(res_excel.keys())
 
@@ -203,32 +217,32 @@ def compare(res_python, res_excel, err_tol=0.001, verbose=True):
                 if verbose:
                     print(f"{vehname} - {res_key} error = {error:.3g}%")
 
-        if (np.array(list(res_comp.values())) == 0).all() and verbose:
+        if (np.array(res_comp.values()) == 0).all() and verbose:
             print(f'All values within error tolerance of {err_tol:.3g}')
 
         res_comps[vehname] = res_comp.copy()
     return res_comps
 
 
-def main(use_jitclass=True, err_tol=0.001, 
-    prev_res_path=PREV_RES_PATH,
-    rerun_excel=False):
-    """Function for running both python and excel and then comparing
+def main(err_tol=0.001, prev_res_path=PREV_RES_PATH, rerun_excel=False, verbose=False):
+    """
+    Function for running both python and excel and then comparing
     Arguments:
     **********
-    use_jitclass : Boolean
-        if True, use numba jitclass
     err_tol : (float) error tolerance, default=1e-3
     prev_res_path : path (str) to prevous results in pickle (*.p) file
-    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open"""
+    rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open
+    verbose : Boolean
+        if True, print progress
+    """
 
     if xw_success and rerun_excel:
-        res_python = run_python(verbose=False, use_jit=use_jitclass)
+        res_python = run(verbose=verbose)
         res_excel = run_excel(prev_res_path=prev_res_path,
                               rerun_excel=rerun_excel)
         res_comps = compare(res_python, res_excel)
     elif not(rerun_excel):
-        res_python = run_python(verbose=False, use_jit=use_jitclass)
+        res_python = run(verbose=verbose)
         res_excel = run_excel(prev_res_path=prev_res_path, rerun_excel=rerun_excel)
         res_comps = compare(res_python, res_excel)
     else:
@@ -242,44 +256,29 @@ def main(use_jitclass=True, err_tol=0.001,
 ACCEL_ERR_TOL = 0.022 
 
 class TestExcel(unittest.TestCase):
-    def test_without_jit(self):
-        "Compares non-jit results against archived Excel results."
-        print(f"Running {type(self)}.test_without_jit")
-        res_python = run_python(verbose=False, use_jit=False)
-        res_excel = run_excel(prev_res_path=PREV_RES_PATH,
-                              rerun_excel=False)
-        res_comps = compare(res_python, res_excel, verbose=False)
+    def setUp(self):
+        fsim.utils.disable_logging()
+    
+    def test_vs_excel(self):
+        "Compares results against archived Excel results."
+        for use_rust in _USE_RUST_LIST:
+            print(f"Running {type(self)} (Rust: {use_rust})")
+            res_python = run(verbose=True, use_rust=use_rust)
+            res_excel = run_excel(prev_res_path=PREV_RES_PATH,
+                                rerun_excel=False)
+            res_comps = compare(res_python, res_excel, verbose=False)
 
-        failed_tests = []
-        for veh_key, veh_val in res_comps.items():
-            if veh_key not in KNOWN_ERROR_LIST:
-                for attr_key, attr_val in veh_val.items():
-                    if attr_key == 'netAccel_frac_err':
-                        if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+            failed_tests = []
+            for veh_key, veh_val in res_comps.items():
+                if veh_key not in KNOWN_ERROR_LIST:
+                    for attr_key, attr_val in veh_val.items():
+                        if attr_key == 'netAccel_frac_err':
+                            if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+                                failed_tests.append(veh_key + '.' + attr_key)
+                        elif attr_val != 0:
                             failed_tests.append(veh_key + '.' + attr_key)
-                    elif attr_val != 0:
-                        failed_tests.append(veh_key + '.' + attr_key)
 
-        self.assertEqual(failed_tests, [])
+            self.assertEqual(failed_tests, [])
 
-    # commented due to redundancy with test_simdrive_sweep
-    # def test_with_jit(self):
-    #     "Compares jit results against archived Excel results."
-    #     print("Running ExcelTest.test_with_jit")
-    #     res_python = run_python(verbose=False, use_jit=True)
-    #     res_excel = run_excel(prev_res_path=PREV_RES_PATH,
-    #                           rerun_excel=False)
-    #     res_comps = compare(res_python, res_excel)
-
-    #     failed_tests = []
-    #     for veh_key, veh_val in res_comps.items():
-    #         if veh_key not in KNOWN_ERROR_LIST:
-    #             for attr_key, attr_val in veh_val.items():
-    #                 if attr_key == 'netAccel_frac_err':
-    #                     if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
-    #                         failed_tests.append(veh_key + '.' + attr_key)
-    #                 elif attr_val != 0:
-    #                     failed_tests.append(veh_key + '.' + attr_key)
-
-    #     self.assertEqual(failed_tests, [])
-
+if __name__ == "__main__":
+    unittest.main()

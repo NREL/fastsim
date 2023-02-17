@@ -1,82 +1,82 @@
 ,Param Name,Param Value,Param Source / Comments
 Category,Scenario name,Template Vehicle for setting up data types,template vehicle for attribute typing
-Vehicle,vehYear,0,model year.  Can be left blank if not known or important
-,vehPtType,1,"1:conv., 2:HEV, 3:PHEV, 4:BEV"
-,dragCoef,0.304,drag coefficient
-,frontalAreaM2,2.574,projected frontal area
-,gliderKg,1045.636,"empty mass minus powertrain components (battery, motor, engine)"
-,vehCgM,0.53,height of cg
-,driveAxleWeightFrac,0.61,fraction of weight over drive axle for traction calculations
-,wheelBaseM,2.6,length of wheelbase
-,cargoKg,136.8,mass of cargo
-,vehOverrideKg,1473.9,"if supplied, overrides calculated total vehicle mass. Can be left blank"
-,compMassMultiplier,1.4,
-Fuel / Fuel Converter / Engine,maxFuelStorKw,2000.8,max fuel flow of fuel storage
-,fuelStorSecsToPeakPwr,1.1,lag/delay for fuel storage to reach peak fuel flow
-,fuelStorKwh,441.8,energy capacity of fuel storage
-,fuelStorKwhPerKg,9.89,energy density of fuel storage
-,maxFuelConvKw,119.3,max fuel converter (engine or fuel cell) power
-,fcPwrOutPerc,"[0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00]",array of fuel converter fraction of peak power at which efficiencies are known. Can be left blank.
-,fcEffMap,"[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]",array of fuel converter efficiencies corresponding to fraction of peak power. Can be left blank.
-,fcEffType,1,"1: SI engine, 2: Atkinson, 3: diesel, 4: fuel cell, 5: hd diesel; overridden by fcEffMap if fcEffMap is not blank"
-,fuelConvSecsToPeakPwr,6.1,lag/delay for engine to reach peak power
-,fuelConvBaseKg,61.3,engine weight before scaling by power
-,fuelConvKwPerKg,2.13,engine weight per power scaling to be added to fuelConvBaseKg
-,minFcTimeOn,30.3,"for PHEV and HEV, duration of engine on time before engine is allowed to turn off again"
-,idleFcKw,1.96,
+Vehicle,veh_year,0,model year.  Can be left blank if not known or important
+,veh_pt_type,Conv,"1:conv., 2:HEV, 3:PHEV, 4:BEV"
+,drag_coef,0.304,drag coefficient
+,frontal_area_m2,2.574,projected frontal area
+,glider_kg,1045.636,"empty mass minus powertrain components (battery, motor, engine)"
+,veh_cg_m,0.53,height of cg
+,drive_axle_weight_frac,0.61,fraction of weight over drive axle for traction calculations
+,wheel_base_m,2.6,length of wheelbase
+,cargo_kg,136.8,mass of cargo
+,veh_override_kg,1473.9,"if supplied, overrides calculated total vehicle mass. Can be left blank"
+,comp_mass_multiplier,1.4,
+Fuel / Fuel Converter / Engine,fs_max_kw,2000.8,max fuel flow of fuel storage
+,fs_secs_to_peak_pwr,1.1,lag/delay for fuel storage to reach peak fuel flow
+,fs_kwh,441.8,energy capacity of fuel storage
+,fs_kwh_per_kg,9.89,energy density of fuel storage
+,fc_max_kw,119.3,max fuel converter (engine or fuel cell) power
+,fc_pwr_out_perc,"[0, 0.005, 0.015, 0.04, 0.06, 0.10, 0.14, 0.20, 0.40, 0.60, 0.80, 1.00]",array of fuel converter fraction of peak power at which efficiencies are known. Can be left blank.
+,fc_eff_map,"[0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30]",array of fuel converter efficiencies corresponding to fraction of peak power. Can be left blank.
+,fc_eff_type,SI,"1: SI engine, 2: Atkinson, 3: diesel, 4: fuel cell, 5: hd diesel; overridden by fcEffMap if fcEffMap is not blank"
+,fc_sec_to_peak_pwr,6.1,lag/delay for engine to reach peak power
+,fc_base_kg,61.3,engine weight before scaling by power
+,fc_kw_per_kg,2.13,engine weight per power scaling to be added to fuelConvBaseKg
+,min_fc_time_on,30.3,"for PHEV and HEV, duration of engine on time before engine is allowed to turn off again"
+,idle_fc_kw,1.96,
 ,fcPeakEffOverride,0.9,
-Motor,maxMotorKw,1.1,"needs to be zero for conventional, non-zero for anything with a traction battery! Needs careful consideration for stop start systems. Needs to be lower than maxEssKw for full utilization of battery."
-,mcPwrOutPerc,"[0.00, 0.02, 0.04, 0.06, 0.08,  0.10,  0.20,  0.40,  0.60,  0.80,  1.00]",array of motor fraction of peak power at which efficiencies are known. Can be left blank.
-,mcEffMap,"[0.83, 0.85,    0.87,  0.89,  0.90,  0.91,  0.93,  0.94,  0.94,  0.93,  0.92]",array of motor efficiencies corresponding to fraction of peak power generic motor. Can be left blank.
-,motorSecsToPeakPwr,4.8,lag/delay for motor to reach peak power
-,mcPeKgPerKw,0.833,motor weight per power scale factor to be added to mcPePaseKg
-,mcPeBaseKg,21.6,base motor weight
+Motor,mc_max_kw,1.1,"needs to be zero for conventional, non-zero for anything with a traction battery! Needs careful consideration for stop start systems. Needs to be lower than ess_max_kw for full utilization of battery."
+,mc_pwr_out_perc,"[0.00, 0.02, 0.04, 0.06, 0.08,  0.10,  0.20,  0.40,  0.60,  0.80,  1.00]",array of motor fraction of peak power at which efficiencies are known. Can be left blank.
+,mc_eff_map,"[0.83, 0.85,    0.87,  0.89,  0.90,  0.91,  0.93,  0.94,  0.94,  0.93,  0.92]",array of motor efficiencies corresponding to fraction of peak power generic motor. Can be left blank.
+,mc_sec_to_peak_pwr,4.8,lag/delay for motor to reach peak power
+,mc_pe_kg_per_kw,0.833,motor weight per power scale factor to be added to mcPePaseKg
+,mc_pe_base_kg,21.6,base motor weight
 ,mcPeakEffOverride,0.2,
-ESS / Battery,maxEssKw,0.1,max battery power output
-,maxEssKwh,0.3,max battery energy storage
-,essKgPerKwh,8.9,batter base weight
-,essBaseKg,75.8,battery weight per power scaling
-,essRoundTripEff,0.97,battery round trip efficiency
-,essLifeCoefA,110.8,
-,essLifeCoefB,-0.6811,
-,minSoc,0.1,minimum battery SOC
-,maxSoc,0.95,maximum battery SOC
-,essDischgToFcMaxEffPerc,0.3,
-,essChgToFcMaxEffPerc,0.3,
-Wheels,wheelInertiaKgM2,0.815,wheel inertia
-,numWheels,4,number of wheels
-,wheelRrCoef,0.0101,wheel rolling resistance
-,wheelRadiusM,0.336,wheel radius
-,wheelCoefOfFric,0.8,wheel coefficient of friction for traction calculations
-HEV Controls,maxAccelBufferMph,60.3,
-,maxAccelBufferPercOfUseableSoc,0.2,
-,percHighAccBuf,0.8,
-,mphFcOn,55.8,
-,kwDemandFcOn,100.8,
-,maxRegen,0.98,
-,stopStart,FALSE,is this a stop/start micro-HEV?
-,forceAuxOnFC,FALSE,
-Misc.,altEff,0.9,alternator efficiency
-,chgEff,0.86,charger efficiency
-,auxKw,0.7,
-,transKg,114.9,
-,transEff,0.92,
-,essToFuelOkError,0.005,
-Vehicle Performance Specs,valUddsMpgge,27.9,
-,valHwyMpgge,27.9,
-,valCombMpgge,27.9,
-,valUddsKwhPerMile,0.3,
-,valHwyKwhPerMile,0.3,
-,valCombKwhPerMile,0.3,
-,valCdRangeMi,33.3,
-,valConst65MphKwhPerMile,0.3,
-,valConst60MphKwhPerMile,0.3,
-,valConst55MphKwhPerMile,0.3,
-,valConst45MphKwhPerMile,0.3,
-,valUnadjUddsKwhPerMile,0.3,
-,valUnadjHwyKwhPerMile,0.3,
-,val0To60Mph,9.9,
-,valEssLifeMiles,98987678.8,
-,valRangeMiles,99.9,
-,valVehBaseCost,9987.8,
-,valMsrp,98789.8,
+ESS / Battery,ess_max_kw,0.1,max battery power output
+,ess_max_kwh,0.3,max battery energy storage
+,ess_kg_per_kwh,8.9,batter base weight
+,ess_base_kg,75.8,battery weight per power scaling
+,ess_round_trip_eff,0.97,battery round trip efficiency
+,ess_life_coef_a,110.8,
+,ess_life_coef_b,-0.6811,
+,min_soc,0.1,minimum battery SOC
+,max_soc,0.95,maximum battery SOC
+,ess_dischg_to_fc_max_eff_perc,0.3,
+,ess_chg_to_fc_max_eff_perc,0.3,
+Wheels,wheel_inertia_kg_m2,0.815,wheel inertia
+,num_wheels,4,number of wheels
+,wheel_rr_coef,0.0101,wheel rolling resistance
+,wheel_radius_m,0.336,wheel radius
+,wheel_coef_of_fric,0.8,wheel coefficient of friction for traction calculations
+HEV Controls,max_accel_buffer_mph,60.3,
+,max_accel_buffer_perc_of_useable_soc,0.2,
+,perc_high_acc_buf,0.8,
+,mph_fc_on,55.8,
+,kw_demand_fc_on,100.8,
+,max_regen,0.98,
+,stop_start,FALSE,is this a stop/start micro-HEV?
+,force_aux_on_fc,FALSE,
+Misc.,alt_eff,0.9,alternator efficiency
+,chg_eff,0.86,charger efficiency
+,aux_kw,0.7,
+,trans_kg,114.9,
+,trans_eff,0.92,
+,ess_to_fuel_ok_error,0.005,
+Vehicle Performance Specs,val_udds_mpgge,27.9,
+,val_hwy_mpgge,27.9,
+,val_comb_mpgge,27.9,
+,val_udds_kwh_per_mile,0.3,
+,val_hwy_kwh_per_mile,0.3,
+,val_comb_kwh_per_mile,0.3,
+,val_cd_range_mi,33.3,
+,val_const65_mph_kwh_per_mile,0.3,
+,val_const60_mph_kwh_per_mile,0.3,
+,val_const55_mph_kwh_per_mile,0.3,
+,val_const45_mph_kwh_per_mile,0.3,
+,val_unadj_udds_kwh_per_mile,0.3,
+,val_unadj_hwy_kwh_per_mile,0.3,
+,val0_to60_mph,9.9,
+,val_ess_life_miles,98987678.8,
+,val_range_miles,99.9,
+,val_veh_base_cost,9987.8,
+,val_msrp,98789.8,
