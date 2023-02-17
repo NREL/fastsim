@@ -592,38 +592,36 @@ impl RustSimDrive {
         init_soc: f64,
         aux_in_kw_override: Option<Array1<f64>>,
     ) -> Result<(), anyhow::Error> {
-        if self.veh.veh_pt_type != CONV
-            && !(self.veh.min_soc..=self.veh.max_soc).contains(&init_soc)
-        {
-            Err(anyhow!(
-                "provided init_soc={} is outside range min_soc={} to max_soc={}",
-                init_soc,
-                self.veh.min_soc,
-                self.veh.max_soc
-            ))
-        } else {
-            self.init_arrays();
+        ensure!(
+            self.veh.veh_pt_type == CONV
+                || (self.veh.min_soc..=self.veh.max_soc).contains(&init_soc),
+            "provided init_soc={} is outside range min_soc={} to max_soc={}",
+            init_soc,
+            self.veh.min_soc,
+            self.veh.max_soc
+        );
 
-            if let Some(arr) = aux_in_kw_override {
-                self.aux_in_kw = arr;
-            }
+        self.init_arrays();
 
-            self.cyc_met[0] = true;
-            self.cur_soc_target[0] = self.veh.max_soc;
-            self.ess_cur_kwh[0] = init_soc * self.veh.ess_max_kwh;
-            self.soc[0] = init_soc;
-            self.mps_ach[0] = self.cyc0.mps[0];
-            self.mph_ach[0] = self.cyc0.mph_at_i(0);
-
-            if self.sim_params.missed_trace_correction
-                || self.sim_params.idm_allow
-                || self.sim_params.coast_allow
-            {
-                self.cyc = self.cyc0.clone(); // reset the cycle in case it has been manipulated
-            }
-            self.i = 1; // time step counter
-            Ok(())
+        if let Some(arr) = aux_in_kw_override {
+            self.aux_in_kw = arr;
         }
+
+        self.cyc_met[0] = true;
+        self.cur_soc_target[0] = self.veh.max_soc;
+        self.ess_cur_kwh[0] = init_soc * self.veh.ess_max_kwh;
+        self.soc[0] = init_soc;
+        self.mps_ach[0] = self.cyc0.mps[0];
+        self.mph_ach[0] = self.cyc0.mph_at_i(0);
+
+        if self.sim_params.missed_trace_correction
+            || self.sim_params.idm_allow
+            || self.sim_params.coast_allow
+        {
+            self.cyc = self.cyc0.clone(); // reset the cycle in case it has been manipulated
+        }
+        self.i = 1; // time step counter
+        Ok(())
     }
 
     /// Calculate the next speed by the Intelligent Driver Model
