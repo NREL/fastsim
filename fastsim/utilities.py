@@ -330,3 +330,28 @@ def model_file_to_vehdb(model_filename: str | Path):
     DEFAULT_VEHDF = pd.concat([DEFAULT_VEHDF, new_row])
     # Save changes
     DEFAULT_VEHDF.to_csv(DEFAULT_VEH_DB, index=False)
+
+
+def full_vehdb_to_model_files(extension: str = "yaml"):
+    import fastsim
+    for selection in fastsim.vehicle.DEFAULT_VEHDF.selection:
+        try:
+            vehdb_entry_to_model_file(selection, extension)
+        except FileExistsError:
+            # Raised by `open(..., "x")` if file already exists
+            pass
+
+
+def vehdb_entry_to_model_file(selection: int, extension: str = "yaml"):
+    import fastsim
+    assert extension in ("yaml", "json"), "file extension must be yaml or json"
+    veh = fastsim.vehicle.Vehicle.from_vehdb(selection).to_rust()
+    filename = veh.scenario_name.replace(" ", "_")+"."+extension
+    for disallowed_character in ("(", ")"):
+        filename = filename.replace(disallowed_character, "")
+    filepath = fastsim.package_root() / "resources/vehdb" / filename
+    with open(filepath, "x") as f:
+        if extension == "yaml":
+            f.write(veh.to_yaml())
+        elif extension == "json":
+            f.write(veh.to_json())
