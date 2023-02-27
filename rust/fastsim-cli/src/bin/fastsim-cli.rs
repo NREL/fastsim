@@ -149,7 +149,6 @@ pub fn main() {
     }
     .unwrap();
 
-
     #[cfg(not(windows))]
     macro_rules! main_separator {
         () => {
@@ -192,13 +191,13 @@ pub fn main() {
             main_separator!(),
             "HHDDTCruiseSmooth.csv"
         ));
-        let cyc = RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap();
+        let cyc =
+            RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap();
         let mut sim_drive = RustSimDrive::new(cyc, veh);
         // // this does nothing if it has already been called for the constructed `sim_drive`
         sim_drive.sim_drive(None, None).unwrap();
         println!("{}", sim_drive.mpgge);
-    }
-    else {
+    } else {
         let mut sim_drive = RustSimDrive::new(cyc, veh);
         // // this does nothing if it has already been called for the constructed `sim_drive`
         sim_drive.sim_drive(None, None).unwrap();
