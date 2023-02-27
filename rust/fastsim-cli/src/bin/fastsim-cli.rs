@@ -84,15 +84,27 @@ struct AdoptResults {
     // add more results here
 }
 
-impl AdoptResults {
-    pub fn to_json(&self) -> String {
+#[derive(Debug, Deserialize, Serialize)]
+#[allow(non_snake_case)]
+struct AdoptHDResults {
+    adjCombMpgge: f64,
+    rangeMiles: f64,
+    UF: f64,
+    adjCombKwhPerMile: f64,
+    accel: f64,
+    // add more results here
+}
+
+trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
+    fn to_json(&self) -> String {
         serde_json::to_string(&self).unwrap()
     }
 }
 
+impl<T> SerdeAPI for T where T: Serialize + for<'a> Deserialize<'a> {}
+
 pub fn main() {
     let fastsim_api = FastSimApi::parse();
-    let mut veh = RustVehicle::mock_vehicle();
 
     if let Some(_cyc_json_str) = fastsim_api.cyc {
         panic!("Need to implement: let cyc = RustCycle::from_json(cyc_json_str)");
@@ -101,6 +113,7 @@ pub fn main() {
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
         if cyc_file_path == *"coastdown" {
             if fastsim_api.a.is_some() && fastsim_api.b.is_some() && fastsim_api.c.is_some() {
+                let mut veh = RustVehicle::mock_vehicle();
                 let (drag_coeff, wheel_rr_coeff) = abc_to_drag_coeffs(
                     &mut veh,
                     fastsim_api.a.unwrap(),
@@ -123,13 +136,16 @@ pub fn main() {
         }
     } else {
         //TODO? use pathbuff to string, for robustness
-        Ok(RustCycle::new(vec![0.0],vec![0.0],vec![0.0],vec![0.0],"".to_string()))
+        Ok(RustCycle::new(
+            vec![0.0],
+            vec![0.0],
+            vec![0.0],
+            vec![0.0],
+            String::from("")
+        ))
     }
     .unwrap();
-
-    // let veh = RustVehicle::mock_vehicle();
-
-    let veh: RustVehicle = if let Some(veh_string) = fastsim_api.veh {
+    let veh = if let Some(veh_string) = fastsim_api.veh {
         if fastsim_api.adopt != None {
             let veh_string = json_regex(veh_string);
             RustVehicle::from_str(&veh_string)
