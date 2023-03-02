@@ -13,14 +13,16 @@ props = params.PhysicalProperties()
 R_air = 287  # J/(kg*K)
 
 
-def abc_to_drag_coeffs(veh: Vehicle,
-                       a_lbf: float, b_lbf__mph: float, c_lbf__mph2: float,
-                       custom_rho: bool = False,
-                       custom_rho_temp_degC: float = 20.,
-                       custom_rho_elevation_m: float = 180.,
-                       simdrive_optimize: bool = True,
-                       show_plots: bool = False,
-                       use_rust=True) -> Tuple[float, float]:
+def abc_to_drag_coeffs(
+    veh: Vehicle,
+    a_lbf: float, b_lbf__mph: float, c_lbf__mph2: float,
+    custom_rho: bool = False,
+    custom_rho_temp_degC: float = 20.,
+    custom_rho_elevation_m: float = 180.,
+    simdrive_optimize: bool = True,
+    show_plots: bool = False,
+    use_rust=True
+) -> Tuple[float, float]:
     """For a given vehicle and target A, B, and C
     coefficients; calculate and return drag and rolling resistance
     coefficients.
