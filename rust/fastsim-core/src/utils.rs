@@ -163,6 +163,31 @@ pub fn interpolate(
     yl + dydx * (x - xl)
 }
 
+const R_AIR: f64 = 287.; // J / (kg * K)
+
+/// Returns air density [kg/m**3] for given elevation and temperature.
+/// Source: https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html
+/// Arguments:
+/// ----------
+/// temp_deg_c : ambient temperature [°C]
+/// elevation_m : (Optional) elevation above sea level [m].
+///     Default 180 m is for Chicago, IL
+#[cfg_attr(feature = "pyo3", pyfunction)]
+pub fn get_rho_air(temp_deg_c: f64, elevation_m: Option<f64>) -> f64 {
+    let temp_standard = 15.04 - 0.00649 * elevation_m.unwrap_or(180.0); // nasa [degC]
+    let p = 101.29e3 * ((temp_standard + 273.1) / 288.08).powf(5.256); // nasa [Pa]
+    let rho = p / (R_AIR * (temp_deg_c + 273.15)); // [kg/m**3]
+
+    rho
+}
+
+#[cfg(feature = "pyo3")]
+#[allow(unused)]
+pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
+    m.add_function(wrap_pyfunction!(get_rho_air, m)?)?;
+    Ok(())
+}
+
 #[cfg(feature = "pyo3")]
 pub mod array_wrappers {
     use proc_macros::add_pyo3_api;

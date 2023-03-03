@@ -100,7 +100,7 @@ class ModelObjectives(object):
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
-        Dict[str, fsim.simdrive.SimDrive],
+        Dict[str, fsim.RustSimDrive],
     ]:
         # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
         # This would make `from typing import Union` unnecessary
