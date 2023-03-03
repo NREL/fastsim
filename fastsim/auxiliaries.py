@@ -1,7 +1,5 @@
 """Auxiliary functions that require fastsim and provide faster access FASTSim vehicle properties."""
 import fastsim as fsim
-from fastsim.vehicle import Vehicle
-from fastsim import parameters as params
 from scipy.optimize import minimize, curve_fit
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,141 +7,139 @@ from typing import Tuple, List
 
 from fastsim.utilities import get_rho_air
 
-props = params.PhysicalProperties()
-R_air = 287  # J/(kg*K)
+# TODO: port to rust
+# def abc_to_drag_coeffs(
+#     veh: Vehicle,
+#     a_lbf: float, b_lbf__mph: float, c_lbf__mph2: float,
+#     custom_rho: bool = False,
+#     custom_rho_temp_degC: float = 20.,
+#     custom_rho_elevation_m: float = 180.,
+#     simdrive_optimize: bool = True,
+#     show_plots: bool = False,
+#     use_rust=True
+# ) -> Tuple[float, float]:
+#     """For a given vehicle and target A, B, and C
+#     coefficients; calculate and return drag and rolling resistance
+#     coefficients.
 
+#     Arguments:
+#     ----------
+#     veh: vehicle.Vehicle with all parameters correct except for drag and rolling resistance coefficients
+#     a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]
+#     custom_rho: if True, use `fastsim.utilities.get_rho_air()` to calculate the current ambient density
+#     custom_rho_temp_degC: ambient temperature [degree C] for `get_rho_air()`; 
+#         will only be used when `custom_rho` is True
+#     custom_rho_elevation_m: location elevation [degree C] for `get_rho_air()`; 
+#         will only be used when `custom_rho` is True; default value is elevation of Chicago, IL
+#     simdrive_optimize: if True, use `SimDrive` to optimize the drag and rolling resistance; 
+#         otherwise, directly use target A, B, C to calculate the results
+#     show_plots: if True, plots are shown
+#     use_rust: if True, use rust implementation of drag coefficient calculation.
+#     """
 
-def abc_to_drag_coeffs(
-    veh: Vehicle,
-    a_lbf: float, b_lbf__mph: float, c_lbf__mph2: float,
-    custom_rho: bool = False,
-    custom_rho_temp_degC: float = 20.,
-    custom_rho_elevation_m: float = 180.,
-    simdrive_optimize: bool = True,
-    show_plots: bool = False,
-    use_rust=True
-) -> Tuple[float, float]:
-    """For a given vehicle and target A, B, and C
-    coefficients; calculate and return drag and rolling resistance
-    coefficients.
+#     # TODO: allows air density read APIs for whole project; `get_rho_air()` not used for `SimDrive` yet
+#     cur_ambient_air_density_kg__m3 = get_rho_air(
+#         custom_rho_temp_degC, custom_rho_elevation_m) if custom_rho else props.air_density_kg_per_m3
 
-    Arguments:
-    ----------
-    veh: vehicle.Vehicle with all parameters correct except for drag and rolling resistance coefficients
-    a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]
-    custom_rho: if True, use `fastsim.utilities.get_rho_air()` to calculate the current ambient density
-    custom_rho_temp_degC: ambient temperature [degree C] for `get_rho_air()`; 
-        will only be used when `custom_rho` is True
-    custom_rho_elevation_m: location elevation [degree C] for `get_rho_air()`; 
-        will only be used when `custom_rho` is True; default value is elevation of Chicago, IL
-    simdrive_optimize: if True, use `SimDrive` to optimize the drag and rolling resistance; 
-        otherwise, directly use target A, B, C to calculate the results
-    show_plots: if True, plots are shown
-    use_rust: if True, use rust implementation of drag coefficient calculation.
-    """
+#     vmax_mph = 70.0
 
-    # TODO: allows air density read APIs for whole project; `get_rho_air()` not used for `SimDrive` yet
-    cur_ambient_air_density_kg__m3 = get_rho_air(
-        custom_rho_temp_degC, custom_rho_elevation_m) if custom_rho else props.air_density_kg_per_m3
+#     a_newton = a_lbf * params.N_PER_LBF
+#     b_newton__mps = b_lbf__mph * params.N_PER_LBF * params.MPH_PER_MPS
+#     c_newton__mps2 = c_lbf__mph2 * params.N_PER_LBF * \
+#         params.MPH_PER_MPS * params.MPH_PER_MPS
 
-    vmax_mph = 70.0
+#     cd_len = 300
 
-    a_newton = a_lbf * params.N_PER_LBF
-    b_newton__mps = b_lbf__mph * params.N_PER_LBF * params.MPH_PER_MPS
-    c_newton__mps2 = c_lbf__mph2 * params.N_PER_LBF * \
-        params.MPH_PER_MPS * params.MPH_PER_MPS
+#     cyc = fsim.cycle.Cycle.from_dict({
+#         'time_s': np.arange(0, cd_len),
+#         'mps': np.linspace(vmax_mph / params.MPH_PER_MPS, 0, cd_len)
+#     })
 
-    cd_len = 300
+#     if use_rust:
+#         cyc = cyc.to_rust()
+#         veh = veh.to_rust()
 
-    cyc = fsim.cycle.Cycle.from_dict({
-        'time_s': np.arange(0, cd_len),
-        'mps': np.linspace(vmax_mph / params.MPH_PER_MPS, 0, cd_len)
-    })
+#     # polynomial function for pounds vs speed
+#     dyno_func_lb = np.poly1d([c_lbf__mph2, b_lbf__mph, a_lbf])
 
-    if use_rust:
-        cyc = cyc.to_rust()
-        veh = veh.to_rust()
+#     def get_err(x):
+#         """fastsim-style solution for drag force on vehicle.
+#         Arguments:
+#         ---------
+#         x: (speed: array of vehicle speeds [mps], dragCoef: drag coefficient [-])
+#         wheelRrCoef: rolling resistance coefficient [-]
+#         """
+#         drag_coef, wheel_rr_coef = x
+#         veh.drag_coef = drag_coef
+#         veh.wheel_rr_coef = wheel_rr_coef
 
-    # polynomial function for pounds vs speed
-    dyno_func_lb = np.poly1d([c_lbf__mph2, b_lbf__mph, a_lbf])
+#         if use_rust:
+#             sd_coast = fsim.simdrive.RustSimDrive(cyc, veh)
+#         else:
+#             sd_coast = fsim.simdrive.SimDrive(cyc, veh)
+#         sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
+#         sd_coast.sim_drive()
 
-    def get_err(x):
-        """fastsim-style solution for drag force on vehicle.
-        Arguments:
-        ---------
-        x: (speed: array of vehicle speeds [mps], dragCoef: drag coefficient [-])
-        wheelRrCoef: rolling resistance coefficient [-]
-        """
-        drag_coef, wheel_rr_coef = x
-        veh.drag_coef = drag_coef
-        veh.wheel_rr_coef = wheel_rr_coef
+#         cutoff = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
 
-        if use_rust:
-            sd_coast = fsim.simdrive.RustSimDrive(cyc, veh)
-        else:
-            sd_coast = fsim.simdrive.SimDrive(cyc, veh)
-        sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
-        sd_coast.sim_drive()
+#         err = fsim.cal.get_error_val(
+#             (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) /
+#                 np.array(sd_coast.mps_ach))[:cutoff],
+#             (dyno_func_lb(sd_coast.mph_ach) * fsim.params.N_PER_LBF)[:cutoff],
+#             np.array(cyc.time_s)[:cutoff],
+#         )
 
-        cutoff = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
+#         return err
 
-        err = fsim.cal.get_error_val(
-            (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) /
-                np.array(sd_coast.mps_ach))[:cutoff],
-            (dyno_func_lb(sd_coast.mph_ach) * fsim.params.N_PER_LBF)[:cutoff],
-            np.array(cyc.time_s)[:cutoff],
-        )
+#     if simdrive_optimize:
+#         res = minimize(get_err, x0=np.array([0.3, 0.01]))
+#         (drag_coef, wheel_rr_coef) = res.x
 
-        return err
+#         # TODO: Surpress unnecessary excessive warnings on screen
 
-    if simdrive_optimize:
-        res = minimize(get_err, x0=np.array([0.3, 0.01]))
-        (drag_coef, wheel_rr_coef) = res.x
+#     else:
+#         drag_coef = c_newton__mps2 / \
+#             (0.5 * veh.frontal_area_m2 * cur_ambient_air_density_kg__m3)
+#         wheel_rr_coef = a_newton / veh.veh_kg / props.a_grav_mps2
 
-        # TODO: Surpress unnecessary excessive warnings on screen
+#     veh.drag_coef, veh.wheel_rr_coef = drag_coef, wheel_rr_coef
 
-    else:
-        drag_coef = c_newton__mps2 / \
-            (0.5 * veh.frontal_area_m2 * cur_ambient_air_density_kg__m3)
-        wheel_rr_coef = a_newton / veh.veh_kg / props.a_grav_mps2
+#     sd_coast = fsim.simdrive.RustSimDrive(
+#         cyc, veh) if use_rust else fsim.simdrive.SimDrive(cyc, veh)
+#     sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
+#     sd_coast.sim_drive()
 
-    veh.drag_coef, veh.wheel_rr_coef = drag_coef, wheel_rr_coef
+#     cutoff_val = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
 
-    sd_coast = fsim.simdrive.RustSimDrive(
-        cyc, veh) if use_rust else fsim.simdrive.SimDrive(cyc, veh)
-    sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
-    sd_coast.sim_drive()
+#     if show_plots:
+#         plt.figure()
+#         plt.plot(
+#             np.array(sd_coast.mph_ach)[:cutoff_val],
+#             (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) /
+#              np.array(sd_coast.mps_ach) / fsim.params.N_PER_LBF)[:cutoff_val],
+#             label='sim_drive simulated road load')
+#         plt.plot(np.array(sd_coast.mph_ach)[:cutoff_val], (dyno_func_lb(
+#             sd_coast.mph_ach))[:cutoff_val], label='ABCs calculated road load')
+#         plt.legend()
+#         plt.xlabel('Speed [mph]')
+#         plt.ylabel('Road Load [lb]')
+#         plt.title("Simulated vs Calculated Road Load with Speed")
+#         plt.show()
 
-    cutoff_val = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
+#         fig, ax = plt.subplots(2, 1, sharex=True)
+#         ax[0].plot(np.array(cyc.time_s)[:cutoff_val],
+#                    (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)
+#                             ) / np.array(sd_coast.mps_ach))[:cutoff_val]
+#                    )
+#         ax[0].set_ylabel("Road Load [N]")
 
-    if show_plots:
-        plt.figure()
-        plt.plot(
-            np.array(sd_coast.mph_ach)[:cutoff_val],
-            (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) /
-             np.array(sd_coast.mps_ach) / fsim.params.N_PER_LBF)[:cutoff_val],
-            label='sim_drive simulated road load')
-        plt.plot(np.array(sd_coast.mph_ach)[:cutoff_val], (dyno_func_lb(
-            sd_coast.mph_ach))[:cutoff_val], label='ABCs calculated road load')
-        plt.legend()
-        plt.xlabel('Speed [mph]')
-        plt.ylabel('Road Load [lb]')
-        plt.title("Simulated vs Calculated Road Load with Speed")
-        plt.show()
+#         ax[-1].plot(np.array(cyc.time_s)[:cutoff_val],
+#                     np.array(sd_coast.mph_ach)[:cutoff_val])
+#         ax[-1].set_ylabel("mph")
+#         ax[-1].set_xlabel('Time [s]')
+#         plt.show()
+#     return drag_coef, wheel_rr_coef
 
-        fig, ax = plt.subplots(2, 1, sharex=True)
-        ax[0].plot(np.array(cyc.time_s)[:cutoff_val],
-                   (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)
-                            ) / np.array(sd_coast.mps_ach))[:cutoff_val]
-                   )
-        ax[0].set_ylabel("Road Load [N]")
-
-        ax[-1].plot(np.array(cyc.time_s)[:cutoff_val],
-                    np.array(sd_coast.mph_ach)[:cutoff_val])
-        ax[-1].set_ylabel("mph")
-        ax[-1].set_xlabel('Time [s]')
-        plt.show()
-    return drag_coef, wheel_rr_coef
 
 
 def drag_coeffs_to_abc(veh,

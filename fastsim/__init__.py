@@ -33,7 +33,6 @@ def _exception_handler(exc_type, exc_value, exc_traceback):
         exc_type, exc_value, exc_traceback))
 sys.excepthook = _exception_handler
 
-from . import parameters as params
 from . import utilities as utils
 from . import simdrive, vehicle, cycle, calibration, tests
 from . import calibration as cal
