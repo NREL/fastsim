@@ -1,17 +1,17 @@
-//! Module containing implementations for [simdrive](super::simdrive).
+//! Module containing implementations for [simdrive](crate::simdrive).
 
-use super::cycle::{
+use crate::cycle::{
     accel_array_for_constant_jerk, accel_for_constant_jerk, calc_constant_jerk_trajectory,
     create_dist_and_target_speeds_by_microtrip, detect_passing, extend_cycle,
     trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance, PassingInfo,
     RustCycle, RustCycleCache,
 };
-use super::params;
-use super::simdrive::{RustSimDrive, RustSimDriveParams};
-use super::utils::{
+use crate::params;
+use crate::simdrive::{RustSimDrive, RustSimDriveParams};
+use crate::utils::{
     add_from, arrmax, first_grtr, max, min, ndarrcumsum, ndarrmax, ndarrmin, ndarrunique,
 };
-use super::vehicle::*;
+use crate::vehicle::*;
 use crate::imports::*;
 
 struct RendezvousTrajectory {
