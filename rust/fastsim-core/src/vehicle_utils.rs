@@ -2,7 +2,7 @@
 
 use argmin::core::{CostFunction, Error, Executor, OptimizationResult, State};
 use argmin::solver::neldermead::NelderMead;
-use curl::easy::Easy;
+use curl::easy::{Easy, SslOpt};
 use ndarray::{array, Array1};
 use polynomial::Polynomial;
 use serde_xml_rs::from_str;
@@ -277,7 +277,13 @@ where
     R: std::io::BufRead,
 {
     // TODO: See if there is a way to detect SSL connect error and tell user to disconnect from VPN
+    // NOTE: `ssl_opt.no_revoke(true);` "Tells libcurl to disable certificate
+    // ... revocation checks for those SSL backends where such behavior is present."
+    // ... see https://docs.rs/curl/latest/curl/easy/struct.SslOpt.html#method.no_revoke
     let mut handle: Easy = Easy::new();
+    let mut ssl_opt: SslOpt = SslOpt::new();
+    ssl_opt.no_revoke(true);
+    handle.ssl_options(&ssl_opt)?;
     let url: String = format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year={year}&make={make}&model={model}").replace(' ', "%20");
     handle.url(&url)?;
     let mut buf: String = String::new();
