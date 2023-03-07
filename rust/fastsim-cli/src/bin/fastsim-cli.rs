@@ -145,6 +145,9 @@ pub fn main() {
         ))
     }
     .unwrap();
+
+    // TODO: put in logic here for loading vehicle for adopt-hd
+    // with same file format as regular adopt and same outputs retured
     let veh = if let Some(veh_string) = fastsim_api.veh {
         if fastsim_api.adopt != None {
             let veh_string = json_regex(veh_string);
