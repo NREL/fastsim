@@ -252,6 +252,28 @@ struct VehicleDataEPA {
     c_lbf_per_mph2: f64,
 }
 
+fn read_url(url: String) -> Result<String, Error>
+{
+    // NOTE: `ssl_opt.no_revoke(true);` "Tells libcurl to disable certificate
+    // ... revocation checks for those SSL backends where such behavior is present."
+    // ... see https://docs.rs/curl/latest/curl/easy/struct.SslOpt.html#method.no_revoke
+    let mut handle: Easy = Easy::new();
+    let mut ssl_opt: SslOpt = SslOpt::new();
+    ssl_opt.no_revoke(true);
+    handle.ssl_options(&ssl_opt)?;
+    handle.url(&url)?;
+    let mut buf: String = String::new();
+    {
+        let mut transfer = handle.transfer();
+        transfer.write_function(|data| {
+            buf.push_str(std::str::from_utf8(data).unwrap());
+            Ok(data.len())
+        })?;
+        transfer.perform()?;
+    }
+    Ok(buf)
+}
+
 /// Gets data from fueleconomy.gov for the given vehicle
 ///
 /// Arguments:
@@ -277,25 +299,10 @@ where
     R: std::io::BufRead,
 {
     // TODO: See if there is a way to detect SSL connect error and tell user to disconnect from VPN
-    // NOTE: `ssl_opt.no_revoke(true);` "Tells libcurl to disable certificate
-    // ... revocation checks for those SSL backends where such behavior is present."
-    // ... see https://docs.rs/curl/latest/curl/easy/struct.SslOpt.html#method.no_revoke
-    let mut handle: Easy = Easy::new();
-    let mut ssl_opt: SslOpt = SslOpt::new();
-    ssl_opt.no_revoke(true);
-    handle.ssl_options(&ssl_opt)?;
-    let url: String = format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year={year}&make={make}&model={model}").replace(' ', "%20");
-    handle.url(&url)?;
-    let mut buf: String = String::new();
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            buf.push_str(std::str::from_utf8(data).unwrap());
-            Ok(data.len())
-        })?;
-        transfer.perform()?;
-    }
-
+    let buf: String = read_url(
+        format!(
+            "https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year={year}&make={make}&model={model}")
+        .replace(' ', "%20"))?;
     let vehicle_options: VehicleOptionsFE = from_str(&buf)?;
     let mut index: usize = 0;
     // TODO: See if there is a more elegant way to handle this
@@ -312,19 +319,10 @@ where
         index = input.trim().parse()?;
     }
 
-    handle.url(&format!(
-        "https://www.fueleconomy.gov/ws/rest/vehicle/{}",
-        vehicle_options.options[index].id
-    ))?;
-    let mut veh_buf: String = String::new();
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            veh_buf.push_str(std::str::from_utf8(data).unwrap());
-            Ok(data.len())
-        })?;
-        transfer.perform()?;
-    }
+    let veh_buf: String = read_url(
+        format!(
+            "https://www.fueleconomy.gov/ws/rest/vehicle/{}",
+            vehicle_options.options[index].id))?;
 
     let mut vehicle_data_fe: VehicleDataFE = from_str(&veh_buf)?;
     if vehicle_data_fe.drive.contains("4-Wheel") {
@@ -885,20 +883,10 @@ where
     W: std::io::Write,
     R: std::io::BufRead,
 {
-    let mut handle: Easy = Easy::new();
-    let url: String =
+    let buf: String = read_url(
         format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year={year}&make={make}")
-            .replace(' ', "%20");
-    handle.url(&url)?;
-    let mut buf: String = String::new();
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            buf.push_str(std::str::from_utf8(data).unwrap());
-            Ok(data.len())
-        })?;
-        transfer.perform()?;
-    }
+        .replace(' ', "%20")
+    )?;
 
     let model_list: VehicleModelsFE = from_str(&buf)?;
 
@@ -929,19 +917,10 @@ where
     W: std::io::Write,
     R: std::io::BufRead,
 {
-    let mut handle: Easy = Easy::new();
-    let url: String = format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year={year}")
-        .replace(' ', "%20");
-    handle.url(&url)?;
-    let mut buf: String = String::new();
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            buf.push_str(std::str::from_utf8(data).unwrap());
-            Ok(data.len())
-        })?;
-        transfer.perform()?;
-    }
+    let buf: String = read_url(
+        format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year={year}")
+        .replace(' ', "%20")
+    )?;
 
     let make_list: VehicleMakesFE = from_str(&buf)?;
 
