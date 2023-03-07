@@ -1,9 +1,12 @@
 //! Module containing FASTSim parameters.
 
 use crate::imports::*;
-use crate::proc_macros::add_pyo3_api;
+use crate::proc_macros::{add_pyo3_api, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
+
+use serde_json::from_str;
+use std::collections::HashMap;
 
 /// Unit conversions that should NEVER change
 pub const MPH_PER_MPS: f64 = 2.2369;
@@ -19,7 +22,7 @@ pub const LBS_PER_KG: f64 = 2.20462;
 pub const MODERN_MAX: f64 = 0.95;
 
 /// Struct containing time trace data
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, ApproxEq)]
 #[allow(non_snake_case)]
 #[add_pyo3_api(
     #[allow(non_snake_case)]
@@ -116,3 +119,72 @@ pub const LARGE_BASELINE_EFF: [f64; 11] = [
 pub const SMALL_BASELINE_EFF: [f64; 11] = [
     0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92,
 ];
+
+pub const CHG_EFF: f64 = 0.86; // charger efficiency for PEVs, this should probably not be hard coded long term
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, ApproxEq)]
+pub struct RustLongParams {
+    #[serde(rename = "rechgFreqMiles")]
+    pub rechg_freq_miles: Vec<f64>,
+    #[serde(rename = "ufArray")]
+    pub uf_array: Vec<f64>,
+    #[serde(rename = "LD_FE_Adj_Coef")]
+    pub ld_fe_adj_coef: AdjCoefMap,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, ApproxEq)]
+pub struct AdjCoefMap {
+    #[serde(flatten)]
+    pub adj_coef_map: HashMap<String, AdjCoef>,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
+pub struct AdjCoef {
+    #[serde(rename = "City Intercept")]
+    pub city_intercept: f64,
+    #[serde(rename = "City Slope")]
+    pub city_slope: f64,
+    #[serde(rename = "Highway Intercept")]
+    pub hwy_intercept: f64,
+    #[serde(rename = "Highway Slope")]
+    pub hwy_slope: f64,
+}
+
+impl Default for RustLongParams {
+    fn default() -> Self {
+        let long_params_str: &str = include_str!("../../../fastsim/resources/longparams.json");
+        let long_params: Self = from_str(long_params_str).unwrap();
+        return long_params;
+    }
+}
+
+#[cfg(test)]
+mod params_test {
+    use super::*;
+
+    #[test]
+    fn test_get_long_params() {
+        let long_params: RustLongParams = RustLongParams::default();
+
+        let adj_coef_2008: AdjCoef = AdjCoef {
+            city_intercept: 0.003259,
+            city_slope: 1.1805,
+            hwy_intercept: 0.001376,
+            hwy_slope: 1.3466,
+        };
+        let adj_coef_2017: AdjCoef = AdjCoef {
+            city_intercept: 0.004091,
+            city_slope: 1.1601,
+            hwy_intercept: 0.003191,
+            hwy_slope: 1.2945,
+        };
+
+        let mut adj_coef_map: HashMap<String, AdjCoef> = HashMap::new();
+        adj_coef_map.insert(String::from("2008"), adj_coef_2008);
+        adj_coef_map.insert(String::from("2017"), adj_coef_2017);
+
+        assert_eq!(long_params.rechg_freq_miles.len(), 602);
+        assert_eq!(long_params.uf_array.len(), 602);
+        assert_eq!(long_params.ld_fe_adj_coef.adj_coef_map, adj_coef_map);
+    }
+}

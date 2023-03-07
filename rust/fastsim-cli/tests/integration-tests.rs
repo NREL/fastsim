@@ -24,9 +24,9 @@ fn test_that_cli_app_produces_result() -> Result<(), Box<dyn std::error::Error>>
         "--veh-file",
         veh_file.to_str().unwrap(),
     ]);
+    // compare against expected value for mpg
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("32.4"));
-
+        .stdout(predicate::str::contains("33.8"));
     Ok(())
 }

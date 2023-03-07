@@ -1,7 +1,7 @@
 """Various optional utilities that may support some applications of FASTSim."""
 
 from __future__ import annotations
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import numpy as np
 from fastsim.rustext import RUST_AVAILABLE
 from fastsim import parameters as params
@@ -10,6 +10,7 @@ import re
 import datetime
 import logging
 from pathlib import Path
+from contextlib import contextmanager
 
 sns.set()
 
@@ -85,15 +86,15 @@ def camel_to_snake(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
 
 
-def set_log_level(level: str | int):
+def set_log_level(level: str | int) -> int:
     """
     Sets logging level for both Python and Rust FASTSim.
-    The default logging level is WARNING.
+    The default logging level is WARNING (30).
     https://docs.python.org/3/library/logging.html#logging-levels
 
     Parameters
     ----------
-    level: str | int
+    level: `str` | `int`
         Logging level to set. `str` level name or `int` logging level
         
         =========== ================
@@ -104,21 +105,70 @@ def set_log_level(level: str | int):
         WARNING     30
         INFO        20
         DEBUG       10
-        NOTSET      0        
+        NOTSET      0
+    
+    Returns
+    -------
+    `int`
+        Previous log level
     """
     # Map string name to logging level
     if isinstance(level, str):
         level = logging._nameToLevel[level]
-    # Set logging level
-    logging.getLogger("fastsim").setLevel(level)
+    # Extract previous log level and set new log level
+    fastsim_logger = logging.getLogger("fastsim")
+    previous_level = fastsim_logger.level
+    fastsim_logger.setLevel(level)
     if RUST_AVAILABLE:
-        logging.getLogger("fastsimrust").setLevel(level)
+        fastsimrust_logger = logging.getLogger("fastsimrust")
+        fastsimrust_logger.setLevel(level)
+    return previous_level
 
-def disable_logging():
-    set_log_level(logging.CRITICAL + 1)
+def disable_logging() -> int:
+    """
+    Disable FASTSim logs from being shown by setting log level
+    to CRITICAL+1 (51).
+    
+    Returns
+    -------
+    `int`
+        Previous log level
+    """
+    return set_log_level(logging.CRITICAL + 1)
 
-def enable_logging():
-    set_log_level(logging.WARNING)
+def enable_logging(level: Optional[int | str] = None):
+    """
+    Re-enable FASTSim logging, optionally to a specified log level,
+    otherwise to the default WARNING (30) level.
+
+    Parameters
+    ----------
+    level: `str` | `int`, optional
+        Logging level to set. `str` level name or `int` logging level.
+        See `utils.set_log_level()` docstring for more details on logging levels.
+    """
+    if level is None:
+        level = logging.WARNING
+    set_log_level(level)
+
+@contextmanager
+def suppress_logging():
+    """
+    Disable, then re-enable FASTSim logging using a context manager.
+    The log level is returned to its previous value.
+    Logging is re-enabled even if the nested code throws an error.
+    
+    Example:
+    ``` python
+    with fastsim.utils.suppress_logging():
+        ...  # do stuff with logging suppressed
+    ```
+    """
+    previous_level = disable_logging()
+    try:
+        yield
+    finally:
+        enable_logging(previous_level)
 
 def set_log_filename(filename: str | Path):
     handler = logging.FileHandler(filename)
@@ -260,3 +310,48 @@ def set_attrs_with_path(
 
 def print_dt():
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+
+def model_file_to_vehdb(model_filename: str | Path):
+    # Imports
+    import pandas as pd
+    from fastsim.vehicle import VEHICLE_DIR, DEFAULT_VEH_DB, DEFAULT_VEHDF
+    # Find last selection in database
+    last_selection = DEFAULT_VEHDF.iloc[-1].selection
+    # Generate new row from CSV model file
+    new_veh = pd.read_csv(
+        VEHICLE_DIR / model_filename,
+        usecols = ["Param Name", "Param Value"],
+        index_col="Param Name",
+    )
+    new_row = pd.DataFrame({k: [new_veh.loc[k]["Param Value"]] for k in new_veh.index})
+    new_row["selection"] = last_selection + 1
+    # Append new row to vehicle database
+    DEFAULT_VEHDF = pd.concat([DEFAULT_VEHDF, new_row])
+    # Save changes
+    DEFAULT_VEHDF.to_csv(DEFAULT_VEH_DB, index=False)
+
+
+def full_vehdb_to_model_files(extension: str = "yaml"):
+    import fastsim
+    for selection in fastsim.vehicle.DEFAULT_VEHDF.selection:
+        try:
+            vehdb_entry_to_model_file(selection, extension)
+        except FileExistsError:
+            # Raised by `open(..., "x")` if file already exists
+            pass
+
+
+def vehdb_entry_to_model_file(selection: int, extension: str = "yaml"):
+    import fastsim
+    assert extension in ("yaml", "json"), "file extension must be yaml or json"
+    veh = fastsim.vehicle.Vehicle.from_vehdb(selection).to_rust()
+    filename = veh.scenario_name.replace(" ", "_")+"."+extension
+    for disallowed_character in ("(", ")"):
+        filename = filename.replace(disallowed_character, "")
+    filepath = fastsim.package_root() / "resources/vehdb" / filename
+    with open(filepath, "x") as f:
+        if extension == "yaml":
+            f.write(veh.to_yaml())
+        elif extension == "json":
+            f.write(veh.to_json())

@@ -55,11 +55,17 @@ To do this, a couple of extra steps are required:
 After FASTSim has been installed as editable per the above instructions, you can rebuild and test everything with `sh build_and_test.sh` in Windows bash or `./build_and_test.sh` in Linux/Unix in the `fastsim/` dir.  
 
 # Users with NREL VPN Access
+## Installation as PyPi Package
 Note: the following instructions work only if you are inside NREL VPN:  
 To install and/or update, run
 ```
 pip install fastsim --upgrade --extra-index-url=https://github.nrel.gov/pages/MBAP/mbap-pypi/
 ```
+
+## Adding FASTSim as a Depency in Rust
+Add this line:  
+`fastsim-core = { git = "https://github.nrel.gov/MBAP/fastsim", branch = "rust-port" }`  
+to your Cargo.toml file, modifying the `branch` key as appropriate.  
 
 # Usage
 To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
@@ -112,6 +118,7 @@ in = component input
 out = component output  
 
 # Release Notes
+2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes
 2.0.9 -- support for mac ARM/RISC architecture
 2.0.8 -- performance improvements
 2.0.6 -- `dist_v2_m` fixes and preliminary CAV functionality

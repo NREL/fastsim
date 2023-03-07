@@ -49,6 +49,11 @@ class SimDriveParams(object):
     def __init__(self):
         """Default values that affect simulation behavior.  
         Can be modified after instantiation."""
+        # if True, accuracy will be favored over performance for grade per step estimates
+        # Specifically, for performance, grade for a step will be assumed to be the grade
+        # looked up at step start distance. For accuracy, the actual elevations will be
+        # used. This distinciton only makes a difference for CAV maneuvers.
+        self.favor_grade_accuracy = True
         self.missed_trace_correction = False  # if True, missed trace correction is active, default = False
         # maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
         self.max_time_dilation = 1.0
@@ -208,129 +213,131 @@ class SimDrive(object):
 
     def init_arrays(self):
         self.i = 1  # initialize step counter for possible use outside sim_drive_walk()
+        cyc_len = self.cyc.len
 
         # Component Limits -- calculated dynamically
-        self.cur_max_fs_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_trans_lim_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_fs_lim_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_max_kw_in = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_fc_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_cap_lim_dischg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_ess_max_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_avail_elec_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_cap_lim_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_ess_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_elec_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mc_elec_in_lim_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mc_transi_lim_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_mc_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
+        self.cur_max_fs_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_trans_lim_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_fs_lim_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_max_kw_in = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_fc_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_cap_lim_dischg_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_ess_max_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_avail_elec_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_cap_lim_chg_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_ess_chg_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_elec_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.mc_elec_in_lim_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.mc_transi_lim_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_mc_kw_out = np.zeros(cyc_len, dtype=np.float64)
         self.ess_lim_mc_regen_perc_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)
-        self.ess_lim_mc_regen_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_mech_mc_kw_in = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_trans_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
+        self.ess_lim_mc_regen_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_mech_mc_kw_in = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_trans_kw_out = np.zeros(cyc_len, dtype=np.float64)
 
         # Drive Train
-        self.cyc_trac_kw_req = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_trac_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.spare_trac_kw = np.zeros(self.cyc.len, dtype=np.float64)
+        self.cyc_trac_kw_req = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_trac_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.spare_trac_kw = np.zeros(cyc_len, dtype=np.float64)
         self.cyc_whl_rad_per_sec = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
-        self.cyc_tire_inertia_kw = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)  # oddball
+        self.cyc_tire_inertia_kw = np.zeros(cyc_len, dtype=np.float64)
         self.cyc_whl_kw_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.regen_contrl_lim_kw_perc = np.zeros(
-            self.cyc.len, dtype=np.float64)
-        self.cyc_regen_brake_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_fric_brake_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_trans_kw_out_req = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cyc_met = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.trans_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.trans_kw_in_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_soc_target = np.zeros(self.cyc.len, dtype=np.float64)
-        self.min_mc_kw_2help_fc = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mc_mech_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mc_elec_kw_in_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.aux_in_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.impose_coast = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.roadway_chg_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.min_ess_kw_2help_fc = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_kw_out_ach_pct = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_kw_in_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fs_kw_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fs_cumu_mj_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fs_kwh_out_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_cur_kwh = np.zeros(self.cyc.len, dtype=np.float64)
-        self.soc = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
+        self.cyc_regen_brake_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cyc_fric_brake_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cyc_trans_kw_out_req = np.zeros(cyc_len, dtype=np.float64)
+        self.cyc_met = np.array([False] * cyc_len, dtype=np.bool_)
+        self.trans_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.trans_kw_in_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_soc_target = np.zeros(cyc_len, dtype=np.float64)
+        self.min_mc_kw_2help_fc = np.zeros(cyc_len, dtype=np.float64)
+        self.mc_mech_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.mc_elec_kw_in_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.aux_in_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.impose_coast = np.array([False] * cyc_len, dtype=np.bool_)
+        self.roadway_chg_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.min_ess_kw_2help_fc = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_kw_out_ach_pct = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_kw_in_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fs_kw_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fs_cumu_mj_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.fs_kwh_out_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_cur_kwh = np.zeros(cyc_len, dtype=np.float64)
+        self.soc = np.zeros(cyc_len, dtype=np.float64)
 
         # Vehicle Attributes, Control Variables
         self.regen_buff_soc = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.ess_regen_buff_dischg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.max_ess_regen_buff_chg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.ess_accel_buff_chg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.accel_buff_soc = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.max_ess_accell_buff_dischg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.ess_accel_regen_dischg_kw = np.zeros(
-            self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
         self.mc_elec_in_kw_for_max_fc_eff = np.zeros(
-            self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
         self.elec_kw_req_4ae = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.can_pwr_all_elec = np.array(  # oddball
-            [False] * self.cyc.len, dtype=np.bool_)
+            [False] * cyc_len, dtype=np.bool_)
         self.desired_ess_kw_out_for_ae = np.zeros(
-            self.cyc.len, dtype=np.float64)
-        self.ess_ae_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.er_ae_kw_out = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_desired_kw_4fc_eff = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)
+        self.ess_ae_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.er_ae_kw_out = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_desired_kw_4fc_eff = np.zeros(cyc_len, dtype=np.float64)
         self.ess_kw_if_fc_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
-        self.cur_max_mc_elec_kw_in = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_kw_gap_fr_eff = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)  # oddball
+        self.cur_max_mc_elec_kw_in = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_kw_gap_fr_eff = np.zeros(cyc_len, dtype=np.float64)
         self.er_kw_if_fc_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.mc_elec_kw_in_if_fc_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
+            cyc_len, dtype=np.float64)  # oddball
         self.mc_kw_if_fc_req = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
-        self.fc_forced_on = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.fc_forced_state = np.zeros(self.cyc.len, dtype=np.int32)
-        self.mc_mech_kw_4forced_fc = np.zeros(self.cyc.len, dtype=np.float64)
-        self.fc_time_on = np.zeros(self.cyc.len, dtype=np.float64)
-        self.prev_fc_time_on = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)  # oddball
+        self.fc_forced_on = np.array([False] * cyc_len, dtype=np.bool_)
+        self.fc_forced_state = np.zeros(cyc_len, dtype=np.int32)
+        self.mc_mech_kw_4forced_fc = np.zeros(cyc_len, dtype=np.float64)
+        self.fc_time_on = np.zeros(cyc_len, dtype=np.float64)
+        self.prev_fc_time_on = np.zeros(cyc_len, dtype=np.float64)
 
         # Additional Variables
-        self.mps_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.mph_ach = np.zeros(self.cyc.len, dtype=np.float64)
-        self.dist_m = np.zeros(self.cyc.len, dtype=np.float64)  # oddbal
-        self.dist_mi = np.zeros(self.cyc.len, dtype=np.float64)  # oddball
+        self.mps_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.mph_ach = np.zeros(cyc_len, dtype=np.float64)
+        self.dist_m = np.zeros(cyc_len, dtype=np.float64)  # oddbal
+        self.dist_mi = np.zeros(cyc_len, dtype=np.float64)  # oddball
         self.high_acc_fc_on_tag = np.array(
-            [False] * self.cyc.len, dtype=np.bool_)
-        self.reached_buff = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.max_trac_mps = np.zeros(self.cyc.len, dtype=np.float64)
-        self.add_kwh = np.zeros(self.cyc.len, dtype=np.float64)
-        self.dod_cycs = np.zeros(self.cyc.len, dtype=np.float64)
+            [False] * cyc_len, dtype=np.bool_)
+        self.reached_buff = np.array([False] * cyc_len, dtype=np.bool_)
+        self.max_trac_mps = np.zeros(cyc_len, dtype=np.float64)
+        self.add_kwh = np.zeros(cyc_len, dtype=np.float64)
+        self.dod_cycs = np.zeros(cyc_len, dtype=np.float64)
         self.ess_perc_dead = np.zeros(
-            self.cyc.len, dtype=np.float64)  # oddball
-        self.drag_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ess_loss_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.accel_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.ascent_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.rr_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.cur_max_roadway_chg_kw = np.zeros(self.cyc.len, dtype=np.float64)
-        self.trace_miss_iters = np.zeros(self.cyc.len, dtype=np.float64)
-        self.newton_iters = np.zeros(self.cyc.len, dtype=np.float64)
-        self.coast_delay_index = np.zeros(self.cyc.len, dtype=np.int32)
-        self.impose_coast = np.array([False] * self.cyc.len, dtype=np.bool_)
-        self.idm_target_speed_m_per_s = np.zeros(self.cyc.len, dtype=np.float64)
+            cyc_len, dtype=np.float64)  # oddball
+        self.drag_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.ess_loss_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.accel_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.ascent_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.rr_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.cur_max_roadway_chg_kw = np.zeros(cyc_len, dtype=np.float64)
+        self.trace_miss_iters = np.zeros(cyc_len, dtype=np.float64)
+        self.newton_iters = np.zeros(cyc_len, dtype=np.float64)
+        self.coast_delay_index = np.zeros(cyc_len, dtype=np.int32)
+        self.impose_coast = np.array([False] * cyc_len, dtype=np.bool_)
+        self.idm_target_speed_m_per_s = np.zeros(cyc_len, dtype=np.float64)
+        self.cyc0_cache = self.cyc0.build_cache()
 
     @property
     def gap_to_lead_vehicle_m(self):
@@ -398,12 +405,8 @@ class SimDrive(object):
         aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.  
                 Default of None causes veh.aux_kw to be used. 
         """
-        if self.veh.veh_pt_type in [HEV, CONV, BEV] and (init_soc > self.veh.max_soc or init_soc < self.veh.min_soc):
-            logger.warning(
-                f"provided init_soc={init_soc} is outside range min_soc={self.veh.min_soc} to max_soc={self.veh.max_soc}; "
-                + "setting init_soc to max_soc"
-            )
-            init_soc = self.veh.max_soc
+        if (self.veh.veh_pt_type != CONV) and (init_soc > self.veh.max_soc or init_soc < self.veh.min_soc):
+            raise ValueError(f"provided init_soc={init_soc} is outside range min_soc={self.veh.min_soc} to max_soc={self.veh.max_soc}")
 
         ############################
         ###   Loop Through Time  ###
@@ -537,7 +540,7 @@ class SimDrive(object):
         v0_m__s = self.mps_ach[i-1]
         v0_lead_m_per_s = self.cyc0.mps[i-1]
         dv0_m_per_s = v0_m__s - v0_lead_m_per_s
-        d0_lead_m = cycle.trapz_step_start_distance(self.cyc0, i) + s0_m
+        d0_lead_m = self.cyc0_cache.trapz_distances_m[max(i-1, 0)] + s0_m
         d0_m = cycle.trapz_step_start_distance(self.cyc, i)
         s_m = max(d0_lead_m - d0_m, 0.01)
         # IDM EQUATIONS
@@ -599,10 +602,11 @@ class SimDrive(object):
             and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
             then returns self.cyc.grade[i]
         """
+        if self.cyc0_cache.grade_all_zero:
+            return 0.0
         if not self.sim_params.coast_allow and not self.sim_params.idm_allow:
             return self.cyc.grade[i]
-        return self.cyc0.average_grade_over_range(
-            cycle.trapz_step_start_distance(self.cyc, i), 0.0)
+        return self.cyc0_cache.interp_grade(cycle.trapz_step_start_distance(self.cyc, i))
     
     def _lookup_grade_for_step(self, i: int, mps_ach: Optional[float] = None) -> float:
         """
@@ -618,15 +622,19 @@ class SimDrive(object):
             and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
             then returns self.cyc.grade[i]
         """
+        if self.cyc0_cache.grade_all_zero:
+            return 0.0
         if not self.sim_params.coast_allow and not self.sim_params.idm_allow:
             return self.cyc.grade[i]
         if mps_ach is not None:
             return self.cyc0.average_grade_over_range(
                 cycle.trapz_step_start_distance(self.cyc, i),
-                0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s_at_i(i))
+                0.5 * (mps_ach + self.mps_ach[i - 1]) * self.cyc.dt_s_at_i(i),
+                cache=self.cyc0_cache)
         return self.cyc0.average_grade_over_range(
                 cycle.trapz_step_start_distance(self.cyc, i),
-                cycle.trapz_distance_for_step(self.cyc, i))
+                cycle.trapz_distance_for_step(self.cyc, i),
+                cache=self.cyc0_cache)
 
     def sim_drive_step(self):
         """
@@ -836,11 +844,11 @@ class SimDrive(object):
         self.cur_max_trac_kw[i] = (
             self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac *
             self.veh.veh_kg * self.props.a_grav_mps2
-            / (1 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m) / 1_000 * self.max_trac_mps[i]
+            / (1 + self.veh.veh_cg_m * self.veh.wheel_coef_of_fric / self.veh.wheel_base_m
+            ) / 1_000 * self.max_trac_mps[i]
         )
 
         if self.veh.fc_eff_type == H2FC:
-
             if self.veh.no_elec_sys or self.veh.no_elec_aux or self.high_acc_fc_on_tag[i]:
                 self.cur_max_trans_kw_out[i] = min(
                     (self.cur_max_mc_kw_out[i] -
@@ -856,7 +864,6 @@ class SimDrive(object):
                 )
 
         else:
-
             if self.veh.no_elec_sys or self.veh.no_elec_aux or self.high_acc_fc_on_tag[i]:
                 self.cur_max_trans_kw_out[i] = min(
                     (self.cur_max_mc_kw_out[i] + self.cur_max_fc_kw_out[i] -
@@ -1666,14 +1673,19 @@ class SimDrive(object):
         """
         if v <= 0.0:
             return 0.0
-        atan_grade = float(np.arctan(grade))
+        atan_grade_sin = 0.0
+        atan_grade_cos = 1.0
+        if grade != 0.0:
+            atan_grade = float(np.arctan(grade))
+            atan_grade_sin = np.sin(atan_grade)
+            atan_grade_cos = np.cos(atan_grade)
         g = self.props.a_grav_mps2
         M = self.veh.veh_kg
         rho_CDFA = self.props.air_density_kg_per_m3 * \
             self.veh.drag_coef * self.veh.frontal_area_m2
         rrc = self.veh.wheel_rr_coef
         return -1.0 * (
-            (g/v) * (np.sin(atan_grade) + rrc * np.cos(atan_grade))
+            (g/v) * (atan_grade_sin + rrc * atan_grade_cos)
             + (0.5 * rho_CDFA * (1.0/M) * v)
         )
 
@@ -1690,11 +1702,11 @@ class SimDrive(object):
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
         assert a_brake <= 0
-        ds = cycle.trapz_step_distances(self.cyc0).cumsum()
+        ds = self.cyc0_cache.trapz_distances_m
         gs = self.cyc0.grade
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
         ds_mask = ds >= d0
-        if sum(ds_mask) == 0:
+        if not np.any(ds_mask):
             return 0.0
         distances_m = ds[ds_mask] - d0
         grade_by_distance = gs[ds_mask]
@@ -1713,17 +1725,16 @@ class SimDrive(object):
         d_max = distances_m[-1] - dtb
         unique_grades = np.unique(grade_by_distance)
         unique_grade = unique_grades[0] if len(unique_grades) == 1 else None
-        MAX_ITER = 2000
-        ITERS_PER_STEP = 2
+        MAX_ITER = 180
+        ITERS_PER_STEP = 2 if self.sim_params.favor_grade_accuracy else 1
         new_speeds_m_per_s = []
         v = v0
         iter = 0
         idx = i
-        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self.cyc0_cache)
         while v > v_brake and v >= 0.0 and d <= d_max and iter < MAX_ITER and idx < len(self.mps_ach):
             dt_s = self.cyc0.dt_s_at_i(idx)
-            gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
-                d + d0, 0)
+            gr = unique_grade if unique_grade is not None else self.cyc0_cache.interp_grade(d + d0)
             k = self._calc_dvdd(v, gr)
             v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
             vavg = 0.5 * (v + v_next)
@@ -1733,8 +1744,8 @@ class SimDrive(object):
                 v_next = v * (1.0 + 0.5 * k * dt_s) / (1.0 - 0.5 * k * dt_s)
                 vavg = 0.5 * (v + v_next)
                 dd = vavg * dt_s
-                gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(
-                    d + d0, dd)
+                if self.sim_params.favor_grade_accuracy:
+                    gr = unique_grade if unique_grade is not None else self.cyc0.average_grade_over_range(d + d0, dd, cache=self.cyc0_cache)
             if k >= 0.0 and unique_grade is not None:
                 # there is no solution for coastdown -- speed will never decrease
                 return NOT_FOUND
@@ -1766,7 +1777,7 @@ class SimDrive(object):
             return dtsc
         return NOT_FOUND
 
-    def _calc_distance_to_stop_coast_v2(self, i):
+    def _calc_distance_to_stop_coast_v2(self, i:int):
         """
         Calculate the distance to stop via coasting in meters.
         - i: non-negative-integer, the current index
@@ -1782,7 +1793,7 @@ class SimDrive(object):
         v0 = self.cyc.mps[i-1]
         v_brake = self.sim_params.coast_brake_start_speed_m_per_s
         a_brake = self.sim_params.coast_brake_accel_m_per_s2
-        ds = cycle.trapz_step_distances(self.cyc0).cumsum()
+        ds = self.cyc0_cache.trapz_distances_m
         gs = self.cyc0.grade
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
         ds_mask = ds >= d0
@@ -1838,7 +1849,7 @@ class SimDrive(object):
             return False
         # distance to next stop (m)
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
-        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self.cyc0_cache)
         dtb = -0.5 * v0 * v0 / self.sim_params.coast_brake_accel_m_per_s2
         return dtsc0 >= dts0 and dts0 >= (4.0 * dtb)
 
@@ -1877,7 +1888,7 @@ class SimDrive(object):
         d0 = cycle.trapz_step_start_distance(self.cyc, i)
         # a_proposed = (v1 - v0) / dt
         # distance to stop from start of time-step
-        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0)
+        dts0 = self.cyc0.calc_distance_to_next_stop_from(d0, cache=self.cyc0_cache)
         if dts0 < 0.0:
             # no stop to coast towards or we're there...
             print("WARNING! Exiting as there is no stop to coast towards")
@@ -1971,7 +1982,7 @@ class SimDrive(object):
         coast_delay = None
         if not self.sim_params.idm_allow and self.cyc.mps[i] < SPEED_TOL:
             d0 = cycle.trapz_step_start_distance(self.cyc, i)
-            d0_lv = cycle.trapz_step_start_distance(self.cyc0, i)
+            d0_lv = self.cyc0_cache.trapz_distances_m[i-1]
             dtlv0 = d0_lv - d0
             if np.abs(dtlv0) > DIST_TOL:
                 d_lv = 0.0
@@ -2376,6 +2387,8 @@ def sim_drive_equal(a: SimDrive, b: SimDrive) -> bool:
     if a is b:
         return True
     for k in ref_sim_drive.__dict__.keys():
+        if k == 'cyc0_cache':
+            continue
         a_val = a.__getattribute__(k)
         b_val = b.__getattribute__(k)
         if k == 'cyc' or k == 'cyc0':

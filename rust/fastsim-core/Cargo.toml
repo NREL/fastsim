@@ -20,7 +20,6 @@ argmin-math = { version = "0.2.1", features = ["ndarray_latest-nolinalg-serde"] 
 curl = "0.4.44"
 serde-xml-rs = "0.6.0"
 
-
 [package.metadata.docs.rs]
 rustdoc-args = [ "--html-in-header", "./src/html/docs-header.html" ]
 
