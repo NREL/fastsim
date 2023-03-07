@@ -1389,90 +1389,90 @@ mod vehicle_utils_tests {
         assert_eq!(volvo_s60_b5_awd_epa_data, volvo_s60_b5_awd_epa_truth)
     }
 
-    #[test]
-    fn test_get_epa_data_diff_test_id() {
-        let emissions_info: EmissionsInfoFE = EmissionsInfoFE {
-            efid: String::from("NTYXV02.0P3A"),
-            score: 5.0,
-            smartway_score: -1,
-            standard: String::from("T3B30"),
-            std_text: String::from("Federal Tier 3 Bin 30"),
-        };
-        let corolla_manual_fe_truth: VehicleDataFE = VehicleDataFE {
-            alt_veh_type: String::new(),
-            city_mpg_fuel1: 29,
-            city_mpg_fuel2: 0,
-            co2_g_per_mi: 277,
-            comb_mpg_fuel1: 32,
-            comb_mpg_fuel2: 0,
-            cylinders: String::from("4"),
-            displ: String::from("2.0"),
-            drive: String::from("Front-Wheel Drive"),
-            emissions_list: EmissionsListFE {
-                emissions_info: vec![emissions_info],
-            },
-            eng_dscr: String::from("SIDI & PFI"),
-            ev_motor_kw: String::new(),
-            fe_score: 7,
-            fuel_type: String::from("Regular"),
-            fuel1: String::from("Regular Gasoline"),
-            fuel2: String::new(),
-            ghg_score: 7,
-            highway_mpg_fuel1: 36,
-            highway_mpg_fuel2: 0,
-            make: String::from("Toyota"),
-            mfr_code: String::from("TYX"),
-            model: String::from("Corolla"),
-            phev_blended: false,
-            phev_city_mpge: 0,
-            phev_comb_mpge: 0,
-            phev_hwy_mpge: 0,
-            range_ev: 0,
-            start_stop: String::from("N"),
-            trany: String::from("Manual 6-spd"),
-            veh_class: String::from("Compact Cars"),
-            year: 2022,
-            super_charge: String::new(),
-            turbo_charge: String::new(),
-        };
+    //#[test]
+    //fn test_get_epa_data_diff_test_id() {
+    //    let emissions_info: EmissionsInfoFE = EmissionsInfoFE {
+    //        efid: String::from("NTYXV02.0P3A"),
+    //        score: 5.0,
+    //        smartway_score: -1,
+    //        standard: String::from("T3B30"),
+    //        std_text: String::from("Federal Tier 3 Bin 30"),
+    //    };
+    //    let corolla_manual_fe_truth: VehicleDataFE = VehicleDataFE {
+    //        alt_veh_type: String::new(),
+    //        city_mpg_fuel1: 29,
+    //        city_mpg_fuel2: 0,
+    //        co2_g_per_mi: 277,
+    //        comb_mpg_fuel1: 32,
+    //        comb_mpg_fuel2: 0,
+    //        cylinders: String::from("4"),
+    //        displ: String::from("2.0"),
+    //        drive: String::from("Front-Wheel Drive"),
+    //        emissions_list: EmissionsListFE {
+    //            emissions_info: vec![emissions_info],
+    //        },
+    //        eng_dscr: String::from("SIDI & PFI"),
+    //        ev_motor_kw: String::new(),
+    //        fe_score: 7,
+    //        fuel_type: String::from("Regular"),
+    //        fuel1: String::from("Regular Gasoline"),
+    //        fuel2: String::new(),
+    //        ghg_score: 7,
+    //        highway_mpg_fuel1: 36,
+    //        highway_mpg_fuel2: 0,
+    //        make: String::from("Toyota"),
+    //        mfr_code: String::from("TYX"),
+    //        model: String::from("Corolla"),
+    //        phev_blended: false,
+    //        phev_city_mpge: 0,
+    //        phev_comb_mpge: 0,
+    //        phev_hwy_mpge: 0,
+    //        range_ev: 0,
+    //        start_stop: String::from("N"),
+    //        trany: String::from("Manual 6-spd"),
+    //        veh_class: String::from("Compact Cars"),
+    //        year: 2022,
+    //        super_charge: String::new(),
+    //        turbo_charge: String::new(),
+    //    };
 
-        let corolla_manual_epa_data = get_epa_data(
-            &corolla_manual_fe_truth,
-            Some(String::from(
-                "C:/Users/vpuligun/Documents/fastsim/fastsim/resources/epa_vehdb/22-tstcar.csv",
-            )),
-        )
-        .unwrap();
-        println!(
-            "Output: {} {} {} {}",
-            corolla_manual_epa_data.year,
-            corolla_manual_epa_data.make,
-            corolla_manual_epa_data.model,
-            corolla_manual_epa_data.test_id
-        );
+    //    let corolla_manual_epa_data = get_epa_data(
+    //        &corolla_manual_fe_truth,
+    //        Some(String::from(
+    //            "C:/Users/vpuligun/Documents/fastsim/fastsim/resources/epa_vehdb/22-tstcar.csv",
+    //        )),
+    //    )
+    //    .unwrap();
+    //    println!(
+    //        "Output: {} {} {} {}",
+    //        corolla_manual_epa_data.year,
+    //        corolla_manual_epa_data.make,
+    //        corolla_manual_epa_data.model,
+    //        corolla_manual_epa_data.test_id
+    //    );
 
-        let corolla_manual_epa_truth: VehicleDataEPA = VehicleDataEPA {
-            year: 2022,
-            mfr_code: String::from("TYX"),
-            make: String::from("TOYOTA"),
-            model: String::from("COROLLA"),
-            test_id: String::from("LTYXV02.0N4B"),
-            displ: 1.987,
-            eng_pwr_hp: 169,
-            cylinders: String::from("4"),
-            trany_code: String::from("M"),
-            trany_type: String::from("Manual"),
-            gears: 6,
-            drive_code: String::from("F"),
-            drive: String::from("2-Wheel Drive, Front"),
-            test_weight_lbs: 3375.0,
-            test_fuel_type: String::from("Tier 2 Cert Gasoline"),
-            a_lbf: 27.071,
-            b_lbf_per_mph: 0.26485,
-            c_lbf_per_mph2: 0.017466,
-        };
-        assert_eq!(corolla_manual_epa_data, corolla_manual_epa_truth)
-    }
+    //    let corolla_manual_epa_truth: VehicleDataEPA = VehicleDataEPA {
+    //        year: 2022,
+    //        mfr_code: String::from("TYX"),
+    //        make: String::from("TOYOTA"),
+    //        model: String::from("COROLLA"),
+    //        test_id: String::from("LTYXV02.0N4B"),
+    //        displ: 1.987,
+    //        eng_pwr_hp: 169,
+    //        cylinders: String::from("4"),
+    //        trany_code: String::from("M"),
+    //        trany_type: String::from("Manual"),
+    //        gears: 6,
+    //        drive_code: String::from("F"),
+    //        drive: String::from("2-Wheel Drive, Front"),
+    //        test_weight_lbs: 3375.0,
+    //        test_fuel_type: String::from("Tier 2 Cert Gasoline"),
+    //        a_lbf: 27.071,
+    //        b_lbf_per_mph: 0.26485,
+    //        c_lbf_per_mph2: 0.017466,
+    //    };
+    //    assert_eq!(corolla_manual_epa_data, corolla_manual_epa_truth)
+    //}
 
     #[test]
     fn test_get_epa_data_ev() {
