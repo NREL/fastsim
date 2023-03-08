@@ -1,5 +1,6 @@
 //! Module for utility functions that support the vehicle struct.
 
+use std::option::Option;
 use argmin::core::{CostFunction, Error, Executor, OptimizationResult, State};
 use argmin::solver::neldermead::NelderMead;
 use curl::easy::{Easy, SslOpt};
@@ -531,6 +532,8 @@ fn get_epa_data(
 /// model: Vehicle model (must match model on fueleconomy.gov)
 /// writer: Writer for printing to console or vector for tests (for user input, writer = std::io::stdout())
 /// reader: Reader for reading from console or string for tests (for user input, reader = std::io::stdin().lock())
+/// yaml_file_path: Option<&str> an optional file path to where to save the yaml data. If None, a default is used.
+///     If Some(path: str), the path is used UNLESS it has the value "" in which case writing of yaml is skipped.
 ///
 /// Returns:
 /// --------
@@ -542,6 +545,7 @@ fn vehicle_import<R, W>(
     model: &str,
     mut writer: W,
     mut reader: R,
+    yaml_file_path: Option<&str>,
 ) -> Result<RustVehicle, Error>
 where
     W: std::io::Write,
@@ -858,8 +862,17 @@ where
     );
 
     // TODO: Allow optional argument for file location
-    let file_name: String = veh.scenario_name.replace(" ", "_");
-    veh.to_file(format!("../../fastsim/resources/vehdb/{}.yaml", file_name).as_str())?;
+    let default_yaml_path: String = {
+        let file_name: String = veh.scenario_name.replace(" ", "_");
+        format!("../../fastsim/resources/vehdb/{}.yaml", file_name)
+    };
+    let yaml_path: &str = match yaml_file_path {
+        Some(path) => path,
+        None => &default_yaml_path,
+    };
+    if yaml_path.len() > 0 {
+        veh.to_file(yaml_path)?;
+    }
 
     return Ok(veh);
 }
@@ -898,6 +911,7 @@ where
             model.model_name.as_str(),
             &mut writer,
             &mut reader,
+            None,
         )?;
     }
 
@@ -1536,7 +1550,10 @@ mod vehicle_utils_tests {
         let input = b"69.3\n57.9\n11.4\n8.8\n71\n19\n19.95\n";
         let mut output = Vec::new();
         let _veh: RustVehicle =
-            vehicle_import("2022", "Toyota", "Prius Prime", &mut output, &input[..]).unwrap();
+            vehicle_import(
+                "2022", "Toyota", "Prius Prime",
+                &mut output, &input[..],
+                Some("")).unwrap();
     }
 
     #[test]
@@ -1550,6 +1567,7 @@ mod vehicle_utils_tests {
             "EV6 RWD (Long Range)",
             &mut output,
             &input[..],
+            Some(""),
         )
         .unwrap();
     }
@@ -1560,7 +1578,11 @@ mod vehicle_utils_tests {
         let input = b"72.8\n56.3\n15.9\n";
         let mut output = Vec::new();
         let _veh: RustVehicle =
-            vehicle_import("2022", "Volvo", "S60 B5 AWD", &mut output, &input[..]).unwrap();
+            vehicle_import(
+                "2022", "Volvo", "S60 B5 AWD",
+                &mut output, &input[..],
+                Some(""),
+            ).unwrap();
     }
 
     #[test]
@@ -1573,6 +1595,7 @@ mod vehicle_utils_tests {
             "Lightyear",
             std::io::stdout(),
             std::io::stdin().lock(),
+            Some(""),
         )
         .unwrap();
     }
