@@ -238,7 +238,7 @@ pub fn impl_getters_and_setters(
 /// If `expected_exlusive` is true, only values in `expected_fn_names` are allowed.  
 /// Raises locationally useful errors if mistakes are made in formatting or whatnot.  
 pub fn parse_ts_as_fn_defs(
-    attr: proc_macro::TokenStream,
+    attr: TokenStream,
     mut expected_fn_names: Vec<String>,
     expected_exclusive: bool,
     forbidden_fn_names: Vec<String>,
@@ -266,9 +266,9 @@ pub fn parse_ts_as_fn_defs(
                 if expected_exclusive {
                     if forbidden_fn_names.contains(sig_str) || !expected_fn_names.contains(sig_str)
                     {
-                        abort!(
+                        emit_error!(
                             &item_meth.sig.ident.span(),
-                            format!("{} is forbidden", sig_str)
+                            format!("Function name `{}` is forbidden", sig_str)
                         )
                     }
                 }
@@ -284,12 +284,15 @@ pub fn parse_ts_as_fn_defs(
                 // remove the matching name from the vec to avoid checking again
                 // at the end of iteration, this vec should be empty
             }
-            _ => abort_call_site!("Expected only method definitions in `solver` argument"),
+            _ => unreachable!(),
         }
     }
 
     if !expected_fn_names.is_empty() {
-        abort_call_site!(format!("Expected fn def for {:?}", expected_fn_names));
+        abort_call_site!(format!(
+            "Expected fn def for `{}`",
+            expected_fn_names.join(", ")
+        ));
     }
     fn_from_attr
 }
