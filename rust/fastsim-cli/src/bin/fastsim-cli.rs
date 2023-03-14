@@ -1,7 +1,7 @@
 use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
 
-use std::fs;
+use std::{fs, str::FromStr};
 
 extern crate fastsim_core;
 use fastsim_core::{
@@ -306,6 +306,25 @@ fn json_regex(x: String) -> String {
         format!("\"forceAuxOnFC\":{}", translateforceAuxOnFC(&caps["a"]))
     });
 
+    let re = Regex::new(r#""fwd1rwd2awd3":(?P<a>\d)"#).unwrap();
+    let mut is_rear_wheel_drive: bool = false;
+    for caps in re.captures_iter(&adoptstring) {
+        if &caps["a"] == "2" || &caps["a"] == "3" {
+            is_rear_wheel_drive = true;
+        }
+        break
+    }
+    let re = Regex::new(r#""vehCgM":(?P<a>-?[0-9]*\.?[0-9]+)"#).unwrap();
+    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
+        let value = String::from_str(&caps["a"]).unwrap();
+        let sign: String = if !is_rear_wheel_drive || value.starts_with("-") {
+            String::from_str("").unwrap()
+        } else {
+            String::from_str("-").unwrap()
+        };
+        format!("\"vehCgM\":{}{}", sign, value)
+    });
+
     let re = Regex::new(r#""fcPwrOutPerc":(?P<a>\[.*?\])"#).unwrap();
     let arr1 = format!(
         "\"fcPwrOutPerc\":{}",
@@ -337,6 +356,8 @@ fn json_regex(x: String) -> String {
     let cap2 = &re.captures(&adoptstring).unwrap()["a"];
 
     let s_s = "\"stop_start\": false";
+
+    let adoptstring = adoptstring.trim_end();
 
     return format!(
         "{},{},{},{},{},{},{},{}}}",
