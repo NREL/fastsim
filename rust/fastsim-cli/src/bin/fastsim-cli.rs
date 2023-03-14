@@ -148,15 +148,17 @@ pub fn main() {
 
     // TODO: put in logic here for loading vehicle for adopt-hd
     // with same file format as regular adopt and same outputs retured
+    let is_adopt: bool = fastsim_api.adopt.is_some() && fastsim_api.adopt.unwrap();
+    let is_adopt_hd: bool = fastsim_api.adopt_hd.is_some() && fastsim_api.adopt_hd.unwrap();
     let veh = if let Some(veh_string) = fastsim_api.veh {
-        if fastsim_api.adopt != None {
+        if is_adopt || is_adopt_hd {
             let veh_string = json_regex(veh_string);
             RustVehicle::from_str(&veh_string)
         } else {
             RustVehicle::from_str(&veh_string)
         }
     } else if let Some(veh_file_path) = fastsim_api.veh_file {
-        if fastsim_api.adopt != None {
+        if is_adopt || is_adopt_hd {
             let vehstring = fs::read_to_string(veh_file_path).unwrap();
             let vehstring = json_regex(vehstring);
             RustVehicle::from_str(&vehstring)
@@ -182,7 +184,7 @@ pub fn main() {
         };
     }
 
-    if fastsim_api.adopt != None {
+    if is_adopt {
         let sdl = get_label_fe(&veh, Some(false), Some(false)).unwrap();
         let res = AdoptResults {
             adjCombMpgge: sdl.0.adj_comb_mpgge,
@@ -192,7 +194,7 @@ pub fn main() {
             accel: sdl.0.net_accel,
         };
         println!("{}", res.to_json());
-    } else if fastsim_api.adopt_hd != None {
+    } else if is_adopt_hd {
         let hd_cyc_filestring = include_str!(concat!(
             "..",
             main_separator!(),
@@ -212,10 +214,17 @@ pub fn main() {
         ));
         let cyc =
             RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap();
-        let mut sim_drive = RustSimDrive::new(cyc, veh);
-        // // this does nothing if it has already been called for the constructed `sim_drive`
+        let mut sim_drive = RustSimDrive::new(cyc.clone(), veh.clone());
         sim_drive.sim_drive(None, None).unwrap();
-        println!("{}", sim_drive.mpgge);
+        let sdl = get_label_fe(&veh, Some(false), Some(false)).unwrap();
+        let res = AdoptResults {
+            adjCombMpgge: sim_drive.mpgge,
+            rangeMiles: sdl.0.net_range_miles,
+            UF: sdl.0.uf,
+            adjCombKwhPerMile: sim_drive.battery_kwh_per_mi,
+            accel: sdl.0.net_accel,
+        };
+        println!("{}", res.to_json());
     } else {
         let mut sim_drive = RustSimDrive::new(cyc, veh);
         // // this does nothing if it has already been called for the constructed `sim_drive`
