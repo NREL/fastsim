@@ -6,6 +6,7 @@ use std::{fs, str::FromStr};
 extern crate fastsim_core;
 use fastsim_core::{
     cycle::RustCycle, simdrive::RustSimDrive, simdrivelabel::get_label_fe, vehicle::RustVehicle,
+    simdrivelabel::get_net_accel, simdrivelabel::make_accel_trace,
     vehicle_utils::abc_to_drag_coeffs,
 };
 
@@ -52,7 +53,7 @@ struct FastSimApi {
     adopt: Option<bool>,
     #[clap(value_parser, long)]
     //adopt HD flag
-    adopt_hd: Option<bool>,
+    adopt_hd: Option<String>,
     /// Vehicle as json string
     #[clap(value_parser, long)]
     veh: Option<String>,
@@ -109,7 +110,17 @@ pub fn main() {
     if let Some(_cyc_json_str) = fastsim_api.cyc {
         panic!("Need to implement: let cyc = RustCycle::from_json(cyc_json_str)");
     }
-
+    let (is_adopt_hd, adopt_hd_string, adopt_hd_has_cycle) = if let Some(adopt_hd_string) = &fastsim_api.adopt_hd {
+        // NOTE: specifying the --adopt-hd flag implies TRUE. Thus specifying --adopt-hd false or --adopt-hd true just
+        // sets the driving cycle to the default HHDDT cycle
+        let adopt_hd_str_lc = adopt_hd_string.to_lowercase();
+        let true_string = String::from("true");
+        let false_string = String::from("false");
+        let adopt_hd_has_cycle = adopt_hd_str_lc.len() > 0 && adopt_hd_str_lc != true_string && adopt_hd_str_lc != false_string;
+        (true, adopt_hd_string.clone(), adopt_hd_has_cycle)
+    } else {
+        (false, String::from(""), false)
+    };
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
         if cyc_file_path == *"coastdown" {
             if fastsim_api.a.is_some() && fastsim_api.b.is_some() && fastsim_api.c.is_some() {
@@ -134,6 +145,8 @@ pub fn main() {
         } else {
             RustCycle::from_file(&cyc_file_path)
         }
+    } else if is_adopt_hd && adopt_hd_has_cycle {
+        RustCycle::from_file(&adopt_hd_string)
     } else {
         //TODO? use pathbuff to string, for robustness
         Ok(RustCycle::new(
@@ -149,7 +162,6 @@ pub fn main() {
     // TODO: put in logic here for loading vehicle for adopt-hd
     // with same file format as regular adopt and same outputs retured
     let is_adopt: bool = fastsim_api.adopt.is_some() && fastsim_api.adopt.unwrap();
-    let is_adopt_hd: bool = fastsim_api.adopt_hd.is_some() && fastsim_api.adopt_hd.unwrap();
     let veh = if let Some(veh_string) = fastsim_api.veh {
         if is_adopt || is_adopt_hd {
             let veh_string = json_regex(veh_string);
@@ -212,17 +224,28 @@ pub fn main() {
             main_separator!(),
             "HHDDTCruiseSmooth.csv"
         ));
-        let cyc =
-            RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap();
+        let cyc = if adopt_hd_has_cycle {
+            cyc.clone()
+        } else {
+            RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap()
+        };
         let mut sim_drive = RustSimDrive::new(cyc.clone(), veh.clone());
         sim_drive.sim_drive(None, None).unwrap();
-        let sdl = get_label_fe(&veh, Some(false), Some(false)).unwrap();
+        let mut sim_drive_accel = RustSimDrive::new(make_accel_trace(), veh.clone());
+        let net_accel = get_net_accel(&mut sim_drive_accel, &veh.scenario_name).unwrap();
         let res = AdoptResults {
             adjCombMpgge: sim_drive.mpgge,
-            rangeMiles: sdl.0.net_range_miles,
-            UF: sdl.0.uf,
+            rangeMiles:
+                if sim_drive.mpgge > 0.0 {
+                    (veh.fs_kwh / sim_drive.props.kwh_per_gge) * sim_drive.mpgge
+                } else if sim_drive.battery_kwh_per_mi > 0.0 {
+                    veh.ess_max_kwh / sim_drive.battery_kwh_per_mi
+                } else {
+                    0.0
+                },
+            UF: 0.0,
             adjCombKwhPerMile: sim_drive.battery_kwh_per_mi,
-            accel: sdl.0.net_accel,
+            accel: net_accel,
         };
         println!("{}", res.to_json());
     } else {

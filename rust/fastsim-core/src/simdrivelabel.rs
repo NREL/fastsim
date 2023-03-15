@@ -108,6 +108,35 @@ pub struct PHEVCycleCalc {
     pub total_cd_miles: f64,
 }
 
+pub fn make_accel_trace() -> RustCycle {
+    let accel_cyc_secs = Array::range(0., 300., 0.1);
+    let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
+    accel_cyc_mps[0] = 0.0;
+
+    RustCycle::new(
+        accel_cyc_secs.to_vec(),
+        accel_cyc_mps.to_vec(),
+        Array::zeros(accel_cyc_secs.len()).to_vec(),
+        Array::zeros(accel_cyc_secs.len()).to_vec(),
+        String::from("accel"),
+    )
+}
+
+pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> Result<f64, anyhow::Error> {
+    log::debug!(target: "fastsimrust",
+        "running `sim_drive_accel`"
+    );
+    sd_accel.sim_drive_accel(None, None)?;
+    if sd_accel.mph_ach.iter().any(|&x| x >= 60.) {
+        Ok(interpolate(&60., &sd_accel.mph_ach, &sd_accel.cyc0.time_s, false))
+    } else {
+        log::warn!(target: "fastsimrust",
+            "vehicle '{}' never achieves 60 mph", scenario_name
+        );
+        Ok(1e3)
+    }
+}
+
 pub fn get_label_fe(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
@@ -137,19 +166,9 @@ pub fn get_label_fe(
     out.veh = veh.clone();
 
     // load the cycles and intstantiate simdrive objects
-    let accel_cyc_secs = Array::range(0., 300., 0.1);
-    let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
-    accel_cyc_mps[0] = 0.0;
-
     cyc.insert(
         "accel",
-        RustCycle::new(
-            accel_cyc_secs.to_vec(),
-            accel_cyc_mps.to_vec(),
-            Array::zeros(accel_cyc_secs.len()).to_vec(),
-            Array::zeros(accel_cyc_secs.len()).to_vec(),
-            String::from("accel"),
-        ),
+        make_accel_trace(),
     );
 
     #[cfg(not(windows))]
@@ -361,25 +380,12 @@ pub fn get_label_fe(
     }
 
     // run accelerating sim_drive
+    let mut sd_accel = RustSimDrive::new(cyc["accel"].clone(), veh.clone());
+    out.net_accel = get_net_accel(&mut sd_accel, &veh.scenario_name)?;
     sd.insert(
         "accel",
-        RustSimDrive::new(cyc["accel"].clone(), veh.clone()),
+        sd_accel,
     );
-    if let Some(sd_accel) = sd.get_mut("accel") {
-        log::debug!(target: "fastsimrust",
-            "running `sim_drive_accel`"
-        );
-        sd_accel.sim_drive_accel(None, None)?;
-    }
-    if sd["accel"].mph_ach.iter().any(|&x| x >= 60.) {
-        out.net_accel = interpolate(&60., &sd["accel"].mph_ach, &cyc["accel"].time_s, false);
-    } else {
-        // in case vehicle never exceeds 60 mph, penalize it a lot with a high number
-        log::warn!(target: "fastsimrust",
-            "vehicle '{}' never achieves 60 mph", veh.scenario_name
-        );
-        out.net_accel = 1e3;
-    }
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true
