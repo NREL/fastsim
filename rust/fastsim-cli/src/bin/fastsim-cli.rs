@@ -1,7 +1,7 @@
 use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
 
-use std::{fs, str::FromStr};
+use std::fs;
 
 extern crate fastsim_core;
 use fastsim_core::{
@@ -270,7 +270,7 @@ fn translateVehPtType(x: &str) -> &str {
     } else if x.eq("4") {
         r#""BEV""#
     } else {
-        "other"
+        x
     }
 }
 
@@ -284,10 +284,10 @@ fn translatefcEffType(x: &str) -> &str {
         r#""DIESEL""#
     } else if x.eq("4") {
         r#""H2FC""#
-    } else if x.eq("5") {
+    } else if x.eq("5") || x.eq("6") {
         r#""HD_DIESEL""#
     } else {
-        "other"
+        x
     }
 }
 
@@ -339,11 +339,11 @@ fn json_regex(x: String) -> String {
     }
     let re = Regex::new(r#""vehCgM":(?P<a>-?[0-9]*\.?[0-9]+)"#).unwrap();
     let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
-        let value = String::from_str(&caps["a"]).unwrap();
+        let value = String::from(&caps["a"]);
         let sign: String = if !is_rear_wheel_drive || value.starts_with("-") {
-            String::from_str("").unwrap()
+            String::from("")
         } else {
-            String::from_str("-").unwrap()
+            String::from("-")
         };
         format!("\"vehCgM\":{}{}", sign, value)
     });
