@@ -9,19 +9,19 @@ All classes and methods are self-documented.
 
 1. Clone the repository from GitHub:
 
-    git clone git@github.nrel.gov:MBAP/fastsim.git
+       git clone git@github.nrel.gov:MBAP/fastsim.git
 
 2. Set up an environment for the project. There are two ways to do this:
 
-- Using Anaconda (with Python 3.8 or newer):
+   - Using Anaconda (with Python 3.8 or newer):
 
-        conda create -n fastsim python=3.8
-        conda activate fastsim
-        conda install -c conda-forge "rust>=1.64"
+         conda create -n fastsim python=3.8
+         conda activate fastsim
+         conda install -c conda-forge "rust>=1.64"
 
-- Manually:
-    - Install the [rust toolchain](https://www.rust-lang.org/tools/install). 
-    - Then, using a virtual environment, and making sure to use Python >= 3.8:
+   - Manually:
+     - Install [Rust](https://www.rust-lang.org/tools/install). 
+     - Then, using a virtual environment, and making sure to use Python >= 3.8:
     
         PowerShell:
 
@@ -38,9 +38,9 @@ All classes and methods are self-documented.
             python -m venv .venv
             .venv/Scripts/activate.bat
     
-3. From within the top level of the FASTSim repository, run a pip install:
+3. From within the top level of the FASTSim repository, install using pip:
 
-    pip install .
+       pip install .
 
 ## Developers
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
