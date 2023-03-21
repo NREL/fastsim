@@ -7,6 +7,8 @@ use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::vehicle::*;
+pub mod simdrive_impl;
+pub mod cyc_mods;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
