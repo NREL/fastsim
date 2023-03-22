@@ -151,13 +151,59 @@ pub fn get_label_fe(
             String::from("accel"),
         ),
     );
+
+    #[cfg(not(windows))]
+    macro_rules! main_separator {
+        () => {
+            "/"
+        };
+    }
+
+    #[cfg(windows)]
+    macro_rules! main_separator {
+        () => {
+            r#"\"#
+        };
+    }
+
+    let udds_filestring = include_str!(concat!(
+        "..",
+        main_separator!(),
+        "..",
+        main_separator!(),
+        "..",
+        main_separator!(),
+        "fastsim",
+        main_separator!(),
+        "resources",
+        main_separator!(),
+        "cycles",
+        main_separator!(),
+        "udds.csv"
+    ));
+    let hwy_filestring = include_str!(concat!(
+        "..",
+        main_separator!(),
+        "..",
+        main_separator!(),
+        "..",
+        main_separator!(),
+        "fastsim",
+        main_separator!(),
+        "resources",
+        main_separator!(),
+        "cycles",
+        main_separator!(),
+        "hwfet.csv"
+    ));
+
     cyc.insert(
         "udds",
-        RustCycle::from_file("../../fastsim/resources/cycles/udds.csv")?,
+        RustCycle::from_csv_string(udds_filestring, "udds".to_string())?,
     );
     cyc.insert(
         "hwy",
-        RustCycle::from_file("../../fastsim/resources/cycles/hwfet.csv")?,
+        RustCycle::from_csv_string(hwy_filestring, "hwfet".to_string())?,
     );
 
     // run simdrive for non-phev powertrains
