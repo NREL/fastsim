@@ -217,7 +217,6 @@ pub fn main() {
         let mut sim_drive = RustSimDrive::new(cyc, veh);
         // // this does nothing if it has already been called for the constructed `sim_drive`
         sim_drive.sim_drive(None, None).unwrap();
-        dbg!(sim_drive.veh.veh_kg);
         println!("{}", sim_drive.mpgge);
     }
     // else {

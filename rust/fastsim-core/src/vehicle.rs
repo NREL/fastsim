@@ -709,7 +709,7 @@ impl RustVehicle {
     }
 
     pub fn mock_vehicle() -> Self {
-        Self {
+        let mut v = Self {
             scenario_name: String::from("2016 FORD Escape 4cyl 2WD"),
             selection: 5,
             veh_year: 2016,
@@ -824,7 +824,9 @@ impl RustVehicle {
             fs_mass_kg: Default::default(),
             veh_kg: Default::default(),
             max_trac_mps2: Default::default(),
-        }
+        };
+        v.set_derived();
+        v
     }
 
     pub fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
@@ -853,9 +855,24 @@ impl RustVehicle {
 mod tests {
     use super::*;
 
+    // warning: this might cause trouble if used on a machine without the cloned git repo
+    fn resources_path() -> PathBuf {
+        let pb = PathBuf::from("../../fastsim/resources");
+        assert!(pb.exists());
+        pb
+    }
+
     #[test]
     fn test_set_derived_via_new() {
         let veh = RustVehicle::mock_vehicle();
         assert!(veh.veh_kg > 0.0);
+    }
+
+    #[test]
+    fn test_veh_kg_override() {
+        let mut veh_file = resources_path();
+        veh_file.push("vehdb/test_overrides.yaml");
+        let veh = RustVehicle::from_file(veh_file.as_os_str().to_str().unwrap()).unwrap();
+        assert!(veh.veh_kg == veh.veh_override_kg.unwrap());
     }
 }

@@ -704,7 +704,7 @@ mod simdrivelabel_tests {
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
         label_fe.veh = vehicle::RustVehicle::default();
-        println!("Calculated net accel: {}", label_fe.net_accel);
+        // println!("Calculated net accel: {}", label_fe.net_accel);
 
         let label_fe_truth: LabelFe = LabelFe {
             veh: vehicle::RustVehicle::default(),
@@ -734,10 +734,10 @@ mod simdrivelabel_tests {
             net_phev_cd_miles: None,
         };
 
-        println!(
-            "Percent diff to Python calc: {:.3}%",
-            100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
-        );
+        // println!(
+        //     "Percent diff to Python calc: {:.3}%",
+        //     100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
+        // );
 
         assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
     }
@@ -958,6 +958,15 @@ mod simdrivelabel_tests {
             net_phev_cd_miles: Some(57.04992781503185),
         };
 
-        assert!(label_fe.approx_eq(&label_fe_truth, 1e-8));
+        let tol = 1e-8;
+        assert!(label_fe.veh.approx_eq(&label_fe_truth.veh, tol));
+        assert!(
+            label_fe
+                .phev_calcs
+                .approx_eq(&label_fe_truth.phev_calcs, tol),
+            "label_fe.phev_calcs: {:?}",
+            &label_fe.phev_calcs
+        );
+        assert!(label_fe.approx_eq(&label_fe_truth, tol));
     }
 }
