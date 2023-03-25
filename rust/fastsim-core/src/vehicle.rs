@@ -37,6 +37,7 @@ pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
         self.mc_peak_eff()
     }
 
+    // TODO: refactor this to have a non-py and `_py` version
     #[setter]
     pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
         let mc_max_eff = ndarrmax(&self.mc_eff_array);
@@ -854,13 +855,6 @@ impl RustVehicle {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // warning: this might cause trouble if used on a machine without the cloned git repo
-    fn resources_path() -> PathBuf {
-        let pb = PathBuf::from("../../fastsim/resources");
-        assert!(pb.exists());
-        pb
-    }
 
     #[test]
     fn test_set_derived_via_new() {

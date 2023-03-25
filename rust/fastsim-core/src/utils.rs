@@ -6,6 +6,13 @@ use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
+#[cfg(test)]
+pub fn resources_path() -> PathBuf {
+    let pb = PathBuf::from("../../fastsim/resources");
+    assert!(pb.exists());
+    pb
+}
+
 /// Error message for when user attempts to set value in a nested struct.
 pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
 Assign nested struct to own variable, run the `reset_orphaned` method, and then 
