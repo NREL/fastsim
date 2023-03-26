@@ -7,8 +7,8 @@ use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::vehicle::*;
-pub mod simdrive_impl;
 pub mod cyc_mods;
+pub mod simdrive_impl;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
@@ -125,6 +125,8 @@ pub struct RustSimDriveParams {
     #[serde(skip)]
     pub orphaned: bool,
 }
+
+impl SerdeAPI for RustSimDriveParams {}
 
 impl Default for RustSimDriveParams {
     fn default() -> Self {
@@ -555,6 +557,8 @@ pub struct RustSimDrive {
     #[serde(skip)]
     pub cyc0_cache: RustCycleCache,
 }
+
+impl SerdeAPI for RustSimDrive {}
 
 // #[cfg(test)]
 // mod tests {

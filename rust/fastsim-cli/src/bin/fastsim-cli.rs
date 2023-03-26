@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use std::fs;
 
-extern crate fastsim_core;
 use fastsim_core::{
-    cycle::RustCycle, simdrive::RustSimDrive, simdrivelabel::get_label_fe, vehicle::RustVehicle,
-    vehicle_utils::abc_to_drag_coeffs,
+    cycle::RustCycle, simdrive::RustSimDrive, simdrivelabel::get_label_fe, traits::SerdeAPI,
+    vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
 };
 
 /// Wrapper for fastsim.
@@ -84,6 +83,8 @@ struct AdoptResults {
     // add more results here
 }
 
+impl SerdeAPI for AdoptResults {}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
 struct AdoptHDResults {
@@ -94,14 +95,6 @@ struct AdoptHDResults {
     accel: f64,
     // add more results here
 }
-
-trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    fn to_json(&self) -> String {
-        serde_json::to_string(&self).unwrap()
-    }
-}
-
-impl<T> SerdeAPI for T where T: Serialize + for<'a> Deserialize<'a> {}
 
 pub fn main() {
     let fastsim_api = FastSimApi::parse();

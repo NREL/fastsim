@@ -2,6 +2,9 @@ use crate::imports::*;
 use std::collections::HashMap;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
+    /// runs any initialization steps that might be needed
+    fn init(&mut self) {}
+
     fn to_file(&self, filename: &str) -> anyhow::Result<()> {
         let file = PathBuf::from(filename);
         match file.extension().unwrap().to_str().unwrap() {
@@ -23,11 +26,13 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .unwrap_or("");
 
         let file = File::open(filename)?;
-        match extension {
-            "yaml" => Ok(serde_yaml::from_reader(file)?),
-            "json" => Ok(serde_json::from_reader(file)?),
+        let mut res = match extension {
+            "yaml" => Ok(serde_yaml::from_reader::<std::fs::File, Self>(file)?),
+            "json" => Ok(serde_json::from_reader::<std::fs::File, Self>(file)?),
             _ => Err(anyhow!("Unsupported file extension {}", extension)),
-        }
+        };
+        res.as_mut().unwrap().init();
+        res
     }
 
     /// json serialization method.
@@ -69,8 +74,6 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(deserialize(encoded)?)
     }
 }
-
-impl<T> SerdeAPI for T where T: Serialize + for<'a> Deserialize<'a> {}
 
 pub trait ApproxEq<Rhs = Self> {
     fn approx_eq(&self, other: &Rhs, tol: f64) -> bool;

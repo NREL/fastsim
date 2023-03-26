@@ -179,26 +179,32 @@ pub mod array_wrappers {
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayU32(Array1<u32>);
+    impl SerdeAPI for Pyo3ArrayU32 {}
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayI32(Array1<i32>);
+    impl SerdeAPI for Pyo3ArrayI32 {}
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3ArrayF64(Array1<f64>);
+    impl SerdeAPI for Pyo3ArrayF64 {}
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayBool(Array1<bool>);
+    impl SerdeAPI for Pyo3ArrayBool {}
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3VecF64(Vec<f64>);
+
+    impl SerdeAPI for Pyo3VecF64 {}
 }
 
 #[cfg(feature = "pyo3")]

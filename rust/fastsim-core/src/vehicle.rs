@@ -830,25 +830,16 @@ impl RustVehicle {
         v
     }
 
-    pub fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
-        let extension = Path::new(filename)
-            .extension()
-            .and_then(OsStr::to_str)
-            .unwrap_or("");
-
-        let file = File::open(filename)?;
-        let mut veh_res: Result<RustVehicle, anyhow::Error> = match extension {
-            "yaml" => Ok(serde_yaml::from_reader(file)?),
-            "json" => Ok(serde_json::from_reader(file)?),
-            _ => Err(anyhow!("Unsupported file extension {}", extension)),
-        };
-        veh_res.as_mut().unwrap().set_derived();
-        veh_res
-    }
     pub fn from_str(filename: &str) -> Result<Self, anyhow::Error> {
         let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
         veh_res.as_mut().unwrap().set_derived();
         veh_res
+    }
+}
+
+impl SerdeAPI for RustVehicle {
+    fn init(&mut self) {
+        self.set_derived();
     }
 }
 

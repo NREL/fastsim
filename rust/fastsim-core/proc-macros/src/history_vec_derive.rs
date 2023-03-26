@@ -108,6 +108,8 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
             }
         }
 
+        impl SerdeAPI for #new_name {}
+
         impl Default for #new_name {
             fn default() -> #new_name {
                 #new_name::new()
