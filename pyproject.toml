@@ -27,6 +27,7 @@ dependencies = [
     "seaborn>=0.10",
     "pymoo==0.6",
     "typing_extensions",
+    "pyyaml",
 ]
 
 [project.urls]

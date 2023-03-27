@@ -17,6 +17,8 @@ from pathlib import Path
 from copy import deepcopy
 import ast
 import copy
+import yaml
+import json
 
 # local modules
 from fastsim import parameters as params
@@ -794,7 +796,10 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
             continue
         if (
             RUST_AVAILABLE
-            and type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties
+            and (
+                isinstance(veh.__getattribute__(key), fsr.RustPhysicalProperties) 
+                or isinstance(veh.__getattribute__(key), params.PhysicalProperties) 
+            )
         ):
             pp = veh.__getattribute__(key)
             # TODO: replace the below with a call to copy_physical_properties(...)
@@ -804,19 +809,21 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
             new_pp.kwh_per_gge = pp.kwh_per_gge
             new_pp.fuel_rho_kg__L = pp.fuel_rho_kg__L
             new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
-            veh_dict[key] = new_pp
+            veh_dict[key] = json.loads(new_pp.to_json())
         elif ((RUST_AVAILABLE)
-              and (
-                (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayU32)
-                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
-                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayBool)
-                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
-        )
+              and isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayU32)
+                or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
+                or isinstance(veh.__getattribute__(key) ,fsr.Pyo3ArrayBool)
+                or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
         ):
+            veh_dict[key] = list(veh.__getattribute__(key))
+        elif RUST_AVAILABLE and isinstance(veh.__getattribute__(key), np.ndarray):
             veh_dict[key] = list(veh.__getattribute__(key))
         else:
             veh_dict[key] = copy.deepcopy(
                 veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
+        # for debugging breakpoint
+        continue
 
     if return_type == DICT:
         return veh_dict
@@ -825,11 +832,10 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
     elif return_type == LEGACY:
         return LegacyVehicle(veh_dict)
     elif RUST_AVAILABLE and return_type == RUST:
-        veh_dict['props'] = params.copy_physical_properties(
-            veh_dict['props'], return_type, deep)
         veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [
             "large_baseline_eff", "small_baseline_eff"]}
-        return RustVehicle(**veh_dict)
+        veh_yaml = yaml.dump(veh_dict)
+        return RustVehicle.from_yaml(veh_yaml)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 
