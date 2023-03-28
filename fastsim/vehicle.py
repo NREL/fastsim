@@ -767,6 +767,21 @@ RETURN_TYPES = ['dict', 'vehicle', 'legacy', 'rust']
 DICT, VEHICLE, LEGACY, RUST = RETURN_TYPES
 
 
+def to_native_type(value):
+    """
+    Attempts to map from numpy and other types to python native for better yaml (de-)serialization
+    """
+    if isinstance(value, np.float64):
+        return float(value)
+    elif isinstance(value, np.ndarray) or isinstance(value, list):
+        return {"v": 1, "dim": [len(value)], "data": [to_native_type(v) for v in value]}
+    elif value is None:
+        return value
+    elif isinstance(value, dict):
+        return {to_native_type(k): to_native_type(v) for (k, v) in value.items()}
+    return value
+
+
 def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Dict[str, np.ndarray] | Vehicle | LegacyVehicle | RustVehicle:
     """Returns copy of Vehicle.
     Arguments:
@@ -832,8 +847,10 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
     elif return_type == LEGACY:
         return LegacyVehicle(veh_dict)
     elif RUST_AVAILABLE and return_type == RUST:
-        veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [
+        veh_dict = {key: to_native_type(veh_dict[key]) for key in veh_dict if key not in [
             "large_baseline_eff", "small_baseline_eff"]}
+        if "veh_kg" not in veh_dict:
+            veh_dict["veh_kg"] = 0.0
         veh_yaml = yaml.dump(veh_dict)
         return RustVehicle.from_yaml(veh_yaml)
     else:
