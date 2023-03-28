@@ -42,6 +42,7 @@ pub struct LabelFe {
     pub adj_cs_comb_mpgge: Option<f64>,
     pub adj_cd_comb_mpgge: Option<f64>,
     pub net_phev_cd_miles: Option<f64>,
+    pub trace_miss_speed_mph: f64,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
@@ -162,6 +163,7 @@ pub fn get_label_fe(
     let mut cyc: HashMap<&str, RustCycle> = HashMap::new();
     let mut sd: HashMap<&str, RustSimDrive> = HashMap::new();
     let mut out: LabelFe = LabelFe::default();
+    let mut max_trace_miss_in_mph: f64 = 0.0;
 
     out.veh = veh.clone();
 
@@ -229,9 +231,15 @@ pub fn get_label_fe(
     sd.insert("udds", RustSimDrive::new(cyc["udds"].clone(), veh.clone()));
     sd.insert("hwy", RustSimDrive::new(cyc["hwy"].clone(), veh.clone()));
 
-    for (_, val) in sd.iter_mut() {
+    for (k, val) in sd.iter_mut() {
         val.sim_drive(None, None)?;
+        let key = String::from(k.clone());
+        let trace_miss_speed_mph = val.trace_miss_speed_mps * MPH_PER_MPS;
+        if (key == String::from("udds") || key == String::from("hwy")) && trace_miss_speed_mph > max_trace_miss_in_mph {
+            max_trace_miss_in_mph = trace_miss_speed_mph;
+        }
     }
+    out.trace_miss_speed_mph = max_trace_miss_in_mph;
 
     // find year-based adjustment parameters
     let adj_params: &AdjCoef = if veh.veh_year < 2017 {
@@ -738,6 +746,7 @@ mod simdrivelabel_tests {
             adj_cs_comb_mpgge: None,
             adj_cd_comb_mpgge: None,
             net_phev_cd_miles: None,
+            trace_miss_speed_mph: 0.0,
         };
 
         println!(
@@ -1054,6 +1063,7 @@ mod simdrivelabel_tests {
             adj_cs_comb_mpgge: Some(45.06826741586106),
             adj_cd_comb_mpgge: Some(2293.5675017498143),
             net_phev_cd_miles: Some(57.04992781503185),
+            trace_miss_speed_mph: 0.0,
         };
 
         assert!(label_fe.approx_eq(&label_fe_truth, 1e-8));

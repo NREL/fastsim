@@ -7,7 +7,7 @@ extern crate fastsim_core;
 use fastsim_core::{
     cycle::RustCycle, simdrive::RustSimDrive, simdrivelabel::get_label_fe, vehicle::RustVehicle,
     simdrivelabel::get_net_accel, simdrivelabel::make_accel_trace,
-    vehicle_utils::abc_to_drag_coeffs,
+    vehicle_utils::abc_to_drag_coeffs, params::MPH_PER_MPS,
 };
 
 /// Wrapper for fastsim.
@@ -82,7 +82,7 @@ struct AdoptResults {
     UF: f64,
     adjCombKwhPerMile: f64,
     accel: f64,
-    // add more results here
+    traceMissInMph: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -204,6 +204,7 @@ pub fn main() {
             UF: sdl.0.uf,
             adjCombKwhPerMile: sdl.0.adj_comb_kwh_per_mi,
             accel: sdl.0.net_accel,
+            traceMissInMph: sdl.0.trace_miss_speed_mph,
         };
         println!("{}", res.to_json());
     } else if is_adopt_hd {
@@ -246,6 +247,7 @@ pub fn main() {
             UF: 0.0,
             adjCombKwhPerMile: sim_drive.battery_kwh_per_mi,
             accel: net_accel,
+            traceMissInMph: sim_drive.trace_miss_speed_mps * MPH_PER_MPS,
         };
         println!("{}", res.to_json());
     } else {
@@ -287,7 +289,7 @@ fn translatefcEffType(x: &str) -> &str {
     } else if x.eq("5") || x.eq("6") {
         r#""HD_DIESEL""#
     } else {
-        x
+        r#""UNKNOWN""#
     }
 }
 
@@ -319,7 +321,7 @@ fn json_regex(x: String) -> String {
         format!("\"vehPtType\":{}", translateVehPtType(&caps["a"]))
     });
 
-    let re = Regex::new(r#""fcEffType":(?P<a>\d)"#).unwrap();
+    let re = Regex::new(r#""fcEffType":(?P<a>\d+)"#).unwrap();
     let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
         format!("\"fcEffType\":{}", translatefcEffType(&caps["a"]))
     });
