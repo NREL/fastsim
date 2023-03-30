@@ -354,4 +354,14 @@ mod tests {
         let expected_y_lookup = 10.0;
         assert_eq!(expected_y_lookup, y_lookup);
     }
+
+    #[test]
+    fn test_interpolate_with_non_evenly_spaced_x_data() {
+        let xs = Array1::from_vec(vec![0.0, 10.0, 100.0, 1000.0]);
+        let ys = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0]);
+        let x = 55.0;
+        let y_lookup = interpolate(&x, &xs, &ys, false);
+        let expected_y_lookup = 1.5;
+        assert_eq!(expected_y_lookup, y_lookup);
+    }
 }
