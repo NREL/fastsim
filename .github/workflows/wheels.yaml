@@ -3,8 +3,8 @@ name: wheels
 on:
   push:
     tags:
-    # 'v[0-9]+.[0-9]+.[0-9]+' to match e.g. v2.0.9
-      - "v[0-9]+.[0-9]+.[0-9]+" 
+      # 'v[0-9]+.[0-9]+.[0-9]+' to match semantic version tag, e.g. v2.0.8
+      - "v[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
   build:
@@ -28,10 +28,10 @@ jobs:
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: set up python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: "3.8"
 
@@ -40,71 +40,80 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable 
           override: true
 
-    - run: rustup target add aarch64-apple-darwin
-      if: matrix.os == 'macos'
+      - name: install python dependencies
+        run: pip install -U setuptools wheel twine cibuildwheel
 
-    - name: install python dependencies
-      run: pip install -U setuptools wheel twine cibuildwheel
-
-    - name: build sdist
-      if: matrix.os == 'ubuntu' && matrix.python-version == '8'
-      run: |
-        pip install -U setuptools-rust
-        python setup.py sdist
-    - name: build ${{ matrix.platform || matrix.os }} binaries
-      run: cibuildwheel --output-dir dist
-      env:
-        CIBW_BUILD: 'cp3${{ matrix.python-version }}-*'
-        CIBW_SKIP: '*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64'
-        CIBW_PLATFORM: ${{ matrix.platform || matrix.os }}
-        CIBW_TEST_COMMAND: 'python -m unittest discover {project}'
-        CIBW_ARCHS_MACOS: 'universal2'
-        # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
-        CIBW_TEST_SKIP: '*_universal2:arm64'
-        CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
-        CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
-        CIBW_MANYLINUX_X86_64_IMAGE: 'manylinux2014'
-        CIBW_MANYLINUX_I686_IMAGE: 'manylinux2014'
-        CIBW_BEFORE_BUILD: >
-          pip install -U setuptools-rust &&
-          rustup default nightly &&
-          rustup show
-        CIBW_BEFORE_BUILD_LINUX: >
-          pip install -U setuptools-rust &&
-          curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
-          rustup show
-
-    - name: list dist files
-      run: ${{ matrix.ls || 'ls -lh' }} dist/
+      - name: build sdist
+        if: matrix.os == 'ubuntu' && matrix.python-version == '8'
+        run: |
+          pip install -U setuptools-rust
+          python setup.py sdist
+      - name: build ${{ matrix.platform || matrix.os }} binaries
+        run: cibuildwheel --output-dir dist
+        env:
+          CIBW_BUILD: "cp3${{ matrix.python-version }}-*"
+          CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
+          CIBW_PLATFORM: ${{ matrix.platform || matrix.os }}
+          CIBW_TEST_REQUIRES: "pytest"
+          CIBW_TEST_COMMAND: "pytest {project}/tests -s"
+          CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
+          CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux2014"
+          CIBW_MANYLINUX_I686_IMAGE: "manylinux2014"
+          CIBW_BEFORE_BUILD: >
+            pip install -U setuptools-rust &&
+            rustup default nightly &&
+            rustup show
+          CIBW_BEFORE_BUILD_LINUX: >
+            pip install -U setuptools-rust &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
+            rustup show
+      # - name: build windows 32bit binaries
+      #   if: matrix.os == 'windows'
+      #   run: cibuildwheel --output-dir dist
+      #   env:
+      #     CIBW_BUILD: 'cp3${{ matrix.python-version }}-win32'
+      #     CIBW_PLATFORM: windows
+      #     CIBW_TEST_REQUIRES: 'pytest'
+      #     CIBW_TEST_COMMAND: 'pytest {project}/tests -s'
+      #     CIBW_ENVIRONMENT: 'PATH="$UserProfile\.cargo\bin;$PATH"'
+      #     CIBW_BEFORE_BUILD: >
+      #       pip install -U setuptools-rust &&
+      #       rustup toolchain install nightly-i686-pc-windows-msvc &&
+      #       rustup default nightly-i686-pc-windows-msvc &&
+      #       rustup override set nightly-i686-pc-windows-msvc &&
+      #       rustup show
+      - name: list dist files
+        run: ${{ matrix.ls || 'ls -lh' }} dist/
 
       - uses: actions/upload-artifact@v3
         with:
-          path:  ./dist/*
+          path: ./dist/*
 
-    - name: Copy built wheels to release
-      uses: actions/upload-artifact@v3
-      with:
-        name: dist
-        path: ./dist/*
-    - name: Download the release created from this tag
-      id: download-release
-      uses: actions/download-artifact@v3
-      with:
-        name: ${{ github.ref }}
-        path: release.zip
-        if-no-files-found: error
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Unzip release artifacts
-      run: unzip release.zip
-      if: steps.download-release.outputs.artifacts_downloaded == 'true'
-    - name: Upload wheels to release
-      uses: ncipollo/release-action@v3
-      with:
-        artifacts: ./dist/*
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Copy built wheels to release
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: ./dist/*
+      - name: Download the release created from this tag
+        id: download-release
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ github.ref }}
+          path: release.zip
+          if-no-files-found: error
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Unzip release artifacts
+        run: unzip release.zip
+        if: steps.download-release.outputs.artifacts_downloaded == 'true'
+      - name: Upload wheels to release
+        uses: ncipollo/release-action@v3
+        with:
+          artifacts: ./dist/*
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
