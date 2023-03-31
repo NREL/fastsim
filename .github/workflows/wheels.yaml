@@ -111,7 +111,7 @@ jobs:
         run: unzip release.zip
         if: steps.download-release.outputs.artifacts_downloaded == 'true'
       - name: Upload wheels to release
-        uses: ncipollo/release-action@v4
+        uses: ncipollo/release-action@v1
         with:
           artifacts: ./dist/*
           prerelease: false
