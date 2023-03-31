@@ -2,6 +2,7 @@
 Tests the code from fastsim/docs/demo.py
 """
 import unittest
+import pytest
 import time
 
 import numpy as np
@@ -196,7 +197,7 @@ class TestDemo(unittest.TestCase):
                     False,
                     msg=f"Exception (Rust: {use_rust}): {ex}"
                 )
-
+    @pytest.mark.filterwarnings("ignore:.*divide by zero*.")
     def test_run_simdrive(self):
         if not RUST_AVAILABLE:
             return
