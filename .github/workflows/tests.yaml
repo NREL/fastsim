@@ -2,7 +2,9 @@ name: tests
 
 on:
   push:
-      branches: [ rust-port ]
+      branches: 
+        - fastsim-2 
+        - fastsim-3
   pull_request:
 
 jobs:
@@ -41,4 +43,4 @@ jobs:
         run: |
           pip install setuptools_rust 
           pip install . 
-          python -m unittest discover
+          pytest -v fastsim/tests/
