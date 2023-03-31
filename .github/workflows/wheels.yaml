@@ -92,28 +92,3 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           path: ./dist/*
-
-      - name: Copy built wheels to release
-        uses: actions/upload-artifact@v3
-        with:
-          name: dist
-          path: ./dist/*
-      - name: Download the release created from this tag
-        id: download-release
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ github.ref }}
-          path: release.zip
-          if-no-files-found: error
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Unzip release artifacts
-        run: unzip release.zip
-        if: steps.download-release.outputs.artifacts_downloaded == 'true'
-      - name: Upload wheels to release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: ./dist/*
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
