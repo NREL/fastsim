@@ -43,6 +43,8 @@ jobs:
           toolchain: stable 
           override: true
 
+      - run: rustup target add aarch64-apple-darwin
+        if: matrix.os == 'macos'
       - name: install python dependencies
         run: pip install -U setuptools wheel twine cibuildwheel
 
