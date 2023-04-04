@@ -70,7 +70,7 @@ jobs:
           CIBW_MANYLINUX_I686_IMAGE: "manylinux2014"
           CIBW_BEFORE_BUILD: >
             pip install -U setuptools-rust &&
-            rustup default nightly &&
+            rustup default stable &&
             rustup show
           CIBW_BEFORE_BUILD_LINUX: >
             pip install -U setuptools-rust &&
