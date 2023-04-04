@@ -40,6 +40,6 @@ jobs:
 
       - name: Python unit tests 
         run: |
-          pip install setuptools_rust 
+          pip install setuptools_rust pytest
           pip install . 
           pytest -v fastsim/tests/
