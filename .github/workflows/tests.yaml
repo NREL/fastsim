@@ -2,7 +2,9 @@ name: tests
 
 on:
   push:
-      branches: [ rust-port ]
+      branches: 
+        - fastsim-2 
+        - fastsim-3
   pull_request:
 
 jobs:
@@ -16,7 +18,6 @@ jobs:
 
       env:
         PYTHON: ${{ matrix.python-version }}
-
       steps:
       - uses: actions/checkout@v2
 
@@ -39,6 +40,6 @@ jobs:
 
       - name: Python unit tests 
         run: |
-          pip install setuptools_rust 
+          pip install setuptools_rust pytest
           pip install . 
-          python -m unittest discover
+          pytest -v fastsim/tests/
