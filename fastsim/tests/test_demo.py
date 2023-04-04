@@ -51,7 +51,8 @@ def run_simdrive(cyc=None, veh=None, use_rust=False, verbose=False):
     else:
         sim_drive = fsim.simdrive.SimDrive(cyc, veh)
     t0 = time.time()
-    sim_drive.sim_drive() 
+    with np.errstate(divide='ignore'):
+        sim_drive.sim_drive() 
     dt = time.time() - t0
     if verbose:
         if use_rust:
