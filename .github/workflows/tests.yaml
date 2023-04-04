@@ -1,10 +1,6 @@
 name: tests 
 
 on:
-  push:
-      branches: 
-        - fastsim-2 
-        - fastsim-3
   pull_request:
 
 jobs:
