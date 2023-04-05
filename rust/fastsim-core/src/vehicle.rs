@@ -941,11 +941,11 @@ impl RustVehicle {
             mc_peak_eff_override,
             orphaned: false,
         };
-        veh.set_derived();
         match veh.validate() {
             Ok(_) => (),
             Err(e) => bail!(e),
         };
+        veh.set_derived();
         Ok(veh)
     }
 
