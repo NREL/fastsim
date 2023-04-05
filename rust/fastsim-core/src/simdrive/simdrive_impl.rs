@@ -432,7 +432,10 @@ impl RustSimDrive {
                         } else {
                             ess_2fuel_kwh = 0.0;
                         }
-                        init_soc = min(1.0, max(0.0, *self.soc.last().unwrap()));
+                        init_soc = min(
+                            self.veh.max_soc,
+                            max(self.veh.min_soc, *self.soc.last().unwrap()),
+                        );
                     }
                     init_soc
                 } else if self.veh.veh_pt_type == PHEV || self.veh.veh_pt_type == BEV {
