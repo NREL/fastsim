@@ -165,7 +165,7 @@ pub fn main() {
     let is_adopt: bool = fastsim_api.adopt.is_some() && fastsim_api.adopt.unwrap();
     let veh = if let Some(veh_string) = fastsim_api.veh {
         if is_adopt || is_adopt_hd {
-            let veh_string = json_regex(veh_string);
+            let veh_string = json_rewrite(veh_string);
             RustVehicle::from_str(&veh_string)
         } else {
             RustVehicle::from_str(&veh_string)
@@ -173,7 +173,7 @@ pub fn main() {
     } else if let Some(veh_file_path) = fastsim_api.veh_file {
         if is_adopt || is_adopt_hd {
             let vehstring = fs::read_to_string(veh_file_path).unwrap();
-            let vehstring = json_regex(vehstring);
+            let vehstring = json_rewrite(vehstring);
             RustVehicle::from_str(&vehstring)
         } else {
             RustVehicle::from_file(&veh_file_path)
@@ -305,7 +305,8 @@ fn transform_array_of_value_to_ndarray_representation(array_of_values: &Vec<Valu
     array_to_object_representation(&transform_array_of_value_to_vec_of_f64(array_of_values))
 }
 
-fn json_regex(x: String) -> String {
+/// Rewrites the ADOPT JSON string to be in compliance with what FASTSim expects for JSON input.
+fn json_rewrite(x: String) -> String {
     let adoptstring = x;
 
     let mut parsed_data: Value = serde_json::from_str(&adoptstring).unwrap();
