@@ -1,5 +1,6 @@
 use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
 use std::fs;
 
@@ -261,138 +262,122 @@ pub fn main() {
     // }
 }
 
-#[allow(non_snake_case)]
-fn translateVehPtType(x: &str) -> &str {
-    if x.eq("1") {
-        r#""Conv""#
-    } else if x.eq("2") {
-        r#""HEV""#
-    } else if x.eq("3") {
-        r#""PHEV""#
-    } else if x.eq("4") {
-        r#""BEV""#
+fn translate_veh_pt_type(x: i64) -> String {
+    if x == 1 {
+        String::from("Conv")
+    } else if x == 2 {
+        String::from("HEV")
+    } else if x == 3 {
+        String::from("PHEV")
+    } else if x == 4 {
+        String::from("BEV")
     } else {
-        x
+        x.to_string()
     }
 }
 
-#[allow(non_snake_case)]
-fn translatefcEffType(x: &str) -> &str {
-    if x.eq("1") {
-        r#""SI""#
-    } else if x.eq("2") {
-        r#""ATKINSON""#
-    } else if x.eq("3") {
-        r#""DIESEL""#
-    } else if x.eq("4") {
-        r#""H2FC""#
-    } else if x.eq("5") || x.eq("6") {
-        r#""HD_DIESEL""#
-    } else {
-        r#""UNKNOWN""#
+#[derive(Debug, Deserialize, Serialize)]
+struct ArrayObject {
+    pub v: i64,
+    pub dim: Vec<usize>,
+    pub data: Vec<f64>,
+}
+
+/// Takes a vector of floats and transforms it into an object representation
+/// used by the ndarray library.
+fn array_to_object_representation(xs: &Vec<f64>) -> ArrayObject {
+    ArrayObject { v: 1, dim: vec![xs.len()], data: xs.clone() }
+}
+
+fn transform_array_of_value_to_vec_of_f64(array_of_values: &Vec<Value>) -> Vec<f64> {
+    let mut vec_of_f64 = Vec::<f64>::new();
+    for idx in 0..array_of_values.len() {
+        let item_raw = &array_of_values[idx];
+        if item_raw.is_number() {
+            let item = item_raw.as_f64().unwrap();
+            vec_of_f64.push(item);
+        }
     }
+    vec_of_f64
 }
 
-#[allow(non_snake_case)]
-fn translateforceAuxOnFC(x: &str) -> bool {
-    if x.eq("0") {
-        false
-    } else {
-        true
-    }
-}
-
-#[allow(non_snake_case)]
-fn countCommas(x: &str) -> usize {
-    x.matches(",").count() + 1
-}
-
-#[allow(non_snake_case)]
-fn arrToVec(x: &str) -> String {
-    format!("{{\"v\":1,\"dim\":[{}],\"data\":{}}}", countCommas(x), x)
+fn transform_array_of_value_to_ndarray_representation(array_of_values: &Vec<Value>) -> ArrayObject {
+    array_to_object_representation(&transform_array_of_value_to_vec_of_f64(array_of_values))
 }
 
 fn json_regex(x: String) -> String {
-    use regex::Regex;
     let adoptstring = x;
 
-    let re = Regex::new(r#""vehPtType":(?P<a>\d)"#).unwrap();
-    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
-        format!("\"vehPtType\":{}", translateVehPtType(&caps["a"]))
-    });
+    let mut parsed_data: Value = serde_json::from_str(&adoptstring).unwrap();
 
-    let re = Regex::new(r#""fcEffType":(?P<a>\d+)"#).unwrap();
-    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
-        format!("\"fcEffType\":{}", translatefcEffType(&caps["a"]))
-    });
-
-    let re = Regex::new(r#""forceAuxOnFC":(?P<a>\d)"#).unwrap();
-    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
-        format!("\"forceAuxOnFC\":{}", translateforceAuxOnFC(&caps["a"]))
-    });
-
-    let re = Regex::new(r#""fwd1rwd2awd3":(?P<a>\d)"#).unwrap();
-    let mut is_rear_wheel_drive: bool = false;
-    for caps in re.captures_iter(&adoptstring) {
-        if &caps["a"] == "2" || &caps["a"] == "3" {
-            is_rear_wheel_drive = true;
-        }
-        break
+    let veh_pt_type_raw = &parsed_data["vehPtType"];
+    if veh_pt_type_raw.is_i64() {
+        let veh_pt_type_value = veh_pt_type_raw.as_i64().unwrap();
+        let new_veh_pt_type_value = translate_veh_pt_type(veh_pt_type_value);
+        parsed_data["vehPtType"] = json!(new_veh_pt_type_value);
     }
-    let re = Regex::new(r#""vehCgM":(?P<a>-?[0-9]*\.?[0-9]+)"#).unwrap();
-    let adoptstring = re.replace_all(&adoptstring, |caps: &regex::Captures| {
-        let value = String::from(&caps["a"]);
-        let sign: String = if !is_rear_wheel_drive || value.starts_with("-") {
-            String::from("")
-        } else {
-            String::from("-")
-        };
-        format!("\"vehCgM\":{}{}", sign, value)
-    });
 
-    let re = Regex::new(r#""fcPwrOutPerc":(?P<a>\[.*?\])"#).unwrap();
-    let arr1 = format!(
-        "\"fcPwrOutPerc\":{}",
-        arrToVec(&re.captures(&adoptstring).unwrap()["a"])
-    );
+    let fc_eff_type_raw = &parsed_data["fuelConverter"]["fcEffType"];
+    if fc_eff_type_raw.is_string() {
+        let fc_eff_type_value = fc_eff_type_raw.as_str().unwrap();
+        parsed_data["fcEffType"] = Value::String(String::from(fc_eff_type_value));
+    }
 
-    let re = Regex::new(r#""fcEffArray":(?P<a>\[.*?\])"#).unwrap();
-    let arr2 = format!(
-        "\"fcEffArray\":{}",
-        &re.captures(&adoptstring).unwrap()["a"]
-    );
+    let force_aux_on_fc_raw = &parsed_data["forceAuxOnFC"];
+    if force_aux_on_fc_raw.is_i64() {
+        let force_aux_on_fc_value = force_aux_on_fc_raw.as_i64().unwrap();
+        parsed_data["forceAuxOnFC"] = json!(force_aux_on_fc_value != 0)
+    }
 
-    let re = Regex::new(r#""mcEffArray":(?P<a>\[.*?\])"#).unwrap();
-    let arr3 = format!(
-        "\"mcEffArray\":{}",
-        arrToVec(&re.captures(&adoptstring).unwrap()["a"])
-    );
+    let mut is_rear_wheel_drive: bool = false;
+    let fwd1rwd2awd3_raw = &parsed_data["fwd1rwd2awd3"];
+    if fwd1rwd2awd3_raw.is_i64() {
+        let fwd1rwd2awd3_value = fwd1rwd2awd3_raw.as_i64().unwrap();
+        is_rear_wheel_drive = fwd1rwd2awd3_value == 2 || fwd1rwd2awd3_value == 3;
+    }
+    let veh_cg_raw = &parsed_data["vehCgM"];
+    if veh_cg_raw.is_number() {
+        let veh_cg_value = veh_cg_raw.as_f64().unwrap();
+        if is_rear_wheel_drive && veh_cg_value > 0.0 {
+            parsed_data["vehCgM"] = json!(-1.0 * veh_cg_value);
+        }
+    }
 
-    let re = Regex::new(r#""mcPwrOutPerc":(?P<a>\[.*?\])"#).unwrap();
-    let arr4 = format!(
-        "\"mcPwrOutPerc\":{}",
-        arrToVec(&re.captures(&adoptstring).unwrap()["a"])
-    );
+    let fc_pwr_out_perc_raw = &parsed_data["fuelConverter"]["fcPwrOutPerc"];
+    if fc_pwr_out_perc_raw.is_array() {
+        parsed_data["fcPwrOutPerc"] = json!(transform_array_of_value_to_ndarray_representation(fc_pwr_out_perc_raw.as_array().unwrap()));
+    }
 
-    let re = Regex::new(r#"(?P<a>"idleFcKw":.*?)[,}]"#).unwrap();
-    let cap1 = &re.captures(&adoptstring).unwrap()["a"];
+    let fc_eff_array_raw = &parsed_data["fuelConverter"]["fcEffArray"];
+    if fc_eff_array_raw.is_array() {
+        parsed_data["fcEffArray"] = json!(transform_array_of_value_to_vec_of_f64(fc_eff_array_raw.as_array().unwrap()));
+    }
 
-    let re = Regex::new(r#"(?P<a>"mcMaxElecInKw":.*?)[,}]"#).unwrap();
-    let cap2 = &re.captures(&adoptstring).unwrap()["a"];
+    let mc_eff_array_raw = &parsed_data["motor"]["mcEffArray"];
+    if mc_eff_array_raw.is_array() {
+        parsed_data["mcEffArray"] = json!(transform_array_of_value_to_ndarray_representation(mc_eff_array_raw.as_array().unwrap()));
+    }
 
-    let s_s = "\"stop_start\": false";
+    let mc_pwr_out_perc_raw = &parsed_data["motor"]["mcPwrOutPerc"];
+    if mc_pwr_out_perc_raw.is_array() {
+        parsed_data["mcPwrOutPerc"] = json!(transform_array_of_value_to_ndarray_representation(mc_pwr_out_perc_raw.as_array().unwrap()));
+    }
 
-    let adoptstring = adoptstring.trim_end();
+    let idle_fc_kw_raw = &parsed_data["fuelConverter"]["idleFcKw"];
+    if idle_fc_kw_raw.is_number() {
+        let idle_fc_kw_value = idle_fc_kw_raw.as_f64().unwrap();
+        parsed_data["idleFcKw"] = json!(idle_fc_kw_value);
+    }
 
-    return format!(
-        "{},{},{},{},{},{},{},{}}}",
-        &adoptstring[0..adoptstring.len() - 1],
-        cap1,
-        cap2,
-        arr1,
-        arr2,
-        arr3,
-        arr4,
-        s_s
-    );
+    let mc_max_elec_in_kw_raw = &parsed_data["motor"]["mcMaxElecInKw"];
+    if mc_max_elec_in_kw_raw.is_number() {
+        let mc_max_elec_in_kw_value = mc_max_elec_in_kw_raw.as_f64().unwrap();
+        parsed_data["mcMaxElecInKw"] = json!(mc_max_elec_in_kw_value);
+    }
+
+    parsed_data["stop_start"] = json!(false);
+
+    let adoptstring = parsed_data.to_json();
+
+    return adoptstring;
 }
