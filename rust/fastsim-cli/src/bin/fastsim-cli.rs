@@ -1,15 +1,14 @@
 use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use std::fs;
 
 extern crate fastsim_core;
 use fastsim_core::{
-    cycle::RustCycle, simdrive::RustSimDrive, simdrivelabel::get_label_fe, vehicle::RustVehicle,
+    cycle::RustCycle, params::MPH_PER_MPS, simdrive::RustSimDrive, simdrivelabel::get_label_fe,
     simdrivelabel::get_net_accel, simdrivelabel::make_accel_trace,
-    vehicle_utils::abc_to_drag_coeffs, params::MPH_PER_MPS,
-    utils::interpolate_vectors as interp
+    utils::interpolate_vectors as interp, vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
 };
 
 /// Wrapper for fastsim.
@@ -85,7 +84,7 @@ struct AdoptResults {
     adjCombKwhPerMile: f64,
     accel: f64,
     traceMissInMph: f64,
-    h2AndDiesel: Option<H2AndDieselResults>
+    h2AndDiesel: Option<H2AndDieselResults>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -119,9 +118,13 @@ pub struct H2AndDieselResults {
 }
 
 pub fn calculate_mpgge_for_h2_diesel_ice(
-    dist_mi: f64, max_fc_power_kw: f64, kwh_per_gge: f64,
-    fc_kw_out_ach: &Vec<f64>, fs_kwh_out_ach: &Vec<f64>,
-    fc_pwr_out_perc: &Vec<f64>, h2share: &Vec<f64>
+    dist_mi: f64,
+    max_fc_power_kw: f64,
+    kwh_per_gge: f64,
+    fc_kw_out_ach: &Vec<f64>,
+    fs_kwh_out_ach: &Vec<f64>,
+    fc_pwr_out_perc: &Vec<f64>,
+    h2share: &Vec<f64>,
 ) -> H2AndDieselResults {
     assert!(fc_kw_out_ach.len() == fs_kwh_out_ach.len());
     assert!(fc_pwr_out_perc.len() == h2share.len());
@@ -153,11 +156,19 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
     H2AndDieselResults {
         h2_kwh: total_h2_kwh,
         h2_gge: total_h2_gge,
-        h2_mpgge: if total_h2_gge > 0.0 { dist_mi / total_h2_gge } else { 0.0 },
+        h2_mpgge: if total_h2_gge > 0.0 {
+            dist_mi / total_h2_gge
+        } else {
+            0.0
+        },
         diesel_kwh: total_diesel_kwh,
         diesel_gals: total_diesel_gals,
         diesel_gge: total_diesel_gge,
-        diesel_mpg: if total_diesel_gals > 0.0 { dist_mi / total_diesel_gals } else { 0.0 },
+        diesel_mpg: if total_diesel_gals > 0.0 {
+            dist_mi / total_diesel_gals
+        } else {
+            0.0
+        },
     }
 }
 
@@ -178,17 +189,20 @@ pub fn main() {
     if let Some(_cyc_json_str) = fastsim_api.cyc {
         panic!("Need to implement: let cyc = RustCycle::from_json(cyc_json_str)");
     }
-    let (is_adopt_hd, adopt_hd_string, adopt_hd_has_cycle) = if let Some(adopt_hd_string) = &fastsim_api.adopt_hd {
-        // NOTE: specifying the --adopt-hd flag implies TRUE. Thus specifying --adopt-hd false or --adopt-hd true just
-        // sets the driving cycle to the default HHDDT cycle
-        let adopt_hd_str_lc = adopt_hd_string.to_lowercase();
-        let true_string = String::from("true");
-        let false_string = String::from("false");
-        let adopt_hd_has_cycle = adopt_hd_str_lc.len() > 0 && adopt_hd_str_lc != true_string && adopt_hd_str_lc != false_string;
-        (true, adopt_hd_string.clone(), adopt_hd_has_cycle)
-    } else {
-        (false, String::from(""), false)
-    };
+    let (is_adopt_hd, adopt_hd_string, adopt_hd_has_cycle) =
+        if let Some(adopt_hd_string) = &fastsim_api.adopt_hd {
+            // NOTE: specifying the --adopt-hd flag implies TRUE. Thus specifying --adopt-hd false or --adopt-hd true just
+            // sets the driving cycle to the default HHDDT cycle
+            let adopt_hd_str_lc = adopt_hd_string.to_lowercase();
+            let true_string = String::from("true");
+            let false_string = String::from("false");
+            let adopt_hd_has_cycle = adopt_hd_str_lc.len() > 0
+                && adopt_hd_str_lc != true_string
+                && adopt_hd_str_lc != false_string;
+            (true, adopt_hd_string.clone(), adopt_hd_has_cycle)
+        } else {
+            (false, String::from(""), false)
+        };
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
         if cyc_file_path == *"coastdown" {
             if fastsim_api.a.is_some() && fastsim_api.b.is_some() && fastsim_api.c.is_some() {
@@ -319,7 +333,7 @@ pub fn main() {
                 &sim_drive.fc_kw_out_ach.to_vec(),
                 &sim_drive.fs_kwh_out_ach.to_vec(),
                 &fc_pwr_out_perc.unwrap(),
-                &hd_h2_diesel_ice_h2share.unwrap()
+                &hd_h2_diesel_ice_h2share.unwrap(),
             );
             mpgge = dist_mi / (r.diesel_gge + r.h2_gge);
             Some(r)
@@ -328,14 +342,13 @@ pub fn main() {
         };
         let res = AdoptResults {
             adjCombMpgge: mpgge,
-            rangeMiles:
-                if mpgge > 0.0 {
-                    (veh.fs_kwh / sim_drive.props.kwh_per_gge) * mpgge
-                } else if sim_drive.battery_kwh_per_mi > 0.0 {
-                    veh.ess_max_kwh / sim_drive.battery_kwh_per_mi
-                } else {
-                    0.0
-                },
+            rangeMiles: if mpgge > 0.0 {
+                (veh.fs_kwh / sim_drive.props.kwh_per_gge) * mpgge
+            } else if sim_drive.battery_kwh_per_mi > 0.0 {
+                veh.ess_max_kwh / sim_drive.battery_kwh_per_mi
+            } else {
+                0.0
+            },
             UF: 0.0,
             adjCombKwhPerMile: sim_drive.battery_kwh_per_mi,
             accel: net_accel,
@@ -378,7 +391,11 @@ struct ArrayObject {
 /// Takes a vector of floats and transforms it into an object representation
 /// used by the ndarray library.
 fn array_to_object_representation(xs: &Vec<f64>) -> ArrayObject {
-    ArrayObject { v: 1, dim: vec![xs.len()], data: xs.clone() }
+    ArrayObject {
+        v: 1,
+        dim: vec![xs.len()],
+        data: xs.clone(),
+    }
 }
 
 fn transform_array_of_value_to_vec_of_f64(array_of_values: &Vec<Value>) -> Vec<f64> {
@@ -421,13 +438,17 @@ fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
         if fc_eff_type == String::from("HDH2DieselIce") {
             let fc_pwr_out_perc_raw = &parsed_data["fuelConverter"]["fcPwrOutPerc"];
             if fc_pwr_out_perc_raw.is_array() {
-                fc_pwr_out_perc = Some(transform_array_of_value_to_vec_of_f64(fc_pwr_out_perc_raw.as_array().unwrap()));
+                fc_pwr_out_perc = Some(transform_array_of_value_to_vec_of_f64(
+                    fc_pwr_out_perc_raw.as_array().unwrap(),
+                ));
             }
             let h2share_raw = &parsed_data["fuelConverter"]["HDH2DieselIceH2Share"];
             if h2share_raw.is_array() {
-                hd_h2_diesel_ice_h2share = Some(transform_array_of_value_to_vec_of_f64(h2share_raw.as_array().unwrap()));
+                hd_h2_diesel_ice_h2share = Some(transform_array_of_value_to_vec_of_f64(
+                    h2share_raw.as_array().unwrap(),
+                ));
             }
-        } 
+        }
     }
 
     let force_aux_on_fc_raw = &parsed_data["forceAuxOnFC"];
@@ -452,22 +473,30 @@ fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
 
     let fc_pwr_out_perc_raw = &parsed_data["fuelConverter"]["fcPwrOutPerc"];
     if fc_pwr_out_perc_raw.is_array() {
-        parsed_data["fcPwrOutPerc"] = json!(transform_array_of_value_to_ndarray_representation(fc_pwr_out_perc_raw.as_array().unwrap()));
+        parsed_data["fcPwrOutPerc"] = json!(transform_array_of_value_to_ndarray_representation(
+            fc_pwr_out_perc_raw.as_array().unwrap()
+        ));
     }
 
     let fc_eff_array_raw = &parsed_data["fuelConverter"]["fcEffArray"];
     if fc_eff_array_raw.is_array() {
-        parsed_data["fcEffArray"] = json!(transform_array_of_value_to_vec_of_f64(fc_eff_array_raw.as_array().unwrap()));
+        parsed_data["fcEffArray"] = json!(transform_array_of_value_to_vec_of_f64(
+            fc_eff_array_raw.as_array().unwrap()
+        ));
     }
 
     let mc_eff_array_raw = &parsed_data["motor"]["mcEffArray"];
     if mc_eff_array_raw.is_array() {
-        parsed_data["mcEffArray"] = json!(transform_array_of_value_to_ndarray_representation(mc_eff_array_raw.as_array().unwrap()));
+        parsed_data["mcEffArray"] = json!(transform_array_of_value_to_ndarray_representation(
+            mc_eff_array_raw.as_array().unwrap()
+        ));
     }
 
     let mc_pwr_out_perc_raw = &parsed_data["motor"]["mcPwrOutPerc"];
     if mc_pwr_out_perc_raw.is_array() {
-        parsed_data["mcPwrOutPerc"] = json!(transform_array_of_value_to_ndarray_representation(mc_pwr_out_perc_raw.as_array().unwrap()));
+        parsed_data["mcPwrOutPerc"] = json!(transform_array_of_value_to_ndarray_representation(
+            mc_pwr_out_perc_raw.as_array().unwrap()
+        ));
     }
 
     let idle_fc_kw_raw = &parsed_data["fuelConverter"]["idleFcKw"];
