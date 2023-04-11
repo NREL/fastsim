@@ -41,7 +41,7 @@ fn test_that_adopt_hd_option_works_as_expected() -> Result<(), Box<dyn std::erro
     let mut cmd = Command::cargo_bin("fastsim-cli")?;
     for (veh_file, expected_result) in expected_results.iter() {
         let mut adopt_veh_file = project_root::get_project_root().unwrap();
-        let mut adopt_str_path = String::from("../fastsim/resources/adopt/");
+        let mut adopt_str_path = String::from("../rust/fastsim-cli/tests/assets/");
         adopt_str_path.push_str(veh_file);
         adopt_veh_file.push(Path::new(&adopt_str_path));
         adopt_veh_file = adopt_veh_file.canonicalize().unwrap();
