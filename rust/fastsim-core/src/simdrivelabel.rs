@@ -124,16 +124,12 @@ pub fn make_accel_trace() -> RustCycle {
 }
 
 pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> Result<f64, anyhow::Error> {
-    log::debug!(target: "fastsimrust",
-        "running `sim_drive_accel`"
-    );
+    log::debug!("running `sim_drive_accel`");
     sd_accel.sim_drive_accel(None, None)?;
     if sd_accel.mph_ach.iter().any(|&x| x >= 60.) {
         Ok(interpolate(&60., &sd_accel.mph_ach, &sd_accel.cyc0.time_s, false))
     } else {
-        log::warn!(target: "fastsimrust",
-            "vehicle '{}' never achieves 60 mph", scenario_name
-        );
+        log::warn!("vehicle '{}' never achieves 60 mph", scenario_name);
         Ok(1e3)
     }
 }
