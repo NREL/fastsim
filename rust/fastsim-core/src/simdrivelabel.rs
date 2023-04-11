@@ -123,11 +123,19 @@ pub fn make_accel_trace() -> RustCycle {
     )
 }
 
-pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> Result<f64, anyhow::Error> {
+pub fn get_net_accel(
+    sd_accel: &mut RustSimDrive,
+    scenario_name: &String,
+) -> Result<f64, anyhow::Error> {
     log::debug!("running `sim_drive_accel`");
     sd_accel.sim_drive_accel(None, None)?;
     if sd_accel.mph_ach.iter().any(|&x| x >= 60.) {
-        Ok(interpolate(&60., &sd_accel.mph_ach, &sd_accel.cyc0.time_s, false))
+        Ok(interpolate(
+            &60.,
+            &sd_accel.mph_ach,
+            &sd_accel.cyc0.time_s,
+            false,
+        ))
     } else {
         log::warn!("vehicle '{}' never achieves 60 mph", scenario_name);
         Ok(1e3)
@@ -164,10 +172,7 @@ pub fn get_label_fe(
     out.veh = veh.clone();
 
     // load the cycles and intstantiate simdrive objects
-    cyc.insert(
-        "accel",
-        make_accel_trace(),
-    );
+    cyc.insert("accel", make_accel_trace());
 
     #[cfg(not(windows))]
     macro_rules! main_separator {
@@ -231,7 +236,9 @@ pub fn get_label_fe(
         val.sim_drive(None, None)?;
         let key = String::from(k.clone());
         let trace_miss_speed_mph = val.trace_miss_speed_mps * MPH_PER_MPS;
-        if (key == String::from("udds") || key == String::from("hwy")) && trace_miss_speed_mph > max_trace_miss_in_mph {
+        if (key == String::from("udds") || key == String::from("hwy"))
+            && trace_miss_speed_mph > max_trace_miss_in_mph
+        {
             max_trace_miss_in_mph = trace_miss_speed_mph;
         }
     }
@@ -386,10 +393,7 @@ pub fn get_label_fe(
     // run accelerating sim_drive
     let mut sd_accel = RustSimDrive::new(cyc["accel"].clone(), veh.clone());
     out.net_accel = get_net_accel(&mut sd_accel, &veh.scenario_name)?;
-    sd.insert(
-        "accel",
-        sd_accel,
-    );
+    sd.insert("accel", sd_accel);
 
     // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true

@@ -1,5 +1,5 @@
-use std::{path::Path, str::FromStr};
 use std::process::Command;
+use std::{path::Path, str::FromStr};
 
 use assert_cmd::prelude::{CommandCargoExt, OutputAssertExt};
 use predicates::prelude::predicate;
@@ -34,7 +34,7 @@ fn test_that_cli_app_produces_result() -> Result<(), Box<dyn std::error::Error>>
 #[test]
 fn test_that_adopt_hd_option_works_as_expected() -> Result<(), Box<dyn std::error::Error>> {
     let expected_results = vec![
-        ("adoptstring.json",  "0.245"), // 0.245 kWh/mile
+        ("adoptstring.json", "0.245"),  // 0.245 kWh/mile
         ("adoptstring2.json", "7.906"), // 7.906 mpgge
         ("adoptstring3.json", "6.882"), // 6.882 mpgge
     ];

@@ -211,7 +211,6 @@ pub fn interpolate_vectors(
     yl + dydx * (x - xl)
 }
 
-
 #[cfg(feature = "pyo3")]
 pub mod array_wrappers {
     use proc_macros::add_pyo3_api;
