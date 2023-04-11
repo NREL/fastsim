@@ -1,18 +1,21 @@
 //! Module containing vehicle struct and related functions.
 // crate local
-use crate::cycle::RustCycle;
+use crate::cycle::{RustCycle, RustCycleCache};
 use crate::imports::*;
 use crate::params::RustPhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::vehicle::*;
+pub mod cyc_mods;
+pub mod simdrive_impl;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
     #[new]
     #[allow(clippy::too_many_arguments)]
     pub fn __new__(
+        favor_grade_accuracy: bool,
         missed_trace_correction: bool, // if true, missed trace correction is active, default = false
         max_time_dilation: f64,
         min_time_dilation: f64,
@@ -46,6 +49,7 @@ use crate::vehicle::*;
         max_epa_adj: f64,
     ) -> Self {
         Self {
+            favor_grade_accuracy,
             missed_trace_correction, // if true, missed trace correction is active, default = false
             max_time_dilation,
             min_time_dilation,
@@ -86,6 +90,7 @@ use crate::vehicle::*;
 )]
 /// Struct containing time trace data
 pub struct RustSimDriveParams {
+    pub favor_grade_accuracy: bool,
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
     pub max_time_dilation: f64,
     pub min_time_dilation: f64,
@@ -123,6 +128,11 @@ pub struct RustSimDriveParams {
 
 impl Default for RustSimDriveParams {
     fn default() -> Self {
+        // if True, accuracy will be favored over performance for grade per step estimates
+        // Specifically, for performance, grade for a step will be assumed to be the grade
+        // looked up at step start distance. For accuracy, the actual elevations will be
+        // used. This distinciton only makes a difference for CAV maneuvers.
+        let favor_grade_accuracy = true;
         // if true, missed trace correction is active, default = false
         let missed_trace_correction = false;
         // maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
@@ -160,6 +170,7 @@ impl Default for RustSimDriveParams {
         // EPA fuel economy adjustment parameters
         let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
         Self {
+            favor_grade_accuracy,
             missed_trace_correction,
             max_time_dilation,
             min_time_dilation,
@@ -541,6 +552,8 @@ pub struct RustSimDrive {
     pub orphaned: bool,
     pub coast_delay_index: Array1<i32>,
     pub idm_target_speed_m_per_s: Array1<f64>,
+    #[serde(skip)]
+    pub cyc0_cache: RustCycleCache,
 }
 
 // #[cfg(test)]

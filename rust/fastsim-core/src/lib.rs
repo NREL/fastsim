@@ -41,7 +41,8 @@ pub mod params;
 #[cfg(feature = "pyo3")]
 pub mod pyo3imports;
 pub mod simdrive;
-pub mod simdrive_impl;
+pub use simdrive::simdrive_impl;
+pub mod simdrivelabel;
 pub mod thermal;
 pub mod traits;
 pub mod utils;

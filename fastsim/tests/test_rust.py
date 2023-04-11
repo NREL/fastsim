@@ -52,16 +52,17 @@ TEST_VARS = [
     "fs_kwh_out_ach",
 ]
 
+
 class TestRust(unittest.TestCase):
     def setUp(self):
         fsim.utils.disable_logging()
-    
+
     def test_run_sim_drive_conv(self):
         if not RUST_AVAILABLE:
             return
         cyc = cycle.Cycle.from_file('udds').to_rust()
         veh = vehicle.Vehicle.from_vehdb(5).to_rust()
-        #sd = simdrive.SimDrive(cyc, veh).to_rust()
+        # sd = simdrive.SimDrive(cyc, veh).to_rust()
         sd = fsr.RustSimDrive(cyc, veh)
         sd.sim_drive()
         self.assertTrue(sd.i > 1)
@@ -93,7 +94,7 @@ class TestRust(unittest.TestCase):
         veh_types = ["CONV", "HEV", "PHEV", "BEV", "ALL"]
         if veh_type not in veh_types:
             raise ValueError(f'veh_type "{veh_type}" not in {veh_types}.')
-        
+
         cyc_dict = {
             "cycSecs": np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]),
             "cycMps":  np.array([0.0, 0.4, 0.8, 1.2, 1.2, 1.2, 1.2, 0.8, 0.4, 0.0, 0.0]),
@@ -107,11 +108,13 @@ class TestRust(unittest.TestCase):
         if veh_type in ["CONV", "ALL"]:
             self.test_vehicle_for_discrepancies(vnum=4, **kwargs)
             self.test_vehicle_for_discrepancies(vnum=7, **kwargs)
-            self.test_vehicle_for_discrepancies(veh_filename="2016_EU_VW_Golf_1.4TSI.csv", **kwargs)
+            self.test_vehicle_for_discrepancies(
+                veh_filename="2016_EU_VW_Golf_1.4TSI.csv", **kwargs)
         if veh_type in ["HEV", "ALL"]:
             self.test_vehicle_for_discrepancies(vnum=9, **kwargs)
             self.test_vehicle_for_discrepancies(vnum=10, **kwargs)
-            self.test_vehicle_for_discrepancies(veh_filename="2022_TOYOTA_Yaris_Hybrid_Mid.csv", **kwargs)
+            self.test_vehicle_for_discrepancies(
+                veh_filename="2022_TOYOTA_Yaris_Hybrid_Mid.csv", **kwargs)
         if veh_type in ["PHEV", "ALL"]:
             self.test_vehicle_for_discrepancies(vnum=13, **kwargs)
             self.test_vehicle_for_discrepancies(vnum=16, **kwargs)
@@ -150,15 +153,24 @@ class TestRust(unittest.TestCase):
         printed_vehicle = False
         places = 6
         tol = 10 ** (-1 * places)
-        self.assertEqual(sim_python.props.air_density_kg_per_m3, sim_rust.props.air_density_kg_per_m3)
-        self.assertEqual(sim_python.sim_params.newton_max_iter, sim_rust.sim_params.newton_max_iter)
-        self.assertEqual(sim_python.sim_params.newton_gain, sim_rust.sim_params.newton_gain)
-        self.assertEqual(sim_python.sim_params.newton_xtol, sim_rust.sim_params.newton_xtol)
-        self.assertAlmostEqual(sim_python.veh.drag_coef, sim_rust.veh.drag_coef, places=places)
-        self.assertAlmostEqual(sim_python.veh.frontal_area_m2, sim_rust.veh.frontal_area_m2, places=places)
-        self.assertAlmostEqual(sim_python.veh.mc_max_elec_in_kw, sim_rust.veh.mc_max_elec_in_kw, places=places)
-        self.assertAlmostEqual(sim_python.veh.ess_max_kwh, sim_rust.veh.ess_max_kwh, places=places)
-        self.assertAlmostEqual(sim_python.veh.ess_round_trip_eff, sim_rust.veh.ess_round_trip_eff, places=places)
+        self.assertEqual(sim_python.props.air_density_kg_per_m3,
+                         sim_rust.props.air_density_kg_per_m3)
+        self.assertEqual(sim_python.sim_params.newton_max_iter,
+                         sim_rust.sim_params.newton_max_iter)
+        self.assertEqual(sim_python.sim_params.newton_gain,
+                         sim_rust.sim_params.newton_gain)
+        self.assertEqual(sim_python.sim_params.newton_xtol,
+                         sim_rust.sim_params.newton_xtol)
+        self.assertAlmostEqual(sim_python.veh.drag_coef,
+                               sim_rust.veh.drag_coef, places=places)
+        self.assertAlmostEqual(
+            sim_python.veh.frontal_area_m2, sim_rust.veh.frontal_area_m2, places=places)
+        self.assertAlmostEqual(
+            sim_python.veh.mc_max_elec_in_kw, sim_rust.veh.mc_max_elec_in_kw, places=places)
+        self.assertAlmostEqual(sim_python.veh.ess_max_kwh,
+                               sim_rust.veh.ess_max_kwh, places=places)
+        self.assertAlmostEqual(sim_python.veh.ess_round_trip_eff,
+                               sim_rust.veh.ess_round_trip_eff, places=places)
         # Simulate
         sim_python.sim_drive()
         sim_rust.sim_drive()
@@ -168,12 +180,13 @@ class TestRust(unittest.TestCase):
         ru_cyc_mps = np.array(sim_rust.cyc.mps)
         ru_cyc_dt_s = np.array(sim_rust.cyc.dt_s)
         self.assertTrue((np.abs(sim_python.cyc.mps - ru_cyc_mps) < tol).all())
-        self.assertTrue((np.abs(sim_python.cyc.dt_s - ru_cyc_dt_s) < tol).all())
+        self.assertTrue(
+            (np.abs(sim_python.cyc.dt_s - ru_cyc_dt_s) < tol).all())
         ru_sd_mps_ach = np.array(sim_rust.mps_ach)
         self.assertTrue((sim_python.mps_ach >= 0.0).all(),
-            msg=f'PYTHON: Detected negative speed for {veh_name}')
+                        msg=f'PYTHON: Detected negative speed for {veh_name}')
         self.assertTrue((ru_sd_mps_ach >= 0.0).all(),
-            msg=f'RUST  : Detected negative speed for {veh_name}')
+                        msg=f'RUST  : Detected negative speed for {veh_name}')
         for v in TEST_VARS:
             py[v] = sim_python.__getattribute__(v)
             ru[v] = sim_rust.__getattribute__(v)
@@ -197,7 +210,7 @@ class TestRust(unittest.TestCase):
                         print(
                             f"REAL: {v} differs for {i}: py = {py[v][i]}; ru = {ru[v][i]}")
         self.assertFalse(discrepancy, "Discrepancy detected")
-    
+
     def test_step_by_step(self):
         if not RUST_AVAILABLE:
             return
@@ -315,8 +328,7 @@ class TestRust(unittest.TestCase):
             veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
             cyc = cycle.Cycle.from_file('udds').to_rust()
             sd = fsr.RustSimDrive(cyc, veh)
-            sd.sim_drive_walk(0.1)
-            sd.set_post_scalars()
+            sd.sim_drive()
             sd_mps_ach = np.array(sd.mps_ach)
             sd_cyc0_mps = np.array(sd.cyc0.mps)
             self.assertFalse(
@@ -327,7 +339,7 @@ class TestRust(unittest.TestCase):
                 (sd_mps_ach > sd_cyc0_mps).any(),
                 msg=f'Achieved speed is greater than requested speed for {vehid}'
             )
-    
+
     def test_grade(self):
         if not RUST_AVAILABLE:
             raise Exception("Rust unavailable.")
@@ -337,7 +349,7 @@ class TestRust(unittest.TestCase):
         period = 500  # seconds
         cyc.grade = amplitude * np.sin((2*np.pi/period) * cyc.time_s)
         cyc_dict = cyc.get_cyc_dict()
-        
+
         self.test_vehicle_for_discrepancies(cyc_dict=cyc_dict)
 
     def test_serde_json(self):
@@ -353,4 +365,3 @@ class TestRust(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    

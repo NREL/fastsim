@@ -7,40 +7,40 @@ All classes and methods are self-documented.
 
 # Installation
 
-First, clone the repository from GitHub:
+1. Clone the repository from GitHub:
 
-    git clone git@github.nrel.gov:MBAP/fastsim.git
+       git clone git@github.nrel.gov:MBAP/fastsim.git
 
-Next, install the Rust toolchain, and create and activate an environment for the project if necessary. There are two ways to do this:
+2. Set up an environment for the project. There are two ways to do this:
 
-- Manually install the [rust toolchain](https://www.rust-lang.org/tools/install). Then, using a virtual environment, and making sure to use Python >= 3.8:
+   - Using Anaconda (with Python 3.8 or newer):
+
+         conda create -n fastsim python=3.8
+         conda activate fastsim
+         conda install -c conda-forge "rust>=1.64"
+
+   - Manually:
+     - Install [Rust](https://www.rust-lang.org/tools/install). 
+     - Then, using a virtual environment, and making sure to use Python >= 3.8:
     
-  PowerShell:
+        PowerShell:
 
-      python -m venv .venv
-      .venv/Scripts/Activate.ps1
+            python -m venv .venv
+            .venv/Scripts/Activate.ps1
 
-  Bash:
+        Bash:
 
-      python -m venv .venv
-      source .venv/bin/activate
+            python -m venv .venv
+            source .venv/bin/activate
 
-  Command Prompt:
+        Command Prompt:
 
-      python -m venv .venv
-      .venv/Scripts/activate.bat
-
-- OR: using a conda environment:
-
-      conda create -n fastsim python=3.8
-      conda activate fastsim
-      conda install -c conda-forge "rust>=1.64"
+            python -m venv .venv
+            .venv/Scripts/activate.bat
     
-Then, from within the top level of the FASTSim folder, run a pip install:
+3. From within the top level of the FASTSim repository, install using pip:
 
-    pip install .
-
-This will install FASTSim with the included rust extensions.
+       pip install .
 
 ## Developers
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
@@ -55,11 +55,17 @@ To do this, a couple of extra steps are required:
 After FASTSim has been installed as editable per the above instructions, you can rebuild and test everything with `sh build_and_test.sh` in Windows bash or `./build_and_test.sh` in Linux/Unix in the `fastsim/` dir.  
 
 # Users with NREL VPN Access
+## Installation as PyPi Package
 Note: the following instructions work only if you are inside NREL VPN:  
 To install and/or update, run
 ```
 pip install fastsim --upgrade --extra-index-url=https://github.nrel.gov/pages/MBAP/mbap-pypi/
 ```
+
+## Adding FASTSim as a Depency in Rust
+Add this line:  
+`fastsim-core = { git = "https://github.nrel.gov/MBAP/fastsim", branch = "rust-port" }`  
+to your Cargo.toml file, modifying the `branch` key as appropriate.  
 
 # Usage
 To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
@@ -112,6 +118,7 @@ in = component input
 out = component output  
 
 # Release Notes
+2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes
 2.0.9 -- support for mac ARM/RISC architecture
 2.0.8 -- performance improvements
 2.0.6 -- `dist_v2_m` fixes and preliminary CAV functionality

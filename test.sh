@@ -1,0 +1,1 @@
+(cd rust/ && cargo test --release) && (cd rust/fastsim-py/ && maturin develop --release) && python -m unittest discover
