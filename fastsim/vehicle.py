@@ -1,5 +1,5 @@
 """
-Module containing classes and methods for for loading vehicle data. For example usage, see ../README.md
+Module containing classes and methods for for loading vehicle data.
 """
 
 # Typing
