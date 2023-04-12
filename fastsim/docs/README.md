@@ -118,6 +118,7 @@ in = component input
 out = component output  
 
 # Release Notes
+2.0.11 -- fixes related to PyPI web rendering
 2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes
 2.0.9 -- support for mac ARM/RISC architecture
 2.0.8 -- performance improvements
