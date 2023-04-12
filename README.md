@@ -124,6 +124,7 @@ in = component input
 out = component output  
 
 # Release Notes
+2.0.14 -- automated twine upload to PyPI
 2.0.13 -- yet another PyPI-related change
 2.0.12 -- more PyPI-related changes
 2.0.11 -- fixes related to PyPI web rendering
