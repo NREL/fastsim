@@ -1,101 +1,68 @@
 ![FASTSim Logo](fastsim/docs/fastsim-icon-web-131x172.jpg)
 
 # Description
-This is the python/rust flavor of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. Other FASTSim flavors may spin off as variations on this core functionality, but these should integrated back into `main` if there is any intent of persistence.
+This is the python/rust flavor of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. 
 
 All classes and methods are self-documented.  
 
 # Installation
 
-## PyPI Installation
+## Python 
+Set up and activate a python environment (compatible with Python 3.8 - 3.10; we recommend Python 3.10) with the following steps.
+### [Anaconda](https://www.anaconda.com/) 
+1. Create: `conda create -n fastsim python=3.10`
+1. Activate: `conda activate fastsim`
 
+### [venv](https://docs.python.org/3/library/venv.html)
+There is some variation based on your Operating System:  
+
+- PowerShell (windows):
+    1. Create: `python -m venv fastsim-venv` -- name is user decision
+    1. Activate: `fastsim-venv/Scripts/Activate.ps1`
+
+- Bash (i.e. unix/linux/mac):
+    1. Create: `python -m venv fastsim-venv` -- name is user decision
+    1. Activate: `source fastsim-venv/bin/activate`
+
+- Command Prompt (windows):
+    1. Create: `python -m venv fastsim-venv` -- name is user decision
+    1. Activate: `fastsim-venv/Scripts/activate.bat`
+
+## FASTSim
+### Via PyPI
 In an active Python environment (either [venv](https://docs.python.org/3/library/venv.html) or [Conda](https://www.anaconda.com/)), run `pip install fastsim`.
 
-## Installing from NREL's internal GitHub
-
-1. Clone the repository from GitHub:
-
-       git clone git@github.nrel.gov:MBAP/fastsim.git
-
-2. Set up an environment for the project. There are two ways to do this:
-
-   - Using Anaconda (with Python 3.8 or newer):
-
-         conda create -n fastsim python=3.8
-         conda activate fastsim
-         conda install -c conda-forge "rust>=1.64"
-
-   - Manually:
-     - Install [Rust](https://www.rust-lang.org/tools/install). 
-     - Then, using a virtual environment, and making sure to use Python >= 3.8:
-    
-        PowerShell:
-
-            python -m venv .venv
-            .venv/Scripts/Activate.ps1
-
-        Bash:
-
-            python -m venv .venv
-            source .venv/bin/activate
-
-        Command Prompt:
-
-            python -m venv .venv
-            .venv/Scripts/activate.bat
-    
-3. From within the top level of the FASTSim repository, install using pip:
-
-       pip install .
-
-## Developers
+### Building from Scratch
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  
 
-To do this, a couple of extra steps are required:
-
-1. First install the python code in place `DEVELOP_MODE=True pip install -e ".[dev]"` if on Mac OS, Linux, or Windows Bash (e.g. git bash, VSCode bash).  On Windows in Power Shell or Command Prompt, run `set DEVELOP_MODE=True` then `pip install -e ".[dev]"`.
-1. Within the same python environment, navigate to `fastsim/rust/` and run `pip install maturin`.
-1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.
-1. In `fastsim/rust/fastsim-py`, you should now be able to run `maturin develop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/fastsim/docs/demo.py`.
+- Easy way: run `sh build_and_test.sh` in root folder.  
+- Hard way (a couple of extra steps are required): 
+    1. First install the python code in place:  
+    `DEVELOP_MODE=True pip install -e ".[dev]"`   
+    if on Mac OS, Linux, or Windows Bash (e.g. git bash, VSCode bash).  On Windows in Power Shell or Command Prompt, run  
+    `set DEVELOP_MODE=True` then `pip install -e ".[dev]"`.
+    1. Within the same python environment, navigate to `fastsim/rust/` and run  
+    `pip install maturin`.
+    1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.
+    1. In `fastsim/rust/fastsim-py`, you should now be able to run `maturin develop --release`, which will enable the tests that use rust to run.  You should also now be able to run `fastsim/fastsim/docs/demo.py`.
 
 After FASTSim has been installed as editable per the above instructions, you can rebuild and test everything with `sh build_and_test.sh` in Windows bash or `./build_and_test.sh` in Linux/Unix in the `fastsim/` dir.  
 
-# Users with NREL VPN Access
-## Installation as PyPi Package
-Note: the following instructions work only if you are inside NREL VPN:  
-To install and/or update, run
-```
-pip install fastsim --upgrade --extra-index-url=https://github.nrel.gov/pages/MBAP/mbap-pypi/
-```
-
-## Adding FASTSim as a Depency in Rust
-Add this line:  
-`fastsim-core = { git = "https://github.nrel.gov/MBAP/fastsim", branch = "rust-port" }`  
-to your Cargo.toml file, modifying the `branch` key as appropriate.  
+### Testing
+At the root level of the git repository: `pytest -v fastsim/tests/`.  This can also be run in the python environment directly.  
 
 # Usage
 To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
 
-To get help in an interactive ipython or jupyter session:  
-```
-import fastsim
-fastsim.simdrive.SimDriveClassic? # or
-help(fastsim.simdrive.SimDriveClassic)
-```
 
-Help can be used in this manner on any FASTSim object.
+# Adding FASTSim as a Depency in Rust
+## Via GitHub
+Add this line:  
+`fastsim-core = { git = "https://github.nrel.gov/MBAP/fastsim", branch = "rust-port" }`  
+to your Cargo.toml file, modifying the `branch` key as appropriate.  
 
-# Testing
-
-The `unittest` package has been implemented such that you can run `python -m unittest discover` from within the fastsim folder, and all tests will be automatically discovered and run.  
-
-## Against Previous Python Version
-
-To run tests, first run the command `from fastim import tests`.  
-To compare FASTSim back to the master branch version from 17 December 2019, run `tests.test26veh3cyc.main()`.  For timing comparisons, run `tests.test26veh3cyc_CPUtime.main()`.  
-
-## Against Excel FASTSim
-To compare Python FASTSim results to Excel FASTSim, you can run `tests.test_vs_excel.main()` to do an experimental (i.e. beta) comparison against saved Excel results. If you have the Excel version (obtainable here: [https://www.nrel.gov/transportation/fastsim.html](https://www.nrel.gov/transportation/fastsim.html)) of FASTSim open, you can specify `rerun_excel=True` to do a live run of the Excel version.
+## Via Cargo
+This has not been implemented yet.  
 
 # List of Abbreviations
 cur = current time step  
@@ -122,6 +89,9 @@ des = desired value
 ach = achieved value  
 in = component input  
 out = component output  
+
+# Known Issues
+Rust versions of classes have limited Language Server Protocol integration, and we are actively working on fixing this.  
 
 # Release Notes
 2.0.11 - 2.0.16 -- PyPI fixes.  Also, Rust version is now >100x faster than Python version.   
