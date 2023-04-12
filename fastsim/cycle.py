@@ -1,5 +1,4 @@
-"""Module containing classes and methods for 
-cycle data. For example usage, see ../README.md"""
+"""Module containing classes and methods for cycle data."""
 
 from __future__ import annotations
 from typing_extensions import Self

@@ -1,5 +1,4 @@
-"""Module containing classes and methods for calculating label fuel economy.
-For example usage, see ../README.md"""
+"""Module containing classes and methods for calculating label fuel economy."""
 
 import numpy as np
 from scipy.interpolate import interp1d

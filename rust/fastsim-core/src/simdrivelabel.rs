@@ -1,5 +1,4 @@
 //! Module containing classes and methods for calculating label fuel economy.
-// For example usage, see ../README.md
 
 use ndarray::Array;
 use std::collections::HashMap;

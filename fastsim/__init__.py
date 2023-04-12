@@ -28,7 +28,7 @@ from pkg_resources import get_distribution
 
 __version__ = get_distribution('fastsim').version
 
-__doc__ += f"{Path(__file__).parent / 'docs/README.md'}"
+__doc__ += "\nhttps://pypi.org/project/fastsim/"
 
 try:
     import fastsimrust as fsr
