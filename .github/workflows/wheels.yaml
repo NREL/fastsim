@@ -97,3 +97,12 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           path: ./dist/*
+
+      - name: twine check
+        run: twine check dist/*
+      
+      - name: upload to pypi
+        run: twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.fastsim_pypi_token }}          
