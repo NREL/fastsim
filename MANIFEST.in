@@ -1,4 +1,4 @@
-include LICENSE LICENSE.md README.md setup.py fastsim-icon-web-131x172.jpg
+include LICENSE LICENSE.md README.md setup.py 
 include pyproject.toml rust/Cargo.toml rust/fastsim-py/Cargo.toml rust/fastsim-core/Cargo.toml rust/fastsim-core/proc-macros/Cargo.toml
 recursive-include rust/fastsim-py/src *
 recursive-include rust/fastsim-core/src *
