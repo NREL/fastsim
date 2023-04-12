@@ -7,6 +7,12 @@ All classes and methods are self-documented.
 
 # Installation
 
+## PyPI Installation
+
+In an active Python environment (either [venv](https://docs.python.org/3/library/venv.html) or [Conda](https://www.anaconda.com/)), run `pip install fastsim`.
+
+## Installing from NREL's internal GitHub
+
 1. Clone the repository from GitHub:
 
        git clone git@github.nrel.gov:MBAP/fastsim.git
