@@ -1,4 +1,4 @@
-![FASTSim Logo](fastsim-icon-web-131x172.jpg)
+![FASTSim Logo](fastsim/docs/fastsim-icon-web-131x172.jpg)
 
 # Description
 This is the python/rust flavor of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. Other FASTSim flavors may spin off as variations on this core functionality, but these should integrated back into `main` if there is any intent of persistence.
@@ -124,7 +124,7 @@ in = component input
 out = component output  
 
 # Release Notes
-2.0.11 - 2.0.15 -- PyPI fixes  
+2.0.11 - 2.0.16 -- PyPI fixes.  Also, Rust version is now >100x faster than Python version.   
 2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes  
 2.0.9 -- support for mac ARM/RISC architecture  
 2.0.8 -- performance improvements  
@@ -160,13 +160,13 @@ out = component output
 0.1.2 -- Fixes os-dependency of xlwings by not running stuff that needs xlwings.  Improvements in functional test.  Refinment utomated typying of jitclass objects.    
 0.1.1 -- Now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.   
 
-# Contributors
+# Contributors  
 Chad Baker -- Chad.Baker@nrel.gov  
 Aaron Brooker -- Aaron.Brooker@nrel.gov  
-Kyle Carow -- Kyle.Carow@nrel.gov
+Kyle Carow -- Kyle.Carow@nrel.gov  
 Jeffrey Gonder -- Jeff.Gonder@nrel.gov  
 Jacob Holden -- Jacob.Holden@nrel.gov  
-Jinghu Hu -- Jinghu.Hu@nrel.gov
+Jinghu Hu -- Jinghu.Hu@nrel.gov  
 Jason Lustbader -- Jason.Lustbader@nrel.gov  
 Sean Lopp -- sean@rstudio.com  
 Matthew Moniot -- Matthew.Moniot@nrel.gov  

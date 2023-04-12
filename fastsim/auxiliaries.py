@@ -11,7 +11,7 @@ from fastsim.utilities import get_rho_air
 
 props = params.PhysicalProperties()
 R_air = 287  # J/(kg*K)
-
+    
 
 def abc_to_drag_coeffs(veh: Vehicle,
                        a_lbf: float, b_lbf__mph: float, c_lbf__mph2: float,
