@@ -1,4 +1,4 @@
-pub(crate) use anyhow::{anyhow, ensure};
+pub(crate) use anyhow::{anyhow, bail, ensure};
 pub(crate) use bincode::{deserialize, serialize};
 pub(crate) use log;
 pub(crate) use ndarray::{array, concatenate, s, Array, Array1, Axis};

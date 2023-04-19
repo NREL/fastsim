@@ -850,7 +850,8 @@ mod simdrivelabel_tests {
             0.99,
             None,
             None,
-        );
+        )
+        .unwrap();
 
         let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
