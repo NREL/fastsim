@@ -32,13 +32,6 @@ setuptools.setup(
         "fastsim": [
             "README.md", 
             "LICENSE.md", 
-            "rust/Cargo.toml",
-            "rust/fastsim-py/Cargo.toml",
-            "rust/fastsim-core/Cargo.toml",
-            "rust/fastsim-core/proc-macros/Cargo.toml",
-            "rust/fastsim-py/src/*",
-            "rust/fastsim-core/src/*",
-            "rust/fastsim-core/proc-macros/src/*",
         ],
     },
 )
