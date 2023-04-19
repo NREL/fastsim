@@ -1,4 +1,6 @@
-"""PyPI setup script.  To use it, run `python setup.py sdist bdist_wheel` from this directory."""
+"""
+PyPI setup script.  To use it, run `python setup.py sdist bdist_wheel` from this directory.
+"""
 
 import setuptools
 from setuptools_rust import RustExtension, Binding
@@ -19,11 +21,14 @@ else:
         ),
     ]
 
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     # rust extension
     rust_extensions=rust_extensions,
+    include_package_data=True,
+    package_data={
+        "fastsim": ["README.md", "LICENSE.md", "rust/*"],
+    },
 )
