@@ -19,7 +19,7 @@ else:
             binding=Binding.PyO3,
             py_limited_api=True,
         ),
-    ]
+    ] 
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -29,6 +29,16 @@ setuptools.setup(
     rust_extensions=rust_extensions,
     include_package_data=True,
     package_data={
-        "fastsim": ["README.md", "LICENSE.md", "rust/*"],
+        "fastsim": [
+            "README.md", 
+            "LICENSE.md", 
+            "rust/Cargo.toml",
+            "rust/fastsim-py/Cargo.toml",
+            "rust/fastsim-core/Cargo.toml",
+            "rust/fastsim-core/proc-macros/Cargo.toml",
+            "rust/fastsim-py/src/*",
+            "rust/fastsim-core/src/*",
+            "rust/fastsim-core/proc-macros/src/*",
+        ],
     },
 )
