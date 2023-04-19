@@ -1,0 +1,1 @@
+To build, create and activate a python3.10 environment, [install Rust](https://www.rust-lang.org/tools/install), and run `sh build_and_test.sh` or equivalent commands as appropriate for your OS. 
