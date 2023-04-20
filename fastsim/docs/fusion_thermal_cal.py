@@ -169,7 +169,8 @@ if __name__ == "__main__":
     save_path.mkdir(exist_ok=True)
     show_plots = args.show
     make_plots = args.make_plots
-    use_simdrivehot = args.use_simdrivehot
+    # override default of False
+    use_simdrivehot = True
 
     cal_objectives, val_objectives, params_bounds = get_cal_and_val_objs(use_simdrivehot)
 
