@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass, InitVar
 from typing import Dict, List, Tuple, Optional, Any, Union
 from pathlib import Path
@@ -83,6 +84,8 @@ class ModelObjectives(object):
     # calculated in __post_init__
     n_obj: int = None
 
+    use_simdrivehot: bool = False
+
     def __post_init__(self):
         assert len(self.dfs) == len(
             self.models), f"{len(self.dfs)} != {len(self.models)}"
@@ -90,7 +93,7 @@ class ModelObjectives(object):
 
     def get_errors(
         self,
-        sim_drives: Dict[str, fsr.SimDriveHot],
+        sim_drives: Dict[str, fsr.RustSimDrive | fsr.SimDriveHot],
         return_mods: Optional[bool] = False,
         plot: Optional[bool] = False,
         plot_save_dir: Optional[str] = None,
@@ -126,7 +129,12 @@ class ModelObjectives(object):
 
             if plot or plot_save_dir:
                 Path(plot_save_dir).mkdir(exist_ok=True, parents=True)
-                time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600
+                if not self.use_simdrivehot:
+                    time_hr = np.array(sim_drive.cyc.time_s) / 3_600
+                    mph_ach = sim_drive.mph_ach
+                else:
+                    time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600
+                    mph_ach = sim_drive.sd.mph_ach
                 ax_multiplier = 2 if plot_perc_err else 1
                 fig, ax = plt.subplots(
                     len(self.obj_names) * ax_multiplier + 1, 1, sharex=True, figsize=(12, 8),
@@ -134,7 +142,7 @@ class ModelObjectives(object):
                 plt.suptitle(f"trip: {key}", fontsize=fontsize)
                 ax[-1].plot(
                     time_hr,
-                    sim_drive.sd.mph_ach,
+                    mph_ach,
                 )
                 ax[-1].set_xlabel('Time [hr]', fontsize=fontsize)
                 ax[-1].set_ylabel('Speed [mph]', fontsize=fontsize)
@@ -160,10 +168,14 @@ class ModelObjectives(object):
 
                 if ref_path:
                     ref_sig = df_exp[ref_path]
+                    if not self.use_simdrivehot:
+                        time_s = sim_drive.cyc.time_s
+                    else:
+                        time_s = sim_drive.sd.cyc.time_s
                     objectives[key][obj[0]] = get_error_val(
                         mod_sig,
                         ref_sig,
-                        sim_drive.sd.cyc.time_s,
+                        time_s,
                     )
                 else:
                     pass
@@ -230,15 +242,27 @@ class ModelObjectives(object):
         assert len(xs) == len(self.params), f"({len(xs)} != {len(self.params)}"
         paths = [fullpath.split(".") for fullpath in self.params]
         t0 = time.perf_counter()
-        # Load SimDriveHot instances from bincode strings
-        sim_drives = {key: fsr.SimDriveHot.from_bincode(
-            model_bincode) for key, model_bincode in self.models.items()}
+        # Load instances from bincode strings
+        if not self.use_simdrivehot:
+            sim_drives = {key: fsr.RustSimDrive.from_bincode(
+                model_bincode) for key, model_bincode in self.models.items()}
+        else:
+            sim_drives = {key: fsr.SimDriveHot.from_bincode(
+                model_bincode) for key, model_bincode in self.models.items()}
         # Update all model parameters
         for key in sim_drives.keys():
             sim_drives[key] = fsim.utils.set_attrs_with_path(
                 sim_drives[key],
                 dict(zip(self.params, xs)),
             )
+            if not self.use_simdrivehot:
+                veh = sim_drives[key].veh
+                veh.set_derived()
+                sim_drives[key].veh = veh
+            else:
+                veh = sim_drives[key].sd.veh
+                veh.set_derived()
+                sim_drives[key].sd.veh = veh
         t1 = time.perf_counter()
         if self.verbose:
             print(f"Time to update params: {t1 - t0:.3g} s")
@@ -371,4 +395,6 @@ def get_parser() -> argparse.ArgumentParser:
                         help="If provided, shows plots.")
     parser.add_argument("--make-plots", action="store_true",
                         help="Generates plots, if provided.")
+    parser.add_argument("--use-simdrivehot", action="store_true",
+                        help="Use fsr.SimDriveHot rather than fsr.RustSimDrive.")
     return parser
