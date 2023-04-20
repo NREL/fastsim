@@ -45,6 +45,15 @@ jobs:
 
       - run: rustup target add aarch64-apple-darwin
         if: matrix.os == 'macos'
+
+      - name: run cargo tests
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable 
+          override: true
+      - run: cd rust/ && cargo test --release
+
       - name: install python dependencies
         run: pip install -U setuptools wheel twine cibuildwheel
 
