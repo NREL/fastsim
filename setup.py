@@ -28,13 +28,7 @@ setuptools.setup(
     # rust extension
     rust_extensions=rust_extensions,
     include_package_data=True,
-    # data_files=[
-    #     ("fastsim", ["README.md", "LICENSE.md"]),
-    # ]
-    package_data={
-        "fastsim": [
-            "README.md", 
-            "LICENSE.md", 
-        ],
-    },
+    data_files=[
+        ("fastsim", ["README.md", "LICENSE.md"]),
+    ]
 )
