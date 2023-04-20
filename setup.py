@@ -27,10 +27,8 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     # rust extension
     rust_extensions=rust_extensions,
-    package_data={
-        "fastsim": [
-            "README.md", 
-            "LICENSE.md", 
-        ],
-    },
+    include_package_data=True,
+    data_files=[
+        ("fastsim", ["README.md", "LICENSE.md"]),
+    ]
 )
