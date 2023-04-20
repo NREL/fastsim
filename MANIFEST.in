@@ -1,4 +1,4 @@
-include LICENSE LICENSE.md build_and_test.sh
+include LICENSE LICENSE.md build_and_test.sh BUILD.md
 include rust/Cargo.toml rust/fastsim-core/Cargo.toml rust/fastsim-core/proc-macros/Cargo.toml rust/fastsim-py/Cargo.toml rust/fastsim-cli/Cargo.toml
 recursive-include rust/fastsim-core/src *
 recursive-include rust/fastsim-core/proc-macros/src *
