@@ -465,9 +465,9 @@ class Vehicle(object):
         # check if veh_year provided in file, and, if not, provide value from scenario_name or default of 0
         if ('veh_year' not in veh_dict) or np.isnan(veh_dict['veh_year']):
             # regex is for vehicle model year if scenario_name starts with any 4 digit string
-            if re.match('\d{4}', str(veh_dict['scenario_name'])):
+            if re.match(r'\d{4}', str(veh_dict['scenario_name'])):
                 veh_dict['veh_year'] = np.int32(
-                    re.match('\d{4}', str(veh_dict['scenario_name'])).group()
+                    re.match(r'\d{4}', str(veh_dict['scenario_name'])).group()
                 )
             else:
                 # set 0 as default to get correct type

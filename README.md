@@ -94,7 +94,7 @@ out = component output
 Rust versions of classes have limited Language Server Protocol integration, and we are actively working on fixing this.  
 
 # Release Notes
-2.0.11 - 2.0.18 -- PyPI fixes.  Also, Rust version is now >100x faster than Python version.   
+2.0.11 - 2.0.22 -- PyPI fixes.  Also, Rust version is now >100x faster than Python version.   
 2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes  
 2.0.9 -- support for mac ARM/RISC architecture  
 2.0.8 -- performance improvements  

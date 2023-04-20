@@ -1,7 +1,8 @@
-include LICENSE LICENSE.md README.md setup.py 
-include pyproject.toml rust/Cargo.toml rust/fastsim-py/Cargo.toml rust/fastsim-core/Cargo.toml rust/fastsim-core/proc-macros/Cargo.toml
-recursive-include rust/fastsim-py/src *
+include LICENSE LICENSE.md build_and_test.sh BUILD.md
+include rust/Cargo.toml rust/fastsim-core/Cargo.toml rust/fastsim-core/proc-macros/Cargo.toml rust/fastsim-py/Cargo.toml rust/fastsim-cli/Cargo.toml
 recursive-include rust/fastsim-core/src *
 recursive-include rust/fastsim-core/proc-macros/src *
+recursive-include rust/fastsim-py/src *
+recursive-include rust/fastsim-cli/src *
 recursive-include fastsim/resources *
 recursive-include fastsim/docs *
