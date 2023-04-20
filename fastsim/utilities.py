@@ -120,7 +120,7 @@ def set_log_level(level: str | int) -> int:
     previous_level = fastsim_logger.level
     fastsim_logger.setLevel(level)
     if RUST_AVAILABLE:
-        fastsimrust_logger = logging.getLogger("fastsimrust")
+        fastsimrust_logger = logging.getLogger("fastsim_core")
         fastsimrust_logger.setLevel(level)
     return previous_level
 
