@@ -9,7 +9,7 @@ use crate::imports::*;
 use crate::pyo3imports::*;
 use crate::simdrive;
 use crate::vehicle;
-use crate::vehicle_thermal::*;
+use crate::vehicle::vehicle_thermal::*;
 
 #[add_pyo3_api(
     /// method for instantiating SimDriveHot

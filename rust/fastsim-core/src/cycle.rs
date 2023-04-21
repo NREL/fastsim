@@ -579,13 +579,7 @@ impl CycleCache {
         Ok(self.delta_elev_m().to_vec())
     }
 )]
-/// Struct for containing:
-/// * time_s, cycle time, $s$
-/// * mps, vehicle speed, $\frac{m}{s}$
-/// * grade, road grade/slope, $\frac{rise}{run}$
-/// * road_type, $kW$
-/// * legacy, will likely change to road charging capacity
-///    * Another sublist.
+/// Time-oriented drive cycle
 pub struct Cycle {
     /// array of time [s]
     #[serde(alias = "cycSecs")]
@@ -604,7 +598,6 @@ pub struct Cycle {
     pub orphaned: bool,
 }
 
-/// pure Rust methods that need to be separate due to pymethods incompatibility
 impl Cycle {
     pub fn new(
         time_s: Vec<f64>,

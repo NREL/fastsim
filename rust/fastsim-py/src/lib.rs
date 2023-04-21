@@ -16,11 +16,14 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<simdrive::SimDriveParams>()?;
     m.add_class::<simdrive::SimDrive>()?;
     m.add_class::<thermal::SimDriveHot>()?;
-    m.add_class::<vehicle_thermal::VehicleThermal>()?;
+    m.add_class::<vehicle::vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::ThermalState>()?;
-    m.add_class::<vehicle_thermal::HVACModel>()?;
+    m.add_class::<vehicle::vehicle_thermal::HVACModel>()?;
     cycle::register(py, m)?;
     utils::register(py, m)?;
-    m.add_function(wrap_pyfunction!(vehicle_utils::abc_to_drag_coeffs, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        vehicle::vehicle_utils::abc_to_drag_coeffs,
+        m
+    )?)?;
     Ok(())
 }
