@@ -8,7 +8,7 @@ pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 anyhow = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = {workspace = true}
-ndarray = { version = "0.15.4", features=["serde"]}
+ndarray = { version = "0.15.4", features=["serde"] }
 csv = "1.1"
 proc-macros = { path = "proc-macros" }
 serde_json = "1.0.81"
@@ -17,6 +17,9 @@ log = "0.4.17"
 polynomial = "0.2.4"
 argmin = "0.7.0"
 argmin-math = { version = "0.2.1", features = ["ndarray_latest-nolinalg-serde"] }
+validator = { version = "0.16", features = ["derive"] }
+lazy_static = "1.4.0"
+regex = "1.7.1"
 
 [package.metadata.docs.rs]
 rustdoc-args = [ "--html-in-header", "./src/html/docs-header.html" ]

@@ -100,8 +100,14 @@ def set_log_level(level: str | int) -> int:
     fastsim_logger = logging.getLogger("fastsim")
     previous_level = fastsim_logger.level
     fastsim_logger.setLevel(level)
+<<<<<<< HEAD
     fastsimrust_logger = logging.getLogger("fastsimrust")
     fastsimrust_logger.setLevel(level)
+=======
+    if RUST_AVAILABLE:
+        fastsimrust_logger = logging.getLogger("fastsim_core")
+        fastsimrust_logger.setLevel(level)
+>>>>>>> 834fcecf2203db09947061845dc8ca9d68b351c1
     return previous_level
 
 
@@ -242,7 +248,6 @@ def set_attr_with_path(
     """
     containers = [struct]
     if isinstance(path, str):
-        assert "." in path, "provide dot-separated path to struct, otherwise use `set_nested_values`"
         path = path.split(".")
     if len(path) == 1:
         setattr(struct, path[0], value)

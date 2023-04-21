@@ -44,7 +44,8 @@ from pkg_resources import get_distribution
 
 __version__ = get_distribution('fastsim').version
 
-__doc__ += f"{Path(__file__).parent / 'docs/README.md'}"
+__doc__ += "\nhttps://pypi.org/project/fastsim/"
+__doc__ += "\nhttps://www.nrel.gov/transportation/fastsim.html"
 
 # Enable np.array() on array structs
 import numpy as np

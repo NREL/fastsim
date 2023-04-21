@@ -7,8 +7,8 @@ use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::vehicle::*;
-pub mod simdrive_impl;
 pub mod cyc_mods;
+pub mod simdrive_impl;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
@@ -418,6 +418,12 @@ impl Default for RustSimDriveParams {
     pub fn get_fs_cumu_mj_out_ach(&self) -> PyResult<Pyo3ArrayF64> {
         Ok(
             Pyo3ArrayF64::new(ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
+        )
+    }
+    #[getter]
+    pub fn get_fc_cumu_mj_out_ach(&self) -> PyResult<Pyo3ArrayF64> {
+        Ok(
+            Pyo3ArrayF64::new(ndarrcumsum(&(self.fc_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
         )
     }
 )]

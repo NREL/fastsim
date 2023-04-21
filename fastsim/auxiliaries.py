@@ -37,6 +37,9 @@ from fastsim.utilities import get_rho_air
 #     use_rust: if True, use rust implementation of drag coefficient calculation.
 #     """
 
+R_air = 287  # J/(kg*K)
+    
+
 #     # TODO: allows air density read APIs for whole project; `get_rho_air()` not used for `SimDrive` yet
 #     cur_ambient_air_density_kg__m3 = get_rho_air(
 #         custom_rho_temp_degC, custom_rho_elevation_m) if custom_rho else props.air_density_kg_per_m3

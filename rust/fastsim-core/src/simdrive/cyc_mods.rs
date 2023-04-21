@@ -1076,7 +1076,7 @@ impl RustSimDrive {
                         }
                         adjusted_current_speed = true;
                     } else {
-                        log::warn!(target: "fastsimrust",
+                        log::warn!(
                             "final_speed_m_per_s={} not close to coast_brake_start_speed={} for i={}; i_for_brake={}, traj_n={}",
                             final_speed_m_per_s,
                             self.sim_params.coast_brake_start_speed_m_per_s,
