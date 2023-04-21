@@ -124,7 +124,7 @@ pub fn accel_array_for_constant_jerk(nmax: usize, a0: f64, k: f64, dt: f64) -> A
 }
 
 /// Calculate the average speed per each step in m/s
-pub fn average_step_speeds(cyc: &RustCycle) -> Array1<f64> {
+pub fn average_step_speeds(cyc: &Cycle) -> Array1<f64> {
     let mut result: Vec<f64> = Vec::with_capacity(cyc.len());
     result.push(0.0);
     for i in 1..cyc.len() {
@@ -135,13 +135,13 @@ pub fn average_step_speeds(cyc: &RustCycle) -> Array1<f64> {
 
 /// Calculate the average step speed at step i in m/s
 /// (i.e., from sample point i-1 to i)
-pub fn average_step_speed_at(cyc: &RustCycle, i: usize) -> f64 {
+pub fn average_step_speed_at(cyc: &Cycle, i: usize) -> f64 {
     0.5 * (cyc.mps[i] + cyc.mps[i - 1])
 }
 
 /// Sum of the distance traveled over each step using
 /// trapezoidal integration
-pub fn trapz_step_distances(cyc: &RustCycle) -> Array1<f64> {
+pub fn trapz_step_distances(cyc: &Cycle) -> Array1<f64> {
     average_step_speeds(cyc) * cyc.dt_s()
 }
 
@@ -157,7 +157,7 @@ pub fn trapz_step_distances_primitive(time_s: &Array1<f64>, mps: &Array1<f64>) -
 /// The distance traveled from start at the beginning of step i
 /// (i.e., distance traveled up to sample point i-1)
 /// Distance is in meters.
-pub fn trapz_step_start_distance(cyc: &RustCycle, i: usize) -> f64 {
+pub fn trapz_step_start_distance(cyc: &Cycle, i: usize) -> f64 {
     let mut dist_m: f64 = 0.0;
     for i in 1..i {
         dist_m += (cyc.time_s[i] - cyc.time_s[i - 1]) * 0.5 * (cyc.mps[i] + cyc.mps[i - 1]);
@@ -167,20 +167,20 @@ pub fn trapz_step_start_distance(cyc: &RustCycle, i: usize) -> f64 {
 
 /// The distance traveled during step i in meters
 /// (i.e., from sample point i-1 to i)
-pub fn trapz_distance_for_step(cyc: &RustCycle, i: usize) -> f64 {
+pub fn trapz_distance_for_step(cyc: &Cycle, i: usize) -> f64 {
     average_step_speed_at(cyc, i) * cyc.dt_s_at_i(i)
 }
 
 /// Calculate the distance from step i_start to the start of step i_end
 /// (i.e., distance from sample point i_start-1 to i_end-1)
-pub fn trapz_distance_over_range(cyc: &RustCycle, i_start: usize, i_end: usize) -> f64 {
+pub fn trapz_distance_over_range(cyc: &Cycle, i_start: usize, i_end: usize) -> f64 {
     trapz_step_distances(cyc).slice(s![i_start..i_end]).sum()
 }
 
 /// Calculate the time in a cycle spent moving
 /// - stopped_speed_m_per_s: the speed above which we are considered to be moving
 /// RETURN: the time spent moving in seconds
-pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) -> f64 {
+pub fn time_spent_moving(cyc: &Cycle, stopped_speed_m_per_s: Option<f64>) -> f64 {
     let mut t_move_s = 0.0;
     let stopped_speed_m_per_s = stopped_speed_m_per_s.unwrap_or(0.0);
     for idx in 1..cyc.time_s.len() {
@@ -202,9 +202,9 @@ pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) ->
 ///     separation
 /// keep_name: (optional) bool, if True and cycle contains "name", adds
 ///     that name to all microtrips
-pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<RustCycle> {
+pub fn to_microtrips(cycle: &Cycle, stop_speed_m_per_s: Option<f64>) -> Vec<Cycle> {
     let stop_speed_m_per_s = stop_speed_m_per_s.unwrap_or(1e-6);
-    let mut microtrips: Vec<RustCycle> = Vec::new();
+    let mut microtrips: Vec<Cycle> = Vec::new();
     let ts = cycle.time_s.to_vec();
     let vs = cycle.mps.to_vec();
     let gs = cycle.grade.to_vec();
@@ -226,7 +226,7 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
             let last_g = mt_gs[last_idx];
             let last_r = mt_rs[last_idx];
             mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
-            microtrips.push(RustCycle::new(
+            microtrips.push(Cycle::new(
                 mt_ts.clone(),
                 mt_vs.clone(),
                 mt_gs.clone(),
@@ -246,13 +246,7 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
     }
     if !mt_ts.is_empty() {
         mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
-        microtrips.push(RustCycle::new(
-            mt_ts,
-            mt_vs,
-            mt_gs,
-            mt_rs,
-            cycle.name.clone(),
-        ));
+        microtrips.push(Cycle::new(mt_ts, mt_vs, mt_gs, mt_rs, cycle.name.clone()));
     }
     microtrips
 }
@@ -270,7 +264,7 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
 ///     each microtrip and target speed for that microtrip
 /// NOTE: target speed per microtrip is not allowed to be below min_target_speed_mps
 pub fn create_dist_and_target_speeds_by_microtrip(
-    cyc: &RustCycle,
+    cyc: &Cycle,
     blend_factor: f64,
     min_target_speed_mps: f64,
 ) -> Vec<(f64, f64)> {
@@ -321,10 +315,10 @@ pub fn create_dist_and_target_speeds_by_microtrip(
 /// RETURNS: fastsim.cycle.Cycle (or fastsimrust.RustCycle), the new cycle with stopped time appended
 /// NOTE: additional time is rounded to the nearest second
 pub fn extend_cycle(
-    cyc: &RustCycle,
+    cyc: &Cycle,
     absolute_time_s: Option<f64>, // =0.0,
     time_fraction: Option<f64>,   // =0.0,
-) -> RustCycle {
+) -> Cycle {
     let absolute_time_s = absolute_time_s.unwrap_or(0.0);
     let time_fraction = time_fraction.unwrap_or(0.0);
     let mut ts = cyc.time_s.to_vec();
@@ -346,7 +340,7 @@ pub fn extend_cycle(
         rs.push(0.0);
         idx += 1;
     }
-    RustCycle::new(ts, vs, gs, rs, cyc.name.clone())
+    Cycle::new(ts, vs, gs, rs, cyc.name.clone())
 }
 
 #[cfg(feature = "pyo3")]
@@ -360,7 +354,7 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
 }
 
 #[derive(Default, PartialEq, Clone, Debug, Deserialize, Serialize)]
-pub struct RustCycleElement {
+pub struct CycleElement {
     /// time [s]
     #[serde(alias = "cycSecs")]
     pub time_s: f64,
@@ -379,12 +373,12 @@ pub struct RustCycleElement {
 #[add_pyo3_api(
     #[new]
     pub fn __new__(
-        cyc: &RustCycle,
+        cyc: &Cycle,
     ) -> Self {
         Self::new(cyc)
     }
 )]
-pub struct RustCycleCache {
+pub struct CycleCache {
     pub grade_all_zero: bool,
     pub trapz_step_distances_m: Array1<f64>,
     pub trapz_distances_m: Array1<f64>,
@@ -396,8 +390,8 @@ pub struct RustCycleCache {
     grades: Array1<f64>,
 }
 
-impl RustCycleCache {
-    pub fn new(cyc: &RustCycle) -> Self {
+impl CycleCache {
+    pub fn new(cyc: &Cycle) -> Self {
         let tol = 1e-6;
         let num_items = cyc.time_s.len();
         let grade_all_zero = cyc.grade.iter().fold(true, |flag, &g| flag && g == 0.0);
@@ -543,7 +537,7 @@ impl RustCycleCache {
     }
 
     #[pyo3(name = "build_cache")]
-    pub fn build_cache_py(&self) -> PyResult<RustCycleCache> {
+    pub fn build_cache_py(&self) -> PyResult<CycleCache> {
         Ok(self.build_cache())
     }
 
@@ -592,7 +586,7 @@ impl RustCycleCache {
 /// * road_type, $kW$
 /// * legacy, will likely change to road charging capacity
 ///    * Another sublist.
-pub struct RustCycle {
+pub struct Cycle {
     /// array of time [s]
     #[serde(alias = "cycSecs")]
     pub time_s: Array1<f64>,
@@ -611,7 +605,7 @@ pub struct RustCycle {
 }
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
-impl RustCycle {
+impl Cycle {
     pub fn new(
         time_s: Vec<f64>,
         mps: Vec<f64>,
@@ -633,11 +627,11 @@ impl RustCycle {
         }
     }
 
-    pub fn build_cache(&self) -> RustCycleCache {
-        RustCycleCache::new(&self)
+    pub fn build_cache(&self) -> CycleCache {
+        CycleCache::new(&self)
     }
 
-    pub fn push(&mut self, cyc_elem: RustCycleElement) {
+    pub fn push(&mut self, cyc_elem: CycleElement) {
         self.time_s
             .append(Axis(0), array![cyc_elem.time_s].view())
             .unwrap();
@@ -677,7 +671,7 @@ impl RustCycle {
         &self,
         distance_start_m: f64,
         delta_distance_m: f64,
-        cache: Option<&RustCycleCache>,
+        cache: Option<&CycleCache>,
     ) -> f64 {
         let tol = 1e-6;
         match &cache {
@@ -757,7 +751,7 @@ impl RustCycle {
     pub fn calc_distance_to_next_stop_from(
         &self,
         distance_m: f64,
-        cache: Option<&RustCycleCache>,
+        cache: Option<&CycleCache>,
     ) -> f64 {
         let tol: f64 = 1e-6;
         match cache {
@@ -908,7 +902,7 @@ impl RustCycle {
             .from_reader(file);
         for result in rdr.deserialize() {
             // TODO: make this more elegant than unwrap
-            let cyc_elem: RustCycleElement = result?;
+            let cyc_elem: CycleElement = result?;
             cyc.push(cyc_elem);
         }
 
@@ -942,7 +936,7 @@ impl RustCycle {
             .has_headers(true)
             .from_reader(data.as_bytes());
         for result in rdr.deserialize() {
-            let cyc_elem: RustCycleElement = result?;
+            let cyc_elem: CycleElement = result?;
             cyc.push(cyc_elem);
         }
 
@@ -977,12 +971,7 @@ pub struct PassingInfo {
 /// - dist_tol_m: float, the distance tolerance away from lead vehicle to be seen as
 ///     "deviated" from the reference/shadow trace (m)
 /// RETURNS: PassingInfo
-pub fn detect_passing(
-    cyc: &RustCycle,
-    cyc0: &RustCycle,
-    i: usize,
-    dist_tol_m: Option<f64>,
-) -> PassingInfo {
+pub fn detect_passing(cyc: &Cycle, cyc0: &Cycle, i: usize, dist_tol_m: Option<f64>) -> PassingInfo {
     if i >= cyc.time_s.len() {
         return PassingInfo {
             has_collision: false,
@@ -1049,7 +1038,7 @@ mod tests {
 
     #[test]
     fn test_dist() {
-        let cyc = RustCycle::test_cyc();
+        let cyc = Cycle::test_cyc();
         assert_eq!(cyc.dist_m().sum(), 45.0);
     }
 
@@ -1060,7 +1049,7 @@ mod tests {
         let grade = Array::zeros(5).to_vec();
         let road_type = Array::zeros(5).to_vec();
         let name = String::from("test");
-        let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
+        let cyc = Cycle::new(time_s, speed_mps, grade, road_type, name);
         let avg_mps = average_step_speeds(&cyc);
         let expected_avg_mps = Array::from_vec(vec![0.0, 5.0, 10.0, 5.0, 0.0]);
         assert_eq!(expected_avg_mps.len(), avg_mps.len());
@@ -1079,7 +1068,7 @@ mod tests {
     fn test_loading_a_cycle_from_the_filesystem() {
         let pathstr = String::from("../../fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        let cyc = RustCycle::from_csv_file(&pathstr).unwrap();
+        let cyc = Cycle::from_csv_file(&pathstr).unwrap();
         assert_eq!(cyc.name, String::from("udds"));
         let num_entries = cyc.time_s.len();
         assert!(num_entries > 0);

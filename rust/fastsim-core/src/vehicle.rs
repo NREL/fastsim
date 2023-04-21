@@ -119,7 +119,7 @@ lazy_static! {
         val_range_miles: f64,
         val_veh_base_cost: f64,
         val_msrp: f64,
-        props: RustPhysicalProperties,
+        props: PhysicalProperties,
         //small_motor_power_kw: f64,
         //large_motor_power_kw: f64,
         //fc_perc_out_array: Option<Vec<f64>>,
@@ -340,7 +340,7 @@ pub struct RustVehicle {
     #[serde(skip)]
     #[api(has_orphaned)]
     /// Physical properties, see [RustPhysicalProperties](RustPhysicalProperties)
-    pub props: RustPhysicalProperties,
+    pub props: PhysicalProperties,
     /// Vehicle name
     #[serde(alias = "name")]
     pub scenario_name: String,
@@ -817,7 +817,7 @@ impl RustVehicle {
         val_range_miles: f64,
         val_veh_base_cost: f64,
         val_msrp: f64,
-        props: RustPhysicalProperties,
+        props: PhysicalProperties,
         regen_a: f64,
         regen_b: f64,
         fc_peak_eff_override: Option<f64>,
@@ -1300,7 +1300,7 @@ impl RustVehicle {
         let val_range_miles: f64 = f64::NAN;
         let val_veh_base_cost: f64 = f64::NAN;
         let val_msrp: f64 = f64::NAN;
-        let props = RustPhysicalProperties::default();
+        let props = PhysicalProperties::default();
         //let small_motor_power_kw: f64 = 7.5;
         //let large_motor_power_kw: f64 = 75.0;
         // TODO: make this look more like:
@@ -1599,7 +1599,7 @@ mod tests {
         let val_range_miles: f64 = f64::NAN;
         let val_veh_base_cost: f64 = f64::NAN;
         let val_msrp: f64 = f64::NAN;
-        let props = RustPhysicalProperties::default();
+        let props = PhysicalProperties::default();
         let regen_a: f64 = 500.0;
         let regen_b: f64 = 0.99;
         let fc_peak_eff_override: Option<f64> = None;

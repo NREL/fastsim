@@ -24,7 +24,7 @@
 //! veh_rust = veh_py.to_rust()
 //!
 //! ## Simulate
-//! sd = fastsim.RustSimDrive(cyc_rust, veh_rust)
+//! sd = fastsim.SimDrive(cyc_rust, veh_rust)
 //! sd.sim_drive()
 //! ```
 

@@ -7,10 +7,10 @@ use crate::cycle::{
     create_dist_and_target_speeds_by_microtrip, detect_passing, extend_cycle,
     trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance, PassingInfo,
 };
-use crate::simdrive::RustSimDrive;
+use crate::simdrive::SimDrive;
 use crate::utils::{add_from, max, min, ndarrcumsum, ndarrmax, ndarrmin, ndarrunique};
 
-impl RustSimDrive {
+impl SimDrive {
     /// Provides the gap-with lead vehicle from start to finish
     pub fn gap_to_lead_vehicle_m(&self) -> Array1<f64> {
         // TODO: consider basing on dist_m?

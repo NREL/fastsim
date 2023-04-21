@@ -4,11 +4,11 @@ use ndarray::Array;
 use std::collections::HashMap;
 
 // crate local
-use crate::cycle::RustCycle;
+use crate::cycle::Cycle;
 use crate::imports::*;
 use crate::params::*;
 use crate::proc_macros::ApproxEq;
-use crate::simdrive::{RustSimDrive, RustSimDriveParams};
+use crate::simdrive::{SimDrive, SimDriveParams};
 use crate::vehicle;
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
@@ -108,12 +108,12 @@ pub struct PHEVCycleCalc {
     pub total_cd_miles: f64,
 }
 
-pub fn make_accel_trace() -> RustCycle {
+pub fn make_accel_trace() -> Cycle {
     let accel_cyc_secs = Array::range(0., 300., 0.1);
     let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
     accel_cyc_mps[0] = 0.0;
 
-    RustCycle::new(
+    Cycle::new(
         accel_cyc_secs.to_vec(),
         accel_cyc_mps.to_vec(),
         Array::zeros(accel_cyc_secs.len()).to_vec(),
@@ -123,7 +123,7 @@ pub fn make_accel_trace() -> RustCycle {
 }
 
 pub fn get_net_accel(
-    sd_accel: &mut RustSimDrive,
+    sd_accel: &mut SimDrive,
     scenario_name: &String,
 ) -> Result<f64, anyhow::Error> {
     log::debug!("running `sim_drive_accel`");
@@ -145,7 +145,7 @@ pub fn get_label_fe(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
     verbose: Option<bool>,
-) -> Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>), anyhow::Error> {
+) -> Result<(LabelFe, Option<HashMap<&str, SimDrive>>), anyhow::Error> {
     // Generates label fuel economy (FE) values for a provided vehicle.
     //
     // Arguments:
@@ -157,14 +157,14 @@ pub fn get_label_fe(
     //     If true, print out key results
     //
     // Returns label fuel economy values as a struct and (optionally)
-    // simdrive::RustSimDrive objects.
+    // simdrive::SimDrive objects.
 
-    let sim_params: RustSimDriveParams = RustSimDriveParams::default();
-    let props: RustPhysicalProperties = RustPhysicalProperties::default();
-    let long_params: RustLongParams = RustLongParams::default();
+    let sim_params: SimDriveParams = SimDriveParams::default();
+    let props: PhysicalProperties = PhysicalProperties::default();
+    let long_params: LongParams = LongParams::default();
 
-    let mut cyc: HashMap<&str, RustCycle> = HashMap::new();
-    let mut sd: HashMap<&str, RustSimDrive> = HashMap::new();
+    let mut cyc: HashMap<&str, Cycle> = HashMap::new();
+    let mut sd: HashMap<&str, SimDrive> = HashMap::new();
     let mut out: LabelFe = LabelFe::default();
     let mut max_trace_miss_in_mph: f64 = 0.0;
 
@@ -220,16 +220,16 @@ pub fn get_label_fe(
 
     cyc.insert(
         "udds",
-        RustCycle::from_csv_string(udds_filestring, "udds".to_string())?,
+        Cycle::from_csv_string(udds_filestring, "udds".to_string())?,
     );
     cyc.insert(
         "hwy",
-        RustCycle::from_csv_string(hwy_filestring, "hwfet".to_string())?,
+        Cycle::from_csv_string(hwy_filestring, "hwfet".to_string())?,
     );
 
     // run simdrive for non-phev powertrains
-    sd.insert("udds", RustSimDrive::new(cyc["udds"].clone(), veh.clone()));
-    sd.insert("hwy", RustSimDrive::new(cyc["hwy"].clone(), veh.clone()));
+    sd.insert("udds", SimDrive::new(cyc["udds"].clone(), veh.clone()));
+    sd.insert("hwy", SimDrive::new(cyc["hwy"].clone(), veh.clone()));
 
     for (k, val) in sd.iter_mut() {
         val.sim_drive(None, None)?;
@@ -390,7 +390,7 @@ pub fn get_label_fe(
     }
 
     // run accelerating sim_drive
-    let mut sd_accel = RustSimDrive::new(cyc["accel"].clone(), veh.clone());
+    let mut sd_accel = SimDrive::new(cyc["accel"].clone(), veh.clone());
     out.net_accel = get_net_accel(&mut sd_accel, &veh.scenario_name)?;
     sd.insert("accel", sd_accel);
 
@@ -412,21 +412,21 @@ pub fn get_label_fe(
 
 pub fn get_label_fe_phev(
     veh: &vehicle::RustVehicle,
-    sd: &mut HashMap<&str, RustSimDrive>,
-    long_params: &RustLongParams,
+    sd: &mut HashMap<&str, SimDrive>,
+    long_params: &LongParams,
     adj_params: &AdjCoef,
-    sim_params: &RustSimDriveParams,
-    props: &RustPhysicalProperties,
+    sim_params: &SimDriveParams,
+    props: &PhysicalProperties,
 ) -> Result<LabelFePHEV, anyhow::Error> {
     // PHEV-specific function for label fe.
     //
     // Arguments:
     // ----------
     // veh : vehicle::RustVehicle
-    // sd : RustSimDrive objects to use for label fe calculations
+    // sd : SimDrive objects to use for label fe calculations
     // long_params : Struct for longparams.json values
     // adj_params: Adjusted coefficients from longparams.json
-    // sim_params : RustSimDriveParams
+    // sim_params : SimDriveParams
     // props : RustPhysicalProperties
     //
     // Returns label fuel economy values for PHEV as a struct.
@@ -721,7 +721,7 @@ mod simdrivelabel_tests {
 
         let label_fe_truth: LabelFe = LabelFe {
             veh: vehicle::RustVehicle::default(),
-            adj_params: RustLongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
+            adj_params: LongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
             lab_udds_mpgge: 32.47503766676829,
             lab_hwy_mpgge: 42.265348793379445,
             lab_comb_mpgge: 36.25407690819302,
@@ -845,7 +845,7 @@ mod simdrivelabel_tests {
             f64::NAN,
             17000.0,
             33170.0,
-            RustPhysicalProperties::default(),
+            PhysicalProperties::default(),
             500.0,
             0.99,
             None,
@@ -1038,7 +1038,7 @@ mod simdrivelabel_tests {
 
         let label_fe_truth: LabelFe = LabelFe {
             veh: vehicle::RustVehicle::default(),
-            adj_params: RustLongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
+            adj_params: LongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
             lab_udds_mpgge: 370.06411942132064,
             lab_hwy_mpgge: 282.75893721314793,
             lab_comb_mpgge: 324.91895455274005,

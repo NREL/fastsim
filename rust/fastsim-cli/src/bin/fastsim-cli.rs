@@ -6,7 +6,7 @@ use std::fs;
 
 extern crate fastsim_core;
 use fastsim_core::{
-    cycle::RustCycle, params::MPH_PER_MPS, simdrive::RustSimDrive, simdrivelabel::get_label_fe,
+    cycle::Cycle, params::MPH_PER_MPS, simdrive::SimDrive, simdrivelabel::get_label_fe,
     simdrivelabel::get_net_accel, simdrivelabel::make_accel_trace,
     utils::interpolate_vectors as interp, vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
 };
@@ -225,13 +225,13 @@ pub fn main() {
                 panic!("Need to provide coastdown test coefficients for drag and wheel rr coefficient calculation");
             }
         } else {
-            RustCycle::from_file(&cyc_file_path)
+            Cycle::from_file(&cyc_file_path)
         }
     } else if is_adopt_hd && adopt_hd_has_cycle {
-        RustCycle::from_file(&adopt_hd_string)
+        Cycle::from_file(&adopt_hd_string)
     } else {
         //TODO? use pathbuff to string, for robustness
-        Ok(RustCycle::new(
+        Ok(Cycle::new(
             vec![0.0],
             vec![0.0],
             vec![0.0],
@@ -317,11 +317,11 @@ pub fn main() {
         let cyc = if adopt_hd_has_cycle {
             cyc.clone()
         } else {
-            RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap()
+            Cycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap()
         };
-        let mut sim_drive = RustSimDrive::new(cyc.clone(), veh.clone());
+        let mut sim_drive = SimDrive::new(cyc.clone(), veh.clone());
         sim_drive.sim_drive(None, None).unwrap();
-        let mut sim_drive_accel = RustSimDrive::new(make_accel_trace(), veh.clone());
+        let mut sim_drive_accel = SimDrive::new(make_accel_trace(), veh.clone());
         let net_accel = get_net_accel(&mut sim_drive_accel, &veh.scenario_name).unwrap();
         let mut mpgge = sim_drive.mpgge;
         let h2_diesel_results = if hd_h2_diesel_ice_h2share.is_some() && fc_pwr_out_perc.is_some() {
@@ -357,7 +357,7 @@ pub fn main() {
         };
         println!("{}", res.to_json());
     } else {
-        let mut sim_drive = RustSimDrive::new(cyc, veh);
+        let mut sim_drive = SimDrive::new(cyc, veh);
         // // this does nothing if it has already been called for the constructed `sim_drive`
         sim_drive.sim_drive(None, None).unwrap();
         println!("{}", sim_drive.mpgge);

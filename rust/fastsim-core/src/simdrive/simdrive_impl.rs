@@ -1,9 +1,9 @@
 //! Module containing implementations for [simdrive](crate::simdrive).
 
-use crate::cycle::{RustCycle, RustCycleCache};
+use crate::cycle::{Cycle, CycleCache};
 use crate::imports::*;
 use crate::params;
-use crate::simdrive::{RustSimDrive, RustSimDriveParams};
+use crate::simdrive::{SimDrive, SimDriveParams};
 use crate::utils::{arrmax, first_grtr, max, min, ndarrmax, ndarrmin};
 use crate::vehicle::*;
 
@@ -25,12 +25,12 @@ pub struct CoastTrajectory {
     pub distance_to_brake_m: Option<f64>,
 }
 
-impl RustSimDrive {
-    pub fn new(cyc: RustCycle, veh: RustVehicle) -> Self {
+impl SimDrive {
+    pub fn new(cyc: Cycle, veh: RustVehicle) -> Self {
         let hev_sim_count: usize = 0;
-        let cyc0: RustCycle = cyc.clone();
-        let sim_params = RustSimDriveParams::default();
-        let props = params::RustPhysicalProperties::default();
+        let cyc0: Cycle = cyc.clone();
+        let sim_params = SimDriveParams::default();
+        let props = params::PhysicalProperties::default();
         let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
         let cyc_len = cyc.time_s.len(); //get_len() as usize;
         let cur_max_fs_kw_out = Array::zeros(cyc_len);
@@ -148,8 +148,8 @@ impl RustSimDrive {
         let trace_miss_speed_mps: f64 = 0.0;
         let coast_delay_index = Array::zeros(cyc_len);
         let idm_target_speed_m_per_s = Array::zeros(cyc_len);
-        let cyc0_cache = RustCycleCache::new(&cyc0);
-        RustSimDrive {
+        let cyc0_cache = CycleCache::new(&cyc0);
+        SimDrive {
             hev_sim_count,
             veh,
             cyc,

@@ -6,12 +6,12 @@ use ndarray::{array, Array1};
 use polynomial::Polynomial;
 
 use crate::air::*;
-use crate::cycle::RustCycle;
+use crate::cycle::Cycle;
 use crate::imports::*;
 use crate::params::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
-use crate::simdrive::RustSimDrive;
+use crate::simdrive::SimDrive;
 use crate::vehicle::RustVehicle;
 
 #[allow(non_snake_case)]
@@ -44,7 +44,7 @@ pub fn abc_to_drag_coeffs(
     // show_plots: if True, plots are shown
 
     let air_props: AirProperties = AirProperties::default();
-    let props: RustPhysicalProperties = RustPhysicalProperties::default();
+    let props: PhysicalProperties = PhysicalProperties::default();
     let cur_ambient_air_density_kg__m3: f64 = if custom_rho.unwrap_or(false) {
         air_props.get_rho(custom_rho_temp_degC.unwrap_or(20.0), custom_rho_elevation_m)
     } else {
@@ -61,7 +61,7 @@ pub fn abc_to_drag_coeffs(
 
     let cd_len: usize = 300;
 
-    let cyc: RustCycle = RustCycle::new(
+    let cyc: Cycle = Cycle::new(
         (0..cd_len as i32).map(f64::from).collect(),
         Array::linspace(vmax_mph / super::params::MPH_PER_MPS, 0.0, cd_len).to_vec(),
         vec![0.0; cd_len],
@@ -134,7 +134,7 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
 }
 
 struct GetError<'a> {
-    cycle: &'a RustCycle,
+    cycle: &'a Cycle,
     vehicle: &'a RustVehicle,
     dyno_func_lb: &'a Polynomial<f64>,
 }
@@ -145,13 +145,13 @@ impl CostFunction for GetError<'_> {
 
     fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
         let mut veh: RustVehicle = self.vehicle.clone();
-        let cyc: RustCycle = self.cycle.clone();
+        let cyc: Cycle = self.cycle.clone();
         let dyno_func_lb: Polynomial<f64> = self.dyno_func_lb.clone();
 
         veh.drag_coef = x[0];
         veh.wheel_rr_coef = x[1];
 
-        let mut sd_coast: RustSimDrive = RustSimDrive::new(self.cycle.clone(), veh);
+        let mut sd_coast: SimDrive = SimDrive::new(self.cycle.clone(), veh);
         sd_coast.impose_coast = Array::from_vec(vec![true; sd_coast.impose_coast.len()]);
         let _sim_drive_result: Result<_, _> = sd_coast.sim_drive(None, None);
 

@@ -272,7 +272,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     });
     let mut output: TokenStream2 = ast.to_token_stream();
     output.extend(impl_block);
-    // if ast.ident.to_string() == "RustSimDrive" {
+    // if ast.ident.to_string() == "SimDrive" {
     //     println!("{}", output.to_string());
     // }
     // println!("{}", output.to_string());

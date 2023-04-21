@@ -42,7 +42,7 @@ pub const MODERN_MAX: f64 = 0.95;
         todo!();
     }
 )]
-pub struct RustPhysicalProperties {
+pub struct PhysicalProperties {
     pub air_density_kg_per_m3: f64, // = 1.2, Sea level air density at approximately 20C
     pub a_grav_mps2: f64,           // = 9.81
     pub kwh_per_gge: f64,           // = 33.7 # kWh per gallon of gasoline
@@ -52,7 +52,7 @@ pub struct RustPhysicalProperties {
     pub orphaned: bool,
 }
 
-impl Default for RustPhysicalProperties {
+impl Default for PhysicalProperties {
     fn default() -> Self {
         let air_density_kg_per_m3: f64 = 1.2;
         let a_grav_mps2: f64 = 9.81;
@@ -71,7 +71,7 @@ impl Default for RustPhysicalProperties {
     }
 }
 
-impl RustPhysicalProperties {
+impl PhysicalProperties {
     pub fn get_fuel_lhv_kj_per_kg(&self) -> f64 {
         // fuel_lhv_kj_per_kg = kWhPerGGE / 3.785 [L/gal] / fuel_rho_kg_per_L [kg/L] * 3_600 [s/hr] = [kJ/kg]
         self.kwh_per_gge / 3.785 / self.fuel_rho_kg__L * 3.6e3
@@ -120,7 +120,7 @@ pub const SMALL_BASELINE_EFF: [f64; 11] = [
 pub const CHG_EFF: f64 = 0.86; // charger efficiency for PEVs, this should probably not be hard coded long term
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, ApproxEq)]
-pub struct RustLongParams {
+pub struct LongParams {
     #[serde(rename = "rechgFreqMiles")]
     pub rechg_freq_miles: Vec<f64>,
     #[serde(rename = "ufArray")]
@@ -147,7 +147,7 @@ pub struct AdjCoef {
     pub hwy_slope: f64,
 }
 
-impl Default for RustLongParams {
+impl Default for LongParams {
     fn default() -> Self {
         let long_params_str: &str = include_str!("../../../fastsim/resources/longparams.json");
         let long_params: Self = from_str(long_params_str).unwrap();
@@ -161,7 +161,7 @@ mod params_test {
 
     #[test]
     fn test_get_long_params() {
-        let long_params: RustLongParams = RustLongParams::default();
+        let long_params: LongParams = LongParams::default();
 
         let adj_coef_2008: AdjCoef = AdjCoef {
             city_intercept: 0.003259,

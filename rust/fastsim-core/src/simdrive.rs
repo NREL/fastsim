@@ -1,8 +1,8 @@
 //! Module containing vehicle struct and related functions.
 // crate local
-use crate::cycle::{RustCycle, RustCycleCache};
+use crate::cycle::{Cycle, CycleCache};
 use crate::imports::*;
-use crate::params::RustPhysicalProperties;
+use crate::params::PhysicalProperties;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
@@ -89,7 +89,7 @@ pub mod simdrive_impl;
     }
 )]
 /// Struct containing time trace data
-pub struct RustSimDriveParams {
+pub struct SimDriveParams {
     pub favor_grade_accuracy: bool,
     pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
     pub max_time_dilation: f64,
@@ -126,7 +126,7 @@ pub struct RustSimDriveParams {
     pub orphaned: bool,
 }
 
-impl Default for RustSimDriveParams {
+impl Default for SimDriveParams {
     fn default() -> Self {
         // if True, accuracy will be favored over performance for grade per step estimates
         // Specifically, for performance, grade for a step will be assumed to be the grade
@@ -209,7 +209,7 @@ impl Default for RustSimDriveParams {
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
     #[new]
-    pub fn __new__(cyc: RustCycle, veh: RustVehicle) -> Self {
+    pub fn __new__(cyc: Cycle, veh: RustVehicle) -> Self {
         Self::new(cyc, veh)
     }
 
@@ -427,19 +427,19 @@ impl Default for RustSimDriveParams {
         )
     }
 )]
-pub struct RustSimDrive {
+pub struct SimDrive {
     pub hev_sim_count: usize,
     #[api(has_orphaned)]
     pub veh: RustVehicle,
     #[api(has_orphaned)]
-    pub cyc: RustCycle,
+    pub cyc: Cycle,
     #[api(has_orphaned)]
-    pub cyc0: RustCycle,
+    pub cyc0: Cycle,
     #[api(has_orphaned)]
-    pub sim_params: RustSimDriveParams,
+    pub sim_params: SimDriveParams,
     #[serde(skip)]
     #[api(has_orphaned)]
-    pub props: RustPhysicalProperties,
+    pub props: PhysicalProperties,
     pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()
     pub cur_max_fs_kw_out: Array1<f64>,
     pub fc_trans_lim_kw: Array1<f64>,
@@ -559,7 +559,7 @@ pub struct RustSimDrive {
     pub coast_delay_index: Array1<i32>,
     pub idm_target_speed_m_per_s: Array1<f64>,
     #[serde(skip)]
-    pub cyc0_cache: RustCycleCache,
+    pub cyc0_cache: CycleCache,
 }
 
 // #[cfg(test)]
@@ -577,7 +577,7 @@ pub struct RustSimDrive {
 //         let veh = RustVehicle::test_veh();
 
 //         // SIM DRIVE
-//         let mut sd = RustSimDrive::__new__(cyc, veh);
+//         let mut sd = SimDrive::__new__(cyc, veh);
 //         let init_soc: f64 = 0.5;
 //         sd.walk(init_soc);
 

@@ -15,7 +15,7 @@ use crate::vehicle_thermal::*;
     /// method for instantiating SimDriveHot
     #[new]
     pub fn __new__(
-        cyc: cycle::RustCycle,
+        cyc: cycle::Cycle,
         veh: vehicle::RustVehicle,
         vehthrm: VehicleThermal,
         init_state: Option<ThermalState>,
@@ -189,7 +189,7 @@ use crate::vehicle_thermal::*;
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct SimDriveHot {
     #[api(has_orphaned)]
-    pub sd: simdrive::RustSimDrive,
+    pub sd: simdrive::SimDrive,
     #[api(has_orphaned)]
     pub vehthrm: VehicleThermal,
     #[api(skip_get, skip_set)]
@@ -205,13 +205,13 @@ pub struct SimDriveHot {
 
 impl SimDriveHot {
     pub fn new(
-        cyc: cycle::RustCycle,
+        cyc: cycle::Cycle,
         veh: vehicle::RustVehicle,
         vehthrm: VehicleThermal,
         init_state: Option<ThermalState>,
         amb_te_deg_c: Option<Array1<f64>>,
     ) -> Self {
-        let sd = simdrive::RustSimDrive::new(cyc, veh);
+        let sd = simdrive::SimDrive::new(cyc, veh);
         let air = AirProperties::default();
         let history = ThermalStateHistoryVec::default();
 
