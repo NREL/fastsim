@@ -1,0 +1,12 @@
+# Unstable and defective options commented out. Once stabilized or corrected these options will
+# likely be enabled.
+
+use_small_heuristics = "Max"
+#wrap_comments = true
+#comment_width = 100
+#format_strings = true
+#match_block_trailing_comma = true
+edition = "2018"
+use_try_shorthand = true
+use_field_init_shorthand = true
+#error_on_unformatted = true
