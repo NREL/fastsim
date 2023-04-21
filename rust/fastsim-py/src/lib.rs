@@ -7,7 +7,7 @@ use pyo3imports::*;
 fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
     m.add_class::<cycle::Cycle>()?;
-    m.add_class::<vehicle::RustVehicle>()?;
+    m.add_class::<vehicle::LegacyVehicle>()?;
     m.add_class::<params::PhysicalProperties>()?;
     m.add_class::<utils::Pyo3ArrayU32>()?;
     m.add_class::<utils::Pyo3ArrayF64>()?;

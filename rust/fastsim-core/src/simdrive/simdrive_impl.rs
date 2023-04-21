@@ -26,7 +26,7 @@ pub struct CoastTrajectory {
 }
 
 impl SimDrive {
-    pub fn new(cyc: Cycle, veh: RustVehicle) -> Self {
+    pub fn new(cyc: Cycle, veh: LegacyVehicle) -> Self {
         let hev_sim_count: usize = 0;
         let cyc0: Cycle = cyc.clone();
         let sim_params = SimDriveParams::default();

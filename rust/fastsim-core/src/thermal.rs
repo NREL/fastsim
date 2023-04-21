@@ -16,7 +16,7 @@ use crate::vehicle::vehicle_thermal::*;
     #[new]
     pub fn __new__(
         cyc: cycle::Cycle,
-        veh: vehicle::RustVehicle,
+        veh: vehicle::LegacyVehicle,
         vehthrm: VehicleThermal,
         init_state: Option<ThermalState>,
         amb_te_deg_c: Option<Vec<f64>>,
@@ -206,7 +206,7 @@ pub struct SimDriveHot {
 impl SimDriveHot {
     pub fn new(
         cyc: cycle::Cycle,
-        veh: vehicle::RustVehicle,
+        veh: vehicle::LegacyVehicle,
         vehthrm: VehicleThermal,
         init_state: Option<ThermalState>,
         amb_te_deg_c: Option<Array1<f64>>,

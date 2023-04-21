@@ -310,7 +310,7 @@ lazy_static! {
         self.set_derived()
     }
 
-    /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
+    /// An identify function to allow LegacyVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
     pub fn to_rust(&self) -> PyResult<Self> {
         Ok(self.clone())
@@ -325,7 +325,7 @@ lazy_static! {
 /// cyc_py = fastsim.cycle.Cycle.from_file("udds")
 /// cyc_rust = cyc_py.to_rust()
 /// ```
-pub struct RustVehicle {
+pub struct LegacyVehicle {
     #[serde(skip)]
     #[api(has_orphaned)]
     /// Physical properties, see [RustPhysicalProperties](RustPhysicalProperties)
@@ -402,14 +402,14 @@ pub struct RustVehicle {
     #[serde(alias = "maxFuelConvKw")]
     #[validate(range(min = 0))]
     pub fc_max_kw: f64,
-    /// Fuel converter output power percentage map, x-values of [fc_eff_map](RustVehicle::fc_eff_map)
+    /// Fuel converter output power percentage map, x-values of [fc_eff_map](LegacyVehicle::fc_eff_map)
     #[serde(alias = "fcPwrOutPerc")]
     pub fc_pwr_out_perc: Array1<f64>,
     /// Fuel converter efficiency map
     #[serde(default)]
     pub fc_eff_map: Array1<f64>,
     /// Fuel converter efficiency type, one of \[[SI](SI), [ATKINSON](ATKINSON), [DIESEL](DIESEL), [H2FC](H2FC), [HD_DIESEL](HD_DIESEL)\]  
-    /// Used for calculating [fc_eff_map](RustVehicle::fc_eff_map), and other calculations if H2FC
+    /// Used for calculating [fc_eff_map](LegacyVehicle::fc_eff_map), and other calculations if H2FC
     #[serde(alias = "fcEffType")]
     #[validate(regex(
         path = "FC_EFF_TYPE_OPTIONS_REGEX",
@@ -440,7 +440,7 @@ pub struct RustVehicle {
     #[serde(alias = "mcMaxElecInKw")]
     #[validate(range(min = 0))]
     pub mc_max_kw: f64,
-    /// Electric motor output power percentage map, x-values of [mc_eff_map](RustVehicle::mc_eff_map)
+    /// Electric motor output power percentage map, x-values of [mc_eff_map](LegacyVehicle::mc_eff_map)
     #[serde(alias = "mcPwrOutPerc")]
     pub mc_pwr_out_perc: Array1<f64>,
     /// Electric motor efficiency map
@@ -721,8 +721,8 @@ pub struct RustVehicle {
     pub orphaned: bool,
 }
 
-/// RustVehicle rust methods
-impl RustVehicle {
+/// LegacyVehicle rust methods
+impl LegacyVehicle {
     #[allow(clippy::too_many_arguments)]
     /// Create new vehicle instance
     pub fn new(
@@ -1470,7 +1470,7 @@ impl RustVehicle {
             .unwrap_or("");
 
         let file = File::open(filename)?;
-        let mut veh_res: Result<RustVehicle, anyhow::Error> = match extension {
+        let mut veh_res: Result<LegacyVehicle, anyhow::Error> = match extension {
             "yaml" => Ok(serde_yaml::from_reader(file)?),
             "json" => Ok(serde_json::from_reader(file)?),
             _ => Err(anyhow!("Unsupported file extension {}", extension)),
@@ -1479,7 +1479,7 @@ impl RustVehicle {
         veh_res
     }
     pub fn from_str(filename: &str) -> Result<Self, anyhow::Error> {
-        let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
+        let mut veh_res: Result<LegacyVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
         veh_res.as_mut().unwrap().set_derived();
         veh_res
     }
@@ -1492,7 +1492,7 @@ mod tests {
 
     #[test]
     fn test_set_derived_via_new() {
-        let veh = RustVehicle::mock_vehicle();
+        let veh = LegacyVehicle::mock_vehicle();
         assert!(veh.veh_kg > 0.0);
     }
 
@@ -1595,7 +1595,7 @@ mod tests {
         let mc_peak_eff_override: Option<f64> = Some(-0.50); // bad input
 
         // instantiate vehicle result
-        let veh_result = RustVehicle::new(
+        let veh_result = LegacyVehicle::new(
             scenario_name,
             selection,
             veh_year,

@@ -12,12 +12,12 @@ use crate::params::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::simdrive::SimDrive;
-use crate::vehicle::RustVehicle;
+use crate::vehicle::LegacyVehicle;
 
 #[allow(non_snake_case)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 pub fn abc_to_drag_coeffs(
-    veh: &mut RustVehicle,
+    veh: &mut LegacyVehicle,
     a_lbf: f64,
     b_lbf__mph: f64,
     c_lbf__mph2: f64,
@@ -32,7 +32,7 @@ pub fn abc_to_drag_coeffs(
     //
     // Arguments:
     // ----------
-    // veh: vehicle.RustVehicle with all parameters correct except for drag and rolling resistance coefficients
+    // veh: vehicle.LegacyVehicle with all parameters correct except for drag and rolling resistance coefficients
     // a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]
     // custom_rho: if True, use `air::get_rho()` to calculate the current ambient density
     // custom_rho_temp_degC: ambient temperature [degree C] for `get_rho()`;
@@ -135,7 +135,7 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
 
 struct GetError<'a> {
     cycle: &'a Cycle,
-    vehicle: &'a RustVehicle,
+    vehicle: &'a LegacyVehicle,
     dyno_func_lb: &'a Polynomial<f64>,
 }
 
@@ -144,7 +144,7 @@ impl CostFunction for GetError<'_> {
     type Output = f64;
 
     fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
-        let mut veh: RustVehicle = self.vehicle.clone();
+        let mut veh: LegacyVehicle = self.vehicle.clone();
         let cyc: Cycle = self.cycle.clone();
         let dyno_func_lb: Polynomial<f64> = self.dyno_func_lb.clone();
 
@@ -198,7 +198,7 @@ mod vehicle_utils_tests {
 
     #[test]
     fn test_abc_to_drag_coeffs() {
-        let mut veh: RustVehicle = RustVehicle::mock_vehicle();
+        let mut veh: LegacyVehicle = LegacyVehicle::mock_vehicle();
         let a: f64 = 25.91;
         let b: f64 = 0.1943;
         let c: f64 = 0.01796;

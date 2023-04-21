@@ -14,7 +14,7 @@ use crate::vehicle;
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 /// Label fuel economy values
 pub struct LabelFe {
-    pub veh: vehicle::RustVehicle,
+    pub veh: vehicle::LegacyVehicle,
     pub adj_params: AdjCoef,
     pub lab_udds_mpgge: f64,
     pub lab_hwy_mpgge: f64,
@@ -142,7 +142,7 @@ pub fn get_net_accel(
 }
 
 pub fn get_label_fe(
-    veh: &vehicle::RustVehicle,
+    veh: &vehicle::LegacyVehicle,
     full_detail: Option<bool>,
     verbose: Option<bool>,
 ) -> Result<(LabelFe, Option<HashMap<&str, SimDrive>>), anyhow::Error> {
@@ -150,7 +150,7 @@ pub fn get_label_fe(
     //
     // Arguments:
     // ----------
-    // veh : vehicle::RustVehicle
+    // veh : vehicle::LegacyVehicle
     // full_detail : boolean, default False
     //     If True, sim_drive objects for each cycle are also returned.
     // verbose : boolean, default false
@@ -411,7 +411,7 @@ pub fn get_label_fe(
 }
 
 pub fn get_label_fe_phev(
-    veh: &vehicle::RustVehicle,
+    veh: &vehicle::LegacyVehicle,
     sd: &mut HashMap<&str, SimDrive>,
     long_params: &LongParams,
     adj_params: &AdjCoef,
@@ -422,7 +422,7 @@ pub fn get_label_fe_phev(
     //
     // Arguments:
     // ----------
-    // veh : vehicle::RustVehicle
+    // veh : vehicle::LegacyVehicle
     // sd : SimDrive objects to use for label fe calculations
     // long_params : Struct for longparams.json values
     // adj_params: Adjusted coefficients from longparams.json
@@ -712,15 +712,15 @@ mod simdrivelabel_tests {
 
     #[test]
     fn test_get_label_fe_conv() {
-        let veh: vehicle::RustVehicle = vehicle::RustVehicle::mock_vehicle();
+        let veh: vehicle::LegacyVehicle = vehicle::LegacyVehicle::mock_vehicle();
         let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
-        // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
+        // For some reason, LegacyVehicle::mock_vehicle() != LegacyVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
-        label_fe.veh = vehicle::RustVehicle::default();
+        label_fe.veh = vehicle::LegacyVehicle::default();
         println!("Calculated net accel: {}", label_fe.net_accel);
 
         let label_fe_truth: LabelFe = LabelFe {
-            veh: vehicle::RustVehicle::default(),
+            veh: vehicle::LegacyVehicle::default(),
             adj_params: LongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
             lab_udds_mpgge: 32.47503766676829,
             lab_hwy_mpgge: 42.265348793379445,
@@ -758,7 +758,7 @@ mod simdrivelabel_tests {
 
     #[test]
     fn test_get_label_fe_phev() {
-        let veh: vehicle::RustVehicle = vehicle::RustVehicle::new(
+        let veh: vehicle::LegacyVehicle = vehicle::LegacyVehicle::new(
             String::from("2016 Chevrolet Volt"),
             13,
             2016,
@@ -854,9 +854,9 @@ mod simdrivelabel_tests {
         .unwrap();
 
         let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
-        // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
+        // For some reason, LegacyVehicle::mock_vehicle() != LegacyVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
-        label_fe.veh = vehicle::RustVehicle::default();
+        label_fe.veh = vehicle::LegacyVehicle::default();
         // TODO: Figure out why net_accel values are different
         println!("Calculated net accel: {}", label_fe.net_accel);
         println!(
@@ -1037,7 +1037,7 @@ mod simdrivelabel_tests {
         };
 
         let label_fe_truth: LabelFe = LabelFe {
-            veh: vehicle::RustVehicle::default(),
+            veh: vehicle::LegacyVehicle::default(),
             adj_params: LongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
             lab_udds_mpgge: 370.06411942132064,
             lab_hwy_mpgge: 282.75893721314793,

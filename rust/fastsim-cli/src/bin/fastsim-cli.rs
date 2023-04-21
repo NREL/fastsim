@@ -9,7 +9,7 @@ use fastsim_core::{
     cycle::Cycle, params::MPH_PER_MPS, simdrive::SimDrive, simdrivelabel::get_label_fe,
     simdrivelabel::get_net_accel, simdrivelabel::make_accel_trace,
     utils::interpolate_vectors as interp, vehicle::vehicle_utils::abc_to_drag_coeffs,
-    vehicle::RustVehicle,
+    vehicle::LegacyVehicle,
 };
 
 /// Wrapper for fastsim.
@@ -207,7 +207,7 @@ pub fn main() {
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
         if cyc_file_path == *"coastdown" {
             if fastsim_api.a.is_some() && fastsim_api.b.is_some() && fastsim_api.c.is_some() {
-                let mut veh = RustVehicle::mock_vehicle();
+                let mut veh = LegacyVehicle::mock_vehicle();
                 let (drag_coeff, wheel_rr_coeff) = abc_to_drag_coeffs(
                     &mut veh,
                     fastsim_api.a.unwrap(),
@@ -252,9 +252,9 @@ pub fn main() {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string);
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_str(&veh_string)
+            LegacyVehicle::from_str(&veh_string)
         } else {
-            RustVehicle::from_str(&veh_string)
+            LegacyVehicle::from_str(&veh_string)
         }
     } else if let Some(veh_file_path) = fastsim_api.veh_file {
         if is_adopt || is_adopt_hd {
@@ -262,12 +262,12 @@ pub fn main() {
             let (vehstring, pwr_out_perc, h2share) = json_rewrite(vehstring);
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_str(&vehstring)
+            LegacyVehicle::from_str(&vehstring)
         } else {
-            RustVehicle::from_file(&veh_file_path)
+            LegacyVehicle::from_file(&veh_file_path)
         }
     } else {
-        Ok(RustVehicle::mock_vehicle())
+        Ok(LegacyVehicle::mock_vehicle())
     }
     .unwrap();
 

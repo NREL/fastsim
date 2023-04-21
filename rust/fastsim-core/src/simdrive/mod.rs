@@ -209,7 +209,7 @@ impl Default for SimDriveParams {
 #[add_pyo3_api(
     /// method for instantiating SimDriveRust
     #[new]
-    pub fn __new__(cyc: Cycle, veh: RustVehicle) -> Self {
+    pub fn __new__(cyc: Cycle, veh: LegacyVehicle) -> Self {
         Self::new(cyc, veh)
     }
 
@@ -430,7 +430,7 @@ impl Default for SimDriveParams {
 pub struct SimDrive {
     pub hev_sim_count: usize,
     #[api(has_orphaned)]
-    pub veh: RustVehicle,
+    pub veh: LegacyVehicle,
     #[api(has_orphaned)]
     pub cyc: Cycle,
     #[api(has_orphaned)]
@@ -574,7 +574,7 @@ pub struct SimDrive {
 
 //         // VEHICLE
 
-//         let veh = RustVehicle::test_veh();
+//         let veh = LegacyVehicle::test_veh();
 
 //         // SIM DRIVE
 //         let mut sd = SimDrive::__new__(cyc, veh);
