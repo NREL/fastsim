@@ -8,7 +8,8 @@ extern crate fastsim_core;
 use fastsim_core::{
     cycle::Cycle, params::MPH_PER_MPS, simdrive::SimDrive, simdrivelabel::get_label_fe,
     simdrivelabel::get_net_accel, simdrivelabel::make_accel_trace,
-    utils::interpolate_vectors as interp, vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
+    utils::interpolate_vectors as interp, vehicle::vehicle_utils::abc_to_drag_coeffs,
+    vehicle::RustVehicle,
 };
 
 /// Wrapper for fastsim.
