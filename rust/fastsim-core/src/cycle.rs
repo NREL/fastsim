@@ -370,7 +370,7 @@ pub struct CycleElement {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[add_pyo3_api(
+#[legacy_api(
     #[new]
     pub fn __new__(
         cyc: &Cycle,
@@ -463,7 +463,7 @@ impl CycleCache {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[add_pyo3_api(
+#[legacy_api(
     #[new]
     pub fn __new__(
         time_s: Vec<f64>,

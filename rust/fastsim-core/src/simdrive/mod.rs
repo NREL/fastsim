@@ -11,7 +11,7 @@ pub mod cyc_mods;
 pub mod simdrive_impl;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[add_pyo3_api(
+#[legacy_api(
     #[new]
     #[allow(clippy::too_many_arguments)]
     pub fn __new__(
@@ -206,7 +206,7 @@ impl Default for SimDriveParams {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[add_pyo3_api(
+#[legacy_api(
     /// method for instantiating SimDriveRust
     #[new]
     pub fn __new__(cyc: Cycle, veh: LegacyVehicle) -> Self {

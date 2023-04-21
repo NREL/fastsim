@@ -21,7 +21,7 @@ pub const MODERN_MAX: f64 = 0.95;
 /// Struct containing time trace data
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, ApproxEq)]
 #[allow(non_snake_case)]
-#[add_pyo3_api(
+#[legacy_api(
     #[allow(non_snake_case)]
     #[new]
     pub fn __new__() -> Self {

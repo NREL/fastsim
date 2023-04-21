@@ -1,6 +1,6 @@
 //! Module for simulating thermal behavior of powertrains
 
-use proc_macros::{add_pyo3_api, HistoryVec};
+use proc_macros::{legacy_api, HistoryVec};
 
 use crate::air::AirProperties;
 use crate::cycle;
@@ -11,7 +11,7 @@ use crate::simdrive;
 use crate::vehicle;
 use crate::vehicle::vehicle_thermal::*;
 
-#[add_pyo3_api(
+#[legacy_api(
     /// method for instantiating SimDriveHot
     #[new]
     pub fn __new__(
@@ -999,7 +999,7 @@ impl SimDriveHot {
     }
 }
 
-#[add_pyo3_api(
+#[legacy_api(
     #[new]
     pub fn __new__(
         amb_te_deg_c: Option<f64>,

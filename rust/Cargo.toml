@@ -4,6 +4,7 @@ members = [
     "fastsim-cli", # command line app
     "fastsim-core", # pure rust core with optional pyo3 feature
     "fastsim-py", # python module exposing fastsim-core
+    "uom", # custom version of UOM, to be replaced by regular uom after contributing PR
 ]
 
 [profile.release]

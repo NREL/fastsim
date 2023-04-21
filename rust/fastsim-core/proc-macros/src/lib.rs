@@ -1,15 +1,24 @@
 mod imports;
 use crate::imports::*;
-mod add_pyo3_api;
 mod approx_eq_derive;
 mod history_vec_derive;
+mod legacy_api;
+mod api;
 mod utilities;
 
-/// macro for creating appropriate setters and getters for pyo3 struct attributes
+/// legacy macro for creating appropriate setters and getters for pyo3 struct attributes
 #[proc_macro_error]
 #[proc_macro_attribute]
-pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
-    add_pyo3_api::add_pyo3_api(attr, item)
+pub fn legacy_api(attr: TokenStream, item: TokenStream) -> TokenStream {
+    legacy_api::legacy_api(attr, item)
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+/// macro for creating appropriate setters and getters for pyo3 struct attributes
+/// and other, non-python API functionality
+pub fn api(attr: TokenStream, item: TokenStream) -> TokenStream {
+    api::api(attr, item)
 }
 
 #[proc_macro_derive(HistoryVec)]

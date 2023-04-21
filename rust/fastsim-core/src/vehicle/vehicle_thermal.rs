@@ -94,7 +94,7 @@ impl Default for FcTempEffModelExponential {
 
 /// Struct containing parameters and one time-varying variable for HVAC model
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, HistoryVec)]
-#[add_pyo3_api(
+#[legacy_api(
     #[classmethod]
     #[pyo3(name = "default")]
     pub fn default_py(_cls: &PyType) -> PyResult<Self> {
@@ -200,7 +200,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
 /// Struct for containing vehicle thermal (and related) parameters.
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
-#[add_pyo3_api(
+#[legacy_api(
     #[classmethod]
     #[pyo3(name = "default")]
     pub fn default_py(_cls: &PyType) -> Self {

@@ -25,13 +25,6 @@ msrv = "1.43.0"
 [badges]
 maintenance = { status = "actively-developed" }
 
-[workspace]
-members = [
-    "tests/feature_check",
-    "uom-macros",
-    "tests/edition_check",
-]
-
 [dependencies]
 num-traits = { version = "0.2", default-features = false }
 num-rational = { version = "0.4", optional = true, default-features = false }

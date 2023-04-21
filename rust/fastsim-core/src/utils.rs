@@ -242,27 +242,27 @@ pub mod array_wrappers {
 
     use super::*;
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[add_pyo3_api]
+    #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayU32(Array1<u32>);
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[add_pyo3_api]
+    #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayI32(Array1<i32>);
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[add_pyo3_api]
+    #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3ArrayF64(Array1<f64>);
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[add_pyo3_api]
+    #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayBool(Array1<bool>);
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
-    #[add_pyo3_api]
+    #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3VecF64(Vec<f64>);
 }

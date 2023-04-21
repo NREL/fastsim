@@ -7,13 +7,13 @@ use validator::Validate;
 // local
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::{add_pyo3_api, ApproxEq};
+use crate::proc_macros::{api, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
-pub use legacy::*;
+pub use legacy_vehicle::*;
 
 // modules
-pub mod legacy;
+pub mod legacy_vehicle;
 pub mod powertrain;
 pub mod vehicle_thermal;
 pub mod vehicle_utils;

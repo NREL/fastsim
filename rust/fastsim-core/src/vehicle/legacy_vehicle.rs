@@ -1,4 +1,5 @@
 use super::*;
+use crate::proc_macros::{legacy_api, ApproxEq};
 
 // veh_pt_type options
 pub const CONV: &str = "Conv";
@@ -23,7 +24,7 @@ lazy_static! {
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
-#[add_pyo3_api(
+#[legacy_api(
     #[allow(clippy::too_many_arguments)]
     #[new]
     pub fn __new__(
