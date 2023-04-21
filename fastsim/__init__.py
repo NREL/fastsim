@@ -6,7 +6,7 @@ import sys
 import logging
 import traceback
 
-from fastsimrust import *
+import fastsimrust as fsr
 
 def package_root() -> Path:
     """Returns the package root directory."""
@@ -36,9 +36,9 @@ def _exception_handler(exc_type, exc_value, exc_traceback):
 sys.excepthook = _exception_handler
 
 from . import utilities as utils
-from . import calibration as cal
 from .resample import resample
 from . import auxiliaries
+from . import calibration as cal
 
 from pkg_resources import get_distribution
 
@@ -51,7 +51,7 @@ import numpy as np
 
 def _as_numpy_array(self, *args, **kwargs):
     return np.array(list(self), *args, **kwargs)
-setattr(Pyo3ArrayF64, "__array__", _as_numpy_array)
-setattr(Pyo3ArrayU32, "__array__", _as_numpy_array)
-setattr(Pyo3ArrayBool, "__array__", _as_numpy_array)
-setattr(Pyo3VecF64, "__array__", _as_numpy_array)
+setattr(fsr.Pyo3ArrayF64, "__array__", _as_numpy_array)
+setattr(fsr.Pyo3ArrayU32, "__array__", _as_numpy_array)
+setattr(fsr.Pyo3ArrayBool, "__array__", _as_numpy_array)
+setattr(fsr.Pyo3VecF64, "__array__", _as_numpy_array)

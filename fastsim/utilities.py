@@ -12,6 +12,8 @@ from contextlib import contextmanager
 
 sns.set()
 
+from fastsimrust import get_rho_air
+
 # TODO: port to rust!
 # def l__100km_to_mpg(l__100km):
 #     """Given fuel economy in L/100km, returns mpg."""
