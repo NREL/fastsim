@@ -31,13 +31,9 @@ class TestVehicle(unittest.TestCase):
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
         if RUST_AVAILABLE and USE_RUST:
             py_veh = vehicle.Vehicle.from_vehdb(1, to_rust=True)
-            import fastsimrust as fsr
-            data = {**py_veh.__dict__}
-            data['props'] = parameters.copy_physical_properties(
-                py_veh.props, 'rust')
-            veh = fsr.RustVehicle(**data)
             py_veh.set_derived()
-            veh = vehicle.copy_vehicle(py_veh,'rust')
+            import fastsimrust as fsr
+            veh = vehicle.copy_vehicle(py_veh, 'rust')
             veh_copy = vehicle.copy_vehicle(veh, 'rust')
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
             self.assertTrue(vehicle.veh_equal(py_veh, veh_copy))
