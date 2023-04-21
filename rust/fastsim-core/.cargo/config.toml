@@ -1,2 +1,3 @@
-[build]
-rustdocflags = [ "--html-in-header", "fastsim-core/src/html/docs-header.html" ]
+# TODO: uncomment this when not needing to run `cargo test` in fastsim-core/
+# [build]
+# rustdocflags = [ "--html-in-header", "fastsim-core/src/html/docs-header.html" ]
