@@ -193,10 +193,10 @@ pub fn legacy_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
         } else {
-            panic!("Likely invalid use of `add_pyo3_api` macro.");
+            panic!("Likely invalid use of `legacy_api` macro.");
         }
     } else {
-        panic!("Likely invalid use of `add_pyo3_api` macro.");
+        panic!("Likely invalid use of `legacy_api` macro.");
     };
 
     // py_impl_block.extend::<TokenStream2>(quote! {

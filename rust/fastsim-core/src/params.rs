@@ -1,7 +1,7 @@
 //! Module containing FASTSim parameters.
 
 use crate::imports::*;
-use crate::proc_macros::{add_pyo3_api, ApproxEq};
+use crate::proc_macros::{legacy_api, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 

@@ -3,10 +3,10 @@
 use crate::cycle::{Cycle, CycleCache};
 use crate::imports::*;
 use crate::params::PhysicalProperties;
-use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::vehicle::*;
+use proc_macros::legacy_api;
 pub mod cyc_mods;
 pub mod simdrive_impl;
 

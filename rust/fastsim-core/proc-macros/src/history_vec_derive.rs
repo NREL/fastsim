@@ -65,7 +65,7 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
     let mut generated = TokenStream2::new();
     generated.append_all(quote! {
         #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-        #[add_pyo3_api]
+        #[legacy_api]
         pub struct #new_name {
             #vec_fields
         }
