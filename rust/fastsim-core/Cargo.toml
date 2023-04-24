@@ -9,6 +9,7 @@ pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 anyhow = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = {workspace = true}
+# TODO: when everything is in good shape, `ndarray` should be deleteable  
 ndarray = { version = "0.15.4", features=["serde"] }
 csv = "1.1"
 proc-macros = { path = "proc-macros" }
