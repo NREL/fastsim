@@ -90,7 +90,7 @@ lazy_static! {
 
     #[pyo3(name = "set_derived")]
     pub fn set_derived_py(&mut self) {
-        self.set_derived()
+        self.set_derived().unwrap()
     }
 
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
@@ -604,7 +604,13 @@ impl RustVehicle {
     ///     - `fs_mass_kg`
     ///     - `veh_kg`
     ///     - `max_trac_mps2`
-    pub fn set_derived(&mut self) {
+    pub fn set_derived(&mut self) -> Result<(), anyhow::Error> {
+        // Vehicle input validation
+        match self.validate() {
+            Ok(_) => (),
+            Err(e) => bail!(e),
+        };
+
         if self.scenario_name != "Template Vehicle for setting up data types" {
             if self.veh_pt_type == BEV {
                 assert!(
@@ -776,6 +782,8 @@ impl RustVehicle {
         assert!(self.mc_peak_eff() < 1.0, "mcPeakEff >= 1 is not allowed.");
 
         self.set_veh_mass();
+
+        Ok(())
     }
 
     pub fn mock_vehicle() -> Self {
@@ -895,20 +903,20 @@ impl RustVehicle {
             veh_kg: Default::default(),
             max_trac_mps2: Default::default(),
         };
-        v.set_derived();
+        v.set_derived().unwrap();
         v
     }
 
     pub fn from_str(filename: &str) -> Result<Self, anyhow::Error> {
         let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
-        veh_res.as_mut().unwrap().set_derived();
+        veh_res.as_mut().unwrap().set_derived()?;
         veh_res
     }
 }
 
 impl SerdeAPI for RustVehicle {
     fn init(&mut self) {
-        self.set_derived();
+        self.set_derived().unwrap();
     }
 }
 
@@ -957,9 +965,6 @@ mod tests {
         let fc_pwr_out_perc: Vec<f64> = vec![
             0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
         ];
-        let fc_eff_map: Vec<f64> = vec![
-            0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
-        ];
         let fc_eff_type: String = String::from("SI");
         let fc_sec_to_peak_pwr: f64 = 6.0;
         let fc_base_kg: f64 = 61.0;
@@ -967,11 +972,6 @@ mod tests {
         let min_fc_time_on: f64 = 30.0;
         let idle_fc_kw: f64 = 2.5;
         let mc_max_kw: f64 = 0.0;
-        let mc_pwr_out_perc: Vec<f64> =
-            vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
-        let mc_eff_map: Vec<f64> = vec![
-            0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92,
-        ];
         let mc_sec_to_peak_pwr: f64 = 4.0;
         let mc_pe_kg_per_kw: f64 = 0.833;
         let mc_pe_base_kg: f64 = 21.6;
@@ -1028,20 +1028,8 @@ mod tests {
         let regen_b: f64 = 0.99;
         let fc_peak_eff_override: Option<f64> = None;
         let mc_peak_eff_override: Option<f64> = Some(-0.50); // bad input
-        let modern_diff = MODERN_MAX - arrmax(&LARGE_BASELINE_EFF);
-        let large_baseline_eff_adj: Vec<f64> =
-            LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
-        let modern_diff = MODERN_MAX - arrmax(&LARGE_BASELINE_EFF);
         let small_motor_power_kw = 7.5;
         let large_motor_power_kw = 75.0;
-        let mc_kw_adj_perc = max(
-            0.0,
-            min(
-                (mc_max_kw - small_motor_power_kw) / (large_motor_power_kw - small_motor_power_kw),
-                1.0,
-            ),
-        );
-
         let fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
         let mc_eff_map = Array1::<f64>::zeros(LARGE_BASELINE_EFF.len());
         let mc_kw_out_array =
@@ -1073,7 +1061,7 @@ mod tests {
         let mc_max_elec_in_kw = arrmax(&mc_kw_in_array);
 
         // instantiate vehicle result
-        let veh_result = RustVehicle {
+        let mut veh = RustVehicle {
             small_motor_power_kw,
             large_motor_power_kw,
             fc_perc_out_array: FC_PERC_OUT_ARRAY.clone().to_vec(),
@@ -1081,7 +1069,7 @@ mod tests {
             no_elec_sys: Default::default(),
             no_elec_aux: Default::default(),
             max_roadway_chg_kw: Default::default(),
-            input_kw_out_array: fc_pwr_out_perc.clone().into() * fc_max_kw,
+            input_kw_out_array: Array1::from_vec(fc_pwr_out_perc.clone()) * fc_max_kw,
             fc_kw_out_array: fc_perc_out_array.iter().map(|n| n * fc_max_kw).collect(),
             fc_eff_array: fc_perc_out_array
                 .iter()
@@ -1212,7 +1200,7 @@ mod tests {
             mc_peak_eff_override, // bad input
         };
 
-        veh_result.set_derived();
+        let validation_result = veh.set_derived();
 
         // hard-coded fields where bad inputs were provided above
         let bad_fields = [
@@ -1226,7 +1214,7 @@ mod tests {
         // downcast anyhow::error back into validator::ValidationErrors
         // this test will fail on the unwrap() if the error is not downcastable to ValidationErrors
         // e.g. if the error was not from input validation
-        let validation_errs = veh_result
+        let validation_errs = validation_result
             .unwrap_err()
             .downcast::<ValidationErrors>()
             .unwrap();

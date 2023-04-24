@@ -899,7 +899,7 @@ mod simdrivelabel_tests {
             mc_peak_eff_override: None,
             orphaned: false,
         };
-        veh.set_derived();
+        veh.set_derived().unwrap();
 
         let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
