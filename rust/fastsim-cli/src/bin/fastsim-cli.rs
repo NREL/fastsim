@@ -5,11 +5,9 @@ use serde_json::{json, Value};
 use std::fs;
 
 use fastsim_core::{
-    cycle::RustCycle, params::MPH_PER_MPS, simdrive::RustSimDrive, simdrive::RustSimDrive,
-    simdrivelabel::get_label_fe, simdrivelabel::get_label_fe, simdrivelabel::get_net_accel,
-    simdrivelabel::make_accel_trace, traits::SerdeAPI, utils::interpolate_vectors as interp,
-    vehicle::RustVehicle, vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
-    vehicle_utils::abc_to_drag_coeffs,
+    cycle::RustCycle, params::MPH_PER_MPS, simdrive::RustSimDrive, simdrivelabel::get_label_fe,
+    simdrivelabel::get_net_accel, simdrivelabel::make_accel_trace, traits::SerdeAPI,
+    utils::interpolate_vectors as interp, vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
 };
 
 /// Wrapper for fastsim.
@@ -99,12 +97,6 @@ struct AdoptHDResults {
     adjCombKwhPerMile: f64,
     accel: f64,
     // add more results here
-}
-
-trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    fn to_json(&self) -> String {
-        serde_json::to_string(&self).unwrap()
-    }
 }
 
 impl<T> SerdeAPI for T where T: Serialize + for<'a> Deserialize<'a> {}
