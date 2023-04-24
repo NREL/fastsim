@@ -929,8 +929,8 @@ mod tests {
         veh_file.push("vehdb/test_overrides.yaml");
         let veh = RustVehicle::from_file(veh_file.as_os_str().to_str().unwrap()).unwrap();
         assert!(veh.veh_kg == veh.veh_override_kg.unwrap());
-    // test input validation by providing bad inputs, then checking
-    // the produced error for the offending field names
+        // test input validation by providing bad inputs, then checking
+        // the produced error for the offending field names
     }
 
     #[test]
@@ -1028,29 +1028,52 @@ mod tests {
         let regen_b: f64 = 0.99;
         let fc_peak_eff_override: Option<f64> = None;
         let mc_peak_eff_override: Option<f64> = Some(-0.50); // bad input
-                let modern_diff = MODERN_MAX - arrmax(&LARGE_BASELINE_EFF);
+        let modern_diff = MODERN_MAX - arrmax(&LARGE_BASELINE_EFF);
         let large_baseline_eff_adj: Vec<f64> =
             LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
         let modern_diff = MODERN_MAX - arrmax(&LARGE_BASELINE_EFF);
-let            small_motor_power_kw = 7.5;
-let            large_motor_power_kw = 75.0;
-       let mc_kw_adj_perc = max(
+        let small_motor_power_kw = 7.5;
+        let large_motor_power_kw = 75.0;
+        let mc_kw_adj_perc = max(
             0.0,
             min(
-                (mc_max_kw - small_motor_power_kw)
-                    / (large_motor_power_kw - small_motor_power_kw),
+                (mc_max_kw - small_motor_power_kw) / (large_motor_power_kw - small_motor_power_kw),
                 1.0,
             ),
         );
-let fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
+
+        let fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
+        let mc_eff_map = Array1::<f64>::zeros(LARGE_BASELINE_EFF.len());
+        let mc_kw_out_array =
+            (Array::linspace(0.0, 1.0, MC_PERC_OUT_ARRAY.len()) * mc_max_kw).to_vec();
+        let mc_perc_out_array = MC_PERC_OUT_ARRAY.clone().to_vec();
+        let mc_pwr_out_perc = array![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
+        let mc_full_eff_array: Vec<f64> = mc_perc_out_array
+            .iter()
+            .enumerate()
+            .map(|(idx, &x): (usize, &f64)| -> f64 {
+                if idx == 0 {
+                    0.0
+                } else {
+                    interpolate(&x, &mc_pwr_out_perc, &mc_eff_map.clone(), false)
+                }
+            })
+            .collect();
+        let mc_kw_in_array: Vec<f64> = [0.0; 101]
+            .iter()
+            .enumerate()
+            .map(|(idx, _)| {
+                if idx == 0 {
+                    0.0
+                } else {
+                    mc_kw_out_array[idx] / mc_full_eff_array[idx]
+                }
+            })
+            .collect();
+        let mc_max_elec_in_kw = arrmax(&mc_kw_in_array);
 
         // instantiate vehicle result
-        let veh_result = RustVehicle{
-            mc_eff_map: large_baseline_eff_adj
-                .iter()
-                .zip(SMALL_BASELINE_EFF.iter())
-                .map(|(&x, &y)| mc_kw_adj_perc * x + (1.0 - mc_kw_adj_perc) * y)
-                .collect(),
+        let veh_result = RustVehicle {
             small_motor_power_kw,
             large_motor_power_kw,
             fc_perc_out_array: FC_PERC_OUT_ARRAY.clone().to_vec(),
@@ -1059,35 +1082,45 @@ let fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
             no_elec_aux: Default::default(),
             max_roadway_chg_kw: Default::default(),
             input_kw_out_array: fc_pwr_out_perc.clone().into() * fc_max_kw,
-            fc_kw_out_array: fc_perc_out_array
-            .iter()
-            .map(|n| n * fc_max_kw)
-            .collect(),
+            fc_kw_out_array: fc_perc_out_array.iter().map(|n| n * fc_max_kw).collect(),
             fc_eff_array: fc_perc_out_array
                 .iter()
                 .map(|x: &f64| -> f64 {
                     interpolate(
                         x,
                         &Array1::from(fc_pwr_out_perc.to_vec()),
-                        &ATKINSON,
+                        &array![
+                            0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30
+                        ],
                         false,
                     )
                 })
                 .collect(),
             modern_max: MODERN_MAX,
-            mc_eff_array,
-            mc_kw_in_array,
+            mc_eff_array: mc_eff_map.clone(),
+            mc_kw_in_array: [0.0; 101]
+                .iter()
+                .enumerate()
+                .map(|(idx, _)| {
+                    if idx == 0 {
+                        0.0
+                    } else {
+                        mc_kw_out_array[idx] / mc_full_eff_array[idx]
+                    }
+                })
+                .collect(),
             mc_kw_out_array,
             mc_max_elec_in_kw,
             mc_full_eff_array,
-            veh_kg,
-            max_trac_mps2,
-            ess_mass_kg,
-            mc_mass_kg,
-            fc_mass_kg,
-            fs_mass_kg,
+            // these get calculated in `se
+            veh_kg: Default::default(),
+            max_trac_mps2: Default::default(),
+            ess_mass_kg: Default::default(),
+            mc_mass_kg: Default::default(),
+            fc_mass_kg: Default::default(),
+            fs_mass_kg: Default::default(),
             mc_perc_out_array,
-            orphaned,
+            orphaned: Default::default(),
             scenario_name,
             selection,
             veh_year,
@@ -1106,8 +1139,12 @@ let fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
             fs_kwh,
             fs_kwh_per_kg,
             fc_max_kw, // bad input
-            fc_pwr_out_perc,
-            fc_eff_map,
+            fc_pwr_out_perc: array![
+                0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
+            ],
+            fc_eff_map: array![
+                0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
+            ],
             fc_eff_type,
             fc_sec_to_peak_pwr,
             fc_base_kg,
@@ -1116,7 +1153,7 @@ let fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
             idle_fc_kw,
             mc_max_kw,
             mc_pwr_out_perc,
-            Some(mc_eff_map),
+            mc_eff_map: array![0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92],
             mc_sec_to_peak_pwr,
             mc_pe_kg_per_kw,
             mc_pe_base_kg,

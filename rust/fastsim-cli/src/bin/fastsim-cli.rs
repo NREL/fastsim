@@ -5,11 +5,11 @@ use serde_json::{json, Value};
 use std::fs;
 
 use fastsim_core::{
-    cycle::RustCycle, simdrive::RustSimDrive, simdrivelabel::get_label_fe, traits::SerdeAPI,
-    vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
-    params::MPH_PER_MPS, simdrive::RustSimDrive, simdrivelabel::get_label_fe,
-    simdrivelabel::get_net_accel, simdrivelabel::make_accel_trace,
-    utils::interpolate_vectors as interp, vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
+    cycle::RustCycle, params::MPH_PER_MPS, simdrive::RustSimDrive, simdrive::RustSimDrive,
+    simdrivelabel::get_label_fe, simdrivelabel::get_label_fe, simdrivelabel::get_net_accel,
+    simdrivelabel::make_accel_trace, traits::SerdeAPI, utils::interpolate_vectors as interp,
+    vehicle::RustVehicle, vehicle::RustVehicle, vehicle_utils::abc_to_drag_coeffs,
+    vehicle_utils::abc_to_drag_coeffs,
 };
 
 /// Wrapper for fastsim.
