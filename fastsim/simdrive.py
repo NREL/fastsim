@@ -1,5 +1,4 @@
-"""Module containing classes and methods for simulating vehicle drive
-cycle. For example usage, see ../README.md"""
+"""Module containing classes and methods for simulating vehicle drive cycle."""
 import sys
 
 # Import necessary python modules
@@ -2468,10 +2467,10 @@ class SimDrivePost(object):
 
         base_var_list = list(self.__dict__.keys())
         pw_var_list = [var for var in base_var_list if re.search(
-            '\w*_kw(?!h)\w*', var)]
+            r'\w*_kw(?!h)\w*', var)]
         # find all vars containing 'Kw' but not 'Kwh'
 
-        prog = re.compile('(\w*)_kw(?!h)(\w*)')
+        prog = re.compile(r'(\w*)_kw(?!h)(\w*)')
         # find all vars containing 'Kw' but not Kwh and capture parts before and after 'Kw'
         # using compile speeds up iteration
 

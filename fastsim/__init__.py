@@ -17,22 +17,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Override exception handler
-def _exception_handler(exc_type, exc_value, exc_traceback):
-    # Handle exception normally if it's a KeyboardInterrupt
-    if issubclass(exc_type, KeyboardInterrupt):
-        sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        return
-    # Handle exception normally if error originates outside of FASTSim
-    exc_filepath = Path(traceback.extract_tb(exc_traceback)[-1].filename)
-    if not package_root() in exc_filepath.parents:
-        sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        return
-    # Log error if it comes from FASTSim
-    logger.error("uncaught exception", exc_info=(
-        exc_type, exc_value, exc_traceback))
-sys.excepthook = _exception_handler
-
 from . import parameters as params
 from . import utilities as utils
 from . import simdrive, vehicle, cycle, calibration, tests
@@ -44,7 +28,8 @@ from pkg_resources import get_distribution
 
 __version__ = get_distribution('fastsim').version
 
-__doc__ += f"{Path(__file__).parent / 'docs/README.md'}"
+__doc__ += "\nhttps://pypi.org/project/fastsim/"
+__doc__ += "\nhttps://www.nrel.gov/transportation/fastsim.html"
 
 try:
     import fastsimrust as fsr

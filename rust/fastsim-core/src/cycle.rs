@@ -544,6 +544,11 @@ impl RustCycleCache {
         Ok(self.average_grade_over_range(distance_start_m, delta_distance_m, None))
     }
 
+    #[pyo3(name = "build_cache")]
+    pub fn build_cache_py(&self) -> PyResult<RustCycleCache> {
+        Ok(self.build_cache())
+    }
+
     #[pyo3(name = "dt_s_at_i")]
     pub fn dt_s_at_i_py(&self, i: usize) -> PyResult<f64> {
         if i == 0 {

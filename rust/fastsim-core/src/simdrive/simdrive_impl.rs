@@ -432,7 +432,10 @@ impl RustSimDrive {
                         } else {
                             ess_2fuel_kwh = 0.0;
                         }
-                        init_soc = min(1.0, max(0.0, *self.soc.last().unwrap()));
+                        init_soc = min(
+                            self.veh.max_soc,
+                            max(self.veh.min_soc, *self.soc.last().unwrap()),
+                        );
                     }
                     init_soc
                 } else if self.veh.veh_pt_type == PHEV || self.veh.veh_pt_type == BEV {
@@ -706,11 +709,11 @@ impl RustSimDrive {
                     self.veh.mc_kw_out_array[first_grtr(
                         &self.veh.mc_kw_in_array,
                         min(
-                            arrmax(&self.veh.mc_kw_in_array) - 0.01,
+                            arrmax(&self.veh.mc_kw_in_array) * 0.9999,
                             self.cur_max_avail_elec_kw[i],
                         ),
                     )
-                    .unwrap_or(0)
+                    .unwrap()
                         - 1_usize],
                     self.veh.mc_max_kw,
                 )
@@ -742,9 +745,9 @@ impl RustSimDrive {
                     1,
                     first_grtr(
                         &self.veh.mc_kw_out_array,
-                        min(self.veh.mc_max_kw - 0.01, self.cur_max_mc_kw_out[i]),
+                        min(self.veh.mc_max_kw * 0.9999, self.cur_max_mc_kw_out[i]),
                     )
-                    .unwrap_or(0)
+                    .unwrap()
                         - 1,
                 )]
         }
@@ -774,7 +777,7 @@ impl RustSimDrive {
                         first_grtr(
                             &self.veh.mc_kw_out_array,
                             min(
-                                self.veh.mc_max_kw - 0.01,
+                                self.veh.mc_max_kw * 0.9999,
                                 self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i],
                             ),
                         )
@@ -1180,9 +1183,9 @@ impl RustSimDrive {
                         1,
                         first_grtr(
                             &self.veh.mc_kw_out_array,
-                            min(self.veh.mc_max_kw - 0.01, self.fc_kw_gap_fr_eff[i]),
+                            min(self.veh.mc_max_kw * 0.9999, self.fc_kw_gap_fr_eff[i]),
                         )
-                        .unwrap_or(0)
+                        .unwrap()
                             - 1,
                     )];
             }
@@ -1191,7 +1194,7 @@ impl RustSimDrive {
         } else {
             self.mc_elec_in_kw_for_max_fc_eff[i] = self.veh.mc_kw_in_array[first_grtr(
                 &self.veh.mc_kw_out_array,
-                min(self.veh.mc_max_kw - 0.01, self.fc_kw_gap_fr_eff[i]),
+                min(self.veh.mc_max_kw * 0.9999, self.fc_kw_gap_fr_eff[i]),
             )
             .unwrap_or(0)
                 - 1];
@@ -1209,9 +1212,9 @@ impl RustSimDrive {
                         1,
                         first_grtr(
                             &self.veh.mc_kw_out_array,
-                            min(self.veh.mc_max_kw - 0.01, self.trans_kw_in_ach[i]),
+                            min(self.veh.mc_max_kw * 0.9999, self.trans_kw_in_ach[i]),
                         )
-                        .unwrap_or(0)
+                        .unwrap()
                             - 1,
                     )]
                     + self.aux_in_kw[i];
@@ -1469,11 +1472,11 @@ impl RustSimDrive {
                         first_grtr(
                             &self.veh.mc_kw_in_array,
                             min(
-                                arrmax(&self.veh.mc_kw_in_array) - 0.01,
+                                arrmax(&self.veh.mc_kw_in_array) * 0.9999,
                                 self.mc_elec_kw_in_if_fc_req[i],
                             ),
                         )
-                        .unwrap_or(0)
+                        .unwrap()
                             - 1,
                     )]
             }
@@ -1487,11 +1490,11 @@ impl RustSimDrive {
                     first_grtr(
                         &self.veh.mc_kw_in_array,
                         min(
-                            arrmax(&self.veh.mc_kw_in_array) - 0.01,
+                            arrmax(&self.veh.mc_kw_in_array) * 0.9999,
                             -self.mc_elec_kw_in_if_fc_req[i],
                         ),
                     )
-                    .unwrap_or(0)
+                    .unwrap()
                         - 1,
                 )];
         }
@@ -1540,11 +1543,11 @@ impl RustSimDrive {
                         first_grtr(
                             &self.veh.mc_kw_in_array,
                             min(
-                                arrmax(&self.veh.mc_kw_in_array) - 0.01,
+                                arrmax(&self.veh.mc_kw_in_array) * 0.9999,
                                 -self.mc_mech_kw_out_ach[i],
                             ),
                         )
-                        .unwrap_or(0)
+                        .unwrap()
                             - 1,
                     )];
             }
@@ -1557,9 +1560,9 @@ impl RustSimDrive {
                     1,
                     first_grtr(
                         &self.veh.mc_kw_out_array,
-                        min(self.veh.mc_max_kw - 0.01, self.mc_mech_kw_out_ach[i]),
+                        min(self.veh.mc_max_kw * 0.9999, self.mc_mech_kw_out_ach[i]),
                     )
-                    .unwrap_or(0)
+                    .unwrap()
                         - 1,
                 )];
         }
@@ -1690,7 +1693,7 @@ impl RustSimDrive {
             &self.veh.fc_kw_out_array,
             min(self.fc_kw_out_ach[i], self.veh.fc_max_kw),
         )
-        .unwrap_or(0)
+        .unwrap()
             - 1]
             != 0.0
         {
@@ -1699,7 +1702,7 @@ impl RustSimDrive {
                     &self.veh.fc_kw_out_array,
                     min(self.fc_kw_out_ach[i], self.veh.fc_max_kw),
                 )
-                .unwrap_or(0)
+                .unwrap()
                     - 1]);
         } else {
             self.fc_kw_in_ach[i] = 0.0
@@ -1792,7 +1795,7 @@ impl RustSimDrive {
                 / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj);
 
         if self.energy_audit_error.abs() > self.sim_params.energy_audit_error_tol {
-            log::warn!(target: "fastsimrust",
+            log::warn!(
                 "problem detected with conservation of energy; \
                     energy audit error: {:.5}",
                 self.energy_audit_error
@@ -1818,7 +1821,7 @@ impl RustSimDrive {
         if !self.sim_params.missed_trace_correction {
             if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol {
                 self.trace_miss = true;
-                log::warn!(target: "fastsimrust",
+                log::warn!(
                     "trace miss distance fraction {:.5} exceeds tolerance of {:.5}",
                     self.trace_miss_dist_frac,
                     self.sim_params.trace_miss_dist_tol
@@ -1826,7 +1829,7 @@ impl RustSimDrive {
             }
         } else if self.trace_miss_time_frac > self.sim_params.trace_miss_time_tol {
             self.trace_miss = true;
-            log::warn!(target: "fastsimrust",
+            log::warn!(
                 "trace miss time fraction {:.5} exceeds tolerance of {:.5}",
                 self.trace_miss_time_frac,
                 self.sim_params.trace_miss_time_tol
@@ -1837,7 +1840,7 @@ impl RustSimDrive {
             ndarrmax(&(self.mps_ach.clone() - self.cyc.mps.clone()).map(|x| x.abs()));
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol {
             self.trace_miss = true;
-            log::warn!(target: "fastsimrust",
+            log::warn!(
                 "trace miss speed {:.5} m/s exceeds tolerance of {:.5} m/s",
                 self.trace_miss_speed_mps,
                 self.sim_params.trace_miss_speed_mps_tol

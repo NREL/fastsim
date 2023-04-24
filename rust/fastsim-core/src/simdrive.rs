@@ -422,6 +422,12 @@ impl Default for RustSimDriveParams {
             Pyo3ArrayF64::new(ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
         )
     }
+    #[getter]
+    pub fn get_fc_cumu_mj_out_ach(&self) -> PyResult<Pyo3ArrayF64> {
+        Ok(
+            Pyo3ArrayF64::new(ndarrcumsum(&(self.fc_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
+        )
+    }
 )]
 pub struct RustSimDrive {
     pub hev_sim_count: usize,

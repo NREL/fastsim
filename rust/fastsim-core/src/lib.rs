@@ -9,7 +9,6 @@
 
 //! # Installation
 //! Currently, the Rust backend is only available through a Python API.  
-//! For installation instructions, see: <https://github.nrel.gov/MBAP/fastsim/blob/rust-port/fastsim/docs/README.md>
 
 //! # Python Examples
 //! ```python
