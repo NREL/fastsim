@@ -74,7 +74,7 @@ struct FastSimApi {
     c: Option<f64>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[allow(non_snake_case)]
 struct AdoptResults {
     adjCombMpgge: f64,
@@ -99,9 +99,9 @@ struct AdoptHDResults {
     // add more results here
 }
 
-impl<T> SerdeAPI for T where T: Serialize + for<'a> Deserialize<'a> {}
+impl SerdeAPI for H2AndDieselResults {}
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub struct H2AndDieselResults {
     pub h2_kwh: f64,
     pub h2_gge: f64,
@@ -376,7 +376,7 @@ fn translate_veh_pt_type(x: i64) -> String {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 struct ArrayObject {
     pub v: i64,
     pub dim: Vec<usize>,
@@ -408,6 +408,11 @@ fn transform_array_of_value_to_vec_of_f64(array_of_values: &Vec<Value>) -> Vec<f
 fn transform_array_of_value_to_ndarray_representation(array_of_values: &Vec<Value>) -> ArrayObject {
     array_to_object_representation(&transform_array_of_value_to_vec_of_f64(array_of_values))
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+struct ParsedValue(Value);
+
+impl SerdeAPI for ParsedValue {}
 
 /// Rewrites the ADOPT JSON string to be in compliance with what FASTSim expects for JSON input.
 fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
@@ -508,7 +513,7 @@ fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
 
     parsed_data["stop_start"] = json!(false);
 
-    let adoptstring = parsed_data.to_json();
+    let adoptstring = ParsedValue(parsed_data).to_json();
 
     return (adoptstring, fc_pwr_out_perc, hd_h2_diesel_ice_h2share);
 }

@@ -102,8 +102,8 @@ ax[-1].plot(sdh.sd.cyc.time_s, sdh.sd.mph_ach)
 ax[-1].set_xlabel("Time")
 ax[-1].set_ylabel("Speed [mph]")
 plt.tight_layout()
-plt.savefig("plots/fusion udds cold start.png")
-plt.savefig("plots/fusion udds cold start.svg")
+# plt.savefig("plots/fusion udds cold start.png")
+# plt.savefig("plots/fusion udds cold start.svg")
 
 # %% Case with cabin cooling
 
@@ -150,8 +150,8 @@ ax[-1].plot(sdh.sd.cyc.time_s, sdh.sd.mph_ach)
 ax[-1].set_xlabel("Time")
 ax[-1].set_ylabel("Speed [mph]")
 plt.tight_layout()
-plt.savefig("plots/fusion udds hot start.png")
-plt.savefig("plots/fusion udds hot start.svg")
+# plt.savefig("plots/fusion udds hot start.png")
+# plt.savefig("plots/fusion udds hot start.svg")
 
 
 # %% sweep ambient
@@ -195,6 +195,6 @@ ax.legend()
 ax.set_xlabel('Ambient/Init. Temp [°C]')
 ax.set_ylabel('Fuel Economy [mpg]')
 plt.tight_layout()
-plt.savefig("plots/fusion FE vs temp sweep.png")
-plt.savefig("plots/fusion FE vs temp sweep.svg")
+# plt.savefig("plots/fusion FE vs temp sweep.png")
+# plt.savefig("plots/fusion FE vs temp sweep.svg")
 # %%
