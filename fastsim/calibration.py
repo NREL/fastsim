@@ -105,15 +105,20 @@ class ModelObjectives(object):
         # or if return_mods is True
         Dict[str, fsim.simdrive.SimDrive],
     ]:
-        # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
-        # This would make `from typing import Union` unnecessary
         """
         Calculate model errors w.r.t. test data for each element in dfs/models for each objective.
         Arguments:
         ----------
+            - sim_drives: dictionary with user-defined keys and SimDrive or SimDriveHot instances
             - return_mods: if true, also returns dict of solved models
-            - plot: if true, plots objectives
+            - plot: if true, plots objectives using matplotlib.pyplot
+            - plot_save_dir: directory in which to save plots.  If `None` (default), plots are not saved.   
+            - plot_perc_err: whether to include % error axes in plots
+            - show: whether to show matplotlib.pyplot plots
+            - fontsize: plot font size
         """
+        # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
+        # This would make `from typing import Union` unnecessary
 
         objectives = {}
         solved_mods = {}
