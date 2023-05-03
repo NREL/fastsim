@@ -10,6 +10,8 @@ import fastsim as fsim
 import fastsimrust as fsr
 
 
+use_nsga2 = True
+
 def load_data() -> Dict[str, pd.DataFrame]:
     # full data
     dfs_raw = dict()
@@ -37,6 +39,7 @@ def load_data() -> Dict[str, pd.DataFrame]:
                         dfs_raw[file.stem],
                         rate_vars=('Eng_FuelFlow_Direct[cc/s]')
                     )
+    assert len(dfs) > 0 
     return dfs
 
 
@@ -176,17 +179,23 @@ if __name__ == "__main__":
 
     if run_minimize:
         print("Starting calibration.")
-
-        algorithm = fsim.calibration.NSGA3(
-            ref_dirs=fsim.calibration.get_reference_directions(
-                "energy",
-                n_dim=cal_objectives.n_obj,  # must be at least cal_objectives.n_obj
-                n_points=pop_size,  # must be at least pop_size
-            ),
-            # size of each population
-            pop_size=pop_size,
-            sampling=fsim.calibration.LHS(),
-        )
+        if use_nsga2:
+            algorithm = fsim.calibration.NSGA2(
+                # size of each population
+                pop_size=pop_size,
+                sampling=fsim.calibration.LHS(),
+            )
+        else:
+            algorithm = fsim.calibration.NSGA3(
+                ref_dirs=fsim.calibration.get_reference_directions(
+                    "energy",
+                    n_dim=cal_objectives.n_obj,  # must be at least cal_objectives.n_obj
+                    n_points=pop_size,  # must be at least pop_size
+                ),
+                # size of each population
+                pop_size=pop_size,
+                sampling=fsim.calibration.LHS(),
+            )
         termination = fsim.calibration.DMOT(
             # max number of generations, default of 10 is very small
             n_max_gen=n_max_gen,
