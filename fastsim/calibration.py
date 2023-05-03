@@ -396,7 +396,7 @@ def update_plots(
             row=i_obj * ax_multiplier + 1,
             col=1,
         )
-        # pltly_fig.update_yaxes(title_text=obj[0], row=i_obj * ax_multiplier + 1, col=1)
+        pltly_fig.update_yaxes(title_text=obj[1], row=i_obj * ax_multiplier + 1, col=1)
 
         if plot_perc_err:
             pltly_fig.add_trace(
