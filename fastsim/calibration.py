@@ -6,7 +6,7 @@ import pickle
 import argparse
 
 # pymoo
-from pymoo.util.display.output import Output
+from pymoo.util.display.output import Output 
 from pymoo.util.display.column import Column
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling as LHS
 from pymoo.termination.default import DefaultMultiObjectiveTermination as DMOT
@@ -85,7 +85,7 @@ class ModelObjectives(object):
     verbose: bool = False
 
     # calculated in __post_init__
-    n_obj: int = None
+    n_obj: Optional[int] = None
 
     # whether to use simdrive hot
     # TOOD: consider passing the type to be used rather than this boolean in the future
@@ -127,14 +127,14 @@ class ModelObjectives(object):
         # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
         # This would make `from typing import Union` unnecessary
 
-        objectives = {}
-        solved_mods = {}
+        objectives: Dict = {}
+        solved_mods: Dict = {}
 
         # loop through all the provided trips
         for ((key, df_exp), sim_drive) in zip(self.dfs.items(), sim_drives.values()):
             t0 = time.perf_counter()
             sim_drive = sim_drive.copy()  # TODO: do we need this?
-            sim_drive.sim_drive()
+            sim_drive.sim_drive() # type: ignore
             t1 = time.perf_counter()
             if self.verbose:
                 print(f"Time to simulate {key}: {t1 - t0:.3g}")
@@ -145,11 +145,11 @@ class ModelObjectives(object):
             ax_multiplier = 2 if plot_perc_err else 1
             # extract speed trace for plotting
             if not self.use_simdrivehot:
-                time_hr = np.array(sim_drive.cyc.time_s) / 3_600
-                mph_ach = sim_drive.mph_ach
+                time_hr = np.array(sim_drive.cyc.time_s) / 3_600 # type: ignore
+                mph_ach = sim_drive.mph_ach # type: ignore
             else:
-                time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600
-                mph_ach = sim_drive.sd.mph_ach
+                time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600 # type: ignore
+                mph_ach = sim_drive.sd.mph_ach # type: ignore
             fig, ax = self.setup_plots(
                 plot,
                 plot_save_dir,
@@ -245,7 +245,7 @@ class ModelObjectives(object):
             else:
                 veh = sim_drives[key].sd.veh
                 veh.set_derived()
-                sim_drives[key].sd.veh = veh
+                fsim.utils.set_attr_with_path(sim_drives[key], "sd.veh", veh)
         t1 = time.perf_counter()
         if self.verbose:
             print(f"Time to update params: {t1 - t0:.3g} s")
@@ -256,7 +256,7 @@ class ModelObjectives(object):
         plot: bool, 
         plot_save_dir: Path,
         sim_drive: Union[fsr.RustSimDrive, fsr.SimDriveHot],
-        fontsize: int,
+        fontsize: float,
         key: str,
         ax_multiplier: int,
         time_hr: float,
@@ -403,7 +403,7 @@ def run_minimize(
     copy_algorithm: bool = False,
     copy_termination: bool = False,
     save_history: bool = False,
-    save_path: Optional[str] = Path("pymoo_res/"),
+    save_path: Union[Path, str] = Path("pymoo_res/"),
 ):
     print("`run_minimize` starting at")
     fsim.utils.print_dt()

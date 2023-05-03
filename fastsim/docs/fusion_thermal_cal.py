@@ -124,7 +124,8 @@ def get_cal_and_val_objs(use_simdrivehot: bool):
         dfs=dfs_cal,
         obj_names=obj_names,
         params=params,
-        verbose=False
+        use_simdrivehot=use_simdrivehot,
+        verbose=False,
     )
 
     # to ensure correct key order
@@ -135,7 +136,7 @@ def get_cal_and_val_objs(use_simdrivehot: bool):
         obj_names=obj_names,
         params=params,
         use_simdrivehot=use_simdrivehot,
-        verbose=False
+        verbose=False,
     )
 
     return cal_objectives, val_objectives, params_bounds
