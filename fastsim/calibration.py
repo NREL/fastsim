@@ -285,7 +285,6 @@ class ModelObjectives(object):
                 shared_xaxes=True,
                 vertical_spacing=0.05,
             )
-            pltly_fig.update_layout(yaxis=dict(tickangle=45))
             pltly_fig.update_layout(title=f'trip: {key}')
             pltly_fig.add_trace(
                 go.Scatter(
