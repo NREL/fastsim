@@ -25,6 +25,8 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import numpy as np
 
 # local -- expects rust-port version of fastsim so make sure this is in the env
@@ -102,7 +104,7 @@ class ModelObjectives(object):
         return_mods: Optional[bool] = False,
         plot: Optional[bool] = False,
         plot_save_dir: Optional[str] = None,
-        plot_perc_err: Optional[bool] = True,
+        plot_perc_err: Optional[bool] = False,
         show: Optional[bool] = False,
         fontsize: Optional[float] = 12,
         plotly: Optional[bool] = False,
@@ -150,8 +152,8 @@ class ModelObjectives(object):
             else:
                 time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600 # type: ignore
                 mph_ach = sim_drive.sd.mph_ach # type: ignore
-            fig, ax = self.setup_plots(
-                plot,
+            fig, ax, pltly_fig = self.setup_plots(
+                plot or show,
                 plot_save_dir,
                 sim_drive,
                 fontsize,
@@ -159,6 +161,7 @@ class ModelObjectives(object):
                 ax_multiplier,
                 time_hr,
                 mph_ach,
+                plotly,
             )                
 
             # loop through the objectives for each trip
@@ -192,9 +195,8 @@ class ModelObjectives(object):
                     # TODO: write else block for objective minimization
                 
                 update_plots(
-                    plot,
-                    plot_save_dir,
                     ax,
+                    pltly_fig,
                     i_obj,
                     ax_multiplier,
                     objectives,
@@ -208,6 +210,17 @@ class ModelObjectives(object):
                     mod_path,
                     show,
                 )    
+            
+            if plot_save_dir is not None:
+                if not Path(plot_save_dir).exists():
+                    Path(plot_save_dir).mkdir(exist_ok=True, parents=True)
+                if ax is not None:
+                    plt.savefig(Path(plot_save_dir) / f"{key}.svg")
+                    plt.savefig(Path(plot_save_dir) / f"{key}.png")
+                    plt.tight_layout()
+                if pltly_fig is not None:
+                    pltly_fig.update_layout(showlegend=True)
+                    pltly_fig.write_html(str(Path(plot_save_dir) / f"{key}.html"))
 
             t2 = time.perf_counter()
             if self.verbose:
@@ -254,15 +267,43 @@ class ModelObjectives(object):
     def setup_plots(
         self,
         plot: bool, 
-        plot_save_dir: Path,
+        plot_save_dir: Optional[Path],
         sim_drive: Union[fsr.RustSimDrive, fsr.SimDriveHot],
         fontsize: float,
         key: str,
         ax_multiplier: int,
         time_hr: float,
         mph_ach: float,
-    ) -> Tuple[Figure, Axes]:
-        if plot or plot_save_dir:
+        plotly: bool,
+    ) -> Tuple[Figure, Axes, go.Figure]:
+        rows = len(self.obj_names) * ax_multiplier + 1
+
+        if plotly and (plot_save_dir is not None):
+            pltly_fig = make_subplots(
+                rows=rows,
+                cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.05,
+            )
+            pltly_fig.update_layout(yaxis=dict(tickangle=45))
+            pltly_fig.update_layout(title=f'trip: {key}')
+            pltly_fig.add_trace(
+                go.Scatter(
+                    x=time_hr,
+                    y=mph_ach,
+                    name="mph",
+                ),
+                row=rows,
+                col=1,
+            )
+            pltly_fig.update_xaxes(title_text="Time [hr]", row=rows, col=1)
+            pltly_fig.update_yaxes(title_text="Speed [mph]", row=rows, col=1)
+        elif plotly:
+            raise Exception("`plot_save_dir` must also be provided for `plotly` to have any effect.")
+        else:
+            pltly_fig = None
+
+        if plot:
             # make directory if it doesn't exist
             Path(plot_save_dir).mkdir(exist_ok=True, parents=True)
             fig, ax = plt.subplots(
@@ -275,14 +316,13 @@ class ModelObjectives(object):
             )
             ax[-1].set_xlabel('Time [hr]', fontsize=fontsize)
             ax[-1].set_ylabel('Speed [mph]', fontsize=fontsize)
-            return fig, ax
+            return fig, ax, pltly_fig
         else:
-            return (None, None)
+            return (None, None, None)
 
 def update_plots(
-    plot: bool, 
-    plot_save_dir: Path,
-    ax: Axes,
+    ax: Optional[Axes],
+    pltly_fig: go.Figure,
     i_obj: int,
     ax_multiplier: int,
     objectives: Dict,
@@ -296,7 +336,7 @@ def update_plots(
     mod_path: str,
     show: bool,
 ):
-    if plot or plot_save_dir:
+    if ax is not None:
         # this code needs to be cleaned up
         # raw signals
         ax[i_obj * ax_multiplier].set_title(
@@ -333,13 +373,48 @@ def update_plots(
 
         if show:
             plt.show()
+    
+    if pltly_fig is not None:
+        pltly_fig.add_trace(
+            go.Scatter(
+                x=time_hr,
+                y=mod_sig,
+                # might want to prepend signal name for this
+                name=obj[0] + ' mod',
+            ),
+            # add 1 for 1-based indexing in plotly
+            row=i_obj * ax_multiplier + 1,
+            col=1,
+        )
+        pltly_fig.add_trace(
+            go.Scatter(
+                x=time_hr,
+                y=ref_sig,
+                # might want to prepend signal name for this
+                name=obj[0] + ' exp',
+            ),
+            # add 1 for 1-based indexing in plotly
+            row=i_obj * ax_multiplier + 1,
+            col=1,
+        )
+        # pltly_fig.update_yaxes(title_text=obj[0], row=i_obj * ax_multiplier + 1, col=1)
 
-    if plot_save_dir:
-        if not Path(plot_save_dir).exists():
-            Path(plot_save_dir).mkdir()
-        plt.tight_layout()
-        plt.savefig(Path(plot_save_dir) / f"{key}.svg")
-        plt.savefig(Path(plot_save_dir) / f"{key}.png")
+        if plot_perc_err:
+            pltly_fig.add_trace(
+                go.Scatter(
+                    x=time_hr,
+                    y=perc_err,
+                    # might want to prepend signal name for this
+                    name=obj[0] + ' % err',
+                ),
+                # add 2 for 1-based indexing and offset for % err plot
+                row=i_obj * ax_multiplier + 2,
+                col=1,
+            )            
+            # pltly_fig.update_yaxes(title_text=obj[0] + "%Err", row=i_obj * ax_multiplier + 2, col=1)
+            pltly_fig.update_yaxes(title_text="%Err", row=i_obj * ax_multiplier + 2, col=1)
+
+
 
 
 
