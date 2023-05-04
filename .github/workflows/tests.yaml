@@ -36,6 +36,6 @@ jobs:
 
       - name: Python unit tests 
         run: |
-          pip install setuptools_rust pytest
+          pip install setuptools_rust pytest plotly
           pip install . 
           pytest -v fastsim/tests/
