@@ -34,7 +34,7 @@ dependencies = [
 "Homepage" = "https://www.nrel.gov/transportation/fastsim.html" 
 
 [project.optional-dependencies]
-dev = ["black", "pytest", "maturin"]
+dev = ["black", "pytest", "maturin", "plotly"]
 
 [tool.setuptools]
 zip-safe = false

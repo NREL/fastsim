@@ -10,6 +10,8 @@ import fastsim as fsim
 import fastsimrust as fsr
 
 
+use_nsga2 = True
+
 def load_data() -> Dict[str, pd.DataFrame]:
     # full data
     dfs_raw = dict()
@@ -35,12 +37,13 @@ def load_data() -> Dict[str, pd.DataFrame]:
 
                     dfs[file.stem] = fsim.resample(
                         dfs_raw[file.stem],
-                        rate_vars=('Eng_FuelFlow_Direct[cc/s]')
+                        rate_vars=('Eng_FuelFlow_Direct[cc/s]',)
                     )
+    assert len(dfs) > 0 
     return dfs
 
 
-def get_cal_and_val_objs(use_simdrivehot: bool):
+def get_cal_and_val_objs():
     dfs = load_data()
 
     # Separate calibration and validation cycles
@@ -121,7 +124,8 @@ def get_cal_and_val_objs(use_simdrivehot: bool):
         dfs=dfs_cal,
         obj_names=obj_names,
         params=params,
-        verbose=False
+        use_simdrivehot=True,
+        verbose=False,
     )
 
     # to ensure correct key order
@@ -131,8 +135,8 @@ def get_cal_and_val_objs(use_simdrivehot: bool):
         dfs=dfs_val,
         obj_names=obj_names,
         params=params,
-        use_simdrivehot=use_simdrivehot,
-        verbose=False
+        use_simdrivehot=True,
+        verbose=False,
     )
 
     return cal_objectives, val_objectives, params_bounds
@@ -172,21 +176,27 @@ if __name__ == "__main__":
     # override default of False
     use_simdrivehot = True
 
-    cal_objectives, val_objectives, params_bounds = get_cal_and_val_objs(use_simdrivehot)
+    cal_objectives, val_objectives, params_bounds = get_cal_and_val_objs()
 
     if run_minimize:
         print("Starting calibration.")
-
-        algorithm = fsim.calibration.NSGA3(
-            ref_dirs=fsim.calibration.get_reference_directions(
-                "energy",
-                n_dim=cal_objectives.n_obj,  # must be at least cal_objectives.n_obj
-                n_points=pop_size,  # must be at least pop_size
-            ),
-            # size of each population
-            pop_size=pop_size,
-            sampling=fsim.calibration.LHS(),
-        )
+        if use_nsga2:
+            algorithm = fsim.calibration.NSGA2(
+                # size of each population
+                pop_size=pop_size,
+                sampling=fsim.calibration.LHS(),
+            )
+        else:
+            algorithm = fsim.calibration.NSGA3(
+                ref_dirs=fsim.calibration.get_reference_directions(
+                    "energy",
+                    n_dim=cal_objectives.n_obj,  # must be at least cal_objectives.n_obj
+                    n_points=pop_size,  # must be at least pop_size
+                ),
+                # size of each population
+                pop_size=pop_size,
+                sampling=fsim.calibration.LHS(),
+            )
         termination = fsim.calibration.DMOT(
             # max number of generations, default of 10 is very small
             n_max_gen=n_max_gen,
@@ -248,12 +258,15 @@ if __name__ == "__main__":
         plot_save_dir=save_path,
         show=show_plots and make_plots,
         plot=make_plots,
+        plotly=make_plots,
         return_mods=True,
     )
     val_objectives.get_errors(
         val_objectives.update_params(param_vals),
         plot_save_dir=save_path,
         show=show_plots,
+        plot=make_plots,
+        plotly=make_plots,
     )
 
     # save calibrated vehicle to file
