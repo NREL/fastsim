@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass, InitVar
 from typing import Dict, List, Tuple, Optional, Any, Union
 from pathlib import Path
@@ -5,12 +6,13 @@ import pickle
 import argparse
 
 # pymoo
-from pymoo.util.display.output import Output
+from pymoo.util.display.output import Output 
 from pymoo.util.display.column import Column
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling as LHS
 from pymoo.termination.default import DefaultMultiObjectiveTermination as DMOT
 from pymoo.core.problem import Problem, ElementwiseProblem, LoopedElementwiseEvaluation, StarmapParallelization
 from pymoo.algorithms.moo.nsga3 import NSGA3
+from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.algorithms.base.genetic import GeneticAlgorithm
 from pymoo.optimize import minimize
@@ -21,6 +23,10 @@ import numpy as np
 import json
 import time
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import numpy as np
 
 # local -- expects rust-port version of fastsim so make sure this is in the env
@@ -81,7 +87,11 @@ class ModelObjectives(object):
     verbose: bool = False
 
     # calculated in __post_init__
-    n_obj: int = None
+    n_obj: Optional[int] = None
+
+    # whether to use simdrive hot
+    # TOOD: consider passing the type to be used rather than this boolean in the future
+    use_simdrivehot: bool = False
 
     def __post_init__(self):
         assert len(self.dfs) == len(
@@ -90,58 +100,69 @@ class ModelObjectives(object):
 
     def get_errors(
         self,
-        sim_drives: Dict[str, fsr.SimDriveHot],
+        sim_drives: Dict[str, fsr.RustSimDrive | fsr.SimDriveHot],
         return_mods: Optional[bool] = False,
         plot: Optional[bool] = False,
         plot_save_dir: Optional[str] = None,
-        plot_perc_err: Optional[bool] = True,
+        plot_perc_err: Optional[bool] = False,
         show: Optional[bool] = False,
         fontsize: Optional[float] = 12,
+        plotly: Optional[bool] = False,
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
         Dict[str, fsim.simdrive.SimDrive],
     ]:
-        # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
-        # This would make `from typing import Union` unnecessary
         """
         Calculate model errors w.r.t. test data for each element in dfs/models for each objective.
         Arguments:
         ----------
+            - sim_drives: dictionary with user-defined keys and SimDrive or SimDriveHot instances
             - return_mods: if true, also returns dict of solved models
-            - plot: if true, plots objectives
+            - plot: if true, plots objectives using matplotlib.pyplot
+            - plot_save_dir: directory in which to save plots.  If `None` (default), plots are not saved.   
+            - plot_perc_err: whether to include % error axes in plots
+            - show: whether to show matplotlib.pyplot plots
+            - fontsize: plot font size
+            - plotly: whether to generate plotly plots, which can be opened manually in a browser window
         """
+        # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
+        # This would make `from typing import Union` unnecessary
 
-        objectives = {}
-        solved_mods = {}
+        objectives: Dict = {}
+        solved_mods: Dict = {}
 
         # loop through all the provided trips
         for ((key, df_exp), sim_drive) in zip(self.dfs.items(), sim_drives.values()):
             t0 = time.perf_counter()
             sim_drive = sim_drive.copy()  # TODO: do we need this?
-            sim_drive.sim_drive()
+            sim_drive.sim_drive() # type: ignore
+            t1 = time.perf_counter()
+            if self.verbose:
+                print(f"Time to simulate {key}: {t1 - t0:.3g}")
             objectives[key] = {}
             if return_mods or plot:
                 solved_mods[key] = sim_drive.copy()
 
-            if plot or plot_save_dir:
-                Path(plot_save_dir).mkdir(exist_ok=True, parents=True)
-                time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600
-                ax_multiplier = 2 if plot_perc_err else 1
-                fig, ax = plt.subplots(
-                    len(self.obj_names) * ax_multiplier + 1, 1, sharex=True, figsize=(12, 8),
-                )
-                plt.suptitle(f"trip: {key}", fontsize=fontsize)
-                ax[-1].plot(
-                    time_hr,
-                    sim_drive.sd.mph_ach,
-                )
-                ax[-1].set_xlabel('Time [hr]', fontsize=fontsize)
-                ax[-1].set_ylabel('Speed [mph]', fontsize=fontsize)
-
-            t1 = time.perf_counter()
-            if self.verbose:
-                print(f"Time to simulate {key}: {t1 - t0:.3g}")
+            ax_multiplier = 2 if plot_perc_err else 1
+            # extract speed trace for plotting
+            if not self.use_simdrivehot:
+                time_hr = np.array(sim_drive.cyc.time_s) / 3_600 # type: ignore
+                mph_ach = sim_drive.mph_ach # type: ignore
+            else:
+                time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600 # type: ignore
+                mph_ach = sim_drive.sd.mph_ach # type: ignore
+            fig, ax, pltly_fig = self.setup_plots(
+                plot or show,
+                plot_save_dir,
+                sim_drive,
+                fontsize,
+                key,
+                ax_multiplier,
+                time_hr,
+                mph_ach,
+                plotly,
+            )                
 
             # loop through the objectives for each trip
             for i_obj, obj in enumerate(self.obj_names):
@@ -160,59 +181,46 @@ class ModelObjectives(object):
 
                 if ref_path:
                     ref_sig = df_exp[ref_path]
+                    if not self.use_simdrivehot:
+                        time_s = sim_drive.cyc.time_s
+                    else:
+                        time_s = sim_drive.sd.cyc.time_s
                     objectives[key][obj[0]] = get_error_val(
                         mod_sig,
                         ref_sig,
-                        sim_drive.sd.cyc.time_s,
+                        time_s,
                     )
                 else:
                     pass
                     # TODO: write else block for objective minimization
-
-                if plot or plot_save_dir:
-                    # this code needs to be cleaned up
-                    # raw signals
-                    ax[i_obj * ax_multiplier].set_title(
-                        f"error: {objectives[key][obj[0]]:.3g}", fontsize=fontsize)
-                    ax[i_obj * ax_multiplier].plot(time_hr,
-                                                   mod_sig, label='mod')
-                    ax[i_obj * ax_multiplier].plot(time_hr,
-                                                   ref_sig,
-                                                   linestyle='--',
-                                                   label="exp",
-                                                   )
-                    ax[i_obj *
-                        ax_multiplier].set_ylabel(obj[0], fontsize=fontsize)
-                    ax[i_obj * ax_multiplier].legend(fontsize=fontsize)
-
-                    if plot_perc_err:
-                        # error
-                        if "deg_c" in mod_path:
-                            perc_err = (mod_sig - ref_sig) / \
-                                (ref_sig + 273.15) * 100
-                        else:
-                            perc_err = (mod_sig - ref_sig) / ref_sig * 100
-                        # clean up inf and nan
-                        perc_err[np.where(perc_err == np.inf)[0][:]] = 0.0
-                        # trim off the first few bits of junk
-                        perc_err[np.where(perc_err > 500)[0][:]] = 0.0
-                        ax[i_obj * ax_multiplier + 1].plot(
-                            time_hr,
-                            perc_err
-                        )
-                        ax[i_obj * ax_multiplier +
-                            1].set_ylabel(obj[0] + "\n%Err", fontsize=fontsize)
-                        ax[i_obj * ax_multiplier + 1].set_ylim([-20, 20])
-
-                    if show:
-                        plt.show()
-
-                if plot_save_dir:
-                    if not Path(plot_save_dir).exists():
-                        Path(plot_save_dir).mkdir()
-                    plt.tight_layout()
+                
+                update_plots(
+                    ax,
+                    pltly_fig,
+                    i_obj,
+                    ax_multiplier,
+                    objectives,
+                    key,
+                    obj,
+                    fontsize,
+                    time_hr,
+                    mod_sig,
+                    ref_sig,
+                    plot_perc_err,
+                    mod_path,
+                    show,
+                )    
+            
+            if plot_save_dir is not None:
+                if not Path(plot_save_dir).exists():
+                    Path(plot_save_dir).mkdir(exist_ok=True, parents=True)
+                if ax is not None:
                     plt.savefig(Path(plot_save_dir) / f"{key}.svg")
                     plt.savefig(Path(plot_save_dir) / f"{key}.png")
+                    plt.tight_layout()
+                if pltly_fig is not None:
+                    pltly_fig.update_layout(showlegend=True)
+                    pltly_fig.write_html(str(Path(plot_save_dir) / f"{key}.html"))
 
             t2 = time.perf_counter()
             if self.verbose:
@@ -230,19 +238,184 @@ class ModelObjectives(object):
         assert len(xs) == len(self.params), f"({len(xs)} != {len(self.params)}"
         paths = [fullpath.split(".") for fullpath in self.params]
         t0 = time.perf_counter()
-        # Load SimDriveHot instances from bincode strings
-        sim_drives = {key: fsr.SimDriveHot.from_bincode(
-            model_bincode) for key, model_bincode in self.models.items()}
+        # Load instances from bincode strings
+        if not self.use_simdrivehot:
+            sim_drives = {key: fsr.RustSimDrive.from_bincode(
+                model_bincode) for key, model_bincode in self.models.items()}
+        else:
+            sim_drives = {key: fsr.SimDriveHot.from_bincode(
+                model_bincode) for key, model_bincode in self.models.items()}
         # Update all model parameters
         for key in sim_drives.keys():
             sim_drives[key] = fsim.utils.set_attrs_with_path(
                 sim_drives[key],
                 dict(zip(self.params, xs)),
             )
+            if not self.use_simdrivehot:
+                veh = sim_drives[key].veh
+                veh.set_derived()
+                sim_drives[key].veh = veh
+            else:
+                veh = sim_drives[key].sd.veh
+                veh.set_derived()
+                fsim.utils.set_attr_with_path(sim_drives[key], "sd.veh", veh)
         t1 = time.perf_counter()
         if self.verbose:
             print(f"Time to update params: {t1 - t0:.3g} s")
         return sim_drives
+    
+    def setup_plots(
+        self,
+        plot: bool, 
+        plot_save_dir: Optional[Path],
+        sim_drive: Union[fsr.RustSimDrive, fsr.SimDriveHot],
+        fontsize: float,
+        key: str,
+        ax_multiplier: int,
+        time_hr: float,
+        mph_ach: float,
+        plotly: bool,
+    ) -> Tuple[Figure, Axes, go.Figure]:
+        rows = len(self.obj_names) * ax_multiplier + 1
+
+        if plotly and (plot_save_dir is not None):
+            pltly_fig = make_subplots(
+                rows=rows,
+                cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.05,
+            )
+            pltly_fig.update_layout(title=f'trip: {key}')
+            pltly_fig.add_trace(
+                go.Scatter(
+                    x=time_hr,
+                    y=mph_ach,
+                    name="mph",
+                ),
+                row=rows,
+                col=1,
+            )
+            pltly_fig.update_xaxes(title_text="Time [hr]", row=rows, col=1)
+            pltly_fig.update_yaxes(title_text="Speed [mph]", row=rows, col=1)
+        elif plotly:
+            raise Exception("`plot_save_dir` must also be provided for `plotly` to have any effect.")
+        else:
+            pltly_fig = None
+
+        if plot:
+            # make directory if it doesn't exist
+            Path(plot_save_dir).mkdir(exist_ok=True, parents=True)
+            fig, ax = plt.subplots(
+                len(self.obj_names) * ax_multiplier + 1, 1, sharex=True, figsize=(12, 8),
+            )
+            plt.suptitle(f"trip: {key}", fontsize=fontsize)
+            ax[-1].plot(
+                time_hr,
+                mph_ach,
+            )
+            ax[-1].set_xlabel('Time [hr]', fontsize=fontsize)
+            ax[-1].set_ylabel('Speed [mph]', fontsize=fontsize)
+            return fig, ax, pltly_fig
+        else:
+            return (None, None, None)
+
+def update_plots(
+    ax: Optional[Axes],
+    pltly_fig: go.Figure,
+    i_obj: int,
+    ax_multiplier: int,
+    objectives: Dict,
+    key: str,
+    obj: Any,  # need to check type on this
+    fontsize: int,
+    time_hr: np.ndarray,
+    mod_sig: np.ndarray,
+    ref_sig: np.ndarray,
+    plot_perc_err: bool,
+    mod_path: str,
+    show: bool,
+):
+    if ax is not None:
+        # this code needs to be cleaned up
+        # raw signals
+        ax[i_obj * ax_multiplier].set_title(
+            f"error: {objectives[key][obj[0]]:.3g}", fontsize=fontsize)
+        ax[i_obj * ax_multiplier].plot(time_hr,
+                                        mod_sig, label='mod')
+        ax[i_obj * ax_multiplier].plot(time_hr,
+                                        ref_sig,
+                                        linestyle='--',
+                                        label="exp",
+                                        )
+        ax[i_obj *
+            ax_multiplier].set_ylabel(obj[0], fontsize=fontsize)
+        ax[i_obj * ax_multiplier].legend(fontsize=fontsize)
+
+        if plot_perc_err:
+            # error
+            if "deg_c" in mod_path:
+                perc_err = (mod_sig - ref_sig) / \
+                    (ref_sig + 273.15) * 100
+            else:
+                perc_err = (mod_sig - ref_sig) / ref_sig * 100
+            # clean up inf and nan
+            perc_err[np.where(perc_err == np.inf)[0][:]] = 0.0
+            # trim off the first few bits of junk
+            perc_err[np.where(perc_err > 500)[0][:]] = 0.0
+            ax[i_obj * ax_multiplier + 1].plot(
+                time_hr,
+                perc_err
+            )
+            ax[i_obj * ax_multiplier +
+                1].set_ylabel(obj[0] + "\n%Err", fontsize=fontsize)
+            ax[i_obj * ax_multiplier + 1].set_ylim([-20, 20])
+
+        if show:
+            plt.show()
+    
+    if pltly_fig is not None:
+        pltly_fig.add_trace(
+            go.Scatter(
+                x=time_hr,
+                y=mod_sig,
+                # might want to prepend signal name for this
+                name=obj[0] + ' mod',
+            ),
+            # add 1 for 1-based indexing in plotly
+            row=i_obj * ax_multiplier + 1,
+            col=1,
+        )
+        pltly_fig.add_trace(
+            go.Scatter(
+                x=time_hr,
+                y=ref_sig,
+                # might want to prepend signal name for this
+                name=obj[0] + ' exp',
+            ),
+            # add 1 for 1-based indexing in plotly
+            row=i_obj * ax_multiplier + 1,
+            col=1,
+        )
+        pltly_fig.update_yaxes(title_text=obj[1], row=i_obj * ax_multiplier + 1, col=1)
+
+        if plot_perc_err:
+            pltly_fig.add_trace(
+                go.Scatter(
+                    x=time_hr,
+                    y=perc_err,
+                    # might want to prepend signal name for this
+                    name=obj[0] + ' % err',
+                ),
+                # add 2 for 1-based indexing and offset for % err plot
+                row=i_obj * ax_multiplier + 2,
+                col=1,
+            )            
+            # pltly_fig.update_yaxes(title_text=obj[0] + "%Err", row=i_obj * ax_multiplier + 2, col=1)
+            pltly_fig.update_yaxes(title_text="%Err", row=i_obj * ax_multiplier + 2, col=1)
+
+
+
+
 
 
 @dataclass
@@ -304,7 +477,7 @@ def run_minimize(
     copy_algorithm: bool = False,
     copy_termination: bool = False,
     save_history: bool = False,
-    save_path: Optional[str] = Path("pymoo_res/"),
+    save_path: Union[Path, str] = Path("pymoo_res/"),
 ):
     print("`run_minimize` starting at")
     fsim.utils.print_dt()
@@ -371,4 +544,6 @@ def get_parser() -> argparse.ArgumentParser:
                         help="If provided, shows plots.")
     parser.add_argument("--make-plots", action="store_true",
                         help="Generates plots, if provided.")
+    parser.add_argument("--use-simdrivehot", action="store_true",
+                        help="Use fsr.SimDriveHot rather than fsr.RustSimDrive.")
     return parser

@@ -30,10 +30,6 @@ import importlib
 # import seaborn as sns
 # sns.set(font_scale=2, style='whitegrid')
 
-if not __name__ == "__main__":
-    get_ipython().run_line_magic('matplotlib', 'inline')
-
-
 # local modules
 import fastsim as fsim
 # importlib.reload(simdrive)
@@ -811,7 +807,6 @@ speed_line = ax2.plot(sim_drive.cyc.time_s, sim_drive.mph_ach ,color='xkcd:pale 
 ax.set_xlabel('Cycle Time [s]', weight='bold')
 ax.set_ylabel('Engine Input Power [kW]', weight='bold', color='xkcd:bluish')
 ax.tick_params('y', colors='xkcd:bluish')
-
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
@@ -827,6 +822,6 @@ test_veh = fsim.vehicle.Vehicle.from_vehdb(5, to_rust=True).to_rust()
 (drag_coef, wheel_rr_coef) = abc_to_drag_coeffs(test_veh, 25.91, 0.1943, 0.01796, simdrive_optimize=True)
 
 # %%
-print(f'Drag Coefficient: {drag_coef}')
-print(f'Wheel Rolling Resistance Coefficient: {wheel_rr_coef}')
+print(f'Drag Coefficient: {drag_coef:.3g}')
+print(f'Wheel Rolling Resistance Coefficient: {wheel_rr_coef:.3g}')
 # %%

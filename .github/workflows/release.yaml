@@ -55,7 +55,7 @@ jobs:
       - run: cd rust/ && cargo test
 
       - name: install python dependencies
-        run: pip install -U setuptools wheel twine cibuildwheel
+        run: pip install -U setuptools wheel twine cibuildwheel plotly
 
       - name: build sdist
         if: matrix.os == 'ubuntu' && matrix.python-version == '8'
