@@ -135,6 +135,8 @@ pub struct HVACModel {
     orphaned: bool,
 }
 
+impl SerdeAPI for HVACModel {}
+
 impl Default for HVACModel {
     fn default() -> Self {
         Self {
@@ -444,6 +446,8 @@ pub struct VehicleThermal {
     #[serde(skip)]
     pub orphaned: bool,
 }
+
+impl SerdeAPI for VehicleThermal {}
 
 impl Default for VehicleThermal {
     fn default() -> Self {

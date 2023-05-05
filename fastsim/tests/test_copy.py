@@ -74,9 +74,10 @@ class TestCopy(unittest.TestCase):
             self.assertEqual(type(rust_veh2), fsr.RustVehicle)
             rust_veh3 = vehicle.Vehicle.from_vehdb(5).to_rust()
             self.assertEqual(type(rust_veh3), fsr.RustVehicle)
+            issues = sorted(vehicle.veh_equal(veh, rust_veh3, full_out=True), key=lambda x: x["key"])
             self.assertTrue(
                 vehicle.veh_equal(veh, rust_veh3),
-                msg=f"Error list: {str(vehicle.veh_equal(veh, rust_veh3, full_out=True))}")
+                msg=f"Error list (veh vs rust_veh3): {str(issues)} count: {len(issues)}")
 
     def test_copy_sim_params(self):
         "Test that copy_sim_params works as expected"

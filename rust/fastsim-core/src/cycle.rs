@@ -396,6 +396,8 @@ pub struct RustCycleCache {
     grades: Array1<f64>,
 }
 
+impl SerdeAPI for RustCycleCache {}
+
 impl RustCycleCache {
     pub fn new(cyc: &RustCycle) -> Self {
         let tol = 1e-6;
@@ -608,6 +610,21 @@ pub struct RustCycle {
     pub name: String,
     #[serde(skip)]
     pub orphaned: bool,
+}
+
+impl SerdeAPI for RustCycle {
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            "csv" => Ok(Self::from_csv_file(filename)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        }
+    }
 }
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
@@ -918,19 +935,6 @@ impl RustCycle {
     /// elevation change w.r.t. to initial
     pub fn delta_elev_m(&self) -> Array1<f64> {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
-    }
-
-    pub fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
-        // check if the extension is csv, and if it is, then call Self::from_csv_file
-        let pathbuf = PathBuf::from(filename);
-        let file = File::open(filename)?;
-        let extension = pathbuf.extension().unwrap().to_str().unwrap();
-        match extension {
-            "yaml" => Ok(serde_yaml::from_reader(file)?),
-            "json" => Ok(serde_json::from_reader(file)?),
-            "csv" => Ok(Self::from_csv_file(filename)?),
-            _ => Err(anyhow!("Unsupported file extension {}", extension)),
-        }
     }
 
     // load a cycle from a string representation of a csv file

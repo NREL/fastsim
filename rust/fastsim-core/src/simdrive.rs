@@ -126,6 +126,8 @@ pub struct RustSimDriveParams {
     pub orphaned: bool,
 }
 
+impl SerdeAPI for RustSimDriveParams {}
+
 impl Default for RustSimDriveParams {
     fn default() -> Self {
         // if True, accuracy will be favored over performance for grade per step estimates
@@ -561,6 +563,8 @@ pub struct RustSimDrive {
     #[serde(skip)]
     pub cyc0_cache: RustCycleCache,
 }
+
+impl SerdeAPI for RustSimDrive {}
 
 // #[cfg(test)]
 // mod tests {

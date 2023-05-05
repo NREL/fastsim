@@ -203,6 +203,8 @@ pub struct SimDriveHot {
     amb_te_deg_c: Option<Array1<f64>>,
 }
 
+impl SerdeAPI for SimDriveHot {}
+
 impl SimDriveHot {
     pub fn new(
         cyc: cycle::RustCycle,
@@ -1098,6 +1100,8 @@ pub struct ThermalState {
     #[serde(skip)]
     pub orphaned: bool,
 }
+
+impl SerdeAPI for ThermalState {}
 
 impl ThermalState {
     pub fn new(

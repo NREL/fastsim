@@ -10,7 +10,7 @@ veh_cg_m: 0.46
 drive_axle_weight_frac: 0.8
 wheel_base_m: 2.26
 cargo_kg: 17236.0
-veh_override_kg: 0.0
+veh_override_kg: 
 comp_mass_multiplier: 1.2
 fs_max_kw: 5000.0
 fs_secs_to_peak_pwr: 1.0

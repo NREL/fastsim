@@ -83,8 +83,12 @@ def copy_physical_properties(p: PhysicalProperties, return_type: str = None, dee
     """
     p_dict = {}
 
+    p_is_dict = isinstance(p, dict)
     for key in inspect_utils.get_attrs(ref_physical_properties):
-        val_to_copy = p.__getattribute__(key)
+        if not p_is_dict:
+            val_to_copy = p.__getattribute__(key)
+        else:
+            val_to_copy = p[key]
         p_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
     if return_type is None:
