@@ -1,17 +1,18 @@
 [build-system]
 requires = [
-"setuptools>=40.6.0",
-"wheel",
-"setuptools-rust>=0.11.4",
+    "setuptools>=40.6.0",
+    "wheel",
+    "setuptools-rust>=0.11.4",
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastsim"
-version = "2.0.10"
-authors = [{ name = "MBAP Group", email = "fastsim@nrel.gov" }]
+version = "2.0.22"
+authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
+license = {file = "LICENSE.md"}
 requires-python = ">=3.8,<3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -33,7 +34,7 @@ dependencies = [
 "Homepage" = "https://www.nrel.gov/transportation/fastsim.html" 
 
 [project.optional-dependencies]
-dev = ["black", "pytest", "maturin"]
+dev = ["black", "pytest", "maturin", "plotly"]
 
 [tool.setuptools]
 zip-safe = false
