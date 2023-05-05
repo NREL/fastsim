@@ -839,7 +839,7 @@ where
         0.99,
         None,
         Some(0.95),
-    );
+    ).unwrap();
 
     abc_to_drag_coeffs(
         &mut veh,

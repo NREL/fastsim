@@ -1,5 +1,4 @@
-"""Module containing classes and methods for simulating vehicle drive
-cycle. For example usage, see ../README.md"""
+"""Module containing classes and methods for simulating vehicle drive cycle."""
 import sys
 
 # Import necessary python modules

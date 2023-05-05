@@ -259,7 +259,6 @@ def set_attr_with_path(
     """
     containers = [struct]
     if isinstance(path, str):
-        assert "." in path, "provide dot-separated path to struct, otherwise use `set_nested_values`"
         path = path.split(".")
     if len(path) == 1:
         setattr(struct, path[0], value)

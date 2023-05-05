@@ -45,12 +45,14 @@ cal_errs, cal_mods = cal_objectives.get_errors(
     plot_save_dir=Path(save_path),
     show=show_plots,
     return_mods=True,
+    plotly=True,
 )
 val_errs, val_mods = val_objectives.get_errors(
     val_objectives.update_params(param_vals),
     plot_save_dir=Path(save_path),
     show=show_plots,
     return_mods=True,
+    plotly=True
 )
 
 # %%
