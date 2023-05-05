@@ -113,8 +113,13 @@ plt.show()
 
 # %%
 fig, ax = plt.subplots(2, 1, figsize=(9, 5))
+fig.suptitle(
+    'Absolute Engine Input\nPower Error for Rust v. Python'
+)
 ax[0].plot(cyc.time_s, sdr.fc_kw_in_ach - sim_drive.fc_kw_in_ach)
-ax[0].set_ylabel('Engine Input\nPower Error [kW]')
+ax[0].set_ylabel(
+    'Power[kW]' 
+)
 
 ax[1].plot(cyc.time_s, sim_drive.mph_ach)
 ax[1].set_xlabel('Cycle Time [s]')

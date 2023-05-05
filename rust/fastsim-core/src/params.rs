@@ -55,6 +55,8 @@ pub struct RustPhysicalProperties {
     pub orphaned: bool,
 }
 
+impl SerdeAPI for RustPhysicalProperties {}
+
 impl Default for RustPhysicalProperties {
     fn default() -> Self {
         let air_density_kg_per_m3: f64 = 1.2;

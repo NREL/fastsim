@@ -17,6 +17,8 @@ from pathlib import Path
 from copy import deepcopy
 import ast
 import copy
+import yaml
+import json
 
 # local modules
 from fastsim import parameters as params
@@ -765,6 +767,21 @@ RETURN_TYPES = ['dict', 'vehicle', 'legacy', 'rust']
 DICT, VEHICLE, LEGACY, RUST = RETURN_TYPES
 
 
+def to_native_type(value):
+    """
+    Attempts to map from numpy and other types to python native for better yaml (de-)serialization
+    """
+    if isinstance(value, np.float64):
+        return float(value)
+    elif isinstance(value, np.ndarray) or isinstance(value, list):
+        return {"v": 1, "dim": [len(value)], "data": [to_native_type(v) for v in value]}
+    elif value is None:
+        return value
+    elif isinstance(value, dict):
+        return {to_native_type(k): to_native_type(v) for (k, v) in value.items()}
+    return value
+
+
 def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Dict[str, np.ndarray] | Vehicle | LegacyVehicle | RustVehicle:
     """Returns copy of Vehicle.
     Arguments:
@@ -789,14 +806,19 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
             raise NotImplementedError(
                 "Only implemented for rust, dict, vehicle, or legacy.")
 
+    props_key = None
     for key in keys_and_types.keys():
         if key in KEYS_TO_REMOVE:
             continue
         if (
             RUST_AVAILABLE
-            and type(veh.__getattribute__(key)) == fsr.RustPhysicalProperties
+            and (
+                isinstance(veh.__getattribute__(key), fsr.RustPhysicalProperties) 
+                or isinstance(veh.__getattribute__(key), params.PhysicalProperties) 
+            )
         ):
             pp = veh.__getattribute__(key)
+            props_key = key
             # TODO: replace the below with a call to copy_physical_properties(...)
             new_pp = fsr.RustPhysicalProperties()
             new_pp.air_density_kg_per_m3 = pp.air_density_kg_per_m3
@@ -806,30 +828,93 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
             new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
             veh_dict[key] = new_pp
         elif ((RUST_AVAILABLE)
-              and (
-                (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayU32)
-                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
-                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayBool)
-                or (type(veh.__getattribute__(key)) == fsr.Pyo3ArrayF64)
-        )
+              and isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayU32)
+                or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
+                or isinstance(veh.__getattribute__(key) ,fsr.Pyo3ArrayBool)
+                or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
         ):
+            veh_dict[key] = list(veh.__getattribute__(key))
+        elif RUST_AVAILABLE and isinstance(veh.__getattribute__(key), np.ndarray):
             veh_dict[key] = list(veh.__getattribute__(key))
         else:
             veh_dict[key] = copy.deepcopy(
                 veh.__getattribute__(key)) if deep else veh.__getattribute__(key)
+        # for debugging breakpoint
+        continue
 
     if return_type == DICT:
         return veh_dict
     elif return_type == VEHICLE:
-        return Vehicle.from_dict(veh_dict)
+        v = Vehicle.from_dict(veh_dict)
+        v.set_derived()
+        return v
     elif return_type == LEGACY:
         return LegacyVehicle(veh_dict)
     elif RUST_AVAILABLE and return_type == RUST:
-        veh_dict['props'] = params.copy_physical_properties(
-            veh_dict['props'], return_type, deep)
-        veh_dict = {key: veh_dict[key] for key in veh_dict if key not in [
+        if "veh_kg" not in veh_dict:
+            veh_dict["veh_kg"] = 0.0
+        if "veh_override_kg" not in veh_dict or veh_dict["veh_override_kg"] == 0.0:
+            veh_dict["veh_override_kg"] = None
+        if "mc_eff_map" not in veh_dict or veh_dict["mc_eff_map"] is None:
+            # NOTE: setting mc_eff_map to same length as LARGE_BASELINE_EFF so it will be auto-calculated
+            # None is not a currently acceptable type...
+            # See vehicle.rs:641 set_derived()
+            veh_dict["mc_eff_map"] = [0.0] * 11
+        if props_key is not None:
+            veh_dict[props_key] = json.loads(veh_dict[props_key].to_json())
+        veh_dict = {key: to_native_type(veh_dict[key]) for key in veh_dict if key not in [
             "large_baseline_eff", "small_baseline_eff"]}
-        return RustVehicle(**veh_dict)
+        veh_yaml = yaml.dump(veh_dict)
+        v = RustVehicle.from_yaml(veh_yaml)
+        v.scenario_name = veh.scenario_name
+        v.selection = veh.selection
+        v.veh_year = veh.veh_year
+        v.regen_a = veh.regen_a
+        v.regen_b = veh.regen_b
+        v.val0_to60_mph = veh.val0_to60_mph
+        v.val_cd_range_mi = veh.val_cd_range_mi
+        v.val_comb_kwh_per_mile = veh.val_comb_kwh_per_mile
+        v.val_comb_mpgge = veh.val_comb_mpgge
+        v.val_const45_mph_kwh_per_mile = veh.val_const45_mph_kwh_per_mile
+        v.val_const55_mph_kwh_per_mile = veh.val_const55_mph_kwh_per_mile
+        v.val_const60_mph_kwh_per_mile = veh.val_const60_mph_kwh_per_mile
+        v.val_const65_mph_kwh_per_mile = veh.val_const65_mph_kwh_per_mile
+        v.val_ess_life_miles = veh.val_ess_life_miles
+        v.val_hwy_kwh_per_mile = veh.val_hwy_kwh_per_mile
+        v.val_hwy_mpgge = veh.val_hwy_mpgge
+        v.val_msrp = veh.val_msrp
+        v.val_range_miles = veh.val_range_miles
+        v.val_udds_kwh_per_mile = veh.val_udds_kwh_per_mile
+        v.val_udds_mpgge = veh.val_udds_mpgge
+        v.val_unadj_hwy_kwh_per_mile = veh.val_unadj_hwy_kwh_per_mile
+        v.val_unadj_udds_kwh_per_mile = veh.val_unadj_udds_kwh_per_mile
+        v.val_veh_base_cost = veh.val_veh_base_cost
+        v.small_motor_power_kw = 7.5
+        v.large_motor_power_kw = 75.0
+        v.fc_peak_eff_override = veh.fc_peak_eff_override
+        v.charging_on = False
+        v.no_elec_sys = False
+        v.no_elec_aux = False
+        v.max_roadway_chg_kw = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        v.input_kw_out_array = [0.0]
+        v.fc_kw_out_array = []
+        v.fc_eff_array = []
+        v.modern_max = params.modern_max
+        v.mc_eff_array = [0.0]
+        v.mc_perc_out_array = []
+        v.mc_kw_in_array = []
+        v.mc_kw_out_array = []
+        v.mc_max_elec_in_kw = 0.0
+        v.mc_full_eff_array = []
+        v.veh_kg = 0.0
+        v.max_trac_mps2 = 0.0
+        v.ess_mass_kg = 0.0
+        v.mc_mass_kg = 0.0
+        v.fc_mass_kg = 0.0
+        v.fs_mass_kg = 0.0
+
+        v.set_derived()
+        return v
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 
@@ -856,6 +941,13 @@ def veh_equal(veh1: Vehicle, veh2: Vehicle, full_out: bool = False) -> bool:
                     return False
                 err_list.append(
                     {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
+        elif key == "veh_override_kg":
+            p1 = veh_dict1[key]
+            p2 = veh_dict2[key]
+            if p1 is None and p2 == 0.0 or p1 == 0.0 and p2 is None or p1 is None and p2 is None or p1 == p2:
+                continue
+            err_list.append(
+                {'key': key, 'val1': veh_dict1[key], 'val2': veh_dict2[key]})
         elif pd.api.types.is_list_like(veh_dict1[key]):
             if (np.abs(np.array(veh_dict1[key]) - np.array(veh_dict2[key])) > TOL).any():
                 if not full_out:
