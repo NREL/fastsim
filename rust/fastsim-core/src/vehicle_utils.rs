@@ -329,7 +329,7 @@ where
     if vehicle_data_fe.drive.contains("4-Wheel") {
         vehicle_data_fe.drive = String::from("All-Wheel Drive");
     }
-    return Ok(vehicle_data_fe);
+    Ok(vehicle_data_fe)
 }
 
 /// Gets data from EPA vehicle database for the given vehicle
@@ -444,36 +444,36 @@ fn get_epa_data(
     } else if fe_gov_vehicle_data.trany.contains("AV-S") {
         transmission_fe_gov = String::from("SCV");
         num_gears_fe_gov =
-            fe_gov_vehicle_data.trany.as_str()[fe_gov_vehicle_data.trany.find("S").unwrap() + 1
-                ..fe_gov_vehicle_data.trany.find(")").unwrap()]
+            fe_gov_vehicle_data.trany.as_str()[fe_gov_vehicle_data.trany.find('S').unwrap() + 1
+                ..fe_gov_vehicle_data.trany.find(')').unwrap()]
                 .parse()
                 .unwrap();
     } else if fe_gov_vehicle_data.trany.contains("AM-S") {
         transmission_fe_gov = String::from("AMS");
         num_gears_fe_gov =
-            fe_gov_vehicle_data.trany.as_str()[fe_gov_vehicle_data.trany.find("S").unwrap() + 1
-                ..fe_gov_vehicle_data.trany.find(")").unwrap()]
+            fe_gov_vehicle_data.trany.as_str()[fe_gov_vehicle_data.trany.find('S').unwrap() + 1
+                ..fe_gov_vehicle_data.trany.find(')').unwrap()]
                 .parse()
                 .unwrap();
-    } else if fe_gov_vehicle_data.trany.contains("S") {
+    } else if fe_gov_vehicle_data.trany.contains('S') {
         transmission_fe_gov = String::from("SA");
         num_gears_fe_gov =
-            fe_gov_vehicle_data.trany.as_str()[fe_gov_vehicle_data.trany.find("S").unwrap() + 1
-                ..fe_gov_vehicle_data.trany.find(")").unwrap()]
+            fe_gov_vehicle_data.trany.as_str()[fe_gov_vehicle_data.trany.find('S').unwrap() + 1
+                ..fe_gov_vehicle_data.trany.find(')').unwrap()]
                 .parse()
                 .unwrap();
     } else if fe_gov_vehicle_data.trany.contains("-spd") {
-        transmission_fe_gov = String::from("A");
+        transmission_fe_gov = String::from('A');
         num_gears_fe_gov =
             fe_gov_vehicle_data.trany.as_str()[fe_gov_vehicle_data.trany.find("-spd").unwrap() - 1
                 ..fe_gov_vehicle_data.trany.find("-spd").unwrap()]
                 .parse()
                 .unwrap();
     } else {
-        transmission_fe_gov = String::from("A");
+        transmission_fe_gov = String::from('A');
         num_gears_fe_gov =
             fe_gov_vehicle_data.trany.as_str()[fe_gov_vehicle_data.trany.find("(A").unwrap() + 2
-                ..fe_gov_vehicle_data.trany.find(")").unwrap()]
+                ..fe_gov_vehicle_data.trany.find(')').unwrap()]
                 .parse()
                 .unwrap();
     }
@@ -489,14 +489,14 @@ fn get_epa_data(
             || veh_epa.model.contains("AWD")
             || veh_epa.drive.contains("4-Wheel Drive")
         {
-            veh_epa.drive_code = String::from("A");
+            veh_epa.drive_code = String::from('A');
             veh_epa.drive = String::from("All Wheel Drive");
         }
         if !veh_epa.test_fuel_type.contains("Cold CO")
             && veh_epa.trany_code == transmission_fe_gov
             && veh_epa.gears == num_gears_fe_gov
             && veh_epa.drive_code == fe_gov_vehicle_data.drive[0..1]
-            && ((fe_gov_vehicle_data.alt_veh_type == String::from("EV")
+            && ((fe_gov_vehicle_data.alt_veh_type == *"EV"
                 && veh_epa.displ.round() == 0.0
                 && veh_epa.cylinders == String::new())
                 || ((veh_epa.displ * 10.0).round() / 10.0
@@ -516,9 +516,9 @@ fn get_epa_data(
         }
     }
     if current_count > most_common_count {
-        return Ok(current_veh);
+        Ok(current_veh)
     } else {
-        return Ok(most_common_veh);
+     Ok(most_common_veh)
     }
 }
 
@@ -888,18 +888,18 @@ where
 
     // TODO: Allow optional argument for file location
     let default_yaml_path: String = {
-        let file_name: String = veh.scenario_name.replace(" ", "_");
+        let file_name: String = veh.scenario_name.replace(' ', "_");
         format!("../../fastsim/resources/vehdb/{}.yaml", file_name)
     };
     let yaml_path: &str = match yaml_file_path {
         Some(path) => path,
         None => &default_yaml_path,
     };
-    if yaml_path.len() > 0 {
+    if !yaml_path.is_empty() {
         veh.to_file(yaml_path)?;
     }
 
-    return Ok(veh);
+    Ok(veh)
 }
 
 /// Creates RustVehicles for all models for a given make in given year
@@ -940,7 +940,7 @@ where
         )?;
     }
 
-    return Ok(());
+    Ok(())
 }
 
 /// Creates RustVehicles for all models for a given year
@@ -968,10 +968,11 @@ where
         multiple_vehicle_import_make(year, make.make_name.as_str(), &mut writer, &mut reader)?;
     }
 
-    return Ok(());
+     Ok(())
 }
 
 #[allow(non_snake_case)]
+#[allow(clippy::too_many_arguments)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 pub fn abc_to_drag_coeffs(
     veh: &mut RustVehicle,
@@ -1055,7 +1056,7 @@ pub fn abc_to_drag_coeffs(
     veh.drag_coef = drag_coef;
     veh.wheel_rr_coef = wheel_rr_coef;
 
-    return (drag_coef, wheel_rr_coef);
+    (drag_coef, wheel_rr_coef)
 }
 
 pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f64>) -> f64 {
@@ -1115,7 +1116,7 @@ impl CostFunction for GetError<'_> {
         let cutoff_vec: Vec<usize> = sd_coast
             .mps_ach
             .indexed_iter()
-            .filter_map(|(index, &item)| (item < 0.1).then(|| index))
+            .filter_map(|(index, &item)| (item < 0.1).then_some(index))
             .collect();
         let cutoff: usize = if cutoff_vec.is_empty() {
             sd_coast.mps_ach.len()
@@ -1123,7 +1124,7 @@ impl CostFunction for GetError<'_> {
             cutoff_vec[0]
         };
 
-        return Ok(get_error_val(
+        Ok(get_error_val(
             (Array::from_vec(vec![1000.0; sd_coast.mps_ach.len()])
                 * (sd_coast.drag_kw + sd_coast.rr_kw)
                 / sd_coast.mps_ach)
@@ -1132,7 +1133,7 @@ impl CostFunction for GetError<'_> {
                 * Array::from_vec(vec![super::params::N_PER_LBF; sd_coast.mph_ach.len()]))
             .slice_move(s![0..cutoff]),
             cyc.time_s.slice_move(s![0..cutoff]),
-        ));
+        ))
     }
 }
 
