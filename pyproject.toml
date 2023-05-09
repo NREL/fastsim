@@ -26,9 +26,10 @@ dependencies = [
     "matplotlib>=3.3",
     "numpy>=1.18",
     "seaborn>=0.10",
-    "pymoo==0.6",
+    "pymoo==0.6.0.1",
     "typing_extensions",
     "pyyaml",
+    "pyplot",
 ]
 
 [project.urls]
