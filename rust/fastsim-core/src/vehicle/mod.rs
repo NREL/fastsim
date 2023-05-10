@@ -12,8 +12,11 @@ use crate::proc_macros::{api, ApproxEq};
 use crate::pyo3imports::*;
 pub use legacy_vehicle::*;
 
-// modules
+// legacy modules 
 pub mod legacy_vehicle;
-pub mod powertrain;
 pub mod vehicle_thermal;
 pub mod vehicle_utils;
+
+// hierarchical modules
+pub mod vehicle_core;
+pub mod powertrain;

@@ -22,6 +22,7 @@ argmin-math = { version = "0.2.1", features = ["ndarray_latest-nolinalg-serde"] 
 validator = { version = "0.16", features = ["derive"] }
 lazy_static = "1.4.0"
 regex = "1.7.1"
+enum_dispatch = "0.3.11"
 
 # TODO: uncomment this when not needing to run `cargo test` in fastsim-core/
 # [package.metadata.docs.rs]

@@ -72,6 +72,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
 
 impl<T> SerdeAPI for T where T: Serialize + for<'a> Deserialize<'a> {}
 
+#[enum_dispatch]
 pub trait ApproxEq<Rhs = Self> {
     fn approx_eq(&self, other: &Rhs, tol: f64) -> bool;
 }

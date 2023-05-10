@@ -1,9 +1,9 @@
 mod imports;
 use crate::imports::*;
+mod api;
 mod approx_eq_derive;
 mod history_vec_derive;
 mod legacy_api;
-mod api;
 mod utilities;
 
 /// legacy macro for creating appropriate setters and getters for pyo3 struct attributes

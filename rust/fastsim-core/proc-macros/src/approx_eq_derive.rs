@@ -11,7 +11,7 @@ pub fn approx_eq_derive(input: TokenStream) -> TokenStream {
                 fields.push(field.clone());
             }
         }
-        _ => panic!("#[derive(ApproxEq)] only works on structs"),
+        _ => abort_call_site!("#[derive(ApproxEq)] only works on structs"),
     }
 
     let field_names = fields
