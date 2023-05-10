@@ -6,7 +6,6 @@ use crate::params::PhysicalProperties;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::vehicle::*;
-use proc_macros::legacy_api;
 pub mod cyc_mods;
 pub mod simdrive_impl;
 

@@ -1,7 +1,5 @@
 //! Module for simulating thermal behavior of powertrains
 
-use proc_macros::{legacy_api, HistoryVec};
-
 use crate::air::AirProperties;
 use crate::cycle;
 use crate::imports::*;

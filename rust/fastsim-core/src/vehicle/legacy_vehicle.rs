@@ -1,5 +1,4 @@
 use super::*;
-use crate::proc_macros::{legacy_api, ApproxEq};
 
 // veh_pt_type options
 pub const CONV: &str = "Conv";

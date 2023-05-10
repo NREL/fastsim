@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use crate::cycle::Cycle;
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::ApproxEq;
 use crate::simdrive::{SimDrive, SimDriveParams};
 use crate::vehicle;
 

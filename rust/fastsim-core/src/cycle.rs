@@ -10,7 +10,6 @@ use std::path::PathBuf;
 // local
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::legacy_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::utils::*;
