@@ -32,9 +32,9 @@ def build_spec(instance, error='raise', extra=None) -> list:
 
     # types that are native to python/numpy/numba
     spec_tuples = [
-        ([float, np.float32, np.float64, np.float], float64, float64[:]),
-        ([int, np.int32, np.int64, np.int], int32, int32[:]),
-        ([bool, np.bool, np.bool_], bool_, bool_[:]),
+        ([float, np.float32, np.float64, np.float64], float64, float64[:]),
+        ([int, np.int32, np.int64, np.int64], int32, int32[:]),
+        ([bool, np.bool_, np.bool_], bool_, bool_[:]),
         ([str], string, string[:]),
     ]
 
