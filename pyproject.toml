@@ -45,7 +45,7 @@ namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
 [tool.maturin]
 python-source="python"
 features = ["pyo3/extension-module"]
-module-name = "fastsim.fastsimrust"
+module-name = "fastsimrust"
 manifest-path = "rust/fastsim-py/Cargo.toml"
 include = [
     { format = "sdist", path = "rust/fastsim-core/Cargo.toml"},
