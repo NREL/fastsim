@@ -1081,7 +1081,7 @@ mod tests {
 
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
-        let pathstr = String::from("../../fastsim/resources/cycles/udds.csv");
+        let pathstr = String::from("../../python/fastsim/resources/cycles/udds.csv");
         let expected_udds_length: usize = 1370;
         let cyc = RustCycle::from_csv_file(&pathstr).unwrap();
         assert_eq!(cyc.name, String::from("udds"));
