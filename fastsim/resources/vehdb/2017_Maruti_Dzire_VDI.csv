@@ -3,7 +3,7 @@ Category,Scenario name,2017 Maruti Dzire VDI,
 Vehicle,vehYear,2017,
 ,vehPtType,Conv,
 ,dragCoef,0.375,https://www.iosrjournals.org/iosr-jmce/papers/vol13-issue3/Version-1/R130301114118.pdf
-,frontalAreaM2,2.1347,80% * 1.735m * 1.515m = 2.10282m²; https://www.iosrjournals.org/iosr-jmce/papers/vol13-issue3/Version-1/R130301114118.pdf
+,frontalAreaM2,2.1347,85% * 1.735m * 1.515m = 2.23424625m²; https://www.iosrjournals.org/iosr-jmce/papers/vol13-issue3/Version-1/R130301114118.pdf
 ,gliderKg,0,
 ,vehCgM,0.53,positive for FWD
 ,driveAxleWeightFrac,0.61,
