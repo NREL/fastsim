@@ -38,9 +38,9 @@ Developers might want to install the code in place so that FASTSim files can be 
 - Easy way: run `sh build_and_test.sh` in root folder.  
 - Hard way (a couple of extra steps are required): 
     1. First install the python code in place:  
-    `DEVELOP_MODE=True pip install -e ".[dev]"`   
+    `pip install -e ".[dev]"`   
     if on Mac OS, Linux, or Windows Bash (e.g. git bash, VSCode bash).  On Windows in Power Shell or Command Prompt, run  
-    `set DEVELOP_MODE=True` then `pip install -e ".[dev]"`.
+    `pip install -e ".[dev]"`.
     1. Within the same python environment, navigate to `fastsim/rust/` and run  
     `pip install maturin`.
     1. _Optional_: Within the `rust/` folder (which contains the rust `src/` folder), run `cargo test --release` to build and run the tests.
@@ -49,7 +49,7 @@ Developers might want to install the code in place so that FASTSim files can be 
 After FASTSim has been installed as editable per the above instructions, you can rebuild and test everything with `sh build_and_test.sh` in Windows bash or `./build_and_test.sh` in Linux/Unix in the `fastsim/` dir.  
 
 ### Testing
-At the root level of the git repository: `pytest -v fastsim/tests/`.  This can also be run in the python environment directly.  
+At the root level of the git repository: `pytest -v python/fastsim/tests/`.  This can also be run in the python environment directly.  
 
 # Usage
 To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  

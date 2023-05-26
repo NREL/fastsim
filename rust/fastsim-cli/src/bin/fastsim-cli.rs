@@ -301,6 +301,8 @@ pub fn main() {
             main_separator!(),
             "..",
             main_separator!(),
+            "python",
+            main_separator!(),
             "fastsim",
             main_separator!(),
             "resources",
