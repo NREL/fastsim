@@ -15,6 +15,7 @@ use crate::air::*;
 use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
+use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::simdrive::RustSimDrive;
@@ -60,197 +61,244 @@ struct VehicleOptionsFE {
     options: Vec<OptionFE>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[add_pyo3_api]
 /// Struct containing transmission and id of a vehicle option from fueleconomy.gov
-struct OptionFE {
+pub struct OptionFE {
     #[serde(rename = "text")]
     /// Transmission of vehicle
-    transmission: String,
+    pub transmission: String,
     #[serde(rename = "value")]
     /// ID of vehicle on fueleconomy.gov
-    id: String,
+    pub id: String,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
+impl SerdeAPI for OptionFE {
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        }
+    }
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[add_pyo3_api]
 /// Struct containing vehicle data from fueleconomy.gov
 pub struct VehicleDataFE {
     #[serde(default, rename = "atvType")]
     /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
-    alt_veh_type: String,
+    pub alt_veh_type: String,
     #[serde(rename = "city08")]
     /// City MPG for fuel 1
-    city_mpg_fuel1: i32,
+    pub city_mpg_fuel1: i32,
     #[serde(rename = "cityA08")]
     /// City MPG for fuel 2
-    city_mpg_fuel2: i32,
+    pub city_mpg_fuel2: i32,
     #[serde(rename = "co2")]
     /// Tailpipe CO2 emissions in grams/mile
-    co2_g_per_mi: i32,
+    pub co2_g_per_mi: i32,
     #[serde(rename = "comb08")]
     /// Combined MPG for fuel 1
-    comb_mpg_fuel1: i32,
+    pub comb_mpg_fuel1: i32,
     #[serde(rename = "combA08")]
     /// Combined MPG for fuel 2
-    comb_mpg_fuel2: i32,
+    pub comb_mpg_fuel2: i32,
     #[serde(default)]
     /// Number of engine cylinders
-    cylinders: String,
+    pub cylinders: String,
     #[serde(default)]
     /// Engine displacement in liters
-    displ: String,
+    pub displ: String,
     /// Drive axle type (FWD, RWD, AWD, 4WD)
-    drive: String,
+    pub drive: String,
     #[serde(rename = "emissionsList")]
     /// List of emissions tests
-    emissions_list: EmissionsListFE,
+    pub emissions_list: EmissionsListFE,
     #[serde(default)]
     /// Description of engine
-    eng_dscr: String,
+    pub eng_dscr: String,
     #[serde(default, rename = "evMotor")]
     /// Electric motor power (kW)
-    ev_motor_kw: String,
+    pub ev_motor_kw: String,
     #[serde(rename = "feScore")]
     /// EPA fuel economy score
-    fe_score: i32,
+    pub fe_score: i32,
     #[serde(rename = "fuelType")]
     /// Combined vehicle fuel type (fuel 1 and fuel 2)
-    fuel_type: String,
+    pub fuel_type: String,
     #[serde(rename = "fuelType1")]
     /// Fuel type 1
-    fuel1: String,
+    pub fuel1: String,
     #[serde(default, rename = "fuelType2")]
     /// Fuel type 2
-    fuel2: String,
+    pub fuel2: String,
     #[serde(rename = "ghgScore")]
     /// EPA GHG Score
-    ghg_score: i32,
+    pub ghg_score: i32,
     #[serde(rename = "highway08")]
     /// Highway MPG for fuel 1
-    highway_mpg_fuel1: i32,
+    pub highway_mpg_fuel1: i32,
     #[serde(rename = "highwayA08")]
     /// Highway MPG for fuel 2
-    highway_mpg_fuel2: i32,
+    pub highway_mpg_fuel2: i32,
     /// Manufacturer
-    make: String,
+    pub make: String,
     #[serde(rename = "mfrCode")]
     /// Manufacturer code
-    mfr_code: String,
+    pub mfr_code: String,
     /// Model name
-    model: String,
+    pub model: String,
     #[serde(rename = "phevBlended")]
     /// Vehicle operates on blend of gasoline and electricity
-    phev_blended: bool,
+    pub phev_blended: bool,
     #[serde(rename = "phevCity")]
     /// EPA composite gasoline-electricity city MPGe
-    phev_city_mpge: i32,
+    pub phev_city_mpge: i32,
     #[serde(rename = "phevComb")]
     /// EPA composite gasoline-electricity combined MPGe
-    phev_comb_mpge: i32,
+    pub phev_comb_mpge: i32,
     #[serde(rename = "phevHwy")]
     /// EPA composite gasoline-electricity highway MPGe
-    phev_hwy_mpge: i32,
+    pub phev_hwy_mpge: i32,
     #[serde(rename = "range")]
     /// Range for EV
-    range_ev: i32,
+    pub range_ev: i32,
     #[serde(rename = "startStop")]
     /// Stop-start technology
-    start_stop: String,
+    pub start_stop: String,
     /// transmission
-    trany: String,
+    pub trany: String,
     #[serde(rename = "VClass")]
     /// EPA vehicle size class
-    veh_class: String,
+    pub veh_class: String,
     /// Model year
-    year: u32,
+    pub year: u32,
     #[serde(default, rename = "sCharger")]
     /// Vehicle is supercharged
-    super_charge: String,
+    pub super_charge: String,
     #[serde(default, rename = "tCharger")]
     /// Vehicle is turbocharged
-    turbo_charge: String,
+    pub turbo_charge: String,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
+impl SerdeAPI for VehicleDataFE {
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        }
+    }
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
+#[pyclass]
 /// Struct containing list of emissions tests from fueleconomy.gov
-struct EmissionsListFE {
+pub struct EmissionsListFE {
     ///
-    emissions_info: Vec<EmissionsInfoFE>,
+    pub emissions_info: Vec<EmissionsInfoFE>,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
+#[pyclass]
 /// Struct containing emissions test results from fueleconomy.gov
-struct EmissionsInfoFE {
+pub struct EmissionsInfoFE {
     /// Engine family id / EPA test group
-    efid: String,
+    pub efid: String,
     /// EPA smog rating
-    score: f64,
+    pub score: f64,
     /// SmartWay score
-    smartway_score: i32,
+    pub smartway_score: i32,
     /// Vehicle emission standard code
-    standard: String,
+    pub standard: String,
     /// Vehicle emission standard
-    std_text: String,
+    pub std_text: String,
 }
 
 #[derive(Default, PartialEq, Clone, Debug, Deserialize, Serialize)]
+#[add_pyo3_api]
 /// Struct containing vehicle data from EPA database
-struct VehicleDataEPA {
+pub struct VehicleDataEPA {
     #[serde(rename = "Model Year")]
     /// Model year
-    year: u32,
+    pub year: u32,
     #[serde(rename = "Veh Mfr Code")]
     /// Vehicle manufacturer code
-    mfr_code: String,
+    pub mfr_code: String,
     #[serde(rename = "Represented Test Veh Make")]
     /// Vehicle make
-    make: String,
+    pub make: String,
     #[serde(rename = "Represented Test Veh Model")]
     /// Vehicle model
-    model: String,
+    pub model: String,
     #[serde(rename = "Actual Tested Testgroup")]
     /// Vehicle test group
-    test_id: String,
+    pub test_id: String,
     #[serde(rename = "Test Veh Displacement (L)")]
     /// Engine displacement
-    displ: f64,
+    pub displ: f64,
     #[serde(rename = "Rated Horsepower")]
     /// Engine power in hp
-    eng_pwr_hp: u32,
+    pub eng_pwr_hp: u32,
     #[serde(rename = "# of Cylinders and Rotors")]
     /// Number of cylinders
-    cylinders: String,
+    pub cylinders: String,
     #[serde(rename = "Tested Transmission Type Code")]
     /// Transmission type code
-    trany_code: String,
+    pub trany_code: String,
     #[serde(rename = "Tested Transmission Type")]
     /// Transmission type
-    trany_type: String,
+    pub trany_type: String,
     #[serde(rename = "# of Gears")]
     /// Number of gears
-    gears: u32,
+    pub gears: u32,
     #[serde(rename = "Drive System Code")]
     /// Drive system code
-    drive_code: String,
+    pub drive_code: String,
     #[serde(rename = "Drive System Description")]
     /// Drive system type
-    drive: String,
+    pub drive: String,
     #[serde(rename = "Equivalent Test Weight (lbs.)")]
     /// Test weight in lbs
-    test_weight_lbs: f64,
+    pub test_weight_lbs: f64,
     #[serde(rename = "Test Fuel Type Description")]
     /// Fuel type used for EPA test
-    test_fuel_type: String,
+    pub test_fuel_type: String,
     #[serde(rename = "Target Coef A (lbf)")]
     /// Dyno coefficient a in lbf
-    a_lbf: f64,
+    pub a_lbf: f64,
     #[serde(rename = "Target Coef B (lbf/mph)")]
     /// Dyno coefficient b in lbf/mph
-    b_lbf_per_mph: f64,
+    pub b_lbf_per_mph: f64,
     #[serde(rename = "Target Coef C (lbf/mph**2)")]
     /// Dyno coefficient c in lbf/mph^2
-    c_lbf_per_mph2: f64,
+    pub c_lbf_per_mph2: f64,
+}
+
+impl SerdeAPI for VehicleDataEPA {
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        }
+    }
 }
 
 fn read_url(url: String) -> Result<String, Error>
@@ -332,6 +380,90 @@ where
     Ok(vehicle_data_fe)
 }
 
+#[cfg_attr(feature = "pyo3", pyfunction)]
+/// Gets options from fueleconomy.gov for the given vehicle year, make, and model
+///
+/// Arguments:
+/// ----------
+/// year: Vehicle year
+/// make: Vehicle make
+/// model: Vehicle model (must match model on fueleconomy.gov)
+///
+/// Returns:
+/// --------
+/// Vec<OptionFE>: Data for the available options for that vehicle year/make/model from fueleconomy.gov
+fn get_fuel_economy_gov_options_for_year_make_model(
+    year: &str,
+    make: &str,
+    model: &str
+) -> Result<Vec<OptionFE>, Error> {
+    let buf: String = read_url(
+        format!(
+            "https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year={year}&make={make}&model={model}")
+        .replace(' ', "%20"))?;
+    let vehicle_options: VehicleOptionsFE = from_str(&buf)?;
+    Ok(vehicle_options.options)
+}
+
+#[cfg_attr(feature = "pyo3", pyfunction)]
+/// Gets data from fueleconomy.gov for the given vehicle
+///
+/// Arguments:
+/// ----------
+/// year: Vehicle year
+/// make: Vehicle make
+/// model: Vehicle model (must match model on fueleconomy.gov)
+/// vehicle_options_idx: The index into the options list from get_fuel_economy_gov_options_for_year_make_model
+///
+/// Returns:
+/// --------
+/// vehicle_data_fe: Data for the given vehicle from fueleconomy.gov
+fn get_fuel_economy_gov_data_for_option_idx(
+    year: &str,
+    make: &str,
+    model: &str,
+    vehicle_options_idx: usize
+) -> Result<VehicleDataFE, Error>
+{
+    let available_options = get_fuel_economy_gov_options_for_year_make_model(year, make, model)?;
+    let mut index = vehicle_options_idx;
+    if vehicle_options_idx >= available_options.len() {
+        index = available_options.len() - 1;
+    }
+    let veh_buf: String = read_url(
+        format!(
+            "https://www.fueleconomy.gov/ws/rest/vehicle/{}",
+            available_options[index].id))?;
+
+    let mut vehicle_data_fe: VehicleDataFE = from_str(&veh_buf)?;
+    if vehicle_data_fe.drive.contains("4-Wheel") {
+        vehicle_data_fe.drive = String::from("All-Wheel Drive");
+    }
+    Ok(vehicle_data_fe)
+}
+
+#[cfg_attr(feature = "pyo3", pyfunction)]
+/// Gets data from fueleconomy.gov for the given vehicle and option id
+///
+/// Arguments:
+/// ----------
+/// option_id: The id of the desired option
+///
+/// Returns:
+/// --------
+/// vehicle_data_fe: Data for the given vehicle from fueleconomy.gov
+fn get_fuel_economy_gov_data_by_option_id(option_id: &str) -> Result<VehicleDataFE, Error>
+{
+    let veh_buf: String = read_url(
+        format!("https://www.fueleconomy.gov/ws/rest/vehicle/{}", option_id))?;
+    let mut vehicle_data_fe: VehicleDataFE = from_str(&veh_buf)?;
+    if vehicle_data_fe.drive.contains("4-Wheel") {
+        vehicle_data_fe.drive = String::from("All-Wheel Drive");
+    }
+    Ok(vehicle_data_fe)
+}
+
+#[cfg_attr(feature = "pyo3", pyfunction)]
 /// Gets data from EPA vehicle database for the given vehicle
 ///
 /// Arguments:
@@ -943,6 +1075,15 @@ where
     Ok(())
 }
 
+#[cfg_attr(feature = "pyo3", pyfunction)]
+fn multiple_vehicle_import_make_py(year: &str, make: &str) -> Result<(), anyhow::Error> {
+    let input = b"72.8\n56.3\n15.9\n";
+    let mut output = Vec::new();
+    multiple_vehicle_import_make(
+        year, make, &mut output, &input[..]
+    )
+}
+
 /// Creates RustVehicles for all models for a given year
 /// The created RustVehicles are also written as a yaml file
 ///
@@ -969,6 +1110,27 @@ where
     }
 
      Ok(())
+}
+
+#[cfg_attr(feature = "pyo3", pyfunction)]
+fn multiple_vehicle_import_year_py(year: &str) -> Result<(), anyhow::Error> {
+    let input = b"72.8\n56.3\n15.9\n";
+    let mut output = Vec::new();
+    multiple_vehicle_import_year(
+        year, &mut output, &input[..]
+    )
+}
+
+#[cfg(feature = "pyo3")]
+#[allow(unused)]
+pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
+    m.add_function(wrap_pyfunction!(multiple_vehicle_import_make_py, m)?)?;
+    m.add_function(wrap_pyfunction!(multiple_vehicle_import_year_py, m)?)?;
+    m.add_function(wrap_pyfunction!(get_fuel_economy_gov_data_for_option_idx, m)?)?;
+    m.add_function(wrap_pyfunction!(get_fuel_economy_gov_data_by_option_id, m)?)?;
+    m.add_function(wrap_pyfunction!(get_fuel_economy_gov_options_for_year_make_model, m)?)?;
+    m.add_function(wrap_pyfunction!(get_epa_data, m)?)?;
+    Ok(())
 }
 
 #[allow(non_snake_case)]
