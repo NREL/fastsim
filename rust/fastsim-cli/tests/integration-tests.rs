@@ -8,12 +8,12 @@ use predicates::prelude::predicate;
 fn test_that_cli_app_produces_result() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastsim-cli")?;
     let mut cyc_file = project_root::get_project_root().unwrap();
-    cyc_file.push(Path::new("../fastsim/resources/cycles/udds.csv"));
+    cyc_file.push(Path::new("../python/fastsim/resources/cycles/udds.csv"));
     cyc_file = cyc_file.canonicalize().unwrap();
     assert!(cyc_file.exists());
     let mut veh_file = project_root::get_project_root().unwrap();
     veh_file.push(Path::new(
-        "../fastsim/resources/vehdb/2012_Ford_Fusion.yaml",
+        "../python/fastsim/resources/vehdb/2012_Ford_Fusion.yaml",
     ));
     veh_file = veh_file.canonicalize().unwrap();
     assert!(veh_file.exists());

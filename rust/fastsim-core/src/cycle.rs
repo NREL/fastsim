@@ -1081,9 +1081,10 @@ mod tests {
 
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
-        let pathstr = String::from("../../fastsim/resources/cycles/udds.csv");
+        let mut cyc_file_path = resources_path();
+        cyc_file_path.push("cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        let cyc = RustCycle::from_csv_file(&pathstr).unwrap();
+        let cyc = RustCycle::from_csv_file(cyc_file_path.as_os_str().to_str().unwrap()).unwrap();
         assert_eq!(cyc.name, String::from("udds"));
         let num_entries = cyc.time_s.len();
         assert!(num_entries > 0);

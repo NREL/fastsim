@@ -69,7 +69,7 @@ jobs:
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
           CIBW_PLATFORM: ${{ matrix.platform || matrix.os }}
           CIBW_TEST_REQUIRES: "pytest"
-          CIBW_TEST_COMMAND: "pytest -v {project}/fastsim/tests"
+          CIBW_TEST_COMMAND: "pytest -v {project}/python/fastsim/tests"
           CIBW_ARCHS_MACOS: 'universal2'
           # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
           CIBW_TEST_SKIP: '*_universal2:arm64'

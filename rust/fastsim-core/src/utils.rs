@@ -8,7 +8,7 @@ use crate::pyo3imports::*;
 
 #[cfg(test)]
 pub fn resources_path() -> PathBuf {
-    let pb = PathBuf::from("../../fastsim/resources");
+    let pb = PathBuf::from("../../python/fastsim/resources");
     assert!(pb.exists());
     pb
 }
