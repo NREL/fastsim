@@ -9,7 +9,7 @@ use polynomial::Polynomial;
 use serde_xml_rs::from_str;
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -478,10 +478,29 @@ fn get_epa_data(
     epa_veh_db_path: Option<String>,
 ) -> Result<VehicleDataEPA, Error> {
     // Open EPA vehicle database csv file
-    let file_path: String = epa_veh_db_path.unwrap_or(format!(
-        "../../fastsim/resources/epa_vehdb/{}-tstcar.csv",
+    let default_path_raw_01: String = format!(
+        "../../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
         fe_gov_vehicle_data.year % 100
-    ));
+    );
+    let default_path_raw_02: String = format!(
+        "../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
+        fe_gov_vehicle_data.year % 100
+    );
+    let default_path_raw_03: String = format!(
+        "./python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
+        fe_gov_vehicle_data.year % 100
+    );
+    let default_path: String = if Path::new(&default_path_raw_01).exists()
+        {
+            default_path_raw_01
+        } else if Path::new(&default_path_raw_02).exists() {
+            default_path_raw_02
+        } else if Path::new(&default_path_raw_03).exists() {
+            default_path_raw_03
+        } else {
+            default_path_raw_01
+        };
+    let file_path: String = epa_veh_db_path.unwrap_or(default_path);
     let pathbuf: PathBuf = PathBuf::from(file_path);
     let file: File = File::open(&pathbuf).unwrap();
     let _name: String = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
@@ -1021,7 +1040,7 @@ where
     // TODO: Allow optional argument for file location
     let default_yaml_path: String = {
         let file_name: String = veh.scenario_name.replace(' ', "_");
-        format!("../../fastsim/resources/vehdb/{}.yaml", file_name)
+        format!("../../python/fastsim/resources/vehdb/{}.yaml", file_name)
     };
     let yaml_path: &str = match yaml_file_path {
         Some(path) => path,
@@ -1030,6 +1049,332 @@ where
     if !yaml_path.is_empty() {
         veh.to_file(yaml_path)?;
     }
+
+    Ok(veh)
+}
+
+#[derive(Default, PartialEq, Clone, Debug, Deserialize, Serialize)]
+#[add_pyo3_api(
+    #[new]
+    pub fn __new__(
+        vehicle_width_in: f64,
+        vehicle_height_in: f64,
+        fuel_tank_gal: f64,
+        ess_max_kwh: f64,
+        fc_max_kw: Option<f64>,
+        mc_max_kw: f64,
+        ess_max_kw: f64
+    ) -> Self {
+        OtherVehicleInputs {
+            vehicle_width_in,
+            vehicle_height_in,
+            fuel_tank_gal,
+            ess_max_kwh,
+            fc_max_kw,
+            mc_max_kw,
+            ess_max_kw
+        }
+    }
+)]
+pub struct OtherVehicleInputs {
+    pub vehicle_width_in: f64,
+    pub vehicle_height_in: f64,
+    pub fuel_tank_gal: f64,
+    pub ess_max_kwh: f64,
+    pub fc_max_kw: Option<f64>,
+    pub mc_max_kw: f64,
+    pub ess_max_kw: f64,
+}
+
+impl SerdeAPI for OtherVehicleInputs {
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        }
+    }
+}
+
+#[cfg_attr(feature = "pyo3", pyfunction)]
+/// Creates RustVehicle for the given vehicle using data from fueleconomy.gov and EPA databases
+/// The created RustVehicle is also written as a yaml file
+///
+/// Arguments:
+/// ----------
+/// vehicle_id: Identifier at fueleconomy.gov for the desired vehicle
+/// other_inputs: Other vehicle inputs required to create the vehicle
+///
+/// Returns:
+/// --------
+/// veh: RustVehicle for specificed vehicle
+fn vehicle_import_from_id(vehicle_id: &str, other_inputs: &OtherVehicleInputs) -> Result<RustVehicle, Error> {
+    // TODO: Aaron wanted custom scenario name option
+    let fe_gov_data: VehicleDataFE =
+        get_fuel_economy_gov_data_by_option_id(vehicle_id)?;
+    let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
+    if epa_data == VehicleDataEPA::default() {
+        let year = fe_gov_data.year;
+        let make = fe_gov_data.make;
+        let model = fe_gov_data.model;
+        return Err(anyhow!("Matching EPA data not found for {vehicle_id}: {year} {make} {model}"));
+    }
+
+    let veh_pt_type: &str = match fe_gov_data.alt_veh_type.as_str() {
+        "Hybrid" => crate::vehicle::HEV,
+        "Plug-in Hybrid" => crate::vehicle::PHEV,
+        "EV" => crate::vehicle::BEV,
+        _ => crate::vehicle::CONV,
+    };
+
+    let veh_cg_m: f64 = match fe_gov_data.drive.as_str() {
+        "Front-Wheel Drive" => 0.53,
+        _ => -0.53,
+    };
+
+    let fs_max_kw: f64;
+    let fc_max_kw: f64;
+    let fc_eff_type: String;
+    let fc_eff_map: Vec<f64>;
+    let min_soc: f64;
+    let max_soc: f64;
+    let ess_dischg_to_fc_max_eff_perc: f64;
+    let mph_fc_on: f64;
+    let kw_demand_fc_on: f64;
+    let aux_kw: f64;
+    let trans_eff: f64;
+    let val_range_miles: f64;
+
+    let mut ess_max_kwh: f64 = other_inputs.ess_max_kwh;
+    let mut mc_max_kw: f64 = other_inputs.mc_max_kw;
+    let mut ess_max_kw: f64 = other_inputs.ess_max_kw;
+
+    if veh_pt_type == crate::vehicle::CONV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        fc_eff_type = String::from(crate::vehicle::SI);
+        fc_eff_map = vec![
+            0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
+        ];
+        mc_max_kw = 0.0;
+        min_soc = 0.1;
+        max_soc = 0.95;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+        mph_fc_on = 55.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.7;
+        trans_eff = 0.92;
+        val_range_miles = 0.0;
+        ess_max_kwh = 0.0;
+    } else if veh_pt_type == crate::vehicle::HEV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = other_inputs.fc_max_kw.unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
+
+        fc_eff_type = String::from(crate::vehicle::ATKINSON);
+        fc_eff_map = vec![
+            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+        ];
+        min_soc = 0.4;
+        max_soc = 0.8;
+
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+        mph_fc_on = 1.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.5;
+        trans_eff = 0.95;
+        val_range_miles = 0.0;
+    } else if veh_pt_type == crate::vehicle::PHEV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = other_inputs.fc_max_kw.unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
+        fc_eff_type = String::from(crate::vehicle::ATKINSON);
+        fc_eff_map = vec![
+            0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
+        ];
+
+        min_soc = 0.15;
+        max_soc = 0.9;
+
+        ess_dischg_to_fc_max_eff_perc = 1.0;
+        mph_fc_on = 85.0;
+        kw_demand_fc_on = 120.0;
+        aux_kw = 0.3;
+        trans_eff = 0.98;
+        val_range_miles = 0.0;
+    } else if veh_pt_type == crate::vehicle::BEV {
+        fs_max_kw = 0.0;
+        fc_max_kw = 0.0;
+        fc_eff_type = String::from(crate::vehicle::SI);
+        fc_eff_map = vec![
+            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+        ];
+        mc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        min_soc = 0.05;
+        max_soc = 0.98;
+        ess_max_kw = 1.05 * mc_max_kw;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+        mph_fc_on = 1.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.25;
+        trans_eff = 0.98;
+        val_range_miles = fe_gov_data.range_ev as f64;
+    } else {
+        return Err(anyhow!("Unknown powertrain type: {veh_pt_type}"));
+    }
+
+    let props: RustPhysicalProperties = RustPhysicalProperties::default();
+
+    let cargo_kg: f64 = 136.0;
+    let trans_kg: f64 = 114.0;
+    let comp_mass_multiplier: f64 = 1.4;
+    let fs_kwh_per_kg: f64 = 9.89;
+    let fc_base_kg: f64 = 61.0;
+    let fc_kw_per_kg: f64 = 2.13;
+    let mc_pe_base_kg: f64 = 21.6;
+    let mc_pe_kg_per_kw: f64 = 0.833;
+    let ess_base_kg: f64 = 75.0;
+    let ess_kg_per_kwh: f64 = 8.0;
+    let glider_kg: f64 = (epa_data.test_weight_lbs / LBS_PER_KG)
+        - cargo_kg
+        - trans_kg
+        - comp_mass_multiplier
+            * ((fs_max_kw / fs_kwh_per_kg)
+                + (fc_base_kg + fc_max_kw / fc_kw_per_kg)
+                + (mc_pe_base_kg + mc_max_kw * mc_pe_kg_per_kw)
+                + (ess_base_kg + ess_max_kwh * ess_kg_per_kwh));
+
+    let mut veh: RustVehicle = RustVehicle {
+        small_motor_power_kw: 7.5,
+        large_motor_power_kw: 75.0,
+        charging_on: false,
+        max_roadway_chg_kw: Default::default(),
+        orphaned: Default::default(),
+        modern_max: MODERN_MAX,
+        no_elec_sys: Default::default(),
+        no_elec_aux: Default::default(),
+        fc_perc_out_array: Default::default(),
+        input_kw_out_array: Default::default(),
+        fc_kw_out_array: Default::default(),
+        fc_eff_array: Default::default(),
+        mc_eff_array: Default::default(),
+        mc_perc_out_array: Default::default(),
+        mc_kw_out_array: Default::default(),
+        mc_full_eff_array: Default::default(),
+        mc_kw_in_array: Default::default(),
+        mc_max_elec_in_kw: Default::default(),
+        ess_mass_kg: Default::default(),
+        mc_mass_kg: Default::default(),
+        fc_mass_kg: Default::default(),
+        fs_mass_kg: Default::default(),
+        veh_kg: Default::default(),
+        max_trac_mps2: Default::default(),
+        scenario_name: format!("{} {} {}",
+            fe_gov_data.year, fe_gov_data.make, fe_gov_data.model),
+        selection: 0,
+        veh_year: fe_gov_data.year,
+        veh_pt_type: String::from(veh_pt_type),
+        drag_coef: 0.0,
+        frontal_area_m2: (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in) / (IN_PER_M * IN_PER_M),
+        glider_kg,
+        veh_cg_m,
+        drive_axle_weight_frac: 0.59,
+        wheel_base_m: 2.6,
+        cargo_kg: 136.0,
+        veh_override_kg: None,
+        comp_mass_multiplier,
+        fs_max_kw,
+        fs_secs_to_peak_pwr: 1.0,
+        fs_kwh: other_inputs.fuel_tank_gal * props.kwh_per_gge,
+        fs_kwh_per_kg,
+        fc_max_kw,
+        fc_pwr_out_perc: Array1::from(vec![
+            0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
+        ]),
+        fc_eff_map: Array1::from(fc_eff_map),
+        fc_eff_type,
+        fc_sec_to_peak_pwr: 6.0,
+        fc_base_kg,
+        fc_kw_per_kg,
+        min_fc_time_on: 30.0,
+        idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
+        mc_max_kw,
+        mc_pwr_out_perc: Array1::from(vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]),
+        mc_eff_map: Array1::from(vec![
+            0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
+        ]),
+        mc_sec_to_peak_pwr: 4.0,
+        mc_pe_kg_per_kw,
+        mc_pe_base_kg,
+        ess_max_kw,
+        ess_max_kwh,
+        ess_kg_per_kwh,
+        ess_base_kg,
+        ess_round_trip_eff: 0.97,
+        ess_life_coef_a: 110.0,
+        ess_life_coef_b: -0.6811,
+        min_soc,
+        max_soc,
+        ess_dischg_to_fc_max_eff_perc,
+        ess_chg_to_fc_max_eff_perc: 0.0,
+        wheel_inertia_kg_m2: 0.815,
+        num_wheels: 4.0,
+        wheel_rr_coef: 0.0,
+        wheel_radius_m: 0.336,
+        wheel_coef_of_fric: 0.7,
+        max_accel_buffer_mph: 60.0,
+        max_accel_buffer_perc_of_useable_soc: 0.2,
+        perc_high_acc_buf: 0.0,
+        mph_fc_on,
+        kw_demand_fc_on,
+        max_regen: 0.98,
+        stop_start: fe_gov_data.start_stop == "Y",
+        force_aux_on_fc: false,
+        alt_eff: 1.0,
+        chg_eff: 0.86,
+        aux_kw,
+        trans_kg,
+        trans_eff,
+        ess_to_fuel_ok_error: 0.005,
+        val_udds_mpgge: fe_gov_data.city_mpg_fuel1 as f64,
+        val_hwy_mpgge: fe_gov_data.highway_mpg_fuel1 as f64,
+        val_comb_mpgge: fe_gov_data.comb_mpg_fuel1 as f64,
+        val_udds_kwh_per_mile: f64::NAN,
+        val_hwy_kwh_per_mile: f64::NAN,
+        val_comb_kwh_per_mile: f64::NAN,
+        val_cd_range_mi: f64::NAN,
+        val_const65_mph_kwh_per_mile: f64::NAN,
+        val_const60_mph_kwh_per_mile: f64::NAN,
+        val_const55_mph_kwh_per_mile: f64::NAN,
+        val_const45_mph_kwh_per_mile: f64::NAN,
+        val_unadj_udds_kwh_per_mile: f64::NAN,
+        val_unadj_hwy_kwh_per_mile: f64::NAN,
+        val0_to60_mph: f64::NAN,
+        val_ess_life_miles: f64::NAN,
+        val_range_miles,
+        val_veh_base_cost: f64::NAN,
+        val_msrp: f64::NAN,
+        props,
+        regen_a: 500.0,
+        regen_b: 0.99,
+        fc_peak_eff_override: None,
+        mc_peak_eff_override: Some(0.95),
+    };
+    veh.set_derived().unwrap();
+
+    abc_to_drag_coeffs(
+        &mut veh,
+        epa_data.a_lbf,
+        epa_data.b_lbf_per_mph,
+        epa_data.c_lbf_per_mph2,
+        Some(false),
+        None,
+        None,
+        Some(true),
+        Some(false),
+    );
 
     Ok(veh)
 }
@@ -1075,15 +1420,6 @@ where
     Ok(())
 }
 
-#[cfg_attr(feature = "pyo3", pyfunction)]
-fn multiple_vehicle_import_make_py(year: &str, make: &str) -> Result<(), anyhow::Error> {
-    let input = b"72.8\n56.3\n15.9\n";
-    let mut output = Vec::new();
-    multiple_vehicle_import_make(
-        year, make, &mut output, &input[..]
-    )
-}
-
 /// Creates RustVehicles for all models for a given year
 /// The created RustVehicles are also written as a yaml file
 ///
@@ -1113,23 +1449,30 @@ where
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
-fn multiple_vehicle_import_year_py(year: &str) -> Result<(), anyhow::Error> {
-    let input = b"72.8\n56.3\n15.9\n";
-    let mut output = Vec::new();
-    multiple_vehicle_import_year(
-        year, &mut output, &input[..]
-    )
+/// Export the given RustVehicle to file
+/// 
+/// veh: The RustVehicle to export
+/// file_path: the path to export to
+/// 
+/// NOTE: the file extension is used to determine the export format.
+/// Supported file types include yaml and JSON
+/// 
+/// RETURN:
+/// ()
+fn export_vehicle_to_file(veh: &RustVehicle, file_path: &str) -> Result<(), anyhow::Error> {
+    veh.to_file(file_path)?;
+    Ok(())
 }
 
 #[cfg(feature = "pyo3")]
 #[allow(unused)]
 pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
-    m.add_function(wrap_pyfunction!(multiple_vehicle_import_make_py, m)?)?;
-    m.add_function(wrap_pyfunction!(multiple_vehicle_import_year_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_fuel_economy_gov_data_for_option_idx, m)?)?;
     m.add_function(wrap_pyfunction!(get_fuel_economy_gov_data_by_option_id, m)?)?;
     m.add_function(wrap_pyfunction!(get_fuel_economy_gov_options_for_year_make_model, m)?)?;
     m.add_function(wrap_pyfunction!(get_epa_data, m)?)?;
+    m.add_function(wrap_pyfunction!(vehicle_import_from_id, m)?)?;
+    m.add_function(wrap_pyfunction!(export_vehicle_to_file, m)?)?;
     Ok(())
 }
 
