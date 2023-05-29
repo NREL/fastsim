@@ -237,9 +237,9 @@ pub fn get_label_fe(
 
     for (k, val) in sd.iter_mut() {
         val.sim_drive(None, None)?;
-        let key = String::from(k.clone());
+        let key = String::from(*k);
         let trace_miss_speed_mph = val.trace_miss_speed_mps * MPH_PER_MPS;
-        if (key == String::from("udds") || key == String::from("hwy"))
+        if (key == *"udds" || key == *"hwy")
             && trace_miss_speed_mph > max_trace_miss_in_mph
         {
             max_trace_miss_in_mph = trace_miss_speed_mph;
