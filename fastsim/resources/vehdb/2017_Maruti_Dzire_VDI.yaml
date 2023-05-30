@@ -9,7 +9,7 @@ veh_cg_m: 0.53
 drive_axle_weight_frac: 0.61
 wheel_base_m: 2.45
 cargo_kg: 0.0
-veh_override_kg: 972.5
+veh_override_kg: 1072.5
 comp_mass_multiplier: 1.4
 fs_max_kw: 2000.0
 fs_secs_to_peak_pwr: 1.1
@@ -118,7 +118,7 @@ stop_start: false
 force_aux_on_fc: false
 alt_eff: 1.0
 chg_eff: 0.86
-aux_kw: 0.95
+aux_kw: 0.8
 trans_kg: 0.0
 trans_eff: 0.95
 ess_to_fuel_ok_error: 0.005
