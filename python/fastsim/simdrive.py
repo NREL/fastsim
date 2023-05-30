@@ -9,11 +9,8 @@ import numpy as np
 import re
 import copy
 
-from .rustext import RUST_AVAILABLE
-
-if RUST_AVAILABLE:
-    import fastsim.fastsimrust as fsr
-    from fastsim.fastsimrust import RustSimDrive
+import fastsim.fastsimrust as fsr
+from fastsim.fastsimrust import RustSimDrive
 from . import params, cycle, vehicle, inspect_utils
 
 # these imports are needed for numba to type these correctly
@@ -126,7 +123,7 @@ def copy_sim_params(sdp: SimDriveParams, return_type: str = None):
         sdp_dict[key] = sdp.__getattribute__(key)
 
     if return_type is None:
-        if RUST_AVAILABLE and type(sdp) == fsr.RustSimDriveParams:
+        if type(sdp) == fsr.RustSimDriveParams:
             return_type = 'rust'
         elif type(sdp) == SimDriveParams:
             return_type = 'python'
@@ -138,7 +135,7 @@ def copy_sim_params(sdp: SimDriveParams, return_type: str = None):
         return sdp_dict
     elif return_type == 'python':
         return SimDriveParams.from_dict(sdp_dict)
-    elif RUST_AVAILABLE and return_type == 'rust':
+    elif return_type == 'rust':
         return fsr.RustSimDriveParams(**sdp_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
