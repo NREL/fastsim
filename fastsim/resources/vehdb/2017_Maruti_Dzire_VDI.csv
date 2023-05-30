@@ -9,7 +9,7 @@ Vehicle,vehYear,2017,
 ,driveAxleWeightFrac,0.61,
 ,wheelBaseM,2.45,https://www.cardekho.com/overview/Maruti_Dzire_2017-2020/Maruti_Dzire_2017-2020_VDI.htm
 ,cargoKg,0,
-,vehOverrideKg,972.5,https://www.cardekho.com/overview/Maruti_Dzire_2017-2020/Maruti_Dzire_2017-2020_VDI.htm
+,vehOverrideKg,1072.5,https://www.cardekho.com/overview/Maruti_Dzire_2017-2020/Maruti_Dzire_2017-2020_VDI.htm
 ,compMassMultiplier,1.4,
 Fuel / Fuel Converter / Engine,maxFuelStorKw,2000,
 ,fuelStorSecsToPeakPwr,1.1,
@@ -53,7 +53,7 @@ HEV Controls,maxAccelBufferMph,60.3,
 ,forceAuxOnFC,FALSE,
 Misc.,altEff,1,
 ,chgEff,0.86,
-,auxKw,0.95,
+,auxKw,0.8,
 ,transKg,0,
 ,transEff,0.95,
 ,essToFuelOkError,0.005,
