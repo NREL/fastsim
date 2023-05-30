@@ -16,7 +16,7 @@ from . import inspect_utils
 from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
-    import fastsimrust as fsr
+    import fastsim.fastsimrust as fsr
 
 
 THIS_DIR = Path(__file__).parent

@@ -27,8 +27,8 @@ from fastsim.vehicle_base import keys_and_types, NEW_TO_OLD
 from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
-    import fastsimrust as fsr
-    from fastsimrust import RustVehicle
+    import fastsim.fastsimrust as fsr
+    from fastsim.fastsimrust import RustVehicle
 
 # Logging
 import logging

@@ -1,4 +1,4 @@
-import fastsimrust
+import fastsim.fastsimrust
 import ast
 import sys
 import os

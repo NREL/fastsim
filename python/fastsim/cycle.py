@@ -20,8 +20,8 @@ from . import inspect_utils
 from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
-    import fastsimrust as fsr
-    from fastsimrust import RustCycle
+    import fastsim.fastsimrust as fsr
+    from fastsim.fastsimrust import RustCycle
 
 # Logging
 import logging

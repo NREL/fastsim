@@ -12,8 +12,8 @@ import copy
 from .rustext import RUST_AVAILABLE
 
 if RUST_AVAILABLE:
-    import fastsimrust as fsr
-    from fastsimrust import RustSimDrive
+    import fastsim.fastsimrust as fsr
+    from fastsim.fastsimrust import RustSimDrive
 from . import params, cycle, vehicle, inspect_utils
 
 # these imports are needed for numba to type these correctly

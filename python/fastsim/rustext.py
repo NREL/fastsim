@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 RUST_AVAILABLE = None
 try:
-    import fastsimrust as fsr
+    import fastsim.fastsimrust as fsr
     RUST_AVAILABLE = True
 except ImportError:
     RUST_AVAILABLE = False

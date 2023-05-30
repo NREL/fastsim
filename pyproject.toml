@@ -25,7 +25,6 @@ dependencies = [
     "pymoo==0.6.0.1",
     "typing_extensions",
     "pyyaml",
-    "plotly",
 ]
 
 [project.urls]
@@ -45,12 +44,13 @@ namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
 [tool.maturin]
 python-source="python"
 features = ["pyo3/extension-module"]
-module-name = "fastsimrust"
+module-name = "fastsim.fastsimrust"
 manifest-path = "rust/fastsim-py/Cargo.toml"
 include = [
     { format = "sdist", path = "rust/fastsim-core/Cargo.toml"},
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml"},
-    { format = "sdist", path = "rust/uom/Cargo.toml"},
     { format = "sdist", path = "rust/fastsim-core/src/*"},
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml"},
     { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*"},
+    { format = "sdist", path = "rust/fastsim-py/Cargo.toml"},
+    { format = "sdist", path = "rust/fastsim-py/src/*"},
 ]

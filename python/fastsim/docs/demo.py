@@ -21,7 +21,7 @@
 import sys
 import os
 from pathlib import Path
-from fastsimrust import abc_to_drag_coeffs
+from fastsim.fastsimrust import abc_to_drag_coeffs
 import numpy as np
 import time
 import pandas as pd
