@@ -4,5 +4,5 @@ recursive-include rust/fastsim-core/src *
 recursive-include rust/fastsim-core/proc-macros/src *
 recursive-include rust/fastsim-py/src *
 recursive-include rust/fastsim-cli/src *
-recursive-include fastsim/resources *
-recursive-include fastsim/demos *
+recursive-include python/fastsim/resources *
+recursive-include python/fastsim/demos *
