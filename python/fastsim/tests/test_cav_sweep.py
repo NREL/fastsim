@@ -1,12 +1,12 @@
 """
-Test fastsim/docs/cav_sweep.py for regressions
+Test fastsim/demos/cav_sweep.py for regressions
 """
 import unittest
 import os
 import csv
 from pathlib import Path
 
-from fastsim.docs.cav_sweep import main, CSV_KEYS
+from fastsim.demos.cav_sweep import main, CSV_KEYS
 import fastsim as fsim
 
 THIS_DIR = os.path.abspath(os.path.dirname(__file__))
