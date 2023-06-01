@@ -43,7 +43,7 @@ Developers might want to install the code in place so that FASTSim files can be 
     1. Run `pytest -v python/fastsim/tests/`
 
 # Usage
-To see and run examples, navigate to fastsim/docs and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
+To see and run examples, navigate to `./python/fastsim/demos` and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
 
 
 # Adding FASTSim as a Depency in Rust
