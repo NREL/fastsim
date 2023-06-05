@@ -18,6 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 from . import fastsimrust
+from . import fastsimrust as fsr
 from . import parameters as params
 from . import utilities as utils
 from . import simdrive, vehicle, cycle, calibration, tests
