@@ -45,7 +45,7 @@ import numpy as np
 
 # local -- expects rust-port version of fastsim so make sure this is in the env
 import fastsim as fsim
-import fastsim.fastsimrust as fsr
+from fastsim import fastsimrust as fsr
 
 
 def get_error_val(model, test, time_steps):

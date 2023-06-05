@@ -8,7 +8,7 @@ import numpy as np
 from numpy.polynomial import Chebyshev
 
 import fastsim
-import fastsim.fastsimrust as fsr
+from fastsim import fastsimrust as fsr
 from fastsim.auxiliaries import set_nested_values
 
 DO_PLOTS = False

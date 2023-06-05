@@ -7,7 +7,7 @@ import pickle
 from cycler import cycler
 
 import fastsim as fsim
-import fastsim.fastsimrust as fsr
+from fastsim import fastsimrust as fsr
 
 
 use_nsga2 = True

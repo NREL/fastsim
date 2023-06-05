@@ -24,7 +24,7 @@ import json
 from fastsim import parameters as params
 from fastsim import utils
 from fastsim.vehicle_base import keys_and_types, NEW_TO_OLD
-import fastsim.fastsimrust as fsr
+from fastsim import fastsimrust as fsr
 from fastsim.fastsimrust import RustVehicle
 
 # Logging

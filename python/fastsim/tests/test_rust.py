@@ -7,7 +7,7 @@ import numpy as np
 
 import fastsim as fsim
 import fastsim.vehicle_base as fsvb
-import fastsim.fastsimrust as fsr
+from fastsim import fastsimrust as fsr
 from fastsim import cycle, vehicle, simdrive
 
 

@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 import copy
 from copy import deepcopy
-import fastsim.fastsimrust as fsr
+from fastsim import fastsimrust as fsr
 
 from . import inspect_utils
 

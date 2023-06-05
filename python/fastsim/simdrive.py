@@ -9,7 +9,7 @@ import numpy as np
 import re
 import copy
 
-import fastsim.fastsimrust as fsr
+from fastsim import fastsimrust as fsr
 from fastsim.fastsimrust import RustSimDrive
 from . import params, cycle, vehicle, inspect_utils
 

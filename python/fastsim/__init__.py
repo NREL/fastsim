@@ -32,7 +32,7 @@ __doc__ += "\nhttps://pypi.org/project/fastsim/"
 __doc__ += "\nhttps://www.nrel.gov/transportation/fastsim.html"
 
 try:
-    import fastsim.fastsimrust as fsr
+    from fastsim import fastsimrust as fsr
 except ImportError:
     logger.warn("fastsimrust not installed")
 else:
