@@ -10,7 +10,7 @@ import unittest
 # local modules
 from fastsim import simdrive, vehicle, cycle, utils
 from fastsim.auxiliaries import set_nested_values
-from fastsim import fastsimrust as fsr
+import fastsim.fastsimrust as fsr
 
 RUN_PYTHON = False
 RUN_RUST = True

@@ -7,7 +7,7 @@ import pickle
 from cycler import cycler
 
 import fastsim as fsim
-from fastsim import fastsimrust as fsr
+import fastsim.fastsimrust as fsr
 
 import fusion_thermal_cal as ftc
 

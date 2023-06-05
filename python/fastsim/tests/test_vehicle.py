@@ -27,7 +27,7 @@ class TestVehicle(unittest.TestCase):
         if USE_RUST:
             py_veh = vehicle.Vehicle.from_vehdb(1, to_rust=True)
             py_veh.set_derived()
-            from fastsim import fastsimrust as fsr
+            import fastsim.fastsimrust as fsr
             veh = vehicle.copy_vehicle(py_veh, 'rust')
             veh_copy = vehicle.copy_vehicle(veh, 'rust')
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))

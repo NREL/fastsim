@@ -11,7 +11,7 @@ import argparse
 import re
 
 import fastsim as fsim
-from fastsim import fastsimrust as fsr
+import fastsim.fastsimrust as fsr
 
 # 4wd is assumed to be not engaged on cycles used because
 # "Veh_4WD_engaged_CAN[]" and "Veh_4WD_L_engaged_CAN[]" are always zero

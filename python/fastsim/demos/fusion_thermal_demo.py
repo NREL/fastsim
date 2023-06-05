@@ -1,7 +1,7 @@
 # To add a new cell, type '# %%'
 # To add a new markdown cell, type '# %% [markdown]'
 # %%
-from fastsim import fastsimrust as fsr
+import fastsim.fastsimrust as fsr
 import fastsim as fsim
 import seaborn as sns
 import matplotlib.pyplot as plt

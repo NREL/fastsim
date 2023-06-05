@@ -10,7 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import fastsim as fsim
-from fastsim import fastsimrust as fsr
+import fastsim.fastsimrust as fsr
 
 VERBOSE = False
 TOL = 1e-6
