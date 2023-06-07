@@ -13,7 +13,7 @@ class TestCavDemo(unittest.TestCase):
         is_interactive_key = 'FASTSIM_DEMO_IS_INTERACTIVE'
         original_value = os.getenv(is_interactive_key)
         os.environ[is_interactive_key] = 'False'
-        from fastsim.docs.cav_demo import RAN_SUCCESSFULLY
+        from fastsim.demos.cav_demo import RAN_SUCCESSFULLY
         if original_value is not None:
             os.environ[is_interactive_key] = original_value
         else:

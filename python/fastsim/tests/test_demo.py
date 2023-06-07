@@ -1,5 +1,5 @@
 """
-Tests the code from fastsim/docs/demo.py
+Tests the code from fastsim/demos/demo.py
 """
 import unittest
 import pytest

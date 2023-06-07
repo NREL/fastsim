@@ -26,13 +26,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
 
       - name: Rust unit tests
         run: |
-          cd rust/
-          cargo test
+          cd rust/ && cargo test
 
       - name: Python unit tests 
         run: |
