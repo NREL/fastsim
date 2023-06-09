@@ -6,8 +6,6 @@ from typing import Dict, Set, Optional, Any
 # Import necessary python modules
 from dataclasses import dataclass
 import copy
-import cmath
-import os
 import numpy as np
 from scipy.interpolate import interp1d
 import pandas as pd
@@ -17,11 +15,8 @@ from copy import deepcopy
 # local modules
 from . import parameters as params
 from . import inspect_utils
-from .rustext import RUST_AVAILABLE
-
-if RUST_AVAILABLE:
-    import fastsimrust as fsr
-    from fastsimrust import RustCycle
+from . import fastsimrust as fsr
+from fastsim.fastsimrust import RustCycle
 
 # Logging
 import logging
@@ -1000,8 +995,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Dict[s
 
     for key in inspect_utils.get_attrs(ref_cyc):
         val_to_copy = cyc.__getattribute__(key)
-        array_types = [np.ndarray] if not RUST_AVAILABLE else [
-            np.ndarray, fsr.Pyo3ArrayF64]
+        array_types = [np.ndarray, fsr.Pyo3ArrayF64]
         if type(val_to_copy) in array_types:
             # has to be float or time_s will get converted to int
             cyc_dict[key] = copy.deepcopy(np.array(
@@ -1010,7 +1004,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Dict[s
             cyc_dict[key] = copy.deepcopy(val_to_copy) if deep else val_to_copy
 
     if return_type is None:
-        if RUST_AVAILABLE and isinstance(cyc, RustCycle):
+        if isinstance(cyc, RustCycle):
             return_type = 'rust'
         elif isinstance(cyc, Cycle):
             return_type = 'python'
@@ -1026,7 +1020,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Dict[s
         return Cycle.from_dict(cyc_dict)
     elif return_type == 'legacy':
         return LegacyCycle(cyc_dict)
-    elif RUST_AVAILABLE and return_type == 'rust':
+    elif return_type == 'rust':
         return RustCycle(**cyc_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")

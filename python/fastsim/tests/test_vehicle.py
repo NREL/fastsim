@@ -9,14 +9,9 @@ import numpy as np
 
 import fastsim as fsim
 from fastsim import parameters, vehicle
-from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
-
 
 USE_PYTHON = True
 USE_RUST = True
-
-if USE_RUST and not RUST_AVAILABLE:
-    warn_rust_unavailable(__file__)
 
 
 class TestVehicle(unittest.TestCase):
@@ -29,10 +24,10 @@ class TestVehicle(unittest.TestCase):
             veh = vehicle.Vehicle.from_vehdb(1)
             veh_copy = vehicle.copy_vehicle(veh)
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             py_veh = vehicle.Vehicle.from_vehdb(1, to_rust=True)
             py_veh.set_derived()
-            import fastsimrust as fsr
+            import fastsim.fastsimrust as fsr
             veh = vehicle.copy_vehicle(py_veh, 'rust')
             veh_copy = vehicle.copy_vehicle(veh, 'rust')
             self.assertTrue(vehicle.veh_equal(veh, veh_copy))
@@ -54,7 +49,7 @@ class TestVehicle(unittest.TestCase):
             veh.mc_eff_array = np.array(veh.mc_eff_array.tolist()) * 1.05
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             veh = vehicle.Vehicle.from_vehdb(10).to_rust()
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_eff_array.tolist()))
             self.assertEqual(veh.mc_peak_eff, np.max(veh.mc_full_eff_array.tolist()))
@@ -105,7 +100,7 @@ class TestVehicle(unittest.TestCase):
                 self.assertTrue(
                     abs(pristine_mc_peak_eff - veh.mc_peak_eff) > TOL)
                 self.assertAlmostEqual(pristine_fc_peak_eff, veh.fc_peak_eff)
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             veh_pristine = vehicle.Vehicle.from_file(veh_name,to_rust=True).to_rust()
             pristine_fc_peak_eff = veh_pristine.fc_peak_eff
             pristine_mc_peak_eff = veh_pristine.mc_peak_eff

@@ -402,7 +402,7 @@ impl RustCycleCache {
     pub fn new(cyc: &RustCycle) -> Self {
         let tol = 1e-6;
         let num_items = cyc.time_s.len();
-        let grade_all_zero = cyc.grade.iter().fold(true, |flag, &g| flag && g == 0.0);
+        let grade_all_zero = cyc.grade.iter().all(|g| *g == 0.0);
         let trapz_step_distances_m = trapz_step_distances(cyc);
         let trapz_distances_m = ndarrcumsum(&trapz_step_distances_m);
         let trapz_elevations_m = if grade_all_zero {
@@ -422,7 +422,7 @@ impl RustCycleCache {
         let mut interp_hs: Vec<f64> = Vec::with_capacity(num_items);
         for idx in 0..num_items {
             let d = trapz_distances_m[idx];
-            if interp_ds.len() == 0 || d > *interp_ds.last().unwrap() {
+            if interp_ds.is_empty() || d > *interp_ds.last().unwrap() {
                 interp_ds.push(d);
                 interp_is.push(idx as f64);
                 interp_hs.push(trapz_elevations_m[idx]);
@@ -651,7 +651,7 @@ impl RustCycle {
     }
 
     pub fn build_cache(&self) -> RustCycleCache {
-        RustCycleCache::new(&self)
+        RustCycleCache::new(self)
     }
 
     pub fn push(&mut self, cyc_elem: RustCycleElement) {
@@ -721,9 +721,9 @@ impl RustCycle {
                     all0
                 };
                 if grade_all_zero {
-                    return 0.0;
+                    0.0
                 } else {
-                    let delta_dists = trapz_step_distances(&self);
+                    let delta_dists = trapz_step_distances(self);
                     let trapz_distances_m = ndarrcumsum(&delta_dists);
                     if delta_distance_m <= tol {
                         if distance_start_m <= trapz_distances_m[0] {
@@ -939,9 +939,11 @@ impl RustCycle {
 
     // load a cycle from a string representation of a csv file
     pub fn from_csv_string(data: &str, name: String) -> Result<Self, anyhow::Error> {
-        let mut cyc = Self::default();
+        let mut cyc = Self {
+            name,
+            ..Self::default()
+        };
 
-        cyc.name = name;
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(true)
             .from_reader(data.as_bytes());

@@ -6,20 +6,14 @@ import time
 import numpy as np
 from pathlib import Path
 import unittest
-from fastsim.auxiliaries import set_nested_values
 
 # local modules
 from fastsim import simdrive, vehicle, cycle, utils
-from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
-
-if RUST_AVAILABLE:
-    import fastsimrust as fsr
+from fastsim.auxiliaries import set_nested_values
+import fastsim.fastsimrust as fsr
 
 RUN_PYTHON = False
 RUN_RUST = True
-
-if RUN_RUST and not RUST_AVAILABLE:
-    warn_rust_unavailable(__file__)
 
 
 def main(err_tol=1e-4, verbose=True, use_rust=False):
@@ -44,9 +38,6 @@ def main(err_tol=1e-4, verbose=True, use_rust=False):
     col_for_max_error: string or None, the column name of the column having max absolute error
     max_abs_err: number or None, the maximum absolute error if it exists
     """
-    if not RUST_AVAILABLE and use_rust:
-        warn_rust_unavailable(__file__)
-        use_rust = False
     t0 = time.time()
 
     print('Running vehicle sweep.\n')
@@ -82,12 +73,10 @@ def main(err_tol=1e-4, verbose=True, use_rust=False):
         for cyc_name, cyc in cycs.items():
             if not(vehno == 1):
                 veh = to_rust(vehicle.Vehicle.from_vehdb(vehno))
-            if RUST_AVAILABLE and use_rust:
-                assert type(cyc) == fsr.RustCycle
-                assert type(veh) == fsr.RustVehicle
+            assert type(cyc) == fsr.RustCycle
+            assert type(veh) == fsr.RustVehicle
             sim_drive = make_simdrive(cyc, veh)
-            if RUST_AVAILABLE and use_rust:
-                assert type(sim_drive) == fsr.RustSimDrive
+            assert type(sim_drive) == fsr.RustSimDrive
             # US06 is known to cause substantial trace miss.
             # This should probably be addressed at some point, but for now,
             # the tolerances are set high to avoid lots of printed warnings.
@@ -175,15 +164,13 @@ class TestSimDriveSweep(unittest.TestCase):
             df_err, _, _, max_err_col, max_abs_err = main(verbose=True)
             self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
                              msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
-        if RUST_AVAILABLE and RUN_RUST:
+        if RUN_RUST:
             df_err, _, _, max_err_col, max_abs_err = main(
                 verbose=True, use_rust=True)
             self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
                              msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
 
     def test_post_diagnostics(self):
-        if not RUST_AVAILABLE:
-            return
         vehid = 9  # FORD C-MAX
         cyc_name = "us06"
         init_soc = None

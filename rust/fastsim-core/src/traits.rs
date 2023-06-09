@@ -126,7 +126,7 @@ where
     T: ApproxEq + std::clone::Clone,
 {
     fn approx_eq(&self, other: &Array1<T>, tol: f64) -> bool {
-        return self.to_vec().approx_eq(&other.to_vec(), tol);
+        self.to_vec().approx_eq(&other.to_vec(), tol)
     }
 }
 
@@ -136,14 +136,13 @@ where
 {
     fn approx_eq(&self, other: &Option<T>, tol: f64) -> bool {
         if self.is_none() && other.is_none() {
-            return true;
+            true
         } else if self.is_some() && other.is_some() {
-            return self
-                .as_ref()
+            self.as_ref()
                 .unwrap()
-                .approx_eq(&other.as_ref().unwrap(), tol);
+                .approx_eq(other.as_ref().unwrap(), tol)
         } else {
-            return false;
+            false
         }
     }
 }

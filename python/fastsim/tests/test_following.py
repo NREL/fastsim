@@ -6,16 +6,11 @@ import unittest
 import numpy as np
 
 import fastsim
-from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 from fastsim.auxiliaries import set_nested_values
 
 DO_PLOTS = False
 USE_PYTHON = True
 USE_RUST = True
-
-if USE_RUST and not RUST_AVAILABLE:
-    warn_rust_unavailable(__file__)
-
 
 class TestFollowing(unittest.TestCase):
     def setUp(self) -> None:
@@ -35,7 +30,7 @@ class TestFollowing(unittest.TestCase):
             self.sd = fastsim.simdrive.SimDrive(self.trapz, self.veh)
             self.sd.sim_params.idm_allow = True
             self.sd.sim_params.idm_minimum_gap_m = self.initial_gap_m
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             self.ru_trapz = fastsim.cycle.Cycle.from_dict(trapz).to_rust()
             self.ru_veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
             # sd0 is for reference to an unchanged, no-following simdrive
@@ -70,7 +65,7 @@ class TestFollowing(unittest.TestCase):
                 fastsim.cycle.trapz_step_distances(self.sd.cyc0).sum(),
                 fastsim.cycle.trapz_step_distances(self.sd.cyc).sum(),
                 places=-1)
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             self.assertTrue(self.ru_sd.sim_params.idm_allow)
             self.ru_sd.sim_drive()
             self.assertTrue(self.ru_sd.sim_params.idm_allow)
@@ -128,7 +123,7 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue(
                 (gaps_m > (self.initial_gap_m - 1.0)).all(),
                 msg='We cannot get closer than the initial gap distance')
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             self.ru_sd.sim_drive()
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
             if DO_PLOTS:
@@ -265,7 +260,7 @@ class TestFollowing(unittest.TestCase):
                 fig.tight_layout()
                 fig.savefig(save_file, dpi=300)
                 plt.close()
-            if RUST_AVAILABLE and USE_RUST:
+            if USE_RUST:
                 import matplotlib.pyplot as plt
                 import pandas as pd
                 import seaborn as sns
@@ -389,7 +384,7 @@ class TestFollowing(unittest.TestCase):
                 fastsim.cycle.trapz_step_distances(self.sd.cyc).sum(),
                 places=-1,
                 msg='Distance traveled should be fairly close')
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             self.ru_sd.sim_drive()
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
             self.assertTrue((gaps_m > self.initial_gap_m).any())
@@ -692,7 +687,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
 
                 print('DONE!')
-            if RUST_AVAILABLE and USE_RUST:
+            if USE_RUST:
                 import matplotlib
                 matplotlib.use('Agg')
                 import matplotlib.pyplot as plt
@@ -1074,7 +1069,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
                 self.assertTrue((sd.cyc.dist_m == sd.dist_m).all())
                 self.assertTrue((sd.mps_ach == sd.cyc.mps).all())
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             cyc = fastsim.cycle.make_cycle(
                 [0.0 , 10.0 , 20.0 , 30.0 , 40.0 , 50.0 , 99.0],
                 [0.0 , 10.0 , 10.0 , 10.0 , 10.0 ,  0.0 ,  0.0],
