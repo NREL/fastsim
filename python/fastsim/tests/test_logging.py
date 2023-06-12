@@ -10,8 +10,8 @@ class TestCase(unittest.TestCase):
             fastsim_logger.warning("test log")
     
     def test_rust_logging(self):
-        fastsimrust_logger = logging.getLogger("fastsimrust")
-        with self.assertLogs("fastsimrust", level="DEBUG"):
+        fastsimrust_logger = logging.getLogger("fastsim.fastsimrust")
+        with self.assertLogs("fastsim.fastsimrust", level="DEBUG"):
             fastsimrust_logger.warning("test log")
 
     # TODO: add tests for disabling logging

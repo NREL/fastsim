@@ -24,20 +24,15 @@ impl Default for FcModelTypes {
 }
 
 /// Which commponent temperature affects FC efficency
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum FcTempEffComponent {
     /// FC efficiency is purely dependent on cat temp
     Catalyst,
     /// FC efficency is dependent on both cat and FC temp
     CatAndFC,
     /// FC efficiency is dependent on FC temp only
+    #[default]
     FuelConverter,
-}
-
-impl Default for FcTempEffComponent {
-    fn default() -> Self {
-        FcTempEffComponent::FuelConverter
-    }
 }
 
 /// Model variants for how FC efficiency depends on temperature
@@ -167,18 +162,13 @@ pub enum CabinHvacModelTypes {
 }
 
 /// Whether compontent thermal model is handled by FASTSim
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ComponentModelTypes {
     /// Component temperature is handled inside FASTSim
+    #[default]
     Internal,
     /// Component temperature will be overriden by wrapper code
     External,
-}
-
-impl Default for ComponentModelTypes {
-    fn default() -> Self {
-        ComponentModelTypes::Internal
-    }
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
