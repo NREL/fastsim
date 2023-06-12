@@ -49,44 +49,64 @@ lazy_static! {
         self.mc_peak_eff()
     }
 
-    // TODO: refactor this to have a non-py and `_py` version
-    #[setter]
-    pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
-        let mc_max_eff = ndarrmax(&self.mc_eff_array);
-        self.mc_eff_array *= new_peak / mc_max_eff;
-        let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
-        self.mc_full_eff_array = self
-            .mc_full_eff_array
-            .iter()
-            .map(|e: &f64| -> f64 { e * (new_peak / mc_max_full_eff) })
-            .collect();
-    }
+   // TODO: refactor this to have a non-py and `_py` version
+   #[setter]
+   pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
+       let mc_max_eff = ndarrmax(&self.mc_eff_array);
+       self.mc_eff_array *= new_peak / mc_max_eff;
+       let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
+       self.mc_full_eff_array = self
+           .mc_full_eff_array
+           .iter()
+           .map(|e: &f64| -> f64 { e * (new_peak / mc_max_full_eff) })
+           .collect();
+   }
 
-    #[getter]
-    pub fn get_max_fc_eff_kw(&self) -> f64 {
-        self.max_fc_eff_kw()
-    }
+   #[getter]
+   pub fn get_max_fc_eff_kw(&self) -> f64 {
+       self.max_fc_eff_kw()
+   }
+   
+   #[pyo3(name = "set_mc_peak_eff")]
+   pub fn set_mc_peak_eff_py(&mut self, new_peak: f64) {
+       self.set_mc_peak_eff(new_peak);
+   }
+   
+   #[pyo3(name = "get_max_fc_eff_kw")]
+   pub fn get_max_fc_eff_kw_py(&self) -> f64 {
+       self.get_max_fc_eff_kw()
+   }
+     
+   #[getter]
+   pub fn get_fc_peak_eff(&self) -> f64 {
+       self.fc_peak_eff()
+   }
 
-    #[getter]
-    pub fn get_fc_peak_eff(&self) -> f64 {
-        self.fc_peak_eff()
-    }
-
-    #[setter]
-    pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
-        let old_fc_peak_eff = self.fc_peak_eff();
-        let multiplier = new_peak / old_fc_peak_eff;
-        self.fc_eff_array = self
-            .fc_eff_array
-            .iter()
-            .map(|eff: &f64| -> f64 { eff * multiplier })
-            .collect();
-        let new_fc_peak_eff = self.fc_peak_eff();
-        let eff_map_multiplier = new_peak / new_fc_peak_eff;
-        self.fc_eff_map = self
-            .fc_eff_map
-            .map(|eff| -> f64 { eff * eff_map_multiplier });
-    }
+   #[setter]
+   pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
+       let old_fc_peak_eff = self.fc_peak_eff();
+       let multiplier = new_peak / old_fc_peak_eff;
+       self.fc_eff_array = self
+           .fc_eff_array
+           .iter()
+           .map(|eff: &f64| -> f64 { eff * multiplier })
+           .collect();
+       let new_fc_peak_eff = self.fc_peak_eff();
+       let eff_map_multiplier = new_peak / new_fc_peak_eff;
+       self.fc_eff_map = self
+           .fc_eff_map
+           .map(|eff| -> f64 { eff * eff_map_multiplier });
+   }
+   
+   #[pyo3(name = "get_fc_peak_eff")]
+   pub fn get_fc_peak_eff_py(&self) -> f64 {
+       self.get_fc_peak_eff()
+   }
+   
+   #[pyo3(name = "set_fc_peak_eff")]
+   pub fn set_fc_peak_eff_py(&mut self, new_peak: f64) {
+       self.set_fc_peak_eff(new_peak);
+   }
 
     #[pyo3(name = "set_derived")]
     pub fn set_derived_py(&mut self) {
