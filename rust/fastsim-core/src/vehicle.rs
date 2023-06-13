@@ -936,8 +936,9 @@ impl RustVehicle {
 }
 
 impl SerdeAPI for RustVehicle {
-    fn init(&mut self) {
-        self.set_derived().unwrap();
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.set_derived()?;
+        Ok(())
     }
 }
 
