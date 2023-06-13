@@ -12,7 +12,7 @@ use crate::simdrive::{RustSimDrive, RustSimDriveParams};
 use crate::vehicle;
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
-// TODO: Asmaa, this struct (and maybe structs that are in its fields) need to 
+// TODO: Asmaa, this struct (and maybe structs that are in its fields) need to
 // be exposed to Python using the `add_pyo3_api` attribute-style procedural macro
 /// Label fuel economy values
 pub struct LabelFe {
