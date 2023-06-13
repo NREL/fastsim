@@ -10,7 +10,7 @@ jobs:
   build:
     name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os:
           - ubuntu
@@ -54,21 +54,24 @@ jobs:
       - run: cd rust/ && cargo test
 
       - name: install python dependencies
-        run: pip install -U setuptools wheel twine cibuildwheel plotly
+        run: pip install -U setuptools wheel twine cibuildwheel pytest
 
       - name: build sdist
         if: matrix.os == 'ubuntu' && matrix.python-version == '8'
         run: |
           pip install -U setuptools-rust
-          python setup.py sdist
+          python -c "import setuptools; setuptools.setup()" sdist
+      
       - name: build ${{ matrix.platform || matrix.os }} binaries
         run: cibuildwheel --output-dir dist
         env:
           CIBW_BUILD: "cp3${{ matrix.python-version }}-*"
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
           CIBW_PLATFORM: ${{ matrix.platform || matrix.os }}
+          # TODO: why doesn't pytest work with cibuildwheel?
           CIBW_TEST_REQUIRES: "pytest"
-          CIBW_TEST_COMMAND: "pytest -v {project}/python/fastsim/tests"
+          # CIBW_TEST_COMMAND: "pytest -v {project}/python/fastsim/tests"
+          CIBW_TEST_COMMAND: "python -m unittest discover {project}/python/fastsim/tests"
           CIBW_ARCHS_MACOS: 'universal2'
           # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
           CIBW_TEST_SKIP: '*_universal2:arm64'
@@ -105,3 +108,17 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           path: ./dist/*
+
+  release:
+    name: TEST release wheels to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: test download
+        uses: actions/download-artifact@v2.1.1
+      
+      - name: ls -l
+        run: ls -l
+
+      - name: ls -R
+        run: ls -R
