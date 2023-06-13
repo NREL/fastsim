@@ -3,9 +3,23 @@ use std::collections::HashMap;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// runs any initialization steps that might be needed
-    fn init(&mut self) {}
+    fn init(&mut self) -> anyhow::Result<()> {
+        Ok(())
+    }
 
-    fn to_file(&self, filename: &str) -> anyhow::Result<()> {
+    #[allow(clippy::wrong_self_convention)]
+    /// Save current data structure to file. Method adaptively calls serialization methods
+    /// dependent on the suffix of the file given as str.
+    ///
+    /// # Argument:
+    ///
+    /// * `filename`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
+    /// supported
+    ///
+    /// # Returns:
+    ///
+    /// A Rust Result
+    fn to_file(&self, filename: &str) -> Result<(), anyhow::Error> {
         let file = PathBuf::from(filename);
         match file.extension().unwrap().to_str().unwrap() {
             "json" => serde_json::to_writer(&File::create(file)?, self)?,
@@ -15,6 +29,19 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(())
     }
 
+    /// Read from file and return instantiated struct. Method adaptively calls deserialization
+    /// methods dependent on the suffix of the file name given as str.
+    /// Function returns a dynamic Error Result if it fails.
+    ///
+    /// # Argument:
+    ///
+    /// * `filename`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
+    /// supported
+    ///
+    /// # Returns:
+    ///
+    /// A Rust Result wrapping data structure if method is called successfully; otherwise a dynamic
+    /// Error.
     fn from_file(filename: &str) -> Result<Self, anyhow::Error>
     where
         Self: std::marker::Sized,
@@ -26,13 +53,14 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .unwrap_or("");
 
         let file = File::open(filename)?;
-        let mut res = match extension {
-            "yaml" => Ok(serde_yaml::from_reader::<std::fs::File, Self>(file)?),
-            "json" => Ok(serde_json::from_reader::<std::fs::File, Self>(file)?),
-            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        // deserialized file
+        let mut file_de: Self = match extension {
+            "yaml" => serde_yaml::from_reader(file)?,
+            "json" => serde_json::from_reader(file)?,
+            _ => bail!("Unsupported file extension {}", extension),
         };
-        res.as_mut().unwrap().init();
-        res
+        file_de.init()?;
+        Ok(file_de)
     }
 
     /// json serialization method.
@@ -41,10 +69,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// json deserialization method.
-    fn from_json(json_str: &str) -> Result<Self, anyhow::Error>
-    where
-        Self: Sized,
-    {
+    fn from_json(json_str: &str) -> Result<Self, anyhow::Error> {
         Ok(serde_json::from_str(json_str)?)
     }
 
@@ -54,10 +79,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// yaml deserialization method.
-    fn from_yaml(yaml_str: &str) -> Result<Self, anyhow::Error>
-    where
-        Self: Sized,
-    {
+    fn from_yaml(yaml_str: &str) -> Result<Self, anyhow::Error> {
         Ok(serde_yaml::from_str(yaml_str)?)
     }
 
@@ -67,10 +89,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// bincode deserialization method.
-    fn from_bincode(encoded: &[u8]) -> Result<Self, anyhow::Error>
-    where
-        Self: Sized,
-    {
+    fn from_bincode(encoded: &[u8]) -> Result<Self, anyhow::Error> {
         Ok(deserialize(encoded)?)
     }
 }
