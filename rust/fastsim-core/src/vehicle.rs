@@ -917,7 +917,7 @@ impl RustVehicle {
         v
     }
 
-    pub fn from_str(filename: &str) -> Result<Self, anyhow::Error> {
+    pub fn from_json_str(filename: &str) -> Result<Self, anyhow::Error> {
         let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
         veh_res.as_mut().unwrap().set_derived()?;
         veh_res
@@ -1095,7 +1095,7 @@ mod tests {
                 })
                 .collect(),
             modern_max: MODERN_MAX,
-            mc_eff_array: mc_eff_map.clone(),
+            mc_eff_array: mc_eff_map,
             mc_kw_in_array: [0.0; 101]
                 .iter()
                 .enumerate()
