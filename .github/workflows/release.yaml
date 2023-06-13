@@ -54,6 +54,10 @@ jobs:
           override: true
       - run: cd rust/ && cargo test
 
+      - name: Python unit tests
+        run: |
+          pip install -e ".[dev]" && pytest -v python/fastsim/tests/
+
       - name: install python dependencies
         run: pip install -U setuptools wheel twine cibuildwheel plotly
 
