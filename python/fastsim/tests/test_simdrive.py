@@ -7,15 +7,10 @@ import numpy as np
 
 import fastsim as fsim
 from fastsim import cycle, vehicle, simdrive
-from fastsim.rustext import RUST_AVAILABLE, warn_rust_unavailable
 from fastsim.auxiliaries import set_nested_values
 
 USE_PYTHON = False
 USE_RUST = True
-
-
-if USE_RUST and not RUST_AVAILABLE:
-    warn_rust_unavailable(__file__)
 
 
 class TestSimDriveClassic(unittest.TestCase):
@@ -39,7 +34,7 @@ class TestSimDriveClassic(unittest.TestCase):
 
             self.assertEqual(sim_drive.fs_kw_out_ach[100], 29.32533101828119)
 
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             msg = f"Issue Running {type(self)}.test_sim_drive_step. Rust"
             cyc = cycle.Cycle.from_file('udds').to_rust()
             veh = vehicle.Vehicle.from_vehdb(1).to_rust()
@@ -65,7 +60,7 @@ class TestSimDriveClassic(unittest.TestCase):
             self.assertAlmostEqual(
                 sim_drive.fs_kw_out_ach.sum(), 24410.31348426869, places=4)
 
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             msg = f"Issue Running {type(self)}.test_sim_drive_walk. Rust"
             cyc = cycle.Cycle.from_file('udds')
             veh = vehicle.Vehicle.from_vehdb(1)
@@ -108,7 +103,7 @@ class TestSimDriveClassic(unittest.TestCase):
                 sd1.fs_kw_out_ach.sum() + sd2.fs_kw_out_ach.sum(),
                 sdtot.fs_kw_out_ach.sum(),
                 places=5)
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             msg = f"Issue Running {type(self)}.test_split_cycles. Rust."
             t_clip = 210  # speed is non-zero here
             cyc1 = cycle.Cycle.from_dict(
@@ -165,7 +160,7 @@ class TestSimDriveClassic(unittest.TestCase):
             self.assertTrue(trace_miss_corrected,
                             msg="Issue in Python version")
 
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             veh = veh.to_rust()
             cyc = cyc.to_rust()
             sd = simdrive.RustSimDrive(cyc, veh)
@@ -206,7 +201,7 @@ class TestSimDriveClassic(unittest.TestCase):
 
             self.assertTrue(sd.fc_kw_in_ach[10] == 0)
             self.assertTrue(sd.fc_kw_in_ach[37] == 0)
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             msg = "Issue with Rust version"
             cyc = cycle.Cycle.from_file('udds').to_rust().get_cyc_dict()
             cyc = cycle.Cycle.from_dict(
@@ -241,7 +236,7 @@ class TestSimDriveClassic(unittest.TestCase):
                     (sd.mps_ach > sd.cyc0.mps).any(),
                     msg=f'Achieved speed is greater than requested speed for {vehid}'
                 )
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             for vehid in range(1, 27):
                 veh = vehicle.Vehicle.from_vehdb(vehid).to_rust()
                 cyc = cycle.Cycle.from_file('udds').to_rust()
@@ -269,7 +264,7 @@ class TestSimDriveClassic(unittest.TestCase):
             sd.sim_drive()
             self.assertEqual(sd.i, sd.cyc0.len)
 
-        if RUST_AVAILABLE and USE_RUST:
+        if USE_RUST:
             sd = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
             sd.sim_drive()
             self.assertEqual(sd.i, sd.cyc0.len)

@@ -3,7 +3,6 @@
 from __future__ import annotations
 from typing import Dict, Any, Optional
 import numpy as np
-from fastsim.rustext import RUST_AVAILABLE
 from fastsim import parameters as params
 import seaborn as sns
 import re
@@ -119,9 +118,8 @@ def set_log_level(level: str | int) -> int:
     fastsim_logger = logging.getLogger("fastsim")
     previous_level = fastsim_logger.level
     fastsim_logger.setLevel(level)
-    if RUST_AVAILABLE:
-        fastsimrust_logger = logging.getLogger("fastsim_core")
-        fastsimrust_logger.setLevel(level)
+    fastsimrust_logger = logging.getLogger("fastsim_core")
+    fastsimrust_logger.setLevel(level)
     return previous_level
 
 def disable_logging() -> int:
@@ -174,8 +172,7 @@ def set_log_filename(filename: str | Path):
     handler = logging.FileHandler(filename)
     handler.setFormatter(logging.root.handlers[0].formatter)
     logging.getLogger("fastsim").addHandler(handler)
-    if RUST_AVAILABLE:
-        logging.getLogger("fastsimrust").addHandler(handler)
+    logging.getLogger("fastsim.fastsimrust").addHandler(handler)
 
 
 def get_containers_with_path(

@@ -8,17 +8,17 @@ jobs:
       runs-on: ubuntu-latest
 
       strategy:
-        fail-fast: false
+        fail-fast: true
         matrix:
           python-version: ['3.8', '3.9', '3.10']
 
       env:
         PYTHON: ${{ matrix.python-version }}
       steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: set up python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -35,6 +35,4 @@ jobs:
 
       - name: Python unit tests 
         run: |
-          pip install setuptools_rust pytest plotly
-          pip install . 
-          pytest -v python/fastsim/tests/
+          pip install -e ".[dev]" && pytest -v python/fastsim/tests/

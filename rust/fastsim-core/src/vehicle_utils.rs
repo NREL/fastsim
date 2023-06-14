@@ -1479,6 +1479,7 @@ pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
 #[allow(non_snake_case)]
 #[allow(clippy::too_many_arguments)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
+#[allow(clippy::too_many_arguments)]
 pub fn abc_to_drag_coeffs(
     veh: &mut RustVehicle,
     a_lbf: f64,

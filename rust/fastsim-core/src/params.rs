@@ -154,9 +154,10 @@ pub struct AdjCoef {
 
 impl Default for RustLongParams {
     fn default() -> Self {
-        let long_params_str: &str = include_str!("../../../python/fastsim/resources/longparams.json");
+        let long_params_str: &str =
+            include_str!("../../../python/fastsim/resources/longparams.json");
         let long_params: Self = from_str(long_params_str).unwrap();
-        return long_params;
+        long_params
     }
 }
 

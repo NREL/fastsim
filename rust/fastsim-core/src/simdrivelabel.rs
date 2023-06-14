@@ -145,7 +145,7 @@ pub fn get_label_fe(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
     verbose: Option<bool>,
-) -> Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>), anyhow::Error> {
+) -> anyhow::Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
     // Generates label fuel economy (FE) values for a provided vehicle.
     //
     // Arguments:
@@ -239,9 +239,7 @@ pub fn get_label_fe(
         val.sim_drive(None, None)?;
         let key = String::from(*k);
         let trace_miss_speed_mph = val.trace_miss_speed_mps * MPH_PER_MPS;
-        if (key == *"udds" || key == *"hwy")
-            && trace_miss_speed_mph > max_trace_miss_in_mph
-        {
+        if (key == *"udds" || key == *"hwy") && trace_miss_speed_mph > max_trace_miss_in_mph {
             max_trace_miss_in_mph = trace_miss_speed_mph;
         }
     }
@@ -326,9 +324,9 @@ pub fn get_label_fe(
             out.adj_comb_kwh_per_mi =
                 0.55 * out.adj_udds_kwh_per_mi + 0.45 * out.adj_hwy_kwh_per_mi;
 
-            out.adj_udds_kwh_per_mi = out.adj_udds_kwh_per_mi * CHG_EFF;
-            out.adj_hwy_kwh_per_mi = out.adj_hwy_kwh_per_mi * CHG_EFF;
-            out.adj_comb_kwh_per_mi = out.adj_comb_kwh_per_mi * CHG_EFF;
+            out.adj_udds_kwh_per_mi *= CHG_EFF;
+            out.adj_hwy_kwh_per_mi *= CHG_EFF;
+            out.adj_comb_kwh_per_mi *= CHG_EFF;
 
             // range for combined city/highway
             out.net_range_miles = veh.ess_max_kwh / out.adj_comb_ess_kwh_per_mi;
@@ -403,14 +401,14 @@ pub fn get_label_fe(
 
     if full_detail.unwrap_or(false) && verbose.unwrap_or(false) {
         println!("{:#?}", out);
-        return Ok((out, Some(sd)));
+        Ok((out, Some(sd)))
     } else if full_detail.unwrap_or(false) {
-        return Ok((out, Some(sd)));
+        Ok((out, Some(sd)))
     } else if verbose.unwrap_or(false) {
         println!("{:#?}", out);
-        return Ok((out, None));
+        Ok((out, None))
     } else {
-        return Ok((out, None));
+        Ok((out, None))
     }
 }
 
@@ -434,17 +432,18 @@ pub fn get_label_fe_phev(
     // props : RustPhysicalProperties
     //
     // Returns label fuel economy values for PHEV as a struct.
-    let mut phev_calcs: LabelFePHEV = LabelFePHEV::default();
-
-    phev_calcs.regen_soc_buffer = min(
-        ((0.5 * veh.veh_kg * ((60. * (1. / MPH_PER_MPS)).powi(2)))
-            * (1. / 3600.)
-            * (1. / 1000.)
-            * veh.max_regen
-            * veh.mc_peak_eff())
-            / veh.ess_max_kwh,
-        (veh.max_soc - veh.min_soc) / 2.0,
-    );
+    let mut phev_calcs = LabelFePHEV {
+        regen_soc_buffer: min(
+            ((0.5 * veh.veh_kg * ((60. * (1. / MPH_PER_MPS)).powi(2)))
+                * (1. / 3600.)
+                * (1. / 1000.)
+                * veh.max_regen
+                * veh.mc_peak_eff())
+                / veh.ess_max_kwh,
+            (veh.max_soc - veh.min_soc) / 2.0,
+        ),
+        ..LabelFePHEV::default()
+    };
 
     // charge sustaining behavior
     for (key, sd_val) in sd.iter_mut() {
@@ -582,18 +581,17 @@ pub fn get_label_fe_phev(
                     * (1.0 - sim_params.max_epa_adj),
             ));
 
-            for c in 0..phev_calc.lab_iter_kwh_per_mi.len() {
-                if phev_calc.lab_iter_kwh_per_mi[c] == 0.0 {
+            for (c, lab_iter_kwh_per_mi) in phev_calc.lab_iter_kwh_per_mi.iter().enumerate() {
+                if *lab_iter_kwh_per_mi == 0.0 {
                     adj_iter_kwh_per_mi_vals[c] = 0.0;
                 } else {
                     adj_iter_kwh_per_mi_vals[c] =
                         (1.0 / max(
                             1.0 / (adj_params.city_intercept
                                 + (adj_params.city_slope
-                                    / ((1.0 / phev_calc.lab_iter_kwh_per_mi[c])
-                                        * props.kwh_per_gge))),
+                                    / ((1.0 / lab_iter_kwh_per_mi) * props.kwh_per_gge))),
                             (1.0 - sim_params.max_epa_adj)
-                                * ((1.0 / phev_calc.lab_iter_kwh_per_mi[c]) * props.kwh_per_gge),
+                                * ((1.0 / lab_iter_kwh_per_mi) * props.kwh_per_gge),
                         )) * props.kwh_per_gge;
                 }
             }
@@ -613,18 +611,17 @@ pub fn get_label_fe_phev(
                     * (1.0 - sim_params.max_epa_adj),
             ));
 
-            for c in 0..phev_calc.lab_iter_kwh_per_mi.len() {
-                if phev_calc.lab_iter_kwh_per_mi[c] == 0.0 {
+            for (c, lab_iter_kwh_per_mi) in phev_calc.lab_iter_kwh_per_mi.iter().enumerate() {
+                if *lab_iter_kwh_per_mi == 0.0 {
                     adj_iter_kwh_per_mi_vals[c] = 0.0;
                 } else {
                     adj_iter_kwh_per_mi_vals[c] =
                         (1.0 / max(
                             1.0 / (adj_params.hwy_intercept
                                 + (adj_params.hwy_slope
-                                    / ((1.0 / phev_calc.lab_iter_kwh_per_mi[c])
-                                        * props.kwh_per_gge))),
+                                    / ((1.0 / lab_iter_kwh_per_mi) * props.kwh_per_gge))),
                             (1.0 - sim_params.max_epa_adj)
-                                * ((1.0 / phev_calc.lab_iter_kwh_per_mi[c]) * props.kwh_per_gge),
+                                * ((1.0 / lab_iter_kwh_per_mi) * props.kwh_per_gge),
                         )) * props.kwh_per_gge;
                 }
             }
@@ -707,7 +704,7 @@ pub fn get_label_fe_phev(
         };
     }
 
-    return Ok(phev_calcs);
+    Ok(phev_calcs)
 }
 
 #[cfg(test)]

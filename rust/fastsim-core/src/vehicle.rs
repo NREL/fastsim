@@ -907,6 +907,7 @@ impl RustVehicle {
         v
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(filename: &str) -> Result<Self, anyhow::Error> {
         let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
         veh_res.as_mut().unwrap().set_derived()?;
@@ -915,8 +916,9 @@ impl RustVehicle {
 }
 
 impl SerdeAPI for RustVehicle {
-    fn init(&mut self) {
-        self.set_derived().unwrap();
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.set_derived()?;
+        Ok(())
     }
 }
 
@@ -1085,7 +1087,7 @@ mod tests {
                 })
                 .collect(),
             modern_max: MODERN_MAX,
-            mc_eff_array: mc_eff_map.clone(),
+            mc_eff_array: mc_eff_map,
             mc_kw_in_array: [0.0; 101]
                 .iter()
                 .enumerate()

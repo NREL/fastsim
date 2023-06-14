@@ -2,7 +2,7 @@ import unittest
 from fastsim import auxiliaries
 from fastsim.vehicle import Vehicle
 from fastsim import utils
-from fastsimrust import abc_to_drag_coeffs
+from fastsim.fastsimrust import abc_to_drag_coeffs
 import numpy as np
 
 class test_auxiliaries(unittest.TestCase):

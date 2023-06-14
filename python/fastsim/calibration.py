@@ -4,20 +4,6 @@ from typing import Dict, List, Tuple, Optional, Any, Union
 from pathlib import Path
 import pickle
 import argparse
-
-# pymoo
-from pymoo.util.display.output import Output 
-from pymoo.util.display.column import Column
-from pymoo.operators.sampling.lhs import LatinHypercubeSampling as LHS
-from pymoo.termination.default import DefaultMultiObjectiveTermination as DMOT
-from pymoo.core.problem import Problem, ElementwiseProblem, LoopedElementwiseEvaluation, StarmapParallelization
-from pymoo.algorithms.moo.nsga3 import NSGA3
-from pymoo.algorithms.moo.nsga2 import NSGA2
-from pymoo.util.ref_dirs import get_reference_directions
-from pymoo.algorithms.base.genetic import GeneticAlgorithm
-from pymoo.optimize import minimize
-
-# misc
 import pandas as pd
 import numpy as np
 import json
@@ -25,13 +11,41 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+try:
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    PLOTLY_AVAILABLE = True
+except ModuleNotFoundError:
+    PLOTLY_AVAILABLE = False
+
+# pymoo
+try:
+    from pymoo.util.display.output import Output 
+    from pymoo.util.display.column import Column
+    from pymoo.operators.sampling.lhs import LatinHypercubeSampling as LHS
+    from pymoo.termination.default import DefaultMultiObjectiveTermination as DMOT
+    from pymoo.core.problem import Problem, ElementwiseProblem, LoopedElementwiseEvaluation, StarmapParallelization
+    from pymoo.algorithms.moo.nsga3 import NSGA3
+    from pymoo.algorithms.moo.nsga2 import NSGA2
+    from pymoo.util.ref_dirs import get_reference_directions
+    from pymoo.algorithms.base.genetic import GeneticAlgorithm
+    from pymoo.optimize import minimize
+    PYMOO_AVAILABLE = True
+except ModuleNotFoundError as err:
+    logger.warning(
+        f"{err}\nTry running `pip install pymoo==0.6.0.1` to use all features in " + 
+        "`fastsim.calibration`"
+    )
+    PYMOO_AVAILABLE = False
+
 import numpy as np
 
 # local -- expects rust-port version of fastsim so make sure this is in the env
 import fastsim as fsim
-import fastsimrust as fsr
+import fastsim.fastsimrust as fsr
 
 
 def get_error_val(model, test, time_steps):
@@ -52,7 +66,6 @@ def get_error_val(model, test, time_steps):
         time_steps), f"{len(model)}, {len(test)}, {len(time_steps)}"
 
     return np.trapz(y=abs(model - test), x=time_steps) / (time_steps[-1] - time_steps[0])
-
 
 @dataclass
 class ModelObjectives(object):
@@ -101,13 +114,13 @@ class ModelObjectives(object):
     def get_errors(
         self,
         sim_drives: Dict[str, fsr.RustSimDrive | fsr.SimDriveHot],
-        return_mods: Optional[bool] = False,
-        plot: Optional[bool] = False,
+        return_mods: bool = False,
+        plot: bool = False,
         plot_save_dir: Optional[str] = None,
-        plot_perc_err: Optional[bool] = False,
-        show: Optional[bool] = False,
-        fontsize: Optional[float] = 12,
-        plotly: Optional[bool] = False,
+        plot_perc_err: bool = False,
+        show: bool = False,
+        fontsize: float = 12,
+        plotly: bool = False,
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
@@ -131,6 +144,11 @@ class ModelObjectives(object):
 
         objectives: Dict = {}
         solved_mods: Dict = {}
+
+        if plotly:
+            assert PLOTLY_AVAILABLE, "Package `plotly` not installed." + \
+                "Run `pip install plotly`."
+
 
         # loop through all the provided trips
         for ((key, df_exp), sim_drive) in zip(self.dfs.items(), sim_drives.values()):
@@ -413,116 +431,114 @@ def update_plots(
             # pltly_fig.update_yaxes(title_text=obj[0] + "%Err", row=i_obj * ax_multiplier + 2, col=1)
             pltly_fig.update_yaxes(title_text="%Err", row=i_obj * ax_multiplier + 2, col=1)
 
+if PYMOO_AVAILABLE:
+    @dataclass
+    class CalibrationProblem(ElementwiseProblem):
+        """
+        Problem for calibrating models to match test data
+        """
+
+        def __init__(
+            self,
+            mod_obj: ModelObjectives,
+            param_bounds: List[Tuple[float, float]],
+            elementwise_runner=LoopedElementwiseEvaluation(),
+        ):
+            self.mod_obj = mod_obj
+            # parameter lower and upper bounds
+            self.param_bounds = param_bounds
+            assert len(self.param_bounds) == len(
+                self.mod_obj.params), f"{len(self.param_bounds)} != {len(self.mod_obj.params)}"
+            super().__init__(
+                n_var=len(self.mod_obj.params),
+                n_obj=self.mod_obj.n_obj,
+                xl=[bounds[0]
+                    for bounds in self.param_bounds],
+                xu=[bounds[1]
+                    for bounds in self.param_bounds],
+                elementwise_runner=elementwise_runner,
+            )
+
+        def _evaluate(self, x, out, *args, **kwargs):
+            sim_drives = self.mod_obj.update_params(x)
+            out['F'] = [
+                val for inner_dict in self.mod_obj.get_errors(sim_drives).values() for val in inner_dict.values()
+            ]
 
 
+if PYMOO_AVAILABLE:
+    class CustomOutput(Output):
+        def __init__(self):
+            super().__init__()
+            self.t_gen_start = time.perf_counter()
+            self.n_nds = Column("n_nds", width=8)
+            self.t_s = Column("t [s]", width=10)
+            self.euclid_min = Column("euclid min", width=13)
+            self.columns += [self.n_nds, self.t_s, self.euclid_min]
+
+        def update(self, algorithm):
+            super().update(algorithm)
+            self.n_nds.set(len(algorithm.opt))
+            self.t_s.set(f"{(time.perf_counter() - self.t_gen_start):.3g}")
+            f = algorithm.pop.get('F')
+            euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
+            self.euclid_min.set(f"{euclid_min:.3g}")
 
 
-
-@dataclass
-class CalibrationProblem(ElementwiseProblem):
-    """
-    Problem for calibrating models to match test data
-    """
-
-    def __init__(
-        self,
-        mod_obj: ModelObjectives,
-        param_bounds: List[Tuple[float, float]],
-        elementwise_runner=LoopedElementwiseEvaluation(),
+if PYMOO_AVAILABLE:
+    def run_minimize(
+        problem: CalibrationProblem,
+        algorithm: GeneticAlgorithm,
+        termination: DMOT,
+        copy_algorithm: bool = False,
+        copy_termination: bool = False,
+        save_history: bool = False,
+        save_path: Union[Path, str] = Path("pymoo_res/"),
     ):
-        self.mod_obj = mod_obj
-        # parameter lower and upper bounds
-        self.param_bounds = param_bounds
-        assert len(self.param_bounds) == len(
-            self.mod_obj.params), f"{len(self.param_bounds)} != {len(self.mod_obj.params)}"
-        super().__init__(
-            n_var=len(self.mod_obj.params),
-            n_obj=self.mod_obj.n_obj,
-            xl=[bounds[0]
-                for bounds in self.param_bounds],
-            xu=[bounds[1]
-                for bounds in self.param_bounds],
-            elementwise_runner=elementwise_runner,
+        print("`run_minimize` starting at")
+        fsim.utils.print_dt()
+
+        t0 = time.perf_counter()
+        res = minimize(
+            problem,
+            algorithm,
+            termination,
+            copy_algorithm,
+            copy_termination,
+            seed=1,
+            verbose=True,
+            save_history=save_history,
+            output=CustomOutput(),
         )
 
-    def _evaluate(self, x, out, *args, **kwargs):
-        sim_drives = self.mod_obj.update_params(x)
-        out['F'] = [
-            val for inner_dict in self.mod_obj.get_errors(sim_drives).values() for val in inner_dict.values()
+        f_columns = [
+            f"{key}: {obj[0]}"
+            for key in problem.mod_obj.dfs.keys()
+            for obj in problem.mod_obj.obj_names
         ]
+        f_df = pd.DataFrame(
+            data=[f for f in res.F.tolist()],
+            columns=f_columns,
+        )
 
+        x_df = pd.DataFrame(
+            data=[x for x in res.X.tolist()],
+            columns=[param for param in problem.mod_obj.params],
+        )
 
-class CustomOutput(Output):
-    def __init__(self):
-        super().__init__()
-        self.t_gen_start = time.perf_counter()
-        self.n_nds = Column("n_nds", width=8)
-        self.t_s = Column("t [s]", width=10)
-        self.euclid_min = Column("euclid min", width=13)
-        self.columns += [self.n_nds, self.t_s, self.euclid_min]
+        Path(save_path).mkdir(exist_ok=True, parents=True)
+        # with open(Path(save_path) / "pymoo_res.pickle", 'wb') as file:
+        #     pickle.dump(res, file)
 
-    def update(self, algorithm):
-        super().update(algorithm)
-        self.n_nds.set(len(algorithm.opt))
-        self.t_s.set(f"{(time.perf_counter() - self.t_gen_start):.3g}")
-        f = algorithm.pop.get('F')
-        euclid_min = np.sqrt((np.array(f) ** 2).sum(axis=1)).min()
-        self.euclid_min.set(f"{euclid_min:.3g}")
+        res_df = pd.concat([x_df, f_df], axis=1)
+        res_df['euclidean'] = (
+            res_df.iloc[:, len(problem.mod_obj.params):] ** 2).sum(1).pow(1/2)
+        res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
 
+        t1 = time.perf_counter()
+        print(f"Elapsed time to run minimization: {t1-t0:.5g} s")
 
-def run_minimize(
-    problem: CalibrationProblem,
-    algorithm: GeneticAlgorithm,
-    termination: DMOT,
-    copy_algorithm: bool = False,
-    copy_termination: bool = False,
-    save_history: bool = False,
-    save_path: Union[Path, str] = Path("pymoo_res/"),
-):
-    print("`run_minimize` starting at")
-    fsim.utils.print_dt()
-
-    t0 = time.perf_counter()
-    res = minimize(
-        problem,
-        algorithm,
-        termination,
-        copy_algorithm,
-        copy_termination,
-        seed=1,
-        verbose=True,
-        save_history=save_history,
-        output=CustomOutput(),
-    )
-
-    f_columns = [
-        f"{key}: {obj[0]}"
-        for key in problem.mod_obj.dfs.keys()
-        for obj in problem.mod_obj.obj_names
-    ]
-    f_df = pd.DataFrame(
-        data=[f for f in res.F.tolist()],
-        columns=f_columns,
-    )
-
-    x_df = pd.DataFrame(
-        data=[x for x in res.X.tolist()],
-        columns=[param for param in problem.mod_obj.params],
-    )
-
-    Path(save_path).mkdir(exist_ok=True, parents=True)
-    # with open(Path(save_path) / "pymoo_res.pickle", 'wb') as file:
-    #     pickle.dump(res, file)
-
-    res_df = pd.concat([x_df, f_df], axis=1)
-    res_df['euclidean'] = (
-        res_df.iloc[:, len(problem.mod_obj.params):] ** 2).sum(1).pow(1/2)
-    res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
-
-    t1 = time.perf_counter()
-    print(f"Elapsed time to run minimization: {t1-t0:.5g} s")
-
-    return res, res_df
+        return res, res_df
 
 
 def get_parser() -> argparse.ArgumentParser:
