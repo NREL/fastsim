@@ -6,6 +6,13 @@ use crate::imports::*;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
+#[cfg(test)]
+pub fn resources_path() -> PathBuf {
+    let pb = PathBuf::from("../../python/fastsim/resources");
+    assert!(pb.exists());
+    pb
+}
+
 /// Error message for when user attempts to set value in a nested struct.
 pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
 Assign nested struct to own variable, run the `reset_orphaned` method, and then 
@@ -245,26 +252,32 @@ pub mod array_wrappers {
     #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayU32(Array1<u32>);
+    impl SerdeAPI for Pyo3ArrayU32 {}
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayI32(Array1<i32>);
+    impl SerdeAPI for Pyo3ArrayI32 {}
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3ArrayF64(Array1<f64>);
+    impl SerdeAPI for Pyo3ArrayF64 {}
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayBool(Array1<bool>);
+    impl SerdeAPI for Pyo3ArrayBool {}
 
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
     #[legacy_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3VecF64(Vec<f64>);
+
+    impl SerdeAPI for Pyo3VecF64 {}
 }
 
 #[cfg(feature = "pyo3")]

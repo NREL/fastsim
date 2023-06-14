@@ -16,6 +16,7 @@ use crate::vehicle::LegacyVehicle;
 
 #[allow(non_snake_case)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
+#[allow(clippy::too_many_arguments)]
 pub fn abc_to_drag_coeffs(
     veh: &mut LegacyVehicle,
     a_lbf: f64,
@@ -78,7 +79,7 @@ pub fn abc_to_drag_coeffs(
     if simdrive_optimize.unwrap_or(true) {
         let cost: GetError = GetError {
             cycle: &cyc,
-            vehicle: &veh,
+            vehicle: veh,
             dyno_func_lb: &dyno_func_lb,
         };
         let solver: NelderMead<Array1<f64>, f64> =
@@ -98,7 +99,7 @@ pub fn abc_to_drag_coeffs(
     veh.drag_coef = drag_coef;
     veh.wheel_rr_coef = wheel_rr_coef;
 
-    return (drag_coef, wheel_rr_coef);
+    (drag_coef, wheel_rr_coef)
 }
 
 pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f64>) -> f64 {
@@ -158,16 +159,15 @@ impl CostFunction for GetError<'_> {
         let cutoff_vec: Vec<usize> = sd_coast
             .mps_ach
             .indexed_iter()
-            .filter_map(|(index, &item)| (item < 0.1).then(|| index))
+            .filter_map(|(index, &item)| (item < 0.1).then_some(index))
             .collect();
-        let cutoff: usize;
-        if cutoff_vec.len() == 0 {
-            cutoff = sd_coast.mps_ach.len();
+        let cutoff: usize = if cutoff_vec.is_empty() {
+            sd_coast.mps_ach.len()
         } else {
-            cutoff = cutoff_vec[0];
-        }
+            cutoff_vec[0]
+        };
 
-        return Ok(get_error_val(
+        Ok(get_error_val(
             (Array::from_vec(vec![1000.0; sd_coast.mps_ach.len()])
                 * (sd_coast.drag_kw + sd_coast.rr_kw)
                 / sd_coast.mps_ach)
@@ -176,7 +176,7 @@ impl CostFunction for GetError<'_> {
                 * Array::from_vec(vec![crate::params::N_PER_LBF; sd_coast.mph_ach.len()]))
             .slice_move(s![0..cutoff]),
             cyc.time_s.slice_move(s![0..cutoff]),
-        ));
+        ))
     }
 }
 

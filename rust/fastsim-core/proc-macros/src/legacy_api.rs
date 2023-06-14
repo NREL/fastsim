@@ -133,7 +133,10 @@ pub fn legacy_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             "self.0.to_vec()".parse::<TokenStream2>().unwrap(),
                         )
                     } else {
-                        panic!("Invalid container type.  Must be Array1 or Vec.")
+                        abort!(
+                            ftype.span(),
+                            "Invalid container type.  Must be Array1 or Vec."
+                        )
                         // replace with proc_macro_error::abort macro
                     };
 
@@ -193,10 +196,12 @@ pub fn legacy_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
         } else {
-            panic!("Likely invalid use of `legacy_api` macro.");
+            abort_call_site!(
+                "`add_pyo3_api` works only on tuple structs with `Vec` or `Array` in the name"
+            );
         }
     } else {
-        panic!("Likely invalid use of `legacy_api` macro.");
+        abort_call_site!("`add_pyo3_api` works only on named and tuple structs.");
     };
 
     // py_impl_block.extend::<TokenStream2>(quote! {

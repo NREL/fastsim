@@ -389,11 +389,13 @@ pub struct CycleCache {
     grades: Array1<f64>,
 }
 
+impl SerdeAPI for CycleCache {}
+
 impl CycleCache {
     pub fn new(cyc: &Cycle) -> Self {
         let tol = 1e-6;
         let num_items = cyc.time_s.len();
-        let grade_all_zero = cyc.grade.iter().fold(true, |flag, &g| flag && g == 0.0);
+        let grade_all_zero = cyc.grade.iter().all(|g| *g == 0.0);
         let trapz_step_distances_m = trapz_step_distances(cyc);
         let trapz_distances_m = ndarrcumsum(&trapz_step_distances_m);
         let trapz_elevations_m = if grade_all_zero {
@@ -413,7 +415,7 @@ impl CycleCache {
         let mut interp_hs: Vec<f64> = Vec::with_capacity(num_items);
         for idx in 0..num_items {
             let d = trapz_distances_m[idx];
-            if interp_ds.len() == 0 || d > *interp_ds.last().unwrap() {
+            if interp_ds.is_empty() || d > *interp_ds.last().unwrap() {
                 interp_ds.push(d);
                 interp_is.push(idx as f64);
                 interp_hs.push(trapz_elevations_m[idx]);
@@ -597,7 +599,23 @@ pub struct Cycle {
     pub orphaned: bool,
 }
 
-impl Cycle {
+impl SerdeAPI for Cycle {
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            "csv" => Ok(Self::from_csv_file(filename)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        }
+    }
+}
+
+/// pure Rust methods that need to be separate due to pymethods incompatibility
+impl RustCycle {
     pub fn new(
         time_s: Vec<f64>,
         mps: Vec<f64>,
@@ -690,9 +708,9 @@ impl Cycle {
                     all0
                 };
                 if grade_all_zero {
-                    return 0.0;
+                    0.0
                 } else {
-                    let delta_dists = trapz_step_distances(&self);
+                    let delta_dists = trapz_step_distances(self);
                     let trapz_distances_m = ndarrcumsum(&delta_dists);
                     if delta_distance_m <= tol {
                         if distance_start_m <= trapz_distances_m[0] {
@@ -906,24 +924,13 @@ impl Cycle {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
     }
 
-    pub fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
-        // check if the extension is csv, and if it is, then call Self::from_csv_file
-        let pathbuf = PathBuf::from(filename);
-        let file = File::open(filename)?;
-        let extension = pathbuf.extension().unwrap().to_str().unwrap();
-        match extension {
-            "yaml" => Ok(serde_yaml::from_reader(file)?),
-            "json" => Ok(serde_json::from_reader(file)?),
-            "csv" => Ok(Self::from_csv_file(filename)?),
-            _ => Err(anyhow!("Unsupported file extension {}", extension)),
-        }
-    }
-
     // load a cycle from a string representation of a csv file
     pub fn from_csv_string(data: &str, name: String) -> Result<Self, anyhow::Error> {
-        let mut cyc = Self::default();
+        let mut cyc = Self {
+            name,
+            ..Self::default()
+        };
 
-        cyc.name = name;
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(true)
             .from_reader(data.as_bytes());
@@ -1058,7 +1065,8 @@ mod tests {
 
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
-        let pathstr = String::from("../../fastsim/resources/cycles/udds.csv");
+        let mut cyc_file_path = resources_path();
+        cyc_file_path.push("cycles/udds.csv");
         let expected_udds_length: usize = 1370;
         let cyc = Cycle::from_csv_file(&pathstr).unwrap();
         assert_eq!(cyc.name, String::from("udds"));

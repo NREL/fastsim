@@ -51,6 +51,8 @@ pub struct PhysicalProperties {
     pub orphaned: bool,
 }
 
+impl SerdeAPI for PhysicalProperties {}
+
 impl Default for PhysicalProperties {
     fn default() -> Self {
         let air_density_kg_per_m3: f64 = 1.2;
@@ -148,9 +150,10 @@ pub struct AdjCoef {
 
 impl Default for LongParams {
     fn default() -> Self {
-        let long_params_str: &str = include_str!("../../../fastsim/resources/longparams.json");
+        let long_params_str: &str =
+            include_str!("../../../python/fastsim/resources/longparams.json");
         let long_params: Self = from_str(long_params_str).unwrap();
-        return long_params;
+        long_params
     }
 }
 

@@ -144,7 +144,7 @@ pub fn get_label_fe(
     veh: &vehicle::LegacyVehicle,
     full_detail: Option<bool>,
     verbose: Option<bool>,
-) -> Result<(LabelFe, Option<HashMap<&str, SimDrive>>), anyhow::Error> {
+) -> anyhow::Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
     // Generates label fuel economy (FE) values for a provided vehicle.
     //
     // Arguments:
@@ -193,6 +193,8 @@ pub fn get_label_fe(
         main_separator!(),
         "..",
         main_separator!(),
+        "python",
+        main_separator!(),
         "fastsim",
         main_separator!(),
         "resources",
@@ -207,6 +209,8 @@ pub fn get_label_fe(
         "..",
         main_separator!(),
         "..",
+        main_separator!(),
+        "python",
         main_separator!(),
         "fastsim",
         main_separator!(),
@@ -232,11 +236,9 @@ pub fn get_label_fe(
 
     for (k, val) in sd.iter_mut() {
         val.sim_drive(None, None)?;
-        let key = String::from(k.clone());
+        let key = String::from(*k);
         let trace_miss_speed_mph = val.trace_miss_speed_mps * MPH_PER_MPS;
-        if (key == String::from("udds") || key == String::from("hwy"))
-            && trace_miss_speed_mph > max_trace_miss_in_mph
-        {
+        if (key == *"udds" || key == *"hwy") && trace_miss_speed_mph > max_trace_miss_in_mph {
             max_trace_miss_in_mph = trace_miss_speed_mph;
         }
     }
@@ -321,9 +323,9 @@ pub fn get_label_fe(
             out.adj_comb_kwh_per_mi =
                 0.55 * out.adj_udds_kwh_per_mi + 0.45 * out.adj_hwy_kwh_per_mi;
 
-            out.adj_udds_kwh_per_mi = out.adj_udds_kwh_per_mi * CHG_EFF;
-            out.adj_hwy_kwh_per_mi = out.adj_hwy_kwh_per_mi * CHG_EFF;
-            out.adj_comb_kwh_per_mi = out.adj_comb_kwh_per_mi * CHG_EFF;
+            out.adj_udds_kwh_per_mi *= CHG_EFF;
+            out.adj_hwy_kwh_per_mi *= CHG_EFF;
+            out.adj_comb_kwh_per_mi *= CHG_EFF;
 
             // range for combined city/highway
             out.net_range_miles = veh.ess_max_kwh / out.adj_comb_ess_kwh_per_mi;
@@ -398,14 +400,14 @@ pub fn get_label_fe(
 
     if full_detail.unwrap_or(false) && verbose.unwrap_or(false) {
         println!("{:#?}", out);
-        return Ok((out, Some(sd)));
+        Ok((out, Some(sd)))
     } else if full_detail.unwrap_or(false) {
-        return Ok((out, Some(sd)));
+        Ok((out, Some(sd)))
     } else if verbose.unwrap_or(false) {
         println!("{:#?}", out);
-        return Ok((out, None));
+        Ok((out, None))
     } else {
-        return Ok((out, None));
+        Ok((out, None))
     }
 }
 
@@ -429,17 +431,18 @@ pub fn get_label_fe_phev(
     // props : RustPhysicalProperties
     //
     // Returns label fuel economy values for PHEV as a struct.
-    let mut phev_calcs: LabelFePHEV = LabelFePHEV::default();
-
-    phev_calcs.regen_soc_buffer = min(
-        ((0.5 * veh.veh_kg * ((60. * (1. / MPH_PER_MPS)).powi(2)))
-            * (1. / 3600.)
-            * (1. / 1000.)
-            * veh.max_regen
-            * veh.mc_peak_eff())
-            / veh.ess_max_kwh,
-        (veh.max_soc - veh.min_soc) / 2.0,
-    );
+    let mut phev_calcs = LabelFePHEV {
+        regen_soc_buffer: min(
+            ((0.5 * veh.veh_kg * ((60. * (1. / MPH_PER_MPS)).powi(2)))
+                * (1. / 3600.)
+                * (1. / 1000.)
+                * veh.max_regen
+                * veh.mc_peak_eff())
+                / veh.ess_max_kwh,
+            (veh.max_soc - veh.min_soc) / 2.0,
+        ),
+        ..LabelFePHEV::default()
+    };
 
     // charge sustaining behavior
     for (key, sd_val) in sd.iter_mut() {
@@ -577,18 +580,17 @@ pub fn get_label_fe_phev(
                     * (1.0 - sim_params.max_epa_adj),
             ));
 
-            for c in 0..phev_calc.lab_iter_kwh_per_mi.len() {
-                if phev_calc.lab_iter_kwh_per_mi[c] == 0.0 {
+            for (c, lab_iter_kwh_per_mi) in phev_calc.lab_iter_kwh_per_mi.iter().enumerate() {
+                if *lab_iter_kwh_per_mi == 0.0 {
                     adj_iter_kwh_per_mi_vals[c] = 0.0;
                 } else {
                     adj_iter_kwh_per_mi_vals[c] =
                         (1.0 / max(
                             1.0 / (adj_params.city_intercept
                                 + (adj_params.city_slope
-                                    / ((1.0 / phev_calc.lab_iter_kwh_per_mi[c])
-                                        * props.kwh_per_gge))),
+                                    / ((1.0 / lab_iter_kwh_per_mi) * props.kwh_per_gge))),
                             (1.0 - sim_params.max_epa_adj)
-                                * ((1.0 / phev_calc.lab_iter_kwh_per_mi[c]) * props.kwh_per_gge),
+                                * ((1.0 / lab_iter_kwh_per_mi) * props.kwh_per_gge),
                         )) * props.kwh_per_gge;
                 }
             }
@@ -608,18 +610,17 @@ pub fn get_label_fe_phev(
                     * (1.0 - sim_params.max_epa_adj),
             ));
 
-            for c in 0..phev_calc.lab_iter_kwh_per_mi.len() {
-                if phev_calc.lab_iter_kwh_per_mi[c] == 0.0 {
+            for (c, lab_iter_kwh_per_mi) in phev_calc.lab_iter_kwh_per_mi.iter().enumerate() {
+                if *lab_iter_kwh_per_mi == 0.0 {
                     adj_iter_kwh_per_mi_vals[c] = 0.0;
                 } else {
                     adj_iter_kwh_per_mi_vals[c] =
                         (1.0 / max(
                             1.0 / (adj_params.hwy_intercept
                                 + (adj_params.hwy_slope
-                                    / ((1.0 / phev_calc.lab_iter_kwh_per_mi[c])
-                                        * props.kwh_per_gge))),
+                                    / ((1.0 / lab_iter_kwh_per_mi) * props.kwh_per_gge))),
                             (1.0 - sim_params.max_epa_adj)
-                                * ((1.0 / phev_calc.lab_iter_kwh_per_mi[c]) * props.kwh_per_gge),
+                                * ((1.0 / lab_iter_kwh_per_mi) * props.kwh_per_gge),
                         )) * props.kwh_per_gge;
                 }
             }
@@ -702,7 +703,7 @@ pub fn get_label_fe_phev(
         };
     }
 
-    return Ok(phev_calcs);
+    Ok(phev_calcs)
 }
 
 #[cfg(test)]
@@ -717,6 +718,7 @@ mod simdrivelabel_tests {
         // Therefore, veh field in both structs replaced with Default for comparison purposes
         label_fe.veh = vehicle::LegacyVehicle::default();
         println!("Calculated net accel: {}", label_fe.net_accel);
+        // println!("Calculated net accel: {}", label_fe.net_accel);
 
         let label_fe_truth: LabelFe = LabelFe {
             veh: vehicle::LegacyVehicle::default(),
@@ -747,10 +749,10 @@ mod simdrivelabel_tests {
             trace_miss_speed_mph: 0.0,
         };
 
-        println!(
-            "Percent diff to Python calc: {:.3}%",
-            100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
-        );
+        // println!(
+        //     "Percent diff to Python calc: {:.3}%",
+        //     100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
+        // );
 
         assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
     }
@@ -778,19 +780,21 @@ mod simdrivelabel_tests {
             75.0,
             vec![
                 0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
-            ],
-            vec![
+            ]),
+            fc_eff_map: Array1::from(vec![
                 0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
-            ],
-            String::from("SI"),
-            6.0,
-            61.0,
-            2.13,
-            30.0,
-            1.5,
-            111.0,
-            vec![0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.],
-            Some(vec![
+            ]),
+            fc_eff_type: "SI".into(),
+            fc_sec_to_peak_pwr: 6.0,
+            fc_base_kg: 61.0,
+            fc_kw_per_kg: 2.13,
+            min_fc_time_on: 30.0,
+            idle_fc_kw: 1.5,
+            mc_max_kw: 111.0,
+            mc_pwr_out_perc: Array1::from(vec![
+                0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0,
+            ]),
+            mc_eff_map: Array1::from(vec![
                 0.84, 0.86, 0.88, 0.9, 0.91, 0.92, 0.94, 0.95, 0.95, 0.94, 0.93,
             ]),
             3.0,
@@ -1065,6 +1069,15 @@ mod simdrivelabel_tests {
             trace_miss_speed_mph: 0.0,
         };
 
-        assert!(label_fe.approx_eq(&label_fe_truth, 1e-8));
+        let tol = 1e-8;
+        assert!(label_fe.veh.approx_eq(&label_fe_truth.veh, tol));
+        assert!(
+            label_fe
+                .phev_calcs
+                .approx_eq(&label_fe_truth.phev_calcs, tol),
+            "label_fe.phev_calcs: {:?}",
+            &label_fe.phev_calcs
+        );
+        assert!(label_fe.approx_eq(&label_fe_truth, tol));
     }
 }

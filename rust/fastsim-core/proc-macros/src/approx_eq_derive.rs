@@ -4,15 +4,10 @@ pub fn approx_eq_derive(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
 
-    let mut fields = Vec::new();
-    match ast.data {
-        syn::Data::Struct(s) => {
-            for field in s.fields.iter() {
-                fields.push(field.clone());
-            }
-        }
+    let fields = match ast.data {
+        syn::Data::Struct(s) => s.fields,
         _ => abort_call_site!("#[derive(ApproxEq)] only works on structs"),
-    }
+    };
 
     let field_names = fields
         .iter()

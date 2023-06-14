@@ -15,6 +15,3 @@ log = "0.4.17"
 [lib]
 name = "fastsimrust"
 crate-type = ["cdylib"]
-
-[package.metadata.maturin]
-python-source = "python"

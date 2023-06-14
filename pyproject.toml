@@ -1,10 +1,6 @@
 [build-system]
-requires = [
-    "setuptools>=40.6.0",
-    "wheel",
-    "setuptools-rust>=0.11.4",
-]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=0.15,<0.16"]
+build-backend = "maturin"
 
 [project]
 name = "fastsim"
@@ -26,15 +22,15 @@ dependencies = [
     "matplotlib>=3.3",
     "numpy>=1.18",
     "seaborn>=0.10",
-    "pymoo==0.6",
     "typing_extensions",
+    "pyyaml",
 ]
 
 [project.urls]
-"Homepage" = "https://www.nrel.gov/transportation/fastsim.html" 
+Homepage = "https://www.nrel.gov/transportation/fastsim.html" 
 
 [project.optional-dependencies]
-dev = ["black", "pytest", "maturin"]
+dev = ["black", "pytest", "maturin", "plotly", "ipykernel", "pymoo==0.6.0.1",]
 
 [tool.setuptools]
 zip-safe = false
@@ -44,5 +40,16 @@ where = ["."]  # list of folders that contain the packages (["."] by default)
 include = ["fastsim*"]  # package names should match these glob patterns (["*"] by default)
 namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
 
-
-
+[tool.maturin]
+python-source="python"
+features = ["pyo3/extension-module"]
+module-name = "fastsim.fastsimrust"
+manifest-path = "rust/fastsim-py/Cargo.toml"
+include = [
+    { format = "sdist", path = "rust/fastsim-core/Cargo.toml"},
+    { format = "sdist", path = "rust/fastsim-core/src/*"},
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml"},
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*"},
+    { format = "sdist", path = "rust/fastsim-py/Cargo.toml"},
+    { format = "sdist", path = "rust/fastsim-py/src/*"},
+]
