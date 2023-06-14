@@ -475,32 +475,10 @@ fn get_fuel_economy_gov_data_by_option_id(option_id: &str) -> Result<VehicleData
 /// vehicle_data_epa: Data for the given vehicle from EPA vehicle database
 fn get_epa_data(
     fe_gov_vehicle_data: &VehicleDataFE,
-    epa_veh_db_path: Option<String>,
+    epa_veh_db_path: String,
 ) -> Result<VehicleDataEPA, Error> {
     // Open EPA vehicle database csv file
-    let default_path_raw_01: String = format!(
-        "../../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
-        fe_gov_vehicle_data.year % 100
-    );
-    let default_path_raw_02: String = format!(
-        "../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
-        fe_gov_vehicle_data.year % 100
-    );
-    let default_path_raw_03: String = format!(
-        "./python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
-        fe_gov_vehicle_data.year % 100
-    );
-    let default_path: String = if Path::new(&default_path_raw_01).exists()
-        {
-            default_path_raw_01
-        } else if Path::new(&default_path_raw_02).exists() {
-            default_path_raw_02
-        } else if Path::new(&default_path_raw_03).exists() {
-            default_path_raw_03
-        } else {
-            default_path_raw_01
-        };
-    let file_path: String = epa_veh_db_path.unwrap_or(default_path);
+    let file_path: String = epa_veh_db_path;
     let pathbuf: PathBuf = PathBuf::from(file_path);
     let file: File = File::open(&pathbuf).unwrap();
     let _name: String = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
@@ -708,7 +686,12 @@ where
     // TODO: Aaron wanted custom scenario name option
     let fe_gov_data: VehicleDataFE =
         get_fuel_economy_gov_data(year, make, model, &mut writer, &mut reader)?;
-    let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
+
+    let epa_veh_db_path = format!(
+        "../../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
+        fe_gov_data.year % 100
+    );
+    let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, epa_veh_db_path)?;
 
     if epa_data == VehicleDataEPA::default() {
         return Err(anyhow!(
@@ -1108,15 +1091,25 @@ impl SerdeAPI for OtherVehicleInputs {
 /// ----------
 /// vehicle_id: Identifier at fueleconomy.gov for the desired vehicle
 /// other_inputs: Other vehicle inputs required to create the vehicle
+/// resource_dir: String, path to resource directory containing
+///     <\d\d>-tstcar.csv where \d\d is the last two digits of the
+///     current year
 ///
 /// Returns:
 /// --------
 /// veh: RustVehicle for specificed vehicle
-fn vehicle_import_from_id(vehicle_id: &str, other_inputs: &OtherVehicleInputs) -> Result<RustVehicle, Error> {
+fn vehicle_import_from_id(
+    vehicle_id: &str,
+    other_inputs: &OtherVehicleInputs,
+    resource_dir: String
+) -> Result<RustVehicle, Error> {
     // TODO: Aaron wanted custom scenario name option
     let fe_gov_data: VehicleDataFE =
         get_fuel_economy_gov_data_by_option_id(vehicle_id)?;
-    let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, None)?;
+    let mut epa_veh_db_path = PathBuf::from(resource_dir);
+    epa_veh_db_path.push(format!("{}-tstcar.csv", fe_gov_data.year % 100));
+    let path = String::from(epa_veh_db_path.to_str().unwrap_or(""));
+    let epa_data: VehicleDataEPA = get_epa_data(&fe_gov_data, path)?;
     if epa_data == VehicleDataEPA::default() {
         let year = fe_gov_data.year;
         let make = fe_gov_data.make;
@@ -1459,8 +1452,10 @@ where
 /// 
 /// RETURN:
 /// ()
-fn export_vehicle_to_file(veh: &RustVehicle, file_path: &str) -> Result<(), anyhow::Error> {
-    veh.to_file(file_path)?;
+fn export_vehicle_to_file(veh: &RustVehicle, file_path: String) -> Result<(), anyhow::Error> {
+    let processed_path = PathBuf::from(file_path);
+    let path_str = processed_path.to_str().unwrap_or("");
+    veh.to_file(path_str)?;
     Ok(())
 }
 
@@ -1881,8 +1876,12 @@ mod vehicle_utils_tests {
             super_charge: String::new(),
             turbo_charge: String::from("T"),
         };
-
-        let volvo_s60_b5_awd_epa_data = get_epa_data(&volvo_s60_b5_awd_fe_truth, None).unwrap();
+        
+        let epa_veh_db_path = format!(
+            "../../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
+            volvo_s60_b5_awd_fe_truth.year % 100
+        );
+        let volvo_s60_b5_awd_epa_data = get_epa_data(&volvo_s60_b5_awd_fe_truth, epa_veh_db_path).unwrap();
         println!(
             "Output: {} {} {} {}",
             volvo_s60_b5_awd_epa_data.year,
@@ -1961,9 +1960,13 @@ mod vehicle_utils_tests {
             turbo_charge: String::new(),
         };
 
+        let epa_veh_db_path = format!(
+            "../../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
+            corolla_manual_fe_truth.year % 100
+        );
         let corolla_manual_epa_data = get_epa_data(
             &corolla_manual_fe_truth,
-            None,
+            epa_veh_db_path,
         )
         .unwrap();
         println!(
@@ -2044,7 +2047,12 @@ mod vehicle_utils_tests {
             turbo_charge: String::new(),
         };
 
-        let ev6_rwd_long_range_epa_data = get_epa_data(&ev6_rwd_long_range_fe_truth, None).unwrap();
+        let epa_veh_db_path = format!(
+            "../../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
+            ev6_rwd_long_range_fe_truth.year % 100
+        );
+        let ev6_rwd_long_range_epa_data =
+            get_epa_data(&ev6_rwd_long_range_fe_truth, epa_veh_db_path).unwrap();
         println!(
             "Output: {} {} {} {}",
             ev6_rwd_long_range_epa_data.year,

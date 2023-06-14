@@ -284,6 +284,13 @@ class TestDemo(unittest.TestCase):
         ru_keys = {k for k in ru_dict}
         ru_keys.add("name") # Rust doesn't provide 'name'
         self.assertEqual(py_keys, ru_keys)
+    
+    def test_vehicle_import_demo(self):
+        import fastsim.tests.utils as utils
+        orig = utils.start_demo_environment()
+        from fastsim.demos.vehicle_import_demo import RAN_SUCCESSFULLY
+        utils.end_demo_test_environment(orig)
+        self.assertTrue(RAN_SUCCESSFULLY)
 
 if __name__ == '__main__':
     unittest.main()
