@@ -25,13 +25,14 @@ dependencies = [
     "seaborn>=0.10",
     "typing_extensions",
     "pyyaml",
+    "pytest",
 ]
 
 [project.urls]
 Homepage = "https://www.nrel.gov/transportation/fastsim.html" 
 
 [project.optional-dependencies]
-dev = ["black", "pytest", "maturin", "plotly", "ipykernel", "pymoo==0.6.0.1",]
+dev = ["black", "maturin", "plotly", "ipykernel", "pymoo==0.6.0.1",]
 
 [tool.setuptools]
 zip-safe = false
