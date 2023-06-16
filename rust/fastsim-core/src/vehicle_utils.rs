@@ -9,7 +9,7 @@ use polynomial::Polynomial;
 use serde_xml_rs::from_str;
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -1124,15 +1124,11 @@ fn vehicle_import_from_id(
         _ => crate::vehicle::CONV,
     };
 
-    let veh_cg_m: f64 = match fe_gov_data.drive.as_str() {
-        "Front-Wheel Drive" => 0.53,
-        _ => -0.53,
-    };
-
     let fs_max_kw: f64;
     let fc_max_kw: f64;
     let fc_eff_type: String;
-    let fc_eff_map: Vec<f64>;
+    let fc_eff_map: Array1<f64>;
+    let mc_max_kw: f64;
     let min_soc: f64;
     let max_soc: f64;
     let ess_dischg_to_fc_max_eff_perc: f64;
@@ -1141,219 +1137,141 @@ fn vehicle_import_from_id(
     let aux_kw: f64;
     let trans_eff: f64;
     let val_range_miles: f64;
-
-    let mut ess_max_kwh: f64 = other_inputs.ess_max_kwh;
-    let mut mc_max_kw: f64 = other_inputs.mc_max_kw;
-    let mut ess_max_kw: f64 = other_inputs.ess_max_kw;
+    let ess_max_kw: f64;
+    let ess_max_kwh: f64;
 
     if veh_pt_type == crate::vehicle::CONV {
         fs_max_kw = 2000.0;
         fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
         fc_eff_type = String::from(crate::vehicle::SI);
-        fc_eff_map = vec![
+        fc_eff_map = Array::from_vec(vec![
             0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
-        ];
+        ]);
         mc_max_kw = 0.0;
         min_soc = 0.1;
-        max_soc = 0.95;
+        max_soc = 0.1;
         ess_dischg_to_fc_max_eff_perc = 0.0;
         mph_fc_on = 55.0;
         kw_demand_fc_on = 100.0;
         aux_kw = 0.7;
         trans_eff = 0.92;
         val_range_miles = 0.0;
+        ess_max_kw = 0.0;
         ess_max_kwh = 0.0;
     } else if veh_pt_type == crate::vehicle::HEV {
         fs_max_kw = 2000.0;
         fc_max_kw = other_inputs.fc_max_kw.unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
-
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
-        fc_eff_map = vec![
+        fc_eff_map = Array::from_vec(vec![
             0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
-        ];
+        ]);
         min_soc = 0.4;
         max_soc = 0.8;
-
         ess_dischg_to_fc_max_eff_perc = 0.0;
         mph_fc_on = 1.0;
         kw_demand_fc_on = 100.0;
         aux_kw = 0.5;
         trans_eff = 0.95;
         val_range_miles = 0.0;
+        ess_max_kw = other_inputs.ess_max_kw;
+        ess_max_kwh = other_inputs.ess_max_kwh;
+        mc_max_kw = other_inputs.mc_max_kw;
     } else if veh_pt_type == crate::vehicle::PHEV {
         fs_max_kw = 2000.0;
         fc_max_kw = other_inputs.fc_max_kw.unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
-        fc_eff_map = vec![
+        fc_eff_map = Array::from_vec(vec![
             0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
-        ];
-
+        ]);
         min_soc = 0.15;
         max_soc = 0.9;
-
         ess_dischg_to_fc_max_eff_perc = 1.0;
         mph_fc_on = 85.0;
         kw_demand_fc_on = 120.0;
         aux_kw = 0.3;
         trans_eff = 0.98;
         val_range_miles = 0.0;
+        ess_max_kw = other_inputs.ess_max_kw;
+        ess_max_kwh = other_inputs.ess_max_kwh;
+        mc_max_kw = other_inputs.mc_max_kw;
     } else if veh_pt_type == crate::vehicle::BEV {
         fs_max_kw = 0.0;
         fc_max_kw = 0.0;
         fc_eff_type = String::from(crate::vehicle::SI);
-        fc_eff_map = vec![
-            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
-        ];
+        fc_eff_map = Array::from_vec(
+            vec![
+                0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+            ]
+        );
         mc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
         min_soc = 0.05;
         max_soc = 0.98;
         ess_max_kw = 1.05 * mc_max_kw;
-        ess_dischg_to_fc_max_eff_perc = 0.0;
+        ess_max_kwh = other_inputs.ess_max_kwh;
         mph_fc_on = 1.0;
         kw_demand_fc_on = 100.0;
         aux_kw = 0.25;
         trans_eff = 0.98;
         val_range_miles = fe_gov_data.range_ev as f64;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
     } else {
         return Err(anyhow!("Unknown powertrain type: {veh_pt_type}"));
     }
 
-    let props: RustPhysicalProperties = RustPhysicalProperties::default();
-
-    let cargo_kg: f64 = 136.0;
-    let trans_kg: f64 = 114.0;
-    let comp_mass_multiplier: f64 = 1.4;
-    let fs_kwh_per_kg: f64 = 9.89;
-    let fc_base_kg: f64 = 61.0;
-    let fc_kw_per_kg: f64 = 2.13;
-    let mc_pe_base_kg: f64 = 21.6;
-    let mc_pe_kg_per_kw: f64 = 0.833;
-    let ess_base_kg: f64 = 75.0;
-    let ess_kg_per_kwh: f64 = 8.0;
-    let glider_kg: f64 = (epa_data.test_weight_lbs / LBS_PER_KG)
-        - cargo_kg
-        - trans_kg
-        - comp_mass_multiplier
-            * ((fs_max_kw / fs_kwh_per_kg)
-                + (fc_base_kg + fc_max_kw / fc_kw_per_kg)
-                + (mc_pe_base_kg + mc_max_kw * mc_pe_kg_per_kw)
-                + (ess_base_kg + ess_max_kwh * ess_kg_per_kwh));
-
-    let mut veh: RustVehicle = RustVehicle {
-        small_motor_power_kw: 7.5,
-        large_motor_power_kw: 75.0,
-        charging_on: false,
-        max_roadway_chg_kw: Default::default(),
-        orphaned: Default::default(),
-        modern_max: MODERN_MAX,
-        no_elec_sys: Default::default(),
-        no_elec_aux: Default::default(),
-        fc_perc_out_array: Default::default(),
-        input_kw_out_array: Default::default(),
-        fc_kw_out_array: Default::default(),
-        fc_eff_array: Default::default(),
-        mc_eff_array: Default::default(),
-        mc_perc_out_array: Default::default(),
-        mc_kw_out_array: Default::default(),
-        mc_full_eff_array: Default::default(),
-        mc_kw_in_array: Default::default(),
-        mc_max_elec_in_kw: Default::default(),
-        ess_mass_kg: Default::default(),
-        mc_mass_kg: Default::default(),
-        fc_mass_kg: Default::default(),
-        fs_mass_kg: Default::default(),
-        veh_kg: Default::default(),
-        max_trac_mps2: Default::default(),
+    let ref_veh: RustVehicle = Default::default();
+    let glider_kg = (epa_data.test_weight_lbs / LBS_PER_KG)
+        - ref_veh.cargo_kg
+        - ref_veh.trans_kg
+        - ref_veh.comp_mass_multiplier
+            * ((fs_max_kw / ref_veh.fs_kwh_per_kg)
+                + (ref_veh.fc_base_kg + fc_max_kw / ref_veh.fc_kw_per_kg)
+                + (ref_veh.mc_pe_base_kg + mc_max_kw * ref_veh.mc_pe_kg_per_kw)
+                + (ref_veh.ess_base_kg + ess_max_kwh * ref_veh.ess_kg_per_kwh));
+    let mut veh = RustVehicle {
+        veh_cg_m: match fe_gov_data.drive.as_str() {
+            "Front-Wheel Drive" => 0.53,
+            _ => -0.53,
+        },
+        glider_kg,
         scenario_name: format!("{} {} {}",
             fe_gov_data.year, fe_gov_data.make, fe_gov_data.model),
+        max_roadway_chg_kw: Default::default(),
         selection: 0,
         veh_year: fe_gov_data.year,
         veh_pt_type: String::from(veh_pt_type),
         drag_coef: 0.0,
-        frontal_area_m2: (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in) / (IN_PER_M * IN_PER_M),
-        glider_kg,
-        veh_cg_m,
-        drive_axle_weight_frac: 0.59,
-        wheel_base_m: 2.6,
-        cargo_kg: 136.0,
-        veh_override_kg: None,
-        comp_mass_multiplier,
-        fs_max_kw,
-        fs_secs_to_peak_pwr: 1.0,
-        fs_kwh: other_inputs.fuel_tank_gal * props.kwh_per_gge,
-        fs_kwh_per_kg,
-        fc_max_kw,
-        fc_pwr_out_perc: Array1::from(vec![
-            0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
-        ]),
-        fc_eff_map: Array1::from(fc_eff_map),
-        fc_eff_type,
-        fc_sec_to_peak_pwr: 6.0,
-        fc_base_kg,
-        fc_kw_per_kg,
-        min_fc_time_on: 30.0,
+        frontal_area_m2:
+            (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in)
+            / (IN_PER_M * IN_PER_M),
+        fs_kwh: other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge,
         idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
-        mc_max_kw,
-        mc_pwr_out_perc: Array1::from(vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]),
         mc_eff_map: Array1::from(vec![
             0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
         ]),
-        mc_sec_to_peak_pwr: 4.0,
-        mc_pe_kg_per_kw,
-        mc_pe_base_kg,
-        ess_max_kw,
-        ess_max_kwh,
-        ess_kg_per_kwh,
-        ess_base_kg,
-        ess_round_trip_eff: 0.97,
-        ess_life_coef_a: 110.0,
-        ess_life_coef_b: -0.6811,
-        min_soc,
-        max_soc,
-        ess_dischg_to_fc_max_eff_perc,
-        ess_chg_to_fc_max_eff_perc: 0.0,
-        wheel_inertia_kg_m2: 0.815,
-        num_wheels: 4.0,
         wheel_rr_coef: 0.0,
-        wheel_radius_m: 0.336,
-        wheel_coef_of_fric: 0.7,
-        max_accel_buffer_mph: 60.0,
-        max_accel_buffer_perc_of_useable_soc: 0.2,
-        perc_high_acc_buf: 0.0,
-        mph_fc_on,
-        kw_demand_fc_on,
-        max_regen: 0.98,
         stop_start: fe_gov_data.start_stop == "Y",
         force_aux_on_fc: false,
-        alt_eff: 1.0,
-        chg_eff: 0.86,
-        aux_kw,
-        trans_kg,
-        trans_eff,
-        ess_to_fuel_ok_error: 0.005,
         val_udds_mpgge: fe_gov_data.city_mpg_fuel1 as f64,
         val_hwy_mpgge: fe_gov_data.highway_mpg_fuel1 as f64,
         val_comb_mpgge: fe_gov_data.comb_mpg_fuel1 as f64,
-        val_udds_kwh_per_mile: f64::NAN,
-        val_hwy_kwh_per_mile: f64::NAN,
-        val_comb_kwh_per_mile: f64::NAN,
-        val_cd_range_mi: f64::NAN,
-        val_const65_mph_kwh_per_mile: f64::NAN,
-        val_const60_mph_kwh_per_mile: f64::NAN,
-        val_const55_mph_kwh_per_mile: f64::NAN,
-        val_const45_mph_kwh_per_mile: f64::NAN,
-        val_unadj_udds_kwh_per_mile: f64::NAN,
-        val_unadj_hwy_kwh_per_mile: f64::NAN,
-        val0_to60_mph: f64::NAN,
-        val_ess_life_miles: f64::NAN,
-        val_range_miles,
-        val_veh_base_cost: f64::NAN,
-        val_msrp: f64::NAN,
-        props,
-        regen_a: 500.0,
-        regen_b: 0.99,
         fc_peak_eff_override: None,
         mc_peak_eff_override: Some(0.95),
+        fs_max_kw,
+        fc_max_kw,
+        fc_eff_type,
+        fc_eff_map,
+        mc_max_kw,
+        min_soc,
+        max_soc,
+        ess_dischg_to_fc_max_eff_perc,
+        mph_fc_on,
+        kw_demand_fc_on,
+        aux_kw,
+        trans_eff,
+        val_range_miles,
+        ess_max_kwh,
+        ess_max_kw,
+        ..Default::default()
     };
     veh.set_derived().unwrap();
 

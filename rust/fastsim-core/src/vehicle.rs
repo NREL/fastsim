@@ -33,7 +33,7 @@ lazy_static! {
         Regex::new("SI|Atkinson|Diesel|H2FC|HD_Diesel").unwrap();
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
 #[add_pyo3_api(
     #[pyo3(name = "set_veh_mass")]
     pub fn set_veh_mass_py(&mut self) {
@@ -912,6 +912,32 @@ impl RustVehicle {
         let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
         veh_res.as_mut().unwrap().set_derived()?;
         veh_res
+    }
+}
+
+impl Default for RustVehicle
+{
+    fn default() -> Self {
+        let mut veh = RustVehicle::mock_vehicle();
+        veh.scenario_name = Default::default();
+        veh.selection = Default::default();
+        veh.veh_year = Default::default();
+        veh.val_udds_kwh_per_mile = Default::default();
+        veh.val_hwy_kwh_per_mile = Default::default();
+        veh.val_comb_kwh_per_mile = Default::default();
+        veh.val_cd_range_mi = Default::default();
+        veh.val_const65_mph_kwh_per_mile = Default::default();
+        veh.val_const60_mph_kwh_per_mile = Default::default();
+        veh.val_const55_mph_kwh_per_mile = Default::default();
+        veh.val_const45_mph_kwh_per_mile = Default::default();
+        veh.val_unadj_udds_kwh_per_mile = Default::default();
+        veh.val_unadj_hwy_kwh_per_mile = Default::default();
+        veh.val0_to60_mph = Default::default();
+        veh.val_ess_life_miles = Default::default();
+        veh.val_range_miles = Default::default();
+        veh.val_veh_base_cost = Default::default();
+        veh.val_msrp = Default::default();
+        veh
     }
 }
 
