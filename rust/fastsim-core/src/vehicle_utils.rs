@@ -1149,7 +1149,7 @@ fn vehicle_import_from_id(
         ]);
         mc_max_kw = 0.0;
         min_soc = 0.1;
-        max_soc = 0.1;
+        max_soc = 0.95;
         ess_dischg_to_fc_max_eff_perc = 0.0;
         mph_fc_on = 55.0;
         kw_demand_fc_on = 100.0;
