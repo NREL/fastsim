@@ -917,9 +917,7 @@ impl RustVehicle {
         v
     }
 
-
     pub fn from_json_str(filename: &str) -> Result<Self, anyhow::Error> {
-
         let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
         veh_res.as_mut().unwrap().set_derived()?;
         veh_res
