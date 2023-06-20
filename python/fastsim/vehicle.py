@@ -24,11 +24,8 @@ import json
 from fastsim import parameters as params
 from fastsim import utils
 from fastsim.vehicle_base import keys_and_types, NEW_TO_OLD
-from .rustext import RUST_AVAILABLE
-
-if RUST_AVAILABLE:
-    import fastsimrust as fsr
-    from fastsimrust import RustVehicle
+import fastsim.fastsimrust as fsr
+from fastsim.fastsimrust import RustVehicle
 
 # Logging
 import logging
@@ -796,7 +793,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
     veh_dict = {}
 
     if return_type is None:
-        if RUST_AVAILABLE and isinstance(veh, RustVehicle):
+        if isinstance(veh, RustVehicle):
             return_type = RUST
         elif isinstance(veh, Vehicle):
             return_type = VEHICLE
@@ -811,11 +808,8 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
         if key in KEYS_TO_REMOVE:
             continue
         if (
-            RUST_AVAILABLE
-            and (
-                isinstance(veh.__getattribute__(key), fsr.RustPhysicalProperties) 
-                or isinstance(veh.__getattribute__(key), params.PhysicalProperties) 
-            )
+            isinstance(veh.__getattribute__(key), fsr.RustPhysicalProperties) 
+            or isinstance(veh.__getattribute__(key), params.PhysicalProperties) 
         ):
             pp = veh.__getattribute__(key)
             props_key = key
@@ -827,14 +821,14 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
             new_pp.fuel_rho_kg__L = pp.fuel_rho_kg__L
             new_pp.fuel_afr_stoich = pp.fuel_afr_stoich
             veh_dict[key] = new_pp
-        elif ((RUST_AVAILABLE)
-              and isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayU32)
-                or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
-                or isinstance(veh.__getattribute__(key) ,fsr.Pyo3ArrayBool)
-                or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
+        elif (
+            isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayU32)
+            or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
+            or isinstance(veh.__getattribute__(key) ,fsr.Pyo3ArrayBool)
+            or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
         ):
             veh_dict[key] = list(veh.__getattribute__(key))
-        elif RUST_AVAILABLE and isinstance(veh.__getattribute__(key), np.ndarray):
+        elif isinstance(veh.__getattribute__(key), np.ndarray):
             veh_dict[key] = list(veh.__getattribute__(key))
         else:
             veh_dict[key] = copy.deepcopy(
@@ -850,7 +844,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
         return v
     elif return_type == LEGACY:
         return LegacyVehicle(veh_dict)
-    elif RUST_AVAILABLE and return_type == RUST:
+    elif return_type == RUST:
         if "veh_kg" not in veh_dict:
             veh_dict["veh_kg"] = 0.0
         if "veh_override_kg" not in veh_dict or veh_dict["veh_override_kg"] == 0.0:

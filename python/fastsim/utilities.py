@@ -1,9 +1,8 @@
 """Various optional utilities that may support some applications of FASTSim."""
 
 from __future__ import annotations
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import numpy as np
-from fastsim.rustext import RUST_AVAILABLE
 from fastsim import parameters as params
 import seaborn as sns
 import re
@@ -119,9 +118,8 @@ def set_log_level(level: str | int) -> int:
     fastsim_logger = logging.getLogger("fastsim")
     previous_level = fastsim_logger.level
     fastsim_logger.setLevel(level)
-    if RUST_AVAILABLE:
-        fastsimrust_logger = logging.getLogger("fastsim_core")
-        fastsimrust_logger.setLevel(level)
+    fastsimrust_logger = logging.getLogger("fastsim_core")
+    fastsimrust_logger.setLevel(level)
     return previous_level
 
 def disable_logging() -> int:
@@ -174,8 +172,7 @@ def set_log_filename(filename: str | Path):
     handler = logging.FileHandler(filename)
     handler.setFormatter(logging.root.handlers[0].formatter)
     logging.getLogger("fastsim").addHandler(handler)
-    if RUST_AVAILABLE:
-        logging.getLogger("fastsimrust").addHandler(handler)
+    logging.getLogger("fastsim.fastsimrust").addHandler(handler)
 
 
 def get_containers_with_path(
@@ -354,3 +351,46 @@ def vehdb_entry_to_model_file(selection: int, extension: str = "yaml"):
             f.write(veh.to_yaml())
         elif extension == "json":
             f.write(veh.to_json())
+    
+
+def calculate_tire_radius(tire_code: str, units: str = "m"):
+    """
+    Calculate tire radius from ISO tire code, with variable units
+
+    Unit options: "m", "cm", "mm", "ft", "in". Default is "m".
+
+    Examples:
+    >>> fastsim.utils.calculate_tire_radius("P205/60R16")
+    0.3262
+    >>> fastsim.utils.calculate_tire_radius("225/70Rx19.5G", units="in")
+    15.950787401574804
+    """
+    # Extract width, aspect ratio, and rim diameter from tire code.
+    PATTERN = r"(?i)[P|LT|ST|T]?(([0-9]{2,3}\.)?[0-9]+)/(([0-9]{1,2}\.)?[0-9]+)[B|D|R]?[x|\-| ]?(([0-9]{1,2}\.)?[0-9]+)[A|B|C|D|E|F|G|H|J|L|M|N]*"
+    m = re.match(PATTERN, tire_code)
+    if not m:
+        raise ValueError(f"Invalid tire code {tire_code}, unable to parse")
+    width_mm = float(m.group(1))
+    aspect_ratio = float(m.group(3))
+    rim_diameter_in = float(m.group(5))
+    # Calculate tire radius in mm
+    sidewall_height_mm = width_mm * aspect_ratio/100
+    diameter_mm = rim_diameter_in*25.4 + 2*sidewall_height_mm
+    radius_mm = diameter_mm/2
+    # Convert units
+    UNIT_OPTIONS = ["m", "cm", "mm", "ft", "in"]
+    if units == "m":
+        radius = radius_mm / 1000
+    elif units == "cm":
+        radius = radius_mm / 10
+    elif units == "mm":
+        radius = radius_mm
+    elif units == "ft":
+        radius = radius_mm / 25.4 / 12
+    elif units == "in":
+        radius = radius_mm / 25.4
+    else:
+        raise ValueError(f"Invalid units: {units} not one of {UNIT_OPTIONS}")
+    # Return result
+    # print(f"Tire radius: {radius} {units}")
+    return radius
