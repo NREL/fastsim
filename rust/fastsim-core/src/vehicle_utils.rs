@@ -323,6 +323,7 @@ fn read_url(url: String) -> Result<String, Error>
     Ok(buf)
 }
 
+#[allow(dead_code)]
 /// Gets data from fueleconomy.gov for the given vehicle
 ///
 /// Arguments:
@@ -651,6 +652,7 @@ fn get_epa_data(
     }
 }
 
+#[allow(dead_code)]
 /// Creates RustVehicle for the given vehicle using data from fueleconomy.gov and EPA databases
 /// The created RustVehicle is also written as a yaml file
 ///
@@ -1290,6 +1292,7 @@ fn vehicle_import_from_id(
     Ok(veh)
 }
 
+#[allow(dead_code)]
 /// Creates RustVehicles for all models for a given make in given year
 /// The created RustVehicles are also written as a yaml file
 ///
@@ -1331,6 +1334,7 @@ where
     Ok(())
 }
 
+#[allow(dead_code)]
 /// Creates RustVehicles for all models for a given year
 /// The created RustVehicles are also written as a yaml file
 ///
