@@ -709,7 +709,7 @@ pub fn get_label_fe_phev(
         };
     }
 
-    return Ok(phev_calcs);
+    return Ok(phev_calcs)
 }
 
 #[cfg(test)]
