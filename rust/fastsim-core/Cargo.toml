@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pyo3 = { workspace = true, version = "0.19", features = ["extension-module"], optional = true }
+pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 anyhow = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = {workspace = true}
