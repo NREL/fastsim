@@ -224,12 +224,12 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         lag: f64,
         minimum: f64,
         fc_temp_eff_component: String
-    ) -> PyResult<()>{
+    ) -> anyhow::Result<()>{
         let fc_temp_eff_comp = match fc_temp_eff_component.as_str() {
             "FuelConverter" => FcTempEffComponent::FuelConverter,
             "Catalyst" => FcTempEffComponent::Catalyst,
             "CatAndFC" => FcTempEffComponent::CatAndFC,
-            _ => panic!("Invalid option for fc_temp_eff_component.")
+            _ => bail!("Invalid option for fc_temp_eff_component.")
         };
 
         Ok(check_orphaned_and_set!(
