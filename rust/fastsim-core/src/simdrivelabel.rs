@@ -8,6 +8,8 @@ use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
 use pyo3::prelude::*;
+use pyo3::types::IntoPyDict;
+use pyo3::types::PyString;
 
 
 use crate::proc_macros::{add_pyo3_api, ApproxEq};
@@ -48,216 +50,6 @@ pub struct LabelFe {
     pub trace_miss_speed_mph: f64,
 }
 
-#[pymethods]
-impl LabelFe {
-    pub fn get_veh(&self) -> &vehicle::RustVehicle {
-        &self.veh
-    }
-
-    pub fn set_veh_py(&mut self, new_veh: vehicle::RustVehicle) {
-        self.veh = new_veh;
-    }
-    pub fn get_adj_params(&self) -> &AdjCoef {
-        &self.adj_params
-    }
-
-    pub fn set_adj_params_py(&mut self, new_params: AdjCoef) {
-        self.adj_params = new_params;
-    }
-
-    pub fn get_lab_udds_mpgge(&self) -> f64 {
-        self.lab_udds_mpgge
-    }
-
-    pub fn set_lab_udds_mpgge_py(&mut self, new_value: f64) {
-        self.lab_udds_mpgge = new_value;
-    }
-
-    pub fn get_lab_hwy_mpgge(&self) -> f64 {
-        self.lab_hwy_mpgge
-    }
-
-    pub fn set_lab_hwy_mpgge_py(&mut self, new_value: f64) {
-        self.lab_hwy_mpgge = new_value;
-    }
-
-    pub fn get_lab_comb_mpgge(&self) -> f64 {
-        self.lab_comb_mpgge
-    }
-
-    pub fn set_lab_comb_mpgge_py(&mut self, new_value: f64) {
-        self.lab_comb_mpgge = new_value;
-    }
-
-    pub fn get_lab_udds_kwh_per_mi(&self) -> f64 {
-        self.lab_udds_kwh_per_mi
-    }
-
-    pub fn set_lab_udds_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.lab_udds_kwh_per_mi = new_value;
-    }
-
-    pub fn get_lab_hwy_kwh_per_mi(&self) -> f64 {
-        self.lab_hwy_kwh_per_mi
-    }
-
-    pub fn set_lab_hwy_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.lab_hwy_kwh_per_mi = new_value;
-    }
-
-    pub fn get_lab_comb_kwh_per_mi(&self) -> f64 {
-        self.lab_comb_kwh_per_mi
-    }
-
-    pub fn set_lab_comb_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.lab_comb_kwh_per_mi = new_value;
-    }
-
-    pub fn get_adj_udds_mpgge(&self) -> f64 {
-        self.adj_udds_mpgge
-    }
-
-    pub fn set_adj_udds_mpgge_py(&mut self, new_value: f64) {
-        self.adj_udds_mpgge = new_value;
-    }
-
-    pub fn get_adj_hwy_mpgge(&self) -> f64 {
-        self.adj_hwy_mpgge
-    }
-
-    pub fn set_adj_hwy_mpgge_py(&mut self, new_value: f64) {
-        self.adj_hwy_mpgge = new_value;
-    }
-
-    pub fn get_adj_comb_mpgge(&self) -> f64 {
-        self.adj_comb_mpgge
-    }
-
-    pub fn set_adj_comb_mpgge_py(&mut self, new_value: f64) {
-        self.adj_comb_mpgge = new_value;
-    }
-
-    pub fn get_adj_udds_kwh_per_mi(&self) -> f64 {
-        self.adj_udds_kwh_per_mi
-    }
-
-    pub fn set_adj_udds_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.adj_udds_kwh_per_mi = new_value;
-    }
-
-    pub fn get_adj_hwy_kwh_per_mi(&self) -> f64 {
-        self.adj_hwy_kwh_per_mi
-    }
-
-    pub fn set_adj_hwy_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.adj_hwy_kwh_per_mi = new_value;
-    }
-
-    pub fn get_adj_comb_kwh_per_mi(&self) -> f64 {
-        self.adj_comb_kwh_per_mi
-    }
-
-    pub fn set_adj_comb_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.adj_comb_kwh_per_mi = new_value;
-    }
-
-    pub fn get_adj_udds_ess_kwh_per_mi(&self) -> f64 {
-        self.adj_udds_ess_kwh_per_mi
-    }
-
-    pub fn set_adj_udds_ess_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.adj_udds_ess_kwh_per_mi = new_value;
-    }
-
-    pub fn get_adj_hwy_ess_kwh_per_mi(&self) -> f64 {
-        self.adj_hwy_ess_kwh_per_mi
-    }
-
-    pub fn set_adj_hwy_ess_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.adj_hwy_ess_kwh_per_mi = new_value;
-    }
-
-    pub fn get_adj_comb_ess_kwh_per_mi(&self) -> f64 {
-        self.adj_comb_ess_kwh_per_mi
-    }
-
-    pub fn set_adj_comb_ess_kwh_per_mi_py(&mut self, new_value: f64) {
-        self.adj_comb_ess_kwh_per_mi = new_value;
-    }
-
-    pub fn get_net_range_miles(&self) -> f64 {
-        self.net_range_miles
-    }
-
-    pub fn set_net_range_miles_py(&mut self, new_value: f64) {
-        self.net_range_miles = new_value;
-    }
-
-    pub fn get_uf(&self) -> f64 {
-        self.uf
-    }
-
-    pub fn set_uf_py(&mut self, new_value: f64) {
-        self.uf = new_value;
-    }
-
-    pub fn get_net_accel(&self) -> f64 {
-        self.net_accel
-    }
-
-    pub fn set_net_accel_py(&mut self, new_value: f64) {
-        self.net_accel = new_value;
-    }
-
-    pub fn get_res_found(&self) -> &str {
-        &self.res_found
-    }
-
-    pub fn set_res_found_py(&mut self, new_value: String) {
-        self.res_found = new_value;
-    }
-
-    pub fn get_phev_calcs(&self) -> Option<&LabelFePHEV> {
-        self.phev_calcs.as_ref()
-    }
-
-    pub fn set_phev_calcs_py(&mut self, new_value: Option<LabelFePHEV>) {
-        self.phev_calcs = new_value;
-    }
-
-    pub fn get_adj_cs_comb_mpgge(&self) -> Option<f64> {
-        self.adj_cs_comb_mpgge
-    }
-
-    pub fn set_adj_cs_comb_mpgge_py(&mut self, new_value: Option<f64>) {
-        self.adj_cs_comb_mpgge = new_value;
-    }
-
-    pub fn get_adj_cd_comb_mpgge(&self) -> Option<f64> {
-        self.adj_cd_comb_mpgge
-    }
-
-    pub fn set_adj_cd_comb_mpgge_py(&mut self, new_value: Option<f64>) {
-        self.adj_cd_comb_mpgge = new_value;
-    }
-
-    pub fn get_net_phev_cd_miles(&self) -> Option<f64> {
-        self.net_phev_cd_miles
-    }
-
-    pub fn set_net_phev_cd_miles_py(&mut self, new_value: Option<f64>) {
-        self.net_phev_cd_miles = new_value;
-    }
-
-    pub fn get_trace_miss_speed_mph(&self) -> f64 {
-        self.trace_miss_speed_mph
-    }
-
-    pub fn set_trace_miss_speed_mph_py(&mut self, new_value: f64) {
-        self.trace_miss_speed_mph = new_value;
-    }
-}
-
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 #[add_pyo3_api]
 /// Label fuel economy values for a PHEV vehicle
@@ -267,41 +59,12 @@ pub struct LabelFePHEV {
     pub hwy: PHEVCycleCalc,
 }
 
-#[pymethods]
-impl LabelFePHEV {
-  
-    pub fn get_regen_soc_buffer(&self) -> f64 {
-        self.regen_soc_buffer() 
-    }
-
-    pub fn set_regen_soc_buffer_py(&mut self, new_value: f64) {
-        self.regen_soc_buffer = new_value;
-    }
-
-    pub fn get_udds(&self) -> &PHEVCycleCalc {
-        &self.udds
-    }
-
-    pub fn set_udds_py(&mut self, new_value: PHEVCycleCalc) {
-        self.udds = new_value;
-    }
-
-    pub fn get_hwy(&self) -> &PHEVCycleCalc {
-        &self.hwy
-    }
-
-    pub fn set_hwy_py(&mut self, new_value: PHEVCycleCalc) {
-        self.hwy = new_value;
-    }
-}
-
-
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 #[add_pyo3_api]
 /// Label fuel economy calculations for a specific cycle of a PHEV vehicle
 pub struct PHEVCycleCalc {
     /// Charge depletion battery kW-hr
-    pub(crate) cd_ess_kwh: f64,
+    pub cd_ess_kwh: f64,
     pub cd_ess_kwh_per_mi: f64,
     /// Charge depletion fuel gallons
     pub cd_fs_gal: f64,
@@ -353,358 +116,21 @@ pub struct PHEVCycleCalc {
     pub total_cd_miles: f64,
 }
 
-impl PHEVCycleCalc {
-    pub fn get_cd_ess_kwh(&self) -> f64 {
-        self.cd_ess_kwh()
-    }
-
-    pub fn set_cd_ess_kwh(&mut self, value: f64) {
-        self.cd_ess_kwh = value;
-    }
-
-    pub fn get_cd_ess_kwh_per_mi(&self) -> f64 {
-        self.cd_ess_kwh_per_mi()
-    }
-
-    pub fn set_cd_ess_kwh_per_mi(&mut self, value: f64) {
-        self.cd_ess_kwh_per_mi = value;
-    }
-
-    pub fn get_cd_fs_gal(&self) -> f64 {
-        self.cd_fs_gal()
-    }
-
-    pub fn set_cd_fs_gal(&mut self, value: f64) {
-        self.cd_fs_gal = value;
-    }
-
-    pub fn get_cd_fs_kwh(&self) -> f64 {
-        self.cd_fs_kwh()
-    }
-
-    pub fn set_cd_fs_kwh(&mut self, value: f64) {
-        self.cd_fs_kwh = value;
-    }
-
-    pub fn get_cd_mpg(&self) -> f64 {
-        self.cd_mpg()
-    }
-
-    pub fn set_cd_mpg(&mut self, value: f64) {
-        self.cd_mpg = value;
-    }
-
-    pub fn get_cd_cycs(&self) -> f64 {
-        self.cd_cycs()
-    }
-
-    pub fn set_cd_cycs(&mut self, value: f64) {
-        self.cd_cycs = value;
-    }
-
-    pub fn get_cd_miles(&self) -> f64 {
-        self.cd_miles()
-    }
-
-    pub fn set_cd_miles(&mut self, value: f64) {
-        self.cd_miles = value;
-    }
-
-    pub fn get_cd_lab_mpg(&self) -> f64 {
-        self.cd_lab_mpg()
-    }
-
-    pub fn set_cd_lab_mpg(&mut self, value: f64) {
-        self.cd_lab_mpg = value;
-    }
-
-    pub fn get_cd_adj_mpg(&self) -> f64 {
-        self.cd_adj_mpg()
-    }
-
-    pub fn set_cd_adj_mpg(&mut self, value: f64) {
-        self.cd_adj_mpg = value;
-    }
-
-    pub fn get_cd_frac_in_trans(&self) -> f64 {
-        self.cd_frac_in_trans()
-    }
-
-    pub fn set_cd_frac_in_trans(&mut self, value: f64) {
-        self.cd_frac_in_trans = value;
-    }
-
-    pub fn get_trans_init_soc(&self) -> f64 {
-        self.trans_init_soc()
-    }
-
-    pub fn set_trans_init_soc(&mut self, value: f64) {
-        self.cd_trans_init_soc = value;
-    }
-
-    pub fn get_trans_ess_kwh(&self) -> f64 {
-        self.trans_ess_kwh()
-    }
-
-    pub fn set_trans_ess_kwh(&mut self, value: f64) {
-        self.cd_trans_ess_kwh = value;
-    }
-
-    pub fn get_trans_ess_kwh_per_mi(&self) -> f64 {
-        self.trans_ess_kwh_per_mi()
-    }
-
-    pub fn set_trans_ess_kwh_per_mi(&mut self, value: f64) {
-        self.trans_ess_kwh_per_mi = value;
-    }
-
-    pub fn get_trans_fs_gal(&self) -> f64 {
-        self.trans_fs_gal()
-    }
-
-    pub fn set_trans_fs_gal(&mut self, value: f64) {
-        self.trans_fs_gal = value;
-    }
-
-    pub fn get_trans_fs_kwh(&self) -> f64 {
-        self.trans_fs_kwh()
-    }
-
-    pub fn set_trans_fs_kwh(&mut self, value: f64) {
-        self.trans_fs_kwh = value;
-    }
-
-    pub fn get_cs_ess_kwh(&self) -> f64 {
-        self.cs_ess_kwh()
-    }
-
-    pub fn set_cs_ess_kwh(&mut self, value: f64) {
-        self.cs_ess_kwh = value;
-    }
-
-    pub fn get_cs_ess_kwh_per_mi(&self) -> f64 {
-        self.cs_ess_kwh_per_mi()
-    }
-
-    pub fn set_cs_ess_kwh_per_mi(&mut self, value: f64) {
-        self.cs_ess_kwh_per_mi = value;
-    }
-
-    
-    pub fn get_cs_fs_gal(&self) -> f64 {
-        self.cs_fs_gal()
-    }
-
-    pub fn set_cs_fs_gal(&mut self, value: f64) {
-        self.cs_fs_gal = value;
-    }
-
-    pub fn get_cs_fs_kwh(&self) -> f64 {
-        self.cs_fs_kwh()
-    }
-
-    pub fn set_cs_fs_kwh(&mut self, value: f64) {
-        self.cs_fs_kwh = value;
-    }
-
-    pub fn get_cs_mpg(&self) -> f64 {
-        self.cs_mpg()
-    }
-
-    pub fn set_cs_mpg(&mut self, value: f64) {
-        self.cs_mpg = value;
-    }
-
-    pub fn get_lab_mpgge(&self) -> f64 {
-        self.lab_mpgge()
-    }
-
-    pub fn set_lab_mpgge(&mut self, value: f64) {
-        self.lab_mpgge = value;
-    }
-
-    pub fn get_lab_kwh_per_mi(&self) -> f64 {
-        self.lab_kwh_per_mi()
-    }
-
-    pub fn set_lab_kwh_per_mi(&mut self, value: f64) {
-        self.lab_kwh_per_mi = value;
-    }
-
-    pub fn get_lab_uf(&self) -> f64 {
-        self.lab_uf()
-    }
-
-    pub fn set_lab_uf(&mut self, value: f64) {
-        self.lab_uf = value;
-    }
-
-    pub fn get_lab_uf_gpm(&self) -> &Array1<f64> {
-        &self.lab_uf_gpm()
-    }
-
-    pub fn set_lab_uf_gpm(&mut self, value: Array1<f64>) {
-        self.lab_uf_gpm = value;
-    }
-
-    pub fn get_lab_iter_uf(&self) -> &Array1<f64> {
-        &self.lab_iter_uf()
-    }
-
-    pub fn set_lab_iter_uf(&mut self, value: Array1<f64>) {
-        self.lab_iter_uf = value;
-    }
-
-    pub fn get_lab_iter_uf_kwh_per_mi(&self) -> &Array1<f64> {
-        &self.lab_iter_uf_kwh_per_mi()
-    }
-
-    pub fn set_lab_iter_uf_kwh_per_mi(&mut self, value: Array1<f64>) {
-        self.lab_iter_uf_kwh_per_mi = value;
-    }
-
-    pub fn get_lab_iter_kwh_per_mi(&self) -> &Array1<f64> {
-        &self.lab_iter_kwh_per_mi()
-    }
-
-    pub fn set_lab_iter_kwh_per_mi(&mut self, value: Array1<f64>) {
-        self.lab_iter_kwh_per_mi = value;
-    }
-
-    pub fn get_adj_iter_mpgge(&self) -> &Array1<f64> {
-        &self.adj_iter_mpgge()
-    }
-
-    pub fn set_adj_iter_mpgge(&mut self, value: Array1<f64>) {
-        self.adj_iter_mpgge = value;
-    }
-
-    pub fn get_adj_iter_kwh_per_mi(&self) -> &Array1<f64> {
-        &self.adj_iter_kwh_per_mi()
-    }
-
-    pub fn set_adj_iter_kwh_per_mi(&mut self, value: Array1<f64>) {
-        self.adj_iter_kwh_per_mi = value;
-    }
-
-    pub fn get_adj_iter_cd_miles(&self) -> &Array1<f64> {
-        &self.adj_iter_cd_miles()
-    }
-
-    pub fn set_adj_iter_cd_miles(&mut self, value: Array1<f64>) {
-        self.adj_iter_cd_miles = value;
-    }
-
-    pub fn get_adj_iter_uf(&self) -> &Array1<f64> {
-        &self.adj_iter_uf()
-    }
-
-    pub fn set_adj_iter_uf(&mut self, value: Array1<f64>) {
-        self.adj_iter_uf = value;
-    }
-
-    pub fn get_adj_iter_uf_gpm(&self) -> &[f64] {
-        &self.adj_iter_uf_gpm()
-    }
-
-    pub fn set_adj_iter_uf_gpm(&mut self, value: Vec<f64>) {
-        self.adj_iter_uf_gpm = value;
-    }
-
-    pub fn get_adj_iter_uf_kwh_per_mi(&self) -> &Array1<f64> {
-        &self.adj_iter_uf_kwh_per_mi()
-    }
-
-    pub fn set_adj_iter_uf_kwh_per_mi(&mut self, value: Array1<f64>) {
-        self.adj_iter_uf_kwh_per_mi = value;
-    }
-
-    pub fn get_adj_cd_miles(&self) -> f64 {
-        self.adj_cd_miles()
-    }
-
-    pub fn set_adj_cd_miles(&mut self, value: f64) {
-        self.adj_cd_miles = value;
-    }
-
-    pub fn get_adj_cd_mpgge(&self) -> f64 {
-        self.adj_cd_mpgge()
-    }
-
-    pub fn set_adj_cd_mpgge(&mut self, value: f64) {
-        self.adj_cd_mpgge = value;
-    }
-
-    pub fn get_adj_cs_mpgge(&self) -> f64 {
-        self.adj_cs_mpgge()
-    }
-
-    pub fn set_adj_cs_mpgge(&mut self, value: f64) {
-        self.adj_cs_mpgge = value;
-    }
-
-    pub fn get_adj_uf(&self) -> f64 {
-        self.adj_uf()
-    }
-
-    pub fn set_adj_uf(&mut self, value: f64) {
-        self.adj_uf = value;
-    }
-
-    pub fn get_adj_mpgge(&self) -> f64 {
-        self.adj_mpgge()
-    }
-
-    pub fn set_adj_mpgge(&mut self, value: f64) {
-        self.adj_mpgge = value;
-    }
-
-    pub fn get_adj_kwh_per_mi(&self) -> f64 {
-        self.adj_kwh_per_mi()
-    }
-
-    pub fn set_adj_kwh_per_mi(&mut self, value: f64) {
-        self.adj_kwh_per_mi = value;
-    }
-
-    pub fn get_adj_ess_kwh_per_mi(&self) -> f64 {
-        self.adj_ess_kwh_per_mi()
-    }
-
-    pub fn set_adj_ess_kwh_per_mi(&mut self, value: f64) {
-        self.adj_ess_kwh_per_mi = value;
-    }
-
-    pub fn get_delta_soc(&self) -> f64 {
-        self.delta_soc()
-    }
-
-    pub fn set_delta_soc(&mut self, value: f64) {
-        self.delta_soc = value;
-    }
-
-    pub fn get_total_cd_miles(&self) -> f64 {
-        self.total_cd_miles()
-    }
-
-    pub fn set_total_cd_miles(&mut self, value: f64) {
-        self.total_cd_miles = value;
-    }
-}
-
-
-pub fn make_accel_trace() -> RustCycle {
-    let accel_cyc_secs = Array::range(0., 300., 0.1);
-    let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
-    accel_cyc_mps[0] = 0.0;
-
-    RustCycle::new(
-        accel_cyc_secs.to_vec(),
-        accel_cyc_mps.to_vec(),
-        Array::zeros(accel_cyc_secs.len()).to_vec(),
-        Array::zeros(accel_cyc_secs.len()).to_vec(),
-        String::from("accel"),
-    )
+pub fn make_accel_trace() -> PyResult<PyObject> {
+    Python::with_gil(|py| {
+        let accel_cyc_secs = Array::range(0., 300., 0.1);
+        let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
+        accel_cyc_mps[0] = 0.0;
+
+        let dict = PyDict::new(py);
+        dict.set_item(py, "accel_cyc_secs", accel_cyc_secs.to_vec())?;
+        dict.set_item(py, "accel_cyc_mps", accel_cyc_mps.to_vec())?;
+        dict.set_item(py, "zeros1", Array::zeros(accel_cyc_secs.len()).to_vec())?;
+        dict.set_item(py, "zeros2", Array::zeros(accel_cyc_secs.len()).to_vec())?;
+        dict.set_item(py, "name", "accel")?;
+
+        Ok(dict.into())
+    })
 }
 
 pub fn get_net_accel(
@@ -779,8 +205,6 @@ pub fn get_label_fe(
         main_separator!(),
         "..",
         main_separator!(),
-        "python",
-        main_separator!(),
         "fastsim",
         main_separator!(),
         "resources",
@@ -795,8 +219,6 @@ pub fn get_label_fe(
         "..",
         main_separator!(),
         "..",
-        main_separator!(),
-        "python",
         main_separator!(),
         "fastsim",
         main_separator!(),
@@ -1292,7 +714,7 @@ pub fn get_label_fe_phev(
         };
     }
 
-    return Ok(phev_calcs)
+    return Ok(phev_calcs);
 }
 
 #[cfg(test)]
