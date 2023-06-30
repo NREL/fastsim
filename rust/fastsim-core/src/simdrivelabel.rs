@@ -8,8 +8,7 @@ use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
 use pyo3::prelude::*;
-use pyo3::types::IntoPyDict;
-use pyo3::types::PyString;
+
 
 
 use crate::proc_macros::{add_pyo3_api, ApproxEq};
@@ -116,21 +115,18 @@ pub struct PHEVCycleCalc {
     pub total_cd_miles: f64,
 }
 
-pub fn make_accel_trace() -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let accel_cyc_secs = Array::range(0., 300., 0.1);
-        let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
-        accel_cyc_mps[0] = 0.0;
+pub fn make_accel_trace() -> RustCycle {
+    let accel_cyc_secs = Array::range(0., 300., 0.1);
+    let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
+    accel_cyc_mps[0] = 0.0;
 
-        let dict = PyDict::new(py);
-        dict.set_item(py, "accel_cyc_secs", accel_cyc_secs.to_vec())?;
-        dict.set_item(py, "accel_cyc_mps", accel_cyc_mps.to_vec())?;
-        dict.set_item(py, "zeros1", Array::zeros(accel_cyc_secs.len()).to_vec())?;
-        dict.set_item(py, "zeros2", Array::zeros(accel_cyc_secs.len()).to_vec())?;
-        dict.set_item(py, "name", "accel")?;
-
-        Ok(dict.into())
-    })
+    RustCycle::new(
+        accel_cyc_secs.to_vec(),
+        accel_cyc_mps.to_vec(),
+        Array::zeros(accel_cyc_secs.len()).to_vec(),
+        Array::zeros(accel_cyc_secs.len()).to_vec(),
+        String::from("accel"),
+    )
 }
 
 pub fn get_net_accel(
