@@ -7,19 +7,12 @@ use std::collections::HashMap;
 use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
-use pyo3::prelude::*;
-
-
-
-use crate::proc_macros::{add_pyo3_api, ApproxEq};
-#[cfg(feature = "pyo3")]
-use crate::pyo3imports::*;
-
+use crate::proc_macros::ApproxEq;
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
 use crate::vehicle;
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
-#[add_pyo3_api]
+/// Label fuel economy values
 pub struct LabelFe {
     pub veh: vehicle::RustVehicle,
     pub adj_params: AdjCoef,
@@ -38,7 +31,9 @@ pub struct LabelFe {
     pub adj_udds_ess_kwh_per_mi: f64,
     pub adj_hwy_ess_kwh_per_mi: f64,
     pub adj_comb_ess_kwh_per_mi: f64,
+    /// Range for combined city/highway
     pub net_range_miles: f64,
+    /// Utility factor
     pub uf: f64,
     pub net_accel: f64,
     pub res_found: String,
@@ -50,7 +45,6 @@ pub struct LabelFe {
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
-#[add_pyo3_api]
 /// Label fuel economy values for a PHEV vehicle
 pub struct LabelFePHEV {
     pub regen_soc_buffer: f64,
@@ -59,7 +53,6 @@ pub struct LabelFePHEV {
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
-#[add_pyo3_api]
 /// Label fuel economy calculations for a specific cycle of a PHEV vehicle
 pub struct PHEVCycleCalc {
     /// Charge depletion battery kW-hr
