@@ -7,12 +7,20 @@ use std::collections::HashMap;
 use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::ApproxEq;
+use pyo3::prelude::*;
+use pyo3::types::IntoPyDict;
+use pyo3::types::PyString;
+
+
+use crate::proc_macros::{add_pyo3_api, ApproxEq};
+#[cfg(feature = "pyo3")]
+use crate::pyo3imports::*;
+
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
 use crate::vehicle;
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
-/// Label fuel economy values
+#[add_pyo3_api]
 pub struct LabelFe {
     pub veh: vehicle::RustVehicle,
     pub adj_params: AdjCoef,
@@ -31,9 +39,7 @@ pub struct LabelFe {
     pub adj_udds_ess_kwh_per_mi: f64,
     pub adj_hwy_ess_kwh_per_mi: f64,
     pub adj_comb_ess_kwh_per_mi: f64,
-    /// Range for combined city/highway
     pub net_range_miles: f64,
-    /// Utility factor
     pub uf: f64,
     pub net_accel: f64,
     pub res_found: String,
@@ -45,6 +51,7 @@ pub struct LabelFe {
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
+#[add_pyo3_api]
 /// Label fuel economy values for a PHEV vehicle
 pub struct LabelFePHEV {
     pub regen_soc_buffer: f64,
@@ -53,6 +60,7 @@ pub struct LabelFePHEV {
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
+#[add_pyo3_api]
 /// Label fuel economy calculations for a specific cycle of a PHEV vehicle
 pub struct PHEVCycleCalc {
     /// Charge depletion battery kW-hr
@@ -108,19 +116,6 @@ pub struct PHEVCycleCalc {
     pub total_cd_miles: f64,
 }
 
-//pub fn make_accel_trace() -> RustCycle {
-    //let accel_cyc_secs = Array::range(0., 300., 0.1);
-   // let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
-   // accel_cyc_mps[0] = 0.0;
-
-   // RustCycle::new(
-        //accel_cyc_secs.to_vec(),
-        //accel_cyc_mps.to_vec(),
-        //Array::zeros(accel_cyc_secs.len()).to_vec(),
-        //Array::zeros(accel_cyc_secs.len()).to_vec(),
-       // String::from("accel"),
-   // )
-//}
 pub fn make_accel_trace() -> PyResult<PyObject> {
     Python::with_gil(|py| {
         let accel_cyc_secs = Array::range(0., 300., 0.1);
@@ -138,6 +133,21 @@ pub fn make_accel_trace() -> PyResult<PyObject> {
         Ok(dict.into())
     })
 }
+
+//pub fn make_accel_trace() -> RustCycle {
+    //let accel_cyc_secs = Array::range(0., 300., 0.1);
+   // let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
+   // accel_cyc_mps[0] = 0.0;
+
+   // RustCycle::new(
+        //accel_cyc_secs.to_vec(),
+        //accel_cyc_mps.to_vec(),
+        //Array::zeros(accel_cyc_secs.len()).to_vec(),
+        //Array::zeros(accel_cyc_secs.len()).to_vec(),
+       // String::from("accel"),
+   // )
+//}
+
 
 pub fn get_net_accel(
     sd_accel: &mut RustSimDrive,
