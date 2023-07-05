@@ -17,22 +17,22 @@ TOL = 1e-6
 
 
 def load_cycle(use_rust=False, verbose=False):
-    t0 = time.time()
+    t0 = time.perf_counter()
     cyc = fsim.cycle.Cycle.from_file("udds")
     if use_rust:
         cyc = cyc.to_rust()
-    t1 = time.time()
+    t1 = time.perf_counter()
     if verbose:
         print(f'Time to load cycle: {t1 - t0:.2e} s')
     return cyc
 
 
 def load_vehicle(use_rust=False, verbose=False):
-    t0 = time.time()
+    t0 = time.perf_counter()
     veh = fsim.vehicle.Vehicle.from_vehdb(11)
     if use_rust:
         veh = veh.to_rust()
-    print(f'Time to load vehicle: {time.time() - t0:.2e} s')
+    print(f'Time to load vehicle: {time.perf_counter() - t0:.2e} s')
     return veh
 
 
@@ -45,10 +45,10 @@ def run_simdrive(cyc=None, veh=None, use_rust=False, verbose=False):
         sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
     else:
         sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-    t0 = time.time()
+    t0 = time.perf_counter()
     with np.errstate(divide='ignore'):
         sim_drive.sim_drive() 
-    dt = time.time() - t0
+    dt = time.perf_counter() - t0
     if verbose:
         if use_rust:
             print(f'Time to simulate in rust: {dt:.2e} s')
@@ -58,7 +58,7 @@ def run_simdrive(cyc=None, veh=None, use_rust=False, verbose=False):
 
 
 def run_by_step_with_varying_aux_loads(use_rust=False, verbose=False):
-    t0 = time.time()
+    t0 = time.perf_counter()
 
     veh = fsim.vehicle.Vehicle.from_vehdb(9)
     cyc = fsim.cycle.Cycle.from_file('udds')
@@ -81,7 +81,7 @@ def run_by_step_with_varying_aux_loads(use_rust=False, verbose=False):
         sim_drive.sim_drive_step()
 
     if verbose:
-        print(f'Time to simulate: {time.time() - t0:.2e} s')
+        print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
     return sim_drive
 
@@ -101,7 +101,7 @@ def run_with_aux_overrides_in_simdrive(use_rust=False):
 
 
 def run_with_aux_override_direct_set(use_rust=False, verbose=False):
-    t0 = time.time()
+    t0 = time.perf_counter()
     veh = fsim.vehicle.Vehicle.from_vehdb(9)
     cyc = fsim.cycle.Cycle.from_file('udds')
     if use_rust:
@@ -118,25 +118,25 @@ def run_with_aux_override_direct_set(use_rust=False, verbose=False):
     while sim_drive.i < len(sim_drive.cyc.time_s):
         sim_drive.sim_drive_step()
     if verbose:
-        print(f'Time to simulate: {time.time() - t0:.2e} s')
+        print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
     return sim_drive
 
 
 def use_simdrive_post(use_rust=False, verbose=False):
-    t0 = time.time()
+    t0 = time.perf_counter()
     veh = fsim.vehicle.Vehicle.from_vehdb(19)
     # veh = veh
     if verbose:
-        print(f'Time to load vehicle: {time.time() - t0:.2e} s')
+        print(f'Time to load vehicle: {time.perf_counter() - t0:.2e} s')
     # generate micro-trip 
-    t0 = time.time()
+    t0 = time.perf_counter()
     cyc = fsim.cycle.Cycle.from_file("udds")
     microtrips = fsim.cycle.to_microtrips(cyc.get_cyc_dict())
     cyc = fsim.cycle.Cycle.from_dict(microtrips[1])
     if verbose:
-        print(f'Time to load cycle: {time.time() - t0:.2e} s')
+        print(f'Time to load cycle: {time.perf_counter() - t0:.2e} s')
 
-    t0 = time.time()
+    t0 = time.perf_counter()
     if use_rust:
         veh = veh.to_rust()
         cyc = cyc.to_rust()
@@ -147,14 +147,14 @@ def use_simdrive_post(use_rust=False, verbose=False):
     # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
     # sim_drive.sim_drive()
     if verbose:
-        print(f'Time to simulate: {time.time() - t0:.2e} s')
+        print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
-    t0 = time.time()
+    t0 = time.perf_counter()
     sim_drive_post = fsim.simdrive.SimDrivePost(sim_drive)
     sim_drive_post.set_battery_wear()
     diag = sim_drive_post.get_diagnostics()
     if verbose:
-        print(f'Time to post process: {time.time() - t0:.2e} s')
+        print(f'Time to post process: {time.perf_counter() - t0:.2e} s')
     return diag
 
 
@@ -211,8 +211,7 @@ class TestDemo(unittest.TestCase):
                 False,
                 msg=f"Exception (Rust: False): {ex}"
             )
-        with np.errstate(divide='ignore'):
-            speedup = py_dt / ru_dt
+        speedup = py_dt / ru_dt
         if VERBOSE:
             print(f"Rust provides a {speedup:.5g}x speedup")
         self.assertTrue(
