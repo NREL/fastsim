@@ -211,7 +211,8 @@ class TestDemo(unittest.TestCase):
                 False,
                 msg=f"Exception (Rust: False): {ex}"
             )
-        speedup = py_dt / ru_dt
+        with np.errstate(divide='ignore'):
+            speedup = py_dt / ru_dt
         if VERBOSE:
             print(f"Rust provides a {speedup:.5g}x speedup")
         self.assertTrue(
