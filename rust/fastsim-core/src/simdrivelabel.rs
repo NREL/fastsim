@@ -8,7 +8,6 @@ use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
 use pyo3::prelude::*;
-use pyo3::PyResult;
 
 use serde::Serialize;
 use crate::proc_macros:: ApproxEq;
@@ -168,6 +167,7 @@ pub fn get_net_accel_py(
     let result = get_net_accel(sd_accel, &scenario_name.to_string())?;
     Ok(result)
 }
+
 
 
 pub fn get_label_fe(
@@ -436,7 +436,19 @@ pub fn get_label_fe(
         return Ok((out, None));
     } else {
         return Ok((out, None));
-    }
+    }  
+    
+}
+
+#[cfg(feature = "pyo3")]
+/// pyo3 version of [get_label_fe]
+pub fn get_label_fe_py(
+    veh: &vehicle::RustVehicle,
+    full_detail: Option<bool>,
+    verbose: Option<bool>,
+) -> PyResult<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
+    let result = get_label_fe(veh, full_detail, verbose)?;
+    Ok(result)
 }
 
 pub fn get_label_fe_phev(
@@ -735,6 +747,20 @@ pub fn get_label_fe_phev(
     return Ok(phev_calcs);
 }
 
+#[cfg(feature = "pyo3")]
+/// pyo3 version of [get_label_fe_phev]
+pub fn get_label_fe_phev_py(
+    veh: &vehicle::RustVehicle,
+    sd: HashMap<&str, RustSimDrive>,
+    long_params: RustLongParams,
+    adj_params: AdjCoef,
+    sim_params: RustSimDriveParams,
+    props: RustPhysicalProperties,
+) -> PyResult<LabelFePHEV> {
+    let result = get_label_fe_phev(veh, &mut sd, &long_params, &adj_params, &sim_params, &props)?;
+    Ok(result)
+}
+
 #[cfg(test)]
 mod simdrivelabel_tests {
     use super::*;
@@ -785,6 +811,14 @@ mod simdrivelabel_tests {
         assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
     }
 
+}
+#[cfg(feature = "pyo3")]
+/// pyo3 version of [get_label_fe_conv]
+pub fn get_label_fe_conv_py() -> LabelFe {
+    let veh: vehicle::RustVehicle = vehicle::RustVehicle::mock_vehicle();
+    let (label_fe, _) = get_label_fe(&veh, None, None).unwrap();
+    label_fe.veh = vehicle::RustVehicle::default();
+    label_fe
 }
     #[test]
     fn test_get_label_fe_phev() {
