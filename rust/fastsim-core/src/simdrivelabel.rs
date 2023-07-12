@@ -429,6 +429,7 @@ pub fn get_label_fe(
 }
 
 #[cfg(feature = "pyo3")]
+
 /// pyo3 version of [get_label_fe]
 pub fn get_label_fe_py(
     veh: &vehicle::RustVehicle,

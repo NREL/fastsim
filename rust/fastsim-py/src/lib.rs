@@ -1,6 +1,8 @@
 use fastsim_core::*;
 
 use pyo3imports::*;
+use fastsim_core::simdrivelabel::*;
+
 
 /// Function for adding Rust structs as Python Classes
 #[pymodule]
@@ -19,12 +21,19 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<vehicle_thermal::HVACModel>()?;
+
     cycle::register(py, m)?;
     m.add_function(wrap_pyfunction!(vehicle_utils::abc_to_drag_coeffs, m)?)?;
     m.add_function(wrap_pyfunction!(make_accel_trace_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_net_accel_py, m)?)?;
-    m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
-    m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
-    m.add_function(wrap_pyfunction!(get_label_fe_conv_py, m)?)?;
-    Ok(())
+    #[cfg(feature = "pyo3")]
+    {
+        m.add_class::<LabelFe>()?;
+        m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
+        m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
+        m.add_function(wrap_pyfunction!(get_label_fe_conv_py, m)?)?;
+
+    }
+   
+ Ok(())
 }
