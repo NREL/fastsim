@@ -132,10 +132,13 @@ pub struct RustLongParams {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, ApproxEq)]
+#[add_pyo3_api]
 pub struct AdjCoefMap {
     #[serde(flatten)]
     pub adj_coef_map: HashMap<String, AdjCoef>,
 }
+
+impl SerdeAPI for AdjCoefMap {}
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct AdjCoef {

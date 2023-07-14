@@ -1,20 +1,21 @@
 //! Module containing classes and methods for calculating label fuel economy.
 
 use ndarray::Array;
+use pyo3::prelude::*;
+use serde::Serialize;
 use std::collections::HashMap;
 
 // crate local
 use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
-use pyo3::prelude::*;
-
-use crate::proc_macros::ApproxEq;
-use serde::Serialize;
+use crate::proc_macros::{add_pyo3_api, ApproxEq};
+use crate::pyo3imports::*;
 
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
 use crate::vehicle;
 
+#[add_pyo3_api]
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 pub struct LabelFe {
     pub veh: vehicle::RustVehicle,
@@ -45,6 +46,9 @@ pub struct LabelFe {
     pub trace_miss_speed_mph: f64,
 }
 
+impl SerdeAPI for LabelFe {}
+
+#[add_pyo3_api]
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 /// Label fuel economy values for a PHEV vehicle
 pub struct LabelFePHEV {
@@ -53,6 +57,9 @@ pub struct LabelFePHEV {
     pub hwy: PHEVCycleCalc,
 }
 
+impl SerdeAPI for LabelFePHEV {}
+
+#[add_pyo3_api]
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 /// Label fuel economy calculations for a specific cycle of a PHEV vehicle
 pub struct PHEVCycleCalc {
@@ -109,6 +116,8 @@ pub struct PHEVCycleCalc {
     pub total_cd_miles: f64,
 }
 
+impl SerdeAPI for PHEVCycleCalc {}
+
 pub fn make_accel_trace() -> RustCycle {
     let accel_cyc_secs = Array::range(0., 300., 0.1);
     let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
@@ -124,7 +133,7 @@ pub fn make_accel_trace() -> RustCycle {
 }
 
 #[cfg(feature = "pyo3")]
-#[pyfunction(rename = "make_accel_trace")]
+#[pyfunction(name = "make_accel_trace")]
 /// pyo3 version of [make_accel_trace]
 pub fn make_accel_trace_py() -> RustCycle {
     make_accel_trace()
@@ -150,7 +159,7 @@ pub fn get_net_accel(
 }
 
 #[cfg(feature = "pyo3")]
-#[pyfunction(rename = "get_net_accel")]
+#[pyfunction(name = "get_net_accel")]
 /// pyo3 version of [get_net_accel]
 pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> PyResult<f64> {
     let result = get_net_accel(sd_accel, &scenario_name.to_string())?;
