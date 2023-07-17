@@ -1,15 +1,18 @@
 //! Module containing classes and methods for calculating label fuel economy.
 
 use ndarray::Array;
-use pyo3::prelude::*;
 use serde::Serialize;
 use std::collections::HashMap;
+
 
 // crate local
 use crate::cycle::RustCycle;
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::{add_pyo3_api, ApproxEq};
+use crate::proc_macros::add_pyo3_api;
+use crate::proc_macros::ApproxEq;
+
+#[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
@@ -17,7 +20,7 @@ use crate::vehicle;
 
 #[add_pyo3_api]
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
-pub struct LabelFe {
+ pub struct LabelFe {
     pub veh: vehicle::RustVehicle,
     pub adj_params: AdjCoef,
     pub lab_udds_mpgge: f64,
@@ -44,7 +47,7 @@ pub struct LabelFe {
     pub adj_cd_comb_mpgge: Option<f64>,
     pub net_phev_cd_miles: Option<f64>,
     pub trace_miss_speed_mph: f64,
-}
+ }
 
 impl SerdeAPI for LabelFe {}
 
@@ -438,14 +441,14 @@ pub fn get_label_fe(
 }
 
 #[cfg(feature = "pyo3")]
-
+#[pyfunction(name = "get_label_fe")]
 /// pyo3 version of [get_label_fe]
 pub fn get_label_fe_py(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
     verbose: Option<bool>,
 ) -> PyResult<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
-    let result = get_label_fe(veh, full_detail, verbose)?;
+    let result: (LabelFe, Option<HashMap<&str, RustSimDrive>>) = get_label_fe(veh, full_detail, verbose)?;
     Ok(result)
 }
 
@@ -747,17 +750,25 @@ pub fn get_label_fe_phev(
 }
 
 #[cfg(feature = "pyo3")]
+ #[pyfunction(name = "get_label_fe_phev")]
+
 /// pyo3 version of [get_label_fe_phev]
 pub fn get_label_fe_phev_py(
     veh: &vehicle::RustVehicle,
-    sd: &mut HashMap<&str, RustSimDrive>,
-    long_params: RustLongParams,
+    sd: HashMap<&str, RustSimDrive>,
     adj_params: AdjCoef,
-    sim_params: RustSimDriveParams,
+    long_params: RustLongParams, 
+    sim_params: &RustSimDriveParams,
     props: RustPhysicalProperties,
-) -> anyhow::Result<LabelFePHEV> {
-    get_label_fe_phev(veh, sd, &long_params, &adj_params, &sim_params, &props)
+) -> Result<LabelFePHEV, anyhow::Error> {
+    let mut sd_mut = HashMap::new();
+    for (key, value) in sd {
+        sd_mut.insert(key, value);
+    }
+
+    get_label_fe_phev(veh, &mut sd_mut, &long_params, &adj_params, &sim_params, &props)
 }
+
 
 #[cfg(test)]
 mod simdrivelabel_tests {
@@ -810,6 +821,7 @@ mod simdrivelabel_tests {
     }
 }
 #[cfg(feature = "pyo3")]
+#[pyfunction(name = "get_label_fe_conv")]
 /// pyo3 version of [get_label_fe_conv]
 pub fn get_label_fe_conv_py() -> LabelFe {
     let veh: vehicle::RustVehicle = vehicle::RustVehicle::mock_vehicle();

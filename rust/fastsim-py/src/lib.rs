@@ -1,5 +1,4 @@
 use fastsim_core::*;
-
 use fastsim_core::simdrivelabel::*;
 use pyo3imports::*;
 
@@ -20,9 +19,9 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<vehicle_thermal::HVACModel>()?;
-    m.add_class::<LabelFe>()?;
-    m.add_class::<LabelFePHEV>()?;
-    m.add_class::<PHEVCycleCalc>()?;
+    m.add_class::<simdrivelabel::LabelFe>()?;
+    m.add_class::<simdrivelabel::LabelFePHEV>()?;
+    m.add_class::<simdrivelabel::PHEVCycleCalc>()?;
 
     cycle::register(py, m)?;
     m.add_function(wrap_pyfunction!(vehicle_utils::abc_to_drag_coeffs, m)?)?;
@@ -31,5 +30,6 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_label_fe_conv_py, m)?)?;
+
     Ok(())
 }
