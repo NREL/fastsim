@@ -799,6 +799,7 @@ mod simdrivelabel_tests {
             fc_kw_per_kg: 2.13,
             min_fc_time_on: 30.0,
             idle_fc_kw: 1.5,
+            mc_pwr_frac_for_fc_on: Some(0.),
             mc_max_kw: 111.0,
             mc_pwr_out_perc: Array1::from(vec![
                 0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0,

@@ -219,6 +219,12 @@ pub struct RustVehicle {
     #[serde(alias = "idleFcKw")]
     #[validate(range(min = 0))]
     pub idle_fc_kw: f64,
+    /// Fraction of power handled by electric sys when fc is on.  
+    /// Uses closes possible power split to this value when fc is on,
+    /// respecting component limits.  If 1, then all power comes
+    /// from mc; if 0, then all power comes from fc.  
+    #[validate(range(min = 0., max = 1.))]
+    pub mc_pwr_frac_for_fc_on: Option<f64>,
     /// Peak continuous electric motor power, $kW$
     #[serde(alias = "mcMaxElecInKw")]
     #[validate(range(min = 0))]
@@ -819,6 +825,7 @@ impl RustVehicle {
             fc_kw_per_kg: 2.13,
             min_fc_time_on: 30.0,
             idle_fc_kw: 2.5,
+            mc_pwr_frac_for_fc_on: Some(0.),
             mc_max_kw: 0.0,
             mc_peak_eff_override: Default::default(),
             mc_pwr_out_perc: array![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0],
@@ -1141,6 +1148,7 @@ mod tests {
             fc_kw_per_kg,
             min_fc_time_on,
             idle_fc_kw,
+            mc_pwr_frac_for_fc_on: Some(0.),
             mc_max_kw,
             mc_pwr_out_perc,
             mc_eff_map: array![0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92],
