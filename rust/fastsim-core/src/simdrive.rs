@@ -502,6 +502,8 @@ pub struct RustSimDrive {
     pub can_pwr_all_elec: Array1<bool>,
     pub desired_ess_kw_out_for_ae: Array1<f64>,
     pub ess_ae_kw_out: Array1<f64>,
+    /// Charging power received from electric roadway (er), if enabled,
+    /// for all electric (ae) operation.  
     pub er_ae_kw_out: Array1<f64>,
     pub ess_desired_kw_4fc_eff: Array1<f64>,
     pub ess_kw_if_fc_req: Array1<f64>,

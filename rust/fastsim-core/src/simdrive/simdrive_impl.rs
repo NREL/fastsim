@@ -1199,6 +1199,7 @@ impl RustSimDrive {
             .unwrap_or(0)
                 - 1];
         }
+        // set elec_kw_req_4ae[i]
         if self.veh.no_elec_sys {
             self.elec_kw_req_4ae[i] = 0.0;
         } else if self.trans_kw_in_ach[i] > 0.0 {
@@ -1225,7 +1226,8 @@ impl RustSimDrive {
 
         self.prev_fc_time_on[i] = self.fc_time_on[i - 1];
 
-        // some conditions in the following if statement have a buffer of 1e-6 to prevent false positives/negatives because these have been encountered in practice.
+        // some conditions in the following if statement have a buffer of 1e-6 to prevent
+        // false positives/negatives because these have been encountered in practice.
         if self.veh.fc_max_kw == 0.0 {
             self.can_pwr_all_elec[i] = self.accel_buff_soc[i] < self.soc[i - 1]
                 && (self.trans_kw_in_ach[i] - 1e-6) <= self.cur_max_mc_kw_out[i]
@@ -1237,6 +1239,7 @@ impl RustSimDrive {
                 && ((self.cyc.mph_at_i(i) - 1e-6) <= self.veh.mph_fc_on || self.veh.charging_on)
                 && self.elec_kw_req_4ae[i] <= self.veh.kw_demand_fc_on;
         }
+        // set desired_ess_kw_out_for_ae[i]
         if self.can_pwr_all_elec[i] {
             if self.trans_kw_in_ach[i] < self.aux_in_kw[i] {
                 self.desired_ess_kw_out_for_ae[i] = self.aux_in_kw[i] + self.trans_kw_in_ach[i];
@@ -1254,27 +1257,23 @@ impl RustSimDrive {
             self.desired_ess_kw_out_for_ae[i] = 0.0;
         }
 
-        if self.can_pwr_all_elec[i] {
-            self.ess_ae_kw_out[i] = max(
-                -self.cur_max_ess_chg_kw[i],
+        self.ess_ae_kw_out[i] = max(
+            -self.cur_max_ess_chg_kw[i],
+            max(
+                -self.max_ess_regen_buff_chg_kw[i],
                 max(
-                    -self.max_ess_regen_buff_chg_kw[i],
-                    max(
-                        min(
-                            0.0,
-                            self.cur_max_roadway_chg_kw[i] - self.trans_kw_in_ach[i]
-                                + self.aux_in_kw[i],
-                        ),
-                        min(
-                            self.cur_ess_max_kw_out[i],
-                            self.desired_ess_kw_out_for_ae[i],
-                        ),
+                    min(
+                        0.0,
+                        self.cur_max_roadway_chg_kw[i] - self.trans_kw_in_ach[i]
+                            + self.aux_in_kw[i],
+                    ),
+                    min(
+                        self.cur_ess_max_kw_out[i],
+                        self.desired_ess_kw_out_for_ae[i],
                     ),
                 ),
-            );
-        } else {
-            self.ess_ae_kw_out[i] = 0.0;
-        }
+            ),
+        );
 
         self.er_ae_kw_out[i] = min(
             max(
@@ -1353,17 +1352,10 @@ impl RustSimDrive {
         }
 
         if self.accel_buff_soc[i] > self.regen_buff_soc[i] {
-            self.ess_kw_if_fc_req[i] = min(
-                self.cur_ess_max_kw_out[i],
-                min(
-                    self.veh.mc_max_elec_in_kw + self.aux_in_kw[i],
-                    min(
-                        self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i],
-                        max(
-                            -self.cur_max_ess_chg_kw[i],
-                            self.ess_accel_regen_dischg_kw[i],
-                        ),
-                    ),
+            self.ess_kw_if_fc_req[i] = self.cur_ess_max_kw_out[i].min(
+                (self.veh.mc_max_elec_in_kw + self.aux_in_kw[i]).min(
+                    (self.cur_max_mc_elec_kw_in[i] + self.aux_in_kw[i])
+                        .min((-self.cur_max_ess_chg_kw[i]).max(self.ess_accel_regen_dischg_kw[i])),
                 ),
             );
         } else if self.ess_regen_buff_dischg_kw[i] > 0.0 {
