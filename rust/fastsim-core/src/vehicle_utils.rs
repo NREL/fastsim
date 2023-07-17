@@ -1,6 +1,5 @@
 //! Module for utility functions that support the vehicle struct.
 
-use std::option::Option;
 use argmin::core::{CostFunction, Error, Executor, OptimizationResult, State};
 use argmin::solver::neldermead::NelderMead;
 use curl::easy::{Easy, SslOpt};
@@ -9,6 +8,7 @@ use polynomial::Polynomial;
 use serde_xml_rs::from_str;
 use std::collections::HashMap;
 use std::fs::File;
+use std::option::Option;
 use std::path::PathBuf;
 
 use crate::air::*;
@@ -301,8 +301,7 @@ impl SerdeAPI for VehicleDataEPA {
     }
 }
 
-fn read_url(url: String) -> Result<String, Error>
-{
+fn read_url(url: String) -> Result<String, Error> {
     // NOTE: `ssl_opt.no_revoke(true);` "Tells libcurl to disable certificate
     // ... revocation checks for those SSL backends where such behavior is present."
     // ... see https://docs.rs/curl/latest/curl/easy/struct.SslOpt.html#method.no_revoke
@@ -369,10 +368,10 @@ where
         index = input.trim().parse()?;
     }
 
-    let veh_buf: String = read_url(
-        format!(
-            "https://www.fueleconomy.gov/ws/rest/vehicle/{}",
-            vehicle_options.options[index].id))?;
+    let veh_buf: String = read_url(format!(
+        "https://www.fueleconomy.gov/ws/rest/vehicle/{}",
+        vehicle_options.options[index].id
+    ))?;
 
     let mut vehicle_data_fe: VehicleDataFE = from_str(&veh_buf)?;
     if vehicle_data_fe.drive.contains("4-Wheel") {
@@ -396,7 +395,7 @@ where
 fn get_fuel_economy_gov_options_for_year_make_model(
     year: &str,
     make: &str,
-    model: &str
+    model: &str,
 ) -> Result<Vec<OptionFE>, Error> {
     let buf: String = read_url(
         format!(
@@ -423,18 +422,17 @@ fn get_fuel_economy_gov_data_for_option_idx(
     year: &str,
     make: &str,
     model: &str,
-    vehicle_options_idx: usize
-) -> Result<VehicleDataFE, Error>
-{
+    vehicle_options_idx: usize,
+) -> Result<VehicleDataFE, Error> {
     let available_options = get_fuel_economy_gov_options_for_year_make_model(year, make, model)?;
     let mut index = vehicle_options_idx;
     if vehicle_options_idx >= available_options.len() {
         index = available_options.len() - 1;
     }
-    let veh_buf: String = read_url(
-        format!(
-            "https://www.fueleconomy.gov/ws/rest/vehicle/{}",
-            available_options[index].id))?;
+    let veh_buf: String = read_url(format!(
+        "https://www.fueleconomy.gov/ws/rest/vehicle/{}",
+        available_options[index].id
+    ))?;
 
     let mut vehicle_data_fe: VehicleDataFE = from_str(&veh_buf)?;
     if vehicle_data_fe.drive.contains("4-Wheel") {
@@ -453,10 +451,11 @@ fn get_fuel_economy_gov_data_for_option_idx(
 /// Returns:
 /// --------
 /// vehicle_data_fe: Data for the given vehicle from fueleconomy.gov
-fn get_fuel_economy_gov_data_by_option_id(option_id: &str) -> Result<VehicleDataFE, Error>
-{
-    let veh_buf: String = read_url(
-        format!("https://www.fueleconomy.gov/ws/rest/vehicle/{}", option_id))?;
+fn get_fuel_economy_gov_data_by_option_id(option_id: &str) -> Result<VehicleDataFE, Error> {
+    let veh_buf: String = read_url(format!(
+        "https://www.fueleconomy.gov/ws/rest/vehicle/{}",
+        option_id
+    ))?;
     let mut vehicle_data_fe: VehicleDataFE = from_str(&veh_buf)?;
     if vehicle_data_fe.drive.contains("4-Wheel") {
         vehicle_data_fe.drive = String::from("All-Wheel Drive");
@@ -630,7 +629,7 @@ fn get_epa_data(
                 && veh_epa.displ.round() == 0.0
                 && veh_epa.cylinders == String::new())
                 || ((veh_epa.displ * 10.0).round() / 10.0
-                    == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap())
+                    == (fe_gov_vehicle_data.displ.parse::<f64>().unwrap_or_default())
                     && veh_epa.cylinders == fe_gov_vehicle_data.cylinders))
         {
             if veh_epa == current_veh {
@@ -648,7 +647,7 @@ fn get_epa_data(
     if current_count > most_common_count {
         Ok(current_veh)
     } else {
-     Ok(most_common_veh)
+        Ok(most_common_veh)
     }
 }
 
@@ -923,7 +922,7 @@ where
         veh_year: fe_gov_data.year,
         veh_pt_type: String::from(veh_pt_type),
         drag_coef: 0.0,
-        frontal_area_m2: (width_in * height_in) / (IN_PER_M * IN_PER_M),
+        frontal_area_m2: (0.85 * width_in * height_in) / (IN_PER_M * IN_PER_M),
         glider_kg,
         veh_cg_m,
         drive_axle_weight_frac: 0.59,
@@ -947,7 +946,9 @@ where
         min_fc_time_on: 30.0,
         idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
         mc_max_kw,
-        mc_pwr_out_perc: Array1::from(vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]),
+        mc_pwr_out_perc: Array1::from(vec![
+            0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0,
+        ]),
         mc_eff_map: Array1::from(vec![
             0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
         ]),
@@ -1103,11 +1104,10 @@ impl SerdeAPI for OtherVehicleInputs {
 fn vehicle_import_from_id(
     vehicle_id: &str,
     other_inputs: &OtherVehicleInputs,
-    resource_dir: String
+    resource_dir: String,
 ) -> Result<RustVehicle, Error> {
     // TODO: Aaron wanted custom scenario name option
-    let fe_gov_data: VehicleDataFE =
-        get_fuel_economy_gov_data_by_option_id(vehicle_id)?;
+    let fe_gov_data: VehicleDataFE = get_fuel_economy_gov_data_by_option_id(vehicle_id)?;
     let mut epa_veh_db_path = PathBuf::from(resource_dir);
     epa_veh_db_path.push(format!("{}-tstcar.csv", fe_gov_data.year % 100));
     let path = String::from(epa_veh_db_path.to_str().unwrap_or(""));
@@ -1116,7 +1116,9 @@ fn vehicle_import_from_id(
         let year = fe_gov_data.year;
         let make = fe_gov_data.make;
         let model = fe_gov_data.model;
-        return Err(anyhow!("Matching EPA data not found for {vehicle_id}: {year} {make} {model}"));
+        return Err(anyhow!(
+            "Matching EPA data not found for {vehicle_id}: {year} {make} {model}"
+        ));
     }
 
     let veh_pt_type: &str = match fe_gov_data.alt_veh_type.as_str() {
@@ -1162,7 +1164,9 @@ fn vehicle_import_from_id(
         ess_max_kwh = 0.0;
     } else if veh_pt_type == crate::vehicle::HEV {
         fs_max_kw = 2000.0;
-        fc_max_kw = other_inputs.fc_max_kw.unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
+        fc_max_kw = other_inputs
+            .fc_max_kw
+            .unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
         fc_eff_map = Array::from_vec(vec![
             0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
@@ -1180,7 +1184,9 @@ fn vehicle_import_from_id(
         mc_max_kw = other_inputs.mc_max_kw;
     } else if veh_pt_type == crate::vehicle::PHEV {
         fs_max_kw = 2000.0;
-        fc_max_kw = other_inputs.fc_max_kw.unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
+        fc_max_kw = other_inputs
+            .fc_max_kw
+            .unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
         fc_eff_map = Array::from_vec(vec![
             0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
@@ -1200,11 +1206,9 @@ fn vehicle_import_from_id(
         fs_max_kw = 0.0;
         fc_max_kw = 0.0;
         fc_eff_type = String::from(crate::vehicle::SI);
-        fc_eff_map = Array::from_vec(
-            vec![
-                0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
-            ]
-        );
+        fc_eff_map = Array::from_vec(vec![
+            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+        ]);
         mc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
         min_soc = 0.05;
         max_soc = 0.98;
@@ -1235,15 +1239,16 @@ fn vehicle_import_from_id(
             _ => -0.53,
         },
         glider_kg,
-        scenario_name: format!("{} {} {}",
-            fe_gov_data.year, fe_gov_data.make, fe_gov_data.model),
+        scenario_name: format!(
+            "{} {} {}",
+            fe_gov_data.year, fe_gov_data.make, fe_gov_data.model
+        ),
         max_roadway_chg_kw: Default::default(),
         selection: 0,
         veh_year: fe_gov_data.year,
         veh_pt_type: String::from(veh_pt_type),
         drag_coef: 0.0,
-        frontal_area_m2:
-            (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in)
+        frontal_area_m2: (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in)
             / (IN_PER_M * IN_PER_M),
         fs_kwh: other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge,
         idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
@@ -1314,7 +1319,7 @@ where
 {
     let buf: String = read_url(
         format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year={year}&make={make}")
-        .replace(' ', "%20")
+            .replace(' ', "%20"),
     )?;
 
     let model_list: VehicleModelsFE = from_str(&buf)?;
@@ -1350,7 +1355,7 @@ where
 {
     let buf: String = read_url(
         format!("https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year={year}")
-        .replace(' ', "%20")
+            .replace(' ', "%20"),
     )?;
 
     let make_list: VehicleMakesFE = from_str(&buf)?;
@@ -1360,18 +1365,18 @@ where
         multiple_vehicle_import_make(year, make.make_name.as_str(), &mut writer, &mut reader)?;
     }
 
-     Ok(())
+    Ok(())
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
 /// Export the given RustVehicle to file
-/// 
+///
 /// veh: The RustVehicle to export
 /// file_path: the path to export to
-/// 
+///
 /// NOTE: the file extension is used to determine the export format.
 /// Supported file types include yaml and JSON
-/// 
+///
 /// RETURN:
 /// ()
 fn export_vehicle_to_file(veh: &RustVehicle, file_path: String) -> Result<(), anyhow::Error> {
@@ -1384,9 +1389,15 @@ fn export_vehicle_to_file(veh: &RustVehicle, file_path: String) -> Result<(), an
 #[cfg(feature = "pyo3")]
 #[allow(unused)]
 pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
-    m.add_function(wrap_pyfunction!(get_fuel_economy_gov_data_for_option_idx, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        get_fuel_economy_gov_data_for_option_idx,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(get_fuel_economy_gov_data_by_option_id, m)?)?;
-    m.add_function(wrap_pyfunction!(get_fuel_economy_gov_options_for_year_make_model, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        get_fuel_economy_gov_options_for_year_make_model,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(get_epa_data, m)?)?;
     m.add_function(wrap_pyfunction!(vehicle_import_from_id, m)?)?;
     m.add_function(wrap_pyfunction!(export_vehicle_to_file, m)?)?;
@@ -1689,7 +1700,7 @@ mod vehicle_utils_tests {
         let mut output = Vec::new();
         let corolla_manual_fe_gov_data: VehicleDataFE =
             get_fuel_economy_gov_data(year, make, model, &mut output, &input[..]).unwrap();
-        
+
         println!(
             "FuelEconomy.gov: {} {} {}",
             corolla_manual_fe_gov_data.year,
@@ -1798,12 +1809,13 @@ mod vehicle_utils_tests {
             super_charge: String::new(),
             turbo_charge: String::from("T"),
         };
-        
+
         let epa_veh_db_path = format!(
             "../../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
             volvo_s60_b5_awd_fe_truth.year % 100
         );
-        let volvo_s60_b5_awd_epa_data = get_epa_data(&volvo_s60_b5_awd_fe_truth, epa_veh_db_path).unwrap();
+        let volvo_s60_b5_awd_epa_data =
+            get_epa_data(&volvo_s60_b5_awd_fe_truth, epa_veh_db_path).unwrap();
         println!(
             "Output: {} {} {} {}",
             volvo_s60_b5_awd_epa_data.year,
@@ -1886,11 +1898,8 @@ mod vehicle_utils_tests {
             "../../python/fastsim/resources/epa_vehdb/{}-tstcar.csv",
             corolla_manual_fe_truth.year % 100
         );
-        let corolla_manual_epa_data = get_epa_data(
-            &corolla_manual_fe_truth,
-            epa_veh_db_path,
-        )
-        .unwrap();
+        let corolla_manual_epa_data =
+            get_epa_data(&corolla_manual_fe_truth, epa_veh_db_path).unwrap();
         println!(
             "Output: {} {} {} {}",
             corolla_manual_epa_data.year,
@@ -2011,11 +2020,15 @@ mod vehicle_utils_tests {
     fn test_vehicle_import_phev() {
         let input = b"69.3\n57.9\n11.4\n8.8\n71\n19\n19.95\n";
         let mut output = Vec::new();
-        let _veh: RustVehicle =
-            vehicle_import(
-                "2022", "Toyota", "Prius Prime",
-                &mut output, &input[..],
-                Some("")).unwrap();
+        let _veh: RustVehicle = vehicle_import(
+            "2022",
+            "Toyota",
+            "Prius Prime",
+            &mut output,
+            &input[..],
+            Some(""),
+        )
+        .unwrap();
     }
 
     #[test]
@@ -2039,12 +2052,15 @@ mod vehicle_utils_tests {
     fn test_vehicle_import_conv() {
         let input = b"72.8\n56.3\n15.9\n";
         let mut output = Vec::new();
-        let _veh: RustVehicle =
-            vehicle_import(
-                "2022", "Volvo", "S60 B5 AWD",
-                &mut output, &input[..],
-                Some(""),
-            ).unwrap();
+        let _veh: RustVehicle = vehicle_import(
+            "2022",
+            "Volvo",
+            "S60 B5 AWD",
+            &mut output,
+            &input[..],
+            Some(""),
+        )
+        .unwrap();
     }
 
     #[test]
