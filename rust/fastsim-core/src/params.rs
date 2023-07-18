@@ -125,7 +125,6 @@ pub const CHG_EFF: f64 = 0.86; // charger efficiency for PEVs, this should proba
 
 
 #[add_pyo3_api]
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct RustLongParams {
     #[serde(rename = "rechgFreqMiles")]
