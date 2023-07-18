@@ -4,7 +4,6 @@ use ndarray::Array;
 use serde::Serialize;
 use std::collections::HashMap;
 
-
 // crate local
 use crate::cycle::RustCycle;
 use crate::imports::*;
@@ -20,7 +19,7 @@ use crate::vehicle;
 
 #[add_pyo3_api]
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
- pub struct LabelFe {
+pub struct LabelFe {
     pub veh: vehicle::RustVehicle,
     pub adj_params: AdjCoef,
     pub lab_udds_mpgge: f64,
@@ -47,7 +46,7 @@ use crate::vehicle;
     pub adj_cd_comb_mpgge: Option<f64>,
     pub net_phev_cd_miles: Option<f64>,
     pub trace_miss_speed_mph: f64,
- }
+}
 
 impl SerdeAPI for LabelFe {}
 
@@ -448,7 +447,8 @@ pub fn get_label_fe_py(
     full_detail: Option<bool>,
     verbose: Option<bool>,
 ) -> PyResult<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
-    let result: (LabelFe, Option<HashMap<&str, RustSimDrive>>) = get_label_fe(veh, full_detail, verbose)?;
+    let result: (LabelFe, Option<HashMap<&str, RustSimDrive>>) =
+        get_label_fe(veh, full_detail, verbose)?;
     Ok(result)
 }
 
@@ -750,14 +750,14 @@ pub fn get_label_fe_phev(
 }
 
 #[cfg(feature = "pyo3")]
- #[pyfunction(name = "get_label_fe_phev")]
+#[pyfunction(name = "get_label_fe_phev")]
 
 /// pyo3 version of [get_label_fe_phev]
 pub fn get_label_fe_phev_py(
     veh: &vehicle::RustVehicle,
     sd: HashMap<&str, RustSimDrive>,
     adj_params: AdjCoef,
-    long_params: RustLongParams, 
+    long_params: RustLongParams,
     sim_params: &RustSimDriveParams,
     props: RustPhysicalProperties,
 ) -> Result<LabelFePHEV, anyhow::Error> {
@@ -766,9 +766,15 @@ pub fn get_label_fe_phev_py(
         sd_mut.insert(key, value);
     }
 
-    get_label_fe_phev(veh, &mut sd_mut, &long_params, &adj_params, &sim_params, &props)
+    get_label_fe_phev(
+        veh,
+        &mut sd_mut,
+        &long_params,
+        &adj_params,
+        &sim_params,
+        &props,
+    )
 }
-
 
 #[cfg(test)]
 mod simdrivelabel_tests {
