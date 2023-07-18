@@ -14,8 +14,8 @@ codegen-units = 1  # optimize connection between modules
 
 [workspace.dependencies]
 anyhow = "1.0.57"
-pyo3 = "0.17.2"
+pyo3 = "0.19"
 pyo3-log = "*"
 serde = "1.0.143"
 serde_json = "1.0.83"
-serde_yaml = "0.8.24"
+serde_yaml = "0.9.22"

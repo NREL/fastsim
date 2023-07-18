@@ -10,6 +10,8 @@ import json
 from pathlib import Path
 import copy
 from copy import deepcopy
+import json
+
 import fastsim.fastsimrust as fsr
 
 from . import inspect_utils
@@ -100,7 +102,7 @@ def copy_physical_properties(p: PhysicalProperties, return_type: str = None, dee
     elif return_type == 'python':
         return PhysicalProperties.from_dict(p_dict)
     elif return_type == 'rust':
-        return fsr.RustPhysicalProperties(**p_dict)
+        return fsr.RustPhysicalProperties.from_json(json.dumps(p_dict))
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 

@@ -121,7 +121,8 @@ pub const SMALL_BASELINE_EFF: [f64; 11] = [
 
 pub const CHG_EFF: f64 = 0.86; // charger efficiency for PEVs, this should probably not be hard coded long term
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, ApproxEq)]
+#[add_pyo3_api]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct RustLongParams {
     #[serde(rename = "rechgFreqMiles")]
     pub rechg_freq_miles: Vec<f64>,
@@ -131,12 +132,18 @@ pub struct RustLongParams {
     pub ld_fe_adj_coef: AdjCoefMap,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, ApproxEq)]
+impl SerdeAPI for RustLongParams {}
+
+#[add_pyo3_api]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct AdjCoefMap {
     #[serde(flatten)]
     pub adj_coef_map: HashMap<String, AdjCoef>,
 }
 
+impl SerdeAPI for AdjCoefMap {}
+
+#[add_pyo3_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct AdjCoef {
     #[serde(rename = "City Intercept")]
@@ -148,6 +155,7 @@ pub struct AdjCoef {
     #[serde(rename = "Highway Slope")]
     pub hwy_slope: f64,
 }
+impl SerdeAPI for AdjCoef {}
 
 impl Default for RustLongParams {
     fn default() -> Self {

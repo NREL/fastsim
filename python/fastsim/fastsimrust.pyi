@@ -480,6 +480,7 @@ class RustSimDrive:
     i: int
     impose_coast: Pyo3ArrayBool
     ke_kj: float
+    long_params: RustLongParams
     max_ess_accell_buff_dischg_kw: Pyo3ArrayF64
     max_ess_regen_buff_chg_kw: Pyo3ArrayF64
     max_trac_mps: Pyo3ArrayF64
