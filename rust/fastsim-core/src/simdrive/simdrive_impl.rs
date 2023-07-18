@@ -917,7 +917,7 @@ impl RustSimDrive {
         if self.cyc_met[i] {
             if self.veh.fc_eff_type == H2FC {
                 self.min_mc_kw_2help_fc[i] =
-                    max(self.trans_kw_in_ach[i], -self.cur_max_mech_mc_kw_in[i]);
+                    self.trans_kw_in_ach[i].max(-self.cur_max_mech_mc_kw_in[i]);
             } else {
                 self.min_mc_kw_2help_fc[i] = max(
                     self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i],
@@ -926,7 +926,7 @@ impl RustSimDrive {
             }
         } else {
             self.min_mc_kw_2help_fc[i] =
-                max(self.cur_max_mc_kw_out[i], -self.cur_max_mech_mc_kw_in[i]);
+                self.cur_max_mc_kw_out[i].max(-self.cur_max_mech_mc_kw_in[i]);
         }
         Ok(())
     }
@@ -1301,7 +1301,7 @@ impl RustSimDrive {
         }
 
         if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
-            // fc forced on because:
+            // fc forced on because either:
             // - it was on in the previous time step and hasn't been on long enough
             // - it can't power everything on it's own
             self.fc_forced_state[i] = 1;
@@ -1340,7 +1340,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> anyhow::Result<()> {
         if (-self.mc_elec_in_kw_for_max_fc_eff[i] - self.cur_max_roadway_chg_kw[i]) > 0.0 {
             self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i]
                 - self.cur_max_roadway_chg_kw[i])
@@ -1498,7 +1498,8 @@ impl RustSimDrive {
             && (self.veh.veh_pt_type == HEV || self.veh.veh_pt_type == PHEV)
             && (self.veh.fc_eff_type != H2FC)
         {
-            self.mc_mech_kw_out_ach[i] = self.mc_mech_kw_4forced_fc[i];
+            ensure!(self.mc_mech_kw_4forced_fc[i] >= 0.0);
+            self.mc_mech_kw_out_ach[i] = self.mc_mech_kw_4forced_fc[i].max(0.0);
         } else if self.trans_kw_in_ach[i] <= 0.0 {
             if self.veh.fc_eff_type != H2FC && self.veh.fc_max_kw > 0.0 {
                 if self.can_pwr_all_elec[i] {
@@ -1519,7 +1520,8 @@ impl RustSimDrive {
         } else if self.can_pwr_all_elec[i] {
             self.mc_mech_kw_out_ach[i] = self.trans_kw_in_ach[i]
         } else {
-            self.mc_mech_kw_out_ach[i] = max(self.min_mc_kw_2help_fc[i], self.mc_kw_if_fc_req[i])
+            // what does `min_mc_kw_2help_fc` do?
+            self.mc_mech_kw_out_ach[i] = self.min_mc_kw_2help_fc[i].max(self.mc_kw_if_fc_req[i])
         }
 
         if self.mc_mech_kw_out_ach[i] == 0.0 {
