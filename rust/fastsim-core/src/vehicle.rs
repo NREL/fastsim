@@ -37,6 +37,8 @@ lazy_static! {
 #[add_pyo3_api(
     #[pyo3(name = "set_veh_mass")]
     pub fn set_veh_mass_py(&mut self) {
+        // TODO: not urgent, but I think it'd better for all instances
+        // of `set_veh_mass` to be `update_veh_mass`
         self.set_veh_mass()
     }
 
@@ -49,17 +51,9 @@ lazy_static! {
         self.mc_peak_eff()
     }
 
-    // TODO: refactor this to have a non-py and `_py` version
-    #[setter]
-    pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
-        let mc_max_eff = ndarrmax(&self.mc_eff_array);
-        self.mc_eff_array *= new_peak / mc_max_eff;
-        let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
-        self.mc_full_eff_array = self
-            .mc_full_eff_array
-            .iter()
-            .map(|e: &f64| -> f64 { e * (new_peak / mc_max_full_eff) })
-            .collect();
+    #[setter("mc_peak_eff")]
+    pub fn set_mc_peak_eff_py(&mut self, new_peak: f64) {
+        self.set_mc_peak_eff(new_peak);
     }
 
     #[getter]
@@ -67,25 +61,14 @@ lazy_static! {
         self.max_fc_eff_kw()
     }
 
+    #[setter("fc_peak_eff")]
+    pub fn set_fc_peak_eff_py(&mut self, new_peak: f64) {
+        self.set_fc_peak_eff(new_peak);
+    }
+
     #[getter]
     pub fn get_fc_peak_eff(&self) -> f64 {
         self.fc_peak_eff()
-    }
-
-    #[setter]
-    pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
-        let old_fc_peak_eff = self.fc_peak_eff();
-        let multiplier = new_peak / old_fc_peak_eff;
-        self.fc_eff_array = self
-            .fc_eff_array
-            .iter()
-            .map(|eff: &f64| -> f64 { eff * multiplier })
-            .collect();
-        let new_fc_peak_eff = self.fc_peak_eff();
-        let eff_map_multiplier = new_peak / new_fc_peak_eff;
-        self.fc_eff_map = self
-            .fc_eff_map
-            .map(|eff| -> f64 { eff * eff_map_multiplier });
     }
 
     #[pyo3(name = "set_derived")]
@@ -141,7 +124,7 @@ pub struct RustVehicle {
     #[serde(alias = "gliderKg")]
     #[validate(range(min = 0))]
     pub glider_kg: f64,
-    /// Vehicle center of mass height, $m$  
+    /// Vehicle center of mass height, $m$
     /// **NOTE:** positive for FWD, negative for RWD, AWD, 4WD
     #[serde(alias = "vehCgM")]
     pub veh_cg_m: f64,
@@ -191,7 +174,7 @@ pub struct RustVehicle {
     /// Fuel converter efficiency map
     #[serde(default)]
     pub fc_eff_map: Array1<f64>,
-    /// Fuel converter efficiency type, one of \[[SI](SI), [ATKINSON](ATKINSON), [DIESEL](DIESEL), [H2FC](H2FC), [HD_DIESEL](HD_DIESEL)\]  
+    /// Fuel converter efficiency type, one of \[[SI](SI), [ATKINSON](ATKINSON), [DIESEL](DIESEL), [H2FC](H2FC), [HD_DIESEL](HD_DIESEL)\]
     /// Used for calculating [fc_eff_map](RustVehicle::fc_eff_map), and other calculations if H2FC
     #[serde(alias = "fcEffType")]
     #[validate(regex(
@@ -574,6 +557,7 @@ impl RustVehicle {
         arrmax(&self.mc_full_eff_array)
     }
 
+    /// Returns _first_ FC output power at which peak efficiency occurs
     pub fn max_fc_eff_kw(&self) -> f64 {
         let fc_eff_arr_max_i =
             first_eq(&self.fc_eff_array, arrmax(&self.fc_eff_array)).unwrap_or(0);
@@ -582,6 +566,32 @@ impl RustVehicle {
 
     pub fn fc_peak_eff(&self) -> f64 {
         arrmax(&self.fc_eff_array)
+    }
+
+    pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
+        let mc_max_eff = ndarrmax(&self.mc_eff_array);
+        self.mc_eff_array *= new_peak / mc_max_eff;
+        let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
+        self.mc_full_eff_array = self
+            .mc_full_eff_array
+            .iter()
+            .map(|e: &f64| -> f64 { e * (new_peak / mc_max_full_eff) })
+            .collect();
+    }
+
+    pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
+        let old_fc_peak_eff = self.fc_peak_eff();
+        let multiplier = new_peak / old_fc_peak_eff;
+        self.fc_eff_array = self
+            .fc_eff_array
+            .iter()
+            .map(|eff: &f64| -> f64 { eff * multiplier })
+            .collect();
+        let new_fc_peak_eff = self.fc_peak_eff();
+        let eff_map_multiplier = new_peak / new_fc_peak_eff;
+        self.fc_eff_map = self
+            .fc_eff_map
+            .map(|eff| -> f64 { eff * eff_map_multiplier });
     }
 
     /// Sets derived parameters:
@@ -914,8 +924,7 @@ impl RustVehicle {
         v
     }
 
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(filename: &str) -> Result<Self, anyhow::Error> {
+    pub fn from_json_str(filename: &str) -> Result<Self, anyhow::Error> {
         let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
         veh_res.as_mut().unwrap().set_derived()?;
         veh_res

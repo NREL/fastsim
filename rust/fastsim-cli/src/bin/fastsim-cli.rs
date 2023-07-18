@@ -191,7 +191,7 @@ pub fn main() {
             let adopt_hd_str_lc = adopt_hd_string.to_lowercase();
             let true_string = String::from("true");
             let false_string = String::from("false");
-            let adopt_hd_has_cycle = adopt_hd_str_lc.len() > 0
+            let adopt_hd_has_cycle = !adopt_hd_str_lc.is_empty()
                 && adopt_hd_str_lc != true_string
                 && adopt_hd_str_lc != false_string;
             (true, adopt_hd_string.clone(), adopt_hd_has_cycle)
@@ -246,9 +246,9 @@ pub fn main() {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string);
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_str(&veh_string)
+            RustVehicle::from_json_str(&veh_string)
         } else {
-            RustVehicle::from_str(&veh_string)
+            RustVehicle::from_json_str(&veh_string)
         }
     } else if let Some(veh_file_path) = fastsim_api.veh_file {
         if is_adopt || is_adopt_hd {
@@ -256,7 +256,7 @@ pub fn main() {
             let (vehstring, pwr_out_perc, h2share) = json_rewrite(vehstring);
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_str(&vehstring)
+            RustVehicle::from_json_str(&vehstring)
         } else {
             RustVehicle::from_file(&veh_file_path)
         }
@@ -312,31 +312,37 @@ pub fn main() {
             "HHDDTCruiseSmooth.csv"
         ));
         let cyc = if adopt_hd_has_cycle {
-            cyc.clone()
+            cyc
         } else {
             RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap()
         };
-        let mut sim_drive = RustSimDrive::new(cyc.clone(), veh.clone());
+        let mut sim_drive = RustSimDrive::new(cyc, veh.clone());
         sim_drive.sim_drive(None, None).unwrap();
         let mut sim_drive_accel = RustSimDrive::new(make_accel_trace(), veh.clone());
         let net_accel = get_net_accel(&mut sim_drive_accel, &veh.scenario_name).unwrap();
         let mut mpgge = sim_drive.mpgge;
-        let h2_diesel_results = if hd_h2_diesel_ice_h2share.is_some() && fc_pwr_out_perc.is_some() {
-            let dist_mi = sim_drive.dist_mi.sum();
-            let r = calculate_mpgge_for_h2_diesel_ice(
-                dist_mi,
-                sim_drive.veh.fc_max_kw,
-                sim_drive.props.kwh_per_gge,
-                &sim_drive.fc_kw_out_ach.to_vec(),
-                &sim_drive.fs_kwh_out_ach.to_vec(),
-                &fc_pwr_out_perc.unwrap(),
-                &hd_h2_diesel_ice_h2share.unwrap(),
-            );
-            mpgge = dist_mi / (r.diesel_gge + r.h2_gge);
-            Some(r)
+
+        let h2_diesel_results = if let Some(hd_h2_diesel_ice_h2share) = hd_h2_diesel_ice_h2share {
+            if let Some(fc_pwr_out_perc) = fc_pwr_out_perc {
+                let dist_mi = sim_drive.dist_mi.sum();
+                let r = calculate_mpgge_for_h2_diesel_ice(
+                    dist_mi,
+                    sim_drive.veh.fc_max_kw,
+                    sim_drive.props.kwh_per_gge,
+                    &sim_drive.fc_kw_out_ach.to_vec(),
+                    &sim_drive.fs_kwh_out_ach.to_vec(),
+                    &fc_pwr_out_perc,
+                    &hd_h2_diesel_ice_h2share,
+                );
+                mpgge = dist_mi / (r.diesel_gge + r.h2_gge);
+                Some(r)
+            } else {
+                None
+            }
         } else {
             None
         };
+
         let res = AdoptResults {
             adjCombMpgge: mpgge,
             rangeMiles: if mpgge > 0.0 {
@@ -397,8 +403,7 @@ fn array_to_object_representation(xs: &Vec<f64>) -> ArrayObject {
 
 fn transform_array_of_value_to_vec_of_f64(array_of_values: &Vec<Value>) -> Vec<f64> {
     let mut vec_of_f64 = Vec::<f64>::new();
-    for idx in 0..array_of_values.len() {
-        let item_raw = &array_of_values[idx];
+    for item_raw in array_of_values {
         if item_raw.is_number() {
             let item = item_raw.as_f64().unwrap();
             vec_of_f64.push(item);
@@ -437,7 +442,7 @@ fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
         let fc_eff_type_value = fc_eff_type_raw.as_str().unwrap();
         let fc_eff_type = String::from(fc_eff_type_value);
         parsed_data["fcEffType"] = Value::String(fc_eff_type.clone());
-        if fc_eff_type == String::from("HDH2DieselIce") {
+        if fc_eff_type == *"HDH2DieselIce" {
             let fc_pwr_out_perc_raw = &parsed_data["fuelConverter"]["fcPwrOutPerc"];
             if fc_pwr_out_perc_raw.is_array() {
                 fc_pwr_out_perc = Some(transform_array_of_value_to_vec_of_f64(
@@ -517,5 +522,5 @@ fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
 
     let adoptstring = ParsedValue(parsed_data).to_json();
 
-    return (adoptstring, fc_pwr_out_perc, hd_h2_diesel_ice_h2share);
+    (adoptstring, fc_pwr_out_perc, hd_h2_diesel_ice_h2share)
 }
