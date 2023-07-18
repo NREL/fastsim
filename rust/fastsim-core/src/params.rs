@@ -42,8 +42,6 @@ pub const MODERN_MAX: f64 = 0.95;
         todo!();
     }
 )]
-
-
 pub struct RustPhysicalProperties {
     pub air_density_kg_per_m3: f64, // = 1.2, Sea level air density at approximately 20C
     pub a_grav_mps2: f64,           // = 9.81
@@ -123,7 +121,6 @@ pub const SMALL_BASELINE_EFF: [f64; 11] = [
 
 pub const CHG_EFF: f64 = 0.86; // charger efficiency for PEVs, this should probably not be hard coded long term
 
-
 #[add_pyo3_api]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct RustLongParams {
@@ -132,13 +129,12 @@ pub struct RustLongParams {
     #[serde(rename = "ufArray")]
     pub uf_array: Vec<f64>,
     #[serde(rename = "LD_FE_Adj_Coef")]
-    pub ld_fe_adj_coef: AdjCoefMap, 
+    pub ld_fe_adj_coef: AdjCoefMap,
 }
 
 impl SerdeAPI for RustLongParams {}
 
 #[add_pyo3_api]
-
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct AdjCoefMap {
     #[serde(flatten)]
@@ -148,7 +144,6 @@ pub struct AdjCoefMap {
 impl SerdeAPI for AdjCoefMap {}
 
 #[add_pyo3_api]
-
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, ApproxEq)]
 pub struct AdjCoef {
     #[serde(rename = "City Intercept")]
