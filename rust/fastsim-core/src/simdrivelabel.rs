@@ -771,7 +771,7 @@ pub fn get_label_fe_phev_py(
         &mut sd_mut,
         &long_params,
         &adj_params,
-        &sim_params,
+        sim_params,
         &props,
     )
 }
