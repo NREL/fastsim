@@ -44,13 +44,13 @@ namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
 profile="release"
 python-source="python"
 features = ["pyo3/extension-module"]
-module-name = "altrios.altrios_core_py"
-manifest-path = "rust/altrios-core-py/Cargo.toml"
+module-name = "fastsim.fastsim_core_py"
+manifest-path = "rust/fastsim-core-py/Cargo.toml"
 include = [
-    { format = "sdist", path = "rust/altrios-core/Cargo.toml"},
-    { format = "sdist", path = "rust/altrios-core/src/*"},
-    { format = "sdist", path = "rust/altrios-core-py/Cargo.toml"},
-    { format = "sdist", path = "rust/altrios-core-py/src/*"},
-    { format = "sdist", path = "rust/altrios-core/proc-macros/Cargo.toml"},
-    { format = "sdist", path = "rust/altrios-core/proc-macros/src/*"},
-``]
+    { format = "sdist", path = "rust/fastsim-core/Cargo.toml"},
+    { format = "sdist", path = "rust/fastsim-core/src/*"},
+    { format = "sdist", path = "rust/fastsim-core-py/Cargo.toml"},
+    { format = "sdist", path = "rust/fastsim-core-py/src/*"},
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml"},
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*"},
+]
