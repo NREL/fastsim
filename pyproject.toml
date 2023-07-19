@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=0.15,<0.16"]
+requires = ["maturin>=1.0"]
 build-backend = "maturin"
 
 [project]
@@ -41,15 +41,16 @@ include = ["fastsim*"]  # package names should match these glob patterns (["*"] 
 namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
 
 [tool.maturin]
+profile="release"
 python-source="python"
 features = ["pyo3/extension-module"]
-module-name = "fastsim.fastsimrust"
-manifest-path = "rust/fastsim-py/Cargo.toml"
+module-name = "altrios.altrios_core_py"
+manifest-path = "rust/altrios-core-py/Cargo.toml"
 include = [
-    { format = "sdist", path = "rust/fastsim-core/Cargo.toml"},
-    { format = "sdist", path = "rust/fastsim-core/src/*"},
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml"},
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*"},
-    { format = "sdist", path = "rust/fastsim-py/Cargo.toml"},
-    { format = "sdist", path = "rust/fastsim-py/src/*"},
-]
+    { format = "sdist", path = "rust/altrios-core/Cargo.toml"},
+    { format = "sdist", path = "rust/altrios-core/src/*"},
+    { format = "sdist", path = "rust/altrios-core-py/Cargo.toml"},
+    { format = "sdist", path = "rust/altrios-core-py/src/*"},
+    { format = "sdist", path = "rust/altrios-core/proc-macros/Cargo.toml"},
+    { format = "sdist", path = "rust/altrios-core/proc-macros/src/*"},
+``]
