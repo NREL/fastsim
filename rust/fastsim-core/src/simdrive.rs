@@ -514,6 +514,9 @@ pub struct RustSimDrive {
     pub mc_kw_if_fc_req: Array1<f64>,
     pub fc_forced_on: Array1<bool>,
     pub fc_forced_state: Array1<u32>,
+    /// Power the motor (mc) must provide if the engine (fc) is being
+    /// forced on. If the engine just turned on and triggers a regen
+    /// event, it'll be negative.
     pub mc_mech_kw_4forced_fc: Array1<f64>,
     pub fc_time_on: Array1<f64>,
     pub prev_fc_time_on: Array1<f64>,
