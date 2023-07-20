@@ -1356,7 +1356,17 @@ impl RustSimDrive {
             // acceleration is not >= 0 and/or idle power is not > trans input power and
             // fc peak eff point in map is <= trans input power
             self.fc_forced_state[i] = 6;
-            self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.max_fc_eff_kw();
+            self.mc_mech_kw_4forced_fc[i] = match self.veh.mc_pwr_frac_for_fc_on {
+                None => self.trans_kw_in_ach[i] - self.veh.max_fc_eff_kw(),
+                Some(mc_pwr_frac) => (mc_pwr_frac
+                    * if self.trans_kw_in_ach[i] > 0. {
+                        self.trans_kw_in_ach[i]
+                    } else {
+                        0.
+                    })
+                .min(self.cur_max_mc_kw_out[i])
+                .max(0.),
+            };
         }
         Ok(())
     }
