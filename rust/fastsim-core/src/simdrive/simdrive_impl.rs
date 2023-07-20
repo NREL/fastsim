@@ -1303,7 +1303,14 @@ impl RustSimDrive {
         if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
             // fc not forced on or ess can't power everything on its own
             self.fc_forced_state[i] = 1;
-            self.mc_mech_kw_4forced_fc[i] = 0.;
+            self.mc_mech_kw_4forced_fc[i] = (self.veh.mc_pwr_frac_for_fc_on.unwrap_or_default()
+                * if self.trans_kw_in_ach[i] > 0. {
+                    self.trans_kw_in_ach[i]
+                } else {
+                    0.
+                })
+            .min(self.cur_max_mc_kw_out[i])
+            .max(0.);
             // (self.veh.mc_pwr_frac_for_fc_on.unwrap_or_default()
             // * if self.trans_kw_in_ach[i] > 0. {
             //     self.trans_kw_in_ach[i]
@@ -1319,7 +1326,14 @@ impl RustSimDrive {
             // fc possibly (???) forced on to be more efficient
             // this seems unlikely to ever happen
             self.fc_forced_state[i] = 3;
-            self.mc_mech_kw_4forced_fc[i] = 0.0;
+            self.mc_mech_kw_4forced_fc[i] = (self.veh.mc_pwr_frac_for_fc_on.unwrap_or_default()
+                * if self.trans_kw_in_ach[i] > 0. {
+                    self.trans_kw_in_ach[i]
+                } else {
+                    0.
+                })
+            .min(self.cur_max_mc_kw_out[i])
+            .max(0.);
         } else if self.veh.idle_fc_kw > self.trans_kw_in_ach[i] && self.accel_kw[i] >= 0.0 {
             // accelerating but idle power is greater than accel power needed by trans
             self.fc_forced_state[i] = 4;
@@ -1327,12 +1341,19 @@ impl RustSimDrive {
         } else if self.veh.max_fc_eff_kw() > self.trans_kw_in_ach[i] {
             // if fc power at which maximum efficiency is achieved exceeds the transmission input power
             self.fc_forced_state[i] = 5;
-            self.mc_mech_kw_4forced_fc[i] = 0.0;
+            self.mc_mech_kw_4forced_fc[i] = (self.veh.mc_pwr_frac_for_fc_on.unwrap_or_default()
+                * if self.trans_kw_in_ach[i] > 0. {
+                    self.trans_kw_in_ach[i]
+                } else {
+                    0.
+                })
+            .min(self.cur_max_mc_kw_out[i])
+            .max(0.);
         } else {
-            // fc not forced on in previous time step or
-            // transmission is not in braking state or
-            // transmission input power is not exactly most efficient point on fc map or
-            // acceleration is not >= 0 and/or idle power is not > trans input power or
+            // forced on and ess can power everything on its own and
+            // transmission is not in braking state and
+            // transmission input power is not exactly most efficient point on fc map and
+            // acceleration is not >= 0 and/or idle power is not > trans input power and
             // fc peak eff point in map is <= trans input power
             self.fc_forced_state[i] = 6;
             self.mc_mech_kw_4forced_fc[i] = self.trans_kw_in_ach[i] - self.veh.max_fc_eff_kw();
