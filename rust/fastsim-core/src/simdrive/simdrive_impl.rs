@@ -1301,11 +1301,15 @@ impl RustSimDrive {
         }
 
         if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
-            // fc forced on because either:
-            // - it was on in the previous time step and hasn't been on long enough
-            // - it can't power everything on it's own
+            // fc not forced on or ess can't power everything on its own
             self.fc_forced_state[i] = 1;
-            self.mc_mech_kw_4forced_fc[i] = 0.0;
+            self.mc_mech_kw_4forced_fc[i] = (self.veh.mc_pwr_frac_for_fc_on.unwrap_or_default()
+                * if self.trans_kw_in_ach[i] > 0. {
+                    self.trans_kw_in_ach[i] 
+                } else {
+                    0.
+                })
+            .max(self.cur_max_mc_kw_out[i]);
         } else if self.trans_kw_in_ach[i] < 0.0 {
             // not forced on.  transmission needs negative power (i.e. regen)
             self.fc_forced_state[i] = 2;
@@ -1498,8 +1502,7 @@ impl RustSimDrive {
             && (self.veh.veh_pt_type == HEV || self.veh.veh_pt_type == PHEV)
             && (self.veh.fc_eff_type != H2FC)
         {
-            ensure!(self.mc_mech_kw_4forced_fc[i] >= 0.0);
-            self.mc_mech_kw_out_ach[i] = self.mc_mech_kw_4forced_fc[i].max(0.0);
+            self.mc_mech_kw_out_ach[i] = self.mc_mech_kw_4forced_fc[i];
         } else if self.trans_kw_in_ach[i] <= 0.0 {
             if self.veh.fc_eff_type != H2FC && self.veh.fc_max_kw > 0.0 {
                 if self.can_pwr_all_elec[i] {
