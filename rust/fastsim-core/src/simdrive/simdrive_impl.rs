@@ -1303,13 +1303,13 @@ impl RustSimDrive {
         if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
             // fc not forced on or ess can't power everything on its own
             self.fc_forced_state[i] = 1;
-            self.mc_mech_kw_4forced_fc[i] = (self.veh.mc_pwr_frac_for_fc_on.unwrap_or_default()
-                * if self.trans_kw_in_ach[i] > 0. {
-                    self.trans_kw_in_ach[i] 
-                } else {
-                    0.
-                })
-            .max(self.cur_max_mc_kw_out[i]);
+            self.mc_mech_kw_4forced_fc[i] = 0.;
+            // (self.veh.mc_pwr_frac_for_fc_on.unwrap_or_default()
+            // * if self.trans_kw_in_ach[i] > 0. {
+            //     self.trans_kw_in_ach[i]
+            // } else {
+            //     0.
+            // })
         } else if self.trans_kw_in_ach[i] < 0.0 {
             // not forced on.  transmission needs negative power (i.e. regen)
             self.fc_forced_state[i] = 2;
