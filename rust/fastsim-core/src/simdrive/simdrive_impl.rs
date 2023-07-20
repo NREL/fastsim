@@ -914,16 +914,12 @@ impl RustSimDrive {
             self.trans_kw_in_ach[i] = self.trans_kw_out_ach[i] * self.veh.trans_eff;
         }
 
-        if self.cyc_met[i] {
-            if self.veh.fc_eff_type == H2FC {
-                self.min_mc_kw_2help_fc[i] =
-                    self.trans_kw_in_ach[i].max(-self.cur_max_mech_mc_kw_in[i]);
-            } else {
-                self.min_mc_kw_2help_fc[i] = max(
-                    self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i],
-                    -self.cur_max_mech_mc_kw_in[i],
-                );
-            }
+        if self.cyc_met[i] && self.veh.fc_eff_type == H2FC {
+            self.min_mc_kw_2help_fc[i] =
+                self.trans_kw_in_ach[i].max(-self.cur_max_mech_mc_kw_in[i]);
+        } else if self.cyc_met[i] {
+            self.min_mc_kw_2help_fc[i] = (self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i])
+                .max(-self.cur_max_mech_mc_kw_in[i]);
         } else {
             self.min_mc_kw_2help_fc[i] =
                 self.cur_max_mc_kw_out[i].max(-self.cur_max_mech_mc_kw_in[i]);
@@ -1526,6 +1522,7 @@ impl RustSimDrive {
                 )];
         }
 
+        // begin set mc_mech_kw_out_ach
         if self.veh.mc_max_kw == 0.0 {
             self.mc_mech_kw_out_ach[i] = 0.0;
         } else if self.fc_forced_on[i]
@@ -1554,9 +1551,10 @@ impl RustSimDrive {
         } else if self.can_pwr_all_elec[i] {
             self.mc_mech_kw_out_ach[i] = self.trans_kw_in_ach[i]
         } else {
-            // what does `min_mc_kw_2help_fc` do?
+            // what does `min_mc_kw_2help_fc` do? TODO: delete this comment
             self.mc_mech_kw_out_ach[i] = self.min_mc_kw_2help_fc[i].max(self.mc_kw_if_fc_req[i])
         }
+        // end set mc_mech_kw_out_ach
 
         if self.mc_mech_kw_out_ach[i] == 0.0 {
             self.mc_elec_kw_in_ach[i] = 0.0;
