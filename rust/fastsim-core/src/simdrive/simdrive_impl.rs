@@ -653,7 +653,7 @@ impl RustSimDrive {
             + (self.veh.fc_max_kw / self.veh.fc_sec_to_peak_pwr * self.cyc.dt_s_at_i(i));
 
         self.fc_max_kw_in[i] = min(self.cur_max_fs_kw_out[i], self.veh.fs_max_kw);
-        self.fc_fs_lim_kw[i] = self.veh.fc_max_kw;
+        self.fc_fs_lim_kw[i] = self.veh.fc_max_kw; // this variable is entirely redundant
         self.cur_max_fc_kw_out[i] = min(
             self.veh.fc_max_kw,
             min(self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i]),
@@ -764,6 +764,7 @@ impl RustSimDrive {
             self.ess_lim_mc_regen_kw[i] = 0.0;
         } else if self.veh.mc_max_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
         {
+            // this seems unlikely to happen
             self.ess_lim_mc_regen_kw[i] = min(
                 self.veh.mc_max_kw,
                 self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array.last().unwrap(),
@@ -915,12 +916,15 @@ impl RustSimDrive {
         }
 
         if self.cyc_met[i] && self.veh.fc_eff_type == H2FC {
+            // If FCEV and cycle is met, all transmission input power much come from electric motor, or if negative (regenerating) limit to max possible regeneration power
             self.min_mc_kw_2help_fc[i] =
                 self.trans_kw_in_ach[i].max(-self.cur_max_mech_mc_kw_in[i]);
         } else if self.cyc_met[i] {
+            // If not FCEV and cycle is met,
             self.min_mc_kw_2help_fc[i] = (self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i])
                 .max(-self.cur_max_mech_mc_kw_in[i]);
         } else {
+            // If cycle is not met, TODO
             self.min_mc_kw_2help_fc[i] =
                 self.cur_max_mc_kw_out[i].max(-self.cur_max_mech_mc_kw_in[i]);
         }

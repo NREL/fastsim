@@ -444,38 +444,52 @@ pub struct RustSimDrive {
     pub props: RustPhysicalProperties,
     pub i: usize, // 1 # initialize step counter for possible use outside sim_drive_walk()
     pub cur_max_fs_kw_out: Array1<f64>,
+    /// Transient fuel converter output power limit, as determined by current power output, `fc_max_kw`, and `veh.fs_secs_to_peak_pwr`
     pub fc_trans_lim_kw: Array1<f64>,
+    /// REDUNDANT: always equal to `fc_max_kw`
     pub fc_fs_lim_kw: Array1<f64>,
     pub fc_max_kw_in: Array1<f64>,
+    /// Current maximum fuel converter output power, considering `fc_max_kw` and transient limit `fc_trans_lim_kw`
     pub cur_max_fc_kw_out: Array1<f64>,
     pub ess_cap_lim_dischg_kw: Array1<f64>,
     pub cur_ess_max_kw_out: Array1<f64>,
     pub cur_max_avail_elec_kw: Array1<f64>,
+    /// ESS charging power limit, considering unused energy capacity and ESS efficiency
     pub ess_cap_lim_chg_kw: Array1<f64>,
+    /// ESS charging power limit, considering `ess_cap_lim_chg_kw` and `ess_max_kw`
     pub cur_max_ess_chg_kw: Array1<f64>,
     pub cur_max_elec_kw: Array1<f64>,
     pub mc_elec_in_lim_kw: Array1<f64>,
     pub mc_transi_lim_kw: Array1<f64>,
     pub cur_max_mc_kw_out: Array1<f64>,
     pub ess_lim_mc_regen_perc_kw: Array1<f64>,
+    /// ESS limit on electricity regeneration, considering `mc_max_kw`, `cur_max_ess_chg_kw`, and motor efficiency
     pub ess_lim_mc_regen_kw: Array1<f64>,
+    /// REDUNDANT: always equal to `ess_lim_mc_regen_kw`
     pub cur_max_mech_mc_kw_in: Array1<f64>,
     pub cur_max_trans_kw_out: Array1<f64>,
+    /// Required tractive power to meet cycle, equal to `drag_kw` + `accel_kw` + `ascent_kw`
     pub cyc_trac_kw_req: Array1<f64>,
     pub cur_max_trac_kw: Array1<f64>,
     pub spare_trac_kw: Array1<f64>,
     pub cyc_whl_rad_per_sec: Array1<f64>,
     pub cyc_tire_inertia_kw: Array1<f64>,
+    /// Required power to wheels to meet cycle, equal to `cyc_trac_kw_req` + `rr_kw` + `cyc_tire_inertia_kw`
     pub cyc_whl_kw_req: Array1<f64>,
     pub regen_contrl_lim_kw_perc: Array1<f64>,
     pub cyc_regen_brake_kw: Array1<f64>,
     pub cyc_fric_brake_kw: Array1<f64>,
+    /// Required transmission output power to meet cycle, equal to `cyc_whl_kw_req` + `cyc_fric_brake_kw`
     pub cyc_trans_kw_out_req: Array1<f64>,
     pub cyc_met: Array1<bool>,
+    /// Achieved transmission output power, either `cyc_trans_kw_out_req` if cycle is met, or `cur_max_trans_kw_out` if it is not
     pub trans_kw_out_ach: Array1<f64>,
+    /// Achieved transmission input power, accounting for `veh.trans_eff`
     pub trans_kw_in_ach: Array1<f64>,
     pub cur_soc_target: Array1<f64>,
+    ///
     pub min_mc_kw_2help_fc: Array1<f64>,
+    /// Achieved electric motor output power (to transmission)
     pub mc_mech_kw_out_ach: Array1<f64>,
     pub mc_elec_kw_in_ach: Array1<f64>,
     pub aux_in_kw: Array1<f64>,
@@ -530,9 +544,12 @@ pub struct RustSimDrive {
     pub add_kwh: Array1<f64>,
     pub dod_cycs: Array1<f64>,
     pub ess_perc_dead: Array1<f64>,
+    /// Power lost to aerodynamic drag according to the drag equation, `1/2 * rho * Cd * A * v_avg³ / 1000`
     pub drag_kw: Array1<f64>,
     pub ess_loss_kw: Array1<f64>,
+    /// Power to accelerate, `veh.veh_kg * (v_current² - v_prev²)/2 / dt / 1000`
     pub accel_kw: Array1<f64>,
+    /// Power expended to ascend a grade, typically `sin(atan(grade)) * 9.81 m/s² * veh.veh_kg * v_avg / 1000`
     pub ascent_kw: Array1<f64>,
     pub rr_kw: Array1<f64>,
     pub cur_max_roadway_chg_kw: Array1<f64>,
