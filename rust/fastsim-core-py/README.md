@@ -4,12 +4,12 @@ Update this for fastsim
 1. Install mypy: `pip install mypy`
 2. Get the html documentation: 
 ```bash
-    cd ALTRIOS/rust/fastsim-core
+    cd FASTSim/rust/fastsim-core
     cargo doc --open
 ```
-3. Go to the python folder in Altrios: 
+3. Go to the python folder in FASTSim: 
 ```bash
-    cd ALTRIOS/rust/fastsim-core-py/python/
+    cd FASTSim/rust/fastsim-core-py/python/
 ```
 4. Generate a new pyi file:
 ```bash

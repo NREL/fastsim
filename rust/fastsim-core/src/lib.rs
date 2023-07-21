@@ -8,7 +8,7 @@
 //! various powertrain components (engine, generator/alternator, battery, and electric drivetrain)
 //! -- all connected to a detailed train model.  
 //! # Features:
-//! - pyo3: enable this feature to expose ALTRIOS structs, methods, and functions to Python
+//! - pyo3: enable this feature to expose FASTSim structs, methods, and functions to Python
 
 #[macro_use]
 pub mod macros;
@@ -16,15 +16,17 @@ pub mod macros;
 #[cfg(test)]
 pub mod testing;
 
-pub mod combo_error;
-pub mod consist;
+pub mod drive_cycle;
 pub mod imports;
-pub mod lin_search_hint;
 pub mod prelude;
 pub mod si;
 pub mod traits;
 pub mod uc;
 pub mod utils;
+pub mod vehicle;
+
+// these might not get used
+pub mod combo_error;
 pub mod validate;
 
 #[cfg(feature = "pyo3")]

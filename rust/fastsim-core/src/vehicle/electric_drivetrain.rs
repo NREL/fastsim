@@ -1,4 +1,4 @@
-use crate::consist::locomotive::powertrain::ElectricMachine;
+use crate::vehicle::locomotive::powertrain::ElectricMachine;
 use crate::imports::*;
 
 #[cfg(feature = "pyo3")]
