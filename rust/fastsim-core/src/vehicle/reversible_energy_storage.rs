@@ -9,10 +9,6 @@ const TOL: f64 = 1e-3;
    #[allow(clippy::too_many_arguments)]
     #[new]
     fn __new__(
-        temperature_interp_grid: Vec<f64>,
-        soc_interp_grid: Vec<f64>,
-        c_rate_interp_grid: Vec<f64>,
-        eta_interp_values: Vec<Vec<Vec<f64>>>,
         pwr_out_max_watts: f64,
         energy_capacity_joules: f64,
         min_soc: f64,
@@ -24,10 +20,6 @@ const TOL: f64 = 1e-3;
         save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
         Self::new(
-            temperature_interp_grid,
-            soc_interp_grid,
-            c_rate_interp_grid,
-            eta_interp_values,
             pwr_out_max_watts,
             energy_capacity_joules,
             min_soc,
@@ -174,13 +166,6 @@ pub struct ReversibleEnergyStorage {
     #[serde(default)]
     /// Custom vector of [Self::state]
     pub history: ReversibleEnergyStorageStateHistoryVec,
-}
-
-impl Default for ReversibleEnergyStorage {
-    fn default() -> Self {
-        let file_contents = include_str!("reversible_energy_storage.default.yaml");
-        serde_yaml::from_str::<ReversibleEnergyStorage>(file_contents).unwrap()
-    }
 }
 
 impl Mass for ReversibleEnergyStorage {

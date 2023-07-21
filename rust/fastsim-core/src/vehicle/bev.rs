@@ -1,24 +1,24 @@
-use super::powertrain::electric_drivetrain::ElectricDrivetrain;
-use super::powertrain::reversible_energy_storage::ReversibleEnergyStorage;
-use super::powertrain::ElectricMachine;
+use super::electric_drivetrain::ElectricDrivetrain;
+use super::powertrain_traits::ElectricMachine;
+use super::reversible_energy_storage::ReversibleEnergyStorage;
 use super::LocoTrait;
 use crate::imports::*;
 
 #[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
 /// Battery electric locomotive
-pub struct BatteryElectricLoco {
+pub struct BatteryElectricVehicle {
     #[has_state]
     pub res: ReversibleEnergyStorage,
     #[has_state]
     pub edrv: ElectricDrivetrain,
 }
 
-impl BatteryElectricLoco {
+impl BatteryElectricVehicle {
     pub fn new(
         reversible_energy_storage: ReversibleEnergyStorage,
         electric_drivetrain: ElectricDrivetrain,
     ) -> Self {
-        BatteryElectricLoco {
+        BatteryElectricVehicle {
             res: reversible_energy_storage,
             edrv: electric_drivetrain,
         }
@@ -56,7 +56,7 @@ impl BatteryElectricLoco {
     }
 }
 
-impl LocoTrait for BatteryElectricLoco {
+impl LocoTrait for BatteryElectricVehicle {
     fn set_cur_pwr_max_out(
         &mut self,
         pwr_aux: Option<si::Power>,

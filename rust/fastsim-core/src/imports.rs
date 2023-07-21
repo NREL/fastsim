@@ -3,7 +3,6 @@
 #[cfg(feature = "pyo3")]
 pub(crate) use crate::pyo3::*;
 
-pub(crate) use crate::lin_search_hint::*;
 pub(crate) use crate::si;
 pub(crate) use crate::traits::*;
 pub(crate) use crate::uc;

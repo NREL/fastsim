@@ -1,18 +1,12 @@
 use argmin::prelude::*;
 use argmin::solver::goldensectionsearch::GoldenSectionSearch;
 
-use super::powertrain::electric_drivetrain::ElectricDrivetrain;
-use super::powertrain::fuel_converter::FuelConverter;
-use super::powertrain::generator::Generator;
-use super::powertrain::reversible_energy_storage::ReversibleEnergyStorage;
-use super::powertrain::ElectricMachine;
-use super::LocoTrait;
-use crate::imports::*;
+use super::*;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, HistoryMethods)]
 /// Hybrid locomotive with both engine and reversible energy storage (aka battery)  
 /// This type of locomotive is not likely to be widely prevalent due to modularity of consists.  
-pub struct HybridLoco {
+pub struct HybridElectricVehicle {
     #[has_state]
     pub fc: FuelConverter,
     #[has_state]
@@ -39,9 +33,9 @@ pub struct HybridLoco {
     i: usize,
 }
 
-impl SerdeAPI for HybridLoco {}
+impl SerdeAPI for HybridElectricVehicle {}
 
-impl Default for HybridLoco {
+impl Default for HybridElectricVehicle {
     fn default() -> Self {
         Self {
             fc: FuelConverter::default(),
@@ -57,7 +51,7 @@ impl Default for HybridLoco {
     }
 }
 
-impl LocoTrait for Box<HybridLoco> {
+impl LocoTrait for Box<HybridElectricVehicle> {
     fn set_cur_pwr_max_out(
         &mut self,
         pwr_aux: Option<si::Power>,
@@ -100,7 +94,7 @@ impl LocoTrait for Box<HybridLoco> {
     }
 }
 
-impl HybridLoco {
+impl HybridElectricVehicle {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         fuel_converter: FuelConverter,
@@ -111,7 +105,7 @@ impl HybridLoco {
         fuel_res_ratio: Option<f64>,
         gss_interval: Option<usize>,
     ) -> Self {
-        HybridLoco {
+        HybridElectricVehicle {
             fc: fuel_converter,
             gen: generator,
             res: reversible_energy_storage,
@@ -279,7 +273,7 @@ impl HybridLoco {
 }
 
 struct CostFunc<'a> {
-    locomotive: &'a HybridLoco,
+    locomotive: &'a HybridElectricVehicle,
 }
 
 impl ArgminOp for CostFunc<'_> {

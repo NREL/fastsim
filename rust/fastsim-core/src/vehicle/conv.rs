@@ -1,9 +1,4 @@
-use super::powertrain::electric_drivetrain::ElectricDrivetrain;
-use super::powertrain::fuel_converter::FuelConverter;
-use super::powertrain::generator::Generator;
-use super::powertrain::ElectricMachine;
-use super::LocoTrait;
-use crate::imports::*;
+use super::*;
 
 #[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
 /// Conventional locomotive

@@ -1,5 +1,5 @@
-use super::locomotive::{BatteryElectricLoco, ConventionalLoco, Dummy, HybridLoco};
 use super::*;
+use super::{BatteryElectricVehicle, ConventionalLoco, Dummy, HybridElectricVehicle};
 
 /// Trait for ensuring consistency among locomotives and consists
 #[enum_dispatch]
@@ -22,11 +22,6 @@ pub trait LocoTrait {
     /// Get energy loss in components
     fn get_energy_loss(&self) -> si::Energy;
 }
-
-#[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, SerdeAPI)]
-/// Wrapper struct for `Vec<Locomotive>` to expose various methods to Python.
-pub struct Pyo3VecLocoWrapper(pub Vec<Locomotive>);
 
 #[enum_dispatch]
 pub trait SolvePower {
@@ -243,27 +238,6 @@ impl SolvePower for GoldenSectionSearch {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Deserialize, Serialize, Debug)]
-/// Control strategy for when locomotives are located at both the front and back of the train.
-pub struct FrontAndBack;
-impl SerdeAPI for FrontAndBack {}
-impl SolvePower for FrontAndBack {
-    fn solve_positive_traction(
-        &mut self,
-        _loco_vec: &[Locomotive],
-        _state: &ConsistState,
-    ) -> anyhow::Result<Vec<si::Power>> {
-        todo!() // not needed urgently
-    }
-
-    fn solve_negative_traction(
-        &mut self,
-        _loco_vec: &[Locomotive],
-        _state: &ConsistState,
-    ) -> anyhow::Result<Vec<si::Power>> {
-        todo!() // not needed urgently
-    }
-}
 /// Variants of this enum are used to determine what control strategy gets used for distributing
 /// power required from or delivered to during negative tractive power each locomotive.
 #[enum_dispatch(SolvePower)]

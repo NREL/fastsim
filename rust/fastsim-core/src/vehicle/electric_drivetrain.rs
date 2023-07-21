@@ -1,6 +1,6 @@
-use crate::vehicle::locomotive::powertrain::ElectricMachine;
-use crate::imports::*;
+use super::*;
 
+#[allow(unused_imports)]
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
 
@@ -233,14 +233,6 @@ impl ElectricDrivetrain {
 //     env!("CARGO_MANIFEST_DIR"),
 //     "/src/consist/locomotive/powertrain/electric_drivetrain.default.yaml"
 // ));
-
-impl Default for ElectricDrivetrain {
-    fn default() -> Self {
-        // let file_contents = include_str!(EDRV_DEFAULT_PATH_STR);
-        let file_contents = include_str!("electric_drivetrain.default.yaml");
-        serde_yaml::from_str::<ElectricDrivetrain>(file_contents).unwrap()
-    }
-}
 
 impl ElectricMachine for ElectricDrivetrain {
     /// Set current max possible output power, `pwr_mech_out_max`,
