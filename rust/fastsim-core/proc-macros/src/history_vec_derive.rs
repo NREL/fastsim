@@ -9,6 +9,7 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
         &format!("{}HistoryVec", original_name.to_token_stream()),
         original_name.span(),
     );
+    let new_name_str: String = new_name.to_string();
     let fields = item_struct.fields;
     let field_names = fields
         .iter()
@@ -38,10 +39,17 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
     let struct_doc: TokenStream2 = format!("/// Stores history of {original_name_str}")
         .parse()
         .unwrap();
+    let push_doc: TokenStream2 =
+        format!("/// Pushes fields of {original_name_str} to {new_name_str}")
+            .parse()
+            .unwrap();
     let pop_doc: TokenStream2 =
         format!("/// Remove and return last element as {original_name_str}")
             .parse()
             .unwrap();
+    let state_vec_doc: TokenStream2 = format!("/// Return history as vec of {original_name_str}")
+        .parse()
+        .unwrap();
     generated.append_all(quote! {
         #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
         #[pyo3_api(
@@ -67,7 +75,7 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
                 }
             }
 
-            /// push fields of state to vec fields in history
+            #push_doc
             pub fn push(&mut self, value: #original_name) {
                 #(self.#field_names.push(value.#field_names);)*
             }
@@ -97,6 +105,19 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
             /// Returns True if contained vecs are empty
             pub fn is_empty(&self) -> bool {
                 self.#first_field.is_empty()
+            }
+
+            #state_vec_doc
+            pub fn state_vec(&self) -> Vec<#original_name> {
+                let mut state_vec: Vec<#original_name> = Vec::new();
+                for i in 0..self.len() {
+                    state_vec.push(
+                        #original_name{
+                            #(#field_names: self.#field_names[i],)*
+                        }
+                    )
+                }
+                state_vec
             }
         }
 
