@@ -52,9 +52,8 @@ use crate::pyo3::*;
     }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods, SerdeAPI)]
-/// Struct for modeling electric drivetrain.  This includes power electronics, motor, axle ...
-/// everything involved in converting high voltage electrical power to force exerted by the wheel on the track.  
-pub struct ElectricDrivetrain {
+/// Struct for modeling transmission.  
+pub struct Transmission {
     #[serde(default)]
     /// struct for tracking current state
     pub state: ElectricDrivetrainState,
@@ -78,7 +77,7 @@ pub struct ElectricDrivetrain {
     pub history: ElectricDrivetrainStateHistoryVec,
 }
 
-impl ElectricDrivetrain {
+impl Transmission {
     pub fn new(
         pwr_out_frac_interp: Vec<f64>,
         eta_interp: Vec<f64>,
@@ -88,7 +87,7 @@ impl ElectricDrivetrain {
         ensure!(
             eta_interp.len() == pwr_out_frac_interp.len(),
             format!(
-                "{}\nedrv eta_interp and pwr_out_frac_interp must be the same length",
+                "{}\ntrans eta_interp and pwr_out_frac_interp must be the same length",
                 eta_interp.len() == pwr_out_frac_interp.len()
             )
         );
@@ -96,7 +95,7 @@ impl ElectricDrivetrain {
         ensure!(
             pwr_out_frac_interp.iter().all(|x| *x >= 0.0),
             format!(
-                "{}\nedrv pwr_out_frac_interp must be non-negative",
+                "{}\ntrans pwr_out_frac_interp must be non-negative",
                 format_dbg!(pwr_out_frac_interp.iter().all(|x| *x >= 0.0))
             )
         );
@@ -104,7 +103,7 @@ impl ElectricDrivetrain {
         ensure!(
             pwr_out_frac_interp.iter().all(|x| *x <= 1.0),
             format!(
-                "{}\nedrv pwr_out_frac_interp must be less than or equal to 1.0",
+                "{}\ntrans pwr_out_frac_interp must be less than or equal to 1.0",
                 format_dbg!(pwr_out_frac_interp.iter().all(|x| *x <= 1.0))
             )
         );
@@ -113,7 +112,7 @@ impl ElectricDrivetrain {
         let pwr_out_max_watts = uc::W * pwr_out_max_watts;
         let state = ElectricDrivetrainState::default();
 
-        let mut edrv = ElectricDrivetrain {
+        let mut trans = Transmission {
             state,
             pwr_out_frac_interp,
             eta_interp,
@@ -122,8 +121,8 @@ impl ElectricDrivetrain {
             save_interval,
             history,
         };
-        edrv.set_pwr_in_frac_interp()?;
-        Ok(edrv)
+        trans.set_pwr_in_frac_interp()?;
+        Ok(trans)
     }
 
     pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
@@ -138,7 +137,7 @@ impl ElectricDrivetrain {
         ensure!(
             self.pwr_in_frac_interp.windows(2).all(|w| w[0] < w[1]),
             format!(
-                "{}\nedrv pwr_in_frac_interp ({:?}) must be monotonically increasing",
+                "{}\ntrans pwr_in_frac_interp ({:?}) must be monotonically increasing",
                 format_dbg!(self.pwr_in_frac_interp.windows(2).all(|w| w[0] < w[1])),
                 self.pwr_in_frac_interp
             )
@@ -169,7 +168,7 @@ impl ElectricDrivetrain {
         ensure!(
             pwr_out_req <= self.pwr_out_max,
             format!(
-                "{}\nedrv required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                "{}\ntrans required power ({:.6} MW) exceeds static max power ({:.6} MW)",
                 format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
                 pwr_out_req.get::<si::megawatt>(),
                 self.pwr_out_max.get::<si::megawatt>()
@@ -188,7 +187,7 @@ impl ElectricDrivetrain {
         ensure!(
             self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R,
             format!(
-                "{}\nedrv eta ({}) must be between 0 and 1",
+                "{}\ntrans eta ({}) must be between 0 and 1",
                 format_dbg!(self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R),
                 self.state.eta.get::<si::ratio>()
             )
@@ -229,12 +228,12 @@ impl ElectricDrivetrain {
 }
 
 // failed attempt at making path to default platform independent
-// const EDRV_DEFAULT_PATH_STR: &'static str = include_str!(concat!(
+// const trans_DEFAULT_PATH_STR: &'static str = include_str!(concat!(
 //     env!("CARGO_MANIFEST_DIR"),
-//     "/src/consist/locomotive/powertrain/electric_drivetrain.default.yaml"
+//     "/src/consist/locomotive/powertrain/trans.default.yaml"
 // ));
 
-impl ElectricMachine for ElectricDrivetrain {
+impl ElectricMachine for Transmission {
     /// Set current max possible output power, `pwr_mech_out_max`,
     /// given `pwr_in_max` from upstream component.
     fn set_cur_pwr_max_out(
@@ -341,34 +340,34 @@ impl Default for ElectricDrivetrainState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn test_edrv() -> ElectricDrivetrain {
-        ElectricDrivetrain::new(vec![0.0, 1.0], vec![0.9, 0.8], 8e6, None).unwrap()
+    fn test_trans() -> Transmission {
+        Transmission::new(vec![0.0, 1.0], vec![0.9, 0.8], 8e6, None).unwrap()
     }
 
     #[test]
     fn test_that_i_increments() {
-        let mut edrv = test_edrv();
-        edrv.step();
-        assert_eq!(2, edrv.state.i);
+        let mut trans = test_trans();
+        trans.step();
+        assert_eq!(2, trans.state.i);
     }
 
     #[test]
     fn test_that_loss_is_monotonic() {
-        let mut edrv = test_edrv();
-        edrv.save_interval = Some(1);
-        edrv.save_state();
-        edrv.set_pwr_in_req(uc::W * 2_000e3, uc::S * 1.0).unwrap();
-        edrv.step();
-        edrv.save_state();
-        edrv.set_pwr_in_req(uc::W * -2_000e3, uc::S * 1.0).unwrap();
-        edrv.step();
-        edrv.save_state();
-        edrv.set_pwr_in_req(uc::W * 1_500e3, uc::S * 1.0).unwrap();
-        edrv.step();
-        edrv.save_state();
-        edrv.set_pwr_in_req(uc::W * -1_500e3, uc::S * 1.0).unwrap();
-        edrv.step();
-        let energy_loss_j = edrv
+        let mut trans = test_trans();
+        trans.save_interval = Some(1);
+        trans.save_state();
+        trans.set_pwr_in_req(uc::W * 2_000e3, uc::S * 1.0).unwrap();
+        trans.step();
+        trans.save_state();
+        trans.set_pwr_in_req(uc::W * -2_000e3, uc::S * 1.0).unwrap();
+        trans.step();
+        trans.save_state();
+        trans.set_pwr_in_req(uc::W * 1_500e3, uc::S * 1.0).unwrap();
+        trans.step();
+        trans.save_state();
+        trans.set_pwr_in_req(uc::W * -1_500e3, uc::S * 1.0).unwrap();
+        trans.step();
+        let energy_loss_j = trans
             .history
             .energy_loss
             .iter()
@@ -380,25 +379,8 @@ mod tests {
     }
 
     #[test]
-    fn test_that_history_has_len_1() {
-        let mut edrv: ElectricDrivetrain = ElectricDrivetrain::default();
-        edrv.save_interval = Some(1);
-        assert!(edrv.history.is_empty());
-        edrv.save_state();
-        assert_eq!(1, edrv.history.len());
-    }
-
-    #[test]
-    fn test_that_history_has_len_0() {
-        let mut edrv: ElectricDrivetrain = ElectricDrivetrain::default();
-        assert!(edrv.history.is_empty());
-        edrv.save_state();
-        assert!(edrv.history.is_empty());
-    }
-
-    #[test]
     fn test_get_and_set_eta() {
-        let mut res = test_edrv();
+        let mut res = test_trans();
         let eta_max = 0.9;
         let eta_min = 0.8;
         let eta_range = 0.1;

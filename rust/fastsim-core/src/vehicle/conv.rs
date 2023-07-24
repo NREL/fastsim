@@ -1,26 +1,19 @@
 use super::*;
 
-#[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
-/// Conventional locomotive
-pub struct ConventionalLoco {
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
+/// Conventional vehicle with only a FuelConverter as a power source
+pub struct ConventionalVehicle {
     #[has_state]
     pub fc: FuelConverter,
     #[has_state]
-    pub gen: Generator,
-    #[has_state]
-    pub edrv: ElectricDrivetrain,
+    pub trans: Transmission,
 }
 
-impl ConventionalLoco {
-    pub fn new(
-        fuel_converter: FuelConverter,
-        generator: Generator,
-        electric_drivetrain: ElectricDrivetrain,
-    ) -> Self {
-        ConventionalLoco {
+impl ConventionalVehicle {
+    pub fn new(fuel_converter: FuelConverter, trans: Transmission) -> Self {
+        ConventionalVehicle {
             fc: fuel_converter,
-            gen: generator,
-            edrv: electric_drivetrain,
+            trans: trans,
         }
     }
 
@@ -32,32 +25,12 @@ impl ConventionalLoco {
         pwr_aux: si::Power,
         assert_limits: bool,
     ) -> anyhow::Result<()> {
-        self.edrv.set_pwr_in_req(pwr_out_req, dt)?;
-
-        self.gen.set_pwr_in_req(
-            self.edrv.state.pwr_elec_prop_in,
-            if engine_on { pwr_aux } else { si::Power::ZERO },
-            dt,
-        )?;
-
-        ensure!(
-            self.gen.state.pwr_mech_in >= si::Power::ZERO,
-            format!(
-                "{}\nfc can only produce positive power",
-                format_dbg!(self.gen.state.pwr_mech_in >= si::Power::ZERO)
-            ),
-        );
-        self.fc.solve_energy_consumption(
-            self.gen.state.pwr_mech_in,
-            dt,
-            engine_on,
-            assert_limits,
-        )?;
+        self.trans.set_pwr_in_req(pwr_out_req, dt)?;
         Ok(())
     }
 }
 
-impl LocoTrait for ConventionalLoco {
+impl LocoTrait for ConventionalVehicle {
     /// returns current max power, current max power rate, and current max regen
     /// power that can be absorbed by the RES/battery
     fn set_cur_pwr_max_out(
@@ -65,15 +38,7 @@ impl LocoTrait for ConventionalLoco {
         pwr_aux: Option<si::Power>,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        self.fc.set_cur_pwr_out_max(dt)?;
-        self.gen
-            .set_cur_pwr_max_out(self.fc.state.pwr_out_max, pwr_aux)?;
-        self.edrv
-            .set_cur_pwr_max_out(self.gen.state.pwr_elec_prop_out_max, None)?;
-        self.gen
-            .set_pwr_rate_out_max(self.fc.pwr_out_max / self.fc.pwr_ramp_lag);
-        self.edrv
-            .set_pwr_rate_out_max(self.gen.state.pwr_rate_out_max);
+        todo!();
         Ok(())
     }
 
@@ -86,6 +51,6 @@ impl LocoTrait for ConventionalLoco {
     }
 
     fn get_energy_loss(&self) -> si::Energy {
-        self.fc.state.energy_loss + self.gen.state.energy_loss + self.edrv.state.energy_loss
+        self.fc.state.energy_loss + self.trans.state.energy_loss
     }
 }

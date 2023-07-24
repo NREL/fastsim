@@ -10,11 +10,9 @@ pub struct HybridElectricVehicle {
     #[has_state]
     pub fc: FuelConverter,
     #[has_state]
-    pub gen: Generator,
-    #[has_state]
     pub res: ReversibleEnergyStorage,
     #[has_state]
-    pub edrv: ElectricDrivetrain,
+    pub trans: Transmission,
     /// if 1.0, then all power comes from fuel via generator
     /// if 0.0, then all power comes from res
     /// If fuel_res_ratio is some, then fuel_res_split is initial and then dynamically updated
@@ -35,46 +33,13 @@ pub struct HybridElectricVehicle {
 
 impl SerdeAPI for HybridElectricVehicle {}
 
-impl Default for HybridElectricVehicle {
-    fn default() -> Self {
-        Self {
-            fc: FuelConverter::default(),
-            gen: Generator::default(),
-            res: ReversibleEnergyStorage::default(),
-            edrv: ElectricDrivetrain::default(),
-            fuel_res_split: 0.5,
-            fuel_res_ratio: Some(3.0),
-            gss_interval: Some(60),
-            dt: si::Time::ZERO,
-            i: 1,
-        }
-    }
-}
-
 impl LocoTrait for Box<HybridElectricVehicle> {
     fn set_cur_pwr_max_out(
         &mut self,
         pwr_aux: Option<si::Power>,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
-        self.fc.set_cur_pwr_out_max(dt)?;
-
-        self.gen
-            .set_cur_pwr_max_out(self.fc.state.pwr_out_max, pwr_aux)?;
-
-        self.edrv.set_cur_pwr_max_out(
-            self.gen.state.pwr_elec_prop_out_max + self.res.state.pwr_prop_out_max,
-            None,
-        )?;
-
-        self.edrv
-            .set_cur_pwr_regen_max(self.res.state.pwr_regen_out_max)?;
-
-        self.gen
-            .set_pwr_rate_out_max(self.fc.pwr_out_max / self.fc.pwr_ramp_lag);
-        self.edrv
-            .set_pwr_rate_out_max(self.gen.state.pwr_rate_out_max);
+        todo!();
         Ok(())
     }
 
@@ -90,7 +55,7 @@ impl LocoTrait for Box<HybridElectricVehicle> {
         self.fc.state.energy_loss
             + self.gen.state.energy_loss
             + self.res.state.energy_loss
-            + self.edrv.state.energy_loss
+            + self.trans.state.energy_loss
     }
 }
 
@@ -98,18 +63,16 @@ impl HybridElectricVehicle {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         fuel_converter: FuelConverter,
-        generator: Generator,
         reversible_energy_storage: ReversibleEnergyStorage,
-        electric_drivetrain: ElectricDrivetrain,
+        trans: Transmission,
         fuel_res_split: Option<f64>,
         fuel_res_ratio: Option<f64>,
         gss_interval: Option<usize>,
     ) -> Self {
         HybridElectricVehicle {
             fc: fuel_converter,
-            gen: generator,
             res: reversible_energy_storage,
-            edrv: electric_drivetrain,
+            trans: trans,
             fuel_res_split: fuel_res_split.unwrap_or(0.5),
             fuel_res_ratio,
             gss_interval,
@@ -120,7 +83,7 @@ impl HybridElectricVehicle {
 
     /// cost function for fuel and res energy expenditure
     fn get_fuel_and_res_energy_cost(&mut self, x: f64) -> anyhow::Result<f64> {
-        let pwr_edrv_in = &self.edrv.state.pwr_elec_prop_in;
+        let pwr_trans_in = &self.trans.state.pwr_elec_prop_in;
 
         let pwr_from_res = self
             .res
@@ -128,9 +91,9 @@ impl HybridElectricVehicle {
             // might want this to be method call
             // ensure res power draw does not exceed current max power of res
             .pwr_prop_out_max
-            .min(*pwr_edrv_in * (1.0 - x));
+            .min(*pwr_trans_in * (1.0 - x));
         // limit on fc already accounted for
-        let pwr_from_gen = *pwr_edrv_in - pwr_from_res;
+        let pwr_from_gen = *pwr_trans_in - pwr_from_res;
         self.gen.set_pwr_in_req(
             // fc can only handle positive power
             pwr_from_gen,
@@ -162,10 +125,10 @@ impl HybridElectricVehicle {
     ) -> anyhow::Result<()> {
         // hybrid controls that determine the split between engine + generator and reversible_energy_storage
 
-        self.edrv.set_pwr_in_req(pwr_out_req, dt)?;
+        self.trans.set_pwr_in_req(pwr_out_req, dt)?;
         self.dt = dt;
 
-        if self.edrv.state.pwr_elec_prop_in > si::Power::ZERO {
+        if self.trans.state.pwr_elec_prop_in > si::Power::ZERO {
             // positive traction
             // todo: maybe make the loco_con calculate the aux load and split it up in here
 
@@ -177,18 +140,18 @@ impl HybridElectricVehicle {
                 // it's the first iteration.  `gss_interval` default is provided in `unwrap_or`
                 // above
                 let cost = CostFunc { locomotive: self };
-                // If self.res.state.pwr_out_max is greater than self.edrv.state.pwr_elec_in,
+                // If self.res.state.pwr_out_max is greater than self.trans.state.pwr_elec_in,
                 // then the lower bound can be zero, meaning 100% of the power could come from the RES.
                 // Otherwise, the lower bound needs to be greater than zero.
-                // If self.gen.state.pwr_elec_out_max is greater than self.edrv.state.pwr_elec_in,
+                // If self.gen.state.pwr_elec_out_max is greater than self.trans.state.pwr_elec_in,
                 // then the upper bound needs to be 1, meaning 100% of the power could come from the gen.
                 // Otherwise, the upper bound needs to be less than 1.
 
                 let gss_bounds = vec![
-                    (1.0 - (self.res.state.pwr_prop_out_max / self.edrv.state.pwr_elec_prop_in)
+                    (1.0 - (self.res.state.pwr_prop_out_max / self.trans.state.pwr_elec_prop_in)
                         .get::<si::ratio>())
                     .clamp(0.0, 1.0),
-                    (self.gen.state.pwr_elec_prop_out_max / self.edrv.state.pwr_elec_prop_in)
+                    (self.gen.state.pwr_elec_prop_out_max / self.trans.state.pwr_elec_prop_in)
                         .get::<si::ratio>()
                         .clamp(0.0, 1.0),
                 ];
@@ -227,9 +190,9 @@ impl HybridElectricVehicle {
                 .res
                 .state
                 .pwr_prop_out_max // limit to pwr_out_max
-                .min(self.edrv.state.pwr_elec_prop_in * (1.0 - self.fuel_res_split));
+                .min(self.trans.state.pwr_elec_prop_in * (1.0 - self.fuel_res_split));
             // limit on fc already accounted for
-            let pwr_from_gen = self.edrv.state.pwr_elec_prop_in - pwr_from_res;
+            let pwr_from_gen = self.trans.state.pwr_elec_prop_in - pwr_from_res;
             self.gen.set_pwr_in_req(
                 // fc can only handle positive power
                 pwr_from_gen,
@@ -248,7 +211,7 @@ impl HybridElectricVehicle {
         } else {
             // negative traction
             self.res.solve_energy_consumption(
-                self.edrv.state.pwr_elec_prop_in,
+                self.trans.state.pwr_elec_prop_in,
                 // assume all aux load on generator
                 si::Power::ZERO,
                 dt,

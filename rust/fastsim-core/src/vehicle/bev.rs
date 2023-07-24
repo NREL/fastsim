@@ -1,26 +1,20 @@
-use super::electric_drivetrain::ElectricDrivetrain;
-use super::powertrain_traits::ElectricMachine;
-use super::reversible_energy_storage::ReversibleEnergyStorage;
-use super::LocoTrait;
+use super::*;
 use crate::imports::*;
 
-#[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
 /// Battery electric locomotive
 pub struct BatteryElectricVehicle {
     #[has_state]
     pub res: ReversibleEnergyStorage,
     #[has_state]
-    pub edrv: ElectricDrivetrain,
+    pub trans: Transmission,
 }
 
 impl BatteryElectricVehicle {
-    pub fn new(
-        reversible_energy_storage: ReversibleEnergyStorage,
-        electric_drivetrain: ElectricDrivetrain,
-    ) -> Self {
+    pub fn new(reversible_energy_storage: ReversibleEnergyStorage, trans: Transmission) -> Self {
         BatteryElectricVehicle {
             res: reversible_energy_storage,
-            edrv: electric_drivetrain,
+            trans: trans,
         }
     }
 
@@ -34,20 +28,20 @@ impl BatteryElectricVehicle {
         dt: si::Time,
         pwr_aux: si::Power,
     ) -> anyhow::Result<()> {
-        self.edrv.set_pwr_in_req(pwr_out_req, dt)?;
-        if self.edrv.state.pwr_elec_prop_in > si::Power::ZERO {
+        self.trans.set_pwr_in_req(pwr_out_req, dt)?;
+        if self.trans.state.pwr_elec_prop_in > si::Power::ZERO {
             // positive traction
             self.res
-                .solve_energy_consumption(self.edrv.state.pwr_elec_prop_in, pwr_aux, dt)?;
+                .solve_energy_consumption(self.trans.state.pwr_elec_prop_in, pwr_aux, dt)?;
         } else {
             // negative traction
             self.res.solve_energy_consumption(
-                self.edrv.state.pwr_elec_prop_in,
+                self.trans.state.pwr_elec_prop_in,
                 // limit aux power to whatever is actually available
                 // TODO: add more detail/nuance to this
                 pwr_aux
                     // whatever power is available from regen plus normal
-                    .min(self.res.state.pwr_prop_out_max - self.edrv.state.pwr_elec_prop_in)
+                    .min(self.res.state.pwr_prop_out_max - self.trans.state.pwr_elec_prop_in)
                     .max(si::Power::ZERO),
                 dt,
             )?;
@@ -64,15 +58,15 @@ impl LocoTrait for BatteryElectricVehicle {
     ) -> anyhow::Result<()> {
         // TODO: I think this is where I want to feed in the catenary
         self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
-        self.edrv
+        self.trans
             .set_cur_pwr_max_out(self.res.state.pwr_prop_out_max, None)?;
-        self.edrv
+        self.trans
             .set_cur_pwr_regen_max(self.res.state.pwr_regen_out_max)?;
 
         // power rate is never limiting in BEL, but assuming dt will be same
         // in next time step, we can synthesize a rate
-        self.edrv.set_pwr_rate_out_max(
-            (self.edrv.state.pwr_mech_out_max - self.edrv.state.pwr_mech_prop_out) / dt,
+        self.trans.set_pwr_rate_out_max(
+            (self.trans.state.pwr_mech_out_max - self.trans.state.pwr_mech_prop_out) / dt,
         );
         Ok(())
     }
@@ -86,6 +80,6 @@ impl LocoTrait for BatteryElectricVehicle {
     }
 
     fn get_energy_loss(&self) -> si::Energy {
-        self.res.state.energy_loss + self.edrv.state.energy_loss
+        self.res.state.energy_loss + self.trans.state.energy_loss
     }
 }

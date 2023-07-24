@@ -1,6 +1,3 @@
-pub use crate::vehicle::locomotive::powertrain::electric_drivetrain::{
-    ElectricDrivetrain, ElectricDrivetrainState, ElectricDrivetrainStateHistoryVec,
-};
 pub use crate::vehicle::locomotive::powertrain::fuel_converter::{
     FuelConverter, FuelConverterState, FuelConverterStateHistoryVec,
 };
@@ -9,6 +6,9 @@ pub use crate::vehicle::locomotive::powertrain::generator::{
 };
 pub use crate::vehicle::locomotive::powertrain::reversible_energy_storage::{
     ReversibleEnergyStorage, ReversibleEnergyStorageState, ReversibleEnergyStorageStateHistoryVec,
+};
+pub use crate::vehicle::locomotive::powertrain::trans::{
+    ElectricDrivetrain, ElectricDrivetrainState, ElectricDrivetrainStateHistoryVec,
 };
 
 pub use crate::vehicle::locomotive::loco_sim::{LocomotiveSimulation, PowerTrace};

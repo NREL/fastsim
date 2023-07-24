@@ -155,13 +155,6 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     py_impl_block.extend::<TokenStream2>(quote! {
-        #[classmethod]
-        #[pyo3(name = "default")]
-        /// Exposes `default` to python.
-        fn default_py(_cls: &PyType) -> PyResult<Self> {
-            Ok(Self::default())
-        }
-
         /// json serialization method.
         #[pyo3(name = "to_json")]
         fn to_json_py(&self) -> PyResult<String> {

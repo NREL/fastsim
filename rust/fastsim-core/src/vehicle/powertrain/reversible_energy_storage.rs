@@ -1,5 +1,6 @@
 use super::*;
 
+#[allow(unused_imports)]
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
 
@@ -133,14 +134,6 @@ pub struct ReversibleEnergyStorage {
     /// ReversibleEnergyStorage energy density (note that pressure has the same units as energy density)
     #[api(skip_get, skip_set)]
     pub energy_density: Option<si::Pressure>,
-    /// efficiency map grid values - indexed temp; soc; c_rate;
-    pub eta_interp_grid: [Vec<f64>; 3],
-
-    /// Values of efficiencies at grid points:
-    /// - temperature
-    /// - soc
-    /// - c_rate
-    pub eta_interp_values: Vec<Vec<Vec<f64>>>,
     #[serde(rename = "pwr_out_max_watts")]
     /// Max output (and input) power battery can produce (accept)
     pub pwr_out_max: si::Power,
@@ -220,10 +213,6 @@ impl SerdeAPI for ReversibleEnergyStorage {
 impl ReversibleEnergyStorage {
     #[allow(clippy::too_many_arguments)]
     fn new(
-        temperature_interp_grid: Vec<f64>,
-        soc_interp_grid: Vec<f64>,
-        c_rate_interp_grid: Vec<f64>,
-        eta_interp_values: Vec<Vec<Vec<f64>>>,
         pwr_out_max_watts: f64,
         energy_capacity_joules: f64,
         min_soc: f64,
@@ -234,48 +223,6 @@ impl ReversibleEnergyStorage {
         soc_lo_ramp_start: Option<f64>,
         save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
-        ensure!(
-            temperature_interp_grid.len() == eta_interp_values.len(),
-            format!(
-                "{}\nres temperature grid size must match eta_interp_values dimension 0",
-                format_dbg!(temperature_interp_grid.len() == eta_interp_values.len())
-            )
-        );
-        ensure!(
-            is_sorted(&temperature_interp_grid),
-            format!(
-                "{}\nres temperature grid must be sorted",
-                format_dbg!(is_sorted(&temperature_interp_grid))
-            )
-        );
-        ensure!(
-            soc_interp_grid.len() == eta_interp_values[0].len(),
-            format!(
-                "{}\nsoc grid size must match eta_interp_values dimension 1",
-                format_dbg!(soc_interp_grid.len() == eta_interp_values[0].len())
-            )
-        );
-        ensure!(
-            is_sorted(&soc_interp_grid),
-            format!(
-                "{}\nsoc grid must be sorted",
-                format_dbg!(is_sorted(&soc_interp_grid))
-            )
-        );
-        ensure!(
-            c_rate_interp_grid.len() == eta_interp_values[0][0].len(),
-            format!(
-                "{}\nc rate grid size must match eta_interp_values dimension 2",
-                format_dbg!(c_rate_interp_grid.len() == eta_interp_values[0][0].len())
-            )
-        );
-        ensure!(
-            is_sorted(&soc_interp_grid),
-            format!(
-                "{}\ncrate grid must be sorted",
-                format_dbg!(is_sorted(&soc_interp_grid))
-            )
-        );
         ensure!(
             min_soc <= initial_soc || initial_soc <= max_soc,
             format!(
@@ -289,10 +236,7 @@ impl ReversibleEnergyStorage {
             temperature_celsius: initial_temperature_celcius,
             ..Default::default()
         };
-        let interp_grid = [temperature_interp_grid, soc_interp_grid, c_rate_interp_grid];
         Ok(ReversibleEnergyStorage {
-            eta_interp_grid: interp_grid,
-            eta_interp_values,
             pwr_out_max: uc::W * pwr_out_max_watts,
             energy_capacity: uc::J * energy_capacity_joules,
             min_soc: uc::R * min_soc,
@@ -302,7 +246,10 @@ impl ReversibleEnergyStorage {
             state: initial_state,
             save_interval,
             history: ReversibleEnergyStorageStateHistoryVec::new(),
-            ..Default::default()
+            mass: Default::default(),
+            volume: Default::default(),
+            energy_density: Default::default(),
+            specific_energy: Default::default(),
         })
     }
 
@@ -503,17 +450,9 @@ impl ReversibleEnergyStorage {
         state.pwr_out_electrical = state.pwr_out_propulsion + state.pwr_aux;
         state.energy_out_electrical += state.pwr_out_electrical * dt;
 
-        let c_rate = state.pwr_out_electrical.get::<si::watt>()
-            / (self.energy_capacity.get::<si::watt_hour>());
-        // evaluate the battery efficiency at the current state
-        let eta_point = [
-            state.temperature_celsius,
-            state.soc.get::<si::ratio>(),
-            c_rate,
-        ];
-        let eta = interp3d(&eta_point, &self.eta_interp_grid, &self.eta_interp_values).unwrap();
-
-        state.eta = uc::R * eta;
+        // TODO: replace this with something correct.
+        // This should trip the `ensure` below
+        state.eta = uc::R * 666.;
         ensure!(
             state.eta >= 0.0 * uc::R || state.eta <= 1.0 * uc::R,
             format!(
@@ -526,11 +465,11 @@ impl ReversibleEnergyStorage {
         if state.pwr_out_electrical > si::Power::ZERO {
             // if positive, chemical power must be greater than electrical power
             // i.e. not all chemical power can be converted to electrical power
-            state.pwr_out_chemical = state.pwr_out_electrical / eta;
+            state.pwr_out_chemical = state.pwr_out_electrical / state.eta;
         } else {
             // if negative, chemical power, must be less than electrical power
             // i.e. not all electrical power can be converted back to chemical power
-            state.pwr_out_chemical = state.pwr_out_electrical * eta;
+            state.pwr_out_chemical = state.pwr_out_electrical * state.eta;
         }
         state.energy_out_chemical += state.pwr_out_chemical * dt;
 
@@ -543,62 +482,17 @@ impl ReversibleEnergyStorage {
     }
 
     pub fn get_eta_max(&self) -> f64 {
-        // since eta is all f64 between 0 and 1, NEG_INFINITY is safe
-        self.eta_interp_values
-            .iter()
-            .fold(f64::NEG_INFINITY, |acc, curr2| {
-                curr2
-                    .iter()
-                    .fold(f64::NEG_INFINITY, |acc, curr1| {
-                        curr1
-                            .iter()
-                            .fold(f64::NEG_INFINITY, |acc, &curr| acc.max(curr))
-                            .max(acc)
-                    })
-                    .max(acc)
-            })
+        todo!()
     }
 
     /// Scales eta_interp by ratio of new `eta_max` per current calculated
     /// max linearly, such that `eta_min` is untouched
     pub fn set_eta_max(&mut self, eta_max: f64) -> Result<(), String> {
-        if (self.get_eta_min()..=1.0).contains(&eta_max) {
-            // this appears to be efficient way to get max of Vec<f64>
-            let old_max = self.get_eta_max();
-            self.eta_interp_values = self
-                .eta_interp_values
-                .iter()
-                .map(|v2| {
-                    v2.iter()
-                        .map(|v1| v1.iter().map(|val| val * eta_max / old_max).collect())
-                        .collect()
-                })
-                .collect();
-            Ok(())
-        } else {
-            Err(format!(
-                "`eta_max` ({:.3}) must be between `eta_min` ({:.3}) and 1.0",
-                eta_max,
-                self.get_eta_min()
-            ))
-        }
+        todo!()
     }
 
     pub fn get_eta_min(&self) -> f64 {
-        // since eta is all f64 between 0 and 1, INFINITY is safe
-        self.eta_interp_values
-            .iter()
-            .fold(f64::INFINITY, |acc, curr2| {
-                curr2
-                    .iter()
-                    .fold(f64::INFINITY, |acc, curr1| {
-                        curr1
-                            .iter()
-                            .fold(f64::INFINITY, |acc, &curr| acc.min(curr))
-                            .min(acc)
-                    })
-                    .min(acc)
-            })
+        todo!()
     }
 
     /// Max value of `eta_interp` minus min value of `eta_interp`.
@@ -609,60 +503,7 @@ impl ReversibleEnergyStorage {
     /// Scales values of `eta_interp` without changing max such that max - min
     /// is equal to new range
     pub fn set_eta_range(&mut self, eta_range: f64) -> anyhow::Result<()> {
-        let eta_max = self.get_eta_max();
-        if eta_range == 0.0 {
-            self.eta_interp_values = self
-                .eta_interp_values
-                .iter()
-                .map(|v2| {
-                    v2.iter()
-                        // this is sloppy but should work
-                        .map(|v1| v1.iter().map(|_val| eta_max).collect())
-                        .collect()
-                })
-                .collect();
-            Ok(())
-        } else if (0.0..=1.0).contains(&eta_range) {
-            let old_min = self.get_eta_min();
-            let old_range = self.get_eta_max() - old_min;
-
-            self.eta_interp_values = self
-                .eta_interp_values
-                .iter()
-                .map(|v2| {
-                    v2.iter()
-                        .map(|v1| {
-                            v1.iter()
-                                .map(|val| eta_max + (val - eta_max) * eta_range / old_range)
-                                .collect()
-                        })
-                        .collect()
-                })
-                .collect();
-            if self.get_eta_min() < 0.0 {
-                let val_neg = self.get_eta_min();
-                self.eta_interp_values = self
-                    .eta_interp_values
-                    .iter()
-                    .map(|v2| {
-                        v2.iter()
-                            .map(|v1| v1.iter().map(|val| val - val_neg).collect())
-                            .collect()
-                    })
-                    .collect();
-            }
-            ensure!(
-                self.get_eta_max() <= 1.0,
-                format!(
-                    "{}\n`eta_max` ({:.3}) must be no greater than 1.0",
-                    format_dbg!(self.get_eta_max() <= 1.0),
-                    self.get_eta_max()
-                )
-            );
-            Ok(())
-        } else {
-            bail!("`eta_range` ({:.3}) must be between 0.0 and 1.0", eta_range)
-        }
+        todo!()
     }
 }
 
@@ -765,59 +606,5 @@ impl Default for ReversibleEnergyStorageState {
 }
 
 mod tests {
-    use super::*;
-
-    fn _mock_res() -> ReversibleEnergyStorage {
-        ReversibleEnergyStorage::default()
-    }
-
-    #[test]
-    fn test_res_constructor() {
-        let _res = _mock_res();
-    }
-
-    #[test]
-    fn test_set_cur_pwr_out_max() {
-        let mut res = _mock_res();
-        res.max_soc = 0.9 * uc::R;
-        res.min_soc = 0.1 * uc::R;
-        res.state.soc = 0.98 * uc::R;
-        res.set_cur_pwr_out_max(5e3 * uc::W, None, None).unwrap();
-        assert_eq!(res.state.pwr_charge_max, si::Power::ZERO);
-        res.soc_hi_ramp_start = Some(0.8 * uc::R);
-        res.state.soc = 0.8 * uc::R;
-        res.set_cur_pwr_out_max(5e3 * uc::W, None, None).unwrap();
-        assert_eq!(res.state.pwr_charge_max, res.pwr_out_max);
-        res.state.soc = 0.85 * uc::R;
-        res.set_cur_pwr_out_max(5e3 * uc::W, None, None).unwrap();
-        assert!(res.state.pwr_charge_max < res.pwr_out_max / 2.0 * 1.0001);
-        assert!(res.state.pwr_charge_max > res.pwr_out_max / 2.0 * 0.9999);
-        res.state.soc = 0.9 * uc::R;
-        res.set_cur_pwr_out_max(5e3 * uc::W, None, None).unwrap();
-        assert_eq!(res.state.pwr_charge_max, si::Power::ZERO);
-        res.state.soc = 0.9 * uc::R;
-        res.set_cur_pwr_out_max(5e3 * uc::W, None, None).unwrap();
-        assert_eq!(res.state.pwr_charge_max, si::Power::ZERO);
-        res.soc_lo_ramp_start = Some(0.2 * uc::R);
-        res.state.soc = 0.2 * uc::R;
-        res.set_cur_pwr_out_max(5e3 * uc::W, None, None).unwrap();
-        assert_eq!(res.state.pwr_disch_max, res.pwr_out_max);
-        res.state.soc = 0.15 * uc::R;
-        res.set_cur_pwr_out_max(5e3 * uc::W, None, None).unwrap();
-        assert!(res.state.pwr_disch_max < res.pwr_out_max / 2.0 * 1.0001);
-        assert!(res.state.pwr_charge_max > res.pwr_out_max / 2.0 * 0.9999);
-        res.state.soc = 0.1 * uc::R;
-        res.set_cur_pwr_out_max(5e3 * uc::W, None, None).unwrap();
-        assert_eq!(res.state.pwr_disch_max, si::Power::ZERO);
-    }
-
-    #[test]
-    fn test_get_and_set_eta() {
-        let mut res = _mock_res();
-        let eta_max = 0.998958;
-        let eta_min = 0.662822531196789;
-        let eta_range = 0.336135468803211;
-
-        eta_test_body!(res, eta_max, eta_min, eta_range);
-    }
+    // TODO: put tests here
 }

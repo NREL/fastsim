@@ -10,16 +10,13 @@ pub mod bev;
 pub mod conv;
 pub mod hev;
 
-// components
-pub mod electric_drivetrain;
-pub mod fuel_converter;
-pub mod reversible_energy_storage;
+// powertrain components
+pub mod powertrain;
 
 // vehicle model
 pub mod vehicle_model;
 
 // traits and utilities
-pub mod powertrain_traits;
 pub mod vehicle_utils;
 
 #[cfg(test)]
@@ -27,10 +24,10 @@ pub mod vehicle_utils;
 pub mod tests;
 
 pub use bev::BatteryElectricVehicle;
-pub use conv::ConventionalLoco;
-pub use electric_drivetrain::ElectricDrivetrain;
-pub use fuel_converter::FuelConverter;
+pub use conv::ConventionalVehicle;
 pub use hev::HybridElectricVehicle;
-pub use powertrain_traits::{ElectricMachine, Mass};
-pub use reversible_energy_storage::ReversibleEnergyStorage;
+pub use powertrain::fuel_converter::FuelConverter;
+pub use powertrain::powertrain_traits::{ElectricMachine, Mass};
+pub use powertrain::reversible_energy_storage::ReversibleEnergyStorage;
+pub use powertrain::trans::Transmission;
 pub use vehicle_utils::LocoTrait;

@@ -1,5 +1,5 @@
 use super::*;
-use super::{BatteryElectricVehicle, ConventionalLoco, Dummy, HybridElectricVehicle};
+use super::{BatteryElectricVehicle, ConventionalVehicle, HybridElectricVehicle};
 
 /// Trait for ensuring consistency among locomotives and consists
 #[enum_dispatch]
@@ -54,16 +54,16 @@ impl SolvePower for RESGreedy {
             loco_vec
                 .iter()
                 .map(|loco| match &loco.loco_type {
-                    LocoType::ConventionalLoco(_) => si::Power::ZERO,
-                    LocoType::HybridLoco(_) => {
+                    PowetrtrainType::ConventionalVehicle(_) => si::Power::ZERO,
+                    PowetrtrainType::HybridLoco(_) => {
                         loco.state.pwr_out_max / state.pwr_out_max_reves * state.pwr_out_req
                     }
-                    LocoType::BatteryElectricLoco(_) => {
+                    PowetrtrainType::BatteryElectricVehicle(_) => {
                         loco.state.pwr_out_max / state.pwr_out_max_reves * state.pwr_out_req
                     }
                     // if the Dummy is present in the consist, it should be the only locomotive
                     // and pwr_out_deficit should be 0.0
-                    LocoType::Dummy(_) => state.pwr_out_req,
+                    PowetrtrainType::Dummy(_) => state.pwr_out_req,
                 })
                 .collect()
         } else {
@@ -71,13 +71,13 @@ impl SolvePower for RESGreedy {
             loco_vec
                 .iter()
                 .map(|loco| match &loco.loco_type {
-                    LocoType::ConventionalLoco(_) => {
+                    PowetrtrainType::ConventionalVehicle(_) => {
                         loco.state.pwr_out_max / state.pwr_out_max_non_reves
                             * state.pwr_out_deficit
                     }
-                    LocoType::HybridLoco(_) => loco.state.pwr_out_max,
-                    LocoType::BatteryElectricLoco(_) => loco.state.pwr_out_max,
-                    LocoType::Dummy(_) => {
+                    PowetrtrainType::HybridLoco(_) => loco.state.pwr_out_max,
+                    PowetrtrainType::BatteryElectricVehicle(_) => loco.state.pwr_out_max,
+                    PowetrtrainType::Dummy(_) => {
                         si::Power::ZERO /* this else branch should not happen when Dummy is present */
                     }
                 })
@@ -105,12 +105,12 @@ fn get_pwr_regen_vec(loco_vec: &[Locomotive], regen_frac: si::Ratio) -> Vec<si::
         .iter()
         .map(|loco| match &loco.loco_type {
             // no braking power from conventional locos if there is capacity to regen all power
-            LocoType::ConventionalLoco(_) => si::Power::ZERO,
-            LocoType::HybridLoco(_) => loco.state.pwr_regen_max * regen_frac,
-            LocoType::BatteryElectricLoco(_) => loco.state.pwr_regen_max * regen_frac,
+            PowetrtrainType::ConventionalVehicle(_) => si::Power::ZERO,
+            PowetrtrainType::HybridLoco(_) => loco.state.pwr_regen_max * regen_frac,
+            PowetrtrainType::BatteryElectricVehicle(_) => loco.state.pwr_regen_max * regen_frac,
             // if the Dummy is present in the consist, it should be the only locomotive
             // and pwr_regen_deficit should be 0.0
-            LocoType::Dummy(_) => si::Power::ZERO,
+            PowetrtrainType::Dummy(_) => si::Power::ZERO,
         })
         .collect()
 }
@@ -143,7 +143,7 @@ fn solve_negative_traction(
             .iter()
             .zip(&pwr_regen_vec)
             // this `unwrap` might cause problems for Dummy
-            .map(|(loco, pwr_regen)| loco.electric_drivetrain().unwrap().pwr_out_max - *pwr_regen)
+            .map(|(loco, pwr_regen)| loco.trans().unwrap().pwr_out_max - *pwr_regen)
             .collect();
         let pwr_surplus_sum = pwr_surplus_vec
             .iter()
