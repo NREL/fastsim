@@ -1,20 +1,14 @@
-pub use crate::vehicle::locomotive::powertrain::fuel_converter::{
-    FuelConverter, FuelConverterState, FuelConverterStateHistoryVec,
-};
-pub use crate::vehicle::locomotive::powertrain::generator::{
-    Generator, GeneratorState, GeneratorStateHistoryVec,
-};
-pub use crate::vehicle::locomotive::powertrain::reversible_energy_storage::{
-    ReversibleEnergyStorage, ReversibleEnergyStorageState, ReversibleEnergyStorageStateHistoryVec,
-};
-pub use crate::vehicle::locomotive::powertrain::trans::{
-    ElectricDrivetrain, ElectricDrivetrainState, ElectricDrivetrainStateHistoryVec,
-};
-
-pub use crate::vehicle::locomotive::loco_sim::{LocomotiveSimulation, PowerTrace};
-pub use crate::vehicle::locomotive::{Locomotive, LocomotiveState, LocomotiveStateHistoryVec};
-
-pub use crate::vehicle::consist_sim::ConsistSimulation;
-pub use crate::vehicle::{Consist, ConsistState, ConsistStateHistoryVec};
+//! Convenience module for exposing commonly used structs
+// TODO: consider exposing more structs here
 
 pub use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecBoolWrapper, Pyo3VecWrapper};
+pub use crate::vehicle::powertrain::fuel_converter::{
+    FuelConverter, FuelConverterState, FuelConverterStateHistoryVec,
+};
+pub use crate::vehicle::powertrain::reversible_energy_storage::{
+    ReversibleEnergyStorage, ReversibleEnergyStorageState, ReversibleEnergyStorageStateHistoryVec,
+};
+pub use crate::vehicle::powertrain::trans::{
+    Transmission, TransmissionState, TransmissionStateHistoryVec,
+};
+pub use crate::vehicle::Vehicle;

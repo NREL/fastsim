@@ -23,6 +23,7 @@ pub mod vehicle_utils;
 /// Module containing tests for consists.
 pub mod tests;
 
+// TODO: think about removing this or at least removing `pub`
 pub use bev::BatteryElectricVehicle;
 pub use conv::ConventionalVehicle;
 pub use hev::HybridElectricVehicle;
@@ -30,4 +31,5 @@ pub use powertrain::fuel_converter::FuelConverter;
 pub use powertrain::powertrain_traits::{ElectricMachine, Mass};
 pub use powertrain::reversible_energy_storage::ReversibleEnergyStorage;
 pub use powertrain::trans::Transmission;
-pub use vehicle_utils::LocoTrait;
+pub use vehicle_model::{PowertrainType, Vehicle};
+pub use vehicle_utils::VehicleTrait;

@@ -13,13 +13,11 @@
 #[macro_use]
 pub mod macros;
 
-#[cfg(test)]
-pub mod testing;
-
 pub mod drive_cycle;
 pub mod imports;
 pub mod prelude;
 pub mod si;
+pub mod simdrive;
 pub mod traits;
 pub mod uc;
 pub mod utils;
@@ -27,7 +25,6 @@ pub mod vehicle;
 
 // these might not get used
 pub mod combo_error;
-pub mod validate;
 
 #[cfg(feature = "pyo3")]
 pub mod pyo3;

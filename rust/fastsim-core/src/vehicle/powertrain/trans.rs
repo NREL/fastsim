@@ -56,7 +56,7 @@ use crate::pyo3::*;
 pub struct Transmission {
     #[serde(default)]
     /// struct for tracking current state
-    pub state: ElectricDrivetrainState,
+    pub state: TransmissionState,
     /// Shaft output power fraction array at which efficiencies are evaluated.
     pub pwr_out_frac_interp: Vec<f64>,
     #[api(skip_set)]
@@ -74,7 +74,7 @@ pub struct Transmission {
     pub save_interval: Option<usize>,
     /// Custom vector of [Self::state]
     #[serde(default)]
-    pub history: ElectricDrivetrainStateHistoryVec,
+    pub history: TransmissionStateHistoryVec,
 }
 
 impl Transmission {
@@ -108,9 +108,9 @@ impl Transmission {
             )
         );
 
-        let history = ElectricDrivetrainStateHistoryVec::new();
+        let history = TransmissionStateHistoryVec::new();
         let pwr_out_max_watts = uc::W * pwr_out_max_watts;
-        let state = ElectricDrivetrainState::default();
+        let state = TransmissionState::default();
 
         let mut trans = Transmission {
             state,
@@ -271,7 +271,7 @@ impl ElectricMachine for Transmission {
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec)]
 #[pyo3_api]
-pub struct ElectricDrivetrainState {
+pub struct TransmissionState {
     /// index
     pub i: usize,
     /// Component efficiency based on current power demand.
@@ -314,7 +314,7 @@ pub struct ElectricDrivetrainState {
     pub energy_loss: si::Energy,
 }
 
-impl Default for ElectricDrivetrainState {
+impl Default for TransmissionState {
     fn default() -> Self {
         Self {
             i: 1,

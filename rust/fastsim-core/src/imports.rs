@@ -1,3 +1,5 @@
+//! Module for crate-local imports to reduce boilerplate in submodules
+
 #![allow(unused_imports)]
 
 #[cfg(feature = "pyo3")]
@@ -9,7 +11,6 @@ pub(crate) use crate::uc;
 pub(crate) use crate::utils;
 pub(crate) use crate::utils::{almost_eq, interp1d, interp3d, is_sorted, DIRECT_SET_ERR};
 pub(crate) use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecWrapper};
-pub(crate) use crate::validate::*;
 pub(crate) use proc_macros::{pyo3_api, HistoryMethods, HistoryVec, SerdeAPI};
 
 pub(crate) use duplicate::duplicate_item;

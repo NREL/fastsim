@@ -33,7 +33,7 @@ pub struct HybridElectricVehicle {
 
 impl SerdeAPI for HybridElectricVehicle {}
 
-impl LocoTrait for Box<HybridElectricVehicle> {
+impl VehicleTrait for Box<HybridElectricVehicle> {
     fn set_cur_pwr_max_out(
         &mut self,
         pwr_aux: Option<si::Power>,
@@ -52,10 +52,7 @@ impl LocoTrait for Box<HybridElectricVehicle> {
     }
 
     fn get_energy_loss(&self) -> si::Energy {
-        self.fc.state.energy_loss
-            + self.gen.state.energy_loss
-            + self.res.state.energy_loss
-            + self.trans.state.energy_loss
+        self.fc.state.energy_loss + self.res.state.energy_loss + self.trans.state.energy_loss
     }
 }
 
@@ -72,7 +69,7 @@ impl HybridElectricVehicle {
         HybridElectricVehicle {
             fc: fuel_converter,
             res: reversible_energy_storage,
-            trans: trans,
+            trans,
             fuel_res_split: fuel_res_split.unwrap_or(0.5),
             fuel_res_ratio,
             gss_interval,
@@ -83,34 +80,7 @@ impl HybridElectricVehicle {
 
     /// cost function for fuel and res energy expenditure
     fn get_fuel_and_res_energy_cost(&mut self, x: f64) -> anyhow::Result<f64> {
-        let pwr_trans_in = &self.trans.state.pwr_elec_prop_in;
-
-        let pwr_from_res = self
-            .res
-            .state
-            // might want this to be method call
-            // ensure res power draw does not exceed current max power of res
-            .pwr_prop_out_max
-            .min(*pwr_trans_in * (1.0 - x));
-        // limit on fc already accounted for
-        let pwr_from_gen = *pwr_trans_in - pwr_from_res;
-        self.gen.set_pwr_in_req(
-            // fc can only handle positive power
-            pwr_from_gen,
-            50e3 * uc::W, // todo; fix this
-            self.dt,
-        )?;
-
-        // todo: fix this function call
-        // assumes all aux load on generator
-        self.fc
-            .solve_energy_consumption(self.gen.state.pwr_mech_in, self.dt, true, false)?;
-        self.res
-            .solve_energy_consumption(pwr_from_res, si::Power::ZERO, self.dt)?;
-        // total weighted energy cost at this time step
-        Ok((self.res.state.pwr_out_chemical
-            + self.fuel_res_ratio.unwrap() * self.fc.state.pwr_fuel)
-            .get::<si::watt>())
+        todo!() // might deem this method as something to be deleted
     }
 
     /// Solve fc and res energy consumption
@@ -124,114 +94,7 @@ impl HybridElectricVehicle {
         assert_limits: bool,
     ) -> anyhow::Result<()> {
         // hybrid controls that determine the split between engine + generator and reversible_energy_storage
-
-        self.trans.set_pwr_in_req(pwr_out_req, dt)?;
-        self.dt = dt;
-
-        if self.trans.state.pwr_elec_prop_in > si::Power::ZERO {
-            // positive traction
-            // todo: maybe make the loco_con calculate the aux load and split it up in here
-
-            if self.fuel_res_ratio.is_some()
-                && (self.i % self.gss_interval.unwrap_or(10) == 0 || self.i == 1)
-            {
-                // solve for best res / generator split if fuel_res_ratio is provided
-                // and `i`, the iteration counter, is a multiple of `gss_interval` or
-                // it's the first iteration.  `gss_interval` default is provided in `unwrap_or`
-                // above
-                let cost = CostFunc { locomotive: self };
-                // If self.res.state.pwr_out_max is greater than self.trans.state.pwr_elec_in,
-                // then the lower bound can be zero, meaning 100% of the power could come from the RES.
-                // Otherwise, the lower bound needs to be greater than zero.
-                // If self.gen.state.pwr_elec_out_max is greater than self.trans.state.pwr_elec_in,
-                // then the upper bound needs to be 1, meaning 100% of the power could come from the gen.
-                // Otherwise, the upper bound needs to be less than 1.
-
-                let gss_bounds = vec![
-                    (1.0 - (self.res.state.pwr_prop_out_max / self.trans.state.pwr_elec_prop_in)
-                        .get::<si::ratio>())
-                    .clamp(0.0, 1.0),
-                    (self.gen.state.pwr_elec_prop_out_max / self.trans.state.pwr_elec_prop_in)
-                        .get::<si::ratio>()
-                        .clamp(0.0, 1.0),
-                ];
-
-                if gss_bounds[1] - gss_bounds[0] < 0.05 {
-                    // if bounds are really close together, don't run the optimizer
-                    // just use mean
-                    self.fuel_res_split = gss_bounds.iter().sum::<f64>() / gss_bounds.len() as f64;
-                } else {
-                    let solver =
-                        GoldenSectionSearch::new(gss_bounds[0], gss_bounds[1]).tolerance(0.01);
-
-                    let res = Executor::new(
-                        cost,
-                        solver,
-                        self.fuel_res_split.clamp(gss_bounds[0], gss_bounds[1]),
-                    )
-                    // .add_observer(ArgminSlogLogger::term(), ObserverMode::Always)
-                    .max_iters(5)
-                    .run()
-                    .unwrap();
-
-                    self.fuel_res_split = res.state.best_param;
-                }
-
-                // uncomment to enable debug printing
-                // Python::with_gil(|py| {
-                //     let locals = pyo3::types::PyDict::new(py);
-                //     locals.set_item("gss_bounds", gss_bounds).unwrap();
-                //     py.run("print(\"gss_bounds:\", gss_bounds)", None, Some(locals))
-                //         .expect("printing gss_bounds failed");
-                // });
-            }
-
-            let pwr_from_res = self
-                .res
-                .state
-                .pwr_prop_out_max // limit to pwr_out_max
-                .min(self.trans.state.pwr_elec_prop_in * (1.0 - self.fuel_res_split));
-            // limit on fc already accounted for
-            let pwr_from_gen = self.trans.state.pwr_elec_prop_in - pwr_from_res;
-            self.gen.set_pwr_in_req(
-                // fc can only handle positive power
-                pwr_from_gen,
-                50e3 * uc::W, // todo: fix this
-                dt,
-            )?;
-            self.fc.solve_energy_consumption(
-                self.gen.state.pwr_mech_in,
-                dt,
-                true,
-                assert_limits,
-            )?; // todo: fix this function call
-                // asumes all aux load on generator
-            self.res
-                .solve_energy_consumption(pwr_from_res, si::Power::ZERO, dt)?;
-        } else {
-            // negative traction
-            self.res.solve_energy_consumption(
-                self.trans.state.pwr_elec_prop_in,
-                // assume all aux load on generator
-                si::Power::ZERO,
-                dt,
-            )?;
-            self.gen.set_pwr_in_req(
-                // fc can only handle positive power
-                si::Power::ZERO,
-                50e3 * uc::W, // todo: fix this
-                dt,
-            )?;
-            self.fc.solve_energy_consumption(
-                self.gen.state.pwr_mech_in,
-                dt,
-                true,
-                assert_limits,
-            )?;
-            // todo: fix this function call
-        }
-        self.i += 1; // iterate counter
-        Ok(())
+        todo!()
     }
 }
 
