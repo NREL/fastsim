@@ -2,13 +2,14 @@
 name = "fastsim-py"
 version = "0.1.0"
 edition = "2021"
+license_file = "../LICENSE.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 fastsim-core = { path = "../fastsim-core", features = ["pyo3"] }
 pyo3 = { workspace = true, features = ["extension-module", "anyhow"] }
-pyo3-log = { workspace = true}
+pyo3-log = { workspace = true }
 log = "0.4.17"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
