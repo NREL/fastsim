@@ -9,7 +9,7 @@ fn main() {
     let prepath: String = "../../../../python/fastsim/resources".into();
 
     let thinger = PathBuf::from(format!(
-        "{}/../../../../python",
+        "{}/../../../../python/fastsim/resources/cycles/udds.csv",
         env::current_dir().unwrap().as_os_str().to_str().unwrap()
     ))
     .canonicalize()
@@ -24,12 +24,12 @@ fn main() {
             prepath
         ),
         format!(
-            "{}/{}/udds.csv",
+            "{}/{}/cycles/udds.csv",
             env::current_dir().unwrap().as_os_str().to_str().unwrap(),
             prepath
         ),
         format!(
-            "{}/{}/hwfet.csv",
+            "{}/{}/cycles/hwfet.csv",
             env::current_dir().unwrap().as_os_str().to_str().unwrap(),
             prepath
         ),
@@ -41,11 +41,11 @@ fn main() {
             env::current_dir().unwrap().as_os_str().to_str().unwrap()
         ),
         format!(
-            "{}/resources/hwfet.csv",
+            "{}/resources/udds.csv",
             env::current_dir().unwrap().as_os_str().to_str().unwrap()
         ),
         format!(
-            "{}/resources/udds.csv",
+            "{}/resources/hwfet.csv",
             env::current_dir().unwrap().as_os_str().to_str().unwrap()
         ),
     ];
