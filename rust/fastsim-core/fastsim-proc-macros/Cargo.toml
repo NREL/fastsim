@@ -4,6 +4,7 @@ name = "fastsim-proc-macros"
 version = "0.1.0"
 edition = "2021"
 license-file = "../../../LICENSE.md"
+readme-file = "../../../README.md"
 description = "Procedural macros for FASTSim"
 homepage = "https://www.nrel.gov/transportation/fastsim.html"
 
