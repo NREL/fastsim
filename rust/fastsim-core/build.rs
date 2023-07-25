@@ -6,16 +6,21 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() {
-    let prepath: String = "../../../../python/fastsim/resources".into();
+    // path when running `cargo publish` in fastsim-core/
+    let publish_path = "../../../../python/fastsim/resources".to_string();
+    // path when building using build_and_test.sh
+    let build_path = "../../python/fastsim/resources".to_string();
 
-    let thinger = PathBuf::from(format!(
-        "{}/../../../../python/fastsim/resources/cycles/udds.csv",
-        env::current_dir().unwrap().as_os_str().to_str().unwrap()
-    ))
-    .canonicalize()
-    .unwrap();
-    assert!(&thinger.exists());
-    dbg!(thinger);
+    let prepath: String = match PathBuf::from(publish_path.clone()).exists() {
+        true => publish_path,
+        false => build_path,
+    };
+
+    assert!(
+        PathBuf::from(prepath.clone()).exists(),
+        "{:?} does not exist.",
+        PathBuf::from(prepath).canonicalize()
+    );
 
     let truth_files = [
         format!(
