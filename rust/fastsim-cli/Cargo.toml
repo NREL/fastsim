@@ -2,8 +2,10 @@
 name = "fastsim-cli"
 version = "0.1.0"
 edition = "2021"
-license_file = "../LICENSE.md"
-
+license-file = "../../LICENSE.md"
+authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
+description = "CLI app for FASTSim models for vehicle energy usage simulation"
+homepage = "https://www.nrel.gov/transportation/fastsim.html"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

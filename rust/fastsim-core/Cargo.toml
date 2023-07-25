@@ -2,7 +2,10 @@
 name = "fastsim-core"
 version = "0.1.0"
 edition = "2021"
-license_file = "../LICENSE.md"
+license-file = "../../LICENSE.md"
+authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
+description = "Core FASTSim models for vehicle energy usage simulation"
+homepage = "https://www.nrel.gov/transportation/fastsim.html"
 
 [dependencies]
 pyo3 = { workspace = true, features = [
