@@ -69,7 +69,7 @@ impl Cycle {
     }
 
     pub fn trim(&mut self, start_idx: Option<usize>, end_idx: Option<usize>) -> anyhow::Result<()> {
-        let start_idx = start_idx.unwrap_or(0);
+        let start_idx = start_idx.unwrap_or_default();
         let end_idx = end_idx.unwrap_or(self.len());
         ensure!(end_idx <= self.len(), format_dbg!(end_idx <= self.len()));
 

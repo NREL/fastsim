@@ -20,7 +20,7 @@ impl Idx for u32 {
 
 impl Idx for Option<NonZeroU16> {
     fn idx(self) -> usize {
-        self.map(u16::from).unwrap_or(0) as usize
+        self.map(u16::from).unwrap_or_default() as usize
     }
 }
 
@@ -157,7 +157,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let extension = Path::new(filename)
             .extension()
             .and_then(OsStr::to_str)
-            .unwrap_or("");
+            .unwrap_or_default();
 
         let file = File::open(filename)?;
         // deserialized file
