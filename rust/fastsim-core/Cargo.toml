@@ -31,6 +31,13 @@ validator = { version = "0.16", features = ["derive"] }
 lazy_static = "1.4.0"
 regex = "1.7.1"
 
+[package.metadata]
+include = [
+    "../../python/fastsim/resources/longparams.json",
+    "../../python/fastsim/resources/cycles/udds.csv",
+    "../../python/fastsim/resources/cycles/hwfet.csv",
+]
+
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", "./src/html/docs-header.html"]
 
