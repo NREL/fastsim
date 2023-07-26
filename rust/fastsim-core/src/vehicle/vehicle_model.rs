@@ -3,9 +3,9 @@ use super::*;
 #[enum_dispatch(VehicleTrait)]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
 pub enum PowertrainType {
-    ConventionalVehicle,
+    ConventionalVehicle(Box<ConventionalVehicle>),
     HybridElectricVehicle(Box<HybridElectricVehicle>),
-    BatteryElectricVehicle,
+    BatteryElectricVehicle(Box<BatteryElectricVehicle>),
 }
 
 impl PowertrainType {
@@ -118,6 +118,19 @@ impl std::string::ToString for PowertrainType {
     }
 }
 
+/// Possible drive wheel configurations
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
+pub enum DriveTypes {
+    /// Rear-wheel drive
+    RWD,
+    /// Front-wheel drive
+    FWD,
+    /// All-wheel drive
+    AWD,
+    /// 4-wheel drive
+    FourWD,
+}
+
 #[pyo3_api(
     #[getter]
     fn get_fuel_res_split(&self) -> PyResult<Option<f64>> {
@@ -228,11 +241,39 @@ impl std::string::ToString for PowertrainType {
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 /// Struct for simulating any type of locomotive
 pub struct Vehicle {
+    /// Vehicle name
+    /// `scenario_name` in fastsim-2
+    name: String,
+    /// Year manufactured
+    /// `veh_year` in fastsim-2
+    year: u32,
     #[api(skip_get, skip_set)]
     /// type of locomotive including contained type-specific parameters
     /// and variables
     pub powertrain_type: PowertrainType,
-    /// current state of locomotive
+    /// Aerodynamic drag coefficient
+    /// `drag_coeff` in fastsim-2
+    drag_coeff: si::Ratio,
+    /// Projected frontal area for drag calculations
+    /// `frontal_area_m2` in fastsim-2
+    frontal_area: si::Area,
+    /// Vehicle mass excluding cargo, passengers, and powertrain components
+    /// `glider_kg` in fastsim-2
+    glider_mass: si::Mass,
+    /// Vehicle center of mass height
+    /// `veh_cg_m` in fastsim-2
+    cg_height: si::Length,
+    #[api(skip_get, skip_set)]
+    /// TODO: make getters and setters for this.
+    /// Drive wheel configuration
+    drive_type: DriveTypes,
+    /// Fraction of vehicle weight on drive action when stationary
+    /// `drive_axle_weight_frac` in fastsim-2
+    drive_axle_weight_frac: si::Ratio,
+    /// Wheel base length
+    /// `wheel_base_m` in fastsim-2
+    wheel_base: si::Length,
+    /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
     #[api(skip_get, skip_set)]

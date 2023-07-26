@@ -50,7 +50,7 @@ impl BatteryElectricVehicle {
     }
 }
 
-impl VehicleTrait for BatteryElectricVehicle {
+impl VehicleTrait for Box<BatteryElectricVehicle> {
     fn set_cur_pwr_max_out(
         &mut self,
         pwr_aux: Option<si::Power>,

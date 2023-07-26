@@ -30,7 +30,7 @@ impl ConventionalVehicle {
     }
 }
 
-impl VehicleTrait for ConventionalVehicle {
+impl VehicleTrait for Box<ConventionalVehicle> {
     /// returns current max power, current max power rate, and current max regen
     /// power that can be absorbed by the RES/battery
     fn set_cur_pwr_max_out(
