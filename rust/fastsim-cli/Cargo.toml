@@ -2,7 +2,7 @@
 name = "fastsim-cli"
 version = "0.1.0"
 edition = "2021"
-license-file = "../../LICENSE.md"
+license = "Apache-2.0"
 authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
 description = "CLI app for FASTSim models for vehicle energy usage simulation"
 homepage = "https://www.nrel.gov/transportation/fastsim.html"

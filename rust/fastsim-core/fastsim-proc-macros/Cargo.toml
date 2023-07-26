@@ -1,9 +1,9 @@
 [package]
 authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
 name = "fastsim-proc-macros"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
-license-file = "../../../LICENSE.md"
+license = "Apache-2.0"
 readme = "../../../README.md"
 description = "Procedural macros for FASTSim"
 homepage = "https://www.nrel.gov/transportation/fastsim.html"
