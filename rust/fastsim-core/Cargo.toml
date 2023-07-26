@@ -1,6 +1,6 @@
 [package]
 name = "fastsim-core"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license-file = "../../LICENSE.md"
 authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
@@ -37,6 +37,7 @@ include = [
     "resources/longparams.json",
     "resources/udds.csv",
     "resources/hwfet.csv",
+    "build.rs",
 ]
 
 [package.metadata.docs.rs]
