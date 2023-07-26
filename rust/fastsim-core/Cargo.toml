@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+fastsim-2 = { package = "fastsim-core", version = "~0" }
 csv = "1.1.6"
 serde = { version = "1.0.136", features = ["derive"] }
 serde_yaml = "0.8.23"
@@ -21,12 +22,23 @@ anyhow = { workspace = true }
 readonly = "0.2.3"
 duplicate = "0.4.1"
 nohash-hasher = "0.2.0"
-polars = {version = "0.30", features = ["dtype-categorical","rank","strings"]}
-polars-lazy = {version = "0.30", features = ["dtype-categorical","rank","strings"]}
-pyo3-polars = {version = "0.4.1", features = ["lazy"]}
+polars = { version = "0.30", features = [
+    "dtype-categorical",
+    "rank",
+    "strings",
+] }
+polars-lazy = { version = "0.30", features = [
+    "dtype-categorical",
+    "rank",
+    "strings",
+] }
+pyo3-polars = { version = "0.4.1", features = ["lazy"] }
 
 # optional
-pyo3 = { workspace = true, features = ["extension-module", "anyhow"], optional = true }
+pyo3 = { workspace = true, features = [
+    "extension-module",
+    "anyhow",
+], optional = true }
 serde-this-or-that = "0.4.2"
 project-root = "0.2.2"
 
