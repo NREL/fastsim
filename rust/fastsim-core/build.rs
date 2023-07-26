@@ -16,11 +16,12 @@ fn main() {
         false => build_path,
     };
 
-    assert!(
-        PathBuf::from(prepath.clone()).exists(),
-        "{:?} does not exist.",
-        PathBuf::from(prepath).canonicalize()
-    );
+    if !PathBuf::from(prepath.clone()).exists() {
+        // no need for further checks since this indicates that it's
+        // likely that python fastsim is not available and thus
+        // fastsim-core is likely being compiled as a dependency
+        return;
+    }
 
     let truth_files = [
         format!(
