@@ -1,16 +1,17 @@
 [workspace]
 
 members = [
-    "fastsim-cli", # command line app
-    "fastsim-core", # pure rust core with optional pyo3 feature
-    "fastsim-py", # python module exposing fastsim-core
+    "fastsim-cli",                      # command line app
+    "fastsim-core",                     # pure rust core with optional pyo3 feature
+    "fastsim-py",                       # python module exposing fastsim-core
+    "fastsim-core/fastsim-proc-macros",
 ]
 
 [profile.release]
 # https://deterministic.space/high-performance-rust.html
-opt-level = 3               # Use better optimizations.
-lto = "fat"  # aggressively optimize inter-crate linking
-codegen-units = 1  # optimize connection between modules
+opt-level = 3     # Use better optimizations.
+lto = "fat"       # aggressively optimize inter-crate linking
+codegen-units = 1 # optimize connection between modules
 
 [workspace.dependencies]
 anyhow = "1.0.57"

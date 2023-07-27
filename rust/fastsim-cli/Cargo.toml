@@ -2,13 +2,18 @@
 name = "fastsim-cli"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
+description = "CLI app for FASTSim models for vehicle energy usage simulation"
+homepage = "https://www.nrel.gov/transportation/fastsim.html"
+repository = "https://github.com/NREL/fastsim"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 fastsim-core = { path = "../fastsim-core" }
-serde = {workspace = true}
-serde_json = {workspace = true}
+serde = { workspace = true }
+serde_json = { workspace = true }
 project-root = "0.2.2"
 clap = { version = "3.2.6", features = ["derive"] }
 regex = "1"
