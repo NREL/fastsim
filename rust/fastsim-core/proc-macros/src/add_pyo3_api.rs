@@ -11,7 +11,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut impl_block = TokenStream2::default();
     let mut py_impl_block = TokenStream2::default();
     py_impl_block.extend::<TokenStream2>(crate::utilities::parse_ts_as_fn_defs(
-        attr.into(),
+        attr,
         vec![],
         false,
         vec![],

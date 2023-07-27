@@ -5,12 +5,13 @@ on:
     tags:
       # 'v[0-9]+.[0-9]+.[0-9]+' to match semantic version tag, e.g. v2.0.8
       - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
 
 jobs:
   build:
     name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os:
           - ubuntu
@@ -30,11 +31,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: set up python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-
       - name: set up rust
         if: matrix.os != 'ubuntu'
         uses: actions-rs/toolchain@v1
@@ -42,6 +38,7 @@ jobs:
           profile: minimal
           toolchain: stable 
           override: true
+
       - run: rustup target add aarch64-apple-darwin
         if: matrix.os == 'macos'
 
@@ -53,22 +50,29 @@ jobs:
           override: true
       - run: cd rust/ && cargo test
 
-      - name: install python dependencies
-        run: pip install -U setuptools wheel twine cibuildwheel plotly
+      - name: set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-      - name: build sdist
-        if: matrix.os == 'ubuntu' && matrix.python-version == '8'
+      - name: install Python dependencies
+        run: pip install -U setuptools wheel twine cibuildwheel pytest
+
+      - name: build source distribution
+        if: matrix.os == 'ubuntu' && matrix.python-version == '10'
         run: |
           pip install -U setuptools-rust
-          python setup.py sdist
+          python -c "import setuptools; setuptools.setup()" sdist
+
       - name: build ${{ matrix.platform || matrix.os }} binaries
         run: cibuildwheel --output-dir dist
         env:
           CIBW_BUILD: "cp3${{ matrix.python-version }}-*"
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
           CIBW_PLATFORM: ${{ matrix.platform || matrix.os }}
-          CIBW_TEST_REQUIRES: "pytest"
-          CIBW_TEST_COMMAND: "pytest -v {project}/python/fastsim/tests"
+          # TODO: why doesn't pytest work with cibuildwheel?
+          # CIBW_TEST_COMMAND: "pytest -v {project}/python/fastsim/tests"
+          CIBW_TEST_COMMAND: "python -m unittest discover {project}/python/fastsim/tests"
           CIBW_ARCHS_MACOS: 'universal2'
           # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
           CIBW_TEST_SKIP: '*_universal2:arm64'
@@ -84,6 +88,7 @@ jobs:
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
+
       # - name: build windows 32bit binaries
       #   if: matrix.os == 'windows'
       #   run: cibuildwheel --output-dir dist
@@ -99,6 +104,7 @@ jobs:
       #       rustup default nightly-i686-pc-windows-msvc &&
       #       rustup override set nightly-i686-pc-windows-msvc &&
       #       rustup show
+
       - name: list dist files
         run: ${{ matrix.ls || 'ls -lh' }} dist/
 

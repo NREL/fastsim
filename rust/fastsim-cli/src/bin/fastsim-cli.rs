@@ -246,9 +246,9 @@ pub fn main() {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string);
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_str(&veh_string)
+            RustVehicle::from_json_str(&veh_string)
         } else {
-            RustVehicle::from_str(&veh_string)
+            RustVehicle::from_json_str(&veh_string)
         }
     } else if let Some(veh_file_path) = fastsim_api.veh_file {
         if is_adopt || is_adopt_hd {
@@ -256,7 +256,7 @@ pub fn main() {
             let (vehstring, pwr_out_perc, h2share) = json_rewrite(vehstring);
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_str(&vehstring)
+            RustVehicle::from_json_str(&vehstring)
         } else {
             RustVehicle::from_file(&veh_file_path)
         }
@@ -321,7 +321,9 @@ pub fn main() {
         let mut sim_drive_accel = RustSimDrive::new(make_accel_trace(), veh.clone());
         let net_accel = get_net_accel(&mut sim_drive_accel, &veh.scenario_name).unwrap();
         let mut mpgge = sim_drive.mpgge;
-        let h2_diesel_results = if let (Some(h2_diesel_ice_h2share), Some(fc_pop)) = (hd_h2_diesel_ice_h2share, fc_pwr_out_perc) {
+        let h2_diesel_results = if let (Some(h2_diesel_ice_h2share), Some(fc_pop)) =
+            (hd_h2_diesel_ice_h2share, fc_pwr_out_perc)
+        {
             let dist_mi = sim_drive.dist_mi.sum();
             let r = calculate_mpgge_for_h2_diesel_ice(
                 dist_mi,
@@ -337,6 +339,7 @@ pub fn main() {
         } else {
             None
         };
+
         let res = AdoptResults {
             adjCombMpgge: mpgge,
             rangeMiles: if mpgge > 0.0 {
@@ -396,12 +399,15 @@ fn array_to_object_representation(xs: &Vec<f64>) -> ArrayObject {
 }
 
 fn transform_array_of_value_to_vec_of_f64(array_of_values: &[Value]) -> Vec<f64> {
-    array_of_values.iter().fold(Vec::<f64>::with_capacity(array_of_values.len()), |mut acc, x| {
-        if x.is_number() {
-            acc.push(x.as_f64().unwrap());
-        }
-        acc
-    })
+    array_of_values.iter().fold(
+        Vec::<f64>::with_capacity(array_of_values.len()),
+        |mut acc, x| {
+            if x.is_number() {
+                acc.push(x.as_f64().unwrap());
+            }
+            acc
+        },
+    )
 }
 
 fn transform_array_of_value_to_ndarray_representation(array_of_values: &[Value]) -> ArrayObject {
