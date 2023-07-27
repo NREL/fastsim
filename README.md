@@ -1,7 +1,7 @@
 ![FASTSim Logo](https://www.nrel.gov/transportation/assets/images/icon-fastsim.jpg)
 
 # Description
-This is the python/rust flavor of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. 
+This is the python/rust flavor of [NREL's FASTSim<sup>TM</sup>](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. 
 
 All classes and methods are self-documented.  
 
