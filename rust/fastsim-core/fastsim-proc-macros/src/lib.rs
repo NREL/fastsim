@@ -19,11 +19,11 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     add_pyo3_api::add_pyo3_api(attr, item)
 }
 
-// #[proc_macro_error]
-// #[proc_macro_attribute]
-// pub fn doc_field(attr: TokenStream, item: TokenStream) -> TokenStream {
-//     doc_field::doc_field(attr, item)
-// }
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn doc_field(attr: TokenStream, item: TokenStream) -> TokenStream {
+    doc_field::doc_field(attr, item)
+}
 
 #[proc_macro_derive(HistoryVec)]
 pub fn history_vec_derive(input: TokenStream) -> TokenStream {
