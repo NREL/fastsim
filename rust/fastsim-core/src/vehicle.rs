@@ -321,7 +321,7 @@ pub struct RustVehicle {
     /// Force auxiliary power load to come from fuel converter
     #[serde(alias = "forceAuxOnFC")]
     pub force_aux_on_fc: bool,
-    /// Alternator efficiency
+    /// Alternator efficiency, only used with auxiliary power load if `veh.no_elec_aux == false`
     #[serde(alias = "altEff")]
     #[validate(range(min = 0, max = 1))]
     pub alt_eff: f64,
@@ -372,6 +372,10 @@ pub struct RustVehicle {
     #[doc(hidden)]
     // all of the parameters that are set in `set_derived` should be skipped by serde
     #[serde(skip)]
+    /// Auxiliary loads forced to go through alternator, rather than directly from ESS. \
+    /// `true` for any vehicle with `no_elec_sys` (e.g. `veh_pt_type == CONV`),
+    /// or if `mc_max_kw` is less than demanded `aux_kw`,
+    /// or if `force_aux_on_fc` is set to `true`
     pub no_elec_aux: bool,
     #[doc(hidden)]
     #[serde(skip)]
@@ -400,6 +404,9 @@ pub struct RustVehicle {
     pub mc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
     #[serde(skip)]
+    /// maximum theoretical input motor power,
+    /// accounting for motor efficiency at all power levels,
+    /// maximum of `mc_kw_in_array`
     pub mc_max_elec_in_kw: f64,
     #[doc(hidden)]
     #[serde(skip)]
