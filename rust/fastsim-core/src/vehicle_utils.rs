@@ -1047,18 +1047,18 @@ where
         vehicle_height_in: f64,
         fuel_tank_gal: f64,
         ess_max_kwh: f64,
-        fc_max_kw: Option<f64>,
         mc_max_kw: f64,
-        ess_max_kw: f64
+        ess_max_kw: f64,
+        fc_max_kw: Option<f64>
     ) -> Self {
         OtherVehicleInputs {
             vehicle_width_in,
             vehicle_height_in,
             fuel_tank_gal,
             ess_max_kwh,
-            fc_max_kw,
             mc_max_kw,
-            ess_max_kw
+            ess_max_kw,
+            fc_max_kw
         }
     }
 )]
@@ -1067,9 +1067,9 @@ pub struct OtherVehicleInputs {
     pub vehicle_height_in: f64,
     pub fuel_tank_gal: f64,
     pub ess_max_kwh: f64,
-    pub fc_max_kw: Option<f64>,
     pub mc_max_kw: f64,
     pub ess_max_kw: f64,
+    pub fc_max_kw: Option<f64>,
 }
 
 impl SerdeAPI for OtherVehicleInputs {

@@ -45,9 +45,9 @@ other_inputs = fsr.OtherVehicleInputs(
     vehicle_height_in=58.0,
     fuel_tank_gal=12.0,
     ess_max_kwh=0.0,
-    fc_max_kw=None, # None -> calculate from EPA data
     mc_max_kw=0.0,
-    ess_max_kw=0.0)
+    ess_max_kw=0.0,
+    fc_max_kw=None) # None -> calculate from EPA data
 rv = fsr.vehicle_import_from_id(opt.id, other_inputs, str(RESOURCE_DIR))
 
 fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle.yaml"))
