@@ -266,14 +266,14 @@ pub fn main() {
     .unwrap();
 
     #[cfg(not(windows))]
-    macro_rules! main_separator {
+    macro_rules! path_separator {
         () => {
             "/"
         };
     }
 
     #[cfg(windows)]
-    macro_rules! main_separator {
+    macro_rules! path_separator {
         () => {
             r#"\"#
         };
@@ -294,21 +294,21 @@ pub fn main() {
     } else if is_adopt_hd {
         let hd_cyc_filestring = include_str!(concat!(
             "..",
-            main_separator!(),
+            path_separator!(),
             "..",
-            main_separator!(),
+            path_separator!(),
             "..",
-            main_separator!(),
+            path_separator!(),
             "..",
-            main_separator!(),
+            path_separator!(),
             "python",
-            main_separator!(),
+            path_separator!(),
             "fastsim",
-            main_separator!(),
+            path_separator!(),
             "resources",
-            main_separator!(),
+            path_separator!(),
             "cycles",
-            main_separator!(),
+            path_separator!(),
             "HHDDTCruiseSmooth.csv"
         ));
         let cyc = if adopt_hd_has_cycle {

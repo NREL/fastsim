@@ -201,14 +201,14 @@ pub fn get_label_fe(
     cyc.insert("accel", make_accel_trace());
 
     #[cfg(not(windows))]
-    macro_rules! main_separator {
+    macro_rules! path_separator {
         () => {
             "/"
         };
     }
 
     #[cfg(windows)]
-    macro_rules! main_separator {
+    macro_rules! path_separator {
         () => {
             r#"\"#
         };
@@ -216,36 +216,16 @@ pub fn get_label_fe(
 
     let udds_filestring = include_str!(concat!(
         "..",
-        main_separator!(),
-        "..",
-        main_separator!(),
-        "..",
-        main_separator!(),
-        "python",
-        main_separator!(),
-        "fastsim",
-        main_separator!(),
+        path_separator!(),
         "resources",
-        main_separator!(),
-        "cycles",
-        main_separator!(),
+        path_separator!(),
         "udds.csv"
     ));
     let hwy_filestring = include_str!(concat!(
         "..",
-        main_separator!(),
-        "..",
-        main_separator!(),
-        "..",
-        main_separator!(),
-        "python",
-        main_separator!(),
-        "fastsim",
-        main_separator!(),
+        path_separator!(),
         "resources",
-        main_separator!(),
-        "cycles",
-        main_separator!(),
+        path_separator!(),
         "hwfet.csv"
     ));
 
