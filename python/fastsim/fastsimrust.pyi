@@ -1047,3 +1047,196 @@ def abc_to_drag_coeffs(
     _show_plots: Optional[bool],
 ) -> Tuple[float, float]:
     ...
+    
+class LabelFe:
+    veh: RustVehicle
+    adj_params: AdjCoef
+    lab_udds_mpgge: float
+    lab_hwy_mpgge: float
+    lab_comb_mpgge: float
+    lab_udds_kwh_per_mi: float
+    lab_hwy_kwh_per_mi: float
+    lab_comb_kwh_per_mi: float
+    adj_udds_mpgge: float
+    adj_hwy_mpgge: float
+    adj_comb_mpgge: float
+    adj_udds_kwh_per_mi: float
+    adj_hwy_kwh_per_mi: float
+    adj_comb_kwh_per_mi: float
+    adj_udds_ess_kwh_per_mi: float
+    adj_hwy_ess_kwh_per_mi: float
+    adj_comb_ess_kwh_per_mi: float
+    net_range_miles: float
+    uf: float
+    net_accel: float
+    res_found: str
+    phev_calcs: Optional[LabelFePHEV]
+    adj_cs_comb_mpgge: Optional[float]
+    adj_cd_comb_mpgge: Optional[float]
+    net_phev_cd_miles: Optional[float]
+    trace_miss_speed_mph: float
+    
+
+    @classmethod
+    def from_bincode(cls, encoded: ByteString) -> Self:
+        ...
+
+    def to_bincode(self) -> ByteString:
+        ...
+
+    @classmethod
+    def from_yaml(cls, yaml_str: str) -> Self:
+        ...
+
+    def to_yaml(self) -> str:
+        ...
+
+    @classmethod
+    def from_json(cls, json_str: str) -> Self:
+        ...
+
+    def to_json(self) -> str:
+        ...
+
+    @classmethod
+    def from_file(cls, filename: str) -> Self:
+        ...
+
+    def to_file(self, filename: str) -> Self:
+        ...
+
+class LabelFePHEV:
+    regen_soc_buffer: float
+    udds: PHEVCycleCalc
+    hwy: PHEVCycleCalc
+
+
+    @classmethod
+    def from_bincode(cls, encoded: ByteString) -> Self:
+        ...
+
+    def to_bincode(self) -> ByteString:
+        ...
+
+    @classmethod
+    def from_yaml(cls, yaml_str: str) -> Self:
+        ...
+
+    def to_yaml(self) -> str:
+        ...
+
+    @classmethod
+    def from_json(cls, json_str: str) -> Self:
+        ...
+
+    def to_json(self) -> str:
+        ...
+
+    @classmethod
+    def from_file(cls, filename: str) -> Self:
+        ...
+
+    def to_file(self, filename: str) -> Self:
+        ...
+
+
+class PHEVCycleCalc:
+    cd_ess_kwh: float
+    cd_ess_kwh_per_mi: float
+    cd_fs_gal: float
+    cd_fs_kwh: float
+    cd_mpg: float
+    cd_cycs: float
+    cd_miles: float
+    cd_lab_mpg: float
+    cd_adj_mpg: float
+    cd_frac_in_trans: float
+    trans_init_soc: float
+    trans_ess_kwh: float
+    trans_ess_kwh_per_mi: float
+    trans_fs_gal: float
+    trans_fs_kwh: float
+    cs_ess_kwh: float
+    cs_ess_kwh_per_mi: float
+    cs_fs_gal: float
+    cs_fs_kwh: float
+    cs_mpg: float
+    lab_mpgge: float
+    lab_kwh_per_mi: float
+    lab_uf: float
+    lab_uf_gpm: List[float]
+    lab_iter_uf: List[float]
+    lab_iter_uf_kwh_per_mi: List[float]
+    lab_iter_kwh_per_mi: List[float]
+    adj_iter_mpgge: List[float]
+    adj_iter_kwh_per_mi: List[float]
+    adj_iter_cd_miles: List[float]
+    adj_iter_uf: List[float]
+    adj_iter_uf_gpm: List[float]
+    adj_iter_uf_kwh_per_mi: List[float]
+    adj_cd_miles: float
+    adj_cd_mpgge: float
+    adj_cs_mpgge: float
+    adj_uf: float
+    adj_mpgge: float
+    adj_kwh_per_mi: float
+    adj_ess_kwh_per_mi: float
+    delta_soc: float
+    total_cd_miles: float
+
+
+    @classmethod
+    def from_bincode(cls, encoded: ByteString) -> Self:
+        ...
+
+    def to_bincode(self) -> ByteString:
+        ...
+
+    @classmethod
+    def from_yaml(cls, yaml_str: str) -> Self:
+        ...
+
+    def to_yaml(self) -> str:
+        ...
+
+    @classmethod
+    def from_json(cls, json_str: str) -> Self:
+        ...
+
+    def to_json(self) -> str:
+        ...
+
+    @classmethod
+    def from_file(cls, filename: str) -> Self:
+        ...
+
+    def to_file(self, filename: str) -> Self:
+        ...
+        
+def make_accel_trace() -> RustCycle:
+    ...
+def get_net_accel(sd_accel: RustSimDrive, scenario_name: str) -> float:
+    ...
+
+                
+def get_label_fe(
+    veh: RustVehicle,
+    full_detail: Optional[bool],
+    verbose: Optional[bool],
+) -> Tuple[LabelFe, Optional[Dict[str, RustSimDrive]]]:   
+    ...
+    
+def get_label_fe_phev(
+    veh: RustVehicle,
+    sd: Dict[str, RustSimDrive],
+    long_params: RustLongParams,
+    adj_params: AdjCoef,
+    sim_params: RustSimDriveParams,
+    props: RustPhysicalProperties,
+) -> LabelFePHEV:
+    ...
+
+def get_label_fe_conv(veh: RustVehicle) -> LabelFeConv:
+   ...
+   
+   
