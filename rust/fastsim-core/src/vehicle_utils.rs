@@ -1571,6 +1571,26 @@ impl CostFunction for GetError<'_> {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct VehicleInputRecord {
+    make: String,
+    model: String,
+    year: u32,
+    output_file_name: String,
+    vehicle_width_in: f64,
+    vehicle_height_in: f64,
+    fuel_tank_gal: f64,
+    ess_max_kwh: f64,
+    mc_max_kw: f64,
+    ess_max_kw: f64,
+    fc_max_kw: Option<f64>,
+}
+
+#[allow(dead_code)]
+fn extract_vehicle(_input: &VehicleInputRecord, _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
+    None
+}
+
 #[cfg(test)]
 mod vehicle_utils_tests {
     use super::*;
@@ -2076,5 +2096,26 @@ mod vehicle_utils_tests {
             Some(""),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_create_new_vehicle_from_input_data() {
+        let veh_record = VehicleInputRecord {
+            make: String::from("Toyota"),
+            model: String::from("Camry"),
+            year: 2020,
+            output_file_name: String::from("2020-toyota-camry.yaml"),
+            vehicle_width_in: 72.4,
+            vehicle_height_in: 56.9,
+            fuel_tank_gal: 15.8,
+            ess_max_kwh: 0.0,
+            mc_max_kw: 0.0,
+            ess_max_kw: 0.0,
+            fc_max_kw: None,
+        };
+        let fegov_data: Vec<VehicleDataFE> = vec![];
+        let epatest_data: Vec<VehicleDataEPA> = vec![];
+        let v = extract_vehicle(&veh_record, &fegov_data, &epatest_data);
+        assert_eq!(v, None);
     }
 }
