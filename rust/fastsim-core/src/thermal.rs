@@ -834,20 +834,12 @@ impl SimDriveHot {
         }
         self.sd.aux_in_kw[i] += self.state.cab_hvac_pwr_aux_kw;
         // Is SOC below min threshold?
-        if self.sd.soc[i - 1] < (self.sd.veh.min_soc + self.sd.veh.perc_high_acc_buf) {
-            self.sd.reached_buff[i] = false;
-        } else {
-            self.sd.reached_buff[i] = true;
-        }
+        self.sd.reached_buff[i] =
+            self.sd.soc[i - 1] >= (self.sd.veh.min_soc + self.sd.veh.perc_high_acc_buf);
 
         // Does the engine need to be on for low SOC or high acceleration
-        if self.sd.soc[i - 1] < self.sd.veh.min_soc
-            || (self.sd.high_acc_fc_on_tag[i - 1] && !(self.sd.reached_buff[i]))
-        {
-            self.sd.high_acc_fc_on_tag[i] = true
-        } else {
-            self.sd.high_acc_fc_on_tag[i] = false
-        }
+        self.sd.high_acc_fc_on_tag[i] = self.sd.soc[i - 1] < self.sd.veh.min_soc
+            || (self.sd.high_acc_fc_on_tag[i - 1] && !(self.sd.reached_buff[i]));
         self.sd.max_trac_mps[i] =
             self.sd.mps_ach[i - 1] + (self.sd.veh.max_trac_mps2 * self.sd.cyc.dt_s_at_i(i));
     }
