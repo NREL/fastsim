@@ -875,14 +875,6 @@ class VehicleThermal:
     def reset_orphaned(self) -> None:
         """Reset the orphaned flag to false."""
         ...
-class AirProperties:
-    def __init__(self):
-        self.te_array_degc: List[float] = []
-        self.k_array: List[float] = []
-        self.c_p_array: List[float] = []
-        self.h_array: List[float] = []
-        self.mu_array: List[float] = []
-        self.pr_array: List[float] = []
 
 class SimDriveHot:
     sd: RustSimDrive
