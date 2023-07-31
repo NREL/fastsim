@@ -875,6 +875,14 @@ class VehicleThermal:
     def reset_orphaned(self) -> None:
         """Reset the orphaned flag to false."""
         ...
+class AirProperties:
+    def __init__(self):
+        self.te_array_degc: List[float] = []
+        self.k_array: List[float] = []
+        self.c_p_array: List[float] = []
+        self.h_array: List[float] = []
+        self.mu_array: List[float] = []
+        self.pr_array: List[float] = []
 
 class SimDriveHot:
     sd: RustSimDrive
@@ -1217,8 +1225,81 @@ def make_accel_trace() -> RustCycle:
     ...
 def get_net_accel(sd_accel: RustSimDrive, scenario_name: str) -> float:
     ...
+class AdjCoef:
+    def __init__(self):
+        self.city_intercept: float = 0.0
+        self.city_slope: float = 0.0
+        self.hwy_intercept: float = 0.0
+        self.hwy_slope: float = 0.0
+        
+    @classmethod
+    def from_bincode(cls, encoded: ByteString) -> Self:
+        ...
 
-                
+    def to_bincode(self) -> ByteString:
+        ...
+
+    @classmethod
+    def from_yaml(cls, yaml_str: str) -> Self:
+        ...
+
+    def to_yaml(self) -> str:
+        ...
+
+    @classmethod
+    def from_json(cls, json_str: str) -> Self:
+        ...
+
+    def to_json(self) -> str:
+        ...
+
+    @classmethod
+    def from_file(cls, filename: str) -> Self:
+        ...
+
+    def to_file(self, filename: str) -> Self:
+        ...
+        
+class AdjCoefMap:
+    def __init__(self):
+        self.adj_coef_map: Dict[str, AdjCoef] = {}
+        
+        
+class RustLongParams:
+    def __init__(self):
+        self.rechg_freq_miles: List[float] = []
+        self.uf_array: List[float] = []
+        self.ld_fe_adj_coef: AdjCoefMap = {}
+        
+    @classmethod
+    def from_bincode(cls, encoded: ByteString) -> Self:
+        ...
+
+    def to_bincode(self) -> ByteString:
+        ...
+
+    @classmethod
+    def from_yaml(cls, yaml_str: str) -> Self:
+        ...
+
+    def to_yaml(self) -> str:
+        ...
+
+    @classmethod
+    def from_json(cls, json_str: str) -> Self:
+        ...
+
+    def to_json(self) -> str:
+        ...
+
+    @classmethod
+    def from_file(cls, filename: str) -> Self:
+        ...
+
+    def to_file(self, filename: str) -> Self:
+        ...
+        
+                        
 def get_label_fe(
     veh: RustVehicle,
     full_detail: Optional[bool],
@@ -1236,7 +1317,7 @@ def get_label_fe_phev(
 ) -> LabelFePHEV:
     ...
 
-def get_label_fe_conv(veh: RustVehicle) -> LabelFeConv:
+def get_label_fe_conv(veh: RustVehicle) -> LabelFe:
    ...
    
    
