@@ -81,6 +81,12 @@ lazy_static! {
     pub fn to_rust(&self) -> PyResult<Self> {
         Ok(self.clone())
     }
+
+    #[classmethod]
+    #[pyo3(name = "mock_vehicle")]
+    fn mock_vehicle_py(_cls: &PyType) -> Self {
+        Self::mock_vehicle()
+    }
 )]
 /// Struct containing vehicle attributes
 /// # Python Examples
