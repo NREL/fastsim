@@ -442,7 +442,7 @@ impl RustSimDrive {
                     // If EV, initializing initial SOC to maximum SOC.
                     self.veh.max_soc
                 } else {
-                    panic!("Failed to properly initialize SOC.");
+                    bail!("Failed to properly initialize SOC.");
                 }
             }
         };

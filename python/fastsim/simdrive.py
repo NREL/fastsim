@@ -1,7 +1,7 @@
 """Module containing classes and methods for simulating vehicle drive cycle."""
-import sys
 
 # Import necessary python modules
+import json
 from dataclasses import dataclass
 from logging import debug
 from typing import Optional, List, Tuple
@@ -136,7 +136,7 @@ def copy_sim_params(sdp: SimDriveParams, return_type: str = None):
     elif return_type == 'python':
         return SimDriveParams.from_dict(sdp_dict)
     elif return_type == 'rust':
-        return fsr.RustSimDriveParams(**sdp_dict)
+        return fsr.RustSimDriveParams.from_json(json.dumps(sdp_dict))
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 

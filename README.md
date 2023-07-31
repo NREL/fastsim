@@ -1,7 +1,7 @@
 ![FASTSim Logo](https://www.nrel.gov/transportation/assets/images/icon-fastsim.jpg)
 
 # Description
-This is the python/rust flavor of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. 
+This is the python/rust flavor of [NREL's FASTSim<sup>TM</sup>](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. 
 
 All classes and methods are self-documented.  
 
@@ -85,6 +85,7 @@ out = component output
 Rust versions of classes have limited Language Server Protocol integration, and we are actively working on fixing this.  
 
 # Release Notes
+2.1.0 -- release and installation improvements, RustVehicle init cleanup, calibration improvements
 2.0.11 - 2.0.22 -- PyPI fixes.  Also, Rust version is now >100x faster than Python version.   
 2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes  
 2.0.9 -- support for mac ARM/RISC architecture  
