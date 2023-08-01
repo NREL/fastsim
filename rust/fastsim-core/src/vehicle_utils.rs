@@ -1588,7 +1588,8 @@ struct VehicleInputRecord {
 
 #[allow(dead_code)]
 fn extract_vehicle(_input: &VehicleInputRecord, _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
-    None
+    let default_veh: RustVehicle = RustVehicle::default();
+    Some(default_veh)
 }
 
 #[cfg(test)]
@@ -2116,6 +2117,6 @@ mod vehicle_utils_tests {
         let fegov_data: Vec<VehicleDataFE> = vec![];
         let epatest_data: Vec<VehicleDataEPA> = vec![];
         let v = extract_vehicle(&veh_record, &fegov_data, &epatest_data);
-        assert_eq!(v, None);
+        assert_eq!(v, Some(RustVehicle::default()));
     }
 }
