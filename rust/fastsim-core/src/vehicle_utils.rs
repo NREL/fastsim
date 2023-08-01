@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::option::Option;
 use std::path::PathBuf;
+use serde::de::DeserializeOwned;
+use tempdir::TempDir;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -1587,11 +1589,15 @@ pub struct VehicleInputRecord {
 }
 
 fn read_vehicle_input_records_from_file(filepath: &Path) -> Result<Vec<VehicleInputRecord>, anyhow::Error> {
-    let mut output: Vec<VehicleInputRecord> = Vec::new();
-    let mut reader = csv::Reader::from_path(filepath)?;
+    let f = File::open(filepath)?;
+    read_records_from_file(f)
+}
+
+fn read_records_from_file<T: DeserializeOwned>(rdr: impl std::io::Read + std::io::Seek) -> Result<Vec<T>, anyhow::Error> {
+    let mut output: Vec<T> = Vec::new();
+    let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
-        let record: VehicleInputRecord = result?;
-        println!("Read VehicleInputRecord: {:?}", record);
+        let record: T = result?;
         output.push(record);
     }
     Ok(output)
@@ -1601,7 +1607,6 @@ fn read_vehicle_input_records_from_file(filepath: &Path) -> Result<Vec<VehicleIn
 fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
     let f = File::open(filepath)?;
     let mut zip = zip::ZipArchive::new(f)?;
-
     for i in 0..zip.len() {
         let file = zip.by_index(i)?;
         println!("Filename: {}", file.name());
@@ -1609,13 +1614,26 @@ fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+fn extract_fueleconomy_data_from_zip(filepath: &Path) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
+    let f = File::open(filepath)?;
+    let mut zip = zip::ZipArchive::new(f)?;
+    let tempdir = TempDir::new("fastsim-fueleconomy.gov")?;
+    zip.extract(&tempdir)?;
+    let data_path = tempdir.path().join("vehicles.csv");
+    let data_file = File::open(data_path)?;
+    let output = read_records_from_file(data_file)?;
+    Ok(output)
+}
+
 pub fn import_and_save_all_vehicles_from_file(_input_path: &Path, _fegov_data_path: &Path, _epatest_data_path: &Path, _output_dir_path: &Path) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(_input_path)?;
-    println!("FuelEconomy.gov data:");
-    list_zip_conents(_fegov_data_path)?;
-    println!("EPA Vehicle Testing data:");
-    list_zip_conents(_epatest_data_path)?;
-    let fegov_db: Vec<VehicleDataFE> = vec![];
+    if false {
+        println!("FuelEconomy.gov data:");
+        list_zip_conents(_fegov_data_path)?;
+        println!("EPA Vehicle Testing data:");
+        list_zip_conents(_epatest_data_path)?;
+    }
+    let fegov_db: Vec<VehicleDataFE> = extract_fueleconomy_data_from_zip(_fegov_data_path)?;
     let epatest_db: Vec<VehicleDataEPA> = vec![];
     import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, _output_dir_path)
 }
