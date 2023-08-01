@@ -1572,22 +1572,82 @@ impl CostFunction for GetError<'_> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct VehicleInputRecord {
-    make: String,
-    model: String,
-    year: u32,
-    output_file_name: String,
-    vehicle_width_in: f64,
-    vehicle_height_in: f64,
-    fuel_tank_gal: f64,
-    ess_max_kwh: f64,
-    mc_max_kw: f64,
-    ess_max_kw: f64,
-    fc_max_kw: Option<f64>,
+pub struct VehicleInputRecord {
+    pub make: String,
+    pub model: String,
+    pub year: u32,
+    pub output_file_name: String,
+    pub vehicle_width_in: f64,
+    pub vehicle_height_in: f64,
+    pub fuel_tank_gal: f64,
+    pub ess_max_kwh: f64,
+    pub mc_max_kw: f64,
+    pub ess_max_kw: f64,
+    pub fc_max_kw: Option<f64>,
 }
 
-#[allow(dead_code)]
-fn extract_vehicle(_input: &VehicleInputRecord, _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
+//impl SerdeAPI for VehicleInputRecord {
+//    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+//        // check if the extension is csv, and if it is, then call Self::from_csv_file
+//        let pathbuf = PathBuf::from(filename);
+//        let file = File::open(filename)?;
+//        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+//        match extension {
+//            "yaml" => Ok(serde_yaml::from_reader(file)?),
+//            "json" => Ok(serde_json::from_reader(file)?),
+//            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+//        }
+//    }
+//}
+
+pub fn import_and_save_all_vehicles_from_file(_input_path: &Path, _fegov_data_path: &Path, _epatest_data_path: &Path, _output_dir_path: &Path) -> Result<(), anyhow::Error> {
+    let veh_record = VehicleInputRecord {
+        make: String::from("Toyota"),
+        model: String::from("Camry"),
+        year: 2020,
+        output_file_name: String::from("2020-toyota-camry.yaml"),
+        vehicle_width_in: 72.4,
+        vehicle_height_in: 56.9,
+        fuel_tank_gal: 15.8,
+        ess_max_kwh: 0.0,
+        mc_max_kw: 0.0,
+        ess_max_kw: 0.0,
+        fc_max_kw: None,
+    };
+    let inputs: Vec<VehicleInputRecord> = vec![veh_record];
+    let fegov_db: Vec<VehicleDataFE> = vec![];
+    let epatest_db: Vec<VehicleDataEPA> = vec![];
+    import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, _output_dir_path)
+}
+
+pub fn import_and_save_all_vehicles(_inputs: &[VehicleInputRecord], _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA], _output_dir_path: &Path) -> Result<(), anyhow::Error> {
+    for vir in _inputs {
+        let maybe_veh = extract_vehicle(vir, _fegov_data, _epatest_data);
+        match maybe_veh {
+            Some(veh) => {
+                let mut outfile: PathBuf = PathBuf::new();
+                outfile.push(_output_dir_path);
+                outfile.push(Path::new(&vir.output_file_name));
+                let outfile_str = outfile.to_str();
+                match outfile_str {
+                    Some(full_outfile) => {
+                        veh.to_file(full_outfile)?;
+                    },
+                    None => {
+                        println!("Could not determine output file path");
+                    }
+                }
+            },
+            None => {
+                println!("Unable to extract vehicle for {} {} {}", vir.year, vir.make, vir.model);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Extract the vehicle from the given data-set
+pub fn extract_vehicle(_input: &VehicleInputRecord, _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
     let default_veh: RustVehicle = RustVehicle::default();
     Some(default_veh)
 }

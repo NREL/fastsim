@@ -1,6 +1,7 @@
 use std::path::Path;
 use clap::Parser;
 use std::fs;
+use fastsim_core::vehicle_utils::import_and_save_all_vehicles_from_file;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -34,6 +35,17 @@ fn run_import(args: &Args) {
         }
     } else if !output_dir_path.is_dir() {
         panic!("Output dir exists but is not a directory: {}", args.output_dir_path);
+    }
+    let result =
+        import_and_save_all_vehicles_from_file(
+            input_file_path,
+            fegov_db_path,
+            epatest_db_path,
+            output_dir_path);
+    if result.is_err() {
+        println!("Error with importing and saving all vehicles from file: {:?}", result.err());
+    } else {
+        println!("Successfully ran vehicle import");
     }
 }
 
