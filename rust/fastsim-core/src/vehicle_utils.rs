@@ -1597,8 +1597,24 @@ fn read_vehicle_input_records_from_file(filepath: &Path) -> Result<Vec<VehicleIn
     Ok(output)
 }
 
+/// Given the path to a zip archive, print out the names of the files within that archive
+fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
+    let f = File::open(filepath)?;
+    let mut zip = zip::ZipArchive::new(f)?;
+
+    for i in 0..zip.len() {
+        let file = zip.by_index(i)?;
+        println!("Filename: {}", file.name());
+    }
+    Ok(())
+}
+
 pub fn import_and_save_all_vehicles_from_file(_input_path: &Path, _fegov_data_path: &Path, _epatest_data_path: &Path, _output_dir_path: &Path) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(_input_path)?;
+    println!("FuelEconomy.gov data:");
+    list_zip_conents(_fegov_data_path)?;
+    println!("EPA Vehicle Testing data:");
+    list_zip_conents(_epatest_data_path)?;
     let fegov_db: Vec<VehicleDataFE> = vec![];
     let epatest_db: Vec<VehicleDataEPA> = vec![];
     import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, _output_dir_path)

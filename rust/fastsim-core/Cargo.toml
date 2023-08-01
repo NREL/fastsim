@@ -33,6 +33,7 @@ serde-xml-rs = "0.6.0"
 validator = { version = "0.16", features = ["derive"] }
 lazy_static = "1.4.0"
 regex = "1.7.1"
+zip = "0.6.6"
 
 [package.metadata]
 include = [
