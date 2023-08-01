@@ -667,18 +667,12 @@ impl RustVehicle {
         // self.charging_on = false;
 
         // # Checking if a vehicle has any hybrid components
-        if (self.ess_max_kwh == 0.0) || (self.ess_max_kw == 0.0) || (self.mc_max_kw == 0.0) {
-            self.no_elec_sys = true;
-        } else {
-            self.no_elec_sys = false;
-        }
+        self.no_elec_sys =
+            (self.ess_max_kwh == 0.0) || (self.ess_max_kw == 0.0) || (self.mc_max_kw == 0.0);
 
         // # Checking if aux loads go through an alternator
-        if self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc {
-            self.no_elec_aux = true;
-        } else {
-            self.no_elec_aux = false;
-        }
+        self.no_elec_aux =
+            self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc;
 
         self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
 
