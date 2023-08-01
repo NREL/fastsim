@@ -848,7 +848,7 @@ where
         mph_fc_on = 85.0;
         kw_demand_fc_on = 120.0;
         aux_kw = 0.3;
-        trans_eff = 0.98;
+        trans_eff = 0.95;
         val_range_miles = 0.0;
     } else if veh_pt_type == crate::vehicle::BEV {
         fs_max_kw = 0.0;
