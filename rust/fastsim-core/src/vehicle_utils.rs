@@ -1586,35 +1586,19 @@ pub struct VehicleInputRecord {
     pub fc_max_kw: Option<f64>,
 }
 
-//impl SerdeAPI for VehicleInputRecord {
-//    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
-//        // check if the extension is csv, and if it is, then call Self::from_csv_file
-//        let pathbuf = PathBuf::from(filename);
-//        let file = File::open(filename)?;
-//        let extension = pathbuf.extension().unwrap().to_str().unwrap();
-//        match extension {
-//            "yaml" => Ok(serde_yaml::from_reader(file)?),
-//            "json" => Ok(serde_json::from_reader(file)?),
-//            _ => Err(anyhow!("Unsupported file extension {}", extension)),
-//        }
-//    }
-//}
+fn read_vehicle_input_records_from_file(filepath: &Path) -> Result<Vec<VehicleInputRecord>, anyhow::Error> {
+    let mut output: Vec<VehicleInputRecord> = Vec::new();
+    let mut reader = csv::Reader::from_path(filepath)?;
+    for result in reader.deserialize() {
+        let record: VehicleInputRecord = result?;
+        println!("Read VehicleInputRecord: {:?}", record);
+        output.push(record);
+    }
+    Ok(output)
+}
 
 pub fn import_and_save_all_vehicles_from_file(_input_path: &Path, _fegov_data_path: &Path, _epatest_data_path: &Path, _output_dir_path: &Path) -> Result<(), anyhow::Error> {
-    let veh_record = VehicleInputRecord {
-        make: String::from("Toyota"),
-        model: String::from("Camry"),
-        year: 2020,
-        output_file_name: String::from("2020-toyota-camry.yaml"),
-        vehicle_width_in: 72.4,
-        vehicle_height_in: 56.9,
-        fuel_tank_gal: 15.8,
-        ess_max_kwh: 0.0,
-        mc_max_kw: 0.0,
-        ess_max_kw: 0.0,
-        fc_max_kw: None,
-    };
-    let inputs: Vec<VehicleInputRecord> = vec![veh_record];
+    let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(_input_path)?;
     let fegov_db: Vec<VehicleDataFE> = vec![];
     let epatest_db: Vec<VehicleDataEPA> = vec![];
     import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, _output_dir_path)
