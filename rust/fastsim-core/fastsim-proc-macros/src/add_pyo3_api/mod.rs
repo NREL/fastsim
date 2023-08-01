@@ -39,6 +39,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             // https://github.com/PyO3/pyo3/blob/48690525e19b87818b59f99be83f1e0eb203c7d4/pyo3-macros-backend/src/pyclass.rs#L220
 
             let mut opts = FieldOptions::default();
+            // attributes to retain, i.e. attributes that are not handled by this macro
             let keep: Vec<bool> = field
                 .attrs
                 .iter()
