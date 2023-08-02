@@ -688,8 +688,8 @@ impl RustCycle {
     /// - delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
     /// RETURN: number, the average grade (rise over run) over the given distance range
     /// Note: grade is assumed to be constant from just after the previous sample point
-    /// until the current sample point. That is, grade[i] applies over the range of
-    /// distances, d, from (d[i - 1], d[i]]
+    /// until the current sample point. That is, grade\[i\] applies over the range of
+    /// distances, d, from (d\[i - 1\], d\[i\])
     pub fn average_grade_over_range(
         &self,
         distance_start_m: f64,

@@ -29,7 +29,7 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
         new_doc_fields.push_str(
             "/// Vehicle level documentation -- e.g. info about calibration/validation of this parameter,
             /// links to reports or other long-form documentation.
-        doc: Option<String>\n}",
+        pub doc: Option<String>\n}",
         );
         let new_doc_fields: syn::FieldsNamed = syn::parse_str::<syn::FieldsNamed>(&new_doc_fields)
             .unwrap_or_else(|e| abort_call_site!("{}", e));

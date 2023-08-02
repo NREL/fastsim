@@ -70,22 +70,22 @@ pub fn min(a: f64, b: f64) -> f64 {
     a.min(b)
 }
 
-/// return max <f64> of arr
+/// return max of arr
 pub fn arrmax(arr: &[f64]) -> f64 {
     arr.iter().copied().fold(f64::NAN, f64::max)
 }
 
-/// return min <f64> of arr
+/// return min of arr
 pub fn arrmin(arr: &[f64]) -> f64 {
     arr.iter().copied().fold(f64::NAN, f64::min)
 }
 
-/// return min <f64> of arr
+/// return min of arr
 pub fn ndarrmin(arr: &Array1<f64>) -> f64 {
     arr.to_vec().into_iter().reduce(f64::min).unwrap()
 }
 
-/// return max <f64> of arr
+/// return max of arr
 pub fn ndarrmax(arr: &Array1<f64>) -> f64 {
     arr.to_vec().into_iter().reduce(f64::max).unwrap()
 }
@@ -95,7 +95,7 @@ pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
     arr.iter().all(|x| *x == 0.0)
 }
 
-/// return cumsum <f64> of arr
+/// return cumsum of arr
 pub fn ndarrcumsum(arr: &Array1<f64>) -> Array1<f64> {
     arr.iter()
         .scan(0.0, |acc, &x| {

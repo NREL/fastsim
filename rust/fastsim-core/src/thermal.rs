@@ -834,20 +834,12 @@ impl SimDriveHot {
         }
         self.sd.aux_in_kw[i] += self.state.cab_hvac_pwr_aux_kw;
         // Is SOC below min threshold?
-        if self.sd.soc[i - 1] < (self.sd.veh.min_soc + self.sd.veh.perc_high_acc_buf) {
-            self.sd.reached_buff[i] = false;
-        } else {
-            self.sd.reached_buff[i] = true;
-        }
+        self.sd.reached_buff[i] =
+            self.sd.soc[i - 1] >= (self.sd.veh.min_soc + self.sd.veh.perc_high_acc_buf);
 
         // Does the engine need to be on for low SOC or high acceleration
-        if self.sd.soc[i - 1] < self.sd.veh.min_soc
-            || (self.sd.high_acc_fc_on_tag[i - 1] && !(self.sd.reached_buff[i]))
-        {
-            self.sd.high_acc_fc_on_tag[i] = true
-        } else {
-            self.sd.high_acc_fc_on_tag[i] = false
-        }
+        self.sd.high_acc_fc_on_tag[i] = self.sd.soc[i - 1] < self.sd.veh.min_soc
+            || (self.sd.high_acc_fc_on_tag[i - 1] && !(self.sd.reached_buff[i]));
         self.sd.max_trac_mps[i] =
             self.sd.mps_ach[i - 1] + (self.sd.veh.max_trac_mps2 * self.sd.cyc.dt_s_at_i(i));
     }
@@ -1024,19 +1016,19 @@ impl SimDriveHot {
 /// Struct containing thermal state variables for all thermal components
 pub struct ThermalState {
     // fuel converter (engine) variables
-    /// fuel converter (engine) temperature [°C]
+    /// fuel converter (engine) temperature \[°C\]
     pub fc_te_deg_c: f64,
     /// fuel converter temperature efficiency correction
     pub fc_eta_temp_coeff: f64,
     /// fuel converter heat generation per total heat release minus shaft power
     pub fc_qdot_per_net_heat: f64,
-    /// fuel converter heat generation [kW]
+    /// fuel converter heat generation \[kW\]
     pub fc_qdot_kw: f64,
-    /// fuel converter convection to ambient [kW]
+    /// fuel converter convection to ambient \[kW\]
     pub fc_qdot_to_amb_kw: f64,
-    /// fuel converter heat loss to heater core [kW]
+    /// fuel converter heat loss to heater core \[kW\]
     pub fc_qdot_to_htr_kw: f64,
-    /// heat transfer coeff [W / (m ** 2 * K)] to amb after arbitration
+    /// heat transfer coeff \[W / (m ** 2 * K)\] to amb after arbitration
     pub fc_htc_to_amb: f64,
     /// lambda (air/fuel ratio normalized w.r.t. stoich air/fuel ratio) -- 1 is reasonable default
     pub fc_lambda: f64,
@@ -1044,13 +1036,13 @@ pub struct ThermalState {
     pub fc_te_adiabatic_deg_c: f64,
 
     // cabin (cab) variables
-    /// cabin temperature [°C]
+    /// cabin temperature \[°C\]
     pub cab_te_deg_c: f64,
-    /// previous cabin temperature [°C]
+    /// previous cabin temperature \[°C\]
     pub cab_prev_te_deg_c: f64,
-    /// cabin solar load [kw]
+    /// cabin solar load \[kw\]
     pub cab_qdot_solar_kw: f64,
-    /// cabin convection to ambient [kw]
+    /// cabin convection to ambient \[kw\]
     pub cab_qdot_to_amb_kw: f64,
     /// heat transfer to cabin from hvac system
     pub cab_qdot_from_hvac_kw: f64,
@@ -1058,41 +1050,41 @@ pub struct ThermalState {
     pub cab_hvac_pwr_aux_kw: f64,
 
     // exhaust variables
-    /// exhaust mass flow rate [kg/s]
+    /// exhaust mass flow rate \[kg/s\]
     pub exh_mdot: f64,
-    /// exhaust enthalpy flow rate [kw]
+    /// exhaust enthalpy flow rate \[kw\]
     pub exh_hdot_kw: f64,
 
     /// exhaust port (exhport) variables
     /// exhaust temperature at exhaust port inlet
     pub exhport_exh_te_in_deg_c: f64,
-    /// heat transfer from exhport to amb [kw]
+    /// heat transfer from exhport to amb \[kw\]
     pub exhport_qdot_to_amb: f64,
-    /// catalyst temperature [°C]
+    /// catalyst temperature \[°C\]
     pub exhport_te_deg_c: f64,
-    /// convection from exhaust to exhport [W]
+    /// convection from exhaust to exhport \[W\]
     /// positive means exhport is receiving heat
     pub exhport_qdot_from_exh: f64,
-    /// net heat generation in cat [W]
+    /// net heat generation in cat \[W\]
     pub exhport_qdot_net: f64,
 
     // catalyst (cat) variables
-    /// catalyst heat generation [W]
+    /// catalyst heat generation \[W\]
     pub cat_qdot: f64,
-    /// catalytic converter convection coefficient to ambient [W / (m ** 2 * K)]
+    /// catalytic converter convection coefficient to ambient \[W / (m ** 2 * K)\]
     pub cat_htc_to_amb: f64,
-    /// heat transfer from catalyst to ambient [W]
+    /// heat transfer from catalyst to ambient \[W\]
     pub cat_qdot_to_amb: f64,
-    /// catalyst temperature [°C]
+    /// catalyst temperature \[°C\]
     pub cat_te_deg_c: f64,
     /// exhaust temperature at cat inlet
     pub cat_exh_te_in_deg_c: f64,
     /// catalyst external reynolds number
     pub cat_re_ext: f64,
-    /// convection from exhaust to cat [W]
+    /// convection from exhaust to cat \[W\]
     /// positive means cat is receiving heat
     pub cat_qdot_from_exh: f64,
-    /// net heat generation in cat [W]
+    /// net heat generation in cat \[W\]
     pub cat_qdot_net: f64,
 
     /// ambient temperature

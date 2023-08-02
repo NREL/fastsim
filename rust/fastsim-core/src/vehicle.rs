@@ -122,6 +122,7 @@ pub struct RustVehicle {
         path = "VEH_PT_TYPE_OPTIONS_REGEX",
         message = "must be one of [\"Conv\", \"HEV\", \"PHEV\", \"BEV\"]"
     ))]
+    #[doc_field(skip_doc)]
     pub veh_pt_type: String,
     /// Aerodynamic drag coefficient
     #[serde(alias = "dragCoef")]
@@ -351,138 +352,181 @@ pub struct RustVehicle {
     #[validate(range(min = 0))]
     pub ess_to_fuel_ok_error: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub small_motor_power_kw: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub large_motor_power_kw: f64,
     // this and other fixed-size arrays can probably be vectors
     // without any performance penalty with the current implementation
     // of the functions in utils.rs
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub fc_perc_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub regen_a: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub regen_b: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub charging_on: bool,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub no_elec_sys: bool,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     // all of the parameters that are set in `set_derived` should be skipped by serde
     #[serde(skip)]
     pub no_elec_aux: bool,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub max_roadway_chg_kw: Array1<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub input_kw_out_array: Array1<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub fc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(default)]
     #[serde(alias = "fcEffArray")]
     pub fc_eff_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub modern_max: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_eff_array: Array1<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_kw_in_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_max_elec_in_kw: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_full_eff_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(alias = "vehKg")]
     pub veh_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub max_trac_mps2: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub ess_mass_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_mass_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub fc_mass_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub fs_mass_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_perc_out_array: Vec<f64>,
     // these probably don't need to be in rust
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_udds_mpgge: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_hwy_mpgge: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_comb_mpgge: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_udds_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_hwy_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_comb_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_cd_range_mi: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_const65_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_const60_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_const55_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_const45_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_unadj_udds_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_unadj_hwy_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val0_to60_mph: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_ess_life_miles: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_range_miles: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_veh_base_cost: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_msrp: f64,
     /// Fuel converter efficiency peak override, scales entire curve
@@ -495,6 +539,7 @@ pub struct RustVehicle {
     pub mc_peak_eff_override: Option<f64>,
     #[serde(skip)]
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     pub orphaned: bool,
 }
 
