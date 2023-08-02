@@ -1,19 +1,11 @@
 use crate::imports::*;
 
-pub fn doc_field(attr: TokenStream, item: TokenStream) -> TokenStream {
+///
+pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
-    // println!("{}", ast.ident.to_string());
-
-    // add field `doc: Option<String>`
 
     if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &mut ast.fields {
-        let field_names: Vec<String> = named
-            .iter()
-            .map(|f| f.ident.as_ref().unwrap().to_string())
-            .collect();
-        let has_orphaned: bool = field_names.iter().any(|f| f == "orphaned");
-
-        let mut new_doc_fields: Vec<syn::Field> = Vec::new();
+        let mut new_doc_fields = String::from("{\n");
 
         for field in named.iter_mut() {
             let mut skip_doc = false;
@@ -24,30 +16,25 @@ pub fn doc_field(attr: TokenStream, item: TokenStream) -> TokenStream {
             field.attrs.retain(|_| *iter.next().unwrap());
             if !skip_doc {
                 // create new doc field as string
-                let new_doc_field = format!("{}_doc", field.ident.as_ref().unwrap().to_string());
-                // convert it to named field
-                let mut new_doc_field = syn::parse_str::<syn::FieldsNamed>(&new_doc_field)
-                    .or_else(|e| abort_call_site!(e))
-                    .unwrap();
-                // give it a type
-                for named in new_doc_field.named.iter_mut() {
-                    named.ty = syn::parse_str::<syn::Type>("Option<String>")
-                        .or_else(|_| abort_call_site!())
-                        .unwrap();
-                    // TODO: figure out how to add a doc string here
-                }
-                new_doc_fields.push(
-                    new_doc_field
-                        .named
-                        .first()
-                        .or_else(|| abort_call_site!())
-                        .unwrap()
-                        .clone(),
-                );
+                new_doc_fields.push_str(&format!(
+                    "/// {} documentation -- e.g. info about calibration/validation of vehicle,
+                    /// links to reports or other long-form documentation.
+                    pub {}_doc: Option<String>,\n",
+                    field.ident.as_ref().unwrap(),
+                    field.ident.as_ref().unwrap()
+                ));
             }
         }
 
-        named.extend(new_doc_fields);
+        new_doc_fields.push_str(
+            "/// Vehicle level documentation -- e.g. info about calibration/validation of this parameter,
+            /// links to reports or other long-form documentation.
+        doc: Option<String>\n}",
+        );
+        let new_doc_fields: syn::FieldsNamed = syn::parse_str::<syn::FieldsNamed>(&new_doc_fields)
+            .unwrap_or_else(|e| abort_call_site!("{}", e));
+
+        named.extend(new_doc_fields.named);
     } else {
         abort_call_site!("`doc_field` proc macro works only on named structs.");
     };
@@ -61,7 +48,7 @@ fn get_attrs_to_keep(field: &mut syn::Field, skip_doc: &mut bool) -> Vec<bool> {
         .attrs
         .iter()
         .map(|x| match x.path.segments[0].ident.to_string().as_str() {
-            "doc" => {
+            "doc_field" => {
                 let meta = x.parse_meta().unwrap();
                 if let Meta::List(list) = meta {
                     for nested in list.nested {

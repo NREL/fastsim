@@ -10,7 +10,7 @@ readme = "../../README.md"
 repository = "https://github.com/NREL/fastsim"
 
 [dependencies]
-proc-macros = { package = "fastsim-proc-macros", version = "~0" }
+proc-macros = { package = "fastsim-proc-macros", path = "./fastsim-proc-macros" }
 pyo3 = { workspace = true, features = [
     "extension-module",
     "anyhow",

@@ -3,7 +3,7 @@
 // local
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::{add_pyo3_api, ApproxEq};
+use crate::proc_macros::{add_pyo3_api, doc_field, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
@@ -33,7 +33,6 @@ lazy_static! {
         Regex::new("SI|Atkinson|Diesel|H2FC|HD_Diesel").unwrap();
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
 #[add_pyo3_api(
     #[pyo3(name = "set_veh_mass")]
     pub fn set_veh_mass_py(&mut self) {
@@ -88,6 +87,8 @@ lazy_static! {
         Self::mock_vehicle()
     }
 )]
+#[doc_field]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
 /// Struct containing vehicle attributes
 /// # Python Examples
 /// ```python
@@ -101,15 +102,19 @@ pub struct RustVehicle {
     #[serde(skip)]
     #[api(has_orphaned)]
     /// Physical properties, see [RustPhysicalProperties](RustPhysicalProperties)
+    #[doc_field(skip_doc)]
     pub props: RustPhysicalProperties,
     /// Vehicle name
     #[serde(alias = "name")]
+    #[doc_field(skip_doc)]
     pub scenario_name: String,
     /// Vehicle database ID
     #[serde(skip)]
+    #[doc_field(skip_doc)]
     pub selection: u32,
     /// Vehicle year
     #[serde(alias = "vehModelYear")]
+    #[doc_field(skip_doc)]
     pub veh_year: u32,
     /// Vehicle powertrain type, one of \[[CONV](CONV), [HEV](HEV), [PHEV](PHEV), [BEV](BEV)\]
     #[serde(alias = "vehPtType")]
@@ -912,6 +917,7 @@ impl RustVehicle {
             fs_mass_kg: Default::default(),
             veh_kg: Default::default(),
             max_trac_mps2: Default::default(),
+            ..Default::default()
         };
         v.set_derived().unwrap();
         v
@@ -1209,6 +1215,7 @@ mod tests {
             regen_b,
             fc_peak_eff_override,
             mc_peak_eff_override, // bad input
+            ..Default::default()
         };
 
         let validation_result = veh.set_derived();
