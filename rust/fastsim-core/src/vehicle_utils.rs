@@ -1603,6 +1603,145 @@ fn read_records_from_file<T: DeserializeOwned>(rdr: impl std::io::Read + std::io
     Ok(output)
 }
 
+fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
+    let mut output: Vec<VehicleDataFE> = Vec::new();
+    let mut reader = csv::Reader::from_reader(rdr);
+    for result in reader.deserialize() {
+        let item: HashMap<String, String> = result?;
+        let vd = VehicleDataFE {
+            // #[serde(default, rename = "atvType")]
+            // /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
+            // pub alt_veh_type: String,
+            alt_veh_type: item.get("atvType").unwrap().clone(),
+            // #[serde(rename = "city08")]
+            // /// City MPG for fuel 1
+            // pub city_mpg_fuel1: i32,
+            city_mpg_fuel1: item.get("city08").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "cityA08")]
+            // /// City MPG for fuel 2
+            // pub city_mpg_fuel2: i32,
+            city_mpg_fuel2: item.get("cityA08").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "co2")]
+            // /// Tailpipe CO2 emissions in grams/mile
+            // pub co2_g_per_mi: i32,
+            co2_g_per_mi: item.get("co2").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "comb08")]
+            // /// Combined MPG for fuel 1
+            // pub comb_mpg_fuel1: i32,
+            comb_mpg_fuel1: item.get("comb08").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "combA08")]
+            // /// Combined MPG for fuel 2
+            // pub comb_mpg_fuel2: i32,
+            comb_mpg_fuel2: item.get("combA08").unwrap().parse::<i32>().unwrap(),
+            // #[serde(default)]
+            // /// Number of engine cylinders
+            // pub cylinders: String,
+            cylinders: item.get("cylinders").unwrap().clone(),
+            // #[serde(default)]
+            // /// Engine displacement in liters
+            // pub displ: String,
+            displ: item.get("displ").unwrap().clone(),
+            // /// Drive axle type (FWD, RWD, AWD, 4WD)
+            // pub drive: String,
+            drive: item.get("drive").unwrap().clone(),
+            // #[serde(rename = "emissionsList")]
+            // /// List of emissions tests
+            // pub emissions_list: EmissionsListFE,
+            emissions_list: EmissionsListFE { emissions_info: vec![] },
+            // #[serde(default)]
+            // /// Description of engine
+            // pub eng_dscr: String,
+            eng_dscr: item.get("eng_dscr").unwrap().clone(),
+            // #[serde(default, rename = "evMotor")]
+            // /// Electric motor power (kW)
+            // pub ev_motor_kw: String,
+            ev_motor_kw: item.get("evMotor").unwrap().clone(),
+            // #[serde(rename = "feScore")]
+            // /// EPA fuel economy score
+            // pub fe_score: i32,
+            fe_score: item.get("feScore").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "fuelType")]
+            // /// Combined vehicle fuel type (fuel 1 and fuel 2)
+            // pub fuel_type: String,
+            fuel_type: item.get("fuelType").unwrap().clone(),
+            // #[serde(rename = "fuelType1")]
+            // /// Fuel type 1
+            // pub fuel1: String,
+            fuel1: item.get("fuelType1").unwrap().clone(),
+            // #[serde(default, rename = "fuelType2")]
+            // /// Fuel type 2
+            // pub fuel2: String,
+            fuel2: item.get("fuelType2").unwrap().clone(),
+            // #[serde(rename = "ghgScore")]
+            // /// EPA GHG Score
+            // pub ghg_score: i32,
+            ghg_score: item.get("ghgScore").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "highway08")]
+            // /// Highway MPG for fuel 1
+            // pub highway_mpg_fuel1: i32,
+            highway_mpg_fuel1: item.get("highway08").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "highwayA08")]
+            // /// Highway MPG for fuel 2
+            // pub highway_mpg_fuel2: i32,
+            highway_mpg_fuel2: item.get("highwayA08").unwrap().parse::<i32>().unwrap(),
+            // /// Manufacturer
+            // pub make: String,
+            make: item.get("make").unwrap().clone(),
+            // #[serde(rename = "mfrCode")]
+            // /// Manufacturer code
+            // pub mfr_code: String,
+            mfr_code: item.get("mfrCode").unwrap().clone(),
+            // /// Model name
+            // pub model: String,
+            model: item.get("model").unwrap().clone(),
+            // #[serde(rename = "phevBlended")]
+            // /// Vehicle operates on blend of gasoline and electricity
+            // pub phev_blended: bool,
+            phev_blended: item.get("phevBlended").unwrap().trim().to_lowercase().parse::<bool>().unwrap(),
+            // #[serde(rename = "phevCity")]
+            // /// EPA composite gasoline-electricity city MPGe
+            // pub phev_city_mpge: i32,
+            phev_city_mpge: item.get("phevCity").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "phevComb")]
+            // /// EPA composite gasoline-electricity combined MPGe
+            // pub phev_comb_mpge: i32,
+            phev_comb_mpge: item.get("phevComb").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "phevHwy")]
+            // /// EPA composite gasoline-electricity highway MPGe
+            // pub phev_hwy_mpge: i32,
+            phev_hwy_mpge: item.get("phevHwy").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "range")]
+            // /// Range for EV
+            // pub range_ev: i32,
+            range_ev: item.get("range").unwrap().parse::<i32>().unwrap(),
+            // #[serde(rename = "startStop")]
+            // /// Stop-start technology
+            // pub start_stop: String,
+            start_stop: item.get("startStop").unwrap().clone(),
+            // /// transmission
+            // pub trany: String,
+            trany: item.get("trany").unwrap().clone(),
+            // #[serde(rename = "VClass")]
+            // /// EPA vehicle size class
+            // pub veh_class: String,
+            veh_class: item.get("VClass").unwrap().clone(),
+            // /// Model year
+            // pub year: u32,
+            year: item.get("year").unwrap().parse::<u32>().unwrap(),
+            // #[serde(default, rename = "sCharger")]
+            // /// Vehicle is supercharged
+            // pub super_charge: String,
+            super_charge: item.get("sCharger").unwrap().clone(),
+            // #[serde(default, rename = "tCharger")]
+            // /// Vehicle is turbocharged
+            // pub turbo_charge: String,
+            turbo_charge: item.get("tCharger").unwrap().clone(),
+        };
+        output.push(vd);
+    }
+    Ok(output)
+}
+
 /// Given the path to a zip archive, print out the names of the files within that archive
 fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
     let f = File::open(filepath)?;
@@ -1621,7 +1760,7 @@ fn extract_fueleconomy_data_from_zip(filepath: &Path) -> Result<Vec<VehicleDataF
     zip.extract(&tempdir)?;
     let data_path = tempdir.path().join("vehicles.csv");
     let data_file = File::open(data_path)?;
-    let output = read_records_from_file(data_file)?;
+    let output = read_fuelecon_gov_data_from_file(data_file)?;
     Ok(output)
 }
 
