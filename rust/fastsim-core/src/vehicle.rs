@@ -33,6 +33,7 @@ lazy_static! {
         Regex::new("SI|Atkinson|Diesel|H2FC|HD_Diesel").unwrap();
 }
 
+#[doc_field]
 #[add_pyo3_api(
     #[pyo3(name = "set_veh_mass")]
     pub fn set_veh_mass_py(&mut self) {
@@ -87,7 +88,6 @@ lazy_static! {
         Self::mock_vehicle()
     }
 )]
-#[doc_field]
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
 /// Struct containing vehicle attributes
 /// # Python Examples
