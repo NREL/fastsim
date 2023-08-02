@@ -51,12 +51,16 @@ pub struct AirProperties {
 }
 
 impl AirProperties {
+    // This is an example of a canonical doc string per:
+    // https://doc.rust-lang.org/beta/rust-by-example/meta/doc.html
     /// Returns density [kg/m^3] of air  
     /// Source: <https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html>  
+    ///
+    /// # Equations used
     /// T = 15.04 - .00649 * h  
     /// p = 101.29 * [(T + 273.1)/288.08]^5.256  
-    /// Arguments:  
-    /// ----------  
+    ///
+    /// # Arguments  
     /// * `te_air` - ambient temperature \[°C\] of air   
     /// * `h` - evelation \[m\] above sea level, defaults to 180 m
     pub fn get_rho(&self, te_air: f64, h: Option<f64>) -> f64 {
