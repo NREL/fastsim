@@ -1,3 +1,5 @@
+//! Module that implements [super::add_pyo3_api]
+
 #[macro_use]
 mod pyo3_api_utils;
 

@@ -1,6 +1,7 @@
+//! Module that implements [super::doc_field]
+
 use crate::imports::*;
 
-///
 pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
 
