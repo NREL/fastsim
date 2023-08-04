@@ -13,6 +13,7 @@ use std::option::Option;
 use std::path::PathBuf;
 use serde::de::DeserializeOwned;
 use directories::ProjectDirs;
+use regex::Regex;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -1805,35 +1806,69 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
     Ok(())
 }
 
+fn read_epa_test_data_to_hashmap(data_dir_path: &Path) -> Result<HashMap<u32, Vec<VehicleDataEPA>>, anyhow::Error> {
+    let mut epatest_db: HashMap<u32, Vec<VehicleDataEPA>> = HashMap::new();
+    let data_file_paths = std::fs::read_dir(data_dir_path)?;
+    let re = Regex::new(r"(\d\d\d\d)-testcar\.csv")?;
+    for file_path in data_file_paths {
+        let entry = file_path?;
+        let p = entry.path();
+        if p.is_file() {
+            if let Some(name) = p.file_name() {
+                if let Some(n) = name.to_str() {
+                    if let Some(caps) = re.captures(n) {
+                        let yr = &caps[1];
+                        let year = str::parse::<u32>(yr)?;
+                        let f = File::open(p)?;
+                        let records = read_records_from_file(f)?;
+                        epatest_db.insert(year, records);
+                    } else {
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+    Ok(epatest_db)
+}
+
 pub fn import_and_save_all_vehicles_from_file(input_path: &Path, data_dir_path: &Path, output_dir_path: &Path) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
     let fegov_path = data_dir_path.join(Path::new("vehicles.csv"));
     let fegov_file = File::open(fegov_path.as_path())?;
     let fegov_db: Vec<VehicleDataFE> = read_fuelecon_gov_data_from_file(fegov_file)?;
-    let epatest_db: Vec<VehicleDataEPA> = vec![];
+    let epatest_db = read_epa_test_data_to_hashmap(data_dir_path)?;
+    println!("Read {} files of epa test vehicle data", epatest_db.len());
     import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, output_dir_path)
 }
 
-pub fn import_and_save_all_vehicles(_inputs: &[VehicleInputRecord], _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA], _output_dir_path: &Path) -> Result<(), anyhow::Error> {
-    for vir in _inputs {
-        let maybe_veh = extract_vehicle(vir, _fegov_data, _epatest_data);
-        match maybe_veh {
-            Some(veh) => {
-                let mut outfile: PathBuf = PathBuf::new();
-                outfile.push(_output_dir_path);
-                outfile.push(Path::new(&vir.output_file_name));
-                let outfile_str = outfile.to_str();
-                match outfile_str {
-                    Some(full_outfile) => {
-                        veh.to_file(full_outfile)?;
-                    },
-                    None => {
-                        println!("Could not determine output file path");
+pub fn import_and_save_all_vehicles(
+    inputs: &[VehicleInputRecord],
+    fegov_data: &[VehicleDataFE],
+    epatest_data: &HashMap<u32, Vec<VehicleDataEPA>>,
+    output_dir_path: &Path
+) -> Result<(), anyhow::Error> {
+    for vir in inputs {
+        if let Some(epatest_data_for_year) = epatest_data.get(&vir.year) {
+            let maybe_veh = extract_vehicle(vir, fegov_data, epatest_data_for_year);
+            match maybe_veh {
+                Some(veh) => {
+                    let mut outfile: PathBuf = PathBuf::new();
+                    outfile.push(output_dir_path);
+                    outfile.push(Path::new(&vir.output_file_name));
+                    let outfile_str = outfile.to_str();
+                    match outfile_str {
+                        Some(full_outfile) => {
+                            veh.to_file(full_outfile)?;
+                        },
+                        None => {
+                            println!("Could not determine output file path");
+                        }
                     }
+                },
+                None => {
+                    println!("Unable to extract vehicle for {} {} {}", vir.year, vir.make, vir.model);
                 }
-            },
-            None => {
-                println!("Unable to extract vehicle for {} {} {}", vir.year, vir.make, vir.model);
             }
         }
     }
