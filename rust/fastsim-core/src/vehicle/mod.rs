@@ -28,6 +28,7 @@ pub use bev::BatteryElectricVehicle;
 pub use conv::ConventionalVehicle;
 pub use hev::HybridElectricVehicle;
 pub use powertrain::fuel_converter::FuelConverter;
+pub use powertrain::fuel_storage::FuelStorage;
 pub use powertrain::powertrain_traits::{ElectricMachine, Mass};
 pub use powertrain::reversible_energy_storage::ReversibleEnergyStorage;
 pub use powertrain::trans::Transmission;

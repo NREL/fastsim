@@ -8,3 +8,7 @@ pub struct SimDrive {
     veh: Vehicle,
     cyc: Cycle,
 }
+
+impl SimDrive {
+    
+}

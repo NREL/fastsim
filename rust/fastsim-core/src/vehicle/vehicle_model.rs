@@ -232,86 +232,58 @@ pub enum DriveTypes {
     fn get_ballast_mass_kg(&self) -> PyResult<Option<f64>> {
         Ok(self.ballast_mass.map(|m| m.get::<si::kilogram>()))
     }
-
-    #[getter]
-    fn get_baseline_mass_kg(&self) -> PyResult<Option<f64>> {
-        Ok(self.baseline_mass.map(|m| m.get::<si::kilogram>()))
-    }
 )]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 /// Struct for simulating any type of locomotive
 pub struct Vehicle {
     /// Vehicle name
-    /// `scenario_name` in fastsim-2
+    /// #[fsim2_name = "scenario_name"]
     name: String,
     /// Year manufactured
-    /// `veh_year` in fastsim-2
+    /// #[fsim2_name = "veh_year"]
     year: u32,
     #[api(skip_get, skip_set)]
     /// type of locomotive including contained type-specific parameters
     /// and variables
     pub powertrain_type: PowertrainType,
     /// Aerodynamic drag coefficient
-    /// `drag_coeff` in fastsim-2
+    /// #[fsim2_name = "drag_coeff"]
     drag_coeff: si::Ratio,
     /// Projected frontal area for drag calculations
-    /// `frontal_area_m2` in fastsim-2
+    /// #[fsim2_name = "frontal_area_m2"]
     frontal_area: si::Area,
     /// Vehicle mass excluding cargo, passengers, and powertrain components
-    /// `glider_kg` in fastsim-2
+    /// #[fsim2_name = "glider_kg"]
     glider_mass: si::Mass,
     /// Vehicle center of mass height
-    /// `veh_cg_m` in fastsim-2
+    /// #[fsim2_name = "veh_cg_m"]
     cg_height: si::Length,
     #[api(skip_get, skip_set)]
     /// TODO: make getters and setters for this.
     /// Drive wheel configuration
     drive_type: DriveTypes,
     /// Fraction of vehicle weight on drive action when stationary
-    /// `drive_axle_weight_frac` in fastsim-2
+    /// #[fsim2_name = "drive_axle_weight_frac"]
     drive_axle_weight_frac: si::Ratio,
     /// Wheel base length
-    /// `wheel_base_m` in fastsim-2
+    /// #[fsim2_name = "wheel_base_m"]
     wheel_base: si::Length,
+    /// Cargo mass including passengers
+    /// #[fsim2_name: "cargo_kg"]
+    pub cargo_mass: si::Mass,
+    // `veh_override_kg` in fastsim-2 is getting deprecated in fastsim-3
+    /// Component mass multiplier for vehicle mass calculation
+    /// #[fsim2_name = "comp_mass_multiplier"]
+    pub comp_mass_multiplier: si::Ratio,
+
+    // locally defined components
+    pub fs: FuelStorage,
+    pub fc: FuelConverter,
+    pub res: ReversibleEnergyStorage,
+    pub trans: Transmission,
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
-    #[api(skip_get, skip_set)]
-    #[serde(default)]
-    /// Locomotive mass
-    mass: Option<si::Mass>,
-    /// Locomotive coefficient of friction between wheels and rail when
-    /// stopped
-    #[api(skip_get, skip_set)]
-    mu: Option<si::Ratio>,
-    /// Ballast mass, any mass that must be added to achieve nominal
-    /// locomotive weight of 432,000 lb.
-    #[api(skip_get, skip_set)]
-    ballast_mass: Option<si::Mass>,
-    /// Baseline mass, which comprises any non-differentiating
-    /// components between technologies, e.g. chassis, motors, trucks,
-    /// cabin
-    #[api(skip_get, skip_set)]
-    baseline_mass: Option<si::Mass>,
-    /// time step interval between saves.  1 is a good option.  If None,
-    /// no saving occurs.
-    #[api(skip_set, skip_get)]
-    save_interval: Option<usize>,
-    /// Custom vector of [Self::state]
-    #[serde(default)]
-    pub history: VehicleStateHistoryVec,
-    #[serde(default = "utils::return_true")]
-    /// If true, requires power demand to not exceed consist
-    /// capabilities.  May be deprecated soon.
-    pub assert_limits: bool,
-    /// constant aux load
-    pub pwr_aux_offset: si::Power,
-    /// gain for linear model on traciton hp use to compute linear aux
-    /// load
-    pub pwr_aux_traction_coeff: si::Ratio,
-    /// maximum tractive force
-    #[api(skip_get, skip_set)]
-    force_max: Option<si::Force>,
 }
 
 impl SerdeAPI for Vehicle {
@@ -341,8 +313,6 @@ impl Mass for Vehicle {
                     self.fuel_converter_mut().map(|fc| fc.update_mass(None));
                     self.reversible_energy_storage_mut()
                         .map(|res| res.update_mass(None));
-                    self.baseline_mass = None;
-                    self.ballast_mass = None;
                 }
             }
             None => {
