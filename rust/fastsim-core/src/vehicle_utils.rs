@@ -467,6 +467,170 @@ fn get_fuel_economy_gov_data_by_option_id(option_id: &str) -> Result<VehicleData
     Ok(vehicle_data_fe)
 }
 
+fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEPA]) -> Option<VehicleDataEPA> {
+    // Keep track of best match to fueleconomy.gov model name for all vehicles and vehicles with matching efid/test id
+    let mut veh_list_overall: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
+    let mut veh_list_efid: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
+    let mut best_match_percent_efid: f64 = 0.0;
+    let mut best_match_model_efid: String = String::new();
+    let mut best_match_percent_overall: f64 = 0.0;
+    let mut best_match_model_overall: String = String::new();
+
+    let fe_model_upper: String = fegov
+        .model
+        .to_uppercase()
+        .replace("4WD", "AWD");
+    let fe_model_words: Vec<&str> = fe_model_upper.split(' ').collect();
+    let efid: &String = &fegov.emissions_list.emissions_info[0].efid;
+
+    for veh_epa in epatest_data {
+        // Find matches between EPA vehicle model name and fe.gov vehicle model name
+        let mut match_count: i64 = 0;
+        let epa_model_upper = veh_epa.model.to_uppercase().replace("4WD", "AWD");
+        let epa_model_words: Vec<&str> = epa_model_upper.split(' ').collect();
+        for word in &epa_model_words {
+            match_count += fe_model_words.contains(word) as i64;
+        }
+        // Calculate composite match percentage
+        let match_percent: f64 = (match_count as f64 * match_count as f64)
+            / (epa_model_words.len() as f64 * fe_model_words.len() as f64);
+
+        // Update overall hashmap with new entry
+        if veh_list_overall.contains_key(&veh_epa.model) {
+            if let Some(x) = veh_list_overall.get_mut(&veh_epa.model) {
+                (*x).push(veh_epa.clone());
+            }
+        } else {
+            veh_list_overall.insert(veh_epa.model.clone(), vec![veh_epa.clone()]);
+
+            if match_percent > best_match_percent_overall {
+                best_match_percent_overall = match_percent;
+                best_match_model_overall = veh_epa.model.clone();
+            }
+        }
+
+        // Update efid hashmap if fe.gov efid matches EPA test id
+        // (for some reason first character in id is almost always different)
+        if veh_epa.test_id.ends_with(&efid[1..efid.len()]) {
+            if veh_list_efid.contains_key(&veh_epa.model) {
+                if let Some(x) = veh_list_efid.get_mut(&veh_epa.model) {
+                    (*x).push(veh_epa.clone());
+                }
+            } else {
+                veh_list_efid.insert(veh_epa.model.clone(), vec![veh_epa.clone()]);
+                if match_percent > best_match_percent_efid {
+                    best_match_percent_efid = match_percent;
+                    best_match_model_efid = veh_epa.model.clone();
+                }
+            }
+        }
+    }
+
+    // Get EPA vehicle model that is best match to fe.gov vehicle
+    let veh_list: Vec<VehicleDataEPA> = if best_match_model_efid == best_match_model_overall {
+        veh_list_efid.get(&best_match_model_efid).unwrap().to_vec()
+    } else {
+        veh_list_overall
+            .get(&best_match_model_overall)
+            .unwrap()
+            .to_vec()
+    };
+
+    // Get number of gears and convert fe.gov transmission description to EPA transmission description
+    let num_gears_fe_gov: u32;
+    let transmission_fe_gov: String;
+    // Based on reference: https://www.fueleconomy.gov/feg/findacarhelp.shtml#engine
+    if fegov.trany.contains("Manual") {
+        transmission_fe_gov = String::from('M');
+        num_gears_fe_gov =
+            fegov.trany.as_str()[fegov.trany.find("-spd").unwrap() - 1
+                ..fegov.trany.find("-spd").unwrap()]
+                .parse()
+                .unwrap();
+    } else if fegov.trany.contains("variable gear ratios") {
+        transmission_fe_gov = String::from("CVT");
+        num_gears_fe_gov = 1;
+    } else if fegov.trany.contains("AV-S") {
+        transmission_fe_gov = String::from("SCV");
+        num_gears_fe_gov =
+            fegov.trany.as_str()[fegov.trany.find('S').unwrap() + 1
+                ..fegov.trany.find(')').unwrap()]
+                .parse()
+                .unwrap();
+    } else if fegov.trany.contains("AM-S") {
+        transmission_fe_gov = String::from("AMS");
+        num_gears_fe_gov =
+            fegov.trany.as_str()[fegov.trany.find('S').unwrap() + 1
+                ..fegov.trany.find(')').unwrap()]
+                .parse()
+                .unwrap();
+    } else if fegov.trany.contains('S') {
+        transmission_fe_gov = String::from("SA");
+        num_gears_fe_gov =
+            fegov.trany.as_str()[fegov.trany.find('S').unwrap() + 1
+                ..fegov.trany.find(')').unwrap()]
+                .parse()
+                .unwrap();
+    } else if fegov.trany.contains("-spd") {
+        transmission_fe_gov = String::from('A');
+        num_gears_fe_gov =
+            fegov.trany.as_str()[fegov.trany.find("-spd").unwrap() - 1
+                ..fegov.trany.find("-spd").unwrap()]
+                .parse()
+                .unwrap();
+    } else {
+        transmission_fe_gov = String::from('A');
+        num_gears_fe_gov =
+            fegov.trany.as_str()[fegov.trany.find("(A").unwrap() + 2
+                ..fegov.trany.find(')').unwrap()]
+                .parse()
+                .unwrap();
+    }
+
+    // Find EPA vehicle entry that matches fe.gov vehicle data
+    // If same vehicle model has multiple configurations, get most common configuration
+    let mut most_common_veh: VehicleDataEPA = VehicleDataEPA::default();
+    let mut most_common_count: i32 = 0;
+    let mut current_veh: VehicleDataEPA = VehicleDataEPA::default();
+    let mut current_count: i32 = 0;
+    for mut veh_epa in veh_list {
+        if veh_epa.model.contains("4WD")
+            || veh_epa.model.contains("AWD")
+            || veh_epa.drive.contains("4-Wheel Drive")
+        {
+            veh_epa.drive_code = String::from('A');
+            veh_epa.drive = String::from("All Wheel Drive");
+        }
+        if !veh_epa.test_fuel_type.contains("Cold CO")
+            && veh_epa.trany_code == transmission_fe_gov
+            && veh_epa.gears == num_gears_fe_gov
+            && veh_epa.drive_code == fegov.drive[0..1]
+            && ((fegov.alt_veh_type == *"EV"
+                && veh_epa.displ.round() == 0.0
+                && veh_epa.cylinders == String::new())
+                || ((veh_epa.displ * 10.0).round() / 10.0
+                    == (fegov.displ.parse::<f64>().unwrap_or_default())
+                    && veh_epa.cylinders == fegov.cylinders))
+        {
+            if veh_epa == current_veh {
+                current_count += 1;
+            } else {
+                if current_count > most_common_count {
+                    most_common_veh = current_veh.clone();
+                    most_common_count = current_count;
+                }
+                current_veh = veh_epa.clone();
+                current_count = 1;
+            }
+        }
+    }
+    if current_count > most_common_count {
+        Some(current_veh)
+    } else {
+        Some(most_common_veh)
+    }
+}
+
 #[cfg_attr(feature = "pyo3", pyfunction)]
 /// Gets data from EPA vehicle database for the given vehicle
 ///
@@ -1301,6 +1465,225 @@ fn vehicle_import_from_id(
     Ok(veh)
 }
 
+fn get_fuel_economy_gov_data_for_input_record(vir: &VehicleInputRecord, fegov_data: &[VehicleDataFE]) -> Vec<VehicleDataFE> {
+    let mut output: Vec<VehicleDataFE> = Vec::new();
+    for fedat in fegov_data {
+        if fedat.year == vir.year
+            && fedat.make.to_lowercase().eq(&vir.make.to_lowercase())
+            && fedat.model.to_lowercase().eq(&vir.model.to_lowercase()) {
+            output.push(fedat.clone());
+        }
+    }
+    output
+}
+
+fn try_make_single_vehicle(fe_gov_data: &VehicleDataFE, epa_data: &VehicleDataEPA, other_inputs: &OtherVehicleInputs) -> Option<RustVehicle> {
+    if epa_data == &VehicleDataEPA::default() {
+        return None;
+    }
+    let veh_pt_type: &str = match fe_gov_data.alt_veh_type.as_str() {
+        "Hybrid" => crate::vehicle::HEV,
+        "Plug-in Hybrid" => crate::vehicle::PHEV,
+        "EV" => crate::vehicle::BEV,
+        _ => crate::vehicle::CONV,
+    };
+
+    let fs_max_kw: f64;
+    let fc_max_kw: f64;
+    let fc_eff_type: String;
+    let fc_eff_map: Array1<f64>;
+    let mc_max_kw: f64;
+    let min_soc: f64;
+    let max_soc: f64;
+    let ess_dischg_to_fc_max_eff_perc: f64;
+    let mph_fc_on: f64;
+    let kw_demand_fc_on: f64;
+    let aux_kw: f64;
+    let trans_eff: f64;
+    let val_range_miles: f64;
+    let ess_max_kw: f64;
+    let ess_max_kwh: f64;
+
+    if veh_pt_type == crate::vehicle::CONV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        fc_eff_type = String::from(crate::vehicle::SI);
+        fc_eff_map = Array::from_vec(vec![
+            0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
+        ]);
+        mc_max_kw = 0.0;
+        min_soc = 0.1;
+        max_soc = 0.95;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+        mph_fc_on = 55.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.7;
+        trans_eff = 0.92;
+        val_range_miles = 0.0;
+        ess_max_kw = 0.0;
+        ess_max_kwh = 0.0;
+    } else if veh_pt_type == crate::vehicle::HEV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = other_inputs
+            .fc_max_kw
+            .unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
+        fc_eff_type = String::from(crate::vehicle::ATKINSON);
+        fc_eff_map = Array::from_vec(vec![
+            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+        ]);
+        min_soc = 0.4;
+        max_soc = 0.8;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+        mph_fc_on = 1.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.5;
+        trans_eff = 0.95;
+        val_range_miles = 0.0;
+        ess_max_kw = other_inputs.ess_max_kw;
+        ess_max_kwh = other_inputs.ess_max_kwh;
+        mc_max_kw = other_inputs.mc_max_kw;
+    } else if veh_pt_type == crate::vehicle::PHEV {
+        fs_max_kw = 2000.0;
+        fc_max_kw = other_inputs
+            .fc_max_kw
+            .unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
+        fc_eff_type = String::from(crate::vehicle::ATKINSON);
+        fc_eff_map = Array::from_vec(vec![
+            0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
+        ]);
+        min_soc = 0.15;
+        max_soc = 0.9;
+        ess_dischg_to_fc_max_eff_perc = 1.0;
+        mph_fc_on = 85.0;
+        kw_demand_fc_on = 120.0;
+        aux_kw = 0.3;
+        trans_eff = 0.98;
+        val_range_miles = 0.0;
+        ess_max_kw = other_inputs.ess_max_kw;
+        ess_max_kwh = other_inputs.ess_max_kwh;
+        mc_max_kw = other_inputs.mc_max_kw;
+    } else if veh_pt_type == crate::vehicle::BEV {
+        fs_max_kw = 0.0;
+        fc_max_kw = 0.0;
+        fc_eff_type = String::from(crate::vehicle::SI);
+        fc_eff_map = Array::from_vec(vec![
+            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+        ]);
+        mc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        min_soc = 0.05;
+        max_soc = 0.98;
+        ess_max_kw = 1.05 * mc_max_kw;
+        ess_max_kwh = other_inputs.ess_max_kwh;
+        mph_fc_on = 1.0;
+        kw_demand_fc_on = 100.0;
+        aux_kw = 0.25;
+        trans_eff = 0.98;
+        val_range_miles = fe_gov_data.range_ev as f64;
+        ess_dischg_to_fc_max_eff_perc = 0.0;
+    } else {
+        return None;
+    }
+
+    let ref_veh: RustVehicle = Default::default();
+    let glider_kg = (epa_data.test_weight_lbs / LBS_PER_KG)
+        - ref_veh.cargo_kg
+        - ref_veh.trans_kg
+        - ref_veh.comp_mass_multiplier
+            * ((fs_max_kw / ref_veh.fs_kwh_per_kg)
+                + (ref_veh.fc_base_kg + fc_max_kw / ref_veh.fc_kw_per_kg)
+                + (ref_veh.mc_pe_base_kg + mc_max_kw * ref_veh.mc_pe_kg_per_kw)
+                + (ref_veh.ess_base_kg + ess_max_kwh * ref_veh.ess_kg_per_kwh));
+    let mut veh = RustVehicle {
+        veh_cg_m: match fe_gov_data.drive.as_str() {
+            "Front-Wheel Drive" => 0.53,
+            _ => -0.53,
+        },
+        glider_kg,
+        scenario_name: format!(
+            "{} {} {}",
+            fe_gov_data.year, fe_gov_data.make, fe_gov_data.model
+        ),
+        max_roadway_chg_kw: Default::default(),
+        selection: 0,
+        veh_year: fe_gov_data.year,
+        veh_pt_type: String::from(veh_pt_type),
+        drag_coef: 0.0,
+        frontal_area_m2: (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in)
+            / (IN_PER_M * IN_PER_M),
+        fs_kwh: other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge,
+        idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
+        mc_eff_map: Array1::from(vec![
+            0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
+        ]),
+        wheel_rr_coef: 0.0,
+        stop_start: fe_gov_data.start_stop == "Y",
+        force_aux_on_fc: false,
+        val_udds_mpgge: fe_gov_data.city_mpg_fuel1 as f64,
+        val_hwy_mpgge: fe_gov_data.highway_mpg_fuel1 as f64,
+        val_comb_mpgge: fe_gov_data.comb_mpg_fuel1 as f64,
+        fc_peak_eff_override: None,
+        mc_peak_eff_override: Some(0.95),
+        fs_max_kw,
+        fc_max_kw,
+        fc_eff_type,
+        fc_eff_map,
+        mc_max_kw,
+        min_soc,
+        max_soc,
+        ess_dischg_to_fc_max_eff_perc,
+        mph_fc_on,
+        kw_demand_fc_on,
+        aux_kw,
+        trans_eff,
+        val_range_miles,
+        ess_max_kwh,
+        ess_max_kw,
+        ..Default::default()
+    };
+    veh.set_derived().unwrap();
+
+    abc_to_drag_coeffs(
+        &mut veh,
+        epa_data.a_lbf,
+        epa_data.b_lbf_per_mph,
+        epa_data.c_lbf_per_mph2,
+        Some(false),
+        None,
+        None,
+        Some(true),
+        Some(false),
+    );
+    Some(veh)
+}
+
+#[allow(dead_code)]
+fn try_import_vehicles(
+    vir: &VehicleInputRecord,
+    fegov_data: &[VehicleDataFE],
+    epatest_data: &[VehicleDataEPA],
+) -> Vec<RustVehicle> {
+    let other_inputs = OtherVehicleInputs {
+        vehicle_width_in: vir.vehicle_width_in,
+        vehicle_height_in: vir.vehicle_height_in,
+        fuel_tank_gal: vir.fuel_tank_gal,
+        ess_max_kwh: vir.ess_max_kwh,
+        mc_max_kw: vir.mc_max_kw,
+        ess_max_kw: vir.ess_max_kw,
+        fc_max_kw: vir.fc_max_kw,
+    };
+    // TODO: Aaron wanted custom scenario name option
+    let mut outputs: Vec<RustVehicle> = Vec::new();
+    let fegov_hits: Vec<VehicleDataFE> = get_fuel_economy_gov_data_for_input_record(vir, fegov_data);
+    for hit in fegov_hits {
+        if let Some(epa_data) = match_epatest_with_fegov(&hit, epatest_data) {
+            if let Some(v) = try_make_single_vehicle(&hit, &epa_data, &other_inputs) {
+                outputs.push(v.clone());
+            }
+        }
+    }
+    outputs
+}
+
 #[allow(dead_code)]
 /// Creates RustVehicles for all models for a given make in given year
 /// The created RustVehicles are also written as a yaml file
@@ -1605,11 +1988,47 @@ fn read_records_from_file<T: DeserializeOwned>(rdr: impl std::io::Read + std::io
     Ok(output)
 }
 
-fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
+fn read_fuelecon_gov_emissions_to_hashmap(rdr: impl std::io::Read + std::io::Seek) -> HashMap<u32, Vec<EmissionsInfoFE>> {
+    let mut output: HashMap<u32, Vec<EmissionsInfoFE>> = HashMap::new();
+    let mut reader = csv::Reader::from_reader(rdr);
+    for result in reader.deserialize() {
+        if result.is_ok() {
+            let ok_result: Option<HashMap<String, String>> = result.ok();
+            if let Some(item) = ok_result {
+                if let Some(id_str) = item.get("id") {
+                    if let Ok(id) = str::parse::<u32>(id_str) {
+                        output.entry(id).or_insert_with(Vec::new);
+                        if let Some(ers) = output.get_mut(&id) {
+                            let emiss = EmissionsInfoFE {
+                                efid: item.get("efid").unwrap().clone(),
+                                score: item.get("score").unwrap().parse().unwrap(),
+                                smartway_score: item.get("smartwayScore").unwrap().parse().unwrap(),
+                                standard: item.get("standard").unwrap().clone(),
+                                std_text: item.get("stdText").unwrap().clone(),
+                            };
+                            ers.push(emiss);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    output
+}
+
+fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek, emissions: &HashMap<u32, Vec<EmissionsInfoFE>>) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
     let mut output: Vec<VehicleDataFE> = Vec::new();
     let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
         let item: HashMap<String, String> = result?;
+        let id: u32 = item.get("id").unwrap().parse::<u32>().unwrap();
+        let emissions_list: EmissionsListFE = if emissions.contains_key(&id) {
+            EmissionsListFE {
+                emissions_info: emissions.get(&id).unwrap().to_vec()
+            }
+        } else {
+            EmissionsListFE::default()
+        };
         let vd = VehicleDataFE {
             // #[serde(default, rename = "atvType")]
             // /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
@@ -1649,7 +2068,7 @@ fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek) -> 
             // #[serde(rename = "emissionsList")]
             // /// List of emissions tests
             // pub emissions_list: EmissionsListFE,
-            emissions_list: EmissionsListFE { emissions_info: vec![] },
+            emissions_list,
             // #[serde(default)]
             // /// Description of engine
             // pub eng_dscr: String,
@@ -1834,9 +2253,16 @@ fn read_epa_test_data_to_hashmap(data_dir_path: &Path) -> Result<HashMap<u32, Ve
 
 pub fn import_and_save_all_vehicles_from_file(input_path: &Path, data_dir_path: &Path, output_dir_path: &Path) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
+    let emissions_path = data_dir_path.join(Path::new("emissions.csv"));
+    let emissions_db: HashMap<u32, Vec<EmissionsInfoFE>> = {
+        let emissions_file = File::open(emissions_path)?;
+        read_fuelecon_gov_emissions_to_hashmap(emissions_file)
+    };
     let fegov_path = data_dir_path.join(Path::new("vehicles.csv"));
-    let fegov_file = File::open(fegov_path.as_path())?;
-    let fegov_db: Vec<VehicleDataFE> = read_fuelecon_gov_data_from_file(fegov_file)?;
+    let fegov_db: Vec<VehicleDataFE> = {
+        let fegov_file = File::open(fegov_path.as_path())?;
+        read_fuelecon_gov_data_from_file(fegov_file, &emissions_db)?
+    };
     let epatest_db = read_epa_test_data_to_hashmap(data_dir_path)?;
     println!("Read {} files of epa test vehicle data", epatest_db.len());
     import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, output_dir_path)
@@ -1875,7 +2301,7 @@ pub fn import_and_save_all_vehicles(
     Ok(())
 }
 
-/// Extract the vehicle from the given data-set
+/// Try to extract the given vehicle from the available data
 pub fn extract_vehicle(_input: &VehicleInputRecord, _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
     let default_veh: RustVehicle = RustVehicle::default();
     Some(default_veh)
