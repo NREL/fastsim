@@ -8,10 +8,10 @@ use polynomial::Polynomial;
 use serde_xml_rs::from_str;
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::prelude::Write;
 use std::option::Option;
 use std::path::PathBuf;
 use serde::de::DeserializeOwned;
-use tempdir::TempDir;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -1743,7 +1743,7 @@ fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek) -> 
 }
 
 /// Given the path to a zip archive, print out the names of the files within that archive
-fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
+pub fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
     let f = File::open(filepath)?;
     let mut zip = zip::ZipArchive::new(f)?;
     for i in 0..zip.len() {
@@ -1753,28 +1753,44 @@ fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn extract_fueleconomy_data_from_zip(filepath: &Path) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
+/// Extract zip archive at filepath to destination directory at dest_dir
+pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> Result<(), anyhow::Error> {
     let f = File::open(filepath)?;
     let mut zip = zip::ZipArchive::new(f)?;
-    let tempdir = TempDir::new("fastsim-fueleconomy.gov")?;
-    zip.extract(&tempdir)?;
-    let data_path = tempdir.path().join("vehicles.csv");
-    let data_file = File::open(data_path)?;
-    let output = read_fuelecon_gov_data_from_file(data_file)?;
-    Ok(output)
+    zip.extract(&dest_dir)?;
+    Ok(())
 }
 
-pub fn import_and_save_all_vehicles_from_file(_input_path: &Path, _fegov_data_path: &Path, _epatest_data_path: &Path, _output_dir_path: &Path) -> Result<(), anyhow::Error> {
-    let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(_input_path)?;
-    if false {
-        println!("FuelEconomy.gov data:");
-        list_zip_conents(_fegov_data_path)?;
-        println!("EPA Vehicle Testing data:");
-        list_zip_conents(_epatest_data_path)?;
+/// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
+pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow::Error> {
+    let mut handle = Easy::new();
+    handle.url(url)?;
+    let mut buffer = Vec::new();
+    {
+        let mut transfer = handle.transfer();
+        transfer.write_function(|data| {
+            buffer.extend_from_slice(data);
+            Ok(data.len())
+        })?;
+        transfer.perform()?;
     }
-    let fegov_db: Vec<VehicleDataFE> = extract_fueleconomy_data_from_zip(_fegov_data_path)?;
+    {
+        let mut file = match File::create(&file_path) {
+            Err(why) => panic!("couldn't open {}: {}", file_path.to_str().unwrap(), why),
+            Ok(file) => file,
+        };
+        file.write_all(buffer.as_slice())?;
+    }
+    Ok(())
+}
+
+pub fn import_and_save_all_vehicles_from_file(input_path: &Path, data_dir_path: &Path, output_dir_path: &Path) -> Result<(), anyhow::Error> {
+    let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
+    let fegov_path = data_dir_path.join(Path::new("vehicles.csv"));
+    let fegov_file = File::open(fegov_path.as_path())?;
+    let fegov_db: Vec<VehicleDataFE> = read_fuelecon_gov_data_from_file(fegov_file)?;
     let epatest_db: Vec<VehicleDataEPA> = vec![];
-    import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, _output_dir_path)
+    import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, output_dir_path)
 }
 
 pub fn import_and_save_all_vehicles(_inputs: &[VehicleInputRecord], _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA], _output_dir_path: &Path) -> Result<(), anyhow::Error> {
