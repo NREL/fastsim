@@ -1,7 +1,7 @@
 use std::path::Path;
 use clap::Parser;
 use std::fs;
-use fastsim_core::vehicle_utils::import_and_save_all_vehicles_from_file;
+use fastsim_core::vehicle_utils::{import_and_save_all_vehicles_from_file, get_fastsim_data_dir};
 
 
 // eliminate db path items; instead, assume we have a config directory on the OS which we'll get via the directories crate
@@ -18,8 +18,8 @@ use fastsim_core::vehicle_utils::import_and_save_all_vehicles_from_file;
 #[clap(author, version, about, long_about = None)]
 struct Args {
     input_file_path: String,
-    data_dir_path: Option<String>,
     output_dir_path: String,
+    data_dir_path: Option<String>,
 }
 
 fn run_import(args: &Args) {
@@ -34,20 +34,14 @@ fn run_import(args: &Args) {
             if !dd_path.exists() {
                 panic!("No data directory at {}", data_dir_str);
             }
-            dd_path
+            dd_path.to_path_buf()
         },
         None => {
-            // TODO: use directories crate to find the fastsim_cache directory
-            // for now, just hard-code it.
-            let fastsim_cache_dir = "C:/Users/mokeefe/AppData/Roaming/fastsim_cache";
-            let dd_path = Path::new(fastsim_cache_dir);
-            if !dd_path.exists() {
-                let result = fs::create_dir_all(dd_path);
-                if result.is_err() {
-                    panic!("Could not create cache directory at {}; {:?}", fastsim_cache_dir, result.err());
-                }
+            if let Some(fastsim_data_dir) = get_fastsim_data_dir() {
+                fastsim_data_dir
+            } else {
+                panic!("Could not create/retrieve FASTSim directory and no other data directory provided");
             }
-            dd_path
         }
     };
     let output_dir_path = Path::new(&args.output_dir_path);
@@ -63,7 +57,7 @@ fn run_import(args: &Args) {
     let result =
         import_and_save_all_vehicles_from_file(
             input_file_path,
-            data_dir_path,
+            data_dir_path.as_path(),
             output_dir_path);
     if result.is_err() {
         println!("Error with importing and saving all vehicles from file: {:?}", result.err());

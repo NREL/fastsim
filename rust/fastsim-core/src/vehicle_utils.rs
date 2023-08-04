@@ -12,6 +12,7 @@ use std::io::prelude::Write;
 use std::option::Option;
 use std::path::PathBuf;
 use serde::de::DeserializeOwned;
+use directories::ProjectDirs;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -1751,6 +1752,26 @@ pub fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
         println!("Filename: {}", file.name());
     }
     Ok(())
+}
+
+/// Creates/gets an OS-specific data directory and returns the path.
+pub fn get_fastsim_data_dir() -> Option<PathBuf> {
+    if let Some(proj_dirs) = ProjectDirs::from("gov", "NREL", "fastsim") {
+        let mut path = PathBuf::from(proj_dirs.config_dir());
+        path.push(Path::new("data"));
+        if !path.exists() {
+            let result = std::fs::create_dir_all(path.as_path());
+            if result.is_err() {
+                None
+            } else {
+                Some(path)
+            }
+        } else {
+            Some(path)
+        }
+    } else {
+        None
+    }
 }
 
 /// Extract zip archive at filepath to destination directory at dest_dir
