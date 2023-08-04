@@ -5,12 +5,12 @@ use argmin::solver::neldermead::NelderMead;
 use curl::easy::{Easy, SslOpt};
 use ndarray::{array, Array1};
 use polynomial::Polynomial;
+use serde::de::DeserializeOwned;
 use serde_xml_rs::from_str;
 use std::collections::HashMap;
 use std::fs::File;
 use std::option::Option;
 use std::path::PathBuf;
-use serde::de::DeserializeOwned;
 use tempdir::TempDir;
 
 use crate::air::*;
@@ -951,9 +951,7 @@ where
         mc_pwr_out_perc: Array1::from(vec![
             0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0,
         ]),
-        mc_eff_map: Array1::from(vec![
-            0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
-        ]),
+        mc_eff_map: Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()),
         mc_sec_to_peak_pwr: 4.0,
         mc_pe_kg_per_kw,
         mc_pe_base_kg,
@@ -1254,9 +1252,7 @@ fn vehicle_import_from_id(
             / (IN_PER_M * IN_PER_M),
         fs_kwh: other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge,
         idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
-        mc_eff_map: Array1::from(vec![
-            0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
-        ]),
+        mc_eff_map: Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()),
         wheel_rr_coef: 0.0,
         stop_start: fe_gov_data.start_stop == "Y",
         force_aux_on_fc: false,
@@ -1588,12 +1584,16 @@ pub struct VehicleInputRecord {
     pub fc_max_kw: Option<f64>,
 }
 
-fn read_vehicle_input_records_from_file(filepath: &Path) -> Result<Vec<VehicleInputRecord>, anyhow::Error> {
+fn read_vehicle_input_records_from_file(
+    filepath: &Path,
+) -> Result<Vec<VehicleInputRecord>, anyhow::Error> {
     let f = File::open(filepath)?;
     read_records_from_file(f)
 }
 
-fn read_records_from_file<T: DeserializeOwned>(rdr: impl std::io::Read + std::io::Seek) -> Result<Vec<T>, anyhow::Error> {
+fn read_records_from_file<T: DeserializeOwned>(
+    rdr: impl std::io::Read + std::io::Seek,
+) -> Result<Vec<T>, anyhow::Error> {
     let mut output: Vec<T> = Vec::new();
     let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
@@ -1603,7 +1603,9 @@ fn read_records_from_file<T: DeserializeOwned>(rdr: impl std::io::Read + std::io
     Ok(output)
 }
 
-fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
+fn read_fuelecon_gov_data_from_file(
+    rdr: impl std::io::Read + std::io::Seek,
+) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
     let mut output: Vec<VehicleDataFE> = Vec::new();
     let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
@@ -1647,7 +1649,9 @@ fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek) -> 
             // #[serde(rename = "emissionsList")]
             // /// List of emissions tests
             // pub emissions_list: EmissionsListFE,
-            emissions_list: EmissionsListFE { emissions_info: vec![] },
+            emissions_list: EmissionsListFE {
+                emissions_info: vec![],
+            },
             // #[serde(default)]
             // /// Description of engine
             // pub eng_dscr: String,
@@ -1697,7 +1701,13 @@ fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek) -> 
             // #[serde(rename = "phevBlended")]
             // /// Vehicle operates on blend of gasoline and electricity
             // pub phev_blended: bool,
-            phev_blended: item.get("phevBlended").unwrap().trim().to_lowercase().parse::<bool>().unwrap(),
+            phev_blended: item
+                .get("phevBlended")
+                .unwrap()
+                .trim()
+                .to_lowercase()
+                .parse::<bool>()
+                .unwrap(),
             // #[serde(rename = "phevCity")]
             // /// EPA composite gasoline-electricity city MPGe
             // pub phev_city_mpge: i32,
@@ -1764,7 +1774,12 @@ fn extract_fueleconomy_data_from_zip(filepath: &Path) -> Result<Vec<VehicleDataF
     Ok(output)
 }
 
-pub fn import_and_save_all_vehicles_from_file(_input_path: &Path, _fegov_data_path: &Path, _epatest_data_path: &Path, _output_dir_path: &Path) -> Result<(), anyhow::Error> {
+pub fn import_and_save_all_vehicles_from_file(
+    _input_path: &Path,
+    _fegov_data_path: &Path,
+    _epatest_data_path: &Path,
+    _output_dir_path: &Path,
+) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(_input_path)?;
     if false {
         println!("FuelEconomy.gov data:");
@@ -1777,7 +1792,12 @@ pub fn import_and_save_all_vehicles_from_file(_input_path: &Path, _fegov_data_pa
     import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, _output_dir_path)
 }
 
-pub fn import_and_save_all_vehicles(_inputs: &[VehicleInputRecord], _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA], _output_dir_path: &Path) -> Result<(), anyhow::Error> {
+pub fn import_and_save_all_vehicles(
+    _inputs: &[VehicleInputRecord],
+    _fegov_data: &[VehicleDataFE],
+    _epatest_data: &[VehicleDataEPA],
+    _output_dir_path: &Path,
+) -> Result<(), anyhow::Error> {
     for vir in _inputs {
         let maybe_veh = extract_vehicle(vir, _fegov_data, _epatest_data);
         match maybe_veh {
@@ -1789,14 +1809,17 @@ pub fn import_and_save_all_vehicles(_inputs: &[VehicleInputRecord], _fegov_data:
                 match outfile_str {
                     Some(full_outfile) => {
                         veh.to_file(full_outfile)?;
-                    },
+                    }
                     None => {
                         println!("Could not determine output file path");
                     }
                 }
-            },
+            }
             None => {
-                println!("Unable to extract vehicle for {} {} {}", vir.year, vir.make, vir.model);
+                println!(
+                    "Unable to extract vehicle for {} {} {}",
+                    vir.year, vir.make, vir.model
+                );
             }
         }
     }
@@ -1804,7 +1827,11 @@ pub fn import_and_save_all_vehicles(_inputs: &[VehicleInputRecord], _fegov_data:
 }
 
 /// Extract the vehicle from the given data-set
-pub fn extract_vehicle(_input: &VehicleInputRecord, _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
+pub fn extract_vehicle(
+    _input: &VehicleInputRecord,
+    _fegov_data: &[VehicleDataFE],
+    _epatest_data: &[VehicleDataEPA],
+) -> Option<RustVehicle> {
     let default_veh: RustVehicle = RustVehicle::default();
     Some(default_veh)
 }
