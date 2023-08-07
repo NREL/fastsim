@@ -358,10 +358,10 @@ pub struct RustVehicle {
     #[serde(skip)]
     pub fc_perc_out_array: Vec<f64>,
     #[doc(hidden)]
-    #[serde(skip)]
+    #[serde(default = "RustVehicle::default_regen_a")]
     pub regen_a: f64,
     #[doc(hidden)]
-    #[serde(skip)]
+    #[serde(default = "RustVehicle::default_regen_b")]
     pub regen_b: f64,
     #[doc(hidden)]
     #[serde(skip)]
@@ -547,6 +547,13 @@ impl RustVehicle {
             / (1.0 + self.veh_cg_m * self.wheel_coef_of_fric / self.wheel_base_m))
             / (self.veh_kg * self.props.a_grav_mps2)
             * self.props.a_grav_mps2;
+    }
+
+    const fn default_regen_a() -> f64 {
+        500.0
+    }
+    const fn default_regen_b() -> f64 {
+        0.99
     }
 
     pub fn max_regen_kwh(&self) -> f64 {
