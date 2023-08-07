@@ -1,7 +1,7 @@
 import unittest
 from fastsim import utils
 
-class test_utils(unittest.TestCase):
+class TestUtils(unittest.TestCase):
     def setUp(self):
         utils.disable_logging()
     
