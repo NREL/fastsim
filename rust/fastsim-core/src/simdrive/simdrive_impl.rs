@@ -1536,7 +1536,24 @@ impl RustSimDrive {
             && (self.veh.veh_pt_type == HEV || self.veh.veh_pt_type == PHEV)
             && (self.veh.fc_eff_type != H2FC)
         {
-            self.mc_mech_kw_out_ach[i] = self.mc_mech_kw_4forced_fc[i];
+            self.mc_mech_kw_out_ach[i] = match self.veh.mc_pwr_frac_for_fc_on {
+                None => self.mc_mech_kw_4forced_fc[i],
+                Some(mc_pwr_frac_for_fc_on) => (mc_pwr_frac_for_fc_on * self.trans_kw_in_ach[i])
+                    // mc_mech_kw_out_ach must be large enough to make up any fc deficit
+                    .max(self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i])
+                    // but not large enough to exceed ess capability
+                    .min({
+                        let ess_avail_for_prop = self.cur_ess_max_kw_out[i] - self.aux_in_kw[i];
+                        #[allow(clippy::let_and_return)] // wanted to be super explicit
+                        let mc_avail_for_prop = ess_avail_for_prop
+                            * self.veh.mc_full_eff_array[cmp::max(
+                                1,
+                                first_grtr(&self.veh.mc_kw_in_array, ess_avail_for_prop).unwrap()
+                                    - 1,
+                            )];
+                        mc_avail_for_prop
+                    }),
+            };
         } else if self.trans_kw_in_ach[i] <= 0.0 {
             if self.veh.fc_eff_type != H2FC && self.veh.fc_max_kw > 0.0 {
                 if self.can_pwr_all_elec[i] {
@@ -1560,7 +1577,24 @@ impl RustSimDrive {
             self.mc_mech_kw_out_ach[i] = self.trans_kw_in_ach[i]
         } else {
             // Otherwise, limit `mc_mech_kw_out_ach` to the greater of `min_mc_kw_2help_fc` or `mc_kw_if_fc_req`
-            self.mc_mech_kw_out_ach[i] = self.min_mc_kw_2help_fc[i].max(self.mc_kw_if_fc_req[i])
+            self.mc_mech_kw_out_ach[i] = match self.veh.mc_pwr_frac_for_fc_on {
+                None => self.min_mc_kw_2help_fc[i].max(self.mc_kw_if_fc_req[i]),
+                Some(mc_pwr_frac_for_fc_on) => (mc_pwr_frac_for_fc_on * self.trans_kw_in_ach[i])
+                    // mc_mech_kw_out_ach must be large enough to make up any fc deficit
+                    .max(self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i])
+                    // but not large enough to exceed ess capability
+                    .min({
+                        let ess_avail_for_prop = self.cur_ess_max_kw_out[i] - self.aux_in_kw[i];
+                        #[allow(clippy::let_and_return)] // wanted to be super explicit
+                        let mc_avail_for_prop = ess_avail_for_prop
+                            * self.veh.mc_full_eff_array[cmp::max(
+                                1,
+                                first_grtr(&self.veh.mc_kw_in_array, ess_avail_for_prop).unwrap()
+                                    - 1,
+                            )];
+                        mc_avail_for_prop
+                    }),
+            };
         }
         // end set mc_mech_kw_out_ach
 
@@ -1689,6 +1723,7 @@ impl RustSimDrive {
     pub fn set_fc_power(&mut self, i: usize) -> Result<(), anyhow::Error> {
         if self.veh.fc_max_kw == 0.0 {
             self.fc_kw_out_ach[i] = 0.0;
+        // H2FC set of `self.fc_kw_out_ach[i]` is innconsistent with other powertrains  
         } else if self.veh.fc_eff_type == H2FC {
             self.fc_kw_out_ach[i] = min(
                 self.cur_max_fc_kw_out[i],
