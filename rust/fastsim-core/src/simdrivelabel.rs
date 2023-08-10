@@ -854,6 +854,7 @@ mod simdrivelabel_tests {
             mc_eff_map: Array1::from(vec![
                 0.84, 0.86, 0.88, 0.9, 0.91, 0.92, 0.94, 0.95, 0.95, 0.94, 0.93,
             ]),
+            mc_pwr_frac_for_fc_on: Default::default(),
             mc_sec_to_peak_pwr: 3.0,
             mc_pe_kg_per_kw: 0.833,
             mc_pe_base_kg: 21.6,

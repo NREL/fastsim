@@ -13,7 +13,6 @@ use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
-use crate::utils::*;
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
 /// # Arguments

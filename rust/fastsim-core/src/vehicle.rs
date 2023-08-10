@@ -208,6 +208,12 @@ pub struct RustVehicle {
     #[serde(alias = "idleFcKw")]
     #[validate(range(min = 0))]
     pub idle_fc_kw: f64,
+    /// Fraction of power handled by electric sys when fc is on.  
+    /// Uses closes possible power split to this value when fc is on,
+    /// respecting component limits.  If 1, then all power comes
+    /// from mc; if 0, then all power comes from fc.  
+    #[validate(range(min = 0., max = 1.))]
+    pub mc_pwr_frac_for_fc_on: Option<f64>,
     /// Peak continuous electric motor power, $kW$
     #[serde(alias = "mcMaxElecInKw")]
     #[validate(range(min = 0))]
@@ -321,7 +327,7 @@ pub struct RustVehicle {
     /// Force auxiliary power load to come from fuel converter
     #[serde(alias = "forceAuxOnFC")]
     pub force_aux_on_fc: bool,
-    /// Alternator efficiency
+    /// Alternator efficiency, only used with auxiliary power load if `veh.no_elec_aux == false`
     #[serde(alias = "altEff")]
     #[validate(range(min = 0, max = 1))]
     pub alt_eff: f64,
@@ -372,6 +378,10 @@ pub struct RustVehicle {
     #[doc(hidden)]
     // all of the parameters that are set in `set_derived` should be skipped by serde
     #[serde(skip)]
+    /// Auxiliary loads forced to go through alternator, rather than directly from ESS. \
+    /// `true` for any vehicle with `no_elec_sys` (e.g. `veh_pt_type == CONV`),
+    /// or if `mc_max_kw` is less than demanded `aux_kw`,
+    /// or if `force_aux_on_fc` is set to `true`
     pub no_elec_aux: bool,
     #[doc(hidden)]
     #[serde(skip)]
@@ -400,6 +410,9 @@ pub struct RustVehicle {
     pub mc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
     #[serde(skip)]
+    /// maximum theoretical input motor power,
+    /// accounting for motor efficiency at all power levels,
+    /// maximum of `mc_kw_in_array`
     pub mc_max_elec_in_kw: f64,
     #[doc(hidden)]
     #[serde(skip)]
@@ -842,6 +855,7 @@ impl RustVehicle {
             fc_kw_per_kg: 2.13,
             min_fc_time_on: 30.0,
             idle_fc_kw: 2.5,
+            mc_pwr_frac_for_fc_on: None,
             mc_max_kw: 0.0,
             mc_peak_eff_override: Default::default(),
             mc_pwr_out_perc: array![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0],
@@ -1163,6 +1177,7 @@ mod tests {
             fc_kw_per_kg,
             min_fc_time_on,
             idle_fc_kw,
+            mc_pwr_frac_for_fc_on: None,
             mc_max_kw,
             mc_pwr_out_perc,
             mc_eff_map: array![0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92],
