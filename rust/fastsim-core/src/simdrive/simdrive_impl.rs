@@ -1542,12 +1542,12 @@ impl RustSimDrive {
                     .max(self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i])
                     // but not large enough to exceed ess capability
                     .min({
-                        let ess_avail_for_prop = self.cur_ess_max_kw_out[i] - self.aux_in_kw[i];
                         #[allow(clippy::let_and_return)] // wanted to be super explicit
-                        let mc_avail_for_prop = ess_avail_for_prop
-                            * self.veh.mc_full_eff_array[cmp::max(
+                        let mc_avail_for_prop = self.cur_max_elec_kw[i]
+                            * self.veh.mc_full_eff_array[cmp::min(
                                 1,
-                                first_grtr(&self.veh.mc_kw_in_array, ess_avail_for_prop).unwrap()
+                                first_grtr(&self.veh.mc_kw_in_array, self.cur_max_elec_kw[i])
+                                    .unwrap()
                                     - 1,
                             )];
                         mc_avail_for_prop
