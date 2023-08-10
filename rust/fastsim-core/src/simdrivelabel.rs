@@ -10,10 +10,8 @@ use crate::imports::*;
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
 use crate::proc_macros::ApproxEq;
-
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
-
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
 use crate::vehicle;
 
@@ -759,6 +757,7 @@ pub fn get_label_fe_phev_py(
 #[cfg(test)]
 mod simdrivelabel_tests {
     use super::*;
+    use crate::vehicle_utils::VehicleField;
 
     #[test]
     fn test_get_label_fe_conv() {
@@ -821,7 +820,7 @@ mod simdrivelabel_tests {
             selection: 13,
             veh_year: 2016,
             veh_pt_type: "PHEV".into(),
-            drag_coef: 0.3,
+            drag_coef: VehicleField::new(0.3),
             frontal_area_m2: 2.565,
             glider_kg: 950.564,
             veh_cg_m: 0.53,

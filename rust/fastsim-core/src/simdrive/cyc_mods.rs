@@ -332,8 +332,9 @@ impl RustSimDrive {
             };
             let g = self.props.a_grav_mps2;
             let m = self.veh.veh_kg;
-            let rho_cdfa =
-                self.props.air_density_kg_per_m3 * self.veh.drag_coef * self.veh.frontal_area_m2;
+            let rho_cdfa = self.veh.drag_coef.clone()
+                * self.props.air_density_kg_per_m3
+                * self.veh.frontal_area_m2;
             let rrc = self.veh.wheel_rr_coef;
             -1.0 * ((g / v) * (atan_grade_sin + rrc * atan_grade_cos)
                 + (0.5 * rho_cdfa * (1.0 / m) * v))
@@ -533,7 +534,7 @@ impl RustSimDrive {
         let grade_by_distance = Array::from_vec(grade_by_distance);
         let veh_mass_kg = self.veh.veh_kg;
         let air_density_kg_per_m3 = self.props.air_density_kg_per_m3;
-        let cdfa_m2 = self.veh.drag_coef * self.veh.frontal_area_m2;
+        let cdfa_m2 = self.veh.drag_coef.clone() * self.veh.frontal_area_m2;
         let rrc = self.veh.wheel_rr_coef;
         let gravity_m_per_s2 = self.props.a_grav_mps2;
         // distance traveled while stopping via friction-braking (i.e., distance to brake)

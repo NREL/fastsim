@@ -1,10 +1,13 @@
 //! Module for utility functions that support the vehicle struct.
 
+// rust crates
 use argmin::core::{CostFunction, Error, Executor, OptimizationResult, State};
 use argmin::solver::neldermead::NelderMead;
 use ndarray::{array, Array1};
 use polynomial::Polynomial;
+use validator::ValidationError;
 
+// local
 use crate::air::*;
 use crate::cycle::RustCycle;
 use crate::imports::*;
@@ -96,7 +99,7 @@ pub fn abc_to_drag_coeffs(
         wheel_rr_coef = a_newton / veh.veh_kg / props.a_grav_mps2;
     }
 
-    veh.drag_coef = drag_coef;
+    veh.drag_coef.value = drag_coef;
     veh.wheel_rr_coef = wheel_rr_coef;
 
     (drag_coef, wheel_rr_coef)
@@ -131,7 +134,7 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
         err += 0.5 * (time_steps[index + 1] - time_steps[index]) * (y[index] + y[index + 1]);
     }
 
-    return err / (time_steps.last().unwrap() - time_steps[0]);
+    return err / (time_steps.last().unwrap() - time_steps.first().unwrap());
 }
 
 struct GetError<'a> {
@@ -149,7 +152,7 @@ impl CostFunction for GetError<'_> {
         let cyc: RustCycle = self.cycle.clone();
         let dyno_func_lb: Polynomial<f64> = self.dyno_func_lb.clone();
 
-        veh.drag_coef = x[0];
+        veh.drag_coef.value = x[0];
         veh.wheel_rr_coef = x[1];
 
         let mut sd_coast: RustSimDrive = RustSimDrive::new(self.cycle.clone(), veh);
@@ -177,6 +180,130 @@ impl CostFunction for GetError<'_> {
             .slice_move(s![0..cutoff]),
             cyc.time_s.slice_move(s![0..cutoff]),
         ))
+    }
+}
+
+macro_rules! array_and_scalar_ops {
+    ($vft: ty) => {
+        impl std::ops::Mul for VehicleField<$vft> {
+            type Output = $vft;
+            fn mul(self, rhs: Self) -> Self::Output {
+                self.value * rhs.value
+            }
+        }
+        impl std::ops::Mul<$vft> for VehicleField<$vft> {
+            type Output = $vft;
+            fn mul(self, rhs: $vft) -> Self::Output {
+                self.value * rhs
+            }
+        }
+        impl std::ops::Add for VehicleField<$vft> {
+            type Output = $vft;
+            fn add(self, rhs: Self) -> Self::Output {
+                self.value + rhs.value
+            }
+        }
+        impl std::ops::Add<$vft> for VehicleField<$vft> {
+            type Output = $vft;
+            fn add(self, rhs: $vft) -> Self::Output {
+                self.value + rhs
+            }
+        }
+        impl std::ops::Div for VehicleField<$vft> {
+            type Output = $vft;
+            fn div(self, rhs: Self) -> Self::Output {
+                self.value / rhs.value
+            }
+        }
+        impl std::ops::Div<$vft> for VehicleField<$vft> {
+            type Output = $vft;
+            fn div(self, rhs: $vft) -> Self::Output {
+                self.value / rhs
+            }
+        }
+        impl std::ops::Sub for VehicleField<$vft> {
+            type Output = $vft;
+            fn sub(self, rhs: Self) -> Self::Output {
+                self.value - rhs.value
+            }
+        }
+        impl std::ops::Sub<$vft> for VehicleField<$vft> {
+            type Output = $vft;
+            fn sub(self, rhs: $vft) -> Self::Output {
+                self.value - rhs
+            }
+        }
+        impl std::ops::Rem for VehicleField<$vft> {
+            type Output = $vft;
+            fn rem(self, rhs: Self) -> Self::Output {
+                self.value % rhs.value
+            }
+        }
+    };
+}
+
+impl std::cmp::PartialEq<VehicleField<f64>> for VehicleField<f64> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl std::cmp::PartialEq<f64> for VehicleField<f64> {
+    fn eq(&self, other: &f64) -> bool {
+        &self.value == other
+    }
+}
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+pub struct VehicleField<T>
+where
+    T: PartialEq,
+{
+    value: T,
+    doc: Option<String>,
+    orphaned: bool,
+}
+
+impl<T> ApproxEq for VehicleField<T>
+where
+    T: ApproxEq + PartialEq,
+{
+    /// Returns `true` if `value` fields are approximately equal
+    fn approx_eq(&self, other: &Self, tol: f64) -> bool {
+        self.value.approx_eq(&other.value, tol)
+    }
+}
+
+impl<T> VehicleField<T>
+where
+    T: PartialOrd + PartialEq + Default,
+{
+    pub fn new(value: T) -> Self {
+        Self {
+            value,
+            ..Default::default()
+        }
+    }
+}
+
+array_and_scalar_ops!(f64);
+array_and_scalar_ops!(u32);
+array_and_scalar_ops!(Array1<f64>);
+
+impl core::ops::Index<usize> for VehicleField<Array1<f64>> {
+    type Output = f64;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.value[index]
+    }
+}
+
+/// Validate range of f64
+pub(crate) fn validate_greater_than_zero_f64(
+    value: &VehicleField<f64>,
+) -> Result<(), ValidationError> {
+    match value.value {
+        v if v > 0. => Ok(()),
+        _ => Err(ValidationError::new("Value not in specified range.")),
     }
 }
 
@@ -219,7 +346,7 @@ mod vehicle_utils_tests {
 
         assert!(drag_coef.approx_eq(&0.24676817210529464, 1e-5));
         assert!(wheel_rr_coef.approx_eq(&0.0068603812443132645, 1e-6));
-        assert_eq!(drag_coef, veh.drag_coef);
+        assert_eq!(veh.drag_coef, drag_coef);
         assert_eq!(wheel_rr_coef, veh.wheel_rr_coef);
     }
 }

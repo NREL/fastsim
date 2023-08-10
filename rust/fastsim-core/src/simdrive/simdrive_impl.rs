@@ -843,9 +843,9 @@ impl RustSimDrive {
 
         let grade = self.lookup_grade_for_step(i, Some(mps_ach));
 
-        self.drag_kw[i] = 0.5
+        self.drag_kw[i] = self.veh.drag_coef.clone()
+            * 0.5
             * self.props.air_density_kg_per_m3
-            * self.veh.drag_coef
             * self.veh.frontal_area_m2
             * ((self.mps_ach[i - 1] + mps_ach) / 2.0).powf(3.0)
             / 1e3;
@@ -952,21 +952,18 @@ impl RustSimDrive {
                 grade_iter += 1;
                 grade = grade_estimate;
 
-                let drag3 = 1.0 / 16.0
+                let drag3 = self.veh.drag_coef.clone() * 1.0 / 16.0
                     * self.props.air_density_kg_per_m3
-                    * self.veh.drag_coef
                     * self.veh.frontal_area_m2;
                 let accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s_at_i(i);
-                let drag2 = 3.0 / 16.0
+                let drag2 = self.veh.drag_coef.clone() * 3.0 / 16.0
                     * self.props.air_density_kg_per_m3
-                    * self.veh.drag_coef
                     * self.veh.frontal_area_m2
                     * self.mps_ach[i - 1];
                 let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels
                     / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powf(2.0));
-                let drag1 = 3.0 / 16.0
+                let drag1 = self.veh.drag_coef.clone() * 3.0 / 16.0
                     * self.props.air_density_kg_per_m3
-                    * self.veh.drag_coef
                     * self.veh.frontal_area_m2
                     * self.mps_ach[i - 1].powf(2.0);
                 let roll1 = 0.5
@@ -977,9 +974,8 @@ impl RustSimDrive {
                 let ascent1 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin() * self.veh.veh_kg;
                 let accel0 =
                     -0.5 * self.veh.veh_kg * self.mps_ach[i - 1].powf(2.0) / self.cyc.dt_s_at_i(i);
-                let drag0 = 1.0 / 16.0
+                let drag0 = self.veh.drag_coef.clone() * 1.0 / 16.0
                     * self.props.air_density_kg_per_m3
-                    * self.veh.drag_coef
                     * self.veh.frontal_area_m2
                     * self.mps_ach[i - 1].powf(3.0);
                 let roll0 = 0.5

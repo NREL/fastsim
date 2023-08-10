@@ -6,6 +6,7 @@ use crate::params::*;
 use crate::proc_macros::{add_pyo3_api, doc_field, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
+use crate::vehicle_utils::VehicleField;
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -102,19 +103,15 @@ pub struct RustVehicle {
     #[serde(skip)]
     #[api(has_orphaned)]
     /// Physical properties, see [RustPhysicalProperties](RustPhysicalProperties)
-    #[doc_field(skip_doc)]
     pub props: RustPhysicalProperties,
     /// Vehicle name
     #[serde(alias = "name")]
-    #[doc_field(skip_doc)]
     pub scenario_name: String,
     /// Vehicle database ID
     #[serde(skip)]
-    #[doc_field(skip_doc)]
     pub selection: u32,
     /// Vehicle year
     #[serde(alias = "vehModelYear")]
-    #[doc_field(skip_doc)]
     pub veh_year: u32,
     /// Vehicle powertrain type, one of \[[CONV](CONV), [HEV](HEV), [PHEV](PHEV), [BEV](BEV)\]
     #[serde(alias = "vehPtType")]
@@ -122,12 +119,12 @@ pub struct RustVehicle {
         path = "VEH_PT_TYPE_OPTIONS_REGEX",
         message = "must be one of [\"Conv\", \"HEV\", \"PHEV\", \"BEV\"]"
     ))]
-    #[doc_field(skip_doc)]
     pub veh_pt_type: String,
     /// Aerodynamic drag coefficient
     #[serde(alias = "dragCoef")]
-    #[validate(range(min = 0))]
-    pub drag_coef: f64,
+    // #[validate(range(min = 0))]
+    #[api(skip_get, skip_set)]
+    pub drag_coef: VehicleField<f64>,
     /// Frontal area, $m^2$
     #[serde(alias = "frontalAreaM2")]
     #[validate(range(min = 0))]
@@ -852,7 +849,7 @@ impl RustVehicle {
             selection: 5,
             veh_year: 2016,
             veh_pt_type: String::from("Conv"),
-            drag_coef: 0.355,
+            drag_coef: VehicleField::new(0.355),
             frontal_area_m2: 3.066,
             glider_kg: 1359.166,
             veh_cg_m: 0.53,
@@ -1175,7 +1172,7 @@ mod tests {
             selection,
             veh_year,
             veh_pt_type, // bad input
-            drag_coef,
+            drag_coef: VehicleField::new(drag_coef),
             frontal_area_m2,
             glider_kg, // bad input
             veh_cg_m,
