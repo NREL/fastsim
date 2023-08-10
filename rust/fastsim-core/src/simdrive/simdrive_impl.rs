@@ -4,7 +4,6 @@ use crate::cycle::{RustCycle, RustCycleCache};
 use crate::imports::*;
 use crate::params;
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
-use crate::utils::{arrmax, first_grtr, max, min, ndarrmax, ndarrmin};
 use crate::vehicle::*;
 
 pub struct RendezvousTrajectory {
@@ -1723,7 +1722,7 @@ impl RustSimDrive {
     pub fn set_fc_power(&mut self, i: usize) -> Result<(), anyhow::Error> {
         if self.veh.fc_max_kw == 0.0 {
             self.fc_kw_out_ach[i] = 0.0;
-        // H2FC set of `self.fc_kw_out_ach[i]` is innconsistent with other powertrains  
+        // H2FC set of `self.fc_kw_out_ach[i]` is inconsistent with other powertrains
         } else if self.veh.fc_eff_type == H2FC {
             self.fc_kw_out_ach[i] = min(
                 self.cur_max_fc_kw_out[i],

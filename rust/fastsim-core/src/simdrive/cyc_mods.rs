@@ -8,7 +8,6 @@ use crate::cycle::{
     trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance, PassingInfo,
 };
 use crate::simdrive::RustSimDrive;
-use crate::utils::{add_from, max, min, ndarrcumsum, ndarrmax, ndarrmin, ndarrunique};
 
 impl RustSimDrive {
     /// Provides the gap-with lead vehicle from start to finish
