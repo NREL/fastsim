@@ -401,17 +401,13 @@ pub struct RustSimDrive {
     /// considering `ess_cap_lim_chg_kw` and `veh.ess_max_kw`
     pub cur_max_ess_chg_kw: Array1<f64>,
     /// Current maximum electrical power that can go toward propulsion:
-    /// if `veh_pt_type == FCEV`, equal to `cur_max_fc_kw_out` + `cur_max_roadway_chg_kw` + `cur_ess_max_kw_out` - `aux_in_kw`,
+    /// if FCEV, equal to `cur_max_fc_kw_out` + `cur_max_roadway_chg_kw` + `cur_ess_max_kw_out` - `aux_in_kw`,
     /// otherwise equal to `cur_max_roadway_chg_kw` + `cur_ess_max_kw_out` - `aux_in_kw`
     pub cur_max_elec_kw: Array1<f64>,
-    /// TODO:
-    /// Limit `veh.mc_max_elec_in_kw` `cur_max_avail_elec_kw`
-    /// TODO: may be bugged?
     pub mc_elec_in_lim_kw: Array1<f64>,
     /// Transient electric motor output power limit,
     /// as determined by achieved motor mechanical power output, `veh.mc_max_kw`, and `veh.ms_secs_to_peak_pwr`
     pub mc_transi_lim_kw: Array1<f64>,
-    /// TODO:
     pub cur_max_mc_kw_out: Array1<f64>,
     pub ess_lim_mc_regen_perc_kw: Array1<f64>,
     /// ESS limit on electricity regeneration,
@@ -449,7 +445,6 @@ pub struct RustSimDrive {
     /// Achieved transmission input power, accounting for `veh.trans_eff`
     pub trans_kw_in_ach: Array1<f64>,
     pub cur_soc_target: Array1<f64>,
-    /// TODO:
     pub min_mc_kw_2help_fc: Array1<f64>,
     /// Achieved electric motor mechanical output power to transmission
     pub mc_mech_kw_out_ach: Array1<f64>,
@@ -494,7 +489,6 @@ pub struct RustSimDrive {
     pub er_ae_kw_out: Array1<f64>,
     pub ess_desired_kw_4fc_eff: Array1<f64>,
     pub ess_kw_if_fc_req: Array1<f64>,
-    ///
     pub cur_max_mc_elec_kw_in: Array1<f64>,
     pub fc_kw_gap_fr_eff: Array1<f64>,
     pub er_kw_if_fc_req: Array1<f64>,
