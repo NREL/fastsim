@@ -184,57 +184,57 @@ impl CostFunction for GetError<'_> {
 }
 
 macro_rules! array_and_scalar_ops {
-    ($vft: ty) => {
-        impl std::ops::Mul for VehicleField<$vft> {
-            type Output = $vft;
+    ($T: ty) => {
+        impl std::ops::Mul for VehicleField<$T> {
+            type Output = $T;
             fn mul(self, rhs: Self) -> Self::Output {
                 self.value * rhs.value
             }
         }
-        impl std::ops::Mul<$vft> for VehicleField<$vft> {
-            type Output = $vft;
-            fn mul(self, rhs: $vft) -> Self::Output {
+        impl std::ops::Mul<$T> for VehicleField<$T> {
+            type Output = $T;
+            fn mul(self, rhs: $T) -> Self::Output {
                 self.value * rhs
             }
         }
-        impl std::ops::Add for VehicleField<$vft> {
-            type Output = $vft;
+        impl std::ops::Add for VehicleField<$T> {
+            type Output = $T;
             fn add(self, rhs: Self) -> Self::Output {
                 self.value + rhs.value
             }
         }
-        impl std::ops::Add<$vft> for VehicleField<$vft> {
-            type Output = $vft;
-            fn add(self, rhs: $vft) -> Self::Output {
+        impl std::ops::Add<$T> for VehicleField<$T> {
+            type Output = $T;
+            fn add(self, rhs: $T) -> Self::Output {
                 self.value + rhs
             }
         }
-        impl std::ops::Div for VehicleField<$vft> {
-            type Output = $vft;
+        impl std::ops::Div for VehicleField<$T> {
+            type Output = $T;
             fn div(self, rhs: Self) -> Self::Output {
                 self.value / rhs.value
             }
         }
-        impl std::ops::Div<$vft> for VehicleField<$vft> {
-            type Output = $vft;
-            fn div(self, rhs: $vft) -> Self::Output {
+        impl std::ops::Div<$T> for VehicleField<$T> {
+            type Output = $T;
+            fn div(self, rhs: $T) -> Self::Output {
                 self.value / rhs
             }
         }
-        impl std::ops::Sub for VehicleField<$vft> {
-            type Output = $vft;
+        impl std::ops::Sub for VehicleField<$T> {
+            type Output = $T;
             fn sub(self, rhs: Self) -> Self::Output {
                 self.value - rhs.value
             }
         }
-        impl std::ops::Sub<$vft> for VehicleField<$vft> {
-            type Output = $vft;
-            fn sub(self, rhs: $vft) -> Self::Output {
+        impl std::ops::Sub<$T> for VehicleField<$T> {
+            type Output = $T;
+            fn sub(self, rhs: $T) -> Self::Output {
                 self.value - rhs
             }
         }
-        impl std::ops::Rem for VehicleField<$vft> {
-            type Output = $vft;
+        impl std::ops::Rem for VehicleField<$T> {
+            type Output = $T;
             fn rem(self, rhs: Self) -> Self::Output {
                 self.value % rhs.value
             }
