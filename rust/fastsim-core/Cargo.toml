@@ -11,9 +11,9 @@ repository = "https://github.com/NREL/fastsim"
 
 [dependencies]
 # uncomment next line for any development work in fastsim-proc-macros
-# proc-macros = { package = "fastsim-proc-macros", path = "./fastsim-proc-macros" }
+proc-macros = { package = "fastsim-proc-macros", path = "./fastsim-proc-macros" }
 # comment next line for any development work in fastsim-proc-macros
-proc-macros = { package = "fastsim-proc-macros", version = "0.1.4" }
+# proc-macros = { package = "fastsim-proc-macros", version = "0.1.4" }
 pyo3 = { workspace = true, features = [
     "extension-module",
     "anyhow",

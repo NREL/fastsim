@@ -180,7 +180,7 @@ pub struct RustVehicle {
     #[serde(alias = "maxFuelConvKw")]
     #[validate(range(min = 0))]
     pub fc_max_kw: f64,
-    /// Fuel converter output power percentage map, x-values of [fc_eff_map](RustVehicle::fc_eff_map)
+    /// Fuel converter output power percentage map, x values of [fc_eff_map](RustVehicle::fc_eff_map)
     #[serde(alias = "fcPwrOutPerc")]
     pub fc_pwr_out_perc: Array1<f64>,
     /// Fuel converter efficiency map
@@ -218,7 +218,7 @@ pub struct RustVehicle {
     #[serde(alias = "mcMaxElecInKw")]
     #[validate(range(min = 0))]
     pub mc_max_kw: f64,
-    /// Electric motor output power percentage map, x-values of [mc_eff_map](RustVehicle::mc_eff_map)
+    /// Electric motor output power percentage map, x values of [mc_eff_map](RustVehicle::mc_eff_map)
     #[serde(alias = "mcPwrOutPerc")]
     pub mc_pwr_out_perc: Array1<f64>,
     /// Electric motor efficiency map
