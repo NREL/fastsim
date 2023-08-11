@@ -10,11 +10,7 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         for field in named.iter_mut() {
             let mut skip_doc = false;
-            let keep = get_attrs_to_keep(field, &mut skip_doc);
-            // println!("options {:?}", opts);
-            let mut iter = keep.iter();
-            // this drops attrs with api, removing the field attribute from the struct def
-            field.attrs.retain(|_| *iter.next().unwrap());
+            remove_handled_attrs(field, &mut skip_doc);
             if !skip_doc {
                 // create new doc field as string
                 new_doc_fields.push_str(&format!(
@@ -43,8 +39,8 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ast.into_token_stream().into()
 }
 
-/// Returns attributes to retain, i.e. attributes that are not handled by the [doc_field] macro
-fn get_attrs_to_keep(field: &mut syn::Field, skip_doc: &mut bool) -> Vec<bool> {
+/// Remove field attributes, i.e. attributes that are not handled by the [doc_field] macro
+fn remove_handled_attrs(field: &mut syn::Field, skip_doc: &mut bool) {
     let keep: Vec<bool> = field
         .attrs
         .iter()
@@ -76,5 +72,13 @@ fn get_attrs_to_keep(field: &mut syn::Field, skip_doc: &mut bool) -> Vec<bool> {
             _ => true,
         })
         .collect();
-    keep
+    // println!("options {:?}", opts);
+    // this drops attrs matching `#[doc_field]`, removing the field attribute from the struct def
+    let new_attrs: (Vec<&syn::Attribute>, Vec<bool>) = field
+        .attrs
+        .iter()
+        .zip(keep.iter())
+        .filter(|(_a, k)| **k)
+        .unzip();
+    field.attrs = new_attrs.0.iter().cloned().cloned().collect();
 }

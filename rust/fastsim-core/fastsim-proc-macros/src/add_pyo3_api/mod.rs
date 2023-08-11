@@ -78,9 +78,14 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 })
                 .collect();
             // println!("options {:?}", opts);
-            let mut iter = keep.iter();
-            // this drops attrs with api, removing the field attribute from the struct def
-            field.attrs.retain(|_| *iter.next().unwrap());
+            // this drops attrs matching `#[pyo3_api(...)]`, removing the field attribute from the struct def
+            let new_attrs: (Vec<&syn::Attribute>, Vec<bool>) = field
+                .attrs
+                .iter()
+                .zip(keep.iter())
+                .filter(|(_a, k)| **k)
+                .unzip();
+            field.attrs = new_attrs.0.iter().cloned().cloned().collect();
 
             if let syn::Type::Path(type_path) = ftype.clone() {
                 // println!(
