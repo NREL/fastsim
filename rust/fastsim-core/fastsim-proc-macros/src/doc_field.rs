@@ -5,40 +5,38 @@ use crate::imports::*;
 pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
 
-    let new_doc_fields: FieldsNamed = if let syn::Fields::Named(FieldsNamed { named, .. }) =
-        &mut ast.fields
-    {
-        let mut new_doc_fields = String::from("{\n");
-
+    if let syn::Fields::Named(FieldsNamed { named, .. }) = &mut ast.fields {
+        let mut new_doc_fields = TokenStream2::new();
         for field in named.iter_mut() {
             let mut skip_doc = false;
             remove_handled_attrs(field, &mut skip_doc);
 
             if !skip_doc {
-                // create new doc field as string
-                new_doc_fields.push_str(&format!(
-                    "
-                    /// {} documentation -- e.g. info about calibration/validation.
-                    pub {}_doc: Option<String>,\n",
-                    field.ident.as_ref().unwrap(),
-                    field.ident.as_ref().unwrap()
-                ));
+                let field_name = format!("{}_doc", field.ident.to_token_stream());
+                new_doc_fields.extend::<TokenStream2>(quote! {
+                    ///  documentation -- e.g. info about calibration/validation.
+                    pub #field_name: Option<String>,
+                });
             }
         }
 
-        new_doc_fields.push_str(
-            "
+        new_doc_fields.extend::<TokenStream2>(quote! {
             /// Vehicle level documentation -- e.g. info about calibration/validation of vehicle
             /// and/or links to reports or other long-form documentation.
-            pub doc: Option<String>\n}",
-        );
-        syn::parse_str::<FieldsNamed>(&new_doc_fields).unwrap_or_else(|e| abort_call_site!("{}", e))
-    } else {
-        abort_call_site!("Expected use on struct with named fields.")
-    };
+            pub doc: Option<String>,
+        });
+        dbg!(&new_doc_fields);
+        let new_doc_fields: TokenStream2 = quote! {
+            /// Dummy struct that will not be used anywhere
+            pub struct Dummy {
+                #new_doc_fields
+            }
+        };
+        dbg!(&new_doc_fields);
 
-    if let syn::Fields::Named(FieldsNamed { named, .. }) = &mut ast.fields {
-        // named.extend(new_doc_fields.named);
+        let new_doc_fields: FieldsNamed = syn::parse2(new_doc_fields)
+            .map_err(|e| format!("[{}:{}] `parse2` failed. {}", file!(), line!(), e))
+            .unwrap();
 
         let old_named = named.clone();
         named.clear();
@@ -50,20 +48,12 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 re.is_match(&x.ident.to_token_stream().to_string())
             }) {
                 dbg!(i);
-                // named.extend::<Punctuated<Field, Comma>>(
-                //     syn::parse_str::<FieldsNamed>(&format!(
-                //         "{}_doc",
-                //         new_doc_fields.named[i].clone().to_token_stream()
-                //     ))
-                //     .unwrap()
-                //     .named,
-                // );
+                named.push(new_doc_fields.named[i].clone());
                 // might be good to also remove field `i` from `new_doc_fields`
-                // dbg!(named.iter().last().to_token_stream().to_string());
             }
         }
     } else {
-        abort_call_site!("`doc_field` proc macro works only on named structs.");
+        abort_call_site!("Expected use on struct with named fields.")
     };
 
     ast.into_token_stream().into()
