@@ -3,60 +3,68 @@
 use crate::imports::*;
 
 pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
+    let mut item_struct = syn::parse_macro_input!(item as syn::ItemStruct);
 
-    if let syn::Fields::Named(FieldsNamed { named, .. }) = &mut ast.fields {
-        let mut new_doc_fields = TokenStream2::new();
+    let new_fields = if let syn::Fields::Named(FieldsNamed { named, .. }) = &mut item_struct.fields
+    {
+        let mut new_doc_fields: Vec<TokenStream2> = Vec::new();
         for field in named.iter_mut() {
             let mut skip_doc = false;
             remove_handled_attrs(field, &mut skip_doc);
 
             if !skip_doc {
-                let field_name = format!("{}_doc", field.ident.to_token_stream());
-                new_doc_fields.extend::<TokenStream2>(quote! {
-                    ///  documentation -- e.g. info about calibration/validation.
+                let field_name: TokenStream2 = format!("{}_doc", field.ident.to_token_stream())
+                    .parse()
+                    .unwrap();
+                new_doc_fields.push(quote! {
+                    /// # String for documentation -- e.g. info about calibration/validation.
                     pub #field_name: Option<String>,
                 });
             }
         }
 
-        new_doc_fields.extend::<TokenStream2>(quote! {
+        new_doc_fields.push(quote! {
             /// Vehicle level documentation -- e.g. info about calibration/validation of vehicle
             /// and/or links to reports or other long-form documentation.
             pub doc: Option<String>,
         });
-        dbg!(&new_doc_fields);
-        let new_doc_fields: TokenStream2 = quote! {
-            /// Dummy struct that will not be used anywhere
-            pub struct Dummy {
-                #new_doc_fields
-            }
-        };
-        dbg!(&new_doc_fields);
 
-        let new_doc_fields: FieldsNamed = syn::parse2(new_doc_fields)
-            .map_err(|e| format!("[{}:{}] `parse2` failed. {}", file!(), line!(), e))
-            .unwrap();
+        let mut new_fields = TokenStream2::new();
 
-        let old_named = named.clone();
-        named.clear();
-        for old in old_named.into_iter() {
-            named.push(old.clone());
-            if let Some(i) = new_doc_fields.named.iter().position(|x| {
-                let re = Regex::new(&old.ident.to_token_stream().to_string())
-                    .unwrap_or_else(|e| abort!(old.span(), e));
-                re.is_match(&x.ident.to_token_stream().to_string())
+        for orig_field in named.iter() {
+            // fields need to have comma added
+            new_fields.extend(
+                format!("{},", orig_field.to_token_stream())
+                    .parse::<TokenStream2>()
+                    .unwrap(),
+            );
+            if let Some(i) = new_doc_fields.iter().position(|x| {
+                let re = Regex::new(&orig_field.ident.to_token_stream().to_string())
+                    .unwrap_or_else(|err| abort!(orig_field.span(), err));
+                re.is_match(&x.to_token_stream().to_string())
             }) {
-                dbg!(i);
-                named.push(new_doc_fields.named[i].clone());
+                new_fields.extend(new_doc_fields[i].clone());
+                new_doc_fields.remove(i);
                 // might be good to also remove field `i` from `new_doc_fields`
             }
         }
+        new_fields
     } else {
         abort_call_site!("Expected use on struct with named fields.")
     };
 
-    ast.into_token_stream().into()
+    let struct_ident = item_struct.ident.to_token_stream();
+    let struct_vis = item_struct.vis;
+    let struct_attrs = item_struct.attrs;
+
+    let output: TokenStream2 = quote! {
+        #(#struct_attrs)*
+        #struct_vis struct #struct_ident {
+            #new_fields
+        }
+    };
+
+    output.into_token_stream().into()
 }
 
 /// Remove field attributes, i.e. attributes that are not handled by the [doc_field] macro
