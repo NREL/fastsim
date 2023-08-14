@@ -17,22 +17,21 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     .parse()
                     .unwrap();
                 new_doc_fields.push(quote! {
-                    /// # String for documentation -- e.g. info about calibration/validation.
+                    /// String for documentation -- e.g. info about calibration/validation.
                     pub #field_name: Option<String>,
                 });
             }
         }
 
-        new_doc_fields.push(quote! {
+        let mut new_fields = TokenStream2::new();
+        new_fields.extend(quote! {
             /// Vehicle level documentation -- e.g. info about calibration/validation of vehicle
             /// and/or links to reports or other long-form documentation.
             pub doc: Option<String>,
         });
 
-        let mut new_fields = TokenStream2::new();
-
         for orig_field in named.iter() {
-            // fields need to have comma added
+            // fields from `orig_field` need to have comma added
             new_fields.extend(
                 format!("{},", orig_field.to_token_stream())
                     .parse::<TokenStream2>()
@@ -45,7 +44,6 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }) {
                 new_fields.extend(new_doc_fields[i].clone());
                 new_doc_fields.remove(i);
-                // might be good to also remove field `i` from `new_doc_fields`
             }
         }
         new_fields
