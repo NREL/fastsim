@@ -20,3 +20,6 @@ syn = { version = "1.0.92", features = ["full"] }
 
 [lib]
 proc-macro = true
+
+[package.metadata]
+include = ["../../../NOTICE"]
