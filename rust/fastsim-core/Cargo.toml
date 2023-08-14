@@ -41,6 +41,7 @@ include = [
     "resources/udds.csv",
     "resources/hwfet.csv",
     "build.rs",
+    "../../NOTICE",
 ]
 
 [features]
