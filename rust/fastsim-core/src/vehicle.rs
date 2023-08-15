@@ -3,7 +3,7 @@
 // local
 use crate::imports::*;
 use crate::params::*;
-use crate::proc_macros::{add_pyo3_api, ApproxEq};
+use crate::proc_macros::{add_pyo3_api, doc_field, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
@@ -33,7 +33,7 @@ lazy_static! {
         Regex::new("SI|Atkinson|Diesel|H2FC|HD_Diesel").unwrap();
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
+#[doc_field]
 #[add_pyo3_api(
     #[pyo3(name = "set_veh_mass")]
     pub fn set_veh_mass_py(&mut self) {
@@ -88,6 +88,7 @@ lazy_static! {
         Self::mock_vehicle()
     }
 )]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
 /// Struct containing vehicle attributes
 /// # Python Examples
 /// ```python
@@ -101,15 +102,19 @@ pub struct RustVehicle {
     #[serde(skip)]
     #[api(has_orphaned)]
     /// Physical properties, see [RustPhysicalProperties](RustPhysicalProperties)
+    #[doc_field(skip_doc)]
     pub props: RustPhysicalProperties,
     /// Vehicle name
     #[serde(alias = "name")]
+    #[doc_field(skip_doc)]
     pub scenario_name: String,
     /// Vehicle database ID
     #[serde(skip)]
+    #[doc_field(skip_doc)]
     pub selection: u32,
     /// Vehicle year
     #[serde(alias = "vehModelYear")]
+    #[doc_field(skip_doc)]
     pub veh_year: u32,
     /// Vehicle powertrain type, one of \[[CONV](CONV), [HEV](HEV), [PHEV](PHEV), [BEV](BEV)\]
     #[serde(alias = "vehPtType")]
@@ -117,6 +122,7 @@ pub struct RustVehicle {
         path = "VEH_PT_TYPE_OPTIONS_REGEX",
         message = "must be one of [\"Conv\", \"HEV\", \"PHEV\", \"BEV\"]"
     ))]
+    #[doc_field(skip_doc)]
     pub veh_pt_type: String,
     /// Aerodynamic drag coefficient
     #[serde(alias = "dragCoef")]
@@ -174,7 +180,7 @@ pub struct RustVehicle {
     #[serde(alias = "maxFuelConvKw")]
     #[validate(range(min = 0))]
     pub fc_max_kw: f64,
-    /// Fuel converter output power percentage map, x-values of [fc_eff_map](RustVehicle::fc_eff_map)
+    /// Fuel converter output power percentage map, x values of [fc_eff_map](RustVehicle::fc_eff_map)
     #[serde(alias = "fcPwrOutPerc")]
     pub fc_pwr_out_perc: Array1<f64>,
     /// Fuel converter efficiency map
@@ -212,7 +218,7 @@ pub struct RustVehicle {
     #[serde(alias = "mcMaxElecInKw")]
     #[validate(range(min = 0))]
     pub mc_max_kw: f64,
-    /// Electric motor output power percentage map, x-values of [mc_eff_map](RustVehicle::mc_eff_map)
+    /// Electric motor output power percentage map, x values of [mc_eff_map](RustVehicle::mc_eff_map)
     #[serde(alias = "mcPwrOutPerc")]
     pub mc_pwr_out_perc: Array1<f64>,
     /// Electric motor efficiency map
@@ -346,138 +352,181 @@ pub struct RustVehicle {
     #[validate(range(min = 0))]
     pub ess_to_fuel_ok_error: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub small_motor_power_kw: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub large_motor_power_kw: f64,
     // this and other fixed-size arrays can probably be vectors
     // without any performance penalty with the current implementation
     // of the functions in utils.rs
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub fc_perc_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(default = "RustVehicle::default_regen_a")]
     pub regen_a: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(default = "RustVehicle::default_regen_b")]
     pub regen_b: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub charging_on: bool,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub no_elec_sys: bool,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     // all of the parameters that are set in `set_derived` should be skipped by serde
     #[serde(skip)]
     pub no_elec_aux: bool,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub max_roadway_chg_kw: Array1<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub input_kw_out_array: Array1<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub fc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(default)]
     #[serde(alias = "fcEffArray")]
     pub fc_eff_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub modern_max: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_eff_array: Array1<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_kw_in_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_kw_out_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_max_elec_in_kw: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_full_eff_array: Vec<f64>,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(alias = "vehKg")]
     pub veh_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub max_trac_mps2: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub ess_mass_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_mass_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub fc_mass_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub fs_mass_kg: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub mc_perc_out_array: Vec<f64>,
     // these probably don't need to be in rust
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_udds_mpgge: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_hwy_mpgge: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_comb_mpgge: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_udds_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_hwy_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_comb_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_cd_range_mi: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_const65_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_const60_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_const55_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_const45_mph_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_unadj_udds_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_unadj_hwy_kwh_per_mile: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val0_to60_mph: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_ess_life_miles: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_range_miles: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_veh_base_cost: f64,
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     #[serde(skip)]
     pub val_msrp: f64,
     /// Fuel converter efficiency peak override, scales entire curve
@@ -490,6 +539,7 @@ pub struct RustVehicle {
     pub mc_peak_eff_override: Option<f64>,
     #[serde(skip)]
     #[doc(hidden)]
+    #[doc_field(skip_doc)]
     pub orphaned: bool,
 }
 
@@ -674,18 +724,12 @@ impl RustVehicle {
         // self.charging_on = false;
 
         // # Checking if a vehicle has any hybrid components
-        if (self.ess_max_kwh == 0.0) || (self.ess_max_kw == 0.0) || (self.mc_max_kw == 0.0) {
-            self.no_elec_sys = true;
-        } else {
-            self.no_elec_sys = false;
-        }
+        self.no_elec_sys =
+            (self.ess_max_kwh == 0.0) || (self.ess_max_kw == 0.0) || (self.mc_max_kw == 0.0);
 
         // # Checking if aux loads go through an alternator
-        if self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc {
-            self.no_elec_aux = true;
-        } else {
-            self.no_elec_aux = false;
-        }
+        self.no_elec_aux =
+            self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc;
 
         self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
 
@@ -925,6 +969,7 @@ impl RustVehicle {
             fs_mass_kg: Default::default(),
             veh_kg: Default::default(),
             max_trac_mps2: Default::default(),
+            ..Default::default()
         };
         v.set_derived().unwrap();
         v
@@ -1222,6 +1267,7 @@ mod tests {
             regen_b,
             fc_peak_eff_override,
             mc_peak_eff_override, // bad input
+            ..Default::default()
         };
 
         let validation_result = veh.set_derived();

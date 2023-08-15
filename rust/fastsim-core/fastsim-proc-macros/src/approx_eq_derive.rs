@@ -1,3 +1,5 @@
+//! Module that implements [super::approx_eq_derive]
+
 use crate::imports::*;
 
 pub fn approx_eq_derive(input: TokenStream) -> TokenStream {

@@ -947,6 +947,7 @@ mod simdrivelabel_tests {
             fc_peak_eff_override: None,
             mc_peak_eff_override: None,
             orphaned: false,
+            ..Default::default()
         };
         veh.set_derived().unwrap();
 
