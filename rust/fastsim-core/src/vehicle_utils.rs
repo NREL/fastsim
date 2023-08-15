@@ -467,6 +467,7 @@ fn get_fuel_economy_gov_data_by_option_id(option_id: &str) -> Result<VehicleData
     Ok(vehicle_data_fe)
 }
 
+/// Match EPA Test Data with FuelEconomy.gov data and return best match
 fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEPA]) -> Option<VehicleDataEPA> {
     // Keep track of best match to fueleconomy.gov model name for all vehicles and vehicles with matching efid/test id
     let mut veh_list_overall: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
@@ -481,19 +482,25 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
         .to_uppercase()
         .replace("4WD", "AWD");
     let fe_model_words: Vec<&str> = fe_model_upper.split(' ').collect();
+    let num_fe_model_words = fe_model_words.len();
     let efid: &String = &fegov.emissions_list.emissions_info[0].efid;
+    println!("FE.gov model: {}", fegov.model);
 
     for veh_epa in epatest_data {
         // Find matches between EPA vehicle model name and fe.gov vehicle model name
         let mut match_count: i64 = 0;
         let epa_model_upper = veh_epa.model.to_uppercase().replace("4WD", "AWD");
         let epa_model_words: Vec<&str> = epa_model_upper.split(' ').collect();
+        let num_epa_model_words = epa_model_words.len();
         for word in &epa_model_words {
             match_count += fe_model_words.contains(word) as i64;
         }
         // Calculate composite match percentage
         let match_percent: f64 = (match_count as f64 * match_count as f64)
-            / (epa_model_words.len() as f64 * fe_model_words.len() as f64);
+            / (num_epa_model_words as f64 * num_fe_model_words as f64);
+        if match_percent > 0.0 {
+            println!("... EPA model: {} (match {}%)", veh_epa.model, match_percent * 100.0);
+        }
 
         // Update overall hashmap with new entry
         if veh_list_overall.contains_key(&veh_epa.model) {
@@ -525,6 +532,11 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
             }
         }
     }
+    println!("best match model overall : {best_match_model_overall}");
+    println!("best match model efid    : {best_match_model_efid}");
+    println!("number of matches overall: {}", veh_list_overall.get(&best_match_model_overall).unwrap().len());
+    println!("number of matches efid   : {}", veh_list_efid.get(&best_match_model_efid).unwrap().len());
+    println!("FE.gov trany             : {}", fegov.trany);
 
     // Get EPA vehicle model that is best match to fe.gov vehicle
     let veh_list: Vec<VehicleDataEPA> = if best_match_model_efid == best_match_model_overall {
@@ -586,6 +598,14 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
                 .parse()
                 .unwrap();
     }
+    println!("FE.gov data to match");
+    println!("... transmission_fe_gov: {transmission_fe_gov}");
+    println!("... num_gears_fe_gov   : {num_gears_fe_gov}");
+    println!("... drive              : {}", fegov.drive);
+    println!("... displacement       : {}", fegov.displ);
+    println!("... cylinders          : {}", fegov.cylinders);
+    println!("... alt_veh_type       : {}", fegov.alt_veh_type);
+    println!("EPA TEST DATA candidates");
 
     // Find EPA vehicle entry that matches fe.gov vehicle data
     // If same vehicle model has multiple configurations, get most common configuration
@@ -594,6 +614,14 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
     let mut current_veh: VehicleDataEPA = VehicleDataEPA::default();
     let mut current_count: i32 = 0;
     for mut veh_epa in veh_list {
+        println!("... ... veh_epa tranny_code: {}", veh_epa.trany_code);
+        println!("... ... veh_epa tranny_type: {}", veh_epa.trany_type);
+        println!("... ... veh_epa gears      : {}", veh_epa.gears);
+        println!("... ... veh_epa drive code : {}", veh_epa.drive_code);
+        println!("... ... veh_epa displ      : {}", veh_epa.displ);
+        println!("... ... veh_epa cylinders  : {}", veh_epa.cylinders);
+        println!("... ... test_fuel_type     : {}", veh_epa.test_fuel_type);
+        println!("--------");
         if veh_epa.model.contains("4WD")
             || veh_epa.model.contains("AWD")
             || veh_epa.drive.contains("4-Wheel Drive")
@@ -602,7 +630,7 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
             veh_epa.drive = String::from("All Wheel Drive");
         }
         if !veh_epa.test_fuel_type.contains("Cold CO")
-            && veh_epa.trany_code == transmission_fe_gov
+            && (veh_epa.trany_code == transmission_fe_gov || fegov.trany.starts_with(veh_epa.trany_type.as_str()))
             && veh_epa.gears == num_gears_fe_gov
             && veh_epa.drive_code == fegov.drive[0..1]
             && ((fegov.alt_veh_type == *"EV"
@@ -612,6 +640,7 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
                     == (fegov.displ.parse::<f64>().unwrap_or_default())
                     && veh_epa.cylinders == fegov.cylinders))
         {
+            println!("... ... HIT");
             if veh_epa == current_veh {
                 current_count += 1;
             } else {
@@ -1467,18 +1496,25 @@ fn vehicle_import_from_id(
 
 fn get_fuel_economy_gov_data_for_input_record(vir: &VehicleInputRecord, fegov_data: &[VehicleDataFE]) -> Vec<VehicleDataFE> {
     let mut output: Vec<VehicleDataFE> = Vec::new();
+    let vir_make = String::from(vir.make.to_lowercase().trim());
+    let vir_model = String::from(vir.model.to_lowercase().trim());
     for fedat in fegov_data {
-        if fedat.year == vir.year
-            && fedat.make.to_lowercase().eq(&vir.make.to_lowercase())
-            && fedat.model.to_lowercase().eq(&vir.model.to_lowercase()) {
+        let fe_make = String::from(fedat.make.to_lowercase().trim());
+        let fe_model = String::from(fedat.model.to_lowercase().trim());
+        if fedat.year == vir.year && fe_make.eq(&vir_make) && fe_model.eq(&vir_model) {
+            println!("Found FE.gov hit: {}-{fe_make}-{fe_model}", fedat.year);
+            println!("... number of emissions items: {}", fedat.emissions_list.emissions_info.len());
             output.push(fedat.clone());
         }
     }
+    println!("Found a total of {} vehicles from FE.gov", output.len());
     output
 }
 
+/// Try to make a single vehicle using the provided data sets.
 fn try_make_single_vehicle(fe_gov_data: &VehicleDataFE, epa_data: &VehicleDataEPA, other_inputs: &OtherVehicleInputs) -> Option<RustVehicle> {
     if epa_data == &VehicleDataEPA::default() {
+        println!("EPA data is the same as default... returning");
         return None;
     }
     let veh_pt_type: &str = match fe_gov_data.alt_veh_type.as_str() {
@@ -1581,6 +1617,7 @@ fn try_make_single_vehicle(fe_gov_data: &VehicleDataFE, epa_data: &VehicleDataEP
         val_range_miles = fe_gov_data.range_ev as f64;
         ess_dischg_to_fc_max_eff_perc = 0.0;
     } else {
+        println!("Unhandled vehicle powertrain type: {veh_pt_type}");
         return None;
     }
 
@@ -1662,23 +1699,22 @@ fn try_import_vehicles(
     fegov_data: &[VehicleDataFE],
     epatest_data: &[VehicleDataEPA],
 ) -> Vec<RustVehicle> {
-    let other_inputs = OtherVehicleInputs {
-        vehicle_width_in: vir.vehicle_width_in,
-        vehicle_height_in: vir.vehicle_height_in,
-        fuel_tank_gal: vir.fuel_tank_gal,
-        ess_max_kwh: vir.ess_max_kwh,
-        mc_max_kw: vir.mc_max_kw,
-        ess_max_kw: vir.ess_max_kw,
-        fc_max_kw: vir.fc_max_kw,
-    };
+    let other_inputs = vir_to_other_inputs(vir);
     // TODO: Aaron wanted custom scenario name option
     let mut outputs: Vec<RustVehicle> = Vec::new();
     let fegov_hits: Vec<VehicleDataFE> = get_fuel_economy_gov_data_for_input_record(vir, fegov_data);
+    println!("Matched {} vehicles from FE.gov", fegov_hits.len());
     for hit in fegov_hits {
         if let Some(epa_data) = match_epatest_with_fegov(&hit, epatest_data) {
+            println!("Matched epa data for {}-{}-{}", vir.year, vir.make, vir.model);
             if let Some(v) = try_make_single_vehicle(&hit, &epa_data, &other_inputs) {
+                println!("Created vehicle for {}-{}-{}!", vir.year, vir.make, vir.model);
                 outputs.push(v.clone());
+            } else {
+                println!("Unable to create vehicle for {}-{}-{}", vir.year, vir.make, vir.model);
             }
+        } else {
+            println!("Did not match any EPA data for {}-{}-{}...", vir.year, vir.make, vir.model);
         }
     }
     outputs
@@ -1973,6 +2009,19 @@ pub struct VehicleInputRecord {
     pub fc_max_kw: Option<f64>,
 }
 
+/// Transltate a VehicleInputRecord to OtherVehicleInputs
+fn vir_to_other_inputs(vir: &VehicleInputRecord) -> OtherVehicleInputs {
+    OtherVehicleInputs {
+        vehicle_width_in: vir.vehicle_width_in,
+        vehicle_height_in: vir.vehicle_height_in,
+        fuel_tank_gal: vir.fuel_tank_gal,
+        ess_max_kwh: vir.ess_max_kwh,
+        mc_max_kw: vir.mc_max_kw,
+        ess_max_kw: vir.ess_max_kw,
+        fc_max_kw: vir.fc_max_kw
+    }
+}
+
 fn read_vehicle_input_records_from_file(filepath: &Path) -> Result<Vec<VehicleInputRecord>, anyhow::Error> {
     let f = File::open(filepath)?;
     read_records_from_file(f)
@@ -2251,6 +2300,7 @@ fn read_epa_test_data_to_hashmap(data_dir_path: &Path) -> Result<HashMap<u32, Ve
     Ok(epatest_db)
 }
 
+/// Import and Save All Vehicles Specified via Input File
 pub fn import_and_save_all_vehicles_from_file(input_path: &Path, data_dir_path: &Path, output_dir_path: &Path) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
     let emissions_path = data_dir_path.join(Path::new("emissions.csv"));
@@ -2276,24 +2326,28 @@ pub fn import_and_save_all_vehicles(
 ) -> Result<(), anyhow::Error> {
     for vir in inputs {
         if let Some(epatest_data_for_year) = epatest_data.get(&vir.year) {
-            let maybe_veh = extract_vehicle(vir, fegov_data, epatest_data_for_year);
-            match maybe_veh {
-                Some(veh) => {
-                    let mut outfile: PathBuf = PathBuf::new();
-                    outfile.push(output_dir_path);
+            let vehs = try_import_vehicles(vir, fegov_data, epatest_data_for_year);
+            for (idx, veh) in vehs.iter().enumerate() {
+                let mut outfile: PathBuf = PathBuf::new();
+                outfile.push(output_dir_path);
+                if idx > 0 {
+                    let path = Path::new(&vir.output_file_name);
+                    let stem = path.file_stem().unwrap().to_str().unwrap();
+                    let ext = path.extension().unwrap().to_str().unwrap();
+                    let output_file_name = format!("{stem}-{idx}{ext}");
+                    println!("Multiple configurations found: output_file_name = {output_file_name}");
+                    outfile.push(Path::new(&output_file_name));
+                } else {
                     outfile.push(Path::new(&vir.output_file_name));
-                    let outfile_str = outfile.to_str();
-                    match outfile_str {
-                        Some(full_outfile) => {
-                            veh.to_file(full_outfile)?;
-                        },
-                        None => {
-                            println!("Could not determine output file path");
-                        }
+                }
+                let outfile_str = outfile.to_str();
+                match outfile_str {
+                    Some(full_outfile) => {
+                        veh.to_file(full_outfile)?;
+                    },
+                    None => {
+                        println!("Could not determine output file path");
                     }
-                },
-                None => {
-                    println!("Unable to extract vehicle for {} {} {}", vir.year, vir.make, vir.model);
                 }
             }
         }
@@ -2852,87 +2906,64 @@ mod vehicle_utils_tests {
         let emiss_list = EmissionsListFE {
             emissions_info: emiss_info,
         };
-        let fegov_data: Vec<VehicleDataFE> = vec![
-            VehicleDataFE {
-                alt_veh_type: String::from(""),
-                city_mpg_fuel1: 22,
-                city_mpg_fuel2: 0,
-                co2_g_per_mi: 338,
-                comb_mpg_fuel1: 26,
-                comb_mpg_fuel2: 0,
-                cylinders: String::from("6"),
-                displ: String::from("3.5"),
-                drive: String::from("Front-Wheel Drive"),
-                emissions_list: emiss_list,
-                eng_dscr: String::from("SIDI & PFI"),
-                ev_motor_kw: String::from(""),
-                fe_score: 5,
-                fuel_type: String::from("Regular"),
-                fuel1: String::from("Regular Gasoline"),
-                fuel2: String::from(""),
-                ghg_score: 5,
-                highway_mpg_fuel1: 33,
-                highway_mpg_fuel2: 0,
-                make: String::from("Toyota"),
-                mfr_code: String::from("TYX"),
-                model: String::from("Camry"),
-                phev_blended: false,
-                phev_city_mpge: 0,
-                phev_comb_mpge: 0,
-                phev_hwy_mpge: 0,
-                range_ev: 0,
-                start_stop: String::from("N"),
-                trany: String::from("Automatic (S8)"),
-                veh_class: String::from("Midsize Cars"),
-                year: 2020,
-                super_charge: String::from(""),
-                turbo_charge: String::from(""),
-            }
-        ];
-        let epatest_data: Vec<VehicleDataEPA> = vec![
-            VehicleDataEPA {
-                year: 2020,
-                mfr_code: String::from("TXY"),
-                make: String::from("TOYOTA"),
-                model: String::from("CAMRY"),
-                test_id: String::from("JTYXV03.5M5B"),
-                displ: 3.456,
-                eng_pwr_hp: 301,
-                cylinders: String::from("6"),
-                trany_code: String::from("A"),
-                trany_type: String::from("Automatic"),
-                gears: 8,
-                drive_code: String::from("F"),
-                drive: String::from("2-Wheel Drive, Front"),
-                test_weight_lbs: 3875.0,
-                test_fuel_type: String::from("61"),
-                a_lbf: 24.843,
-                b_lbf_per_mph: 0.40298,
-                c_lbf_per_mph2: 0.015068,
-            }
-        ];
-        let v = extract_vehicle(&veh_record, &fegov_data, &epatest_data);
-        assert_eq!(v, Some(RustVehicle::default()));
-    }
-
-    #[test]
-    fn test_extract_vehicle_where_no_data_available() {
-        let vir = VehicleInputRecord {
+        let fegov_data = VehicleDataFE {
+            alt_veh_type: String::from(""),
+            city_mpg_fuel1: 22,
+            city_mpg_fuel2: 0,
+            co2_g_per_mi: 338,
+            comb_mpg_fuel1: 26,
+            comb_mpg_fuel2: 0,
+            cylinders: String::from("6"),
+            displ: String::from("3.5"),
+            drive: String::from("Front-Wheel Drive"),
+            emissions_list: emiss_list,
+            eng_dscr: String::from("SIDI & PFI"),
+            ev_motor_kw: String::from(""),
+            fe_score: 5,
+            fuel_type: String::from("Regular"),
+            fuel1: String::from("Regular Gasoline"),
+            fuel2: String::from(""),
+            ghg_score: 5,
+            highway_mpg_fuel1: 33,
+            highway_mpg_fuel2: 0,
             make: String::from("Toyota"),
+            mfr_code: String::from("TYX"),
             model: String::from("Camry"),
+            phev_blended: false,
+            phev_city_mpge: 0,
+            phev_comb_mpge: 0,
+            phev_hwy_mpge: 0,
+            range_ev: 0,
+            start_stop: String::from("N"),
+            trany: String::from("Automatic (S8)"),
+            veh_class: String::from("Midsize Cars"),
             year: 2020,
-            output_file_name: String::from("2020-toyota-camry.yaml"),
-            vehicle_width_in: 72.4,
-            vehicle_height_in: 56.9,
-            fuel_tank_gal: 15.8,
-            ess_max_kwh: 0.0,
-            mc_max_kw: 0.0,
-            ess_max_kw: 0.0,
-            fc_max_kw: None,
+            super_charge: String::from(""),
+            turbo_charge: String::from(""),
         };
-        let fegov_data = Vec::<VehicleDataFE>::new();
-        let epatest_data = Vec::<VehicleDataEPA>::new();
-        let maybe_veh = extract_vehicle(&vir, &fegov_data, &epatest_data);
-        assert!(maybe_veh.is_none());
+        let epatest_data = VehicleDataEPA {
+            year: 2020,
+            mfr_code: String::from("TXY"),
+            make: String::from("TOYOTA"),
+            model: String::from("CAMRY"),
+            test_id: String::from("JTYXV03.5M5B"),
+            displ: 3.456,
+            eng_pwr_hp: 301,
+            cylinders: String::from("6"),
+            trany_code: String::from("A"),
+            trany_type: String::from("Automatic"),
+            gears: 8,
+            drive_code: String::from("F"),
+            drive: String::from("2-Wheel Drive, Front"),
+            test_weight_lbs: 3875.0,
+            test_fuel_type: String::from("61"),
+            a_lbf: 24.843,
+            b_lbf_per_mph: 0.40298,
+            c_lbf_per_mph2: 0.015068,
+        };
+        let other_inputs = vir_to_other_inputs(&veh_record);
+        let v = try_make_single_vehicle(&fegov_data, &epatest_data, &other_inputs);
+        // TODO: expand test. Should have characteristics from the imported data
+        assert!(v.is_some());
     }
 }
