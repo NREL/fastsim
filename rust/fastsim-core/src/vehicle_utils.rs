@@ -2302,9 +2302,13 @@ pub fn import_and_save_all_vehicles(
 }
 
 /// Try to extract the given vehicle from the available data
-pub fn extract_vehicle(_input: &VehicleInputRecord, _fegov_data: &[VehicleDataFE], _epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
-    let default_veh: RustVehicle = RustVehicle::default();
-    Some(default_veh)
+pub fn extract_vehicle(_input: &VehicleInputRecord, fegov_data: &[VehicleDataFE], epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
+    if fegov_data.is_empty() || epatest_data.is_empty() {
+        None
+    } else {
+        let default_veh: RustVehicle = RustVehicle::default();
+        Some(default_veh)
+    }
 }
 
 #[cfg(test)]
@@ -2829,9 +2833,106 @@ mod vehicle_utils_tests {
             ess_max_kw: 0.0,
             fc_max_kw: None,
         };
-        let fegov_data: Vec<VehicleDataFE> = vec![];
-        let epatest_data: Vec<VehicleDataEPA> = vec![];
+        let emiss_info = vec![
+            EmissionsInfoFE {
+                efid: String::from("LTYXV03.5M5B"),
+                score: 5.0,
+                smartway_score: -1,
+                standard: String::from("L3ULEV70"),
+                std_text: String::from("California LEV-III ULEV70"),
+            },
+            EmissionsInfoFE {
+                efid: String::from("LTYXV03.5M5B"),
+                score: 5.0,
+                smartway_score: -1,
+                standard: String::from("T3B70"),
+                std_text: String::from("Federal Tier 3 Bin 70"),
+            },
+        ];
+        let emiss_list = EmissionsListFE {
+            emissions_info: emiss_info,
+        };
+        let fegov_data: Vec<VehicleDataFE> = vec![
+            VehicleDataFE {
+                alt_veh_type: String::from(""),
+                city_mpg_fuel1: 22,
+                city_mpg_fuel2: 0,
+                co2_g_per_mi: 338,
+                comb_mpg_fuel1: 26,
+                comb_mpg_fuel2: 0,
+                cylinders: String::from("6"),
+                displ: String::from("3.5"),
+                drive: String::from("Front-Wheel Drive"),
+                emissions_list: emiss_list,
+                eng_dscr: String::from("SIDI & PFI"),
+                ev_motor_kw: String::from(""),
+                fe_score: 5,
+                fuel_type: String::from("Regular"),
+                fuel1: String::from("Regular Gasoline"),
+                fuel2: String::from(""),
+                ghg_score: 5,
+                highway_mpg_fuel1: 33,
+                highway_mpg_fuel2: 0,
+                make: String::from("Toyota"),
+                mfr_code: String::from("TYX"),
+                model: String::from("Camry"),
+                phev_blended: false,
+                phev_city_mpge: 0,
+                phev_comb_mpge: 0,
+                phev_hwy_mpge: 0,
+                range_ev: 0,
+                start_stop: String::from("N"),
+                trany: String::from("Automatic (S8)"),
+                veh_class: String::from("Midsize Cars"),
+                year: 2020,
+                super_charge: String::from(""),
+                turbo_charge: String::from(""),
+            }
+        ];
+        let epatest_data: Vec<VehicleDataEPA> = vec![
+            VehicleDataEPA {
+                year: 2020,
+                mfr_code: String::from("TXY"),
+                make: String::from("TOYOTA"),
+                model: String::from("CAMRY"),
+                test_id: String::from("JTYXV03.5M5B"),
+                displ: 3.456,
+                eng_pwr_hp: 301,
+                cylinders: String::from("6"),
+                trany_code: String::from("A"),
+                trany_type: String::from("Automatic"),
+                gears: 8,
+                drive_code: String::from("F"),
+                drive: String::from("2-Wheel Drive, Front"),
+                test_weight_lbs: 3875.0,
+                test_fuel_type: String::from("61"),
+                a_lbf: 24.843,
+                b_lbf_per_mph: 0.40298,
+                c_lbf_per_mph2: 0.015068,
+            }
+        ];
         let v = extract_vehicle(&veh_record, &fegov_data, &epatest_data);
         assert_eq!(v, Some(RustVehicle::default()));
+    }
+
+    #[test]
+    fn test_extract_vehicle_where_no_data_available() {
+        let vir = VehicleInputRecord {
+            make: String::from("Toyota"),
+            model: String::from("Camry"),
+            year: 2020,
+            output_file_name: String::from("2020-toyota-camry.yaml"),
+            vehicle_width_in: 72.4,
+            vehicle_height_in: 56.9,
+            fuel_tank_gal: 15.8,
+            ess_max_kwh: 0.0,
+            mc_max_kw: 0.0,
+            ess_max_kw: 0.0,
+            fc_max_kw: None,
+        };
+        let fegov_data = Vec::<VehicleDataFE>::new();
+        let epatest_data = Vec::<VehicleDataEPA>::new();
+        let maybe_veh = extract_vehicle(&vir, &fegov_data, &epatest_data);
+        assert!(maybe_veh.is_none());
     }
 }
