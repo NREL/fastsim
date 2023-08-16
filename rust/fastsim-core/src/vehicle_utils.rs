@@ -536,20 +536,6 @@ fn match_epatest_with_fegov(
             }
         }
     }
-    println!("best match model overall : {best_match_model_overall}");
-    println!("best match model efid    : {best_match_model_efid}");
-    println!(
-        "number of matches overall: {}",
-        veh_list_overall
-            .get(&best_match_model_overall)
-            .unwrap()
-            .len()
-    );
-    println!(
-        "number of matches efid   : {}",
-        veh_list_efid.get(&best_match_model_efid).unwrap().len()
-    );
-    println!("FE.gov trany             : {}", fegov.trany);
 
     // Get EPA vehicle model that is best match to fe.gov vehicle
     let veh_list: Vec<VehicleDataEPA> = if best_match_model_efid == best_match_model_overall {
@@ -1707,7 +1693,6 @@ fn try_make_single_vehicle(
     Some(veh)
 }
 
-#[allow(dead_code)]
 fn try_import_vehicles(
     vir: &VehicleInputRecord,
     fegov_data: &[VehicleDataFE],
@@ -1730,7 +1715,21 @@ fn try_import_vehicles(
                     "Created vehicle for {}-{}-{}!",
                     vir.year, vir.make, vir.model
                 );
-                outputs.push(v.clone());
+                let mut v = v.clone();
+                if hit.alt_veh_type == *"EV" {
+                    v.scenario_name = format!("{} (EV)", v.scenario_name);
+                } else {
+                    let alt_type = if hit.alt_veh_type.is_empty() {
+                        String::from("")
+                    } else {
+                        format!("{}, ", hit.alt_veh_type)
+                    };
+                    v.scenario_name = format!(
+                        "{} ({}{} cylinders, {} L, {})",
+                        alt_type, v.scenario_name, hit.cylinders, hit.displ, hit.trany
+                    );
+                }
+                outputs.push(v);
             } else {
                 println!(
                     "Unable to create vehicle for {}-{}-{}",
@@ -2351,6 +2350,7 @@ pub fn import_and_save_all_vehicles_from_file(
     output_dir_path: &Path,
 ) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
+    println!("Found {} vehicle input records", inputs.len());
     let emissions_path = data_dir_path.join(Path::new("emissions.csv"));
     let emissions_db: HashMap<u32, Vec<EmissionsInfoFE>> = {
         let emissions_file = File::open(emissions_path)?;
@@ -2382,7 +2382,7 @@ pub fn import_and_save_all_vehicles(
                     let path = Path::new(&vir.output_file_name);
                     let stem = path.file_stem().unwrap().to_str().unwrap();
                     let ext = path.extension().unwrap().to_str().unwrap();
-                    let output_file_name = format!("{stem}-{idx}{ext}");
+                    let output_file_name = format!("{stem}-{idx}.{ext}");
                     println!(
                         "Multiple configurations found: output_file_name = {output_file_name}"
                     );
@@ -2390,16 +2390,14 @@ pub fn import_and_save_all_vehicles(
                 } else {
                     outfile.push(Path::new(&vir.output_file_name));
                 }
-                let outfile_str = outfile.to_str();
-                match outfile_str {
-                    Some(full_outfile) => {
-                        veh.to_file(full_outfile)?;
-                    }
-                    None => {
-                        println!("Could not determine output file path");
-                    }
+                if let Some(full_outfile) = outfile.to_str() {
+                    veh.to_file(full_outfile)?;
+                } else {
+                    println!("Could not determine output file path");
                 }
             }
+        } else {
+            println!("No EPA test data available for year {}", vir.year);
         }
     }
     Ok(())
