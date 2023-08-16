@@ -3,8 +3,10 @@
 use argmin::core::{CostFunction, Error, Executor, OptimizationResult, State};
 use argmin::solver::neldermead::NelderMead;
 use curl::easy::{Easy, SslOpt};
+use directories::ProjectDirs;
 use ndarray::{array, Array1};
 use polynomial::Polynomial;
+use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde_xml_rs::from_str;
 use std::collections::HashMap;
@@ -12,8 +14,6 @@ use std::fs::File;
 use std::io::prelude::Write;
 use std::option::Option;
 use std::path::PathBuf;
-use directories::ProjectDirs;
-use regex::Regex;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -468,7 +468,10 @@ fn get_fuel_economy_gov_data_by_option_id(option_id: &str) -> Result<VehicleData
 }
 
 /// Match EPA Test Data with FuelEconomy.gov data and return best match
-fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEPA]) -> Option<VehicleDataEPA> {
+fn match_epatest_with_fegov(
+    fegov: &VehicleDataFE,
+    epatest_data: &[VehicleDataEPA],
+) -> Option<VehicleDataEPA> {
     // Keep track of best match to fueleconomy.gov model name for all vehicles and vehicles with matching efid/test id
     let mut veh_list_overall: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
     let mut veh_list_efid: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
@@ -477,10 +480,7 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
     let mut best_match_percent_overall: f64 = 0.0;
     let mut best_match_model_overall: String = String::new();
 
-    let fe_model_upper: String = fegov
-        .model
-        .to_uppercase()
-        .replace("4WD", "AWD");
+    let fe_model_upper: String = fegov.model.to_uppercase().replace("4WD", "AWD");
     let fe_model_words: Vec<&str> = fe_model_upper.split(' ').collect();
     let num_fe_model_words = fe_model_words.len();
     let efid: &String = &fegov.emissions_list.emissions_info[0].efid;
@@ -499,7 +499,11 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
         let match_percent: f64 = (match_count as f64 * match_count as f64)
             / (num_epa_model_words as f64 * num_fe_model_words as f64);
         if match_percent > 0.0 {
-            println!("... EPA model: {} (match {}%)", veh_epa.model, match_percent * 100.0);
+            println!(
+                "... EPA model: {} (match {}%)",
+                veh_epa.model,
+                match_percent * 100.0
+            );
         }
 
         // Update overall hashmap with new entry
@@ -534,8 +538,17 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
     }
     println!("best match model overall : {best_match_model_overall}");
     println!("best match model efid    : {best_match_model_efid}");
-    println!("number of matches overall: {}", veh_list_overall.get(&best_match_model_overall).unwrap().len());
-    println!("number of matches efid   : {}", veh_list_efid.get(&best_match_model_efid).unwrap().len());
+    println!(
+        "number of matches overall: {}",
+        veh_list_overall
+            .get(&best_match_model_overall)
+            .unwrap()
+            .len()
+    );
+    println!(
+        "number of matches efid   : {}",
+        veh_list_efid.get(&best_match_model_efid).unwrap().len()
+    );
     println!("FE.gov trany             : {}", fegov.trany);
 
     // Get EPA vehicle model that is best match to fe.gov vehicle
@@ -554,49 +567,43 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
     // Based on reference: https://www.fueleconomy.gov/feg/findacarhelp.shtml#engine
     if fegov.trany.contains("Manual") {
         transmission_fe_gov = String::from('M');
-        num_gears_fe_gov =
-            fegov.trany.as_str()[fegov.trany.find("-spd").unwrap() - 1
-                ..fegov.trany.find("-spd").unwrap()]
-                .parse()
-                .unwrap();
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find("-spd").unwrap() - 1..fegov.trany.find("-spd").unwrap()]
+            .parse()
+            .unwrap();
     } else if fegov.trany.contains("variable gear ratios") {
         transmission_fe_gov = String::from("CVT");
         num_gears_fe_gov = 1;
     } else if fegov.trany.contains("AV-S") {
         transmission_fe_gov = String::from("SCV");
-        num_gears_fe_gov =
-            fegov.trany.as_str()[fegov.trany.find('S').unwrap() + 1
-                ..fegov.trany.find(')').unwrap()]
-                .parse()
-                .unwrap();
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+            .parse()
+            .unwrap();
     } else if fegov.trany.contains("AM-S") {
         transmission_fe_gov = String::from("AMS");
-        num_gears_fe_gov =
-            fegov.trany.as_str()[fegov.trany.find('S').unwrap() + 1
-                ..fegov.trany.find(')').unwrap()]
-                .parse()
-                .unwrap();
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+            .parse()
+            .unwrap();
     } else if fegov.trany.contains('S') {
         transmission_fe_gov = String::from("SA");
-        num_gears_fe_gov =
-            fegov.trany.as_str()[fegov.trany.find('S').unwrap() + 1
-                ..fegov.trany.find(')').unwrap()]
-                .parse()
-                .unwrap();
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+            .parse()
+            .unwrap();
     } else if fegov.trany.contains("-spd") {
         transmission_fe_gov = String::from('A');
-        num_gears_fe_gov =
-            fegov.trany.as_str()[fegov.trany.find("-spd").unwrap() - 1
-                ..fegov.trany.find("-spd").unwrap()]
-                .parse()
-                .unwrap();
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find("-spd").unwrap() - 1..fegov.trany.find("-spd").unwrap()]
+            .parse()
+            .unwrap();
     } else {
         transmission_fe_gov = String::from('A');
-        num_gears_fe_gov =
-            fegov.trany.as_str()[fegov.trany.find("(A").unwrap() + 2
-                ..fegov.trany.find(')').unwrap()]
-                .parse()
-                .unwrap();
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find("(A").unwrap() + 2..fegov.trany.find(')').unwrap()]
+            .parse()
+            .unwrap();
     }
     println!("FE.gov data to match");
     println!("... transmission_fe_gov: {transmission_fe_gov}");
@@ -630,7 +637,8 @@ fn match_epatest_with_fegov(fegov: &VehicleDataFE, epatest_data: &[VehicleDataEP
             veh_epa.drive = String::from("All Wheel Drive");
         }
         if !veh_epa.test_fuel_type.contains("Cold CO")
-            && (veh_epa.trany_code == transmission_fe_gov || fegov.trany.starts_with(veh_epa.trany_type.as_str()))
+            && (veh_epa.trany_code == transmission_fe_gov
+                || fegov.trany.starts_with(veh_epa.trany_type.as_str()))
             && veh_epa.gears == num_gears_fe_gov
             && veh_epa.drive_code == fegov.drive[0..1]
             && ((fegov.alt_veh_type == *"EV"
@@ -1490,7 +1498,10 @@ fn vehicle_import_from_id(
     Ok(veh)
 }
 
-fn get_fuel_economy_gov_data_for_input_record(vir: &VehicleInputRecord, fegov_data: &[VehicleDataFE]) -> Vec<VehicleDataFE> {
+fn get_fuel_economy_gov_data_for_input_record(
+    vir: &VehicleInputRecord,
+    fegov_data: &[VehicleDataFE],
+) -> Vec<VehicleDataFE> {
     let mut output: Vec<VehicleDataFE> = Vec::new();
     let vir_make = String::from(vir.make.to_lowercase().trim());
     let vir_model = String::from(vir.model.to_lowercase().trim());
@@ -1499,7 +1510,10 @@ fn get_fuel_economy_gov_data_for_input_record(vir: &VehicleInputRecord, fegov_da
         let fe_model = String::from(fedat.model.to_lowercase().trim());
         if fedat.year == vir.year && fe_make.eq(&vir_make) && fe_model.eq(&vir_model) {
             println!("Found FE.gov hit: {}-{fe_make}-{fe_model}", fedat.year);
-            println!("... number of emissions items: {}", fedat.emissions_list.emissions_info.len());
+            println!(
+                "... number of emissions items: {}",
+                fedat.emissions_list.emissions_info.len()
+            );
             output.push(fedat.clone());
         }
     }
@@ -1508,7 +1522,11 @@ fn get_fuel_economy_gov_data_for_input_record(vir: &VehicleInputRecord, fegov_da
 }
 
 /// Try to make a single vehicle using the provided data sets.
-fn try_make_single_vehicle(fe_gov_data: &VehicleDataFE, epa_data: &VehicleDataEPA, other_inputs: &OtherVehicleInputs) -> Option<RustVehicle> {
+fn try_make_single_vehicle(
+    fe_gov_data: &VehicleDataFE,
+    epa_data: &VehicleDataEPA,
+    other_inputs: &OtherVehicleInputs,
+) -> Option<RustVehicle> {
     if epa_data == &VehicleDataEPA::default() {
         println!("EPA data is the same as default... returning");
         return None;
@@ -1698,19 +1716,32 @@ fn try_import_vehicles(
     let other_inputs = vir_to_other_inputs(vir);
     // TODO: Aaron wanted custom scenario name option
     let mut outputs: Vec<RustVehicle> = Vec::new();
-    let fegov_hits: Vec<VehicleDataFE> = get_fuel_economy_gov_data_for_input_record(vir, fegov_data);
+    let fegov_hits: Vec<VehicleDataFE> =
+        get_fuel_economy_gov_data_for_input_record(vir, fegov_data);
     println!("Matched {} vehicles from FE.gov", fegov_hits.len());
     for hit in fegov_hits {
         if let Some(epa_data) = match_epatest_with_fegov(&hit, epatest_data) {
-            println!("Matched epa data for {}-{}-{}", vir.year, vir.make, vir.model);
+            println!(
+                "Matched epa data for {}-{}-{}",
+                vir.year, vir.make, vir.model
+            );
             if let Some(v) = try_make_single_vehicle(&hit, &epa_data, &other_inputs) {
-                println!("Created vehicle for {}-{}-{}!", vir.year, vir.make, vir.model);
+                println!(
+                    "Created vehicle for {}-{}-{}!",
+                    vir.year, vir.make, vir.model
+                );
                 outputs.push(v.clone());
             } else {
-                println!("Unable to create vehicle for {}-{}-{}", vir.year, vir.make, vir.model);
+                println!(
+                    "Unable to create vehicle for {}-{}-{}",
+                    vir.year, vir.make, vir.model
+                );
             }
         } else {
-            println!("Did not match any EPA data for {}-{}-{}...", vir.year, vir.make, vir.model);
+            println!(
+                "Did not match any EPA data for {}-{}-{}...",
+                vir.year, vir.make, vir.model
+            );
         }
     }
     outputs
@@ -2014,7 +2045,7 @@ fn vir_to_other_inputs(vir: &VehicleInputRecord) -> OtherVehicleInputs {
         ess_max_kwh: vir.ess_max_kwh,
         mc_max_kw: vir.mc_max_kw,
         ess_max_kw: vir.ess_max_kw,
-        fc_max_kw: vir.fc_max_kw
+        fc_max_kw: vir.fc_max_kw,
     }
 }
 
@@ -2037,7 +2068,9 @@ fn read_records_from_file<T: DeserializeOwned>(
     Ok(output)
 }
 
-fn read_fuelecon_gov_emissions_to_hashmap(rdr: impl std::io::Read + std::io::Seek) -> HashMap<u32, Vec<EmissionsInfoFE>> {
+fn read_fuelecon_gov_emissions_to_hashmap(
+    rdr: impl std::io::Read + std::io::Seek,
+) -> HashMap<u32, Vec<EmissionsInfoFE>> {
     let mut output: HashMap<u32, Vec<EmissionsInfoFE>> = HashMap::new();
     let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
@@ -2067,7 +2100,7 @@ fn read_fuelecon_gov_emissions_to_hashmap(rdr: impl std::io::Read + std::io::See
 
 fn read_fuelecon_gov_data_from_file(
     rdr: impl std::io::Read + std::io::Seek,
-    emissions: &HashMap<u32, Vec<EmissionsInfoFE>>
+    emissions: &HashMap<u32, Vec<EmissionsInfoFE>>,
 ) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
     let mut output: Vec<VehicleDataFE> = Vec::new();
     let mut reader = csv::Reader::from_reader(rdr);
@@ -2076,7 +2109,7 @@ fn read_fuelecon_gov_data_from_file(
         let id: u32 = item.get("id").unwrap().parse::<u32>().unwrap();
         let emissions_list: EmissionsListFE = if emissions.contains_key(&id) {
             EmissionsListFE {
-                emissions_info: emissions.get(&id).unwrap().to_vec()
+                emissions_info: emissions.get(&id).unwrap().to_vec(),
             }
         } else {
             EmissionsListFE::default()
@@ -2283,7 +2316,9 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
     Ok(())
 }
 
-fn read_epa_test_data_to_hashmap(data_dir_path: &Path) -> Result<HashMap<u32, Vec<VehicleDataEPA>>, anyhow::Error> {
+fn read_epa_test_data_to_hashmap(
+    data_dir_path: &Path,
+) -> Result<HashMap<u32, Vec<VehicleDataEPA>>, anyhow::Error> {
     let mut epatest_db: HashMap<u32, Vec<VehicleDataEPA>> = HashMap::new();
     let data_file_paths = std::fs::read_dir(data_dir_path)?;
     let re = Regex::new(r"(\d\d\d\d)-testcar\.csv")?;
@@ -2310,7 +2345,11 @@ fn read_epa_test_data_to_hashmap(data_dir_path: &Path) -> Result<HashMap<u32, Ve
 }
 
 /// Import and Save All Vehicles Specified via Input File
-pub fn import_and_save_all_vehicles_from_file(input_path: &Path, data_dir_path: &Path, output_dir_path: &Path) -> Result<(), anyhow::Error> {
+pub fn import_and_save_all_vehicles_from_file(
+    input_path: &Path,
+    data_dir_path: &Path,
+    output_dir_path: &Path,
+) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
     let emissions_path = data_dir_path.join(Path::new("emissions.csv"));
     let emissions_db: HashMap<u32, Vec<EmissionsInfoFE>> = {
@@ -2331,7 +2370,7 @@ pub fn import_and_save_all_vehicles(
     inputs: &[VehicleInputRecord],
     fegov_data: &[VehicleDataFE],
     epatest_data: &HashMap<u32, Vec<VehicleDataEPA>>,
-    output_dir_path: &Path
+    output_dir_path: &Path,
 ) -> Result<(), anyhow::Error> {
     for vir in inputs {
         if let Some(epatest_data_for_year) = epatest_data.get(&vir.year) {
@@ -2344,7 +2383,9 @@ pub fn import_and_save_all_vehicles(
                     let stem = path.file_stem().unwrap().to_str().unwrap();
                     let ext = path.extension().unwrap().to_str().unwrap();
                     let output_file_name = format!("{stem}-{idx}{ext}");
-                    println!("Multiple configurations found: output_file_name = {output_file_name}");
+                    println!(
+                        "Multiple configurations found: output_file_name = {output_file_name}"
+                    );
                     outfile.push(Path::new(&output_file_name));
                 } else {
                     outfile.push(Path::new(&vir.output_file_name));
@@ -2353,7 +2394,7 @@ pub fn import_and_save_all_vehicles(
                 match outfile_str {
                     Some(full_outfile) => {
                         veh.to_file(full_outfile)?;
-                    },
+                    }
                     None => {
                         println!("Could not determine output file path");
                     }
@@ -2365,7 +2406,11 @@ pub fn import_and_save_all_vehicles(
 }
 
 /// Try to extract the given vehicle from the available data
-pub fn extract_vehicle(_input: &VehicleInputRecord, fegov_data: &[VehicleDataFE], epatest_data: &[VehicleDataEPA]) -> Option<RustVehicle> {
+pub fn extract_vehicle(
+    _input: &VehicleInputRecord,
+    fegov_data: &[VehicleDataFE],
+    epatest_data: &[VehicleDataEPA],
+) -> Option<RustVehicle> {
     if fegov_data.is_empty() || epatest_data.is_empty() {
         None
     } else {
@@ -2972,7 +3017,10 @@ mod vehicle_utils_tests {
         };
         let other_inputs = vir_to_other_inputs(&veh_record);
         let v = try_make_single_vehicle(&fegov_data, &epatest_data, &other_inputs);
-        // TODO: expand test. Should have characteristics from the imported data
         assert!(v.is_some());
+        if let Some(vs) = v {
+            assert_eq!(vs.scenario_name, String::from("2020 Toyota Camry"));
+            assert_eq!(vs.val_comb_mpgge, 26.0);
+        }
     }
 }
