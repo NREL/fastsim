@@ -924,8 +924,7 @@ impl RustVehicle {
     }
 }
 
-impl Default for RustVehicle
-{
+impl Default for RustVehicle {
     fn default() -> Self {
         let mut veh = RustVehicle::mock_vehicle();
         veh.scenario_name = Default::default();

@@ -5,13 +5,13 @@ use argmin::solver::neldermead::NelderMead;
 use curl::easy::{Easy, SslOpt};
 use ndarray::{array, Array1};
 use polynomial::Polynomial;
+use serde::de::DeserializeOwned;
 use serde_xml_rs::from_str;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::Write;
 use std::option::Option;
 use std::path::PathBuf;
-use serde::de::DeserializeOwned;
 use directories::ProjectDirs;
 use regex::Regex;
 
@@ -1146,9 +1146,7 @@ where
         mc_pwr_out_perc: Array1::from(vec![
             0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0,
         ]),
-        mc_eff_map: Array1::from(vec![
-            0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
-        ]),
+        mc_eff_map: Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()),
         mc_sec_to_peak_pwr: 4.0,
         mc_pe_kg_per_kw,
         mc_pe_base_kg,
@@ -1449,9 +1447,7 @@ fn vehicle_import_from_id(
             / (IN_PER_M * IN_PER_M),
         fs_kwh: other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge,
         idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
-        mc_eff_map: Array1::from(vec![
-            0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
-        ]),
+        mc_eff_map: Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()),
         wheel_rr_coef: 0.0,
         stop_start: fe_gov_data.start_stop == "Y",
         force_aux_on_fc: false,
@@ -2022,12 +2018,16 @@ fn vir_to_other_inputs(vir: &VehicleInputRecord) -> OtherVehicleInputs {
     }
 }
 
-fn read_vehicle_input_records_from_file(filepath: &Path) -> Result<Vec<VehicleInputRecord>, anyhow::Error> {
+fn read_vehicle_input_records_from_file(
+    filepath: &Path,
+) -> Result<Vec<VehicleInputRecord>, anyhow::Error> {
     let f = File::open(filepath)?;
     read_records_from_file(f)
 }
 
-fn read_records_from_file<T: DeserializeOwned>(rdr: impl std::io::Read + std::io::Seek) -> Result<Vec<T>, anyhow::Error> {
+fn read_records_from_file<T: DeserializeOwned>(
+    rdr: impl std::io::Read + std::io::Seek,
+) -> Result<Vec<T>, anyhow::Error> {
     let mut output: Vec<T> = Vec::new();
     let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
@@ -2065,7 +2065,10 @@ fn read_fuelecon_gov_emissions_to_hashmap(rdr: impl std::io::Read + std::io::See
     output
 }
 
-fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek, emissions: &HashMap<u32, Vec<EmissionsInfoFE>>) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
+fn read_fuelecon_gov_data_from_file(
+    rdr: impl std::io::Read + std::io::Seek,
+    emissions: &HashMap<u32, Vec<EmissionsInfoFE>>
+) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
     let mut output: Vec<VehicleDataFE> = Vec::new();
     let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
@@ -2167,7 +2170,13 @@ fn read_fuelecon_gov_data_from_file(rdr: impl std::io::Read + std::io::Seek, emi
             // #[serde(rename = "phevBlended")]
             // /// Vehicle operates on blend of gasoline and electricity
             // pub phev_blended: bool,
-            phev_blended: item.get("phevBlended").unwrap().trim().to_lowercase().parse::<bool>().unwrap(),
+            phev_blended: item
+                .get("phevBlended")
+                .unwrap()
+                .trim()
+                .to_lowercase()
+                .parse::<bool>()
+                .unwrap(),
             // #[serde(rename = "phevCity")]
             // /// EPA composite gasoline-electricity city MPGe
             // pub phev_city_mpge: i32,
