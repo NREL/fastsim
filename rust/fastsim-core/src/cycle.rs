@@ -369,10 +369,10 @@ pub struct RustCycleElement {
     pub mps: f64,
     /// grade [rise/run]
     #[serde(alias = "cycGrade")]
-    pub grade: f64,
+    pub grade: Option<f64>,
     /// max possible charge rate from roadway
     #[serde(alias = "cycRoadType")]
-    pub road_type: f64,
+    pub road_type: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -603,9 +603,11 @@ pub struct RustCycle {
     pub mps: Array1<f64>,
     /// array of grade [rise/run]
     #[serde(alias = "cycGrade")]
+    #[serde(default)]
     pub grade: Array1<f64>,
     /// array of max possible charge rate from roadway
     #[serde(alias = "cycRoadType")]
+    #[serde(default)]
     pub road_type: Array1<f64>,
     pub name: String,
     #[serde(skip)]
@@ -661,12 +663,14 @@ impl RustCycle {
         self.mps
             .append(Axis(0), array![cyc_elem.mps].view())
             .unwrap();
-        self.grade
-            .append(Axis(0), array![cyc_elem.grade].view())
-            .unwrap();
-        self.road_type
-            .append(Axis(0), array![cyc_elem.road_type].view())
-            .unwrap();
+        if let Some(grade) = cyc_elem.grade {
+            self.grade.append(Axis(0), array![grade].view()).unwrap();
+        }
+        if let Some(road_type) = cyc_elem.road_type {
+            self.road_type
+                .append(Axis(0), array![road_type].view())
+                .unwrap();
+        }
     }
 
     #[allow(clippy::len_without_is_empty)]
