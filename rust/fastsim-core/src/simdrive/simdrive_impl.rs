@@ -527,12 +527,11 @@ impl RustSimDrive {
         self.init_arrays();
 
         // set `self.aux_in_kw_override` if it has been provided and not previously set
-        match aux_in_kw_override {
-            Some(arr) => match self.aux_in_kw_override {
+        if let Some(arr) = aux_in_kw_override {
+            match self.aux_in_kw_override {
                 Some(_) => {}
                 None => self.aux_in_kw = arr,
-            },
-            None => {}
+            }
         }
 
         self.cyc_met[0] = true;
