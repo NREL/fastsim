@@ -85,6 +85,7 @@ out = component output
 Rust versions of classes have limited Language Server Protocol integration, and we are actively working on fixing this.  
 
 # Release Notes
+2.1.1 -- license changed to Apache 2.0, default cycle grade and road type to zero if not provided, defaults to regenerative braking parameters, optional documentation fields now generated in Rust
 2.1.0 -- release and installation improvements, RustVehicle init cleanup, calibration improvements
 2.0.11 - 2.0.22 -- PyPI fixes.  Also, Rust version is now >100x faster than Python version.   
 2.0.10 -- logging fixes, proc macro reorganization, some CAVs performance fixes  
