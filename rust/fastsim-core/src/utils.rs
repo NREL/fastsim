@@ -220,7 +220,7 @@ pub fn interpolate_vectors(
 
 #[cfg(feature = "pyo3")]
 pub mod array_wrappers {
-    use proc_macros::add_pyo3_api;
+    use crate::proc_macros::add_pyo3_api;
 
     use super::*;
     /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
