@@ -6,12 +6,13 @@ use curl::easy::{Easy, SslOpt};
 use directories::ProjectDirs;
 use ndarray::{array, Array1};
 use polynomial::Polynomial;
-use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde_xml_rs::from_str;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::Write;
+use std::iter::FromIterator;
 use std::option::Option;
 use std::path::PathBuf;
 
@@ -2315,32 +2316,66 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
     Ok(())
 }
 
-fn read_epa_test_data_to_hashmap(
+fn read_epa_test_data_for_given_years(
     data_dir_path: &Path,
+    years: &HashSet<u32>,
 ) -> Result<HashMap<u32, Vec<VehicleDataEPA>>, anyhow::Error> {
     let mut epatest_db: HashMap<u32, Vec<VehicleDataEPA>> = HashMap::new();
-    let data_file_paths = std::fs::read_dir(data_dir_path)?;
-    let re = Regex::new(r"(\d\d\d\d)-testcar\.csv")?;
-    for file_path in data_file_paths {
-        let entry = file_path?;
-        let p = entry.path();
-        if p.is_file() {
-            if let Some(name) = p.file_name() {
-                if let Some(n) = name.to_str() {
-                    if let Some(caps) = re.captures(n) {
-                        let yr = &caps[1];
-                        let year = str::parse::<u32>(yr)?;
-                        let f = File::open(p)?;
-                        let records = read_records_from_file(f)?;
-                        epatest_db.insert(year, records);
-                    } else {
-                        continue;
-                    }
-                }
-            }
-        }
+    for year in years {
+        let file_name = format!("{year}-testcar.csv");
+        let p = data_dir_path.join(Path::new(&file_name));
+        let f = File::open(p)?;
+        let records = read_records_from_file(f)?;
+        epatest_db.insert(*year, records);
     }
     Ok(epatest_db)
+}
+
+fn determine_model_years_of_interest(virs: &[VehicleInputRecord]) -> HashSet<u32> {
+    HashSet::from_iter(virs.iter().map(|vir| vir.year))
+}
+
+fn load_emissions_data_for_given_years(
+    data_dir_path: &Path,
+    years: &HashSet<u32>,
+) -> Result<HashMap<u32, HashMap<u32, Vec<EmissionsInfoFE>>>, anyhow::Error> {
+    let mut data = HashMap::<u32, HashMap<u32, Vec<EmissionsInfoFE>>>::new();
+    for year in years {
+        let file_name = format!("{year}-emissions.csv");
+        let emissions_path = data_dir_path.join(Path::new(&file_name));
+        if !emissions_path.exists() {
+            // download from URL and cache
+            println!("DATA DOES NOT EXIST AT {}", emissions_path.to_string_lossy());
+        }
+        let emissions_db: HashMap<u32, Vec<EmissionsInfoFE>> = {
+            let emissions_file = File::open(emissions_path)?;
+            read_fuelecon_gov_emissions_to_hashmap(emissions_file)
+        };
+        data.insert(*year, emissions_db);
+    }
+    Ok(data)
+}
+
+fn load_fegov_data_for_given_years(
+    data_dir_path: &Path,
+    emissions_by_year_and_by_id: &HashMap<u32, HashMap<u32, Vec<EmissionsInfoFE>>>,
+    years: &HashSet<u32>,
+) -> Result<HashMap<u32, Vec<VehicleDataFE>>, anyhow::Error> {
+    let mut data = HashMap::<u32, Vec<VehicleDataFE>>::new();
+    for year in years {
+        if let Some(emissions_by_id) = emissions_by_year_and_by_id.get(year) {
+            let file_name = format!("{year}-vehicles.csv");
+            let fegov_path = data_dir_path.join(Path::new(&file_name));
+            let fegov_db: Vec<VehicleDataFE> = {
+                let fegov_file = File::open(fegov_path.as_path())?;
+                read_fuelecon_gov_data_from_file(fegov_file, emissions_by_id)?
+            };
+            data.insert(*year, fegov_db);
+        } else {
+            println!("No fe.gov emissions data available for {year}");
+        }
+    }
+    Ok(data)
 }
 
 /// Import and Save All Vehicles Specified via Input File
@@ -2351,53 +2386,51 @@ pub fn import_and_save_all_vehicles_from_file(
 ) -> Result<(), anyhow::Error> {
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
     println!("Found {} vehicle input records", inputs.len());
-    let emissions_path = data_dir_path.join(Path::new("emissions.csv"));
-    let emissions_db: HashMap<u32, Vec<EmissionsInfoFE>> = {
-        let emissions_file = File::open(emissions_path)?;
-        read_fuelecon_gov_emissions_to_hashmap(emissions_file)
-    };
-    let fegov_path = data_dir_path.join(Path::new("vehicles.csv"));
-    let fegov_db: Vec<VehicleDataFE> = {
-        let fegov_file = File::open(fegov_path.as_path())?;
-        read_fuelecon_gov_data_from_file(fegov_file, &emissions_db)?
-    };
-    let epatest_db = read_epa_test_data_to_hashmap(data_dir_path)?;
+    let model_years = determine_model_years_of_interest(&inputs);
+    let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
+    let fegov_data_by_year =
+        load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
+    let epatest_db = read_epa_test_data_for_given_years(data_dir_path, &model_years)?;
     println!("Read {} files of epa test vehicle data", epatest_db.len());
-    import_and_save_all_vehicles(&inputs, &fegov_db, &epatest_db, output_dir_path)
+    import_and_save_all_vehicles(&inputs, &fegov_data_by_year, &epatest_db, output_dir_path)
 }
 
 pub fn import_and_save_all_vehicles(
     inputs: &[VehicleInputRecord],
-    fegov_data: &[VehicleDataFE],
-    epatest_data: &HashMap<u32, Vec<VehicleDataEPA>>,
+    fegov_data_by_year: &HashMap<u32, Vec<VehicleDataFE>>,
+    epatest_data_by_year: &HashMap<u32, Vec<VehicleDataEPA>>,
     output_dir_path: &Path,
 ) -> Result<(), anyhow::Error> {
     for vir in inputs {
-        if let Some(epatest_data_for_year) = epatest_data.get(&vir.year) {
-            let vehs = try_import_vehicles(vir, fegov_data, epatest_data_for_year);
-            for (idx, veh) in vehs.iter().enumerate() {
-                let mut outfile: PathBuf = PathBuf::new();
-                outfile.push(output_dir_path);
-                if idx > 0 {
-                    let path = Path::new(&vir.output_file_name);
-                    let stem = path.file_stem().unwrap().to_str().unwrap();
-                    let ext = path.extension().unwrap().to_str().unwrap();
-                    let output_file_name = format!("{stem}-{idx}.{ext}");
-                    println!(
-                        "Multiple configurations found: output_file_name = {output_file_name}"
-                    );
-                    outfile.push(Path::new(&output_file_name));
-                } else {
-                    outfile.push(Path::new(&vir.output_file_name));
+        if let Some(fegov_data) = fegov_data_by_year.get(&vir.year) {
+            if let Some(epatest_data) = epatest_data_by_year.get(&vir.year) {
+                let vehs = try_import_vehicles(vir, fegov_data, epatest_data);
+                for (idx, veh) in vehs.iter().enumerate() {
+                    let mut outfile: PathBuf = PathBuf::new();
+                    outfile.push(output_dir_path);
+                    if idx > 0 {
+                        let path = Path::new(&vir.output_file_name);
+                        let stem = path.file_stem().unwrap().to_str().unwrap();
+                        let ext = path.extension().unwrap().to_str().unwrap();
+                        let output_file_name = format!("{stem}-{idx}.{ext}");
+                        println!(
+                            "Multiple configurations found: output_file_name = {output_file_name}"
+                        );
+                        outfile.push(Path::new(&output_file_name));
+                    } else {
+                        outfile.push(Path::new(&vir.output_file_name));
+                    }
+                    if let Some(full_outfile) = outfile.to_str() {
+                        veh.to_file(full_outfile)?;
+                    } else {
+                        println!("Could not determine output file path");
+                    }
                 }
-                if let Some(full_outfile) = outfile.to_str() {
-                    veh.to_file(full_outfile)?;
-                } else {
-                    println!("Could not determine output file path");
-                }
+            } else {
+                println!("No EPA test data available for year {}", vir.year);
             }
         } else {
-            println!("No EPA test data available for year {}", vir.year);
+            println!("No FE.gov data available for year {}", vir.year);
         }
     }
     Ok(())
