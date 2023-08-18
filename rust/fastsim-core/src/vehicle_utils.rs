@@ -2378,6 +2378,67 @@ fn load_fegov_data_for_given_years(
     Ok(data)
 }
 
+fn get_box_url_for_year(year: &u32) -> String {
+    match year {
+        2004 => String::from(""),
+        2005 => String::from(""),
+        2006 => String::from(""),
+        2007 => String::from(""),
+        2008 => String::from(""),
+        2009 => String::from(""),
+        2010 => String::from(""),
+        2011 => String::from(""),
+        2012 => String::from(""),
+        2013 => String::from(""),
+        2014 => String::from(""),
+        2015 => String::from(""),
+        2016 => String::from(""),
+        2017 => String::from(""),
+        2018 => String::from(""),
+        2019 => String::from(""),
+        2020 => String::from("https://app.box.com/s/0dkdys0aspzu4jtewjh8g3esjdsq9x6t"),
+        2021 => String::from(""),
+        2022 => String::from("https://app.box.com/s/edr9wezpgljmvxz8wptdzbk3c8rbbu6h"),
+        2023 => String::from(""),
+        _ => String::from(""),
+    }
+}
+
+/// Checks the cache directory to see if data files have been downloaded
+/// If so, moves on without any further action.
+/// If not, downloads data by year from remote site if it exists
+fn populate_cache_for_given_years_if_needed(data_dir_path: &Path, years: &HashSet<u32>) -> Result<bool, anyhow::Error> {
+    let mut downloaded_data = false;
+    for year in years {
+        println!("Checking {year}...");
+        let veh_file_exists = {
+            let name = format!("{year}-vehicles.csv");
+            let path = data_dir_path.join(Path::new(&name));
+            path.exists()
+        }; 
+        let emissions_file_exists = {
+            let name = format!("{year}-emissions.csv");
+            let path = data_dir_path.join(Path::new(&name));
+            path.exists()
+        };
+        let epa_file_exists = {
+            let name = format!("{year}-testcar.csv");
+            let path = data_dir_path.join(Path::new(&name));
+            path.exists()
+        };
+        if !veh_file_exists || !emissions_file_exists || !epa_file_exists {
+            let zip_file_name = format!("{year}.zip");
+            let zip_file_path = data_dir_path.join(Path::new(&zip_file_name));
+            let url = get_box_url_for_year(year);
+            println!("Downloading from box for {year}: {url}");
+            download_file_from_url(&url, &zip_file_path)?;
+            println!("... downloading data for {year}");
+            downloaded_data = true;
+        }
+    }
+    Ok(downloaded_data)
+}
+
 /// Import and Save All Vehicles Specified via Input File
 pub fn import_and_save_all_vehicles_from_file(
     input_path: &Path,
@@ -2387,6 +2448,10 @@ pub fn import_and_save_all_vehicles_from_file(
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
     println!("Found {} vehicle input records", inputs.len());
     let model_years = determine_model_years_of_interest(&inputs);
+    let downloaded = populate_cache_for_given_years_if_needed(data_dir_path, &model_years)?;
+    if downloaded {
+        println!("Downloaded and cached some data...");
+    }
     let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
     let fegov_data_by_year =
         load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
