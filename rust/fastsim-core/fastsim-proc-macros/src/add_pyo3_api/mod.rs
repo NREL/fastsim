@@ -6,6 +6,11 @@ mod pyo3_api_utils;
 use crate::imports::*;
 
 pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
+    println!(
+        "[{}{}] Using the local dev version of fastsim-proc-macros.",
+        file!(),
+        line!()
+    );
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
     // println!("{}", ast.ident.to_string());
     let ident = &ast.ident;
