@@ -353,7 +353,8 @@ cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
 t0 = time.time()
 
 sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
-sim_drive.sim_drive(None, np.array(cyc.time_s) / cyc.time_s[-1] * 10)
+aux_in_kw_override = np.array(cyc.time_s) / cyc.time_s[-1] * 10
+sim_drive.sim_drive(None)
 
 plt.figure()
 plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
