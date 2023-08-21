@@ -172,9 +172,9 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             if idx >= self.0.len() as i32 {
                                 Err(PyIndexError::new_err("Index is out of bounds"))
                             } else if idx >= 0 {
-                                Ok(self.0[idx as usize])
+                                Ok(self.0[idx as usize].clone())
                             } else {
-                                Ok(self.0[self.0.len() + idx as usize])
+                                Ok(self.0[self.0.len() + idx as usize].clone())
                             }
                         }
                         pub fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype
@@ -206,9 +206,6 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
         } else {
-            abort_call_site!(
-                "`add_pyo3_api` works only on tuple structs with `Vec` or `Array` in the name"
-            );
         }
     } else {
         abort_call_site!("`add_pyo3_api` works only on named and tuple structs.");

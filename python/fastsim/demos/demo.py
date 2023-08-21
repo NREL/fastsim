@@ -366,6 +366,30 @@ plt.show()
 
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
+
+# %% [markdown]
+# # Simulating multiple instances of RustSimDrive
+
+# Note that this cell (demarcated by the `# %%`)
+
+def get_sim_drive_vec(
+    parallelize: bool=True,
+) -> fsim.fastsimrust.SimDriveVec:
+    cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
+    veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
+    sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
+    sim_drive_vec = fsim.fastsimrust.SimDriveVec([sim_drive] * 20)
+    t0 = time.perf_counter()
+    sim_drive_vec.sim_drive(parallelize)
+    par_str = "with parallelization" if parallelize else "without parallelization"
+    print(f'Time to simulate {par_str}: {time.perf_counter() - t0:.2e} s')
+    return sim_drive_vec
+
+if __name__ == "__main__":
+    sdv = get_sim_drive_vec(False)
+    sdv_par = get_sim_drive_vec(True)
+
+
 # %% [markdown]
 # ## Batch Drive Cycles - TSDC Drive Cycles
 # 
