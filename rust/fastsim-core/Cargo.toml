@@ -11,7 +11,7 @@ repository = "https://github.com/NREL/fastsim"
 
 [dependencies]
 # this is compiled only when `dev-proc-macros` feature is not enabled, which is the default
-fastsim-proc-macros = { package = "fastsim-proc-macros", version = "0.1.4" }
+fastsim-proc-macros = { package = "fastsim-proc-macros", version = "0.1.5" }
 # this is compiled when `dev-proc-macros` feature is enabled with e.g. `cargo build --features
 # dev-proc-macros`
 dev-proc-macros = { package = "fastsim-proc-macros", path = "./fastsim-proc-macros" }
