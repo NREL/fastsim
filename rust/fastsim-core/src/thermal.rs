@@ -1,6 +1,6 @@
 //! Module for simulating thermal behavior of powertrains
 
-use proc_macros::{add_pyo3_api, HistoryVec};
+use crate::proc_macros::{add_pyo3_api, HistoryVec};
 
 use crate::air::AirProperties;
 use crate::cycle;
