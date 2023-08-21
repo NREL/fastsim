@@ -274,6 +274,7 @@ impl RustSimDrive {
             coast_delay_index,
             idm_target_speed_m_per_s,
             cyc0_cache,
+            aux_in_kw_override: None,
         }
     }
 
@@ -525,8 +526,12 @@ impl RustSimDrive {
 
         self.init_arrays();
 
+        // set `self.aux_in_kw_override` if it has been provided and not previously set
         if let Some(arr) = aux_in_kw_override {
-            self.aux_in_kw = arr;
+            match self.aux_in_kw_override {
+                Some(_) => {}
+                None => self.aux_in_kw = arr,
+            }
         }
 
         self.cyc_met[0] = true;
