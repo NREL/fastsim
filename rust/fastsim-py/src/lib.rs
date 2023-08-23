@@ -24,7 +24,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<simdrivelabel::LabelFe>()?;
     m.add_class::<simdrivelabel::LabelFePHEV>()?;
     m.add_class::<simdrivelabel::PHEVCycleCalc>()?;
-    m.add_class::<simdrive::simdrivevec::SimDriveVec>()?;
+    m.add_class::<simdrive::simdrive_iter::SimDriveVec>()?;
 
     cycle::register(py, m)?;
 

@@ -1,4 +1,5 @@
-//! Module containing vehicle struct and related functions.
+//! Module containing structs with parallel and serial iteration methods for batch
+//! running of `sim_drive` method
 // crate local
 use super::RustSimDrive;
 use crate::imports::*;
@@ -12,7 +13,7 @@ use rayon::prelude::*;
     #[pyo3(name = "sim_drive")]
     /// Calls `sim_drive` method for each simdrive instance in vec.
     /// # Arguments:
-    /// * parallelize: whether to parallelize `sim_drive` calls
+    /// * parallelize: whether to parallelize `sim_drive` calls, defaults to `true`
     fn sim_drive_py(&mut self, parallelize: Option<bool>) -> anyhow::Result<()> {
         self.sim_drive(parallelize)
     }

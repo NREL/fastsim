@@ -9,7 +9,7 @@ use crate::pyo3imports::*;
 use crate::vehicle::*;
 pub mod cyc_mods;
 pub mod simdrive_impl;
-pub mod simdrivevec;
+pub mod simdrive_iter;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
