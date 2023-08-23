@@ -63,37 +63,40 @@ class Pyo3ArrayI32(SerdeAPI, RustVec):
     """Helper struct to allow Rust to return a Python class that will indicate to the user that it's
     a clone.  """
 
-    def tolist(self) -> List[int]:
-        ...
-
 class Pyo3ArrayU32(SerdeAPI, RustVec):
     """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
-
-    def tolist(self) -> List[int]:
-        ...
 
 class Pyo3ArrayF64(SerdeAPI, RustVec):
     """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
 
-    def tolist(self) -> List[float]:
-        ...
 
 class Pyo3ArrayBool(SerdeAPI, RustVec):
     """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
 
-    def tolist(self) -> List[bool]:
-        ...
 
 class Pyo3VecF64(SerdeAPI, RustVec):
     """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
 
-    def tolist(self) -> List[float]:
-        ...
 
 class SimDriveVec(SerdeAPI, RustVec): 
     """Vector of RustSimDrive"""
+    def sim_drive(self, parallelize: bool = True, verbose: bool = False):
+        ...
 
-    def tolist(self) -> List[RustSimDrive]:
+    def push(self, sd: RustSimDrive):
+        """Push a new element onto the end"""
+        ...
+
+    def pop(self) -> Optional[RustSimDrive]: 
+        """Removed and return the last element"""
+        ...
+
+    def remove(self, idx: int):
+        """Remove element at `idx`"""
+        ...
+    
+    def insert(self, idx: int, sd: RustSimDrive):
+        """Insert `sd` before element `idx`"""
         ...
 
 
@@ -545,7 +548,7 @@ class RustSimDrive(SerdeAPI):
         Arguments
         ------------
         i: index of time step
-        `_py` extension is needed to avoid name collision with getter/setter methods"""
+        """
         ...
 
     def set_fc_power(self, i: int) -> None:
@@ -842,7 +845,7 @@ class SimDriveHot(SerdeAPI):
         Arguments
         ------------
         i: index of time step
-        `_py` extension is needed to avoid name collision with getter/setter methods"""
+        """
         ...
 
     def set_fc_power(self, i: int) -> None:
