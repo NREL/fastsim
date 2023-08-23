@@ -16,6 +16,7 @@ pub use si::length::{foot, kilometer, meter};
 pub use si::mass::{kilogram, megagram};
 pub use si::power::{kilowatt, megawatt, watt};
 pub use si::power_rate::watt_per_second;
+pub use si::pressure::kilopascal;
 pub use si::ratio::ratio;
 pub use si::time::{hour, second};
 pub use si::volume::cubic_meter;

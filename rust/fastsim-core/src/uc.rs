@@ -55,6 +55,8 @@ unit_const!(W, Power, 1.0);
 unit_const!(KW, Power, 1.0E3);
 unit_const!(MW, Power, 1.0E6);
 unit_const!(J, Energy, 1.0);
+unit_const!(MJ, Energy, 1.0E6);
+unit_const!(KJ, Energy, 1.0E3);
 
 unit_const!(KGPM3, MassDensity, 1.0);
 

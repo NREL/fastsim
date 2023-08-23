@@ -1,5 +1,5 @@
 use super::*;
-use crate::imports::*;
+// use crate::imports::*;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
 /// Battery electric locomotive
@@ -14,7 +14,7 @@ impl BatteryElectricVehicle {
     pub fn new(reversible_energy_storage: ReversibleEnergyStorage, trans: Transmission) -> Self {
         BatteryElectricVehicle {
             res: reversible_energy_storage,
-            trans: trans,
+            trans,
         }
     }
 

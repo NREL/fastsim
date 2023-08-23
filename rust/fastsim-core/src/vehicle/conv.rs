@@ -3,6 +3,7 @@ use super::*;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
 /// Conventional vehicle with only a FuelConverter as a power source
 pub struct ConventionalVehicle {
+    pub fs: FuelStorage,
     #[has_state]
     pub fc: FuelConverter,
     #[has_state]
@@ -10,13 +11,6 @@ pub struct ConventionalVehicle {
 }
 
 impl ConventionalVehicle {
-    pub fn new(fuel_converter: FuelConverter, trans: Transmission) -> Self {
-        ConventionalVehicle {
-            fc: fuel_converter,
-            trans: trans,
-        }
-    }
-
     pub fn solve_energy_consumption(
         &mut self,
         pwr_out_req: si::Power,
