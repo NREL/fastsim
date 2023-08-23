@@ -31,6 +31,7 @@ argmin-math = { version = "0.2.1", features = [
 validator = { version = "0.16", features = ["derive"] }
 lazy_static = "1.4.0"
 regex = "1.7.1"
+rayon = "1.7.0"
 
 [package.metadata]
 include = [

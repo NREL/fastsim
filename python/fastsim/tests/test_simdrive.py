@@ -269,6 +269,20 @@ class TestSimDriveClassic(unittest.TestCase):
             sd.sim_drive()
             self.assertEqual(sd.i, sd.cyc0.len)
 
+class TestSimDriveVec(unittest.TestCase):
+    def test_sim_drive_vec(self):
+        cyc = cycle.Cycle.from_file('udds').to_rust()
+        veh = vehicle.Vehicle.from_vehdb(1).to_rust()
+        sim_drive = simdrive.RustSimDrive(cyc, veh)
+        sim_drive_vec = fsim.fastsimrust.SimDriveVec([sim_drive] * 3)
+        sim_drive_vec.sim_drive()
+    
+    def test_sim_drive_vec_par(self):
+        cyc = cycle.Cycle.from_file('udds').to_rust()
+        veh = vehicle.Vehicle.from_vehdb(1).to_rust()
+        sim_drive = simdrive.RustSimDrive(cyc, veh)
+        sim_drive_vec = fsim.fastsimrust.SimDriveVec([sim_drive] * 3)
+        sim_drive_vec.sim_drive(parallelize=True)
 
 if __name__ == '__main__':
     unittest.main()
