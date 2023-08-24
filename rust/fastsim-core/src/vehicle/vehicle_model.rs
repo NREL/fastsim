@@ -4,54 +4,55 @@ use super::*;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
 pub enum PowertrainType {
     ConventionalVehicle(Box<ConventionalVehicle>),
-    // HybridElectricVehicle(Box<HybridElectricVehicle>),
-    // BatteryElectricVehicle(Box<BatteryElectricVehicle>),
+    HybridElectricVehicle(Box<HybridElectricVehicle>),
+    BatteryElectricVehicle(Box<BatteryElectricVehicle>),
+    // TODO: add PHEV here
 }
 
 impl PowertrainType {
     pub fn fuel_converter(&self) -> Option<&FuelConverter> {
         match self {
-            PowertrainType::ConventionalVehicle(loco) => Some(&loco.fc),
-            // PowertrainType::HybridElectricVehicle(loco) => Some(&loco.fc),
-            // PowertrainType::BatteryElectricVehicle(_) => None,
+            PowertrainType::ConventionalVehicle(conv) => Some(&conv.fc),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.fc),
+            PowertrainType::BatteryElectricVehicle(_) => None,
         }
     }
 
     pub fn fuel_converter_mut(&mut self) -> Option<&mut FuelConverter> {
         match self {
-            PowertrainType::ConventionalVehicle(loco) => Some(&mut loco.fc),
-            // PowertrainType::HybridElectricVehicle(loco) => Some(&mut loco.fc),
-            // PowertrainType::BatteryElectricVehicle(_) => None,
+            PowertrainType::ConventionalVehicle(conv) => Some(&mut conv.fc),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.fc),
+            PowertrainType::BatteryElectricVehicle(_) => None,
         }
     }
 
     pub fn set_fuel_converter(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
         match self {
-            PowertrainType::ConventionalVehicle(loco) => {
-                loco.fc = fc;
+            PowertrainType::ConventionalVehicle(conv) => {
+                conv.fc = fc;
                 Ok(())
             }
-            // PowertrainType::HybridElectricVehicle(loco) => {
-            //     loco.fc = fc;
-            //     Ok(())
-            // }
-            // PowertrainType::BatteryElectricVehicle(_) => bail!("BEL has no FuelConverter."),
+            PowertrainType::HybridElectricVehicle(hev) => {
+                hev.fc = fc;
+                Ok(())
+            }
+            PowertrainType::BatteryElectricVehicle(_) => bail!("BEL has no FuelConverter."),
         }
     }
 
     pub fn reversible_energy_storage(&self) -> Option<&ReversibleEnergyStorage> {
         match self {
             PowertrainType::ConventionalVehicle(_) => None,
-            // PowertrainType::HybridElectricVehicle(loco) => Some(&loco.res),
-            // PowertrainType::BatteryElectricVehicle(loco) => Some(&loco.res),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.res),
+            PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.res),
         }
     }
 
     pub fn reversible_energy_storage_mut(&mut self) -> Option<&mut ReversibleEnergyStorage> {
         match self {
             PowertrainType::ConventionalVehicle(_) => None,
-            // PowertrainType::HybridElectricVehicle(loco) => Some(&mut loco.res),
-            // PowertrainType::BatteryElectricVehicle(loco) => Some(&mut loco.res),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.res),
+            PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.res),
         }
     }
 
@@ -62,46 +63,48 @@ impl PowertrainType {
         match self {
             PowertrainType::ConventionalVehicle(_) => {
                 bail!("Conventional has no ReversibleEnergyStorage.")
-            } // PowertrainType::HybridElectricVehicle(loco) => {
-              //     loco.res = res;
-              //     Ok(())
-              // }
-              // PowertrainType::BatteryElectricVehicle(loco) => {
-              //     loco.res = res;
-              //     Ok(())
-              // }
+            }
+            PowertrainType::HybridElectricVehicle(loco) => {
+                loco.res = res;
+                Ok(())
+            }
+            PowertrainType::BatteryElectricVehicle(loco) => {
+                loco.res = res;
+                Ok(())
+            }
         }
     }
 
     pub fn trans(&self) -> &Transmission {
         match self {
-            PowertrainType::ConventionalVehicle(loco) => &loco.trans,
-            // PowertrainType::HybridElectricVehicle(loco) => &loco.trans,
-            // PowertrainType::BatteryElectricVehicle(loco) => &loco.trans,
+            PowertrainType::ConventionalVehicle(conv) => &conv.trans,
+            PowertrainType::HybridElectricVehicle(hev) => &hev.trans,
+            PowertrainType::BatteryElectricVehicle(bev) => &bev.trans,
         }
     }
 
     pub fn trans_mut(&mut self) -> &mut Transmission {
         match self {
-            PowertrainType::ConventionalVehicle(loco) => &mut loco.trans,
-            // PowertrainType::HybridElectricVehicle(loco) => &mut loco.trans,
-            // PowertrainType::BatteryElectricVehicle(loco) => &mut loco.trans,
+            PowertrainType::ConventionalVehicle(conv) => &mut conv.trans,
+            PowertrainType::HybridElectricVehicle(hev) => &mut hev.trans,
+            PowertrainType::BatteryElectricVehicle(bev) => &mut bev.trans,
         }
     }
 
     pub fn set_trans(&mut self, trans: Transmission) -> anyhow::Result<()> {
         match self {
-            PowertrainType::ConventionalVehicle(loco) => {
-                loco.trans = trans;
+            PowertrainType::ConventionalVehicle(conv) => {
+                conv.trans = trans;
                 Ok(())
-            } // PowertrainType::HybridElectricVehicle(loco) => {
-              //     loco.trans = trans;
-              //     Ok(())
-              // }
-              // PowertrainType::BatteryElectricVehicle(loco) => {
-              //     loco.trans = trans;
-              //     Ok(())
-              // }
+            }
+            PowertrainType::HybridElectricVehicle(hev) => {
+                hev.trans = trans;
+                Ok(())
+            }
+            PowertrainType::BatteryElectricVehicle(bev) => {
+                bev.trans = trans;
+                Ok(())
+            }
         }
     }
 }
@@ -109,9 +112,9 @@ impl PowertrainType {
 impl std::string::ToString for PowertrainType {
     fn to_string(&self) -> String {
         match self {
-            PowertrainType::ConventionalVehicle(_) => String::from("Conventional"),
-            // PowertrainType::HybridElectricVehicle(_) => String::from("HEV"),
-            // PowertrainType::BatteryElectricVehicle(_) => String::from("BEV"),
+            PowertrainType::ConventionalVehicle(_) => String::from("Conv"),
+            PowertrainType::HybridElectricVehicle(_) => String::from("HEV"),
+            PowertrainType::BatteryElectricVehicle(_) => String::from("BEV"),
         }
     }
 }
@@ -130,28 +133,12 @@ pub enum DriveTypes {
 }
 
 #[pyo3_api(
-    #[getter]
-    fn get_fuel_res_split(&self) -> PyResult<Option<f64>> {
-        match &self.powertrain_type {
-            PowertrainType::HybridElectricVehicle(loco) => Ok(Some(loco.fuel_res_split)),
-            _ => Ok(None),
-        }
+    #[pyo3(name = "set_save_interval")]
+    /// Set save interval and cascade to nested components.
+    fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> PyResult<()> {
+        self.set_save_interval(save_interval);
+        Ok(())
     }
-
-    #[getter]
-    fn get_fuel_res_ratio(&self) -> PyResult<Option<f64>> {
-        match &self.powertrain_type {
-            PowertrainType::HybridElectricVehicle(loco) => Ok(loco.fuel_res_ratio),
-            _ => Ok(None),
-        }
-    }
-
-    // #[pyo3(name = "set_save_interval")]
-    // /// Set save interval and cascade to nested components.
-    // fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> PyResult<()> {
-    //     self.set_save_interval(save_interval);
-    //     Ok(())
-    // }
 
     // #[pyo3(name = "get_save_interval")]
     // /// Set save interval and cascade to nested components.
@@ -209,27 +196,10 @@ pub enum DriveTypes {
     //     self.get_pwr_rated().get::<si::kilowatt>()
     // }
 
-    // #[getter("force_max_pounds")]
-    // fn get_force_max_pounds_py(&self) -> PyResult<Option<f64>> {
-    //     Ok(self.force_max()?.map(|f| f.get::<si::pound_force>()))
-    // }
-
-    // #[getter("force_max_newtons")]
-    // fn get_force_max_newtons_py(&self) -> PyResult<Option<f64>> {
-    //     Ok(
-    //         self.force_max()?.map(|f| f.get::<si::newton>())
-    //     )
-    // }
-
-    // #[getter]
-    // fn get_mass_kg(&self) -> PyResult<Option<f64>> {
-    //     Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
-    // }
-
-    // #[getter]
-    // fn get_ballast_mass_kg(&self) -> PyResult<Option<f64>> {
-    //     Ok(self.ballast_mass.map(|m| m.get::<si::kilogram>()))
-    // }
+    #[getter]
+    fn get_mass_kg(&self) -> PyResult<Option<f64>> {
+        Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
+    }
 )]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 /// Struct for simulating any type of locomotive
@@ -260,6 +230,8 @@ pub struct Vehicle {
     /// Wheel base length
     /// #[fsim2_name = "wheel_base_m"]
     wheel_base: si::Length,
+    /// Total vehicle mass
+    pub mass: si::Mass,
     /// Cargo mass including passengers
     /// #[fsim2_name: "cargo_kg"]
     pub cargo_mass: si::Mass,
@@ -271,6 +243,9 @@ pub struct Vehicle {
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
+    /// time step interval at which `state` is saved into `history`
+    #[api(skip_set, skip_get)]
+    save_interval: Option<usize>,
 }
 
 impl SerdeAPI for Vehicle {
@@ -331,18 +306,44 @@ impl Mass for Vehicle {
 impl From<fastsim_2::vehicle::RustVehicle> for Vehicle {
     fn from(veh: fastsim_2::vehicle::RustVehicle) -> Self {
         let powertrain_type = match &veh.veh_pt_type {
-            _x if _x == "Conv" => ConventionalVehicle {
-                fs: FuelStorage {
-                    max_kw: veh.fs_max_kw * uc::KW,
-                    t_to_peak_pwr: veh.fs_secs_to_peak_pwr * uc::S,
-                    energy_capacity: veh.fs_kwh * 3.6 * uc::MJ,
-                    specific_energy: ,
-                    
-                },
-            },
-            _x if _x == "HEV" => todo!(),
-            _x if _x == "PHEV" => todo!(),
-            _x if _x == "BEV" => todo!(),
+            _x if _x == "Conv" => {
+                let conv = ConventionalVehicle {
+                    fs: FuelStorage {
+                        pwr_out_max: veh.fs_max_kw * uc::KW,
+                        t_to_peak_pwr: veh.fs_secs_to_peak_pwr * uc::S,
+                        energy_capacity: veh.fs_kwh * 3.6 * uc::MJ,
+                        specific_energy: todo!(),
+                        specific_pwr_kw_per_kg: todo!(),
+                        mass: todo!(),
+                    },
+                    fc: FuelConverter {
+                        state: Default::default(),
+                        mass: todo!(),
+                        specific_pwr_kw_per_kg: todo!(),
+                        pwr_out_max: todo!(),
+                        pwr_out_max_init: todo!(),
+                        pwr_ramp_lag: todo!(),
+                        pwr_out_frac_interp: todo!(),
+                        eta_interp: todo!(),
+                        pwr_idle_fuel: todo!(),
+                        save_interval: todo!(),
+                        history: todo!(),
+                    },
+                    trans: Transmission {
+                        state: Default::default(),
+                        pwr_out_frac_interp: vec![],
+                        eta_interp: (),
+                        pwr_in_frac_interp: (),
+                        pwr_out_max: (),
+                        save_interval: (),
+                        history: (),
+                    },
+                };
+                PowertrainType::ConventionalVehicle(Box::new(conv))
+            }
+            // _x if _x == "HEV" => todo!(),
+            // _x if _x == "PHEV" => todo!(),
+            // _x if _x == "BEV" => todo!(),
             _ => panic!("Invalid veh_pt_type: {}", veh.veh_pt_type),
         };
 
@@ -367,6 +368,7 @@ impl From<fastsim_2::vehicle::RustVehicle> for Vehicle {
             cargo_mass: veh.cargo_kg * uc::KG,
             comp_mass_multiplier: veh.comp_mass_multiplier * uc::R,
             state: Default::default(),
+            save_interval: Some(1),
         }
     }
 }
