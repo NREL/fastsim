@@ -375,15 +375,17 @@ pub struct RustCycleElement {
     pub road_type: Option<f64>,
 }
 
+macro_rules! cycle_cache_pymethods {
+    () => {
+        #[new]
+        pub fn __new__(cyc: &RustCycle) -> Self {
+            Self::new(cyc)
+        }
+    };
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[add_pyo3_api(
-    #[new]
-    pub fn __new__(
-        cyc: &RustCycle,
-    ) -> Self {
-        Self::new(cyc)
-    }
-)]
+#[add_pyo3_api(cycle_cache_pymethods!();)]
 pub struct RustCycleCache {
     pub grade_all_zero: bool,
     pub trapz_step_distances_m: Array1<f64>,
@@ -470,18 +472,30 @@ impl RustCycleCache {
     }
 }
 
+#[cfg(feature = "pyo3")]
+macro_rules! cycle_new_method {
+    () => {
+        #[new]
+        pub fn __new__(
+            time_s: Vec<f64>,
+            mps: Vec<f64>,
+            grade: Vec<f64>,
+            road_type: Vec<f64>,
+            name: String,
+        ) -> Self {
+            Self::new(time_s, mps, grade, road_type, name)
+        }
+
+        pub struct ShouldBeInvalidHere {
+            a: f64,
+            b: f64,
+        }
+    };
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[add_pyo3_api(
-    #[new]
-    pub fn __new__(
-        time_s: Vec<f64>,
-        mps: Vec<f64>,
-        grade: Vec<f64>,
-        road_type: Vec<f64>,
-        name: String,
-    ) -> Self {
-        Self::new(time_s, mps, grade, road_type, name)
-    }
+    cycle_new_method!();
 
     #[allow(clippy::type_complexity)]
     pub fn __getnewargs__(&self) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
