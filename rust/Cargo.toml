@@ -17,6 +17,8 @@ codegen-units = 1 # optimize connection between modules
 anyhow = "1.0.57"
 pyo3 = "0.19"
 pyo3-log = "*"
-serde = "1.0.143"
+serde = "1.0.186"
 serde_json = "1.0.83"
 serde_yaml = "0.9.22"
+serde_derive = "1.0.186"
+

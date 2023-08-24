@@ -1,7 +1,7 @@
 //! Module containing classes and methods for calculating label fuel economy.
 
 use ndarray::Array;
-use serde::Serialize;
+use serde_derive::Serialize;
 use std::collections::HashMap;
 
 // crate local

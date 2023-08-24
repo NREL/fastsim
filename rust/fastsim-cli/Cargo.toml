@@ -14,6 +14,7 @@ repository = "https://github.com/NREL/fastsim"
 fastsim-core = { path = "../fastsim-core", version = "~0" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_derive = { workspace = true }
 project-root = "0.2.2"
 clap = { version = "3.2.6", features = ["derive"] }
 regex = "1"

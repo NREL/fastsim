@@ -1,5 +1,5 @@
 use clap::{ArgGroup, Parser};
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use std::fs;

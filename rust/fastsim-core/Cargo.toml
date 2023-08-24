@@ -16,7 +16,8 @@ pyo3 = { workspace = true, features = [
     "anyhow",
 ], optional = true }
 anyhow = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true }
+serde_derive = { workspace = true }
 serde_yaml = { workspace = true }
 ndarray = { version = "0.15.4", features = ["serde"] }
 csv = "1.1"

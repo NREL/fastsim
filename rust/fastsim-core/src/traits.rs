@@ -1,7 +1,7 @@
 use crate::imports::*;
 use std::collections::HashMap;
 
-pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
+pub trait SerdeAPI: serde::Serialize + for<'a> serde::Deserialize<'a> {
     /// runs any initialization steps that might be needed
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
@@ -45,7 +45,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     fn from_file(filename: &str) -> Result<Self, anyhow::Error>
     where
         Self: std::marker::Sized,
-        for<'de> Self: Deserialize<'de>,
+        for<'de> Self: serde::Deserialize<'de>,
     {
         let extension = Path::new(filename)
             .extension()
