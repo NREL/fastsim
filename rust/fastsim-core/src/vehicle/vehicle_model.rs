@@ -75,34 +75,34 @@ impl PowertrainType {
         }
     }
 
-    pub fn trans(&self) -> &Transmission {
+    pub fn e_machine(&self) -> &ElectricMachine {
         match self {
-            PowertrainType::ConventionalVehicle(conv) => &conv.trans,
-            PowertrainType::HybridElectricVehicle(hev) => &hev.trans,
-            PowertrainType::BatteryElectricVehicle(bev) => &bev.trans,
+            PowertrainType::ConventionalVehicle(conv) => &conv.e_machine,
+            PowertrainType::HybridElectricVehicle(hev) => &hev.e_machine,
+            PowertrainType::BatteryElectricVehicle(bev) => &bev.e_machine,
         }
     }
 
-    pub fn trans_mut(&mut self) -> &mut Transmission {
+    pub fn e_machine_mut(&mut self) -> &mut ElectricMachine {
         match self {
-            PowertrainType::ConventionalVehicle(conv) => &mut conv.trans,
-            PowertrainType::HybridElectricVehicle(hev) => &mut hev.trans,
-            PowertrainType::BatteryElectricVehicle(bev) => &mut bev.trans,
+            PowertrainType::ConventionalVehicle(conv) => &mut conv.e_machine,
+            PowertrainType::HybridElectricVehicle(hev) => &mut hev.e_machine,
+            PowertrainType::BatteryElectricVehicle(bev) => &mut bev.e_machine,
         }
     }
 
-    pub fn set_trans(&mut self, trans: Transmission) -> anyhow::Result<()> {
+    pub fn set_e_machine(&mut self, e_machine: ElectricMachine) -> anyhow::Result<()> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => {
-                conv.trans = trans;
+                conv.e_machine = e_machine;
                 Ok(())
             }
             PowertrainType::HybridElectricVehicle(hev) => {
-                hev.trans = trans;
+                hev.e_machine = e_machine;
                 Ok(())
             }
             PowertrainType::BatteryElectricVehicle(bev) => {
-                bev.trans = trans;
+                bev.e_machine = e_machine;
                 Ok(())
             }
         }
@@ -174,17 +174,17 @@ pub enum DriveTypes {
     //     self.set_reversible_energy_storage(res).map_err(|e| PyAttributeError::new_err(e.to_string()))
     // }
     // #[getter]
-    // fn get_trans(&self) -> Transmission {
-    //     self.trans().clone()
+    // fn get_e_machine(&self) -> ElectricMachine {
+    //     self.e_machine().clone()
     // }
 
     // #[setter]
-    // fn set_trans_py(&mut self, _trans: Transmission) -> PyResult<()> {
+    // fn set_e_machine_py(&mut self, _e_machine: ElectricMachine) -> PyResult<()> {
     //     Err(PyAttributeError::new_err(DIRECT_SET_ERR))
     // }
-    // #[setter(__trans)]
-    // fn set_trans_hidden(&mut self, trans: Transmission) -> PyResult<()> {
-    //     self.set_trans(trans).map_err(|e| PyAttributeError::new_err(e.to_string()))
+    // #[setter(__e_machine)]
+    // fn set_e_machine_hidden(&mut self, e_machine: ElectricMachine) -> PyResult<()> {
+    //     self.set_e_machine(e_machine).map_err(|e| PyAttributeError::new_err(e.to_string()))
     // }
 
     // fn loco_type(&self) -> PyResult<String> {
@@ -196,10 +196,10 @@ pub enum DriveTypes {
     //     self.get_pwr_rated().get::<si::kilowatt>()
     // }
 
-    #[getter]
-    fn get_mass_kg(&self) -> PyResult<Option<f64>> {
-        Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
-    }
+    // #[getter]
+    // fn get_mass_kg(&self) -> PyResult<Option<f64>> {
+    //     Ok(self.mass()?.map(|m| m))
+    // }
 )]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 /// Struct for simulating any type of locomotive
@@ -217,7 +217,9 @@ pub struct Vehicle {
     /// Projected frontal area for drag calculations
     frontal_area: si::Area,
     /// Vehicle mass excluding cargo, passengers, and powertrain components
-    glider_mass: si::Mass,
+    // TODO: make sure setter and getter get written
+    #[api(skip_get, skip_set)]
+    glider_mass: Option<si::Mass>,
     /// Vehicle center of mass height
     cg_height: si::Length,
     #[api(skip_get, skip_set)]
@@ -231,9 +233,12 @@ pub struct Vehicle {
     /// #[fsim2_name = "wheel_base_m"]
     wheel_base: si::Length,
     /// Total vehicle mass
-    pub mass: si::Mass,
+    // TODO: make sure setter and getter get written
+    #[api(skip_get, skip_set)]
+    pub mass: Option<si::Mass>,
     /// Cargo mass including passengers
     /// #[fsim2_name: "cargo_kg"]
+    #[serde(default)]
     pub cargo_mass: si::Mass,
     // `veh_override_kg` in fastsim-2 is getting deprecated in fastsim-3
     /// Component mass multiplier for vehicle mass calculation
@@ -246,6 +251,8 @@ pub struct Vehicle {
     /// time step interval at which `state` is saved into `history`
     #[api(skip_set, skip_get)]
     save_interval: Option<usize>,
+    /// Custom vector of [Self::state]
+    pub history: VehicleStateHistoryVec,
 }
 
 impl SerdeAPI for Vehicle {
@@ -303,20 +310,34 @@ impl Mass for Vehicle {
     }
 }
 
-impl From<fastsim_2::vehicle::RustVehicle> for Vehicle {
-    fn from(veh: fastsim_2::vehicle::RustVehicle) -> Self {
-        let powertrain_type = match &veh.veh_pt_type {
-            _x if _x == "Conv" => {
-                let conv = ConventionalVehicle {
-                    fs: FuelStorage {
+/// TODO: update this constant to match fastsim-2 for gasoline
+const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
+const CONV: &str = "Conv";
+const HEV: &str = "HEV";
+const PHEV: &str = "PHEV";
+const BEV: &str = "BEV";
+
+impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
+    type Error = anyhow::Error;
+    fn try_from(veh: fastsim_2::vehicle::RustVehicle) -> Result<Self, Self::Error> {
+        let mut veh = veh.clone();
+        veh.set_derived();
+        let save_interval = Some(1);
+        let powertrain_type: PowertrainType = if &veh.veh_pt_type == CONV {
+            let conv = ConventionalVehicle {
+                fs: {
+                    let mut fs = FuelStorage {
                         pwr_out_max: veh.fs_max_kw * uc::KW,
                         t_to_peak_pwr: veh.fs_secs_to_peak_pwr * uc::S,
                         energy_capacity: veh.fs_kwh * 3.6 * uc::MJ,
-                        specific_energy: todo!(),
-                        specific_pwr_kw_per_kg: todo!(),
-                        mass: todo!(),
-                    },
-                    fc: FuelConverter {
+                        specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
+                        mass: None,
+                    };
+                    fs.update_mass(None);
+                    fs
+                },
+                fc: {
+                    let mut fc = FuelConverter {
                         state: Default::default(),
                         mass: todo!(),
                         specific_pwr_kw_per_kg: todo!(),
@@ -327,25 +348,31 @@ impl From<fastsim_2::vehicle::RustVehicle> for Vehicle {
                         eta_interp: todo!(),
                         pwr_idle_fuel: todo!(),
                         save_interval: todo!(),
-                        history: todo!(),
-                    },
-                    trans: Transmission {
-                        state: Default::default(),
-                        pwr_out_frac_interp: vec![],
-                        eta_interp: (),
-                        pwr_in_frac_interp: (),
-                        pwr_out_max: (),
-                        save_interval: (),
-                        history: (),
-                    },
-                };
-                PowertrainType::ConventionalVehicle(Box::new(conv))
-            }
-            // _x if _x == "HEV" => todo!(),
-            // _x if _x == "PHEV" => todo!(),
-            // _x if _x == "BEV" => todo!(),
-            _ => panic!("Invalid veh_pt_type: {}", veh.veh_pt_type),
-        };
+                        history: Default::default(),
+                    };
+                    fc.update_mass(None);
+                    fc
+                },
+                e_machine: ElectricMachine {
+                    state: Default::default(),
+                    pwr_out_frac_interp: veh.mc_pwr_out_perc.to_vec(),
+                    eta_interp: veh.mc_eff_map.to_vec(),
+                    pwr_in_frac_interp: vec![],
+                    pwr_out_max: veh.mc_max_kw * uc::KW,
+                    save_interval,
+                    history: Default::default(),
+                },
+            };
+            Some(PowertrainType::ConventionalVehicle(Box::new(conv)))
+        } else {
+            None
+        }
+        .expect(&format!(
+            "Invalid powertrain type: {}.
+            Expected one of {}",
+            veh.veh_pt_type,
+            [CONV, HEV, PHEV, BEV].join(", ")
+        ));
 
         let drive_type = if veh.veh_cg_m < 0. {
             DriveTypes::RWD
@@ -353,13 +380,13 @@ impl From<fastsim_2::vehicle::RustVehicle> for Vehicle {
             DriveTypes::FWD
         };
 
-        Self {
+        Ok(Self {
             name: veh.scenario_name,
             year: veh.veh_year,
             powertrain_type,
             drag_coeff: veh.drag_coef * uc::R,
             frontal_area: veh.frontal_area_m2 * uc::M2,
-            glider_mass: veh.glider_kg * uc::KG,
+            glider_mass: Some(veh.glider_kg * uc::KG),
             cg_height: veh.veh_cg_m * uc::M,
             // TODO: check the logic here!
             drive_type,
@@ -368,54 +395,14 @@ impl From<fastsim_2::vehicle::RustVehicle> for Vehicle {
             cargo_mass: veh.cargo_kg * uc::KG,
             comp_mass_multiplier: veh.comp_mass_multiplier * uc::R,
             state: Default::default(),
-            save_interval: Some(1),
-        }
+            save_interval,
+            history: Default::default(),
+            mass: None,
+        })
     }
 }
 
 impl Vehicle {
-    /// Sets force max based on provided value or previously set
-    /// `self.mu`.
-    ///
-    /// Arugments:
-    /// * `force_max` - option for setting `self.force_max` directly
-    pub fn update_force_max(&mut self, force_max: Option<si::Force>) -> anyhow::Result<()> {
-        match force_max {
-            Some(force_max) => {
-                self.force_max = Some(force_max);
-                self.mu = self.mass.map(|mass| force_max / (mass * uc::ACC_GRAV))
-            }
-            // derive force_max from other parameters
-            None => {
-                self.force_max = match self.mu {
-                    Some(mu) => match self.mass {
-                        Some(mass) => Some(mass * uc::ACC_GRAV * mu),
-                        None => {
-                            bail!("Must set `self.mass`")
-                        }
-                    },
-                    None => match self.mu {
-                        Some(_mu) => bail!("Must set `self.mu`"),
-                        None => bail!("Must set `self.mu` and `self.mass`"),
-                    },
-                }
-            }
-        };
-        Ok(())
-    }
-
-    pub fn force_max(&self) -> anyhow::Result<Option<si::Force>> {
-        self.check_force_max()?; // TODO: might want to copy this to `from_file` method
-        Ok(self.force_max)
-    }
-
-    pub fn check_force_max(&self) -> anyhow::Result<()> {
-        if let (Some(f), Some(mu), Some(mass)) = (self.force_max, self.mu, self.mass) {
-            ensure!(utils::almost_eq_uom(&f, &(mu * mass * uc::ACC_GRAV), None));
-        }
-        Ok(())
-    }
-
     pub fn get_pwr_rated(&self) -> si::Power {
         if self.fuel_converter().is_some() && self.reversible_energy_storage().is_some() {
             self.fuel_converter().unwrap().pwr_out_max
@@ -436,16 +423,16 @@ impl Vehicle {
         match &mut self.powertrain_type {
             PowertrainType::ConventionalVehicle(loco) => {
                 loco.fc.save_interval = save_interval;
-                loco.trans.save_interval = save_interval;
+                loco.e_machine.save_interval = save_interval;
             }
             PowertrainType::HybridElectricVehicle(loco) => {
                 loco.fc.save_interval = save_interval;
                 loco.res.save_interval = save_interval;
-                loco.trans.save_interval = save_interval;
+                loco.e_machine.save_interval = save_interval;
             }
             PowertrainType::BatteryElectricVehicle(loco) => {
                 loco.res.save_interval = save_interval;
-                loco.trans.save_interval = save_interval;
+                loco.e_machine.save_interval = save_interval;
             }
         }
     }
@@ -477,21 +464,22 @@ impl Vehicle {
         self.powertrain_type.set_reversible_energy_storage(res)
     }
 
-    pub fn trans(&self) -> &Transmission {
-        self.powertrain_type.trans()
+    pub fn e_machine(&self) -> &ElectricMachine {
+        self.powertrain_type.e_machine()
     }
 
-    pub fn trans_mut(&mut self) -> &mut Transmission {
-        self.powertrain_type.trans_mut()
+    pub fn e_machine_mut(&mut self) -> &mut ElectricMachine {
+        self.powertrain_type.e_machine_mut()
     }
 
     /// Calculate mass from components.
     fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        if let (Some(baseline), Some(ballast)) = (self.baseline_mass, self.ballast_mass) {
+        if let Some(_glider_mass) = self.glider_mass {
             match self.powertrain_type {
                 PowertrainType::ConventionalVehicle(_) => {
+                    // TODO: add the other component and vehicle level masses here
                     if let Some(fc) = self.fuel_converter().unwrap().mass()? {
-                        Ok(Some(fc + baseline + ballast))
+                        Ok(Some(fc))
                     } else {
                         bail!(
                             "Locomotive fields baseline and ballast masses are both specified\n{}\n{}",
@@ -505,8 +493,10 @@ impl Vehicle {
                         self.fuel_converter().unwrap().mass()?,
                         self.reversible_energy_storage().unwrap().mass()?,
                     ) {
-                        Ok(Some(fc + res + baseline + ballast))
+                        // TODO: add the other component and vehicle level masses here
+                        Ok(Some(fc + res))
                     } else {
+                        // TODO: update error message
                         bail!(
                             "Locomotive fields baseline and ballast masses are both specified\n{}\n{}",
                             "so `fc`, `gen`, and `res` masses must also be specified.",
@@ -516,7 +506,7 @@ impl Vehicle {
                 }
                 PowertrainType::BatteryElectricVehicle(_) => {
                     if let Some(res) = self.reversible_energy_storage().unwrap().mass()? {
-                        Ok(Some(res + baseline + ballast))
+                        Ok(Some(res))
                     } else {
                         bail!(
                             "Locomotive fields baseline and ballast masses are both specified\n{}\n{}",
@@ -526,44 +516,7 @@ impl Vehicle {
                     }
                 }
             }
-        } else if self.baseline_mass.is_none() && self.ballast_mass.is_none() {
-            match self.powertrain_type {
-                PowertrainType::ConventionalVehicle(_) => {
-                    if self.fuel_converter().unwrap().mass()?.is_none() {
-                        Ok(None)
-                    } else {
-                        bail!(
-                            "Locomotive fields baseline and ballast masses are both `None`\n{}\n{}",
-                            "so `fc` and `gen` masses must also be `None`.",
-                            format_dbg!()
-                        )
-                    }
-                }
-                PowertrainType::HybridElectricVehicle(_) => {
-                    if self.fuel_converter().unwrap().mass()?.is_none()
-                        && self.reversible_energy_storage().unwrap().mass()?.is_none()
-                    {
-                        Ok(None)
-                    } else {
-                        bail!(
-                            "Locomotive fields baseline and ballast masses are both `None`\n{}\n{}",
-                            "so `fc`, `gen`, and `res` masses must also be `None`.",
-                            format_dbg!()
-                        )
-                    }
-                }
-                PowertrainType::BatteryElectricVehicle(_) => {
-                    if self.reversible_energy_storage().unwrap().mass()?.is_none() {
-                        Ok(None)
-                    } else {
-                        bail!(
-                            "Locomotive fields baseline and ballast masses are both `None`\n{}\n{}",
-                            "so `res` mass must also also be `None`.",
-                            format_dbg!()
-                        )
-                    }
-                }
-            }
+            // TODO: probably need more `else ... if` branches here
         } else {
             bail!(
                 "Both `baseline` and `ballast` masses must be either `Some` or `None`\n{}",
@@ -588,50 +541,29 @@ impl Vehicle {
 
         self.state.pwr_out = pwr_out_req;
         match &mut self.powertrain_type {
-            PowertrainType::ConventionalVehicle(loco) => {
-                loco.solve_energy_consumption(
+            PowertrainType::ConventionalVehicle(conv) => {
+                conv.solve_energy_consumption(
                     pwr_out_req,
                     dt,
                     engine_on.unwrap_or(true),
                     self.state.pwr_aux,
-                    self.assert_limits,
                 )?;
-                self.state.pwr_out =
-                    loco.trans.state.pwr_mech_prop_out - loco.trans.state.pwr_mech_dyn_brake;
+                self.state.pwr_out = conv.e_machine.state.pwr_mech_prop_out
+                    - conv.e_machine.state.pwr_mech_dyn_brake;
             }
-            PowertrainType::HybridElectricVehicle(loco) => {
-                loco.solve_energy_consumption(pwr_out_req, dt, self.assert_limits)?;
-                // TODO: add `engine_on` and `pwr_aux` here as inputs
-                self.state.pwr_out =
-                    loco.trans.state.pwr_mech_prop_out - loco.trans.state.pwr_mech_dyn_brake;
-            }
-            PowertrainType::BatteryElectricVehicle(loco) => {
-                //todo: put something in hear for deep sleep that is the
-                //equivalent of engine_on in conventional loco
-                loco.solve_energy_consumption(pwr_out_req, dt, self.state.pwr_aux)?;
-                self.state.pwr_out =
-                    loco.trans.state.pwr_mech_prop_out - loco.trans.state.pwr_mech_dyn_brake;
-            }
+            PowertrainType::HybridElectricVehicle(_hev) => {}
+            PowertrainType::BatteryElectricVehicle(_bev) => {}
         }
         self.state.energy_out += self.state.pwr_out * dt;
         self.state.energy_aux += self.state.pwr_aux * dt;
-
         Ok(())
-    }
-
-    pub fn set_pwr_aux(&mut self, engine_on: Option<bool>) {
-        self.state.pwr_aux = if engine_on.unwrap_or(true) {
-            self.pwr_aux_offset + self.pwr_aux_traction_coeff * self.state.pwr_out.abs()
-        } else {
-            si::Power::ZERO
-        };
     }
 }
 
-fn set_pwr_lims(state: &mut VehicleState, trans: &Transmission) {
-    state.pwr_out_max = trans.state.pwr_mech_out_max;
-    state.pwr_rate_out_max = trans.state.pwr_rate_out_max;
-    state.pwr_regen_max = trans.state.pwr_mech_regen_max;
+fn set_pwr_lims(state: &mut VehicleState, e_machine: &ElectricMachine) {
+    state.pwr_out_max = e_machine.state.pwr_mech_out_max;
+    state.pwr_rate_out_max = e_machine.state.pwr_rate_out_max;
+    state.pwr_regen_max = e_machine.state.pwr_mech_regen_max;
 }
 
 impl VehicleTrait for Vehicle {
@@ -672,15 +604,15 @@ impl VehicleTrait for Vehicle {
         match &self.powertrain_type {
             PowertrainType::ConventionalVehicle(loco) => {
                 // TODO: Coordinate with Geordie on the rate
-                set_pwr_lims(&mut self.state, &loco.trans);
+                set_pwr_lims(&mut self.state, &loco.e_machine);
                 assert_eq!(self.state.pwr_regen_max, si::Power::ZERO);
             }
             PowertrainType::HybridElectricVehicle(loco) => {
-                set_pwr_lims(&mut self.state, &loco.trans);
+                set_pwr_lims(&mut self.state, &loco.e_machine);
                 // TODO: Coordinate with Geordie on rate
             }
             PowertrainType::BatteryElectricVehicle(loco) => {
-                set_pwr_lims(&mut self.state, &loco.trans);
+                set_pwr_lims(&mut self.state, &loco.e_machine);
                 // TODO: Coordinate with Geordie on rate; INCOMPLETE ON
                 // RATE (Jinghu as of 06/06/2022)
             }

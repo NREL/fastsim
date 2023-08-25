@@ -10,7 +10,7 @@ pub struct HybridElectricVehicle {
     #[has_state]
     pub fc: FuelConverter,
     #[has_state]
-    pub trans: Transmission,
+    pub e_machine: ElectricMachine,
 }
 
 impl SerdeAPI for HybridElectricVehicle {}
@@ -21,7 +21,7 @@ impl VehicleTrait for Box<HybridElectricVehicle> {
         pwr_aux: Option<si::Power>,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        todo!();
+        // TODO
         Ok(())
     }
 
@@ -34,6 +34,6 @@ impl VehicleTrait for Box<HybridElectricVehicle> {
     }
 
     fn get_energy_loss(&self) -> si::Energy {
-        self.fc.state.energy_loss + self.res.state.energy_loss + self.trans.state.energy_loss
+        self.fc.state.energy_loss + self.res.state.energy_loss + self.e_machine.state.energy_loss
     }
 }

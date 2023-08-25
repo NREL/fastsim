@@ -7,7 +7,7 @@ pub struct ConventionalVehicle {
     #[has_state]
     pub fc: FuelConverter,
     #[has_state]
-    pub trans: Transmission,
+    pub e_machine: ElectricMachine,
 }
 
 impl ConventionalVehicle {
@@ -17,9 +17,8 @@ impl ConventionalVehicle {
         dt: si::Time,
         engine_on: bool,
         pwr_aux: si::Power,
-        assert_limits: bool,
     ) -> anyhow::Result<()> {
-        self.trans.set_pwr_in_req(pwr_out_req, dt)?;
+        self.e_machine.set_pwr_in_req(pwr_out_req, dt)?;
         Ok(())
     }
 }
@@ -32,7 +31,7 @@ impl VehicleTrait for Box<ConventionalVehicle> {
         pwr_aux: Option<si::Power>,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        todo!();
+        // TODO
         Ok(())
     }
 
@@ -45,6 +44,6 @@ impl VehicleTrait for Box<ConventionalVehicle> {
     }
 
     fn get_energy_loss(&self) -> si::Energy {
-        self.fc.state.energy_loss + self.trans.state.energy_loss
+        self.fc.state.energy_loss + self.e_machine.state.energy_loss
     }
 }

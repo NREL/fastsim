@@ -7,14 +7,17 @@ pub struct BatteryElectricVehicle {
     #[has_state]
     pub res: ReversibleEnergyStorage,
     #[has_state]
-    pub trans: Transmission,
+    pub e_machine: ElectricMachine,
 }
 
 impl BatteryElectricVehicle {
-    pub fn new(reversible_energy_storage: ReversibleEnergyStorage, trans: Transmission) -> Self {
+    pub fn new(
+        reversible_energy_storage: ReversibleEnergyStorage,
+        e_machine: ElectricMachine,
+    ) -> Self {
         BatteryElectricVehicle {
             res: reversible_energy_storage,
-            trans,
+            e_machine,
         }
     }
 
@@ -28,20 +31,23 @@ impl BatteryElectricVehicle {
         dt: si::Time,
         pwr_aux: si::Power,
     ) -> anyhow::Result<()> {
-        self.trans.set_pwr_in_req(pwr_out_req, dt)?;
-        if self.trans.state.pwr_elec_prop_in > si::Power::ZERO {
+        self.e_machine.set_pwr_in_req(pwr_out_req, dt)?;
+        if self.e_machine.state.pwr_elec_prop_in > si::Power::ZERO {
             // positive traction
-            self.res
-                .solve_energy_consumption(self.trans.state.pwr_elec_prop_in, pwr_aux, dt)?;
+            self.res.solve_energy_consumption(
+                self.e_machine.state.pwr_elec_prop_in,
+                pwr_aux,
+                dt,
+            )?;
         } else {
             // negative traction
             self.res.solve_energy_consumption(
-                self.trans.state.pwr_elec_prop_in,
+                self.e_machine.state.pwr_elec_prop_in,
                 // limit aux power to whatever is actually available
                 // TODO: add more detail/nuance to this
                 pwr_aux
                     // whatever power is available from regen plus normal
-                    .min(self.res.state.pwr_prop_out_max - self.trans.state.pwr_elec_prop_in)
+                    .min(self.res.state.pwr_prop_out_max - self.e_machine.state.pwr_elec_prop_in)
                     .max(si::Power::ZERO),
                 dt,
             )?;
@@ -56,18 +62,18 @@ impl VehicleTrait for Box<BatteryElectricVehicle> {
         pwr_aux: Option<si::Power>,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        // TODO: I think this is where I want to feed in the catenary
-        self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
-        self.trans
-            .set_cur_pwr_max_out(self.res.state.pwr_prop_out_max, None)?;
-        self.trans
-            .set_cur_pwr_regen_max(self.res.state.pwr_regen_out_max)?;
+        // TODO
+        // self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
+        // self.e_machine
+        //     .set_cur_pwr_max_out(self.res.state.pwr_prop_out_max, None)?;
+        // self.e_machine
+        //     .set_cur_pwr_regen_max(self.res.state.pwr_regen_out_max)?;
 
-        // power rate is never limiting in BEL, but assuming dt will be same
-        // in next time step, we can synthesize a rate
-        self.trans.set_pwr_rate_out_max(
-            (self.trans.state.pwr_mech_out_max - self.trans.state.pwr_mech_prop_out) / dt,
-        );
+        // // power rate is never limiting in BEL, but assuming dt will be same
+        // // in next time step, we can synthesize a rate
+        // self.e_machine.set_pwr_rate_out_max(
+        //     (self.e_machine.state.pwr_mech_out_max - self.e_machine.state.pwr_mech_prop_out) / dt,
+        // );
         Ok(())
     }
 
@@ -80,6 +86,6 @@ impl VehicleTrait for Box<BatteryElectricVehicle> {
     }
 
     fn get_energy_loss(&self) -> si::Energy {
-        self.res.state.energy_loss + self.trans.state.energy_loss
+        self.res.state.energy_loss + self.e_machine.state.energy_loss
     }
 }

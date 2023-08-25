@@ -175,6 +175,40 @@ fn extract_type_path(ty: &syn::Type) -> Option<&syn::Path> {
     }
 }
 
+/// adapted from https://stackoverflow.com/questions/55271857/how-can-i-get-the-t-from-an-optiont-when-using-syn
+fn extract_type_from_option(ty: &syn::Type) -> Option<&syn::Type> {
+    use syn::{GenericArgument, Path, PathArguments, PathSegment};
+
+    // TODO store (with lazy static) the vec of string
+    // TODO maybe optimization, reverse the order of segments
+    fn extract_option_segment(path: &Path) -> Option<&PathSegment> {
+        let idents_of_path = path.segments.iter().fold(String::new(), |mut acc, v| {
+            acc.push_str(&v.ident.to_string());
+            acc.push('|');
+            acc
+        });
+        vec!["Option|", "std|option|Option|", "core|option|Option|"]
+            .into_iter()
+            .find(|s| idents_of_path == *s)
+            .and_then(|_| path.segments.last())
+    }
+
+    extract_type_path(ty)
+        .and_then(extract_option_segment)
+        .and_then(|path_seg| {
+            let type_params = &path_seg.arguments;
+            // It should have only on angle-bracketed param ("<String>"):
+            match *type_params {
+                PathArguments::AngleBracketed(ref params) => params.args.first(),
+                _ => None,
+            }
+        })
+        .and_then(|generic_arg| match *generic_arg {
+            GenericArgument::Type(ref ty) => Some(ty),
+            _ => None,
+        })
+}
+
 /// Adapted from https://stackoverflow.com/questions/55271857/how-can-i-get-the-t-from-an-optiont-when-using-syn
 /// Extracts contained type from Vec -- i.e. Vec<T> -> T
 fn extract_type_from_vec(ty: &syn::Type) -> Option<&syn::Type> {
@@ -241,6 +275,13 @@ pub(crate) fn impl_getters_and_setters(
 ) -> Option<()> {
     let mut vec_layers: u8 = 0;
     let mut inner_type = ftype;
+
+    // // pull out `inner_type` from `Option<inner_type>`
+    // if let Some(opt_inner_type) = extract_type_from_option(inner_type) {
+    //     inner_type = opt_inner_type;
+    // }
+
+    // pull out `inner_type` from `Vec<inner_type>`, recursively if there is any nesting
     while let Some(vec_inner_type) = extract_type_from_vec(inner_type) {
         inner_type = vec_inner_type;
         vec_layers += 1;
@@ -258,6 +299,11 @@ pub(crate) fn impl_getters_and_setters(
             "Acceleration" => extract_units!(uom::si::acceleration::meter_per_second_squared),
             "Angle" => extract_units!(uom::si::angle::radian),
             "Area" => extract_units!(uom::si::area::square_meter),
+            "AvailableEnergy" => extract_units!(
+                uom::si::available_energy::joule_per_kilogram,
+                uom::si::available_energy::kilojoule_per_kilogram,
+                uom::si::available_energy::megajoule_per_kilogram
+            ),
             "Energy" => extract_units!(uom::si::energy::joule),
             "Force" => extract_units!(uom::si::force::newton),
             "InverseVelocity" => extract_units!(uom::si::inverse_velocity::second_per_meter),
@@ -265,12 +311,14 @@ pub(crate) fn impl_getters_and_setters(
             "Mass" => extract_units!(uom::si::mass::kilogram),
             "Power" => extract_units!(uom::si::power::watt),
             "PowerRate" => extract_units!(uom::si::power_rate::watt_per_second),
+            "Pressure" => extract_units!(uom::si::pressure::kilopascal, uom::si::pressure::bar),
             "Ratio" => extract_units!(uom::si::ratio::ratio),
             "Time" => extract_units!(uom::si::time::second, uom::si::time::hour),
             "Velocity" => extract_units!(
                 uom::si::velocity::meter_per_second,
                 uom::si::velocity::mile_per_hour
             ),
+            "Volume" => extract_units!(uom::si::volume::cubic_meter, uom::si::volume::liter),
             _ => abort!(inner_path.span(), "Unknown si quantity!"),
         };
         for (field_units, unit_name) in &unit_impls {
