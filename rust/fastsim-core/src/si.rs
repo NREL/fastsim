@@ -9,7 +9,8 @@ pub use si::energy::{joule, watt_hour};
 pub use si::f64::{
     Acceleration, Angle, Area, AvailableEnergy, Curvature, Energy, Force, Frequency,
     InverseVelocity, Length, Mass, MassDensity, Power, PowerRate, Pressure, Ratio,
-    SpecificHeatCapacity, TemperatureInterval, ThermodynamicTemperature, Time, Velocity, Volume,
+    SpecificHeatCapacity, SpecificPower, TemperatureInterval, ThermodynamicTemperature, Time,
+    Velocity, Volume,
 };
 pub use si::force::{newton, pound_force};
 pub use si::length::{foot, kilometer, meter};
@@ -18,6 +19,6 @@ pub use si::power::{kilowatt, megawatt, watt};
 pub use si::power_rate::watt_per_second;
 pub use si::pressure::kilopascal;
 pub use si::ratio::ratio;
-pub use si::specific_power::SpecificPower;
+pub use si::specific_power::{kilowatt_per_kilogram, watt_per_kilogram};
 pub use si::time::{hour, second};
 pub use si::volume::cubic_meter;

@@ -339,8 +339,8 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
                 fc: {
                     let mut fc = FuelConverter {
                         state: Default::default(),
-                        mass: todo!(),
-                        specific_pwr_kw_per_kg: todo!(),
+                        mass: None,
+                        specific_pwr: Some(veh.fc_kw_per_kg * uc::KW / uc::KG),
                         pwr_out_max: todo!(),
                         pwr_out_max_init: todo!(),
                         pwr_ramp_lag: todo!(),

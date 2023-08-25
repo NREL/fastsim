@@ -44,7 +44,7 @@ const TOL: f64 = 1e-3;
 
     #[getter]
     fn get_specific_pwr_kw_per_kg(&self) -> Option<f64> {
-        self.specific_pwr_kw_per_kg
+        self.specific_pwr.map(|x| x.get::<si::kilowatt_per_kilogram>())
     }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
@@ -56,11 +56,11 @@ pub struct FuelConverter {
     /// FuelConverter mass
     #[serde(default)]
     #[api(skip_get, skip_set)]
-    mass: Option<si::Mass>,
+    pub(in super::super) mass: Option<si::Mass>,
     /// FuelConverter specific power
     /// TODO: make this si::specific_power after Geordie's pull request into `uom`
     #[api(skip_get, skip_set)]
-    specific_pwr_kw_per_kg: Option<f64>,
+    pub(in super::super) specific_pwr: Option<si::SpecificPower>,
     #[serde(rename = "pwr_out_max_watts")]
     /// max rated brake output power
     pub pwr_out_max: si::Power,
@@ -106,13 +106,12 @@ impl Mass for FuelConverter {
     fn update_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
         match mass {
             Some(mass) => {
-                self.specific_pwr_kw_per_kg =
-                    Some(self.pwr_out_max.get::<si::kilowatt>() / mass.get::<si::kilogram>());
+                self.specific_pwr = Some(self.pwr_out_max / mass);
                 self.mass = Some(mass);
             }
-            None => match self.specific_pwr_kw_per_kg {
+            None => match self.specific_pwr {
                 Some(spec_pwr_kw_per_kg) => {
-                    self.mass = Some(self.pwr_out_max / (spec_pwr_kw_per_kg * uc::KW / uc::KG));
+                    self.mass = Some(self.pwr_out_max / spec_pwr_kw_per_kg);
                 }
                 None => {
                     bail!(format!(
@@ -129,9 +128,9 @@ impl Mass for FuelConverter {
 
     fn check_mass_consistent(&self) -> anyhow::Result<()> {
         match &self.mass {
-            Some(mass) => match &self.specific_pwr_kw_per_kg {
+            Some(mass) => match &self.specific_pwr {
                 Some(spec_pwr_kw_per_kg) => {
-                    ensure!(self.pwr_out_max / (*spec_pwr_kw_per_kg * uc::KW / uc::KG) == *mass,
+                    ensure!(self.pwr_out_max / *spec_pwr_kw_per_kg  == *mass,
                     format!("{}\n{}", 
                         format_dbg!(),
                         "FuelConverter `pwr_out_max`, `specific_pwr_kw_per_kg` and `mass` are not consistent"))

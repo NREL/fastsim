@@ -18,9 +18,9 @@ fn fastsim_core_py(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ReversibleEnergyStorage>()?;
     m.add_class::<ReversibleEnergyStorageState>()?;
     m.add_class::<ReversibleEnergyStorageStateHistoryVec>()?;
-    m.add_class::<Transmission>()?;
-    m.add_class::<TransmissionState>()?;
-    m.add_class::<TransmissionStateHistoryVec>()?;
+    m.add_class::<ElectricMachine>()?;
+    m.add_class::<ElectricMachineState>()?;
+    m.add_class::<ElectricMachineStateHistoryVec>()?;
 
     m.add_class::<Pyo3VecWrapper>()?;
     m.add_class::<Pyo3Vec2Wrapper>()?;
