@@ -2255,7 +2255,7 @@ fn read_fuelecon_gov_data_from_file(
 }
 
 /// Given the path to a zip archive, print out the names of the files within that archive
-pub fn list_zip_conents(filepath: &Path) -> Result<(), anyhow::Error> {
+pub fn list_zip_contents(filepath: &Path) -> Result<(), anyhow::Error> {
     let f = File::open(filepath)?;
     let mut zip = zip::ZipArchive::new(f)?;
     for i in 0..zip.len() {
@@ -2345,7 +2345,10 @@ fn load_emissions_data_for_given_years(
         let emissions_path = data_dir_path.join(Path::new(&file_name));
         if !emissions_path.exists() {
             // download from URL and cache
-            println!("DATA DOES NOT EXIST AT {}", emissions_path.to_string_lossy());
+            println!(
+                "DATA DOES NOT EXIST AT {}",
+                emissions_path.to_string_lossy()
+            );
         }
         let emissions_db: HashMap<u32, Vec<EmissionsInfoFE>> = {
             let emissions_file = File::open(emissions_path)?;
@@ -2407,7 +2410,10 @@ fn get_box_url_for_year(year: &u32) -> String {
 /// Checks the cache directory to see if data files have been downloaded
 /// If so, moves on without any further action.
 /// If not, downloads data by year from remote site if it exists
-fn populate_cache_for_given_years_if_needed(data_dir_path: &Path, years: &HashSet<u32>) -> Result<bool, anyhow::Error> {
+fn populate_cache_for_given_years_if_needed(
+    data_dir_path: &Path,
+    years: &HashSet<u32>,
+) -> Result<bool, anyhow::Error> {
     let mut downloaded_data = false;
     for year in years {
         println!("Checking {year}...");
@@ -2415,7 +2421,7 @@ fn populate_cache_for_given_years_if_needed(data_dir_path: &Path, years: &HashSe
             let name = format!("{year}-vehicles.csv");
             let path = data_dir_path.join(Path::new(&name));
             path.exists()
-        }; 
+        };
         let emissions_file_exists = {
             let name = format!("{year}-emissions.csv");
             let path = data_dir_path.join(Path::new(&name));
