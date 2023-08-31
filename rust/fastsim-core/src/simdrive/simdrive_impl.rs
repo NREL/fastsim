@@ -1050,7 +1050,17 @@ impl RustSimDrive {
 
                 let _ys = Array::from_vec(ys).map(|x| x.abs());
                 self.mps_ach[i] = max(
-                    xs[_ys.iter().position(|&x| x == ndarrmin(&_ys)).unwrap()],
+                    xs[match _ys.iter().position(|&x| x == ndarrmin(&_ys)) {
+                        Some(pos) => pos,
+                        None => bail!(
+                            "[{}:{}]
+                            ndarrmin(&_ys): {}
+                            ",
+                            file!(),
+                            line!(),
+                            ndarrmin(&_ys),
+                        ),
+                    }],
                     0.0,
                 );
                 grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]));
