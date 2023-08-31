@@ -217,6 +217,82 @@ pub fn interpolate_vectors(
     let dydx = (yr - yl) / (xr - xl);
     yl + dydx * (x - xl)
 }
+/// helper function to find where a query falls on an axis of discrete values;
+/// NOTE: this assumes the axis array is sorted with values ascending and that there are no repeating values!
+fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usize)> {
+    let axis_size = axis.len();
+    match axis
+        .windows(2)
+        .position(|w| query >= &w[0] && query < &w[1])
+    {
+        Some(p) => {
+            if query == &axis[p] {
+                Ok((p, p))
+            } else if query == &axis[p + 1] {
+                Ok((p + 1, p + 1))
+            } else {
+                Ok((p, p + 1))
+            }
+        }
+        None => {
+            if query <= &axis[0] {
+                Ok((0, 0))
+            } else if query >= &axis[axis_size - 1] {
+                Ok((axis_size - 1, axis_size - 1))
+            } else {
+                bail!("Unable to find where the query fits in the values, check grid.")
+            }
+        }
+    }
+}
+
+/// Helper function to compute the difference between a value and a set of bounds
+fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
+    if lower == upper {
+        0.0
+    } else {
+        (value - lower) / (upper - lower)
+    }
+}
+
+/// Bilinear interpolation over a structured grid;
+pub fn interp2d(
+    point: &[f64; 2],
+    grid: &[Vec<f64>; 2],
+    values: &[Vec<f64>],
+) -> anyhow::Result<f64> {
+    let x = point[0];
+    let y = point[1];
+
+    let x_points = &grid[0];
+    let y_points = &grid[1];
+
+    // find indeces of x-values that surround the specified x-value
+    let (xi0, xi1) = find_interp_indices(&x, x_points)?;
+    // which indeces of y-values that surround the specified y-value
+    let (yi0, yi1) = find_interp_indices(&y, y_points)?;
+
+    // calculate fraction of position of specified x-value between the lower and upper x bounds
+    let xd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
+    // calculate fraction of position of specified y-value between the lower and upper y bounds
+    let yd = compute_interp_diff(&y, &y_points[yi0], &y_points[yi1]);
+
+    // extract values at four surrounding points
+    let c00 = values[xi0][yi0]; // lower left
+    let c10 = values[xi1][yi0]; // lower right
+    let c01 = values[xi0][yi1]; // upper left
+    let c11 = values[xi1][yi1]; // upper right
+
+    // interpolate in the x-direction
+    let c0 = c00 * (1.0 - xd) + c10 * xd;
+    let c1 = c01 * (1.0 - xd) + c11 * xd;
+
+    // interpolate in the y-direction
+    let c = c0 * (1.0 - yd) + c1 * yd;
+
+    // return result
+    Ok(c)
+}
 
 #[cfg(feature = "pyo3")]
 pub mod array_wrappers {
@@ -261,6 +337,132 @@ pub use array_wrappers::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_interp2d() -> anyhow::Result<()> {
+        // specified (x, y) point at which to interpolate value
+        let point = [0.5, 0.5];
+        // grid coordinates: (x0, x1), (y0, y1)
+        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
+        // values at grid points
+        let values = [
+            vec![
+                1.0, // lower left (x0, y0)
+                0.0, // upper left (x0, y1)
+            ],
+            vec![
+                0.0, // lower right (x1, y0)
+                1.0, // upper right (x1, y1)
+            ],
+        ];
+        anyhow::ensure!(interp2d(&point, &grid, &values)? == 0.5);
+        Ok(())
+    }
+
+    #[test]
+    fn test_interp2d_offset() -> anyhow::Result<()> {
+        // specified (x, y) point at which to interpolate value
+        let point = [0.25, 0.75];
+        // grid coordinates: (x0, x1), (y0, y1)
+        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
+        // values at grid points
+        let values = [
+            vec![
+                1.0, // lower left (x0, y0)
+                0.0, // upper left (x0, y1)
+            ],
+            vec![
+                0.0, // lower right (x1, y0)
+                1.0, // upper right (x1, y1)
+            ],
+        ];
+        anyhow::ensure!(interp2d(&point, &grid, &values)? == 0.375);
+        Ok(())
+    }
+
+    #[test]
+    fn test_interp2d_exact_value_lower() -> anyhow::Result<()> {
+        // specified (x, y) point at which to interpolate value
+        let point = [0.0, 0.0];
+        // grid coordinates: (x0, x1), (y0, y1)
+        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
+        // values at grid points
+        let values = [
+            vec![
+                1.0, // lower left (x0, y0)
+                0.0, // upper left (x0, y1)
+            ],
+            vec![
+                0.0, // lower right (x1, y0)
+                1.0, // upper right (x1, y1)
+            ],
+        ];
+        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_interp2d_below_value_lower() -> anyhow::Result<()> {
+        // specified (x, y) point at which to interpolate value
+        let point = [-1.0, -1.0];
+        // grid coordinates: (x0, x1), (y0, y1)
+        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
+        // values at grid points
+        let values = [
+            vec![
+                1.0, // lower left (x0, y0)
+                0.0, // upper left (x0, y1)
+            ],
+            vec![
+                0.0, // lower right (x1, y0)
+                1.0, // upper right (x1, y1)
+            ],
+        ];
+        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_interp2d_above_value_upper() -> anyhow::Result<()> {
+        // specified (x, y) point at which to interpolate value
+        let point = [2.0, 2.0];
+        // grid coordinates: (x0, x1), (y0, y1)
+        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
+        // values at grid points
+        let values = [
+            vec![
+                1.0, // lower left (x0, y0)
+                0.0, // upper left (x0, y1)
+            ],
+            vec![
+                0.0, // lower right (x1, y0)
+                1.0, // upper right (x1, y1)
+            ],
+        ];
+        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_interp2d_exact_value_upper() -> anyhow::Result<()> {
+        // specified (x, y) point at which to interpolate value
+        let point = [1.0, 1.0];
+        // grid coordinates: (x0, x1), (y0, y1)
+        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
+        // values at grid points
+        let values = [
+            vec![
+                1.0, // lower left (x0, y0)
+                0.0, // upper left (x0, y1)
+            ],
+            vec![
+                0.0, // lower right (x1, y0)
+                1.0, // upper right (x1, y1)
+            ],
+        ];
+        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
+        Ok(())
+    }
 
     #[test]
     fn test_diff() {
