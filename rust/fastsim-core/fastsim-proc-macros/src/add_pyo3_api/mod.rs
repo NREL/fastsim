@@ -1,5 +1,9 @@
+//! Module that implements [super::add_pyo3_api]
+
+#[macro_use]
+mod pyo3_api_utils;
+
 use crate::imports::*;
-use crate::utilities::*;
 
 pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
@@ -37,6 +41,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             // https://github.com/PyO3/pyo3/blob/48690525e19b87818b59f99be83f1e0eb203c7d4/pyo3-macros-backend/src/pyclass.rs#L220
 
             let mut opts = FieldOptions::default();
+            // attributes to retain, i.e. attributes that are not handled by this macro
             let keep: Vec<bool> = field
                 .attrs
                 .iter()
@@ -73,9 +78,14 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 })
                 .collect();
             // println!("options {:?}", opts);
-            let mut iter = keep.iter();
-            // this drops attrs with api, removing the field attribute from the struct def
-            field.attrs.retain(|_| *iter.next().unwrap());
+            // this drops attrs matching `#[pyo3_api(...)]`, removing the field attribute from the struct def
+            let new_attrs: (Vec<&syn::Attribute>, Vec<bool>) = field
+                .attrs
+                .iter()
+                .zip(keep.iter())
+                .filter(|(_a, k)| **k)
+                .unzip();
+            field.attrs = new_attrs.0.iter().cloned().cloned().collect();
 
             if let syn::Type::Path(type_path) = ftype.clone() {
                 // println!(
@@ -162,9 +172,9 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             if idx >= self.0.len() as i32 {
                                 Err(PyIndexError::new_err("Index is out of bounds"))
                             } else if idx >= 0 {
-                                Ok(self.0[idx as usize])
+                                Ok(self.0[idx as usize].clone())
                             } else {
-                                Ok(self.0[self.0.len() + idx as usize])
+                                Ok(self.0[self.0.len() + idx as usize].clone())
                             }
                         }
                         pub fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype
@@ -196,9 +206,6 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
         } else {
-            abort_call_site!(
-                "`add_pyo3_api` works only on tuple structs with `Vec` or `Array` in the name"
-            );
         }
     } else {
         abort_call_site!("`add_pyo3_api` works only on named and tuple structs.");
@@ -283,4 +290,61 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     // println!("{}", output.to_string());
     final_output.extend::<TokenStream2>(output);
     final_output.into()
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct FieldOptions {
+    /// if true, getters are not generated for a field
+    pub skip_get: bool,
+    /// if true, setters are not generated for a field
+    pub skip_set: bool,
+    /// if true, current field is itself a struct with `orphaned` field
+    pub field_has_orphaned: bool,
+}
+
+pub fn impl_getters_and_setters(
+    type_path: syn::TypePath,
+    impl_block: &mut TokenStream2,
+    ident: &proc_macro2::Ident,
+    opts: FieldOptions,
+    has_orphaned: bool,
+    ftype: syn::Type,
+) {
+    let type_str = type_path.into_token_stream().to_string();
+    match type_str.as_str() {
+        "Array1 < f64 >" => {
+            impl_vec_get_set!(opts, ident, impl_block, f64, Pyo3ArrayF64, has_orphaned);
+        }
+        "Array1 < u32 >" => {
+            impl_vec_get_set!(opts, ident, impl_block, u32, Pyo3ArrayU32, has_orphaned);
+        }
+        "Array1 < i32 >" => {
+            impl_vec_get_set!(opts, ident, impl_block, i32, Pyo3ArrayI32, has_orphaned);
+        }
+        "Array1 < bool >" => {
+            impl_vec_get_set!(opts, ident, impl_block, bool, Pyo3ArrayBool, has_orphaned);
+        }
+        "Vec < f64 >" => {
+            impl_vec_get_set!(opts, ident, impl_block, f64, Pyo3VecF64, has_orphaned);
+        }
+        _ => match ident.to_string().as_str() {
+            "orphaned" => {
+                impl_block.extend::<TokenStream2>(quote! {
+                    #[getter]
+                    pub fn get_orphaned(&self) -> PyResult<bool> {
+                        Ok(self.orphaned)
+                    }
+                    /// Reset the orphaned flag to false.
+                    pub fn reset_orphaned(&mut self) -> PyResult<()> {
+                        self.orphaned = false;
+                        Ok(())
+                    }
+                })
+            }
+            _ => {
+                impl_get_body!(ftype, ident, impl_block, opts);
+                impl_set_body!(ftype, ident, impl_block, has_orphaned, opts);
+            }
+        },
+    }
 }

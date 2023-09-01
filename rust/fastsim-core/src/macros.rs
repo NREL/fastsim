@@ -45,3 +45,20 @@ macro_rules! check_orphaned_and_set {
         }
     };
 }
+
+#[macro_export]
+/// Generates a String similar to output of `dbg` but without printing
+macro_rules! format_dbg {
+    ($dbg_expr:expr) => {
+        format!(
+            "[{}:{}] {}: {:?}",
+            file!(),
+            line!(),
+            stringify!($dbg_expr),
+            $dbg_expr
+        )
+    };
+    () => {
+        format!("[{}:{}]", file!(), line!())
+    };
+}

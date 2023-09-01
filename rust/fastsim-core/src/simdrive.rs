@@ -9,6 +9,7 @@ use crate::pyo3imports::*;
 use crate::vehicle::*;
 pub mod cyc_mods;
 pub mod simdrive_impl;
+pub mod simdrive_iter;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[add_pyo3_api(
@@ -490,6 +491,9 @@ pub struct RustSimDrive {
     pub idm_target_speed_m_per_s: Array1<f64>,
     #[serde(skip)]
     pub cyc0_cache: RustCycleCache,
+    #[api(skip_get, skip_set)]
+    #[serde(skip)]
+    aux_in_kw_override: Option<Vec<f64>>,
 }
 
 impl SerdeAPI for RustSimDrive {}

@@ -9,6 +9,8 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<cycle::RustCycle>()?;
     m.add_class::<vehicle::RustVehicle>()?;
     m.add_class::<params::RustPhysicalProperties>()?;
+    m.add_class::<params::AdjCoef>()?;
+    m.add_class::<params::RustLongParams>()?;
     m.add_class::<utils::Pyo3ArrayU32>()?;
     m.add_class::<utils::Pyo3ArrayF64>()?;
     m.add_class::<utils::Pyo3ArrayBool>()?;
@@ -23,6 +25,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<simdrivelabel::LabelFe>()?;
     m.add_class::<simdrivelabel::LabelFePHEV>()?;
     m.add_class::<simdrivelabel::PHEVCycleCalc>()?;
+    m.add_class::<simdrive::simdrive_iter::SimDriveVec>()?;
 
     cycle::register(py, m)?;
     vehicle_utils::register(py, m)?;

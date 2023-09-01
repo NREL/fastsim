@@ -1,11 +1,11 @@
 use crate::imports::*;
+use crate::proc_macros::{add_pyo3_api, HistoryVec};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 #[cfg(feature = "pyo3")]
 use crate::utils;
 #[cfg(feature = "pyo3")]
 use crate::utils::Pyo3VecF64;
-use proc_macros::{add_pyo3_api, HistoryVec};
 use std::f64::consts::PI;
 
 /// Whether FC thermal modeling is handled by FASTSim
@@ -99,13 +99,13 @@ impl Default for FcTempEffModelExponential {
 pub struct HVACModel {
     /// set temperature for component (e.g. cabin, ESS)
     pub te_set_deg_c: f64,
-    /// proportional control effort [kW / °C]
+    /// proportional control effort \[kW / °C\]
     pub p_cntrl_kw_per_deg_c: f64,
-    /// integral control effort [kW / (°C-seconds)]
+    /// integral control effort \[kW / (°C-seconds)\]
     pub i_cntrl_kw_per_deg_c_scnds: f64,
-    /// derivative control effort [kW / (°C/second) = kJ / °C]
+    /// derivative control effort \\[kW / (°C/second) = kJ / °C\\]
     pub d_cntrl_kj_per_deg_c: f64,
-    /// Saturation value for integral control [kW].
+    /// Saturation value for integral control \[kW\].
     /// Whenever `i_cntrl_kw` hit this value, it stops accumulating
     pub cntrl_max_kw: f64,
     /// deadband range.  any cabin temperature within this range of
@@ -358,18 +358,18 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
 )]
 pub struct VehicleThermal {
     // fuel converter / engine
-    /// parameter fuel converter thermal mass [kJ/K]
+    /// parameter fuel converter thermal mass \[kJ/K\]
     pub fc_c_kj__k: f64,
-    /// parameter for engine characteristic length [m] for heat transfer calcs
+    /// parameter for engine characteristic length \[m\] for heat transfer calcs
     pub fc_l: f64,
-    /// parameter for heat transfer coeff [W / (m ** 2 * K)] from eng to ambient during vehicle stop
+    /// parameter for heat transfer coeff \[W / (m ** 2 * K)\] from eng to ambient during vehicle stop
     pub fc_htc_to_amb_stop: f64,
     /// coeff. for fraction of combustion heat that goes to fuel converter (engine)
     /// thermal mass. Remainder goes to environment (e.g. via tailpipe)
     pub fc_coeff_from_comb: f64,
-    /// parameter for temperature [°C] at which thermostat starts to open
+    /// parameter for temperature \[°C\] at which thermostat starts to open
     pub tstat_te_sto_deg_c: f64,
-    /// temperature delta [°C] over which thermostat is partially open
+    /// temperature delta \[°C\] over which thermostat is partially open
     pub tstat_te_delta_deg_c: f64,
     /// radiator effectiveness -- ratio of active heat rejection from
     /// radiator to passive heat rejection
@@ -381,7 +381,7 @@ pub struct VehicleThermal {
     pub fc_model: FcModelTypes,
 
     // battery
-    /// battery thermal mass [kJ/K]
+    /// battery thermal mass \[kJ/K\]
     pub ess_c_kj_k: f64,
     /// effective (incl. any thermal management system) heat transfer coefficient from battery to ambient
     pub ess_htc_to_amb: f64,
@@ -393,15 +393,15 @@ pub struct VehicleThermal {
     /// cabin model internal or external w.r.t. fastsim
     #[api(skip_get, skip_set)]
     pub cabin_hvac_model: CabinHvacModelTypes,
-    /// parameter for cabin thermal mass [kJ/K]
+    /// parameter for cabin thermal mass \[kJ/K\]
     pub cab_c_kj__k: f64,
-    /// cabin length [m], modeled as a flat plate
+    /// cabin length \[m\], modeled as a flat plate
     pub cab_l_length: f64,
-    /// cabin width [m], modeled as a flat plate
+    /// cabin width \[m\], modeled as a flat plate
     pub cab_l_width: f64,
-    /// cabin shell thermal resistance [m **2 * K / W]
+    /// cabin shell thermal resistance \[m **2 * K / W\]
     pub cab_r_to_amb: f64,
-    /// parameter for heat transfer coeff [W / (m ** 2 * K)] from cabin to ambient during
+    /// parameter for heat transfer coeff \[W / (m ** 2 * K)\] from cabin to ambient during
     /// vehicle stop
     pub cab_htc_to_amb_stop: f64,
 
@@ -410,21 +410,21 @@ pub struct VehicleThermal {
     /// exhaust port model type
     #[api(skip_get, skip_set)]
     pub exhport_model: ComponentModelTypes,
-    /// thermal conductance [W/K] for heat transfer to ambient
+    /// thermal conductance \[W/K\] for heat transfer to ambient
     pub exhport_ha_to_amb: f64,
-    /// thermal conductance [W/K] for heat transfer from exhaust
+    /// thermal conductance \[W/K\] for heat transfer from exhaust
     pub exhport_ha_int: f64,
-    /// exhaust port thermal capacitance [kJ/K]
+    /// exhaust port thermal capacitance \[kJ/K\]
     pub exhport_c_kj__k: f64,
 
     // catalytic converter (catalyst)
     #[api(skip_get, skip_set)]
     pub cat_model: ComponentModelTypes,
-    /// diameter [m] of catalyst as sphere for thermal model
+    /// diameter \[m\] of catalyst as sphere for thermal model
     pub cat_l: f64,
-    /// catalyst thermal capacitance [kJ/K]
+    /// catalyst thermal capacitance \[kJ/K\]
     pub cat_c_kj__K: f64,
-    /// parameter for heat transfer coeff [W / (m ** 2 * K)] from catalyst to ambient
+    /// parameter for heat transfer coeff \[W / (m ** 2 * K)\] from catalyst to ambient
     /// during vehicle stop
     pub cat_htc_to_amb_stop: f64,
     /// lightoff temperature to be used when fc_temp_eff_component == 'hybrid'
@@ -474,17 +474,17 @@ impl Default for VehicleThermal {
 }
 
 impl VehicleThermal {
-    /// derived temperature [ºC] at which thermostat is fully open
+    /// derived temperature \[ºC\] at which thermostat is fully open
     pub fn tstat_te_fo_deg_c(&self) -> f64 {
         self.tstat_te_sto_deg_c + self.tstat_te_delta_deg_c
     }
 
-    /// parameter for engine surface area [m**2] for heat transfer calcs
+    /// parameter for engine surface area \[m**2\] for heat transfer calcs
     pub fn fc_area_ext(&self) -> f64 {
         PI * self.fc_l.powf(2.0 / 4.0)
     }
 
-    /// parameter for catalyst surface area [m**2] for heat transfer calcs
+    /// parameter for catalyst surface area \[m**2\] for heat transfer calcs
     pub fn cat_area_ext(&self) -> f64 {
         PI * self.cat_l.powf(2.0 / 4.0)
     }

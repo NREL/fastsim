@@ -1,6 +1,6 @@
 [package]
 name = "fastsim-core"
-version = "0.1.3"
+version = "0.1.5"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["NREL/MTES/CIMS/MBAP Group <fastsim@nrel.gov>"]
@@ -10,7 +10,7 @@ readme = "../../README.md"
 repository = "https://github.com/NREL/fastsim"
 
 [dependencies]
-proc-macros = { package = "fastsim-proc-macros", version = "~0" }
+fastsim-proc-macros = { package = "fastsim-proc-macros", path = "./fastsim-proc-macros", version = "0.1.5" }
 pyo3 = { workspace = true, features = [
     "extension-module",
     "anyhow",
@@ -33,6 +33,7 @@ serde-xml-rs = "0.6.0"
 validator = { version = "0.16", features = ["derive"] }
 lazy_static = "1.4.0"
 regex = "1.7.1"
+rayon = "1.7.0"
 zip = "0.6.6"
 directories = "5.0.1"
 
@@ -42,6 +43,7 @@ include = [
     "resources/udds.csv",
     "resources/hwfet.csv",
     "build.rs",
+    "../../NOTICE",
 ]
 
 [features]

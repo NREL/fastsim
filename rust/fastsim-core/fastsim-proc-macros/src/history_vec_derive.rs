@@ -1,3 +1,5 @@
+//! Module that implements [super::history_vec_derive]
+
 use crate::imports::*;
 use crate::utilities::*;
 

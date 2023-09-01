@@ -1,46 +1,34 @@
 from __future__ import annotations
 from typing_extensions import Self
 from typing import Dict, List, Tuple, Optional, ByteString
+from abc import ABC
 
-class Pyo3ArrayI32:
-    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
-
-    def tolist(self) -> List[int]:
+class RustVec(ABC):
+    def __repr__(self) -> str:
         ...
 
-class Pyo3ArrayU32:
-    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
-
-    def tolist(self) -> List[int]:
+    def __str__(self) -> str:
         ...
 
-class Pyo3ArrayF64:
-    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
-
-    def tolist(self) -> List[float]:
+    def __getitem__(self, idx: int):
         ...
 
-class Pyo3ArrayBool:
-    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
-
-    def tolist(self) -> List[bool]:
+    def __setitem__(self, _idx, _new_value):
         ...
 
-class Pyo3VecF64:
-    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
-
-    def tolist(self) -> List[float]:
+    def tolist(self):
         ...
 
-class RustPhysicalProperties:
-    """Struct containing time trace data"""
-    a_grav_mps2: float
-    air_density_kg_per_m3: float
-    fuel_afr_stoich: float
-    fuel_rho_kg__L: float
-    kwh_per_gge: float
-    orphaned: bool
+    def __list__(self):
+        ...
 
+    def __len__(self):
+        ...
+
+    def is_empty(self):
+        ...
+
+class SerdeAPI(ABC):
     @classmethod
     def from_bincode(cls, encoded: ByteString) -> Self:
         ...
@@ -69,11 +57,63 @@ class RustPhysicalProperties:
     def to_file(self, filename: str) -> Self:
         ...
 
+
+
+class Pyo3ArrayI32(SerdeAPI, RustVec):
+    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's
+    a clone.  """
+
+class Pyo3ArrayU32(SerdeAPI, RustVec):
+    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
+
+class Pyo3ArrayF64(SerdeAPI, RustVec):
+    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
+
+
+class Pyo3ArrayBool(SerdeAPI, RustVec):
+    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
+
+
+class Pyo3VecF64(SerdeAPI, RustVec):
+    """Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  """
+
+
+class SimDriveVec(SerdeAPI, RustVec): 
+    """Vector of RustSimDrive"""
+    def sim_drive(self, parallelize: bool = True, verbose: bool = False):
+        ...
+
+    def push(self, sd: RustSimDrive):
+        """Push a new element onto the end"""
+        ...
+
+    def pop(self) -> Optional[RustSimDrive]: 
+        """Removed and return the last element"""
+        ...
+
+    def remove(self, idx: int):
+        """Remove element at `idx`"""
+        ...
+    
+    def insert(self, idx: int, sd: RustSimDrive):
+        """Insert `sd` before element `idx`"""
+        ...
+
+
+class RustPhysicalProperties(SerdeAPI):
+    """Struct containing time trace data"""
+    a_grav_mps2: float
+    air_density_kg_per_m3: float
+    fuel_afr_stoich: float
+    fuel_rho_kg__L: float
+    kwh_per_gge: float
+    orphaned: bool
+
     def reset_orphaned(self) -> None:
         """Reset the orphaned flag to false."""
         ...
 
-class RustCycle:
+class RustCycle(SerdeAPI):
     """Struct for containing:
     * time_s, cycle time, $s$  
     * mps, vehicle speed, $\\frac{m}{s}$  
@@ -114,10 +154,16 @@ class RustCycle:
         """Return a HashMap representing the cycle"""
         ...
 
-    def modify_by_const_jerk_trajectory(self, idx: int, n: int, jerk_m_per_s3: float, accel0_m_per_s2: float) -> float:
+    def modify_by_const_jerk_trajectory(
+        self, idx: int, n: int, jerk_m_per_s3: float, accel0_m_per_s2: float) -> float:
         ...
 
-    def modify_with_braking_trajectory(self, brake_accel_m_per_s2: float, idx: int, dts_m: Optional[float]) -> Tuple[float, int]:
+    def modify_with_braking_trajectory(
+        self, 
+        brake_accel_m_per_s2: float, 
+        idx: int, 
+        dts_m: Optional[float]
+    ) -> Tuple[float, int]:
         ...
 
     def to_rust(self) -> Self:
@@ -126,39 +172,11 @@ class RustCycle:
     def copy(self) -> Self:
         ...
 
-    @classmethod
-    def from_bincode(cls, encoded: ByteString) -> Self:
-        ...
-
-    def to_bincode(self) -> ByteString:
-        ...
-
-    @classmethod
-    def from_yaml(cls, yaml_str: str) -> Self:
-        ...
-
-    def to_yaml(self) -> str:
-        ...
-
-    @classmethod
-    def from_json(cls, json_str: str) -> Self:
-        ...
-
-    def to_json(self) -> str:
-        ...
-
-    @classmethod
-    def from_file(cls, filename: str) -> Self:
-        ...
-
-    def to_file(self, filename: str) -> Self:
-        ...
-
     def reset_orphaned(self):
         """Reset the orphaned flag to false."""
         ...
 
-class RustVehicle:
+class RustVehicle(SerdeAPI):
     """Struct containing vehicle attributes
 
     # Python Examples
@@ -365,39 +383,11 @@ class RustVehicle:
     def copy(self) -> Self:
         ...
 
-    @classmethod
-    def from_bincode(cls, encoded: ByteString) -> Self:
-        ...
-
-    def to_bincode(self) -> ByteString:
-        ...
-
-    @classmethod
-    def from_yaml(cls, yaml_str: str) -> Self:
-        ...
-
-    def to_yaml(self) -> str:
-        ...
-
-    @classmethod
-    def from_json(cls, json_str: str) -> Self:
-        ...
-
-    def to_json(self) -> str:
-        ...
-
-    @classmethod
-    def from_file(cls, filename: str) -> Self:
-        ...
-
-    def to_file(self, filename: str) -> Self:
-        ...
-
     def reset_orphaned(self) -> None:
         """Reset the orphaned flag to false."""
         ...
 
-class RustSimDrive:
+class RustSimDrive(SerdeAPI):
     accel_buff_soc: Pyo3ArrayF64
     accel_kw: Pyo3ArrayF64
     add_kwh: Pyo3ArrayF64
@@ -558,7 +548,7 @@ class RustSimDrive:
         Arguments
         ------------
         i: index of time step
-        `_py` extension is needed to avoid name collision with getter/setter methods"""
+        """
         ...
 
     def set_fc_power(self, i: int) -> None:
@@ -643,35 +633,7 @@ class RustSimDrive:
     def copy(self) -> Self:
         ...
 
-    @classmethod
-    def from_bincode(cls, encoded: ByteString) -> Self:
-        ...
-
-    def to_bincode(self) -> ByteString:
-        ...
-
-    @classmethod
-    def from_yaml(cls, yaml_str: str) -> Self:
-        ...
-
-    def to_yaml(self) -> str:
-        ...
-
-    @classmethod
-    def from_json(cls, json_str: str) -> Self:
-        ...
-
-    def to_json(self) -> str:
-        ...
-
-    @classmethod
-    def from_file(cls, filename: str) -> Self:
-        ...
-
-    def to_file(self, filename: str) -> Self:
-        ...
-
-class RustSimDriveParams:
+class RustSimDriveParams(SerdeAPI):
     """Struct containing time trace data"""
     coast_allow: bool
     coast_allow_passing: bool
@@ -702,34 +664,6 @@ class RustSimDriveParams:
     trace_miss_dist_tol: float
     trace_miss_speed_mps_tol: float
     trace_miss_time_tol: float
-
-    @classmethod
-    def from_bincode(cls, encoded: ByteString) -> Self:
-        ...
-
-    def to_bincode(self) -> ByteString:
-        ...
-
-    @classmethod
-    def from_yaml(cls, yaml_str: str) -> Self:
-        ...
-
-    def to_yaml(self) -> str:
-        ...
-
-    @classmethod
-    def from_json(cls, json_str: str) -> Self:
-        ...
-
-    def to_json(self) -> str:
-        ...
-
-    @classmethod
-    def from_file(cls, filename: str) -> Self:
-        ...
-
-    def to_file(self, filename: str) -> Self:
-        ...
 
     def reset_orphaned(self) -> None:
         """Reset the orphaned flag to false."""
@@ -844,47 +778,29 @@ class VehicleThermal:
     def set_fc_model_internal_exponential(self, offset: float, lag: float, minimum: float, fc_temp_eff_component: str):
         ...
 
-    @classmethod
-    def from_bincode(cls, encoded: ByteString) -> Self:
-        ...
-
-    def to_bincode(self) -> ByteString:
-        ...
-
-    @classmethod
-    def from_yaml(cls, yaml_str: str) -> Self:
-        ...
-
-    def to_yaml(self) -> str:
-        ...
-
-    @classmethod
-    def from_json(cls, json_str: str) -> Self:
-        ...
-
-    def to_json(self) -> str:
-        ...
-
-    @classmethod
-    def from_file(cls, filename: str) -> Self:
-        ...
-
-    def to_file(self, filename: str) -> Self:
-        ...
-
     def reset_orphaned(self) -> None:
         """Reset the orphaned flag to false."""
         ...
 
-class SimDriveHot:
+
+class ThermalStateHistoryVec(SerdeAPI, RustVec):
+    ...
+
+class SimDriveHot(SerdeAPI):
     sd: RustSimDrive
     vehthrm: VehicleThermal
-    air: AirProperties
     state: ThermalState
     history: ThermalStateHistoryVec
     amb_te_deg_c: Optional[List[float]]
 
-    def __init__(self, cyc: RustCycle, veh: RustVehicle, vehthrm: VehicleThermal, init_state: Optional[ThermalState], amb_te_deg_c: Optional[List[float]]) -> Self:
+    def __init__(
+        self, 
+        cyc: RustCycle, 
+        veh: RustVehicle, 
+        vehthrm: VehicleThermal, 
+        init_state: Optional[ThermalState], 
+        amb_te_deg_c: Optional[List[float]]
+    ) -> Self:
         ...
 
     def copy(self) -> Self:
@@ -894,7 +810,11 @@ class SimDriveHot:
         """Provides the gap-with lead vehicle from start to finish"""
         ...
 
-    def init_for_step(self, init_soc: float, aux_in_kw_override: Optional[List[float]]) -> None:
+    def init_for_step(
+        self,
+        init_soc: float, 
+        aux_in_kw_override: Optional[List[float]]
+    ) -> None:
         """This is a specialty method which should be called prior to using
         sim_drive_step in a loop.
         Arguments
@@ -925,7 +845,7 @@ class SimDriveHot:
         Arguments
         ------------
         i: index of time step
-        `_py` extension is needed to avoid name collision with getter/setter methods"""
+        """
         ...
 
     def set_fc_power(self, i: int) -> None:
@@ -976,7 +896,11 @@ class SimDriveHot:
         i: index of time step"""
         ...
 
-    def sim_drive(self, init_soc: float, aux_in_kw_override: Optional[List[float]]) -> None:
+    def sim_drive(
+        self, 
+        init_soc: float, 
+        aux_in_kw_override: Optional[List[float]]
+    ) -> None:
         """Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         Arguments
         ------------
@@ -989,7 +913,11 @@ class SimDriveHot:
         """Step through 1 time step."""
         ...
 
-    def sim_drive_walk(self, init_soc: float, aux_in_kw_override: Optional[List[float]]) -> None:
+    def sim_drive_walk(
+        self, 
+        init_soc: float, 
+        aux_in_kw_override: Optional[List[float]]
+    ) -> None:
         """Receives second-by-second cycle information, vehicle properties,
         and an initial state of charge and runs sim_drive_step to perform a
         backward facing powertrain simulation. Method 'sim_drive' runs this
@@ -1007,34 +935,6 @@ class SimDriveHot:
         """Perform all the calculations to solve 1 time step."""
         ...
 
-    @classmethod
-    def from_bincode(cls, encoded: ByteString) -> Self:
-        ...
-
-    def to_bincode(self) -> ByteString:
-        ...
-
-    @classmethod
-    def from_yaml(cls, yaml_str: str) -> Self:
-        ...
-
-    def to_yaml(self) -> str:
-        ...
-
-    @classmethod
-    def from_json(cls, json_str: str) -> Self:
-        ...
-
-    def to_json(self) -> str:
-        ...
-
-    @classmethod
-    def from_file(cls, filename: str) -> Self:
-        ...
-
-    def to_file(self, filename: str) -> Self:
-        ...
-
 def abc_to_drag_coeffs(
     veh: RustVehicle,
     a_lbf: float,
@@ -1047,3 +947,128 @@ def abc_to_drag_coeffs(
     _show_plots: Optional[bool],
 ) -> Tuple[float, float]:
     ...
+    
+class LabelFe(SerdeAPI):
+    veh: RustVehicle
+    adj_params: AdjCoef
+    lab_udds_mpgge: float
+    lab_hwy_mpgge: float
+    lab_comb_mpgge: float
+    lab_udds_kwh_per_mi: float
+    lab_hwy_kwh_per_mi: float
+    lab_comb_kwh_per_mi: float
+    adj_udds_mpgge: float
+    adj_hwy_mpgge: float
+    adj_comb_mpgge: float
+    adj_udds_kwh_per_mi: float
+    adj_hwy_kwh_per_mi: float
+    adj_comb_kwh_per_mi: float
+    adj_udds_ess_kwh_per_mi: float
+    adj_hwy_ess_kwh_per_mi: float
+    adj_comb_ess_kwh_per_mi: float
+    net_range_miles: float
+    uf: float
+    net_accel: float
+    res_found: str
+    phev_calcs: Optional[LabelFePHEV]
+    adj_cs_comb_mpgge: Optional[float]
+    adj_cd_comb_mpgge: Optional[float]
+    net_phev_cd_miles: Optional[float]
+    trace_miss_speed_mph: float
+    
+
+class LabelFePHEV(SerdeAPI):
+    regen_soc_buffer: float
+    udds: PHEVCycleCalc
+    hwy: PHEVCycleCalc
+
+
+class PHEVCycleCalc(SerdeAPI):
+    cd_ess_kwh: float
+    cd_ess_kwh_per_mi: float
+    cd_fs_gal: float
+    cd_fs_kwh: float
+    cd_mpg: float
+    cd_cycs: float
+    cd_miles: float
+    cd_lab_mpg: float
+    cd_adj_mpg: float
+    cd_frac_in_trans: float
+    trans_init_soc: float
+    trans_ess_kwh: float
+    trans_ess_kwh_per_mi: float
+    trans_fs_gal: float
+    trans_fs_kwh: float
+    cs_ess_kwh: float
+    cs_ess_kwh_per_mi: float
+    cs_fs_gal: float
+    cs_fs_kwh: float
+    cs_mpg: float
+    lab_mpgge: float
+    lab_kwh_per_mi: float
+    lab_uf: float
+    lab_uf_gpm: List[float]
+    lab_iter_uf: List[float]
+    lab_iter_uf_kwh_per_mi: List[float]
+    lab_iter_kwh_per_mi: List[float]
+    adj_iter_mpgge: List[float]
+    adj_iter_kwh_per_mi: List[float]
+    adj_iter_cd_miles: List[float]
+    adj_iter_uf: List[float]
+    adj_iter_uf_gpm: List[float]
+    adj_iter_uf_kwh_per_mi: List[float]
+    adj_cd_miles: float
+    adj_cd_mpgge: float
+    adj_cs_mpgge: float
+    adj_uf: float
+    adj_mpgge: float
+    adj_kwh_per_mi: float
+    adj_ess_kwh_per_mi: float
+    delta_soc: float
+    total_cd_miles: float
+
+
+def make_accel_trace() -> RustCycle:
+    ...
+def get_net_accel(sd_accel: RustSimDrive, scenario_name: str) -> float:
+    ...
+class AdjCoef(SerdeAPI):
+    def __init__(self):
+        self.city_intercept: float = 0.0
+        self.city_slope: float = 0.0
+        self.hwy_intercept: float = 0.0
+        self.hwy_slope: float = 0.0
+        
+        
+class AdjCoefMap:
+    def __init__(self):
+        self.adj_coef_map: Dict[str, AdjCoef] = {}
+        
+        
+class RustLongParams(SerdeAPI):
+    def __init__(self):
+        self.rechg_freq_miles: List[float] = []
+        self.uf_array: List[float] = []
+        self.ld_fe_adj_coef: AdjCoefMap = {}
+                        
+def get_label_fe(
+    veh: RustVehicle,
+    full_detail: Optional[bool],
+    verbose: Optional[bool],
+) -> Tuple[LabelFe, Optional[Dict[str, RustSimDrive]]]:   
+    ...
+    
+def get_label_fe_phev(
+    veh: RustVehicle,
+    sd: Dict[str, RustSimDrive],
+    long_params: RustLongParams,
+    adj_params: AdjCoef,
+    sim_params: RustSimDriveParams,
+    props: RustPhysicalProperties,
+) -> LabelFePHEV:
+    ...
+
+def get_label_fe_conv(veh: RustVehicle) -> LabelFe:
+   ...
+   
+   

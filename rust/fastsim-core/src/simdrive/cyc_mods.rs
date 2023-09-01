@@ -97,7 +97,7 @@ impl RustSimDrive {
     /// REFERENCE:
     /// Treiber, Martin and Kesting, Arne. 2013. "Chapter 11: Car-Following Models Based on Driving Strategies".
     ///     Traffic Flow Dynamics: Data, Models and Simulation. Springer-Verlag. Springer, Berlin, Heidelberg.
-    ///     DOI: https://doi.org/10.1007/978-3-642-32460-4.
+    ///     DOI: <https://doi.org/10.1007/978-3-642-32460-4>.
     #[allow(clippy::too_many_arguments)]
     pub fn next_speed_by_idm(
         &mut self,
@@ -190,7 +190,7 @@ impl RustSimDrive {
     /// NOTE:
     ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
     ///     and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
-    ///     then returns self.cyc.grade[i]
+    ///     then returns self.cyc.grade\[i\]
     pub fn estimate_grade_for_step(&self, i: usize) -> f64 {
         if self.cyc0_cache.grade_all_zero {
             return 0.0;
@@ -210,7 +210,7 @@ impl RustSimDrive {
     /// NOTE:
     ///     If not allowing coasting (i.e., sim_params.coast_allow == False)
     ///     and not allowing IDM/following (i.e., self.sim_params.idm_allow == False)
-    ///     then returns self.cyc.grade[i]
+    ///     then returns self.cyc.grade\[i\]
     pub fn lookup_grade_for_step(&self, i: usize, mps_ach: Option<f64>) -> f64 {
         if self.cyc0_cache.grade_all_zero {
             return 0.0;
