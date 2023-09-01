@@ -88,7 +88,7 @@ lazy_static! {
         Self::mock_vehicle()
     }
 )]
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
 /// Struct containing vehicle attributes
 /// # Python Examples
 /// ```python
