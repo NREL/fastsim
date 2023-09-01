@@ -1198,6 +1198,7 @@ where
         regen_b: 0.99,
         fc_peak_eff_override: None,
         mc_peak_eff_override: Some(0.95),
+        ..Default::default()
     };
     veh.set_derived().unwrap();
 
