@@ -98,6 +98,8 @@ impl SerdeAPI for OptionFE {
 #[add_pyo3_api]
 /// Struct containing vehicle data from fueleconomy.gov
 pub struct VehicleDataFE {
+    /// Vehicle ID
+    pub id: i32,
     #[serde(default, rename = "atvType")]
     /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
     pub alt_veh_type: String,
@@ -438,6 +440,51 @@ fn get_fuel_economy_gov_options_for_year_make_model(
         .replace(' ', "%20"))?;
     let vehicle_options: VehicleOptionsFE = from_str(&buf)?;
     Ok(vehicle_options.options)
+}
+
+#[cfg_attr(feature = "pyo3", pyfunction)]
+/// Gets options from fueleconomy.gov for the given vehicle year, make, and model
+///
+/// Arguments:
+/// ----------
+/// year: Vehicle year
+/// make: Vehicle make
+/// model: Vehicle model (must match model on fueleconomy.gov)
+///
+/// Returns:
+/// --------
+/// Vec<OptionFE>: Data for the available options for that vehicle year/make/model from fueleconomy.gov
+pub fn get_options_for_year_make_model(
+    year: &str,
+    make: &str,
+    model: &str,
+) -> Result<Vec<VehicleDataFE>, Error> {
+    // prep the cache for year
+    let y: u32 = year.trim().parse()?;
+    let ys: HashSet<u32> = {
+        let mut h = HashSet::new();
+        h.insert(y);
+        h
+    };
+    if let Some(ddpath) = get_fastsim_data_dir() {
+        populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys)?;
+        let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
+        let fegov_data_by_year =
+            load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
+        if let Some(fegov_db) = fegov_data_by_year.get(&y) {
+            let mut hits: Vec<VehicleDataFE> = Vec::new();
+            for item in fegov_db.iter() {
+                if item.make == make && item.model == model {
+                    hits.push(item.clone());
+                }
+            }
+            Ok(hits)
+        } else {
+            Ok(vec![])
+        }
+    } else {
+        Ok(vec![])
+    }
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
@@ -1516,6 +1563,62 @@ fn vehicle_import_from_id(
     Ok(veh)
 }
 
+#[cfg_attr(feature = "pyo3", pyfunction)]
+/// Creates RustVehicle for the given vehicle using data from fueleconomy.gov and EPA databases
+/// The created RustVehicle is also written as a yaml file
+///
+/// Arguments:
+/// ----------
+/// vehicle_id: i32, Identifier at fueleconomy.gov for the desired vehicle
+/// year: u32, the year of the vehicle
+/// other_inputs: Other vehicle inputs required to create the vehicle
+///
+/// Returns:
+/// --------
+/// veh: RustVehicle for specificed vehicle
+pub fn vehicle_import_by_id_and_year(
+    vehicle_id: i32,
+    year: u32,
+    other_inputs: &OtherVehicleInputs,
+) -> Result<RustVehicle, Error> {
+    let mut maybe_veh: Option<RustVehicle> = None;
+    if let Some(data_dir_path) = get_fastsim_data_dir() {
+        let model_years = {
+            let mut h: HashSet<u32> = HashSet::new();
+            h.insert(year);
+            h
+        };
+        let data_dir_path = data_dir_path.as_path();
+        let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
+        let fegov_data_by_year =
+            load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
+        let epatest_db = read_epa_test_data_for_given_years(data_dir_path, &model_years)?;
+        if let Some(fe_gov_data) = fegov_data_by_year.get(&year) {
+            if let Some(epa_data) = epatest_db.get(&year) {
+                let fe_gov_data = {
+                    let mut maybe_data = None;
+                    for item in fe_gov_data {
+                        if item.id == vehicle_id {
+                            maybe_data = Some(item.clone());
+                            break;
+                        }
+                    }
+                    maybe_data
+                };
+                if let Some(fe_gov_data) = fe_gov_data {
+                    if let Some(epa_data) = match_epatest_with_fegov(&fe_gov_data, &epa_data) {
+                        maybe_veh = try_make_single_vehicle(&fe_gov_data, &epa_data, other_inputs);
+                    }
+                }
+            }
+        }
+    }
+    match maybe_veh {
+        Some(veh) => Ok(veh),
+        None => Err(anyhow!("Unable to find/match vehicle in DB")),
+    }
+}
+
 fn get_fuel_economy_gov_data_for_input_record(
     vir: &VehicleInputRecord,
     fegov_data: &[VehicleDataFE],
@@ -2146,6 +2249,7 @@ fn read_fuelecon_gov_data_from_file(
             EmissionsListFE::default()
         };
         let vd = VehicleDataFE {
+            id: item.get("id").unwrap().trim().parse().unwrap(),
             // #[serde(default, rename = "atvType")]
             // /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
             // pub alt_veh_type: String,
@@ -2662,6 +2766,7 @@ mod vehicle_utils_tests {
             std_text: String::from("Federal Tier 3 Bin 30"),
         };
         let prius_prime_fe_truth: VehicleDataFE = VehicleDataFE {
+            id: 44362,
             alt_veh_type: String::from("Plug-in Hybrid"),
             city_mpg_fuel1: 55,
             city_mpg_fuel2: 145,
@@ -2735,6 +2840,7 @@ mod vehicle_utils_tests {
             std_text: String::from("Federal Tier 3 Bin 30"),
         };
         let corolla_manual_fe_truth: VehicleDataFE = VehicleDataFE {
+            id: 44075,
             alt_veh_type: String::new(),
             city_mpg_fuel1: 29,
             city_mpg_fuel2: 0,
@@ -2785,6 +2891,7 @@ mod vehicle_utils_tests {
             std_text: String::from("Federal Tier 3 Bin 70"),
         };
         let volvo_s60_b5_awd_fe_truth: VehicleDataFE = VehicleDataFE {
+            id: 1,
             alt_veh_type: String::new(),
             city_mpg_fuel1: 25,
             city_mpg_fuel2: 0,
@@ -2869,6 +2976,7 @@ mod vehicle_utils_tests {
             std_text: String::from("Federal Tier 3 Bin 30"),
         };
         let corolla_manual_fe_truth: VehicleDataFE = VehicleDataFE {
+            id: 30000,
             alt_veh_type: String::new(),
             city_mpg_fuel1: 29,
             city_mpg_fuel2: 0,
@@ -2953,6 +3061,7 @@ mod vehicle_utils_tests {
             std_text: String::from("California ZEV"),
         };
         let ev6_rwd_long_range_fe_truth: VehicleDataFE = VehicleDataFE {
+            id: 1,
             alt_veh_type: String::from("EV"),
             city_mpg_fuel1: 134,
             city_mpg_fuel2: 0,
@@ -3125,6 +3234,7 @@ mod vehicle_utils_tests {
             emissions_info: emiss_info,
         };
         let fegov_data = VehicleDataFE {
+            id: 32204,
             alt_veh_type: String::from(""),
             city_mpg_fuel1: 22,
             city_mpg_fuel2: 0,

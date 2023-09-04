@@ -35,6 +35,14 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_label_fe_conv_py, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        vehicle_utils::get_options_for_year_make_model,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        vehicle_utils::vehicle_import_by_id_and_year,
+        m
+    )?)?;
 
     Ok(())
 }
