@@ -208,16 +208,30 @@ impl SerdeAPI for VehicleDataFE {
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
-#[pyclass]
+#[add_pyo3_api]
 /// Struct containing list of emissions tests from fueleconomy.gov
 pub struct EmissionsListFE {
     ///
     pub emissions_info: Vec<EmissionsInfoFE>,
 }
 
+impl SerdeAPI for EmissionsListFE {
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        }
+    }
+}
+
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
-#[pyclass]
+#[add_pyo3_api]
 /// Struct containing emissions test results from fueleconomy.gov
 pub struct EmissionsInfoFE {
     /// Engine family id / EPA test group
@@ -230,6 +244,20 @@ pub struct EmissionsInfoFE {
     pub standard: String,
     /// Vehicle emission standard
     pub std_text: String,
+}
+
+impl SerdeAPI for EmissionsInfoFE {
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        }
+    }
 }
 
 #[derive(Default, PartialEq, Clone, Debug, Deserialize, Serialize)]
