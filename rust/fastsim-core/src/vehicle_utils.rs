@@ -12,9 +12,11 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::Write;
+use std::io::Read;
 use std::iter::FromIterator;
 use std::option::Option;
 use std::path::PathBuf;
+use zip::ZipArchive;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -2325,6 +2327,9 @@ pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> Result<(), anyhow::Error
 /// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
 pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow::Error> {
     let mut handle = Easy::new();
+    let mut ssl_opt: SslOpt = SslOpt::new();
+    ssl_opt.no_revoke(true);
+    handle.ssl_options(&ssl_opt)?;
     handle.url(url)?;
     let mut buffer = Vec::new();
     {
@@ -2335,6 +2340,7 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
         })?;
         transfer.perform()?;
     }
+    println!("Downloaded data from {} of length {}", url, buffer.len());
     {
         let mut file = match File::create(&file_path) {
             Err(why) => panic!("couldn't open {}: {}", file_path.to_str().unwrap(), why),
@@ -2342,6 +2348,18 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
         };
         file.write_all(buffer.as_slice())?;
     }
+    Ok(())
+}
+
+fn download_file_from_url_v2(url: &str, file_path: &Path) -> Result<(), anyhow::Error> {
+    println!("Downloading from {} to {:?}", url, file_path.to_str());
+    let response = reqwest::blocking::get(url)?;
+    println!("... response status: {}", response.status());
+    println!("... content length: {:?}", response.content_length());
+    let content = response.bytes()?;
+    let data = Vec::from(content);
+    let mut file = File::create(file_path)?;
+    file.write_all(&data)?;
     Ok(())
 }
 
@@ -2410,30 +2428,23 @@ fn load_fegov_data_for_given_years(
     Ok(data)
 }
 
-fn get_box_url_for_year(year: &u32) -> String {
-    match year {
-        2004 => String::from(""),
-        2005 => String::from(""),
-        2006 => String::from(""),
-        2007 => String::from(""),
-        2008 => String::from(""),
-        2009 => String::from(""),
-        2010 => String::from(""),
-        2011 => String::from(""),
-        2012 => String::from(""),
-        2013 => String::from(""),
-        2014 => String::from(""),
-        2015 => String::from(""),
-        2016 => String::from(""),
-        2017 => String::from(""),
-        2018 => String::from(""),
-        2019 => String::from(""),
-        2020 => String::from("https://app.box.com/s/0dkdys0aspzu4jtewjh8g3esjdsq9x6t"),
-        2021 => String::from(""),
-        2022 => String::from("https://app.box.com/s/edr9wezpgljmvxz8wptdzbk3c8rbbu6h"),
-        2023 => String::from(""),
-        _ => String::from(""),
-    }
+fn get_box_url_for_year(year: &u32) -> Result<Option<String>, anyhow::Error> {
+    let target_url = format!("https://github.com/NREL/temp-data/raw/main/{year}.zip");
+    Ok(Some(target_url))
+}
+
+fn extract_file_from_zip(
+    zip_file_path: &Path,
+    name_of_file_to_extract: &str,
+    path_to_save_to: &Path,
+) -> Result<(), anyhow::Error> {
+    let zipfile = File::open(zip_file_path)?;
+    let mut archive = ZipArchive::new(zipfile)?;
+    let mut file = archive.by_name(name_of_file_to_extract)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    std::fs::write(path_to_save_to, contents)?;
+    Ok(())
 }
 
 /// Checks the cache directory to see if data files have been downloaded
@@ -2443,7 +2454,7 @@ fn populate_cache_for_given_years_if_needed(
     data_dir_path: &Path,
     years: &HashSet<u32>,
 ) -> Result<bool, anyhow::Error> {
-    let mut downloaded_data = false;
+    let mut downloaded_and_unzipped_data = false;
     for year in years {
         println!("Checking {year}...");
         let veh_file_exists = {
@@ -2464,14 +2475,36 @@ fn populate_cache_for_given_years_if_needed(
         if !veh_file_exists || !emissions_file_exists || !epa_file_exists {
             let zip_file_name = format!("{year}.zip");
             let zip_file_path = data_dir_path.join(Path::new(&zip_file_name));
-            let url = get_box_url_for_year(year);
-            println!("Downloading from box for {year}: {url}");
-            download_file_from_url(&url, &zip_file_path)?;
-            println!("... downloading data for {year}");
-            downloaded_data = true;
+            if let Some(url) = get_box_url_for_year(year)? {
+                println!("Downloading data for {year}: {url}");
+                download_file_from_url_v2(&url, &zip_file_path)?;
+                println!("... downloading data for {year}");
+                let emissions_name = format!("{year}-emissions.csv");
+                extract_file_from_zip(
+                    zip_file_path.as_path(),
+                    &emissions_name,
+                    data_dir_path.join(Path::new(&emissions_name)).as_path(),
+                )?;
+                println!("... extracted {}", emissions_name);
+                let vehicles_name = format!("{year}-vehicles.csv");
+                extract_file_from_zip(
+                    zip_file_path.as_path(),
+                    &vehicles_name,
+                    data_dir_path.join(Path::new(&vehicles_name)).as_path(),
+                )?;
+                println!("... extracted {}", vehicles_name);
+                let epatests_name = format!("{year}-testcar.csv");
+                extract_file_from_zip(
+                    zip_file_path.as_path(),
+                    &epatests_name,
+                    data_dir_path.join(Path::new(&epatests_name)).as_path(),
+                )?;
+                println!("... extracted {}", epatests_name);
+                downloaded_and_unzipped_data = true;
+            }
         }
     }
-    Ok(downloaded_data)
+    Ok(downloaded_and_unzipped_data)
 }
 
 /// Import and Save All Vehicles Specified via Input File
