@@ -2611,6 +2611,50 @@ fn populate_cache_for_given_years_if_needed(
     Ok(downloaded_and_unzipped_data)
 }
 
+#[cfg_attr(feature = "pyo3", pyfunction)]
+/// Import All Vehicles for the given Year, Make, and Model and supplied other inputs
+pub fn import_all_vehicles(
+    year: u32,
+    make: &str,
+    model: &str,
+    other_inputs: &OtherVehicleInputs,
+) -> Result<Vec<RustVehicle>, anyhow::Error> {
+    let vir = VehicleInputRecord {
+        year,
+        make: make.to_string(),
+        model: model.to_string(),
+        output_file_name: String::from(""),
+        vehicle_width_in: other_inputs.vehicle_width_in,
+        vehicle_height_in: other_inputs.vehicle_height_in,
+        fuel_tank_gal: other_inputs.fuel_tank_gal,
+        ess_max_kwh: other_inputs.ess_max_kwh,
+        mc_max_kw: other_inputs.mc_max_kw,
+        ess_max_kw: other_inputs.ess_max_kw,
+        fc_max_kw: other_inputs.fc_max_kw,
+    };
+    let inputs = vec![vir];
+    let model_years = {
+        let mut h: HashSet<u32> = HashSet::new();
+        h.insert(year);
+        h
+    };
+    if let Some(data_dir_path) = get_fastsim_data_dir() {
+        let data_dir_path = data_dir_path.as_path();
+        let downloaded = populate_cache_for_given_years_if_needed(data_dir_path, &model_years)?;
+        if downloaded {
+            println!("Downloaded and cached some data...");
+        }
+        let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
+        let fegov_data_by_year =
+            load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
+        let epatest_db = read_epa_test_data_for_given_years(data_dir_path, &model_years)?;
+        let vehs = import_all_vehicles_from_record(&inputs, &fegov_data_by_year, &epatest_db);
+        Ok(vehs)
+    } else {
+        Ok(vec![])
+    }
+}
+
 /// Import and Save All Vehicles Specified via Input File
 pub fn import_and_save_all_vehicles_from_file(
     input_path: &Path,
@@ -2632,42 +2676,57 @@ pub fn import_and_save_all_vehicles_from_file(
     import_and_save_all_vehicles(&inputs, &fegov_data_by_year, &epatest_db, output_dir_path)
 }
 
-pub fn import_and_save_all_vehicles(
+pub fn import_all_vehicles_from_record(
     inputs: &[VehicleInputRecord],
     fegov_data_by_year: &HashMap<u32, Vec<VehicleDataFE>>,
     epatest_data_by_year: &HashMap<u32, Vec<VehicleDataEPA>>,
-    output_dir_path: &Path,
-) -> Result<(), anyhow::Error> {
+) -> Vec<RustVehicle> {
+    let mut vehs: Vec<RustVehicle> = Vec::new();
     for vir in inputs {
         if let Some(fegov_data) = fegov_data_by_year.get(&vir.year) {
             if let Some(epatest_data) = epatest_data_by_year.get(&vir.year) {
-                let vehs = try_import_vehicles(vir, fegov_data, epatest_data);
-                for (idx, veh) in vehs.iter().enumerate() {
-                    let mut outfile: PathBuf = PathBuf::new();
-                    outfile.push(output_dir_path);
-                    if idx > 0 {
-                        let path = Path::new(&vir.output_file_name);
-                        let stem = path.file_stem().unwrap().to_str().unwrap();
-                        let ext = path.extension().unwrap().to_str().unwrap();
-                        let output_file_name = format!("{stem}-{idx}.{ext}");
-                        println!(
-                            "Multiple configurations found: output_file_name = {output_file_name}"
-                        );
-                        outfile.push(Path::new(&output_file_name));
-                    } else {
-                        outfile.push(Path::new(&vir.output_file_name));
-                    }
-                    if let Some(full_outfile) = outfile.to_str() {
-                        veh.to_file(full_outfile)?;
-                    } else {
-                        println!("Could not determine output file path");
-                    }
+                let vs = try_import_vehicles(vir, fegov_data, epatest_data);
+                for v in vs.iter() {
+                    vehs.push(v.clone());
                 }
             } else {
                 println!("No EPA test data available for year {}", vir.year);
             }
         } else {
             println!("No FE.gov data available for year {}", vir.year);
+        }
+    }
+    vehs
+}
+
+pub fn import_and_save_all_vehicles(
+    inputs: &[VehicleInputRecord],
+    fegov_data_by_year: &HashMap<u32, Vec<VehicleDataFE>>,
+    epatest_data_by_year: &HashMap<u32, Vec<VehicleDataEPA>>,
+    output_dir_path: &Path,
+) -> Result<(), anyhow::Error> {
+    for (idx, veh) in
+        import_all_vehicles_from_record(inputs, fegov_data_by_year, epatest_data_by_year)
+            .iter()
+            .enumerate()
+    {
+        let vir = &inputs[idx];
+        let mut outfile: PathBuf = PathBuf::new();
+        outfile.push(output_dir_path);
+        if idx > 0 {
+            let path = Path::new(&vir.output_file_name);
+            let stem = path.file_stem().unwrap().to_str().unwrap();
+            let ext = path.extension().unwrap().to_str().unwrap();
+            let output_file_name = format!("{stem}-{idx}.{ext}");
+            println!("Multiple configurations found: output_file_name = {output_file_name}");
+            outfile.push(Path::new(&output_file_name));
+        } else {
+            outfile.push(Path::new(&vir.output_file_name));
+        }
+        if let Some(full_outfile) = outfile.to_str() {
+            veh.to_file(full_outfile)?;
+        } else {
+            println!("Could not determine output file path");
         }
     }
     Ok(())

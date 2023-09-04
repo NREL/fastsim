@@ -43,6 +43,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
         vehicle_utils::vehicle_import_by_id_and_year,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(vehicle_utils::import_all_vehicles, m)?)?;
 
     Ok(())
 }
