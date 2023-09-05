@@ -1866,8 +1866,8 @@ fn try_import_vehicles(
                         format!("{}, ", hit.alt_veh_type)
                     };
                     v.scenario_name = format!(
-                        "{} ({}{} cylinders, {} L, {})",
-                        alt_type, v.scenario_name, hit.cylinders, hit.displ, hit.trany
+                        "{} ( {} {} cylinders, {} L, {} )",
+                        v.scenario_name, alt_type, hit.cylinders, hit.displ, hit.trany
                     );
                 }
                 outputs.push(v);
