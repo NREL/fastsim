@@ -1612,7 +1612,7 @@ pub fn vehicle_import_by_id_and_year(
                     maybe_data
                 };
                 if let Some(fe_gov_data) = fe_gov_data {
-                    if let Some(epa_data) = match_epatest_with_fegov(&fe_gov_data, &epa_data) {
+                    if let Some(epa_data) = match_epatest_with_fegov(&fe_gov_data, epa_data) {
                         maybe_veh = try_make_single_vehicle(&fe_gov_data, &epa_data, other_inputs);
                     }
                 }
