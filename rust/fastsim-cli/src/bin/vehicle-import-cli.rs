@@ -1,8 +1,9 @@
-use std::path::Path;
 use clap::Parser;
+use fastsim_core::vehicle_utils::{
+    get_default_cache_url, get_fastsim_data_dir, import_and_save_all_vehicles_from_file,
+};
 use std::fs;
-use fastsim_core::vehicle_utils::{import_and_save_all_vehicles_from_file, get_fastsim_data_dir};
-
+use std::path::Path;
 
 // eliminate db path items; instead, assume we have a config directory on the OS which we'll get via the directories crate
 // - if the config directory (fastsim_cache) doesn't exist:
@@ -20,6 +21,7 @@ struct Args {
     input_file_path: String,
     output_dir_path: String,
     data_dir_path: Option<String>,
+    cache_url: Option<String>,
 }
 
 fn run_import(args: &Args) {
@@ -35,7 +37,7 @@ fn run_import(args: &Args) {
                 panic!("No data directory at {}", data_dir_str);
             }
             dd_path.to_path_buf()
-        },
+        }
         None => {
             if let Some(fastsim_data_dir) = get_fastsim_data_dir() {
                 fastsim_data_dir
@@ -52,15 +54,29 @@ fn run_import(args: &Args) {
             panic!("Could not create directory {}", args.output_dir_path);
         }
     } else if !output_dir_path.is_dir() {
-        panic!("Output dir exists but is not a directory: {}", args.output_dir_path);
+        panic!(
+            "Output dir exists but is not a directory: {}",
+            args.output_dir_path
+        );
     }
-    let result =
-        import_and_save_all_vehicles_from_file(
-            input_file_path,
-            data_dir_path.as_path(),
-            output_dir_path);
+    let cache_url = {
+        if let Some(url) = &args.cache_url {
+            url.clone()
+        } else {
+            get_default_cache_url()
+        }
+    };
+    let result = import_and_save_all_vehicles_from_file(
+        input_file_path,
+        data_dir_path.as_path(),
+        output_dir_path,
+        Some(cache_url),
+    );
     if result.is_err() {
-        println!("Error with importing and saving all vehicles from file: {:?}", result.err());
+        println!(
+            "Error with importing and saving all vehicles from file: {:?}",
+            result.err()
+        );
     } else {
         println!("Successfully ran vehicle import");
     }

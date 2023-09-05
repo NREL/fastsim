@@ -458,6 +458,7 @@ pub fn get_options_for_year_make_model(
     year: &str,
     make: &str,
     model: &str,
+    cache_url: Option<String>,
 ) -> Result<Vec<VehicleDataFE>, Error> {
     // prep the cache for year
     let y: u32 = year.trim().parse()?;
@@ -467,7 +468,12 @@ pub fn get_options_for_year_make_model(
         h
     };
     if let Some(ddpath) = get_fastsim_data_dir() {
-        populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys)?;
+        let cache_url = if let Some(url) = &cache_url {
+            url.clone()
+        } else {
+            get_default_cache_url()
+        };
+        populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url)?;
         let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
         let fegov_data_by_year =
             load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
@@ -2532,8 +2538,13 @@ fn load_fegov_data_for_given_years(
     Ok(data)
 }
 
-fn get_box_url_for_year(year: &u32) -> Result<Option<String>, anyhow::Error> {
-    let target_url = format!("https://github.com/NREL/temp-data/raw/main/{year}.zip");
+pub fn get_default_cache_url() -> String {
+    String::from("https://github.com/NREL/temp-data/raw/main/")
+}
+
+fn get_cache_url_for_year(cache_url: &str, year: &u32) -> Result<Option<String>, anyhow::Error> {
+    let maybe_slash = if cache_url.ends_with('/') { "" } else { "/" };
+    let target_url = format!("{cache_url}{maybe_slash}{year}.zip");
     Ok(Some(target_url))
 }
 
@@ -2557,6 +2568,7 @@ fn extract_file_from_zip(
 fn populate_cache_for_given_years_if_needed(
     data_dir_path: &Path,
     years: &HashSet<u32>,
+    cache_url: &str,
 ) -> Result<bool, anyhow::Error> {
     let mut downloaded_and_unzipped_data = false;
     for year in years {
@@ -2579,7 +2591,7 @@ fn populate_cache_for_given_years_if_needed(
         if !veh_file_exists || !emissions_file_exists || !epa_file_exists {
             let zip_file_name = format!("{year}.zip");
             let zip_file_path = data_dir_path.join(Path::new(&zip_file_name));
-            if let Some(url) = get_box_url_for_year(year)? {
+            if let Some(url) = get_cache_url_for_year(cache_url, year)? {
                 println!("Downloading data for {year}: {url}");
                 download_file_from_url_v2(&url, &zip_file_path)?;
                 println!("... downloading data for {year}");
@@ -2640,7 +2652,9 @@ pub fn import_all_vehicles(
     };
     if let Some(data_dir_path) = get_fastsim_data_dir() {
         let data_dir_path = data_dir_path.as_path();
-        let downloaded = populate_cache_for_given_years_if_needed(data_dir_path, &model_years)?;
+        let cache_url = get_default_cache_url();
+        let downloaded =
+            populate_cache_for_given_years_if_needed(data_dir_path, &model_years, &cache_url)?;
         if downloaded {
             println!("Downloaded and cached some data...");
         }
@@ -2660,11 +2674,18 @@ pub fn import_and_save_all_vehicles_from_file(
     input_path: &Path,
     data_dir_path: &Path,
     output_dir_path: &Path,
+    cache_url: Option<String>,
 ) -> Result<(), anyhow::Error> {
+    let cache_url = if let Some(url) = &cache_url {
+        url.clone()
+    } else {
+        get_default_cache_url()
+    };
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
     println!("Found {} vehicle input records", inputs.len());
     let model_years = determine_model_years_of_interest(&inputs);
-    let downloaded = populate_cache_for_given_years_if_needed(data_dir_path, &model_years)?;
+    let downloaded =
+        populate_cache_for_given_years_if_needed(data_dir_path, &model_years, &cache_url)?;
     if downloaded {
         println!("Downloaded and cached some data...");
     }
