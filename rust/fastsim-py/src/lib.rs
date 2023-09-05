@@ -28,7 +28,6 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<simdrive::simdrive_iter::SimDriveVec>()?;
 
     cycle::register(py, m)?;
-    vehicle_utils::register(py, m)?;
     m.add_function(wrap_pyfunction!(vehicle_utils::abc_to_drag_coeffs, m)?)?;
     m.add_function(wrap_pyfunction!(make_accel_trace_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_net_accel_py, m)?)?;
@@ -44,6 +43,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(vehicle_utils::import_all_vehicles, m)?)?;
+    m.add_function(wrap_pyfunction!(vehicle_utils::export_vehicle_to_file, m)?)?;
 
     Ok(())
 }
