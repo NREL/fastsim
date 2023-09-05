@@ -1851,7 +1851,7 @@ impl CostFunction for GetError<'_> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VehicleInputRecord {
     pub make: String,
     pub model: String,
@@ -2352,7 +2352,10 @@ pub fn import_all_vehicles(
         let fegov_data_by_year =
             load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
         let epatest_db = read_epa_test_data_for_given_years(data_dir_path, &model_years)?;
-        let vehs = import_all_vehicles_from_record(&inputs, &fegov_data_by_year, &epatest_db);
+        let vehs = import_all_vehicles_from_record(&inputs, &fegov_data_by_year, &epatest_db)
+            .into_iter()
+            .map(|x| -> RustVehicle { x.1 })
+            .collect();
         Ok(vehs)
     } else {
         Ok(vec![])
@@ -2391,14 +2394,14 @@ pub fn import_all_vehicles_from_record(
     inputs: &[VehicleInputRecord],
     fegov_data_by_year: &HashMap<u32, Vec<VehicleDataFE>>,
     epatest_data_by_year: &HashMap<u32, Vec<VehicleDataEPA>>,
-) -> Vec<RustVehicle> {
-    let mut vehs: Vec<RustVehicle> = Vec::new();
+) -> Vec<(VehicleInputRecord, RustVehicle)> {
+    let mut vehs: Vec<(VehicleInputRecord, RustVehicle)> = Vec::new();
     for vir in inputs {
         if let Some(fegov_data) = fegov_data_by_year.get(&vir.year) {
             if let Some(epatest_data) = epatest_data_by_year.get(&vir.year) {
                 let vs = try_import_vehicles(vir, fegov_data, epatest_data);
                 for v in vs.iter() {
-                    vehs.push(v.clone());
+                    vehs.push((vir.clone(), v.clone()));
                 }
             } else {
                 println!("No EPA test data available for year {}", vir.year);
@@ -2416,12 +2419,11 @@ pub fn import_and_save_all_vehicles(
     epatest_data_by_year: &HashMap<u32, Vec<VehicleDataEPA>>,
     output_dir_path: &Path,
 ) -> Result<(), anyhow::Error> {
-    for (idx, veh) in
+    for (idx, (vir, veh)) in
         import_all_vehicles_from_record(inputs, fegov_data_by_year, epatest_data_by_year)
             .iter()
             .enumerate()
     {
-        let vir = &inputs[idx];
         let mut outfile: PathBuf = PathBuf::new();
         outfile.push(output_dir_path);
         if idx > 0 {
