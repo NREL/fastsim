@@ -25,6 +25,13 @@ make = "Toyota"
 model = "Corolla"
 year = "2022"
 
+# NOTE: two additional optional arguments can be passed to get_options_for_year_make_model.
+# They are the cache_url which is the URL for a file download service to retrieve cache data by year
+# and also a data directory where that cache data will be stored.
+# If not provided, they default to NREL's cache URL and the OS specific config data directory for this application.
+# Also note that, due to interop requirements, these must be passed in as python strings. For example, a
+# Python pathlib.Path object will be rejected.
+
 options = fsr.get_options_for_year_make_model(year, make, model)
 if IS_INTERACTIVE:
     for opt in options:
@@ -49,6 +56,14 @@ other_inputs = fsr.OtherVehicleInputs(
     ess_max_kw=0.0,
     fc_max_kw=None,
 )  # None -> calculate from EPA data
+
+# NOTE: two additional optional arguments can be passed to vehicle_import_by_id_and_year. 
+# They are the cache_url which is the URL for a file download service to retrieve cache data by year
+# and also a data directory where that cache data will be stored.
+# If not provided, they default to NREL's cache URL and the OS specific config data directory for this application.
+# Also note that, due to interop requirements, these must be passed in as python strings. For example, a
+# Python pathlib.Path object will be rejected.
+
 rv = fsr.vehicle_import_by_id_and_year(data.id, int(year), other_inputs)
 
 fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle-v2.yaml"))
@@ -57,6 +72,14 @@ fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle-v2.yaml"))
 # Alternative API for importing all vehicles at once
 # This API will import all matching configurations for
 # the given year, make, and model.
+
+# NOTE: two additional optional arguments can be passed to import_all_vehicles. 
+# They are the cache_url which is the URL for a file download service to retrieve cache data by year
+# and also a data directory where that cache data will be stored.
+# If not provided, they default to NREL's cache URL and the OS specific config data directory for this application.
+# Also note that, due to interop requirements, these must be passed in as python strings. For example, a
+# Python pathlib.Path object will be rejected.
+
 vehs = fsr.import_all_vehicles(int(year), make, model, other_inputs)
 if IS_INTERACTIVE:
     for v in vehs:

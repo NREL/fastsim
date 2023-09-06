@@ -434,6 +434,7 @@ pub fn get_options_for_year_make_model(
     make: &str,
     model: &str,
     cache_url: Option<String>,
+    data_dir: Option<String>,
 ) -> Result<Vec<VehicleDataFE>, Error> {
     // prep the cache for year
     let y: u32 = year.trim().parse()?;
@@ -442,27 +443,34 @@ pub fn get_options_for_year_make_model(
         h.insert(y);
         h
     };
-    if let Some(ddpath) = get_fastsim_data_dir() {
-        let cache_url = if let Some(url) = &cache_url {
-            url.clone()
-        } else {
-            get_default_cache_url()
-        };
-        populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url)?;
-        let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
-        let fegov_data_by_year =
-            load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
-        if let Some(fegov_db) = fegov_data_by_year.get(&y) {
-            let mut hits: Vec<VehicleDataFE> = Vec::new();
-            for item in fegov_db.iter() {
-                if item.make == make && item.model == model {
-                    hits.push(item.clone());
-                }
+    let ddpath = if let Some(dd) = &data_dir {
+        let ddpath = Path::new(dd);
+        ddpath.to_path_buf()
+    } else if let Some(ddpath) = get_fastsim_data_dir() {
+        ddpath
+    } else {
+        return Ok(vec![]);
+    };
+    let cache_url = if let Some(url) = &cache_url {
+        url.clone()
+    } else {
+        get_default_cache_url()
+    };
+    let downloaded = populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url)?;
+    if downloaded {
+        println!("Downloaded and cached some data...");
+    }
+    let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
+    let fegov_data_by_year =
+        load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
+    if let Some(fegov_db) = fegov_data_by_year.get(&y) {
+        let mut hits: Vec<VehicleDataFE> = Vec::new();
+        for item in fegov_db.iter() {
+            if item.make == make && item.model == model {
+                hits.push(item.clone());
             }
-            Ok(hits)
-        } else {
-            Ok(vec![])
         }
+        Ok(hits)
     } else {
         Ok(vec![])
     }
@@ -1294,35 +1302,52 @@ pub fn vehicle_import_by_id_and_year(
     vehicle_id: i32,
     year: u32,
     other_inputs: &OtherVehicleInputs,
+    cache_url: Option<String>,
+    data_dir: Option<String>,
 ) -> Result<RustVehicle, Error> {
     let mut maybe_veh: Option<RustVehicle> = None;
-    if let Some(data_dir_path) = get_fastsim_data_dir() {
-        let model_years = {
-            let mut h: HashSet<u32> = HashSet::new();
-            h.insert(year);
-            h
-        };
-        let data_dir_path = data_dir_path.as_path();
-        let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
-        let fegov_data_by_year =
-            load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
-        let epatest_db = read_epa_test_data_for_given_years(data_dir_path, &model_years)?;
-        if let Some(fe_gov_data) = fegov_data_by_year.get(&year) {
-            if let Some(epa_data) = epatest_db.get(&year) {
-                let fe_gov_data = {
-                    let mut maybe_data = None;
-                    for item in fe_gov_data {
-                        if item.id == vehicle_id {
-                            maybe_data = Some(item.clone());
-                            break;
-                        }
+    let data_dir_path = if let Some(data_dir) = &data_dir {
+        PathBuf::from(data_dir)
+    } else if let Some(data_dir_path) = get_fastsim_data_dir() {
+        data_dir_path
+    } else {
+        return Err(anyhow!("Could not determine the data directory"));
+    };
+    let data_dir_path = data_dir_path.as_path();
+    let model_years = {
+        let mut h: HashSet<u32> = HashSet::new();
+        h.insert(year);
+        h
+    };
+    let cache_url = if let Some(cache_url) = &cache_url {
+        cache_url.clone()
+    } else {
+        get_default_cache_url()
+    };
+    let downloaded =
+        populate_cache_for_given_years_if_needed(data_dir_path, &model_years, &cache_url)?;
+    if downloaded {
+        println!("Downloaded cache data");
+    }
+    let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
+    let fegov_data_by_year =
+        load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
+    let epatest_db = read_epa_test_data_for_given_years(data_dir_path, &model_years)?;
+    if let Some(fe_gov_data) = fegov_data_by_year.get(&year) {
+        if let Some(epa_data) = epatest_db.get(&year) {
+            let fe_gov_data = {
+                let mut maybe_data = None;
+                for item in fe_gov_data {
+                    if item.id == vehicle_id {
+                        maybe_data = Some(item.clone());
+                        break;
                     }
-                    maybe_data
-                };
-                if let Some(fe_gov_data) = fe_gov_data {
-                    if let Some(epa_data) = match_epatest_with_fegov(&fe_gov_data, epa_data) {
-                        maybe_veh = try_make_single_vehicle(&fe_gov_data, &epa_data, other_inputs);
-                    }
+                }
+                maybe_data
+            };
+            if let Some(fe_gov_data) = fe_gov_data {
+                if let Some(epa_data) = match_epatest_with_fegov(&fe_gov_data, epa_data) {
+                    maybe_veh = try_make_single_vehicle(&fe_gov_data, &epa_data, other_inputs);
                 }
             }
         }
@@ -2127,9 +2152,6 @@ pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> Result<(), anyhow::Error
 /// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
 pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow::Error> {
     let mut handle = Easy::new();
-    let mut ssl_opt: SslOpt = SslOpt::new();
-    ssl_opt.no_revoke(true);
-    handle.ssl_options(&ssl_opt)?;
     handle.url(url)?;
     let mut buffer = Vec::new();
     {
@@ -2148,18 +2170,6 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
         };
         file.write_all(buffer.as_slice())?;
     }
-    Ok(())
-}
-
-fn download_file_from_url_v2(url: &str, file_path: &Path) -> Result<(), anyhow::Error> {
-    println!("Downloading from {} to {:?}", url, file_path.to_str());
-    let response = reqwest::blocking::get(url)?;
-    println!("... response status: {}", response.status());
-    println!("... content length: {:?}", response.content_length());
-    let content = response.bytes()?;
-    let data = Vec::from(content);
-    let mut file = File::create(file_path)?;
-    file.write_all(&data)?;
     Ok(())
 }
 
@@ -2229,7 +2239,7 @@ fn load_fegov_data_for_given_years(
 }
 
 pub fn get_default_cache_url() -> String {
-    String::from("https://github.com/NREL/temp-data/raw/main/")
+    String::from("https://raw.githubusercontent.com/NREL/temp-data/main")
 }
 
 fn get_cache_url_for_year(cache_url: &str, year: &u32) -> Result<Option<String>, anyhow::Error> {
@@ -2283,7 +2293,7 @@ fn populate_cache_for_given_years_if_needed(
             let zip_file_path = data_dir_path.join(Path::new(&zip_file_name));
             if let Some(url) = get_cache_url_for_year(cache_url, year)? {
                 println!("Downloading data for {year}: {url}");
-                download_file_from_url_v2(&url, &zip_file_path)?;
+                download_file_from_url(&url, &zip_file_path)?;
                 println!("... downloading data for {year}");
                 let emissions_name = format!("{year}-emissions.csv");
                 extract_file_from_zip(
@@ -2320,6 +2330,8 @@ pub fn import_all_vehicles(
     make: &str,
     model: &str,
     other_inputs: &OtherVehicleInputs,
+    cache_url: Option<String>,
+    data_dir: Option<String>,
 ) -> Result<Vec<RustVehicle>, anyhow::Error> {
     let vir = VehicleInputRecord {
         year,
@@ -2340,26 +2352,33 @@ pub fn import_all_vehicles(
         h.insert(year);
         h
     };
-    if let Some(data_dir_path) = get_fastsim_data_dir() {
-        let data_dir_path = data_dir_path.as_path();
-        let cache_url = get_default_cache_url();
-        let downloaded =
-            populate_cache_for_given_years_if_needed(data_dir_path, &model_years, &cache_url)?;
-        if downloaded {
-            println!("Downloaded and cached some data...");
-        }
-        let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
-        let fegov_data_by_year =
-            load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
-        let epatest_db = read_epa_test_data_for_given_years(data_dir_path, &model_years)?;
-        let vehs = import_all_vehicles_from_record(&inputs, &fegov_data_by_year, &epatest_db)
-            .into_iter()
-            .map(|x| -> RustVehicle { x.1 })
-            .collect();
-        Ok(vehs)
+    let data_dir_path = if let Some(dd_path) = &data_dir {
+        PathBuf::from(dd_path.clone())
+    } else if let Some(dd_path) = get_fastsim_data_dir() {
+        dd_path
     } else {
-        Ok(vec![])
+        return Err(anyhow!("Unable to determine data directory"));
+    };
+    let data_dir_path = data_dir_path.as_path();
+    let cache_url = if let Some(cache_url) = &cache_url {
+        cache_url.clone()
+    } else {
+        get_default_cache_url()
+    };
+    let downloaded =
+        populate_cache_for_given_years_if_needed(data_dir_path, &model_years, &cache_url)?;
+    if downloaded {
+        println!("Downloaded and cached some data...");
     }
+    let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
+    let fegov_data_by_year =
+        load_fegov_data_for_given_years(data_dir_path, &emissions_data, &model_years)?;
+    let epatest_db = read_epa_test_data_for_given_years(data_dir_path, &model_years)?;
+    let vehs = import_all_vehicles_from_record(&inputs, &fegov_data_by_year, &epatest_db)
+        .into_iter()
+        .map(|x| -> RustVehicle { x.1 })
+        .collect();
+    Ok(vehs)
 }
 
 /// Import and Save All Vehicles Specified via Input File
@@ -3069,4 +3088,39 @@ mod vehicle_utils_tests {
             assert_eq!(vs.val_comb_mpgge, 26.0);
         }
     }
+
+    #[test]
+    fn test_get_options_for_year_make_model() {
+        let year = String::from("2020");
+        let make = String::from("Toyota");
+        let model = String::from("Corolla");
+        let res = get_options_for_year_make_model(&year, &make, &model, None, None);
+        assert!(res.is_ok());
+        if let Ok(vs) = res {
+            assert!(!vs.is_empty());
+        }
+    }
+
+    // Enable the test below after github.com/NREL/temp-data (or equivalent) get created
+    // #[test]
+    // fn test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir() {
+    //     let year = String::from("2020");
+    //     let make = String::from("Toyota");
+    //     let model = String::from("Corolla");
+    //     let data_dir = PathBuf::from("./temp");
+    //     let cacheurl = String::from("https://github.com/NREL/temp-data/raw/main/");
+    //     let r1 = std::fs::create_dir_all(data_dir.as_path());
+    //     assert!(r1.is_ok());
+    //     let r2 = get_options_for_year_make_model(
+    //         &year,
+    //         &make,
+    //         &model,
+    //         Some(cacheurl),
+    //         Some(data_dir.to_str().unwrap_or("").to_string()),
+    //     );
+    //     assert!(r2.is_ok());
+    //     if let Ok(vs) = r2 {
+    //         assert!(!vs.is_empty());
+    //     }
+    // }
 }
