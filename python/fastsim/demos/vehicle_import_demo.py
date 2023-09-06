@@ -66,7 +66,7 @@ other_inputs = fsr.OtherVehicleInputs(
 
 rv = fsr.vehicle_import_by_id_and_year(data.id, int(year), other_inputs)
 
-fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle-v2.yaml"))
+fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle.yaml"))
 
 # %%
 # Alternative API for importing all vehicles at once
