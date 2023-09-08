@@ -1430,6 +1430,7 @@ pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> Result<(), anyhow::Error
 /// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
 pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow::Error> {
     let mut handle = Easy::new();
+    handle.follow_location(true)?;
     handle.url(url)?;
     let mut buffer = Vec::new();
     {
@@ -1529,7 +1530,7 @@ fn load_fegov_data_for_given_years(
 }
 
 pub fn get_default_cache_url() -> String {
-    String::from("https://raw.githubusercontent.com/NREL/temp-data/main")
+    String::from("https://github.com/NREL/fastsim-data/raw/main/")
 }
 
 fn get_cache_url_for_year(cache_url: &str, year: &u32) -> Result<Option<String>, anyhow::Error> {
