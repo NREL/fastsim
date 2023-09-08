@@ -5,9 +5,9 @@ use crate::imports::*;
     fn __new__(
         time_seconds: Vec<f64>,
         pwr_watts: Vec<f64>,
-        engine_on: Vec<Option<bool>>,
+        fc_on: Vec<Option<bool>>,
     ) -> PyResult<Self> {
-        Ok(Self::new(time_seconds, pwr_watts, engine_on))
+        Ok(Self::new(time_seconds, pwr_watts, fc_on))
     }
 
     #[classmethod]
@@ -30,15 +30,15 @@ pub struct Cycle {
     #[serde(rename = "pwr_watts")]
     pub pwr: Vec<si::Power>,
     /// Whether engine is on
-    pub engine_on: Vec<Option<bool>>,
+    pub fc_on: Vec<Option<bool>>,
 }
 
 impl Cycle {
-    pub fn new(time_s: Vec<f64>, pwr_watts: Vec<f64>, engine_on: Vec<Option<bool>>) -> Self {
+    pub fn new(time_s: Vec<f64>, pwr_watts: Vec<f64>, fc_on: Vec<Option<bool>>) -> Self {
         Self {
             time: time_s.iter().map(|x| uc::S * (*x)).collect(),
             pwr: pwr_watts.iter().map(|x| uc::W * (*x)).collect(),
-            engine_on,
+            fc_on,
         }
     }
 
@@ -46,7 +46,7 @@ impl Cycle {
         Self {
             time: Vec::new(),
             pwr: Vec::new(),
-            engine_on: Vec::new(),
+            fc_on: Vec::new(),
         }
     }
 
@@ -65,7 +65,7 @@ impl Cycle {
     pub fn push(&mut self, pt_element: CycleElement) {
         self.time.push(pt_element.time);
         self.pwr.push(pt_element.pwr);
-        self.engine_on.push(pt_element.engine_on);
+        self.fc_on.push(pt_element.fc_on);
     }
 
     pub fn trim(&mut self, start_idx: Option<usize>, end_idx: Option<usize>) -> anyhow::Result<()> {
@@ -75,7 +75,7 @@ impl Cycle {
 
         self.time = self.time[start_idx..end_idx].to_vec();
         self.pwr = self.pwr[start_idx..end_idx].to_vec();
-        self.engine_on = self.engine_on[start_idx..end_idx].to_vec();
+        self.fc_on = self.fc_on[start_idx..end_idx].to_vec();
         Ok(())
     }
 
@@ -125,5 +125,5 @@ pub struct CycleElement {
     #[serde(rename = "pwr_watts")]
     pwr: si::Power,
     /// Whether engine is on
-    engine_on: Option<bool>,
+    fc_on: Option<bool>,
 }

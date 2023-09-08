@@ -157,8 +157,7 @@ impl FuelConverter {
         if self.pwr_out_max_init == si::Power::ZERO {
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
-        self.state.pwr_out_max = (self.state.pwr_shaft
-            + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
+        self.state.pwr_out_max = (self.state.pwr_out + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
             .min(self.pwr_out_max)
             .max(self.pwr_out_max_init);
         Ok(())
@@ -170,7 +169,7 @@ impl FuelConverter {
         &mut self,
         pwr_out_req: si::Power,
         dt: si::Time,
-        engine_on: bool,
+        fc_on: bool,
         assert_limits: bool,
     ) -> anyhow::Result<()> {
         if assert_limits {
@@ -198,7 +197,7 @@ impl FuelConverter {
                 pwr_out_req.get::<si::megawatt>()
             )
         );
-        self.state.pwr_shaft = pwr_out_req;
+        self.state.pwr_out = pwr_out_req;
         self.state.eta = uc::R
             * interp1d(
                 &(pwr_out_req / self.pwr_out_max).get::<si::ratio>(),
@@ -215,24 +214,24 @@ impl FuelConverter {
             )
         );
 
-        self.state.engine_on = engine_on;
-        self.state.pwr_idle_fuel = if self.state.engine_on {
+        self.state.fc_on = fc_on;
+        self.state.pwr_idle_fuel = if self.state.fc_on {
             self.pwr_idle_fuel
         } else {
             si::Power::ZERO
         };
         // if the engine is not on, `pwr_out_req` should be 0.0
         ensure!(
-            self.state.engine_on || pwr_out_req == si::Power::ZERO,
+            self.state.fc_on || pwr_out_req == si::Power::ZERO,
             format!(
                 "{}\nEngine is off but pwr_out_req is non-zero",
-                format_dbg!(self.state.engine_on || pwr_out_req == si::Power::ZERO)
+                format_dbg!(self.state.fc_on || pwr_out_req == si::Power::ZERO)
             )
         );
         self.state.pwr_fuel = pwr_out_req / self.state.eta + self.pwr_idle_fuel;
-        self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_shaft;
+        self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_out;
 
-        self.state.energy_brake += self.state.pwr_shaft * dt;
+        self.state.energy_brake += self.state.pwr_out * dt;
         self.state.energy_fuel += self.state.pwr_fuel * dt;
         self.state.energy_loss += self.state.pwr_loss * dt;
         self.state.energy_idle_fuel += self.state.pwr_idle_fuel * dt;
@@ -260,7 +259,7 @@ pub struct FuelConverterState {
     /// efficiency evaluated at current demand
     pub eta: si::Ratio,
     /// instantaneous power going to generator
-    pub pwr_shaft: si::Power,
+    pub pwr_out: si::Power,
     /// instantaneous fuel power flow
     pub pwr_fuel: si::Power,
     /// loss power, including idle
@@ -276,7 +275,7 @@ pub struct FuelConverterState {
     /// cumulative fuel energy fc has lost due to idle
     pub energy_idle_fuel: si::Energy,
     /// If true, engine is on, and if false, off (no idle)
-    pub engine_on: bool,
+    pub fc_on: bool,
 }
 
 impl Default for FuelConverterState {
@@ -286,14 +285,14 @@ impl Default for FuelConverterState {
             pwr_out_max: Default::default(),
             eta: Default::default(),
             pwr_fuel: Default::default(),
-            pwr_shaft: Default::default(),
+            pwr_out: Default::default(),
             pwr_loss: Default::default(),
             pwr_idle_fuel: Default::default(),
             energy_fuel: Default::default(),
             energy_brake: Default::default(),
             energy_loss: Default::default(),
             energy_idle_fuel: Default::default(),
-            engine_on: true,
+            fc_on: true,
         }
     }
 }

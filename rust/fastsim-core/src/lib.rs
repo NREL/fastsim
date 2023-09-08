@@ -4,9 +4,7 @@
 // #![warn(missing_docs_in_private_items)]
 
 //! Crate containing models for second-by-second fuel and energy consumption of simulation
-//! of locomotive consists comprising collections of individual locomotives, which comprise
-//! various powertrain components (engine, generator/alternator, battery, and electric drivetrain)
-//! -- all connected to a detailed train model.  
+//! of vehicles
 //! # Features:
 //! - pyo3: enable this feature to expose FASTSim structs, methods, and functions to Python
 

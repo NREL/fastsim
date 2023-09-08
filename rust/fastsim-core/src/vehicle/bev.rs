@@ -2,7 +2,7 @@ use super::*;
 // use crate::imports::*;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
-/// Battery electric locomotive
+/// Battery electric vehicle
 pub struct BatteryElectricVehicle {
     #[has_state]
     pub res: ReversibleEnergyStorage,
@@ -83,9 +83,5 @@ impl VehicleTrait for Box<BatteryElectricVehicle> {
 
     fn step(&mut self) {
         self.step()
-    }
-
-    fn get_energy_loss(&self) -> si::Energy {
-        self.res.state.energy_loss + self.e_machine.state.energy_loss
     }
 }

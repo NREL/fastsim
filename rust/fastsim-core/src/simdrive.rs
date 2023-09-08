@@ -1,5 +1,5 @@
 use super::drive_cycle::Cycle;
-use super::vehicle::Vehicle;
+use super::vehicle::{Vehicle, VehicleTrait};
 use crate::imports::*;
 
 #[pyo3_api]
@@ -10,5 +10,15 @@ pub struct SimDrive {
 }
 
 impl SimDrive {
-    
+    fn walk(&mut self) -> anyhow::Result<()> {
+        while self.veh.state.i <= self.cyc.len() {
+            self.step();
+        }
+        Ok(())
+    }
+
+    fn step(&mut self) -> anyhow::Result<()> {
+        self.veh.step();
+        Ok(())
+    }
 }

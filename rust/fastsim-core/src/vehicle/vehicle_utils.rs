@@ -18,6 +18,4 @@ pub trait VehicleTrait {
     fn step(&mut self) {
         unimplemented!();
     }
-    /// Get energy loss in components
-    fn get_energy_loss(&self) -> si::Energy;
 }

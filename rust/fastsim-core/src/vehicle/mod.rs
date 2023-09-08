@@ -1,7 +1,7 @@
 // TODO: uncomment when docs are somewhat mature to check for missing docs
 // #![warn(missing_docs)]
 // #![warn(missing_docs_in_private_items)]
-//! Module containing submodules for consists, locomotives, and powertrain models
+//! Module containing submodules for vehicle and powertrain models
 
 use crate::imports::*;
 
