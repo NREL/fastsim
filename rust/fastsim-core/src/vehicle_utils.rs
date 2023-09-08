@@ -456,9 +456,11 @@ pub fn get_options_for_year_make_model(
     } else {
         get_default_cache_url()
     };
-    let downloaded = populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url)?;
-    if downloaded {
-        println!("Downloaded and cached some data...");
+    let has_data = populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url)?;
+    if !has_data {
+        return Err(anyhow!(
+            "Unable to load or download cache data from {cache_url}"
+        ));
     }
     let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
     let fegov_data_by_year =
@@ -1324,10 +1326,12 @@ pub fn vehicle_import_by_id_and_year(
     } else {
         get_default_cache_url()
     };
-    let downloaded =
+    let has_data =
         populate_cache_for_given_years_if_needed(data_dir_path, &model_years, &cache_url)?;
-    if downloaded {
-        println!("Downloaded cache data");
+    if !has_data {
+        return Err(anyhow!(
+            "Unable to load or download cache data from {cache_url}"
+        ));
     }
     let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
     let fegov_data_by_year =
@@ -2160,12 +2164,24 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
             buffer.extend_from_slice(data);
             Ok(data.len())
         })?;
-        transfer.perform()?;
+        let result = transfer.perform();
+        if result.is_err() {
+            return Err(anyhow!("Could not download from {}", url));
+        }
     }
     println!("Downloaded data from {} of length {}", url, buffer.len());
+    if buffer.is_empty() {
+        return Err(anyhow!("No data available from {url}"));
+    }
     {
         let mut file = match File::create(&file_path) {
-            Err(why) => panic!("couldn't open {}: {}", file_path.to_str().unwrap(), why),
+            Err(why) => {
+                return Err(anyhow!(
+                    "couldn't open {}: {}",
+                    file_path.to_str().unwrap(),
+                    why
+                ))
+            }
             Ok(file) => file,
         };
         file.write_all(buffer.as_slice())?;
@@ -2270,7 +2286,7 @@ fn populate_cache_for_given_years_if_needed(
     years: &HashSet<u32>,
     cache_url: &str,
 ) -> Result<bool, anyhow::Error> {
-    let mut downloaded_and_unzipped_data = false;
+    let mut all_data_available = true;
     for year in years {
         println!("Checking {year}...");
         let veh_file_exists = {
@@ -2289,6 +2305,7 @@ fn populate_cache_for_given_years_if_needed(
             path.exists()
         };
         if !veh_file_exists || !emissions_file_exists || !epa_file_exists {
+            all_data_available = false;
             let zip_file_name = format!("{year}.zip");
             let zip_file_path = data_dir_path.join(Path::new(&zip_file_name));
             if let Some(url) = get_cache_url_for_year(cache_url, year)? {
@@ -2316,11 +2333,11 @@ fn populate_cache_for_given_years_if_needed(
                     data_dir_path.join(Path::new(&epatests_name)).as_path(),
                 )?;
                 println!("... extracted {}", epatests_name);
-                downloaded_and_unzipped_data = true;
+                all_data_available = true;
             }
         }
     }
-    Ok(downloaded_and_unzipped_data)
+    Ok(all_data_available)
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
@@ -2365,10 +2382,12 @@ pub fn import_all_vehicles(
     } else {
         get_default_cache_url()
     };
-    let downloaded =
+    let has_data =
         populate_cache_for_given_years_if_needed(data_dir_path, &model_years, &cache_url)?;
-    if downloaded {
-        println!("Downloaded and cached some data...");
+    if !has_data {
+        return Err(anyhow!(
+            "Unable to load or download cache data from {cache_url}"
+        ));
     }
     let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
     let fegov_data_by_year =
@@ -2396,10 +2415,12 @@ pub fn import_and_save_all_vehicles_from_file(
     let inputs: Vec<VehicleInputRecord> = read_vehicle_input_records_from_file(input_path)?;
     println!("Found {} vehicle input records", inputs.len());
     let model_years = determine_model_years_of_interest(&inputs);
-    let downloaded =
+    let has_data =
         populate_cache_for_given_years_if_needed(data_dir_path, &model_years, &cache_url)?;
-    if downloaded {
-        println!("Downloaded and cached some data...");
+    if !has_data {
+        return Err(anyhow!(
+            "Unable to load or download cache data from {cache_url}"
+        ));
     }
     let emissions_data = load_emissions_data_for_given_years(data_dir_path, &model_years)?;
     let fegov_data_by_year =
@@ -3095,8 +3116,9 @@ mod vehicle_utils_tests {
         let make = String::from("Toyota");
         let model = String::from("Corolla");
         let res = get_options_for_year_make_model(&year, &make, &model, None, None);
-        assert!(res.is_ok());
-        if let Ok(vs) = res {
+        if let Err(err) = &res {
+            panic!("{:?}", err);
+        } else if let Ok(vs) = &res {
             assert!(!vs.is_empty());
         }
     }
