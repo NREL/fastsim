@@ -11,14 +11,23 @@ pub struct SimDrive {
 
 impl SimDrive {
     fn walk(&mut self) -> anyhow::Result<()> {
-        while self.veh.state.i <= self.cyc.len() {
-            self.step();
+        while self.veh.state.i < self.cyc.len() {
+            self.veh.step();
         }
         Ok(())
     }
+}
 
-    fn step(&mut self) -> anyhow::Result<()> {
-        self.veh.step();
-        Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_sim_drive() {
+        let veh = Vehicle::from_file(todo!()).unwrap();
+        let cyc = Cycle::from_file(todo!()).unwrap();
+        let sd = SimDrive { veh, cyc };
+        sd.walk();
+        assert!(sd.veh.state.i == sd.cyc.len());
+        assert!(sd.veh.fuel_converter().unwrap().state.energy_fuel > uc::J * 0.);
     }
 }

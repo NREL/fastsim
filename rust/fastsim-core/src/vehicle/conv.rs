@@ -20,18 +20,14 @@ impl ConventionalVehicle {
         assert_limits: bool,
     ) -> anyhow::Result<()> {
         self.fc
-            .solve_energy_consumption(pwr_out_req + pwr_aux, dt, fc_on, assert_limits)?;
+            .solve_energy_consumption(pwr_out_req, pwr_aux, fc_on, dt, assert_limits)?;
         Ok(())
     }
 }
 
 impl VehicleTrait for Box<ConventionalVehicle> {
     /// returns current max power
-    fn set_cur_pwr_max_out(
-        &mut self,
-        _pwr_aux: Option<si::Power>,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
+    fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
         self.fc.set_cur_pwr_out_max(dt)?;
         Ok(())
     }

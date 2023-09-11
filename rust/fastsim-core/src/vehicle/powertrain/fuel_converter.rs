@@ -58,7 +58,6 @@ pub struct FuelConverter {
     #[api(skip_get, skip_set)]
     pub(in super::super) mass: Option<si::Mass>,
     /// FuelConverter specific power
-    /// TODO: make this si::specific_power after Geordie's pull request into `uom`
     #[api(skip_get, skip_set)]
     pub(in super::super) specific_pwr: Option<si::SpecificPower>,
     #[serde(rename = "pwr_out_max_watts")]
@@ -68,10 +67,7 @@ pub struct FuelConverter {
     #[serde(default)]
     pub pwr_out_max_init: si::Power,
     // TODO: consider a ramp down rate, which may be needed for fuel cells
-    #[serde(rename(
-        serialize = "pwr_ramp_lag_seconds",
-        deserialize = "pwr_ramp_lag_seconds"
-    ))]
+    #[serde(rename = "pwr_ramp_lag_seconds")]
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
     /// Fuel converter brake power fraction array at which efficiencies are evaluated.
@@ -164,43 +160,62 @@ impl FuelConverter {
     }
 
     /// Solve for fuel usage for a given required fuel converter power output
-    /// (pwr_out_req \[W\]) and time step size (dt_s \[s\])
+    /// # Arguments
+    /// * pwr_out - output power for propulsion
+    /// * pwr_aux - output power for auxiliaries
+    /// * fc_on - whether FC is on (i.e. consuming fuel)
+    /// * assert limits - whether various physical limits are enforced, should generally be true
     pub fn solve_energy_consumption(
         &mut self,
-        pwr_out_req: si::Power,
-        dt: si::Time,
+        pwr_out: si::Power,
+        pwr_aux: si::Power,
         fc_on: bool,
+        dt: si::Time,
         assert_limits: bool,
     ) -> anyhow::Result<()> {
         if assert_limits {
             ensure!(
-                utils::almost_le_uom(&pwr_out_req, &self.pwr_out_max, Some(TOL)),
+                utils::almost_le_uom(&pwr_out, &self.pwr_out_max, Some(TOL)),
                 format!(
-                "{}\nfc pwr_out_req ({:.6} MW) must be less than or equal to static pwr_out_max ({:.6} MW)",
-                format_dbg!(utils::almost_le_uom(&pwr_out_req, &self.pwr_out_max, Some(TOL))),
-                pwr_out_req.get::<si::megawatt>(),
-                self.pwr_out_max.get::<si::megawatt>()),
+                    "{}TODO: update this error message",
+                    format_dbg!(utils::almost_le_uom(
+                        &(pwr_out + pwr_aux),
+                        &self.pwr_out_max,
+                        Some(TOL)
+                    )),
+                ),
             );
             ensure!(
-                utils::almost_le_uom(&pwr_out_req, &self.state.pwr_out_max, Some(TOL)),
-                format!("{}\nfc pwr_out_req ({:.6} MW) must be less than or equal to current transient pwr_out_max ({:.6} MW)",
-                format_dbg!(utils::almost_le_uom(&pwr_out_req, &self.state.pwr_out_max, Some(TOL))),
-                pwr_out_req.get::<si::megawatt>(),
-                self.state.pwr_out_max.get::<si::megawatt>()),
+                utils::almost_le_uom(&pwr_out, &self.state.pwr_out_max, Some(TOL)),
+                format!(
+                    "{}\nTODO: update this error",
+                    format_dbg!(utils::almost_le_uom(
+                        &(pwr_out + pwr_aux),
+                        &self.state.pwr_out_max,
+                        Some(TOL)
+                    )),
+                )
             );
         }
         ensure!(
-            pwr_out_req >= si::Power::ZERO,
+            pwr_out >= si::Power::ZERO,
             format!(
-                "{}\nfc pwr_out_req ({:.6} MW) must be greater than or equal to zero",
-                format_dbg!(pwr_out_req >= si::Power::ZERO),
-                pwr_out_req.get::<si::megawatt>()
+                "{}\n`pwr_out` must be >= 0",
+                format_dbg!(pwr_out >= si::Power::ZERO),
             )
         );
-        self.state.pwr_out = pwr_out_req;
+        ensure!(
+            pwr_aux >= si::Power::ZERO,
+            format!(
+                "{}\n`pwr_aux` must be >= 0",
+                format_dbg!(pwr_aux >= si::Power::ZERO),
+            )
+        );
+        self.state.pwr_out = pwr_out;
+        self.state.pwr_aux = pwr_aux;
         self.state.eta = uc::R
             * interp1d(
-                &(pwr_out_req / self.pwr_out_max).get::<si::ratio>(),
+                &((pwr_out + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
                 &self.pwr_out_frac_interp,
                 &self.eta_interp,
                 false,
@@ -222,13 +237,19 @@ impl FuelConverter {
         };
         // if the engine is not on, `pwr_out_req` should be 0.0
         ensure!(
-            self.state.fc_on || pwr_out_req == si::Power::ZERO,
+            self.state.fc_on || (pwr_out == si::Power::ZERO && pwr_aux == si::Power::ZERO),
             format!(
-                "{}\nEngine is off but pwr_out_req is non-zero",
-                format_dbg!(self.state.fc_on || pwr_out_req == si::Power::ZERO)
+                "{}\nEngine is off but pwr_out + pwr_aux is non-zero",
+                format_dbg!(
+                    self.state.fc_on || (pwr_out == si::Power::ZERO && pwr_aux == si::Power::ZERO)
+                )
             )
         );
-        self.state.pwr_fuel = pwr_out_req / self.state.eta + self.pwr_idle_fuel;
+        // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
+        // zero, there will be fuel consumption to overcome internal dissipation.
+        self.state.pwr_fuel = (pwr_out + pwr_aux) / self.state.eta + self.pwr_idle_fuel;
+        // or maybe like this
+        // self.state.pwr_fuel = ((pwr_out + pwr_aux) / self.state.eta).max(self.pwr_idle_fuel);
         self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_out;
 
         self.state.energy_brake += self.state.pwr_out * dt;
@@ -258,8 +279,10 @@ pub struct FuelConverterState {
     pub pwr_out_max: si::Power,
     /// efficiency evaluated at current demand
     pub eta: si::Ratio,
-    /// instantaneous power going to generator
+    /// instantaneous power going to drivetrain, not including aux
     pub pwr_out: si::Power,
+    /// power going to auxiliaries
+    pub pwr_aux: si::Power,
     /// instantaneous fuel power flow
     pub pwr_fuel: si::Power,
     /// loss power, including idle
@@ -286,6 +309,7 @@ impl Default for FuelConverterState {
             eta: Default::default(),
             pwr_fuel: Default::default(),
             pwr_out: Default::default(),
+            pwr_aux: Default::default(),
             pwr_loss: Default::default(),
             pwr_idle_fuel: Default::default(),
             energy_fuel: Default::default(),

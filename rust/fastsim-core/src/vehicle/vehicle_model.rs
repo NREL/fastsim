@@ -1,6 +1,5 @@
 use super::*;
 
-#[enum_dispatch(VehicleTrait)]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
 pub enum PowertrainType {
     ConventionalVehicle(Box<ConventionalVehicle>),
@@ -104,6 +103,33 @@ impl PowertrainType {
                 bev.e_machine = e_machine;
                 Ok(())
             }
+        }
+    }
+}
+
+impl VehicleTrait for PowertrainType {
+    fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => conv.set_cur_pwr_max_out(pwr_aux, dt)?,
+            Self::HybridElectricVehicle(hev) => hev.set_cur_pwr_max_out(pwr_aux, dt)?,
+            Self::BatteryElectricVehicle(bev) => bev.set_cur_pwr_max_out(pwr_aux, dt)?,
+        }
+        Ok(())
+    }
+
+    fn save_state(&mut self) {
+        match self {
+            Self::ConventionalVehicle(conv) => conv.save_state(),
+            Self::HybridElectricVehicle(hev) => hev.save_state(),
+            Self::BatteryElectricVehicle(bev) => bev.save_state(),
+        }
+    }
+
+    fn step(&mut self) {
+        match self {
+            Self::ConventionalVehicle(conv) => conv.step(),
+            Self::HybridElectricVehicle(hev) => hev.step(),
+            Self::BatteryElectricVehicle(bev) => bev.step(),
         }
     }
 }
@@ -567,7 +593,7 @@ impl Vehicle {
                     dt,
                     assert_limits,
                 )?;
-                self.state.pwr_out = conv.fc.state.pwr_out / conv.trans_eff;
+                self.state.pwr_out = conv.fc.state.pwr_out * conv.trans_eff;
             }
             PowertrainType::HybridElectricVehicle(_hev) => {
                 todo!()
@@ -597,25 +623,9 @@ impl VehicleTrait for Vehicle {
         }
     }
 
-    fn set_cur_pwr_max_out(
-        &mut self,
-        pwr_aux: Option<si::Power>,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
-        ensure!(
-            pwr_aux.is_none(),
-            format!(
-                "{}\ntime step: {}",
-                format_dbg!(pwr_aux.is_none()),
-                self.state.i
-            )
-        );
+    fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+        self.powertrain_type.set_cur_pwr_max_out(pwr_aux, dt)?;
 
-        match &mut self.powertrain_type {
-            PowertrainType::ConventionalVehicle(conv) => conv.set_cur_pwr_max_out(pwr_aux, dt)?,
-            PowertrainType::HybridElectricVehicle(_) => todo!(),
-            PowertrainType::BatteryElectricVehicle(_) => todo!(),
-        };
         Ok(())
     }
 }

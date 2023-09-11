@@ -15,7 +15,6 @@ pub(crate) use proc_macros::{pyo3_api, HistoryMethods, HistoryVec, SerdeAPI};
 
 pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
-pub(crate) use enum_dispatch::enum_dispatch;
 
 pub(crate) use bincode::{deserialize, serialize};
 pub(crate) use serde::{Deserialize, Serialize};
