@@ -352,16 +352,20 @@ const HEV: &str = "HEV";
 const PHEV: &str = "PHEV";
 const BEV: &str = "BEV";
 
+/// Returns fastsim-3 vehicle given fastsim-2 vehicle
+///
+/// # Arguments
+/// * `f2veh` - fastsim-2 vehicle
 fn get_pt_type_from_fsim2_veh(
-    veh: &fastsim_2::vehicle::RustVehicle,
-) -> anyhow::Result<Option<PowertrainType>> {
-    if veh.veh_pt_type == CONV {
+    f2veh: &fastsim_2::vehicle::RustVehicle,
+) -> anyhow::Result<PowertrainType> {
+    if f2veh.veh_pt_type == CONV {
         let conv = ConventionalVehicle {
             fs: {
                 let mut fs = FuelStorage {
-                    pwr_out_max: veh.fs_max_kw * uc::KW,
-                    t_to_peak_pwr: veh.fs_secs_to_peak_pwr * uc::S,
-                    energy_capacity: veh.fs_kwh * 3.6 * uc::MJ,
+                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                    t_to_peak_pwr: f2veh.fs_secs_to_peak_pwr * uc::S,
+                    energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
                     specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
                     mass: None,
                 };
@@ -372,20 +376,20 @@ fn get_pt_type_from_fsim2_veh(
                 let mut fc = FuelConverter {
                     state: Default::default(),
                     mass: None,
-                    specific_pwr: Some(veh.fc_kw_per_kg * uc::KW / uc::KG),
-                    pwr_out_max: veh.fc_max_kw * uc::KW,
+                    specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
+                    pwr_out_max: f2veh.fc_max_kw * uc::KW,
                     // assumes 1 s time step
-                    pwr_out_max_init: veh.fc_max_kw * uc::KW / veh.fc_sec_to_peak_pwr,
-                    pwr_ramp_lag: veh.fc_sec_to_peak_pwr * uc::S,
-                    pwr_out_frac_interp: veh.fc_pwr_out_perc.to_vec(),
-                    eta_interp: veh.fc_eff_map.to_vec(),
+                    pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
+                    pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
+                    pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
+                    eta_interp: f2veh.fc_eff_map.to_vec(),
                     // TODO: verify this
-                    pwr_idle_fuel: veh.aux_kw
-                        / veh
+                    pwr_idle_fuel: f2veh.aux_kw
+                        / f2veh
                             .fc_eff_map
                             .to_vec()
                             .first()
-                            .ok_or_else(|| anyhow!(format_dbg!(veh.fc_eff_map)))?
+                            .ok_or_else(|| anyhow!(format_dbg!(f2veh.fc_eff_map)))?
                         * uc::KW,
                     save_interval: Some(1),
                     history: Default::default(),
@@ -393,11 +397,16 @@ fn get_pt_type_from_fsim2_veh(
                 fc.update_mass(None)?;
                 fc
             },
-            trans_eff: veh.trans_eff * uc::R,
+            trans_eff: f2veh.trans_eff * uc::R,
         };
-        Ok(Some(PowertrainType::ConventionalVehicle(Box::new(conv))))
+        Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
     } else {
-        Ok(None)
+        bail!(
+            "Invalid powertrain type: {}.
+                Expected one of {}",
+            f2veh.veh_pt_type,
+            [CONV, HEV, PHEV, BEV].join(", "),
+        )
     }
 }
 
@@ -407,16 +416,9 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
         let mut veh = veh.clone();
         veh.set_derived()?;
         let save_interval = Some(1);
-        let powertrain_type = match get_pt_type_from_fsim2_veh(&veh)? {
-            Some(pt_type) => pt_type,
-            None => bail!(
-                "Invalid powertrain type: {}.
-                Expected one of {}",
-                veh.veh_pt_type,
-                [CONV, HEV, PHEV, BEV].join(", "),
-            ),
-        };
+        let powertrain_type = get_pt_type_from_fsim2_veh(&veh)?;
 
+        // TODO: check this sign convention
         let drive_type = if veh.veh_cg_m < 0. {
             DriveTypes::RWD
         } else {
@@ -605,6 +607,18 @@ impl Vehicle {
         self.state.energy_out += self.state.pwr_out * dt;
         self.state.energy_aux += self.state.pwr_aux * dt;
         Ok(())
+    }
+
+    pub(crate) fn test_veh() -> Self {
+        use fastsim_2::traits::SerdeAPI;
+        let filename = "";
+        let f2veh = fastsim_2::vehicle::RustVehicle::from_file(filename).unwrap();
+        let veh = Self::try_from(f2veh).unwrap();
+        veh.to_file({
+            // some path to a test fixture file
+            todo!()
+        });
+        veh
     }
 }
 
