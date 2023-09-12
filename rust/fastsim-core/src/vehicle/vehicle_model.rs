@@ -609,15 +609,15 @@ impl Vehicle {
         Ok(())
     }
 
-    pub(crate) fn test_veh() -> Self {
+    pub(crate) fn test_conv_veh() -> Self {
         use fastsim_2::traits::SerdeAPI;
-        let filename = "";
-        let f2veh = fastsim_2::vehicle::RustVehicle::from_file(filename).unwrap();
+        let f_source = "/Users/cbaker2/Documents/GitHub/fastsim/python/fastsim/resources/vehdb/2012_Ford_Fusion.yaml";
+        let f2veh = fastsim_2::vehicle::RustVehicle::from_file(f_source).unwrap();
         let veh = Self::try_from(f2veh).unwrap();
-        veh.to_file({
-            // some path to a test fixture file
-            todo!()
-        });
+        // after running this once, load the file from this dir
+        let f = PathBuf::from("./fastsim-core2012_Ford_Fusion.yaml");
+        veh.to_file(f.to_owned().as_os_str().to_str().unwrap().clone())
+            .unwrap();
         veh
     }
 }
@@ -677,5 +677,14 @@ impl Default for VehicleState {
             pwr_aux: Default::default(),
             energy_aux: Default::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_load_fusion() {
+        let veh = Vehicle::test_conv_veh();
     }
 }
