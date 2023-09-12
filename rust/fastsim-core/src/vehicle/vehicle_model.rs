@@ -610,9 +610,8 @@ impl Vehicle {
     }
 
     pub(crate) fn test_conv_veh() -> Self {
-        use fastsim_2::traits::SerdeAPI;
         let file_contents = include_str!("2012_Ford_Fusion.yaml");
-        let veh = serde_yaml::from_str::<Vehicle>(file_contents).unwrap();
+        let veh = Self::from_yaml(file_contents).unwrap();
         veh
     }
 }
