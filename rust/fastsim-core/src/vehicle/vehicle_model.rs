@@ -611,13 +611,8 @@ impl Vehicle {
 
     pub(crate) fn test_conv_veh() -> Self {
         use fastsim_2::traits::SerdeAPI;
-        let f_source = "/Users/cbaker2/Documents/GitHub/fastsim/python/fastsim/resources/vehdb/2012_Ford_Fusion.yaml";
-        let f2veh = fastsim_2::vehicle::RustVehicle::from_file(f_source).unwrap();
-        let veh = Self::try_from(f2veh).unwrap();
-        // after running this once, load the file from this dir
-        let f = PathBuf::from("./fastsim-core2012_Ford_Fusion.yaml");
-        veh.to_file(f.to_owned().as_os_str().to_str().unwrap().clone())
-            .unwrap();
+        let file_contents = include_str!("2012_Ford_Fusion.yaml");
+        let veh = serde_yaml::from_str::<Vehicle>(file_contents).unwrap();
         veh
     }
 }

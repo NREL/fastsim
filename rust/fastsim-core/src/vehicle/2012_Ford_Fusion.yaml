@@ -1,0 +1,101 @@
+---
+name: 2012 Ford Fusion
+year: 2012
+powertrain_type:
+  ConventionalVehicle:
+    fs:
+      pwr_out_max: 1000000.0
+      t_to_peak_pwr: 1.0
+      energy_capacity: 2124000000.0
+      specific_energy: 43200000.0
+      mass: 49.166666666666664
+    fc:
+      state:
+        i: 1
+        pwr_out_max: 0.0
+        eta: 0.0
+        pwr_out: 0.0
+        pwr_aux: 0.0
+        pwr_fuel: 0.0
+        pwr_loss: 0.0
+        pwr_idle_fuel: 0.0
+        energy_brake: 0.0
+        energy_fuel: 0.0
+        energy_loss: 0.0
+        energy_idle_fuel: 0.0
+        fc_on: true
+      mass: 277.6595744680851
+      specific_pwr: 470.0
+      pwr_out_max_watts: 130500.0
+      pwr_out_max_init: 21750.0
+      pwr_ramp_lag_seconds: 6.0
+      pwr_out_frac_interp:
+        - 0.0
+        - 0.005
+        - 0.015
+        - 0.04
+        - 0.06
+        - 0.1
+        - 0.14
+        - 0.2
+        - 0.4
+        - 0.6
+        - 0.8
+        - 1.0
+      eta_interp:
+        - 0.1
+        - 0.12
+        - 0.16
+        - 0.22
+        - 0.28
+        - 0.33
+        - 0.35
+        - 0.36
+        - 0.35
+        - 0.34
+        - 0.32
+        - 0.3
+      pwr_idle_fuel_watts: 6999.999999999999
+      save_interval: 1
+      history:
+        i: []
+        pwr_out_max: []
+        eta: []
+        pwr_out: []
+        pwr_aux: []
+        pwr_fuel: []
+        pwr_loss: []
+        pwr_idle_fuel: []
+        energy_brake: []
+        energy_fuel: []
+        energy_loss: []
+        energy_idle_fuel: []
+        fc_on: []
+    trans_eff: 0.875
+drag_coeff: 0.393
+frontal_area: 2.12
+glider_mass: 791.0702892
+cg_height: 0.53
+drive_type: FWD
+drive_axle_weight_frac: 0.59
+wheel_base: 2.72
+mass: ~
+cargo_mass: 136.0
+comp_mass_multiplier: 1.4
+state:
+  i: 1
+  pwr_out_max: 0.0
+  pwr_regen_max: 0.0
+  pwr_out: 0.0
+  pwr_aux: 0.0
+  energy_out: 0.0
+  energy_aux: 0.0
+save_interval: 1
+history:
+  i: []
+  pwr_out_max: []
+  pwr_regen_max: []
+  pwr_out: []
+  pwr_aux: []
+  energy_out: []
+  energy_aux: []
