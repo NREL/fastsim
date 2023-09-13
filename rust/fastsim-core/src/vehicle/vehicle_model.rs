@@ -277,11 +277,13 @@ pub struct Vehicle {
     /// #[fsim2_name: "cargo_kg"]
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[api(skip_get, skip_set)]
     pub cargo_mass: Option<si::Mass>,
     // `veh_override_kg` in fastsim-2 is getting deprecated in fastsim-3
     /// Component mass multiplier for vehicle mass calculation
     /// #[fsim2_name = "comp_mass_multiplier"]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[api(skip_get, skip_set)]
     pub comp_mass_multiplier: Option<si::Ratio>,
 
     /// current state of vehicle
@@ -442,8 +444,8 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             drive_type,
             drive_axle_weight_frac: veh.drive_axle_weight_frac * uc::R,
             wheel_base: veh.wheel_base_m * uc::M,
-            cargo_mass: veh.cargo_kg * uc::KG,
-            comp_mass_multiplier: veh.comp_mass_multiplier * uc::R,
+            cargo_mass: Some(veh.cargo_kg * uc::KG),
+            comp_mass_multiplier: Some(veh.comp_mass_multiplier * uc::R),
             state: Default::default(),
             save_interval,
             history: Default::default(),
