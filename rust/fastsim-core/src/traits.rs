@@ -1,6 +1,11 @@
 use crate::imports::*;
 
 pub trait Linspace {
+    /// Generate linearly spaced vec
+    /// # Arguments
+    /// - start - starting point
+    /// - stop - stopping point, inclusive
+    /// - n_elements - number of array elements
     fn linspace(start: f64, stop: f64, n_elements: usize) -> Vec<f64> {
         let n_steps = n_elements - 1;
         let step_size = (stop - start) / n_steps as f64;
@@ -115,5 +120,35 @@ impl<T: SerdeAPI> SerdeAPI for Vec<T> {
             val.init()?
         }
         Ok(())
+    }
+}
+
+pub trait Diff {
+    fn diff(&self) -> Vec<f64>;
+}
+
+impl Diff for Vec<f64> {
+    fn diff(&self) -> Vec<f64> {
+        self.windows(2)
+            .map(|vs| {
+                let [x, y] = vs else {unreachable!()};
+                y - x
+            })
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_linspace() {
+        assert_eq!(Vec::linspace(0., 2., 3), vec![0., 1., 2.]);
+    }
+
+    #[test]
+    fn test_diff() {
+        assert_eq!(Vec::linspace(0., 2., 3).diff(), vec![0., 1., 1.]);
     }
 }
