@@ -1,5 +1,6 @@
 mod imports;
 use imports::*;
+mod cycle_derive;
 mod history_vec_derive;
 mod hm_derive;
 mod pyo3_api;

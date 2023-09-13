@@ -224,7 +224,7 @@ pub enum DriveTypes {
     // }
 
     // fn veh_type(&self) -> PyResult<String> {
-    //     Ok(self.powertrain_type.to_string())
+    //     Ok(self.pt_type.to_string())
     // }
 
     // #[getter]
@@ -246,16 +246,11 @@ pub struct Vehicle {
     year: u32,
     #[api(skip_get, skip_set)]
     /// type of vehicle powertrain including contained type-specific parameters and variables
-    pub powertrain_type: PowertrainType,
+    pub pt_type: PowertrainType,
     /// Aerodynamic drag coefficient
     pub drag_coeff: si::Ratio,
     /// Projected frontal area for drag calculations
     pub frontal_area: si::Area,
-    /// Vehicle mass excluding cargo, passengers, and powertrain components
-    // TODO: make sure setter and getter get written
-    #[api(skip_get, skip_set)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    glider_mass: Option<si::Mass>,
     /// Vehicle center of mass height
     pub cg_height: si::Length,
     #[api(skip_get, skip_set)]
@@ -273,6 +268,11 @@ pub struct Vehicle {
     #[api(skip_get, skip_set)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mass: Option<si::Mass>,
+    /// Vehicle mass excluding cargo, passengers, and powertrain components
+    // TODO: make sure setter and getter get written
+    #[api(skip_get, skip_set)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    glider_mass: Option<si::Mass>,
     /// Cargo mass including passengers
     /// #[fsim2_name: "cargo_kg"]
     #[serde(default)]
@@ -285,6 +285,9 @@ pub struct Vehicle {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
     pub comp_mass_multiplier: Option<si::Ratio>,
+
+    /// power required by auxilliary systems (e.g. HVAC, stereo)
+    pub pwr_aux: si::Power,
 
     /// current state of vehicle
     #[serde(default)]
@@ -420,11 +423,11 @@ fn get_pt_type_from_fsim2_veh(
 
 impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
-    fn try_from(veh: fastsim_2::vehicle::RustVehicle) -> Result<Self, Self::Error> {
-        let mut veh = veh.clone();
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<Self, Self::Error> {
+        let mut veh = f2veh.clone();
         veh.set_derived()?;
         let save_interval = Some(1);
-        let powertrain_type = get_pt_type_from_fsim2_veh(&veh)?;
+        let pt_type = get_pt_type_from_fsim2_veh(&veh)?;
 
         // TODO: check this sign convention
         let drive_type = if veh.veh_cg_m < 0. {
@@ -436,7 +439,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
         Ok(Self {
             name: veh.scenario_name,
             year: veh.veh_year,
-            powertrain_type,
+            pt_type,
             drag_coeff: veh.drag_coef * uc::R,
             frontal_area: veh.frontal_area_m2 * uc::M2,
             glider_mass: Some(veh.glider_kg * uc::KG),
@@ -446,6 +449,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             wheel_base: veh.wheel_base_m * uc::M,
             cargo_mass: Some(veh.cargo_kg * uc::KG),
             comp_mass_multiplier: Some(veh.comp_mass_multiplier * uc::R),
+            pwr_aux: f2veh.aux_kw * uc::KW,
             state: Default::default(),
             save_interval,
             history: Default::default(),
@@ -455,6 +459,8 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
 }
 
 impl Vehicle {
+    /// # Assumptions
+    /// - peak power of all components can be produced concurrently.
     pub fn get_pwr_rated(&self) -> si::Power {
         if self.fuel_converter().is_some() && self.reversible_energy_storage().is_some() {
             self.fuel_converter().unwrap().pwr_out_max
@@ -472,7 +478,7 @@ impl Vehicle {
 
     pub fn set_save_interval(&mut self, save_interval: Option<usize>) {
         self.save_interval = save_interval;
-        match &mut self.powertrain_type {
+        match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(veh) => {
                 veh.fc.save_interval = save_interval;
             }
@@ -489,44 +495,44 @@ impl Vehicle {
     }
 
     pub fn fuel_converter(&self) -> Option<&FuelConverter> {
-        self.powertrain_type.fuel_converter()
+        self.pt_type.fuel_converter()
     }
 
     pub fn fuel_converter_mut(&mut self) -> Option<&mut FuelConverter> {
-        self.powertrain_type.fuel_converter_mut()
+        self.pt_type.fuel_converter_mut()
     }
 
     pub fn set_fuel_converter(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
-        self.powertrain_type.set_fuel_converter(fc)
+        self.pt_type.set_fuel_converter(fc)
     }
 
     pub fn reversible_energy_storage(&self) -> Option<&ReversibleEnergyStorage> {
-        self.powertrain_type.reversible_energy_storage()
+        self.pt_type.reversible_energy_storage()
     }
 
     pub fn reversible_energy_storage_mut(&mut self) -> Option<&mut ReversibleEnergyStorage> {
-        self.powertrain_type.reversible_energy_storage_mut()
+        self.pt_type.reversible_energy_storage_mut()
     }
 
     pub fn set_reversible_energy_storage(
         &mut self,
         res: ReversibleEnergyStorage,
     ) -> anyhow::Result<()> {
-        self.powertrain_type.set_reversible_energy_storage(res)
+        self.pt_type.set_reversible_energy_storage(res)
     }
 
     pub fn e_machine(&self) -> Option<&ElectricMachine> {
-        self.powertrain_type.e_machine()
+        self.pt_type.e_machine()
     }
 
     pub fn e_machine_mut(&mut self) -> Option<&mut ElectricMachine> {
-        self.powertrain_type.e_machine_mut()
+        self.pt_type.e_machine_mut()
     }
 
     /// Calculate mass from components.
     fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
         if let Some(_glider_mass) = self.glider_mass {
-            match self.powertrain_type {
+            match self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => {
                     // TODO: add the other component and vehicle level masses here
                     if let Some(fc) = self.fuel_converter().unwrap().mass()? {
@@ -576,6 +582,33 @@ impl Vehicle {
         }
     }
 
+    /// Solves current time step
+    /// # Arguments
+    /// - speed - prescribed speed
+    /// - dt - time step size
+    pub fn solve_step(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
+        self.set_cur_pwr_max_out(self.pwr_aux, dt)?;
+        self.get_req_pwr(speed, dt)?;
+        self.set_ach_speed(dt)?;
+        Ok(())
+    }
+
+    /// Sets power required for given prescribed speed
+    /// # Arguments
+    /// - speed - prescribed or achieved speed
+    /// - dt - time step size
+    pub fn get_req_pwr(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<si::Power> {
+        Ok(uc::W * 666.)
+    }
+
+    /// Sets achieved speed based on known current max power
+    /// # Arguments
+    /// - dt - time step size
+    pub fn set_ach_speed(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        todo!();
+        Ok(())
+    }
+
     /// Given required power output and time step, solves for energy consumption
     /// # Arguments
     /// * pwr_out_req: float, output brake power required from fuel converter.
@@ -583,14 +616,14 @@ impl Vehicle {
     pub fn solve_energy_consumption(
         &mut self,
         pwr_out_req: si::Power,
-        dt: si::Time,
         pwr_aux: si::Power,
+        dt: si::Time,
     ) -> anyhow::Result<()> {
         // TODO: think carefully about whether `self.state.pwr_out` ought to include
         // `self.state.pwr_aux` and document accordingly in the places
         self.state.pwr_out = pwr_out_req + pwr_aux;
         self.state.pwr_aux = pwr_aux;
-        match &mut self.powertrain_type {
+        match &mut self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => {
                 // TODO: put logic for toggling `fc_on` here
                 let fc_on = true;
@@ -617,21 +650,21 @@ impl Vehicle {
         Ok(())
     }
 
+    #[allow(unused)]
     pub(crate) fn test_conv_veh() -> Self {
         let file_contents = include_str!("2012_Ford_Fusion.yaml");
-        let veh = Self::from_yaml(file_contents).unwrap();
-        veh
+        Self::from_yaml(file_contents).unwrap()
     }
 }
 
 impl VehicleTrait for Vehicle {
     fn step(&mut self) {
-        self.powertrain_type.step();
+        self.pt_type.step();
         self.state.i += 1;
     }
 
     fn save_state(&mut self) {
-        self.powertrain_type.save_state();
+        self.pt_type.save_state();
         if let Some(interval) = self.save_interval {
             if self.state.i % interval == 0 || self.state.i == 1 {
                 self.history.push(self.state);
@@ -640,7 +673,7 @@ impl VehicleTrait for Vehicle {
     }
 
     fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
-        self.powertrain_type.set_cur_pwr_max_out(pwr_aux, dt)?;
+        self.pt_type.set_cur_pwr_max_out(pwr_aux, dt)?;
 
         Ok(())
     }

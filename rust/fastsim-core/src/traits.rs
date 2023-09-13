@@ -124,6 +124,8 @@ impl<T: SerdeAPI> SerdeAPI for Vec<T> {
 }
 
 pub trait Diff {
+    /// Returns vec of length `self.len() - 1` where each element in the returned vec at index i is
+    /// `self[i + 1] - self[i]`
     fn diff(&self) -> Vec<f64>;
 }
 
@@ -149,6 +151,8 @@ mod tests {
 
     #[test]
     fn test_diff() {
-        assert_eq!(Vec::linspace(0., 2., 3).diff(), vec![0., 1., 1.]);
+        let diff = Vec::linspace(0., 2., 3).diff();
+        let ref_diff = vec![1., 1.];
+        assert_eq!(diff, ref_diff);
     }
 }

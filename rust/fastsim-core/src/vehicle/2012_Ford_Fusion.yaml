@@ -1,7 +1,7 @@
 ---
 name: 2012 Ford Fusion
 year: 2012
-powertrain_type:
+pt_type:
   ConventionalVehicle:
     fs:
       pwr_out_max: 1000000.0

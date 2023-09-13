@@ -11,7 +11,11 @@ pub struct SimDrive {
 
 impl SimDrive {
     fn walk(&mut self) -> anyhow::Result<()> {
+        ensure!(self.cyc.len() >= 2, format_dbg!(self.cyc.len() < 2));
         while self.veh.state.i < self.cyc.len() {
+            let i = self.veh.state.i;
+            let dt = self.cyc.dt_at_i(i);
+            self.veh.solve_step(self.cyc.speed[i], dt)?;
             self.veh.step();
         }
         Ok(())
