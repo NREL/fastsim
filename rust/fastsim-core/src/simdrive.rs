@@ -25,9 +25,10 @@ impl SimDrive {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vehicle::vehicle_model::tests::test_conv_veh;
     #[test]
     fn test_sim_drive() {
-        let veh = Vehicle::test_conv_veh();
+        let veh = test_conv_veh();
         let cyc = Cycle::from_file(todo!()).unwrap();
         let sd = SimDrive { veh, cyc };
         sd.walk().unwrap();

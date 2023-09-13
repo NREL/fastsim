@@ -649,12 +649,6 @@ impl Vehicle {
         self.state.energy_aux += self.state.pwr_aux * dt;
         Ok(())
     }
-
-    #[allow(unused)]
-    pub(crate) fn test_conv_veh() -> Self {
-        let file_contents = include_str!("2012_Ford_Fusion.yaml");
-        Self::from_yaml(file_contents).unwrap()
-    }
 }
 
 impl VehicleTrait for Vehicle {
@@ -716,10 +710,15 @@ impl Default for VehicleState {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     #[test]
     fn test_load_fusion() {
-        let veh = Vehicle::test_conv_veh();
+        let veh = test_conv_veh();
+    }
+
+    pub(crate) fn test_conv_veh() -> Vehicle {
+        let file_contents = include_str!("2012_Ford_Fusion.yaml");
+        Vehicle::from_yaml(file_contents).unwrap()
     }
 }
