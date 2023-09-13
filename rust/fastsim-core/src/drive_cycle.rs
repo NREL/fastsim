@@ -4,10 +4,10 @@ use crate::imports::*;
     #[new]
     fn __new__(
         time_seconds: Vec<f64>,
-        pwr_watts: Vec<f64>,
+        speed_watts: Vec<f64>,
         fc_on: Vec<Option<bool>>,
     ) -> PyResult<Self> {
-        Ok(Self::new(time_seconds, pwr_watts, fc_on))
+        Ok(Self::new(time_seconds, speed_watts, fc_on))
     }
 
     #[classmethod]
@@ -27,26 +27,22 @@ pub struct Cycle {
     #[serde(rename = "time_seconds")]
     pub time: Vec<si::Time>,
     /// simulation power \[W\]
-    #[serde(rename = "pwr_watts")]
-    pub pwr: Vec<si::Power>,
-    /// Whether engine is on
-    pub fc_on: Vec<Option<bool>>,
+    #[serde(rename = "speed_watts")]
+    pub speed: Vec<si::Power>,
 }
 
 impl Cycle {
-    pub fn new(time_s: Vec<f64>, pwr_watts: Vec<f64>, fc_on: Vec<Option<bool>>) -> Self {
+    pub fn new(time_s: Vec<f64>, speed_watts: Vec<f64>, fc_on: Vec<Option<bool>>) -> Self {
         Self {
             time: time_s.iter().map(|x| uc::S * (*x)).collect(),
-            pwr: pwr_watts.iter().map(|x| uc::W * (*x)).collect(),
-            fc_on,
+            speed: speed_watts.iter().map(|x| uc::W * (*x)).collect(),
         }
     }
 
     pub fn empty() -> Self {
         Self {
             time: Vec::new(),
-            pwr: Vec::new(),
-            fc_on: Vec::new(),
+            speed: Vec::new(),
         }
     }
 
@@ -64,8 +60,7 @@ impl Cycle {
 
     pub fn push(&mut self, pt_element: CycleElement) {
         self.time.push(pt_element.time);
-        self.pwr.push(pt_element.pwr);
-        self.fc_on.push(pt_element.fc_on);
+        self.speed.push(pt_element.speed);
     }
 
     pub fn trim(&mut self, start_idx: Option<usize>, end_idx: Option<usize>) -> anyhow::Result<()> {
@@ -74,8 +69,7 @@ impl Cycle {
         ensure!(end_idx <= self.len(), format_dbg!(end_idx <= self.len()));
 
         self.time = self.time[start_idx..end_idx].to_vec();
-        self.pwr = self.pwr[start_idx..end_idx].to_vec();
-        self.fc_on = self.fc_on[start_idx..end_idx].to_vec();
+        self.speed = self.speed[start_idx..end_idx].to_vec();
         Ok(())
     }
 
@@ -102,19 +96,6 @@ impl Cycle {
     }
 }
 
-impl Default for Cycle {
-    fn default() -> Self {
-        let pwr_max_watts = 1.5e6;
-        let pwr_watts_ramp: Vec<f64> = Vec::linspace(0., pwr_max_watts, 300);
-        let mut pwr_watts = pwr_watts_ramp.clone();
-        pwr_watts.append(&mut vec![pwr_max_watts; 100]);
-        pwr_watts.append(&mut pwr_watts_ramp.iter().rev().copied().collect());
-        let time_s: Vec<f64> = (0..pwr_watts.len()).map(|x| x as f64).collect();
-        let time_len = time_s.len();
-        Self::new(time_s, pwr_watts, vec![Some(true); time_len])
-    }
-}
-
 /// Element of `Cycle`.  Used for vec-like operations.
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
 pub struct CycleElement {
@@ -122,8 +103,6 @@ pub struct CycleElement {
     #[serde(rename = "time_seconds")]
     time: si::Time,
     /// simulation power \[W\]
-    #[serde(rename = "pwr_watts")]
-    pwr: si::Power,
-    /// Whether engine is on
-    fc_on: Option<bool>,
+    #[serde(rename = "speed_watts")]
+    speed: si::Power,
 }

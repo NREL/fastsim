@@ -248,45 +248,51 @@ pub struct Vehicle {
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub powertrain_type: PowertrainType,
     /// Aerodynamic drag coefficient
-    drag_coeff: si::Ratio,
+    pub drag_coeff: si::Ratio,
     /// Projected frontal area for drag calculations
-    frontal_area: si::Area,
+    pub frontal_area: si::Area,
     /// Vehicle mass excluding cargo, passengers, and powertrain components
     // TODO: make sure setter and getter get written
     #[api(skip_get, skip_set)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     glider_mass: Option<si::Mass>,
     /// Vehicle center of mass height
-    cg_height: si::Length,
+    pub cg_height: si::Length,
     #[api(skip_get, skip_set)]
     /// TODO: make getters and setters for this.
     /// Drive wheel configuration
-    drive_type: DriveTypes,
+    pub drive_type: DriveTypes,
     /// Fraction of vehicle weight on drive action when stationary
     /// #[fsim2_name = "drive_axle_weight_frac"]
-    drive_axle_weight_frac: si::Ratio,
+    pub drive_axle_weight_frac: si::Ratio,
     /// Wheel base length
     /// #[fsim2_name = "wheel_base_m"]
-    wheel_base: si::Length,
+    pub wheel_base: si::Length,
     /// Total vehicle mass
     // TODO: make sure setter and getter get written
     #[api(skip_get, skip_set)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mass: Option<si::Mass>,
     /// Cargo mass including passengers
     /// #[fsim2_name: "cargo_kg"]
     #[serde(default)]
-    pub cargo_mass: si::Mass,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cargo_mass: Option<si::Mass>,
     // `veh_override_kg` in fastsim-2 is getting deprecated in fastsim-3
     /// Component mass multiplier for vehicle mass calculation
     /// #[fsim2_name = "comp_mass_multiplier"]
-    pub comp_mass_multiplier: si::Ratio,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comp_mass_multiplier: Option<si::Ratio>,
 
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
     /// time step interval at which `state` is saved into `history`
     #[api(skip_set, skip_get)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     save_interval: Option<usize>,
     /// Custom vector of [Self::state]
+    #[serde(skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
     pub history: VehicleStateHistoryVec,
 }
 

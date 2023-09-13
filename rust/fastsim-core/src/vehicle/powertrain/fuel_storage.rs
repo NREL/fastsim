@@ -22,9 +22,11 @@ pub struct FuelStorage {
     pub energy_capacity: si::Energy,
     /// Fuel and tank specific energy \[J/kg\]
     #[api(skip_get, skip_set)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub specific_energy: Option<si::AvailableEnergy>,
     /// Mass of fuel storage
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
     pub mass: Option<si::Mass>,
 }

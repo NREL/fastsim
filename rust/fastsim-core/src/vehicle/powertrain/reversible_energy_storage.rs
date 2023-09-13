@@ -133,6 +133,7 @@ pub struct ReversibleEnergyStorage {
     specific_energy: Option<si::AvailableEnergy>,
     /// ReversibleEnergyStorage energy density (note that pressure has the same units as energy density)
     #[api(skip_get, skip_set)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub energy_density: Option<si::Pressure>,
     #[serde(rename = "pwr_out_max_watts")]
     /// Max output (and input) power battery can produce (accept)
@@ -149,12 +150,15 @@ pub struct ReversibleEnergyStorage {
     /// SOC at which negative/charge power begins to ramp down.
     /// Should always be slightly below [Self::max_soc].
     #[api(skip_get, skip_set)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub soc_hi_ramp_start: Option<si::Ratio>,
     /// SOC at which positive/discharge power begins to ramp down.
     /// Should always be slightly above [Self::min_soc].
     #[api(skip_get, skip_set)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub soc_lo_ramp_start: Option<si::Ratio>,
     /// Time step interval at which history is saved
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
     #[serde(default)]
     /// Custom vector of [Self::state]

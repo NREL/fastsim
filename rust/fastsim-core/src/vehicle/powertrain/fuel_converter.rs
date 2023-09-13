@@ -80,9 +80,11 @@ pub struct FuelConverter {
     #[serde(rename = "pwr_idle_fuel_watts")]
     pub pwr_idle_fuel: si::Power,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
     /// Custom vector of [Self::state]
     #[serde(default)]
+    #[serde(skip_serializing_if = "FuelConverterStateHistoryVec::is_empty")]
     pub history: FuelConverterStateHistoryVec, // TODO: spec out fuel tank size and track kg of fuel
 }
 

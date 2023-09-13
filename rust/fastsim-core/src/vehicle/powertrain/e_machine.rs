@@ -72,9 +72,11 @@ pub struct ElectricMachine {
     #[serde(rename = "pwr_out_max_watts")]
     pub pwr_out_max: si::Power,
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
     /// Custom vector of [Self::state]
     #[serde(default)]
+    #[serde(skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty")]
     pub history: ElectricMachineStateHistoryVec,
 }
 
