@@ -18,6 +18,7 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     .unwrap();
                 new_doc_fields.push(quote! {
                     /// String for documentation -- e.g. info about calibration/validation.
+                    #[serde(skip_serializing_if = "Option::is_none")]
                     pub #field_name: Option<String>,
                 });
             }
@@ -27,6 +28,7 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
         new_fields.extend(quote! {
             /// Vehicle level documentation -- e.g. info about calibration/validation of vehicle
             /// and/or links to reports or other long-form documentation.
+            #[serde(skip_serializing_if = "Option::is_none")]
             pub doc: Option<String>,
         });
 
