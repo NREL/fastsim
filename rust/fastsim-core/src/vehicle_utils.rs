@@ -1934,7 +1934,11 @@ mod vehicle_utils_tests {
             ess_max_kw: 0.0,
             fc_max_kw: None,
         };
-        for vr in veh_records {
+        let max_iter = veh_records.len();
+        for (num_iter, vr) in veh_records.iter().enumerate() {
+            if num_iter >= max_iter {
+                break;
+            }
             let make = vr.get("make");
             let model = vr.get("model");
             if let (Some(make), Some(model)) = (make, model) {
@@ -1948,7 +1952,7 @@ mod vehicle_utils_tests {
             }
         }
         let success_frac: f64 = (num_success as f64) / (num_records as f64);
-        assert!(success_frac > 0.5);
+        assert!(success_frac > 0.90, "success_frac = {}", success_frac);
     }
 
     // Enable the test below after github.com/NREL/temp-data (or equivalent) get created
