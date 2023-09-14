@@ -75,8 +75,7 @@ impl SerdeAPI for Cycle {
             .iter()
             .zip(&self.speed)
             .scan(0. * uc::M, |dist, (time, speed)| {
-                let delta = *time * *speed;
-                *dist += delta;
+                *dist += *time * *speed;
                 Some(*dist)
             })
             .collect();
@@ -85,16 +84,19 @@ impl SerdeAPI for Cycle {
         match &self.grade {
             Some(grade) => {
                 self.init_elev = self.init_elev.or(Some(get_elev_def()));
-                self.elev = vec![0. * uc::M; self.len()];
-                self.elev
-                    .iter_mut()
-                    .zip(grade)
-                    .map(|(&mut elev, grade)| (elev, *grade))
+                self.elev = grade
+                    .iter()
                     .zip(&self.dist)
-                    .fold(self.init_elev.unwrap(), |acc, ((mut elev, grade), dist)| {
-                        elev += acc + grade * *dist;
-                        elev
-                    });
+                    .scan(
+                        // already guaranteed to be `Some`
+                        self.init_elev.unwrap(),
+                        |elev, (grade, dist)| {
+                            // TODO: Kyle, check this
+                            *elev += *dist * *grade;
+                            Some(*elev)
+                        },
+                    )
+                    .collect();
             }
             None => {}
         };
@@ -223,7 +225,14 @@ mod tests {
         let cyc = test_cyc_len_2();
         assert_eq!(
             cyc.dist,
-            vec![0., 1., 5.]
+            vec![0., 1., 5.] // meters
+                .iter()
+                .map(|x| *x * uc::M)
+                .collect::<Vec<si::Length>>()
+        );
+        assert_eq!(
+            cyc.elev,
+            vec![121.92, 121.93, 122.03] // meters
                 .iter()
                 .map(|x| *x * uc::M)
                 .collect::<Vec<si::Length>>()
