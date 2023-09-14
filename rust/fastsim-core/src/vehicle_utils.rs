@@ -13,6 +13,7 @@ use std::fs::File;
 use std::io::prelude::Write;
 use std::io::Read;
 use std::iter::FromIterator;
+use std::num::ParseIntError;
 use std::option::Option;
 use std::path::PathBuf;
 use zip::ZipArchive;
@@ -414,8 +415,10 @@ fn match_epatest_with_fegov(
     let fe_model_upper: String = fegov.model.to_uppercase().replace("4WD", "AWD");
     let fe_model_words: Vec<&str> = fe_model_upper.split(' ').collect();
     let num_fe_model_words = fe_model_words.len();
+    if fegov.emissions_list.emissions_info.is_empty() {
+        return None;
+    }
     let efid: &String = &fegov.emissions_list.emissions_info[0].efid;
-    println!("FE.gov model: {}", fegov.model);
 
     for veh_epa in epatest_data {
         // Find matches between EPA vehicle model name and fe.gov vehicle model name
@@ -429,13 +432,6 @@ fn match_epatest_with_fegov(
         // Calculate composite match percentage
         let match_percent: f64 = (match_count as f64 * match_count as f64)
             / (num_epa_model_words as f64 * num_fe_model_words as f64);
-        if match_percent > 0.0 {
-            println!(
-                "... EPA model: {} (match {}%)",
-                veh_epa.model,
-                match_percent * 100.0
-            );
-        }
 
         // Update overall hashmap with new entry
         if veh_list_overall.contains_key(&veh_epa.model) {
@@ -470,7 +466,9 @@ fn match_epatest_with_fegov(
 
     // Get EPA vehicle model that is best match to fe.gov vehicle
     let veh_list: Vec<VehicleDataEPA> = if best_match_model_efid == best_match_model_overall {
-        veh_list_efid.get(&best_match_model_efid).unwrap().to_vec()
+        let x = veh_list_efid.get(&best_match_model_efid);
+        x?;
+        x.unwrap().to_vec()
     } else {
         veh_list_overall
             .get(&best_match_model_overall)
@@ -517,19 +515,17 @@ fn match_epatest_with_fegov(
             .unwrap();
     } else {
         transmission_fe_gov = String::from('A');
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find("(A").unwrap() + 2..fegov.trany.find(')').unwrap()]
-            .parse()
-            .unwrap();
+        num_gears_fe_gov = {
+            let res: Result<u32, ParseIntError> = fegov.trany.as_str()
+                [fegov.trany.find("(A").unwrap() + 2..fegov.trany.find(')').unwrap()]
+                .parse();
+            if let Ok(n) = res {
+                n
+            } else {
+                1
+            }
+        }
     }
-    println!("FE.gov data to match");
-    println!("... transmission_fe_gov: {transmission_fe_gov}");
-    println!("... num_gears_fe_gov   : {num_gears_fe_gov}");
-    println!("... drive              : {}", fegov.drive);
-    println!("... displacement       : {}", fegov.displ);
-    println!("... cylinders          : {}", fegov.cylinders);
-    println!("... alt_veh_type       : {}", fegov.alt_veh_type);
-    println!("EPA TEST DATA candidates");
 
     // Find EPA vehicle entry that matches fe.gov vehicle data
     // If same vehicle model has multiple configurations, get most common configuration
@@ -538,14 +534,6 @@ fn match_epatest_with_fegov(
     let mut current_veh: VehicleDataEPA = VehicleDataEPA::default();
     let mut current_count: i32 = 0;
     for mut veh_epa in veh_list {
-        println!("... ... veh_epa tranny_code: {}", veh_epa.trany_code);
-        println!("... ... veh_epa tranny_type: {}", veh_epa.trany_type);
-        println!("... ... veh_epa gears      : {}", veh_epa.gears);
-        println!("... ... veh_epa drive code : {}", veh_epa.drive_code);
-        println!("... ... veh_epa displ      : {}", veh_epa.displ);
-        println!("... ... veh_epa cylinders  : {}", veh_epa.cylinders);
-        println!("... ... test_fuel_type     : {}", veh_epa.test_fuel_type);
-        println!("--------");
         if veh_epa.model.contains("4WD")
             || veh_epa.model.contains("AWD")
             || veh_epa.drive.contains("4-Wheel Drive")
@@ -565,7 +553,6 @@ fn match_epatest_with_fegov(
                     == (fegov.displ.parse::<f64>().unwrap_or_default())
                     && veh_epa.cylinders == fegov.cylinders))
         {
-            println!("... ... HIT");
             if veh_epa == current_veh {
                 current_count += 1;
             } else {
@@ -718,15 +705,9 @@ fn get_fuel_economy_gov_data_for_input_record(
         let fe_make = String::from(fedat.make.to_lowercase().trim());
         let fe_model = String::from(fedat.model.to_lowercase().trim());
         if fedat.year == vir.year && fe_make.eq(&vir_make) && fe_model.eq(&vir_model) {
-            println!("Found FE.gov hit: {}-{fe_make}-{fe_model}", fedat.year);
-            println!(
-                "... number of emissions items: {}",
-                fedat.emissions_list.emissions_info.len()
-            );
             output.push(fedat.clone());
         }
     }
-    println!("Found a total of {} vehicles from FE.gov", output.len());
     output
 }
 
@@ -737,7 +718,6 @@ fn try_make_single_vehicle(
     other_inputs: &OtherVehicleInputs,
 ) -> Option<RustVehicle> {
     if epa_data == &VehicleDataEPA::default() {
-        println!("EPA data is the same as default... returning");
         return None;
     }
     let veh_pt_type: &str = match fe_gov_data.alt_veh_type.as_str() {
@@ -762,9 +742,13 @@ fn try_make_single_vehicle(
     let val_range_miles: f64;
     let ess_max_kw: f64;
     let ess_max_kwh: f64;
+    let fs_kwh: f64;
+
+    let ref_veh: RustVehicle = Default::default();
 
     if veh_pt_type == crate::vehicle::CONV {
         fs_max_kw = 2000.0;
+        fs_kwh = other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge;
         fc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
         fc_eff_type = String::from(crate::vehicle::SI);
         fc_eff_map = Array::from_vec(vec![
@@ -783,6 +767,7 @@ fn try_make_single_vehicle(
         ess_max_kwh = 0.0;
     } else if veh_pt_type == crate::vehicle::HEV {
         fs_max_kw = 2000.0;
+        fs_kwh = other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge;
         fc_max_kw = other_inputs
             .fc_max_kw
             .unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
@@ -803,6 +788,7 @@ fn try_make_single_vehicle(
         mc_max_kw = other_inputs.mc_max_kw;
     } else if veh_pt_type == crate::vehicle::PHEV {
         fs_max_kw = 2000.0;
+        fs_kwh = other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge;
         fc_max_kw = other_inputs
             .fc_max_kw
             .unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
@@ -823,6 +809,7 @@ fn try_make_single_vehicle(
         mc_max_kw = other_inputs.mc_max_kw;
     } else if veh_pt_type == crate::vehicle::BEV {
         fs_max_kw = 0.0;
+        fs_kwh = 0.0;
         fc_max_kw = 0.0;
         fc_eff_type = String::from(crate::vehicle::SI);
         fc_eff_map = Array::from_vec(vec![
@@ -844,7 +831,6 @@ fn try_make_single_vehicle(
         return None;
     }
 
-    let ref_veh: RustVehicle = Default::default();
     let glider_kg = (epa_data.test_weight_lbs / LBS_PER_KG)
         - ref_veh.cargo_kg
         - ref_veh.trans_kg
@@ -870,7 +856,7 @@ fn try_make_single_vehicle(
         drag_coef: 0.0,
         frontal_area_m2: (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in)
             / (IN_PER_M * IN_PER_M),
-        fs_kwh: other_inputs.fuel_tank_gal * ref_veh.props.kwh_per_gge,
+        fs_kwh,
         idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
         mc_eff_map: Array1::from(vec![
             0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
@@ -926,18 +912,9 @@ fn try_import_vehicles(
     let mut outputs: Vec<RustVehicle> = Vec::new();
     let fegov_hits: Vec<VehicleDataFE> =
         get_fuel_economy_gov_data_for_input_record(vir, fegov_data);
-    println!("Matched {} vehicles from FE.gov", fegov_hits.len());
     for hit in fegov_hits {
         if let Some(epa_data) = match_epatest_with_fegov(&hit, epatest_data) {
-            println!(
-                "Matched epa data for {}-{}-{}",
-                vir.year, vir.make, vir.model
-            );
             if let Some(v) = try_make_single_vehicle(&hit, &epa_data, &other_inputs) {
-                println!(
-                    "Created vehicle for {}-{}-{}!",
-                    vir.year, vir.make, vir.model
-                );
                 let mut v = v.clone();
                 if hit.alt_veh_type == *"EV" {
                     v.scenario_name = format!("{} (EV)", v.scenario_name);
@@ -1760,20 +1737,6 @@ pub fn import_and_save_all_vehicles(
     Ok(())
 }
 
-/// Try to extract the given vehicle from the available data
-pub fn extract_vehicle(
-    _input: &VehicleInputRecord,
-    fegov_data: &[VehicleDataFE],
-    epatest_data: &[VehicleDataEPA],
-) -> Option<RustVehicle> {
-    if fegov_data.is_empty() || epatest_data.is_empty() {
-        None
-    } else {
-        let default_veh: RustVehicle = RustVehicle::default();
-        Some(default_veh)
-    }
-}
-
 #[cfg(test)]
 mod vehicle_utils_tests {
     use super::*;
@@ -1929,6 +1892,65 @@ mod vehicle_utils_tests {
         }
     }
 
+    #[test]
+    fn test_import_robustness() {
+        // Ensure 2019 data is cached
+        let ddpath = get_fastsim_data_dir();
+        assert!(ddpath.is_some());
+        let ddpath = ddpath.unwrap();
+        let model_year: u32 = 2019;
+        let years = {
+            let mut s = HashSet::new();
+            s.insert(model_year);
+            s
+        };
+        let cache_url = get_default_cache_url();
+        let res = populate_cache_for_given_years_if_needed(ddpath.as_path(), &years, &cache_url);
+        assert!(res.is_ok());
+        // Load all year/make/models for 2019
+        let vehicles_path = ddpath.join(Path::new("2019-vehicles.csv"));
+        let veh_records = {
+            let file = File::open(vehicles_path);
+            if let Ok(f) = file {
+                let data_result: Result<Vec<HashMap<String, String>>, Error> =
+                    read_records_from_file(f);
+                if let Ok(data) = data_result {
+                    data
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
+        };
+        let num_records = veh_records.len();
+        let mut num_success: usize = 0;
+        let other_inputs = OtherVehicleInputs {
+            vehicle_height_in: 72.4,
+            vehicle_width_in: 56.9,
+            fuel_tank_gal: 15.8,
+            ess_max_kwh: 0.0,
+            mc_max_kw: 0.0,
+            ess_max_kw: 0.0,
+            fc_max_kw: None,
+        };
+        for vr in veh_records {
+            let make = vr.get("make");
+            let model = vr.get("model");
+            if let (Some(make), Some(model)) = (make, model) {
+                let result =
+                    import_all_vehicles(model_year, make, model, &other_inputs, None, None);
+                if let Ok(vehs) = &result {
+                    if !vehs.is_empty() {
+                        num_success += 1;
+                    }
+                }
+            }
+        }
+        let success_frac: f64 = (num_success as f64) / (num_records as f64);
+        assert!(success_frac > 0.5);
+    }
+
     // Enable the test below after github.com/NREL/temp-data (or equivalent) get created
     // #[test]
     // fn test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir() {
@@ -1936,7 +1958,7 @@ mod vehicle_utils_tests {
     //     let make = String::from("Toyota");
     //     let model = String::from("Corolla");
     //     let data_dir = PathBuf::from("./temp");
-    //     let cacheurl = String::from("https://github.com/NREL/temp-data/raw/main/");
+    //     let cacheurl = get_default_cache_url();
     //     let r1 = std::fs::create_dir_all(data_dir.as_path());
     //     assert!(r1.is_ok());
     //     let r2 = get_options_for_year_make_model(
@@ -1950,5 +1972,6 @@ mod vehicle_utils_tests {
     //     if let Ok(vs) = r2 {
     //         assert!(!vs.is_empty());
     //     }
+    //     // TODO: delete the data_dir and all contents
     // }
 }
