@@ -70,16 +70,16 @@ impl SerdeAPI for Cycle {
         }
 
         // calculate distance from RHS integral of speed and time
-        self.dist = vec![0. * uc::M; self.len()];
-        self.dist
-            .iter_mut()
-            .zip(&self.time)
-            .map(|(&mut dist, time)| (dist, time))
+        self.dist = self
+            .time
+            .iter()
             .zip(&self.speed)
-            .fold(0. * uc::M, |acc: si::Length, ((&mut dist, time), speed)| {
-                *dist += acc + *time * *speed;
-                *dist
-            });
+            .scan(0. * uc::M, |dist, (time, speed)| {
+                let delta = *time * *speed;
+                *dist += delta;
+                Some(*dist)
+            })
+            .collect();
 
         // calculate elevation from RHS integral of grade and distance
         match &self.grade {
@@ -204,7 +204,6 @@ pub struct CycleElement {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn test_cyc_len_2() -> Cycle {
         let mut cyc = Cycle {
             init_elev: None,
@@ -224,9 +223,10 @@ mod tests {
         let cyc = test_cyc_len_2();
         assert_eq!(
             cyc.dist,
-            (0..=2)
-                .map(|x| (x as f64) * uc::M)
-                .collect::<Vec<si::Length>>(),
-        )
+            vec![0., 1., 5.]
+                .iter()
+                .map(|x| *x * uc::M)
+                .collect::<Vec<si::Length>>()
+        );
     }
 }
