@@ -3,9 +3,9 @@ use crate::imports::*;
 pub trait Linspace {
     /// Generate linearly spaced vec
     /// # Arguments
-    /// - start - starting point
-    /// - stop - stopping point, inclusive
-    /// - n_elements - number of array elements
+    /// - `start` - starting point
+    /// - `stop` - stopping point, inclusive
+    /// - `n_elements` - number of array elements
     fn linspace(start: f64, stop: f64, n_elements: usize) -> Vec<f64> {
         let n_steps = n_elements - 1;
         let step_size = (stop - start) / n_steps as f64;
@@ -35,10 +35,6 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `filename`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
     /// supported
-    ///
-    /// # Returns:
-    ///
-    /// A Rust Result
     fn to_file(&self, filename: &str) -> Result<(), anyhow::Error> {
         let file = PathBuf::from(filename);
         match file.extension().unwrap().to_str().unwrap() {
@@ -50,8 +46,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// Read from file and return instantiated struct. Method adaptively calls deserialization
-    /// methods dependent on the suffix of the file name given as str.
-    /// Function returns a dynamic Error Result if it fails.
+    /// methods dependent on the suffix of the file name given as str. Function returns a dynamic
+    /// Error Result if it fails.
     ///
     /// # Argument:
     ///

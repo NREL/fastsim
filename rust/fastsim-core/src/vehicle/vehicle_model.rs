@@ -584,8 +584,8 @@ impl Vehicle {
 
     /// Solves current time step
     /// # Arguments
-    /// - speed - prescribed speed
-    /// - dt - time step size
+    /// - `speed`: prescribed speed
+    /// - `dt`: time step size
     pub fn solve_step(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
         self.set_cur_pwr_max_out(self.pwr_aux, dt)?;
         self.get_req_pwr(speed, dt)?;
@@ -595,15 +595,15 @@ impl Vehicle {
 
     /// Sets power required for given prescribed speed
     /// # Arguments
-    /// - speed - prescribed or achieved speed
-    /// - dt - time step size
+    /// - `speed`: prescribed or achieved speed
+    /// - `dt`: time step size
     pub fn get_req_pwr(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<si::Power> {
         Ok(uc::W * 666.)
     }
 
     /// Sets achieved speed based on known current max power
     /// # Arguments
-    /// - dt - time step size
+    /// - `dt`: time step size
     pub fn set_ach_speed(&mut self, dt: si::Time) -> anyhow::Result<()> {
         todo!();
         Ok(())
@@ -611,8 +611,8 @@ impl Vehicle {
 
     /// Given required power output and time step, solves for energy consumption
     /// # Arguments
-    /// * pwr_out_req: float, output brake power required from fuel converter.
-    /// * dt: current time step size
+    /// - `pwr_out_req`: float, output brake power required from fuel converter.
+    /// - `dt`: current time step size
     pub fn solve_energy_consumption(
         &mut self,
         pwr_out_req: si::Power,

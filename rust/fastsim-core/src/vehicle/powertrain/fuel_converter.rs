@@ -163,10 +163,10 @@ impl FuelConverter {
 
     /// Solve for fuel usage for a given required fuel converter power output
     /// # Arguments
-    /// * pwr_out - output power for propulsion
-    /// * pwr_aux - output power for auxiliaries
-    /// * fc_on - whether FC is on (i.e. consuming fuel)
-    /// * assert limits - whether various physical limits are enforced, should generally be true
+    /// * `pwr_out`: output power for propulsion
+    /// * `pwr_aux`: output power for auxiliaries
+    /// * `fc_on`: whether FC is on (i.e. consuming fuel)
+    /// * `assert` limits: whether various physical limits are enforced, should generally be true
     pub fn solve_energy_consumption(
         &mut self,
         pwr_out: si::Power,
