@@ -399,11 +399,189 @@ pub fn get_options_for_year_make_model(
     }
 }
 
+fn derive_transmission_specs(fegov: &VehicleDataFE) -> (u32, String) {
+    let num_gears_fe_gov: u32;
+    let transmission_fe_gov: String;
+    // Based on reference: https://www.fueleconomy.gov/feg/findacarhelp.shtml#engine
+    if fegov.trany.contains("Manual") {
+        transmission_fe_gov = String::from('M');
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find("-spd").unwrap() - 1..fegov.trany.find("-spd").unwrap()]
+            .parse()
+            .unwrap();
+    } else if fegov.trany.contains("variable gear ratios") {
+        transmission_fe_gov = String::from("CVT");
+        num_gears_fe_gov = 1;
+    } else if fegov.trany.contains("AV-S") {
+        transmission_fe_gov = String::from("SCV");
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+            .parse()
+            .unwrap();
+    } else if fegov.trany.contains("AM-S") {
+        transmission_fe_gov = String::from("AMS");
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+            .parse()
+            .unwrap();
+    } else if fegov.trany.contains('S') {
+        transmission_fe_gov = String::from("SA");
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+            .parse()
+            .unwrap();
+    } else if fegov.trany.contains("-spd") {
+        transmission_fe_gov = String::from('A');
+        num_gears_fe_gov = fegov.trany.as_str()
+            [fegov.trany.find("-spd").unwrap() - 1..fegov.trany.find("-spd").unwrap()]
+            .parse()
+            .unwrap();
+    } else {
+        transmission_fe_gov = String::from('A');
+        num_gears_fe_gov = {
+            let res: Result<u32, ParseIntError> = fegov.trany.as_str()
+                [fegov.trany.find("(A").unwrap() + 2..fegov.trany.find(')').unwrap()]
+                .parse();
+            if let Ok(n) = res {
+                n
+            } else {
+                1
+            }
+        }
+    }
+    (num_gears_fe_gov, transmission_fe_gov)
+}
+
 /// Match EPA Test Data with FuelEconomy.gov data and return best match
+fn match_epatest_with_fegov_v2(
+    fegov: &VehicleDataFE,
+    epatest_data: &[VehicleDataEPA],
+) -> Option<VehicleDataEPA> {
+    let fe_model_upper: String = fegov.model.to_uppercase().replace("4WD", "AWD");
+    let fe_model_words: Vec<&str> = fe_model_upper.split_ascii_whitespace().collect();
+    let num_fe_model_words = fe_model_words.len();
+    let fegov_disp = fegov.displ.parse::<f64>().unwrap_or_default();
+    let efid = if !fegov.emissions_list.emissions_info.is_empty() {
+        fegov.emissions_list.emissions_info[0].efid.clone()
+    } else {
+        String::new()
+    };
+    let fegov_drive = {
+        let mut s = String::new();
+        if !fegov.drive.is_empty() {
+            let maybe_char = fegov.drive.chars().next();
+            if let Some(c) = maybe_char {
+                s.push(c);
+            }
+            s
+        } else {
+            s
+        }
+    };
+    let (num_gears_fe_gov, transmission_fe_gov) = derive_transmission_specs(fegov);
+    let epa_candidates = {
+        let mut xs: Vec<(f64, f64, VehicleDataEPA)> = Vec::new();
+        for x in epatest_data {
+            if x.year == fegov.year && x.make.eq_ignore_ascii_case(&fegov.make) {
+                let mut score = 0.0;
+
+                // Things we Don't Want to Match
+                if x.test_fuel_type.contains("Cold CO") {
+                    continue;
+                }
+                let matching_test_id = if !x.test_id.is_empty() && !efid.is_empty() {
+                    x.test_id.ends_with(&efid[1..efid.len()])
+                } else {
+                    false
+                };
+                // ID match
+                let name_match = if matching_test_id || x.model.eq_ignore_ascii_case(&fegov.model) {
+                    1.0
+                } else {
+                    let epa_model_upper = x.model.to_uppercase().replace("4WD", "AWD");
+                    let epa_model_words: Vec<&str> =
+                        epa_model_upper.split_ascii_whitespace().collect();
+                    let num_epa_model_words = epa_model_words.len();
+                    let mut match_count = 0;
+                    for word in &epa_model_words {
+                        match_count += fe_model_words.contains(word) as i64;
+                    }
+                    let match_frac: f64 = (match_count as f64 * match_count as f64)
+                        / (num_epa_model_words as f64 * num_fe_model_words as f64);
+                    match_frac
+                };
+                if name_match == 0.0 {
+                    continue;
+                }
+                // By PT Type
+                if fegov.alt_veh_type == *"EV" {
+                    if x.cylinders.is_empty() && x.displ.round() == 0.0 {
+                        score += 1.0;
+                    }
+                } else {
+                    let epa_disp = (x.displ * 10.0).round() / 10.0;
+                    if x.cylinders == fegov.cylinders && epa_disp == fegov_disp {
+                        score += 1.0;
+                    }
+                }
+                // Drive Code
+                let drive_code = if x.model.contains("4WD")
+                    || x.model.contains("AWD")
+                    || x.drive.contains("4-Wheel Drive")
+                {
+                    String::from('A')
+                } else {
+                    x.drive.clone()
+                };
+                if drive_code == fegov_drive {
+                    score += 1.0;
+                }
+                // Transmission Type and Num Gears
+                if x.trany_code == transmission_fe_gov {
+                    score += 0.5;
+                } else if transmission_fe_gov.starts_with(x.trany_type.as_str()) {
+                    score += 0.25;
+                }
+                if x.gears == num_gears_fe_gov {
+                    score += 0.5;
+                }
+                xs.push((name_match, score, x.clone()));
+            }
+        }
+        xs
+    };
+    if epa_candidates.is_empty() {
+        None
+    } else {
+        let mut largest_id_match_value = 0.0;
+        let mut largest_score_value = 0.0;
+        let mut best_idx: usize = 0;
+        for (idx, item) in epa_candidates.iter().enumerate() {
+            if item.0 > largest_id_match_value
+                || (item.0 == largest_id_match_value && item.1 > largest_score_value)
+            {
+                largest_id_match_value = item.0;
+                largest_score_value = item.1;
+                best_idx = idx;
+            }
+        }
+        if largest_id_match_value == 0.0 {
+            None
+        } else {
+            Some(epa_candidates[best_idx].2.clone())
+        }
+    }
+}
+
+/// Match EPA Test Data with FuelEconomy.gov data and return best match
+#[allow(dead_code)]
 fn match_epatest_with_fegov(
     fegov: &VehicleDataFE,
     epatest_data: &[VehicleDataEPA],
 ) -> Option<VehicleDataEPA> {
+    if fegov.emissions_list.emissions_info.is_empty() {
+        return None;
+    }
     // Keep track of best match to fueleconomy.gov model name for all vehicles and vehicles with matching efid/test id
     let mut veh_list_overall: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
     let mut veh_list_efid: HashMap<String, Vec<VehicleDataEPA>> = HashMap::new();
@@ -415,9 +593,6 @@ fn match_epatest_with_fegov(
     let fe_model_upper: String = fegov.model.to_uppercase().replace("4WD", "AWD");
     let fe_model_words: Vec<&str> = fe_model_upper.split(' ').collect();
     let num_fe_model_words = fe_model_words.len();
-    if fegov.emissions_list.emissions_info.is_empty() {
-        return None;
-    }
     let efid: &String = &fegov.emissions_list.emissions_info[0].efid;
 
     for veh_epa in epatest_data {
@@ -682,7 +857,7 @@ pub fn vehicle_import_by_id_and_year(
                 maybe_data
             };
             if let Some(fe_gov_data) = fe_gov_data {
-                if let Some(epa_data) = match_epatest_with_fegov(&fe_gov_data, epa_data) {
+                if let Some(epa_data) = match_epatest_with_fegov_v2(&fe_gov_data, epa_data) {
                     maybe_veh = try_make_single_vehicle(&fe_gov_data, &epa_data, other_inputs);
                 }
             }
@@ -913,7 +1088,7 @@ fn try_import_vehicles(
     let fegov_hits: Vec<VehicleDataFE> =
         get_fuel_economy_gov_data_for_input_record(vir, fegov_data);
     for hit in fegov_hits {
-        if let Some(epa_data) = match_epatest_with_fegov(&hit, epatest_data) {
+        if let Some(epa_data) = match_epatest_with_fegov_v2(&hit, epatest_data) {
             if let Some(v) = try_make_single_vehicle(&hit, &epa_data, &other_inputs) {
                 let mut v = v.clone();
                 if hit.alt_veh_type == *"EV" {
@@ -1421,7 +1596,7 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
             return Err(anyhow!("Could not download from {}", url));
         }
     }
-    println!("Downloaded data from {} of length {}", url, buffer.len());
+    println!("Downloaded data from {}; bytes: {}", url, buffer.len());
     if buffer.is_empty() {
         return Err(anyhow!("No data available from {url}"));
     }
@@ -1540,7 +1715,6 @@ fn populate_cache_for_given_years_if_needed(
 ) -> Result<bool, anyhow::Error> {
     let mut all_data_available = true;
     for year in years {
-        println!("Checking {year}...");
         let veh_file_exists = {
             let name = format!("{year}-vehicles.csv");
             let path = data_dir_path.join(Path::new(&name));
@@ -1923,7 +2097,6 @@ mod vehicle_utils_tests {
                 vec![]
             }
         };
-        let num_records = veh_records.len();
         let mut num_success: usize = 0;
         let other_inputs = OtherVehicleInputs {
             vehicle_height_in: 72.4,
@@ -1934,8 +2107,16 @@ mod vehicle_utils_tests {
             ess_max_kw: 0.0,
             fc_max_kw: None,
         };
+        let mut num_records = 0;
         let max_iter = veh_records.len();
+        // NOTE: below, we can use fewer records in the interest of time as this is a long test with all records
+        // We skip because the vehicles at the beginning of the file tend to be more exotic and to not have
+        // EPA test entries. Thus, they are a bad representation of the whole.
+        let skip_idx: usize = 200;
         for (num_iter, vr) in veh_records.iter().enumerate() {
+            if num_iter % skip_idx != 0 {
+                continue;
+            }
             if num_iter >= max_iter {
                 break;
             }
@@ -1949,7 +2130,10 @@ mod vehicle_utils_tests {
                         num_success += 1;
                     }
                 }
+            } else {
+                panic!("Unable to find make and model in vehicle record");
             }
+            num_records += 1;
         }
         let success_frac: f64 = (num_success as f64) / (num_records as f64);
         assert!(success_frac > 0.90, "success_frac = {}", success_frac);
