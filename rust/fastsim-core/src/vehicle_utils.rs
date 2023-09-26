@@ -2148,14 +2148,14 @@ mod vehicle_utils_tests {
         let data_dir = PathBuf::from("./temp");
         let cacheurl = get_default_cache_url();
         std::fs::create_dir_all(data_dir.as_path())?;
-        let r2 = get_options_for_year_make_model(
+        ensure!(!get_options_for_year_make_model(
             &year,
             &make,
             &model,
             Some(cacheurl),
             Some(data_dir.to_str().unwrap_or("").to_string()),
-        )?;
-        ensure!(!r2.is_empty());
+        )?
+        .is_empty());
         Ok(())
         // TODO: delete the data_dir and all contents
     }
