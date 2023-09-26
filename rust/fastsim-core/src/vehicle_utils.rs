@@ -356,7 +356,7 @@ pub fn get_options_for_year_make_model(
     model: &str,
     cache_url: Option<String>,
     data_dir: Option<String>,
-) -> Result<Vec<VehicleDataFE>, Error> {
+) -> anyhow::Result<Vec<VehicleDataFE>> {
     // prep the cache for year
     let y: u32 = year.trim().parse()?;
     let ys: HashSet<u32> = {
@@ -1682,7 +1682,7 @@ fn load_fegov_data_for_given_years(
 }
 
 pub fn get_default_cache_url() -> String {
-    String::from("https://github.com/NREL/fastsim-data/raw/main/")
+    String::from("https://github.nrel.gov/MBAP/vehicle-data/raw/main/")
 }
 
 fn get_cache_url_for_year(cache_url: &str, year: &u32) -> Result<Option<String>, anyhow::Error> {
@@ -2067,10 +2067,10 @@ mod vehicle_utils_tests {
     }
 
     #[test]
-    fn test_import_robustness() {
+    fn test_import_robustness() -> anyhow::Result<()> {
         // Ensure 2019 data is cached
         let ddpath = get_fastsim_data_dir();
-        assert!(ddpath.is_some());
+        ensure!(ddpath.is_some());
         let ddpath = ddpath.unwrap();
         let model_year: u32 = 2019;
         let years = {
@@ -2079,8 +2079,7 @@ mod vehicle_utils_tests {
             s
         };
         let cache_url = get_default_cache_url();
-        let res = populate_cache_for_given_years_if_needed(ddpath.as_path(), &years, &cache_url);
-        assert!(res.is_ok());
+        populate_cache_for_given_years_if_needed(ddpath.as_path(), &years, &cache_url)?;
         // Load all year/make/models for 2019
         let vehicles_path = ddpath.join(Path::new("2019-vehicles.csv"));
         let veh_records = {
@@ -2136,30 +2135,28 @@ mod vehicle_utils_tests {
             num_records += 1;
         }
         let success_frac: f64 = (num_success as f64) / (num_records as f64);
-        assert!(success_frac > 0.90, "success_frac = {}", success_frac);
+        ensure!(success_frac > 0.90, "success_frac = {}", success_frac);
+        Ok(())
     }
 
-    // Enable the test below after github.com/NREL/temp-data (or equivalent) get created
-    // #[test]
-    // fn test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir() {
-    //     let year = String::from("2020");
-    //     let make = String::from("Toyota");
-    //     let model = String::from("Corolla");
-    //     let data_dir = PathBuf::from("./temp");
-    //     let cacheurl = get_default_cache_url();
-    //     let r1 = std::fs::create_dir_all(data_dir.as_path());
-    //     assert!(r1.is_ok());
-    //     let r2 = get_options_for_year_make_model(
-    //         &year,
-    //         &make,
-    //         &model,
-    //         Some(cacheurl),
-    //         Some(data_dir.to_str().unwrap_or("").to_string()),
-    //     );
-    //     assert!(r2.is_ok());
-    //     if let Ok(vs) = r2 {
-    //         assert!(!vs.is_empty());
-    //     }
-    //     // TODO: delete the data_dir and all contents
-    // }
+    #[test]
+    fn test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir(
+    ) -> anyhow::Result<()> {
+        let year = String::from("2020");
+        let make = String::from("Toyota");
+        let model = String::from("Corolla");
+        let data_dir = PathBuf::from("./temp");
+        let cacheurl = get_default_cache_url();
+        std::fs::create_dir_all(data_dir.as_path())?;
+        let r2 = get_options_for_year_make_model(
+            &year,
+            &make,
+            &model,
+            Some(cacheurl),
+            Some(data_dir.to_str().unwrap_or("").to_string()),
+        )?;
+        ensure!(!r2.is_empty());
+        Ok(())
+        // TODO: delete the data_dir and all contents
+    }
 }
