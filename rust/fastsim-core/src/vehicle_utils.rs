@@ -100,100 +100,123 @@ impl SerdeAPI for OptionFE {
 pub struct VehicleDataFE {
     /// Vehicle ID
     pub id: i32,
-    #[serde(default, rename = "atvType")]
-    /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
-    pub alt_veh_type: String,
-    #[serde(rename = "city08")]
-    /// City MPG for fuel 1
-    pub city_mpg_fuel1: i32,
-    #[serde(rename = "cityA08")]
-    /// City MPG for fuel 2
-    pub city_mpg_fuel2: i32,
-    #[serde(rename = "co2")]
-    /// Tailpipe CO2 emissions in grams/mile
-    pub co2_g_per_mi: i32,
-    #[serde(rename = "comb08")]
-    /// Combined MPG for fuel 1
-    pub comb_mpg_fuel1: i32,
-    #[serde(rename = "combA08")]
-    /// Combined MPG for fuel 2
-    pub comb_mpg_fuel2: i32,
-    #[serde(default)]
-    /// Number of engine cylinders
-    pub cylinders: String,
-    #[serde(default)]
-    /// Engine displacement in liters
-    pub displ: String,
-    /// Drive axle type (FWD, RWD, AWD, 4WD)
-    pub drive: String,
-    #[serde(rename = "emissionsList")]
-    /// List of emissions tests
-    pub emissions_list: EmissionsListFE,
-    #[serde(default)]
-    /// Description of engine
-    pub eng_dscr: String,
-    #[serde(default, rename = "evMotor")]
-    /// Electric motor power (kW)
-    pub ev_motor_kw: String,
-    #[serde(rename = "feScore")]
-    /// EPA fuel economy score
-    pub fe_score: i32,
-    #[serde(rename = "fuelType")]
-    /// Combined vehicle fuel type (fuel 1 and fuel 2)
-    pub fuel_type: String,
-    #[serde(rename = "fuelType1")]
-    /// Fuel type 1
-    pub fuel1: String,
-    #[serde(default, rename = "fuelType2")]
-    /// Fuel type 2
-    pub fuel2: String,
-    #[serde(rename = "ghgScore")]
-    /// EPA GHG Score
-    pub ghg_score: i32,
-    #[serde(rename = "highway08")]
-    /// Highway MPG for fuel 1
-    pub highway_mpg_fuel1: i32,
-    #[serde(rename = "highwayA08")]
-    /// Highway MPG for fuel 2
-    pub highway_mpg_fuel2: i32,
-    /// Manufacturer
-    pub make: String,
-    #[serde(rename = "mfrCode")]
-    /// Manufacturer code
-    pub mfr_code: String,
-    /// Model name
-    pub model: String,
-    #[serde(rename = "phevBlended")]
-    /// Vehicle operates on blend of gasoline and electricity
-    pub phev_blended: bool,
-    #[serde(rename = "phevCity")]
-    /// EPA composite gasoline-electricity city MPGe
-    pub phev_city_mpge: i32,
-    #[serde(rename = "phevComb")]
-    /// EPA composite gasoline-electricity combined MPGe
-    pub phev_comb_mpge: i32,
-    #[serde(rename = "phevHwy")]
-    /// EPA composite gasoline-electricity highway MPGe
-    pub phev_hwy_mpge: i32,
-    #[serde(rename = "range")]
-    /// Range for EV
-    pub range_ev: i32,
-    #[serde(rename = "startStop")]
-    /// Stop-start technology
-    pub start_stop: String,
-    /// transmission
-    pub trany: String,
-    #[serde(rename = "VClass")]
-    /// EPA vehicle size class
-    pub veh_class: String,
+
     /// Model year
     pub year: u32,
+    /// Vehicle make
+    pub make: String,
+    /// Vehicle model
+    pub model: String,
+
+    /// EPA vehicle size class
+    #[serde(rename = "VClass")]
+    pub veh_class: String,
+
+    /// Drive axle type (FWD, RWD, AWD, 4WD)
+    pub drive: String,
+    /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
+    #[serde(default, rename = "atvType")]
+    pub alt_veh_type: String,
+
+    /// Combined vehicle fuel type (fuel 1 and fuel 2)
+    #[serde(rename = "fuelType")]
+    pub fuel_type: String,
+    /// Fuel type 1
+    #[serde(rename = "fuelType1")]
+    pub fuel1: String,
+    /// Fuel type 2
+    #[serde(default, rename = "fuelType2")]
+    pub fuel2: String,
+
+    /// Description of engine
+    #[serde(default)]
+    pub eng_dscr: String,
+    /// Number of engine cylinders
+    #[serde(default)]
+    pub cylinders: String,
+    /// Engine displacement in liters
+    #[serde(default)]
+    pub displ: String,
+    /// transmission
+    #[serde(rename = "trany")]
+    pub transmission: String,
+
+    /// "S" if vehicle has supercharger
     #[serde(default, rename = "sCharger")]
-    /// Vehicle is supercharged
-    pub super_charge: String,
+    pub super_charger: String,
+    /// "T" if vehicle has turbocharger
     #[serde(default, rename = "tCharger")]
-    /// Vehicle is turbocharged
-    pub turbo_charge: String,
+    pub turbo_charger: String,
+
+    /// Stop-start technology
+    #[serde(rename = "startStop")]
+    pub start_stop: String,
+
+    /// Vehicle operates on blend of gasoline and electricity
+    #[serde(rename = "phevBlended")]
+    pub phev_blended: bool,
+    /// EPA composite gasoline-electricity city MPGe
+    #[serde(rename = "phevCity")]
+    pub phev_city_mpge: i32,
+    /// EPA composite gasoline-electricity combined MPGe
+    #[serde(rename = "phevComb")]
+    pub phev_comb_mpge: i32,
+    /// EPA composite gasoline-electricity highway MPGe
+    #[serde(rename = "phevHwy")]
+    pub phev_hwy_mpge: i32,
+
+    /// Electric motor power (kW), not very consistent as an input
+    #[serde(default, rename = "evMotor")]
+    pub ev_motor_kw: String,
+    /// EV range
+    #[serde(rename = "range")]
+    pub range_ev: i32,
+
+    /// City MPG for fuel 1
+    #[serde(rename = "city08U")]
+    pub city_mpg_fuel1: f64,
+    /// City MPG for fuel 2
+    #[serde(rename = "cityA08U")]
+    pub city_mpg_fuel2: f64,
+    /// Unadjusted unroaded city MPG for fuel 1
+    #[serde(rename = "UCity")]
+    pub unadj_city_mpg_fuel1: f64,
+    /// Unadjusted unroaded city MPG for fuel 2
+    #[serde(rename = "UCityA")]
+    pub unadj_city_mpg_fuel2: f64,
+    /// City electricity consumption in kWh/100 mi
+    #[serde(rename = "cityE")]
+    pub city_kwh_per_100mi: f64,
+
+    /// Adjusted unrounded highway MPG for fuel 1
+    #[serde(rename = "highway08U")]
+    pub highway_mpg_fuel1: f64,
+    /// Adjusted unrounded highway MPG for fuel 2
+    #[serde(rename = "highwayA08U")]
+    pub highway_mpg_fuel2: f64,
+    /// Unadjusted unrounded highway MPG for fuel 1
+    #[serde(default, rename = "UHighway")]
+    pub unadj_highway_mpg_fuel1: f64,
+    /// Unadjusted unrounded highway MPG for fuel 2
+    #[serde(default, rename = "UHighwayA")]
+    pub unadj_highway_mpg_fuel2: f64,
+    /// Highway electricity consumption in kWh/100 mi
+    #[serde(default, rename = "highwayE")]
+    pub highway_kwh_per_100mi: f64,
+
+    /// Combined MPG for fuel 1
+    #[serde(rename = "comb08U")]
+    pub comb_mpg_fuel1: f64,
+    /// Combined MPG for fuel 2
+    #[serde(rename = "combA08U")]
+    pub comb_mpg_fuel2: f64,
+    /// Combined electricity consumption in kWh/100 mi
+    #[serde(default, rename = "combE")]
+    pub comb_kwh_per_100mi: f64,
+
+    /// List of emissions tests
+    #[serde(rename = "emissionsList")]
+    pub emissions_list: EmissionsListFE,
 }
 
 impl SerdeAPI for VehicleDataFE {
@@ -268,59 +291,56 @@ impl SerdeAPI for EmissionsInfoFE {
 #[add_pyo3_api]
 /// Struct containing vehicle data from EPA database
 pub struct VehicleDataEPA {
-    #[serde(rename = "Model Year")]
     /// Model year
+    #[serde(rename = "Model Year")]
     pub year: u32,
-    #[serde(rename = "Veh Mfr Code")]
-    /// Vehicle manufacturer code
-    pub mfr_code: String,
-    #[serde(rename = "Represented Test Veh Make")]
     /// Vehicle make
+    #[serde(rename = "Represented Test Veh Make")]
     pub make: String,
-    #[serde(rename = "Represented Test Veh Model")]
     /// Vehicle model
+    #[serde(rename = "Represented Test Veh Model")]
     pub model: String,
-    #[serde(rename = "Actual Tested Testgroup")]
     /// Vehicle test group
+    #[serde(rename = "Actual Tested Testgroup")]
     pub test_id: String,
-    #[serde(rename = "Test Veh Displacement (L)")]
     /// Engine displacement
+    #[serde(rename = "Test Veh Displacement (L)")]
     pub displ: f64,
-    #[serde(rename = "Rated Horsepower")]
     /// Engine power in hp
+    #[serde(rename = "Rated Horsepower")]
     pub eng_pwr_hp: u32,
-    #[serde(rename = "# of Cylinders and Rotors")]
     /// Number of cylinders
+    #[serde(rename = "# of Cylinders and Rotors")]
     pub cylinders: String,
-    #[serde(rename = "Tested Transmission Type Code")]
     /// Transmission type code
-    pub trany_code: String,
-    #[serde(rename = "Tested Transmission Type")]
+    #[serde(rename = "Tested Transmission Type Code")]
+    pub transmission_code: String,
     /// Transmission type
-    pub trany_type: String,
-    #[serde(rename = "# of Gears")]
+    #[serde(rename = "Tested Transmission Type")]
+    pub transmission_type: String,
     /// Number of gears
+    #[serde(rename = "# of Gears")]
     pub gears: u32,
-    #[serde(rename = "Drive System Code")]
     /// Drive system code
+    #[serde(rename = "Drive System Code")]
     pub drive_code: String,
-    #[serde(rename = "Drive System Description")]
     /// Drive system type
+    #[serde(rename = "Drive System Description")]
     pub drive: String,
-    #[serde(rename = "Equivalent Test Weight (lbs.)")]
     /// Test weight in lbs
+    #[serde(rename = "Equivalent Test Weight (lbs.)")]
     pub test_weight_lbs: f64,
-    #[serde(rename = "Test Fuel Type Description")]
     /// Fuel type used for EPA test
+    #[serde(rename = "Test Fuel Type Description")]
     pub test_fuel_type: String,
-    #[serde(rename = "Target Coef A (lbf)")]
     /// Dyno coefficient a in lbf
+    #[serde(rename = "Target Coef A (lbf)")]
     pub a_lbf: f64,
-    #[serde(rename = "Target Coef B (lbf/mph)")]
     /// Dyno coefficient b in lbf/mph
+    #[serde(rename = "Target Coef B (lbf/mph)")]
     pub b_lbf_per_mph: f64,
-    #[serde(rename = "Target Coef C (lbf/mph**2)")]
     /// Dyno coefficient c in lbf/mph^2
+    #[serde(rename = "Target Coef C (lbf/mph**2)")]
     pub c_lbf_per_mph2: f64,
 }
 
@@ -403,44 +423,44 @@ fn derive_transmission_specs(fegov: &VehicleDataFE) -> (u32, String) {
     let num_gears_fe_gov: u32;
     let transmission_fe_gov: String;
     // Based on reference: https://www.fueleconomy.gov/feg/findacarhelp.shtml#engine
-    if fegov.trany.contains("Manual") {
+    if fegov.transmission.contains("Manual") {
         transmission_fe_gov = String::from('M');
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find("-spd").unwrap() - 1..fegov.trany.find("-spd").unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()[fegov.transmission.find("-spd").unwrap() - 1
+            ..fegov.transmission.find("-spd").unwrap()]
             .parse()
             .unwrap();
-    } else if fegov.trany.contains("variable gear ratios") {
+    } else if fegov.transmission.contains("variable gear ratios") {
         transmission_fe_gov = String::from("CVT");
         num_gears_fe_gov = 1;
-    } else if fegov.trany.contains("AV-S") {
+    } else if fegov.transmission.contains("AV-S") {
         transmission_fe_gov = String::from("SCV");
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()
+            [fegov.transmission.find('S').unwrap() + 1..fegov.transmission.find(')').unwrap()]
             .parse()
             .unwrap();
-    } else if fegov.trany.contains("AM-S") {
+    } else if fegov.transmission.contains("AM-S") {
         transmission_fe_gov = String::from("AMS");
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()
+            [fegov.transmission.find('S').unwrap() + 1..fegov.transmission.find(')').unwrap()]
             .parse()
             .unwrap();
-    } else if fegov.trany.contains('S') {
+    } else if fegov.transmission.contains('S') {
         transmission_fe_gov = String::from("SA");
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()
+            [fegov.transmission.find('S').unwrap() + 1..fegov.transmission.find(')').unwrap()]
             .parse()
             .unwrap();
-    } else if fegov.trany.contains("-spd") {
+    } else if fegov.transmission.contains("-spd") {
         transmission_fe_gov = String::from('A');
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find("-spd").unwrap() - 1..fegov.trany.find("-spd").unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()[fegov.transmission.find("-spd").unwrap() - 1
+            ..fegov.transmission.find("-spd").unwrap()]
             .parse()
             .unwrap();
     } else {
         transmission_fe_gov = String::from('A');
         num_gears_fe_gov = {
-            let res: Result<u32, ParseIntError> = fegov.trany.as_str()
-                [fegov.trany.find("(A").unwrap() + 2..fegov.trany.find(')').unwrap()]
+            let res: Result<u32, ParseIntError> = fegov.transmission.as_str()
+                [fegov.transmission.find("(A").unwrap() + 2..fegov.transmission.find(')').unwrap()]
                 .parse();
             if let Ok(n) = res {
                 n
@@ -537,9 +557,9 @@ fn match_epatest_with_fegov_v2(
                     score += 1.0;
                 }
                 // Transmission Type and Num Gears
-                if x.trany_code == transmission_fe_gov {
+                if x.transmission_code == transmission_fe_gov {
                     score += 0.5;
-                } else if transmission_fe_gov.starts_with(x.trany_type.as_str()) {
+                } else if transmission_fe_gov.starts_with(x.transmission_type.as_str()) {
                     score += 0.25;
                 }
                 if x.gears == num_gears_fe_gov {
@@ -655,44 +675,44 @@ fn match_epatest_with_fegov(
     let num_gears_fe_gov: u32;
     let transmission_fe_gov: String;
     // Based on reference: https://www.fueleconomy.gov/feg/findacarhelp.shtml#engine
-    if fegov.trany.contains("Manual") {
+    if fegov.transmission.contains("Manual") {
         transmission_fe_gov = String::from('M');
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find("-spd").unwrap() - 1..fegov.trany.find("-spd").unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()[fegov.transmission.find("-spd").unwrap() - 1
+            ..fegov.transmission.find("-spd").unwrap()]
             .parse()
             .unwrap();
-    } else if fegov.trany.contains("variable gear ratios") {
+    } else if fegov.transmission.contains("variable gear ratios") {
         transmission_fe_gov = String::from("CVT");
         num_gears_fe_gov = 1;
-    } else if fegov.trany.contains("AV-S") {
+    } else if fegov.transmission.contains("AV-S") {
         transmission_fe_gov = String::from("SCV");
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()
+            [fegov.transmission.find('S').unwrap() + 1..fegov.transmission.find(')').unwrap()]
             .parse()
             .unwrap();
-    } else if fegov.trany.contains("AM-S") {
+    } else if fegov.transmission.contains("AM-S") {
         transmission_fe_gov = String::from("AMS");
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()
+            [fegov.transmission.find('S').unwrap() + 1..fegov.transmission.find(')').unwrap()]
             .parse()
             .unwrap();
-    } else if fegov.trany.contains('S') {
+    } else if fegov.transmission.contains('S') {
         transmission_fe_gov = String::from("SA");
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find('S').unwrap() + 1..fegov.trany.find(')').unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()
+            [fegov.transmission.find('S').unwrap() + 1..fegov.transmission.find(')').unwrap()]
             .parse()
             .unwrap();
-    } else if fegov.trany.contains("-spd") {
+    } else if fegov.transmission.contains("-spd") {
         transmission_fe_gov = String::from('A');
-        num_gears_fe_gov = fegov.trany.as_str()
-            [fegov.trany.find("-spd").unwrap() - 1..fegov.trany.find("-spd").unwrap()]
+        num_gears_fe_gov = fegov.transmission.as_str()[fegov.transmission.find("-spd").unwrap() - 1
+            ..fegov.transmission.find("-spd").unwrap()]
             .parse()
             .unwrap();
     } else {
         transmission_fe_gov = String::from('A');
         num_gears_fe_gov = {
-            let res: Result<u32, ParseIntError> = fegov.trany.as_str()
-                [fegov.trany.find("(A").unwrap() + 2..fegov.trany.find(')').unwrap()]
+            let res: Result<u32, ParseIntError> = fegov.transmission.as_str()
+                [fegov.transmission.find("(A").unwrap() + 2..fegov.transmission.find(')').unwrap()]
                 .parse();
             if let Ok(n) = res {
                 n
@@ -717,8 +737,10 @@ fn match_epatest_with_fegov(
             veh_epa.drive = String::from("All Wheel Drive");
         }
         if !veh_epa.test_fuel_type.contains("Cold CO")
-            && (veh_epa.trany_code == transmission_fe_gov
-                || fegov.trany.starts_with(veh_epa.trany_type.as_str()))
+            && (veh_epa.transmission_code == transmission_fe_gov
+                || fegov
+                    .transmission
+                    .starts_with(veh_epa.transmission_type.as_str()))
             && veh_epa.gears == num_gears_fe_gov
             && veh_epa.drive_code == fegov.drive[0..1]
             && ((fegov.alt_veh_type == *"EV"
@@ -1028,15 +1050,13 @@ fn try_make_single_vehicle(
         selection: 0,
         veh_year: fe_gov_data.year,
         veh_pt_type: String::from(veh_pt_type),
-        drag_coef: 0.0,
-        frontal_area_m2: (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in)
+        drag_coef: 0.0, // overridden
+        frontal_area_m2: 0.85 * (other_inputs.vehicle_width_in * other_inputs.vehicle_height_in)
             / (IN_PER_M * IN_PER_M),
         fs_kwh,
-        idle_fc_kw: fc_max_kw / 100.0, // TODO: Figure out if idle_fc_kw is needed
-        mc_eff_map: Array1::from(vec![
-            0.41, 0.45, 0.48, 0.54, 0.58, 0.62, 0.83, 0.93, 0.94, 0.93, 0.92,
-        ]),
-        wheel_rr_coef: 0.0,
+        idle_fc_kw: 0.0,
+        mc_eff_map: Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()),
+        wheel_rr_coef: 0.0, // overridden
         stop_start: fe_gov_data.start_stop == "Y",
         force_aux_on_fc: false,
         val_udds_mpgge: fe_gov_data.city_mpg_fuel1 as f64,
@@ -1101,7 +1121,7 @@ fn try_import_vehicles(
                     };
                     v.scenario_name = format!(
                         "{} ( {} {} cylinders, {} L, {} )",
-                        v.scenario_name, alt_type, hit.cylinders, hit.displ, hit.trany
+                        v.scenario_name, alt_type, hit.cylinders, hit.displ, hit.transmission
                     );
                 }
                 outputs.push(v);
@@ -1401,94 +1421,30 @@ fn read_fuelecon_gov_data_from_file(
         };
         let vd = VehicleDataFE {
             id: item.get("id").unwrap().trim().parse().unwrap(),
-            // #[serde(default, rename = "atvType")]
-            // /// Type of alternative fuel vehicle (Hybrid, Plug-in Hybrid, EV)
-            // pub alt_veh_type: String,
-            alt_veh_type: item.get("atvType").unwrap().clone(),
-            // #[serde(rename = "city08")]
-            // /// City MPG for fuel 1
-            // pub city_mpg_fuel1: i32,
-            city_mpg_fuel1: item.get("city08").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "cityA08")]
-            // /// City MPG for fuel 2
-            // pub city_mpg_fuel2: i32,
-            city_mpg_fuel2: item.get("cityA08").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "co2")]
-            // /// Tailpipe CO2 emissions in grams/mile
-            // pub co2_g_per_mi: i32,
-            co2_g_per_mi: item.get("co2").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "comb08")]
-            // /// Combined MPG for fuel 1
-            // pub comb_mpg_fuel1: i32,
-            comb_mpg_fuel1: item.get("comb08").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "combA08")]
-            // /// Combined MPG for fuel 2
-            // pub comb_mpg_fuel2: i32,
-            comb_mpg_fuel2: item.get("combA08").unwrap().parse::<i32>().unwrap(),
-            // #[serde(default)]
-            // /// Number of engine cylinders
-            // pub cylinders: String,
-            cylinders: item.get("cylinders").unwrap().clone(),
-            // #[serde(default)]
-            // /// Engine displacement in liters
-            // pub displ: String,
-            displ: item.get("displ").unwrap().clone(),
-            // /// Drive axle type (FWD, RWD, AWD, 4WD)
-            // pub drive: String,
-            drive: item.get("drive").unwrap().clone(),
-            // #[serde(rename = "emissionsList")]
-            // /// List of emissions tests
-            // pub emissions_list: EmissionsListFE,
-            emissions_list,
-            // #[serde(default)]
-            // /// Description of engine
-            // pub eng_dscr: String,
-            eng_dscr: item.get("eng_dscr").unwrap().clone(),
-            // #[serde(default, rename = "evMotor")]
-            // /// Electric motor power (kW)
-            // pub ev_motor_kw: String,
-            ev_motor_kw: item.get("evMotor").unwrap().clone(),
-            // #[serde(rename = "feScore")]
-            // /// EPA fuel economy score
-            // pub fe_score: i32,
-            fe_score: item.get("feScore").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "fuelType")]
-            // /// Combined vehicle fuel type (fuel 1 and fuel 2)
-            // pub fuel_type: String,
-            fuel_type: item.get("fuelType").unwrap().clone(),
-            // #[serde(rename = "fuelType1")]
-            // /// Fuel type 1
-            // pub fuel1: String,
-            fuel1: item.get("fuelType1").unwrap().clone(),
-            // #[serde(default, rename = "fuelType2")]
-            // /// Fuel type 2
-            // pub fuel2: String,
-            fuel2: item.get("fuelType2").unwrap().clone(),
-            // #[serde(rename = "ghgScore")]
-            // /// EPA GHG Score
-            // pub ghg_score: i32,
-            ghg_score: item.get("ghgScore").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "highway08")]
-            // /// Highway MPG for fuel 1
-            // pub highway_mpg_fuel1: i32,
-            highway_mpg_fuel1: item.get("highway08").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "highwayA08")]
-            // /// Highway MPG for fuel 2
-            // pub highway_mpg_fuel2: i32,
-            highway_mpg_fuel2: item.get("highwayA08").unwrap().parse::<i32>().unwrap(),
-            // /// Manufacturer
-            // pub make: String,
+
+            year: item.get("year").unwrap().parse::<u32>().unwrap(),
             make: item.get("make").unwrap().clone(),
-            // #[serde(rename = "mfrCode")]
-            // /// Manufacturer code
-            // pub mfr_code: String,
-            mfr_code: item.get("mfrCode").unwrap().clone(),
-            // /// Model name
-            // pub model: String,
             model: item.get("model").unwrap().clone(),
-            // #[serde(rename = "phevBlended")]
-            // /// Vehicle operates on blend of gasoline and electricity
-            // pub phev_blended: bool,
+
+            veh_class: item.get("VClass").unwrap().clone(),
+
+            drive: item.get("drive").unwrap().clone(),
+            alt_veh_type: item.get("atvType").unwrap().clone(),
+
+            fuel_type: item.get("fuelType").unwrap().clone(),
+            fuel1: item.get("fuelType1").unwrap().clone(),
+            fuel2: item.get("fuelType2").unwrap().clone(),
+
+            eng_dscr: item.get("eng_dscr").unwrap().clone(),
+            cylinders: item.get("cylinders").unwrap().clone(),
+            displ: item.get("displ").unwrap().clone(),
+            transmission: item.get("trany").unwrap().clone(),
+
+            super_charger: item.get("sCharger").unwrap().clone(),
+            turbo_charger: item.get("tCharger").unwrap().clone(),
+
+            start_stop: item.get("startStop").unwrap().clone(),
+
             phev_blended: item
                 .get("phevBlended")
                 .unwrap()
@@ -1496,44 +1452,30 @@ fn read_fuelecon_gov_data_from_file(
                 .to_lowercase()
                 .parse::<bool>()
                 .unwrap(),
-            // #[serde(rename = "phevCity")]
-            // /// EPA composite gasoline-electricity city MPGe
-            // pub phev_city_mpge: i32,
             phev_city_mpge: item.get("phevCity").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "phevComb")]
-            // /// EPA composite gasoline-electricity combined MPGe
-            // pub phev_comb_mpge: i32,
             phev_comb_mpge: item.get("phevComb").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "phevHwy")]
-            // /// EPA composite gasoline-electricity highway MPGe
-            // pub phev_hwy_mpge: i32,
             phev_hwy_mpge: item.get("phevHwy").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "range")]
-            // /// Range for EV
-            // pub range_ev: i32,
+
+            ev_motor_kw: item.get("evMotor").unwrap().clone(),
             range_ev: item.get("range").unwrap().parse::<i32>().unwrap(),
-            // #[serde(rename = "startStop")]
-            // /// Stop-start technology
-            // pub start_stop: String,
-            start_stop: item.get("startStop").unwrap().clone(),
-            // /// transmission
-            // pub trany: String,
-            trany: item.get("trany").unwrap().clone(),
-            // #[serde(rename = "VClass")]
-            // /// EPA vehicle size class
-            // pub veh_class: String,
-            veh_class: item.get("VClass").unwrap().clone(),
-            // /// Model year
-            // pub year: u32,
-            year: item.get("year").unwrap().parse::<u32>().unwrap(),
-            // #[serde(default, rename = "sCharger")]
-            // /// Vehicle is supercharged
-            // pub super_charge: String,
-            super_charge: item.get("sCharger").unwrap().clone(),
-            // #[serde(default, rename = "tCharger")]
-            // /// Vehicle is turbocharged
-            // pub turbo_charge: String,
-            turbo_charge: item.get("tCharger").unwrap().clone(),
+
+            city_mpg_fuel1: item.get("city08U").unwrap().parse::<f64>().unwrap(),
+            city_mpg_fuel2: item.get("cityA08U").unwrap().parse::<f64>().unwrap(),
+            unadj_city_mpg_fuel1: item.get("UCity").unwrap().parse::<f64>().unwrap(),
+            unadj_city_mpg_fuel2: item.get("UCityA").unwrap().parse::<f64>().unwrap(),
+            city_kwh_per_100mi: item.get("cityE").unwrap().parse::<f64>().unwrap(),
+
+            highway_mpg_fuel1: item.get("highway08U").unwrap().parse::<f64>().unwrap(),
+            highway_mpg_fuel2: item.get("highwayA08U").unwrap().parse::<f64>().unwrap(),
+            unadj_highway_mpg_fuel1: item.get("UHighway").unwrap().parse::<f64>().unwrap(),
+            unadj_highway_mpg_fuel2: item.get("UHighwayA").unwrap().parse::<f64>().unwrap(),
+            highway_kwh_per_100mi: item.get("highwayE").unwrap().parse::<f64>().unwrap(),
+
+            comb_mpg_fuel1: item.get("comb08U").unwrap().parse::<f64>().unwrap(),
+            comb_mpg_fuel2: item.get("combA08U").unwrap().parse::<f64>().unwrap(),
+            comb_kwh_per_100mi: item.get("combE").unwrap().parse::<f64>().unwrap(),
+
+            emissions_list,
         };
         output.push(vd);
     }
@@ -1990,51 +1932,66 @@ mod vehicle_utils_tests {
         };
         let fegov_data = VehicleDataFE {
             id: 32204,
-            alt_veh_type: String::from(""),
-            city_mpg_fuel1: 22,
-            city_mpg_fuel2: 0,
-            co2_g_per_mi: 338,
-            comb_mpg_fuel1: 26,
-            comb_mpg_fuel2: 0,
-            cylinders: String::from("6"),
-            displ: String::from("3.5"),
+
+            year: 2020,
+            make: String::from("Toyota"),
+            model: String::from("Camry"),
+
+            veh_class: String::from("Midsize Cars"),
+
             drive: String::from("Front-Wheel Drive"),
-            emissions_list: emiss_list,
-            eng_dscr: String::from("SIDI & PFI"),
-            ev_motor_kw: String::from(""),
-            fe_score: 5,
+            alt_veh_type: String::from(""),
+
             fuel_type: String::from("Regular"),
             fuel1: String::from("Regular Gasoline"),
             fuel2: String::from(""),
-            ghg_score: 5,
-            highway_mpg_fuel1: 33,
-            highway_mpg_fuel2: 0,
-            make: String::from("Toyota"),
-            mfr_code: String::from("TYX"),
-            model: String::from("Camry"),
+
+            eng_dscr: String::from("SIDI & PFI"),
+            cylinders: String::from("6"),
+            displ: String::from("3.5"),
+            transmission: String::from("Automatic (S8)"),
+
+            super_charger: String::from(""),
+            turbo_charger: String::from(""),
+
+            start_stop: String::from("N"),
+
             phev_blended: false,
             phev_city_mpge: 0,
             phev_comb_mpge: 0,
             phev_hwy_mpge: 0,
+
+            ev_motor_kw: String::from(""),
             range_ev: 0,
-            start_stop: String::from("N"),
-            trany: String::from("Automatic (S8)"),
-            veh_class: String::from("Midsize Cars"),
-            year: 2020,
-            super_charge: String::from(""),
-            turbo_charge: String::from(""),
+
+            city_mpg_fuel1: 16.4596,
+            city_mpg_fuel2: 0.0,
+            unadj_city_mpg_fuel1: 20.2988,
+            unadj_city_mpg_fuel2: 0.0,
+            city_kwh_per_100mi: 0.0,
+
+            highway_mpg_fuel1: 22.5568,
+            highway_mpg_fuel2: 0.0,
+            unadj_highway_mpg_fuel1: 30.1798,
+            unadj_highway_mpg_fuel2: 0.0,
+            highway_kwh_per_100mi: 0.0,
+
+            comb_mpg_fuel1: 18.7389,
+            comb_mpg_fuel2: 0.0,
+            comb_kwh_per_100mi: 0.0,
+
+            emissions_list: emiss_list,
         };
         let epatest_data = VehicleDataEPA {
             year: 2020,
-            mfr_code: String::from("TXY"),
             make: String::from("TOYOTA"),
             model: String::from("CAMRY"),
             test_id: String::from("JTYXV03.5M5B"),
             displ: 3.456,
             eng_pwr_hp: 301,
             cylinders: String::from("6"),
-            trany_code: String::from("A"),
-            trany_type: String::from("Automatic"),
+            transmission_code: String::from("A"),
+            transmission_type: String::from("Automatic"),
             gears: 8,
             drive_code: String::from("F"),
             drive: String::from("2-Wheel Drive, Front"),
@@ -2049,7 +2006,7 @@ mod vehicle_utils_tests {
         assert!(v.is_some());
         if let Some(vs) = v {
             assert_eq!(vs.scenario_name, String::from("2020 Toyota Camry"));
-            assert_eq!(vs.val_comb_mpgge, 26.0);
+            assert_eq!(vs.val_comb_mpgge, 18.7389);
         }
     }
 
