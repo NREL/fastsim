@@ -21,7 +21,12 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// A Rust Result
     fn to_file(&self, filename: &str) -> Result<(), anyhow::Error> {
         let file = PathBuf::from(filename);
-        match file.extension().unwrap().to_str().unwrap() {
+        match file
+            .extension()
+            .ok_or_else(|| anyhow!("File extension not specified"))?
+            .to_str()
+            .unwrap()
+        {
             "json" => serde_json::to_writer(&File::create(file)?, self)?,
             "yaml" => serde_yaml::to_writer(&File::create(file)?, self)?,
             _ => serde_json::to_writer(&File::create(file)?, self)?,
