@@ -25,8 +25,12 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .extension()
             .ok_or_else(|| anyhow!("Unable to parse file extension: {:?}", file))?
             .to_str()
-            .unwrap()
-        {
+            .ok_or_else(|| {
+                anyhow!(
+                    "Unable to convert file extension from `&OsStr` to `&str`: {:?}",
+                    file
+                )
+            })? {
             "json" => serde_json::to_writer(&File::create(file)?, self)?,
             "yaml" => serde_yaml::to_writer(&File::create(file)?, self)?,
             _ => serde_json::to_writer(&File::create(file)?, self)?,
