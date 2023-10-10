@@ -216,7 +216,7 @@ impl SerdeAPI for ReversibleEnergyStorage {
 
 impl ReversibleEnergyStorage {
     #[allow(clippy::too_many_arguments)]
-    fn new(
+    pub fn new(
         pwr_out_max_watts: f64,
         energy_capacity_joules: f64,
         min_soc: f64,
@@ -511,7 +511,7 @@ impl ReversibleEnergyStorage {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, Debug, PartialEq, HistoryVec)]
+#[derive(Clone, Copy, Default, Debug, Deserialize, Serialize, PartialEq, HistoryVec)]
 #[pyo3_api]
 // component limits
 /// ReversibleEnergyStorage state variables
@@ -529,7 +529,7 @@ pub struct ReversibleEnergyStorageState {
     /// max charge power on the output side
     pub pwr_charge_max: si::Power,
 
-    /// simulation step
+    /// time step index
     pub i: usize,
 
     /// state of charge (SOC)
@@ -577,34 +577,19 @@ pub struct ReversibleEnergyStorageState {
     pub temperature_celsius: f64,
 }
 
-impl Default for ReversibleEnergyStorageState {
-    fn default() -> Self {
+impl ReversibleEnergyStorageState {
+    pub fn new() -> Self {
         Self {
             i: 1,
             // slightly less than max soc for default ReversibleEnergyStorage
             soc: uc::R * 0.95,
             soh: 1.0,
-            eta: Default::default(),
-            pwr_prop_out_max: Default::default(),
-            pwr_regen_out_max: Default::default(),
-            pwr_disch_max: Default::default(),
-            pwr_charge_max: Default::default(),
-            pwr_cat_max: Default::default(),
-            pwr_out_electrical: Default::default(),
-            pwr_out_propulsion: Default::default(),
-            pwr_aux: Default::default(),
-            pwr_out_chemical: Default::default(),
-            pwr_loss: Default::default(),
-            energy_out_electrical: Default::default(),
-            energy_out_propulsion: Default::default(),
-            energy_aux: Default::default(),
-            energy_out_chemical: Default::default(),
-            energy_loss: Default::default(),
             max_soc: uc::R * 1.0,
             soc_hi_ramp_start: uc::R * 1.0,
             min_soc: si::Ratio::ZERO,
             soc_lo_ramp_start: si::Ratio::ZERO,
             temperature_celsius: 45.0,
+            ..Default::default()
         }
     }
 }

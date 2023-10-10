@@ -264,10 +264,10 @@ impl ElectricMachine {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec)]
 #[pyo3_api]
 pub struct ElectricMachineState {
-    /// index
+    /// time step index
     pub i: usize,
     /// Component efficiency based on current power demand.
     pub eta: si::Ratio,
@@ -309,25 +309,11 @@ pub struct ElectricMachineState {
     pub energy_loss: si::Energy,
 }
 
-impl Default for ElectricMachineState {
-    fn default() -> Self {
+impl ElectricMachineState {
+    pub fn new() -> Self {
         Self {
             i: 1,
-            eta: Default::default(),
-            pwr_out_req: Default::default(),
-            pwr_mech_prop_out: Default::default(),
-            pwr_elec_prop_in: Default::default(),
-            pwr_mech_out_max: Default::default(),
-            pwr_mech_regen_max: Default::default(),
-            pwr_elec_dyn_brake: Default::default(),
-            pwr_mech_dyn_brake: Default::default(),
-            pwr_loss: Default::default(),
-            pwr_rate_out_max: Default::default(),
-            energy_elec_prop_in: Default::default(),
-            energy_mech_prop_out: Default::default(),
-            energy_elec_dyn_brake: Default::default(),
-            energy_mech_dyn_brake: Default::default(),
-            energy_loss: Default::default(),
+            ..Default::default()
         }
     }
 }

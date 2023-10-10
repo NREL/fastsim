@@ -674,39 +674,45 @@ impl VehicleTrait for Vehicle {
 }
 
 /// Vehicle state for current time step
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default)]
 #[pyo3_api]
 pub struct VehicleState {
+    /// time step index
     pub i: usize,
+
+    // power and fields
     /// maximum forward propulsive power vehicle can produce
     pub pwr_out_max: si::Power,
     /// maximum regen power vehicle can absorb at the wheel
     pub pwr_regen_max: si::Power,
     /// actual wheel power achieved
     pub pwr_out: si::Power,
-    /// time varying aux load
-    pub pwr_aux: si::Power,
-    //todo: add variable for statemachine pwr_out_prev,
-    //time_at_or_below_idle, time_in_engine_state
     /// integral of [Self::pwr_out]
     pub energy_out: si::Energy,
+    /// time varying aux load
+    pub pwr_aux: si::Power,
     /// integral of [Self::pwr_aux]
     pub energy_aux: si::Energy,
-    // pub force_max: si::Mass,
-}
-
-impl Default for VehicleState {
-    fn default() -> Self {
-        Self {
-            i: 1,
-            pwr_out_max: Default::default(),
-            pwr_out: Default::default(),
-            pwr_regen_max: Default::default(),
-            energy_out: Default::default(),
-            pwr_aux: Default::default(),
-            energy_aux: Default::default(),
-        }
-    }
+    /// Power applied to aero drag
+    pub pwr_drag: si::Power,
+    /// integral of [Self::pwr_drag]
+    pub energy_drag: si::Energy,
+    /// Power applied to acceleration (includes deceleration)
+    pub pwr_accel: si::Power,
+    /// integral of [Self::pwr_accel]
+    pub energy_accel: si::Energy,
+    /// Power applied to grade ascent
+    pub pwr_ascent: si::Power,
+    /// integral of [Self::pwr_ascent]
+    pub energy_ascent: si::Energy,
+    /// Power applied to rolling resistance
+    pub pwr_rr: si::Power,
+    /// integral of [Self::pwr_rr]
+    pub energy_rr: si::Energy,
+    /// Total braking power
+    pub pwr_brake: si::Power,
+    /// integral of [Self::pwr_brake]
+    pub energy_brake: si::Energy,
 }
 
 #[cfg(test)]
@@ -725,6 +731,7 @@ pub(crate) mod tests {
                 .unwrap();
         // uncomment this if the fastsim-3 version needs to be rewritten
         // veh.to_file("2012_Ford_Fusion.yaml").unwrap();
+        #[allow(clippy::let_and_return)]
         veh
     }
 }

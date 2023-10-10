@@ -272,10 +272,10 @@ impl FuelConverter {
     impl_get_set_eta_range!();
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec)]
 #[pyo3_api]
 pub struct FuelConverterState {
-    /// iteration counter
+    /// time step index
     pub i: usize,
     /// max power fc can produce at current time
     pub pwr_out_max: si::Power,
@@ -303,22 +303,12 @@ pub struct FuelConverterState {
     pub fc_on: bool,
 }
 
-impl Default for FuelConverterState {
-    fn default() -> Self {
+impl FuelConverterState {
+    pub fn new() -> Self {
         Self {
             i: 1,
-            pwr_out_max: Default::default(),
-            eta: Default::default(),
-            pwr_fuel: Default::default(),
-            pwr_out: Default::default(),
-            pwr_aux: Default::default(),
-            pwr_loss: Default::default(),
-            pwr_idle_fuel: Default::default(),
-            energy_fuel: Default::default(),
-            energy_brake: Default::default(),
-            energy_loss: Default::default(),
-            energy_idle_fuel: Default::default(),
             fc_on: true,
+            ..Default::default()
         }
     }
 }

@@ -103,6 +103,26 @@ impl SerdeAPI for Cycle {
 
         Ok(())
     }
+
+    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+        // check if the extension is csv, and if it is, then call Self::from_csv_file
+        let pathbuf = PathBuf::from(filename);
+        let file = File::open(filename)?;
+        let extension = pathbuf.extension().unwrap().to_str().unwrap();
+        let mut cyc = match extension {
+            "yaml" => Ok(serde_yaml::from_reader(file)?),
+            "json" => Ok(serde_json::from_reader(file)?),
+            "csv" => Ok(Self::from_csv_file(filename)?),
+            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+        };
+
+        match &mut cyc {
+            Ok(cyc) => cyc.init()?,
+            Err(_) => (),
+        }
+
+        cyc
+    }
 }
 
 impl Cycle {
@@ -147,6 +167,34 @@ impl Cycle {
             _ => {}
         }
         self.speed.push(element.speed);
+        Ok(())
+    }
+
+    pub fn extend(&mut self, vec: Vec<CycleElement>) -> anyhow::Result<()> {
+        self.time.extend(vec.iter().map(|x| x.time).clone());
+        todo!();
+        // self.time.extend(vec.iter().map(|x| x.time).clone());
+        // match (&mut self.grade, vec.grade) {
+        //     (Some(grade_mut), Some(grade)) => grade_mut.push(grade),
+        //     (None, Some(_)) => {
+        //         bail!("Element and Cycle `grade` fields must both be `Some` or `None`")
+        //     }
+        //     (Some(_), None) => {
+        //         bail!("Element and Cycle `grade` fields must both be `Some` or `None`")
+        //     }
+        //     _ => {}
+        // }
+        // match (&mut self.pwr_max_chrg, vec.pwr_max_charge) {
+        //     (Some(pwr_max_chrg_mut), Some(pwr_max_chrg)) => pwr_max_chrg_mut.push(pwr_max_chrg),
+        //     (None, Some(_)) => {
+        //         bail!("Element and Cycle `pwr_max_chrg` fields must both be `Some` or `None`")
+        //     }
+        //     (Some(_), None) => {
+        //         bail!("Element and Cycle `pwr_max_chrg` fields must both be `Some` or `None`")
+        //     }
+        //     _ => {}
+        // }
+        // self.speed.push(vec.speed);
         Ok(())
     }
 
@@ -206,7 +254,7 @@ pub struct CycleElement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn test_cyc_len_2() -> Cycle {
+    fn mock_cyc_len_2() -> Cycle {
         let mut cyc = Cycle {
             init_elev: None,
             time: (0..=2).map(|x| (x as f64) * uc::S).collect(),
@@ -222,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_init() {
-        let cyc = test_cyc_len_2();
+        let cyc = mock_cyc_len_2();
         assert_eq!(
             cyc.dist,
             vec![0., 1., 5.] // meters
