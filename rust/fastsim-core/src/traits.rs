@@ -23,7 +23,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let file = PathBuf::from(filename);
         match file
             .extension()
-            .ok_or_else(|| anyhow!("File extension not specified"))?
+            .ok_or_else(|| anyhow!("Unable to parse file extension: {:?}", file))?
             .to_str()
             .unwrap()
         {
