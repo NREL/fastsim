@@ -723,7 +723,8 @@ pub(crate) mod tests {
         let veh =
             Vehicle::try_from(fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap())
                 .unwrap();
-        veh.to_file("2012_Ford_Fusion.yaml").unwrap();
+        // uncomment this if the fastsim-3 version needs to be rewritten
+        // veh.to_file("2012_Ford_Fusion.yaml").unwrap();
         veh
     }
 }
