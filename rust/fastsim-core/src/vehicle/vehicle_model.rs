@@ -713,12 +713,17 @@ impl Default for VehicleState {
 pub(crate) mod tests {
     use super::*;
     #[test]
-    fn test_load_fusion() {
-        let veh = test_conv_veh();
+    fn test_load_f2_fusion() {
+        _ = mock_f2_conv_veh();
     }
 
-    pub(crate) fn test_conv_veh() -> Vehicle {
-        let file_contents = include_str!("2012_Ford_Fusion.yaml");
-        Vehicle::from_yaml(file_contents).unwrap()
+    pub(crate) fn mock_f2_conv_veh() -> Vehicle {
+        let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
+        use fastsim_2::traits::SerdeAPI;
+        let veh =
+            Vehicle::try_from(fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap())
+                .unwrap();
+        veh.to_file("2012_Ford_Fusion.yaml").unwrap();
+        veh
     }
 }
