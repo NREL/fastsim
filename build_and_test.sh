@@ -3,4 +3,4 @@
 (cd rust/fastsim-cli/ && cargo test) && \
 pip install -qe ".[dev]" && \
 pytest -v python/fastsim/tests/
-(cd python/fastsim/demos/ && python run_all_demos.py)
+(cd python/fastsim/demos/ && python run_all.py)
