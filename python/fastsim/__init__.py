@@ -57,14 +57,14 @@ if has_demos:
             #need a way to get the "basename" for the online demos files as well for this to work
             if f == os.path.basename(file.replace('\\', '/')): #necessary to ensure command works on all operating systems
                 already_downloaded = True
-                print('{} = {} already downloaded'.format(file, f)) #placeholder until I figure out how to download the file
+                print('{} = {} already downloaded'.format(file, f))
                 break
         if already_downloaded ==  False:
             #download file
-            print('{} != {} needs downloading'.format(file, f)) #placeholder under I figure out how to download the folder
+            print('{} != {} needs downloading'.format(file, f)) #placeholder under I figure out how to download the file
 else:
     #just download demos folder
-    print('demos folder needs downloading')
+    print('demos folder needs downloading') #placeholder until I figure out how to download the file
 
 __doc__ += "\nhttps://pypi.org/project/fastsim/"
 __doc__ += "\nhttps://www.nrel.gov/transportation/fastsim.html"
