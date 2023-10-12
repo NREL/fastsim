@@ -1,6 +1,6 @@
 import pathlib
 
-p = pathlib.Path('run_all.py').parent
+p = pathlib.Path(__file__).parent
 
 for file in p.glob('*demo*.py'):
     with open(file) as f:
