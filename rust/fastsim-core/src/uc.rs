@@ -81,17 +81,3 @@ unit_const!(KELVIN, ThermodynamicTemperature, 1.0);
 unit_const!(KELVIN_INT, TemperatureInterval, 1.0);
 unit_const!(M2PS2K, SpecificHeatCapacity, 1.0);
 unit_const!(PASCAL, Pressure, 1.0);
-
-// TODO: make this variable
-pub fn rho_air() -> MassDensity {
-    KGPM3 * 1.225
-}
-
-pub fn get_rho_air(temperature: ThermodynamicTemperature, elevation: Length) -> MassDensity {
-    let cur_elevation_std_temp = (15.04 - 0.00649 * elevation.get::<meter>() + 273.15) * KELVIN;
-    let cur_pressure = (101.29e3 * PASCAL)
-        * ((cur_elevation_std_temp / (288.08 * KELVIN))
-            .get::<ratio>()
-            .powf(5.256));
-    cur_pressure / (287.0 * M2PS2K) / temperature
-}

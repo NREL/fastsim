@@ -54,11 +54,13 @@ impl BatteryElectricVehicle {
         }
         Ok(())
     }
-}
 
-impl VehicleTrait for Box<BatteryElectricVehicle> {
-    fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
-        // TODO
+    pub fn get_cur_pwr_max_out(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
+        todo!();
         // self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
         // self.e_machine
         //     .set_cur_pwr_max_out(self.res.state.pwr_prop_out_max, None)?;
@@ -70,14 +72,5 @@ impl VehicleTrait for Box<BatteryElectricVehicle> {
         // self.e_machine.set_pwr_rate_out_max(
         //     (self.e_machine.state.pwr_mech_out_max - self.e_machine.state.pwr_mech_prop_out) / dt,
         // );
-        Ok(())
-    }
-
-    fn save_state(&mut self) {
-        self.save_state();
-    }
-
-    fn step(&mut self) {
-        self.step()
     }
 }

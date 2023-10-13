@@ -273,14 +273,14 @@ mod tests {
         let cyc = mock_cyc_len_2();
         assert_eq!(
             cyc.dist,
-            vec![0., 1., 5.] // meters
+            [0., 1., 5.] // meters
                 .iter()
                 .map(|x| *x * uc::M)
                 .collect::<Vec<si::Length>>()
         );
         assert_eq!(
             cyc.elev,
-            vec![121.92, 121.93, 122.03] // meters
+            [121.92, 121.93, 122.03] // meters
                 .iter()
                 .map(|x| *x * uc::M)
                 .collect::<Vec<si::Length>>()

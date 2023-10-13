@@ -20,6 +20,7 @@ pub mod traits;
 pub mod uc;
 pub mod utils;
 pub mod vehicle;
+pub mod air_properties;
 
 // these might not get used
 pub mod combo_error;

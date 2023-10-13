@@ -231,7 +231,7 @@ impl ElectricMachine {
 
     /// Set current max possible output power, `pwr_mech_out_max`,
     /// given `pwr_in_max` from upstream component.
-    fn set_cur_pwr_max_out(
+    pub fn set_cur_pwr_max_out(
         &mut self,
         pwr_in_max: si::Power,
         pwr_aux: Option<si::Power>,
@@ -254,7 +254,7 @@ impl ElectricMachine {
 
     /// Set current power out max ramp rate, `pwr_rate_out_max` given `pwr_rate_in_max`
     /// from upstream component.  
-    fn set_pwr_rate_out_max(&mut self, pwr_rate_in_max: si::PowerRate) {
+    pub fn set_pwr_rate_out_max(&mut self, pwr_rate_in_max: si::PowerRate) {
         self.state.pwr_rate_out_max = pwr_rate_in_max
             * if self.state.eta > si::Ratio::ZERO {
                 self.state.eta

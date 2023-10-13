@@ -6,7 +6,6 @@ pub struct ConventionalVehicle {
     pub fs: FuelStorage,
     #[has_state]
     pub fc: FuelConverter,
-    /// Transmission efficiency
     pub trans_eff: si::Ratio,
 }
 
@@ -23,22 +22,16 @@ impl ConventionalVehicle {
             .solve_energy_consumption(pwr_out_req, pwr_aux, fc_on, dt, assert_limits)?;
         Ok(())
     }
-}
 
-impl VehicleTrait for Box<ConventionalVehicle> {
-    /// returns current max power
-    fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+    /// # Arguments
+    /// - pwr_aux: amount of auxilliary power required from engine
+    /// - dt: time step size
+    pub fn get_cur_pwr_max_out(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
         self.fc.set_cur_pwr_out_max(dt)?;
-        Ok(())
-    }
-
-    fn save_state(&mut self) {
-        self.fs.save_state();
-        self.fc.save_state();
-    }
-
-    fn step(&mut self) {
-        self.fs.step();
-        self.fc.step();
+        Ok((self.fc.state.pwr_out_max - pwr_aux) * self.trans_eff)
     }
 }

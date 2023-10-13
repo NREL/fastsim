@@ -12,7 +12,7 @@ use super::*;
     //     Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
     // }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods, SerdeAPI)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, SerdeAPI)]
 pub struct FuelStorage {
     /// max power output
     pub pwr_out_max: si::Power,
@@ -29,6 +29,8 @@ pub struct FuelStorage {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
     pub mass: Option<si::Mass>,
+    // TODO: add state to track fuel level and make sure mass changes propagate up to vehicle level,
+    // which should then include vehicle mass in state
 }
 
 impl Mass for FuelStorage {

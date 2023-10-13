@@ -15,17 +15,12 @@ pub struct HybridElectricVehicle {
 
 impl SerdeAPI for HybridElectricVehicle {}
 
-impl VehicleTrait for Box<HybridElectricVehicle> {
-    fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+impl HybridElectricVehicle {
+    pub fn get_cur_pwr_max_out(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
         todo!();
-        Ok(())
-    }
-
-    fn save_state(&mut self) {
-        self.deref_mut().save_state();
-    }
-
-    fn step(&mut self) {
-        self.deref_mut().step()
     }
 }

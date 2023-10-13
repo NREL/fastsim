@@ -1,148 +1,5 @@
 use super::*;
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
-pub enum PowertrainType {
-    ConventionalVehicle(Box<ConventionalVehicle>),
-    HybridElectricVehicle(Box<HybridElectricVehicle>),
-    BatteryElectricVehicle(Box<BatteryElectricVehicle>),
-    // TODO: add PHEV here
-}
-
-impl PowertrainType {
-    pub fn fuel_converter(&self) -> Option<&FuelConverter> {
-        match self {
-            PowertrainType::ConventionalVehicle(conv) => Some(&conv.fc),
-            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.fc),
-            PowertrainType::BatteryElectricVehicle(_) => None,
-        }
-    }
-
-    pub fn fuel_converter_mut(&mut self) -> Option<&mut FuelConverter> {
-        match self {
-            PowertrainType::ConventionalVehicle(conv) => Some(&mut conv.fc),
-            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.fc),
-            PowertrainType::BatteryElectricVehicle(_) => None,
-        }
-    }
-
-    pub fn set_fuel_converter(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
-        match self {
-            PowertrainType::ConventionalVehicle(conv) => {
-                conv.fc = fc;
-                Ok(())
-            }
-            PowertrainType::HybridElectricVehicle(hev) => {
-                hev.fc = fc;
-                Ok(())
-            }
-            PowertrainType::BatteryElectricVehicle(_) => bail!("BEL has no FuelConverter."),
-        }
-    }
-
-    pub fn reversible_energy_storage(&self) -> Option<&ReversibleEnergyStorage> {
-        match self {
-            PowertrainType::ConventionalVehicle(_) => None,
-            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.res),
-            PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.res),
-        }
-    }
-
-    pub fn reversible_energy_storage_mut(&mut self) -> Option<&mut ReversibleEnergyStorage> {
-        match self {
-            PowertrainType::ConventionalVehicle(_) => None,
-            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.res),
-            PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.res),
-        }
-    }
-
-    pub fn set_reversible_energy_storage(
-        &mut self,
-        res: ReversibleEnergyStorage,
-    ) -> anyhow::Result<()> {
-        match self {
-            PowertrainType::ConventionalVehicle(_) => {
-                bail!("Conventional has no ReversibleEnergyStorage.")
-            }
-            PowertrainType::HybridElectricVehicle(veh) => {
-                veh.res = res;
-                Ok(())
-            }
-            PowertrainType::BatteryElectricVehicle(veh) => {
-                veh.res = res;
-                Ok(())
-            }
-        }
-    }
-
-    pub fn e_machine(&self) -> Option<&ElectricMachine> {
-        match self {
-            PowertrainType::ConventionalVehicle(_conv) => None,
-            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.e_machine),
-            PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.e_machine),
-        }
-    }
-
-    pub fn e_machine_mut(&mut self) -> Option<&mut ElectricMachine> {
-        match self {
-            PowertrainType::ConventionalVehicle(_conv) => None,
-            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.e_machine),
-            PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.e_machine),
-        }
-    }
-
-    pub fn set_e_machine(&mut self, e_machine: ElectricMachine) -> anyhow::Result<()> {
-        match self {
-            PowertrainType::ConventionalVehicle(_conv) => {
-                Err(anyhow!("ConventionalVehicle has no `e_machine`"))
-            }
-            PowertrainType::HybridElectricVehicle(hev) => {
-                hev.e_machine = e_machine;
-                Ok(())
-            }
-            PowertrainType::BatteryElectricVehicle(bev) => {
-                bev.e_machine = e_machine;
-                Ok(())
-            }
-        }
-    }
-}
-
-impl VehicleTrait for PowertrainType {
-    fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
-        match self {
-            Self::ConventionalVehicle(conv) => conv.set_cur_pwr_max_out(pwr_aux, dt)?,
-            Self::HybridElectricVehicle(hev) => hev.set_cur_pwr_max_out(pwr_aux, dt)?,
-            Self::BatteryElectricVehicle(bev) => bev.set_cur_pwr_max_out(pwr_aux, dt)?,
-        }
-        Ok(())
-    }
-
-    fn save_state(&mut self) {
-        match self {
-            Self::ConventionalVehicle(conv) => conv.save_state(),
-            Self::HybridElectricVehicle(hev) => hev.save_state(),
-            Self::BatteryElectricVehicle(bev) => bev.save_state(),
-        }
-    }
-
-    fn step(&mut self) {
-        match self {
-            Self::ConventionalVehicle(conv) => conv.step(),
-            Self::HybridElectricVehicle(hev) => hev.step(),
-            Self::BatteryElectricVehicle(bev) => bev.step(),
-        }
-    }
-}
-
-impl std::string::ToString for PowertrainType {
-    fn to_string(&self) -> String {
-        match self {
-            PowertrainType::ConventionalVehicle(_) => String::from("Conv"),
-            PowertrainType::HybridElectricVehicle(_) => String::from("HEV"),
-            PowertrainType::BatteryElectricVehicle(_) => String::from("BEV"),
-        }
-    }
-}
+use crate::air_properties::*;
 
 /// Possible aux load power sources
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
@@ -237,18 +94,19 @@ pub enum DriveTypes {
     //     Ok(self.mass()?.map(|m| m))
     // }
 )]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 /// Struct for simulating vehicle
 pub struct Vehicle {
     /// Vehicle name
     name: String,
     /// Year manufactured
     year: u32,
+    #[has_state]
     #[api(skip_get, skip_set)]
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub pt_type: PowertrainType,
     /// Aerodynamic drag coefficient
-    pub drag_coeff: si::Ratio,
+    pub drag_coef: si::Ratio,
     /// Projected frontal area for drag calculations
     pub frontal_area: si::Area,
     /// Vehicle center of mass height
@@ -440,7 +298,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             name: veh.scenario_name,
             year: veh.veh_year,
             pt_type,
-            drag_coeff: veh.drag_coef * uc::R,
+            drag_coef: veh.drag_coef * uc::R,
             frontal_area: veh.frontal_area_m2 * uc::M2,
             glider_mass: Some(veh.glider_kg * uc::KG),
             cg_height: veh.veh_cg_m * uc::M,
@@ -582,33 +440,6 @@ impl Vehicle {
         }
     }
 
-    /// Solves current time step
-    /// # Arguments
-    /// - `speed`: prescribed speed
-    /// - `dt`: time step size
-    pub fn solve_step(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
-        self.set_cur_pwr_max_out(self.pwr_aux, dt)?;
-        self.get_req_pwr(speed, dt)?;
-        self.set_ach_speed(dt)?;
-        Ok(())
-    }
-
-    /// Sets power required for given prescribed speed
-    /// # Arguments
-    /// - `speed`: prescribed or achieved speed
-    /// - `dt`: time step size
-    pub fn get_req_pwr(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<si::Power> {
-        Ok(uc::W * 666.)
-    }
-
-    /// Sets achieved speed based on known current max power
-    /// # Arguments
-    /// - `dt`: time step size
-    pub fn set_ach_speed(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        todo!();
-        Ok(())
-    }
-
     /// Given required power output and time step, solves for energy consumption
     /// # Arguments
     /// - `pwr_out_req`: float, output brake power required from fuel converter.
@@ -649,26 +480,9 @@ impl Vehicle {
         self.state.energy_aux += self.state.pwr_aux * dt;
         Ok(())
     }
-}
 
-impl VehicleTrait for Vehicle {
-    fn step(&mut self) {
-        self.pt_type.step();
-        self.state.i += 1;
-    }
-
-    fn save_state(&mut self) {
-        self.pt_type.save_state();
-        if let Some(interval) = self.save_interval {
-            if self.state.i % interval == 0 || self.state.i == 1 {
-                self.history.push(self.state);
-            }
-        }
-    }
-
-    fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
-        self.pt_type.set_cur_pwr_max_out(pwr_aux, dt)?;
-
+    pub fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+        self.state.pwr_out_max = self.pt_type.get_cur_pwr_max_out(pwr_aux, dt)?;
         Ok(())
     }
 }
@@ -709,10 +523,20 @@ pub struct VehicleState {
     pub pwr_rr: si::Power,
     /// integral of [Self::pwr_rr]
     pub energy_rr: si::Energy,
+    /// Power applied to wheel inertia
+    pub pwr_whl_inertia: si::Power,
+    /// integral of [Self::pwr_whl_inertia]
+    pub energy_whl_inertia: si::Energy,
     /// Total braking power
     pub pwr_brake: si::Power,
     /// integral of [Self::pwr_brake]
     pub energy_brake: si::Energy,
+    /// whether powertrain can achieve power demand
+    pub cyc_met: bool,
+    /// actual achieved speed
+    pub speed_ach: si::Velocity,
+    /// actual achieved speed in previous time step
+    pub speed_ach_prev: si::Velocity,
 }
 
 #[cfg(test)]

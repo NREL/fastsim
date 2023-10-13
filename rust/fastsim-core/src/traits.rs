@@ -86,7 +86,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
 
     /// json deserialization method.
     fn from_json(json_str: &str) -> Result<Self, anyhow::Error> {
-        Ok(serde_json::from_str(json_str)?)
+        let mut json_de: Self = serde_json::from_str(json_str)?;
+        json_de.init();
+        Ok(json_de)
     }
 
     /// yaml serialization method.
@@ -96,7 +98,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
 
     /// yaml deserialization method.
     fn from_yaml(yaml_str: &str) -> Result<Self, anyhow::Error> {
-        Ok(serde_yaml::from_str(yaml_str)?)
+        let mut yaml_de: Self = serde_yaml::from_str(yaml_str)?;
+        yaml_de.init();
+        Ok(yaml_de)
     }
 
     /// bincode serialization method.
@@ -106,7 +110,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
 
     /// bincode deserialization method.
     fn from_bincode(encoded: &[u8]) -> Result<Self, anyhow::Error> {
-        Ok(deserialize(encoded)?)
+        let mut bincode_de: Self = deserialize(encoded)?;
+        bincode_de.init();
+        Ok(bincode_de)
     }
 }
 
@@ -129,11 +135,21 @@ impl Diff for Vec<f64> {
     fn diff(&self) -> Vec<f64> {
         self.windows(2)
             .map(|vs| {
-                let [x, y] = vs else {unreachable!()};
+                let [x, y] = vs else { unreachable!() };
                 y - x
             })
             .collect()
     }
+}
+
+/// Trait that provides method for saving state
+pub trait SaveState {
+    fn save_state(&mut self) {}
+}
+
+/// Trait that provides method for stepping index counter
+pub trait Step {
+    fn step(&mut self) {}
 }
 
 #[cfg(test)]

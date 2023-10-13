@@ -309,7 +309,7 @@ impl ReversibleEnergyStorage {
         charge_buffer: Option<si::Energy>,
         discharge_buffer: Option<si::Energy>,
     ) -> anyhow::Result<()> {
-        let mut state = &mut self.state;
+        let state = &mut self.state;
 
         if self.soc_hi_ramp_start.is_none() {
             self.soc_hi_ramp_start = Some(self.max_soc - 0.05 * uc::R);
@@ -377,7 +377,7 @@ impl ReversibleEnergyStorage {
         pwr_aux_req: si::Power,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let mut state = &mut self.state;
+        let state = &mut self.state;
 
         ensure!(
             state.soc <= state.max_soc || pwr_prop_req >= si::Power::ZERO,
