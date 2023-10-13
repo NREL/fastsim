@@ -6,7 +6,6 @@ use crate::imports::*;
 use crate::proc_macros::add_pyo3_api;
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
-use anyhow::Context;
 use rayon::prelude::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
