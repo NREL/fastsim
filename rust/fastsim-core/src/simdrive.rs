@@ -43,7 +43,7 @@ impl SimDrive {
         let speed_prev = self.veh.state.speed_ach_prev;
         self.veh.state.pwr_accel = self.veh.mass.unwrap() / (2.0 * dt)
             * (speed.powi(typenum::P2::new()) - speed_prev.powi(typenum::P2::new()));
-        self.veh.state.pwr_ascent = uc::ACC_GRAV
+            self.veh.state.pwr_ascent = uc::ACC_GRAV
             * match &self.cyc.grade {
                 Some(grade) => grade[i],
                 None => uc::R * 0.,
