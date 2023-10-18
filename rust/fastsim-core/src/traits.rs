@@ -63,11 +63,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(file_de)
     }
 
-    // /// JSON serialization method
-    // fn to_json(&self) -> anyhow::Result<String> {
-    //     Ok(serde_json::to_string(&self)?)
-    // }
-    /// JSON serialization method.
+    /// JSON serialization method
     fn to_json(&self) -> anyhow::Result<String> {
         Ok(serde_json::to_string(&self)?)
     }
