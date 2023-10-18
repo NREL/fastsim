@@ -240,7 +240,7 @@ fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usiz
             } else if query >= &axis[axis_size - 1] {
                 Ok((axis_size - 1, axis_size - 1))
             } else {
-                bail!("Unable to find where the query fits in the values, check grid.")
+                anyhow::bail!("Unable to find where the query fits in the values, check grid.")
             }
         }
     }

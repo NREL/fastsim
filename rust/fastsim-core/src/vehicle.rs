@@ -78,7 +78,7 @@ lazy_static! {
 
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
-    pub fn to_rust(&self) -> PyResult<Self> {
+    pub fn to_rust(&self) -> anyhow::Result<Self> {
         Ok(self.clone())
     }
 
@@ -677,12 +677,9 @@ impl RustVehicle {
     ///     - `fs_mass_kg`
     ///     - `veh_kg`
     ///     - `max_trac_mps2`
-    pub fn set_derived(&mut self) -> Result<(), anyhow::Error> {
+    pub fn set_derived(&mut self) -> anyhow::Result<()> {
         // Vehicle input validation
-        match self.validate() {
-            Ok(_) => (),
-            Err(e) => bail!(e),
-        };
+        self.validate()?;
 
         if self.scenario_name != "Template Vehicle for setting up data types" {
             if self.veh_pt_type == BEV {
@@ -975,8 +972,8 @@ impl RustVehicle {
         v
     }
 
-    pub fn from_json_str(filename: &str) -> Result<Self, anyhow::Error> {
-        let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
+    pub fn from_json_str(json_str: &str) -> anyhow::Result<Self> {
+        let mut veh_res: anyhow::Result<RustVehicle> = Ok(serde_json::from_str(json_str)?);
         veh_res.as_mut().unwrap().set_derived()?;
         veh_res
     }

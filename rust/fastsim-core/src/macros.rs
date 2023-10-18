@@ -37,11 +37,16 @@ macro_rules! print_to_py {
 #[macro_export]
 macro_rules! check_orphaned_and_set {
     ($struct_self: ident, $field: ident, $value: expr) => {
+        // TODO: This seems like it could be used instead, but raises an error
+        // anyhow::ensure!(!$struct_self.orphaned, utils::NESTED_STRUCT_ERR);
+        // $struct_self.$field = $value;
+        // Ok(())
+
         if !$struct_self.orphaned {
             $struct_self.$field = $value;
-            Ok(())
+            anyhow::Ok(())
         } else {
-            Err(anyhow!(utils::NESTED_STRUCT_ERR))
+            anyhow::bail!(utils::NESTED_STRUCT_ERR)
         }
     };
 }

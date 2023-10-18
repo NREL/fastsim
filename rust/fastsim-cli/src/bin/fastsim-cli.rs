@@ -290,7 +290,7 @@ pub fn main() {
             traceMissInMph: sdl.0.trace_miss_speed_mph,
             h2AndDiesel: None,
         };
-        println!("{}", res.to_json());
+        println!("{}", res.to_json().unwrap());
     } else if is_adopt_hd {
         let hd_cyc_filestring = include_str!(concat!(
             "..",
@@ -358,7 +358,7 @@ pub fn main() {
             traceMissInMph: sim_drive.trace_miss_speed_mps * MPH_PER_MPS,
             h2AndDiesel: h2_diesel_results,
         };
-        println!("{}", res.to_json());
+        println!("{}", res.to_json().unwrap());
     } else {
         let mut sim_drive = RustSimDrive::new(cyc, veh);
         // // this does nothing if it has already been called for the constructed `sim_drive`
@@ -520,7 +520,7 @@ fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
 
     parsed_data["stop_start"] = json!(false);
 
-    let adoptstring = ParsedValue(parsed_data).to_json();
+    let adoptstring = ParsedValue(parsed_data).to_json().unwrap();
 
     (adoptstring, fc_pwr_out_perc, hd_h2_diesel_ice_h2share)
 }

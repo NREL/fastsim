@@ -141,10 +141,7 @@ pub fn make_accel_trace_py() -> RustCycle {
     make_accel_trace()
 }
 
-pub fn get_net_accel(
-    sd_accel: &mut RustSimDrive,
-    scenario_name: &String,
-) -> Result<f64, anyhow::Error> {
+pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> anyhow::Result<f64> {
     log::debug!("running `sim_drive_accel`");
     sd_accel.sim_drive_accel(None, None)?;
     if sd_accel.mph_ach.iter().any(|&x| x >= 60.) {
@@ -163,7 +160,7 @@ pub fn get_net_accel(
 #[cfg(feature = "pyo3")]
 #[pyfunction(name = "get_net_accel")]
 /// pyo3 version of [get_net_accel]
-pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> PyResult<f64> {
+pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> anyhow::Result<f64> {
     let result = get_net_accel(sd_accel, &scenario_name.to_string())?;
     Ok(result)
 }
@@ -426,7 +423,7 @@ pub fn get_label_fe_py(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
     verbose: Option<bool>,
-) -> PyResult<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
+) -> anyhow::Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
     let result: (LabelFe, Option<HashMap<&str, RustSimDrive>>) =
         get_label_fe(veh, full_detail, verbose)?;
     Ok(result)
@@ -439,7 +436,7 @@ pub fn get_label_fe_phev(
     adj_params: &AdjCoef,
     sim_params: &RustSimDriveParams,
     props: &RustPhysicalProperties,
-) -> Result<LabelFePHEV, anyhow::Error> {
+) -> anyhow::Result<LabelFePHEV> {
     // PHEV-specific function for label fe.
     //
     // Arguments:
@@ -722,7 +719,7 @@ pub fn get_label_fe_phev(
         match *key {
             "udds" => phev_calcs.udds = phev_calc.clone(),
             "hwy" => phev_calcs.hwy = phev_calc.clone(),
-            &_ => return Err(anyhow!("No field for cycle {}", key)),
+            &_ => return Err(anyhow::anyhow!("No field for cycle {}", key)),
         };
     }
 
@@ -740,7 +737,7 @@ pub fn get_label_fe_phev_py(
     long_params: RustLongParams,
     sim_params: &RustSimDriveParams,
     props: RustPhysicalProperties,
-) -> Result<LabelFePHEV, anyhow::Error> {
+) -> anyhow::Result<LabelFePHEV> {
     let mut sd_mut = HashMap::new();
     for (key, value) in sd {
         sd_mut.insert(key, value);

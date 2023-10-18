@@ -108,15 +108,14 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         if !is_state_or_history {
             py_impl_block.extend::<TokenStream2>(quote! {
                 #[pyo3(name = "to_file")]
-                pub fn to_file_py(&self, filename: &str) -> PyResult<()> {
-                   Ok(self.to_file(filename)?)
+                pub fn to_file_py(&self, filepath: &str) -> anyhow::Result<()> {
+                   self.to_file(filepath)
                 }
 
                 #[classmethod]
                 #[pyo3(name = "from_file")]
-                pub fn from_file_py(_cls: &PyType, json_str:String) -> PyResult<Self> {
-                    // unwrap is ok here because it makes sense to stop execution if a file is not loadable
-                    Ok(Self::from_file(&json_str)?)
+                pub fn from_file_py(_cls: &PyType, filepath: &str) -> anyhow::Result<Self> {
+                    Self::from_file(filepath)
                 }
             });
         }
@@ -168,9 +167,9 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                         pub fn __str__(&self) -> String {
                             format!("{:?}", self.0)
                         }
-                        pub fn __getitem__(&self, idx: i32) -> PyResult<#contained_dtype> {
+                        pub fn __getitem__(&self, idx: i32) -> anyhow::Result<#contained_dtype> {
                             if idx >= self.0.len() as i32 {
-                                Err(PyIndexError::new_err("Index is out of bounds"))
+                                anyhow::bail!(PyIndexError::new_err("Index is out of bounds"))
                             } else if idx >= 0 {
                                 Ok(self.0[idx as usize].clone())
                             } else {
@@ -178,17 +177,17 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             }
                         }
                         pub fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype
-                            ) -> PyResult<()> {
-                            Err(PyNotImplementedError::new_err(
+                            ) -> anyhow::Result<()> {
+                            anyhow::bail!(PyNotImplementedError::new_err(
                                 "Setting value at index is not implemented.
                                 Run `tolist` method, modify value at index, and
                                 then set entire vector.",
                             ))
                         }
-                        pub fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
+                        pub fn tolist(&self) -> anyhow::Result<Vec<#contained_dtype>> {
                             Ok(#tolist_body)
                         }
-                        pub fn __list__(&self) -> PyResult<Vec<#contained_dtype>> {
+                        pub fn __list__(&self) -> anyhow::Result<Vec<#contained_dtype>> {
                             Ok(#tolist_body)
                         }
                         pub fn __len__(&self) -> usize {
@@ -214,7 +213,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     // py_impl_block.extend::<TokenStream2>(quote! {
     //     #[classmethod]
     //     #[pyo3(name = "default")]
-    //     pub fn default_py(_cls: &PyType) -> PyResult<Self> {
+    //     pub fn default_py(_cls: &PyType) -> anyhow::Result<Self> {
     //         Ok(Self::default())
     //     }
     // });
@@ -224,43 +223,43 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn __copy__(&self) -> Self {self.clone()}
         pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
 
-        /// json serialization method.
+        /// JSON serialization method.
         #[pyo3(name = "to_json")]
-        pub fn to_json_py(&self) -> PyResult<String> {
-            Ok(self.to_json())
+        pub fn to_json_py(&self) -> anyhow::Result<String> {
+            self.to_json()
         }
 
         #[classmethod]
-        /// json deserialization method.
+        /// JSON deserialization method.
         #[pyo3(name = "from_json")]
-        pub fn from_json_py(_cls: &PyType, json_str: &str) -> PyResult<Self> {
-            Ok(Self::from_json(json_str)?)
+        pub fn from_json_py(_cls: &PyType, json_str: &str) -> anyhow::Result<Self> {
+            Self::from_json(json_str)
         }
 
-        /// yaml serialization method.
+        /// YAML serialization method.
         #[pyo3(name = "to_yaml")]
-        pub fn to_yaml_py(&self) -> PyResult<String> {
-            Ok(self.to_yaml())
+        pub fn to_yaml_py(&self) -> anyhow::Result<String> {
+            self.to_yaml()
         }
 
         #[classmethod]
-        /// yaml deserialization method.
+        /// YAML deserialization method.
         #[pyo3(name = "from_yaml")]
-        pub fn from_yaml_py(_cls: &PyType, yaml_str: &str) -> PyResult<Self> {
-            Ok(Self::from_yaml(yaml_str)?)
+        pub fn from_yaml_py(_cls: &PyType, yaml_str: &str) -> anyhow::Result<Self> {
+            Self::from_yaml(yaml_str)
         }
 
         /// bincode serialization method.
         #[pyo3(name = "to_bincode")]
-        pub fn to_bincode_py<'py>(&self, py: Python<'py>) -> PyResult<&'py PyBytes> {
-            Ok(PyBytes::new(py, &self.to_bincode()))
+        pub fn to_bincode_py<'py>(&self, py: Python<'py>) -> anyhow::Result<&'py PyBytes> {
+            Ok(PyBytes::new(py, &self.to_bincode()?))
         }
 
         #[classmethod]
         /// bincode deserialization method.
         #[pyo3(name = "from_bincode")]
-        pub fn from_bincode_py(_cls: &PyType, encoded: &PyBytes) -> PyResult<Self> {
-            Ok(Self::from_bincode(encoded.as_bytes())?)
+        pub fn from_bincode_py(_cls: &PyType, encoded: &PyBytes) -> anyhow::Result<Self> {
+            Self::from_bincode(encoded.as_bytes())
         }
 
     });
@@ -331,11 +330,11 @@ pub fn impl_getters_and_setters(
             "orphaned" => {
                 impl_block.extend::<TokenStream2>(quote! {
                     #[getter]
-                    pub fn get_orphaned(&self) -> PyResult<bool> {
+                    pub fn get_orphaned(&self) -> anyhow::Result<bool> {
                         Ok(self.orphaned)
                     }
                     /// Reset the orphaned flag to false.
-                    pub fn reset_orphaned(&mut self) -> PyResult<()> {
+                    pub fn reset_orphaned(&mut self) -> anyhow::Result<()> {
                         self.orphaned = false;
                         Ok(())
                     }

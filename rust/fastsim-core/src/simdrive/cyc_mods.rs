@@ -38,7 +38,7 @@ impl RustSimDrive {
         extend_fraction: f64,          // 0.1
         blend_factor: f64,             // 0.0
         min_target_speed_m_per_s: f64, // 8.0
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         self.sim_params.idm_allow = true;
         if !by_microtrip {
             self.sim_params.idm_v_desired_m_per_s =
@@ -53,13 +53,13 @@ impl RustSimDrive {
                 };
         } else {
             if !(0.0..=1.0).contains(&blend_factor) {
-                return Err(anyhow!(
+                return Err(anyhow::anyhow!(
                     "blend_factor must be between 0 and 1 but got {}",
                     blend_factor
                 ));
             }
             if min_target_speed_m_per_s < 0.0 {
-                return Err(anyhow!(
+                return Err(anyhow::anyhow!(
                     "min_target_speed_m_per_s must be >= 0 but got {}",
                     min_target_speed_m_per_s
                 ));
@@ -73,7 +73,7 @@ impl RustSimDrive {
         }
         // Extend the duration of the base cycle
         if extend_fraction < 0.0 {
-            return Err(anyhow!(
+            return Err(anyhow::anyhow!(
                 "extend_fraction must be >= 0.0 but got {}",
                 extend_fraction
             ));
@@ -231,7 +231,7 @@ impl RustSimDrive {
             ),
         }
     }
-    pub fn set_time_dilation(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_time_dilation(&mut self, i: usize) -> anyhow::Result<()> {
         // if prescribed speed is zero, trace is met to avoid div-by-zero errors and other possible wackiness
         let mut trace_met = (self.cyc.dist_m().slice(s![0..(i + 1)]).sum()
             - self.dist_m.slice(s![0..(i + 1)]).sum())
@@ -962,7 +962,7 @@ impl RustSimDrive {
     /// Placeholder for method to impose coasting.
     /// Might be good to include logic for deciding when to coast.
     /// Solve for the next-step speed that will yield a zero roadload
-    pub fn set_coast_speed(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_coast_speed(&mut self, i: usize) -> anyhow::Result<()> {
         let tol = 1e-6;
         let v0 = self.mps_ach[i - 1];
         if v0 > tol && !self.impose_coast[i] && self.should_impose_coast(i) {

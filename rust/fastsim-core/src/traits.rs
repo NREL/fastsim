@@ -13,14 +13,14 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// # Argument:
     ///
-    /// * `filename`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
+    /// * `filepath`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
     /// supported
     ///
     /// # Returns:
     ///
     /// A Rust Result
-    fn to_file(&self, filename: &str) -> Result<(), anyhow::Error> {
-        let file = PathBuf::from(filename);
+    fn to_file(&self, filepath: &str) -> anyhow::Result<()> {
+        let file = PathBuf::from(filepath);
         match file.extension().unwrap().to_str().unwrap() {
             "json" => serde_json::to_writer(&File::create(file)?, self)?,
             "yaml" => serde_yaml::to_writer(&File::create(file)?, self)?,
@@ -35,62 +35,66 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// # Argument:
     ///
-    /// * `filename`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
+    /// * `filepath`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
     /// supported
     ///
     /// # Returns:
     ///
     /// A Rust Result wrapping data structure if method is called successfully; otherwise a dynamic
     /// Error.
-    fn from_file(filename: &str) -> Result<Self, anyhow::Error>
+    fn from_file(filepath: &str) -> anyhow::Result<Self>
     where
         Self: std::marker::Sized,
         for<'de> Self: Deserialize<'de>,
     {
-        let extension = Path::new(filename)
+        let extension = Path::new(filepath)
             .extension()
             .and_then(OsStr::to_str)
             .unwrap_or("");
 
-        let file = File::open(filename)?;
+        let file = File::open(filepath)?;
         // deserialized file
         let mut file_de: Self = match extension {
             "yaml" => serde_yaml::from_reader(file)?,
             "json" => serde_json::from_reader(file)?,
-            _ => bail!("Unsupported file extension {}", extension),
+            _ => anyhow::bail!("Unsupported file extension {}", extension),
         };
         file_de.init()?;
         Ok(file_de)
     }
 
-    /// json serialization method.
-    fn to_json(&self) -> String {
-        serde_json::to_string(&self).unwrap()
+    // /// JSON serialization method
+    // fn to_json(&self) -> anyhow::Result<String> {
+    //     Ok(serde_json::to_string(&self)?)
+    // }
+    /// JSON serialization method.
+    fn to_json(&self) -> anyhow::Result<String> {
+        Ok(serde_json::to_string(&self)?)
     }
 
-    /// json deserialization method.
-    fn from_json(json_str: &str) -> Result<Self, anyhow::Error> {
+    /// JSON deserialization method
+    fn from_json(json_str: &str) -> anyhow::Result<Self> {
         Ok(serde_json::from_str(json_str)?)
     }
 
-    /// yaml serialization method.
-    fn to_yaml(&self) -> String {
-        serde_yaml::to_string(&self).unwrap()
+    /// YAML serialization method
+    fn to_yaml(&self) -> anyhow::Result<String> {
+        Ok(serde_yaml::to_string(&self)?)
     }
 
-    /// yaml deserialization method.
-    fn from_yaml(yaml_str: &str) -> Result<Self, anyhow::Error> {
+    /// YAML deserialization method
+    fn from_yaml(yaml_str: &str) -> anyhow::Result<Self> {
         Ok(serde_yaml::from_str(yaml_str)?)
     }
 
-    /// bincode serialization method.
-    fn to_bincode(&self) -> Vec<u8> {
-        serialize(&self).unwrap()
+    /// bincode serialization method
+    fn to_bincode(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(bincode::serialize(&self)?)
     }
 
-    /// bincode deserialization method.
-    fn from_bincode(encoded: &[u8]) -> Result<Self, anyhow::Error> {
-        Ok(deserialize(encoded)?)
+    /// bincode deserialization method
+    fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
+        Ok(bincode::deserialize(encoded)?)
     }
 }
 

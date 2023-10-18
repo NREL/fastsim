@@ -351,7 +351,7 @@ pub fn extend_cycle(
 
 #[cfg(feature = "pyo3")]
 #[allow(unused)]
-pub fn register(_py: Python<'_>, m: &PyModule) -> Result<(), anyhow::Error> {
+pub fn register(_py: Python<'_>, m: &PyModule) -> anyhow::Result<()> {
     m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(accel_for_constant_jerk, m)?)?;
     m.add_function(wrap_pyfunction!(speed_for_constant_jerk, m)?)?;
@@ -484,7 +484,7 @@ impl RustCycleCache {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn __getnewargs__(&self) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
+    pub fn __getnewargs__(&self) -> anyhow::Result<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
         Ok((self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name))
     }
 
@@ -516,7 +516,7 @@ impl RustCycleCache {
         n: usize,
         jerk_m_per_s3: f64,
         accel0_m_per_s2: f64,
-    ) -> PyResult<f64> {
+    ) -> anyhow::Result<f64> {
         Ok(self.modify_by_const_jerk_trajectory(idx, n, jerk_m_per_s3, accel0_m_per_s2))
     }
 
@@ -526,12 +526,12 @@ impl RustCycleCache {
         brake_accel_m_per_s2: f64,
         idx: usize,
         dts_m: Option<f64>
-    ) -> PyResult<(f64, usize)> {
+    ) -> anyhow::Result<(f64, usize)> {
         Ok(self.modify_with_braking_trajectory(brake_accel_m_per_s2, idx, dts_m))
     }
 
     #[pyo3(name = "calc_distance_to_next_stop_from")]
-    pub fn calc_distance_to_next_stop_from_py(&self, distance_m: f64) -> PyResult<f64> {
+    pub fn calc_distance_to_next_stop_from_py(&self, distance_m: f64) -> anyhow::Result<f64> {
         Ok(self.calc_distance_to_next_stop_from(distance_m, None))
     }
 
@@ -540,17 +540,17 @@ impl RustCycleCache {
         &self,
         distance_start_m: f64,
         delta_distance_m: f64,
-    ) -> PyResult<f64> {
+    ) -> anyhow::Result<f64> {
         Ok(self.average_grade_over_range(distance_start_m, delta_distance_m, None))
     }
 
     #[pyo3(name = "build_cache")]
-    pub fn build_cache_py(&self) -> PyResult<RustCycleCache> {
+    pub fn build_cache_py(&self) -> anyhow::Result<RustCycleCache> {
         Ok(self.build_cache())
     }
 
     #[pyo3(name = "dt_s_at_i")]
-    pub fn dt_s_at_i_py(&self, i: usize) -> PyResult<f64> {
+    pub fn dt_s_at_i_py(&self, i: usize) -> anyhow::Result<f64> {
         if i == 0 {
             Ok(0.0)
         } else {
@@ -559,31 +559,31 @@ impl RustCycleCache {
     }
 
     #[getter]
-    pub fn get_mph(&self) -> PyResult<Vec<f64>> {
+    pub fn get_mph(&self) -> anyhow::Result<Vec<f64>> {
         Ok((&self.mps * crate::params::MPH_PER_MPS).to_vec())
     }
     #[setter]
-    pub fn set_mph(&mut self, new_value: Vec<f64>) -> PyResult<()> {
+    pub fn set_mph(&mut self, new_value: Vec<f64>) -> anyhow::Result<()> {
         self.mps = Array::from_vec(new_value) / MPH_PER_MPS;
         Ok(())
     }
     #[getter]
     /// array of time steps
-    pub fn get_dt_s(&self) -> PyResult<Vec<f64>> {
+    pub fn get_dt_s(&self) -> anyhow::Result<Vec<f64>> {
         Ok(self.dt_s().to_vec())
     }
     #[getter]
     /// cycle length
-    pub fn get_len(&self) -> PyResult<usize> {
+    pub fn get_len(&self) -> anyhow::Result<usize> {
         Ok(self.len())
     }
     #[getter]
     /// distance for each time step based on final speed
-    pub fn get_dist_m(&self) -> PyResult<Vec<f64>> {
+    pub fn get_dist_m(&self) -> anyhow::Result<Vec<f64>> {
         Ok(self.dist_m().to_vec())
     }
     #[getter]
-    pub fn get_delta_elev_m(&self) -> PyResult<Vec<f64>> {
+    pub fn get_delta_elev_m(&self) -> anyhow::Result<Vec<f64>> {
         Ok(self.delta_elev_m().to_vec())
     }
 )]
@@ -615,16 +615,16 @@ pub struct RustCycle {
 }
 
 impl SerdeAPI for RustCycle {
-    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
+    fn from_file(filepath: &str) -> anyhow::Result<Self> {
         // check if the extension is csv, and if it is, then call Self::from_csv_file
-        let pathbuf = PathBuf::from(filename);
-        let file = File::open(filename)?;
+        let pathbuf = PathBuf::from(filepath);
+        let file = File::open(filepath)?;
         let extension = pathbuf.extension().unwrap().to_str().unwrap();
         match extension {
             "yaml" => Ok(serde_yaml::from_reader(file)?),
             "json" => Ok(serde_json::from_reader(file)?),
-            "csv" => Ok(Self::from_csv_file(filename)?),
-            _ => Err(anyhow!("Unsupported file extension {}", extension)),
+            "csv" => Ok(Self::from_csv_file(filepath)?),
+            _ => anyhow::bail!("Unsupported file extension {}", extension),
         }
     }
 }
@@ -914,7 +914,7 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_csv_file(pathstr: &str) -> Result<Self, anyhow::Error> {
+    pub fn from_csv_file(pathstr: &str) -> anyhow::Result<Self> {
         let pathbuf = PathBuf::from(&pathstr);
 
         // create empty cycle to be populated
@@ -942,7 +942,7 @@ impl RustCycle {
     }
 
     // load a cycle from a string representation of a csv file
-    pub fn from_csv_string(data: &str, name: String) -> Result<Self, anyhow::Error> {
+    pub fn from_csv_string(data: &str, name: String) -> anyhow::Result<Self> {
         let mut cyc = Self {
             name,
             ..Self::default()
