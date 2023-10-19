@@ -197,43 +197,8 @@ pub fn get_label_fe(
     // load the cycles and intstantiate simdrive objects
     cyc.insert("accel", make_accel_trace());
 
-    #[cfg(not(windows))]
-    macro_rules! path_separator {
-        () => {
-            "/"
-        };
-    }
-
-    #[cfg(windows)]
-    macro_rules! path_separator {
-        () => {
-            r#"\"#
-        };
-    }
-
-    let udds_filestring = include_str!(concat!(
-        "..",
-        path_separator!(),
-        "resources",
-        path_separator!(),
-        "udds.csv"
-    ));
-    let hwy_filestring = include_str!(concat!(
-        "..",
-        path_separator!(),
-        "resources",
-        path_separator!(),
-        "hwfet.csv"
-    ));
-
-    cyc.insert(
-        "udds",
-        RustCycle::from_csv_string(udds_filestring, "udds".to_string())?,
-    );
-    cyc.insert(
-        "hwy",
-        RustCycle::from_csv_string(hwy_filestring, "hwfet".to_string())?,
-    );
+    cyc.insert("udds", RustCycle::from_csv_file("resources/udds.csv")?);
+    cyc.insert("hwy", RustCycle::from_csv_file("resources/hwfet.csv")?);
 
     // run simdrive for non-phev powertrains
     sd.insert("udds", RustSimDrive::new(cyc["udds"].clone(), veh.clone()));
@@ -719,7 +684,7 @@ pub fn get_label_fe_phev(
         match *key {
             "udds" => phev_calcs.udds = phev_calc.clone(),
             "hwy" => phev_calcs.hwy = phev_calc.clone(),
-            &_ => return Err(anyhow::anyhow!("No field for cycle {}", key)),
+            &_ => anyhow::bail!("No field for cycle {}", key),
         };
     }
 
@@ -758,9 +723,9 @@ mod simdrivelabel_tests {
     use super::*;
 
     #[test]
-    fn test_get_label_fe_conv() {
+    fn test_get_label_fe_conv() -> anyhow::Result<()> {
         let veh: vehicle::RustVehicle = vehicle::RustVehicle::mock_vehicle();
-        let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
+        let (mut label_fe, _) = get_label_fe(&veh, None, None)?;
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
         label_fe.veh = vehicle::RustVehicle::default();
@@ -800,10 +765,11 @@ mod simdrivelabel_tests {
         //     100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
         // );
 
-        assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
+        anyhow::ensure!(label_fe.approx_eq(&label_fe_truth, 1e-10));
+        Ok(())
     }
     #[test]
-    fn test_get_label_fe_phev() {
+    fn test_get_label_fe_phev() -> anyhow::Result<()> {
         let mut veh = vehicle::RustVehicle {
             props: RustPhysicalProperties {
                 air_density_kg_per_m3: 1.2,
@@ -946,9 +912,9 @@ mod simdrivelabel_tests {
             orphaned: false,
             ..Default::default()
         };
-        veh.set_derived().unwrap();
+        veh.set_derived()?;
 
-        let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
+        let (mut label_fe, _) = get_label_fe(&veh, None, None)?;
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
         label_fe.veh = vehicle::RustVehicle::default();
@@ -1162,15 +1128,16 @@ mod simdrivelabel_tests {
         };
 
         let tol = 1e-8;
-        assert!(label_fe.veh.approx_eq(&label_fe_truth.veh, tol));
-        assert!(
+        anyhow::ensure!(label_fe.veh.approx_eq(&label_fe_truth.veh, tol));
+        anyhow::ensure!(
             label_fe
                 .phev_calcs
                 .approx_eq(&label_fe_truth.phev_calcs, tol),
             "label_fe.phev_calcs: {:?}",
             &label_fe.phev_calcs
         );
-        assert!(label_fe.approx_eq(&label_fe_truth, tol));
+        anyhow::ensure!(label_fe.approx_eq(&label_fe_truth, tol));
+        Ok(())
     }
 }
 

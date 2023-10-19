@@ -34,9 +34,9 @@ pub fn calc_constant_jerk_trajectory(
     dr: f64,
     vr: f64,
     dt: f64,
-) -> (f64, f64) {
-    assert!(n > 1);
-    assert!(dr > d0);
+) -> anyhow::Result<(f64, f64)> {
+    anyhow::ensure!(n > 1);
+    anyhow::ensure!(dr > d0);
     let n = n as f64;
     let ddr = dr - d0;
     let dvr = vr - v0;
@@ -48,7 +48,7 @@ pub fn calc_constant_jerk_trajectory(
         - n * v0
         - ((1.0 / 6.0) * n * (n - 1.0) * (n - 2.0) * dt + 0.25 * n * (n - 1.0) * dt * dt) * k)
         / (0.5 * n * n * dt);
-    (k, a0)
+    Ok((k, a0))
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
@@ -527,7 +527,7 @@ impl RustCycleCache {
         idx: usize,
         dts_m: Option<f64>
     ) -> anyhow::Result<(f64, usize)> {
-        Ok(self.modify_with_braking_trajectory(brake_accel_m_per_s2, idx, dts_m))
+        self.modify_with_braking_trajectory(brake_accel_m_per_s2, idx, dts_m)
     }
 
     #[pyo3(name = "calc_distance_to_next_stop_from")]
@@ -859,10 +859,10 @@ impl RustCycle {
         brake_accel_m_per_s2: f64,
         i: usize,
         dts_m: Option<f64>,
-    ) -> (f64, usize) {
-        assert!(brake_accel_m_per_s2 < 0.0);
+    ) -> anyhow::Result<(f64, usize)> {
+        anyhow::ensure!(brake_accel_m_per_s2 < 0.0);
         if i >= self.time_s.len() {
-            return (*self.mps.last().unwrap(), 0);
+            return Ok((*self.mps.last().unwrap(), 0));
         }
         let v0 = self.mps[i - 1];
         let dt = self.dt_s_at_i(i);
@@ -878,7 +878,7 @@ impl RustCycle {
             None => -0.5 * v0 * v0 / brake_accel_m_per_s2,
         };
         if dts_m <= 0.0 {
-            return (v0, 0);
+            return Ok((v0, 0));
         }
         // time-to-stop (s)
         let tts_s = -v0 / brake_accel_m_per_s2;
@@ -886,11 +886,11 @@ impl RustCycle {
         let n: usize = (tts_s / dt).round() as usize;
         let n: usize = if n < 2 { 2 } else { n }; // need at least 2 steps
         let (jerk_m_per_s3, accel_m_per_s2) =
-            calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt);
-        (
+            calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)?;
+        Ok((
             self.modify_by_const_jerk_trajectory(i, n, jerk_m_per_s3, accel_m_per_s2),
             n,
-        )
+        ))
     }
 
     /// rust-internal time steps
@@ -914,15 +914,22 @@ impl RustCycle {
     }
 
     /// Load cycle from csv file
-    pub fn from_csv_file(pathstr: &str) -> anyhow::Result<Self> {
-        let pathbuf = PathBuf::from(&pathstr);
+    pub fn from_csv_file(filepath: &str) -> anyhow::Result<Self> {
+        let pathbuf = PathBuf::from(&filepath);
 
         // create empty cycle to be populated
         let mut cyc = Self::default();
 
         // unwrap is ok because if statement checks existence
-        let file = File::open(&pathbuf).unwrap();
-        let name = String::from(pathbuf.file_stem().unwrap().to_str().unwrap());
+        let file = File::open(&pathbuf)
+            .with_context(|| format!("File could not be opened: {filepath:?}"))?;
+        let name = String::from(
+            pathbuf
+                .file_stem()
+                .with_context(|| format!("Could not parse file stem: {filepath:?}"))?
+                .to_str()
+                .with_context(|| format!("File stem is not valid unicode: {filepath:?}"))?,
+        );
         cyc.name = name;
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(true)
@@ -944,7 +951,7 @@ impl RustCycle {
     // load a cycle from a string representation of a csv file
     pub fn from_csv_string(data: &str, name: String) -> anyhow::Result<Self> {
         let mut cyc = Self {
-            name,
+            name: String::from(name),
             ..Self::default()
         };
 
@@ -1058,13 +1065,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_dist() {
+    fn test_dist() -> anyhow::Result<()> {
         let cyc = RustCycle::test_cyc();
-        assert_eq!(cyc.dist_m().sum(), 45.0);
+        anyhow::ensure!(cyc.dist_m().sum() == 45.0);
+        Ok(())
     }
 
     #[test]
-    fn test_average_speeds_and_distances() {
+    fn test_average_speeds_and_distances() -> anyhow::Result<()> {
         let time_s = vec![0.0, 10.0, 30.0, 34.0, 40.0];
         let speed_mps = vec![0.0, 10.0, 10.0, 0.0, 0.0];
         let grade = Array::zeros(5).to_vec();
@@ -1073,31 +1081,33 @@ mod tests {
         let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
         let avg_mps = average_step_speeds(&cyc);
         let expected_avg_mps = Array::from_vec(vec![0.0, 5.0, 10.0, 5.0, 0.0]);
-        assert_eq!(expected_avg_mps.len(), avg_mps.len());
+        anyhow::ensure!(expected_avg_mps.len() == avg_mps.len());
         for (expected, actual) in expected_avg_mps.iter().zip(avg_mps.iter()) {
-            assert_eq!(expected, actual);
+            anyhow::ensure!(expected == actual);
         }
         let dist_m = trapz_step_distances(&cyc);
         let expected_dist_m = Array::from_vec(vec![0.0, 50.0, 200.0, 20.0, 0.0]);
-        assert_eq!(expected_dist_m.len(), dist_m.len());
+        anyhow::ensure!(expected_dist_m.len() == dist_m.len());
         for (expected, actual) in expected_dist_m.iter().zip(dist_m.iter()) {
-            assert_eq!(expected, actual);
+            anyhow::ensure!(expected == actual);
         }
+        Ok(())
     }
 
     #[test]
-    fn test_loading_a_cycle_from_the_filesystem() {
+    fn test_loading_a_cycle_from_the_filesystem() -> anyhow::Result<()> {
         let mut cyc_file_path = resources_path();
         cyc_file_path.push("cycles/udds.csv");
         let expected_udds_length: usize = 1370;
         let cyc = RustCycle::from_csv_file(cyc_file_path.as_os_str().to_str().unwrap()).unwrap();
-        assert_eq!(cyc.name, String::from("udds"));
+        anyhow::ensure!(cyc.name == String::from("udds"));
         let num_entries = cyc.time_s.len();
-        assert!(num_entries > 0);
-        assert_eq!(num_entries, cyc.time_s.len());
-        assert_eq!(num_entries, cyc.mps.len());
-        assert_eq!(num_entries, cyc.grade.len());
-        assert_eq!(num_entries, cyc.road_type.len());
-        assert_eq!(num_entries, expected_udds_length);
+        anyhow::ensure!(num_entries > 0);
+        anyhow::ensure!(num_entries == cyc.time_s.len());
+        anyhow::ensure!(num_entries == cyc.mps.len());
+        anyhow::ensure!(num_entries == cyc.grade.len());
+        anyhow::ensure!(num_entries == cyc.road_type.len());
+        anyhow::ensure!(num_entries == expected_udds_length);
+        Ok(())
     }
 }
