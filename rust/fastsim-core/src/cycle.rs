@@ -913,6 +913,11 @@ impl RustCycle {
         self.mps[i] * MPH_PER_MPS
     }
 
+    /// elevation change w.r.t. to initial
+    pub fn delta_elev_m(&self) -> Array1<f64> {
+        ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+    }
+
     /// Load cycle from csv file
     pub fn from_csv_file(filepath: &str) -> anyhow::Result<Self> {
         let pathbuf = PathBuf::from(&filepath);
@@ -943,13 +948,8 @@ impl RustCycle {
         Ok(cyc)
     }
 
-    /// elevation change w.r.t. to initial
-    pub fn delta_elev_m(&self) -> Array1<f64> {
-        ndarrcumsum(&(self.dist_m() * self.grade.clone()))
-    }
-
     // load a cycle from a string representation of a csv file
-    pub fn from_csv_string(data: &str, name: String) -> anyhow::Result<Self> {
+    pub fn from_csv_string(data: &str, name: &str) -> anyhow::Result<Self> {
         let mut cyc = Self {
             name: String::from(name),
             ..Self::default()
