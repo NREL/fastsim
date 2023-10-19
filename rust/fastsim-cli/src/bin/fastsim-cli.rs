@@ -121,9 +121,9 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
     fs_kwh_out_ach: &Vec<f64>,
     fc_pwr_out_perc: &Vec<f64>,
     h2share: &Vec<f64>,
-) -> H2AndDieselResults {
-    assert!(fc_kw_out_ach.len() == fs_kwh_out_ach.len());
-    assert!(fc_pwr_out_perc.len() == h2share.len());
+) -> anyhow::Result<H2AndDieselResults> {
+    anyhow::ensure!(fc_kw_out_ach.len() == fs_kwh_out_ach.len());
+    anyhow::ensure!(fc_pwr_out_perc.len() == h2share.len());
     let kwh_per_gallon_diesel = 37.95;
     let gge_per_kwh = 1.0 / kwh_per_gge;
     let mut total_diesel_kwh = 0.0;
@@ -149,7 +149,7 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
         total_diesel_gals += diesel_gals;
         total_diesel_gge += diesel_gge;
     }
-    H2AndDieselResults {
+    Ok(H2AndDieselResults {
         h2_kwh: total_h2_kwh,
         h2_gge: total_h2_gge,
         h2_mpgge: if total_h2_gge > 0.0 {
@@ -165,25 +165,25 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
         } else {
             0.0
         },
-    }
+    })
 }
 
-pub fn integrate_power_to_kwh(dts_s: &Vec<f64>, ps_kw: &Vec<f64>) -> Vec<f64> {
-    assert!(dts_s.len() == ps_kw.len());
+pub fn integrate_power_to_kwh(dts_s: &Vec<f64>, ps_kw: &Vec<f64>) -> anyhow::Result<Vec<f64>> {
+    anyhow::ensure!(dts_s.len() == ps_kw.len());
     let mut energy_kwh = Vec::<f64>::with_capacity(dts_s.len());
     for idx in 0..dts_s.len() {
         let dt_s = dts_s[idx];
         let p_kw = ps_kw[idx];
         energy_kwh.push(p_kw * dt_s / 3600.0);
     }
-    energy_kwh
+    Ok(energy_kwh)
 }
 
 pub fn main() -> anyhow::Result<()> {
     let fastsim_api = FastSimApi::parse();
 
     if let Some(_cyc_json_str) = fastsim_api.cyc {
-        panic!("Need to implement: let cyc = RustCycle::from_json(cyc_json_str)");
+        anyhow::bail!("Need to implement: let cyc = RustCycle::from_json(cyc_json_str)");
     }
     let (is_adopt_hd, adopt_hd_string, adopt_hd_has_cycle) =
         if let Some(adopt_hd_string) = &fastsim_api.adopt_hd {
@@ -218,7 +218,7 @@ pub fn main() -> anyhow::Result<()> {
                 println!("Wheel RR Coefficient: {}", wheel_rr_coeff);
                 return Ok(());
             } else {
-                panic!("Need to provide coastdown test coefficients for drag and wheel rr coefficient calculation");
+                anyhow::bail!("Need to provide coastdown test coefficients for drag and wheel rr coefficient calculation");
             }
         } else {
             RustCycle::from_file(&cyc_file_path)
@@ -264,20 +264,6 @@ pub fn main() -> anyhow::Result<()> {
         Ok(RustVehicle::mock_vehicle())
     }?;
 
-    #[cfg(not(windows))]
-    macro_rules! path_separator {
-        () => {
-            "/"
-        };
-    }
-
-    #[cfg(windows)]
-    macro_rules! path_separator {
-        () => {
-            r#"\"#
-        };
-    }
-
     if is_adopt {
         let sdl = get_label_fe(&veh, Some(false), Some(false))?;
         let res = AdoptResults {
@@ -291,29 +277,10 @@ pub fn main() -> anyhow::Result<()> {
         };
         println!("{}", res.to_json()?);
     } else if is_adopt_hd {
-        let hd_cyc_filestring = include_str!(concat!(
-            "..",
-            path_separator!(),
-            "..",
-            path_separator!(),
-            "..",
-            path_separator!(),
-            "..",
-            path_separator!(),
-            "python",
-            path_separator!(),
-            "fastsim",
-            path_separator!(),
-            "resources",
-            path_separator!(),
-            "cycles",
-            path_separator!(),
-            "HHDDTCruiseSmooth.csv"
-        ));
         let cyc = if adopt_hd_has_cycle {
             cyc
         } else {
-            RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string())?
+            RustCycle::from_csv_file("../../python/fastsim/resources/cycles/HHDDTCruiseSmooth.csv")?
         };
         let mut sim_drive = RustSimDrive::new(cyc, veh.clone());
         sim_drive.sim_drive(None, None)?;
@@ -332,7 +299,7 @@ pub fn main() -> anyhow::Result<()> {
                     &sim_drive.fs_kwh_out_ach.to_vec(),
                     &fc_pwr_out_perc,
                     &hd_h2_diesel_ice_h2share,
-                );
+                )?;
                 mpgge = dist_mi / (r.diesel_gge + r.h2_gge);
                 Some(r)
             } else {
