@@ -112,9 +112,9 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                    self.to_file(filepath)
                 }
 
-                #[classmethod]
+                #[staticmethod]
                 #[pyo3(name = "from_file")]
-                pub fn from_file_py(_cls: &PyType, filepath: &str) -> anyhow::Result<Self> {
+                pub fn from_file_py(filepath: &str) -> anyhow::Result<Self> {
                     Self::from_file(filepath)
                 }
             });
@@ -229,10 +229,10 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             self.to_json()
         }
 
-        #[classmethod]
+        #[staticmethod]
         /// JSON deserialization method.
         #[pyo3(name = "from_json")]
-        pub fn from_json_py(_cls: &PyType, json_str: &str) -> anyhow::Result<Self> {
+        pub fn from_json_py(json_str: &str) -> anyhow::Result<Self> {
             Self::from_json(json_str)
         }
 
@@ -242,10 +242,10 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             self.to_yaml()
         }
 
-        #[classmethod]
+        #[staticmethod]
         /// YAML deserialization method.
         #[pyo3(name = "from_yaml")]
-        pub fn from_yaml_py(_cls: &PyType, yaml_str: &str) -> anyhow::Result<Self> {
+        pub fn from_yaml_py(yaml_str: &str) -> anyhow::Result<Self> {
             Self::from_yaml(yaml_str)
         }
 
@@ -255,10 +255,10 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             Ok(PyBytes::new(py, &self.to_bincode()?))
         }
 
-        #[classmethod]
+        #[staticmethod]
         /// bincode deserialization method.
         #[pyo3(name = "from_bincode")]
-        pub fn from_bincode_py(_cls: &PyType, encoded: &PyBytes) -> anyhow::Result<Self> {
+        pub fn from_bincode_py(encoded: &PyBytes) -> anyhow::Result<Self> {
             Self::from_bincode(encoded.as_bytes())
         }
 
