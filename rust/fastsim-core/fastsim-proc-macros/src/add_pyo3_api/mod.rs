@@ -108,14 +108,14 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         if !is_state_or_history {
             py_impl_block.extend::<TokenStream2>(quote! {
                 #[pyo3(name = "to_file")]
-                pub fn to_file_py(&self, filepath: &str) -> anyhow::Result<()> {
-                   self.to_file(filepath)
+                pub fn to_file_py(&self, filepath: &PyAny) -> anyhow::Result<()> {
+                   self.to_file(PathBuf::extract(filepath)?)
                 }
 
                 #[staticmethod]
                 #[pyo3(name = "from_file")]
-                pub fn from_file_py(filepath: &str) -> anyhow::Result<Self> {
-                    Self::from_file(filepath)
+                pub fn from_file_py(filepath: &PyAny) -> anyhow::Result<Self> {
+                    Self::from_file(PathBuf::extract(filepath)?)
                 }
             });
         }

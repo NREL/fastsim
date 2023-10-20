@@ -19,8 +19,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// # Returns:
     ///
     /// A Rust Result
-    fn to_file(&self, filepath: &str) -> anyhow::Result<()> {
-        let file = PathBuf::from(filepath);
+    fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
+        let file = PathBuf::from(filepath.as_ref());
         match file.extension().unwrap().to_str().unwrap() {
             "json" => serde_json::to_writer(&File::create(file)?, self)?,
             "yaml" => serde_yaml::to_writer(&File::create(file)?, self)?,
@@ -42,25 +42,64 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// A Rust Result wrapping data structure if method is called successfully; otherwise a dynamic
     /// Error.
-    fn from_file(filepath: &str) -> anyhow::Result<Self>
-    where
-        Self: std::marker::Sized,
-        for<'de> Self: Deserialize<'de>,
-    {
-        let extension = Path::new(filepath)
+    fn from_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
+        let filepath = filepath.as_ref();
+        let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .unwrap_or("");
-
-        let file = File::open(filepath)?;
+            .with_context(|| {
+                format!(
+                    "File extension could not be parsed: \"{}\"",
+                    filepath.display()
+                )
+            })?;
+        let file = File::open(filepath).with_context(|| {
+            if !filepath.exists() {
+                format!("File not found: \"{}\"", filepath.display())
+            } else {
+                format!("Could not open file: \"{}\"", filepath.display())
+            }
+        })?;
         // deserialized file
-        let mut file_de: Self = match extension {
-            "yaml" => serde_yaml::from_reader(file)?,
-            "json" => serde_json::from_reader(file)?,
-            _ => anyhow::bail!("Unsupported file extension {}", extension),
-        };
-        file_de.init()?;
-        Ok(file_de)
+        let mut deserialized = Self::from_reader(file, extension)?;
+        deserialized.init()?;
+        Ok(deserialized)
+    }
+
+    fn from_resource<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
+        let filepath = filepath.as_ref();
+        let contents = crate::resources::RESOURCES_DIR
+            .get_file(filepath)
+            .and_then(include_dir::File::contents_utf8)
+            .with_context(|| format!("File not found in resources: \"{}\"", filepath.display()))?;
+        let extension = filepath
+            .extension()
+            .and_then(OsStr::to_str)
+            .with_context(|| {
+                format!(
+                    "File extension could not be parsed: \"{}\"",
+                    filepath.display()
+                )
+            })?;
+        let mut deserialized = Self::from_str(contents, extension)?;
+        deserialized.init()?;
+        Ok(deserialized)
+    }
+
+    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
+        Ok(match format {
+            "yaml" => serde_yaml::from_reader(rdr)?,
+            "json" => serde_json::from_reader(rdr)?,
+            _ => anyhow::bail!("Unsupported file format: {format:?}"),
+        })
+    }
+
+    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
+        Ok(match format {
+            "yaml" => serde_yaml::from_str(contents)?,
+            "json" => serde_json::from_str(contents)?,
+            _ => anyhow::bail!("Unsupported file format: {format:?}"),
+        })
     }
 
     /// JSON serialization method

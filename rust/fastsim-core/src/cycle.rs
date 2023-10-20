@@ -5,7 +5,6 @@ extern crate ndarray;
 #[cfg(feature = "pyo3")]
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::PathBuf;
 
 // local
 use crate::imports::*;
@@ -488,10 +487,10 @@ impl RustCycleCache {
         Ok((self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name))
     }
 
-    #[classmethod]
-    #[pyo3(name = "from_csv_file")]
-    pub fn from_csv_file_py(_cls: &PyType, pathstr: String) -> anyhow::Result<Self> {
-        Self::from_csv_file(&pathstr)
+    #[staticmethod]
+    #[pyo3(name = "from_csv")]
+    pub fn from_csv_py(filepath: &PyAny) -> anyhow::Result<Self> {
+        Self::from_csv_file(PathBuf::extract(filepath)?)
     }
 
     pub fn to_rust(&self) -> anyhow::Result<Self> {
@@ -615,17 +614,56 @@ pub struct RustCycle {
 }
 
 impl SerdeAPI for RustCycle {
-    fn from_file(filepath: &str) -> anyhow::Result<Self> {
+    /// Load cycle from file, not parsing cycle name from filepath
+    fn from_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         // check if the extension is csv, and if it is, then call Self::from_csv_file
-        let pathbuf = PathBuf::from(filepath);
-        let file = File::open(filepath)?;
-        let extension = pathbuf.extension().unwrap().to_str().unwrap();
-        match extension {
-            "yaml" => Ok(serde_yaml::from_reader(file)?),
-            "json" => Ok(serde_json::from_reader(file)?),
-            "csv" => Ok(Self::from_csv_file(filepath)?),
-            _ => anyhow::bail!("Unsupported file extension {}", extension),
-        }
+        let filepath = filepath.as_ref();
+        let extension = filepath
+            .extension()
+            .and_then(OsStr::to_str)
+            .with_context(|| {
+                format!(
+                    "File extension could not be parsed: \"{}\"",
+                    filepath.display()
+                )
+            })?;
+        let file = File::open(filepath).with_context(|| {
+            if !filepath.exists() {
+                format!("File not found: \"{}\"", filepath.display())
+            } else {
+                format!("Could not open file: \"{}\"", filepath.display())
+            }
+        })?;
+        Self::from_reader(file, extension)
+    }
+
+    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
+        Ok(match format {
+            "yaml" => serde_yaml::from_reader(rdr)?,
+            "json" => serde_json::from_reader(rdr)?,
+            "csv" => {
+                // Create empty cycle to be populated
+                let mut cyc = Self::default();
+                let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_reader(rdr);
+                for result in rdr.deserialize() {
+                    let cyc_elem: crate::cycle::RustCycleElement = result?;
+                    cyc.push(cyc_elem);
+                }
+                cyc
+            }
+            _ => anyhow::bail!("Unsupported file format: {format:?}"),
+        })
+    }
+
+    // Note that using this method to instantiate a RustCycle from CSV instead of
+    // the `from_csv_str` method directly sets the cycle name to an empty string.
+    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
+        Ok(match format {
+            "yaml" => serde_yaml::from_str(contents)?,
+            "json" => serde_json::from_str(contents)?,
+            "csv" => Self::from_csv_str(contents, "")?,
+            _ => anyhow::bail!("Unsupported file format: {format:?}"),
+        })
     }
 }
 
@@ -650,6 +688,36 @@ impl RustCycle {
             name,
             orphaned: false,
         }
+    }
+
+    /// Load cycle from CSV file, parsing name from filepath
+    pub fn from_csv_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
+        let filepath = filepath.as_ref();
+        let name = String::from(filepath.file_stem().and_then(OsStr::to_str).with_context(
+            || {
+                format!(
+                    "Could not parse cycle name from filepath: \"{}\"",
+                    filepath.display()
+                )
+            },
+        )?);
+        let file = File::open(filepath).with_context(|| {
+            if !filepath.exists() {
+                format!("File not found: \"{}\"", filepath.display())
+            } else {
+                format!("Could not open file: \"{}\"", filepath.display())
+            }
+        })?;
+        let mut cyc = Self::from_reader(file, "csv")?;
+        cyc.name = name;
+        Ok(cyc)
+    }
+
+    /// Load cycle from CSV string
+    pub fn from_csv_str(csv_str: &str, name: &str) -> anyhow::Result<Self> {
+        let mut cyc = Self::from_reader(csv_str.as_bytes(), "csv")?;
+        cyc.name = name.to_string();
+        Ok(cyc)
     }
 
     pub fn build_cache(&self) -> RustCycleCache {
@@ -917,54 +985,6 @@ impl RustCycle {
     pub fn delta_elev_m(&self) -> Array1<f64> {
         ndarrcumsum(&(self.dist_m() * self.grade.clone()))
     }
-
-    /// Load cycle from csv file
-    pub fn from_csv_file(filepath: &str) -> anyhow::Result<Self> {
-        let pathbuf = PathBuf::from(&filepath);
-
-        // create empty cycle to be populated
-        let mut cyc = Self::default();
-
-        // unwrap is ok because if statement checks existence
-        let file = File::open(&pathbuf)
-            .with_context(|| format!("File could not be opened: {filepath:?}"))?;
-        let name = String::from(
-            pathbuf
-                .file_stem()
-                .with_context(|| format!("Could not parse file stem: {filepath:?}"))?
-                .to_str()
-                .with_context(|| format!("File stem is not valid unicode: {filepath:?}"))?,
-        );
-        cyc.name = name;
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(file);
-        for result in rdr.deserialize() {
-            // TODO: make this more elegant than unwrap
-            let cyc_elem: RustCycleElement = result?;
-            cyc.push(cyc_elem);
-        }
-
-        Ok(cyc)
-    }
-
-    // load a cycle from a string representation of a csv file
-    pub fn from_csv_string(data: &str, name: &str) -> anyhow::Result<Self> {
-        let mut cyc = Self {
-            name: String::from(name),
-            ..Self::default()
-        };
-
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(data.as_bytes());
-        for result in rdr.deserialize() {
-            let cyc_elem: RustCycleElement = result?;
-            cyc.push(cyc_elem);
-        }
-
-        Ok(cyc)
-    }
 }
 
 pub struct PassingInfo {
@@ -1096,12 +1116,11 @@ mod tests {
 
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() -> anyhow::Result<()> {
-        let mut cyc_file_path = resources_path();
-        cyc_file_path.push("cycles/udds.csv");
+        let cyc_file_path = resources_path().join("cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        let cyc = RustCycle::from_csv_file(cyc_file_path.as_os_str().to_str().unwrap()).unwrap();
-        anyhow::ensure!(cyc.name == String::from("udds"));
+        let cyc = RustCycle::from_csv_file(cyc_file_path)?;
         let num_entries = cyc.time_s.len();
+        anyhow::ensure!(cyc.name == String::from("udds"));
         anyhow::ensure!(num_entries > 0);
         anyhow::ensure!(num_entries == cyc.time_s.len());
         anyhow::ensure!(num_entries == cyc.mps.len());

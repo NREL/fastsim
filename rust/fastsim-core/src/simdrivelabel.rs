@@ -197,8 +197,8 @@ pub fn get_label_fe(
     // load the cycles and intstantiate simdrive objects
     cyc.insert("accel", make_accel_trace());
 
-    cyc.insert("udds", RustCycle::from_csv_file("resources/udds.csv")?);
-    cyc.insert("hwy", RustCycle::from_csv_file("resources/hwfet.csv")?);
+    cyc.insert("udds", RustCycle::from_resource("cycles/udds.csv")?);
+    cyc.insert("hwy", RustCycle::from_resource("cycles/hwfet.csv")?);
 
     // run simdrive for non-phev powertrains
     sd.insert("udds", RustSimDrive::new(cyc["udds"].clone(), veh.clone()));
