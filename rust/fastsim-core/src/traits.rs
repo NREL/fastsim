@@ -20,13 +20,22 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// A Rust Result
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
-        let file = PathBuf::from(filepath.as_ref());
-        match file.extension().unwrap().to_str().unwrap() {
-            "json" => serde_json::to_writer(&File::create(file)?, self)?,
-            "yaml" => serde_yaml::to_writer(&File::create(file)?, self)?,
-            _ => serde_json::to_writer(&File::create(file)?, self)?,
-        };
-        Ok(())
+        let filepath = filepath.as_ref();
+        let extension = filepath
+            .extension()
+            .and_then(OsStr::to_str)
+            .with_context(|| {
+                format!(
+                    "File extension could not be parsed: \"{}\"",
+                    filepath.display()
+                )
+            })?;
+        Ok(match extension {
+            "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
+            "yaml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
+            // TODO: do we want a default behavior for this?
+            _ => serde_json::to_writer(&File::create(filepath)?, self)?,
+        })
     }
 
     /// Read from file and return instantiated struct. Method adaptively calls deserialization
