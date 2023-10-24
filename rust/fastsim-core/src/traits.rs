@@ -19,9 +19,18 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// # Returns:
     ///
     /// A Rust Result
-    fn to_file(&self, filename: &str) -> Result<(), anyhow::Error> {
+    fn to_file(&self, filename: &str) -> anyhow::Result<()> {
         let file = PathBuf::from(filename);
-        match file.extension().unwrap().to_str().unwrap() {
+        match file
+            .extension()
+            .ok_or_else(|| anyhow!("Unable to parse file extension: {:?}", file))?
+            .to_str()
+            .ok_or_else(|| {
+                anyhow!(
+                    "Unable to convert file extension from `&OsStr` to `&str`: {:?}",
+                    file
+                )
+            })? {
             "json" => serde_json::to_writer(&File::create(file)?, self)?,
             "yaml" => serde_yaml::to_writer(&File::create(file)?, self)?,
             _ => serde_json::to_writer(&File::create(file)?, self)?,
