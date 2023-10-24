@@ -5,7 +5,7 @@
 ## Setup
 This assumes that the output of `git remote -v` is
 ```
-external        git@github.com:NREL/fastsim.git (push)
+external        git@github.com:NREL/fastsim.git (push)``
 external        git@github.com:NREL/fastsim.git (fetch)
 ```
 
@@ -21,4 +21,4 @@ external        git@github.com:NREL/fastsim.git (fetch)
 After that, just run `sh publish.sh`
 
 ## Troubleshooting
-Check that https://github.com/NREL/fastsim/settings/pages is set to deploy from the `mdbook-src` branch.  
+Check that https://github.com/NREL/fastsim/settings/pages is set to deploy from the `mdbook-publish` branch.  
