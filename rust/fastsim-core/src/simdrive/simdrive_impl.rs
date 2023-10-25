@@ -1023,53 +1023,68 @@ impl RustSimDrive {
                     * self.mps_ach[i - 1].powf(2.0)
                     / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powf(2.0));
 
-                let total3 = drag3 / 1e3;
-                let total2 = (accel2 + drag2 + wheel2) / 1e3;
-                let total1 = (drag1 + roll1 + ascent1) / 1e3;
-                let total0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) / 1e3
+                let t3 = drag3 / 1e3;
+                let t2 = (accel2 + drag2 + wheel2) / 1e3;
+                let t1 = (drag1 + roll1 + ascent1) / 1e3;
+                let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) / 1e3
                     - self.cur_max_trans_kw_out[i];
 
-                let totals = array![total3, total2, total1, total0];
-
-                let t3 = totals[0];
-                let t2 = totals[1];
-                let t1 = totals[2];
-                let t0 = totals[3];
                 // initial guess
-                let xi = max(1.0, self.mps_ach[i - 1]);
+                let speed_guess = max(1.0, self.mps_ach[i - 1]);
                 // stop criteria
                 let max_iter = self.sim_params.newton_max_iter;
                 let xtol = self.sim_params.newton_xtol;
                 // solver gain
                 let g = self.sim_params.newton_gain;
-                let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
-                let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
-                let bi = yi - xi * mi;
-                let mut xs = vec![xi];
-                let mut ys = vec![yi];
-                let mut ms = vec![mi];
-                let mut bs = vec![bi];
+                let pwr_err =
+                    t3 * speed_guess.powf(3.0) + t2 * speed_guess.powf(2.0) + t1 * speed_guess + t0;
+                let d_pwr_err_per_d_speed_guess =
+                    3.0 * t3 * speed_guess.powf(2.0) + 2.0 * t2 * speed_guess + t1;
+                let new_speed_guess = pwr_err - speed_guess * d_pwr_err_per_d_speed_guess;
+                let mut speed_guesses = vec![speed_guess];
+                let mut pwr_errs = vec![pwr_err];
+                let mut d_pwr_err_per_d_speed_guesses = vec![d_pwr_err_per_d_speed_guess];
+                let mut new_speed_guesses = vec![new_speed_guess];
                 let mut iterate = 1;
                 let mut converged = false;
                 while iterate < max_iter && !converged {
-                    let xi = xs[xs.len() - 1] * (1.0 - g) - g * bs[xs.len() - 1] / ms[xs.len() - 1];
-                    let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
-                    let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
-                    let bi = yi - xi * mi;
-                    xs.push(xi);
-                    ys.push(yi);
-                    ms.push(mi);
-                    bs.push(bi);
-                    converged =
-                        ((xs[xs.len() - 1] - xs[xs.len() - 2]) / xs[xs.len() - 2]).abs() < xtol;
+                    let speed_guess = speed_guesses
+                        .iter()
+                        .last()
+                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        * (1.0 - g)
+                        - g * new_speed_guesses
+                            .iter()
+                            .last()
+                            .ok_or(anyhow!("{}", format_dbg!()))?
+                            / d_pwr_err_per_d_speed_guesses[speed_guesses.len() - 1];
+                    let pwr_err = t3 * speed_guess.powf(3.0)
+                        + t2 * speed_guess.powf(2.0)
+                        + t1 * speed_guess
+                        + t0;
+                    let d_pwr_err_per_d_speed_guess =
+                        3.0 * t3 * speed_guess.powf(2.0) + 2.0 * t2 * speed_guess + t1;
+                    let new_speed_guess = pwr_err - speed_guess * d_pwr_err_per_d_speed_guess;
+                    speed_guesses.push(speed_guess);
+                    pwr_errs.push(pwr_err);
+                    d_pwr_err_per_d_speed_guesses.push(d_pwr_err_per_d_speed_guess);
+                    new_speed_guesses.push(new_speed_guess);
+                    converged = ((speed_guesses
+                        .iter()
+                        .last()
+                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        - speed_guesses[speed_guesses.len() - 2])
+                        / speed_guesses[speed_guesses.len() - 2])
+                        .abs()
+                        < xtol;
                     iterate += 1;
                 }
 
                 self.newton_iters[i] = iterate;
 
-                let _ys = Array::from_vec(ys).map(|x| x.abs());
+                let _ys = Array::from_vec(pwr_errs).map(|x| x.abs());
                 self.mps_ach[i] = max(
-                    xs[_ys
+                    speed_guesses[_ys
                         .iter()
                         .position(|&x| x == ndarrmin(&_ys))
                         .ok_or_else(|| anyhow!(format_dbg!(ndarrmin(&_ys))))?],
