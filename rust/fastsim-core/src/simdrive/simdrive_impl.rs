@@ -886,13 +886,9 @@ impl RustSimDrive {
         self.cyc_tire_inertia_kw[i] = (0.5
             * self.veh.wheel_inertia_kg_m2
             * self.veh.num_wheels
-            * self.cyc_whl_rad_per_sec[i].powi(2)
-            / self.cyc.dt_s_at_i(i)
-            - 0.5
-                * self.veh.wheel_inertia_kg_m2
-                * self.veh.num_wheels
-                * (self.mps_ach[i - 1] / self.veh.wheel_radius_m).powi(2)
-                / self.cyc.dt_s_at_i(i))
+            * (self.cyc_whl_rad_per_sec[i].powi(2)
+                - (self.mps_ach[i - 1] / self.veh.wheel_radius_m).powi(2))
+            / self.cyc.dt_s_at_i(i))
             / 1e3;
 
         self.cyc_whl_kw_req[i] =
