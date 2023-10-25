@@ -862,10 +862,10 @@ impl RustSimDrive {
             * self.props.air_density_kg_per_m3
             * self.veh.drag_coef
             * self.veh.frontal_area_m2
-            * ((self.mps_ach[i - 1] + mps_ach) / 2.0).powf(3.0)
+            * ((self.mps_ach[i - 1] + mps_ach) / 2.0).powi(3)
             / 1e3;
         self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s_at_i(i))
-            * (mps_ach.powf(2.0) - self.mps_ach[i - 1].powf(2.0))
+            * (mps_ach.powi(2) - self.mps_ach[i - 1].powi(2))
             / 1e3;
         self.ascent_kw[i] = self.props.a_grav_mps2
             * grade.atan().sin()
@@ -886,12 +886,12 @@ impl RustSimDrive {
         self.cyc_tire_inertia_kw[i] = (0.5
             * self.veh.wheel_inertia_kg_m2
             * self.veh.num_wheels
-            * self.cyc_whl_rad_per_sec[i].powf(2.0)
+            * self.cyc_whl_rad_per_sec[i].powi(2)
             / self.cyc.dt_s_at_i(i)
             - 0.5
                 * self.veh.wheel_inertia_kg_m2
                 * self.veh.num_wheels
-                * (self.mps_ach[i - 1] / self.veh.wheel_radius_m).powf(2.0)
+                * (self.mps_ach[i - 1] / self.veh.wheel_radius_m).powi(2)
                 / self.cyc.dt_s_at_i(i))
             / 1e3;
 
@@ -978,12 +978,12 @@ impl RustSimDrive {
                     * self.veh.frontal_area_m2
                     * self.mps_ach[i - 1];
                 let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels
-                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powf(2.0));
+                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powi(2));
                 let drag1 = 3.0 / 16.0
                     * self.props.air_density_kg_per_m3
                     * self.veh.drag_coef
                     * self.veh.frontal_area_m2
-                    * self.mps_ach[i - 1].powf(2.0);
+                    * self.mps_ach[i - 1].powi(2);
                 let roll1 = 0.5
                     * self.veh.veh_kg
                     * self.props.a_grav_mps2
@@ -991,12 +991,12 @@ impl RustSimDrive {
                     * grade.atan().cos();
                 let ascent1 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin() * self.veh.veh_kg;
                 let accel0 =
-                    -0.5 * self.veh.veh_kg * self.mps_ach[i - 1].powf(2.0) / self.cyc.dt_s_at_i(i);
+                    -0.5 * self.veh.veh_kg * self.mps_ach[i - 1].powi(2) / self.cyc.dt_s_at_i(i);
                 let drag0 = 1.0 / 16.0
                     * self.props.air_density_kg_per_m3
                     * self.veh.drag_coef
                     * self.veh.frontal_area_m2
-                    * self.mps_ach[i - 1].powf(3.0);
+                    * self.mps_ach[i - 1].powi(3);
                 let roll0 = 0.5
                     * self.veh.veh_kg
                     * self.props.a_grav_mps2
@@ -1011,8 +1011,8 @@ impl RustSimDrive {
                 let wheel0 = -0.5
                     * self.veh.wheel_inertia_kg_m2
                     * self.veh.num_wheels
-                    * self.mps_ach[i - 1].powf(2.0)
-                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powf(2.0));
+                    * self.mps_ach[i - 1].powi(2)
+                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powi(2));
 
                 let t3 = drag3 / 1e3;
                 let t2 = (accel2 + drag2 + wheel2) / 1e3;
@@ -1028,10 +1028,10 @@ impl RustSimDrive {
                 // solver gain
                 let g = self.sim_params.newton_gain;
                 let pwr_err_fn = |speed_guess: f64| -> f64 {
-                    t3 * speed_guess.powf(3.0) + t2 * speed_guess.powf(2.0) + t1 * speed_guess + t0
+                    t3 * speed_guess.powi(3) + t2 * speed_guess.powi(2) + t1 * speed_guess + t0
                 };
                 let pwr_err_per_speed_guess_fn = |speed_guess: f64| -> f64 {
-                    3.0 * t3 * speed_guess.powf(2.0) + 2.0 * t2 * speed_guess + t1
+                    3.0 * t3 * speed_guess.powi(2) + 2.0 * t2 * speed_guess + t1
                 };
                 let pwr_err = pwr_err_fn(speed_guess);
                 let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
@@ -1113,7 +1113,7 @@ impl RustSimDrive {
                 (self.veh.ess_max_kwh * self.veh.max_soc
                     - 0.5
                         * self.veh.veh_kg
-                        * (self.cyc.mps[i].powf(2.0))
+                        * (self.cyc.mps[i].powi(2))
                         * (1.0 / 1_000.0)
                         * (1.0 / 3_600.0)
                         * self.veh.mc_peak_eff()
@@ -1145,9 +1145,9 @@ impl RustSimDrive {
         } else {
             self.accel_buff_soc[i] = min(
                 max(
-                    ((self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powf(2.0)
-                        - self.cyc.mps[i].powf(2.0))
-                        / (self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powf(2.0)
+                    ((self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powi(2)
+                        - self.cyc.mps[i].powi(2))
+                        / (self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powi(2)
                         * min(
                             self.veh.max_accel_buffer_perc_of_useable_soc
                                 * (self.veh.max_soc - self.veh.min_soc),
@@ -1849,12 +1849,12 @@ impl RustSimDrive {
                 .mps_ach
                 .first()
                 .ok_or_else(|| anyhow!(format_dbg!(self.mps_ach)))?
-                .powf(2.0)
+                .powi(2)
                 - self
                     .mps_ach
                     .last()
                     .ok_or_else(|| anyhow!(format_dbg!(self.mps_ach)))?
-                    .powf(2.0))
+                    .powi(2))
             / 1_000.0;
 
         self.energy_audit_error =
@@ -1870,7 +1870,7 @@ impl RustSimDrive {
         }
         for i in 1..self.cyc.len() {
             self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s_at_i(i))
-                * (self.mps_ach[i].powf(2.0) - self.mps_ach[i - 1].powf(2.0))
+                * (self.mps_ach[i].powi(2) - self.mps_ach[i - 1].powi(2))
                 / 1_000.0;
         }
 

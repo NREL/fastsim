@@ -205,7 +205,6 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                     });
                 }
             }
-        } else {
         }
     } else {
         abort_call_site!("`add_pyo3_api` works only on named and tuple structs.");
