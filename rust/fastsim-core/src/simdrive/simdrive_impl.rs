@@ -1036,18 +1036,23 @@ impl RustSimDrive {
                 let xtol = self.sim_params.newton_xtol;
                 // solver gain
                 let g = self.sim_params.newton_gain;
-                let pwr_err =
-                    t3 * speed_guess.powf(3.0) + t2 * speed_guess.powf(2.0) + t1 * speed_guess + t0;
-                let d_pwr_err_per_d_speed_guess =
-                    3.0 * t3 * speed_guess.powf(2.0) + 2.0 * t2 * speed_guess + t1;
-                let new_speed_guess = pwr_err - speed_guess * d_pwr_err_per_d_speed_guess;
+                let pwr_err_fn = |speed_guess: f64| -> f64 {
+                    t3 * speed_guess.powf(3.0) + t2 * speed_guess.powf(2.0) + t1 * speed_guess + t0
+                };
+                let pwr_err_per_speed_guess_fn = |speed_guess: f64| -> f64 {
+                    3.0 * t3 * speed_guess.powf(2.0) + 2.0 * t2 * speed_guess + t1
+                };
+                let pwr_err = pwr_err_fn(speed_guess);
+                let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
+                let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
                 let mut speed_guesses = vec![speed_guess];
                 let mut pwr_errs = vec![pwr_err];
-                let mut d_pwr_err_per_d_speed_guesses = vec![d_pwr_err_per_d_speed_guess];
+                let mut d_pwr_err_per_d_speed_guesses = vec![pwr_err_per_speed_guess];
                 let mut new_speed_guesses = vec![new_speed_guess];
-                let mut iterate = 1;
+                // speed achieved iteration counter
+                let mut spd_ach_i = 1;
                 let mut converged = false;
-                while iterate < max_iter && !converged {
+                while spd_ach_i < max_iter && !converged {
                     let speed_guess = speed_guesses
                         .iter()
                         .last()
@@ -1058,16 +1063,12 @@ impl RustSimDrive {
                             .last()
                             .ok_or(anyhow!("{}", format_dbg!()))?
                             / d_pwr_err_per_d_speed_guesses[speed_guesses.len() - 1];
-                    let pwr_err = t3 * speed_guess.powf(3.0)
-                        + t2 * speed_guess.powf(2.0)
-                        + t1 * speed_guess
-                        + t0;
-                    let d_pwr_err_per_d_speed_guess =
-                        3.0 * t3 * speed_guess.powf(2.0) + 2.0 * t2 * speed_guess + t1;
-                    let new_speed_guess = pwr_err - speed_guess * d_pwr_err_per_d_speed_guess;
+                    let pwr_err = pwr_err_fn(speed_guess);
+                    let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
+                    let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
                     speed_guesses.push(speed_guess);
                     pwr_errs.push(pwr_err);
-                    d_pwr_err_per_d_speed_guesses.push(d_pwr_err_per_d_speed_guess);
+                    d_pwr_err_per_d_speed_guesses.push(pwr_err_per_speed_guess);
                     new_speed_guesses.push(new_speed_guess);
                     converged = ((speed_guesses
                         .iter()
@@ -1077,12 +1078,14 @@ impl RustSimDrive {
                         / speed_guesses[speed_guesses.len() - 2])
                         .abs()
                         < xtol;
-                    iterate += 1;
+                    spd_ach_i += 1;
                 }
 
-                self.newton_iters[i] = iterate;
+                self.newton_iters[i] = spd_ach_i;
 
                 let _ys = Array::from_vec(pwr_errs).map(|x| x.abs());
+                // Question: could we assume `speed_guesses.iter().last()` is the correct solution?
+                // This would make for faster running.
                 self.mps_ach[i] = max(
                     speed_guesses[_ys
                         .iter()
