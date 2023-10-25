@@ -976,65 +976,28 @@ impl RustSimDrive {
                 grade_iter += 1;
                 grade = grade_estimate;
 
-                let drag3 = 1.0 / 16.0
-                    * self.props.air_density_kg_per_m3
-                    * self.veh.drag_coef
-                    * self.veh.frontal_area_m2;
-                let accel2 = 0.5 * self.veh.veh_kg / self.cyc.dt_s_at_i(i);
-                let drag2 = 3.0 / 16.0
-                    * self.props.air_density_kg_per_m3
-                    * self.veh.drag_coef
-                    * self.veh.frontal_area_m2
-                    * self.mps_ach[i - 1];
-                let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels
-                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powf(2.0));
-                let drag1 = 3.0 / 16.0
-                    * self.props.air_density_kg_per_m3
-                    * self.veh.drag_coef
-                    * self.veh.frontal_area_m2
-                    * self.mps_ach[i - 1].powf(2.0);
-                let roll1 = 0.5
-                    * self.veh.veh_kg
-                    * self.props.a_grav_mps2
-                    * self.veh.wheel_rr_coef
-                    * grade.atan().cos();
-                let ascent1 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin() * self.veh.veh_kg;
-                let accel0 =
-                    -0.5 * self.veh.veh_kg * self.mps_ach[i - 1].powf(2.0) / self.cyc.dt_s_at_i(i);
-                let drag0 = 1.0 / 16.0
-                    * self.props.air_density_kg_per_m3
-                    * self.veh.drag_coef
-                    * self.veh.frontal_area_m2
-                    * self.mps_ach[i - 1].powf(3.0);
-                let roll0 = 0.5
-                    * self.veh.veh_kg
-                    * self.props.a_grav_mps2
-                    * self.veh.wheel_rr_coef
-                    * grade.atan().cos()
-                    * self.mps_ach[i - 1];
-                let ascent0 = 0.5
-                    * self.props.a_grav_mps2
-                    * grade.atan().sin()
-                    * self.veh.veh_kg
-                    * self.mps_ach[i - 1];
-                let wheel0 = -0.5
-                    * self.veh.wheel_inertia_kg_m2
-                    * self.veh.num_wheels
-                    * self.mps_ach[i - 1].powf(2.0)
-                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powf(2.0));
+                let pwr_err = |speed: f64| -> f64 {
+                    (self.veh.veh_kg
+                        + self.veh.num_wheels * self.veh.wheel_inertia_kg_m2
+                            / self.veh.wheel_radius_m.powi(2))
+                        * (speed.powi(2) - self.mps_ach[i - 1].powi(2))
+                        / (2. * self.cyc.dt_s_at_i(i))
+                        + self.veh.veh_kg * self.props.a_grav_mps2 * (speed + self.mps_ach[i - 1])
+                            / 2.
+                            * ({
+                                let theta = grade;
+                                theta.sin() + grade.atan().cos() * self.veh.wheel_rr_coef
+                            })
+                        + 1. / 16.
+                            * self.props.air_density_kg_per_m3
+                            * self.veh.drag_coef
+                            * self.veh.frontal_area_m2
+                            * (speed.powi(3)
+                                + 3. * speed.powi(2) * self.mps_ach[i - 1]
+                                + self.mps_ach[i - 1].powi(3)
+                                + 3. * speed * self.mps_ach[i - 1].powi(2))
+                };
 
-                let total3 = drag3 / 1e3;
-                let total2 = (accel2 + drag2 + wheel2) / 1e3;
-                let total1 = (drag1 + roll1 + ascent1) / 1e3;
-                let total0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) / 1e3
-                    - self.cur_max_trans_kw_out[i];
-
-                let totals = array![total3, total2, total1, total0];
-
-                let t3 = totals[0];
-                let t2 = totals[1];
-                let t1 = totals[2];
-                let t0 = totals[3];
                 // initial guess
                 let xi = max(1.0, self.mps_ach[i - 1]);
                 // stop criteria
