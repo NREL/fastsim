@@ -632,20 +632,11 @@ impl RustSimDrive {
             }
         }
         // Is SOC below min threshold?
-        if self.soc[i - 1] < (self.veh.min_soc + self.veh.perc_high_acc_buf) {
-            self.reached_buff[i] = false;
-        } else {
-            self.reached_buff[i] = true;
-        }
+        self.reached_buff[i] = self.soc[i - 1] >= (self.veh.min_soc + self.veh.perc_high_acc_buf);
 
         // Does the engine need to be on for low SOC or high acceleration
-        if self.soc[i - 1] < self.veh.min_soc
-            || (self.high_acc_fc_on_tag[i - 1] && !(self.reached_buff[i]))
-        {
-            self.high_acc_fc_on_tag[i] = true
-        } else {
-            self.high_acc_fc_on_tag[i] = false
-        }
+        self.high_acc_fc_on_tag[i] = self.soc[i - 1] < self.veh.min_soc
+            || (self.high_acc_fc_on_tag[i - 1] && !(self.reached_buff[i]));
         self.max_trac_mps[i] =
             self.mps_ach[i - 1] + (self.veh.max_trac_mps2 * self.cyc.dt_s_at_i(i));
         Ok(())
@@ -1350,14 +1341,8 @@ impl RustSimDrive {
     pub fn set_fc_forced_state_rust(&mut self, i: usize) -> Result<(), anyhow::Error> {
         // force fuel converter on if it was on in the previous time step, but only if fc
         // has not been on longer than minFcTimeOn
-        if self.prev_fc_time_on[i] > 0.0
-            && self.prev_fc_time_on[i] < self.veh.min_fc_time_on - self.cyc.dt_s_at_i(i)
-        {
-            self.fc_forced_on[i] = true;
-        } else {
-            self.fc_forced_on[i] = false
-        }
-
+        self.fc_forced_on[i] = self.prev_fc_time_on[i] > 0.0
+            && self.prev_fc_time_on[i] < self.veh.min_fc_time_on - self.cyc.dt_s_at_i(i);
         if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
             // fc forced on because:
             // - it was on in the previous time step and hasn't been on long enough
