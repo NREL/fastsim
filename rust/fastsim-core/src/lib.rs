@@ -11,6 +11,7 @@
 #[macro_use]
 pub mod macros;
 
+pub mod air_properties;
 pub mod drive_cycle;
 pub mod imports;
 pub mod prelude;
@@ -20,7 +21,6 @@ pub mod traits;
 pub mod uc;
 pub mod utils;
 pub mod vehicle;
-pub mod air_properties;
 
 // these might not get used
 pub mod combo_error;

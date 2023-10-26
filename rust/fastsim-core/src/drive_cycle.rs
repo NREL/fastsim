@@ -13,7 +13,7 @@ use crate::imports::*;
 
     #[setter]
     fn set_grade(&mut self, grade: Vec<f64>) {
-        self.grade = Some(grade.iter().map(|x| *x * uc::R).collect::<Vec<si::Ratio>>());
+        self.grade = Some(grade.iter().map(|x| *x * uc::R).collect());
     }
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
@@ -60,9 +60,9 @@ impl SerdeAPI for Cycle {
     /// - if `init_elev.is_none()`, then defaults to
     fn init(&mut self) -> anyhow::Result<()> {
         assert_eq!(self.time.len(), self.speed.len());
-        match &self.grade {
+        match &mut self.grade {
             Some(grade) => assert_eq!(grade.len(), self.len()),
-            None => {}
+            None => self.grade = Some(vec![0. * uc::R; self.len()]),
         }
         match &self.pwr_max_chrg {
             Some(pwr_max_chrg) => assert_eq!(pwr_max_chrg.len(), self.len()),
@@ -209,6 +209,8 @@ impl Cycle {
     }
 
     /// Load cycle from csv file
+    ///
+    /// TODO: move this into `from_file`
     pub fn from_csv_file(pathstr: &str) -> Result<Self, anyhow::Error> {
         let pathbuf = PathBuf::from(&pathstr);
 
@@ -223,6 +225,7 @@ impl Cycle {
             let pt_elem: CycleElement = result?;
             pt.push(pt_elem)?;
         }
+        pt.init()?;
         if pt.is_empty() {
             bail!("Invalid Cycle file; Cycle is empty")
         } else {
@@ -260,7 +263,7 @@ mod tests {
             time: (0..=2).map(|x| (x as f64) * uc::S).collect(),
             speed: (0..=2).map(|x| (x as f64) * uc::MPS).collect(),
             dist: vec![],
-            grade: Some((0..=2).map(|x| (x as f64) / 100. * uc::R).collect()),
+            grade: Some((0..=2).map(|x| (x as f64 * uc::R) / 100.).collect()),
             elev: vec![],
             pwr_max_chrg: None,
         };

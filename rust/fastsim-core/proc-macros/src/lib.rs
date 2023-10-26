@@ -6,6 +6,7 @@ mod hm_derive;
 mod pyo3_api;
 mod serde_api_derive;
 mod utilities;
+mod energy_method_derive;
 
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -20,6 +21,12 @@ pub fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// stores each field of state as a vec field.
 pub fn history_vec_derive(input: TokenStream) -> TokenStream {
     history_vec_derive::history_vec_derive(input)
+}
+
+#[proc_macro_derive(EnergyMethod)]
+/// generate method to calculate `energy_*` field values from `pwr_*`
+pub fn energy_method_derive(input: TokenStream) -> TokenStream {
+    energy_method_derive::energy_method_derive(input)
 }
 
 #[proc_macro_derive(HistoryMethods, attributes(has_state))]

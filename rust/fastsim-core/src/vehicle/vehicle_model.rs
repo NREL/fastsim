@@ -1,5 +1,4 @@
 use super::*;
-use crate::air_properties::*;
 
 /// Possible aux load power sources
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
@@ -109,6 +108,15 @@ pub struct Vehicle {
     pub drag_coef: si::Ratio,
     /// Projected frontal area for drag calculations
     pub frontal_area: si::Area,
+    /// Wheel rolling resistance for the vehicle (i.e. all wheels included)
+    pub wheel_rr: si::Ratio,
+    // as of 2023-10-24, there is no `uom` unit for rotational inertia
+    /// Wheel inertia per wheel
+    pub wheel_inertia_kg_m2: si::Ratio,
+    /// Number of wheels
+    pub num_wheels: u8,
+    /// Wheel radius
+    pub wheel_radius: si::Length,
     /// Vehicle center of mass height
     pub cg_height: si::Length,
     #[api(skip_get, skip_set)]
@@ -116,10 +124,8 @@ pub struct Vehicle {
     /// Drive wheel configuration
     pub drive_type: DriveTypes,
     /// Fraction of vehicle weight on drive action when stationary
-    /// #[fsim2_name = "drive_axle_weight_frac"]
     pub drive_axle_weight_frac: si::Ratio,
     /// Wheel base length
-    /// #[fsim2_name = "wheel_base_m"]
     pub wheel_base: si::Length,
     /// Total vehicle mass
     // TODO: make sure setter and getter get written
@@ -305,6 +311,10 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             drive_type,
             drive_axle_weight_frac: veh.drive_axle_weight_frac * uc::R,
             wheel_base: veh.wheel_base_m * uc::M,
+            wheel_inertia_kg_m2: veh.wheel_inertia_kg_m2 * uc::R,
+            wheel_rr: veh.wheel_rr_coef * uc::R,
+            num_wheels: veh.num_wheels as u8,
+            wheel_radius: veh.wheel_radius_m * uc::M,
             cargo_mass: Some(veh.cargo_kg * uc::KG),
             comp_mass_multiplier: Some(veh.comp_mass_multiplier * uc::R),
             pwr_aux: f2veh.aux_kw * uc::KW,
@@ -488,7 +498,9 @@ impl Vehicle {
 }
 
 /// Vehicle state for current time step
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default, EnergyMethod,
+)]
 #[pyo3_api]
 pub struct VehicleState {
     /// time step index
@@ -497,9 +509,7 @@ pub struct VehicleState {
     // power and fields
     /// maximum forward propulsive power vehicle can produce
     pub pwr_out_max: si::Power,
-    /// maximum regen power vehicle can absorb at the wheel
-    pub pwr_regen_max: si::Power,
-    /// actual wheel power achieved
+    /// pwr exerted on wheels by powertrain
     pub pwr_out: si::Power,
     /// integral of [Self::pwr_out]
     pub energy_out: si::Energy,
@@ -523,7 +533,7 @@ pub struct VehicleState {
     pub pwr_rr: si::Power,
     /// integral of [Self::pwr_rr]
     pub energy_rr: si::Energy,
-    /// Power applied to wheel inertia
+    /// Power applied to wheel and tire inertia
     pub pwr_whl_inertia: si::Power,
     /// integral of [Self::pwr_whl_inertia]
     pub energy_whl_inertia: si::Energy,
@@ -531,11 +541,17 @@ pub struct VehicleState {
     pub pwr_brake: si::Power,
     /// integral of [Self::pwr_brake]
     pub energy_brake: si::Energy,
+    /// tractive power exerted by tire on ground
+    pub pwr_tractive: si::Power,
+    /// integral of [Self::pwr_tractive]
+    pub energy_tractive: si::Energy,
     /// whether powertrain can achieve power demand
     pub cyc_met: bool,
     /// actual achieved speed
     pub speed_ach: si::Velocity,
-    /// actual achieved speed in previous time step
+    /// cumulative distance traveled, integral of [Self::speed_ach]
+    pub dist_ach: si::Length,
+    /// [Self::speed_ach] from previous time step
     pub speed_ach_prev: si::Velocity,
 }
 
