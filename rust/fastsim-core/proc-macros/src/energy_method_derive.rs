@@ -28,7 +28,10 @@ pub(crate) fn energy_method_derive(input: TokenStream) -> TokenStream {
 
     let impl_block: TokenStream2 = quote! {
         impl #ident {
-            fn set_energy_fields(&mut self, dt: si::Time) -> anyhow::Result<()> {
+            /// For all `energy_*` fields that have matching `pwr_*` fields, set cumulative energy based on power and `dt`
+            /// # Arugments
+            /// - `dt`: time step size
+            pub fn set_energy_fields(&mut self, dt: si::Time) -> anyhow::Result<()> {
                 #(self.#energy_fields = self.#pwr_fields * dt)*;
                 Ok(())
             }
