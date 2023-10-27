@@ -100,10 +100,27 @@ pub fn interp3d(
 
     Ok(c)
 }
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, SerdeAPI)]
+pub enum Extrapolate {
+    /// allow extrapolation
+    #[default]
+    Yes,
+    /// don't allow extropalaiton but return result from nearest x-data point
+    No,
+    /// return an error on extrapolation
+    Error,
+}
+
 /// interpolation algorithm from <http://www.cplusplus.com/forum/general/216928/>  
 /// Arguments:
 /// x : value at which to interpolate
-pub fn interp1d(x: &f64, x_data: &[f64], y_data: &[f64], extrapolate: bool) -> anyhow::Result<f64> {
+pub fn interp1d(
+    x: &f64,
+    x_data: &[f64],
+    y_data: &[f64],
+    extrapolate: Extrapolate,
+) -> anyhow::Result<f64> {
     let y_mean = y_data.iter().sum::<f64>() / y_data.len() as f64;
     if y_data.iter().all(|&y| y == y_mean) {
         // return mean if all data is equal to mean
@@ -127,13 +144,19 @@ pub fn interp1d(x: &f64, x_data: &[f64], y_data: &[f64], extrapolate: bool) -> a
         let mut yl = &y_data[i];
         let xr = &x_data[i + 1];
         let mut yr = &y_data[i + 1];
-        if !extrapolate {
-            if x < xl {
-                yr = yl;
+        match extrapolate {
+            Extrapolate::No => {
+                if x < xl {
+                    yr = yl;
+                }
+                if x > xr {
+                    yl = yr;
+                }
             }
-            if x > xr {
-                yl = yr;
+            Extrapolate::Error => {
+                bail!("{}\nAttempted extrapolation", format_dbg!());
             }
+            _ => {}
         }
         let dydx = (yr - yl) / (xr - xl);
         Ok(yl + dydx * (x - xl))
@@ -292,62 +315,77 @@ mod tests {
     // interp1d
     #[test]
     fn test_interp1d_above_value_upper() {
-        assert_eq!(interp1d(&2.0, &[0.0, 1.0], &[0.0, 1.0], true).unwrap(), 2.0);
         assert_eq!(
-            interp1d(&2.0, &[0.0, 1.0], &[0.0, 1.0], false).unwrap(),
+            interp1d(&2.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
+            2.0
+        );
+        assert_eq!(
+            interp1d(&2.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
             1.0
         );
     }
 
     #[test]
     fn test_interp1d_exact_value_upper() {
-        assert_eq!(interp1d(&1.0, &[0.0, 1.0], &[0.0, 1.0], true).unwrap(), 1.0);
         assert_eq!(
-            interp1d(&1.0, &[0.0, 1.0], &[0.0, 1.0], false).unwrap(),
+            interp1d(&1.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
+            1.0
+        );
+        assert_eq!(
+            interp1d(&1.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
             1.0
         );
     }
 
     #[test]
     fn test_interp1d_exact_value_lower() {
-        assert_eq!(interp1d(&0.0, &[0.0, 1.0], &[0.0, 1.0], true).unwrap(), 0.0);
         assert_eq!(
-            interp1d(&0.0, &[0.0, 1.0], &[0.0, 1.0], false).unwrap(),
+            interp1d(&0.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
+            0.0
+        );
+        assert_eq!(
+            interp1d(&0.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
             0.0
         );
     }
     #[test]
     fn test_interp1d_below_value_lower() {
         assert_eq!(
-            interp1d(&-1.0, &[0.0, 1.0], &[0.0, 1.0], true).unwrap(),
+            interp1d(&-1.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
             -1.0
         );
         assert_eq!(
-            interp1d(&-1.0, &[0.0, 1.0], &[0.0, 1.0], false).unwrap(),
+            interp1d(&-1.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
             0.0
         );
     }
     #[test]
     fn test_interp1d_inside_range() {
-        assert_eq!(interp1d(&0.5, &[0.0, 1.0], &[0.0, 1.0], true).unwrap(), 0.5);
         assert_eq!(
-            interp1d(&0.5, &[0.0, 1.0], &[0.0, 1.0], false).unwrap(),
+            interp1d(&0.5, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
+            0.5
+        );
+        assert_eq!(
+            interp1d(&0.5, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
             0.5
         );
     }
 
     #[test]
     fn test_interp1d_with_duplicate_y_data() {
-        assert_eq!(interp1d(&0.5, &[0.0, 1.0], &[1.0, 1.0], true).unwrap(), 1.0);
         assert_eq!(
-            interp1d(&0.5, &[0.0, 1.0], &[1.0, 1.0], false).unwrap(),
+            interp1d(&0.5, &[0.0, 1.0], &[1.0, 1.0], Extrapolate::Yes).unwrap(),
+            1.0
+        );
+        assert_eq!(
+            interp1d(&0.5, &[0.0, 1.0], &[1.0, 1.0], Extrapolate::No).unwrap(),
             1.0
         );
     }
 
     #[test]
     fn test_interp1d_with_duplicate_x_data() {
-        assert!(interp1d(&0.5, &[0.0, 0.0], &[0.0, 1.0], true).is_err());
+        assert!(interp1d(&0.5, &[0.0, 0.0], &[0.0, 1.0], Extrapolate::Yes).is_err());
     }
 
     #[test]

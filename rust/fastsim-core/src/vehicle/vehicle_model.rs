@@ -108,8 +108,8 @@ pub struct Vehicle {
     pub drag_coef: si::Ratio,
     /// Projected frontal area for drag calculations
     pub frontal_area: si::Area,
-    /// Wheel rolling resistance for the vehicle (i.e. all wheels included)
-    pub wheel_rr: si::Ratio,
+    /// Wheel rolling resistance coefficient for the vehicle (i.e. all wheels included)
+    pub wheel_rr_coef: si::Ratio,
     // as of 2023-10-24, there is no `uom` unit for rotational inertia
     /// Wheel inertia per wheel
     pub wheel_inertia_kg_m2: si::Ratio,
@@ -312,7 +312,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             drive_axle_weight_frac: veh.drive_axle_weight_frac * uc::R,
             wheel_base: veh.wheel_base_m * uc::M,
             wheel_inertia_kg_m2: veh.wheel_inertia_kg_m2 * uc::R,
-            wheel_rr: veh.wheel_rr_coef * uc::R,
+            wheel_rr_coef: veh.wheel_rr_coef * uc::R,
             num_wheels: veh.num_wheels as u8,
             wheel_radius: veh.wheel_radius_m * uc::M,
             cargo_mass: Some(veh.cargo_kg * uc::KG),
@@ -550,7 +550,7 @@ pub struct VehicleState {
     /// actual achieved speed
     pub speed_ach: si::Velocity,
     /// cumulative distance traveled, integral of [Self::speed_ach]
-    pub dist_ach: si::Length,
+    pub dist: si::Length,
     /// [Self::speed_ach] from previous time step
     pub speed_ach_prev: si::Velocity,
 }
