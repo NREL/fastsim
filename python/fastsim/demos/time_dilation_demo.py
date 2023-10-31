@@ -16,7 +16,13 @@ sns.set()
 from fastsim import simdrive, vehicle, cycle
 from fastsim import parameters as params
 
+import fastsim as fsim
+import fastsim.utilities as utils
+
 # importlib.reload(simdrive)
+
+#for testing demo files, false when running automatic tests
+SHOW_PLOTS = fsim.utils.show_plots()
 
 # %%
 
@@ -72,7 +78,8 @@ plt.legend()
 plt.xlabel('Time [s]')
 plt.ylabel('Speed [mps]')
 plt.title('Speed v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 plt.figure()
 plt.plot(cyc.mps, label='trace')
@@ -82,7 +89,8 @@ plt.legend()
 plt.xlabel('Index')
 plt.ylabel('Speed [mps]')
 plt.title('Speed v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # distance
 
@@ -97,7 +105,8 @@ plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Distance [km]')
 plt.title('Distance v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 plt.figure()
 plt.plot((cyc.mps * cyc.dt_s).cumsum() / 1e3, label='trace')
@@ -110,7 +119,8 @@ plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Distance [km]')
 plt.title('Distance v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 plt.figure()
 plt.plot(sd_fixed.cyc.time_s,
@@ -124,7 +134,8 @@ plt.xlabel('Time [s]')
 plt.ylabel('Distance (trace - achieved) [km]')
 plt.title('Trace Miss v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.tight_layout()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 plt.figure()
 plt.plot((cyc.dist_m.cumsum() -
@@ -134,7 +145,8 @@ plt.xlabel('Index')
 plt.ylabel('Distance (trace - achieved) [m]')
 plt.title('Trace Miss v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
 plt.tight_layout()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # elevation change
 
@@ -149,7 +161,8 @@ plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Delta Elevation [m]')
 plt.title('Delta Elev. v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 
 plt.figure()
@@ -163,7 +176,8 @@ plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Delta Elevation [m]')
 plt.title('Delta Elev. v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # grade
 
@@ -175,7 +189,8 @@ plt.legend(loc='upper left')
 plt.xlabel('Time [s]')
 plt.ylabel('Grade [-]')
 plt.title('Grade v. Time, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 plt.figure()
 plt.plot(cyc.grade, label='trace')
@@ -185,7 +200,8 @@ plt.legend(loc='upper left')
 plt.xlabel('Index')
 plt.ylabel('Grade [-]')
 plt.title('Grade v. Index, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # time dilation
 
@@ -195,5 +211,6 @@ plt.plot(sd_fixed.cyc.dt_s)
 plt.xlabel('Index')
 plt.ylabel('Time Dilation')
 plt.title('Time Dilation, veh wt = {:,.0f} lbs'.format(round(veh.veh_kg * 2.205 / 1000) * 1000))
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 # %%

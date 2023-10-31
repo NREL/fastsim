@@ -13,8 +13,10 @@ import seaborn as sns
 
 import fastsim as fsim
 from fastsim.tests.test_coasting import make_coasting_plot
+import fastsim.utilities as utils
 
-RAN_SUCCESSFULLY = False
+#for testing demo files, false when running automatic tests
+SHOW_PLOTS = fsim.utils.show_plots()
 
 def maybe_str_to_bool(x, default=True):
     """
@@ -37,8 +39,6 @@ def maybe_str_to_bool(x, default=True):
     except:
         return default
 
-IS_INTERACTIVE = maybe_str_to_bool(os.getenv('FASTSIM_DEMO_IS_INTERACTIVE'))
-
 
 # %% [markdown]
 # ## Create a Vehicle and Cycle
@@ -52,9 +52,9 @@ sd = fsim.simdrive.RustSimDrive(cyc, veh)
 sd.sim_drive()
 
 base_mpg = sd.mpgge
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     print(f"Base fuel economy over UDDS: {sd.mpgge} mpg")
-    make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
+    make_coasting_plot(sd.cyc0, sd.cyc, do_show=SHOW_PLOTS)
 
 # %% [markdown]
 # ## Eco-Coasting
@@ -70,11 +70,11 @@ sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
 sd.sim_drive()
 
 coast_mpg = sd.mpgge
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     print(f"Coast fuel economy over UDDS: {sd.mpgge} mpg")
     pct_savings = ((1.0/base_mpg) - (1.0/coast_mpg)) * 100.0 / ((1.0/base_mpg))
     print(f"Percent Savings: {pct_savings} %")
-    make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
+    make_coasting_plot(sd.cyc0, sd.cyc, do_show=SHOW_PLOTSe)
 
 # %% [markdown]
 # # Car Following at Average Speed
@@ -103,11 +103,11 @@ sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
 sd.sim_drive()
 
 cruise_mpg = sd.mpgge
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     print(f"Cruise fuel economy over UDDS: {sd.mpgge} mpg")
     pct_savings = ((1.0/base_mpg) - (1.0/cruise_mpg)) * 100.0 / ((1.0/base_mpg))
     print(f"Percent Savings: {pct_savings} %")
-    make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
+    make_coasting_plot(sd.cyc0, sd.cyc, do_show=SHOW_PLOTS)
 
 # %% [markdown]
 # # Eco-Cruising at Multiple Average Speeds
@@ -135,7 +135,7 @@ for mt in microtrips:
     mt_dist_m = sum(mt_cyc.dist_m)
     mt_time_s = mt_cyc.time_s[-1]
     mt_avg_spd_m_per_s = mt_dist_m / mt_time_s if mt_time_s > 0.0 else 0.0
-    if IS_INTERACTIVE:
+    if SHOW_PLOTS:
         print(f"mt num points      : {len(mt_cyc.time_s)}")
         print(f"mt dist (m)        : {mt_dist_m}")
         print(f"mt time (s)        : {mt_time_s}")
@@ -144,7 +144,7 @@ for mt in microtrips:
         (dist_at_start_of_microtrip_m, mt_avg_spd_m_per_s)
     )
     dist_at_start_of_microtrip_m += mt_dist_m
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     print(f"Found speeds for {len(dist_and_avg_speeds)} microtrips")
 sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
     idm_allow=True,
@@ -167,18 +167,17 @@ while sd.i < len(cyc.time_s):
             sd.sim_params = fsim.auxiliaries.set_nested_values(sd.sim_params,
                 idm_v_desired_m_per_s=mt_avg_spd_m_per_s
             )
-            if IS_INTERACTIVE:
-                print(f"... setting idm_v_desired_m_per_s = {sd.sim_params.idm_v_desired_m_per_s}")
+            print(f"... setting idm_v_desired_m_per_s = {sd.sim_params.idm_v_desired_m_per_s}")
             current_mt_idx += 1
     sd.sim_drive_step()
 sd.set_post_scalars()
 
 cruise_mpg = sd.mpgge
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     print(f"Cruise fuel economy over UDDS: {sd.mpgge} mpg")
     pct_savings = ((1.0/base_mpg) - (1.0/cruise_mpg)) * 100.0 / ((1.0/base_mpg))
     print(f"Percent Savings: {pct_savings} %")
-    make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
+    make_coasting_plot(sd.cyc0, sd.cyc, do_show=SHOW_PLOTS)
 
 # %% [markdown]
 # # Eco-Cruise and Eco-Approach running at the same time
@@ -208,15 +207,10 @@ params.idm_v_desired_m_per_s = 15.0 # np.sum(cyc_udds['mps']) / cyc_udds['time_s
 sd.sim_params = params
 sd.sim_drive()
 
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     eco_mpg = sd.mpgge
     print(f"Cruise and Coast fuel economy over UDDS: {sd.mpgge} mpg")
     pct_savings = ((1.0/base_mpg) - (1.0/eco_mpg)) * 100.0 / ((1.0/base_mpg))
     print(f"Percent Savings: {pct_savings} %")
-    make_coasting_plot(sd.cyc0, sd.cyc, do_show=True)
+    make_coasting_plot(sd.cyc0, sd.cyc, do_show=SHOW_PLOTS)
 
-
-# %%
-# The flag below lets us know if this module ran successfully without error
-RAN_SUCCESSFULLY = True
-# %%

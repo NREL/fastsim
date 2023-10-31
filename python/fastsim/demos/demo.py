@@ -41,7 +41,11 @@ import importlib
 
 # local modules
 import fastsim as fsim
+import fastsim.utilities as utils
 # importlib.reload(simdrive) importlib.reload(cycle)
+
+#for testing demo files, false when running automatic tests
+SHOW_PLOTS = fsim.utils.show_plots()
 
 #%%
 
@@ -128,7 +132,8 @@ ax[1].plot(cyc.time_s, sim_drive.mph_ach)
 ax[1].set_xlabel('Cycle Time [s]')
 ax[1].set_ylabel('Speed [MPH]')
 
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # %%
 fig, ax = plt.subplots(2, 1, figsize=(9, 5))
@@ -144,7 +149,8 @@ ax[1].plot(cyc.time_s, sim_drive.mph_ach)
 ax[1].set_xlabel('Cycle Time [s]')
 ax[1].set_ylabel('Speed [MPH]')
 
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # %% [markdown]
 # ## Running sim_drive_step() with modified auxInKw
@@ -174,7 +180,8 @@ plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
 # %%
@@ -205,7 +212,8 @@ plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
 # %% [markdown]
@@ -230,7 +238,8 @@ plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
@@ -253,7 +262,8 @@ plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
@@ -286,7 +296,8 @@ plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
@@ -316,7 +327,8 @@ plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
@@ -339,7 +351,8 @@ plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
@@ -362,7 +375,8 @@ plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
 plt.xlabel('Time [s]')
 plt.ylabel('Power [kW]')
 plt.legend()
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
@@ -580,7 +594,8 @@ plt.figure()
 df_fltr.mpgge.hist(bins=20, rwidth=.9)
 plt.xlabel('Miles per Gallon')
 plt.ylabel('Number of Cycles')
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 
 # %%
@@ -607,7 +622,8 @@ plt.legend(
     scatterpoints=1)
 plt.xlabel('Average Cycle Speed [MPH]')
 plt.ylabel('Fuel Economy [MPG]')
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # %% [markdown]
 # # Cycle manipulation tools
@@ -661,7 +677,8 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # %% [markdown]
 # ## Concat cycles/trips
@@ -717,7 +734,8 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # %% [markdown]
 # ## Cycle comparison
@@ -751,7 +769,8 @@ plt.plot(cyc10Hz.time_s, cyc10Hz.mph, marker=',')
 plt.plot(cyc10s.time_s, cyc10s.mph, marker=',')
 plt.xlabel('Cycle Time [s]')
 plt.ylabel('Vehicle Speed [mph]')
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 print(f'Time to load and resample: {time.perf_counter() - t0:.2e} s')
 
 # %% [markdown]
@@ -811,7 +830,8 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # %% [markdown]
 # ## Clip by times
@@ -861,7 +881,8 @@ ax.tick_params('y', colors='xkcd:bluish')
 ax2.set_ylabel('Speed [MPH]', weight='bold', color='xkcd:pale red')
 ax2.grid(False)
 ax2.tick_params('y', colors='xkcd:pale red')
-plt.show()
+if SHOW_PLOTS:
+    plt.show()
 
 # %% [markdown]
 # ### Test Coefficients Calculation
