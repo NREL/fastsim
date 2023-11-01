@@ -453,6 +453,8 @@ def show_plots() -> bool:
 
 #what exactly should I make the default path and how -- would the working directory potentially cause problems? (check when back at
 # NREL about notes from internal repo)
+#perhaps there can be instructions for where to run this file, and a default option for current_demo_path and path_for_copies
+#based on that instruction, and then users can add their own paths if they run it from somewhere other than the default location
 def copy_demo_files(current_demo_path, path_for_copies):
     """
     Copies demo files from demos folder into specified local directory
