@@ -632,20 +632,11 @@ impl RustSimDrive {
             }
         }
         // Is SOC below min threshold?
-        if self.soc[i - 1] < (self.veh.min_soc + self.veh.perc_high_acc_buf) {
-            self.reached_buff[i] = false;
-        } else {
-            self.reached_buff[i] = true;
-        }
+        self.reached_buff[i] = self.soc[i - 1] >= (self.veh.min_soc + self.veh.perc_high_acc_buf);
 
         // Does the engine need to be on for low SOC or high acceleration
-        if self.soc[i - 1] < self.veh.min_soc
-            || (self.high_acc_fc_on_tag[i - 1] && !(self.reached_buff[i]))
-        {
-            self.high_acc_fc_on_tag[i] = true
-        } else {
-            self.high_acc_fc_on_tag[i] = false
-        }
+        self.high_acc_fc_on_tag[i] = self.soc[i - 1] < self.veh.min_soc
+            || (self.high_acc_fc_on_tag[i - 1] && !(self.reached_buff[i]));
         self.max_trac_mps[i] =
             self.mps_ach[i - 1] + (self.veh.max_trac_mps2 * self.cyc.dt_s_at_i(i));
         Ok(())
@@ -871,10 +862,10 @@ impl RustSimDrive {
             * self.props.air_density_kg_per_m3
             * self.veh.drag_coef
             * self.veh.frontal_area_m2
-            * ((self.mps_ach[i - 1] + mps_ach) / 2.0).powf(3.0)
+            * ((self.mps_ach[i - 1] + mps_ach) / 2.0).powi(3)
             / 1e3;
         self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s_at_i(i))
-            * (mps_ach.powf(2.0) - self.mps_ach[i - 1].powf(2.0))
+            * (mps_ach.powi(2) - self.mps_ach[i - 1].powi(2))
             / 1e3;
         self.ascent_kw[i] = self.props.a_grav_mps2
             * grade.atan().sin()
@@ -895,13 +886,9 @@ impl RustSimDrive {
         self.cyc_tire_inertia_kw[i] = (0.5
             * self.veh.wheel_inertia_kg_m2
             * self.veh.num_wheels
-            * self.cyc_whl_rad_per_sec[i].powf(2.0)
-            / self.cyc.dt_s_at_i(i)
-            - 0.5
-                * self.veh.wheel_inertia_kg_m2
-                * self.veh.num_wheels
-                * (self.mps_ach[i - 1] / self.veh.wheel_radius_m).powf(2.0)
-                / self.cyc.dt_s_at_i(i))
+            * (self.cyc_whl_rad_per_sec[i].powi(2)
+                - (self.mps_ach[i - 1] / self.veh.wheel_radius_m).powi(2))
+            / self.cyc.dt_s_at_i(i))
             / 1e3;
 
         self.cyc_whl_kw_req[i] =
@@ -987,12 +974,12 @@ impl RustSimDrive {
                     * self.veh.frontal_area_m2
                     * self.mps_ach[i - 1];
                 let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels
-                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powf(2.0));
+                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powi(2));
                 let drag1 = 3.0 / 16.0
                     * self.props.air_density_kg_per_m3
                     * self.veh.drag_coef
                     * self.veh.frontal_area_m2
-                    * self.mps_ach[i - 1].powf(2.0);
+                    * self.mps_ach[i - 1].powi(2);
                 let roll1 = 0.5
                     * self.veh.veh_kg
                     * self.props.a_grav_mps2
@@ -1000,12 +987,12 @@ impl RustSimDrive {
                     * grade.atan().cos();
                 let ascent1 = 0.5 * self.props.a_grav_mps2 * grade.atan().sin() * self.veh.veh_kg;
                 let accel0 =
-                    -0.5 * self.veh.veh_kg * self.mps_ach[i - 1].powf(2.0) / self.cyc.dt_s_at_i(i);
+                    -0.5 * self.veh.veh_kg * self.mps_ach[i - 1].powi(2) / self.cyc.dt_s_at_i(i);
                 let drag0 = 1.0 / 16.0
                     * self.props.air_density_kg_per_m3
                     * self.veh.drag_coef
                     * self.veh.frontal_area_m2
-                    * self.mps_ach[i - 1].powf(3.0);
+                    * self.mps_ach[i - 1].powi(3);
                 let roll0 = 0.5
                     * self.veh.veh_kg
                     * self.props.a_grav_mps2
@@ -1020,56 +1007,74 @@ impl RustSimDrive {
                 let wheel0 = -0.5
                     * self.veh.wheel_inertia_kg_m2
                     * self.veh.num_wheels
-                    * self.mps_ach[i - 1].powf(2.0)
-                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powf(2.0));
+                    * self.mps_ach[i - 1].powi(2)
+                    / (self.cyc.dt_s_at_i(i) * self.veh.wheel_radius_m.powi(2));
 
-                let total3 = drag3 / 1e3;
-                let total2 = (accel2 + drag2 + wheel2) / 1e3;
-                let total1 = (drag1 + roll1 + ascent1) / 1e3;
-                let total0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) / 1e3
+                let t3 = drag3 / 1e3;
+                let t2 = (accel2 + drag2 + wheel2) / 1e3;
+                let t1 = (drag1 + roll1 + ascent1) / 1e3;
+                let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) / 1e3
                     - self.cur_max_trans_kw_out[i];
 
-                let totals = array![total3, total2, total1, total0];
-
-                let t3 = totals[0];
-                let t2 = totals[1];
-                let t1 = totals[2];
-                let t0 = totals[3];
                 // initial guess
-                let xi = max(1.0, self.mps_ach[i - 1]);
+                let speed_guess = max(1.0, self.mps_ach[i - 1]);
                 // stop criteria
                 let max_iter = self.sim_params.newton_max_iter;
                 let xtol = self.sim_params.newton_xtol;
                 // solver gain
                 let g = self.sim_params.newton_gain;
-                let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
-                let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
-                let bi = yi - xi * mi;
-                let mut xs = vec![xi];
-                let mut ys = vec![yi];
-                let mut ms = vec![mi];
-                let mut bs = vec![bi];
-                let mut iterate = 1;
+                let pwr_err_fn = |speed_guess: f64| -> f64 {
+                    t3 * speed_guess.powi(3) + t2 * speed_guess.powi(2) + t1 * speed_guess + t0
+                };
+                let pwr_err_per_speed_guess_fn = |speed_guess: f64| -> f64 {
+                    3.0 * t3 * speed_guess.powi(2) + 2.0 * t2 * speed_guess + t1
+                };
+                let pwr_err = pwr_err_fn(speed_guess);
+                let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
+                let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
+                let mut speed_guesses = vec![speed_guess];
+                let mut pwr_errs = vec![pwr_err];
+                let mut d_pwr_err_per_d_speed_guesses = vec![pwr_err_per_speed_guess];
+                let mut new_speed_guesses = vec![new_speed_guess];
+                // speed achieved iteration counter
+                let mut spd_ach_i = 1;
                 let mut converged = false;
-                while iterate < max_iter && !converged {
-                    let xi = xs[xs.len() - 1] * (1.0 - g) - g * bs[xs.len() - 1] / ms[xs.len() - 1];
-                    let yi = t3 * xi.powf(3.0) + t2 * xi.powf(2.0) + t1 * xi + t0;
-                    let mi = 3.0 * t3 * xi.powf(2.0) + 2.0 * t2 * xi + t1;
-                    let bi = yi - xi * mi;
-                    xs.push(xi);
-                    ys.push(yi);
-                    ms.push(mi);
-                    bs.push(bi);
-                    converged =
-                        ((xs[xs.len() - 1] - xs[xs.len() - 2]) / xs[xs.len() - 2]).abs() < xtol;
-                    iterate += 1;
+                while spd_ach_i < max_iter && !converged {
+                    let speed_guess = speed_guesses
+                        .iter()
+                        .last()
+                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        * (1.0 - g)
+                        - g * new_speed_guesses
+                            .iter()
+                            .last()
+                            .ok_or(anyhow!("{}", format_dbg!()))?
+                            / d_pwr_err_per_d_speed_guesses[speed_guesses.len() - 1];
+                    let pwr_err = pwr_err_fn(speed_guess);
+                    let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
+                    let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
+                    speed_guesses.push(speed_guess);
+                    pwr_errs.push(pwr_err);
+                    d_pwr_err_per_d_speed_guesses.push(pwr_err_per_speed_guess);
+                    new_speed_guesses.push(new_speed_guess);
+                    converged = ((speed_guesses
+                        .iter()
+                        .last()
+                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        - speed_guesses[speed_guesses.len() - 2])
+                        / speed_guesses[speed_guesses.len() - 2])
+                        .abs()
+                        < xtol;
+                    spd_ach_i += 1;
                 }
 
-                self.newton_iters[i] = iterate;
+                self.newton_iters[i] = spd_ach_i;
 
-                let _ys = Array::from_vec(ys).map(|x| x.abs());
+                let _ys = Array::from_vec(pwr_errs).map(|x| x.abs());
+                // Question: could we assume `speed_guesses.iter().last()` is the correct solution?
+                // This would make for faster running.
                 self.mps_ach[i] = max(
-                    xs[_ys
+                    speed_guesses[_ys
                         .iter()
                         .position(|&x| x == ndarrmin(&_ys))
                         .ok_or_else(|| anyhow!(format_dbg!(ndarrmin(&_ys))))?],
@@ -1104,7 +1109,7 @@ impl RustSimDrive {
                 (self.veh.ess_max_kwh * self.veh.max_soc
                     - 0.5
                         * self.veh.veh_kg
-                        * (self.cyc.mps[i].powf(2.0))
+                        * (self.cyc.mps[i].powi(2))
                         * (1.0 / 1_000.0)
                         * (1.0 / 3_600.0)
                         * self.veh.mc_peak_eff()
@@ -1136,9 +1141,9 @@ impl RustSimDrive {
         } else {
             self.accel_buff_soc[i] = min(
                 max(
-                    ((self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powf(2.0)
-                        - self.cyc.mps[i].powf(2.0))
-                        / (self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powf(2.0)
+                    ((self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powi(2)
+                        - self.cyc.mps[i].powi(2))
+                        / (self.veh.max_accel_buffer_mph / params::MPH_PER_MPS).powi(2)
                         * min(
                             self.veh.max_accel_buffer_perc_of_useable_soc
                                 * (self.veh.max_soc - self.veh.min_soc),
@@ -1332,14 +1337,8 @@ impl RustSimDrive {
     pub fn set_fc_forced_state_rust(&mut self, i: usize) -> Result<(), anyhow::Error> {
         // force fuel converter on if it was on in the previous time step, but only if fc
         // has not been on longer than minFcTimeOn
-        if self.prev_fc_time_on[i] > 0.0
-            && self.prev_fc_time_on[i] < self.veh.min_fc_time_on - self.cyc.dt_s_at_i(i)
-        {
-            self.fc_forced_on[i] = true;
-        } else {
-            self.fc_forced_on[i] = false
-        }
-
+        self.fc_forced_on[i] = self.prev_fc_time_on[i] > 0.0
+            && self.prev_fc_time_on[i] < self.veh.min_fc_time_on - self.cyc.dt_s_at_i(i);
         if !self.fc_forced_on[i] || !self.can_pwr_all_elec[i] {
             // fc forced on because:
             // - it was on in the previous time step and hasn't been on long enough
@@ -1846,12 +1845,12 @@ impl RustSimDrive {
                 .mps_ach
                 .first()
                 .ok_or_else(|| anyhow!(format_dbg!(self.mps_ach)))?
-                .powf(2.0)
+                .powi(2)
                 - self
                     .mps_ach
                     .last()
                     .ok_or_else(|| anyhow!(format_dbg!(self.mps_ach)))?
-                    .powf(2.0))
+                    .powi(2))
             / 1_000.0;
 
         self.energy_audit_error =
@@ -1867,7 +1866,7 @@ impl RustSimDrive {
         }
         for i in 1..self.cyc.len() {
             self.accel_kw[i] = self.veh.veh_kg / (2.0 * self.cyc.dt_s_at_i(i))
-                * (self.mps_ach[i].powf(2.0) - self.mps_ach[i - 1].powf(2.0))
+                * (self.mps_ach[i].powi(2) - self.mps_ach[i - 1].powi(2))
                 / 1_000.0;
         }
 
