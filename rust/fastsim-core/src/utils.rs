@@ -304,7 +304,11 @@ lazy_static! {
 
 /// Calculate tire radius (in meters) from an [ISO metric tire code](https://en.wikipedia.org/wiki/Tire_code#ISO_metric_tire_codes)
 ///
-/// **Example 1:**
+/// # Arguments
+/// * `tire_code` - A string containing a parsable ISO metric tire code
+///
+/// # Examples
+/// ## Example 1:
 ///
 /// ```rust
 /// // Note the floating point imprecision in the result
@@ -313,7 +317,7 @@ lazy_static! {
 /// assert_eq!(tire_code_to_radius(&tire_code).unwrap(), 0.40514999999999995);
 /// ```
 ///
-/// **Example 2:**
+/// ## Example 2:
 ///
 /// ```rust
 /// // Either `&str`, `&String`, or `String` can be passed
