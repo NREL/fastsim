@@ -1085,14 +1085,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_dist() -> anyhow::Result<()> {
+    fn test_dist() {
         let cyc = RustCycle::test_cyc();
-        anyhow::ensure!(cyc.dist_m().sum() == 45.0);
-        Ok(())
+        assert_eq!(cyc.dist_m().sum(), 45.0);
     }
 
     #[test]
-    fn test_average_speeds_and_distances() -> anyhow::Result<()> {
+    fn test_average_speeds_and_distances() {
         let time_s = vec![0.0, 10.0, 30.0, 34.0, 40.0];
         let speed_mps = vec![0.0, 10.0, 10.0, 0.0, 0.0];
         let grade = Array::zeros(5).to_vec();
@@ -1101,32 +1100,30 @@ mod tests {
         let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
         let avg_mps = average_step_speeds(&cyc);
         let expected_avg_mps = Array::from_vec(vec![0.0, 5.0, 10.0, 5.0, 0.0]);
-        anyhow::ensure!(expected_avg_mps.len() == avg_mps.len());
+        assert_eq!(expected_avg_mps.len(), avg_mps.len());
         for (expected, actual) in expected_avg_mps.iter().zip(avg_mps.iter()) {
-            anyhow::ensure!(expected == actual);
+            assert_eq!(expected, actual);
         }
         let dist_m = trapz_step_distances(&cyc);
         let expected_dist_m = Array::from_vec(vec![0.0, 50.0, 200.0, 20.0, 0.0]);
-        anyhow::ensure!(expected_dist_m.len() == dist_m.len());
+        assert_eq!(expected_dist_m.len(), dist_m.len());
         for (expected, actual) in expected_dist_m.iter().zip(dist_m.iter()) {
-            anyhow::ensure!(expected == actual);
+            assert_eq!(expected, actual);
         }
-        Ok(())
     }
 
     #[test]
-    fn test_loading_a_cycle_from_the_filesystem() -> anyhow::Result<()> {
+    fn test_loading_a_cycle_from_the_filesystem() {
         let cyc_file_path = resources_path().join("cycles/udds.csv");
         let expected_udds_length: usize = 1370;
-        let cyc = RustCycle::from_csv_file(cyc_file_path)?;
+        let cyc = RustCycle::from_csv_file(cyc_file_path).unwrap();
         let num_entries = cyc.time_s.len();
-        anyhow::ensure!(cyc.name == String::from("udds"));
-        anyhow::ensure!(num_entries > 0);
-        anyhow::ensure!(num_entries == cyc.time_s.len());
-        anyhow::ensure!(num_entries == cyc.mps.len());
-        anyhow::ensure!(num_entries == cyc.grade.len());
-        anyhow::ensure!(num_entries == cyc.road_type.len());
-        anyhow::ensure!(num_entries == expected_udds_length);
-        Ok(())
+        assert_eq!(cyc.name, String::from("udds"));
+        assert!(num_entries > 0);
+        assert_eq!(num_entries, cyc.time_s.len());
+        assert_eq!(num_entries, cyc.mps.len());
+        assert_eq!(num_entries, cyc.grade.len());
+        assert_eq!(num_entries, cyc.road_type.len());
+        assert_eq!(num_entries, expected_udds_length);
     }
 }

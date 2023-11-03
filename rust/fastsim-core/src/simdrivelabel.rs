@@ -723,9 +723,9 @@ mod simdrivelabel_tests {
     use super::*;
 
     #[test]
-    fn test_get_label_fe_conv() -> anyhow::Result<()> {
+    fn test_get_label_fe_conv() {
         let veh: vehicle::RustVehicle = vehicle::RustVehicle::mock_vehicle();
-        let (mut label_fe, _) = get_label_fe(&veh, None, None)?;
+        let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
         label_fe.veh = vehicle::RustVehicle::default();
@@ -765,11 +765,10 @@ mod simdrivelabel_tests {
         //     100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
         // );
 
-        anyhow::ensure!(label_fe.approx_eq(&label_fe_truth, 1e-10));
-        Ok(())
+        assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
     }
     #[test]
-    fn test_get_label_fe_phev() -> anyhow::Result<()> {
+    fn test_get_label_fe_phev() {
         let mut veh = vehicle::RustVehicle {
             props: RustPhysicalProperties {
                 air_density_kg_per_m3: 1.2,
@@ -912,9 +911,9 @@ mod simdrivelabel_tests {
             orphaned: false,
             ..Default::default()
         };
-        veh.set_derived()?;
+        veh.set_derived().unwrap();
 
-        let (mut label_fe, _) = get_label_fe(&veh, None, None)?;
+        let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
         label_fe.veh = vehicle::RustVehicle::default();
@@ -1128,16 +1127,15 @@ mod simdrivelabel_tests {
         };
 
         let tol = 1e-8;
-        anyhow::ensure!(label_fe.veh.approx_eq(&label_fe_truth.veh, tol));
-        anyhow::ensure!(
+        assert!(label_fe.veh.approx_eq(&label_fe_truth.veh, tol));
+        assert!(
             label_fe
                 .phev_calcs
                 .approx_eq(&label_fe_truth.phev_calcs, tol),
             "label_fe.phev_calcs: {:?}",
             &label_fe.phev_calcs
         );
-        anyhow::ensure!(label_fe.approx_eq(&label_fe_truth, tol));
-        Ok(())
+        assert!(label_fe.approx_eq(&label_fe_truth, tol));
     }
 }
 
