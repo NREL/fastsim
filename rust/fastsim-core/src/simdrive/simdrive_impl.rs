@@ -460,8 +460,7 @@ impl RustSimDrive {
 
         self.walk(init_soc, aux_in_kw_override)?;
 
-        self.set_post_scalars()?;
-        Ok(())
+        self.set_post_scalars()
     }
 
     pub fn sim_drive_accel(

@@ -28,9 +28,8 @@ macro_rules! impl_vec_get_set {
                     } else {
                         $impl_block.extend(quote! {
                             #[setter]
-                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> anyhow::Result<()> {
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) {
                                 self.#$fident = new_value;
-                                Ok(())
                             }
                         })
                     }
@@ -51,9 +50,8 @@ macro_rules! impl_vec_get_set {
                     } else {
                         $impl_block.extend(quote! {
                             #[setter]
-                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> anyhow::Result<()> {
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) {
                                 self.#$fident = Array1::from_vec(new_value);
-                                Ok(())
                             }
                         })
                     }

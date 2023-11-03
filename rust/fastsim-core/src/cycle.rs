@@ -196,7 +196,7 @@ pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) ->
 /// to subsequent stop plus any idle (stopped time).
 /// Arguments:
 /// ----------
-/// cycle: drive cycle converted to dictionary by cycle.get_cyc_dict()
+/// cycle: drive cycle
 /// stop_speed_m__s: speed at which vehicle is considered stopped for trip
 ///     separation
 /// keep_name: (optional) bool, if True and cycle contains "name", adds
@@ -483,8 +483,8 @@ impl RustCycleCache {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn __getnewargs__(&self) -> anyhow::Result<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str)> {
-        Ok((self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name))
+    pub fn __getnewargs__(&self) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str) {
+        (self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name)
     }
 
     #[staticmethod]
@@ -493,19 +493,18 @@ impl RustCycleCache {
         Self::from_csv_file(PathBuf::extract(filepath)?)
     }
 
-    pub fn to_rust(&self) -> anyhow::Result<Self> {
-        Ok(self.clone())
+    pub fn to_rust(&self) -> Self {
+        self.clone()
     }
 
     /// Return a HashMap representing the cycle
-    pub fn get_cyc_dict(&self) -> anyhow::Result<HashMap<String, Vec<f64>>> {
-        let dict: HashMap<String, Vec<f64>> = HashMap::from([
+    pub fn get_cyc_dict(&self) -> HashMap<String, Vec<f64>> {
+        HashMap::from([
             ("time_s".to_string(), self.time_s.to_vec()),
             ("mps".to_string(), self.mps.to_vec()),
             ("grade".to_string(), self.grade.to_vec()),
             ("road_type".to_string(), self.road_type.to_vec()),
-        ]);
-        Ok(dict)
+        ])
     }
 
     #[pyo3(name = "modify_by_const_jerk_trajectory")]
@@ -515,8 +514,8 @@ impl RustCycleCache {
         n: usize,
         jerk_m_per_s3: f64,
         accel0_m_per_s2: f64,
-    ) -> anyhow::Result<f64> {
-        Ok(self.modify_by_const_jerk_trajectory(idx, n, jerk_m_per_s3, accel0_m_per_s2))
+    ) -> f64 {
+        self.modify_by_const_jerk_trajectory(idx, n, jerk_m_per_s3, accel0_m_per_s2)
     }
 
     #[pyo3(name = "modify_with_braking_trajectory")]
@@ -530,8 +529,8 @@ impl RustCycleCache {
     }
 
     #[pyo3(name = "calc_distance_to_next_stop_from")]
-    pub fn calc_distance_to_next_stop_from_py(&self, distance_m: f64) -> anyhow::Result<f64> {
-        Ok(self.calc_distance_to_next_stop_from(distance_m, None))
+    pub fn calc_distance_to_next_stop_from_py(&self, distance_m: f64) -> f64 {
+        self.calc_distance_to_next_stop_from(distance_m, None)
     }
 
     #[pyo3(name = "average_grade_over_range")]
@@ -539,51 +538,50 @@ impl RustCycleCache {
         &self,
         distance_start_m: f64,
         delta_distance_m: f64,
-    ) -> anyhow::Result<f64> {
-        Ok(self.average_grade_over_range(distance_start_m, delta_distance_m, None))
+    ) -> f64 {
+        self.average_grade_over_range(distance_start_m, delta_distance_m, None)
     }
 
     #[pyo3(name = "build_cache")]
-    pub fn build_cache_py(&self) -> anyhow::Result<RustCycleCache> {
-        Ok(self.build_cache())
+    pub fn build_cache_py(&self) -> RustCycleCache {
+        self.build_cache()
     }
 
     #[pyo3(name = "dt_s_at_i")]
-    pub fn dt_s_at_i_py(&self, i: usize) -> anyhow::Result<f64> {
+    pub fn dt_s_at_i_py(&self, i: usize) -> f64 {
         if i == 0 {
-            Ok(0.0)
+            0.0
         } else {
-            Ok(self.dt_s_at_i(i))
+            self.dt_s_at_i(i)
         }
     }
 
     #[getter]
-    pub fn get_mph(&self) -> anyhow::Result<Vec<f64>> {
-        Ok((&self.mps * crate::params::MPH_PER_MPS).to_vec())
+    pub fn get_mph(&self) -> Vec<f64> {
+        (&self.mps * crate::params::MPH_PER_MPS).to_vec()
     }
     #[setter]
-    pub fn set_mph(&mut self, new_value: Vec<f64>) -> anyhow::Result<()> {
+    pub fn set_mph(&mut self, new_value: Vec<f64>) {
         self.mps = Array::from_vec(new_value) / MPH_PER_MPS;
-        Ok(())
     }
     #[getter]
     /// array of time steps
-    pub fn get_dt_s(&self) -> anyhow::Result<Vec<f64>> {
-        Ok(self.dt_s().to_vec())
+    pub fn get_dt_s(&self) -> Vec<f64> {
+        self.dt_s().to_vec()
     }
     #[getter]
     /// cycle length
-    pub fn get_len(&self) -> anyhow::Result<usize> {
-        Ok(self.len())
+    pub fn get_len(&self) -> usize {
+        self.len()
     }
     #[getter]
     /// distance for each time step based on final speed
-    pub fn get_dist_m(&self) -> anyhow::Result<Vec<f64>> {
-        Ok(self.dist_m().to_vec())
+    pub fn get_dist_m(&self) -> Vec<f64> {
+        self.dist_m().to_vec()
     }
     #[getter]
-    pub fn get_delta_elev_m(&self) -> anyhow::Result<Vec<f64>> {
-        Ok(self.delta_elev_m().to_vec())
+    pub fn get_delta_elev_m(&self) -> Vec<f64> {
+        self.delta_elev_m().to_vec()
     }
 )]
 /// Struct for containing:

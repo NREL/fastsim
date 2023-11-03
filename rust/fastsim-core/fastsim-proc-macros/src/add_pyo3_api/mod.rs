@@ -329,13 +329,12 @@ pub fn impl_getters_and_setters(
             "orphaned" => {
                 impl_block.extend::<TokenStream2>(quote! {
                     #[getter]
-                    pub fn get_orphaned(&self) -> anyhow::Result<bool> {
-                        Ok(self.orphaned)
+                    pub fn get_orphaned(&self) -> bool {
+                        self.orphaned
                     }
                     /// Reset the orphaned flag to false.
-                    pub fn reset_orphaned(&mut self) -> anyhow::Result<()> {
+                    pub fn reset_orphaned(&mut self) {
                         self.orphaned = false;
-                        Ok(())
                     }
                 })
             }

@@ -834,16 +834,17 @@ impl RustVehicle {
         }
 
         // check that efficiencies are not violating the first law of thermo
-        assert!(
+        // TODO: this could perhaps be done in the input validators
+        ensure!(
             arrmin(&self.fc_eff_array) >= 0.0,
-            "min MC eff < 0 is not allowed"
+            "minimum FC efficiency < 0 is not allowed"
         );
-        assert!(self.fc_peak_eff() < 1.0, "fcPeakEff >= 1 is not allowed.");
-        assert!(
+        ensure!(self.fc_peak_eff() < 1.0, "fc_peak_eff >= 1 is not allowed");
+        ensure!(
             arrmin(&self.mc_full_eff_array) >= 0.0,
-            "min MC eff < 0 is not allowed"
+            "minimum MC efficiency < 0 is not allowed"
         );
-        assert!(self.mc_peak_eff() < 1.0, "mcPeakEff >= 1 is not allowed.");
+        ensure!(self.mc_peak_eff() < 1.0, "mc_peak_eff >= 1 is not allowed");
 
         self.set_veh_mass();
 
@@ -975,8 +976,7 @@ impl RustVehicle {
 
 impl SerdeAPI for RustVehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.set_derived()?;
-        Ok(())
+        self.set_derived()
     }
 }
 
