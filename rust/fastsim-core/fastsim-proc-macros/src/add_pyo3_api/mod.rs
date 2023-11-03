@@ -210,10 +210,10 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     // py_impl_block.extend::<TokenStream2>(quote! {
-    //     #[classmethod]
+    //     #[staticmethod]
     //     #[pyo3(name = "default")]
-    //     pub fn default_py(_cls: &PyType) -> anyhow::Result<Self> {
-    //         Ok(Self::default())
+    //     pub fn default_py() -> Self {
+    //         Self::default()
     //     }
     // });
 

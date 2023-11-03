@@ -52,18 +52,16 @@ impl RustSimDrive {
                     0.0
                 };
         } else {
-            if !(0.0..=1.0).contains(&blend_factor) {
-                return Err(anyhow!(
-                    "blend_factor must be between 0 and 1 but got {}",
-                    blend_factor
-                ));
-            }
-            if min_target_speed_m_per_s < 0.0 {
-                return Err(anyhow!(
-                    "min_target_speed_m_per_s must be >= 0 but got {}",
-                    min_target_speed_m_per_s
-                ));
-            }
+            ensure!(
+                (0.0..=1.0).contains(&blend_factor),
+                "blend_factor must be between 0 and 1 but got {}",
+                blend_factor
+            );
+            ensure!(
+                min_target_speed_m_per_s >= 0.0,
+                "min_target_speed_m_per_s must be >= 0.0 but got {}",
+                min_target_speed_m_per_s
+            );
             self.sim_params.idm_v_desired_in_m_per_s_by_distance_m =
                 Some(create_dist_and_target_speeds_by_microtrip(
                     &self.cyc0,
@@ -72,12 +70,11 @@ impl RustSimDrive {
                 ));
         }
         // Extend the duration of the base cycle
-        if extend_fraction < 0.0 {
-            return Err(anyhow!(
-                "extend_fraction must be >= 0.0 but got {}",
-                extend_fraction
-            ));
-        }
+        ensure!(
+            extend_fraction >= 0.0,
+            "extend_fraction must be >= 0.0 but got {}",
+            extend_fraction
+        );
         if extend_fraction > 0.0 {
             self.cyc0 = extend_cycle(&self.cyc0, None, Some(extend_fraction));
             self.cyc = self.cyc0.clone();

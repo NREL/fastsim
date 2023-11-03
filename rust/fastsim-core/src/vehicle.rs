@@ -82,9 +82,9 @@ lazy_static! {
         Ok(self.clone())
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(name = "mock_vehicle")]
-    fn mock_vehicle_py(_cls: &PyType) -> Self {
+    fn mock_vehicle_py() -> Self {
         Self::mock_vehicle()
     }
 )]

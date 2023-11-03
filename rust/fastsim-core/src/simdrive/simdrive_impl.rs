@@ -1043,12 +1043,12 @@ impl RustSimDrive {
                     let speed_guess = speed_guesses
                         .iter()
                         .last()
-                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        .ok_or_else(|| anyhow!("{}", format_dbg!()))?
                         * (1.0 - g)
                         - g * new_speed_guesses
                             .iter()
                             .last()
-                            .ok_or(anyhow!("{}", format_dbg!()))?
+                            .ok_or_else(|| anyhow!("{}", format_dbg!()))?
                             / d_pwr_err_per_d_speed_guesses[speed_guesses.len() - 1];
                     let pwr_err = pwr_err_fn(speed_guess);
                     let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
@@ -1060,7 +1060,7 @@ impl RustSimDrive {
                     converged = ((speed_guesses
                         .iter()
                         .last()
-                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        .ok_or_else(|| anyhow!("{}", format_dbg!()))?
                         - speed_guesses[speed_guesses.len() - 2])
                         / speed_guesses[speed_guesses.len() - 2])
                         .abs()

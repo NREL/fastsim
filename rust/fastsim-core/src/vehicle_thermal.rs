@@ -90,10 +90,10 @@ impl Default for FcTempEffModelExponential {
 /// Struct containing parameters and one time-varying variable for HVAC model
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, HistoryVec)]
 #[add_pyo3_api(
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(name = "default")]
-    pub fn default_py(_cls: &PyType) -> anyhow::Result<Self> {
-        Ok(Self::default())
+    pub fn default_py() -> Self {
+        Self::default()
     }
 )]
 pub struct HVACModel {
@@ -193,9 +193,9 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[add_pyo3_api(
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(name = "default")]
-    pub fn default_py(_cls: &PyType) -> Self {
+    pub fn default_py() -> Self {
         Default::default()
     }
 
@@ -203,7 +203,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         &mut self,
         hvac_model: HVACModel
     ) -> anyhow::Result<()>{
-        Ok(check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))?)
+        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))
     }
 
     pub fn get_cabin_model_internal(&self, ) -> anyhow::Result<HVACModel> {
@@ -214,8 +214,8 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         }
     }
 
-    pub fn set_cabin_hvac_model_external(&mut self, ) -> anyhow::Result<()> {
-        Ok(check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)?)
+    pub fn set_cabin_hvac_model_external(&mut self) -> anyhow::Result<()> {
+        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)
     }
 
     pub fn set_fc_model_internal_exponential(
