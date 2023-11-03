@@ -117,6 +117,12 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 pub fn from_file_py(filepath: &PyAny) -> anyhow::Result<Self> {
                     Self::from_file(PathBuf::extract(filepath)?)
                 }
+
+                #[staticmethod]
+                #[pyo3(name = "from_resource")]
+                pub fn from_resource_py(filepath: &PyAny) -> anyhow::Result<Self> {
+                    Self::from_resource(PathBuf::extract(filepath)?)
+                }
             });
         }
     } else if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast.fields {
