@@ -30,12 +30,13 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                     filepath.display()
                 )
             })?;
-        Ok(match extension {
+        match extension {
             "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
             "yaml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
             // TODO: do we want a default behavior for this?
             _ => serde_json::to_writer(&File::create(filepath)?, self)?,
-        })
+        }
+        Ok(())
     }
 
     /// Read from file and return instantiated struct. Method adaptively calls deserialization

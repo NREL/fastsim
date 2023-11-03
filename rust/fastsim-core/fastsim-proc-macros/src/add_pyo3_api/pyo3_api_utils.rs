@@ -4,8 +4,8 @@ macro_rules! impl_vec_get_set {
             let get_name: TokenStream2 = format!("get_{}", $fident).parse().unwrap();
             $impl_block.extend::<TokenStream2>(quote! {
                 #[getter]
-                pub fn #get_name(&self) -> anyhow::Result<$wrapper_type> {
-                    Ok($wrapper_type::new(self.#$fident.clone()))
+                pub fn #get_name(&self) -> $wrapper_type {
+                    $wrapper_type::new(self.#$fident.clone())
                 }
             });
         }
@@ -78,16 +78,16 @@ macro_rules! impl_get_body {
             let get_block = if $opts.field_has_orphaned {
                 quote! {
                     #[getter]
-                    pub fn #get_name(&mut self) -> anyhow::Result<#$type> {
+                    pub fn #get_name(&mut self) -> #$type {
                         self.#$field.orphaned = true;
-                        Ok(self.#$field.clone())
+                        self.#$field.clone()
                     }
                 }
             } else {
                 quote! {
                     #[getter]
-                    pub fn #get_name(&self) -> anyhow::Result<#$type> {
-                        Ok(self.#$field.clone())
+                    pub fn #get_name(&self) -> #$type {
+                        self.#$field.clone()
                     }
                 }
             };

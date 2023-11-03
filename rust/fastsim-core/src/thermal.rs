@@ -60,9 +60,9 @@ use crate::vehicle_thermal::*;
         &mut self,
         init_soc: f64,
         aux_in_kw_override: Option<Vec<f64>>,
-    ) -> anyhow::Result<()> {
+    ) {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
-        Ok(self.walk(init_soc, aux_in_kw_override))
+        self.walk(init_soc, aux_in_kw_override);
     }
 
     #[pyo3(name = "init_for_step")]
@@ -77,9 +77,9 @@ use crate::vehicle_thermal::*;
         &mut self,
         init_soc:f64,
         aux_in_kw_override: Option<Vec<f64>>
-    ) -> anyhow::Result<()> {
+    ) {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
-        Ok(self.init_for_step(init_soc, aux_in_kw_override))
+        self.init_for_step(init_soc, aux_in_kw_override);
     }
 
     /// Step through 1 time step.
@@ -88,8 +88,8 @@ use crate::vehicle_thermal::*;
     }
     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
-    pub fn solve_step_py(&mut self, i: usize) -> anyhow::Result<()> {
-        Ok(self.solve_step(i))
+    pub fn solve_step_py(&mut self, i: usize) {
+        self.solve_step(i);
     }
 
     #[pyo3(name = "set_misc_calcs")]
@@ -97,8 +97,8 @@ use crate::vehicle_thermal::*;
     /// Arguments:
     /// ----------
     /// i: index of time step
-    pub fn set_misc_calcs_py(&mut self, i: usize) -> anyhow::Result<()> {
-        Ok(self.set_misc_calcs(i))
+    pub fn set_misc_calcs_py(&mut self, i: usize) {
+        self.set_misc_calcs(i);
     }
 
     #[pyo3(name = "set_comp_lims")]

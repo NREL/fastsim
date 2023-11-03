@@ -1,4 +1,3 @@
-use anyhow;
 use clap::{ArgGroup, Parser};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -224,7 +223,7 @@ pub fn main() -> anyhow::Result<()> {
             RustCycle::from_file(&cyc_file_path)
         }
     } else if is_adopt_hd && adopt_hd_has_cycle {
-        RustCycle::from_file(&adopt_hd_string)
+        RustCycle::from_file(adopt_hd_string)
     } else {
         //TODO? use pathbuff to string, for robustness
         Ok(RustCycle::new(
@@ -395,6 +394,7 @@ struct ParsedValue(Value);
 impl SerdeAPI for ParsedValue {}
 
 /// Rewrites the ADOPT JSON string to be in compliance with what FASTSim expects for JSON input.
+#[allow(clippy::type_complexity)]
 fn json_rewrite(x: String) -> anyhow::Result<(String, Option<Vec<f64>>, Option<Vec<f64>>)> {
     let adoptstring = x;
 

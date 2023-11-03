@@ -346,16 +346,12 @@ impl Default for RustSimDriveParams {
     }
 
     #[getter]
-    pub fn get_fs_cumu_mj_out_ach(&self) -> anyhow::Result<Pyo3ArrayF64> {
-        Ok(
-            Pyo3ArrayF64::new(ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
-        )
+    pub fn get_fs_cumu_mj_out_ach(&self) -> Pyo3ArrayF64 {
+        Pyo3ArrayF64::new(ndarrcumsum(&(self.fs_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
     }
     #[getter]
-    pub fn get_fc_cumu_mj_out_ach(&self) -> anyhow::Result<Pyo3ArrayF64> {
-        Ok(
-            Pyo3ArrayF64::new(ndarrcumsum(&(self.fc_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
-        )
+    pub fn get_fc_cumu_mj_out_ach(&self) -> Pyo3ArrayF64 {
+        Pyo3ArrayF64::new(ndarrcumsum(&(self.fc_kw_out_ach.clone() * self.cyc.dt_s() * 1e-3)))
     }
 )]
 pub struct RustSimDrive {

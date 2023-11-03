@@ -78,8 +78,8 @@ lazy_static! {
 
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
-    pub fn to_rust(&self) -> anyhow::Result<Self> {
-        Ok(self.clone())
+    pub fn to_rust(&self) -> Self {
+        self.clone()
     }
 
     #[staticmethod]
