@@ -88,8 +88,8 @@ use crate::vehicle_thermal::*;
     }
     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
-    pub fn solve_step_py(&mut self, i: usize) {
-        self.solve_step(i);
+    pub fn solve_step_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.solve_step(i)
     }
 
     #[pyo3(name = "set_misc_calcs")]
@@ -357,8 +357,8 @@ impl SimDriveHot {
         Ok(())
     }
 
-    pub fn solve_step(&mut self, i: usize) {
-        self.sd.solve_step(i).unwrap();
+    pub fn solve_step(&mut self, i: usize) -> anyhow::Result<()> {
+        self.sd.solve_step(i)
     }
 
     pub fn set_thermal_calcs(&mut self, i: usize) {
