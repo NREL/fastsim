@@ -658,12 +658,12 @@ impl SerdeAPI for RustCycle {
     // Note that using this method to instantiate a RustCycle from CSV instead of
     // the `from_csv_str` method directly sets the cycle name to an empty string.
     fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
-        Ok(match format {
-            "yaml" => serde_yaml::from_str(contents)?,
-            "json" => serde_json::from_str(contents)?,
-            "csv" => Self::from_csv_str(contents, "")?,
+        match format {
+            "yaml" => Self::from_yaml(contents),
+            "json" => Self::from_json(contents),
+            "csv" => Self::from_csv_str(contents, ""),
             _ => bail!("Unsupported file format: {format:?}"),
-        })
+        }
     }
 }
 

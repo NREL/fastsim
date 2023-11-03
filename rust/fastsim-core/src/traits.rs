@@ -104,11 +104,11 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
-        Ok(match format {
-            "yaml" => serde_yaml::from_str(contents)?,
-            "json" => serde_json::from_str(contents)?,
+        match format {
+            "yaml" => Self::from_yaml(contents),
+            "json" => Self::from_json(contents),
             _ => bail!("Unsupported file format: {format:?}"),
-        })
+        }
     }
 
     /// JSON serialization method
