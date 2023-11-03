@@ -169,7 +169,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                         }
                         pub fn __getitem__(&self, idx: i32) -> anyhow::Result<#contained_dtype> {
                             if idx >= self.0.len() as i32 {
-                                anyhow::bail!(PyIndexError::new_err("Index is out of bounds"))
+                                bail!(PyIndexError::new_err("Index is out of bounds"))
                             } else if idx >= 0 {
                                 Ok(self.0[idx as usize].clone())
                             } else {
@@ -178,7 +178,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                         }
                         pub fn __setitem__(&mut self, _idx: usize, _new_value: #contained_dtype
                             ) -> anyhow::Result<()> {
-                            anyhow::bail!(PyNotImplementedError::new_err(
+                            bail!(PyNotImplementedError::new_err(
                                 "Setting value at index is not implemented.
                                 Run `tolist` method, modify value at index, and
                                 then set entire vector.",
@@ -204,7 +204,6 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                     });
                 }
             }
-        } else {
         }
     } else {
         abort_call_site!("`add_pyo3_api` works only on named and tuple structs.");

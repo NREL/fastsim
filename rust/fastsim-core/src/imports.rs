@@ -1,4 +1,4 @@
-pub(crate) use anyhow::{self, Context};
+pub(crate) use anyhow::{anyhow, bail, ensure, Context};
 pub(crate) use bincode;
 pub(crate) use log;
 pub(crate) use ndarray::{array, concatenate, s, Array, Array1, Axis};

@@ -1,5 +1,7 @@
 //! Module containing miscellaneous utility functions.
 
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::collections::HashSet;
 
 use crate::imports::*;
@@ -240,7 +242,7 @@ fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usiz
             } else if query >= &axis[axis_size - 1] {
                 Ok((axis_size - 1, axis_size - 1))
             } else {
-                anyhow::bail!("Unable to find where the query fits in the values, check grid.")
+                bail!("Unable to find where the query fits in the values, check grid.")
             }
         }
     }
@@ -292,6 +294,55 @@ pub fn interp2d(
 
     // return result
     Ok(c)
+}
+
+lazy_static! {
+    static ref TIRE_CODE_REGEX: Regex = Regex::new(
+        r"(?i)[P|LT|ST|T]?((?:[0-9]{2,3}\.)?[0-9]+)/((?:[0-9]{1,2}\.)?[0-9]+) ?[B|D|R]?[x|\-| ]?((?:[0-9]{1,2}\.)?[0-9]+)[A|B|C|D|E|F|G|H|J|L|M|N]?"
+    ).unwrap();
+}
+
+/// Calculate tire radius (in meters) from an [ISO metric tire code](https://en.wikipedia.org/wiki/Tire_code#ISO_metric_tire_codes)
+///
+/// # Arguments
+/// * `tire_code` - A string containing a parsable ISO metric tire code
+///
+/// # Examples
+/// ## Example 1:
+///
+/// ```rust
+/// // Note the floating point imprecision in the result
+/// use fastsim_core::utils::tire_code_to_radius;
+/// let tire_code = "225/70Rx19.5G";
+/// assert_eq!(tire_code_to_radius(&tire_code).unwrap(), 0.40514999999999995);
+/// ```
+///
+/// ## Example 2:
+///
+/// ```rust
+/// // Either `&str`, `&String`, or `String` can be passed
+/// use fastsim_core::utils::tire_code_to_radius;
+/// let tire_code = String::from("P205/60R16");
+/// assert_eq!(tire_code_to_radius(tire_code).unwrap(), 0.3262);
+/// ```
+///
+pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
+    let tire_code = tire_code.as_ref();
+    let captures = TIRE_CODE_REGEX.captures(tire_code).with_context(|| {
+        format!(
+            "Regex pattern does not match for {:?}: {:?}",
+            tire_code,
+            TIRE_CODE_REGEX.as_str(),
+        )
+    })?;
+    let width_mm: f64 = captures[1].parse()?;
+    let aspect_ratio: f64 = captures[2].parse()?;
+    let rim_diameter_in: f64 = captures[3].parse()?;
+
+    let sidewall_height_mm = width_mm * aspect_ratio / 100.0;
+    let radius_mm = (rim_diameter_in * 25.4) / 2.0 + sidewall_height_mm;
+
+    Ok(radius_mm / 1000.0)
 }
 
 #[cfg(feature = "pyo3")]

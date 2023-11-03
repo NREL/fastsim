@@ -210,7 +210,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         if let CabinHvacModelTypes::Internal(hvac_model) = &self.cabin_hvac_model {
             Ok(hvac_model.clone())
         } else {
-            anyhow::bail!(PyAttributeError::new_err("HvacModelTypes::External variant currently used."))
+            bail!(PyAttributeError::new_err("HvacModelTypes::External variant currently used."))
         }
     }
 
@@ -229,7 +229,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             "FuelConverter" => FcTempEffComponent::FuelConverter,
             "Catalyst" => FcTempEffComponent::Catalyst,
             "CatAndFC" => FcTempEffComponent::CatAndFC,
-            _ => anyhow::bail!("Invalid option for fc_temp_eff_component.")
+            _ => bail!("Invalid option for fc_temp_eff_component.")
         };
 
         check_orphaned_and_set!(
@@ -267,7 +267,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             };
             Ok(())
         } else {
-            anyhow::bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+            bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 
@@ -295,7 +295,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             };
             Ok(())
         } else {
-            anyhow::bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+            bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 
@@ -323,7 +323,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             };
             Ok(())
         } else {
-            anyhow::bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+            bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 
@@ -332,7 +332,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, ..}), ..) = &self.fc_model {
             Ok(*offset)
         } else {
-            anyhow::bail!(PyAttributeError::new_err("fc_model is not Exponential"))
+            bail!(PyAttributeError::new_err("fc_model is not Exponential"))
         }
     }
 
@@ -341,7 +341,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ lag, ..}), ..) = &self.fc_model {
             Ok(*lag)
         } else {
-            anyhow::bail!(PyAttributeError::new_err("fc_model is not Exponential"))
+            bail!(PyAttributeError::new_err("fc_model is not Exponential"))
         }
     }
 
@@ -350,7 +350,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
         if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ minimum, ..}), ..) = &self.fc_model {
             Ok(*minimum)
         } else {
-            anyhow::bail!(PyAttributeError::new_err("fc_model is not Exponential"))
+            bail!(PyAttributeError::new_err("fc_model is not Exponential"))
         }
     }
 

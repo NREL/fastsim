@@ -684,7 +684,7 @@ pub fn get_label_fe_phev(
         match *key {
             "udds" => phev_calcs.udds = phev_calc.clone(),
             "hwy" => phev_calcs.hwy = phev_calc.clone(),
-            &_ => anyhow::bail!("No field for cycle {}", key),
+            &_ => bail!("No field for cycle {}", key),
         };
     }
 
@@ -765,7 +765,12 @@ mod simdrivelabel_tests {
         //     100. * (label_fe_truth.net_accel - label_fe.net_accel) / label_fe_truth.net_accel
         // );
 
-        assert!(label_fe.approx_eq(&label_fe_truth, 1e-10));
+        assert!(
+            label_fe.approx_eq(&label_fe_truth, 1e-10),
+            "label_fe:\n{}\n\nlabel_fe_truth:\n{}",
+            label_fe.to_json().unwrap(),
+            label_fe_truth.to_json().unwrap(),
+        );
     }
     #[test]
     fn test_get_label_fe_phev() {

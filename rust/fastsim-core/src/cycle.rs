@@ -34,8 +34,8 @@ pub fn calc_constant_jerk_trajectory(
     vr: f64,
     dt: f64,
 ) -> anyhow::Result<(f64, f64)> {
-    anyhow::ensure!(n > 1);
-    anyhow::ensure!(dr > d0);
+    ensure!(n > 1);
+    ensure!(dr > d0);
     let n = n as f64;
     let ddr = dr - d0;
     let dvr = vr - v0;
@@ -651,7 +651,7 @@ impl SerdeAPI for RustCycle {
                 }
                 cyc
             }
-            _ => anyhow::bail!("Unsupported file format: {format:?}"),
+            _ => bail!("Unsupported file format: {format:?}"),
         })
     }
 
@@ -662,7 +662,7 @@ impl SerdeAPI for RustCycle {
             "yaml" => serde_yaml::from_str(contents)?,
             "json" => serde_json::from_str(contents)?,
             "csv" => Self::from_csv_str(contents, "")?,
-            _ => anyhow::bail!("Unsupported file format: {format:?}"),
+            _ => bail!("Unsupported file format: {format:?}"),
         })
     }
 }
@@ -928,7 +928,7 @@ impl RustCycle {
         i: usize,
         dts_m: Option<f64>,
     ) -> anyhow::Result<(f64, usize)> {
-        anyhow::ensure!(brake_accel_m_per_s2 < 0.0);
+        ensure!(brake_accel_m_per_s2 < 0.0);
         if i >= self.time_s.len() {
             return Ok((*self.mps.last().unwrap(), 0));
         }

@@ -53,13 +53,13 @@ impl RustSimDrive {
                 };
         } else {
             if !(0.0..=1.0).contains(&blend_factor) {
-                return Err(anyhow::anyhow!(
+                return Err(anyhow!(
                     "blend_factor must be between 0 and 1 but got {}",
                     blend_factor
                 ));
             }
             if min_target_speed_m_per_s < 0.0 {
-                return Err(anyhow::anyhow!(
+                return Err(anyhow!(
                     "min_target_speed_m_per_s must be >= 0 but got {}",
                     min_target_speed_m_per_s
                 ));
@@ -73,7 +73,7 @@ impl RustSimDrive {
         }
         // Extend the duration of the base cycle
         if extend_fraction < 0.0 {
-            return Err(anyhow::anyhow!(
+            return Err(anyhow!(
                 "extend_fraction must be >= 0.0 but got {}",
                 extend_fraction
             ));

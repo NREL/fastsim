@@ -298,7 +298,7 @@ impl SimDriveHot {
                     // If EV, initializing initial SOC to maximum SOC.
                     self.sd.veh.max_soc
                 } else {
-                    anyhow::bail!("Failed to properly initialize SOC.");
+                    bail!("Failed to properly initialize SOC.");
                 }
             }
         };

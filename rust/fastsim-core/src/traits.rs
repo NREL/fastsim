@@ -99,7 +99,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(match format {
             "yaml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
-            _ => anyhow::bail!("Unsupported file format: {format:?}"),
+            _ => bail!("Unsupported file format: {format:?}"),
         })
     }
 
@@ -107,7 +107,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(match format {
             "yaml" => serde_yaml::from_str(contents)?,
             "json" => serde_json::from_str(contents)?,
-            _ => anyhow::bail!("Unsupported file format: {format:?}"),
+            _ => bail!("Unsupported file format: {format:?}"),
         })
     }
 

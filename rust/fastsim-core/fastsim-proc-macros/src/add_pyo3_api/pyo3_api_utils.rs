@@ -21,7 +21,7 @@ macro_rules! impl_vec_get_set {
                                     self.#$fident = new_value;
                                     Ok(())
                                 } else {
-                                    anyhow::bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                                    bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
                                 }
                             }
                         })
@@ -44,7 +44,7 @@ macro_rules! impl_vec_get_set {
                                     self.#$fident = Array1::from_vec(new_value);
                                     Ok(())
                                 } else {
-                                    anyhow::bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                                    bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
                                 }
                             }
                         })
@@ -120,7 +120,7 @@ macro_rules! impl_set_body {
                         self.#$field.orphaned = false;
                         Ok(())
                     } else {
-                        anyhow::bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                        bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
                     }
                 }
             } else if $has_orphaned {
@@ -129,7 +129,7 @@ macro_rules! impl_set_body {
                         self.#$field = new_value;
                         Ok(())
                     } else {
-                        anyhow::bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                        bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
                     }
                 }
             } else {
