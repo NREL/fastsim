@@ -971,12 +971,6 @@ impl RustVehicle {
         v.set_derived().unwrap();
         v
     }
-
-    pub fn from_json_str(json_str: &str) -> anyhow::Result<Self> {
-        let mut veh_res: anyhow::Result<RustVehicle> = Ok(serde_json::from_str(json_str)?);
-        veh_res.as_mut().unwrap().set_derived()?;
-        veh_res
-    }
 }
 
 impl SerdeAPI for RustVehicle {

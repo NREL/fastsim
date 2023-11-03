@@ -246,17 +246,23 @@ pub fn main() -> anyhow::Result<()> {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_json_str(&veh_string)
+            let mut veh = RustVehicle::from_json(&veh_string)?;
+            veh.set_derived()?;
+            Ok(veh)
         } else {
-            RustVehicle::from_json_str(&veh_string)
+            let mut veh = RustVehicle::from_json(&veh_string)?;
+            veh.set_derived()?;
+            Ok(veh)
         }
     } else if let Some(veh_file_path) = fastsim_api.veh_file {
         if is_adopt || is_adopt_hd {
-            let vehstring = fs::read_to_string(veh_file_path)?;
-            let (vehstring, pwr_out_perc, h2share) = json_rewrite(vehstring)?;
+            let veh_string = fs::read_to_string(veh_file_path)?;
+            let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_json_str(&vehstring)
+            let mut veh = RustVehicle::from_json(&veh_string)?;
+            veh.set_derived()?;
+            Ok(veh)
         } else {
             RustVehicle::from_file(&veh_file_path)
         }
