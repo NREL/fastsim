@@ -455,21 +455,24 @@ def show_plots() -> bool:
 # NREL about notes from internal repo)
 #perhaps there can be instructions for where to run this file, and a default option for current_demo_path and path_for_copies
 #based on that instruction, and then users can add their own paths if they run it from somewhere other than the default location
-def copy_demo_files(current_demo_path, path_for_copies):
+def copy_demo_files(current_demo_path='fastsim/python/fastsim/demos', path_for_copies='pwd/demos/'):
     """
     Copies demo files from demos folder into specified local directory
 
     # Arguments
-    current_demo_path: path to demos folder (relative or absolute in )
+    current_demo_path: path to demos folder (relative or absolute)
     path_for_copies: path to copy files into
 
     # Warning
-    Running this function will overwrite existing files in the specified directory so make sure any files with
-    changes you'd like to keep are renamed.
+    Running this function will overwrite existing files with the same name in the specified directory so 
+    make sure any files with changes you'd like to keep are renamed.
     """
+    #include something for if the default demo path is used but is incorrect -- could test this by whether it results in no p.glob being empty list
 
+    assert Path(path_for_copies).resolve() != Path(current_demo_path), "Can't copy demos inside site-packages"
     p = current_demo_path
     demo_files = list(p.glob('*demo*.py'))
+    assert demo_files != [], "Demos files not found in current_demo_path. Please input correct path to demos folder."
     test_demo_files = list(p.glob('*test*.py'))
     for file in test_demo_files:
         demo_files.remove(file)
