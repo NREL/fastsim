@@ -3,6 +3,7 @@
 from __future__ import annotations
 from typing import Dict, Any, Optional, Tuple
 import numpy as np
+import fastsim as fsim
 from fastsim import parameters as params
 import seaborn as sns
 import datetime
@@ -455,26 +456,46 @@ def show_plots() -> bool:
 # NREL about notes from internal repo)
 #perhaps there can be instructions for where to run this file, and a default option for current_demo_path and path_for_copies
 #based on that instruction, and then users can add their own paths if they run it from somewhere other than the default location
-def copy_demo_files(current_demo_path='fastsim/python/fastsim/demos', path_for_copies='pwd/demos/'):
+def copy_demo_files(path_for_copies: Path=Path("demos")):
     """
     Copies demo files from demos folder into specified local directory
 
     # Arguments
-    current_demo_path: path to demos folder (relative or absolute)
-    path_for_copies: path to copy files into
+    - `path_for_copies`: path to copy files into (relative or absolute in)
 
     # Warning
     Running this function will overwrite existing files with the same name in the specified directory so 
     make sure any files with changes you'd like to keep are renamed.
     """
-    #include something for if the default demo path is used but is incorrect -- could test this by whether it results in no p.glob being empty list
-
-    assert Path(path_for_copies).resolve() != Path(current_demo_path), "Can't copy demos inside site-packages"
-    p = current_demo_path
-    demo_files = list(p.glob('*demo*.py'))
-    assert demo_files != [], "Demos files not found in current_demo_path. Please input correct path to demos folder."
-    test_demo_files = list(p.glob('*test*.py'))
+    __version__ = get_distribution("fastsim").version
+    v = f"v{__version__}"
+    current_demo_path = fsim.package_root() / "demos"
+    assert path_for_copies.resolve() != Path(current_demo_path), "Can't copy demos inside site-packages"
+    demo_files = list(current_demo_path.glob('*demo*.py'))
+    test_demo_files = list(current_demo_path.glob('*test*.py'))
     for file in test_demo_files:
         demo_files.remove(file)
     for file in demo_files:
-        shutil.copy(file, path_for_copies)
+        if os.path.exists(path_for_copies):
+            dest_file = path_for_copies / file.name
+            shutil.copy(file, path_for_copies)
+            with open(dest_file, "r+") as file:
+                file_content = file.readlines()
+                prepend_str = f"# %% Copied from FASTSim version '{v}'. Guaranteed compatibility with this version only.\n"
+                prepend = [prepend_str]
+                file_content = prepend + file_content
+                file.seek(0)
+                file.writelines(file_content)
+            print(f"Saved {dest_file.name} to {dest_file}")
+        else:
+            os.makedirs(path_for_copies)
+            dest_file = path_for_copies / file.name
+            shutil.copy(file, path_for_copies)
+            with open(dest_file, "r+") as file:
+                file_content = file.readlines()
+                prepend_str = f"# %% Copied from FASTSim version '{v}'. Guaranteed compatibility with this version only.\n"
+                prepend = [prepend_str]
+                file_content = prepend + file_content
+                file.seek(0)
+                file.writelines(file_content)
+            print(f"Saved {dest_file.name} to {dest_file}")
