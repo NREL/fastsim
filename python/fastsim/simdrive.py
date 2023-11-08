@@ -214,8 +214,6 @@ class SimDrive(object):
         # Component Limits -- calculated dynamically
         self.cur_max_fs_kw_out = np.zeros(cyc_len, dtype=np.float64)
         self.fc_trans_lim_kw = np.zeros(cyc_len, dtype=np.float64)
-        self.fc_fs_lim_kw = np.zeros(cyc_len, dtype=np.float64)
-        self.fc_max_kw_in = np.zeros(cyc_len, dtype=np.float64)
         self.cur_max_fc_kw_out = np.zeros(cyc_len, dtype=np.float64)
         self.ess_cap_lim_dischg_kw = np.zeros(cyc_len, dtype=np.float64)
         self.cur_ess_max_kw_out = np.zeros(cyc_len, dtype=np.float64)
@@ -229,7 +227,6 @@ class SimDrive(object):
         self.ess_lim_mc_regen_perc_kw = np.zeros(
             cyc_len, dtype=np.float64)
         self.ess_lim_mc_regen_kw = np.zeros(cyc_len, dtype=np.float64)
-        self.cur_max_mech_mc_kw_in = np.zeros(cyc_len, dtype=np.float64)
         self.cur_max_trans_kw_out = np.zeros(cyc_len, dtype=np.float64)
 
         # Drive Train
@@ -720,11 +717,8 @@ class SimDrive(object):
             self.veh.fc_max_kw / self.veh.fc_sec_to_peak_pwr * self.cyc.dt_s_at_i(i)
         )
 
-        self.fc_max_kw_in[i] = min(
-            self.cur_max_fs_kw_out[i], self.veh.fs_max_kw)
-        self.fc_fs_lim_kw[i] = self.veh.fc_max_kw
         self.cur_max_fc_kw_out[i] = min(
-            self.veh.fc_max_kw, self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i])
+            self.veh.fc_max_kw, self.fc_trans_lim_kw[i])
 
         if self.veh.ess_max_kwh == 0 or self.soc[i-1] < self.veh.min_soc:
             self.ess_cap_lim_dischg_kw[i] = 0.0
@@ -835,8 +829,6 @@ class SimDrive(object):
                     ]
                 )
 
-        self.cur_max_mech_mc_kw_in[i] = min(
-            self.ess_lim_mc_regen_kw[i], self.veh.mc_max_kw)
         self.cur_max_trac_kw[i] = (
             self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac *
             self.veh.veh_kg * self.props.a_grav_mps2
@@ -920,7 +912,7 @@ class SimDrive(object):
         self.regen_contrl_lim_kw_perc[i] = self.veh.max_regen / (1 + self.veh.regen_a * np.exp(-self.veh.regen_b * (
             (self.cyc.mph[i] + self.mps_ach[i-1] * params.MPH_PER_MPS) / 2.0 + 1.0)))
         self.cyc_regen_brake_kw[i] = max(min(
-            self.cur_max_mech_mc_kw_in[i] * self.veh.trans_eff,
+            self.ess_lim_mc_regen_kw[i] * self.veh.trans_eff,
             self.regen_contrl_lim_kw_perc[i] * -self.cyc_whl_kw_req[i]),
             0
         )
@@ -948,14 +940,14 @@ class SimDrive(object):
 
             if self.veh.fc_eff_type == H2FC:
                 self.min_mc_kw_2help_fc[i] = max(
-                    self.trans_kw_in_ach[i], -self.cur_max_mech_mc_kw_in[i])
+                    self.trans_kw_in_ach[i], -self.ess_lim_mc_regen_kw[i])
 
             else:
                 self.min_mc_kw_2help_fc[i] = max(
-                    self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i], -self.cur_max_mech_mc_kw_in[i])
+                    self.trans_kw_in_ach[i] - self.cur_max_fc_kw_out[i], -self.ess_lim_mc_regen_kw[i])
         else:
             self.min_mc_kw_2help_fc[i] = max(
-                self.cur_max_mc_kw_out[i], -self.cur_max_mech_mc_kw_in[i])
+                self.cur_max_mc_kw_out[i], -self.ess_lim_mc_regen_kw[i])
 
     def set_ach_speed(self, i):
         """
@@ -1361,7 +1353,7 @@ class SimDrive(object):
 
         self.er_kw_if_fc_req[i] = max(0,
                                       min(
-                                          self.cur_max_roadway_chg_kw[i], self.cur_max_mech_mc_kw_in[i],
+                                          self.cur_max_roadway_chg_kw[i], self.ess_lim_mc_regen_kw[i],
                                           self.ess_kw_if_fc_req[i] -
                                           self.mc_elec_in_lim_kw[i] +
                                           self.aux_in_kw[i]
@@ -1415,17 +1407,17 @@ class SimDrive(object):
             if self.veh.fc_eff_type != H2FC and self.veh.fc_max_kw > 0:
                 if self.can_pwr_all_elec[i] == 1:
                     self.mc_mech_kw_out_ach[i] = - \
-                        min(self.cur_max_mech_mc_kw_in[i], -
+                        min(self.ess_lim_mc_regen_kw[i], -
                             self.trans_kw_in_ach[i])
                 else:
                     self.mc_mech_kw_out_ach[i] = min(
-                        -min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]),
+                        -min(self.ess_lim_mc_regen_kw[i], -self.trans_kw_in_ach[i]),
                         max(-self.cur_max_fc_kw_out[i],
                             self.mc_kw_if_fc_req[i])
                     )
             else:
                 self.mc_mech_kw_out_ach[i] = min(
-                    -min(self.cur_max_mech_mc_kw_in[i], -self.trans_kw_in_ach[i]),
+                    -min(self.ess_lim_mc_regen_kw[i], -self.trans_kw_in_ach[i]),
                     -self.trans_kw_in_ach[i]
                 )
 

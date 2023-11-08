@@ -42,10 +42,6 @@ lazy_static! {
         self.set_veh_mass()
     }
 
-    pub fn get_max_regen_kwh(&self) -> f64 {
-        self.max_regen_kwh()
-    }
-
     #[getter]
     pub fn get_mc_peak_eff(&self) -> f64 {
         self.mc_peak_eff()
@@ -541,6 +537,10 @@ pub struct RustVehicle {
     #[doc(hidden)]
     #[doc_field(skip_doc)]
     pub orphaned: bool,
+    #[serde(skip)]
+    #[doc(hidden)]
+    #[doc_field(skip_doc)]
+    pub max_regen_kwh: f64,
 }
 
 /// RustVehicle rust methods
@@ -604,10 +604,6 @@ impl RustVehicle {
     }
     const fn default_regen_b() -> f64 {
         0.99
-    }
-
-    pub fn max_regen_kwh(&self) -> f64 {
-        0.5 * self.veh_kg * (27.0 * 27.0) / (3_600.0 * 1_000.0)
     }
 
     pub fn mc_peak_eff(&self) -> f64 {
@@ -849,6 +845,8 @@ impl RustVehicle {
         assert!(self.mc_peak_eff() < 1.0, "mcPeakEff >= 1 is not allowed.");
 
         self.set_veh_mass();
+
+        self.max_regen_kwh = 0.5 * self.veh_kg * (27.0 * 27.0) / (3_600.0 * 1_000.0);
 
         Ok(())
     }

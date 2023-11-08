@@ -407,7 +407,6 @@ class RustSimDrive(SerdeAPI):
     cur_max_fs_kw_out: Pyo3ArrayF64
     cur_max_mc_elec_kw_in: Pyo3ArrayF64
     cur_max_mc_kw_out: Pyo3ArrayF64
-    cur_max_mech_mc_kw_in: Pyo3ArrayF64
     cur_max_roadway_chg_kw: Pyo3ArrayF64
     cur_max_trac_kw: Pyo3ArrayF64
     cur_max_trans_kw_out: Pyo3ArrayF64
@@ -452,13 +451,11 @@ class RustSimDrive(SerdeAPI):
     ess_regen_buff_dischg_kw: Pyo3ArrayF64
     fc_forced_on: Pyo3ArrayBool
     fc_forced_state: Pyo3ArrayU32
-    fc_fs_lim_kw: Pyo3ArrayF64
     fc_kj: float
     fc_kw_gap_fr_eff: Pyo3ArrayF64
     fc_kw_in_ach: Pyo3ArrayF64
     fc_kw_out_ach: Pyo3ArrayF64
     fc_kw_out_ach_pct: Pyo3ArrayF64
-    fc_max_kw_in: Pyo3ArrayF64
     fc_time_on: Pyo3ArrayF64
     fc_trans_lim_kw: Pyo3ArrayF64
     fs_cumu_mj_out_ach: Pyo3ArrayF64
