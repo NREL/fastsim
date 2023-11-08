@@ -1,4 +1,5 @@
 # Crate Architecture
+[![Tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml) [![wheels](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml?event=release) ![Release](https://img.shields.io/badge/release-v0.1.0-blue) ![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10-blue) [![Documentation](https://img.shields.io/badge/documentation-custom-blue.svg)](https://nrel.github.io/fastsim/) [![GitHub](https://img.shields.io/badge/GitHub-fastsim-blue.svg)](https://github.com/NREL/fastsim)
 FASTSim Rust crates are organized as a cargo [workspace](Cargo.toml) as follows:
 1. `fastsim-core`: a pure rust lib crate with optional `pyo3` feature.  This crate is intended to be used by other crates and is not in itself an app.
 1. `fastsim-cli`: a wrapper around `fastsim-core` to enable a standalone CLI app for running fastsim and getting results out.  
