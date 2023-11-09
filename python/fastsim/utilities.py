@@ -407,55 +407,6 @@ def show_plots() -> bool:
     """
     return os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
 
-#do I need a different default path?
-# def download_demo_files(demo_path: Path=Path("demos")):
-#     """
-#     Downloads demo files from github repo into local directory.
-
-#     # Arguments
-#     demo_path: path (relative or absolute in )
-
-#     # Warning
-#     Running this function will overwrite existing files so make sure any files with
-#     changes you'd like to keep are renamed.
-#     """
-#     __version__ = get_distribution("fastsim").version
-
-#     v = f"v{__version__}"
-
-#     api_url = f"https://api.github.com/repos/NREL/fastsim/contents/python/fastsim/demos?reg={v}"
-#     response = requests.get(api_url)
-    
-#     if response.status_code == 200:
-#         contents = response.json()
-        
-#         for item in contents:
-#             if item["type"] == "file" and item["name"].endswith(".py"):
-#                 file_url = item["download_url"]
-#                 file_name = item["name"]
-
-#                 demo_path.mkdir(exist_ok=True)
-                
-#                 with open(demo_path / file_name, "wb") as file:
-#                     file_content = requests.get(file_url).content
-#                     file.write(file_content)
-                
-#                 with open(demo_path / file_name, "r+") as file:
-#                     file_content = file.readlines()
-#                     prepend_str = f"# %% Downloaded from FASTSIM version '{v}'. Guaranteed compatibility with this version only.\n"
-#                     prepend = [prepend_str]
-#                     file_content = prepend + file_content
-#                     file.seek(0)
-#                     file.writelines(file_content)
-                    
-#                 print(f"Saved {file_name} to {str(demo_path / file_name)}")
-#     else:
-#         print("Failed to download demo files")
-
-#what exactly should I make the default path and how -- would the working directory potentially cause problems? (check when back at
-# NREL about notes from internal repo)
-#perhaps there can be instructions for where to run this file, and a default option for current_demo_path and path_for_copies
-#based on that instruction, and then users can add their own paths if they run it from somewhere other than the default location
 def copy_demo_files(path_for_copies: Path=Path("demos")):
     """
     Copies demo files from demos folder into specified local directory
@@ -467,8 +418,7 @@ def copy_demo_files(path_for_copies: Path=Path("demos")):
     Running this function will overwrite existing files with the same name in the specified directory so 
     make sure any files with changes you'd like to keep are renamed.
     """
-    __version__ = get_distribution("fastsim").version
-    v = f"v{__version__}"
+    v = f"v{fsim.__version__}"
     current_demo_path = fsim.package_root() / "demos"
     assert path_for_copies.resolve() != Path(current_demo_path), "Can't copy demos inside site-packages"
     demo_files = list(current_demo_path.glob('*demo*.py'))
