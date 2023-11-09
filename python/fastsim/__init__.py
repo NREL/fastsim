@@ -1,9 +1,6 @@
 """Package containing modules for running FASTSim.
 For example usage, see """
 
-from pkg_resources import get_distribution
-__version__ = get_distribution("fastsim").version
-
 from pathlib import Path
 import sys
 import logging
@@ -32,6 +29,8 @@ from . import calibration as cal
 from .resample import resample
 from . import auxiliaries
 
+from pkg_resources import get_distribution
+__version__ = get_distribution("fastsim").version
 
 # __doc__ += "\nhttps://pypi.org/project/fastsim/"
 # __doc__ += "\nhttps://www.nrel.gov/transportation/fastsim.html"
