@@ -9,7 +9,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
     // println!("{}", ast.ident.to_string());
     let ident = &ast.ident;
-    let is_state_or_history: bool =
+    let _is_state_or_history: bool =
         ident.to_string().contains("State") || ident.to_string().contains("HistoryVec");
 
     let mut impl_block = TokenStream2::default();
@@ -103,27 +103,6 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                     ftype,
                 );
             }
-        }
-
-        if !is_state_or_history {
-            py_impl_block.extend::<TokenStream2>(quote! {
-                #[pyo3(name = "to_file")]
-                pub fn to_file_py(&self, filepath: &PyAny) -> anyhow::Result<()> {
-                   self.to_file(PathBuf::extract(filepath)?)
-                }
-
-                #[staticmethod]
-                #[pyo3(name = "from_file")]
-                pub fn from_file_py(filepath: &PyAny) -> anyhow::Result<Self> {
-                    Self::from_file(PathBuf::extract(filepath)?)
-                }
-
-                #[staticmethod]
-                #[pyo3(name = "from_resource")]
-                pub fn from_resource_py(filepath: &PyAny) -> anyhow::Result<Self> {
-                    Self::from_resource(PathBuf::extract(filepath)?)
-                }
-            });
         }
     } else if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast.fields {
         // tuple struct
@@ -227,6 +206,23 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn copy(&self) -> Self {self.clone()}
         pub fn __copy__(&self) -> Self {self.clone()}
         pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
+        
+        #[pyo3(name = "to_file")]
+        pub fn to_file_py(&self, filepath: &PyAny) -> anyhow::Result<()> {
+           self.to_file(PathBuf::extract(filepath)?)
+        }
+
+        #[staticmethod]
+        #[pyo3(name = "from_file")]
+        pub fn from_file_py(filepath: &PyAny) -> anyhow::Result<Self> {
+            Self::from_file(PathBuf::extract(filepath)?)
+        }
+
+        #[staticmethod]
+        #[pyo3(name = "from_resource")]
+        pub fn from_resource_py(filepath: &PyAny) -> anyhow::Result<Self> {
+            Self::from_resource(PathBuf::extract(filepath)?)
+        }
 
         /// JSON serialization method.
         #[pyo3(name = "to_json")]
