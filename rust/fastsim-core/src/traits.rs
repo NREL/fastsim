@@ -21,6 +21,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         match extension.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
             "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
+            "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
             _ => bail!(
                 "Unsupported file format {extension:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
             ),
@@ -62,15 +63,21 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
 
     fn from_resource<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
-        let contents = crate::resources::RESOURCES_DIR
-            .get_file(filepath)
-            .and_then(include_dir::File::contents_utf8)
-            .with_context(|| format!("File not found in resources: {filepath:?}"))?;
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        let mut deserialized = Self::from_str(contents, extension)?;
+        let file = crate::resources::RESOURCES_DIR
+            .get_file(filepath)
+            .with_context(|| format!("File not found in resources: {filepath:?}"))?;
+        let mut deserialized = match extension.trim_start_matches('.').to_lowercase().as_str() {
+            "bin" => Self::from_bincode(include_dir::File::contents(file))?,
+            _ => Self::from_str(
+                include_dir::File::contents_utf8(file)
+                    .with_context(|| format!("File could not be parsed to UTF-8: {filepath:?}"))?,
+                extension,
+            )?,
+        };
         deserialized.init()?;
         Ok(deserialized)
     }
@@ -80,6 +87,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             match format.trim_start_matches('.').to_lowercase().as_str() {
                 "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
                 "json" => serde_json::from_reader(rdr)?,
+                "bin" => bincode::deserialize_from(rdr)?,
                 _ => bail!(
                     "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
                 ),

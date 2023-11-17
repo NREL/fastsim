@@ -622,6 +622,7 @@ impl SerdeAPI for RustCycle {
         match extension.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
             "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
+            "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
             "csv" => self.write_csv(&mut csv::Writer::from_path(filepath)?)?,
             _ => bail!(
                 "Unsupported file format {extension:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
@@ -635,6 +636,7 @@ impl SerdeAPI for RustCycle {
             match format.trim_start_matches('.').to_lowercase().as_str() {
                 "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
                 "json" => serde_json::from_reader(rdr)?,
+                "bin" => bincode::deserialize_from(rdr)?,
                 "csv" => {
                     // Create empty cycle to be populated
                     let mut cyc = Self::default();

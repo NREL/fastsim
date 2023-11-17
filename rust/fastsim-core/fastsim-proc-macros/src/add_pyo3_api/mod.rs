@@ -212,7 +212,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn from_resource_py(filepath: &PyAny) -> anyhow::Result<Self> {
             Self::from_resource(PathBuf::extract(filepath)?)
         }
-        
+
         #[pyo3(name = "to_file")]
         pub fn to_file_py(&self, filepath: &PyAny) -> anyhow::Result<()> {
            self.to_file(PathBuf::extract(filepath)?)
