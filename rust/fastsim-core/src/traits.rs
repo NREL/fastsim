@@ -4,23 +4,14 @@ use std::collections::HashMap;
 pub(crate) const ACCEPTED_FILE_FORMATS: [&str; 2] = ["yaml", "json"];
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    /// runs any initialization steps that might be needed
+    /// Runs any initialization steps that might be needed
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
 
     #[allow(clippy::wrong_self_convention)]
     /// Save current data structure to file. Method adaptively calls serialization methods
-    /// dependent on the suffix of the file given as str.
-    ///
-    /// # Argument:
-    ///
-    /// * `filepath`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
-    /// supported
-    ///
-    /// # Returns:
-    ///
-    /// A Rust Result
+    /// dependent on the suffix of the filepath.
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
         let filepath = filepath.as_ref();
         let extension = filepath
