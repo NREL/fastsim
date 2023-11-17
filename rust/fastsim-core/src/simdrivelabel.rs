@@ -141,10 +141,7 @@ pub fn make_accel_trace_py() -> RustCycle {
     make_accel_trace()
 }
 
-pub fn get_net_accel(
-    sd_accel: &mut RustSimDrive,
-    scenario_name: &String,
-) -> Result<f64, anyhow::Error> {
+pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> anyhow::Result<f64> {
     log::debug!("running `sim_drive_accel`");
     sd_accel.sim_drive_accel(None, None)?;
     if sd_accel.mph_ach.iter().any(|&x| x >= 60.) {
@@ -163,7 +160,7 @@ pub fn get_net_accel(
 #[cfg(feature = "pyo3")]
 #[pyfunction(name = "get_net_accel")]
 /// pyo3 version of [get_net_accel]
-pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> PyResult<f64> {
+pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> anyhow::Result<f64> {
     let result = get_net_accel(sd_accel, &scenario_name.to_string())?;
     Ok(result)
 }
@@ -200,43 +197,8 @@ pub fn get_label_fe(
     // load the cycles and intstantiate simdrive objects
     cyc.insert("accel", make_accel_trace());
 
-    #[cfg(not(windows))]
-    macro_rules! path_separator {
-        () => {
-            "/"
-        };
-    }
-
-    #[cfg(windows)]
-    macro_rules! path_separator {
-        () => {
-            r#"\"#
-        };
-    }
-
-    let udds_filestring = include_str!(concat!(
-        "..",
-        path_separator!(),
-        "resources",
-        path_separator!(),
-        "udds.csv"
-    ));
-    let hwy_filestring = include_str!(concat!(
-        "..",
-        path_separator!(),
-        "resources",
-        path_separator!(),
-        "hwfet.csv"
-    ));
-
-    cyc.insert(
-        "udds",
-        RustCycle::from_csv_string(udds_filestring, "udds".to_string())?,
-    );
-    cyc.insert(
-        "hwy",
-        RustCycle::from_csv_string(hwy_filestring, "hwfet".to_string())?,
-    );
+    cyc.insert("udds", RustCycle::from_resource("cycles/udds.csv")?);
+    cyc.insert("hwy", RustCycle::from_resource("cycles/hwfet.csv")?);
 
     // run simdrive for non-phev powertrains
     sd.insert("udds", RustSimDrive::new(cyc["udds"].clone(), veh.clone()));
@@ -426,7 +388,7 @@ pub fn get_label_fe_py(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
     verbose: Option<bool>,
-) -> PyResult<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
+) -> anyhow::Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
     let result: (LabelFe, Option<HashMap<&str, RustSimDrive>>) =
         get_label_fe(veh, full_detail, verbose)?;
     Ok(result)
@@ -439,7 +401,7 @@ pub fn get_label_fe_phev(
     adj_params: &AdjCoef,
     sim_params: &RustSimDriveParams,
     props: &RustPhysicalProperties,
-) -> Result<LabelFePHEV, anyhow::Error> {
+) -> anyhow::Result<LabelFePHEV> {
     // PHEV-specific function for label fe.
     //
     // Arguments:
@@ -722,7 +684,7 @@ pub fn get_label_fe_phev(
         match *key {
             "udds" => phev_calcs.udds = phev_calc.clone(),
             "hwy" => phev_calcs.hwy = phev_calc.clone(),
-            &_ => return Err(anyhow!("No field for cycle {}", key)),
+            &_ => bail!("No field for cycle {}", key),
         };
     }
 
@@ -740,7 +702,7 @@ pub fn get_label_fe_phev_py(
     long_params: RustLongParams,
     sim_params: &RustSimDriveParams,
     props: RustPhysicalProperties,
-) -> Result<LabelFePHEV, anyhow::Error> {
+) -> anyhow::Result<LabelFePHEV> {
     let mut sd_mut = HashMap::new();
     for (key, value) in sd {
         sd_mut.insert(key, value);
@@ -806,8 +768,8 @@ mod simdrivelabel_tests {
         assert!(
             label_fe.approx_eq(&label_fe_truth, 1e-10),
             "label_fe:\n{}\n\nlabel_fe_truth:\n{}",
-            label_fe.to_json(),
-            label_fe_truth.to_json()
+            label_fe.to_json().unwrap(),
+            label_fe_truth.to_json().unwrap(),
         );
     }
     #[test]

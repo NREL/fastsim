@@ -74,13 +74,13 @@ lazy_static! {
 
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
-    pub fn to_rust(&self) -> PyResult<Self> {
-        Ok(self.clone())
+    pub fn to_rust(&self) -> Self {
+        self.clone()
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(name = "mock_vehicle")]
-    fn mock_vehicle_py(_cls: &PyType) -> Self {
+    fn mock_vehicle_py() -> Self {
         Self::mock_vehicle()
     }
 )]
@@ -673,12 +673,9 @@ impl RustVehicle {
     ///     - `fs_mass_kg`
     ///     - `veh_kg`
     ///     - `max_trac_mps2`
-    pub fn set_derived(&mut self) -> Result<(), anyhow::Error> {
+    pub fn set_derived(&mut self) -> anyhow::Result<()> {
         // Vehicle input validation
-        match self.validate() {
-            Ok(_) => (),
-            Err(e) => bail!(e),
-        };
+        self.validate()?;
 
         if self.scenario_name != "Template Vehicle for setting up data types" {
             if self.veh_pt_type == BEV {
@@ -833,16 +830,17 @@ impl RustVehicle {
         }
 
         // check that efficiencies are not violating the first law of thermo
-        assert!(
+        // TODO: this could perhaps be done in the input validators
+        ensure!(
             arrmin(&self.fc_eff_array) >= 0.0,
-            "min MC eff < 0 is not allowed"
+            "minimum FC efficiency < 0 is not allowed"
         );
-        assert!(self.fc_peak_eff() < 1.0, "fcPeakEff >= 1 is not allowed.");
-        assert!(
+        ensure!(self.fc_peak_eff() < 1.0, "fc_peak_eff >= 1 is not allowed");
+        ensure!(
             arrmin(&self.mc_full_eff_array) >= 0.0,
-            "min MC eff < 0 is not allowed"
+            "minimum MC efficiency < 0 is not allowed"
         );
-        assert!(self.mc_peak_eff() < 1.0, "mcPeakEff >= 1 is not allowed.");
+        ensure!(self.mc_peak_eff() < 1.0, "mc_peak_eff >= 1 is not allowed");
 
         self.set_veh_mass();
 
@@ -972,18 +970,11 @@ impl RustVehicle {
         v.set_derived().unwrap();
         v
     }
-
-    pub fn from_json_str(filename: &str) -> Result<Self, anyhow::Error> {
-        let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
-        veh_res.as_mut().unwrap().set_derived()?;
-        veh_res
-    }
 }
 
 impl SerdeAPI for RustVehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.set_derived()?;
-        Ok(())
+        self.set_derived()
     }
 }
 
