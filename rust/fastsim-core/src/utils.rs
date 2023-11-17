@@ -390,7 +390,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_interp2d() -> anyhow::Result<()> {
+    fn test_interp2d() {
         // specified (x, y) point at which to interpolate value
         let point = [0.5, 0.5];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -406,12 +406,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 0.5);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 0.5);
     }
 
     #[test]
-    fn test_interp2d_offset() -> anyhow::Result<()> {
+    fn test_interp2d_offset() {
         // specified (x, y) point at which to interpolate value
         let point = [0.25, 0.75];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -427,12 +426,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 0.375);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 0.375);
     }
 
     #[test]
-    fn test_interp2d_exact_value_lower() -> anyhow::Result<()> {
+    fn test_interp2d_exact_value_lower() {
         // specified (x, y) point at which to interpolate value
         let point = [0.0, 0.0];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -448,12 +446,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
     }
 
     #[test]
-    fn test_interp2d_below_value_lower() -> anyhow::Result<()> {
+    fn test_interp2d_below_value_lower() {
         // specified (x, y) point at which to interpolate value
         let point = [-1.0, -1.0];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -469,12 +466,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
     }
 
     #[test]
-    fn test_interp2d_above_value_upper() -> anyhow::Result<()> {
+    fn test_interp2d_above_value_upper() {
         // specified (x, y) point at which to interpolate value
         let point = [2.0, 2.0];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -490,12 +486,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
     }
 
     #[test]
-    fn test_interp2d_exact_value_upper() -> anyhow::Result<()> {
+    fn test_interp2d_exact_value_upper() {
         // specified (x, y) point at which to interpolate value
         let point = [1.0, 1.0];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -511,8 +506,7 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
     }
 
     #[test]

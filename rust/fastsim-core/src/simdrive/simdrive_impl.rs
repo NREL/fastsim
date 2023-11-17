@@ -400,7 +400,7 @@ impl RustSimDrive {
         &mut self,
         init_soc: Option<f64>,
         aux_in_kw_override: Option<Array1<f64>>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         self.hev_sim_count = 0;
 
         let init_soc = match init_soc {
@@ -460,15 +460,14 @@ impl RustSimDrive {
 
         self.walk(init_soc, aux_in_kw_override)?;
 
-        self.set_post_scalars()?;
-        Ok(())
+        self.set_post_scalars()
     }
 
     pub fn sim_drive_accel(
         &mut self,
         init_soc: Option<f64>,
         aux_in_kw_override: Option<Array1<f64>>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         // Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
         let init_soc_auto: f64 = match self.veh.veh_pt_type.as_str() {
             // If no EV / Hybrid components, no SOC considerations.
@@ -497,7 +496,7 @@ impl RustSimDrive {
         &mut self,
         init_soc: f64,
         aux_in_kw_override: Option<Array1<f64>>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         self.init_for_step(init_soc, aux_in_kw_override)?;
         while self.i < self.cyc.time_s.len() {
             self.step()?;
@@ -524,7 +523,7 @@ impl RustSimDrive {
         &mut self,
         init_soc: f64,
         aux_in_kw_override: Option<Array1<f64>>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         ensure!(
             self.veh.veh_pt_type == CONV
                 || (self.veh.min_soc..=self.veh.max_soc).contains(&init_soc),
@@ -562,7 +561,7 @@ impl RustSimDrive {
     }
 
     /// Step through 1 time step.
-    pub fn step(&mut self) -> Result<(), anyhow::Error> {
+    pub fn step(&mut self) -> anyhow::Result<()> {
         if self.sim_params.idm_allow {
             self.idm_target_speed_m_per_s[self.i] =
                 match &self.sim_params.idm_v_desired_in_m_per_s_by_distance_m {
@@ -603,7 +602,7 @@ impl RustSimDrive {
     }
 
     /// Perform all the calculations to solve 1 time step.
-    pub fn solve_step(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn solve_step(&mut self, i: usize) -> anyhow::Result<()> {
         self.set_misc_calcs(i)?;
         self.set_comp_lims(i)?;
         self.set_power_calcs(i)?;
@@ -619,7 +618,7 @@ impl RustSimDrive {
     /// Arguments:
     /// ----------
     /// i: index of time step
-    pub fn set_misc_calcs(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_misc_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         // if cycle iteration is used, auxInKw must be re-zeroed to trigger the below if statement
         // TODO: this is probably computationally expensive and was probably a workaround for numba
         // figure out a way to not need this
@@ -647,7 +646,7 @@ impl RustSimDrive {
     /// ------------
     /// i: index of time step
     /// initSoc: initial SOC for electrified vehicles
-    pub fn set_comp_lims(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_comp_lims(&mut self, i: usize) -> anyhow::Result<()> {
         // max fuel storage power output
         self.cur_max_fs_kw_out[i] = min(
             self.veh.fs_max_kw,
@@ -849,7 +848,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_power_calcs(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_power_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         let mps_ach = if self.newton_iters[i] > 0u32 {
             self.mps_ach[i]
         } else {
@@ -946,7 +945,7 @@ impl RustSimDrive {
     // Arguments
     // ------------
     // i: index of time step
-    pub fn set_ach_speed(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_ach_speed(&mut self, i: usize) -> anyhow::Result<()> {
         // Cycle is met
         if self.cyc_met[i] {
             self.mps_ach[i] = self.cyc.mps[i];
@@ -1043,12 +1042,12 @@ impl RustSimDrive {
                     let speed_guess = speed_guesses
                         .iter()
                         .last()
-                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        .ok_or_else(|| anyhow!("{}", format_dbg!()))?
                         * (1.0 - g)
                         - g * new_speed_guesses
                             .iter()
                             .last()
-                            .ok_or(anyhow!("{}", format_dbg!()))?
+                            .ok_or_else(|| anyhow!("{}", format_dbg!()))?
                             / d_pwr_err_per_d_speed_guesses[speed_guesses.len() - 1];
                     let pwr_err = pwr_err_fn(speed_guess);
                     let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
@@ -1060,7 +1059,7 @@ impl RustSimDrive {
                     converged = ((speed_guesses
                         .iter()
                         .last()
-                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        .ok_or_else(|| anyhow!("{}", format_dbg!()))?
                         - speed_guesses[speed_guesses.len() - 2])
                         / speed_guesses[speed_guesses.len() - 2])
                         .abs()
@@ -1096,7 +1095,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_calcs(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_hybrid_cont_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         if self.veh.no_elec_sys {
             self.regen_buff_soc[i] = 0.0;
         } else if self.veh.charging_on {
@@ -1334,7 +1333,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_fc_forced_state_rust(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_fc_forced_state_rust(&mut self, i: usize) -> anyhow::Result<()> {
         // force fuel converter on if it was on in the previous time step, but only if fc
         // has not been on longer than minFcTimeOn
         self.fc_forced_on[i] = self.prev_fc_time_on[i] > 0.0
@@ -1379,7 +1378,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> anyhow::Result<()> {
         if (-self.mc_elec_in_kw_for_max_fc_eff[i] - self.cur_max_roadway_chg_kw[i]) > 0.0 {
             self.ess_desired_kw_4fc_eff[i] = (-self.mc_elec_in_kw_for_max_fc_eff[i]
                 - self.cur_max_roadway_chg_kw[i])
@@ -1700,7 +1699,7 @@ impl RustSimDrive {
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_fc_power(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_fc_power(&mut self, i: usize) -> anyhow::Result<()> {
         if self.veh.fc_max_kw == 0.0 {
             self.fc_kw_out_ach[i] = 0.0;
         } else if self.veh.fc_eff_type == H2FC {
@@ -1764,7 +1763,7 @@ impl RustSimDrive {
 
     /// Sets scalar variables that can be calculated after a cycle is run.
     /// This includes mpgge, various energy metrics, and others
-    pub fn set_post_scalars(&mut self) -> Result<(), anyhow::Error> {
+    pub fn set_post_scalars(&mut self) -> anyhow::Result<()> {
         if self.fs_kwh_out_ach.sum() == 0.0 {
             self.mpgge = 0.0;
         } else {

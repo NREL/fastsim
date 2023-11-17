@@ -47,11 +47,11 @@ fn main() {
             env::current_dir().unwrap().as_os_str().to_str().unwrap()
         ),
         format!(
-            "{}/resources/udds.csv",
+            "{}/resources/cycles/udds.csv",
             env::current_dir().unwrap().as_os_str().to_str().unwrap()
         ),
         format!(
-            "{}/resources/hwfet.csv",
+            "{}/resources/cycles/hwfet.csv",
             env::current_dir().unwrap().as_os_str().to_str().unwrap()
         ),
     ];
