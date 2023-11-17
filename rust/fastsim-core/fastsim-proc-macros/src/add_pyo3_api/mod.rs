@@ -206,6 +206,12 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn copy(&self) -> Self {self.clone()}
         pub fn __copy__(&self) -> Self {self.clone()}
         pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
+
+        #[staticmethod]
+        #[pyo3(name = "from_resource")]
+        pub fn from_resource_py(filepath: &PyAny) -> anyhow::Result<Self> {
+            Self::from_resource(PathBuf::extract(filepath)?)
+        }
         
         #[pyo3(name = "to_file")]
         pub fn to_file_py(&self, filepath: &PyAny) -> anyhow::Result<()> {
@@ -218,10 +224,15 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             Self::from_file(PathBuf::extract(filepath)?)
         }
 
+        #[pyo3(name = "to_str")]
+        pub fn to_str_py(&self, format: &str) -> anyhow::Result<String> {
+            self.to_str(format)
+        }
+
         #[staticmethod]
-        #[pyo3(name = "from_resource")]
-        pub fn from_resource_py(filepath: &PyAny) -> anyhow::Result<Self> {
-            Self::from_resource(PathBuf::extract(filepath)?)
+        #[pyo3(name = "from_str")]
+        pub fn from_str_py(contents: &str, format: &str) -> anyhow::Result<Self> {
+            Self::from_str(contents, format)
         }
 
         /// JSON serialization method.

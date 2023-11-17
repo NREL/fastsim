@@ -1,6 +1,8 @@
 use crate::imports::*;
 use std::collections::HashMap;
 
+pub(crate) const ACCEPTED_FILE_FORMATS: [&str; 2] = ["yaml", "json"];
+
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// runs any initialization steps that might be needed
     fn init(&mut self) -> anyhow::Result<()> {
@@ -24,17 +26,13 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .with_context(|| {
-                format!(
-                    "File extension could not be parsed: \"{}\"",
-                    filepath.display()
-                )
-            })?;
-        match extension {
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
+        match extension.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
             "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
-            "yaml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
-            // TODO: do we want a default behavior for this?
-            _ => serde_json::to_writer(&File::create(filepath)?, self)?,
+            _ => bail!(
+                "Unsupported file format {extension:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+            ),
         }
         Ok(())
     }
@@ -57,17 +55,12 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .with_context(|| {
-                format!(
-                    "File extension could not be parsed: \"{}\"",
-                    filepath.display()
-                )
-            })?;
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
         let file = File::open(filepath).with_context(|| {
             if !filepath.exists() {
-                format!("File not found: \"{}\"", filepath.display())
+                format!("File not found: {filepath:?}")
             } else {
-                format!("Could not open file: \"{}\"", filepath.display())
+                format!("Could not open file: {filepath:?}")
             }
         })?;
         // deserialized file
@@ -81,34 +74,45 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let contents = crate::resources::RESOURCES_DIR
             .get_file(filepath)
             .and_then(include_dir::File::contents_utf8)
-            .with_context(|| format!("File not found in resources: \"{}\"", filepath.display()))?;
+            .with_context(|| format!("File not found in resources: {filepath:?}"))?;
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .with_context(|| {
-                format!(
-                    "File extension could not be parsed: \"{}\"",
-                    filepath.display()
-                )
-            })?;
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
         let mut deserialized = Self::from_str(contents, extension)?;
         deserialized.init()?;
         Ok(deserialized)
     }
 
     fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
-        Ok(match format {
-            "yaml" => serde_yaml::from_reader(rdr)?,
-            "json" => serde_json::from_reader(rdr)?,
-            _ => bail!("Unsupported file format: {format:?}"),
-        })
+        Ok(
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
+                "json" => serde_json::from_reader(rdr)?,
+                _ => bail!(
+                    "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+                ),
+            },
+        )
+    }
+
+    fn to_str(&self, format: &str) -> anyhow::Result<String> {
+        match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => self.to_yaml(),
+            "json" => self.to_json(),
+            _ => bail!(
+                "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+            ),
+        }
     }
 
     fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
-        match format {
-            "yaml" => Self::from_yaml(contents),
+        match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => Self::from_yaml(contents),
             "json" => Self::from_json(contents),
-            _ => bail!("Unsupported file format: {format:?}"),
+            _ => bail!(
+                "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+            ),
         }
     }
 
