@@ -283,6 +283,11 @@ impl RustSimDrive {
         self.cyc.time_s.len()
     }
 
+    /// Is cycle empty?
+    pub fn is_empty(&self) -> bool {
+        self.cyc.time_s.is_empty()
+    }
+
     // TODO: probably shouldn't be public...?
     pub fn init_arrays(&mut self) {
         self.i = 1; // initialize step counter for possible use outside sim_drive_walk()

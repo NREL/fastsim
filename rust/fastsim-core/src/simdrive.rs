@@ -338,11 +338,9 @@ impl Default for RustSimDriveParams {
         self.len()
     }
 
-    /// added to make clippy happy
-    /// not sure whether there is any benefit to this or not for our purposes
-    /// Return self.cyc.time_is.is_empty()
-    pub fn is_empty(&self) -> bool {
-        self.cyc.time_s.is_empty()
+    #[pyo3(name = "is_empty")]
+    pub fn is_empty_py(&self) -> bool {
+        self.is_empty()
     }
 
     #[getter]

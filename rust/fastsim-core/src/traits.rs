@@ -9,7 +9,6 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(())
     }
 
-    #[allow(clippy::wrong_self_convention)]
     /// Save current data structure to file. Method adaptively calls serialization methods
     /// dependent on the suffix of the filepath.
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
