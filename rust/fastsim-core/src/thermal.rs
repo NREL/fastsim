@@ -311,7 +311,7 @@ impl SimDriveHot {
 
     pub fn walk(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
         self.init_for_step(init_soc, aux_in_kw_override);
-        while self.sd.i < self.sd.cyc.time_s.len() {
+        while self.sd.i < self.sd.cyc.len() {
             self.step().unwrap();
         }
     }
@@ -703,7 +703,7 @@ impl SimDriveHot {
 
     pub fn thermal_soak_walk(&mut self) {
         self.sd.i = 1;
-        while self.sd.i < self.sd.cyc.time_s.len() {
+        while self.sd.i < self.sd.cyc.len() {
             self.set_thermal_calcs(self.sd.i);
             self.sd.i += 1;
         }

@@ -32,7 +32,7 @@ impl RustSimDrive {
         let sim_params = RustSimDriveParams::default();
         let props = params::RustPhysicalProperties::default();
         let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
-        let cyc_len = cyc.time_s.len(); //get_len() as usize;
+        let cyc_len = cyc.len();
         let cur_max_fs_kw_out = Array::zeros(cyc_len);
         let fc_trans_lim_kw = Array::zeros(cyc_len);
         let fc_fs_lim_kw = Array::zeros(cyc_len);
@@ -503,7 +503,7 @@ impl RustSimDrive {
         aux_in_kw_override: Option<Array1<f64>>,
     ) -> anyhow::Result<()> {
         self.init_for_step(init_soc, aux_in_kw_override)?;
-        while self.i < self.cyc.time_s.len() {
+        while self.i < self.cyc.len() {
             self.step()?;
         }
 
@@ -1813,7 +1813,7 @@ impl RustSimDrive {
         self.ascent_kj = (self.ascent_kw.clone() * self.cyc.dt_s()).sum();
         self.rr_kj = (self.rr_kw.clone() * self.cyc.dt_s()).sum();
 
-        for i in 1..self.cyc.time_s.len() {
+        for i in 1..self.cyc.len() {
             if self.veh.ess_max_kw == 0.0 || self.veh.ess_max_kwh == 0.0 {
                 self.ess_loss_kw[i] = 0.0;
             } else if self.ess_kw_out_ach[i] < 0.0 {

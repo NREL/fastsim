@@ -181,7 +181,7 @@ pub fn trapz_distance_over_range(cyc: &RustCycle, i_start: usize, i_end: usize) 
 pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) -> f64 {
     let mut t_move_s = 0.0;
     let stopped_speed_m_per_s = stopped_speed_m_per_s.unwrap_or(0.0);
-    for idx in 1..cyc.time_s.len() {
+    for idx in 1..cyc.len() {
         let dt = cyc.time_s[idx] - cyc.time_s[idx - 1];
         let vavg = (cyc.mps[idx] + cyc.mps[idx - 1]) / 2.0;
         if vavg > stopped_speed_m_per_s {
@@ -399,7 +399,7 @@ impl SerdeAPI for RustCycleCache {}
 impl RustCycleCache {
     pub fn new(cyc: &RustCycle) -> Self {
         let tol = 1e-6;
-        let num_items = cyc.time_s.len();
+        let num_items = cyc.len();
         let grade_all_zero = cyc.grade.iter().all(|g| *g == 0.0);
         let trapz_step_distances_m = trapz_step_distances(cyc);
         let trapz_distances_m = ndarrcumsum(&trapz_step_distances_m);
@@ -1051,7 +1051,7 @@ pub fn detect_passing(
     i: usize,
     dist_tol_m: Option<f64>,
 ) -> PassingInfo {
-    if i >= cyc.time_s.len() {
+    if i >= cyc.len() {
         return PassingInfo {
             has_collision: false,
             idx: 0,
@@ -1148,10 +1148,10 @@ mod tests {
         let cyc_file_path = resources_path().join("cycles/udds.csv");
         let expected_udds_length: usize = 1370;
         let cyc = RustCycle::from_csv_file(cyc_file_path).unwrap();
-        let num_entries = cyc.time_s.len();
+        let num_entries = cyc.len();
         assert_eq!(cyc.name, String::from("udds"));
         assert!(num_entries > 0);
-        assert_eq!(num_entries, cyc.time_s.len());
+        assert_eq!(num_entries, cyc.len());
         assert_eq!(num_entries, cyc.mps.len());
         assert_eq!(num_entries, cyc.grade.len());
         assert_eq!(num_entries, cyc.road_type.len());

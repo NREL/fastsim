@@ -754,7 +754,7 @@ impl RustSimDrive {
     fn set_coast_delay(&mut self, i: usize) {
         let speed_tol = 0.01; // m/s
         let dist_tol = 0.1; // meters
-        for idx in i..self.cyc.time_s.len() {
+        for idx in i..self.cyc.len() {
             self.coast_delay_index[idx] = 0; // clear all future coast-delays
         }
         let mut coast_delay: Option<i32> = None;
@@ -848,7 +848,7 @@ impl RustSimDrive {
                 if n < 2 {
                     break;
                 }
-                if (idx - 1 + full_brake_steps) >= self.cyc.time_s.len() {
+                if (idx - 1 + full_brake_steps) >= self.cyc.len() {
                     break;
                 }
                 let dt = collision.time_step_duration_s;
@@ -873,7 +873,7 @@ impl RustSimDrive {
                 let mut accels_m_per_s2: Vec<f64> = vec![];
                 let mut trace_accels_m_per_s2: Vec<f64> = vec![];
                 for ni in 0..n {
-                    if (ni + idx + full_brake_steps) >= self.cyc.time_s.len() {
+                    if (ni + idx + full_brake_steps) >= self.cyc.len() {
                         break;
                     }
                     accels_m_per_s2.push(accel_for_constant_jerk(
@@ -934,7 +934,7 @@ impl RustSimDrive {
             return self.prevent_collisions(i, Some(new_passing_tol_m));
         }
         for fbs in 0..best.full_brake_steps {
-            if (best.idx + fbs) >= self.cyc.time_s.len() {
+            if (best.idx + fbs) >= self.cyc.len() {
                 break;
             }
             let dt = self.cyc.time_s[best.idx + fbs] - self.cyc.time_s[best.idx - 1];
@@ -1037,7 +1037,7 @@ impl RustSimDrive {
                     i,
                     None,
                 )?;
-                for idx in i..self.cyc.time_s.len() {
+                for idx in i..self.cyc.len() {
                     self.impose_coast[idx] = idx < (i + num_steps);
                 }
                 adjusted_current_speed = true;
