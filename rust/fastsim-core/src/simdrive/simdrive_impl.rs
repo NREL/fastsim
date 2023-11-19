@@ -507,13 +507,18 @@ impl RustSimDrive {
             self.step()?;
         }
 
-        // TODO: uncomment and implement logging
-        //    if (self.cyc.dt_s > 5).any() and self.sim_params.verbose:
-        //         if self.sim_params.missed_trace_correction:
-        //             print('Max time dilation factor =', (round((self.cyc.dt_s / self.cyc0.dt_s).max(), 3)))
-        //         print("Warning: large time steps affect accuracy significantly.")
-        //         print("To suppress this message, view the doc string for simdrive.SimDriveParams.")
-        //         print('Max time step =', (round(self.cyc.dt_s.max(), 3)))
+        if self.cyc.dt_s().iter().any(|&dt| dt > 5.0) {
+            if self.sim_params.missed_trace_correction {
+                log::info!(
+                    "Max time dilation factor = {:.3}",
+                    ndarrmax(&(self.cyc.dt_s() / self.cyc0.dt_s()))
+                );
+            }
+            log::warn!(
+                "Large time steps affect accuracy significantly (max time step = {:.3})",
+                ndarrmax(&self.cyc.dt_s())
+            );
+        }
         Ok(())
     }
 
