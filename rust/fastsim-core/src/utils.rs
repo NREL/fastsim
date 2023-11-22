@@ -1,6 +1,7 @@
 //! Module containing miscellaneous utility functions.
 
 use lazy_static::lazy_static;
+use ndarray_stats::QuantileExt;
 use regex::Regex;
 use std::collections::HashSet;
 
@@ -82,16 +83,6 @@ pub fn arrmin(arr: &[f64]) -> f64 {
     arr.iter().copied().fold(f64::NAN, f64::min)
 }
 
-/// return min of arr
-pub fn ndarrmin(arr: &Array1<f64>) -> f64 {
-    arr.to_vec().into_iter().reduce(f64::min).unwrap()
-}
-
-/// return max of arr
-pub fn ndarrmax(arr: &Array1<f64>) -> f64 {
-    arr.to_vec().into_iter().reduce(f64::max).unwrap()
-}
-
 /// return true if the array is all zeros
 pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
     arr.iter().all(|x| *x == 0.0)
@@ -111,8 +102,8 @@ pub fn ndarrcumsum(arr: &Array1<f64>) -> Array1<f64> {
 pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
     let mut set: HashSet<usize> = HashSet::new();
     let mut new_arr: Vec<f64> = Vec::new();
-    let x_min = ndarrmin(arr);
-    let x_max = ndarrmax(arr);
+    let x_min = arr.min().unwrap();
+    let x_max = arr.max().unwrap();
     let dx = if x_max == x_min { 1.0 } else { x_max - x_min };
     for &x in arr.iter() {
         let y = (((x - x_min) / dx) * (usize::MAX as f64)) as usize;
@@ -544,20 +535,6 @@ mod tests {
         let idx = first_grtr(&xs, 7.0).unwrap();
         let expected_idx: usize = xs.len() - 1;
         assert_eq!(idx, expected_idx)
-    }
-
-    #[test]
-    fn test_that_ndarrmin_returns_the_min() {
-        let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
-        let xmin = ndarrmin(&xs);
-        assert_eq!(xmin, 3.0);
-    }
-
-    #[test]
-    fn test_that_ndarrmax_returns_the_max() {
-        let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
-        let xmax = ndarrmax(&xs);
-        assert_eq!(xmax, 80.0);
     }
 
     #[test]
