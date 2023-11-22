@@ -889,8 +889,8 @@ impl RustSimDrive {
                 }
                 let all_sub_coast: bool = trace_accels_m_per_s2
                     .iter()
-                    .zip(accels_m_per_s2.iter())
-                    .map(|(&a, &b)| (a, b))
+                    .copied()
+                    .zip(accels_m_per_s2.iter().copied())
                     .fold(
                         true,
                         |all_sc_flag: bool, (trace_accel, accel): (f64, f64)| {
