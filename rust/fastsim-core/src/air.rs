@@ -192,7 +192,7 @@ impl Default for AirProperties {
             .into(),
         );
 
-        let pr_array = mu_array.clone() * c_p_array.clone() / k_array.clone();
+        let pr_array = &mu_array * &c_p_array / &k_array;
 
         Self {
             te_array_degc,

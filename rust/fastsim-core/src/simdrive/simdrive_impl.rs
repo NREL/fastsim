@@ -28,7 +28,7 @@ pub struct CoastTrajectory {
 impl RustSimDrive {
     pub fn new(cyc: RustCycle, veh: RustVehicle) -> Self {
         let hev_sim_count: usize = 0;
-        let cyc0: RustCycle = cyc.clone();
+        let cyc0 = cyc.clone();
         let sim_params = RustSimDriveParams::default();
         let props = params::RustPhysicalProperties::default();
         let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
@@ -123,29 +123,29 @@ impl RustSimDrive {
         let cur_max_roadway_chg_kw = Array::zeros(cyc_len);
         let trace_miss_iters = Array::zeros(cyc_len);
         let newton_iters = Array::zeros(cyc_len);
-        let fuel_kj: f64 = 0.0;
-        let ess_dischg_kj: f64 = 0.0;
-        let energy_audit_error: f64 = 0.0;
-        let mpgge: f64 = 0.0;
-        let roadway_chg_kj: f64 = 0.0;
-        let battery_kwh_per_mi: f64 = 0.0;
-        let electric_kwh_per_mi: f64 = 0.0;
-        let ess2fuel_kwh: f64 = 0.0;
-        let drag_kj: f64 = 0.0;
-        let ascent_kj: f64 = 0.0;
-        let rr_kj: f64 = 0.0;
-        let brake_kj: f64 = 0.0;
-        let trans_kj: f64 = 0.0;
-        let mc_kj: f64 = 0.0;
-        let ess_eff_kj: f64 = 0.0;
-        let aux_kj: f64 = 0.0;
-        let fc_kj: f64 = 0.0;
-        let net_kj: f64 = 0.0;
-        let ke_kj: f64 = 0.0;
+        let fuel_kj = 0.0;
+        let ess_dischg_kj = 0.0;
+        let energy_audit_error = 0.0;
+        let mpgge = 0.0;
+        let roadway_chg_kj = 0.0;
+        let battery_kwh_per_mi = 0.0;
+        let electric_kwh_per_mi = 0.0;
+        let ess2fuel_kwh = 0.0;
+        let drag_kj = 0.0;
+        let ascent_kj = 0.0;
+        let rr_kj = 0.0;
+        let brake_kj = 0.0;
+        let trans_kj = 0.0;
+        let mc_kj = 0.0;
+        let ess_eff_kj = 0.0;
+        let aux_kj = 0.0;
+        let fc_kj = 0.0;
+        let net_kj = 0.0;
+        let ke_kj = 0.0;
         let trace_miss = false;
-        let trace_miss_dist_frac: f64 = 0.0;
-        let trace_miss_time_frac: f64 = 0.0;
-        let trace_miss_speed_mps: f64 = 0.0;
+        let trace_miss_dist_frac = 0.0;
+        let trace_miss_time_frac = 0.0;
+        let trace_miss_speed_mps = 0.0;
         let coast_delay_index = Array::zeros(cyc_len);
         let idm_target_speed_m_per_s = Array::zeros(cyc_len);
         let cyc0_cache = RustCycleCache::new(&cyc0);
@@ -474,7 +474,7 @@ impl RustSimDrive {
         aux_in_kw_override: Option<Array1<f64>>,
     ) -> anyhow::Result<()> {
         // Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
-        let init_soc_auto: f64 = match self.veh.veh_pt_type.as_str() {
+        let init_soc_auto = match self.veh.veh_pt_type.as_str() {
             // If no EV / Hybrid components, no SOC considerations.
             CONV => (self.veh.max_soc + self.veh.min_soc) / 2.0,
             HEV => (self.veh.max_soc + self.veh.min_soc) / 2.0,
@@ -1780,7 +1780,7 @@ impl RustSimDrive {
             self.mpgge = self.dist_mi.sum() / (self.fs_kwh_out_ach.sum() / self.props.kwh_per_gge);
         }
 
-        self.roadway_chg_kj = (self.roadway_chg_kw_out_ach.clone() * self.cyc.dt_s()).sum();
+        self.roadway_chg_kj = (&self.roadway_chg_kw_out_ach * self.cyc.dt_s()).sum();
         self.ess_dischg_kj = -1.0
             * (self
                 .soc
@@ -1800,7 +1800,7 @@ impl RustSimDrive {
         } else {
             0.0
         };
-        self.fuel_kj = (self.fs_kw_out_ach.clone() * self.cyc.dt_s()).sum();
+        self.fuel_kj = (&self.fs_kw_out_ach * self.cyc.dt_s()).sum();
 
         if (self.fuel_kj + self.roadway_chg_kj) == 0.0 {
             self.ess2fuel_kwh = 1.0
@@ -1809,9 +1809,9 @@ impl RustSimDrive {
         }
 
         // energy audit calcs
-        self.drag_kj = (self.drag_kw.clone() * self.cyc.dt_s()).sum();
-        self.ascent_kj = (self.ascent_kw.clone() * self.cyc.dt_s()).sum();
-        self.rr_kj = (self.rr_kw.clone() * self.cyc.dt_s()).sum();
+        self.drag_kj = (&self.drag_kw * self.cyc.dt_s()).sum();
+        self.ascent_kj = (&self.ascent_kw * self.cyc.dt_s()).sum();
+        self.rr_kj = (&self.rr_kw * self.cyc.dt_s()).sum();
 
         for i in 1..self.cyc.len() {
             if self.veh.ess_max_kw == 0.0 || self.veh.ess_max_kwh == 0.0 {
@@ -1826,17 +1826,12 @@ impl RustSimDrive {
             }
         }
 
-        self.brake_kj = (self.cyc_fric_brake_kw.clone() * self.cyc.dt_s()).sum();
-        self.trans_kj = ((self.trans_kw_in_ach.clone() - self.trans_kw_out_ach.clone())
-            * self.cyc.dt_s())
-        .sum();
-        self.mc_kj = ((self.mc_elec_kw_in_ach.clone() - self.mc_mech_kw_out_ach.clone())
-            * self.cyc.dt_s())
-        .sum();
-        self.ess_eff_kj = (self.ess_loss_kw.clone() * self.cyc.dt_s()).sum();
-        self.aux_kj = (self.aux_in_kw.clone() * self.cyc.dt_s()).sum();
-        self.fc_kj =
-            ((self.fc_kw_in_ach.clone() - self.fc_kw_out_ach.clone()) * self.cyc.dt_s()).sum();
+        self.brake_kj = (&self.cyc_fric_brake_kw * self.cyc.dt_s()).sum();
+        self.trans_kj = ((&self.trans_kw_in_ach - &self.trans_kw_out_ach) * self.cyc.dt_s()).sum();
+        self.mc_kj = ((&self.mc_elec_kw_in_ach - &self.mc_mech_kw_out_ach) * self.cyc.dt_s()).sum();
+        self.ess_eff_kj = (&self.ess_loss_kw * self.cyc.dt_s()).sum();
+        self.aux_kj = (&self.aux_in_kw * self.cyc.dt_s()).sum();
+        self.fc_kj = ((&self.fc_kw_in_ach - &self.fc_kw_out_ach) * self.cyc.dt_s()).sum();
 
         self.net_kj = self.drag_kj
             + self.ascent_kj
@@ -1914,8 +1909,7 @@ impl RustSimDrive {
             );
         }
 
-        self.trace_miss_speed_mps =
-            ndarrmax(&(self.mps_ach.clone() - self.cyc.mps.clone()).map(|x| x.abs()));
+        self.trace_miss_speed_mps = ndarrmax(&(&self.mps_ach - &self.cyc.mps).map(|x| x.abs()));
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol {
             self.trace_miss = true;
             log::warn!(
