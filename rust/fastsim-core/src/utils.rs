@@ -287,11 +287,6 @@ pub fn multilinear(point: &[f64], grid: &[Vec<f64>], values: &ArrayD<f64>) -> an
         "Length of supplied `grid` must be same as `values` dimensionality: {grid:?} is not {n}-dimensional",
     );
     for i in 0..n {
-        // TODO: This ensure! could be removed if subsetting got rid of length 1 dimensions in `grid` and `points` as well
-        anyhow::ensure!(
-            grid[i].len() > 1,
-            "Supplied `grid` length must be > 1 for dimension {i}",
-        );
         anyhow::ensure!(
             grid[i].len() == values.shape()[i],
             "Supplied `grid` and `values` are not compatible shapes: dimension {i}, lengths {} != {}",
