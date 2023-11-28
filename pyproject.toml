@@ -26,7 +26,6 @@ dependencies = [
     "typing_extensions",
     "pyyaml",
     "pytest",
-    "requests",
 ]
 
 [project.urls]

@@ -11,7 +11,6 @@ import logging
 from pathlib import Path
 import re
 from contextlib import contextmanager
-import requests
 import os
 from pkg_resources import get_distribution
 import pathlib
