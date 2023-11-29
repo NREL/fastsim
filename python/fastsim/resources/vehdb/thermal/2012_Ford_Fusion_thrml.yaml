@@ -6,9 +6,8 @@ fc_coeff_from_comb: 0.0003706654943757363
 tstat_te_sto_deg_c: 85.0
 tstat_te_delta_deg_c: 5.0
 rad_eps: 6.330558106102167
-fc_model:
-  Internal:
-    - Exponential:
+fc_model: !Internal
+    - !Exponential
         offset: 4.036805344402077
         lag: 53.024341127793704
         minimum: 0.3808514871387067

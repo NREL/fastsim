@@ -26,11 +26,9 @@ sns.set()
 # %% Case with no cabin thermal modeling or HVAC
 
 fusion = fsr.RustVehicle.from_file(
-    str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml"))
+    str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml")) 
 fusion_thermal_base = fsr.VehicleThermal.from_file(
-    # str("2012_Ford_Fusion_thrml"))
-    str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml"))  
-    # ! tag:vehiclethermal:fordfusion)
+    str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml")) 
 cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
 
 # no arguments use default of 22°C

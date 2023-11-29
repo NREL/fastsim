@@ -414,7 +414,7 @@ def copy_demo_files(path_for_copies: Path=Path("demos")):
     - `path_for_copies`: path to copy files into (relative or absolute in)
 
     # Warning
-    Running this function will overwrite existing files with the same name in the specified directory so 
+    Running this function will overwrite existing files with the same name in the specified directory, so 
     make sure any files with changes you'd like to keep are renamed.
     """
     v = f"v{fsim.__version__}"

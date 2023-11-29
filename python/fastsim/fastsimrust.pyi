@@ -788,30 +788,6 @@ class VehicleThermal:
     @classmethod
     def from_file(cls, filename: str) -> Self:
         ...
-        # """
-        # Loads VehicleThermal from file `filename` (str).  Looks in working dir and then 
-        # fastsim/resources/vehdb/thermal.
-        # Argument:
-        #     filename: path to vehicle database file
-        # """
-        # filename = str(filename)
-        # if str(filename).endswith('.yaml'):
-        #     str.replace('.yaml', '.csv')
-        # if not(str(filename).endswith('.csv')):
-        #     filename = str(filename) + '.csv'
-        # if Path(filename).exists():
-        #     filename = Path(filename)
-        # elif (VEHICLE_DIR / filename).exists():
-        #     filename = VEHICLE_DIR / filename
-        # else:
-        #     raise ValueError("Invalid vehicle filename.")
-
-        # vehdf = pd.read_csv(filename)
-
-        # veh_file = filename
-
-        # return cls.from_df(vehdf, veh_file)
-
 
 class ThermalStateHistoryVec(SerdeAPI, RustVec):
     ...
