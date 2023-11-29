@@ -786,7 +786,7 @@ class VehicleThermal:
         ...
 
     @classmethod
-    def from_file(filename: str) -> Self:
+    def from_file(cls, filename: str) -> Self:
         ...
         # """
         # Loads VehicleThermal from file `filename` (str).  Looks in working dir and then 

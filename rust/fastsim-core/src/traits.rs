@@ -1,5 +1,6 @@
 use crate::imports::*;
 use std::collections::HashMap;
+//use serde_json::de::Read;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// runs any initialization steps that might be needed
@@ -42,16 +43,21 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// A Rust Result wrapping data structure if method is called successfully; otherwise a dynamic
     /// Error.
+
+    //this is the root of it then -- I was looking in the wrong place all along. I guess
+    //the question is what is going wrong
     fn from_file(filename: &str) -> Result<Self, anyhow::Error>
     where
         Self: std::marker::Sized,
+        //for<'a> Self: Read<'a>,
         for<'de> Self: Deserialize<'de>,
     {
         let extension = Path::new(filename)
             .extension()
             .and_then(OsStr::to_str)
             .unwrap_or("");
-
+        //perhaps the file::open is not opening in a way that can be accessable for later steps
+        //might be good to figure out how to print contents of opened file to make sure it makes sense
         let file = File::open(filename)?;
         // deserialized file
         let mut file_de: Self = match extension {

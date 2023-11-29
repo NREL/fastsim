@@ -287,7 +287,7 @@ class Vehicle(object):
         vehdf.set_index('selection', inplace=True, drop=False)
 
         return cls.from_df(vehdf, vnum, veh_file, to_rust)
-    #need to duplicate this function for VehicleThermal -- but first need a csv file from the yaml
+    
     @classmethod
     def from_file(cls, filename: str, vnum: int = None, to_rust: bool = False) -> Self:
         """

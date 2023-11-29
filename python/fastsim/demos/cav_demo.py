@@ -74,7 +74,7 @@ if SHOW_PLOTS:
     print(f"Coast fuel economy over UDDS: {sd.mpgge} mpg")
     pct_savings = ((1.0/base_mpg) - (1.0/coast_mpg)) * 100.0 / ((1.0/base_mpg))
     print(f"Percent Savings: {pct_savings} %")
-    make_coasting_plot(sd.cyc0, sd.cyc, do_show=SHOW_PLOTSe)
+    make_coasting_plot(sd.cyc0, sd.cyc, do_show=SHOW_PLOTS)
 
 # %% [markdown]
 # # Car Following at Average Speed
