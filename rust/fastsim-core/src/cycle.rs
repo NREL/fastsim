@@ -229,7 +229,7 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
                 mt_vs.clone(),
                 mt_gs.clone(),
                 mt_rs.clone(),
-                cycle.name.clone(),
+                &cycle.name,
             ));
             mt_ts = vec![last_t];
             mt_vs = vec![last_v];
@@ -244,13 +244,7 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
     }
     if !mt_ts.is_empty() {
         mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
-        microtrips.push(RustCycle::new(
-            mt_ts,
-            mt_vs,
-            mt_gs,
-            mt_rs,
-            cycle.name.clone(),
-        ));
+        microtrips.push(RustCycle::new(mt_ts, mt_vs, mt_gs, mt_rs, &cycle.name));
     }
     microtrips
 }
@@ -344,7 +338,7 @@ pub fn extend_cycle(
         rs.push(0.0);
         idx += 1;
     }
-    RustCycle::new(ts, vs, gs, rs, cyc.name.clone())
+    RustCycle::new(ts, vs, gs, rs, &cyc.name)
 }
 
 #[cfg(feature = "pyo3")]
@@ -686,17 +680,18 @@ impl SerdeAPI for RustCycle {
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
 impl RustCycle {
-    pub fn new(
+    pub fn new<S: AsRef<str>>(
         time_s: Vec<f64>,
         mps: Vec<f64>,
         grade: Vec<f64>,
         road_type: Vec<f64>,
-        name: String,
+        name: S,
     ) -> Self {
         let time_s = Array::from_vec(time_s);
         let mps = Array::from_vec(mps);
         let grade = Array::from_vec(grade);
         let road_type = Array::from_vec(road_type);
+        let name = name.as_ref().to_string();
         Self {
             time_s,
             mps,
@@ -1014,7 +1009,7 @@ impl RustCycle {
 
     /// elevation change w.r.t. to initial
     pub fn delta_elev_m(&self) -> Array1<f64> {
-        ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+        ndarrcumsum(&(self.dist_m() * &self.grade))
     }
 }
 
@@ -1127,7 +1122,7 @@ mod tests {
         let speed_mps = vec![0.0, 10.0, 10.0, 0.0, 0.0];
         let grade = Array::zeros(5).to_vec();
         let road_type = Array::zeros(5).to_vec();
-        let name = String::from("test");
+        let name = "test";
         let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
         let avg_mps = average_step_speeds(&cyc);
         let expected_avg_mps = Array::from_vec(vec![0.0, 5.0, 10.0, 5.0, 0.0]);
