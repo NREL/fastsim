@@ -122,16 +122,18 @@ impl SerdeAPI for PHEVCycleCalc {}
 
 pub fn make_accel_trace() -> RustCycle {
     let accel_cyc_secs = Array::range(0., 300., 0.1);
-    let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
+    let cyc_len = accel_cyc_secs.len();
+    let mut accel_cyc_mps = Array::ones(cyc_len) * 90.0 / MPH_PER_MPS;
     accel_cyc_mps[0] = 0.0;
 
-    RustCycle::new(
-        accel_cyc_secs.to_vec(),
-        accel_cyc_mps.to_vec(),
-        Array::zeros(accel_cyc_secs.len()).to_vec(),
-        Array::zeros(accel_cyc_secs.len()).to_vec(),
-        String::from("accel"),
-    )
+    RustCycle {
+        time_s: accel_cyc_secs,
+        mps: accel_cyc_mps,
+        grade: Array::zeros(cyc_len),
+        road_type: Array::zeros(cyc_len),
+        name: String::from("accel"),
+        orphaned: false,
+    }
 }
 
 #[cfg(feature = "pyo3")]

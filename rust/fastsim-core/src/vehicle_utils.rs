@@ -62,13 +62,14 @@ pub fn abc_to_drag_coeffs(
 
     let cd_len: usize = 300;
 
-    let cyc: RustCycle = RustCycle::new(
-        (0..cd_len as i32).map(f64::from).collect(),
-        Array::linspace(vmax_mph / super::params::MPH_PER_MPS, 0.0, cd_len).to_vec(),
-        vec![0.0; cd_len],
-        vec![0.0; cd_len],
-        String::from("cycle"),
-    );
+    let cyc: RustCycle = RustCycle {
+        time_s: (0..cd_len as i32).map(f64::from).collect(),
+        mps: Array::linspace(vmax_mph / super::params::MPH_PER_MPS, 0.0, cd_len),
+        grade: Array::zeros(cd_len),
+        road_type: Array::zeros(cd_len),
+        name: String::from("cycle"),
+        orphaned: false,
+    };
 
     // polynomial function for pounds vs speed
     let dyno_func_lb: Polynomial<f64> = Polynomial::new(vec![a_lbf, b_lbf__mph, c_lbf__mph2]);

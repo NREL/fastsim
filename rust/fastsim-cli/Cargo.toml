@@ -13,6 +13,7 @@ repository = "https://github.com/NREL/fastsim"
 [dependencies]
 fastsim-core = { path = "../fastsim-core", version = "~0" }
 anyhow = { workspace = true }
+ndarray = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 project-root = "0.2.2"
