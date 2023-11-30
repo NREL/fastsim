@@ -4,8 +4,8 @@ macro_rules! impl_vec_get_set {
             let get_name: TokenStream2 = format!("get_{}", $fident).parse().unwrap();
             $impl_block.extend::<TokenStream2>(quote! {
                 #[getter]
-                pub fn #get_name(&self) -> PyResult<$wrapper_type> {
-                    Ok($wrapper_type::new(self.#$fident.clone()))
+                pub fn #get_name(&self) -> $wrapper_type {
+                    $wrapper_type::new(self.#$fident.clone())
                 }
             });
         }
@@ -16,21 +16,20 @@ macro_rules! impl_vec_get_set {
                     if $has_orphaned {
                         $impl_block.extend(quote! {
                             #[setter]
-                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> PyResult<()> {
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> anyhow::Result<()> {
                                 if !self.orphaned {
                                     self.#$fident = new_value;
                                     Ok(())
                                 } else {
-                                    Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                                    bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
                                 }
                             }
                         })
                     } else {
                         $impl_block.extend(quote! {
                             #[setter]
-                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> PyResult<()> {
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) {
                                 self.#$fident = new_value;
-                                Ok(())
                             }
                         })
                     }
@@ -39,21 +38,20 @@ macro_rules! impl_vec_get_set {
                     if $has_orphaned {
                         $impl_block.extend(quote! {
                             #[setter]
-                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> PyResult<()> {
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> anyhow::Result<()> {
                                 if !self.orphaned {
                                     self.#$fident = Array1::from_vec(new_value);
                                     Ok(())
                                 } else {
-                                    Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                                    bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
                                 }
                             }
                         })
                     } else {
                         $impl_block.extend(quote! {
                             #[setter]
-                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) -> PyResult<()> {
+                            pub fn #set_name(&mut self, new_value: Vec<$contained_type>) {
                                 self.#$fident = Array1::from_vec(new_value);
-                                Ok(())
                             }
                         })
                     }
@@ -80,16 +78,16 @@ macro_rules! impl_get_body {
             let get_block = if $opts.field_has_orphaned {
                 quote! {
                     #[getter]
-                    pub fn #get_name(&mut self) -> PyResult<#$type> {
+                    pub fn #get_name(&mut self) -> #$type {
                         self.#$field.orphaned = true;
-                        Ok(self.#$field.clone())
+                        self.#$field.clone()
                     }
                 }
             } else {
                 quote! {
                     #[getter]
-                    pub fn #get_name(&self) -> PyResult<#$type> {
-                        Ok(self.#$field.clone())
+                    pub fn #get_name(&self) -> #$type {
+                        self.#$field.clone()
                     }
                 }
             };
@@ -120,7 +118,7 @@ macro_rules! impl_set_body {
                         self.#$field.orphaned = false;
                         Ok(())
                     } else {
-                        Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                        bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
                     }
                 }
             } else if $has_orphaned {
@@ -129,7 +127,7 @@ macro_rules! impl_set_body {
                         self.#$field = new_value;
                         Ok(())
                     } else {
-                        Err(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
+                        bail!(PyAttributeError::new_err(crate::utils::NESTED_STRUCT_ERR))
                     }
                 }
             } else {
@@ -141,7 +139,7 @@ macro_rules! impl_set_body {
 
             $impl_block.extend::<TokenStream2>(quote! {
                 #[setter]
-                pub fn #set_name(&mut self, new_value: #$type) ->  PyResult<()> {
+                pub fn #set_name(&mut self, new_value: #$type) -> anyhow::Result<()> {
                     #orphaned_set_block
                 }
             });

@@ -1,5 +1,8 @@
 //! Module containing miscellaneous utility functions.
 
+use lazy_static::lazy_static;
+use ndarray_stats::QuantileExt;
+use regex::Regex;
 use std::collections::HashSet;
 
 use crate::imports::*;
@@ -80,16 +83,6 @@ pub fn arrmin(arr: &[f64]) -> f64 {
     arr.iter().copied().fold(f64::NAN, f64::min)
 }
 
-/// return min of arr
-pub fn ndarrmin(arr: &Array1<f64>) -> f64 {
-    arr.to_vec().into_iter().reduce(f64::min).unwrap()
-}
-
-/// return max of arr
-pub fn ndarrmax(arr: &Array1<f64>) -> f64 {
-    arr.to_vec().into_iter().reduce(f64::max).unwrap()
-}
-
 /// return true if the array is all zeros
 pub fn ndarrallzeros(arr: &Array1<f64>) -> bool {
     arr.iter().all(|x| *x == 0.0)
@@ -109,8 +102,8 @@ pub fn ndarrcumsum(arr: &Array1<f64>) -> Array1<f64> {
 pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
     let mut set: HashSet<usize> = HashSet::new();
     let mut new_arr: Vec<f64> = Vec::new();
-    let x_min = ndarrmin(arr);
-    let x_max = ndarrmax(arr);
+    let x_min = arr.min().unwrap();
+    let x_max = arr.max().unwrap();
     let dx = if x_max == x_min { 1.0 } else { x_max - x_min };
     for &x in arr.iter() {
         let y = (((x - x_min) / dx) * (usize::MAX as f64)) as usize;
@@ -294,6 +287,55 @@ pub fn interp2d(
     Ok(c)
 }
 
+lazy_static! {
+    static ref TIRE_CODE_REGEX: Regex = Regex::new(
+        r"(?i)[P|LT|ST|T]?((?:[0-9]{2,3}\.)?[0-9]+)/((?:[0-9]{1,2}\.)?[0-9]+) ?[B|D|R]?[x|\-| ]?((?:[0-9]{1,2}\.)?[0-9]+)[A|B|C|D|E|F|G|H|J|L|M|N]?"
+    ).unwrap();
+}
+
+/// Calculate tire radius (in meters) from an [ISO metric tire code](https://en.wikipedia.org/wiki/Tire_code#ISO_metric_tire_codes)
+///
+/// # Arguments
+/// * `tire_code` - A string containing a parsable ISO metric tire code
+///
+/// # Examples
+/// ## Example 1:
+///
+/// ```rust
+/// // Note the floating point imprecision in the result
+/// use fastsim_core::utils::tire_code_to_radius;
+/// let tire_code = "225/70Rx19.5G";
+/// assert_eq!(tire_code_to_radius(&tire_code).unwrap(), 0.40514999999999995);
+/// ```
+///
+/// ## Example 2:
+///
+/// ```rust
+/// // Either `&str`, `&String`, or `String` can be passed
+/// use fastsim_core::utils::tire_code_to_radius;
+/// let tire_code = String::from("P205/60R16");
+/// assert_eq!(tire_code_to_radius(tire_code).unwrap(), 0.3262);
+/// ```
+///
+pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
+    let tire_code = tire_code.as_ref();
+    let captures = TIRE_CODE_REGEX.captures(tire_code).with_context(|| {
+        format!(
+            "Regex pattern does not match for {:?}: {:?}",
+            tire_code,
+            TIRE_CODE_REGEX.as_str(),
+        )
+    })?;
+    let width_mm: f64 = captures[1].parse()?;
+    let aspect_ratio: f64 = captures[2].parse()?;
+    let rim_diameter_in: f64 = captures[3].parse()?;
+
+    let sidewall_height_mm = width_mm * aspect_ratio / 100.0;
+    let radius_mm = (rim_diameter_in * 25.4) / 2.0 + sidewall_height_mm;
+
+    Ok(radius_mm / 1000.0)
+}
+
 #[cfg(feature = "pyo3")]
 pub mod array_wrappers {
     use crate::proc_macros::add_pyo3_api;
@@ -339,7 +381,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_interp2d() -> anyhow::Result<()> {
+    fn test_interp2d() {
         // specified (x, y) point at which to interpolate value
         let point = [0.5, 0.5];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -355,12 +397,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 0.5);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 0.5);
     }
 
     #[test]
-    fn test_interp2d_offset() -> anyhow::Result<()> {
+    fn test_interp2d_offset() {
         // specified (x, y) point at which to interpolate value
         let point = [0.25, 0.75];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -376,12 +417,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 0.375);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 0.375);
     }
 
     #[test]
-    fn test_interp2d_exact_value_lower() -> anyhow::Result<()> {
+    fn test_interp2d_exact_value_lower() {
         // specified (x, y) point at which to interpolate value
         let point = [0.0, 0.0];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -397,12 +437,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
     }
 
     #[test]
-    fn test_interp2d_below_value_lower() -> anyhow::Result<()> {
+    fn test_interp2d_below_value_lower() {
         // specified (x, y) point at which to interpolate value
         let point = [-1.0, -1.0];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -418,12 +457,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
     }
 
     #[test]
-    fn test_interp2d_above_value_upper() -> anyhow::Result<()> {
+    fn test_interp2d_above_value_upper() {
         // specified (x, y) point at which to interpolate value
         let point = [2.0, 2.0];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -439,12 +477,11 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
     }
 
     #[test]
-    fn test_interp2d_exact_value_upper() -> anyhow::Result<()> {
+    fn test_interp2d_exact_value_upper() {
         // specified (x, y) point at which to interpolate value
         let point = [1.0, 1.0];
         // grid coordinates: (x0, x1), (y0, y1)
@@ -460,8 +497,7 @@ mod tests {
                 1.0, // upper right (x1, y1)
             ],
         ];
-        anyhow::ensure!(interp2d(&point, &grid, &values)? == 1.0);
-        Ok(())
+        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
     }
 
     #[test]
@@ -499,20 +535,6 @@ mod tests {
         let idx = first_grtr(&xs, 7.0).unwrap();
         let expected_idx: usize = xs.len() - 1;
         assert_eq!(idx, expected_idx)
-    }
-
-    #[test]
-    fn test_that_ndarrmin_returns_the_min() {
-        let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
-        let xmin = ndarrmin(&xs);
-        assert_eq!(xmin, 3.0);
-    }
-
-    #[test]
-    fn test_that_ndarrmax_returns_the_max() {
-        let xs = Array1::from_vec(vec![10.0, 80.0, 3.0, 3.2, 9.0]);
-        let xmax = ndarrmax(&xs);
-        assert_eq!(xmax, 80.0);
     }
 
     #[test]

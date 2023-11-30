@@ -49,12 +49,12 @@ impl SimDriveVec {
         if parallelize {
             self.0.par_iter_mut().enumerate().try_for_each(|(i, sd)| {
                 sd.sim_drive(None, None)
-                    .map_err(|err| err.context(format!("simdrive idx:{}", i)))
+                    .with_context(|| format!("simdrive idx: {}", i))
             })?;
         } else {
             self.0.iter_mut().enumerate().try_for_each(|(i, sd)| {
                 sd.sim_drive(None, None)
-                    .map_err(|err| err.context(format!("simdrive idx:{}", i)))
+                    .with_context(|| format!("simdrive idx: {}", i))
             })?;
         }
         Ok(())
