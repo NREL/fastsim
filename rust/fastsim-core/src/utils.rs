@@ -225,7 +225,7 @@ pub fn interpolate_vectors(
 /// Generate all permutations of indices for a given *N*-dimensional array shape
 ///
 /// # Arguments
-/// * `shape` - Reference to shape of the *N*-dimensional array returned by `ndarray::Array::shape()`
+/// * `shape` - Reference to shape of the *N*-dimensional array, as returned by `ndarray::ArrayBase::shape()`
 ///
 /// # Returns
 /// A `Vec<Vec<usize>>` where each inner `Vec<usize>` is one permutation of indices
@@ -252,6 +252,7 @@ pub fn interpolate_vectors(
 ///     ]
 /// );
 /// ```
+///
 pub fn get_index_permutations(shape: &[usize]) -> Vec<Vec<usize>> {
     if shape.is_empty() {
         return vec![vec![]];
@@ -265,13 +266,99 @@ pub fn get_index_permutations(shape: &[usize]) -> Vec<Vec<usize>> {
 
 /// Multilinear interpolation function, accepting any dimensionality *N*.
 ///
-/// Arguments
+/// # Arguments
+/// * `point` - An *N*-length array representing the interpolation point coordinates in each dimension
+/// * `grid` - A grid containing the coordinates for each dimension,
+///   i.e. `[[0.0, 1.0], [-0.5, 1.5]]` indicates x<sub>0</sub> = 0.0, x<sub>1</sub> = 1.0, y<sub>0</sub> = -0.5, y<sub>1</sub> = 1.5
+/// * `values` - An *N*-dimensional [`ndarray::ArrayD`] containing the values at given grid coordinates
 ///
-/// * `point`: interpolation point - specified by *N*-length array `&[x, y, z, ...]`
+/// # Errors
+/// This function returns an [`InterpolationError`] if any of the validation checks from [`validate_inputs`] fail,
+/// or if any values surrounding supplied `point` are `NaN`.
 ///
-/// * `grid`: rectilinear grid points - *N*-length array of x, y, z, ... grid coordinate vectors
+/// # Examples
+/// ## 1D Example
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
 ///
-/// * `values`: *N*-dimensional [`ndarray::ArrayD`] containing values at grid points, can be created by calling `Array::into_dyn()`
+/// let grid = [vec![0.0, 1.0, 4.0]];
+/// let values = array![0.0, 2.0, 4.45].into_dyn();
+///
+/// let point_a = [0.82];
+/// assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 1.64);
+/// let point_b = [2.98];
+/// assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 3.617);
+/// let point_c = [grid[0][2]]; // returns value at x2
+/// assert_eq!(multilinear(&point_c, &grid, &values).unwrap(), values[2]);
+/// ```
+///
+/// ## 2D Example
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
+///
+/// let grid = [
+///     vec![0.0, 1.0, 2.0], // x0, x1, x2
+///     vec![0.0, 1.0, 2.0], // y0, y1, y2
+/// ];
+/// let values = array![
+///     [0.0, 2.0, 1.9], // (x0, y0), (x0, y1), (x0, y2)
+///     [2.0, 4.0, 3.1], // (x1, y0), (x1, y1), (x1, y2)
+///     [5.0, 0.0, 1.4], // (x2, y0), (x2, y1), (x2, y2)
+/// ]
+/// .into_dyn();
+///
+/// let point_a = [0.5, 0.5];
+/// assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 2.0);
+/// let point_b = [1.52, 0.36];
+/// assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 2.9696);
+/// let point_c = [grid[0][2], grid[1][1]]; // returns value at (x2, y1)
+/// assert_eq!(
+///     multilinear(&point_c, &grid, &values).unwrap(),
+///     values[[2, 1]]
+/// );
+/// ```
+///
+/// ## 3D Example
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
+///
+/// let grid = [
+///     vec![0.0, 1.0, 2.0], // x0, x1, x2
+///     vec![0.0, 1.0, 2.0], // y0, y1, y2
+///     vec![0.0, 1.0, 2.0], // z0, z1, z2
+/// ];
+/// let values = array![
+///     [
+///         [0.0, 1.5, 3.0], // (x0, y0, z0), (x0, y0, z1), (x0, y0, z2)
+///         [2.0, 0.5, 1.4], // (x0, y1, z0), (x0, y1, z1), (x0, y1, z2)
+///         [1.9, 5.3, 2.2], // (x0, y2, z0), (x0, y0, z1), (x0, y2, z2)
+///     ],
+///     [
+///         [2.0, 5.1, 1.1], // (x1, y0, z0), (x1, y0, z1), (x1, y0, z2)
+///         [4.0, 1.0, 0.5], // (x1, y1, z0), (x1, y1, z1), (x1, y1, z2)
+///         [3.1, 0.9, 1.2], // (x1, y2, z0), (x1, y2, z1), (x1, y2, z2)
+///     ],
+///     [
+///         [5.0, 0.2, 5.1], // (x2, y0, z0), (x2, y0, z1), (x2, y0, z2)
+///         [0.7, 0.1, 3.2], // (x2, y1, z0), (x2, y1, z1), (x2, y1, z2)
+///         [1.4, 1.1, 0.0], // (x2, y2, z0), (x2, y2, z1), (x2, y2, z2)
+///     ],
+/// ]
+/// .into_dyn();
+///
+/// let point_a = [0.5, 0.5, 0.5];
+/// assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 2.0125);
+/// let point_b = [1.52, 0.36, 0.5];
+/// assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 2.46272);
+/// let point_c = [grid[0][2], grid[1][1], grid[2][0]]; // returns value at (x2, y1, z0)
+/// assert_eq!(
+///     multilinear(&point_c, &grid, &values).unwrap(),
+///     values[[2, 1, 0]]
+/// );
+/// ```
 ///
 pub fn multilinear(point: &[f64], grid: &[Vec<f64>], values: &ArrayD<f64>) -> anyhow::Result<f64> {
     // Dimensionality
@@ -480,90 +567,6 @@ pub use array_wrappers::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_multilinear_1d() {
-        let grid = [vec![0.0, 1.0, 4.0]];
-        let values = array![0.0, 2.0, 4.45].into_dyn();
-
-        let point_a = [0.82];
-        assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 1.64);
-
-        let point_b = [2.98];
-        assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 3.617);
-
-        // returns value at x2
-        let point_c = [4.0];
-        assert_eq!(multilinear(&point_c, &grid, &values).unwrap(), values[2]);
-    }
-
-    // test targets found using https://www.omnicalculator.com/math/bilinear-interpolation
-    #[test]
-    fn test_multilinear_2d() {
-        let grid = [
-            vec![0.0, 1.0, 2.0], // x0, x1, x2
-            vec![0.0, 1.0, 2.0], // y0, y1, y2
-        ];
-        let values = array![
-            [0.0, 2.0, 1.9], // (x0, y0), (x0, y1), (x0, y2)
-            [2.0, 4.0, 3.1], // (x1, y0), (x1, y1), (x1, y2)
-            [5.0, 0.0, 1.4], // (x2, y0), (x2, y1), (x2, y2)
-        ]
-        .into_dyn();
-
-        let point_a = [0.5, 0.5];
-        assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 2.0);
-
-        let point_b = [1.52, 0.36];
-        assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 2.9696);
-
-        // returns value at (x2, y1)
-        let point_c = [2.0, 1.0];
-        assert_eq!(
-            multilinear(&point_c, &grid, &values).unwrap(),
-            values[[2, 1]]
-        );
-    }
-
-    #[test]
-    fn test_multilinear_3d() {
-        let grid = [
-            vec![0.0, 1.0, 2.0], // x0, x1, x2
-            vec![0.0, 1.0, 2.0], // y0, y1, y2
-            vec![0.0, 1.0, 2.0], // z0, z1, z2
-        ];
-        let values = array![
-            [
-                [0.0, 1.5, 3.0], // (x0, y0, z0), (x0, y0, z1), (x0, y0, z2)
-                [2.0, 0.5, 1.4], // (x0, y1, z0), (x0, y1, z1), (x0, y1, z2)
-                [1.9, 5.3, 2.2], // (x0, y2, z0), (x0, y0, z1), (x0, y2, z2)
-            ],
-            [
-                [2.0, 5.1, 1.1], // (x1, y0, z0), (x1, y0, z1), (x1, y0, z2)
-                [4.0, 1.0, 0.5], // (x1, y1, z0), (x1, y1, z1), (x1, y1, z2)
-                [3.1, 0.9, 1.2], // (x1, y2, z0), (x1, y2, z1), (x1, y2, z2)
-            ],
-            [
-                [5.0, 0.2, 5.1], // (x2, y0, z0), (x2, y0, z1), (x2, y0, z2)
-                [0.7, 0.1, 3.2], // (x2, y1, z0), (x2, y1, z1), (x2, y1, z2)
-                [1.4, 1.1, 0.0], // (x2, y2, z0), (x2, y2, z1), (x2, y2, z2)
-            ],
-        ]
-        .into_dyn();
-
-        let point_a = [0.5, 0.5, 0.5];
-        assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 2.0125);
-
-        let point_b = [1.52, 0.36, 0.5];
-        assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 2.46272);
-
-        // returns value at (x2, y1, z0)
-        let point_c = [2.0, 1.0, 0.0];
-        assert_eq!(
-            multilinear(&point_c, &grid, &values).unwrap(),
-            values[[2, 1, 0]]
-        );
-    }
 
     #[test]
     fn test_diff() {
