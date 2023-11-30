@@ -197,7 +197,7 @@ pub fn main() -> anyhow::Result<()> {
                 && adopt_hd_str_lc != false_string;
             (true, adopt_hd_string.clone(), adopt_hd_has_cycle)
         } else {
-            (false, String::from(""), false)
+            (false, String::default(), false)
         };
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
         if cyc_file_path == *"coastdown" {

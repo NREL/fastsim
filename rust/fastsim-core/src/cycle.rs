@@ -1080,7 +1080,7 @@ impl RustCycle {
 
     /// elevation change w.r.t. to initial
     pub fn delta_elev_m(&self) -> Array1<f64> {
-        ndarrcumsum(&(self.dist_m() * self.grade.clone()))
+        ndarrcumsum(&(self.dist_m() * &self.grade))
     }
 }
 
