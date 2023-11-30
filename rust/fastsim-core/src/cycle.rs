@@ -494,6 +494,10 @@ impl RustCycleCache {
         }
     }
 
+    pub fn __len__(&self) -> usize {
+        self.len()
+    }
+
     #[allow(clippy::type_complexity)]
     pub fn __getnewargs__(&self) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, &str) {
         (self.time_s.to_vec(), self.mps.to_vec(), self.grade.to_vec(), self.road_type.to_vec(), &self.name)
@@ -604,11 +608,6 @@ impl RustCycleCache {
     /// array of time steps
     pub fn get_dt_s(&self) -> Vec<f64> {
         self.dt_s().to_vec()
-    }
-    #[getter]
-    /// cycle length
-    pub fn get_len(&self) -> usize {
-        self.len()
     }
     #[getter]
     /// distance for each time step based on final speed

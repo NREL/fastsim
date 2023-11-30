@@ -53,7 +53,7 @@ class CycleCache:
         self.trapz_step_distances_m = trapz_step_distances(cyc)
         self.trapz_distances_m = self.trapz_step_distances_m.cumsum()
         if (self.grade_all_zero):
-            self.trapz_elevations_m = np.zeros(len(cyc.time_s))
+            self.trapz_elevations_m = np.zeros(len(cyc))
         else:
             self.trapz_elevations_m = np.cumsum(np.cos(np.arctan(cyc.grade)) * self.trapz_step_distances_m * np.array(cyc.grade))
         self.stops = np.array(cyc.mps) <= tol
@@ -219,8 +219,8 @@ class Cycle(object):
         """
         return (self.dist_m * self.grade).cumsum()
 
-    @property
-    def len(self) -> int:
+    
+    def __len__(self) -> int:
         "return cycle length"
         return len(self.time_s)
 

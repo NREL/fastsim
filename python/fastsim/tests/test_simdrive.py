@@ -262,12 +262,12 @@ class TestSimDriveClassic(unittest.TestCase):
         if USE_PYTHON:
             sd = simdrive.SimDrive(cyc, veh)
             sd.sim_drive()
-            self.assertEqual(sd.i, sd.cyc0.len)
+            self.assertEqual(sd.i, len(sd.cyc0))
 
         if USE_RUST:
             sd = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
             sd.sim_drive()
-            self.assertEqual(sd.i, sd.cyc0.len)
+            self.assertEqual(sd.i, len(sd.cyc0))
 
 class TestSimDriveVec(unittest.TestCase):
     def test_sim_drive_vec(self):
