@@ -374,14 +374,13 @@ impl RustSimDrive {
         let a_brake = self.sim_params.coast_brake_accel_m_per_s2;
         assert![a_brake <= 0.0];
         let ds = &self.cyc0_cache.trapz_distances_m;
-        let gs = self.cyc0.grade.clone();
         let d0 = trapz_step_start_distance(&self.cyc, i);
         let mut distances_m: Vec<f64> = Vec::with_capacity(ds.len());
         let mut grade_by_distance: Vec<f64> = Vec::with_capacity(ds.len());
         for idx in 0..ds.len() {
             if ds[idx] >= d0 {
                 distances_m.push(ds[idx] - d0);
-                grade_by_distance.push(gs[idx])
+                grade_by_distance.push(self.cyc0.grade[idx])
             }
         }
         if distances_m.is_empty() {
@@ -889,9 +888,9 @@ impl RustSimDrive {
                     );
                 }
                 let all_sub_coast: bool = trace_accels_m_per_s2
-                    .clone()
-                    .into_iter()
-                    .zip(accels_m_per_s2.clone().into_iter())
+                    .iter()
+                    .copied()
+                    .zip(accels_m_per_s2.iter().copied())
                     .fold(
                         true,
                         |all_sc_flag: bool, (trace_accel, accel): (f64, f64)| {

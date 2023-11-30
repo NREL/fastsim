@@ -131,7 +131,7 @@ pub fn make_accel_trace() -> RustCycle {
         accel_cyc_mps.to_vec(),
         Array::zeros(accel_cyc_secs.len()).to_vec(),
         Array::zeros(accel_cyc_secs.len()).to_vec(),
-        String::from("accel"),
+        "accel",
     )
 }
 
