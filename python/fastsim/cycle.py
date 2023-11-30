@@ -1021,7 +1021,7 @@ def copy_cycle(cyc: Cycle, return_type: str = None, deep: bool = True) -> Dict[s
     elif return_type == 'legacy':
         return LegacyCycle(cyc_dict)
     elif return_type == 'rust':
-        return RustCycle(**cyc_dict)
+        return RustCycle.from_dict(cyc_dict)
     else:
         raise ValueError(f"Invalid return_type: '{return_type}'")
 

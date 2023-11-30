@@ -476,24 +476,6 @@ impl RustCycleCache {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[add_pyo3_api(
-    #[new]
-    pub fn __new__(
-        time_s: Vec<f64>,
-        mps: Vec<f64>,
-        grade: Vec<f64>,
-        road_type: Vec<f64>,
-        name: String,
-    ) -> Self {
-        Self {
-            time_s: Array::from_vec(time_s),
-            mps: Array::from_vec(mps),
-            grade: Array::from_vec(grade),
-            road_type: Array::from_vec(road_type),
-            name,
-            orphaned: false,
-        }
-    }
-
     pub fn __len__(&self) -> usize {
         self.len()
     }
