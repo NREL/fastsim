@@ -34,6 +34,7 @@ regex = "1.7.1"
 rayon = "1.7.0"
 include_dir = "0.7.3"
 itertools = "0.12.0"
+ndarray-stats = "0.5.1"
 
 [package.metadata]
 include = [

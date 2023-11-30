@@ -1,6 +1,7 @@
 //! Module containing classes and methods for calculating label fuel economy.
 
 use ndarray::Array;
+use ndarray_stats::QuantileExt;
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -130,7 +131,7 @@ pub fn make_accel_trace() -> RustCycle {
         accel_cyc_mps.to_vec(),
         Array::zeros(accel_cyc_secs.len()).to_vec(),
         Array::zeros(accel_cyc_secs.len()).to_vec(),
-        String::from("accel"),
+        "accel",
     )
 }
 
@@ -501,7 +502,7 @@ pub fn get_label_fe_phev(
 
         // city and highway cycle ranges
         phev_calc.cd_miles =
-            if (veh.max_soc - phev_calcs.regen_soc_buffer - ndarrmin(&sd_val.soc)) < 0.01 {
+            if (veh.max_soc - phev_calcs.regen_soc_buffer - sd_val.soc.min()?) < 0.01 {
                 1000.0
             } else {
                 phev_calc.cd_cycs.ceil() * sd_val.dist_mi.sum()
@@ -517,7 +518,7 @@ pub fn get_label_fe_phev(
 
         // labCombMpgge
         phev_calc.cd_adj_mpg =
-            ndarrmax(&phev_calc.lab_iter_uf) / phev_calc.lab_uf_gpm[phev_calc.lab_uf_gpm.len() - 2];
+            phev_calc.lab_iter_uf.max()? / phev_calc.lab_uf_gpm[phev_calc.lab_uf_gpm.len() - 2];
 
         phev_calc.lab_mpgge = 1.0
             / (phev_calc.lab_uf / phev_calc.cd_adj_mpg
@@ -543,7 +544,7 @@ pub fn get_label_fe_phev(
         phev_calc.lab_iter_uf_kwh_per_mi = Array::from_vec(vals);
 
         phev_calc.lab_kwh_per_mi =
-            phev_calc.lab_iter_uf_kwh_per_mi.sum() / ndarrmax(&phev_calc.lab_iter_uf);
+            phev_calc.lab_iter_uf_kwh_per_mi.sum() / phev_calc.lab_iter_uf.max()?;
 
         let mut adj_iter_mpgge_vals: Vec<f64> = vec![0.0; phev_calc.cd_cycs.floor() as usize];
         let mut adj_iter_kwh_per_mi_vals: Vec<f64> = vec![0.0; phev_calc.lab_iter_kwh_per_mi.len()];
@@ -632,10 +633,10 @@ pub fn get_label_fe_phev(
         }
 
         phev_calc.adj_cd_miles =
-            if veh.max_soc - phev_calcs.regen_soc_buffer - ndarrmin(&sd_val.soc) < 0.01 {
+            if veh.max_soc - phev_calcs.regen_soc_buffer - sd_val.soc.min()? < 0.01 {
                 1000.0
             } else {
-                ndarrmax(&phev_calc.adj_iter_cd_miles)
+                *phev_calc.adj_iter_cd_miles.max()?
             };
 
         // utility factor calculation for last charge depletion iteration and transition iteration
@@ -664,9 +665,9 @@ pub fn get_label_fe_phev(
 
         phev_calc.adj_cd_mpgge = 1.0
             / phev_calc.adj_iter_uf_gpm[phev_calc.adj_iter_uf_gpm.len() - 2]
-            * ndarrmax(&phev_calc.adj_iter_uf);
+            * phev_calc.adj_iter_uf.max()?;
         phev_calc.adj_cs_mpgge = 1.0 / phev_calc.adj_iter_uf_gpm.last().unwrap()
-            * (1.0 - ndarrmax(&phev_calc.adj_iter_uf));
+            * (1.0 - phev_calc.adj_iter_uf.max()?);
 
         phev_calc.adj_uf = long_params.uf_array
             [first_grtr(&long_params.rechg_freq_miles, phev_calc.adj_cd_miles).unwrap() - 1];
@@ -676,10 +677,10 @@ pub fn get_label_fe_phev(
                 + (1.0 - phev_calc.adj_uf) / phev_calc.adj_cs_mpgge);
 
         phev_calc.adj_kwh_per_mi =
-            phev_calc.adj_iter_uf_kwh_per_mi.sum() / ndarrmax(&phev_calc.adj_iter_uf) / veh.chg_eff;
+            phev_calc.adj_iter_uf_kwh_per_mi.sum() / phev_calc.adj_iter_uf.max()? / veh.chg_eff;
 
         phev_calc.adj_ess_kwh_per_mi =
-            phev_calc.adj_iter_uf_kwh_per_mi.sum() / ndarrmax(&phev_calc.adj_iter_uf);
+            phev_calc.adj_iter_uf_kwh_per_mi.sum() / phev_calc.adj_iter_uf.max()?;
 
         match *key {
             "udds" => phev_calcs.udds = phev_calc.clone(),

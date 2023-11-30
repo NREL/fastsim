@@ -626,7 +626,7 @@ impl RustVehicle {
     }
 
     pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
-        let mc_max_eff = ndarrmax(&self.mc_eff_array);
+        let mc_max_eff = self.mc_eff_array.max().unwrap();
         self.mc_eff_array *= new_peak / mc_max_eff;
         let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
         self.mc_full_eff_array = self
@@ -731,7 +731,7 @@ impl RustVehicle {
         self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
 
         // # discrete array of possible engine power outputs
-        self.input_kw_out_array = self.fc_pwr_out_perc.clone() * self.fc_max_kw;
+        self.input_kw_out_array = &self.fc_pwr_out_perc * self.fc_max_kw;
         // # Relatively continuous array of possible engine power outputs
         self.fc_kw_out_array = self
             .fc_perc_out_array
@@ -787,7 +787,7 @@ impl RustVehicle {
         self.mc_eff_array = self.mc_eff_map.clone();
         // println!("{:?}",self.mc_eff_map);
         // self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
-        //     + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
+        //     + (1.0 - mc_kw_adj_perc) * &self.small_baseline_eff;
         // self.mc_eff_map = self.mc_eff_array.clone();
 
         self.mc_perc_out_array = MC_PERC_OUT_ARRAY.clone().to_vec();
@@ -1103,7 +1103,7 @@ mod tests {
                 if idx == 0 {
                     0.0
                 } else {
-                    interpolate(&x, &mc_pwr_out_perc, &mc_eff_map.clone(), false)
+                    interpolate(&x, &mc_pwr_out_perc, &mc_eff_map, false)
                 }
             })
             .collect();
