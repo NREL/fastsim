@@ -232,7 +232,7 @@ pub fn main() -> anyhow::Result<()> {
             mps: array![0.0],
             grade: array![0.0],
             road_type: array![0.0],
-            name: String::from(""),
+            name: String::default(),
             orphaned: false,
         })
     }?;
