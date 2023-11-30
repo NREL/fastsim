@@ -4,7 +4,7 @@ use crate::cycle::{RustCycle, RustCycleCache};
 use crate::imports::*;
 use crate::params;
 use crate::simdrive::{RustSimDrive, RustSimDriveParams};
-use crate::utils::{arrmax, first_grtr, max, min, ndarrmax, ndarrmin};
+use crate::utils::{arrmax, first_grtr, max, min};
 use crate::vehicle::*;
 
 pub struct RendezvousTrajectory {
@@ -511,12 +511,12 @@ impl RustSimDrive {
             if self.sim_params.missed_trace_correction {
                 log::info!(
                     "Max time dilation factor = {:.3}",
-                    ndarrmax(&(self.cyc.dt_s() / self.cyc0.dt_s()))
+                    (self.cyc.dt_s() / self.cyc0.dt_s()).max()?
                 );
             }
             log::warn!(
                 "Large time steps affect accuracy significantly (max time step = {:.3})",
-                ndarrmax(&self.cyc.dt_s())
+                self.cyc.dt_s().max()?
             );
         }
         Ok(())
@@ -1085,8 +1085,8 @@ impl RustSimDrive {
                 self.mps_ach[i] = max(
                     speed_guesses[_ys
                         .iter()
-                        .position(|&x| x == ndarrmin(&_ys))
-                        .ok_or_else(|| anyhow!(format_dbg!(ndarrmin(&_ys))))?],
+                        .position(|x| x == _ys.min().unwrap())
+                        .ok_or_else(|| anyhow!(format_dbg!(_ys.min().unwrap())))?],
                     0.0,
                 );
                 grade_estimate = self.lookup_grade_for_step(i, Some(self.mps_ach[i]));
@@ -1909,7 +1909,7 @@ impl RustSimDrive {
             );
         }
 
-        self.trace_miss_speed_mps = ndarrmax(&(&self.mps_ach - &self.cyc.mps).map(|x| x.abs()));
+        self.trace_miss_speed_mps = *(&self.mps_ach - &self.cyc.mps).map(|x| x.abs()).max()?;
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol {
             self.trace_miss = true;
             log::warn!(

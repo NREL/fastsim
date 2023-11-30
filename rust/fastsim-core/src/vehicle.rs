@@ -626,7 +626,7 @@ impl RustVehicle {
     }
 
     pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
-        let mc_max_eff = ndarrmax(&self.mc_eff_array);
+        let mc_max_eff = self.mc_eff_array.max().unwrap();
         self.mc_eff_array *= new_peak / mc_max_eff;
         let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
         self.mc_full_eff_array = self

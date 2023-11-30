@@ -8,7 +8,7 @@ use crate::cycle::{
     trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance, PassingInfo,
 };
 use crate::simdrive::RustSimDrive;
-use crate::utils::{add_from, max, min, ndarrcumsum, ndarrmax, ndarrmin, ndarrunique};
+use crate::utils::{add_from, max, min, ndarrcumsum, ndarrunique};
 
 impl RustSimDrive {
     /// Provides the gap-with lead vehicle from start to finish
@@ -159,7 +159,7 @@ impl RustSimDrive {
         let v_desired_m_per_s = if self.idm_target_speed_m_per_s[i] > 0.0 {
             self.idm_target_speed_m_per_s[i]
         } else {
-            ndarrmax(&self.cyc0.mps)
+            *self.cyc0.mps.max().unwrap()
         };
         // DERIVED VALUES
         self.cyc.mps[i] = self.next_speed_by_idm(
@@ -901,8 +901,8 @@ impl RustSimDrive {
                         },
                     );
                 let accels_ndarr = Array1::from(accels_m_per_s2.clone());
-                let min_accel_m_per_s2 = ndarrmin(&accels_ndarr);
-                let max_accel_m_per_s2 = ndarrmax(&accels_ndarr);
+                let min_accel_m_per_s2 = accels_ndarr.min()?;
+                let max_accel_m_per_s2 = accels_ndarr.max()?;
                 let accept = all_sub_coast;
                 let accel_spread = (max_accel_m_per_s2 - min_accel_m_per_s2).abs();
                 if accept && (!best.found_trajectory || accel_spread < best.accel_spread) {
