@@ -405,7 +405,7 @@ pub struct RustSimDrive {
     pub ess_lim_mc_regen_perc_kw: Array1<f64>,
     /// ESS limit on electricity regeneration,
     /// considering `veh.mc_max_kw`, or `cur_max_ess_chg_kw` and motor efficiency
-    pub ess_lim_mc_regen_kw: Array1<f64>,
+    pub cur_max_mech_mc_kw_in: Array1<f64>,
     pub cur_max_trans_kw_out: Array1<f64>,
     /// Required tractive power to meet cycle,
     /// equal to `drag_kw` + `accel_kw` + `ascent_kw`

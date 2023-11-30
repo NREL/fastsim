@@ -444,7 +444,7 @@ class RustSimDrive(SerdeAPI):
     ess_eff_kj: float
     ess_kw_if_fc_req: Pyo3ArrayF64
     ess_kw_out_ach: Pyo3ArrayF64
-    ess_lim_mc_regen_kw: Pyo3ArrayF64
+    cur_max_mech_mc_kw_in: Pyo3ArrayF64
     ess_lim_mc_regen_perc_kw: Pyo3ArrayF64
     ess_loss_kw: Pyo3ArrayF64
     ess_perc_dead: Pyo3ArrayF64

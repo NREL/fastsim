@@ -223,7 +223,7 @@ class TestSimDriveSweep(unittest.TestCase):
             "er_ae_kw_out",
             "ess_cap_lim_chg_kw",
             "ess_cap_lim_dischg_kw",
-            "ess_lim_mc_regen_kw",
+            "cur_max_mech_mc_kw_in",
             "ess_lim_mc_regen_perc_kw",
             "fc_trans_lim_kw",
             "high_acc_fc_on_tag",
