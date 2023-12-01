@@ -35,7 +35,7 @@ year = "2022"
 options = fsr.get_options_for_year_make_model(year, make, model)
 if IS_INTERACTIVE:
     for opt in options:
-        print(f"{opt.id}: {opt.trany}")
+        print(f"{opt.id}: {opt.transmission}")
 
 # %%
 # Get the data for the given option
@@ -57,7 +57,7 @@ other_inputs = fsr.OtherVehicleInputs(
     fc_max_kw=None,
 )  # None -> calculate from EPA data
 
-# NOTE: two additional optional arguments can be passed to vehicle_import_by_id_and_year. 
+# NOTE: two additional optional arguments can be passed to vehicle_import_by_id_and_year.
 # They are the cache_url which is the URL for a file download service to retrieve cache data by year
 # and also a data directory where that cache data will be stored.
 # If not provided, they default to NREL's cache URL and the OS specific config data directory for this application.
@@ -73,7 +73,7 @@ fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle.yaml"))
 # This API will import all matching configurations for
 # the given year, make, and model.
 
-# NOTE: two additional optional arguments can be passed to import_all_vehicles. 
+# NOTE: two additional optional arguments can be passed to import_all_vehicles.
 # They are the cache_url which is the URL for a file download service to retrieve cache data by year
 # and also a data directory where that cache data will be stored.
 # If not provided, they default to NREL's cache URL and the OS specific config data directory for this application.
