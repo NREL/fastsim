@@ -26,7 +26,7 @@ use crate::vehicle_thermal::*;
 
     #[pyo3(name = "gap_to_lead_vehicle_m")]
     /// Provides the gap-with lead vehicle from start to finish
-    pub fn gap_to_lead_vehicle_m_py(&self) -> PyResult<Vec<f64>> {
+    pub fn gap_to_lead_vehicle_m_py(&self) -> anyhow::Result<Vec<f64>> {
         Ok(self.gap_to_lead_vehicle_m().to_vec())
     }
      #[pyo3(name = "sim_drive")]
@@ -40,9 +40,9 @@ use crate::vehicle_thermal::*;
         &mut self,
         init_soc: Option<f64>,
         aux_in_kw_override: Option<Vec<f64>>,
-    ) -> PyResult<()> {
+    ) -> anyhow::Result<()> {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
-        Ok(self.sim_drive(init_soc, aux_in_kw_override)?)
+        self.sim_drive(init_soc, aux_in_kw_override)
     }
 
     /// Receives second-by-second cycle information, vehicle properties,
@@ -60,10 +60,9 @@ use crate::vehicle_thermal::*;
         &mut self,
         init_soc: f64,
         aux_in_kw_override: Option<Vec<f64>>,
-    ) -> PyResult<()> {
+    ) {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
         self.walk(init_soc, aux_in_kw_override);
-        Ok(())
     }
 
     #[pyo3(name = "init_for_step")]
@@ -78,21 +77,19 @@ use crate::vehicle_thermal::*;
         &mut self,
         init_soc:f64,
         aux_in_kw_override: Option<Vec<f64>>
-    ) -> PyResult<()> {
+    ) {
         let aux_in_kw_override = aux_in_kw_override.map(Array1::from);
         self.init_for_step(init_soc, aux_in_kw_override);
-        Ok(())
     }
 
     /// Step through 1 time step.
-    pub fn sim_drive_step(&mut self) -> PyResult<()> {
-        Ok(self.step()?)
+    pub fn sim_drive_step(&mut self) -> anyhow::Result<()> {
+        self.step()
     }
     #[pyo3(name = "solve_step")]
     /// Perform all the calculations to solve 1 time step.
-    pub fn solve_step_py(&mut self, i: usize) -> PyResult<()> {
-        self.solve_step(i);
-        Ok(())
+    pub fn solve_step_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.solve_step(i)
     }
 
     #[pyo3(name = "set_misc_calcs")]
@@ -100,9 +97,8 @@ use crate::vehicle_thermal::*;
     /// Arguments:
     /// ----------
     /// i: index of time step
-    pub fn set_misc_calcs_py(&mut self, i: usize) -> PyResult<()> {
+    pub fn set_misc_calcs_py(&mut self, i: usize) {
         self.set_misc_calcs(i);
-        Ok(())
     }
 
     #[pyo3(name = "set_comp_lims")]
@@ -110,8 +106,8 @@ use crate::vehicle_thermal::*;
     // Arguments
     // ------------
     // i: index of time step
-    pub fn set_comp_lims_py(&mut self, i: usize) -> PyResult<()> {
-        Ok(self.set_comp_lims(i)?)
+    pub fn set_comp_lims_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.set_comp_lims(i)
     }
 
     #[pyo3(name = "set_power_calcs")]
@@ -120,8 +116,8 @@ use crate::vehicle_thermal::*;
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_power_calcs_py(&mut self, i: usize) -> PyResult<()> {
-        Ok(self.set_power_calcs(i)?)
+    pub fn set_power_calcs_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.set_power_calcs(i)
     }
 
     #[pyo3(name = "set_ach_speed")]
@@ -129,8 +125,8 @@ use crate::vehicle_thermal::*;
     // Arguments
     // ------------
     // i: index of time step
-    pub fn set_ach_speed_py(&mut self, i: usize) -> PyResult<()> {
-        Ok(self.set_ach_speed(i)?)
+    pub fn set_ach_speed_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.set_ach_speed(i)
     }
 
     #[pyo3(name = "set_hybrid_cont_calcs")]
@@ -138,8 +134,8 @@ use crate::vehicle_thermal::*;
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_calcs_py(&mut self, i: usize) -> PyResult<()> {
-        Ok(self.set_hybrid_cont_calcs(i)?)
+    pub fn set_hybrid_cont_calcs_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.set_hybrid_cont_calcs(i)
     }
 
     #[pyo3(name = "set_fc_forced_state")]
@@ -148,8 +144,8 @@ use crate::vehicle_thermal::*;
     /// ------------
     /// i: index of time step
     /// `_py` extension is needed to avoid name collision with getter/setter methods
-    pub fn set_fc_forced_state_py(&mut self, i: usize) -> PyResult<()> {
-        Ok(self.set_fc_forced_state_rust(i)?)
+    pub fn set_fc_forced_state_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.set_fc_forced_state_rust(i)
     }
 
     #[pyo3(name = "set_hybrid_cont_decisions")]
@@ -157,8 +153,8 @@ use crate::vehicle_thermal::*;
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_hybrid_cont_decisions_py(&mut self, i: usize) -> PyResult<()> {
-        Ok(self.set_hybrid_cont_decisions(i)?)
+    pub fn set_hybrid_cont_decisions_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.set_hybrid_cont_decisions(i)
     }
 
     #[pyo3(name = "set_fc_power")]
@@ -166,8 +162,8 @@ use crate::vehicle_thermal::*;
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_fc_power_py(&mut self, i: usize) -> PyResult<()> {
-        Ok(self.set_fc_power(i)?)
+    pub fn set_fc_power_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.set_fc_power(i)
     }
 
     #[pyo3(name = "set_time_dilation")]
@@ -175,15 +171,15 @@ use crate::vehicle_thermal::*;
     /// Arguments
     /// ------------
     /// i: index of time step
-    pub fn set_time_dilation_py(&mut self, i: usize) -> PyResult<()> {
-        Ok(self.set_time_dilation(i)?)
+    pub fn set_time_dilation_py(&mut self, i: usize) -> anyhow::Result<()> {
+        self.set_time_dilation(i)
     }
 
     #[pyo3(name = "set_post_scalars")]
     /// Sets scalar variables that can be calculated after a cycle is run.
     /// This includes mpgge, various energy metrics, and others
-    pub fn set_post_scalars_py(&mut self) -> PyResult<()> {
-        Ok(self.set_post_scalars()?)
+    pub fn set_post_scalars_py(&mut self) -> anyhow::Result<()> {
+        self.set_post_scalars()
     }
 )]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -259,7 +255,7 @@ impl SimDriveHot {
         &mut self,
         init_soc: Option<f64>,
         aux_in_kw_override: Option<Array1<f64>>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         self.sd.hev_sim_count = 0;
 
         let init_soc = match init_soc {
@@ -315,7 +311,7 @@ impl SimDriveHot {
 
     pub fn walk(&mut self, init_soc: f64, aux_in_kw_override: Option<Array1<f64>>) {
         self.init_for_step(init_soc, aux_in_kw_override);
-        while self.sd.i < self.sd.cyc.time_s.len() {
+        while self.sd.i < self.sd.cyc.len() {
             self.step().unwrap();
         }
     }
@@ -339,7 +335,7 @@ impl SimDriveHot {
         self.sd.set_speed_for_target_gap(i);
     }
 
-    pub fn step(&mut self) -> Result<(), anyhow::Error> {
+    pub fn step(&mut self) -> anyhow::Result<()> {
         self.set_thermal_calcs(self.sd.i);
         self.set_misc_calcs(self.sd.i);
         self.set_comp_lims(self.sd.i)?;
@@ -361,8 +357,8 @@ impl SimDriveHot {
         Ok(())
     }
 
-    pub fn solve_step(&mut self, i: usize) {
-        self.sd.solve_step(i).unwrap();
+    pub fn solve_step(&mut self, i: usize) -> anyhow::Result<()> {
+        self.sd.solve_step(i)
     }
 
     pub fn set_thermal_calcs(&mut self, i: usize) {
@@ -707,7 +703,7 @@ impl SimDriveHot {
 
     pub fn thermal_soak_walk(&mut self) {
         self.sd.i = 1;
-        while self.sd.i < self.sd.cyc.time_s.len() {
+        while self.sd.i < self.sd.cyc.len() {
             self.set_thermal_calcs(self.sd.i);
             self.sd.i += 1;
         }
@@ -844,31 +840,31 @@ impl SimDriveHot {
             self.sd.mps_ach[i - 1] + (self.sd.veh.max_trac_mps2 * self.sd.cyc.dt_s_at_i(i));
     }
 
-    pub fn set_comp_lims(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_comp_lims(&mut self, i: usize) -> anyhow::Result<()> {
         self.sd.set_comp_lims(i)
     }
 
-    pub fn set_power_calcs(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_power_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         self.sd.set_power_calcs(i)
     }
 
-    pub fn set_ach_speed(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_ach_speed(&mut self, i: usize) -> anyhow::Result<()> {
         self.sd.set_ach_speed(i)
     }
 
-    pub fn set_hybrid_cont_calcs(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_hybrid_cont_calcs(&mut self, i: usize) -> anyhow::Result<()> {
         self.sd.set_hybrid_cont_calcs(i)
     }
 
-    pub fn set_fc_forced_state_rust(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_fc_forced_state_rust(&mut self, i: usize) -> anyhow::Result<()> {
         self.sd.set_fc_forced_state_rust(i)
     }
 
-    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_hybrid_cont_decisions(&mut self, i: usize) -> anyhow::Result<()> {
         self.sd.set_hybrid_cont_decisions(i)
     }
 
-    pub fn set_fc_power(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_fc_power(&mut self, i: usize) -> anyhow::Result<()> {
         if self.sd.veh.fc_max_kw == 0.0 {
             self.sd.fc_kw_out_ach[i] = 0.0;
         } else if self.sd.veh.fc_eff_type == vehicle::H2FC {
@@ -956,7 +952,7 @@ impl SimDriveHot {
                 }
             }
 
-            if self.sd.fc_kw_out_ach[i] == ndarrmax(&self.sd.veh.input_kw_out_array) {
+            if &self.sd.fc_kw_out_ach[i] == self.sd.veh.input_kw_out_array.max()? {
                 self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i]
                     / (self.sd.veh.fc_eff_array.last().unwrap() * self.state.fc_eta_temp_coeff)
             } else {
@@ -967,7 +963,7 @@ impl SimDriveHot {
                             &self.sd.veh.fc_kw_out_array,
                             min(
                                 self.sd.fc_kw_out_ach[i],
-                                ndarrmax(&self.sd.veh.input_kw_out_array) - 0.001,
+                                self.sd.veh.input_kw_out_array.max()? - 0.001,
                             ),
                         )
                         .unwrap()
@@ -984,11 +980,11 @@ impl SimDriveHot {
         Ok(())
     }
 
-    pub fn set_time_dilation(&mut self, i: usize) -> Result<(), anyhow::Error> {
+    pub fn set_time_dilation(&mut self, i: usize) -> anyhow::Result<()> {
         self.sd.set_time_dilation(i)
     }
 
-    pub fn set_post_scalars(&mut self) -> Result<(), anyhow::Error> {
+    pub fn set_post_scalars(&mut self) -> anyhow::Result<()> {
         self.sd.set_post_scalars()
     }
 }

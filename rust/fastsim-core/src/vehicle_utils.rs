@@ -1215,7 +1215,7 @@ pub fn abc_to_drag_coeffs(
         Array::linspace(vmax_mph / super::params::MPH_PER_MPS, 0.0, cd_len).to_vec(),
         vec![0.0; cd_len],
         vec![0.0; cd_len],
-        String::from("cycle"),
+        "cycle",
     );
 
     // polynomial function for pounds vs speed

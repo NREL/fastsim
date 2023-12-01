@@ -90,10 +90,10 @@ impl Default for FcTempEffModelExponential {
 /// Struct containing parameters and one time-varying variable for HVAC model
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, HistoryVec)]
 #[add_pyo3_api(
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(name = "default")]
-    pub fn default_py(_cls: &PyType) -> PyResult<Self> {
-        Ok(Self::default())
+    pub fn default_py() -> Self {
+        Self::default()
     }
 )]
 pub struct HVACModel {
@@ -193,29 +193,29 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[add_pyo3_api(
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(name = "default")]
-    pub fn default_py(_cls: &PyType) -> Self {
+    pub fn default_py() -> Self {
         Default::default()
     }
 
     pub fn set_cabin_hvac_model_internal(
         &mut self,
         hvac_model: HVACModel
-    ) -> PyResult<()>{
-        Ok(check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))?)
+    ) -> anyhow::Result<()>{
+        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::Internal(hvac_model))
     }
 
-    pub fn get_cabin_model_internal(&self, ) -> PyResult<HVACModel> {
+    pub fn get_cabin_model_internal(&self, ) -> anyhow::Result<HVACModel> {
         if let CabinHvacModelTypes::Internal(hvac_model) = &self.cabin_hvac_model {
             Ok(hvac_model.clone())
         } else {
-            Err(PyAttributeError::new_err("HvacModelTypes::External variant currently used."))
+            bail!(PyAttributeError::new_err("HvacModelTypes::External variant currently used."))
         }
     }
 
-    pub fn set_cabin_hvac_model_external(&mut self, ) -> PyResult<()> {
-        Ok(check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)?)
+    pub fn set_cabin_hvac_model_external(&mut self) -> anyhow::Result<()> {
+        check_orphaned_and_set!(self, cabin_hvac_model, CabinHvacModelTypes::External)
     }
 
     pub fn set_fc_model_internal_exponential(
@@ -232,7 +232,7 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             _ => bail!("Invalid option for fc_temp_eff_component.")
         };
 
-        Ok(check_orphaned_and_set!(
+        check_orphaned_and_set!(
             self,
             fc_model,
             FcModelTypes::Internal(
@@ -240,11 +240,11 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
                     FcTempEffModelExponential{ offset, lag, minimum }),
                     fc_temp_eff_comp
             )
-        )?)
+        )
     }
 
     #[setter]
-    pub fn set_fc_exp_offset(&mut self, new_offset: f64) -> PyResult<()> {
+    pub fn set_fc_exp_offset(&mut self, new_offset: f64) -> anyhow::Result<()> {
         if !self.orphaned {
             self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
                 // If model is internal
@@ -267,12 +267,12 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             };
             Ok(())
         } else {
-            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+            bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 
     #[setter]
-    pub fn set_fc_exp_lag(&mut self, new_lag: f64) -> PyResult<()>{
+    pub fn set_fc_exp_lag(&mut self, new_lag: f64) -> anyhow::Result<()>{
         if !self.orphaned {
             self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
                 // If model is internal
@@ -295,12 +295,12 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             };
             Ok(())
         } else {
-            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+            bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 
     #[setter]
-    pub fn set_fc_exp_minimum(&mut self, new_minimum: f64) -> PyResult<()> {
+    pub fn set_fc_exp_minimum(&mut self, new_minimum: f64) -> anyhow::Result<()> {
         if !self.orphaned {
             self.fc_model = if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) = &self.fc_model {
                 // If model is internal
@@ -323,34 +323,34 @@ pub fn get_sphere_conv_params(re: f64) -> (f64, f64) {
             };
             Ok(())
         } else {
-            Err(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
+            bail!(PyAttributeError::new_err(utils::NESTED_STRUCT_ERR))
         }
     }
 
     #[getter]
-    pub fn get_fc_exp_offset(&mut self) -> PyResult<f64> {
+    pub fn get_fc_exp_offset(&mut self) -> anyhow::Result<f64> {
         if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ offset, ..}), ..) = &self.fc_model {
             Ok(*offset)
         } else {
-            Err(PyAttributeError::new_err("fc_model is not Exponential"))
+            bail!(PyAttributeError::new_err("fc_model is not Exponential"))
         }
     }
 
     #[getter]
-    pub fn get_fc_exp_lag(&mut self) -> PyResult<f64> {
+    pub fn get_fc_exp_lag(&mut self) -> anyhow::Result<f64> {
         if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ lag, ..}), ..) = &self.fc_model {
             Ok(*lag)
         } else {
-            Err(PyAttributeError::new_err("fc_model is not Exponential"))
+            bail!(PyAttributeError::new_err("fc_model is not Exponential"))
         }
     }
 
     #[getter]
-    pub fn get_fc_exp_minimum(&mut self) -> PyResult<f64> {
+    pub fn get_fc_exp_minimum(&mut self) -> anyhow::Result<f64> {
         if let FcModelTypes::Internal(FcTempEffModel::Exponential(FcTempEffModelExponential{ minimum, ..}), ..) = &self.fc_model {
             Ok(*minimum)
         } else {
-            Err(PyAttributeError::new_err("fc_model is not Exponential"))
+            bail!(PyAttributeError::new_err("fc_model is not Exponential"))
         }
     }
 

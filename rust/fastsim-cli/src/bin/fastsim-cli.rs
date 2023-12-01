@@ -120,9 +120,9 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
     fs_kwh_out_ach: &Vec<f64>,
     fc_pwr_out_perc: &Vec<f64>,
     h2share: &Vec<f64>,
-) -> H2AndDieselResults {
-    assert!(fc_kw_out_ach.len() == fs_kwh_out_ach.len());
-    assert!(fc_pwr_out_perc.len() == h2share.len());
+) -> anyhow::Result<H2AndDieselResults> {
+    anyhow::ensure!(fc_kw_out_ach.len() == fs_kwh_out_ach.len());
+    anyhow::ensure!(fc_pwr_out_perc.len() == h2share.len());
     let kwh_per_gallon_diesel = 37.95;
     let gge_per_kwh = 1.0 / kwh_per_gge;
     let mut total_diesel_kwh = 0.0;
@@ -148,7 +148,7 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
         total_diesel_gals += diesel_gals;
         total_diesel_gge += diesel_gge;
     }
-    H2AndDieselResults {
+    Ok(H2AndDieselResults {
         h2_kwh: total_h2_kwh,
         h2_gge: total_h2_gge,
         h2_mpgge: if total_h2_gge > 0.0 {
@@ -164,25 +164,25 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
         } else {
             0.0
         },
-    }
+    })
 }
 
-pub fn integrate_power_to_kwh(dts_s: &Vec<f64>, ps_kw: &Vec<f64>) -> Vec<f64> {
-    assert!(dts_s.len() == ps_kw.len());
+pub fn integrate_power_to_kwh(dts_s: &Vec<f64>, ps_kw: &Vec<f64>) -> anyhow::Result<Vec<f64>> {
+    anyhow::ensure!(dts_s.len() == ps_kw.len());
     let mut energy_kwh = Vec::<f64>::with_capacity(dts_s.len());
     for idx in 0..dts_s.len() {
         let dt_s = dts_s[idx];
         let p_kw = ps_kw[idx];
         energy_kwh.push(p_kw * dt_s / 3600.0);
     }
-    energy_kwh
+    Ok(energy_kwh)
 }
 
-pub fn main() {
+pub fn main() -> anyhow::Result<()> {
     let fastsim_api = FastSimApi::parse();
 
     if let Some(_cyc_json_str) = fastsim_api.cyc {
-        panic!("Need to implement: let cyc = RustCycle::from_json(cyc_json_str)");
+        anyhow::bail!("Need to implement: let cyc = RustCycle::from_json(cyc_json_str)");
     }
     let (is_adopt_hd, adopt_hd_string, adopt_hd_has_cycle) =
         if let Some(adopt_hd_string) = &fastsim_api.adopt_hd {
@@ -196,7 +196,7 @@ pub fn main() {
                 && adopt_hd_str_lc != false_string;
             (true, adopt_hd_string.clone(), adopt_hd_has_cycle)
         } else {
-            (false, String::from(""), false)
+            (false, String::default(), false)
         };
     let cyc = if let Some(cyc_file_path) = fastsim_api.cyc_file {
         if cyc_file_path == *"coastdown" {
@@ -215,15 +215,15 @@ pub fn main() {
                 );
                 println!("Drag Coefficient: {}", drag_coeff);
                 println!("Wheel RR Coefficient: {}", wheel_rr_coeff);
-                return;
+                return Ok(());
             } else {
-                panic!("Need to provide coastdown test coefficients for drag and wheel rr coefficient calculation");
+                anyhow::bail!("Need to provide coastdown test coefficients for drag and wheel rr coefficient calculation");
             }
         } else {
             RustCycle::from_file(&cyc_file_path)
         }
     } else if is_adopt_hd && adopt_hd_has_cycle {
-        RustCycle::from_file(&adopt_hd_string)
+        RustCycle::from_file(adopt_hd_string)
     } else {
         //TODO? use pathbuff to string, for robustness
         Ok(RustCycle::new(
@@ -231,10 +231,9 @@ pub fn main() {
             vec![0.0],
             vec![0.0],
             vec![0.0],
-            String::from("")
+            "",
         ))
-    }
-    .unwrap();
+    }?;
 
     // TODO: put in logic here for loading vehicle for adopt-hd
     // with same file format as regular adopt and same outputs retured
@@ -243,44 +242,35 @@ pub fn main() {
     let mut hd_h2_diesel_ice_h2share: Option<Vec<f64>> = None;
     let veh = if let Some(veh_string) = fastsim_api.veh {
         if is_adopt || is_adopt_hd {
-            let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string);
+            let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_json_str(&veh_string)
+            let mut veh = RustVehicle::from_json(&veh_string)?;
+            veh.set_derived()?;
+            Ok(veh)
         } else {
-            RustVehicle::from_json_str(&veh_string)
+            let mut veh = RustVehicle::from_json(&veh_string)?;
+            veh.set_derived()?;
+            Ok(veh)
         }
     } else if let Some(veh_file_path) = fastsim_api.veh_file {
         if is_adopt || is_adopt_hd {
-            let vehstring = fs::read_to_string(veh_file_path).unwrap();
-            let (vehstring, pwr_out_perc, h2share) = json_rewrite(vehstring);
+            let veh_string = fs::read_to_string(veh_file_path)?;
+            let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            RustVehicle::from_json_str(&vehstring)
+            let mut veh = RustVehicle::from_json(&veh_string)?;
+            veh.set_derived()?;
+            Ok(veh)
         } else {
             RustVehicle::from_file(&veh_file_path)
         }
     } else {
         Ok(RustVehicle::mock_vehicle())
-    }
-    .unwrap();
-
-    #[cfg(not(windows))]
-    macro_rules! path_separator {
-        () => {
-            "/"
-        };
-    }
-
-    #[cfg(windows)]
-    macro_rules! path_separator {
-        () => {
-            r#"\"#
-        };
-    }
+    }?;
 
     if is_adopt {
-        let sdl = get_label_fe(&veh, Some(false), Some(false)).unwrap();
+        let sdl = get_label_fe(&veh, Some(false), Some(false))?;
         let res = AdoptResults {
             adjCombMpgge: sdl.0.adj_comb_mpgge,
             rangeMiles: sdl.0.net_range_miles,
@@ -290,52 +280,35 @@ pub fn main() {
             traceMissInMph: sdl.0.trace_miss_speed_mph,
             h2AndDiesel: None,
         };
-        println!("{}", res.to_json());
+        println!("{}", res.to_json()?);
     } else if is_adopt_hd {
-        let hd_cyc_filestring = include_str!(concat!(
-            "..",
-            path_separator!(),
-            "..",
-            path_separator!(),
-            "..",
-            path_separator!(),
-            "..",
-            path_separator!(),
-            "python",
-            path_separator!(),
-            "fastsim",
-            path_separator!(),
-            "resources",
-            path_separator!(),
-            "cycles",
-            path_separator!(),
-            "HHDDTCruiseSmooth.csv"
-        ));
         let cyc = if adopt_hd_has_cycle {
             cyc
         } else {
-            RustCycle::from_csv_string(hd_cyc_filestring, "HHDDTCruiseSmooth".to_string()).unwrap()
+            RustCycle::from_resource("cycles/HHDDTCruiseSmooth.csv")?
         };
         let mut sim_drive = RustSimDrive::new(cyc, veh.clone());
-        sim_drive.sim_drive(None, None).unwrap();
+        sim_drive.sim_drive(None, None)?;
         let mut sim_drive_accel = RustSimDrive::new(make_accel_trace(), veh.clone());
-        let net_accel = get_net_accel(&mut sim_drive_accel, &veh.scenario_name).unwrap();
+        let net_accel = get_net_accel(&mut sim_drive_accel, &veh.scenario_name)?;
         let mut mpgge = sim_drive.mpgge;
-        let h2_diesel_results = if let (Some(h2_diesel_ice_h2share), Some(fc_pop)) =
-            (hd_h2_diesel_ice_h2share, fc_pwr_out_perc)
-        {
-            let dist_mi = sim_drive.dist_mi.sum();
-            let r = calculate_mpgge_for_h2_diesel_ice(
-                dist_mi,
-                sim_drive.veh.fc_max_kw,
-                sim_drive.props.kwh_per_gge,
-                &sim_drive.fc_kw_out_ach.to_vec(),
-                &sim_drive.fs_kwh_out_ach.to_vec(),
-                &fc_pop,
-                &h2_diesel_ice_h2share,
-            );
-            mpgge = dist_mi / (r.diesel_gge + r.h2_gge);
-            Some(r)
+        let h2_diesel_results = if let Some(hd_h2_diesel_ice_h2share) = hd_h2_diesel_ice_h2share {
+            if let Some(fc_pwr_out_perc) = fc_pwr_out_perc {
+                let dist_mi = sim_drive.dist_mi.sum();
+                let r = calculate_mpgge_for_h2_diesel_ice(
+                    dist_mi,
+                    sim_drive.veh.fc_max_kw,
+                    sim_drive.props.kwh_per_gge,
+                    &sim_drive.fc_kw_out_ach.to_vec(),
+                    &sim_drive.fs_kwh_out_ach.to_vec(),
+                    &fc_pwr_out_perc,
+                    &hd_h2_diesel_ice_h2share,
+                )?;
+                mpgge = dist_mi / (r.diesel_gge + r.h2_gge);
+                Some(r)
+            } else {
+                None
+            }
         } else {
             None
         };
@@ -355,16 +328,17 @@ pub fn main() {
             traceMissInMph: sim_drive.trace_miss_speed_mps * MPH_PER_MPS,
             h2AndDiesel: h2_diesel_results,
         };
-        println!("{}", res.to_json());
+        println!("{}", res.to_json()?);
     } else {
         let mut sim_drive = RustSimDrive::new(cyc, veh);
         // // this does nothing if it has already been called for the constructed `sim_drive`
-        sim_drive.sim_drive(None, None).unwrap();
+        sim_drive.sim_drive(None, None)?;
         println!("{}", sim_drive.mpgge);
     }
     // else {
     //     println!("Invalid option `{}` for `--res-fmt`", res_fmt);
     // }
+    Ok(())
 }
 
 fn translate_veh_pt_type(x: i64) -> String {
@@ -420,13 +394,14 @@ struct ParsedValue(Value);
 impl SerdeAPI for ParsedValue {}
 
 /// Rewrites the ADOPT JSON string to be in compliance with what FASTSim expects for JSON input.
-fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
+#[allow(clippy::type_complexity)]
+fn json_rewrite(x: String) -> anyhow::Result<(String, Option<Vec<f64>>, Option<Vec<f64>>)> {
     let adoptstring = x;
 
     let mut fc_pwr_out_perc: Option<Vec<f64>> = None;
     let mut hd_h2_diesel_ice_h2share: Option<Vec<f64>> = None;
 
-    let mut parsed_data: Value = serde_json::from_str(&adoptstring).unwrap();
+    let mut parsed_data: Value = serde_json::from_str(&adoptstring)?;
 
     let veh_pt_type_raw = &parsed_data["vehPtType"];
     if veh_pt_type_raw.is_i64() {
@@ -518,7 +493,7 @@ fn json_rewrite(x: String) -> (String, Option<Vec<f64>>, Option<Vec<f64>>) {
 
     parsed_data["stop_start"] = json!(false);
 
-    let adoptstring = ParsedValue(parsed_data).to_json();
+    let adoptstring = ParsedValue(parsed_data).to_json()?;
 
-    (adoptstring, fc_pwr_out_perc, hd_h2_diesel_ice_h2share)
+    Ok((adoptstring, fc_pwr_out_perc, hd_h2_diesel_ice_h2share))
 }

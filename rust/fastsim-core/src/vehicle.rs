@@ -42,10 +42,6 @@ lazy_static! {
         self.set_veh_mass()
     }
 
-    pub fn get_max_regen_kwh(&self) -> f64 {
-        self.max_regen_kwh()
-    }
-
     #[getter]
     pub fn get_mc_peak_eff(&self) -> f64 {
         self.mc_peak_eff()
@@ -78,13 +74,13 @@ lazy_static! {
 
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
-    pub fn to_rust(&self) -> PyResult<Self> {
-        Ok(self.clone())
+    pub fn to_rust(&self) -> Self {
+        self.clone()
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(name = "mock_vehicle")]
-    fn mock_vehicle_py(_cls: &PyType) -> Self {
+    fn mock_vehicle_py() -> Self {
         Self::mock_vehicle()
     }
 )]
@@ -541,6 +537,10 @@ pub struct RustVehicle {
     #[doc(hidden)]
     #[doc_field(skip_doc)]
     pub orphaned: bool,
+    #[serde(skip)]
+    #[doc(hidden)]
+    #[doc_field(skip_doc)]
+    pub max_regen_kwh: f64,
 }
 
 /// RustVehicle rust methods
@@ -606,10 +606,6 @@ impl RustVehicle {
         0.99
     }
 
-    pub fn max_regen_kwh(&self) -> f64 {
-        0.5 * self.veh_kg * (27.0 * 27.0) / (3_600.0 * 1_000.0)
-    }
-
     pub fn mc_peak_eff(&self) -> f64 {
         arrmax(&self.mc_full_eff_array)
     }
@@ -626,7 +622,7 @@ impl RustVehicle {
     }
 
     pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
-        let mc_max_eff = ndarrmax(&self.mc_eff_array);
+        let mc_max_eff = self.mc_eff_array.max().unwrap();
         self.mc_eff_array *= new_peak / mc_max_eff;
         let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
         self.mc_full_eff_array = self
@@ -677,12 +673,9 @@ impl RustVehicle {
     ///     - `fs_mass_kg`
     ///     - `veh_kg`
     ///     - `max_trac_mps2`
-    pub fn set_derived(&mut self) -> Result<(), anyhow::Error> {
+    pub fn set_derived(&mut self) -> anyhow::Result<()> {
         // Vehicle input validation
-        match self.validate() {
-            Ok(_) => (),
-            Err(e) => bail!(e),
-        };
+        self.validate()?;
 
         if self.scenario_name != "Template Vehicle for setting up data types" {
             if self.veh_pt_type == BEV {
@@ -734,7 +727,7 @@ impl RustVehicle {
         self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
 
         // # discrete array of possible engine power outputs
-        self.input_kw_out_array = self.fc_pwr_out_perc.clone() * self.fc_max_kw;
+        self.input_kw_out_array = &self.fc_pwr_out_perc * self.fc_max_kw;
         // # Relatively continuous array of possible engine power outputs
         self.fc_kw_out_array = self
             .fc_perc_out_array
@@ -790,7 +783,7 @@ impl RustVehicle {
         self.mc_eff_array = self.mc_eff_map.clone();
         // println!("{:?}",self.mc_eff_map);
         // self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
-        //     + (1.0 - mc_kw_adj_perc) * self.small_baseline_eff.clone();
+        //     + (1.0 - mc_kw_adj_perc) * &self.small_baseline_eff;
         // self.mc_eff_map = self.mc_eff_array.clone();
 
         self.mc_perc_out_array = MC_PERC_OUT_ARRAY.clone().to_vec();
@@ -837,18 +830,21 @@ impl RustVehicle {
         }
 
         // check that efficiencies are not violating the first law of thermo
-        assert!(
+        // TODO: this could perhaps be done in the input validators
+        ensure!(
             arrmin(&self.fc_eff_array) >= 0.0,
-            "min MC eff < 0 is not allowed"
+            "minimum FC efficiency < 0 is not allowed"
         );
-        assert!(self.fc_peak_eff() < 1.0, "fcPeakEff >= 1 is not allowed.");
-        assert!(
+        ensure!(self.fc_peak_eff() < 1.0, "fc_peak_eff >= 1 is not allowed");
+        ensure!(
             arrmin(&self.mc_full_eff_array) >= 0.0,
-            "min MC eff < 0 is not allowed"
+            "minimum MC efficiency < 0 is not allowed"
         );
-        assert!(self.mc_peak_eff() < 1.0, "mcPeakEff >= 1 is not allowed.");
+        ensure!(self.mc_peak_eff() < 1.0, "mc_peak_eff >= 1 is not allowed");
 
         self.set_veh_mass();
+
+        self.max_regen_kwh = 0.5 * self.veh_kg * (27.0 * 27.0) / (3_600.0 * 1_000.0);
 
         Ok(())
     }
@@ -1036,12 +1032,6 @@ impl RustVehicle {
         v.set_derived().unwrap();
         v
     }
-
-    pub fn from_json_str(filename: &str) -> Result<Self, anyhow::Error> {
-        let mut veh_res: Result<RustVehicle, anyhow::Error> = Ok(serde_json::from_str(filename)?);
-        veh_res.as_mut().unwrap().set_derived()?;
-        veh_res
-    }
 }
 
 impl Default for RustVehicle {
@@ -1071,8 +1061,7 @@ impl Default for RustVehicle {
 
 impl SerdeAPI for RustVehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.set_derived()?;
-        Ok(())
+        self.set_derived()
     }
 }
 
@@ -1199,7 +1188,7 @@ mod tests {
                 if idx == 0 {
                     0.0
                 } else {
-                    interpolate(&x, &mc_pwr_out_perc, &mc_eff_map.clone(), false)
+                    interpolate(&x, &mc_pwr_out_perc, &mc_eff_map, false)
                 }
             })
             .collect();

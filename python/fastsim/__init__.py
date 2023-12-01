@@ -6,6 +6,15 @@ import sys
 import logging
 import traceback
 
+from . import fastsimrust
+from . import fastsimrust as fsr
+from . import parameters as params
+from . import utilities as utils
+from . import simdrive, vehicle, cycle, calibration, tests
+from . import calibration as cal
+from .resample import resample
+from . import auxiliaries
+
 
 def package_root() -> Path:
     """Returns the package root directory."""
@@ -18,16 +27,6 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
-
-
-from . import fastsimrust
-from . import fastsimrust as fsr
-from . import parameters as params
-from . import utilities as utils
-from . import simdrive, vehicle, cycle, calibration, tests
-from . import calibration as cal
-from .resample import resample
-from . import auxiliaries
 
 from pkg_resources import get_distribution
 
