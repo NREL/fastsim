@@ -952,8 +952,8 @@ fn try_make_single_vehicle(
             0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
         ]);
         mc_max_kw = 0.0;
-        min_soc = 0.1;
-        max_soc = 0.95;
+        min_soc = 0.0;
+        max_soc = 1.0;
         ess_dischg_to_fc_max_eff_perc = 0.0;
         mph_fc_on = 55.0;
         kw_demand_fc_on = 100.0;
@@ -970,10 +970,10 @@ fn try_make_single_vehicle(
             .unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
         fc_eff_map = Array::from_vec(vec![
-            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+            0.10, 0.12, 0.28, 0.35, 0.375, 0.39, 0.40, 0.40, 0.38, 0.37, 0.36, 0.35,
         ]);
-        min_soc = 0.4;
-        max_soc = 0.8;
+        min_soc = 0.0;
+        max_soc = 1.0;
         ess_dischg_to_fc_max_eff_perc = 0.0;
         mph_fc_on = 1.0;
         kw_demand_fc_on = 100.0;
@@ -991,10 +991,10 @@ fn try_make_single_vehicle(
             .unwrap_or(epa_data.eng_pwr_hp as f64 / HP_PER_KW);
         fc_eff_type = String::from(crate::vehicle::ATKINSON);
         fc_eff_map = Array::from_vec(vec![
-            0.1, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.3,
+            0.10, 0.12, 0.28, 0.35, 0.375, 0.39, 0.40, 0.40, 0.38, 0.37, 0.36, 0.35,
         ]);
-        min_soc = 0.15;
-        max_soc = 0.9;
+        min_soc = 0.0;
+        max_soc = 1.0;
         ess_dischg_to_fc_max_eff_perc = 1.0;
         mph_fc_on = 85.0;
         kw_demand_fc_on = 120.0;
@@ -1010,11 +1010,11 @@ fn try_make_single_vehicle(
         fc_max_kw = 0.0;
         fc_eff_type = String::from(crate::vehicle::SI);
         fc_eff_map = Array::from_vec(vec![
-            0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35,
+            0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30,
         ]);
         mc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
-        min_soc = 0.05;
-        max_soc = 0.98;
+        min_soc = 0.0;
+        max_soc = 1.0;
         ess_max_kw = 1.05 * mc_max_kw;
         ess_max_kwh = other_inputs.ess_max_kwh;
         mph_fc_on = 1.0;
@@ -1028,20 +1028,22 @@ fn try_make_single_vehicle(
         return None;
     }
 
-    let glider_kg = (epa_data.test_weight_lbs / LBS_PER_KG)
-        - ref_veh.cargo_kg
-        - ref_veh.trans_kg
-        - ref_veh.comp_mass_multiplier
-            * ((fs_max_kw / ref_veh.fs_kwh_per_kg)
-                + (ref_veh.fc_base_kg + fc_max_kw / ref_veh.fc_kw_per_kg)
-                + (ref_veh.mc_pe_base_kg + mc_max_kw * ref_veh.mc_pe_kg_per_kw)
-                + (ref_veh.ess_base_kg + ess_max_kwh * ref_veh.ess_kg_per_kwh));
+    // TODO: fix glider_kg calculation
+    // let glider_kg = (epa_data.test_weight_lbs / LBS_PER_KG)
+    //     - ref_veh.cargo_kg
+    //     - ref_veh.trans_kg
+    //     - ref_veh.comp_mass_multiplier
+    //         * ((fs_max_kw / ref_veh.fs_kwh_per_kg)
+    //             + (ref_veh.fc_base_kg + fc_max_kw / ref_veh.fc_kw_per_kg)
+    //             + (ref_veh.mc_pe_base_kg + mc_max_kw * ref_veh.mc_pe_kg_per_kw)
+    //             + (ref_veh.ess_base_kg + ess_max_kwh * ref_veh.ess_kg_per_kwh));
     let mut veh = RustVehicle {
+        veh_override_kg: Some(epa_data.test_weight_lbs / LBS_PER_KG),
         veh_cg_m: match fe_gov_data.drive.as_str() {
             "Front-Wheel Drive" => 0.53,
             _ => -0.53,
         },
-        glider_kg,
+        // glider_kg,
         scenario_name: format!(
             "{} {} {}",
             fe_gov_data.year, fe_gov_data.make, fe_gov_data.model
