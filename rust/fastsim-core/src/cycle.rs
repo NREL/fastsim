@@ -626,7 +626,7 @@ pub struct RustCycle {
     pub orphaned: bool,
 }
 
-const ACCEPTED_FILE_FORMATS: [&str; 3] = ["yaml", "json", "csv"];
+const ACCEPTED_FILE_FORMATS: [&str; 4] = ["yaml", "json", "bin", "csv"];
 
 impl SerdeAPI for RustCycle {
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {

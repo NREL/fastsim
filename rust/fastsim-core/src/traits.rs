@@ -1,7 +1,7 @@
 use crate::imports::*;
 use std::collections::HashMap;
 
-pub(crate) const ACCEPTED_FILE_FORMATS: [&str; 2] = ["yaml", "json"];
+pub(crate) const ACCEPTED_FILE_FORMATS: [&str; 3] = ["yaml", "json", "bin"];
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// Runs any initialization steps that might be needed
