@@ -955,6 +955,7 @@ impl RustVehicle {
             input_kw_out_array: Default::default(),
             fc_kw_out_array: Default::default(),
             fc_eff_array: Default::default(),
+            max_regen_kwh: Default::default(),
             mc_eff_array: Default::default(),
             mc_perc_out_array: Default::default(),
             mc_kw_out_array: Default::default(),
