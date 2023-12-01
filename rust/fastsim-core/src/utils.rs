@@ -1,6 +1,8 @@
 //! Module containing miscellaneous utility functions.
 
+use itertools::Itertools;
 use lazy_static::lazy_static;
+use ndarray::*;
 use ndarray_stats::QuantileExt;
 use regex::Regex;
 use std::collections::HashSet;
@@ -210,81 +212,258 @@ pub fn interpolate_vectors(
     let dydx = (yr - yl) / (xr - xl);
     yl + dydx * (x - xl)
 }
-/// helper function to find where a query falls on an axis of discrete values;
-/// NOTE: this assumes the axis array is sorted with values ascending and that there are no repeating values!
-fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usize)> {
-    let axis_size = axis.len();
-    match axis
-        .windows(2)
-        .position(|w| query >= &w[0] && query < &w[1])
-    {
-        Some(p) => {
-            if query == &axis[p] {
-                Ok((p, p))
-            } else if query == &axis[p + 1] {
-                Ok((p + 1, p + 1))
-            } else {
-                Ok((p, p + 1))
-            }
-        }
-        None => {
-            if query <= &axis[0] {
-                Ok((0, 0))
-            } else if query >= &axis[axis_size - 1] {
-                Ok((axis_size - 1, axis_size - 1))
-            } else {
-                bail!("Unable to find where the query fits in the values, check grid.")
-            }
-        }
+
+/// Generate all permutations of indices for a given *N*-dimensional array shape
+///
+/// # Arguments
+/// * `shape` - Reference to shape of the *N*-dimensional array, as returned by `ndarray::ArrayBase::shape()`
+///
+/// # Returns
+/// A `Vec<Vec<usize>>` where each inner `Vec<usize>` is one permutation of indices
+///
+/// # Example
+/// ```rust
+/// use fastsim_core::utils::get_index_permutations;
+/// let shape = [3, 2, 2];
+/// assert_eq!(
+///     get_index_permutations(&shape),
+///     [
+///         [0, 0, 0],
+///         [0, 0, 1],
+///         [0, 1, 0],
+///         [0, 1, 1],
+///         [1, 0, 0],
+///         [1, 0, 1],
+///         [1, 1, 0],
+///         [1, 1, 1],
+///         [2, 0, 0],
+///         [2, 0, 1],
+///         [2, 1, 0],
+///         [2, 1, 1],
+///     ]
+/// );
+/// ```
+///
+pub fn get_index_permutations(shape: &[usize]) -> Vec<Vec<usize>> {
+    if shape.is_empty() {
+        return vec![vec![]];
     }
+    shape
+        .iter()
+        .map(|&len| 0..len)
+        .multi_cartesian_product()
+        .collect()
 }
 
-/// Helper function to compute the difference between a value and a set of bounds
-fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
-    if lower == upper {
-        0.0
-    } else {
-        (value - lower) / (upper - lower)
+/// Multilinear interpolation function, accepting any dimensionality *N*.
+///
+/// # Arguments
+/// * `point` - An *N*-length array representing the interpolation point coordinates in each dimension
+/// * `grid` - A grid containing the coordinates for each dimension,
+///   i.e. `[[0.0, 1.0], [-0.5, 1.5]]` indicates x<sub>0</sub> = 0.0, x<sub>1</sub> = 1.0, y<sub>0</sub> = -0.5, y<sub>1</sub> = 1.5
+/// * `values` - An *N*-dimensional [`ndarray::ArrayD`] containing the values at given grid coordinates
+///
+/// # Errors
+/// This function returns an [`InterpolationError`] if any of the validation checks from [`validate_inputs`] fail,
+/// or if any values surrounding supplied `point` are `NaN`.
+///
+/// # Examples
+/// ## 1D Example
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
+///
+/// let grid = [vec![0.0, 1.0, 4.0]];
+/// let values = array![0.0, 2.0, 4.45].into_dyn();
+///
+/// let point_a = [0.82];
+/// assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 1.64);
+/// let point_b = [2.98];
+/// assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 3.617);
+/// let point_c = [grid[0][2]]; // returns value at x2
+/// assert_eq!(multilinear(&point_c, &grid, &values).unwrap(), values[2]);
+/// ```
+///
+/// ## 2D Example
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
+///
+/// let grid = [
+///     vec![0.0, 1.0, 2.0], // x0, x1, x2
+///     vec![0.0, 1.0, 2.0], // y0, y1, y2
+/// ];
+/// let values = array![
+///     [0.0, 2.0, 1.9], // (x0, y0), (x0, y1), (x0, y2)
+///     [2.0, 4.0, 3.1], // (x1, y0), (x1, y1), (x1, y2)
+///     [5.0, 0.0, 1.4], // (x2, y0), (x2, y1), (x2, y2)
+/// ]
+/// .into_dyn();
+///
+/// let point_a = [0.5, 0.5];
+/// assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 2.0);
+/// let point_b = [1.52, 0.36];
+/// assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 2.9696);
+/// let point_c = [grid[0][2], grid[1][1]]; // returns value at (x2, y1)
+/// assert_eq!(
+///     multilinear(&point_c, &grid, &values).unwrap(),
+///     values[[2, 1]]
+/// );
+/// ```
+///
+/// ## 3D Example
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
+///
+/// let grid = [
+///     vec![0.0, 1.0, 2.0], // x0, x1, x2
+///     vec![0.0, 1.0, 2.0], // y0, y1, y2
+///     vec![0.0, 1.0, 2.0], // z0, z1, z2
+/// ];
+/// let values = array![
+///     [
+///         [0.0, 1.5, 3.0], // (x0, y0, z0), (x0, y0, z1), (x0, y0, z2)
+///         [2.0, 0.5, 1.4], // (x0, y1, z0), (x0, y1, z1), (x0, y1, z2)
+///         [1.9, 5.3, 2.2], // (x0, y2, z0), (x0, y0, z1), (x0, y2, z2)
+///     ],
+///     [
+///         [2.0, 5.1, 1.1], // (x1, y0, z0), (x1, y0, z1), (x1, y0, z2)
+///         [4.0, 1.0, 0.5], // (x1, y1, z0), (x1, y1, z1), (x1, y1, z2)
+///         [3.1, 0.9, 1.2], // (x1, y2, z0), (x1, y2, z1), (x1, y2, z2)
+///     ],
+///     [
+///         [5.0, 0.2, 5.1], // (x2, y0, z0), (x2, y0, z1), (x2, y0, z2)
+///         [0.7, 0.1, 3.2], // (x2, y1, z0), (x2, y1, z1), (x2, y1, z2)
+///         [1.4, 1.1, 0.0], // (x2, y2, z0), (x2, y2, z1), (x2, y2, z2)
+///     ],
+/// ]
+/// .into_dyn();
+///
+/// let point_a = [0.5, 0.5, 0.5];
+/// assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 2.0125);
+/// let point_b = [1.52, 0.36, 0.5];
+/// assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 2.46272);
+/// let point_c = [grid[0][2], grid[1][1], grid[2][0]]; // returns value at (x2, y1, z0)
+/// assert_eq!(
+///     multilinear(&point_c, &grid, &values).unwrap(),
+///     values[[2, 1, 0]]
+/// );
+/// ```
+///
+pub fn multilinear(point: &[f64], grid: &[Vec<f64>], values: &ArrayD<f64>) -> anyhow::Result<f64> {
+    // Dimensionality
+    let mut n = values.ndim();
+
+    // Validate inputs
+    anyhow::ensure!(
+        point.len() == n,
+        "Length of supplied `point` must be same as `values` dimensionality: {point:?} is not {n}-dimensional",
+    );
+    anyhow::ensure!(
+        grid.len() == n,
+        "Length of supplied `grid` must be same as `values` dimensionality: {grid:?} is not {n}-dimensional",
+    );
+    for i in 0..n {
+        anyhow::ensure!(
+            grid[i].len() == values.shape()[i],
+            "Supplied `grid` and `values` are not compatible shapes: dimension {i}, lengths {} != {}",
+            grid[i].len(),
+            values.shape()[i]
+        );
+        anyhow::ensure!(
+            grid[i].windows(2).all(|w| w[0] < w[1]),
+            "Supplied `grid` coordinates must be sorted and non-repeating: dimension {i}, {:?}",
+            grid[i]
+        );
+        anyhow::ensure!(
+            grid[i][0] <= point[i] && point[i] <= *grid[i].last().unwrap(),
+            "Supplied `point` must be within `grid` for dimension {i}: point[{i}] = {:?}, grid[{i}] = {:?}",
+            point[i],
+            grid[i],
+        );
     }
-}
 
-/// Bilinear interpolation over a structured grid;
-pub fn interp2d(
-    point: &[f64; 2],
-    grid: &[Vec<f64>; 2],
-    values: &[Vec<f64>],
-) -> anyhow::Result<f64> {
-    let x = point[0];
-    let y = point[1];
+    // Point can share up to N values of a grid point, which reduces the problem dimensionality
+    // i.e. the point shares one of three values of a 3-D grid point, then the interpolation becomes 2-D at that slice
+    // or   if the point shares two of three values of a 3-D grid point, then the interpolation becomes 1-D
+    let mut point = point.to_vec();
+    let mut grid = grid.to_vec();
+    let mut values_view = values.view();
+    for dim in (0..n).rev() {
+        // Range is reversed so that removal doesn't affect indexing
+        if let Some(pos) = grid[dim]
+            .iter()
+            .position(|&grid_point| grid_point == point[dim])
+        {
+            point.remove(dim);
+            grid.remove(dim);
+            values_view.index_axis_inplace(Axis(dim), pos);
+        }
+    }
+    if values_view.len() == 1 {
+        // Supplied point is coincident with a grid point, so just return the value
+        return Ok(*values_view.first().unwrap());
+    }
+    // Simplified dimensionality
+    n = values_view.ndim();
 
-    let x_points = &grid[0];
-    let y_points = &grid[1];
+    // Extract the lower and upper indices for each dimension,
+    // as well as the fraction of how far the supplied point is between the surrounding grid points
+    let mut lower_idxs = Vec::with_capacity(n);
+    let mut interp_diffs = Vec::with_capacity(n);
+    for dim in 0..n {
+        let lower_idx = grid[dim]
+            .windows(2)
+            .position(|w| w[0] < point[dim] && point[dim] < w[1])
+            .unwrap();
+        let interp_diff =
+            (point[dim] - grid[dim][lower_idx]) / (grid[dim][lower_idx + 1] - grid[dim][lower_idx]);
+        lower_idxs.push(lower_idx);
+        interp_diffs.push(interp_diff);
+    }
+    // `interp_vals` contains all values surrounding the point of interest, starting with shape (2, 2, ...) in N dimensions
+    // this gets mutated and reduces in dimension each iteration, filling with the next values to interpolate with
+    // this ends up as a 0-dimensional array containing only the final interpolated value
+    let mut interp_vals = values_view
+        .slice_each_axis(|ax| {
+            let lower = lower_idxs[ax.axis.0];
+            Slice::from(lower..=lower + 1)
+        })
+        .to_owned();
+    let mut index_permutations = get_index_permutations(&interp_vals.shape());
+    // This loop interpolates in each dimension sequentially
+    // each outer loop iteration the dimensionality reduces by 1
+    // `interp_vals` ends up as a 0-dimensional array containing only the final interpolated value
+    for dim in 0..n {
+        let diff = interp_diffs[dim];
+        let next_dim = n - 1 - dim;
+        let next_shape = vec![2; next_dim];
+        // Indeces used for saving results of this dimensions interpolation results
+        // assigned to `index_permutations` at end of loop to be used for indexing in next iteration
+        let next_idxs = get_index_permutations(&next_shape);
+        let mut intermediate_arr = Array::default(next_shape);
+        for i in 0..next_idxs.len() {
+            // `next_idxs` is always half the length of `index_permutations`
+            let l = index_permutations[i].as_slice();
+            let u = index_permutations[next_idxs.len() + i].as_slice();
+            if dim == 0 {
+                anyhow::ensure!(
+                    !interp_vals[l].is_nan() && !interp_vals[u].is_nan(),
+                    "Surrounding value(s) cannot be NaN:\npoint = {point:?},\ngrid = {grid:?},\nvalues = {values:?}"
+                );
+            }
+            // This calculation happens 2^(n-1) times in the first iteration of the outer loop,
+            // 2^(n-2) times in the second iteration, etc.
+            intermediate_arr[next_idxs[i].as_slice()] =
+                interp_vals[l] * (1.0 - diff) + interp_vals[u] * diff;
+        }
+        index_permutations = next_idxs;
+        interp_vals = intermediate_arr;
+    }
 
-    // find indeces of x-values that surround the specified x-value
-    let (xi0, xi1) = find_interp_indices(&x, x_points)?;
-    // which indeces of y-values that surround the specified y-value
-    let (yi0, yi1) = find_interp_indices(&y, y_points)?;
-
-    // calculate fraction of position of specified x-value between the lower and upper x bounds
-    let xd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
-    // calculate fraction of position of specified y-value between the lower and upper y bounds
-    let yd = compute_interp_diff(&y, &y_points[yi0], &y_points[yi1]);
-
-    // extract values at four surrounding points
-    let c00 = values[xi0][yi0]; // lower left
-    let c10 = values[xi1][yi0]; // lower right
-    let c01 = values[xi0][yi1]; // upper left
-    let c11 = values[xi1][yi1]; // upper right
-
-    // interpolate in the x-direction
-    let c0 = c00 * (1.0 - xd) + c10 * xd;
-    let c1 = c01 * (1.0 - xd) + c11 * xd;
-
-    // interpolate in the y-direction
-    let c = c0 * (1.0 - yd) + c1 * yd;
-
-    // return result
-    Ok(c)
+    // return the only value contained within the 0-dimensional array
+    Ok(*interp_vals.first().unwrap())
 }
 
 lazy_static! {
@@ -379,126 +558,6 @@ pub use array_wrappers::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_interp2d() {
-        // specified (x, y) point at which to interpolate value
-        let point = [0.5, 0.5];
-        // grid coordinates: (x0, x1), (y0, y1)
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
-        // values at grid points
-        let values = [
-            vec![
-                1.0, // lower left (x0, y0)
-                0.0, // upper left (x0, y1)
-            ],
-            vec![
-                0.0, // lower right (x1, y0)
-                1.0, // upper right (x1, y1)
-            ],
-        ];
-        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 0.5);
-    }
-
-    #[test]
-    fn test_interp2d_offset() {
-        // specified (x, y) point at which to interpolate value
-        let point = [0.25, 0.75];
-        // grid coordinates: (x0, x1), (y0, y1)
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
-        // values at grid points
-        let values = [
-            vec![
-                1.0, // lower left (x0, y0)
-                0.0, // upper left (x0, y1)
-            ],
-            vec![
-                0.0, // lower right (x1, y0)
-                1.0, // upper right (x1, y1)
-            ],
-        ];
-        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 0.375);
-    }
-
-    #[test]
-    fn test_interp2d_exact_value_lower() {
-        // specified (x, y) point at which to interpolate value
-        let point = [0.0, 0.0];
-        // grid coordinates: (x0, x1), (y0, y1)
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
-        // values at grid points
-        let values = [
-            vec![
-                1.0, // lower left (x0, y0)
-                0.0, // upper left (x0, y1)
-            ],
-            vec![
-                0.0, // lower right (x1, y0)
-                1.0, // upper right (x1, y1)
-            ],
-        ];
-        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
-    }
-
-    #[test]
-    fn test_interp2d_below_value_lower() {
-        // specified (x, y) point at which to interpolate value
-        let point = [-1.0, -1.0];
-        // grid coordinates: (x0, x1), (y0, y1)
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
-        // values at grid points
-        let values = [
-            vec![
-                1.0, // lower left (x0, y0)
-                0.0, // upper left (x0, y1)
-            ],
-            vec![
-                0.0, // lower right (x1, y0)
-                1.0, // upper right (x1, y1)
-            ],
-        ];
-        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
-    }
-
-    #[test]
-    fn test_interp2d_above_value_upper() {
-        // specified (x, y) point at which to interpolate value
-        let point = [2.0, 2.0];
-        // grid coordinates: (x0, x1), (y0, y1)
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
-        // values at grid points
-        let values = [
-            vec![
-                1.0, // lower left (x0, y0)
-                0.0, // upper left (x0, y1)
-            ],
-            vec![
-                0.0, // lower right (x1, y0)
-                1.0, // upper right (x1, y1)
-            ],
-        ];
-        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
-    }
-
-    #[test]
-    fn test_interp2d_exact_value_upper() {
-        // specified (x, y) point at which to interpolate value
-        let point = [1.0, 1.0];
-        // grid coordinates: (x0, x1), (y0, y1)
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0]];
-        // values at grid points
-        let values = [
-            vec![
-                1.0, // lower left (x0, y0)
-                0.0, // upper left (x0, y1)
-            ],
-            vec![
-                0.0, // lower right (x1, y0)
-                1.0, // upper right (x1, y1)
-            ],
-        ];
-        assert_eq!(interp2d(&point, &grid, &values).unwrap(), 1.0);
-    }
 
     #[test]
     fn test_diff() {
