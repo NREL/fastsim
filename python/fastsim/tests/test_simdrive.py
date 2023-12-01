@@ -76,11 +76,11 @@ class TestSimDriveClassic(unittest.TestCase):
             t_clip = 210  # speed is non-zero here
             cyc1 = cycle.Cycle.from_dict(
                 cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file(
-                    'udds').get_cyc_dict(), t_end=t_clip))
+                    'udds').to_dict(), t_end=t_clip))
             )
             t_end = cycle.Cycle.from_file('udds').time_s[-1]
             cyc2 = cycle.Cycle.from_dict(
-                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(),
+                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').to_dict(),
                                               t_start=t_clip, t_end=t_end))
             )
 
@@ -108,11 +108,11 @@ class TestSimDriveClassic(unittest.TestCase):
             t_clip = 210  # speed is non-zero here
             cyc1 = cycle.Cycle.from_dict(
                 cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file(
-                    'udds').get_cyc_dict(), t_end=t_clip))
+                    'udds').to_dict(), t_end=t_clip))
             ).to_rust()
             t_end = cycle.Cycle.from_file('udds').time_s[-1]
             cyc2 = cycle.Cycle.from_dict(
-                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').get_cyc_dict(),
+                cyc_dict=(cycle.clip_by_times(cycle.Cycle.from_file('udds').to_dict(),
                                               t_start=t_clip, t_end=t_end))
             ).to_rust()
 
@@ -186,7 +186,7 @@ class TestSimDriveClassic(unittest.TestCase):
 
     def test_stop_start(self):
         if USE_PYTHON:
-            cyc = cycle.Cycle.from_file('udds').get_cyc_dict()
+            cyc = cycle.Cycle.from_file('udds').to_dict()
             cyc = cycle.Cycle.from_dict(cyc_dict=cycle.clip_by_times(cyc, 130))
 
             veh = vehicle.Vehicle.from_vehdb(1)
@@ -203,7 +203,7 @@ class TestSimDriveClassic(unittest.TestCase):
             self.assertTrue(sd.fc_kw_in_ach[37] == 0)
         if USE_RUST:
             msg = "Issue with Rust version"
-            cyc = cycle.Cycle.from_file('udds').to_rust().get_cyc_dict()
+            cyc = cycle.Cycle.from_file('udds').to_rust().to_dict()
             cyc = cycle.Cycle.from_dict(
                 cyc_dict=cycle.clip_by_times(cyc, 130)).to_rust()
 

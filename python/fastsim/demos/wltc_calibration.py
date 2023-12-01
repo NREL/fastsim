@@ -56,10 +56,10 @@ cyc_extrahigh = fastsim.cycle.Cycle.from_file("wltc_class3_extra_high3.csv")
 # Generate combined cycle
 cyc_combined_dict = fastsim.cycle.concat(
     [
-        cyc_low.get_cyc_dict(),
-        cyc_med.get_cyc_dict(),
-        cyc_high.get_cyc_dict(),
-        cyc_extrahigh.get_cyc_dict(),
+        cyc_low.to_dict(),
+        cyc_med.to_dict(),
+        cyc_high.to_dict(),
+        cyc_extrahigh.to_dict(),
     ]
 )
 cyc = fastsim.cycle.Cycle.from_dict(cyc_combined_dict)

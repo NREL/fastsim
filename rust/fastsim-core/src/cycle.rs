@@ -517,8 +517,6 @@ impl RustCycleCache {
         })
     }
 
-    // TODO: okay to rename `get_cyc_dict` in Python and Rust to `to_dict`?
-    #[pyo3(name = "get_cyc_dict")]
     pub fn to_dict<'py>(&self, py: Python<'py>) -> anyhow::Result<&'py PyDict> {
         let dict = PyDict::new(py);
         dict.set_item("time_s", self.time_s.to_vec())?;

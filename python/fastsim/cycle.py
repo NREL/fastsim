@@ -224,7 +224,7 @@ class Cycle(object):
         "return cycle length"
         return len(self.time_s)
 
-    def get_cyc_dict(self) -> Dict[str, np.ndarray]:
+    def to_dict(self) -> Dict[str, np.ndarray]:
         """Returns cycle as dict rather than class instance."""
         keys = STANDARD_CYCLE_KEYS
 
@@ -396,7 +396,7 @@ def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False):
 
     Arguments:
     ----------
-    cycle: drive cycle converted to dictionary by cycle.get_cyc_dict()
+    cycle: drive cycle converted to dictionary by cycle.to_dict()
     stop_speed_m__s: speed at which vehicle is considered stopped for trip
         separation
     keep_name: (optional) bool, if True and cycle contains "name", adds
@@ -469,8 +469,8 @@ def equals(c1, c2) -> bool:
     Returns true if the two cycles are equal, false otherwise
     Arguments:
     ----------
-    c1: cycle as dictionary from get_cyc_dict()
-    c2: cycle as dictionary from get_cyc_dict()
+    c1: cycle as dictionary from to_dict()
+    c2: cycle as dictionary from to_dict()
     """
     if c1.keys() != c2.keys():
         c2missing = set(c1.keys()) - set(c2.keys())
@@ -914,7 +914,7 @@ def extend_cycle(
     RETURNS: fastsim.cycle.Cycle (or fastsimrust.RustCycle), the new cycle with stopped time appended
     NOTE: additional time is rounded to the nearest second
     """
-    cyc0 = cyc.get_cyc_dict()
+    cyc0 = cyc.to_dict()
     extra_time_s = absolute_time_s + float(int(round(time_fraction * cyc.time_s[-1])))
     # Zero-velocity cycle segment so simulation doesn't end while moving
     cyc_stop = resample(
@@ -952,13 +952,13 @@ def create_dist_and_target_speeds_by_microtrip(cyc: Cycle, blend_factor: float=0
     blend_factor = max(0.0, min(1.0, blend_factor))
     dist_and_tgt_speeds = []
     # Split cycle into microtrips
-    microtrips = to_microtrips(cyc.get_cyc_dict())
+    microtrips = to_microtrips(cyc.to_dict())
     dist_at_start_of_microtrip_m = 0.0
     for mt in microtrips:
         mt_cyc = Cycle.from_dict(mt)
         mt_dist_m = sum(mt_cyc.dist_m)
         mt_time_s = mt_cyc.time_s[-1] - mt_cyc.time_s[0]
-        mt_moving_time_s = time_spent_moving(mt_cyc.get_cyc_dict())
+        mt_moving_time_s = time_spent_moving(mt_cyc.to_dict())
         mt_avg_spd_m_per_s = mt_dist_m / mt_time_s if mt_time_s > 0.0 else 0.0
         mt_moving_avg_spd_m_per_s = mt_dist_m / mt_moving_time_s if mt_moving_time_s > 0.0 else 0.0
         mt_target_spd_m_per_s = max(

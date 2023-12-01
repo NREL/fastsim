@@ -150,7 +150,7 @@ class RustCycle(SerdeAPI):
     def calc_distance_to_next_stop_from(self, distance_m: float) -> float:
         ...
 
-    def get_cyc_dict(self) -> Dict[str, List[float]]:
+    def to_dict(self) -> Dict[str, List[float]]:
         """Return a HashMap representing the cycle"""
         ...
 
