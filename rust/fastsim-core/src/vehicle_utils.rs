@@ -1554,7 +1554,7 @@ fn load_fegov_data_for_given_years(
 }
 
 pub fn get_default_cache_url() -> String {
-    String::from("https://github.nrel.gov/MBAP/vehicle-data/raw/main/")
+    String::from("https://github.com/NREL/vehicle-data/raw/main/")
 }
 
 fn get_cache_url_for_year(cache_url: &str, year: &u32) -> Result<Option<String>, anyhow::Error> {
