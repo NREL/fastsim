@@ -209,13 +209,11 @@ class SimDrive(object):
 
     def init_arrays(self):
         self.i = 1  # initialize step counter for possible use outside sim_drive_walk()
-        cyc_len = self.cyc.len
+        cyc_len = len(self.cyc)
 
         # Component Limits -- calculated dynamically
         self.cur_max_fs_kw_out = np.zeros(cyc_len, dtype=np.float64)
         self.fc_trans_lim_kw = np.zeros(cyc_len, dtype=np.float64)
-        self.fc_fs_lim_kw = np.zeros(cyc_len, dtype=np.float64)
-        self.fc_max_kw_in = np.zeros(cyc_len, dtype=np.float64)
         self.cur_max_fc_kw_out = np.zeros(cyc_len, dtype=np.float64)
         self.ess_cap_lim_dischg_kw = np.zeros(cyc_len, dtype=np.float64)
         self.cur_ess_max_kw_out = np.zeros(cyc_len, dtype=np.float64)
@@ -228,7 +226,6 @@ class SimDrive(object):
         self.cur_max_mc_kw_out = np.zeros(cyc_len, dtype=np.float64)
         self.ess_lim_mc_regen_perc_kw = np.zeros(
             cyc_len, dtype=np.float64)
-        self.ess_lim_mc_regen_kw = np.zeros(cyc_len, dtype=np.float64)
         self.cur_max_mech_mc_kw_in = np.zeros(cyc_len, dtype=np.float64)
         self.cur_max_trans_kw_out = np.zeros(cyc_len, dtype=np.float64)
 
@@ -487,7 +484,7 @@ class SimDrive(object):
         params = self.sim_params
         params.idm_allow = True
         if not by_microtrip:
-            if self.cyc0.len > 0 and self.cyc0.time_s[-1] > 0.0:
+            if len(self.cyc0) > 0 and self.cyc0.time_s[-1] > 0.0:
                 params.idm_v_desired_m_per_s = self.cyc0.dist_m.sum() / self.cyc0.time_s[-1]
             else:
                 params.idm_v_desired_m_per_s = 0.0
@@ -720,11 +717,8 @@ class SimDrive(object):
             self.veh.fc_max_kw / self.veh.fc_sec_to_peak_pwr * self.cyc.dt_s_at_i(i)
         )
 
-        self.fc_max_kw_in[i] = min(
-            self.cur_max_fs_kw_out[i], self.veh.fs_max_kw)
-        self.fc_fs_lim_kw[i] = self.veh.fc_max_kw
         self.cur_max_fc_kw_out[i] = min(
-            self.veh.fc_max_kw, self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i])
+            self.veh.fc_max_kw, self.fc_trans_lim_kw[i])
 
         if self.veh.ess_max_kwh == 0 or self.soc[i-1] < self.veh.min_soc:
             self.ess_cap_lim_dischg_kw[i] = 0.0
@@ -813,14 +807,14 @@ class SimDrive(object):
             self.ess_lim_mc_regen_perc_kw[i] = min(
                 (self.cur_max_ess_chg_kw[i] + self.aux_in_kw[i]) / self.veh.mc_max_kw, 1)
         if self.cur_max_ess_chg_kw[i] == 0:
-            self.ess_lim_mc_regen_kw[i] = 0.0
+            self.cur_max_mech_mc_kw_in[i] = 0.0
 
         else:
             if self.veh.mc_max_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]:
-                self.ess_lim_mc_regen_kw[i] = min(
+                self.cur_max_mech_mc_kw_in[i] = min(
                     self.veh.mc_max_kw, self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[-1])
             else:
-                self.ess_lim_mc_regen_kw[i] = min(
+                self.cur_max_mech_mc_kw_in[i] = min(
                     self.veh.mc_max_kw,
                     self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array[
                         max(1,
@@ -835,8 +829,6 @@ class SimDrive(object):
                     ]
                 )
 
-        self.cur_max_mech_mc_kw_in[i] = min(
-            self.ess_lim_mc_regen_kw[i], self.veh.mc_max_kw)
         self.cur_max_trac_kw[i] = (
             self.veh.wheel_coef_of_fric * self.veh.drive_axle_weight_frac *
             self.veh.veh_kg * self.props.a_grav_mps2

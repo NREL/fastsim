@@ -28,7 +28,7 @@ SHOW_PLOTS = fsim.utils.show_plots()
 
 t0 = time.time()
 cyc = cycle.Cycle.from_dict(cyc_dict=cycle.clip_by_times(
-   cycle.Cycle.from_file('longHaulDriveCycle').get_cyc_dict(),
+   cycle.Cycle.from_file('longHaulDriveCycle').to_dict(),
     t_end=18_000, t_start=1_800))
 print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
 

@@ -373,10 +373,6 @@ pub struct RustSimDrive {
     /// Transient fuel converter output power limit,
     /// as determined by achieved fuel converter power output, `veh.fc_max_kw`, and `veh.fs_secs_to_peak_pwr`
     pub fc_trans_lim_kw: Array1<f64>,
-    /// REDUNDANT: always equal to `veh.fc_max_kw`
-    pub fc_fs_lim_kw: Array1<f64>,
-    /// REDUNDANT: always equal to `cur_max_fs_kw_out`
-    pub fc_max_kw_in: Array1<f64>,
     /// Current maximum fuel converter output power,
     /// considering `veh.fc_max_kw` and transient limit `fc_trans_lim_kw`
     pub cur_max_fc_kw_out: Array1<f64>,
@@ -407,8 +403,6 @@ pub struct RustSimDrive {
     pub ess_lim_mc_regen_perc_kw: Array1<f64>,
     /// ESS limit on electricity regeneration,
     /// considering `veh.mc_max_kw`, or `cur_max_ess_chg_kw` and motor efficiency
-    pub ess_lim_mc_regen_kw: Array1<f64>,
-    /// REDUNDANT: always equal to `ess_lim_mc_regen_kw`
     pub cur_max_mech_mc_kw_in: Array1<f64>,
     pub cur_max_trans_kw_out: Array1<f64>,
     /// Required tractive power to meet cycle,

@@ -35,8 +35,6 @@ impl RustSimDrive {
         let cyc_len = cyc.len();
         let cur_max_fs_kw_out = Array::zeros(cyc_len);
         let fc_trans_lim_kw = Array::zeros(cyc_len);
-        let fc_fs_lim_kw = Array::zeros(cyc_len);
-        let fc_max_kw_in = Array::zeros(cyc_len);
         let cur_max_fc_kw_out = Array::zeros(cyc_len);
         let ess_cap_lim_dischg_kw = Array::zeros(cyc_len);
         let cur_ess_max_kw_out = Array::zeros(cyc_len);
@@ -48,7 +46,6 @@ impl RustSimDrive {
         let mc_transi_lim_kw = Array::zeros(cyc_len);
         let cur_max_mc_kw_out = Array::zeros(cyc_len);
         let ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len);
-        let ess_lim_mc_regen_kw = Array::zeros(cyc_len);
         let cur_max_mech_mc_kw_in = Array::zeros(cyc_len);
         let cur_max_trans_kw_out = Array::zeros(cyc_len);
         let cyc_trac_kw_req = Array::zeros(cyc_len);
@@ -159,8 +156,6 @@ impl RustSimDrive {
             i, // 1 # initialize step counter for possible use outside sim_drive_walk()
             cur_max_fs_kw_out,
             fc_trans_lim_kw,
-            fc_fs_lim_kw,
-            fc_max_kw_in,
             cur_max_fc_kw_out,
             ess_cap_lim_dischg_kw,
             cur_ess_max_kw_out,
@@ -172,7 +167,6 @@ impl RustSimDrive {
             mc_transi_lim_kw,
             cur_max_mc_kw_out,
             ess_lim_mc_regen_perc_kw,
-            ess_lim_mc_regen_kw,
             cur_max_mech_mc_kw_in,
             cur_max_trans_kw_out,
             cyc_trac_kw_req,
@@ -296,8 +290,6 @@ impl RustSimDrive {
         // Component Limits -- calculated dynamically
         self.cur_max_fs_kw_out = Array::zeros(cyc_len);
         self.fc_trans_lim_kw = Array::zeros(cyc_len);
-        self.fc_fs_lim_kw = Array::zeros(cyc_len);
-        self.fc_max_kw_in = Array::zeros(cyc_len);
         self.cur_max_fc_kw_out = Array::zeros(cyc_len);
         self.ess_cap_lim_dischg_kw = Array::zeros(cyc_len);
         self.cur_ess_max_kw_out = Array::zeros(cyc_len);
@@ -309,7 +301,6 @@ impl RustSimDrive {
         self.mc_transi_lim_kw = Array::zeros(cyc_len);
         self.cur_max_mc_kw_out = Array::zeros(cyc_len);
         self.ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len);
-        self.ess_lim_mc_regen_kw = Array::zeros(cyc_len);
         self.cur_max_mech_mc_kw_in = Array::zeros(cyc_len);
         self.cur_max_trans_kw_out = Array::zeros(cyc_len);
 
@@ -667,12 +658,7 @@ impl RustSimDrive {
         self.fc_trans_lim_kw[i] = self.fc_kw_out_ach[i - 1]
             + (self.veh.fc_max_kw / self.veh.fc_sec_to_peak_pwr * self.cyc.dt_s_at_i(i));
 
-        self.fc_max_kw_in[i] = min(self.cur_max_fs_kw_out[i], self.veh.fs_max_kw);
-        self.fc_fs_lim_kw[i] = self.veh.fc_max_kw;
-        self.cur_max_fc_kw_out[i] = min(
-            self.veh.fc_max_kw,
-            min(self.fc_fs_lim_kw[i], self.fc_trans_lim_kw[i]),
-        );
+        self.cur_max_fc_kw_out[i] = min(self.veh.fc_max_kw, self.fc_trans_lim_kw[i]);
 
         if self.veh.ess_max_kwh == 0.0 || self.soc[i - 1] < self.veh.min_soc {
             self.ess_cap_lim_dischg_kw[i] = 0.0;
@@ -784,16 +770,16 @@ impl RustSimDrive {
             );
         }
         if self.cur_max_ess_chg_kw[i] == 0.0 {
-            self.ess_lim_mc_regen_kw[i] = 0.0;
+            self.cur_max_mech_mc_kw_in[i] = 0.0;
         } else if self.veh.mc_max_kw == self.cur_max_ess_chg_kw[i] - self.cur_max_roadway_chg_kw[i]
         {
-            self.ess_lim_mc_regen_kw[i] = min(
+            self.cur_max_mech_mc_kw_in[i] = min(
                 self.veh.mc_max_kw,
                 // this unwrap has already been checked above
                 self.cur_max_ess_chg_kw[i] / self.veh.mc_full_eff_array.last().unwrap(),
             );
         } else {
-            self.ess_lim_mc_regen_kw[i] = min(
+            self.cur_max_mech_mc_kw_in[i] = min(
                 self.veh.mc_max_kw,
                 self.cur_max_ess_chg_kw[i]
                     / self.veh.mc_full_eff_array[cmp::max(
@@ -810,7 +796,6 @@ impl RustSimDrive {
                     )],
             );
         }
-        self.cur_max_mech_mc_kw_in[i] = min(self.ess_lim_mc_regen_kw[i], self.veh.mc_max_kw);
 
         self.cur_max_trac_kw[i] = self.veh.wheel_coef_of_fric
             * self.veh.drive_axle_weight_frac
@@ -1110,7 +1095,7 @@ impl RustSimDrive {
             self.regen_buff_soc[i] = 0.0;
         } else if self.veh.charging_on {
             self.regen_buff_soc[i] = max(
-                self.veh.max_soc - (self.veh.max_regen_kwh() / self.veh.ess_max_kwh),
+                self.veh.max_soc - (self.veh.max_regen_kwh / self.veh.ess_max_kwh),
                 (self.veh.max_soc + self.veh.min_soc) / 2.0,
             );
         } else {
@@ -1156,10 +1141,8 @@ impl RustSimDrive {
                         * min(
                             self.veh.max_accel_buffer_perc_of_useable_soc
                                 * (self.veh.max_soc - self.veh.min_soc),
-                            self.veh.max_regen_kwh() / self.veh.ess_max_kwh,
+                            self.veh.max_regen_kwh / self.veh.ess_max_kwh,
                         )
-                        * self.veh.ess_max_kwh
-                        / self.veh.ess_max_kwh
                         + self.veh.min_soc,
                     self.veh.min_soc,
                 ),

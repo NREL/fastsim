@@ -81,7 +81,7 @@ if SHOW_PLOTS:
 #
 # Here we set up an "automated cruise control" for a system
 # that drives the average speed of the cycle.
-cyc_udds = fsim.cycle.Cycle.from_file('udds').get_cyc_dict()
+cyc_udds = fsim.cycle.Cycle.from_file('udds').to_dict()
 cyc_stop = fsim.cycle.resample(
     fsim.cycle.make_cycle([0.0, 200.0], [0.0, 0.0]),
     new_dt=1.0,
@@ -116,7 +116,7 @@ if SHOW_PLOTS:
 # the average speed of the microtrip assuming the vehicle
 # is able to get the average speed per microtrip from some
 # external source.
-cyc_udds = fsim.cycle.Cycle.from_file('udds').get_cyc_dict()
+cyc_udds = fsim.cycle.Cycle.from_file('udds').to_dict()
 cyc_stop = fsim.cycle.resample(
     fsim.cycle.make_cycle([0.0, 200.0], [0.0, 0.0]),
     new_dt=1.0,
@@ -127,7 +127,7 @@ cyc = fsim.cycle.Cycle.from_dict(
 veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
 sd = fsim.simdrive.RustSimDrive(cyc, veh)
 dist_and_avg_speeds = []
-microtrips = fsim.cycle.to_microtrips(cyc.get_cyc_dict())
+microtrips = fsim.cycle.to_microtrips(cyc.to_dict())
 dist_at_start_of_microtrip_m = 0.0
 for mt in microtrips:
     mt_cyc = fsim.cycle.Cycle.from_dict(mt)
@@ -183,7 +183,7 @@ if SHOW_PLOTS:
 # # Eco-Cruise and Eco-Approach running at the same time
 #
 # Here, we run an Eco-Cruise and Eco-Approach at the same time.
-cyc_udds = fsim.cycle.Cycle.from_file('udds').get_cyc_dict()
+cyc_udds = fsim.cycle.Cycle.from_file('udds').to_dict()
 cyc_stop = fsim.cycle.resample(
     fsim.cycle.make_cycle([0.0, 400.0], [0.0, 0.0]),
     new_dt=1.0,

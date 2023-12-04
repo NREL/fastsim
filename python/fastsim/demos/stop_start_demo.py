@@ -28,8 +28,8 @@ from fastsim import simdrive, cycle, vehicle
 # %%
 t0 = time.time()
 # cyc = cycle.Cycle.from_dict(cyc_dict=
-#                   cycle.clip_by_times(cycle.Cycle.from_file("udds").get_cyc_dict(), 130))
-cyc = cycle.Cycle.from_file('udds').get_cyc_dict()
+#                   cycle.clip_by_times(cycle.Cycle.from_file("udds").to_dict(), 130))
+cyc = cycle.Cycle.from_file('udds').to_dict()
 cyc = cycle.Cycle.from_dict(cycle.clip_by_times(cyc, 130))
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 

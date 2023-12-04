@@ -1,8 +1,5 @@
 //! Module containing drive cycle struct and related functions.
 
-extern crate ndarray;
-
-#[cfg(feature = "pyo3")]
 use std::collections::HashMap;
 
 // local
@@ -207,10 +204,10 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
     let vs = cycle.mps.to_vec();
     let gs = cycle.grade.to_vec();
     let rs = cycle.road_type.to_vec();
-    let mut mt_ts: Vec<f64> = Vec::new();
-    let mut mt_vs: Vec<f64> = Vec::new();
-    let mut mt_gs: Vec<f64> = Vec::new();
-    let mut mt_rs: Vec<f64> = Vec::new();
+    let mut mt_ts = Vec::new();
+    let mut mt_vs = Vec::new();
+    let mut mt_gs = Vec::new();
+    let mut mt_rs = Vec::new();
     let mut moving = false;
     for idx in 0..ts.len() {
         let t = ts[idx];
@@ -224,13 +221,14 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
             let last_g = mt_gs[last_idx];
             let last_r = mt_rs[last_idx];
             mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
-            microtrips.push(RustCycle::new(
-                mt_ts.clone(),
-                mt_vs.clone(),
-                mt_gs.clone(),
-                mt_rs.clone(),
-                &cycle.name,
-            ));
+            microtrips.push(RustCycle {
+                time_s: Array::from_vec(mt_ts),
+                mps: Array::from_vec(mt_vs),
+                grade: Array::from_vec(mt_gs),
+                road_type: Array::from_vec(mt_rs),
+                name: cycle.name.clone(),
+                orphaned: false,
+            });
             mt_ts = vec![last_t];
             mt_vs = vec![last_v];
             mt_gs = vec![last_g];
@@ -244,7 +242,14 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
     }
     if !mt_ts.is_empty() {
         mt_ts = mt_ts.iter().map(|t| -> f64 { t - mt_ts[0] }).collect();
-        microtrips.push(RustCycle::new(mt_ts, mt_vs, mt_gs, mt_rs, &cycle.name));
+        microtrips.push(RustCycle {
+            time_s: Array::from_vec(mt_ts),
+            mps: Array::from_vec(mt_vs),
+            grade: Array::from_vec(mt_gs),
+            road_type: Array::from_vec(mt_rs),
+            name: cycle.name.clone(),
+            orphaned: false,
+        });
     }
     microtrips
 }
@@ -338,7 +343,14 @@ pub fn extend_cycle(
         rs.push(0.0);
         idx += 1;
     }
-    RustCycle::new(ts, vs, gs, rs, &cyc.name)
+    RustCycle {
+        time_s: Array::from_vec(ts),
+        mps: Array::from_vec(vs),
+        grade: Array::from_vec(gs),
+        road_type: Array::from_vec(rs),
+        name: cyc.name.clone(),
+        orphaned: false,
+    }
 }
 
 #[cfg(feature = "pyo3")]
@@ -464,15 +476,8 @@ impl RustCycleCache {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[add_pyo3_api(
-    #[new]
-    pub fn __new__(
-        time_s: Vec<f64>,
-        mps: Vec<f64>,
-        grade: Vec<f64>,
-        road_type: Vec<f64>,
-        name: String,
-    ) -> Self {
-        Self::new(time_s, mps, grade, road_type, name)
+    pub fn __len__(&self) -> usize {
+        self.len()
     }
 
     #[allow(clippy::type_complexity)]
@@ -490,14 +495,36 @@ impl RustCycleCache {
         self.clone()
     }
 
-    /// Return a HashMap representing the cycle
-    pub fn get_cyc_dict(&self) -> HashMap<String, Vec<f64>> {
-        HashMap::from([
-            ("time_s".to_string(), self.time_s.to_vec()),
-            ("mps".to_string(), self.mps.to_vec()),
-            ("grade".to_string(), self.grade.to_vec()),
-            ("road_type".to_string(), self.road_type.to_vec()),
-        ])
+    #[staticmethod]
+    pub fn from_dict(dict: &PyDict) -> anyhow::Result<Self> {
+        let time_s = Array::from_vec(PyAny::get_item(&dict, "time_s")?.extract()?);
+        let cyc_len = time_s.len();
+        Ok(Self {
+            time_s,
+            mps: Array::from_vec(PyAny::get_item(&dict, "mps")?.extract()?),
+            grade: if let Ok(value) = PyAny::get_item(&dict, "grade") {
+                Array::from_vec(value.extract()?)
+            } else {
+                Array::default(cyc_len)
+            },
+            road_type: if let Ok(value) = PyAny::get_item(&dict, "road_type") {
+                Array::from_vec(value.extract()?)
+            } else {
+                Array::default(cyc_len)
+            },
+            name: PyAny::get_item(&dict, "name").and_then(String::extract).unwrap_or_default(),
+            orphaned: false,
+        })
+    }
+
+    pub fn to_dict<'py>(&self, py: Python<'py>) -> anyhow::Result<&'py PyDict> {
+        let dict = PyDict::new(py);
+        dict.set_item("time_s", self.time_s.to_vec())?;
+        dict.set_item("mps", self.mps.to_vec())?;
+        dict.set_item("grade", self.grade.to_vec())?;
+        dict.set_item("road_type", self.road_type.to_vec())?;
+        dict.set_item("name", self.name.clone())?;
+        Ok(dict)
     }
 
     #[pyo3(name = "modify_by_const_jerk_trajectory")]
@@ -563,11 +590,6 @@ impl RustCycleCache {
         self.dt_s().to_vec()
     }
     #[getter]
-    /// cycle length
-    pub fn get_len(&self) -> usize {
-        self.len()
-    }
-    #[getter]
     /// distance for each time step based on final speed
     pub fn get_dist_m(&self) -> Vec<f64> {
         self.dist_m().to_vec()
@@ -604,7 +626,7 @@ pub struct RustCycle {
     pub orphaned: bool,
 }
 
-const ACCEPTED_FILE_FORMATS: [&str; 3] = ["yaml", "json", "csv"];
+const ACCEPTED_FILE_FORMATS: [&str; 4] = ["yaml", "json", "bin", "csv"];
 
 impl SerdeAPI for RustCycle {
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
@@ -678,30 +700,56 @@ impl SerdeAPI for RustCycle {
     }
 }
 
+impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
+    type Error = anyhow::Error;
+
+    fn try_from(hashmap: HashMap<String, Vec<f64>>) -> anyhow::Result<Self> {
+        let time_s = Array::from_vec(
+            hashmap
+                .get("time_s")
+                .with_context(|| "`time_s` not in HashMap")?
+                .to_owned(),
+        );
+        let cyc_len = time_s.len();
+        Ok(Self {
+            time_s,
+            mps: Array::from_vec(
+                hashmap
+                    .get("mps")
+                    .with_context(|| "`mps` not in HashMap")?
+                    .to_owned(),
+            ),
+            grade: Array::from_vec(
+                hashmap
+                    .get("grade")
+                    .unwrap_or(&vec![0.0; cyc_len])
+                    .to_owned(),
+            ),
+            road_type: Array::from_vec(
+                hashmap
+                    .get("road_type")
+                    .unwrap_or(&vec![0.0; cyc_len])
+                    .to_owned(),
+            ),
+            name: String::default(),
+            orphaned: false,
+        })
+    }
+}
+
+impl Into<HashMap<String, Vec<f64>>> for RustCycle {
+    fn into(self) -> HashMap<String, Vec<f64>> {
+        HashMap::from([
+            ("time_s".into(), self.time_s.to_vec()),
+            ("mps".into(), self.mps.to_vec()),
+            ("grade".into(), self.grade.to_vec()),
+            ("road_type".into(), self.road_type.to_vec()),
+        ])
+    }
+}
+
 /// pure Rust methods that need to be separate due to pymethods incompatibility
 impl RustCycle {
-    pub fn new<S: AsRef<str>>(
-        time_s: Vec<f64>,
-        mps: Vec<f64>,
-        grade: Vec<f64>,
-        road_type: Vec<f64>,
-        name: S,
-    ) -> Self {
-        let time_s = Array::from_vec(time_s);
-        let mps = Array::from_vec(mps);
-        let grade = Array::from_vec(grade);
-        let road_type = Array::from_vec(road_type);
-        let name = name.as_ref().to_string();
-        Self {
-            time_s,
-            mps,
-            grade,
-            road_type,
-            name,
-            orphaned: false,
-        }
-    }
-
     /// Load cycle from CSV file, parsing name from filepath
     pub fn from_csv_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
@@ -773,12 +821,14 @@ impl RustCycle {
     }
 
     pub fn test_cyc() -> Self {
-        let time_s = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
-        let speed_mps = Array1::<f64>::range(0.0, 10.0, 1.0).to_vec();
-        let grade = Array::zeros(10).to_vec();
-        let road_type = Array::zeros(10).to_vec();
-        let name = String::from("test");
-        Self::new(time_s, speed_mps, grade, road_type, name)
+        Self {
+            time_s: Array::range(0.0, 10.0, 1.0),
+            mps: Array::range(0.0, 10.0, 1.0),
+            grade: Array::zeros(10),
+            road_type: Array::zeros(10),
+            name: String::from("test"),
+            orphaned: false,
+        }
     }
 
     /// Returns the average grade over the given range of distances
@@ -1118,12 +1168,14 @@ mod tests {
 
     #[test]
     fn test_average_speeds_and_distances() {
-        let time_s = vec![0.0, 10.0, 30.0, 34.0, 40.0];
-        let speed_mps = vec![0.0, 10.0, 10.0, 0.0, 0.0];
-        let grade = Array::zeros(5).to_vec();
-        let road_type = Array::zeros(5).to_vec();
-        let name = "test";
-        let cyc = RustCycle::new(time_s, speed_mps, grade, road_type, name);
+        let cyc = RustCycle {
+            time_s: array![0.0, 10.0, 30.0, 34.0, 40.0],
+            mps: array![0.0, 10.0, 10.0, 0.0, 0.0],
+            grade: Array::zeros(5),
+            road_type: Array::zeros(5),
+            name: String::from("test"),
+            orphaned: false,
+        };
         let avg_mps = average_step_speeds(&cyc);
         let expected_avg_mps = Array::from_vec(vec![0.0, 5.0, 10.0, 5.0, 0.0]);
         assert_eq!(expected_avg_mps.len(), avg_mps.len());

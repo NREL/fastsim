@@ -92,14 +92,14 @@ class TestCycle(unittest.TestCase):
         cyc_from_dict = cycle.Cycle.from_dict(cyc_dict)
 
         self.assertTrue((
-            pd.DataFrame(cyc.get_cyc_dict()) ==
-            pd.DataFrame(cyc_from_dict.get_cyc_dict())).all().all()
+            pd.DataFrame(cyc.to_dict()) ==
+            pd.DataFrame(cyc_from_dict.to_dict())).all().all()
         )
     
     def test_that_udds_has_18_microtrips(self):
         "Check that the number of microtrips equals expected"
         cyc = cycle.Cycle.from_file("udds")
-        microtrips = cycle.to_microtrips(cyc.get_cyc_dict())
+        microtrips = cycle.to_microtrips(cyc.to_dict())
         expected_number_of_microtrips = 18
         actual_number_of_microtrips = len(microtrips)
         self.assertTrue(
@@ -109,7 +109,7 @@ class TestCycle(unittest.TestCase):
     def test_roundtrip_of_microtrip_and_concat(self):
         "A cycle split into microtrips and concatenated back together should equal the original"
         cyc = cycle.Cycle.from_file("udds")
-        cyc_dict = cyc.get_cyc_dict()
+        cyc_dict = cyc.to_dict()
         microtrips = cycle.to_microtrips(cyc_dict)
         # NOTE: specifying the name for concat is required to get the same keys 
         reconstituted_cycle = cycle.concat(microtrips, name=cyc_dict["name"])
@@ -119,7 +119,7 @@ class TestCycle(unittest.TestCase):
     def test_roundtrip_of_microtrip_and_concat_using_keep_name_arg(self):
         "A cycle split into microtrips and concatenated back together should equal the original"
         cyc = cycle.Cycle.from_file("udds")
-        cyc_dict = cyc.get_cyc_dict()
+        cyc_dict = cyc.to_dict()
         microtrips = cycle.to_microtrips(cyc_dict, keep_name=True)
         # NOTE: specifying the name for concat is required to get the same keys 
         reconstituted_cycle = cycle.concat(microtrips, name=cyc_dict["name"])
@@ -129,10 +129,10 @@ class TestCycle(unittest.TestCase):
     def test_set_from_dict_for_a_microtrip(self):
         "Test splitting into microtrips and setting is as expected"
         cyc = cycle.Cycle.from_file("udds")
-        cyc_dict = cyc.get_cyc_dict()
+        cyc_dict = cyc.to_dict()
         microtrips = cycle.to_microtrips(cyc_dict, keep_name=True)
         cyc = cycle.Cycle.from_dict(microtrips[1])
-        mt_dict = cyc.get_cyc_dict()
+        mt_dict = cyc.to_dict()
         (are_equal, issues) = dicts_are_equal(microtrips[1], mt_dict, "first_microtrip", "microtrip_via_set_from_dict")
         self.assertTrue(are_equal, "; ".join(issues))
     
@@ -140,8 +140,8 @@ class TestCycle(unittest.TestCase):
         "Test that two cycles concatenated have the same duration as the sum of the constituents"
         cyc1 =cycle.Cycle.from_file('udds')
         cyc2 =cycle.Cycle.from_file('us06')
-        cyc_concat12 = cycle.concat([cyc1.get_cyc_dict(), cyc2.get_cyc_dict()])
-        cyc_concat21 = cycle.concat([cyc2.get_cyc_dict(), cyc1.get_cyc_dict()])
+        cyc_concat12 = cycle.concat([cyc1.to_dict(), cyc2.to_dict()])
+        cyc_concat21 = cycle.concat([cyc2.to_dict(), cyc1.to_dict()])
         cyc12 = cycle.Cycle.from_dict(cyc_dict=cyc_concat12)
         cyc21 = cycle.Cycle.from_dict(cyc_dict=cyc_concat21)
         self.assertEqual(cyc_concat12["time_s"][-1], cyc_concat21["time_s"][-1])
@@ -157,19 +157,19 @@ class TestCycle(unittest.TestCase):
         "Test structural equality of driving cycles"
         udds = cycle.Cycle.from_file("udds")
         us06 = cycle.Cycle.from_file("us06")
-        self.assertFalse(cycle.equals(udds.get_cyc_dict(), us06.get_cyc_dict()))
+        self.assertFalse(cycle.equals(udds.to_dict(), us06.to_dict()))
         udds_2 = cycle.Cycle.from_file("udds")
-        self.assertTrue(cycle.equals(udds.get_cyc_dict(), udds_2.get_cyc_dict()))
-        cyc2dict = udds_2.get_cyc_dict()
+        self.assertTrue(cycle.equals(udds.to_dict(), udds_2.to_dict()))
+        cyc2dict = udds_2.to_dict()
         cyc2dict['extra key'] = None
-        self.assertFalse(cycle.equals(udds.get_cyc_dict(), cyc2dict))
+        self.assertFalse(cycle.equals(udds.to_dict(), cyc2dict))
     
     def test_that_cycle_resampling_works_as_expected(self):
         "Test resampling the values of a cycle"
         for cycle_name in ["udds", "us06", "hwfet", "longHaulDriveCycle"]:
             cyc = cycle.Cycle.from_file(cycle_name)
-            cyc_at_dt0_1 = cycle.Cycle.from_dict(cycle.resample(cyc.get_cyc_dict(), new_dt=0.1))
-            cyc_at_dt10 = cycle.Cycle.from_dict(cycle.resample(cyc.get_cyc_dict(), new_dt=10))
+            cyc_at_dt0_1 = cycle.Cycle.from_dict(cycle.resample(cyc.to_dict(), new_dt=0.1))
+            cyc_at_dt10 = cycle.Cycle.from_dict(cycle.resample(cyc.to_dict(), new_dt=10))
             msg = f"issue for {cycle_name}, {len(cyc.time_s)} points, duration {cyc.time_s[-1]}"
             expected_num_at_dt0_1 = 10 * len(cyc.time_s) - 9
             self.assertEqual(len(cyc_at_dt0_1.time_s), expected_num_at_dt0_1, msg)
@@ -186,12 +186,12 @@ class TestCycle(unittest.TestCase):
         "Test that concatenating cycles at different sampling rates works as expected"
         udds = cycle.Cycle.from_file("udds")
         udds_10Hz = cycle.Cycle.from_dict(
-            cyc_dict=cycle.resample(udds.get_cyc_dict(), new_dt=0.1))
+            cyc_dict=cycle.resample(udds.to_dict(), new_dt=0.1))
         us06 = cycle.Cycle.from_file("us06")
         combo_resampled = cycle.resample(
-            cycle.concat([udds_10Hz.get_cyc_dict(), us06.get_cyc_dict()]),
+            cycle.concat([udds_10Hz.to_dict(), us06.to_dict()]),
             new_dt=1)
-        combo = cycle.concat([udds.get_cyc_dict(), us06.get_cyc_dict()])
+        combo = cycle.concat([udds.to_dict(), us06.to_dict()])
         self.assertTrue(cycle.equals(combo, combo_resampled))
     
     def test_resampling_with_hold_keys(self):
@@ -210,7 +210,7 @@ class TestCycle(unittest.TestCase):
     def test_that_resampling_preserves_total_distance_traveled_using_rate_keys(self):
         "Distance traveled before and after resampling should be the same when rate_keys are used"
         for cycle_name in ['udds', 'us06', 'hwfet', 'longHaulDriveCycle']:
-            the_cyc = cycle.Cycle.from_file(cycle_name).get_cyc_dict()
+            the_cyc = cycle.Cycle.from_file(cycle_name).to_dict()
             # DOWNSAMPLING
             new_dt_s = 10.0
             cyc_at_0_1hz = cycle.resample(the_cyc, new_dt=new_dt_s)
@@ -261,7 +261,7 @@ class TestCycle(unittest.TestCase):
     
     def test_clip_by_times(self):
         "Test that clipping by times works as expected"
-        udds = cycle.Cycle.from_file("udds").get_cyc_dict()
+        udds = cycle.Cycle.from_file("udds").to_dict()
         udds_start = cycle.clip_by_times(udds, t_end=300)
         udds_end = cycle.clip_by_times(udds, t_end=udds["time_s"][-1], t_start=300)
         self.assertTrue(udds_start['time_s'][-1] == 300.0)
@@ -305,7 +305,7 @@ class TestCycle(unittest.TestCase):
         "Checks that copy methods produce identical cycles"
         udds = cycle.Cycle.from_file('udds')
         another_udds = cycle.copy_cycle(udds)
-        self.assertTrue(udds.get_cyc_dict(), another_udds.get_cyc_dict())
+        self.assertTrue(udds.to_dict(), another_udds.to_dict())
     
     def test_make_cycle(self):
         "Check that make_cycle works as expected"
