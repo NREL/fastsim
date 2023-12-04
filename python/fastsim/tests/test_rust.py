@@ -328,7 +328,7 @@ class TestRust(unittest.TestCase):
         amplitude = 0.05
         period = 500  # seconds
         cyc.grade = amplitude * np.sin((2*np.pi/period) * cyc.time_s)
-        cyc_dict = cyc.get_cyc_dict()
+        cyc_dict = cyc.to_dict()
 
         self.test_vehicle_for_discrepancies(cyc_dict=cyc_dict)
 

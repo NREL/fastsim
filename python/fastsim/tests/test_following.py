@@ -421,7 +421,7 @@ class TestFollowing(unittest.TestCase):
                 results = None
                 # CYCLE STATISICS
                 stopped_dict = fastsim.cycle.make_cycle([0, 120], [0, 0])
-                udds_dict = fastsim.cycle.Cycle.from_file('udds').get_cyc_dict()
+                udds_dict = fastsim.cycle.Cycle.from_file('udds').to_dict()
                 udds = fastsim.cycle.Cycle.from_dict(
                     fastsim.cycle.resample(
                         fastsim.cycle.concat([udds_dict, stopped_dict]),
@@ -705,7 +705,7 @@ class TestFollowing(unittest.TestCase):
                 results = None
                 # CYCLE STATISICS
                 stopped_dict = fastsim.cycle.make_cycle([0, 120], [0, 0])
-                udds_dict = fastsim.cycle.Cycle.from_file('udds').get_cyc_dict()
+                udds_dict = fastsim.cycle.Cycle.from_file('udds').to_dict()
                 udds = fastsim.cycle.Cycle.from_dict(
                     fastsim.cycle.resample(
                         fastsim.cycle.concat([udds_dict, stopped_dict]),

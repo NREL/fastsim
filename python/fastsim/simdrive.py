@@ -209,7 +209,7 @@ class SimDrive(object):
 
     def init_arrays(self):
         self.i = 1  # initialize step counter for possible use outside sim_drive_walk()
-        cyc_len = self.cyc.len
+        cyc_len = len(self.cyc)
 
         # Component Limits -- calculated dynamically
         self.cur_max_fs_kw_out = np.zeros(cyc_len, dtype=np.float64)
@@ -484,7 +484,7 @@ class SimDrive(object):
         params = self.sim_params
         params.idm_allow = True
         if not by_microtrip:
-            if self.cyc0.len > 0 and self.cyc0.time_s[-1] > 0.0:
+            if len(self.cyc0) > 0 and self.cyc0.time_s[-1] > 0.0:
                 params.idm_v_desired_m_per_s = self.cyc0.dist_m.sum() / self.cyc0.time_s[-1]
             else:
                 params.idm_v_desired_m_per_s = 0.0

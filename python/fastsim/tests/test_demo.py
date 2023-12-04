@@ -131,7 +131,7 @@ def use_simdrive_post(use_rust=False, verbose=False):
     # generate micro-trip 
     t0 = time.perf_counter()
     cyc = fsim.cycle.Cycle.from_file("udds")
-    microtrips = fsim.cycle.to_microtrips(cyc.get_cyc_dict())
+    microtrips = fsim.cycle.to_microtrips(cyc.to_dict())
     cyc = fsim.cycle.Cycle.from_dict(microtrips[1])
     if verbose:
         print(f'Time to load cycle: {time.perf_counter() - t0:.2e} s')
@@ -278,8 +278,8 @@ class TestDemo(unittest.TestCase):
     def test_cycle_to_dict(self):
         py_cyc = fsim.cycle.Cycle.from_file('udds')
         ru_cyc = py_cyc.to_rust()
-        py_dict = py_cyc.get_cyc_dict()
-        ru_dict = ru_cyc.get_cyc_dict()
+        py_dict = py_cyc.to_dict()
+        ru_dict = ru_cyc.to_dict()
         py_keys = {k for k in py_dict}
         ru_keys = {k for k in ru_dict}
         ru_keys.add("name") # Rust doesn't provide 'name'

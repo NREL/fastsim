@@ -16,10 +16,10 @@ def convention_eu_veh_wltp_fe_test():
     wltp_med_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_med3b.csv').to_rust()
     wltp_high_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_high3b.csv').to_rust()
     wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_extra_high3.csv').to_rust()
-    cyc_wltp_combo = fsim.cycle.concat([wltp_low_cyc_3.get_cyc_dict(), 
-                                        wltp_med_cyc_3b.get_cyc_dict(),
-                                        wltp_high_cyc_3b.get_cyc_dict(),
-                                        wltp_extrahigh_cyc_3.get_cyc_dict()]
+    cyc_wltp_combo = fsim.cycle.concat([wltp_low_cyc_3.to_dict(), 
+                                        wltp_med_cyc_3b.to_dict(),
+                                        wltp_high_cyc_3b.to_dict(),
+                                        wltp_extrahigh_cyc_3.to_dict()]
                                       )
     cyc_wltp_combo = fsim.cycle.Cycle.from_dict(cyc_wltp_combo).to_rust()
 
@@ -60,10 +60,10 @@ def hybrid_eu_veh_wltp_fe_test():
     wltp_high_cyc_3b_rust = wltp_high_cyc_3b.to_rust()
     wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_extra_high3.csv')
     wltp_extrahigh_cyc_3_rust = wltp_extrahigh_cyc_3.to_rust()
-    cyc_wltp_combined = fsim.cycle.concat([wltp_low_cyc_3.get_cyc_dict(), 
-                                        wltp_med_cyc_3b.get_cyc_dict(),
-                                        wltp_high_cyc_3b.get_cyc_dict(),
-                                        wltp_extrahigh_cyc_3.get_cyc_dict()
+    cyc_wltp_combined = fsim.cycle.concat([wltp_low_cyc_3.to_dict(), 
+                                        wltp_med_cyc_3b.to_dict(),
+                                        wltp_high_cyc_3b.to_dict(),
+                                        wltp_extrahigh_cyc_3.to_dict()
                                         ]
                                        )
     cyc_wltp_combined = fsim.cycle.Cycle.from_dict(cyc_wltp_combined)

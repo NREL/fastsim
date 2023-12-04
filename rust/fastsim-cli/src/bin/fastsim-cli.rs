@@ -1,4 +1,5 @@
 use clap::{ArgGroup, Parser};
+use ndarray::array;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -226,13 +227,14 @@ pub fn main() -> anyhow::Result<()> {
         RustCycle::from_file(adopt_hd_string)
     } else {
         //TODO? use pathbuff to string, for robustness
-        Ok(RustCycle::new(
-            vec![0.0],
-            vec![0.0],
-            vec![0.0],
-            vec![0.0],
-            "",
-        ))
+        Ok(RustCycle {
+            time_s: array![0.0],
+            mps: array![0.0],
+            grade: array![0.0],
+            road_type: array![0.0],
+            name: String::default(),
+            orphaned: false,
+        })
     }?;
 
     // TODO: put in logic here for loading vehicle for adopt-hd

@@ -123,7 +123,7 @@ def load_cycle(cyc_name: str, use_rust: bool=False) -> fastsim.cycle.Cycle:
         if RESAMPLE_TO_1HZ:
             raw_cycle = fastsim.cycle.Cycle.from_dict(
                 fastsim.cycle.resample(
-                    raw_cycle.get_cyc_dict(),
+                    raw_cycle.to_dict(),
                     new_dt=1.0,
                     hold_keys_next={'grade'},
                 )
