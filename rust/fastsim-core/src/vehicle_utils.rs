@@ -1954,10 +1954,10 @@ mod vehicle_utils_tests {
     }
 
     #[test]
-    fn test_import_robustness() -> anyhow::Result<()> {
+    fn test_import_robustness() {
         // Ensure 2019 data is cached
         let ddpath = get_fastsim_data_dir();
-        ensure!(ddpath.is_some());
+        assert!(ddpath.is_some());
         let ddpath = ddpath.unwrap();
         let model_year: u32 = 2019;
         let years = {
@@ -1966,7 +1966,7 @@ mod vehicle_utils_tests {
             s
         };
         let cache_url = get_default_cache_url();
-        populate_cache_for_given_years_if_needed(ddpath.as_path(), &years, &cache_url)?;
+        populate_cache_for_given_years_if_needed(ddpath.as_path(), &years, &cache_url).unwrap();
         // Load all year/make/models for 2019
         let vehicles_path = ddpath.join(Path::new("2019-vehicles.csv"));
         let veh_records = {
@@ -2022,28 +2022,25 @@ mod vehicle_utils_tests {
             num_records += 1;
         }
         let success_frac: f64 = (num_success as f64) / (num_records as f64);
-        ensure!(success_frac > 0.90, "success_frac = {}", success_frac);
-        Ok(())
+        assert!(success_frac > 0.90, "success_frac = {}", success_frac);
     }
 
     #[test]
-    fn test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir(
-    ) -> anyhow::Result<()> {
+    fn test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir() {
         let year = String::from("2020");
         let make = String::from("Toyota");
         let model = String::from("Corolla");
-        let data_dir = PathBuf::from("./temp");
+        let temp_dir = tempfile::tempdir().unwrap();
+        let data_dir = temp_dir.path();
         let cacheurl = get_default_cache_url();
-        std::fs::create_dir_all(data_dir.as_path())?;
-        ensure!(!get_options_for_year_make_model(
+        assert!(!get_options_for_year_make_model(
             &year,
             &make,
             &model,
             Some(cacheurl),
-            Some(data_dir.to_str().unwrap_or("").to_string()),
-        )?
+            Some(data_dir.to_str().unwrap().to_string()),
+        )
+        .unwrap()
         .is_empty());
-        Ok(())
-        // TODO: delete the data_dir and all contents
     }
 }
