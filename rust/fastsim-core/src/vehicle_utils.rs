@@ -957,6 +957,8 @@ fn try_make_single_vehicle(
     }
 
     // TODO: fix glider_kg calculation
+    // https://github.com/NREL/fastsim/pull/30#issuecomment-1841413126
+    //
     // let glider_kg = (epa_data.test_weight_lbs / LBS_PER_KG)
     //     - ref_veh.cargo_kg
     //     - ref_veh.trans_kg
