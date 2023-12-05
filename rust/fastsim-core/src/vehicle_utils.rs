@@ -989,9 +989,9 @@ fn try_make_single_vehicle(
         wheel_rr_coef: 0.0, // overridden
         stop_start: fe_gov_data.start_stop == "Y",
         force_aux_on_fc: false,
-        val_udds_mpgge: fe_gov_data.city_mpg_fuel1 as f64,
-        val_hwy_mpgge: fe_gov_data.highway_mpg_fuel1 as f64,
-        val_comb_mpgge: fe_gov_data.comb_mpg_fuel1 as f64,
+        val_udds_mpgge: fe_gov_data.city_mpg_fuel1,
+        val_hwy_mpgge: fe_gov_data.highway_mpg_fuel1,
+        val_comb_mpgge: fe_gov_data.comb_mpg_fuel1,
         fc_peak_eff_override: None,
         mc_peak_eff_override: Some(0.95),
         fs_max_kw,
