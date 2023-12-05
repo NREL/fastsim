@@ -413,6 +413,19 @@ fn derive_transmission_specs(fegov: &VehicleDataFE) -> (u32, String) {
 }
 
 /// Match EPA Test Data with FuelEconomy.gov data and return best match
+/// The matching algorithm tries to find the best match in the EPA Test data for the given FuelEconomy.gov data
+/// The algorithm works as follows:
+/// - only EPA Test Data matching the year and make of the FuelEconomy.gov data will be considered
+/// - we try to match on both the efid/test id and also the model name
+/// - next, for each match, we calculate a score based on matching various powertrain aspects based on:
+///     - transmission type
+///     - number of gears in the transmission
+///     - drive type (all-wheel drive / 4-wheel drive, etc.)
+///     - (for non-EVs)
+///         - engine displacement
+///         - number of cylinders
+/// RETURNS: the EPA Test data with the best match on make and/or efid/test id. When multiple vehicles match
+///          the same make name/ efid/test-id, we return the one with the highest score
 fn match_epatest_with_fegov_v2(
     fegov: &VehicleDataFE,
     epatest_data: &[VehicleDataEPA],
