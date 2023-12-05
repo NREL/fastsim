@@ -13,31 +13,11 @@ import seaborn as sns
 
 import fastsim as fsim
 from fastsim.tests.test_coasting import make_coasting_plot
+from fastsim.demos.utils import maybe_str_to_bool, DEMO_TEST_ENV_VAR
 
 RAN_SUCCESSFULLY = False
 
-def maybe_str_to_bool(x, default=True):
-    """
-    Turn values of None or string to bool
-    - x: str | None, some parameter, a string or None
-    - default: Bool, the default if x is None or blank
-    RETURN: True or False
-    """
-    if x is None:
-        return default
-    if x is True or x is False:
-        return x
-    try:
-        lower_cased = x.lower().strip()
-        if lower_cased == 'false':
-            return False
-        if lower_cased == 'true':
-            return True
-        return default
-    except:
-        return default
-
-IS_INTERACTIVE = maybe_str_to_bool(os.getenv('FASTSIM_DEMO_IS_INTERACTIVE'))
+IS_INTERACTIVE = maybe_str_to_bool(os.getenv(DEMO_TEST_ENV_VAR))
 
 
 # %% [markdown]
