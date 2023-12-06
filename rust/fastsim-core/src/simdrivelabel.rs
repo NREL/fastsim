@@ -296,9 +296,9 @@ pub fn get_label_fe(
             out.adj_comb_kwh_per_mi =
                 0.55 * out.adj_udds_kwh_per_mi + 0.45 * out.adj_hwy_kwh_per_mi;
 
-            out.adj_udds_kwh_per_mi *= CHG_EFF;
-            out.adj_hwy_kwh_per_mi *= CHG_EFF;
-            out.adj_comb_kwh_per_mi *= CHG_EFF;
+            out.adj_udds_ess_kwh_per_mi = out.adj_udds_kwh_per_mi * CHG_EFF;
+            out.adj_hwy_ess_kwh_per_mi = out.adj_hwy_kwh_per_mi * CHG_EFF;
+            out.adj_comb_ess_kwh_per_mi = out.adj_comb_kwh_per_mi * CHG_EFF;
 
             // range for combined city/highway
             out.net_range_miles = veh.ess_max_kwh / out.adj_comb_ess_kwh_per_mi;
