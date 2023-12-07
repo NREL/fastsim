@@ -294,7 +294,6 @@ pub fn main() -> anyhow::Result<()> {
         let mut sim_drive_accel = RustSimDrive::new(make_accel_trace(), veh.clone());
         let net_accel = get_net_accel(&mut sim_drive_accel, &veh.scenario_name)?;
         let mut mpgge = sim_drive.mpgge;
-
         let h2_diesel_results = if let Some(hd_h2_diesel_ice_h2share) = hd_h2_diesel_ice_h2share {
             if let Some(fc_pwr_out_perc) = fc_pwr_out_perc {
                 let dist_mi = sim_drive.dist_mi.sum();
@@ -375,18 +374,19 @@ fn array_to_object_representation(xs: &Vec<f64>) -> ArrayObject {
     }
 }
 
-fn transform_array_of_value_to_vec_of_f64(array_of_values: &Vec<Value>) -> Vec<f64> {
-    let mut vec_of_f64 = Vec::<f64>::new();
-    for item_raw in array_of_values {
-        if item_raw.is_number() {
-            let item = item_raw.as_f64().unwrap();
-            vec_of_f64.push(item);
-        }
-    }
-    vec_of_f64
+fn transform_array_of_value_to_vec_of_f64(array_of_values: &[Value]) -> Vec<f64> {
+    array_of_values.iter().fold(
+        Vec::<f64>::with_capacity(array_of_values.len()),
+        |mut acc, x| {
+            if x.is_number() {
+                acc.push(x.as_f64().unwrap());
+            }
+            acc
+        },
+    )
 }
 
-fn transform_array_of_value_to_ndarray_representation(array_of_values: &Vec<Value>) -> ArrayObject {
+fn transform_array_of_value_to_ndarray_representation(array_of_values: &[Value]) -> ArrayObject {
     array_to_object_representation(&transform_array_of_value_to_vec_of_f64(array_of_values))
 }
 

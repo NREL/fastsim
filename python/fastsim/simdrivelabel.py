@@ -13,7 +13,13 @@ cyc_hwfet = cycle.Cycle.from_file('hwfet')
 sim_params = simdrive.SimDriveParams()
 props = params.PhysicalProperties()
 
-def get_label_fe(veh:vehicle.Vehicle, full_detail:bool=False, verbose:bool=False, chg_eff:float=None, use_rust=False):
+def get_label_fe(
+    veh:vehicle.Vehicle, 
+    full_detail:bool=False, 
+    verbose:bool=False, 
+    chg_eff:float=None, 
+    use_rust=False
+):
     """Generates label fuel economy (FE) values for a provided vehicle.
     
     Arguments:

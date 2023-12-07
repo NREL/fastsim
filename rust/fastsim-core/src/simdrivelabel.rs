@@ -731,11 +731,13 @@ mod simdrivelabel_tests {
         let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
-        label_fe.veh = vehicle::RustVehicle::default();
+        // The reason this fails is that NaN != NaN. mock_vehicle defaults some values to NaN.
+        let ref_veh = vehicle::RustVehicle::default();
+        label_fe.veh = ref_veh.clone();
         // println!("Calculated net accel: {}", label_fe.net_accel);
 
         let label_fe_truth: LabelFe = LabelFe {
-            veh: vehicle::RustVehicle::default(),
+            veh: ref_veh,
             adj_params: RustLongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
             lab_udds_mpgge: 32.47503766676829,
             lab_hwy_mpgge: 42.265348793379445,

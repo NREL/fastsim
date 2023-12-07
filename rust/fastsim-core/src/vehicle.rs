@@ -84,7 +84,7 @@ lazy_static! {
         Self::mock_vehicle()
     }
 )]
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq, Validate)]
 /// Struct containing vehicle attributes
 /// # Python Examples
 /// ```python
@@ -850,6 +850,8 @@ impl RustVehicle {
     }
 
     pub fn mock_vehicle() -> Self {
+        // NOTE: Default::default() uses mock_vehicle so this method can't "splat" defaults in
+        // (i.e., = Self { ..Default::default() } will cause a stack overflow)
         let mut v = Self {
             scenario_name: String::from("2016 FORD Escape 4cyl 2WD"),
             selection: 5,
@@ -953,6 +955,7 @@ impl RustVehicle {
             input_kw_out_array: Default::default(),
             fc_kw_out_array: Default::default(),
             fc_eff_array: Default::default(),
+            max_regen_kwh: Default::default(),
             mc_eff_array: Default::default(),
             mc_perc_out_array: Default::default(),
             mc_kw_out_array: Default::default(),
@@ -965,10 +968,95 @@ impl RustVehicle {
             fs_mass_kg: Default::default(),
             veh_kg: Default::default(),
             max_trac_mps2: Default::default(),
-            ..Default::default()
+            doc: Default::default(),
+            drag_coef_doc: Default::default(),
+            frontal_area_m2_doc: Default::default(),
+            glider_kg_doc: Default::default(),
+            veh_cg_m_doc: Default::default(),
+            drive_axle_weight_frac_doc: Default::default(),
+            wheel_base_m_doc: Default::default(),
+            cargo_kg_doc: Default::default(),
+            veh_override_kg_doc: Default::default(),
+            comp_mass_multiplier_doc: Default::default(),
+            fs_max_kw_doc: Default::default(),
+            fs_secs_to_peak_pwr_doc: Default::default(),
+            fs_kwh_doc: Default::default(),
+            fs_kwh_per_kg_doc: Default::default(),
+            fc_max_kw_doc: Default::default(),
+            fc_pwr_out_perc_doc: Default::default(),
+            fc_eff_map_doc: Default::default(),
+            fc_eff_type_doc: Default::default(),
+            fc_sec_to_peak_pwr_doc: Default::default(),
+            fc_base_kg_doc: Default::default(),
+            fc_kw_per_kg_doc: Default::default(),
+            min_fc_time_on_doc: Default::default(),
+            idle_fc_kw_doc: Default::default(),
+            mc_max_kw_doc: Default::default(),
+            mc_pwr_out_perc_doc: Default::default(),
+            mc_eff_map_doc: Default::default(),
+            mc_sec_to_peak_pwr_doc: Default::default(),
+            mc_pe_kg_per_kw_doc: Default::default(),
+            mc_pe_base_kg_doc: Default::default(),
+            ess_max_kw_doc: Default::default(),
+            ess_max_kwh_doc: Default::default(),
+            ess_kg_per_kwh_doc: Default::default(),
+            ess_base_kg_doc: Default::default(),
+            ess_round_trip_eff_doc: Default::default(),
+            ess_life_coef_a_doc: Default::default(),
+            ess_life_coef_b_doc: Default::default(),
+            min_soc_doc: Default::default(),
+            max_soc_doc: Default::default(),
+            ess_dischg_to_fc_max_eff_perc_doc: Default::default(),
+            ess_chg_to_fc_max_eff_perc_doc: Default::default(),
+            wheel_inertia_kg_m2_doc: Default::default(),
+            num_wheels_doc: Default::default(),
+            wheel_rr_coef_doc: Default::default(),
+            wheel_radius_m_doc: Default::default(),
+            wheel_coef_of_fric_doc: Default::default(),
+            max_accel_buffer_mph_doc: Default::default(),
+            max_accel_buffer_perc_of_useable_soc_doc: Default::default(),
+            perc_high_acc_buf_doc: Default::default(),
+            mph_fc_on_doc: Default::default(),
+            kw_demand_fc_on_doc: Default::default(),
+            max_regen_doc: Default::default(),
+            stop_start_doc: Default::default(),
+            force_aux_on_fc_doc: Default::default(),
+            alt_eff_doc: Default::default(),
+            chg_eff_doc: Default::default(),
+            aux_kw_doc: Default::default(),
+            trans_kg_doc: Default::default(),
+            trans_eff_doc: Default::default(),
+            ess_to_fuel_ok_error_doc: Default::default(),
+            fc_peak_eff_override_doc: Default::default(),
+            mc_peak_eff_override_doc: Default::default(),
         };
         v.set_derived().unwrap();
         v
+    }
+}
+
+impl Default for RustVehicle {
+    fn default() -> Self {
+        let mut veh = RustVehicle::mock_vehicle();
+        veh.scenario_name = Default::default();
+        veh.selection = Default::default();
+        veh.veh_year = Default::default();
+        veh.val_udds_kwh_per_mile = Default::default();
+        veh.val_hwy_kwh_per_mile = Default::default();
+        veh.val_comb_kwh_per_mile = Default::default();
+        veh.val_cd_range_mi = Default::default();
+        veh.val_const65_mph_kwh_per_mile = Default::default();
+        veh.val_const60_mph_kwh_per_mile = Default::default();
+        veh.val_const55_mph_kwh_per_mile = Default::default();
+        veh.val_const45_mph_kwh_per_mile = Default::default();
+        veh.val_unadj_udds_kwh_per_mile = Default::default();
+        veh.val_unadj_hwy_kwh_per_mile = Default::default();
+        veh.val0_to60_mph = Default::default();
+        veh.val_ess_life_miles = Default::default();
+        veh.val_range_miles = Default::default();
+        veh.val_veh_base_cost = Default::default();
+        veh.val_msrp = Default::default();
+        veh
     }
 }
 
