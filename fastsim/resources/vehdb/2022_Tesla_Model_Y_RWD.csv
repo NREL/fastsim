@@ -2,14 +2,14 @@
 ,Scenario name,2022 Tesla Model Y RWD,
 ,vehYear,2022,
 ,vehPtType,BEV,
-,dragCoef,0.21716617209403616,
-,frontalAreaM2,3.121538772737215,
-,gliderKg,306.4316324129186,
+,dragCoef,0.23,previously 0.21716617209403616
+,frontalAreaM2,2.45,
+,gliderKg,628.8332729551923,
 ,vehCgM,-0.53,
 ,driveAxleWeightFrac,0.59,
-,wheelBaseM,2.6,
+,wheelBaseM,2.89,https://www.evspecifications.com/en/model/102829e
 ,cargoKg,136.0,
-,vehOverrideKg,1909,
+,vehOverrideKg,1909,https://www.evspecifications.com/en/model/102829e
 ,compMassMultiplier,1.4,
 ,maxFuelStorKw,0.0,
 ,fuelStorSecsToPeakPwr,1.0,
@@ -42,8 +42,8 @@
 ,essChgToFcMaxEffPerc,0.0,
 ,wheelInertiaKgM2,0.815,
 ,numWheels,4.0,
-,wheelRrCoef,0.007752538840328322,
-,wheelRadiusM,0.336,
+,wheelRrCoef,0.006,previously 0.007752538840328322
+,wheelRadiusM,0.36295,275/35R21
 ,wheelCoefOfFric,0.7,
 ,maxAccelBufferMph,60.0,
 ,maxAccelBufferPercOfUseableSoc,0.2,
@@ -55,7 +55,7 @@
 ,forceAuxOnFC,False,
 ,altEff,1.0,
 ,chgEff,0.86,
-,auxKw,0.1,previously 0.25
+,auxKw,0.2,
 ,transKg,114.0,
 ,transEff,0.98,
 ,essToFuelOkError,0.005,
