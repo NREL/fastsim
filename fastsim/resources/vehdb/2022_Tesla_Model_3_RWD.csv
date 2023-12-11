@@ -1,9 +1,9 @@
 ,Param Name,Param Value,Param Source / Comments
-,Scenario name,2022 Tesla Model 3 RWD,
+,Scenario_name,2022 Tesla Model 3 RWD,
 ,vehYear,2022,
 ,vehPtType,BEV,
-,dragCoef,0.20831719183517006,
-,frontalAreaM2,2.667759525218935,
+,dragCoef,0.23,previously 0.20831719183517006; https://arxiv.org/pdf/1908.08920.pdf%5D
+,frontalAreaM2,2.22,previously 2.667759525218935; https://arxiv.org/pdf/1908.08920.pdf%5D
 ,gliderKg,628.8332729551923,
 ,vehCgM,-0.53,negative = RWD
 ,driveAxleWeightFrac,0.59,
@@ -16,6 +16,7 @@
 ,fuelStorKwh,0.0,
 ,fuelStorKwhPerKg,9.89,
 ,maxFuelConvKw,0.0,
+,fcPwrOutPerc,"[0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0]",
 ,fcEffMap,"[0.1, 0.12, 0.28, 0.35, 0.38, 0.39, 0.4, 0.4, 0.38, 0.37, 0.36, 0.35]",
 ,fcEffType,SI,
 ,fuelConvSecsToPeakPwr,6.0,
@@ -42,7 +43,7 @@
 ,essChgToFcMaxEffPerc,0.0,
 ,wheelInertiaKgM2,0.815,
 ,numWheels,4.0,
-,wheelRrCoef,0.009028609173159454,
+,wheelRrCoef,0.007,previously 0.009028609173159454
 ,wheelRadiusM,0.33435,previously 0.336
 ,wheelCoefOfFric,0.7,
 ,maxAccelBufferMph,60.0,
