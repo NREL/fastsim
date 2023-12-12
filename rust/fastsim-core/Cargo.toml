@@ -18,7 +18,7 @@ pyo3 = { workspace = true, features = [
 anyhow = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
-ndarray = { version = "0.15.4", features = ["serde"] }
+ndarray = { workspace = true }
 csv = "1.1"
 serde_json = "1.0.81"
 bincode = "1.3.3"
@@ -28,13 +28,18 @@ argmin = "0.7.0"
 argmin-math = { version = "0.2.1", features = [
     "ndarray_latest-nolinalg-serde",
 ] }
+curl = "0.4.44"
+serde-xml-rs = "0.6.0"
 validator = { version = "0.16", features = ["derive"] }
 lazy_static = "1.4.0"
 regex = "1.7.1"
 rayon = "1.7.0"
+zip = "0.6.6"
+directories = "5.0.1"
 include_dir = "0.7.3"
 itertools = "0.12.0"
 ndarray-stats = "0.5.1"
+tempfile = "3.8.1"
 
 [package.metadata]
 include = [

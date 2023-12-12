@@ -123,16 +123,18 @@ impl SerdeAPI for PHEVCycleCalc {}
 
 pub fn make_accel_trace() -> RustCycle {
     let accel_cyc_secs = Array::range(0., 300., 0.1);
-    let mut accel_cyc_mps = Array::ones(accel_cyc_secs.len()) * 90.0 / MPH_PER_MPS;
+    let cyc_len = accel_cyc_secs.len();
+    let mut accel_cyc_mps = Array::ones(cyc_len) * 90.0 / MPH_PER_MPS;
     accel_cyc_mps[0] = 0.0;
 
-    RustCycle::new(
-        accel_cyc_secs.to_vec(),
-        accel_cyc_mps.to_vec(),
-        Array::zeros(accel_cyc_secs.len()).to_vec(),
-        Array::zeros(accel_cyc_secs.len()).to_vec(),
-        "accel",
-    )
+    RustCycle {
+        time_s: accel_cyc_secs,
+        mps: accel_cyc_mps,
+        grade: Array::zeros(cyc_len),
+        road_type: Array::zeros(cyc_len),
+        name: String::from("accel"),
+        orphaned: false,
+    }
 }
 
 #[cfg(feature = "pyo3")]
@@ -294,9 +296,9 @@ pub fn get_label_fe(
             out.adj_comb_kwh_per_mi =
                 0.55 * out.adj_udds_kwh_per_mi + 0.45 * out.adj_hwy_kwh_per_mi;
 
-            out.adj_udds_kwh_per_mi *= CHG_EFF;
-            out.adj_hwy_kwh_per_mi *= CHG_EFF;
-            out.adj_comb_kwh_per_mi *= CHG_EFF;
+            out.adj_udds_ess_kwh_per_mi = out.adj_udds_kwh_per_mi * CHG_EFF;
+            out.adj_hwy_ess_kwh_per_mi = out.adj_hwy_kwh_per_mi * CHG_EFF;
+            out.adj_comb_ess_kwh_per_mi = out.adj_comb_kwh_per_mi * CHG_EFF;
 
             // range for combined city/highway
             out.net_range_miles = veh.ess_max_kwh / out.adj_comb_ess_kwh_per_mi;
@@ -729,11 +731,13 @@ mod simdrivelabel_tests {
         let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
-        label_fe.veh = vehicle::RustVehicle::default();
+        // The reason this fails is that NaN != NaN. mock_vehicle defaults some values to NaN.
+        let ref_veh = vehicle::RustVehicle::default();
+        label_fe.veh = ref_veh.clone();
         // println!("Calculated net accel: {}", label_fe.net_accel);
 
         let label_fe_truth: LabelFe = LabelFe {
-            veh: vehicle::RustVehicle::default(),
+            veh: ref_veh,
             adj_params: RustLongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
             lab_udds_mpgge: 32.47503766676829,
             lab_hwy_mpgge: 42.265348793379445,

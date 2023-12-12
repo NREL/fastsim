@@ -27,6 +27,7 @@ dependencies = [
     "pyyaml",
     "pytest",
     "setuptools<=65.6.3", # suppresses pkg_resources deprecation warning
+    "openpyxl>=3.1.2"
 ]
 
 [project.urls]

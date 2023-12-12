@@ -16,6 +16,7 @@ codegen-units = 1 # optimize connection between modules
 
 [workspace.dependencies]
 anyhow = "1.0.57"
+ndarray = { version = "0.15.4", features = ["serde"] }
 pyo3 = "0.19"
 pyo3-log = "*"
 serde = "1.0.143"
