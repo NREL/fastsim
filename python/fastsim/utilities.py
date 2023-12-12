@@ -3,13 +3,18 @@
 from __future__ import annotations
 from typing import Dict, Any, Optional, Tuple
 import numpy as np
+import fastsim as fsim
 from fastsim import parameters as params
 import seaborn as sns
-import re
 import datetime
 import logging
 from pathlib import Path
+import re
 from contextlib import contextmanager
+import os
+from pkg_resources import get_distribution
+import pathlib
+import shutil
 
 sns.set()
 
@@ -394,3 +399,52 @@ def calculate_tire_radius(tire_code: str, units: str = "m"):
     # Return result
     # print(f"Tire radius: {radius} {units}")
     return radius
+
+def show_plots() -> bool:
+    """
+    Returns true if plots should be displayed
+    """
+    return os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
+
+def copy_demo_files(path_for_copies: Path=Path("demos")):
+    """
+    Copies demo files from demos folder into specified local directory
+
+    # Arguments
+    - `path_for_copies`: path to copy files into (relative or absolute in)
+
+    # Warning
+    Running this function will overwrite existing files with the same name in the specified directory, so 
+    make sure any files with changes you'd like to keep are renamed.
+    """
+    v = f"v{fsim.__version__}"
+    current_demo_path = fsim.package_root() / "demos"
+    assert path_for_copies.resolve() != Path(current_demo_path), "Can't copy demos inside site-packages"
+    demo_files = list(current_demo_path.glob('*demo*.py'))
+    test_demo_files = list(current_demo_path.glob('*test*.py'))
+    for file in test_demo_files:
+        demo_files.remove(file)
+    for file in demo_files:
+        if os.path.exists(path_for_copies):
+            dest_file = path_for_copies / file.name
+            shutil.copy(file, path_for_copies)
+            with open(dest_file, "r+") as file:
+                file_content = file.readlines()
+                prepend_str = f"# %% Copied from FASTSim version '{v}'. Guaranteed compatibility with this version only.\n"
+                prepend = [prepend_str]
+                file_content = prepend + file_content
+                file.seek(0)
+                file.writelines(file_content)
+            print(f"Saved {dest_file.name} to {dest_file}")
+        else:
+            os.makedirs(path_for_copies)
+            dest_file = path_for_copies / file.name
+            shutil.copy(file, path_for_copies)
+            with open(dest_file, "r+") as file:
+                file_content = file.readlines()
+                prepend_str = f"# %% Copied from FASTSim version '{v}'. Guaranteed compatibility with this version only.\n"
+                prepend = [prepend_str]
+                file_content = prepend + file_content
+                file.seek(0)
+                file.writelines(file_content)
+            print(f"Saved {dest_file.name} to {dest_file}")

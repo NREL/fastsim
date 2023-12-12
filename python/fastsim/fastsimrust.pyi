@@ -2,6 +2,9 @@ from __future__ import annotations
 from typing_extensions import Self
 from typing import Dict, List, Tuple, Optional, ByteString
 from abc import ABC
+from fastsim.vehicle import VEHICLE_DIR
+import yaml
+from pathlib import Path
 
 class RustVec(ABC):
     def __repr__(self) -> str:
@@ -779,6 +782,9 @@ class VehicleThermal:
         """Reset the orphaned flag to false."""
         ...
 
+    @classmethod
+    def from_file(cls, filename: str) -> Self:
+        ...
 
 class ThermalStateHistoryVec(SerdeAPI, RustVec):
     ...

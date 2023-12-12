@@ -29,7 +29,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 from pkg_resources import get_distribution
-
 __version__ = get_distribution("fastsim").version
 
 __doc__ += "\nhttps://pypi.org/project/fastsim/"
