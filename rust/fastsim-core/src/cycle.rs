@@ -630,6 +630,25 @@ impl SerdeAPI for RustCycle {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
 
+    // TODO: make this get called somewhere
+    fn init(&mut self) -> anyhow::Result<()> {
+        ensure!(!self.is_empty(), "Deserialized cycle is empty");
+        let cyc_len = self.len();
+        ensure!(
+            self.mps.len() == cyc_len,
+            "Length of `mps` does not match length of `time_s`"
+        );
+        ensure!(
+            self.grade.len() == cyc_len,
+            "Length of `grade` does not match length of `time_s`"
+        );
+        ensure!(
+            self.road_type.len() == cyc_len,
+            "Length of `road_type` does not match length of `time_s`"
+        );
+        Ok(())
+    }
+
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
         let filepath = filepath.as_ref();
         let extension = filepath
@@ -824,9 +843,12 @@ impl RustCycle {
         }
     }
 
-    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.time_s.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn test_cyc() -> Self {
