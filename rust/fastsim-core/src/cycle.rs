@@ -626,9 +626,10 @@ pub struct RustCycle {
     pub orphaned: bool,
 }
 
-const ACCEPTED_FILE_FORMATS: [&str; 4] = ["yaml", "json", "bin", "csv"];
-
 impl SerdeAPI for RustCycle {
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
+
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
         let filepath = filepath.as_ref();
         let extension = filepath
@@ -641,7 +642,8 @@ impl SerdeAPI for RustCycle {
             "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
             "csv" => self.write_csv(&mut csv::Writer::from_path(filepath)?)?,
             _ => bail!(
-                "Unsupported file format {extension:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+                "Unsupported format {extension:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS
             ),
         }
         Ok(())
@@ -662,9 +664,12 @@ impl SerdeAPI for RustCycle {
                     }
                     cyc
                 }
-                _ => bail!(
-                    "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
-                ),
+                _ => {
+                    bail!(
+                        "Unsupported format {format:?}, must be one of {:?}",
+                        Self::ACCEPTED_BYTE_FORMATS
+                    )
+                }
             },
         )
     }
@@ -679,9 +684,12 @@ impl SerdeAPI for RustCycle {
                     self.write_csv(&mut wtr)?;
                     String::from_utf8(wtr.into_inner()?)?
                 }
-                _ => bail!(
-                    "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
-                ),
+                _ => {
+                    bail!(
+                        "Unsupported format {format:?}, must be one of {:?}",
+                        Self::ACCEPTED_STR_FORMATS
+                    )
+                }
             },
         )
     }
@@ -694,7 +702,8 @@ impl SerdeAPI for RustCycle {
             "json" => Self::from_json(contents),
             "csv" => Self::from_csv_str(contents, ""),
             _ => bail!(
-                "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_STR_FORMATS
             ),
         }
     }

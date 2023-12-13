@@ -1,9 +1,10 @@
 use crate::imports::*;
 use std::collections::HashMap;
 
-pub(crate) const ACCEPTED_FILE_FORMATS: [&str; 3] = ["yaml", "json", "bin"];
-
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
+
     /// Runs any initialization steps that might be needed
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
@@ -22,7 +23,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
             "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
             _ => bail!(
-                "Unsupported file format {extension:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+                "Unsupported format {extension:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS
             ),
         }
         Ok(())
@@ -65,16 +67,22 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?
+            .to_lowercase();
+        ensure!(
+            Self::ACCEPTED_BYTE_FORMATS.contains(&extension.as_str()),
+            "Unsupported format {extension:?}, must be one of {:?}",
+            Self::ACCEPTED_BYTE_FORMATS
+        );
         let file = crate::resources::RESOURCES_DIR
             .get_file(filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
-        let mut deserialized = match extension.trim_start_matches('.').to_lowercase().as_str() {
+        let mut deserialized = match extension.as_str() {
             "bin" => Self::from_bincode(include_dir::File::contents(file))?,
             _ => Self::from_str(
                 include_dir::File::contents_utf8(file)
                     .with_context(|| format!("File could not be parsed to UTF-8: {filepath:?}"))?,
-                extension,
+                &extension,
             )?,
         };
         deserialized.init()?;
@@ -88,7 +96,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 "json" => serde_json::from_reader(rdr)?,
                 "bin" => bincode::deserialize_from(rdr)?,
                 _ => bail!(
-                    "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS
                 ),
             },
         )
@@ -99,7 +108,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             "yaml" | "yml" => self.to_yaml(),
             "json" => self.to_json(),
             _ => bail!(
-                "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_STR_FORMATS
             ),
         }
     }
@@ -109,7 +119,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             "yaml" | "yml" => Self::from_yaml(contents),
             "json" => Self::from_json(contents),
             _ => bail!(
-                "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_STR_FORMATS
             ),
         }
     }
