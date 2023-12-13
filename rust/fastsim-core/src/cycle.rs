@@ -497,22 +497,22 @@ impl RustCycleCache {
 
     #[staticmethod]
     pub fn from_dict(dict: &PyDict) -> anyhow::Result<Self> {
-        let time_s = Array::from_vec(PyAny::get_item(&dict, "time_s")?.extract()?);
+        let time_s = Array::from_vec(PyAny::get_item(dict, "time_s")?.extract()?);
         let cyc_len = time_s.len();
         Ok(Self {
             time_s,
-            mps: Array::from_vec(PyAny::get_item(&dict, "mps")?.extract()?),
-            grade: if let Ok(value) = PyAny::get_item(&dict, "grade") {
+            mps: Array::from_vec(PyAny::get_item(dict, "mps")?.extract()?),
+            grade: if let Ok(value) = PyAny::get_item(dict, "grade") {
                 Array::from_vec(value.extract()?)
             } else {
                 Array::default(cyc_len)
             },
-            road_type: if let Ok(value) = PyAny::get_item(&dict, "road_type") {
+            road_type: if let Ok(value) = PyAny::get_item(dict, "road_type") {
                 Array::from_vec(value.extract()?)
             } else {
                 Array::default(cyc_len)
             },
-            name: PyAny::get_item(&dict, "name").and_then(String::extract).unwrap_or_default(),
+            name: PyAny::get_item(dict, "name").and_then(String::extract).unwrap_or_default(),
             orphaned: false,
         })
     }
@@ -737,13 +737,13 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
     }
 }
 
-impl Into<HashMap<String, Vec<f64>>> for RustCycle {
-    fn into(self) -> HashMap<String, Vec<f64>> {
+impl From<RustCycle> for HashMap<String, Vec<f64>> {
+    fn from(cyc: RustCycle) -> Self {
         HashMap::from([
-            ("time_s".into(), self.time_s.to_vec()),
-            ("mps".into(), self.mps.to_vec()),
-            ("grade".into(), self.grade.to_vec()),
-            ("road_type".into(), self.road_type.to_vec()),
+            ("time_s".into(), cyc.time_s.to_vec()),
+            ("mps".into(), cyc.mps.to_vec()),
+            ("grade".into(), cyc.grade.to_vec()),
+            ("road_type".into(), cyc.road_type.to_vec()),
         ])
     }
 }
