@@ -1330,7 +1330,7 @@ fn read_fuelecon_gov_emissions_to_hashmap(
             if let Some(item) = ok_result {
                 if let Some(id_str) = item.get("id") {
                     if let Ok(id) = str::parse::<u32>(id_str) {
-                        output.entry(id).or_insert_with(Vec::new);
+                        output.entry(id).or_default();
                         if let Some(ers) = output.get_mut(&id) {
                             let emiss = EmissionsInfoFE {
                                 efid: item.get("efid").unwrap().clone(),
@@ -1463,7 +1463,7 @@ pub fn get_fastsim_data_dir() -> Option<PathBuf> {
 pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> Result<(), anyhow::Error> {
     let f = File::open(filepath)?;
     let mut zip = zip::ZipArchive::new(f)?;
-    zip.extract(&dest_dir)?;
+    zip.extract(dest_dir)?;
     Ok(())
 }
 
@@ -1489,7 +1489,7 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
         return Err(anyhow!("No data available from {url}"));
     }
     {
-        let mut file = match File::create(&file_path) {
+        let mut file = match File::create(file_path) {
             Err(why) => {
                 return Err(anyhow!(
                     "couldn't open {}: {}",

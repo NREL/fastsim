@@ -431,12 +431,11 @@ pub fn multilinear(point: &[f64], grid: &[Vec<f64>], values: &ArrayD<f64>) -> an
             Slice::from(lower..=lower + 1)
         })
         .to_owned();
-    let mut index_permutations = get_index_permutations(&interp_vals.shape());
+    let mut index_permutations = get_index_permutations(interp_vals.shape());
     // This loop interpolates in each dimension sequentially
     // each outer loop iteration the dimensionality reduces by 1
     // `interp_vals` ends up as a 0-dimensional array containing only the final interpolated value
-    for dim in 0..n {
-        let diff = interp_diffs[dim];
+    for (dim, diff) in interp_diffs.iter().enumerate() {
         let next_dim = n - 1 - dim;
         let next_shape = vec![2; next_dim];
         // Indeces used for saving results of this dimensions interpolation results
