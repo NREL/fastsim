@@ -24,7 +24,7 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_derive(EnergyMethod)]
-/// generate method to calculate `energy_*` field values from `pwr_*`
+/// generate method to calculate `energy_*` field values from `pwr_*` fields
 pub fn energy_method_derive(input: TokenStream) -> TokenStream {
     energy_method_derive::energy_method_derive(input)
 }

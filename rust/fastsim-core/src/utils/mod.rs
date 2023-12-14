@@ -104,9 +104,9 @@ pub fn interp3d(
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, SerdeAPI)]
 pub enum Extrapolate {
     /// allow extrapolation
-    #[default]
     Yes,
     /// don't allow extropalaiton but return result from nearest x-data point
+    #[default]
     No,
     /// return an error on extrapolation
     Error,

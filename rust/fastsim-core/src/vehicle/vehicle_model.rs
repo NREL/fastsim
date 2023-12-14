@@ -174,6 +174,7 @@ impl SerdeAPI for Vehicle {
 }
 
 impl Mass for Vehicle {
+    // TODO: make the Option go away and throw error if None is returned
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         self.check_mass_consistent()?;
         let mass = match self.mass {

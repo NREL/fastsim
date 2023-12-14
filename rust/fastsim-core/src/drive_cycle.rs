@@ -13,7 +13,7 @@ use crate::imports::*;
 
     #[setter]
     fn set_grade(&mut self, grade: Vec<f64>) {
-        self.grade = Some(grade.iter().map(|x| *x * uc::R).collect());
+        self.grade = grade.iter().map(|x| *x * uc::R).collect();
     }
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
@@ -35,16 +35,14 @@ pub struct Cycle {
     /// calculated prescribed distance based on RHS integral of time and speed
     pub dist: Vec<si::Length>,
     /// road grade
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
-    pub grade: Option<Vec<si::Ratio>>,
+    pub grade: Vec<si::Ratio>,
     // TODO: consider trapezoidal integration scheme
     /// calculated prescribed elevation based on RHS integral distance and grade
     pub elev: Vec<si::Length>,
     /// road charging/discharing capacity
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
-    pub pwr_max_chrg: Option<Vec<si::Power>>,
+    pub pwr_max_chrg: Vec<si::Power>,
 }
 
 const ELEV_DEF_FT: f64 = 400.;
@@ -59,15 +57,9 @@ impl SerdeAPI for Cycle {
     /// Assumptions
     /// - if `init_elev.is_none()`, then defaults to
     fn init(&mut self) -> anyhow::Result<()> {
-        assert_eq!(self.time.len(), self.speed.len());
-        match &mut self.grade {
-            Some(grade) => assert_eq!(grade.len(), self.len()),
-            None => self.grade = Some(vec![0. * uc::R; self.len()]),
-        }
-        match &self.pwr_max_chrg {
-            Some(pwr_max_chrg) => assert_eq!(pwr_max_chrg.len(), self.len()),
-            None => {}
-        }
+        ensure!(self.time.len() == self.speed.len());
+        ensure!(self.grade.len() == self.len());
+        ensure!(self.pwr_max_chrg.len() == self.len());
 
         // calculate distance from RHS integral of speed and time
         self.dist = self
@@ -81,25 +73,21 @@ impl SerdeAPI for Cycle {
             .collect();
 
         // calculate elevation from RHS integral of grade and distance
-        match &self.grade {
-            Some(grade) => {
-                self.init_elev = self.init_elev.or(Some(get_elev_def()));
-                self.elev = grade
-                    .iter()
-                    .zip(&self.dist)
-                    .scan(
-                        // already guaranteed to be `Some`
-                        self.init_elev.unwrap(),
-                        |elev, (grade, dist)| {
-                            // TODO: Kyle, check this
-                            *elev += *dist * *grade;
-                            Some(*elev)
-                        },
-                    )
-                    .collect();
-            }
-            None => {}
-        };
+        self.init_elev = self.init_elev.or(Some(get_elev_def()));
+        self.elev = self
+            .grade
+            .iter()
+            .zip(&self.dist)
+            .scan(
+                // already guaranteed to be `Some`
+                self.init_elev.unwrap(),
+                |elev, (grade, dist)| {
+                    // TODO: Kyle, check this
+                    *elev += *dist * *grade;
+                    Some(*elev)
+                },
+            )
+            .collect();
 
         Ok(())
     }
@@ -144,28 +132,20 @@ impl Cycle {
     }
 
     pub fn push(&mut self, element: CycleElement) -> anyhow::Result<()> {
+        // TODO: maybe automate generation of this function as derive macro
+        // TODO: maybe automate `ensure!` that all vec fields are same length before returning result
+        // TODO: make sure all fields are being updated as appropriate
         self.time.push(element.time);
         self.speed.push(element.speed);
-        match (&mut self.grade, element.grade) {
-            (Some(grade_mut), Some(grade)) => grade_mut.push(grade),
-            (None, Some(_)) => {
-                bail!("Element and Cycle `grade` fields must both be `Some` or `None`")
-            }
-            (Some(_), None) => {
-                bail!("Element and Cycle `grade` fields must both be `Some` or `None`")
-            }
+        match element.grade {
+            Some(grade) => self.grade.push(grade),
             _ => {}
         }
-        match (&mut self.pwr_max_chrg, element.pwr_max_charge) {
-            (Some(pwr_max_chrg_mut), Some(pwr_max_chrg)) => pwr_max_chrg_mut.push(pwr_max_chrg),
-            (None, Some(_)) => {
-                bail!("Element and Cycle `pwr_max_chrg` fields must both be `Some` or `None`")
-            }
-            (Some(_), None) => {
-                bail!("Element and Cycle `pwr_max_chrg` fields must both be `Some` or `None`")
-            }
+        match element.pwr_max_charge {
+            Some(pwr_max_chrg) => self.pwr_max_chrg.push(pwr_max_chrg),
             _ => {}
         }
+
         self.speed.push(element.speed);
         Ok(())
     }
@@ -209,27 +189,25 @@ impl Cycle {
     }
 
     /// Load cycle from csv file
-    ///
-    /// TODO: move this into `from_file`
     pub fn from_csv_file(pathstr: &str) -> Result<Self, anyhow::Error> {
         let pathbuf = PathBuf::from(&pathstr);
 
         // create empty cycle to be populated
-        let mut pt = Self::default();
+        let mut cyc = Self::default();
 
         let file = File::open(pathbuf)?;
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(true)
             .from_reader(file);
         for result in rdr.deserialize() {
-            let pt_elem: CycleElement = result?;
-            pt.push(pt_elem)?;
+            let cyc_elem: CycleElement = result?;
+            cyc.push(cyc_elem)?;
         }
-        pt.init()?;
-        if pt.is_empty() {
+        cyc.init()?;
+        if cyc.is_empty() {
             bail!("Invalid Cycle file; Cycle is empty")
         } else {
-            Ok(pt)
+            Ok(cyc)
         }
     }
 }
@@ -239,17 +217,16 @@ impl Cycle {
 /// Element of `Cycle`.  Used for vec-like operations.
 pub struct CycleElement {
     /// simulation time \[s\]
-    #[serde(rename = "time_seconds")]
+    #[serde(rename = "time_seconds", alias = "cycSecs")]
     time: si::Time,
     /// simulation power \[W\]
-    #[serde(rename = "speed_mps")]
+    #[serde(rename = "speed_mps", alias = "cycMps")]
     speed: si::Velocity,
     /// road grade
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", alias = "cycGrade")]
     #[api(skip_get, skip_set)]
     pub grade: Option<si::Ratio>,
     /// road charging/discharing capacity
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
     pub pwr_max_charge: Option<si::Power>,
 }
@@ -263,9 +240,9 @@ mod tests {
             time: (0..=2).map(|x| (x as f64) * uc::S).collect(),
             speed: (0..=2).map(|x| (x as f64) * uc::MPS).collect(),
             dist: vec![],
-            grade: Some((0..=2).map(|x| (x as f64 * uc::R) / 100.).collect()),
+            grade: (0..=2).map(|x| (x as f64 * uc::R) / 100.).collect(),
             elev: vec![],
-            pwr_max_chrg: None,
+            pwr_max_chrg: vec![],
         };
         cyc.init().unwrap();
         cyc

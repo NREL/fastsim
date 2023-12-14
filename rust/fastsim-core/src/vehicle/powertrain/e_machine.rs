@@ -159,7 +159,7 @@ impl ElectricMachine {
                     .abs(),
                 &self.pwr_out_frac_interp,
                 &self.eta_interp,
-                false,
+                Default::default(),
             )?;
         self.state.pwr_mech_regen_max = (pwr_max_regen_in * eta).min(self.pwr_out_max);
         ensure!(self.state.pwr_mech_regen_max >= si::Power::ZERO);
@@ -185,7 +185,7 @@ impl ElectricMachine {
                 &(pwr_out_req / self.pwr_out_max).get::<si::ratio>().abs(),
                 &self.pwr_out_frac_interp,
                 &self.eta_interp,
-                false,
+                Default::default(),
             )?;
         ensure!(
             self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R,
@@ -245,7 +245,7 @@ impl ElectricMachine {
                 &(pwr_in_max / self.pwr_out_max).get::<si::ratio>().abs(),
                 &self.pwr_in_frac_interp,
                 &self.eta_interp,
-                false,
+                Default::default(),
             )?;
 
         self.state.pwr_mech_out_max = self.pwr_out_max.min(pwr_in_max * eta);

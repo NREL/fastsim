@@ -7,7 +7,8 @@ use crate::imports::*;
 /// Solver parameters
 pub struct SimParams {
     pub ach_speed_max_iter: u32,
-    pub ach_speed_tol: f64,
+    pub ach_speed_tol: si::Ratio,
+    pub ach_speed_solver_gain: f64,
     pub trace_miss_tol: TraceMissTolerance,
 }
 
@@ -15,7 +16,8 @@ impl Default for SimParams {
     fn default() -> Self {
         Self {
             ach_speed_max_iter: 3,
-            ach_speed_tol: 1e-9,
+            ach_speed_tol: 1e-9 * uc::R,
+            ach_speed_solver_gain: 0.9,
             trace_miss_tol: Default::default(),
         }
     }
@@ -82,9 +84,12 @@ impl SimDrive {
             * self.veh.drag_coef
             * self.veh.frontal_area
             * ((speed + speed_prev) / 2.0).powi(typenum::P3::new());
-        vs.pwr_rr =
-            mass * uc::ACC_GRAV * self.veh.wheel_rr * grade.atan().cos() * (speed_prev + speed)
-                / 2.;
+        vs.pwr_rr = mass
+            * uc::ACC_GRAV
+            * self.veh.wheel_rr_coef
+            * grade.atan().cos()
+            * (speed_prev + speed)
+            / 2.;
         vs.pwr_whl_inertia = 0.5
             * self.veh.wheel_inertia_kg_m2
             * uc::KG
@@ -114,11 +119,11 @@ impl SimDrive {
             let mass = self.veh.mass.ok_or_else(|| {
                 anyhow!("{}\nMass should have been set before now", format_dbg!())
             })?;
-            let speed_prev = self.veh.state.speed_ach_prev;
+            let speed_prev = vs.speed_ach_prev;
             // Question: should this be grade at end of time step or start?
             // I'm treating it like grade at start is suitable
             let grade = utils::interp1d(
-                &self.veh.state.dist.get::<si::meter>(),
+                &vs.dist.get::<si::meter>(),
                 &self
                     .cyc
                     .dist
@@ -128,9 +133,8 @@ impl SimDrive {
                 &self
                     .cyc
                     .grade
-                    .ok_or_else(|| {
-                        anyhow!("{}\nGrade should have been set already.", format_dbg!())
-                    })?
+                    .as_ref()
+                    .unwrap() // already checked in [Cycle::]
                     .iter()
                     .map(|g| g.get::<si::ratio>())
                     .collect::<Vec<f64>>(),
@@ -142,8 +146,9 @@ impl SimDrive {
             let accel2 = 0.5 * mass / self.cyc.dt_at_i(vs.i);
             let drag2 =
                 3.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area * speed_prev;
-            let wheel2 = 0.5 * self.veh.wheel_inertia_kg_m2 * self.veh.num_wheels as f64
-                / (self.cyc.dt_at_i(vs.i) * self.veh.wheel_radius.powi(typenum::P2::new()));
+            let wheel2 =
+                0.5 * self.veh.wheel_inertia_kg_m2 * uc::KG * uc::M2 * self.veh.num_wheels as f64
+                    / (self.cyc.dt_at_i(vs.i) * self.veh.wheel_radius.powi(typenum::P2::new()));
             let drag1 = 3.0 / 16.0
                 * rho_air
                 * self.veh.drag_coef
@@ -166,28 +171,33 @@ impl SimDrive {
             let ascent0 = 0.5 * uc::ACC_GRAV * grade.atan().sin() * mass * speed_prev;
             let wheel0 = -0.5
                 * self.veh.wheel_inertia_kg_m2
+                * uc::KG
+                * uc::M2
                 * self.veh.num_wheels as f64
                 * speed_prev.powi(typenum::P2::new())
                 / (self.cyc.dt_at_i(vs.i) * self.veh.wheel_radius.powi(typenum::P2::new()));
 
-            let t3 = drag3 / 1e3;
-            let t2 = (accel2 + drag2 + wheel2) / 1e3;
-            let t1 = (drag1 + roll1 + ascent1) / 1e3;
-            let t0 =
-                (accel0 + drag0 + roll0 + ascent0 + wheel`0) / 1e3 - self.cur_max_trans_kw_out[i];
+            let t3 = drag3;
+            let t2 = accel2 + drag2 + wheel2;
+            let t1 = drag1 + roll1 + ascent1;
+            // TODO: verify that final term should be `self.veh.state.pwr_out_max`.  Needs to be same as `self.cur_max_trans_kw_out[i]`
+            let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - self.veh.state.pwr_out_max;
 
             // initial guess
-            let speed_guess = max(1.0, self.mps_ach[i - 1]);
+            let speed_guess = (1. * uc::MPS).max(self.veh.state.speed_ach);
             // stop criteria
-            let max_iter = self.sim_params.newton_max_iter;
-            let xtol = self.sim_params.newton_xtol;
+            let max_iter = self.sim_params.ach_speed_max_iter;
+            let xtol = self.sim_params.ach_speed_tol;
             // solver gain
-            let g = self.sim_params.newton_gain;
-            let pwr_err_fn = |speed_guess: f64| -> f64 {
-                t3 * speed_guess.powf(3.0) + t2 * speed_guess.powf(2.0) + t1 * speed_guess + t0
+            let g = self.sim_params.ach_speed_solver_gain;
+            let pwr_err_fn = |speed_guess: si::Velocity| -> si::Power {
+                t3 * speed_guess.powi(typenum::P3::new())
+                    + t2 * speed_guess.powi(typenum::P2::new())
+                    + t1 * speed_guess
+                    + t0
             };
-            let pwr_err_per_speed_guess_fn = |speed_guess: f64| -> f64 {
-                3.0 * t3 * speed_guess.powf(2.0) + 2.0 * t2 * speed_guess + t1
+            let pwr_err_per_speed_guess_fn = |speed_guess: si::Velocity| {
+                3.0 * t3 * speed_guess.powi(typenum::P2::new()) + 2.0 * t2 * speed_guess + t1
             };
             let pwr_err = pwr_err_fn(speed_guess);
             let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
@@ -197,15 +207,15 @@ impl SimDrive {
             let mut d_pwr_err_per_d_speed_guesses = vec![pwr_err_per_speed_guess];
             let mut new_speed_guesses = vec![new_speed_guess];
             // speed achieved iteration counter
-            let mut spd_ach_i = 1;
+            let mut spd_ach_iter_counter = 1;
             let mut converged = false;
-            while spd_ach_i < max_iter && !converged {
-                let speed_guess = speed_guesses
+            while spd_ach_iter_counter < max_iter && !converged {
+                let speed_guess = *speed_guesses
                     .iter()
                     .last()
                     .ok_or(anyhow!("{}", format_dbg!()))?
                     * (1.0 - g)
-                    - g * new_speed_guesses
+                    - g * *new_speed_guesses
                         .iter()
                         .last()
                         .ok_or(anyhow!("{}", format_dbg!()))?
@@ -217,7 +227,7 @@ impl SimDrive {
                 pwr_errs.push(pwr_err);
                 d_pwr_err_per_d_speed_guesses.push(pwr_err_per_speed_guess);
                 new_speed_guesses.push(new_speed_guess);
-                converged = ((speed_guesses
+                converged = ((*speed_guesses
                     .iter()
                     .last()
                     .ok_or(anyhow!("{}", format_dbg!()))?
@@ -225,21 +235,20 @@ impl SimDrive {
                     / speed_guesses[speed_guesses.len() - 2])
                     .abs()
                     < xtol;
-                spd_ach_i += 1;
+                spd_ach_iter_counter += 1;
             }
 
-            self.newton_iters[i] = spd_ach_i;
-
-            let _ys = Array::from_vec(pwr_errs).map(|x| x.abs());
             // Question: could we assume `speed_guesses.iter().last()` is the correct solution?
             // This would make for faster running.
-            self.mps_ach[i] = max(
-                speed_guesses[_ys
-                    .iter()
-                    .position(|&x| x == ndarrmin(&_ys))
-                    .ok_or_else(|| anyhow!(format_dbg!(ndarrmin(&_ys))))?],
-                0.0,
-            );
+            self.veh.state.speed_ach = speed_guesses[pwr_errs
+                .iter()
+                .position(|&x| x == pwr_errs.iter().fold(uc::W * f64::NAN, |acc, &x| acc.min(x)))
+                .ok_or_else(|| {
+                    anyhow!(format_dbg!(pwr_errs
+                        .iter()
+                        .fold(uc::W * f64::NAN, |acc, &x| acc.min(x))))
+                })?]
+            .max(0.0 * uc::MPS);
         }
 
         Ok(())
@@ -280,11 +289,19 @@ mod tests {
     use crate::vehicle::vehicle_model::tests::mock_f2_conv_veh;
     #[test]
     fn test_sim_drive() {
-        let veh = mock_f2_conv_veh();
-        let cyc = Cycle::from_file(todo!()).unwrap();
-        let sd = SimDrive {
-            veh,
-            cyc,
+        let _veh = mock_f2_conv_veh();
+        let _cyc = Cycle::from_file(
+            directories::UserDirs::new()
+                .unwrap()
+                .home_dir()
+                .join("Documents/GitHub/fastsim-3/python/fastsim/resources/cycles/udds.csv")
+                .to_str()
+                .unwrap(),
+        )
+        .unwrap();
+        let mut sd = SimDrive {
+            veh: _veh,
+            cyc: _cyc,
             sim_params: Default::default(),
         };
         sd.walk().unwrap();

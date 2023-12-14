@@ -220,7 +220,7 @@ impl FuelConverter {
                 &((pwr_out + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
                 &self.pwr_out_frac_interp,
                 &self.eta_interp,
-                false,
+                Default::default()  ,
             )?;
         ensure!(
             self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R,
