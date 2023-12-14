@@ -45,7 +45,7 @@ impl SimDrive {
     /// # Arguments
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = self.veh.state.i;
-        let dt = self.cyc.dt_at_i(i);
+        let dt = self.cyc.dt_at_i(i)?;
         self.veh.set_cur_pwr_max_out(self.veh.pwr_aux, dt)?;
         self.set_req_pwr(self.cyc.speed[i], dt)?;
         self.set_ach_speed(dt)?;
@@ -65,11 +65,7 @@ impl SimDrive {
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach_prev;
-        let grade = &self
-            .cyc
-            .grade
-            .as_ref()
-            .ok_or_else(|| anyhow!("{}\nGrade should have been set already.", format_dbg!()))?[i];
+        let grade = &self.cyc.grade[i];
         let mass = self.veh.mass.ok_or_else(|| {
             anyhow!(
                 "{}\nVehicle mass should have been set already.",
@@ -97,7 +93,7 @@ impl SimDrive {
             * self.veh.num_wheels as f64
             * ((speed / self.veh.wheel_radius).powi(typenum::P2::new())
                 - (speed_prev / self.veh.wheel_radius).powi(typenum::P2::new()))
-            / self.cyc.dt_at_i(i);
+            / self.cyc.dt_at_i(i)?;
 
         vs.pwr_tractive = vs.pwr_accel + vs.pwr_ascent + vs.pwr_drag;
         vs.pwr_out = vs.pwr_tractive + vs.pwr_rr + vs.pwr_whl_inertia;
@@ -133,8 +129,6 @@ impl SimDrive {
                 &self
                     .cyc
                     .grade
-                    .as_ref()
-                    .unwrap() // already checked in [Cycle::]
                     .iter()
                     .map(|g| g.get::<si::ratio>())
                     .collect::<Vec<f64>>(),
@@ -143,12 +137,12 @@ impl SimDrive {
 
             // actual calucations
             let drag3 = 1.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area;
-            let accel2 = 0.5 * mass / self.cyc.dt_at_i(vs.i);
+            let accel2 = 0.5 * mass / self.cyc.dt_at_i(vs.i)?;
             let drag2 =
                 3.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area * speed_prev;
             let wheel2 =
                 0.5 * self.veh.wheel_inertia_kg_m2 * uc::KG * uc::M2 * self.veh.num_wheels as f64
-                    / (self.cyc.dt_at_i(vs.i) * self.veh.wheel_radius.powi(typenum::P2::new()));
+                    / (self.cyc.dt_at_i(vs.i)? * self.veh.wheel_radius.powi(typenum::P2::new()));
             let drag1 = 3.0 / 16.0
                 * rho_air
                 * self.veh.drag_coef
@@ -156,7 +150,8 @@ impl SimDrive {
                 * speed_prev.powi(typenum::P2::new());
             let roll1 = 0.5 * mass * uc::ACC_GRAV * self.veh.wheel_rr_coef * grade.atan().cos();
             let ascent1 = 0.5 * uc::ACC_GRAV * grade.atan().sin() * mass;
-            let accel0 = -0.5 * mass * speed_prev.powi(typenum::P2::new()) / self.cyc.dt_at_i(vs.i);
+            let accel0 =
+                -0.5 * mass * speed_prev.powi(typenum::P2::new()) / self.cyc.dt_at_i(vs.i)?;
             let drag0 = 1.0 / 16.0
                 * rho_air
                 * self.veh.drag_coef
@@ -175,7 +170,7 @@ impl SimDrive {
                 * uc::M2
                 * self.veh.num_wheels as f64
                 * speed_prev.powi(typenum::P2::new())
-                / (self.cyc.dt_at_i(vs.i) * self.veh.wheel_radius.powi(typenum::P2::new()));
+                / (self.cyc.dt_at_i(vs.i)? * self.veh.wheel_radius.powi(typenum::P2::new()));
 
             let t3 = drag3;
             let t2 = accel2 + drag2 + wheel2;
@@ -289,16 +284,12 @@ mod tests {
     use crate::vehicle::vehicle_model::tests::mock_f2_conv_veh;
     #[test]
     fn test_sim_drive() {
+        let filepath = directories::UserDirs::new().unwrap();
+        let filepath = filepath
+            .home_dir()
+            .join("Repositories/fastsim/python/fastsim/resources/cycles/udds.csv");
         let _veh = mock_f2_conv_veh();
-        let _cyc = Cycle::from_file(
-            directories::UserDirs::new()
-                .unwrap()
-                .home_dir()
-                .join("Documents/GitHub/fastsim-3/python/fastsim/resources/cycles/udds.csv")
-                .to_str()
-                .unwrap(),
-        )
-        .unwrap();
+        let _cyc = Cycle::from_file(filepath.to_str().unwrap()).unwrap();
         let mut sd = SimDrive {
             veh: _veh,
             cyc: _cyc,

@@ -115,12 +115,9 @@ impl SerdeAPI for Cycle {
 
 impl Cycle {
     /// rust-internal time steps at i
-    pub fn dt_at_i(&self, i: usize) -> si::Time {
-        self.time[i] - self.time[i - 1]
-    }
-
-    pub fn dt(&self, i: usize) -> si::Time {
-        self.time[i] - self.time[i - 1]
+    pub fn dt_at_i(&self, i: usize) -> anyhow::Result<si::Time> {
+        Ok(*self.time.get(i).ok_or_else(|| anyhow!(format_dbg!()))?
+            - *self.time.get(i - 1).ok_or_else(|| anyhow!(format_dbg!()))?)
     }
 
     pub fn len(&self) -> usize {
@@ -139,14 +136,12 @@ impl Cycle {
         self.speed.push(element.speed);
         match element.grade {
             Some(grade) => self.grade.push(grade),
-            _ => {}
+            _ => self.grade.push(0.0 * uc::R),
         }
         match element.pwr_max_charge {
             Some(pwr_max_chrg) => self.pwr_max_chrg.push(pwr_max_chrg),
-            _ => {}
+            _ => self.pwr_max_chrg.push(0.0 * uc::W),
         }
-
-        self.speed.push(element.speed);
         Ok(())
     }
 
