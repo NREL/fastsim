@@ -15,6 +15,7 @@ pub mod air_properties;
 pub mod drive_cycle;
 pub mod imports;
 pub mod prelude;
+pub mod resources;
 pub mod si;
 pub mod simdrive;
 pub mod traits;

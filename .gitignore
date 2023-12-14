@@ -13,3 +13,4 @@ dist
 *.pyd
 *pymoo_res*
 *env*/
+*/Cargo.lock
