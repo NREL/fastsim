@@ -254,7 +254,7 @@ impl SimDrive {
     /// - `dt`: time step size
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         todo!();
-        Ok(())
+        // Ok(())
     }
 }
 

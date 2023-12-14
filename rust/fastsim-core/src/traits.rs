@@ -187,7 +187,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     fn from_json(json_str: &str) -> anyhow::Result<Self> {
         let mut json_de: Self = serde_json::from_str(json_str)?;
-        json_de.init();
+        json_de.init()?;
         Ok(json_de)
     }
 
@@ -204,7 +204,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     fn from_yaml(yaml_str: &str) -> anyhow::Result<Self> {
         let mut yaml_de: Self = serde_yaml::from_str(yaml_str)?;
-        yaml_de.init();
+        yaml_de.init()?;
         Ok(yaml_de)
     }
 
@@ -221,7 +221,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
         let mut bincode_de: Self = deserialize(encoded)?;
-        bincode_de.init();
+        bincode_de.init()?;
         Ok(bincode_de)
     }
 }
