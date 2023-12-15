@@ -54,13 +54,27 @@ jobs:
           toolchain: stable
           override: true
 
-      - run: cd rust/ && cargo test
+      - run: cd rust/fastsim-cli/ && cargo test
 
-      - run: cd rust/ && cargo build --release
+      - run: cd rust/fastsim-cli/ && cargo build --release
 
       - name: list current directory files
         run: ${{ matrix.ls || 'ls -lh' }} ./rust/target/release/
+      
+      - name: copy cli programs to new directory
+        if: matrix.os == 'windows'
+        run: |
+          mkdir cli
+          copy ./rust/target/release/vehicle-import-cli.exe cli
+          copy ./rust/target/release/fastsim-cli.exe cli
+      
+      - name: copy cli programs to new directory (non-windows)
+        if: matrix.os != 'windows'
+        run: |
+          mkdir cli
+          cp ./rust/target/release/vehicle-import-cli cli
+          cp ./rust/target/release/fastsim-cli cli
 
       - uses: actions/upload-artifact@v3
         with:
-          path: ./rust/target/release/
+          path: ./cli
