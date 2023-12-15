@@ -56,8 +56,10 @@ jobs:
 
       - run: cd rust/ && cargo test
 
+      - run: cd rust/ && cargo build --release
+
       - name: list current directory files
-        run: ${{ matrix.ls || 'ls -lh' }} .
+        run: ${{ matrix.ls || 'ls -lh' }} ./rust/target/release/
 
       - uses: actions/upload-artifact@v3
         with:
