@@ -75,6 +75,7 @@ jobs:
           cp ./rust/target/release/vehicle-import-cli cli
           cp ./rust/target/release/fastsim-cli cli
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: cli
           path: ./cli
