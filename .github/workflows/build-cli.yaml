@@ -56,8 +56,8 @@ jobs:
 
       - run: cd rust/ && cargo test
 
-      - name: list dist files
-        run: ${{ matrix.ls || 'ls -lh' }} dist/
+      - name: list current directory files
+        run: ${{ matrix.ls || 'ls -lh' }} .
 
       - uses: actions/upload-artifact@v3
         with:
