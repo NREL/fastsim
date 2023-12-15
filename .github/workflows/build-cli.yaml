@@ -1,4 +1,4 @@
-name: cli-app-build
+name: build-cli
 
 on:
   push:
@@ -24,6 +24,7 @@ jobs:
             ls: dir
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
+
     steps:
       - uses: actions/checkout@v3
 
@@ -32,9 +33,9 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable 
+          toolchain: stable
           override: true
-      
+
       - name: set up rust for ubuntu
         if: matrix.os == 'ubuntu'
         run: >
@@ -48,7 +49,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable 
+          toolchain: stable
           override: true
 
       - run: cd rust/ && cargo test
