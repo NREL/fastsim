@@ -20,17 +20,6 @@ anyhow = { workspace = true }
 readonly = "0.2.3"
 duplicate = "0.4.1"
 nohash-hasher = "0.2.0"
-polars = { version = "0.30", features = [
-    "dtype-categorical",
-    "rank",
-    "strings",
-] }
-polars-lazy = { version = "0.30", features = [
-    "dtype-categorical",
-    "rank",
-    "strings",
-] }
-pyo3-polars = { version = "0.4.1", features = ["lazy"] }
 
 # optional
 pyo3 = { workspace = true, features = [

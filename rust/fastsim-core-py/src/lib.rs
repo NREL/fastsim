@@ -7,7 +7,6 @@ pub use pyo3::exceptions::{
 };
 pub use pyo3::prelude::*;
 pub use pyo3::types::PyType;
-pub use pyo3_polars::PyDataFrame;
 
 #[pymodule]
 fn fastsim_core_py(_py: Python, m: &PyModule) -> PyResult<()> {
