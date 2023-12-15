@@ -21,97 +21,207 @@ pub trait Linspace {
 
 impl Linspace for Vec<f64> {}
 
+// TODO: only call `init` once per deserialization
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    /// runs any initialization steps that may be needed.
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
+
+    /// Specialized code to execute upon initialization
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    /// Save current data structure to file. Method adaptively calls serialization methods
-    /// dependent on the suffix of the file given as str.
+    /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
     ///
-    /// # Argument:
+    /// # Arguments:
     ///
-    /// * `filename`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
-    /// supported
-    fn to_file(&self, filename: &str) -> Result<(), anyhow::Error> {
-        let file = PathBuf::from(filename);
-        match file.extension().unwrap().to_str().unwrap() {
-            "json" => serde_json::to_writer(&File::create(file)?, self)?,
-            "yaml" => serde_yaml::to_writer(&File::create(file)?, self)?,
-            _ => serde_json::to_writer(&File::create(file)?, self)?,
+    /// * `filepath` - Filepath, relative to the top of the `resources` folder, from which to read the object
+    ///
+    fn from_resource<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
+        let filepath = filepath.as_ref();
+        let extension = filepath
+            .extension()
+            .and_then(OsStr::to_str)
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?
+            .to_lowercase();
+        ensure!(
+            Self::ACCEPTED_BYTE_FORMATS.contains(&extension.as_str()),
+            "Unsupported format {extension:?}, must be one of {:?}",
+            Self::ACCEPTED_BYTE_FORMATS
+        );
+        let file = crate::resources::RESOURCES_DIR
+            .get_file(filepath)
+            .with_context(|| format!("File not found in resources: {filepath:?}"))?;
+        let mut deserialized = match extension.as_str() {
+            "bin" => Self::from_bincode(include_dir::File::contents(file))?,
+            _ => Self::from_str(
+                include_dir::File::contents_utf8(file)
+                    .with_context(|| format!("File could not be parsed to UTF-8: {filepath:?}"))?,
+                &extension,
+            )?,
         };
+        deserialized.init()?;
+        Ok(deserialized)
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    /// Write (serialize) an object to a file.
+    /// Supported file extensions are listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`).
+    /// Creates a new file if it does not already exist, otherwise truncates the existing file.
+    ///
+    /// # Arguments
+    ///
+    /// * `filepath` - The filepath at which write the object
+    ///
+    fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
+        let filepath = filepath.as_ref();
+        let extension = filepath
+            .extension()
+            .and_then(OsStr::to_str)
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
+        match extension.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
+            "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
+            "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
+            _ => bail!(
+                "Unsupported format {extension:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS
+            ),
+        }
         Ok(())
     }
 
-    /// Read from file and return instantiated struct. Method adaptively calls deserialization
-    /// methods dependent on the suffix of the file name given as str. Function returns a dynamic
-    /// Error Result if it fails.
+    /// Read (deserialize) an object from a file.
+    /// Supported file extensions are listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`).
     ///
-    /// # Argument:
+    /// # Arguments:
     ///
-    /// * `filename`: a `str` storing the targeted file name. Currently `.json` and `.yaml` suffixes are
-    /// supported
+    /// * `filepath`: The filepath from which to read the object
     ///
-    /// # Returns:
-    ///
-    /// A Rust Result wrapping data structure if method is called successfully; otherwise a dynamic
-    /// Error.
-    fn from_file(filename: &str) -> Result<Self, anyhow::Error>
-    where
-        Self: std::marker::Sized,
-        for<'de> Self: Deserialize<'de>,
-    {
-        let extension = Path::new(filename)
+    fn from_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
+        let filepath = filepath.as_ref();
+        let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .unwrap_or_default();
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
+        let file = File::open(filepath).with_context(|| {
+            if !filepath.exists() {
+                format!("File not found: {filepath:?}")
+            } else {
+                format!("Could not open file: {filepath:?}")
+            }
+        })?;
+        let mut deserialized = Self::from_reader(file, extension)?;
+        deserialized.init()?;
+        Ok(deserialized)
+    }
 
-        let file = File::open(filename)?;
-        // deserialized file
-        let mut file_de: Self = match extension {
-            "yaml" => serde_yaml::from_reader(file)?,
-            "json" => serde_json::from_reader(file)?,
-            _ => bail!("Unsupported file extension {}", extension),
+    /// Write (serialize) an object into a string
+    ///
+    /// # Arguments:
+    ///
+    /// * `format` - The target format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
+    ///
+    fn to_str(&self, format: &str) -> anyhow::Result<String> {
+        match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => self.to_yaml(),
+            "json" => self.to_json(),
+            _ => bail!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_STR_FORMATS
+            ),
+        }
+    }
+
+    /// Read (deserialize) an object from a string
+    ///
+    /// # Arguments:
+    ///
+    /// * `contents` - The string containing the object data
+    /// * `format` - The source format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
+    ///
+    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
+        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => Self::from_yaml(contents)?,
+            "json" => Self::from_json(contents)?,
+            _ => bail!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_STR_FORMATS
+            ),
         };
-        file_de.init()?;
-        Ok(file_de)
+        deserialized.init()?;
+        Ok(deserialized)
     }
 
-    /// json serialization method.
-    fn to_json(&self) -> String {
-        serde_json::to_string(&self).unwrap()
+    /// Deserialize an object from anything that implements [`std::io::Read`]
+    ///
+    /// # Arguments:
+    ///
+    /// * `rdr` - The reader from which to read object data
+    /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
+    ///
+    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
+        let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
+            "json" => serde_json::from_reader(rdr)?,
+            "bin" => bincode::deserialize_from(rdr)?,
+            _ => bail!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS
+            ),
+        };
+        deserialized.init()?;
+        Ok(deserialized)
     }
 
-    /// json deserialization method.
-    fn from_json(json_str: &str) -> Result<Self, anyhow::Error> {
+    /// Write (serialize) an object to a JSON string
+    fn to_json(&self) -> anyhow::Result<String> {
+        Ok(serde_json::to_string(&self)?)
+    }
+
+    /// Read (deserialize) an object to a JSON string
+    ///
+    /// # Arguments
+    ///
+    /// * `json_str` - JSON-formatted string to deserialize from
+    ///
+    fn from_json(json_str: &str) -> anyhow::Result<Self> {
         let mut json_de: Self = serde_json::from_str(json_str)?;
-        json_de.init();
+        json_de.init()?;
         Ok(json_de)
     }
 
-    /// yaml serialization method.
-    fn to_yaml(&self) -> String {
-        serde_yaml::to_string(&self).unwrap()
+    /// Write (serialize) an object to a YAML string
+    fn to_yaml(&self) -> anyhow::Result<String> {
+        Ok(serde_yaml::to_string(&self)?)
     }
 
-    /// yaml deserialization method.
-    fn from_yaml(yaml_str: &str) -> Result<Self, anyhow::Error> {
+    /// Read (deserialize) an object from a YAML string
+    ///
+    /// # Arguments
+    ///
+    /// * `yaml_str` - YAML-formatted string to deserialize from
+    ///
+    fn from_yaml(yaml_str: &str) -> anyhow::Result<Self> {
         let mut yaml_de: Self = serde_yaml::from_str(yaml_str)?;
-        yaml_de.init();
+        yaml_de.init()?;
         Ok(yaml_de)
     }
 
-    /// bincode serialization method.
-    fn to_bincode(&self) -> Vec<u8> {
-        serialize(&self).unwrap()
+    /// Write (serialize) an object to a bincode-encoded byte array
+    fn to_bincode(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(bincode::serialize(&self)?)
     }
 
-    /// bincode deserialization method.
-    fn from_bincode(encoded: &[u8]) -> Result<Self, anyhow::Error> {
+    /// Read (deserialize) an object from a bincode-encoded byte array
+    ///
+    /// # Arguments
+    ///
+    /// * `encoded` - Encoded byte array to deserialize from
+    ///
+    fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
         let mut bincode_de: Self = deserialize(encoded)?;
-        bincode_de.init();
+        bincode_de.init()?;
         Ok(bincode_de)
     }
 }

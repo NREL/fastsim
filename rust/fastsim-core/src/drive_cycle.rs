@@ -1,12 +1,6 @@
 use crate::imports::*;
 
 #[pyo3_api(
-    #[classmethod]
-    #[pyo3(name = "from_csv_file")]
-    fn from_csv_file_py(_cls: &PyType, pathstr: String) -> anyhow::Result<Self> {
-        Self::from_csv_file(&pathstr)
-    }
-
     fn __len__(&self) -> usize {
         self.len()
     }
@@ -52,6 +46,9 @@ pub fn get_elev_def() -> si::Length {
 }
 
 impl SerdeAPI for Cycle {
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
+
     /// Sets `self.dist` and `self.elev`
     ///
     /// Assumptions
@@ -92,24 +89,82 @@ impl SerdeAPI for Cycle {
         Ok(())
     }
 
-    fn from_file(filename: &str) -> Result<Self, anyhow::Error> {
-        // check if the extension is csv, and if it is, then call Self::from_csv_file
-        let pathbuf = PathBuf::from(filename);
-        let file = File::open(filename)?;
-        let extension = pathbuf.extension().unwrap().to_str().unwrap();
-        let mut cyc = match extension {
-            "yaml" => Ok(serde_yaml::from_reader(file)?),
-            "json" => Ok(serde_json::from_reader(file)?),
-            "csv" => Ok(Self::from_csv_file(filename)?),
-            _ => Err(anyhow!("Unsupported file extension {}", extension)),
-        };
-
-        match &mut cyc {
-            Ok(cyc) => cyc.init()?,
-            Err(_) => (),
+    fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
+        let filepath = filepath.as_ref();
+        let extension = filepath
+            .extension()
+            .and_then(OsStr::to_str)
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
+        match extension.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
+            "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
+            "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
+            "csv" => self.write_csv(&mut csv::Writer::from_path(filepath)?)?,
+            _ => bail!(
+                "Unsupported format {extension:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS
+            ),
         }
+        Ok(())
+    }
 
-        cyc
+    fn to_str(&self, format: &str) -> anyhow::Result<String> {
+        Ok(
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                "yaml" | "yml" => self.to_yaml()?,
+                "json" => self.to_json()?,
+                "csv" => {
+                    let mut wtr = csv::Writer::from_writer(Vec::with_capacity(self.len()));
+                    self.write_csv(&mut wtr)?;
+                    String::from_utf8(wtr.into_inner()?)?
+                }
+                _ => {
+                    bail!(
+                        "Unsupported format {format:?}, must be one of {:?}",
+                        Self::ACCEPTED_STR_FORMATS
+                    )
+                }
+            },
+        )
+    }
+
+    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
+        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => Self::from_yaml(contents),
+            "json" => Self::from_json(contents),
+            "csv" => Self::from_reader(contents.as_bytes(), "csv"),
+            _ => bail!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_STR_FORMATS
+            ),
+        }?;
+        deserialized.init()?;
+        Ok(deserialized)
+    }
+
+    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
+        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
+            "json" => serde_json::from_reader(rdr)?,
+            "bin" => bincode::deserialize_from(rdr)?,
+            "csv" => {
+                // Create empty cycle to be populated
+                let mut cyc = Self::default();
+                let mut rdr = csv::Reader::from_reader(rdr);
+                for result in rdr.deserialize() {
+                    cyc.push(result?)?;
+                }
+                cyc
+            }
+            _ => {
+                bail!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS
+                )
+            }
+        };
+        deserialized.init()?;
+        Ok(deserialized)
     }
 }
 
@@ -170,7 +225,7 @@ impl Cycle {
         //     _ => {}
         // }
         // self.speed.push(vec.speed);
-        Ok(())
+        // Ok(())
     }
 
     pub fn trim(&mut self, start_idx: Option<usize>, end_idx: Option<usize>) -> anyhow::Result<()> {
@@ -183,32 +238,27 @@ impl Cycle {
         Ok(())
     }
 
-    /// Load cycle from csv file
-    pub fn from_csv_file(pathstr: &str) -> Result<Self, anyhow::Error> {
-        let pathbuf = PathBuf::from(&pathstr);
-
-        // create empty cycle to be populated
-        let mut cyc = Self::default();
-
-        let file = File::open(pathbuf)?;
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(file);
-        for result in rdr.deserialize() {
-            let cyc_elem: CycleElement = result?;
-            cyc.push(cyc_elem)?;
+    /// Serialize cycle data into a CSV writer
+    ///
+    /// # Arguments
+    ///
+    /// * `wtr`: The CSV writer to write into
+    ///
+    fn write_csv<W: std::io::Write>(&self, wtr: &mut csv::Writer<W>) -> anyhow::Result<()> {
+        for i in 0..self.len() {
+            wtr.serialize(CycleElement {
+                time: self.time[i],
+                speed: self.speed[i],
+                grade: Some(self.grade[i]),
+                pwr_max_charge: Some(self.pwr_max_chrg[i]),
+            })?;
         }
-        cyc.init()?;
-        if cyc.is_empty() {
-            bail!("Invalid Cycle file; Cycle is empty")
-        } else {
-            Ok(cyc)
-        }
+        wtr.flush()?;
+        Ok(())
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, SerdeAPI, Clone)]
-#[pyo3_api()]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 /// Element of `Cycle`.  Used for vec-like operations.
 pub struct CycleElement {
     /// simulation time \[s\]
@@ -219,10 +269,8 @@ pub struct CycleElement {
     speed: si::Velocity,
     /// road grade
     #[serde(skip_serializing_if = "Option::is_none", alias = "cycGrade")]
-    #[api(skip_get, skip_set)]
     pub grade: Option<si::Ratio>,
     /// road charging/discharing capacity
-    #[api(skip_get, skip_set)]
     pub pwr_max_charge: Option<si::Power>,
 }
 

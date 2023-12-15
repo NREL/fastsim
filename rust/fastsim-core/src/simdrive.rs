@@ -254,7 +254,7 @@ impl SimDrive {
     /// - `dt`: time step size
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         todo!();
-        Ok(())
+        // Ok(())
     }
 }
 
@@ -284,12 +284,8 @@ mod tests {
     use crate::vehicle::vehicle_model::tests::mock_f2_conv_veh;
     #[test]
     fn test_sim_drive() {
-        let filepath = directories::UserDirs::new().unwrap();
-        let filepath = filepath
-            .home_dir()
-            .join("Repositories/fastsim/python/fastsim/resources/cycles/udds.csv");
         let _veh = mock_f2_conv_veh();
-        let _cyc = Cycle::from_file(filepath.to_str().unwrap()).unwrap();
+        let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
         let mut sd = SimDrive {
             veh: _veh,
             cyc: _cyc,
