@@ -5,8 +5,6 @@ on:
     tags:
       # 'v[0-9]+.[0-9]+.[0-9]+' to match semantic version tag, e.g. v2.0.8
       - "v[0-9]+.[0-9]+.[0-9]+"
-    branches:
-      - feature/github-action-for-cli
   workflow_dispatch:
 
 jobs:
