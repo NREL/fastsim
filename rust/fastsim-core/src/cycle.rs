@@ -668,31 +668,6 @@ impl SerdeAPI for RustCycle {
         Ok(())
     }
 
-    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
-        Ok(
-            match format.trim_start_matches('.').to_lowercase().as_str() {
-                "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
-                "json" => serde_json::from_reader(rdr)?,
-                "bin" => bincode::deserialize_from(rdr)?,
-                "csv" => {
-                    // Create empty cycle to be populated
-                    let mut cyc = Self::default();
-                    let mut rdr = csv::Reader::from_reader(rdr);
-                    for result in rdr.deserialize() {
-                        cyc.push(result?);
-                    }
-                    cyc
-                }
-                _ => {
-                    bail!(
-                        "Unsupported format {format:?}, must be one of {:?}",
-                        Self::ACCEPTED_BYTE_FORMATS
-                    )
-                }
-            },
-        )
-    }
-
     fn to_str(&self, format: &str) -> anyhow::Result<String> {
         Ok(
             match format.trim_start_matches('.').to_lowercase().as_str() {
@@ -716,7 +691,7 @@ impl SerdeAPI for RustCycle {
     /// Note that using this method to instantiate a RustCycle from CSV, rather
     /// than the `from_csv_str` method, sets the cycle name to an empty string
     fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
-        match format.trim_start_matches('.').to_lowercase().as_str() {
+        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => Self::from_yaml(contents),
             "json" => Self::from_json(contents),
             "csv" => Self::from_csv_str(contents, ""),
@@ -724,7 +699,34 @@ impl SerdeAPI for RustCycle {
                 "Unsupported format {format:?}, must be one of {:?}",
                 Self::ACCEPTED_STR_FORMATS
             ),
-        }
+        }?;
+        deserialized.init()?;
+        Ok(deserialized)
+    }
+
+    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
+        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
+            "json" => serde_json::from_reader(rdr)?,
+            "bin" => bincode::deserialize_from(rdr)?,
+            "csv" => {
+                // Create empty cycle to be populated
+                let mut cyc = Self::default();
+                let mut rdr = csv::Reader::from_reader(rdr);
+                for result in rdr.deserialize() {
+                    cyc.push(result?);
+                }
+                cyc
+            }
+            _ => {
+                bail!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS
+                )
+            }
+        };
+        deserialized.init()?;
+        Ok(deserialized)
     }
 }
 
