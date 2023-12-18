@@ -1,6 +1,5 @@
 echo "Testing rust" &&
-(cd rust/fastsim-core/ && cargo test) &&
-(cd rust/fastsim-cli/ && cargo test) &&
+(cd rust && cargo test) &&
 pip install -qe ".[dev]" &&
 echo "Running python tests" &&
 pytest -v python/fastsim/tests/ &&
