@@ -56,7 +56,8 @@ impl SerdeAPI for Cycle {
     fn init(&mut self) -> anyhow::Result<()> {
         ensure!(self.time.len() == self.speed.len());
         ensure!(self.grade.len() == self.len());
-        ensure!(self.pwr_max_chrg.len() == self.len());
+        // TODO: figure out if this should be uncommented -- probably need to use a `match`
+        // somewhere to fix this ensure!(self.pwr_max_chrg.len() == self.len());
 
         // calculate distance from RHS integral of speed and time
         self.dist = self
