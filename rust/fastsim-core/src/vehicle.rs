@@ -6,6 +6,7 @@ use crate::params::*;
 use crate::proc_macros::{add_pyo3_api, doc_field, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
+use crate::utils::create_project_subdir;
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -1032,6 +1033,23 @@ impl RustVehicle {
         };
         v.set_derived().unwrap();
         v
+    }
+    /// Downloads specified vehicle from vehicle repo into fastsim/python/fastsim/resources/vehdb.
+    /// 
+    /// Arguments:
+    /// ----------
+    /// vehicle (string): name of the vehicle to be downloaded
+
+    // make separate function that gets list of yaml files off of github, then user can choose from that for input -- Rust function
+    // exposed to python, put in utilities
+    pub fn from_github(vehicle_file_name: String) {
+        let mut vehicle_url: String = "https://github.com/NREL/fastsim-vehicles/blob/main/public/".to_string();
+        vehicle_url.push_str(&vehicle_file_name);
+        // find or create fastsim data directory with subdirectory "vehicles" and return path
+        let data_directory: Option<PathBuf> = create_project_subdir("vehicles");
+        // see if you can find file_name in vehicle data
+        // if file doesn't already exist in directory, and once we have file path to directory:
+        // download_file_from_url(vehicle_url, data_directory)
     }
 }
 
