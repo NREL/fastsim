@@ -31,7 +31,7 @@ concurrency:
 jobs:
   # Build job
   build:
-    runs-on: [ self-hosted ]
+    runs-on: ubuntu-latest
     env:
       MDBOOK_VERSION: 0.4.21
     steps:
@@ -45,7 +45,7 @@ jobs:
         id: pages
         uses: actions/configure-pages@v3
       - name: Build with mdBook
-        working-directory: ${{runner.workspace}}/mbap-computing/docs/
+        working-directory: ${{runner.workspace}}/fastsim/docs/
         run: mdbook build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
