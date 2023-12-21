@@ -252,13 +252,17 @@ impl Diff for Vec<f64> {
     }
 }
 
-/// Trait that provides method for saving state
+/// Provides method that saves `self.state` to `self.history` and propagates to any fields with
+/// `state`
 pub trait SaveState {
+    /// Saves `self.state` to `self.history` and propagates to any fields with `state`
     fn save_state(&mut self) {}
 }
 
-/// Trait that provides method for stepping index counter
+/// Trait that provides method for incrementing `i` field of this and all contained structs,
+/// recursively
 pub trait Step {
+    /// Increments `i` field of this and all contained structs, recursively
     fn step(&mut self) {}
 }
 

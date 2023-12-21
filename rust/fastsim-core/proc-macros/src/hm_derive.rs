@@ -30,26 +30,23 @@ pub(crate) fn history_methods_derive(input: TokenStream) -> TokenStream {
         .map(|(f, _hsv)| f.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
-    if struct_has_state {
-        impl_block.extend::<TokenStream2>(quote! {
-            impl Step for #ident {
-                /// Increments `self.state.i`
-                fn step(&mut self) {
-                    self.state.i += 1;
-                    #(self.#fields_with_state.step();)*
-                }
-            }
-        });
+    let self_state_step: TokenStream2 = if struct_has_state {
+        quote! {
+            self.state.i += 1;
+        }
     } else {
-        impl_block.extend::<TokenStream2>(quote! {
-            impl Step for #ident {
-                /// Increments `self.state.i`
-                fn step(&mut self) {
-                    #(self.#fields_with_state.step();)*
-                }
+        quote! {}
+    };
+
+    impl_block.extend::<TokenStream2>(quote! {
+        impl Step for #ident {
+            fn step(&mut self) {
+                #self_state_step
+                #(self.#fields_with_state.step();)*
             }
-        });
-    }
+        }
+    });
+
 
     let self_save_state: TokenStream2 = if struct_has_state {
         quote! {self.history.push(self.state);}
@@ -60,7 +57,6 @@ pub(crate) fn history_methods_derive(input: TokenStream) -> TokenStream {
     if struct_has_save_interval {
         impl_block.extend::<TokenStream2>(quote! {
             impl SaveState for #ident {
-                /// Saves `self.state` to `self.history` and propagates to any fields with `state`
                 fn save_state(&mut self) {
                     if let Some(interval) = self.save_interval {
                         if self.state.i % interval == 0 || self.state.i == 1 {
@@ -74,7 +70,6 @@ pub(crate) fn history_methods_derive(input: TokenStream) -> TokenStream {
     } else {
         impl_block.extend::<TokenStream2>(quote! {
             impl SaveState for #ident {
-                /// Saves `self.state` to `self.history` and propagates to any fields with `state`
                 fn save_state(&mut self) {
                     #self_save_state
                     #(self.#fields_with_state.save_state();)*
