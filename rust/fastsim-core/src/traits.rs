@@ -1,5 +1,6 @@
 use crate::imports::*;
 use std::collections::HashMap;
+use tempfile::tempdir;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
@@ -153,6 +154,44 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// bincode deserialization method
     fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
         Ok(bincode::deserialize(encoded)?)
+    }
+
+    /// instantiates an object from a url
+    fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
+        let url = url.as_ref();
+        let temp_dir = tempdir()?;
+        let mut file_path = PathBuf::new();
+        // do these file types need to be specific to the object?
+        // TODO: either make funciton work for csv files, or remove from supported file list
+        if url.ends_with("yaml"){
+            let file_path = temp_dir.path().join("temporary_object.yaml");
+        } else if url.ends_with("csv"){
+            let file_path = temp_dir.path().join("temporary_object.csv");
+        } else if url.ends_with("json"){
+            let file_path = temp_dir.path().join("temporary_object.json");
+        } else {
+            bail!("Unsupported file type, must be a yaml, json, or csv file.");
+        }
+        download_file_from_url(url, &file_path);
+        // only works for json and yaml
+        // seems like I might also be able to use from_reader instead -- which one is preferable?
+        Self::from_file(file_path)
+    }
+
+    /// takes an object from a url and saves it in the fastsim data directory in a rust_objects folder
+    /// WARNING: if there is a file already in the data subdirectory with the same name, it will be replaced by the new file
+    /// to save to a folder other than rust_objects for a specific object type, override this default
+    /// implementation for the Rust object, and in the object-specific implementation, replace
+    /// "rust_objects" with your choice of folder name
+    fn to_cache<S: AsRef<str>>(url: S) {
+        let url = url.as_ref();
+        let url_parts: Vec<&str> = url.split("/").collect();
+        let file_name = url_parts.last().unwrap_or_else(||panic!("Could not determine file name/type."));
+        let data_subdirectory = create_project_subdir("rust_objects").unwrap_or_else(|_|panic!("Could not find or create Fastsim data subdirectory."));
+        let file_path = data_subdirectory.join(file_name);
+        // I believe this will overwrite any existing files with the same name -- is this preferable, or should we add
+        // a bool argument so user can determine whether the file should overwrite an existing file or not
+        download_file_from_url(url, &file_path);
     }
 }
 

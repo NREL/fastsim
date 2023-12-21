@@ -29,6 +29,7 @@
 //! ```
 
 extern crate ndarray;
+extern crate tempfile;
 
 #[macro_use]
 pub mod macros;
