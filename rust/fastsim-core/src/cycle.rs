@@ -629,6 +629,8 @@ pub struct RustCycle {
 impl SerdeAPI for RustCycle {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
+    // is this enough, or do I have to copy paste in the whole to_cache mathod?
+    const CACHE_FOLDER: &'static str = &"cycles";
 
     // TODO: make this get called somewhere
     fn init(&mut self) -> anyhow::Result<()> {
@@ -725,19 +727,6 @@ impl SerdeAPI for RustCycle {
                 Self::ACCEPTED_STR_FORMATS
             ),
         }
-    }
-
-    /// takes an object from a url and saves it in the fastsim data directory in a rust_objects folder
-    /// WARNING: if there is a file already in the data subdirectory with the same name, it will be replaced by the new file
-    fn to_cache<S: AsRef<str>>(url: S) {
-        let url = url.as_ref();
-        let url_parts: Vec<&str> = url.split("/").collect();
-        let file_name = url_parts.last().unwrap_or_else(||panic!("Could not determine file name/type."));
-        let data_subdirectory = create_project_subdir("cycles").unwrap_or_else(|_|panic!("Could not find or create Fastsim data subdirectory."));
-        let file_path = data_subdirectory.join(file_name);
-        // I believe this will overwrite any existing files with the same name -- is this preferable, or should we add
-        // a bool argument so user can determine whether the file should overwrite an existing file or not
-        download_file_from_url(url, &file_path);
     }
 }
 

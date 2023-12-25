@@ -7,6 +7,7 @@ use ndarray::*;
 use ndarray_stats::QuantileExt;
 use regex::Regex;
 use std::collections::HashSet;
+use url::{Url, Host, Position};
 
 use crate::imports::*;
 #[cfg(feature = "pyo3")]
@@ -523,6 +524,29 @@ pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathB
     let path = PathBuf::from(proj_dirs.config_dir()).join(subpath);
     std::fs::create_dir_all(path.as_path())?;
     Ok(path)
+}
+
+/// takes an object from a url and saves it in the FASTSim data directory in a
+/// rust_objects folder  
+/// WARNING: if there is a file already in the data subdirectory with the same
+/// name, it will be replaced by the new file   
+/// to save to a folder other than rust_objects, define constant CACHE_FOLDER to
+/// be the desired folder name  
+/// # Arguments  
+/// - url: url (either as a string or url type) to object  
+/// - subpath: path to subdirectory within FASTSim data directory. Suggested
+/// paths are "vehicles" for a RustVehicle, "cycles" for a RustCycle, and
+/// "rust_objects" for other Rust objects.
+pub fn url_to_cache<S: AsRef<str>, P: AsRef<Path>>(url: S, subpath: P) -> anyhow::Result<()> {
+    let url = Url::parse(url.as_ref())?;
+    let file_name = url
+        .path_segments()
+        .and_then(|segments| segments.last())
+        .with_context(|| "Could not parse filename from URL: {url:?}")?;
+    let data_subdirectory = create_project_subdir(subpath).with_context(||"Could not find or build Fastsim data subdirectory.")?;
+    let file_path = data_subdirectory.join(file_name);
+    download_file_from_url(url.as_ref(), &file_path)?;
+    Ok(())
 }
 
 #[cfg(feature = "pyo3")]

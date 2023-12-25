@@ -546,6 +546,7 @@ pub struct RustVehicle {
 
 /// RustVehicle rust methods
 impl RustVehicle {
+    const VEHICLE_DIRECTORY_URL: &'static str = &"https://github.com/NREL/fastsim-vehicles/blob/main/public/";
     /// Sets the following parameters:
     /// - `ess_mass_kg`
     /// - `mc_mass_kg`
@@ -1034,22 +1035,19 @@ impl RustVehicle {
         v.set_derived().unwrap();
         v
     }
-    /// Downloads specified vehicle from vehicle repo into fastsim/python/fastsim/resources/vehdb.
-    /// 
-    /// Arguments:
-    /// ----------
-    /// vehicle (string): name of the vehicle to be downloaded
 
-    // make separate function that gets list of yaml files off of github, then user can choose from that for input -- Rust function
-    // exposed to python, put in utilities
-    pub fn from_github(vehicle_file_name: String) {
-        let mut vehicle_url: String = "https://github.com/NREL/fastsim-vehicles/blob/main/public/".to_string();
-        vehicle_url.push_str(&vehicle_file_name);
-        // find or create fastsim data directory with subdirectory "vehicles" and return path
-        let data_directory: Option<PathBuf> = create_project_subdir("vehicles");
-        // see if you can find file_name in vehicle data
-        // if file doesn't already exist in directory, and once we have file path to directory:
-        // download_file_from_url(vehicle_url, data_directory)
+    /// Downloads specified vehicle from vehicle repo into
+    /// fastsim/python/fastsim/resources/vehdb.  
+    /// # Arguments  
+    /// - vehicle_file_name: file name for vehicle to be downloaded  
+    /// - url: url for vehicle to be downloaded, if None, assumed to be
+    ///   downloaded from vehicle FASTSim repo  
+    /// - cache: If True, function will first check for vehicle in FASTSim data
+    /// directory, and if vehicle is already there, will use local version. If
+    /// vehicle is not stored locally, will download and store vehicle for later
+    /// use. If False, will not check for vehicle locally or store vehicle
+    /// locally for later use
+    pub fn from_github_or_url<S: AsRef<str>>(vehicle_file_name: S, url: Option<S>, cache: bool) {
     }
 }
 
@@ -1079,20 +1077,11 @@ impl Default for RustVehicle {
 }
 
 impl SerdeAPI for RustVehicle {
+    // is this enough, or do I have to copy paste in the whole to_cache mathod?
+    const CACHE_FOLDER: &'static str = &"vehicles";
+
     fn init(&mut self) -> anyhow::Result<()> {
         self.set_derived()
-    }
-    /// takes an object from a url and saves it in the fastsim data directory in a rust_objects folder
-    /// WARNING: if there is a file already in the data subdirectory with the same name, it will be replaced by the new file
-    fn to_cache<S: AsRef<str>>(url: S) {
-        let url = url.as_ref();
-        let url_parts: Vec<&str> = url.split("/").collect();
-        let file_name = url_parts.last().unwrap_or_else(||panic!("Could not determine file name/type."));
-        let data_subdirectory = create_project_subdir("vehicles").unwrap_or_else(|_|panic!("Could not find or create Fastsim data subdirectory."));
-        let file_path = data_subdirectory.join(file_name);
-        // I believe this will overwrite any existing files with the same name -- is this preferable, or should we add
-        // a bool argument so user can determine whether the file should overwrite an existing file or not
-        download_file_from_url(url, &file_path);
     }
 }
 

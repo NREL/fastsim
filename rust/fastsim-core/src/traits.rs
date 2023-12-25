@@ -5,6 +5,7 @@ use tempfile::tempdir;
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
+    const CACHE_FOLDER: &'static str = &"rust_objects";
 
     /// Runs any initialization steps that might be needed
     fn init(&mut self) -> anyhow::Result<()> {
@@ -156,42 +157,57 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(bincode::deserialize(encoded)?)
     }
 
-    /// instantiates an object from a url
+    /// instantiates an object from a url  
+    /// accepts yaml and json file types  
+    /// # Arguments  
+    /// - url: url (either as a string or url type) to object
     fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
         let url = url.as_ref();
+        let url_parts: Vec<&str> = url.split(".").collect();
+        let file_extension = url_parts.last().unwrap_or_else(||panic!("Could not determine file type.")).to_lowercase().as_str();
+        ensure!(
+            Self::ACCEPTED_STR_FORMATS.contains(&file_extension) || file_extension == "yml",
+            "Unsupported format {file_extension:?}, must be one of {:?}",
+            Self::ACCEPTED_STR_FORMATS
+        );
+        let file_name = "temporary_object.".to_string() + file_extension;
         let temp_dir = tempdir()?;
-        let mut file_path = PathBuf::new();
-        // do these file types need to be specific to the object?
-        // TODO: either make funciton work for csv files, or remove from supported file list
-        if url.ends_with("yaml"){
-            let file_path = temp_dir.path().join("temporary_object.yaml");
-        } else if url.ends_with("csv"){
-            let file_path = temp_dir.path().join("temporary_object.csv");
-        } else if url.ends_with("json"){
-            let file_path = temp_dir.path().join("temporary_object.json");
-        } else {
-            bail!("Unsupported file type, must be a yaml, json, or csv file.");
-        }
+        let file_path = temp_dir.path().join(file_name);
         download_file_from_url(url, &file_path);
-        // only works for json and yaml
-        // seems like I might also be able to use from_reader instead -- which one is preferable?
+        // seems like I might also be able to use from_reader instead -- which
+        // one is preferable?
+        // try switching over to from_reader(), this will require finding
+        // a crate which takes a url and spits out a Rust object
+        // that implements std::io::Read
         Self::from_file(file_path)
     }
 
-    /// takes an object from a url and saves it in the fastsim data directory in a rust_objects folder
-    /// WARNING: if there is a file already in the data subdirectory with the same name, it will be replaced by the new file
-    /// to save to a folder other than rust_objects for a specific object type, override this default
-    /// implementation for the Rust object, and in the object-specific implementation, replace
-    /// "rust_objects" with your choice of folder name
-    fn to_cache<S: AsRef<str>>(url: S) {
-        let url = url.as_ref();
-        let url_parts: Vec<&str> = url.split("/").collect();
-        let file_name = url_parts.last().unwrap_or_else(||panic!("Could not determine file name/type."));
-        let data_subdirectory = create_project_subdir("rust_objects").unwrap_or_else(|_|panic!("Could not find or create Fastsim data subdirectory."));
+    /// takes an instantiated Rust object and saves it in the FASTSim data directory in
+    /// a rust_objects folder  
+    /// WARNING: if there is a file already in the data subdirectory with the
+    /// same name, it will be replaced by the new file  
+    /// to save to a folder other than rust_objects for a specific object type,
+    /// in the object-specific SerdeAPI implementation, redefine the
+    /// CACHE_FOLDER constant to be your choice of folder name  
+    /// # Arguments  
+    /// - self (rust object)  
+    /// - file_path: path to file within subdirectory. If only the file name is
+    /// listed, file will sit directly within the subdirectory of
+    /// the FASTSim data directory. If a path is given, the file will live
+    /// within the path specified, within the subdirectory CACHE_FOLDER of the
+    /// FASTSim data directory.
+    fn to_cache<P: AsRef<Path>>(&self, file_path: P) -> anyhow::Result<()> {
+        let file_name = file_path.as_ref().file_name().with_context(||"Could not determine file name")?.to_str().context("Could not determine file name.")?;
+        let mut subpath = PathBuf::new();
+        let file_path_internal = file_path.as_ref().to_str().context("Could not determine file name.")?;
+        if file_name == file_path_internal {
+            subpath = PathBuf::from(Self::CACHE_FOLDER);
+        } else {
+            subpath = Path::new(Self::CACHE_FOLDER).join(file_path_internal.strip_suffix(file_name).context("Could not determine path to subdirectory.")?);
+        }
+        let data_subdirectory = create_project_subdir(subpath).with_context(||"Could not find or build Fastsim data subdirectory.")?;
         let file_path = data_subdirectory.join(file_name);
-        // I believe this will overwrite any existing files with the same name -- is this preferable, or should we add
-        // a bool argument so user can determine whether the file should overwrite an existing file or not
-        download_file_from_url(url, &file_path);
+        self.to_file(file_path)
     }
 }
 
