@@ -717,7 +717,8 @@ impl SerdeAPI for RustCycle {
 
     /// Note that using this method to instantiate a RustCycle from CSV, rather
     /// than the `from_csv_str` method, sets the cycle name to an empty string
-    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
+    fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
+        let contents = contents.as_ref();
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => Self::from_yaml(contents),
             "json" => Self::from_json(contents),

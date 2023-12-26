@@ -1,7 +1,6 @@
 use crate::imports::*;
 use std::collections::HashMap;
 use ureq;
-use url::Url;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
@@ -117,7 +116,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         }
     }
 
-    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
+    fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
+        let contents = contents.as_ref();
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => Self::from_yaml(contents),
             "json" => Self::from_json(contents),
@@ -163,145 +163,15 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// # Arguments  
     /// - url: url (either as a string or url type) to object
     fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
-        let url = Url::parse(url.as_ref())?;
+        let url = url::Url::parse(url.as_ref())?;
         let format = url
             .path_segments()
             .and_then(|segments| segments.last())
             .and_then(|filename| Path::new(filename).extension())
             .and_then(OsStr::to_str)
             .with_context(|| "Could not parse file format from URL: {url:?}")?;
-        ensure!(
-            Self::ACCEPTED_STR_FORMATS.contains(&format) || format == "yml",
-            "Unsupported format {format:?}, must be one of {:?}",
-            Self::ACCEPTED_STR_FORMATS
-        );
-        let body_ureq = ureq::get(url.as_ref()).call()?.into_string()?;
-        let body = body_ureq.as_str();
-        SerdeAPI::from_str(body, format)
-        // if (format == "yaml") | (format == "yml") {
-        //     // let file = serde_yaml::from_str::<Self>(body).with_context(||"Could not access url content.");
-        //     // Ok(serde_yaml::from_str::<Self>(&body))
-        //     self.from_str(body, format)
-        // } else if format == "json" {
-        //     // let file = serde_json::from_str::<Self>(body).with_context(||"Could not access url content.");
-        //     // Ok(serde_json::from_str::<Self>(&body))
-        // } else {
-        //     return Err(anyhow!("Incorrect file format."))
-        // }
-
-
-        // let client = reqwest::Client::builder()
-        //     .redirect(reqwest::redirect::Policy::none())
-        //     .build()
-        //     .unwrap();
-        // let res = client.get(url)
-        //     .text()?;   
-        // let file = match file_extension {
-        //         "yaml" | "yml" => serde_yaml::from_str(&body).with_context(||"Could not access url content."),
-        //         "json" => serde_json::from_str(&body).with_context(||"Could not access url content."),
-        //         _ => return Err(anyhow!("Incorrect file format."))
-        //     };
-
-
-        // let page = http::handle().get(url).exec().with_context(||"Could not access url content.")?;
-        // let body = std::str::from_utf8(page.get_body()).with_context(|| {
-        //     "Failed to parse response from url."
-        // })?;
-        // let file = match file_extension {
-        //     "yaml" | "yml" => serde_yaml::from_str(body).with_context("Could not access url content."),
-        //     "json" => serde_json::from_str(body).with_context("Could not access url content."),
-        //     _ => return Err(anyhow!("Incorrect file format."))
-        // };
-        // file.from_reader();
-        // let client = reqwest::blocking::Client::builder()
-        //     .redirect(reqwest::redirect::Policy::none())
-        //     .build()
-        //     .unwrap();
-        // let res = client.get("http://example.com")
-        //     .send()?
-        //     .text()?;
-        // println!("{}", res);
-
-        // if (file_extension == "yaml") | (file_extension == "yml") {
-        //     let file: serde_yaml::Value = reqwest::Client::new()
-        //         .get(url)
-        //         .header("User-Agent", "Reqwest Rust Test")
-        //         .send()
-        //         .await?
-        //         .json()
-        //         .await?
-        //         .from_reader();
-        // } else if file_extension == "json" {
-        //     let file: serde_json::Value = reqwest::Client::new()
-        //         .get(url)
-        //         .header("User-Agent", "Reqwest Rust Test")
-        //         .send()
-        //         .await?
-        //         .json()
-        //         .await?;
-        // } else {
-        //     return Err(anyhow!("Incorrect file format."))
-        // }
-        // file.from_reader()
-
-
-        // let echo_json: serde_json::Value = reqwest::Client::new()
-        //     .get(url)
-        //     .header("User-Agent", "Reqwest Rust Test")
-        //     .send()
-        //     .await?
-        //     .json()
-        //     .await?;
-
-
-        // let url = url.as_ref();
-        // let url_parts: Vec<&str> = url.split(".").collect();
-        // let file_extension = url_parts.last().unwrap_or_else(||panic!("Could not determine file type.")).to_lowercase().as_str();
-        // ensure!(
-        //     Self::ACCEPTED_STR_FORMATS.contains(&file_extension) || file_extension == "yml",
-        //     "Unsupported format {file_extension:?}, must be one of {:?}",
-        //     Self::ACCEPTED_STR_FORMATS
-        // );
-        // let page = http::handle().get(url).exec().with_context(||"Could not access url content.")?;
-        // let body = std::str::from_utf8(page.get_body()).with_context(|| {
-        //     "Failed to parse response from url."
-        // })?;
-        // let file = match file_extension {
-        //     "yaml" | "yml" => serde_yaml::from_str(body).with_context("Could not access url content."),
-        //     "json" => serde_json::from_str(body).with_context("Could not access url content."),
-        //     _ => return Err(anyhow!("Incorrect file format."))
-        // };
-        // file.from_reader();
-
-        // let url = Url::parse(url.as_ref())?;
-        // let scheme = url.scheme();
-        // let port = match scheme {
-        //     "http" => 80,
-        //     "https" => 443,
-        //     _ => return Err(anyhow!("Could not determine port."))
-        // };
-        // let ips = lookup_host(url.as_ref()).with_context(||"Could not determine ips.")?;
-
-
-
-        // let url = url.as_ref();
-        // let url_parts: Vec<&str> = url.split(".").collect();
-        // let file_extension = url_parts.last().unwrap_or_else(||panic!("Could not determine file type.")).to_lowercase().as_str();
-        // ensure!(
-        //     Self::ACCEPTED_STR_FORMATS.contains(&file_extension) || file_extension == "yml",
-        //     "Unsupported format {file_extension:?}, must be one of {:?}",
-        //     Self::ACCEPTED_STR_FORMATS
-        // );
-        // let file_name = "temporary_object.".to_string() + file_extension;
-        // let temp_dir = tempdir()?;
-        // let file_path = temp_dir.path().join(file_name);
-        // download_file_from_url(url, &file_path);
-        // // seems like I might also be able to use from_reader instead -- which
-        // // one is preferable?
-        // // try switching over to from_reader(), this will require finding
-        // // a crate which takes a url and spits out a Rust object
-        // // that implements std::io::Read
-        // Self::from_file(file_path)
+        let response = ureq::get(url.as_ref()).call()?.into_string()?;
+        Self::from_str(response, format)
     }
 
     /// takes an instantiated Rust object and saves it in the FASTSim data directory in
