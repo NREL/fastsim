@@ -186,16 +186,16 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(yaml_de)
     }
 
-    /// Write (serialize) an object to a bincode-encoded byte array
+    /// Write (serialize) an object to bincode-encoded bytes
     fn to_bincode(&self) -> anyhow::Result<Vec<u8>> {
         Ok(bincode::serialize(&self)?)
     }
 
-    /// Read (deserialize) an object from a bincode-encoded byte array
+    /// Read (deserialize) an object from bincode-encoded bytes
     ///
     /// # Arguments
     ///
-    /// * `encoded` - Encoded byte array to deserialize from
+    /// * `encoded` - Encoded bytes to deserialize from
     ///
     fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
         let mut bincode_de: Self = bincode::deserialize(encoded)?;
