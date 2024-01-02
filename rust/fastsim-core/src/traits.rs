@@ -161,7 +161,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// instantiates an object from a url  
     /// accepts yaml and json file types  
     /// # Arguments  
-    /// - url: url (either as a string or url type) to object
+    /// - url: URL (either as a string or url type) to object  
+    /// Note: The URL needs to be a URL pointing directly to a file, for example
+    /// a raw github URL.
     fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
         let url = url::Url::parse(url.as_ref())?;
         let format = url
@@ -170,8 +172,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .and_then(|filename| Path::new(filename).extension())
             .and_then(OsStr::to_str)
             .with_context(|| "Could not parse file format from URL: {url:?}")?;
-        let response = ureq::get(url.as_ref()).call()?.into_string()?;
-        Self::from_str(response, format)
+        let response = ureq::get(url.as_ref()).call()?.into_reader();
+        Self::from_reader(response, format)
     }
 
     /// takes an instantiated Rust object and saves it in the FASTSim data directory in

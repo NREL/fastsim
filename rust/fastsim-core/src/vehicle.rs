@@ -7,6 +7,7 @@ use crate::proc_macros::{add_pyo3_api, doc_field, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::utils::create_project_subdir;
+use std::fs;
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -1036,8 +1037,8 @@ impl RustVehicle {
         v
     }
 
-    /// Downloads specified vehicle from vehicle repo into
-    /// fastsim/python/fastsim/resources/vehdb.  
+    /// Downloads specified vehicle from vehicle repo or url into
+    /// VEHICLE_DIRECTORY_URL, if not already downloaded. Returns vehicle.  
     /// # Arguments  
     /// - vehicle_file_name: file name for vehicle to be downloaded  
     /// - url: url for vehicle to be downloaded, if None, assumed to be
@@ -1047,7 +1048,40 @@ impl RustVehicle {
     /// vehicle is not stored locally, will download and store vehicle for later
     /// use. If False, will not check for vehicle locally or store vehicle
     /// locally for later use
-    pub fn from_github_or_url<S: AsRef<str>>(vehicle_file_name: S, url: Option<S>, cache: bool) {
+    /// Note: The URL needs to be a URL pointing directly to a file, for example
+    /// a raw github URL.
+    pub fn from_github_or_url<S: AsRef<str>>(vehicle_file_name: S, url: Option<S>, cache: bool) -> anyhow::Result<Self> {
+        if cache {
+            let dir = create_project_subdir("vehicles").with_context(||"Could not determine FASTSim data directory path.")?;
+            let mut file_already_downloaded = false;
+            let mut file_path = PathBuf::new();
+            for entry in  fs::read_dir(dir)? {
+                let entry = entry?;
+                file_path = entry.path();
+                let entry_name = file_path.file_name().with_context(||"Could not parse file name from directory file: {entry:?}")?.to_str().with_context(||"Could not parse file name from directory file: {entry:?}")?;
+                if entry_name == vehicle_file_name.as_ref() {
+                    file_already_downloaded = true;
+                    break
+                } else {
+                    continue
+                }
+            }
+            if file_already_downloaded {
+                Self::from_resource(file_path)
+            } else {
+                let url_internal = match url {
+                    Some(s) => s.as_ref().to_owned(),
+                    None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref()
+                };
+                Self::from_url(url_internal)
+            }
+        } else {
+            let url_internal = match url {
+                Some(s) => s.as_ref().to_owned(),
+                None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref()
+            };
+            Self::from_url(url_internal)
+        }
     }
 }
 

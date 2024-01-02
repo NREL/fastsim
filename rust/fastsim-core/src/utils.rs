@@ -7,7 +7,7 @@ use ndarray::*;
 use ndarray_stats::QuantileExt;
 use regex::Regex;
 use std::collections::HashSet;
-use url::{Url, Host, Position};
+use url::Url;
 
 use crate::imports::*;
 #[cfg(feature = "pyo3")]
