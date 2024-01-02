@@ -3,11 +3,11 @@ Category,Scenario name,2020 Chevrolet Colorado 2WD Diesel,"2.8L Turbo Diesel, Cr
 Vehicle,vehPtType,Conv,
 ,dragCoef,0.4,"from a,b,c targets"
 ,frontalAreaM2,2.88,"H=1.795m, W=1.886m, FA=H*W*0.85, https://media.chevrolet.com/content/media/us/en/chevrolet/vehicles/colorado/2020/_jcr_content/iconrow/textfile/file.res/2020%20Chevrolet%20Colorado%20Product%20Guide.pdf"
-,gliderKg,,
+,gliderKg,1250,
 ,vehCgM,0.53,
 ,driveAxleWeightFrac,0.61,
 ,wheelBaseM,3.26,https://media.chevrolet.com/content/media/us/en/chevrolet/vehicles/colorado/2020/_jcr_content/iconrow/textfile/file.res/2020%20Chevrolet%20Colorado%20Product%20Guide.pdf
-,cargoKg,,
+,cargoKg,136.8,
 ,vehOverrideKg,2325,EPA Test Data
 Fuel / Fuel Converter,maxFuelStorKw,2000,
 ,fuelStorSecsToPeakPwr,1,
@@ -37,15 +37,15 @@ Wheels,wheelInertiaKgM2,2.38,bndtechsource.wixsite.com/home/rotational-inertia-c
 ,wheelRrCoef,0.009,
 ,wheelRadiusM,0.4064,P265/70R16
 ,wheelCoefOfFric,0.7,
-"SOC, ESS Discharch / Charge",minSoc,,
-,maxSoc,,
-,essDischgToFcMaxEffPerc,,
-,essChgToFcMaxEffPerc,,
-"Acceleration, FC, Efficiency, Mass, Regen, etc",maxAccelBufferMph,,
-,maxAccelBufferPercOfUseableSoc,,
-,percHighAccBuf,,
-,mphFcOn,,
-,kwDemandFcOn,,
+"SOC, ESS Discharch / Charge",minSoc,0.25,
+,maxSoc,0.95,
+,essDischgToFcMaxEffPerc,1,
+,essChgToFcMaxEffPerc,0,
+"Acceleration, FC, Efficiency, Mass, Regen, etc",maxAccelBufferMph,60,
+,maxAccelBufferPercOfUseableSoc,0.2,
+,percHighAccBuf,0,
+,mphFcOn,85,
+,kwDemandFcOn,70,
 ,altEff,1,
 ,chgEff,0.86,
 ,auxKw,1.5,
