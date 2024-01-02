@@ -1,5 +1,5 @@
 ,Param Name,Param Value,Param Source / Comments
-,Scenario_name,2022 Tesla Model 3 RWD,
+,Scenario name,2022 Tesla Model 3 RWD,
 ,vehYear,2022,
 ,vehPtType,BEV,
 ,dragCoef,0.23,previously 0.20831719183517006; https://arxiv.org/pdf/1908.08920.pdf%5D
