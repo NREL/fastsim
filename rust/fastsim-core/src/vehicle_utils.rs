@@ -1771,6 +1771,33 @@ pub fn import_and_save_all_vehicles(
     Ok(())
 }
 
+#[derive(Deserialize)]
+pub struct GitVehicleInfo {
+    pub name: String,
+    pub path: String,
+    pub sha: String,
+    pub size: i64,
+    pub url: String,
+    pub html_url: String,
+    pub git_url: String,
+    pub download_url: String,
+    #[serde(rename = "type")]
+    pub url_type: String,
+    pub links: Vec<String>,
+}
+
+const VEHICLE_REPO_LIST_URL: &'static str = &"https://api.github.com/repos/NREL/fastsim-vehicles/contents/public";
+
+pub fn fetch_github_list() -> anyhow::Result<Vec<String>> {
+    let response = ureq::get(VEHICLE_REPO_LIST_URL).call()?.into_reader();
+    let github_list: HashMap<i64, GitVehicleInfo> = serde_json::from_reader(response).with_context(||"Cannot parse github vehicle list.")?;
+    let mut vehicle_name_list: Vec<String> = Vec::new();
+    for (key, value) in github_list.iter() {
+        vehicle_name_list.push(value.name.to_owned())
+    }
+    Ok(vehicle_name_list)
+}
+
 #[cfg(test)]
 mod vehicle_utils_tests {
     use super::*;
