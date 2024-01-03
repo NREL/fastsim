@@ -71,22 +71,10 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .and_then(OsStr::to_str)
             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?
             .to_lowercase();
-        ensure!(
-            Self::ACCEPTED_BYTE_FORMATS.contains(&extension.as_str()),
-            "Unsupported format {extension:?}, must be one of {:?}",
-            Self::ACCEPTED_BYTE_FORMATS
-        );
         let file = crate::resources::RESOURCES_DIR
             .get_file(filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
-        let mut deserialized = match extension.as_str() {
-            "bin" => Self::from_bincode(include_dir::File::contents(file))?,
-            _ => Self::from_str(
-                include_dir::File::contents_utf8(file)
-                    .with_context(|| format!("File could not be parsed to UTF-8: {filepath:?}"))?,
-                &extension,
-            )?,
-        };
+        let mut deserialized = Self::from_reader(file.contents(), &extension)?;
         deserialized.init()?;
         Ok(deserialized)
     }
@@ -117,7 +105,6 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
-        let contents = contents.as_ref();
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => Self::from_yaml(contents),
             "json" => Self::from_json(contents),
@@ -134,8 +121,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// JSON deserialization method
-    fn from_json(json_str: &str) -> anyhow::Result<Self> {
-        Ok(serde_json::from_str(json_str)?)
+    fn from_json<S: AsRef<str>>(json_str: S) -> anyhow::Result<Self> {
+        Ok(serde_json::from_str(json_str.as_ref())?)
     }
 
     /// YAML serialization method
@@ -144,8 +131,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// YAML deserialization method
-    fn from_yaml(yaml_str: &str) -> anyhow::Result<Self> {
-        Ok(serde_yaml::from_str(yaml_str)?)
+    fn from_yaml<S: AsRef<str>>(yaml_str: S) -> anyhow::Result<Self> {
+        Ok(serde_yaml::from_str(yaml_str.as_ref())?)
     }
 
     /// bincode serialization method
@@ -191,15 +178,28 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// within the path specified, within the subdirectory CACHE_FOLDER of the
     /// FASTSim data directory.
     fn to_cache<P: AsRef<Path>>(&self, file_path: P) -> anyhow::Result<()> {
-        let file_name = file_path.as_ref().file_name().with_context(||"Could not determine file name")?.to_str().context("Could not determine file name.")?;
+        let file_name = file_path
+            .as_ref()
+            .file_name()
+            .with_context(|| "Could not determine file name")?
+            .to_str()
+            .context("Could not determine file name.")?;
         let mut subpath = PathBuf::new();
-        let file_path_internal = file_path.as_ref().to_str().context("Could not determine file name.")?;
+        let file_path_internal = file_path
+            .as_ref()
+            .to_str()
+            .context("Could not determine file name.")?;
         if file_name == file_path_internal {
             subpath = PathBuf::from(Self::CACHE_FOLDER);
         } else {
-            subpath = Path::new(Self::CACHE_FOLDER).join(file_path_internal.strip_suffix(file_name).context("Could not determine path to subdirectory.")?);
+            subpath = Path::new(Self::CACHE_FOLDER).join(
+                file_path_internal
+                    .strip_suffix(file_name)
+                    .context("Could not determine path to subdirectory.")?,
+            );
         }
-        let data_subdirectory = create_project_subdir(subpath).with_context(||"Could not find or build Fastsim data subdirectory.")?;
+        let data_subdirectory = create_project_subdir(subpath)
+            .with_context(|| "Could not find or build Fastsim data subdirectory.")?;
         let file_path = data_subdirectory.join(file_name);
         self.to_file(file_path)
     }
