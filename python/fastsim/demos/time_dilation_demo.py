@@ -17,7 +17,6 @@ from fastsim import simdrive, vehicle, cycle
 from fastsim import parameters as params
 
 import fastsim as fsim
-import fastsim.utilities as utils
 
 # importlib.reload(simdrive)
 

@@ -7,8 +7,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Tuple, List
 
-from fastsim.utilities import get_rho_air
-
 props = params.PhysicalProperties()
 R_air = 287  # J/(kg*K)
     

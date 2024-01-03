@@ -7,7 +7,7 @@ This module demonstrates the vehicle import API
 import os, pathlib
 
 import fastsim.fastsimrust as fsr
-import fastsim.utilities as utils
+import fastsim.utils as utils
 
 #for testing demo files, false when running automatic tests
 SHOW_PLOTS = utils.show_plots()
