@@ -23,22 +23,10 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .and_then(OsStr::to_str)
             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?
             .to_lowercase();
-        ensure!(
-            Self::ACCEPTED_BYTE_FORMATS.contains(&extension.as_str()),
-            "Unsupported format {extension:?}, must be one of {:?}",
-            Self::ACCEPTED_BYTE_FORMATS
-        );
         let file = crate::resources::RESOURCES_DIR
             .get_file(filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
-        let mut deserialized = match extension.as_str() {
-            "bin" => Self::from_bincode(include_dir::File::contents(file))?,
-            _ => Self::from_str(
-                include_dir::File::contents_utf8(file)
-                    .with_context(|| format!("File could not be parsed to UTF-8: {filepath:?}"))?,
-                &extension,
-            )?,
-        };
+        let mut deserialized = Self::from_reader(file.contents(), &extension)?;
         deserialized.init()?;
         Ok(deserialized)
     }
@@ -118,7 +106,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `contents` - The string containing the object data
     /// * `format` - The source format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
     ///
-    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
+    fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
         let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => Self::from_yaml(contents)?,
             "json" => Self::from_json(contents)?,
@@ -163,8 +151,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `json_str` - JSON-formatted string to deserialize from
     ///
-    fn from_json(json_str: &str) -> anyhow::Result<Self> {
-        let mut json_de: Self = serde_json::from_str(json_str)?;
+    fn from_json<S: AsRef<str>>(json_str: S) -> anyhow::Result<Self> {
+        let mut json_de: Self = serde_json::from_str(json_str.as_ref())?;
         json_de.init()?;
         Ok(json_de)
     }
@@ -180,8 +168,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `yaml_str` - YAML-formatted string to deserialize from
     ///
-    fn from_yaml(yaml_str: &str) -> anyhow::Result<Self> {
-        let mut yaml_de: Self = serde_yaml::from_str(yaml_str)?;
+    fn from_yaml<S: AsRef<str>>(yaml_str: S) -> anyhow::Result<Self> {
+        let mut yaml_de: Self = serde_yaml::from_str(yaml_str.as_ref())?;
         yaml_de.init()?;
         Ok(yaml_de)
     }

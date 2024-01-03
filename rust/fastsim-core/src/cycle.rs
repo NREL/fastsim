@@ -690,16 +690,16 @@ impl SerdeAPI for RustCycle {
 
     /// Note that using this method to instantiate a RustCycle from CSV, rather
     /// than the `from_csv_str` method, sets the cycle name to an empty string
-    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
+    fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
         let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => Self::from_yaml(contents),
-            "json" => Self::from_json(contents),
-            "csv" => Self::from_csv_str(contents, ""),
+            "yaml" | "yml" => Self::from_yaml(contents)?,
+            "json" => Self::from_json(contents)?,
+            "csv" => Self::from_csv_str(contents, "".to_string())?,
             _ => bail!(
                 "Unsupported format {format:?}, must be one of {:?}",
                 Self::ACCEPTED_STR_FORMATS
             ),
-        }?;
+        };
         deserialized.init()?;
         Ok(deserialized)
     }
@@ -804,9 +804,9 @@ impl RustCycle {
     }
 
     /// Load cycle from CSV string
-    pub fn from_csv_str(csv_str: &str, name: &str) -> anyhow::Result<Self> {
-        let mut cyc = Self::from_reader(csv_str.as_bytes(), "csv")?;
-        cyc.name = name.to_string();
+    pub fn from_csv_str<S: AsRef<str>>(csv_str: S, name: String) -> anyhow::Result<Self> {
+        let mut cyc = Self::from_reader(csv_str.as_ref().as_bytes(), "csv")?;
+        cyc.name = name;
         Ok(cyc)
     }
 
@@ -1240,10 +1240,10 @@ mod tests {
 
     #[test]
     fn test_str_serde() {
-        let format = "csv";
         let cyc = RustCycle::test_cyc();
-        println!("{cyc:?}");
-        let csv_str = cyc.to_str(format).unwrap();
-        RustCycle::from_str(&csv_str, format).unwrap();
+        for format in RustCycle::ACCEPTED_STR_FORMATS {
+            let csv_str = cyc.to_str(format).unwrap();
+            RustCycle::from_str(&csv_str, format).unwrap();
+        }
     }
 }
