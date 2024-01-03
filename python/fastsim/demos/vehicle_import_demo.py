@@ -7,10 +7,10 @@ This module demonstrates the vehicle import API
 import os, pathlib
 
 import fastsim.fastsimrust as fsr
-from fastsim.demos.utils import maybe_str_to_bool, DEMO_TEST_ENV_VAR
+import fastsim.utilities as utils
 
-RAN_SUCCESSFULLY = False
-IS_INTERACTIVE = maybe_str_to_bool(os.getenv(DEMO_TEST_ENV_VAR))
+#for testing demo files, false when running automatic tests
+SHOW_PLOTS = utils.show_plots()
 
 # %%
 # Setup some directories
@@ -33,14 +33,14 @@ year = "2022"
 # Python pathlib.Path object will be rejected.
 
 options = fsr.get_options_for_year_make_model(year, make, model)
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     for opt in options:
         print(f"{opt.id}: {opt.transmission}")
 
 # %%
 # Get the data for the given option
 data = options[1]
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     print(
         f"{data.year} {data.make} {data.model}: {data.comb_mpg_fuel1} mpg ({data.city_mpg_fuel1} CITY / {data.highway_mpg_fuel1} HWY)"
     )
@@ -81,11 +81,6 @@ fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle.yaml"))
 # Python pathlib.Path object will be rejected.
 
 vehs = fsr.import_all_vehicles(int(year), make, model, other_inputs)
-if IS_INTERACTIVE:
+if SHOW_PLOTS:
     for v in vehs:
         print(f"Imported {v.scenario_name}")
-
-
-# %%
-# Used for automated testing
-RAN_SUCCESSFULLY = True
