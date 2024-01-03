@@ -7,11 +7,11 @@ use crate::proc_macros::{add_pyo3_api, doc_field, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 use crate::utils::create_project_subdir;
-use std::fs;
 
 use lazy_static::lazy_static;
 use regex::Regex;
 use validator::Validate;
+use std::fs;
 
 // veh_pt_type options
 pub const CONV: &str = "Conv";
@@ -547,7 +547,7 @@ pub struct RustVehicle {
 
 /// RustVehicle rust methods
 impl RustVehicle {
-    const VEHICLE_DIRECTORY_URL: &'static str = &"https://github.com/NREL/fastsim-vehicles/blob/main/public/";
+    const VEHICLE_DIRECTORY_URL: &'static str = &"https://github.com/NREL/fastsim-vehicles/tree/main/public";
     /// Sets the following parameters:
     /// - `ess_mass_kg`
     /// - `mc_mass_kg`
@@ -1039,6 +1039,8 @@ impl RustVehicle {
 
     /// Downloads specified vehicle from vehicle repo or url into
     /// VEHICLE_DIRECTORY_URL, if not already downloaded. Returns vehicle.  
+    /// WARNING: if there is a file already in the data subdirectory with the
+    /// same name, it will be replaced by the new file  
     /// # Arguments  
     /// - vehicle_file_name: file name for vehicle to be downloaded  
     /// - url: url for vehicle to be downloaded, if None, assumed to be
@@ -1055,8 +1057,8 @@ impl RustVehicle {
             let dir = create_project_subdir("vehicles").with_context(||"Could not determine FASTSim data directory path.")?;
             let mut file_already_downloaded = false;
             let mut file_path = PathBuf::new();
-            for entry in  fs::read_dir(dir)? {
-                let entry = entry?;
+            for entry in  fs::read_dir(dir).with_context(||"Could not read data directory.")? {
+                let entry = entry.with_context(||"Could not parse entry: {entry:?}")?;
                 file_path = entry.path();
                 let entry_name = file_path.file_name().with_context(||"Could not parse file name from directory file: {entry:?}")?.to_str().with_context(||"Could not parse file name from directory file: {entry:?}")?;
                 if entry_name == vehicle_file_name.as_ref() {
