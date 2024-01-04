@@ -836,11 +836,13 @@ impl RustVehicle {
             "minimum FC efficiency < 0 is not allowed"
         );
         ensure!(self.fc_peak_eff() < 1.0, "fc_peak_eff >= 1 is not allowed");
-        ensure!(
-            arrmin(&self.mc_full_eff_array) >= 0.0,
-            "minimum MC efficiency < 0 is not allowed"
-        );
-        ensure!(self.mc_peak_eff() < 1.0, "mc_peak_eff >= 1 is not allowed");
+        if !self.no_elec_sys {
+            ensure!(
+                arrmin(&self.mc_full_eff_array) >= 0.0,
+                "minimum MC efficiency < 0 is not allowed"
+            );
+            ensure!(self.mc_peak_eff() < 1.0, "mc_peak_eff >= 1 is not allowed");
+        }
 
         self.set_veh_mass();
 
