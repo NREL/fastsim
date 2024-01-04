@@ -499,7 +499,7 @@ impl RustCycleCache {
     pub fn from_dict(dict: &PyDict) -> anyhow::Result<Self> {
         let time_s = Array::from_vec(PyAny::get_item(dict, "time_s")?.extract()?);
         let cyc_len = time_s.len();
-        Ok(Self {
+        let mut cyc = Self {
             time_s,
             mps: Array::from_vec(PyAny::get_item(dict, "mps")?.extract()?),
             grade: if let Ok(value) = PyAny::get_item(dict, "grade") {
@@ -514,7 +514,9 @@ impl RustCycleCache {
             },
             name: PyAny::get_item(dict, "name").and_then(String::extract).unwrap_or_default(),
             orphaned: false,
-        })
+        };
+        cyc.init()?;
+        Ok(cyc)
     }
 
     pub fn to_dict<'py>(&self, py: Python<'py>) -> anyhow::Result<&'py PyDict> {
@@ -630,7 +632,6 @@ impl SerdeAPI for RustCycle {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
 
-    // TODO: make this get called somewhere
     fn init(&mut self) -> anyhow::Result<()> {
         ensure!(!self.is_empty(), "Deserialized cycle is empty");
         let cyc_len = self.len();
@@ -741,7 +742,7 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
                 .to_owned(),
         );
         let cyc_len = time_s.len();
-        Ok(Self {
+        let mut cyc = Self {
             time_s,
             mps: Array::from_vec(
                 hashmap
@@ -763,7 +764,9 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
             ),
             name: String::default(),
             orphaned: false,
-        })
+        };
+        cyc.init()?;
+        Ok(cyc)
     }
 }
 
