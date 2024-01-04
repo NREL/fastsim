@@ -541,6 +541,10 @@ pub struct RustVehicle {
     #[doc(hidden)]
     #[doc_field(skip_doc)]
     pub max_regen_kwh: f64,
+    #[serde(skip)]
+    #[doc(hidden)]
+    #[doc_field(skip_doc)]
+    pub initialized: bool,
 }
 
 /// RustVehicle rust methods
@@ -1031,6 +1035,7 @@ impl RustVehicle {
             ess_to_fuel_ok_error_doc: Default::default(),
             fc_peak_eff_override_doc: Default::default(),
             mc_peak_eff_override_doc: Default::default(),
+            initialized: false,
         };
         v.set_derived().unwrap();
         v
@@ -1064,7 +1069,10 @@ impl Default for RustVehicle {
 
 impl SerdeAPI for RustVehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.set_derived()
+        if !self.initialized {
+            self.set_derived()?;
+        }
+        Ok(())
     }
 }
 
