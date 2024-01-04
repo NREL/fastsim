@@ -107,16 +107,16 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `format` - The source format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
     ///
     fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
-        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => Self::from_yaml(contents)?,
-            "json" => Self::from_json(contents)?,
-            _ => bail!(
-                "Unsupported format {format:?}, must be one of {:?}",
-                Self::ACCEPTED_STR_FORMATS
-            ),
-        };
-        deserialized.init()?;
-        Ok(deserialized)
+        Ok(
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                "yaml" | "yml" => Self::from_yaml(contents)?,
+                "json" => Self::from_json(contents)?,
+                _ => bail!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_STR_FORMATS
+                ),
+            },
+        )
     }
 
     /// Deserialize an object from anything that implements [`std::io::Read`]

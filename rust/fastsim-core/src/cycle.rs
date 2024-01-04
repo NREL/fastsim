@@ -812,6 +812,7 @@ impl RustCycle {
         })?;
         let mut cyc = Self::from_reader(file, "csv")?;
         cyc.name = name;
+        cyc.init()?;
         Ok(cyc)
     }
 
@@ -819,6 +820,7 @@ impl RustCycle {
     pub fn from_csv_str<S: AsRef<str>>(csv_str: S, name: String) -> anyhow::Result<Self> {
         let mut cyc = Self::from_reader(csv_str.as_ref().as_bytes(), "csv")?;
         cyc.name = name;
+        cyc.init()?;
         Ok(cyc)
     }
 
