@@ -1082,6 +1082,7 @@ impl RustVehicle {
                 Some(s) => s.as_ref().to_owned(),
                 None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref()
             };
+            url_to_cache(&url_internal, "vehicles").with_context(||"Unable to cache vehicle from url")?;
             Self::from_url(url_internal)
         }
     }
