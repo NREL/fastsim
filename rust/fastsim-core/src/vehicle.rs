@@ -1039,8 +1039,6 @@ impl RustVehicle {
 
     /// Downloads specified vehicle from vehicle repo or url into
     /// VEHICLE_DIRECTORY_URL, if not already downloaded. Returns vehicle.  
-    /// WARNING: if there is a file already in the data subdirectory with the
-    /// same name, it will be replaced by the new file  
     /// # Arguments  
     /// - vehicle_file_name: file name for vehicle to be downloaded  
     /// - url: url for vehicle to be downloaded, if None, assumed to be
