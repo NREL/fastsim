@@ -21,12 +21,11 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
-            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?
-            .to_lowercase();
+            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
         let file = crate::resources::RESOURCES_DIR
             .get_file(filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
-        let mut deserialized = Self::from_reader(file.contents(), &extension)?;
+        let mut deserialized = Self::from_reader(file.contents(), extension)?;
         deserialized.init()?;
         Ok(deserialized)
     }
