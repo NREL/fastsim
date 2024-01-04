@@ -749,7 +749,7 @@ impl RustVehicle {
                 })
                 .collect();
         }
-        //self.modern_max = MODERN_MAX;
+        self.modern_max = MODERN_MAX;
 
         // NOTE: unused because the first part of if/else commented below is unused
         let modern_diff = self.modern_max - arrmax(&LARGE_BASELINE_EFF);
