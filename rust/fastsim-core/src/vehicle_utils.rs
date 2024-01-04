@@ -1153,6 +1153,7 @@ pub fn abc_to_drag_coeffs(
         grade: Array::zeros(cd_len),
         road_type: Array::zeros(cd_len),
         name: String::from("cycle"),
+        initialized: true,
         orphaned: false,
     };
 

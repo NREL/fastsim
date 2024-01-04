@@ -233,6 +233,7 @@ pub fn main() -> anyhow::Result<()> {
             grade: array![0.0],
             road_type: array![0.0],
             name: String::default(),
+            initialized: true,
             orphaned: false,
         })
     }?;
