@@ -227,7 +227,6 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
                 grade: Array::from_vec(mt_gs),
                 road_type: Array::from_vec(mt_rs),
                 name: cycle.name.clone(),
-                initialized: true,
                 orphaned: false,
             });
             mt_ts = vec![last_t];
@@ -249,7 +248,6 @@ pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<
             grade: Array::from_vec(mt_gs),
             road_type: Array::from_vec(mt_rs),
             name: cycle.name.clone(),
-            initialized: true,
             orphaned: false,
         });
     }
@@ -351,7 +349,6 @@ pub fn extend_cycle(
         grade: Array::from_vec(gs),
         road_type: Array::from_vec(rs),
         name: cyc.name.clone(),
-        initialized: true,
         orphaned: false,
     }
 }
@@ -516,7 +513,6 @@ impl RustCycleCache {
                 Array::default(cyc_len)
             },
             name: PyAny::get_item(dict, "name").and_then(String::extract).unwrap_or_default(),
-            initialized: false,
             orphaned: false,
         };
         cyc.init()?;
@@ -629,8 +625,6 @@ pub struct RustCycle {
     pub road_type: Array1<f64>,
     pub name: String,
     #[serde(skip)]
-    pub initialized: bool,
-    #[serde(skip)]
     pub orphaned: bool,
 }
 
@@ -639,23 +633,20 @@ impl SerdeAPI for RustCycle {
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
 
     fn init(&mut self) -> anyhow::Result<()> {
-        if !self.initialized {
-            ensure!(!self.is_empty(), "Deserialized cycle is empty");
-            let cyc_len = self.len();
-            ensure!(
-                self.mps.len() == cyc_len,
-                "Length of `mps` does not match length of `time_s`"
-            );
-            ensure!(
-                self.grade.len() == cyc_len,
-                "Length of `grade` does not match length of `time_s`"
-            );
-            ensure!(
-                self.road_type.len() == cyc_len,
-                "Length of `road_type` does not match length of `time_s`"
-            );
-            self.initialized = true;
-        }
+        ensure!(!self.is_empty(), "Deserialized cycle is empty");
+        let cyc_len = self.len();
+        ensure!(
+            self.mps.len() == cyc_len,
+            "Length of `mps` does not match length of `time_s`"
+        );
+        ensure!(
+            self.grade.len() == cyc_len,
+            "Length of `grade` does not match length of `time_s`"
+        );
+        ensure!(
+            self.road_type.len() == cyc_len,
+            "Length of `road_type` does not match length of `time_s`"
+        );
         Ok(())
     }
 
@@ -724,10 +715,8 @@ impl SerdeAPI for RustCycle {
                 let mut cyc = Self::default();
                 let mut rdr = csv::Reader::from_reader(rdr);
                 for result in rdr.deserialize() {
-                    cyc.initialized = true; // skip init checks until finished
-                    cyc.push(result?)?;
+                    cyc.push(result?);
                 }
-                cyc.initialized = false;
                 cyc
             }
             _ => {
@@ -774,7 +763,6 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
                     .to_owned(),
             ),
             name: String::default(),
-            initialized: false,
             orphaned: false,
         };
         cyc.init()?;
@@ -798,14 +786,11 @@ impl RustCycle {
     /// Load cycle from CSV file, parsing name from filepath
     pub fn from_csv_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
-        let name = String::from(
-            filepath
-                .file_stem()
-                .and_then(OsStr::to_str)
-                .with_context(|| {
-                    format!("Could not parse cycle name from filepath: {filepath:?}")
-                })?,
-        );
+        let name = filepath
+            .file_stem()
+            .and_then(OsStr::to_str)
+            .with_context(|| format!("Could not parse cycle name from filepath: {filepath:?}"))?
+            .to_string();
         let file = File::open(filepath).with_context(|| {
             if !filepath.exists() {
                 format!("File not found: {filepath:?}")
@@ -843,7 +828,7 @@ impl RustCycle {
         RustCycleCache::new(self)
     }
 
-    pub fn push(&mut self, cyc_elem: RustCycleElement) -> anyhow::Result<()> {
+    pub fn push(&mut self, cyc_elem: RustCycleElement) {
         self.time_s
             .append(Axis(0), array![cyc_elem.time_s].view())
             .unwrap();
@@ -858,7 +843,6 @@ impl RustCycle {
                 .append(Axis(0), array![road_type].view())
                 .unwrap();
         }
-        self.init()
     }
 
     pub fn len(&self) -> usize {
@@ -876,7 +860,6 @@ impl RustCycle {
             grade: Array::zeros(10),
             road_type: Array::zeros(10),
             name: String::from("test"),
-            initialized: true,
             orphaned: false,
         }
     }
@@ -1224,7 +1207,6 @@ mod tests {
             grade: Array::zeros(5),
             road_type: Array::zeros(5),
             name: String::from("test"),
-            initialized: true,
             orphaned: false,
         };
         let avg_mps = average_step_speeds(&cyc);

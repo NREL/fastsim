@@ -133,7 +133,6 @@ pub fn make_accel_trace() -> RustCycle {
         grade: Array::zeros(cyc_len),
         road_type: Array::zeros(cyc_len),
         name: String::from("accel"),
-        initialized: true,
         orphaned: false,
     }
 }
