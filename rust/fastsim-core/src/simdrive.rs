@@ -257,6 +257,10 @@ impl SimDrive {
     /// - `dt`: time step size
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         todo!();
+        // # Algorithm
+        // 1. with known required power (`vs.pwr_out`) from `set_req_pwr` 
+
+
         // Ok(())
     }
 }

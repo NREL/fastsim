@@ -289,41 +289,44 @@ fn get_pt_type_from_fsim2_veh(
 impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
     fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<Self, Self::Error> {
-        let mut veh = f2veh.clone();
-        veh.set_derived()?;
+        let mut f2veh = f2veh.clone();
+        f2veh.set_derived()?;
         let save_interval = Some(1);
-        let pt_type = get_pt_type_from_fsim2_veh(&veh)?;
+        let pt_type = get_pt_type_from_fsim2_veh(&f2veh)?;
 
         // TODO: check this sign convention
-        let drive_type = if veh.veh_cg_m < 0. {
+        let drive_type = if f2veh.veh_cg_m < 0. {
             DriveTypes::RWD
         } else {
             DriveTypes::FWD
         };
 
-        Ok(Self {
-            name: veh.scenario_name,
-            year: veh.veh_year,
+        let mut f3veh = Self {
+            name: f2veh.scenario_name,
+            year: f2veh.veh_year,
             pt_type,
-            drag_coef: veh.drag_coef * uc::R,
-            frontal_area: veh.frontal_area_m2 * uc::M2,
-            glider_mass: Some(veh.glider_kg * uc::KG),
-            cg_height: veh.veh_cg_m * uc::M,
+            drag_coef: f2veh.drag_coef * uc::R,
+            frontal_area: f2veh.frontal_area_m2 * uc::M2,
+            glider_mass: Some(f2veh.glider_kg * uc::KG),
+            cg_height: f2veh.veh_cg_m * uc::M,
             drive_type,
-            drive_axle_weight_frac: veh.drive_axle_weight_frac * uc::R,
-            wheel_base: veh.wheel_base_m * uc::M,
-            wheel_inertia_kg_m2: veh.wheel_inertia_kg_m2 * uc::R,
-            wheel_rr_coef: veh.wheel_rr_coef * uc::R,
-            num_wheels: veh.num_wheels as u8,
-            wheel_radius: veh.wheel_radius_m * uc::M,
-            cargo_mass: Some(veh.cargo_kg * uc::KG),
-            comp_mass_multiplier: Some(veh.comp_mass_multiplier * uc::R),
+            drive_axle_weight_frac: f2veh.drive_axle_weight_frac * uc::R,
+            wheel_base: f2veh.wheel_base_m * uc::M,
+            wheel_inertia_kg_m2: f2veh.wheel_inertia_kg_m2 * uc::R,
+            wheel_rr_coef: f2veh.wheel_rr_coef * uc::R,
+            num_wheels: f2veh.num_wheels as u8,
+            wheel_radius: f2veh.wheel_radius_m * uc::M,
+            cargo_mass: Some(f2veh.cargo_kg * uc::KG),
+            comp_mass_multiplier: Some(f2veh.comp_mass_multiplier * uc::R),
             pwr_aux: f2veh.aux_kw * uc::KW,
             state: Default::default(),
             save_interval,
             history: Default::default(),
             mass: None,
-        })
+        };
+        f3veh.init()?;
+
+        Ok(f3veh)
     }
 }
 
