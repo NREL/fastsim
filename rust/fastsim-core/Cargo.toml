@@ -41,6 +41,7 @@ ndarray-stats = "0.5.1"
 tempfile = "3.8.1"
 url = "2.5.0"
 ureq = "2.9.1"
+isahc = "1.7.2"
 
 [package.metadata]
 include = [

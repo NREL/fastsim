@@ -16,6 +16,7 @@ use std::num::ParseIntError;
 use std::option::Option;
 use std::path::PathBuf;
 use zip::ZipArchive;
+use isahc::prelude::*;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -1798,6 +1799,8 @@ pub struct GitVehicleInfo {
 const VEHICLE_REPO_LIST_URL: &'static str = &"https://api.github.com/repos/NREL/fastsim-vehicles/contents/public";
 
 pub fn fetch_github_list() -> anyhow::Result<Vec<String>> {
+    // let mut response = isahc::get(VEHICLE_REPO_LIST_URL)?;
+    // let github_list: HashMap<i64, GitVehicleInfo> = serde_json::from_str(&response.text()?)?;
     let response = ureq::get(VEHICLE_REPO_LIST_URL).call()?.into_reader();
     let github_list: HashMap<i64, GitVehicleInfo> = serde_json::from_reader(response).with_context(||"Cannot parse github vehicle list.")?;
     let mut vehicle_name_list: Vec<String> = Vec::new();
@@ -2064,5 +2067,11 @@ mod vehicle_utils_tests {
         )
         .unwrap()
         .is_empty());
+    }
+
+    #[test]
+    fn test_fetch_github_list() {
+        let list = fetch_github_list().unwrap();
+        println!("{:?}", list);
     }
 }

@@ -547,7 +547,7 @@ pub struct RustVehicle {
 
 /// RustVehicle rust methods
 impl RustVehicle {
-    const VEHICLE_DIRECTORY_URL: &'static str = &"https://github.com/NREL/fastsim-vehicles/tree/main/public";
+    const VEHICLE_DIRECTORY_URL: &'static str = &"https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/";
     /// Sets the following parameters:
     /// - `ess_mass_kg`
     /// - `mc_mass_kg`
@@ -1069,12 +1069,13 @@ impl RustVehicle {
                 }
             }
             if file_already_downloaded {
-                Self::from_resource(file_path)
+                Self::from_file(file_path)
             } else {
                 let url_internal = match url {
                     Some(s) => s.as_ref().to_owned(),
                     None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref()
                 };
+                url_to_cache(&url_internal, "vehicles").with_context(||"Unable to cache vehicle from url")?;
                 Self::from_url(url_internal)
             }
         } else {
@@ -1082,7 +1083,6 @@ impl RustVehicle {
                 Some(s) => s.as_ref().to_owned(),
                 None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref()
             };
-            url_to_cache(&url_internal, "vehicles").with_context(||"Unable to cache vehicle from url")?;
             Self::from_url(url_internal)
         }
     }
@@ -1427,5 +1427,166 @@ mod tests {
             .keys()
             .all(|key| bad_fields.contains(key)));
         assert!(validation_errs_hashmap.len() == bad_fields.len());
+    }
+
+    #[test]
+    fn test_from_github_or_url() {
+        let comparison_vehicle = crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
+        let data_subdirectory = create_project_subdir("vehicles").unwrap();
+        let file_path_test = data_subdirectory.join("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
+        // // test when cache = false and no url provided
+        // let vehicle = RustVehicle::from_github_or_url("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", None, false).unwrap();
+        // assert_eq! (vehicle, comparison_vehicle);
+        // // test when cache = false and url provided
+        // let vehicle_1 = RustVehicle::from_github_or_url("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml"), false).unwrap();
+        // assert_eq! (vehicle_1, comparison_vehicle);
+        // // test when cache = true and no url provided and no file downloaded -- general
+        // let vehicle_2 = RustVehicle::from_github_or_url("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", None, true).unwrap();
+        // assert_eq! (vehicle_2, comparison_vehicle);
+        // std::fs::remove_file(&file_path_test).unwrap();
+        // // test when cache = true and no url provided and no file downloaded -- specific
+        // let vehicle_file_name = "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml";
+        // let url: Option<String> = None;
+        // let dir = create_project_subdir("vehicles").with_context(||"Could not determine FASTSim data directory path.").unwrap();
+        // let mut file_already_downloaded = false;
+        // let mut file_path = PathBuf::new();
+        // for entry in  fs::read_dir(dir).with_context(||"Could not read data directory.").unwrap() {
+        //     let entry = entry.with_context(||"Could not parse entry: {entry:?}").unwrap();
+        //     file_path = entry.path();
+        //     let entry_name = file_path.file_name().with_context(||"Could not parse file name from directory file: {entry:?}").unwrap().to_str().with_context(||"Could not parse file name from directory file: {entry:?}").unwrap();
+        //     if entry_name == vehicle_file_name {
+        //         file_already_downloaded = true;
+        //         break
+        //     } else {
+        //         continue
+        //     }
+        // }
+        // assert_eq!(file_already_downloaded, false);
+        // if file_already_downloaded {
+        //     let vehicle_3 = RustVehicle::from_resource(file_path).unwrap();
+        //     println!("Accessed vehicle from cache in no file downloaded scenario -- BAD.");
+        //     assert_eq! (vehicle_3, comparison_vehicle);
+        // } else {
+        //     let url_internal = match url {
+        //         Some(s) => s.to_owned(),
+        //         None => RustVehicle::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name
+        //     };
+        //     url_to_cache(&url_internal, "vehicles").with_context(||"Unable to cache vehicle from url").unwrap();
+        //     let vehicle_3 = RustVehicle::from_url(url_internal).unwrap();
+        //     println!("Downloaded vehicle from url and saved it to cache in no file downloaded scenario.");
+        //     assert_eq! (vehicle_3, comparison_vehicle);
+        // }
+        // testing when cache = true and no url provided and file downloaded -- general
+        url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", "vehicles").unwrap();
+        let vehicle_4 = RustVehicle::from_github_or_url("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", None, true).unwrap();
+        assert_eq! (vehicle_4, comparison_vehicle);
+        // testing when cache = true and no url provided and file downloaded -- specific
+        let vehicle_file_name_2 = "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml";
+        let url_2: Option<String> = None;
+        let dir_2 = create_project_subdir("vehicles").with_context(||"Could not determine FASTSim data directory path.").unwrap();
+        let mut file_already_downloaded_2 = false;
+        let mut file_path_2 = PathBuf::new();
+        for entry_2 in  fs::read_dir(dir_2).with_context(||"Could not read data directory.").unwrap() {
+            let entry_2 = entry_2.with_context(||"Could not parse entry: {entry_2:?}").unwrap();
+            file_path_2 = entry_2.path();
+            let entry_name_2 = file_path_2.file_name().with_context(||"Could not parse file name from directory file: {entry_2:?}").unwrap().to_str().with_context(||"Could not parse file name from directory file: {entry_2:?}").unwrap();
+            if entry_name_2 == vehicle_file_name_2 {
+                file_already_downloaded_2 = true;
+                break
+            } else {
+                continue
+            }
+        }
+        assert_eq!(file_already_downloaded_2, true);
+        if file_already_downloaded_2 {
+            let vehicle_5 = RustVehicle::from_file(file_path_2).unwrap();
+            println!("Accessed vehicle from cache in vehicle already downloaded scenario.");
+            assert_eq! (vehicle_5, comparison_vehicle);
+        } else {
+            let url_internal_2 = match url_2 {
+                Some(s) => s.to_owned(),
+                None => RustVehicle::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name_2
+            };
+            url_to_cache(&url_internal_2, "vehicles").with_context(||"Unable to cache vehicle from url").unwrap();
+            let vehicle_5 = RustVehicle::from_url(url_internal_2).unwrap();
+            println!("Downloaded vehicle from url and saved it to cache in vehicle already downloaded scenario -- BAD.");
+            assert_eq! (vehicle_5, comparison_vehicle);
+        }
+        std::fs::remove_file(&file_path_test).unwrap();
+
+
+        // // test when cache = true and url provided and no file downloaded -- general
+        // let vehicle_6 = RustVehicle::from_github_or_url("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml"), true).unwrap();
+        // assert_eq! (vehicle_6, comparison_vehicle);
+        // std::fs::remove_file(&file_path_test).unwrap();
+        // // test when cache = true and url provided and no file downloaded -- specific
+        // let vehicle_file_name_3 = "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml";
+        // let url_3: Option<String> = Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml".to_string());
+        // let dir_3 = create_project_subdir("vehicles").with_context(||"Could not determine FASTSim data directory path.").unwrap();
+        // let mut file_already_downloaded_3 = false;
+        // let mut file_path_3 = PathBuf::new();
+        // for entry_3 in  fs::read_dir(dir_3).with_context(||"Could not read data directory.").unwrap() {
+        //     let entry_3 = entry_3.with_context(||"Could not parse entry: {entry_3:?}").unwrap();
+        //     file_path_3 = entry_3.path();
+        //     let entry_name_3 = file_path_3.file_name().with_context(||"Could not parse file name from directory file: {entry_3:?}").unwrap().to_str().with_context(||"Could not parse file name from directory file: {entry_3:?}").unwrap();
+        //     if entry_name_3 == vehicle_file_name_3 {
+        //         file_already_downloaded_3 = true;
+        //         break
+        //     } else {
+        //         continue
+        //     }
+        // }
+        // assert_eq!(file_already_downloaded_3, false);
+        // if file_already_downloaded_3 {
+        //     let vehicle_7 = RustVehicle::from_resource(file_path_3).unwrap();
+        //     println!("Accessed vehicle from cache in no file downloaded scenario -- BAD.");
+        //     assert_eq! (vehicle_7, comparison_vehicle);
+        // } else {
+        //     let url_internal_3 = match url_3 {
+        //         Some(s) => s.to_owned(),
+        //         None => RustVehicle::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name_3
+        //     };
+        //     url_to_cache(&url_internal_3, "vehicles").with_context(||"Unable to cache vehicle from url").unwrap();
+        //     let vehicle_7 = RustVehicle::from_url(url_internal_3).unwrap();
+        //     println!("Downloaded vehicle from url and saved it to cache in no file downloaded scenario.");
+        //     assert_eq! (vehicle_7, comparison_vehicle);
+        // }
+        // testing when cache = true and url provided and file downloaded -- general
+        url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", "vehicles").unwrap();
+        let vehicle_8 = RustVehicle::from_github_or_url("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml"), true).unwrap();
+        assert_eq! (vehicle_8, comparison_vehicle);
+        // testing when cache = true and url provided and file downloaded -- specific
+        let vehicle_file_name_4 = "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml";
+        let url_4: Option<String> = Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml".to_string());
+        let dir_4 = create_project_subdir("vehicles").with_context(||"Could not determine FASTSim data directory path.").unwrap();
+        let mut file_already_downloaded_4 = false;
+        let mut file_path_4 = PathBuf::new();
+        for entry_4 in  fs::read_dir(dir_4).with_context(||"Could not read data directory.").unwrap() {
+            let entry_4 = entry_4.with_context(||"Could not parse entry: {entry_4:?}").unwrap();
+            file_path_4 = entry_4.path();
+            let entry_name_4 = file_path_4.file_name().with_context(||"Could not parse file name from directory file: {entry_4:?}").unwrap().to_str().with_context(||"Could not parse file name from directory file: {entry_4:?}").unwrap();
+            if entry_name_4 == vehicle_file_name_4 {
+                file_already_downloaded_4 = true;
+                break
+            } else {
+                continue
+            }
+        }
+        assert_eq!(file_already_downloaded_4, true);
+        if file_already_downloaded_4 {
+            let vehicle_9 = RustVehicle::from_file(file_path_4).unwrap();
+            println!("Accessed vehicle from cache in vehicle already downloaded scenario.");
+            assert_eq! (vehicle_9, comparison_vehicle);
+        } else {
+            let url_internal_4 = match url_4 {
+                Some(s) => s.to_owned(),
+                None => RustVehicle::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name_4
+            };
+            url_to_cache(&url_internal_4, "vehicles").with_context(||"Unable to cache vehicle from url").unwrap();
+            let vehicle_9 = RustVehicle::from_url(url_internal_4).unwrap();
+            println!("Downloaded vehicle from url and saved it to cache in vehicle already downloaded scenario -- BAD.");
+            assert_eq! (vehicle_9, comparison_vehicle);
+        }
+        std::fs::remove_file(&file_path_test).unwrap();
     }
 }

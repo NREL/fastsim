@@ -536,7 +536,9 @@ pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathB
 /// - url: url (either as a string or url type) to object  
 /// - subpath: path to subdirectory within FASTSim data directory. Suggested
 /// paths are "vehicles" for a RustVehicle, "cycles" for a RustCycle, and
-/// "rust_objects" for other Rust objects.
+/// "rust_objects" for other Rust objects.  
+/// Note: In order for the file to be save in the proper format, the URL needs
+/// to be a URL pointing directly to a file, for example a raw github URL.
 pub fn url_to_cache<S: AsRef<str>, P: AsRef<Path>>(url: S, subpath: P) -> anyhow::Result<()> {
     let url = Url::parse(url.as_ref())?;
     let file_name = url
@@ -755,5 +757,17 @@ mod tests {
         assert_eq!(expected_y_lookup, y_lookup);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);
         assert_eq!(expected_y_lookup, y_lookup);
+    }
+
+    #[test]
+    fn test_url_to_cache() {
+        url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", "vehicles").unwrap();
+        let data_subdirectory = create_project_subdir("vehicles").unwrap();
+        let file_path = data_subdirectory.join("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
+        println!("{}", file_path.to_string_lossy());
+        let vehicle = crate::vehicle::RustVehicle::from_file(&file_path).unwrap();
+        let comparison_vehicle = crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
+        assert_eq! (vehicle, comparison_vehicle);
+        std::fs::remove_file(file_path).unwrap();
     }
 }
