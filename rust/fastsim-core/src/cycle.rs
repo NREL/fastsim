@@ -654,6 +654,7 @@ impl SerdeAPI for RustCycle {
                 self.road_type.len() == cyc_len,
                 "Length of `road_type` does not match length of `time_s`"
             );
+            self.initialized = true;
         }
         Ok(())
     }
@@ -700,17 +701,17 @@ impl SerdeAPI for RustCycle {
     /// Note that using this method to instantiate a RustCycle from CSV, rather
     /// than the `from_csv_str` method, sets the cycle name to an empty string
     fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
-        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => Self::from_yaml(contents)?,
-            "json" => Self::from_json(contents)?,
-            "csv" => Self::from_csv_str(contents, "".to_string())?,
-            _ => bail!(
-                "Unsupported format {format:?}, must be one of {:?}",
-                Self::ACCEPTED_STR_FORMATS
-            ),
-        };
-        deserialized.init()?;
-        Ok(deserialized)
+        Ok(
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                "yaml" | "yml" => Self::from_yaml(contents)?,
+                "json" => Self::from_json(contents)?,
+                "csv" => Self::from_csv_str(contents, "".to_string())?,
+                _ => bail!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_STR_FORMATS
+                ),
+            },
+        )
     }
 
     fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
@@ -723,8 +724,10 @@ impl SerdeAPI for RustCycle {
                 let mut cyc = Self::default();
                 let mut rdr = csv::Reader::from_reader(rdr);
                 for result in rdr.deserialize() {
-                    cyc.push(result?);
+                    cyc.initialized = true; // skip init checks until finished
+                    cyc.push(result?)?;
                 }
+                cyc.initialized = false;
                 cyc
             }
             _ => {
@@ -812,7 +815,6 @@ impl RustCycle {
         })?;
         let mut cyc = Self::from_reader(file, "csv")?;
         cyc.name = name;
-        cyc.init()?;
         Ok(cyc)
     }
 
@@ -820,7 +822,6 @@ impl RustCycle {
     pub fn from_csv_str<S: AsRef<str>>(csv_str: S, name: String) -> anyhow::Result<Self> {
         let mut cyc = Self::from_reader(csv_str.as_ref().as_bytes(), "csv")?;
         cyc.name = name;
-        cyc.init()?;
         Ok(cyc)
     }
 
@@ -842,7 +843,7 @@ impl RustCycle {
         RustCycleCache::new(self)
     }
 
-    pub fn push(&mut self, cyc_elem: RustCycleElement) {
+    pub fn push(&mut self, cyc_elem: RustCycleElement) -> anyhow::Result<()> {
         self.time_s
             .append(Axis(0), array![cyc_elem.time_s].view())
             .unwrap();
@@ -857,6 +858,7 @@ impl RustCycle {
                 .append(Axis(0), array![road_type].view())
                 .unwrap();
         }
+        self.init()
     }
 
     pub fn len(&self) -> usize {

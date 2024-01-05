@@ -25,9 +25,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let file = crate::resources::RESOURCES_DIR
             .get_file(filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
-        let mut deserialized = Self::from_reader(file.contents(), extension)?;
-        deserialized.init()?;
-        Ok(deserialized)
+        Self::from_reader(file.contents(), extension)
     }
 
     /// Write (serialize) an object to a file.
@@ -76,9 +74,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 format!("Could not open file: {filepath:?}")
             }
         })?;
-        let mut deserialized = Self::from_reader(file, extension)?;
-        deserialized.init()?;
-        Ok(deserialized)
+        Self::from_reader(file, extension)
     }
 
     /// Write (serialize) an object into a string

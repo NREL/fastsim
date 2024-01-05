@@ -1071,6 +1071,7 @@ impl SerdeAPI for RustVehicle {
     fn init(&mut self) -> anyhow::Result<()> {
         if !self.initialized {
             self.set_derived()?;
+            self.initialized = true;
         }
         Ok(())
     }

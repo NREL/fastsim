@@ -183,6 +183,7 @@ pub fn main() -> anyhow::Result<()> {
     let fastsim_api = FastSimApi::parse();
 
     if let Some(_cyc_json_str) = fastsim_api.cyc {
+        // TODO: this probably could be filled out...
         anyhow::bail!("Need to implement: let cyc = RustCycle::from_json(cyc_json_str)");
     }
     let (is_adopt_hd, adopt_hd_string, adopt_hd_has_cycle) =
