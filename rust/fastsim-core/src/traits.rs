@@ -303,6 +303,7 @@ mod tests {
     #[test]
     fn test_from_url() {
         let vehicle = crate::vehicle::RustVehicle::from_url("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
+        vehicle.to_file("/Users/rsteutev/Documents/GitHub/fastsim/rust/fastsim-core/resources/test_from_url_vehicle.yaml").unwrap();
         let comparison_vehicle = crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
         // let comparison_vehicle = crate::vehicle::RustVehicle::from_file("/Users/rsteutev/Documents/GitHub/fastsim/rust/fastsim-core/src/test_vehicle.json").unwrap();
         println!("{}", vehicle.to_yaml().unwrap());
