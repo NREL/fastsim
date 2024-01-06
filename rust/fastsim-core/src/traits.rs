@@ -1,7 +1,6 @@
 use crate::imports::*;
 use std::collections::HashMap;
 use ureq;
-use isahc::prelude::*;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
@@ -160,8 +159,6 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .and_then(|filename| Path::new(filename).extension())
             .and_then(OsStr::to_str)
             .with_context(|| "Could not parse file format from URL: {url:?}")?;
-        // let mut response = isahc::get(url.as_ref())?;
-        // Self::from_str(response.text()?, format)
         let response = ureq::get(url.as_ref()).call()?.into_reader();
         Self::from_reader(response, format)
     }
@@ -303,7 +300,6 @@ mod tests {
     #[test]
     fn test_from_url() {
         let vehicle = crate::vehicle::RustVehicle::from_url("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
-        vehicle.to_file("/Users/rsteutev/Documents/GitHub/fastsim/rust/fastsim-core/resources/test_from_url_vehicle.yaml").unwrap();
         let comparison_vehicle = crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
         // let comparison_vehicle = crate::vehicle::RustVehicle::from_file("/Users/rsteutev/Documents/GitHub/fastsim/rust/fastsim-core/src/test_vehicle.json").unwrap();
         println!("{}", vehicle.to_yaml().unwrap());

@@ -16,7 +16,7 @@ use std::num::ParseIntError;
 use std::option::Option;
 use std::path::PathBuf;
 use zip::ZipArchive;
-use isahc::prelude::*;
+use tempfile::tempdir;
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -1799,10 +1799,18 @@ pub struct GitVehicleInfo {
 const VEHICLE_REPO_LIST_URL: &'static str = &"https://api.github.com/repos/NREL/fastsim-vehicles/contents/public";
 
 pub fn fetch_github_list() -> anyhow::Result<Vec<String>> {
-    // let mut response = isahc::get(VEHICLE_REPO_LIST_URL)?;
-    // let github_list: HashMap<i64, GitVehicleInfo> = serde_json::from_str(&response.text()?)?;
-    let response = ureq::get(VEHICLE_REPO_LIST_URL).call()?.into_reader();
-    let github_list: HashMap<i64, GitVehicleInfo> = serde_json::from_reader(response).with_context(||"Cannot parse github vehicle list.")?;
+    let temp_dir = tempdir()?;
+    let file_path = temp_dir.path().join("github_vehicle_list.json");
+    download_file_from_url(VEHICLE_REPO_LIST_URL, &file_path).with_context(||"Could not download file from url.")?;
+    // let response = ureq::get(VEHICLE_REPO_LIST_URL).call()?.into_reader();
+    let file = File::open(&file_path).with_context(|| {
+        if !file_path.exists() {
+            format!("File not found: {file_path:?}")
+        } else {
+            format!("Could not open file: {file_path:?}")
+        }
+    })?;
+    let github_list: HashMap<i64, GitVehicleInfo> = serde_json::from_reader(file).with_context(||"Could not parse github vehicle list.")?;
     let mut vehicle_name_list: Vec<String> = Vec::new();
     for (_key, value) in github_list.iter() {
         vehicle_name_list.push(value.name.to_owned())
