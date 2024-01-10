@@ -5,7 +5,6 @@ use crate::proc_macros::{add_pyo3_api, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
-use serde_json::from_str;
 use std::collections::HashMap;
 
 /// Unit conversions that should NEVER change
@@ -163,7 +162,7 @@ impl SerdeAPI for AdjCoef {}
 impl Default for RustLongParams {
     fn default() -> Self {
         let long_params_str: &str = include_str!("../resources/longparams.json");
-        let long_params: Self = from_str(long_params_str).unwrap();
+        let long_params = Self::from_json(long_params_str).unwrap();
         long_params
     }
 }

@@ -207,73 +207,121 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn __copy__(&self) -> Self {self.clone()}
         pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
 
+        /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
+        ///
+        /// # Arguments:
+        ///
+        /// * `filepath`: `str | pathlib.Path` - Filepath, relative to the top of the `resources` folder, from which to read the object
+        ///
         #[staticmethod]
         #[pyo3(name = "from_resource")]
         pub fn from_resource_py(filepath: &PyAny) -> anyhow::Result<Self> {
             Self::from_resource(PathBuf::extract(filepath)?)
         }
 
+        /// Write (serialize) an object to a file.
+        /// Supported file extensions are listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`).
+        /// Creates a new file if it does not already exist, otherwise truncates the existing file.
+        ///
+        /// # Arguments
+        ///
+        /// * `filepath`: `str | pathlib.Path` - The filepath at which to write the object
+        ///
         #[pyo3(name = "to_file")]
         pub fn to_file_py(&self, filepath: &PyAny) -> anyhow::Result<()> {
            self.to_file(PathBuf::extract(filepath)?)
         }
 
+        /// Read (deserialize) an object from a file.
+        /// Supported file extensions are listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`).
+        ///
+        /// # Arguments:
+        ///
+        /// * `filepath`: `str | pathlib.Path` - The filepath from which to read the object
+        ///
         #[staticmethod]
         #[pyo3(name = "from_file")]
         pub fn from_file_py(filepath: &PyAny) -> anyhow::Result<Self> {
             Self::from_file(PathBuf::extract(filepath)?)
         }
 
+        /// Write (serialize) an object into a string
+        ///
+        /// # Arguments:
+        ///
+        /// * `format`: `str` - The target format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
+        ///
         #[pyo3(name = "to_str")]
         pub fn to_str_py(&self, format: &str) -> anyhow::Result<String> {
             self.to_str(format)
         }
 
+        /// Read (deserialize) an object from a string
+        ///
+        /// # Arguments:
+        ///
+        /// * `contents`: `str` - The string containing the object data
+        /// * `format`: `str` - The source format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
+        ///
         #[staticmethod]
         #[pyo3(name = "from_str")]
         pub fn from_str_py(contents: &str, format: &str) -> anyhow::Result<Self> {
             Self::from_str(contents, format)
         }
 
-        /// JSON serialization method.
+        /// Write (serialize) an object to a JSON string
         #[pyo3(name = "to_json")]
         pub fn to_json_py(&self) -> anyhow::Result<String> {
             self.to_json()
         }
 
+        /// Read (deserialize) an object to a JSON string
+        ///
+        /// # Arguments
+        ///
+        /// * `json_str`: `str` - JSON-formatted string to deserialize from
+        ///
         #[staticmethod]
-        /// JSON deserialization method.
         #[pyo3(name = "from_json")]
         pub fn from_json_py(json_str: &str) -> anyhow::Result<Self> {
             Self::from_json(json_str)
         }
 
-        /// YAML serialization method.
+        /// Write (serialize) an object to a YAML string
         #[pyo3(name = "to_yaml")]
         pub fn to_yaml_py(&self) -> anyhow::Result<String> {
             self.to_yaml()
         }
 
+        /// Read (deserialize) an object from a YAML string
+        ///
+        /// # Arguments
+        ///
+        /// * `yaml_str`: `str` - YAML-formatted string to deserialize from
+        ///
         #[staticmethod]
-        /// YAML deserialization method.
         #[pyo3(name = "from_yaml")]
         pub fn from_yaml_py(yaml_str: &str) -> anyhow::Result<Self> {
             Self::from_yaml(yaml_str)
         }
 
-        /// bincode serialization method.
+        /// Write (serialize) an object to bincode-encoded `bytes`
         #[pyo3(name = "to_bincode")]
         pub fn to_bincode_py<'py>(&self, py: Python<'py>) -> anyhow::Result<&'py PyBytes> {
             Ok(PyBytes::new(py, &self.to_bincode()?))
         }
 
+        /// Read (deserialize) an object from bincode-encoded `bytes`
+        ///
+        /// # Arguments
+        ///
+        /// * `encoded`: `bytes` - Encoded bytes to deserialize from
+        ///
         #[staticmethod]
-        /// bincode deserialization method.
         #[pyo3(name = "from_bincode")]
         pub fn from_bincode_py(encoded: &PyBytes) -> anyhow::Result<Self> {
             Self::from_bincode(encoded.as_bytes())
         }
-
     });
 
     let impl_block = quote! {
