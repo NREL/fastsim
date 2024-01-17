@@ -1,9 +1,11 @@
 //! Module containing miscellaneous utility functions.
 
+#[cfg(feature = "full")]
 use directories::ProjectDirs;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use ndarray::*;
+#[cfg(feature = "full")]
 use ndarray_stats::QuantileExt;
 use regex::Regex;
 use std::collections::HashSet;
@@ -515,6 +517,7 @@ pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
     Ok(radius_mm / 1000.0)
 }
 
+#[cfg(feature = "full")]
 /// Creates/gets an OS-specific data directory and returns the path.
 pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathBuf> {
     let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {

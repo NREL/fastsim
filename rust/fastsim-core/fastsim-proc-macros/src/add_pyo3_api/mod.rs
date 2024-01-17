@@ -213,6 +213,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///
         /// * `filepath`: `str | pathlib.Path` - Filepath, relative to the top of the `resources` folder, from which to read the object
         ///
+        #[cfg(feature = "full")]
         #[staticmethod]
         #[pyo3(name = "from_resource")]
         pub fn from_resource_py(filepath: &PyAny) -> anyhow::Result<Self> {

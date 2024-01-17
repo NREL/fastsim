@@ -15,7 +15,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// # Arguments:
     ///
     /// * `filepath` - Filepath, relative to the top of the `resources` folder, from which to read the object
-    ///
+    #[cfg(feature = "full")]
     fn from_resource<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
         let extension = filepath
@@ -272,5 +272,21 @@ where
         return self
             .iter()
             .all(|(key, value)| other.get(key).map_or(false, |v| value.approx_eq(v, tol)));
+    }
+}
+
+pub trait IterMaxMin {
+    fn max(&self) -> anyhow::Result<f64>;
+    fn min(&self) -> anyhow::Result<f64>;
+}
+
+impl IterMaxMin for Array1<f64> {
+    fn max(&self) -> anyhow::Result<f64> {
+        ensure!(!self.is_empty());
+        Ok(self.iter().fold(f64::NEG_INFINITY, |acc, x| x.max(acc)))
+    }
+    fn min(&self) -> anyhow::Result<f64> {
+        ensure!(!self.is_empty());
+        Ok(self.iter().fold(f64::INFINITY, |acc, x| x.min(acc)))
     }
 }

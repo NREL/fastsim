@@ -1070,7 +1070,7 @@ impl RustSimDrive {
                 self.mps_ach[i] = max(
                     speed_guesses[_ys
                         .iter()
-                        .position(|x| x == _ys.min().unwrap())
+                        .position(|x| *x == _ys.min().unwrap())
                         .ok_or_else(|| anyhow!(format_dbg!(_ys.min().unwrap())))?],
                     0.0,
                 );
@@ -1892,7 +1892,7 @@ impl RustSimDrive {
             );
         }
 
-        self.trace_miss_speed_mps = *(&self.mps_ach - &self.cyc.mps).map(|x| x.abs()).max()?;
+        self.trace_miss_speed_mps = (&self.mps_ach - &self.cyc.mps).map(|x| x.abs()).max()?;
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol {
             self.trace_miss = true;
             log::warn!(

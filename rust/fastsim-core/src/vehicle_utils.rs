@@ -1,9 +1,13 @@
 //! Module for utility functions that support the vehicle struct.
 
-use argmin::core::{CostFunction, Error, Executor, OptimizationResult, State};
+#[cfg(feature = "full")]
+use argmin::core::{CostFunction, Executor, OptimizationResult, State};
+#[cfg(feature = "full")]
 use argmin::solver::neldermead::NelderMead;
+#[cfg(feature = "full")]
 use curl::easy::Easy;
 use ndarray::{array, Array1};
+#[cfg(feature = "full")]
 use polynomial::Polynomial;
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
@@ -297,6 +301,7 @@ pub struct VehicleDataEPA {
 
 impl SerdeAPI for VehicleDataEPA {}
 
+#[cfg(feature = "full")]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 /// Gets options from fueleconomy.gov for the given vehicle year, make, and model
 ///
@@ -753,6 +758,7 @@ pub struct OtherVehicleInputs {
 
 impl SerdeAPI for OtherVehicleInputs {}
 
+#[cfg(feature = "full")]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 /// Creates RustVehicle for the given vehicle using data from fueleconomy.gov and EPA databases
 /// The created RustVehicle is also written as a yaml file
@@ -772,7 +778,7 @@ pub fn vehicle_import_by_id_and_year(
     other_inputs: &OtherVehicleInputs,
     cache_url: Option<String>,
     data_dir: Option<String>,
-) -> Result<RustVehicle, Error> {
+) -> anyhow::Result<RustVehicle> {
     let mut maybe_veh: Option<RustVehicle> = None;
     let data_dir_path = if let Some(data_dir) = data_dir {
         PathBuf::from(data_dir)
@@ -843,6 +849,7 @@ fn get_fuel_economy_gov_data_for_input_record(
     output
 }
 
+#[cfg(feature = "full")]
 /// Try to make a single vehicle using the provided data sets.
 fn try_make_single_vehicle(
     fe_gov_data: &VehicleDataFE,
@@ -1036,6 +1043,7 @@ fn try_make_single_vehicle(
     Some(veh)
 }
 
+#[cfg(feature = "full")]
 fn try_import_vehicles(
     vir: &VehicleInputRecord,
     fegov_data: &[VehicleDataFE],
@@ -1099,9 +1107,9 @@ pub fn export_vehicle_to_file(veh: &RustVehicle, file_path: String) -> anyhow::R
 }
 
 #[allow(non_snake_case)]
-#[allow(clippy::too_many_arguments)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "full")]
 pub fn abc_to_drag_coeffs(
     veh: &mut RustVehicle,
     a_lbf: f64,
@@ -1220,12 +1228,14 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
     return err / (time_steps.last().unwrap() - time_steps[0]);
 }
 
+#[cfg(feature = "full")]
 struct GetError<'a> {
     cycle: &'a RustCycle,
     vehicle: &'a RustVehicle,
     dyno_func_lb: &'a Polynomial<f64>,
 }
 
+#[cfg(feature = "full")]
 impl CostFunction for GetError<'_> {
     type Param = Array1<f64>;
     type Output = f64;
@@ -1441,6 +1451,7 @@ pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "full")]
 /// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
 pub fn download_file_from_url(url: &str, file_path: &Path) -> anyhow::Result<()> {
     let mut handle = Easy::new();
@@ -1567,6 +1578,7 @@ fn extract_file_from_zip(
     Ok(())
 }
 
+#[cfg(feature = "full")]
 /// Checks the cache directory to see if data files have been downloaded
 /// If so, moves on without any further action.
 /// If not, downloads data by year from remote site if it exists
@@ -1629,6 +1641,7 @@ fn populate_cache_for_given_years_if_needed(
 }
 
 #[cfg_attr(feature = "pyo3", pyfunction)]
+#[cfg(feature = "full")]
 /// Import All Vehicles for the given Year, Make, and Model and supplied other inputs
 pub fn import_all_vehicles(
     year: u32,
@@ -1686,6 +1699,7 @@ pub fn import_all_vehicles(
     Ok(vehs)
 }
 
+#[cfg(feature = "full")]
 /// Import and Save All Vehicles Specified via Input File
 pub fn import_and_save_all_vehicles_from_file(
     input_path: &Path,
@@ -1716,6 +1730,7 @@ pub fn import_and_save_all_vehicles_from_file(
     import_and_save_all_vehicles(&inputs, &fegov_data_by_year, &epatest_db, output_dir_path)
 }
 
+#[cfg(feature = "full")]
 pub fn import_all_vehicles_from_record(
     inputs: &[VehicleInputRecord],
     fegov_data_by_year: &HashMap<u32, Vec<VehicleDataFE>>,
@@ -1739,6 +1754,7 @@ pub fn import_all_vehicles_from_record(
     vehs
 }
 
+#[cfg(feature = "full")]
 pub fn import_and_save_all_vehicles(
     inputs: &[VehicleInputRecord],
     fegov_data_by_year: &HashMap<u32, Vec<VehicleDataFE>>,
@@ -1787,6 +1803,7 @@ mod vehicle_utils_tests {
         assert!(error_val.approx_eq(&0.8124999999999998, 1e-10));
     }
 
+    #[cfg(feature = "full")]
     #[test]
     fn test_abc_to_drag_coeffs() {
         let mut veh: RustVehicle = RustVehicle::mock_vehicle();
@@ -1814,6 +1831,7 @@ mod vehicle_utils_tests {
         assert_eq!(wheel_rr_coef, veh.wheel_rr_coef);
     }
 
+    #[cfg(feature = "full")]
     #[test]
     fn test_create_new_vehicle_from_input_data() {
         let veh_record = VehicleInputRecord {
@@ -1928,6 +1946,7 @@ mod vehicle_utils_tests {
         }
     }
 
+    #[cfg(feature = "full")]
     #[test]
     fn test_get_options_for_year_make_model() {
         let year = String::from("2020");
@@ -1941,6 +1960,7 @@ mod vehicle_utils_tests {
         }
     }
 
+    #[cfg(feature = "full")]
     #[test]
     fn test_import_robustness() {
         // Ensure 2019 data is cached
@@ -1958,8 +1978,7 @@ mod vehicle_utils_tests {
         let veh_records = {
             let file = File::open(vehicles_path);
             if let Ok(f) = file {
-                let data_result: Result<Vec<HashMap<String, String>>, Error> =
-                    read_records_from_file(f);
+                let data_result = read_records_from_file(f);
                 if let Ok(data) = data_result {
                     data
                 } else {
@@ -2011,6 +2030,7 @@ mod vehicle_utils_tests {
         assert!(success_frac > 0.90, "success_frac = {}", success_frac);
     }
 
+    #[cfg(feature = "full")]
     #[test]
     fn test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir() {
         let year = String::from("2020");

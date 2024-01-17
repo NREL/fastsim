@@ -1,6 +1,7 @@
 //! Module containing classes and methods for calculating label fuel economy.
 
 use ndarray::Array;
+#[cfg(feature = "full")]
 use ndarray_stats::QuantileExt;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -168,6 +169,7 @@ pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> any
     Ok(result)
 }
 
+#[cfg(feature = "full")]
 pub fn get_label_fe(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
@@ -384,6 +386,7 @@ pub fn get_label_fe(
     }
 }
 
+#[cfg(feature = "full")]
 #[cfg(feature = "pyo3")]
 #[pyfunction(name = "get_label_fe")]
 /// pyo3 version of [get_label_fe]
@@ -638,7 +641,7 @@ pub fn get_label_fe_phev(
             if veh.max_soc - phev_calcs.regen_soc_buffer - sd_val.soc.min()? < 0.01 {
                 1000.0
             } else {
-                *phev_calc.adj_iter_cd_miles.max()?
+                phev_calc.adj_iter_cd_miles.max()?
             };
 
         // utility factor calculation for last charge depletion iteration and transition iteration
@@ -722,6 +725,7 @@ pub fn get_label_fe_phev_py(
 }
 
 #[cfg(test)]
+#[cfg(feature = "full")]
 mod simdrivelabel_tests {
     use super::*;
 
@@ -777,6 +781,7 @@ mod simdrivelabel_tests {
             label_fe_truth.to_json().unwrap(),
         );
     }
+
     #[test]
     fn test_get_label_fe_phev() {
         let mut veh = vehicle::RustVehicle {
@@ -1149,6 +1154,7 @@ mod simdrivelabel_tests {
     }
 }
 
+#[cfg(feature = "full")]
 #[cfg(feature = "pyo3")]
 #[pyfunction(name = "get_label_fe_conv")]
 /// pyo3 version of [get_label_fe_conv]
