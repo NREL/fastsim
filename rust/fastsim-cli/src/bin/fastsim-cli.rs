@@ -248,7 +248,7 @@ pub fn main() -> anyhow::Result<()> {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            let mut veh = RustVehicle::from_json(&veh_string)?;
+            let mut veh = RustVehicle::from_json(veh_string)?;
             veh.set_derived()?;
             Ok(veh)
         } else {
@@ -262,7 +262,7 @@ pub fn main() -> anyhow::Result<()> {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            let mut veh = RustVehicle::from_json(&veh_string)?;
+            let mut veh = RustVehicle::from_json(veh_string)?;
             veh.set_derived()?;
             Ok(veh)
         } else {
