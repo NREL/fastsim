@@ -25,5 +25,5 @@ crate-type = ["cdylib"]
 include = ["../../NOTICE"]
 
 [features]
-# default = ["full"]
+default = ["full"]
 full = ["fastsim-core/full", "dep:pyo3-log"]

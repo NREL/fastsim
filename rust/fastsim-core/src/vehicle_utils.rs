@@ -1240,7 +1240,7 @@ impl CostFunction for GetError<'_> {
     type Param = Array1<f64>;
     type Output = f64;
 
-    fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+    fn cost(&self, x: &Self::Param) -> anyhow::Result<Self::Output> {
         let mut veh: RustVehicle = self.vehicle.clone();
         let cyc: RustCycle = self.cycle.clone();
         let dyno_func_lb: Polynomial<f64> = self.dyno_func_lb.clone();
@@ -1978,7 +1978,8 @@ mod vehicle_utils_tests {
         let veh_records = {
             let file = File::open(vehicles_path);
             if let Ok(f) = file {
-                let data_result = read_records_from_file(f);
+                let data_result: anyhow::Result<Vec<HashMap<String, String>>> =
+                    read_records_from_file(f);
                 if let Ok(data) = data_result {
                     data
                 } else {

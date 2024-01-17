@@ -952,7 +952,7 @@ impl SimDriveHot {
                 }
             }
 
-            if self.sd.fc_kw_out_ach[i] == self.sd.veh.input_kw_out_array.max()? {
+            if self.sd.fc_kw_out_ach[i] == *self.sd.veh.input_kw_out_array.max()? {
                 self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i]
                     / (self.sd.veh.fc_eff_array.last().unwrap() * self.state.fc_eta_temp_coeff)
             } else {

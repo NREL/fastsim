@@ -5,8 +5,6 @@ use directories::ProjectDirs;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use ndarray::*;
-#[cfg(feature = "full")]
-use ndarray_stats::QuantileExt;
 use regex::Regex;
 use std::collections::HashSet;
 

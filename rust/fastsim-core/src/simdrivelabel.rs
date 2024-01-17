@@ -1,8 +1,6 @@
 //! Module containing classes and methods for calculating label fuel economy.
 
 use ndarray::Array;
-#[cfg(feature = "full")]
-use ndarray_stats::QuantileExt;
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -641,7 +639,7 @@ pub fn get_label_fe_phev(
             if veh.max_soc - phev_calcs.regen_soc_buffer - sd_val.soc.min()? < 0.01 {
                 1000.0
             } else {
-                phev_calc.adj_iter_cd_miles.max()?
+                *phev_calc.adj_iter_cd_miles.max()?
             };
 
         // utility factor calculation for last charge depletion iteration and transition iteration

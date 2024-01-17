@@ -37,7 +37,6 @@ zip = "0.6.6"
 directories = { optional = true, version = "5.0.1" }
 include_dir = { optional = true, version = "0.7.3" }
 itertools = "0.12.0"
-ndarray-stats = { optional = true, version = "0.5.1" }
 tempfile = "3.8.1"
 
 [package.metadata]
@@ -53,7 +52,7 @@ include = [
 # to disable the default features, see
 # https://doc.rust-lang.org/cargo/reference/features.html?highlight=no-default-features#the-default-feature
 # and use the `--no-default-features` flag when compiling
-# default = ["full"]
+default = ["full"]
 pyo3 = ["dep:pyo3"]
 full = [
     "dep:argmin",

@@ -159,7 +159,7 @@ impl RustSimDrive {
         let v_desired_m_per_s = if self.idm_target_speed_m_per_s[i] > 0.0 {
             self.idm_target_speed_m_per_s[i]
         } else {
-            self.cyc0.mps.max().unwrap()
+            *self.cyc0.mps.max().unwrap()
         };
         // DERIVED VALUES
         self.cyc.mps[i] = self.next_speed_by_idm(

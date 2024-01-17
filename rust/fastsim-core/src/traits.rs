@@ -275,18 +275,32 @@ where
     }
 }
 
-pub trait IterMaxMin {
-    fn max(&self) -> anyhow::Result<f64>;
-    fn min(&self) -> anyhow::Result<f64>;
+/// This trait was heavily inspired by `ndarray-stats` crate
+pub trait IterMaxMin<A: PartialOrd> {
+    fn max(&self) -> anyhow::Result<&A>;
+    fn min(&self) -> anyhow::Result<&A>;
 }
 
-impl IterMaxMin for Array1<f64> {
-    fn max(&self) -> anyhow::Result<f64> {
-        ensure!(!self.is_empty());
-        Ok(self.iter().fold(f64::NEG_INFINITY, |acc, x| x.max(acc)))
+#[allow(clippy::manual_try_fold)] // `try_fold` is apparently not implemented
+impl IterMaxMin<f64> for Array1<f64> {
+    fn max(&self) -> anyhow::Result<&f64> {
+        let first = self.first().ok_or(anyhow!("empty input"))?;
+        self.fold(Ok(first), |acc, elem| {
+            let acc = acc?;
+            match elem.partial_cmp(acc).ok_or(anyhow!("undefined order"))? {
+                cmp::Ordering::Greater => Ok(elem),
+                _ => Ok(acc),
+            }
+        })
     }
-    fn min(&self) -> anyhow::Result<f64> {
-        ensure!(!self.is_empty());
-        Ok(self.iter().fold(f64::INFINITY, |acc, x| x.min(acc)))
+    fn min(&self) -> anyhow::Result<&f64> {
+        let first = self.first().ok_or(anyhow!("empty input"))?;
+        self.fold(Ok(first), |acc, elem| {
+            let acc = acc?;
+            match elem.partial_cmp(acc).ok_or(anyhow!("undefined order"))? {
+                cmp::Ordering::Less => Ok(elem),
+                _ => Ok(acc),
+            }
+        })
     }
 }
