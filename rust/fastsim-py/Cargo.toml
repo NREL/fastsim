@@ -11,9 +11,9 @@ repository = "https://github.com/NREL/fastsim"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+pyo3-log = { workspace = true, optional = true }
 fastsim-core = { path = "../fastsim-core", features = ["pyo3"], version = "~0" }
 pyo3 = { workspace = true, features = ["extension-module", "anyhow"] }
-pyo3-log = { workspace = true }
 log = "0.4.17"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -23,3 +23,7 @@ crate-type = ["cdylib"]
 
 [package.metadata]
 include = ["../../NOTICE"]
+
+[features]
+# default = ["full"]
+full = ["fastsim-core/full", "dep:pyo3-log"]
