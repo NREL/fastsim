@@ -458,6 +458,7 @@ pub struct RustSimDrive {
     /// Current ESS state of charge,
     /// multiply by `veh.ess_max_kwh` to calculate remaining ESS energy
     pub soc: Array1<f64>,
+    pub cur_mc_eff: Array1<f64>,
     pub regen_buff_soc: Array1<f64>,
     pub ess_regen_buff_dischg_kw: Array1<f64>,
     pub max_ess_regen_buff_chg_kw: Array1<f64>,

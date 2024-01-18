@@ -27,247 +27,135 @@ pub struct CoastTrajectory {
 
 impl RustSimDrive {
     pub fn new(cyc: RustCycle, veh: RustVehicle) -> Self {
-        let hev_sim_count: usize = 0;
-        let cyc0 = cyc.clone();
-        let sim_params = RustSimDriveParams::default();
-        let props = params::RustPhysicalProperties::default();
-        let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
         let cyc_len = cyc.len();
-        let cur_max_fs_kw_out = Array::zeros(cyc_len);
-        let fc_trans_lim_kw = Array::zeros(cyc_len);
-        let cur_max_fc_kw_out = Array::zeros(cyc_len);
-        let ess_cap_lim_dischg_kw = Array::zeros(cyc_len);
-        let cur_ess_max_kw_out = Array::zeros(cyc_len);
-        let cur_max_avail_elec_kw = Array::zeros(cyc_len);
-        let ess_cap_lim_chg_kw = Array::zeros(cyc_len);
-        let cur_max_ess_chg_kw = Array::zeros(cyc_len);
-        let cur_max_elec_kw = Array::zeros(cyc_len);
-        let mc_elec_in_lim_kw = Array::zeros(cyc_len);
-        let mc_transi_lim_kw = Array::zeros(cyc_len);
-        let cur_max_mc_kw_out = Array::zeros(cyc_len);
-        let ess_lim_mc_regen_perc_kw = Array::zeros(cyc_len);
-        let cur_max_mech_mc_kw_in = Array::zeros(cyc_len);
-        let cur_max_trans_kw_out = Array::zeros(cyc_len);
-        let cyc_trac_kw_req = Array::zeros(cyc_len);
-        let cur_max_trac_kw = Array::zeros(cyc_len);
-        let spare_trac_kw = Array::zeros(cyc_len);
-        let cyc_whl_rad_per_sec = Array::zeros(cyc_len);
-        let cyc_tire_inertia_kw = Array::zeros(cyc_len);
-        let cyc_whl_kw_req = Array::zeros(cyc_len);
-        let regen_contrl_lim_kw_perc = Array::zeros(cyc_len);
-        let cyc_regen_brake_kw = Array::zeros(cyc_len);
-        let cyc_fric_brake_kw = Array::zeros(cyc_len);
-        let cyc_trans_kw_out_req = Array::zeros(cyc_len);
-        let cyc_met = Array::from_vec(vec![false; cyc_len]);
-        let trans_kw_out_ach = Array::zeros(cyc_len);
-        let trans_kw_in_ach = Array::zeros(cyc_len);
-        let cur_soc_target = Array::zeros(cyc_len);
-        let min_mc_kw_2help_fc = Array::zeros(cyc_len);
-        let mc_mech_kw_out_ach = Array::zeros(cyc_len);
-        let mc_elec_kw_in_ach = Array::zeros(cyc_len);
-        let aux_in_kw = Array::zeros(cyc_len);
-        let impose_coast = Array::from_vec(vec![false; cyc_len]);
-        let roadway_chg_kw_out_ach = Array::zeros(cyc_len);
-        let min_ess_kw_2help_fc = Array::zeros(cyc_len);
-        let ess_kw_out_ach = Array::zeros(cyc_len);
-        let fc_kw_out_ach = Array::zeros(cyc_len);
-        let fc_kw_out_ach_pct = Array::zeros(cyc_len);
-        let fc_kw_in_ach = Array::zeros(cyc_len);
-        let fs_kw_out_ach = Array::zeros(cyc_len);
-        let fs_kwh_out_ach = Array::zeros(cyc_len);
-        let ess_cur_kwh = Array::zeros(cyc_len);
-        let soc = Array::zeros(cyc_len);
-        let regen_buff_soc = Array::zeros(cyc_len);
-        let ess_regen_buff_dischg_kw = Array::zeros(cyc_len);
-        let max_ess_regen_buff_chg_kw = Array::zeros(cyc_len);
-        let ess_accel_buff_chg_kw = Array::zeros(cyc_len);
-        let accel_buff_soc = Array::zeros(cyc_len);
-        let max_ess_accell_buff_dischg_kw = Array::zeros(cyc_len);
-        let ess_accel_regen_dischg_kw = Array::zeros(cyc_len);
-        let mc_elec_in_kw_for_max_fc_eff = Array::zeros(cyc_len);
-        let elec_kw_req_4ae = Array::zeros(cyc_len);
-        let can_pwr_all_elec = Array::from_vec(vec![false; cyc_len]);
-        let desired_ess_kw_out_for_ae = Array::zeros(cyc_len);
-        let ess_ae_kw_out = Array::zeros(cyc_len);
-        let er_ae_kw_out = Array::zeros(cyc_len);
-        let ess_desired_kw_4fc_eff = Array::zeros(cyc_len);
-        let ess_kw_if_fc_req = Array::zeros(cyc_len);
-        let cur_max_mc_elec_kw_in = Array::zeros(cyc_len);
-        let fc_kw_gap_fr_eff = Array::zeros(cyc_len);
-        let er_kw_if_fc_req = Array::zeros(cyc_len);
-        let mc_elec_kw_in_if_fc_req = Array::zeros(cyc_len);
-        let mc_kw_if_fc_req = Array::zeros(cyc_len);
-        let fc_forced_on = Array::from_vec(vec![false; cyc_len]);
-        let fc_forced_state = Array::zeros(cyc_len);
-        let mc_mech_kw_4forced_fc = Array::zeros(cyc_len);
-        let fc_time_on = Array::zeros(cyc_len);
-        let prev_fc_time_on = Array::zeros(cyc_len);
-        let mps_ach = Array::zeros(cyc_len);
-        let mph_ach = Array::zeros(cyc_len);
-        let dist_m = Array::zeros(cyc_len);
-        let dist_mi = Array::zeros(cyc_len);
-        let high_acc_fc_on_tag = Array::from_vec(vec![false; cyc_len]);
-        let reached_buff = Array::from_vec(vec![false; cyc_len]);
-        let max_trac_mps = Array::zeros(cyc_len);
-        let add_kwh = Array::zeros(cyc_len);
-        let dod_cycs = Array::zeros(cyc_len);
-        let ess_perc_dead = Array::zeros(cyc_len);
-        let drag_kw = Array::zeros(cyc_len);
-        let ess_loss_kw = Array::zeros(cyc_len);
-        let accel_kw = Array::zeros(cyc_len);
-        let ascent_kw = Array::zeros(cyc_len);
-        let rr_kw = Array::zeros(cyc_len);
-        let cur_max_roadway_chg_kw = Array::zeros(cyc_len);
-        let trace_miss_iters = Array::zeros(cyc_len);
-        let newton_iters = Array::zeros(cyc_len);
-        let fuel_kj = 0.0;
-        let ess_dischg_kj = 0.0;
-        let energy_audit_error = 0.0;
-        let mpgge = 0.0;
-        let roadway_chg_kj = 0.0;
-        let battery_kwh_per_mi = 0.0;
-        let electric_kwh_per_mi = 0.0;
-        let ess2fuel_kwh = 0.0;
-        let drag_kj = 0.0;
-        let ascent_kj = 0.0;
-        let rr_kj = 0.0;
-        let brake_kj = 0.0;
-        let trans_kj = 0.0;
-        let mc_kj = 0.0;
-        let ess_eff_kj = 0.0;
-        let aux_kj = 0.0;
-        let fc_kj = 0.0;
-        let net_kj = 0.0;
-        let ke_kj = 0.0;
-        let trace_miss = false;
-        let trace_miss_dist_frac = 0.0;
-        let trace_miss_time_frac = 0.0;
-        let trace_miss_speed_mps = 0.0;
-        let coast_delay_index = Array::zeros(cyc_len);
-        let idm_target_speed_m_per_s = Array::zeros(cyc_len);
+        let zeros_f64 = Array::zeros(cyc_len);
+        let zeros_u32 = Array::zeros(cyc_len);
+        let falses = Array::from_vec(vec![false; cyc_len]);
+        let cyc0 = cyc.clone();
         let cyc0_cache = RustCycleCache::new(&cyc0);
         RustSimDrive {
-            hev_sim_count,
-            veh,
-            cyc,
-            cyc0,
-            sim_params,
-            props,
-            i, // 1 # initialize step counter for possible use outside sim_drive_walk()
-            cur_max_fs_kw_out,
-            fc_trans_lim_kw,
-            cur_max_fc_kw_out,
-            ess_cap_lim_dischg_kw,
-            cur_ess_max_kw_out,
-            cur_max_avail_elec_kw,
-            ess_cap_lim_chg_kw,
-            cur_max_ess_chg_kw,
-            cur_max_elec_kw,
-            mc_elec_in_lim_kw,
-            mc_transi_lim_kw,
-            cur_max_mc_kw_out,
-            ess_lim_mc_regen_perc_kw,
-            cur_max_mech_mc_kw_in,
-            cur_max_trans_kw_out,
-            cyc_trac_kw_req,
-            cur_max_trac_kw,
-            spare_trac_kw,
-            cyc_whl_rad_per_sec,
-            cyc_tire_inertia_kw,
-            cyc_whl_kw_req,
-            regen_contrl_lim_kw_perc,
-            cyc_regen_brake_kw,
-            cyc_fric_brake_kw,
-            cyc_trans_kw_out_req,
-            cyc_met,
-            trans_kw_out_ach,
-            trans_kw_in_ach,
-            cur_soc_target,
-            min_mc_kw_2help_fc,
-            mc_mech_kw_out_ach,
-            mc_elec_kw_in_ach,
-            aux_in_kw,
-            impose_coast,
-            roadway_chg_kw_out_ach,
-            min_ess_kw_2help_fc,
-            ess_kw_out_ach,
-            fc_kw_out_ach,
-            fc_kw_out_ach_pct,
-            fc_kw_in_ach,
-            fs_kw_out_ach,
-            fs_kwh_out_ach,
-            ess_cur_kwh,
-            soc,
-            regen_buff_soc,
-            ess_regen_buff_dischg_kw,
-            max_ess_regen_buff_chg_kw,
-            ess_accel_buff_chg_kw,
-            accel_buff_soc,
-            max_ess_accell_buff_dischg_kw,
-            ess_accel_regen_dischg_kw,
-            mc_elec_in_kw_for_max_fc_eff,
-            elec_kw_req_4ae,
-            can_pwr_all_elec,
-            desired_ess_kw_out_for_ae,
-            ess_ae_kw_out,
-            er_ae_kw_out,
-            ess_desired_kw_4fc_eff,
-            ess_kw_if_fc_req,
-            cur_max_mc_elec_kw_in,
-            fc_kw_gap_fr_eff,
-            er_kw_if_fc_req,
-            mc_elec_kw_in_if_fc_req,
-            mc_kw_if_fc_req,
-            fc_forced_on,
-            fc_forced_state,
-            mc_mech_kw_4forced_fc,
-            fc_time_on,
-            prev_fc_time_on,
-            mps_ach,
-            mph_ach,
-            dist_m,
-            dist_mi,
-            high_acc_fc_on_tag,
-            reached_buff,
-            max_trac_mps,
-            add_kwh,
-            dod_cycs,
-            ess_perc_dead,
-            drag_kw,
-            ess_loss_kw,
-            accel_kw,
-            ascent_kw,
-            rr_kw,
-            cur_max_roadway_chg_kw,
-            trace_miss_iters,
-            newton_iters,
-            fuel_kj,
-            ess_dischg_kj,
-            energy_audit_error,
-            mpgge,
-            roadway_chg_kj,
-            battery_kwh_per_mi,
-            electric_kwh_per_mi,
-            ess2fuel_kwh,
-            drag_kj,
-            ascent_kj,
-            rr_kj,
-            brake_kj,
-            trans_kj,
-            mc_kj,
-            ess_eff_kj,
-            aux_kj,
-            fc_kj,
-            net_kj,
-            ke_kj,
-            trace_miss,
-            trace_miss_dist_frac,
-            trace_miss_time_frac,
-            trace_miss_speed_mps,
+            hev_sim_count: 0,
+            veh: veh,
+            cyc: cyc,
+            cyc0: cyc0,
+            sim_params: RustSimDriveParams::default(),
+            props: params::RustPhysicalProperties::default(),
+            i: 1, // 1 # initialize step counter for possible use outside sim_drive_walk()
+            cur_max_fs_kw_out: zeros_f64.clone(),
+            fc_trans_lim_kw: zeros_f64.clone(),
+            cur_max_fc_kw_out: zeros_f64.clone(),
+            ess_cap_lim_dischg_kw: zeros_f64.clone(),
+            cur_ess_max_kw_out: zeros_f64.clone(),
+            cur_max_avail_elec_kw: zeros_f64.clone(),
+            ess_cap_lim_chg_kw: zeros_f64.clone(),
+            cur_max_ess_chg_kw: zeros_f64.clone(),
+            cur_max_elec_kw: zeros_f64.clone(),
+            mc_elec_in_lim_kw: zeros_f64.clone(),
+            mc_transi_lim_kw: zeros_f64.clone(),
+            cur_max_mc_kw_out: zeros_f64.clone(),
+            ess_lim_mc_regen_perc_kw: zeros_f64.clone(),
+            cur_max_mech_mc_kw_in: zeros_f64.clone(),
+            cur_max_trans_kw_out: zeros_f64.clone(),
+            cyc_trac_kw_req: zeros_f64.clone(),
+            cur_max_trac_kw: zeros_f64.clone(),
+            spare_trac_kw: zeros_f64.clone(),
+            cyc_whl_rad_per_sec: zeros_f64.clone(),
+            cyc_tire_inertia_kw: zeros_f64.clone(),
+            cyc_whl_kw_req: zeros_f64.clone(),
+            regen_contrl_lim_kw_perc: zeros_f64.clone(),
+            cyc_regen_brake_kw: zeros_f64.clone(),
+            cyc_fric_brake_kw: zeros_f64.clone(),
+            cyc_trans_kw_out_req: zeros_f64.clone(),
+            cyc_met: falses.clone(),
+            trans_kw_out_ach: zeros_f64.clone(),
+            trans_kw_in_ach: zeros_f64.clone(),
+            cur_soc_target: zeros_f64.clone(),
+            min_mc_kw_2help_fc: zeros_f64.clone(),
+            mc_mech_kw_out_ach: zeros_f64.clone(),
+            mc_elec_kw_in_ach: zeros_f64.clone(),
+            aux_in_kw: zeros_f64.clone(),
+            impose_coast: falses.clone(),
+            roadway_chg_kw_out_ach: zeros_f64.clone(),
+            min_ess_kw_2help_fc: zeros_f64.clone(),
+            ess_kw_out_ach: zeros_f64.clone(),
+            fc_kw_out_ach: zeros_f64.clone(),
+            fc_kw_out_ach_pct: zeros_f64.clone(),
+            fc_kw_in_ach: zeros_f64.clone(),
+            fs_kw_out_ach: zeros_f64.clone(),
+            fs_kwh_out_ach: zeros_f64.clone(),
+            ess_cur_kwh: zeros_f64.clone(),
+            soc: zeros_f64.clone(),
+            cur_mc_eff: zeros_f64.clone(),
+            regen_buff_soc: zeros_f64.clone(),
+            ess_regen_buff_dischg_kw: zeros_f64.clone(),
+            max_ess_regen_buff_chg_kw: zeros_f64.clone(),
+            ess_accel_buff_chg_kw: zeros_f64.clone(),
+            accel_buff_soc: zeros_f64.clone(),
+            max_ess_accell_buff_dischg_kw: zeros_f64.clone(),
+            ess_accel_regen_dischg_kw: zeros_f64.clone(),
+            mc_elec_in_kw_for_max_fc_eff: zeros_f64.clone(),
+            elec_kw_req_4ae: zeros_f64.clone(),
+            can_pwr_all_elec: falses.clone(),
+            desired_ess_kw_out_for_ae: zeros_f64.clone(),
+            ess_ae_kw_out: zeros_f64.clone(),
+            er_ae_kw_out: zeros_f64.clone(),
+            ess_desired_kw_4fc_eff: zeros_f64.clone(),
+            ess_kw_if_fc_req: zeros_f64.clone(),
+            cur_max_mc_elec_kw_in: zeros_f64.clone(),
+            fc_kw_gap_fr_eff: zeros_f64.clone(),
+            er_kw_if_fc_req: zeros_f64.clone(),
+            mc_elec_kw_in_if_fc_req: zeros_f64.clone(),
+            mc_kw_if_fc_req: zeros_f64.clone(),
+            fc_forced_on: falses.clone(),
+            fc_forced_state: zeros_u32.clone(),
+            mc_mech_kw_4forced_fc: zeros_f64.clone(),
+            fc_time_on: zeros_f64.clone(),
+            prev_fc_time_on: zeros_f64.clone(),
+            mps_ach: zeros_f64.clone(),
+            mph_ach: zeros_f64.clone(),
+            dist_m: zeros_f64.clone(),
+            dist_mi: zeros_f64.clone(),
+            high_acc_fc_on_tag: falses.clone(),
+            reached_buff: falses.clone(),
+            max_trac_mps: zeros_f64.clone(),
+            add_kwh: zeros_f64.clone(),
+            dod_cycs: zeros_f64.clone(),
+            ess_perc_dead: zeros_f64.clone(),
+            drag_kw: zeros_f64.clone(),
+            ess_loss_kw: zeros_f64.clone(),
+            accel_kw: zeros_f64.clone(),
+            ascent_kw: zeros_f64.clone(),
+            rr_kw: zeros_f64.clone(),
+            cur_max_roadway_chg_kw: zeros_f64.clone(),
+            trace_miss_iters: zeros_u32.clone(),
+            newton_iters: zeros_u32.clone(),
+            fuel_kj: 0.0,
+            ess_dischg_kj: 0.0,
+            energy_audit_error: 0.0,
+            mpgge: 0.0,
+            roadway_chg_kj: 0.0,
+            battery_kwh_per_mi: 0.0,
+            electric_kwh_per_mi: 0.0,
+            ess2fuel_kwh: 0.0,
+            drag_kj: 0.0,
+            ascent_kj: 0.0,
+            rr_kj: 0.0,
+            brake_kj: 0.0,
+            trans_kj: 0.0,
+            mc_kj: 0.0,
+            ess_eff_kj: 0.0,
+            aux_kj: 0.0,
+            fc_kj: 0.0,
+            net_kj: 0.0,
+            ke_kj: 0.0,
+            trace_miss: false,
+            trace_miss_dist_frac: 0.0,
+            trace_miss_time_frac: 0.0,
+            trace_miss_speed_mps: 0.0,
             orphaned: false,
-            coast_delay_index,
-            idm_target_speed_m_per_s,
-            cyc0_cache,
+            coast_delay_index: Array::zeros(cyc_len),
+            idm_target_speed_m_per_s: zeros_f64.clone(),
+            cyc0_cache: cyc0_cache,
             aux_in_kw_override: None,
         }
     }
