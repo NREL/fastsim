@@ -52,5 +52,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(vehicle_utils::import_all_vehicles, m)?)?;
     m.add_function(wrap_pyfunction!(vehicle_utils::export_vehicle_to_file, m)?)?;
 
+    m.add_function(wrap_pyfunction!(enabled_features, m)?)?;
+
     Ok(())
 }
