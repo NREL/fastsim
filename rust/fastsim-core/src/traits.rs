@@ -5,7 +5,7 @@ use ureq;
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
-    const CACHE_FOLDER: &'static str = &"rust_objects";
+    const CACHE_FOLDER: &'static str = &"";
 
     /// Specialized code to execute upon initialization
     fn init(&mut self) -> anyhow::Result<()> {
@@ -208,11 +208,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
 
     /// takes an instantiated Rust object and saves it in the FASTSim data directory in
     /// a rust_objects folder  
-    /// WARNING: if there is a file already in the data subdirectory with the
-    /// same name, it will be replaced by the new file  
-    /// to save to a folder other than rust_objects for a specific object type,
-    /// in the object-specific SerdeAPI implementation, redefine the
-    /// CACHE_FOLDER constant to be your choice of folder name  
+    /// WARNING: If there is a file already in the data subdirectory with the
+    /// same name, it will be replaced by the new file.  
     /// # Arguments  
     /// - self (rust object)  
     /// - file_path: path to file within subdirectory. If only the file name is
@@ -246,6 +243,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let file_path = data_subdirectory.join(file_name);
         self.to_file(file_path)
     }
+
+    //TODO from_cache method
 }
 
 pub trait ApproxEq<Rhs = Self> {
@@ -343,23 +342,30 @@ mod tests {
     #[test]
     fn test_from_url() {
         let vehicle = crate::vehicle::RustVehicle::from_url("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
-        let comparison_vehicle = crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
+        let comparison_vehicle =
+            crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")
+                .unwrap();
         // let comparison_vehicle = crate::vehicle::RustVehicle::from_file("/Users/rsteutev/Documents/GitHub/fastsim/rust/fastsim-core/src/test_vehicle.json").unwrap();
         println!("{}", vehicle.to_yaml().unwrap());
-        assert_eq! (vehicle, comparison_vehicle);
+        assert_eq!(vehicle, comparison_vehicle);
     }
 
     #[test]
     fn test_to_cache() {
-        let vehicle_a = crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
-        crate::vehicle::RustVehicle::to_cache(&vehicle_a, "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
+        let vehicle_a =
+            crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")
+                .unwrap();
+        crate::vehicle::RustVehicle::to_cache(
+            &vehicle_a,
+            "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
+        )
+        .unwrap();
         let data_subdirectory = create_project_subdir("vehicles").unwrap();
         let file_path = data_subdirectory.join("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
         println!("{}", file_path.to_string_lossy());
         println!("{}", crate::vehicle::RustVehicle::CACHE_FOLDER);
         let vehicle_b = crate::vehicle::RustVehicle::from_file(&file_path).unwrap();
-        assert_eq! (vehicle_a, vehicle_b);
+        assert_eq!(vehicle_a, vehicle_b);
         std::fs::remove_file(file_path).unwrap();
     }
 }
-
