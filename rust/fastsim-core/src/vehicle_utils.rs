@@ -1841,7 +1841,10 @@ pub fn fetch_github_list(repo_url: Option<String>) -> anyhow::Result<Vec<String>
     for object in github_list.iter() {
         if object.url_type == "dir" {
             let url = &object.url;
-            fetch_github_list(Some(url.to_owned()))?;
+            let vehicle_name_sublist = fetch_github_list(Some(url.to_owned()))?;
+            for name in vehicle_name_sublist.iter() {
+                vehicle_name_list.push(name.to_owned());
+            }
         } else if object.url_type == "file" {
             let url = url::Url::parse(&object.url)?;
             let path = &object.path;
@@ -2128,6 +2131,7 @@ mod vehicle_utils_tests {
             "https://github.com/NREL/fastsim-vehicles/tree/main".to_owned(),
         ))
         .unwrap();
+        // let list = fetch_github_list(None).unwrap();
         println!("{:?}", list);
     }
 }
