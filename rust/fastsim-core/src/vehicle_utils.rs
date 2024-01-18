@@ -2128,10 +2128,11 @@ mod vehicle_utils_tests {
     #[test]
     fn test_fetch_github_list() {
         let list = fetch_github_list(Some(
-            "https://github.com/NREL/fastsim-vehicles/tree/main".to_owned(),
+            "https://api.github.com/repos/NREL/fastsim-vehicles/contents".to_owned(),
         ))
         .unwrap();
-        // let list = fetch_github_list(None).unwrap();
+        let other_list = fetch_github_list(None).unwrap();
         println!("{:?}", list);
+        println!("{:?}", other_list);
     }
 }
