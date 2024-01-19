@@ -13,10 +13,11 @@ pub(crate) use crate::utils::{almost_eq, interp1d, interp3d, is_sorted, DIRECT_S
 pub(crate) use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecWrapper};
 pub(crate) use proc_macros::{pyo3_api, EnergyMethod, HistoryMethods, HistoryVec, SerdeAPI};
 
+pub(crate) use anyhow::{anyhow, bail, ensure, Context};
+pub(crate) use bincode::{deserialize, serialize};
 pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
-
-pub(crate) use bincode::{deserialize, serialize};
+pub(crate) use enum_dispatch::enum_dispatch;
 pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use std::cmp::{self, Ordering};
 pub(crate) use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
@@ -27,8 +28,5 @@ pub(crate) use std::fs::File;
 pub(crate) use std::num::{NonZeroU16, NonZeroUsize};
 pub(crate) use std::ops::{Deref, DerefMut, IndexMut, Sub};
 pub(crate) use std::path::{Path, PathBuf};
-
 pub(crate) use uom::typenum;
 pub(crate) use uom::ConstZero;
-
-pub(crate) use anyhow::{anyhow, bail, ensure, Context};

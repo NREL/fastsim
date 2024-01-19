@@ -1,5 +1,6 @@
 use super::*;
 
+#[enum_dispatch(Powertrain)]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
 pub enum PowertrainType {
     ConventionalVehicle(Box<ConventionalVehicle>),
@@ -104,20 +105,6 @@ impl PowertrainType {
                 Ok(())
             }
         }
-    }
-
-    /// Returns current max power that the powertrain can produce at the axle
-    pub fn get_cur_pwr_max_out(
-        &mut self,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
-        let pwr_out_max = match self {
-            Self::ConventionalVehicle(conv) => conv.get_cur_pwr_max_out(pwr_aux, dt)?,
-            Self::HybridElectricVehicle(hev) => hev.get_cur_pwr_max_out(pwr_aux, dt)?,
-            Self::BatteryElectricVehicle(bev) => bev.get_cur_pwr_max_out(pwr_aux, dt)?,
-        };
-        Ok(pwr_out_max)
     }
 }
 

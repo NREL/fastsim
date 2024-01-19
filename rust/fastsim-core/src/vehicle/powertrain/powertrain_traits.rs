@@ -1,6 +1,7 @@
 //! Traits defining power flow interfaces for electric machines
 use super::*;
 
+// TODO: fix and uncomment or delete this
 // pub trait ElectricMachine {
 //     /// Sets current max power output given `pwr_in_max` from upstream component
 //     fn set_cur_pwr_max_out(
@@ -22,4 +23,22 @@ pub trait Mass {
 
     /// Checks if mass is consistent with other parameters
     fn check_mass_consistent(&self) -> anyhow::Result<()>;
+}
+
+/// Provides functions for solving powertrain
+#[enum_dispatch]
+pub trait Powertrain {
+    /// # Arguments
+    /// - dt: time step size
+    fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power>;
+    /// Solves for power flow in powertrain
+    /// # Arguments
+    /// - dt: time step size
+    fn solve_powertrain(
+        &mut self,
+        pwr_out_req: si::Power,
+        pwr_aux: si::Power,
+        dt: si::Time,
+        assert_limits: bool,
+    ) -> anyhow::Result<()>;
 }

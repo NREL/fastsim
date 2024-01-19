@@ -20,16 +20,18 @@ impl BatteryElectricVehicle {
             e_machine,
         }
     }
-
+}
+impl Powertrain for Box<BatteryElectricVehicle> {
     /// Solve energy consumption for the current power output required
     /// Arguments:
     /// - pwr_out_req: tractive power required
     /// - dt: time step size
-    pub fn solve_energy_consumption(
+    fn solve_powertrain(
         &mut self,
         pwr_out_req: si::Power,
-        dt: si::Time,
         pwr_aux: si::Power,
+        dt: si::Time,
+        assert_limits: bool,
     ) -> anyhow::Result<()> {
         self.e_machine.set_pwr_in_req(pwr_out_req, dt)?;
         if self.e_machine.state.pwr_elec_prop_in > si::Power::ZERO {
@@ -55,11 +57,7 @@ impl BatteryElectricVehicle {
         Ok(())
     }
 
-    pub fn get_cur_pwr_max_out(
-        &mut self,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
+    fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
         todo!();
         // self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
         // self.e_machine

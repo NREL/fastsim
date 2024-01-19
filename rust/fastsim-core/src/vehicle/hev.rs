@@ -15,12 +15,17 @@ pub struct HybridElectricVehicle {
 
 impl SerdeAPI for HybridElectricVehicle {}
 
-impl HybridElectricVehicle {
-    pub fn get_cur_pwr_max_out(
+impl Powertrain for Box<HybridElectricVehicle> {
+    fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+        todo!();
+    }
+    fn solve_powertrain(
         &mut self,
+        pwr_out_req: si::Power,
         pwr_aux: si::Power,
         dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
-        todo!();
+        assert_limits: bool,
+    ) -> anyhow::Result<()> {
+        todo!()
     }
 }

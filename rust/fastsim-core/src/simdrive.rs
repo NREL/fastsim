@@ -37,7 +37,8 @@ impl SimDrive {
         // to increment `i` to 1 everywhere
         self.step();
         while self.veh.state.i < self.cyc.len() {
-            self.solve_step()?;
+            self.solve_step()
+                .with_context(|| format!("time step: {}", self.veh.state.i))?;
             self.save_state();
             self.step();
         }
@@ -49,11 +50,10 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
-        self.veh.set_cur_pwr_max_out(self.veh.pwr_aux, dt)?;
+        self.veh.set_cur_pwr_max_out(dt)?;
         self.set_req_pwr(self.cyc.speed[i], dt)?;
         self.set_ach_speed(dt)?;
-        self.solve_powertrain(dt)?;
-        self.veh.state.set_energy_fields(dt)?;
+        self.veh.solve_powertrain(dt)?;
         Ok(())
     }
 
@@ -98,8 +98,8 @@ impl SimDrive {
                 - (speed_prev / self.veh.wheel_radius).powi(typenum::P2::new()))
             / self.cyc.dt_at_i(i)?;
 
-        vs.pwr_tractive = vs.pwr_accel + vs.pwr_ascent + vs.pwr_drag;
-        vs.pwr_out = vs.pwr_tractive + vs.pwr_rr + vs.pwr_whl_inertia;
+        vs.pwr_tractive =
+            vs.pwr_rr + vs.pwr_whl_inertia + vs.pwr_accel + vs.pwr_ascent + vs.pwr_drag;
 
         Ok(())
     }
@@ -109,7 +109,7 @@ impl SimDrive {
     /// - `dt`: time step size
     pub fn set_ach_speed(&mut self, dt: si::Time) -> anyhow::Result<()> {
         let vs = &mut self.veh.state;
-        vs.cyc_met = vs.pwr_out_max >= vs.pwr_out;
+        vs.cyc_met = vs.pwr_tractive_max >= vs.pwr_tractive;
         if vs.cyc_met {
             vs.speed_ach = self.cyc.speed[vs.i]
         } else {
@@ -140,12 +140,12 @@ impl SimDrive {
 
             // actual calucations
             let drag3 = 1.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area;
-            let accel2 = 0.5 * mass / self.cyc.dt_at_i(vs.i)?;
+            let accel2 = 0.5 * mass / dt;
             let drag2 =
                 3.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area * speed_prev;
             let wheel2 =
                 0.5 * self.veh.wheel_inertia_kg_m2 * uc::KG * uc::M2 * self.veh.num_wheels as f64
-                    / (self.cyc.dt_at_i(vs.i)? * self.veh.wheel_radius.powi(typenum::P2::new()));
+                    / (dt * self.veh.wheel_radius.powi(typenum::P2::new()));
             let drag1 = 3.0 / 16.0
                 * rho_air
                 * self.veh.drag_coef
@@ -153,8 +153,7 @@ impl SimDrive {
                 * speed_prev.powi(typenum::P2::new());
             let roll1 = 0.5 * mass * uc::ACC_GRAV * self.veh.wheel_rr_coef * grade.atan().cos();
             let ascent1 = 0.5 * uc::ACC_GRAV * grade.atan().sin() * mass;
-            let accel0 =
-                -0.5 * mass * speed_prev.powi(typenum::P2::new()) / self.cyc.dt_at_i(vs.i)?;
+            let accel0 = -0.5 * mass * speed_prev.powi(typenum::P2::new()) / dt;
             let drag0 = 1.0 / 16.0
                 * rho_air
                 * self.veh.drag_coef
@@ -173,13 +172,13 @@ impl SimDrive {
                 * uc::M2
                 * self.veh.num_wheels as f64
                 * speed_prev.powi(typenum::P2::new())
-                / (self.cyc.dt_at_i(vs.i)? * self.veh.wheel_radius.powi(typenum::P2::new()));
+                / (dt * self.veh.wheel_radius.powi(typenum::P2::new()));
 
             let t3 = drag3;
             let t2 = accel2 + drag2 + wheel2;
             let t1 = drag1 + roll1 + ascent1;
             // TODO: verify that final term should be `self.veh.state.pwr_out_max`.  Needs to be same as `self.cur_max_trans_kw_out[i]`
-            let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - self.veh.state.pwr_out_max;
+            let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - self.veh.state.pwr_tractive_max;
 
             // initial guess
             let speed_guess = (1. * uc::MPS).max(self.veh.state.speed_ach);
@@ -250,18 +249,6 @@ impl SimDrive {
         }
 
         Ok(())
-    }
-
-    /// Solves for efficiencies and energy dissipation backwards up the whole powertrain
-    /// # Arguments
-    /// - `dt`: time step size
-    pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        todo!();
-        // # Algorithm
-        // 1. with known required power (`vs.pwr_out`) from `set_req_pwr` 
-
-
-        // Ok(())
     }
 }
 

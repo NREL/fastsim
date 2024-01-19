@@ -153,6 +153,9 @@ pub struct Vehicle {
     /// power required by auxilliary systems (e.g. HVAC, stereo)
     pub pwr_aux: si::Power,
 
+    /// transmission efficiency
+    pub trans_eff: si::Ratio,
+
     /// current state of vehicle
     #[serde(default)]
     pub state: VehicleState,
@@ -273,7 +276,6 @@ fn get_pt_type_from_fsim2_veh(
                 fc.update_mass(None)?;
                 fc
             },
-            trans_eff: f2veh.trans_eff * uc::R,
         };
         Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
     } else {
@@ -319,6 +321,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             cargo_mass: Some(f2veh.cargo_kg * uc::KG),
             comp_mass_multiplier: Some(f2veh.comp_mass_multiplier * uc::R),
             pwr_aux: f2veh.aux_kw * uc::KW,
+            trans_eff: f2veh.trans_eff * uc::R,
             state: Default::default(),
             save_interval,
             history: Default::default(),
@@ -454,50 +457,29 @@ impl Vehicle {
         }
     }
 
-    /// Given required power output and time step, solves for energy consumption
-    /// # Arguments
-    /// - `pwr_out_req`: float, output brake power required from fuel converter.
-    /// - `dt`: current time step size
-    pub fn solve_energy_consumption(
-        &mut self,
-        pwr_out_req: si::Power,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
-        // TODO: think carefully about whether `self.state.pwr_out` ought to include
-        // `self.state.pwr_aux` and document accordingly in the places
-        self.state.pwr_out = pwr_out_req + pwr_aux;
-        self.state.pwr_aux = pwr_aux;
-        match &mut self.pt_type {
-            PowertrainType::ConventionalVehicle(conv) => {
-                // TODO: put logic for toggling `fc_on` here
-                let fc_on = true;
-                // TODO: propagate this
-                let assert_limits = true;
-                conv.solve_energy_consumption(
-                    pwr_out_req,
-                    self.state.pwr_aux,
-                    fc_on,
-                    dt,
-                    assert_limits,
-                )?;
-                self.state.pwr_out = conv.fc.state.pwr_out * conv.trans_eff;
-            }
-            PowertrainType::HybridElectricVehicle(_hev) => {
-                todo!()
-            }
-            PowertrainType::BatteryElectricVehicle(_bev) => {
-                todo!()
-            }
-        }
-        self.state.energy_out += self.state.pwr_out * dt;
-        self.state.energy_aux += self.state.pwr_aux * dt;
+    /// Solves for energy consumption
+    pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        // TODO: do something more sophisticated with pwr_aux
+        self.state.pwr_aux = self.pwr_aux;
+        // TODO: put logic for toggling `fc_on` here, after moving this comment to the right place
+        // let fc_on = true;
+        // TODO: propagate this
+        self.pt_type.solve_powertrain(
+            self.state.pwr_tractive,
+            self.pwr_aux,
+            dt,
+            true, // TODO: parameterize this
+        )?;
         Ok(())
     }
 
-    pub fn set_cur_pwr_max_out(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
-        self.state.pwr_out_max = self.pt_type.get_cur_pwr_max_out(pwr_aux, dt)?;
+    pub fn set_cur_pwr_max_out(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        self.state.pwr_tractive_max = self.get_pwr_out_max(dt)?;
         Ok(())
+    }
+
+    pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+        Ok(self.pt_type.get_pwr_out_max(dt)? * self.trans_eff)
     }
 }
 
@@ -512,9 +494,9 @@ pub struct VehicleState {
 
     // power and fields
     /// maximum forward propulsive power vehicle can produce
-    pub pwr_out_max: si::Power,
+    pub pwr_tractive_max: si::Power,
     /// pwr exerted on wheels by powertrain
-    pub pwr_out: si::Power,
+    pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
     pub energy_out: si::Energy,
     /// time varying aux load
@@ -545,8 +527,6 @@ pub struct VehicleState {
     pub pwr_brake: si::Power,
     /// integral of [Self::pwr_brake]
     pub energy_brake: si::Energy,
-    /// tractive power exerted by tire on ground
-    pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_tractive]
     pub energy_tractive: si::Energy,
     /// whether powertrain can achieve power demand
