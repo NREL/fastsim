@@ -244,7 +244,11 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         self.to_file(file_path)
     }
 
-    //TODO from_cache method
+    fn from_cache<P: AsRef<Path>>(file_path: P) -> anyhow::Result<Self> {
+        let full_file_path = Path::new(Self::CACHE_FOLDER).join(file_path);
+        let path_including_directory = path_to_cache(Some(full_file_path))?;
+        Self::from_file(path_including_directory)
+    }
 }
 
 pub trait ApproxEq<Rhs = Self> {

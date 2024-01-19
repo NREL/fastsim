@@ -526,6 +526,17 @@ pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathB
     Ok(path)
 }
 
+pub fn path_to_cache<P: AsRef<Path>>(subpath: Option<P>) -> anyhow::Result<PathBuf> {
+    let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
+        anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
+    })?;
+    let path = match subpath {
+        Some(subpath) => PathBuf::from(proj_dirs.config_dir()).join(subpath.as_ref()),
+        None => PathBuf::from(proj_dirs.config_dir()),
+    };
+    Ok(path)
+}
+
 /// takes an object from a url and saves it in the FASTSim data directory in a
 /// rust_objects folder  
 /// WARNING: if there is a file already in the data subdirectory with the same
@@ -545,7 +556,8 @@ pub fn url_to_cache<S: AsRef<str>, P: AsRef<Path>>(url: S, subpath: P) -> anyhow
         .path_segments()
         .and_then(|segments| segments.last())
         .with_context(|| "Could not parse filename from URL: {url:?}")?;
-    let data_subdirectory = create_project_subdir(subpath).with_context(||"Could not find or build Fastsim data subdirectory.")?;
+    let data_subdirectory = create_project_subdir(subpath)
+        .with_context(|| "Could not find or build Fastsim data subdirectory.")?;
     let file_path = data_subdirectory.join(file_name);
     download_file_from_url(url.as_ref(), &file_path)?;
     Ok(())
@@ -766,8 +778,16 @@ mod tests {
         let file_path = data_subdirectory.join("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
         println!("{}", file_path.to_string_lossy());
         let vehicle = crate::vehicle::RustVehicle::from_file(&file_path).unwrap();
-        let comparison_vehicle = crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
-        assert_eq! (vehicle, comparison_vehicle);
+        let comparison_vehicle =
+            crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")
+                .unwrap();
+        assert_eq!(vehicle, comparison_vehicle);
         std::fs::remove_file(file_path).unwrap();
     }
+
+    // #[test]
+    // fn test_path_to_cache() {
+    //     let path = path_to_cache(None).unwrap();
+    //     println!("{:?}", path)
+    // }
 }

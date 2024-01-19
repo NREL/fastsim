@@ -1026,30 +1026,41 @@ impl RustVehicle {
         v
     }
 
-    /// Downloads specified vehicle from vehicle repo or url and instantiates it
-    /// into a RustVehicle. Returns vehicle.  
+    /// Downloads specified vehicle from FASTSim vehicle repo or url and
+    /// instantiates it into a RustVehicle. Notes in vehicle.doc the origin of
+    /// the vehicle. Returns vehicle.  
     /// # Arguments  
-    /// - vehicle_file_name: file name for vehicle to be downloaded  
-    /// - url: url for vehicle to be downloaded, if None, assumed to be
-    ///   downloaded from vehicle FASTSim repo  
+    /// - vehicle_file_name: file name for vehicle to be downloaded, including
+    ///   path from url directory or FASTSim repository (if applicable)  
+    /// - url: url for vehicle repository where vehicle will be downloaded from,
+    ///   if None, assumed to be downloaded from vehicle FASTSim repo  
     /// Note: The URL needs to be a URL pointing directly to a file, for example
-    /// a raw github URL.  
+    /// a raw github URL, split up so that the "url" argument is the path to the
+    /// directory, and the "vehicle_file_name" is the path within the directory
+    /// to the file.  
     /// Note: If downloading from the FASTSim Vehicle Repo, the
     /// vehicle_file_name should include the path to the file from the root of
     /// the Repo, as listed in the output of the
-    /// vehicle_utils::fetch_github_list() function.
+    /// vehicle_utils::fetch_github_list() function.  
+    /// Note: the url should not include the file name, only the path to the
+    /// file or a root directory of the file.
     pub fn from_github_or_url<S: AsRef<str>>(
         vehicle_file_name: S,
         url: Option<S>,
     ) -> anyhow::Result<Self> {
         let url_internal = match url {
-            Some(s) => s.as_ref().to_owned(),
+            Some(s) => {
+                s.as_ref().trim_end_matches('/').to_owned()
+                    + "/"
+                    + &vehicle_file_name.as_ref().trim_start_matches('/')
+            }
             None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref(),
         };
         let mut vehicle =
-            Self::from_url(url_internal).with_context(|| "Could not parse vehicle from url")?;
-        vehicle.doc = Some("Vehicle from {url_internal:?}".to_string());
-        return Ok(vehicle);
+            Self::from_url(&url_internal).with_context(|| "Could not parse vehicle from url")?;
+        let vehicle_origin = "Vehicle from ".to_owned() + url_internal.as_str();
+        vehicle.doc = Some(vehicle_origin);
+        Ok(vehicle)
     }
 }
 
@@ -1083,6 +1094,28 @@ impl SerdeAPI for RustVehicle {
 
     fn init(&mut self) -> anyhow::Result<()> {
         self.set_derived()
+    }
+
+    /// instantiates a vehicle from a url, and notes in vehicle.doc the origin
+    /// of the vehicle.  
+    /// accepts yaml and json file types  
+    /// # Arguments  
+    /// - url: URL (either as a string or url type) to object  
+    /// Note: The URL needs to be a URL pointing directly to a file, for example
+    /// a raw github URL.
+    fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
+        let url = url::Url::parse(url.as_ref())?;
+        let format = url
+            .path_segments()
+            .and_then(|segments| segments.last())
+            .and_then(|filename| Path::new(filename).extension())
+            .and_then(OsStr::to_str)
+            .with_context(|| "Could not parse file format from URL: {url:?}")?;
+        let response = ureq::get(url.as_ref()).call()?.into_reader();
+        let mut vehicle = Self::from_reader(response, format)?;
+        let vehicle_origin = "Vehicle from ".to_owned() + url.as_ref();
+        vehicle.doc = Some(vehicle_origin);
+        Ok(vehicle)
     }
 }
 
@@ -1395,16 +1428,62 @@ mod tests {
 
     #[test]
     fn test_from_github_or_url() {
-        let comparison_vehicle =
+        let mut comparison_vehicle =
             crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")
                 .unwrap();
-        // test when cache = false and no url provided
-        let vehicle =
-            RustVehicle::from_github_or_url("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", None)
-                .unwrap();
+        comparison_vehicle.doc = Some("Vehicle from https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml".to_owned());
+        // test no url provided
+        let vehicle = RustVehicle::from_github_or_url(
+            "public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
+            None,
+        )
+        .unwrap();
         assert_eq!(vehicle, comparison_vehicle);
-        // test when cache = false and url provided
-        let vehicle_1 = RustVehicle::from_github_or_url("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")).unwrap();
+        // test url provided
+        let vehicle_1 = RustVehicle::from_github_or_url(
+            "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
+            Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/"),
+        )
+        .unwrap();
         assert_eq!(vehicle_1, comparison_vehicle);
+        let vehicle_2 = RustVehicle::from_github_or_url(
+            "/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
+            Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public"),
+        )
+        .unwrap();
+        assert_eq!(vehicle_2, comparison_vehicle);
+        let vehicle_3 = RustVehicle::from_github_or_url(
+            "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
+            Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public"),
+        )
+        .unwrap();
+        assert_eq!(vehicle_3, comparison_vehicle);
+        let vehicle_4 = RustVehicle::from_github_or_url(
+            "public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
+            Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/"),
+        )
+        .unwrap();
+        assert_eq!(vehicle_4, comparison_vehicle);
+        let vehicle_5 = RustVehicle::from_github_or_url(
+            "/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
+            Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main"),
+        )
+        .unwrap();
+        assert_eq!(vehicle_5, comparison_vehicle);
+        let vehicle_6 = RustVehicle::from_github_or_url(
+            "public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
+            Some("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main"),
+        )
+        .unwrap();
+        assert_eq!(vehicle_6, comparison_vehicle);
+    }
+
+    #[test]
+    fn test_from_url() {
+        let vehicle = RustVehicle::from_url("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
+        let mut comparison_vehicle =
+            RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml").unwrap();
+        comparison_vehicle.doc = Some("Vehicle from https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml".to_owned());
+        assert_eq!(vehicle, comparison_vehicle);
     }
 }
