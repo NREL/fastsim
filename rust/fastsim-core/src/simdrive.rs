@@ -54,6 +54,8 @@ impl SimDrive {
         self.set_req_pwr(self.cyc.speed[i], dt)?;
         self.set_ach_speed(dt)?;
         self.veh.solve_powertrain(dt)?;
+        // TODO (URGENT, IMPORTANT): make sure `EnergyMethods` macro/trait gets invoked here to increment all the
+        // energies before proceeding
         Ok(())
     }
 
