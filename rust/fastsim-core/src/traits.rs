@@ -244,9 +244,25 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         self.to_file(file_path)
     }
 
+    /// Instantiates a Rust object from the subdirectory within the FASTSim data
+    /// directory corresponding to the Rust Object ("vehices" for a RustVehice,
+    /// "cycles" for a RustCycle, and the root folder of the data directory for
+    /// all other objects).  
+    /// # Arguments  
+    /// - file_path: subpath to object, including file name, within subdirectory.
+    ///   If the file sits directly in the subdirectory, this will just be the
+    ///   file name.  
+    /// Note: This function will work for all objects cached using the
+    /// to_cache() method. If a file has been saved manually to a different
+    /// subdirectory than the correct one for the object type (for instance a
+    /// RustVehicle saved within a subdirectory other than "vehicles" using the
+    /// utils::url_to_cache() function), then from_cache() will not be able to
+    /// find and instantiate the object. Instead, use the from_file method, and
+    /// use the utils::path_to_cache() to find the FASTSim data directory
+    /// location if needed.
     fn from_cache<P: AsRef<Path>>(file_path: P) -> anyhow::Result<Self> {
         let full_file_path = Path::new(Self::CACHE_FOLDER).join(file_path);
-        let path_including_directory = path_to_cache(Some(full_file_path))?;
+        let path_including_directory = path_to_cache()?.join(full_file_path);
         Self::from_file(path_including_directory)
     }
 }
@@ -349,18 +365,17 @@ mod tests {
         let comparison_vehicle =
             crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")
                 .unwrap();
-        // let comparison_vehicle = crate::vehicle::RustVehicle::from_file("/Users/rsteutev/Documents/GitHub/fastsim/rust/fastsim-core/src/test_vehicle.json").unwrap();
         println!("{}", vehicle.to_yaml().unwrap());
         assert_eq!(vehicle, comparison_vehicle);
     }
 
     #[test]
     fn test_to_cache() {
-        let vehicle_a =
+        let comparison_vehicle =
             crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")
                 .unwrap();
         crate::vehicle::RustVehicle::to_cache(
-            &vehicle_a,
+            &comparison_vehicle,
             "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml",
         )
         .unwrap();
@@ -369,7 +384,21 @@ mod tests {
         println!("{}", file_path.to_string_lossy());
         println!("{}", crate::vehicle::RustVehicle::CACHE_FOLDER);
         let vehicle_b = crate::vehicle::RustVehicle::from_file(&file_path).unwrap();
-        assert_eq!(vehicle_a, vehicle_b);
+        assert_eq!(comparison_vehicle, vehicle_b);
         std::fs::remove_file(file_path).unwrap();
+    }
+
+    #[test]
+    fn test_from_cache() {
+        let test_path = "1110_2022_Tesla_Model_Y_RWD_opt45017.yaml";
+        let comparison_vehicle =
+            crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")
+                .unwrap();
+        crate::vehicle::RustVehicle::to_cache(&comparison_vehicle, test_path).unwrap();
+        let vehicle = crate::vehicle::RustVehicle::from_cache(test_path).unwrap();
+        assert_eq!(comparison_vehicle, vehicle);
+        let full_file_path = Path::new("vehicles").join(test_path);
+        let path_including_directory = path_to_cache().unwrap().join(full_file_path);
+        std::fs::remove_file(path_including_directory).unwrap();
     }
 }

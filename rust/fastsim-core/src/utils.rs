@@ -526,15 +526,33 @@ pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathB
     Ok(path)
 }
 
-pub fn path_to_cache<P: AsRef<Path>>(subpath: Option<P>) -> anyhow::Result<PathBuf> {
+/// Returns the path to the OS-specific data directory, if it exists.
+pub fn path_to_cache() -> anyhow::Result<PathBuf> {
     let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
         anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
     })?;
+    Ok(PathBuf::from(proj_dirs.config_dir()))
+}
+
+/// Deletes FASTSim data directory, clearing its contents. If subpath is
+/// provided, will only delete the subdirectory pointed to by the subpath,
+/// rather than deleting the whole data directory.   
+/// USE WITH CAUTION, as this function deletes ALL objects stored in the FASTSim
+/// data directory or provided subdirectory.  
+/// # Arguments  
+/// - subpath (Option): Subpath to a subdirectory within the FASTSim data
+///   directory. If None, the function will deleter the whole FASTSim data
+///   directory, clearing all its contents.  
+/// Note: it is not possible to delete single files using this function, only
+/// directories. If a single file needs deleting, the path_to_cache() function
+/// can be used to find the FASTSim data directory location. The file can then
+/// be found and manually deleted.
+pub fn clear_cache(subpath: Option<String>) -> anyhow::Result<()> {
     let path = match subpath {
-        Some(subpath) => PathBuf::from(proj_dirs.config_dir()).join(subpath.as_ref()),
-        None => PathBuf::from(proj_dirs.config_dir()),
+        Some(subpath) => path_to_cache()?.join(subpath),
+        None => path_to_cache()?,
     };
-    Ok(path)
+    Ok(std::fs::remove_dir_all(path)?)
 }
 
 /// takes an object from a url and saves it in the FASTSim data directory in a
@@ -785,9 +803,25 @@ mod tests {
         std::fs::remove_file(file_path).unwrap();
     }
 
-    // #[test]
-    // fn test_path_to_cache() {
-    //     let path = path_to_cache(None).unwrap();
-    //     println!("{:?}", path)
-    // }
+    #[test]
+    fn test_path_to_cache() {
+        let path = path_to_cache().unwrap();
+        println!("{:?}", path);
+    }
+
+    #[test]
+    fn test_clear_cache() {
+        // let temp_sub_dir = tempfile::TempDir::new_in(path_to_cache().unwrap()).unwrap();
+        // let sub_dir_path = temp_sub_dir.path().to_str().unwrap();
+        // url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", "vehicles").unwrap();
+        // clear_cache(Some(sub_dir_path.to_string())).unwrap();
+        // let still_exists = std::fs::metadata(sub_dir_path).is_ok();
+        // assert_eq!(still_exists, false);
+        // let path_to_vehicle = path_to_cache().unwrap().join("vehicles/https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
+        // let vehicle_still_exists = std::fs::metadata(path_to_vehicle).is_ok();
+        // assert_eq!(vehicle_still_exists, true);
+        // // delete vehicle from subdir (for first attept, use clear_cache to clear entire cache -- but get rid of this once tested)
+        // std::fs::remove_file(path_to_vehicle).unwrap();
+        // // test to see if an empty string will clear entire cache
+    }
 }
