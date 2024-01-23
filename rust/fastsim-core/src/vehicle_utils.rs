@@ -2125,6 +2125,9 @@ mod vehicle_utils_tests {
         .is_empty());
     }
 
+    // NOTE: this test does not seem to reliably pass. Sometimes the function
+    // will give a 403 error and sometimes it will succeed -- I don't think
+    // there's any way to ensure the function succeeds 100% of the time.
     #[test]
     fn test_fetch_github_list() {
         let list = fetch_github_list(Some(
