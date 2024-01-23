@@ -1809,7 +1809,7 @@ const VEHICLE_REPO_LIST_URL: &'static str =
 fn get_response<S: AsRef<str>>(url: S) -> Result<Response, OtherError> {
     for _ in 1..4 {
         match ureq::get(url.as_ref()).call() {
-            Err(Status(503, r)) | Err(Status(429, r)) => {
+            Err(Status(503, r)) | Err(Status(429, r)) | Err(Status(403, r)) => {
                 let retry: Option<u64> = r.header("retry-after").and_then(|h| h.parse().ok());
                 let retry = retry.unwrap_or(5);
                 eprintln!("{} for {}, retry in {}", r.status(), r.get_url(), retry);
