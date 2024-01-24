@@ -497,24 +497,26 @@ impl RustCycleCache {
 
     #[staticmethod]
     pub fn from_dict(dict: &PyDict) -> anyhow::Result<Self> {
-        let time_s = Array::from_vec(PyAny::get_item(&dict, "time_s")?.extract()?);
+        let time_s = Array::from_vec(PyAny::get_item(dict, "time_s")?.extract()?);
         let cyc_len = time_s.len();
-        Ok(Self {
+        let mut cyc = Self {
             time_s,
-            mps: Array::from_vec(PyAny::get_item(&dict, "mps")?.extract()?),
-            grade: if let Ok(value) = PyAny::get_item(&dict, "grade") {
+            mps: Array::from_vec(PyAny::get_item(dict, "mps")?.extract()?),
+            grade: if let Ok(value) = PyAny::get_item(dict, "grade") {
                 Array::from_vec(value.extract()?)
             } else {
                 Array::default(cyc_len)
             },
-            road_type: if let Ok(value) = PyAny::get_item(&dict, "road_type") {
+            road_type: if let Ok(value) = PyAny::get_item(dict, "road_type") {
                 Array::from_vec(value.extract()?)
             } else {
                 Array::default(cyc_len)
             },
-            name: PyAny::get_item(&dict, "name").and_then(String::extract).unwrap_or_default(),
+            name: PyAny::get_item(dict, "name").and_then(String::extract).unwrap_or_default(),
             orphaned: false,
-        })
+        };
+        cyc.init()?;
+        Ok(cyc)
     }
 
     pub fn to_dict<'py>(&self, py: Python<'py>) -> anyhow::Result<&'py PyDict> {
@@ -626,9 +628,28 @@ pub struct RustCycle {
     pub orphaned: bool,
 }
 
-const ACCEPTED_FILE_FORMATS: [&str; 4] = ["yaml", "json", "bin", "csv"];
-
 impl SerdeAPI for RustCycle {
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
+
+    fn init(&mut self) -> anyhow::Result<()> {
+        ensure!(!self.is_empty(), "Deserialized cycle is empty");
+        let cyc_len = self.len();
+        ensure!(
+            self.mps.len() == cyc_len,
+            "Length of `mps` does not match length of `time_s`"
+        );
+        ensure!(
+            self.grade.len() == cyc_len,
+            "Length of `grade` does not match length of `time_s`"
+        );
+        ensure!(
+            self.road_type.len() == cyc_len,
+            "Length of `road_type` does not match length of `time_s`"
+        );
+        Ok(())
+    }
+
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
         let filepath = filepath.as_ref();
         let extension = filepath
@@ -641,32 +662,11 @@ impl SerdeAPI for RustCycle {
             "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
             "csv" => self.write_csv(&mut csv::Writer::from_path(filepath)?)?,
             _ => bail!(
-                "Unsupported file format {extension:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
+                "Unsupported format {extension:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS
             ),
         }
         Ok(())
-    }
-
-    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
-        Ok(
-            match format.trim_start_matches('.').to_lowercase().as_str() {
-                "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
-                "json" => serde_json::from_reader(rdr)?,
-                "bin" => bincode::deserialize_from(rdr)?,
-                "csv" => {
-                    // Create empty cycle to be populated
-                    let mut cyc = Self::default();
-                    let mut rdr = csv::Reader::from_reader(rdr);
-                    for result in rdr.deserialize() {
-                        cyc.push(result?);
-                    }
-                    cyc
-                }
-                _ => bail!(
-                    "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
-                ),
-            },
-        )
     }
 
     fn to_str(&self, format: &str) -> anyhow::Result<String> {
@@ -679,24 +679,55 @@ impl SerdeAPI for RustCycle {
                     self.write_csv(&mut wtr)?;
                     String::from_utf8(wtr.into_inner()?)?
                 }
-                _ => bail!(
-                    "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
-                ),
+                _ => {
+                    bail!(
+                        "Unsupported format {format:?}, must be one of {:?}",
+                        Self::ACCEPTED_STR_FORMATS
+                    )
+                }
             },
         )
     }
 
     /// Note that using this method to instantiate a RustCycle from CSV, rather
     /// than the `from_csv_str` method, sets the cycle name to an empty string
-    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
-        match format.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => Self::from_yaml(contents),
-            "json" => Self::from_json(contents),
-            "csv" => Self::from_csv_str(contents, ""),
-            _ => bail!(
-                "Unsupported file format {format:?}, must be one of {ACCEPTED_FILE_FORMATS:?}"
-            ),
-        }
+    fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
+        Ok(
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                "yaml" | "yml" => Self::from_yaml(contents)?,
+                "json" => Self::from_json(contents)?,
+                "csv" => Self::from_csv_str(contents, "".to_string())?,
+                _ => bail!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_STR_FORMATS
+                ),
+            },
+        )
+    }
+
+    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
+        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
+            "json" => serde_json::from_reader(rdr)?,
+            "bin" => bincode::deserialize_from(rdr)?,
+            "csv" => {
+                // Create empty cycle to be populated
+                let mut cyc = Self::default();
+                let mut rdr = csv::Reader::from_reader(rdr);
+                for result in rdr.deserialize() {
+                    cyc.push(result?);
+                }
+                cyc
+            }
+            _ => {
+                bail!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_BYTE_FORMATS
+                )
+            }
+        };
+        deserialized.init()?;
+        Ok(deserialized)
     }
 }
 
@@ -711,7 +742,7 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
                 .to_owned(),
         );
         let cyc_len = time_s.len();
-        Ok(Self {
+        let mut cyc = Self {
             time_s,
             mps: Array::from_vec(
                 hashmap
@@ -733,17 +764,19 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
             ),
             name: String::default(),
             orphaned: false,
-        })
+        };
+        cyc.init()?;
+        Ok(cyc)
     }
 }
 
-impl Into<HashMap<String, Vec<f64>>> for RustCycle {
-    fn into(self) -> HashMap<String, Vec<f64>> {
+impl From<RustCycle> for HashMap<String, Vec<f64>> {
+    fn from(cyc: RustCycle) -> Self {
         HashMap::from([
-            ("time_s".into(), self.time_s.to_vec()),
-            ("mps".into(), self.mps.to_vec()),
-            ("grade".into(), self.grade.to_vec()),
-            ("road_type".into(), self.road_type.to_vec()),
+            ("time_s".into(), cyc.time_s.to_vec()),
+            ("mps".into(), cyc.mps.to_vec()),
+            ("grade".into(), cyc.grade.to_vec()),
+            ("road_type".into(), cyc.road_type.to_vec()),
         ])
     }
 }
@@ -753,14 +786,11 @@ impl RustCycle {
     /// Load cycle from CSV file, parsing name from filepath
     pub fn from_csv_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
-        let name = String::from(
-            filepath
-                .file_stem()
-                .and_then(OsStr::to_str)
-                .with_context(|| {
-                    format!("Could not parse cycle name from filepath: {filepath:?}")
-                })?,
-        );
+        let name = filepath
+            .file_stem()
+            .and_then(OsStr::to_str)
+            .with_context(|| format!("Could not parse cycle name from filepath: {filepath:?}"))?
+            .to_string();
         let file = File::open(filepath).with_context(|| {
             if !filepath.exists() {
                 format!("File not found: {filepath:?}")
@@ -774,9 +804,9 @@ impl RustCycle {
     }
 
     /// Load cycle from CSV string
-    pub fn from_csv_str(csv_str: &str, name: &str) -> anyhow::Result<Self> {
-        let mut cyc = Self::from_reader(csv_str.as_bytes(), "csv")?;
-        cyc.name = name.to_string();
+    pub fn from_csv_str<S: AsRef<str>>(csv_str: S, name: String) -> anyhow::Result<Self> {
+        let mut cyc = Self::from_reader(csv_str.as_ref().as_bytes(), "csv")?;
+        cyc.name = name;
         Ok(cyc)
     }
 
@@ -815,9 +845,12 @@ impl RustCycle {
         }
     }
 
-    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.time_s.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn test_cyc() -> Self {
@@ -1207,10 +1240,10 @@ mod tests {
 
     #[test]
     fn test_str_serde() {
-        let format = "csv";
         let cyc = RustCycle::test_cyc();
-        println!("{cyc:?}");
-        let csv_str = cyc.to_str(format).unwrap();
-        RustCycle::from_str(&csv_str, format).unwrap();
+        for format in RustCycle::ACCEPTED_STR_FORMATS {
+            let csv_str = cyc.to_str(format).unwrap();
+            RustCycle::from_str(&csv_str, format).unwrap();
+        }
     }
 }

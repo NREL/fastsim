@@ -1,5 +1,6 @@
 //! Module containing miscellaneous utility functions.
 
+use directories::ProjectDirs;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use ndarray::*;
@@ -431,12 +432,11 @@ pub fn multilinear(point: &[f64], grid: &[Vec<f64>], values: &ArrayD<f64>) -> an
             Slice::from(lower..=lower + 1)
         })
         .to_owned();
-    let mut index_permutations = get_index_permutations(&interp_vals.shape());
+    let mut index_permutations = get_index_permutations(interp_vals.shape());
     // This loop interpolates in each dimension sequentially
     // each outer loop iteration the dimensionality reduces by 1
     // `interp_vals` ends up as a 0-dimensional array containing only the final interpolated value
-    for dim in 0..n {
-        let diff = interp_diffs[dim];
+    for (dim, diff) in interp_diffs.iter().enumerate() {
         let next_dim = n - 1 - dim;
         let next_shape = vec![2; next_dim];
         // Indeces used for saving results of this dimensions interpolation results
@@ -513,6 +513,16 @@ pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
     let radius_mm = (rim_diameter_in * 25.4) / 2.0 + sidewall_height_mm;
 
     Ok(radius_mm / 1000.0)
+}
+
+/// Creates/gets an OS-specific data directory and returns the path.
+pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathBuf> {
+    let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
+        anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
+    })?;
+    let path = PathBuf::from(proj_dirs.config_dir()).join(subpath);
+    std::fs::create_dir_all(path.as_path())?;
+    Ok(path)
 }
 
 #[cfg(feature = "pyo3")]

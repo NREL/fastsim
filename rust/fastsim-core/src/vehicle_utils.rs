@@ -3,7 +3,6 @@
 use argmin::core::{CostFunction, Error, Executor, OptimizationResult, State};
 use argmin::solver::neldermead::NelderMead;
 use curl::easy::Easy;
-use directories::ProjectDirs;
 use ndarray::{array, Array1};
 use polynomial::Polynomial;
 use serde::de::DeserializeOwned;
@@ -324,13 +323,10 @@ pub fn get_options_for_year_make_model(
         h.insert(y);
         h
     };
-    let ddpath = if let Some(dd) = &data_dir {
-        let ddpath = Path::new(dd);
-        ddpath.to_path_buf()
-    } else if let Some(ddpath) = get_fastsim_data_dir() {
-        ddpath
+    let ddpath = if let Some(dd) = data_dir {
+        PathBuf::from(dd)
     } else {
-        return Ok(vec![]);
+        create_project_subdir("fe_label_data")?
     };
     let cache_url = if let Some(url) = &cache_url {
         url.clone()
@@ -778,12 +774,10 @@ pub fn vehicle_import_by_id_and_year(
     data_dir: Option<String>,
 ) -> Result<RustVehicle, Error> {
     let mut maybe_veh: Option<RustVehicle> = None;
-    let data_dir_path = if let Some(data_dir) = &data_dir {
+    let data_dir_path = if let Some(data_dir) = data_dir {
         PathBuf::from(data_dir)
-    } else if let Some(data_dir_path) = get_fastsim_data_dir() {
-        data_dir_path
     } else {
-        return Err(anyhow!("Could not determine the data directory"));
+        create_project_subdir("fe_label_data")?
     };
     let data_dir_path = data_dir_path.as_path();
     let model_years = {
@@ -1097,7 +1091,7 @@ fn try_import_vehicles(
 ///
 /// RETURN:
 /// ()
-pub fn export_vehicle_to_file(veh: &RustVehicle, file_path: String) -> Result<(), anyhow::Error> {
+pub fn export_vehicle_to_file(veh: &RustVehicle, file_path: String) -> anyhow::Result<()> {
     let processed_path = PathBuf::from(file_path);
     let path_str = processed_path.to_str().unwrap_or("");
     veh.to_file(path_str)?;
@@ -1302,14 +1296,14 @@ fn vir_to_other_inputs(vir: &VehicleInputRecord) -> OtherVehicleInputs {
 
 fn read_vehicle_input_records_from_file(
     filepath: &Path,
-) -> Result<Vec<VehicleInputRecord>, anyhow::Error> {
+) -> anyhow::Result<Vec<VehicleInputRecord>> {
     let f = File::open(filepath)?;
     read_records_from_file(f)
 }
 
 fn read_records_from_file<T: DeserializeOwned>(
     rdr: impl std::io::Read + std::io::Seek,
-) -> Result<Vec<T>, anyhow::Error> {
+) -> anyhow::Result<Vec<T>> {
     let mut output: Vec<T> = Vec::new();
     let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
@@ -1330,7 +1324,7 @@ fn read_fuelecon_gov_emissions_to_hashmap(
             if let Some(item) = ok_result {
                 if let Some(id_str) = item.get("id") {
                     if let Ok(id) = str::parse::<u32>(id_str) {
-                        output.entry(id).or_insert_with(Vec::new);
+                        output.entry(id).or_default();
                         if let Some(ers) = output.get_mut(&id) {
                             let emiss = EmissionsInfoFE {
                                 efid: item.get("efid").unwrap().clone(),
@@ -1352,7 +1346,7 @@ fn read_fuelecon_gov_emissions_to_hashmap(
 fn read_fuelecon_gov_data_from_file(
     rdr: impl std::io::Read + std::io::Seek,
     emissions: &HashMap<u32, Vec<EmissionsInfoFE>>,
-) -> Result<Vec<VehicleDataFE>, anyhow::Error> {
+) -> anyhow::Result<Vec<VehicleDataFE>> {
     let mut output: Vec<VehicleDataFE> = Vec::new();
     let mut reader = csv::Reader::from_reader(rdr);
     for result in reader.deserialize() {
@@ -1429,7 +1423,7 @@ fn read_fuelecon_gov_data_from_file(
 }
 
 /// Given the path to a zip archive, print out the names of the files within that archive
-pub fn list_zip_contents(filepath: &Path) -> Result<(), anyhow::Error> {
+pub fn list_zip_contents(filepath: &Path) -> anyhow::Result<()> {
     let f = File::open(filepath)?;
     let mut zip = zip::ZipArchive::new(f)?;
     for i in 0..zip.len() {
@@ -1439,36 +1433,16 @@ pub fn list_zip_contents(filepath: &Path) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-/// Creates/gets an OS-specific data directory and returns the path.
-pub fn get_fastsim_data_dir() -> Option<PathBuf> {
-    if let Some(proj_dirs) = ProjectDirs::from("gov", "NREL", "fastsim") {
-        let mut path = PathBuf::from(proj_dirs.config_dir());
-        path.push(Path::new("data"));
-        if !path.exists() {
-            let result = std::fs::create_dir_all(path.as_path());
-            if result.is_err() {
-                None
-            } else {
-                Some(path)
-            }
-        } else {
-            Some(path)
-        }
-    } else {
-        None
-    }
-}
-
 /// Extract zip archive at filepath to destination directory at dest_dir
-pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> Result<(), anyhow::Error> {
+pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> anyhow::Result<()> {
     let f = File::open(filepath)?;
     let mut zip = zip::ZipArchive::new(f)?;
-    zip.extract(&dest_dir)?;
+    zip.extract(dest_dir)?;
     Ok(())
 }
 
 /// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
-pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow::Error> {
+pub fn download_file_from_url(url: &str, file_path: &Path) -> anyhow::Result<()> {
     let mut handle = Easy::new();
     handle.follow_location(true)?;
     handle.url(url)?;
@@ -1489,7 +1463,7 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
         return Err(anyhow!("No data available from {url}"));
     }
     {
-        let mut file = match File::create(&file_path) {
+        let mut file = match File::create(file_path) {
             Err(why) => {
                 return Err(anyhow!(
                     "couldn't open {}: {}",
@@ -1507,7 +1481,7 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> Result<(), anyhow:
 fn read_epa_test_data_for_given_years(
     data_dir_path: &Path,
     years: &HashSet<u32>,
-) -> Result<HashMap<u32, Vec<VehicleDataEPA>>, anyhow::Error> {
+) -> anyhow::Result<HashMap<u32, Vec<VehicleDataEPA>>> {
     let mut epatest_db: HashMap<u32, Vec<VehicleDataEPA>> = HashMap::new();
     for year in years {
         let file_name = format!("{year}-testcar.csv");
@@ -1526,7 +1500,7 @@ fn determine_model_years_of_interest(virs: &[VehicleInputRecord]) -> HashSet<u32
 fn load_emissions_data_for_given_years(
     data_dir_path: &Path,
     years: &HashSet<u32>,
-) -> Result<HashMap<u32, HashMap<u32, Vec<EmissionsInfoFE>>>, anyhow::Error> {
+) -> anyhow::Result<HashMap<u32, HashMap<u32, Vec<EmissionsInfoFE>>>> {
     let mut data = HashMap::<u32, HashMap<u32, Vec<EmissionsInfoFE>>>::new();
     for year in years {
         let file_name = format!("{year}-emissions.csv");
@@ -1551,7 +1525,7 @@ fn load_fegov_data_for_given_years(
     data_dir_path: &Path,
     emissions_by_year_and_by_id: &HashMap<u32, HashMap<u32, Vec<EmissionsInfoFE>>>,
     years: &HashSet<u32>,
-) -> Result<HashMap<u32, Vec<VehicleDataFE>>, anyhow::Error> {
+) -> anyhow::Result<HashMap<u32, Vec<VehicleDataFE>>> {
     let mut data = HashMap::<u32, Vec<VehicleDataFE>>::new();
     for year in years {
         if let Some(emissions_by_id) = emissions_by_year_and_by_id.get(year) {
@@ -1573,7 +1547,7 @@ pub fn get_default_cache_url() -> String {
     String::from("https://github.com/NREL/vehicle-data/raw/main/")
 }
 
-fn get_cache_url_for_year(cache_url: &str, year: &u32) -> Result<Option<String>, anyhow::Error> {
+fn get_cache_url_for_year(cache_url: &str, year: &u32) -> anyhow::Result<Option<String>> {
     let maybe_slash = if cache_url.ends_with('/') { "" } else { "/" };
     let target_url = format!("{cache_url}{maybe_slash}{year}.zip");
     Ok(Some(target_url))
@@ -1583,7 +1557,7 @@ fn extract_file_from_zip(
     zip_file_path: &Path,
     name_of_file_to_extract: &str,
     path_to_save_to: &Path,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     let zipfile = File::open(zip_file_path)?;
     let mut archive = ZipArchive::new(zipfile)?;
     let mut file = archive.by_name(name_of_file_to_extract)?;
@@ -1600,7 +1574,7 @@ fn populate_cache_for_given_years_if_needed(
     data_dir_path: &Path,
     years: &HashSet<u32>,
     cache_url: &str,
-) -> Result<bool, anyhow::Error> {
+) -> anyhow::Result<bool> {
     let mut all_data_available = true;
     for year in years {
         let veh_file_exists = {
@@ -1663,7 +1637,7 @@ pub fn import_all_vehicles(
     other_inputs: &OtherVehicleInputs,
     cache_url: Option<String>,
     data_dir: Option<String>,
-) -> Result<Vec<RustVehicle>, anyhow::Error> {
+) -> anyhow::Result<Vec<RustVehicle>> {
     let vir = VehicleInputRecord {
         year,
         make: make.to_string(),
@@ -1683,12 +1657,10 @@ pub fn import_all_vehicles(
         h.insert(year);
         h
     };
-    let data_dir_path = if let Some(dd_path) = &data_dir {
+    let data_dir_path = if let Some(dd_path) = data_dir {
         PathBuf::from(dd_path.clone())
-    } else if let Some(dd_path) = get_fastsim_data_dir() {
-        dd_path
     } else {
-        return Err(anyhow!("Unable to determine data directory"));
+        create_project_subdir("fe_label_data")?
     };
     let data_dir_path = data_dir_path.as_path();
     let cache_url = if let Some(cache_url) = &cache_url {
@@ -1720,7 +1692,7 @@ pub fn import_and_save_all_vehicles_from_file(
     data_dir_path: &Path,
     output_dir_path: &Path,
     cache_url: Option<String>,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     let cache_url = if let Some(url) = &cache_url {
         url.clone()
     } else {
@@ -1772,7 +1744,7 @@ pub fn import_and_save_all_vehicles(
     fegov_data_by_year: &HashMap<u32, Vec<VehicleDataFE>>,
     epatest_data_by_year: &HashMap<u32, Vec<VehicleDataEPA>>,
     output_dir_path: &Path,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     for (idx, (vir, veh)) in
         import_all_vehicles_from_record(inputs, fegov_data_by_year, epatest_data_by_year)
             .iter()
@@ -1972,9 +1944,7 @@ mod vehicle_utils_tests {
     #[test]
     fn test_import_robustness() {
         // Ensure 2019 data is cached
-        let ddpath = get_fastsim_data_dir();
-        assert!(ddpath.is_some());
-        let ddpath = ddpath.unwrap();
+        let ddpath = create_project_subdir("fe_label_data").unwrap();
         let model_year: u32 = 2019;
         let years = {
             let mut s = HashSet::new();

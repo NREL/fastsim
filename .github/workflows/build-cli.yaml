@@ -1,0 +1,77 @@
+name: build-cli
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build command line interfaces for ${{ matrix.platform || matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - ubuntu
+          - macos
+          - windows
+        include:
+          - os: ubuntu
+            platform: linux
+          - os: windows
+            ls: dir
+
+    runs-on: ${{ format('{0}-latest', matrix.os) }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: set up rust
+        if: matrix.os != 'ubuntu'
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: set up rust for ubuntu
+        if: matrix.os == 'ubuntu'
+        run: >
+          curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
+          rustup show
+
+      - run: rustup target add aarch64-apple-darwin
+        if: matrix.os == 'macos'
+
+      - name: run cargo tests
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - run: cd rust/fastsim-cli/ && cargo test
+
+      - run: cd rust/fastsim-cli/ && cargo build --release
+
+      - name: list current directory files
+        run: ${{ matrix.ls || 'ls -lh' }} ./rust/target/release/
+      
+      - name: copy cli programs to new directory
+        if: matrix.os == 'windows'
+        run: |
+          mkdir cli
+          copy ./rust/target/release/vehicle-import-cli.exe cli
+          copy ./rust/target/release/fastsim-cli.exe cli
+      
+      - name: copy cli programs to new directory (non-windows)
+        if: matrix.os != 'windows'
+        run: |
+          mkdir cli
+          cp ./rust/target/release/vehicle-import-cli cli
+          cp ./rust/target/release/fastsim-cli cli
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-cli
+          path: ./cli

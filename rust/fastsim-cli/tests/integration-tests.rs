@@ -32,7 +32,7 @@ fn test_that_cli_app_produces_result() {
 
 #[test]
 fn test_that_adopt_hd_option_works_as_expected() {
-    let expected_results = vec![
+    let expected_results = [
         ("adoptstring.json", "0.245"),  // 0.245 kWh/mile
         ("adoptstring2.json", "7.906"), // 7.906 mpgge
         ("adoptstring3.json", "6.882"), // 6.882 mpgge

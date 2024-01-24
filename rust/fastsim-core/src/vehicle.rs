@@ -716,25 +716,25 @@ impl RustVehicle {
         // self.max_roadway_chg_kw = Array1::from_vec(vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         // self.charging_on = false;
 
-        // # Checking if a vehicle has any hybrid components
+        // Checking if a vehicle has any hybrid components
         self.no_elec_sys =
             (self.ess_max_kwh == 0.0) || (self.ess_max_kw == 0.0) || (self.mc_max_kw == 0.0);
 
-        // # Checking if aux loads go through an alternator
+        // Checking if aux loads go through an alternator
         self.no_elec_aux =
             self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc;
 
         self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
 
-        // # discrete array of possible engine power outputs
+        // discrete array of possible engine power outputs
         self.input_kw_out_array = &self.fc_pwr_out_perc * self.fc_max_kw;
-        // # Relatively continuous array of possible engine power outputs
+        // Relatively continuous array of possible engine power outputs
         self.fc_kw_out_array = self
             .fc_perc_out_array
             .iter()
             .map(|n| n * self.fc_max_kw)
             .collect();
-        // # Creates relatively continuous array for fc_eff
+        // Creates relatively continuous array for fc_eff
         if self.fc_eff_array.is_empty() {
             self.fc_eff_array = self
                 .fc_perc_out_array
@@ -749,9 +749,10 @@ impl RustVehicle {
                 })
                 .collect();
         }
-        //self.modern_max = MODERN_MAX;
+        if self.modern_max == 0.0 {
+            self.modern_max = MODERN_MAX;
+        }
 
-        // NOTE: unused because the first part of if/else commented below is unused
         let modern_diff = self.modern_max - arrmax(&LARGE_BASELINE_EFF);
         let large_baseline_eff_adj: Vec<f64> =
             LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
@@ -764,15 +765,6 @@ impl RustVehicle {
             ),
         );
 
-        // NOTE: it should not be possible to have `None in self.mc_eff_map` in Rust (although NaN is possible...).
-        //       if we want to express that mc_eff_map should be calculated in some cases, but not others,
-        //       we may need some sort of option type ?
-        //if None in self.mc_eff_map:
-        //    self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj + \
-        //            (1 - mc_kw_adj_perc) * self.small_baseline_eff
-        //    self.mc_eff_map = self.mc_eff_array
-        //else:
-        //    self.mc_eff_array = self.mc_eff_map
         if self.mc_eff_map == Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()) {
             self.mc_eff_map = large_baseline_eff_adj
                 .iter()
@@ -781,10 +773,6 @@ impl RustVehicle {
                 .collect();
         }
         self.mc_eff_array = self.mc_eff_map.clone();
-        // println!("{:?}",self.mc_eff_map);
-        // self.mc_eff_array = mc_kw_adj_perc * large_baseline_eff_adj
-        //     + (1.0 - mc_kw_adj_perc) * &self.small_baseline_eff;
-        // self.mc_eff_map = self.mc_eff_array.clone();
 
         self.mc_perc_out_array = MC_PERC_OUT_ARRAY.clone().to_vec();
 
@@ -836,11 +824,13 @@ impl RustVehicle {
             "minimum FC efficiency < 0 is not allowed"
         );
         ensure!(self.fc_peak_eff() < 1.0, "fc_peak_eff >= 1 is not allowed");
-        ensure!(
-            arrmin(&self.mc_full_eff_array) >= 0.0,
-            "minimum MC efficiency < 0 is not allowed"
-        );
-        ensure!(self.mc_peak_eff() < 1.0, "mc_peak_eff >= 1 is not allowed");
+        if !self.no_elec_sys {
+            ensure!(
+                arrmin(&self.mc_full_eff_array) >= 0.0,
+                "minimum MC efficiency < 0 is not allowed"
+            );
+            ensure!(self.mc_peak_eff() < 1.0, "mc_peak_eff >= 1 is not allowed");
+        }
 
         self.set_veh_mass();
 
