@@ -46,7 +46,7 @@ namespaces = false # to disable scanning PEP 420 namespaces (true by default)
 profile = "release"
 python-source = "python"
 features = ["pyo3/extension-module"]
-module-name = "fastsim.fastsim_py"
+module-name = "fastsim.fastsimrust"
 manifest-path = "rust/fastsim-py/Cargo.toml"
 include = [
     { format = "sdist", path = "rust/fastsim-core/Cargo.toml" },
