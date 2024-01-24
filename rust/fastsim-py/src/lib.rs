@@ -9,7 +9,7 @@ pub use pyo3::prelude::*;
 pub use pyo3::types::PyType;
 
 #[pymodule]
-fn fastsim_core_py(_py: Python, m: &PyModule) -> PyResult<()> {
+fn fastsim_py(_py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
     m.add_class::<FuelConverter>()?;
     m.add_class::<FuelConverterState>()?;
@@ -20,7 +20,9 @@ fn fastsim_core_py(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ElectricMachine>()?;
     m.add_class::<ElectricMachineState>()?;
     m.add_class::<ElectricMachineStateHistoryVec>()?;
-
+    m.add_class::<Cycle>()?;
+    m.add_class::<CycleElement>()?;
+    m.add_class::<Vehicle>()?;
     m.add_class::<Pyo3VecWrapper>()?;
     m.add_class::<Pyo3Vec2Wrapper>()?;
     m.add_class::<Pyo3Vec3Wrapper>()?;

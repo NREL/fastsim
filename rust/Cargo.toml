@@ -1,8 +1,8 @@
 [workspace]
 
 members = [
-    "fastsim-core",    # pure rust core with optional pyo3 feature
-    "fastsim-core-py", # python module exposing fastsim-core
+    "fastsim-core", # pure rust core with optional pyo3 feature
+    "fastsim-py",   # python module exposing fastsim-core
 ]
 resolver = "2"
 

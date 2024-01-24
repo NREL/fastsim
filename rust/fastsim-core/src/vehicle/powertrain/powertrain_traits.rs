@@ -14,6 +14,7 @@ use super::*;
 // }
 
 pub trait Mass {
+    /// Returns mass of Self, including contribution from any fields that implement `Mass`
     fn mass(&self) -> anyhow::Result<Option<si::Mass>>;
 
     /// Sets component mass to `mass`, or if `None` is provided for `mass`,

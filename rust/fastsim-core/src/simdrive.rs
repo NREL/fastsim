@@ -3,12 +3,14 @@ use super::vehicle::Vehicle;
 use crate::air_properties as air;
 use crate::imports::*;
 
+#[pyo3_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
 /// Solver parameters
 pub struct SimParams {
     pub ach_speed_max_iter: u32,
     pub ach_speed_tol: si::Ratio,
     pub ach_speed_solver_gain: f64,
+    #[api(skip_get, skip_set)] // TODO: manually write out getter and setter
     pub trace_miss_tol: TraceMissTolerance,
 }
 
@@ -23,6 +25,7 @@ impl Default for SimParams {
     }
 }
 
+#[pyo3_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
 pub struct SimDrive {
     #[has_state]

@@ -32,20 +32,20 @@ pub enum DriveTypes {
         Ok(())
     }
 
-    // #[pyo3(name = "get_save_interval")]
-    // /// Set save interval and cascade to nested components.
-    // fn get_save_interval_py(&self) -> PyResult<Option<usize>> {
-    //     Ok(self.get_save_interval())
-    // }
+    #[pyo3(name = "get_save_interval")]
+    /// Set save interval and cascade to nested components.
+    fn get_save_interval_py(&self) -> PyResult<Option<usize>> {
+        Ok(self.get_save_interval())
+    }
 
-    // #[getter]
-    // fn get_fc(&self) -> Option<FuelConverter> {
-    //     self.fuel_converter().cloned()
-    // }
-    // #[setter]
-    // fn set_fc(&mut self, _fc: FuelConverter) -> PyResult<()> {
-    //     Err(PyAttributeError::new_err(DIRECT_SET_ERR))
-    // }
+    #[getter]
+    fn get_fc(&self) -> Option<FuelConverter> {
+        self.fuel_converter().cloned()
+    }
+    #[setter]
+    fn set_fc(&mut self, _fc: FuelConverter) -> PyResult<()> {
+        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
+    }
 
     // #[setter(__fc)]
     // fn set_fc_hidden(&mut self, fc: FuelConverter) -> PyResult<()> {

@@ -1,5 +1,5 @@
 [package]
-name = "fastsim-core-py"
+name = "fastsim-py"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,5 +12,5 @@ pyo3-log = { workspace = true }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "fastsim_core_py"
+name = "fastsim_py"
 crate-type = ["cdylib"]

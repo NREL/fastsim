@@ -276,6 +276,7 @@ pub(crate) fn impl_getters_and_setters(
     let mut vec_layers: u8 = 0;
     let mut inner_type = ftype;
 
+    // TODO: figure this out and uncomment.  Then check that all `Option` fields are handled appropriately.
     // // pull out `inner_type` from `Option<inner_type>`
     // if let Some(opt_inner_type) = extract_type_from_option(inner_type) {
     //     inner_type = opt_inner_type;

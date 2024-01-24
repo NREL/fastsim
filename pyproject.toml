@@ -8,7 +8,7 @@ version = "2.0.22"
 authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
-license = {file = "LICENSE.md"}
+license = { file = "LICENSE.md" }
 requires-python = ">=3.8,<3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -27,30 +27,32 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://www.nrel.gov/transportation/fastsim.html" 
+Homepage = "https://www.nrel.gov/transportation/fastsim.html"
 
 [project.optional-dependencies]
-dev = ["black", "pytest", "maturin", "plotly", "ipykernel", "pymoo==0.6.0.1",]
+dev = ["black", "pytest", "maturin", "plotly", "ipykernel", "pymoo==0.6.0.1"]
 
 [tool.setuptools]
 zip-safe = false
 
 [tool.setuptools.packages.find]
-where = ["."]  # list of folders that contain the packages (["."] by default)
-include = ["fastsim*"]  # package names should match these glob patterns (["*"] by default)
-namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+where = ["."] # list of folders that contain the packages (["."] by default)
+include = [
+    "fastsim*",
+] # package names should match these glob patterns (["*"] by default)
+namespaces = false # to disable scanning PEP 420 namespaces (true by default)
 
 [tool.maturin]
-profile="release"
-python-source="python"
+profile = "release"
+python-source = "python"
 features = ["pyo3/extension-module"]
-module-name = "fastsim.fastsim_core_py"
-manifest-path = "rust/fastsim-core-py/Cargo.toml"
+module-name = "fastsim.fastsim_py"
+manifest-path = "rust/fastsim-py/Cargo.toml"
 include = [
-    { format = "sdist", path = "rust/fastsim-core/Cargo.toml"},
-    { format = "sdist", path = "rust/fastsim-core/src/*"},
-    { format = "sdist", path = "rust/fastsim-core-py/Cargo.toml"},
-    { format = "sdist", path = "rust/fastsim-core-py/src/*"},
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml"},
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*"},
+    { format = "sdist", path = "rust/fastsim-core/Cargo.toml" },
+    { format = "sdist", path = "rust/fastsim-core/src/*" },
+    { format = "sdist", path = "rust/fastsim-py/Cargo.toml" },
+    { format = "sdist", path = "rust/fastsim-py/src/*" },
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml" },
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*" },
 ]
