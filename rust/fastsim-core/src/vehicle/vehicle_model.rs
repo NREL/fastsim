@@ -25,6 +25,8 @@ pub enum DriveTypes {
 }
 
 #[pyo3_api(
+    // TODO: expose `try_from` method so python users can load fastsim-2 vehicles
+    
     #[pyo3(name = "set_save_interval")]
     /// Set save interval and cascade to nested components.
     fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> PyResult<()> {
@@ -554,7 +556,7 @@ pub(crate) mod tests {
             Vehicle::try_from(fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap())
                 .unwrap();
         // uncomment this if the fastsim-3 version needs to be rewritten
-        // veh.to_file("2012_Ford_Fusion.yaml").unwrap();
+        veh.to_file("2012_Ford_Fusion.yaml").unwrap();
         #[allow(clippy::let_and_return)]
         veh
     }

@@ -11,7 +11,7 @@ pt_type:
       mass: 49.166666666666664
     fc:
       state:
-        i: 1
+        i: 0
         pwr_out_max: 0.0
         eta: 0.0
         pwr_out: 0.0
@@ -23,7 +23,7 @@ pt_type:
         energy_fuel: 0.0
         energy_loss: 0.0
         energy_idle_fuel: 0.0
-        fc_on: true
+        fc_on: false
       mass: 277.6595744680851
       specific_pwr: 470.0
       pwr_out_max_watts: 130500.0
@@ -57,23 +57,44 @@ pt_type:
         - 0.3
       pwr_idle_fuel_watts: 6999.999999999999
       save_interval: 1
-    trans_eff: 0.875
-drag_coeff: 0.393
+drag_coef: 0.393
 frontal_area: 2.12
+wheel_rr_coef: 0.007
+wheel_inertia_kg_m2: 0.82
+num_wheels: 4
+wheel_radius: 0.326
 cg_height: 0.53
 drive_type: FWD
 drive_axle_weight_frac: 0.59
 wheel_base: 2.72
+mass: 277.6595744680851
 glider_mass: 791.0702892
 cargo_mass: 136.0
 comp_mass_multiplier: 1.4
 pwr_aux: 700.0
+trans_eff: 0.875
 state:
-  i: 1
-  pwr_out_max: 0.0
-  pwr_regen_max: 0.0
-  pwr_out: 0.0
-  pwr_aux: 0.0
+  i: 0
+  pwr_tractive_max: 0.0
+  pwr_tractive: 0.0
   energy_out: 0.0
+  pwr_aux: 0.0
   energy_aux: 0.0
+  pwr_drag: 0.0
+  energy_drag: 0.0
+  pwr_accel: 0.0
+  energy_accel: 0.0
+  pwr_ascent: 0.0
+  energy_ascent: 0.0
+  pwr_rr: 0.0
+  energy_rr: 0.0
+  pwr_whl_inertia: 0.0
+  energy_whl_inertia: 0.0
+  pwr_brake: 0.0
+  energy_brake: 0.0
+  energy_tractive: 0.0
+  cyc_met: false
+  speed_ach: 0.0
+  dist: 0.0
+  speed_ach_prev: 0.0
 save_interval: 1
