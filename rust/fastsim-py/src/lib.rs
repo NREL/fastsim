@@ -23,6 +23,8 @@ fn fastsimrust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Cycle>()?;
     m.add_class::<CycleElement>()?;
     m.add_class::<Vehicle>()?;
+    m.add_class::<SimDrive>()?;
+    m.add_class::<SimDrive>()?;
     m.add_class::<Pyo3VecWrapper>()?;
     m.add_class::<Pyo3Vec2Wrapper>()?;
     m.add_class::<Pyo3Vec3Wrapper>()?;

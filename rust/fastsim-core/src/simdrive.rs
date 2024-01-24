@@ -25,7 +25,21 @@ impl Default for SimParams {
     }
 }
 
-#[pyo3_api]
+#[pyo3_api(
+    #[new]
+    fn __new__(veh: Vehicle, cyc: Cycle, sim_params: Option<SimParams>) -> anyhow::Result<Self> {
+        Ok(SimDrive{
+            veh,
+            cyc, 
+            sim_params: sim_params.unwrap_or_default(),
+        })
+    }
+
+    #[pyo3(name = "walk")]
+    fn walk_py(&mut self) -> anyhow::Result<()> {
+        self.walk()
+    }
+)]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
 pub struct SimDrive {
     #[has_state]

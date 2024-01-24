@@ -165,7 +165,8 @@ pub struct Vehicle {
     #[api(skip_set, skip_get)]
     #[serde(skip_serializing_if = "Option::is_none")]
     save_interval: Option<usize>,
-    /// Custom vector of [Self::state]
+    /// Vector-like history of [Self::state]
+    #[serde(default)]
     #[serde(skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
     pub history: VehicleStateHistoryVec,
 }
@@ -556,7 +557,7 @@ pub(crate) mod tests {
             Vehicle::try_from(fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap())
                 .unwrap();
         // uncomment this if the fastsim-3 version needs to be rewritten
-        veh.to_file("2012_Ford_Fusion.yaml").unwrap();
+        veh.to_file(project_root::get_project_root().unwrap().join("tests/assets/2012_Ford_Fusion.yaml")).unwrap();
         #[allow(clippy::let_and_return)]
         veh
     }
