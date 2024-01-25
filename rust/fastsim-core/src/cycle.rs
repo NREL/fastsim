@@ -798,14 +798,7 @@ impl RustCycle {
             .and_then(OsStr::to_str)
             .with_context(|| format!("Could not parse cycle name from filepath: {filepath:?}"))?
             .to_string();
-        let file = File::open(filepath).with_context(|| {
-            if !filepath.exists() {
-                format!("File not found: {filepath:?}")
-            } else {
-                format!("Could not open file: {filepath:?}")
-            }
-        })?;
-        let mut cyc = Self::from_reader(file, "csv")?;
+        let mut cyc = Self::from_file(filepath)?;
         cyc.name = name;
         Ok(cyc)
     }
