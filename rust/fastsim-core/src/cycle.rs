@@ -703,7 +703,7 @@ impl SerdeAPI for RustCycle {
             match format.trim_start_matches('.').to_lowercase().as_str() {
                 "yaml" | "yml" => Self::from_yaml(contents)?,
                 "json" => Self::from_json(contents)?,
-                "csv" => Self::from_csv_str(contents, "".to_string())?,
+                "csv" => Self::from_reader(contents.as_ref().as_bytes(), "csv")?,
                 _ => bail!(
                     "Unsupported format {format:?}, must be one of {:?}",
                     Self::ACCEPTED_STR_FORMATS
@@ -805,7 +805,7 @@ impl RustCycle {
 
     /// Load cycle from CSV string
     pub fn from_csv_str<S: AsRef<str>>(csv_str: S, name: String) -> anyhow::Result<Self> {
-        let mut cyc = Self::from_reader(csv_str.as_ref().as_bytes(), "csv")?;
+        let mut cyc = Self::from_str(csv_str, "csv")?;
         cyc.name = name;
         Ok(cyc)
     }
