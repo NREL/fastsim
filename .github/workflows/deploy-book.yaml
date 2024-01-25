@@ -7,6 +7,7 @@ on:
     paths:
       - "docs/**"
       - ".github/workflows/deploy-book.yaml"
+      - "README.md"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
