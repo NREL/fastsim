@@ -1,26 +1,28 @@
+# FASTSim
+
 ![FASTSim Logo](https://www.nrel.gov/transportation/assets/images/icon-fastsim.jpg)
 
 [![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nrel.gov/transportation/fastsim.html) [![tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml) [![wheels](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml?event=release) [![python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/fastsim/) [![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://nrel.github.io/fastsim/) [![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NREL/fastsim)
 
 
-# Description
+## Description
 
 This is the python/rust flavor of [NREL's FASTSim<sup>TM</sup>](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another.
 
 All classes and methods are self-documented.  
 
-# Installation
+## Installation
 
-## Python
+### Python
 
 Set up and activate a python environment (compatible with Python 3.8 - 3.10; we recommend Python 3.10) with the following steps.
 
-### [Anaconda](https://www.anaconda.com/)
+#### [Anaconda](https://www.anaconda.com/)
 
 1. Create: `conda create -n fastsim python=3.10`
 1. Activate: `conda activate fastsim`
 
-### [venv](https://docs.python.org/3/library/venv.html)
+#### [venv](https://docs.python.org/3/library/venv.html)
 
 There is some variation based on your Operating System:  
 
@@ -36,13 +38,13 @@ There is some variation based on your Operating System:
     1. Create: `python -m venv fastsim-venv` -- name is user decision
     1. Activate: `fastsim-venv/Scripts/activate.bat`
 
-## FASTSim
+### FASTSim
 
-### Via PyPI
+#### Via PyPI
 
 In an active Python environment created above, run `pip install fastsim`.
 
-### Building from Scratch
+#### Building from Scratch
 
 Developers might want to install the code in place so that FASTSim files can be editable (the `-e` flag for pip provides this behavior). This option can be handy since FASTSim will be installed in place from the installation location and any updates will be propagated each time FASTSim is freshly imported.  To do this, you'll need to have the [Rust toolchain](https://www.rust-lang.org/tools/install) installed.
 
@@ -53,23 +55,23 @@ Developers might want to install the code in place so that FASTSim files can be 
     1. Run `cd rust/ && cargo test`
     1. Run `pytest -v python/fastsim/tests/`
 
-# Usage
+## Usage
 
 To see and run examples, navigate to `./python/fastsim/demos` and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
 
-# Adding FASTSim as a Depency in Rust
+## Adding FASTSim as a Depency in Rust
 
-## Via GitHub
+### Via GitHub
 
 Add this line:  
 `fastsim-core = { git = "https://github.nrel.gov/MBAP/fastsim", branch = "rust-port" }`  
 to your Cargo.toml file, modifying the `branch` key as appropriate.  
 
-## Via Cargo
+### Via Cargo
 
 This has not been implemented yet.  
 
-# List of Abbreviations
+## List of Abbreviations
 
 cur = current time step  
 prev = previous time step  
@@ -96,11 +98,11 @@ ach = achieved value
 in = component input  
 out = component output  
 
-# Known Issues
+## Known Issues
 
 Rust versions of classes have limited Language Server Protocol integration, and we are actively working on fixing this.  
 
-# Release Notes
+## Release Notes
 
 2.1.1 -- license changed to Apache 2.0, default cycle grade and road type to zero if not provided, defaults to regenerative braking parameters, optional documentation fields now generated in Rust
 2.1.0 -- release and installation improvements, RustVehicle init cleanup, calibration improvements
@@ -140,7 +142,7 @@ Rust versions of classes have limited Language Server Protocol integration, and 
 0.1.2 -- Fixes os-dependency of xlwings by not running stuff that needs xlwings.  Improvements in functional test.  Refinment utomated typying of jitclass objects.
 0.1.1 -- Now includes label fuel economy and/or battery kW-hr/mi values that match excel and test for benchmarking against Excel values and CPU time.
 
-# Contributors  
+## Contributors  
 
 Chad Baker -- <Chad.Baker@nrel.gov>  
 Aaron Brooker -- <Aaron.Brooker@nrel.gov>  
