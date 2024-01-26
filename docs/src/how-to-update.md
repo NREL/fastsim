@@ -11,7 +11,7 @@ Run the following in the repository root directory:
 1. If any python files were modified, 
     1. Install [pipx](https://github.com/pypa/pipx#install-pipx)
     1. Install [pydoc-markdown](https://niklasrosenstein.github.io/pydoc-markdown/#installation-)
-    1. run `pydoc-markdown -I python/ -p fastsim --render-toc > docs/src/python_docs.md`. Do not modify this file manually. 
+    1. run `pydoc-markdown -I python/ -p fastsim --render-toc > docs/src/python-doc.md`. Do not modify this file manually. 
 1. Run `mdbook serve --open docs/`
 
 ## Publishing
