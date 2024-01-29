@@ -58,39 +58,16 @@ pub use dev_proc_macros as proc_macros;
 #[cfg(not(feature = "dev-proc-macros"))]
 pub use fastsim_proc_macros as proc_macros;
 
-use features_enabled::*;
-
 #[cfg_attr(feature = "pyo3", pyo3imports::pyfunction)]
 #[allow(clippy::vec_init_then_push)]
 pub fn enabled_features() -> Vec<String> {
     let mut enabled = vec![];
 
-    if full_enabled() {
-        enabled.push("full".into());
-    }
+    #[cfg(feature = "full")]
+    enabled.push("full".into());
 
-    if resources_enabled() {
-        enabled.push("resources".into());
-    }
+    #[cfg(feature = "resources")]
+    enabled.push("resources".into());
 
     enabled
-}
-
-mod features_enabled {
-    #[cfg(feature = "full")]
-    pub(super) fn full_enabled() -> bool {
-        true
-    }
-    #[cfg(not(feature = "full"))]
-    pub(super) fn full_enabled() -> bool {
-        false
-    }
-    #[cfg(feature = "full")]
-    pub(super) fn resources_enabled() -> bool {
-        true
-    }
-    #[cfg(not(feature = "resources"))]
-    pub(super) fn resources_enabled() -> bool {
-        false
-    }
 }
