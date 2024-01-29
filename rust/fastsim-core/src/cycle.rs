@@ -633,21 +633,7 @@ impl SerdeAPI for RustCycle {
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
 
     fn init(&mut self) -> anyhow::Result<()> {
-        ensure!(!self.is_empty(), "Deserialized cycle is empty");
-        let cyc_len = self.len();
-        ensure!(
-            self.mps.len() == cyc_len,
-            "Length of `mps` does not match length of `time_s`"
-        );
-        ensure!(
-            self.grade.len() == cyc_len,
-            "Length of `grade` does not match length of `time_s`"
-        );
-        ensure!(
-            self.road_type.len() == cyc_len,
-            "Length of `road_type` does not match length of `time_s`"
-        );
-        Ok(())
+        self.init_checks()
     }
 
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
@@ -738,7 +724,7 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
         let time_s = Array::from_vec(
             hashmap
                 .get("time_s")
-                .with_context(|| "`time_s` not in HashMap")?
+                .with_context(|| format!("`time_s` not in HashMap: {hashmap:?}"))?
                 .to_owned(),
         );
         let cyc_len = time_s.len();
@@ -747,7 +733,7 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
             mps: Array::from_vec(
                 hashmap
                     .get("mps")
-                    .with_context(|| "`mps` not in HashMap")?
+                    .with_context(|| format!("`mps` not in HashMap: {hashmap:?}"))?
                     .to_owned(),
             ),
             grade: Array::from_vec(
@@ -783,6 +769,20 @@ impl From<RustCycle> for HashMap<String, Vec<f64>> {
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
 impl RustCycle {
+    fn init_checks(&self) -> anyhow::Result<()> {
+        ensure!(!self.is_empty(), "Deserialized cycle is empty");
+        ensure!(self.is_sorted(), "Deserialized cycle is not sorted in time");
+        ensure!(
+            self.are_fields_equal_length(),
+            "Deserialized cycle has unequal field lengths\ntime_s: {}\nmps: {}\ngrade: {}\nroad_type: {}",
+            self.time_s.len(),
+            self.mps.len(),
+            self.grade.len(),
+            self.road_type.len(),
+        );
+        Ok(())
+    }
+
     /// Load cycle from CSV file, parsing name from filepath
     pub fn from_csv_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
@@ -851,6 +851,21 @@ impl RustCycle {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    pub fn is_sorted(&self) -> bool {
+        self.time_s
+            .as_slice()
+            .unwrap()
+            .windows(2)
+            .all(|window| window[0] < window[1])
+    }
+
+    pub fn are_fields_equal_length(&self) -> bool {
+        let cyc_len = self.len();
+        [self.mps.len(), self.grade.len(), self.road_type.len()]
+            .iter()
+            .all(|len| len == &cyc_len)
     }
 
     pub fn test_cyc() -> Self {
