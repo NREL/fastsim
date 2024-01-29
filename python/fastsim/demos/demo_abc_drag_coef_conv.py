@@ -1,6 +1,5 @@
 import fastsim as fsim
 from fastsim.auxiliaries import abc_to_drag_coeffs, drag_coeffs_to_abc
-import fastsim.utilities as utils
 v = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
 v2 = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
 
