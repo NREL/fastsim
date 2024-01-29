@@ -49,7 +49,7 @@ jobs:
       - name: Generate python docs
         working-directory: ${{runner.workspace}}/fastsim/
         run:
-          pydoc-markdown -I python/ -p fastsim --render-toc > docs/src/python-doc.md
+          pydoc-markdown -I python/ --render-toc > docs/src/python-doc.md
 
       - name: Setup Pages
         id: pages
