@@ -59,7 +59,8 @@ full = [
     "dep:argmin-math",
     "dep:curl",
     "dep:directories",
-    "dep:include_dir",
     "dep:polynomial",
     "dep:validator",
+    "resources",
 ]
+resources = ["dep:include_dir"]

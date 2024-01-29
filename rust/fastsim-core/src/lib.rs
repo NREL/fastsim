@@ -53,3 +53,16 @@ pub mod vehicle_utils;
 pub use dev_proc_macros as proc_macros;
 #[cfg(not(feature = "dev-proc-macros"))]
 pub use fastsim_proc_macros as proc_macros;
+
+#[cfg_attr(feature = "pyo3", pyo3imports::pyfunction)]
+pub fn enabled_features() -> Vec<String> {
+    let mut enabled = Vec::new();
+
+    #[cfg(feature = "full")]
+    enabled.push("full".into());
+
+    #[cfg(feature = "resources")]
+    enabled.push("resources".into());
+
+    enabled
+}
