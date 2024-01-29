@@ -41,9 +41,9 @@ jobs:
 
       - name: Install dependencies for python docs
         run: 
-          sudo apt update
-          sudo apt install pipx
-          pipx ensurepath
+          sudo apt update &&
+          sudo apt install pipx &&
+          pipx ensurepath &&
           pipx install pydoc-markdown
 
       - name: Generate python docs
