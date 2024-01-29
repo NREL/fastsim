@@ -5,7 +5,7 @@ import numpy as np
 import time
 import fastsim as fsim
 import fastsim.parameters as params
-import fastsim.utilities as utils
+import fastsim.utils as utils
 import matplotlib.pyplot as plt
 
 

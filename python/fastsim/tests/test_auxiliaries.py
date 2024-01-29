@@ -15,16 +15,28 @@ class test_auxiliaries(unittest.TestCase):
             a = 25.91
             b = 0.1943
             c = 0.01796
-            drag_coeff, wheel_rr_coef = auxiliaries.abc_to_drag_coeffs(veh=veh,
-                                                                        a_lbf=a, 
-                                                                    b_lbf__mph=b, 
-                                                                    c_lbf__mph2=c,
-                                                                    custom_rho=False,
-                                                                    simdrive_optimize=True,
-                                                                    show_plots=False,
-                                                                    use_rust=False)
+            drag_coeff, wheel_rr_coef = auxiliaries.abc_to_drag_coeffs(
+                veh=veh,
+                a_lbf=a, 
+                b_lbf__mph=b, 
+                c_lbf__mph2=c,
+                custom_rho=False,
+                simdrive_optimize=True,
+                show_plots=False,
+                use_rust=False
+            )
             self.assertAlmostEqual(0.29396666380768194, drag_coeff, places=5)
             self.assertAlmostEqual(0.00836074507871098, wheel_rr_coef, places=7)
+            drag_coeff, wheel_rr_coef = auxiliaries.abc_to_drag_coeffs(
+                veh=veh,
+                a_lbf=a,
+                b_lbf__mph=b,
+                c_lbf__mph2=c,
+                custom_rho=True,
+                simdrive_optimize=True,
+                show_plots=False,
+                use_rust=False
+            )
 
     def test_drag_coeffs_to_abc(self):
         veh = Vehicle.from_vehdb(1).to_rust()

@@ -7,6 +7,8 @@ on:
     paths:
       - "docs/**"
       - ".github/workflows/deploy-book.yaml"
+      - "README.md"
+      - "python/**"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -31,11 +33,24 @@ jobs:
       MDBOOK_VERSION: 0.4.21
     steps:
       - uses: actions/checkout@v3
-      - name: Install mdBook
+      - name: Install mdBook and supporting dependencies
         run: |
           curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf -y | sh
           rustup update
           cargo install --version ${MDBOOK_VERSION} mdbook
+
+      - name: Install dependencies for python docs
+        run: 
+          sudo apt update &&
+          sudo apt install pipx &&
+          pipx ensurepath &&
+          pipx install pydoc-markdown
+
+      - name: Generate python docs
+        working-directory: ${{runner.workspace}}/fastsim/
+        run:
+          pydoc-markdown -I python/ --render-toc > docs/src/python-doc.md
+
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v3
