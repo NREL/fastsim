@@ -1,3 +1,10 @@
+//! # Crate features
+//! * **full** - When enabled (which is default), include additional capabilities that
+//!   require additional dependencies
+//! * **resources** - When enabled (which is triggered by enabling full (thus default)
+//!   or enabling this feature directly), compiles commonly used resources (e.g.
+//!   standard drive cycles) for faster access.
+
 use fastsim_core::simdrivelabel::*;
 use fastsim_core::*;
 use pyo3imports::*;
@@ -51,6 +58,8 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     #[cfg(feature = "full")]
     m.add_function(wrap_pyfunction!(vehicle_utils::import_all_vehicles, m)?)?;
     m.add_function(wrap_pyfunction!(vehicle_utils::export_vehicle_to_file, m)?)?;
+
+    m.add_function(wrap_pyfunction!(enabled_features, m)?)?;
 
     Ok(())
 }

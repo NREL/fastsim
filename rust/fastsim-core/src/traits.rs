@@ -15,7 +15,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// # Arguments:
     ///
     /// * `filepath` - Filepath, relative to the top of the `resources` folder, from which to read the object
-    #[cfg(feature = "full")]
+    #[cfg(feature = "resources")]
     fn from_resource<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
         let extension = filepath
