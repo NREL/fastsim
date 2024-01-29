@@ -1,3 +1,10 @@
+//! # Crate features
+//! * **full** - When enabled (which is default), include additional capabilities that
+//!   require additional dependencies
+//! * **resources** - When enabled (which is triggered by enabling full (thus default)
+//!   or enabling this feature directly), compiles commonly used resources (e.g.
+//!   standard drive cycles) for faster access.
+
 use fastsim_core::simdrivelabel::*;
 use fastsim_core::*;
 use pyo3imports::*;
