@@ -41,7 +41,7 @@ import importlib
 
 # local modules
 import fastsim as fsim
-import fastsim.utilities as utils
+
 # importlib.reload(simdrive) importlib.reload(cycle)
 
 #for testing demo files, false when running automatic tests

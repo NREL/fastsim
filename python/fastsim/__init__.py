@@ -9,7 +9,7 @@ import traceback
 from . import fastsimrust
 from . import fastsimrust as fsr
 from . import parameters as params
-from . import utilities as utils
+from . import utils
 from . import simdrive, vehicle, cycle, calibration, tests
 from . import calibration as cal
 from .resample import resample

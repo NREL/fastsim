@@ -1,26 +1,29 @@
 """Auxiliary functions that require fastsim and provide faster access FASTSim vehicle properties."""
-import fastsim as fsim
-from fastsim.vehicle import Vehicle
-from fastsim import parameters as params
 from scipy.optimize import minimize, curve_fit
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Tuple, List
 
-from fastsim.utilities import get_rho_air
+# Local imports
+import fastsim as fsim
+from fastsim.vehicle import Vehicle
+from fastsim import parameters as params
+from fastsim.utils import get_rho_air
 
 props = params.PhysicalProperties()
 R_air = 287  # J/(kg*K)
     
 
-def abc_to_drag_coeffs(veh: Vehicle,
-                       a_lbf: float, b_lbf__mph: float, c_lbf__mph2: float,
-                       custom_rho: bool = False,
-                       custom_rho_temp_degC: float = 20.,
-                       custom_rho_elevation_m: float = 180.,
-                       simdrive_optimize: bool = True,
-                       show_plots: bool = False,
-                       use_rust=True) -> Tuple[float, float]:
+def abc_to_drag_coeffs(
+    veh: Vehicle,
+    a_lbf: float, b_lbf__mph: float, c_lbf__mph2: float,
+    custom_rho: bool = False,
+    custom_rho_temp_degC: float = 20.,
+    custom_rho_elevation_m: float = 180.,
+    simdrive_optimize: bool = True,
+    show_plots: bool = False,
+    use_rust=True
+) -> Tuple[float, float]:
     """For a given vehicle and target A, B, and C
     coefficients; calculate and return drag and rolling resistance
     coefficients.
@@ -41,13 +44,16 @@ def abc_to_drag_coeffs(veh: Vehicle,
     """
 
     # TODO: allows air density read APIs for whole project; `get_rho_air()` not used for `SimDrive` yet
-    cur_ambient_air_density_kg__m3 = get_rho_air(
-        custom_rho_temp_degC, custom_rho_elevation_m) if custom_rho else props.air_density_kg_per_m3
+    
+    if custom_rho:
+        cur_ambient_air_density_kg__m3 = get_rho_air(custom_rho_temp_degC, custom_rho_elevation_m)  
+    else:
+        cur_ambient_air_density_kg__m3 = props.air_density_kg_per_m3
 
     vmax_mph = 70.0
 
     a_newton = a_lbf * params.N_PER_LBF
-    b_newton__mps = b_lbf__mph * params.N_PER_LBF * params.MPH_PER_MPS
+    _b_newton__mps = b_lbf__mph * params.N_PER_LBF * params.MPH_PER_MPS
     c_newton__mps2 = c_lbf__mph2 * params.N_PER_LBF * \
         params.MPH_PER_MPS * params.MPH_PER_MPS
 
