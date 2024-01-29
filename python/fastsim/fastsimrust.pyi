@@ -2,9 +2,6 @@ from __future__ import annotations
 from typing_extensions import Self
 from typing import Dict, List, Tuple, Optional, ByteString
 from abc import ABC
-from fastsim.vehicle import VEHICLE_DIR
-import yaml
-from pathlib import Path
 
 class RustVec(ABC):
     def __repr__(self) -> str:
@@ -1074,4 +1071,5 @@ def get_label_fe_phev(
 def get_label_fe_conv(veh: RustVehicle) -> LabelFe:
    ...
    
+def enabled_features() -> List[str]: ...
    
