@@ -47,6 +47,7 @@
   * [extend\_cycle](#fastsim.cycle.extend_cycle)
   * [create\_dist\_and\_target\_speeds\_by\_microtrip](#fastsim.cycle.create_dist_and_target_speeds_by_microtrip)
   * [copy\_cycle](#fastsim.cycle.copy_cycle)
+* [fastsim.generate\_doc](#fastsim.generate_doc)
 * [fastsim.vehicle\_base](#fastsim.vehicle_base)
 * [fastsim.resample](#fastsim.resample)
   * [resample](#fastsim.resample.resample)
@@ -225,7 +226,6 @@
   * [isprop](#fastsim.inspect_utils.isprop)
   * [isfunc](#fastsim.inspect_utils.isfunc)
   * [get\_attrs](#fastsim.inspect_utils.get_attrs)
-* [fastsim.temp](#fastsim.temp)
 * [fastsim.parameters](#fastsim.parameters)
   * [PhysicalProperties](#fastsim.parameters.PhysicalProperties)
   * [copy\_physical\_properties](#fastsim.parameters.copy_physical_properties)
@@ -985,6 +985,10 @@ Returns copy of Cycle.
 - `'legacy'` - LegacyCycle
 - `'rust'` - RustCycle
 - `deep` - if True, uses deepcopy on everything
+
+<a id="fastsim.generate_doc"></a>
+
+# fastsim.generate\_doc
 
 <a id="fastsim.vehicle_base"></a>
 
@@ -3067,10 +3071,6 @@ Given an instantiated object, returns attributes that are not:
 -- callable  
 -- special (i.e. start with `__`)  
 -- properties
-
-<a id="fastsim.temp"></a>
-
-# fastsim.temp
 
 <a id="fastsim.parameters"></a>
 
