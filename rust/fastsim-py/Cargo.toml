@@ -12,7 +12,9 @@ repository = "https://github.com/NREL/fastsim"
 
 [dependencies]
 pyo3-log = { workspace = true, optional = true }
-fastsim-core = { path = "../fastsim-core", features = ["pyo3"], version = "~0" }
+fastsim-core = { path = "../fastsim-core", features = [
+    "pyo3",
+], version = "~0", default-features = false }
 pyo3 = { workspace = true, features = ["extension-module", "anyhow"] }
 log = "0.4.17"
 
