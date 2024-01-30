@@ -7,9 +7,11 @@ use crate::proc_macros::{add_pyo3_api, doc_field, ApproxEq};
 #[cfg(feature = "pyo3")]
 use crate::pyo3imports::*;
 
+#[cfg(feature = "validation")]
 use lazy_static::lazy_static;
+#[cfg(feature = "validation")]
 use regex::Regex;
-#[cfg(feature = "full")]
+#[cfg(feature = "validation")]
 use validator::Validate;
 
 // veh_pt_type options
@@ -18,6 +20,7 @@ pub const HEV: &str = "HEV";
 pub const PHEV: &str = "PHEV";
 pub const BEV: &str = "BEV";
 pub const VEH_PT_TYPES: [&str; 4] = [CONV, HEV, PHEV, BEV];
+#[cfg(feature = "validation")]
 lazy_static! {
     static ref VEH_PT_TYPE_OPTIONS_REGEX: Regex = Regex::new("Conv|HEV|PHEV|BEV").unwrap();
 }
@@ -29,6 +32,7 @@ pub const DIESEL: &str = "Diesel";
 pub const H2FC: &str = "H2FC";
 pub const HD_DIESEL: &str = "HD_Diesel";
 pub const FC_EFF_TYPES: [&str; 5] = [SI, ATKINSON, DIESEL, H2FC, HD_DIESEL];
+#[cfg(feature = "validation")]
 lazy_static! {
     static ref FC_EFF_TYPE_OPTIONS_REGEX: Regex =
         Regex::new("SI|Atkinson|Diesel|H2FC|HD_Diesel").unwrap();
@@ -85,7 +89,7 @@ lazy_static! {
         Self::mock_vehicle()
     }
 )]
-#[cfg_attr(feature = "full", derive(Validate))]
+#[cfg_attr(feature = "validation", derive(Validate))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ApproxEq)]
 /// Struct containing vehicle attributes
 /// # Python Examples
@@ -117,7 +121,7 @@ pub struct RustVehicle {
     /// Vehicle powertrain type, one of \[[CONV](CONV), [HEV](HEV), [PHEV](PHEV), [BEV](BEV)\]
     #[serde(alias = "vehPtType")]
     #[cfg_attr(
-        feature = "full",
+        feature = "validation",
         validate(regex(
             path = "VEH_PT_TYPE_OPTIONS_REGEX",
             message = "must be one of [\"Conv\", \"HEV\", \"PHEV\", \"BEV\"]"
@@ -127,15 +131,15 @@ pub struct RustVehicle {
     pub veh_pt_type: String,
     /// Aerodynamic drag coefficient
     #[serde(alias = "dragCoef")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub drag_coef: f64,
     /// Frontal area, $m^2$
     #[serde(alias = "frontalAreaM2")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub frontal_area_m2: f64,
     /// Vehicle mass excluding cargo, passengers, and powertrain components, $kg$
     #[serde(alias = "gliderKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub glider_kg: f64,
     /// Vehicle center of mass height, $m$
     /// **NOTE:** positive for FWD, negative for RWD, AWD, 4WD
@@ -143,43 +147,43 @@ pub struct RustVehicle {
     pub veh_cg_m: f64,
     /// Fraction of weight on the drive axle while stopped
     #[serde(alias = "driveAxleWeightFrac")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub drive_axle_weight_frac: f64,
     /// Wheelbase, $m$
     #[serde(alias = "wheelBaseM")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub wheel_base_m: f64,
     /// Cargo mass including passengers, $kg$
     #[serde(alias = "cargoKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub cargo_kg: f64,
     /// Total vehicle mass, overrides mass calculation, $kg$
     #[serde(alias = "vehOverrideKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub veh_override_kg: Option<f64>,
     /// Component mass multiplier for vehicle mass calculation
     #[serde(alias = "compMassMultiplier")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub comp_mass_multiplier: f64,
     /// Fuel storage max power output, $kW$
     #[serde(alias = "maxFuelStorKw")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub fs_max_kw: f64,
     /// Fuel storage time to peak power, $s$
     #[serde(alias = "fuelStorSecsToPeakPwr")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub fs_secs_to_peak_pwr: f64,
     /// Fuel storage energy capacity, $kWh$
     #[serde(alias = "fuelStorKwh")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub fs_kwh: f64,
     /// Fuel specific energy, $\frac{kWh}{kg}$
     #[serde(alias = "fuelStorKwhPerKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub fs_kwh_per_kg: f64,
     /// Fuel converter peak continuous power, $kW$
     #[serde(alias = "maxFuelConvKw")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub fc_max_kw: f64,
     /// Fuel converter output power percentage map, x values of [fc_eff_map](RustVehicle::fc_eff_map)
     #[serde(alias = "fcPwrOutPerc")]
@@ -191,7 +195,7 @@ pub struct RustVehicle {
     /// Used for calculating [fc_eff_map](RustVehicle::fc_eff_map), and other calculations if H2FC
     #[serde(alias = "fcEffType")]
     #[cfg_attr(
-        feature = "full",
+        feature = "validation",
         validate(regex(
             path = "FC_EFF_TYPE_OPTIONS_REGEX",
             message = "must be one of [\"SI\", \"Atkinson\", \"Diesel\", \"H2FC\", \"HD_Diesel\"]"
@@ -200,27 +204,27 @@ pub struct RustVehicle {
     pub fc_eff_type: String,
     /// Fuel converter time to peak power, $s$
     #[serde(alias = "fuelConvSecsToPeakPwr")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub fc_sec_to_peak_pwr: f64,
     /// Fuel converter base mass, $kg$
     #[serde(alias = "fuelConvBaseKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub fc_base_kg: f64,
     /// Fuel converter specific power (power-to-weight ratio), $\frac{kW}{kg}$
     #[serde(alias = "fuelConvKwPerKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub fc_kw_per_kg: f64,
     /// Minimum time fuel converter must be on before shutoff (for HEV, PHEV)
     #[serde(alias = "minFcTimeOn")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub min_fc_time_on: f64,
     /// Fuel converter idle power, $kW$
     #[serde(alias = "idleFcKw")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub idle_fc_kw: f64,
     /// Peak continuous electric motor power, $kW$
     #[serde(alias = "mcMaxElecInKw")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub mc_max_kw: f64,
     /// Electric motor output power percentage map, x values of [mc_eff_map](RustVehicle::mc_eff_map)
     #[serde(alias = "mcPwrOutPerc")]
@@ -230,35 +234,35 @@ pub struct RustVehicle {
     pub mc_eff_map: Array1<f64>,
     /// Electric motor time to peak power, $s$
     #[serde(alias = "motorSecsToPeakPwr")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub mc_sec_to_peak_pwr: f64,
     /// Motor power electronics mass per power output, $\frac{kg}{kW}$
     #[serde(alias = "mcPeKgPerKw")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub mc_pe_kg_per_kw: f64,
     /// Motor power electronics base mass, $kg$
     #[serde(alias = "mcPeBaseKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub mc_pe_base_kg: f64,
     /// Traction battery maximum power output, $kW$
     #[serde(alias = "maxEssKw")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub ess_max_kw: f64,
     /// Traction battery energy capacity, $kWh$
     #[serde(alias = "maxEssKwh")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub ess_max_kwh: f64,
     /// Traction battery mass per energy, $\frac{kg}{kWh}$
     #[serde(alias = "essKgPerKwh")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub ess_kg_per_kwh: f64,
     /// Traction battery base mass, $kg$
     #[serde(alias = "essBaseKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub ess_base_kg: f64,
     /// Traction battery round-trip efficiency
     #[serde(alias = "essRoundTripEff")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub ess_round_trip_eff: f64,
     /// Traction battery cycle life coefficient A, see [reference](https://web.archive.org/web/20090529194442/http://www.ocean.udel.edu/cms/wkempton/Kempton-V2G-pdfFiles/PDF%20format/Duvall-V2G-batteries-June05.pdf)
     #[serde(alias = "essLifeCoefA")]
@@ -268,63 +272,63 @@ pub struct RustVehicle {
     pub ess_life_coef_b: f64,
     /// Traction battery minimum state of charge
     #[serde(alias = "minSoc")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub min_soc: f64,
     /// Traction battery maximum state of charge
     #[serde(alias = "maxSoc")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub max_soc: f64,
     /// ESS discharge effort toward max FC efficiency
     #[serde(alias = "essDischgToFcMaxEffPerc")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub ess_dischg_to_fc_max_eff_perc: f64,
     /// ESS charge effort toward max FC efficiency
     #[serde(alias = "essChgToFcMaxEffPerc")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub ess_chg_to_fc_max_eff_perc: f64,
     /// Mass moment of inertia per wheel, $kg \cdot m^2$
     #[serde(alias = "wheelInertiaKgM2")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub wheel_inertia_kg_m2: f64,
     /// Number of wheels
     #[serde(alias = "numWheels")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub num_wheels: f64, // TODO: Shouldn't this just be a unsigned integer? u8 would work fine.
     /// Rolling resistance coefficient
     #[serde(alias = "wheelRrCoef")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub wheel_rr_coef: f64,
     /// Wheel radius, $m$
     #[serde(alias = "wheelRadiusM")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub wheel_radius_m: f64,
     /// Wheel coefficient of friction
     #[serde(alias = "wheelCoefOfFric")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub wheel_coef_of_fric: f64,
     /// Speed where the battery reserved for accelerating is zero
     #[serde(alias = "maxAccelBufferMph")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub max_accel_buffer_mph: f64,
     /// Percent of usable battery energy reserved to help accelerate
     #[serde(alias = "maxAccelBufferPercOfUseableSoc")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub max_accel_buffer_perc_of_useable_soc: f64,
     /// Percent SOC buffer for high accessory loads during cycles with long idle time
     #[serde(alias = "percHighAccBuf")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub perc_high_acc_buf: f64,
     /// Speed at which the fuel converter must turn on, $mph$
     #[serde(alias = "mphFcOn")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub mph_fc_on: f64,
     /// Power demand above which to require fuel converter on, $kW$
     #[serde(alias = "kwDemandFcOn")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub kw_demand_fc_on: f64,
     /// Maximum brake regeneration efficiency
     #[serde(alias = "maxRegen")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub max_regen: f64,
     /// Stop/start micro-HEV flag
     pub stop_start: bool,
@@ -333,27 +337,27 @@ pub struct RustVehicle {
     pub force_aux_on_fc: bool,
     /// Alternator efficiency
     #[serde(alias = "altEff")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub alt_eff: f64,
     /// Charger efficiency
     #[serde(alias = "chgEff")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub chg_eff: f64,
     /// Auxiliary load power, $kW$
     #[serde(alias = "auxKw")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub aux_kw: f64,
     /// Transmission mass, $kg$
     #[serde(alias = "transKg")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub trans_kg: f64,
     /// Transmission efficiency
     #[serde(alias = "transEff")]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub trans_eff: f64,
     /// Maximum acceptable ratio of change in ESS energy to expended fuel energy (used in hybrid SOC balancing), $\frac{\Delta E_{ESS}}{\Delta E_{fuel}}$
     #[serde(alias = "essToFuelOkError")]
-    #[cfg_attr(feature = "full", validate(range(min = 0)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0)))]
     pub ess_to_fuel_ok_error: f64,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
@@ -535,11 +539,11 @@ pub struct RustVehicle {
     pub val_msrp: f64,
     /// Fuel converter efficiency peak override, scales entire curve
     #[serde(skip)]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub fc_peak_eff_override: Option<f64>,
     /// Motor efficiency peak override, scales entire curve
     #[serde(skip)]
-    #[cfg_attr(feature = "full", validate(range(min = 0, max = 1)))]
+    #[cfg_attr(feature = "validation", validate(range(min = 0, max = 1)))]
     pub mc_peak_eff_override: Option<f64>,
     #[serde(skip)]
     #[doc(hidden)]
@@ -683,7 +687,7 @@ impl RustVehicle {
     ///     - `max_trac_mps2`
     pub fn set_derived(&mut self) -> anyhow::Result<()> {
         // Vehicle input validation
-        #[cfg(feature = "full")]
+        #[cfg(feature = "validation")]
         self.validate()?;
 
         if self.scenario_name != "Template Vehicle for setting up data types" {
@@ -1068,7 +1072,7 @@ impl SerdeAPI for RustVehicle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "full")]
+    #[cfg(feature = "validation")]
     use validator::ValidationErrors;
 
     #[test]
@@ -1087,7 +1091,7 @@ mod tests {
         // the produced error for the offending field names
     }
 
-    #[cfg(feature = "full")]
+    #[cfg(feature = "validation")]
     #[test]
     fn test_input_validation() {
         // set up vehicle input parameters

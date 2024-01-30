@@ -60,7 +60,8 @@ full = [
     "dep:curl",
     "dep:directories",
     "dep:polynomial",
-    "dep:validator",
     "resources",
+    "validation",
 ]
 resources = ["dep:include_dir"]
+validation = ["dep:validator"]

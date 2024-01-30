@@ -28,5 +28,6 @@ include = ["../../NOTICE"]
 
 [features]
 default = ["full"]
-full = ["fastsim-core/full", "dep:pyo3-log", "resources"]
+full = ["fastsim-core/full", "dep:pyo3-log", "resources", "validation"]
 resources = ["fastsim-core/resources"]
+validation = ["fastsim-core/validation"]
