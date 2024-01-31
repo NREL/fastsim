@@ -31,7 +31,6 @@
 import sys
 import os
 from pathlib import Path
-from fastsim.fastsimrust import abc_to_drag_coeffs
 import numpy as np
 import time
 import pandas as pd
@@ -891,10 +890,12 @@ if SHOW_PLOTS:
 # values.
 
 # %%
-test_veh = fsim.vehicle.Vehicle.from_vehdb(5, to_rust=True).to_rust()
-(drag_coef, wheel_rr_coef) = abc_to_drag_coeffs(test_veh, 25.91, 0.1943, 0.01796, simdrive_optimize=True)
+if "full" in fsim.fastsimrust.enabled_features():
+    from fastsim.fastsimrust import abc_to_drag_coeffs
+    test_veh = fsim.vehicle.Vehicle.from_vehdb(5, to_rust=True).to_rust()
+    (drag_coef, wheel_rr_coef) = abc_to_drag_coeffs(test_veh, 25.91, 0.1943, 0.01796, simdrive_optimize=True)
 
-# %%
-print(f'Drag Coefficient: {drag_coef:.3g}')
-print(f'Wheel Rolling Resistance Coefficient: {wheel_rr_coef:.3g}')
+    print(f'Drag Coefficient: {drag_coef:.3g}')
+    print(f'Wheel Rolling Resistance Coefficient: {wheel_rr_coef:.3g}')
+
 # %%

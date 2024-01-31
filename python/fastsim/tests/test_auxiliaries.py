@@ -3,9 +3,8 @@ from fastsim import auxiliaries
 from fastsim.vehicle import Vehicle
 from fastsim import utils
 from fastsim import fastsimrust
-if "full" in fastsimrust.enabled_features():
-    from fastsim.fastsimrust import abc_to_drag_coeffs
 import numpy as np
+import pytest
 
 class test_auxiliaries(unittest.TestCase):
     def setUp(self):
@@ -49,7 +48,9 @@ class test_auxiliaries(unittest.TestCase):
         self.assertAlmostEqual(0, b_lbf__mph)
         self.assertAlmostEqual(0.020817239083920212, c_lbf__mph2)
 
+    @pytest.mark.skipif("full" not in fastsimrust.enabled_features(), reason='requires "full" feature')
     def test_abc_to_drag_coeffs_rust_port(self):
+        from fastsim.fastsimrust import abc_to_drag_coeffs
         with np.errstate(divide='ignore'):
             veh = Vehicle.from_vehdb(5).to_rust()
             a = 25.91
