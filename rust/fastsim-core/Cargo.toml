@@ -57,11 +57,12 @@ pyo3 = ["dep:pyo3"]
 full = [
     "dep:argmin",
     "dep:argmin-math",
-    "dep:curl",
     "dep:directories",
     "dep:polynomial",
     "resources",
     "validation",
+    "vehicle-import",
 ]
 resources = ["dep:include_dir"]
 validation = ["dep:validator"]
+vehicle-import = ["dep:curl", "full"]

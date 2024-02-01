@@ -40,7 +40,6 @@ pub mod air;
 pub mod cycle;
 pub mod imports;
 pub mod params;
-#[cfg(feature = "pyo3")]
 pub mod pyo3imports;
 pub mod simdrive;
 pub use simdrive::simdrive_impl;
@@ -50,6 +49,7 @@ pub mod thermal;
 pub mod traits;
 pub mod utils;
 pub mod vehicle;
+pub mod vehicle_import;
 pub mod vehicle_thermal;
 pub mod vehicle_utils;
 

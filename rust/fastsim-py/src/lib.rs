@@ -29,7 +29,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<vehicle_thermal::HVACModel>()?;
-    m.add_class::<vehicle_utils::OtherVehicleInputs>()?;
+    m.add_class::<vehicle_import::OtherVehicleInputs>()?;
     m.add_class::<simdrivelabel::LabelFe>()?;
     m.add_class::<simdrivelabel::LabelFePHEV>()?;
     m.add_class::<simdrivelabel::PHEVCycleCalc>()?;
@@ -45,19 +45,18 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
     #[cfg(feature = "full")]
     m.add_function(wrap_pyfunction!(get_label_fe_conv_py, m)?)?;
-    #[cfg(feature = "full")]
+    #[cfg(feature = "vehicle-import")]
     m.add_function(wrap_pyfunction!(
-        vehicle_utils::get_options_for_year_make_model,
+        vehicle_import::get_options_for_year_make_model,
         m
     )?)?;
-    #[cfg(feature = "full")]
+    #[cfg(feature = "vehicle-import")]
     m.add_function(wrap_pyfunction!(
-        vehicle_utils::vehicle_import_by_id_and_year,
+        vehicle_import::vehicle_import_by_id_and_year,
         m
     )?)?;
-    #[cfg(feature = "full")]
-    m.add_function(wrap_pyfunction!(vehicle_utils::import_all_vehicles, m)?)?;
-    m.add_function(wrap_pyfunction!(vehicle_utils::export_vehicle_to_file, m)?)?;
+    #[cfg(feature = "vehicle-import")]
+    m.add_function(wrap_pyfunction!(vehicle_import::import_all_vehicles, m)?)?;
 
     m.add_function(wrap_pyfunction!(enabled_features, m)?)?;
 
