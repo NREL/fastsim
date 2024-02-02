@@ -5,7 +5,6 @@
 //!   or enabling this feature directly), compiles commonly used resources (e.g.
 //!   standard drive cycles) for faster access.
 
-use fastsim_core::simdrivelabel::*;
 use fastsim_core::*;
 use pyo3imports::*;
 
@@ -34,31 +33,8 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<simdrivelabel::LabelFePHEV>()?;
     m.add_class::<simdrivelabel::PHEVCycleCalc>()?;
     m.add_class::<simdrive::simdrive_iter::SimDriveVec>()?;
-
+    add_pyfunctions(m)?;
     cycle::register(py, m)?;
-    #[cfg(feature = "full")]
-    m.add_function(wrap_pyfunction!(vehicle_utils::abc_to_drag_coeffs, m)?)?;
-    m.add_function(wrap_pyfunction!(make_accel_trace_py, m)?)?;
-    m.add_function(wrap_pyfunction!(get_net_accel_py, m)?)?;
-    #[cfg(feature = "full")]
-    m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
-    m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
-    #[cfg(feature = "full")]
-    m.add_function(wrap_pyfunction!(get_label_fe_conv_py, m)?)?;
-    #[cfg(feature = "vehicle-import")]
-    m.add_function(wrap_pyfunction!(
-        vehicle_import::get_options_for_year_make_model,
-        m
-    )?)?;
-    #[cfg(feature = "vehicle-import")]
-    m.add_function(wrap_pyfunction!(
-        vehicle_import::vehicle_import_by_id_and_year,
-        m
-    )?)?;
-    #[cfg(feature = "vehicle-import")]
-    m.add_function(wrap_pyfunction!(vehicle_import::import_all_vehicles, m)?)?;
-
-    m.add_function(wrap_pyfunction!(enabled_features, m)?)?;
-
     Ok(())
 }
+
