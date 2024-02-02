@@ -74,28 +74,3 @@ pub fn enabled_features() -> Vec<String> {
 
     enabled
 }
-
-#[cfg(feature = "pyo3")]
-use pyo3imports::*;
-
-#[cfg(feature = "pyo3")]
-fn add_pyfunctions(m: &PyModule) -> PyResult<()> {
-    #[cfg(feature = "full")]
-    m.add_function(wrap_pyfunction!(abc_to_drag_coeffs, m)?)?;
-    m.add_function(wrap_pyfunction!(make_accel_trace_py, m)?)?;
-    m.add_function(wrap_pyfunction!(get_net_accel_py, m)?)?;
-    #[cfg(feature = "full")]
-    m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
-    m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
-    #[cfg(feature = "full")]
-    m.add_function(wrap_pyfunction!(get_label_fe_conv_py, m)?)?;
-    #[cfg(feature = "vehicle-import")]
-    m.add_function(wrap_pyfunction!(get_options_for_year_make_model, m)?)?;
-    #[cfg(feature = "vehicle-import")]
-    m.add_function(wrap_pyfunction!(vehicle_import_by_id_and_year, m)?)?;
-    #[cfg(feature = "vehicle-import")]
-    m.add_function(wrap_pyfunction!(vehicle_import::import_all_vehicles, m)?)?;
-
-    m.add_function(wrap_pyfunction!(enabled_features, m)?)?;
-    Ok(())
-}
