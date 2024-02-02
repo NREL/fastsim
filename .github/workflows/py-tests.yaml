@@ -1,4 +1,4 @@
-name: tests 
+name: py-tests 
 
 on:
   push:
@@ -30,19 +30,6 @@ jobs:
           with:
             python-version: ${{ matrix.python-version }}
 
-      if: contains(github.event.pull_request.changed_files, 'rust/')
-        - name: install rust
-          uses: actions-rs/toolchain@v1
-          with:
-            profile: minimal
-            toolchain: stable
-            override: true
-
-        - name: Rust unit tests
-          run: |
-            cd rust/ && cargo test
-
-      if: contains(github.event.pull_request.changed_files, 'python/') || contains(github.event.pull_request.changed_files, 'rust/')
         - name: Python unit tests 
           run: |
             pip install -e ".[dev]" && pytest -v python/fastsim/tests/ 

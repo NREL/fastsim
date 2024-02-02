@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
+  call-tests:
+    uses: nrel/fastsim/.github/workflows/rust-tests.yaml@main && nrel/fastsim/.github/workflows/py-tests.yaml@main
   build:
     name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os }}
     strategy:
@@ -42,13 +44,13 @@ jobs:
       - run: rustup target add aarch64-apple-darwin
         if: matrix.os == 'macos'
 
-      - name: run cargo tests
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable 
-          override: true
-      - run: cd rust/ && cargo test
+      # - name: run cargo tests
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #     profile: minimal
+      #     toolchain: stable 
+      #     override: true
+      # - run: cd rust/ && cargo test
 
       - name: set up python
         uses: actions/setup-python@v4
@@ -105,6 +107,9 @@ jobs:
       #       rustup override set nightly-i686-pc-windows-msvc &&
       #       rustup show
 
+#somewhere around this point in the altrios file, theres a if: github.repository
+#== 'nrel/altrios', not sure if that is needed here, the code surrounding the if
+#statement isn't included here
       - name: list dist files
         run: ${{ matrix.ls || 'ls -lh' }} dist/
 
