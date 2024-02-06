@@ -42,12 +42,16 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .extension()
             .and_then(OsStr::to_str)
             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        match extension.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
-            "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
-            "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
+        self.to_writer(File::create(filepath)?, extension)
+    }
+
+    fn to_writer<W: std::io::Write>(&self, wtr: W, format: &str) -> anyhow::Result<()> {
+        match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
+            "json" => serde_json::to_writer(wtr, self)?,
+            "bin" => bincode::serialize_into(wtr, self)?,
             _ => bail!(
-                "Unsupported format {extension:?}, must be one of {:?}",
+                "Unsupported format {format:?}, must be one of {:?}",
                 Self::ACCEPTED_BYTE_FORMATS
             ),
         }
