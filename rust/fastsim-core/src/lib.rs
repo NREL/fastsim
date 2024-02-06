@@ -80,6 +80,7 @@ pub mod pyfunctions {
     use super::*;
     use pyo3imports::*;
     use simdrivelabel::*;
+    #[cfg(feature = "vehicle-import")]
     use vehicle_import::*;
     use vehicle_utils::*;
 

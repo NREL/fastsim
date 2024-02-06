@@ -28,6 +28,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<vehicle_thermal::HVACModel>()?;
+    #[cfg(feature = "vehicle-import")]
     m.add_class::<vehicle_import::OtherVehicleInputs>()?;
     m.add_class::<simdrivelabel::LabelFe>()?;
     m.add_class::<simdrivelabel::LabelFePHEV>()?;
