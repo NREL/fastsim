@@ -74,3 +74,6 @@ pub fn enabled_features() -> Vec<String> {
 
     enabled
 }
+
+#[cfg(feature = "pyo3")]
+use pyo3imports::*;
