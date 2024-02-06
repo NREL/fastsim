@@ -188,8 +188,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Ok(bincode_de)
     }
 
-    /// instantiates an object from a url  
-    /// accepts yaml and json file types  
+    /// Instantiates an object from a url.  Accepts yaml and json file types  
     /// # Arguments  
     /// - url: URL (either as a string or url type) to object  
     /// Note: The URL needs to be a URL pointing directly to a file, for example
@@ -206,8 +205,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         Self::from_reader(response, format)
     }
 
-    /// takes an instantiated Rust object and saves it in the FASTSim data directory in
-    /// a rust_objects folder  
+    /// Takes an instantiated Rust object and saves it in the FASTSim data directory in
+    /// a rust_objects folder.  
     /// WARNING: If there is a file already in the data subdirectory with the
     /// same name, it will be replaced by the new file.  
     /// # Arguments  
