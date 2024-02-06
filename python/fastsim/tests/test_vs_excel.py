@@ -15,11 +15,11 @@ from pathlib import Path
 from math import isclose
 import importlib
 import unittest
+from typing import Dict
+import re
 
 import fastsim as fsim
 from fastsim import simdrive, vehicle, cycle, simdrivelabel
-importlib.reload(simdrivelabel) # useful for debugging
-
 
 RUN_PYTHON = False
 RUN_RUST = True
@@ -36,7 +36,7 @@ else:
     xw_success = False
 
 
-def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
+def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False) -> Dict[str, float]:
     """
     Runs python fastsim through 26 vehicles and returns list of dictionaries 
     containing scenario descriptions.
@@ -53,7 +53,7 @@ def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
     print('Running vehicle sweep.')
     print()
 
-    res_python = {}
+    res = {}
     def to_rust(obj):
         if use_rust:
             return obj.to_rust()
@@ -63,13 +63,21 @@ def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False):
         veh = to_rust(vehicle.Vehicle.from_vehdb(vehno))
         if verbose:
             print('Running ' + veh.scenario_name)
-        res_python[veh.scenario_name] = simdrivelabel.get_label_fe(veh, verbose=False, use_rust=use_rust)
+        if use_rust:
+            res_rust = fsim.fsr.get_label_fe(
+                veh, verbose=False)[0]
+            for rk in RES_SNAKE_KEYS:
+                res[veh.scenario_name][rk] = getattr(res_rust, rk)
+
+        else:
+            res[veh.scenario_name] = simdrivelabel.get_label_fe(
+                veh, verbose=False, use_rust=use_rust)
 
     t1 = time.time()
     print()
     print('Elapsed time: ', round(t1 - t0, 2), 's')
 
-    return res_python
+    return res
 
 
 PREV_RES_PATH = Path(__file__).resolve().parents[1] / 'resources' / 'res_excel.json'
@@ -161,6 +169,15 @@ def run_excel(vehicles=np.arange(1, 28), prev_res_path=PREV_RES_PATH, rerun_exce
 # vehicles for which fairly large discrepancies in efficiencies are expected
 KNOWN_ERROR_LIST = ['Regional Delivery Class 8 Truck']
 
+RES_KEYS = ['labUddsMpgge', 'labHwyMpgge', 'labCombMpgge',
+            'labUddsKwhPerMile', 'labHwyKwhPerMile', 'labCombKwhPerMile',
+            'adjUddsMpgge', 'adjHwyMpgge', 'adjCombMpgge',
+            'adjUddsKwhPerMile', 'adjHwyKwhPerMile', 'adjCombKwhPerMile', 
+            'netAccel', ]
+
+RES_SNAKE_KEYS = [
+    re.sub("([A-Z])", r"_\1", rk).lower() for rk in RES_KEYS
+]
 
 def compare(res_python, res_excel, err_tol=0.001, verbose=True):
     """
@@ -181,12 +198,6 @@ def compare(res_python, res_excel, err_tol=0.001, verbose=True):
 
     common_names = set(res_python.keys()) & set(res_excel.keys())
 
-    res_keys = ['labUddsMpgge', 'labHwyMpgge', 'labCombMpgge',
-                'labUddsKwhPerMile', 'labHwyKwhPerMile', 'labCombKwhPerMile',
-                'adjUddsMpgge', 'adjHwyMpgge', 'adjCombMpgge',
-                'adjUddsKwhPerMile', 'adjHwyKwhPerMile', 'adjCombKwhPerMile', 
-                'netAccel', ]
-
     res_comps = {}
     for vehname in common_names:
         if verbose:
@@ -199,7 +210,7 @@ def compare(res_python, res_excel, err_tol=0.001, verbose=True):
             print("Discrepancy in model year between Excel and Python")
             print("is probably the root cause of efficiency errors below.")
 
-        for res_key in res_keys:
+        for res_key in RES_KEYS:
             if (type(res_python[vehname][res_key]) != np.ndarray) and not(
                 isclose(res_python[vehname][res_key],
                             res_excel[vehname][res_key],
