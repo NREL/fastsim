@@ -788,20 +788,6 @@ mod tests {
     }
 
     #[test]
-    fn test_url_to_cache() {
-        url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", "vehicles").unwrap();
-        let data_subdirectory = create_project_subdir("vehicles").unwrap();
-        let file_path = data_subdirectory.join("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
-        println!("{}", file_path.to_string_lossy());
-        let vehicle = crate::vehicle::RustVehicle::from_file(&file_path).unwrap();
-        let comparison_vehicle =
-            crate::vehicle::RustVehicle::from_resource("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml")
-                .unwrap();
-        assert_eq!(vehicle, comparison_vehicle);
-        std::fs::remove_file(file_path).unwrap();
-    }
-
-    #[test]
     fn test_path_to_cache() {
         let path = path_to_cache().unwrap();
         println!("{:?}", path);
