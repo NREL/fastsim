@@ -1067,9 +1067,5 @@ def get_label_fe_phev(
     props: RustPhysicalProperties,
 ) -> LabelFePHEV:
     ...
-
-def get_label_fe_conv(veh: RustVehicle) -> LabelFe:
-   ...
    
 def enabled_features() -> List[str]: ...
-   

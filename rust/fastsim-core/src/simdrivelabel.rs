@@ -1151,14 +1151,3 @@ mod simdrivelabel_tests {
         assert!(label_fe.approx_eq(&label_fe_truth, tol));
     }
 }
-
-#[cfg(feature = "full")]
-#[cfg(feature = "pyo3")]
-#[pyfunction(name = "get_label_fe_conv")]
-/// pyo3 version of [get_label_fe_conv]
-pub fn get_label_fe_conv_py() -> LabelFe {
-    let veh: vehicle::RustVehicle = vehicle::RustVehicle::mock_vehicle();
-    let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
-    label_fe.veh = vehicle::RustVehicle::default();
-    label_fe
-}
