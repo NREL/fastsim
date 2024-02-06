@@ -39,7 +39,7 @@ import numpy as np
 
 
 def _as_numpy_array(self, *args, **kwargs):
-    return np.array(list(self), *args, **kwargs)
+    return np.array(self.__list__(), *args, **kwargs)
 
 
 setattr(fsr.Pyo3ArrayF64, "__array__", _as_numpy_array)

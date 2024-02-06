@@ -510,7 +510,7 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     sim_drive.sim_drive()
 
     output['nrel_trip_id'] = trp
-    output['distance_mi'] = sum(sim_drive.dist_mi)
+    output['distance_mi'] = sum(sim_drive.dist_mi.__list__())
     duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
     output['avg_speed_mph'] = sum(
         sim_drive.dist_mi) / (duration_sec / 3600.0)
@@ -554,7 +554,7 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     sim_drive.sim_drive()
 
     output['nrel_trip_id'] = trp
-    output['distance_mi'] = sum(sim_drive.dist_mi)
+    output['distance_mi'] = sum(sim_drive.dist_mi.__list__())
     duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
     output['avg_speed_mph'] = sum(
         sim_drive.dist_mi) / (duration_sec / 3600.0)

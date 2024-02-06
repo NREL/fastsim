@@ -143,7 +143,7 @@ pub fn make_accel_trace_py() -> RustCycle {
     make_accel_trace()
 }
 
-pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &str) -> anyhow::Result<f64> {
+pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> anyhow::Result<f64> {
     log::debug!("running `sim_drive_accel`");
     sd_accel.sim_drive_accel(None, None)?;
     if sd_accel.mph_ach.iter().any(|&x| x >= 60.) {
@@ -163,7 +163,7 @@ pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &str) -> anyhow
 #[pyfunction(name = "get_net_accel")]
 /// pyo3 version of [get_net_accel]
 pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> anyhow::Result<f64> {
-    let result = get_net_accel(sd_accel, scenario_name)?;
+    let result = get_net_accel(sd_accel, &scenario_name.to_string())?;
     Ok(result)
 }
 
