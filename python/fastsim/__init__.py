@@ -41,8 +41,16 @@ import numpy as np
 def _as_numpy_array(self, *args, **kwargs):
     return np.array(self.__list__(), *args, **kwargs)
 
-
 setattr(fsr.Pyo3ArrayF64, "__array__", _as_numpy_array)
 setattr(fsr.Pyo3ArrayU32, "__array__", _as_numpy_array)
 setattr(fsr.Pyo3ArrayBool, "__array__", _as_numpy_array)
 setattr(fsr.Pyo3VecF64, "__array__", _as_numpy_array)
+
+
+def _as_iter(self, *args, **kwargs):
+    return iter(self.__list__(), *args, **kwargs)
+
+setattr(fsr.Pyo3ArrayF64, "__iter__", _as_iter)
+setattr(fsr.Pyo3ArrayU32, "__iter__", _as_iter)
+setattr(fsr.Pyo3ArrayBool, "__iter__", _as_iter)
+setattr(fsr.Pyo3VecF64, "__iter__", _as_iter)

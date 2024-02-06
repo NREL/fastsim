@@ -827,7 +827,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
             or isinstance(veh.__getattribute__(key) ,fsr.Pyo3ArrayBool)
             or isinstance(veh.__getattribute__(key), fsr.Pyo3ArrayF64)
         ):
-            veh_dict[key] = veh.__getattribute__(key).__list__()
+            veh_dict[key] = list(veh.__getattribute__(key))
         elif isinstance(veh.__getattribute__(key), np.ndarray):
             veh_dict[key] = list(veh.__getattribute__(key))
         else:
