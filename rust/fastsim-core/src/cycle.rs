@@ -631,7 +631,6 @@ pub struct RustCycle {
 impl SerdeAPI for RustCycle {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
-    // is this enough, or do I have to copy paste in the whole to_cache mathod?
     const CACHE_FOLDER: &'static str = &"cycles";
 
     fn init(&mut self) -> anyhow::Result<()> {
