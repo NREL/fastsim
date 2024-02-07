@@ -541,16 +541,28 @@ if PYMOO_AVAILABLE:
         return res, res_df
 
 
-def get_parser() -> argparse.ArgumentParser:
+def get_parser(
+    def_p:int=4,
+    def_n_max_gen:int=500,
+    def_pop_size:int=12,
+) -> argparse.ArgumentParser:
     """
     Generate parser for optimization hyper params and misc. other params
+
+    Args:
+        def_p (int, optional): default number of processes. Defaults to 4.
+        def_n_max_gen (int, optional): max allowed generations. Defaults to 500.
+        def_pop_size (int, optional): default population size. Defaults to 12.
+
+    Returns:
+        argparse.ArgumentParser: _description_
     """
     parser = argparse.ArgumentParser(description='...')
     parser.add_argument('-p', '--processes', type=int,
-                        default=4, help="Number of pool processes.")
-    parser.add_argument('--n-max-gen', type=int, default=500,
+                        default=def_p, help="Number of pool processes.")
+    parser.add_argument('--n-max-gen', type=int, default=def_n_max_gen,
                         help="PyMOO termination criterion: n_max_gen.")
-    parser.add_argument('--pop-size', type=int, default=12,
+    parser.add_argument('--pop-size', type=int, default=def_pop_size,
                         help="PyMOO population size in each generation.")
     parser.add_argument('--skip-minimize', action="store_true",
                         help="If provided, load previous results.")
