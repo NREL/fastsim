@@ -398,7 +398,7 @@ pub struct RustVehicle {
     #[doc(hidden)]
     #[doc_field(skip_doc)]
     #[serde(default)]
-    #[serde(alias = "fcEffArray")]
+    #[serde(alias = "fcEffArray", skip_serializing)]
     pub fc_eff_array: Vec<f64>,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
@@ -426,7 +426,7 @@ pub struct RustVehicle {
     pub mc_full_eff_array: Vec<f64>,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
-    #[serde(alias = "vehKg")]
+    #[serde(skip)]
     pub veh_kg: f64,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
