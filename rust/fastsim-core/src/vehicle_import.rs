@@ -322,17 +322,18 @@ pub fn get_options_for_year_make_model(
     let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
     let fegov_data_by_year =
         load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
-    if let Some(fegov_db) = fegov_data_by_year.get(&y) {
-        let mut hits = Vec::new();
-        for item in fegov_db.iter() {
-            if item.make == make && item.model == model {
-                hits.push(item.clone());
+    Ok(fegov_data_by_year
+        .get(&y)
+        .and_then(|fegov_db| {
+            let mut hits = Vec::new();
+            for item in fegov_db.iter() {
+                if item.make == make && item.model == model {
+                    hits.push(item.clone());
+                }
             }
-        }
-        Ok(hits)
-    } else {
-        Ok(vec![])
-    }
+            Some(hits)
+        })
+        .unwrap_or_else(|| vec![]))
 }
 
 fn derive_transmission_specs(fegov: &VehicleDataFE) -> (u32, String) {
