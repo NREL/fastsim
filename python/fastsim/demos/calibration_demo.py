@@ -142,6 +142,7 @@ if __name__ == "__main__":
         # optimization, set this much higher.
         def_n_max_gen=3,
         def_pop_size=3,
+        def_p=3,
         # TODO: figure out other terminaton criteria that should be included here.  
     )
     args = parser.parse_args()
