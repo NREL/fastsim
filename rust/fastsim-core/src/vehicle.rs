@@ -724,6 +724,7 @@ impl RustVehicle {
         self.no_elec_aux =
             self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc;
 
+        // TODO: this probably shouldnt be set if already provided
         self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
 
         // discrete array of possible engine power outputs

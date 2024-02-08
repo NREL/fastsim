@@ -73,7 +73,7 @@ class ModelObjectives(object):
     Class for calculating eco-driving objectives
     """
 
-    # dictionary of bincode models to be simulated
+    # dictionary of json models to be simulated
     models: Dict[str, str]
 
     # dictionary of test data to calibrate against
@@ -256,13 +256,13 @@ class ModelObjectives(object):
         assert len(xs) == len(self.params), f"({len(xs)} != {len(self.params)}"
         paths = [fullpath.split(".") for fullpath in self.params]
         t0 = time.perf_counter()
-        # Load instances from bincode strings
+        # Load instances from json strings
         if not self.use_simdrivehot:
-            sim_drives = {key: fsr.RustSimDrive.from_bincode(
-                model_bincode) for key, model_bincode in self.models.items()}
+            sim_drives = {key: fsr.RustSimDrive.from_json(
+                model_json) for key, model_json in self.models.items()}
         else:
-            sim_drives = {key: fsr.SimDriveHot.from_bincode(
-                model_bincode) for key, model_bincode in self.models.items()}
+            sim_drives = {key: fsr.SimDriveHot.from_json(
+                model_json) for key, model_json in self.models.items()}
         # Update all model parameters
         for key in sim_drives.keys():
             sim_drives[key] = fsim.utils.set_attrs_with_path(
