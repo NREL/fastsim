@@ -1,10 +1,7 @@
 from typing import Dict
 from pathlib import Path
-import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
-import pickle
-from cycler import cycler
+import plotly.express as px
 
 import fastsim as fsim
 import fastsim.fastsimrust as fsr
@@ -104,10 +101,8 @@ def get_cal_and_val_objs():
             val_sim_drives[key] = sd.to_json()
 
     params_and_bounds = (
-        (
-            "veh.fc_peak_eff",
-            (0.2, 0.5),
-        ),
+        ("veh.fc_peak_eff", (0.2, 0.5)),
+        ("veh.fc_peak_eff", (0.2, 0.5)),
     )
     params = [pb[0] for pb in params_and_bounds]
     params_bounds = [pb[1] for pb in params_and_bounds]
@@ -144,6 +139,7 @@ if __name__ == "__main__":
         def_n_max_gen=3,
         def_pop_size=3,
         def_p=3,
+        def_save_path=None,
         # TODO: figure out other terminaton criteria that should be included here.
     )
     args = parser.parse_args()
@@ -153,8 +149,12 @@ if __name__ == "__main__":
     # should be at least as big as n_processes
     pop_size = args.pop_size
     run_minimize = not (args.skip_minimize)
-    save_path = Path(args.save_path)
-    save_path.mkdir(exist_ok=True)  # TODO: make this not save inside fastsim package
+    if args.save_path is not None:
+        save_path = Path(args.save_path) 
+        save_path.mkdir(exist_ok=True)
+    else:
+        save_path = None
+
     show_plots = args.show
     make_plots = args.make_plots
 
@@ -229,8 +229,6 @@ if __name__ == "__main__":
 
     best_row = res_df["euclidean"].argmin()
     best_df = res_df.iloc[best_row, :]
-    res_df["fuel euclidean"] = (res_df.filter(like="fs_cumu") ** 2).sum(1) ** (1 / 2)
-    res_df["temp euclidean"] = (res_df.filter(like="fc_te") ** 2).sum(1) ** (1 / 2)
     param_vals = res_df.iloc[best_row, : len(cal_objectives.params)].to_numpy()
 
     _, sds = cal_objectives.get_errors(
@@ -250,6 +248,21 @@ if __name__ == "__main__":
     )
 
     # save calibrated vehicle to file
-    sds[list(sds.keys())[0]].veh.to_file(
-        str(save_path / "2016_TOYOTA_Camry_4cyl_2WD_optimized.yaml")
-    )
+    if save_path is not None:
+        sds[list(sds.keys())[0]].veh.to_file(
+            str(save_path / "2016_TOYOTA_Camry_4cyl_2WD_optimized.yaml")
+        )
+
+    if make_plots and save_path is not None:
+        fig = px.parallel_coordinates(
+            res_df, 
+            color="euclidean", 
+            dimensions=res_df.columns,
+            color_continuous_scale=px.colors.diverging.Tealrose
+        )
+        fig.update_layout(
+            xaxis_title="Parameters and Objectives",
+            yaxis_title="Values",
+            coloraxis_colorbar=dict(title="Euclidean Min")
+        )
+        fig.write_html(save_path / "parallel coord.html", auto_open=True)

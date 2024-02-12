@@ -526,14 +526,14 @@ if PYMOO_AVAILABLE:
             columns=[param for param in problem.mod_obj.params],
         )
 
-        Path(save_path).mkdir(exist_ok=True, parents=True)
-        # with open(Path(save_path) / "pymoo_res.pickle", 'wb') as file:
-        #     pickle.dump(res, file)
+        if save_path is not None:
+            Path(save_path).mkdir(exist_ok=True, parents=True)
 
         res_df = pd.concat([x_df, f_df], axis=1)
         res_df['euclidean'] = (
             res_df.iloc[:, len(problem.mod_obj.params):] ** 2).sum(1).pow(1/2)
-        res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
+        if save_path is not None:
+            res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
 
         t1 = time.perf_counter()
         print(f"Elapsed time to run minimization: {t1-t0:.5g} s")
@@ -542,9 +542,12 @@ if PYMOO_AVAILABLE:
 
 
 def get_parser(
+    def_description:str="Programm for calibrating fastsim models.",
     def_p:int=4,
     def_n_max_gen:int=500,
     def_pop_size:int=12,
+    def_save_path:Optional[str]="pymoo_res"
+
 ) -> argparse.ArgumentParser:
     """
     Generate parser for optimization hyper params and misc. other params
@@ -553,25 +556,56 @@ def get_parser(
         def_p (int, optional): default number of processes. Defaults to 4.
         def_n_max_gen (int, optional): max allowed generations. Defaults to 500.
         def_pop_size (int, optional): default population size. Defaults to 12.
+        def_save_path (str, optional): default save path.  Defaults to `pymoo_res`.
 
     Returns:
         argparse.ArgumentParser: _description_
     """
-    parser = argparse.ArgumentParser(description='...')
-    parser.add_argument('-p', '--processes', type=int,
-                        default=def_p, help="Number of pool processes.")
-    parser.add_argument('--n-max-gen', type=int, default=def_n_max_gen,
-                        help="PyMOO termination criterion: n_max_gen.")
-    parser.add_argument('--pop-size', type=int, default=def_pop_size,
-                        help="PyMOO population size in each generation.")
-    parser.add_argument('--skip-minimize', action="store_true",
-                        help="If provided, load previous results.")
-    parser.add_argument('--save-path', type=str, default="pymoo_res",
-                        help="File location to save results.")
-    parser.add_argument('--show', action="store_true",
-                        help="If provided, shows plots.")
-    parser.add_argument("--make-plots", action="store_true",
-                        help="Generates plots, if provided.")
-    parser.add_argument("--use-simdrivehot", action="store_true",
-                        help="Use fsr.SimDriveHot rather than fsr.RustSimDrive.")
+    parser = argparse.ArgumentParser(description=def_description)
+    parser.add_argument(
+        '-p', 
+        '--processes', 
+        type=int,
+        default=def_p, 
+        help="Number of pool processes."
+    )
+    parser.add_argument(
+        '--n-max-gen', 
+        type=int, 
+        default=def_n_max_gen,
+        help="PyMOO termination criterion: n_max_gen."
+    )
+    parser.add_argument(
+        '--pop-size', 
+        type=int, 
+        default=def_pop_size,
+        help="PyMOO population size in each generation."
+    )
+    parser.add_argument(
+        '--skip-minimize', 
+        action="store_true",
+        help="If provided, load previous results."
+    )
+    parser.add_argument(
+        '--save-path', 
+        type=str, 
+        default=def_save_path,               
+        help="File location to save results." + (" If not provided, results are not saved" if def_save_path is None else "")
+    )
+    parser.add_argument(
+        '--show', 
+        action="store_true",
+        help="If provided, shows plots."
+    )
+    parser.add_argument(
+        "--make-plots", 
+        action="store_true",
+        help="Generates plots, if provided."
+    )
+    parser.add_argument(
+        "--use-simdrivehot", 
+        action="store_true",
+        help="Use fsr.SimDriveHot rather than fsr.RustSimDrive."
+    )
+    
     return parser
