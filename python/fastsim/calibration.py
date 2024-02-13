@@ -542,7 +542,7 @@ if PYMOO_AVAILABLE:
 
 
 def get_parser(
-    def_description:str="Programm for calibrating fastsim models.",
+    def_description:str="Program for calibrating fastsim models.",
     def_p:int=4,
     def_n_max_gen:int=500,
     def_pop_size:int=12,
@@ -567,19 +567,31 @@ def get_parser(
         '--processes', 
         type=int,
         default=def_p, 
-        help="Number of pool processes."
+        help=f"Number of pool processes. Defaults to {def_p}"
     )
     parser.add_argument(
         '--n-max-gen', 
         type=int, 
         default=def_n_max_gen,
-        help="PyMOO termination criterion: n_max_gen."
+        help=f"PyMOO termination criterion: n_max_gen. Defaults to {def_n_max_gen}"
+    )
+    parser.add_argument(
+        '--xtol',
+        type=float,
+        default=DMOT().x.termination.tol,
+        help=f"PyMOO termination criterion: xtol. Defaluts to {DMOT().x.termination.tol}"
+    )
+    parser.add_argument(
+        '--ftol',
+        type=float,
+        default=DMOT().f.termination.tol,
+        help=f"PyMOO termination criterion: ftol. Defaults to {DMOT().f.termination.tol}"
     )
     parser.add_argument(
         '--pop-size', 
         type=int, 
         default=def_pop_size,
-        help="PyMOO population size in each generation."
+        help=f"PyMOO population size in each generation. Defaults to {def_pop_size}"
     )
     parser.add_argument(
         '--skip-minimize', 
