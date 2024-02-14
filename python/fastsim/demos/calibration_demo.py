@@ -1,3 +1,9 @@
+"""
+Script for demonstrating how to calibrate a vehicle model.  See [FASTSim
+Calibration/Validation documentation](https://nrel.github.io/fastsim/cal_and_val.html)
+for more info on how to use this.  
+"""
+
 from typing import Dict
 from pathlib import Path
 import pandas as pd
@@ -6,11 +12,13 @@ import plotly.express as px
 import fastsim as fsim
 import fastsim.fastsimrust as fsr
 
-
 use_nsga2 = True
 
+# density of fuel
 rho_fuel_kg_per_ml = 0.743e-3
+# lower heating value of fuel
 lhv_fuel_btu_per_lbm = 18_344  # from "2012FordFusionV6Overview V5.pdf"
+# conversoion factors
 lbm_per_kg = 2.2
 btu_per_kj = 0.948
 lhv_fuel_kj_per_kg = lhv_fuel_btu_per_lbm * lbm_per_kg / btu_per_kj
@@ -24,6 +32,7 @@ def load_data() -> Dict[str, pd.DataFrame]:
     Returns:
         Dict[str, pd.DataFrame]: dictionary of dataframes
     """
+    # Change this to whatever your data directory is
     trip_dir = fsim.package_root() / "resources/calibration_demo_assets/dyno_data"
     # full data
     dfs_raw = dict()
@@ -55,7 +64,9 @@ def load_data() -> Dict[str, pd.DataFrame]:
 def get_cal_and_val_objs():
     dfs = load_data()
 
-    # Separate calibration and validation cycles
+    # Separate calibration and validation cycles  
+    # tuple of regex patterns that match cycles to be used for calibration; any cycles
+    # not selected for calibration are reserved for validation.  
     cal_cyc_patterns = ("12", "13", "14")
     dfs_cal = dict()
     for key in dfs.keys():
@@ -74,6 +85,7 @@ def get_cal_and_val_objs():
     cal_sim_drives = dict()
     val_sim_drives = dict()
     for key in dfs.keys():
+        # construct cycle from dyno test data
         cycs[key] = fsim.cycle.Cycle.from_dict(
             {
                 "time_s": dfs[key]["Time[s]"],
@@ -100,13 +112,16 @@ def get_cal_and_val_objs():
             val_sim_drives[key] = sd.to_json()
 
     params_and_bounds = (
-        ("veh.fc_peak_eff", (0.2, 0.5)),
-        ("veh.fc_peak_eff", (0.2, 0.5)),
+        # `veh.fc_peak_eff` is allowed to vary between 0.2 and 0.5
+        ("veh.fc_peak_eff", (0.2, 0.5)), 
     )
     params = [pb[0] for pb in params_and_bounds]
     params_bounds = [pb[1] for pb in params_and_bounds]
     obj_names = [
-        ("fs_cumu_mj_out_ach", "Fuel_Energy_Calc[MJ]"),
+        (
+            "fs_cumu_mj_out_ach",  # fastsim signal name
+            "Fuel_Energy_Calc[MJ]" # matching test data signal to be used as benchmark
+        ),
     ]
 
     cal_objectives = fsim.calibration.ModelObjectives(
@@ -229,6 +244,12 @@ if __name__ == "__main__":
         # with open(save_path / "pymoo_res.pickle", 'rb') as file:
         #     res = pickle.load(file)
 
+    # ***********************************************************************************
+    # IMPORTANT NOTE: usually, all the stuff that happens below this line is in another
+    # file that can be run interactively to enable exploration of results besides the
+    # best euclidean result.  This is not particularly practical for a demo.
+    # ***********************************************************************************
+
     res_df["euclidean"] = (
         (res_df.iloc[:, len(cal_objectives.params) :] ** 2).sum(1).pow(1 / 2)
     )
@@ -253,7 +274,7 @@ if __name__ == "__main__":
         plotly=make_plots,
     )
 
-    # save calibrated vehicle to file
+    # save calibrated vehicle based on euclidean-minimized result to file
     if save_path is not None:
         sds[list(sds.keys())[0]].veh.to_file(
             str(save_path / "2016_TOYOTA_Camry_4cyl_2WD_optimized.yaml")

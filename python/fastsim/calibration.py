@@ -602,7 +602,9 @@ def get_parser(
         '--save-path', 
         type=str, 
         default=def_save_path,               
-        help="File location to save results." + (" If not provided, results are not saved" if def_save_path is None else "")
+        help="File location to save results dataframe with rows of parameter and corresponding" 
+            + " objective values and any optional plots." 
+            + (" If not provided, results are not saved" if def_save_path is None else "")
     )
     parser.add_argument(
         '--show', 
