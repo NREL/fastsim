@@ -31,7 +31,6 @@ def load_data() -> Dict[str, pd.DataFrame]:
     for file in trip_dir.iterdir():
         print("loading: ", file.resolve())
         dfs_raw[file.stem] = pd.read_csv(file)
-        # TODO: resample to 1 Hz
         # clip time at zero seconds
         dfs_raw[file.stem] = dfs_raw[file.stem][dfs_raw[file.stem]["Time[s]"] >= 0.0]
 
@@ -107,7 +106,6 @@ def get_cal_and_val_objs():
     params = [pb[0] for pb in params_and_bounds]
     params_bounds = [pb[1] for pb in params_and_bounds]
     obj_names = [
-        # ("fs_kw_out_ach", "Fuel_Power_Calc[kW]"),
         ("fs_cumu_mj_out_ach", "Fuel_Energy_Calc[MJ]"),
     ]
 
@@ -166,6 +164,8 @@ if __name__ == "__main__":
             algorithm = fsim.calibration.NSGA2(
                 # size of each population
                 pop_size=pop_size,
+                # LatinHyperCube sampling seems to be more effective than the default
+                # random sampling
                 sampling=fsim.calibration.LHS(),
             )
         else:
@@ -177,6 +177,8 @@ if __name__ == "__main__":
                 ),
                 # size of each population
                 pop_size=pop_size,
+                # LatinHyperCube sampling seems to be more effective than the default
+                # random sampling
                 sampling=fsim.calibration.LHS(),
             )
         termination = fsim.calibration.DMOT(
@@ -184,6 +186,10 @@ if __name__ == "__main__":
             n_max_gen=n_max_gen,
             # evaluate tolerance over this interval of generations every
             period=5,
+            # parameter variation tolerance
+            xtol=args.xtol,
+            # objective variation tolerance
+            ftol=args.ftol
         )
 
         if n_processes == 1:
@@ -242,7 +248,7 @@ if __name__ == "__main__":
     val_objectives.get_errors(
         val_objectives.update_params(param_vals),
         plot_save_dir=save_path,
-        show=show_plots,
+        show=show_plots and make_plots,
         plot=make_plots,
         plotly=make_plots,
     )
@@ -253,11 +259,11 @@ if __name__ == "__main__":
             str(save_path / "2016_TOYOTA_Camry_4cyl_2WD_optimized.yaml")
         )
 
-    if make_plots and save_path is not None:
+    if make_plots and save_path is not None and len(res_df) > 1:
+        res_df.insert(0, 'index', res_df.index)
         fig = px.parallel_coordinates(
             res_df, 
             color="euclidean", 
-            dimensions=res_df.columns,
             color_continuous_scale=px.colors.diverging.Tealrose
         )
         fig.update_layout(
@@ -266,3 +272,5 @@ if __name__ == "__main__":
             coloraxis_colorbar=dict(title="Euclidean Min")
         )
         fig.write_html(save_path / "parallel coord.html", auto_open=True)
+    else:
+        print("Skipping parallel coordinates plot because only 1 design was found.")
