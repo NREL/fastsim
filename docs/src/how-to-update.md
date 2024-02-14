@@ -16,7 +16,7 @@ Run the following in the repository root directory:
 
 ## Publishing
 1. Update `book.toml` or files in `docs/src/`
-1. Make sure the docs look good locally by running the 
+1. Make sure the docs look good locally by running the steps in [Serving Locally](#serving-locally)
 1. Commit files and push to `main` branch
 
 After that, a GitHub action will build the book and publish it [here](https://pages.github.nrel.gov/MBAP/mbap-computing/)
