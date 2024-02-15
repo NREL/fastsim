@@ -1,6 +1,24 @@
 # Calibration and Validation of Vehicle Models
+FASTSim powertrain models can have varying levels of calibration and resolution based on available calibration and validation data. In the simplest (US) cases, the only available validation data for a powertrain model is the EPA "window sticker" energy consumption rates. However, there are also situations in which detailed dynamometer or on-road data is available for a particular vehicle, enabling much more detailed model calibration. This documentation is meant to summarize these various calibration levels and the tools available to help with more detailed calibration.
 
-# General Guidelines
+## Calibration/Validation Levels
+
+| Level | Calibration | Validation | 
+| --- | --- | --- | 
+| 0 | Vehicle is parameterized without any fitting to performance data. This is called __parameterization__, not calibration.  | Could be none or could be validated against aggregate energy consumption data like EPA window sticker values. | 
+| 1 | Vehicle parameters are adjusted so that model results reasonably match test data for aggregate, cycle-level data (e.g. fuel usage, net SOC change). | Model results reasonably match at least some aggregate, cycle-level test data not used in any calibration process. |
+| 2 | Vehicle parameters are adjusted so that model results reasonably match test data for time-resolved test data (e.g. instantaneous fuel usage, instantaneous cumulative fuel usage, instantaneous SOC). | Model results reasonably match at least some time-resolved test data not used in any calibration process. |
+| 3 | Some amount of component-level thermal modeling is included and vehicle parameters are adjusted so that model results reasonably match test data for time-resolved test data (e.g. instantaneous fuel usage, instantaneous cumulative fuel usage, instantaneous SOC). | Model results reasonably match time-resolved test data not used in any calibration process that covers various temperatures and/vehcile transient thermal states. |
+
+Examples of calibration levels 0, 2, and 3 from the [FASTSim Validation Report](https://www.nrel.gov/docs/fy22osti/81097.pdf):
+
+![image](https://github.com/NREL/fastsim/assets/4818940/1b7dae5d-b328-406e-9e2c-07abadff7a3a)
+
+![image](https://github.com/NREL/fastsim/assets/4818940/530f6a15-8400-4618-a97a-da67609f6ecd)
+
+![image](https://github.com/NREL/fastsim/assets/4818940/8483661f-dee4-4d59-9d69-e6d54dae0100)
+
+## Calibration Level 2 Guidelines
 - Copy
   [calibration_demo.py](https://github.com/NREL/fastsim/blob/fastsim-2/python/fastsim/demos/calibration_demo.py)
   to your project directory and modify as needed.
