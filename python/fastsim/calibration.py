@@ -6,6 +6,7 @@ import pickle
 import argparse
 import pandas as pd
 import numpy as np
+import numpy.typing as npt
 import json
 import time
 import matplotlib.pyplot as plt
@@ -48,20 +49,22 @@ import fastsim as fsim
 import fastsim.fastsimrust as fsr
 
 
-def get_error_val(model, test, time_steps):
-    """Returns time-averaged error for model and test signal.
-    Arguments:
-    ----------
-    model: array of values for signal from model
-    test: array of values for signal from test data
-    time_steps: array (or scalar for constant) of values for model time steps [s]
-    test: array of values for signal from test
+def get_error_val(
+    model: npt.NDArray[np.float64], 
+    test: npt.NDArray[np.float64], 
+    time_steps: npt.NDArray[np.float64]
+) -> float:
+    """
+    Returns time-averaged error for model and test signal.
 
-    Output:
-    -------
-    err: integral of absolute value of difference between model and
-    test per time"""
+    Args:
+        model (npt.NDArray[np.float64]): array of values for signal from model
+        test (npt.NDArray[np.float64]): array of values for signal from test data
+        time_steps (npt.NDArray[np.float64]): array (or scalar for constant) of values for model time steps [s]
 
+    Returns:
+        float: integral of absolute value of difference between model and test per time
+    """
     assert len(model) == len(test) == len(
         time_steps), f"{len(model)}, {len(test)}, {len(time_steps)}"
 
@@ -124,20 +127,23 @@ class ModelObjectives(object):
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
-        Dict[str, fsim.simdrive.SimDrive],
+        Tuple[Dict[str, fsim.simdrive.SimDrive], Dict[str, Dict[str, float]]]
     ]:
         """
         Calculate model errors w.r.t. test data for each element in dfs/models for each objective.
-        Arguments:
-        ----------
-            - sim_drives: dictionary with user-defined keys and SimDrive or SimDriveHot instances
-            - return_mods: if true, also returns dict of solved models
-            - plot: if true, plots objectives using matplotlib.pyplot
-            - plot_save_dir: directory in which to save plots.  If `None` (default), plots are not saved.   
-            - plot_perc_err: whether to include % error axes in plots
-            - show: whether to show matplotlib.pyplot plots
-            - fontsize: plot font size
-            - plotly: whether to generate plotly plots, which can be opened manually in a browser window
+
+        Args:
+            sim_drives (Dict[str, fsr.RustSimDrive  |  fsr.SimDriveHot]): dictionary with user-defined keys and SimDrive or SimDriveHot instances
+            return_mods (bool, optional): if true, also returns dict of solved models. Defaults to False.
+            plot (bool, optional): if true, plots objectives using matplotlib.pyplot. Defaults to False.
+            plot_save_dir (Optional[str], optional): directory in which to save plots. If None, plots are not saved. Defaults to None.
+            plot_perc_err (bool, optional): whether to include % error axes in plots. Defaults to False.
+            show (bool, optional): whether to show matplotlib.pyplot plots. Defaults to False.
+            fontsize (float, optional): plot font size. Defaults to 12.
+            plotly (bool, optional): whether to generate plotly plots, which can be opened manually in a browser window. Defaults to False.
+
+        Returns:
+            Objectives and optionally solved models
         """
         # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
         # This would make `from typing import Union` unnecessary

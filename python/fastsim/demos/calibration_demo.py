@@ -4,7 +4,7 @@ Calibration/Validation documentation](https://nrel.github.io/fastsim/cal_and_val
 for more info on how to use this.  
 """
 
-from typing import Dict
+from typing import Dict, Tuple, List
 from pathlib import Path
 import pandas as pd
 import plotly.express as px
@@ -61,7 +61,18 @@ def load_data() -> Dict[str, pd.DataFrame]:
     return dfs
 
 
-def get_cal_and_val_objs():
+def get_cal_and_val_objs(
+    dfs:Dict[str, pd.DataFrame]=load_data(),
+) -> Tuple[fsim.cal.ModelObjectives, fsim.cal.ModelObjectives, List[Tuple[float, float]]]:
+    """
+    Returns objects to be used by PyMOO optimizer
+
+    Args:
+        dfs (Dict[str, pd.DataFrame]): output of `load_data`
+
+    Returns:
+        Tuple[fsim.cal.ModelObjectives, fsim.cal.ModelObjectives, List[Tuple[float, float]]]: _description_
+    """
     dfs = load_data()
 
     # Separate calibration and validation cycles  
@@ -116,7 +127,7 @@ def get_cal_and_val_objs():
         ("veh.fc_peak_eff", (0.2, 0.5)), 
     )
     params = [pb[0] for pb in params_and_bounds]
-    params_bounds = [pb[1] for pb in params_and_bounds]
+    bounds = [pb[1] for pb in params_and_bounds]
     obj_names = [
         (
             "fs_cumu_mj_out_ach",  # fastsim signal name
@@ -142,7 +153,7 @@ def get_cal_and_val_objs():
         verbose=False,
     )
 
-    return cal_objectives, val_objectives, params_bounds
+    return cal_objectives, val_objectives, bounds
 
 
 if __name__ == "__main__":
