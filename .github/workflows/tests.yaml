@@ -38,5 +38,5 @@ jobs:
 
       - name: Python unit tests 
         run: |
-          pip install -e ".[dev]" && pytest -v python/fastsim/tests/ 
+          pip install ".[dev]" && pytest -v python/fastsim/tests/ 
           pytest -v python/fastsim/demos/
