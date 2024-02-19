@@ -164,7 +164,6 @@ if __name__ == "__main__":
         def_pop_size=3,
         def_p=3,
         def_save_path=None,
-        # TODO: figure out other terminaton criteria that should be included here.
     )
     args = parser.parse_args()
 
