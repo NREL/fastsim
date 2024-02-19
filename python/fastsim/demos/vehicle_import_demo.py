@@ -9,15 +9,28 @@ import os, pathlib
 import fastsim.fastsimrust as fsr
 import fastsim.utils as utils
 
+import tempfile
+
 #for testing demo files, false when running automatic tests
 SHOW_PLOTS = utils.show_plots()
 
 # %%
-# Setup some directories
-THIS_DIR = pathlib.Path(__file__).parent.absolute()
-OUTPUT_DIR = pathlib.Path(THIS_DIR) / "test_output"
-if not OUTPUT_DIR.exists():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+if SHOW_PLOTS:
+    # Setup some directories
+    THIS_DIR = pathlib.Path(__file__).parent.absolute()
+    # If the current directory is the fastsim installation directory, then the
+    # output directory should be temporary directory
+    if "site-packages/fastsim" in str(pathlib.Path(THIS_DIR)):
+        OUTPUT_DIR_FULL = tempfile.TemporaryDirectory()
+        OUTPUT_DIR = OUTPUT_DIR_FULL.name
+        is_temp_dir = True
+    # If the current directory is not the fastsim installation directory, find or
+    # create "demo_output" directory to save outputs
+    else:
+        OUTPUT_DIR = pathlib.Path(THIS_DIR) / "demo_output"
+        if not OUTPUT_DIR.exists():
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        is_temp_dir = False
 
 # %%
 # List available options for the given year / make / model
@@ -66,7 +79,8 @@ other_inputs = fsr.OtherVehicleInputs(
 
 rv = fsr.vehicle_import_by_id_and_year(data.id, int(year), other_inputs)
 
-fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle.yaml"))
+if SHOW_PLOTS:
+    fsr.export_vehicle_to_file(rv, os.path.join(OUTPUT_DIR, "demo-vehicle.yaml"))
 
 # %%
 # Alternative API for importing all vehicles at once
@@ -84,3 +98,5 @@ vehs = fsr.import_all_vehicles(int(year), make, model, other_inputs)
 if SHOW_PLOTS:
     for v in vehs:
         print(f"Imported {v.scenario_name}")
+    if is_temp_dir:
+        OUTPUT_DIR_FULL.cleanup()

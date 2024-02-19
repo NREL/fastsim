@@ -7,12 +7,19 @@ from typing import Union, List, Optional
 import numpy as np
 from numpy.polynomial import Chebyshev
 
+import tempfile
+import os
+# import pathlib
+
 import fastsim
 import fastsim.fastsimrust as fsr
 from fastsim.auxiliaries import set_nested_values
+import fastsim.utils as utils
 
-DO_PLOTS = False
+DO_PLOTS = utils.show_plots()
+# if true tests Python versions of the functions
 USE_PYTHON = True
+# if true tests Rust versions of the functions
 USE_RUST = True
 
 
@@ -340,6 +347,8 @@ class TestCoasting(unittest.TestCase):
     
     def test_that_we_can_coast(self):
         "Test the standard interface to Eco-Approach for 'free coasting'"
+        if DO_PLOTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
             self.sim_drive.init_for_step(init_soc=self.veh.max_soc)
@@ -354,7 +363,7 @@ class TestCoasting(unittest.TestCase):
                     self.sim_drive_coast.cyc,
                     use_mph=False,
                     title="Test That We Can Coast",
-                    save_file='junk-test-that-we-can-coast.png')
+                    save_file= os.path.join(OUTPUT_DIR.name, 'junk-test-that-we-can-coast.png'))
         if USE_RUST:
             self.assertFalse(
                 self.ru_sim_drive.sim_params.coast_allow,
@@ -384,7 +393,9 @@ class TestCoasting(unittest.TestCase):
                     self.ru_sim_drive_coast.cyc,
                     use_mph=False,
                     title="Test That We Can Coast",
-                    save_file='junk-test-that-we-can-coast-rust.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-that-we-can-coast-rust.png'))
+        if DO_PLOTS:
+            OUTPUT_DIR.cleanup()
 
     def test_eco_approach_modeling(self):
         "Test a simplified model of eco-approach"
@@ -678,6 +689,8 @@ class TestCoasting(unittest.TestCase):
     
     def test_logic_to_enter_eco_approach_automatically(self):
         "Test that we can auto-enter eco-approach"
+        if DO_PLOTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             trapz = self.trapz.copy()
             veh = fastsim.vehicle.Vehicle.from_vehdb(5)
@@ -693,7 +706,7 @@ class TestCoasting(unittest.TestCase):
                     sd.cyc,
                     use_mph=False,
                     title="Logic to Enter Eco-Approach Automatically (no 1)",
-                    save_file='junk-test-logic-to-enter-eco-approach-automatically-1.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-logic-to-enter-eco-approach-automatically-1.png'))
             trapz2 = fastsim.cycle.Cycle.from_dict(
                 fastsim.cycle.resample(
                     fastsim.cycle.make_cycle(
@@ -716,11 +729,11 @@ class TestCoasting(unittest.TestCase):
                     sd.cyc,
                     use_mph=False,
                     title="Logic to Enter Eco-Approach Automatically (no 2)",
-                    save_file='junk-test-logic-to-enter-eco-approach-automatically-2.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-logic-to-enter-eco-approach-automatically-2.png'))
                 make_dvdd_plot(
                     sd.cyc,
                     use_mph=False,
-                    save_file='junk-test-logic-to-enter-eco-approach-automatically-3-dvdd.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-logic-to-enter-eco-approach-automatically-3-dvdd.png'),
                     coast_to_break_speed_m__s=11.0
                 )
         if USE_RUST:
@@ -740,7 +753,7 @@ class TestCoasting(unittest.TestCase):
                     sd.cyc,
                     use_mph=False,
                     title="Logic to Enter Eco-Approach Automatically (no 1)",
-                    save_file='junk-test-logic-to-enter-eco-approach-automatically-1-rust.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-logic-to-enter-eco-approach-automatically-1-rust.png'))
             trapz2 = fastsim.cycle.Cycle.from_dict(
                 fastsim.cycle.resample(
                     fastsim.cycle.make_cycle(
@@ -765,16 +778,20 @@ class TestCoasting(unittest.TestCase):
                     sd.cyc,
                     use_mph=False,
                     title="Logic to Enter Eco-Approach Automatically (no 2)",
-                    save_file='junk-test-logic-to-enter-eco-approach-automatically-2-rust.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-logic-to-enter-eco-approach-automatically-2-rust.png'))
                 make_dvdd_plot(
                     sd.cyc,
                     use_mph=False,
-                    save_file='junk-test-logic-to-enter-eco-approach-automatically-3-dvdd-rust.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-logic-to-enter-eco-approach-automatically-3-dvdd-rust.png'),
                     coast_to_break_speed_m__s=11.0
                 )
+        if DO_PLOTS:
+            OUTPUT_DIR.cleanup()
 
     def test_that_coasting_works_going_uphill(self):
         "Test coasting logic while hill climbing"
+        if DO_PLOTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             trapz = fastsim.cycle.Cycle.from_dict(
                 fastsim.cycle.resample(
@@ -812,11 +829,11 @@ class TestCoasting(unittest.TestCase):
                     sd.cyc,
                     use_mph=False,
                     title="Test That Coasting Works Going Uphill",
-                    save_file='junk-test_that_coasting_works_going_uphill-trace.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_works_going_uphill-trace.png'))
                 make_dvdd_plot(
                     sd.cyc,
                     use_mph=False,
-                    save_file='junk-test_that_coasting_works_going_uphill-dvdd.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_works_going_uphill-dvdd.png'),
                     coast_to_break_speed_m__s=5.0,
                     additional_xs=vavgs,
                     additional_ys=ks
@@ -860,18 +877,22 @@ class TestCoasting(unittest.TestCase):
                     sd.cyc,
                     use_mph=False,
                     title="Test That Coasting Works Going Uphill",
-                    save_file='junk-test_that_coasting_works_going_uphill-trace-rust.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_works_going_uphill-trace-rust.png'))
                 make_dvdd_plot(
                     sd.cyc,
                     use_mph=False,
-                    save_file='junk-test_that_coasting_works_going_uphill-dvdd-rust.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_works_going_uphill-dvdd-rust.png'),
                     coast_to_break_speed_m__s=5.0,
                     additional_xs=vavgs,
                     additional_ys=ks
                 )
+        if DO_PLOTS:
+            OUTPUT_DIR.cleanup()
 
     def test_that_coasting_logic_works_going_uphill(self):
         "When going uphill, we want to ensure we can still hit our coasting target"
+        if DO_PLOTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             grade = 0.01
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -900,7 +921,7 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Uphill (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-5.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-5.png'))
             # assert we have grade set correctly
             self.assertTrue((sd.cyc0.grade == grade).all())
             self.assertTrue((np.abs(sd.cyc.grade - grade) < 1e-6).all())
@@ -934,7 +955,7 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Uphill (Veh 1)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1.png'))
             # TODO: should we use sd.cyc.dist_m or fastsim.cycle.trapz_step_distances().sum() for sd.cyc below?
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
@@ -974,7 +995,7 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Uphill (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-5-rust.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-5-rust.png'))
             # assert we have grade set correctly
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
             self.assertTrue((np.abs(np.array(sd.cyc.grade) - grade) < 1e-6).all())
@@ -1014,15 +1035,19 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Uphill (Veh 1)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1-rust.png')
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_logic_works_going_uphill-trace-vehicle-1-rust.png'))
             # TODO: should we use sd.cyc.dist_m or fastsim.cycle.trapz_step_distances().sum() for sd.cyc below?
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 np.array(sd.cyc.dist_m).sum(),
                 places=0)
+        if DO_PLOTS:
+            OUTPUT_DIR.cleanup()
 
     def test_that_coasting_logic_works_going_downhill(self):
         "When going downhill, ensure we can still hit our coasting target"
+        if DO_PLOTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             grade = -0.0025
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -1051,7 +1076,7 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Downhill (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5.png'),
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertTrue((sd.cyc0.grade == grade).all())
@@ -1087,7 +1112,7 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Downhill (Veh 1)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1.png'),
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # TODO: should we use sd.cyc.dist_m or fastsim.cycle.trapz_step_distances().sum() for sd.cyc below?
             self.assertAlmostEqual(
@@ -1123,7 +1148,7 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Downhill (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5-rust.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-5-rust.png'),
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertTrue((np.array(sd.cyc0.grade) == grade).all())
@@ -1161,15 +1186,19 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="That Coasting Logic Works Going Downhill (Veh 1)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1-rust.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_logic_works_going_downhill-trace-vehicle-1-rust.png'),
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # TODO: should we use sd.cyc.dist_m or fastsim.cycle.trapz_step_distances().sum() for sd.cyc below?
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 np.array(sd.cyc.dist_m).sum())
+        if DO_PLOTS:
+            OUTPUT_DIR.cleanup()
 
     def test_that_coasting_works_with_multiple_stops_and_grades(self):
         "Ensure coasting hits distance target with multiple stops and both uphill/downhill"
+        if DO_PLOTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             grade1 = -0.005
             grade2 = 0.005
@@ -1207,7 +1236,7 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="Coasting With Multiple Stops and Grades (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5.png',
+                    save_file=os.path.join(OUTPUT_DIR.name, 'junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5.png'),
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertAlmostEqual(
@@ -1256,12 +1285,14 @@ class TestCoasting(unittest.TestCase):
                     use_mph=False,
                     title="Coasting With Multiple Stops and Grades (Veh 5)",
                     do_show=False,
-                    save_file='junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5-rust.png',
+                    save_file=os.path.join(OUTPUT_DIR.name,  'junk-test_that_coasting_works_with_multiple_stops_and_grades-veh5-rust.png'),
                     coast_brake_start_speed_m_per_s=sd.sim_params.coast_brake_start_speed_m_per_s)
             # assert we have grade set correctly
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 fastsim.cycle.trapz_step_distances(sd.cyc).sum())
+        if DO_PLOTS:
+            OUTPUT_DIR.cleanup()
 
 if __name__ == '__main__':
     unittest.main()
