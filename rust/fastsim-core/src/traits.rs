@@ -227,20 +227,19 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .with_context(|| "Could not determine file name")?
             .to_str()
             .context("Could not determine file name.")?;
-        let mut subpath = PathBuf::new();
         let file_path_internal = file_path
             .as_ref()
             .to_str()
             .context("Could not determine file name.")?;
-        if file_name == file_path_internal {
-            subpath = PathBuf::from(Self::CACHE_FOLDER);
+        let subpath = if file_name == file_path_internal {
+            PathBuf::from(Self::CACHE_FOLDER)
         } else {
-            subpath = Path::new(Self::CACHE_FOLDER).join(
+            Path::new(Self::CACHE_FOLDER).join(
                 file_path_internal
                     .strip_suffix(file_name)
                     .context("Could not determine path to subdirectory.")?,
-            );
-        }
+            )
+        };
         let data_subdirectory = create_project_subdir(subpath)
             .with_context(|| "Could not find or build Fastsim data subdirectory.")?;
         let file_path = data_subdirectory.join(file_name);
