@@ -8,6 +8,7 @@ from typing import Dict, Tuple, List
 from pathlib import Path
 import pandas as pd
 import plotly.express as px
+import os
 
 import fastsim as fsim
 import fastsim.fastsimrust as fsr
@@ -157,20 +158,20 @@ def get_cal_and_val_objs(
 
 
 if __name__ == "__main__":
+    # if True, this file is being run as part of test
+    TESTING = os.environ.get("TESTING", "false").lower() == "true"
+
     parser = fsim.cal.get_parser(
         # Defaults are set low to allow for fast run time during testing.  For a good
         # optimization, set this much higher.
-        def_n_max_gen=3,
-        def_pop_size=3,
-        def_p=3,
         def_save_path=None,
     )
     args = parser.parse_args()
 
-    n_processes = args.processes
-    n_max_gen = args.n_max_gen
+    n_processes = args.processes if not TESTING else 1
+    n_max_gen = args.n_max_gen if not TESTING else 3
     # should be at least as big as n_processes
-    pop_size = args.pop_size
+    pop_size = args.pop_size if not TESTING else 1
     run_minimize = not (args.skip_minimize)
     if args.save_path is not None:
         save_path = Path(args.save_path) 
