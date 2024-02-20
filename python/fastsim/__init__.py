@@ -6,14 +6,14 @@ import sys
 import logging
 import traceback
 
-from fastsim import fastsimrust
-from fastsim import fastsimrust as fsr
 from fastsim import parameters as params
 from fastsim import utils
 from fastsim import simdrive, vehicle, cycle, calibration, tests
 from fastsim import calibration as cal
 from fastsim.resample import resample
 from fastsim import auxiliaries
+from fastsim import fastsimrust
+from fastsim import fastsimrust as fsr
 
 
 def package_root() -> Path:
