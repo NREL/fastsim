@@ -16,7 +16,7 @@ import fastsim.fastsimrust as fsr
 from fastsim.auxiliaries import set_nested_values
 import fastsim.utils as utils
 
-DO_PLOTS = utils.show_plots()
+DO_TESTS = utils.do_tests()
 # if true tests Python versions of the functions
 USE_PYTHON = True
 # if true tests Rust versions of the functions
@@ -347,7 +347,7 @@ class TestCoasting(unittest.TestCase):
     
     def test_that_we_can_coast(self):
         "Test the standard interface to Eco-Approach for 'free coasting'"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             self.assertFalse(self.sim_drive.impose_coast.any(), "All impose_coast starts out False")
@@ -357,7 +357,7 @@ class TestCoasting(unittest.TestCase):
             max_trace_miss_coast_m__s = np.absolute(self.trapz.mps - self.sim_drive_coast.mps_ach).max()
             self.assertTrue(max_trace_miss_coast_m__s > 1.0, f"Max trace miss: {max_trace_miss_coast_m__s} m/s")
             self.assertFalse(self.sim_drive_coast.impose_coast[0])
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     self.sim_drive_coast.cyc0,
                     self.sim_drive_coast.cyc,
@@ -387,14 +387,14 @@ class TestCoasting(unittest.TestCase):
                 max_trace_miss_coast_m__s > 1.0,
                 f"Max trace miss: {max_trace_miss_coast_m__s} m/s")
             self.assertFalse(self.ru_sim_drive_coast.impose_coast[0])
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     self.ru_sim_drive_coast.cyc0,
                     self.ru_sim_drive_coast.cyc,
                     use_mph=False,
                     title="Test That We Can Coast",
                     save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-that-we-can-coast-rust.png'))
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
 
     def test_eco_approach_modeling(self):
@@ -689,7 +689,7 @@ class TestCoasting(unittest.TestCase):
     
     def test_logic_to_enter_eco_approach_automatically(self):
         "Test that we can auto-enter eco-approach"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             trapz = self.trapz.copy()
@@ -700,7 +700,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -723,7 +723,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -747,7 +747,7 @@ class TestCoasting(unittest.TestCase):
             )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -772,7 +772,7 @@ class TestCoasting(unittest.TestCase):
             )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -785,12 +785,12 @@ class TestCoasting(unittest.TestCase):
                     save_file=os.path.join(OUTPUT_DIR.name, 'junk-test-logic-to-enter-eco-approach-automatically-3-dvdd-rust.png'),
                     coast_to_break_speed_m__s=11.0
                 )
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
 
     def test_that_coasting_works_going_uphill(self):
         "Test coasting logic while hill climbing"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             trapz = fastsim.cycle.Cycle.from_dict(
@@ -811,7 +811,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_brake_start_speed_m_per_s = 4.0
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 vavgs = np.linspace(5.0, 40.0, endpoint=True)
                 grade = 0.01
                 def dvdd(vavg, grade):
@@ -859,7 +859,7 @@ class TestCoasting(unittest.TestCase):
             )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 vavgs = np.linspace(5.0, 40.0, endpoint=True)
                 grade = 0.01
                 def dvdd(vavg, grade):
@@ -886,12 +886,12 @@ class TestCoasting(unittest.TestCase):
                     additional_xs=vavgs,
                     additional_ys=ks
                 )
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
 
     def test_that_coasting_logic_works_going_uphill(self):
         "When going uphill, we want to ensure we can still hit our coasting target"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             grade = 0.01
@@ -914,7 +914,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_brake_accel_m_per_s2 = -2.0
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -948,7 +948,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_brake_accel_m_per_s2 = -2.5
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -988,7 +988,7 @@ class TestCoasting(unittest.TestCase):
             assert sd.sim_params.coast_brake_accel_m_per_s2 == -2.0
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1028,7 +1028,7 @@ class TestCoasting(unittest.TestCase):
             assert sd.sim_params.coast_brake_accel_m_per_s2 == -2.5
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1041,12 +1041,12 @@ class TestCoasting(unittest.TestCase):
                 fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 np.array(sd.cyc.dist_m).sum(),
                 places=0)
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
 
     def test_that_coasting_logic_works_going_downhill(self):
         "When going downhill, ensure we can still hit our coasting target"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             grade = -0.0025
@@ -1069,7 +1069,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_brake_accel_m_per_s2 = -2.0
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1105,7 +1105,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_brake_accel_m_per_s2 = -2.5
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1141,7 +1141,7 @@ class TestCoasting(unittest.TestCase):
             )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1179,7 +1179,7 @@ class TestCoasting(unittest.TestCase):
             )
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1192,12 +1192,12 @@ class TestCoasting(unittest.TestCase):
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 np.array(sd.cyc.dist_m).sum())
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
 
     def test_that_coasting_works_with_multiple_stops_and_grades(self):
         "Ensure coasting hits distance target with multiple stops and both uphill/downhill"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             grade1 = -0.005
@@ -1229,7 +1229,7 @@ class TestCoasting(unittest.TestCase):
             sd.sim_params.coast_brake_accel_m_per_s2 = -2.0
             sd.sim_drive()
             self.assertTrue(sd.impose_coast.any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1278,7 +1278,7 @@ class TestCoasting(unittest.TestCase):
             assert sd.sim_params.coast_brake_accel_m_per_s2 == -2.0
             sd.sim_drive()
             self.assertTrue(np.array(sd.impose_coast).any(), msg="Coast should initiate automatically")
-            if DO_PLOTS:
+            if DO_TESTS:
                 make_coasting_plot(
                     sd.cyc0,
                     sd.cyc,
@@ -1291,7 +1291,7 @@ class TestCoasting(unittest.TestCase):
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(sd.cyc0).sum(),
                 fastsim.cycle.trapz_step_distances(sd.cyc).sum())
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
 
 if __name__ == '__main__':

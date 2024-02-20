@@ -12,7 +12,7 @@ import fastsim
 from fastsim.auxiliaries import set_nested_values
 import fastsim.utils as utils
 
-DO_PLOTS =  utils.show_plots()
+DO_TESTS =  utils.do_tests()
 # if true tests Python versions of the functions
 USE_PYTHON = True
 # if ture tests Rust versions of the functions
@@ -52,14 +52,14 @@ class TestFollowing(unittest.TestCase):
 
     def test_that_we_have_a_gap_between_us_and_the_lead_vehicle(self):
         "A positive gap should exist between us and the lead vehicle"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             self.assertTrue(self.sd.sim_params.idm_allow)
             self.sd.sim_drive()
             self.assertTrue(self.sd.sim_params.idm_allow)
             gaps_m = self.sd.gap_to_lead_vehicle_m
-            if DO_PLOTS:
+            if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.plot(self.sd.cyc0.time_s, gaps_m, 'k.')
@@ -79,7 +79,7 @@ class TestFollowing(unittest.TestCase):
             self.ru_sd.sim_drive()
             self.assertTrue(self.ru_sd.sim_params.idm_allow)
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
-            if DO_PLOTS:
+            if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.plot(self.ru_sd.cyc0.time_s, gaps_m, 'k.')
@@ -94,17 +94,17 @@ class TestFollowing(unittest.TestCase):
                 fastsim.cycle.trapz_step_distances(self.ru_sd.cyc0).sum(),
                 fastsim.cycle.trapz_step_distances(self.ru_sd.cyc).sum(),
                 places=-1)
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
 
     def test_that_the_gap_changes_over_the_cycle(self):
         "Ensure that our gap calculation is doing something"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             self.sd.sim_drive()
             gaps_m = self.sd.gap_to_lead_vehicle_m
-            if DO_PLOTS:
+            if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.plot(self.sd.cyc0.time_s, gaps_m, 'k.')
@@ -139,7 +139,7 @@ class TestFollowing(unittest.TestCase):
         if USE_RUST:
             self.ru_sd.sim_drive()
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
-            if DO_PLOTS:
+            if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.plot(self.ru_sd.cyc0.time_s, gaps_m, 'k.')
@@ -165,12 +165,12 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue(
                 (gaps_m > (self.initial_gap_m - 1.0)).all(),
                 msg='We cannot get closer than the initial gap distance')
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
 
     def test_that_following_works_over_parameter_sweep(self):
         "We're going to sweep through all of the parameters and see how it goes"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
             if USE_PYTHON:
                 import matplotlib.pyplot as plt
@@ -387,13 +387,13 @@ class TestFollowing(unittest.TestCase):
     
     def test_that_we_can_use_the_idm(self):
         "Tests use of the IDM model for following"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             self.sd.sim_drive()
             gaps_m = self.sd.gap_to_lead_vehicle_m
             self.assertTrue((gaps_m > self.initial_gap_m).any())
-            if DO_PLOTS:
+            if DO_TESTS:
                 from fastsim.tests.test_coasting import make_coasting_plot
                 make_coasting_plot(
                     self.sd.cyc0, self.sd.cyc,
@@ -408,7 +408,7 @@ class TestFollowing(unittest.TestCase):
             self.ru_sd.sim_drive()
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
             self.assertTrue((gaps_m > self.initial_gap_m).any())
-            if DO_PLOTS:
+            if DO_TESTS:
                 from fastsim.tests.test_coasting import make_coasting_plot
                 make_coasting_plot(
                     self.ru_sd.cyc0, self.ru_sd.cyc,
@@ -419,13 +419,13 @@ class TestFollowing(unittest.TestCase):
                 fastsim.cycle.trapz_step_distances(self.ru_sd.cyc).sum(),
                 places=-1,
                 msg='Distance traveled should be fairly close')
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR.cleanup()
             
 
     def test_sweeping_idm_parameters(self):
         "Tests use of the IDM model for following"
-        if DO_PLOTS:
+        if DO_TESTS:
             OUTPUT_DIR = tempfile.TemporaryDirectory()
             if USE_PYTHON:
                 import matplotlib
