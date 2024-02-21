@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+      if: github.repository == 'nrel/fastsim'
       runs-on: ubuntu-latest
 
       strategy:
@@ -18,7 +19,7 @@ jobs:
       env:
         PYTHON: ${{ matrix.python-version }}
       steps:
-      - ${{ if eq(github.repository, 'NREL/fastsim') }}:
+      # - ${{ if eq(github.repository, 'NREL/fastsim') }}:
         - uses: actions/checkout@v3
 
         - name: set up python ${{ matrix.python-version }}
