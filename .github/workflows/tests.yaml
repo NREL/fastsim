@@ -7,19 +7,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  - ${{ if eq(github.repository, 'nrel/fastsim') }}:
-    test:
-        runs-on: ubuntu-latest
+  test:
+      runs-on: ubuntu-latest
 
-        strategy:
-          fail-fast: true
-          matrix:
-            python-version: ['3.8', '3.9', '3.10']
+      strategy:
+        fail-fast: true
+        matrix:
+          python-version: ['3.8', '3.9', '3.10']
 
-        env:
-          PYTHON: ${{ matrix.python-version }}
-        steps:
-        - uses: actions/checkout@v3
+      env:
+        PYTHON: ${{ matrix.python-version }}
+      steps:
+      - uses: actions/checkout@v3
+      - ${{ if eq(github.repository, 'nrel/fastsim') }}:
 
         - name: set up python ${{ matrix.python-version }}
           uses: actions/setup-python@v4
