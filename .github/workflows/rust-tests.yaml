@@ -10,21 +10,21 @@ on:
 jobs:
   test:
     # might not be needed
-    if: github.repository == 'nrel/fastsim'
+    # if: github.repository == 'nrel/fastsim'
 
-      runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-      strategy:
-        fail-fast: true
+    strategy:
+      fail-fast: true
 
-      if: contains(github.event.pull_request.changed_files, 'rust/')
-        - name: install rust
-          uses: actions-rs/toolchain@v1
-          with:
-            profile: minimal
-            toolchain: stable
-            override: true
+    if: contains(github.event.pull_request.changed_files, 'rust/')
+      - name: install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
 
-        - name: Rust unit tests
-          run: |
-            cd rust/ && cargo test
+      - name: Rust unit tests
+        run: |
+          cd rust/ && cargo test
