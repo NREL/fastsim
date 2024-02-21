@@ -18,8 +18,8 @@ jobs:
       env:
         PYTHON: ${{ matrix.python-version }}
       steps:
-      - uses: actions/checkout@v3
       - ${{ if eq(github.repository, 'nrel/fastsim') }}:
+        - uses: actions/checkout@v3
 
         - name: set up python ${{ matrix.python-version }}
           uses: actions/setup-python@v4
