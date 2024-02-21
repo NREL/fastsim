@@ -2310,12 +2310,12 @@ def copy_sim_drive(sd: SimDrive, return_type: str = None, deep: bool = True) -> 
     """Returns copy of SimDriveClassic or SimDriveJit as SimDriveClassic.
     Arguments:
     ----------
-    sd: instantiated SimDriveClassic or SimDriveJit
-    return_type: 
-        default: infer from type of sd
-        'python': Cycle 
-        'legacy': LegacyCycle
-        'rust': RustCycle
+    sd: instantiated SimDriveClassic or SimDriveJit  
+    return_type: accepted inputs are None, 'python', 'legacy', 'rust'  
+                  - default: infer from type of sd
+                  - 'python': Cycle
+                  - 'legacy': LegacyCycle
+                  - 'rust': RustCycle
     deep: if True, uses deepcopy on everything
     """
 
