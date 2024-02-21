@@ -24,6 +24,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: set up python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
     # if: contains(github.event.pull_request.changed_files, 'rust/')
     - name: install rust
       uses: actions-rs/toolchain@v1
