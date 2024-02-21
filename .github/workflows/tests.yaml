@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    if: github.repository == 'NREL/fastsim'
+    # if: github.repository == 'NREL/fastsim'
       runs-on: ubuntu-latest
 
       strategy:
