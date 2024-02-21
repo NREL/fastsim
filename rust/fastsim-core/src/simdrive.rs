@@ -548,7 +548,12 @@ pub struct RustSimDrive {
     aux_in_kw_override: Option<Vec<f64>>,
 }
 
-impl SerdeAPI for RustSimDrive {}
+impl SerdeAPI for RustSimDrive {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.veh.init()?;
+        Ok(())
+    }
+}
 
 // #[cfg(test)]
 // mod tests {

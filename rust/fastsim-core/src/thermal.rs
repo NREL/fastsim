@@ -199,7 +199,12 @@ pub struct SimDriveHot {
     amb_te_deg_c: Option<Array1<f64>>,
 }
 
-impl SerdeAPI for SimDriveHot {}
+impl SerdeAPI for SimDriveHot {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.sd.veh.init()?;
+        Ok(())
+    }
+}
 
 impl SimDriveHot {
     pub fn new(
