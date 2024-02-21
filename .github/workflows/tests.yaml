@@ -6,8 +6,8 @@ on:
   pull_request:
   workflow_dispatch:
 
-if: github.repository == 'nrel/fastsim'
-  jobs:
+jobs:
+  - ${{ if eq(github.repository, 'nrel/fastsim') }}:
     test:
         runs-on: ubuntu-latest
 
