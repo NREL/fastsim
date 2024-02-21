@@ -781,7 +781,7 @@ impl From<RustCycle> for HashMap<String, Vec<f64>> {
     }
 }
 
-/// pure Rust methods that need to be separate due to pymethods incompatibility
+/// Pure Rust methods that need to be separate due to pymethods incompatibility
 impl RustCycle {
     /// Load cycle from CSV file, parsing name from filepath
     pub fn from_csv_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
