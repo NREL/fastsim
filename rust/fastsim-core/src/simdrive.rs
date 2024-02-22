@@ -1,5 +1,5 @@
 //! Module containing vehicle struct and related functions.
-// crate local
+// Crate local
 use crate::cycle::{RustCycle, RustCycleCache};
 use crate::imports::*;
 use crate::params::RustPhysicalProperties;

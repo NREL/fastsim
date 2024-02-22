@@ -35,7 +35,7 @@ jobs:
           override: true
 
       - name: Rust unit tests
-        if: ${{ github.repository == 'nrel/fastsim' }}
+        if: ${{ github.repository == 'nrel/fastsim'}}
         if: ${{ contains(github.event.pull_request.changed_files, 'rust/') }}
         run: |
           cd rust/ && cargo test
