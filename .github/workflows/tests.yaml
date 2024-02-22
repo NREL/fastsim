@@ -41,7 +41,7 @@ jobs:
           cd rust/ && cargo test
 
       - name: Python unit tests 
-        if: ${{ github.repository == 'nrel/fastsim' }}
+        if: ${{ github.repository == 'nrel/fastsim' && (contains(github.event.pull_request.changed_files, 'python/') || contains(github.event.pull_request.changed_files, 'rust/')) }}
         # if: ${{ contains(github.event.pull_request.changed_files, 'python/') || contains(github.event.pull_request.changed_files, 'rust/') }}
         run: |
           pip install -e ".[dev]" && pytest -v python/fastsim/tests/ 
