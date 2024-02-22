@@ -20,7 +20,7 @@ pub mod simdrive_iter;
 /// Struct containing time trace data
 pub struct RustSimDriveParams {
     pub favor_grade_accuracy: bool,
-    pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
+    pub missed_trace_correction: bool, // If true, missed trace correction is active, default = false
     pub max_time_dilation: f64,
     pub min_time_dilation: f64,
     pub time_dilation_tol: f64,
