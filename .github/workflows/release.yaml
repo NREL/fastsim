@@ -34,7 +34,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable 
+          toolchain: stable
           override: true
 
       - run: rustup target add aarch64-apple-darwin
@@ -44,7 +44,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable 
+          toolchain: stable
           override: true
       - run: cd rust/ && cargo test
 
@@ -71,9 +71,9 @@ jobs:
           # TODO: why doesn't pytest work with cibuildwheel?
           # CIBW_TEST_COMMAND: "pytest -v {project}/python/fastsim/tests"
           CIBW_TEST_COMMAND: "python -m unittest discover {project}/python/fastsim/tests"
-          CIBW_ARCHS_MACOS: 'universal2'
+          CIBW_ARCHS_MACOS: "universal2"
           # see https://cibuildwheel.readthedocs.io/en/stable/faq/#universal2
-          CIBW_TEST_SKIP: '*_universal2:arm64'
+          CIBW_TEST_SKIP: "*_universal2:arm64"
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
           CIBW_MANYLINUX_X86_64_IMAGE: "manylinux2014"
@@ -83,6 +83,7 @@ jobs:
             rustup default stable &&
             rustup show
           CIBW_BEFORE_BUILD_LINUX: >
+            yum -y install openssl openssl-devel &&
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
