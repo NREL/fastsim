@@ -363,7 +363,7 @@ pub fn get_label_fe(
             + out.net_phev_cd_miles.unwrap();
     }
 
-    // run accelerating sim_drive
+    // Run accelerating sim_drive
     let mut sd_accel = RustSimDrive::new(cyc["accel"].clone(), veh.clone());
     out.net_accel = get_net_accel(&mut sd_accel, &veh.scenario_name)?;
     sd.insert("accel", sd_accel);
