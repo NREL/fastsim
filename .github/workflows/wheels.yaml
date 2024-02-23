@@ -46,13 +46,13 @@ jobs:
       - run: rustup target add aarch64-apple-darwin
         if: matrix.os == 'macos'
 
-      # - name: run cargo tests
-      #   uses: actions-rs/toolchain@v1
-      #   with:
-      #     profile: minimal
-      #     toolchain: stable 
-      #     override: true
-      # - run: cd rust/ && cargo test
+      - name: run cargo tests
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable 
+          override: true
+      - run: cd rust/ && cargo test
 
       - name: set up python
         uses: actions/setup-python@v4
