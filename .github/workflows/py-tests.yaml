@@ -11,7 +11,7 @@ on:
     #   - "python/**"
     #   - "rust/**"
   workflow_dispatch:
-  workflow_call:
+  # workflow_call:
 
 jobs:
   # call-rust-tests:
