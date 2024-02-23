@@ -408,7 +408,7 @@ impl SimDriveHot {
                 / (1.0 + self.state.fc_lambda * self.sd.props.fuel_afr_stoich),
         );
 
-        // limited between 0 and 1, but should really not get near 1
+        // Limited between 0 and 1, but should really not get near 1
         self.state.fc_qdot_per_net_heat = (self.vehthrm.fc_coeff_from_comb
             * (self.state.fc_te_adiabatic_deg_c - self.state.fc_te_deg_c))
             .min(1.0)
