@@ -17,8 +17,6 @@ jobs:
   call-rust-tests:
     uses: nrel/fastsim/.github/workflows/rust-tests.yaml@main
   test:
-    # might not be needed
-    # if: github.repository == 'nrel/fastsim'
     needs: call-rust-tests
     # add in if first step works
     # if: ${{ github.repository == 'nrel/fastsim' }}
@@ -34,6 +32,7 @@ jobs:
 
     env:
       PYTHON: ${{ matrix.python-version }}
+
     steps:
     - uses: actions/checkout@v3
 
@@ -43,18 +42,22 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
 # not sure if this is needed if I'm only running python tests
-    # - name: install rust
-    #   uses: actions-rs/toolchain@v1
-    #   with:
-    #     profile: minimal
-    #     toolchain: stable 
-    #     override: true
+    - name: install rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable 
+        override: true
+
+    - name: Rust unit tests
+      run: |
+        cd rust/ && cargo test
+
+  # in altrios, also includes Rust tests here -- but I think this would mean
+  # Rust and Python tests are always run (so, even if only python code is
+  # modified)
 
     - name: Python unit tests 
       run: |
         pip install -e ".[dev]" && pytest -v python/fastsim/tests/ 
         pytest -v python/fastsim/demos/
-
-  # in altrios, also includes Rust tests here -- but I think this would mean
-  # Rust and Python tests are always run (so, even if only python code is
-  # modified)
