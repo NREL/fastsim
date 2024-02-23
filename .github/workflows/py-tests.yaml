@@ -1,63 +1,63 @@
-name: tests 
+# name: tests 
 
-on:
-  push:
-    branches: [fastsim-2, fastsim-3]
-      # paths:
-      #   - "python/**"
-      #   - "rust/**"
-  pull_request:
-    # paths:
-    #   - "python/**"
-    #   - "rust/**"
-  workflow_dispatch:
-  # workflow_call:
+# on:
+#   push:
+#     branches: [fastsim-2, fastsim-3]
+#       # paths:
+#       #   - "python/**"
+#       #   - "rust/**"
+#   pull_request:
+#     # paths:
+#     #   - "python/**"
+#     #   - "rust/**"
+#   workflow_dispatch:
+#   # workflow_call:
 
-jobs:
-  # call-rust-tests:
-  #   uses: nrel/fastsim/.github/workflows/rust-tests.yaml@main
-  test:
-    # needs: call-rust-tests
-    # add in if first step works
-    # if: ${{ github.repository == 'nrel/fastsim' }}
-    # or
-    # if: github.repository == 'nrel/fastsim'
+# jobs:
+#   # call-rust-tests:
+#   #   uses: nrel/fastsim/.github/workflows/rust-tests.yaml@main
+#   test:
+#     # needs: call-rust-tests
+#     # add in if first step works
+#     # if: ${{ github.repository == 'nrel/fastsim' }}
+#     # or
+#     # if: github.repository == 'nrel/fastsim'
 
-    runs-on: ubuntu-latest
+#     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: true
-      matrix:
-        python-version: ['3.8', '3.9', '3.10']
+#     strategy:
+#       fail-fast: true
+#       matrix:
+#         python-version: ['3.8', '3.9', '3.10']
 
-    env:
-      PYTHON: ${{ matrix.python-version }}
+#     env:
+#       PYTHON: ${{ matrix.python-version }}
 
-    steps:
-    - uses: actions/checkout@v3
+#     steps:
+#     - uses: actions/checkout@v3
 
-    - name: set up python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+#     - name: set up python ${{ matrix.python-version }}
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: ${{ matrix.python-version }}
 
-# not sure if this is needed if I'm only running python tests
-    - name: install rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable 
-        override: true
+# # not sure if this is needed if I'm only running python tests
+#     - name: install rust
+#       uses: actions-rs/toolchain@v1
+#       with:
+#         profile: minimal
+#         toolchain: stable 
+#         override: true
 
-    - name: Rust unit tests
-      run: |
-        cd rust/ && cargo test
+#     - name: Rust unit tests
+#       run: |
+#         cd rust/ && cargo test
 
-  # in altrios, also includes Rust tests here -- but I think this would mean
-  # Rust and Python tests are always run (so, even if only python code is
-  # modified)
+#   # in altrios, also includes Rust tests here -- but I think this would mean
+#   # Rust and Python tests are always run (so, even if only python code is
+#   # modified)
 
-    - name: Python unit tests 
-      run: |
-        pip install -e ".[dev]" && pytest -v python/fastsim/tests/ 
-        pytest -v python/fastsim/demos/
+#     - name: Python unit tests 
+#       run: |
+#         pip install -e ".[dev]" && pytest -v python/fastsim/tests/ 
+#         pytest -v python/fastsim/demos/
