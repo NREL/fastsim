@@ -9,10 +9,11 @@ on:
 
 jobs:
   call-tests:
-    uses: nrel/fastsim/.github/workflows/tests.yaml@main
+    uses: nrel/fastsim/.github/workflows/py-tests.yaml@main
     # nrel/fastsim/.github/workflows/rust-tests.yaml@main && nrel/fastsim/.github/workflows/py-tests.yaml@main
   build:
     name: build py3.${{ matrix.python-version }} on ${{ matrix.platform || matrix.os }}
+    needs: call-tests
     strategy:
       fail-fast: true
       matrix:
