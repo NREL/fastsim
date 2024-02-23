@@ -345,8 +345,8 @@ pub fn get_label_fe(
         out.adj_comb_ess_kwh_per_mi =
             0.55 * phev_calcs.udds.adj_ess_kwh_per_mi + 0.45 * phev_calcs.hwy.adj_ess_kwh_per_mi;
 
-        // range for combined city/highway
-        // utility factor (percent driving in charge depletion mode)
+        // Range for combined city/highway
+        // Utility factor (percent driving in charge depletion mode)
         out.uf = long_params.uf_array[first_grtr(
             &long_params.rechg_freq_miles,
             0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles,
@@ -363,12 +363,12 @@ pub fn get_label_fe(
             + out.net_phev_cd_miles.unwrap();
     }
 
-    // run accelerating sim_drive
+    // Run accelerating sim_drive
     let mut sd_accel = RustSimDrive::new(cyc["accel"].clone(), veh.clone());
     out.net_accel = get_net_accel(&mut sd_accel, &veh.scenario_name)?;
     sd.insert("accel", sd_accel);
 
-    // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
+    // Success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true
 
     if full_detail.unwrap_or(false) && verbose.unwrap_or(false) {

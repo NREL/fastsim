@@ -614,17 +614,17 @@ impl RustCycleCache {
 /// * legacy, will likely change to road charging capacity
 ///    * Another sublist.
 pub struct RustCycle {
-    /// array of time [s]
+    /// Array of time [s]
     #[serde(alias = "cycSecs")]
     pub time_s: Array1<f64>,
-    /// array of speed [m/s]
+    /// Array of speed [m/s]
     #[serde(alias = "cycMps")]
     pub mps: Array1<f64>,
-    /// array of grade [rise/run]
+    /// Array of grade [rise/run]
     #[serde(alias = "cycGrade")]
     #[serde(default)]
     pub grade: Array1<f64>,
-    /// array of max possible charge rate from roadway
+    /// Array of max possible charge rate from roadway
     #[serde(alias = "cycRoadType")]
     #[serde(default)]
     pub road_type: Array1<f64>,
@@ -775,7 +775,7 @@ impl From<RustCycle> for HashMap<String, Vec<f64>> {
     }
 }
 
-/// pure Rust methods that need to be separate due to pymethods incompatibility
+/// Pure Rust methods that need to be separate due to pymethods incompatibility
 impl RustCycle {
     fn init_checks(&self) -> anyhow::Result<()> {
         ensure!(!self.is_empty(), "Deserialized cycle is empty");

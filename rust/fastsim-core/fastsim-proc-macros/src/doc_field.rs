@@ -101,7 +101,7 @@ fn remove_handled_attrs(field: &mut syn::Field, skip_doc: &mut bool) {
         })
         .collect();
     // println!("options {:?}", opts);
-    // this drops attrs matching `#[doc_field]`, removing the field attribute from the struct def
+    // This drops attrs matching `#[doc_field]`, removing the field attribute from the struct def.
     let new_attrs: (Vec<&syn::Attribute>, Vec<bool>) = field
         .attrs
         .iter()
