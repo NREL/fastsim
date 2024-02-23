@@ -368,7 +368,7 @@ pub fn get_label_fe(
     out.net_accel = get_net_accel(&mut sd_accel, &veh.scenario_name)?;
     sd.insert("accel", sd_accel);
 
-    // success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
+    // Success Boolean -- did all of the tests work(e.g. met trace within ~2 mph)?
     out.res_found = String::from("model needs to be implemented for this"); // this may need fancier logic than just always being true
 
     if full_detail.unwrap_or(false) && verbose.unwrap_or(false) {
