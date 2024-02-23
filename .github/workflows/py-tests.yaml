@@ -7,9 +7,9 @@ on:
         - "python/**"
         - "rust/**"
   pull_request:
-    paths:
-      - "python/**"
-      - "rust/**"
+    # paths:
+    #   - "python/**"
+    #   - "rust/**"
   workflow_dispatch:
   workflow_call:
 

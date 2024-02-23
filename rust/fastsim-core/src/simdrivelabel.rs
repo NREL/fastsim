@@ -345,8 +345,8 @@ pub fn get_label_fe(
         out.adj_comb_ess_kwh_per_mi =
             0.55 * phev_calcs.udds.adj_ess_kwh_per_mi + 0.45 * phev_calcs.hwy.adj_ess_kwh_per_mi;
 
-        // range for combined city/highway
-        // utility factor (percent driving in charge depletion mode)
+        // Range for combined city/highway
+        // Utility factor (percent driving in charge depletion mode)
         out.uf = long_params.uf_array[first_grtr(
             &long_params.rechg_freq_miles,
             0.55 * phev_calcs.udds.adj_cd_miles + 0.45 * phev_calcs.hwy.adj_cd_miles,
