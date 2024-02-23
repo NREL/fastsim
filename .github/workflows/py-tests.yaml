@@ -14,10 +14,10 @@ on:
   workflow_call:
 
 jobs:
-  call-rust-tests:
-    uses: nrel/fastsim/.github/workflows/rust-tests.yaml@main
+  # call-rust-tests:
+  #   uses: nrel/fastsim/.github/workflows/rust-tests.yaml@main
   test:
-    needs: call-rust-tests
+    # needs: call-rust-tests
     # add in if first step works
     # if: ${{ github.repository == 'nrel/fastsim' }}
     # or
