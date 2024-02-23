@@ -1156,7 +1156,7 @@ pub fn abc_to_drag_coeffs(
         orphaned: false,
     };
 
-    // polynomial function for pounds vs speed
+    // Polynomial function for pounds vs speed
     let dyno_func_lb: Polynomial<f64> = Polynomial::new(vec![a_lbf, b_lbf__mph, c_lbf__mph2]);
 
     let drag_coef: f64;
