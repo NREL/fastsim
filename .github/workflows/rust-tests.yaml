@@ -3,8 +3,8 @@ name: tests
 on:
   push:
     branches: [fastsim-2, fastsim-3]
-      paths:
-      - "rust/**"
+      # paths:
+      # - "rust/**"
   pull_request:
     # paths:
     #   - "rust/**"

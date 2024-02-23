@@ -3,9 +3,9 @@ name: tests
 on:
   push:
     branches: [fastsim-2, fastsim-3]
-      paths:
-        - "python/**"
-        - "rust/**"
+      # paths:
+      #   - "python/**"
+      #   - "rust/**"
   pull_request:
     # paths:
     #   - "python/**"
