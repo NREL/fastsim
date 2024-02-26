@@ -58,7 +58,6 @@ full = [
     "dep:argmin-math",
     "dep:directories",
     "dep:polynomial",
-    "bincode",
     "resources",
     "validation",
     "vehicle-import",

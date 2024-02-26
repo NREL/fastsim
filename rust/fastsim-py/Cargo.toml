@@ -31,7 +31,6 @@ default = ["full"]
 full = [
     "dep:pyo3-log",
     "fastsim-core/full",
-    "bincode",
     "resources",
     "validation",
     "vehicle-import",
