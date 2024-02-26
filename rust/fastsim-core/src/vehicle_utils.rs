@@ -1,11 +1,11 @@
 //! Module for utility functions that support the vehicle struct.
 
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 use argmin::core::{CostFunction, Executor, OptimizationResult, State};
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 use argmin::solver::neldermead::NelderMead;
 use ndarray::{array, Array1};
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 use polynomial::Polynomial;
 use std::option::Option;
 
@@ -21,7 +21,7 @@ use crate::vehicle::RustVehicle;
 #[allow(non_snake_case)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 #[allow(clippy::too_many_arguments)]
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 pub fn abc_to_drag_coeffs(
     veh: &mut RustVehicle,
     a_lbf: f64,
@@ -140,14 +140,14 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
     return err / (time_steps.last().unwrap() - time_steps[0]);
 }
 
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 struct GetError<'a> {
     cycle: &'a RustCycle,
     vehicle: &'a RustVehicle,
     dyno_func_lb: &'a Polynomial<f64>,
 }
 
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 impl CostFunction for GetError<'_> {
     type Param = Array1<f64>;
     type Output = f64;
@@ -223,7 +223,7 @@ mod tests {
         assert!(error_val.approx_eq(&0.8124999999999998, 1e-10));
     }
 
-    #[cfg(feature = "full")]
+    #[cfg(feature = "default")]
     #[test]
     fn test_abc_to_drag_coeffs() {
         let mut veh: RustVehicle = RustVehicle::mock_vehicle();

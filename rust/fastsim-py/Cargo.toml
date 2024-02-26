@@ -27,10 +27,9 @@ crate-type = ["cdylib"]
 include = ["../../NOTICE"]
 
 [features]
-default = ["full"]
-full = [
+default = [
     "dep:pyo3-log",
-    "fastsim-core/full",
+    "fastsim-core/default",
     "resources",
     "validation",
     "vehicle-import",

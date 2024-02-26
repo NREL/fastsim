@@ -12,7 +12,7 @@ use pyo3imports::*;
 /// Function for adding Rust structs as Python Classes
 #[pymodule]
 fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
-    #[cfg(feature = "full")]
+    #[cfg(feature = "default")]
     pyo3_log::init();
     m.add_class::<cycle::RustCycle>()?;
     m.add_class::<vehicle::RustVehicle>()?;
@@ -36,11 +36,11 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<simdrive::simdrive_iter::SimDriveVec>()?;
 
     cycle::register(py, m)?;
-    #[cfg(feature = "full")]
+    #[cfg(feature = "default")]
     m.add_function(wrap_pyfunction!(vehicle_utils::abc_to_drag_coeffs, m)?)?;
     m.add_function(wrap_pyfunction!(make_accel_trace_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_net_accel_py, m)?)?;
-    #[cfg(feature = "full")]
+    #[cfg(feature = "default")]
     m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
     m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
     #[cfg(feature = "vehicle-import")]

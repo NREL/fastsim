@@ -52,8 +52,7 @@ include = [
 # to disable the default features, see
 # https://doc.rust-lang.org/cargo/reference/features.html?highlight=no-default-features#the-default-feature
 # and use the `--no-default-features` flag when compiling
-default = ["full"]
-full = [
+default = [
     "dep:argmin",
     "dep:argmin-math",
     "dep:directories",
@@ -66,4 +65,4 @@ bincode = ["dep:bincode"]
 pyo3 = ["dep:pyo3"]
 resources = ["dep:include_dir"]
 validation = ["dep:validator"]
-vehicle-import = ["dep:curl", "full"]
+vehicle-import = ["dep:curl"]

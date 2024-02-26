@@ -63,8 +63,8 @@ pub use fastsim_proc_macros as proc_macros;
 pub fn enabled_features() -> Vec<String> {
     let mut enabled = vec![];
 
-    #[cfg(feature = "full")]
-    enabled.push("full".into());
+    #[cfg(feature = "default")]
+    enabled.push("default".into());
 
     #[cfg(feature = "bincode")]
     enabled.push("bincode".into());

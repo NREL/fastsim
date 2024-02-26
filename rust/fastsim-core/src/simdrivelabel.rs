@@ -167,7 +167,7 @@ pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> any
     Ok(result)
 }
 
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 pub fn get_label_fe(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
@@ -384,7 +384,7 @@ pub fn get_label_fe(
     }
 }
 
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 #[cfg(feature = "pyo3")]
 #[pyfunction(name = "get_label_fe")]
 /// pyo3 version of [get_label_fe]
@@ -723,7 +723,7 @@ pub fn get_label_fe_phev_py(
 }
 
 #[cfg(test)]
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 mod simdrivelabel_tests {
     use super::*;
 
