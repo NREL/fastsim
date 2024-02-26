@@ -307,6 +307,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         /// Write (serialize) an object to bincode-encoded `bytes`
+        #[cfg(feature = "bincode")]
         #[pyo3(name = "to_bincode")]
         pub fn to_bincode_py<'py>(&self, py: Python<'py>) -> anyhow::Result<&'py PyBytes> {
             Ok(PyBytes::new(py, &self.to_bincode()?))
@@ -318,6 +319,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///
         /// * `encoded`: `bytes` - Encoded bytes to deserialize from
         ///
+        #[cfg(feature = "bincode")]
         #[staticmethod]
         #[pyo3(name = "from_bincode")]
         pub fn from_bincode_py(encoded: &PyBytes) -> anyhow::Result<Self> {

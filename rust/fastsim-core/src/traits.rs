@@ -45,6 +45,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         match extension.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
             "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
+            #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
             _ => bail!(
                 "Unsupported format {extension:?}, must be one of {:?}",
@@ -125,6 +126,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
+            #[cfg(feature = "bincode")]
             "bin" => bincode::deserialize_from(rdr)?,
             _ => bail!(
                 "Unsupported format {format:?}, must be one of {:?}",
@@ -170,6 +172,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// Write (serialize) an object to bincode-encoded bytes
+    #[cfg(feature = "bincode")]
     fn to_bincode(&self) -> anyhow::Result<Vec<u8>> {
         Ok(bincode::serialize(&self)?)
     }
@@ -180,6 +183,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `encoded` - Encoded bytes to deserialize from
     ///
+    #[cfg(feature = "bincode")]
     fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
         let mut bincode_de: Self = bincode::deserialize(encoded)?;
         bincode_de.init()?;

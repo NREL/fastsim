@@ -1,4 +1,5 @@
 pub(crate) use anyhow::{anyhow, bail, ensure, Context};
+#[cfg(feature = "bincode")]
 pub(crate) use bincode;
 pub(crate) use log;
 pub(crate) use ndarray::{array, s, Array, Array1, Axis};
