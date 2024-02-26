@@ -529,6 +529,11 @@ impl RustCycleCache {
         Ok(dict)
     }
 
+    #[pyo3(name = "to_csv")]
+    pub fn to_csv_py(&self) -> PyResult<String> {
+        self.to_csv().map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+    }
+
     #[pyo3(name = "modify_by_const_jerk_trajectory")]
     pub fn modify_by_const_jerk_trajectory_py(
         &mut self,
@@ -631,39 +636,32 @@ pub struct RustCycle {
 impl SerdeAPI for RustCycle {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
+    const CACHE_FOLDER: &'static str = &"cycles";
 
     fn init(&mut self) -> anyhow::Result<()> {
-        ensure!(!self.is_empty(), "Deserialized cycle is empty");
-        let cyc_len = self.len();
-        ensure!(
-            self.mps.len() == cyc_len,
-            "Length of `mps` does not match length of `time_s`"
-        );
-        ensure!(
-            self.grade.len() == cyc_len,
-            "Length of `grade` does not match length of `time_s`"
-        );
-        ensure!(
-            self.road_type.len() == cyc_len,
-            "Length of `road_type` does not match length of `time_s`"
-        );
-        Ok(())
+        self.init_checks()
     }
 
-    fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
-        let filepath = filepath.as_ref();
-        let extension = filepath
-            .extension()
-            .and_then(OsStr::to_str)
-            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        match extension.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
-            "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
+    fn to_writer<W: std::io::Write>(&self, wtr: W, format: &str) -> anyhow::Result<()> {
+        match format.trim_start_matches('.').to_lowercase().as_str() {
+            "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
+            "json" => serde_json::to_writer(wtr, self)?,
             #[cfg(feature = "bincode")]
-            "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
-            "csv" => self.write_csv(&mut csv::Writer::from_path(filepath)?)?,
+            "bin" => bincode::serialize_into(wtr, self)?,
+            "csv" => {
+                let mut wtr = csv::Writer::from_writer(wtr);
+                for i in 0..self.len() {
+                    wtr.serialize(RustCycleElement {
+                        time_s: self.time_s[i],
+                        mps: self.mps[i],
+                        grade: Some(self.grade[i]),
+                        road_type: Some(self.road_type[i]),
+                    })?;
+                }
+                wtr.flush()?
+            }
             _ => bail!(
-                "Unsupported format {extension:?}, must be one of {:?}",
+                "Unsupported format {format:?}, must be one of {:?}",
                 Self::ACCEPTED_BYTE_FORMATS
             ),
         }
@@ -675,11 +673,7 @@ impl SerdeAPI for RustCycle {
             match format.trim_start_matches('.').to_lowercase().as_str() {
                 "yaml" | "yml" => self.to_yaml()?,
                 "json" => self.to_json()?,
-                "csv" => {
-                    let mut wtr = csv::Writer::from_writer(Vec::with_capacity(self.len()));
-                    self.write_csv(&mut wtr)?;
-                    String::from_utf8(wtr.into_inner()?)?
-                }
+                "csv" => self.to_csv()?,
                 _ => {
                     bail!(
                         "Unsupported format {format:?}, must be one of {:?}",
@@ -697,7 +691,7 @@ impl SerdeAPI for RustCycle {
             match format.trim_start_matches('.').to_lowercase().as_str() {
                 "yaml" | "yml" => Self::from_yaml(contents)?,
                 "json" => Self::from_json(contents)?,
-                "csv" => Self::from_csv_str(contents, "".to_string())?,
+                "csv" => Self::from_reader(contents.as_ref().as_bytes(), "csv")?,
                 _ => bail!(
                     "Unsupported format {format:?}, must be one of {:?}",
                     Self::ACCEPTED_STR_FORMATS
@@ -740,7 +734,7 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
         let time_s = Array::from_vec(
             hashmap
                 .get("time_s")
-                .with_context(|| "`time_s` not in HashMap")?
+                .with_context(|| format!("`time_s` not in HashMap: {hashmap:?}"))?
                 .to_owned(),
         );
         let cyc_len = time_s.len();
@@ -749,7 +743,7 @@ impl TryFrom<HashMap<String, Vec<f64>>> for RustCycle {
             mps: Array::from_vec(
                 hashmap
                     .get("mps")
-                    .with_context(|| "`mps` not in HashMap")?
+                    .with_context(|| format!("`mps` not in HashMap: {hashmap:?}"))?
                     .to_owned(),
             ),
             grade: Array::from_vec(
@@ -785,6 +779,20 @@ impl From<RustCycle> for HashMap<String, Vec<f64>> {
 
 /// pure Rust methods that need to be separate due to pymethods incompatibility
 impl RustCycle {
+    fn init_checks(&self) -> anyhow::Result<()> {
+        ensure!(!self.is_empty(), "Deserialized cycle is empty");
+        ensure!(self.is_sorted(), "Deserialized cycle is not sorted in time");
+        ensure!(
+            self.are_fields_equal_length(),
+            "Deserialized cycle has unequal field lengths\ntime_s: {}\nmps: {}\ngrade: {}\nroad_type: {}",
+            self.time_s.len(),
+            self.mps.len(),
+            self.grade.len(),
+            self.road_type.len(),
+        );
+        Ok(())
+    }
+
     /// Load cycle from CSV file, parsing name from filepath
     pub fn from_csv_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
@@ -793,37 +801,23 @@ impl RustCycle {
             .and_then(OsStr::to_str)
             .with_context(|| format!("Could not parse cycle name from filepath: {filepath:?}"))?
             .to_string();
-        let file = File::open(filepath).with_context(|| {
-            if !filepath.exists() {
-                format!("File not found: {filepath:?}")
-            } else {
-                format!("Could not open file: {filepath:?}")
-            }
-        })?;
-        let mut cyc = Self::from_reader(file, "csv")?;
+        let mut cyc = Self::from_file(filepath)?;
         cyc.name = name;
         Ok(cyc)
     }
 
     /// Load cycle from CSV string
     pub fn from_csv_str<S: AsRef<str>>(csv_str: S, name: String) -> anyhow::Result<Self> {
-        let mut cyc = Self::from_reader(csv_str.as_ref().as_bytes(), "csv")?;
+        let mut cyc = Self::from_str(csv_str, "csv")?;
         cyc.name = name;
         Ok(cyc)
     }
 
-    /// Write cycle data to a CSV writer
-    fn write_csv<W: std::io::Write>(&self, wtr: &mut csv::Writer<W>) -> anyhow::Result<()> {
-        for i in 0..self.len() {
-            wtr.serialize(RustCycleElement {
-                time_s: self.time_s[i],
-                mps: self.mps[i],
-                grade: Some(self.grade[i]),
-                road_type: Some(self.road_type[i]),
-            })?;
-        }
-        wtr.flush()?;
-        Ok(())
+    /// Write (serialize) cycle to a CSV string
+    pub fn to_csv(&self) -> anyhow::Result<String> {
+        let mut buf = Vec::with_capacity(self.len());
+        self.to_writer(&mut buf, "csv")?;
+        Ok(String::from_utf8(buf)?)
     }
 
     pub fn build_cache(&self) -> RustCycleCache {
@@ -853,6 +847,21 @@ impl RustCycle {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    pub fn is_sorted(&self) -> bool {
+        self.time_s
+            .as_slice()
+            .unwrap()
+            .windows(2)
+            .all(|window| window[0] < window[1])
+    }
+
+    pub fn are_fields_equal_length(&self) -> bool {
+        let cyc_len = self.len();
+        [self.mps.len(), self.grade.len(), self.road_type.len()]
+            .iter()
+            .all(|len| len == &cyc_len)
     }
 
     pub fn test_cyc() -> Self {

@@ -2,11 +2,9 @@
 
 use crate::params::*;
 use crate::proc_macros::add_pyo3_api;
-use curl::easy::Easy;
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::io::prelude::Write;
 use std::io::Read;
 use std::path::PathBuf;
 use zip::ZipArchive;
@@ -1465,43 +1463,6 @@ fn extract_file_from_zip(
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     std::fs::write(path_to_save_to, contents)?;
-    Ok(())
-}
-
-/// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
-pub fn download_file_from_url(url: &str, file_path: &Path) -> anyhow::Result<()> {
-    let mut handle = Easy::new();
-    handle.follow_location(true)?;
-    handle.url(url)?;
-    let mut buffer = Vec::new();
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            buffer.extend_from_slice(data);
-            Ok(data.len())
-        })?;
-        let result = transfer.perform();
-        if result.is_err() {
-            return Err(anyhow!("Could not download from {}", url));
-        }
-    }
-    println!("Downloaded data from {}; bytes: {}", url, buffer.len());
-    if buffer.is_empty() {
-        return Err(anyhow!("No data available from {url}"));
-    }
-    {
-        let mut file = match File::create(file_path) {
-            Err(why) => {
-                return Err(anyhow!(
-                    "couldn't open {}: {}",
-                    file_path.to_str().unwrap(),
-                    why
-                ))
-            }
-            Ok(file) => file,
-        };
-        file.write_all(buffer.as_slice())?;
-    }
     Ok(())
 }
 

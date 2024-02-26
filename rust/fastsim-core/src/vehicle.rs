@@ -410,7 +410,7 @@ pub struct RustVehicle {
     #[doc(hidden)]
     #[doc_field(skip_doc)]
     #[serde(default)]
-    #[serde(alias = "fcEffArray")]
+    #[serde(alias = "fcEffArray", skip_serializing)]
     pub fc_eff_array: Vec<f64>,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
@@ -438,7 +438,7 @@ pub struct RustVehicle {
     pub mc_full_eff_array: Vec<f64>,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
-    #[serde(alias = "vehKg")]
+    #[serde(skip)]
     pub veh_kg: f64,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
@@ -557,6 +557,8 @@ pub struct RustVehicle {
 
 /// RustVehicle rust methods
 impl RustVehicle {
+    const VEHICLE_DIRECTORY_URL: &'static str =
+        &"https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/";
     /// Sets the following parameters:
     /// - `ess_mass_kg`
     /// - `mc_mass_kg`
@@ -737,6 +739,7 @@ impl RustVehicle {
         self.no_elec_aux =
             self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc;
 
+        // TODO: this probably shouldnt be set if already provided
         self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
 
         // discrete array of possible engine power outputs
@@ -1036,6 +1039,43 @@ impl RustVehicle {
         v.set_derived().unwrap();
         v
     }
+
+    /// Downloads specified vehicle from FASTSim vehicle repo or url and
+    /// instantiates it into a RustVehicle. Notes in vehicle.doc the origin of
+    /// the vehicle. Returns vehicle.  
+    /// # Arguments  
+    /// - vehicle_file_name: file name for vehicle to be downloaded, including
+    ///   path from url directory or FASTSim repository (if applicable)  
+    /// - url: url for vehicle repository where vehicle will be downloaded from,
+    ///   if None, assumed to be downloaded from vehicle FASTSim repo  
+    /// Note: The URL needs to be a URL pointing directly to a file, for example
+    /// a raw github URL, split up so that the "url" argument is the path to the
+    /// directory, and the "vehicle_file_name" is the path within the directory
+    /// to the file.  
+    /// Note: If downloading from the FASTSim Vehicle Repo, the
+    /// vehicle_file_name should include the path to the file from the root of
+    /// the Repo, as listed in the output of the
+    /// vehicle_utils::fetch_github_list() function.  
+    /// Note: the url should not include the file name, only the path to the
+    /// file or a root directory of the file.
+    pub fn from_github_or_url<S: AsRef<str>>(
+        vehicle_file_name: S,
+        url: Option<S>,
+    ) -> anyhow::Result<Self> {
+        let url_internal = match url {
+            Some(s) => {
+                s.as_ref().trim_end_matches('/').to_owned()
+                    + "/"
+                    + &vehicle_file_name.as_ref().trim_start_matches('/')
+            }
+            None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref(),
+        };
+        let mut vehicle =
+            Self::from_url(&url_internal).with_context(|| "Could not parse vehicle from url")?;
+        let vehicle_origin = "Vehicle from ".to_owned() + url_internal.as_str();
+        vehicle.doc = Some(vehicle_origin);
+        Ok(vehicle)
+    }
 }
 
 impl Default for RustVehicle {
@@ -1064,8 +1104,32 @@ impl Default for RustVehicle {
 }
 
 impl SerdeAPI for RustVehicle {
+    const CACHE_FOLDER: &'static str = &"vehicles";
+
     fn init(&mut self) -> anyhow::Result<()> {
         self.set_derived()
+    }
+
+    /// instantiates a vehicle from a url, and notes in vehicle.doc the origin
+    /// of the vehicle.  
+    /// accepts yaml and json file types  
+    /// # Arguments  
+    /// - url: URL (either as a string or url type) to object  
+    /// Note: The URL needs to be a URL pointing directly to a file, for example
+    /// a raw github URL.
+    fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
+        let url = url::Url::parse(url.as_ref())?;
+        let format = url
+            .path_segments()
+            .and_then(|segments| segments.last())
+            .and_then(|filename| Path::new(filename).extension())
+            .and_then(OsStr::to_str)
+            .with_context(|| "Could not parse file format from URL: {url:?}")?;
+        let response = ureq::get(url.as_ref()).call()?.into_reader();
+        let mut vehicle = Self::from_reader(response, format)?;
+        let vehicle_origin = "Vehicle from ".to_owned() + url.as_ref();
+        vehicle.doc = Some(vehicle_origin);
+        Ok(vehicle)
     }
 }
 

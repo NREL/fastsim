@@ -7,7 +7,8 @@ use argmin::solver::neldermead::NelderMead;
 use ndarray::{array, Array1};
 #[cfg(feature = "default")]
 use polynomial::Polynomial;
-use std::option::Option;
+use std::{result::Result, thread, time::Duration};
+use ureq::{Error as OtherError, Error::Status, Response};
 
 use crate::air::*;
 use crate::cycle::RustCycle;
@@ -207,6 +208,99 @@ pub fn extract_zip(filepath: &Path, dest_dir: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[derive(Deserialize)]
+pub struct ObjectLinks {
+    #[serde(rename = "self")]
+    pub self_url: Option<String>,
+    pub git: Option<String>,
+    pub html: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct GitObjectInfo {
+    pub name: String,
+    pub path: String,
+    pub sha: Option<String>,
+    pub size: Option<i64>,
+    pub url: String,
+    pub html_url: Option<String>,
+    pub git_url: Option<String>,
+    pub download_url: Option<String>,
+    #[serde(rename = "type")]
+    pub url_type: String,
+    #[serde(rename = "_links")]
+    pub links: Option<ObjectLinks>,
+}
+
+const VEHICLE_REPO_LIST_URL: &'static str =
+    &"https://api.github.com/repos/NREL/fastsim-vehicles/contents/public";
+
+/// Function that takes a url and calls the url. If a 503 or 429 error is
+/// thrown, it tries again after a pause, up to four times. It returns either a
+/// result or an error.  
+/// # Arguments  
+/// - url: url to be called
+/// Source: https://docs.rs/ureq/latest/ureq/enum.Error.html
+fn get_response<S: AsRef<str>>(url: S) -> Result<Response, OtherError> {
+    for _ in 1..4 {
+        match ureq::get(url.as_ref()).call() {
+            Err(Status(503, r)) | Err(Status(429, r)) | Err(Status(403, r)) => {
+                let retry: Option<u64> = r.header("retry-after").and_then(|h| h.parse().ok());
+                let retry = retry.unwrap_or(5);
+                eprintln!("{} for {}, retry in {}", r.status(), r.get_url(), retry);
+                thread::sleep(Duration::from_secs(retry));
+            }
+            result => return result,
+        };
+    }
+    // Ran out of retries; try one last time and return whatever result we get.
+    ureq::get(url.as_ref()).call()
+}
+
+/// Returns a list of vehicle file names in the Fastsim Vehicle Repo, or,
+/// optionally, a different GitHub repo, in which case the url provided needs to
+/// be the url for the file tree within GitHub for the root folder the Rust
+/// objects, for example
+/// "https://api.github.com/repos/NREL/fastsim-vehicles/contents/public"  
+/// Note: for each file, the output will list the vehicle file name, including
+/// the path from the root of the repository  
+/// # Arguments  
+/// - repo_url: url to the GitHub repository, Option, if None, defaults to the
+///   FASTSim Vehicle Repo
+pub fn fetch_github_list(repo_url: Option<String>) -> anyhow::Result<Vec<String>> {
+    let repo_url = repo_url.unwrap_or(VEHICLE_REPO_LIST_URL.to_string());
+    let response = get_response(repo_url)?.into_reader();
+    let github_list: Vec<GitObjectInfo> =
+        serde_json::from_reader(response).with_context(|| "Cannot parse github vehicle list.")?;
+    let mut vehicle_name_list: Vec<String> = Vec::new();
+    for object in github_list.iter() {
+        if object.url_type == "dir" {
+            let url = &object.url;
+            let vehicle_name_sublist = fetch_github_list(Some(url.to_owned()))?;
+            for name in vehicle_name_sublist.iter() {
+                vehicle_name_list.push(name.to_owned());
+            }
+        } else if object.url_type == "file" {
+            let url = url::Url::parse(&object.url)?;
+            let path = &object.path;
+            let format = url
+                .path_segments()
+                .and_then(|segments| segments.last())
+                .and_then(|filename| Path::new(filename).extension())
+                .and_then(OsStr::to_str)
+                .with_context(|| "Could not parse file format from URL: {url:?}")?;
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                "yaml" | "yml" => vehicle_name_list.push(path.to_owned()),
+                "json" => vehicle_name_list.push(path.to_owned()),
+                _ => continue,
+            }
+        } else {
+            continue;
+        }
+    }
+    Ok(vehicle_name_list)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,5 +343,19 @@ mod tests {
         assert!(wheel_rr_coef.approx_eq(&0.0068603812443132645, 1e-6));
         assert_eq!(drag_coef, veh.drag_coef);
         assert_eq!(wheel_rr_coef, veh.wheel_rr_coef);
+    }
+
+    // NOTE: this test does not seem to reliably pass. Sometimes the function
+    // will give a 403 error and sometimes it will succeed -- I don't think
+    // there's any way to ensure the function succeeds 100% of the time.
+    #[test]
+    fn test_fetch_github_list() {
+        let list = fetch_github_list(Some(
+            "https://api.github.com/repos/NREL/fastsim-vehicles/contents".to_owned(),
+        ))
+        .unwrap();
+        let other_list = fetch_github_list(None).unwrap();
+        println!("{:?}", list);
+        println!("{:?}", other_list);
     }
 }
