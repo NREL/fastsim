@@ -53,7 +53,6 @@ include = [
 # https://doc.rust-lang.org/cargo/reference/features.html?highlight=no-default-features#the-default-feature
 # and use the `--no-default-features` flag when compiling
 default = ["full"]
-pyo3 = ["dep:pyo3"]
 full = [
     "dep:argmin",
     "dep:argmin-math",
@@ -65,6 +64,7 @@ full = [
     "vehicle-import",
 ]
 bincode = ["dep:bincode"]
+pyo3 = ["dep:pyo3"]
 resources = ["dep:include_dir"]
 validation = ["dep:validator"]
 vehicle-import = ["dep:curl", "full"]
