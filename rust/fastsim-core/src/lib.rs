@@ -75,5 +75,8 @@ pub fn enabled_features() -> Vec<String> {
     #[cfg(feature = "validation")]
     enabled.push("validation".into());
 
+    #[cfg(feature = "vehicle-import")]
+    enabled.push("vehicle-import".into());
+
     enabled
 }

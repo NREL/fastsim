@@ -5,7 +5,7 @@ This module demonstrates the vehicle import API
 # %%
 from fastsim import fastsimrust
 
-REQUIRED_FEATURE = "full"
+REQUIRED_FEATURE = "vehicle-import"
 if __name__ == "__main__" and REQUIRED_FEATURE not in fastsimrust.enabled_features():
     raise NotImplementedError(
         f'Feature "{REQUIRED_FEATURE}" is required to run this demo'
