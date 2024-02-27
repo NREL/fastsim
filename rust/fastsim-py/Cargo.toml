@@ -40,5 +40,6 @@ logging = [
     "fastsim-core/logging",
 ]
 resources = ["fastsim-core/resources"]
+simdrivelabel = ["fastsim-core/simdrivelabel", "resources"]
 validation = ["fastsim-core/validation"]
 vehicle-import = ["fastsim-core/vehicle-import"]

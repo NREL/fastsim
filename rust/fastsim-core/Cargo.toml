@@ -62,6 +62,7 @@ default = [
     "dep:polynomial",
     "logging",
     "resources",
+    "simdrivelabel",
     "validation",
     "vehicle-import",
 ]
@@ -69,5 +70,6 @@ bincode = ["dep:bincode"] # non-default: bincode broken for RustVehicle struct
 logging = ["dep:log"]
 pyo3 = ["dep:pyo3"] # non-default: feature for use with fastsim-py crate
 resources = ["dep:include_dir"]
+simdrivelabel = ["resources"]
 validation = ["dep:validator"]
 vehicle-import = ["dep:curl"]

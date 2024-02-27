@@ -5,6 +5,7 @@
 //!   or enabling this feature directly), compiles commonly used resources (e.g.
 //!   standard drive cycles) for faster access.
 
+#[cfg(feature = "simdrivelabel")]
 use fastsim_core::simdrivelabel::*;
 use fastsim_core::*;
 use pyo3imports::*;
@@ -30,18 +31,24 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<vehicle_thermal::HVACModel>()?;
     m.add_class::<vehicle_import::OtherVehicleInputs>()?;
+    #[cfg(feature = "simdrivelabel")]
     m.add_class::<simdrivelabel::LabelFe>()?;
+    #[cfg(feature = "simdrivelabel")]
     m.add_class::<simdrivelabel::LabelFePHEV>()?;
+    #[cfg(feature = "simdrivelabel")]
     m.add_class::<simdrivelabel::PHEVCycleCalc>()?;
     m.add_class::<simdrive::simdrive_iter::SimDriveVec>()?;
 
     cycle::register(py, m)?;
     #[cfg(feature = "default")]
     m.add_function(wrap_pyfunction!(vehicle_utils::abc_to_drag_coeffs, m)?)?;
+    #[cfg(feature = "simdrivelabel")]
     m.add_function(wrap_pyfunction!(make_accel_trace_py, m)?)?;
+    #[cfg(feature = "simdrivelabel")]
     m.add_function(wrap_pyfunction!(get_net_accel_py, m)?)?;
-    #[cfg(feature = "default")]
+    #[cfg(feature = "simdrivelabel")]
     m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
+    #[cfg(feature = "simdrivelabel")]
     m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
     #[cfg(feature = "vehicle-import")]
     m.add_function(wrap_pyfunction!(
