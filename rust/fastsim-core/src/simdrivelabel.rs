@@ -144,6 +144,7 @@ pub fn make_accel_trace_py() -> RustCycle {
 }
 
 pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> anyhow::Result<f64> {
+    #[cfg(feature = "logging")]
     log::debug!("running `sim_drive_accel`");
     sd_accel.sim_drive_accel(None, None)?;
     if sd_accel.mph_ach.iter().any(|&x| x >= 60.) {
@@ -154,6 +155,7 @@ pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> any
             false,
         ))
     } else {
+        #[cfg(feature = "logging")]
         log::warn!("vehicle '{}' never achieves 60 mph", scenario_name);
         Ok(1e3)
     }

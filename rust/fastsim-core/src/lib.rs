@@ -69,6 +69,9 @@ pub fn enabled_features() -> Vec<String> {
     #[cfg(feature = "bincode")]
     enabled.push("bincode".into());
 
+    #[cfg(feature = "logging")]
+    enabled.push("logging".into());
+
     #[cfg(feature = "resources")]
     enabled.push("resources".into());
 

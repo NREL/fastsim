@@ -28,13 +28,17 @@ include = ["../../NOTICE"]
 
 [features]
 default = [
-    "dep:pyo3-log",
     "fastsim-core/default",
+    "logging",
     "resources",
     "validation",
     "vehicle-import",
 ]
 bincode = ["fastsim-core/bincode"]
+logging = [
+    "dep:pyo3-log",
+    "fastsim-core/logging",
+]
 resources = ["fastsim-core/resources"]
 validation = ["fastsim-core/validation"]
 vehicle-import = ["fastsim-core/vehicle-import"]

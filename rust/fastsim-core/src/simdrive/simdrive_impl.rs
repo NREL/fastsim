@@ -500,11 +500,13 @@ impl RustSimDrive {
 
         if self.cyc.dt_s().iter().any(|&dt| dt > 5.0) {
             if self.sim_params.missed_trace_correction {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Max time dilation factor = {:.3}",
                     (self.cyc.dt_s() / self.cyc0.dt_s()).max()?
                 );
             }
+            #[cfg(feature = "logging")]
             log::warn!(
                 "Large time steps affect accuracy significantly (max time step = {:.3})",
                 self.cyc.dt_s().max()?
@@ -1835,6 +1837,7 @@ impl RustSimDrive {
                 / (self.roadway_chg_kj + self.ess_dischg_kj + self.fuel_kj + self.ke_kj);
 
         if self.energy_audit_error.abs() > self.sim_params.energy_audit_error_tol {
+            #[cfg(feature = "logging")]
             log::warn!(
                 "problem detected with conservation of energy; \
                     energy audit error: {:.5}",
@@ -1867,6 +1870,7 @@ impl RustSimDrive {
         if !self.sim_params.missed_trace_correction {
             if self.trace_miss_dist_frac > self.sim_params.trace_miss_dist_tol {
                 self.trace_miss = true;
+                #[cfg(feature = "logging")]
                 log::warn!(
                     "trace miss distance fraction {:.5} exceeds tolerance of {:.5}",
                     self.trace_miss_dist_frac,
@@ -1875,6 +1879,7 @@ impl RustSimDrive {
             }
         } else if self.trace_miss_time_frac > self.sim_params.trace_miss_time_tol {
             self.trace_miss = true;
+            #[cfg(feature = "logging")]
             log::warn!(
                 "trace miss time fraction {:.5} exceeds tolerance of {:.5}",
                 self.trace_miss_time_frac,
@@ -1885,6 +1890,7 @@ impl RustSimDrive {
         self.trace_miss_speed_mps = *(&self.mps_ach - &self.cyc.mps).map(|x| x.abs()).max()?;
         if self.trace_miss_speed_mps > self.sim_params.trace_miss_speed_mps_tol {
             self.trace_miss = true;
+            #[cfg(feature = "logging")]
             log::warn!(
                 "trace miss speed {:.5} m/s exceeds tolerance of {:.5} m/s",
                 self.trace_miss_speed_mps,
