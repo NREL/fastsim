@@ -3,7 +3,7 @@ import pytest
 
 from fastsim import fastsimrust
 
-@pytest.mark.skipif("default" not in fastsimrust.enabled_features(), reason='requires "default" feature')
+@pytest.mark.skipif("simdrivelabel" not in fastsimrust.enabled_features(), reason='requires "simdrivelabel" feature')
 class TestSimDriveLabel(unittest.TestCase):
     def test_get_label_fe_conv(self):
         veh = fastsimrust.RustVehicle.mock_vehicle()
