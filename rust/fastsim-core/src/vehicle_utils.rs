@@ -5,8 +5,6 @@ use argmin::core::{CostFunction, Executor, OptimizationResult, State};
 #[cfg(feature = "default")]
 use argmin::solver::neldermead::NelderMead;
 use ndarray::{array, Array1};
-#[cfg(feature = "default")]
-use polynomial::Polynomial;
 use std::{result::Result, thread, time::Duration};
 use ureq::{Error as OtherError, Error::Status, Response};
 
@@ -78,13 +76,13 @@ pub fn abc_to_drag_coeffs(
     };
 
     // polynomial function for pounds vs speed
-    let dyno_func_lb: Polynomial<f64> = Polynomial::new(vec![a_lbf, b_lbf__mph, c_lbf__mph2]);
+    let dyno_func_lb = |x: &f64| a_lbf + b_lbf__mph * x + c_lbf__mph2 * x.powi(2);
 
     let drag_coef: f64;
     let wheel_rr_coef: f64;
 
     if simdrive_optimize.unwrap_or(true) {
-        let cost: GetError = GetError {
+        let cost = GetError {
             cycle: &cyc,
             vehicle: veh,
             dyno_func_lb: &dyno_func_lb,
@@ -142,21 +140,26 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
 }
 
 #[cfg(feature = "default")]
-struct GetError<'a> {
+struct GetError<'a, F>
+where
+    F: Fn(&f64) -> f64,
+{
     cycle: &'a RustCycle,
     vehicle: &'a RustVehicle,
-    dyno_func_lb: &'a Polynomial<f64>,
+    dyno_func_lb: &'a F,
 }
 
 #[cfg(feature = "default")]
-impl CostFunction for GetError<'_> {
+impl<F> CostFunction for GetError<'_, F>
+where
+    F: Fn(&f64) -> f64,
+{
     type Param = Array1<f64>;
     type Output = f64;
 
     fn cost(&self, x: &Self::Param) -> anyhow::Result<Self::Output> {
         let mut veh: RustVehicle = self.vehicle.clone();
         let cyc: RustCycle = self.cycle.clone();
-        let dyno_func_lb: Polynomial<f64> = self.dyno_func_lb.clone();
 
         veh.drag_coef = x[0];
         veh.wheel_rr_coef = x[1];
@@ -181,7 +184,7 @@ impl CostFunction for GetError<'_> {
                 * (sd_coast.drag_kw + sd_coast.rr_kw)
                 / sd_coast.mps_ach)
                 .slice_move(s![0..cutoff]),
-            (sd_coast.mph_ach.map(|x| dyno_func_lb.eval(*x))
+            (sd_coast.mph_ach.map(self.dyno_func_lb)
                 * Array::from_vec(vec![super::params::N_PER_LBF; sd_coast.mph_ach.len()]))
             .slice_move(s![0..cutoff]),
             cyc.time_s.slice_move(s![0..cutoff]),
