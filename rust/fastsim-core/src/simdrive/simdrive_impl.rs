@@ -27,11 +27,11 @@ pub struct CoastTrajectory {
 
 impl RustSimDrive {
     pub fn new(cyc: RustCycle, veh: RustVehicle) -> Self {
-        let hev_sim_count: usize = 0;
+        let hev_sim_count = 0;
         let cyc0 = cyc.clone();
         let sim_params = RustSimDriveParams::default();
         let props = params::RustPhysicalProperties::default();
-        let i: usize = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
+        let i = 1; // 1 # initialize step counter for possible use outside sim_drive_walk()
         let cyc_len = cyc.len();
         let cur_max_fs_kw_out = Array::zeros(cyc_len);
         let fc_trans_lim_kw = Array::zeros(cyc_len);

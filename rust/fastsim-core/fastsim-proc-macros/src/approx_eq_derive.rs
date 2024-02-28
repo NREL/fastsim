@@ -20,7 +20,7 @@ pub fn approx_eq_derive(input: TokenStream) -> TokenStream {
     generated.append_all(quote! {
         impl ApproxEq for #name {
             fn approx_eq(&self, other: &#name, tol: f64) -> bool {
-                let mut approx_eq_vals: Vec<bool> = Vec::new();
+                let mut approx_eq_vals = Vec::new();
                 #(approx_eq_vals.push(self.#field_names.approx_eq(&other.#field_names, tol));)*
                 approx_eq_vals.iter().all(|&x| x)
             }

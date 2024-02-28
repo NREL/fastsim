@@ -106,8 +106,8 @@ pub fn ndarrcumsum(arr: &Array1<f64>) -> Array1<f64> {
 
 /// return the unique values of the array
 pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
-    let mut set: HashSet<usize> = HashSet::new();
-    let mut new_arr: Vec<f64> = Vec::new();
+    let mut set = HashSet::new();
+    let mut new_arr = Vec::new();
     let x_min = arr.min().unwrap();
     let x_max = arr.max().unwrap();
     let dx = if x_max == x_min { 1.0 } else { x_max - x_min };
@@ -131,8 +131,8 @@ pub fn interpolate(
     extrapolate: bool,
 ) -> f64 {
     assert!(x_data_in.len() == y_data_in.len());
-    let mut new_x_data: Vec<f64> = Vec::new();
-    let mut new_y_data: Vec<f64> = Vec::new();
+    let mut new_x_data = Vec::new();
+    let mut new_y_data = Vec::new();
     let mut last_x = x_data_in[0];
     for idx in 0..x_data_in.len() {
         if idx == 0 || (idx > 0 && x_data_in[idx] > last_x) {
@@ -179,8 +179,8 @@ pub fn interpolate_vectors(
     extrapolate: bool,
 ) -> f64 {
     assert!(x_data_in.len() == y_data_in.len());
-    let mut new_x_data: Vec<f64> = Vec::new();
-    let mut new_y_data: Vec<f64> = Vec::new();
+    let mut new_x_data = Vec::new();
+    let mut new_y_data = Vec::new();
     let mut last_x = x_data_in[0];
     for idx in 0..x_data_in.len() {
         if idx == 0 || (idx > 0 && x_data_in[idx] > last_x) {
@@ -670,33 +670,33 @@ mod tests {
 
     #[test]
     fn test_that_first_eq_finds_the_right_index_when_one_exists() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_eq(&xs, 3.3).unwrap();
-        let expected_idx: usize = 2;
+        let expected_idx = 2;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_eq_yields_last_index_when_nothing_found() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_eq(&xs, 7.0).unwrap();
-        let expected_idx: usize = xs.len() - 1;
+        let expected_idx = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_grtr_finds_the_right_index_when_one_exists() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_grtr(&xs, 3.0).unwrap();
-        let expected_idx: usize = 2;
+        let expected_idx = 2;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_grtr_yields_last_index_when_nothing_found() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_grtr(&xs, 7.0).unwrap();
-        let expected_idx: usize = xs.len() - 1;
+        let expected_idx = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
 
@@ -735,7 +735,7 @@ mod tests {
     }
     // #[test]
     // fn test_that_argmax_does_the_right_thing_on_an_empty_array(){
-    //     let xs: Array1<bool> = Array::from_vec(vec![]);
+    //     let xs = Array::from_vec(vec![]);
     //     let idx = first_grtr(&xs);
     //     // unclear what should happen here; np.argmax throws a ValueError in the case of an empty vector
     //     // ... possibly we should return an Option type?

@@ -1,7 +1,7 @@
 //! Module for utility functions that support the vehicle struct.
 
 #[cfg(feature = "default")]
-use argmin::core::{CostFunction, Executor, OptimizationResult, State};
+use argmin::core::{CostFunction, Executor, State};
 #[cfg(feature = "default")]
 use argmin::solver::neldermead::NelderMead;
 use ndarray::{array, Array1};
@@ -48,25 +48,25 @@ pub fn abc_to_drag_coeffs(
     //     otherwise, directly use target A, B, C to calculate the results
     // show_plots: if True, plots are shown
 
-    let air_props: AirProperties = AirProperties::default();
+    let air_props = AirProperties::default();
     let props = RustPhysicalProperties::default();
-    let cur_ambient_air_density_kg__m3: f64 = if custom_rho.unwrap_or(false) {
+    let cur_ambient_air_density_kg__m3 = if custom_rho.unwrap_or(false) {
         air_props.get_rho(custom_rho_temp_degC.unwrap_or(20.0), custom_rho_elevation_m)
     } else {
         props.air_density_kg_per_m3
     };
 
-    let vmax_mph: f64 = 70.0;
-    let a_newton: f64 = a_lbf * super::params::N_PER_LBF;
-    let _b_newton__mps: f64 = b_lbf__mph * super::params::N_PER_LBF * super::params::MPH_PER_MPS;
-    let c_newton__mps2: f64 = c_lbf__mph2
+    let vmax_mph = 70.0;
+    let a_newton = a_lbf * super::params::N_PER_LBF;
+    let _b_newton__mps = b_lbf__mph * super::params::N_PER_LBF * super::params::MPH_PER_MPS;
+    let c_newton__mps2 = c_lbf__mph2
         * super::params::N_PER_LBF
         * super::params::MPH_PER_MPS
         * super::params::MPH_PER_MPS;
 
-    let cd_len: usize = 300;
+    let cd_len = 300;
 
-    let cyc: RustCycle = RustCycle {
+    let cyc = RustCycle {
         time_s: (0..cd_len as i32).map(f64::from).collect(),
         mps: Array::linspace(vmax_mph / super::params::MPH_PER_MPS, 0.0, cd_len),
         grade: Array::zeros(cd_len),
@@ -87,13 +87,13 @@ pub fn abc_to_drag_coeffs(
             vehicle: veh,
             dyno_func_lb: &dyno_func_lb,
         };
-        let solver: NelderMead<Array1<f64>, f64> =
+        let solver =
             NelderMead::new(vec![array![0.0, 0.0], array![0.5, 0.0], array![0.5, 0.1]]);
-        let res: OptimizationResult<_, _, _> = Executor::new(cost, solver)
+        let res = Executor::new(cost, solver)
             .configure(|state| state.max_iters(100))
             .run()
             .unwrap();
-        let best_param: &Array1<f64> = res.state().get_best_param().unwrap();
+        let best_param = res.state().get_best_param().unwrap();
         drag_coef = best_param[0];
         wheel_rr_coef = best_param[1];
     } else {
@@ -129,8 +129,8 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
         time_steps.len()
     );
 
-    let mut err: f64 = 0.0;
-    let y: Array1<f64> = (model - test).mapv(f64::abs);
+    let mut err = 0.0;
+    let y = (model - test).mapv(f64::abs);
 
     for index in 0..time_steps.len() - 1 {
         err += 0.5 * (time_steps[index + 1] - time_steps[index]) * (y[index] + y[index + 1]);
@@ -158,22 +158,22 @@ where
     type Output = f64;
 
     fn cost(&self, x: &Self::Param) -> anyhow::Result<Self::Output> {
-        let mut veh: RustVehicle = self.vehicle.clone();
-        let cyc: RustCycle = self.cycle.clone();
+        let mut veh = self.vehicle.clone();
+        let cyc = self.cycle.clone();
 
         veh.drag_coef = x[0];
         veh.wheel_rr_coef = x[1];
 
-        let mut sd_coast: RustSimDrive = RustSimDrive::new(self.cycle.clone(), veh);
+        let mut sd_coast = RustSimDrive::new(self.cycle.clone(), veh);
         sd_coast.impose_coast = Array::from_vec(vec![true; sd_coast.impose_coast.len()]);
-        let _sim_drive_result: Result<_, _> = sd_coast.sim_drive(None, None);
+        let _sim_drive_result = sd_coast.sim_drive(None, None);
 
         let cutoff_vec: Vec<usize> = sd_coast
             .mps_ach
             .indexed_iter()
             .filter_map(|(index, &item)| (item < 0.1).then_some(index))
             .collect();
-        let cutoff: usize = if cutoff_vec.is_empty() {
+        let cutoff = if cutoff_vec.is_empty() {
             sd_coast.mps_ach.len()
         } else {
             cutoff_vec[0]
@@ -275,7 +275,7 @@ pub fn fetch_github_list(repo_url: Option<String>) -> anyhow::Result<Vec<String>
     let response = get_response(repo_url)?.into_reader();
     let github_list: Vec<GitObjectInfo> =
         serde_json::from_reader(response).with_context(|| "Cannot parse github vehicle list.")?;
-    let mut vehicle_name_list: Vec<String> = Vec::new();
+    let mut vehicle_name_list = Vec::new();
     for object in github_list.iter() {
         if object.url_type == "dir" {
             let url = &object.url;
@@ -310,11 +310,11 @@ mod tests {
 
     #[test]
     fn test_get_error_val() {
-        let time_steps: Array1<f64> = array![0.0, 1.0, 2.0, 3.0, 4.0];
-        let model: Array1<f64> = array![1.1, 4.6, 2.5, 3.7, 5.0];
-        let test: Array1<f64> = array![2.1, 4.5, 3.4, 4.8, 6.3];
+        let time_steps = array![0.0, 1.0, 2.0, 3.0, 4.0];
+        let model = array![1.1, 4.6, 2.5, 3.7, 5.0];
+        let test = array![2.1, 4.5, 3.4, 4.8, 6.3];
 
-        let error_val: f64 = get_error_val(model, test, time_steps);
+        let error_val = get_error_val(model, test, time_steps);
         println!("Error Value: {}", error_val);
 
         assert!(error_val.approx_eq(&0.8124999999999998, 1e-10));
@@ -323,12 +323,12 @@ mod tests {
     #[cfg(feature = "default")]
     #[test]
     fn test_abc_to_drag_coeffs() {
-        let mut veh: RustVehicle = RustVehicle::mock_vehicle();
-        let a: f64 = 25.91;
-        let b: f64 = 0.1943;
-        let c: f64 = 0.01796;
+        let mut veh = RustVehicle::mock_vehicle();
+        let a = 25.91;
+        let b = 0.1943;
+        let c = 0.01796;
 
-        let (drag_coef, wheel_rr_coef): (f64, f64) = abc_to_drag_coeffs(
+        let (drag_coef, wheel_rr_coef) = abc_to_drag_coeffs(
             &mut veh,
             a,
             b,

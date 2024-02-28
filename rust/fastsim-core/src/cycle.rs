@@ -111,7 +111,7 @@ pub fn accel_for_constant_jerk(n: usize, a0: f64, k: f64, dt: f64) -> f64 {
 
 /// Apply `accel_for_constant_jerk` to full
 pub fn accel_array_for_constant_jerk(nmax: usize, a0: f64, k: f64, dt: f64) -> Array1<f64> {
-    let mut accels: Vec<f64> = Vec::new();
+    let mut accels = Vec::new();
     for n in 0..nmax {
         accels.push(accel_for_constant_jerk(n, a0, k, dt));
     }
@@ -120,7 +120,7 @@ pub fn accel_array_for_constant_jerk(nmax: usize, a0: f64, k: f64, dt: f64) -> A
 
 /// Calculate the average speed per each step in m/s
 pub fn average_step_speeds(cyc: &RustCycle) -> Array1<f64> {
-    let mut result: Vec<f64> = Vec::with_capacity(cyc.len());
+    let mut result = Vec::with_capacity(cyc.len());
     result.push(0.0);
     for i in 1..cyc.len() {
         result.push(0.5 * (cyc.mps[i] + cyc.mps[i - 1]));
@@ -141,7 +141,7 @@ pub fn trapz_step_distances(cyc: &RustCycle) -> Array1<f64> {
 }
 
 pub fn trapz_step_distances_primitive(time_s: &Array1<f64>, mps: &Array1<f64>) -> Array1<f64> {
-    let mut delta_dists_m: Vec<f64> = Vec::with_capacity(time_s.len());
+    let mut delta_dists_m = Vec::with_capacity(time_s.len());
     delta_dists_m.push(0.0);
     for i in 1..time_s.len() {
         delta_dists_m.push((time_s[i] - time_s[i - 1]) * 0.5 * (mps[i] + mps[i - 1]));
@@ -153,7 +153,7 @@ pub fn trapz_step_distances_primitive(time_s: &Array1<f64>, mps: &Array1<f64>) -
 /// (i.e., distance traveled up to sample point i-1)
 /// Distance is in meters.
 pub fn trapz_step_start_distance(cyc: &RustCycle, i: usize) -> f64 {
-    let mut dist_m: f64 = 0.0;
+    let mut dist_m = 0.0;
     for i in 1..i {
         dist_m += (cyc.time_s[i] - cyc.time_s[i - 1]) * 0.5 * (cyc.mps[i] + cyc.mps[i - 1]);
     }
@@ -199,7 +199,7 @@ pub fn time_spent_moving(cyc: &RustCycle, stopped_speed_m_per_s: Option<f64>) ->
 ///     that name to all microtrips
 pub fn to_microtrips(cycle: &RustCycle, stop_speed_m_per_s: Option<f64>) -> Vec<RustCycle> {
     let stop_speed_m_per_s = stop_speed_m_per_s.unwrap_or(1e-6);
-    let mut microtrips: Vec<RustCycle> = Vec::new();
+    let mut microtrips = Vec::new();
     let ts = cycle.time_s.to_vec();
     let vs = cycle.mps.to_vec();
     let gs = cycle.grade.to_vec();
@@ -278,7 +278,7 @@ pub fn create_dist_and_target_speeds_by_microtrip(
     } else {
         blend_factor
     };
-    let mut dist_and_tgt_speeds: Vec<(f64, f64)> = Vec::new();
+    let mut dist_and_tgt_speeds = Vec::new();
     // Split cycle into microtrips
     let microtrips = to_microtrips(cyc, None);
     let mut dist_at_start_of_microtrip_m = 0.0;
@@ -421,9 +421,9 @@ impl RustCycleCache {
             ndarrcumsum(&xs)
         };
         let stops = Array::from_iter(cyc.mps.iter().map(|v| v <= &tol));
-        let mut interp_ds: Vec<f64> = Vec::with_capacity(num_items);
-        let mut interp_is: Vec<f64> = Vec::with_capacity(num_items);
-        let mut interp_hs: Vec<f64> = Vec::with_capacity(num_items);
+        let mut interp_ds = Vec::with_capacity(num_items);
+        let mut interp_is = Vec::with_capacity(num_items);
+        let mut interp_hs = Vec::with_capacity(num_items);
         for idx in 0..num_items {
             let d = trapz_distances_m[idx];
             if interp_ds.is_empty() || d > *interp_ds.last().unwrap() {
@@ -968,7 +968,7 @@ impl RustCycle {
         distance_m: f64,
         cache: Option<&RustCycleCache>,
     ) -> f64 {
-        let tol: f64 = 1e-6;
+        let tol = 1e-6;
         match cache {
             Some(rcc) => {
                 for (&dist, &v) in rcc.trapz_distances_m.iter().zip(self.mps.iter()) {
@@ -1071,8 +1071,8 @@ impl RustCycle {
         // time-to-stop (s)
         let tts_s = -v0 / brake_accel_m_per_s2;
         // number of steps to take
-        let n: usize = (tts_s / dt).round() as usize;
-        let n: usize = if n < 2 { 2 } else { n }; // need at least 2 steps
+        let n = (tts_s / dt).round() as usize;
+        let n = if n < 2 { 2 } else { n }; // need at least 2 steps
         let (jerk_m_per_s3, accel_m_per_s2) =
             calc_constant_jerk_trajectory(n, 0.0, v0, dts_m, 0.0, dt)?;
         Ok((
@@ -1154,16 +1154,16 @@ pub fn detect_passing(
     }
     let zero_speed_tol_m_per_s = 1e-6;
     let dist_tol_m = dist_tol_m.unwrap_or(0.1);
-    let mut v0: f64 = cyc.mps[i - 1];
-    let d0: f64 = trapz_step_start_distance(cyc, i);
-    let mut v0_lv: f64 = cyc0.mps[i - 1];
-    let d0_lv: f64 = trapz_step_start_distance(cyc0, i);
+    let mut v0 = cyc.mps[i - 1];
+    let d0 = trapz_step_start_distance(cyc, i);
+    let mut v0_lv = cyc0.mps[i - 1];
+    let d0_lv = trapz_step_start_distance(cyc0, i);
     let mut d = d0;
     let mut d_lv = d0_lv;
-    let mut rendezvous_idx: Option<usize> = None;
-    let mut rendezvous_num_steps: usize = 0;
-    let mut rendezvous_distance_m: f64 = 0.0;
-    let mut rendezvous_speed_m_per_s: f64 = 0.0;
+    let mut rendezvous_idx = None;
+    let mut rendezvous_num_steps = 0;
+    let mut rendezvous_distance_m = 0.0;
+    let mut rendezvous_speed_m_per_s = 0.0;
     for di in 0..(cyc.mps.len() - i) {
         let idx = i + di;
         let v = cyc.mps[idx];
@@ -1237,7 +1237,7 @@ mod tests {
     #[test]
     fn test_loading_a_cycle_from_the_filesystem() {
         let cyc_file_path = resources_path().join("cycles/udds.csv");
-        let expected_udds_length: usize = 1370;
+        let expected_udds_length = 1370;
         let cyc = RustCycle::from_csv_file(cyc_file_path).unwrap();
         let num_entries = cyc.len();
         assert_eq!(cyc.name, String::from("udds"));

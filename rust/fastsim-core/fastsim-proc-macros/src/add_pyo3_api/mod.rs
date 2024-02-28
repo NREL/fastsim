@@ -9,7 +9,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
     // println!("{}", ast.ident.to_string());
     let ident = &ast.ident;
-    let _is_state_or_history: bool =
+    let _is_state_or_history =
         ident.to_string().contains("State") || ident.to_string().contains("HistoryVec");
 
     let mut impl_block = TokenStream2::default();
@@ -344,7 +344,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     final_output.extend::<TokenStream2>(quote! {
         #[cfg_attr(feature="pyo3", pyclass(module = "fastsimrust", subclass))]
     });
-    let mut output: TokenStream2 = ast.to_token_stream();
+    let mut output = ast.to_token_stream();
     output.extend(impl_block);
     // if ast.ident.to_string() == "RustSimDrive" {
     //     println!("{}", output.to_string());
