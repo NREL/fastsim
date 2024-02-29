@@ -18,6 +18,31 @@ Examples of calibration levels 0, 2, and 3 from the [FASTSim Validation Report](
 
 ![image](https://github.com/NREL/fastsim/assets/4818940/8483661f-dee4-4d59-9d69-e6d54dae0100)
 
+## Calibration Level 0 (Parameterization) Guidelines
+- Create a new vehicle file, either from a template or an existing vehicle model
+- Enter vehicle parameters from specification websites
+  - `veh_pt_type` and `fc_eff_type` are important high level powertrain descriptors
+    - `veh_pt_type`: Vehicle powertrain type
+      - `Conv`: conventional (ICE, gasoline or diesel) vehicle
+      - `HEV`: hybrid electric vehicle
+      - `PHEV`: plug-in hybrid electric vehicle
+      - `BEV`: battery electric vehicle
+    - `fc_eff_type`: Fuel converter efficiency type
+      - Used to retrieve default `fc_eff_map` if it is not provided
+      - Unimportant and ineffectual for vehicles without a fuel converter (e.g. BEVs)
+      - `SI`: spark ignition
+      - `Atkinson`: Atkinson cycle (typical for hybrids)
+      - `Diesel`: diesel (compression ignition)
+      - `H2FC`: hydrogen fuel cell (use with `veh_pt_type` set to `HEV`)
+      - `HD_Diesel`: heavy-duty diesel
+  - `veh_override_kg` is the simplest way to specify total vehicle mass
+    - If not provided, the various component mass parameters will be used to calculate total vehicle mass
+    - If `veh_override_kg` is provided, component mass parameters are ineffectual
+  - `drag_coef` and `wheel_rr_coef` can be calculated from dynamometer road load equation coefficients (ABCs) for vehicles tested by the EPA using `fastsim.auxiliaries.abc_to_drag_coeffs`
+    - `drag_coef` is sometimes provided on specification websites, but if possible the ABCs should be used
+  - `wheel_radius_m` is often not explicitly provided, but a tire code can be supplied to `fastsim.utils.calculate_tire_radius` to calculate a radius
+  - Note: For hybrids, 'total system power' is often provided. This should not be used for either `fc_max_kw` or `mc_max_kw`, individual powers should instead be provided
+
 ## Calibration Level 2 Guidelines
 - Copy
   [calibration_demo.py](https://github.com/NREL/fastsim/blob/fastsim-2/python/fastsim/demos/calibration_demo.py)
