@@ -19,29 +19,33 @@ Examples of calibration levels 0, 2, and 3 from the [FASTSim Validation Report](
 ![image](https://github.com/NREL/fastsim/assets/4818940/8483661f-dee4-4d59-9d69-e6d54dae0100)
 
 ## Calibration Level 0 (Parameterization) Guidelines
-- Create a new vehicle file, either from a template or an existing vehicle model
-- Enter vehicle parameters from specification websites
-  - `veh_pt_type` and `fc_eff_type` are important high level powertrain descriptors
+As noted in the table above, parameterization of a new FASTSim powertrain model is performed when little or no ground truth performance data is available for a specific vehicle. One example of this is if EPA window-sticker fuel economy data is the only available performance data. In this situation, it is recommended to parameterize a FASTSim powertrain model using the most reliable vehicle parameters from available information (e.g., specification websites). This helps to avoid overfitting and relies on the robustness of the FASTSim approach to capture the most important powertrain dynamics and to simulate energy consumption.
+
+- Create a new vehicle file, either from a template or an existing vehicle model (ideally of the same powertrain type)
+- Enter vehicle parameters from various specification sources (__note__: it is recommended to document the source of specifications that are used to determine each parameter)
+  - `veh_pt_type` and `fc_eff_type` are important high level descriptors that define the powertrain technology
     - `veh_pt_type`: Vehicle powertrain type
-      - `Conv`: conventional (ICE, gasoline or diesel) vehicle
-      - `HEV`: hybrid electric vehicle
-      - `PHEV`: plug-in hybrid electric vehicle
-      - `BEV`: battery electric vehicle
+      - Parameter values:
+        - `Conv`: conventional (ICE, gasoline or diesel) vehicle
+        - `HEV`: hybrid electric vehicle
+        - `PHEV`: plug-in hybrid electric vehicle
+        - `BEV`: battery electric vehicle
     - `fc_eff_type`: Fuel converter efficiency type
-      - Used to retrieve default `fc_eff_map` if it is not provided
-      - Unimportant and ineffectual for vehicles without a fuel converter (e.g. BEVs)
-      - `SI`: spark ignition
-      - `Atkinson`: Atkinson cycle (typical for hybrids)
-      - `Diesel`: diesel (compression ignition)
-      - `H2FC`: hydrogen fuel cell (use with `veh_pt_type` set to `HEV`)
-      - `HD_Diesel`: heavy-duty diesel
+      - This parameter is used to retrieve the default `fc_eff_map` for a particular engine type if a custom map is not provided
+      - Unnecessary and not used for vehicles without a fuel converter (e.g. BEVs)
+      - Parameter values:
+        - `SI`: spark ignition
+        - `Atkinson`: Atkinson cycle (typical for hybrids)
+        - `Diesel`: diesel (compression ignition)
+        - `H2FC`: hydrogen fuel cell (use with `veh_pt_type` set to `HEV`)
+        - `HD_Diesel`: heavy-duty diesel
   - `veh_override_kg` is the simplest way to specify total vehicle mass
     - If not provided, the various component mass parameters will be used to calculate total vehicle mass
-    - If `veh_override_kg` is provided, component mass parameters are ineffectual
-  - `drag_coef` and `wheel_rr_coef` can be calculated from dynamometer road load equation coefficients (ABCs) for vehicles tested by the EPA using `fastsim.auxiliaries.abc_to_drag_coeffs`
-    - `drag_coef` is sometimes provided on specification websites, but if possible the ABCs should be used
-  - `wheel_radius_m` is often not explicitly provided, but a tire code can be supplied to `fastsim.utils.calculate_tire_radius` to calculate a radius
-  - Note: For hybrids, 'total system power' is often provided. This should not be used for either `fc_max_kw` or `mc_max_kw`, individual powers should instead be provided
+    - If `veh_override_kg` is provided, component mass parameters are unnecessary and not used
+  - `drag_coef` and `wheel_rr_coef` can be calculated from dynamometer road load equation coefficients (ABCs) for vehicles tested by the US EPA using `fastsim.auxiliaries.abc_to_drag_coeffs`. Test data, including the road load coefficients from coast-down testing, for cars tested by the US EPA is available [here](https://www.epa.gov/compliance-and-fuel-economy-data/data-cars-used-testing-fuel-economy).
+    - `drag_coef` is sometimes provided on specification websites and reasonable values informed by engineering judgement for `wheel_rr_coef` can be used , but when possible the ABCs and `fastsim.auxiliaries.abc_to_drag_coeffs` method should be used instead
+  - `wheel_radius_m` is often not explicitly available for a vehicle, but a tire code can be supplied to `fastsim.utils.calculate_tire_radius` to calculate a radius
+  - Note: For hybrids, 'total system power' is often provided (e.g., combined ICE and electric motor powers). This should not be used for either `fc_max_kw` or `mc_max_kw`, peak engine-only power should be used for `fc_max_kw` and peak electric motor-only power for `mc_max_kw`.
 
 ## Calibration Level 2 Guidelines
 - Copy
