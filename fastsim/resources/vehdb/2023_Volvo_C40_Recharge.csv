@@ -2,14 +2,14 @@
 Category,Scenario name,2023 Volvo C40 Recharge,
 Vehicle,vehYear,2023,
 ,vehPtType,BEV,
-,dragCoef,0.319,https://web.archive.org/web/20230322230545/https://www.media.volvocars.com/global/en-gb/models/c40-recharge/2023/specifications
+,dragCoef,0.371319383535661,
 ,frontalAreaM2,2.54,https://web.archive.org/web/20230322230545/https://www.media.volvocars.com/global/en-gb/models/c40-recharge/2023/specifications
 ,gliderKg,0,
 ,vehCgM,0.53,positive for AWD
 ,driveAxleWeightFrac,0.61,
 ,wheelBaseM,2.702,https://web.archive.org/web/20230322230545/https://www.media.volvocars.com/global/en-gb/models/c40-recharge/2023/specifications
 ,cargoKg,0,
-,vehOverrideKg,2620,https://web.archive.org/web/20230322230545/https://www.media.volvocars.com/global/en-gb/models/c40-recharge/2023/specifications
+,vehOverrideKg,2237,
 ,compMassMultiplier,1.4,
 Fuel / Fuel Converter / Engine,maxFuelStorKw,0,
 ,fuelStorSecsToPeakPwr,1.1,
@@ -40,7 +40,7 @@ ESS / Battery,maxEssKw,1000,
 ,essChgToFcMaxEffPerc,0.3,
 Wheels,wheelInertiaKgM2,0.815,
 ,numWheels,4,
-,wheelRrCoef,0.0101,
+,wheelRrCoef,0.007699287908499693,
 ,wheelRadiusM,0.356,255/40R20; https://www.edmunds.com/volvo/c40-recharge/2023/features-specs/
 ,wheelCoefOfFric,0.8,
 HEV Controls,maxAccelBufferMph,60.3,
