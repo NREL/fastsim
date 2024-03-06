@@ -334,6 +334,35 @@ pub fn get_options_for_year_make_model(
         .unwrap_or_else(|| vec![]))
 }
 
+#[cfg_attr(feature = "pyo3", pyfunction)]
+pub fn get_vehicle_data_for_id(
+    id: i32,
+    year: &str, 
+    cache_url: Option<String>,
+    data_dir: Option<String>,
+) -> anyhow::Result<VehicleDataFE> {
+    // prep the cache for year
+    let y: u32 = year.trim().parse()?;
+    let ys: HashSet<u32> = {
+        let mut h = HashSet::new();
+        h.insert(y);
+        h
+    };
+    let ddpath = data_dir.and_then(|dd| Some(PathBuf::from(dd))).unwrap_or(create_project_subdir("fe_label_data")?);
+    let cache_url = cache_url.unwrap_or_else(get_default_cache_url);
+    populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url).with_context(|| format!("Unable to load or download cache data from {cache_url}"))?;
+    let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
+    let fegov_data_by_year =
+        load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
+    let fegov_db = fegov_data_by_year.get(&y).context(format!("Could not get fueleconomy.gov data from year {y}"))?;
+    for item in fegov_db.iter() {
+        if item.id == id {
+            return Ok(item.clone())
+        }
+    }
+    bail!("Could not find ID in data {id}");
+}
+
 fn derive_transmission_specs(fegov: &VehicleDataFE) -> (u32, String) {
     let num_gears_fe_gov: u32;
     let transmission_fe_gov: String;
