@@ -30,7 +30,6 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<vehicle_thermal::HVACModel>()?;
-    m.add_class::<vehicle_import::OtherVehicleInputs>()?;
 
     cycle::register(py, m)?;
 
@@ -50,6 +49,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     }
     #[cfg(feature = "vehicle-import")]
     {
+        m.add_class::<vehicle_import::OtherVehicleInputs>()?;
         m.add_function(wrap_pyfunction!(
             vehicle_import::get_options_for_year_make_model,
             m

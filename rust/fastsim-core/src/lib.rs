@@ -61,6 +61,7 @@ pub use fastsim_proc_macros as proc_macros;
 #[cfg_attr(feature = "pyo3", pyo3imports::pyfunction)]
 #[allow(clippy::vec_init_then_push)]
 pub fn enabled_features() -> Vec<String> {
+    #[allow(unused_mut)]
     let mut enabled = vec![];
 
     #[cfg(feature = "default")]

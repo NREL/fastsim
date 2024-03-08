@@ -224,6 +224,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// the FASTSim data directory. If a path is given, the file will live
     /// within the path specified, within the subdirectory CACHE_FOLDER of the
     /// FASTSim data directory.
+    #[cfg(feature = "default")]
     fn to_cache<P: AsRef<Path>>(&self, file_path: P) -> anyhow::Result<()> {
         let file_name = file_path
             .as_ref()
@@ -266,6 +267,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// find and instantiate the object. Instead, use the from_file method, and
     /// use the utils::path_to_cache() to find the FASTSim data directory
     /// location if needed.
+    #[cfg(feature = "default")]
     fn from_cache<P: AsRef<Path>>(file_path: P) -> anyhow::Result<Self> {
         let full_file_path = Path::new(Self::CACHE_FOLDER).join(file_path);
         let path_including_directory = path_to_cache()?.join(full_file_path);

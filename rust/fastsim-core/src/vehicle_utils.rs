@@ -4,17 +4,21 @@
 use argmin::core::{CostFunction, Executor, State};
 #[cfg(feature = "default")]
 use argmin::solver::neldermead::NelderMead;
-use ndarray::{array, Array1};
 use std::{result::Result, thread, time::Duration};
 use ureq::{Error as OtherError, Error::Status, Response};
 
+#[cfg(feature = "default")]
 use crate::air::*;
+#[cfg(feature = "default")]
 use crate::cycle::RustCycle;
 use crate::imports::*;
+#[cfg(feature = "default")]
 use crate::params::*;
-#[cfg(feature = "pyo3")]
+#[cfg(all(feature = "pyo3", feature = "default"))]
 use crate::pyo3imports::*;
+#[cfg(feature = "default")]
 use crate::simdrive::RustSimDrive;
+#[cfg(feature = "default")]
 use crate::vehicle::RustVehicle;
 
 #[allow(non_snake_case)]
