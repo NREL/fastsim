@@ -67,19 +67,19 @@ impl Default for RustSimDriveParams {
         // if true, missed trace correction is active, default = false
         let missed_trace_correction = false;
         // maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
-        let max_time_dilation: f64 = 1.0;
+        let max_time_dilation = 1.0;
         // minimum time dilation margin to let trace "catch up" -- e.g. -0.5 means 50% reduction in step size
-        let min_time_dilation: f64 = -0.5;
-        let time_dilation_tol: f64 = 5e-4; // convergence criteria for time dilation
-        let max_trace_miss_iters: u32 = 5; // number of iterations to achieve time dilation correction
-        let trace_miss_speed_mps_tol: f64 = 1.0; // # threshold of error in speed [m/s] that triggers warning
-        let trace_miss_time_tol: f64 = 1e-3; // threshold for printing warning when time dilation is active
-        let trace_miss_dist_tol: f64 = 1e-3; // threshold of fractional eror in distance that triggers warning
-        let sim_count_max: usize = 30; // max allowable number of HEV SOC iterations
-        let newton_gain: f64 = 0.9; // newton solver gain
-        let newton_max_iter: u32 = 100; // newton solver max iterations
-        let newton_xtol: f64 = 1e-9; // newton solver tolerance
-        let energy_audit_error_tol: f64 = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
+        let min_time_dilation = -0.5;
+        let time_dilation_tol = 5e-4; // convergence criteria for time dilation
+        let max_trace_miss_iters = 5; // number of iterations to achieve time dilation correction
+        let trace_miss_speed_mps_tol = 1.0; // # threshold of error in speed [m/s] that triggers warning
+        let trace_miss_time_tol = 1e-3; // threshold for printing warning when time dilation is active
+        let trace_miss_dist_tol = 1e-3; // threshold of fractional eror in distance that triggers warning
+        let sim_count_max = 30; // max allowable number of HEV SOC iterations
+        let newton_gain = 0.9; // newton solver gain
+        let newton_max_iter = 100; // newton solver max iterations
+        let newton_xtol = 1e-9; // newton solver tolerance
+        let energy_audit_error_tol = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
                                                  // Coasting
         let coast_allow = false;
         let coast_allow_passing = false;
@@ -99,7 +99,7 @@ impl Default for RustSimDriveParams {
         let idm_decel_m_per_s2 = 1.5;
         let idm_v_desired_in_m_per_s_by_distance_m = None;
         // EPA fuel economy adjustment parameters
-        let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
+        let max_epa_adj = 0.3; // maximum EPA adjustment factor
         Self {
             favor_grade_accuracy,
             missed_trace_correction,
@@ -207,9 +207,9 @@ impl Default for RustSimDriveParams {
         blend_factor: Option<f64>,
         min_target_speed_m_per_s: Option<f64>,
     ) -> anyhow::Result<()> {
-        let by_microtrip: bool = by_microtrip.unwrap_or(false);
-        let extend_fraction: f64 = extend_fraction.unwrap_or(0.1);
-        let blend_factor: f64 = blend_factor.unwrap_or(0.0);
+        let by_microtrip = by_microtrip.unwrap_or(false);
+        let extend_fraction = extend_fraction.unwrap_or(0.1);
+        let blend_factor = blend_factor.unwrap_or(0.0);
         let min_target_speed_m_per_s = min_target_speed_m_per_s.unwrap_or(8.0);
             self.activate_eco_cruise_rust(
                 by_microtrip, extend_fraction, blend_factor, min_target_speed_m_per_s)
@@ -571,10 +571,10 @@ impl SerdeAPI for RustSimDrive {
 
 //         // SIM DRIVE
 //         let mut sd = RustSimDrive::__new__(cyc, veh);
-//         let init_soc: f64 = 0.5;
+//         let init_soc = 0.5;
 //         sd.walk(init_soc);
 
-//         let expected_final_i: usize = cycle_length;
+//         let expected_final_i = cycle_length;
 //         assert_eq!(sd.i, expected_final_i);
 //     }
 // }

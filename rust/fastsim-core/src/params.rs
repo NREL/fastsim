@@ -58,12 +58,12 @@ impl SerdeAPI for RustPhysicalProperties {}
 
 impl Default for RustPhysicalProperties {
     fn default() -> Self {
-        let air_density_kg_per_m3: f64 = 1.2;
-        let a_grav_mps2: f64 = 9.81;
-        let kwh_per_gge: f64 = 33.7;
+        let air_density_kg_per_m3 = 1.2;
+        let a_grav_mps2 = 9.81;
+        let kwh_per_gge = 33.7;
         #[allow(non_snake_case)]
-        let fuel_rho_kg__L: f64 = 0.75;
-        let fuel_afr_stoich: f64 = 14.7;
+        let fuel_rho_kg__L = 0.75;
+        let fuel_afr_stoich = 14.7;
         Self {
             air_density_kg_per_m3,
             a_grav_mps2,
@@ -161,7 +161,7 @@ impl SerdeAPI for AdjCoef {}
 
 impl Default for RustLongParams {
     fn default() -> Self {
-        let long_params_str: &str = include_str!("../resources/longparams.json");
+        let long_params_str = include_str!("../resources/longparams.json");
         let long_params = Self::from_json(long_params_str).unwrap();
         long_params
     }
@@ -173,22 +173,22 @@ mod params_test {
 
     #[test]
     fn test_get_long_params() {
-        let long_params: RustLongParams = RustLongParams::default();
+        let long_params = RustLongParams::default();
 
-        let adj_coef_2008: AdjCoef = AdjCoef {
+        let adj_coef_2008 = AdjCoef {
             city_intercept: 0.003259,
             city_slope: 1.1805,
             hwy_intercept: 0.001376,
             hwy_slope: 1.3466,
         };
-        let adj_coef_2017: AdjCoef = AdjCoef {
+        let adj_coef_2017 = AdjCoef {
             city_intercept: 0.004091,
             city_slope: 1.1601,
             hwy_intercept: 0.003191,
             hwy_slope: 1.2945,
         };
 
-        let mut adj_coef_map: HashMap<String, AdjCoef> = HashMap::new();
+        let mut adj_coef_map = HashMap::new();
         adj_coef_map.insert(String::from("2008"), adj_coef_2008);
         adj_coef_map.insert(String::from("2017"), adj_coef_2017);
 

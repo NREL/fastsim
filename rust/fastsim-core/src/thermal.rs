@@ -481,13 +481,13 @@ impl SimDriveHot {
         if let CabinHvacModelTypes::Internal(hvac_model) = &mut self.vehthrm.cabin_hvac_model {
             // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
             // Transfer, 7th Edition
-            let cab_te_film_ext_deg_c: f64 =
+            let cab_te_film_ext_deg_c =
                 0.5 * (self.state.cab_te_deg_c + self.state.amb_te_deg_c);
-            let re_l: f64 = self.air.get_rho(cab_te_film_ext_deg_c, None)
+            let re_l = self.air.get_rho(cab_te_film_ext_deg_c, None)
                 * self.sd.mps_ach[i - 1]
                 * self.vehthrm.cab_l_length
                 / self.air.get_mu(cab_te_film_ext_deg_c);
-            let re_l_crit: f64 = 5.0e5; // critical Re for transition to turbulence
+            let re_l_crit = 5.0e5; // critical Re for transition to turbulence
 
             let nu_l_bar = if re_l < re_l_crit {
                 // equation 7.30
@@ -720,7 +720,7 @@ impl SimDriveHot {
 
         // Constitutive equations for catalyst
         // catalyst film temperature for property calculation
-        let cat_te_ext_film_deg_c: f64 = 0.5 * (self.state.cat_te_deg_c + self.state.amb_te_deg_c);
+        let cat_te_ext_film_deg_c = 0.5 * (self.state.cat_te_deg_c + self.state.amb_te_deg_c);
         // density * speed * diameter / dynamic viscosity
         self.state.cat_re_ext = self.air.get_rho(cat_te_ext_film_deg_c, None)
             * self.sd.mps_ach[i - 1]
@@ -957,7 +957,7 @@ impl SimDriveHot {
                 }
             }
 
-            if &self.sd.fc_kw_out_ach[i] == self.sd.veh.input_kw_out_array.max()? {
+            if self.sd.fc_kw_out_ach[i] == *self.sd.veh.input_kw_out_array.max()? {
                 self.sd.fc_kw_in_ach[i] = self.sd.fc_kw_out_ach[i]
                     / (self.sd.veh.fc_eff_array.last().unwrap() * self.state.fc_eta_temp_coeff)
             } else {
@@ -1105,7 +1105,7 @@ impl ThermalState {
         cat_te_deg_c_init: Option<f64>,
     ) -> Self {
         // Note default temperature is defined twice, see default()
-        let default_te_deg_c: f64 = 22.0;
+        let default_te_deg_c = 22.0;
         let amb_te_deg_c = amb_te_deg_c.unwrap_or(default_te_deg_c);
         Self {
             amb_te_deg_c,
@@ -1123,7 +1123,7 @@ impl ThermalState {
 impl Default for ThermalState {
     fn default() -> Self {
         // Note default temperature is defined twice, see new()
-        let default_te_deg_c: f64 = 22.0;
+        let default_te_deg_c = 22.0;
 
         Self {
             fc_te_deg_c: default_te_deg_c, // overridden by new()

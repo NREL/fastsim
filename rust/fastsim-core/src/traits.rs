@@ -17,7 +17,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// # Arguments:
     ///
     /// * `filepath` - Filepath, relative to the top of the `resources` folder, from which to read the object
-    ///
+    #[cfg(feature = "resources")]
     fn from_resource<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
         let extension = filepath
@@ -51,6 +51,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
             "json" => serde_json::to_writer(wtr, self)?,
+            #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(wtr, self)?,
             _ => bail!(
                 "Unsupported format {format:?}, must be one of {:?}",
@@ -131,6 +132,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
+            #[cfg(feature = "bincode")]
             "bin" => bincode::deserialize_from(rdr)?,
             _ => bail!(
                 "Unsupported format {format:?}, must be one of {:?}",
@@ -176,6 +178,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// Write (serialize) an object to bincode-encoded bytes
+    #[cfg(feature = "bincode")]
     fn to_bincode(&self) -> anyhow::Result<Vec<u8>> {
         Ok(bincode::serialize(&self)?)
     }
@@ -186,6 +189,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `encoded` - Encoded bytes to deserialize from
     ///
+    #[cfg(feature = "bincode")]
     fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
         let mut bincode_de: Self = bincode::deserialize(encoded)?;
         bincode_de.init()?;
@@ -220,6 +224,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// the FASTSim data directory. If a path is given, the file will live
     /// within the path specified, within the subdirectory CACHE_FOLDER of the
     /// FASTSim data directory.
+    #[cfg(feature = "default")]
     fn to_cache<P: AsRef<Path>>(&self, file_path: P) -> anyhow::Result<()> {
         let file_name = file_path
             .as_ref()
@@ -262,6 +267,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// find and instantiate the object. Instead, use the from_file method, and
     /// use the utils::path_to_cache() to find the FASTSim data directory
     /// location if needed.
+    #[cfg(feature = "default")]
     fn from_cache<P: AsRef<Path>>(file_path: P) -> anyhow::Result<Self> {
         let full_file_path = Path::new(Self::CACHE_FOLDER).join(file_path);
         let path_including_directory = path_to_cache()?.join(full_file_path);
@@ -354,5 +360,35 @@ where
         return self
             .iter()
             .all(|(key, value)| other.get(key).map_or(false, |v| value.approx_eq(v, tol)));
+    }
+}
+
+/// This trait was heavily inspired by `ndarray-stats` crate
+pub trait IterMaxMin<A: PartialOrd> {
+    fn max(&self) -> anyhow::Result<&A>;
+    fn min(&self) -> anyhow::Result<&A>;
+}
+
+#[allow(clippy::manual_try_fold)] // `try_fold` is apparently not implemented
+impl IterMaxMin<f64> for Array1<f64> {
+    fn max(&self) -> anyhow::Result<&f64> {
+        let first = self.first().ok_or(anyhow!("empty input"))?;
+        self.fold(Ok(first), |acc, elem| {
+            let acc = acc?;
+            match elem.partial_cmp(acc).ok_or(anyhow!("undefined order"))? {
+                cmp::Ordering::Greater => Ok(elem),
+                _ => Ok(acc),
+            }
+        })
+    }
+    fn min(&self) -> anyhow::Result<&f64> {
+        let first = self.first().ok_or(anyhow!("empty input"))?;
+        self.fold(Ok(first), |acc, elem| {
+            let acc = acc?;
+            match elem.partial_cmp(acc).ok_or(anyhow!("undefined order"))? {
+                cmp::Ordering::Less => Ok(elem),
+                _ => Ok(acc),
+            }
+        })
     }
 }

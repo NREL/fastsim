@@ -1,13 +1,16 @@
 //! Module containing miscellaneous utility functions.
 
+#[cfg(feature = "default")]
 use directories::ProjectDirs;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use ndarray::*;
-use ndarray_stats::QuantileExt;
 use regex::Regex;
 use std::collections::HashSet;
-use url::Url;
+#[cfg(feature = "default")]
+use std::io::Write;
+#[cfg(feature = "default")]
+use curl::easy::Easy;
 
 use crate::imports::*;
 #[cfg(feature = "pyo3")]
@@ -104,8 +107,8 @@ pub fn ndarrcumsum(arr: &Array1<f64>) -> Array1<f64> {
 
 /// return the unique values of the array
 pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
-    let mut set: HashSet<usize> = HashSet::new();
-    let mut new_arr: Vec<f64> = Vec::new();
+    let mut set = HashSet::new();
+    let mut new_arr = Vec::new();
     let x_min = arr.min().unwrap();
     let x_max = arr.max().unwrap();
     let dx = if x_max == x_min { 1.0 } else { x_max - x_min };
@@ -129,8 +132,8 @@ pub fn interpolate(
     extrapolate: bool,
 ) -> f64 {
     assert!(x_data_in.len() == y_data_in.len());
-    let mut new_x_data: Vec<f64> = Vec::new();
-    let mut new_y_data: Vec<f64> = Vec::new();
+    let mut new_x_data = Vec::new();
+    let mut new_y_data = Vec::new();
     let mut last_x = x_data_in[0];
     for idx in 0..x_data_in.len() {
         if idx == 0 || (idx > 0 && x_data_in[idx] > last_x) {
@@ -177,8 +180,8 @@ pub fn interpolate_vectors(
     extrapolate: bool,
 ) -> f64 {
     assert!(x_data_in.len() == y_data_in.len());
-    let mut new_x_data: Vec<f64> = Vec::new();
-    let mut new_y_data: Vec<f64> = Vec::new();
+    let mut new_x_data = Vec::new();
+    let mut new_y_data = Vec::new();
     let mut last_x = x_data_in[0];
     for idx in 0..x_data_in.len() {
         if idx == 0 || (idx > 0 && x_data_in[idx] > last_x) {
@@ -516,7 +519,46 @@ pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
     Ok(radius_mm / 1000.0)
 }
 
+/// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
+#[cfg(feature = "default")]
+pub fn download_file_from_url(url: &str, file_path: &Path) -> anyhow::Result<()> {
+    let mut handle = Easy::new();
+    handle.follow_location(true)?;
+    handle.url(url)?;
+    let mut buffer = Vec::new();
+    {
+        let mut transfer = handle.transfer();
+        transfer.write_function(|data| {
+            buffer.extend_from_slice(data);
+            Ok(data.len())
+        })?;
+        let result = transfer.perform();
+        if result.is_err() {
+            return Err(anyhow!("Could not download from {}", url));
+        }
+    }
+    println!("Downloaded data from {}; bytes: {}", url, buffer.len());
+    if buffer.is_empty() {
+        return Err(anyhow!("No data available from {url}"));
+    }
+    {
+        let mut file = match File::create(file_path) {
+            Err(why) => {
+                return Err(anyhow!(
+                    "couldn't open {}: {}",
+                    file_path.to_str().unwrap(),
+                    why
+                ))
+            }
+            Ok(file) => file,
+        };
+        file.write_all(buffer.as_slice())?;
+    }
+    Ok(())
+}
+
 /// Creates/gets an OS-specific data directory and returns the path.
+#[cfg(feature = "default")]
 pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathBuf> {
     let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
         anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
@@ -527,6 +569,7 @@ pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathB
 }
 
 /// Returns the path to the OS-specific data directory, if it exists.
+#[cfg(feature = "default")]
 pub fn path_to_cache() -> anyhow::Result<PathBuf> {
     let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
         anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
@@ -548,6 +591,7 @@ pub fn path_to_cache() -> anyhow::Result<PathBuf> {
 /// directories. If a single file needs deleting, the path_to_cache() function
 /// can be used to find the FASTSim data directory location. The file can then
 /// be found and manually deleted.
+#[cfg(feature = "default")]
 pub fn clear_cache<P: AsRef<Path>>(subpath: P) -> anyhow::Result<()> {
     let path = path_to_cache()?.join(subpath);
     Ok(std::fs::remove_dir_all(path)?)
@@ -566,8 +610,9 @@ pub fn clear_cache<P: AsRef<Path>>(subpath: P) -> anyhow::Result<()> {
 /// "rust_objects" for other Rust objects.  
 /// Note: In order for the file to be save in the proper format, the URL needs
 /// to be a URL pointing directly to a file, for example a raw github URL.
+#[cfg(feature = "default")]
 pub fn url_to_cache<S: AsRef<str>, P: AsRef<Path>>(url: S, subpath: P) -> anyhow::Result<()> {
-    let url = Url::parse(url.as_ref())?;
+    let url = url::Url::parse(url.as_ref())?;
     let file_name = url
         .path_segments()
         .and_then(|segments| segments.last())
@@ -630,33 +675,33 @@ mod tests {
 
     #[test]
     fn test_that_first_eq_finds_the_right_index_when_one_exists() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_eq(&xs, 3.3).unwrap();
-        let expected_idx: usize = 2;
+        let expected_idx = 2;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_eq_yields_last_index_when_nothing_found() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_eq(&xs, 7.0).unwrap();
-        let expected_idx: usize = xs.len() - 1;
+        let expected_idx = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_grtr_finds_the_right_index_when_one_exists() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_grtr(&xs, 3.0).unwrap();
-        let expected_idx: usize = 2;
+        let expected_idx = 2;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_grtr_yields_last_index_when_nothing_found() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_grtr(&xs, 7.0).unwrap();
-        let expected_idx: usize = xs.len() - 1;
+        let expected_idx = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
 
@@ -695,7 +740,7 @@ mod tests {
     }
     // #[test]
     // fn test_that_argmax_does_the_right_thing_on_an_empty_array(){
-    //     let xs: Array1<bool> = Array::from_vec(vec![]);
+    //     let xs = Array::from_vec(vec![]);
     //     let idx = first_grtr(&xs);
     //     // unclear what should happen here; np.argmax throws a ValueError in the case of an empty vector
     //     // ... possibly we should return an Option type?

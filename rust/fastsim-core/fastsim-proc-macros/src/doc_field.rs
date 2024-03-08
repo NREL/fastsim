@@ -7,7 +7,7 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let new_fields = if let syn::Fields::Named(FieldsNamed { named, .. }) = &mut item_struct.fields
     {
-        let mut new_doc_fields: Vec<TokenStream2> = Vec::new();
+        let mut new_doc_fields = Vec::new();
         for field in named.iter_mut() {
             let mut skip_doc = false;
             remove_handled_attrs(field, &mut skip_doc);
@@ -57,7 +57,7 @@ pub fn doc_field(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let struct_vis = item_struct.vis;
     let struct_attrs = item_struct.attrs;
 
-    let output: TokenStream2 = quote! {
+    let output = quote! {
         #(#struct_attrs)*
         #struct_vis struct #struct_ident {
             #new_fields

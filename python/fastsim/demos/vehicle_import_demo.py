@@ -3,13 +3,22 @@ Vehicle Import Demonstration
 This module demonstrates the vehicle import API
 """
 # %%
+from fastsim import fastsimrust
+
+REQUIRED_FEATURE = "vehicle-import"
+if __name__ == "__main__" and REQUIRED_FEATURE not in fastsimrust.enabled_features():
+    raise NotImplementedError(
+        f'Feature "{REQUIRED_FEATURE}" is required to run this demo'
+    )
+
+# %%
 # Preamble: Basic imports
 import os, pathlib
 
 import fastsim.fastsimrust as fsr
 import fastsim.utils as utils
 
-#for testing demo files, false when running automatic tests
+# for testing demo files, false when running automatic tests
 SHOW_PLOTS = utils.show_plots()
 
 # %%
@@ -66,7 +75,7 @@ other_inputs = fsr.OtherVehicleInputs(
 
 rv = fsr.vehicle_import_by_id_and_year(data.id, int(year), other_inputs)
 
-fsr.export_vehicle_to_file(rv, str(OUTPUT_DIR / "demo-vehicle.yaml"))
+rv.to_file(OUTPUT_DIR / "demo-vehicle.yaml")
 
 # %%
 # Alternative API for importing all vehicles at once
