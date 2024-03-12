@@ -43,8 +43,8 @@ pub enum DriveTypes {
     fn get_fc(&self) -> Option<FuelConverter> {
         self.fc().cloned()
     }
-    #[setter]
-    fn set_fc(&mut self, _fc: FuelConverter) -> PyResult<()> {
+    #[setter("fc")]
+    fn set_fc_py(&mut self, _fc: FuelConverter) -> PyResult<()> {
         Err(PyAttributeError::new_err(DIRECT_SET_ERR))
     }
 
@@ -372,11 +372,11 @@ impl Vehicle {
     }
 
     pub fn fs(&self) -> Option<&FuelStorage> {
-        self.pt_type.fs
+        self.pt_type.fs()
     }
 
     pub fn fs_mut(&mut self) -> Option<&mut FuelStorage> {
-        self.pt_type.fc_mut()
+        self.pt_type.fs_mut()
     }
 
     pub fn set_fs(&mut self, fs: FuelStorage) -> anyhow::Result<()> {
@@ -506,38 +506,15 @@ impl Vehicle {
             cargo_kg: self.cargo_mass.unwrap_or_default().get::<si::kilogram>(),
             veh_override_kg: self.mass()?.map(|m| m.get::<si::kilogram>()),
             comp_mass_multiplier: 1.4,
-            fs_max_kw: self.fuel,
-            fs_secs_to_peak_pwr: self.fs().map(|x| x.pwr_ramp_lag.get::<si::second>()),
-            fs_kwh: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {conv.fs.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.fs.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {0.},
-            },
-            fs_kwh_per_kg: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {conv.fs.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.fs.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {0.},
-            },
-            fc_max_kw: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {conv.fc.pwr_out_max.get::<si::kilowatt>()},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.fc.pwr_out_max.get::<si::kilowatt>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {0.},
-            },
-            fc_sec_to_peak_pwr: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {conv.fc.pwr_ramp_lag.get::<si::second>()},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.fc.pwr_ramp_lag.get::<si::second>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {0.},
-            },
-            ess_max_kw: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {0.},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.res.pwr_out_max.get::<si::kilowatt>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {bev.res.pwr_out_max.get::<si::kilowatt>()},
-            },
-            ess_max_kwh: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {0.},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.res.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {bev.res.energy_capacity.get::<si::kilowatt_hour>()},
-            },
+            fs_max_kw: self.fs().map(|fs| fs.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            fs_secs_to_peak_pwr: self.fs().map(|fs| fs.pwr_ramp_lag.get::<si::second>()).unwrap_or_default(),
+            fs_kwh: self.fs().map(|fs| fs.energy_capacity.get::<si::kilowatt_hour>()).unwrap_or_default(),
+            // TODO: fix unit
+            fs_kwh_per_kg: self.fs().and_then(|fs| fs.specific_energy).map(|specific_energy| specific_energy.get::<si::kilowatt_hour_per_kilogram>()).unwrap_or_default(),
+            fc_max_kw: self.fc().map(|fc| fc.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            fc_sec_to_peak_pwr: self.fc().map(|fc| fc.pwr_ramp_lag.get::<si::second>()).unwrap_or_default(),
+            ess_max_kw: self.res().map(|res| res.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            ess_max_kwh: self.res().map(|res| res.energy_capacity.get::<si::kilowatt_hour>()).unwrap_or_default(),
         })
     }
 }
