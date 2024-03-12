@@ -20,6 +20,9 @@ t1 = time.perf_counter()
 
 print(f"`sd.walk()` elapsed time: {t1-t0:.2e} s")
 
+# TODO: provide `to_fastsim2` returning fastsim-2 `RustSimdrive` with `to_json` method
+# TODO: use above to create dictionary for comparison
+
 fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 5))
 
 # TODO: propagate all the below TODO comments everyhwere else in this file

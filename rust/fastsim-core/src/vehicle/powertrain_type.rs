@@ -1,6 +1,5 @@
 use super::*;
 
-#[enum_dispatch(Powertrain)]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
 pub enum PowertrainType {
     ConventionalVehicle(Box<ConventionalVehicle>),
@@ -9,8 +8,55 @@ pub enum PowertrainType {
     // TODO: add PHEV here
 }
 
+impl Powertrain for PowertrainType {
+    fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+        match self {
+            Self::ConventionalVehicle(v) => v.get_pwr_out_max(dt),
+            Self::HybridElectricVehicle(v) => v.get_pwr_out_max(dt),
+            Self::BatteryElectricVehicle(v) => v.get_pwr_out_max(dt),
+        }
+    }
+
+    fn solve_powertrain(
+        &mut self,
+        pwr_out_req: si::Power,
+        pwr_aux: si::Power,
+        dt: si::Time,
+        assert_limits: bool,
+    ) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(v) => {
+                v.solve_powertrain(pwr_out_req, pwr_aux, dt, assert_limits)
+            }
+            Self::HybridElectricVehicle(v) => {
+                v.solve_powertrain(pwr_out_req, pwr_aux, dt, assert_limits)
+            }
+            Self::BatteryElectricVehicle(v) => {
+                v.solve_powertrain(pwr_out_req, pwr_aux, dt, assert_limits)
+            }
+        }
+    }
+}
+
+impl SaveInterval for PowertrainType {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        match self {
+            PowertrainType::ConventionalVehicle(v) => v.save_interval(),
+            PowertrainType::HybridElectricVehicle(v) => v.save_interval(),
+            PowertrainType::BatteryElectricVehicle(v) => v.save_interval(),
+        }
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        match self {
+            PowertrainType::ConventionalVehicle(v) => v.set_save_interval(save_interval),
+            PowertrainType::HybridElectricVehicle(v) => v.set_save_interval(save_interval),
+            PowertrainType::BatteryElectricVehicle(v) => v.set_save_interval(save_interval),
+        }
+    }
+}
+
 impl PowertrainType {
-    pub fn fuel_converter(&self) -> Option<&FuelConverter> {
+    pub fn fc(&self) -> Option<&FuelConverter> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => Some(&conv.fc),
             PowertrainType::HybridElectricVehicle(hev) => Some(&hev.fc),
@@ -18,7 +64,7 @@ impl PowertrainType {
         }
     }
 
-    pub fn fuel_converter_mut(&mut self) -> Option<&mut FuelConverter> {
+    pub fn fc_mut(&mut self) -> Option<&mut FuelConverter> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => Some(&mut conv.fc),
             PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.fc),
@@ -26,7 +72,7 @@ impl PowertrainType {
         }
     }
 
-    pub fn set_fuel_converter(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
+    pub fn set_fc(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
         match self {
             PowertrainType::ConventionalVehicle(conv) => {
                 conv.fc = fc;
@@ -40,7 +86,37 @@ impl PowertrainType {
         }
     }
 
-    pub fn reversible_energy_storage(&self) -> Option<&ReversibleEnergyStorage> {
+    pub fn fs(&self) -> Option<&FuelStorage> {
+        match self {
+            PowertrainType::ConventionalVehicle(conv) => Some(&conv.fs),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.fs),
+            PowertrainType::BatteryElectricVehicle(_) => None,
+        }
+    }
+
+    pub fn fs_mut(&mut self) -> Option<&mut FuelStorage> {
+        match self {
+            PowertrainType::ConventionalVehicle(conv) => Some(&mut conv.fs),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.fs),
+            PowertrainType::BatteryElectricVehicle(_) => None,
+        }
+    }
+
+    pub fn set_fs(&mut self, fs: FuelStorage) -> anyhow::Result<()> {
+        match self {
+            PowertrainType::ConventionalVehicle(conv) => {
+                conv.fs = fs;
+                Ok(())
+            }
+            PowertrainType::HybridElectricVehicle(hev) => {
+                hev.fs = fs;
+                Ok(())
+            }
+            PowertrainType::BatteryElectricVehicle(_) => bail!("BEL has no FuelConverter."),
+        }
+    }
+
+    pub fn res(&self) -> Option<&ReversibleEnergyStorage> {
         match self {
             PowertrainType::ConventionalVehicle(_) => None,
             PowertrainType::HybridElectricVehicle(hev) => Some(&hev.res),
@@ -48,7 +124,7 @@ impl PowertrainType {
         }
     }
 
-    pub fn reversible_energy_storage_mut(&mut self) -> Option<&mut ReversibleEnergyStorage> {
+    pub fn res_mut(&mut self) -> Option<&mut ReversibleEnergyStorage> {
         match self {
             PowertrainType::ConventionalVehicle(_) => None,
             PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.res),
@@ -56,10 +132,7 @@ impl PowertrainType {
         }
     }
 
-    pub fn set_reversible_energy_storage(
-        &mut self,
-        res: ReversibleEnergyStorage,
-    ) -> anyhow::Result<()> {
+    pub fn set_res(&mut self, res: ReversibleEnergyStorage) -> anyhow::Result<()> {
         match self {
             PowertrainType::ConventionalVehicle(_) => {
                 bail!("Conventional has no ReversibleEnergyStorage.")

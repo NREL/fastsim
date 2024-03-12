@@ -81,8 +81,15 @@ ach = achieved value
 in = component input  
 out = component output  
 
-# Known Issues
-Rust versions of classes have limited Language Server Protocol integration, and we are actively working on fixing this.  
+# New Features and Capabilities
+In `fastsim-3`, we introduce:
+- modular, hierchical component structure 
+- component-specific vehicle models -- i.e. the conventional vehicle contains only data for the fuel
+  converter and other relevant components but does contain any dummy battery or motor parameters as
+  is the case in `fastsim-2`
+- faster run times due to modularity and extensive streamlining
+- ability to control granularity of time-resolved data -- e.g. save at every time step, save at every _n_th time step, or never save at all (saving only cumulative trip-level results)
+- ability to simulate standalone component models
 
 # Release Notes
 2.0.11 - 2.0.22 -- PyPI fixes.  Also, Rust version is now >100x faster than Python version.   

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "2.0.22"
+version = "3.0.0"
 authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
@@ -23,14 +23,21 @@ dependencies = [
     "numpy>=1.18",
     "seaborn>=0.10",
     "typing_extensions",
-    "pyyaml",
+    "pypi-multi-versions",
 ]
 
 [project.urls]
 Homepage = "https://www.nrel.gov/transportation/fastsim.html"
 
 [project.optional-dependencies]
-dev = ["black", "pytest", "maturin", "plotly", "ipykernel", "pymoo==0.6.0.1"]
+dev = [
+    "black",
+    "pytest",
+    "maturin",
+    "plotly",
+    "ipykernel",
+    "pymoo==0.6.0.1",
+]
 
 [tool.setuptools]
 zip-safe = false

@@ -13,6 +13,9 @@ use crate::imports::*;
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
 /// Container
 pub struct Cycle {
+    /// Name of cycle (can be left empty)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     // TODO: either write or automate generation of getter and setter for this
     // TODO: put the above TODO in github issue for all fields with `Option<...>` type
@@ -285,6 +288,7 @@ mod tests {
     use super::*;
     fn mock_cyc_len_2() -> Cycle {
         let mut cyc = Cycle {
+            name: Default::default(),
             init_elev: None,
             time: (0..=2).map(|x| (x as f64) * uc::S).collect(),
             speed: (0..=2).map(|x| (x as f64) * uc::MPS).collect(),

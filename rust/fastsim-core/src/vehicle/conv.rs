@@ -8,6 +8,16 @@ pub struct ConventionalVehicle {
     pub fc: FuelConverter,
 }
 
+impl SaveInterval for ConventionalVehicle {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        bail!("`save_interval` is not implemented in ConventionalVehicle")
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.fc.save_interval = save_interval;
+        Ok(())
+    }
+}
+
 impl Powertrain for Box<ConventionalVehicle> {
     fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
         self.fc.set_cur_pwr_out_max(dt)?;

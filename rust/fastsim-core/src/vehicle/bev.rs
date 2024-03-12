@@ -21,6 +21,18 @@ impl BatteryElectricVehicle {
         }
     }
 }
+
+impl SaveInterval for BatteryElectricVehicle {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        bail!("`save_interval` is not implemented in BatteryElectricVehicle")
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.res.save_interval = save_interval;
+        self.e_machine.save_interval = save_interval;
+        Ok(())
+    }
+}
+
 impl Powertrain for Box<BatteryElectricVehicle> {
     /// Solve energy consumption for the current power output required
     /// Arguments:

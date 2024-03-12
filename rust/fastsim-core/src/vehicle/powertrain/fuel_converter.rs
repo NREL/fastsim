@@ -141,6 +141,16 @@ impl Mass for FuelConverter {
     }
 }
 
+impl SaveInterval for FuelConverter {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        Ok(())
+    }
+}
+
 // non-py methods
 impl FuelConverter {
     /// Get fuel converter max power output given time step, dt \[s\]
@@ -220,7 +230,7 @@ impl FuelConverter {
                 &((pwr_out + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
                 &self.pwr_out_frac_interp,
                 &self.eta_interp,
-                Default::default()  ,
+                Default::default(),
             )?;
         ensure!(
             self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R,

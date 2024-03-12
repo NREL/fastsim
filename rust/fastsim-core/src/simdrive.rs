@@ -2,6 +2,10 @@ use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
 use crate::air_properties as air;
 use crate::imports::*;
+use fastsim_2::{
+    cycle::RustCycle as Cycle2, simdrive::RustSimDrive as SimDrive2,
+    vehicle::RustVehicle as Vehicle2,
+};
 
 #[pyo3_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
@@ -30,7 +34,7 @@ impl Default for SimParams {
     fn __new__(veh: Vehicle, cyc: Cycle, sim_params: Option<SimParams>) -> anyhow::Result<Self> {
         Ok(SimDrive{
             veh,
-            cyc, 
+            cyc,
             sim_params: sim_params.unwrap_or_default(),
         })
     }
@@ -39,6 +43,9 @@ impl Default for SimParams {
     fn walk_py(&mut self) -> anyhow::Result<()> {
         self.walk()
     }
+
+    // #[setter]
+    // fn set_save_interval
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
 pub struct SimDrive {
@@ -269,6 +276,31 @@ impl SimDrive {
 
         Ok(())
     }
+
+    // TODO: make this function work
+    pub fn to_fastsim2(&self) -> anyhow::Result<SimDrive2> {
+        let cyc2 = Cycle2::new(
+            self.cyc
+                .time
+                .iter()
+                .map(|t| t.get::<si::second>())
+                .collect(),
+            self.cyc
+                .speed
+                .iter()
+                .map(|s| s.get::<si::meter_per_second>())
+                .collect(),
+            self.cyc
+                .grade
+                .iter()
+                .map(|g| g.get::<si::ratio>())
+                .collect(),
+            vec![0.; self.cyc.len()],
+            self.cyc.name,
+        );
+        let veh2 = self.veh.to_fastsim2()?;
+        Ok(SimDrive2::new(cyc2, veh2))
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
@@ -306,6 +338,6 @@ mod tests {
         };
         sd.walk().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
-        assert!(sd.veh.fuel_converter().unwrap().state.energy_fuel > uc::J * 0.);
+        assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
     }
 }

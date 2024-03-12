@@ -259,6 +259,17 @@ pub trait SaveState {
     fn save_state(&mut self) {}
 }
 
+/// Provides methods for getting and setting the save interval
+pub trait SaveInterval {
+    /// Recursively sets save interval
+    /// # Arguments
+    /// - `save_interval`: time step interval at which to save `self.state` to `self.history`
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()>;
+    /// Returns save interval for `self` but does not guarantee recursive consistency in nested
+    /// objects
+    fn save_interval(&self) -> anyhow::Result<Option<usize>>;
+}
+
 /// Trait that provides method for incrementing `i` field of this and all contained structs,
 /// recursively
 pub trait Step {

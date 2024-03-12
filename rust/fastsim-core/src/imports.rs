@@ -17,7 +17,6 @@ pub(crate) use anyhow::{anyhow, bail, ensure, Context};
 pub(crate) use bincode::{deserialize, serialize};
 pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
-pub(crate) use enum_dispatch::enum_dispatch;
 pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use std::cmp::{self, Ordering};
 pub(crate) use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};

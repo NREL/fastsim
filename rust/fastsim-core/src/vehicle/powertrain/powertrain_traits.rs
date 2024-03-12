@@ -27,7 +27,6 @@ pub trait Mass {
 }
 
 /// Provides functions for solving powertrain
-#[enum_dispatch]
 pub trait Powertrain {
     /// # Arguments
     /// - dt: time step size

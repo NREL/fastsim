@@ -27,22 +27,21 @@ pub enum DriveTypes {
 #[pyo3_api(
     // TODO: expose `try_from` method so python users can load fastsim-2 vehicles
     
-    #[pyo3(name = "set_save_interval")]
+    #[setter("save_interval")]
     /// Set save interval and cascade to nested components.
-    fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> PyResult<()> {
-        self.set_save_interval(save_interval);
-        Ok(())
+    fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.set_save_interval(save_interval)
     }
 
-    #[pyo3(name = "get_save_interval")]
+    #[getter("save_interval")]
     /// Set save interval and cascade to nested components.
-    fn get_save_interval_py(&self) -> PyResult<Option<usize>> {
-        Ok(self.get_save_interval())
+    fn get_save_interval_py(&self) -> anyhow::Result<Option<usize>> {
+        self.save_interval()
     }
 
     #[getter]
     fn get_fc(&self) -> Option<FuelConverter> {
-        self.fuel_converter().cloned()
+        self.fc().cloned()
     }
     #[setter]
     fn set_fc(&mut self, _fc: FuelConverter) -> PyResult<()> {
@@ -196,8 +195,8 @@ impl Mass for Vehicle {
                 // set component masses to None if they aren't consistent
                 self.mass = Some(mass);
                 if self.check_mass_consistent().is_err() {
-                    self.fuel_converter_mut().map(|fc| fc.update_mass(None));
-                    self.reversible_energy_storage_mut()
+                    self.fc_mut().map(|fc| fc.update_mass(None));
+                    self.res_mut()
                         .map(|res| res.update_mass(None));
                 }
             }
@@ -227,6 +226,16 @@ impl Mass for Vehicle {
     }
 }
 
+impl SaveInterval for Vehicle {
+    fn save_interval(&self) -> anyhow::Result<Option<usize>> {
+        Ok(self.save_interval)
+    }
+    fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
+        self.save_interval = save_interval;
+        self.pt_type.set_save_interval(save_interval)
+    }
+}
+
 /// TODO: update this constant to match fastsim-2 for gasoline
 const FUEL_LHV_MJ_PER_KG: f64 = 43.2;
 const CONV: &str = "Conv";
@@ -246,7 +255,7 @@ fn get_pt_type_from_fsim2_veh(
             fs: {
                 let mut fs = FuelStorage {
                     pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                    t_to_peak_pwr: f2veh.fs_secs_to_peak_pwr * uc::S,
+                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
                     energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
                     specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
                     mass: None,
@@ -340,63 +349,53 @@ impl Vehicle {
     /// # Assumptions
     /// - peak power of all components can be produced concurrently.
     pub fn get_pwr_rated(&self) -> si::Power {
-        if self.fuel_converter().is_some() && self.reversible_energy_storage().is_some() {
-            self.fuel_converter().unwrap().pwr_out_max
-                + self.reversible_energy_storage().unwrap().pwr_out_max
-        } else if self.fuel_converter().is_some() {
-            self.fuel_converter().unwrap().pwr_out_max
+        if self.fc().is_some() && self.res().is_some() {
+            self.fc().unwrap().pwr_out_max
+                + self.res().unwrap().pwr_out_max
+        } else if self.fc().is_some() {
+            self.fc().unwrap().pwr_out_max
         } else {
-            self.reversible_energy_storage().unwrap().pwr_out_max
+            self.res().unwrap().pwr_out_max
         }
     }
 
-    pub fn get_save_interval(&self) -> Option<usize> {
-        self.save_interval
+    pub fn fc(&self) -> Option<&FuelConverter> {
+        self.pt_type.fc()
     }
 
-    pub fn set_save_interval(&mut self, save_interval: Option<usize>) {
-        self.save_interval = save_interval;
-        match &mut self.pt_type {
-            PowertrainType::ConventionalVehicle(veh) => {
-                veh.fc.save_interval = save_interval;
-            }
-            PowertrainType::HybridElectricVehicle(veh) => {
-                veh.fc.save_interval = save_interval;
-                veh.res.save_interval = save_interval;
-                veh.e_machine.save_interval = save_interval;
-            }
-            PowertrainType::BatteryElectricVehicle(veh) => {
-                veh.res.save_interval = save_interval;
-                veh.e_machine.save_interval = save_interval;
-            }
-        }
+    pub fn fc_mut(&mut self) -> Option<&mut FuelConverter> {
+        self.pt_type.fc_mut()
     }
 
-    pub fn fuel_converter(&self) -> Option<&FuelConverter> {
-        self.pt_type.fuel_converter()
+    pub fn set_fc(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
+        self.pt_type.set_fc(fc)
     }
 
-    pub fn fuel_converter_mut(&mut self) -> Option<&mut FuelConverter> {
-        self.pt_type.fuel_converter_mut()
+    pub fn fs(&self) -> Option<&FuelStorage> {
+        self.pt_type.fs
     }
 
-    pub fn set_fuel_converter(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
-        self.pt_type.set_fuel_converter(fc)
+    pub fn fs_mut(&mut self) -> Option<&mut FuelStorage> {
+        self.pt_type.fc_mut()
     }
 
-    pub fn reversible_energy_storage(&self) -> Option<&ReversibleEnergyStorage> {
-        self.pt_type.reversible_energy_storage()
+    pub fn set_fs(&mut self, fs: FuelStorage) -> anyhow::Result<()> {
+        self.pt_type.set_fs(fs)
     }
 
-    pub fn reversible_energy_storage_mut(&mut self) -> Option<&mut ReversibleEnergyStorage> {
-        self.pt_type.reversible_energy_storage_mut()
+    pub fn res(&self) -> Option<&ReversibleEnergyStorage> {
+        self.pt_type.res()
     }
 
-    pub fn set_reversible_energy_storage(
+    pub fn res_mut(&mut self) -> Option<&mut ReversibleEnergyStorage> {
+        self.pt_type.res_mut()
+    }
+
+    pub fn set_res(
         &mut self,
         res: ReversibleEnergyStorage,
     ) -> anyhow::Result<()> {
-        self.pt_type.set_reversible_energy_storage(res)
+        self.pt_type.set_res(res)
     }
 
     pub fn e_machine(&self) -> Option<&ElectricMachine> {
@@ -413,7 +412,7 @@ impl Vehicle {
             match self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => {
                     // TODO: add the other component and vehicle level masses here
-                    if let Some(fc) = self.fuel_converter().unwrap().mass()? {
+                    if let Some(fc) = self.fc().unwrap().mass()? {
                         Ok(Some(fc))
                     } else {
                         bail!(
@@ -425,8 +424,8 @@ impl Vehicle {
                 }
                 PowertrainType::HybridElectricVehicle(_) => {
                     if let (Some(fc), Some(res)) = (
-                        self.fuel_converter().unwrap().mass()?,
-                        self.reversible_energy_storage().unwrap().mass()?,
+                        self.fc().unwrap().mass()?,
+                        self.res().unwrap().mass()?,
                     ) {
                         // TODO: add the other component and vehicle level masses here
                         Ok(Some(fc + res))
@@ -440,7 +439,7 @@ impl Vehicle {
                     }
                 }
                 PowertrainType::BatteryElectricVehicle(_) => {
-                    if let Some(res) = self.reversible_energy_storage().unwrap().mass()? {
+                    if let Some(res) = self.res().unwrap().mass()? {
                         Ok(Some(res))
                     } else {
                         bail!(
@@ -483,6 +482,63 @@ impl Vehicle {
 
     pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
         Ok(self.pt_type.get_pwr_out_max(dt)? * self.trans_eff)
+    }
+
+    pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
+        Ok(fastsim_2::vehicle::RustVehicle{
+            // TODO: replace with `doc` field once implemented in fastsim-3
+            doc: Default::default(),
+            props: fastsim_2::params::RustPhysicalProperties::default(), 
+            scenario_name: self.name,
+            selection: 0, // there is no equivalent in fastsim-3
+            veh_year: self.year,
+            veh_pt_type: match &self.pt_type {
+                PowertrainType::ConventionalVehicle(_) => "Conv".into(),
+                PowertrainType::HybridElectricVehicle(_) => "HEV".into(),
+                PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
+            },
+            drag_coef: self.drag_coef.get::<si::ratio>(),
+            frontal_area_m2: self.frontal_area.get::<si::square_meter>(),
+            glider_kg: self.glider_mass.unwrap_or_default().get::<si::kilogram>(),
+            veh_cg_m: self.cg_height.get::<si::meter>(),
+            drive_axle_weight_frac: self.drive_axle_weight_frac.get::<si::ratio>(),
+            wheel_base_m: self.wheel_base.get::<si::meter>(),
+            cargo_kg: self.cargo_mass.unwrap_or_default().get::<si::kilogram>(),
+            veh_override_kg: self.mass()?.map(|m| m.get::<si::kilogram>()),
+            comp_mass_multiplier: 1.4,
+            fs_max_kw: self.fuel,
+            fs_secs_to_peak_pwr: self.fs().map(|x| x.pwr_ramp_lag.get::<si::second>()),
+            fs_kwh: match &self.pt_type {
+                PowertrainType::ConventionalVehicle(conv) => {conv.fs.energy_capacity.get::<si::kilowatt_hour>()},
+                PowertrainType::HybridElectricVehicle(hev) => {hev.fs.energy_capacity.get::<si::kilowatt_hour>()},
+                PowertrainType::BatteryElectricVehicle(bev) => {0.},
+            },
+            fs_kwh_per_kg: match &self.pt_type {
+                PowertrainType::ConventionalVehicle(conv) => {conv.fs.energy_capacity.get::<si::kilowatt_hour>()},
+                PowertrainType::HybridElectricVehicle(hev) => {hev.fs.energy_capacity.get::<si::kilowatt_hour>()},
+                PowertrainType::BatteryElectricVehicle(bev) => {0.},
+            },
+            fc_max_kw: match &self.pt_type {
+                PowertrainType::ConventionalVehicle(conv) => {conv.fc.pwr_out_max.get::<si::kilowatt>()},
+                PowertrainType::HybridElectricVehicle(hev) => {hev.fc.pwr_out_max.get::<si::kilowatt>()},
+                PowertrainType::BatteryElectricVehicle(bev) => {0.},
+            },
+            fc_sec_to_peak_pwr: match &self.pt_type {
+                PowertrainType::ConventionalVehicle(conv) => {conv.fc.pwr_ramp_lag.get::<si::second>()},
+                PowertrainType::HybridElectricVehicle(hev) => {hev.fc.pwr_ramp_lag.get::<si::second>()},
+                PowertrainType::BatteryElectricVehicle(bev) => {0.},
+            },
+            ess_max_kw: match &self.pt_type {
+                PowertrainType::ConventionalVehicle(conv) => {0.},
+                PowertrainType::HybridElectricVehicle(hev) => {hev.res.pwr_out_max.get::<si::kilowatt>()},
+                PowertrainType::BatteryElectricVehicle(bev) => {bev.res.pwr_out_max.get::<si::kilowatt>()},
+            },
+            ess_max_kwh: match &self.pt_type {
+                PowertrainType::ConventionalVehicle(conv) => {0.},
+                PowertrainType::HybridElectricVehicle(hev) => {hev.res.energy_capacity.get::<si::kilowatt_hour>()},
+                PowertrainType::BatteryElectricVehicle(bev) => {bev.res.energy_capacity.get::<si::kilowatt_hour>()},
+            },
+        })
     }
 }
 
@@ -557,7 +613,12 @@ pub(crate) mod tests {
             Vehicle::try_from(fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap())
                 .unwrap();
         // uncomment this if the fastsim-3 version needs to be rewritten
-        veh.to_file(project_root::get_project_root().unwrap().join("tests/assets/2012_Ford_Fusion.yaml")).unwrap();
+        veh.to_file(
+            project_root::get_project_root()
+                .unwrap()
+                .join("tests/assets/2012_Ford_Fusion.yaml"),
+        )
+        .unwrap();
         #[allow(clippy::let_and_return)]
         veh
     }
