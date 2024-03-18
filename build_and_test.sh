@@ -1,4 +1,4 @@
 (cd rust/ && cargo test) && \
-pip install -qe ".[dev]" && \
+pip install -e ".[dev]" && \
 # pytest -v python/fastsim/tests/ &&
 pytest -v python/fastsim/demos
