@@ -113,8 +113,8 @@ impl SimDrive {
             * uc::KG
             * uc::M2
             * self.veh.num_wheels as f64
-            * ((speed / self.veh.wheel_radius).powi(typenum::P2::new())
-                - (speed_prev / self.veh.wheel_radius).powi(typenum::P2::new()))
+            * ((speed / self.veh.wheel_radius.unwrap()).powi(typenum::P2::new())
+                - (speed_prev / self.veh.wheel_radius.unwrap()).powi(typenum::P2::new()))
             / self.cyc.dt_at_i(i)?;
 
         vs.pwr_tractive =
@@ -164,7 +164,7 @@ impl SimDrive {
                 3.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area * speed_prev;
             let wheel2 =
                 0.5 * self.veh.wheel_inertia_kg_m2 * uc::KG * uc::M2 * self.veh.num_wheels as f64
-                    / (dt * self.veh.wheel_radius.powi(typenum::P2::new()));
+                    / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
             let drag1 = 3.0 / 16.0
                 * rho_air
                 * self.veh.drag_coef
@@ -191,7 +191,7 @@ impl SimDrive {
                 * uc::M2
                 * self.veh.num_wheels as f64
                 * speed_prev.powi(typenum::P2::new())
-                / (dt * self.veh.wheel_radius.powi(typenum::P2::new()));
+                / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
 
             let t3 = drag3;
             let t2 = accel2 + drag2 + wheel2;

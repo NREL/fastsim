@@ -17,7 +17,7 @@ pub struct FuelStorage {
     /// max power output
     pub pwr_out_max: si::Power,
     /// time to peak power
-    pub t_to_peak_pwr: si::Time,
+    pub pwr_ramp_lag: si::Time,
     /// energy capacity
     pub energy_capacity: si::Energy,
     /// Fuel and tank specific energy \[J/kg\]
