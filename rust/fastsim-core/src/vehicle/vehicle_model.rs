@@ -255,7 +255,7 @@ fn get_pt_type_from_fsim2_veh(
             fs: {
                 let mut fs = FuelStorage {
                     pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                    t_to_peak_pwr: f2veh.fs_secs_to_peak_pwr * uc::S,
+                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
                     energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
                     specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
                     mass: None,
