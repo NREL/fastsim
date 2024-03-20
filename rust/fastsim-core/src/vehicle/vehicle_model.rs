@@ -117,7 +117,15 @@ pub struct Vehicle {
     /// Number of wheels
     pub num_wheels: u8,
     /// Wheel radius
-    pub wheel_radius: si::Length,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[api(skip_get, skip_set)]
+    pub wheel_radius: Option<si::Length>,
+    /// Tire code (optional method of calculating wheel radius)
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[api(skip_get, skip_set)]
+    pub tire_code: Option<String>,
     /// Vehicle center of mass height
     pub cg_height: si::Length,
     #[api(skip_get, skip_set)]
@@ -174,6 +182,7 @@ impl SerdeAPI for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
         self.check_mass_consistent()?;
         self.update_mass(None)?;
+        self.calculate_wheel_radius()?;
         Ok(())
     }
 }
@@ -329,7 +338,8 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             wheel_inertia_kg_m2: f2veh.wheel_inertia_kg_m2 * uc::R,
             wheel_rr_coef: f2veh.wheel_rr_coef * uc::R,
             num_wheels: f2veh.num_wheels as u8,
-            wheel_radius: f2veh.wheel_radius_m * uc::M,
+            wheel_radius: Some(f2veh.wheel_radius_m * uc::M),
+            tire_code: None,
             cargo_mass: Some(f2veh.cargo_kg * uc::KG),
             comp_mass_multiplier: Some(f2veh.comp_mass_multiplier * uc::R),
             pwr_aux: f2veh.aux_kw * uc::KW,
@@ -457,6 +467,15 @@ impl Vehicle {
                 format_dbg!()
             )
         }
+    }
+
+    /// Calculate wheel radius from tire code, if applicable
+    fn calculate_wheel_radius(&mut self) -> anyhow::Result<()> {
+        ensure!(self.wheel_radius.is_some() || self.tire_code.is_some(), "Either `wheel_radius` or `tire_code` must be supplied");
+        if self.wheel_radius.is_none() {
+            self.wheel_radius = Some(utils::tire_code_to_radius(self.tire_code.as_ref().unwrap())? * uc::M)
+        }
+        Ok(())
     }
 
     /// Solves for energy consumption

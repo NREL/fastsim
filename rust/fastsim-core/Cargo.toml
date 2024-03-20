@@ -30,6 +30,9 @@ serde-this-or-that = "0.4.2"
 project-root = "0.2.2"
 include_dir = "0.7.3"
 itertools = "0.12.0"
+enum_dispatch = "0.3.12"
+lazy_static = "1.4.0"
+regex = "1.10.3"
 
 [features]
 pyo3 = ["dep:pyo3"]

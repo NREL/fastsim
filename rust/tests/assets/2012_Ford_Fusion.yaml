@@ -5,7 +5,7 @@ pt_type:
   ConventionalVehicle:
     fs:
       pwr_out_max: 1000000.0
-      t_to_peak_pwr: 1.0
+      pwr_ramp_lag: 1.0
       energy_capacity: 2124000000.0
       specific_energy: 43200000.0
       mass: 49.166666666666664
