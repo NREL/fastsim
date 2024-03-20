@@ -676,7 +676,7 @@ impl Vehicle {
             wheel_coef_of_fric_doc: None,
             wheel_inertia_kg_m2: self.wheel_inertia.get::<si::kilogram_square_meter>(),
             wheel_inertia_kg_m2_doc: None,
-            wheel_radius_m: self.wheel_radius.get::<si::meter>(),
+            wheel_radius_m: self.wheel_radius.unwrap().get::<si::meter>(),
             wheel_radius_m_doc: None,
             wheel_rr_coef: self.wheel_rr_coef.get::<si::ratio>(),
             wheel_rr_coef_doc: None

@@ -20,6 +20,7 @@ impl SaveInterval for ConventionalVehicle {
 
 impl Powertrain for Box<ConventionalVehicle> {
     fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+        // TODO: make this function take `pwr_aux: si::Power` so that it can be used to determine max tractive power
         self.fc.set_cur_pwr_out_max(dt)?;
         Ok(self.fc.state.pwr_out_max)
     }

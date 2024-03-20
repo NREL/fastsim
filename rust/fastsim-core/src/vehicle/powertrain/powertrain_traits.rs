@@ -30,8 +30,12 @@ pub trait Mass {
 pub trait Powertrain {
     /// # Arguments
     /// - dt: time step size
+    ///
+    /// # Returns
+    /// - maximum possible tractive power this component/system can produce, accounting for any aux
+    ///   power required
     fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power>;
-    /// Solves for power flow in powertrain
+    /// Solves for powertrain efficiency and sets power output values
     /// # Arguments
     /// - dt: time step size
     fn solve_powertrain(

@@ -153,7 +153,7 @@ impl SaveInterval for FuelConverter {
 
 // non-py methods
 impl FuelConverter {
-    /// Get fuel converter max power output given time step, dt \[s\]
+    /// Get fuel converter max power output after subtracting off aux power given time step, dt \[s\]
     pub fn set_cur_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         ensure!(
             dt > si::Time::ZERO,
