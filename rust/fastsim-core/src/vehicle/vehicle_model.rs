@@ -766,4 +766,15 @@ pub(crate) mod tests {
         #[allow(clippy::let_and_return)]
         veh
     }
+
+    /// tests that vehicle can be initialized and that repeating has no net effect
+    #[test]
+    pub(crate) fn test_veh_init() {
+        let mut veh = mock_f2_conv_veh();
+        let mut veh1 = veh.clone();
+        assert!(veh == veh1);
+        veh1.init().unwrap();
+        assert!(veh == veh1);
+
+    }
 }
