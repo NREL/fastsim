@@ -38,7 +38,7 @@ impl Powertrain for Box<BatteryElectricVehicle> {
     /// Arguments:
     /// - pwr_out_req: tractive power required
     /// - dt: time step size
-    fn solve_powertrain(
+    fn solve(
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
@@ -69,7 +69,7 @@ impl Powertrain for Box<BatteryElectricVehicle> {
         Ok(())
     }
 
-    fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+    fn get_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
         todo!();
         // self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
         // self.e_machine

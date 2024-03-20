@@ -6,6 +6,8 @@ pub struct ConventionalVehicle {
     pub fs: FuelStorage,
     #[has_state]
     pub fc: FuelConverter,
+    /// Alternator efficiency used to calculate aux mechanical power demand on engine
+    pub alt_eff: si::Ratio,
 }
 
 impl SaveInterval for ConventionalVehicle {
@@ -19,21 +21,24 @@ impl SaveInterval for ConventionalVehicle {
 }
 
 impl Powertrain for Box<ConventionalVehicle> {
-    fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
-        // TODO: make this function take `pwr_aux: si::Power` so that it can be used to determine max tractive power
-        self.fc.set_cur_pwr_out_max(dt)?;
-        Ok(self.fc.state.pwr_out_max)
+    fn get_curr_pwr_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
+        self.fc.get_curr_pwr_out_max(pwr_aux / self.alt_eff, dt)
     }
-    fn solve_powertrain(
+    fn solve(
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
+        enabled: bool,
         dt: si::Time,
         assert_limits: bool,
     ) -> anyhow::Result<()> {
-        let fc_on = true;
+        let enabled = true; // TODO: replace with a stop/start model
         self.fc
-            .solve_energy_consumption(pwr_out_req, pwr_aux, fc_on, dt, assert_limits)?;
+            .solve(pwr_out_req, pwr_aux, enabled, dt, assert_limits)?;
         Ok(())
     }
 }

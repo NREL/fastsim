@@ -484,7 +484,7 @@ impl Vehicle {
         // TODO: put logic for toggling `fc_on` here, after moving this comment to the right place
         // let fc_on = true;
         // TODO: propagate this
-        self.pt_type.solve_powertrain(
+        self.pt_type.solve(
             self.state.pwr_tractive,
             self.pwr_aux,
             dt,
@@ -499,7 +499,7 @@ impl Vehicle {
     }
 
     pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
-        Ok(self.pt_type.get_pwr_out_max(dt)? * self.trans_eff)
+        Ok(self.pt_type.get_curr_pwr_out_max(dt)? * self.trans_eff)
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {

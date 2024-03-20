@@ -152,9 +152,12 @@ impl SaveInterval for FuelConverter {
 }
 
 // non-py methods
-impl FuelConverter {
-    /// Get fuel converter max power output after subtracting off aux power given time step, dt \[s\]
-    pub fn set_cur_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
+impl Powertrain for FuelConverter {
+    fn get_curr_pwr_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
         ensure!(
             dt > si::Time::ZERO,
             format!(
@@ -165,44 +168,39 @@ impl FuelConverter {
         if self.pwr_out_max_init == si::Power::ZERO {
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
+        self.state.pwr_aux = pwr_aux;
         self.state.pwr_out_max = (self.state.pwr_out + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
             .min(self.pwr_out_max)
             .max(self.pwr_out_max_init);
-        Ok(())
+        Ok(self.pwr_out_max)
     }
 
-    /// Solve for fuel usage for a given required fuel converter power output
-    /// # Arguments
-    /// * `pwr_out`: output power for propulsion
-    /// * `pwr_aux`: output power for auxiliaries
-    /// * `fc_on`: whether FC is on (i.e. consuming fuel)
-    /// * `assert` limits: whether various physical limits are enforced, should generally be true
-    pub fn solve_energy_consumption(
+    fn solve(
         &mut self,
-        pwr_out: si::Power,
+        pwr_out_req: si::Power,
         pwr_aux: si::Power,
-        fc_on: bool,
+        enabled: bool,
         dt: si::Time,
         assert_limits: bool,
     ) -> anyhow::Result<()> {
         if assert_limits {
             ensure!(
-                utils::almost_le_uom(&pwr_out, &self.pwr_out_max, Some(TOL)),
+                utils::almost_le_uom(&pwr_out_req, &self.pwr_out_max, Some(TOL)),
                 format!(
                     "{}TODO: update this error message",
                     format_dbg!(utils::almost_le_uom(
-                        &(pwr_out + pwr_aux),
+                        &(pwr_out_req + pwr_aux),
                         &self.pwr_out_max,
                         Some(TOL)
                     )),
                 ),
             );
             ensure!(
-                utils::almost_le_uom(&pwr_out, &self.state.pwr_out_max, Some(TOL)),
+                utils::almost_le_uom(&pwr_out_req, &self.state.pwr_out_max, Some(TOL)),
                 format!(
                     "{}\nTODO: update this error",
                     format_dbg!(utils::almost_le_uom(
-                        &(pwr_out + pwr_aux),
+                        &(pwr_out_req + pwr_aux),
                         &self.state.pwr_out_max,
                         Some(TOL)
                     )),
@@ -210,10 +208,10 @@ impl FuelConverter {
             );
         }
         ensure!(
-            pwr_out >= si::Power::ZERO,
+            pwr_out_req >= si::Power::ZERO,
             format!(
-                "{}\n`pwr_out` must be >= 0",
-                format_dbg!(pwr_out >= si::Power::ZERO),
+                "{}\n`pwr_out_req` must be >= 0",
+                format_dbg!(pwr_out_req >= si::Power::ZERO),
             )
         );
         ensure!(
@@ -223,11 +221,11 @@ impl FuelConverter {
                 format_dbg!(pwr_aux >= si::Power::ZERO),
             )
         );
-        self.state.pwr_out = pwr_out;
+        self.state.pwr_out = pwr_out_req;
         self.state.pwr_aux = pwr_aux;
         self.state.eta = uc::R
             * interp1d(
-                &((pwr_out + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
+                &((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
                 &self.pwr_out_frac_interp,
                 &self.eta_interp,
                 Default::default(),
@@ -241,7 +239,7 @@ impl FuelConverter {
             )
         );
 
-        self.state.fc_on = fc_on;
+        self.state.fc_on = enabled;
         self.state.pwr_idle_fuel = if self.state.fc_on {
             self.pwr_idle_fuel
         } else {
@@ -249,17 +247,18 @@ impl FuelConverter {
         };
         // if the engine is not on, `pwr_out_req` should be 0.0
         ensure!(
-            self.state.fc_on || (pwr_out == si::Power::ZERO && pwr_aux == si::Power::ZERO),
+            self.state.fc_on || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO),
             format!(
-                "{}\nEngine is off but pwr_out + pwr_aux is non-zero",
+                "{}\nEngine is off but pwr_out_req + pwr_aux is non-zero",
                 format_dbg!(
-                    self.state.fc_on || (pwr_out == si::Power::ZERO && pwr_aux == si::Power::ZERO)
+                    self.state.fc_on
+                        || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO)
                 )
             )
         );
         // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
         // zero, there will be fuel consumption to overcome internal dissipation.
-        self.state.pwr_fuel = (pwr_out + pwr_aux) / self.state.eta + self.pwr_idle_fuel;
+        self.state.pwr_fuel = (pwr_out_req + pwr_aux) / self.state.eta + self.pwr_idle_fuel;
         // or maybe like this
         // self.state.pwr_fuel = ((pwr_out + pwr_aux) / self.state.eta).max(self.pwr_idle_fuel);
         self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_out;
@@ -277,7 +276,9 @@ impl FuelConverter {
         );
         Ok(())
     }
+}
 
+impl FuelConverter {
     impl_get_set_eta_max_min!();
     impl_get_set_eta_range!();
 }

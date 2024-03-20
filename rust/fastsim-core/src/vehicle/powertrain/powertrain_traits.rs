@@ -28,20 +28,26 @@ pub trait Mass {
 
 /// Provides functions for solving powertrain
 pub trait Powertrain {
+    /// Returns maximum possible tractive power this component/system can produce, accounting for any aux power required.
     /// # Arguments
-    /// - dt: time step size
-    ///
-    /// # Returns
-    /// - maximum possible tractive power this component/system can produce, accounting for any aux
-    ///   power required
-    fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power>;
-    /// Solves for powertrain efficiency and sets power output values
+    /// - `pwr`
+    /// - `dt`: time step size
+    fn get_curr_pwr_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power>;
+    /// Solves for this powertrain system/component efficiency and sets/returns power output values.
     /// # Arguments
-    /// - dt: time step size
-    fn solve_powertrain(
+    /// - `pwr_out_req`: tractive power output required to achieve presribed speed  
+    /// - `pwr_aux`: component-specific aux power demand (e.g. mechanical power if from engine/FC)  
+    /// - `enabled`: whether component is actively running   
+    /// - `dt`: time step size  
+    fn solve(
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
+        enabled: bool,
         dt: si::Time,
         assert_limits: bool,
     ) -> anyhow::Result<()>;

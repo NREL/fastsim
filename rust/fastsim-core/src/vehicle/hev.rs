@@ -30,10 +30,10 @@ impl SaveInterval for HybridElectricVehicle {
 impl SerdeAPI for HybridElectricVehicle {}
 
 impl Powertrain for Box<HybridElectricVehicle> {
-    fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+    fn get_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
         todo!();
     }
-    fn solve_powertrain(
+    fn solve(
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
