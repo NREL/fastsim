@@ -310,6 +310,7 @@ pub(crate) fn impl_getters_and_setters(
             "InverseVelocity" => extract_units!(uom::si::inverse_velocity::second_per_meter),
             "Length" => extract_units!(uom::si::length::meter, uom::si::length::mile),
             "Mass" => extract_units!(uom::si::mass::kilogram),
+            "MomentOfInertia" => extract_units!(uom::si::moment_of_inertia::kilogram_square_meter),
             "Power" => extract_units!(uom::si::power::watt),
             "PowerRate" => extract_units!(uom::si::power_rate::watt_per_second),
             "Pressure" => extract_units!(uom::si::pressure::kilopascal, uom::si::pressure::bar),

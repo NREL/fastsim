@@ -43,8 +43,8 @@ pub enum DriveTypes {
     fn get_fc(&self) -> Option<FuelConverter> {
         self.fc().cloned()
     }
-    #[setter]
-    fn set_fc(&mut self, _fc: FuelConverter) -> PyResult<()> {
+    #[setter("fc")]
+    fn set_fc_py(&mut self, _fc: FuelConverter) -> PyResult<()> {
         Err(PyAttributeError::new_err(DIRECT_SET_ERR))
     }
 
@@ -111,9 +111,8 @@ pub struct Vehicle {
     pub frontal_area: si::Area,
     /// Wheel rolling resistance coefficient for the vehicle (i.e. all wheels included)
     pub wheel_rr_coef: si::Ratio,
-    // as of 2023-10-24, there is no `uom` unit for rotational inertia
     /// Wheel inertia per wheel
-    pub wheel_inertia_kg_m2: si::Ratio,
+    pub wheel_inertia: si::MomentOfInertia,
     /// Number of wheels
     pub num_wheels: u8,
     /// Wheel radius
@@ -335,7 +334,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             drive_type,
             drive_axle_weight_frac: f2veh.drive_axle_weight_frac * uc::R,
             wheel_base: f2veh.wheel_base_m * uc::M,
-            wheel_inertia_kg_m2: f2veh.wheel_inertia_kg_m2 * uc::R,
+            wheel_inertia: f2veh.wheel_inertia_kg_m2 * uc::KGM2,
             wheel_rr_coef: f2veh.wheel_rr_coef * uc::R,
             num_wheels: f2veh.num_wheels as u8,
             wheel_radius: Some(f2veh.wheel_radius_m * uc::M),
@@ -382,11 +381,11 @@ impl Vehicle {
     }
 
     pub fn fs(&self) -> Option<&FuelStorage> {
-        self.pt_type.fs
+        self.pt_type.fs()
     }
 
     pub fn fs_mut(&mut self) -> Option<&mut FuelStorage> {
-        self.pt_type.fc_mut()
+        self.pt_type.fs_mut()
     }
 
     pub fn set_fs(&mut self, fs: FuelStorage) -> anyhow::Result<()> {
@@ -504,60 +503,186 @@ impl Vehicle {
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
-        Ok(fastsim_2::vehicle::RustVehicle{
+        let mut veh = fastsim_2::vehicle::RustVehicle{
+            alt_eff: todo!(),
+            alt_eff_doc: None,
+            aux_kw: todo!(),
+            aux_kw_doc: None,
+            cargo_kg: self.cargo_mass.unwrap_or_default().get::<si::kilogram>(),
+            cargo_kg_doc: None,
+            charging_on: false,
+            chg_eff: todo!(),
+            chg_eff_doc: None,
+            comp_mass_multiplier: 1.4,
+            comp_mass_multiplier_doc: None,
             // TODO: replace with `doc` field once implemented in fastsim-3
-            doc: Default::default(),
-            props: fastsim_2::params::RustPhysicalProperties::default(), 
+            doc: None,
+            drag_coef: self.drag_coef.get::<si::ratio>(),
+            drag_coef_doc: None,
+            drive_axle_weight_frac: self.drive_axle_weight_frac.get::<si::ratio>(),
+            drive_axle_weight_frac_doc: None,
+            ess_base_kg: todo!(),
+            ess_base_kg_doc: None,
+            ess_chg_to_fc_max_eff_perc: todo!(),
+            ess_chg_to_fc_max_eff_perc_doc: None,
+            ess_dischg_to_fc_max_eff_perc: todo!(),
+            ess_dischg_to_fc_max_eff_perc_doc: None,
+            ess_kg_per_kwh: todo!(),
+            ess_kg_per_kwh_doc: None,
+            ess_life_coef_a: todo!(),
+            ess_life_coef_a_doc: None,
+            ess_life_coef_b: todo!(),
+            ess_life_coef_b_doc: None,
+            ess_mass_kg: todo!(),
+            ess_max_kw: self.res().map(|res| res.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            ess_max_kw_doc: None,
+            ess_max_kwh: self.res().map(|res| res.energy_capacity.get::<si::kilowatt_hour>()).unwrap_or_default(),
+            ess_max_kwh_doc: None,
+            ess_round_trip_eff: todo!(), // SOC is not time-varying in fastsim-2 // self.res().map(|res| res.eta.get::<si::ratio>().powi(2)).unwrap_or_default()
+            ess_round_trip_eff_doc: None,
+            ess_to_fuel_ok_error: todo!(),
+            ess_to_fuel_ok_error_doc: None,
+            fc_base_kg: todo!(),
+            fc_base_kg_doc: None,
+            fc_eff_array: todo!(),
+            fc_eff_map: todo!(),
+            fc_eff_map_doc: None,
+            fc_eff_type: todo!(),
+            fc_eff_type_doc: None,
+            fc_kw_out_array: todo!(),
+            fc_kw_per_kg: todo!(),
+            fc_kw_per_kg_doc: None,
+            fc_mass_kg: todo!(),
+            fc_max_kw: self.fc().map(|fc| fc.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            fc_max_kw_doc: None,
+            fc_peak_eff_override: todo!(),
+            fc_peak_eff_override_doc: None,
+            fc_perc_out_array: todo!(),
+            fc_pwr_out_perc: todo!(),
+            fc_pwr_out_perc_doc: None,
+            fc_sec_to_peak_pwr: self.fc().map(|fc| fc.pwr_ramp_lag.get::<si::second>()).unwrap_or_default(),
+            fc_sec_to_peak_pwr_doc: None,
+            force_aux_on_fc: todo!(),
+            force_aux_on_fc_doc: None,
+            frontal_area_m2: self.frontal_area.get::<si::square_meter>(),
+            frontal_area_m2_doc: None,
+            fs_kwh: self.fs().map(|fs| fs.energy_capacity.get::<si::kilowatt_hour>()).unwrap_or_default(),
+            fs_kwh_doc: None,
+            fs_kwh_per_kg: self.fs().and_then(|fs| fs.specific_energy).map(|specific_energy| specific_energy.get::<si::kilojoule_per_kilogram>() / 3600.).unwrap_or_default(),
+            fs_kwh_per_kg_doc: None,
+            fs_mass_kg: todo!(),
+            fs_max_kw: self.fs().map(|fs| fs.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            fs_max_kw_doc: None,
+            fs_secs_to_peak_pwr: self.fs().map(|fs| fs.pwr_ramp_lag.get::<si::second>()).unwrap_or_default(),
+            fs_secs_to_peak_pwr_doc: None,
+            glider_kg: self.glider_mass.unwrap_or_default().get::<si::kilogram>(),
+            glider_kg_doc: None,
+            idle_fc_kw: 0.,
+            idle_fc_kw_doc: None,
+            input_kw_out_array: todo!(),
+            kw_demand_fc_on: todo!(),
+            kw_demand_fc_on_doc: None,
+            large_motor_power_kw: todo!(),
+            max_accel_buffer_mph: todo!(),
+            max_accel_buffer_mph_doc: None,
+            max_accel_buffer_perc_of_useable_soc: todo!(),
+            max_accel_buffer_perc_of_useable_soc_doc: None,
+            max_regen: todo!(),
+            max_regen_doc: None,
+            max_regen_kwh: todo!(),
+            max_roadway_chg_kw: todo!(),
+            max_soc: self.res().map(|res| res.max_soc.get::<si::ratio>()).unwrap_or(1.0),
+            max_soc_doc: None,
+            max_trac_mps2: todo!(),
+            mc_eff_array: todo!(),
+            mc_eff_map: todo!(),
+            mc_eff_map_doc: None,
+            mc_full_eff_array: todo!(),
+            mc_kw_in_array: todo!(),
+            mc_kw_out_array: todo!(),
+            mc_mass_kg: todo!(),
+            mc_max_elec_in_kw: todo!(),
+            mc_max_kw: todo!(),
+            mc_max_kw_doc: None,
+            mc_pe_base_kg: todo!(),
+            mc_pe_base_kg_doc: None,
+            mc_pe_kg_per_kw: todo!(),
+            mc_pe_kg_per_kw_doc: None,
+            mc_peak_eff_override: todo!(),
+            mc_peak_eff_override_doc: None,
+            mc_perc_out_array: todo!(),
+            mc_pwr_out_perc: todo!(),
+            mc_pwr_out_perc_doc: None,
+            mc_sec_to_peak_pwr: todo!(),
+            mc_sec_to_peak_pwr_doc: None,
+            min_fc_time_on: todo!(),
+            min_fc_time_on_doc: None,
+            min_soc: self.res().map(|res| res.min_soc.get::<si::ratio>()).unwrap_or_default(),
+            min_soc_doc: None,
+            modern_max: todo!(),
+            mph_fc_on: todo!(),
+            mph_fc_on_doc: None,
+            no_elec_aux: todo!(),
+            no_elec_sys: todo!(),
+            num_wheels: self.num_wheels as f64,
+            num_wheels_doc: None,
+            orphaned: false,
+            perc_high_acc_buf: todo!(),
+            perc_high_acc_buf_doc: None,
+            props: fastsim_2::params::RustPhysicalProperties::default(),
+            regen_a: todo!(),
+            regen_b: todo!(),
             scenario_name: self.name,
             selection: 0, // there is no equivalent in fastsim-3
-            veh_year: self.year,
+            small_motor_power_kw: todo!(),
+            stop_start: todo!(),
+            stop_start_doc: None,
+            trans_eff: self.trans_eff.get::<si::ratio>(),
+            trans_eff_doc: None,
+            trans_kg: todo!(),
+            trans_kg_doc: None,
+            val0_to60_mph: f64::NAN,
+            val_cd_range_mi: f64::NAN,
+            val_comb_kwh_per_mile: f64::NAN,
+            val_comb_mpgge: f64::NAN,
+            val_const45_mph_kwh_per_mile: f64::NAN,
+            val_const55_mph_kwh_per_mile: f64::NAN,
+            val_const60_mph_kwh_per_mile: f64::NAN,
+            val_const65_mph_kwh_per_mile: f64::NAN,
+            val_ess_life_miles: f64::NAN,
+            val_hwy_kwh_per_mile: f64::NAN,
+            val_hwy_mpgge: f64::NAN,
+            val_msrp: f64::NAN,
+            val_range_miles: f64::NAN,
+            val_udds_kwh_per_mile: f64::NAN,
+            val_udds_mpgge: f64::NAN,
+            val_unadj_hwy_kwh_per_mile: f64::NAN,
+            val_unadj_udds_kwh_per_mile: f64::NAN,
+            val_veh_base_cost: f64::NAN,
+            veh_cg_m: self.cg_height.get::<si::meter>(),
+            veh_cg_m_doc: None,
+            veh_kg: self.mass()?.context("Vehicle mass is `None`")?.get::<si::kilogram>(),
+            veh_override_kg: self.mass()?.map(|m| m.get::<si::kilogram>()),
+            veh_override_kg_doc: None,
             veh_pt_type: match &self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => "Conv".into(),
                 PowertrainType::HybridElectricVehicle(_) => "HEV".into(),
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
             },
-            drag_coef: self.drag_coef.get::<si::ratio>(),
-            frontal_area_m2: self.frontal_area.get::<si::square_meter>(),
-            glider_kg: self.glider_mass.unwrap_or_default().get::<si::kilogram>(),
-            veh_cg_m: self.cg_height.get::<si::meter>(),
-            drive_axle_weight_frac: self.drive_axle_weight_frac.get::<si::ratio>(),
+            veh_year: self.year,
             wheel_base_m: self.wheel_base.get::<si::meter>(),
-            cargo_kg: self.cargo_mass.unwrap_or_default().get::<si::kilogram>(),
-            veh_override_kg: self.mass()?.map(|m| m.get::<si::kilogram>()),
-            comp_mass_multiplier: 1.4,
-            fs_max_kw: self.fuel,
-            fs_secs_to_peak_pwr: self.fs().map(|x| x.pwr_ramp_lag.get::<si::second>()),
-            fs_kwh: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {conv.fs.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.fs.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {0.},
-            },
-            fs_kwh_per_kg: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {conv.fs.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.fs.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {0.},
-            },
-            fc_max_kw: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {conv.fc.pwr_out_max.get::<si::kilowatt>()},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.fc.pwr_out_max.get::<si::kilowatt>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {0.},
-            },
-            fc_sec_to_peak_pwr: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {conv.fc.pwr_ramp_lag.get::<si::second>()},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.fc.pwr_ramp_lag.get::<si::second>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {0.},
-            },
-            ess_max_kw: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {0.},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.res.pwr_out_max.get::<si::kilowatt>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {bev.res.pwr_out_max.get::<si::kilowatt>()},
-            },
-            ess_max_kwh: match &self.pt_type {
-                PowertrainType::ConventionalVehicle(conv) => {0.},
-                PowertrainType::HybridElectricVehicle(hev) => {hev.res.energy_capacity.get::<si::kilowatt_hour>()},
-                PowertrainType::BatteryElectricVehicle(bev) => {bev.res.energy_capacity.get::<si::kilowatt_hour>()},
-            },
-        })
+            wheel_base_m_doc: None,
+            wheel_coef_of_fric: todo!(),
+            wheel_coef_of_fric_doc: None,
+            wheel_inertia_kg_m2: self.wheel_inertia.get::<si::kilogram_square_meter>(),
+            wheel_inertia_kg_m2_doc: None,
+            wheel_radius_m: self.wheel_radius.get::<si::meter>(),
+            wheel_radius_m_doc: None,
+            wheel_rr_coef: self.wheel_rr_coef.get::<si::ratio>(),
+            wheel_rr_coef_doc: None
+        };
+        veh.set_derived();
+        Ok(veh)
     }
 }
 
