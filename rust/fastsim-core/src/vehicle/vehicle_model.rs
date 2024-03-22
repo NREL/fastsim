@@ -27,13 +27,15 @@ pub enum DriveTypes {
 #[pyo3_api(
     // TODO: expose `try_from` method so python users can load fastsim-2 vehicles
     
+    // despite having `setter` here, this seems to work as a function
     #[setter("save_interval")]
     /// Set save interval and cascade to nested components.
     fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.set_save_interval(save_interval)
     }
 
-    #[getter("save_interval")]
+    // despite having `getter` here, this seems to work as a function
+    #[getter("save_interval")] 
     /// Set save interval and cascade to nested components.
     fn get_save_interval_py(&self) -> anyhow::Result<Option<usize>> {
         self.save_interval()
