@@ -129,6 +129,8 @@ pub struct Vehicle {
     pub tire_code: Option<String>,
     /// Vehicle center of mass height
     pub cg_height: si::Length,
+    /// Wheel coefficient of friction
+    pub wheel_fric_coef: si::Ratio,
     #[api(skip_get, skip_set)]
     /// TODO: make getters and setters for this.
     /// Drive wheel configuration
@@ -298,6 +300,7 @@ fn get_pt_type_from_fsim2_veh(
                 fc.update_mass(None)?;
                 fc
             },
+            alt_eff: f2veh.alt_eff * uc::R,
         };
         Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
     } else {
@@ -333,6 +336,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             frontal_area: f2veh.frontal_area_m2 * uc::M2,
             glider_mass: Some(f2veh.glider_kg * uc::KG),
             cg_height: f2veh.veh_cg_m * uc::M,
+            wheel_fric_coef: f2veh.wheel_coef_of_fric * uc::R,
             drive_type,
             drive_axle_weight_frac: f2veh.drive_axle_weight_frac * uc::R,
             wheel_base: f2veh.wheel_base_m * uc::M,
@@ -506,9 +510,12 @@ impl Vehicle {
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
         let mut veh = fastsim_2::vehicle::RustVehicle{
-            alt_eff: todo!(),
+            alt_eff: match self.pt_type {
+                PowertrainType::ConventionalVehicle(conv) => conv.alt_eff.get::<si::ratio>(),
+                _ => 1.0,
+            },
             alt_eff_doc: None,
-            aux_kw: todo!(),
+            aux_kw: self.pwr_aux.get::<si::kilowatt>(),
             aux_kw_doc: None,
             cargo_kg: self.cargo_mass.unwrap_or_default().get::<si::kilogram>(),
             cargo_kg_doc: None,
@@ -661,7 +668,10 @@ impl Vehicle {
             val_unadj_hwy_kwh_per_mile: f64::NAN,
             val_unadj_udds_kwh_per_mile: f64::NAN,
             val_veh_base_cost: f64::NAN,
-            veh_cg_m: self.cg_height.get::<si::meter>(),
+            veh_cg_m: self.cg_height.get::<si::meter>() * match self.drive_type {
+                DriveTypes::FWD => 1.0,
+                DriveTypes::RWD | DriveTypes::AWD | DriveTypes::FourWD => -1.0,
+            },
             veh_cg_m_doc: None,
             veh_kg: self.mass()?.context("Vehicle mass is `None`")?.get::<si::kilogram>(),
             veh_override_kg: self.mass()?.map(|m| m.get::<si::kilogram>()),
@@ -674,7 +684,7 @@ impl Vehicle {
             veh_year: self.year,
             wheel_base_m: self.wheel_base.get::<si::meter>(),
             wheel_base_m_doc: None,
-            wheel_coef_of_fric: todo!(),
+            wheel_coef_of_fric: self.wheel_fric_coef.get::<si::ratio>(),
             wheel_coef_of_fric_doc: None,
             wheel_inertia_kg_m2: self.wheel_inertia.get::<si::kilogram_square_meter>(),
             wheel_inertia_kg_m2_doc: None,
