@@ -26,7 +26,7 @@ pub enum DriveTypes {
 
 #[pyo3_api(
     // TODO: expose `try_from` method so python users can load fastsim-2 vehicles
-    
+
     // despite having `setter` here, this seems to work as a function
     #[setter("save_interval")]
     /// Set save interval and cascade to nested components.
@@ -35,7 +35,7 @@ pub enum DriveTypes {
     }
 
     // despite having `getter` here, this seems to work as a function
-    #[getter("save_interval")] 
+    #[getter("save_interval")]
     /// Set save interval and cascade to nested components.
     fn get_save_interval_py(&self) -> anyhow::Result<Option<usize>> {
         self.save_interval()
@@ -208,8 +208,7 @@ impl Mass for Vehicle {
                 self.mass = Some(mass);
                 if self.check_mass_consistent().is_err() {
                     self.fc_mut().map(|fc| fc.update_mass(None));
-                    self.res_mut()
-                        .map(|res| res.update_mass(None));
+                    self.res_mut().map(|res| res.update_mass(None));
                 }
             }
             None => {
@@ -285,7 +284,7 @@ fn get_pt_type_from_fsim2_veh(
                     pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                     pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
                     pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
-                    eta_interp: f2veh.fc_eff_map.to_vec(),
+                    eff_interp: f2veh.fc_eff_map.to_vec(),
                     // TODO: verify this
                     pwr_idle_fuel: f2veh.aux_kw
                         / f2veh
@@ -365,8 +364,7 @@ impl Vehicle {
     /// - peak power of all components can be produced concurrently.
     pub fn get_pwr_rated(&self) -> si::Power {
         if self.fc().is_some() && self.res().is_some() {
-            self.fc().unwrap().pwr_out_max
-                + self.res().unwrap().pwr_out_max
+            self.fc().unwrap().pwr_out_max + self.res().unwrap().pwr_out_max
         } else if self.fc().is_some() {
             self.fc().unwrap().pwr_out_max
         } else {
@@ -406,10 +404,7 @@ impl Vehicle {
         self.pt_type.res_mut()
     }
 
-    pub fn set_res(
-        &mut self,
-        res: ReversibleEnergyStorage,
-    ) -> anyhow::Result<()> {
+    pub fn set_res(&mut self, res: ReversibleEnergyStorage) -> anyhow::Result<()> {
         self.pt_type.set_res(res)
     }
 
@@ -438,10 +433,9 @@ impl Vehicle {
                     }
                 }
                 PowertrainType::HybridElectricVehicle(_) => {
-                    if let (Some(fc), Some(res)) = (
-                        self.fc().unwrap().mass()?,
-                        self.res().unwrap().mass()?,
-                    ) {
+                    if let (Some(fc), Some(res)) =
+                        (self.fc().unwrap().mass()?, self.res().unwrap().mass()?)
+                    {
                         // TODO: add the other component and vehicle level masses here
                         Ok(Some(fc + res))
                     } else {
@@ -476,9 +470,13 @@ impl Vehicle {
 
     /// Calculate wheel radius from tire code, if applicable
     fn calculate_wheel_radius(&mut self) -> anyhow::Result<()> {
-        ensure!(self.wheel_radius.is_some() || self.tire_code.is_some(), "Either `wheel_radius` or `tire_code` must be supplied");
+        ensure!(
+            self.wheel_radius.is_some() || self.tire_code.is_some(),
+            "Either `wheel_radius` or `tire_code` must be supplied"
+        );
         if self.wheel_radius.is_none() {
-            self.wheel_radius = Some(utils::tire_code_to_radius(self.tire_code.as_ref().unwrap())? * uc::M)
+            self.wheel_radius =
+                Some(utils::tire_code_to_radius(self.tire_code.as_ref().unwrap())? * uc::M)
         }
         Ok(())
     }
@@ -487,14 +485,12 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: do something more sophisticated with pwr_aux
         self.state.pwr_aux = self.pwr_aux;
-        // TODO: put logic for toggling `fc_on` here, after moving this comment to the right place
-        // let fc_on = true;
-        // TODO: propagate this
         self.pt_type.solve(
             self.state.pwr_tractive,
             self.pwr_aux,
+            true, // this should always be true at the powertrain level
             dt,
-            true, // TODO: parameterize this
+            true, // TODO: parameterize and propagate this
         )?;
         Ok(())
     }
@@ -505,11 +501,12 @@ impl Vehicle {
     }
 
     pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
-        Ok(self.pt_type.get_curr_pwr_out_max(dt)? * self.trans_eff)
+        // TODO: when a fancier model for `pwr_aux` is implemented,
+        Ok(self.pt_type.get_curr_pwr_out_max(self.pwr_aux, dt)? * self.trans_eff)
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
-        let mut veh = fastsim_2::vehicle::RustVehicle{
+        let mut veh = fastsim_2::vehicle::RustVehicle {
             alt_eff: match self.pt_type {
                 PowertrainType::ConventionalVehicle(conv) => conv.alt_eff.get::<si::ratio>(),
                 _ => 1.0,
@@ -542,14 +539,23 @@ impl Vehicle {
             ess_life_coef_a_doc: None,
             ess_life_coef_b: -0.6811,
             ess_life_coef_b_doc: None,
-            ess_mass_kg: self.res().map(|res| res.mass().get::<si::kilogram>()).unwrap_or_default(),
-            ess_max_kw: self.res().map(|res| res.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            ess_mass_kg: self
+                .res()
+                .map(|res| res.mass().get::<si::kilogram>())
+                .unwrap_or_default(),
+            ess_max_kw: self
+                .res()
+                .map(|res| res.pwr_out_max.get::<si::kilowatt>())
+                .unwrap_or_default(),
             ess_max_kw_doc: None,
-            ess_max_kwh: self.res().map(|res| res.energy_capacity.get::<si::kilowatt_hour>()).unwrap_or_default(),
+            ess_max_kwh: self
+                .res()
+                .map(|res| res.energy_capacity.get::<si::kilowatt_hour>())
+                .unwrap_or_default(),
             ess_max_kwh_doc: None,
             // TODO: make an enum for this in fastsim-3
             // SOC is not time-varying in fastsim-2
-            // self.res().map(|res| res.eta.get::<si::ratio>().powi(2)).unwrap_or_default()
+            // self.res().map(|res| res.eff.get::<si::ratio>().powi(2)).unwrap_or_default()
             ess_round_trip_eff: 0.97,
             ess_round_trip_eff_doc: None,
             ess_to_fuel_ok_error: 0.005, // TODO: update when hybrid logic is implemented
@@ -557,22 +563,37 @@ impl Vehicle {
             fc_base_kg: todo!(), // TODO: Put reasonable default here and revisit
             fc_base_kg_doc: None,
             fc_eff_array: Default::default(),
-            fc_eff_map: self.fc().map(|fc| fc.eta_interp.into()).unwrap_or_default(),
+            fc_eff_map: self.fc().map(|fc| fc.eff_interp.into()).unwrap_or_default(),
             fc_eff_map_doc: None,
             fc_eff_type: "SI".into(), // TODO: placeholder, revisit and update if needed
             fc_eff_type_doc: None,
             fc_kw_out_array: Default::default(),
             fc_kw_per_kg: todo!(), // TODO: Put reasonable default here and revisit
             fc_kw_per_kg_doc: None,
-            fc_mass_kg: self.fc().map(|fc| fc.mass().get::<si::kilogram>()).unwrap_or_default(),
-            fc_max_kw: self.fc().map(|fc| fc.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            fc_mass_kg: match self.fc() {
+                Some(fc) => match fc.mass() {
+                    Err(e) => bail!(e),
+                    Ok(mass) => mass.unwrap_or_default().get::<si::kilogram>(),
+                },
+                None => 0.,
+            },
+            fc_max_kw: self
+                .fc()
+                .map(|fc| fc.pwr_out_max.get::<si::kilowatt>())
+                .unwrap_or_default(),
             fc_max_kw_doc: None,
             fc_peak_eff_override: None,
             fc_peak_eff_override_doc: None,
             fc_perc_out_array: Default::default(),
-            fc_pwr_out_perc: self.fc().map(|fc| fc.pwr_out_frac_interp.into()).unwrap_or_default(),
+            fc_pwr_out_perc: self
+                .fc()
+                .map(|fc| fc.pwr_out_frac_interp.into())
+                .unwrap_or_default(),
             fc_pwr_out_perc_doc: None,
-            fc_sec_to_peak_pwr: self.fc().map(|fc| fc.pwr_ramp_lag.get::<si::second>()).unwrap_or_default(),
+            fc_sec_to_peak_pwr: self
+                .fc()
+                .map(|fc| fc.pwr_ramp_lag.get::<si::second>())
+                .unwrap_or_default(),
             fc_sec_to_peak_pwr_doc: None,
             force_aux_on_fc: match self.pt_type {
                 PowertrainType::ConventionalVehicle(_) => true,
@@ -581,14 +602,33 @@ impl Vehicle {
             force_aux_on_fc_doc: None,
             frontal_area_m2: self.frontal_area.get::<si::square_meter>(),
             frontal_area_m2_doc: None,
-            fs_kwh: self.fs().map(|fs| fs.energy_capacity.get::<si::kilowatt_hour>()).unwrap_or_default(),
+            fs_kwh: self
+                .fs()
+                .map(|fs| fs.energy_capacity.get::<si::kilowatt_hour>())
+                .unwrap_or_default(),
             fs_kwh_doc: None,
-            fs_kwh_per_kg: self.fs().and_then(|fs| fs.specific_energy).map(|specific_energy| specific_energy.get::<si::kilojoule_per_kilogram>() / 3600.).unwrap_or_default(),
+            fs_kwh_per_kg: self
+                .fs()
+                .and_then(|fs| fs.specific_energy)
+                .map(|specific_energy| specific_energy.get::<si::kilojoule_per_kilogram>() / 3600.)
+                .unwrap_or_default(),
             fs_kwh_per_kg_doc: None,
-            fs_mass_kg: self.fs().map(|fs| fs.mass().get::<si::kilogram>()).unwrap_or_default(),
-            fs_max_kw: self.fs().map(|fs| fs.pwr_out_max.get::<si::kilowatt>()).unwrap_or_default(),
+            fs_mass_kg: match self.fs() {
+                Some(fs) => match fs.mass() {
+                    Err(e) => bail!(e),
+                    Ok(mass) => mass.unwrap_or_default().get::<si::kilogram>(),
+                },
+                None => 0.,
+            },
+            fs_max_kw: self
+                .fs()
+                .map(|fs| fs.pwr_out_max.get::<si::kilowatt>())
+                .unwrap_or_default(),
             fs_max_kw_doc: None,
-            fs_secs_to_peak_pwr: self.fs().map(|fs| fs.pwr_ramp_lag.get::<si::second>()).unwrap_or_default(),
+            fs_secs_to_peak_pwr: self
+                .fs()
+                .map(|fs| fs.pwr_ramp_lag.get::<si::second>())
+                .unwrap_or_default(),
             fs_secs_to_peak_pwr_doc: None,
             glider_kg: self.glider_mass.unwrap_or_default().get::<si::kilogram>(),
             glider_kg_doc: None,
@@ -606,7 +646,10 @@ impl Vehicle {
             max_regen_doc: None,
             max_regen_kwh: todo!(),
             max_roadway_chg_kw: todo!(),
-            max_soc: self.res().map(|res| res.max_soc.get::<si::ratio>()).unwrap_or(1.0),
+            max_soc: self
+                .res()
+                .map(|res| res.max_soc.get::<si::ratio>())
+                .unwrap_or(1.0),
             max_soc_doc: None,
             max_trac_mps2: todo!(),
             mc_eff_array: todo!(),
@@ -615,7 +658,13 @@ impl Vehicle {
             mc_full_eff_array: todo!(),
             mc_kw_in_array: todo!(),
             mc_kw_out_array: todo!(),
-            mc_mass_kg: todo!(),
+            mc_mass_kg: match self.e_machine() {
+                Some(e_machine) => match e_machine.mass() {
+                    Err(e) => bail!(e),
+                    Ok(mass) => mass.unwrap_or_default().get::<si::kilogram>(),
+                },
+                None => 0.,
+            },,
             mc_max_elec_in_kw: todo!(),
             mc_max_kw: todo!(),
             mc_max_kw_doc: None,
@@ -632,7 +681,10 @@ impl Vehicle {
             mc_sec_to_peak_pwr_doc: None,
             min_fc_time_on: todo!(),
             min_fc_time_on_doc: None,
-            min_soc: self.res().map(|res| res.min_soc.get::<si::ratio>()).unwrap_or_default(),
+            min_soc: self
+                .res()
+                .map(|res| res.min_soc.get::<si::ratio>())
+                .unwrap_or_default(),
             min_soc_doc: None,
             modern_max: todo!(),
             mph_fc_on: todo!(),
@@ -674,12 +726,16 @@ impl Vehicle {
             val_unadj_hwy_kwh_per_mile: f64::NAN,
             val_unadj_udds_kwh_per_mile: f64::NAN,
             val_veh_base_cost: f64::NAN,
-            veh_cg_m: self.cg_height.get::<si::meter>() * match self.drive_type {
-                DriveTypes::FWD => 1.0,
-                DriveTypes::RWD | DriveTypes::AWD | DriveTypes::FourWD => -1.0,
-            },
+            veh_cg_m: self.cg_height.get::<si::meter>()
+                * match self.drive_type {
+                    DriveTypes::FWD => 1.0,
+                    DriveTypes::RWD | DriveTypes::AWD | DriveTypes::FourWD => -1.0,
+                },
             veh_cg_m_doc: None,
-            veh_kg: self.mass()?.context("Vehicle mass is `None`")?.get::<si::kilogram>(),
+            veh_kg: self
+                .mass()?
+                .context("Vehicle mass is `None`")?
+                .get::<si::kilogram>(),
             veh_override_kg: self.mass()?.map(|m| m.get::<si::kilogram>()),
             veh_override_kg_doc: None,
             veh_pt_type: match &self.pt_type {
@@ -697,7 +753,7 @@ impl Vehicle {
             wheel_radius_m: self.wheel_radius.unwrap().get::<si::meter>(),
             wheel_radius_m_doc: None,
             wheel_rr_coef: self.wheel_rr_coef.get::<si::ratio>(),
-            wheel_rr_coef_doc: None
+            wheel_rr_coef_doc: None,
         };
         veh.set_derived();
         Ok(veh)
@@ -793,6 +849,5 @@ pub(crate) mod tests {
         assert!(veh == veh1);
         veh1.init().unwrap();
         assert!(veh == veh1);
-
     }
 }

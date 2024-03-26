@@ -56,29 +56,29 @@ const TOL: f64 = 1e-3;
         Ok(())
     }
 
-    #[getter("eta_max")]
-    fn get_eta_max_py(&self) -> f64 {
-        self.get_eta_max()
+    #[getter("eff_max")]
+    fn get_eff_max_py(&self) -> f64 {
+        self.get_eff_max()
     }
 
-    #[setter("__eta_max")]
-    fn set_eta_max_py(&mut self, eta_max: f64) -> PyResult<()> {
-        self.set_eta_max(eta_max).map_err(PyValueError::new_err)
+    #[setter("__eff_max")]
+    fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+        self.set_eff_max(eff_max).map_err(PyValueError::new_err)
     }
 
-    #[getter("eta_min")]
-    fn get_eta_min_py(&self) -> f64 {
-        self.get_eta_min()
+    #[getter("eff_min")]
+    fn get_eff_min_py(&self) -> f64 {
+        self.get_eff_min()
     }
 
-    #[getter("eta_range")]
-    fn get_eta_range_py(&self) -> f64 {
-        self.get_eta_range()
+    #[getter("eff_range")]
+    fn get_eff_range_py(&self) -> f64 {
+        self.get_eff_range()
     }
 
-    #[setter("__eta_range")]
-    fn set_eta_range_py(&mut self, eta_range: f64) -> anyhow::Result<()> {
-        self.set_eta_range(eta_range)
+    #[setter("__eff_range")]
+    fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
+        self.set_eff_range(eff_range)
     }
 
     #[setter("__mass_kg")]
@@ -456,24 +456,24 @@ impl ReversibleEnergyStorage {
 
         // TODO: replace this with something correct.
         // This should trip the `ensure` below
-        state.eta = uc::R * 666.;
+        state.eff = uc::R * 666.;
         ensure!(
-            state.eta >= 0.0 * uc::R || state.eta <= 1.0 * uc::R,
+            state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R,
             format!(
-                "{}\nres eta ({}) must be between 0 and 1",
-                format_dbg!(state.eta >= 0.0 * uc::R || state.eta <= 1.0 * uc::R),
-                state.eta.get::<si::ratio>()
+                "{}\nres efficiency ({}) must be between 0 and 1",
+                format_dbg!(state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R),
+                state.eff.get::<si::ratio>()
             )
         );
 
         if state.pwr_out_electrical > si::Power::ZERO {
             // if positive, chemical power must be greater than electrical power
             // i.e. not all chemical power can be converted to electrical power
-            state.pwr_out_chemical = state.pwr_out_electrical / state.eta;
+            state.pwr_out_chemical = state.pwr_out_electrical / state.eff;
         } else {
             // if negative, chemical power, must be less than electrical power
             // i.e. not all electrical power can be converted back to chemical power
-            state.pwr_out_chemical = state.pwr_out_electrical * state.eta;
+            state.pwr_out_chemical = state.pwr_out_electrical * state.eff;
         }
         state.energy_out_chemical += state.pwr_out_chemical * dt;
 
@@ -485,28 +485,28 @@ impl ReversibleEnergyStorage {
         Ok(())
     }
 
-    pub fn get_eta_max(&self) -> f64 {
+    pub fn get_eff_max(&self) -> f64 {
         todo!()
     }
 
-    /// Scales eta_interp by ratio of new `eta_max` per current calculated
-    /// max linearly, such that `eta_min` is untouched
-    pub fn set_eta_max(&mut self, eta_max: f64) -> Result<(), String> {
+    /// Scales eff_interp by ratio of new `eff_max` per current calculated
+    /// max linearly, such that `eff_min` is untouched
+    pub fn set_eff_max(&mut self, eff_max: f64) -> Result<(), String> {
         todo!()
     }
 
-    pub fn get_eta_min(&self) -> f64 {
+    pub fn get_eff_min(&self) -> f64 {
         todo!()
     }
 
-    /// Max value of `eta_interp` minus min value of `eta_interp`.
-    pub fn get_eta_range(&self) -> f64 {
-        self.get_eta_max() - self.get_eta_min()
+    /// Max value of `eff_interp` minus min value of `eff_interp`.
+    pub fn get_eff_range(&self) -> f64 {
+        self.get_eff_max() - self.get_eff_min()
     }
 
-    /// Scales values of `eta_interp` without changing max such that max - min
+    /// Scales values of `eff_interp` without changing max such that max - min
     /// is equal to new range
-    pub fn set_eta_range(&mut self, eta_range: f64) -> anyhow::Result<()> {
+    pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
         todo!()
     }
 }
@@ -535,7 +535,7 @@ pub struct ReversibleEnergyStorageState {
     /// state of charge (SOC)
     pub soc: si::Ratio,
     /// Chemical <-> Electrical conversion efficiency based on current power demand
-    pub eta: si::Ratio,
+    pub eff: si::Ratio,
     /// State of Health (SOH)
     pub soh: f64,
 

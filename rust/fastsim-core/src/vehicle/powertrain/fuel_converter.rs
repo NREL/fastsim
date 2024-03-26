@@ -6,29 +6,29 @@ const TOL: f64 = 1e-3;
 
 #[pyo3_api(
     // optional, custom, struct-specific pymethods
-    #[getter("eta_max")]
-    fn get_eta_max_py(&self) -> f64 {
-        self.get_eta_max()
+    #[getter("eff_max")]
+    fn get_eff_max_py(&self) -> f64 {
+        self.get_eff_max()
     }
 
-    #[setter("__eta_max")]
-    fn set_eta_max_py(&mut self, eta_max: f64) -> PyResult<()> {
-        self.set_eta_max(eta_max).map_err(PyValueError::new_err)
+    #[setter("__eff_max")]
+    fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+        self.set_eff_max(eff_max).map_err(PyValueError::new_err)
     }
 
-    #[getter("eta_min")]
-    fn get_eta_min_py(&self) -> f64 {
-        self.get_eta_min()
+    #[getter("eff_min")]
+    fn get_eff_min_py(&self) -> f64 {
+        self.get_eff_min()
     }
 
-    #[getter("eta_range")]
-    fn get_eta_range_py(&self) -> f64 {
-        self.get_eta_range()
+    #[getter("eff_range")]
+    fn get_eff_range_py(&self) -> f64 {
+        self.get_eff_range()
     }
 
-    #[setter("__eta_range")]
-    fn set_eta_range_py(&mut self, eta_range: f64) -> PyResult<()> {
-        self.set_eta_range(eta_range).map_err(PyValueError::new_err)
+    #[setter("__eff_range")]
+    fn set_eff_range_py(&mut self, eff_range: f64) -> PyResult<()> {
+        self.set_eff_range(eff_range).map_err(PyValueError::new_err)
     }
 
     #[setter("__mass_kg")]
@@ -75,7 +75,7 @@ pub struct FuelConverter {
     /// always be controlled for operating at max possible efficiency for the power demand
     pub pwr_out_frac_interp: Vec<f64>,
     /// fuel converter efficiency array
-    pub eta_interp: Vec<f64>,
+    pub eff_interp: Vec<f64>,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     #[serde(rename = "pwr_idle_fuel_watts")]
     pub pwr_idle_fuel: si::Power,
@@ -223,19 +223,19 @@ impl Powertrain for FuelConverter {
         );
         self.state.pwr_out = pwr_out_req;
         self.state.pwr_aux = pwr_aux;
-        self.state.eta = uc::R
+        self.state.eff = uc::R
             * interp1d(
                 &((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
                 &self.pwr_out_frac_interp,
-                &self.eta_interp,
+                &self.eff_interp,
                 Default::default(),
             )?;
         ensure!(
-            self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R,
+            self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
             format!(
-                "{}\nfc eta ({}) must be between 0 and 1",
-                format_dbg!(self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R),
-                self.state.eta.get::<si::ratio>()
+                "{}\nfc efficiency ({}) must be between 0 and 1",
+                format_dbg!(self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R),
+                self.state.eff.get::<si::ratio>()
             )
         );
 
@@ -258,9 +258,9 @@ impl Powertrain for FuelConverter {
         );
         // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
         // zero, there will be fuel consumption to overcome internal dissipation.
-        self.state.pwr_fuel = (pwr_out_req + pwr_aux) / self.state.eta + self.pwr_idle_fuel;
+        self.state.pwr_fuel = (pwr_out_req + pwr_aux) / self.state.eff + self.pwr_idle_fuel;
         // or maybe like this
-        // self.state.pwr_fuel = ((pwr_out + pwr_aux) / self.state.eta).max(self.pwr_idle_fuel);
+        // self.state.pwr_fuel = ((pwr_out + pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
         self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_out;
 
         self.state.energy_brake += self.state.pwr_out * dt;
@@ -279,8 +279,8 @@ impl Powertrain for FuelConverter {
 }
 
 impl FuelConverter {
-    impl_get_set_eta_max_min!();
-    impl_get_set_eta_range!();
+    impl_get_set_eff_max_min!();
+    impl_get_set_eff_range!();
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec)]
@@ -291,7 +291,7 @@ pub struct FuelConverterState {
     /// max power fc can produce at current time
     pub pwr_out_max: si::Power,
     /// efficiency evaluated at current demand
-    pub eta: si::Ratio,
+    pub eff: si::Ratio,
     /// instantaneous power going to drivetrain, not including aux
     pub pwr_out: si::Power,
     /// power going to auxiliaries

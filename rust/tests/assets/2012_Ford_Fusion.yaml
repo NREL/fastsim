@@ -13,7 +13,7 @@ pt_type:
       state:
         i: 0
         pwr_out_max: 0.0
-        eta: 0.0
+        eff: 0.0
         pwr_out: 0.0
         pwr_aux: 0.0
         pwr_fuel: 0.0
@@ -42,7 +42,7 @@ pt_type:
         - 0.6
         - 0.8
         - 1.0
-      eta_interp:
+      eff_interp:
         - 0.1
         - 0.12
         - 0.16

@@ -1,37 +1,37 @@
-/// Implements `get_eta_max`, `set_eta_max`, `get_eta_min`, and `set_eta_min` methods
+/// Implements `get_eff_max`, `set_eff_max`, `get_eff_min`, and `set_eff_min` methods
 #[macro_export]
-macro_rules! impl_get_set_eta_max_min {
+macro_rules! impl_get_set_eff_max_min {
     () => {
-        /// Returns max value of `eta_interp`
-        pub fn get_eta_max(&self) -> f64 {
-            // since eta is all f64 between 0 and 1, NEG_INFINITY is safe
-            self.eta_interp
+        /// Returns max value of `eff_interp`
+        pub fn get_eff_max(&self) -> f64 {
+            // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+            self.eff_interp
                 .iter()
                 .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr))
         }
 
-        /// Scales eta_interp by ratio of new `eta_max` per current calculated max
-        pub fn set_eta_max(&mut self, eta_max: f64) -> Result<(), String> {
-            if (0.0..=1.0).contains(&eta_max) {
-                let old_max = self.get_eta_max();
-                self.eta_interp = self
-                    .eta_interp
+        /// Scales eff_interp by ratio of new `eff_max` per current calculated max
+        pub fn set_eff_max(&mut self, eff_max: f64) -> Result<(), String> {
+            if (0.0..=1.0).contains(&eff_max) {
+                let old_max = self.get_eff_max();
+                self.eff_interp = self
+                    .eff_interp
                     .iter()
-                    .map(|x| x * eta_max / old_max)
+                    .map(|x| x * eff_max / old_max)
                     .collect();
                 Ok(())
             } else {
                 Err(format!(
-                    "`eta_max` ({:.3}) must be between 0.0 and 1.0",
-                    eta_max,
+                    "`eff_max` ({:.3}) must be between 0.0 and 1.0",
+                    eff_max,
                 ))
             }
         }
 
-        /// Returns min value of `eta_interp`
-        pub fn get_eta_min(&self) -> f64 {
-            // since eta is all f64 between 0 and 1, NEG_INFINITY is safe
-            self.eta_interp
+        /// Returns min value of `eff_interp`
+        pub fn get_eff_min(&self) -> f64 {
+            // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+            self.eff_interp
                 .iter()
                 .fold(f64::INFINITY, |acc, curr| acc.min(*curr))
         }
@@ -39,49 +39,49 @@ macro_rules! impl_get_set_eta_max_min {
 }
 
 #[macro_export]
-macro_rules! impl_get_set_eta_range {
+macro_rules! impl_get_set_eff_range {
     () => {
-        /// Max value of `eta_interp` minus min value of `eta_interp`.
-        pub fn get_eta_range(&self) -> f64 {
-            self.get_eta_max() - self.get_eta_min()
+        /// Max value of `eff_interp` minus min value of `eff_interp`.
+        pub fn get_eff_range(&self) -> f64 {
+            self.get_eff_max() - self.get_eff_min()
         }
 
-        /// Scales values of `eta_interp` without changing max such that max - min
+        /// Scales values of `eff_interp` without changing max such that max - min
         /// is equal to new range.  Will change max if needed to ensure no values are
         /// less than zero.
-        pub fn set_eta_range(&mut self, eta_range: f64) -> Result<(), String> {
-            let eta_max = self.get_eta_max();
-            if eta_range == 0.0 {
-                self.eta_interp = vec![eta_max; self.eta_interp.len()];
+        pub fn set_eff_range(&mut self, eff_range: f64) -> Result<(), String> {
+            let eff_max = self.get_eff_max();
+            if eff_range == 0.0 {
+                self.eff_interp = vec![eff_max; self.eff_interp.len()];
                 Ok(())
-            } else if (0.0..=1.0).contains(&eta_range) {
-                let old_min = self.get_eta_min();
-                let old_range = self.get_eta_max() - old_min;
+            } else if (0.0..=1.0).contains(&eff_range) {
+                let old_min = self.get_eff_min();
+                let old_range = self.get_eff_max() - old_min;
                 if old_range == 0.0 {
                     return Err(format!(
-                        "`eta_range` is already zero so it cannot be modified."
+                        "`eff_range` is already zero so it cannot be modified."
                     ));
                 }
-                self.eta_interp = self
-                    .eta_interp
+                self.eff_interp = self
+                    .eff_interp
                     .iter()
-                    .map(|x| eta_max + (x - eta_max) * eta_range / old_range)
+                    .map(|x| eff_max + (x - eff_max) * eff_range / old_range)
                     .collect();
-                if self.get_eta_min() < 0.0 {
-                    let x_neg = self.get_eta_min();
-                    self.eta_interp = self.eta_interp.iter().map(|x| x - x_neg).collect();
+                if self.get_eff_min() < 0.0 {
+                    let x_neg = self.get_eff_min();
+                    self.eff_interp = self.eff_interp.iter().map(|x| x - x_neg).collect();
                 }
-                if self.get_eta_max() > 1.0 {
+                if self.get_eff_max() > 1.0 {
                     return Err(format!(
-                        "`eta_max` ({:.3}) must be no greater than 1.0",
-                        self.get_eta_max()
+                        "`eff_max` ({:.3}) must be no greater than 1.0",
+                        self.get_eff_max()
                     ));
                 }
                 Ok(())
             } else {
                 Err(format!(
-                    "`eta_range` ({:.3}) must be between 0.0 and 1.0",
-                    eta_range,
+                    "`eff_range` ({:.3}) must be between 0.0 and 1.0",
+                    eff_range,
                 ))
             }
         }
@@ -125,34 +125,34 @@ macro_rules! print_to_py {
 }
 
 #[macro_export]
-macro_rules! eta_test_body {
-    ($component:ident, $eta_max:expr, $eta_min:expr, $eta_range:expr) => {
-        assert!(almost_eq($component.get_eta_max(), $eta_max, None));
-        assert!(almost_eq($component.get_eta_min(), $eta_min, None));
-        assert!(almost_eq($component.get_eta_range(), $eta_range, None));
+macro_rules! eff_test_body {
+    ($component:ident, $eff_max:expr, $eff_min:expr, $eff_range:expr) => {
+        assert!(almost_eq($component.get_eff_max(), $eff_max, None));
+        assert!(almost_eq($component.get_eff_min(), $eff_min, None));
+        assert!(almost_eq($component.get_eff_range(), $eff_range, None));
 
-        $component.set_eta_max(0.9).unwrap();
-        assert!(almost_eq($component.get_eta_max(), 0.9, None));
+        $component.set_eff_max(0.9).unwrap();
+        assert!(almost_eq($component.get_eff_max(), 0.9, None));
         assert!(almost_eq(
-            $component.get_eta_min(),
-            $eta_min * 0.9 / $eta_max,
+            $component.get_eff_min(),
+            $eff_min * 0.9 / $eff_max,
             None
         ));
         assert!(almost_eq(
-            $component.get_eta_range(),
-            $eta_range * 0.9 / $eta_max,
+            $component.get_eff_range(),
+            $eff_range * 0.9 / $eff_max,
             None
         ));
 
-        $component.set_eta_range(0.2).unwrap();
-        assert!(almost_eq($component.get_eta_max(), 0.9, None));
-        assert!(almost_eq($component.get_eta_min(), 0.7, None));
-        assert!(almost_eq($component.get_eta_range(), 0.2, None));
+        $component.set_eff_range(0.2).unwrap();
+        assert!(almost_eq($component.get_eff_max(), 0.9, None));
+        assert!(almost_eq($component.get_eff_min(), 0.7, None));
+        assert!(almost_eq($component.get_eff_range(), 0.2, None));
 
-        $component.set_eta_range(0.98).unwrap();
-        assert!(almost_eq($component.get_eta_max(), 0.98, None));
-        assert!(almost_eq($component.get_eta_min(), 0.0, None));
-        assert!(almost_eq($component.get_eta_range(), 0.98, None));
+        $component.set_eff_range(0.98).unwrap();
+        assert!(almost_eq($component.get_eff_max(), 0.98, None));
+        assert!(almost_eq($component.get_eff_min(), 0.0, None));
+        assert!(almost_eq($component.get_eff_range(), 0.98, None));
     };
 }
 

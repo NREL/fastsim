@@ -8,47 +8,47 @@ use crate::pyo3::*;
     // #[new]
     // fn __new__(
     //     pwr_out_frac_interp: Vec<f64>,
-    //     eta_interp: Vec<f64>,
+    //     eff_interp: Vec<f64>,
     //     pwr_out_max_watts: f64,
     //     save_interval: Option<usize>,
     // ) -> anyhow::Result<Self> {
     //     Self::new(
     //         pwr_out_frac_interp,
-    //         eta_interp,
+    //         eff_interp,
     //         pwr_out_max_watts,
     //         save_interval,
     //     )
     // }
 
     // #[setter]
-    // pub fn set_eta_interp(&mut self, new_value: Vec<f64>) -> anyhow::Result<()> {
-    //     self.eta_interp = new_value;
+    // pub fn set_eff_interp(&mut self, new_value: Vec<f64>) -> anyhow::Result<()> {
+    //     self.eff_interp = new_value;
     //     self.set_pwr_in_frac_interp()
     // }
 
-    // #[getter("eta_max")]
-    // fn get_eta_max_py(&self) -> f64 {
-    //     self.get_eta_max()
+    // #[getter("eff_max")]
+    // fn get_eff_max_py(&self) -> f64 {
+    //     self.get_eff_max()
     // }
 
-    // #[setter("__eta_max")]
-    // fn set_eta_max_py(&mut self, eta_max: f64) -> PyResult<()> {
-    //     self.set_eta_max(eta_max).map_err(PyValueError::new_err)
+    // #[setter("__eff_max")]
+    // fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+    //     self.set_eff_max(eff_max).map_err(PyValueError::new_err)
     // }
 
-    // #[getter("eta_min")]
-    // fn get_eta_min_py(&self) -> f64 {
-    //     self.get_eta_min()
+    // #[getter("eff_min")]
+    // fn get_eff_min_py(&self) -> f64 {
+    //     self.get_eff_min()
     // }
 
-    // #[getter("eta_range")]
-    // fn get_eta_range_py(&self) -> f64 {
-    //     self.get_eta_range()
+    // #[getter("eff_range")]
+    // fn get_eff_range_py(&self) -> f64 {
+    //     self.get_eff_range()
     // }
 
-    // #[setter("__eta_range")]
-    // fn set_eta_range_py(&mut self, eta_range: f64) -> PyResult<()> {
-    //     self.set_eta_range(eta_range).map_err(PyValueError::new_err)
+    // #[setter("__eff_range")]
+    // fn set_eff_range_py(&mut self, eff_range: f64) -> PyResult<()> {
+    //     self.set_eff_range(eff_range).map_err(PyValueError::new_err)
     // }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods, SerdeAPI)]
@@ -62,7 +62,7 @@ pub struct ElectricMachine {
     pub pwr_out_frac_interp: Vec<f64>,
     #[api(skip_set)]
     /// Efficiency array corresponding to [Self::pwr_out_frac_interp] and [Self::pwr_in_frac_interp]
-    pub eta_interp: Vec<f64>,
+    pub eff_interp: Vec<f64>,
     /// Electrical input power fraction array at which efficiencies are evaluated.
     /// Calculated during runtime if not provided.
     #[serde(skip)]
@@ -83,15 +83,15 @@ pub struct ElectricMachine {
 impl ElectricMachine {
     pub fn new(
         pwr_out_frac_interp: Vec<f64>,
-        eta_interp: Vec<f64>,
+        eff_interp: Vec<f64>,
         pwr_out_max_watts: f64,
         save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
         ensure!(
-            eta_interp.len() == pwr_out_frac_interp.len(),
+            eff_interp.len() == pwr_out_frac_interp.len(),
             format!(
-                "{}\nedrv eta_interp and pwr_out_frac_interp must be the same length",
-                eta_interp.len() == pwr_out_frac_interp.len()
+                "{}\nedrv eff_interp and pwr_out_frac_interp must be the same length",
+                eff_interp.len() == pwr_out_frac_interp.len()
             )
         );
 
@@ -118,7 +118,7 @@ impl ElectricMachine {
         let mut edrv = ElectricMachine {
             state,
             pwr_out_frac_interp,
-            eta_interp,
+            eff_interp,
             pwr_in_frac_interp: Vec::new(),
             pwr_out_max: pwr_out_max_watts,
             save_interval,
@@ -133,7 +133,7 @@ impl ElectricMachine {
         self.pwr_in_frac_interp = self
             .pwr_out_frac_interp
             .iter()
-            .zip(self.eta_interp.iter())
+            .zip(self.eff_interp.iter())
             .map(|(x, y)| x / y)
             .collect();
         // verify monotonicity
@@ -152,16 +152,16 @@ impl ElectricMachine {
         if self.pwr_in_frac_interp.is_empty() {
             self.set_pwr_in_frac_interp()?;
         }
-        let eta = uc::R
+        let eff = uc::R
             * interp1d(
                 &(pwr_max_regen_in / self.pwr_out_max)
                     .get::<si::ratio>()
                     .abs(),
                 &self.pwr_out_frac_interp,
-                &self.eta_interp,
+                &self.eff_interp,
                 Default::default(),
             )?;
-        self.state.pwr_mech_regen_max = (pwr_max_regen_in * eta).min(self.pwr_out_max);
+        self.state.pwr_mech_regen_max = (pwr_max_regen_in * eff).min(self.pwr_out_max);
         ensure!(self.state.pwr_mech_regen_max >= si::Power::ZERO);
         Ok(())
     }
@@ -180,19 +180,19 @@ impl ElectricMachine {
 
         self.state.pwr_out_req = pwr_out_req;
 
-        self.state.eta = uc::R
+        self.state.eff = uc::R
             * interp1d(
                 &(pwr_out_req / self.pwr_out_max).get::<si::ratio>().abs(),
                 &self.pwr_out_frac_interp,
-                &self.eta_interp,
+                &self.eff_interp,
                 Default::default(),
             )?;
         ensure!(
-            self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R,
+            self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
             format!(
-                "{}\nedrv eta ({}) must be between 0 and 1",
-                format_dbg!(self.state.eta >= 0.0 * uc::R || self.state.eta <= 1.0 * uc::R),
-                self.state.eta.get::<si::ratio>()
+                "{}\nedrv eff ({}) must be between 0 and 1",
+                format_dbg!(self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R),
+                self.state.eff.get::<si::ratio>()
             )
         );
 
@@ -208,15 +208,15 @@ impl ElectricMachine {
             "Mech Dynamic Brake Power cannot be below 0.0"
         );
 
-        // if pwr_out_req is negative, need to multiply by eta
+        // if pwr_out_req is negative, need to multiply by eff
         self.state.pwr_elec_prop_in = if pwr_out_req > si::Power::ZERO {
-            self.state.pwr_mech_prop_out / self.state.eta
+            self.state.pwr_mech_prop_out / self.state.eff
         } else {
-            self.state.pwr_mech_prop_out * self.state.eta
+            self.state.pwr_mech_prop_out * self.state.eff
         };
         self.state.energy_elec_prop_in += self.state.pwr_elec_prop_in * dt;
 
-        self.state.pwr_elec_dyn_brake = self.state.pwr_mech_dyn_brake * self.state.eta;
+        self.state.pwr_elec_dyn_brake = self.state.pwr_mech_dyn_brake * self.state.eff;
         self.state.energy_elec_dyn_brake += self.state.pwr_elec_dyn_brake * dt;
 
         // loss does not account for dynamic braking
@@ -226,8 +226,8 @@ impl ElectricMachine {
         Ok(())
     }
 
-    impl_get_set_eta_max_min!();
-    impl_get_set_eta_range!();
+    impl_get_set_eff_max_min!();
+    impl_get_set_eff_range!();
 
     /// Set current max possible output power, `pwr_mech_out_max`,
     /// given `pwr_in_max` from upstream component.
@@ -240,15 +240,15 @@ impl ElectricMachine {
         if self.pwr_in_frac_interp.is_empty() {
             self.set_pwr_in_frac_interp()?;
         }
-        let eta = uc::R
+        let eff = uc::R
             * interp1d(
                 &(pwr_in_max / self.pwr_out_max).get::<si::ratio>().abs(),
                 &self.pwr_in_frac_interp,
-                &self.eta_interp,
+                &self.eff_interp,
                 Default::default(),
             )?;
 
-        self.state.pwr_mech_out_max = self.pwr_out_max.min(pwr_in_max * eta);
+        self.state.pwr_mech_out_max = self.pwr_out_max.min(pwr_in_max * eff);
         Ok(())
     }
 
@@ -256,8 +256,8 @@ impl ElectricMachine {
     /// from upstream component.  
     pub fn set_pwr_rate_out_max(&mut self, pwr_rate_in_max: si::PowerRate) {
         self.state.pwr_rate_out_max = pwr_rate_in_max
-            * if self.state.eta > si::Ratio::ZERO {
-                self.state.eta
+            * if self.state.eff > si::Ratio::ZERO {
+                self.state.eff
             } else {
                 uc::R * 1.0
             };
@@ -270,7 +270,7 @@ pub struct ElectricMachineState {
     /// time step index
     pub i: usize,
     /// Component efficiency based on current power demand.
-    pub eta: si::Ratio,
+    pub eff: si::Ratio,
     // Component limits
     /// Maximum possible positive traction power.
     pub pwr_mech_out_max: si::Power,

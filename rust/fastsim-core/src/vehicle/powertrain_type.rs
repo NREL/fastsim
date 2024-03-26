@@ -9,11 +9,15 @@ pub enum PowertrainType {
 }
 
 impl Powertrain for PowertrainType {
-    fn get_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+    fn get_curr_pwr_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
         match self {
-            Self::ConventionalVehicle(v) => v.get_curr_pwr_out_max(dt),
-            Self::HybridElectricVehicle(v) => v.get_curr_pwr_out_max(dt),
-            Self::BatteryElectricVehicle(v) => v.get_curr_pwr_out_max(dt),
+            Self::ConventionalVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
+            Self::HybridElectricVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
+            Self::BatteryElectricVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
         }
     }
 
@@ -21,13 +25,20 @@ impl Powertrain for PowertrainType {
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
+        enabled: bool,
         dt: si::Time,
         assert_limits: bool,
     ) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, pwr_aux, dt, assert_limits),
-            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, dt, assert_limits),
-            Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, dt, assert_limits),
+            Self::ConventionalVehicle(v) => {
+                v.solve(pwr_out_req, pwr_aux, enabled, dt, assert_limits)
+            }
+            Self::HybridElectricVehicle(v) => {
+                v.solve(pwr_out_req, pwr_aux, enabled, dt, assert_limits)
+            }
+            Self::BatteryElectricVehicle(v) => {
+                v.solve(pwr_out_req, pwr_aux, enabled, dt, assert_limits)
+            }
         }
     }
 }

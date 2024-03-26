@@ -1,6 +1,6 @@
 use crate::imports::*;
-use paste::paste;
 use lazy_static::lazy_static;
+use paste::paste;
 use regex::Regex;
 
 /// Error message for when user attempts to set value in a nested struct.
