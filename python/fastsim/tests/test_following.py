@@ -5,12 +5,19 @@ import unittest
 
 import numpy as np
 
+import tempfile
+import os
+
 import fastsim
 from fastsim.auxiliaries import set_nested_values
+import fastsim.utils as utils
 
-DO_PLOTS = False
+DO_TESTS =  utils.do_tests()
+# if true tests Python versions of the functions
 USE_PYTHON = True
+# if ture tests Rust versions of the functions
 USE_RUST = True
+
 
 class TestFollowing(unittest.TestCase):
     def setUp(self) -> None:
@@ -45,19 +52,21 @@ class TestFollowing(unittest.TestCase):
 
     def test_that_we_have_a_gap_between_us_and_the_lead_vehicle(self):
         "A positive gap should exist between us and the lead vehicle"
+        if DO_TESTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             self.assertTrue(self.sd.sim_params.idm_allow)
             self.sd.sim_drive()
             self.assertTrue(self.sd.sim_params.idm_allow)
             gaps_m = self.sd.gap_to_lead_vehicle_m
-            if DO_PLOTS:
+            if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.plot(self.sd.cyc0.time_s, gaps_m, 'k.')
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Gap (m)')
                 fig.tight_layout()
-                save_file = "test_that_we_have_a_gap_between_us_and_the_lead_vehicle__0.png"
+                save_file=os.path.join(OUTPUT_DIR.name, "test_that_we_have_a_gap_between_us_and_the_lead_vehicle__0.png")
                 fig.savefig(save_file, dpi=300)
                 plt.close()
             self.assertTrue((gaps_m > 0.0).any())
@@ -70,14 +79,14 @@ class TestFollowing(unittest.TestCase):
             self.ru_sd.sim_drive()
             self.assertTrue(self.ru_sd.sim_params.idm_allow)
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
-            if DO_PLOTS:
+            if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.plot(self.ru_sd.cyc0.time_s, gaps_m, 'k.')
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Gap (m)')
                 fig.tight_layout()
-                save_file = "test_that_we_have_a_gap_between_us_and_the_lead_vehicle__0-rust.png"
+                save_file=os.path.join(OUTPUT_DIR.name,  "test_that_we_have_a_gap_between_us_and_the_lead_vehicle__0-rust.png")
                 fig.savefig(save_file, dpi=300)
                 plt.close()
             self.assertTrue((gaps_m > 0.0).any())
@@ -85,13 +94,17 @@ class TestFollowing(unittest.TestCase):
                 fastsim.cycle.trapz_step_distances(self.ru_sd.cyc0).sum(),
                 fastsim.cycle.trapz_step_distances(self.ru_sd.cyc).sum(),
                 places=-1)
+        if DO_TESTS:
+            OUTPUT_DIR.cleanup()
 
     def test_that_the_gap_changes_over_the_cycle(self):
         "Ensure that our gap calculation is doing something"
+        if DO_TESTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             self.sd.sim_drive()
             gaps_m = self.sd.gap_to_lead_vehicle_m
-            if DO_PLOTS:
+            if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.plot(self.sd.cyc0.time_s, gaps_m, 'k.')
@@ -104,14 +117,14 @@ class TestFollowing(unittest.TestCase):
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Gap (m)')
                 fig.tight_layout()
-                save_file = "test_that_the_gap_changes_over_the_cycle__0.png"
+                save_file=os.path.join(OUTPUT_DIR.name,  "test_that_the_gap_changes_over_the_cycle__0.png")
                 fig.savefig(save_file, dpi=300)
                 plt.close()
                 from fastsim.tests.test_coasting import make_coasting_plot
                 make_coasting_plot(
                     self.sd.cyc0, self.sd.cyc,
                     title='Test that Gap Changes Over Cycle (Python)',
-                    save_file="test_that_the_gap_changes_over_the_cycle__1.png",
+                    save_file=os.path.join(OUTPUT_DIR.name,  "test_that_the_gap_changes_over_the_cycle__1.png"),
                 )
             self.assertFalse((gaps_m == 5.0).all())
             self.assertAlmostEqual(
@@ -126,21 +139,21 @@ class TestFollowing(unittest.TestCase):
         if USE_RUST:
             self.ru_sd.sim_drive()
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
-            if DO_PLOTS:
+            if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.plot(self.ru_sd.cyc0.time_s, gaps_m, 'k.')
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Gap (m)')
                 fig.tight_layout()
-                save_file = "test_that_the_gap_changes_over_the_cycle__0-rust.png"
+                save_file=os.path.join(OUTPUT_DIR.name,  "test_that_the_gap_changes_over_the_cycle__0-rust.png")
                 fig.savefig(save_file, dpi=300)
                 plt.close()
                 from fastsim.tests.test_coasting import make_coasting_plot
                 make_coasting_plot(
                     self.ru_sd.cyc0, self.ru_sd.cyc,
                     title='Test that Gap Changes Over Cycle (Rust)',
-                    save_file="test_that_the_gap_changes_over_the_cycle__1-rust.png",
+                    save_file=os.path.join(OUTPUT_DIR.name,  "test_that_the_gap_changes_over_the_cycle__1-rust.png"),
                 )
             self.assertFalse((gaps_m == 5.0).all())
             self.assertAlmostEqual(
@@ -152,15 +165,18 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue(
                 (gaps_m > (self.initial_gap_m - 1.0)).all(),
                 msg='We cannot get closer than the initial gap distance')
+        if DO_TESTS:
+            OUTPUT_DIR.cleanup()
 
     def test_that_following_works_over_parameter_sweep(self):
         "We're going to sweep through all of the parameters and see how it goes"
-        if DO_PLOTS:
+        if DO_TESTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
             if USE_PYTHON:
                 import matplotlib.pyplot as plt
                 import pandas as pd
                 import seaborn as sns
-                sns.set()
+                sns.set_theme()
 
                 accel_coefs = np.linspace(-10.0, 10.0, num=5, endpoint=True)
                 speed_coefs = np.linspace(-10.0, 10.0, num=5, endpoint=True)
@@ -202,7 +218,7 @@ class TestFollowing(unittest.TestCase):
                             results['distance_short_m'].append(base_distance_m - dist_m)
                 results = pd.DataFrame(results)
                 # Sweep of Speed Coef, holding accel_coef_s2
-                save_file = 'test_that_following_works_over_parameter_sweep_SC.png'
+                save_file=os.path.join(OUTPUT_DIR.name,  'test_that_following_works_over_parameter_sweep_SC.png')
                 fig, ax = plt.subplots()
                 ac_range = [accel_coefs[0], accel_coefs[len(accel_coefs)//4], accel_coefs[len(accel_coefs)//2], accel_coefs[3*len(accel_coefs)//4], accel_coefs[-1]]
                 for ac in ac_range:
@@ -223,7 +239,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
 
                 # Sweep of Accel Coef, holding speed_coef_s
-                save_file = 'test_that_following_works_over_parameter_sweep_AC.png'
+                save_file=os.path.join(OUTPUT_DIR.name,  'test_that_following_works_over_parameter_sweep_AC.png')
                 fig, ax = plt.subplots()
                 sc_range = [speed_coefs[0], speed_coefs[len(speed_coefs)//4], speed_coefs[len(speed_coefs)//2], speed_coefs[3*len(speed_coefs)//4], speed_coefs[-1]]
                 for sc in sc_range:
@@ -244,7 +260,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
 
                 # Sweep of Init Offset
-                save_file = 'test_that_following_works_over_parameter_sweep_OFFSET.png'
+                save_file=os.path.join(OUTPUT_DIR.name,  'test_that_following_works_over_parameter_sweep_OFFSET.png')
                 fig, ax = plt.subplots()
                 ax.plot(
                     results['init_offset_m'],
@@ -264,7 +280,7 @@ class TestFollowing(unittest.TestCase):
                 import matplotlib.pyplot as plt
                 import pandas as pd
                 import seaborn as sns
-                sns.set()
+                sns.set_theme()
 
                 accel_coefs = np.linspace(-10.0, 10.0, num=5, endpoint=True)
                 speed_coefs = np.linspace(-10.0, 10.0, num=5, endpoint=True)
@@ -295,6 +311,7 @@ class TestFollowing(unittest.TestCase):
                             veh = fastsim.vehicle.Vehicle.from_vehdb(5).to_rust()
                             sd = fastsim.simdrive.RustSimDrive(udds, veh)
                             sim_params = sd.sim_params
+                            sim_params.reset_orphaned()
                             sim_params.idm_allow = True
                             sd.sim_params = sim_params
                             sd.sim_drive()
@@ -308,7 +325,7 @@ class TestFollowing(unittest.TestCase):
                             results['distance_short_m'].append(base_distance_m - dist_m)
                 results = pd.DataFrame(results)
                 # Sweep of Speed Coef, holding accel_coef_s2
-                save_file = 'test_that_following_works_over_parameter_sweep_SC-rust.png'
+                save_file=os.path.join(OUTPUT_DIR.name,  'test_that_following_works_over_parameter_sweep_SC-rust.png')
                 fig, ax = plt.subplots()
                 ac_range = [accel_coefs[0], accel_coefs[len(accel_coefs)//4], accel_coefs[len(accel_coefs)//2], accel_coefs[3*len(accel_coefs)//4], accel_coefs[-1]]
                 for ac in ac_range:
@@ -329,7 +346,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
 
                 # Sweep of Accel Coef, holding speed_coef_s
-                save_file = 'test_that_following_works_over_parameter_sweep_AC-rust.png'
+                save_file=os.path.join(OUTPUT_DIR.name,  'test_that_following_works_over_parameter_sweep_AC-rust.png')
                 fig, ax = plt.subplots()
                 sc_range = [speed_coefs[0], speed_coefs[len(speed_coefs)//4], speed_coefs[len(speed_coefs)//2], speed_coefs[3*len(speed_coefs)//4], speed_coefs[-1]]
                 for sc in sc_range:
@@ -350,7 +367,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
 
                 # Sweep of Init Offset
-                save_file = 'test_that_following_works_over_parameter_sweep_OFFSET-rust.png'
+                save_file=os.path.join(OUTPUT_DIR.name,  'test_that_following_works_over_parameter_sweep_OFFSET-rust.png')
                 fig, ax = plt.subplots()
                 ax.plot(
                     results['init_offset_m'],
@@ -366,19 +383,22 @@ class TestFollowing(unittest.TestCase):
                 fig.tight_layout()
                 fig.savefig(save_file, dpi=300)
                 plt.close()
+            OUTPUT_DIR.cleanup()
     
     def test_that_we_can_use_the_idm(self):
         "Tests use of the IDM model for following"
+        if DO_TESTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
         if USE_PYTHON:
             self.sd.sim_drive()
             gaps_m = self.sd.gap_to_lead_vehicle_m
             self.assertTrue((gaps_m > self.initial_gap_m).any())
-            if DO_PLOTS:
+            if DO_TESTS:
                 from fastsim.tests.test_coasting import make_coasting_plot
                 make_coasting_plot(
                     self.sd.cyc0, self.sd.cyc,
                     title='test_that_we_can_use_the_idm__1.png',
-                    save_file="test_that_we_can_use_the_idm__1.png")
+                    save_file=os.path.join(OUTPUT_DIR.name,  "test_that_we_can_use_the_idm__1.png"))
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(self.sd.cyc0).sum(),
                 fastsim.cycle.trapz_step_distances(self.sd.cyc).sum(),
@@ -388,21 +408,25 @@ class TestFollowing(unittest.TestCase):
             self.ru_sd.sim_drive()
             gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
             self.assertTrue((gaps_m > self.initial_gap_m).any())
-            if DO_PLOTS:
+            if DO_TESTS:
                 from fastsim.tests.test_coasting import make_coasting_plot
                 make_coasting_plot(
                     self.ru_sd.cyc0, self.ru_sd.cyc,
                     title='Test That We Can use the IDM (RUST)',
-                    save_file="test_that_we_can_use_the_idm__1-rust.png")
+                    save_file=os.path.join(OUTPUT_DIR.name,  "test_that_we_can_use_the_idm__1-rust.png"))
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(self.ru_sd.cyc0).sum(),
                 fastsim.cycle.trapz_step_distances(self.ru_sd.cyc).sum(),
                 places=-1,
                 msg='Distance traveled should be fairly close')
+        if DO_TESTS:
+            OUTPUT_DIR.cleanup()
+            
 
     def test_sweeping_idm_parameters(self):
         "Tests use of the IDM model for following"
-        if DO_PLOTS:
+        if DO_TESTS:
+            OUTPUT_DIR = tempfile.TemporaryDirectory()
             if USE_PYTHON:
                 import matplotlib
                 matplotlib.use('Agg')
@@ -410,12 +434,10 @@ class TestFollowing(unittest.TestCase):
                 import pandas as pd
                 import seaborn as sns
                 import pathlib as pl
-                sns.set()
+                sns.set_theme()
 
                 datafile_name = 'test_sweeping_idm_parameters.csv'
-                save_dir = pl.Path('test_output')
-                if not save_dir.exists():
-                    save_dir.mkdir(parents=True)
+                save_dir = pl.Path(OUTPUT_DIR.name)
                 datafile_path = save_dir / datafile_name
 
                 results = None
@@ -694,12 +716,10 @@ class TestFollowing(unittest.TestCase):
                 import pandas as pd
                 import seaborn as sns
                 import pathlib as pl
-                sns.set()
+                sns.set_theme()
 
                 datafile_name = 'test_sweeping_idm_parameters.csv'
-                save_dir = pl.Path('test_output') / 'rust'
-                if not save_dir.exists():
-                    save_dir.mkdir(parents=True)
+                save_dir = pl.Path(OUTPUT_DIR.name)
                 datafile_path = save_dir / datafile_name
 
                 results = None
@@ -801,6 +821,7 @@ class TestFollowing(unittest.TestCase):
                                                     print(f"Running {idx}...")
                                                 sd = fastsim.simdrive.RustSimDrive(udds, veh)
                                                 sim_params = sd.sim_params
+                                                sim_params.reset_orphaned()
                                                 sim_params.idm_allow = True
                                                 sim_params.idm_minimum_gap_m = s_min_m
                                                 sim_params.idm_delta = delta
@@ -973,6 +994,7 @@ class TestFollowing(unittest.TestCase):
                 plt.close()
 
                 print('DONE!')
+            OUTPUT_DIR.cleanup()
 
     def test_distance_based_grade_on_following(self):
         "Tests use of the IDM model for following"
@@ -1027,13 +1049,14 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue((time_at_peak0 + 10.0) < time_at_peak1)
             if False:
                 import matplotlib.pyplot as plt
+                OUTPUT_DIR = tempfile.TemporaryDirectory()
                 fig, ax = plt.subplots()
                 ax.plot(sd.cyc0.time_s, sd.cyc0.delta_elev_m, 'r-', label='cyc0')
                 ax.plot(sd.cyc.time_s, sd.cyc.delta_elev_m, 'k.', label='cyc')
                 ax.legend()
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Elevation (m)')
-                fig.savefig('junk-elev.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-elev.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
                 ax.plot(sd.cyc0.time_s, sd.cyc0.mps, 'r-', label='cyc0')
@@ -1041,7 +1064,7 @@ class TestFollowing(unittest.TestCase):
                 ax.legend()
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Speed (m/s)')
-                fig.savefig('junk-mps.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-mps.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
                 ax.plot(sd.cyc0.dist_m.cumsum(), sd.cyc0.delta_elev_m, 'r-', label='cyc0')
@@ -1049,7 +1072,7 @@ class TestFollowing(unittest.TestCase):
                 ax.legend()
                 ax.set_xlabel('Distance Traveled (s)')
                 ax.set_ylabel('Elevation (m)')
-                fig.savefig('junk-elev-by-dist.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-elev-by-dist.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
                 ax.plot(sd.cyc0.dist_m.cumsum(), sd.cyc0.mps, 'r-', label='cyc0')
@@ -1057,7 +1080,7 @@ class TestFollowing(unittest.TestCase):
                 ax.legend()
                 ax.set_xlabel('Distance Traveled (m)')
                 ax.set_ylabel('Speed (m/s)')
-                fig.savefig('junk-mps-by-dist.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-mps-by-dist.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
                 ax.plot(sd.cyc0.time_s, sd.cyc0.dist_m.cumsum(), 'r-', label='cyc0')
@@ -1065,10 +1088,11 @@ class TestFollowing(unittest.TestCase):
                 ax.legend()
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Distance Traveled (m)')
-                fig.savefig('junk-distance-by-time.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-distance-by-time.png'), dpi=600)
                 plt.close()
                 self.assertTrue((sd.cyc.dist_m == sd.dist_m).all())
                 self.assertTrue((sd.mps_ach == sd.cyc.mps).all())
+                OUTPUT_DIR.cleanup()
         if USE_RUST:
             cyc = fastsim.cycle.make_cycle(
                 [0.0 , 10.0 , 20.0 , 30.0 , 40.0 , 50.0 , 99.0],
@@ -1122,13 +1146,14 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue((time_at_peak0 + 10.0) < time_at_peak1)
             if False:
                 import matplotlib.pyplot as plt
+                OUTPUT_DIR = tempfile.TemporaryDirectory()
                 fig, ax = plt.subplots()
                 ax.plot(sd.cyc0.time_s, sd.cyc0.delta_elev_m, 'r-', label='cyc0')
                 ax.plot(sd.cyc.time_s, sd.cyc.delta_elev_m, 'k.', label='cyc')
                 ax.legend()
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Elevation (m)')
-                fig.savefig('junk-rust-elev.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-elev.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
                 ax.plot(sd.cyc0.time_s, sd.cyc0.mps, 'r-', label='cyc0')
@@ -1136,7 +1161,7 @@ class TestFollowing(unittest.TestCase):
                 ax.legend()
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Speed (m/s)')
-                fig.savefig('junk-rust-mps.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-mps.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
                 ax.plot(np.array(sd.cyc0.dist_m).cumsum(), sd.cyc0.delta_elev_m, 'r-', label='cyc0')
@@ -1144,7 +1169,7 @@ class TestFollowing(unittest.TestCase):
                 ax.legend()
                 ax.set_xlabel('Distance Traveled (s)')
                 ax.set_ylabel('Elevation (m)')
-                fig.savefig('junk-rust-elev-by-dist.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-elev-by-dist.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
                 ax.plot(np.array(sd.cyc0.dist_m).cumsum(), sd.cyc0.mps, 'r-', label='cyc0')
@@ -1152,7 +1177,7 @@ class TestFollowing(unittest.TestCase):
                 ax.legend()
                 ax.set_xlabel('Distance Traveled (m)')
                 ax.set_ylabel('Speed (m/s)')
-                fig.savefig('junk-rust-mps-by-dist.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-mps-by-dist.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
                 ax.plot(sd.cyc0.time_s, np.array(sd.cyc0.dist_m).cumsum(), 'r-', label='cyc0')
@@ -1160,10 +1185,11 @@ class TestFollowing(unittest.TestCase):
                 ax.legend()
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Distance Traveled (m)')
-                fig.savefig('junk-rust-distance-by-time.png', dpi=600)
+                fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-distance-by-time.png'), dpi=600)
                 plt.close()
                 self.assertTrue((np.array(sd.cyc.dist_m) == np.array(sd.dist_m)).all())
                 self.assertTrue((np.array(sd.mps_ach) == np.array(sd.cyc.mps)).all())
+                OUTPUT_DIR.cleanup()
 
 if __name__ == '__main__':
     unittest.main()
