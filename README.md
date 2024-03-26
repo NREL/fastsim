@@ -4,7 +4,6 @@
 
 [![homepage](https://img.shields.io/badge/homepage-fastsim-blue)](https://www.nrel.gov/transportation/fastsim.html) [![tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml) [![wheels](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml?event=release) [![python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/fastsim/) [![documentation](https://img.shields.io/badge/documentation-book-blue.svg)](https://nrel.github.io/fastsim/) [![github](https://img.shields.io/badge/github-fastsim-blue.svg)](https://github.com/NREL/fastsim)
 
-
 ## Description
 
 This is the python/rust flavor of [NREL's FASTSim<sup>TM</sup>](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another.
@@ -59,17 +58,25 @@ Developers might want to install the code in place so that FASTSim files can be 
 
 To see and run examples, navigate to `./python/fastsim/demos` and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
 
-## Adding FASTSim as a Depency in Rust
+## Adding FASTSim as a Dependency in Rust
 
 ### Via GitHub
 
-Add this line:  
-`fastsim-core = { git = "https://github.nrel.gov/MBAP/fastsim", branch = "rust-port" }`  
+Add this line:
+
+```
+fastsim-core = { git = "https://github.com/NREL/fastsim/", branch = "fastsim-2" }
+```
+
 to your Cargo.toml file, modifying the `branch` key as appropriate.  
 
 ### Via Cargo
 
-This has not been implemented yet.  
+FASTSim is [available as a Rust crate](https://crates.io/crates/fastsim-core), which can be added to your dependencies via the following command:
+
+```
+cargo add fastsim-core
+```
 
 ## List of Abbreviations
 
@@ -104,6 +111,7 @@ Rust versions of classes have limited Language Server Protocol integration, and 
 
 ## Release Notes
 
+2.1.2 -- SerdeAPI revamp with many new functions, various new vehicles, calibration demo, better error propagation, demo testing
 2.1.1 -- license changed to Apache 2.0, default cycle grade and road type to zero if not provided, defaults to regenerative braking parameters, optional documentation fields now generated in Rust
 2.1.0 -- release and installation improvements, RustVehicle init cleanup, calibration improvements
 2.0.11 - 2.0.22 -- PyPI fixes.  Also, Rust version is now >100x faster than Python version.
@@ -147,6 +155,7 @@ Rust versions of classes have limited Language Server Protocol integration, and 
 Chad Baker -- <Chad.Baker@nrel.gov>  
 Aaron Brooker -- <Aaron.Brooker@nrel.gov>  
 Kyle Carow -- <Kyle.Carow@nrel.gov>  
+Robin Steuteville -- <Robin.Steuteville@nrel.gov>  
 Jeffrey Gonder -- <Jeff.Gonder@nrel.gov>  
 Jacob Holden -- <Jacob.Holden@nrel.gov>  
 Jinghu Hu -- <Jinghu.Hu@nrel.gov>  

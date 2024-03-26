@@ -9,7 +9,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
     // println!("{}", ast.ident.to_string());
     let ident = &ast.ident;
-    let _is_state_or_history: bool =
+    let _is_state_or_history =
         ident.to_string().contains("State") || ident.to_string().contains("HistoryVec");
 
     let mut impl_block = TokenStream2::default();
@@ -213,6 +213,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///
         /// * `filepath`: `str | pathlib.Path` - Filepath, relative to the top of the `resources` folder, from which to read the object
         ///
+        #[cfg(feature = "resources")]
         #[staticmethod]
         #[pyo3(name = "from_resource")]
         pub fn from_resource_py(filepath: &PyAny) -> PyResult<Self> {
@@ -306,6 +307,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         /// Write (serialize) an object to bincode-encoded `bytes`
+        #[cfg(feature = "bincode")]
         #[pyo3(name = "to_bincode")]
         pub fn to_bincode_py<'py>(&self, py: Python<'py>) -> PyResult<&'py PyBytes> {
             PyResult::Ok(PyBytes::new(py, &self.to_bincode()?)).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
@@ -317,6 +319,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///
         /// * `encoded`: `bytes` - Encoded bytes to deserialize from
         ///
+        #[cfg(feature = "bincode")]
         #[staticmethod]
         #[pyo3(name = "from_bincode")]
         pub fn from_bincode_py(encoded: &PyBytes) -> PyResult<Self> {
@@ -341,7 +344,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     final_output.extend::<TokenStream2>(quote! {
         #[cfg_attr(feature="pyo3", pyclass(module = "fastsimrust", subclass))]
     });
-    let mut output: TokenStream2 = ast.to_token_stream();
+    let mut output = ast.to_token_stream();
     output.extend(impl_block);
     // if ast.ident.to_string() == "RustSimDrive" {
     //     println!("{}", output.to_string());
