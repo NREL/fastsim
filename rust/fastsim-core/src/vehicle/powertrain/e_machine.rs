@@ -132,7 +132,7 @@ impl ElectricMachine {
         ensure!(
             eff_interp.len() == pwr_out_frac_interp.len(),
             format!(
-                "{}\nedrv eff_interp and pwr_out_frac_interp must be the same length",
+                "{}\nElectricMachine `eff_interp` and `pwr_out_frac_interp` must be the same length",
                 eff_interp.len() == pwr_out_frac_interp.len()
             )
         );
@@ -140,7 +140,7 @@ impl ElectricMachine {
         ensure!(
             pwr_out_frac_interp.iter().all(|x| *x >= 0.0),
             format!(
-                "{}\nedrv pwr_out_frac_interp must be non-negative",
+                "{}\nElectricMachine `pwr_out_frac_interp` must be non-negative",
                 format_dbg!(pwr_out_frac_interp.iter().all(|x| *x >= 0.0))
             )
         );
@@ -148,7 +148,7 @@ impl ElectricMachine {
         ensure!(
             pwr_out_frac_interp.iter().all(|x| *x <= 1.0),
             format!(
-                "{}\nedrv pwr_out_frac_interp must be less than or equal to 1.0",
+                "{}\nElectricMachine `pwr_out_frac_interp` must be less than or equal to 1.0",
                 format_dbg!(pwr_out_frac_interp.iter().all(|x| *x <= 1.0))
             )
         );
@@ -159,7 +159,7 @@ impl ElectricMachine {
         let mass_kg = mass_kg.map(|mass| uc::KG * mass);
         let history = ElectricMachineStateHistoryVec::new();
 
-        let mut edrv = ElectricMachine {
+        let mut e_machine = ElectricMachine {
             state,
             pwr_out_frac_interp,
             eff_interp,
@@ -170,8 +170,9 @@ impl ElectricMachine {
             save_interval,
             history,
         };
-        edrv.set_pwr_in_frac_interp()?;
-        Ok(edrv)
+        e_machine.set_pwr_in_frac_interp()?;
+        e_machine.check_mass_consistent()?;
+        Ok(e_machine)
     }
 
     pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
@@ -186,7 +187,7 @@ impl ElectricMachine {
         ensure!(
             self.pwr_in_frac_interp.windows(2).all(|w| w[0] < w[1]),
             format!(
-                "{}\nedrv pwr_in_frac_interp ({:?}) must be monotonically increasing",
+                "{}\nElectricMachine `pwr_in_frac_interp` ({:?}) must be monotonically increasing",
                 format_dbg!(self.pwr_in_frac_interp.windows(2).all(|w| w[0] < w[1])),
                 self.pwr_in_frac_interp
             )
@@ -217,7 +218,7 @@ impl ElectricMachine {
         ensure!(
             pwr_out_req <= self.pwr_out_max,
             format!(
-                "{}\nedrv required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                "{}\ne_machine required power ({:.6} MW) exceeds static max power ({:.6} MW)",
                 format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
                 pwr_out_req.get::<si::megawatt>(),
                 self.pwr_out_max.get::<si::megawatt>()
@@ -236,7 +237,7 @@ impl ElectricMachine {
         ensure!(
             self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
             format!(
-                "{}\nedrv eff ({}) must be between 0 and 1",
+                "{}\ne_machine eff ({}) must be between 0 and 1",
                 format_dbg!(self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R),
                 self.state.eff.get::<si::ratio>()
             )
