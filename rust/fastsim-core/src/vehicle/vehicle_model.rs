@@ -143,7 +143,7 @@ pub struct Vehicle {
     // TODO: make sure setter and getter get written
     #[api(skip_get, skip_set)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mass: Option<si::Mass>,
+    pub(in super::super) mass: Option<si::Mass>,
     /// Vehicle mass excluding cargo, passengers, and powertrain components
     // TODO: make sure setter and getter get written
     #[api(skip_get, skip_set)]

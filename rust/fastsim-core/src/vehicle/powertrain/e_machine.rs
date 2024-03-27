@@ -74,7 +74,7 @@ pub struct ElectricMachine {
     /// ElectricMachine specific power
     pub specific_pwr: Option<si::SpecificPower>,
     /// ElectricMachine mass
-    pub mass: Option<si::Mass>,
+    pub(in super::super) mass: Option<si::Mass>,
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
@@ -125,6 +125,8 @@ impl ElectricMachine {
         pwr_out_frac_interp: Vec<f64>,
         eff_interp: Vec<f64>,
         pwr_out_max_watts: f64,
+        specific_pwr_kw_per_kg: Option<f64>,
+        mass_kg: Option<f64>,
         save_interval: Option<usize>,
     ) -> anyhow::Result<Self> {
         ensure!(
@@ -151,9 +153,11 @@ impl ElectricMachine {
             )
         );
 
-        let history = ElectricMachineStateHistoryVec::new();
-        let pwr_out_max_watts = uc::W * pwr_out_max_watts;
         let state = ElectricMachineState::default();
+        let pwr_out_max_watts = uc::W * pwr_out_max_watts;
+        let specific_pwr_kw_per_kg = specific_pwr_kw_per_kg.map(|specific_pwr| uc::KW / uc::KG * specific_pwr);
+        let mass_kg = mass_kg.map(|mass| uc::KG * mass);
+        let history = ElectricMachineStateHistoryVec::new();
 
         let mut edrv = ElectricMachine {
             state,
@@ -161,6 +165,8 @@ impl ElectricMachine {
             eff_interp,
             pwr_in_frac_interp: Vec::new(),
             pwr_out_max: pwr_out_max_watts,
+            specific_pwr: specific_pwr_kw_per_kg,
+            mass: mass_kg,
             save_interval,
             history,
         };

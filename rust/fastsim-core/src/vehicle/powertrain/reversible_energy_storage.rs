@@ -123,7 +123,7 @@ pub struct ReversibleEnergyStorage {
     /// ReversibleEnergyStorage mass
     #[serde(default)]
     #[api(skip_get, skip_set)]
-    mass: Option<si::Mass>,
+    pub(in super::super) mass: Option<si::Mass>,
     /// ReversibleEnergyStorage volume, used as a sanity check
     #[api(skip_get, skip_set)]
     #[serde(default)]

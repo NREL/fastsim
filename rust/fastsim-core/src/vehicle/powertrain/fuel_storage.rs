@@ -28,7 +28,7 @@ pub struct FuelStorage {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
-    pub mass: Option<si::Mass>,
+    pub(in super::super) mass: Option<si::Mass>,
     // TODO: add state to track fuel level and make sure mass changes propagate up to vehicle level,
     // which should then include vehicle mass in state
 }
