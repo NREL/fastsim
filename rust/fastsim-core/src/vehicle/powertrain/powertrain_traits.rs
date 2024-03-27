@@ -20,7 +20,7 @@ pub trait Mass {
     /// Sets component mass to `mass`, or if `None` is provided for `mass`,
     /// sets mass based
     /// on other component parameters (e.g. power and power density)
-    fn update_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()>;
+    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()>;
 
     /// Checks if mass is consistent with other parameters
     fn check_mass_consistent(&self) -> anyhow::Result<()>;

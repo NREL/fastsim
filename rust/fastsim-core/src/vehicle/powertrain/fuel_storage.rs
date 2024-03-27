@@ -2,8 +2,8 @@ use super::*;
 
 #[pyo3_api(
     // #[setter("__mass_kg")]
-    // fn update_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
-    //     self.update_mass(mass_kg.map(|m| m * uc::KG))?;
+    // fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
+    //     self.set_mass(mass_kg.map(|m| m * uc::KG))?;
     //     Ok(())
     // }
 
@@ -39,37 +39,31 @@ impl Mass for FuelStorage {
         Ok(self.mass)
     }
 
-    fn update_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
-        match mass {
+    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
+        self.mass = match mass {
             Some(mass) => {
                 self.specific_energy = Some(self.energy_capacity / mass);
-                self.mass = Some(mass)
-            }
-            None => match self.specific_energy {
-                Some(e) => self.mass = Some(self.energy_capacity / e),
-                None => {
-                    bail!(format!(
-                        "{}\n{}",
-                        format_dbg!(),
-                        "Mass must be provided or `self.specific_energy` must be set"
-                    ));
-                }
+                Some(mass)
             },
-        }
-
+            None => {
+                Some(self.energy_capacity / self.specific_energy.with_context(|| format!(
+                    "{}\n{}",
+                    format_dbg!(),
+                    "`mass` must be provided, or `self.specific_energy` must be set")
+                )?)
+            },
+        };
         Ok(())
     }
 
     fn check_mass_consistent(&self) -> anyhow::Result<()> {
-        match &self.mass {
-            Some(mass) => match &self.specific_energy {
-                Some(e) => {
-                    ensure!(self.energy_capacity / *e == *mass,
-                    format!("{}\n{}", format_dbg!(), "ReversibleEnergyStorage `energy_capacity`, `specific_energy` and `mass` are not consistent"))
-                }
-                None => {}
-            },
-            None => {}
+        if self.mass.is_some() && self.specific_energy.is_some() {
+            ensure!(
+                self.energy_capacity / self.specific_energy.unwrap() == self.mass.unwrap(),
+                "{}\n{}",
+                format_dbg!(),
+                "`energy_capacity`, `specific_energy`, and `mass` fields are not consistent"
+            )
         }
         Ok(())
     }

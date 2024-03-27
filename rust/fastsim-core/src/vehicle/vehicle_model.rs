@@ -184,7 +184,7 @@ pub struct Vehicle {
 impl SerdeAPI for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
         self.check_mass_consistent()?;
-        self.update_mass(None)?;
+        self.set_mass(None)?;
         self.calculate_wheel_radius()?;
         Ok(())
     }
@@ -201,14 +201,14 @@ impl Mass for Vehicle {
         Ok(mass)
     }
 
-    fn update_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
         match mass {
             Some(mass) => {
                 // set component masses to None if they aren't consistent
                 self.mass = Some(mass);
                 if self.check_mass_consistent().is_err() {
-                    self.fc_mut().map(|fc| fc.update_mass(None));
-                    self.res_mut().map(|res| res.update_mass(None));
+                    self.fc_mut().map(|fc| fc.set_mass(None));
+                    self.res_mut().map(|res| res.set_mass(None));
                 }
             }
             None => {
@@ -228,7 +228,7 @@ impl Mass for Vehicle {
                 format!(
                     "{}\n{}",
                     format_dbg!(utils::almost_eq_uom(&mass_set, &mass_deriv, None)),
-                    "Try running `update_mass` method."
+                    "Try running `set_mass` method."
                 )
             )
         }
@@ -271,7 +271,7 @@ fn get_pt_type_from_fsim2_veh(
                     specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
                     mass: None,
                 };
-                fs.update_mass(None)?;
+                fs.set_mass(None)?;
                 fs
             },
             fc: {
@@ -296,7 +296,7 @@ fn get_pt_type_from_fsim2_veh(
                     save_interval: Some(1),
                     history: Default::default(),
                 };
-                fc.update_mass(None)?;
+                fc.set_mass(None)?;
                 fc
             },
             alt_eff: f2veh.alt_eff * uc::R,

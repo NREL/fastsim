@@ -90,38 +90,32 @@ impl Mass for ElectricMachine {
         Ok(self.mass)
     }
 
-    fn update_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
-        match mass {
+    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
+        self.mass = match mass {
             Some(mass) => {
                 self.specific_pwr = Some(self.pwr_out_max / mass);
-                self.mass = Some(mass)
-            }
-            None => match self.specific_pwr {
-                Some(p) => self.mass = Some(self.pwr_out_max / p),
-                None => {
-                    bail!(format!(
-                        "{}\n{}",
-                        format_dbg!(),
-                        "Mass must be provided or `self.specific_pwr` must be set"
-                    ));
-                }
+                Some(mass)
             },
-        }
-
+            None => {
+                Some(self.pwr_out_max / self.specific_pwr.with_context(|| format!(
+                    "{}\n{}",
+                    format_dbg!(),
+                    "`mass` must be provided, or `self.specific_pwr` must be set")
+                )?)
+            },
+        };
         Ok(())
     }
 
     fn check_mass_consistent(&self) -> anyhow::Result<()> {
-        match &self.mass {
-            Some(mass) => match &self.specific_pwr {
-                Some(p) => {
-                    ensure!(self.pwr_out_max / *p == *mass,
-                    format!("{}\n{}", format_dbg!(), "ElectricMachine `pwr_out_max`, `specific_pwr` and `mass` are not consistent"))
-                }
-                None => {}
-            },
-            None => {}
-        }
+        if self.mass.is_some() && self.specific_pwr.is_some() {
+            ensure!(
+                self.pwr_out_max / self.specific_pwr.unwrap() == self.mass.unwrap(),
+                "{}\n{}",
+                format_dbg!(),
+                "`pwr_out_max`, `specific_pwr`, and `mass` fields are not consistent"
+            )
+        };
         Ok(())
     }
 }
