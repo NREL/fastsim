@@ -116,9 +116,7 @@ impl SimDrive {
             * (speed_prev + speed)
             / 2.;
         vs.pwr_whl_inertia = 0.5
-            * self.veh.wheel_inertia_kg_m2
-            * uc::KG
-            * uc::M2
+            * self.veh.wheel_inertia
             * self.veh.num_wheels as f64
             * ((speed / self.veh.wheel_radius.unwrap()).powi(typenum::P2::new())
                 - (speed_prev / self.veh.wheel_radius.unwrap()).powi(typenum::P2::new()))
@@ -170,7 +168,7 @@ impl SimDrive {
             let drag2 =
                 3.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area * speed_prev;
             let wheel2 =
-                0.5 * self.veh.wheel_inertia_kg_m2 * uc::KG * uc::M2 * self.veh.num_wheels as f64
+                0.5 * self.veh.wheel_inertia * self.veh.num_wheels as f64
                     / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
             let drag1 = 3.0 / 16.0
                 * rho_air
@@ -193,9 +191,7 @@ impl SimDrive {
                 * speed_prev;
             let ascent0 = 0.5 * uc::ACC_GRAV * grade.atan().sin() * mass * speed_prev;
             let wheel0 = -0.5
-                * self.veh.wheel_inertia_kg_m2
-                * uc::KG
-                * uc::M2
+                * self.veh.wheel_inertia
                 * self.veh.num_wheels as f64
                 * speed_prev.powi(typenum::P2::new())
                 / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));

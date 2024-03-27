@@ -68,9 +68,13 @@ pub struct ElectricMachine {
     #[serde(skip)]
     #[api(skip_set)]
     pub pwr_in_frac_interp: Vec<f64>,
-    /// ElectricDrivetrain maximum output power \[W\]
+    /// ElectricMachine maximum output power \[W\]
     #[serde(rename = "pwr_out_max_watts")]
     pub pwr_out_max: si::Power,
+    /// ElectricMachine specific power
+    pub specific_pwr: Option<si::SpecificPower>,
+    /// ElectricMachine mass
+    pub mass: Option<si::Mass>,
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
@@ -78,6 +82,48 @@ pub struct ElectricMachine {
     #[serde(default)]
     #[serde(skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty")]
     pub history: ElectricMachineStateHistoryVec,
+}
+
+impl Mass for ElectricMachine {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        self.check_mass_consistent()?;
+        Ok(self.mass)
+    }
+
+    fn update_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
+        match mass {
+            Some(mass) => {
+                self.specific_pwr = Some(self.pwr_out_max / mass);
+                self.mass = Some(mass)
+            }
+            None => match self.specific_pwr {
+                Some(p) => self.mass = Some(self.pwr_out_max / p),
+                None => {
+                    bail!(format!(
+                        "{}\n{}",
+                        format_dbg!(),
+                        "Mass must be provided or `self.specific_pwr` must be set"
+                    ));
+                }
+            },
+        }
+
+        Ok(())
+    }
+
+    fn check_mass_consistent(&self) -> anyhow::Result<()> {
+        match &self.mass {
+            Some(mass) => match &self.specific_pwr {
+                Some(p) => {
+                    ensure!(self.pwr_out_max / *p == *mass,
+                    format!("{}\n{}", format_dbg!(), "ElectricMachine `pwr_out_max`, `specific_pwr` and `mass` are not consistent"))
+                }
+                None => {}
+            },
+            None => {}
+        }
+        Ok(())
+    }
 }
 
 impl ElectricMachine {
