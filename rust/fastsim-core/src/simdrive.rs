@@ -167,9 +167,8 @@ impl SimDrive {
             let accel2 = 0.5 * mass / dt;
             let drag2 =
                 3.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area * speed_prev;
-            let wheel2 =
-                0.5 * self.veh.wheel_inertia * self.veh.num_wheels as f64
-                    / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
+            let wheel2 = 0.5 * self.veh.wheel_inertia * self.veh.num_wheels as f64
+                / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
             let drag1 = 3.0 / 16.0
                 * rho_air
                 * self.veh.drag_coef

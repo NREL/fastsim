@@ -106,14 +106,17 @@ impl Mass for FuelConverter {
             Some(mass) => {
                 self.specific_pwr = Some(self.pwr_out_max / mass);
                 Some(mass)
-            },
-            None => {
-                Some(self.pwr_out_max / self.specific_pwr.with_context(|| format!(
-                    "{}\n{}",
-                    format_dbg!(),
-                    "`mass` must be provided, or `self.specific_pwr` must be set")
-                )?)
-            },
+            }
+            None => Some(
+                self.pwr_out_max
+                    / self.specific_pwr.with_context(|| {
+                        format!(
+                            "{}\n{}",
+                            format_dbg!(),
+                            "`mass` must be provided, or `self.specific_pwr` must be set"
+                        )
+                    })?,
+            ),
         };
         Ok(())
     }

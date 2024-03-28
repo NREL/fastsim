@@ -44,14 +44,17 @@ impl Mass for FuelStorage {
             Some(mass) => {
                 self.specific_energy = Some(self.energy_capacity / mass);
                 Some(mass)
-            },
-            None => {
-                Some(self.energy_capacity / self.specific_energy.with_context(|| format!(
-                    "{}\n{}",
-                    format_dbg!(),
-                    "`mass` must be provided, or `self.specific_energy` must be set")
-                )?)
-            },
+            }
+            None => Some(
+                self.energy_capacity
+                    / self.specific_energy.with_context(|| {
+                        format!(
+                            "{}\n{}",
+                            format_dbg!(),
+                            "`mass` must be provided, or `self.specific_energy` must be set"
+                        )
+                    })?,
+            ),
         };
         Ok(())
     }

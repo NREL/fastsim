@@ -539,7 +539,9 @@ impl Vehicle {
             ess_life_coef_a_doc: None,
             ess_life_coef_b: -0.6811,
             ess_life_coef_b_doc: None,
-            ess_mass_kg: self.res().map_or(anyhow::Ok(0.), |res| Ok(res.mass()?.unwrap_or_default().get::<si::kilogram>()))?,
+            ess_mass_kg: self.res().map_or(anyhow::Ok(0.), |res| {
+                Ok(res.mass()?.unwrap_or_default().get::<si::kilogram>())
+            })?,
             ess_max_kw: self
                 .res()
                 .map(|res| res.pwr_out_max.get::<si::kilowatt>())
@@ -567,7 +569,9 @@ impl Vehicle {
             fc_kw_out_array: Default::default(),
             fc_kw_per_kg: todo!(), // TODO: Put reasonable default here and revisit
             fc_kw_per_kg_doc: None,
-            fc_mass_kg: self.fc().map_or(anyhow::Ok(0.), |fc| Ok(fc.mass()?.unwrap_or_default().get::<si::kilogram>()))?,
+            fc_mass_kg: self.fc().map_or(anyhow::Ok(0.), |fc| {
+                Ok(fc.mass()?.unwrap_or_default().get::<si::kilogram>())
+            })?,
             fc_max_kw: self
                 .fc()
                 .map(|fc| fc.pwr_out_max.get::<si::kilowatt>())
@@ -604,7 +608,9 @@ impl Vehicle {
                 .map(|specific_energy| specific_energy.get::<si::kilojoule_per_kilogram>() / 3600.)
                 .unwrap_or_default(),
             fs_kwh_per_kg_doc: None,
-            fs_mass_kg: self.fs().map_or(anyhow::Ok(0.), |fs| Ok(fs.mass()?.unwrap_or_default().get::<si::kilogram>()))?,
+            fs_mass_kg: self.fs().map_or(anyhow::Ok(0.), |fs| {
+                Ok(fs.mass()?.unwrap_or_default().get::<si::kilogram>())
+            })?,
             fs_max_kw: self
                 .fs()
                 .map(|fs| fs.pwr_out_max.get::<si::kilowatt>())
@@ -643,7 +649,9 @@ impl Vehicle {
             mc_full_eff_array: todo!(),
             mc_kw_in_array: todo!(),
             mc_kw_out_array: todo!(),
-            mc_mass_kg: self.e_machine().map_or(anyhow::Ok(0.), |e_machine| Ok(e_machine.mass()?.unwrap_or_default().get::<si::kilogram>()))?,
+            mc_mass_kg: self.e_machine().map_or(anyhow::Ok(0.), |e_machine| {
+                Ok(e_machine.mass()?.unwrap_or_default().get::<si::kilogram>())
+            })?,
             mc_max_elec_in_kw: todo!(),
             mc_max_kw: todo!(),
             mc_max_kw_doc: None,

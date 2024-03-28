@@ -95,14 +95,17 @@ impl Mass for ElectricMachine {
             Some(mass) => {
                 self.specific_pwr = Some(self.pwr_out_max / mass);
                 Some(mass)
-            },
-            None => {
-                Some(self.pwr_out_max / self.specific_pwr.with_context(|| format!(
-                    "{}\n{}",
-                    format_dbg!(),
-                    "`mass` must be provided, or `self.specific_pwr` must be set")
-                )?)
-            },
+            }
+            None => Some(
+                self.pwr_out_max
+                    / self.specific_pwr.with_context(|| {
+                        format!(
+                            "{}\n{}",
+                            format_dbg!(),
+                            "`mass` must be provided, or `self.specific_pwr` must be set"
+                        )
+                    })?,
+            ),
         };
         Ok(())
     }
@@ -155,7 +158,8 @@ impl ElectricMachine {
 
         let state = ElectricMachineState::default();
         let pwr_out_max_watts = uc::W * pwr_out_max_watts;
-        let specific_pwr_kw_per_kg = specific_pwr_kw_per_kg.map(|specific_pwr| uc::KW / uc::KG * specific_pwr);
+        let specific_pwr_kw_per_kg =
+            specific_pwr_kw_per_kg.map(|specific_pwr| uc::KW / uc::KG * specific_pwr);
         let mass_kg = mass_kg.map(|mass| uc::KG * mass);
         let history = ElectricMachineStateHistoryVec::new();
 
