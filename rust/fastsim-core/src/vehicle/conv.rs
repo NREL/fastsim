@@ -27,6 +27,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         dt: si::Time,
     ) -> anyhow::Result<si::Power> {
         self.fc.get_curr_pwr_out_max(pwr_aux / self.alt_eff, dt)
+        // TODO: put transmission efficiency in here somehow
     }
     fn solve(
         &mut self,

@@ -159,6 +159,7 @@ impl Powertrain for FuelConverter {
             )
         );
         if self.pwr_out_max_init == si::Power::ZERO {
+            // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
         self.state.pwr_aux = pwr_aux;

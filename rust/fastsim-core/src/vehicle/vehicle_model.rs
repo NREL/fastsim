@@ -501,7 +501,7 @@ impl Vehicle {
     }
 
     pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
-        // TODO: when a fancier model for `pwr_aux` is implemented,
+        // TODO: when a fancier model for `pwr_aux` is implemented, put it here
         Ok(self.pt_type.get_curr_pwr_out_max(self.pwr_aux, dt)? * self.trans_eff)
     }
 
