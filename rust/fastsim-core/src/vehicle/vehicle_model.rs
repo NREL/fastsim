@@ -517,7 +517,7 @@ impl Vehicle {
             cargo_kg: self.cargo_mass.unwrap_or_default().get::<si::kilogram>(),
             cargo_kg_doc: None,
             charging_on: false,
-            chg_eff: todo!(), // Put reasonable default here
+            chg_eff: 0.86, // TODO: revisit?
             chg_eff_doc: None,
             comp_mass_multiplier: 1.4,
             comp_mass_multiplier_doc: None,
