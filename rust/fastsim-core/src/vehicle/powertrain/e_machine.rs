@@ -72,8 +72,12 @@ pub struct ElectricMachine {
     #[serde(rename = "pwr_out_max_watts")]
     pub pwr_out_max: si::Power,
     /// ElectricMachine specific power
+    // TODO: fix `extract_type_from_option` to allow for not having this line
+    #[api(skip_get, skip_set)]
     pub specific_pwr: Option<si::SpecificPower>,
     /// ElectricMachine mass
+    // TODO: fix `extract_type_from_option` to allow for not having this line
+    #[api(skip_get, skip_set)]
     pub(in super::super) mass: Option<si::Mass>,
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]
