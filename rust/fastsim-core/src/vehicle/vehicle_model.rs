@@ -527,13 +527,13 @@ impl Vehicle {
             drag_coef_doc: None,
             drive_axle_weight_frac: self.drive_axle_weight_frac.get::<si::ratio>(),
             drive_axle_weight_frac_doc: None,
-            ess_base_kg: todo!(), // TODO: Put reasonable default here and revisit
+            ess_base_kg: 75.0, // TODO: revisit
             ess_base_kg_doc: None,
             ess_chg_to_fc_max_eff_perc: 0.0, // TODO: ??? update later
             ess_chg_to_fc_max_eff_perc_doc: None,
             ess_dischg_to_fc_max_eff_perc: 0.0, // TODO: ??? update later
             ess_dischg_to_fc_max_eff_perc_doc: None,
-            ess_kg_per_kwh: todo!(), // TODO: Put reasonable default here and revisit
+            ess_kg_per_kwh: 8.0, // TODO: revisit
             ess_kg_per_kwh_doc: None,
             ess_life_coef_a: 110.,
             ess_life_coef_a_doc: None,
@@ -559,7 +559,7 @@ impl Vehicle {
             ess_round_trip_eff_doc: None,
             ess_to_fuel_ok_error: 0.005, // TODO: update when hybrid logic is implemented
             ess_to_fuel_ok_error_doc: None,
-            fc_base_kg: todo!(), // TODO: Put reasonable default here and revisit
+            fc_base_kg: 61.0, // TODO: revisit
             fc_base_kg_doc: None,
             fc_eff_array: Default::default(),
             fc_eff_map: self.fc().map(|fc| fc.eff_interp.into()).unwrap_or_default(),
@@ -567,7 +567,7 @@ impl Vehicle {
             fc_eff_type: "SI".into(), // TODO: placeholder, revisit and update if needed
             fc_eff_type_doc: None,
             fc_kw_out_array: Default::default(),
-            fc_kw_per_kg: todo!(), // TODO: Put reasonable default here and revisit
+            fc_kw_per_kg: 2.13, // TODO: revisit
             fc_kw_per_kg_doc: None,
             fc_mass_kg: self.fc().map_or(anyhow::Ok(0.), |fc| {
                 Ok(fc.mass()?.unwrap_or_default().get::<si::kilogram>())
@@ -684,8 +684,8 @@ impl Vehicle {
             perc_high_acc_buf: todo!(),
             perc_high_acc_buf_doc: None,
             props: fastsim_2::params::RustPhysicalProperties::default(),
-            regen_a: todo!(),
-            regen_b: todo!(),
+            regen_a: 500.0, //TODO: placeholder
+            regen_b: 0.99, //TODO: placeholder
             scenario_name: self.name,
             selection: 0, // there is no equivalent in fastsim-3
             small_motor_power_kw: 7.5,
@@ -693,7 +693,7 @@ impl Vehicle {
             stop_start_doc: None,
             trans_eff: self.trans_eff.get::<si::ratio>(),
             trans_eff_doc: None,
-            trans_kg: todo!(),
+            trans_kg: 114.0, // TODO: replace with actual transmission mass
             trans_kg_doc: None,
             val0_to60_mph: f64::NAN,
             val_cd_range_mi: f64::NAN,
