@@ -982,7 +982,7 @@ fn try_make_single_vehicle(
         idle_fc_kw: 0.0,
         mc_eff_map: Array1::zeros(LARGE_BASELINE_EFF.len()),
         wheel_rr_coef: 0.0, // overridden
-        stop_start: fe_gov_data.start_stop == "Y",
+        stop_start: false,
         force_aux_on_fc: false,
         val_udds_mpgge: fe_gov_data.city_mpg_fuel1,
         val_hwy_mpgge: fe_gov_data.highway_mpg_fuel1,
