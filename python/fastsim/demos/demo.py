@@ -7,20 +7,22 @@ import time
 import os
 import fastsim as fsim
 
-sns.set()
+sns.set_theme()
 
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
 
 veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../rust/tests/assets/2012_Ford_Fusion.yaml")
 )
-veh.set_save_interval(1)
+veh.save_interval = 1
 cyc = fsim.Cycle.from_resource("cycles/udds.csv")
 sd = fsim.SimDrive(veh, cyc)
 
 t0 = time.perf_counter()
 sd.walk()
 t1 = time.perf_counter()
+
+sd2 = sd.to_fastsim2()
 
 print(f"`sd.walk()` elapsed time: {t1-t0:.2e} s")
 
@@ -34,7 +36,7 @@ if SHOW_PLOTS:
     ax[0].plot(
         # TODO: figure out why the slice is needed
         # TODO: figure out how to make the `tolist` unnecessary
-        np.array(sd.cyc.time_seconds.tolist()[1::veh.get_save_interval()]),
+        np.array(sd.cyc.time_seconds.tolist()[1::veh.save_interval]),
         # TODO: figure out how to make the `tolist` unnecessary
         np.array(sd.veh.fc.history.pwr_out_watts.tolist()) / 1e3,
         label="FC out",
@@ -45,7 +47,7 @@ if SHOW_PLOTS:
     ax[1].plot(
         # TODO: figure out why the slice is needed
         # TODO: figure out how to make the `tolist` unnecessary
-        np.array(sd.cyc.time_seconds.tolist()[1::veh.get_save_interval()]),
+        np.array(sd.cyc.time_seconds.tolist()[1::veh.save_interval]),
         # TODO: figure out how to make the `tolist` unnecessary
         np.array(sd.veh.fc.history.pwr_out_watts.tolist()) / \
         np.array(sd.veh.fc.history.pwr_fuel_watts.tolist()),
@@ -56,7 +58,7 @@ if SHOW_PLOTS:
 
 
     ax[-1].plot(
-        np.array(sd.cyc.time_seconds.tolist()[1::veh.get_save_interval()]),
+        np.array(sd.cyc.time_seconds.tolist()[1::veh.save_interval]),
         np.array(sd.veh.history.speed_ach_meters_per_second.tolist()),
         label="achieved",
     )

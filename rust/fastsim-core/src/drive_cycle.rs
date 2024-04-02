@@ -1,4 +1,5 @@
 use crate::imports::*;
+use fastsim_2::cycle::RustCycle as Cycle2;
 
 #[pyo3_api(
     fn __len__(&self) -> usize {
@@ -259,6 +260,23 @@ impl Cycle {
         }
         wtr.flush()?;
         Ok(())
+    }
+
+    pub fn to_fastsim2(&self) -> anyhow::Result<Cycle2> {
+        let cyc2 = Cycle2 {
+            name: self.name.clone(),
+            time_s: self.time.iter().map(|t| t.get::<si::second>()).collect(),
+            mps: self
+                .speed
+                .iter()
+                .map(|s| s.get::<si::meter_per_second>())
+                .collect(),
+            grade: self.grade.iter().map(|g| g.get::<si::ratio>()).collect(),
+            orphaned: false,
+            road_type: vec![0.; self.len()].into(),
+        };
+
+        Ok(cyc2)
     }
 }
 

@@ -42,6 +42,7 @@ impl Powertrain for Box<BatteryElectricVehicle> {
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
+        enabled: bool,
         dt: si::Time,
         assert_limits: bool,
     ) -> anyhow::Result<()> {
@@ -69,7 +70,11 @@ impl Powertrain for Box<BatteryElectricVehicle> {
         Ok(())
     }
 
-    fn get_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+    fn get_curr_pwr_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
         todo!();
         // self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
         // self.e_machine

@@ -507,7 +507,7 @@ impl Vehicle {
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
         let mut veh = fastsim_2::vehicle::RustVehicle {
-            alt_eff: match self.pt_type {
+            alt_eff: match &self.pt_type {
                 PowertrainType::ConventionalVehicle(conv) => conv.alt_eff.get::<si::ratio>(),
                 _ => 1.0,
             },
@@ -562,7 +562,10 @@ impl Vehicle {
             fc_base_kg: 61.0, // TODO: revisit
             fc_base_kg_doc: None,
             fc_eff_array: Default::default(),
-            fc_eff_map: self.fc().map(|fc| fc.eff_interp.into()).unwrap_or_default(),
+            fc_eff_map: self
+                .fc()
+                .map(|fc| fc.eff_interp.clone().into())
+                .unwrap_or_default(),
             fc_eff_map_doc: None,
             fc_eff_type: "SI".into(), // TODO: placeholder, revisit and update if needed
             fc_eff_type_doc: None,
@@ -582,7 +585,7 @@ impl Vehicle {
             fc_perc_out_array: Default::default(),
             fc_pwr_out_perc: self
                 .fc()
-                .map(|fc| fc.pwr_out_frac_interp.into())
+                .map(|fc| fc.pwr_out_frac_interp.clone().into())
                 .unwrap_or_default(),
             fc_pwr_out_perc_doc: None,
             fc_sec_to_peak_pwr: self
@@ -625,71 +628,73 @@ impl Vehicle {
             glider_kg_doc: None,
             idle_fc_kw: 0.,
             idle_fc_kw_doc: None,
-            input_kw_out_array: Default::default(),
-            kw_demand_fc_on: 100.0, // TODO: placeholder, revisit
+            input_kw_out_array: Default::default(), // calculated in `set_derived()`
+            kw_demand_fc_on: 100.0,                 // TODO: placeholder, revisit
             kw_demand_fc_on_doc: None,
             large_motor_power_kw: 75.0,
             max_accel_buffer_mph: 60.0, // TODO: placeholder, revisit
             max_accel_buffer_mph_doc: None,
-            max_accel_buffer_perc_of_useable_soc: todo!(),
+            max_accel_buffer_perc_of_useable_soc: 0.2, // TODO: placeholder, revisit
             max_accel_buffer_perc_of_useable_soc_doc: None,
-            max_regen: todo!(),
+            max_regen: 0.98, // TODO: placeholder, revisit
             max_regen_doc: None,
-            max_regen_kwh: todo!(),
-            max_roadway_chg_kw: todo!(),
+            max_regen_kwh: Default::default(),
+            max_roadway_chg_kw: Default::default(),
             max_soc: self
                 .res()
                 .map(|res| res.max_soc.get::<si::ratio>())
                 .unwrap_or(1.0),
             max_soc_doc: None,
-            max_trac_mps2: todo!(),
-            mc_eff_array: todo!(),
-            mc_eff_map: todo!(),
+            max_trac_mps2: Default::default(),
+            mc_eff_array: Default::default(),
+            mc_eff_map: Default::default(), // TODO: revisit when implementing xEVs
             mc_eff_map_doc: None,
-            mc_full_eff_array: todo!(),
-            mc_kw_in_array: todo!(),
-            mc_kw_out_array: todo!(),
+            mc_full_eff_array: Default::default(), // TODO: revisit when implementing xEVs
+            mc_kw_in_array: Default::default(),    // calculated in `set_derived`
+            mc_kw_out_array: Default::default(),   // calculated in `set_derived`
             mc_mass_kg: self.e_machine().map_or(anyhow::Ok(0.), |e_machine| {
                 Ok(e_machine.mass()?.unwrap_or_default().get::<si::kilogram>())
             })?,
-            mc_max_elec_in_kw: todo!(),
-            mc_max_kw: todo!(),
+            mc_max_elec_in_kw: Default::default(), // calculated in `set_derived`
+            mc_max_kw: Default::default(), // placeholder, TODO: review when implementing xEVs
             mc_max_kw_doc: None,
-            mc_pe_base_kg: todo!(),
+            mc_pe_base_kg: 0.0, // placeholder, TODO: review when implementing xEVs
             mc_pe_base_kg_doc: None,
-            mc_pe_kg_per_kw: todo!(),
+            mc_pe_kg_per_kw: 0.833, // placeholder, TODO: review when implementing xEVs
             mc_pe_kg_per_kw_doc: None,
-            mc_peak_eff_override: todo!(),
+            mc_peak_eff_override: Default::default(),
             mc_peak_eff_override_doc: None,
-            mc_perc_out_array: todo!(),
-            mc_pwr_out_perc: todo!(),
+            mc_perc_out_array: Default::default(),
+            // short array that can use xEV when implented.  TODO: fix this when implementing xEV
+            mc_pwr_out_perc: Default::default(),
             mc_pwr_out_perc_doc: None,
-            mc_sec_to_peak_pwr: todo!(),
+            mc_sec_to_peak_pwr: Default::default(), // placeholder, TODO: revisit when implementing xEVs
             mc_sec_to_peak_pwr_doc: None,
-            min_fc_time_on: todo!(),
+            min_fc_time_on: 30.0, // TODO: implement this when doing HEV
             min_fc_time_on_doc: None,
             min_soc: self
                 .res()
                 .map(|res| res.min_soc.get::<si::ratio>())
                 .unwrap_or_default(),
             min_soc_doc: None,
-            modern_max: todo!(),
-            mph_fc_on: todo!(),
+            modern_max: 0.95,
+            // TODO: revisit when implemementing HEV
+            mph_fc_on: 70.0,
             mph_fc_on_doc: None,
-            no_elec_aux: todo!(),
-            no_elec_sys: todo!(),
+            no_elec_aux: false, // TODO: revisit when implemementing HEV
+            no_elec_sys: false, // TODO: revisit when implemementing HEV
             num_wheels: self.num_wheels as f64,
             num_wheels_doc: None,
             orphaned: false,
-            perc_high_acc_buf: todo!(),
+            perc_high_acc_buf: Default::default(), // TODO: revisit when implemementing HEV
             perc_high_acc_buf_doc: None,
             props: fastsim_2::params::RustPhysicalProperties::default(),
             regen_a: 500.0, //TODO: placeholder
-            regen_b: 0.99, //TODO: placeholder
-            scenario_name: self.name,
+            regen_b: 0.99,  //TODO: placeholder
+            scenario_name: self.name.clone(),
             selection: 0, // there is no equivalent in fastsim-3
             small_motor_power_kw: 7.5,
-            stop_start: todo!(),
+            stop_start: false, // TODO: revisit when implemementing mild hybrids and stop/start vehicles
             stop_start_doc: None,
             trans_eff: self.trans_eff.get::<si::ratio>(),
             trans_eff_doc: None,
@@ -742,7 +747,7 @@ impl Vehicle {
             wheel_rr_coef: self.wheel_rr_coef.get::<si::ratio>(),
             wheel_rr_coef_doc: None,
         };
-        veh.set_derived();
+        veh.set_derived()?;
         Ok(veh)
     }
 }
@@ -831,7 +836,7 @@ pub(crate) mod tests {
     /// tests that vehicle can be initialized and that repeating has no net effect
     #[test]
     pub(crate) fn test_veh_init() {
-        let mut veh = mock_f2_conv_veh();
+        let veh = mock_f2_conv_veh();
         let mut veh1 = veh.clone();
         assert!(veh == veh1);
         veh1.init().unwrap();

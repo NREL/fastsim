@@ -57,13 +57,15 @@ pt_type:
         - 0.3
       pwr_idle_fuel_watts: 6999.999999999999
       save_interval: 1
+    alt_eff: 1.0
 drag_coef: 0.393
 frontal_area: 2.12
 wheel_rr_coef: 0.007
-wheel_inertia_kg_m2: 0.82
+wheel_inertia: 0.82
 num_wheels: 4
 wheel_radius: 0.326
 cg_height: 0.53
+wheel_fric_coef: 0.7
 drive_type: FWD
 drive_axle_weight_frac: 0.59
 wheel_base: 2.72
