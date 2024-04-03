@@ -91,7 +91,7 @@ print(f'Time to load cycle: {t1 - t0:.2e} s')
 
 # %%
 t0 = time.perf_counter()
-veh = fsim.vehicle.Vehicle.from_vehdb(10)
+veh = fsim.vehicle.Vehicle.from_vehdb(12)
 print(f'Time to load vehicle: {time.perf_counter() - t0:.2e} s')
 
 # %% [markdown]
@@ -121,15 +121,20 @@ print(f"Rust provides a {t_py/t_rust:.5g}x speedup")
 # ### Results
 
 # %%
-fig, ax = plt.subplots(2, 1, figsize=(9, 5))
+fig, ax = plt.subplots(3, 1, figsize=(9, 5), sharex=True)
 ax[0].plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='py')
 ax[0].plot(cyc.time_s, sdr.fc_kw_in_ach, linestyle='--', label='rust')
 ax[0].legend()
 ax[0].set_ylabel('Engine Input\nPower [kW]')
 
-ax[1].plot(cyc.time_s, sim_drive.mph_ach)
-ax[1].set_xlabel('Cycle Time [s]')
-ax[1].set_ylabel('Speed [MPH]')
+ax[1].plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='py')
+ax[1].plot(cyc.time_s, sdr.ess_kw_out_ach, linestyle='--', label='rust')
+ax[1].legend()
+ax[1].set_ylabel('Battery Output\nPower [kW]')
+
+ax[-1].plot(cyc.time_s, sim_drive.mph_ach)
+ax[-1].set_xlabel('Cycle Time [s]')
+ax[-1].set_ylabel('Speed [MPH]')
 
 if SHOW_PLOTS:
     plt.show()
