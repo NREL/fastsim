@@ -593,10 +593,7 @@ impl Vehicle {
                 .map(|fc| fc.pwr_ramp_lag.get::<si::second>())
                 .unwrap_or_default(),
             fc_sec_to_peak_pwr_doc: None,
-            force_aux_on_fc: match self.pt_type {
-                PowertrainType::ConventionalVehicle(_) => true,
-                _ => false,
-            },
+            force_aux_on_fc: matches!(self.pt_type, PowertrainType::ConventionalVehicle(_)),
             force_aux_on_fc_doc: None,
             frontal_area_m2: self.frontal_area.get::<si::square_meter>(),
             frontal_area_m2_doc: None,
@@ -647,7 +644,7 @@ impl Vehicle {
             max_soc_doc: None,
             max_trac_mps2: Default::default(),
             mc_eff_array: Default::default(),
-            mc_eff_map: Default::default(), // TODO: revisit when implementing xEVs
+            mc_eff_map: vec![0.; 11].into(), // TODO: revisit when implementing xEVs
             mc_eff_map_doc: None,
             mc_full_eff_array: Default::default(), // TODO: revisit when implementing xEVs
             mc_kw_in_array: Default::default(),    // calculated in `set_derived`
@@ -666,7 +663,7 @@ impl Vehicle {
             mc_peak_eff_override_doc: None,
             mc_perc_out_array: Default::default(),
             // short array that can use xEV when implented.  TODO: fix this when implementing xEV
-            mc_pwr_out_perc: Default::default(),
+            mc_pwr_out_perc: vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0].into(),
             mc_pwr_out_perc_doc: None,
             mc_sec_to_peak_pwr: Default::default(), // placeholder, TODO: revisit when implementing xEVs
             mc_sec_to_peak_pwr_doc: None,
