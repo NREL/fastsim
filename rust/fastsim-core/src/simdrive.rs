@@ -58,6 +58,7 @@ pub struct SimDrive {
 impl SimDrive {
     pub fn walk(&mut self) -> anyhow::Result<()> {
         ensure!(self.cyc.len() >= 2, format_dbg!(self.cyc.len() < 2));
+        self.save_state();
         // to increment `i` to 1 everywhere
         self.step();
         while self.veh.state.i < self.cyc.len() {

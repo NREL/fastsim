@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Union, Any
+import numpy as np
 
 from . import fastsimrust
 from .fastsimrust import *
@@ -66,3 +67,8 @@ def set_param_from_path(
         prev_container = container
 
     return model
+
+def __array__(self):
+    return np.array(self.tolist())
+
+setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405

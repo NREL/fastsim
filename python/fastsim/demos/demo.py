@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
+import json
 import os
 import fastsim as fsim
 
@@ -21,50 +22,38 @@ sd = fsim.SimDrive(veh, cyc)
 t0 = time.perf_counter()
 sd.walk()
 t1 = time.perf_counter()
+print(f"fastsim-3 `sd.walk()` elapsed time: {t1-t0:.2e} s")
 
 sd2 = sd.to_fastsim2()
-
-print(f"`sd.walk()` elapsed time: {t1-t0:.2e} s")
-
-# TODO: provide `to_fastsim2` returning fastsim-2 `RustSimdrive` with `to_json` method
-# TODO: use above to create dictionary for comparison
+t0 = time.perf_counter()
+sd2.sim_drive()
+t1 = time.perf_counter()
+print(f"fastsim-2 `sd.walk()` elapsed time: {t1-t0:.2e} s")
 
 if SHOW_PLOTS:
-    fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 5))
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 5))
 
-    # TODO: propagate all the below TODO comments everyhwere else in this file
     ax[0].plot(
-        # TODO: figure out why the slice is needed
-        # TODO: figure out how to make the `tolist` unnecessary
-        np.array(sd.cyc.time_seconds.tolist()[1::veh.save_interval]),
-        # TODO: figure out how to make the `tolist` unnecessary
-        np.array(sd.veh.fc.history.pwr_out_watts.tolist()) / 1e3,
-        label="FC out",
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        np.array(sd.veh.fc.history.pwr_out_watts) / 1e3,
+        label="f3: FC out",
+    )
+    ax[0].plot(
+        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.fc_kw_out_ach.tolist()),
+        label="f2: FC out",
     )
     ax[0].set_ylabel("Power [kW]")
     ax[0].legend()
 
-    ax[1].plot(
-        # TODO: figure out why the slice is needed
-        # TODO: figure out how to make the `tolist` unnecessary
-        np.array(sd.cyc.time_seconds.tolist()[1::veh.save_interval]),
-        # TODO: figure out how to make the `tolist` unnecessary
-        np.array(sd.veh.fc.history.pwr_out_watts.tolist()) / \
-        np.array(sd.veh.fc.history.pwr_fuel_watts.tolist()),
-        label='FC',
-    )
-    ax[1].legend()
-    ax[1].set_ylabel("Efficiency")
-
-
     ax[-1].plot(
-        np.array(sd.cyc.time_seconds.tolist()[1::veh.save_interval]),
-        np.array(sd.veh.history.speed_ach_meters_per_second.tolist()),
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        np.array(sd.veh.history.speed_ach_meters_per_second),
         label="achieved",
     )
     ax[-1].plot(
-        np.array(sd.cyc.time_seconds.tolist()),
-        np.array(sd.cyc.speed_meters_per_second.tolist()),
+        np.array(sd.cyc.time_seconds),
+        np.array(sd.cyc.speed_meters_per_second),
         label="prescribed",
     )
     ax[-1].legend()

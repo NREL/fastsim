@@ -23,8 +23,5 @@ pub mod uc;
 pub mod utils;
 pub mod vehicle;
 
-// these might not get used
-pub mod combo_error;
-
 #[cfg(feature = "pyo3")]
 pub mod pyo3;
