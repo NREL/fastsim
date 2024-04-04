@@ -170,6 +170,7 @@ pub struct Vehicle {
 
     /// current state of vehicle
     #[serde(default)]
+    #[serde(skip_serializing_if = "IsDefault::is_default")]
     pub state: VehicleState,
     /// time step interval at which `state` is saved into `history`
     #[api(skip_set, skip_get)]
@@ -485,8 +486,9 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: do something more sophisticated with pwr_aux
         self.state.pwr_aux = self.pwr_aux;
+        self.state.pwr_brake = -self.state.pwr_tractive.min(uc::W * 0.);
         self.pt_type.solve(
-            self.state.pwr_tractive,
+            self.state.pwr_tractive.max(uc::W * 0.0),
             self.pwr_aux,
             true, // this should always be true at the powertrain level
             dt,
@@ -801,8 +803,6 @@ pub struct VehicleState {
     pub speed_ach: si::Velocity,
     /// cumulative distance traveled, integral of [Self::speed_ach]
     pub dist: si::Length,
-    /// [Self::speed_ach] from previous time step
-    pub speed_ach_prev: si::Velocity,
 }
 
 #[cfg(test)]

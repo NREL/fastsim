@@ -10,20 +10,6 @@ pt_type:
       specific_energy: 43200000.0
       mass: 49.166666666666664
     fc:
-      state:
-        i: 0
-        pwr_out_max: 0.0
-        eff: 0.0
-        pwr_out: 0.0
-        pwr_aux: 0.0
-        pwr_fuel: 0.0
-        pwr_loss: 0.0
-        pwr_idle_fuel: 0.0
-        energy_brake: 0.0
-        energy_fuel: 0.0
-        energy_loss: 0.0
-        energy_idle_fuel: 0.0
-        fc_on: false
       mass: 277.6595744680851
       specific_pwr: 470.0
       pwr_out_max_watts: 130500.0
@@ -75,28 +61,4 @@ cargo_mass: 136.0
 comp_mass_multiplier: 1.4
 pwr_aux: 700.0
 trans_eff: 0.875
-state:
-  i: 0
-  pwr_tractive_max: 0.0
-  pwr_tractive: 0.0
-  energy_out: 0.0
-  pwr_aux: 0.0
-  energy_aux: 0.0
-  pwr_drag: 0.0
-  energy_drag: 0.0
-  pwr_accel: 0.0
-  energy_accel: 0.0
-  pwr_ascent: 0.0
-  energy_ascent: 0.0
-  pwr_rr: 0.0
-  energy_rr: 0.0
-  pwr_whl_inertia: 0.0
-  energy_whl_inertia: 0.0
-  pwr_brake: 0.0
-  energy_brake: 0.0
-  energy_tractive: 0.0
-  cyc_met: false
-  speed_ach: 0.0
-  dist: 0.0
-  speed_ach_prev: 0.0
 save_interval: 1

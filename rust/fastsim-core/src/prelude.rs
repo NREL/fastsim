@@ -14,3 +14,4 @@ pub use crate::vehicle::powertrain::reversible_energy_storage::{
     ReversibleEnergyStorage, ReversibleEnergyStorageState, ReversibleEnergyStorageStateHistoryVec,
 };
 pub use crate::vehicle::Vehicle;
+pub use crate::air_properties::get_rho_air;

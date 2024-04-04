@@ -56,6 +56,7 @@ use crate::pyo3::*;
 /// electronics.
 pub struct ElectricMachine {
     #[serde(default)]
+    #[serde(skip_serializing_if = "IsDefault::is_default")]
     /// struct for tracking current state
     pub state: ElectricMachineState,
     /// Shaft output power fraction array at which efficiencies are evaluated.

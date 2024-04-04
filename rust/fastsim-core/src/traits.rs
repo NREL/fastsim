@@ -277,6 +277,16 @@ pub trait Step {
     fn step(&mut self) {}
 }
 
+/// Provides method for checking if struct is default
+pub trait IsDefault: std::default::Default + PartialEq {
+    /// If `self` is default, returns true
+    fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
+impl<T: Default + PartialEq> IsDefault for T {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

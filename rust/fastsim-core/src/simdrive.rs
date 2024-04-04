@@ -87,14 +87,13 @@ impl SimDrive {
     /// Sets power required for given prescribed speed
     /// # Arguments
     /// - `speed`: prescribed or achieved speed
-    /// - `speed_prev`: achieved speed at previous time step
     /// - `dt`: time step size
     pub fn set_req_pwr(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
         // unwrap on `self.mass` is ok because any method of creating the vehicle should
         // automatically called `SerdeAPI::init`, which will ensure mass is some
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
-        let speed_prev = vs.speed_ach_prev;
+        let speed_prev = vs.speed_ach;
         let grade = &self.cyc.grade[i];
         let mass = self.veh.mass.ok_or_else(|| {
             anyhow!(
@@ -143,7 +142,7 @@ impl SimDrive {
             let mass = self.veh.mass.ok_or_else(|| {
                 anyhow!("{}\nMass should have been set before now", format_dbg!())
             })?;
-            let speed_prev = vs.speed_ach_prev;
+            let speed_prev = vs.speed_ach;
             // Question: should this be grade at end of time step or start?
             // I'm treating it like grade at start is suitable
             let grade = utils::interp1d(

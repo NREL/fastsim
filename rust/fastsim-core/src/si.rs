@@ -17,6 +17,7 @@ pub use si::force::{newton, pound_force};
 pub use si::length::{foot, kilometer, meter};
 pub use si::mass::{kilogram, megagram};
 pub use si::moment_of_inertia::kilogram_square_meter;
+pub use si::mass_density::kilogram_per_cubic_meter;
 pub use si::power::{kilowatt, megawatt, watt};
 pub use si::power_rate::watt_per_second;
 pub use si::pressure::kilopascal;
