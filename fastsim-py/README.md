@@ -4,12 +4,12 @@ Update this for fastsim
 1. Install mypy: `pip install mypy`
 2. Get the html documentation: 
 ```bash
-    cd FASTSim/rust/fastsim-core
+    cd FASTSim/fastsim-core
     cargo doc --open
 ```
 3. Go to the python folder in FASTSim: 
 ```bash
-    cd FASTSim/rust/fastsim-py/python/
+    cd FASTSim/fastsim-py/python/
 ```
 4. Generate a new pyi file:
 ```bash

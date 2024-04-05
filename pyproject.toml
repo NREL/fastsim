@@ -43,7 +43,6 @@ dev = [
 zip-safe = false
 
 [tool.setuptools.packages.find]
-where = ["."] # list of folders that contain the packages (["."] by default)
 include = [
     "fastsim*",
 ] # package names should match these glob patterns (["*"] by default)
@@ -53,13 +52,13 @@ namespaces = false # to disable scanning PEP 420 namespaces (true by default)
 profile = "release"
 python-source = "python"
 features = ["pyo3/extension-module"]
-module-name = "fastsim.fastsimrust"
-manifest-path = "rust/fastsim-py/Cargo.toml"
+module-name = "fastsim.fastsim"
+manifest-path = "fastsim-py/Cargo.toml"
 include = [
-    { format = "sdist", path = "rust/fastsim-core/Cargo.toml" },
-    { format = "sdist", path = "rust/fastsim-core/src/*" },
-    { format = "sdist", path = "rust/fastsim-py/Cargo.toml" },
-    { format = "sdist", path = "rust/fastsim-py/src/*" },
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml" },
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*" },
+    { format = "sdist", path = "fastsim-core/Cargo.toml" },
+    { format = "sdist", path = "fastsim-core/src/*" },
+    { format = "sdist", path = "fastsim-py/Cargo.toml" },
+    { format = "sdist", path = "fastsim-py/src/*" },
+    { format = "sdist", path = "fastsim-core/proc-macros/Cargo.toml" },
+    { format = "sdist", path = "fastsim-core/proc-macros/src/*" },
 ]

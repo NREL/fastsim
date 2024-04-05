@@ -13,5 +13,5 @@ pyo3-log = { workspace = true }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "fastsimrust"
+name = "fastsim"
 crate-type = ["cdylib"]

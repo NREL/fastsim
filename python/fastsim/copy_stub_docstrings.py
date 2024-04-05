@@ -1,4 +1,4 @@
-import fastsim.fastsimrust
+import fastsim
 import ast
 import sys
 import os
@@ -18,7 +18,7 @@ class DocCopier(ast.NodeTransformer):
 
     def visit_ClassDef(self, node: ast.ClassDef) -> ast.ClassDef:
         # Make docstring for class
-        class_object = getattr(fastsimrust, node.name)
+        class_object = getattr(fastsim, node.name)
         class_docstring = class_object.__doc__
         if class_docstring is not None:
             node = self.make_docstring(node, class_docstring)
@@ -33,7 +33,7 @@ class DocCopier(ast.NodeTransformer):
 
 
 ARG_DEFAULTS = {
-    "pyi_filepath": "./rust/fastsim-py/python/fastsimrust/fastsimrust.pyi",
+    "pyi_filepath": "fastsim-py/python/fastsimfastsim.pyi",
     "overwrite": False,
     "output_suffix": "_output",
     "backup_suffix": "_backup",

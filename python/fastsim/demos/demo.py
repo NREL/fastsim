@@ -15,7 +15,7 @@ sns.set_theme()
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
 
 veh = fsim.Vehicle.from_file(
-    str(fsim.package_root() / "../../rust/tests/assets/2012_Ford_Fusion.yaml")
+    str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
 )
 veh.save_interval = 1
 cyc = fsim.Cycle.from_resource("cycles/udds.csv")

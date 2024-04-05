@@ -39,7 +39,7 @@ Developers might want to install the code in place so that FASTSim files can be 
 - Option 2:  
     1. Run `pip install -e ".[dev]"`  
     Optional testing steps:
-    1. Run `cd rust/ && cargo test`
+    1. Run `cargo test`
     1. Run `pytest -v python/fastsim/tests/`
 
 # Usage

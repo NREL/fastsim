@@ -31,7 +31,7 @@ jobs:
 
       - name: Rust unit tests
         run: |
-          cd rust/ && cargo test
+          cargo test
 
       - name: Python unit tests 
         run: |

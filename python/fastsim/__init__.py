@@ -2,8 +2,7 @@ from pathlib import Path
 from typing import Union, Any
 import numpy as np
 
-from . import fastsimrust
-from .fastsimrust import *
+from .fastsim import *
 
 def package_root() -> Path:
     """Returns the package root directory."""
