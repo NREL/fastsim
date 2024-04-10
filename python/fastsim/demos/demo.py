@@ -50,7 +50,8 @@ if SHOW_PLOTS:
 
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.fc.history.pwr_out_watts) / 1e3,
+        (np.array(sd.veh.fc.history.pwr_out_watts) +
+         np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3,
         label="f3",
     )
     ax[0].plot(
