@@ -486,9 +486,9 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: do something more sophisticated with pwr_aux
         self.state.pwr_aux = self.pwr_aux;
-        self.state.pwr_brake = -self.state.pwr_tractive.min(uc::W * 0.);
+        self.state.pwr_brake = -self.state.pwr_tractive.min(uc::W * 0.); // TODO: this _might_ be wrong for anything with regen capability
         self.pt_type.solve(
-            self.state.pwr_tractive.max(uc::W * 0.0),
+            self.state.pwr_tractive.max(uc::W * 0.0), // TODO: this will be wrong for anything with regen capability
             self.pwr_aux,
             true, // this should always be true at the powertrain level
             dt,
@@ -791,7 +791,7 @@ pub struct VehicleState {
     pub pwr_whl_inertia: si::Power,
     /// integral of [Self::pwr_whl_inertia]
     pub energy_whl_inertia: si::Energy,
-    /// Total braking power
+    /// Total braking power including regen
     pub pwr_brake: si::Power,
     /// integral of [Self::pwr_brake]
     pub energy_brake: si::Energy,
