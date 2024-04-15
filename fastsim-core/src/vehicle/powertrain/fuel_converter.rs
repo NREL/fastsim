@@ -253,9 +253,7 @@ impl Powertrain for FuelConverter {
         );
         // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
         // zero, there will be fuel consumption to overcome internal dissipation.
-        self.state.pwr_fuel = (pwr_out_req + pwr_aux) / self.state.eff + self.pwr_idle_fuel;
-        // or maybe like this
-        // self.state.pwr_fuel = ((pwr_out + pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
+        self.state.pwr_fuel = ((pwr_out_req + pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
         self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_out;
 
         self.state.energy_brake += self.state.pwr_out * dt;
