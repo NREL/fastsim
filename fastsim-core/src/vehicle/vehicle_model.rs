@@ -50,10 +50,10 @@ pub enum DriveTypes {
         Err(PyAttributeError::new_err(DIRECT_SET_ERR))
     }
 
-    // #[setter(__fc)]
-    // fn set_fc_hidden(&mut self, fc: FuelConverter) -> PyResult<()> {
-    //     self.set_fuel_converter(fc).map_err(|e| PyAttributeError::new_err(e.to_string()))
-    // }
+    #[setter(__fc)]
+    fn set_fc_hidden(&mut self, fc: FuelConverter) -> PyResult<()> {
+        self.set_fc(fc).map_err(|e| PyAttributeError::new_err(e.to_string()))
+    }
 
     // #[getter]
     // fn get_res(&self) -> Option<ReversibleEnergyStorage> {

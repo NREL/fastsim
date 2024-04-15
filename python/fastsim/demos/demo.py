@@ -33,11 +33,13 @@ t1 = time.perf_counter()
 print(f"fastsim-2 `sd.walk()` elapsed time: {t1-t0:.2e} s")
 
 if SHOW_PLOTS:
+    figsize_3_stacked = (10, 9)
+
     # set up cycling of colors and linestyles
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2',
               '#7f7f7f', '#bcbd22', '#17becf']
-    linestyles = ["--", "-.", ":"]
-    linestyles = [[c, c] for c in linestyles]
+    baselinestyles = ["--", "-.", ":"]
+    linestyles = [[c, c] for c in baselinestyles]
     linestyles = [x for sublist in linestyles for x in sublist]
     default_cycler = (
         cycler(color=colors[:len(linestyles)]) +
@@ -45,22 +47,49 @@ if SHOW_PLOTS:
     )
     plt.rc('axes', prop_cycle=default_cycler)
 
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 5))
+    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Fuel Converter")
 
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         (np.array(sd.veh.fc.history.pwr_out_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3,
-        label="f3",
+        label="f3 shaft",
     )
     ax[0].plot(
         np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
         np.array(sd2.fc_kw_out_ach.tolist()),
-        label="f2",
+        label="f2 shaft",
+    )
+    ax[0].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        np.array(sd.veh.fc.history.pwr_fuel_watts) / 1e3,
+        label="f3 fuel",
+    )
+    ax[0].plot(
+        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.fs_kw_out_ach.tolist()),
+        label="f2 fuel",
     )
     ax[0].set_ylabel("FC Power [kW]")
     ax[0].legend()
+
+    ax[1].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        (np.array(sd.veh.fc.history.pwr_out_watts) +
+         np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        label="shaft",
+        linestyle=baselinestyles[0]
+    )
+    ax[1].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        (np.array(sd.veh.fc.history.pwr_out_watts) +
+         np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        label="fuel",
+        linestyle=baselinestyles[1]
+    )
+    ax[1].set_ylabel("FC Power\nDelta [kW]")
+    ax[1].legend()
 
     ax[-1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
@@ -74,10 +103,10 @@ if SHOW_PLOTS:
     )
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Speed [m/s]")
+    ax[-1].set_ylabel("Ach Speed [m/s]")
     plt.show()
 
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 5))
+    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Road Loads")
 
     ax[0].plot(
@@ -103,6 +132,24 @@ if SHOW_PLOTS:
     ax[0].set_ylabel("Power [kW]")
     ax[0].legend()
 
+    ax[1].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        np.array(sd.veh.history.pwr_drag_watts) /
+        1e3 - np.array(sd2.drag_kw.tolist()),
+        label="drag",
+        linestyle=baselinestyles[0],
+    )
+    ax[1].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        np.array(sd.veh.history.pwr_rr_watts) /
+        1e3 - np.array(sd2.rr_kw.tolist()),
+        label="rr",
+        linestyle=baselinestyles[1],
+    )
+    ax[1].text(500, -0.125, "Drag error is due to intentional\nair density model change.")
+    ax[1].set_ylabel("Power\nDelta [kW]")
+    ax[1].legend()
+
     ax[-1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         np.array(sd.veh.history.speed_ach_meters_per_second),
@@ -115,7 +162,7 @@ if SHOW_PLOTS:
     )
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Speed [m/s]")
+    ax[-1].set_ylabel("Ach. Speed [m/s]")
     plt.show()
 
 # %%
