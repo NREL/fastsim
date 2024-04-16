@@ -360,17 +360,17 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     }
 }
 
-impl SetEnergies for Vehicle {
-    fn set_energies(&mut self, dt: si::Time) {
-        self.state.set_energies(dt);
+impl SetCumulative for Vehicle {
+    fn set_cumulative(&mut self, dt: si::Time) {
+        self.state.set_cumulative(dt);
         if let Some(fc) = self.fc_mut() {
-            fc.set_energies(dt);
+            fc.set_cumulative(dt);
         }
         if let Some(res) = self.res_mut() {
-            res.set_energies(dt);
+            res.set_cumulative(dt);
         }
         if let Some(em) = self.e_machine_mut() {
-            em.set_energies(dt);
+            em.set_cumulative(dt);
         }
     }
 }
@@ -768,7 +768,7 @@ impl Vehicle {
 
 /// Vehicle state for current time step
 #[derive(
-    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default, SetEnergies,
+    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default, SetCumulative,
 )]
 #[pyo3_api]
 pub struct VehicleState {
@@ -781,7 +781,7 @@ pub struct VehicleState {
     /// pwr exerted on wheels by powertrain
     pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
-    pub energy_out: si::Energy,
+    pub energy_tractive: si::Energy,
     /// time varying aux load
     pub pwr_aux: si::Power,
     /// integral of [Self::pwr_aux]
@@ -810,8 +810,6 @@ pub struct VehicleState {
     pub pwr_brake: si::Power,
     /// integral of [Self::pwr_brake]
     pub energy_brake: si::Energy,
-    /// integral of [Self::pwr_tractive]
-    pub energy_tractive: si::Energy,
     /// whether powertrain can achieve power demand
     pub cyc_met: bool,
     /// actual achieved speed

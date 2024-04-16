@@ -89,9 +89,9 @@ pub struct ElectricMachine {
     pub history: ElectricMachineStateHistoryVec,
 }
 
-impl SetEnergies for ElectricMachine {
-    fn set_energies(&mut self, dt: si::Time) {
-        self.state.set_energies(dt);
+impl SetCumulative for ElectricMachine {
+    fn set_cumulative(&mut self, dt: si::Time) {
+        self.state.set_cumulative(dt);
     }
 }
 
@@ -315,7 +315,7 @@ impl ElectricMachine {
     }
 
     /// Set current power out max ramp rate, `pwr_rate_out_max` given `pwr_rate_in_max`
-    /// from upstream component.  
+    /// from upstream component.
     pub fn set_pwr_rate_out_max(&mut self, pwr_rate_in_max: si::PowerRate) {
         self.state.pwr_rate_out_max = pwr_rate_in_max
             * if self.state.eff > si::Ratio::ZERO {
@@ -327,7 +327,7 @@ impl ElectricMachine {
 }
 
 #[derive(
-    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetEnergies,
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
 #[pyo3_api]
 pub struct ElectricMachineState {
@@ -346,33 +346,31 @@ pub struct ElectricMachineState {
     // Current values
     /// Raw power requirement from boundary conditions
     pub pwr_out_req: si::Power,
+    /// Integral of [Self::pwr_out_req]
+    pub energy_out_req: si::Energy,
     /// Electrical power to propulsion from ReversibleEnergyStorage and Generator.
     /// negative value indicates regenerative braking
     pub pwr_elec_prop_in: si::Power,
+    /// Integral of [Self::pwr_elec_prop_in]
+    pub energy_elec_prop_in: si::Energy,
     /// Mechanical power to propulsion, corrected by efficiency, from ReversibleEnergyStorage and Generator.
     /// Negative value indicates regenerative braking.
     pub pwr_mech_prop_out: si::Power,
+    /// Integral of [Self::pwr_mech_prop_out]
+    pub energy_mech_prop_out: si::Energy,
     /// Mechanical power from dynamic braking.  Positive value indicates braking; this should be zero otherwise.
     pub pwr_mech_dyn_brake: si::Power,
+    /// Integral of [Self::pwr_mech_dyn_brake]
+    pub energy_mech_dyn_brake: si::Energy,
     /// Electrical power from dynamic braking, dissipated as heat.
     pub pwr_elec_dyn_brake: si::Power,
+    /// Integral of [Self::pwr_elec_dyn_brake]
+    pub energy_elec_dyn_brake: si::Energy,
     /// Power lost in regeneratively converting mechanical power to power that can be absorbed by the battery.
     pub pwr_loss: si::Power,
-
-    // Cumulative energy values
-    /// cumulative mech energy in from fc
-    pub energy_elec_prop_in: si::Energy,
-    /// cumulative elec energy out
-    pub energy_mech_prop_out: si::Energy,
-    /// cumulative energy has lost due to imperfect efficiency
-    /// Mechanical energy from dynamic braking.
-    pub energy_mech_dyn_brake: si::Energy,
-    /// Electrical energy from dynamic braking, dissipated as heat.
-    pub energy_elec_dyn_brake: si::Energy,
-    /// Cumulative energy lost in regeneratively converting mechanical power to power that can be absorbed by the battery.
+    /// Integral of [Self::pwr_loss]
     pub energy_loss: si::Energy,
 }
-
 impl ElectricMachineState {
     pub fn new() -> Self {
         Self {

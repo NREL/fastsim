@@ -79,7 +79,7 @@ impl SimDrive {
         self.set_req_pwr(self.cyc.speed[i], dt)?;
         self.set_ach_speed(dt)?;
         self.veh.solve_powertrain(dt)?;
-        self.veh.set_energies(dt);
+        self.veh.set_cumulative(dt);
         Ok(())
     }
 

@@ -117,7 +117,7 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         then set entire list.",
                                     ))
                                 }
-                                /// PyO3-exposed method to convert vec-containing struct to Python list. 
+                                /// PyO3-exposed method to convert vec-containing struct to Python list.
                                 fn tolist(&self) -> PyResult<Vec<#contained_dtype>> {
                                     Ok(self.0.clone())
                                 }
@@ -239,7 +239,7 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     let mut final_output = TokenStream2::default();
     final_output.extend::<TokenStream2>(quote! {
-        #[cfg_attr(feature="pyo3", pyclass)]
+        #[cfg_attr(feature="pyo3", pyclass(module = "fastsim", subclass))]
     });
     let mut output: TokenStream2 = ast.to_token_stream();
     output.extend(impl_block);

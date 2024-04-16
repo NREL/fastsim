@@ -89,9 +89,9 @@ pub struct FuelConverter {
     pub history: FuelConverterStateHistoryVec, // TODO: spec out fuel tank size and track kg of fuel
 }
 
-impl SetEnergies for FuelConverter {
-    fn set_energies(&mut self, dt: si::Time) {
-        self.state.set_energies(dt);
+impl SetCumulative for FuelConverter {
+    fn set_cumulative(&mut self, dt: si::Time) {
+        self.state.set_cumulative(dt);
     }
 }
 
@@ -170,7 +170,8 @@ impl Powertrain for FuelConverter {
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
         self.state.pwr_aux = pwr_aux;
-        self.state.pwr_out_max = (self.state.pwr_out + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
+        self.state.pwr_out_max = (self.state.pwr_tractive
+            + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
             .min(self.pwr_out_max)
             .max(self.pwr_out_max_init);
         Ok(self.pwr_out_max)
@@ -222,7 +223,7 @@ impl Powertrain for FuelConverter {
                 format_dbg!(pwr_aux >= si::Power::ZERO),
             )
         );
-        self.state.pwr_out = pwr_out_req;
+        self.state.pwr_tractive = pwr_out_req;
         self.state.pwr_aux = pwr_aux;
         self.state.eff = uc::R
             * interp1d(
@@ -241,11 +242,6 @@ impl Powertrain for FuelConverter {
         );
 
         self.state.fc_on = enabled;
-        self.state.pwr_idle_fuel = if self.state.fc_on {
-            self.pwr_idle_fuel
-        } else {
-            si::Power::ZERO
-        };
         // if the engine is not on, `pwr_out_req` should be 0.0
         ensure!(
             self.state.fc_on || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO),
@@ -260,19 +256,16 @@ impl Powertrain for FuelConverter {
         // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
         // zero, there will be fuel consumption to overcome internal dissipation.
         self.state.pwr_fuel = ((pwr_out_req + pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
-        self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_out;
+        self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_tractive;
 
-        self.state.energy_brake += self.state.pwr_out * dt;
-        self.state.energy_fuel += self.state.pwr_fuel * dt;
-        self.state.energy_loss += self.state.pwr_loss * dt;
-        self.state.energy_idle_fuel += self.state.pwr_idle_fuel * dt;
-        ensure!(
-            self.state.energy_loss.get::<si::joule>() >= 0.0,
-            format!(
-                "{}\nEnergy loss must be non-negative",
-                format_dbg!(self.state.energy_loss.get::<si::joule>() >= 0.0)
-            )
-        );
+        // TODO: put this in `SetCumulative::set_custom_cumulative`
+        // ensure!(
+        //     self.state.energy_loss.get::<si::joule>() >= 0.0,
+        //     format!(
+        //         "{}\nEnergy loss must be non-negative",
+        //         format_dbg!(self.state.energy_loss.get::<si::joule>() >= 0.0)
+        //     )
+        // );
         Ok(())
     }
 }
@@ -283,7 +276,7 @@ impl FuelConverter {
 }
 
 #[derive(
-    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetEnergies,
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
 #[pyo3_api]
 pub struct FuelConverterState {
@@ -294,23 +287,21 @@ pub struct FuelConverterState {
     /// efficiency evaluated at current demand
     pub eff: si::Ratio,
     /// instantaneous power going to drivetrain, not including aux
-    pub pwr_out: si::Power,
+    pub pwr_tractive: si::Power,
+    /// integral of [Self::pwr_tractive]
+    pub energy_tractive: si::Energy,
     /// power going to auxiliaries
     pub pwr_aux: si::Power,
+    /// Integral of [Self::pwr_aux]
+    pub energy_aux: si::Energy,
     /// instantaneous fuel power flow
     pub pwr_fuel: si::Power,
+    /// Integral of [Self::pwr_fuel]
+    pub energy_fuel: si::Energy,
     /// loss power, including idle
     pub pwr_loss: si::Power,
-    /// idle fuel flow rate power
-    pub pwr_idle_fuel: si::Power,
-    /// cumulative propulsion energy fc has produced
-    pub energy_brake: si::Energy,
-    /// cumulative fuel energy fc has consumed
-    pub energy_fuel: si::Energy,
-    /// cumulative energy fc has lost due to imperfect efficiency
+    /// Integral of [Self::pwr_loss]
     pub energy_loss: si::Energy,
-    /// cumulative fuel energy fc has lost due to idle
-    pub energy_idle_fuel: si::Energy,
     /// If true, engine is on, and if false, off (no idle)
     pub fc_on: bool,
 }

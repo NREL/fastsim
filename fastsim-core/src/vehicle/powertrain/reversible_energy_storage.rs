@@ -166,9 +166,9 @@ pub struct ReversibleEnergyStorage {
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
-impl SetEnergies for ReversibleEnergyStorage {
-    fn set_energies(&mut self, dt: si::Time) {
-        self.state.set_energies(dt);
+impl SetCumulative for ReversibleEnergyStorage {
+    fn set_cumulative(&mut self, dt: si::Time) {
+        self.state.set_cumulative(dt);
     }
 }
 
@@ -516,7 +516,7 @@ impl ReversibleEnergyStorage {
 }
 
 #[derive(
-    Clone, Copy, Default, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetEnergies,
+    Clone, Copy, Default, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
 #[pyo3_api]
 // component limits

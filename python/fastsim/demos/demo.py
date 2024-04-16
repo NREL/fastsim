@@ -48,11 +48,11 @@ if SHOW_PLOTS:
     plt.rc('axes', prop_cycle=default_cycler)
 
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
-    plt.suptitle("Fuel Converter")
+    plt.suptitle("Fuel Converter Power")
 
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_out_watts) +
+        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3,
         label="f3 shaft",
     )
@@ -76,14 +76,73 @@ if SHOW_PLOTS:
 
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_out_watts) +
+        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
         label="shaft",
         linestyle=baselinestyles[0]
     )
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_out_watts) +
+        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
+         np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        label="fuel",
+        linestyle=baselinestyles[1]
+    )
+    ax[1].set_ylabel("FC Power\nDelta [kW]")
+    ax[1].legend()
+
+    ax[-1].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        np.array(sd.veh.history.speed_ach_meters_per_second),
+        label="f3",
+    )
+    ax[-1].plot(
+        np.array(sd2.cyc.time_s.tolist()),
+        np.array(sd2.mps_ach.tolist()),
+        label="f2",
+    )
+    ax[-1].legend()
+    ax[-1].set_xlabel("Time [s]")
+    ax[-1].set_ylabel("Ach Speed [m/s]")
+    plt.show()
+
+    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
+    plt.suptitle("Fuel Converter Energy")
+
+    ax[0].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        (np.array(sd.veh.fc.history.energy_tractive_joules) +
+         np.array(sd.veh.fc.history.energy_aux_joules)) / 1e6,
+        label="f3 shaft",
+    )
+    ax[0].plot(
+        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.fc_cumu_mj_out_ach.tolist()),
+        label="f2 shaft",
+    )
+    ax[0].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        np.array(sd.veh.fc.history.energy_fuel_joules) / 1e6,
+        label="f3 fuel",
+    )
+    ax[0].plot(
+        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.fs_cumu_mj_out_ach.tolist()),
+        label="f2 fuel",
+    )
+    ax[0].set_ylabel("FC Energy [MJ]")
+    ax[0].legend()
+
+    ax[1].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
+         np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        label="shaft",
+        linestyle=baselinestyles[0]
+    )
+    ax[1].plot(
+        np.array(sd.cyc.time_seconds)[::veh.save_interval],
+        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
         label="fuel",
         linestyle=baselinestyles[1]

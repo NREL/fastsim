@@ -1,7 +1,7 @@
 mod imports;
 use imports::*;
+mod cumu_method_derive;
 mod cycle_derive;
-mod energy_method_derive;
 mod history_vec_derive;
 mod hm_derive;
 mod pyo3_api;
@@ -23,15 +23,15 @@ pub fn history_vec_derive(input: TokenStream) -> TokenStream {
     history_vec_derive::history_vec_derive(input)
 }
 
-#[proc_macro_derive(SetEnergies)]
-/// generate method to implement `SetEnergies` trait
-pub fn energy_method_derive(input: TokenStream) -> TokenStream {
-    energy_method_derive::energy_method_derive(input)
+#[proc_macro_derive(SetCumulative)]
+/// generate method to implement `SetCumulative` trait
+pub fn cumu_method_derive(input: TokenStream) -> TokenStream {
+    cumu_method_derive::cumu_method_derive(input)
 }
 
 #[proc_macro_derive(HistoryMethods, attributes(has_state))]
 /// Generate `step` and `save_state` methods that work for struct and any
-/// nested fields with the `#[has_state]` attribute.  
+/// nested fields with the `#[has_state]` attribute.
 pub fn history_methods_derive(input: TokenStream) -> TokenStream {
     hm_derive::history_methods_derive(input)
 }
