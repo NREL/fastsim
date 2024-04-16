@@ -287,6 +287,18 @@ pub trait IsDefault: std::default::Default + PartialEq {
 
 impl<T: Default + PartialEq> IsDefault for T {}
 
+/// Trait for setting cumulative energy values based on powers and time step size
+pub trait SetEnergies {
+    /// Sets cumulative energy values based on powers and time step size
+    fn set_energies(&mut self, dt: si::Time);
+}
+
+/// Trait for setting cumulative values based on rate values
+pub trait SetCumulative {
+    /// Sets cumulative values based on rate values
+    fn set_cumulative(&mut self, dt: si::Time);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

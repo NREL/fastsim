@@ -166,6 +166,12 @@ pub struct ReversibleEnergyStorage {
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
+impl SetEnergies for ReversibleEnergyStorage {
+    fn set_energies(&mut self, dt: si::Time) {
+        self.state.set_energies(dt);
+    }
+}
+
 impl Mass for ReversibleEnergyStorage {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         self.check_mass_consistent()?;
@@ -489,7 +495,7 @@ impl ReversibleEnergyStorage {
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
     /// max linearly, such that `eff_min` is untouched
-    pub fn set_eff_max(&mut self, eff_max: f64) -> Result<(), String> {
+    pub fn set_eff_max(&mut self, _eff_max: f64) -> Result<(), String> {
         todo!()
     }
 
@@ -504,12 +510,14 @@ impl ReversibleEnergyStorage {
 
     /// Scales values of `eff_interp` without changing max such that max - min
     /// is equal to new range
-    pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
+    pub fn set_eff_range(&mut self, _eff_range: f64) -> anyhow::Result<()> {
         todo!()
     }
 }
 
-#[derive(Clone, Copy, Default, Debug, Deserialize, Serialize, PartialEq, HistoryVec)]
+#[derive(
+    Clone, Copy, Default, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetEnergies,
+)]
 #[pyo3_api]
 // component limits
 /// ReversibleEnergyStorage state variables

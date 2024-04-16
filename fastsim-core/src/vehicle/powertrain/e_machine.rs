@@ -89,6 +89,12 @@ pub struct ElectricMachine {
     pub history: ElectricMachineStateHistoryVec,
 }
 
+impl SetEnergies for ElectricMachine {
+    fn set_energies(&mut self, dt: si::Time) {
+        self.state.set_energies(dt);
+    }
+}
+
 impl Mass for ElectricMachine {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         self.check_mass_consistent()?;
@@ -320,7 +326,9 @@ impl ElectricMachine {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetEnergies,
+)]
 #[pyo3_api]
 pub struct ElectricMachineState {
     /// time step index

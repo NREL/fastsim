@@ -360,6 +360,21 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     }
 }
 
+impl SetEnergies for Vehicle {
+    fn set_energies(&mut self, dt: si::Time) {
+        self.state.set_energies(dt);
+        if let Some(fc) = self.fc_mut() {
+            fc.set_energies(dt);
+        }
+        if let Some(res) = self.res_mut() {
+            res.set_energies(dt);
+        }
+        if let Some(em) = self.e_machine_mut() {
+            em.set_energies(dt);
+        }
+    }
+}
+
 impl Vehicle {
     /// # Assumptions
     /// - peak power of all components can be produced concurrently.
@@ -753,7 +768,7 @@ impl Vehicle {
 
 /// Vehicle state for current time step
 #[derive(
-    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default, EnergyMethod,
+    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default, SetEnergies,
 )]
 #[pyo3_api]
 pub struct VehicleState {

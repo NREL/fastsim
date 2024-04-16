@@ -89,6 +89,12 @@ pub struct FuelConverter {
     pub history: FuelConverterStateHistoryVec, // TODO: spec out fuel tank size and track kg of fuel
 }
 
+impl SetEnergies for FuelConverter {
+    fn set_energies(&mut self, dt: si::Time) {
+        self.state.set_energies(dt);
+    }
+}
+
 impl SerdeAPI for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
         self.check_mass_consistent()?;
@@ -276,7 +282,9 @@ impl FuelConverter {
     impl_get_set_eff_range!();
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetEnergies,
+)]
 #[pyo3_api]
 pub struct FuelConverterState {
     /// time step index
