@@ -39,7 +39,7 @@ pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl SetCumulative for #ident {
             fn set_cumulative(&mut self, dt: si::Time) {
-                #(self.#energy_fields = self.#pwr_fields * dt;)*
+                #(self.#energy_fields += self.#pwr_fields * dt;)*
                 self.set_custom_cumu_vals(dt);
             }
         }

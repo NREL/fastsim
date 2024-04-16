@@ -182,7 +182,7 @@ impl Powertrain for FuelConverter {
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
         enabled: bool,
-        dt: si::Time,
+        _dt: si::Time,
         assert_limits: bool,
     ) -> anyhow::Result<()> {
         if assert_limits {
