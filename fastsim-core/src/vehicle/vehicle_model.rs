@@ -1,3 +1,5 @@
+use self::utils::Efficiency;
+
 use super::*;
 
 /// Possible aux load power sources
@@ -150,14 +152,12 @@ pub struct Vehicle {
     #[serde(skip_serializing_if = "Option::is_none")]
     glider_mass: Option<si::Mass>,
     /// Cargo mass including passengers
-    /// #[fsim2_name: "cargo_kg"]
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
     pub cargo_mass: Option<si::Mass>,
     // `veh_override_kg` in fastsim-2 is getting deprecated in fastsim-3
     /// Component mass multiplier for vehicle mass calculation
-    /// #[fsim2_name = "comp_mass_multiplier"]
     #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
     pub comp_mass_multiplier: Option<si::Ratio>,
@@ -166,6 +166,8 @@ pub struct Vehicle {
     pub pwr_aux: si::Power,
 
     /// transmission efficiency
+    // TODO: make `transmission::{Transmission, TransmissionState}` and
+    // `Transmission` should have field `efficency: Efficiency`.  
     pub trans_eff: si::Ratio,
 
     /// current state of vehicle
