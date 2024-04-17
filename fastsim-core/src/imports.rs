@@ -20,6 +20,7 @@ pub(crate) use bincode::{deserialize, serialize};
 pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
 pub(crate) use ndarray::prelude::*;
+pub(crate) use ndarray::Slice;
 pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use std::cmp::{self, Ordering};
 pub(crate) use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
