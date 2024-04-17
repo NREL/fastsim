@@ -1,4 +1,4 @@
 cargo test && \
-pip install -e ".[dev]" && \
+pip install -e .[dev] && \
 # pytest -v python/fastsim/tests/ &&
-pytest -v python/fastsim/demos
+pytest -v
