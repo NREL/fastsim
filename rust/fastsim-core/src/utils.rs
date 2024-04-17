@@ -25,7 +25,7 @@ pub fn resources_path() -> PathBuf {
 
 /// Error message for when user attempts to set value in a nested struct.
 pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
-Assign nested struct to own variable, run the `reset_orphaned` method, and then 
+Assign nested struct to own variable, run the `reset_orphaned` method, and then
 modify field value. Then set the nested struct back inside containing struct.";
 
 pub fn diff(x: &Array1<f64>) -> Array1<f64> {
@@ -316,6 +316,33 @@ pub fn get_index_permutations(shape: &[usize]) -> Vec<Vec<usize>> {
 /// );
 /// ```
 ///
+/// ## 2D Example with non-uniform dimension sizes
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
+///
+/// let grid = [
+///     vec![0.0, 1.0, 2.0], // x0, x1, x2
+///     vec![0.0, 1.0], // y0, y1
+/// ];
+/// let values = array![
+///     [0.0, 2.0], // f(x0, y0), f(x0, y1)
+///     [2.0, 4.0], // f(x1, y0), f(x1, y1)
+///     [5.0, 0.0], // f(x2, y0), f(x2, y1)
+/// ]
+/// .into_dyn();
+///
+/// let point_a = [0.5, 0.5];
+/// assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 2.0);
+/// let point_b = [1.52, 0.36];
+/// assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 2.9696);
+/// let point_c = [grid[0][2], grid[1][1]]; // returns value at (x2, y1)
+/// assert_eq!(
+///     multilinear(&point_c, &grid, &values).unwrap(),
+///     values[[2, 1]]
+/// );
+/// ```
+///
 /// ## 3D Example
 /// ```rust
 /// use ndarray::prelude::*;
@@ -580,13 +607,13 @@ pub fn path_to_cache() -> anyhow::Result<PathBuf> {
 /// Deletes FASTSim data directory, clearing its contents. If subpath is
 /// provided, will only delete the subdirectory pointed to by the subpath,
 /// rather than deleting the whole data directory. If the subpath is an empty
-/// string, deletes the entire FASTSim directory.     
+/// string, deletes the entire FASTSim directory.
 /// USE WITH CAUTION, as this function deletes ALL objects stored in the FASTSim
-/// data directory or provided subdirectory.  
-/// # Arguments  
+/// data directory or provided subdirectory.
+/// # Arguments
 /// - subpath: Subpath to a subdirectory within the FASTSim data directory. If
 ///   an empty string, the function will delete the whole FASTSim data
-///   directory, clearing all its contents.  
+///   directory, clearing all its contents.
 /// Note: it is not possible to delete single files using this function, only
 /// directories. If a single file needs deleting, the path_to_cache() function
 /// can be used to find the FASTSim data directory location. The file can then
@@ -598,16 +625,16 @@ pub fn clear_cache<P: AsRef<Path>>(subpath: P) -> anyhow::Result<()> {
 }
 
 /// takes an object from a url and saves it in the FASTSim data directory in a
-/// rust_objects folder  
+/// rust_objects folder
 /// WARNING: if there is a file already in the data subdirectory with the same
-/// name, it will be replaced by the new file   
+/// name, it will be replaced by the new file
 /// to save to a folder other than rust_objects, define constant CACHE_FOLDER to
-/// be the desired folder name  
-/// # Arguments  
-/// - url: url (either as a string or url type) to object  
+/// be the desired folder name
+/// # Arguments
+/// - url: url (either as a string or url type) to object
 /// - subpath: path to subdirectory within FASTSim data directory. Suggested
 /// paths are "vehicles" for a RustVehicle, "cycles" for a RustCycle, and
-/// "rust_objects" for other Rust objects.  
+/// "rust_objects" for other Rust objects.
 /// Note: In order for the file to be save in the proper format, the URL needs
 /// to be a URL pointing directly to a file, for example a raw github URL.
 #[cfg(feature = "default")]
@@ -629,31 +656,31 @@ pub mod array_wrappers {
     use crate::proc_macros::add_pyo3_api;
 
     use super::*;
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayU32(Array1<u32>);
     impl SerdeAPI for Pyo3ArrayU32 {}
 
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayI32(Array1<i32>);
     impl SerdeAPI for Pyo3ArrayI32 {}
 
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3ArrayF64(Array1<f64>);
     impl SerdeAPI for Pyo3ArrayF64 {}
 
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayBool(Array1<bool>);
     impl SerdeAPI for Pyo3ArrayBool {}
 
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3VecF64(Vec<f64>);
