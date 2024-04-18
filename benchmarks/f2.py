@@ -9,12 +9,15 @@ from memory_profiler import profile
 
 @profile(precision=3)
 def build_and_run_sim_drive():
-    veh = fsr.RustVehicle.from_file(
-        str(fsim.package_root() / "resources/vehdb/2012_Ford_Fusion.yaml")
-    )
-    cyc = fsr.RustCycle.from_resource("cycles/udds.csv")
-    sd = fsr.RustSimDrive(cyc, veh)
-    sd.sim_drive()
+    sds = []
+    for _ in range(10):
+        veh = fsr.RustVehicle.from_file(
+            str(fsim.package_root() / "resources/vehdb/2012_Ford_Fusion.yaml")
+        )
+        cyc = fsr.RustCycle.from_resource("cycles/udds.csv")
+        sd = fsr.RustSimDrive(cyc, veh)
+        sd.sim_drive()
+        sds.append(sd)
 
 if __name__ == "__main__":
     build_and_run_sim_drive()
