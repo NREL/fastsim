@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 def convention_eu_veh_wltp_fe_test():
     veh_2020_golf = fsim.vehicle.Vehicle.from_file('2020_EU_VW_Golf_2.0TDI.csv').to_rust()
 
-    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_low3.csv').to_rust()
-    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_med3b.csv').to_rust()
-    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_high3b.csv').to_rust()
-    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_extra_high3.csv').to_rust()
+    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file('wltc_low_3.csv').to_rust()
+    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file('wltc_medium_3b.csv').to_rust()
+    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file('wltc_high_3b.csv').to_rust()
+    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file('wltc_extrahigh_3.csv').to_rust()
     cyc_wltp_combo = fsim.cycle.concat([wltp_low_cyc_3.to_dict(), 
                                         wltp_med_cyc_3b.to_dict(),
                                         wltp_high_cyc_3b.to_dict(),
@@ -52,21 +52,15 @@ def hybrid_eu_veh_wltp_fe_test():
     meas_fe_high_liter__100km = 3.5
     meas_fe_extrahigh_liter__100km = 5
     
-    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_low3.csv')
+    wltp_low_cyc_3 = fsim.cycle.Cycle.from_file('wltc_low_3.csv')
     wltp_low_cyc_3_rust = wltp_low_cyc_3.to_rust()
-    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_med3b.csv')
+    wltp_med_cyc_3b = fsim.cycle.Cycle.from_file('wltc_medium_3b.csv')
     wltp_med_cyc_3b_rust = wltp_med_cyc_3b.to_rust()
-    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file('wltc_class3_high3b.csv')
+    wltp_high_cyc_3b = fsim.cycle.Cycle.from_file('wltc_high_3b.csv')
     wltp_high_cyc_3b_rust = wltp_high_cyc_3b.to_rust()
-    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file('wltc_class3_extra_high3.csv')
+    wltp_extrahigh_cyc_3 = fsim.cycle.Cycle.from_file('wltc_extrahigh_3.csv')
     wltp_extrahigh_cyc_3_rust = wltp_extrahigh_cyc_3.to_rust()
-    cyc_wltp_combined = fsim.cycle.concat([wltp_low_cyc_3.to_dict(), 
-                                        wltp_med_cyc_3b.to_dict(),
-                                        wltp_high_cyc_3b.to_dict(),
-                                        wltp_extrahigh_cyc_3.to_dict()
-                                        ]
-                                       )
-    cyc_wltp_combined = fsim.cycle.Cycle.from_dict(cyc_wltp_combined)
+    cyc_wltp_combined = fsim.cycle.Cycle.from_file("wltc_3b.csv")
     cyc_wltp_combined_rust = cyc_wltp_combined.to_rust()
 
     sim = fsim.simdrive.SimDrive(cyc_wltp_combined, veh_2022_yaris)

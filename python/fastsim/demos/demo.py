@@ -3,9 +3,8 @@
 
 # %% [markdown]
 # # FASTSim Demonstration
-# | ![fastsim icon](fastsim-icon-web-131x172.jpg)
 #
-# Developed by NREL, the Future Automotive Systems Technology Simulator
+#  Developed by NREL, the Future Automotive Systems Technology Simulator
 # (FASTSim) evaluates the impact of technology improvements on
 # efficiency, performance, cost, and battery life in conventional
 # vehicles, hybrid electric vehicles (HEVs), plug-in hybrid electric
@@ -890,7 +889,7 @@ if SHOW_PLOTS:
 # values.
 
 # %%
-if "full" in fsim.fastsimrust.enabled_features():
+if "default" in fsim.fastsimrust.enabled_features():
     from fastsim.fastsimrust import abc_to_drag_coeffs
     test_veh = fsim.vehicle.Vehicle.from_vehdb(5, to_rust=True).to_rust()
     (drag_coef, wheel_rr_coef) = abc_to_drag_coeffs(test_veh, 25.91, 0.1943, 0.01796, simdrive_optimize=True)

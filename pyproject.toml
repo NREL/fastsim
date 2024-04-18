@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "2.1.1"
+version = "2.1.2"
 authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
@@ -28,6 +28,7 @@ dependencies = [
     "pytest",
     "setuptools<=65.6.3", # suppresses pkg_resources deprecation warning
     "openpyxl>=3.1.2",
+    "plotly==5.18",
 ]
 
 [project.urls]

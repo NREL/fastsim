@@ -410,7 +410,7 @@ pub struct RustVehicle {
     #[doc(hidden)]
     #[doc_field(skip_doc)]
     #[serde(default)]
-    #[serde(alias = "fcEffArray")]
+    #[serde(alias = "fcEffArray", skip_serializing)]
     pub fc_eff_array: Vec<f64>,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
@@ -438,7 +438,7 @@ pub struct RustVehicle {
     pub mc_full_eff_array: Vec<f64>,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
-    #[serde(alias = "vehKg")]
+    #[serde(skip)]
     pub veh_kg: f64,
     #[doc(hidden)]
     #[doc_field(skip_doc)]
@@ -557,6 +557,8 @@ pub struct RustVehicle {
 
 /// RustVehicle rust methods
 impl RustVehicle {
+    const VEHICLE_DIRECTORY_URL: &'static str =
+        &"https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/";
     /// Sets the following parameters:
     /// - `ess_mass_kg`
     /// - `mc_mass_kg`
@@ -737,6 +739,7 @@ impl RustVehicle {
         self.no_elec_aux =
             self.no_elec_sys || (self.mc_max_kw <= self.aux_kw) || self.force_aux_on_fc;
 
+        // TODO: this probably shouldnt be set if already provided
         self.fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();
 
         // discrete array of possible engine power outputs
@@ -1036,6 +1039,43 @@ impl RustVehicle {
         v.set_derived().unwrap();
         v
     }
+
+    /// Downloads specified vehicle from FASTSim vehicle repo or url and
+    /// instantiates it into a RustVehicle. Notes in vehicle.doc the origin of
+    /// the vehicle. Returns vehicle.  
+    /// # Arguments  
+    /// - vehicle_file_name: file name for vehicle to be downloaded, including
+    ///   path from url directory or FASTSim repository (if applicable)  
+    /// - url: url for vehicle repository where vehicle will be downloaded from,
+    ///   if None, assumed to be downloaded from vehicle FASTSim repo  
+    /// Note: The URL needs to be a URL pointing directly to a file, for example
+    /// a raw github URL, split up so that the "url" argument is the path to the
+    /// directory, and the "vehicle_file_name" is the path within the directory
+    /// to the file.  
+    /// Note: If downloading from the FASTSim Vehicle Repo, the
+    /// vehicle_file_name should include the path to the file from the root of
+    /// the Repo, as listed in the output of the
+    /// vehicle_utils::fetch_github_list() function.  
+    /// Note: the url should not include the file name, only the path to the
+    /// file or a root directory of the file.
+    pub fn from_github_or_url<S: AsRef<str>>(
+        vehicle_file_name: S,
+        url: Option<S>,
+    ) -> anyhow::Result<Self> {
+        let url_internal = match url {
+            Some(s) => {
+                s.as_ref().trim_end_matches('/').to_owned()
+                    + "/"
+                    + &vehicle_file_name.as_ref().trim_start_matches('/')
+            }
+            None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref(),
+        };
+        let mut vehicle =
+            Self::from_url(&url_internal).with_context(|| "Could not parse vehicle from url")?;
+        let vehicle_origin = "Vehicle from ".to_owned() + url_internal.as_str();
+        vehicle.doc = Some(vehicle_origin);
+        Ok(vehicle)
+    }
 }
 
 impl Default for RustVehicle {
@@ -1064,8 +1104,32 @@ impl Default for RustVehicle {
 }
 
 impl SerdeAPI for RustVehicle {
+    const CACHE_FOLDER: &'static str = &"vehicles";
+
     fn init(&mut self) -> anyhow::Result<()> {
         self.set_derived()
+    }
+
+    /// instantiates a vehicle from a url, and notes in vehicle.doc the origin
+    /// of the vehicle.  
+    /// accepts yaml and json file types  
+    /// # Arguments  
+    /// - url: URL (either as a string or url type) to object  
+    /// Note: The URL needs to be a URL pointing directly to a file, for example
+    /// a raw github URL.
+    fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
+        let url = url::Url::parse(url.as_ref())?;
+        let format = url
+            .path_segments()
+            .and_then(|segments| segments.last())
+            .and_then(|filename| Path::new(filename).extension())
+            .and_then(OsStr::to_str)
+            .with_context(|| "Could not parse file format from URL: {url:?}")?;
+        let response = ureq::get(url.as_ref()).call()?.into_reader();
+        let mut vehicle = Self::from_reader(response, format)?;
+        let vehicle_origin = "Vehicle from ".to_owned() + url.as_ref();
+        vehicle.doc = Some(vehicle_origin);
+        Ok(vehicle)
     }
 }
 
@@ -1096,89 +1160,89 @@ mod tests {
     fn test_input_validation() {
         // set up vehicle input parameters
         let scenario_name = String::from("2016 FORD Escape 4cyl 2WD");
-        let selection: u32 = 5;
-        let veh_year: u32 = 2016;
+        let selection = 5;
+        let veh_year = 2016;
         let veh_pt_type = String::from("whoops"); // bad input
-        let drag_coef: f64 = 0.355;
-        let frontal_area_m2: f64 = 3.066;
-        let glider_kg: f64 = -50.0; // bad input
-        let veh_cg_m: f64 = 0.53;
-        let drive_axle_weight_frac: f64 = 0.59;
-        let wheel_base_m: f64 = 2.6;
-        let cargo_kg: f64 = 136.0;
-        let veh_override_kg: Option<f64> = None;
-        let comp_mass_multiplier: f64 = 1.4;
-        let fs_max_kw: f64 = 2000.0;
-        let fs_secs_to_peak_pwr: f64 = 1.0;
-        let fs_kwh: f64 = 504.0;
-        let fs_kwh_per_kg: f64 = 9.89;
-        let fc_max_kw: f64 = -60.0; // bad input
-        let fc_pwr_out_perc: Vec<f64> = vec![
+        let drag_coef = 0.355;
+        let frontal_area_m2 = 3.066;
+        let glider_kg = -50.0; // bad input
+        let veh_cg_m = 0.53;
+        let drive_axle_weight_frac = 0.59;
+        let wheel_base_m = 2.6;
+        let cargo_kg = 136.0;
+        let veh_override_kg = None;
+        let comp_mass_multiplier = 1.4;
+        let fs_max_kw = 2000.0;
+        let fs_secs_to_peak_pwr = 1.0;
+        let fs_kwh = 504.0;
+        let fs_kwh_per_kg = 9.89;
+        let fc_max_kw = -60.0; // bad input
+        let fc_pwr_out_perc = vec![
             0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.8, 1.0,
         ];
-        let fc_eff_type: String = String::from("SI");
-        let fc_sec_to_peak_pwr: f64 = 6.0;
-        let fc_base_kg: f64 = 61.0;
-        let fc_kw_per_kg: f64 = 2.13;
-        let min_fc_time_on: f64 = 30.0;
-        let idle_fc_kw: f64 = 2.5;
-        let mc_max_kw: f64 = 0.0;
-        let mc_sec_to_peak_pwr: f64 = 4.0;
-        let mc_pe_kg_per_kw: f64 = 0.833;
-        let mc_pe_base_kg: f64 = 21.6;
-        let ess_max_kw: f64 = 0.0;
-        let ess_max_kwh: f64 = 0.0;
-        let ess_kg_per_kwh: f64 = 8.0;
-        let ess_base_kg: f64 = 75.0;
-        let ess_round_trip_eff: f64 = 0.97;
-        let ess_life_coef_a: f64 = 110.0;
-        let ess_life_coef_b: f64 = -0.6811;
-        let min_soc: f64 = -0.5; // bad input
-        let max_soc: f64 = 1.5; // bad input
-        let ess_dischg_to_fc_max_eff_perc: f64 = 0.0;
-        let ess_chg_to_fc_max_eff_perc: f64 = 0.0;
-        let wheel_inertia_kg_m2: f64 = 0.815;
-        let num_wheels: f64 = 4.0;
-        let wheel_rr_coef: f64 = 0.006;
-        let wheel_radius_m: f64 = 0.336;
-        let wheel_coef_of_fric: f64 = 0.7;
-        let max_accel_buffer_mph: f64 = 60.0;
-        let max_accel_buffer_perc_of_useable_soc: f64 = 0.2;
-        let perc_high_acc_buf: f64 = 0.0;
-        let mph_fc_on: f64 = 30.0;
-        let kw_demand_fc_on: f64 = 100.0;
-        let max_regen: f64 = 0.98;
-        let stop_start: bool = false;
-        let force_aux_on_fc: bool = true;
-        let alt_eff: f64 = 1.0;
-        let chg_eff: f64 = 0.86;
-        let aux_kw: f64 = 0.7;
-        let trans_kg: f64 = 114.0;
-        let trans_eff: f64 = 0.92;
-        let ess_to_fuel_ok_error: f64 = 0.005;
-        let val_udds_mpgge: f64 = 23.0;
-        let val_hwy_mpgge: f64 = 32.0;
-        let val_comb_mpgge: f64 = 26.0;
-        let val_udds_kwh_per_mile: f64 = f64::NAN;
-        let val_hwy_kwh_per_mile: f64 = f64::NAN;
-        let val_comb_kwh_per_mile: f64 = f64::NAN;
-        let val_cd_range_mi: f64 = f64::NAN;
-        let val_const65_mph_kwh_per_mile: f64 = f64::NAN;
-        let val_const60_mph_kwh_per_mile: f64 = f64::NAN;
-        let val_const55_mph_kwh_per_mile: f64 = f64::NAN;
-        let val_const45_mph_kwh_per_mile: f64 = f64::NAN;
-        let val_unadj_udds_kwh_per_mile: f64 = f64::NAN;
-        let val_unadj_hwy_kwh_per_mile: f64 = f64::NAN;
-        let val0_to60_mph: f64 = 9.9;
-        let val_ess_life_miles: f64 = f64::NAN;
-        let val_range_miles: f64 = f64::NAN;
-        let val_veh_base_cost: f64 = f64::NAN;
-        let val_msrp: f64 = f64::NAN;
+        let fc_eff_type = String::from("SI");
+        let fc_sec_to_peak_pwr = 6.0;
+        let fc_base_kg = 61.0;
+        let fc_kw_per_kg = 2.13;
+        let min_fc_time_on = 30.0;
+        let idle_fc_kw = 2.5;
+        let mc_max_kw = 0.0;
+        let mc_sec_to_peak_pwr = 4.0;
+        let mc_pe_kg_per_kw = 0.833;
+        let mc_pe_base_kg = 21.6;
+        let ess_max_kw = 0.0;
+        let ess_max_kwh = 0.0;
+        let ess_kg_per_kwh = 8.0;
+        let ess_base_kg = 75.0;
+        let ess_round_trip_eff = 0.97;
+        let ess_life_coef_a = 110.0;
+        let ess_life_coef_b = -0.6811;
+        let min_soc = -0.5; // bad input
+        let max_soc = 1.5; // bad input
+        let ess_dischg_to_fc_max_eff_perc = 0.0;
+        let ess_chg_to_fc_max_eff_perc = 0.0;
+        let wheel_inertia_kg_m2 = 0.815;
+        let num_wheels = 4.0;
+        let wheel_rr_coef = 0.006;
+        let wheel_radius_m = 0.336;
+        let wheel_coef_of_fric = 0.7;
+        let max_accel_buffer_mph = 60.0;
+        let max_accel_buffer_perc_of_useable_soc = 0.2;
+        let perc_high_acc_buf = 0.0;
+        let mph_fc_on = 30.0;
+        let kw_demand_fc_on = 100.0;
+        let max_regen = 0.98;
+        let stop_start = false;
+        let force_aux_on_fc = true;
+        let alt_eff = 1.0;
+        let chg_eff = 0.86;
+        let aux_kw = 0.7;
+        let trans_kg = 114.0;
+        let trans_eff = 0.92;
+        let ess_to_fuel_ok_error = 0.005;
+        let val_udds_mpgge = 23.0;
+        let val_hwy_mpgge = 32.0;
+        let val_comb_mpgge = 26.0;
+        let val_udds_kwh_per_mile = f64::NAN;
+        let val_hwy_kwh_per_mile = f64::NAN;
+        let val_comb_kwh_per_mile = f64::NAN;
+        let val_cd_range_mi = f64::NAN;
+        let val_const65_mph_kwh_per_mile = f64::NAN;
+        let val_const60_mph_kwh_per_mile = f64::NAN;
+        let val_const55_mph_kwh_per_mile = f64::NAN;
+        let val_const45_mph_kwh_per_mile = f64::NAN;
+        let val_unadj_udds_kwh_per_mile = f64::NAN;
+        let val_unadj_hwy_kwh_per_mile = f64::NAN;
+        let val0_to60_mph = 9.9;
+        let val_ess_life_miles = f64::NAN;
+        let val_range_miles = f64::NAN;
+        let val_veh_base_cost = f64::NAN;
+        let val_msrp = f64::NAN;
         let props = RustPhysicalProperties::default();
-        let regen_a: f64 = 500.0;
-        let regen_b: f64 = 0.99;
-        let fc_peak_eff_override: Option<f64> = None;
-        let mc_peak_eff_override: Option<f64> = Some(-0.50); // bad input
+        let regen_a = 500.0;
+        let regen_b = 0.99;
+        let fc_peak_eff_override = None;
+        let mc_peak_eff_override = Some(-0.50); // bad input
         let small_motor_power_kw = 7.5;
         let large_motor_power_kw = 75.0;
         let fc_perc_out_array = FC_PERC_OUT_ARRAY.clone().to_vec();

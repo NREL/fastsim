@@ -6,6 +6,10 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
+import pathlib
+import tempfile
+import os
+
 import fastsim
 from fastsim.tests.test_coasting import make_coasting_plot
 
@@ -13,7 +17,20 @@ from fastsim.tests.test_coasting import make_coasting_plot
 DO_SHOW = False
 FRACTION_EXTENDED_TIME = 0.25
 ABSOLUTE_EXTENDED_TIME_S = 20.0 # 180.0
-OUTPUT_DIR = Path(__file__).parent.absolute() / 'test_output'
+THIS_DIR = pathlib.Path(__file__).parent.absolute()
+# If the current directory is the fastsim installation directory, then the
+# output directory should be temporary directory
+if "site-packages/fastsim" in str(pathlib.Path(THIS_DIR)):
+    OUTPUT_DIR_FULL = tempfile.TemporaryDirectory()
+    OUTPUT_DIR = OUTPUT_DIR_FULL.name
+    is_temp_dir = True
+# If the current directory is not the fastsim isntallation directory, find or
+# create "demo_output" directory to save outputs
+else:
+    OUTPUT_DIR = pathlib.Path(THIS_DIR) / "demo_output"
+    if not OUTPUT_DIR.exists():
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    is_temp_dir = False
 MIN_ECO_CRUISE_TARGET_SPEED_m_per_s = 8.0
 ECO_COAST_ALLOW_PASSING = False
 RESAMPLE_TO_1HZ = True
@@ -77,7 +94,7 @@ def make_save_file(prefix, postfix, save_dir=None, use_rust=False):
         prefix_addition = ''
         if use_rust:
             prefix_addition = '_rust'
-        return save_dir / f'{prefix}{prefix_addition}_{postfix}'
+        return os.path.join(save_dir, f'{prefix}{prefix_addition}_{postfix}')
     return None
 
 
@@ -303,7 +320,7 @@ def run_for_powertrain(save_dir, outputs, cyc_name, veh, powertrain, init_soc=No
 def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False, verbose=True, save_dir=None, maneuver=None):
     """
     """
-    if save_dir is not None:
+    if save_dir is not None and save_dir != OUTPUT_DIR:
         save_dir.mkdir(parents=True, exist_ok=True)
     cyc_names = [cycle_name] if cycle_name is not None else [
         "hwfet", "udds", "us06", "NREL13", "trapz", "trapz-x2", "stacked-trapz", "TSDC_tripno_42648_cycle",
@@ -339,7 +356,7 @@ def main(cycle_name=None, powertrain=None, do_show=None, use_rust=False, verbose
 
     keys = CSV_KEYS
     if save_dir is not None:
-        with open(save_dir / 'output.csv', 'w', newline='') as csvfile:
+        with open(os.path.join(save_dir, 'output.csv'), 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(keys)
             for item in outputs:
@@ -373,3 +390,6 @@ if __name__ == "__main__":
         print("PLATFORM  : PURE PYTHON")
     sys.stdout.flush()
     main(cycle_name, powertrain=powertrain, do_show=do_show, use_rust=use_rust, save_dir=OUTPUT_DIR)
+
+if is_temp_dir:
+    OUTPUT_DIR_FULL.cleanup()

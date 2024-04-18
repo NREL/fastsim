@@ -61,16 +61,29 @@ pub use fastsim_proc_macros as proc_macros;
 #[cfg_attr(feature = "pyo3", pyo3imports::pyfunction)]
 #[allow(clippy::vec_init_then_push)]
 pub fn enabled_features() -> Vec<String> {
+    #[allow(unused_mut)]
     let mut enabled = vec![];
 
-    #[cfg(feature = "full")]
-    enabled.push("full".into());
+    #[cfg(feature = "default")]
+    enabled.push("default".into());
+
+    #[cfg(feature = "bincode")]
+    enabled.push("bincode".into());
+
+    #[cfg(feature = "logging")]
+    enabled.push("logging".into());
 
     #[cfg(feature = "resources")]
     enabled.push("resources".into());
 
+    #[cfg(feature = "simdrivelabel")]
+    enabled.push("simdrivelabel".into());
+
     #[cfg(feature = "validation")]
     enabled.push("validation".into());
+
+    #[cfg(feature = "vehicle-import")]
+    enabled.push("vehicle-import".into());
 
     enabled
 }

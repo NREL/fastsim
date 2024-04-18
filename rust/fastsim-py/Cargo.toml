@@ -27,14 +27,20 @@ crate-type = ["cdylib"]
 include = ["../../NOTICE"]
 
 [features]
-default = ["full"]
-full = [
-    "dep:pyo3-log",
-    "fastsim-core/full",
+default = [
+    "fastsim-core/default",
+    "logging",
     "resources",
+    "simdrivelabel",
     "validation",
     "vehicle-import",
 ]
+bincode = ["fastsim-core/bincode"]
+logging = [
+    "dep:pyo3-log",
+    "fastsim-core/logging",
+]
 resources = ["fastsim-core/resources"]
+simdrivelabel = ["fastsim-core/simdrivelabel", "resources"]
 validation = ["fastsim-core/validation"]
 vehicle-import = ["fastsim-core/vehicle-import"]

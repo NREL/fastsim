@@ -6,6 +6,7 @@ import pickle
 import argparse
 import pandas as pd
 import numpy as np
+import numpy.typing as npt
 import json
 import time
 import matplotlib.pyplot as plt
@@ -48,20 +49,22 @@ import fastsim as fsim
 import fastsim.fastsimrust as fsr
 
 
-def get_error_val(model, test, time_steps):
-    """Returns time-averaged error for model and test signal.
-    Arguments:
-    ----------
-    model: array of values for signal from model
-    test: array of values for signal from test data
-    time_steps: array (or scalar for constant) of values for model time steps [s]
-    test: array of values for signal from test
+def get_error_val(
+    model: npt.NDArray[np.float64], 
+    test: npt.NDArray[np.float64], 
+    time_steps: npt.NDArray[np.float64]
+) -> float:
+    """
+    Returns time-averaged error for model and test signal.
 
-    Output:
-    -------
-    err: integral of absolute value of difference between model and
-    test per time"""
+    Args:
+        model (npt.NDArray[np.float64]): array of values for signal from model
+        test (npt.NDArray[np.float64]): array of values for signal from test data
+        time_steps (npt.NDArray[np.float64]): array (or scalar for constant) of values for model time steps [s]
 
+    Returns:
+        float: integral of absolute value of difference between model and test per time
+    """
     assert len(model) == len(test) == len(
         time_steps), f"{len(model)}, {len(test)}, {len(time_steps)}"
 
@@ -73,7 +76,7 @@ class ModelObjectives(object):
     Class for calculating eco-driving objectives
     """
 
-    # dictionary of bincode models to be simulated
+    # dictionary of json models to be simulated
     models: Dict[str, str]
 
     # dictionary of test data to calibrate against
@@ -124,20 +127,23 @@ class ModelObjectives(object):
     ) -> Union[
         Dict[str, Dict[str, float]],
         # or if return_mods is True
-        Dict[str, fsim.simdrive.SimDrive],
+        Tuple[Dict[str, fsim.simdrive.SimDrive], Dict[str, Dict[str, float]]]
     ]:
         """
         Calculate model errors w.r.t. test data for each element in dfs/models for each objective.
-        Arguments:
-        ----------
-            - sim_drives: dictionary with user-defined keys and SimDrive or SimDriveHot instances
-            - return_mods: if true, also returns dict of solved models
-            - plot: if true, plots objectives using matplotlib.pyplot
-            - plot_save_dir: directory in which to save plots.  If `None` (default), plots are not saved.   
-            - plot_perc_err: whether to include % error axes in plots
-            - show: whether to show matplotlib.pyplot plots
-            - fontsize: plot font size
-            - plotly: whether to generate plotly plots, which can be opened manually in a browser window
+
+        Args:
+            sim_drives (Dict[str, fsr.RustSimDrive  |  fsr.SimDriveHot]): dictionary with user-defined keys and SimDrive or SimDriveHot instances
+            return_mods (bool, optional): if true, also returns dict of solved models. Defaults to False.
+            plot (bool, optional): if true, plots objectives using matplotlib.pyplot. Defaults to False.
+            plot_save_dir (Optional[str], optional): directory in which to save plots. If None, plots are not saved. Defaults to None.
+            plot_perc_err (bool, optional): whether to include % error axes in plots. Defaults to False.
+            show (bool, optional): whether to show matplotlib.pyplot plots. Defaults to False.
+            fontsize (float, optional): plot font size. Defaults to 12.
+            plotly (bool, optional): whether to generate plotly plots, which can be opened manually in a browser window. Defaults to False.
+
+        Returns:
+            Objectives and optionally solved models
         """
         # TODO: should return type instead be `Dict[str, Dict[str, float]] | Tuple[Dict[str, Dict[str, float]], Dict[str, fsim.simdrive.SimDrive]]`
         # This would make `from typing import Union` unnecessary
@@ -256,13 +262,13 @@ class ModelObjectives(object):
         assert len(xs) == len(self.params), f"({len(xs)} != {len(self.params)}"
         paths = [fullpath.split(".") for fullpath in self.params]
         t0 = time.perf_counter()
-        # Load instances from bincode strings
+        # Load instances from json strings
         if not self.use_simdrivehot:
-            sim_drives = {key: fsr.RustSimDrive.from_bincode(
-                model_bincode) for key, model_bincode in self.models.items()}
+            sim_drives = {key: fsr.RustSimDrive.from_json(
+                model_json) for key, model_json in self.models.items()}
         else:
-            sim_drives = {key: fsr.SimDriveHot.from_bincode(
-                model_bincode) for key, model_bincode in self.models.items()}
+            sim_drives = {key: fsr.SimDriveHot.from_json(
+                model_json) for key, model_json in self.models.items()}
         # Update all model parameters
         for key in sim_drives.keys():
             sim_drives[key] = fsim.utils.set_attrs_with_path(
@@ -526,14 +532,14 @@ if PYMOO_AVAILABLE:
             columns=[param for param in problem.mod_obj.params],
         )
 
-        Path(save_path).mkdir(exist_ok=True, parents=True)
-        # with open(Path(save_path) / "pymoo_res.pickle", 'wb') as file:
-        #     pickle.dump(res, file)
+        if save_path is not None:
+            Path(save_path).mkdir(exist_ok=True, parents=True)
 
         res_df = pd.concat([x_df, f_df], axis=1)
         res_df['euclidean'] = (
             res_df.iloc[:, len(problem.mod_obj.params):] ** 2).sum(1).pow(1/2)
-        res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
+        if save_path is not None:
+            res_df.to_csv(Path(save_path) / "pymoo_res_df.csv", index=False)
 
         t1 = time.perf_counter()
         print(f"Elapsed time to run minimization: {t1-t0:.5g} s")
@@ -541,25 +547,85 @@ if PYMOO_AVAILABLE:
         return res, res_df
 
 
-def get_parser() -> argparse.ArgumentParser:
+def get_parser(
+    def_description:str="Program for calibrating fastsim models.",
+    def_p:int=4,
+    def_n_max_gen:int=500,
+    def_pop_size:int=12,
+    def_save_path:Optional[str]="pymoo_res"
+
+) -> argparse.ArgumentParser:
     """
     Generate parser for optimization hyper params and misc. other params
+
+    Args:
+        def_p (int, optional): default number of processes. Defaults to 4.
+        def_n_max_gen (int, optional): max allowed generations. Defaults to 500.
+        def_pop_size (int, optional): default population size. Defaults to 12.
+        def_save_path (str, optional): default save path.  Defaults to `pymoo_res`.
+
+    Returns:
+        argparse.ArgumentParser: _description_
     """
-    parser = argparse.ArgumentParser(description='...')
-    parser.add_argument('-p', '--processes', type=int,
-                        default=4, help="Number of pool processes.")
-    parser.add_argument('--n-max-gen', type=int, default=500,
-                        help="PyMOO termination criterion: n_max_gen.")
-    parser.add_argument('--pop-size', type=int, default=12,
-                        help="PyMOO population size in each generation.")
-    parser.add_argument('--skip-minimize', action="store_true",
-                        help="If provided, load previous results.")
-    parser.add_argument('--save-path', type=str, default="pymoo_res",
-                        help="File location to save results.")
-    parser.add_argument('--show', action="store_true",
-                        help="If provided, shows plots.")
-    parser.add_argument("--make-plots", action="store_true",
-                        help="Generates plots, if provided.")
-    parser.add_argument("--use-simdrivehot", action="store_true",
-                        help="Use fsr.SimDriveHot rather than fsr.RustSimDrive.")
+    parser = argparse.ArgumentParser(description=def_description)
+    parser.add_argument(
+        '-p', 
+        '--processes', 
+        type=int,
+        default=def_p, 
+        help=f"Number of pool processes. Defaults to {def_p}"
+    )
+    parser.add_argument(
+        '--n-max-gen', 
+        type=int, 
+        default=def_n_max_gen,
+        help=f"PyMOO termination criterion: n_max_gen. Defaults to {def_n_max_gen}"
+    )
+    parser.add_argument(
+        '--xtol',
+        type=float,
+        default=DMOT().x.termination.tol,
+        help=f"PyMOO termination criterion: xtol. Defaluts to {DMOT().x.termination.tol}"
+    )
+    parser.add_argument(
+        '--ftol',
+        type=float,
+        default=DMOT().f.termination.tol,
+        help=f"PyMOO termination criterion: ftol. Defaults to {DMOT().f.termination.tol}"
+    )
+    parser.add_argument(
+        '--pop-size', 
+        type=int, 
+        default=def_pop_size,
+        help=f"PyMOO population size in each generation. Defaults to {def_pop_size}"
+    )
+    parser.add_argument(
+        '--skip-minimize', 
+        action="store_true",
+        help="If provided, load previous results."
+    )
+    parser.add_argument(
+        '--save-path', 
+        type=str, 
+        default=def_save_path,               
+        help="File location to save results dataframe with rows of parameter and corresponding" 
+            + " objective values and any optional plots." 
+            + (" If not provided, results are not saved" if def_save_path is None else "")
+    )
+    parser.add_argument(
+        '--show', 
+        action="store_true",
+        help="If provided, shows plots."
+    )
+    parser.add_argument(
+        "--make-plots", 
+        action="store_true",
+        help="Generates plots, if provided."
+    )
+    parser.add_argument(
+        "--use-simdrivehot", 
+        action="store_true",
+        help="Use fsr.SimDriveHot rather than fsr.RustSimDrive."
+    )
+    
     return parser

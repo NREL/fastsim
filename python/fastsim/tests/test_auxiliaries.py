@@ -48,7 +48,7 @@ class test_auxiliaries(unittest.TestCase):
         self.assertAlmostEqual(0, b_lbf__mph)
         self.assertAlmostEqual(0.020817239083920212, c_lbf__mph2)
 
-    @pytest.mark.skipif("full" not in fastsimrust.enabled_features(), reason='requires "full" feature')
+    @pytest.mark.skipif("default" not in fastsimrust.enabled_features(), reason='requires "default" feature')
     def test_abc_to_drag_coeffs_rust_port(self):
         from fastsim.fastsimrust import abc_to_drag_coeffs
         with np.errstate(divide='ignore'):

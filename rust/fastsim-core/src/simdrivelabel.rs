@@ -1,4 +1,5 @@
 //! Module containing classes and methods for calculating label fuel economy.
+#![cfg(feature = "simdrivelabel")]
 
 use ndarray::Array;
 use serde::Serialize;
@@ -144,6 +145,7 @@ pub fn make_accel_trace_py() -> RustCycle {
 }
 
 pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> anyhow::Result<f64> {
+    #[cfg(feature = "logging")]
     log::debug!("running `sim_drive_accel`");
     sd_accel.sim_drive_accel(None, None)?;
     if sd_accel.mph_ach.iter().any(|&x| x >= 60.) {
@@ -154,6 +156,7 @@ pub fn get_net_accel(sd_accel: &mut RustSimDrive, scenario_name: &String) -> any
             false,
         ))
     } else {
+        #[cfg(feature = "logging")]
         log::warn!("vehicle '{}' never achieves 60 mph", scenario_name);
         Ok(1e3)
     }
@@ -167,7 +170,6 @@ pub fn get_net_accel_py(sd_accel: &mut RustSimDrive, scenario_name: &str) -> any
     Ok(result)
 }
 
-#[cfg(feature = "full")]
 pub fn get_label_fe(
     veh: &vehicle::RustVehicle,
     full_detail: Option<bool>,
@@ -186,14 +188,14 @@ pub fn get_label_fe(
     // Returns label fuel economy values as a struct and (optionally)
     // simdrive::RustSimDrive objects.
 
-    let sim_params: RustSimDriveParams = RustSimDriveParams::default();
-    let props: RustPhysicalProperties = RustPhysicalProperties::default();
-    let long_params: RustLongParams = RustLongParams::default();
+    let sim_params = RustSimDriveParams::default();
+    let props = RustPhysicalProperties::default();
+    let long_params = RustLongParams::default();
 
-    let mut cyc: HashMap<&str, RustCycle> = HashMap::new();
-    let mut sd: HashMap<&str, RustSimDrive> = HashMap::new();
-    let mut out: LabelFe = LabelFe::default();
-    let mut max_trace_miss_in_mph: f64 = 0.0;
+    let mut cyc = HashMap::new();
+    let mut sd = HashMap::new();
+    let mut out = LabelFe::default();
+    let mut max_trace_miss_in_mph = 0.0;
 
     out.veh = veh.clone();
 
@@ -218,7 +220,7 @@ pub fn get_label_fe(
     out.trace_miss_speed_mph = max_trace_miss_in_mph;
 
     // find year-based adjustment parameters
-    let adj_params: &AdjCoef = if veh.veh_year < 2017 {
+    let adj_params = if veh.veh_year < 2017 {
         &long_params.ld_fe_adj_coef.adj_coef_map["2008"]
     } else {
         // assume 2017 coefficients are valid
@@ -308,7 +310,7 @@ pub fn get_label_fe(
         out.uf = 0.;
     } else {
         // PHEV
-        let phev_calcs: LabelFePHEV =
+        let phev_calcs =
             get_label_fe_phev(veh, &mut sd, &long_params, adj_params, &sim_params, &props)?;
         out.phev_calcs = Some(phev_calcs.clone());
 
@@ -384,7 +386,6 @@ pub fn get_label_fe(
     }
 }
 
-#[cfg(feature = "full")]
 #[cfg(feature = "pyo3")]
 #[pyfunction(name = "get_label_fe")]
 /// pyo3 version of [get_label_fe]
@@ -393,7 +394,7 @@ pub fn get_label_fe_py(
     full_detail: Option<bool>,
     verbose: Option<bool>,
 ) -> anyhow::Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
-    let result: (LabelFe, Option<HashMap<&str, RustSimDrive>>) =
+    let result =
         get_label_fe(veh, full_detail, verbose)?;
     Ok(result)
 }
@@ -438,7 +439,7 @@ pub fn get_label_fe_phev(
         // By assuming that the battery SOC depletion per mile is constant across cycles,
         // the first cycle can be extrapolated until charge sustaining kicks in.
         sd_val.sim_drive(Some(veh.max_soc), None)?;
-        let mut phev_calc: PHEVCycleCalc = PHEVCycleCalc::default();
+        let mut phev_calc = PHEVCycleCalc::default();
 
         // charge depletion cycle has already been simulated
         // charge depletion battery kW-hr
@@ -462,7 +463,7 @@ pub fn get_label_fe_phev(
 
         // utility factor calculation for last charge depletion iteration and transition iteration
         // ported from excel
-        let interp_x_vals: Array1<f64> =
+        let interp_x_vals =
             Array::range(0.0, phev_calc.cd_cycs.ceil() + 1.0, 1.0) * sd_val.dist_mi.sum();
         phev_calc.lab_iter_uf = interp_x_vals
             .iter()
@@ -483,7 +484,7 @@ pub fn get_label_fe_phev(
 
         // charge sustaining
         // the 0.01 is here to be consistent with Excel
-        let init_soc: f64 = sd_val.veh.min_soc + 0.01;
+        let init_soc = sd_val.veh.min_soc + 0.01;
         sd_val.sim_drive(Some(init_soc), None)?;
         // charge sustaining fuel gallons
         phev_calc.cs_fs_gal = sd_val.fs_kwh_out_ach.sum() / props.kwh_per_gge;
@@ -495,7 +496,7 @@ pub fn get_label_fe_phev(
         phev_calc.cs_ess_kwh = sd_val.ess_dischg_kj;
         phev_calc.cs_ess_kwh_per_mi = sd_val.battery_kwh_per_mi;
 
-        let lab_iter_uf_diff: Array1<f64> = diff(&phev_calc.lab_iter_uf);
+        let lab_iter_uf_diff = diff(&phev_calc.lab_iter_uf);
         phev_calc.lab_uf_gpm = Array::from_vec(vec![
             phev_calc.trans_fs_gal * lab_iter_uf_diff.last().unwrap(),
             phev_calc.cs_fs_gal * (1.0 - phev_calc.lab_iter_uf.last().unwrap()),
@@ -527,14 +528,14 @@ pub fn get_label_fe_phev(
             / (phev_calc.lab_uf / phev_calc.cd_adj_mpg
                 + (1.0 - phev_calc.lab_uf) / phev_calc.cs_mpg);
 
-        let mut lab_iter_kwh_per_mi_vals: Vec<f64> = Vec::new();
+        let mut lab_iter_kwh_per_mi_vals = Vec::new();
         lab_iter_kwh_per_mi_vals.push(0.0);
         lab_iter_kwh_per_mi_vals
             .extend(vec![phev_calc.cd_ess_kwh_per_mi; phev_calc.cd_cycs.floor() as usize].iter());
         lab_iter_kwh_per_mi_vals.push(phev_calc.trans_ess_kwh_per_mi);
         lab_iter_kwh_per_mi_vals.push(0.0);
         phev_calc.lab_iter_kwh_per_mi = Array::from_vec(lab_iter_kwh_per_mi_vals);
-        let mut vals: Vec<f64> = Vec::new();
+        let mut vals = Vec::new();
         vals.push(0.0);
         vals.extend(
             (&phev_calc
@@ -549,8 +550,8 @@ pub fn get_label_fe_phev(
         phev_calc.lab_kwh_per_mi =
             phev_calc.lab_iter_uf_kwh_per_mi.sum() / phev_calc.lab_iter_uf.max()?;
 
-        let mut adj_iter_mpgge_vals: Vec<f64> = vec![0.0; phev_calc.cd_cycs.floor() as usize];
-        let mut adj_iter_kwh_per_mi_vals: Vec<f64> = vec![0.0; phev_calc.lab_iter_kwh_per_mi.len()];
+        let mut adj_iter_mpgge_vals = vec![0.0; phev_calc.cd_cycs.floor() as usize];
+        let mut adj_iter_kwh_per_mi_vals = vec![0.0; phev_calc.lab_iter_kwh_per_mi.len()];
         if *key == "udds" {
             adj_iter_mpgge_vals.push(max(
                 1.0 / (adj_params.city_intercept
@@ -652,7 +653,7 @@ pub fn get_label_fe_phev(
             })
             .collect();
 
-        let adj_iter_uf_diff: Array1<f64> = diff(&phev_calc.adj_iter_uf);
+        let adj_iter_uf_diff = diff(&phev_calc.adj_iter_uf);
         phev_calc.adj_iter_uf_gpm = vec![0.0; phev_calc.cd_cycs.floor() as usize];
         phev_calc.adj_iter_uf_gpm.push(
             (1.0 / phev_calc.adj_iter_mpgge[phev_calc.adj_iter_mpgge.len() - 2])
@@ -723,13 +724,12 @@ pub fn get_label_fe_phev_py(
 }
 
 #[cfg(test)]
-#[cfg(feature = "full")]
 mod simdrivelabel_tests {
     use super::*;
 
     #[test]
     fn test_get_label_fe_conv() {
-        let veh: vehicle::RustVehicle = vehicle::RustVehicle::mock_vehicle();
+        let veh = vehicle::RustVehicle::mock_vehicle();
         let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
         // For some reason, RustVehicle::mock_vehicle() != RustVehicle::mock_vehicle()
         // Therefore, veh field in both structs replaced with Default for comparison purposes
@@ -738,7 +738,7 @@ mod simdrivelabel_tests {
         label_fe.veh = ref_veh.clone();
         // println!("Calculated net accel: {}", label_fe.net_accel);
 
-        let label_fe_truth: LabelFe = LabelFe {
+        let label_fe_truth = LabelFe {
             veh: ref_veh,
             adj_params: RustLongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
             lab_udds_mpgge: 32.47503766676829,
@@ -938,7 +938,7 @@ mod simdrivelabel_tests {
         );
         label_fe.net_accel = 1000.;
 
-        let udds: PHEVCycleCalc = PHEVCycleCalc {
+        let udds = PHEVCycleCalc {
             cd_ess_kwh: 13.799999999999999,
             cd_ess_kwh_per_mi: 0.1670807863534209,
             cd_fs_gal: 0.0,
@@ -1032,7 +1032,7 @@ mod simdrivelabel_tests {
             total_cd_miles: 82.59477526523773,
         };
 
-        let hwy: PHEVCycleCalc = PHEVCycleCalc {
+        let hwy = PHEVCycleCalc {
             cd_ess_kwh: 13.799999999999999,
             cd_ess_kwh_per_mi: 0.19912462736394723,
             cd_fs_gal: 0.0,
@@ -1103,13 +1103,13 @@ mod simdrivelabel_tests {
             total_cd_miles: 69.30333119859274,
         };
 
-        let phev_calcs: LabelFePHEV = LabelFePHEV {
+        let phev_calcs = LabelFePHEV {
             regen_soc_buffer: 0.00957443430586049,
             udds,
             hwy,
         };
 
-        let label_fe_truth: LabelFe = LabelFe {
+        let label_fe_truth = LabelFe {
             veh: vehicle::RustVehicle::default(),
             adj_params: RustLongParams::default().ld_fe_adj_coef.adj_coef_map["2008"].clone(),
             lab_udds_mpgge: 370.06411942132064,
@@ -1150,15 +1150,4 @@ mod simdrivelabel_tests {
         );
         assert!(label_fe.approx_eq(&label_fe_truth, tol));
     }
-}
-
-#[cfg(feature = "full")]
-#[cfg(feature = "pyo3")]
-#[pyfunction(name = "get_label_fe_conv")]
-/// pyo3 version of [get_label_fe_conv]
-pub fn get_label_fe_conv_py() -> LabelFe {
-    let veh: vehicle::RustVehicle = vehicle::RustVehicle::mock_vehicle();
-    let (mut label_fe, _) = get_label_fe(&veh, None, None).unwrap();
-    label_fe.veh = vehicle::RustVehicle::default();
-    label_fe
 }

@@ -5,7 +5,7 @@ This module demonstrates the vehicle import API
 # %%
 from fastsim import fastsimrust
 
-REQUIRED_FEATURE = "full"
+REQUIRED_FEATURE = "vehicle-import"
 if __name__ == "__main__" and REQUIRED_FEATURE not in fastsimrust.enabled_features():
     raise NotImplementedError(
         f'Feature "{REQUIRED_FEATURE}" is required to run this demo'
@@ -18,15 +18,29 @@ import os, pathlib
 import fastsim.fastsimrust as fsr
 import fastsim.utils as utils
 
+import tempfile
+
 # for testing demo files, false when running automatic tests
 SHOW_PLOTS = utils.show_plots()
+SAVE_OUTPUT = SHOW_PLOTS
 
 # %%
-# Setup some directories
-THIS_DIR = pathlib.Path(__file__).parent.absolute()
-OUTPUT_DIR = pathlib.Path(THIS_DIR) / "test_output"
-if not OUTPUT_DIR.exists():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+if SHOW_PLOTS:
+    # Setup some directories
+    THIS_DIR = pathlib.Path(__file__).parent.absolute()
+    # If the current directory is the fastsim installation directory, then the
+    # output directory should be temporary directory
+    if "site-packages/fastsim" in str(pathlib.Path(THIS_DIR)):
+        OUTPUT_DIR_FULL = tempfile.TemporaryDirectory()
+        OUTPUT_DIR = OUTPUT_DIR_FULL.name
+        is_temp_dir = True
+    # If the current directory is not the fastsim installation directory, find or
+    # create "demo_output" directory to save outputs
+    else:
+        OUTPUT_DIR = pathlib.Path(THIS_DIR) / "demo_output"
+        if not OUTPUT_DIR.exists():
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        is_temp_dir = False
 
 # %%
 # List available options for the given year / make / model
@@ -75,7 +89,8 @@ other_inputs = fsr.OtherVehicleInputs(
 
 rv = fsr.vehicle_import_by_id_and_year(data.id, int(year), other_inputs)
 
-rv.to_file(OUTPUT_DIR / "demo-vehicle.yaml")
+if SAVE_OUTPUT:
+    rv.to_file(OUTPUT_DIR / "demo-vehicle.yaml")
 
 # %%
 # Alternative API for importing all vehicles at once

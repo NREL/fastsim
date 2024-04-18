@@ -240,9 +240,9 @@ pub fn main() -> anyhow::Result<()> {
 
     // TODO: put in logic here for loading vehicle for adopt-hd
     // with same file format as regular adopt and same outputs retured
-    let is_adopt: bool = fastsim_api.adopt.is_some() && fastsim_api.adopt.unwrap();
-    let mut fc_pwr_out_perc: Option<Vec<f64>> = None;
-    let mut hd_h2_diesel_ice_h2share: Option<Vec<f64>> = None;
+    let is_adopt = fastsim_api.adopt.is_some() && fastsim_api.adopt.unwrap();
+    let mut fc_pwr_out_perc = None;
+    let mut hd_h2_diesel_ice_h2share = None;
     let veh = if let Some(veh_string) = fastsim_api.veh {
         if is_adopt || is_adopt_hd {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
@@ -401,8 +401,8 @@ impl SerdeAPI for ParsedValue {}
 fn json_rewrite(x: String) -> anyhow::Result<(String, Option<Vec<f64>>, Option<Vec<f64>>)> {
     let adoptstring = x;
 
-    let mut fc_pwr_out_perc: Option<Vec<f64>> = None;
-    let mut hd_h2_diesel_ice_h2share: Option<Vec<f64>> = None;
+    let mut fc_pwr_out_perc = None;
+    let mut hd_h2_diesel_ice_h2share = None;
 
     let mut parsed_data: Value = serde_json::from_str(&adoptstring)?;
 
@@ -440,7 +440,7 @@ fn json_rewrite(x: String) -> anyhow::Result<(String, Option<Vec<f64>>, Option<V
         parsed_data["forceAuxOnFC"] = json!(force_aux_on_fc_value != 0)
     }
 
-    let mut is_rear_wheel_drive: bool = false;
+    let mut is_rear_wheel_drive = false;
     let fwd1rwd2awd3_raw = &parsed_data["fwd1rwd2awd3"];
     if fwd1rwd2awd3_raw.is_i64() {
         let fwd1rwd2awd3_value = fwd1rwd2awd3_raw.as_i64().unwrap();
