@@ -14,3 +14,4 @@ dist
 *pymoo_res*
 *env*/
 rust/
+*.dat
