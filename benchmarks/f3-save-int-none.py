@@ -4,17 +4,14 @@ from memory_profiler import profile
 
 @profile(precision=3)
 def build_and_run_sim_drive():
-    sds = []
-    for _ in range(10):
-        veh = fsim.Vehicle.from_file(
-            # TODO: figure out why `str` is needed here
-            str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
-        )
-        veh.save_interval = None
-        cyc = fsim.Cycle.from_resource("cycles/udds.csv")
-        sd = fsim.SimDrive(veh, cyc)
-        sd.walk()
-        sds.append(sd)
+    veh = fsim.Vehicle.from_file(
+        # TODO: figure out why `str` is needed here
+        str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
+    )
+    veh.save_interval = None
+    cyc = fsim.Cycle.from_resource("cycles/udds.csv")
+    sd = fsim.SimDrive(veh, cyc)
+    sd.walk()
 
 if __name__ == "__main__":
     build_and_run_sim_drive()
