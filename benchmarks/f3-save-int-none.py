@@ -1,7 +1,8 @@
+#!../fastsim-3-venv/bin/python
 import fastsim as fsim
 from memory_profiler import profile
 
-@profile
+@profile(precision=3)
 def build_and_run_sim_drive():
     veh = fsim.Vehicle.from_file(
         # TODO: figure out why `str` is needed here
@@ -16,15 +17,16 @@ if __name__ == "__main__":
     build_and_run_sim_drive()
 
 # `python -m memory_profiler f3-save-int-none.py` outputs:
-# Filename: f3-save-int-none.py
+# Filename: /Users/cbaker2/Documents/GitHub/fastsim-3/benchmarks/./f3-save-int-none.py
 # Line #    Mem usage    Increment  Occurrences   Line Contents
 # =============================================================
-     # 4     60.6 MiB     60.6 MiB           1   @profile
-     # 5                                         def build_and_run_sim_drive():
-     # 6     61.2 MiB      0.6 MiB           2       veh = fsim.Vehicle.from_file(
-     # 7     60.6 MiB      0.0 MiB           1           str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
-     # 8                                             )
-     # 9     61.2 MiB      0.0 MiB           1       veh.save_interval = None
-    # 10     61.4 MiB      0.2 MiB           1       cyc = fsim.Cycle.from_resource("cycles/udds.csv")
-    # 11     61.5 MiB      0.1 MiB           1       sd = fsim.SimDrive(veh, cyc)
-    # 12     61.5 MiB      0.0 MiB           1       sd.walk()
+#      5   61.203 MiB   61.203 MiB           1   @profile(precision=3)
+#      6                                         def build_and_run_sim_drive():
+#      7   61.766 MiB    0.562 MiB           2       veh = fsim.Vehicle.from_file(
+#      8                                                 # TODO: figure out why `str` is needed here
+#      9   61.203 MiB    0.000 MiB           1           str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
+#     10                                             )
+#     11   61.766 MiB    0.000 MiB           1       veh.save_interval = None
+#     12   61.938 MiB    0.172 MiB           1       cyc = fsim.Cycle.from_resource("cycles/udds.csv")
+#     13   62.031 MiB    0.094 MiB           1       sd = fsim.SimDrive(veh, cyc)
+#     14   62.031 MiB    0.000 MiB           1       sd.walk()
