@@ -1,0 +1,9 @@
+[package]
+name = "fastsim-cli"
+version = "0.1.0"
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fastsim-core = { workspace = true }
