@@ -3,7 +3,9 @@
 members = [
     "fastsim-core",                     # pure rust core with optional pyo3 feature
     "fastsim-py",                       # python module exposing fastsim-core
+    "fastsim-cli",                      # CLI apps
     "fastsim-core/fastsim-proc-macros",
+    "fastsim-cli",
 ]
 resolver = "2"
 
@@ -18,6 +20,8 @@ opt-level = 0
 opt-level = 3
 
 [workspace.dependencies]
+# TODO: uncomment and correct version `version = "~0.0.1"`
+fastsim-core = { path = "fastsim-core" }
 anyhow = "1.0.71"
 pyo3 = "0.19"
 pyo3-log = "*"

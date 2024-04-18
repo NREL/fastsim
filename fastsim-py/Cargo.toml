@@ -7,7 +7,7 @@ edition = { workspace = true }
 
 [dependencies]
 fastsim-2 = { workspace = true }
-fastsim-core = { path = "../fastsim-core", features = ["pyo3"] }
+fastsim-core = { workspace = true, features = ["pyo3"] }
 pyo3 = { workspace = true, features = ["extension-module", "anyhow"] }
 pyo3-log = { workspace = true }
 

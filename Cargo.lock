@@ -475,6 +475,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "658bd65b1cf4c852a3cc96f18a8ce7b5640f6b703f905c7d74532294c2a63984"
 
 [[package]]
+name = "fastsim-cli"
+version = "0.1.0"
+dependencies = [
+ "fastsim-core 1.0.0",
+]
+
+[[package]]
 name = "fastsim-core"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
