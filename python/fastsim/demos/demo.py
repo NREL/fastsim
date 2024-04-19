@@ -14,23 +14,50 @@ sns.set_theme()
 
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
 
+# %% [markdown]
+
+# `fastsim3` -- load vehicle and cycle, build simulation, and run 
+# %%
+
+# load 2012 Ford Fusion from file
 veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
 )
+
+# Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
 veh.save_interval = 1
+
+# load cycle from file
 cyc = fsim.Cycle.from_resource("cycles/udds.csv")
+
+# instantiate `SimDrive` simulation object
 sd = fsim.SimDrive(veh, cyc)
 
+# simulation start time
 t0 = time.perf_counter()
+# run simulation
 sd.walk()
+# simulation end time
 t1 = time.perf_counter()
 print(f"fastsim-3 `sd.walk()` elapsed time: {t1-t0:.2e} s")
+
+# %% [markdown]  
+
+# `fastsim-2` benchmarking
+
+# %%
 
 sd2 = sd.to_fastsim2()
 t0 = time.perf_counter()
 sd2.sim_drive()
 t1 = time.perf_counter()
 print(f"fastsim-2 `sd.walk()` elapsed time: {t1-t0:.2e} s")
+
+# %% [markdown]
+
+# Visualize results
+
+# %%
 
 if SHOW_PLOTS:
     figsize_3_stacked = (10, 9)
@@ -129,6 +156,13 @@ if SHOW_PLOTS:
         np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
         np.array(sd2.fs_cumu_mj_out_ach.tolist()),
         label="f2 fuel",
+    )
+    ax[0].text(
+        200, 
+        13, 
+        "Discrepancy mostly due to switch to linear interpolation\n" + 
+        "from left-hand interpolation resulting in more accurate\n" + 
+        "handling of idling conditions.",
     )
     ax[0].set_ylabel("FC Energy [MJ]")
     ax[0].legend()
