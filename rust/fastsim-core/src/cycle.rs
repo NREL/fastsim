@@ -636,7 +636,8 @@ pub struct RustCycle {
 impl SerdeAPI for RustCycle {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
-    const CACHE_FOLDER: &'static str = &"cycles";
+    const RESOURCE_PREFIX: &'static str = "cycles";
+    const CACHE_FOLDER: &'static str = "cycles";
 
     fn init(&mut self) -> anyhow::Result<()> {
         self.init_checks()
