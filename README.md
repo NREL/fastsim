@@ -1,9 +1,15 @@
 ![FASTSim Logo](https://www.nrel.gov/transportation/assets/images/icon-fastsim.jpg)
 
 # Description
-This is the python/rust flavor of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html), which is based on the original Excel implementation. Effort will be made to keep the core methodology between this software and the Excel flavor in line with one another. 
-
-All classes and methods are self-documented.  
+This is the 'fastim-3' version of [NREL's FASTSim](https://www.nrel.gov/transportation/fastsim.html). It introduces numerous new enhancements and features, including:
+- ~10x faster! -- when setting `save_interval` to `None`, which means only the state at the last time step, which includes fuel consumption and/or battery depletion, among other useful cumulative state variables.  
+- Roughly ~60% reduction in memory consumption (~160 mb in [`fastsim-2`](https://github.com/NREL/fastsim) v. 60 mb in [`fastsim-3`](https://github.com/NREL/fastsim/tree/fastsim-3)
+- object-oriented, hierarchical model structure
+- file formats that are more robust and more human readable
+- backwards compatibility with `fastsim-2`
+- flexible data structures to allow for future model types
+- flexible model interfacing (e.g. multiple folder/file formats for reading and/or writing data)
+- more accurate interpolation methods
 
 # Installation
 
@@ -28,7 +34,7 @@ There is some variation based on your Operating System:
     1. Create: `python -m venv fastsim-venv` -- name is user decision
     1. Activate: `fastsim-venv/Scripts/activate.bat`
 
-## FASTSim
+## FASTSim-3
 ### Via PyPI
 In an active Python environment created above, run `pip install fastsim`.
 

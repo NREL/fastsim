@@ -1,0 +1,2836 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Python - FASTSim Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="fastsim-doc.html"><strong aria-hidden="true">2.</strong> Documentation</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="python-doc.html" class="active"><strong aria-hidden="true">2.1.</strong> Python</a></li><li class="chapter-item "><a href="rust-doc.html"><strong aria-hidden="true">2.2.</strong> Rust</a></li></ol></li><li class="chapter-item "><a href="how-to-update.html"><strong aria-hidden="true">3.</strong> How to Update This Book</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">FASTSim Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h1>
+<ul>
+<li><a href="#fastsim">fastsim</a>
+<ul>
+<li><a href="#fastsim.package_root">package_root</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.cycle">fastsim.cycle</a>
+<ul>
+<li><a href="#fastsim.cycle.CycleCache">CycleCache</a>
+<ul>
+<li><a href="#fastsim.cycle.CycleCache.interp_grade">interp_grade</a></li>
+<li><a href="#fastsim.cycle.CycleCache.interp_elevation">interp_elevation</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.cycle.Cycle">Cycle</a>
+<ul>
+<li><a href="#fastsim.cycle.Cycle.from_file">from_file</a></li>
+<li><a href="#fastsim.cycle.Cycle.from_dict">from_dict</a></li>
+<li><a href="#fastsim.cycle.Cycle.get_numba_cyc">get_numba_cyc</a></li>
+<li><a href="#fastsim.cycle.Cycle.build_cache">build_cache</a></li>
+<li><a href="#fastsim.cycle.Cycle.dt_s_at_i">dt_s_at_i</a></li>
+<li><a href="#fastsim.cycle.Cycle.delta_elev_m">delta_elev_m</a></li>
+<li><a href="#fastsim.cycle.Cycle.__len__">__len__</a></li>
+<li><a href="#fastsim.cycle.Cycle.to_dict">to_dict</a></li>
+<li><a href="#fastsim.cycle.Cycle.reset_orphaned">reset_orphaned</a></li>
+<li><a href="#fastsim.cycle.Cycle.copy">copy</a></li>
+<li><a href="#fastsim.cycle.Cycle.average_grade_over_range">average_grade_over_range</a></li>
+<li><a href="#fastsim.cycle.Cycle.calc_distance_to_next_stop_from">calc_distance_to_next_stop_from</a></li>
+<li><a href="#fastsim.cycle.Cycle.modify_by_const_jerk_trajectory">modify_by_const_jerk_trajectory</a></li>
+<li><a href="#fastsim.cycle.Cycle.modify_with_braking_trajectory">modify_with_braking_trajectory</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.cycle.LegacyCycle">LegacyCycle</a>
+<ul>
+<li><a href="#fastsim.cycle.LegacyCycle.__init__">__init__</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.cycle.cyc_equal">cyc_equal</a></li>
+<li><a href="#fastsim.cycle.to_microtrips">to_microtrips</a></li>
+<li><a href="#fastsim.cycle.make_cycle">make_cycle</a></li>
+<li><a href="#fastsim.cycle.equals">equals</a></li>
+<li><a href="#fastsim.cycle.concat">concat</a></li>
+<li><a href="#fastsim.cycle.resample">resample</a></li>
+<li><a href="#fastsim.cycle.clip_by_times">clip_by_times</a></li>
+<li><a href="#fastsim.cycle.accelerations">accelerations</a></li>
+<li><a href="#fastsim.cycle.peak_acceleration">peak_acceleration</a></li>
+<li><a href="#fastsim.cycle.peak_deceleration">peak_deceleration</a></li>
+<li><a href="#fastsim.cycle.calc_constant_jerk_trajectory">calc_constant_jerk_trajectory</a></li>
+<li><a href="#fastsim.cycle.accel_for_constant_jerk">accel_for_constant_jerk</a></li>
+<li><a href="#fastsim.cycle.speed_for_constant_jerk">speed_for_constant_jerk</a></li>
+<li><a href="#fastsim.cycle.dist_for_constant_jerk">dist_for_constant_jerk</a></li>
+<li><a href="#fastsim.cycle.detect_passing">detect_passing</a></li>
+<li><a href="#fastsim.cycle.average_step_speeds">average_step_speeds</a></li>
+<li><a href="#fastsim.cycle.average_step_speed_at">average_step_speed_at</a></li>
+<li><a href="#fastsim.cycle.trapz_step_distances">trapz_step_distances</a></li>
+<li><a href="#fastsim.cycle.trapz_step_start_distance">trapz_step_start_distance</a></li>
+<li><a href="#fastsim.cycle.trapz_distance_for_step">trapz_distance_for_step</a></li>
+<li><a href="#fastsim.cycle.trapz_distance_over_range">trapz_distance_over_range</a></li>
+<li><a href="#fastsim.cycle.extend_cycle">extend_cycle</a></li>
+<li><a href="#fastsim.cycle.create_dist_and_target_speeds_by_microtrip">create_dist_and_target_speeds_by_microtrip</a></li>
+<li><a href="#fastsim.cycle.copy_cycle">copy_cycle</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.vehicle_base">fastsim.vehicle_base</a></li>
+<li><a href="#fastsim.resample">fastsim.resample</a>
+<ul>
+<li><a href="#fastsim.resample.resample">resample</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.auxiliaries">fastsim.auxiliaries</a>
+<ul>
+<li><a href="#fastsim.auxiliaries.R_air">R_air</a></li>
+<li><a href="#fastsim.auxiliaries.abc_to_drag_coeffs">abc_to_drag_coeffs</a></li>
+<li><a href="#fastsim.auxiliaries.drag_coeffs_to_abc">drag_coeffs_to_abc</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.simdrivelabel">fastsim.simdrivelabel</a>
+<ul>
+<li><a href="#fastsim.simdrivelabel.get_label_fe">get_label_fe</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.simdrive">fastsim.simdrive</a>
+<ul>
+<li><a href="#fastsim.simdrive.SimDriveParams">SimDriveParams</a>
+<ul>
+<li><a href="#fastsim.simdrive.SimDriveParams.from_dict">from_dict</a></li>
+<li><a href="#fastsim.simdrive.SimDriveParams.__init__">__init__</a></li>
+<li><a href="#fastsim.simdrive.SimDriveParams.to_rust">to_rust</a></li>
+<li><a href="#fastsim.simdrive.SimDriveParams.reset_orphaned">reset_orphaned</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.simdrive.copy_sim_params">copy_sim_params</a></li>
+<li><a href="#fastsim.simdrive.sim_params_equal">sim_params_equal</a></li>
+<li><a href="#fastsim.simdrive.SimDrive">SimDrive</a>
+<ul>
+<li><a href="#fastsim.simdrive.SimDrive.__init__">__init__</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.gap_to_lead_vehicle_m">gap_to_lead_vehicle_m</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.sim_drive">sim_drive</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.init_for_step">init_for_step</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.sim_drive_walk">sim_drive_walk</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.activate_eco_cruise">activate_eco_cruise</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.sim_drive_step">sim_drive_step</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.solve_step">solve_step</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_misc_calcs">set_misc_calcs</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_comp_lims">set_comp_lims</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_power_calcs">set_power_calcs</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_ach_speed">set_ach_speed</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_hybrid_cont_calcs">set_hybrid_cont_calcs</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_fc_forced_state">set_fc_forced_state</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_hybrid_cont_decisions">set_hybrid_cont_decisions</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_fc_power">set_fc_power</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.set_post_scalars">set_post_scalars</a></li>
+<li><a href="#fastsim.simdrive.SimDrive.to_rust">to_rust</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.simdrive.copy_sim_drive">copy_sim_drive</a></li>
+<li><a href="#fastsim.simdrive.sim_drive_equal">sim_drive_equal</a></li>
+<li><a href="#fastsim.simdrive.run_simdrive_for_accel_test">run_simdrive_for_accel_test</a></li>
+<li><a href="#fastsim.simdrive.SimDrivePost">SimDrivePost</a>
+<ul>
+<li><a href="#fastsim.simdrive.SimDrivePost.__init__">__init__</a></li>
+<li><a href="#fastsim.simdrive.SimDrivePost.get_diagnostics">get_diagnostics</a></li>
+<li><a href="#fastsim.simdrive.SimDrivePost.set_battery_wear">set_battery_wear</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.simdrive.SimDriveJit">SimDriveJit</a></li>
+<li><a href="#fastsim.simdrive.estimate_soc_corrected_fuel_kJ">estimate_soc_corrected_fuel_kJ</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_utils">fastsim.tests.test_utils</a></li>
+<li><a href="#fastsim.tests.test_simdrive">fastsim.tests.test_simdrive</a>
+<ul>
+<li><a href="#fastsim.tests.test_simdrive.TestSimDriveClassic">TestSimDriveClassic</a>
+<ul>
+<li><a href="#fastsim.tests.test_simdrive.TestSimDriveClassic.test_sim_drive_step">test_sim_drive_step</a></li>
+<li><a href="#fastsim.tests.test_simdrive.TestSimDriveClassic.test_sim_drive_walk">test_sim_drive_walk</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_logging">fastsim.tests.test_logging</a></li>
+<li><a href="#fastsim.tests.test_following">fastsim.tests.test_following</a>
+<ul>
+<li><a href="#fastsim.tests.test_following.TestFollowing">TestFollowing</a>
+<ul>
+<li><a href="#fastsim.tests.test_following.TestFollowing.test_that_we_have_a_gap_between_us_and_the_lead_vehicle">test_that_we_have_a_gap_between_us_and_the_lead_vehicle</a></li>
+<li><a href="#fastsim.tests.test_following.TestFollowing.test_that_the_gap_changes_over_the_cycle">test_that_the_gap_changes_over_the_cycle</a></li>
+<li><a href="#fastsim.tests.test_following.TestFollowing.test_that_following_works_over_parameter_sweep">test_that_following_works_over_parameter_sweep</a></li>
+<li><a href="#fastsim.tests.test_following.TestFollowing.test_that_we_can_use_the_idm">test_that_we_can_use_the_idm</a></li>
+<li><a href="#fastsim.tests.test_following.TestFollowing.test_sweeping_idm_parameters">test_sweeping_idm_parameters</a></li>
+<li><a href="#fastsim.tests.test_following.TestFollowing.test_distance_based_grade_on_following">test_distance_based_grade_on_following</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_vehicle">fastsim.tests.test_vehicle</a>
+<ul>
+<li><a href="#fastsim.tests.test_vehicle.TestVehicle">TestVehicle</a>
+<ul>
+<li><a href="#fastsim.tests.test_vehicle.TestVehicle.test_equal">test_equal</a></li>
+<li><a href="#fastsim.tests.test_vehicle.TestVehicle.test_properties">test_properties</a></li>
+<li><a href="#fastsim.tests.test_vehicle.TestVehicle.test_fc_efficiency_override">test_fc_efficiency_override</a></li>
+<li><a href="#fastsim.tests.test_vehicle.TestVehicle.test_set_derived_init">test_set_derived_init</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_copy">fastsim.tests.test_copy</a>
+<ul>
+<li><a href="#fastsim.tests.test_copy.TestCopy">TestCopy</a>
+<ul>
+<li><a href="#fastsim.tests.test_copy.TestCopy.test_copy_cycle">test_copy_cycle</a></li>
+<li><a href="#fastsim.tests.test_copy.TestCopy.test_copy_physical_properties">test_copy_physical_properties</a></li>
+<li><a href="#fastsim.tests.test_copy.TestCopy.test_copy_vehicle">test_copy_vehicle</a></li>
+<li><a href="#fastsim.tests.test_copy.TestCopy.test_copy_sim_params">test_copy_sim_params</a></li>
+<li><a href="#fastsim.tests.test_copy.TestCopy.test_copy_sim_drive">test_copy_sim_drive</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests">fastsim.tests</a>
+<ul>
+<li><a href="#fastsim.tests.run_functional_tests">run_functional_tests</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_auxiliaries">fastsim.tests.test_auxiliaries</a></li>
+<li><a href="#fastsim.tests.test_simdrivelabel">fastsim.tests.test_simdrivelabel</a></li>
+<li><a href="#fastsim.tests.test_simdrive_sweep">fastsim.tests.test_simdrive_sweep</a>
+<ul>
+<li><a href="#fastsim.tests.test_simdrive_sweep.main">main</a></li>
+<li><a href="#fastsim.tests.test_simdrive_sweep.TestSimDriveSweep">TestSimDriveSweep</a>
+<ul>
+<li><a href="#fastsim.tests.test_simdrive_sweep.TestSimDriveSweep.test_sweep">test_sweep</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_cycle">fastsim.tests.test_cycle</a>
+<ul>
+<li><a href="#fastsim.tests.test_cycle.calc_distance_traveled_m">calc_distance_traveled_m</a></li>
+<li><a href="#fastsim.tests.test_cycle.dicts_are_equal">dicts_are_equal</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle">TestCycle</a>
+<ul>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_monotonicity">test_monotonicity</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_load_dict">test_load_dict</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_that_udds_has_18_microtrips">test_that_udds_has_18_microtrips</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_roundtrip_of_microtrip_and_concat">test_roundtrip_of_microtrip_and_concat</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_roundtrip_of_microtrip_and_concat_using_keep_name_arg">test_roundtrip_of_microtrip_and_concat_using_keep_name_arg</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_set_from_dict_for_a_microtrip">test_set_from_dict_for_a_microtrip</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_duration_of_concatenated_cycles_is_the_sum_of_the_components">test_duration_of_concatenated_cycles_is_the_sum_of_the_components</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_cycle_equality">test_cycle_equality</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_that_cycle_resampling_works_as_expected">test_that_cycle_resampling_works_as_expected</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_resampling_and_concatenating_cycles">test_resampling_and_concatenating_cycles</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_resampling_with_hold_keys">test_resampling_with_hold_keys</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_that_resampling_preserves_total_distance_traveled_using_rate_keys">test_that_resampling_preserves_total_distance_traveled_using_rate_keys</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_clip_by_times">test_clip_by_times</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_get_accelerations">test_get_accelerations</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_that_copy_creates_idential_structures">test_that_copy_creates_idential_structures</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_make_cycle">test_make_cycle</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_key_conversion">test_key_conversion</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_get_grade_by_distance">test_get_grade_by_distance</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_dt_s_vs_dt_s_at_i">test_dt_s_vs_dt_s_at_i</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_trapz_step_start_distance">test_trapz_step_start_distance</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_that_cycle_cache_interp_grade_substitutes_for_average_grade_over_range">test_that_cycle_cache_interp_grade_substitutes_for_average_grade_over_range</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_that_trapz_step_start_distance_equals_cache_trapz_distances">test_that_trapz_step_start_distance_equals_cache_trapz_distances</a></li>
+<li><a href="#fastsim.tests.test_cycle.TestCycle.test_average_grade_over_range_with_and_without_cache">test_average_grade_over_range_with_and_without_cache</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_cav_sweep">fastsim.tests.test_cav_sweep</a></li>
+<li><a href="#fastsim.tests.test_soc_correction">fastsim.tests.test_soc_correction</a>
+<ul>
+<li><a href="#fastsim.tests.test_soc_correction.TestSocCorrection">TestSocCorrection</a>
+<ul>
+<li><a href="#fastsim.tests.test_soc_correction.TestSocCorrection.test_that_soc_correction_method_works">test_that_soc_correction_method_works</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_coasting">fastsim.tests.test_coasting</a>
+<ul>
+<li><a href="#fastsim.tests.test_coasting.make_coasting_plot">make_coasting_plot</a></li>
+<li><a href="#fastsim.tests.test_coasting.make_dvdd_plot">make_dvdd_plot</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting">TestCoasting</a>
+<ul>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_cycle_reported_distance_traveled_m">test_cycle_reported_distance_traveled_m</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_cycle_modifications_with_constant_jerk">test_cycle_modifications_with_constant_jerk</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_that_cycle_modifications_work_as_expected">test_that_cycle_modifications_work_as_expected</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_that_we_can_coast">test_that_we_can_coast</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_eco_approach_modeling">test_eco_approach_modeling</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_consistency_of_constant_jerk_trajectory">test_consistency_of_constant_jerk_trajectory</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_that_final_speed_of_cycle_modification_matches_trajectory_calcs">test_that_final_speed_of_cycle_modification_matches_trajectory_calcs</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_that_cycle_distance_reported_is_correct">test_that_cycle_distance_reported_is_correct</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_brake_trajectory">test_brake_trajectory</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_logic_to_enter_eco_approach_automatically">test_logic_to_enter_eco_approach_automatically</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_that_coasting_works_going_uphill">test_that_coasting_works_going_uphill</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_that_coasting_logic_works_going_uphill">test_that_coasting_logic_works_going_uphill</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_that_coasting_logic_works_going_downhill">test_that_coasting_logic_works_going_downhill</a></li>
+<li><a href="#fastsim.tests.test_coasting.TestCoasting.test_that_coasting_works_with_multiple_stops_and_grades">test_that_coasting_works_with_multiple_stops_and_grades</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_rust">fastsim.tests.test_rust</a>
+<ul>
+<li><a href="#fastsim.tests.test_rust.TestRust">TestRust</a>
+<ul>
+<li><a href="#fastsim.tests.test_rust.TestRust.test_discrepancies">test_discrepancies</a></li>
+<li><a href="#fastsim.tests.test_rust.TestRust.test_vehicle_for_discrepancies">test_vehicle_for_discrepancies</a></li>
+<li><a href="#fastsim.tests.test_rust.TestRust.test_fueling_prediction_for_multiple_vehicle">test_fueling_prediction_for_multiple_vehicle</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_vs_excel">fastsim.tests.test_vs_excel</a>
+<ul>
+<li><a href="#fastsim.tests.test_vs_excel.run">run</a></li>
+<li><a href="#fastsim.tests.test_vs_excel.run_excel">run_excel</a></li>
+<li><a href="#fastsim.tests.test_vs_excel.compare">compare</a></li>
+<li><a href="#fastsim.tests.test_vs_excel.main">main</a></li>
+<li><a href="#fastsim.tests.test_vs_excel.TestExcel">TestExcel</a>
+<ul>
+<li><a href="#fastsim.tests.test_vs_excel.TestExcel.test_vs_excel">test_vs_excel</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#fastsim.tests.test_eco_cruise">fastsim.tests.test_eco_cruise</a></li>
+<li><a href="#fastsim.vehicle">fastsim.vehicle</a>
+<ul>
+<li><a href="#fastsim.vehicle.clean_data">clean_data</a></li>
+<li><a href="#fastsim.vehicle.Vehicle">Vehicle</a>
+<ul>
+<li><a href="#fastsim.vehicle.Vehicle.from_vehdb">from_vehdb</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.from_file">from_file</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.from_df">from_df</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.from_dict">from_dict</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.__post_init__">__post_init__</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.set_derived">set_derived</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.set_veh_mass">set_veh_mass</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.veh_type_selection">veh_type_selection</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.get_mcPeakEff">get_mcPeakEff</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.set_mcPeakEff">set_mcPeakEff</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.get_fcPeakEff">get_fcPeakEff</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.set_fcPeakEff">set_fcPeakEff</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.get_numba_veh">get_numba_veh</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.to_rust">to_rust</a></li>
+<li><a href="#fastsim.vehicle.Vehicle.reset_orphaned">reset_orphaned</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.vehicle.LegacyVehicle">LegacyVehicle</a>
+<ul>
+<li><a href="#fastsim.vehicle.LegacyVehicle.__init__">__init__</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.vehicle.to_native_type">to_native_type</a></li>
+<li><a href="#fastsim.vehicle.copy_vehicle">copy_vehicle</a></li>
+<li><a href="#fastsim.vehicle.veh_equal">veh_equal</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.utils">fastsim.utils</a></li>
+<li><a href="#fastsim.utils.vehicle_import_preproc">fastsim.utils.vehicle_import_preproc</a>
+<ul>
+<li><a href="#fastsim.utils.vehicle_import_preproc.process_csv">process_csv</a></li>
+<li><a href="#fastsim.utils.vehicle_import_preproc.write_csvs_for_each_year">write_csvs_for_each_year</a></li>
+<li><a href="#fastsim.utils.vehicle_import_preproc.sort_fueleconomygov_data_by_year">sort_fueleconomygov_data_by_year</a></li>
+<li><a href="#fastsim.utils.vehicle_import_preproc.xlsx_to_csv">xlsx_to_csv</a></li>
+<li><a href="#fastsim.utils.vehicle_import_preproc.process_epa_test_data">process_epa_test_data</a></li>
+<li><a href="#fastsim.utils.vehicle_import_preproc.create_zip_archives_by_year">create_zip_archives_by_year</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.utils.utilities">fastsim.utils.utilities</a>
+<ul>
+<li><a href="#fastsim.utils.utilities.R_air">R_air</a></li>
+<li><a href="#fastsim.utils.utilities.get_rho_air">get_rho_air</a></li>
+<li><a href="#fastsim.utils.utilities.l__100km_to_mpg">l__100km_to_mpg</a></li>
+<li><a href="#fastsim.utils.utilities.mpg_to_l__100km">mpg_to_l__100km</a></li>
+<li><a href="#fastsim.utils.utilities.rollav">rollav</a></li>
+<li><a href="#fastsim.utils.utilities.camel_to_snake">camel_to_snake</a></li>
+<li><a href="#fastsim.utils.utilities.set_log_level">set_log_level</a></li>
+<li><a href="#fastsim.utils.utilities.disable_logging">disable_logging</a></li>
+<li><a href="#fastsim.utils.utilities.enable_logging">enable_logging</a></li>
+<li><a href="#fastsim.utils.utilities.suppress_logging">suppress_logging</a></li>
+<li><a href="#fastsim.utils.utilities.get_containers_with_path">get_containers_with_path</a></li>
+<li><a href="#fastsim.utils.utilities.get_attr_with_path">get_attr_with_path</a></li>
+<li><a href="#fastsim.utils.utilities.set_attr_with_path">set_attr_with_path</a></li>
+<li><a href="#fastsim.utils.utilities.set_attrs_with_path">set_attrs_with_path</a></li>
+<li><a href="#fastsim.utils.utilities.calculate_tire_radius">calculate_tire_radius</a></li>
+<li><a href="#fastsim.utils.utilities.show_plots">show_plots</a></li>
+<li><a href="#fastsim.utils.utilities.copy_demo_files">copy_demo_files</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.inspect_utils">fastsim.inspect_utils</a>
+<ul>
+<li><a href="#fastsim.inspect_utils.isprop">isprop</a></li>
+<li><a href="#fastsim.inspect_utils.isfunc">isfunc</a></li>
+<li><a href="#fastsim.inspect_utils.get_attrs">get_attrs</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.parameters">fastsim.parameters</a>
+<ul>
+<li><a href="#fastsim.parameters.PhysicalProperties">PhysicalProperties</a></li>
+<li><a href="#fastsim.parameters.copy_physical_properties">copy_physical_properties</a></li>
+<li><a href="#fastsim.parameters.physical_properties_equal">physical_properties_equal</a></li>
+<li><a href="#fastsim.parameters.fc_perc_out_array">fc_perc_out_array</a></li>
+<li><a href="#fastsim.parameters.chg_eff">chg_eff</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.demos.vehicle_import_demo">fastsim.demos.vehicle_import_demo</a>
+<ul>
+<li><a href="#fastsim.demos.vehicle_import_demo.other_inputs">other_inputs</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.demos.fusion_thermal_cal_post">fastsim.demos.fusion_thermal_cal_post</a>
+<ul>
+<li><a href="#fastsim.demos.fusion_thermal_cal_post.save_path">save_path</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.demos.cav_sweep">fastsim.demos.cav_sweep</a>
+<ul>
+<li><a href="#fastsim.demos.cav_sweep.ABSOLUTE_EXTENDED_TIME_S">ABSOLUTE_EXTENDED_TIME_S</a></li>
+<li><a href="#fastsim.demos.cav_sweep.make_debug_plot">make_debug_plot</a></li>
+<li><a href="#fastsim.demos.cav_sweep.load_cycle">load_cycle</a></li>
+<li><a href="#fastsim.demos.cav_sweep.main">main</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.demos.time_dilation_demo">fastsim.demos.time_dilation_demo</a></li>
+<li><a href="#fastsim.demos.accel_demo">fastsim.demos.accel_demo</a>
+<ul>
+<li><a href="#fastsim.demos.accel_demo.create_accel_cyc">create_accel_cyc</a></li>
+<li><a href="#fastsim.demos.accel_demo.main">main</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.demos.cav_demo">fastsim.demos.cav_demo</a></li>
+<li><a href="#fastsim.demos">fastsim.demos</a></li>
+<li><a href="#fastsim.demos.demo_eu_vehicle_wltp">fastsim.demos.demo_eu_vehicle_wltp</a></li>
+<li><a href="#fastsim.demos.fusion_thermal_demo">fastsim.demos.fusion_thermal_demo</a></li>
+<li><a href="#fastsim.demos.timing_demo">fastsim.demos.timing_demo</a></li>
+<li><a href="#fastsim.demos.mp_parallel_demo">fastsim.demos.mp_parallel_demo</a></li>
+<li><a href="#fastsim.demos.2017_Ford_F150_thermal_val">fastsim.demos.2017_Ford_F150_thermal_val</a>
+<ul>
+<li><a href="#fastsim.demos.2017_Ford_F150_thermal_val.lhv_fuel_btu_per_lbm">lhv_fuel_btu_per_lbm</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.demos.test_demos">fastsim.demos.test_demos</a></li>
+<li><a href="#fastsim.demos.fusion_thermal_cal">fastsim.demos.fusion_thermal_cal</a>
+<ul>
+<li><a href="#fastsim.demos.fusion_thermal_cal.lhv_fuel_btu_per_lbm">lhv_fuel_btu_per_lbm</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.demos.stop_start_demo">fastsim.demos.stop_start_demo</a></li>
+<li><a href="#fastsim.demos.demo_abc_drag_coef_conv">fastsim.demos.demo_abc_drag_coef_conv</a></li>
+<li><a href="#fastsim.demos.demo">fastsim.demos.demo</a>
+<ul>
+<li><a href="#fastsim.demos.demo.v2">v2</a></li>
+<li><a href="#fastsim.demos.demo.data_path">data_path</a></li>
+<li><a href="#fastsim.demos.demo.veh">veh</a></li>
+<li><a href="#fastsim.demos.demo.veh">veh</a></li>
+<li><a href="#fastsim.demos.demo.veh">veh</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.demos.wltc_calibration">fastsim.demos.wltc_calibration</a>
+<ul>
+<li><a href="#fastsim.demos.wltc_calibration.WILLANS_FACTOR">WILLANS_FACTOR</a></li>
+<li><a href="#fastsim.demos.wltc_calibration.E10_HEAT_VALUE">E10_HEAT_VALUE</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.calibration">fastsim.calibration</a>
+<ul>
+<li><a href="#fastsim.calibration.get_error_val">get_error_val</a></li>
+<li><a href="#fastsim.calibration.ModelObjectives">ModelObjectives</a>
+<ul>
+<li><a href="#fastsim.calibration.ModelObjectives.get_errors">get_errors</a></li>
+<li><a href="#fastsim.calibration.ModelObjectives.update_params">update_params</a></li>
+</ul>
+</li>
+<li><a href="#fastsim.calibration.get_parser">get_parser</a></li>
+</ul>
+</li>
+</ul>
+<p><a id="fastsim"></a></p>
+<h1 id="fastsim"><a class="header" href="#fastsim">fastsim</a></h1>
+<p>Package containing modules for running FASTSim.
+For example usage, see</p>
+<p><a id="fastsim.package_root"></a></p>
+<h4 id="package_root"><a class="header" href="#package_root">package_root</a></h4>
+<pre><code class="language-python">def package_root() -&gt; Path
+</code></pre>
+<p>Returns the package root directory.</p>
+<p><a id="fastsim.cycle"></a></p>
+<h1 id="fastsimcycle"><a class="header" href="#fastsimcycle">fastsim.cycle</a></h1>
+<p>Module containing classes and methods for cycle data.</p>
+<p><a id="fastsim.cycle.CycleCache"></a></p>
+<h2 id="cyclecache-objects"><a class="header" href="#cyclecache-objects">CycleCache Objects</a></h2>
+<pre><code class="language-python">class CycleCache()
+</code></pre>
+<p><a id="fastsim.cycle.CycleCache.interp_grade"></a></p>
+<h4 id="interp_grade"><a class="header" href="#interp_grade">interp_grade</a></h4>
+<pre><code class="language-python">def interp_grade(dist: float)
+</code></pre>
+<p>Interpolate the single-point grade at the given distance.
+Assumes that the grade at i applies from sample point (i-1, i]</p>
+<p><a id="fastsim.cycle.CycleCache.interp_elevation"></a></p>
+<h4 id="interp_elevation"><a class="header" href="#interp_elevation">interp_elevation</a></h4>
+<pre><code class="language-python">def interp_elevation(dist: float)
+</code></pre>
+<p>Interpolate the elevation at the given distance</p>
+<p><a id="fastsim.cycle.Cycle"></a></p>
+<h2 id="cycle-objects"><a class="header" href="#cycle-objects">Cycle Objects</a></h2>
+<pre><code class="language-python">@dataclass
+class Cycle(object)
+</code></pre>
+<p>Object for containing time, speed, road grade, and road charging vectors
+for drive cycle.  Instantiate with the <code>from_file</code> or <code>from_dict</code> method.</p>
+<p><a id="fastsim.cycle.Cycle.from_file"></a></p>
+<h4 id="from_file"><a class="header" href="#from_file">from_file</a></h4>
+<pre><code class="language-python">@classmethod
+def from_file(cls, filename: str) -&gt; Self
+</code></pre>
+<p>Load cycle from filename (str).
+Can be absolute or relative path.  If relative, looks in working dir first
+and then in <code>fastsim/resources/cycles</code>.</p>
+<p>File must contain columns for:
+-- <code>cycSecs</code> or <code>time_s</code>
+-- <code>cycMps</code> or <code>mps</code>
+-- <code>cycGrade</code> or <code>grade</code> (optional)
+-- <code>cycRoadType</code> or <code>road_type</code> (optional)</p>
+<p><a id="fastsim.cycle.Cycle.from_dict"></a></p>
+<h4 id="from_dict"><a class="header" href="#from_dict">from_dict</a></h4>
+<pre><code class="language-python">@classmethod
+def from_dict(cls, cyc_dict: dict) -&gt; Self
+</code></pre>
+<p>Load cycle from dict, which must contain keys for:
+-- <code>cycSecs</code> or <code>time_s</code>
+-- <code>cycMps</code> or <code>mps</code>
+-- <code>cycGrade</code> or <code>grade</code> (optional)
+-- <code>cycRoadType</code> or <code>road_type</code> (optional)</p>
+<p><a id="fastsim.cycle.Cycle.get_numba_cyc"></a></p>
+<h4 id="get_numba_cyc"><a class="header" href="#get_numba_cyc">get_numba_cyc</a></h4>
+<pre><code class="language-python">def get_numba_cyc()
+</code></pre>
+<p>Deprecated.</p>
+<p><a id="fastsim.cycle.Cycle.build_cache"></a></p>
+<h4 id="build_cache"><a class="header" href="#build_cache">build_cache</a></h4>
+<pre><code class="language-python">def build_cache() -&gt; CycleCache
+</code></pre>
+<p>Calculates a dataclass containing expensive-to-calculate items. The data created
+can persist between calls and optionally be passed into methods that can use
+it which will result in a performance enhancement.
+RETURN: CycleCache</p>
+<p><a id="fastsim.cycle.Cycle.dt_s_at_i"></a></p>
+<h4 id="dt_s_at_i"><a class="header" href="#dt_s_at_i">dt_s_at_i</a></h4>
+<pre><code class="language-python">def dt_s_at_i(i: int) -&gt; float
+</code></pre>
+<p>Calculate the time-step duration for time-step <code>i</code>.
+Returns: the time-step duration in seconds</p>
+<p><a id="fastsim.cycle.Cycle.delta_elev_m"></a></p>
+<h4 id="delta_elev_m"><a class="header" href="#delta_elev_m">delta_elev_m</a></h4>
+<pre><code class="language-python">@property
+def delta_elev_m() -&gt; np.ndarray
+</code></pre>
+<p>Cumulative elevation change w.r.t. to initial</p>
+<p><a id="fastsim.cycle.Cycle.__len__"></a></p>
+<h4 id="__len__"><a class="header" href="#__len__">__len__</a></h4>
+<pre><code class="language-python">def __len__() -&gt; int
+</code></pre>
+<p>return cycle length</p>
+<p><a id="fastsim.cycle.Cycle.to_dict"></a></p>
+<h4 id="to_dict"><a class="header" href="#to_dict">to_dict</a></h4>
+<pre><code class="language-python">def to_dict() -&gt; Dict[str, np.ndarray]
+</code></pre>
+<p>Returns cycle as dict rather than class instance.</p>
+<p><a id="fastsim.cycle.Cycle.reset_orphaned"></a></p>
+<h4 id="reset_orphaned"><a class="header" href="#reset_orphaned">reset_orphaned</a></h4>
+<pre><code class="language-python">def reset_orphaned()
+</code></pre>
+<p>Dummy method for flexibility between Rust/Python version interfaces</p>
+<p><a id="fastsim.cycle.Cycle.copy"></a></p>
+<h4 id="copy"><a class="header" href="#copy">copy</a></h4>
+<pre><code class="language-python">def copy() -&gt; Self
+</code></pre>
+<p>Return a copy of this Cycle instance.</p>
+<p><a id="fastsim.cycle.Cycle.average_grade_over_range"></a></p>
+<h4 id="average_grade_over_range"><a class="header" href="#average_grade_over_range">average_grade_over_range</a></h4>
+<pre><code class="language-python">def average_grade_over_range(distance_start_m,
+                             delta_distance_m,
+                             cache: Optional[CycleCache] = None)
+</code></pre>
+<p>Returns the average grade over the given range of distances</p>
+<ul>
+<li>distance_start_m: non-negative-number, the distance at start of evaluation area (m)</li>
+<li>delta_distance_m: non-negative-number, the distance traveled from distance_start_m (m)
+RETURN: number, the average grade (rise over run) over the given distance range
+Note: grade is assumed to be constant from just after the previous sample point
+until the current sample point. That is, grade[i] applies over the range of
+distances, d, from (d[i - 1], d[i]]</li>
+</ul>
+<p><a id="fastsim.cycle.Cycle.calc_distance_to_next_stop_from"></a></p>
+<h4 id="calc_distance_to_next_stop_from"><a class="header" href="#calc_distance_to_next_stop_from">calc_distance_to_next_stop_from</a></h4>
+<pre><code class="language-python">def calc_distance_to_next_stop_from(distance_m: float,
+                                    cache: Optional[CycleCache] = None
+                                    ) -&gt; float
+</code></pre>
+<p>Calculate the distance to next stop from <code>distance_m</code></p>
+<ul>
+<li>distance_m: non-negative-number, the current distance from start (m)
+RETURN: returns the distance to the next stop from distance_m
+NOTE: distance may be negative if we're beyond the last stop</li>
+</ul>
+<p><a id="fastsim.cycle.Cycle.modify_by_const_jerk_trajectory"></a></p>
+<h4 id="modify_by_const_jerk_trajectory"><a class="header" href="#modify_by_const_jerk_trajectory">modify_by_const_jerk_trajectory</a></h4>
+<pre><code class="language-python">def modify_by_const_jerk_trajectory(idx, n, jerk_m__s3, accel0_m__s2)
+</code></pre>
+<p>Modifies the cycle using the given constant-jerk trajectory parameters</p>
+<ul>
+<li>idx: non-negative integer, the point in the cycle to initiate
+modification (note: THIS point is modified since trajectory should be calculated from idx-1)</li>
+<li>jerk_m__s3: number, the &quot;Jerk&quot; associated with the trajectory (m/s3)</li>
+<li>accel0_m__s2: number, the initial acceleration (m/s2)
+NOTE:</li>
+<li>modifies cyc in place to hit any critical rendezvous_points by a trajectory adjustment</li>
+<li>CAUTION: NOT ROBUST AGAINST VARIABLE DURATION TIME-STEPS
+RETURN: Number, final modified speed (m/s)</li>
+</ul>
+<p><a id="fastsim.cycle.Cycle.modify_with_braking_trajectory"></a></p>
+<h4 id="modify_with_braking_trajectory"><a class="header" href="#modify_with_braking_trajectory">modify_with_braking_trajectory</a></h4>
+<pre><code class="language-python">def modify_with_braking_trajectory(brake_accel_m__s2: float,
+                                   idx: int,
+                                   dts_m: Optional[float] = None) -&gt; tuple
+</code></pre>
+<p>Add a braking trajectory that would cover the same distance as the given constant brake deceleration</p>
+<ul>
+<li>brake_accel_m__s2: negative number, the braking acceleration (m/s2)</li>
+<li>idx: non-negative integer, the index where to initiate the stop trajectory, start of the step (i in FASTSim)</li>
+<li>dts_m: None | float: if given, this is the desired distance-to-stop in meters. If not given, it is
+calculated based on braking deceleration.
+RETURN: (non-negative-number, positive-integer)</li>
+<li>the final speed of the modified trajectory (m/s) </li>
+<li>the number of time-steps required to complete the braking maneuver
+NOTE:</li>
+<li>modifies the cycle in place for the braking trajectory</li>
+</ul>
+<p><a id="fastsim.cycle.LegacyCycle"></a></p>
+<h2 id="legacycycle-objects"><a class="header" href="#legacycycle-objects">LegacyCycle Objects</a></h2>
+<pre><code class="language-python">class LegacyCycle(object)
+</code></pre>
+<p>Implementation of Cycle with legacy keys.</p>
+<p><a id="fastsim.cycle.LegacyCycle.__init__"></a></p>
+<h4 id="__init__"><a class="header" href="#__init__">__init__</a></h4>
+<pre><code class="language-python">def __init__(cycle: Cycle)
+</code></pre>
+<p>Given cycle, returns legacy cycle.</p>
+<p><a id="fastsim.cycle.cyc_equal"></a></p>
+<h4 id="cyc_equal"><a class="header" href="#cyc_equal">cyc_equal</a></h4>
+<pre><code class="language-python">def cyc_equal(a: Cycle, b: Cycle) -&gt; bool
+</code></pre>
+<p>Return True if a and b are equal</p>
+<p><a id="fastsim.cycle.to_microtrips"></a></p>
+<h4 id="to_microtrips"><a class="header" href="#to_microtrips">to_microtrips</a></h4>
+<pre><code class="language-python">def to_microtrips(cycle, stop_speed_m__s=1e-6, keep_name=False)
+</code></pre>
+<p>Split a cycle into an array of microtrips with one microtrip being a start
+to subsequent stop plus any idle (stopped time).</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>cycle</code> - drive cycle converted to dictionary by cycle.to_dict()</li>
+<li><code>stop_speed_m__s</code> - speed at which vehicle is considered stopped for trip
+separation</li>
+<li><code>keep_name</code> - (optional) bool, if True and cycle contains &quot;name&quot;, adds
+that name to all microtrips</li>
+</ul>
+<p><a id="fastsim.cycle.make_cycle"></a></p>
+<h4 id="make_cycle"><a class="header" href="#make_cycle">make_cycle</a></h4>
+<pre><code class="language-python">def make_cycle(ts, vs, gs=None, rs=None) -&gt; dict
+</code></pre>
+<p>(Array Num) (Array Num) (Array Num)? -&gt; Dict
+Create a cycle from times, speeds, and grades. If grades is not
+specified, it is set to zero.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>ts</code> - array of times [s]</li>
+<li><code>vs</code> - array of vehicle speeds [mps]</li>
+<li><code>gs</code> - array of grades</li>
+<li><code>rs</code> - array of road types (charging or not)</li>
+</ul>
+<p><a id="fastsim.cycle.equals"></a></p>
+<h4 id="equals"><a class="header" href="#equals">equals</a></h4>
+<pre><code class="language-python">def equals(c1, c2) -&gt; bool
+</code></pre>
+<p>Dict Dict -&gt; Bool
+Returns true if the two cycles are equal, false otherwise</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>c1</code> - cycle as dictionary from to_dict()</li>
+<li><code>c2</code> - cycle as dictionary from to_dict()</li>
+</ul>
+<p><a id="fastsim.cycle.concat"></a></p>
+<h4 id="concat"><a class="header" href="#concat">concat</a></h4>
+<pre><code class="language-python">def concat(cycles, name=None)
+</code></pre>
+<p>Concatenates cycles together one after another into a single dictionary
+(Array Dict) String -&gt; Dict</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>cycles</code> - (Array Dict)</li>
+<li><code>name</code> - (optional) string or None, if a string, adds the &quot;name&quot; key to the output</li>
+</ul>
+<p><a id="fastsim.cycle.resample"></a></p>
+<h4 id="resample"><a class="header" href="#resample">resample</a></h4>
+<pre><code class="language-python">def resample(cycle: Dict[str, Any],
+             new_dt: Optional[float] = None,
+             start_time: Optional[float] = None,
+             end_time: Optional[float] = None,
+             hold_keys: Optional[Set[str]] = None,
+             hold_keys_next: Optional[Set[str]] = None,
+             rate_keys: Optional[Set[str]] = None)
+</code></pre>
+<p>Cycle new_dt=?Real start_time=?Real end_time=?Real -&gt; Cycle
+Resample a cycle with a new delta time from start time to end time.</p>
+<ul>
+<li>cycle: Dict with keys
+'time_s': numpy.array Real giving the elapsed time</li>
+<li>new_dt: Real, optional
+the new delta time of the sampling. Defaults to the
+difference between the first two times of the cycle passed in</li>
+<li>start_time: Real, optional
+the start time of the sample. Defaults to 0.0 seconds</li>
+<li>end_time: Real, optional
+the end time of the cycle. Defaults to the last time of the passed in
+cycle.</li>
+<li>hold_keys: None or (Set String), if specified, yields values that
+should be interpolated step-wise, holding their value until
+an explicit change (i.e., NOT interpolated)</li>
+<li>hold_keys_next: None or (Set String), similar to hold_keys but yields
+values that should be interpolated step-wise, taking the
+NEXT value as the value (vs hold_keys which uses the previous)</li>
+<li>rate_keys: None or (Set String), if specified, yields values that maintain
+the interpolated value of the given rate. So, for example,
+if a speed, will set the speed such that the distance traveled
+is consistent. Note: using rate keys for mps may result in
+non-zero starting and ending speeds
+Resamples all non-time metrics by the new sample time.</li>
+</ul>
+<p><a id="fastsim.cycle.clip_by_times"></a></p>
+<h4 id="clip_by_times"><a class="header" href="#clip_by_times">clip_by_times</a></h4>
+<pre><code class="language-python">def clip_by_times(cycle, t_end, t_start=0)
+</code></pre>
+<p>Cycle Number Number -&gt; Cycle
+INPUT:</p>
+<ul>
+<li>cycle: Dict, a legitimate driving cycle</li>
+<li>t_start: Number, time to start</li>
+<li>t_end: Number, time to end
+RETURNS: Dict, the cycle with fields snipped
+to times &gt;= t_start and &lt;= t_end
+Clip the cycle to the given times and return</li>
+</ul>
+<p><a id="fastsim.cycle.accelerations"></a></p>
+<h4 id="accelerations"><a class="header" href="#accelerations">accelerations</a></h4>
+<pre><code class="language-python">def accelerations(cycle)
+</code></pre>
+<p>Cycle -&gt; Real
+Return the acceleration of the given cycle
+INPUTS:</p>
+<ul>
+<li>cycle: Dict, a legitimate driving cycle
+OUTPUTS: Real, the maximum acceleration</li>
+</ul>
+<p><a id="fastsim.cycle.peak_acceleration"></a></p>
+<h4 id="peak_acceleration"><a class="header" href="#peak_acceleration">peak_acceleration</a></h4>
+<pre><code class="language-python">def peak_acceleration(cycle)
+</code></pre>
+<p>Cycle -&gt; Real
+Return the maximum acceleration of the given cycle
+INPUTS:</p>
+<ul>
+<li>cycle: Dict, a legitimate driving cycle
+OUTPUTS: Real, the maximum acceleration</li>
+</ul>
+<p><a id="fastsim.cycle.peak_deceleration"></a></p>
+<h4 id="peak_deceleration"><a class="header" href="#peak_deceleration">peak_deceleration</a></h4>
+<pre><code class="language-python">def peak_deceleration(cycle)
+</code></pre>
+<p>Cycle -&gt; Real
+Return the minimum acceleration (maximum deceleration) of the given cycle
+INPUTS:</p>
+<ul>
+<li>cycle: Dict, a legitimate driving cycle
+OUTPUTS: Real, the maximum acceleration</li>
+</ul>
+<p><a id="fastsim.cycle.calc_constant_jerk_trajectory"></a></p>
+<h4 id="calc_constant_jerk_trajectory"><a class="header" href="#calc_constant_jerk_trajectory">calc_constant_jerk_trajectory</a></h4>
+<pre><code class="language-python">def calc_constant_jerk_trajectory(n: int, D0: float, v0: float, Dr: float,
+                                  vr: float, dt: float) -&gt; tuple
+</code></pre>
+<p>Num Num Num Num Num Int -&gt; (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
+INPUTS:</p>
+<ul>
+<li>n: Int, number of time-steps away from rendezvous</li>
+<li>D0: Num, distance of simulated vehicle (m/s)</li>
+<li>v0: Num, speed of simulated vehicle (m/s)</li>
+<li>Dr: Num, distance of rendezvous point (m)</li>
+<li>vr: Num, speed of rendezvous point (m/s)</li>
+<li>dt: Num, step duration (s)
+RETURNS: (Tuple 'jerk_m__s3': Num, 'accel_m__s2': Num)
+Returns the constant jerk and acceleration for initial time step.</li>
+</ul>
+<p><a id="fastsim.cycle.accel_for_constant_jerk"></a></p>
+<h4 id="accel_for_constant_jerk"><a class="header" href="#accel_for_constant_jerk">accel_for_constant_jerk</a></h4>
+<pre><code class="language-python">def accel_for_constant_jerk(n, a0, k, dt)
+</code></pre>
+<p>Calculate the acceleration n timesteps away
+INPUTS:</p>
+<ul>
+<li>n: Int, number of times steps away to calculate</li>
+<li>a0: Num, initial acceleration (m/s2)</li>
+<li>k: Num, constant jerk (m/s3)</li>
+<li>dt: Num, time-step duration in seconds
+NOTE:</li>
+<li>this is the constant acceleration over the time-step from sample n to sample n+1
+RETURN: Num, the acceleration n timesteps away (m/s2)</li>
+</ul>
+<p><a id="fastsim.cycle.speed_for_constant_jerk"></a></p>
+<h4 id="speed_for_constant_jerk"><a class="header" href="#speed_for_constant_jerk">speed_for_constant_jerk</a></h4>
+<pre><code class="language-python">def speed_for_constant_jerk(n, v0, a0, k, dt)
+</code></pre>
+<p>Int Num Num Num Num -&gt; Num
+Calculate speed (m/s) n timesteps away
+INPUTS:</p>
+<ul>
+<li>n: Int, numer of timesteps away to calculate</li>
+<li>v0: Num, initial speed (m/s)</li>
+<li>a0: Num, initial acceleration (m/s2)</li>
+<li>k: Num, constant jerk</li>
+<li>dt: Num, duration of a timestep (s)
+NOTE:</li>
+<li>this is the speed at sample n</li>
+<li>if n == 0, speed is v0</li>
+<li>if n == 1, speed is v0 + a0*dt, etc.
+RETURN: Num, the speed n timesteps away (m/s)</li>
+</ul>
+<p><a id="fastsim.cycle.dist_for_constant_jerk"></a></p>
+<h4 id="dist_for_constant_jerk"><a class="header" href="#dist_for_constant_jerk">dist_for_constant_jerk</a></h4>
+<pre><code class="language-python">def dist_for_constant_jerk(n, d0, v0, a0, k, dt)
+</code></pre>
+<p>Calculate distance (m) after n timesteps
+INPUTS:</p>
+<ul>
+<li>n: Int, numer of timesteps away to calculate</li>
+<li>d0: Num, initial distance (m)</li>
+<li>v0: Num, initial speed (m/s)</li>
+<li>a0: Num, initial acceleration (m/s2)</li>
+<li>k: Num, constant jerk</li>
+<li>dt: Num, duration of a timestep (s)
+NOTE:</li>
+<li>this is the distance traveled from start (i.e., n=0) measured at sample point n
+RETURN: Num, the distance at n timesteps away (m)</li>
+</ul>
+<p><a id="fastsim.cycle.detect_passing"></a></p>
+<h4 id="detect_passing"><a class="header" href="#detect_passing">detect_passing</a></h4>
+<pre><code class="language-python">def detect_passing(cyc: Cycle,
+                   cyc0: Cycle,
+                   i: int,
+                   dist_tol_m: float = 0.1) -&gt; PassingInfo
+</code></pre>
+<p>Reports back information of the first point where cyc passes cyc0, starting at
+step i until the next stop of cyc.</p>
+<ul>
+<li>cyc: fastsim.Cycle, the proposed cycle of the vehicle under simulation</li>
+<li>cyc0: fastsim.Cycle, the reference/lead vehicle/shadow cycle to compare with</li>
+<li>i: int, the time-step index to consider</li>
+<li>dist_tol_m: float, the distance tolerance away from lead vehicle to be seen as
+&quot;deviated&quot; from the reference/shadow trace (m)
+RETURNS: PassingInfo</li>
+</ul>
+<p><a id="fastsim.cycle.average_step_speeds"></a></p>
+<h4 id="average_step_speeds"><a class="header" href="#average_step_speeds">average_step_speeds</a></h4>
+<pre><code class="language-python">def average_step_speeds(cyc: Cycle) -&gt; np.ndarray
+</code></pre>
+<p>Calculate the average speed per each step in m/s</p>
+<p><a id="fastsim.cycle.average_step_speed_at"></a></p>
+<h4 id="average_step_speed_at"><a class="header" href="#average_step_speed_at">average_step_speed_at</a></h4>
+<pre><code class="language-python">def average_step_speed_at(cyc: Cycle, i: int) -&gt; float
+</code></pre>
+<p>Calculate the average step speed at step i in m/s
+(i.e., from sample point i-1 to i)</p>
+<p><a id="fastsim.cycle.trapz_step_distances"></a></p>
+<h4 id="trapz_step_distances"><a class="header" href="#trapz_step_distances">trapz_step_distances</a></h4>
+<pre><code class="language-python">def trapz_step_distances(cyc: Cycle) -&gt; np.ndarray
+</code></pre>
+<p>Sum of the distance traveled over each step using
+trapezoidal integration</p>
+<p><a id="fastsim.cycle.trapz_step_start_distance"></a></p>
+<h4 id="trapz_step_start_distance"><a class="header" href="#trapz_step_start_distance">trapz_step_start_distance</a></h4>
+<pre><code class="language-python">def trapz_step_start_distance(cyc: Cycle, i: int) -&gt; float
+</code></pre>
+<p>The distance traveled from start at the beginning of step i
+(i.e., distance traveled up to sample point i-1)
+Distance is in meters.</p>
+<p><a id="fastsim.cycle.trapz_distance_for_step"></a></p>
+<h4 id="trapz_distance_for_step"><a class="header" href="#trapz_distance_for_step">trapz_distance_for_step</a></h4>
+<pre><code class="language-python">def trapz_distance_for_step(cyc: Cycle, i: int) -&gt; float
+</code></pre>
+<p>The distance traveled during step i in meters
+(i.e., from sample point i-1 to i)</p>
+<p><a id="fastsim.cycle.trapz_distance_over_range"></a></p>
+<h4 id="trapz_distance_over_range"><a class="header" href="#trapz_distance_over_range">trapz_distance_over_range</a></h4>
+<pre><code class="language-python">def trapz_distance_over_range(cyc: Cycle, i_start: int, i_end: int) -&gt; float
+</code></pre>
+<p>Calculate the distance from step i_start to the start of step i_end
+(i.e., distance from sample point i_start-1 to i_end-1)</p>
+<p><a id="fastsim.cycle.extend_cycle"></a></p>
+<h4 id="extend_cycle"><a class="header" href="#extend_cycle">extend_cycle</a></h4>
+<pre><code class="language-python">def extend_cycle(cyc: Cycle,
+                 absolute_time_s: float = 0.0,
+                 time_fraction: float = 0.0,
+                 use_rust: bool = False) -&gt; Cycle
+</code></pre>
+<ul>
+<li>cyc: fastsim.cycle.Cycle</li>
+<li>absolute_time_s: float, the seconds to extend</li>
+<li>time_fraction: float, the fraction of the original cycle time to add on</li>
+<li>use_rust: bool, if True, return a RustCycle instance, else a normal Python Cycle
+RETURNS: fastsim.cycle.Cycle (or fastsimrust.RustCycle), the new cycle with stopped time appended
+NOTE: additional time is rounded to the nearest second</li>
+</ul>
+<p><a id="fastsim.cycle.create_dist_and_target_speeds_by_microtrip"></a></p>
+<h4 id="create_dist_and_target_speeds_by_microtrip"><a class="header" href="#create_dist_and_target_speeds_by_microtrip">create_dist_and_target_speeds_by_microtrip</a></h4>
+<pre><code class="language-python">def create_dist_and_target_speeds_by_microtrip(
+        cyc: Cycle,
+        blend_factor: float = 0.0,
+        min_target_speed_mps: float = 8.0) -&gt; list
+</code></pre>
+<p>Create distance and target speeds by microtrip
+This helper function splits a cycle up into microtrips and returns a list of 2-tuples of:
+(distance from start in meters, target speed in meters/second)</p>
+<ul>
+<li>cyc: the cycle to operate on</li>
+<li>blend_factor: float, from 0 to 1
+if 0, use average speed of the microtrip
+if 1, use average speed while moving (i.e., no stopped time)
+else something in between</li>
+<li>min_target_speed_mps: float, the minimum target speed allowed (m/s)
+RETURN: list of 2-tuple of (float, float) representing the distance of start of
+each microtrip and target speed for that microtrip
+NOTE: target speed per microtrip is not allowed to be below min_target_speed_mps</li>
+</ul>
+<p><a id="fastsim.cycle.copy_cycle"></a></p>
+<h4 id="copy_cycle"><a class="header" href="#copy_cycle">copy_cycle</a></h4>
+<pre><code class="language-python">def copy_cycle(
+    cyc: Cycle,
+    return_type: str = None,
+    deep: bool = True
+) -&gt; Dict[str, np.ndarray] | Cycle | LegacyCycle | RustCycle
+</code></pre>
+<p>Returns copy of Cycle.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>cyc</code> - instantianed Cycle or CycleJit
+return_type:</li>
+<li><code>default</code> - infer from type of cyc</li>
+<li><code>'dict'</code> - dict</li>
+<li><code>'python'</code> - Cycle</li>
+<li><code>'legacy'</code> - LegacyCycle</li>
+<li><code>'rust'</code> - RustCycle</li>
+<li><code>deep</code> - if True, uses deepcopy on everything</li>
+</ul>
+<p><a id="fastsim.vehicle_base"></a></p>
+<h1 id="fastsimvehicle_base"><a class="header" href="#fastsimvehicle_base">fastsim.vehicle_base</a></h1>
+<p>Boiler plate stuff needed for vehicle.py</p>
+<p><a id="fastsim.resample"></a></p>
+<h1 id="fastsimresample"><a class="header" href="#fastsimresample">fastsim.resample</a></h1>
+<p><a id="fastsim.resample.resample"></a></p>
+<h4 id="resample-1"><a class="header" href="#resample-1">resample</a></h4>
+<pre><code class="language-python">def resample(df: pd.DataFrame,
+             dt_new: Optional[float] = 1.0,
+             time_col: Optional[str] = &quot;Time[s]&quot;,
+             rate_vars: Optional[Tuple[str]] = [],
+             hold_vars: Optional[Tuple[str]] = []) -&gt; pd.DataFrame
+</code></pre>
+<p>Resamples dataframe <code>df</code>.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li>df: dataframe to resample</li>
+<li>dt_new: new time step size, default 1.0 s</li>
+<li>time_col: column for time in s</li>
+<li>rate_vars: list of variables that represent rates that need to be time averaged</li>
+<li>hold_vars: vars that need zero-order hold from previous nearest time step
+(e.g. quantized variables like current gear)</li>
+</ul>
+<p><a id="fastsim.auxiliaries"></a></p>
+<h1 id="fastsimauxiliaries"><a class="header" href="#fastsimauxiliaries">fastsim.auxiliaries</a></h1>
+<p>Auxiliary functions that require fastsim and provide faster access FASTSim vehicle properties.</p>
+<p><a id="fastsim.auxiliaries.R_air"></a></p>
+<h4 id="r_air"><a class="header" href="#r_air">R_air</a></h4>
+<p>J/(kg*K)</p>
+<p><a id="fastsim.auxiliaries.abc_to_drag_coeffs"></a></p>
+<h4 id="abc_to_drag_coeffs"><a class="header" href="#abc_to_drag_coeffs">abc_to_drag_coeffs</a></h4>
+<pre><code class="language-python">def abc_to_drag_coeffs(veh: Vehicle,
+                       a_lbf: float,
+                       b_lbf__mph: float,
+                       c_lbf__mph2: float,
+                       custom_rho: bool = False,
+                       custom_rho_temp_degC: float = 20.,
+                       custom_rho_elevation_m: float = 180.,
+                       simdrive_optimize: bool = True,
+                       show_plots: bool = False,
+                       use_rust=True) -&gt; Tuple[float, float]
+</code></pre>
+<p>For a given vehicle and target A, B, and C
+coefficients; calculate and return drag and rolling resistance
+coefficients.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>veh</code> - vehicle.Vehicle with all parameters correct except for drag and rolling resistance coefficients
+a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]</li>
+<li><code>custom_rho</code> - if True, use <code>fastsim.utilities.get_rho_air()</code> to calculate the current ambient density</li>
+<li><code>custom_rho_temp_degC</code> - ambient temperature [degree C] for <code>get_rho_air()</code>;
+will only be used when <code>custom_rho</code> is True</li>
+<li><code>custom_rho_elevation_m</code> - location elevation [degree C] for <code>get_rho_air()</code>;
+will only be used when <code>custom_rho</code> is True; default value is elevation of Chicago, IL</li>
+<li><code>simdrive_optimize</code> - if True, use <code>SimDrive</code> to optimize the drag and rolling resistance;
+otherwise, directly use target A, B, C to calculate the results</li>
+<li><code>show_plots</code> - if True, plots are shown</li>
+<li><code>use_rust</code> - if True, use rust implementation of drag coefficient calculation.</li>
+</ul>
+<p><a id="fastsim.auxiliaries.drag_coeffs_to_abc"></a></p>
+<h4 id="drag_coeffs_to_abc"><a class="header" href="#drag_coeffs_to_abc">drag_coeffs_to_abc</a></h4>
+<pre><code class="language-python">def drag_coeffs_to_abc(veh,
+                       custom_rho: bool = False,
+                       custom_rho_temp_degC: float = 20.,
+                       custom_rho_elevation_m: float = 180.,
+                       fit_with_curve: bool = False,
+                       show_plots: bool = False) -&gt; Tuple[float, float, float]
+</code></pre>
+<p>For a given vehicle mass, frontal area, dragCoef, and wheelRrCoef,
+calculate and return ABCs.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>veh</code> - vehicle.Vehicle with correct drag and rolling resistance</li>
+<li><code>custom_rho</code> - if True, use <code>fastsim.utilities.get_rho_air()</code> to calculate the current ambient density</li>
+<li><code>custom_rho_temp_degC</code> - ambient temperature [degree C] for <code>get_rho_air()</code>; will only be used when <code>custom_rho</code> is True</li>
+<li><code>custom_rho_elevation_m</code> - location elevation [degree C] for <code>get_rho_air()</code>; will only be used when <code>custom_rho</code> is True; default value is elevation of Chicago, IL</li>
+<li><code>fit_with_curve</code> - if True, use <code>scipy.curve_fit</code> to get A, B, Cs; otherwise, directly calculate A, B, Cs from given drag and rolling resistance</li>
+<li><code>show_plots</code> - if True, plots are shown</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>a_lbf, b_lbf__mph, c_lbf__mph2: coastdown coefficients for road load [lbf] vs speed [mph]</p>
+<p><a id="fastsim.simdrivelabel"></a></p>
+<h1 id="fastsimsimdrivelabel"><a class="header" href="#fastsimsimdrivelabel">fastsim.simdrivelabel</a></h1>
+<p>Module containing classes and methods for calculating label fuel economy.</p>
+<p><a id="fastsim.simdrivelabel.get_label_fe"></a></p>
+<h4 id="get_label_fe"><a class="header" href="#get_label_fe">get_label_fe</a></h4>
+<pre><code class="language-python">def get_label_fe(veh: vehicle.Vehicle,
+                 full_detail: bool = False,
+                 verbose: bool = False,
+                 chg_eff: float = None,
+                 use_rust=False)
+</code></pre>
+<p>Generates label fuel economy (FE) values for a provided vehicle.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p>veh : vehicle.Vehicle()
+full_detail : boolean, default False
+If True, sim_drive objects for each cycle are also returned.
+verbose : boolean, default false
+If true, print out key results
+chg_eff : float between 0 and 1
+Override for chg_eff -- currently not functional</p>
+<ul>
+<li>
+<p><code>use_rust</code> - bool, if True, use rust version of classes, else Python</p>
+<p>Returns label fuel economy values as a dict and (optionally)
+simdrive.SimDriveClassic objects.</p>
+</li>
+</ul>
+<p><a id="fastsim.simdrive"></a></p>
+<h1 id="fastsimsimdrive"><a class="header" href="#fastsimsimdrive">fastsim.simdrive</a></h1>
+<p>Module containing classes and methods for simulating vehicle drive cycle.</p>
+<p><a id="fastsim.simdrive.SimDriveParams"></a></p>
+<h2 id="simdriveparams-objects"><a class="header" href="#simdriveparams-objects">SimDriveParams Objects</a></h2>
+<pre><code class="language-python">class SimDriveParams(object)
+</code></pre>
+<p>Class containing attributes used for configuring sim_drive.
+Usually the defaults are ok, and there will be no need to use this.</p>
+<p>See comments in code for descriptions of various parameters that
+affect simulation behavior. If, for example, you want to suppress
+warning messages, use the following pastable code EXAMPLE:</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>import logging
+logging.getLogger(&quot;fastsim&quot;).setLevel(logging.DEBUG)</p>
+</blockquote>
+</blockquote>
+</blockquote>
+<p><a id="fastsim.simdrive.SimDriveParams.from_dict"></a></p>
+<h4 id="from_dict-1"><a class="header" href="#from_dict-1">from_dict</a></h4>
+<pre><code class="language-python">@classmethod
+def from_dict(cls, sdp_dict)
+</code></pre>
+<p>Create from a dictionary</p>
+<p><a id="fastsim.simdrive.SimDriveParams.__init__"></a></p>
+<h4 id="__init__-1"><a class="header" href="#__init__-1">__init__</a></h4>
+<pre><code class="language-python">def __init__()
+</code></pre>
+<p>Default values that affect simulation behavior.
+Can be modified after instantiation.</p>
+<p><a id="fastsim.simdrive.SimDriveParams.to_rust"></a></p>
+<h4 id="to_rust"><a class="header" href="#to_rust">to_rust</a></h4>
+<pre><code class="language-python">def to_rust()
+</code></pre>
+<p>Change to the Rust version</p>
+<p><a id="fastsim.simdrive.SimDriveParams.reset_orphaned"></a></p>
+<h4 id="reset_orphaned-1"><a class="header" href="#reset_orphaned-1">reset_orphaned</a></h4>
+<pre><code class="language-python">def reset_orphaned()
+</code></pre>
+<p>Dummy method for flexibility between Rust/Python version interfaces</p>
+<p><a id="fastsim.simdrive.copy_sim_params"></a></p>
+<h4 id="copy_sim_params"><a class="header" href="#copy_sim_params">copy_sim_params</a></h4>
+<pre><code class="language-python">def copy_sim_params(sdp: SimDriveParams, return_type: str = None)
+</code></pre>
+<p>Returns copy of SimDriveParams.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>sdp</code> - instantianed SimDriveParams or RustSimDriveParams
+return_type:</li>
+<li><code>default</code> - infer from type of sdp</li>
+<li><code>'dict'</code> - dict</li>
+<li><code>'python'</code> - SimDriveParams</li>
+<li><code>'rust'</code> - RustSimDriveParams</li>
+<li><code>deep</code> - if True, uses deepcopy on everything</li>
+</ul>
+<p><a id="fastsim.simdrive.sim_params_equal"></a></p>
+<h4 id="sim_params_equal"><a class="header" href="#sim_params_equal">sim_params_equal</a></h4>
+<pre><code class="language-python">def sim_params_equal(a: SimDriveParams, b: SimDriveParams) -&gt; bool
+</code></pre>
+<p>Returns True if objects are structurally equal (i.e., equal by value), else false.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>a</code> - instantiated SimDriveParams object</li>
+<li><code>b</code> - instantiated SimDriveParams object</li>
+</ul>
+<p><a id="fastsim.simdrive.SimDrive"></a></p>
+<h2 id="simdrive-objects"><a class="header" href="#simdrive-objects">SimDrive Objects</a></h2>
+<pre><code class="language-python">class SimDrive(object)
+</code></pre>
+<p>Class containing methods for running FASTSim vehicle
+fuel economy simulations. This class is not compiled and will
+run slower for large batch runs.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>cyc</code> - cycle.Cycle instance</li>
+<li><code>veh</code> - vehicle.Vehicle instance</li>
+</ul>
+<p><a id="fastsim.simdrive.SimDrive.__init__"></a></p>
+<h4 id="__init__-2"><a class="header" href="#__init__-2">__init__</a></h4>
+<pre><code class="language-python">def __init__(cyc: cycle.Cycle, veh: vehicle.Vehicle)
+</code></pre>
+<p>Initalizes arrays, given vehicle.Vehicle() and cycle.Cycle() as arguments.
+sim_params is needed only if non-default behavior is desired.</p>
+<p><a id="fastsim.simdrive.SimDrive.gap_to_lead_vehicle_m"></a></p>
+<h4 id="gap_to_lead_vehicle_m"><a class="header" href="#gap_to_lead_vehicle_m">gap_to_lead_vehicle_m</a></h4>
+<pre><code class="language-python">@property
+def gap_to_lead_vehicle_m()
+</code></pre>
+<p>Provides the gap-with lead vehicle from start to finish</p>
+<p><a id="fastsim.simdrive.SimDrive.sim_drive"></a></p>
+<h4 id="sim_drive"><a class="header" href="#sim_drive">sim_drive</a></h4>
+<pre><code class="language-python">def sim_drive(init_soc: Optional[float] = None,
+              aux_in_kw_override: Optional[np.ndarray] = None)
+</code></pre>
+<h2>Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.
+Arguments</h2>
+<p>init_soc: initial SOC for electrified vehicles.<br />
+aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.<br />
+Default of None causes veh.aux_kw to be used.</p>
+<p><a id="fastsim.simdrive.SimDrive.init_for_step"></a></p>
+<h4 id="init_for_step"><a class="header" href="#init_for_step">init_for_step</a></h4>
+<pre><code class="language-python">def init_for_step(init_soc: float,
+                  aux_in_kw_override: Optional[np.ndarray] = None)
+</code></pre>
+<p>This is a specialty method which should be called prior to using
+sim_drive_step in a loop.</p>
+<h2 id="arguments"><a class="header" href="#arguments">Arguments</a></h2>
+<p>init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.<br />
+Default of None causes veh.aux_kw to be used.</p>
+<p><a id="fastsim.simdrive.SimDrive.sim_drive_walk"></a></p>
+<h4 id="sim_drive_walk"><a class="header" href="#sim_drive_walk">sim_drive_walk</a></h4>
+<pre><code class="language-python">def sim_drive_walk(init_soc: float,
+                   aux_in_kw_override: Optional[np.ndarray] = None)
+</code></pre>
+<p>Receives second-by-second cycle information, vehicle properties, 
+and an initial state of charge and runs sim_drive_step to perform a 
+backward facing powertrain simulation. Method 'sim_drive' runs this
+iteratively to achieve correct SOC initial and final conditions, as 
+needed.</p>
+<h2 id="arguments-1"><a class="header" href="#arguments-1">Arguments</a></h2>
+<p>init_soc: initial battery state-of-charge (SOC) for electrified vehicles
+aux_in_kw: aux_in_kw override.  Array of same length as cyc.time_s.<br />
+Default of None causes veh.aux_kw to be used.</p>
+<p><a id="fastsim.simdrive.SimDrive.activate_eco_cruise"></a></p>
+<h4 id="activate_eco_cruise"><a class="header" href="#activate_eco_cruise">activate_eco_cruise</a></h4>
+<pre><code class="language-python">def activate_eco_cruise(by_microtrip: bool = False,
+                        extend_fraction: float = 0.1,
+                        blend_factor: float = 0.0,
+                        min_target_speed_m_per_s: float = 8.0)
+</code></pre>
+<p>Sets the intelligent driver model parameters for an eco-cruise driving trajectory.
+This is a convenience method instead of setting the sim_params.idm* parameters yourself.</p>
+<ul>
+<li>by_microtrip: bool, if True, target speed is set by microtrip, else by cycle</li>
+<li>extend_fraction: float, the fraction of time to extend the cycle to allow for catch-up
+of the following vehicle</li>
+<li>blend_factor: float, a value between 0 and 1; only used of by_microtrip is True, blends
+between microtrip average speed and microtrip average speed when moving. Must be
+between 0 and 1 inclusive</li>
+</ul>
+<p><a id="fastsim.simdrive.SimDrive.sim_drive_step"></a></p>
+<h4 id="sim_drive_step"><a class="header" href="#sim_drive_step">sim_drive_step</a></h4>
+<pre><code class="language-python">def sim_drive_step()
+</code></pre>
+<p>Step through 1 time step.
+TODO: create self.set_speed_for_target_gap(self.i):
+TODO: consider implementing for battery SOC dependence</p>
+<p><a id="fastsim.simdrive.SimDrive.solve_step"></a></p>
+<h4 id="solve_step"><a class="header" href="#solve_step">solve_step</a></h4>
+<pre><code class="language-python">def solve_step(i)
+</code></pre>
+<p>Perform all the calculations to solve 1 time step.</p>
+<p><a id="fastsim.simdrive.SimDrive.set_misc_calcs"></a></p>
+<h4 id="set_misc_calcs"><a class="header" href="#set_misc_calcs">set_misc_calcs</a></h4>
+<pre><code class="language-python">def set_misc_calcs(i)
+</code></pre>
+<p>Sets misc. calculations at time step 'i'</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>i</code> - index of time step</li>
+</ul>
+<p><a id="fastsim.simdrive.SimDrive.set_comp_lims"></a></p>
+<h4 id="set_comp_lims"><a class="header" href="#set_comp_lims">set_comp_lims</a></h4>
+<pre><code class="language-python">def set_comp_lims(i)
+</code></pre>
+<h2>Sets component limits for time step 'i'
+Arguments</h2>
+<p>i: index of time step
+init_soc: initial SOC for electrified vehicles</p>
+<p><a id="fastsim.simdrive.SimDrive.set_power_calcs"></a></p>
+<h4 id="set_power_calcs"><a class="header" href="#set_power_calcs">set_power_calcs</a></h4>
+<pre><code class="language-python">def set_power_calcs(i)
+</code></pre>
+<h2>Calculate power requirements to meet cycle and determine if
+cycle can be met.<br />
+Arguments</h2>
+<p>i: index of time step</p>
+<p><a id="fastsim.simdrive.SimDrive.set_ach_speed"></a></p>
+<h4 id="set_ach_speed"><a class="header" href="#set_ach_speed">set_ach_speed</a></h4>
+<pre><code class="language-python">def set_ach_speed(i)
+</code></pre>
+<h2>Calculate actual speed achieved if vehicle hardware cannot achieve trace speed.
+Arguments</h2>
+<p>i: index of time step</p>
+<p><a id="fastsim.simdrive.SimDrive.set_hybrid_cont_calcs"></a></p>
+<h4 id="set_hybrid_cont_calcs"><a class="header" href="#set_hybrid_cont_calcs">set_hybrid_cont_calcs</a></h4>
+<pre><code class="language-python">def set_hybrid_cont_calcs(i)
+</code></pre>
+<h2>Hybrid control calculations.
+Arguments</h2>
+<p>i: index of time step</p>
+<p><a id="fastsim.simdrive.SimDrive.set_fc_forced_state"></a></p>
+<h4 id="set_fc_forced_state"><a class="header" href="#set_fc_forced_state">set_fc_forced_state</a></h4>
+<pre><code class="language-python">def set_fc_forced_state(i)
+</code></pre>
+<h2>Calculate control variables related to engine on/off state
+Arguments</h2>
+<p>i: index of time step</p>
+<p><a id="fastsim.simdrive.SimDrive.set_hybrid_cont_decisions"></a></p>
+<h4 id="set_hybrid_cont_decisions"><a class="header" href="#set_hybrid_cont_decisions">set_hybrid_cont_decisions</a></h4>
+<pre><code class="language-python">def set_hybrid_cont_decisions(i)
+</code></pre>
+<h2>Hybrid control decisions.
+Arguments</h2>
+<p>i: index of time step</p>
+<p><a id="fastsim.simdrive.SimDrive.set_fc_power"></a></p>
+<h4 id="set_fc_power"><a class="header" href="#set_fc_power">set_fc_power</a></h4>
+<pre><code class="language-python">def set_fc_power(i)
+</code></pre>
+<h2>Sets fcKwOutAch and fcKwInAch.
+Arguments</h2>
+<p>i: index of time step</p>
+<p><a id="fastsim.simdrive.SimDrive.set_post_scalars"></a></p>
+<h4 id="set_post_scalars"><a class="header" href="#set_post_scalars">set_post_scalars</a></h4>
+<pre><code class="language-python">def set_post_scalars()
+</code></pre>
+<p>Sets scalar variables that can be calculated after a cycle is run.
+This includes mpgge, various energy metrics, and others</p>
+<p><a id="fastsim.simdrive.SimDrive.to_rust"></a></p>
+<h4 id="to_rust-1"><a class="header" href="#to_rust-1">to_rust</a></h4>
+<pre><code class="language-python">def to_rust()
+</code></pre>
+<p>Create a rust version of SimDrive</p>
+<p><a id="fastsim.simdrive.copy_sim_drive"></a></p>
+<h4 id="copy_sim_drive"><a class="header" href="#copy_sim_drive">copy_sim_drive</a></h4>
+<pre><code class="language-python">def copy_sim_drive(sd: SimDrive,
+                   return_type: str = None,
+                   deep: bool = True) -&gt; SimDrive
+</code></pre>
+<p>Returns copy of SimDriveClassic or SimDriveJit as SimDriveClassic.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>sd</code> - instantiated SimDriveClassic or SimDriveJit</li>
+<li><code>return_type</code> - accepted inputs are None, 'python', 'legacy', 'rust'
+<ul>
+<li>default: infer from type of sd</li>
+<li>'python': Cycle</li>
+<li>'legacy': LegacyCycle</li>
+<li>'rust': RustCycle</li>
+</ul>
+</li>
+<li><code>deep</code> - if True, uses deepcopy on everything</li>
+</ul>
+<p><a id="fastsim.simdrive.sim_drive_equal"></a></p>
+<h4 id="sim_drive_equal"><a class="header" href="#sim_drive_equal">sim_drive_equal</a></h4>
+<pre><code class="language-python">def sim_drive_equal(a: SimDrive, b: SimDrive) -&gt; bool
+</code></pre>
+<p><a id="fastsim.simdrive.run_simdrive_for_accel_test"></a></p>
+<h4 id="run_simdrive_for_accel_test"><a class="header" href="#run_simdrive_for_accel_test">run_simdrive_for_accel_test</a></h4>
+<pre><code class="language-python">def run_simdrive_for_accel_test(sd: SimDrive)
+</code></pre>
+<p>Initialize and run sim_drive_walk as appropriate for vehicle attribute vehPtType.</p>
+<p><a id="fastsim.simdrive.SimDrivePost"></a></p>
+<h2 id="simdrivepost-objects"><a class="header" href="#simdrivepost-objects">SimDrivePost Objects</a></h2>
+<pre><code class="language-python">class SimDrivePost(object)
+</code></pre>
+<p>Class for post-processing of SimDrive instance.  Requires already-run
+SimDrive instance.</p>
+<p><a id="fastsim.simdrive.SimDrivePost.__init__"></a></p>
+<h4 id="__init__-3"><a class="header" href="#__init__-3">__init__</a></h4>
+<pre><code class="language-python">def __init__(sim_drive: SimDrive)
+</code></pre>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>sim_drive</code> - solved sim_drive object</li>
+</ul>
+<p><a id="fastsim.simdrive.SimDrivePost.get_diagnostics"></a></p>
+<h4 id="get_diagnostics"><a class="header" href="#get_diagnostics">get_diagnostics</a></h4>
+<pre><code class="language-python">def get_diagnostics()
+</code></pre>
+<p>This method is to be run after runing sim_drive if diagnostic variables
+are needed.  Diagnostic variables are returned in a dict.  Diagnostic variables include:</p>
+<ul>
+<li>final integrated value of all positive powers</li>
+<li>final integrated value of all negative powers</li>
+<li>total distance traveled</li>
+<li>miles per gallon gasoline equivalent (mpgge)</li>
+</ul>
+<p><a id="fastsim.simdrive.SimDrivePost.set_battery_wear"></a></p>
+<h4 id="set_battery_wear"><a class="header" href="#set_battery_wear">set_battery_wear</a></h4>
+<pre><code class="language-python">def set_battery_wear()
+</code></pre>
+<p>Battery wear calcs</p>
+<p><a id="fastsim.simdrive.SimDriveJit"></a></p>
+<h4 id="simdrivejit"><a class="header" href="#simdrivejit">SimDriveJit</a></h4>
+<pre><code class="language-python">def SimDriveJit(cyc_jit, veh_jit)
+</code></pre>
+<p>deprecated</p>
+<p><a id="fastsim.simdrive.estimate_soc_corrected_fuel_kJ"></a></p>
+<h4 id="estimate_soc_corrected_fuel_kj"><a class="header" href="#estimate_soc_corrected_fuel_kj">estimate_soc_corrected_fuel_kJ</a></h4>
+<pre><code class="language-python">def estimate_soc_corrected_fuel_kJ(sd: SimDrive) -&gt; float
+</code></pre>
+<ul>
+<li>sd: SimDriveClassic, the simdrive instance after simulation
+RETURN: number, the kJ of fuel corrected for SOC imbalance</li>
+</ul>
+<p><a id="fastsim.tests.test_utils"></a></p>
+<h1 id="fastsimteststest_utils"><a class="header" href="#fastsimteststest_utils">fastsim.tests.test_utils</a></h1>
+<p><a id="fastsim.tests.test_simdrive"></a></p>
+<h1 id="fastsimteststest_simdrive"><a class="header" href="#fastsimteststest_simdrive">fastsim.tests.test_simdrive</a></h1>
+<p>Test suite for simdrive instantiation and usage.</p>
+<p><a id="fastsim.tests.test_simdrive.TestSimDriveClassic"></a></p>
+<h2 id="testsimdriveclassic-objects"><a class="header" href="#testsimdriveclassic-objects">TestSimDriveClassic Objects</a></h2>
+<pre><code class="language-python">class TestSimDriveClassic(unittest.TestCase)
+</code></pre>
+<p>Tests for fastsim.simdrive.SimDriveClassic methods</p>
+<p><a id="fastsim.tests.test_simdrive.TestSimDriveClassic.test_sim_drive_step"></a></p>
+<h4 id="test_sim_drive_step"><a class="header" href="#test_sim_drive_step">test_sim_drive_step</a></h4>
+<pre><code class="language-python">def test_sim_drive_step()
+</code></pre>
+<p>Verify that sim_drive_step produces an expected result.</p>
+<p><a id="fastsim.tests.test_simdrive.TestSimDriveClassic.test_sim_drive_walk"></a></p>
+<h4 id="test_sim_drive_walk"><a class="header" href="#test_sim_drive_walk">test_sim_drive_walk</a></h4>
+<pre><code class="language-python">def test_sim_drive_walk()
+</code></pre>
+<p>Verify that sim_drive_walk produces an expected result.</p>
+<p><a id="fastsim.tests.test_logging"></a></p>
+<h1 id="fastsimteststest_logging"><a class="header" href="#fastsimteststest_logging">fastsim.tests.test_logging</a></h1>
+<p><a id="fastsim.tests.test_following"></a></p>
+<h1 id="fastsimteststest_following"><a class="header" href="#fastsimteststest_following">fastsim.tests.test_following</a></h1>
+<p>Tests that check the drive cycle modification functionality.</p>
+<p><a id="fastsim.tests.test_following.TestFollowing"></a></p>
+<h2 id="testfollowing-objects"><a class="header" href="#testfollowing-objects">TestFollowing Objects</a></h2>
+<pre><code class="language-python">class TestFollowing(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_following.TestFollowing.test_that_we_have_a_gap_between_us_and_the_lead_vehicle"></a></p>
+<h4 id="test_that_we_have_a_gap_between_us_and_the_lead_vehicle"><a class="header" href="#test_that_we_have_a_gap_between_us_and_the_lead_vehicle">test_that_we_have_a_gap_between_us_and_the_lead_vehicle</a></h4>
+<pre><code class="language-python">def test_that_we_have_a_gap_between_us_and_the_lead_vehicle()
+</code></pre>
+<p>A positive gap should exist between us and the lead vehicle</p>
+<p><a id="fastsim.tests.test_following.TestFollowing.test_that_the_gap_changes_over_the_cycle"></a></p>
+<h4 id="test_that_the_gap_changes_over_the_cycle"><a class="header" href="#test_that_the_gap_changes_over_the_cycle">test_that_the_gap_changes_over_the_cycle</a></h4>
+<pre><code class="language-python">def test_that_the_gap_changes_over_the_cycle()
+</code></pre>
+<p>Ensure that our gap calculation is doing something</p>
+<p><a id="fastsim.tests.test_following.TestFollowing.test_that_following_works_over_parameter_sweep"></a></p>
+<h4 id="test_that_following_works_over_parameter_sweep"><a class="header" href="#test_that_following_works_over_parameter_sweep">test_that_following_works_over_parameter_sweep</a></h4>
+<pre><code class="language-python">def test_that_following_works_over_parameter_sweep()
+</code></pre>
+<p>We're going to sweep through all of the parameters and see how it goes</p>
+<p><a id="fastsim.tests.test_following.TestFollowing.test_that_we_can_use_the_idm"></a></p>
+<h4 id="test_that_we_can_use_the_idm"><a class="header" href="#test_that_we_can_use_the_idm">test_that_we_can_use_the_idm</a></h4>
+<pre><code class="language-python">def test_that_we_can_use_the_idm()
+</code></pre>
+<p>Tests use of the IDM model for following</p>
+<p><a id="fastsim.tests.test_following.TestFollowing.test_sweeping_idm_parameters"></a></p>
+<h4 id="test_sweeping_idm_parameters"><a class="header" href="#test_sweeping_idm_parameters">test_sweeping_idm_parameters</a></h4>
+<pre><code class="language-python">def test_sweeping_idm_parameters()
+</code></pre>
+<p>Tests use of the IDM model for following</p>
+<p><a id="fastsim.tests.test_following.TestFollowing.test_distance_based_grade_on_following"></a></p>
+<h4 id="test_distance_based_grade_on_following"><a class="header" href="#test_distance_based_grade_on_following">test_distance_based_grade_on_following</a></h4>
+<pre><code class="language-python">def test_distance_based_grade_on_following()
+</code></pre>
+<p>Tests use of the IDM model for following</p>
+<p><a id="fastsim.tests.test_vehicle"></a></p>
+<h1 id="fastsimteststest_vehicle"><a class="header" href="#fastsimteststest_vehicle">fastsim.tests.test_vehicle</a></h1>
+<p>Test suite for cycle instantiation and manipulation.</p>
+<p><a id="fastsim.tests.test_vehicle.TestVehicle"></a></p>
+<h2 id="testvehicle-objects"><a class="header" href="#testvehicle-objects">TestVehicle Objects</a></h2>
+<pre><code class="language-python">class TestVehicle(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_vehicle.TestVehicle.test_equal"></a></p>
+<h4 id="test_equal"><a class="header" href="#test_equal">test_equal</a></h4>
+<pre><code class="language-python">def test_equal()
+</code></pre>
+<p>Verify that a copied Vehicle and original are equal.</p>
+<p><a id="fastsim.tests.test_vehicle.TestVehicle.test_properties"></a></p>
+<h4 id="test_properties"><a class="header" href="#test_properties">test_properties</a></h4>
+<pre><code class="language-python">def test_properties()
+</code></pre>
+<p>Verify that some of the property variables are working as expected.</p>
+<p><a id="fastsim.tests.test_vehicle.TestVehicle.test_fc_efficiency_override"></a></p>
+<h4 id="test_fc_efficiency_override"><a class="header" href="#test_fc_efficiency_override">test_fc_efficiency_override</a></h4>
+<pre><code class="language-python">def test_fc_efficiency_override()
+</code></pre>
+<p>Verify that we can scale FC</p>
+<p><a id="fastsim.tests.test_vehicle.TestVehicle.test_set_derived_init"></a></p>
+<h4 id="test_set_derived_init"><a class="header" href="#test_set_derived_init">test_set_derived_init</a></h4>
+<pre><code class="language-python">def test_set_derived_init()
+</code></pre>
+<p>Verify that we can set derived parameters or not on init.</p>
+<p><a id="fastsim.tests.test_copy"></a></p>
+<h1 id="fastsimteststest_copy"><a class="header" href="#fastsimteststest_copy">fastsim.tests.test_copy</a></h1>
+<p>Test various copy utilities</p>
+<p><a id="fastsim.tests.test_copy.TestCopy"></a></p>
+<h2 id="testcopy-objects"><a class="header" href="#testcopy-objects">TestCopy Objects</a></h2>
+<pre><code class="language-python">class TestCopy(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_copy.TestCopy.test_copy_cycle"></a></p>
+<h4 id="test_copy_cycle"><a class="header" href="#test_copy_cycle">test_copy_cycle</a></h4>
+<pre><code class="language-python">def test_copy_cycle()
+</code></pre>
+<p>Test that cycle_copy works as expected</p>
+<p><a id="fastsim.tests.test_copy.TestCopy.test_copy_physical_properties"></a></p>
+<h4 id="test_copy_physical_properties"><a class="header" href="#test_copy_physical_properties">test_copy_physical_properties</a></h4>
+<pre><code class="language-python">def test_copy_physical_properties()
+</code></pre>
+<p>Test that copy_physical_properties works as expected</p>
+<p><a id="fastsim.tests.test_copy.TestCopy.test_copy_vehicle"></a></p>
+<h4 id="test_copy_vehicle"><a class="header" href="#test_copy_vehicle">test_copy_vehicle</a></h4>
+<pre><code class="language-python">def test_copy_vehicle()
+</code></pre>
+<p>Test that vehicle_copy works as expected</p>
+<p><a id="fastsim.tests.test_copy.TestCopy.test_copy_sim_params"></a></p>
+<h4 id="test_copy_sim_params"><a class="header" href="#test_copy_sim_params">test_copy_sim_params</a></h4>
+<pre><code class="language-python">def test_copy_sim_params()
+</code></pre>
+<p>Test that copy_sim_params works as expected</p>
+<p><a id="fastsim.tests.test_copy.TestCopy.test_copy_sim_drive"></a></p>
+<h4 id="test_copy_sim_drive"><a class="header" href="#test_copy_sim_drive">test_copy_sim_drive</a></h4>
+<pre><code class="language-python">def test_copy_sim_drive()
+</code></pre>
+<p>Test that copy_sim_drive works as expected</p>
+<p><a id="fastsim.tests"></a></p>
+<h1 id="fastsimtests"><a class="header" href="#fastsimtests">fastsim.tests</a></h1>
+<p>Package containing tests for FASTSim.</p>
+<p><a id="fastsim.tests.run_functional_tests"></a></p>
+<h4 id="run_functional_tests"><a class="header" href="#run_functional_tests">run_functional_tests</a></h4>
+<pre><code class="language-python">def run_functional_tests()
+</code></pre>
+<p>Runs all functional tests.</p>
+<p><a id="fastsim.tests.test_auxiliaries"></a></p>
+<h1 id="fastsimteststest_auxiliaries"><a class="header" href="#fastsimteststest_auxiliaries">fastsim.tests.test_auxiliaries</a></h1>
+<p><a id="fastsim.tests.test_simdrivelabel"></a></p>
+<h1 id="fastsimteststest_simdrivelabel"><a class="header" href="#fastsimteststest_simdrivelabel">fastsim.tests.test_simdrivelabel</a></h1>
+<p><a id="fastsim.tests.test_simdrive_sweep"></a></p>
+<h1 id="fastsimteststest_simdrive_sweep"><a class="header" href="#fastsimteststest_simdrive_sweep">fastsim.tests.test_simdrive_sweep</a></h1>
+<p>Test script that saves results from 26 vehicles currently in master branch of FASTSim as of 17 December 2019 for 3 standard cycles.
+From command line, pass True (default if left blank) or False argument to use JIT compilation or not, respectively.</p>
+<p><a id="fastsim.tests.test_simdrive_sweep.main"></a></p>
+<h4 id="main"><a class="header" href="#main">main</a></h4>
+<pre><code class="language-python">def main(err_tol=1e-4, verbose=True, use_rust=False)
+</code></pre>
+<p>Runs test test for 26 vehicles and 3 cycles.
+Test compares cumulative positive and negative energy
+values to a benchmark from earlier.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p>err_tol : error tolerance
+default of 1e-4 was selected to prevent minor errors from showing.
+As of 31 December 2020, a recent python update caused errors that
+are smaller than this and therefore ok to neglect.</p>
+<ul>
+<li><code>verbose</code> - if True, prints progress</li>
+<li><code>use_rust</code> - Boolean, if True, use Rust version of classes, else python version</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<hr />
+<p>df_err : pandas datafram, fractional errors
+df : pandas dataframe, new values
+df0 : pandas dataframe, original benchmark values</p>
+<ul>
+<li><code>col_for_max_error</code> - string or None, the column name of the column having max absolute error</li>
+<li><code>max_abs_err</code> - number or None, the maximum absolute error if it exists</li>
+</ul>
+<p><a id="fastsim.tests.test_simdrive_sweep.TestSimDriveSweep"></a></p>
+<h2 id="testsimdrivesweep-objects"><a class="header" href="#testsimdrivesweep-objects">TestSimDriveSweep Objects</a></h2>
+<pre><code class="language-python">class TestSimDriveSweep(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_simdrive_sweep.TestSimDriveSweep.test_sweep"></a></p>
+<h4 id="test_sweep"><a class="header" href="#test_sweep">test_sweep</a></h4>
+<pre><code class="language-python">def test_sweep()
+</code></pre>
+<p>Compares results against benchmark.</p>
+<p><a id="fastsim.tests.test_cycle"></a></p>
+<h1 id="fastsimteststest_cycle"><a class="header" href="#fastsimteststest_cycle">fastsim.tests.test_cycle</a></h1>
+<p>Test suite for cycle instantiation and manipulation.</p>
+<p><a id="fastsim.tests.test_cycle.calc_distance_traveled_m"></a></p>
+<h4 id="calc_distance_traveled_m"><a class="header" href="#calc_distance_traveled_m">calc_distance_traveled_m</a></h4>
+<pre><code class="language-python">def calc_distance_traveled_m(cyc, up_to=None)
+</code></pre>
+<p>Calculate the distance traveled in meters</p>
+<ul>
+<li>cyc: a cycle dictionary</li>
+<li>up_to: None or a positive number indicating a time in seconds. Will calculate the distance up-to that given time
+RETURN: Number, the distance traveled in meters</li>
+</ul>
+<p><a id="fastsim.tests.test_cycle.dicts_are_equal"></a></p>
+<h4 id="dicts_are_equal"><a class="header" href="#dicts_are_equal">dicts_are_equal</a></h4>
+<pre><code class="language-python">def dicts_are_equal(d1, d2, d1_name=None, d2_name=None)
+</code></pre>
+<p>Checks if dictionaries are equal</p>
+<ul>
+<li>d1: dict</li>
+<li>d2: dict</li>
+<li>d1_name: None or string, the name used for dict 1 in messaging</li>
+<li>d2_name: None or string, the name used for dict 1 in messaging
+RETURN: (boolean, (Array string)),
+Returns (True, []) if the dictionaries are equal; otherwise, returns
+(False, [... list of issues here])</li>
+</ul>
+<p><a id="fastsim.tests.test_cycle.TestCycle"></a></p>
+<h2 id="testcycle-objects"><a class="header" href="#testcycle-objects">TestCycle Objects</a></h2>
+<pre><code class="language-python">class TestCycle(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_monotonicity"></a></p>
+<h4 id="test_monotonicity"><a class="header" href="#test_monotonicity">test_monotonicity</a></h4>
+<pre><code class="language-python">def test_monotonicity()
+</code></pre>
+<p>checks that time is monotonically increasing</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_load_dict"></a></p>
+<h4 id="test_load_dict"><a class="header" href="#test_load_dict">test_load_dict</a></h4>
+<pre><code class="language-python">def test_load_dict()
+</code></pre>
+<p>checks that conversion from dict works</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_that_udds_has_18_microtrips"></a></p>
+<h4 id="test_that_udds_has_18_microtrips"><a class="header" href="#test_that_udds_has_18_microtrips">test_that_udds_has_18_microtrips</a></h4>
+<pre><code class="language-python">def test_that_udds_has_18_microtrips()
+</code></pre>
+<p>Check that the number of microtrips equals expected</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_roundtrip_of_microtrip_and_concat"></a></p>
+<h4 id="test_roundtrip_of_microtrip_and_concat"><a class="header" href="#test_roundtrip_of_microtrip_and_concat">test_roundtrip_of_microtrip_and_concat</a></h4>
+<pre><code class="language-python">def test_roundtrip_of_microtrip_and_concat()
+</code></pre>
+<p>A cycle split into microtrips and concatenated back together should equal the original</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_roundtrip_of_microtrip_and_concat_using_keep_name_arg"></a></p>
+<h4 id="test_roundtrip_of_microtrip_and_concat_using_keep_name_arg"><a class="header" href="#test_roundtrip_of_microtrip_and_concat_using_keep_name_arg">test_roundtrip_of_microtrip_and_concat_using_keep_name_arg</a></h4>
+<pre><code class="language-python">def test_roundtrip_of_microtrip_and_concat_using_keep_name_arg()
+</code></pre>
+<p>A cycle split into microtrips and concatenated back together should equal the original</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_set_from_dict_for_a_microtrip"></a></p>
+<h4 id="test_set_from_dict_for_a_microtrip"><a class="header" href="#test_set_from_dict_for_a_microtrip">test_set_from_dict_for_a_microtrip</a></h4>
+<pre><code class="language-python">def test_set_from_dict_for_a_microtrip()
+</code></pre>
+<p>Test splitting into microtrips and setting is as expected</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_duration_of_concatenated_cycles_is_the_sum_of_the_components"></a></p>
+<h4 id="test_duration_of_concatenated_cycles_is_the_sum_of_the_components"><a class="header" href="#test_duration_of_concatenated_cycles_is_the_sum_of_the_components">test_duration_of_concatenated_cycles_is_the_sum_of_the_components</a></h4>
+<pre><code class="language-python">def test_duration_of_concatenated_cycles_is_the_sum_of_the_components()
+</code></pre>
+<p>Test that two cycles concatenated have the same duration as the sum of the constituents</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_cycle_equality"></a></p>
+<h4 id="test_cycle_equality"><a class="header" href="#test_cycle_equality">test_cycle_equality</a></h4>
+<pre><code class="language-python">def test_cycle_equality()
+</code></pre>
+<p>Test structural equality of driving cycles</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_that_cycle_resampling_works_as_expected"></a></p>
+<h4 id="test_that_cycle_resampling_works_as_expected"><a class="header" href="#test_that_cycle_resampling_works_as_expected">test_that_cycle_resampling_works_as_expected</a></h4>
+<pre><code class="language-python">def test_that_cycle_resampling_works_as_expected()
+</code></pre>
+<p>Test resampling the values of a cycle</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_resampling_and_concatenating_cycles"></a></p>
+<h4 id="test_resampling_and_concatenating_cycles"><a class="header" href="#test_resampling_and_concatenating_cycles">test_resampling_and_concatenating_cycles</a></h4>
+<pre><code class="language-python">def test_resampling_and_concatenating_cycles()
+</code></pre>
+<p>Test that concatenating cycles at different sampling rates works as expected</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_resampling_with_hold_keys"></a></p>
+<h4 id="test_resampling_with_hold_keys"><a class="header" href="#test_resampling_with_hold_keys">test_resampling_with_hold_keys</a></h4>
+<pre><code class="language-python">def test_resampling_with_hold_keys()
+</code></pre>
+<p>Test that 'hold_keys' works with resampling</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_that_resampling_preserves_total_distance_traveled_using_rate_keys"></a></p>
+<h4 id="test_that_resampling_preserves_total_distance_traveled_using_rate_keys"><a class="header" href="#test_that_resampling_preserves_total_distance_traveled_using_rate_keys">test_that_resampling_preserves_total_distance_traveled_using_rate_keys</a></h4>
+<pre><code class="language-python">def test_that_resampling_preserves_total_distance_traveled_using_rate_keys()
+</code></pre>
+<p>Distance traveled before and after resampling should be the same when rate_keys are used</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_clip_by_times"></a></p>
+<h4 id="test_clip_by_times"><a class="header" href="#test_clip_by_times">test_clip_by_times</a></h4>
+<pre><code class="language-python">def test_clip_by_times()
+</code></pre>
+<p>Test that clipping by times works as expected</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_get_accelerations"></a></p>
+<h4 id="test_get_accelerations"><a class="header" href="#test_get_accelerations">test_get_accelerations</a></h4>
+<pre><code class="language-python">def test_get_accelerations()
+</code></pre>
+<p>Test getting and processing accelerations</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_that_copy_creates_idential_structures"></a></p>
+<h4 id="test_that_copy_creates_idential_structures"><a class="header" href="#test_that_copy_creates_idential_structures">test_that_copy_creates_idential_structures</a></h4>
+<pre><code class="language-python">def test_that_copy_creates_idential_structures()
+</code></pre>
+<p>Checks that copy methods produce identical cycles</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_make_cycle"></a></p>
+<h4 id="test_make_cycle"><a class="header" href="#test_make_cycle">test_make_cycle</a></h4>
+<pre><code class="language-python">def test_make_cycle()
+</code></pre>
+<p>Check that make_cycle works as expected</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_key_conversion"></a></p>
+<h4 id="test_key_conversion"><a class="header" href="#test_key_conversion">test_key_conversion</a></h4>
+<pre><code class="language-python">def test_key_conversion()
+</code></pre>
+<p>check that legacy keys can still be generated</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_get_grade_by_distance"></a></p>
+<h4 id="test_get_grade_by_distance"><a class="header" href="#test_get_grade_by_distance">test_get_grade_by_distance</a></h4>
+<pre><code class="language-python">def test_get_grade_by_distance()
+</code></pre>
+<p>check that we can lookup grade by distance</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_dt_s_vs_dt_s_at_i"></a></p>
+<h4 id="test_dt_s_vs_dt_s_at_i"><a class="header" href="#test_dt_s_vs_dt_s_at_i">test_dt_s_vs_dt_s_at_i</a></h4>
+<pre><code class="language-python">def test_dt_s_vs_dt_s_at_i()
+</code></pre>
+<p>Test that dt_s_at_i is a true replacement for dt_s[i]</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_trapz_step_start_distance"></a></p>
+<h4 id="test_trapz_step_start_distance"><a class="header" href="#test_trapz_step_start_distance">test_trapz_step_start_distance</a></h4>
+<pre><code class="language-python">def test_trapz_step_start_distance()
+</code></pre>
+<p>Test the implementation of trapz_step_start_distance</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_that_cycle_cache_interp_grade_substitutes_for_average_grade_over_range"></a></p>
+<h4 id="test_that_cycle_cache_interp_grade_substitutes_for_average_grade_over_range"><a class="header" href="#test_that_cycle_cache_interp_grade_substitutes_for_average_grade_over_range">test_that_cycle_cache_interp_grade_substitutes_for_average_grade_over_range</a></h4>
+<pre><code class="language-python">def test_that_cycle_cache_interp_grade_substitutes_for_average_grade_over_range(
+)
+</code></pre>
+<p>Ensure that CycleCache.interp_grade actually predicts the same values as
+Cycle.average_grade_over_range(d, 0.0, cache=None|CycleCache) with and without
+using CycleCache</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_that_trapz_step_start_distance_equals_cache_trapz_distances"></a></p>
+<h4 id="test_that_trapz_step_start_distance_equals_cache_trapz_distances"><a class="header" href="#test_that_trapz_step_start_distance_equals_cache_trapz_distances">test_that_trapz_step_start_distance_equals_cache_trapz_distances</a></h4>
+<pre><code class="language-python">def test_that_trapz_step_start_distance_equals_cache_trapz_distances()
+</code></pre>
+<p>Test that cycle.trapz_step_start_distance(self.cyc0, i) == self._cyc0_cache.trapz_distances_m[i-1]</p>
+<p><a id="fastsim.tests.test_cycle.TestCycle.test_average_grade_over_range_with_and_without_cache"></a></p>
+<h4 id="test_average_grade_over_range_with_and_without_cache"><a class="header" href="#test_average_grade_over_range_with_and_without_cache">test_average_grade_over_range_with_and_without_cache</a></h4>
+<pre><code class="language-python">def test_average_grade_over_range_with_and_without_cache()
+</code></pre>
+<p>Ensure that CycleCache usage only speeds things up; doesn't change values...</p>
+<p><a id="fastsim.tests.test_cav_sweep"></a></p>
+<h1 id="fastsimteststest_cav_sweep"><a class="header" href="#fastsimteststest_cav_sweep">fastsim.tests.test_cav_sweep</a></h1>
+<p>Test fastsim/demos/cav_sweep.py for regressions</p>
+<p><a id="fastsim.tests.test_soc_correction"></a></p>
+<h1 id="fastsimteststest_soc_correction"><a class="header" href="#fastsimteststest_soc_correction">fastsim.tests.test_soc_correction</a></h1>
+<p>Tests an HEV correction methodology versus other techniques</p>
+<p><a id="fastsim.tests.test_soc_correction.TestSocCorrection"></a></p>
+<h2 id="testsoccorrection-objects"><a class="header" href="#testsoccorrection-objects">TestSocCorrection Objects</a></h2>
+<pre><code class="language-python">class TestSocCorrection(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_soc_correction.TestSocCorrection.test_that_soc_correction_method_works"></a></p>
+<h4 id="test_that_soc_correction_method_works"><a class="header" href="#test_that_soc_correction_method_works">test_that_soc_correction_method_works</a></h4>
+<pre><code class="language-python">def test_that_soc_correction_method_works()
+</code></pre>
+<p>Test using an SOC equivalency method versus other techniques</p>
+<p><a id="fastsim.tests.test_coasting"></a></p>
+<h1 id="fastsimteststest_coasting"><a class="header" href="#fastsimteststest_coasting">fastsim.tests.test_coasting</a></h1>
+<p>Tests that check the drive cycle modification functionality.</p>
+<p><a id="fastsim.tests.test_coasting.make_coasting_plot"></a></p>
+<h4 id="make_coasting_plot"><a class="header" href="#make_coasting_plot">make_coasting_plot</a></h4>
+<pre><code class="language-python">def make_coasting_plot(
+        cyc0: fastsim.cycle.Cycle,
+        cyc: fastsim.cycle.Cycle,
+        use_mph: bool = False,
+        title: Optional[str] = None,
+        save_file: Optional[str] = None,
+        do_show: bool = False,
+        verbose: bool = False,
+        gap_offset_m: float = 0.0,
+        coast_brake_start_speed_m_per_s: Optional[float] = None)
+</code></pre>
+<ul>
+<li>cyc0: Cycle, the reference cycle (the &quot;shadow trace&quot; or &quot;lead vehicle&quot;)</li>
+<li>cyc: Cycle, the actual cycle driven</li>
+<li>use_mph: Bool, if True, plot in miles per hour, else m/s</li>
+<li>title: None or string, if string, set the title</li>
+<li>save_file: (Or None string), if specified, save the file to disk</li>
+<li>do_show: Bool, whether to show the file or not</li>
+<li>verbose: Bool, if True, prints out</li>
+<li>gap_offset_m: number, an offset to apply to the gap metrics (m)</li>
+<li>coast_brake_start_speed_m_per_s: None | number, if supplied, plots the coast-start speed (m/s)
+RETURN: None</li>
+<li>saves creates the given file and shows it</li>
+</ul>
+<p><a id="fastsim.tests.test_coasting.make_dvdd_plot"></a></p>
+<h4 id="make_dvdd_plot"><a class="header" href="#make_dvdd_plot">make_dvdd_plot</a></h4>
+<pre><code class="language-python">def make_dvdd_plot(cyc: fastsim.cycle.Cycle,
+                   coast_to_break_speed_m__s: Union[float, None] = None,
+                   use_mph: bool = False,
+                   save_file: Union[None, str] = None,
+                   do_show: bool = False,
+                   curve_fit: bool = True,
+                   additional_xs: Union[None, List[float]] = None,
+                   additional_ys: Union[None, List[float]] = None)
+</code></pre>
+<p>Create a change in speed (dv) by change in distance (dd) plot</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting"></a></p>
+<h2 id="testcoasting-objects"><a class="header" href="#testcoasting-objects">TestCoasting Objects</a></h2>
+<pre><code class="language-python">class TestCoasting(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_cycle_reported_distance_traveled_m"></a></p>
+<h4 id="test_cycle_reported_distance_traveled_m"><a class="header" href="#test_cycle_reported_distance_traveled_m">test_cycle_reported_distance_traveled_m</a></h4>
+<pre><code class="language-python">def test_cycle_reported_distance_traveled_m()
+</code></pre>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_cycle_modifications_with_constant_jerk"></a></p>
+<h4 id="test_cycle_modifications_with_constant_jerk"><a class="header" href="#test_cycle_modifications_with_constant_jerk">test_cycle_modifications_with_constant_jerk</a></h4>
+<pre><code class="language-python">def test_cycle_modifications_with_constant_jerk()
+</code></pre>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_that_cycle_modifications_work_as_expected"></a></p>
+<h4 id="test_that_cycle_modifications_work_as_expected"><a class="header" href="#test_that_cycle_modifications_work_as_expected">test_that_cycle_modifications_work_as_expected</a></h4>
+<pre><code class="language-python">def test_that_cycle_modifications_work_as_expected()
+</code></pre>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_that_we_can_coast"></a></p>
+<h4 id="test_that_we_can_coast"><a class="header" href="#test_that_we_can_coast">test_that_we_can_coast</a></h4>
+<pre><code class="language-python">def test_that_we_can_coast()
+</code></pre>
+<p>Test the standard interface to Eco-Approach for 'free coasting'</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_eco_approach_modeling"></a></p>
+<h4 id="test_eco_approach_modeling"><a class="header" href="#test_eco_approach_modeling">test_eco_approach_modeling</a></h4>
+<pre><code class="language-python">def test_eco_approach_modeling()
+</code></pre>
+<p>Test a simplified model of eco-approach</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_consistency_of_constant_jerk_trajectory"></a></p>
+<h4 id="test_consistency_of_constant_jerk_trajectory"><a class="header" href="#test_consistency_of_constant_jerk_trajectory">test_consistency_of_constant_jerk_trajectory</a></h4>
+<pre><code class="language-python">def test_consistency_of_constant_jerk_trajectory()
+</code></pre>
+<p>Confirm that acceleration, speed, and distances are as expected for constant jerk trajectory</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_that_final_speed_of_cycle_modification_matches_trajectory_calcs"></a></p>
+<h4 id="test_that_final_speed_of_cycle_modification_matches_trajectory_calcs"><a class="header" href="#test_that_final_speed_of_cycle_modification_matches_trajectory_calcs">test_that_final_speed_of_cycle_modification_matches_trajectory_calcs</a></h4>
+<pre><code class="language-python">def test_that_final_speed_of_cycle_modification_matches_trajectory_calcs()
+</code></pre>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_that_cycle_distance_reported_is_correct"></a></p>
+<h4 id="test_that_cycle_distance_reported_is_correct"><a class="header" href="#test_that_cycle_distance_reported_is_correct">test_that_cycle_distance_reported_is_correct</a></h4>
+<pre><code class="language-python">def test_that_cycle_distance_reported_is_correct()
+</code></pre>
+<p>Test the reported distances via cycDistMeters</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_brake_trajectory"></a></p>
+<h4 id="test_brake_trajectory"><a class="header" href="#test_brake_trajectory">test_brake_trajectory</a></h4>
+<pre><code class="language-python">def test_brake_trajectory()
+</code></pre>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_logic_to_enter_eco_approach_automatically"></a></p>
+<h4 id="test_logic_to_enter_eco_approach_automatically"><a class="header" href="#test_logic_to_enter_eco_approach_automatically">test_logic_to_enter_eco_approach_automatically</a></h4>
+<pre><code class="language-python">def test_logic_to_enter_eco_approach_automatically()
+</code></pre>
+<p>Test that we can auto-enter eco-approach</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_that_coasting_works_going_uphill"></a></p>
+<h4 id="test_that_coasting_works_going_uphill"><a class="header" href="#test_that_coasting_works_going_uphill">test_that_coasting_works_going_uphill</a></h4>
+<pre><code class="language-python">def test_that_coasting_works_going_uphill()
+</code></pre>
+<p>Test coasting logic while hill climbing</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_that_coasting_logic_works_going_uphill"></a></p>
+<h4 id="test_that_coasting_logic_works_going_uphill"><a class="header" href="#test_that_coasting_logic_works_going_uphill">test_that_coasting_logic_works_going_uphill</a></h4>
+<pre><code class="language-python">def test_that_coasting_logic_works_going_uphill()
+</code></pre>
+<p>When going uphill, we want to ensure we can still hit our coasting target</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_that_coasting_logic_works_going_downhill"></a></p>
+<h4 id="test_that_coasting_logic_works_going_downhill"><a class="header" href="#test_that_coasting_logic_works_going_downhill">test_that_coasting_logic_works_going_downhill</a></h4>
+<pre><code class="language-python">def test_that_coasting_logic_works_going_downhill()
+</code></pre>
+<p>When going downhill, ensure we can still hit our coasting target</p>
+<p><a id="fastsim.tests.test_coasting.TestCoasting.test_that_coasting_works_with_multiple_stops_and_grades"></a></p>
+<h4 id="test_that_coasting_works_with_multiple_stops_and_grades"><a class="header" href="#test_that_coasting_works_with_multiple_stops_and_grades">test_that_coasting_works_with_multiple_stops_and_grades</a></h4>
+<pre><code class="language-python">def test_that_coasting_works_with_multiple_stops_and_grades()
+</code></pre>
+<p>Ensure coasting hits distance target with multiple stops and both uphill/downhill</p>
+<p><a id="fastsim.tests.test_rust"></a></p>
+<h1 id="fastsimteststest_rust"><a class="header" href="#fastsimteststest_rust">fastsim.tests.test_rust</a></h1>
+<p>Tests using the Rust versions of SimDrive, Cycle, and Vehicle</p>
+<p><a id="fastsim.tests.test_rust.TestRust"></a></p>
+<h2 id="testrust-objects"><a class="header" href="#testrust-objects">TestRust Objects</a></h2>
+<pre><code class="language-python">class TestRust(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_rust.TestRust.test_discrepancies"></a></p>
+<h4 id="test_discrepancies"><a class="header" href="#test_discrepancies">test_discrepancies</a></h4>
+<pre><code class="language-python">def test_discrepancies(veh_type=&quot;ALL&quot;, use_dict=True, cyc_name=&quot;udds&quot;)
+</code></pre>
+<p>Function for testing for Rust/Python discrepancies, both in the vehicle database
+CSV as well as the individual model files. Uses test_vehicle_for_discrepancies as backend.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>veh_type</code> - type of vehicle to test for discrepancies
+can be &quot;CONV&quot;, &quot;HEV&quot;, &quot;PHEV&quot;, &quot;BEV&quot;, or &quot;ALL&quot;</li>
+<li><code>use_dict</code> - if True, use small cyc_dict to speed up test
+if false, default to UDDS</li>
+<li><code>cyc_name</code> - name of cycle from database to use if use_dict == False</li>
+</ul>
+<p><a id="fastsim.tests.test_rust.TestRust.test_vehicle_for_discrepancies"></a></p>
+<h4 id="test_vehicle_for_discrepancies"><a class="header" href="#test_vehicle_for_discrepancies">test_vehicle_for_discrepancies</a></h4>
+<pre><code class="language-python">def test_vehicle_for_discrepancies(vnum=1,
+                                   veh_filename=None,
+                                   cyc_dict=None,
+                                   cyc_name=&quot;udds&quot;)
+</code></pre>
+<p>Test for finding discrepancies between Rust and Python for single vehicle.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>vnum</code> - vehicle database number, optional, default option without any arguments</li>
+<li><code>veh_filename</code> - vehicle filename from vehdb folder, optional</li>
+<li><code>cyc_dict</code> - cycle dictionary for custom cycle, optional</li>
+<li><code>cyc_name</code> - cycle name from cycle database, optional</li>
+</ul>
+<p><a id="fastsim.tests.test_rust.TestRust.test_fueling_prediction_for_multiple_vehicle"></a></p>
+<h4 id="test_fueling_prediction_for_multiple_vehicle"><a class="header" href="#test_fueling_prediction_for_multiple_vehicle">test_fueling_prediction_for_multiple_vehicle</a></h4>
+<pre><code class="language-python">def test_fueling_prediction_for_multiple_vehicle()
+</code></pre>
+<p>This test assures that Rust and Python agree on at least one 
+example of all permutations of veh_pt_type and fc_eff_type.</p>
+<p><a id="fastsim.tests.test_vs_excel"></a></p>
+<h1 id="fastsimteststest_vs_excel"><a class="header" href="#fastsimteststest_vs_excel">fastsim.tests.test_vs_excel</a></h1>
+<p>Module for comparing python results with Excel by running all the vehicles
+in both Excel (uses archived results if Excel version not available) and 
+Python FASTSim for both UDDS and HWFET cycles.</p>
+<p><a id="fastsim.tests.test_vs_excel.run"></a></p>
+<h4 id="run"><a class="header" href="#run">run</a></h4>
+<pre><code class="language-python">def run(vehicles=np.arange(1, 27), verbose=True, use_rust=False)
+</code></pre>
+<p>Runs python fastsim through 26 vehicles and returns list of dictionaries
+containing scenario descriptions.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p>verbose : Boolean
+if True, print progress</p>
+<ul>
+<li><code>use_rust</code> - Boolean, if True, use Rust versions of classes</li>
+</ul>
+<p><a id="fastsim.tests.test_vs_excel.run_excel"></a></p>
+<h4 id="run_excel"><a class="header" href="#run_excel">run_excel</a></h4>
+<pre><code class="language-python">def run_excel(
+        vehicles=np.arange(1, 28), prev_res_path=PREV_RES_PATH,
+        rerun_excel=False)
+</code></pre>
+<p>Runs excel fastsim through 26 vehicles and returns list of dictionaries
+containing scenario descriptions.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p>prev_res_path : path (str) to prevous results in pickle (*.p) file
+rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open</p>
+<p><a id="fastsim.tests.test_vs_excel.compare"></a></p>
+<h4 id="compare"><a class="header" href="#compare">compare</a></h4>
+<pre><code class="language-python">def compare(res_python, res_excel, err_tol=0.001, verbose=True)
+</code></pre>
+<p>Finds common vehicle names in both excel and python
+(hypothetically all of them, but there may be discrepancies) and then compares
+fuel economy results.
+Arguments: results from run_python and run_excel
+Returns dict of comparsion results.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p>res_python : output of run_python
+res_excel : output of run_excel
+err_tol : (float) error tolerance, default=1e-3
+verbose : Boolean
+if True, print progress</p>
+<p><a id="fastsim.tests.test_vs_excel.main"></a></p>
+<h4 id="main-1"><a class="header" href="#main-1">main</a></h4>
+<pre><code class="language-python">def main(err_tol=0.001,
+         prev_res_path=PREV_RES_PATH,
+         rerun_excel=False,
+         verbose=False)
+</code></pre>
+<p>Function for running both python and excel and then comparing</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p>err_tol : (float) error tolerance, default=1e-3
+prev_res_path : path (str) to prevous results in pickle (*.p) file
+rerun_excel : (Boolean) if True, re-runs Excel FASTSim, which must be open
+verbose : Boolean
+if True, print progress</p>
+<p><a id="fastsim.tests.test_vs_excel.TestExcel"></a></p>
+<h2 id="testexcel-objects"><a class="header" href="#testexcel-objects">TestExcel Objects</a></h2>
+<pre><code class="language-python">class TestExcel(unittest.TestCase)
+</code></pre>
+<p><a id="fastsim.tests.test_vs_excel.TestExcel.test_vs_excel"></a></p>
+<h4 id="test_vs_excel"><a class="header" href="#test_vs_excel">test_vs_excel</a></h4>
+<pre><code class="language-python">def test_vs_excel()
+</code></pre>
+<p>Compares results against archived Excel results.</p>
+<p><a id="fastsim.tests.test_eco_cruise"></a></p>
+<h1 id="fastsimteststest_eco_cruise"><a class="header" href="#fastsimteststest_eco_cruise">fastsim.tests.test_eco_cruise</a></h1>
+<p>Test the eco-cruise feature in FASTSim</p>
+<p><a id="fastsim.vehicle"></a></p>
+<h1 id="fastsimvehicle"><a class="header" href="#fastsimvehicle">fastsim.vehicle</a></h1>
+<p>Module containing classes and methods for for loading vehicle data.</p>
+<p><a id="fastsim.vehicle.clean_data"></a></p>
+<h4 id="clean_data"><a class="header" href="#clean_data">clean_data</a></h4>
+<pre><code class="language-python">def clean_data(raw_data)
+</code></pre>
+<h2>Cleans up data formatting.
+Argument:</h2>
+<p>raw_data: cell of vehicle dataframe</p>
+<p>Output:
+clean_data: cleaned up data</p>
+<p><a id="fastsim.vehicle.Vehicle"></a></p>
+<h2 id="vehicle-objects"><a class="header" href="#vehicle-objects">Vehicle Objects</a></h2>
+<pre><code class="language-python">@dataclass
+class Vehicle(object)
+</code></pre>
+<p>Class for loading and contaning vehicle attributes
+See <code>from_vehdb</code>, <code>from_file</code>, and <code>from_dict</code> methods for usage instructions.</p>
+<p><a id="fastsim.vehicle.Vehicle.from_vehdb"></a></p>
+<h4 id="from_vehdb"><a class="header" href="#from_vehdb">from_vehdb</a></h4>
+<pre><code class="language-python">@classmethod
+def from_vehdb(cls,
+               vnum: int,
+               veh_file: str = None,
+               to_rust: bool = False) -&gt; Self
+</code></pre>
+<p>Load vehicle <code>vnum</code> from default vehdb or <code>veh_file</code>.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>vnum</code> - vehicle number</li>
+<li><code>veh_file</code> - path to vehicle database file</li>
+<li><code>to_rust</code> - if True, convert to rust-compatible vehicle</li>
+</ul>
+<p><a id="fastsim.vehicle.Vehicle.from_file"></a></p>
+<h4 id="from_file-1"><a class="header" href="#from_file-1">from_file</a></h4>
+<pre><code class="language-python">@classmethod
+def from_file(cls,
+              filename: str,
+              vnum: int = None,
+              to_rust: bool = False) -&gt; Self
+</code></pre>
+<p>Loads vehicle from file <code>filename</code> (str).  Looks in working dir and then
+fastsim/resources/vehdb, which also contains numerous examples of vehicle csv files.
+<code>vnum</code> is needed for multi-vehicle files.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>filename</code> - path to vehicle database file</li>
+<li><code>vnum</code> - vehicle number</li>
+<li><code>to_rust</code> - if True, convert to rust-compatible vehicle</li>
+</ul>
+<p><a id="fastsim.vehicle.Vehicle.from_df"></a></p>
+<h4 id="from_df"><a class="header" href="#from_df">from_df</a></h4>
+<pre><code class="language-python">@classmethod
+def from_df(cls,
+            vehdf: pd.DataFrame,
+            vnum: int,
+            veh_file: Path,
+            to_rust: bool = False) -&gt; Self
+</code></pre>
+<p>Given vehdf, generates dict to feed to <code>from_dict</code>.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>vehdf</code> - pandas dataframe of vehicle attributes</li>
+<li><code>vnum</code> - vehicle number</li>
+<li><code>veh_file</code> - path to vehicle database file</li>
+<li><code>to_rust</code> - if True, convert to rust-compatible vehicle</li>
+</ul>
+<p><a id="fastsim.vehicle.Vehicle.from_dict"></a></p>
+<h4 id="from_dict-2"><a class="header" href="#from_dict-2">from_dict</a></h4>
+<pre><code class="language-python">@classmethod
+def from_dict(cls, veh_dict: dict, to_rust: bool = False) -&gt; Self
+</code></pre>
+<p>Load vehicle from dict with snake_case key names.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>veh_dict</code> - dict of vehicle attributes</li>
+<li><code>to_rust</code> - if True, convert to rust-compatible vehicle</li>
+</ul>
+<p><a id="fastsim.vehicle.Vehicle.__post_init__"></a></p>
+<h4 id="__post_init__"><a class="header" href="#__post_init__">__post_init__</a></h4>
+<pre><code class="language-python">def __post_init__(converted_to_rust: bool = False)
+</code></pre>
+<p>Sets derived parameters.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>fc_peak_eff_override</code> - float (0, 1) or -1, if provided and not -1, overrides engine peak efficiency
+with proportional scaling.  Default of -1 has no effect.</li>
+<li><code>mc_peak_eff_override</code> - float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
+with proportional scaling.  Default of -1 has no effect.</li>
+</ul>
+<p><a id="fastsim.vehicle.Vehicle.set_derived"></a></p>
+<h4 id="set_derived"><a class="header" href="#set_derived">set_derived</a></h4>
+<pre><code class="language-python">def set_derived()
+</code></pre>
+<p>Sets derived parameters.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>fc_peak_eff_override</code> - float (0, 1) or -1, if provided and not -1, overrides engine peak efficiency
+with proportional scaling.  Default of -1 has no effect.</li>
+<li><code>mc_peak_eff_override</code> - float (0, 1) or -1, if provided and not -1, overrides motor peak efficiency
+with proportional scaling.  Default of -1 has no effect.</li>
+</ul>
+<p><a id="fastsim.vehicle.Vehicle.set_veh_mass"></a></p>
+<h4 id="set_veh_mass"><a class="header" href="#set_veh_mass">set_veh_mass</a></h4>
+<pre><code class="language-python">def set_veh_mass()
+</code></pre>
+<p>Calculate total vehicle mass.  Sum up component masses if
+positive real number is not specified for self.veh_override_kg</p>
+<p><a id="fastsim.vehicle.Vehicle.veh_type_selection"></a></p>
+<h4 id="veh_type_selection"><a class="header" href="#veh_type_selection">veh_type_selection</a></h4>
+<pre><code class="language-python">@property
+def veh_type_selection() -&gt; str
+</code></pre>
+<p>Copying veh_pt_type to additional key
+to be consistent with Excel version but not used in Python version</p>
+<p><a id="fastsim.vehicle.Vehicle.get_mcPeakEff"></a></p>
+<h4 id="get_mcpeakeff"><a class="header" href="#get_mcpeakeff">get_mcPeakEff</a></h4>
+<pre><code class="language-python">def get_mcPeakEff() -&gt; float
+</code></pre>
+<p>Return <code>np.max(self.mc_eff_array)</code></p>
+<p><a id="fastsim.vehicle.Vehicle.set_mcPeakEff"></a></p>
+<h4 id="set_mcpeakeff"><a class="header" href="#set_mcpeakeff">set_mcPeakEff</a></h4>
+<pre><code class="language-python">def set_mcPeakEff(new_peak)
+</code></pre>
+<p>Set motor peak efficiency EVERYWHERE.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>new_peak</code> - float, new peak motor efficiency in decimal form</li>
+</ul>
+<p><a id="fastsim.vehicle.Vehicle.get_fcPeakEff"></a></p>
+<h4 id="get_fcpeakeff"><a class="header" href="#get_fcpeakeff">get_fcPeakEff</a></h4>
+<pre><code class="language-python">def get_fcPeakEff() -&gt; float
+</code></pre>
+<p>Return <code>np.max(self.fc_eff_array)</code></p>
+<p><a id="fastsim.vehicle.Vehicle.set_fcPeakEff"></a></p>
+<h4 id="set_fcpeakeff"><a class="header" href="#set_fcpeakeff">set_fcPeakEff</a></h4>
+<pre><code class="language-python">def set_fcPeakEff(new_peak)
+</code></pre>
+<p>Set fc peak efficiency EVERWHERE.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li><code>new_peak</code> - float, new peak fc efficiency in decimal form</li>
+</ul>
+<p><a id="fastsim.vehicle.Vehicle.get_numba_veh"></a></p>
+<h4 id="get_numba_veh"><a class="header" href="#get_numba_veh">get_numba_veh</a></h4>
+<pre><code class="language-python">def get_numba_veh()
+</code></pre>
+<p>Deprecated.</p>
+<p><a id="fastsim.vehicle.Vehicle.to_rust"></a></p>
+<h4 id="to_rust-2"><a class="header" href="#to_rust-2">to_rust</a></h4>
+<pre><code class="language-python">def to_rust() -&gt; RustVehicle
+</code></pre>
+<p>Return a Rust version of the vehicle</p>
+<p><a id="fastsim.vehicle.Vehicle.reset_orphaned"></a></p>
+<h4 id="reset_orphaned-2"><a class="header" href="#reset_orphaned-2">reset_orphaned</a></h4>
+<pre><code class="language-python">def reset_orphaned()
+</code></pre>
+<p>Dummy method for flexibility between Rust/Python version interfaces</p>
+<p><a id="fastsim.vehicle.LegacyVehicle"></a></p>
+<h2 id="legacyvehicle-objects"><a class="header" href="#legacyvehicle-objects">LegacyVehicle Objects</a></h2>
+<pre><code class="language-python">class LegacyVehicle(object)
+</code></pre>
+<p>Implementation of Vehicle with legacy keys.</p>
+<p><a id="fastsim.vehicle.LegacyVehicle.__init__"></a></p>
+<h4 id="__init__-4"><a class="header" href="#__init__-4">__init__</a></h4>
+<pre><code class="language-python">def __init__(vehicle: Vehicle)
+</code></pre>
+<p>Given cycle, returns legacy cycle.</p>
+<p><a id="fastsim.vehicle.to_native_type"></a></p>
+<h4 id="to_native_type"><a class="header" href="#to_native_type">to_native_type</a></h4>
+<pre><code class="language-python">def to_native_type(value)
+</code></pre>
+<p>Attempts to map from numpy and other types to python native for better yaml (de-)serialization</p>
+<p><a id="fastsim.vehicle.copy_vehicle"></a></p>
+<h4 id="copy_vehicle"><a class="header" href="#copy_vehicle">copy_vehicle</a></h4>
+<pre><code class="language-python">def copy_vehicle(
+    veh: Vehicle,
+    return_type: str = None,
+    deep: bool = True
+) -&gt; Dict[str, np.ndarray] | Vehicle | LegacyVehicle | RustVehicle
+</code></pre>
+<p>Returns copy of Vehicle.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>veh</code> - instantiated Vehicle or RustVehicle
+return_type:</li>
+<li><code>'dict'</code> - dict</li>
+<li><code>'vehicle'</code> - Vehicle</li>
+<li><code>'legacy'</code> - LegacyVehicle</li>
+<li><code>'rust'</code> - RustVehicle</li>
+</ul>
+<p><a id="fastsim.vehicle.veh_equal"></a></p>
+<h4 id="veh_equal"><a class="header" href="#veh_equal">veh_equal</a></h4>
+<pre><code class="language-python">def veh_equal(veh1: Vehicle, veh2: Vehicle, full_out: bool = False) -&gt; bool
+</code></pre>
+<p>Given veh1 and veh2, which can be Vehicle and/or RustVehicle
+instances, return True if equal.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p><a id="fastsim.utils"></a></p>
+<h1 id="fastsimutils"><a class="header" href="#fastsimutils">fastsim.utils</a></h1>
+<p><a id="fastsim.utils.vehicle_import_preproc"></a></p>
+<h1 id="fastsimutilsvehicle_import_preproc"><a class="header" href="#fastsimutilsvehicle_import_preproc">fastsim.utils.vehicle_import_preproc</a></h1>
+<p>Module for pre-processing data from fueleconomy.gov and EPA vehicle testing that is used for &quot;vehicle import&quot; functionality.
+Vehicle import allows FASTSim to import vehicles by specifying make, model, and year. 
+See fastsim.demos.vehicle_import_demo for usage.</p>
+<p>In order to run this pre-processing script, the data from the sources below should be placed in the &quot;input_dir&quot; (see the run function).</p>
+<p>fueleconomy.gov data:
+https://www.fueleconomy.gov/feg/download.shtml</p>
+<ul>
+<li>vehicles.csv</li>
+<li>emissions.csv</li>
+</ul>
+<p>EPA Test data:
+https://www.epa.gov/compliance-and-fuel-economy-data/data-cars-used-testing-fuel-economy</p>
+<ul>
+<li>the data for emissions by year; e.g., 20tstcar-2021-03-02.xlsx</li>
+<li>note: there are multiple formats in use</li>
+</ul>
+<p><a id="fastsim.utils.vehicle_import_preproc.process_csv"></a></p>
+<h4 id="process_csv"><a class="header" href="#process_csv">process_csv</a></h4>
+<pre><code class="language-python">def process_csv(path: Path, fn)
+</code></pre>
+<p><a id="fastsim.utils.vehicle_import_preproc.write_csvs_for_each_year"></a></p>
+<h4 id="write_csvs_for_each_year"><a class="header" href="#write_csvs_for_each_year">write_csvs_for_each_year</a></h4>
+<pre><code class="language-python">def write_csvs_for_each_year(output_data_dir, basename, rows_by_year, header)
+</code></pre>
+<p><a id="fastsim.utils.vehicle_import_preproc.sort_fueleconomygov_data_by_year"></a></p>
+<h4 id="sort_fueleconomygov_data_by_year"><a class="header" href="#sort_fueleconomygov_data_by_year">sort_fueleconomygov_data_by_year</a></h4>
+<pre><code class="language-python">def sort_fueleconomygov_data_by_year(input_data_dir: Path,
+                                     output_data_dir: Path)
+</code></pre>
+<p>Opens up the vehicles.csv and emissions.csv and breaks them up to be by year and saves them again.</p>
+<p><a id="fastsim.utils.vehicle_import_preproc.xlsx_to_csv"></a></p>
+<h4 id="xlsx_to_csv"><a class="header" href="#xlsx_to_csv">xlsx_to_csv</a></h4>
+<pre><code class="language-python">def xlsx_to_csv(xlsx_path, csv_path)
+</code></pre>
+<p><a id="fastsim.utils.vehicle_import_preproc.process_epa_test_data"></a></p>
+<h4 id="process_epa_test_data"><a class="header" href="#process_epa_test_data">process_epa_test_data</a></h4>
+<pre><code class="language-python">def process_epa_test_data(input_dir, output_dir)
+</code></pre>
+<p><a id="fastsim.utils.vehicle_import_preproc.create_zip_archives_by_year"></a></p>
+<h4 id="create_zip_archives_by_year"><a class="header" href="#create_zip_archives_by_year">create_zip_archives_by_year</a></h4>
+<pre><code class="language-python">def create_zip_archives_by_year(files_dir, zip_dir)
+</code></pre>
+<p>Takes files in the files_dir that start with \d\d\d\d-*.csv
+and adds them to a \d\d\d\d.zip in the zip_dir</p>
+<p><a id="fastsim.utils.utilities"></a></p>
+<h1 id="fastsimutilsutilities"><a class="header" href="#fastsimutilsutilities">fastsim.utils.utilities</a></h1>
+<p>Various optional utilities that may support some applications of FASTSim.</p>
+<p><a id="fastsim.utils.utilities.R_air"></a></p>
+<h4 id="r_air-1"><a class="header" href="#r_air-1">R_air</a></h4>
+<p>J/(kg*K)</p>
+<p><a id="fastsim.utils.utilities.get_rho_air"></a></p>
+<h4 id="get_rho_air"><a class="header" href="#get_rho_air">get_rho_air</a></h4>
+<pre><code class="language-python">def get_rho_air(temperature_degC, elevation_m=180)
+</code></pre>
+<p>Returns air density [kg/m**3] for given elevation and temperature.
+Source: https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p>temperature_degC : ambient temperature [°C]
+elevation_m : elevation above sea level [m].
+Default 180 m is for Chicago, IL</p>
+<p><a id="fastsim.utils.utilities.l__100km_to_mpg"></a></p>
+<h4 id="l__100km_to_mpg"><a class="header" href="#l__100km_to_mpg">l__100km_to_mpg</a></h4>
+<pre><code class="language-python">def l__100km_to_mpg(l__100km)
+</code></pre>
+<p>Given fuel economy in L/100km, returns mpg.</p>
+<p><a id="fastsim.utils.utilities.mpg_to_l__100km"></a></p>
+<h4 id="mpg_to_l__100km"><a class="header" href="#mpg_to_l__100km">mpg_to_l__100km</a></h4>
+<pre><code class="language-python">def mpg_to_l__100km(mpg)
+</code></pre>
+<p>Given fuel economy in mpg, returns L/100km.</p>
+<p><a id="fastsim.utils.utilities.rollav"></a></p>
+<h4 id="rollav"><a class="header" href="#rollav">rollav</a></h4>
+<pre><code class="language-python">def rollav(x, y, width=10)
+</code></pre>
+<p>Returns x-weighted backward-looking rolling average of y.
+Good for resampling data that needs to preserve cumulative information.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p>x : x data
+y : y data (<code>len(y) == len(x)</code> must be True)</p>
+<ul>
+<li><code>width</code> - rolling average width</li>
+</ul>
+<p><a id="fastsim.utils.utilities.camel_to_snake"></a></p>
+<h4 id="camel_to_snake"><a class="header" href="#camel_to_snake">camel_to_snake</a></h4>
+<pre><code class="language-python">def camel_to_snake(name)
+</code></pre>
+<p>Given camelCase, returns snake_case.</p>
+<p><a id="fastsim.utils.utilities.set_log_level"></a></p>
+<h4 id="set_log_level"><a class="header" href="#set_log_level">set_log_level</a></h4>
+<pre><code class="language-python">def set_log_level(level: str | int) -&gt; int
+</code></pre>
+<p>Sets logging level for both Python and Rust FASTSim.
+The default logging level is WARNING (30).
+https://docs.python.org/3/library/logging.html#logging-levels</p>
+<h2 id="parameters"><a class="header" href="#parameters">Parameters</a></h2>
+<p>level: <code>str</code> | <code>int</code>
+Logging level to set. <code>str</code> level name or <code>int</code> logging level</p>
+<pre><code>=========== ================
+Level       Numeric value
+=========== ================
+CRITICAL    50
+ERROR       40
+WARNING     30
+INFO        20
+DEBUG       10
+NOTSET      0
+</code></pre>
+<h2 id="returns"><a class="header" href="#returns">Returns</a></h2>
+<p><code>int</code>
+Previous log level</p>
+<p><a id="fastsim.utils.utilities.disable_logging"></a></p>
+<h4 id="disable_logging"><a class="header" href="#disable_logging">disable_logging</a></h4>
+<pre><code class="language-python">def disable_logging() -&gt; int
+</code></pre>
+<p>Disable FASTSim logs from being shown by setting log level
+to CRITICAL+1 (51).</p>
+<h2 id="returns-1"><a class="header" href="#returns-1">Returns</a></h2>
+<p><code>int</code>
+Previous log level</p>
+<p><a id="fastsim.utils.utilities.enable_logging"></a></p>
+<h4 id="enable_logging"><a class="header" href="#enable_logging">enable_logging</a></h4>
+<pre><code class="language-python">def enable_logging(level: Optional[int | str] = None)
+</code></pre>
+<p>Re-enable FASTSim logging, optionally to a specified log level,
+otherwise to the default WARNING (30) level.</p>
+<h2 id="parameters-1"><a class="header" href="#parameters-1">Parameters</a></h2>
+<p>level: <code>str</code> | <code>int</code>, optional
+Logging level to set. <code>str</code> level name or <code>int</code> logging level.
+See <code>utils.set_log_level()</code> docstring for more details on logging levels.</p>
+<p><a id="fastsim.utils.utilities.suppress_logging"></a></p>
+<h4 id="suppress_logging"><a class="header" href="#suppress_logging">suppress_logging</a></h4>
+<pre><code class="language-python">@contextmanager
+def suppress_logging()
+</code></pre>
+<p>Disable, then re-enable FASTSim logging using a context manager.
+The log level is returned to its previous value.
+Logging is re-enabled even if the nested code throws an error.</p>
+<p><strong>Example</strong>:</p>
+<pre><code class="language-python">with fastsim.utils.suppress_logging():
+    ...  # do stuff with logging suppressed
+</code></pre>
+<p><a id="fastsim.utils.utilities.get_containers_with_path"></a></p>
+<h4 id="get_containers_with_path"><a class="header" href="#get_containers_with_path">get_containers_with_path</a></h4>
+<pre><code class="language-python">def get_containers_with_path(struct: Any, path: str | list) -&gt; list
+</code></pre>
+<p>Get all attributes containers from nested struct using <code>path</code> to attribute.</p>
+<h2 id="parameters-2"><a class="header" href="#parameters-2">Parameters</a></h2>
+<p>struct: Any
+Outermost struct where first name in <code>path</code> is an attribute
+path: str | list
+Dot-separated path, e.g. <code>&quot;sd.veh.drag_coef&quot;</code> or <code>[&quot;sd&quot;, &quot;veh&quot;, &quot;drag_coef&quot;]</code></p>
+<h2 id="returns-2"><a class="header" href="#returns-2">Returns</a></h2>
+<p>List[Any]
+Ordered list of containers, from outermost to innermost</p>
+<p><a id="fastsim.utils.utilities.get_attr_with_path"></a></p>
+<h4 id="get_attr_with_path"><a class="header" href="#get_attr_with_path">get_attr_with_path</a></h4>
+<pre><code class="language-python">def get_attr_with_path(struct: Any, path: str | list) -&gt; Any
+</code></pre>
+<p>Get attribute from nested struct using <code>path</code> to attribute.</p>
+<h2 id="parameters-3"><a class="header" href="#parameters-3">Parameters</a></h2>
+<p>struct: Any
+Outermost struct where first name in <code>path</code> is an attribute
+path: str | list
+Dot-separated path, e.g. <code>&quot;sd.veh.drag_coef&quot;</code> or <code>[&quot;sd&quot;, &quot;veh&quot;, &quot;drag_coef&quot;]</code></p>
+<h2 id="returns-3"><a class="header" href="#returns-3">Returns</a></h2>
+<p>Any
+Requested attribute</p>
+<p><a id="fastsim.utils.utilities.set_attr_with_path"></a></p>
+<h4 id="set_attr_with_path"><a class="header" href="#set_attr_with_path">set_attr_with_path</a></h4>
+<pre><code class="language-python">def set_attr_with_path(struct: Any, path: str | list, value: Any) -&gt; Any
+</code></pre>
+<p>Set attribute on nested struct using <code>path</code> to attribute.</p>
+<h2 id="parameters-4"><a class="header" href="#parameters-4">Parameters</a></h2>
+<p>struct: Any
+Outermost struct where first name in <code>path</code> is an attribute
+path: str | list
+Dot-separated path, e.g. <code>&quot;sd.veh.drag_coef&quot;</code> or <code>[&quot;sd&quot;, &quot;veh&quot;, &quot;drag_coef&quot;]</code>
+value: Any</p>
+<h2 id="returns-4"><a class="header" href="#returns-4">Returns</a></h2>
+<p>Any
+<code>struct</code> with nested value set</p>
+<p><a id="fastsim.utils.utilities.set_attrs_with_path"></a></p>
+<h4 id="set_attrs_with_path"><a class="header" href="#set_attrs_with_path">set_attrs_with_path</a></h4>
+<pre><code class="language-python">def set_attrs_with_path(struct: Any, paths_and_values: Dict[str, Any]) -&gt; Any
+</code></pre>
+<p>Set multiple attributes on nested struct using <code>path</code>: <code>value</code> pairs.</p>
+<h2 id="parameters-5"><a class="header" href="#parameters-5">Parameters</a></h2>
+<p>struct: Any
+Outermost struct where first name in <code>path</code> is an attribute
+paths_and_values: Dict[str | list, Any]
+Mapping of dot-separated path (e.g. <code>sd.veh.drag_coef</code> or <code>[&quot;sd&quot;, &quot;veh&quot;, &quot;drag_coef&quot;]</code>)
+to values (e.g. <code>0.32</code>)</p>
+<h2 id="returns-5"><a class="header" href="#returns-5">Returns</a></h2>
+<p>Any
+<code>struct</code> with nested values set</p>
+<p><a id="fastsim.utils.utilities.calculate_tire_radius"></a></p>
+<h4 id="calculate_tire_radius"><a class="header" href="#calculate_tire_radius">calculate_tire_radius</a></h4>
+<pre><code class="language-python">def calculate_tire_radius(tire_code: str, units: str = &quot;m&quot;)
+</code></pre>
+<p>Calculate tire radius from ISO tire code, with variable units</p>
+<p>Unit options: &quot;m&quot;, &quot;cm&quot;, &quot;mm&quot;, &quot;ft&quot;, &quot;in&quot;. Default is &quot;m&quot;.</p>
+<p><strong>Examples</strong>:</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>fastsim.utils.calculate_tire_radius(&quot;P205/60R16&quot;)
+0.3262
+fastsim.utils.calculate_tire_radius(&quot;225/70Rx19.5G&quot;, units=&quot;in&quot;)
+15.950787401574804</p>
+</blockquote>
+</blockquote>
+</blockquote>
+<p><a id="fastsim.utils.utilities.show_plots"></a></p>
+<h4 id="show_plots"><a class="header" href="#show_plots">show_plots</a></h4>
+<pre><code class="language-python">def show_plots() -&gt; bool
+</code></pre>
+<p>Returns true if plots should be displayed</p>
+<p><a id="fastsim.utils.utilities.copy_demo_files"></a></p>
+<h4 id="copy_demo_files"><a class="header" href="#copy_demo_files">copy_demo_files</a></h4>
+<pre><code class="language-python">def copy_demo_files(path_for_copies: Path = Path(&quot;demos&quot;))
+</code></pre>
+<p>Copies demo files from demos folder into specified local directory</p>
+<p><strong>Arguments</strong></p>
+<ul>
+<li><strong>- <code>path_for_copies</code></strong>: path to copy files into (relative or absolute in)</li>
+</ul>
+<p><strong>Warning</strong></p>
+<p>Running this function will overwrite existing files with the same name in the specified directory, so 
+make sure any files with changes you'd like to keep are renamed.</p>
+<p><a id="fastsim.inspect_utils"></a></p>
+<h1 id="fastsiminspect_utils"><a class="header" href="#fastsiminspect_utils">fastsim.inspect_utils</a></h1>
+<p>Utilities to assist with object introspection.</p>
+<p><a id="fastsim.inspect_utils.isprop"></a></p>
+<h4 id="isprop"><a class="header" href="#isprop">isprop</a></h4>
+<pre><code class="language-python">def isprop(attr) -&gt; bool
+</code></pre>
+<p>Checks if instance attribute is a property.</p>
+<p><a id="fastsim.inspect_utils.isfunc"></a></p>
+<h4 id="isfunc"><a class="header" href="#isfunc">isfunc</a></h4>
+<pre><code class="language-python">def isfunc(attr) -&gt; bool
+</code></pre>
+<p>Checks if instance attribute is method.</p>
+<p><a id="fastsim.inspect_utils.get_attrs"></a></p>
+<h4 id="get_attrs"><a class="header" href="#get_attrs">get_attrs</a></h4>
+<pre><code class="language-python">def get_attrs(instance)
+</code></pre>
+<p>Given an instantiated object, returns attributes that are not:
+-- callable<br />
+-- special (i.e. start with <code>__</code>)<br />
+-- properties</p>
+<p><a id="fastsim.parameters"></a></p>
+<h1 id="fastsimparameters"><a class="header" href="#fastsimparameters">fastsim.parameters</a></h1>
+<p>Global constants representing unit conversions that shourd never change, 
+physical properties that should rarely change, and vehicle model parameters 
+that can be modified by advanced users.</p>
+<p><a id="fastsim.parameters.PhysicalProperties"></a></p>
+<h2 id="physicalproperties-objects"><a class="header" href="#physicalproperties-objects">PhysicalProperties Objects</a></h2>
+<pre><code class="language-python">class PhysicalProperties(object)
+</code></pre>
+<p>Container class for physical constants that could change under certain special
+circumstances (e.g. high altitude or extreme weather)</p>
+<p><a id="fastsim.parameters.copy_physical_properties"></a></p>
+<h4 id="copy_physical_properties"><a class="header" href="#copy_physical_properties">copy_physical_properties</a></h4>
+<pre><code class="language-python">def copy_physical_properties(p: PhysicalProperties,
+                             return_type: str = None,
+                             deep: bool = True)
+</code></pre>
+<p>Returns copy of PhysicalProperties.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>p</code> - instantianed PhysicalProperties or RustPhysicalProperties
+return_type:</li>
+<li><code>default</code> - infer from type of p</li>
+<li><code>'dict'</code> - dict</li>
+<li><code>'python'</code> - PhysicalProperties</li>
+<li><code>'legacy'</code> - LegacyPhysicalProperties -- NOT IMPLEMENTED YET; is it needed?</li>
+<li><code>'rust'</code> - RustPhysicalProperties</li>
+<li><code>deep</code> - if True, uses deepcopy on everything</li>
+</ul>
+<p><a id="fastsim.parameters.physical_properties_equal"></a></p>
+<h4 id="physical_properties_equal"><a class="header" href="#physical_properties_equal">physical_properties_equal</a></h4>
+<pre><code class="language-python">def physical_properties_equal(a: PhysicalProperties,
+                              b: PhysicalProperties) -&gt; bool
+</code></pre>
+<p>Return True if the physical properties are equal by value</p>
+<p><a id="fastsim.parameters.fc_perc_out_array"></a></p>
+<h4 id="fc_perc_out_array"><a class="header" href="#fc_perc_out_array">fc_perc_out_array</a></h4>
+<p>hardcoded ***</p>
+<p><a id="fastsim.parameters.chg_eff"></a></p>
+<h4 id="chg_eff"><a class="header" href="#chg_eff">chg_eff</a></h4>
+<p>charger efficiency for PEVs, this should probably not be hard coded long term</p>
+<p><a id="fastsim.demos.vehicle_import_demo"></a></p>
+<h1 id="fastsimdemosvehicle_import_demo"><a class="header" href="#fastsimdemosvehicle_import_demo">fastsim.demos.vehicle_import_demo</a></h1>
+<p>Vehicle Import Demonstration
+This module demonstrates the vehicle import API</p>
+<p><a id="fastsim.demos.vehicle_import_demo.other_inputs"></a></p>
+<h4 id="other_inputs"><a class="header" href="#other_inputs">other_inputs</a></h4>
+<p>None -&gt; calculate from EPA data</p>
+<p><a id="fastsim.demos.fusion_thermal_cal_post"></a></p>
+<h1 id="fastsimdemosfusion_thermal_cal_post"><a class="header" href="#fastsimdemosfusion_thermal_cal_post">fastsim.demos.fusion_thermal_cal_post</a></h1>
+<p><a id="fastsim.demos.fusion_thermal_cal_post.save_path"></a></p>
+<h4 id="save_path"><a class="header" href="#save_path">save_path</a></h4>
+<p>seems to be best</p>
+<p><a id="fastsim.demos.cav_sweep"></a></p>
+<h1 id="fastsimdemoscav_sweep"><a class="header" href="#fastsimdemoscav_sweep">fastsim.demos.cav_sweep</a></h1>
+<p><a id="fastsim.demos.cav_sweep.ABSOLUTE_EXTENDED_TIME_S"></a></p>
+<h4 id="absolute_extended_time_s"><a class="header" href="#absolute_extended_time_s">ABSOLUTE_EXTENDED_TIME_S</a></h4>
+<p>180.0</p>
+<p><a id="fastsim.demos.cav_sweep.make_debug_plot"></a></p>
+<h4 id="make_debug_plot"><a class="header" href="#make_debug_plot">make_debug_plot</a></h4>
+<pre><code class="language-python">def make_debug_plot(sd: fastsim.simdrive.SimDrive,
+                    save_file: Optional[str] = None,
+                    do_show: bool = False)
+</code></pre>
+<p><a id="fastsim.demos.cav_sweep.load_cycle"></a></p>
+<h4 id="load_cycle"><a class="header" href="#load_cycle">load_cycle</a></h4>
+<pre><code class="language-python">def load_cycle(cyc_name: str, use_rust: bool = False) -&gt; fastsim.cycle.Cycle
+</code></pre>
+<p>Load the given cycle and return</p>
+<p><a id="fastsim.demos.cav_sweep.main"></a></p>
+<h4 id="main-2"><a class="header" href="#main-2">main</a></h4>
+<pre><code class="language-python">def main(cycle_name=None,
+         powertrain=None,
+         do_show=None,
+         use_rust=False,
+         verbose=True,
+         save_dir=None,
+         maneuver=None)
+</code></pre>
+<p><a id="fastsim.demos.time_dilation_demo"></a></p>
+<h1 id="fastsimdemostime_dilation_demo"><a class="header" href="#fastsimdemostime_dilation_demo">fastsim.demos.time_dilation_demo</a></h1>
+<p><a id="fastsim.demos.accel_demo"></a></p>
+<h1 id="fastsimdemosaccel_demo"><a class="header" href="#fastsimdemosaccel_demo">fastsim.demos.accel_demo</a></h1>
+<p><a id="fastsim.demos.accel_demo.create_accel_cyc"></a></p>
+<h4 id="create_accel_cyc"><a class="header" href="#create_accel_cyc">create_accel_cyc</a></h4>
+<pre><code class="language-python">def create_accel_cyc(length_in_seconds=300, spd_mph=89.48, grade=0.0, hz=10)
+</code></pre>
+<p>Create a synthetic Drive Cycle for acceleration targeting.
+Defaults to a 15 second acceleration cycle. Should be adjusted based on target acceleration time
+and initial vehicle acceleration time, so that time isn't wasted on cycles that are needlessly long.</p>
+<p>spd_mph @ 89.48 FASTSim XL version mph default speed for acceleration cycles
+grade @ 0 and hz @ 10 also matches XL version settings</p>
+<p><a id="fastsim.demos.accel_demo.main"></a></p>
+<h4 id="main-3"><a class="header" href="#main-3">main</a></h4>
+<pre><code class="language-python">def main()
+</code></pre>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<p><a id="fastsim.demos.cav_demo"></a></p>
+<h1 id="fastsimdemoscav_demo"><a class="header" href="#fastsimdemoscav_demo">fastsim.demos.cav_demo</a></h1>
+<p><a id="fastsim.demos"></a></p>
+<h1 id="fastsimdemos"><a class="header" href="#fastsimdemos">fastsim.demos</a></h1>
+<p><a id="fastsim.demos.demo_eu_vehicle_wltp"></a></p>
+<h1 id="fastsimdemosdemo_eu_vehicle_wltp"><a class="header" href="#fastsimdemosdemo_eu_vehicle_wltp">fastsim.demos.demo_eu_vehicle_wltp</a></h1>
+<p><a id="fastsim.demos.fusion_thermal_demo"></a></p>
+<h1 id="fastsimdemosfusion_thermal_demo"><a class="header" href="#fastsimdemosfusion_thermal_demo">fastsim.demos.fusion_thermal_demo</a></h1>
+<p><a id="fastsim.demos.timing_demo"></a></p>
+<h1 id="fastsimdemostiming_demo"><a class="header" href="#fastsimdemostiming_demo">fastsim.demos.timing_demo</a></h1>
+<p><a id="fastsim.demos.mp_parallel_demo"></a></p>
+<h1 id="fastsimdemosmp_parallel_demo"><a class="header" href="#fastsimdemosmp_parallel_demo">fastsim.demos.mp_parallel_demo</a></h1>
+<p>Script for demonstrating parallelization of FASTSim.<br />
+Optional positional arguments:
+- processes: int, number of processes</p>
+<p><a id="fastsim.demos.2017_Ford_F150_thermal_val"></a></p>
+<h1 id="fastsimdemos2017_ford_f150_thermal_val"><a class="header" href="#fastsimdemos2017_ford_f150_thermal_val">fastsim.demos.2017_Ford_F150_thermal_val</a></h1>
+<p><a id="fastsim.demos.2017_Ford_F150_thermal_val.lhv_fuel_btu_per_lbm"></a></p>
+<h4 id="lhv_fuel_btu_per_lbm"><a class="header" href="#lhv_fuel_btu_per_lbm">lhv_fuel_btu_per_lbm</a></h4>
+<p>from &quot;2012FordFusionV6Overview V5.pdf&quot;</p>
+<p><a id="fastsim.demos.test_demos"></a></p>
+<h1 id="fastsimdemostest_demos"><a class="header" href="#fastsimdemostest_demos">fastsim.demos.test_demos</a></h1>
+<p><a id="fastsim.demos.fusion_thermal_cal"></a></p>
+<h1 id="fastsimdemosfusion_thermal_cal"><a class="header" href="#fastsimdemosfusion_thermal_cal">fastsim.demos.fusion_thermal_cal</a></h1>
+<p><a id="fastsim.demos.fusion_thermal_cal.lhv_fuel_btu_per_lbm"></a></p>
+<h4 id="lhv_fuel_btu_per_lbm-1"><a class="header" href="#lhv_fuel_btu_per_lbm-1">lhv_fuel_btu_per_lbm</a></h4>
+<p>from &quot;2012FordFusionV6Overview V5.pdf&quot;</p>
+<p><a id="fastsim.demos.stop_start_demo"></a></p>
+<h1 id="fastsimdemosstop_start_demo"><a class="header" href="#fastsimdemosstop_start_demo">fastsim.demos.stop_start_demo</a></h1>
+<p><a id="fastsim.demos.demo_abc_drag_coef_conv"></a></p>
+<h1 id="fastsimdemosdemo_abc_drag_coef_conv"><a class="header" href="#fastsimdemosdemo_abc_drag_coef_conv">fastsim.demos.demo_abc_drag_coef_conv</a></h1>
+<p><a id="fastsim.demos.demo"></a></p>
+<h1 id="fastsimdemosdemo"><a class="header" href="#fastsimdemosdemo">fastsim.demos.demo</a></h1>
+<p><a id="fastsim.demos.demo.v2"></a></p>
+<h4 id="v2"><a class="header" href="#v2">v2</a></h4>
+<p>should not have derived params</p>
+<p><a id="fastsim.demos.demo.data_path"></a></p>
+<h4 id="data_path"><a class="header" href="#data_path">data_path</a></h4>
+<p>path to drive cycles</p>
+<p><a id="fastsim.demos.demo.veh"></a></p>
+<h4 id="veh"><a class="header" href="#veh">veh</a></h4>
+<p>load vehicle model</p>
+<p><a id="fastsim.demos.demo.veh"></a></p>
+<h4 id="veh-1"><a class="header" href="#veh-1">veh</a></h4>
+<p>load vehicle model</p>
+<p><a id="fastsim.demos.demo.veh"></a></p>
+<h4 id="veh-2"><a class="header" href="#veh-2">veh</a></h4>
+<p>load vehicle using name</p>
+<p><a id="fastsim.demos.wltc_calibration"></a></p>
+<h1 id="fastsimdemoswltc_calibration"><a class="header" href="#fastsimdemoswltc_calibration">fastsim.demos.wltc_calibration</a></h1>
+<p><a id="fastsim.demos.wltc_calibration.WILLANS_FACTOR"></a></p>
+<h4 id="willans_factor"><a class="header" href="#willans_factor">WILLANS_FACTOR</a></h4>
+<p>gCO2/MJ</p>
+<p><a id="fastsim.demos.wltc_calibration.E10_HEAT_VALUE"></a></p>
+<h4 id="e10_heat_value"><a class="header" href="#e10_heat_value">E10_HEAT_VALUE</a></h4>
+<p>kWh/L</p>
+<p><a id="fastsim.calibration"></a></p>
+<h1 id="fastsimcalibration"><a class="header" href="#fastsimcalibration">fastsim.calibration</a></h1>
+<p><a id="fastsim.calibration.get_error_val"></a></p>
+<h4 id="get_error_val"><a class="header" href="#get_error_val">get_error_val</a></h4>
+<pre><code class="language-python">def get_error_val(model, test, time_steps)
+</code></pre>
+<p>Returns time-averaged error for model and test signal.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li>
+<p><code>model</code> - array of values for signal from model</p>
+</li>
+<li>
+<p><code>test</code> - array of values for signal from test data</p>
+</li>
+<li>
+<p><code>time_steps</code> - array (or scalar for constant) of values for model time steps [s]</p>
+</li>
+<li>
+<p><code>test</code> - array of values for signal from test</p>
+<h2 id="output"><a class="header" href="#output">Output:</a></h2>
+</li>
+<li>
+<p><code>err</code> - integral of absolute value of difference between model and
+test per time</p>
+</li>
+</ul>
+<p><a id="fastsim.calibration.ModelObjectives"></a></p>
+<h2 id="modelobjectives-objects"><a class="header" href="#modelobjectives-objects">ModelObjectives Objects</a></h2>
+<pre><code class="language-python">@dataclass
+class ModelObjectives(object)
+</code></pre>
+<p>Class for calculating eco-driving objectives</p>
+<p><a id="fastsim.calibration.ModelObjectives.get_errors"></a></p>
+<h4 id="get_errors"><a class="header" href="#get_errors">get_errors</a></h4>
+<pre><code class="language-python">def get_errors(
+    sim_drives: Dict[str, fsr.RustSimDrive | fsr.SimDriveHot],
+    return_mods: bool = False,
+    plot: bool = False,
+    plot_save_dir: Optional[str] = None,
+    plot_perc_err: bool = False,
+    show: bool = False,
+    fontsize: float = 12,
+    plotly: bool = False
+) -&gt; Union[
+        Dict[str, Dict[str, float]],
+        # or if return_mods is True
+        Dict[str, fsim.simdrive.SimDrive],
+]
+</code></pre>
+<p>Calculate model errors w.r.t. test data for each element in dfs/models for each objective.</p>
+<p><strong>Arguments</strong>:</p>
+<hr />
+<ul>
+<li>sim_drives: dictionary with user-defined keys and SimDrive or SimDriveHot instances</li>
+<li>return_mods: if true, also returns dict of solved models</li>
+<li>plot: if true, plots objectives using matplotlib.pyplot</li>
+<li>plot_save_dir: directory in which to save plots.  If <code>None</code> (default), plots are not saved.</li>
+<li>plot_perc_err: whether to include % error axes in plots</li>
+<li>show: whether to show matplotlib.pyplot plots</li>
+<li>fontsize: plot font size</li>
+<li>plotly: whether to generate plotly plots, which can be opened manually in a browser window</li>
+</ul>
+<p><a id="fastsim.calibration.ModelObjectives.update_params"></a></p>
+<h4 id="update_params"><a class="header" href="#update_params">update_params</a></h4>
+<pre><code class="language-python">def update_params(xs: List[Any])
+</code></pre>
+<p>Updates model parameters based on <code>x</code>, which must match length of self.params</p>
+<p><a id="fastsim.calibration.get_parser"></a></p>
+<h4 id="get_parser"><a class="header" href="#get_parser">get_parser</a></h4>
+<pre><code class="language-python">def get_parser() -&gt; argparse.ArgumentParser
+</code></pre>
+<p>Generate parser for optimization hyper params and misc. other params</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="fastsim-doc.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="rust-doc.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="fastsim-doc.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="rust-doc.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
