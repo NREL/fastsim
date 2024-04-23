@@ -14,6 +14,7 @@ pub mod hev;
 pub mod powertrain;
 
 // vehicle model
+pub mod chassis;
 pub mod powertrain_type;
 pub mod vehicle_model;
 
@@ -22,6 +23,7 @@ pub mod vehicle_model;
 pub mod tests;
 
 pub use bev::BatteryElectricVehicle;
+pub use chassis::Chassis;
 pub use conv::ConventionalVehicle;
 pub use hev::HybridElectricVehicle;
 pub use powertrain::e_machine::ElectricMachine;
