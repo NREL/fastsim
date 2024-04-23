@@ -49,6 +49,7 @@ pub struct Chassis {
     pub drive_axle_weight_frac: si::Ratio,
     /// Wheel base length
     pub wheel_base: si::Length,
+    pub(crate) mass: Option<si::Mass>,
     /// Vehicle mass excluding cargo, passengers, and powertrain components
     // TODO: make sure setter and getter get written
     #[api(skip_get, skip_set)]
@@ -59,15 +60,10 @@ pub struct Chassis {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[api(skip_get, skip_set)]
     pub cargo_mass: Option<si::Mass>,
-    // `veh_override_kg` in fastsim-2 is getting deprecated in fastsim-3
-    /// Component mass multiplier for vehicle mass calculation
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[api(skip_get, skip_set)]
-    pub comp_mass_multiplier: Option<si::Ratio>,
 }
 
 impl Chassis {
-    pub fn derived_mass(&self) -> anyhow::Result<si::Mass> {}
+    pub fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {}
 }
 
 impl Mass for Chassis {
@@ -101,8 +97,9 @@ impl Mass for Chassis {
         Ok(())
     }
 
-    fn check_mass_consistent(&self) -> anyhow::Result<()> {
-        if let (Some(mass_deriv), Some(mass_set)) = (self.derived_mass()?, self.mass) {
+    fn check_mass_consistent(&self) -> anyhow::Result<Option<si::Mass>> {
+        let mass_deriv = self.derived_mass()?;
+        if let (Some(mass_deriv), Some(mass_set)) = (mass_deriv, self.mass) {
             ensure!(
                 utils::almost_eq_uom(&mass_set, &mass_deriv, None),
                 format!(
@@ -112,7 +109,6 @@ impl Mass for Chassis {
                 )
             )
         }
-
-        Ok(())
+        Ok(mass_deriv)
     }
 }
