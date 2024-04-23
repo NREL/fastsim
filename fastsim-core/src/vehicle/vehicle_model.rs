@@ -27,7 +27,10 @@ pub enum DriveTypes {
 }
 
 #[pyo3_api(
-    // TODO: expose `try_from` method so python users can load fastsim-2 vehicles
+    #[staticmethod]
+    fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
+        Ok(Self::try_from(veh.clone())?)
+    }
 
     // despite having `setter` here, this seems to work as a function
     #[setter("save_interval")]
@@ -167,7 +170,7 @@ pub struct Vehicle {
 
     /// transmission efficiency
     // TODO: make `transmission::{Transmission, TransmissionState}` and
-    // `Transmission` should have field `efficency: Efficiency`.  
+    // `Transmission` should have field `efficency: Efficiency`.
     pub trans_eff: si::Ratio,
 
     /// current state of vehicle
