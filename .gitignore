@@ -16,3 +16,4 @@ dist
 *env*/
 rust/
 *.dat
+.zed
