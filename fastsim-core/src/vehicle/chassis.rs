@@ -122,7 +122,7 @@ impl Mass for Chassis {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
             Some(new_mass) => {
                 if let Some(dm) = derived_mass {
-                    if dm != new_mass {
+                    if !utils::almost_eq_uom(&dm, &new_mass, None) {
                         log::warn!("Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`", stringify!(Chassis));
                         self.expunge_mass_fields();
                     }
