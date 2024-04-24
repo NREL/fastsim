@@ -97,45 +97,55 @@ impl SetCumulative for ElectricMachine {
 
 impl Mass for ElectricMachine {
     fn mass(&self) -> anyhow::Result<si::Mass> {
-        let derived_mass = self.get_checked_mass()?;
-        Ok(self.mass.unwrap_or(derived_mass.with_context(|| {
-            format!(
-                "Not all mass fields in `{}` are set and mass field is `None`.",
-                stringify!(ElectricMachine)
-            )
-        })?))
-    }
-
-    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
-        self.mass = match mass {
-            Some(mass) => {
-                self.specific_pwr = Some(self.pwr_out_max / mass);
-                Some(mass)
-            }
-            None => Some(
-                self.pwr_out_max
-                    / self.specific_pwr.with_context(|| {
-                        format!(
-                            "{}\n{}",
-                            format_dbg!(),
-                            "`mass` must be provided, or `self.specific_pwr` must be set"
-                        )
-                    })?,
-            ),
-        };
-        Ok(())
-    }
-
-    fn get_checked_mass(&self) -> anyhow::Result<()> {
-        if self.mass.is_some() && self.specific_pwr.is_some() {
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
-                self.pwr_out_max / self.specific_pwr.unwrap() == self.mass.unwrap(),
-                "{}\n{}",
-                format_dbg!(),
-                "`pwr_out_max`, `specific_pwr`, and `mass` fields are not consistent"
-            )
+                utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                format!(
+                    "{}",
+                    format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                )
+            );
+            Ok(set_mass)
+        } else {
+            self.mass.or(derived_mass).with_context(|| {
+                format!(
+                    // TODO: should we have a more generic name for 'mass field' that applies better to specific_pwr?
+                    "Not all mass fields in `{}` are set and mass field is `None`.",
+                    stringify!(ElectricMachine)
+                )
+            })
+        }
+    }
+
+    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+        let derived_mass = self.derived_mass()?;
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, and reset `specific_pwr` to match, if needed
+            Some(new_mass) => {
+                if let Some(dm) = derived_mass {
+                    if dm != new_mass {
+                        log::warn!("Derived mass from `self.specific_pwr` and `self.specific_pwr` does not match provided mass, setting `self.specific_pwr` to be consistent with provided mass");
+                        self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                    }
+                }
+                Some(new_mass)
+            }
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(ElectricMachine)
+                )
+            })?),
         };
         Ok(())
+    }
+
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        Ok(self
+            .specific_pwr
+            .map(|specific_pwr| self.pwr_out_max / specific_pwr))
     }
 }
 
@@ -173,10 +183,10 @@ impl ElectricMachine {
         );
 
         let state = ElectricMachineState::default();
-        let pwr_out_max_watts = uc::W * pwr_out_max_watts;
-        let specific_pwr_kw_per_kg =
+        let pwr_out_max = uc::W * pwr_out_max_watts;
+        let specific_pwr =
             specific_pwr_kw_per_kg.map(|specific_pwr| uc::KW / uc::KG * specific_pwr);
-        let mass_kg = mass_kg.map(|mass| uc::KG * mass);
+        let mass = mass_kg.map(|mass| uc::KG * mass);
         let history = ElectricMachineStateHistoryVec::new();
 
         let mut em = ElectricMachine {
@@ -184,14 +194,14 @@ impl ElectricMachine {
             pwr_out_frac_interp,
             eff_interp,
             pwr_in_frac_interp: Vec::new(),
-            pwr_out_max: pwr_out_max_watts,
-            specific_pwr: specific_pwr_kw_per_kg,
-            mass: mass_kg,
+            pwr_out_max,
+            specific_pwr,
+            mass: None,
             save_interval,
             history,
         };
         em.set_pwr_in_frac_interp()?;
-        em.get_checked_mass()?;
+        em.set_mass(mass)?;
         Ok(em)
     }
 

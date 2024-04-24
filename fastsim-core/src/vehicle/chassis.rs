@@ -106,40 +106,37 @@ impl Mass for Chassis {
                 )
             );
             Ok(set_mass)
-        } else if let Some(derived_mass) = derived_mass {
-            Ok(derived_mass)
-        } else if let Some(set_mass) = self.mass {
-            Ok(set_mass)
         } else {
-            bail!(
-                "Not all mass fields in `{}` are set and mass field is `None`.",
-                stringify!(Chassis)
-            )
+            self.mass.or(derived_mass).with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and mass field is `None`.",
+                    stringify!(Chassis)
+                )
+            })
         }
     }
 
     fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
         let derived_mass = self.derived_mass()?;
-        match new_mass {
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
             Some(new_mass) => {
-                self.mass = Some(new_mass);
                 if let Some(dm) = derived_mass {
                     if dm != new_mass {
-                        // set all the field with mass to `None` because their
-                        // values are not consistent with new mass
+                        log::warn!("Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`", stringify!(Chassis));
                         self.expunge_mass_fields();
                     }
                 }
+                Some(new_mass)
             }
-            None => {
-                self.mass = Some(derived_mass.with_context(|| {
-                    format!(
-                        "Not all mass fields in `{}` are set and no mass was provided.",
-                        stringify!(Chassis)
-                    )
-                })?);
-            }
-        }
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(Chassis)
+                )
+            })?),
+        };
         Ok(())
     }
 
