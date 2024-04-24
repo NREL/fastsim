@@ -51,7 +51,7 @@ use crate::pyo3::*;
     //     self.set_eff_range(eff_range).map_err(PyValueError::new_err)
     // }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods, SerdeAPI)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
 /// electronics.
 pub struct ElectricMachine {
@@ -87,6 +87,13 @@ pub struct ElectricMachine {
     #[serde(default)]
     #[serde(skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty")]
     pub history: ElectricMachineStateHistoryVec,
+}
+
+impl SerdeAPI for ElectricMachine {
+    fn init(&mut self) -> anyhow::Result<()> {
+        let _ = self.mass()?;
+        Ok(())
+    }
 }
 
 impl SetCumulative for ElectricMachine {
