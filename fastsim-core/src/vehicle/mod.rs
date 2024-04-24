@@ -26,7 +26,7 @@ pub use bev::BatteryElectricVehicle;
 pub use chassis::Chassis;
 pub use conv::ConventionalVehicle;
 pub use hev::HybridElectricVehicle;
-pub use powertrain::e_machine::ElectricMachine;
+pub use powertrain::electric_machine::ElectricMachine;
 pub use powertrain::fuel_converter::FuelConverter;
 pub use powertrain::fuel_storage::FuelStorage;
 pub use powertrain::powertrain_traits::{Mass, Powertrain};

@@ -7,7 +7,7 @@ pub use crate::simdrive::{SimDrive, SimParams};
 pub use crate::utils::{
     multilinear, Efficiency, Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecBoolWrapper, Pyo3VecWrapper,
 };
-pub use crate::vehicle::powertrain::e_machine::{
+pub use crate::vehicle::powertrain::electric_machine::{
     ElectricMachine, ElectricMachineState, ElectricMachineStateHistoryVec,
 };
 pub use crate::vehicle::powertrain::fuel_converter::{

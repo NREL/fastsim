@@ -179,7 +179,7 @@ impl ElectricMachine {
         let mass_kg = mass_kg.map(|mass| uc::KG * mass);
         let history = ElectricMachineStateHistoryVec::new();
 
-        let mut e_machine = ElectricMachine {
+        let mut em = ElectricMachine {
             state,
             pwr_out_frac_interp,
             eff_interp,
@@ -190,9 +190,9 @@ impl ElectricMachine {
             save_interval,
             history,
         };
-        e_machine.set_pwr_in_frac_interp()?;
-        e_machine.get_checked_mass()?;
-        Ok(e_machine)
+        em.set_pwr_in_frac_interp()?;
+        em.get_checked_mass()?;
+        Ok(em)
     }
 
     pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
@@ -238,7 +238,7 @@ impl ElectricMachine {
         ensure!(
             pwr_out_req <= self.pwr_out_max,
             format!(
-                "{}\ne_machine required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                "{}\nElectricMachine required power ({:.6} MW) exceeds static max power ({:.6} MW)",
                 format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
                 pwr_out_req.get::<si::megawatt>(),
                 self.pwr_out_max.get::<si::megawatt>()
@@ -257,7 +257,7 @@ impl ElectricMachine {
         ensure!(
             self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
             format!(
-                "{}\ne_machine eff ({}) must be between 0 and 1",
+                "{}\nElectricMachine eff ({}) must be between 0 and 1",
                 format_dbg!(self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R),
                 self.state.eff.get::<si::ratio>()
             )

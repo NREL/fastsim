@@ -61,17 +61,17 @@ pub enum AuxSource {
     //     self.set_reversible_energy_storage(res).map_err(|e| PyAttributeError::new_err(e.to_string()))
     // }
     // #[getter]
-    // fn get_e_machine(&self) -> ElectricMachine {
-    //     self.e_machine().clone()
+    // fn get_em(&self) -> ElectricMachine {
+    //     self.em().clone()
     // }
 
     // #[setter]
-    // fn set_e_machine_py(&mut self, _e_machine: ElectricMachine) -> PyResult<()> {
+    // fn set_em_py(&mut self, _em: ElectricMachine) -> PyResult<()> {
     //     Err(PyAttributeError::new_err(DIRECT_SET_ERR))
     // }
-    // #[setter(__e_machine)]
-    // fn set_e_machine_hidden(&mut self, e_machine: ElectricMachine) -> PyResult<()> {
-    //     self.set_e_machine(e_machine).map_err(|e| PyAttributeError::new_err(e.to_string()))
+    // #[setter(__em)]
+    // fn set_em_hidden(&mut self, em: ElectricMachine) -> PyResult<()> {
+    //     self.set_em(em).map_err(|e| PyAttributeError::new_err(e.to_string()))
     // }
 
     // fn veh_type(&self) -> PyResult<String> {
@@ -251,7 +251,7 @@ impl SetCumulative for Vehicle {
         if let Some(res) = self.res_mut() {
             res.set_cumulative(dt);
         }
-        if let Some(em) = self.e_machine_mut() {
+        if let Some(em) = self.em_mut() {
             em.set_cumulative(dt);
         }
     }
@@ -306,12 +306,12 @@ impl Vehicle {
         self.pt_type.set_res(res)
     }
 
-    pub fn e_machine(&self) -> Option<&ElectricMachine> {
-        self.pt_type.e_machine()
+    pub fn em(&self) -> Option<&ElectricMachine> {
+        self.pt_type.em()
     }
 
-    pub fn e_machine_mut(&mut self) -> Option<&mut ElectricMachine> {
-        self.pt_type.e_machine_mut()
+    pub fn em_mut(&mut self) -> Option<&mut ElectricMachine> {
+        self.pt_type.em_mut()
     }
 
     /// Calculate mass from components.
@@ -556,8 +556,8 @@ impl Vehicle {
             mc_full_eff_array: Default::default(), // TODO: revisit when implementing xEVs
             mc_kw_in_array: Default::default(),    // calculated in `set_derived`
             mc_kw_out_array: Default::default(),   // calculated in `set_derived`
-            mc_mass_kg: self.e_machine().map_or(anyhow::Ok(0.), |e_machine| {
-                Ok(e_machine.mass()?.unwrap_or_default().get::<si::kilogram>())
+            mc_mass_kg: self.em().map_or(anyhow::Ok(0.), |em| {
+                Ok(em.mass()?.unwrap_or_default().get::<si::kilogram>())
             })?,
             mc_max_elec_in_kw: Default::default(), // calculated in `set_derived`
             mc_max_kw: Default::default(), // placeholder, TODO: review when implementing xEVs
