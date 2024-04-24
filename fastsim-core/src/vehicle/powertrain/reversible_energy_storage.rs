@@ -173,9 +173,14 @@ impl SetCumulative for ReversibleEnergyStorage {
 }
 
 impl Mass for ReversibleEnergyStorage {
-    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        self.check_mass_consistent()?;
-        Ok(self.mass)
+    fn mass(&self) -> anyhow::Result<si::Mass> {
+        let derived_mass = self.get_checked_mass()?;
+        Ok(self.mass.unwrap_or(derived_mass.with_context(|| {
+            format!(
+                "Not all mass fields in `{}` are set and mass field is `None`.",
+                stringify!(ReversibleEnergyStorage)
+            )
+        })?))
     }
 
     fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
@@ -198,7 +203,7 @@ impl Mass for ReversibleEnergyStorage {
         Ok(())
     }
 
-    fn check_mass_consistent(&self) -> anyhow::Result<()> {
+    fn get_checked_mass(&self) -> anyhow::Result<()> {
         if self.mass.is_some() && self.specific_energy.is_some() {
             ensure!(
                 self.energy_capacity / self.specific_energy.unwrap() == self.mass.unwrap(),
@@ -213,7 +218,7 @@ impl Mass for ReversibleEnergyStorage {
 
 impl SerdeAPI for ReversibleEnergyStorage {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.check_mass_consistent()?;
+        self.get_checked_mass()?;
         Ok(())
     }
 }

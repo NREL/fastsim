@@ -157,61 +157,62 @@ const HEV: &str = "HEV";
 const PHEV: &str = "PHEV";
 const BEV: &str = "BEV";
 
-/// Returns fastsim-3 vehicle given fastsim-2 vehicle
-///
-/// # Arguments
-/// * `f2veh` - fastsim-2 vehicle
-fn get_pt_type_from_fsim2_veh(
-    f2veh: &fastsim_2::vehicle::RustVehicle,
-) -> anyhow::Result<PowertrainType> {
-    if f2veh.veh_pt_type == CONV {
-        let conv = ConventionalVehicle {
-            fs: {
-                let mut fs = FuelStorage {
-                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
-                    energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
-                    specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
-                    mass: None,
-                };
-                fs.set_mass(None)?;
-                fs
-            },
-            fc: {
-                let mut fc = FuelConverter {
-                    state: Default::default(),
-                    mass: None,
-                    specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
-                    pwr_out_max: f2veh.fc_max_kw * uc::KW,
-                    // assumes 1 s time step
-                    pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
-                    pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                    pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
-                    eff_interp: f2veh.fc_eff_map.to_vec(),
-                    // TODO: verify this
-                    pwr_idle_fuel: f2veh.aux_kw
-                        / f2veh
-                            .fc_eff_map
-                            .to_vec()
-                            .first()
-                            .ok_or_else(|| anyhow!(format_dbg!(f2veh.fc_eff_map)))?
-                        * uc::KW,
-                    save_interval: Some(1),
-                    history: Default::default(),
-                };
-                fc.set_mass(None)?;
-                fc
-            },
-            alt_eff: f2veh.alt_eff * uc::R,
-        };
-        Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
-    } else {
-        bail!(
-            "Invalid powertrain type: {}.
-                Expected one of {}",
-            f2veh.veh_pt_type,
-            [CONV, HEV, PHEV, BEV].join(", "),
-        )
+impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
+    type Error = anyhow::Error;
+    /// Returns fastsim-3 vehicle given fastsim-2 vehicle
+    ///
+    /// # Arguments
+    /// * `f2veh` - fastsim-2 vehicle
+    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<PowertrainType> {
+        if f2veh.veh_pt_type == CONV {
+            let conv = ConventionalVehicle {
+                fs: {
+                    let mut fs = FuelStorage {
+                        pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                        pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                        energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
+                        specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
+                        mass: None,
+                    };
+                    fs.set_mass(None)?;
+                    fs
+                },
+                fc: {
+                    let mut fc = FuelConverter {
+                        state: Default::default(),
+                        mass: None,
+                        specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
+                        pwr_out_max: f2veh.fc_max_kw * uc::KW,
+                        // assumes 1 s time step
+                        pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
+                        pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
+                        pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
+                        eff_interp: f2veh.fc_eff_map.to_vec(),
+                        // TODO: verify this
+                        pwr_idle_fuel: f2veh.aux_kw
+                            / f2veh
+                                .fc_eff_map
+                                .to_vec()
+                                .first()
+                                .ok_or_else(|| anyhow!(format_dbg!(f2veh.fc_eff_map)))?
+                            * uc::KW,
+                        save_interval: Some(1),
+                        history: Default::default(),
+                    };
+                    fc.set_mass(None)?;
+                    fc
+                },
+                alt_eff: f2veh.alt_eff * uc::R,
+            };
+            Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
+        } else {
+            bail!(
+                "Invalid powertrain type: {}.
+                    Expected one of {}",
+                f2veh.veh_pt_type,
+                [CONV, HEV, PHEV, BEV].join(", "),
+            )
+        }
     }
 }
 
@@ -221,40 +222,19 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
         let mut f2veh = f2veh.clone();
         f2veh.set_derived()?;
         let save_interval = Some(1);
-        let pt_type = get_pt_type_from_fsim2_veh(&f2veh)?;
-
-        // TODO: check this sign convention
-        let drive_type = if f2veh.veh_cg_m < 0. {
-            DriveTypes::RWD
-        } else {
-            DriveTypes::FWD
-        };
+        let pt_type = PowertrainType::try_from(&f2veh)?;
 
         let mut f3veh = Self {
             name: f2veh.scenario_name,
             year: f2veh.veh_year,
             pt_type,
-            drag_coef: f2veh.drag_coef * uc::R,
-            frontal_area: f2veh.frontal_area_m2 * uc::M2,
-            glider_mass: Some(f2veh.glider_kg * uc::KG),
-            cg_height: f2veh.veh_cg_m * uc::M,
-            wheel_fric_coef: f2veh.wheel_coef_of_fric * uc::R,
-            drive_type,
-            drive_axle_weight_frac: f2veh.drive_axle_weight_frac * uc::R,
-            wheel_base: f2veh.wheel_base_m * uc::M,
-            wheel_inertia: f2veh.wheel_inertia_kg_m2 * uc::KGM2,
-            wheel_rr_coef: f2veh.wheel_rr_coef * uc::R,
-            num_wheels: f2veh.num_wheels as u8,
-            wheel_radius: Some(f2veh.wheel_radius_m * uc::M),
-            tire_code: None,
-            cargo_mass: Some(f2veh.cargo_kg * uc::KG),
-            comp_mass_multiplier: Some(f2veh.comp_mass_multiplier * uc::R),
+            chassis: Chassis::try_from(&f2veh)?,
             pwr_aux: f2veh.aux_kw * uc::KW,
             trans_eff: f2veh.trans_eff * uc::R,
             state: Default::default(),
             save_interval,
             history: Default::default(),
-            mass: None,
+            mass: Some(f2veh.veh_kg * uc::KG),
         };
         f3veh.init()?;
 
@@ -433,7 +413,11 @@ impl Vehicle {
             alt_eff_doc: None,
             aux_kw: self.pwr_aux.get::<si::kilowatt>(),
             aux_kw_doc: None,
-            cargo_kg: self.cargo_mass.unwrap_or_default().get::<si::kilogram>(),
+            cargo_kg: self
+                .chassis
+                .cargo_mass
+                .unwrap_or_default()
+                .get::<si::kilogram>(),
             cargo_kg_doc: None,
             charging_on: false,
             chg_eff: 0.86, // TODO: revisit?
@@ -442,9 +426,9 @@ impl Vehicle {
             comp_mass_multiplier_doc: None,
             // TODO: replace with `doc` field once implemented in fastsim-3
             doc: None,
-            drag_coef: self.drag_coef.get::<si::ratio>(),
+            drag_coef: self.chassis.drag_coef.get::<si::ratio>(),
             drag_coef_doc: None,
-            drive_axle_weight_frac: self.drive_axle_weight_frac.get::<si::ratio>(),
+            drive_axle_weight_frac: self.chassis.drive_axle_weight_frac.get::<si::ratio>(),
             drive_axle_weight_frac_doc: None,
             ess_base_kg: 75.0, // TODO: revisit
             ess_base_kg_doc: None,
@@ -514,7 +498,7 @@ impl Vehicle {
             fc_sec_to_peak_pwr_doc: None,
             force_aux_on_fc: matches!(self.pt_type, PowertrainType::ConventionalVehicle(_)),
             force_aux_on_fc_doc: None,
-            frontal_area_m2: self.frontal_area.get::<si::square_meter>(),
+            frontal_area_m2: self.chassis.frontal_area.get::<si::square_meter>(),
             frontal_area_m2_doc: None,
             fs_kwh: self
                 .fs()
@@ -540,7 +524,11 @@ impl Vehicle {
                 .map(|fs| fs.pwr_ramp_lag.get::<si::second>())
                 .unwrap_or_default(),
             fs_secs_to_peak_pwr_doc: None,
-            glider_kg: self.glider_mass.unwrap_or_default().get::<si::kilogram>(),
+            glider_kg: self
+                .chassis
+                .glider_mass
+                .unwrap_or_default()
+                .get::<si::kilogram>(),
             glider_kg_doc: None,
             idle_fc_kw: 0.,
             idle_fc_kw_doc: None,
@@ -599,7 +587,7 @@ impl Vehicle {
             mph_fc_on_doc: None,
             no_elec_aux: false, // TODO: revisit when implemementing HEV
             no_elec_sys: false, // TODO: revisit when implemementing HEV
-            num_wheels: self.num_wheels as f64,
+            num_wheels: self.chassis.num_wheels as f64,
             num_wheels_doc: None,
             orphaned: false,
             perc_high_acc_buf: Default::default(), // TODO: revisit when implemementing HEV
@@ -634,10 +622,12 @@ impl Vehicle {
             val_unadj_hwy_kwh_per_mile: f64::NAN,
             val_unadj_udds_kwh_per_mile: f64::NAN,
             val_veh_base_cost: f64::NAN,
-            veh_cg_m: self.cg_height.get::<si::meter>()
-                * match self.drive_type {
-                    DriveTypes::FWD => 1.0,
-                    DriveTypes::RWD | DriveTypes::AWD | DriveTypes::FourWD => -1.0,
+            veh_cg_m: self.chassis.cg_height.get::<si::meter>()
+                * match self.chassis.drive_type {
+                    Chassis::DriveTypes::FWD => 1.0,
+                    Chassis::DriveTypes::RWD
+                    | Chassis::DriveTypes::AWD
+                    | Chassis::DriveTypes::FourWD => -1.0,
                 },
             veh_cg_m_doc: None,
             veh_kg: self
@@ -652,15 +642,18 @@ impl Vehicle {
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
             },
             veh_year: self.year,
-            wheel_base_m: self.wheel_base.get::<si::meter>(),
+            wheel_base_m: self.chassis.wheel_base.get::<si::meter>(),
             wheel_base_m_doc: None,
-            wheel_coef_of_fric: self.wheel_fric_coef.get::<si::ratio>(),
+            wheel_coef_of_fric: self.chassis.wheel_fric_coef.get::<si::ratio>(),
             wheel_coef_of_fric_doc: None,
-            wheel_inertia_kg_m2: self.wheel_inertia.get::<si::kilogram_square_meter>(),
+            wheel_inertia_kg_m2: self
+                .chassis
+                .wheel_inertia
+                .get::<si::kilogram_square_meter>(),
             wheel_inertia_kg_m2_doc: None,
-            wheel_radius_m: self.wheel_radius.unwrap().get::<si::meter>(),
+            wheel_radius_m: self.chassis.wheel_radius.unwrap().get::<si::meter>(),
             wheel_radius_m_doc: None,
-            wheel_rr_coef: self.wheel_rr_coef.get::<si::ratio>(),
+            wheel_rr_coef: self.chassis.wheel_rr_coef.get::<si::ratio>(),
             wheel_rr_coef_doc: None,
         };
         veh.set_derived()?;

@@ -97,15 +97,20 @@ impl SetCumulative for FuelConverter {
 
 impl SerdeAPI for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.check_mass_consistent()?;
+        self.get_checked_mass()?;
         Ok(())
     }
 }
 
 impl Mass for FuelConverter {
-    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        self.check_mass_consistent()?;
-        Ok(self.mass)
+    fn mass(&self) -> anyhow::Result<si::Mass> {
+        let derived_mass = self.get_checked_mass()?;
+        Ok(self.mass.unwrap_or(derived_mass.with_context(|| {
+            format!(
+                "Not all mass fields in `{}` are set and mass field is `None`.",
+                stringify!(FuelConverter)
+            )
+        })?))
     }
 
     fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
@@ -128,7 +133,7 @@ impl Mass for FuelConverter {
         Ok(())
     }
 
-    fn check_mass_consistent(&self) -> anyhow::Result<()> {
+    fn get_checked_mass(&self) -> anyhow::Result<()> {
         if self.mass.is_some() && self.specific_pwr.is_some() {
             ensure!(
                 self.pwr_out_max / self.specific_pwr.unwrap() == self.mass.unwrap(),

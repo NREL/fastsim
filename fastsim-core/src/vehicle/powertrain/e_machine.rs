@@ -96,9 +96,14 @@ impl SetCumulative for ElectricMachine {
 }
 
 impl Mass for ElectricMachine {
-    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        self.check_mass_consistent()?;
-        Ok(self.mass)
+    fn mass(&self) -> anyhow::Result<si::Mass> {
+        let derived_mass = self.get_checked_mass()?;
+        Ok(self.mass.unwrap_or(derived_mass.with_context(|| {
+            format!(
+                "Not all mass fields in `{}` are set and mass field is `None`.",
+                stringify!(ElectricMachine)
+            )
+        })?))
     }
 
     fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
@@ -121,7 +126,7 @@ impl Mass for ElectricMachine {
         Ok(())
     }
 
-    fn check_mass_consistent(&self) -> anyhow::Result<()> {
+    fn get_checked_mass(&self) -> anyhow::Result<()> {
         if self.mass.is_some() && self.specific_pwr.is_some() {
             ensure!(
                 self.pwr_out_max / self.specific_pwr.unwrap() == self.mass.unwrap(),
@@ -186,7 +191,7 @@ impl ElectricMachine {
             history,
         };
         e_machine.set_pwr_in_frac_interp()?;
-        e_machine.check_mass_consistent()?;
+        e_machine.get_checked_mass()?;
         Ok(e_machine)
     }
 

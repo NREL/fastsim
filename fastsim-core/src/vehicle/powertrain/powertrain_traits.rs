@@ -14,16 +14,23 @@ use super::*;
 // }
 
 pub trait Mass {
-    /// Returns mass of Self, including contribution from any fields that implement `Mass`
-    fn mass(&self) -> anyhow::Result<Option<si::Mass>>;
+    /// Returns mass of Self, either from `self.mass` or
+    /// the derived from fields that store mass data. `Mass::mass` also checks that
+    /// derived mass, if Some, is same as `self.mass`.
+    fn mass(&self) -> anyhow::Result<si::Mass>;
 
     /// Sets component mass to `mass`, or if `None` is provided for `mass`,
-    /// sets mass based
-    /// on other component parameters (e.g. power and power density)
-    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()>;
+    /// sets mass based on other component parameters (e.g. power and power
+    /// density, sum of fields containing mass)
+    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()>;
 
-    /// Checks if mass is consistent with other parameters
-    fn check_mass_consistent(&self) -> anyhow::Result<()>;
+    /// Returns derived mass (e.g. sum of mass fields, or
+    /// calculation involving mass specific properties).  If
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>>;
+
+    /// Sets all fields that are used in calculating derived mass to `None`.
+    /// Does not touch `self.mass`.
+    fn expunge_mass_fields(&mut self) {}
 }
 
 /// Provides functions for solving powertrain
@@ -39,10 +46,10 @@ pub trait Powertrain {
     ) -> anyhow::Result<si::Power>;
     /// Solves for this powertrain system/component efficiency and sets/returns power output values.
     /// # Arguments
-    /// - `pwr_out_req`: tractive power output required to achieve presribed speed  
-    /// - `pwr_aux`: component-specific aux power demand (e.g. mechanical power if from engine/FC)  
-    /// - `enabled`: whether component is actively running   
-    /// - `dt`: time step size  
+    /// - `pwr_out_req`: tractive power output required to achieve presribed speed
+    /// - `pwr_aux`: component-specific aux power demand (e.g. mechanical power if from engine/FC)
+    /// - `enabled`: whether component is actively running
+    /// - `dt`: time step size
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
