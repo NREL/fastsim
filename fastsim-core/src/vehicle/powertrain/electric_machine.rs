@@ -150,61 +150,6 @@ impl Mass for ElectricMachine {
 }
 
 impl ElectricMachine {
-    pub fn new(
-        pwr_out_frac_interp: Vec<f64>,
-        eff_interp: Vec<f64>,
-        pwr_out_max_watts: f64,
-        specific_pwr_kw_per_kg: Option<f64>,
-        mass_kg: Option<f64>,
-        save_interval: Option<usize>,
-    ) -> anyhow::Result<Self> {
-        ensure!(
-            eff_interp.len() == pwr_out_frac_interp.len(),
-            format!(
-                "{}\nElectricMachine `eff_interp` and `pwr_out_frac_interp` must be the same length",
-                eff_interp.len() == pwr_out_frac_interp.len()
-            )
-        );
-
-        ensure!(
-            pwr_out_frac_interp.iter().all(|x| *x >= 0.0),
-            format!(
-                "{}\nElectricMachine `pwr_out_frac_interp` must be non-negative",
-                format_dbg!(pwr_out_frac_interp.iter().all(|x| *x >= 0.0))
-            )
-        );
-
-        ensure!(
-            pwr_out_frac_interp.iter().all(|x| *x <= 1.0),
-            format!(
-                "{}\nElectricMachine `pwr_out_frac_interp` must be less than or equal to 1.0",
-                format_dbg!(pwr_out_frac_interp.iter().all(|x| *x <= 1.0))
-            )
-        );
-
-        let state = ElectricMachineState::default();
-        let pwr_out_max = uc::W * pwr_out_max_watts;
-        let specific_pwr =
-            specific_pwr_kw_per_kg.map(|specific_pwr| uc::KW / uc::KG * specific_pwr);
-        let mass = mass_kg.map(|mass| uc::KG * mass);
-        let history = ElectricMachineStateHistoryVec::new();
-
-        let mut em = ElectricMachine {
-            state,
-            pwr_out_frac_interp,
-            eff_interp,
-            pwr_in_frac_interp: Vec::new(),
-            pwr_out_max,
-            specific_pwr,
-            mass: None,
-            save_interval,
-            history,
-        };
-        em.set_pwr_in_frac_interp()?;
-        em.set_mass(mass)?;
-        Ok(em)
-    }
-
     pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
         // make sure vector has been created
         self.pwr_in_frac_interp = self
