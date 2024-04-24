@@ -125,7 +125,7 @@ impl Mass for ElectricMachine {
             Some(new_mass) => {
                 if let Some(dm) = derived_mass {
                     if dm != new_mass {
-                        log::warn!("Derived mass from `self.specific_pwr` and `self.specific_pwr` does not match provided mass, setting `self.specific_pwr` to be consistent with provided mass");
+                        log::warn!("Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match provided mass, setting `self.specific_pwr` to be consistent with provided mass");
                         self.specific_pwr = Some(self.pwr_out_max / new_mass);
                     }
                 }
