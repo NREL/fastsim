@@ -97,7 +97,7 @@ impl SetCumulative for FuelConverter {
 
 impl SerdeAPI for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.get_checked_mass()?;
+        let _ = self.mass()?;
         Ok(())
     }
 }

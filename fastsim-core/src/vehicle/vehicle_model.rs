@@ -133,8 +133,7 @@ pub struct Vehicle {
 
 impl SerdeAPI for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.check_mass_consistent()?;
-        self.set_mass(None)?;
+        let _ = self.mass()?;
         self.calculate_wheel_radius()?;
         Ok(())
     }
