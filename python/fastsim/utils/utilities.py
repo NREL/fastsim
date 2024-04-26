@@ -117,6 +117,26 @@ def set_log_level(level: str | int) -> int:
         Previous log level
     """
     # Map string name to logging level
+
+    allowed_args = [
+        "CRITICAL",
+        50,
+        "ERROR",
+        40,
+        "WARNING",
+        30,
+        "INFO",
+        20,
+        "DEBUG",
+        10,
+        "NOTSET",
+        0,
+    ]
+
+    err_str = f"Invalid arg: '{level}'.  See doc string:\n{set_log_level.__doc__}"
+
+    assert level in allowed_args, err_str
+
     if isinstance(level, str):
         level = logging._nameToLevel[level]
     # Extract previous log level and set new log level
