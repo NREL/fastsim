@@ -131,6 +131,8 @@ def set_log_level(level: str | int) -> int:
         10,
         "NOTSET",
         0,
+        # no logging of anything ever!
+        logging.CRITICAL + 1,
     ]
 
     err_str = f"Invalid arg: '{level}'.  See doc string:\n{set_log_level.__doc__}"
