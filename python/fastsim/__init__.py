@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import logging
 import traceback
+from typing import Dict
 
 from fastsim import parameters as params
 from fastsim import utils
@@ -21,11 +22,16 @@ def package_root() -> Path:
     return Path(__file__).parent
 
 
+def default_logging_config() -> Dict[str, str]:
+    return dict(
+        format = "%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ) 
+
+
+
 # Set up logging
-logging.basicConfig(
-    format="%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+logging.basicConfig(**default_logging_config())
 logger = logging.getLogger(__name__)
 
 from pkg_resources import get_distribution
