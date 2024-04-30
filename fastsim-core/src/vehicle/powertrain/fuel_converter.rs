@@ -140,6 +140,11 @@ impl Mass for FuelConverter {
             .specific_pwr
             .map(|specific_pwr| self.pwr_out_max / specific_pwr))
     }
+
+    fn expunge_mass_fields(&mut self) {
+        self.mass = None;
+        self.specific_pwr = None;
+    }
 }
 
 impl SaveInterval for FuelConverter {

@@ -30,7 +30,7 @@ pub trait Mass {
 
     /// Sets all fields that are used in calculating derived mass to `None`.
     /// Does not touch `self.mass`.
-    fn expunge_mass_fields(&mut self) {}
+    fn expunge_mass_fields(&mut self);
 }
 
 /// Provides functions for solving powertrain

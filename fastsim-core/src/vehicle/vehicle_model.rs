@@ -107,7 +107,7 @@ pub struct Vehicle {
     // TODO: make sure setter and getter get written
     #[api(skip_get, skip_set)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(in super::super) mass: Option<si::Mass>,
+    pub(crate) mass: Option<si::Mass>,
 
     /// power required by auxilliary systems (e.g. HVAC, stereo)
     pub pwr_aux: si::Power,
@@ -146,7 +146,7 @@ impl Mass for Vehicle {
                 Ok(Some(set_mass))
             }
             (None, None) => bail!(
-                "Not all mass fields in `{}` are set and no mass was provided.",
+                "Not all mass fields in `{}` are set and no mass was previously set.",
                 stringify!(Vehicle)
             ),
             _ => Ok(self.mass.or(derived_mass)),
@@ -180,55 +180,32 @@ impl Mass for Vehicle {
     }
 
     fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        // because this is used for vehicle dynamics, this method must return `Some`
-        let chassis_mass = self.chassis.mass()?.unwrap_or_default();
-        let fc_mass = self
-            .fc()
-            .map(|fc| fc.mass())
-            .transpose()?
-            .flatten()
-            .unwrap_or_default();
-        let fs_mass = self
-            .fs()
-            .map(|fs| fs.mass())
-            .transpose()?
-            .flatten()
-            .unwrap_or_default();
-        let res_mass = self
-            .res()
-            .map(|res| res.mass())
-            .transpose()?
-            .flatten()
-            .unwrap_or_default();
-        let em_mass = self
-            .em()
-            .map(|em| em.mass())
-            .transpose()?
-            .flatten()
-            .unwrap_or_default();
-        Ok(Some(chassis_mass + fc_mass + fs_mass + res_mass + em_mass))
+        let chassis_mass = self.chassis.mass()?;
+        let pt_mass = match &self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => conv.mass()?,
+            PowertrainType::HybridElectricVehicle(hev) => hev.mass()?,
+            PowertrainType::BatteryElectricVehicle(bev) => bev.mass()?,
+        };
+        if let (Some(pt_mass), Some(chassis_mass)) = (pt_mass, chassis_mass) {
+            Ok(Some(pt_mass + chassis_mass))
+        } else {
+            Ok(None)
+        }
     }
 
     fn expunge_mass_fields(&mut self) {
         self.chassis.expunge_mass_fields();
-        if let Some(fc_mut) = self.em_mut() {
-            fc_mut.expunge_mass_fields();
-        }
-        if let Some(fs_mut) = self.fs_mut() {
-            fs_mut.expunge_mass_fields();
-        }
-        if let Some(res_mut) = self.res_mut() {
-            res_mut.expunge_mass_fields();
-        }
-        if let Some(em_mut) = self.em_mut() {
-            em_mut.expunge_mass_fields();
-        }
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => conv.expunge_mass_fields(),
+            PowertrainType::HybridElectricVehicle(hev) => hev.expunge_mass_fields(),
+            PowertrainType::BatteryElectricVehicle(bev) => bev.expunge_mass_fields(),
+        };
     }
 }
 
 impl SerdeAPI for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass()?;
+        let _mass = self.mass()?;
         self.calculate_wheel_radius()?;
         Ok(())
     }
@@ -296,6 +273,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     fc.set_mass(None)?;
                     fc
                 },
+                mass: None,
                 alt_eff: f2veh.alt_eff * uc::R,
             };
             Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
@@ -312,7 +290,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
 
 impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<Self, Self::Error> {
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> anyhow::Result<Self> {
         let mut f2veh = f2veh.clone();
         f2veh.set_derived()?;
         let save_interval = Some(1);
@@ -367,6 +345,10 @@ impl Vehicle {
 
     pub fn fc(&self) -> Option<&FuelConverter> {
         self.pt_type.fc()
+    }
+
+    pub fn fc_mut(&mut self) -> Option<&mut FuelConverter> {
+        self.pt_type.fc_mut()
     }
 
     pub fn set_fc(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
@@ -767,9 +749,12 @@ pub(crate) mod tests {
     pub(crate) fn mock_f2_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
-        let veh =
-            Vehicle::try_from(fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap())
-                .unwrap();
+        let veh = {
+            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap();
+            let veh = Vehicle::try_from(f2veh);
+            veh.unwrap()
+        };
+
         // uncomment this if the fastsim-3 version needs to be rewritten
         veh.to_file(
             project_root::get_project_root()

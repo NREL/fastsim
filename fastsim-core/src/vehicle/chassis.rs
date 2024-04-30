@@ -143,6 +143,7 @@ impl Mass for Chassis {
     }
 
     fn expunge_mass_fields(&mut self) {
+        self.mass = None;
         self.glider_mass = None;
         self.cargo_mass = None;
     }

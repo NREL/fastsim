@@ -185,6 +185,11 @@ impl Mass for ReversibleEnergyStorage {
             .specific_energy
             .map(|specific_energy| self.energy_capacity / specific_energy))
     }
+
+    fn expunge_mass_fields(&mut self) {
+        self.mass = None;
+        self.specific_energy = None;
+    }
 }
 
 impl SerdeAPI for ReversibleEnergyStorage {

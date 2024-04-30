@@ -140,6 +140,11 @@ impl Mass for ElectricMachine {
             .specific_pwr
             .map(|specific_pwr| self.pwr_out_max / specific_pwr))
     }
+
+    fn expunge_mass_fields(&mut self) {
+        self.specific_pwr = None;
+        self.mass = None;
+    }
 }
 
 impl ElectricMachine {

@@ -8,17 +8,70 @@ pub struct BatteryElectricVehicle {
     pub res: ReversibleEnergyStorage,
     #[has_state]
     pub em: ElectricMachine,
+    pub(crate) mass: Option<si::Mass>,
 }
 
-impl BatteryElectricVehicle {
-    pub fn new(
-        reversible_energy_storage: ReversibleEnergyStorage,
-        electric_machine: ElectricMachine,
-    ) -> Self {
-        BatteryElectricVehicle {
-            res: reversible_energy_storage,
-            em: electric_machine,
+impl Mass for BatteryElectricVehicle {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        let derived_mass = self.derived_mass()?;
+        match (derived_mass, self.mass) {
+            (Some(derived_mass), Some(set_mass)) => {
+                ensure!(
+                    utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                    format!(
+                        "{}",
+                        format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                    )
+                );
+                Ok(Some(set_mass))
+            }
+            _ => Ok(self.mass.or(derived_mass)),
         }
+    }
+
+    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+        let derived_mass = self.derived_mass()?;
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            Some(new_mass) => {
+                if let Some(dm) = derived_mass {
+                    if dm != new_mass {
+                        log::warn!(
+                            "Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`",
+                            stringify!(BatteryElectricVehicle));
+                        self.expunge_mass_fields();
+                    }
+                }
+                Some(new_mass)
+            }
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(BatteryElectricVehicle)
+                )
+            })?),
+        };
+        Ok(())
+    }
+
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        let res_mass = self.res.mass()?;
+        let em_mass = self.em.mass()?;
+        match (res_mass, em_mass) {
+            (Some(res_mass), Some(em_mass)) => Ok(Some(em_mass + res_mass)),
+            (None, None) => Ok(None),
+            _ => bail!(
+                "`{}` field masses are not consistently set to `Some` or `None`",
+                stringify!(BatteryElectricVehicle)
+            ),
+        }
+    }
+
+    fn expunge_mass_fields(&mut self) {
+        self.res.expunge_mass_fields();
+        self.em.expunge_mass_fields();
+        self.mass = None;
     }
 }
 
