@@ -96,23 +96,6 @@ const TOL: f64 = 1e-3;
     fn get_specific_energy_kjoules_per_kg(&self) -> Option<f64> {
         self.specific_energy.map(|se| se.get::<si::kilojoule_per_kilogram>())
     }
-
-    #[setter("__volume_m3")]
-    fn update_volume_py(&mut self, volume_m3: Option<f64>) -> anyhow::Result<()> {
-        let volume = volume_m3.map(|v| v * uc::M3);
-        self.update_volume(volume)?;
-        Ok(())
-    }
-
-    #[getter("volume_m3")]
-    fn get_volume_py(&mut self) -> anyhow::Result<Option<f64>> {
-        Ok(self.volume()?.map(|v| v.get::<si::cubic_meter>()))
-    }
-
-    #[getter]
-    fn get_energy_density_kjoules_per_m3(&self) -> Option<f64> {
-        self.specific_energy.map(|se| se.get::<si::kilojoule_per_kilogram>())
-    }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
@@ -125,17 +108,9 @@ pub struct ReversibleEnergyStorage {
     #[serde(default)]
     #[api(skip_get, skip_set)]
     pub(in super::super) mass: Option<si::Mass>,
-    /// ReversibleEnergyStorage volume, used as a sanity check
-    #[api(skip_get, skip_set)]
-    #[serde(default)]
-    volume: Option<si::Volume>,
     /// ReversibleEnergyStorage specific energy
     #[api(skip_get, skip_set)]
-    specific_energy: Option<si::AvailableEnergy>,
-    /// ReversibleEnergyStorage energy density (note that pressure has the same units as energy density)
-    #[api(skip_get, skip_set)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub energy_density: Option<si::Pressure>,
+    specific_energy: Option<si::SpecificEnergy>,
     #[serde(rename = "pwr_out_max_watts")]
     /// Max output (and input) power battery can produce (accept)
     pub pwr_out_max: si::Power,
@@ -174,46 +149,52 @@ impl SetCumulative for ReversibleEnergyStorage {
 
 impl Mass for ReversibleEnergyStorage {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        self.check_mass_consistent()?;
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
+            ensure!(
+                utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                format!(
+                    "{}",
+                    format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                )
+            );
+        }
         Ok(self.mass)
     }
 
-    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
-        self.mass = match mass {
-            Some(mass) => {
-                self.specific_energy = Some(self.energy_capacity / mass);
-                Some(mass)
+    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
+            if derived_mass != new_mass {
+                log::info!(
+                    "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
+                    "provided mass, setting `self.specific_energy` to be consistent with provided mass"
+                );
+                self.specific_energy = Some(self.energy_capacity / new_mass);
             }
-            None => Some(
-                self.energy_capacity
-                    / self.specific_energy.with_context(|| {
-                        format!(
-                            "{}\n{}",
-                            format_dbg!(),
-                            "`mass` must be provided, or `self.specific_energy` must be set"
-                        )
-                    })?,
-            ),
-        };
+        } else if let None = new_mass {
+            log::debug!("Provided mass is None, setting `self.specific_energy` to None");
+            self.specific_energy = None;
+        }
+        self.mass = new_mass;
         Ok(())
     }
 
-    fn check_mass_consistent(&self) -> anyhow::Result<()> {
-        if self.mass.is_some() && self.specific_energy.is_some() {
-            ensure!(
-                self.energy_capacity / self.specific_energy.unwrap() == self.mass.unwrap(),
-                "{}\n{}",
-                format_dbg!(),
-                "`energy_capacity`, `specific_energy`, and `mass` fields are not consistent"
-            )
-        }
-        Ok(())
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        Ok(self
+            .specific_energy
+            .map(|specific_energy| self.energy_capacity / specific_energy))
+    }
+
+    fn expunge_mass_fields(&mut self) {
+        self.mass = None;
+        self.specific_energy = None;
     }
 }
 
 impl SerdeAPI for ReversibleEnergyStorage {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.check_mass_consistent()?;
+        let _ = self.mass()?;
         Ok(())
     }
 }
@@ -255,50 +236,8 @@ impl ReversibleEnergyStorage {
             save_interval,
             history: ReversibleEnergyStorageStateHistoryVec::new(),
             mass: Default::default(),
-            volume: Default::default(),
-            energy_density: Default::default(),
             specific_energy: Default::default(),
         })
-    }
-
-    fn volume(&self) -> anyhow::Result<Option<si::Volume>> {
-        self.check_vol_consistent()?;
-        Ok(self.volume)
-    }
-
-    fn update_volume(&mut self, volume: Option<si::Volume>) -> anyhow::Result<()> {
-        match volume {
-            Some(volume) => {
-                self.energy_density = Some(self.energy_capacity / volume);
-                self.volume = Some(volume);
-            }
-            None => match self.energy_density {
-                Some(e) => self.volume = Some(self.energy_capacity / e),
-                None => {
-                    bail!(format!(
-                        "{}\n{}",
-                        format_dbg!(),
-                        "Volume must be provided or `self.energy_density` must be set"
-                    ));
-                }
-            },
-        };
-
-        Ok(())
-    }
-
-    fn check_vol_consistent(&self) -> anyhow::Result<()> {
-        match &self.volume {
-            Some(vol) => match &self.energy_density {
-                Some(e) => {
-                    ensure!(self.energy_capacity / *e == *vol,
-                    format!("{}\n{}", format_dbg!(), "ReversibleEnergyStorage `energy_capacity`, `energy_density` and `volume` are not consistent"))
-                }
-                None => {}
-            },
-            None => {}
-        }
-        Ok(())
     }
 
     /// Returns max output and max regen power based on current state

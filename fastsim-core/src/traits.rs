@@ -21,7 +21,7 @@ pub trait Linspace {
 
 impl Linspace for Vec<f64> {}
 
-// TODO: only call `init` once per deserialization
+// TODO: only call `init` once per deserialization -- @Kyle, has this been solved?
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];

@@ -153,33 +153,33 @@ impl PowertrainType {
         }
     }
 
-    pub fn e_machine(&self) -> Option<&ElectricMachine> {
+    pub fn em(&self) -> Option<&ElectricMachine> {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => None,
-            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.e_machine),
-            PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.e_machine),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.em),
+            PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.em),
         }
     }
 
-    pub fn e_machine_mut(&mut self) -> Option<&mut ElectricMachine> {
+    pub fn em_mut(&mut self) -> Option<&mut ElectricMachine> {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => None,
-            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.e_machine),
-            PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.e_machine),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.em),
+            PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.em),
         }
     }
 
-    pub fn set_e_machine(&mut self, e_machine: ElectricMachine) -> anyhow::Result<()> {
+    pub fn set_em(&mut self, em: ElectricMachine) -> anyhow::Result<()> {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => {
-                Err(anyhow!("ConventionalVehicle has no `e_machine`"))
+                Err(anyhow!("ConventionalVehicle has no `ElectricMachine`"))
             }
             PowertrainType::HybridElectricVehicle(hev) => {
-                hev.e_machine = e_machine;
+                hev.em = em;
                 Ok(())
             }
             PowertrainType::BatteryElectricVehicle(bev) => {
-                bev.e_machine = e_machine;
+                bev.em = em;
                 Ok(())
             }
         }

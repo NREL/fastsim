@@ -97,47 +97,53 @@ impl SetCumulative for FuelConverter {
 
 impl SerdeAPI for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.check_mass_consistent()?;
+        let _ = self.mass()?;
         Ok(())
     }
 }
 
 impl Mass for FuelConverter {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        self.check_mass_consistent()?;
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
+            ensure!(
+                utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                format!(
+                    "{}",
+                    format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                )
+            );
+        }
         Ok(self.mass)
     }
 
-    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
-        self.mass = match mass {
-            Some(mass) => {
-                self.specific_pwr = Some(self.pwr_out_max / mass);
-                Some(mass)
+    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
+            if derived_mass != new_mass {
+                log::info!(
+                    "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
+                    "provided mass, setting `self.specific_pwr` to be consistent with provided mass"
+                );
+                self.specific_pwr = Some(self.pwr_out_max / new_mass);
             }
-            None => Some(
-                self.pwr_out_max
-                    / self.specific_pwr.with_context(|| {
-                        format!(
-                            "{}\n{}",
-                            format_dbg!(),
-                            "`mass` must be provided, or `self.specific_pwr` must be set"
-                        )
-                    })?,
-            ),
-        };
+        } else if let None = new_mass {
+            log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
+            self.specific_pwr = None;
+        }
+        self.mass = new_mass;
         Ok(())
     }
 
-    fn check_mass_consistent(&self) -> anyhow::Result<()> {
-        if self.mass.is_some() && self.specific_pwr.is_some() {
-            ensure!(
-                self.pwr_out_max / self.specific_pwr.unwrap() == self.mass.unwrap(),
-                "{}\n{}",
-                format_dbg!(),
-                "`pwr_out_max`, `specific_pwr`, and `mass` fields are not consistent"
-            )
-        };
-        Ok(())
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        Ok(self
+            .specific_pwr
+            .map(|specific_pwr| self.pwr_out_max / specific_pwr))
+    }
+
+    fn expunge_mass_fields(&mut self) {
+        self.mass = None;
+        self.specific_pwr = None;
     }
 }
 

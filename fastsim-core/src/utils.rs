@@ -244,11 +244,11 @@ pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
     Ok(radius_mm / 1000.0)
 }
 
-make_cmp_fns!(almost_eq);
-make_cmp_fns!(almost_gt);
-make_cmp_fns!(almost_lt);
-make_cmp_fns!(almost_ge);
-make_cmp_fns!(almost_le);
+make_uom_cmp_fn!(almost_eq);
+make_uom_cmp_fn!(almost_gt);
+make_uom_cmp_fn!(almost_lt);
+make_uom_cmp_fn!(almost_ge);
+make_uom_cmp_fn!(almost_le);
 
 #[pyo3_api]
 #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq, SerdeAPI)]

@@ -51,7 +51,7 @@ use crate::pyo3::*;
     //     self.set_eff_range(eff_range).map_err(PyValueError::new_err)
     // }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods, SerdeAPI)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
 /// electronics.
 pub struct ElectricMachine {
@@ -89,6 +89,13 @@ pub struct ElectricMachine {
     pub history: ElectricMachineStateHistoryVec,
 }
 
+impl SerdeAPI for ElectricMachine {
+    fn init(&mut self) -> anyhow::Result<()> {
+        let _ = self.mass()?;
+        Ok(())
+    }
+}
+
 impl SetCumulative for ElectricMachine {
     fn set_cumulative(&mut self, dt: si::Time) {
         self.state.set_cumulative(dt);
@@ -97,99 +104,50 @@ impl SetCumulative for ElectricMachine {
 
 impl Mass for ElectricMachine {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        self.check_mass_consistent()?;
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
+            ensure!(
+                utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                format!(
+                    "{}",
+                    format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                )
+            );
+        }
         Ok(self.mass)
     }
 
-    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
-        self.mass = match mass {
-            Some(mass) => {
-                self.specific_pwr = Some(self.pwr_out_max / mass);
-                Some(mass)
+    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
+            if derived_mass != new_mass {
+                log::info!(
+                    "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
+                    "provided mass, setting `self.specific_pwr` to be consistent with provided mass"
+                );
+                self.specific_pwr = Some(self.pwr_out_max / new_mass);
             }
-            None => Some(
-                self.pwr_out_max
-                    / self.specific_pwr.with_context(|| {
-                        format!(
-                            "{}\n{}",
-                            format_dbg!(),
-                            "`mass` must be provided, or `self.specific_pwr` must be set"
-                        )
-                    })?,
-            ),
-        };
+        } else if let None = new_mass {
+            log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
+            self.specific_pwr = None;
+        }
+        self.mass = new_mass;
         Ok(())
     }
 
-    fn check_mass_consistent(&self) -> anyhow::Result<()> {
-        if self.mass.is_some() && self.specific_pwr.is_some() {
-            ensure!(
-                self.pwr_out_max / self.specific_pwr.unwrap() == self.mass.unwrap(),
-                "{}\n{}",
-                format_dbg!(),
-                "`pwr_out_max`, `specific_pwr`, and `mass` fields are not consistent"
-            )
-        };
-        Ok(())
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        Ok(self
+            .specific_pwr
+            .map(|specific_pwr| self.pwr_out_max / specific_pwr))
+    }
+
+    fn expunge_mass_fields(&mut self) {
+        self.specific_pwr = None;
+        self.mass = None;
     }
 }
 
 impl ElectricMachine {
-    pub fn new(
-        pwr_out_frac_interp: Vec<f64>,
-        eff_interp: Vec<f64>,
-        pwr_out_max_watts: f64,
-        specific_pwr_kw_per_kg: Option<f64>,
-        mass_kg: Option<f64>,
-        save_interval: Option<usize>,
-    ) -> anyhow::Result<Self> {
-        ensure!(
-            eff_interp.len() == pwr_out_frac_interp.len(),
-            format!(
-                "{}\nElectricMachine `eff_interp` and `pwr_out_frac_interp` must be the same length",
-                eff_interp.len() == pwr_out_frac_interp.len()
-            )
-        );
-
-        ensure!(
-            pwr_out_frac_interp.iter().all(|x| *x >= 0.0),
-            format!(
-                "{}\nElectricMachine `pwr_out_frac_interp` must be non-negative",
-                format_dbg!(pwr_out_frac_interp.iter().all(|x| *x >= 0.0))
-            )
-        );
-
-        ensure!(
-            pwr_out_frac_interp.iter().all(|x| *x <= 1.0),
-            format!(
-                "{}\nElectricMachine `pwr_out_frac_interp` must be less than or equal to 1.0",
-                format_dbg!(pwr_out_frac_interp.iter().all(|x| *x <= 1.0))
-            )
-        );
-
-        let state = ElectricMachineState::default();
-        let pwr_out_max_watts = uc::W * pwr_out_max_watts;
-        let specific_pwr_kw_per_kg =
-            specific_pwr_kw_per_kg.map(|specific_pwr| uc::KW / uc::KG * specific_pwr);
-        let mass_kg = mass_kg.map(|mass| uc::KG * mass);
-        let history = ElectricMachineStateHistoryVec::new();
-
-        let mut e_machine = ElectricMachine {
-            state,
-            pwr_out_frac_interp,
-            eff_interp,
-            pwr_in_frac_interp: Vec::new(),
-            pwr_out_max: pwr_out_max_watts,
-            specific_pwr: specific_pwr_kw_per_kg,
-            mass: mass_kg,
-            save_interval,
-            history,
-        };
-        e_machine.set_pwr_in_frac_interp()?;
-        e_machine.check_mass_consistent()?;
-        Ok(e_machine)
-    }
-
     pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
         // make sure vector has been created
         self.pwr_in_frac_interp = self
@@ -233,7 +191,7 @@ impl ElectricMachine {
         ensure!(
             pwr_out_req <= self.pwr_out_max,
             format!(
-                "{}\ne_machine required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                "{}\nElectricMachine required power ({:.6} MW) exceeds static max power ({:.6} MW)",
                 format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
                 pwr_out_req.get::<si::megawatt>(),
                 self.pwr_out_max.get::<si::megawatt>()
@@ -252,7 +210,7 @@ impl ElectricMachine {
         ensure!(
             self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
             format!(
-                "{}\ne_machine eff ({}) must be between 0 and 1",
+                "{}\nElectricMachine eff ({}) must be between 0 and 1",
                 format_dbg!(self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R),
                 self.state.eff.get::<si::ratio>()
             )
