@@ -318,7 +318,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
 impl SetCumulative for Vehicle {
     fn set_cumulative(&mut self, dt: si::Time) {
         self.state.set_cumulative(dt);
-        if let Some(fc) = self.em_mut() {
+        if let Some(fc) = self.fc_mut() {
             fc.set_cumulative(dt);
         }
         if let Some(res) = self.res_mut() {
