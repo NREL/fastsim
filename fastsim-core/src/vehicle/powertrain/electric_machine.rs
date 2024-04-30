@@ -103,7 +103,7 @@ impl SetCumulative for ElectricMachine {
 }
 
 impl Mass for ElectricMachine {
-    fn mass(&self) -> anyhow::Result<si::Mass> {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self.derived_mass()?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
@@ -113,40 +113,25 @@ impl Mass for ElectricMachine {
                     format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
                 )
             );
-            Ok(set_mass)
-        } else {
-            self.mass.or(derived_mass).with_context(|| {
-                format!(
-                    // TODO: should we have a more generic name for 'mass field' that applies better to specific_pwr?
-                    "Not all mass fields in `{}` are set and mass field is `None`.",
-                    stringify!(ElectricMachine)
-                )
-            })
         }
+        Ok(self.mass)
     }
 
     fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
         let derived_mass = self.derived_mass()?;
-        self.mass = match new_mass {
-            // Set using provided `new_mass`, and reset `specific_pwr` to match, if needed
-            Some(new_mass) => {
-                if let Some(dm) = derived_mass {
-                    if dm != new_mass {
-                        log::warn!("Derived mass from `self.specific_pwr` and `self.specific_pwr` does not {}",
-                            "match provided mass, setting `self.specific_pwr` to be consistent with provided mass");
-                        self.specific_pwr = Some(self.pwr_out_max / new_mass);
-                    }
-                }
-                Some(new_mass)
+        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
+            if derived_mass != new_mass {
+                log::info!(
+                    "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
+                    "provided mass, setting `self.specific_pwr` to be consistent with provided mass"
+                );
+                self.specific_pwr = Some(self.pwr_out_max / new_mass);
             }
-            // Set using `derived_mass()`, failing if it returns `None`
-            None => Some(derived_mass.with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and no mass was provided.",
-                    stringify!(ElectricMachine)
-                )
-            })?),
-        };
+        } else if let None = new_mass {
+            log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
+            self.specific_pwr = None;
+        }
+        self.mass = new_mass;
         Ok(())
     }
 

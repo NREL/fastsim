@@ -98,7 +98,7 @@ fn impl_get_set_si(
     }
 }
 
-/// Generates pyo3 getter methods  
+/// Generates pyo3 getter methods
 ///
 /// - impl_block: TokenStream2
 /// - field: struct field
@@ -133,7 +133,7 @@ fn impl_get_body(
     }
 }
 
-/// Generates pyo3 getter methods  
+/// Generates pyo3 getter methods
 ///
 /// - impl_block: TokenStream2
 /// - field: struct field
@@ -300,7 +300,7 @@ pub(crate) fn impl_getters_and_setters(
             "Acceleration" => extract_units!(uom::si::acceleration::meter_per_second_squared),
             "Angle" => extract_units!(uom::si::angle::radian),
             "Area" => extract_units!(uom::si::area::square_meter),
-            "AvailableEnergy" => extract_units!(
+            "SpecificEnergy" => extract_units!(
                 uom::si::available_energy::joule_per_kilogram,
                 uom::si::available_energy::kilojoule_per_kilogram,
                 uom::si::available_energy::megajoule_per_kilogram

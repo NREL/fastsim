@@ -95,7 +95,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for Chassis {
 }
 
 impl Mass for Chassis {
-    fn mass(&self) -> anyhow::Result<si::Mass> {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self.derived_mass()?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
@@ -105,38 +105,25 @@ impl Mass for Chassis {
                     format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
                 )
             );
-            Ok(set_mass)
-        } else {
-            self.mass.or(derived_mass).with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and mass field is `None`.",
-                    stringify!(Chassis)
-                )
-            })
         }
+        Ok(self.mass)
     }
 
     fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
         let derived_mass = self.derived_mass()?;
-        self.mass = match new_mass {
-            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
-            Some(new_mass) => {
-                if let Some(dm) = derived_mass {
-                    if !utils::almost_eq_uom(&dm, &new_mass, None) {
-                        log::warn!("Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`", stringify!(Chassis));
-                        self.expunge_mass_fields();
-                    }
-                }
-                Some(new_mass)
+        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
+            if derived_mass != new_mass {
+                log::warn!("Derived mass does not match provided mass, setting `{}` constituent mass fields to `None`", stringify!(Chassis));
+                self.expunge_mass_fields();
             }
-            // Set using `derived_mass()`, failing if it returns `None`
-            None => Some(derived_mass.with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and no mass was provided.",
-                    stringify!(Chassis)
-                )
-            })?),
-        };
+        } else if let None = new_mass {
+            log::debug!(
+                "Provided mass is None, setting `{}` constituent mass fields to `None`",
+                stringify!(Chassis)
+            );
+            self.expunge_mass_fields();
+        }
+        self.mass = new_mass;
         Ok(())
     }
 

@@ -96,23 +96,6 @@ const TOL: f64 = 1e-3;
     fn get_specific_energy_kjoules_per_kg(&self) -> Option<f64> {
         self.specific_energy.map(|se| se.get::<si::kilojoule_per_kilogram>())
     }
-
-    #[setter("__volume_m3")]
-    fn update_volume_py(&mut self, volume_m3: Option<f64>) -> anyhow::Result<()> {
-        let volume = volume_m3.map(|v| v * uc::M3);
-        self.update_volume(volume)?;
-        Ok(())
-    }
-
-    #[getter("volume_m3")]
-    fn get_volume_py(&mut self) -> anyhow::Result<Option<f64>> {
-        Ok(self.volume()?.map(|v| v.get::<si::cubic_meter>()))
-    }
-
-    #[getter]
-    fn get_energy_density_kjoules_per_m3(&self) -> Option<f64> {
-        self.specific_energy.map(|se| se.get::<si::kilojoule_per_kilogram>())
-    }
 )]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
@@ -125,17 +108,9 @@ pub struct ReversibleEnergyStorage {
     #[serde(default)]
     #[api(skip_get, skip_set)]
     pub(in super::super) mass: Option<si::Mass>,
-    /// ReversibleEnergyStorage volume, used as a sanity check
-    #[api(skip_get, skip_set)]
-    #[serde(default)]
-    volume: Option<si::Volume>,
     /// ReversibleEnergyStorage specific energy
     #[api(skip_get, skip_set)]
-    specific_energy: Option<si::AvailableEnergy>,
-    /// ReversibleEnergyStorage energy density (note that pressure has the same units as energy density)
-    #[api(skip_get, skip_set)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub energy_density: Option<si::Pressure>,
+    specific_energy: Option<si::SpecificEnergy>,
     #[serde(rename = "pwr_out_max_watts")]
     /// Max output (and input) power battery can produce (accept)
     pub pwr_out_max: si::Power,
@@ -173,7 +148,7 @@ impl SetCumulative for ReversibleEnergyStorage {
 }
 
 impl Mass for ReversibleEnergyStorage {
-    fn mass(&self) -> anyhow::Result<si::Mass> {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
         let derived_mass = self.derived_mass()?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
@@ -183,38 +158,25 @@ impl Mass for ReversibleEnergyStorage {
                     format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
                 )
             );
-            Ok(set_mass)
-        } else {
-            self.mass.or(derived_mass).with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and mass field is `None`.",
-                    stringify!(ReversibleEnergyStorage)
-                )
-            })
         }
+        Ok(self.mass)
     }
 
     fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
         let derived_mass = self.derived_mass()?;
-        self.mass = match new_mass {
-            // Set using provided `new_mass`, and reset `specific_energy` to match, if needed
-            Some(new_mass) => {
-                if let Some(dm) = derived_mass {
-                    if dm != new_mass {
-                        log::warn!("Derived mass from `self.specific_energy` and `self.energy_capacity` does not match provided mass, setting `self.specific_energy` to be consistent with provided mass");
-                        self.specific_energy = Some(self.energy_capacity / new_mass);
-                    }
-                }
-                Some(new_mass)
+        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
+            if derived_mass != new_mass {
+                log::info!(
+                    "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
+                    "provided mass, setting `self.specific_energy` to be consistent with provided mass"
+                );
+                self.specific_energy = Some(self.energy_capacity / new_mass);
             }
-            // Set using `derived_mass()`, failing if it returns `None`
-            None => Some(derived_mass.with_context(|| {
-                format!(
-                    "Not all mass fields in `{}` are set and no mass was provided.",
-                    stringify!(ReversibleEnergyStorage)
-                )
-            })?),
-        };
+        } else if let None = new_mass {
+            log::debug!("Provided mass is None, setting `self.specific_energy` to None");
+            self.specific_energy = None;
+        }
+        self.mass = new_mass;
         Ok(())
     }
 
@@ -269,50 +231,8 @@ impl ReversibleEnergyStorage {
             save_interval,
             history: ReversibleEnergyStorageStateHistoryVec::new(),
             mass: Default::default(),
-            volume: Default::default(),
-            energy_density: Default::default(),
             specific_energy: Default::default(),
         })
-    }
-
-    fn volume(&self) -> anyhow::Result<Option<si::Volume>> {
-        self.check_vol_consistent()?;
-        Ok(self.volume)
-    }
-
-    fn update_volume(&mut self, volume: Option<si::Volume>) -> anyhow::Result<()> {
-        match volume {
-            Some(volume) => {
-                self.energy_density = Some(self.energy_capacity / volume);
-                self.volume = Some(volume);
-            }
-            None => match self.energy_density {
-                Some(e) => self.volume = Some(self.energy_capacity / e),
-                None => {
-                    bail!(format!(
-                        "{}\n{}",
-                        format_dbg!(),
-                        "Volume must be provided or `self.energy_density` must be set"
-                    ));
-                }
-            },
-        };
-
-        Ok(())
-    }
-
-    fn check_vol_consistent(&self) -> anyhow::Result<()> {
-        match &self.volume {
-            Some(vol) => match &self.energy_density {
-                Some(e) => {
-                    ensure!(self.energy_capacity / *e == *vol,
-                    format!("{}\n{}", format_dbg!(), "ReversibleEnergyStorage `energy_capacity`, `energy_density` and `volume` are not consistent"))
-                }
-                None => {}
-            },
-            None => {}
-        }
-        Ok(())
     }
 
     /// Returns max output and max regen power based on current state

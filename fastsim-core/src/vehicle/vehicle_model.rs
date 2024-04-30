@@ -131,6 +131,101 @@ pub struct Vehicle {
     pub history: VehicleStateHistoryVec,
 }
 
+impl Mass for Vehicle {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        let derived_mass = self.derived_mass()?;
+        match (derived_mass, self.mass) {
+            (Some(derived_mass), Some(set_mass)) => {
+                ensure!(
+                    utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                    format!(
+                        "{}",
+                        format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                    )
+                );
+                Ok(Some(set_mass))
+            }
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was provided.",
+                stringify!(Vehicle)
+            ),
+            _ => Ok(self.mass.or(derived_mass)),
+        }
+    }
+
+    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+        let derived_mass = self.derived_mass()?;
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            Some(new_mass) => {
+                if let Some(dm) = derived_mass {
+                    if !utils::almost_eq_uom(&dm, &new_mass, None) {
+                        log::warn!(
+                            "Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`",
+                            stringify!(Vehicle));
+                        self.expunge_mass_fields();
+                    }
+                }
+                Some(new_mass)
+            }
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(Vehicle)
+                )
+            })?),
+        };
+        Ok(())
+    }
+
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        // because this is used for vehicle dynamics, this method must return `Some`
+        let chassis_mass = self.chassis.mass()?.unwrap_or_default();
+        let fc_mass = self
+            .fc()
+            .map(|fc| fc.mass())
+            .transpose()?
+            .flatten()
+            .unwrap_or_default();
+        let fs_mass = self
+            .fs()
+            .map(|fs| fs.mass())
+            .transpose()?
+            .flatten()
+            .unwrap_or_default();
+        let res_mass = self
+            .res()
+            .map(|res| res.mass())
+            .transpose()?
+            .flatten()
+            .unwrap_or_default();
+        let em_mass = self
+            .em()
+            .map(|em| em.mass())
+            .transpose()?
+            .flatten()
+            .unwrap_or_default();
+        Ok(Some(chassis_mass + fc_mass + fs_mass + res_mass + em_mass))
+    }
+
+    fn expunge_mass_fields(&mut self) {
+        self.chassis.expunge_mass_fields();
+        if let Some(fc_mut) = self.em_mut() {
+            fc_mut.expunge_mass_fields();
+        }
+        if let Some(fs_mut) = self.fs_mut() {
+            fs_mut.expunge_mass_fields();
+        }
+        if let Some(res_mut) = self.res_mut() {
+            res_mut.expunge_mass_fields();
+        }
+        if let Some(em_mut) = self.em_mut() {
+            em_mut.expunge_mass_fields();
+        }
+    }
+}
+
 impl SerdeAPI for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
@@ -224,7 +319,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
         let pt_type = PowertrainType::try_from(&f2veh)?;
 
         let mut f3veh = Self {
-            name: f2veh.scenario_name,
+            name: f2veh.scenario_name.clone(),
             year: f2veh.veh_year,
             pt_type,
             chassis: Chassis::try_from(&f2veh)?,
@@ -244,7 +339,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
 impl SetCumulative for Vehicle {
     fn set_cumulative(&mut self, dt: si::Time) {
         self.state.set_cumulative(dt);
-        if let Some(fc) = self.fc_mut() {
+        if let Some(fc) = self.em_mut() {
             fc.set_cumulative(dt);
         }
         if let Some(res) = self.res_mut() {
@@ -271,10 +366,6 @@ impl Vehicle {
 
     pub fn fc(&self) -> Option<&FuelConverter> {
         self.pt_type.fc()
-    }
-
-    pub fn fc_mut(&mut self) -> Option<&mut FuelConverter> {
-        self.pt_type.fc_mut()
     }
 
     pub fn set_fc(&mut self, fc: FuelConverter) -> anyhow::Result<()> {
@@ -313,67 +404,19 @@ impl Vehicle {
         self.pt_type.em_mut()
     }
 
-    /// Calculate mass from components.
-    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        if let Some(_glider_mass) = self.glider_mass {
-            match self.pt_type {
-                PowertrainType::ConventionalVehicle(_) => {
-                    // TODO: add the other component and vehicle level masses here
-                    if let Some(fc) = self.fc().unwrap().mass()? {
-                        Ok(Some(fc))
-                    } else {
-                        bail!(
-                            "TODO: fix this error message\n{}\n{}",
-                            "so `fc` and `gen` masses must also be specified.",
-                            format_dbg!()
-                        )
-                    }
-                }
-                PowertrainType::HybridElectricVehicle(_) => {
-                    if let (Some(fc), Some(res)) =
-                        (self.fc().unwrap().mass()?, self.res().unwrap().mass()?)
-                    {
-                        // TODO: add the other component and vehicle level masses here
-                        Ok(Some(fc + res))
-                    } else {
-                        // TODO: update error message
-                        bail!(
-                            "TODO: fix this error message\n{}\n{}",
-                            "so `fc`, `gen`, and `res` masses must also be specified.",
-                            format_dbg!()
-                        )
-                    }
-                }
-                PowertrainType::BatteryElectricVehicle(_) => {
-                    if let Some(res) = self.res().unwrap().mass()? {
-                        Ok(Some(res))
-                    } else {
-                        bail!(
-                            "TODO: fix this error message\n{}\n{}",
-                            "so `res` mass must also be specified.",
-                            format_dbg!()
-                        )
-                    }
-                }
-            }
-            // TODO: probably need more `else ... if` branches here
-        } else {
-            bail!(
-                "Both `baseline` and `ballast` masses must be either `Some` or `None`\n{}",
-                format_dbg!()
-            )
-        }
+    pub fn set_em(&mut self, em: ElectricMachine) -> anyhow::Result<()> {
+        self.pt_type.set_em(em)
     }
 
     /// Calculate wheel radius from tire code, if applicable
     fn calculate_wheel_radius(&mut self) -> anyhow::Result<()> {
         ensure!(
-            self.wheel_radius.is_some() || self.tire_code.is_some(),
+            self.chassis.wheel_radius.is_some() || self.chassis.tire_code.is_some(),
             "Either `wheel_radius` or `tire_code` must be supplied"
         );
-        if self.wheel_radius.is_none() {
-            self.wheel_radius =
-                Some(utils::tire_code_to_radius(self.tire_code.as_ref().unwrap())? * uc::M)
+        if self.chassis.wheel_radius.is_none() {
+            self.chassis.wheel_radius =
+                Some(utils::tire_code_to_radius(self.chassis.tire_code.as_ref().unwrap())? * uc::M)
         }
         Ok(())
     }
@@ -623,10 +666,10 @@ impl Vehicle {
             val_veh_base_cost: f64::NAN,
             veh_cg_m: self.chassis.cg_height.get::<si::meter>()
                 * match self.chassis.drive_type {
-                    Chassis::DriveTypes::FWD => 1.0,
-                    Chassis::DriveTypes::RWD
-                    | Chassis::DriveTypes::AWD
-                    | Chassis::DriveTypes::FourWD => -1.0,
+                    chassis::DriveTypes::FWD => 1.0,
+                    chassis::DriveTypes::RWD
+                    | chassis::DriveTypes::AWD
+                    | chassis::DriveTypes::FourWD => -1.0,
                 },
             veh_cg_m_doc: None,
             veh_kg: self

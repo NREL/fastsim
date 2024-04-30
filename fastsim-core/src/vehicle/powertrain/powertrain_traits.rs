@@ -17,7 +17,7 @@ pub trait Mass {
     /// Returns mass of Self, either from `self.mass` or
     /// the derived from fields that store mass data. `Mass::mass` also checks that
     /// derived mass, if Some, is same as `self.mass`.
-    fn mass(&self) -> anyhow::Result<si::Mass>;
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>>;
 
     /// Sets component mass to `mass`, or if `None` is provided for `mass`,
     /// sets mass based on other component parameters (e.g. power and power

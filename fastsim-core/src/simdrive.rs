@@ -105,20 +105,20 @@ impl SimDrive {
         vs.pwr_ascent = uc::ACC_GRAV * (*grade) * mass * (speed_prev + speed) / 2.0;
         vs.pwr_drag = 0.5
             * air::get_rho_air(None, None)
-            * self.veh.drag_coef
-            * self.veh.frontal_area
+            * self.veh.chassis.drag_coef
+            * self.veh.chassis.frontal_area
             * ((speed + speed_prev) / 2.0).powi(typenum::P3::new());
         vs.pwr_rr = mass
             * uc::ACC_GRAV
-            * self.veh.wheel_rr_coef
+            * self.veh.chassis.wheel_rr_coef
             * grade.atan().cos()
             * (speed_prev + speed)
             / 2.;
         vs.pwr_whl_inertia = 0.5
-            * self.veh.wheel_inertia
-            * self.veh.num_wheels as f64
-            * ((speed / self.veh.wheel_radius.unwrap()).powi(typenum::P2::new())
-                - (speed_prev / self.veh.wheel_radius.unwrap()).powi(typenum::P2::new()))
+            * self.veh.chassis.wheel_inertia
+            * self.veh.chassis.num_wheels as f64
+            * ((speed / self.veh.chassis.wheel_radius.unwrap()).powi(typenum::P2::new())
+                - (speed_prev / self.veh.chassis.wheel_radius.unwrap()).powi(typenum::P2::new()))
             / self.cyc.dt_at_i(i)?;
 
         vs.pwr_tractive =
@@ -162,37 +162,54 @@ impl SimDrive {
             )?;
 
             // actual calucations
-            let drag3 = 1.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area;
+            let drag3 =
+                1.0 / 16.0 * rho_air * self.veh.chassis.drag_coef * self.veh.chassis.frontal_area;
             let accel2 = 0.5 * mass / dt;
-            let drag2 =
-                3.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area * speed_prev;
-            let wheel2 = 0.5 * self.veh.wheel_inertia * self.veh.num_wheels as f64
-                / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
+            let drag2 = 3.0 / 16.0
+                * rho_air
+                * self.veh.chassis.drag_coef
+                * self.veh.chassis.frontal_area
+                * speed_prev;
+            let wheel2 = 0.5 * self.veh.chassis.wheel_inertia * self.veh.chassis.num_wheels as f64
+                / (dt
+                    * self
+                        .veh
+                        .chassis
+                        .wheel_radius
+                        .unwrap()
+                        .powi(typenum::P2::new()));
             let drag1 = 3.0 / 16.0
                 * rho_air
-                * self.veh.drag_coef
-                * self.veh.frontal_area
+                * self.veh.chassis.drag_coef
+                * self.veh.chassis.frontal_area
                 * speed_prev.powi(typenum::P2::new());
-            let roll1 = 0.5 * mass * uc::ACC_GRAV * self.veh.wheel_rr_coef * grade.atan().cos();
+            let roll1 =
+                0.5 * mass * uc::ACC_GRAV * self.veh.chassis.wheel_rr_coef * grade.atan().cos();
             let ascent1 = 0.5 * uc::ACC_GRAV * grade.atan().sin() * mass;
             let accel0 = -0.5 * mass * speed_prev.powi(typenum::P2::new()) / dt;
             let drag0 = 1.0 / 16.0
                 * rho_air
-                * self.veh.drag_coef
-                * self.veh.frontal_area
+                * self.veh.chassis.drag_coef
+                * self.veh.chassis.frontal_area
                 * speed_prev.powi(typenum::P3::new());
             let roll0 = 0.5
                 * mass
                 * uc::ACC_GRAV
-                * self.veh.wheel_rr_coef
+                * self.veh.chassis.wheel_rr_coef
                 * grade.atan().cos()
                 * speed_prev;
             let ascent0 = 0.5 * uc::ACC_GRAV * grade.atan().sin() * mass * speed_prev;
             let wheel0 = -0.5
-                * self.veh.wheel_inertia
-                * self.veh.num_wheels as f64
+                * self.veh.chassis.wheel_inertia
+                * self.veh.chassis.num_wheels as f64
                 * speed_prev.powi(typenum::P2::new())
-                / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
+                / (dt
+                    * self
+                        .veh
+                        .chassis
+                        .wheel_radius
+                        .unwrap()
+                        .powi(typenum::P2::new()));
 
             let t3 = drag3;
             let t2 = accel2 + drag2 + wheel2;

@@ -8,10 +8,10 @@ pub use si::area::square_meter;
 pub use si::available_energy::{joule_per_kilogram, kilojoule_per_kilogram};
 pub use si::energy::{joule, kilowatt_hour, watt_hour};
 pub use si::f64::{
-    Acceleration, Angle, Area, AvailableEnergy, Curvature, Energy, Force, Frequency,
-    InverseVelocity, Length, Mass, MassDensity, MomentOfInertia, Power, PowerRate, Pressure, Ratio,
-    SpecificHeatCapacity, SpecificPower, TemperatureInterval, ThermodynamicTemperature, Time,
-    Velocity, Volume,
+    Acceleration, Angle, Area, AvailableEnergy as SpecificEnergy, Curvature, Energy, Force,
+    Frequency, InverseVelocity, Length, Mass, MassDensity, MomentOfInertia, Power, PowerRate,
+    Pressure, Ratio, SpecificHeatCapacity, SpecificPower, TemperatureInterval,
+    ThermodynamicTemperature, Time, Velocity, Volume,
 };
 pub use si::force::{newton, pound_force};
 pub use si::length::{foot, kilometer, meter};
