@@ -159,7 +159,7 @@ impl Mass for Vehicle {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
             Some(new_mass) => {
                 if let Some(dm) = derived_mass {
-                    if !utils::almost_eq_uom(&dm, &new_mass, None) {
+                    if dm != new_mass {
                         log::warn!(
                             "Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`",
                             stringify!(Vehicle));
@@ -330,6 +330,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             history: Default::default(),
             mass: Some(f2veh.veh_kg * uc::KG),
         };
+        f3veh.expunge_mass_fields();
         f3veh.init()?;
 
         Ok(f3veh)
