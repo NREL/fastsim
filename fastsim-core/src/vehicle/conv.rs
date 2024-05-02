@@ -21,13 +21,14 @@ impl SaveInterval for ConventionalVehicle {
     }
 }
 
-impl Powertrain for Box<ConventionalVehicle> {
-    fn get_curr_pwr_out_max(
+impl PowertrainSource for Box<ConventionalVehicle> {
+    fn get_curr_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
     ) -> anyhow::Result<si::Power> {
-        self.fc.get_curr_pwr_out_max(pwr_aux / self.alt_eff, dt)
+        self.fc
+            .get_curr_pwr_tract_out_max(pwr_aux / self.alt_eff, dt)
         // TODO: put transmission efficiency in here somehow
     }
     fn solve(

@@ -8,16 +8,16 @@ pub enum PowertrainType {
     // TODO: add PHEV here
 }
 
-impl Powertrain for PowertrainType {
-    fn get_curr_pwr_out_max(
+impl PowertrainSource for PowertrainType {
+    fn get_curr_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
     ) -> anyhow::Result<si::Power> {
         match self {
-            Self::ConventionalVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
-            Self::HybridElectricVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
-            Self::BatteryElectricVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
+            Self::ConventionalVehicle(v) => v.get_curr_pwr_tract_out_max(pwr_aux, dt),
+            Self::HybridElectricVehicle(v) => v.get_curr_pwr_tract_out_max(pwr_aux, dt),
+            Self::BatteryElectricVehicle(v) => v.get_curr_pwr_tract_out_max(pwr_aux, dt),
         }
     }
 

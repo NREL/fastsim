@@ -158,12 +158,14 @@ impl SaveInterval for FuelConverter {
 }
 
 // non-py methods
-impl Powertrain for FuelConverter {
-    fn get_curr_pwr_out_max(
+
+impl PowertrainSource for FuelConverter {
+    fn get_curr_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
     ) -> anyhow::Result<si::Power> {
+        // TODO: move this ensure somewhere higher up in the callstack
         ensure!(
             dt > si::Time::ZERO,
             format!(

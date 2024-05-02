@@ -86,7 +86,7 @@ impl SaveInterval for BatteryElectricVehicle {
     }
 }
 
-impl Powertrain for Box<BatteryElectricVehicle> {
+impl PowertrainSource for Box<BatteryElectricVehicle> {
     /// Solve energy consumption for the current power output required
     /// Arguments:
     /// - pwr_out_req: tractive power required
@@ -120,7 +120,7 @@ impl Powertrain for Box<BatteryElectricVehicle> {
         Ok(())
     }
 
-    fn get_curr_pwr_out_max(
+    fn get_curr_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,

@@ -1,3 +1,5 @@
+//! Module for electric machine (i.e. bidirectional electromechanical device), generator, or motor
+
 use super::*;
 
 #[allow(unused_imports)]
@@ -89,6 +91,14 @@ pub struct ElectricMachine {
     pub history: ElectricMachineStateHistoryVec,
 }
 
+impl PowertrainThrough for ElectricMachine {
+    fn get_curr_pwr_tract_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
+    }
+}
 impl SerdeAPI for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;

@@ -426,7 +426,7 @@ impl Vehicle {
 
     pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
         // TODO: when a fancier model for `pwr_aux` is implemented, put it here
-        Ok(self.pt_type.get_curr_pwr_out_max(self.pwr_aux, dt)? * self.trans_eff)
+        Ok(self.pt_type.get_curr_pwr_tract_out_max(self.pwr_aux, dt)? * self.trans_eff)
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {

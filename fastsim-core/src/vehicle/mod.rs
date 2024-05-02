@@ -29,7 +29,7 @@ pub use hev::HybridElectricVehicle;
 pub use powertrain::electric_machine::ElectricMachine;
 pub use powertrain::fuel_converter::FuelConverter;
 pub use powertrain::fuel_storage::FuelStorage;
-pub use powertrain::powertrain_traits::{Mass, Powertrain};
+pub use powertrain::powertrain_traits::{Mass, PowertrainSource, PowertrainThrough};
 pub use powertrain::reversible_energy_storage::ReversibleEnergyStorage;
 pub use powertrain_type::PowertrainType;
 pub use vehicle_model::Vehicle;

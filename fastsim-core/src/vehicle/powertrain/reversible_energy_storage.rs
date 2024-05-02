@@ -141,6 +141,124 @@ pub struct ReversibleEnergyStorage {
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
+impl PowertrainSource for ReversibleEnergyStorage {
+    fn get_curr_pwr_tract_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<si::Power> {
+        // TODO: move this ensure somewhere higher up in the callstack
+        ensure!(
+            dt > si::Time::ZERO,
+            format!(
+                "{}\n dt must always be greater than 0.0",
+                format_dbg!(dt > si::Time::ZERO)
+            )
+        );
+        if self.pwr_out_max_init == si::Power::ZERO {
+            // TODO: think about how to initialize power
+            self.pwr_out_max_init = self.pwr_out_max / 10.
+        };
+        self.state.pwr_aux = pwr_aux;
+        self.state.pwr_out_max = (self.state.pwr_tractive
+            + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
+            .min(self.pwr_out_max)
+            .max(self.pwr_out_max_init);
+        Ok(self.pwr_out_max)
+    }
+
+    fn solve(
+        &mut self,
+        pwr_out_req: si::Power,
+        pwr_aux: si::Power,
+        enabled: bool,
+        _dt: si::Time,
+        assert_limits: bool,
+    ) -> anyhow::Result<()> {
+        if assert_limits {
+            ensure!(
+                utils::almost_le_uom(&pwr_out_req, &self.pwr_out_max, Some(TOL)),
+                format!(
+                    "{}TODO: update this error message",
+                    format_dbg!(utils::almost_le_uom(
+                        &(pwr_out_req + pwr_aux),
+                        &self.pwr_out_max,
+                        Some(TOL)
+                    )),
+                ),
+            );
+            ensure!(
+                utils::almost_le_uom(&pwr_out_req, &self.state.pwr_out_max, Some(TOL)),
+                format!(
+                    "{}\nTODO: update this error",
+                    format_dbg!(utils::almost_le_uom(
+                        &(pwr_out_req + pwr_aux),
+                        &self.state.pwr_out_max,
+                        Some(TOL)
+                    )),
+                )
+            );
+        }
+        ensure!(
+            pwr_out_req >= si::Power::ZERO,
+            format!(
+                "{}\n`pwr_out_req` must be >= 0",
+                format_dbg!(pwr_out_req >= si::Power::ZERO),
+            )
+        );
+        ensure!(
+            pwr_aux >= si::Power::ZERO,
+            format!(
+                "{}\n`pwr_aux` must be >= 0",
+                format_dbg!(pwr_aux >= si::Power::ZERO),
+            )
+        );
+        self.state.pwr_tractive = pwr_out_req;
+        self.state.pwr_aux = pwr_aux;
+        self.state.eff = uc::R
+            * interp1d(
+                &((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
+                &self.pwr_out_frac_interp,
+                &self.eff_interp,
+                Default::default(),
+            )?;
+        ensure!(
+            self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
+            format!(
+                "{}\nfc efficiency ({}) must be between 0 and 1",
+                format_dbg!(self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R),
+                self.state.eff.get::<si::ratio>()
+            )
+        );
+
+        self.state.fc_on = enabled;
+        // if the engine is not on, `pwr_out_req` should be 0.0
+        ensure!(
+            self.state.fc_on || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO),
+            format!(
+                "{}\nEngine is off but pwr_out_req + pwr_aux is non-zero",
+                format_dbg!(
+                    self.state.fc_on
+                        || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO)
+                )
+            )
+        );
+        // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
+        // zero, there will be fuel consumption to overcome internal dissipation.
+        self.state.pwr_fuel = ((pwr_out_req + pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
+        self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_tractive;
+
+        // TODO: put this in `SetCumulative::set_custom_cumulative`
+        // ensure!(
+        //     self.state.energy_loss.get::<si::joule>() >= 0.0,
+        //     format!(
+        //         "{}\nEnergy loss must be non-negative",
+        //         format_dbg!(self.state.energy_loss.get::<si::joule>() >= 0.0)
+        //     )
+        // );
+        Ok(())
+    }
+}
 impl SetCumulative for ReversibleEnergyStorage {
     fn set_cumulative(&mut self, dt: si::Time) {
         self.state.set_cumulative(dt);
