@@ -66,8 +66,7 @@ pub struct Chassis {
 
 impl TryFrom<&fastsim_2::vehicle::RustVehicle> for Chassis {
     type Error = anyhow::Error;
-    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> Result<Self, Self::Error> {
-        // TODO: check this sign convention
+    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<Self> {
         let drive_type = if f2veh.veh_cg_m < 0. {
             chassis::DriveTypes::RWD
         } else {
@@ -109,7 +108,11 @@ impl Mass for Chassis {
         Ok(self.mass)
     }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
         let derived_mass = self.derived_mass()?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {

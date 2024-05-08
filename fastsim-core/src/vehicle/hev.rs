@@ -28,15 +28,16 @@ impl SaveInterval for HybridElectricVehicle {
     }
 }
 
-impl SerdeAPI for HybridElectricVehicle {}
-
-impl PowertrainSource for Box<HybridElectricVehicle> {
-    fn get_curr_pwr_tract_out_max(
+impl Powertrain for Box<HybridElectricVehicle> {
+    fn get_cur_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
-        self.em.get_curr_pwr_tract_out_max()
+    ) -> anyhow::Result<(si::Power, si::Power)> {
+        let (pwr_res_tract_max, pwr_res_regen_max) =
+            self.res.get_cur_pwr_out_max(pwr_aux, None, None)?;
+        self.em
+            .get_cur_pwr_tract_out_max(pwr_res_tract_max, pwr_res_regen_max, pwr_aux, dt)
     }
     fn solve(
         &mut self,
@@ -44,7 +45,6 @@ impl PowertrainSource for Box<HybridElectricVehicle> {
         pwr_aux: si::Power,
         enabled: bool,
         _dt: si::Time,
-        assert_limits: bool,
     ) -> anyhow::Result<()> {
         todo!()
     }
@@ -68,7 +68,15 @@ impl Mass for HybridElectricVehicle {
         }
     }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
+        ensure!(
+            side_effect == MassSideEffect::None,
+            "At the powertrain level, only `MassSideEffect::None` is allowed"
+        );
         let derived_mass = self.derived_mass()?;
         self.mass = match new_mass {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent

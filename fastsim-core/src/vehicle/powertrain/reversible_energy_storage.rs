@@ -81,9 +81,14 @@ const TOL: f64 = 1e-3;
         self.set_eff_range(eff_range)
     }
 
-    #[setter("__mass_kg")]
-    fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
-        self.set_mass(mass_kg.map(|m| m * uc::KG))?;
+    // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
+    #[pyo3(name = "set_mass")]
+    fn set_mass_py(&mut self, mass_kg: Option<f64>, side_effect: Option<String>) -> anyhow::Result<()> {
+        let side_effect = side_effect.unwrap_or_else(|| "Intensive".into());
+        self.set_mass(
+            mass_kg.map(|m| m * uc::KG),
+            MassSideEffect::try_from(side_effect)?
+        )?;
         Ok(())
     }
 
@@ -141,235 +146,125 @@ pub struct ReversibleEnergyStorage {
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
-impl PowertrainSource for ReversibleEnergyStorage {
-    fn get_curr_pwr_tract_out_max(
-        &mut self,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
-        // TODO: move this ensure somewhere higher up in the callstack
-        ensure!(
-            dt > si::Time::ZERO,
-            format!(
-                "{}\n dt must always be greater than 0.0",
-                format_dbg!(dt > si::Time::ZERO)
-            )
-        );
-        if self.pwr_out_max_init == si::Power::ZERO {
-            // TODO: think about how to initialize power
-            self.pwr_out_max_init = self.pwr_out_max / 10.
-        };
-        self.state.pwr_aux = pwr_aux;
-        self.state.pwr_out_max = (self.state.pwr_tractive
-            + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
-            .min(self.pwr_out_max)
-            .max(self.pwr_out_max_init);
-        Ok(self.pwr_out_max)
-    }
-
-    fn solve(
+impl ReversibleEnergyStorage {
+    pub fn solve(
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
-        enabled: bool,
-        _dt: si::Time,
-        assert_limits: bool,
+        dt: si::Time,
     ) -> anyhow::Result<()> {
-        if assert_limits {
+        let state = &mut self.state;
+
+        ensure!(
+            state.soc <= state.max_soc || pwr_out_req >= si::Power::ZERO,
+            "{}\npwr_out_req must be greater than or equal to 0 if SOC is over max SOC\nstate.soc = {}",
+            format_dbg!(state.soc <= state.max_soc || pwr_out_req >= si::Power::ZERO),
+            state.soc.get::<si::ratio>()
+        );
+        ensure!(
+            state.soc >= state.min_soc || pwr_out_req <= si::Power::ZERO,
+            "{}\npwr_out_req must be less than 0 or equal to zero if SOC is below min SOC\nstate.soc = {}",
+            format_dbg!(state.soc >= state.min_soc || pwr_out_req <= si::Power::ZERO),
+            state.soc.get::<si::ratio>()
+        );
+
+        if pwr_out_req + pwr_aux >= si::Power::ZERO {
             ensure!(
-                utils::almost_le_uom(&pwr_out_req, &self.pwr_out_max, Some(TOL)),
+                utils::almost_le_uom(&(pwr_out_req + pwr_aux), &self.pwr_out_max, Some(TOL)),
+                "{}\nres required power ({:.6} MW) exceeds static max discharge power ({:.6} MW)\nstate.soc = {}",
+                format_dbg!(utils::almost_le_uom(
+                    &(pwr_out_req + pwr_aux),
+                    &self.pwr_out_max,
+                    Some(TOL)
+                )),
+                (pwr_out_req + pwr_aux).get::<si::megawatt>(),
+                state.pwr_disch_max.get::<si::megawatt>(),
+                state.soc.get::<si::ratio>()
+            );
+            ensure!(
+                utils::almost_le_uom(&(pwr_out_req + pwr_aux), &state.pwr_disch_max, Some(TOL)),
+                "{}\nres required power ({:.6} MW) exceeds transient max discharge power ({:.6} MW)\nstate.soc = {}",
+                format_dbg!(utils::almost_le_uom(&(pwr_out_req + pwr_aux), &state.pwr_disch_max, Some(TOL))),
+                (pwr_out_req + pwr_aux).get::<si::megawatt>(),
+                state.pwr_disch_max.get::<si::megawatt>(),
+                state.soc.get::<si::ratio>()
+            );
+        } else {
+            ensure!(
+                utils::almost_ge_uom(&(pwr_out_req + pwr_aux), &-self.pwr_out_max, Some(TOL)),
                 format!(
-                    "{}TODO: update this error message",
-                    format_dbg!(utils::almost_le_uom(
+                    "{}\nres required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                    format_dbg!(utils::almost_ge_uom(
                         &(pwr_out_req + pwr_aux),
-                        &self.pwr_out_max,
+                        &-self.pwr_out_max,
                         Some(TOL)
                     )),
-                ),
+                    (pwr_out_req + pwr_aux).get::<si::megawatt>(),
+                    state.pwr_charge_max.get::<si::megawatt>()
+                )
             );
             ensure!(
-                utils::almost_le_uom(&pwr_out_req, &self.state.pwr_out_max, Some(TOL)),
+                utils::almost_ge_uom(&(pwr_out_req + pwr_aux), &-state.pwr_charge_max, Some(TOL)),
                 format!(
-                    "{}\nTODO: update this error",
-                    format_dbg!(utils::almost_le_uom(
+                    "{}\nres required power ({:.6} MW) exceeds transient max power ({:.6} MW)",
+                    format_dbg!(utils::almost_ge_uom(
                         &(pwr_out_req + pwr_aux),
-                        &self.state.pwr_out_max,
+                        &-state.pwr_charge_max,
                         Some(TOL)
                     )),
+                    (pwr_out_req + pwr_aux).get::<si::megawatt>(),
+                    state.pwr_charge_max.get::<si::megawatt>()
                 )
             );
         }
+
+        state.pwr_out_propulsion = pwr_out_req;
+        state.pwr_aux = pwr_aux;
+
+        state.pwr_out_electrical = state.pwr_out_propulsion + state.pwr_aux;
+
+        // TODO: replace this with something correct.
+        // This should trip the `ensure` below
+        state.eff = uc::R * 666.;
         ensure!(
-            pwr_out_req >= si::Power::ZERO,
+            state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R,
             format!(
-                "{}\n`pwr_out_req` must be >= 0",
-                format_dbg!(pwr_out_req >= si::Power::ZERO),
-            )
-        );
-        ensure!(
-            pwr_aux >= si::Power::ZERO,
-            format!(
-                "{}\n`pwr_aux` must be >= 0",
-                format_dbg!(pwr_aux >= si::Power::ZERO),
-            )
-        );
-        self.state.pwr_tractive = pwr_out_req;
-        self.state.pwr_aux = pwr_aux;
-        self.state.eff = uc::R
-            * interp1d(
-                &((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
-                &self.pwr_out_frac_interp,
-                &self.eff_interp,
-                Default::default(),
-            )?;
-        ensure!(
-            self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
-            format!(
-                "{}\nfc efficiency ({}) must be between 0 and 1",
-                format_dbg!(self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R),
-                self.state.eff.get::<si::ratio>()
+                "{}\nres efficiency ({}) must be between 0 and 1",
+                format_dbg!(state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R),
+                state.eff.get::<si::ratio>()
             )
         );
 
-        self.state.fc_on = enabled;
-        // if the engine is not on, `pwr_out_req` should be 0.0
-        ensure!(
-            self.state.fc_on || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO),
-            format!(
-                "{}\nEngine is off but pwr_out_req + pwr_aux is non-zero",
-                format_dbg!(
-                    self.state.fc_on
-                        || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO)
-                )
-            )
-        );
-        // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
-        // zero, there will be fuel consumption to overcome internal dissipation.
-        self.state.pwr_fuel = ((pwr_out_req + pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
-        self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_tractive;
-
-        // TODO: put this in `SetCumulative::set_custom_cumulative`
-        // ensure!(
-        //     self.state.energy_loss.get::<si::joule>() >= 0.0,
-        //     format!(
-        //         "{}\nEnergy loss must be non-negative",
-        //         format_dbg!(self.state.energy_loss.get::<si::joule>() >= 0.0)
-        //     )
-        // );
-        Ok(())
-    }
-}
-impl SetCumulative for ReversibleEnergyStorage {
-    fn set_cumulative(&mut self, dt: si::Time) {
-        self.state.set_cumulative(dt);
-    }
-}
-
-impl Mass for ReversibleEnergyStorage {
-    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
-        if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
-            ensure!(
-                utils::almost_eq_uom(&set_mass, &derived_mass, None),
-                format!(
-                    "{}",
-                    format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
-                )
-            );
+        if state.pwr_out_electrical > si::Power::ZERO {
+            // if positive, chemical power must be greater than electrical power
+            // i.e. not all chemical power can be converted to electrical power
+            state.pwr_out_chemical = state.pwr_out_electrical / state.eff;
+        } else {
+            // if negative, chemical power, must be less than electrical power
+            // i.e. not all electrical power can be converted back to chemical power
+            state.pwr_out_chemical = state.pwr_out_electrical * state.eff;
         }
-        Ok(self.mass)
-    }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
-        let derived_mass = self.derived_mass()?;
-        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
-            if derived_mass != new_mass {
-                log::info!(
-                    "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
-                    "provided mass, setting `self.specific_energy` to be consistent with provided mass"
-                );
-                self.specific_energy = Some(self.energy_capacity / new_mass);
-            }
-        } else if let None = new_mass {
-            log::debug!("Provided mass is None, setting `self.specific_energy` to None");
-            self.specific_energy = None;
-        }
-        self.mass = new_mass;
+        state.pwr_loss = (state.pwr_out_chemical - state.pwr_out_electrical).abs();
+
+        let new_soc = state.soc - state.pwr_out_chemical * dt / self.energy_capacity;
+        state.soc = new_soc;
         Ok(())
     }
 
-    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        Ok(self
-            .specific_energy
-            .map(|specific_energy| self.energy_capacity / specific_energy))
-    }
-
-    fn expunge_mass_fields(&mut self) {
-        self.mass = None;
-        self.specific_energy = None;
-    }
-}
-
-impl SerdeAPI for ReversibleEnergyStorage {
-    fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass()?;
-        Ok(())
-    }
-}
-
-impl ReversibleEnergyStorage {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        pwr_out_max_watts: f64,
-        energy_capacity_joules: f64,
-        min_soc: f64,
-        max_soc: f64,
-        initial_soc: f64,
-        initial_temperature_celcius: f64,
-        soc_hi_ramp_start: Option<f64>,
-        soc_lo_ramp_start: Option<f64>,
-        save_interval: Option<usize>,
-    ) -> anyhow::Result<Self> {
-        ensure!(
-            min_soc <= initial_soc || initial_soc <= max_soc,
-            format!(
-                "{}\ninitial soc must be between min and max soc, inclusive",
-                format_dbg!(min_soc <= initial_soc || initial_soc <= max_soc)
-            )
-        );
-
-        let initial_state = ReversibleEnergyStorageState {
-            soc: uc::R * initial_soc,
-            temperature_celsius: initial_temperature_celcius,
-            ..Default::default()
-        };
-        Ok(ReversibleEnergyStorage {
-            pwr_out_max: uc::W * pwr_out_max_watts,
-            energy_capacity: uc::J * energy_capacity_joules,
-            min_soc: uc::R * min_soc,
-            max_soc: uc::R * max_soc,
-            soc_hi_ramp_start: soc_hi_ramp_start.map(|val| val * uc::R),
-            soc_lo_ramp_start: soc_lo_ramp_start.map(|val| val * uc::R),
-            state: initial_state,
-            save_interval,
-            history: ReversibleEnergyStorageStateHistoryVec::new(),
-            mass: Default::default(),
-            specific_energy: Default::default(),
-        })
-    }
-
-    /// Returns max output and max regen power based on current state
-    /// Arguments:
-    /// - charge_buffer: min future train energy state - current train energy state.
-    /// If provided, reserves some charge capacity for future.
-    /// - discharge_buffer: max future train energy state - current train energy state.
-    /// If provided, reserves some discharge capacity for future.
-    pub fn set_cur_pwr_out_max(
+    /// Returns max output and max regen power based on current state  
+    /// #  Arguments:
+    /// - `pwr_aux`: aux power demand on `ReversibleEnergyStorage`
+    /// - `charge_buffer`: buffer below max SOC to allow for anticipated future
+    /// charging (i.e. decelerating while exiting a highway)
+    /// - `discharge_buffer`: buffer above min SOC to allow for anticipated
+    /// future discharging (i.e. accelerating to enter a highway)
+    pub fn get_cur_pwr_out_max(
         &mut self,
         pwr_aux: si::Power,
         charge_buffer: Option<si::Energy>,
         discharge_buffer: Option<si::Energy>,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<(si::Power, si::Power)> {
         let state = &mut self.state;
 
         if self.soc_hi_ramp_start.is_none() {
@@ -412,7 +307,7 @@ impl ReversibleEnergyStorage {
                     state.soc_lo_ramp_start.get::<si::ratio>(),
                 ],
                 &[0.0, self.pwr_out_max.get::<si::watt>()],
-                Default::default(), // don't extrapolate
+                utils::Extrapolate::Yes, // don't extrapolate
             )?;
 
         state.pwr_charge_max = uc::W
@@ -423,126 +318,89 @@ impl ReversibleEnergyStorage {
                     state.max_soc.get::<si::ratio>(),
                 ],
                 &[self.pwr_out_max.get::<si::watt>(), 0.0],
-                Default::default(), // don't extrapolate
+                utils::Extrapolate::Yes, // don't extrapolate
             )?;
 
         state.pwr_prop_out_max = state.pwr_disch_max - pwr_aux;
         state.pwr_regen_out_max = state.pwr_charge_max + pwr_aux;
 
-        Ok(())
+        Ok((state.pwr_prop_out_max, state.pwr_regen_out_max))
     }
 
-    pub fn solve_energy_consumption(
-        &mut self,
-        pwr_prop_req: si::Power,
-        pwr_aux_req: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
-        let state = &mut self.state;
-
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        pwr_out_max_watts: f64,
+        energy_capacity_joules: f64,
+        min_soc: f64,
+        max_soc: f64,
+        initial_soc: f64,
+        initial_temperature_celcius: f64,
+        soc_hi_ramp_start: Option<f64>,
+        soc_lo_ramp_start: Option<f64>,
+        save_interval: Option<usize>,
+    ) -> anyhow::Result<Self> {
         ensure!(
-            state.soc <= state.max_soc || pwr_prop_req >= si::Power::ZERO,
-            "{}\npwr_prop_req must be greater than 0 if SOC is over max SOC\nstate.soc = {}",
-            format_dbg!(state.soc <= state.max_soc || pwr_prop_req >= si::Power::ZERO),
-            state.soc.get::<si::ratio>()
-        );
-        ensure!(
-            state.soc >= state.min_soc || pwr_prop_req <= si::Power::ZERO,
-            "{}\npwr_prop_req must be less than 0 if SOC is below min SOC\nstate.soc = {}",
-            format_dbg!(state.soc >= state.min_soc || pwr_prop_req <= si::Power::ZERO),
-            state.soc.get::<si::ratio>()
-        );
-
-        if pwr_prop_req + pwr_aux_req >= si::Power::ZERO {
-            ensure!(
-                utils::almost_le_uom(&(pwr_prop_req + pwr_aux_req), &self.pwr_out_max, Some(TOL)),
-                "{}\nres required power ({:.6} MW) exceeds static max discharge power ({:.6} MW)\nstate.soc = {}",
-                format_dbg!(utils::almost_le_uom(
-                    &(pwr_prop_req + pwr_aux_req),
-                    &self.pwr_out_max,
-                    Some(TOL)
-                )),
-                (pwr_prop_req + pwr_aux_req).get::<si::megawatt>(),
-                state.pwr_disch_max.get::<si::megawatt>(),
-                state.soc.get::<si::ratio>()
-            );
-            ensure!(
-                utils::almost_le_uom(&(pwr_prop_req + pwr_aux_req), &state.pwr_disch_max, Some(TOL)),
-                "{}\nres required power ({:.6} MW) exceeds transient max discharge power ({:.6} MW)\nstate.soc = {}",
-                format_dbg!(utils::almost_le_uom(&(pwr_prop_req + pwr_aux_req), &state.pwr_disch_max, Some(TOL))),
-                (pwr_prop_req + pwr_aux_req).get::<si::megawatt>(),
-                state.pwr_disch_max.get::<si::megawatt>(),
-                state.soc.get::<si::ratio>()
-            );
-        } else {
-            ensure!(
-                utils::almost_ge_uom(&(pwr_prop_req + pwr_aux_req), &-self.pwr_out_max, Some(TOL)),
-                format!(
-                    "{}\nres required power ({:.6} MW) exceeds static max power ({:.6} MW)",
-                    format_dbg!(utils::almost_ge_uom(
-                        &(pwr_prop_req + pwr_aux_req),
-                        &-self.pwr_out_max,
-                        Some(TOL)
-                    )),
-                    (pwr_prop_req + pwr_aux_req).get::<si::megawatt>(),
-                    state.pwr_charge_max.get::<si::megawatt>()
-                )
-            );
-            ensure!(
-                utils::almost_ge_uom(
-                    &(pwr_prop_req + pwr_aux_req),
-                    &-state.pwr_charge_max,
-                    Some(TOL)
-                ),
-                format!(
-                    "{}\nres required power ({:.6} MW) exceeds transient max power ({:.6} MW)",
-                    format_dbg!(utils::almost_ge_uom(
-                        &(pwr_prop_req + pwr_aux_req),
-                        &-state.pwr_charge_max,
-                        Some(TOL)
-                    )),
-                    (pwr_prop_req + pwr_aux_req).get::<si::megawatt>(),
-                    state.pwr_charge_max.get::<si::megawatt>()
-                )
-            );
-        }
-
-        state.pwr_out_propulsion = pwr_prop_req;
-        state.energy_out_propulsion += pwr_prop_req * dt;
-        state.pwr_aux = pwr_aux_req;
-        state.energy_aux += state.pwr_aux * dt;
-
-        state.pwr_out_electrical = state.pwr_out_propulsion + state.pwr_aux;
-        state.energy_out_electrical += state.pwr_out_electrical * dt;
-
-        // TODO: replace this with something correct.
-        // This should trip the `ensure` below
-        state.eff = uc::R * 666.;
-        ensure!(
-            state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R,
+            min_soc <= initial_soc || initial_soc <= max_soc,
             format!(
-                "{}\nres efficiency ({}) must be between 0 and 1",
-                format_dbg!(state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R),
-                state.eff.get::<si::ratio>()
+                "{}\ninitial soc must be between min and max soc, inclusive",
+                format_dbg!(min_soc <= initial_soc || initial_soc <= max_soc)
             )
         );
 
-        if state.pwr_out_electrical > si::Power::ZERO {
-            // if positive, chemical power must be greater than electrical power
-            // i.e. not all chemical power can be converted to electrical power
-            state.pwr_out_chemical = state.pwr_out_electrical / state.eff;
-        } else {
-            // if negative, chemical power, must be less than electrical power
-            // i.e. not all electrical power can be converted back to chemical power
-            state.pwr_out_chemical = state.pwr_out_electrical * state.eff;
+        let initial_state = ReversibleEnergyStorageState {
+            soc: uc::R * initial_soc,
+            temperature_celsius: initial_temperature_celcius,
+            ..Default::default()
+        };
+        Ok(ReversibleEnergyStorage {
+            pwr_out_max: uc::W * pwr_out_max_watts,
+            energy_capacity: uc::J * energy_capacity_joules,
+            min_soc: uc::R * min_soc,
+            max_soc: uc::R * max_soc,
+            soc_hi_ramp_start: soc_hi_ramp_start.map(|val| val * uc::R),
+            soc_lo_ramp_start: soc_lo_ramp_start.map(|val| val * uc::R),
+            state: initial_state,
+            save_interval,
+            history: ReversibleEnergyStorageStateHistoryVec::new(),
+            mass: Default::default(),
+            specific_energy: Default::default(),
+        })
+    }
+
+    /// Sets specific energy and either mass or energy capacity of battery
+    /// # Arguments
+    /// - `specific_energy`: specific energy of battery
+    /// - `side_effect`: whether to update mass or energy capacity
+    pub fn set_specific_energy(
+        mut self,
+        specific_energy: si::SpecificEnergy,
+        side_effect: SpecificEnergySideEffect,
+    ) -> anyhow::Result<()> {
+        match side_effect {
+            SpecificEnergySideEffect::Mass => self.set_mass(
+                Some(
+                    self.energy_capacity
+                        / self.specific_energy.with_context(|| {
+                            format!(
+                            "{}\n{}",
+                            format_dbg!(),
+                            "Expected `ReversibleEnergyStorage::specific_energy` to have been set."
+                        )
+                        })?,
+                ),
+                MassSideEffect::Intensive,
+            )?,
+            SpecificEnergySideEffect::Energy => {
+                self.energy_capacity = specific_energy
+                    * self.mass.ok_or_else(|| {
+                        anyhow!(
+                            "{}\n{}",
+                            format_dbg!(),
+                            "Expected `ReversibleEnergyStorage::mass` to have been set."
+                        )
+                    })?;
+            }
         }
-        state.energy_out_chemical += state.pwr_out_chemical * dt;
-
-        state.pwr_loss = (state.pwr_out_chemical - state.pwr_out_electrical).abs();
-        state.energy_loss += state.pwr_loss * dt;
-
-        let new_soc = state.soc - state.pwr_out_chemical * dt / self.energy_capacity;
-        state.soc = new_soc;
         Ok(())
     }
 
@@ -570,6 +428,93 @@ impl ReversibleEnergyStorage {
     pub fn set_eff_range(&mut self, _eff_range: f64) -> anyhow::Result<()> {
         todo!()
     }
+}
+impl SetCumulative for ReversibleEnergyStorage {
+    fn set_cumulative(&mut self, dt: si::Time) {
+        self.state.set_cumulative(dt);
+    }
+}
+
+impl Mass for ReversibleEnergyStorage {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
+            ensure!(
+                utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                format!(
+                    "{}",
+                    format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                )
+            );
+        }
+        Ok(self.mass)
+    }
+
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
+        let derived_mass = self.derived_mass()?;
+        if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
+            if derived_mass != new_mass {
+                log::info!(
+                    "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
+                    "provided mass. Updating based on `side_effect`"
+                );
+                match side_effect {
+                    MassSideEffect::Extensive => {
+                        self.energy_capacity = self.specific_energy.ok_or_else(|| {
+                            anyhow!(
+                                "{}\nExpected `self.specific_energy` to be `Some`.",
+                                format_dbg!()
+                            )
+                        })? * new_mass;
+                    }
+                    MassSideEffect::Intensive => {
+                        self.specific_energy = Some(self.energy_capacity / new_mass);
+                    }
+                    MassSideEffect::None => {
+                        self.specific_energy = None;
+                    }
+                }
+            }
+        } else if let None = new_mass {
+            log::debug!("Provided mass is None, setting `self.specific_energy` to None");
+            self.specific_energy = None;
+        }
+        self.mass = new_mass;
+
+        Ok(())
+    }
+
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        Ok(self
+            .specific_energy
+            .map(|specific_energy| self.energy_capacity / specific_energy))
+    }
+
+    fn expunge_mass_fields(&mut self) {
+        self.mass = None;
+        self.specific_energy = None;
+    }
+}
+
+impl SerdeAPI for ReversibleEnergyStorage {
+    fn init(&mut self) -> anyhow::Result<()> {
+        let _ = self.mass()?;
+        Ok(())
+    }
+}
+
+impl ReversibleEnergyStorage {}
+
+/// Controls which parameter to update when setting specific energy
+pub enum SpecificEnergySideEffect {
+    /// update mass
+    Mass,
+    /// update energy
+    Energy,
 }
 
 #[derive(

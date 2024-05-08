@@ -1,6 +1,7 @@
 use super::*;
 
 #[pyo3_api(
+    // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
     // #[setter("__mass_kg")]
     // fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
     //     self.set_mass(mass_kg.map(|m| m * uc::KG))?;
@@ -48,21 +49,41 @@ impl Mass for FuelStorage {
         Ok(self.mass)
     }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
         let derived_mass = self.derived_mass()?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(
                     "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
-                    "provided mass, setting `self.specific_energy` to be consistent with provided mass"
+                    "provided mass. Updating based on `side_effect`"
                 );
-                self.specific_energy = Some(self.energy_capacity / new_mass);
+                match side_effect {
+                    MassSideEffect::Extensive => {
+                        self.energy_capacity = self.specific_energy.with_context(|| {
+                            format!(
+                                "{}\nExpected `self.specific_energy` to be `Some`.",
+                                format_dbg!()
+                            )
+                        })? * new_mass;
+                    }
+                    MassSideEffect::Intensive => {
+                        self.specific_energy = Some(self.energy_capacity / new_mass);
+                    }
+                    MassSideEffect::None => {
+                        self.specific_energy = None;
+                    }
+                }
             }
         } else if let None = new_mass {
             log::debug!("Provided mass is None, setting `self.specific_energy` to None");
             self.specific_energy = None;
         }
         self.mass = new_mass;
+
         Ok(())
     }
 

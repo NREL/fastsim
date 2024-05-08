@@ -21,15 +21,18 @@ impl SaveInterval for ConventionalVehicle {
     }
 }
 
-impl PowertrainSource for Box<ConventionalVehicle> {
-    fn get_curr_pwr_tract_out_max(
+impl Powertrain for Box<ConventionalVehicle> {
+    fn get_cur_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
-        self.fc
-            .get_curr_pwr_tract_out_max(pwr_aux / self.alt_eff, dt)
-        // TODO: put transmission efficiency in here somehow
+    ) -> anyhow::Result<(si::Power, si::Power)> {
+        let pwr_pos_max = self
+            .fc
+            .get_cur_pwr_tract_out_max(pwr_aux / self.alt_eff, dt)?;
+        // TODO: make sure transmission efficiency is accounted for
+        let pwr_neg_max = 0. * uc::W;
+        Ok((pwr_pos_max, pwr_neg_max))
     }
     fn solve(
         &mut self,
@@ -37,11 +40,9 @@ impl PowertrainSource for Box<ConventionalVehicle> {
         pwr_aux: si::Power,
         enabled: bool,
         dt: si::Time,
-        assert_limits: bool,
     ) -> anyhow::Result<()> {
         let enabled = true; // TODO: replace with a stop/start model
-        self.fc
-            .solve(pwr_out_req, pwr_aux, enabled, dt, assert_limits)?;
+        self.fc.solve(pwr_out_req, pwr_aux, enabled, dt)?;
         Ok(())
     }
 }
@@ -64,7 +65,15 @@ impl Mass for ConventionalVehicle {
         }
     }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
+        ensure!(
+            side_effect == MassSideEffect::None,
+            "At the powertrain level, only `MassSideEffect::None` is allowed"
+        );
         let derived_mass = self.derived_mass()?;
         self.mass = match new_mass {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent

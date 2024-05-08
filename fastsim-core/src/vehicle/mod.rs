@@ -16,7 +16,8 @@ pub mod powertrain;
 // vehicle model
 pub mod chassis;
 pub mod powertrain_type;
-pub mod vehicle_model;
+pub mod traits;
+pub mod vehicle;
 
 #[cfg(test)]
 /// Module containing tests for consists.
@@ -29,7 +30,8 @@ pub use hev::HybridElectricVehicle;
 pub use powertrain::electric_machine::ElectricMachine;
 pub use powertrain::fuel_converter::FuelConverter;
 pub use powertrain::fuel_storage::FuelStorage;
-pub use powertrain::powertrain_traits::{Mass, PowertrainSource, PowertrainThrough};
 pub use powertrain::reversible_energy_storage::ReversibleEnergyStorage;
+pub use powertrain::traits::{Powertrain, PowertrainThrough};
 pub use powertrain_type::PowertrainType;
-pub use vehicle_model::Vehicle;
+pub use traits::*;
+pub use vehicle::Vehicle;

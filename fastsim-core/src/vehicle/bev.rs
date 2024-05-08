@@ -29,7 +29,15 @@ impl Mass for BatteryElectricVehicle {
         }
     }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
+        ensure!(
+            side_effect == MassSideEffect::None,
+            "At the powertrain level, only `MassSideEffect::None` is allowed"
+        );
         let derived_mass = self.derived_mass()?;
         self.mass = match new_mass {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
@@ -86,9 +94,9 @@ impl SaveInterval for BatteryElectricVehicle {
     }
 }
 
-impl PowertrainSource for Box<BatteryElectricVehicle> {
+impl Powertrain for BatteryElectricVehicle {
     /// Solve energy consumption for the current power output required
-    /// Arguments:
+    /// # Arguments:
     /// - pwr_out_req: tractive power required
     /// - dt: time step size
     fn solve(
@@ -97,16 +105,15 @@ impl PowertrainSource for Box<BatteryElectricVehicle> {
         pwr_aux: si::Power,
         enabled: bool,
         dt: si::Time,
-        assert_limits: bool,
     ) -> anyhow::Result<()> {
-        self.em.set_pwr_in_req(pwr_out_req, dt)?;
+        let pwr_out_req_from_res = self.em.get_pwr_in_req(pwr_out_req, pwr_aux, dt)?;
+        // TODO: revisit this if...else block
         if self.em.state.pwr_elec_prop_in > si::Power::ZERO {
             // positive traction
-            self.res
-                .solve_energy_consumption(self.em.state.pwr_elec_prop_in, pwr_aux, dt)?;
+            self.res.solve(pwr_out_req_from_res, pwr_aux, dt)?;
         } else {
-            // negative traction
-            self.res.solve_energy_consumption(
+            // negative traction (should this be different from positive traction here?)
+            self.res.solve(
                 self.em.state.pwr_elec_prop_in,
                 // limit aux power to whatever is actually available
                 // TODO: add more detail/nuance to this
@@ -120,11 +127,11 @@ impl PowertrainSource for Box<BatteryElectricVehicle> {
         Ok(())
     }
 
-    fn get_curr_pwr_tract_out_max(
+    fn get_cur_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
+    ) -> anyhow::Result<(si::Power, si::Power)> {
         todo!();
         // self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
         // self.em.set_cur_pwr_max_out(self.res.state.pwr_prop_out_max, None)?;

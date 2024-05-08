@@ -153,7 +153,16 @@ impl Mass for Vehicle {
         }
     }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
+        ensure!(
+            side_effect == MassSideEffect::None,
+            "At the vehicle level, only `MassSideEffect::None` is allowed"
+        );
+
         let derived_mass = self.derived_mass()?;
         self.mass = match new_mass {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
@@ -245,7 +254,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
                         mass: None,
                     };
-                    fs.set_mass(None)?;
+                    fs.set_mass(None, MassSideEffect::None)?;
                     fs
                 },
                 fc: {
@@ -265,12 +274,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                                 .fc_eff_map
                                 .to_vec()
                                 .first()
-                                .ok_or_else(|| anyhow!(format_dbg!(f2veh.fc_eff_map)))?
+                                .with_context(|| format_dbg!(f2veh.fc_eff_map))?
                             * uc::KW,
                         save_interval: Some(1),
                         history: Default::default(),
                     };
-                    fc.set_mass(None)?;
+                    fc.set_mass(None, MassSideEffect::None)?;
                     fc
                 },
                 mass: None,
@@ -327,6 +336,7 @@ impl SetCumulative for Vehicle {
         if let Some(em) = self.em_mut() {
             em.set_cumulative(dt);
         }
+        self.state.dist += self.state.speed_ach * dt;
     }
 }
 
@@ -414,19 +424,26 @@ impl Vehicle {
             self.pwr_aux,
             true, // this should always be true at the powertrain level
             dt,
-            true, // TODO: parameterize and propagate this
         )?;
         Ok(())
     }
 
     pub fn set_cur_pwr_max_out(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.pwr_tractive_max = self.get_pwr_out_max(dt)?;
+        (self.state.pwr_tract_pos_max, self.state.pwr_tract_neg_max) = self.get_pwr_out_max(dt)?;
         Ok(())
     }
 
-    pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+    pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<(si::Power, si::Power)> {
         // TODO: when a fancier model for `pwr_aux` is implemented, put it here
-        Ok(self.pt_type.get_curr_pwr_tract_out_max(self.pwr_aux, dt)? * self.trans_eff)
+        // TODO: make transmission field in vehicle and make it be able to produce an efficiency
+
+        let (pwr_out_pos_max, pwr_out_neg_max) =
+            self.pt_type.get_cur_pwr_tract_out_max(self.pwr_aux, dt)?;
+
+        Ok((
+            pwr_out_pos_max * self.trans_eff,
+            pwr_out_neg_max * self.trans_eff,
+        ))
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
@@ -696,9 +713,11 @@ pub struct VehicleState {
     pub i: usize,
 
     // power and fields
-    /// maximum forward propulsive power vehicle can produce
-    pub pwr_tractive_max: si::Power,
+    /// maximum positive propulsive power vehicle can produce
+    pub pwr_tract_pos_max: si::Power,
     /// pwr exerted on wheels by powertrain
+    /// maximum negative propulsive power vehicle can produce
+    pub pwr_tract_neg_max: si::Power,
     pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
     pub energy_tractive: si::Energy,

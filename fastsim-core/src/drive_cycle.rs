@@ -176,8 +176,8 @@ impl SerdeAPI for Cycle {
 impl Cycle {
     /// rust-internal time steps at i
     pub fn dt_at_i(&self, i: usize) -> anyhow::Result<si::Time> {
-        Ok(*self.time.get(i).ok_or_else(|| anyhow!(format_dbg!()))?
-            - *self.time.get(i - 1).ok_or_else(|| anyhow!(format_dbg!()))?)
+        Ok(*self.time.get(i).with_context(|| format_dbg!())?
+            - *self.time.get(i - 1).with_context(|| format_dbg!())?)
     }
 
     pub fn len(&self) -> usize {

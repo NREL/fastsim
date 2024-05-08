@@ -31,11 +31,12 @@ const TOL: f64 = 1e-3;
         self.set_eff_range(eff_range).map_err(PyValueError::new_err)
     }
 
-    #[setter("__mass_kg")]
-    fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
-        self.set_mass(mass_kg.map(|m| m * uc::KG))?;
-        Ok(())
-    }
+    // TODO: handle `side_effects` and uncomment
+    // #[setter("__mass_kg")]
+    // fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
+    //     self.set_mass(mass_kg.map(|m| m * uc::KG))?;
+    //     Ok(())
+    // }
 
     #[getter("mass_kg")]
     fn get_mass_py(&self) -> PyResult<Option<f64>> {
@@ -117,15 +118,34 @@ impl Mass for FuelConverter {
         Ok(self.mass)
     }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
         let derived_mass = self.derived_mass()?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(
                     "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
-                    "provided mass, setting `self.specific_pwr` to be consistent with provided mass"
+                    "provided mass. Updating based on `side_effect`"
                 );
-                self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                match side_effect {
+                    MassSideEffect::Extensive => {
+                        self.pwr_out_max = self.specific_pwr.ok_or_else(|| {
+                            anyhow!(
+                                "{}\nExpected `self.specific_pwr` to be `Some`.",
+                                format_dbg!()
+                            )
+                        })? * new_mass;
+                    }
+                    MassSideEffect::Intensive => {
+                        self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                    }
+                    MassSideEffect::None => {
+                        self.specific_pwr = None;
+                    }
+                }
             }
         } else if let None = new_mass {
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
@@ -159,8 +179,13 @@ impl SaveInterval for FuelConverter {
 
 // non-py methods
 
-impl PowertrainSource for FuelConverter {
-    fn get_curr_pwr_tract_out_max(
+impl FuelConverter {
+    /// Returns maximum possible traction-related power [FuelConverter]
+    /// can produce, accounting for any aux-related power required.
+    /// # Arguments
+    /// - `pwr_aux`: aux-related power required from this component
+    /// - `dt`: time step size
+    pub fn get_cur_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
@@ -185,38 +210,19 @@ impl PowertrainSource for FuelConverter {
         Ok(self.pwr_out_max)
     }
 
-    fn solve(
+    /// Solves for this powertrain system/component efficiency and sets/returns power output values.
+    /// # Arguments
+    /// - `pwr_out_req`: tractive power output required to achieve presribed speed
+    /// - `pwr_aux`: component-specific aux power demand (e.g. mechanical power if from engine/FC)
+    /// - `enabled`: whether component is actively running
+    /// - `dt`: time step size
+    pub fn solve(
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
         enabled: bool,
         _dt: si::Time,
-        assert_limits: bool,
     ) -> anyhow::Result<()> {
-        if assert_limits {
-            ensure!(
-                utils::almost_le_uom(&pwr_out_req, &self.pwr_out_max, Some(TOL)),
-                format!(
-                    "{}TODO: update this error message",
-                    format_dbg!(utils::almost_le_uom(
-                        &(pwr_out_req + pwr_aux),
-                        &self.pwr_out_max,
-                        Some(TOL)
-                    )),
-                ),
-            );
-            ensure!(
-                utils::almost_le_uom(&pwr_out_req, &self.state.pwr_out_max, Some(TOL)),
-                format!(
-                    "{}\nTODO: update this error",
-                    format_dbg!(utils::almost_le_uom(
-                        &(pwr_out_req + pwr_aux),
-                        &self.state.pwr_out_max,
-                        Some(TOL)
-                    )),
-                )
-            );
-        }
         ensure!(
             pwr_out_req >= si::Power::ZERO,
             format!(

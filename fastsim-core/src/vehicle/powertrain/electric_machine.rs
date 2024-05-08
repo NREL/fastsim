@@ -62,6 +62,8 @@ pub struct ElectricMachine {
     /// struct for tracking current state
     pub state: ElectricMachineState,
     /// Shaft output power fraction array at which efficiencies are evaluated.
+    /// This can range from 0 to 1 or -1 to 1, dependending on whether the efficiency is
+    /// directionally symmetrical.
     pub pwr_out_frac_interp: Vec<f64>,
     #[api(skip_set)]
     /// Efficiency array corresponding to [Self::pwr_out_frac_interp] and [Self::pwr_in_frac_interp]
@@ -92,16 +94,110 @@ pub struct ElectricMachine {
 }
 
 impl PowertrainThrough for ElectricMachine {
-    fn get_curr_pwr_tract_out_max(
+    fn get_cur_pwr_tract_out_max(
         &mut self,
+        pwr_in_pos_max: si::Power,
+        pwr_in_neg_max: si::Power,
         pwr_aux: si::Power,
-        dt: si::Time,
+        _dt: si::Time,
+    ) -> anyhow::Result<(si::Power, si::Power)> {
+        ensure!(
+            pwr_in_pos_max >= uc::W * 0.,
+            "`pwr_in_pos_max` must be greater than or equal to zero for `{}`",
+            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
+        );
+        ensure!(
+            pwr_in_neg_max >= uc::W * 0.,
+            "`pwr_in_neg_max` must be greater than or equal to zero for `{}`",
+            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
+        );
+        ensure!(
+            pwr_aux == uc::W * 0.,
+            "`pwr_aux` must be zero for `{}`",
+            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
+        );
+        if self.pwr_in_frac_interp.is_empty() {
+            self.set_pwr_in_frac_interp()
+                .with_context(|| format_dbg!())?;
+        }
+        let eff_pos = uc::R
+            * interp1d(
+                &(pwr_in_pos_max / self.pwr_out_max).get::<si::ratio>(),
+                &self.pwr_in_frac_interp,
+                &self.eff_interp,
+                Extrapolate::Error,
+            )?;
+        let eff_neg = uc::R
+            * interp1d(
+                &(pwr_in_neg_max / self.pwr_out_max).get::<si::ratio>(),
+                &self.pwr_in_frac_interp,
+                &self.eff_interp,
+                Extrapolate::Error,
+            )?;
+
+        self.state.pwr_mech_out_max = self.pwr_out_max.min(pwr_in_pos_max * eff_pos);
+        self.state.pwr_mech_regen_max = self.pwr_out_max.min(pwr_in_pos_max * eff_neg);
+        Ok((self.state.pwr_mech_out_max, self.state.pwr_mech_regen_max))
+    }
+
+    fn get_pwr_in_req(
+        &mut self,
+        pwr_out_req: si::Power,
+        _pwr_aux: si::Power,
+        _dt: si::Time,
     ) -> anyhow::Result<si::Power> {
+        ensure!(
+            pwr_out_req <= self.pwr_out_max,
+            format!(
+                "{}\nedrv required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
+                pwr_out_req.get::<si::megawatt>(),
+                self.pwr_out_max.get::<si::megawatt>()
+            ),
+        );
+
+        self.state.pwr_out_req = pwr_out_req;
+
+        self.state.eff = uc::R
+            * interp1d(
+                &(pwr_out_req / self.pwr_out_max).get::<si::ratio>(),
+                &self.pwr_out_frac_interp,
+                &self.eff_interp,
+                Extrapolate::Error,
+            )?;
+
+        // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
+        // in which case, excess is handled by `pwr_mech_dyn_brake`
+        self.state.pwr_mech_prop_out = pwr_out_req.max(-self.state.pwr_mech_regen_max);
+
+        self.state.pwr_mech_dyn_brake = -(pwr_out_req - self.state.pwr_mech_prop_out);
+        ensure!(
+            self.state.pwr_mech_dyn_brake >= si::Power::ZERO,
+            "Mech Dynamic Brake Power cannot be below 0.0"
+        );
+
+        // if pwr_out_req is negative, need to multiply by eff
+        self.state.pwr_elec_prop_in = if pwr_out_req > si::Power::ZERO {
+            self.state.pwr_mech_prop_out / self.state.eff
+        } else {
+            self.state.pwr_mech_prop_out * self.state.eff
+        };
+
+        self.state.pwr_elec_dyn_brake = self.state.pwr_mech_dyn_brake * self.state.eff;
+
+        // loss does not account for dynamic braking
+        self.state.pwr_loss = (self.state.pwr_mech_prop_out - self.state.pwr_elec_prop_in).abs();
+
+        Ok(self.state.pwr_elec_prop_in)
     }
 }
+
 impl SerdeAPI for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
+        check_interp_frac_data(&self.pwr_out_frac_interp, false)
+            .with_context(|| format!(
+                "To allow for possible asymmetry, `ElectricMachine::pwr_out_frac_interp` must range from [-1..1]."))?;
         Ok(())
     }
 }
@@ -127,15 +223,34 @@ impl Mass for ElectricMachine {
         Ok(self.mass)
     }
 
-    fn set_mass(&mut self, new_mass: Option<si::Mass>) -> anyhow::Result<()> {
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
         let derived_mass = self.derived_mass()?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(
                     "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
-                    "provided mass, setting `self.specific_pwr` to be consistent with provided mass"
+                    "provided mass. Updating based on `side_effect`"
                 );
-                self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                match side_effect {
+                    MassSideEffect::Extensive => {
+                        self.pwr_out_max = self.specific_pwr.with_context(|| {
+                            format!(
+                                "{}\nExpected `self.specific_pwr` to be `Some`.",
+                                format_dbg!()
+                            )
+                        })? * new_mass;
+                    }
+                    MassSideEffect::Intensive => {
+                        self.specific_pwr = Some(self.pwr_out_max / new_mass);
+                    }
+                    MassSideEffect::None => {
+                        self.specific_pwr = None;
+                    }
+                }
             }
         } else if let None = new_mass {
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
@@ -166,132 +281,11 @@ impl ElectricMachine {
             .zip(self.eff_interp.iter())
             .map(|(x, y)| x / y)
             .collect();
-        // verify monotonicity
-        ensure!(
-            self.pwr_in_frac_interp.windows(2).all(|w| w[0] < w[1]),
-            format!(
-                "{}\nElectricMachine `pwr_in_frac_interp` ({:?}) must be monotonically increasing",
-                format_dbg!(self.pwr_in_frac_interp.windows(2).all(|w| w[0] < w[1])),
-                self.pwr_in_frac_interp
-            )
-        );
-        Ok(())
-    }
-
-    pub fn set_cur_pwr_regen_max(&mut self, pwr_max_regen_in: si::Power) -> anyhow::Result<()> {
-        if self.pwr_in_frac_interp.is_empty() {
-            self.set_pwr_in_frac_interp()?;
-        }
-        let eff = uc::R
-            * interp1d(
-                &(pwr_max_regen_in / self.pwr_out_max)
-                    .get::<si::ratio>()
-                    .abs(),
-                &self.pwr_out_frac_interp,
-                &self.eff_interp,
-                Default::default(),
-            )?;
-        self.state.pwr_mech_regen_max = (pwr_max_regen_in * eff).min(self.pwr_out_max);
-        ensure!(self.state.pwr_mech_regen_max >= si::Power::ZERO);
-        Ok(())
-    }
-
-    /// Set `pwr_in_req` required to achieve desired `pwr_out_req` with time step size `dt`.
-    pub fn set_pwr_in_req(&mut self, pwr_out_req: si::Power, dt: si::Time) -> anyhow::Result<()> {
-        ensure!(
-            pwr_out_req <= self.pwr_out_max,
-            format!(
-                "{}\nElectricMachine required power ({:.6} MW) exceeds static max power ({:.6} MW)",
-                format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
-                pwr_out_req.get::<si::megawatt>(),
-                self.pwr_out_max.get::<si::megawatt>()
-            ),
-        );
-
-        self.state.pwr_out_req = pwr_out_req;
-
-        self.state.eff = uc::R
-            * interp1d(
-                &(pwr_out_req / self.pwr_out_max).get::<si::ratio>().abs(),
-                &self.pwr_out_frac_interp,
-                &self.eff_interp,
-                Default::default(),
-            )?;
-        ensure!(
-            self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
-            format!(
-                "{}\nElectricMachine eff ({}) must be between 0 and 1",
-                format_dbg!(self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R),
-                self.state.eff.get::<si::ratio>()
-            )
-        );
-
-        // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
-        // in which case, excess is handled by `pwr_mech_dyn_brake`
-        self.state.pwr_mech_prop_out = pwr_out_req.max(-self.state.pwr_mech_regen_max);
-        self.state.energy_mech_prop_out += self.state.pwr_mech_prop_out * dt;
-
-        self.state.pwr_mech_dyn_brake = -(pwr_out_req - self.state.pwr_mech_prop_out);
-        self.state.energy_mech_dyn_brake += self.state.pwr_mech_dyn_brake * dt;
-        ensure!(
-            self.state.pwr_mech_dyn_brake >= si::Power::ZERO,
-            "Mech Dynamic Brake Power cannot be below 0.0"
-        );
-
-        // if pwr_out_req is negative, need to multiply by eff
-        self.state.pwr_elec_prop_in = if pwr_out_req > si::Power::ZERO {
-            self.state.pwr_mech_prop_out / self.state.eff
-        } else {
-            self.state.pwr_mech_prop_out * self.state.eff
-        };
-        self.state.energy_elec_prop_in += self.state.pwr_elec_prop_in * dt;
-
-        self.state.pwr_elec_dyn_brake = self.state.pwr_mech_dyn_brake * self.state.eff;
-        self.state.energy_elec_dyn_brake += self.state.pwr_elec_dyn_brake * dt;
-
-        // loss does not account for dynamic braking
-        self.state.pwr_loss = (self.state.pwr_mech_prop_out - self.state.pwr_elec_prop_in).abs();
-        self.state.energy_loss += self.state.pwr_loss * dt;
-
         Ok(())
     }
 
     impl_get_set_eff_max_min!();
     impl_get_set_eff_range!();
-
-    /// Set current max possible output power, `pwr_mech_out_max`,
-    /// given `pwr_in_max` from upstream component.
-    pub fn set_cur_pwr_max_out(
-        &mut self,
-        pwr_in_max: si::Power,
-        pwr_aux: Option<si::Power>,
-    ) -> anyhow::Result<()> {
-        ensure!(pwr_aux.is_none(), format_dbg!(pwr_aux.is_none()));
-        if self.pwr_in_frac_interp.is_empty() {
-            self.set_pwr_in_frac_interp()?;
-        }
-        let eff = uc::R
-            * interp1d(
-                &(pwr_in_max / self.pwr_out_max).get::<si::ratio>().abs(),
-                &self.pwr_in_frac_interp,
-                &self.eff_interp,
-                Default::default(),
-            )?;
-
-        self.state.pwr_mech_out_max = self.pwr_out_max.min(pwr_in_max * eff);
-        Ok(())
-    }
-
-    /// Set current power out max ramp rate, `pwr_rate_out_max` given `pwr_rate_in_max`
-    /// from upstream component.
-    pub fn set_pwr_rate_out_max(&mut self, pwr_rate_in_max: si::PowerRate) {
-        self.state.pwr_rate_out_max = pwr_rate_in_max
-            * if self.state.eff > si::Ratio::ZERO {
-                self.state.eff
-            } else {
-                uc::R * 1.0
-            };
-    }
 }
 
 #[derive(
