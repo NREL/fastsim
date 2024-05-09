@@ -142,6 +142,7 @@ pub struct ReversibleEnergyStorage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
     #[serde(default)]
+    #[serde(skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty")]
     /// Custom vector of [Self::state]
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
@@ -321,10 +322,10 @@ impl ReversibleEnergyStorage {
                 utils::Extrapolate::Yes, // don't extrapolate
             )?;
 
-        state.pwr_prop_out_max = state.pwr_disch_max - pwr_aux;
-        state.pwr_regen_out_max = state.pwr_charge_max + pwr_aux;
+        state.pwr_prop_max = state.pwr_disch_max - pwr_aux;
+        state.pwr_regen_max = state.pwr_charge_max + pwr_aux;
 
-        Ok((state.pwr_prop_out_max, state.pwr_regen_out_max))
+        Ok((state.pwr_prop_max, state.pwr_regen_max))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -529,9 +530,9 @@ pub struct ReversibleEnergyStorageState {
     /// maximum catenary power capability
     pub pwr_cat_max: si::Power,
     /// max output power for propulsion during positive traction
-    pub pwr_prop_out_max: si::Power,
+    pub pwr_prop_max: si::Power,
     /// max regen power for propulsion during negative traction
-    pub pwr_regen_out_max: si::Power,
+    pub pwr_regen_max: si::Power,
     /// max discharge power total
     pub pwr_disch_max: si::Power,
     /// max charge power on the output side

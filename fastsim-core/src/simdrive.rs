@@ -76,7 +76,7 @@ impl SimDrive {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
         self.veh.set_cur_pwr_out_max(dt)?;
-        self.set_req_pwr(self.cyc.speed[i], dt)?;
+        self.set_pwr_tract_for_speed(self.cyc.speed[i], dt)?;
         self.set_ach_speed(dt)?;
         self.veh.solve_powertrain(dt)?;
         self.veh.set_cumulative(dt);
@@ -87,7 +87,11 @@ impl SimDrive {
     /// # Arguments
     /// - `speed`: prescribed or achieved speed
     /// - `dt`: time step size
-    pub fn set_req_pwr(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
+    pub fn set_pwr_tract_for_speed(
+        &mut self,
+        speed: si::Velocity,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
@@ -280,7 +284,7 @@ impl SimDrive {
                 spd_ach_iter_counter += 1;
             }
 
-            // Question: could we assume `speed_guesses.iter().last()` is the correct solution?
+            // TODO: answer this question: could we assume `speed_guesses.iter().last()` is the correct solution?
             // This would make for faster running.
             self.veh.state.speed_ach = speed_guesses[pwr_errs
                 .iter()
@@ -337,18 +341,5 @@ mod tests {
         sd.walk().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
-    }
-
-    #[test]
-    fn test_to_fastsim2() {
-        let veh = mock_f2_conv_veh();
-        let cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
-        let sd = SimDrive {
-            veh,
-            cyc,
-            sim_params: Default::default(),
-        };
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
     }
 }

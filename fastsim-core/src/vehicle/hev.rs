@@ -1,4 +1,6 @@
-use super::*;
+use crate::prelude::{FuelConverterState, ReversibleEnergyStorageState};
+
+use super::{vehicle::VehicleState, *};
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, HistoryMethods)]
 /// Hybrid vehicle with both engine and reversible energy storage (aka battery)
@@ -11,6 +13,9 @@ pub struct HybridElectricVehicle {
     pub fc: FuelConverter,
     #[has_state]
     pub em: ElectricMachine,
+    /// control strategy for distributing power demand between `fc` and `res`
+    /// hybrid powertrain mass
+    pub hev_controls: HEVControls,
     pub(crate) mass: Option<si::Mass>,
     // TODO: add enum for controling fraction of aux pwr handled by battery vs engine
     // TODO: add enum for controling fraction of tractive pwr handled by battery vs engine -- there
@@ -131,5 +136,53 @@ impl Mass for HybridElectricVehicle {
         self.res.expunge_mass_fields();
         self.em.expunge_mass_fields();
         self.mass = None;
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub enum HEVControls {
+    /// Controls that attempt to exactly match fastsim-2
+    Fastsim2,
+    /// Purely greedy controls
+    RESGreedy,
+    // TODO: add `SpeedAware` to enable buffers similar to fastsim-2 but without
+    // the feature from fastsim-2 that forces the fc to be greedily meet power demand
+    // when it's on
+}
+
+impl HEVControls {
+    fn get_pwr_fc_and_res(
+        &self,
+        pwr_out_req: si::Power,
+        veh_state: &VehicleState,
+        fc_state: &FuelConverterState,
+        res_state: &ReversibleEnergyStorageState,
+    ) -> anyhow::Result<(si::Power, si::Power)> {
+        if pwr_out_req >= uc::W * 0. {
+            match self {
+                Self::Fastsim2 => {
+                    todo!()
+                }
+                Self::RESGreedy => {
+                    let fc_pwr = fc_state.pwr_out_max
+                        / (fc_state.pwr_out_max + res_state.pwr_prop_max)
+                        * pwr_out_req;
+                    let res_pwr = res_state.pwr_prop_max
+                        / (fc_state.pwr_out_max + res_state.pwr_prop_max)
+                        * pwr_out_req;
+
+                    Ok((fc_pwr, res_pwr))
+                }
+            }
+        } else {
+            match self {
+                Self::Fastsim2 => {
+                    todo!()
+                }
+                Self::RESGreedy => {
+                    todo!()
+                }
+            }
+        }
     }
 }

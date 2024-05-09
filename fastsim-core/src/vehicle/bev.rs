@@ -119,7 +119,7 @@ impl Powertrain for BatteryElectricVehicle {
                 // TODO: add more detail/nuance to this
                 pwr_aux
                     // whatever power is available from regen plus normal
-                    .min(self.res.state.pwr_prop_out_max - self.em.state.pwr_elec_prop_in)
+                    .min(self.res.state.pwr_prop_max - self.em.state.pwr_elec_prop_in)
                     .max(si::Power::ZERO),
                 dt,
             )?;

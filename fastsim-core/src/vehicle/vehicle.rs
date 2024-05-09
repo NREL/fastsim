@@ -858,4 +858,17 @@ pub(crate) mod tests {
         veh1.init().unwrap();
         assert!(veh == veh1);
     }
+
+    #[test]
+    fn test_to_fastsim2() {
+        let veh = mock_f2_conv_veh();
+        let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
+        let sd = crate::simdrive::SimDrive {
+            veh,
+            cyc,
+            sim_params: Default::default(),
+        };
+        let mut sd2 = sd.to_fastsim2().unwrap();
+        sd2.sim_drive(None, None).unwrap();
+    }
 }
