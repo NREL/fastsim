@@ -115,7 +115,7 @@ pub struct ReversibleEnergyStorage {
     pub(in super::super) mass: Option<si::Mass>,
     /// ReversibleEnergyStorage specific energy
     #[api(skip_get, skip_set)]
-    specific_energy: Option<si::SpecificEnergy>,
+    pub(in super::super) specific_energy: Option<si::SpecificEnergy>,
     #[serde(rename = "pwr_out_max_watts")]
     /// Max output (and input) power battery can produce (accept)
     pub pwr_out_max: si::Power,
@@ -405,17 +405,17 @@ impl ReversibleEnergyStorage {
     }
 
     pub fn get_eff_max(&self) -> f64 {
-        todo!()
+        todo!("adapt from ALTRIOS");
     }
 
     /// Scales eff_interp by ratio of new `eff_max` per current calculated
     /// max linearly, such that `eff_min` is untouched
     pub fn set_eff_max(&mut self, _eff_max: f64) -> Result<(), String> {
-        todo!()
+        todo!("adapt from ALTRIOS");
     }
 
     pub fn get_eff_min(&self) -> f64 {
-        todo!()
+        todo!("adapt from ALTRIOS");
     }
 
     /// Max value of `eff_interp` minus min value of `eff_interp`.
@@ -426,7 +426,7 @@ impl ReversibleEnergyStorage {
     /// Scales values of `eff_interp` without changing max such that max - min
     /// is equal to new range
     pub fn set_eff_range(&mut self, _eff_range: f64) -> anyhow::Result<()> {
-        todo!()
+        todo!("adapt from ALTRIOS");
     }
 }
 impl SetCumulative for ReversibleEnergyStorage {

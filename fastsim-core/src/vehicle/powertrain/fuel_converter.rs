@@ -190,14 +190,6 @@ impl FuelConverter {
         pwr_aux: si::Power,
         dt: si::Time,
     ) -> anyhow::Result<si::Power> {
-        // TODO: move this ensure somewhere higher up in the callstack
-        ensure!(
-            dt > si::Time::ZERO,
-            format!(
-                "{}\n dt must always be greater than 0.0",
-                format_dbg!(dt > si::Time::ZERO)
-            )
-        );
         if self.pwr_out_max_init == si::Power::ZERO {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.

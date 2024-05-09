@@ -44,9 +44,15 @@ impl Powertrain for Box<HybridElectricVehicle> {
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
         enabled: bool,
-        _dt: si::Time,
+        dt: si::Time,
     ) -> anyhow::Result<()> {
-        todo!()
+        // TODO: replace with actual logic.  Should probably have vehicle controls enum in `HybridElectricVehicle`
+        let (fc_pwr_out_req, em_pwr_out_req) = (0.5 * pwr_out_req, 0.5 * pwr_out_req);
+
+        let enabled = true; // TODO: replace with a stop/start model
+        self.fc.solve(fc_pwr_out_req, pwr_aux, enabled, dt)?;
+        // self.fs.solve()
+        Ok(())
     }
 }
 

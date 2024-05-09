@@ -3,7 +3,7 @@ use super::*;
 
 /// Provides functions for solving powertrain through component, i.e. / any
 /// component that accepts input power and provides output power but is not
-/// itself a power source.
+/// itself a power source, e.g. `ElectricMachine`.
 pub trait PowertrainThrough {
     /// Returns maximum possible positive and negative traction-related powers
     /// this component/system can produce, accounting for any aux-related power

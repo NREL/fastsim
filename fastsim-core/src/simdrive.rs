@@ -75,7 +75,7 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
-        self.veh.set_cur_pwr_max_out(dt)?;
+        self.veh.set_cur_pwr_out_max(dt)?;
         self.set_req_pwr(self.cyc.speed[i], dt)?;
         self.set_ach_speed(dt)?;
         self.veh.solve_powertrain(dt)?;

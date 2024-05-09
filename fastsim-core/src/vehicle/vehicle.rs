@@ -1,5 +1,3 @@
-use self::utils::Efficiency;
-
 use super::*;
 
 /// Possible aux load power sources
@@ -109,7 +107,8 @@ pub struct Vehicle {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) mass: Option<si::Mass>,
 
-    /// power required by auxilliary systems (e.g. HVAC, stereo)
+    /// power required by auxilliary systems (e.g. HVAC, stereo)  
+    /// TODO: make this an enum to allow for future variations
     pub pwr_aux: si::Power,
 
     /// transmission efficiency
@@ -286,6 +285,71 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                 alt_eff: f2veh.alt_eff * uc::R,
             };
             Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
+        } else if f2veh.veh_pt_type == HEV {
+            let hev = HybridElectricVehicle {
+                fs: {
+                    let mut fs = FuelStorage {
+                        pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                        pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                        energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
+                        specific_energy: None,
+                        mass: None,
+                    };
+                    fs.set_mass(None, MassSideEffect::None)?;
+                    fs
+                },
+                fc: {
+                    let mut fc = FuelConverter {
+                        state: Default::default(),
+                        mass: None,
+                        specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
+                        pwr_out_max: f2veh.fc_max_kw * uc::KW,
+                        // assumes 1 s time step
+                        pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
+                        pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
+                        pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
+                        eff_interp: f2veh.fc_eff_map.to_vec(),
+                        // TODO: verify this
+                        pwr_idle_fuel: f2veh.aux_kw
+                            / f2veh
+                                .fc_eff_map
+                                .to_vec()
+                                .first()
+                                .with_context(|| format_dbg!(f2veh.fc_eff_map))?
+                            * uc::KW,
+                        save_interval: Some(1),
+                        history: Default::default(),
+                    };
+                    fc.set_mass(None, MassSideEffect::None)?;
+                    fc
+                },
+                res: ReversibleEnergyStorage {
+                    state: Default::default(),
+                    mass: None,
+                    specific_energy: None,
+                    pwr_out_max: f2veh.ess_max_kw * uc::KW,
+                    energy_capacity: f2veh.ess_max_kwh * uc::KWH,
+                    min_soc: f2veh.min_soc * uc::R,
+                    max_soc: f2veh.max_soc * uc::R,
+                    soc_hi_ramp_start: None,
+                    soc_lo_ramp_start: None,
+                    save_interval: Some(1),
+                    history: Default::default(),
+                },
+                em: ElectricMachine {
+                    state: Default::default(),
+                    pwr_out_frac_interp: f2veh.mc_kw_out_array.to_vec(),
+                    eff_interp: f2veh.mc_eff_array.to_vec(),
+                    pwr_in_frac_interp: Default::default(),
+                    pwr_out_max: f2veh.mc_max_kw * uc::KW,
+                    specific_pwr: None,
+                    mass: None,
+                    save_interval: Some(1),
+                    history: Default::default(),
+                },
+                mass: None,
+            };
+            Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
         } else {
             bail!(
                 "Invalid powertrain type: {}.
@@ -428,7 +492,7 @@ impl Vehicle {
         Ok(())
     }
 
-    pub fn set_cur_pwr_max_out(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    pub fn set_cur_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         (self.state.pwr_tract_pos_max, self.state.pwr_tract_neg_max) = self.get_pwr_out_max(dt)?;
         Ok(())
     }
