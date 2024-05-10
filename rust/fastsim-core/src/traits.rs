@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use ureq;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
-    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "toml"];
     const CACHE_FOLDER: &'static str = &"";
 
     /// Specialized code to execute upon initialization
@@ -47,10 +47,14 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         self.to_writer(File::create(filepath)?, extension)
     }
 
-    fn to_writer<W: std::io::Write>(&self, wtr: W, format: &str) -> anyhow::Result<()> {
+    fn to_writer<W: std::io::Write>(&self, mut wtr: W, format: &str) -> anyhow::Result<()> {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
             "json" => serde_json::to_writer(wtr, self)?,
+            "toml" => {
+                let toml_string = self.to_toml()?;
+                wtr.write_all(toml_string.as_bytes())?;
+            },
             #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(wtr, self)?,
             _ => bail!(
@@ -94,6 +98,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => self.to_yaml(),
             "json" => self.to_json(),
+            "toml" => self.to_toml(),
             _ => bail!(
                 "Unsupported format {format:?}, must be one of {:?}",
                 Self::ACCEPTED_STR_FORMATS
@@ -113,6 +118,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             match format.trim_start_matches('.').to_lowercase().as_str() {
                 "yaml" | "yml" => Self::from_yaml(contents, skip_init)?,
                 "json" => Self::from_json(contents, skip_init)?,
+                "toml" => Self::from_toml(contents, skip_init)?,
                 _ => bail!(
                     "Unsupported format {format:?}, must be one of {:?}",
                     Self::ACCEPTED_STR_FORMATS
@@ -128,10 +134,15 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `rdr` - The reader from which to read object data
     /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
     ///
-    fn from_reader<R: std::io::Read>(rdr: R, format: &str, skip_init: bool) -> anyhow::Result<Self> {
+    fn from_reader<R: std::io::Read>(mut rdr: R, format: &str, skip_init: bool) -> anyhow::Result<Self> {
         let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
+            "toml" => {
+                let mut buf = String::new();
+                rdr.read_to_string(&mut buf)?;
+                Self::from_toml(buf, skip_init)?
+            },
             #[cfg(feature = "bincode")]
             "bin" => bincode::deserialize_from(rdr)?,
             _ => bail!(
@@ -181,6 +192,18 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             yaml_de.init()?;
         }
         Ok(yaml_de)
+    }
+
+    fn to_toml(&self) -> anyhow::Result<String> {
+        Ok(toml::to_string(&self)?)
+    }
+
+    fn from_toml<S: AsRef<str>>(toml_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        let mut toml_de: Self = toml::from_str(toml_str.as_ref())?;
+        if !skip_init {
+            toml_de.init()?;
+        }
+        Ok(toml_de)
     }
 
     /// Write (serialize) an object to bincode-encoded bytes
