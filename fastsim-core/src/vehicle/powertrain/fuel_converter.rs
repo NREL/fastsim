@@ -96,7 +96,8 @@ impl SetCumulative for FuelConverter {
     }
 }
 
-impl SerdeAPI for FuelConverter {
+impl SerdeAPI for FuelConverter {}
+impl Init for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
         Ok(())
@@ -311,6 +312,9 @@ pub struct FuelConverterState {
     /// If true, engine is on, and if false, off (no idle)
     pub fc_on: bool,
 }
+
+impl SerdeAPI for FuelConverterState {}
+impl Init for FuelConverterState {}
 
 impl FuelConverterState {
     pub fn new() -> Self {

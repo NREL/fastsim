@@ -501,7 +501,8 @@ impl Mass for ReversibleEnergyStorage {
     }
 }
 
-impl SerdeAPI for ReversibleEnergyStorage {
+impl SerdeAPI for ReversibleEnergyStorage {}
+impl Init for ReversibleEnergyStorage {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
         Ok(())
@@ -585,6 +586,9 @@ pub struct ReversibleEnergyStorageState {
     /// component temperature
     pub temperature_celsius: f64,
 }
+
+impl Init for ReversibleEnergyStorageState {}
+impl SerdeAPI for ReversibleEnergyStorageState {}
 
 impl ReversibleEnergyStorageState {
     pub fn new() -> Self {

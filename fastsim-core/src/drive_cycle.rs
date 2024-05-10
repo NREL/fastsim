@@ -49,10 +49,7 @@ pub fn get_elev_def() -> si::Length {
     ELEV_DEF_FT * uc::FT
 }
 
-impl SerdeAPI for Cycle {
-    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
-    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
-
+impl Init for Cycle {
     /// Sets `self.dist` and `self.elev`
     ///
     /// Assumptions
@@ -93,6 +90,11 @@ impl SerdeAPI for Cycle {
 
         Ok(())
     }
+}
+
+impl SerdeAPI for Cycle {
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
 
     fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
         let filepath = filepath.as_ref();
@@ -281,7 +283,7 @@ impl Cycle {
 }
 
 #[pyo3_api]
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, SerdeAPI)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 /// Element of `Cycle`.  Used for vec-like operations.
 pub struct CycleElement {
     /// simulation time \[s\]
@@ -300,6 +302,9 @@ pub struct CycleElement {
     /// road charging/discharing capacity
     pub pwr_max_charge: Option<si::Power>,
 }
+
+impl SerdeAPI for CycleElement {}
+impl Init for CycleElement {}
 
 #[cfg(test)]
 mod tests {

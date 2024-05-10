@@ -1,7 +1,7 @@
 pub use super::*;
 
 /// Possible drive wheel configurations for traction limit calculations
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum DriveTypes {
     /// Rear-wheel drive
     RWD,
@@ -13,8 +13,11 @@ pub enum DriveTypes {
     FourWD,
 }
 
+impl SerdeAPI for DriveTypes {}
+impl Init for DriveTypes {}
+
 #[pyo3_api]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 /// Struct for simulating vehicle
 pub struct Chassis {
     /// Aerodynamic drag coefficient
@@ -63,6 +66,9 @@ pub struct Chassis {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cargo_mass: Option<si::Mass>,
 }
+
+impl SerdeAPI for Chassis {}
+impl Init for Chassis {}
 
 impl TryFrom<&fastsim_2::vehicle::RustVehicle> for Chassis {
     type Error = anyhow::Error;

@@ -21,15 +21,17 @@ pub trait Linspace {
 
 impl Linspace for Vec<f64> {}
 
-// TODO: only call `init` once per deserialization -- @Kyle, has this been solved?
-pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
-    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
-
+pub trait Init {
     /// Specialized code to execute upon initialization
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
+}
+
+// TODO: only call `init` once per deserialization -- @Kyle, has this been solved?
+pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
 
     /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
     ///
@@ -226,7 +228,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 }
 
-impl<T: SerdeAPI> SerdeAPI for Vec<T> {
+impl<T: SerdeAPI> SerdeAPI for Vec<T> {}
+impl<T: Init> Init for Vec<T> {
     fn init(&mut self) -> anyhow::Result<()> {
         for val in self {
             val.init()?

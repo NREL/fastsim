@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods)]
 /// Conventional vehicle with only a FuelConverter as a power source
 pub struct ConventionalVehicle {
     pub fs: FuelStorage,
@@ -10,6 +10,9 @@ pub struct ConventionalVehicle {
     /// Alternator efficiency used to calculate aux mechanical power demand on engine
     pub alt_eff: si::Ratio,
 }
+
+impl SerdeAPI for ConventionalVehicle {}
+impl Init for ConventionalVehicle {}
 
 impl SaveInterval for ConventionalVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {
@@ -34,6 +37,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         let pwr_neg_max = 0. * uc::W;
         Ok((pwr_pos_max, pwr_neg_max))
     }
+
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
@@ -41,9 +45,15 @@ impl Powertrain for Box<ConventionalVehicle> {
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
+        // only positive power can come from powertrain.  Revisit this if engine braking model is needed.
+        let pwr_out_req = pwr_out_req.max(uc::W * 0.0);
         let enabled = true; // TODO: replace with a stop/start model
         self.fc.solve(pwr_out_req, pwr_aux, enabled, dt)?;
         Ok(())
+    }
+
+    fn pwr_regen(&self) -> si::Power {
+        uc::W * 0.
     }
 }
 

@@ -192,7 +192,8 @@ impl PowertrainThrough for ElectricMachine {
     }
 }
 
-impl SerdeAPI for ElectricMachine {
+impl SerdeAPI for ElectricMachine {}
+impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
         check_interp_frac_data(&self.pwr_out_frac_interp, false)
@@ -333,6 +334,10 @@ pub struct ElectricMachineState {
     /// Integral of [Self::pwr_loss]
     pub energy_loss: si::Energy,
 }
+
+impl Init for ElectricMachineState {}
+impl SerdeAPI for ElectricMachineState {}
+
 impl ElectricMachineState {
     pub fn new() -> Self {
         Self {

@@ -14,9 +14,7 @@ pub(crate) use crate::utils::{
     Extrapolate, DIRECT_SET_ERR,
 };
 pub(crate) use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecWrapper};
-pub(crate) use fastsim_proc_macros::{
-    pyo3_api, HistoryMethods, HistoryVec, SerdeAPI, SetCumulative,
-};
+pub(crate) use fastsim_proc_macros::{pyo3_api, HistoryMethods, HistoryVec, SetCumulative};
 
 pub(crate) use anyhow::{anyhow, bail, ensure, Context};
 pub(crate) use bincode::{deserialize, serialize};

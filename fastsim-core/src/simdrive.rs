@@ -5,7 +5,7 @@ use crate::imports::*;
 use fastsim_2::simdrive::RustSimDrive as SimDrive2;
 
 #[pyo3_api]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 /// Solver parameters
 pub struct SimParams {
     pub ach_speed_max_iter: u32,
@@ -14,6 +14,9 @@ pub struct SimParams {
     #[api(skip_get, skip_set)] // TODO: manually write out getter and setter
     pub trace_miss_tol: TraceMissTolerance,
 }
+
+impl SerdeAPI for SimParams {}
+impl Init for SimParams {}
 
 impl Default for SimParams {
     fn default() -> Self {
@@ -47,13 +50,16 @@ impl Default for SimParams {
     }
 
 )]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 pub struct SimDrive {
     #[has_state]
     pub veh: Vehicle,
     pub cyc: Cycle,
     pub sim_params: SimParams,
 }
+
+impl SerdeAPI for SimDrive {}
+impl Init for SimDrive {}
 
 impl SimDrive {
     pub fn walk(&mut self) -> anyhow::Result<()> {
@@ -305,7 +311,7 @@ impl SimDrive {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 
 pub struct TraceMissTolerance {
     tol_dist: si::Length,
@@ -313,6 +319,9 @@ pub struct TraceMissTolerance {
     tol_speed: si::Velocity,
     tol_speed_frac: si::Ratio,
 }
+
+impl SerdeAPI for TraceMissTolerance {}
+impl Init for TraceMissTolerance {}
 
 impl Default for TraceMissTolerance {
     fn default() -> Self {
@@ -328,9 +337,9 @@ impl Default for TraceMissTolerance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vehicle::vehicle::tests::mock_f2_conv_veh;
+    use crate::vehicle::vehicle::tests::*;
     #[test]
-    fn test_sim_drive() {
+    fn test_sim_drive_conv() {
         let _veh = mock_f2_conv_veh();
         let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
         let mut sd = SimDrive {

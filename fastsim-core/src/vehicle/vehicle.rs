@@ -1,7 +1,7 @@
-use super::*;
+use super::{hev::HEVControls, *};
 
 /// Possible aux load power sources
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum AuxSource {
     /// Aux load power provided by ReversibleEnergyStorage with help from FuelConverter, if present
     /// and needed
@@ -10,6 +10,9 @@ pub enum AuxSource {
     /// and needed
     FuelConverter,
 }
+
+impl SerdeAPI for AuxSource {}
+impl Init for AuxSource {}
 
 #[pyo3_api(
     #[staticmethod]
@@ -211,7 +214,8 @@ impl Mass for Vehicle {
     }
 }
 
-impl SerdeAPI for Vehicle {
+impl SerdeAPI for Vehicle {}
+impl Init for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
         let _mass = self.mass()?;
         self.calculate_wheel_radius()?;
@@ -347,6 +351,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     save_interval: Some(1),
                     history: Default::default(),
                 },
+                hev_controls: HEVControls::RESGreedy,
                 mass: None,
             };
             Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
@@ -482,32 +487,29 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: do something more sophisticated with pwr_aux
         self.state.pwr_aux = self.pwr_aux;
-        self.state.pwr_brake = -self.state.pwr_tractive.min(uc::W * 0.); // TODO: this _might_ be wrong for anything with regen capability
         self.pt_type.solve(
-            self.state.pwr_tractive.max(uc::W * 0.0), // TODO: this will be wrong for anything with regen capability
+            self.state.pwr_tractive,
             self.pwr_aux,
-            true, // this should always be true at the powertrain level
+            true, // `enabled` should always be true at the powertrain level
             dt,
         )?;
+        // TODO: this is wrong for anything with regen capability
+        self.state.pwr_brake = -self.state.pwr_tractive.max(uc::W * 0.) - self.pt_type.pwr_regen();
         Ok(())
     }
 
     pub fn set_cur_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        (self.state.pwr_tract_pos_max, self.state.pwr_tract_neg_max) = self.get_pwr_out_max(dt)?;
-        Ok(())
-    }
-
-    pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<(si::Power, si::Power)> {
         // TODO: when a fancier model for `pwr_aux` is implemented, put it here
         // TODO: make transmission field in vehicle and make it be able to produce an efficiency
+        // TODO: account for traction limits here
 
         let (pwr_out_pos_max, pwr_out_neg_max) =
             self.pt_type.get_cur_pwr_tract_out_max(self.pwr_aux, dt)?;
 
-        Ok((
-            pwr_out_pos_max * self.trans_eff,
-            pwr_out_neg_max * self.trans_eff,
-        ))
+        self.state.pwr_tract_pos_max = pwr_out_pos_max * self.trans_eff;
+        self.state.pwr_tract_neg_max = pwr_out_neg_max * self.trans_eff;
+
+        Ok(())
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
@@ -821,14 +823,12 @@ pub struct VehicleState {
     pub dist: si::Length,
 }
 
+impl SerdeAPI for VehicleState {}
+impl Init for VehicleState {}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    #[test]
-    fn test_load_f2_fusion() {
-        _ = mock_f2_conv_veh();
-    }
-
     pub(crate) fn mock_f2_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -849,9 +849,28 @@ pub(crate) mod tests {
         veh
     }
 
+    pub(crate) fn mock_f2_hev() -> Vehicle {
+        let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
+        use fastsim_2::traits::SerdeAPI;
+        let veh = {
+            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap();
+            let veh = Vehicle::try_from(f2veh);
+            veh.unwrap()
+        };
+
+        // uncomment this if the fastsim-3 version needs to be rewritten
+        veh.to_file(
+            project_root::get_project_root()
+                .unwrap()
+                .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
+        )
+        .unwrap();
+        #[allow(clippy::let_and_return)]
+        veh
+    }
     /// tests that vehicle can be initialized and that repeating has no net effect
     #[test]
-    pub(crate) fn test_veh_init() {
+    pub(crate) fn test_conv_veh_init() {
         let veh = mock_f2_conv_veh();
         let mut veh1 = veh.clone();
         assert!(veh == veh1);
@@ -860,8 +879,21 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_to_fastsim2() {
+    fn test_to_fastsim2_conv() {
         let veh = mock_f2_conv_veh();
+        let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
+        let sd = crate::simdrive::SimDrive {
+            veh,
+            cyc,
+            sim_params: Default::default(),
+        };
+        let mut sd2 = sd.to_fastsim2().unwrap();
+        sd2.sim_drive(None, None).unwrap();
+    }
+
+    #[test]
+    fn test_to_fastsim2_hev() {
+        let veh = mock_f2_hev();
         let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,

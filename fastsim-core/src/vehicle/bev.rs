@@ -1,7 +1,7 @@
 use super::*;
 // use crate::imports::*;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, HistoryMethods)]
 /// Battery electric vehicle
 pub struct BatteryElectricVehicle {
     #[has_state]
@@ -10,6 +10,9 @@ pub struct BatteryElectricVehicle {
     pub em: ElectricMachine,
     pub(crate) mass: Option<si::Mass>,
 }
+
+impl SerdeAPI for BatteryElectricVehicle {}
+impl Init for BatteryElectricVehicle {}
 
 impl Mass for BatteryElectricVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
@@ -142,5 +145,12 @@ impl Powertrain for BatteryElectricVehicle {
         // self.em.set_pwr_rate_out_max(
         //     (self.em.state.pwr_mech_out_max - self.em.state.pwr_mech_prop_out) / dt,
         // );
+    }
+
+    fn pwr_regen(&self) -> si::Power {
+        // When `pwr_mech_prop_out` is negative, regen is happening.  First, clip it at 0, and then negate it.
+        // see https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e8f7af5a6e436dd1163fa3c70931d18d
+        // for example
+        -self.em.state.pwr_mech_prop_out.min(0. * uc::W)
     }
 }

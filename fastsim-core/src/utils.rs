@@ -104,7 +104,7 @@ pub fn interp3d(
     Ok(c)
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, SerdeAPI)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub enum Extrapolate {
     /// allow extrapolation
     Yes,
@@ -114,6 +114,9 @@ pub enum Extrapolate {
     /// return an error on attempted extrapolation
     Error,
 }
+
+impl SerdeAPI for Extrapolate {}
+impl Init for Extrapolate {}
 
 /// interpolation algorithm from <http://www.cplusplus.com/forum/general/216928/>
 /// # Arguments:
@@ -251,30 +254,38 @@ make_uom_cmp_fn!(almost_ge);
 make_uom_cmp_fn!(almost_le);
 
 #[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq, SerdeAPI)]
+#[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Pyo3VecBoolWrapper(pub Vec<bool>);
+impl SerdeAPI for Pyo3VecBoolWrapper {}
+impl Init for Pyo3VecBoolWrapper {}
 
 #[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, SerdeAPI)]
+#[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3VecWrapper(pub Vec<f64>);
+impl SerdeAPI for Pyo3VecWrapper {}
+impl Init for Pyo3VecWrapper {}
 
 #[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, SerdeAPI)]
+#[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3Vec2Wrapper(pub Vec<Vec<f64>>);
 impl From<Vec<Vec<f64>>> for Pyo3Vec2Wrapper {
     fn from(v: Vec<Vec<f64>>) -> Self {
         Pyo3Vec2Wrapper::new(v)
     }
 }
+impl SerdeAPI for Pyo3Vec2Wrapper {}
+impl Init for Pyo3Vec2Wrapper {}
 
 #[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, SerdeAPI)]
+#[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3Vec3Wrapper(pub Vec<Vec<Vec<f64>>>);
 impl From<Vec<Vec<Vec<f64>>>> for Pyo3Vec3Wrapper {
     fn from(v: Vec<Vec<Vec<f64>>>) -> Self {
         Pyo3Vec3Wrapper::new(v)
     }
 }
+impl SerdeAPI for Pyo3Vec3Wrapper {}
+impl Init for Pyo3Vec3Wrapper {}
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub enum Efficiency {

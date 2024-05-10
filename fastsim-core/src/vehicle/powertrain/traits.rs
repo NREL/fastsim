@@ -62,4 +62,7 @@ pub trait Powertrain {
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()>;
+
+    /// Returns regen power after `Powertrain::solve` has been called
+    fn pwr_regen(&self) -> si::Power;
 }

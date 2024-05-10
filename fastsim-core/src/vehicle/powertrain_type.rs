@@ -1,12 +1,15 @@
 use super::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum PowertrainType {
     ConventionalVehicle(Box<ConventionalVehicle>),
     HybridElectricVehicle(Box<HybridElectricVehicle>),
     BatteryElectricVehicle(Box<BatteryElectricVehicle>),
     // TODO: add PHEV here
 }
+
+impl SerdeAPI for PowertrainType {}
+impl Init for PowertrainType {}
 
 impl Powertrain for PowertrainType {
     fn get_cur_pwr_tract_out_max(
@@ -32,6 +35,14 @@ impl Powertrain for PowertrainType {
             Self::ConventionalVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
             Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
             Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
+        }
+    }
+
+    fn pwr_regen(&self) -> si::Power {
+        match self {
+            Self::ConventionalVehicle(v) => v.pwr_regen(),
+            Self::HybridElectricVehicle(v) => v.pwr_regen(),
+            Self::BatteryElectricVehicle(v) => v.pwr_regen(),
         }
     }
 }

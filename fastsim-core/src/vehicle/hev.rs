@@ -59,6 +59,13 @@ impl Powertrain for Box<HybridElectricVehicle> {
         // self.fs.solve()
         Ok(())
     }
+
+    fn pwr_regen(&self) -> si::Power {
+        // When `pwr_mech_prop_out` is negative, regen is happening.  First, clip it at 0, and then negate it.
+        // see https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e8f7af5a6e436dd1163fa3c70931d18d
+        // for example
+        -self.em.state.pwr_mech_prop_out.min(0. * uc::W)
+    }
 }
 
 impl Mass for HybridElectricVehicle {
@@ -180,7 +187,8 @@ impl HEVControls {
                     todo!()
                 }
                 Self::RESGreedy => {
-                    todo!()
+                    let res_pwr = res_state.pwr_regen_max.min(-pwr_out_req);
+                    Ok((0. * uc::W, res_pwr))
                 }
             }
         }
