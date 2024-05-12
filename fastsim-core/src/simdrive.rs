@@ -2,7 +2,6 @@ use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
 use crate::air_properties as air;
 use crate::imports::*;
-use fastsim_2::simdrive::RustSimDrive as SimDrive2;
 
 #[pyo3_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
@@ -45,7 +44,7 @@ impl Default for SimParams {
     }
 
     #[pyo3(name = "to_fastsim2")]
-    fn to_fastsim2_py(&self) -> anyhow::Result<SimDrive2> {
+    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
         self.to_fastsim2()
     }
 
@@ -59,7 +58,14 @@ pub struct SimDrive {
 }
 
 impl SerdeAPI for SimDrive {}
-impl Init for SimDrive {}
+impl Init for SimDrive {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.veh.init()?;
+        self.cyc.init()?;
+        self.sim_params.init()?;
+        Ok(())
+    }
+}
 
 impl SimDrive {
     pub fn walk(&mut self) -> anyhow::Result<()> {
@@ -304,10 +310,10 @@ impl SimDrive {
         Ok(())
     }
 
-    pub fn to_fastsim2(&self) -> anyhow::Result<SimDrive2> {
+    pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
         let veh2 = self.veh.to_fastsim2()?;
         let cyc2 = self.cyc.to_fastsim2()?;
-        Ok(SimDrive2::new(cyc2, veh2))
+        Ok(fastsim_2::simdrive::RustSimDrive::new(cyc2, veh2))
     }
 }
 

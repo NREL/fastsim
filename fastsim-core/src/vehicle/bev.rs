@@ -12,7 +12,13 @@ pub struct BatteryElectricVehicle {
 }
 
 impl SerdeAPI for BatteryElectricVehicle {}
-impl Init for BatteryElectricVehicle {}
+impl Init for BatteryElectricVehicle {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.res.init()?;
+        self.em.init()?;
+        Ok(())
+    }
+}
 
 impl Mass for BatteryElectricVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {

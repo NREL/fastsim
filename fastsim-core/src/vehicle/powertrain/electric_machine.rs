@@ -199,6 +199,7 @@ impl Init for ElectricMachine {
         check_interp_frac_data(&self.pwr_out_frac_interp, false)
             .with_context(|| format!(
                 "To allow for possible asymmetry, `ElectricMachine::pwr_out_frac_interp` must range from [-1..1]."))?;
+        self.state.init()?;
         Ok(())
     }
 }

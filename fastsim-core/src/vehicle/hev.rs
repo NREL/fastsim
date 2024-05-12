@@ -33,6 +33,15 @@ impl SaveInterval for HybridElectricVehicle {
     }
 }
 
+impl Init for HybridElectricVehicle {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.fc.init()?;
+        self.res.init()?;
+        self.em.init()?;
+        Ok(())
+    }
+}
+
 impl Powertrain for Box<HybridElectricVehicle> {
     fn get_cur_pwr_tract_out_max(
         &mut self,

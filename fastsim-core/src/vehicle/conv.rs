@@ -12,7 +12,13 @@ pub struct ConventionalVehicle {
 }
 
 impl SerdeAPI for ConventionalVehicle {}
-impl Init for ConventionalVehicle {}
+impl Init for ConventionalVehicle {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.fc.init()?;
+        self.fs.init()?;
+        Ok(())
+    }
+}
 
 impl SaveInterval for ConventionalVehicle {
     fn save_interval(&self) -> anyhow::Result<Option<usize>> {

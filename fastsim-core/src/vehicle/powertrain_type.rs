@@ -9,7 +9,15 @@ pub enum PowertrainType {
 }
 
 impl SerdeAPI for PowertrainType {}
-impl Init for PowertrainType {}
+impl Init for PowertrainType {
+    fn init(&mut self) -> anyhow::Result<()> {
+        match self {
+            Self::ConventionalVehicle(conv) => conv.init(),
+            Self::HybridElectricVehicle(hev) => hev.init(),
+            Self::BatteryElectricVehicle(bev) => bev.init(),
+        }
+    }
+}
 
 impl Powertrain for PowertrainType {
     fn get_cur_pwr_tract_out_max(

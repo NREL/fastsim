@@ -505,6 +505,7 @@ impl SerdeAPI for ReversibleEnergyStorage {}
 impl Init for ReversibleEnergyStorage {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
+        self.state.init()?;
         Ok(())
     }
 }

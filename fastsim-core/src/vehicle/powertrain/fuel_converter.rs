@@ -100,6 +100,7 @@ impl SerdeAPI for FuelConverter {}
 impl Init for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
+        self.state.init()?;
         Ok(())
     }
 }

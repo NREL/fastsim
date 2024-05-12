@@ -22,7 +22,8 @@ pub trait Linspace {
 impl Linspace for Vec<f64> {}
 
 pub trait Init {
-    /// Specialized code to execute upon initialization
+    /// Specialized code to execute upon initialization.  For any struct with fields
+    /// implement `Init`, this should propagate down the hierarchy.
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
     }

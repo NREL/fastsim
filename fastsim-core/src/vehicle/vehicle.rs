@@ -219,6 +219,7 @@ impl Init for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
         let _mass = self.mass()?;
         self.calculate_wheel_radius()?;
+        self.pt_type.init()?;
         Ok(())
     }
 }
