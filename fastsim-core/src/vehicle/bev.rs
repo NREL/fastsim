@@ -124,8 +124,6 @@ impl Powertrain for BatteryElectricVehicle {
             // negative traction (should this be different from positive traction here?)
             self.res.solve(
                 self.em.state.pwr_elec_prop_in,
-                // limit aux power to whatever is actually available
-                // TODO: add more detail/nuance to this
                 pwr_aux
                     // whatever power is available from regen plus normal
                     .min(self.res.state.pwr_prop_max - self.em.state.pwr_elec_prop_in)

@@ -1,5 +1,5 @@
 //! Convenience module for exposing commonly used structs
-// TODO: consider exposing more structs and other stuff here
+// NOTE: consider exposing more structs and other stuff here
 
 pub use crate::air_properties::get_rho_air;
 pub use crate::drive_cycle::{Cycle, CycleElement};

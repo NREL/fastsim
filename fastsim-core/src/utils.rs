@@ -58,7 +58,7 @@ fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
 }
 
 /// Trilinear interpolation over a structured grid;
-/// TODO: this could be generalized to compute a linear interpolation in N dimensions
+/// NOTE: this could be generalized to compute a linear interpolation in N dimensions
 /// NOTE: this function assumes the each axis on the grid is sorted and that there
 /// are no repeating values on each axis
 pub fn interp3d(
@@ -298,7 +298,7 @@ pub enum Efficiency {
         grid: Vec<Vec<f64>>,
         /// An *N*-dimensional [`ndarray::ArrayD`] containing the values at given grid coordinates
         values: ArrayD<f64>,
-        // TODO: maybe figure out a way to provide labels for x-data, y-data, ...
+        // NOTE: maybe should figure out a way to provide labels for x-data, y-data, ...
     },
 }
 
