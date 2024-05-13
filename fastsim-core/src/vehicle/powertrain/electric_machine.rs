@@ -5,6 +5,7 @@ use super::*;
 #[allow(unused_imports)]
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
+use crate::utils::abs_fixed_x_val;
 
 #[pyo3_api(
     // #[new]
@@ -96,18 +97,18 @@ pub struct ElectricMachine {
 impl PowertrainThrough for ElectricMachine {
     fn get_cur_pwr_tract_out_max(
         &mut self,
-        pwr_in_pos_max: si::Power,
-        pwr_in_neg_max: si::Power,
+        pwr_in_fwd_max: si::Power,
+        pwr_in_bwd_max: si::Power,
         pwr_aux: si::Power,
         _dt: si::Time,
     ) -> anyhow::Result<(si::Power, si::Power)> {
         ensure!(
-            pwr_in_pos_max >= uc::W * 0.,
+            pwr_in_fwd_max >= uc::W * 0.,
             "`pwr_in_pos_max` must be greater than or equal to zero for `{}`",
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
         ensure!(
-            pwr_in_neg_max >= uc::W * 0.,
+            pwr_in_bwd_max >= uc::W * 0.,
             "`pwr_in_neg_max` must be greater than or equal to zero for `{}`",
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
@@ -122,22 +123,32 @@ impl PowertrainThrough for ElectricMachine {
         }
         let eff_pos = uc::R
             * interp1d(
-                &(pwr_in_pos_max / self.pwr_out_max).get::<si::ratio>(),
+                &abs_fixed_x_val(
+                    (pwr_in_fwd_max / self.pwr_out_max).get::<si::ratio>(),
+                    &self.pwr_in_frac_interp,
+                )?,
                 &self.pwr_in_frac_interp,
                 &self.eff_interp,
                 Extrapolate::Error,
             )?;
+        // TODO: scrutinize this variable assignment
         let eff_neg = uc::R
             * interp1d(
-                &(pwr_in_neg_max / self.pwr_out_max).get::<si::ratio>(),
+                &abs_fixed_x_val(
+                    (pwr_in_bwd_max / self.pwr_out_max).get::<si::ratio>(),
+                    &self.pwr_in_frac_interp,
+                )?,
                 &self.pwr_in_frac_interp,
                 &self.eff_interp,
                 Extrapolate::Error,
             )?;
 
-        self.state.pwr_mech_out_max = self.pwr_out_max.min(pwr_in_pos_max * eff_pos);
-        self.state.pwr_mech_regen_max = self.pwr_out_max.min(pwr_in_pos_max * eff_neg);
-        Ok((self.state.pwr_mech_out_max, self.state.pwr_mech_regen_max))
+        self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
+        self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max * eff_neg);
+        Ok((
+            self.state.pwr_mech_fwd_out_max,
+            self.state.pwr_mech_bwd_out_max,
+        ))
     }
 
     fn get_pwr_in_req(
@@ -146,6 +157,7 @@ impl PowertrainThrough for ElectricMachine {
         _pwr_aux: si::Power,
         _dt: si::Time,
     ) -> anyhow::Result<si::Power> {
+        //TODO: update this function to use `pwr_mech_regen_out_max`
         ensure!(
             pwr_out_req <= self.pwr_out_max,
             format!(
@@ -168,7 +180,7 @@ impl PowertrainThrough for ElectricMachine {
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
-        self.state.pwr_mech_prop_out = pwr_out_req.max(-self.state.pwr_mech_regen_max);
+        self.state.pwr_mech_prop_out = pwr_out_req.max(-self.state.pwr_mech_bwd_out_max);
 
         self.state.pwr_mech_dyn_brake = -(pwr_out_req - self.state.pwr_mech_prop_out);
         ensure!(
@@ -192,14 +204,24 @@ impl PowertrainThrough for ElectricMachine {
     }
 }
 
+use fastsim_2::params::{
+    LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF, SMALL_MOTOR_POWER_KW,
+};
+
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
-        check_interp_frac_data(&self.pwr_out_frac_interp, false)
+        let _ = check_interp_frac_data(&self.pwr_out_frac_interp, InterpRange::Either)
             .with_context(|| format!(
-                "To allow for possible asymmetry, `ElectricMachine::pwr_out_frac_interp` must range from [-1..1]."))?;
+                "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1]."))?;
         self.state.init()?;
+        // TODO: make use of `use fastsim_2::params::{LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF,SMALL_MOTOR_POWER_KW};`
+        // to set
+        // if let None = self.pwr_out_frac_interp {
+        //     self.pwr_out_frac_interp =
+        // }
+        // TODO: verify that `pwr_in_frac_interp` is set somewhere and if it is, maybe move it to here???
         Ok(())
     }
 }
@@ -301,9 +323,9 @@ pub struct ElectricMachineState {
     pub eff: si::Ratio,
     // Component limits
     /// Maximum possible positive traction power.
-    pub pwr_mech_out_max: si::Power,
+    pub pwr_mech_fwd_out_max: si::Power,
     /// Maximum possible regeneration power going to ReversibleEnergyStorage.
-    pub pwr_mech_regen_max: si::Power,
+    pub pwr_mech_bwd_out_max: si::Power,
     /// max ramp-up rate
     pub pwr_rate_out_max: si::PowerRate,
 

@@ -357,4 +357,17 @@ mod tests {
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
     }
+    #[test]
+    fn test_sim_drive_hev() {
+        let _veh = mock_f2_hev();
+        let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
+        let mut sd = SimDrive {
+            veh: _veh,
+            cyc: _cyc,
+            sim_params: Default::default(),
+        };
+        sd.walk().unwrap();
+        assert!(sd.veh.state.i == sd.cyc.len());
+        assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
+    }
 }

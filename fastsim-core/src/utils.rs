@@ -169,6 +169,19 @@ pub fn interp1d(
     }
 }
 
+/// Returns absolute value of `x_val`
+pub fn abs_fixed_x_val(x_val: f64, x_data: &[f64]) -> anyhow::Result<f64> {
+    if *x_data
+        .first()
+        .with_context(|| anyhow!("{}\nExpected `first` to return `Some`.", format_dbg!()))?
+        == 0.
+    {
+        Ok(x_val.abs())
+    } else {
+        Ok(x_val)
+    }
+}
+
 /// Returns true if `val1` and `val2` are within a relative/absolute `epsilon` of each other,
 /// depending on magnitude.
 pub fn almost_eq(val1: f64, val2: f64, epsilon: Option<f64>) -> bool {
@@ -581,31 +594,64 @@ pub fn get_index_permutations(shape: &[usize]) -> Vec<Vec<usize>> {
         .collect()
 }
 
+pub(crate) enum InterpRange {
+    ZeroThroughOne,
+    NegativeOneThroughOne,
+    Either,
+}
+
 /// Ensures that passed data is between 0 and 1 and monotonically increasing.  
 /// # Arguments:
 /// - `data`: data used for interpolating efficiency from fraction of peak power
-/// - `geq_zero`: if true, data ranges from 0 to 1, inclusive; otherwise, data
-/// ranges from -1 to 1, inclusive
-pub fn check_interp_frac_data(data: &[f64], geq_zero: bool) -> anyhow::Result<()> {
+/// - `interp_range`: allowed range
+pub(crate) fn check_interp_frac_data(
+    data: &[f64],
+    interp_range: InterpRange,
+) -> anyhow::Result<InterpRange> {
     check_monotonicity(data)?;
-    let max = data.iter().fold(f64::NEG_INFINITY, |prev, x| x.max(prev));
-    let min = data.iter().fold(f64::INFINITY, |prev, x| x.min(prev));
-    if geq_zero {
-        ensure!(
-            min == 0. && max == 1.,
-            "data min ({}) and max ({}) must be zero and one, respectively.",
-            min,
-            max
-        );
-    } else {
-        ensure!(
-            min == -1. && max == 1.,
-            "data min ({}) and max ({}) must be zero and one, respectively.",
-            min,
-            max
-        );
+    let min = data.first().with_context(|| {
+        anyhow!(
+            "{}\nProblem extracting first element of `data`",
+            format_dbg!()
+        )
+    })?;
+    let max = data.last().with_context(|| {
+        anyhow!(
+            "{}\nProblem extracting first element of `data`",
+            format_dbg!()
+        )
+    })?;
+    match interp_range {
+        InterpRange::ZeroThroughOne => {
+            ensure!(
+                *min == 0. && *max == 1.,
+                "data min ({}) and max ({}) must be zero and one, respectively.",
+                min,
+                max
+            );
+        }
+        InterpRange::NegativeOneThroughOne => {
+            ensure!(
+                *min == -1. && *max == 1.,
+                "data min ({}) and max ({}) must be zero and one, respectively.",
+                min,
+                max
+            );
+        }
+        InterpRange::Either => {
+            ensure!(
+                (*min == -1. || *min == 0.) && *max == 1.,
+                "data min ({}) and max ({}) must be zero or negative one and one, respectively.",
+                min,
+                max
+            );
+        }
     }
-    Ok(())
+    if *min == 0. && *max == 1. {
+        Ok(InterpRange::ZeroThroughOne)
+    } else {
+        Ok(InterpRange::NegativeOneThroughOne)
+    }
 }
 
 /// Verifies that passed `data` is monotonically increasing.

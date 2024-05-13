@@ -101,6 +101,8 @@ impl Init for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass()?;
         self.state.init()?;
+        // TODO: set the engine map here based on efficiency type, which should allow for
+        // `None` and `Other<String>` variants
         Ok(())
     }
 }

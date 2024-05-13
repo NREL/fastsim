@@ -343,7 +343,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                 },
                 em: ElectricMachine {
                     state: Default::default(),
-                    pwr_out_frac_interp: f2veh.mc_kw_out_array.to_vec(),
+                    pwr_out_frac_interp: f2veh.mc_pwr_out_perc.to_vec(),
                     eff_interp: f2veh.mc_eff_array.to_vec(),
                     pwr_in_frac_interp: Default::default(),
                     pwr_out_max: f2veh.mc_max_kw * uc::KW,

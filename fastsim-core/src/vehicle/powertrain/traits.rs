@@ -9,16 +9,18 @@ pub trait PowertrainThrough {
     /// this component/system can produce, accounting for any aux-related power
     /// required.
     /// # Arguments
-    /// - `pwr_in_pos_max`: positive-traction-related power available to this
-    /// component
-    /// - `pwr_in_neg_max`: negative-traction-related power available to this
-    /// component
+    /// - `pwr_in_fwd_max`: positive-traction-related power available to this
+    /// component. Positive values indicate that the upstream component can supply
+    /// positive tractive power.
+    /// - `pwr_in_bwd_max`: backward-traction-related power available to this
+    /// component. Zero means no power can be sent to upstream compnents and positive
+    /// values indicate upstream components can absorb energy.
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: time step size
     fn get_cur_pwr_tract_out_max(
         &mut self,
-        pwr_in_pos_max: si::Power,
-        pwr_in_neg_max: si::Power,
+        pwr_in_fwd_max: si::Power,
+        pwr_in_bwd_max: si::Power,
         pwr_aux: si::Power,
         dt: si::Time,
     ) -> anyhow::Result<(si::Power, si::Power)>;
