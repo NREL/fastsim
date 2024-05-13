@@ -36,7 +36,6 @@ pub struct Chassis {
     pub wheel_radius: Option<si::Length>,
     /// Tire code (optional method of calculating wheel radius)
     #[serde(default)]
-    #[api(skip_get, skip_set)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tire_code: Option<String>,
     /// Vehicle center of mass height
