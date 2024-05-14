@@ -162,7 +162,7 @@ impl SerdeAPI for AdjCoef {}
 impl Default for RustLongParams {
     fn default() -> Self {
         let long_params_str = include_str!("../resources/longparams.json");
-        let long_params = Self::from_json(long_params_str).unwrap();
+        let long_params = Self::from_json(long_params_str, false).unwrap();
         long_params
     }
 }

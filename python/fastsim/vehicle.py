@@ -859,7 +859,7 @@ def copy_vehicle(veh: Vehicle, return_type: str = None, deep: bool = True) -> Di
         veh_dict = {key: to_native_type(veh_dict[key]) for key in veh_dict if key not in [
             "large_baseline_eff", "small_baseline_eff"]}
         veh_yaml = yaml.dump(veh_dict)
-        v = RustVehicle.from_yaml(veh_yaml)
+        v = RustVehicle.from_yaml(veh_yaml, skip_init=True)
         v.scenario_name = veh.scenario_name
         v.selection = veh.selection
         v.veh_year = veh.veh_year

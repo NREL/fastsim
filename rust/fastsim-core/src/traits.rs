@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use ureq;
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
-    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "toml"];
     const RESOURCE_PREFIX: &'static str = "";
     const CACHE_FOLDER: &'static str = "";
 
@@ -28,7 +28,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         let file = crate::resources::RESOURCES_DIR
             .get_file(&filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
-        Self::from_reader(file.contents(), extension)
+        Self::from_reader(file.contents(), extension, skip_init)
     }
 
     /// Write (serialize) an object to a file.
@@ -48,10 +48,14 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         self.to_writer(File::create(filepath)?, extension)
     }
 
-    fn to_writer<W: std::io::Write>(&self, wtr: W, format: &str) -> anyhow::Result<()> {
+    fn to_writer<W: std::io::Write>(&self, mut wtr: W, format: &str) -> anyhow::Result<()> {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
             "json" => serde_json::to_writer(wtr, self)?,
+            "toml" => {
+                let toml_string = self.to_toml()?;
+                wtr.write_all(toml_string.as_bytes())?;
+            },
             #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(wtr, self)?,
             _ => bail!(
@@ -69,7 +73,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `filepath`: The filepath from which to read the object
     ///
-    fn from_file<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
+    fn from_file<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
         let extension = filepath
             .extension()
@@ -82,7 +86,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 format!("Could not open file: {filepath:?}")
             }
         })?;
-        Self::from_reader(file, extension)
+        Self::from_reader(file, extension, skip_init)
     }
 
     /// Write (serialize) an object into a string
@@ -95,6 +99,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => self.to_yaml(),
             "json" => self.to_json(),
+            "toml" => self.to_toml(),
             _ => bail!(
                 "Unsupported format {format:?}, must be one of {:?}",
                 Self::ACCEPTED_STR_FORMATS
@@ -109,11 +114,12 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `contents` - The string containing the object data
     /// * `format` - The source format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
     ///
-    fn from_str<S: AsRef<str>>(contents: S, format: &str) -> anyhow::Result<Self> {
+    fn from_str<S: AsRef<str>>(contents: S, format: &str, skip_init: bool) -> anyhow::Result<Self> {
         Ok(
             match format.trim_start_matches('.').to_lowercase().as_str() {
-                "yaml" | "yml" => Self::from_yaml(contents)?,
-                "json" => Self::from_json(contents)?,
+                "yaml" | "yml" => Self::from_yaml(contents, skip_init)?,
+                "json" => Self::from_json(contents, skip_init)?,
+                "toml" => Self::from_toml(contents, skip_init)?,
                 _ => bail!(
                     "Unsupported format {format:?}, must be one of {:?}",
                     Self::ACCEPTED_STR_FORMATS
@@ -129,10 +135,15 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `rdr` - The reader from which to read object data
     /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
     ///
-    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
+    fn from_reader<R: std::io::Read>(mut rdr: R, format: &str, skip_init: bool) -> anyhow::Result<Self> {
         let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
+            "toml" => {
+                let mut buf = String::new();
+                rdr.read_to_string(&mut buf)?;
+                Self::from_toml(buf, skip_init)?
+            },
             #[cfg(feature = "bincode")]
             "bin" => bincode::deserialize_from(rdr)?,
             _ => bail!(
@@ -140,7 +151,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 Self::ACCEPTED_BYTE_FORMATS
             ),
         };
-        deserialized.init()?;
+        if !skip_init {
+            deserialized.init()?;
+        }
         Ok(deserialized)
     }
 
@@ -155,9 +168,11 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `json_str` - JSON-formatted string to deserialize from
     ///
-    fn from_json<S: AsRef<str>>(json_str: S) -> anyhow::Result<Self> {
+    fn from_json<S: AsRef<str>>(json_str: S, skip_init: bool) -> anyhow::Result<Self> {
         let mut json_de: Self = serde_json::from_str(json_str.as_ref())?;
-        json_de.init()?;
+        if !skip_init {
+            json_de.init()?;
+        }
         Ok(json_de)
     }
 
@@ -172,10 +187,24 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `yaml_str` - YAML-formatted string to deserialize from
     ///
-    fn from_yaml<S: AsRef<str>>(yaml_str: S) -> anyhow::Result<Self> {
+    fn from_yaml<S: AsRef<str>>(yaml_str: S, skip_init: bool) -> anyhow::Result<Self> {
         let mut yaml_de: Self = serde_yaml::from_str(yaml_str.as_ref())?;
-        yaml_de.init()?;
+        if !skip_init {
+            yaml_de.init()?;
+        }
         Ok(yaml_de)
+    }
+
+    fn to_toml(&self) -> anyhow::Result<String> {
+        Ok(toml::to_string(&self)?)
+    }
+
+    fn from_toml<S: AsRef<str>>(toml_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        let mut toml_de: Self = toml::from_str(toml_str.as_ref())?;
+        if !skip_init {
+            toml_de.init()?;
+        }
+        Ok(toml_de)
     }
 
     /// Write (serialize) an object to bincode-encoded bytes
@@ -191,9 +220,11 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `encoded` - Encoded bytes to deserialize from
     ///
     #[cfg(feature = "bincode")]
-    fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
+    fn from_bincode(encoded: &[u8], skip_init: bool) -> anyhow::Result<Self> {
         let mut bincode_de: Self = bincode::deserialize(encoded)?;
-        bincode_de.init()?;
+        if !skip_init {
+            bincode_de.init()?;
+        }
         Ok(bincode_de)
     }
 
@@ -202,7 +233,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// - url: URL (either as a string or url type) to object  
     /// Note: The URL needs to be a URL pointing directly to a file, for example
     /// a raw github URL.
-    fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
+    fn from_url<S: AsRef<str>>(url: S, skip_init: bool) -> anyhow::Result<Self> {
         let url = url::Url::parse(url.as_ref())?;
         let format = url
             .path_segments()
@@ -211,7 +242,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .and_then(OsStr::to_str)
             .with_context(|| "Could not parse file format from URL: {url:?}")?;
         let response = ureq::get(url.as_ref()).call()?.into_reader();
-        Self::from_reader(response, format)
+        Self::from_reader(response, format, skip_init)
     }
 
     /// Takes an instantiated Rust object and saves it in the FASTSim data directory in
@@ -269,10 +300,10 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// use the utils::path_to_cache() to find the FASTSim data directory
     /// location if needed.
     #[cfg(feature = "default")]
-    fn from_cache<P: AsRef<Path>>(file_path: P) -> anyhow::Result<Self> {
+    fn from_cache<P: AsRef<Path>>(file_path: P, skip_init: bool) -> anyhow::Result<Self> {
         let full_file_path = Path::new(Self::CACHE_FOLDER).join(file_path);
         let path_including_directory = path_to_cache()?.join(full_file_path);
-        Self::from_file(path_including_directory)
+        Self::from_file(path_including_directory, skip_init)
     }
 }
 
