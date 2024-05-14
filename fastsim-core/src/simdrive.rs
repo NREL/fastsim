@@ -332,6 +332,7 @@ impl Init for TraceMissTolerance {}
 impl Default for TraceMissTolerance {
     fn default() -> Self {
         Self {
+            // TODO: update these values
             tol_dist: 666. * uc::M,
             tol_dist_frac: 666. * uc::R,
             tol_speed: 666. * uc::MPS,
