@@ -19,7 +19,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// * `filepath` - Filepath, relative to the top of the `resources` folder (excluding any relevant prefix), from which to read the object
     #[cfg(feature = "resources")]
-    fn from_resource<P: AsRef<Path>>(filepath: P) -> anyhow::Result<Self> {
+    fn from_resource<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
         let filepath = Path::new(Self::RESOURCE_PREFIX).join(filepath);
         let extension = filepath
             .extension()
