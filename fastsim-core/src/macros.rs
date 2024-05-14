@@ -88,9 +88,9 @@ macro_rules! impl_get_set_eff_range {
     };
 }
 
-/// Given pairs of arbitrary keys and values, prints "key: value" to python intepreter.  
-/// Given str, prints str.  
-/// Using this will break `cargo test` but work with `maturin develop`.  
+/// Given pairs of arbitrary keys and values, prints "key: value" to python intepreter.
+/// Given str, prints str.
+/// Using this will break `cargo test` but work with `maturin develop`.
 #[macro_export]
 macro_rules! print_to_py {
     ( $( $x:expr, $y:expr ),* ) => {
@@ -157,27 +157,6 @@ macro_rules! eff_test_body {
 }
 
 #[macro_export]
-macro_rules! make_assert_cmp_fn {
-    ($name:ident) => {
-        paste! {
-            pub fn [<assert_ $name>]<D, U>(
-                val1: f64,
-                val2: f64,
-                epsilon: Option<f64>,
-            ) {
-                assert!($name(val1, val2, epsilon),
-                    "
-                    assert_{} failed.
-                    LHS: {val1:?}
-                    RHS: {val2:?}",
-                    std::stringify!($name)
-                );
-            }
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! make_uom_cmp_fn {
     ($name:ident) => {
         paste! {
@@ -193,40 +172,6 @@ macro_rules! make_uom_cmp_fn {
                 $name(val1.value, val2.value, epsilon)
             }
         }
-    };
-}
-
-#[macro_export]
-macro_rules! make_assert_uom_cmp_fn {
-    ($name:ident) => {
-        paste! {
-            pub fn [<assert_ $name _uom>]<D, U>(
-                val1: &uom::si::Quantity<D, U, f64>,
-                val2: &uom::si::Quantity<D, U, f64>,
-                epsilon: Option<f64>,
-            )
-            where
-                D: uom::si::Dimension + ?Sized,
-                U: uom::si::Units<f64> + ?Sized,
-            {
-                assert!($name(val1.value, val2.value, epsilon),
-                    "
-                    assert_{}_uom failed.
-                    LHS: {val1:?}
-                    RHS: {val2:?}",
-                    std::stringify!($name)
-                );
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! make_cmp_fns {
-    ($name:ident) => {
-        make_assert_cmp_fn!($name);
-        make_uom_cmp_fn!($name);
-        make_assert_uom_cmp_fn!($name);
     };
 }
 

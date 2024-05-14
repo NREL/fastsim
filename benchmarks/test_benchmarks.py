@@ -2,6 +2,9 @@ import subprocess
 import os
 from pathlib import Path
 import pytest
+import sys
+
+PYTHON_EXE = Path(sys.executable)
 
 def script_paths():
     script_paths = list(Path(__file__).parent.glob("*.py"))
@@ -15,7 +18,7 @@ def script_paths():
 def test_demo(script_path: Path):
     os.environ['SHOW_PLOTS'] = "false"
     rslt = subprocess.run(
-        ["python", script_path],
+        [str(PYTHON_EXE), script_path],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True

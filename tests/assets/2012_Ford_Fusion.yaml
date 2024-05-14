@@ -7,11 +7,9 @@ pt_type:
       pwr_out_max: 1000000.0
       pwr_ramp_lag: 1.0
       energy_capacity: 2124000000.0
-      specific_energy: 43200000.0
-      mass: 49.166666666666664
     fc:
-      mass: 277.6595744680851
-      specific_pwr: 470.0
+      mass: ~
+      specific_pwr: ~
       pwr_out_max_watts: 130500.0
       pwr_out_max_init: 21750.0
       pwr_ramp_lag_seconds: 6.0
@@ -43,22 +41,21 @@ pt_type:
         - 0.3
       pwr_idle_fuel_watts: 6999.999999999999
       save_interval: 1
+    mass: ~
     alt_eff: 1.0
-drag_coef: 0.393
-frontal_area: 2.12
-wheel_rr_coef: 0.007
-wheel_inertia: 0.82
-num_wheels: 4
-wheel_radius: 0.326
-cg_height: 0.53
-wheel_fric_coef: 0.7
-drive_type: FWD
-drive_axle_weight_frac: 0.59
-wheel_base: 2.72
-mass: 277.6595744680851
-glider_mass: 791.0702892
-cargo_mass: 136.0
-comp_mass_multiplier: 1.4
+chassis:
+  drag_coef: 0.393
+  frontal_area: 2.12
+  wheel_rr_coef: 0.007
+  wheel_inertia: 0.82
+  num_wheels: 4
+  wheel_radius: 0.326
+  cg_height: 0.53
+  wheel_fric_coef: 0.7
+  drive_type: FWD
+  drive_axle_weight_frac: 0.59
+  wheel_base: 2.72
+mass: 1644.2724500334996
 pwr_aux: 700.0
 trans_eff: 0.875
 save_interval: 1

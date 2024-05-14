@@ -108,15 +108,15 @@ pub fn interp3d(
 pub enum Extrapolate {
     /// allow extrapolation
     Yes,
-    /// don't allow extropalaiton but return result from nearest x-data point
+    /// don't allow extrapolation but return result from nearest x-data point
     #[default]
     No,
-    /// return an error on extrapolation
+    /// return an error on attempted extrapolation
     Error,
 }
 
 /// interpolation algorithm from <http://www.cplusplus.com/forum/general/216928/>
-/// Arguments:
+/// # Arguments:
 /// x : value at which to interpolate
 pub fn interp1d(
     x: &f64,
@@ -244,11 +244,11 @@ pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
     Ok(radius_mm / 1000.0)
 }
 
-make_cmp_fns!(almost_eq);
-make_cmp_fns!(almost_gt);
-make_cmp_fns!(almost_lt);
-make_cmp_fns!(almost_ge);
-make_cmp_fns!(almost_le);
+make_uom_cmp_fn!(almost_eq);
+make_uom_cmp_fn!(almost_gt);
+make_uom_cmp_fn!(almost_lt);
+make_uom_cmp_fn!(almost_ge);
+make_uom_cmp_fn!(almost_le);
 
 #[pyo3_api]
 #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq, SerdeAPI)]
@@ -568,6 +568,42 @@ pub fn get_index_permutations(shape: &[usize]) -> Vec<Vec<usize>> {
         .map(|&len| 0..len)
         .multi_cartesian_product()
         .collect()
+}
+
+/// Ensures that passed data is between 0 and 1 and monotonically increasing.  
+/// # Arguments:
+/// - `data`: data used for interpolating efficiency from fraction of peak power
+/// - `geq_zero`: if true, data ranges from 0 to 1, inclusive; otherwise, data
+/// ranges from -1 to 1, inclusive
+pub fn check_interp_frac_data(data: &[f64], geq_zero: bool) -> anyhow::Result<()> {
+    check_monotonicity(data)?;
+    let max = data.iter().fold(f64::NEG_INFINITY, |prev, x| x.max(prev));
+    let min = data.iter().fold(f64::INFINITY, |prev, x| x.min(prev));
+    if geq_zero {
+        ensure!(
+            min == 0. && max == 1.,
+            "data min ({}) and max ({}) must be zero and one, respectively.",
+            min,
+            max
+        );
+    } else {
+        ensure!(
+            min == -1. && max == 1.,
+            "data min ({}) and max ({}) must be zero and one, respectively.",
+            min,
+            max
+        );
+    }
+    Ok(())
+}
+
+/// Verifies that passed `data` is monotonically increasing.
+pub fn check_monotonicity(data: &[f64]) -> anyhow::Result<()> {
+    ensure!(
+        data.windows(2).all(|w| w[0] < w[1]),
+        format_dbg!("{}\n`data` must be monotonically increasing")
+    );
+    Ok(())
 }
 
 #[cfg(test)]

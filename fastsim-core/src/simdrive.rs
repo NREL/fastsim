@@ -75,7 +75,7 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
-        self.veh.set_cur_pwr_max_out(dt)?;
+        self.veh.set_cur_pwr_out_max(dt)?;
         self.set_req_pwr(self.cyc.speed[i], dt)?;
         self.set_ach_speed(dt)?;
         self.veh.solve_powertrain(dt)?;
@@ -88,37 +88,51 @@ impl SimDrive {
     /// - `speed`: prescribed or achieved speed
     /// - `dt`: time step size
     pub fn set_req_pwr(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
-        // unwrap on `self.mass` is ok because any method of creating the vehicle should
-        // automatically called `SerdeAPI::init`, which will ensure mass is some
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
-        let grade = &self.cyc.grade[i];
-        let mass = self.veh.mass.ok_or_else(|| {
-            anyhow!(
+        let grade = interp1d(
+            &vs.dist.get::<si::meter>(),
+            &self
+                .cyc
+                .dist
+                .iter()
+                .map(|d| d.get::<si::meter>())
+                .collect::<Vec<f64>>(),
+            &self
+                .cyc
+                .grade
+                .iter()
+                .map(|g| g.get::<si::ratio>())
+                .collect::<Vec<f64>>(),
+            utils::Extrapolate::Error,
+        )?;
+
+        let mass = self.veh.mass.with_context(|| {
+            format!(
                 "{}\nVehicle mass should have been set already.",
                 format_dbg!()
             )
         })?;
         vs.pwr_accel = mass / (2.0 * dt)
             * (speed.powi(typenum::P2::new()) - speed_prev.powi(typenum::P2::new()));
-        vs.pwr_ascent = uc::ACC_GRAV * (*grade) * mass * (speed_prev + speed) / 2.0;
+        vs.pwr_ascent = uc::ACC_GRAV * grade * mass * (speed_prev + speed) / 2.0;
         vs.pwr_drag = 0.5
             * air::get_rho_air(None, None)
-            * self.veh.drag_coef
-            * self.veh.frontal_area
+            * self.veh.chassis.drag_coef
+            * self.veh.chassis.frontal_area
             * ((speed + speed_prev) / 2.0).powi(typenum::P3::new());
         vs.pwr_rr = mass
             * uc::ACC_GRAV
-            * self.veh.wheel_rr_coef
+            * self.veh.chassis.wheel_rr_coef
             * grade.atan().cos()
             * (speed_prev + speed)
             / 2.;
         vs.pwr_whl_inertia = 0.5
-            * self.veh.wheel_inertia
-            * self.veh.num_wheels as f64
-            * ((speed / self.veh.wheel_radius.unwrap()).powi(typenum::P2::new())
-                - (speed_prev / self.veh.wheel_radius.unwrap()).powi(typenum::P2::new()))
+            * self.veh.chassis.wheel_inertia
+            * self.veh.chassis.num_wheels as f64
+            * ((speed / self.veh.chassis.wheel_radius.unwrap()).powi(typenum::P2::new())
+                - (speed_prev / self.veh.chassis.wheel_radius.unwrap()).powi(typenum::P2::new()))
             / self.cyc.dt_at_i(i)?;
 
         vs.pwr_tractive =
@@ -132,14 +146,14 @@ impl SimDrive {
     /// - `dt`: time step size
     pub fn set_ach_speed(&mut self, dt: si::Time) -> anyhow::Result<()> {
         let vs = &mut self.veh.state;
-        vs.cyc_met = vs.pwr_tractive_max >= vs.pwr_tractive;
+        vs.cyc_met = vs.pwr_tract_pos_max >= vs.pwr_tractive;
         if vs.cyc_met {
             vs.speed_ach = self.cyc.speed[vs.i]
         } else {
             // assignments to allow for brevity
             let rho_air = air::get_rho_air(None, None);
-            let mass = self.veh.mass.ok_or_else(|| {
-                anyhow!("{}\nMass should have been set before now", format_dbg!())
+            let mass = self.veh.mass.with_context(|| {
+                format!("{}\nMass should have been set before now", format_dbg!())
             })?;
             let speed_prev = vs.speed_ach;
             // Question: should this be grade at end of time step or start?
@@ -162,43 +176,60 @@ impl SimDrive {
             )?;
 
             // actual calucations
-            let drag3 = 1.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area;
+            let drag3 =
+                1.0 / 16.0 * rho_air * self.veh.chassis.drag_coef * self.veh.chassis.frontal_area;
             let accel2 = 0.5 * mass / dt;
-            let drag2 =
-                3.0 / 16.0 * rho_air * self.veh.drag_coef * self.veh.frontal_area * speed_prev;
-            let wheel2 = 0.5 * self.veh.wheel_inertia * self.veh.num_wheels as f64
-                / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
+            let drag2 = 3.0 / 16.0
+                * rho_air
+                * self.veh.chassis.drag_coef
+                * self.veh.chassis.frontal_area
+                * speed_prev;
+            let wheel2 = 0.5 * self.veh.chassis.wheel_inertia * self.veh.chassis.num_wheels as f64
+                / (dt
+                    * self
+                        .veh
+                        .chassis
+                        .wheel_radius
+                        .unwrap()
+                        .powi(typenum::P2::new()));
             let drag1 = 3.0 / 16.0
                 * rho_air
-                * self.veh.drag_coef
-                * self.veh.frontal_area
+                * self.veh.chassis.drag_coef
+                * self.veh.chassis.frontal_area
                 * speed_prev.powi(typenum::P2::new());
-            let roll1 = 0.5 * mass * uc::ACC_GRAV * self.veh.wheel_rr_coef * grade.atan().cos();
+            let roll1 =
+                0.5 * mass * uc::ACC_GRAV * self.veh.chassis.wheel_rr_coef * grade.atan().cos();
             let ascent1 = 0.5 * uc::ACC_GRAV * grade.atan().sin() * mass;
             let accel0 = -0.5 * mass * speed_prev.powi(typenum::P2::new()) / dt;
             let drag0 = 1.0 / 16.0
                 * rho_air
-                * self.veh.drag_coef
-                * self.veh.frontal_area
+                * self.veh.chassis.drag_coef
+                * self.veh.chassis.frontal_area
                 * speed_prev.powi(typenum::P3::new());
             let roll0 = 0.5
                 * mass
                 * uc::ACC_GRAV
-                * self.veh.wheel_rr_coef
+                * self.veh.chassis.wheel_rr_coef
                 * grade.atan().cos()
                 * speed_prev;
             let ascent0 = 0.5 * uc::ACC_GRAV * grade.atan().sin() * mass * speed_prev;
             let wheel0 = -0.5
-                * self.veh.wheel_inertia
-                * self.veh.num_wheels as f64
+                * self.veh.chassis.wheel_inertia
+                * self.veh.chassis.num_wheels as f64
                 * speed_prev.powi(typenum::P2::new())
-                / (dt * self.veh.wheel_radius.unwrap().powi(typenum::P2::new()));
+                / (dt
+                    * self
+                        .veh
+                        .chassis
+                        .wheel_radius
+                        .unwrap()
+                        .powi(typenum::P2::new()));
 
             let t3 = drag3;
             let t2 = accel2 + drag2 + wheel2;
             let t1 = drag1 + roll1 + ascent1;
             // TODO: verify that final term should be `self.veh.state.pwr_out_max`.  Needs to be same as `self.cur_max_trans_kw_out[i]`
-            let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - self.veh.state.pwr_tractive_max;
+            let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - self.veh.state.pwr_tract_pos_max;
 
             // initial guess
             let speed_guess = (1. * uc::MPS).max(self.veh.state.speed_ach);
@@ -227,15 +258,12 @@ impl SimDrive {
             let mut spd_ach_iter_counter = 1;
             let mut converged = false;
             while spd_ach_iter_counter < max_iter && !converged {
-                let speed_guess = *speed_guesses
-                    .iter()
-                    .last()
-                    .ok_or(anyhow!("{}", format_dbg!()))?
+                let speed_guess = *speed_guesses.iter().last().with_context(|| format_dbg!())?
                     * (1.0 - g)
                     - g * *new_speed_guesses
                         .iter()
                         .last()
-                        .ok_or(anyhow!("{}", format_dbg!()))?
+                        .with_context(|| format_dbg!())?
                         / d_pwr_err_per_d_speed_guesses[speed_guesses.len() - 1];
                 let pwr_err = pwr_err_fn(speed_guess);
                 let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
@@ -244,10 +272,7 @@ impl SimDrive {
                 pwr_errs.push(pwr_err);
                 d_pwr_err_per_d_speed_guesses.push(pwr_err_per_speed_guess);
                 new_speed_guesses.push(new_speed_guess);
-                converged = ((*speed_guesses
-                    .iter()
-                    .last()
-                    .ok_or(anyhow!("{}", format_dbg!()))?
+                converged = ((*speed_guesses.iter().last().with_context(|| format_dbg!())?
                     - speed_guesses[speed_guesses.len() - 2])
                     / speed_guesses[speed_guesses.len() - 2])
                     .abs()
@@ -260,10 +285,8 @@ impl SimDrive {
             self.veh.state.speed_ach = speed_guesses[pwr_errs
                 .iter()
                 .position(|&x| x == pwr_errs.iter().fold(uc::W * f64::NAN, |acc, &x| acc.min(x)))
-                .ok_or_else(|| {
-                    anyhow!(format_dbg!(pwr_errs
-                        .iter()
-                        .fold(uc::W * f64::NAN, |acc, &x| acc.min(x))))
+                .with_context(|| {
+                    format_dbg!(pwr_errs.iter().fold(uc::W * f64::NAN, |acc, &x| acc.min(x)))
                 })?]
             .max(0.0 * uc::MPS);
         }
@@ -301,7 +324,7 @@ impl Default for TraceMissTolerance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vehicle::vehicle_model::tests::mock_f2_conv_veh;
+    use crate::vehicle::vehicle::tests::mock_f2_conv_veh;
     #[test]
     fn test_sim_drive() {
         let _veh = mock_f2_conv_veh();

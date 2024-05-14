@@ -1,6 +1,7 @@
 use crate::imports::*;
 use crate::utilities::TokenStreamIterator;
 
+#[allow(unused)]
 pub(crate) fn cycle_derive(input: TokenStream) -> TokenStream {
     let item_struct = syn::parse_macro_input!(input as syn::ItemStruct);
     let original_name = &item_struct.ident;

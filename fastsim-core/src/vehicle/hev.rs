@@ -10,7 +10,8 @@ pub struct HybridElectricVehicle {
     #[has_state]
     pub fc: FuelConverter,
     #[has_state]
-    pub e_machine: ElectricMachine,
+    pub em: ElectricMachine,
+    pub(crate) mass: Option<si::Mass>,
     // TODO: add enum for controling fraction of aux pwr handled by battery vs engine
     // TODO: add enum for controling fraction of tractive pwr handled by battery vs engine -- there
     // might be many ways we'd want to do this, especially since there will be thermal models involved
@@ -22,29 +23,113 @@ impl SaveInterval for HybridElectricVehicle {
     }
     fn set_save_interval(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
         self.res.save_interval = save_interval;
-        self.e_machine.save_interval = save_interval;
+        self.em.save_interval = save_interval;
         Ok(())
     }
 }
 
-impl SerdeAPI for HybridElectricVehicle {}
-
 impl Powertrain for Box<HybridElectricVehicle> {
-    fn get_curr_pwr_out_max(
+    fn get_cur_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
-        todo!();
+    ) -> anyhow::Result<(si::Power, si::Power)> {
+        let (pwr_res_tract_max, pwr_res_regen_max) =
+            self.res.get_cur_pwr_out_max(pwr_aux, None, None)?;
+        self.em
+            .get_cur_pwr_tract_out_max(pwr_res_tract_max, pwr_res_regen_max, pwr_aux, dt)
     }
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
         enabled: bool,
-        _dt: si::Time,
-        assert_limits: bool,
+        dt: si::Time,
     ) -> anyhow::Result<()> {
-        todo!()
+        // TODO: replace with actual logic.  Should probably have vehicle controls enum in `HybridElectricVehicle`
+        let (fc_pwr_out_req, em_pwr_out_req) = (0.5 * pwr_out_req, 0.5 * pwr_out_req);
+
+        let enabled = true; // TODO: replace with a stop/start model
+        self.fc.solve(fc_pwr_out_req, pwr_aux, enabled, dt)?;
+        // self.fs.solve()
+        Ok(())
+    }
+}
+
+impl Mass for HybridElectricVehicle {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        let derived_mass = self.derived_mass()?;
+        match (derived_mass, self.mass) {
+            (Some(derived_mass), Some(set_mass)) => {
+                ensure!(
+                    utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                    format!(
+                        "{}",
+                        format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                    )
+                );
+                Ok(Some(set_mass))
+            }
+            _ => Ok(self.mass.or(derived_mass)),
+        }
+    }
+
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
+        ensure!(
+            side_effect == MassSideEffect::None,
+            "At the powertrain level, only `MassSideEffect::None` is allowed"
+        );
+        let derived_mass = self.derived_mass()?;
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            Some(new_mass) => {
+                if let Some(dm) = derived_mass {
+                    if dm != new_mass {
+                        log::warn!(
+                            "Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`",
+                            stringify!(HybridElectricVehicle));
+                        self.expunge_mass_fields();
+                    }
+                }
+                Some(new_mass)
+            }
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(HybridElectricVehicle)
+                )
+            })?),
+        };
+        Ok(())
+    }
+
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        let fc_mass = self.fc.mass()?;
+        let fs_mass = self.fs.mass()?;
+        let res_mass = self.res.mass()?;
+        let em_mass = self.em.mass()?;
+        match (fc_mass, fs_mass, res_mass, em_mass) {
+            (Some(fc_mass), Some(fs_mass), Some(res_mass), Some(em_mass)) => {
+                Ok(Some(fc_mass + fs_mass + em_mass + res_mass))
+            }
+            (None, None, None, None) => Ok(None),
+            _ => bail!(
+                "`{}` field masses are not consistently set to `Some` or `None`",
+                stringify!(HybridElectricVehicle)
+            ),
+        }
+    }
+
+    fn expunge_mass_fields(&mut self) {
+        self.fc.expunge_mass_fields();
+        self.fs.expunge_mass_fields();
+        self.res.expunge_mass_fields();
+        self.em.expunge_mass_fields();
+        self.mass = None;
     }
 }

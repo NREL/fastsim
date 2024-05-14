@@ -9,15 +9,15 @@ pub enum PowertrainType {
 }
 
 impl Powertrain for PowertrainType {
-    fn get_curr_pwr_out_max(
+    fn get_cur_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
+    ) -> anyhow::Result<(si::Power, si::Power)> {
         match self {
-            Self::ConventionalVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
-            Self::HybridElectricVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
-            Self::BatteryElectricVehicle(v) => v.get_curr_pwr_out_max(pwr_aux, dt),
+            Self::ConventionalVehicle(v) => v.get_cur_pwr_tract_out_max(pwr_aux, dt),
+            Self::HybridElectricVehicle(v) => v.get_cur_pwr_tract_out_max(pwr_aux, dt),
+            Self::BatteryElectricVehicle(v) => v.get_cur_pwr_tract_out_max(pwr_aux, dt),
         }
     }
 
@@ -27,18 +27,11 @@ impl Powertrain for PowertrainType {
         pwr_aux: si::Power,
         enabled: bool,
         dt: si::Time,
-        assert_limits: bool,
     ) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => {
-                v.solve(pwr_out_req, pwr_aux, enabled, dt, assert_limits)
-            }
-            Self::HybridElectricVehicle(v) => {
-                v.solve(pwr_out_req, pwr_aux, enabled, dt, assert_limits)
-            }
-            Self::BatteryElectricVehicle(v) => {
-                v.solve(pwr_out_req, pwr_aux, enabled, dt, assert_limits)
-            }
+            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
+            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
+            Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
         }
     }
 }
@@ -153,33 +146,33 @@ impl PowertrainType {
         }
     }
 
-    pub fn e_machine(&self) -> Option<&ElectricMachine> {
+    pub fn em(&self) -> Option<&ElectricMachine> {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => None,
-            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.e_machine),
-            PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.e_machine),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&hev.em),
+            PowertrainType::BatteryElectricVehicle(bev) => Some(&bev.em),
         }
     }
 
-    pub fn e_machine_mut(&mut self) -> Option<&mut ElectricMachine> {
+    pub fn em_mut(&mut self) -> Option<&mut ElectricMachine> {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => None,
-            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.e_machine),
-            PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.e_machine),
+            PowertrainType::HybridElectricVehicle(hev) => Some(&mut hev.em),
+            PowertrainType::BatteryElectricVehicle(bev) => Some(&mut bev.em),
         }
     }
 
-    pub fn set_e_machine(&mut self, e_machine: ElectricMachine) -> anyhow::Result<()> {
+    pub fn set_em(&mut self, em: ElectricMachine) -> anyhow::Result<()> {
         match self {
             PowertrainType::ConventionalVehicle(_conv) => {
-                Err(anyhow!("ConventionalVehicle has no `e_machine`"))
+                Err(anyhow!("ConventionalVehicle has no `ElectricMachine`"))
             }
             PowertrainType::HybridElectricVehicle(hev) => {
-                hev.e_machine = e_machine;
+                hev.em = em;
                 Ok(())
             }
             PowertrainType::BatteryElectricVehicle(bev) => {
-                bev.e_machine = e_machine;
+                bev.em = em;
                 Ok(())
             }
         }

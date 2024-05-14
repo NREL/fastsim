@@ -1,5 +1,3 @@
-use self::utils::Efficiency;
-
 use super::*;
 
 /// Possible aux load power sources
@@ -13,21 +11,11 @@ pub enum AuxSource {
     FuelConverter,
 }
 
-/// Possible drive wheel configurations
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
-pub enum DriveTypes {
-    /// Rear-wheel drive
-    RWD,
-    /// Front-wheel drive
-    FWD,
-    /// All-wheel drive
-    AWD,
-    /// 4-wheel drive
-    FourWD,
-}
-
 #[pyo3_api(
-    // TODO: expose `try_from` method so python users can load fastsim-2 vehicles
+    #[staticmethod]
+    fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
+        Ok(Self::try_from(veh.clone())?)
+    }
 
     // despite having `setter` here, this seems to work as a function
     #[setter("save_interval")]
@@ -71,17 +59,17 @@ pub enum DriveTypes {
     //     self.set_reversible_energy_storage(res).map_err(|e| PyAttributeError::new_err(e.to_string()))
     // }
     // #[getter]
-    // fn get_e_machine(&self) -> ElectricMachine {
-    //     self.e_machine().clone()
+    // fn get_em(&self) -> ElectricMachine {
+    //     self.em().clone()
     // }
 
     // #[setter]
-    // fn set_e_machine_py(&mut self, _e_machine: ElectricMachine) -> PyResult<()> {
+    // fn set_em_py(&mut self, _em: ElectricMachine) -> PyResult<()> {
     //     Err(PyAttributeError::new_err(DIRECT_SET_ERR))
     // }
-    // #[setter(__e_machine)]
-    // fn set_e_machine_hidden(&mut self, e_machine: ElectricMachine) -> PyResult<()> {
-    //     self.set_e_machine(e_machine).map_err(|e| PyAttributeError::new_err(e.to_string()))
+    // #[setter(__em)]
+    // fn set_em_hidden(&mut self, em: ElectricMachine) -> PyResult<()> {
+    //     self.set_em(em).map_err(|e| PyAttributeError::new_err(e.to_string()))
     // }
 
     // fn veh_type(&self) -> PyResult<String> {
@@ -109,133 +97,124 @@ pub struct Vehicle {
     #[api(skip_get, skip_set)]
     /// type of vehicle powertrain including contained type-specific parameters and variables
     pub pt_type: PowertrainType,
-    /// Aerodynamic drag coefficient
-    pub drag_coef: si::Ratio,
-    /// Projected frontal area for drag calculations
-    pub frontal_area: si::Area,
-    /// Wheel rolling resistance coefficient for the vehicle (i.e. all wheels included)
-    pub wheel_rr_coef: si::Ratio,
-    /// Wheel inertia per wheel
-    pub wheel_inertia: si::MomentOfInertia,
-    /// Number of wheels
-    pub num_wheels: u8,
-    /// Wheel radius
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[api(skip_get, skip_set)]
-    pub wheel_radius: Option<si::Length>,
-    /// Tire code (optional method of calculating wheel radius)
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[api(skip_get, skip_set)]
-    pub tire_code: Option<String>,
-    /// Vehicle center of mass height
-    pub cg_height: si::Length,
-    /// Wheel coefficient of friction
-    pub wheel_fric_coef: si::Ratio,
-    #[api(skip_get, skip_set)]
-    /// TODO: make getters and setters for this.
-    /// Drive wheel configuration
-    pub drive_type: DriveTypes,
-    /// Fraction of vehicle weight on drive action when stationary
-    pub drive_axle_weight_frac: si::Ratio,
-    /// Wheel base length
-    pub wheel_base: si::Length,
+
+    /// Chassis model with various chassis-related parameters
+    pub chassis: Chassis,
+
     /// Total vehicle mass
     // TODO: make sure setter and getter get written
     #[api(skip_get, skip_set)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(in super::super) mass: Option<si::Mass>,
-    /// Vehicle mass excluding cargo, passengers, and powertrain components
-    // TODO: make sure setter and getter get written
-    #[api(skip_get, skip_set)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    glider_mass: Option<si::Mass>,
-    /// Cargo mass including passengers
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[api(skip_get, skip_set)]
-    pub cargo_mass: Option<si::Mass>,
-    // `veh_override_kg` in fastsim-2 is getting deprecated in fastsim-3
-    /// Component mass multiplier for vehicle mass calculation
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[api(skip_get, skip_set)]
-    pub comp_mass_multiplier: Option<si::Ratio>,
+    pub(crate) mass: Option<si::Mass>,
 
-    /// power required by auxilliary systems (e.g. HVAC, stereo)
+    /// power required by auxilliary systems (e.g. HVAC, stereo)  
+    /// TODO: make this an enum to allow for future variations
     pub pwr_aux: si::Power,
 
     /// transmission efficiency
     // TODO: make `transmission::{Transmission, TransmissionState}` and
-    // `Transmission` should have field `efficency: Efficiency`.  
+    // `Transmission` should have field `efficency: Efficiency`.
     pub trans_eff: si::Ratio,
 
-    /// current state of vehicle
-    #[serde(default)]
-    #[serde(skip_serializing_if = "IsDefault::is_default")]
-    pub state: VehicleState,
     /// time step interval at which `state` is saved into `history`
     #[api(skip_set, skip_get)]
     #[serde(skip_serializing_if = "Option::is_none")]
     save_interval: Option<usize>,
+    /// current state of vehicle
+    #[serde(default)]
+    #[serde(skip_serializing_if = "IsDefault::is_default")]
+    pub state: VehicleState,
     /// Vector-like history of [Self::state]
     #[serde(default)]
     #[serde(skip_serializing_if = "VehicleStateHistoryVec::is_empty")]
     pub history: VehicleStateHistoryVec,
 }
 
-impl SerdeAPI for Vehicle {
-    fn init(&mut self) -> anyhow::Result<()> {
-        self.check_mass_consistent()?;
-        self.set_mass(None)?;
-        self.calculate_wheel_radius()?;
+impl Mass for Vehicle {
+    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        let derived_mass = self.derived_mass()?;
+        match (derived_mass, self.mass) {
+            (Some(derived_mass), Some(set_mass)) => {
+                ensure!(
+                    utils::almost_eq_uom(&set_mass, &derived_mass, None),
+                    format!(
+                        "{}",
+                        format_dbg!(utils::almost_eq_uom(&set_mass, &derived_mass, None)),
+                    )
+                );
+                Ok(Some(set_mass))
+            }
+            (None, None) => bail!(
+                "Not all mass fields in `{}` are set and no mass was previously set.",
+                stringify!(Vehicle)
+            ),
+            _ => Ok(self.mass.or(derived_mass)),
+        }
+    }
+
+    fn set_mass(
+        &mut self,
+        new_mass: Option<si::Mass>,
+        side_effect: MassSideEffect,
+    ) -> anyhow::Result<()> {
+        ensure!(
+            side_effect == MassSideEffect::None,
+            "At the vehicle level, only `MassSideEffect::None` is allowed"
+        );
+
+        let derived_mass = self.derived_mass()?;
+        self.mass = match new_mass {
+            // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
+            Some(new_mass) => {
+                if let Some(dm) = derived_mass {
+                    if dm != new_mass {
+                        log::warn!(
+                            "Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`",
+                            stringify!(Vehicle));
+                        self.expunge_mass_fields();
+                    }
+                }
+                Some(new_mass)
+            }
+            // Set using `derived_mass()`, failing if it returns `None`
+            None => Some(derived_mass.with_context(|| {
+                format!(
+                    "Not all mass fields in `{}` are set and no mass was provided.",
+                    stringify!(Vehicle)
+                )
+            })?),
+        };
         Ok(())
+    }
+
+    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
+        let chassis_mass = self.chassis.mass()?;
+        let pt_mass = match &self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => conv.mass()?,
+            PowertrainType::HybridElectricVehicle(hev) => hev.mass()?,
+            PowertrainType::BatteryElectricVehicle(bev) => bev.mass()?,
+        };
+        if let (Some(pt_mass), Some(chassis_mass)) = (pt_mass, chassis_mass) {
+            Ok(Some(pt_mass + chassis_mass))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn expunge_mass_fields(&mut self) {
+        self.chassis.expunge_mass_fields();
+        match &mut self.pt_type {
+            PowertrainType::ConventionalVehicle(conv) => conv.expunge_mass_fields(),
+            PowertrainType::HybridElectricVehicle(hev) => hev.expunge_mass_fields(),
+            PowertrainType::BatteryElectricVehicle(bev) => bev.expunge_mass_fields(),
+        };
     }
 }
 
-impl Mass for Vehicle {
-    // TODO: make the Option go away and throw error if None is returned
-    fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        self.check_mass_consistent()?;
-        let mass = match self.mass {
-            Some(mass) => Some(mass),
-            None => self.derived_mass()?,
-        };
-        Ok(mass)
-    }
-
-    fn set_mass(&mut self, mass: Option<si::Mass>) -> anyhow::Result<()> {
-        match mass {
-            Some(mass) => {
-                // set component masses to None if they aren't consistent
-                self.mass = Some(mass);
-                if self.check_mass_consistent().is_err() {
-                    self.fc_mut().map(|fc| fc.set_mass(None));
-                    self.res_mut().map(|res| res.set_mass(None));
-                }
-            }
-            None => {
-                self.mass = Some(
-                    self.derived_mass()?
-                        .ok_or_else(|| anyhow!("`mass` must be provided or set."))?,
-                )
-            }
-        }
-        Ok(())
-    }
-
-    fn check_mass_consistent(&self) -> anyhow::Result<()> {
-        if let (Some(mass_deriv), Some(mass_set)) = (self.derived_mass()?, self.mass) {
-            ensure!(
-                utils::almost_eq_uom(&mass_set, &mass_deriv, None),
-                format!(
-                    "{}\n{}",
-                    format_dbg!(utils::almost_eq_uom(&mass_set, &mass_deriv, None)),
-                    "Try running `set_mass` method."
-                )
-            )
-        }
-
+impl SerdeAPI for Vehicle {
+    fn init(&mut self) -> anyhow::Result<()> {
+        let _mass = self.mass()?;
+        self.calculate_wheel_radius()?;
         Ok(())
     }
 }
@@ -257,105 +236,152 @@ const HEV: &str = "HEV";
 const PHEV: &str = "PHEV";
 const BEV: &str = "BEV";
 
-/// Returns fastsim-3 vehicle given fastsim-2 vehicle
-///
-/// # Arguments
-/// * `f2veh` - fastsim-2 vehicle
-fn get_pt_type_from_fsim2_veh(
-    f2veh: &fastsim_2::vehicle::RustVehicle,
-) -> anyhow::Result<PowertrainType> {
-    if f2veh.veh_pt_type == CONV {
-        let conv = ConventionalVehicle {
-            fs: {
-                let mut fs = FuelStorage {
-                    pwr_out_max: f2veh.fs_max_kw * uc::KW,
-                    pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
-                    energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
-                    specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
-                    mass: None,
-                };
-                fs.set_mass(None)?;
-                fs
-            },
-            fc: {
-                let mut fc = FuelConverter {
+impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
+    type Error = anyhow::Error;
+    /// Returns fastsim-3 vehicle given fastsim-2 vehicle
+    ///
+    /// # Arguments
+    /// * `f2veh` - fastsim-2 vehicle
+    fn try_from(f2veh: &fastsim_2::vehicle::RustVehicle) -> anyhow::Result<PowertrainType> {
+        if f2veh.veh_pt_type == CONV {
+            let conv = ConventionalVehicle {
+                fs: {
+                    let mut fs = FuelStorage {
+                        pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                        pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                        energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
+                        specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
+                        mass: None,
+                    };
+                    fs.set_mass(None, MassSideEffect::None)?;
+                    fs
+                },
+                fc: {
+                    let mut fc = FuelConverter {
+                        state: Default::default(),
+                        mass: None,
+                        specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
+                        pwr_out_max: f2veh.fc_max_kw * uc::KW,
+                        // assumes 1 s time step
+                        pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
+                        pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
+                        pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
+                        eff_interp: f2veh.fc_eff_map.to_vec(),
+                        // TODO: verify this
+                        pwr_idle_fuel: f2veh.aux_kw
+                            / f2veh
+                                .fc_eff_map
+                                .to_vec()
+                                .first()
+                                .with_context(|| format_dbg!(f2veh.fc_eff_map))?
+                            * uc::KW,
+                        save_interval: Some(1),
+                        history: Default::default(),
+                    };
+                    fc.set_mass(None, MassSideEffect::None)?;
+                    fc
+                },
+                mass: None,
+                alt_eff: f2veh.alt_eff * uc::R,
+            };
+            Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
+        } else if f2veh.veh_pt_type == HEV {
+            let hev = HybridElectricVehicle {
+                fs: {
+                    let mut fs = FuelStorage {
+                        pwr_out_max: f2veh.fs_max_kw * uc::KW,
+                        pwr_ramp_lag: f2veh.fs_secs_to_peak_pwr * uc::S,
+                        energy_capacity: f2veh.fs_kwh * 3.6 * uc::MJ,
+                        specific_energy: None,
+                        mass: None,
+                    };
+                    fs.set_mass(None, MassSideEffect::None)?;
+                    fs
+                },
+                fc: {
+                    let mut fc = FuelConverter {
+                        state: Default::default(),
+                        mass: None,
+                        specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
+                        pwr_out_max: f2veh.fc_max_kw * uc::KW,
+                        // assumes 1 s time step
+                        pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
+                        pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
+                        pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
+                        eff_interp: f2veh.fc_eff_map.to_vec(),
+                        // TODO: verify this
+                        pwr_idle_fuel: f2veh.aux_kw
+                            / f2veh
+                                .fc_eff_map
+                                .to_vec()
+                                .first()
+                                .with_context(|| format_dbg!(f2veh.fc_eff_map))?
+                            * uc::KW,
+                        save_interval: Some(1),
+                        history: Default::default(),
+                    };
+                    fc.set_mass(None, MassSideEffect::None)?;
+                    fc
+                },
+                res: ReversibleEnergyStorage {
                     state: Default::default(),
                     mass: None,
-                    specific_pwr: Some(f2veh.fc_kw_per_kg * uc::KW / uc::KG),
-                    pwr_out_max: f2veh.fc_max_kw * uc::KW,
-                    // assumes 1 s time step
-                    pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
-                    pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                    pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
-                    eff_interp: f2veh.fc_eff_map.to_vec(),
-                    // TODO: verify this
-                    pwr_idle_fuel: f2veh.aux_kw
-                        / f2veh
-                            .fc_eff_map
-                            .to_vec()
-                            .first()
-                            .ok_or_else(|| anyhow!(format_dbg!(f2veh.fc_eff_map)))?
-                        * uc::KW,
+                    specific_energy: None,
+                    pwr_out_max: f2veh.ess_max_kw * uc::KW,
+                    energy_capacity: f2veh.ess_max_kwh * uc::KWH,
+                    min_soc: f2veh.min_soc * uc::R,
+                    max_soc: f2veh.max_soc * uc::R,
+                    soc_hi_ramp_start: None,
+                    soc_lo_ramp_start: None,
                     save_interval: Some(1),
                     history: Default::default(),
-                };
-                fc.set_mass(None)?;
-                fc
-            },
-            alt_eff: f2veh.alt_eff * uc::R,
-        };
-        Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
-    } else {
-        bail!(
-            "Invalid powertrain type: {}.
-                Expected one of {}",
-            f2veh.veh_pt_type,
-            [CONV, HEV, PHEV, BEV].join(", "),
-        )
+                },
+                em: ElectricMachine {
+                    state: Default::default(),
+                    pwr_out_frac_interp: f2veh.mc_kw_out_array.to_vec(),
+                    eff_interp: f2veh.mc_eff_array.to_vec(),
+                    pwr_in_frac_interp: Default::default(),
+                    pwr_out_max: f2veh.mc_max_kw * uc::KW,
+                    specific_pwr: None,
+                    mass: None,
+                    save_interval: Some(1),
+                    history: Default::default(),
+                },
+                mass: None,
+            };
+            Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
+        } else {
+            bail!(
+                "Invalid powertrain type: {}.
+                    Expected one of {}",
+                f2veh.veh_pt_type,
+                [CONV, HEV, PHEV, BEV].join(", "),
+            )
+        }
     }
 }
 
 impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
-    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> Result<Self, Self::Error> {
+    fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> anyhow::Result<Self> {
         let mut f2veh = f2veh.clone();
         f2veh.set_derived()?;
         let save_interval = Some(1);
-        let pt_type = get_pt_type_from_fsim2_veh(&f2veh)?;
-
-        // TODO: check this sign convention
-        let drive_type = if f2veh.veh_cg_m < 0. {
-            DriveTypes::RWD
-        } else {
-            DriveTypes::FWD
-        };
+        let pt_type = PowertrainType::try_from(&f2veh)?;
 
         let mut f3veh = Self {
-            name: f2veh.scenario_name,
+            name: f2veh.scenario_name.clone(),
             year: f2veh.veh_year,
             pt_type,
-            drag_coef: f2veh.drag_coef * uc::R,
-            frontal_area: f2veh.frontal_area_m2 * uc::M2,
-            glider_mass: Some(f2veh.glider_kg * uc::KG),
-            cg_height: f2veh.veh_cg_m * uc::M,
-            wheel_fric_coef: f2veh.wheel_coef_of_fric * uc::R,
-            drive_type,
-            drive_axle_weight_frac: f2veh.drive_axle_weight_frac * uc::R,
-            wheel_base: f2veh.wheel_base_m * uc::M,
-            wheel_inertia: f2veh.wheel_inertia_kg_m2 * uc::KGM2,
-            wheel_rr_coef: f2veh.wheel_rr_coef * uc::R,
-            num_wheels: f2veh.num_wheels as u8,
-            wheel_radius: Some(f2veh.wheel_radius_m * uc::M),
-            tire_code: None,
-            cargo_mass: Some(f2veh.cargo_kg * uc::KG),
-            comp_mass_multiplier: Some(f2veh.comp_mass_multiplier * uc::R),
+            chassis: Chassis::try_from(&f2veh)?,
             pwr_aux: f2veh.aux_kw * uc::KW,
             trans_eff: f2veh.trans_eff * uc::R,
             state: Default::default(),
             save_interval,
             history: Default::default(),
-            mass: None,
+            mass: Some(f2veh.veh_kg * uc::KG),
         };
+        f3veh.expunge_mass_fields();
         f3veh.init()?;
 
         Ok(f3veh)
@@ -371,9 +397,10 @@ impl SetCumulative for Vehicle {
         if let Some(res) = self.res_mut() {
             res.set_cumulative(dt);
         }
-        if let Some(em) = self.e_machine_mut() {
+        if let Some(em) = self.em_mut() {
             em.set_cumulative(dt);
         }
+        self.state.dist += self.state.speed_ach * dt;
     }
 }
 
@@ -426,75 +453,27 @@ impl Vehicle {
         self.pt_type.set_res(res)
     }
 
-    pub fn e_machine(&self) -> Option<&ElectricMachine> {
-        self.pt_type.e_machine()
+    pub fn em(&self) -> Option<&ElectricMachine> {
+        self.pt_type.em()
     }
 
-    pub fn e_machine_mut(&mut self) -> Option<&mut ElectricMachine> {
-        self.pt_type.e_machine_mut()
+    pub fn em_mut(&mut self) -> Option<&mut ElectricMachine> {
+        self.pt_type.em_mut()
     }
 
-    /// Calculate mass from components.
-    fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        if let Some(_glider_mass) = self.glider_mass {
-            match self.pt_type {
-                PowertrainType::ConventionalVehicle(_) => {
-                    // TODO: add the other component and vehicle level masses here
-                    if let Some(fc) = self.fc().unwrap().mass()? {
-                        Ok(Some(fc))
-                    } else {
-                        bail!(
-                            "TODO: fix this error message\n{}\n{}",
-                            "so `fc` and `gen` masses must also be specified.",
-                            format_dbg!()
-                        )
-                    }
-                }
-                PowertrainType::HybridElectricVehicle(_) => {
-                    if let (Some(fc), Some(res)) =
-                        (self.fc().unwrap().mass()?, self.res().unwrap().mass()?)
-                    {
-                        // TODO: add the other component and vehicle level masses here
-                        Ok(Some(fc + res))
-                    } else {
-                        // TODO: update error message
-                        bail!(
-                            "TODO: fix this error message\n{}\n{}",
-                            "so `fc`, `gen`, and `res` masses must also be specified.",
-                            format_dbg!()
-                        )
-                    }
-                }
-                PowertrainType::BatteryElectricVehicle(_) => {
-                    if let Some(res) = self.res().unwrap().mass()? {
-                        Ok(Some(res))
-                    } else {
-                        bail!(
-                            "TODO: fix this error message\n{}\n{}",
-                            "so `res` mass must also be specified.",
-                            format_dbg!()
-                        )
-                    }
-                }
-            }
-            // TODO: probably need more `else ... if` branches here
-        } else {
-            bail!(
-                "Both `baseline` and `ballast` masses must be either `Some` or `None`\n{}",
-                format_dbg!()
-            )
-        }
+    pub fn set_em(&mut self, em: ElectricMachine) -> anyhow::Result<()> {
+        self.pt_type.set_em(em)
     }
 
     /// Calculate wheel radius from tire code, if applicable
     fn calculate_wheel_radius(&mut self) -> anyhow::Result<()> {
         ensure!(
-            self.wheel_radius.is_some() || self.tire_code.is_some(),
+            self.chassis.wheel_radius.is_some() || self.chassis.tire_code.is_some(),
             "Either `wheel_radius` or `tire_code` must be supplied"
         );
-        if self.wheel_radius.is_none() {
-            self.wheel_radius =
-                Some(utils::tire_code_to_radius(self.tire_code.as_ref().unwrap())? * uc::M)
+        if self.chassis.wheel_radius.is_none() {
+            self.chassis.wheel_radius =
+                Some(utils::tire_code_to_radius(self.chassis.tire_code.as_ref().unwrap())? * uc::M)
         }
         Ok(())
     }
@@ -509,19 +488,26 @@ impl Vehicle {
             self.pwr_aux,
             true, // this should always be true at the powertrain level
             dt,
-            true, // TODO: parameterize and propagate this
         )?;
         Ok(())
     }
 
-    pub fn set_cur_pwr_max_out(&mut self, dt: si::Time) -> anyhow::Result<()> {
-        self.state.pwr_tractive_max = self.get_pwr_out_max(dt)?;
+    pub fn set_cur_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
+        (self.state.pwr_tract_pos_max, self.state.pwr_tract_neg_max) = self.get_pwr_out_max(dt)?;
         Ok(())
     }
 
-    pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<si::Power> {
+    pub fn get_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<(si::Power, si::Power)> {
         // TODO: when a fancier model for `pwr_aux` is implemented, put it here
-        Ok(self.pt_type.get_curr_pwr_out_max(self.pwr_aux, dt)? * self.trans_eff)
+        // TODO: make transmission field in vehicle and make it be able to produce an efficiency
+
+        let (pwr_out_pos_max, pwr_out_neg_max) =
+            self.pt_type.get_cur_pwr_tract_out_max(self.pwr_aux, dt)?;
+
+        Ok((
+            pwr_out_pos_max * self.trans_eff,
+            pwr_out_neg_max * self.trans_eff,
+        ))
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::vehicle::RustVehicle> {
@@ -533,7 +519,11 @@ impl Vehicle {
             alt_eff_doc: None,
             aux_kw: self.pwr_aux.get::<si::kilowatt>(),
             aux_kw_doc: None,
-            cargo_kg: self.cargo_mass.unwrap_or_default().get::<si::kilogram>(),
+            cargo_kg: self
+                .chassis
+                .cargo_mass
+                .unwrap_or_default()
+                .get::<si::kilogram>(),
             cargo_kg_doc: None,
             charging_on: false,
             chg_eff: 0.86, // TODO: revisit?
@@ -542,9 +532,9 @@ impl Vehicle {
             comp_mass_multiplier_doc: None,
             // TODO: replace with `doc` field once implemented in fastsim-3
             doc: None,
-            drag_coef: self.drag_coef.get::<si::ratio>(),
+            drag_coef: self.chassis.drag_coef.get::<si::ratio>(),
             drag_coef_doc: None,
-            drive_axle_weight_frac: self.drive_axle_weight_frac.get::<si::ratio>(),
+            drive_axle_weight_frac: self.chassis.drive_axle_weight_frac.get::<si::ratio>(),
             drive_axle_weight_frac_doc: None,
             ess_base_kg: 75.0, // TODO: revisit
             ess_base_kg_doc: None,
@@ -614,7 +604,7 @@ impl Vehicle {
             fc_sec_to_peak_pwr_doc: None,
             force_aux_on_fc: matches!(self.pt_type, PowertrainType::ConventionalVehicle(_)),
             force_aux_on_fc_doc: None,
-            frontal_area_m2: self.frontal_area.get::<si::square_meter>(),
+            frontal_area_m2: self.chassis.frontal_area.get::<si::square_meter>(),
             frontal_area_m2_doc: None,
             fs_kwh: self
                 .fs()
@@ -640,7 +630,11 @@ impl Vehicle {
                 .map(|fs| fs.pwr_ramp_lag.get::<si::second>())
                 .unwrap_or_default(),
             fs_secs_to_peak_pwr_doc: None,
-            glider_kg: self.glider_mass.unwrap_or_default().get::<si::kilogram>(),
+            glider_kg: self
+                .chassis
+                .glider_mass
+                .unwrap_or_default()
+                .get::<si::kilogram>(),
             glider_kg_doc: None,
             idle_fc_kw: 0.,
             idle_fc_kw_doc: None,
@@ -668,8 +662,8 @@ impl Vehicle {
             mc_full_eff_array: Default::default(), // TODO: revisit when implementing xEVs
             mc_kw_in_array: Default::default(),    // calculated in `set_derived`
             mc_kw_out_array: Default::default(),   // calculated in `set_derived`
-            mc_mass_kg: self.e_machine().map_or(anyhow::Ok(0.), |e_machine| {
-                Ok(e_machine.mass()?.unwrap_or_default().get::<si::kilogram>())
+            mc_mass_kg: self.em().map_or(anyhow::Ok(0.), |em| {
+                Ok(em.mass()?.unwrap_or_default().get::<si::kilogram>())
             })?,
             mc_max_elec_in_kw: Default::default(), // calculated in `set_derived`
             mc_max_kw: Default::default(), // placeholder, TODO: review when implementing xEVs
@@ -699,7 +693,7 @@ impl Vehicle {
             mph_fc_on_doc: None,
             no_elec_aux: false, // TODO: revisit when implemementing HEV
             no_elec_sys: false, // TODO: revisit when implemementing HEV
-            num_wheels: self.num_wheels as f64,
+            num_wheels: self.chassis.num_wheels as f64,
             num_wheels_doc: None,
             orphaned: false,
             perc_high_acc_buf: Default::default(), // TODO: revisit when implemementing HEV
@@ -734,10 +728,12 @@ impl Vehicle {
             val_unadj_hwy_kwh_per_mile: f64::NAN,
             val_unadj_udds_kwh_per_mile: f64::NAN,
             val_veh_base_cost: f64::NAN,
-            veh_cg_m: self.cg_height.get::<si::meter>()
-                * match self.drive_type {
-                    DriveTypes::FWD => 1.0,
-                    DriveTypes::RWD | DriveTypes::AWD | DriveTypes::FourWD => -1.0,
+            veh_cg_m: self.chassis.cg_height.get::<si::meter>()
+                * match self.chassis.drive_type {
+                    chassis::DriveTypes::FWD => 1.0,
+                    chassis::DriveTypes::RWD
+                    | chassis::DriveTypes::AWD
+                    | chassis::DriveTypes::FourWD => -1.0,
                 },
             veh_cg_m_doc: None,
             veh_kg: self
@@ -752,15 +748,18 @@ impl Vehicle {
                 PowertrainType::BatteryElectricVehicle(_) => "BEV".into(),
             },
             veh_year: self.year,
-            wheel_base_m: self.wheel_base.get::<si::meter>(),
+            wheel_base_m: self.chassis.wheel_base.get::<si::meter>(),
             wheel_base_m_doc: None,
-            wheel_coef_of_fric: self.wheel_fric_coef.get::<si::ratio>(),
+            wheel_coef_of_fric: self.chassis.wheel_fric_coef.get::<si::ratio>(),
             wheel_coef_of_fric_doc: None,
-            wheel_inertia_kg_m2: self.wheel_inertia.get::<si::kilogram_square_meter>(),
+            wheel_inertia_kg_m2: self
+                .chassis
+                .wheel_inertia
+                .get::<si::kilogram_square_meter>(),
             wheel_inertia_kg_m2_doc: None,
-            wheel_radius_m: self.wheel_radius.unwrap().get::<si::meter>(),
+            wheel_radius_m: self.chassis.wheel_radius.unwrap().get::<si::meter>(),
             wheel_radius_m_doc: None,
-            wheel_rr_coef: self.wheel_rr_coef.get::<si::ratio>(),
+            wheel_rr_coef: self.chassis.wheel_rr_coef.get::<si::ratio>(),
             wheel_rr_coef_doc: None,
         };
         veh.set_derived()?;
@@ -778,9 +777,11 @@ pub struct VehicleState {
     pub i: usize,
 
     // power and fields
-    /// maximum forward propulsive power vehicle can produce
-    pub pwr_tractive_max: si::Power,
+    /// maximum positive propulsive power vehicle can produce
+    pub pwr_tract_pos_max: si::Power,
     /// pwr exerted on wheels by powertrain
+    /// maximum negative propulsive power vehicle can produce
+    pub pwr_tract_neg_max: si::Power,
     pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
     pub energy_tractive: si::Energy,
@@ -831,9 +832,12 @@ pub(crate) mod tests {
     pub(crate) fn mock_f2_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
-        let veh =
-            Vehicle::try_from(fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap())
-                .unwrap();
+        let veh = {
+            let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap();
+            let veh = Vehicle::try_from(f2veh);
+            veh.unwrap()
+        };
+
         // uncomment this if the fastsim-3 version needs to be rewritten
         veh.to_file(
             project_root::get_project_root()
