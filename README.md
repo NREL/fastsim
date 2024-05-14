@@ -68,10 +68,6 @@ To see and run examples, navigate to `./python/fastsim/demos` and run the variou
 to see fastsim use cases. There are other examples in fastsim/tests.  
 
 
-## Via Cargo
-This has not been implemented yet.  
-
-
 # Contributors  
 Chad Baker -- Chad.Baker@nrel.gov  
 Aaron Brooker -- Aaron.Brooker@nrel.gov  
