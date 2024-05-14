@@ -5,7 +5,8 @@ use ureq;
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin"];
     const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "toml"];
-    const CACHE_FOLDER: &'static str = &"";
+    const RESOURCE_PREFIX: &'static str = "";
+    const CACHE_FOLDER: &'static str = "";
 
     /// Specialized code to execute upon initialization
     fn init(&mut self) -> anyhow::Result<()> {
@@ -16,16 +17,16 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     ///
     /// # Arguments:
     ///
-    /// * `filepath` - Filepath, relative to the top of the `resources` folder, from which to read the object
+    /// * `filepath` - Filepath, relative to the top of the `resources` folder (excluding any relevant prefix), from which to read the object
     #[cfg(feature = "resources")]
     fn from_resource<P: AsRef<Path>>(filepath: P, skip_init: bool) -> anyhow::Result<Self> {
-        let filepath = filepath.as_ref();
+        let filepath = Path::new(Self::RESOURCE_PREFIX).join(filepath);
         let extension = filepath
             .extension()
             .and_then(OsStr::to_str)
             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
         let file = crate::resources::RESOURCES_DIR
-            .get_file(filepath)
+            .get_file(&filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
         Self::from_reader(file.contents(), extension, skip_init)
     }

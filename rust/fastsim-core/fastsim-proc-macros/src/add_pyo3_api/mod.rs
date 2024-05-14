@@ -211,7 +211,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///
         /// # Arguments:
         ///
-        /// * `filepath`: `str | pathlib.Path` - Filepath, relative to the top of the `resources` folder, from which to read the object
+        /// * `filepath`: `str | pathlib.Path` - Filepath, relative to the top of the `resources` folder (excluding any relevant prefix), from which to read the object
         ///
         #[cfg(feature = "resources")]
         #[staticmethod]
