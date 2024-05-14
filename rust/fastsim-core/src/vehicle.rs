@@ -765,27 +765,25 @@ impl RustVehicle {
                 })
                 .collect();
         }
-        if self.modern_max == 0.0 {
-            self.modern_max = MODERN_MAX;
-        }
-
-        let modern_diff = self.modern_max - arrmax(&LARGE_BASELINE_EFF);
-        let large_baseline_eff_adj: Vec<f64> =
-            LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
-        let mc_kw_adj_perc = max(
-            0.0,
-            min(
-                (self.mc_max_kw - self.small_motor_power_kw)
-                    / (self.large_motor_power_kw - self.small_motor_power_kw),
-                1.0,
-            ),
-        );
 
         if self.mc_eff_map == Array1::<f64>::zeros(LARGE_BASELINE_EFF.len()) {
+            if self.modern_max == 0.0 {
+                self.modern_max = MODERN_MAX;
+            }
+            let modern_diff = self.modern_max - arrmax(&LARGE_BASELINE_EFF);
+            let large_baseline_eff_adj: Vec<f64> = LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
+            let mc_kw_adj_perc = max(
+                0.0,
+                min(
+                    (self.mc_max_kw - self.small_motor_power_kw)
+                        / (self.large_motor_power_kw - self.small_motor_power_kw),
+                    1.0,
+                ),
+            );
             self.mc_eff_map = large_baseline_eff_adj
                 .iter()
-                .zip(SMALL_BASELINE_EFF.iter())
-                .map(|(&x, &y)| mc_kw_adj_perc * x + (1.0 - mc_kw_adj_perc) * y)
+                .zip(SMALL_BASELINE_EFF)
+                .map(|(&x, y)| mc_kw_adj_perc * x + (1.0 - mc_kw_adj_perc) * y)
                 .collect();
         }
         self.mc_eff_array = self.mc_eff_map.clone();
@@ -1071,7 +1069,7 @@ impl RustVehicle {
             None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref(),
         };
         let mut vehicle =
-            Self::from_url(&url_internal).with_context(|| "Could not parse vehicle from url")?;
+            Self::from_url(&url_internal, false).with_context(|| "Could not parse vehicle from url")?;
         let vehicle_origin = "Vehicle from ".to_owned() + url_internal.as_str();
         vehicle.doc = Some(vehicle_origin);
         Ok(vehicle)
@@ -1104,7 +1102,8 @@ impl Default for RustVehicle {
 }
 
 impl SerdeAPI for RustVehicle {
-    const CACHE_FOLDER: &'static str = &"vehicles";
+    const RESOURCE_PREFIX: &'static str = "vehicles";
+    const CACHE_FOLDER: &'static str = "vehicles";
 
     fn init(&mut self) -> anyhow::Result<()> {
         self.set_derived()
@@ -1117,7 +1116,7 @@ impl SerdeAPI for RustVehicle {
     /// - url: URL (either as a string or url type) to object  
     /// Note: The URL needs to be a URL pointing directly to a file, for example
     /// a raw github URL.
-    fn from_url<S: AsRef<str>>(url: S) -> anyhow::Result<Self> {
+    fn from_url<S: AsRef<str>>(url: S, skip_init: bool) -> anyhow::Result<Self> {
         let url = url::Url::parse(url.as_ref())?;
         let format = url
             .path_segments()
@@ -1126,7 +1125,7 @@ impl SerdeAPI for RustVehicle {
             .and_then(OsStr::to_str)
             .with_context(|| "Could not parse file format from URL: {url:?}")?;
         let response = ureq::get(url.as_ref()).call()?.into_reader();
-        let mut vehicle = Self::from_reader(response, format)?;
+        let mut vehicle = Self::from_reader(response, format, skip_init)?;
         let vehicle_origin = "Vehicle from ".to_owned() + url.as_ref();
         vehicle.doc = Some(vehicle_origin);
         Ok(vehicle)
@@ -1147,9 +1146,8 @@ mod tests {
 
     #[test]
     fn test_veh_kg_override() {
-        let mut veh_file = resources_path();
-        veh_file.push("vehdb/test_overrides.yaml");
-        let veh = RustVehicle::from_file(veh_file.as_os_str().to_str().unwrap()).unwrap();
+        let veh_file = resources_path().join("vehdb/test_overrides.yaml");
+        let veh = RustVehicle::from_file(veh_file, false).unwrap();
         assert!(veh.veh_kg == veh.veh_override_kg.unwrap());
         // test input validation by providing bad inputs, then checking
         // the produced error for the offending field names

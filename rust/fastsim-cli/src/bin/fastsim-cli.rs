@@ -222,10 +222,10 @@ pub fn main() -> anyhow::Result<()> {
                 anyhow::bail!("Need to provide coastdown test coefficients for drag and wheel rr coefficient calculation");
             }
         } else {
-            RustCycle::from_file(&cyc_file_path)
+            RustCycle::from_file(&cyc_file_path, false)
         }
     } else if is_adopt_hd && adopt_hd_has_cycle {
-        RustCycle::from_file(adopt_hd_string)
+        RustCycle::from_file(adopt_hd_string, false)
     } else {
         //TODO? use pathbuff to string, for robustness
         Ok(RustCycle {
@@ -248,11 +248,11 @@ pub fn main() -> anyhow::Result<()> {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            let mut veh = RustVehicle::from_json(&veh_string)?;
+            let mut veh = RustVehicle::from_json(&veh_string, false)?;
             veh.set_derived()?;
             Ok(veh)
         } else {
-            let mut veh = RustVehicle::from_json(&veh_string)?;
+            let mut veh = RustVehicle::from_json(&veh_string, false)?;
             veh.set_derived()?;
             Ok(veh)
         }
@@ -262,11 +262,11 @@ pub fn main() -> anyhow::Result<()> {
             let (veh_string, pwr_out_perc, h2share) = json_rewrite(veh_string)?;
             hd_h2_diesel_ice_h2share = h2share;
             fc_pwr_out_perc = pwr_out_perc;
-            let mut veh = RustVehicle::from_json(&veh_string)?;
+            let mut veh = RustVehicle::from_json(&veh_string, false)?;
             veh.set_derived()?;
             Ok(veh)
         } else {
-            RustVehicle::from_file(&veh_file_path)
+            RustVehicle::from_file(&veh_file_path, false)
         }
     } else {
         Ok(RustVehicle::mock_vehicle())
@@ -288,7 +288,7 @@ pub fn main() -> anyhow::Result<()> {
         let cyc = if adopt_hd_has_cycle {
             cyc
         } else {
-            RustCycle::from_resource("cycles/HHDDTCruiseSmooth.csv")?
+            RustCycle::from_resource("HHDDTCruiseSmooth.csv", false)?
         };
         let mut sim_drive = RustSimDrive::new(cyc, veh.clone());
         sim_drive.sim_drive(None, None)?;
