@@ -253,7 +253,7 @@ impl ReversibleEnergyStorage {
         Ok(())
     }
 
-    /// Returns max output and max regen power based on current state  
+    /// Returns max output and max regen power based on current state
     /// #  Arguments:
     /// - `pwr_aux`: aux power demand on `ReversibleEnergyStorage`
     /// - `charge_buffer`: buffer below max SOC to allow for anticipated future
@@ -275,6 +275,7 @@ impl ReversibleEnergyStorage {
             self.soc_lo_ramp_start = Some(self.min_soc + 0.05 * uc::R);
         }
 
+        // TODO: consider having the buffer affect the max and min but not the ramp???
         // operating lo_ramp_start and min_soc, allowing for buffer
         state.soc_lo_ramp_start = (self.soc_lo_ramp_start.unwrap()
             + charge_buffer.unwrap_or_default() / self.energy_capacity)
@@ -308,7 +309,7 @@ impl ReversibleEnergyStorage {
                     state.soc_lo_ramp_start.get::<si::ratio>(),
                 ],
                 &[0.0, self.pwr_out_max.get::<si::watt>()],
-                utils::Extrapolate::Yes, // don't extrapolate
+                utils::Extrapolate::Error, // don't extrapolate
             )?;
 
         state.pwr_charge_max = uc::W
@@ -319,7 +320,7 @@ impl ReversibleEnergyStorage {
                     state.max_soc.get::<si::ratio>(),
                 ],
                 &[self.pwr_out_max.get::<si::watt>(), 0.0],
-                utils::Extrapolate::Yes, // don't extrapolate
+                utils::Extrapolate::Error, // don't extrapolate
             )?;
 
         state.pwr_prop_max = state.pwr_disch_max - pwr_aux;

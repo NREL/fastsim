@@ -20,6 +20,7 @@ impl Init for PowertrainType {
 }
 
 impl Powertrain for PowertrainType {
+    // TODO: change this to `set_...`
     fn get_cur_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,

@@ -104,12 +104,16 @@ impl PowertrainThrough for ElectricMachine {
     ) -> anyhow::Result<(si::Power, si::Power)> {
         ensure!(
             pwr_in_fwd_max >= uc::W * 0.,
-            "`pwr_in_pos_max` must be greater than or equal to zero for `{}`",
+            "`{}` ({} W) must be greater than or equal to zero for `{}`",
+            stringify!(pwr_in_fwd_max),
+            pwr_in_fwd_max.get::<si::watt>().format_eng(None),
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
         ensure!(
             pwr_in_bwd_max >= uc::W * 0.,
-            "`pwr_in_neg_max` must be greater than or equal to zero for `{}`",
+            "`{}` ({} W) must be greater than or equal to zero for `{}`",
+            stringify!(pwr_in_bwd_max),
+            pwr_in_bwd_max.get::<si::watt>().format_eng(None),
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
         ensure!(
