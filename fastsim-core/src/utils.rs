@@ -127,10 +127,12 @@ pub fn interp1d(
     y_data: &[f64],
     extrapolate: Extrapolate,
 ) -> anyhow::Result<f64> {
-    let y_mean = y_data.iter().sum::<f64>() / y_data.len() as f64;
-    if y_data.iter().all(|&y| y == y_mean) {
-        // return mean if all data is equal to mean
-        Ok(y_mean)
+    let y_first = y_data
+        .first()
+        .with_context(|| anyhow!("Unable to extract first element"))?;
+    if y_data.iter().all(|y| y == y_first) {
+        // return first if all data is equal to first
+        Ok(*y_first)
     } else {
         let x_mean = x_data.iter().sum::<f64>() / x_data.len() as f64;
         if x_data.iter().all(|&x| x == x_mean) {
