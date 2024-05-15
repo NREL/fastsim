@@ -306,6 +306,18 @@ pub enum Efficiency {
 /// or if any values surrounding supplied `point` are `NaN`.
 ///
 /// # Examples
+/// ## 0D Example
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
+///
+/// let grid = [vec![]];
+/// let values = array![0.5].into_dyn();
+///
+/// let point = [];
+/// assert_eq!(multilinear(&point, &grid, &values).unwrap(), 0.5);
+/// ```
+/// 
 /// ## 1D Example
 /// ```rust
 /// use ndarray::prelude::*;
@@ -420,33 +432,35 @@ pub fn multilinear(point: &[f64], grid: &[Vec<f64>], values: &ArrayD<f64>) -> an
     // Dimensionality
     let mut n = values.ndim();
 
-    // Validate inputs
-    anyhow::ensure!(
-        point.len() == n,
-        "Length of supplied `point` must be same as `values` dimensionality: {point:?} is not {n}-dimensional",
-    );
-    anyhow::ensure!(
-        grid.len() == n,
-        "Length of supplied `grid` must be same as `values` dimensionality: {grid:?} is not {n}-dimensional",
-    );
-    for i in 0..n {
+    if values.len() > 1 {
+        // Validate inputs
         anyhow::ensure!(
-            grid[i].len() == values.shape()[i],
-            "Supplied `grid` and `values` are not compatible shapes: dimension {i}, lengths {} != {}",
-            grid[i].len(),
-            values.shape()[i]
+            point.len() == n,
+            "Length of supplied `point` must be same as `values` dimensionality: {point:?} is not {n}-dimensional",
         );
         anyhow::ensure!(
-            grid[i].windows(2).all(|w| w[0] < w[1]),
-            "Supplied `grid` coordinates must be sorted and non-repeating: dimension {i}, {:?}",
-            grid[i]
+            grid.len() == n,
+            "Length of supplied `grid` must be same as `values` dimensionality: {grid:?} is not {n}-dimensional",
         );
-        anyhow::ensure!(
-            grid[i][0] <= point[i] && point[i] <= *grid[i].last().unwrap(),
-            "Supplied `point` must be within `grid` for dimension {i}: point[{i}] = {:?}, grid[{i}] = {:?}",
-            point[i],
-            grid[i],
-        );
+        for i in 0..n {
+            anyhow::ensure!(
+                grid[i].len() == values.shape()[i],
+                "Supplied `grid` and `values` are not compatible shapes: dimension {i}, lengths {} != {}",
+                grid[i].len(),
+                values.shape()[i]
+            );
+            anyhow::ensure!(
+                grid[i].windows(2).all(|w| w[0] < w[1]),
+                "Supplied `grid` coordinates must be sorted and non-repeating: dimension {i}, {:?}",
+                grid[i]
+            );
+            anyhow::ensure!(
+                grid[i][0] <= point[i] && point[i] <= *grid[i].last().unwrap(),
+                "Supplied `point` must be within `grid` for dimension {i}: point[{i}] = {:?}, grid[{i}] = {:?}",
+                point[i],
+                grid[i],
+            );
+        }
     }
 
     // Point can share up to N values of a grid point, which reduces the problem dimensionality
@@ -855,5 +869,12 @@ mod tests {
         assert!(!almost_lt(1e9, 1e9 * (1.0 + 1e-9), None));
         assert!(!almost_lt(1e9 * (1.0 + 1e-7), 1e9, None));
         assert!(almost_lt(1e9, 1e9 * (1.0 + 1e-7), None));
+    }
+
+    #[test]
+    fn test_0D() {
+        let g: [Vec<f64>] = [vec![]];
+        let v = array![0.5].into_dyn();
+        println!("{}", v.ndim());
     }
 }
