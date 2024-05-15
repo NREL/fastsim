@@ -1,12 +1,14 @@
+use uom::si::length::yard;
+
 use crate::imports::*;
 
 #[derive(Debug)]
 pub enum Interpolation {
-   Interp0D(f64),
-   Interp1D(Interp1D),
-   Interp2D(Interp2D),
-   Interp3D(Interp3D),
-   InterpND(InterpND),
+    Interp0D(f64),
+    Interp1D(Interp1D),
+    Interp2D(Interp2D),
+    Interp3D(Interp3D),
+    InterpND(InterpND),
 }
 
 impl Interpolation {
@@ -14,67 +16,188 @@ impl Interpolation {
         self.validate_inputs(point, strategy)?;
         match self {
             Self::Interp0D(value) => {
-                ensure!(matches!(strategy, Strategy::None), "Provided strategy {:?} is not applicable for 0-D, select {:?}", strategy, Strategy::None);
+                ensure!(
+                    matches!(strategy, Strategy::None),
+                    "Provided strategy {:?} is not applicable for 0-D, select {:?}",
+                    strategy,
+                    Strategy::None
+                );
                 Ok(*value)
             }
-            Self::Interp1D(interp) => {
-                match strategy {
-                    Strategy::Linear => {
-                        interp.linear(point[0])
-                    },
-                    Strategy::LeftNearest => {
-                        interp.left_nearest(point[0])
-                    },
-                    Strategy::RightNearest => {
-                        interp.right_nearest(point[0])
-                    },
-                    Strategy::Nearest => {
-                        interp.nearest(point[0])
-                    },
-                    _ => bail!("Provided strategy {:?} is not applicable for 1-D interpolation", strategy)
-                }
+            Self::Interp1D(interp) => match strategy {
+                Strategy::Linear => interp.linear(point[0]),
+                Strategy::LeftNearest => interp.left_nearest(point[0]),
+                Strategy::RightNearest => interp.right_nearest(point[0]),
+                Strategy::Nearest => interp.nearest(point[0]),
+                _ => bail!(
+                    "Provided strategy {:?} is not applicable for 1-D interpolation",
+                    strategy
+                ),
             },
-            Self::Interp2D(interp) => {
-                match strategy {
-                    Strategy::Linear => {
-                        interp.linear(point)
-                    },
-                    _ => bail!("Provided strategy {:?} is not applicable for 2-D interpolation", strategy)
-                }
+            Self::Interp2D(interp) => match strategy {
+                Strategy::Linear => interp.linear(point),
+                _ => bail!(
+                    "Provided strategy {:?} is not applicable for 2-D interpolation",
+                    strategy
+                ),
             },
-            Self::Interp3D(interp) => {
-                match strategy {
-                    Strategy::Linear => {
-                        interp.linear(point)
-                    },
-                    _ => bail!("Provided strategy {:?} is not applicable for 3-D interpolation", strategy)
-                }
-            }
+            Self::Interp3D(interp) => match strategy {
+                Strategy::Linear => interp.linear(point),
+                _ => bail!(
+                    "Provided strategy {:?} is not applicable for 3-D interpolation",
+                    strategy
+                ),
+            },
             Self::InterpND(interp) => {
                 // ensure!(point.len() == interp.values.ndim(), "Supplied point slice should have length {n} for {n}-D interpolation", n = interp.values.ndim());
                 match strategy {
-                    Strategy::Linear => {
-                        interp.linear(point)
-                    },
-                    _ => bail!("Provided strategy {:?} is not applicable for 3-D interpolation", strategy)
+                    Strategy::Linear => interp.linear(point),
+                    _ => bail!(
+                        "Provided strategy {:?} is not applicable for 3-D interpolation",
+                        strategy
+                    ),
                 }
-            },
+            }
         }
     }
 
     fn validate_inputs(&self, point: &[f64], _strategy: &Strategy) -> anyhow::Result<()> {
+        let n = self.ndim();
         // Check supplied point dimensionality
         match self {
-            Self::Interp0D(_) => ensure!(point.is_empty(), "No point should be provided for 0-D interpolation"),
+            Self::Interp0D(_) => ensure!(
+                point.is_empty(),
+                "No point should be provided for 0-D interpolation"
+            ),
             _ => {
-                let n = self.get_ndim();
-                ensure!(point.len() == n, "Supplied point slice should have length {n} for {n}-D interpolation")
+                ensure!(
+                    point.len() == n,
+                    "Supplied point slice should have length {n} for {n}-D interpolation"
+                )
             }
+        }
+        // Check that grid points are monotonically increasing
+        match self {
+            Self::Interp1D(interp) => {
+                anyhow::ensure!(
+                    interp.x.windows(2).all(|w| w[0] < w[1]),
+                    "Supplied x-values must be sorted and non-repeating"
+                );
+            }
+            Self::Interp2D(interp) => {
+                anyhow::ensure!(
+                    interp.x.windows(2).all(|w| w[0] < w[1])
+                    && interp.y.windows(2).all(|w| w[0] < w[1]),
+                    "Supplied values must be sorted and non-repeating"
+                );
+            }
+            Self::Interp3D(interp) => {
+                anyhow::ensure!(
+                    interp.x.windows(2).all(|w| w[0] < w[1])
+                    && interp.y.windows(2).all(|w| w[0] < w[1])
+                    && interp.z.windows(2).all(|w| w[0] < w[1]),
+                    "Supplied values must be sorted and non-repeating"
+                );
+            }
+            Self::InterpND(interp) => {
+                for i in 0..n {
+                    anyhow::ensure!(
+                    interp.grid[i].windows(2).all(|w| w[0] < w[1]),
+                    "Supplied `grid` coordinates must be sorted and non-repeating: dimension {i}, {:?}",
+                    interp.grid[i]
+                );
+                }
+            }
+            _ => (),
+        }
+        // Check that grid and values are compatible shapes
+        match self {
+            Self::Interp1D(interp) => {
+                anyhow::ensure!(interp.x.len() == interp.f_x.len(), "",);
+            }
+            Self::Interp2D(interp) => {
+                anyhow::ensure!(
+                    interp.x.len() == interp.f_xy.len()
+                    && interp.y.len() == interp.f_xy[0].len(),
+                    // TODO: protect against different length y-data
+                    ""
+                );
+            }
+            Self::Interp3D(interp) => {
+                anyhow::ensure!(
+                    interp.x.len() == interp.f_xyz.len()
+                    && interp.y.len() == interp.f_xyz[0].len()
+                    && interp.z.len() == interp.f_xyz[0][0].len(),
+                    // TODO: protect against different length y-data, as well as different length z-data
+                    "Supplied grid and values are not compatible shapes"
+                );
+            }
+            Self::InterpND(interp) => {
+                for i in 0..n {
+                    anyhow::ensure!(
+                    interp.grid[i].len() == interp.values.shape()[i],
+                    "Supplied grid and values are not compatible shapes: dimension {i}, lengths {} != {}",
+                    interp.grid[i].len(),
+                    interp.values.shape()[i]
+                );
+                }
+            }
+            _ => (),
+        }
+        // Check that point is within grid in each dimension
+        match self {
+            Self::Interp1D(interp) => {
+                anyhow::ensure!(
+                    interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap(),
+                    "Supplied point must be within grid: point = {point:?}, x = {:?}",
+                    interp.x
+                );
+            }
+            Self::Interp2D(interp) => {
+                anyhow::ensure!(
+                    (interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap())
+                        && (interp.y[0] <= point[1] && point[1] <= *interp.y.last().unwrap()),
+                    "Supplied point must be within grid: point = {point:?}, x = {:?}, y = {:?}",
+                    interp.x,
+                    interp.y,
+                );
+            }
+            Self::Interp3D(interp) => {
+                anyhow::ensure!(
+                    (interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap())
+                    && (interp.y[0] <= point[1] && point[1] <= *interp.y.last().unwrap())
+                    && (interp.z[0] <= point[2] && point[2] <= *interp.z.last().unwrap()),
+                    "Supplied point must be within grid: point = {point:?}, x = {:?}, y = {:?}, z = {:?}",
+                    interp.x,
+                    interp.y,
+                    interp.z,
+                );
+            }
+            Self::InterpND(interp) => {
+                for i in 0..n {
+                    anyhow::ensure!(
+                    interp.grid[i][0] <= point[i] && point[i] <= *interp.grid[i].last().unwrap(),
+                    "Supplied point must be within grid for dimension {i}: point[{i}] = {:?}, grid[{i}] = {:?}",
+                    point[i],
+                    interp.grid[i],
+                );
+                }
+            }
+            _ => (),
+        }
+        // N-dimensional specific checks
+        if let Self::InterpND(interp) = self {
+            // Check grid dimensionality
+            anyhow::ensure!(
+                interp.grid.len() == n,
+                "Length of supplied `grid` must be same as `values` dimensionality: {:?} is not {n}-dimensional",
+                interp.grid
+            );
         }
         Ok(())
     }
 
-    fn get_ndim(&self) -> usize {
+    fn ndim(&self) -> usize {
         match self {
             Self::Interp0D(_) => 0,
             Self::Interp1D(_) => 1,
@@ -84,8 +207,6 @@ impl Interpolation {
         }
     }
 }
-
-
 
 /// Interpolation strategy
 #[derive(Debug)]
@@ -102,8 +223,6 @@ pub enum Strategy {
     Nearest,
 }
 
-
-
 /// 1-dimensional interpolation
 #[derive(Debug)]
 pub struct Interp1D {
@@ -112,32 +231,36 @@ pub struct Interp1D {
 }
 impl Interp1D {
     fn linear(&self, point: f64) -> anyhow::Result<f64> {
-        let lower_index = self.x
+        let lower_index = self
+            .x
             .windows(2)
             .position(|w| w[0] <= point && point < w[1])
             .unwrap();
         let diff = (point - self.x[lower_index]) / (self.x[lower_index + 1] - self.x[lower_index]);
         Ok(self.f_x[lower_index] * (1.0 - diff) + self.f_x[lower_index + 1] * diff)
     }
-    
+
     fn left_nearest(&self, point: f64) -> anyhow::Result<f64> {
-        let lower_index = self.x
+        let lower_index = self
+            .x
             .windows(2)
             .position(|w| w[0] <= point && point < w[1])
             .unwrap();
         Ok(self.f_x[lower_index])
     }
-    
+
     fn right_nearest(&self, point: f64) -> anyhow::Result<f64> {
-        let lower_index = self.x
+        let lower_index = self
+            .x
             .windows(2)
             .position(|w| w[0] <= point && point < w[1])
             .unwrap();
         Ok(self.f_x[lower_index + 1])
     }
-    
+
     fn nearest(&self, point: f64) -> anyhow::Result<f64> {
-        let lower_index = self.x
+        let lower_index = self
+            .x
             .windows(2)
             .position(|w| w[0] <= point && point < w[1])
             .unwrap();
@@ -149,8 +272,6 @@ impl Interp1D {
         })
     }
 }
-
-
 
 /// 2-dimensional interpolation
 #[derive(Debug)]
@@ -165,23 +286,19 @@ impl Interp2D {
     }
 }
 
-
-
 /// 2-dimensional interpolation
 #[derive(Debug)]
 pub struct Interp3D {
     pub x: Vec<f64>,
     pub y: Vec<f64>,
     pub z: Vec<f64>,
-    pub f_xy: Vec<Vec<Vec<f64>>>,
+    pub f_xyz: Vec<Vec<Vec<f64>>>,
 }
 impl Interp3D {
     fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
         todo!()
     }
 }
-
-
 
 /// N-dimensional interpolation
 #[derive(Debug)]
