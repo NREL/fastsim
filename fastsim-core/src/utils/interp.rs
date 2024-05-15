@@ -113,14 +113,14 @@ impl Interpolation {
         // Check that grid and values are compatible shapes
         match self {
             Self::Interp1D(interp) => {
-                anyhow::ensure!(interp.x.len() == interp.f_x.len(), "",);
+                anyhow::ensure!(interp.x.len() == interp.f_x.len(), "Supplied grid and values are not compatible shapes");
             }
             Self::Interp2D(interp) => {
                 anyhow::ensure!(
                     interp.x.len() == interp.f_xy.len()
                     && interp.y.len() == interp.f_xy[0].len(),
                     // TODO: protect against different length y-data
-                    ""
+                    "Supplied grid and values are not compatible shapes"
                 );
             }
             Self::Interp3D(interp) => {
@@ -231,6 +231,9 @@ pub struct Interp1D {
 }
 impl Interp1D {
     fn linear(&self, point: f64) -> anyhow::Result<f64> {
+        if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
+            return Ok(self.f_x[i])
+        }
         let lower_index = self
             .x
             .windows(2)
@@ -241,6 +244,9 @@ impl Interp1D {
     }
 
     fn left_nearest(&self, point: f64) -> anyhow::Result<f64> {
+        if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
+            return Ok(self.f_x[i])
+        }
         let lower_index = self
             .x
             .windows(2)
@@ -250,6 +256,9 @@ impl Interp1D {
     }
 
     fn right_nearest(&self, point: f64) -> anyhow::Result<f64> {
+        if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
+            return Ok(self.f_x[i])
+        }
         let lower_index = self
             .x
             .windows(2)
@@ -259,6 +268,9 @@ impl Interp1D {
     }
 
     fn nearest(&self, point: f64) -> anyhow::Result<f64> {
+        if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
+            return Ok(self.f_x[i])
+        }
         let lower_index = self
             .x
             .windows(2)
@@ -286,7 +298,7 @@ impl Interp2D {
     }
 }
 
-/// 2-dimensional interpolation
+/// 3-dimensional interpolation
 #[derive(Debug)]
 pub struct Interp3D {
     pub x: Vec<f64>,
@@ -350,21 +362,27 @@ mod tests_1D {
     fn test_1D_linear() {
         let strategy = Strategy::Linear;
         let interp = setup_1D();
+        assert_eq!(interp.interpolate(&[3.00], &strategy).unwrap(), 0.8);
         assert_eq!(interp.interpolate(&[3.75], &strategy).unwrap(), 0.95);
+        assert_eq!(interp.interpolate(&[4.00], &strategy).unwrap(), 1.0);
     }
 
     #[test]
     fn test_1D_left_nearest() {
         let strategy = Strategy::LeftNearest;
         let interp = setup_1D();
+        assert_eq!(interp.interpolate(&[3.00], &strategy).unwrap(), 0.8);
         assert_eq!(interp.interpolate(&[3.75], &strategy).unwrap(), 0.8);
+        assert_eq!(interp.interpolate(&[4.00], &strategy).unwrap(), 1.0);
     }
 
     #[test]
     fn test_1D_right_nearest() {
         let strategy = Strategy::RightNearest;
         let interp = setup_1D();
-        assert_eq!(interp.interpolate(&[3.75], &strategy).unwrap(), 1.0);
+        assert_eq!(interp.interpolate(&[3.00], &strategy).unwrap(), 0.8);
+        assert_eq!(interp.interpolate(&[3.25], &strategy).unwrap(), 1.0);
+        assert_eq!(interp.interpolate(&[4.00], &strategy).unwrap(), 1.0);
     }
 
     #[test]
@@ -375,8 +393,7 @@ mod tests_1D {
         assert_eq!(interp.interpolate(&[3.25], &strategy).unwrap(), 0.8);
         assert_eq!(interp.interpolate(&[3.50], &strategy).unwrap(), 1.0);
         assert_eq!(interp.interpolate(&[3.75], &strategy).unwrap(), 1.0);
-        // assert_eq!(interp.interpolate(&[4.00], &strategy).unwrap(), 1.0);
-        // TODO: fix exact value
+        assert_eq!(interp.interpolate(&[4.00], &strategy).unwrap(), 1.0);
     }
 }
 

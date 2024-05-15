@@ -870,11 +870,4 @@ mod tests {
         assert!(!almost_lt(1e9 * (1.0 + 1e-7), 1e9, None));
         assert!(almost_lt(1e9, 1e9 * (1.0 + 1e-7), None));
     }
-
-    #[test]
-    fn test_0D() {
-        let g: [Vec<f64>] = [vec![]];
-        let v = array![0.5].into_dyn();
-        println!("{}", v.ndim());
-    }
 }
