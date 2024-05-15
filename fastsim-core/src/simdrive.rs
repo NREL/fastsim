@@ -122,7 +122,8 @@ impl SimDrive {
                 .map(|g| g.get::<si::ratio>())
                 .collect::<Vec<f64>>(),
             utils::Extrapolate::Error,
-        )?;
+        )
+        .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?;
 
         let mass = self.veh.mass.with_context(|| {
             format!(
@@ -189,7 +190,8 @@ impl SimDrive {
                     .map(|g| g.get::<si::ratio>())
                     .collect::<Vec<f64>>(),
                 utils::Extrapolate::Error,
-            )?;
+            )
+            .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?;
 
             // actual calucations
             let drag3 =

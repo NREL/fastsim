@@ -240,8 +240,15 @@ impl FuelConverter {
                 &((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
                 &self.pwr_out_frac_interp,
                 &self.eff_interp,
-                Default::default(),
-            )?;
+                Extrapolate::Error,
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(self.state.eff)
+                )
+            })?;
         ensure!(
             self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
             format!(

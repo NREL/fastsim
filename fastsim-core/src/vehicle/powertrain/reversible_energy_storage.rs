@@ -309,8 +309,15 @@ impl ReversibleEnergyStorage {
                     state.soc_lo_ramp_start.get::<si::ratio>(),
                 ],
                 &[0.0, self.pwr_out_max.get::<si::watt>()],
-                utils::Extrapolate::Error, // don't extrapolate
-            )?;
+                Extrapolate::Error, // don't extrapolate
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(state.pwr_disch_max)
+                )
+            })?;
 
         state.pwr_charge_max = uc::W
             * interp1d(
@@ -320,8 +327,15 @@ impl ReversibleEnergyStorage {
                     state.max_soc.get::<si::ratio>(),
                 ],
                 &[self.pwr_out_max.get::<si::watt>(), 0.0],
-                utils::Extrapolate::Error, // don't extrapolate
-            )?;
+                Extrapolate::Error, // don't extrapolate
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(state.pwr_charge_max)
+                )
+            })?;
 
         state.pwr_prop_max = state.pwr_disch_max - pwr_aux;
         state.pwr_regen_max = state.pwr_charge_max + pwr_aux;
