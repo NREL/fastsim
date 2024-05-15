@@ -134,7 +134,14 @@ impl PowertrainThrough for ElectricMachine {
                 &self.pwr_in_frac_interp,
                 &self.eff_interp,
                 Extrapolate::Error,
-            )?;
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(eff_pos)
+                )
+            })?;
         // TODO: scrutinize this variable assignment
         let eff_neg = uc::R
             * interp1d(
@@ -145,7 +152,14 @@ impl PowertrainThrough for ElectricMachine {
                 &self.pwr_in_frac_interp,
                 &self.eff_interp,
                 Extrapolate::Error,
-            )?;
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(eff_neg)
+                )
+            })?;
 
         self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
         self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max * eff_neg);
@@ -180,7 +194,14 @@ impl PowertrainThrough for ElectricMachine {
                 &self.pwr_out_frac_interp,
                 &self.eff_interp,
                 Extrapolate::Error,
-            )?;
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(self.state.eff)
+                )
+            })?;
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
