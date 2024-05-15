@@ -35,24 +35,37 @@ impl SaveInterval for HybridElectricVehicle {
 
 impl Init for HybridElectricVehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.fc.init()?;
-        self.res.init()?;
-        self.em.init()?;
+        self.fc.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.res.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.em.init().with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 }
 
 impl Powertrain for Box<HybridElectricVehicle> {
-    fn get_cur_pwr_tract_out_max(
-        &mut self,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<(si::Power, si::Power)> {
-        let (pwr_res_tract_max, pwr_res_regen_max) =
-            self.res.get_cur_pwr_out_max(pwr_aux, None, None)?;
+    fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+        // TODO: account for transmission efficiency in here
+        self.res
+            .set_cur_pwr_out_max(pwr_aux, None, None)
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.em
-            .get_cur_pwr_tract_out_max(pwr_res_tract_max, pwr_res_regen_max, pwr_aux, dt)
+            .set_cur_pwr_prop_out_max(
+                self.res.state.pwr_prop_max,
+                self.res.state.pwr_regen_max,
+                pwr_aux,
+                dt,
+            )
+            .with_context(|| anyhow!(format_dbg!()))?;
+        Ok(())
     }
+
+    fn get_cur_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        Ok((
+            self.em.state.pwr_mech_fwd_out_max + self.fc.state.pwr_prop_max,
+            self.em.state.pwr_mech_bwd_out_max,
+        ))
+    }
+
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
@@ -64,7 +77,9 @@ impl Powertrain for Box<HybridElectricVehicle> {
         let (fc_pwr_out_req, em_pwr_out_req) = (0.5 * pwr_out_req, 0.5 * pwr_out_req);
 
         let enabled = true; // TODO: replace with a stop/start model
-        self.fc.solve(fc_pwr_out_req, pwr_aux, enabled, dt)?;
+        self.fc
+            .solve(fc_pwr_out_req, pwr_aux, enabled, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         // self.fs.solve()
         Ok(())
     }
@@ -79,7 +94,9 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
 impl Mass for HybridElectricVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         match (derived_mass, self.mass) {
             (Some(derived_mass), Some(set_mass)) => {
                 ensure!(
@@ -104,7 +121,9 @@ impl Mass for HybridElectricVehicle {
             side_effect == MassSideEffect::None,
             "At the powertrain level, only `MassSideEffect::None` is allowed"
         );
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.mass = match new_mass {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
             Some(new_mass) => {
@@ -130,10 +149,10 @@ impl Mass for HybridElectricVehicle {
     }
 
     fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let fc_mass = self.fc.mass()?;
-        let fs_mass = self.fs.mass()?;
-        let res_mass = self.res.mass()?;
-        let em_mass = self.em.mass()?;
+        let fc_mass = self.fc.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let fs_mass = self.fs.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let res_mass = self.res.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let em_mass = self.em.mass().with_context(|| anyhow!(format_dbg!()))?;
         match (fc_mass, fs_mass, res_mass, em_mass) {
             (Some(fc_mass), Some(fs_mass), Some(res_mass), Some(em_mass)) => {
                 Ok(Some(fc_mass + fs_mass + em_mass + res_mass))
@@ -180,11 +199,11 @@ impl HEVControls {
                     todo!()
                 }
                 Self::RESGreedy => {
-                    let fc_pwr = fc_state.pwr_out_max
-                        / (fc_state.pwr_out_max + res_state.pwr_prop_max)
+                    let fc_pwr = fc_state.pwr_prop_max
+                        / (fc_state.pwr_prop_max + res_state.pwr_prop_max)
                         * pwr_out_req;
                     let res_pwr = res_state.pwr_prop_max
-                        / (fc_state.pwr_out_max + res_state.pwr_prop_max)
+                        / (fc_state.pwr_prop_max + res_state.pwr_prop_max)
                         * pwr_out_req;
 
                     Ok((fc_pwr, res_pwr))

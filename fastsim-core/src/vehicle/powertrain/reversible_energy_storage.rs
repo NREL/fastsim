@@ -253,14 +253,14 @@ impl ReversibleEnergyStorage {
         Ok(())
     }
 
-    /// Returns max output and max regen power based on current state
+    /// Sets max output and max regen power based on current state
     /// #  Arguments:
     /// - `pwr_aux`: aux power demand on `ReversibleEnergyStorage`
     /// - `charge_buffer`: buffer below max SOC to allow for anticipated future
     /// charging (i.e. decelerating while exiting a highway)
     /// - `discharge_buffer`: buffer above min SOC to allow for anticipated
     /// future discharging (i.e. accelerating to enter a highway)
-    pub fn get_cur_pwr_out_max(
+    pub fn set_cur_pwr_out_max(
         &mut self,
         pwr_aux: si::Power,
         charge_buffer: Option<si::Energy>,
@@ -309,7 +309,7 @@ impl ReversibleEnergyStorage {
                     state.soc_lo_ramp_start.get::<si::ratio>(),
                 ],
                 &[0.0, self.pwr_out_max.get::<si::watt>()],
-                Extrapolate::Error, // don't extrapolate
+                Extrapolate::No, // don't extrapolate
             )
             .with_context(|| {
                 anyhow!(
@@ -327,7 +327,7 @@ impl ReversibleEnergyStorage {
                     state.max_soc.get::<si::ratio>(),
                 ],
                 &[self.pwr_out_max.get::<si::watt>(), 0.0],
-                Extrapolate::Error, // don't extrapolate
+                Extrapolate::No, // don't extrapolate
             )
             .with_context(|| {
                 anyhow!(
@@ -336,9 +336,41 @@ impl ReversibleEnergyStorage {
                     stringify!(state.pwr_charge_max)
                 )
             })?;
+        ensure!(
+            state.pwr_disch_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero",
+            stringify!(state.pwr_disch_max),
+            state.pwr_disch_max.get::<si::watt>().format_eng(None)
+        );
+        ensure!(
+            state.pwr_charge_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero",
+            stringify!(state.pwr_charge_max),
+            state.pwr_charge_max.get::<si::watt>().format_eng(None)
+        );
 
         state.pwr_prop_max = state.pwr_disch_max - pwr_aux;
         state.pwr_regen_max = state.pwr_charge_max + pwr_aux;
+
+        ensure!(
+            pwr_aux <= state.pwr_disch_max,
+            "`{}` ({} W) must always be less than or equal to {}",
+            stringify!(pwr_aux),
+            pwr_aux.get::<si::watt>().format_eng(None),
+            stringify!(state.pwr_disch_max)
+        );
+        ensure!(
+            state.pwr_prop_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero",
+            stringify!(state.pwr_prop_max),
+            state.pwr_prop_max.get::<si::watt>().format_eng(None)
+        );
+        ensure!(
+            state.pwr_regen_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero",
+            stringify!(state.pwr_regen_max),
+            state.pwr_regen_max.get::<si::watt>().format_eng(None)
+        );
 
         Ok((state.pwr_prop_max, state.pwr_regen_max))
     }
@@ -453,7 +485,9 @@ impl SetCumulative for ReversibleEnergyStorage {
 
 impl Mass for ReversibleEnergyStorage {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
                 utils::almost_eq_uom(&set_mass, &derived_mass, None),
@@ -471,7 +505,9 @@ impl Mass for ReversibleEnergyStorage {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(
@@ -519,8 +555,8 @@ impl Mass for ReversibleEnergyStorage {
 impl SerdeAPI for ReversibleEnergyStorage {}
 impl Init for ReversibleEnergyStorage {
     fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass()?;
-        self.state.init()?;
+        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 }

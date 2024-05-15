@@ -122,7 +122,8 @@ impl SerdeAPI for Cycle {
                 "json" => self.to_json()?,
                 "csv" => {
                     let mut wtr = csv::Writer::from_writer(Vec::with_capacity(self.len()));
-                    self.write_csv(&mut wtr)?;
+                    self.write_csv(&mut wtr)
+                        .with_context(|| anyhow!(format_dbg!()))?;
                     String::from_utf8(wtr.into_inner()?)?
                 }
                 _ => {
@@ -145,7 +146,9 @@ impl SerdeAPI for Cycle {
                 Self::ACCEPTED_STR_FORMATS
             ),
         }?;
-        deserialized.init()?;
+        deserialized
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(deserialized)
     }
 
@@ -159,7 +162,7 @@ impl SerdeAPI for Cycle {
                 let mut cyc = Self::default();
                 let mut rdr = csv::Reader::from_reader(rdr);
                 for result in rdr.deserialize() {
-                    cyc.push(result?)?;
+                    cyc.push(result?).with_context(|| anyhow!(format_dbg!()))?;
                 }
                 cyc
             }
@@ -170,7 +173,9 @@ impl SerdeAPI for Cycle {
                 )
             }
         };
-        deserialized.init()?;
+        deserialized
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(deserialized)
     }
 }
@@ -258,9 +263,10 @@ impl Cycle {
                 speed: self.speed[i],
                 grade: Some(self.grade[i]),
                 pwr_max_charge: Some(self.pwr_max_chrg[i]),
-            })?;
+            })
+            .with_context(|| anyhow!(format_dbg!()))?;
         }
-        wtr.flush()?;
+        wtr.flush().with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 

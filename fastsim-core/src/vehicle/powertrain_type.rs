@@ -20,16 +20,11 @@ impl Init for PowertrainType {
 }
 
 impl Powertrain for PowertrainType {
-    // TODO: change this to `set_...`
-    fn get_cur_pwr_tract_out_max(
-        &mut self,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<(si::Power, si::Power)> {
+    fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => v.get_cur_pwr_tract_out_max(pwr_aux, dt),
-            Self::HybridElectricVehicle(v) => v.get_cur_pwr_tract_out_max(pwr_aux, dt),
-            Self::BatteryElectricVehicle(v) => v.get_cur_pwr_tract_out_max(pwr_aux, dt),
+            Self::ConventionalVehicle(v) => v.set_cur_pwr_prop_out_max(pwr_aux, dt),
+            Self::HybridElectricVehicle(v) => v.set_cur_pwr_prop_out_max(pwr_aux, dt),
+            Self::BatteryElectricVehicle(v) => v.set_cur_pwr_prop_out_max(pwr_aux, dt),
         }
     }
 
@@ -44,6 +39,14 @@ impl Powertrain for PowertrainType {
             Self::ConventionalVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
             Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
             Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
+        }
+    }
+
+    fn get_cur_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        match self {
+            Self::ConventionalVehicle(v) => v.get_cur_pwr_prop_out_max(),
+            Self::HybridElectricVehicle(v) => v.get_cur_pwr_prop_out_max(),
+            Self::BatteryElectricVehicle(v) => v.get_cur_pwr_prop_out_max(),
         }
     }
 

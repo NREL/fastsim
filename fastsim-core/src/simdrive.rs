@@ -60,9 +60,11 @@ pub struct SimDrive {
 impl SerdeAPI for SimDrive {}
 impl Init for SimDrive {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.veh.init()?;
-        self.cyc.init()?;
-        self.sim_params.init()?;
+        self.veh.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.cyc.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.sim_params
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 }
@@ -75,7 +77,7 @@ impl SimDrive {
         self.step();
         while self.veh.state.i < self.cyc.len() {
             self.solve_step()
-                .with_context(|| format!("time step: {}", self.veh.state.i))?;
+                .with_context(|| format!("{}\ntime step: {}", format_dbg!(), self.veh.state.i))?;
             self.save_state();
             self.step();
         }
@@ -87,10 +89,16 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
-        self.veh.set_cur_pwr_out_max(dt)?;
-        self.set_pwr_tract_for_speed(self.cyc.speed[i], dt)?;
-        self.set_ach_speed(dt)?;
-        self.veh.solve_powertrain(dt)?;
+        self.veh
+            .set_cur_pwr_out_max(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.set_pwr_tract_for_speed(self.cyc.speed[i], dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.set_ach_speed(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.veh
+            .solve_powertrain(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.veh.set_cumulative(dt);
         Ok(())
     }
@@ -313,8 +321,14 @@ impl SimDrive {
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
-        let veh2 = self.veh.to_fastsim2()?;
-        let cyc2 = self.cyc.to_fastsim2()?;
+        let veh2 = self
+            .veh
+            .to_fastsim2()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        let cyc2 = self
+            .cyc
+            .to_fastsim2()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(fastsim_2::simdrive::RustSimDrive::new(cyc2, veh2))
     }
 }

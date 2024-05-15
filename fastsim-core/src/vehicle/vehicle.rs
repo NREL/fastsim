@@ -135,7 +135,9 @@ pub struct Vehicle {
 
 impl Mass for Vehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         match (derived_mass, self.mass) {
             (Some(derived_mass), Some(set_mass)) => {
                 ensure!(
@@ -165,7 +167,9 @@ impl Mass for Vehicle {
             "At the vehicle level, only `MassSideEffect::None` is allowed"
         );
 
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.mass = match new_mass {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
             Some(new_mass) => {
@@ -191,7 +195,10 @@ impl Mass for Vehicle {
     }
 
     fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let chassis_mass = self.chassis.mass()?;
+        let chassis_mass = self
+            .chassis
+            .mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         let pt_mass = match &self.pt_type {
             PowertrainType::ConventionalVehicle(conv) => conv.mass()?,
             PowertrainType::HybridElectricVehicle(hev) => hev.mass()?,
@@ -217,9 +224,12 @@ impl Mass for Vehicle {
 impl SerdeAPI for Vehicle {}
 impl Init for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        let _mass = self.mass()?;
-        self.calculate_wheel_radius()?;
-        self.pt_type.init()?;
+        let _mass = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+        self.calculate_wheel_radius()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.pt_type
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 }
@@ -258,7 +268,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         specific_energy: Some(FUEL_LHV_MJ_PER_KG * uc::MJ / uc::KG),
                         mass: None,
                     };
-                    fs.set_mass(None, MassSideEffect::None)?;
+                    fs.set_mass(None, MassSideEffect::None)
+                        .with_context(|| anyhow!(format_dbg!()))?;
                     fs
                 },
                 fc: {
@@ -283,7 +294,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         save_interval: Some(1),
                         history: Default::default(),
                     };
-                    fc.set_mass(None, MassSideEffect::None)?;
+                    fc.set_mass(None, MassSideEffect::None)
+                        .with_context(|| anyhow!(format_dbg!()))?;
                     fc
                 },
                 mass: None,
@@ -300,7 +312,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         specific_energy: None,
                         mass: None,
                     };
-                    fs.set_mass(None, MassSideEffect::None)?;
+                    fs.set_mass(None, MassSideEffect::None)
+                        .with_context(|| anyhow!(format_dbg!()))?;
                     fs
                 },
                 fc: {
@@ -325,7 +338,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         save_interval: Some(1),
                         history: Default::default(),
                     };
-                    fc.set_mass(None, MassSideEffect::None)?;
+                    fc.set_mass(None, MassSideEffect::None)
+                        .with_context(|| anyhow!(format_dbg!()))?;
                     fc
                 },
                 res: ReversibleEnergyStorage {
@@ -371,9 +385,11 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
     type Error = anyhow::Error;
     fn try_from(f2veh: fastsim_2::vehicle::RustVehicle) -> anyhow::Result<Self> {
         let mut f2veh = f2veh.clone();
-        f2veh.set_derived()?;
+        f2veh
+            .set_derived()
+            .with_context(|| anyhow!(format_dbg!()))?;
         let save_interval = Some(1);
-        let pt_type = PowertrainType::try_from(&f2veh)?;
+        let pt_type = PowertrainType::try_from(&f2veh).with_context(|| anyhow!(format_dbg!()))?;
 
         let mut f3veh = Self {
             name: f2veh.scenario_name.clone(),
@@ -388,7 +404,7 @@ impl TryFrom<fastsim_2::vehicle::RustVehicle> for Vehicle {
             mass: Some(f2veh.veh_kg * uc::KG),
         };
         f3veh.expunge_mass_fields();
-        f3veh.init()?;
+        f3veh.init().with_context(|| anyhow!(format_dbg!()))?;
 
         Ok(f3veh)
     }
@@ -488,12 +504,14 @@ impl Vehicle {
     pub fn solve_powertrain(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: do something more sophisticated with pwr_aux
         self.state.pwr_aux = self.pwr_aux;
-        self.pt_type.solve(
-            self.state.pwr_tractive,
-            self.pwr_aux,
-            true, // `enabled` should always be true at the powertrain level
-            dt,
-        )?;
+        self.pt_type
+            .solve(
+                self.state.pwr_tractive,
+                self.pwr_aux,
+                true, // `enabled` should always be true at the powertrain level
+                dt,
+            )
+            .with_context(|| anyhow!(format_dbg!()))?;
         // TODO: this is wrong for anything with regen capability
         self.state.pwr_brake = -self.state.pwr_tractive.max(uc::W * 0.) - self.pt_type.pwr_regen();
         Ok(())
@@ -504,11 +522,14 @@ impl Vehicle {
         // TODO: make transmission field in vehicle and make it be able to produce an efficiency
         // TODO: account for traction limits here
 
-        let (pwr_out_pos_max, pwr_out_neg_max) =
-            self.pt_type.get_cur_pwr_tract_out_max(self.pwr_aux, dt)?;
+        self.pt_type
+            .set_cur_pwr_prop_out_max(self.pwr_aux, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
 
-        self.state.pwr_tract_pos_max = pwr_out_pos_max * self.trans_eff;
-        self.state.pwr_tract_neg_max = pwr_out_neg_max * self.trans_eff;
+        (self.state.pwr_tract_pos_max, self.state.pwr_tract_neg_max) = self
+            .pt_type
+            .get_cur_pwr_prop_out_max()
+            .with_context(|| anyhow!(format_dbg!()))?;
 
         Ok(())
     }
@@ -765,7 +786,7 @@ impl Vehicle {
             wheel_rr_coef: self.chassis.wheel_rr_coef.get::<si::ratio>(),
             wheel_rr_coef_doc: None,
         };
-        veh.set_derived()?;
+        veh.set_derived().with_context(|| anyhow!(format_dbg!()))?;
         Ok(veh)
     }
 }

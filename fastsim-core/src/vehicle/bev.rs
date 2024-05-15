@@ -14,15 +14,17 @@ pub struct BatteryElectricVehicle {
 impl SerdeAPI for BatteryElectricVehicle {}
 impl Init for BatteryElectricVehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.res.init()?;
-        self.em.init()?;
+        self.res.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.em.init().with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 }
 
 impl Mass for BatteryElectricVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         match (derived_mass, self.mass) {
             (Some(derived_mass), Some(set_mass)) => {
                 ensure!(
@@ -47,7 +49,9 @@ impl Mass for BatteryElectricVehicle {
             side_effect == MassSideEffect::None,
             "At the powertrain level, only `MassSideEffect::None` is allowed"
         );
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.mass = match new_mass {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
             Some(new_mass) => {
@@ -73,8 +77,8 @@ impl Mass for BatteryElectricVehicle {
     }
 
     fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let res_mass = self.res.mass()?;
-        let em_mass = self.em.mass()?;
+        let res_mass = self.res.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let em_mass = self.em.mass().with_context(|| anyhow!(format_dbg!()))?;
         match (res_mass, em_mass) {
             (Some(res_mass), Some(em_mass)) => Ok(Some(em_mass + res_mass)),
             (None, None) => Ok(None),
@@ -115,30 +119,41 @@ impl Powertrain for BatteryElectricVehicle {
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let pwr_out_req_from_res = self.em.get_pwr_in_req(pwr_out_req, pwr_aux, dt)?;
+        let pwr_out_req_from_res = self
+            .em
+            .get_pwr_in_req(pwr_out_req, pwr_aux, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         // TODO: revisit this if...else block
         if self.em.state.pwr_elec_prop_in > si::Power::ZERO {
             // positive traction
-            self.res.solve(pwr_out_req_from_res, pwr_aux, dt)?;
+            self.res
+                .solve(pwr_out_req_from_res, pwr_aux, dt)
+                .with_context(|| anyhow!(format_dbg!()))?;
         } else {
             // negative traction (should this be different from positive traction here?)
-            self.res.solve(
-                self.em.state.pwr_elec_prop_in,
-                pwr_aux
-                    // whatever power is available from regen plus normal
-                    .min(self.res.state.pwr_prop_max - self.em.state.pwr_elec_prop_in)
-                    .max(si::Power::ZERO),
-                dt,
-            )?;
+            self.res
+                .solve(
+                    self.em.state.pwr_elec_prop_in,
+                    pwr_aux
+                        // whatever power is available from regen plus normal
+                        .min(self.res.state.pwr_prop_max - self.em.state.pwr_elec_prop_in)
+                        .max(si::Power::ZERO),
+                    dt,
+                )
+                .with_context(|| anyhow!(format_dbg!()))?;
         }
         Ok(())
     }
 
-    fn get_cur_pwr_tract_out_max(
-        &mut self,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<(si::Power, si::Power)> {
+    fn get_cur_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        Ok((
+            self.em.state.pwr_mech_fwd_out_max,
+            self.em.state.pwr_mech_bwd_out_max,
+        ))
+    }
+
+    fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+        // TODO: account for transmission efficiency in here
         todo!();
         // self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;
         // self.em.set_cur_pwr_max_out(self.res.state.pwr_prop_out_max, None)?;

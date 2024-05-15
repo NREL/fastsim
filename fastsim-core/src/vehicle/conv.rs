@@ -14,8 +14,8 @@ pub struct ConventionalVehicle {
 impl SerdeAPI for ConventionalVehicle {}
 impl Init for ConventionalVehicle {
     fn init(&mut self) -> anyhow::Result<()> {
-        self.fc.init()?;
-        self.fs.init()?;
+        self.fc.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.fs.init().with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 }
@@ -31,17 +31,16 @@ impl SaveInterval for ConventionalVehicle {
 }
 
 impl Powertrain for Box<ConventionalVehicle> {
-    fn get_cur_pwr_tract_out_max(
-        &mut self,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<(si::Power, si::Power)> {
-        let pwr_pos_max = self
-            .fc
-            .get_cur_pwr_tract_out_max(pwr_aux / self.alt_eff, dt)?;
-        // TODO: make sure transmission efficiency is accounted for
-        let pwr_neg_max = 0. * uc::W;
-        Ok((pwr_pos_max, pwr_neg_max))
+    fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+        // TODO: account for transmission efficiency in here
+        self.fc
+            .set_cur_pwr_tract_out_max(pwr_aux / self.alt_eff, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        Ok(())
+    }
+
+    fn get_cur_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+        Ok((self.fc.state.pwr_prop_max, 0. * uc::W))
     }
 
     fn solve(
@@ -54,7 +53,9 @@ impl Powertrain for Box<ConventionalVehicle> {
         // only positive power can come from powertrain.  Revisit this if engine braking model is needed.
         let pwr_out_req = pwr_out_req.max(uc::W * 0.0);
         let enabled = true; // TODO: replace with a stop/start model
-        self.fc.solve(pwr_out_req, pwr_aux, enabled, dt)?;
+        self.fc
+            .solve(pwr_out_req, pwr_aux, enabled, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 
@@ -65,7 +66,9 @@ impl Powertrain for Box<ConventionalVehicle> {
 
 impl Mass for ConventionalVehicle {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         match (derived_mass, self.mass) {
             (Some(derived_mass), Some(set_mass)) => {
                 ensure!(
@@ -90,7 +93,9 @@ impl Mass for ConventionalVehicle {
             side_effect == MassSideEffect::None,
             "At the powertrain level, only `MassSideEffect::None` is allowed"
         );
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.mass = match new_mass {
             // Set using provided `new_mass`, setting constituent mass fields to `None` to match if inconsistent
             Some(new_mass) => {
@@ -116,8 +121,8 @@ impl Mass for ConventionalVehicle {
     }
 
     fn derived_mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let fc_mass = self.fc.mass()?;
-        let fs_mass = self.fs.mass()?;
+        let fc_mass = self.fc.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let fs_mass = self.fs.mass().with_context(|| anyhow!(format_dbg!()))?;
         match (fc_mass, fs_mass) {
             (Some(fc_mass), Some(fs_mass)) => Ok(Some(fc_mass + fs_mass)),
             (None, None) => Ok(None),

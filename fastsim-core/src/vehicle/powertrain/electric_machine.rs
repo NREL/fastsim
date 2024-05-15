@@ -95,13 +95,13 @@ pub struct ElectricMachine {
 }
 
 impl PowertrainThrough for ElectricMachine {
-    fn get_cur_pwr_tract_out_max(
+    fn set_cur_pwr_prop_out_max(
         &mut self,
         pwr_in_fwd_max: si::Power,
         pwr_in_bwd_max: si::Power,
         pwr_aux: si::Power,
         _dt: si::Time,
-    ) -> anyhow::Result<(si::Power, si::Power)> {
+    ) -> anyhow::Result<()> {
         ensure!(
             pwr_in_fwd_max >= uc::W * 0.,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
@@ -163,10 +163,7 @@ impl PowertrainThrough for ElectricMachine {
 
         self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
         self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max * eff_neg);
-        Ok((
-            self.state.pwr_mech_fwd_out_max,
-            self.state.pwr_mech_bwd_out_max,
-        ))
+        Ok(())
     }
 
     fn get_pwr_in_req(
@@ -236,11 +233,11 @@ use fastsim_2::params::{
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass()?;
+        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         let _ = check_interp_frac_data(&self.pwr_out_frac_interp, InterpRange::Either)
             .with_context(|| format!(
                 "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1]."))?;
-        self.state.init()?;
+        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
         // TODO: make use of `use fastsim_2::params::{LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF,SMALL_MOTOR_POWER_KW};`
         // to set
         // if let None = self.pwr_out_frac_interp {
@@ -259,7 +256,9 @@ impl SetCumulative for ElectricMachine {
 
 impl Mass for ElectricMachine {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
                 utils::almost_eq_uom(&set_mass, &derived_mass, None),
@@ -277,7 +276,9 @@ impl Mass for ElectricMachine {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(

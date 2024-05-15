@@ -74,9 +74,9 @@ pub fn interp3d(
     let y_points = &grid[1];
     let z_points = &grid[2];
 
-    let (xi0, xi1) = find_interp_indices(&x, x_points)?;
-    let (yi0, yi1) = find_interp_indices(&y, y_points)?;
-    let (zi0, zi1) = find_interp_indices(&z, z_points)?;
+    let (xi0, xi1) = find_interp_indices(&x, x_points).with_context(|| anyhow!(format_dbg!()))?;
+    let (yi0, yi1) = find_interp_indices(&y, y_points).with_context(|| anyhow!(format_dbg!()))?;
+    let (zi0, zi1) = find_interp_indices(&z, z_points).with_context(|| anyhow!(format_dbg!()))?;
 
     let xd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
     let yd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
@@ -162,7 +162,15 @@ pub fn interp1d(
                 }
             }
             Extrapolate::Error => {
-                bail!("{}\nAttempted extrapolation", format_dbg!());
+                if x < xl || x > xr {
+                    bail!(
+                        "{}\nAttempted extrapolation\n`x_data` first and last: ({}, {})\n`x` input: {}",
+                        format_dbg!(),
+                        xl,
+                        xr,
+                        x
+                    );
+                }
             }
             _ => {}
         }
@@ -610,7 +618,7 @@ pub(crate) fn check_interp_frac_data(
     data: &[f64],
     interp_range: InterpRange,
 ) -> anyhow::Result<InterpRange> {
-    check_monotonicity(data)?;
+    check_monotonicity(data).with_context(|| anyhow!(format_dbg!()))?;
     let min = data.first().with_context(|| {
         anyhow!(
             "{}\nProblem extracting first element of `data`",
