@@ -22,16 +22,15 @@ def package_root() -> Path:
     return Path(__file__).parent
 
 
-def default_logging_config() -> Dict[str, str]:
-    return dict(
-        format = "%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    ) 
+DEFAULT_LOGGING_CONFIG = dict(
+    format = "%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
+    datefmt = "%Y-%m-%d %H:%M:%S",
+) 
 
 
 
 # Set up logging
-logging.basicConfig(**default_logging_config())
+logging.basicConfig(**DEFAULT_LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
 from pkg_resources import get_distribution
