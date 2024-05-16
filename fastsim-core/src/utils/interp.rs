@@ -294,7 +294,49 @@ pub struct Interp2D {
 }
 impl Interp2D {
     fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
-        todo!()
+        if let Some(x_idx) = self.x.iter().position(|&x_val| x_val == point[0]) {
+            let interp = Interp1D {
+                x: self.y.clone(),
+                f_x: self.f_xy[x_idx].clone(),
+            };
+            return interp.linear(point[1])
+        }
+        if let Some(y_idx) = self.y.iter().position(|&y_val| y_val == point[1]) {
+            let interp = Interp1D {
+                x: self.x.clone(),
+                f_x: self.f_xy.iter().map(|x| x[y_idx]).collect(),
+            };
+            return interp.linear(point[0])
+        }
+
+        let x_l = self
+            .x
+            .windows(2)
+            .position(|w| w[0] <= point[0] && point[0] < w[1])
+            .unwrap();
+        let x_u = x_l + 1;
+        let x_diff = (point[0] - self.x[x_l]) / (self.x[x_u] - self.x[x_l]);
+
+        let y_l = self
+            .y
+            .windows(2)
+            .position(|w| w[0] <= point[1] && point[1] < w[1])
+            .unwrap();
+        let y_u = y_l + 1;
+        let y_diff = (point[1] - self.y[y_l]) / (self.y[y_u] - self.y[y_l]);
+
+        // bind values to variables
+        let c00 = self.f_xy[x_l][y_l]; // lower left
+        let c10 = self.f_xy[x_u][y_l]; // lower right
+        let c01 = self.f_xy[x_l][y_u]; // upper left
+        let c11 = self.f_xy[x_u][y_u]; // upper right
+    
+        // interpolate in the x-direction
+        let c0 = c00 * (1.0 - x_diff) + c10 * x_diff;
+        let c1 = c01 * (1.0 - x_diff) + c11 * x_diff;
+    
+        // interpolate in the y-direction
+        Ok(c0 * (1.0 - y_diff) + c1 * y_diff)
     }
 }
 
@@ -308,7 +350,77 @@ pub struct Interp3D {
 }
 impl Interp3D {
     fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
-        todo!()
+        if let Some(x_idx) = self.x.iter().position(|&x_val| x_val == point[0]) {
+            let interp = Interp2D {
+                x: self.y.clone(),
+                y: self.z.clone(),
+                f_xy: self.f_xyz[x_idx].clone(),
+            };
+            return interp.linear(&[point[1], point[2]])
+        }
+        if let Some(y_idx) = self.y.iter().position(|&y_val| y_val == point[1]) {
+            let interp = Interp2D {
+                x: self.x.clone(),
+                y: self.z.clone(),
+                f_xy: self.f_xyz.iter().map(|x| x[y_idx].clone()).collect(),
+            };
+            return interp.linear(&[point[0], point[2]])
+        }
+        if let Some(z_idx) = self.z.iter().position(|&z_val| z_val == point[2]) {
+            let interp = Interp2D {
+                x: self.x.clone(),
+                y: self.y.clone(),
+                f_xy: self.f_xyz.iter().map(|x| x.iter().map(|y| y[z_idx]).collect()).collect(),
+            };
+            return interp.linear(&[point[0], point[1]])
+        }
+
+        let x_l = self
+            .x
+            .windows(2)
+            .position(|w| w[0] <= point[0] && point[0] < w[1])
+            .unwrap();
+        let x_u = x_l + 1;
+        let x_diff = (point[0] - self.x[x_l]) / (self.x[x_u] - self.x[x_l]);
+
+        let y_l = self
+            .y
+            .windows(2)
+            .position(|w| w[0] <= point[1] && point[1] < w[1])
+            .unwrap();
+        let y_u = y_l + 1;
+        let y_diff = (point[1] - self.y[y_l]) / (self.y[y_u] - self.y[y_l]);
+
+        let z_l = self
+            .z
+            .windows(2)
+            .position(|w| w[0] <= point[2] && point[2] < w[1])
+            .unwrap();
+        let z_u = z_l + 1;
+        let z_diff = (point[1] - self.y[z_l]) / (self.z[z_u] - self.z[z_l]);
+
+        // bind values to variables
+        let c000 = self.f_xyz[x_l][y_l][z_l];
+        let c100 = self.f_xyz[x_u][y_l][z_l];
+        let c001 = self.f_xyz[x_l][y_l][z_u];
+        let c101 = self.f_xyz[x_u][y_l][z_u];
+        let c010 = self.f_xyz[x_l][y_u][z_l];
+        let c110 = self.f_xyz[x_u][y_u][z_l];
+        let c011 = self.f_xyz[x_l][y_u][z_u];
+        let c111 = self.f_xyz[x_u][y_u][z_u];
+
+        // interpolate in the x-direction
+        let c00 = c000 * (1.0 - x_diff) + c100 * x_diff;
+        let c01 = c001 * (1.0 - x_diff) + c101 * x_diff;
+        let c10 = c010 * (1.0 - x_diff) + c110 * x_diff;
+        let c11 = c011 * (1.0 - x_diff) + c111 * x_diff;
+    
+        // interpolate in the y-direction
+        let c0 = c00 * (1.0 - y_diff) + c10 * y_diff;
+        let c1 = c01 * (1.0 - y_diff) + c11 * y_diff;
+    
+        // interpolate in the z-direction
+        Ok(c0 * (1.0 - z_diff) + c1 * z_diff)
     }
 }
 
@@ -401,17 +513,84 @@ mod tests_1D {
 mod tests_2D {
     use super::*;
 
+    // #[test]
+    // fn test_2D_linear() {
+    //     let strategy = Strategy::Linear;
+    //     let expected = 0.5;
+    //     let interp = Interpolation::Interp2D(Interp2D {
+    //         x: vec![0.05, 0.10, 0.15, 0.20],
+    //         y: vec![0.10, 0.20, 0.30, 0.40],
+    //         f_xy: vec![],
+    //     });
+    //     assert_eq!(interp.interpolate(&[], &strategy).unwrap(), expected);
+    //     assert!(interp.interpolate(&[], &strategy).is_err());
+    //     assert!(interp.interpolate(&[], &strategy).is_err());
+    // }
+}
+
+#[cfg(test)]
+mod tests_3D {
+    use super::*;
+
     #[test]
-    fn test_2D_linear() {
+    fn test_short_circuit() {
         let strategy = Strategy::Linear;
-        let expected = 0.5;
-        let interp = Interpolation::Interp2D(Interp2D {
-            x: vec![],
-            y: vec![],
-            f_xy: vec![],
+        let x = vec![0.05, 0.10, 0.15];
+        let y = vec![0.10, 0.20, 0.30];
+        let z = vec![0.20, 0.40, 0.60];
+        let f_xyz = vec![
+            vec![
+                vec![
+                    0., 1., 2.,
+                ],
+                vec![
+                    3., 4., 5.,
+                ],
+                vec![
+                    6., 7., 8.,
+                ],
+            ],
+            vec![
+                vec![
+                    9., 10., 11.,
+                ],
+                vec![
+                    12., 13., 14.,
+                ],
+                vec![
+                    15., 16., 17.,
+                ],
+            ],
+            vec![
+                vec![
+                    18., 19., 20.,
+                ],
+                vec![
+                    21., 22., 23.,
+                ],
+                vec![
+                    24., 25., 26.,
+                ],
+            ],
+        ];
+        let interp = Interpolation::Interp3D(Interp3D {
+            x: x.clone(),
+            y: y.clone(),
+            z: z.clone(),
+            f_xyz: f_xyz.clone(),
         });
-        assert_eq!(interp.interpolate(&[], &strategy).unwrap(), expected);
-        assert!(interp.interpolate(&[], &strategy).is_err());
-        assert!(interp.interpolate(&[], &strategy).is_err());
+        for i in 0..x.len() {
+            for j in 0..y.len() {
+                for k in 0..z.len() {
+                    assert_eq!(interp.interpolate(&[x[i], y[j], z[k]], &strategy).unwrap(), f_xyz[i][j][k]);
+                }
+            }
+        }
+        assert_eq!(interp.interpolate(&[x[0], y[0], 0.3], &strategy).unwrap(), 0.4999999999999999); // 0.5
+        assert_eq!(interp.interpolate(&[x[0], 0.15, z[0]], &strategy).unwrap(), 1.4999999999999996); // 1.5
+        assert_eq!(interp.interpolate(&[x[0], 0.15, 0.3], &strategy).unwrap(), 1.9999999999999996); // 2.0
+        assert_eq!(interp.interpolate(&[0.075, y[0], z[0]], &strategy).unwrap(), 4.499999999999999); // 4.5
+        assert_eq!(interp.interpolate(&[0.075, y[0], 0.3], &strategy).unwrap(), 4.999999999999999); // 5.0
+        assert_eq!(interp.interpolate(&[0.075, 0.15, z[0]], &strategy).unwrap(), 5.999999999999998); // 6.0
     }
 }
