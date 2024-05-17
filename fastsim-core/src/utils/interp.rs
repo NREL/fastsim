@@ -1,5 +1,3 @@
-use uom::si::length::yard;
-
 use crate::imports::*;
 
 #[derive(Debug)]
@@ -230,7 +228,7 @@ pub struct Interp1D {
     pub f_x: Vec<f64>,
 }
 impl Interp1D {
-    fn linear(&self, point: f64) -> anyhow::Result<f64> {
+    pub fn linear(&self, point: f64) -> anyhow::Result<f64> {
         if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
             return Ok(self.f_x[i])
         }
@@ -243,7 +241,7 @@ impl Interp1D {
         Ok(self.f_x[lower_index] * (1.0 - diff) + self.f_x[lower_index + 1] * diff)
     }
 
-    fn left_nearest(&self, point: f64) -> anyhow::Result<f64> {
+    pub fn left_nearest(&self, point: f64) -> anyhow::Result<f64> {
         if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
             return Ok(self.f_x[i])
         }
@@ -255,7 +253,7 @@ impl Interp1D {
         Ok(self.f_x[lower_index])
     }
 
-    fn right_nearest(&self, point: f64) -> anyhow::Result<f64> {
+    pub fn right_nearest(&self, point: f64) -> anyhow::Result<f64> {
         if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
             return Ok(self.f_x[i])
         }
@@ -267,7 +265,7 @@ impl Interp1D {
         Ok(self.f_x[lower_index + 1])
     }
 
-    fn nearest(&self, point: f64) -> anyhow::Result<f64> {
+    pub fn nearest(&self, point: f64) -> anyhow::Result<f64> {
         if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
             return Ok(self.f_x[i])
         }
@@ -293,20 +291,9 @@ pub struct Interp2D {
     pub f_xy: Vec<Vec<f64>>,
 }
 impl Interp2D {
-    fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
-        if let Some(x_idx) = self.x.iter().position(|&x_val| x_val == point[0]) {
-            let interp = Interp1D {
-                x: self.y.clone(),
-                f_x: self.f_xy[x_idx].clone(),
-            };
-            return interp.linear(point[1])
-        }
-        if let Some(y_idx) = self.y.iter().position(|&y_val| y_val == point[1]) {
-            let interp = Interp1D {
-                x: self.x.clone(),
-                f_x: self.f_xy.iter().map(|x| x[y_idx]).collect(),
-            };
-            return interp.linear(point[0])
+    pub fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
+        if let Some(value) = self.try_lower_dim(point)? {
+            return Ok(value)
         }
 
         let x_l = self
@@ -324,19 +311,33 @@ impl Interp2D {
             .unwrap();
         let y_u = y_l + 1;
         let y_diff = (point[1] - self.y[y_l]) / (self.y[y_u] - self.y[y_l]);
-
-        // bind values to variables
-        let c00 = self.f_xy[x_l][y_l]; // lower left
-        let c10 = self.f_xy[x_u][y_l]; // lower right
-        let c01 = self.f_xy[x_l][y_u]; // upper left
-        let c11 = self.f_xy[x_u][y_u]; // upper right
     
         // interpolate in the x-direction
-        let c0 = c00 * (1.0 - x_diff) + c10 * x_diff;
-        let c1 = c01 * (1.0 - x_diff) + c11 * x_diff;
+        let c0 = self.f_xy[x_l][y_l] * (1.0 - x_diff) + self.f_xy[x_u][y_l] * x_diff;
+        let c1 = self.f_xy[x_l][y_u] * (1.0 - x_diff) + self.f_xy[x_u][y_u] * x_diff;
     
         // interpolate in the y-direction
         Ok(c0 * (1.0 - y_diff) + c1 * y_diff)
+    }
+
+    fn try_lower_dim(&self, point: &[f64]) -> anyhow::Result<Option<f64>> {
+        // Is point in x grid?
+        if let Some(x_idx) = self.x.iter().position(|&x_val| x_val == point[0]) {
+            let interp = Interp1D {
+                x: self.y.clone(),
+                f_x: self.f_xy[x_idx].clone(),
+            };
+            return Some(interp.linear(point[1])).transpose()
+        }
+        // Is point in y grid?
+        if let Some(y_idx) = self.y.iter().position(|&y_val| y_val == point[1]) {
+            let interp = Interp1D {
+                x: self.x.clone(),
+                f_x: self.f_xy.iter().map(|x| x[y_idx]).collect(),
+            };
+            return Some(interp.linear(point[0])).transpose()
+        }
+        Ok(None)
     }
 }
 
@@ -349,30 +350,9 @@ pub struct Interp3D {
     pub f_xyz: Vec<Vec<Vec<f64>>>,
 }
 impl Interp3D {
-    fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
-        if let Some(x_idx) = self.x.iter().position(|&x_val| x_val == point[0]) {
-            let interp = Interp2D {
-                x: self.y.clone(),
-                y: self.z.clone(),
-                f_xy: self.f_xyz[x_idx].clone(),
-            };
-            return interp.linear(&[point[1], point[2]])
-        }
-        if let Some(y_idx) = self.y.iter().position(|&y_val| y_val == point[1]) {
-            let interp = Interp2D {
-                x: self.x.clone(),
-                y: self.z.clone(),
-                f_xy: self.f_xyz.iter().map(|x| x[y_idx].clone()).collect(),
-            };
-            return interp.linear(&[point[0], point[2]])
-        }
-        if let Some(z_idx) = self.z.iter().position(|&z_val| z_val == point[2]) {
-            let interp = Interp2D {
-                x: self.x.clone(),
-                y: self.y.clone(),
-                f_xy: self.f_xyz.iter().map(|x| x.iter().map(|y| y[z_idx]).collect()).collect(),
-            };
-            return interp.linear(&[point[0], point[1]])
+    pub fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
+        if let Some(value) = self.try_lower_dim(point)? {
+            return Ok(value)
         }
 
         let x_l = self
@@ -399,21 +379,11 @@ impl Interp3D {
         let z_u = z_l + 1;
         let z_diff = (point[1] - self.y[z_l]) / (self.z[z_u] - self.z[z_l]);
 
-        // bind values to variables
-        let c000 = self.f_xyz[x_l][y_l][z_l];
-        let c100 = self.f_xyz[x_u][y_l][z_l];
-        let c001 = self.f_xyz[x_l][y_l][z_u];
-        let c101 = self.f_xyz[x_u][y_l][z_u];
-        let c010 = self.f_xyz[x_l][y_u][z_l];
-        let c110 = self.f_xyz[x_u][y_u][z_l];
-        let c011 = self.f_xyz[x_l][y_u][z_u];
-        let c111 = self.f_xyz[x_u][y_u][z_u];
-
         // interpolate in the x-direction
-        let c00 = c000 * (1.0 - x_diff) + c100 * x_diff;
-        let c01 = c001 * (1.0 - x_diff) + c101 * x_diff;
-        let c10 = c010 * (1.0 - x_diff) + c110 * x_diff;
-        let c11 = c011 * (1.0 - x_diff) + c111 * x_diff;
+        let c00 = self.f_xyz[x_l][y_l][z_l] * (1.0 - x_diff) + self.f_xyz[x_u][y_l][z_l] * x_diff;
+        let c01 = self.f_xyz[x_l][y_l][z_u] * (1.0 - x_diff) + self.f_xyz[x_u][y_l][z_u] * x_diff;
+        let c10 = self.f_xyz[x_l][y_u][z_l] * (1.0 - x_diff) + self.f_xyz[x_u][y_u][z_l] * x_diff;
+        let c11 = self.f_xyz[x_l][y_u][z_u] * (1.0 - x_diff) + self.f_xyz[x_u][y_u][z_u] * x_diff;
     
         // interpolate in the y-direction
         let c0 = c00 * (1.0 - y_diff) + c10 * y_diff;
@@ -421,6 +391,37 @@ impl Interp3D {
     
         // interpolate in the z-direction
         Ok(c0 * (1.0 - z_diff) + c1 * z_diff)
+    }
+
+    fn try_lower_dim(&self, point: &[f64]) -> anyhow::Result<Option<f64>> {
+        // Is point in x grid?
+        if let Some(x_idx) = self.x.iter().position(|&x_val| x_val == point[0]) {
+            let interp = Interp2D {
+                x: self.y.clone(),
+                y: self.z.clone(),
+                f_xy: self.f_xyz[x_idx].clone(),
+            };
+            return Some(interp.linear(&[point[1], point[2]])).transpose()
+        }
+        // Is point in y grid?
+        if let Some(y_idx) = self.y.iter().position(|&y_val| y_val == point[1]) {
+            let interp = Interp2D {
+                x: self.x.clone(),
+                y: self.z.clone(),
+                f_xy: self.f_xyz.iter().map(|x| x[y_idx].clone()).collect(),
+            };
+            return Some(interp.linear(&[point[0], point[2]])).transpose()
+        }
+        // Is point in z grid?
+        if let Some(z_idx) = self.z.iter().position(|&z_val| z_val == point[2]) {
+            let interp = Interp2D {
+                x: self.x.clone(),
+                y: self.y.clone(),
+                f_xy: self.f_xyz.iter().map(|x| x.iter().map(|y| y[z_idx]).collect()).collect(),
+            };
+            return Some(interp.linear(&[point[0], point[1]])).transpose()
+        }
+        Ok(None)
     }
 }
 
@@ -513,19 +514,24 @@ mod tests_1D {
 mod tests_2D {
     use super::*;
 
-    // #[test]
-    // fn test_2D_linear() {
-    //     let strategy = Strategy::Linear;
-    //     let expected = 0.5;
-    //     let interp = Interpolation::Interp2D(Interp2D {
-    //         x: vec![0.05, 0.10, 0.15, 0.20],
-    //         y: vec![0.10, 0.20, 0.30, 0.40],
-    //         f_xy: vec![],
-    //     });
-    //     assert_eq!(interp.interpolate(&[], &strategy).unwrap(), expected);
-    //     assert!(interp.interpolate(&[], &strategy).is_err());
-    //     assert!(interp.interpolate(&[], &strategy).is_err());
-    // }
+    #[test]
+    fn test_2D_linear() {
+        let strategy = Strategy::Linear;
+        let x = vec![0.05, 0.10, 0.15];
+        let y = vec![0.10, 0.20, 0.30];
+        let f_xy = vec![
+            vec![0., 1., 2.],
+            vec![3., 4., 5.],
+            vec![6., 7., 8.],
+        ];
+        let interp = Interpolation::Interp2D(Interp2D {
+            x: x.clone(),
+            y: y.clone(),
+            f_xy: f_xy.clone(),
+        });
+        assert_eq!(interp.interpolate(&[x[2], y[1]], &strategy).unwrap(), 7.);
+        assert_eq!(interp.interpolate(&[x[2], y[1]], &strategy).unwrap(), 7.);
+    }
 }
 
 #[cfg(test)]
@@ -533,7 +539,7 @@ mod tests_3D {
     use super::*;
 
     #[test]
-    fn test_short_circuit() {
+    fn test_3D_linear() {
         let strategy = Strategy::Linear;
         let x = vec![0.05, 0.10, 0.15];
         let y = vec![0.10, 0.20, 0.30];
