@@ -354,10 +354,12 @@ impl ReversibleEnergyStorage {
 
         ensure!(
             pwr_aux <= state.pwr_disch_max,
-            "`{}` ({} W) must always be less than or equal to {}",
+            "`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
             stringify!(pwr_aux),
             pwr_aux.get::<si::watt>().format_eng(None),
-            stringify!(state.pwr_disch_max)
+            stringify!(state.pwr_disch_max),
+            state.pwr_disch_max.get::<si::watt>().format_eng(None),
+            state.soc.get::<si::ratio>()
         );
         ensure!(
             state.pwr_prop_max >= uc::W * 0.,
@@ -571,9 +573,7 @@ pub enum SpecificEnergySideEffect {
     Energy,
 }
 
-#[derive(
-    Clone, Copy, Default, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
-)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[pyo3_api]
 // component limits
 /// ReversibleEnergyStorage state variables
@@ -637,6 +637,12 @@ pub struct ReversibleEnergyStorageState {
 
     /// component temperature
     pub temperature_celsius: f64,
+}
+
+impl Default for ReversibleEnergyStorageState {
+    fn default() -> Self {
+        todo!()
+    }
 }
 
 impl Init for ReversibleEnergyStorageState {}
