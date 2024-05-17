@@ -557,7 +557,7 @@ mod tests_0D {
         let interp = Interpolator::Interp0D(expected);
         assert_eq!(interp.interpolate(&[], &strategy).unwrap(), expected);
         assert!(interp.interpolate(&[0.], &strategy).is_err());
-        assert!(interp.interpolate(&[], &strategy).is_err());
+        assert!(interp.interpolate(&[], &Strategy::Linear).is_err());
     }
 }
 
