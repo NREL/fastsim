@@ -20,8 +20,6 @@ anyhow = { workspace = true }
 readonly = "0.2.3"
 duplicate = "0.4.1"
 nohash-hasher = "0.2.0"
-
-# optional
 pyo3 = { workspace = true, features = [
     "extension-module",
     "anyhow",
@@ -35,6 +33,13 @@ lazy_static = "1.4.0"
 regex = "1.10.3"
 ndarray = "0.15.6"
 toml = "0.8.12"
+
+[dev-dependencies]
+criterion = { version = "0.4", features = ["html_reports"] }
+
+[[bench]]
+name = "interp_bench"
+harness = false
 
 [features]
 pyo3 = ["dep:pyo3", "fastsim-2/pyo3"]
