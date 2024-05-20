@@ -337,7 +337,7 @@ pub fn get_options_for_year_make_model(
 #[cfg_attr(feature = "pyo3", pyfunction)]
 pub fn get_vehicle_data_for_id(
     id: i32,
-    year: &str, 
+    year: &str,
     cache_url: Option<String>,
     data_dir: Option<String>,
 ) -> anyhow::Result<VehicleDataFE> {
@@ -348,16 +348,21 @@ pub fn get_vehicle_data_for_id(
         h.insert(y);
         h
     };
-    let ddpath = data_dir.and_then(|dd| Some(PathBuf::from(dd))).unwrap_or(create_project_subdir("fe_label_data")?);
+    let ddpath = data_dir
+        .and_then(|dd| Some(PathBuf::from(dd)))
+        .unwrap_or(create_project_subdir("fe_label_data")?);
     let cache_url = cache_url.unwrap_or_else(get_default_cache_url);
-    populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url).with_context(|| format!("Unable to load or download cache data from {cache_url}"))?;
+    populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url)
+        .with_context(|| format!("Unable to load or download cache data from {cache_url}"))?;
     let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
     let fegov_data_by_year =
         load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
-    let fegov_db = fegov_data_by_year.get(&y).context(format!("Could not get fueleconomy.gov data from year {y}"))?;
+    let fegov_db = fegov_data_by_year
+        .get(&y)
+        .context(format!("Could not get fueleconomy.gov data from year {y}"))?;
     for item in fegov_db.iter() {
         if item.id == id {
-            return Ok(item.clone())
+            return Ok(item.clone());
         }
     }
     bail!("Could not find ID in data {id}");
@@ -933,10 +938,10 @@ fn try_make_single_vehicle(
         fc_eff_map = Array::from_vec(vec![
             0.10, 0.12, 0.16, 0.22, 0.28, 0.33, 0.35, 0.36, 0.35, 0.34, 0.32, 0.30,
         ]);
-        mc_max_kw = epa_data.eng_pwr_hp as f64 / HP_PER_KW;
+        mc_max_kw = other_inputs.mc_max_kw;
         min_soc = 0.0;
         max_soc = 1.0;
-        ess_max_kw = 1.05 * mc_max_kw;
+        ess_max_kw = other_inputs.ess_max_kw;
         ess_max_kwh = other_inputs.ess_max_kwh;
         mph_fc_on = 1.0;
         kw_demand_fc_on = 100.0;
