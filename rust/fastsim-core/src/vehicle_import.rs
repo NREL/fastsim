@@ -301,6 +301,7 @@ pub fn get_options_for_year_make_model(
     year: &str,
     make: &str,
     model: &str,
+    id: i32,
     cache_url: Option<String>,
     data_dir: Option<String>,
 ) -> anyhow::Result<Vec<VehicleDataFE>> {
@@ -325,7 +326,7 @@ pub fn get_options_for_year_make_model(
         .and_then(|fegov_db| {
             let mut hits = Vec::new();
             for item in fegov_db.iter() {
-                if item.make == make && item.model == model {
+                if item.make == make && item.model == model && item.id == id {
                     hits.push(item.clone());
                 }
             }
