@@ -1621,7 +1621,9 @@ mod tests {
         let year = String::from("2020");
         let make = String::from("Toyota");
         let model = String::from("Corolla");
-        let options = get_options_for_year_make_model(&year, &make, &model, None, None).unwrap();
+        let id = 41213;
+        let options =
+            get_options_for_year_make_model(&year, &make, &model, id, None, None).unwrap();
         assert!(!options.is_empty());
     }
 
@@ -1700,6 +1702,7 @@ mod tests {
         let year = String::from("2020");
         let make = String::from("Toyota");
         let model = String::from("Corolla");
+        let id = 41213;
         let temp_dir = tempfile::tempdir().unwrap();
         let data_dir = temp_dir.path();
         let cacheurl = get_default_cache_url();
@@ -1707,6 +1710,7 @@ mod tests {
             &year,
             &make,
             &model,
+            id,
             Some(cacheurl),
             Some(data_dir.to_str().unwrap().to_string()),
         )
