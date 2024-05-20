@@ -301,7 +301,6 @@ pub fn get_options_for_year_make_model(
     year: &str,
     make: &str,
     model: &str,
-    id: i32,
     cache_url: Option<String>,
     data_dir: Option<String>,
 ) -> anyhow::Result<Vec<VehicleDataFE>> {
@@ -326,7 +325,7 @@ pub fn get_options_for_year_make_model(
         .and_then(|fegov_db| {
             let mut hits = Vec::new();
             for item in fegov_db.iter() {
-                if item.make == make && item.model == model && item.id == id {
+                if item.make == make && item.model == model {
                     hits.push(item.clone());
                 }
             }
@@ -1621,9 +1620,8 @@ mod tests {
         let year = String::from("2020");
         let make = String::from("Toyota");
         let model = String::from("Corolla");
-        let id = 41213;
-        let options =
-            get_options_for_year_make_model(&year, &make, &model, id, None, None).unwrap();
+        // let id = 41213;
+        let options = get_options_for_year_make_model(&year, &make, &model, None, None).unwrap();
         assert!(!options.is_empty());
     }
 
@@ -1702,7 +1700,7 @@ mod tests {
         let year = String::from("2020");
         let make = String::from("Toyota");
         let model = String::from("Corolla");
-        let id = 41213;
+        // let id = 41213;
         let temp_dir = tempfile::tempdir().unwrap();
         let data_dir = temp_dir.path();
         let cacheurl = get_default_cache_url();
@@ -1710,7 +1708,6 @@ mod tests {
             &year,
             &make,
             &model,
-            id,
             Some(cacheurl),
             Some(data_dir.to_str().unwrap().to_string()),
         )
