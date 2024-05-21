@@ -12,66 +12,8 @@ pub enum Interpolator {
 }
 
 impl Interpolator {
-    pub fn interpolate(&self, point: &[f64], strategy: &Strategy) -> anyhow::Result<f64> {
-        self.validate_inputs(point, strategy)?;
-        match self {
-            Self::Interp0D(value) => {
-                ensure!(
-                    matches!(strategy, Strategy::None),
-                    "Provided strategy {:?} is not applicable for 0-D, select {:?}",
-                    strategy,
-                    Strategy::None
-                );
-                Ok(*value)
-            }
-            Self::Interp1D(interp) => match strategy {
-                Strategy::Linear => interp.linear(point[0]),
-                Strategy::LeftNearest => interp.left_nearest(point[0]),
-                Strategy::RightNearest => interp.right_nearest(point[0]),
-                Strategy::Nearest => interp.nearest(point[0]),
-                _ => bail!(
-                    "Provided strategy {:?} is not applicable for 1-D interpolation",
-                    strategy
-                ),
-            },
-            Self::Interp2D(interp) => match strategy {
-                Strategy::Linear => interp.linear(point),
-                _ => bail!(
-                    "Provided strategy {:?} is not applicable for 2-D interpolation",
-                    strategy
-                ),
-            },
-            Self::Interp3D(interp) => match strategy {
-                Strategy::Linear => interp.linear(point),
-                _ => bail!(
-                    "Provided strategy {:?} is not applicable for 3-D interpolation",
-                    strategy
-                ),
-            },
-            Self::InterpND(interp) => match strategy {
-                Strategy::None | Strategy::Linear => interp.linear(point),
-                _ => bail!(
-                    "Provided strategy {:?} is not applicable for 3-D interpolation",
-                    strategy
-                ),
-            },
-        }
-    }
-
-    fn validate_inputs(&self, point: &[f64], _strategy: &Strategy) -> anyhow::Result<()> {
+    pub fn validate(&self) -> anyhow::Result<()> {
         let n = self.ndim();
-        // Check supplied point dimensionality
-        if n == 0 {
-            ensure!(
-                point.is_empty(),
-                "No point should be provided for 0-D interpolation"
-            )
-        } else {
-            ensure!(
-                point.len() == n,
-                "Supplied point slice should have length {n} for {n}-D interpolation"
-            )
-        }
         // Check that grid points are monotonically increasing
         match self {
             Self::Interp1D(interp) => {
@@ -142,6 +84,83 @@ impl Interpolator {
             }
             _ => (),
         }
+        // N-dimensional specific checks
+        if let Self::InterpND(interp) = self {
+            // Check grid dimensionality
+            let grid_len = if interp.grid[0].is_empty() {
+                0
+            } else {
+                interp.grid.len()
+            };
+            ensure!(
+                grid_len == n,
+                "Length of supplied `grid` must be same as `values` dimensionality: {:?} is not {n}-dimensional",
+                interp.grid
+            );
+        }
+        Ok(())
+    }
+
+    pub fn interpolate(&self, point: &[f64], strategy: &Strategy) -> anyhow::Result<f64> {
+        self.validate_inputs(point, strategy)?;
+        match self {
+            Self::Interp0D(value) => {
+                ensure!(
+                    matches!(strategy, Strategy::None),
+                    "Provided strategy {:?} is not applicable for 0-D, select {:?}",
+                    strategy,
+                    Strategy::None
+                );
+                Ok(*value)
+            }
+            Self::Interp1D(interp) => match strategy {
+                Strategy::Linear => interp.linear(point[0]),
+                Strategy::LeftNearest => interp.left_nearest(point[0]),
+                Strategy::RightNearest => interp.right_nearest(point[0]),
+                Strategy::Nearest => interp.nearest(point[0]),
+                _ => bail!(
+                    "Provided strategy {:?} is not applicable for 1-D interpolation",
+                    strategy
+                ),
+            },
+            Self::Interp2D(interp) => match strategy {
+                Strategy::Linear => interp.linear(point),
+                _ => bail!(
+                    "Provided strategy {:?} is not applicable for 2-D interpolation",
+                    strategy
+                ),
+            },
+            Self::Interp3D(interp) => match strategy {
+                Strategy::Linear => interp.linear(point),
+                _ => bail!(
+                    "Provided strategy {:?} is not applicable for 3-D interpolation",
+                    strategy
+                ),
+            },
+            Self::InterpND(interp) => match strategy {
+                Strategy::None | Strategy::Linear => interp.linear(point),
+                _ => bail!(
+                    "Provided strategy {:?} is not applicable for 3-D interpolation",
+                    strategy
+                ),
+            },
+        }
+    }
+
+    fn validate_inputs(&self, point: &[f64], _strategy: &Strategy) -> anyhow::Result<()> {
+        let n = self.ndim();
+        // Check supplied point dimensionality
+        if n == 0 {
+            ensure!(
+                point.is_empty(),
+                "No point should be provided for 0-D interpolation"
+            )
+        } else {
+            ensure!(
+                point.len() == n,
+                "Supplied point slice should have length {n} for {n}-D interpolation"
+            )
+        }
         // Check that point is within grid in each dimension
         match self {
             Self::Interp1D(interp) => {
@@ -182,20 +201,6 @@ impl Interpolator {
                 }
             }
             _ => (),
-        }
-        // N-dimensional specific checks
-        if let Self::InterpND(interp) = self {
-            // Check grid dimensionality
-            let grid_len = if interp.grid[0].is_empty() {
-                0
-            } else {
-                interp.grid.len()
-            };
-            ensure!(
-                grid_len == n,
-                "Length of supplied `grid` must be same as `values` dimensionality: {:?} is not {n}-dimensional",
-                interp.grid
-            );
         }
         Ok(())
     }
@@ -492,6 +497,7 @@ mod tests_0D {
         let strategy = Strategy::None;
         let expected = 0.5;
         let interp = Interpolator::Interp0D(expected);
+        interp.validate().unwrap();
         assert_eq!(interp.interpolate(&[], &strategy).unwrap(), expected);
         assert!(interp.interpolate(&[0.], &strategy).is_err());
         assert!(interp.interpolate(&[], &Strategy::Linear).is_err());
@@ -505,10 +511,12 @@ mod tests_1D {
 
     fn setup_1D() -> Interpolator {
         // f(x) = 0.2x + 0.2
-        Interpolator::Interp1D(Interp1D {
+        let interp = Interpolator::Interp1D(Interp1D {
             x: vec![0., 1., 2., 3., 4.],
             f_x: vec![0.2, 0.4, 0.6, 0.8, 1.0],
-        })
+        });
+        interp.validate().unwrap();
+        interp
     }
 
     #[test]
@@ -573,6 +581,7 @@ mod tests_2D {
             y: y.clone(),
             f_xy: f_xy.clone(),
         });
+        interp.validate().unwrap();
         assert_eq!(interp.interpolate(&[x[2], y[1]], &strategy).unwrap(), 7.);
         assert_eq!(interp.interpolate(&[x[2], y[1]], &strategy).unwrap(), 7.);
     }
@@ -584,6 +593,7 @@ mod tests_2D {
             y: vec![0., 1.],
             f_xy: vec![vec![0., 1.], vec![2., 3.]],
         });
+        interp.validate().unwrap();
         let interp_res = interp
             .interpolate(&[0.25, 0.65], &Strategy::Linear)
             .unwrap();
@@ -617,6 +627,7 @@ mod tests_3D {
             z: z.clone(),
             f_xyz: f_xyz.clone(),
         });
+        interp.validate().unwrap();
         // Check that interpolating at grid points just retrieves the value
         for i in 0..x.len() {
             for j in 0..y.len() {
@@ -665,6 +676,7 @@ mod tests_3D {
                 vec![vec![4., 5.], vec![6., 7.]],
             ],
         });
+        interp.validate().unwrap();
         let interp_res = interp
             .interpolate(&[0.25, 0.65, 0.9], &Strategy::Linear)
             .unwrap();
@@ -695,6 +707,7 @@ mod tests_ND {
             grid: grid.clone(),
             values: f_xyz.clone(),
         });
+        interp.validate().unwrap();
         // Check that interpolating at grid points just retrieves the value
         for i in 0..grid[0].len() {
             for j in 0..grid[1].len() {
@@ -752,6 +765,7 @@ mod tests_ND {
             grid: vec![vec![0., 1.], vec![0., 1.], vec![0., 1.]],
             values: array![[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]],].into_dyn(),
         });
+        interp.validate().unwrap();
         let interp_res = interp
             .interpolate(&[0.25, 0.65, 0.9], &Strategy::Linear)
             .unwrap();

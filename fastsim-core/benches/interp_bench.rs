@@ -7,6 +7,7 @@ use rand::{self, rngs::StdRng, Rng, SeedableRng};
 /// 0-D interpolation (hardcoded)
 fn benchmark_0D() {
     let interp_0d = Interpolator::Interp0D(0.5);
+    interp_0d.validate().unwrap();
     interp_0d.interpolate(&[], &Strategy::None).unwrap();
 }
 
@@ -16,6 +17,7 @@ fn benchmark_0D_multi() {
         grid: vec![vec![]],
         values: array![0.5].into_dyn(),
     });
+    interp_0d_multi.validate().unwrap();
     interp_0d_multi.interpolate(&[], &Strategy::None).unwrap();
 }
 
@@ -25,6 +27,7 @@ fn benchmark_0D_multi() {
 //         x: todo!(),
 //         f_x: todo!(),
 //     });
+//     interp_1d.validate().unwrap();
 //     interp_1d.interpolate(&[], &Strategy::Linear).unwrap();
 // }
 
@@ -34,6 +37,7 @@ fn benchmark_0D_multi() {
 //         grid: vec![vec![]],
 //         values: array![].into_dyn(),
 //     });
+//     interp_1d_multi.validate().unwrap();
 //     interp_1d_multi.interpolate(&[], &Strategy::Linear).unwrap();
 // }
 
@@ -44,6 +48,7 @@ fn benchmark_0D_multi() {
 //         y: todo!(),
 //         f_xy: todo!(),
 //     });
+//     interp_2d.validate().unwrap();
 //     interp_2d.interpolate(&[], &Strategy::Linear).unwrap();
 // }
 
@@ -53,6 +58,7 @@ fn benchmark_0D_multi() {
 //         grid: vec![vec![], vec![], vec![]],
 //         values: array![].into_dyn(),
 //     });
+//     interp_2d_multi.validate().unwrap();
 //     interp_2d_multi.interpolate(&[], &Strategy::Linear).unwrap();
 // }
 
@@ -77,6 +83,7 @@ fn benchmark_3D() {
         z: grid_data.clone(),
         f_xyz: values_data,
     });
+    interp_3d.validate().unwrap();
     // Sample 1,000 points
     let points = (0..1_000)
         .map(|_| {
@@ -104,6 +111,7 @@ fn benchmark_3D_multi() {
         grid: vec![grid_data.clone(), grid_data.clone(), grid_data.clone()],
         values: ArrayD::from_shape_vec(IxDyn(&[100, 100, 100]), values_data).unwrap(),
     });
+    interp_3d_multi.validate().unwrap();
     // Sample 1,000 points
     let points = (0..1_000)
         .map(|_| {
