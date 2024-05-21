@@ -34,5 +34,13 @@ regex = "1.10.3"
 ndarray = "0.15.6"
 toml = "0.8.12"
 
+[dev-dependencies]
+criterion = "0.3"
+rand = "0.8.5"
+
+[[bench]]
+name = "interp_bench"
+harness = false
+
 [features]
 pyo3 = ["dep:pyo3", "fastsim-2/pyo3"]

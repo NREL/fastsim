@@ -247,7 +247,7 @@ impl Interp1D {
             .x
             .windows(2)
             .position(|w| w[0] <= point && point < w[1])
-            .unwrap();
+            .unwrap_or(self.x.len() - 2);
         let diff = (point - self.x[lower_index]) / (self.x[lower_index + 1] - self.x[lower_index]);
         Ok(self.f_x[lower_index] * (1.0 - diff) + self.f_x[lower_index + 1] * diff)
     }
@@ -260,7 +260,7 @@ impl Interp1D {
             .x
             .windows(2)
             .position(|w| w[0] <= point && point < w[1])
-            .unwrap();
+            .unwrap_or(self.x.len() - 2);
         Ok(self.f_x[lower_index])
     }
 
@@ -272,7 +272,7 @@ impl Interp1D {
             .x
             .windows(2)
             .position(|w| w[0] <= point && point < w[1])
-            .unwrap();
+            .unwrap_or(self.x.len() - 2);
         Ok(self.f_x[lower_index + 1])
     }
 
@@ -284,7 +284,7 @@ impl Interp1D {
             .x
             .windows(2)
             .position(|w| w[0] <= point && point < w[1])
-            .unwrap();
+            .unwrap_or(self.x.len() - 2);
         let diff = (point - self.x[lower_index]) / (self.x[lower_index + 1] - self.x[lower_index]);
         Ok(if diff < 0.5 {
             self.f_x[lower_index]
@@ -303,15 +303,11 @@ pub struct Interp2D {
 }
 impl Interp2D {
     pub fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
-        if let Some(value) = self.try_lower_dim(point)? {
-            return Ok(value);
-        }
-
         let x_l = self
             .x
             .windows(2)
             .position(|w| w[0] <= point[0] && point[0] < w[1])
-            .unwrap();
+            .unwrap_or(self.x.len() - 2);
         let x_u = x_l + 1;
         let x_diff = (point[0] - self.x[x_l]) / (self.x[x_u] - self.x[x_l]);
 
@@ -319,7 +315,7 @@ impl Interp2D {
             .y
             .windows(2)
             .position(|w| w[0] <= point[1] && point[1] < w[1])
-            .unwrap();
+            .unwrap_or(self.y.len() - 2);
         let y_u = y_l + 1;
         let y_diff = (point[1] - self.y[y_l]) / (self.y[y_u] - self.y[y_l]);
 
@@ -329,26 +325,6 @@ impl Interp2D {
 
         // interpolate in the y-direction
         Ok(c0 * (1.0 - y_diff) + c1 * y_diff)
-    }
-
-    fn try_lower_dim(&self, point: &[f64]) -> anyhow::Result<Option<f64>> {
-        // Is point in x grid?
-        if let Some(x_idx) = self.x.iter().position(|&x_val| x_val == point[0]) {
-            let interp = Interp1D {
-                x: self.y.clone(),
-                f_x: self.f_xy[x_idx].clone(),
-            };
-            return Some(interp.linear(point[1])).transpose();
-        }
-        // Is point in y grid?
-        if let Some(y_idx) = self.y.iter().position(|&y_val| y_val == point[1]) {
-            let interp = Interp1D {
-                x: self.x.clone(),
-                f_x: self.f_xy.iter().map(|x| x[y_idx]).collect(),
-            };
-            return Some(interp.linear(point[0])).transpose();
-        }
-        Ok(None)
     }
 }
 
@@ -362,15 +338,11 @@ pub struct Interp3D {
 }
 impl Interp3D {
     pub fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
-        if let Some(value) = self.try_lower_dim(point)? {
-            return Ok(value);
-        }
-
         let x_l = self
             .x
             .windows(2)
             .position(|w| w[0] <= point[0] && point[0] < w[1])
-            .unwrap();
+            .unwrap_or(self.x.len() - 2);
         let x_u = x_l + 1;
         let x_diff = (point[0] - self.x[x_l]) / (self.x[x_u] - self.x[x_l]);
 
@@ -378,7 +350,7 @@ impl Interp3D {
             .y
             .windows(2)
             .position(|w| w[0] <= point[1] && point[1] < w[1])
-            .unwrap();
+            .unwrap_or(self.y.len() - 2);
         let y_u = y_l + 1;
         let y_diff = (point[1] - self.y[y_l]) / (self.y[y_u] - self.y[y_l]);
 
@@ -386,7 +358,7 @@ impl Interp3D {
             .z
             .windows(2)
             .position(|w| w[0] <= point[2] && point[2] < w[1])
-            .unwrap();
+            .unwrap_or(self.z.len() - 2);
         let z_u = z_l + 1;
         let z_diff = (point[2] - self.z[z_l]) / (self.z[z_u] - self.z[z_l]);
 
@@ -402,41 +374,6 @@ impl Interp3D {
 
         // interpolate in the z-direction
         Ok(c0 * (1.0 - z_diff) + c1 * z_diff)
-    }
-
-    fn try_lower_dim(&self, point: &[f64]) -> anyhow::Result<Option<f64>> {
-        // Is point in x grid?
-        if let Some(x_idx) = self.x.iter().position(|&x_val| x_val == point[0]) {
-            let interp = Interp2D {
-                x: self.y.clone(),
-                y: self.z.clone(),
-                f_xy: self.f_xyz[x_idx].clone(),
-            };
-            return Some(interp.linear(&[point[1], point[2]])).transpose();
-        }
-        // Is point in y grid?
-        if let Some(y_idx) = self.y.iter().position(|&y_val| y_val == point[1]) {
-            let interp = Interp2D {
-                x: self.x.clone(),
-                y: self.z.clone(),
-                f_xy: self.f_xyz.iter().map(|x| x[y_idx].clone()).collect(),
-            };
-            return Some(interp.linear(&[point[0], point[2]])).transpose();
-        }
-        // Is point in z grid?
-        if let Some(z_idx) = self.z.iter().position(|&z_val| z_val == point[2]) {
-            let interp = Interp2D {
-                x: self.x.clone(),
-                y: self.y.clone(),
-                f_xy: self
-                    .f_xyz
-                    .iter()
-                    .map(|x| x.iter().map(|y| y[z_idx]).collect())
-                    .collect(),
-            };
-            return Some(interp.linear(&[point[0], point[1]])).transpose();
-        }
-        Ok(None)
     }
 }
 
