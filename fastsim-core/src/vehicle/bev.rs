@@ -1,3 +1,5 @@
+use self::vehicle::VehicleState;
+
 use super::*;
 // use crate::imports::*;
 
@@ -116,12 +118,13 @@ impl Powertrain for BatteryElectricVehicle {
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
+        veh_state: &VehicleState,
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         let pwr_out_req_from_res = self
             .em
-            .get_pwr_in_req(pwr_out_req, pwr_aux, dt)
+            .get_pwr_in_req(pwr_out_req, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         // TODO: revisit this if...else block
         if self.em.state.pwr_elec_prop_in > si::Power::ZERO {

@@ -5,7 +5,7 @@ use super::*;
 #[allow(unused_imports)]
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
-use crate::utils::abs_fixed_x_val;
+use crate::utils::abs_checked_x_val;
 
 #[pyo3_api(
     // #[new]
@@ -94,12 +94,23 @@ pub struct ElectricMachine {
     pub history: ElectricMachineStateHistoryVec,
 }
 
-impl PowertrainThrough for ElectricMachine {
-    fn set_cur_pwr_prop_out_max(
+impl ElectricMachine {
+    /// Returns maximum possible positive and negative propulsion-related powers
+    /// this component/system can produce, accounting for any aux-related power
+    /// required.
+    /// # Arguments
+    /// - `pwr_in_fwd_max`: positive-propulsion-related power available to this
+    /// component. Positive values indicate that the upstream component can supply
+    /// positive tractive power.
+    /// - `pwr_in_bwd_max`: negative-propulsion-related power available to this
+    /// component. Zero means no power can be sent to upstream compnents and positive
+    /// values indicate upstream components can absorb energy.
+    /// - `pwr_aux`: aux-related power required from this component
+    /// - `dt`: time step size
+    pub fn set_cur_pwr_prop_out_max(
         &mut self,
         pwr_in_fwd_max: si::Power,
         pwr_in_bwd_max: si::Power,
-        pwr_aux: si::Power,
         _dt: si::Time,
     ) -> anyhow::Result<()> {
         ensure!(
@@ -116,24 +127,21 @@ impl PowertrainThrough for ElectricMachine {
             pwr_in_bwd_max.get::<si::watt>().format_eng(None),
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
-        ensure!(
-            pwr_aux == uc::W * 0.,
-            "`pwr_aux` must be zero for `{}`",
-            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
-        );
+
         if self.pwr_in_frac_interp.is_empty() {
             self.set_pwr_in_frac_interp()
                 .with_context(|| format_dbg!())?;
         }
         let eff_pos = uc::R
             * interp1d(
-                &abs_fixed_x_val(
+                &abs_checked_x_val(
                     (pwr_in_fwd_max / self.pwr_out_max).get::<si::ratio>(),
                     &self.pwr_in_frac_interp,
                 )?,
                 &self.pwr_in_frac_interp,
                 &self.eff_interp,
-                Extrapolate::Error,
+                // Extrapolation does not trigger error because `self.pwr_out_max` is limiting regardless
+                Extrapolate::No,
             )
             .with_context(|| {
                 anyhow!(
@@ -145,13 +153,14 @@ impl PowertrainThrough for ElectricMachine {
         // TODO: scrutinize this variable assignment
         let eff_neg = uc::R
             * interp1d(
-                &abs_fixed_x_val(
+                &abs_checked_x_val(
                     (pwr_in_bwd_max / self.pwr_out_max).get::<si::ratio>(),
                     &self.pwr_in_frac_interp,
                 )?,
                 &self.pwr_in_frac_interp,
                 &self.eff_interp,
-                Extrapolate::Error,
+                // Extrapolation does not trigger error because `self.pwr_out_max` is limiting regardless
+                Extrapolate::No,
             )
             .with_context(|| {
                 anyhow!(
@@ -166,10 +175,13 @@ impl PowertrainThrough for ElectricMachine {
         Ok(())
     }
 
-    fn get_pwr_in_req(
+    /// Solves for this powertrain system/component efficiency and sets/returns power input required.
+    /// # Arguments
+    /// - `pwr_out_req`: propulsion-related power output required
+    /// - `dt`: time step size
+    pub fn get_pwr_in_req(
         &mut self,
         pwr_out_req: si::Power,
-        _pwr_aux: si::Power,
         _dt: si::Time,
     ) -> anyhow::Result<si::Power> {
         //TODO: update this function to use `pwr_mech_regen_out_max`
@@ -224,6 +236,20 @@ impl PowertrainThrough for ElectricMachine {
 
         Ok(self.state.pwr_elec_prop_in)
     }
+
+    pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
+        // make sure vector has been created
+        self.pwr_in_frac_interp = self
+            .pwr_out_frac_interp
+            .iter()
+            .zip(self.eff_interp.iter())
+            .map(|(x, y)| x / y)
+            .collect();
+        Ok(())
+    }
+
+    impl_get_set_eff_max_min!();
+    impl_get_set_eff_range!();
 }
 
 use fastsim_2::params::{
@@ -320,22 +346,6 @@ impl Mass for ElectricMachine {
         self.specific_pwr = None;
         self.mass = None;
     }
-}
-
-impl ElectricMachine {
-    pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
-        // make sure vector has been created
-        self.pwr_in_frac_interp = self
-            .pwr_out_frac_interp
-            .iter()
-            .zip(self.eff_interp.iter())
-            .map(|(x, y)| x / y)
-            .collect();
-        Ok(())
-    }
-
-    impl_get_set_eff_max_min!();
-    impl_get_set_eff_range!();
 }
 
 #[derive(

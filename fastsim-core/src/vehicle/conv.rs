@@ -47,6 +47,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
+        _veh_state: &VehicleState,
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {

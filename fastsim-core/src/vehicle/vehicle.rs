@@ -508,6 +508,7 @@ impl Vehicle {
             .solve(
                 self.state.pwr_tractive,
                 self.pwr_aux,
+                &self.state,
                 true, // `enabled` should always be true at the powertrain level
                 dt,
             )

@@ -52,7 +52,6 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .set_cur_pwr_prop_out_max(
                 self.res.state.pwr_prop_max,
                 self.res.state.pwr_regen_max,
-                pwr_aux,
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -70,17 +69,24 @@ impl Powertrain for Box<HybridElectricVehicle> {
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
+        veh_state: &VehicleState,
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        // TODO: replace with actual logic.  Should probably have vehicle controls enum in `HybridElectricVehicle`
-        let (fc_pwr_out_req, em_pwr_out_req) = (0.5 * pwr_out_req, 0.5 * pwr_out_req);
+        let (fc_pwr_out_req, em_pwr_out_req) = self.hev_controls.get_pwr_fc_and_res(
+            pwr_out_req,
+            veh_state,
+            &self.fc.state,
+            &self.res.state,
+        )?;
 
         let enabled = true; // TODO: replace with a stop/start model
+                            // TODO: figure out fancier way to handle apportionment of `pwr_aux` between `fc` and `res`
         self.fc
             .solve(fc_pwr_out_req, pwr_aux, enabled, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        // self.fs.solve()
+        let res_pwr_out_req = self.em.get_pwr_in_req(em_pwr_out_req, dt)?;
+        self.res.solve(res_pwr_out_req, pwr_aux, dt)?;
         Ok(())
     }
 

@@ -32,13 +32,16 @@ impl Powertrain for PowertrainType {
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
+        veh_state: &VehicleState,
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
-            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
-            Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, enabled, dt),
+            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, pwr_aux, veh_state, enabled, dt),
+            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, veh_state, enabled, dt),
+            Self::BatteryElectricVehicle(v) => {
+                v.solve(pwr_out_req, pwr_aux, veh_state, enabled, dt)
+            }
         }
     }
 

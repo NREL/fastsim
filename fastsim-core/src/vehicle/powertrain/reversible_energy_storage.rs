@@ -636,12 +636,38 @@ pub struct ReversibleEnergyStorageState {
     pub soc_lo_ramp_start: si::Ratio,
 
     /// component temperature
+    // TODO: make this uom or figure out why it's not!
     pub temperature_celsius: f64,
 }
 
 impl Default for ReversibleEnergyStorageState {
     fn default() -> Self {
-        todo!()
+        Self {
+            pwr_cat_max: uc::W * 0.,
+            pwr_prop_max: uc::W * 0.,
+            pwr_regen_max: uc::W * 0.,
+            pwr_disch_max: uc::W * 0.,
+            pwr_charge_max: uc::W * 0.,
+            i: 0,
+            soc: uc::R * 0.5,
+            eff: uc::R * 0.,
+            soh: 0.,
+            pwr_out_electrical: uc::W * 0.,
+            pwr_out_propulsion: uc::W * 0.,
+            pwr_aux: uc::W * 0.,
+            pwr_loss: uc::W * 0.,
+            pwr_out_chemical: uc::W * 0.,
+            energy_out_electrical: uc::J * 0.,
+            energy_out_propulsion: uc::J * 0.,
+            energy_aux: uc::J * 0.,
+            energy_loss: uc::J * 0.,
+            energy_out_chemical: uc::J * 0.,
+            max_soc: uc::R * 0.,
+            soc_hi_ramp_start: uc::R * 0.,
+            min_soc: uc::R * 0.,
+            soc_lo_ramp_start: uc::R * 0.,
+            temperature_celsius: 22.,
+        }
     }
 }
 
