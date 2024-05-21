@@ -75,20 +75,20 @@ impl Interpolator {
         // Check that grid points are monotonically increasing
         match self {
             Self::Interp1D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     interp.x.windows(2).all(|w| w[0] < w[1]),
                     "Supplied x-values must be sorted and non-repeating"
                 );
             }
             Self::Interp2D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     interp.x.windows(2).all(|w| w[0] < w[1])
                         && interp.y.windows(2).all(|w| w[0] < w[1]),
                     "Supplied values must be sorted and non-repeating"
                 );
             }
             Self::Interp3D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     interp.x.windows(2).all(|w| w[0] < w[1])
                         && interp.y.windows(2).all(|w| w[0] < w[1])
                         && interp.z.windows(2).all(|w| w[0] < w[1]),
@@ -97,7 +97,7 @@ impl Interpolator {
             }
             Self::InterpND(interp) => {
                 for i in 0..n {
-                    anyhow::ensure!(
+                    ensure!(
                     interp.grid[i].windows(2).all(|w| w[0] < w[1]),
                     "Supplied `grid` coordinates must be sorted and non-repeating: dimension {i}, {:?}",
                     interp.grid[i]
@@ -109,20 +109,20 @@ impl Interpolator {
         // Check that grid and values are compatible shapes
         match self {
             Self::Interp1D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     interp.x.len() == interp.f_x.len(),
                     "Supplied grid and values are not compatible shapes"
                 );
             }
             Self::Interp2D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     interp.x.len() == interp.f_xy.len() && interp.y.len() == interp.f_xy[0].len(),
                     // TODO: protect against different length y-data
                     "Supplied grid and values are not compatible shapes"
                 );
             }
             Self::Interp3D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     interp.x.len() == interp.f_xyz.len()
                         && interp.y.len() == interp.f_xyz[0].len()
                         && interp.z.len() == interp.f_xyz[0][0].len(),
@@ -132,7 +132,7 @@ impl Interpolator {
             }
             Self::InterpND(interp) => {
                 for i in 0..n {
-                    anyhow::ensure!(
+                    ensure!(
                     interp.grid[i].len() == interp.values.shape()[i],
                     "Supplied grid and values are not compatible shapes: dimension {i}, lengths {} != {}",
                     interp.grid[i].len(),
@@ -145,14 +145,14 @@ impl Interpolator {
         // Check that point is within grid in each dimension
         match self {
             Self::Interp1D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap(),
                     "Supplied point must be within grid: point = {point:?}, x = {:?}",
                     interp.x
                 );
             }
             Self::Interp2D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     (interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap())
                         && (interp.y[0] <= point[1] && point[1] <= *interp.y.last().unwrap()),
                     "Supplied point must be within grid: point = {point:?}, x = {:?}, y = {:?}",
@@ -161,7 +161,7 @@ impl Interpolator {
                 );
             }
             Self::Interp3D(interp) => {
-                anyhow::ensure!(
+                ensure!(
                     (interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap())
                     && (interp.y[0] <= point[1] && point[1] <= *interp.y.last().unwrap())
                     && (interp.z[0] <= point[2] && point[2] <= *interp.z.last().unwrap()),
@@ -173,7 +173,7 @@ impl Interpolator {
             }
             Self::InterpND(interp) => {
                 for i in 0..n {
-                    anyhow::ensure!(
+                    ensure!(
                     interp.grid[i][0] <= point[i] && point[i] <= *interp.grid[i].last().unwrap(),
                     "Supplied point must be within grid for dimension {i}: point[{i}] = {:?}, grid[{i}] = {:?}",
                     point[i],
@@ -191,7 +191,7 @@ impl Interpolator {
             } else {
                 interp.grid.len()
             };
-            anyhow::ensure!(
+            ensure!(
                 grid_len == n,
                 "Length of supplied `grid` must be same as `values` dimensionality: {:?} is not {n}-dimensional",
                 interp.grid
@@ -451,7 +451,7 @@ impl InterpND {
                 let l = index_permutations[i].as_slice();
                 let u = index_permutations[next_idxs.len() + i].as_slice();
                 if dim == 0 {
-                    anyhow::ensure!(
+                    ensure!(
                             !interp_vals[l].is_nan() && !interp_vals[u].is_nan(),
                             "Surrounding value(s) cannot be NaN:\npoint = {point:?},\ngrid = {grid:?},\nvalues = {:?}",
                             self.values
