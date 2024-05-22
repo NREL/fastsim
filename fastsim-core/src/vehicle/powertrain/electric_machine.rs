@@ -5,6 +5,7 @@ use super::*;
 #[allow(unused_imports)]
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
+use crate::utils::abs_checked_x_val;
 
 #[pyo3_api(
     // #[new]
@@ -93,59 +94,97 @@ pub struct ElectricMachine {
     pub history: ElectricMachineStateHistoryVec,
 }
 
-impl PowertrainThrough for ElectricMachine {
-    fn get_cur_pwr_tract_out_max(
+impl ElectricMachine {
+    /// Returns maximum possible positive and negative propulsion-related powers
+    /// this component/system can produce, accounting for any aux-related power
+    /// required.
+    /// # Arguments
+    /// - `pwr_in_fwd_max`: positive-propulsion-related power available to this
+    /// component. Positive values indicate that the upstream component can supply
+    /// positive tractive power.
+    /// - `pwr_in_bwd_max`: negative-propulsion-related power available to this
+    /// component. Zero means no power can be sent to upstream compnents and positive
+    /// values indicate upstream components can absorb energy.
+    /// - `pwr_aux`: aux-related power required from this component
+    /// - `dt`: time step size
+    pub fn set_cur_pwr_prop_out_max(
         &mut self,
-        pwr_in_pos_max: si::Power,
-        pwr_in_neg_max: si::Power,
-        pwr_aux: si::Power,
+        pwr_in_fwd_max: si::Power,
+        pwr_in_bwd_max: si::Power,
         _dt: si::Time,
-    ) -> anyhow::Result<(si::Power, si::Power)> {
+    ) -> anyhow::Result<()> {
         ensure!(
-            pwr_in_pos_max >= uc::W * 0.,
-            "`pwr_in_pos_max` must be greater than or equal to zero for `{}`",
+            pwr_in_fwd_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero for `{}`",
+            stringify!(pwr_in_fwd_max),
+            pwr_in_fwd_max.get::<si::watt>().format_eng(None),
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
         ensure!(
-            pwr_in_neg_max >= uc::W * 0.,
-            "`pwr_in_neg_max` must be greater than or equal to zero for `{}`",
+            pwr_in_bwd_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero for `{}`",
+            stringify!(pwr_in_bwd_max),
+            pwr_in_bwd_max.get::<si::watt>().format_eng(None),
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
-        ensure!(
-            pwr_aux == uc::W * 0.,
-            "`pwr_aux` must be zero for `{}`",
-            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
-        );
+
         if self.pwr_in_frac_interp.is_empty() {
             self.set_pwr_in_frac_interp()
                 .with_context(|| format_dbg!())?;
         }
         let eff_pos = uc::R
             * interp1d(
-                &(pwr_in_pos_max / self.pwr_out_max).get::<si::ratio>(),
+                &abs_checked_x_val(
+                    (pwr_in_fwd_max / self.pwr_out_max).get::<si::ratio>(),
+                    &self.pwr_in_frac_interp,
+                )?,
                 &self.pwr_in_frac_interp,
                 &self.eff_interp,
-                Extrapolate::Error,
-            )?;
+                // Extrapolation does not trigger error because `self.pwr_out_max` is limiting regardless
+                Extrapolate::No,
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(eff_pos)
+                )
+            })?;
+        // TODO: scrutinize this variable assignment
         let eff_neg = uc::R
             * interp1d(
-                &(pwr_in_neg_max / self.pwr_out_max).get::<si::ratio>(),
+                &abs_checked_x_val(
+                    (pwr_in_bwd_max / self.pwr_out_max).get::<si::ratio>(),
+                    &self.pwr_in_frac_interp,
+                )?,
                 &self.pwr_in_frac_interp,
                 &self.eff_interp,
-                Extrapolate::Error,
-            )?;
+                // Extrapolation does not trigger error because `self.pwr_out_max` is limiting regardless
+                Extrapolate::No,
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(eff_neg)
+                )
+            })?;
 
-        self.state.pwr_mech_out_max = self.pwr_out_max.min(pwr_in_pos_max * eff_pos);
-        self.state.pwr_mech_regen_max = self.pwr_out_max.min(pwr_in_pos_max * eff_neg);
-        Ok((self.state.pwr_mech_out_max, self.state.pwr_mech_regen_max))
+        self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
+        self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max * eff_neg);
+        Ok(())
     }
 
-    fn get_pwr_in_req(
+    /// Solves for this powertrain system/component efficiency and sets/returns power input required.
+    /// # Arguments
+    /// - `pwr_out_req`: propulsion-related power output required
+    /// - `dt`: time step size
+    pub fn get_pwr_in_req(
         &mut self,
         pwr_out_req: si::Power,
-        _pwr_aux: si::Power,
         _dt: si::Time,
     ) -> anyhow::Result<si::Power> {
+        //TODO: update this function to use `pwr_mech_regen_out_max`
         ensure!(
             pwr_out_req <= self.pwr_out_max,
             format!(
@@ -164,11 +203,18 @@ impl PowertrainThrough for ElectricMachine {
                 &self.pwr_out_frac_interp,
                 &self.eff_interp,
                 Extrapolate::Error,
-            )?;
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(self.state.eff)
+                )
+            })?;
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
-        self.state.pwr_mech_prop_out = pwr_out_req.max(-self.state.pwr_mech_regen_max);
+        self.state.pwr_mech_prop_out = pwr_out_req.max(-self.state.pwr_mech_bwd_out_max);
 
         self.state.pwr_mech_dyn_brake = -(pwr_out_req - self.state.pwr_mech_prop_out);
         ensure!(
@@ -190,14 +236,40 @@ impl PowertrainThrough for ElectricMachine {
 
         Ok(self.state.pwr_elec_prop_in)
     }
+
+    pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
+        // make sure vector has been created
+        self.pwr_in_frac_interp = self
+            .pwr_out_frac_interp
+            .iter()
+            .zip(self.eff_interp.iter())
+            .map(|(x, y)| x / y)
+            .collect();
+        Ok(())
+    }
+
+    impl_get_set_eff_max_min!();
+    impl_get_set_eff_range!();
 }
 
-impl SerdeAPI for ElectricMachine {
+use fastsim_2::params::{
+    LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF, SMALL_MOTOR_POWER_KW,
+};
+
+impl SerdeAPI for ElectricMachine {}
+impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass()?;
-        check_interp_frac_data(&self.pwr_out_frac_interp, false)
+        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+        let _ = check_interp_frac_data(&self.pwr_out_frac_interp, InterpRange::Either)
             .with_context(|| format!(
-                "To allow for possible asymmetry, `ElectricMachine::pwr_out_frac_interp` must range from [-1..1]."))?;
+                "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1]."))?;
+        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+        // TODO: make use of `use fastsim_2::params::{LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF,SMALL_MOTOR_POWER_KW};`
+        // to set
+        // if let None = self.pwr_out_frac_interp {
+        //     self.pwr_out_frac_interp =
+        // }
+        // TODO: verify that `pwr_in_frac_interp` is set somewhere and if it is, maybe move it to here???
         Ok(())
     }
 }
@@ -210,7 +282,9 @@ impl SetCumulative for ElectricMachine {
 
 impl Mass for ElectricMachine {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
                 utils::almost_eq_uom(&set_mass, &derived_mass, None),
@@ -228,7 +302,9 @@ impl Mass for ElectricMachine {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(
@@ -272,22 +348,6 @@ impl Mass for ElectricMachine {
     }
 }
 
-impl ElectricMachine {
-    pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
-        // make sure vector has been created
-        self.pwr_in_frac_interp = self
-            .pwr_out_frac_interp
-            .iter()
-            .zip(self.eff_interp.iter())
-            .map(|(x, y)| x / y)
-            .collect();
-        Ok(())
-    }
-
-    impl_get_set_eff_max_min!();
-    impl_get_set_eff_range!();
-}
-
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
@@ -299,9 +359,9 @@ pub struct ElectricMachineState {
     pub eff: si::Ratio,
     // Component limits
     /// Maximum possible positive traction power.
-    pub pwr_mech_out_max: si::Power,
+    pub pwr_mech_fwd_out_max: si::Power,
     /// Maximum possible regeneration power going to ReversibleEnergyStorage.
-    pub pwr_mech_regen_max: si::Power,
+    pub pwr_mech_bwd_out_max: si::Power,
     /// max ramp-up rate
     pub pwr_rate_out_max: si::PowerRate,
 
@@ -333,6 +393,10 @@ pub struct ElectricMachineState {
     /// Integral of [Self::pwr_loss]
     pub energy_loss: si::Energy,
 }
+
+impl Init for ElectricMachineState {}
+impl SerdeAPI for ElectricMachineState {}
+
 impl ElectricMachineState {
     pub fn new() -> Self {
         Self {

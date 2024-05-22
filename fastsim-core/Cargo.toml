@@ -20,6 +20,7 @@ anyhow = { workspace = true }
 readonly = "0.2.3"
 duplicate = "0.4.1"
 nohash-hasher = "0.2.0"
+eng_fmt = "0.1.2"
 pyo3 = { workspace = true, features = [
     "extension-module",
     "anyhow",
@@ -28,11 +29,11 @@ serde-this-or-that = "0.4.2"
 project-root = "0.2.2"
 include_dir = "0.7.3"
 itertools = "0.12.0"
-enum_dispatch = "0.3.12"
 lazy_static = "1.4.0"
 regex = "1.10.3"
 ndarray = "0.15.6"
 toml = "0.8.12"
+derive_more = "0.99.17"
 
 [dev-dependencies]
 criterion = "0.3"

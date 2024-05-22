@@ -142,6 +142,7 @@ pub struct ReversibleEnergyStorage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
     #[serde(default)]
+    #[serde(skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty")]
     /// Custom vector of [Self::state]
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
@@ -252,14 +253,14 @@ impl ReversibleEnergyStorage {
         Ok(())
     }
 
-    /// Returns max output and max regen power based on current state  
+    /// Sets max output and max regen power based on current state
     /// #  Arguments:
     /// - `pwr_aux`: aux power demand on `ReversibleEnergyStorage`
     /// - `charge_buffer`: buffer below max SOC to allow for anticipated future
     /// charging (i.e. decelerating while exiting a highway)
     /// - `discharge_buffer`: buffer above min SOC to allow for anticipated
     /// future discharging (i.e. accelerating to enter a highway)
-    pub fn get_cur_pwr_out_max(
+    pub fn set_cur_pwr_out_max(
         &mut self,
         pwr_aux: si::Power,
         charge_buffer: Option<si::Energy>,
@@ -274,6 +275,7 @@ impl ReversibleEnergyStorage {
             self.soc_lo_ramp_start = Some(self.min_soc + 0.05 * uc::R);
         }
 
+        // TODO: consider having the buffer affect the max and min but not the ramp???
         // operating lo_ramp_start and min_soc, allowing for buffer
         state.soc_lo_ramp_start = (self.soc_lo_ramp_start.unwrap()
             + charge_buffer.unwrap_or_default() / self.energy_capacity)
@@ -307,8 +309,15 @@ impl ReversibleEnergyStorage {
                     state.soc_lo_ramp_start.get::<si::ratio>(),
                 ],
                 &[0.0, self.pwr_out_max.get::<si::watt>()],
-                utils::Extrapolate::Yes, // don't extrapolate
-            )?;
+                Extrapolate::No, // don't extrapolate
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(state.pwr_disch_max)
+                )
+            })?;
 
         state.pwr_charge_max = uc::W
             * interp1d(
@@ -318,13 +327,54 @@ impl ReversibleEnergyStorage {
                     state.max_soc.get::<si::ratio>(),
                 ],
                 &[self.pwr_out_max.get::<si::watt>(), 0.0],
-                utils::Extrapolate::Yes, // don't extrapolate
-            )?;
+                Extrapolate::No, // don't extrapolate
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(state.pwr_charge_max)
+                )
+            })?;
+        ensure!(
+            state.pwr_disch_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero",
+            stringify!(state.pwr_disch_max),
+            state.pwr_disch_max.get::<si::watt>().format_eng(None)
+        );
+        ensure!(
+            state.pwr_charge_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero",
+            stringify!(state.pwr_charge_max),
+            state.pwr_charge_max.get::<si::watt>().format_eng(None)
+        );
 
-        state.pwr_prop_out_max = state.pwr_disch_max - pwr_aux;
-        state.pwr_regen_out_max = state.pwr_charge_max + pwr_aux;
+        state.pwr_prop_max = state.pwr_disch_max - pwr_aux;
+        state.pwr_regen_max = state.pwr_charge_max + pwr_aux;
 
-        Ok((state.pwr_prop_out_max, state.pwr_regen_out_max))
+        ensure!(
+            pwr_aux <= state.pwr_disch_max,
+            "`{}` ({} W) must always be less than or equal to {} ({} W)\nsoc:{}",
+            stringify!(pwr_aux),
+            pwr_aux.get::<si::watt>().format_eng(None),
+            stringify!(state.pwr_disch_max),
+            state.pwr_disch_max.get::<si::watt>().format_eng(None),
+            state.soc.get::<si::ratio>()
+        );
+        ensure!(
+            state.pwr_prop_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero",
+            stringify!(state.pwr_prop_max),
+            state.pwr_prop_max.get::<si::watt>().format_eng(None)
+        );
+        ensure!(
+            state.pwr_regen_max >= uc::W * 0.,
+            "`{}` ({} W) must be greater than or equal to zero",
+            stringify!(state.pwr_regen_max),
+            state.pwr_regen_max.get::<si::watt>().format_eng(None)
+        );
+
+        Ok((state.pwr_prop_max, state.pwr_regen_max))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -437,7 +487,9 @@ impl SetCumulative for ReversibleEnergyStorage {
 
 impl Mass for ReversibleEnergyStorage {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
                 utils::almost_eq_uom(&set_mass, &derived_mass, None),
@@ -455,7 +507,9 @@ impl Mass for ReversibleEnergyStorage {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(
@@ -500,9 +554,11 @@ impl Mass for ReversibleEnergyStorage {
     }
 }
 
-impl SerdeAPI for ReversibleEnergyStorage {
+impl SerdeAPI for ReversibleEnergyStorage {}
+impl Init for ReversibleEnergyStorage {
     fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass()?;
+        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 }
@@ -517,9 +573,7 @@ pub enum SpecificEnergySideEffect {
     Energy,
 }
 
-#[derive(
-    Clone, Copy, Default, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
-)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[pyo3_api]
 // component limits
 /// ReversibleEnergyStorage state variables
@@ -529,9 +583,9 @@ pub struct ReversibleEnergyStorageState {
     /// maximum catenary power capability
     pub pwr_cat_max: si::Power,
     /// max output power for propulsion during positive traction
-    pub pwr_prop_out_max: si::Power,
+    pub pwr_prop_max: si::Power,
     /// max regen power for propulsion during negative traction
-    pub pwr_regen_out_max: si::Power,
+    pub pwr_regen_max: si::Power,
     /// max discharge power total
     pub pwr_disch_max: si::Power,
     /// max charge power on the output side
@@ -582,8 +636,43 @@ pub struct ReversibleEnergyStorageState {
     pub soc_lo_ramp_start: si::Ratio,
 
     /// component temperature
+    // TODO: make this uom or figure out why it's not!
     pub temperature_celsius: f64,
 }
+
+impl Default for ReversibleEnergyStorageState {
+    fn default() -> Self {
+        Self {
+            pwr_cat_max: uc::W * 0.,
+            pwr_prop_max: uc::W * 0.,
+            pwr_regen_max: uc::W * 0.,
+            pwr_disch_max: uc::W * 0.,
+            pwr_charge_max: uc::W * 0.,
+            i: 0,
+            soc: uc::R * 0.5,
+            eff: uc::R * 0.,
+            soh: 0.,
+            pwr_out_electrical: uc::W * 0.,
+            pwr_out_propulsion: uc::W * 0.,
+            pwr_aux: uc::W * 0.,
+            pwr_loss: uc::W * 0.,
+            pwr_out_chemical: uc::W * 0.,
+            energy_out_electrical: uc::J * 0.,
+            energy_out_propulsion: uc::J * 0.,
+            energy_aux: uc::J * 0.,
+            energy_loss: uc::J * 0.,
+            energy_out_chemical: uc::J * 0.,
+            max_soc: uc::R * 0.,
+            soc_hi_ramp_start: uc::R * 0.,
+            min_soc: uc::R * 0.,
+            soc_lo_ramp_start: uc::R * 0.,
+            temperature_celsius: 22.,
+        }
+    }
+}
+
+impl Init for ReversibleEnergyStorageState {}
+impl SerdeAPI for ReversibleEnergyStorageState {}
 
 impl ReversibleEnergyStorageState {
     pub fn new() -> Self {
