@@ -184,7 +184,8 @@ impl Mass for HybridElectricVehicle {
 pub enum HEVControls {
     /// Controls that attempt to exactly match fastsim-2
     Fastsim2,
-    /// Purely greedy controls
+    /// Purely greedy controls that favor charging or discharging the
+    /// battery as much as possible.
     RESGreedy,
     // TODO: add `SpeedAware` to enable buffers similar to fastsim-2 but without
     // the feature from fastsim-2 that forces the fc to be greedily meet power demand
