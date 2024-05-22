@@ -861,6 +861,8 @@ pub(crate) mod tests {
             veh.unwrap()
         };
 
+        assert!(veh.pt_type.is_conventional_vehicle());
+
         // uncomment this if the fastsim-3 version needs to be rewritten
         veh.to_file(
             project_root::get_project_root()
@@ -868,7 +870,6 @@ pub(crate) mod tests {
                 .join("tests/assets/2012_Ford_Fusion.yaml"),
         )
         .unwrap();
-        #[allow(clippy::let_and_return)]
         veh
     }
 
@@ -881,6 +882,8 @@ pub(crate) mod tests {
             veh.unwrap()
         };
 
+        assert!(veh.pt_type.is_hybrid_electric_vehicle());
+
         // uncomment this if the fastsim-3 version needs to be rewritten
         veh.to_file(
             project_root::get_project_root()
@@ -888,7 +891,6 @@ pub(crate) mod tests {
                 .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
         )
         .unwrap();
-        #[allow(clippy::let_and_return)]
         veh
     }
     /// tests that vehicle can be initialized and that repeating has no net effect
@@ -925,5 +927,18 @@ pub(crate) mod tests {
         };
         let mut sd2 = sd.to_fastsim2().unwrap();
         sd2.sim_drive(None, None).unwrap();
+    }
+
+    #[test]
+    fn test_hev_deserialize() {
+        let veh = mock_f2_hev();
+
+        let veh_from_file = Vehicle::from_file(
+            project_root::get_project_root()
+                .unwrap()
+                .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
+        )
+        .unwrap();
+        assert!(veh == veh_from_file);
     }
 }

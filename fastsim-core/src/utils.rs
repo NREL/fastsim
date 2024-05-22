@@ -334,7 +334,7 @@ pub enum Efficiency {
 /// * `values` - An *N*-dimensional [`ndarray::ArrayD`] containing the values at given grid coordinates
 ///
 /// # Errors
-/// This function returns an [`InterpolationError`] if any of the validation checks from [`validate_inputs`] fail,
+/// This function returns an [InterpolationError] if any of the validation checks from [`validate_inputs`] fail,
 /// or if any values surrounding supplied `point` are `NaN`.
 ///
 /// # Examples

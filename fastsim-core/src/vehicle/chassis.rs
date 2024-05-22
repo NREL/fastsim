@@ -119,7 +119,7 @@ impl Mass for Chassis {
     fn set_mass(
         &mut self,
         new_mass: Option<si::Mass>,
-        side_effect: MassSideEffect,
+        _side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
         let derived_mass = self
             .derived_mass()

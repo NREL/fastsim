@@ -14,6 +14,7 @@ pub(crate) use crate::utils::{
     Extrapolate, InterpRange, DIRECT_SET_ERR,
 };
 pub(crate) use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecWrapper};
+pub(crate) use derive_more::IsVariant;
 pub(crate) use eng_fmt::FormatEng;
 pub(crate) use fastsim_proc_macros::{pyo3_api, HistoryMethods, HistoryVec, SetCumulative};
 

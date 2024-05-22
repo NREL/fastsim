@@ -386,5 +386,6 @@ mod tests {
         sd.walk().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
+        assert!(sd.veh.res().unwrap().state.energy_out_chemical != uc::J * 0.);
     }
 }

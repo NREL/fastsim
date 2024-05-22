@@ -21,7 +21,7 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 
 # load 2012 Ford Fusion from file
 veh = fsim.Vehicle.from_file(
-    str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
+    str(fsim.package_root() / "../../tests/assets/2016_TOYOTA_Prius_Two.yaml")
 )
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
@@ -156,13 +156,6 @@ if SHOW_PLOTS:
         np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
         np.array(sd2.fs_cumu_mj_out_ach.tolist()),
         label="f2 fuel",
-    )
-    ax[0].text(
-        200, 
-        13, 
-        "Discrepancy mostly due to switch to linear interpolation\n" + 
-        "from left-hand interpolation resulting in more accurate\n" + 
-        "handling of idling conditions.",
     )
     ax[0].set_ylabel("FC Energy [MJ]")
     ax[0].legend()
