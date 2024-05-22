@@ -317,7 +317,7 @@ pub enum Efficiency {
 /// let point = [];
 /// assert_eq!(multilinear(&point, &grid, &values).unwrap(), 0.5);
 /// ```
-/// 
+///
 /// ## 1D Example
 /// ```rust
 /// use ndarray::prelude::*;

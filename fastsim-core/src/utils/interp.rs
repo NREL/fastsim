@@ -165,15 +165,26 @@ impl Interpolator {
         match self {
             Self::Interp1D(interp) => {
                 ensure!(
-                    interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap(),
+                    interp.x[0] <= point[0]
+                        && &point[0]
+                            <= interp.x.last().with_context(|| {
+                                "Could not get last grid value for x-dimension, is x-grid empty?"
+                            })?,
                     "Supplied point must be within grid: point = {point:?}, x = {:?}",
                     interp.x
                 );
             }
             Self::Interp2D(interp) => {
                 ensure!(
-                    (interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap())
-                        && (interp.y[0] <= point[1] && point[1] <= *interp.y.last().unwrap()),
+                    (interp.x[0] <= point[0]
+                        && &point[0]
+                            <= interp.x.last().with_context(|| {
+                                "Could not get last grid value for x-dimension, is x-grid empty?"
+                            })?)
+                        && (interp.y[0] <= point[1]
+                            && &point[1] <= interp.y.last().with_context(|| {
+                                "Could not get last grid value for y-dimension, is y-grid empty?"
+                            })?),
                     "Supplied point must be within grid: point = {point:?}, x = {:?}, y = {:?}",
                     interp.x,
                     interp.y,
@@ -181,9 +192,14 @@ impl Interpolator {
             }
             Self::Interp3D(interp) => {
                 ensure!(
-                    (interp.x[0] <= point[0] && point[0] <= *interp.x.last().unwrap())
-                    && (interp.y[0] <= point[1] && point[1] <= *interp.y.last().unwrap())
-                    && (interp.z[0] <= point[2] && point[2] <= *interp.z.last().unwrap()),
+                    (interp.x[0] <= point[0] && &point[0] <= interp.x.last().with_context(||
+                        "Could not get last grid value for x-dimension, is x-grid empty?"
+                    )?)
+                    && (interp.y[0] <= point[1] && &point[1] <= interp.y.last().with_context(||
+                        "Could not get last grid value for y-dimension, is y-grid empty?"
+                    )?)
+                    && (interp.z[0] <= point[2] && &point[2] <= interp.z.last().with_context(||
+                        "Could not get last grid value for z-dimension, is z-grid empty?")?),
                     "Supplied point must be within grid: point = {point:?}, x = {:?}, y = {:?}, z = {:?}",
                     interp.x,
                     interp.y,
@@ -193,7 +209,9 @@ impl Interpolator {
             Self::InterpND(interp) => {
                 for i in 0..n {
                     ensure!(
-                    interp.grid[i][0] <= point[i] && point[i] <= *interp.grid[i].last().unwrap(),
+                    interp.grid[i][0] <= point[i] && &point[i] <= interp.grid[i].last().with_context(|| format!(
+                        "Could not get last grid value for dimension {i}, is grid empty?"
+                    ))?,
                     "Supplied point must be within grid for dimension {i}: point[{i}] = {:?}, grid[{i}] = {:?}",
                     point[i],
                     interp.grid[i],
@@ -237,6 +255,38 @@ pub enum Strategy {
     Nearest,
 }
 
+// This method contains code from RouteE Compass, another NREL-developed tool
+// https://www.nrel.gov/transportation/route-energy-prediction-model.html
+// https://github.com/NREL/routee-compass/
+fn find_nearest_index(arr: &[f64], target: f64) -> anyhow::Result<usize> {
+    if &target
+        == arr
+            .last()
+            .with_context(|| "Could not get last grid value of arr, is arr empty?")?
+    {
+        return Ok(arr.len() - 2);
+    }
+
+    let mut low = 0;
+    let mut high = arr.len() - 1;
+
+    while low < high {
+        let mid = low + (high - low) / 2;
+
+        if arr[mid] >= target {
+            high = mid;
+        } else {
+            low = mid + 1;
+        }
+    }
+
+    if low > 0 && arr[low] >= target {
+        Ok(low - 1)
+    } else {
+        Ok(low)
+    }
+}
+
 /// 1-dimensional interpolation
 #[derive(Debug)]
 pub struct Interp1D {
@@ -248,11 +298,7 @@ impl Interp1D {
         if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
             return Ok(self.f_x[i]);
         }
-        let lower_index = self
-            .x
-            .windows(2)
-            .position(|w| w[0] <= point && point < w[1])
-            .unwrap_or(self.x.len() - 2);
+        let lower_index = find_nearest_index(&self.x, point)?;
         let diff = (point - self.x[lower_index]) / (self.x[lower_index + 1] - self.x[lower_index]);
         Ok(self.f_x[lower_index] * (1.0 - diff) + self.f_x[lower_index + 1] * diff)
     }
@@ -261,11 +307,7 @@ impl Interp1D {
         if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
             return Ok(self.f_x[i]);
         }
-        let lower_index = self
-            .x
-            .windows(2)
-            .position(|w| w[0] <= point && point < w[1])
-            .unwrap_or(self.x.len() - 2);
+        let lower_index = find_nearest_index(&self.x, point)?;
         Ok(self.f_x[lower_index])
     }
 
@@ -273,11 +315,7 @@ impl Interp1D {
         if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
             return Ok(self.f_x[i]);
         }
-        let lower_index = self
-            .x
-            .windows(2)
-            .position(|w| w[0] <= point && point < w[1])
-            .unwrap_or(self.x.len() - 2);
+        let lower_index = find_nearest_index(&self.x, point)?;
         Ok(self.f_x[lower_index + 1])
     }
 
@@ -285,11 +323,7 @@ impl Interp1D {
         if let Some(i) = self.x.iter().position(|&x_val| x_val == point) {
             return Ok(self.f_x[i]);
         }
-        let lower_index = self
-            .x
-            .windows(2)
-            .position(|w| w[0] <= point && point < w[1])
-            .unwrap_or(self.x.len() - 2);
+        let lower_index = find_nearest_index(&self.x, point)?;
         let diff = (point - self.x[lower_index]) / (self.x[lower_index + 1] - self.x[lower_index]);
         Ok(if diff < 0.5 {
             self.f_x[lower_index]
@@ -308,19 +342,11 @@ pub struct Interp2D {
 }
 impl Interp2D {
     pub fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
-        let x_l = self
-            .x
-            .windows(2)
-            .position(|w| w[0] <= point[0] && point[0] < w[1])
-            .unwrap_or(self.x.len() - 2);
+        let x_l = find_nearest_index(&self.x, point[0])?;
         let x_u = x_l + 1;
         let x_diff = (point[0] - self.x[x_l]) / (self.x[x_u] - self.x[x_l]);
 
-        let y_l = self
-            .y
-            .windows(2)
-            .position(|w| w[0] <= point[1] && point[1] < w[1])
-            .unwrap_or(self.y.len() - 2);
+        let y_l = find_nearest_index(&self.y, point[1])?;
         let y_u = y_l + 1;
         let y_diff = (point[1] - self.y[y_l]) / (self.y[y_u] - self.y[y_l]);
 
@@ -343,27 +369,15 @@ pub struct Interp3D {
 }
 impl Interp3D {
     pub fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
-        let x_l = self
-            .x
-            .windows(2)
-            .position(|w| w[0] <= point[0] && point[0] < w[1])
-            .unwrap_or(self.x.len() - 2);
+        let x_l = find_nearest_index(&self.x, point[0])?;
         let x_u = x_l + 1;
         let x_diff = (point[0] - self.x[x_l]) / (self.x[x_u] - self.x[x_l]);
 
-        let y_l = self
-            .y
-            .windows(2)
-            .position(|w| w[0] <= point[1] && point[1] < w[1])
-            .unwrap_or(self.y.len() - 2);
+        let y_l = find_nearest_index(&self.y, point[1])?;
         let y_u = y_l + 1;
         let y_diff = (point[1] - self.y[y_l]) / (self.y[y_u] - self.y[y_l]);
 
-        let z_l = self
-            .z
-            .windows(2)
-            .position(|w| w[0] <= point[2] && point[2] < w[1])
-            .unwrap_or(self.z.len() - 2);
+        let z_l = find_nearest_index(&self.z, point[2])?;
         let z_u = z_l + 1;
         let z_diff = (point[2] - self.z[z_l]) / (self.z[z_u] - self.z[z_l]);
 
@@ -412,7 +426,9 @@ impl InterpND {
         }
         if values_view.len() == 1 {
             // Supplied point is coincident with a grid point, so just return the value
-            return Ok(*values_view.first().unwrap());
+            return values_view.first().copied().with_context(|| {
+                "Could not extract value (on grid) during multilinear interpolation"
+            });
         }
         // Simplified dimensionality
         n = values_view.ndim();
@@ -422,10 +438,7 @@ impl InterpND {
         let mut lower_idxs = Vec::with_capacity(n);
         let mut interp_diffs = Vec::with_capacity(n);
         for dim in 0..n {
-            let lower_idx = grid[dim]
-                .windows(2)
-                .position(|w| w[0] < point[dim] && point[dim] < w[1])
-                .unwrap();
+            let lower_idx = find_nearest_index(&grid[dim], point[dim])?;
             let interp_diff = (point[dim] - grid[dim][lower_idx])
                 / (grid[dim][lower_idx + 1] - grid[dim][lower_idx]);
             lower_idxs.push(lower_idx);
@@ -472,7 +485,10 @@ impl InterpND {
         }
 
         // return the only value contained within the 0-dimensional array
-        Ok(*interp_vals.first().unwrap())
+        interp_vals
+            .first()
+            .copied()
+            .with_context(|| "Could not extract value during multilinear interpolation")
     }
 
     fn get_index_permutations(&self, shape: &[usize]) -> Vec<Vec<usize>> {
