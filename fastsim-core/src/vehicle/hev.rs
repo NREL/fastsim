@@ -198,6 +198,7 @@ impl HEVControls {
         pwr_out_req: si::Power,
         veh_state: &VehicleState,
         fc_state: &FuelConverterState,
+        // TODO: figure out if this should be `res_state` or `em_state`
         res_state: &ReversibleEnergyStorageState,
     ) -> anyhow::Result<(si::Power, si::Power)> {
         if pwr_out_req >= uc::W * 0. {
@@ -206,9 +207,11 @@ impl HEVControls {
                     todo!()
                 }
                 Self::RESGreedy => {
+                    // TODO: fix the logic in here.
                     let fc_pwr = fc_state.pwr_prop_max
                         / (fc_state.pwr_prop_max + res_state.pwr_prop_max)
                         * pwr_out_req;
+                    // TODO: verify that this could be `pwr_out_req` - `fc_pwr`
                     let res_pwr = res_state.pwr_prop_max
                         / (fc_state.pwr_prop_max + res_state.pwr_prop_max)
                         * pwr_out_req;
