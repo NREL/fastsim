@@ -841,7 +841,6 @@ fn try_make_single_vehicle(
     other_inputs: &OtherVehicleInputs,
 ) -> Option<RustVehicle> {
     if epa_data == &VehicleDataEPA::default() {
-        println!("no epa data");
         return None;
     }
     let veh_pt_type = match fe_gov_data.alt_veh_type.as_str() {
