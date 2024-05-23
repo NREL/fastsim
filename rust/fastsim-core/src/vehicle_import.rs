@@ -966,10 +966,6 @@ fn try_make_single_vehicle(
     //             + (ref_veh.mc_pe_base_kg + mc_max_kw * ref_veh.mc_pe_kg_per_kw)
     //             + (ref_veh.ess_base_kg + ess_max_kwh * ref_veh.ess_kg_per_kwh));
     let mut veh = RustVehicle {
-        doc: Some("### Calibration & Validation
-        - Calibration Level: 1
-        - Validation Level: 0
-        - For information on level definitions, see https://github.nrel.gov/MBAP/fastsim-vehicles#calibration-and-validation-nomenclature".to_string()),
         veh_override_kg: Some(epa_data.test_weight_lbs / LBS_PER_KG),
         veh_cg_m: match fe_gov_data.drive.as_str() {
             "Front-Wheel Drive" => 0.53,
@@ -1615,7 +1611,6 @@ mod tests {
         };
         let other_inputs = vir_to_other_inputs(&veh_record);
         let v = try_make_single_vehicle(&fegov_data, &epatest_data, &other_inputs).unwrap();
-        assert_eq!(v.doc, Some("### Calibration & Validation\n        - Calibration Level: 1\n        - Validation Level: 0\n        - For information on level definitions, see https://github.nrel.gov/MBAP/fastsim-vehicles#calibration-and-validation-nomenclature".to_string()));
         assert_eq!(v.scenario_name, String::from("2020 Toyota Camry"));
         assert_eq!(v.val_comb_mpgge, 18.7389);
     }
