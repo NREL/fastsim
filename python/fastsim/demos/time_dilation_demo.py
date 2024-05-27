@@ -40,14 +40,14 @@ print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 
 t0 = time.time()
 
-sd_fixed = simdrive.SimDrive(cyc, veh)
+sd_fixed = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
 sim_params = sd_fixed.sim_params
 sim_params.missed_trace_correction=True
 # sim_params.min_time_dilation = 1
 sim_params.max_time_dilation = 0.1
 # sim_params.time_dilation_tol = 1e-1
 
-sd_base = simdrive.SimDrive(cyc, veh)
+sd_base = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
 
 sd_fixed.sim_drive() 
 sd_base.sim_drive()

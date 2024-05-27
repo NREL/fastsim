@@ -65,6 +65,7 @@ def hybrid_eu_veh_wltp_fe_test():
 
     sim = fsim.simdrive.SimDrive(cyc_wltp_combined, veh_2022_yaris)
     sim_rust = fsim.simdrive.RustSimDrive(cyc_wltp_combined_rust,veh_2022_yaris_rust)
+    # In this case, is sim_drive() run separately with python and rust for a reason?
     sim.sim_drive()
     sim_rust.sim_drive()
     

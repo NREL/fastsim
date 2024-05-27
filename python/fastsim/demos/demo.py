@@ -642,7 +642,9 @@ microtrips = fsim.cycle.to_microtrips(cyc.to_dict())
 cyc = fsim.cycle.Cycle.from_dict(microtrips[1])
 print(f'Time to load cycle: {time.perf_counter() - t0:.2e} s')
 
-
+# None of the instances of sim_drive() called past this point have a rust
+# version, only python. Should these be switched to rust, or are they called in
+# python on purpose?
 # %% simulate
 t0 = time.perf_counter()
 sim_drive = fsim.simdrive.SimDrive(cyc, veh)
