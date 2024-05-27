@@ -56,7 +56,7 @@ Developers might want to install the code in place so that FASTSim files can be 
 
 ## Usage
 
-To see and run examples, navigate to `./python/fastsim/demos` and run the various *demo.py files to see fastsim use cases. There are other examples in fastsim/tests.  
+To see and run examples, download the FASTSim demo files using the function `copy_demo_files()` from `fastsim.utils`. This function downloads demo files into a specified local directory. WARNING: If you download the demo files to a location where files of the same name already exist, the original files will be overwritten.  
 
 ## Adding FASTSim as a Dependency in Rust
 
