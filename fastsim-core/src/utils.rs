@@ -58,7 +58,7 @@ fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
 }
 
 /// Trilinear interpolation over a structured grid;
-/// TODO: this could be generalized to compute a linear interpolation in N dimensions
+/// NOTE: this could be generalized to compute a linear interpolation in N dimensions
 /// NOTE: this function assumes the each axis on the grid is sorted and that there
 /// are no repeating values on each axis
 pub fn interp3d(
@@ -74,9 +74,9 @@ pub fn interp3d(
     let y_points = &grid[1];
     let z_points = &grid[2];
 
-    let (xi0, xi1) = find_interp_indices(&x, x_points)?;
-    let (yi0, yi1) = find_interp_indices(&y, y_points)?;
-    let (zi0, zi1) = find_interp_indices(&z, z_points)?;
+    let (xi0, xi1) = find_interp_indices(&x, x_points).with_context(|| anyhow!(format_dbg!()))?;
+    let (yi0, yi1) = find_interp_indices(&y, y_points).with_context(|| anyhow!(format_dbg!()))?;
+    let (zi0, zi1) = find_interp_indices(&z, z_points).with_context(|| anyhow!(format_dbg!()))?;
 
     let xd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
     let yd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
@@ -104,7 +104,7 @@ pub fn interp3d(
     Ok(c)
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, SerdeAPI)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub enum Extrapolate {
     /// allow extrapolation
     Yes,
@@ -115,6 +115,9 @@ pub enum Extrapolate {
     Error,
 }
 
+impl SerdeAPI for Extrapolate {}
+impl Init for Extrapolate {}
+
 /// interpolation algorithm from <http://www.cplusplus.com/forum/general/216928/>
 /// # Arguments:
 /// x : value at which to interpolate
@@ -124,10 +127,12 @@ pub fn interp1d(
     y_data: &[f64],
     extrapolate: Extrapolate,
 ) -> anyhow::Result<f64> {
-    let y_mean = y_data.iter().sum::<f64>() / y_data.len() as f64;
-    if y_data.iter().all(|&y| y == y_mean) {
-        // return mean if all data is equal to mean
-        Ok(y_mean)
+    let y_first = y_data
+        .first()
+        .with_context(|| anyhow!("Unable to extract first element"))?;
+    if y_data.iter().all(|y| y == y_first) {
+        // return first if all data is equal to first
+        Ok(*y_first)
     } else {
         let x_mean = x_data.iter().sum::<f64>() / x_data.len() as f64;
         if x_data.iter().all(|&x| x == x_mean) {
@@ -157,12 +162,33 @@ pub fn interp1d(
                 }
             }
             Extrapolate::Error => {
-                bail!("{}\nAttempted extrapolation", format_dbg!());
+                if x < xl || x > xr {
+                    bail!(
+                        "{}\nAttempted extrapolation\n`x_data` first and last: ({}, {})\n`x` input: {}",
+                        format_dbg!(),
+                        xl,
+                        xr,
+                        x
+                    );
+                }
             }
             _ => {}
         }
         let dydx = (yr - yl) / (xr - xl);
         Ok(yl + dydx * (x - xl))
+    }
+}
+
+/// Returns absolute value of `x_val`
+pub fn abs_checked_x_val(x_val: f64, x_data: &[f64]) -> anyhow::Result<f64> {
+    if *x_data
+        .first()
+        .with_context(|| anyhow!("{}\nExpected `first` to return `Some`.", format_dbg!()))?
+        == 0.
+    {
+        Ok(x_val.abs())
+    } else {
+        Ok(x_val)
     }
 }
 
@@ -251,30 +277,38 @@ make_uom_cmp_fn!(almost_ge);
 make_uom_cmp_fn!(almost_le);
 
 #[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq, SerdeAPI)]
+#[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Pyo3VecBoolWrapper(pub Vec<bool>);
+impl SerdeAPI for Pyo3VecBoolWrapper {}
+impl Init for Pyo3VecBoolWrapper {}
 
 #[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, SerdeAPI)]
+#[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3VecWrapper(pub Vec<f64>);
+impl SerdeAPI for Pyo3VecWrapper {}
+impl Init for Pyo3VecWrapper {}
 
 #[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, SerdeAPI)]
+#[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3Vec2Wrapper(pub Vec<Vec<f64>>);
 impl From<Vec<Vec<f64>>> for Pyo3Vec2Wrapper {
     fn from(v: Vec<Vec<f64>>) -> Self {
         Pyo3Vec2Wrapper::new(v)
     }
 }
+impl SerdeAPI for Pyo3Vec2Wrapper {}
+impl Init for Pyo3Vec2Wrapper {}
 
 #[pyo3_api]
-#[derive(Default, Serialize, Deserialize, Clone, PartialEq, SerdeAPI)]
+#[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3Vec3Wrapper(pub Vec<Vec<Vec<f64>>>);
 impl From<Vec<Vec<Vec<f64>>>> for Pyo3Vec3Wrapper {
     fn from(v: Vec<Vec<Vec<f64>>>) -> Self {
         Pyo3Vec3Wrapper::new(v)
     }
 }
+impl SerdeAPI for Pyo3Vec3Wrapper {}
+impl Init for Pyo3Vec3Wrapper {}
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub enum Efficiency {
@@ -287,7 +321,7 @@ pub enum Efficiency {
         grid: Vec<Vec<f64>>,
         /// An *N*-dimensional [`ndarray::ArrayD`] containing the values at given grid coordinates
         values: ArrayD<f64>,
-        // TODO: maybe figure out a way to provide labels for x-data, y-data, ...
+        // NOTE: maybe should figure out a way to provide labels for x-data, y-data, ...
     },
 }
 
@@ -300,7 +334,7 @@ pub enum Efficiency {
 /// * `values` - An *N*-dimensional [`ndarray::ArrayD`] containing the values at given grid coordinates
 ///
 /// # Errors
-/// This function returns an [`InterpolationError`] if any of the validation checks from [`validate_inputs`] fail,
+/// This function returns an [InterpolationError] if any of the validation checks from [`validate_inputs`] fail,
 /// or if any values surrounding supplied `point` are `NaN`.
 ///
 /// # Examples
@@ -570,31 +604,64 @@ pub fn get_index_permutations(shape: &[usize]) -> Vec<Vec<usize>> {
         .collect()
 }
 
+pub(crate) enum InterpRange {
+    ZeroThroughOne,
+    NegativeOneThroughOne,
+    Either,
+}
+
 /// Ensures that passed data is between 0 and 1 and monotonically increasing.  
 /// # Arguments:
 /// - `data`: data used for interpolating efficiency from fraction of peak power
-/// - `geq_zero`: if true, data ranges from 0 to 1, inclusive; otherwise, data
-/// ranges from -1 to 1, inclusive
-pub fn check_interp_frac_data(data: &[f64], geq_zero: bool) -> anyhow::Result<()> {
-    check_monotonicity(data)?;
-    let max = data.iter().fold(f64::NEG_INFINITY, |prev, x| x.max(prev));
-    let min = data.iter().fold(f64::INFINITY, |prev, x| x.min(prev));
-    if geq_zero {
-        ensure!(
-            min == 0. && max == 1.,
-            "data min ({}) and max ({}) must be zero and one, respectively.",
-            min,
-            max
-        );
-    } else {
-        ensure!(
-            min == -1. && max == 1.,
-            "data min ({}) and max ({}) must be zero and one, respectively.",
-            min,
-            max
-        );
+/// - `interp_range`: allowed range
+pub(crate) fn check_interp_frac_data(
+    data: &[f64],
+    interp_range: InterpRange,
+) -> anyhow::Result<InterpRange> {
+    check_monotonicity(data).with_context(|| anyhow!(format_dbg!()))?;
+    let min = data.first().with_context(|| {
+        anyhow!(
+            "{}\nProblem extracting first element of `data`",
+            format_dbg!()
+        )
+    })?;
+    let max = data.last().with_context(|| {
+        anyhow!(
+            "{}\nProblem extracting first element of `data`",
+            format_dbg!()
+        )
+    })?;
+    match interp_range {
+        InterpRange::ZeroThroughOne => {
+            ensure!(
+                *min == 0. && *max == 1.,
+                "data min ({}) and max ({}) must be zero and one, respectively.",
+                min,
+                max
+            );
+        }
+        InterpRange::NegativeOneThroughOne => {
+            ensure!(
+                *min == -1. && *max == 1.,
+                "data min ({}) and max ({}) must be zero and one, respectively.",
+                min,
+                max
+            );
+        }
+        InterpRange::Either => {
+            ensure!(
+                (*min == -1. || *min == 0.) && *max == 1.,
+                "data min ({}) and max ({}) must be zero or negative one and one, respectively.",
+                min,
+                max
+            );
+        }
     }
-    Ok(())
+    if *min == 0. && *max == 1. {
+        Ok(InterpRange::ZeroThroughOne)
+    } else {
+        Ok(InterpRange::NegativeOneThroughOne)
+    }
 }
 
 /// Verifies that passed `data` is monotonically increasing.

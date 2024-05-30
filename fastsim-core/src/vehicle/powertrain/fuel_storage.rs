@@ -13,7 +13,7 @@ use super::*;
     //     Ok(self.mass()?.map(|m| m.get::<si::kilogram>()))
     // }
 )]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, SerdeAPI)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct FuelStorage {
     /// max power output
     pub pwr_out_max: si::Power,
@@ -34,9 +34,14 @@ pub struct FuelStorage {
     // which should then include vehicle mass in state
 }
 
+impl SerdeAPI for FuelStorage {}
+impl Init for FuelStorage {}
+
 impl Mass for FuelStorage {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
                 utils::almost_eq_uom(&set_mass, &derived_mass, None),
@@ -54,7 +59,9 @@ impl Mass for FuelStorage {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(

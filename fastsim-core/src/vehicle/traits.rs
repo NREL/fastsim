@@ -53,4 +53,11 @@ pub trait Mass {
     /// Sets all fields that are used in calculating derived mass to `None`.
     /// Does not touch `self.mass`.
     fn expunge_mass_fields(&mut self);
+
+    /// Sets any mass-specific property with appropriate side effects
+    fn set_mass_specific_property(&mut self) -> anyhow::Result<()> {
+        // TODO: remove this default implementation when this method has been universally implemented.
+        // For structs without specific properties (e.g. `Vehicle`), return an error
+        Ok(())
+    }
 }

@@ -96,16 +96,22 @@ impl SetCumulative for FuelConverter {
     }
 }
 
-impl SerdeAPI for FuelConverter {
+impl SerdeAPI for FuelConverter {}
+impl Init for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
-        let _ = self.mass()?;
+        let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
+        self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+        // TODO: set the engine map here based on efficiency type, which should allow for
+        // `None` and `Other<String>` variants
         Ok(())
     }
 }
 
 impl Mass for FuelConverter {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
                 utils::almost_eq_uom(&set_mass, &derived_mass, None),
@@ -123,7 +129,9 @@ impl Mass for FuelConverter {
         new_mass: Option<si::Mass>,
         side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::info!(
@@ -180,26 +188,26 @@ impl SaveInterval for FuelConverter {
 // non-py methods
 
 impl FuelConverter {
-    /// Returns maximum possible traction-related power [FuelConverter]
+    /// Sets maximum possible traction-related power [FuelConverter]
     /// can produce, accounting for any aux-related power required.
     /// # Arguments
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: time step size
-    pub fn get_cur_pwr_tract_out_max(
+    pub fn set_cur_pwr_tract_out_max(
         &mut self,
         pwr_aux: si::Power,
         dt: si::Time,
-    ) -> anyhow::Result<si::Power> {
+    ) -> anyhow::Result<()> {
         if self.pwr_out_max_init == si::Power::ZERO {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
         self.state.pwr_aux = pwr_aux;
-        self.state.pwr_out_max = (self.state.pwr_tractive
+        self.state.pwr_prop_max = (self.state.pwr_tractive
             + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
             .min(self.pwr_out_max)
             .max(self.pwr_out_max_init);
-        Ok(self.pwr_out_max)
+        Ok(())
     }
 
     /// Solves for this powertrain system/component efficiency and sets/returns power output values.
@@ -236,8 +244,15 @@ impl FuelConverter {
                 &((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
                 &self.pwr_out_frac_interp,
                 &self.eff_interp,
-                Default::default(),
-            )?;
+                Extrapolate::Error,
+            )
+            .with_context(|| {
+                anyhow!(
+                    "{}\n failed to calculate {}",
+                    format_dbg!(),
+                    stringify!(self.state.eff)
+                )
+            })?;
         ensure!(
             self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
             format!(
@@ -288,8 +303,8 @@ impl FuelConverter {
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,
-    /// max power fc can produce at current time
-    pub pwr_out_max: si::Power,
+    /// max propulsion power fc can produce at current time
+    pub pwr_prop_max: si::Power,
     /// efficiency evaluated at current demand
     pub eff: si::Ratio,
     /// instantaneous power going to drivetrain, not including aux
@@ -311,6 +326,9 @@ pub struct FuelConverterState {
     /// If true, engine is on, and if false, off (no idle)
     pub fc_on: bool,
 }
+
+impl SerdeAPI for FuelConverterState {}
+impl Init for FuelConverterState {}
 
 impl FuelConverterState {
     pub fn new() -> Self {

@@ -2,10 +2,9 @@ use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
 use crate::air_properties as air;
 use crate::imports::*;
-use fastsim_2::simdrive::RustSimDrive as SimDrive2;
 
 #[pyo3_api]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 /// Solver parameters
 pub struct SimParams {
     pub ach_speed_max_iter: u32,
@@ -14,6 +13,9 @@ pub struct SimParams {
     #[api(skip_get, skip_set)] // TODO: manually write out getter and setter
     pub trace_miss_tol: TraceMissTolerance,
 }
+
+impl SerdeAPI for SimParams {}
+impl Init for SimParams {}
 
 impl Default for SimParams {
     fn default() -> Self {
@@ -42,17 +44,29 @@ impl Default for SimParams {
     }
 
     #[pyo3(name = "to_fastsim2")]
-    fn to_fastsim2_py(&self) -> anyhow::Result<SimDrive2> {
+    fn to_fastsim2_py(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
         self.to_fastsim2()
     }
 
 )]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 pub struct SimDrive {
     #[has_state]
     pub veh: Vehicle,
     pub cyc: Cycle,
     pub sim_params: SimParams,
+}
+
+impl SerdeAPI for SimDrive {}
+impl Init for SimDrive {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.veh.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.cyc.init().with_context(|| anyhow!(format_dbg!()))?;
+        self.sim_params
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        Ok(())
+    }
 }
 
 impl SimDrive {
@@ -63,7 +77,7 @@ impl SimDrive {
         self.step();
         while self.veh.state.i < self.cyc.len() {
             self.solve_step()
-                .with_context(|| format!("time step: {}", self.veh.state.i))?;
+                .with_context(|| format!("{}\ntime step: {}", format_dbg!(), self.veh.state.i))?;
             self.save_state();
             self.step();
         }
@@ -75,10 +89,16 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
-        self.veh.set_cur_pwr_out_max(dt)?;
-        self.set_req_pwr(self.cyc.speed[i], dt)?;
-        self.set_ach_speed(dt)?;
-        self.veh.solve_powertrain(dt)?;
+        self.veh
+            .set_cur_pwr_out_max(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.set_pwr_tract_for_speed(self.cyc.speed[i], dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.set_ach_speed(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.veh
+            .solve_powertrain(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.veh.set_cumulative(dt);
         Ok(())
     }
@@ -87,7 +107,11 @@ impl SimDrive {
     /// # Arguments
     /// - `speed`: prescribed or achieved speed
     /// - `dt`: time step size
-    pub fn set_req_pwr(&mut self, speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
+    pub fn set_pwr_tract_for_speed(
+        &mut self,
+        speed: si::Velocity,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
@@ -106,7 +130,8 @@ impl SimDrive {
                 .map(|g| g.get::<si::ratio>())
                 .collect::<Vec<f64>>(),
             utils::Extrapolate::Error,
-        )?;
+        )
+        .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?;
 
         let mass = self.veh.mass.with_context(|| {
             format!(
@@ -173,7 +198,8 @@ impl SimDrive {
                     .map(|g| g.get::<si::ratio>())
                     .collect::<Vec<f64>>(),
                 utils::Extrapolate::Error,
-            )?;
+            )
+            .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?;
 
             // actual calucations
             let drag3 =
@@ -280,7 +306,7 @@ impl SimDrive {
                 spd_ach_iter_counter += 1;
             }
 
-            // Question: could we assume `speed_guesses.iter().last()` is the correct solution?
+            // TODO: answer this question: could we assume `speed_guesses.iter().last()` is the correct solution?
             // This would make for faster running.
             self.veh.state.speed_ach = speed_guesses[pwr_errs
                 .iter()
@@ -294,14 +320,20 @@ impl SimDrive {
         Ok(())
     }
 
-    pub fn to_fastsim2(&self) -> anyhow::Result<SimDrive2> {
-        let veh2 = self.veh.to_fastsim2()?;
-        let cyc2 = self.cyc.to_fastsim2()?;
-        Ok(SimDrive2::new(cyc2, veh2))
+    pub fn to_fastsim2(&self) -> anyhow::Result<fastsim_2::simdrive::RustSimDrive> {
+        let veh2 = self
+            .veh
+            .to_fastsim2()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        let cyc2 = self
+            .cyc
+            .to_fastsim2()
+            .with_context(|| anyhow!(format_dbg!()))?;
+        Ok(fastsim_2::simdrive::RustSimDrive::new(cyc2, veh2))
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, SerdeAPI, HistoryMethods)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 
 pub struct TraceMissTolerance {
     tol_dist: si::Length,
@@ -310,9 +342,13 @@ pub struct TraceMissTolerance {
     tol_speed_frac: si::Ratio,
 }
 
+impl SerdeAPI for TraceMissTolerance {}
+impl Init for TraceMissTolerance {}
+
 impl Default for TraceMissTolerance {
     fn default() -> Self {
         Self {
+            // TODO: update these values
             tol_dist: 666. * uc::M,
             tol_dist_frac: 666. * uc::R,
             tol_speed: 666. * uc::MPS,
@@ -324,9 +360,9 @@ impl Default for TraceMissTolerance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vehicle::vehicle::tests::mock_f2_conv_veh;
+    use crate::vehicle::vehicle::tests::*;
     #[test]
-    fn test_sim_drive() {
+    fn test_sim_drive_conv() {
         let _veh = mock_f2_conv_veh();
         let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
         let mut sd = SimDrive {
@@ -338,17 +374,18 @@ mod tests {
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
     }
-
     #[test]
-    fn test_to_fastsim2() {
-        let veh = mock_f2_conv_veh();
-        let cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
-        let sd = SimDrive {
-            veh,
-            cyc,
+    fn test_sim_drive_hev() {
+        let _veh = mock_f2_hev();
+        let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
+        let mut sd = SimDrive {
+            veh: _veh,
+            cyc: _cyc,
             sim_params: Default::default(),
         };
-        let mut sd2 = sd.to_fastsim2().unwrap();
-        sd2.sim_drive(None, None).unwrap();
+        sd.walk().unwrap();
+        assert!(sd.veh.state.i == sd.cyc.len());
+        assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
+        assert!(sd.veh.res().unwrap().state.energy_out_chemical != uc::J * 0.);
     }
 }

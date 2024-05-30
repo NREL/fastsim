@@ -1,7 +1,7 @@
 pub use super::*;
 
 /// Possible drive wheel configurations for traction limit calculations
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum DriveTypes {
     /// Rear-wheel drive
     RWD,
@@ -13,8 +13,11 @@ pub enum DriveTypes {
     FourWD,
 }
 
+impl SerdeAPI for DriveTypes {}
+impl Init for DriveTypes {}
+
 #[pyo3_api]
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods, SerdeAPI)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 /// Struct for simulating vehicle
 pub struct Chassis {
     /// Aerodynamic drag coefficient
@@ -29,13 +32,13 @@ pub struct Chassis {
     pub num_wheels: u8,
     /// Wheel radius
     #[serde(default)]
-    #[api(skip_get, skip_set)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[api(skip_get, skip_set)]
     pub wheel_radius: Option<si::Length>,
     /// Tire code (optional method of calculating wheel radius)
     #[serde(default)]
-    #[api(skip_get, skip_set)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[api(skip_get, skip_set)]
     pub tire_code: Option<String>,
     /// Vehicle center of mass height
     pub cg_height: si::Length,
@@ -63,6 +66,9 @@ pub struct Chassis {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cargo_mass: Option<si::Mass>,
 }
+
+impl SerdeAPI for Chassis {}
+impl Init for Chassis {}
 
 impl TryFrom<&fastsim_2::vehicle::RustVehicle> for Chassis {
     type Error = anyhow::Error;
@@ -95,7 +101,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for Chassis {
 
 impl Mass for Chassis {
     fn mass(&self) -> anyhow::Result<Option<si::Mass>> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(set_mass)) = (derived_mass, self.mass) {
             ensure!(
                 utils::almost_eq_uom(&set_mass, &derived_mass, None),
@@ -111,9 +119,11 @@ impl Mass for Chassis {
     fn set_mass(
         &mut self,
         new_mass: Option<si::Mass>,
-        side_effect: MassSideEffect,
+        _side_effect: MassSideEffect,
     ) -> anyhow::Result<()> {
-        let derived_mass = self.derived_mass()?;
+        let derived_mass = self
+            .derived_mass()
+            .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
                 log::warn!("Derived mass does not match provided mass, setting `{}` constituent mass fields to `None`", stringify!(Chassis));
