@@ -33,7 +33,7 @@ def copy_demo_files(path_for_copies: Path=Path("demos")):
             print(f"Saved {dest_file.name} to {dest_file}")
         else:
             os.makedirs(path_for_copies)
-            dest_file = path_for_copies / file.name
+            dest_file = Path(path_for_copies) / file.name
             shutil.copy(file, path_for_copies)
             with open(dest_file, "r+") as file:
                 file_content = file.readlines()
