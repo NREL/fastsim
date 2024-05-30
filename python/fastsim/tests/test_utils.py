@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 import fastsim as fsim
-import fastsim.utils.utilities as utils
+from fastsim import utils
 
 class TestUtils(unittest.TestCase):
 
