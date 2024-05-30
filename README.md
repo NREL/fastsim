@@ -64,7 +64,7 @@ this, you'll need to have the [Rust toolchain](https://www.rust-lang.org/tools/i
     1. Run `pytest -v python/fastsim/tests/`
 
 # Usage
-To see and run examples, download the FASTSim demo files using the following code (with your Python environment activated and FASTSim installed):
+To see and run examples, download the `fastsim-3` demo files using the following code (with your Python environment activated and `fastsim-3` installed):
 ```python
 from fastsim import utils  
 utils.copy_demo_files()
