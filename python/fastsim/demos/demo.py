@@ -122,11 +122,11 @@ print(f"Rust provides a {t_py/t_rust:.5g}x speedup")
 # %%
 fig, ax = plt.subplots(2, 1, figsize=(9, 5))
 ax[0].plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='py')
-ax[0].plot(cyc.time_s, sdr.fc_kw_in_ach, linestyle='--', label='rust')
+ax[0].plot(rc.time_s, sdr.fc_kw_in_ach, linestyle='--', label='rust')
 ax[0].legend()
 ax[0].set_ylabel('Engine Input\nPower [kW]')
 
-ax[1].plot(cyc.time_s, sim_drive.mph_ach)
+ax[1].plot(rc.time_s, sdr.mph_ach)
 ax[1].set_xlabel('Cycle Time [s]')
 ax[1].set_ylabel('Speed [MPH]')
 
@@ -143,7 +143,7 @@ ax[0].set_ylabel(
     'Power[kW]' 
 )
 
-ax[1].plot(cyc.time_s, sim_drive.mph_ach)
+ax[1].plot(rc.time_s, sdr.mph_ach)
 ax[1].set_xlabel('Cycle Time [s]')
 ax[1].set_ylabel('Speed [MPH]')
 
@@ -151,39 +151,10 @@ if SHOW_PLOTS:
     plt.show()
 
 # %% [markdown]
-# ## Running sim_drive_step() with modified auxInKw
+# ## Running sim_drive_step() with modified auxInKw using Rust
 # Note that auxInKw is the only variable setup to be externally modified
 # as of 1 July 2020  
 # ### Overriding at each time step
-
-# %%
-## Running sim_drive_step() with modified auxInKw
-# Note that auxInKw is the only variable setup to be externally modified
-# as of 1 July 2020
-
-t0 = time.perf_counter()
-
-veh = fsim.vehicle.Vehicle.from_vehdb(9)
-cyc = fsim.cycle.Cycle.from_file('udds')
-sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-sim_drive.init_for_step(init_soc=0.7935)
-
-while sim_drive.i < len(cyc.time_s):
-    sim_drive.aux_in_kw[sim_drive.i] = sim_drive.i / cyc.time_s[-1] * 10 
-    # above could be a function of some internal sim_drive state
-    sim_drive.sim_drive_step()
-
-plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
-plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
-plt.xlabel('Time [s]')
-plt.ylabel('Power [kW]')
-plt.legend()
-if SHOW_PLOTS:
-    plt.show()
-print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
-
-# %%
-## Running sim_drive_step() with modified auxInKw using Rust
 # Note that the aux load array **must** be set as a whole. We currently
 # cannot set just an index of an array via the Python bindings to Rust
 # at this time
@@ -218,31 +189,6 @@ print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 # ### Overriding using a constant value
 
 # %%
-## Running sim_drive_step() with modified auxInKw
-# Note that auxInKw is the only variable setup to be externally modified
-# as of 1 July 2020
-
-t0 = time.perf_counter()
-
-veh = fsim.vehicle.Vehicle.from_vehdb(9)
-cyc = fsim.cycle.Cycle.from_file('udds')
-sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-auxInKwConst = 12
-sim_drive.sim_drive(None, np.ones(len(cyc.time_s))*auxInKwConst)
-
-plt.figure()
-plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
-plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
-plt.xlabel('Time [s]')
-plt.ylabel('Power [kW]')
-plt.legend()
-if SHOW_PLOTS:
-    plt.show()
-
-print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
-
-
-# %%
 ## Running sim_drive_step() with modified auxInKw using Rust
 # Note that auxInKw is the only variable setup to be externally modified
 # as of 1 July 2020
@@ -267,37 +213,6 @@ print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
 # # %% [markdown]
 # ### Overriding using a time trace
-
-# %%
-## Running sim_drive_step() with modified auxInKw
-# Note that auxInKw is the only variable setup to be externally modified
-# as of 1 July 2020
-
-t0 = time.perf_counter()
-
-veh = fsim.vehicle.Vehicle.from_vehdb(9)
-cyc = fsim.cycle.Cycle.from_file('udds')
-sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-
-# by assigning the value directly (this is faster than using positional
-# args)
-sim_drive.init_for_step(
-    0.5,
-    aux_in_kw_override=cyc.time_s / cyc.time_s[-1] * 10
-)
-while sim_drive.i < len(sim_drive.cyc.time_s):
-    sim_drive.sim_drive_step()
-
-plt.figure()
-plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
-plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
-plt.xlabel('Time [s]')
-plt.ylabel('Power [kW]')
-plt.legend()
-if SHOW_PLOTS:
-    plt.show()
-
-print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
 # %%
 ## Running sim_drive_step() with modified auxInKw using Rust
@@ -330,29 +245,6 @@ if SHOW_PLOTS:
 
 print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
-
-# %% by assigning positional arguments may require recompile if these
-# arguments have not been passed, but this is the fastest approach after
-# compilation
-
-veh = fsim.vehicle.Vehicle.from_vehdb(9)
-cyc = fsim.cycle.Cycle.from_file('udds')
-
-t0 = time.perf_counter()
-
-sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-sim_drive.sim_drive(None, cyc.time_s / cyc.time_s[-1] * 10)
-
-plt.figure()
-plt.plot(cyc.time_s, sim_drive.fc_kw_out_ach, label='FC out')
-plt.plot(cyc.time_s, sim_drive.ess_kw_out_ach, label='ESS out')
-plt.xlabel('Time [s]')
-plt.ylabel('Power [kW]')
-plt.legend()
-if SHOW_PLOTS:
-    plt.show()
-
-print(f'Time to simulate: {time.perf_counter() - t0:.2e} s')
 
 # %% by assigning positional arguments (using Rust) may require
 # recompile if these arguments have not been passed, but this is the
@@ -481,51 +373,6 @@ print(f'Time to load cycles: {time.perf_counter() - t0:.2e} s')
 # ### Load Model, Run FASTSim
 # Includes example of how to load cycle from dict
 
-# %%
-veh = fsim.vehicle.Vehicle.from_vehdb(1)  # load vehicle model
-output = {}
-
-results_df = pd.DataFrame()
-t_start = time.perf_counter()
-for trp in list(drive_cycs_df.nrel_trip_id.unique()):
-    pnts = drive_cycs_df[drive_cycs_df['nrel_trip_id'] == trp].copy()
-    pnts['time_local'] = pd.to_datetime(pnts['timestamp'])
-
-    cyc = {}
-    cyc['cycGrade'] = np.zeros(len(pnts))
-    cyc['mps'] = np.array(
-        pnts['speed_mph'] / fsim.params.MPH_PER_MPS)  # MPH to MPS conversion
-    cyc['time_s'] = np.array(
-        np.cumsum(
-            (pnts['time_local'] -
-             pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')
-        )
-    )
-    cyc['road_type'] = np.zeros(len(pnts))
-    # example of loading cycle from dict
-    cyc = fsim.cycle.Cycle.from_dict(cyc)
-    
-    sim_drive = fsim.simdrive.SimDrive(cyc, veh)
-    sim_drive.sim_drive()
-
-    output['nrel_trip_id'] = trp
-    output['distance_mi'] = sum(sim_drive.dist_mi)
-    duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
-    output['avg_speed_mph'] = sum(
-        sim_drive.dist_mi) / (duration_sec / 3600.0)
-    #results_df = results_df.append(output, ignore_index=True)
-    results_df = pd.concat([results_df,pd.DataFrame(output,index=[0])],ignore_index=True)
-    output['mpgge'] = sim_drive.mpgge
-    
-t_end = time.perf_counter()
-
-# results_df = results_df.astype(float)
-
-print(f'Simulations Complete. Total runtime = {t_end - t_start:.2f} s')
-print('     Average time per cycle = {:.2f} s'.format((
-    t_end - t_start) / len(drive_cycs_df.nrel_trip_id.unique())))
-
-# %% ... and the Rust version
 veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()  # load vehicle model
 output = {}
 
@@ -557,7 +404,7 @@ for trp in list(drive_cycs_df.nrel_trip_id.unique()):
     duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
     output['avg_speed_mph'] = sum(
         sim_drive.dist_mi) / (duration_sec / 3600.0)
-    rust_results_df = pd.concat([results_df, pd.DataFrame(output,index=[0])],  ignore_index=True)
+    rust_results_df = pd.concat([rust_results_df, pd.DataFrame(output,index=[0])],  ignore_index=True)
     #rust_results_df = results_df.append(output, ignore_index=True)
     output['mpgge'] = sim_drive.mpgge
     
@@ -582,9 +429,9 @@ print('     Average time per cycle = {:.2f} s'.format((
 # that led to an unrealistically high cycle average speed.
 
 # %%
-df_fltr = results_df[(results_df['distance_mi'] < 1000)
-                     & (results_df['distance_mi'] > 0) &
-                     (results_df['avg_speed_mph'] < 100)]
+df_fltr = rust_results_df[(rust_results_df['distance_mi'] < 1000)
+                     & (rust_results_df['distance_mi'] > 0) &
+                     (rust_results_df['avg_speed_mph'] < 100)]
 
 
 # %%
@@ -630,7 +477,7 @@ if SHOW_PLOTS:
 
 # %% load vehicle
 t0 = time.perf_counter()
-veh = fsim.vehicle.Vehicle.from_vehdb(9)
+veh = fsim.vehicle.Vehicle.from_vehdb(9).to_rust()
 # veh = veh
 print(f'Time to load vehicle: {time.perf_counter() - t0:.2e} s')
 
@@ -639,15 +486,12 @@ print(f'Time to load vehicle: {time.perf_counter() - t0:.2e} s')
 t0 = time.perf_counter()
 cyc = fsim.cycle.Cycle.from_file("udds")
 microtrips = fsim.cycle.to_microtrips(cyc.to_dict())
-cyc = fsim.cycle.Cycle.from_dict(microtrips[1])
+cyc = fsim.cycle.Cycle.from_dict(microtrips[1]).to_rust()
 print(f'Time to load cycle: {time.perf_counter() - t0:.2e} s')
 
-# None of the instances of sim_drive() called past this point have a rust
-# version, only python. Should these be switched to rust, or are they called in
-# python on purpose?
 # %% simulate
 t0 = time.perf_counter()
-sim_drive = fsim.simdrive.SimDrive(cyc, veh)
+sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
 sim_drive.sim_drive()
 # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 # sim_drive.sim_drive()
@@ -688,7 +532,7 @@ if SHOW_PLOTS:
 # %% load vehicle
 t0 = time.perf_counter()
 # load from standalone vehicle file
-veh = fsim.vehicle.Vehicle.from_file('2012_Ford_Fusion.csv') # load vehicle using name
+veh = fsim.vehicle.Vehicle.from_file('2012_Ford_Fusion.csv').to_rust() # load vehicle using name
 print(f'Time to load veicle: {time.perf_counter() - t0:.2e} s')
 
 
@@ -696,16 +540,16 @@ print(f'Time to load veicle: {time.perf_counter() - t0:.2e} s')
 t0 = time.perf_counter()
 # load from cycle file path
 cyc1 = fsim.cycle.Cycle.from_file(
-    str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/udds.csv'))
-cyc2 = fsim.cycle.Cycle.from_file("us06")
+    str(Path(fsim.simdrive.__file__).parent / 'resources/cycles/udds.csv')).to_rust()
+cyc2 = fsim.cycle.Cycle.from_file("us06").to_rust()
 cyc_combo = fsim.cycle.concat([cyc1.to_dict(), cyc2.to_dict()])
-cyc_combo = fsim.cycle.Cycle.from_dict(cyc_combo)
+cyc_combo = fsim.cycle.Cycle.from_dict(cyc_combo).to_rust()
 print(f'Time to load cycles: {time.perf_counter() - t0:.2e} s')
 
 
 # %% simulate
 t0 = time.perf_counter()
-sim_drive = fsim.simdrive.SimDrive(cyc_combo, veh)
+sim_drive = fsim.simdrive.RustSimDrive(cyc_combo, veh)
 sim_drive.sim_drive()
 # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 # sim_drive.sim_drive()
@@ -742,12 +586,12 @@ if SHOW_PLOTS:
 
 # %% generate concatenated trip
 t0 = time.perf_counter()
-cyc1 = fsim.cycle.Cycle.from_file("udds")
-cyc2 = fsim.cycle.Cycle.from_file("us06")
+cyc1 = fsim.cycle.Cycle.from_file("udds").to_rust()
+cyc2 = fsim.cycle.Cycle.from_file("us06").to_rust()
 print('Cycle 1 and 2 equal?')
 print(fsim.cycle.equals(cyc1.to_dict(), cyc2.to_dict()))
-cyc1 = fsim.cycle.Cycle.from_file("udds")
-cyc2 = fsim.cycle.Cycle.from_file("udds")
+cyc1 = fsim.cycle.Cycle.from_file("udds").to_rust()
+cyc2 = fsim.cycle.Cycle.from_file("udds").to_rust()
 print('Cycle 1 and 2 equal?')
 print(fsim.cycle.equals(cyc1.to_dict(), cyc2.to_dict()))
 cyc2dict = cyc2.to_dict()
@@ -761,9 +605,9 @@ print(f'Time to load and compare cycles: {time.perf_counter() - t0:.2e} s')
 
 # %%
 t0 = time.perf_counter()
-cyc = fsim.cycle.Cycle.from_file("udds")
-cyc10Hz = fsim.cycle.Cycle.from_dict(fsim.cycle.resample(cyc.to_dict(), new_dt=0.1))
-cyc10s = fsim.cycle.Cycle.from_dict(fsim.cycle.resample(cyc.to_dict(), new_dt=10))
+cyc = fsim.cycle.Cycle.from_file("udds").to_rust()
+cyc10Hz = fsim.cycle.Cycle.from_dict(fsim.cycle.resample(cyc.to_dict(), new_dt=0.1)).to_rust()
+cyc10s = fsim.cycle.Cycle.from_dict(fsim.cycle.resample(cyc.to_dict(), new_dt=10)).to_rust()
 
 plt.plot(cyc10Hz.time_s, cyc10Hz.mph, marker=',')
 plt.plot(cyc10s.time_s, cyc10s.mph, marker=',')
@@ -782,26 +626,26 @@ print(f'Time to load and resample: {time.perf_counter() - t0:.2e} s')
 t0 = time.perf_counter()
 # load vehicle using explicit path
 veh = fsim.vehicle.Vehicle.from_file(Path(fsim.simdrive.__file__).parent / 
-                      'resources/vehdb/2012_Ford_Fusion.csv')
+                      'resources/vehdb/2012_Ford_Fusion.csv').to_rust()
 print(f'Time to load vehicle: {time.perf_counter() - t0:.2e} s')
 
 
 # %% generate concatenated trip
 t0 = time.perf_counter()
-cyc_udds = fsim.cycle.Cycle.from_file("udds")
+cyc_udds = fsim.cycle.Cycle.from_file("udds").to_rust()
 # Generate cycle with 0.1 s time steps
 cyc_udds_10Hz = fsim.cycle.Cycle.from_dict(
-    fsim.cycle.resample(cyc_udds.to_dict(), new_dt=0.1))
-cyc_us06 = fsim.cycle.Cycle.from_file("us06")
+    fsim.cycle.resample(cyc_udds.to_dict(), new_dt=0.1)).to_rust()
+cyc_us06 = fsim.cycle.Cycle.from_file("us06").to_rust()
 cyc_combo = fsim.cycle.concat([cyc_udds_10Hz.to_dict(), cyc_us06.to_dict()])
 cyc_combo = fsim.cycle.resample(cyc_combo, new_dt=1)
-cyc_combo = fsim.cycle.Cycle.from_dict(cyc_combo)
+cyc_combo = fsim.cycle.Cycle.from_dict(cyc_combo).to_rust()
 print(f'Time to load and concatenate cycles: {time.perf_counter() - t0:.2e} s')
 
 
 # %% simulate
 t0 = time.perf_counter()
-sim_drive = fsim.simdrive.SimDrive(cyc_combo, veh)
+sim_drive = fsim.simdrive.RustSimDrive(cyc_combo, veh)
 sim_drive.sim_drive()
 # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 # sim_drive.sim_drive()
@@ -838,7 +682,7 @@ if SHOW_PLOTS:
 
 # %% load vehicle
 t0 = time.perf_counter()
-veh = fsim.vehicle.Vehicle.from_vehdb(1)
+veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()
 # veh = veh
 print(f'Time to load vehicle: {time.perf_counter() - t0:.2e} s')
 
@@ -847,13 +691,13 @@ print(f'Time to load vehicle: {time.perf_counter() - t0:.2e} s')
 t0 = time.perf_counter()
 cyc = fsim.cycle.Cycle.from_file("udds")
 cyc = fsim.cycle.clip_by_times(cyc.to_dict(), t_end=300)
-cyc = fsim.cycle.Cycle.from_dict(cyc)
+cyc = fsim.cycle.Cycle.from_dict(cyc).to_rust()
 print(f'Time to load and clip cycle: {time.perf_counter() - t0:.2e} s')
 
 
 # %% simulate
 t0 = time.perf_counter()
-sim_drive = fsim.simdrive.SimDrive(cyc, veh)
+sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
 sim_drive.sim_drive()
 # sim_drive = fsim.simdrive.SimDriveClassic(cyc, veh)
 # sim_drive.sim_drive()

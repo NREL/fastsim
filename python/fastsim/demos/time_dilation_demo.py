@@ -28,19 +28,19 @@ SHOW_PLOTS = fsim.utils.show_plots()
 t0 = time.time()
 cyc = cycle.Cycle.from_dict(cyc_dict=cycle.clip_by_times(
    cycle.Cycle.from_file('longHaulDriveCycle').to_dict(),
-    t_end=18_000, t_start=1_800))
+    t_end=18_000, t_start=1_800)).to_rust()
 print('Time to load cycle file: {:.3f} s'.format(time.time() - t0))
 
 
 t0 = time.time()
-veh = vehicle.Vehicle.from_file('Line_Haul_Conv.csv')
+veh = vehicle.Vehicle.from_file('Line_Haul_Conv.csv').to_rust()
 veh.veh_kg *= 2
 print('Time to load vehicle: {:.3f} s'.format(time.time() - t0))
 
 
 t0 = time.time()
 
-sd_fixed = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
+sd_fixed = simdrive.RustSimDrive(cyc, veh)
 sim_params = sd_fixed.sim_params
 sim_params.reset_orphaned()
 sim_params.missed_trace_correction=True
@@ -49,7 +49,7 @@ sim_params.max_time_dilation = 0.1
 # sim_params.time_dilation_tol = 1e-1
 sd_fixed.sim_params = sim_params
 
-sd_base = simdrive.RustSimDrive(cyc.to_rust(), veh.to_rust())
+sd_base = simdrive.RustSimDrive(cyc, veh)
 
 sd_fixed.sim_drive() 
 sd_base.sim_drive()
@@ -59,7 +59,7 @@ t_delta = time.time() - t0
 print('Time to run sim_drive: {:.3f} s'.format(t_delta))
 print('Mean number of trace miss iterations: {:.3f}'.format(np.array(sd_fixed.trace_miss_iters).mean()))
 print('Distance percent error w.r.t. base cycle: {:.3%}'.format(
-    (np.array(sd_fixed.dist_m).sum() - cyc.dist_m.sum()) / cyc.dist_m.sum()))
+    (np.array(sd_fixed.dist_m).sum() - np.array(cyc.dist_m).sum()) / np.array(cyc.dist_m).sum()))
 
 # elevation delta based on dilated cycle secs
 delta_elev_dilated = (np.array(sd_fixed.cyc.grade) * np.array(sd_fixed.cyc.dt_s) * np.array(sd_fixed.cyc.mps)).sum()
@@ -96,7 +96,7 @@ if SHOW_PLOTS:
 # distance
 
 plt.figure()
-plt.plot(cyc.time_s, (cyc.mps * cyc.dt_s).cumsum() / 1e3, label='trace')
+plt.plot(cyc.time_s, (np.array(cyc.mps) * np.array(cyc.dt_s)).cumsum() / 1e3, label='trace')
 plt.plot(sd_fixed.cyc.time_s, (np.array(sd_fixed.mps_ach) *
                                  np.array(sd_fixed.cyc.dt_s)).cumsum() / 1e3, label='dilated', linestyle='--')
 plt.plot(sd_base.cyc.time_s, (np.array(sd_base.mps_ach) *
@@ -110,7 +110,7 @@ if SHOW_PLOTS:
     plt.show()
 
 plt.figure()
-plt.plot((cyc.mps * cyc.dt_s).cumsum() / 1e3, label='trace')
+plt.plot((np.array(cyc.mps) * np.array(cyc.dt_s)).cumsum() / 1e3, label='trace')
 plt.plot((np.array(sd_fixed.mps_ach) * np.array(sd_fixed.cyc.dt_s)).cumsum() / 1e3,
          label='dilated', linestyle='--')
 plt.plot((np.array(sd_base.mps_ach) * np.array(sd_base.cyc.dt_s)).cumsum() / 1e3,
@@ -128,7 +128,7 @@ plt.plot(sd_fixed.cyc.time_s,
     (np.interp(
     sd_fixed.cyc.time_s, 
     cyc.time_s, 
-    cyc.dist_m.cumsum()) - np.array(sd_fixed.dist_m).cumsum())
+    np.array(cyc.dist_m).cumsum()) - np.array(sd_fixed.dist_m).cumsum())
          / 1e3)
 # plt.grid()
 plt.xlabel('Time [s]')
@@ -139,7 +139,7 @@ if SHOW_PLOTS:
     plt.show()
 
 plt.figure()
-plt.plot((cyc.dist_m.cumsum() -
+plt.plot((np.array(cyc.dist_m).cumsum() -
          np.array(sd_fixed.dist_m).cumsum()))
 # plt.grid()
 plt.xlabel('Index')
@@ -152,8 +152,8 @@ if SHOW_PLOTS:
 # elevation change
 
 plt.figure()
-plt.plot(cyc.time_s, (cyc.grade * cyc.mps * cyc.dt_s).cumsum(), label='trace')
-plt.plot(sd_fixed.cyc.time_s, (cyc.grade * cyc.dt_s *
+plt.plot(cyc.time_s, (np.array(cyc.grade) * np.array(cyc.mps) * np.array(cyc.dt_s)).cumsum(), label='trace')
+plt.plot(sd_fixed.cyc.time_s, (np.array(cyc.grade) * np.array(cyc.dt_s) *
                                  np.array(sd_fixed.mps_ach)).cumsum(), label='undilated', linestyle='--')
 plt.plot(sd_fixed.cyc.time_s, (np.array(sd_fixed.cyc.grade) * np.array(sd_fixed.cyc.dt_s) *
                                  np.array(sd_fixed.mps_ach)).cumsum(), label='dilated', linestyle='-.')
@@ -167,9 +167,9 @@ if SHOW_PLOTS:
 
 
 plt.figure()
-plt.plot((cyc.grade * cyc.mps *
-                       cyc.dt_s).cumsum(), label='trace')
-plt.plot((cyc.grade * cyc.dt_s * np.array(sd_fixed.mps_ach)).cumsum(), label='undilated', linestyle='--')
+plt.plot((np.array(cyc.grade) * np.array(cyc.mps) *
+                       np.array(cyc.dt_s)).cumsum(), label='trace')
+plt.plot((np.array(cyc.grade) * np.array(cyc.dt_s) * np.array(sd_fixed.mps_ach)).cumsum(), label='undilated', linestyle='--')
 plt.plot((np.array(sd_fixed.cyc.grade) * np.array(sd_fixed.cyc.dt_s) *
                                  np.array(sd_fixed.mps_ach)).cumsum(), label='dilated', linestyle='-.')
 # plt.grid()
