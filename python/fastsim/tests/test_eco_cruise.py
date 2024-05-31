@@ -80,7 +80,6 @@ class TestEcoCruise(unittest.TestCase):
 
     def test_that_eco_cruise_works_with_blend_factor(self):
         for use_rust in [False, True]:
-            # should this instead be sd, _, _ = self.make_simdrive(use_rust=use_rust)
             sd, _, _ = self.make_simdrive()
             sd.activate_eco_cruise(by_microtrip=True, blend_factor=1.0)
             sd.sim_drive()
