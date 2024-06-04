@@ -359,7 +359,7 @@ pub fn get_vehicle_data_for_id(
         load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
     let fegov_db = fegov_data_by_year
         .get(&y)
-        .context(format!("Could not get fueleconomy.gov data from year {y}"))?;
+        .with_context(format!("Could not get fueleconomy.gov data from year {y}"))?;
     for item in fegov_db.iter() {
         if item.id == id {
             return Ok(item.clone());
