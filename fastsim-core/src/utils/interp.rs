@@ -330,7 +330,7 @@ fn find_nearest_index(arr: &[f64], target: f64) -> anyhow::Result<usize> {
 pub struct Interp1D {
     pub x: Vec<f64>,
     pub f_x: Vec<f64>,
-    _phantom: PhantomData<()>,
+    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
 }
 impl Interp1D {
     pub fn new(x: Vec<f64>, f_x: Vec<f64>) -> anyhow::Result<Self> {
@@ -388,7 +388,7 @@ pub struct Interp2D {
     pub x: Vec<f64>,
     pub y: Vec<f64>,
     pub f_xy: Vec<Vec<f64>>,
-    _phantom: PhantomData<()>,
+    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
 }
 impl Interp2D {
     pub fn new(x: Vec<f64>, y: Vec<f64>, f_xy: Vec<Vec<f64>>) -> anyhow::Result<Self> {
@@ -427,7 +427,7 @@ pub struct Interp3D {
     pub y: Vec<f64>,
     pub z: Vec<f64>,
     pub f_xyz: Vec<Vec<Vec<f64>>>,
-    _phantom: PhantomData<()>,
+    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
 }
 impl Interp3D {
     pub fn new(
@@ -480,7 +480,7 @@ impl Interp3D {
 pub struct InterpND {
     pub grid: Vec<Vec<f64>>,
     pub values: ArrayD<f64>,
-    _phantom: PhantomData<()>,
+    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
 }
 impl InterpND {
     fn ndim(&self) -> usize {
