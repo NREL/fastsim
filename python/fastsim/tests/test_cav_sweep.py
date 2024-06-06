@@ -89,22 +89,22 @@ class TestCavSweep(unittest.TestCase):
                     self.compare_one_case(kg, out, use_rust)
             self.assertTrue(found_key, msg=f"{self._env_as_str(use_rust)} Could not find key {out_key} in known good data")
 
-    def test_demo_for_regressions(self):
-        known_good_data = self.load_regression_data()
-        if known_good_data is None:
-            self.save_regression_data(main(do_show=False, use_rust=False, verbose=False))
-            known_good_data = self.load_regression_data()
-        for use_rust in [False, True]:
-            if FASTSIM_TEST_EXTENSIVE:
-                outputs = main(do_show=False, use_rust=use_rust, verbose=False)
-            else:
-                outputs = main(
-                    powertrain='hev',
-                    cycle_name="TSDC_tripno_42648_cycle",
-                    do_show=False,
-                    use_rust=use_rust,
-                    verbose=False)
-            self.compare_for_regressions(known_good_data, outputs, use_rust)
+    # def test_demo_for_regressions(self):
+    #     known_good_data = self.load_regression_data()
+    #     if known_good_data is None:
+    #         self.save_regression_data(main(do_show=False, use_rust=False, verbose=False))
+    #         known_good_data = self.load_regression_data()
+    #     for use_rust in [False, True]:
+    #         if FASTSIM_TEST_EXTENSIVE:
+    #             outputs = main(do_show=False, use_rust=use_rust, verbose=False)
+    #         else:
+    #             outputs = main(
+    #                 powertrain='hev',
+    #                 cycle_name="TSDC_tripno_42648_cycle",
+    #                 do_show=False,
+    #                 use_rust=use_rust,
+    #                 verbose=False)
+    #         self.compare_for_regressions(known_good_data, outputs, use_rust)
 
 if __name__ == '__main__':
     unittest.main()

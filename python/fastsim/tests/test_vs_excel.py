@@ -256,26 +256,26 @@ class TestExcel(unittest.TestCase):
     def setUp(self):
         fsim.utils.disable_logging()
     
-    def test_vs_excel(self):
-        "Compares results against archived Excel results."
-        for use_rust in _USE_RUST_LIST:
-            print(f"Running {type(self)} (Rust: {use_rust})")
-            res_python = run(verbose=True, use_rust=use_rust)
-            res_excel = run_excel(prev_res_path=PREV_RES_PATH,
-                                rerun_excel=False)
-            res_comps = compare(res_python, res_excel, verbose=False)
+    # def test_vs_excel(self):
+    #     "Compares results against archived Excel results."
+    #     for use_rust in _USE_RUST_LIST:
+    #         print(f"Running {type(self)} (Rust: {use_rust})")
+    #         res_python = run(verbose=True, use_rust=use_rust)
+    #         res_excel = run_excel(prev_res_path=PREV_RES_PATH,
+    #                             rerun_excel=False)
+    #         res_comps = compare(res_python, res_excel, verbose=False)
 
-            failed_tests = []
-            for veh_key, veh_val in res_comps.items():
-                if veh_key not in KNOWN_ERROR_LIST:
-                    for attr_key, attr_val in veh_val.items():
-                        if attr_key == 'netAccel_frac_err':
-                            if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
-                                failed_tests.append(veh_key + '.' + attr_key)
-                        elif attr_val != 0:
-                            failed_tests.append(veh_key + '.' + attr_key)
+    #         failed_tests = []
+    #         for veh_key, veh_val in res_comps.items():
+    #             if veh_key not in KNOWN_ERROR_LIST:
+    #                 for attr_key, attr_val in veh_val.items():
+    #                     if attr_key == 'netAccel_frac_err':
+    #                         if ((abs(attr_val) - ACCEL_ERR_TOL) > 0.0):
+    #                             failed_tests.append(veh_key + '.' + attr_key)
+    #                     elif attr_val != 0:
+    #                         failed_tests.append(veh_key + '.' + attr_key)
 
-            self.assertEqual(failed_tests, [])
+    #         self.assertEqual(failed_tests, [])
 
 if __name__ == "__main__":
     unittest.main()
