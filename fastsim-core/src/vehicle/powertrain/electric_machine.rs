@@ -170,8 +170,12 @@ impl ElectricMachine {
                 )
             })?;
 
+        // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
+        // power based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
-        self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max * eff_neg);
+        // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
+        // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
+        self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max / eff_neg);
         Ok(())
     }
 

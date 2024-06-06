@@ -11,7 +11,7 @@ use super::*;
 /// # Arguments  
 /// * `te_air` - ambient temperature of air, defaults to 22 C
 /// * `h` - evelation above sea level, defaults to 180 m
-pub fn get_rho_air(
+pub fn get_density_air(
     te_air: Option<si::ThermodynamicTemperature>,
     h: Option<si::Length>,
 ) -> si::MassDensity {
@@ -26,7 +26,7 @@ pub fn get_rho_air(
 }
 
 #[cfg(feature = "pyo3")]
-#[pyfunction(name = "get_rho_air")]
+#[pyfunction(name = "get_density_air")]
 /// Returns density of air [kg/m^3]
 /// Source: <https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html>  
 ///
@@ -37,8 +37,8 @@ pub fn get_rho_air(
 /// # Arguments  
 /// * `te_air_deg_c` - optional ambient temperature [Celsius] of air, defaults to 22 C
 /// * `h_m` - optional elevation [m] above sea level, defaults to 180 m
-pub fn get_rho_air_py(te_air_deg_c: Option<f64>, h_m: Option<f64>) -> f64 {
-    get_rho_air(
+pub fn get_density_air_py(te_air_deg_c: Option<f64>, h_m: Option<f64>) -> f64 {
+    get_density_air(
         te_air_deg_c.map(|te_air_deg_c| (te_air_deg_c + 273.15) * uc::KELVIN),
         h_m.map(|h_m| h_m * uc::M),
     )

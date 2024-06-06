@@ -527,7 +527,7 @@ impl Vehicle {
             .set_cur_pwr_prop_out_max(self.pwr_aux, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
 
-        (self.state.pwr_tract_pos_max, self.state.pwr_tract_neg_max) = self
+        (self.state.pwr_prop_pos_max, self.state.pwr_prop_neg_max) = self
             .pt_type
             .get_cur_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -803,10 +803,10 @@ pub struct VehicleState {
 
     // power and fields
     /// maximum positive propulsive power vehicle can produce
-    pub pwr_tract_pos_max: si::Power,
+    pub pwr_prop_pos_max: si::Power,
     /// pwr exerted on wheels by powertrain
     /// maximum negative propulsive power vehicle can produce
-    pub pwr_tract_neg_max: si::Power,
+    pub pwr_prop_neg_max: si::Power,
     pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
     pub energy_tractive: si::Energy,

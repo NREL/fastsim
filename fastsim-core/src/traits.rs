@@ -250,7 +250,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
 
     /// Write (serialize) an object to a YAML string
     fn to_yaml(&self) -> anyhow::Result<String> {
-        Ok(serde_yaml::to_string(&self).with_context(|| anyhow!(format_dbg!()))?)
+        serde_yaml::to_string(&self).with_context(|| anyhow!(format_dbg!()))
     }
 
     /// Read (deserialize) an object from a YAML string

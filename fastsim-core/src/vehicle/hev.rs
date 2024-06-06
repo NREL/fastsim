@@ -1,4 +1,4 @@
-use crate::prelude::{FuelConverterState, ReversibleEnergyStorageState};
+use crate::prelude::{ElectricMachineState, FuelConverterState};
 
 use super::{vehicle::VehicleState, *};
 
@@ -70,15 +70,12 @@ impl Powertrain for Box<HybridElectricVehicle> {
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
         veh_state: &VehicleState,
-        enabled: bool,
+        _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        let (fc_pwr_out_req, em_pwr_out_req) = self.hev_controls.get_pwr_fc_and_res(
-            pwr_out_req,
-            veh_state,
-            &self.fc.state,
-            &self.res.state,
-        )?;
+        let (fc_pwr_out_req, em_pwr_out_req) =
+            self.hev_controls
+                .get_pwr_fc_and_em(pwr_out_req, &self.fc.state, &self.em.state)?;
 
         let enabled = true; // TODO: replace with a stop/start model
                             // TODO: figure out fancier way to handle apportionment of `pwr_aux` between `fc` and `res`
@@ -193,40 +190,56 @@ pub enum HEVControls {
 }
 
 impl HEVControls {
-    fn get_pwr_fc_and_res(
+    fn get_pwr_fc_and_em(
         &self,
         pwr_out_req: si::Power,
-        veh_state: &VehicleState,
         fc_state: &FuelConverterState,
-        // TODO: figure out if this should be `res_state` or `em_state`
-        res_state: &ReversibleEnergyStorageState,
+        em_state: &ElectricMachineState,
     ) -> anyhow::Result<(si::Power, si::Power)> {
         if pwr_out_req >= uc::W * 0. {
+            // positive net power out of the powertrain
             match self {
                 Self::Fastsim2 => {
                     todo!()
                 }
                 Self::RESGreedy => {
-                    // TODO: fix the logic in here.
-                    let fc_pwr = fc_state.pwr_prop_max
-                        / (fc_state.pwr_prop_max + res_state.pwr_prop_max)
-                        * pwr_out_req;
-                    // TODO: verify that this could be `pwr_out_req` - `fc_pwr`
-                    let res_pwr = res_state.pwr_prop_max
-                        / (fc_state.pwr_prop_max + res_state.pwr_prop_max)
-                        * pwr_out_req;
+                    // Use ElectricMachine greedily until its max then draw
+                    // remaining power from FuelConverter
+                    // Ok(if pwr_out_req <= em_state.pwr_prop_max {
+                    //     let fc_pwr = 0.;
+                    //     let em_pwr = pwr_out_req
+                    //     (fc_pwr, em_pwr)
+                    // } else {
+                    //     let fc_pwr = pwr_out_req - fc_state.pwr_prop_max.max(pwr_out_req);
+                    //     let em_pwr = em_state.pwr_prop_max;
+                    //     (fc_pwr, em_pwr)
+                    // })
+                    let em_pwr = pwr_out_req
+                        // cannot exceed ElectricMachine max output power
+                        .min(em_state.pwr_mech_fwd_out_max);
+                    let fc_pwr = pwr_out_req - em_pwr;
 
-                    Ok((fc_pwr, res_pwr))
+                    ensure!(fc_pwr >= uc::W * 0., format_dbg!(fc_pwr >= uc::W * 0.));
+                    ensure!(
+                        pwr_out_req <= fc_state.pwr_prop_max + em_state.pwr_mech_fwd_out_max,
+                        format_dbg!(
+                            pwr_out_req <= fc_state.pwr_prop_max + em_state.pwr_mech_fwd_out_max
+                        )
+                    );
+
+                    Ok((fc_pwr, em_pwr))
                 }
             }
         } else {
+            // negative net power out of the powertrain -- i.e. positive net power _into_ powertrain
             match self {
                 Self::Fastsim2 => {
                     todo!()
                 }
                 Self::RESGreedy => {
-                    let res_pwr = res_state.pwr_regen_max.min(-pwr_out_req);
-                    Ok((0. * uc::W, res_pwr))
+                    // if `em_pwr` is less than magnitude of `pwr_out_req`, friction brakes can handle excess
+                    let em_pwr = -em_state.pwr_mech_bwd_out_max.min(-pwr_out_req);
+                    Ok((0. * uc::W, em_pwr))
                 }
             }
         }
