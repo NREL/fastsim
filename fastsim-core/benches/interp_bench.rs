@@ -1,4 +1,4 @@
-//! Benchmarks for 0/1/2/3/N-dimensional interpolation
+//! Benchmarks for 0/1/2/3/N-dimensional linear interpolation
 //! Run these with `cargo bench`
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -7,19 +7,29 @@ use fastsim_core::utils::interp::*;
 use ndarray::prelude::*;
 use rand::{self, rngs::StdRng, Rng, SeedableRng};
 
+#[allow(non_snake_case)]
 /// 0-D interpolation (hardcoded)
 fn benchmark_0D() {
     let interp_0d = Interpolator::Interp0D(0.5);
-    interp_0d.interpolate(&[], &Strategy::None).unwrap();
+    interp_0d.interpolate(&[]).unwrap();
 }
 
+#[allow(non_snake_case)]
 /// 0-D interpolation (multilinear interpolator)
 fn benchmark_0D_multi() {
-    let interp_0d_multi =
-        Interpolator::InterpND(InterpND::new(vec![vec![]], array![0.5].into_dyn()).unwrap());
-    interp_0d_multi.interpolate(&[], &Strategy::None).unwrap();
+    let interp_0d_multi = Interpolator::InterpND(
+        InterpND::new(
+            vec![vec![]],
+            array![0.5].into_dyn(),
+            Strategy::Linear,
+            Extrapolate::Error,
+        )
+        .unwrap(),
+    );
+    interp_0d_multi.interpolate(&[]).unwrap();
 }
 
+#[allow(non_snake_case)]
 /// 1-D interpolation (hardcoded)
 fn benchmark_1D() {
     let seed = 1234567890;
@@ -28,14 +38,17 @@ fn benchmark_1D() {
     // Generate interpolator data (same as N-D benchmark)
     let values_data: Vec<f64> = (0..100).map(|_| rng.gen::<f64>()).collect();
     // Create a 1-D interpolator with 100 data points
-    let interp_1d = Interpolator::Interp1D(Interp1D::new(grid_data, values_data).unwrap());
+    let interp_1d = Interpolator::Interp1D(
+        Interp1D::new(grid_data, values_data, Strategy::Linear, Extrapolate::Error).unwrap(),
+    );
     // Sample 1,000 points
     let points: Vec<f64> = (0..1_000).map(|_| rng.gen::<f64>() * 99.).collect();
     for point in points {
-        interp_1d.interpolate(&[point], &Strategy::Linear).unwrap();
+        interp_1d.interpolate(&[point]).unwrap();
     }
 }
 
+#[allow(non_snake_case)]
 /// 1-D interpolation (multilinear interpolator)
 fn benchmark_1D_multi() {
     let seed = 1234567890;
@@ -48,18 +61,19 @@ fn benchmark_1D_multi() {
         InterpND::new(
             vec![grid_data],
             ArrayD::from_shape_vec(IxDyn(&[100]), values_data).unwrap(),
+            Strategy::Linear,
+            Extrapolate::Error,
         )
         .unwrap(),
     );
     // Sample 1,000 points
     let points: Vec<f64> = (0..1_000).map(|_| rng.gen::<f64>() * 99.).collect();
     for point in points {
-        interp_1d_multi
-            .interpolate(&[point], &Strategy::Linear)
-            .unwrap();
+        interp_1d_multi.interpolate(&[point]).unwrap();
     }
 }
 
+#[allow(non_snake_case)]
 /// 2-D interpolation (hardcoded)
 fn benchmark_2D() {
     let seed = 1234567890;
@@ -72,17 +86,25 @@ fn benchmark_2D() {
         .collect();
     // Create a 2-D interpolator with 100x100 data (10,000 points)
     let interp_2d = Interpolator::Interp2D(
-        Interp2D::new(grid_data.clone(), grid_data.clone(), values_data).unwrap(),
+        Interp2D::new(
+            grid_data.clone(),
+            grid_data.clone(),
+            values_data,
+            Strategy::Linear,
+            Extrapolate::Error,
+        )
+        .unwrap(),
     );
     // Sample 1,000 points
     let points: Vec<Vec<f64>> = (0..1_000)
         .map(|_| vec![rng.gen::<f64>() * 99., rng.gen::<f64>() * 99.])
         .collect();
     for point in points {
-        interp_2d.interpolate(&point, &Strategy::Linear).unwrap();
+        interp_2d.interpolate(&point).unwrap();
     }
 }
 
+#[allow(non_snake_case)]
 /// 2-D interpolation (multilinear interpolator)
 fn benchmark_2D_multi() {
     let seed = 1234567890;
@@ -95,6 +117,8 @@ fn benchmark_2D_multi() {
         InterpND::new(
             vec![grid_data.clone(), grid_data.clone()],
             ArrayD::from_shape_vec(IxDyn(&[100, 100]), values_data).unwrap(),
+            Strategy::Linear,
+            Extrapolate::Error,
         )
         .unwrap(),
     );
@@ -103,12 +127,11 @@ fn benchmark_2D_multi() {
         .map(|_| vec![rng.gen::<f64>() * 99., rng.gen::<f64>() * 99.])
         .collect();
     for point in points {
-        interp_2d_multi
-            .interpolate(&point, &Strategy::Linear)
-            .unwrap();
+        interp_2d_multi.interpolate(&point).unwrap();
     }
 }
 
+#[allow(non_snake_case)]
 /// 3-D interpolation (hardcoded)
 fn benchmark_3D() {
     let seed = 1234567890;
@@ -130,6 +153,8 @@ fn benchmark_3D() {
             grid_data.clone(),
             grid_data.clone(),
             values_data,
+            Strategy::Linear,
+            Extrapolate::Error,
         )
         .unwrap(),
     );
@@ -144,10 +169,11 @@ fn benchmark_3D() {
         })
         .collect();
     for point in points {
-        interp_3d.interpolate(&point, &Strategy::Linear).unwrap();
+        interp_3d.interpolate(&point).unwrap();
     }
 }
 
+#[allow(non_snake_case)]
 /// 3-D interpolation (multilinear interpolator)
 fn benchmark_3D_multi() {
     let seed = 1234567890;
@@ -160,6 +186,8 @@ fn benchmark_3D_multi() {
         InterpND::new(
             vec![grid_data.clone(), grid_data.clone(), grid_data.clone()],
             ArrayD::from_shape_vec(IxDyn(&[100, 100, 100]), values_data).unwrap(),
+            Strategy::Linear,
+            Extrapolate::Error,
         )
         .unwrap(),
     );
@@ -174,9 +202,7 @@ fn benchmark_3D_multi() {
         })
         .collect();
     for point in points {
-        interp_3d_multi
-            .interpolate(&point, &Strategy::Linear)
-            .unwrap();
+        interp_3d_multi.interpolate(&point).unwrap();
     }
 }
 
