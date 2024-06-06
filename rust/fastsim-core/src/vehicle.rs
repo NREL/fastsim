@@ -783,7 +783,7 @@ impl RustVehicle {
             );
             self.mc_eff_map = large_baseline_eff_adj
                 .iter()
-                .zip(LARGE_BASELINE_EFF)
+                .zip(SMALL_BASELINE_EFF)
                 .map(|(&x, y)| mc_kw_adj_perc * x + (1.0 - mc_kw_adj_perc) * y)
                 .collect();
         }

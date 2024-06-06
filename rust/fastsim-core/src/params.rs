@@ -118,8 +118,12 @@ pub const LARGE_BASELINE_EFF: [f64; 11] = [
 ];
 
 pub const SMALL_BASELINE_EFF: [f64; 11] = [
-    0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92,
+    0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
 ];
+
+// pub const SMALL_BASELINE_EFF: [f64; 11] = [
+//     0.12, 0.16, 0.21, 0.29, 0.35, 0.42, 0.75, 0.92, 0.93, 0.93, 0.92,
+// ];
 
 pub const CHG_EFF: f64 = 0.86; // charger efficiency for PEVs, this should probably not be hard coded long term
 

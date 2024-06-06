@@ -590,7 +590,7 @@ class Vehicle(object):
 
         if self.mc_eff_map is None:
             self.mc_eff_map = mc_kw_adj_perc * large_baseline_eff_adj + \
-                (1 - mc_kw_adj_perc) * self.large_baseline_eff
+                (1 - mc_kw_adj_perc) * self.small_baseline_eff
             self.mc_eff_array = self.mc_eff_map
         else:
             self.mc_eff_array = self.mc_eff_map
