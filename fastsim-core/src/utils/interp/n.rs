@@ -143,6 +143,8 @@ impl InterpMethods for InterpND {
     fn validate(&self) -> anyhow::Result<()> {
         let n = self.ndim();
 
+        ensure!(!matches!(self.extrapolate, Extrapolate::Extrapolate), "`Extrapolate` is not implemented for N-D, use `Clamp` or `Error` extrapolation strategy instead");
+
         // Check that each grid dimension has elements
         for i in 0..n {
             // Indexing `grid` directly is okay because `grid == vec![]` is caught at compilation
@@ -277,5 +279,44 @@ mod tests {
             interp.interpolate(&[0.25, 0.65, 0.9]).unwrap(),
             3.1999999999999997
         ) // 3.2
+    }
+
+    #[test]
+    fn test_extrapolate_inputs() {
+        // Extrapolate::Extrapolate
+        assert!(InterpND::new(
+            vec![vec![0., 1.], vec![0., 1.], vec![0., 1.]],
+            array![[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]],].into_dyn(),
+            Strategy::Linear,
+            Extrapolate::Extrapolate,
+        )
+        .is_err());
+        // Extrapolate::Error
+        let interp = Interpolator::InterpND(
+            InterpND::new(
+                vec![vec![0., 1.], vec![0., 1.], vec![0., 1.]],
+                array![[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]],].into_dyn(),
+                Strategy::Linear,
+                Extrapolate::Error,
+            )
+            .unwrap(),
+        );
+        assert!(interp.interpolate(&[-1., -1., -1.]).is_err());
+        assert!(interp.interpolate(&[2., 2., 2.]).is_err());
+    }
+
+    #[test]
+    fn test_extrapolate_clamp() {
+        let interp = Interpolator::InterpND(
+            InterpND::new(
+                vec![vec![0., 1.], vec![0., 1.], vec![0., 1.]],
+                array![[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]],].into_dyn(),
+                Strategy::Linear,
+                Extrapolate::Clamp,
+            )
+            .unwrap(),
+        );
+        assert_eq!(interp.interpolate(&[-1., -1., -1.]).unwrap(), 0.);
+        assert_eq!(interp.interpolate(&[2., 2., 2.]).unwrap(), 7.);
     }
 }

@@ -69,6 +69,8 @@ impl InterpMethods for Interp3D {
         let y_grid_len = self.y.len();
         let z_grid_len = self.z.len();
 
+        ensure!(!matches!(self.extrapolate, Extrapolate::Extrapolate), "`Extrapolate` is not implemented for 3-D, use `Clamp` or `Error` extrapolation strategy instead");
+
         // Check that each grid dimension has elements
         ensure!(
             x_grid_len != 0 || y_grid_len != 0 || z_grid_len != 0,
@@ -198,5 +200,59 @@ mod tests {
             interp.interpolate(&[0.25, 0.65, 0.9]).unwrap(),
             3.1999999999999997
         ) // 3.2
+    }
+
+    #[test]
+    fn test_extrapolate_inputs() {
+        // Extrapolate::Extrapolate
+        assert!(Interp3D::new(
+            vec![0., 1.],
+            vec![0., 1.],
+            vec![0., 1.],
+            vec![
+                vec![vec![0., 1.], vec![2., 3.]],
+                vec![vec![4., 5.], vec![6., 7.]],
+            ],
+            Strategy::Linear,
+            Extrapolate::Extrapolate,
+        )
+        .is_err());
+        // Extrapolate::Error
+        let interp = Interpolator::Interp3D(
+            Interp3D::new(
+                vec![0., 1.],
+                vec![0., 1.],
+                vec![0., 1.],
+                vec![
+                    vec![vec![0., 1.], vec![2., 3.]],
+                    vec![vec![4., 5.], vec![6., 7.]],
+                ],
+                Strategy::Linear,
+                Extrapolate::Error,
+            )
+            .unwrap(),
+        );
+        assert!(interp.interpolate(&[-1., -1., -1.]).is_err());
+        assert!(interp.interpolate(&[2., 2., 2.]).is_err());
+    }
+
+    #[test]
+    fn test_extrapolate_clamp() {
+        let interp = Interpolator::Interp3D(
+            Interp3D::new(
+                vec![0., 1.],
+                vec![0., 1.],
+                vec![0., 1.],
+                vec![
+                    vec![vec![0., 1.], vec![2., 3.]],
+                    vec![vec![4., 5.], vec![6., 7.]],
+                ],
+                Strategy::Linear,
+                Extrapolate::Clamp,
+            )
+            .unwrap(),
+        );
+        assert_eq!(interp.interpolate(&[-1., -1., -1.]).unwrap(), 0.);
+        assert_eq!(interp.interpolate(&[2., 2., 2.]).unwrap(), 7.);
     }
 }

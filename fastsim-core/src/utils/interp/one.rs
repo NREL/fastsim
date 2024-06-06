@@ -36,9 +36,15 @@ impl Interp1D {
         // Extrapolate, if applicable
         if matches!(self.extrapolate, Extrapolate::Extrapolate) {
             if point < self.x[0] {
+                log::warn!("Extrapolating: point = {}, x_min = {}", point, self.x[0]);
                 let slope = (self.f_x[1] - self.f_x[0]) / (self.x[1] - self.x[0]);
                 return Ok(slope * (point - self.x[0]) + self.f_x[0]);
             } else if &point > self.x.last().unwrap() {
+                log::warn!(
+                    "Extrapolating: point = {}, x_max = {}",
+                    point,
+                    self.x.last().unwrap()
+                );
                 let slope = (self.f_x.last().unwrap() - self.f_x[self.f_x.len() - 2])
                     / (self.x.last().unwrap() - self.x[self.x.len() - 2]);
                 return Ok(slope * (point - self.x.last().unwrap()) + self.f_x.last().unwrap());
@@ -82,6 +88,19 @@ impl Interp1D {
 impl InterpMethods for Interp1D {
     fn validate(&self) -> anyhow::Result<()> {
         let x_grid_len = self.x.len();
+
+        if matches!(self.extrapolate, Extrapolate::Extrapolate) {
+            ensure!(
+                matches!(self.strategy, Strategy::Linear),
+                "`Extrapolate` is only implemented for 1-D linear, use `Clamp` or `Error` extrapolation strategy instead"
+            );
+            ensure!(
+                self.x.len() >= 2,
+                "At least 2 data points are required for extrapolation: x = {:?}, f_x = {:?}",
+                self.x,
+                self.f_x,
+            );
+        }
 
         // Check that each grid dimension has elements
         ensure!(x_grid_len != 0, "Supplied x-coordinates cannot be empty");
@@ -192,5 +211,59 @@ mod tests {
         assert_eq!(interp.interpolate(&[3.50]).unwrap(), 1.0);
         assert_eq!(interp.interpolate(&[3.75]).unwrap(), 1.0);
         assert_eq!(interp.interpolate(&[4.00]).unwrap(), 1.0);
+    }
+
+    #[test]
+    fn test_extrapolate_inputs() {
+        // Incorrect strategy
+        assert!(Interp1D::new(
+            vec![0., 1., 2., 3., 4.],
+            vec![0.2, 0.4, 0.6, 0.8, 1.0],
+            Strategy::Nearest,
+            Extrapolate::Extrapolate,
+        )
+        .is_err());
+        // Extrapolate::Error
+        let interp = Interpolator::Interp1D(
+            Interp1D::new(
+                vec![0., 1., 2., 3., 4.],
+                vec![0.2, 0.4, 0.6, 0.8, 1.0],
+                Strategy::Linear,
+                Extrapolate::Error,
+            )
+            .unwrap(),
+        );
+        assert!(interp.interpolate(&[-1.]).is_err());
+        assert!(interp.interpolate(&[5.]).is_err());
+    }
+
+    #[test]
+    fn test_extrapolate_clamp() {
+        let interp = Interpolator::Interp1D(
+            Interp1D::new(
+                vec![0., 1., 2., 3., 4.],
+                vec![0.2, 0.4, 0.6, 0.8, 1.0],
+                Strategy::Linear,
+                Extrapolate::Clamp,
+            )
+            .unwrap(),
+        );
+        assert_eq!(interp.interpolate(&[-1.]).unwrap(), 0.2);
+        assert_eq!(interp.interpolate(&[5.]).unwrap(), 1.0);
+    }
+
+    #[test]
+    fn test_extrapolate() {
+        let interp = Interpolator::Interp1D(
+            Interp1D::new(
+                vec![0., 1., 2., 3., 4.],
+                vec![0.2, 0.4, 0.6, 0.8, 1.0],
+                Strategy::Linear,
+                Extrapolate::Extrapolate,
+            )
+            .unwrap(),
+        );
+        assert_eq!(interp.interpolate(&[-1.]).unwrap(), 0.0);
+        assert_eq!(interp.interpolate(&[5.]).unwrap(), 1.2);
     }
 }

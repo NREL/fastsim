@@ -56,18 +56,6 @@ impl Interpolator {
             Self::Interp0D(value) => Ok(*value),
             Self::Interp1D(interp) => {
                 match interp.extrapolate {
-                    Extrapolate::Extrapolate => {
-                        ensure!(
-                            matches!(interp.strategy, Strategy::Linear),
-                            "`Extrapolate` is only implemented for 1-D linear, use `Clamp` or `Error` extrapolation strategy instead"
-                        );
-                        ensure!(
-                            interp.x.len() >= 2,
-                            "At least 2 data points are required for extrapolation: x = {:?}, f_x = {:?}",
-                            interp.x,
-                            interp.f_x,
-                        );
-                    }
                     Extrapolate::Clamp => {
                         let clamped_point =
                             &[point[0].clamp(interp.x[0], *interp.x.last().unwrap())];
@@ -82,35 +70,37 @@ impl Interpolator {
                             interp.x,
                         );
                     }
+                    _ => {}
                 };
                 interp.interpolate(point)
             }
             Self::Interp2D(interp) => {
                 match interp.extrapolate {
-                    Extrapolate::Extrapolate => bail!("`Extrapolate` is not implemented for 2-D, use `Clamp` or `Error` extrapolation strategy instead"),
                     Extrapolate::Clamp => {
                         let clamped_point = &[
                             point[0].clamp(interp.x[0], *interp.x.last().unwrap()),
                             point[1].clamp(interp.y[0], *interp.y.last().unwrap()),
                         ];
                         return interp.interpolate(clamped_point);
-                    },
+                    }
                     Extrapolate::Error => {
-                        let x_dim_ok = interp.x[0] <= point[0] && &point[0] <= interp.x.last().unwrap();
-                        let y_dim_ok = interp.y[0] <= point[1] && &point[1] <= interp.y.last().unwrap();
+                        let x_dim_ok =
+                            interp.x[0] <= point[0] && &point[0] <= interp.x.last().unwrap();
+                        let y_dim_ok =
+                            interp.y[0] <= point[1] && &point[1] <= interp.y.last().unwrap();
                         ensure!(
                             x_dim_ok && y_dim_ok,
                             "Attempted to interpolate at point beyond grid data: point = {point:?}, x grid = {:?}, y grid = {:?}",
                             interp.x,
                             interp.y,
                         );
-                    },
+                    }
+                    _ => {}
                 };
                 interp.interpolate(point)
             }
             Self::Interp3D(interp) => {
                 match interp.extrapolate {
-                    Extrapolate::Extrapolate => bail!("`Extrapolate` is not implemented for 3-D, use `Clamp` or `Error` extrapolation strategy instead"),
                     Extrapolate::Clamp => {
                         let clamped_point = &[
                             point[0].clamp(interp.x[0], *interp.x.last().unwrap()),
@@ -118,24 +108,27 @@ impl Interpolator {
                             point[2].clamp(interp.z[0], *interp.z.last().unwrap()),
                         ];
                         return interp.interpolate(clamped_point);
-                    },
+                    }
                     Extrapolate::Error => {
-                        let x_dim_ok = interp.x[0] <= point[0] && &point[0] <= interp.x.last().unwrap();
-                        let y_dim_ok = interp.y[0] <= point[1] && &point[1] <= interp.y.last().unwrap();
-                        let z_dim_ok = interp.z[0] <= point[2] && &point[2] <= interp.z.last().unwrap();
+                        let x_dim_ok =
+                            interp.x[0] <= point[0] && &point[0] <= interp.x.last().unwrap();
+                        let y_dim_ok =
+                            interp.y[0] <= point[1] && &point[1] <= interp.y.last().unwrap();
+                        let z_dim_ok =
+                            interp.z[0] <= point[2] && &point[2] <= interp.z.last().unwrap();
                         ensure!(x_dim_ok && y_dim_ok && z_dim_ok,
                             "Attempted to interpolate at point beyond grid data: point = {point:?}, x grid = {:?}, y grid = {:?}, z grid = {:?}",
                             interp.x,
                             interp.y,
                             interp.z,
                         );
-                    },
+                    }
+                    _ => {}
                 };
                 interp.interpolate(point)
             }
             Self::InterpND(interp) => {
                 match interp.extrapolate {
-                    Extrapolate::Extrapolate => bail!("`Extrapolate` is not implemented for multilinear interpolator, use `Clamp` or `Error` extrapolation strategy instead"),
                     Extrapolate::Clamp => {
                         let clamped_point: Vec<f64> = point
                             .iter()
@@ -144,12 +137,13 @@ impl Interpolator {
                                 pt.clamp(interp.grid[dim].min().unwrap(), interp.grid[dim].max().unwrap())
                             ).collect();
                         return interp.interpolate(&clamped_point);
-                    },
+                    }
                     Extrapolate::Error => ensure!(
                         point.iter().enumerate().all(|(dim, pt_dim)| &interp.grid[dim][0] <= pt_dim && pt_dim <= interp.grid[dim].last().unwrap()),
                         "Attempted to interpolate at point beyond grid data: point = {point:?}, grid: {:?}",
                         interp.grid,
                     ),
+                    _ => {}
                 };
                 interp.interpolate(&point)
             }

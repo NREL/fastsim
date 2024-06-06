@@ -55,6 +55,8 @@ impl InterpMethods for Interp2D {
         let x_grid_len = self.x.len();
         let y_grid_len = self.y.len();
 
+        ensure!(!matches!(self.extrapolate, Extrapolate::Extrapolate), "`Extrapolate` is not implemented for 2-D, use `Clamp` or `Error` extrapolation strategy instead");
+
         // Check that each grid dimension has elements
         ensure!(
             x_grid_len != 0 && y_grid_len != 0,
@@ -128,5 +130,47 @@ mod tests {
         );
         let interp_res = interp.interpolate(&[0.25, 0.65]).unwrap();
         assert_eq!(interp_res, 1.1500000000000001) // 1.15
+    }
+
+    #[test]
+    fn test_extrapolate_inputs() {
+        // Extrapolate::Extrapolate
+        assert!(Interp2D::new(
+            vec![0., 1.],
+            vec![0., 1.],
+            vec![vec![0., 1.], vec![2., 3.]],
+            Strategy::Linear,
+            Extrapolate::Extrapolate,
+        )
+        .is_err());
+        // Extrapolate::Error
+        let interp = Interpolator::Interp2D(
+            Interp2D::new(
+                vec![0., 1.],
+                vec![0., 1.],
+                vec![vec![0., 1.], vec![2., 3.]],
+                Strategy::Linear,
+                Extrapolate::Error,
+            )
+            .unwrap(),
+        );
+        assert!(interp.interpolate(&[-1.]).is_err());
+        assert!(interp.interpolate(&[2.]).is_err());
+    }
+
+    #[test]
+    fn test_extrapolate_clamp() {
+        let interp = Interpolator::Interp2D(
+            Interp2D::new(
+                vec![0., 1.],
+                vec![0., 1.],
+                vec![vec![0., 1.], vec![2., 3.]],
+                Strategy::Linear,
+                Extrapolate::Clamp,
+            )
+            .unwrap(),
+        );
+        assert_eq!(interp.interpolate(&[-1., -1.]).unwrap(), 0.);
+        assert_eq!(interp.interpolate(&[2., 2.]).unwrap(), 3.);
     }
 }
