@@ -14,14 +14,7 @@ pub struct InterpND {
 }
 
 impl InterpND {
-    pub fn ndim(&self) -> usize {
-        if self.values.len() == 1 {
-            0
-        } else {
-            self.values.ndim()
-        }
-    }
-
+    /// Create and validate 2-D interpolator
     pub fn new(
         grid: Vec<Vec<f64>>,
         values: ArrayD<f64>,
@@ -37,6 +30,15 @@ impl InterpND {
         };
         interp.validate()?;
         Ok(interp)
+    }
+
+    /// Interpolator dimensionality
+    pub fn ndim(&self) -> usize {
+        if self.values.len() == 1 {
+            0
+        } else {
+            self.values.ndim()
+        }
     }
 
     pub fn linear(&self, point: &[f64]) -> anyhow::Result<f64> {
@@ -142,6 +144,10 @@ impl InterpND {
 impl InterpMethods for InterpND {
     fn validate(&self) -> anyhow::Result<()> {
         let n = self.ndim();
+
+        if n <= 3 {
+            log::warn!("Using N-D interpolator for {n}-D interpolation, use hardcoded {n}-D interpolator for better performance");
+        }
 
         ensure!(!matches!(self.extrapolate, Extrapolate::Extrapolate), "`Extrapolate` is not implemented for N-D, use `Clamp` or `Error` extrapolation strategy instead");
 

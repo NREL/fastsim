@@ -12,6 +12,7 @@ pub struct Interp1D {
 }
 
 impl Interp1D {
+    /// Create and validate 1-D interpolator
     pub fn new(
         x: Vec<f64>,
         f_x: Vec<f64>,

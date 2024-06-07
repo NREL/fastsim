@@ -14,6 +14,7 @@ pub struct Interp3D {
 }
 
 impl Interp3D {
+    /// Create and validate 3-D interpolator
     pub fn new(
         x: Vec<f64>,
         y: Vec<f64>,

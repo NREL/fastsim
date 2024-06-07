@@ -13,6 +13,7 @@ pub struct Interp2D {
 }
 
 impl Interp2D {
+    /// Create and validate 2-D interpolator
     pub fn new(
         x: Vec<f64>,
         y: Vec<f64>,
