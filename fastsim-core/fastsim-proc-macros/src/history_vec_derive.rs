@@ -57,7 +57,7 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
         .parse()
         .unwrap();
     generated.append_all(quote! {
-        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
+        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
         #[pyo3_api(
             #[pyo3(name = "len")]
             fn len_py(&self) -> usize {
@@ -72,6 +72,9 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
         pub struct #new_name {
             #vec_fields
         }
+
+        impl Init for #new_name { }
+        impl SerdeAPI for #new_name { }
 
         impl #new_name {
             /// Creates new emtpy vec container
@@ -132,8 +135,6 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
                 #new_name::new()
             }
         }
-
-        impl SerdeAPI for #original_name { }
     });
     generated.into()
 }

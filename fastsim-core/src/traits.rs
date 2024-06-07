@@ -21,15 +21,62 @@ pub trait Linspace {
 
 impl Linspace for Vec<f64> {}
 
-// TODO: only call `init` once per deserialization -- @Kyle, has this been solved?
-pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
-    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
-    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
+pub trait Min {
+    fn min(&self) -> anyhow::Result<f64>;
+}
+impl Min for &[f64] {
+    fn min(&self) -> anyhow::Result<f64> {
+        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
+    }
+}
+impl Min for Vec<f64> {
+    fn min(&self) -> anyhow::Result<f64> {
+        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
+    }
+}
+impl Min for Vec<&f64> {
+    fn min(&self) -> anyhow::Result<f64> {
+        Ok(self.iter().fold(f64::INFINITY, |acc, curr| acc.min(**curr)))
+    }
+}
 
-    /// Specialized code to execute upon initialization
+pub trait Max {
+    fn max(&self) -> anyhow::Result<f64>;
+}
+impl Max for &[f64] {
+    fn max(&self) -> anyhow::Result<f64> {
+        Ok(self
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
+    }
+}
+impl Max for Vec<f64> {
+    fn max(&self) -> anyhow::Result<f64> {
+        Ok(self
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
+    }
+}
+impl Max for Vec<&f64> {
+    fn max(&self) -> anyhow::Result<f64> {
+        Ok(self
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(**curr)))
+    }
+}
+
+pub trait Init {
+    /// Specialized code to execute upon initialization.  For any struct with fields
+    /// implement `Init`, this should propagate down the hierarchy.
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
+}
+
+// TODO: only call `init` once per deserialization -- @Kyle, has this been solved?
+pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json"];
 
     /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
     ///
@@ -60,7 +107,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 &extension,
             )?,
         };
-        deserialized.init()?;
+        deserialized
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(deserialized)
     }
 
@@ -111,8 +160,11 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 format!("Could not open file: {filepath:?}")
             }
         })?;
-        let mut deserialized = Self::from_reader(file, extension)?;
-        deserialized.init()?;
+        let mut deserialized =
+            Self::from_reader(file, extension).with_context(|| anyhow!(format_dbg!()))?;
+        deserialized
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(deserialized)
     }
 
@@ -149,7 +201,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 Self::ACCEPTED_STR_FORMATS
             ),
         };
-        deserialized.init()?;
+        deserialized
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(deserialized)
     }
 
@@ -170,7 +224,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 Self::ACCEPTED_BYTE_FORMATS
             ),
         };
-        deserialized.init()?;
+        deserialized
+            .init()
+            .with_context(|| anyhow!(format_dbg!()))?;
         Ok(deserialized)
     }
 
@@ -186,14 +242,15 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `json_str` - JSON-formatted string to deserialize from
     ///
     fn from_json(json_str: &str) -> anyhow::Result<Self> {
-        let mut json_de: Self = serde_json::from_str(json_str)?;
-        json_de.init()?;
+        let mut json_de: Self =
+            serde_json::from_str(json_str).with_context(|| anyhow!(format_dbg!()))?;
+        json_de.init().with_context(|| anyhow!(format_dbg!()))?;
         Ok(json_de)
     }
 
     /// Write (serialize) an object to a YAML string
     fn to_yaml(&self) -> anyhow::Result<String> {
-        Ok(serde_yaml::to_string(&self)?)
+        Ok(serde_yaml::to_string(&self).with_context(|| anyhow!(format_dbg!()))?)
     }
 
     /// Read (deserialize) an object from a YAML string
@@ -203,8 +260,9 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `yaml_str` - YAML-formatted string to deserialize from
     ///
     fn from_yaml(yaml_str: &str) -> anyhow::Result<Self> {
-        let mut yaml_de: Self = serde_yaml::from_str(yaml_str)?;
-        yaml_de.init()?;
+        let mut yaml_de: Self =
+            serde_yaml::from_str(yaml_str).with_context(|| anyhow!(format_dbg!()))?;
+        yaml_de.init().with_context(|| anyhow!(format_dbg!()))?;
         Ok(yaml_de)
     }
 
@@ -220,13 +278,14 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `encoded` - Encoded byte array to deserialize from
     ///
     fn from_bincode(encoded: &[u8]) -> anyhow::Result<Self> {
-        let mut bincode_de: Self = deserialize(encoded)?;
-        bincode_de.init()?;
+        let mut bincode_de: Self = deserialize(encoded).with_context(|| anyhow!(format_dbg!()))?;
+        bincode_de.init().with_context(|| anyhow!(format_dbg!()))?;
         Ok(bincode_de)
     }
 }
 
-impl<T: SerdeAPI> SerdeAPI for Vec<T> {
+impl<T: SerdeAPI> SerdeAPI for Vec<T> {}
+impl<T: Init> Init for Vec<T> {
     fn init(&mut self) -> anyhow::Result<()> {
         for val in self {
             val.init()?
@@ -292,6 +351,7 @@ pub trait SetCumulative {
     /// Sets cumulative values based on rate values
     fn set_cumulative(&mut self, dt: si::Time);
     /// Sets any cumulative values that won't be handled by the macro
+    #[allow(unused_variables)]
     fn set_custom_cumu_vals(&mut self, dt: si::Time) {}
 }
 
@@ -302,6 +362,15 @@ mod tests {
     #[test]
     fn test_linspace() {
         assert_eq!(Vec::linspace(0., 2., 3), vec![0., 1., 2.]);
+    }
+
+    #[test]
+    fn test_max_for_vec_f64() {
+        assert_eq!(Vec::linspace(-10., 12., 5).max().unwrap(), 12.);
+    }
+    #[test]
+    fn test_min_for_vec_f64() {
+        assert_eq!(Vec::linspace(-10., 12., 5).min().unwrap(), -10.);
     }
 
     #[test]

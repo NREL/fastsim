@@ -52,7 +52,7 @@ pub(crate) fn cycle_derive(input: TokenStream) -> TokenStream {
         .parse()
         .unwrap();
     generated.append_all(quote! {
-        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, SerdeAPI)]
+        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
         #[pyo3_api(
             #[pyo3(name = "len")]
             fn len_py(&self) -> usize {

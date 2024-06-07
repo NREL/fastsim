@@ -5,7 +5,6 @@ mod cycle_derive;
 mod history_vec_derive;
 mod hm_derive;
 mod pyo3_api;
-mod serde_api_derive;
 mod utilities;
 
 #[proc_macro_error]
@@ -17,7 +16,7 @@ pub fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_derive(HistoryVec)]
-/// generate HistoryVec that acts like a vec of States but
+/// generate HistoryVec that acts like a vec of states but
 /// stores each field of state as a vec field.
 pub fn history_vec_derive(input: TokenStream) -> TokenStream {
     history_vec_derive::history_vec_derive(input)
@@ -34,11 +33,4 @@ pub fn cumu_method_derive(input: TokenStream) -> TokenStream {
 /// nested fields with the `#[has_state]` attribute.
 pub fn history_methods_derive(input: TokenStream) -> TokenStream {
     hm_derive::history_methods_derive(input)
-}
-
-#[proc_macro_error]
-#[proc_macro_derive(SerdeAPI)]
-/// macro for deriving default implementation of SerdeAPI trait
-pub fn serde_api_derive(item: TokenStream) -> TokenStream {
-    serde_api_derive::serde_api_derive(item)
 }
