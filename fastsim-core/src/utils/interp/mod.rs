@@ -134,7 +134,7 @@ impl Interpolator {
                             .iter()
                             .enumerate()
                             .map(|(dim, pt)|
-                                pt.clamp(interp.grid[dim].min().unwrap(), interp.grid[dim].max().unwrap())
+                                pt.clamp(interp.grid[dim][0], *interp.grid[dim].last().unwrap())
                             ).collect();
                         return interp.interpolate(&clamped_point);
                     }
