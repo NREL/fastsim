@@ -24,14 +24,7 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
             let doc_attrs = &f
                 .attrs
                 .iter()
-                .filter(|attr| {
-                    if attr.path.is_ident("doc") {
-                        attr.parse_meta()
-                            .is_ok_and(|meta| matches!(meta, syn::Meta::NameValue(_)))
-                    } else {
-                        false
-                    }
-                })
+                .filter(|attr| attr.path.is_ident("doc"))
                 .collect::<Vec<&syn::Attribute>>();
             quote! {
                 #(#doc_attrs)*
