@@ -94,7 +94,7 @@ impl SimDrive {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_pwr_tract_for_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_ach_speed(dt)
+        self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.veh
             .solve_powertrain(dt)
@@ -169,7 +169,7 @@ impl SimDrive {
     /// Sets achieved speed based on known current max power
     /// # Arguments
     /// - `dt`: time step size
-    pub fn set_ach_speed(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
         let vs = &mut self.veh.state;
         let density_air = air::get_density_air(None, None);
         let mass = self
@@ -197,7 +197,6 @@ impl SimDrive {
         )
         .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?;
 
-        // actual calucations
         let drag3 =
             1.0 / 16.0 * density_air * self.veh.chassis.drag_coef * self.veh.chassis.frontal_area;
         let accel2 = 0.5 * mass / dt;
@@ -249,7 +248,7 @@ impl SimDrive {
         let t3 = drag3;
         let t2 = accel2 + drag2 + wheel2;
         let t1 = drag1 + roll1 + ascent1;
-        // TODO: verify that final term should be `vs.pwr_out_max`.  Needs to be same as `self.cur_max_trans_kw_out[i]`
+        // TODO: verify final term being subtracted.  Needs to be same as `self.cur_max_trans_kw_out[i]`
         let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - vs.pwr_prop_pos_max;
 
         // initial guess
@@ -277,7 +276,8 @@ impl SimDrive {
         let mut new_speed_guesses = vec![new_speed_guess];
         // speed achieved iteration counter
         let mut spd_ach_iter_counter = 1;
-        let mut converged = false;
+        // if `pwr_err` 
+        let mut converged = pwr_err <= uc::W * 0.;
         while spd_ach_iter_counter < max_iter && !converged {
             let speed_guess = *speed_guesses.iter().last().with_context(|| format_dbg!())?
                 * (1.0 - g)
