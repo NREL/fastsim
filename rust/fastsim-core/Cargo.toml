@@ -52,23 +52,24 @@ include = [
 ]
 
 [features]
-# to disable the default features, see
-# https://doc.rust-lang.org/cargo/reference/features.html?highlight=no-default-features#the-default-feature
-# and use the `--no-default-features` flag when compiling
 default = [
-    "dep:argmin",
-    "dep:argmin-math",
-    "dep:directories",
+    "abc-to-drag-coeffs",
+    "directories",
     "logging",
     "resources",
     "simdrivelabel",
     "validation",
     "vehicle-import",
-]
-bincode = ["dep:bincode"] # non-default: bincode broken for RustVehicle struct
+] # to disable the default features, see
+# https://doc.rust-lang.org/cargo/reference/features.html?highlight=no-default-features#the-default-feature
+# and use the `--no-default-features` flag when compiling
+abc-to-drag-coeffs = ["dep:argmin", "dep:argmin-math"]
+bincode = ["dep:bincode"]                                     # non-default: bincode broken for RustVehicle struct
+directories = ["dep:directories"]
 logging = ["dep:log"]
-pyo3 = ["dep:pyo3"] # non-default: feature for use with fastsim-py crate
+pyo3 = ["dep:pyo3"]                                           # non-default: feature for use with fastsim-py crate
 resources = ["dep:include_dir"]
 simdrivelabel = ["resources"]
+url = ["dep:curl"]
 validation = ["dep:validator"]
-vehicle-import = ["dep:curl"]
+vehicle-import = ["abc-to-drag-coeffs", "directories", "url"]

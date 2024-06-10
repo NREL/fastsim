@@ -29,18 +29,23 @@ include = ["../../NOTICE"]
 [features]
 default = [
     "fastsim-core/default",
+    "abc-to-drag-coeffs",
     "logging",
     "resources",
+    "directories",
     "simdrivelabel",
     "validation",
     "vehicle-import",
 ]
+abc-to-drag-coeffs = []
 bincode = ["fastsim-core/bincode"]
-logging = [
-    "dep:pyo3-log",
-    "fastsim-core/logging",
-]
+logging = ["dep:pyo3-log", "fastsim-core/logging"]
 resources = ["fastsim-core/resources"]
+directories = ["fastsim-core/directories"]
 simdrivelabel = ["fastsim-core/simdrivelabel", "resources"]
 validation = ["fastsim-core/validation"]
-vehicle-import = ["fastsim-core/vehicle-import"]
+vehicle-import = [
+    "fastsim-core/vehicle-import",
+    "directories",
+    "abc-to-drag-coeffs",
+]

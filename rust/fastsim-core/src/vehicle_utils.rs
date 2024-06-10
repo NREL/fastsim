@@ -1,30 +1,25 @@
 //! Module for utility functions that support the vehicle struct.
 
-#[cfg(feature = "default")]
+#[cfg(feature = "abc-to-drag-coeffs")]
 use argmin::core::{CostFunction, Executor, State};
-#[cfg(feature = "default")]
+#[cfg(feature = "abc-to-drag-coeffs")]
 use argmin::solver::neldermead::NelderMead;
 use std::{result::Result, thread, time::Duration};
 use ureq::{Error as OtherError, Error::Status, Response};
 
-#[cfg(feature = "default")]
 use crate::air::*;
-#[cfg(feature = "default")]
 use crate::cycle::RustCycle;
 use crate::imports::*;
-#[cfg(feature = "default")]
 use crate::params::*;
-#[cfg(all(feature = "pyo3", feature = "default"))]
+#[cfg(all(feature = "pyo3", feature = "abc-to-drag-coeffs"))]
 use crate::pyo3imports::*;
-#[cfg(feature = "default")]
 use crate::simdrive::RustSimDrive;
-#[cfg(feature = "default")]
 use crate::vehicle::RustVehicle;
 
 #[allow(non_snake_case)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 #[allow(clippy::too_many_arguments)]
-#[cfg(feature = "default")]
+#[cfg(feature = "abc-to-drag-coeffs")]
 pub fn abc_to_drag_coeffs(
     veh: &mut RustVehicle,
     a_lbf: f64,
@@ -91,8 +86,7 @@ pub fn abc_to_drag_coeffs(
             vehicle: veh,
             dyno_func_lb: &dyno_func_lb,
         };
-        let solver =
-            NelderMead::new(vec![array![0.0, 0.0], array![0.5, 0.0], array![0.5, 0.1]]);
+        let solver = NelderMead::new(vec![array![0.0, 0.0], array![0.5, 0.0], array![0.5, 0.1]]);
         let res = Executor::new(cost, solver)
             .configure(|state| state.max_iters(100))
             .run()
@@ -143,7 +137,7 @@ pub fn get_error_val(model: Array1<f64>, test: Array1<f64>, time_steps: Array1<f
     return err / (time_steps.last().unwrap() - time_steps[0]);
 }
 
-#[cfg(feature = "default")]
+#[cfg(feature = "abc-to-drag-coeffs")]
 struct GetError<'a, F>
 where
     F: Fn(&f64) -> f64,
@@ -153,7 +147,7 @@ where
     dyno_func_lb: &'a F,
 }
 
-#[cfg(feature = "default")]
+#[cfg(feature = "abc-to-drag-coeffs")]
 impl<F> CostFunction for GetError<'_, F>
 where
     F: Fn(&f64) -> f64,
@@ -324,7 +318,7 @@ mod tests {
         assert!(error_val.approx_eq(&0.8124999999999998, 1e-10));
     }
 
-    #[cfg(feature = "default")]
+    #[cfg(feature = "abc-to-drag-coeffs")]
     #[test]
     fn test_abc_to_drag_coeffs() {
         let mut veh = RustVehicle::mock_vehicle();

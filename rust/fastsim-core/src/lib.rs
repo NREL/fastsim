@@ -67,8 +67,14 @@ pub fn enabled_features() -> Vec<String> {
     #[cfg(feature = "default")]
     enabled.push("default".into());
 
+    #[cfg(feature = "abc-to-drag-coeffs")]
+    enabled.push("abc-to-drag-coeffs".into());
+
     #[cfg(feature = "bincode")]
     enabled.push("bincode".into());
+
+    #[cfg(feature = "directories")]
+    enabled.push("directories".into());
 
     #[cfg(feature = "logging")]
     enabled.push("logging".into());
@@ -78,6 +84,9 @@ pub fn enabled_features() -> Vec<String> {
 
     #[cfg(feature = "simdrivelabel")]
     enabled.push("simdrivelabel".into());
+
+    #[cfg(feature = "url")]
+    enabled.push("url".into());
 
     #[cfg(feature = "validation")]
     enabled.push("validation".into());
@@ -92,21 +101,28 @@ pub fn enabled_features() -> Vec<String> {
 pub mod pyfunctions {
     use super::*;
     use pyo3imports::*;
+    #[cfg(feature = "simdrivelabel")]
     use simdrivelabel::*;
     #[cfg(feature = "vehicle-import")]
     use vehicle_import::*;
     use vehicle_utils::*;
 
     pub fn add_pyfunctions(m: &PyModule) -> PyResult<()> {
-        #[cfg(feature = "full")]
+        // vehicle_utils
+        #[cfg(feature = "default")]
         m.add_function(wrap_pyfunction!(abc_to_drag_coeffs, m)?)?;
+
+        // simdrivelabel
+        #[cfg(feature = "simdrivelabel")]
         m.add_function(wrap_pyfunction!(make_accel_trace_py, m)?)?;
+        #[cfg(feature = "simdrivelabel")]
         m.add_function(wrap_pyfunction!(get_net_accel_py, m)?)?;
-        #[cfg(feature = "full")]
+        #[cfg(feature = "simdrivelabel")]
         m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
+        #[cfg(feature = "simdrivelabel")]
         m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
-        #[cfg(feature = "full")]
-        m.add_function(wrap_pyfunction!(get_label_fe_conv_py, m)?)?;
+
+        // vehicle-import
         #[cfg(feature = "vehicle-import")]
         m.add_function(wrap_pyfunction!(get_options_for_year_make_model, m)?)?;
         #[cfg(feature = "vehicle-import")]

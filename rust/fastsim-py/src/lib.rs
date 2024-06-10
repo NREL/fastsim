@@ -26,9 +26,20 @@ mod default_pyfunctions {
         simdrive_optimize: Option<bool>,
         _show_plots: Option<bool>,
     ) -> (f64, f64) {
-        vehicle_utils::abc_to_drag_coeffs(veh, a_lbf, b_lbf__mph, c_lbf__mph2, custom_rho, custom_rho_temp_degC, custom_rho_elevation_m, simdrive_optimize, _show_plots)
+        vehicle_utils::abc_to_drag_coeffs(
+            veh,
+            a_lbf,
+            b_lbf__mph,
+            c_lbf__mph2,
+            custom_rho,
+            custom_rho_temp_degC,
+            custom_rho_elevation_m,
+            simdrive_optimize,
+            _show_plots,
+        )
     }
 }
+#[cfg(feature = "default")]
 use default_pyfunctions::*;
 
 // re-expose pyfunctions for vehicle-import feature
@@ -45,17 +56,21 @@ mod vehicle_import_pyfunctions {
         cache_url: Option<String>,
         data_dir: Option<String>,
     ) -> PyResult<Vec<vehicle_import::VehicleDataFE>> {
-        Ok(vehicle_import::get_options_for_year_make_model(year, make, model, cache_url, data_dir)?)
+        Ok(vehicle_import::get_options_for_year_make_model(
+            year, make, model, cache_url, data_dir,
+        )?)
     }
-    
+
     #[pyfunction]
     fn get_vehicle_data_for_id(
         id: i32,
-        year: &str, 
+        year: &str,
         cache_url: Option<String>,
         data_dir: Option<String>,
     ) -> PyResult<vehicle_import::VehicleDataFE> {
-        Ok(vehicle_import::get_vehicle_data_for_id(id, year, cache_url, data_dir)?)
+        Ok(vehicle_import::get_vehicle_data_for_id(
+            id, year, cache_url, data_dir,
+        )?)
     }
 
     #[pyfunction]
@@ -66,7 +81,13 @@ mod vehicle_import_pyfunctions {
         cache_url: Option<String>,
         data_dir: Option<String>,
     ) -> PyResult<vehicle::RustVehicle> {
-        Ok(vehicle_import::vehicle_import_by_id_and_year(vehicle_id, year, other_inputs, cache_url, data_dir)?)
+        Ok(vehicle_import::vehicle_import_by_id_and_year(
+            vehicle_id,
+            year,
+            other_inputs,
+            cache_url,
+            data_dir,
+        )?)
     }
 
     #[pyfunction]
@@ -78,9 +99,17 @@ mod vehicle_import_pyfunctions {
         cache_url: Option<String>,
         data_dir: Option<String>,
     ) -> PyResult<Vec<vehicle::RustVehicle>> {
-        Ok(vehicle_import::import_all_vehicles(year, make, model, other_inputs, cache_url, data_dir)?)
+        Ok(vehicle_import::import_all_vehicles(
+            year,
+            make,
+            model,
+            other_inputs,
+            cache_url,
+            data_dir,
+        )?)
     }
 }
+#[cfg(feature = "vehicle-import")]
 use vehicle_import_pyfunctions::*;
 
 // re-expose pyfunctions for default feature
@@ -100,15 +129,30 @@ mod simdrivelabel_pyfunctions {
     }
 
     #[pyfunction]
-    fn get_label_fe(veh: &vehicle::RustVehicle, full_detail: Option<bool>, verbose: Option<bool>) -> PyResult<(simdrivelabel::LabelFe, Option<std::collections::HashMap<&str, simdrive::RustSimDrive>>)> {
+    fn get_label_fe(
+        veh: &vehicle::RustVehicle,
+        full_detail: Option<bool>,
+        verbose: Option<bool>,
+    ) -> PyResult<(
+        simdrivelabel::LabelFe,
+        Option<std::collections::HashMap<&str, simdrive::RustSimDrive>>,
+    )> {
         Ok(simdrivelabel::get_label_fe_py(veh, full_detail, verbose)?)
     }
 
     #[pyfunction]
-    fn get_label_fe_phev(veh: &vehicle::RustVehicle, full_detail: Option<bool>, verbose: Option<bool>) -> PyResult<(simdrivelabel::LabelFe, Option<std::collections::HashMap<&str, simdrive::RustSimDrive>>)> {
+    fn get_label_fe_phev(
+        veh: &vehicle::RustVehicle,
+        full_detail: Option<bool>,
+        verbose: Option<bool>,
+    ) -> PyResult<(
+        simdrivelabel::LabelFe,
+        Option<std::collections::HashMap<&str, simdrive::RustSimDrive>>,
+    )> {
         Ok(simdrivelabel::get_label_fe_py(veh, full_detail, verbose)?)
     }
 }
+#[cfg(feature = "simdrivelabel")]
 use simdrivelabel_pyfunctions::*;
 
 // re-expose other pyfunctions
@@ -138,6 +182,7 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<vehicle_thermal::VehicleThermal>()?;
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<vehicle_thermal::HVACModel>()?;
+    m.add_class::<simdrive::simdrive_iter::SimDriveVec>()?;
 
     cycle::register(py, m)?;
 
@@ -149,7 +194,6 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
         m.add_class::<simdrivelabel::LabelFe>()?;
         m.add_class::<simdrivelabel::LabelFePHEV>()?;
         m.add_class::<simdrivelabel::PHEVCycleCalc>()?;
-        m.add_class::<simdrive::simdrive_iter::SimDriveVec>()?;
         m.add_function(wrap_pyfunction!(make_accel_trace, m)?)?;
         m.add_function(wrap_pyfunction!(get_net_accel, m)?)?;
         m.add_function(wrap_pyfunction!(get_label_fe, m)?)?;
@@ -158,18 +202,9 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     #[cfg(feature = "vehicle-import")]
     {
         m.add_class::<vehicle_import::OtherVehicleInputs>()?;
-        m.add_function(wrap_pyfunction!(
-            get_options_for_year_make_model,
-            m
-        )?)?;
-        m.add_function(wrap_pyfunction!(
-            get_vehicle_data_for_id,
-            m
-        )?)?;
-        m.add_function(wrap_pyfunction!(
-            vehicle_import_by_id_and_year,
-            m
-        )?)?;
+        m.add_function(wrap_pyfunction!(get_options_for_year_make_model, m)?)?;
+        m.add_function(wrap_pyfunction!(get_vehicle_data_for_id, m)?)?;
+        m.add_function(wrap_pyfunction!(vehicle_import_by_id_and_year, m)?)?;
         m.add_function(wrap_pyfunction!(import_all_vehicles, m)?)?;
     }
     // Function to check what features are enabled from Python

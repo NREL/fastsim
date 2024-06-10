@@ -1,16 +1,14 @@
 //! Module containing miscellaneous utility functions.
 
-#[cfg(feature = "default")]
+#[cfg(feature = "url")]
+use curl::easy::Easy;
+#[cfg(feature = "directories")]
 use directories::ProjectDirs;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use ndarray::*;
 use regex::Regex;
 use std::collections::HashSet;
-#[cfg(feature = "default")]
-use std::io::Write;
-#[cfg(feature = "default")]
-use curl::easy::Easy;
 
 use crate::imports::*;
 #[cfg(feature = "pyo3")]
@@ -547,8 +545,10 @@ pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
 }
 
 /// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
-#[cfg(feature = "default")]
+#[cfg(all(feature = "directories", feature = "url"))]
 pub fn download_file_from_url(url: &str, file_path: &Path) -> anyhow::Result<()> {
+    use std::io::Write;
+
     let mut handle = Easy::new();
     handle.follow_location(true)?;
     handle.url(url)?;
@@ -585,7 +585,7 @@ pub fn download_file_from_url(url: &str, file_path: &Path) -> anyhow::Result<()>
 }
 
 /// Creates/gets an OS-specific data directory and returns the path.
-#[cfg(feature = "default")]
+#[cfg(feature = "directories")]
 pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathBuf> {
     let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
         anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
@@ -596,7 +596,7 @@ pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathB
 }
 
 /// Returns the path to the OS-specific data directory, if it exists.
-#[cfg(feature = "default")]
+#[cfg(feature = "directories")]
 pub fn path_to_cache() -> anyhow::Result<PathBuf> {
     let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
         anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
@@ -618,7 +618,7 @@ pub fn path_to_cache() -> anyhow::Result<PathBuf> {
 /// directories. If a single file needs deleting, the path_to_cache() function
 /// can be used to find the FASTSim data directory location. The file can then
 /// be found and manually deleted.
-#[cfg(feature = "default")]
+#[cfg(feature = "directories")]
 pub fn clear_cache<P: AsRef<Path>>(subpath: P) -> anyhow::Result<()> {
     let path = path_to_cache()?.join(subpath);
     Ok(std::fs::remove_dir_all(path)?)
@@ -637,7 +637,7 @@ pub fn clear_cache<P: AsRef<Path>>(subpath: P) -> anyhow::Result<()> {
 /// "rust_objects" for other Rust objects.
 /// Note: In order for the file to be save in the proper format, the URL needs
 /// to be a URL pointing directly to a file, for example a raw github URL.
-#[cfg(feature = "default")]
+#[cfg(all(feature = "directories", feature = "url"))]
 pub fn url_to_cache<S: AsRef<str>, P: AsRef<Path>>(url: S, subpath: P) -> anyhow::Result<()> {
     let url = url::Url::parse(url.as_ref())?;
     let file_name = url
@@ -866,6 +866,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "directories", feature = "url"))]
     fn test_clear_cache() {
         let temp_sub_dir = tempfile::TempDir::new_in(create_project_subdir("").unwrap()).unwrap();
         let sub_dir_path = temp_sub_dir.path().to_str().unwrap();
