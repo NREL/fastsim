@@ -40,6 +40,7 @@ tempfile = "3.8.1"
 url = "2.5.0"
 ureq = "2.9.1"
 isahc = "1.7.2"
+toml = "0.8.12"
 
 [package.metadata]
 include = [

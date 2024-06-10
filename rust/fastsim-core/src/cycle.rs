@@ -636,18 +636,23 @@ pub struct RustCycle {
 }
 
 impl SerdeAPI for RustCycle {
-    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
-    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
-    const CACHE_FOLDER: &'static str = &"cycles";
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin", "csv"];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "csv"];
+    const RESOURCE_PREFIX: &'static str = "cycles";
+    const CACHE_FOLDER: &'static str = "cycles";
 
     fn init(&mut self) -> anyhow::Result<()> {
         self.init_checks()
     }
 
-    fn to_writer<W: std::io::Write>(&self, wtr: W, format: &str) -> anyhow::Result<()> {
+    fn to_writer<W: std::io::Write>(&self, mut wtr: W, format: &str) -> anyhow::Result<()> {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
             "json" => serde_json::to_writer(wtr, self)?,
+            "toml" => {
+                let toml_string = self.to_toml()?;
+                wtr.write_all(toml_string.as_bytes())?;
+            },
             #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(wtr, self)?,
             "csv" => {
@@ -675,6 +680,7 @@ impl SerdeAPI for RustCycle {
             match format.trim_start_matches('.').to_lowercase().as_str() {
                 "yaml" | "yml" => self.to_yaml()?,
                 "json" => self.to_json()?,
+                "toml" => self.to_toml()?,
                 "csv" => self.to_csv()?,
                 _ => {
                     bail!(
@@ -693,6 +699,7 @@ impl SerdeAPI for RustCycle {
             match format.trim_start_matches('.').to_lowercase().as_str() {
                 "yaml" | "yml" => Self::from_yaml(contents, skip_init)?,
                 "json" => Self::from_json(contents, skip_init)?,
+                "toml" => Self::from_toml(contents, skip_init)?,
                 "csv" => Self::from_reader(contents.as_ref().as_bytes(), "csv", skip_init)?,
                 _ => bail!(
                     "Unsupported format {format:?}, must be one of {:?}",
@@ -702,10 +709,15 @@ impl SerdeAPI for RustCycle {
         )
     }
 
-    fn from_reader<R: std::io::Read>(rdr: R, format: &str, skip_init: bool) -> anyhow::Result<Self> {
+    fn from_reader<R: std::io::Read>(mut rdr: R, format: &str, skip_init: bool) -> anyhow::Result<Self> {
         let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
+            "toml" => {
+                let mut buf = String::new();
+                rdr.read_to_string(&mut buf)?;
+                Self::from_toml(buf, skip_init)?
+            },
             #[cfg(feature = "bincode")]
             "bin" => bincode::deserialize_from(rdr)?,
             "csv" => {

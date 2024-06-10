@@ -288,7 +288,7 @@ pub fn main() -> anyhow::Result<()> {
         let cyc = if adopt_hd_has_cycle {
             cyc
         } else {
-            RustCycle::from_resource("cycles/HHDDTCruiseSmooth.csv", false)?
+            RustCycle::from_resource("HHDDTCruiseSmooth.csv", false)?
         };
         let mut sim_drive = RustSimDrive::new(cyc, veh.clone());
         sim_drive.sim_drive(None, None)?;

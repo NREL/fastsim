@@ -1102,7 +1102,8 @@ impl Default for RustVehicle {
 }
 
 impl SerdeAPI for RustVehicle {
-    const CACHE_FOLDER: &'static str = &"vehicles";
+    const RESOURCE_PREFIX: &'static str = "vehicles";
+    const CACHE_FOLDER: &'static str = "vehicles";
 
     fn init(&mut self) -> anyhow::Result<()> {
         self.set_derived()
