@@ -1,3 +1,5 @@
+use utils::interp::{Extrapolate, *};
+
 use super::{hev::HEVControls, *};
 
 /// Possible aux load power sources
@@ -281,8 +283,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
-                        eff_interp: f2veh.fc_eff_map.to_vec(),
+                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
+                            f2veh.fc_pwr_out_perc.to_vec(),
+                            f2veh.fc_eff_map.to_vec(),
+                            Strategy::LeftNearest,
+                            Extrapolate::Error,
+                        )?)),
                         // TODO: verify this
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
@@ -325,8 +331,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        pwr_out_frac_interp: f2veh.fc_pwr_out_perc.to_vec(),
-                        eff_interp: f2veh.fc_eff_map.to_vec(),
+                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
+                            f2veh.fc_pwr_out_perc.to_vec(),
+                            f2veh.mc_eff_map.to_vec(),
+                            Strategy::LeftNearest,
+                            Extrapolate::Error,
+                        )?)),
                         // TODO: verify this
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
@@ -598,7 +608,11 @@ impl Vehicle {
             fc_eff_array: Default::default(),
             fc_eff_map: self
                 .fc()
-                .map(|fc| fc.eff_interp.clone().into())
+                .map(|fc| match &fc.eff_interp.0 {
+                    utils::interp::Interpolator::Interp1D(interp) => Ok(interp.f_x.clone().into()),
+                    _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
+                })
+                .transpose()?
                 .unwrap_or_default(),
             fc_eff_map_doc: None,
             fc_eff_type: "SI".into(), // TODO: placeholder, revisit and update if needed
@@ -619,7 +633,11 @@ impl Vehicle {
             fc_perc_out_array: Default::default(),
             fc_pwr_out_perc: self
                 .fc()
-                .map(|fc| fc.pwr_out_frac_interp.clone().into())
+                .map(|fc| match &fc.eff_interp.0 {
+                    utils::interp::Interpolator::Interp1D(interp) => Ok(interp.x.clone().into()),
+                    _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
+                })
+                .transpose()?
                 .unwrap_or_default(),
             fc_pwr_out_perc_doc: None,
             fc_sec_to_peak_pwr: self

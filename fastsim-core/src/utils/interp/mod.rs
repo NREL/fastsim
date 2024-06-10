@@ -17,11 +17,13 @@ pub mod n;
 pub mod one;
 pub mod three;
 pub mod two;
+pub mod wrapper;
 
 pub use n::*;
 pub use one::*;
 pub use three::*;
 pub use two::*;
+pub use wrapper::*;
 
 use crate::imports::*;
 
@@ -166,7 +168,7 @@ fn find_nearest_index(arr: &[f64], target: f64) -> anyhow::Result<usize> {
 /// assert!(interp.interpolate(&[2.5, 2.5, 2.5]).is_err()); // out of bounds point with `Extrapolate::Error` fails
 /// ```
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Interpolator {
     /// 0-dimensional (constant value) interpolation
     Interp0D(f64),
@@ -314,7 +316,7 @@ impl Interpolator {
 }
 
 /// Interpolation strategy.
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Strategy {
     /// Linear interpolation: https://en.wikipedia.org/wiki/Linear_interpolation
     Linear,
@@ -330,7 +332,7 @@ pub enum Strategy {
 ///
 /// Controls what happens if supplied interpolant point
 /// is outside the bounds of the interpolation grid.
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Extrapolate {
     /// If interpolant point is beyond the limits of the interpolation grid,
     /// find result via extrapolation using slope of nearby points.  

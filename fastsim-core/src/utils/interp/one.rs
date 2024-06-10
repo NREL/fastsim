@@ -2,7 +2,7 @@
 
 use super::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Interp1D {
     pub x: Vec<f64>,
     pub f_x: Vec<f64>,

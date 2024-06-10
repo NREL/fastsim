@@ -4,7 +4,7 @@ use super::*;
 
 use itertools::Itertools;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct InterpND {
     pub grid: Vec<Vec<f64>>,
     pub values: ArrayD<f64>,
