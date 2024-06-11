@@ -30,6 +30,8 @@ veh.save_interval = 1
 # load cycle from file
 cyc = fsim.Cycle.from_resource("cycles/udds.csv")
 
+print(veh.param_path_list())
+
 # instantiate `SimDrive` simulation object
 sd = fsim.SimDrive(veh, cyc)
 
