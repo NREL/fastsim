@@ -12,7 +12,8 @@ import fastsim as fsim
 
 sns.set_theme()
 
-SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
+SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true" 
+SHOW_PLOTS = False
 
 # %% [markdown]
 
@@ -34,6 +35,9 @@ print(veh.param_path_list())
 
 # instantiate `SimDrive` simulation object
 sd = fsim.SimDrive(veh, cyc)
+
+# print([attr for attr in sd.__dir__() if not attr.startswith("__") and not callable(getattr(sd,attr))])
+# print(sd.param_path_list())
 
 # simulation start time
 t0 = time.perf_counter()
