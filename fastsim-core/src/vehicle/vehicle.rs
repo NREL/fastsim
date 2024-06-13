@@ -873,6 +873,7 @@ pub(crate) mod tests {
         veh
     }
 
+    #[cfg(feature = "yaml")]
     pub(crate) fn mock_f2_hev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -904,9 +905,10 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_conv() {
         let veh = mock_f2_conv_veh();
-        let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
             cyc,
@@ -917,9 +919,10 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_hev() {
         let veh = mock_f2_hev();
-        let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
             cyc,
@@ -930,6 +933,7 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(feature = "yaml")]
     fn test_hev_deserialize() {
         let veh = mock_f2_hev();
 
@@ -937,6 +941,7 @@ pub(crate) mod tests {
             project_root::get_project_root()
                 .unwrap()
                 .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
+            false,
         )
         .unwrap();
         assert!(veh == veh_from_file);
