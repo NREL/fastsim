@@ -224,8 +224,6 @@ impl Mass for Vehicle {
 impl SerdeAPI for Vehicle {
     #[cfg(feature = "resources")]
     const RESOURCE_PREFIX: &'static str = "vehicles";
-    #[cfg(feature = "cache")]
-    const CACHE_FOLDER: &'static str = "vehicles";
 }
 impl Init for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {

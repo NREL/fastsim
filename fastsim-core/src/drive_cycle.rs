@@ -117,8 +117,6 @@ impl SerdeAPI for Cycle {
     ];
     #[cfg(feature = "resources")]
     const RESOURCE_PREFIX: &'static str = "cycles";
-    #[cfg(feature = "cache")]
-    const CACHE_FOLDER: &'static str = "cycles";
 
     /// Write (serialize) an object into anything that implements [`std::io::Write`]
     ///
