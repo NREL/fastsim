@@ -33,6 +33,8 @@ cyc = fsim.Cycle.from_resource("cycles/udds.csv")
 
 print(veh.param_path_list())
 
+print(veh.history_path_list())
+
 # instantiate `SimDrive` simulation object
 sd = fsim.SimDrive(veh, cyc)
 
