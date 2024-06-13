@@ -94,8 +94,6 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     ];
     #[cfg(feature = "resources")]
     const RESOURCE_PREFIX: &'static str = "";
-    #[cfg(feature = "cache")]
-    const CACHE_FOLDER: &'static str = "";
 
     /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
     ///
@@ -365,67 +363,6 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
         }
         Ok(yaml_de)
     }
-
-    // /// Takes an instantiated Rust object and saves it in the FASTSim data directory in
-    // /// a rust_objects folder.
-    // /// WARNING: If there is a file already in the data subdirectory with the
-    // /// same name, it will be replaced by the new file.
-    // /// # Arguments
-    // /// - self (rust object)
-    // /// - file_path: path to file within subdirectory. If only the file name is
-    // /// listed, file will sit directly within the subdirectory of
-    // /// the FASTSim data directory. If a path is given, the file will live
-    // /// within the path specified, within the subdirectory CACHE_FOLDER of the
-    // /// FASTSim data directory.
-    // #[cfg(feature = "cache")]
-    // fn to_cache<P: AsRef<Path>>(&self, file_path: P) -> anyhow::Result<()> {
-    //     let file_name = file_path
-    //         .as_ref()
-    //         .file_name()
-    //         .with_context(|| "Could not determine file name")?
-    //         .to_str()
-    //         .context("Could not determine file name.")?;
-    //     let file_path_internal = file_path
-    //         .as_ref()
-    //         .to_str()
-    //         .context("Could not determine file name.")?;
-    //     let subpath = if file_name == file_path_internal {
-    //         PathBuf::from(Self::CACHE_FOLDER)
-    //     } else {
-    //         Path::new(Self::CACHE_FOLDER).join(
-    //             file_path_internal
-    //                 .strip_suffix(file_name)
-    //                 .context("Could not determine path to subdirectory.")?,
-    //         )
-    //     };
-    //     let data_subdirectory = create_project_subdir(subpath)
-    //         .with_context(|| "Could not find or build Fastsim data subdirectory.")?;
-    //     let file_path = data_subdirectory.join(file_name);
-    //     self.to_file(file_path)
-    // }
-
-    // /// Instantiates a Rust object from the subdirectory within the FASTSim data
-    // /// directory corresponding to the Rust Object ("vehices" for a RustVehice,
-    // /// "cycles" for a RustCycle, and the root folder of the data directory for
-    // /// all other objects).
-    // /// # Arguments
-    // /// - file_path: subpath to object, including file name, within subdirectory.
-    // ///   If the file sits directly in the subdirectory, this will just be the
-    // ///   file name.
-    // /// Note: This function will work for all objects cached using the
-    // /// to_cache() method. If a file has been saved manually to a different
-    // /// subdirectory than the correct one for the object type (for instance a
-    // /// RustVehicle saved within a subdirectory other than "vehicles" using the
-    // /// utils::url_to_cache() function), then from_cache() will not be able to
-    // /// find and instantiate the object. Instead, use the from_file method, and
-    // /// use the utils::path_to_cache() to find the FASTSim data directory
-    // /// location if needed.
-    // #[cfg(feature = "cache")]
-    // fn from_cache<P: AsRef<Path>>(file_path: P, skip_init: bool) -> anyhow::Result<Self> {
-    //     let full_file_path = Path::new(Self::CACHE_FOLDER).join(file_path);
-    //     let path_including_directory = path_to_cache()?.join(full_file_path);
-    //     Self::from_file(path_including_directory, skip_init)
-    // }
 }
 
 impl<T: SerdeAPI> SerdeAPI for Vec<T> {}

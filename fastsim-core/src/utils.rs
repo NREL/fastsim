@@ -24,7 +24,10 @@ pub fn is_sorted<T: std::cmp::PartialOrd>(data: &[T]) -> bool {
 /// If supplied filepath has no file extension,
 /// this function will attempt to parse a filename from the last segment of the URL.
 #[cfg(feature = "web")]
-fn download_file<S: AsRef<str>, P: AsRef<Path>>(url: S, filepath: P) -> anyhow::Result<()> {
+pub(crate) fn download_file<S: AsRef<str>, P: AsRef<Path>>(
+    url: S,
+    filepath: P,
+) -> anyhow::Result<()> {
     let url = url::Url::parse(url.as_ref())?;
     let filepath = filepath.as_ref();
     let filepath = if filepath.extension().is_none() {
