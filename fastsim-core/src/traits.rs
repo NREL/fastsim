@@ -92,6 +92,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
         #[cfg(feature = "toml")]
         "toml",
     ];
+    #[cfg(feature = "resources")]
     const RESOURCE_PREFIX: &'static str = "";
     #[cfg(feature = "cache")]
     const CACHE_FOLDER: &'static str = "";
