@@ -32,5 +32,8 @@ fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Pyo3VecBoolWrapper>()?;
     m.add_function(wrap_pyfunction!(get_density_air_py, m)?)?;
 
+    // List enabled features
+    m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;
+
     Ok(())
 }
