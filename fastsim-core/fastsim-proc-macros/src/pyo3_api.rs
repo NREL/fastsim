@@ -178,7 +178,7 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///
         /// * `url`: `str` - URL from which to read the object
         ///
-        #[cfg(feature = "url")]
+        #[cfg(feature = "web")]
         #[staticmethod]
         #[pyo3(name = "from_url")]
         pub fn from_url_py(url: &str, skip_init: Option<bool>) -> PyResult<Self> {
