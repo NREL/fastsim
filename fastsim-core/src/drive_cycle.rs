@@ -115,6 +115,7 @@ impl SerdeAPI for Cycle {
         #[cfg(feature = "yaml")]
         "yaml",
     ];
+    #[cfg(feature = "resources")]
     const RESOURCE_PREFIX: &'static str = "cycles";
     #[cfg(feature = "cache")]
     const CACHE_FOLDER: &'static str = "cycles";
@@ -187,7 +188,7 @@ impl SerdeAPI for Cycle {
             }
             #[cfg(feature = "json")]
             "json" => serde_json::from_reader(rdr)?,
-            #[cfg(feature = "tonl")]
+            #[cfg(feature = "toml")]
             "toml" => {
                 let mut buf = String::new();
                 rdr.read_to_string(&mut buf)?;
