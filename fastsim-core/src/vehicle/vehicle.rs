@@ -125,7 +125,7 @@ pub struct Vehicle {
     save_interval: Option<usize>,
     /// current state of vehicle
     #[serde(default)]
-    #[serde(skip_serializing_if = "IsDefault::is_default")]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
     pub state: VehicleState,
     /// Vector-like history of [Self::state]
     #[serde(default)]
@@ -427,6 +427,7 @@ impl SetCumulative for Vehicle {
 }
 
 impl Vehicle {
+    // TODO: run this assumption by Robin: peak power of all components can be produced concurrently.
     /// # Assumptions
     /// - peak power of all components can be produced concurrently.
     pub fn get_pwr_rated(&self) -> si::Power {

@@ -59,7 +59,7 @@ use crate::utils::abs_checked_x_val;
 /// electronics.
 pub struct ElectricMachine {
     #[serde(default)]
-    #[serde(skip_serializing_if = "IsDefault::is_default")]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
     /// struct for tracking current state
     pub state: ElectricMachineState,
     /// Shaft output power fraction array at which efficiencies are evaluated.
