@@ -31,15 +31,8 @@ veh.save_interval = 1
 # load cycle from file
 cyc = fsim.Cycle.from_resource("cycles/udds.csv")
 
-print(veh.param_path_list())
-
-print(veh.history_path_list())
-
 # instantiate `SimDrive` simulation object
 sd = fsim.SimDrive(veh, cyc)
-
-# print([attr for attr in sd.__dir__() if not attr.startswith("__") and not callable(getattr(sd,attr))])
-# print(sd.param_path_list())
 
 # simulation start time
 t0 = time.perf_counter()

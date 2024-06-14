@@ -88,7 +88,6 @@ ACCEPTED_RUST_STRUCTS = ['FuelConverter',
                          'CycleElement',
                          'Vehicle',
                          'SimDrive',
-                         'SimParams',
                          'RustSimDrive',
                          'Pyo3VecWrapper',
                          'Pyo3Vec2Wrapper',
@@ -97,7 +96,8 @@ ACCEPTED_RUST_STRUCTS = ['FuelConverter',
 
 def param_path_list(self, path = "", param_path_list = []) -> list[str]:
     """Returns list of relative paths to all variables and sub-variables within
-    class (relative to the class the method was called on)
+    class (relative to the class the method was called on) 
+    See example usage in demo_param_paths.py.
     Arguments:
     ----------
     path : Defaults to empty string. This is mainly used within the method in
@@ -110,7 +110,6 @@ def param_path_list(self, path = "", param_path_list = []) -> list[str]:
     returned by the method.
     """
     variable_list = [attr for attr in self.__dir__() if not attr.startswith("__") and not callable(getattr(self,attr))]
-    print(variable_list)
     for variable in variable_list:
         if not type(getattr(self,variable)).__name__ in ACCEPTED_RUST_STRUCTS:
             if path == "":
@@ -134,7 +133,8 @@ def param_path_list(self, path = "", param_path_list = []) -> list[str]:
 
 def history_path_list(self) -> list[str]:
     """Returns a list of relative paths to all history variables (all variables
-    that contain history as a subpath)."""
+    that contain history as a subpath). 
+    See example usage in demo_param_paths.py."""
     return [item for item in self.param_path_list() if "history" in item]
             
 

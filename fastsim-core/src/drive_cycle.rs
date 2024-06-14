@@ -6,9 +6,14 @@ use fastsim_2::cycle::RustCycle as Cycle2;
         self.len()
     }
 
-    #[setter]
-    fn set_grade(&mut self, grade: Vec<f64>) {
+    #[setter("__grade")]
+    fn set_grade_py(&mut self, grade: Vec<f64>) {
         self.grade = grade.iter().map(|x| *x * uc::R).collect();
+    }
+
+    #[getter]
+    fn get_grade_py(&self) -> Vec<f64> {
+        self.grade.iter().map(|x| x.get::<si::ratio>()).collect()
     }
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
