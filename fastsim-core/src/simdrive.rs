@@ -1,3 +1,5 @@
+use self::utils::almost_eq_uom;
+
 use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
 use crate::air_properties as air;
@@ -96,6 +98,9 @@ impl SimDrive {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
+        if i > 32 {
+            println!("yikes!");
+        }
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -170,7 +175,13 @@ impl SimDrive {
     /// # Arguments
     /// - `dt`: time step size
     pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
+        // borrow state as `vs` for shorthand
         let vs = &mut self.veh.state;
+        if vs.pwr_tractive <= vs.pwr_prop_pos_max {
+            vs.speed_ach = cyc_speed;
+            vs.cyc_met = true;
+            return Ok(());
+        }
         let density_air = air::get_density_air(None, None);
         let mass = self
             .veh
@@ -252,12 +263,13 @@ impl SimDrive {
         let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - vs.pwr_prop_pos_max;
 
         // initial guess
-        let speed_guess = (1. * uc::MPS).max(vs.speed_ach);
+        let speed_guess = (1e-3 * uc::MPS).max(cyc_speed);
         // stop criteria
         let max_iter = self.sim_params.ach_speed_max_iter;
         let xtol = self.sim_params.ach_speed_tol;
         // solver gain
         let g = self.sim_params.ach_speed_solver_gain;
+        // TODO: figure out if `pwr_err_fn` should be applied as the early return criterion
         let pwr_err_fn = |speed_guess: si::Velocity| -> si::Power {
             t3 * speed_guess.powi(typenum::P3::new())
                 + t2 * speed_guess.powi(typenum::P2::new())
@@ -268,6 +280,10 @@ impl SimDrive {
             3.0 * t3 * speed_guess.powi(typenum::P2::new()) + 2.0 * t2 * speed_guess + t1
         };
         let pwr_err = pwr_err_fn(speed_guess);
+        if almost_eq_uom(&pwr_err, &(0. * uc::W), Some(1e-4)) {
+            vs.speed_ach = cyc_speed;
+            return Ok(());
+        }
         let pwr_err_per_speed_guess = pwr_err_per_speed_guess_fn(speed_guess);
         let new_speed_guess = pwr_err - speed_guess * pwr_err_per_speed_guess;
         let mut speed_guesses = vec![speed_guess];
@@ -276,7 +292,6 @@ impl SimDrive {
         let mut new_speed_guesses = vec![new_speed_guess];
         // speed achieved iteration counter
         let mut spd_ach_iter_counter = 1;
-        // if `pwr_err` 
         let mut converged = pwr_err <= uc::W * 0.;
         while spd_ach_iter_counter < max_iter && !converged {
             let speed_guess = *speed_guesses.iter().last().with_context(|| format_dbg!())?
@@ -293,6 +308,7 @@ impl SimDrive {
             pwr_errs.push(pwr_err);
             d_pwr_err_per_d_speed_guesses.push(pwr_err_per_speed_guess);
             new_speed_guesses.push(new_speed_guess);
+            // is the fractional change between previous and current speed guess smaller than `xtol`
             converged = ((*speed_guesses.iter().last().with_context(|| format_dbg!())?
                 - speed_guesses[speed_guesses.len() - 2])
                 / speed_guesses[speed_guesses.len() - 2])
@@ -300,16 +316,11 @@ impl SimDrive {
                 < xtol;
             spd_ach_iter_counter += 1;
 
-            // TODO: answer this question: could we assume `speed_guesses.iter().last()` is the correct solution?
-            // This would make for faster running.
-            // Find the speed that results in the minum power error, likely the last element of `speed_guesses`.
-            vs.speed_ach = speed_guesses[pwr_errs
-                .iter()
-                .position(|&x| x == pwr_errs.iter().fold(uc::W * f64::NAN, |acc, &x| acc.min(x)))
-                .with_context(|| {
-                    format_dbg!(pwr_errs.iter().fold(uc::W * f64::NAN, |acc, &x| acc.min(x)))
-                })?]
-            .max(0.0 * uc::MPS);
+            // TODO: verify that assuming `speed_guesses.iter().last()` is the correct solution
+            vs.speed_ach = speed_guesses
+                .last()
+                .with_context(|| format_dbg!("should have had at least one element"))?
+                .max(0.0 * uc::MPS);
         }
 
         // if achieved speed is almost identical to prescribed speed, cycle is satisfied
@@ -319,10 +330,6 @@ impl SimDrive {
             // TODO: check if this value is reasonable to use here
             Some(self.sim_params.ach_speed_tol.get::<si::ratio>()),
         );
-        if vs.cyc_met {
-            return Ok(());
-        }
-
         Ok(())
     }
 

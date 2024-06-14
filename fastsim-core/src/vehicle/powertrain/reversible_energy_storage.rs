@@ -426,28 +426,16 @@ impl ReversibleEnergyStorage {
         specific_energy: si::SpecificEnergy,
         side_effect: SpecificEnergySideEffect,
     ) -> anyhow::Result<()> {
+        self.specific_energy = Some(specific_energy);
         match side_effect {
             SpecificEnergySideEffect::Mass => self.set_mass(
-                Some(
-                    self.energy_capacity
-                        / self.specific_energy.with_context(|| {
-                            format!(
-                            "{}\n{}",
-                            format_dbg!(),
-                            "Expected `ReversibleEnergyStorage::specific_energy` to have been set."
-                        )
-                        })?,
-                ),
+                Some(self.energy_capacity / specific_energy),
                 MassSideEffect::Intensive,
             )?,
             SpecificEnergySideEffect::Energy => {
                 self.energy_capacity = specific_energy
-                    * self.mass.ok_or_else(|| {
-                        anyhow!(
-                            "{}\n{}",
-                            format_dbg!(),
-                            "Expected `ReversibleEnergyStorage::mass` to have been set."
-                        )
+                    * self.mass.with_context(|| {
+                        format_dbg!("Expected `ReversibleEnergyStorage::mass` to have been set.")
                     })?;
             }
         }

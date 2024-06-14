@@ -808,6 +808,7 @@ pub struct VehicleState {
     /// pwr exerted on wheels by powertrain
     /// maximum negative propulsive power vehicle can produce
     pub pwr_prop_neg_max: si::Power,
+    /// Tractive power required for achieved speed
     pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
     pub energy_tractive: si::Energy,

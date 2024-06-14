@@ -206,7 +206,8 @@ impl FuelConverter {
         self.state.pwr_prop_max = (self.state.pwr_tractive
             + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
             .min(self.pwr_out_max)
-            .max(self.pwr_out_max_init);
+            .max(self.pwr_out_max_init)
+            - pwr_aux;
         Ok(())
     }
 
