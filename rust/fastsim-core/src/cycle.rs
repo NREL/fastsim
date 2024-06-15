@@ -353,16 +353,6 @@ pub fn extend_cycle(
     }
 }
 
-#[cfg(feature = "pyo3")]
-#[allow(unused)]
-pub fn register(_py: Python<'_>, m: &PyModule) -> anyhow::Result<()> {
-    m.add_function(wrap_pyfunction!(calc_constant_jerk_trajectory, m)?)?;
-    m.add_function(wrap_pyfunction!(accel_for_constant_jerk, m)?)?;
-    m.add_function(wrap_pyfunction!(speed_for_constant_jerk, m)?)?;
-    m.add_function(wrap_pyfunction!(dist_for_constant_jerk, m)?)?;
-    Ok(())
-}
-
 #[derive(Default, PartialEq, Clone, Debug, Deserialize, Serialize)]
 pub struct RustCycleElement {
     /// time [s]
@@ -487,8 +477,8 @@ impl RustCycleCache {
 
     #[staticmethod]
     #[pyo3(name = "from_csv")]
-    pub fn from_csv_py(filepath: &PyAny, skip_init: Option<bool>) -> anyhow::Result<Self> {
-        Self::from_csv_file(PathBuf::extract(filepath)?, skip_init.unwrap_or_default())
+    pub fn from_csv_py(filepath: &Bound<PyAny>, skip_init: Option<bool>) -> anyhow::Result<Self> {
+        Self::from_csv_file(PathBuf::extract_bound(filepath)?, skip_init.unwrap_or_default())
     }
 
     pub fn to_rust(&self) -> Self {
@@ -496,23 +486,19 @@ impl RustCycleCache {
     }
 
     #[staticmethod]
-    pub fn from_dict(dict: &PyDict, skip_init: Option<bool>) -> anyhow::Result<Self> {
-        let time_s = Array::from_vec(PyAny::get_item(dict, "time_s")?.extract()?);
+    pub fn from_dict(dict: &Bound<PyDict>, skip_init: Option<bool>) -> anyhow::Result<Self> {
+        let time_s = Array::from_vec(dict.get_item("time_s")?.with_context(|| "'time_s' not found in dict")?.extract()?);
         let cyc_len = time_s.len();
+        let mps = Array::from_vec(dict.get_item("mps")?.with_context(|| "'mps' not found in dict")?.extract()?);
+        let grade = dict.get_item("grade")?.map(|v| v.extract()).transpose()?.unwrap_or_else(|| vec![0.; cyc_len]).into();
+        let road_type = dict.get_item("road_type")?.map(|v| v.extract()).transpose()?.unwrap_or_else(|| vec![0.; cyc_len]).into();
+        let name = dict.get_item("name")?.map(|s| s.extract()).transpose()?.unwrap_or_default();
         let mut cyc = Self {
             time_s,
-            mps: Array::from_vec(PyAny::get_item(dict, "mps")?.extract()?),
-            grade: if let Ok(value) = PyAny::get_item(dict, "grade") {
-                Array::from_vec(value.extract()?)
-            } else {
-                Array::default(cyc_len)
-            },
-            road_type: if let Ok(value) = PyAny::get_item(dict, "road_type") {
-                Array::from_vec(value.extract()?)
-            } else {
-                Array::default(cyc_len)
-            },
-            name: PyAny::get_item(dict, "name").and_then(String::extract).unwrap_or_default(),
+            mps,
+            grade,
+            road_type,
+            name,
             orphaned: false,
         };
         if !skip_init.unwrap_or_default() {
@@ -521,8 +507,8 @@ impl RustCycleCache {
         Ok(cyc)
     }
 
-    pub fn to_dict<'py>(&self, py: Python<'py>) -> anyhow::Result<&'py PyDict> {
-        let dict = PyDict::new(py);
+    pub fn to_dict<'py>(&self, py: Python<'py>) -> anyhow::Result<Bound<'py, PyDict>> {
+        let dict = PyDict::new_bound(py);
         dict.set_item("time_s", self.time_s.to_vec())?;
         dict.set_item("mps", self.mps.to_vec())?;
         dict.set_item("grade", self.grade.to_vec())?;
@@ -652,7 +638,7 @@ impl SerdeAPI for RustCycle {
             "toml" => {
                 let toml_string = self.to_toml()?;
                 wtr.write_all(toml_string.as_bytes())?;
-            },
+            }
             #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(wtr, self)?,
             "csv" => {
@@ -709,7 +695,11 @@ impl SerdeAPI for RustCycle {
         )
     }
 
-    fn from_reader<R: std::io::Read>(mut rdr: R, format: &str, skip_init: bool) -> anyhow::Result<Self> {
+    fn from_reader<R: std::io::Read>(
+        mut rdr: R,
+        format: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
         let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
@@ -717,7 +707,7 @@ impl SerdeAPI for RustCycle {
                 let mut buf = String::new();
                 rdr.read_to_string(&mut buf)?;
                 Self::from_toml(buf, skip_init)?
-            },
+            }
             #[cfg(feature = "bincode")]
             "bin" => bincode::deserialize_from(rdr)?,
             "csv" => {
@@ -823,7 +813,11 @@ impl RustCycle {
     }
 
     /// Load cycle from CSV string
-    pub fn from_csv_str<S: AsRef<str>>(csv_str: S, name: String, skip_init: bool) -> anyhow::Result<Self> {
+    pub fn from_csv_str<S: AsRef<str>>(
+        csv_str: S,
+        name: String,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
         let mut cyc = Self::from_str(csv_str, "csv", skip_init)?;
         cyc.name = name;
         Ok(cyc)

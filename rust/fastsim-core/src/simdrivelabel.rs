@@ -394,8 +394,7 @@ pub fn get_label_fe_py(
     full_detail: Option<bool>,
     verbose: Option<bool>,
 ) -> anyhow::Result<(LabelFe, Option<HashMap<&str, RustSimDrive>>)> {
-    let result =
-        get_label_fe(veh, full_detail, verbose)?;
+    let result = get_label_fe(veh, full_detail, verbose)?;
     Ok(result)
 }
 
@@ -696,10 +695,6 @@ pub fn get_label_fe_phev(
     Ok(phev_calcs)
 }
 
-#[cfg(feature = "pyo3")]
-#[pyfunction(name = "get_label_fe_phev")]
-
-/// pyo3 version of [get_label_fe_phev]
 pub fn get_label_fe_phev_py(
     veh: &vehicle::RustVehicle,
     sd: HashMap<&str, RustSimDrive>,

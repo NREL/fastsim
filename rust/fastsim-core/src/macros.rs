@@ -6,7 +6,7 @@ macro_rules! print_to_py {
     ( $( $x:expr, $y:expr ),* ) => {
         {
             pyo3::Python::with_gil(|py| {
-                let locals = pyo3::types::PyDict::new(py);
+                let locals = pyo3::types::PyDict::new_bound(py);
                 $(
                     locals.set_item($x, $y).unwrap();
                     py.run(

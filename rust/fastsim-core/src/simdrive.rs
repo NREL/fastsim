@@ -80,7 +80,7 @@ impl Default for RustSimDriveParams {
         let newton_max_iter = 100; // newton solver max iterations
         let newton_xtol = 1e-9; // newton solver tolerance
         let energy_audit_error_tol = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
-                                                 // Coasting
+                                            // Coasting
         let coast_allow = false;
         let coast_allow_passing = false;
         let coast_max_speed_m_per_s = 40.0;

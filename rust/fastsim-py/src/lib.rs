@@ -12,7 +12,7 @@ use pyo3imports::*;
 
 /// Function for adding Rust structs as Python Classes
 #[pymodule]
-fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
+fn fastsimrust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[cfg(feature = "logging")]
     pyo3_log::init();
     m.add_class::<cycle::RustCycle>()?;
@@ -31,7 +31,10 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<thermal::ThermalState>()?;
     m.add_class::<vehicle_thermal::HVACModel>()?;
 
-    cycle::register(py, m)?;
+    m.add_function(wrap_pyfunction!(cycle::calc_constant_jerk_trajectory, m)?)?;
+    m.add_function(wrap_pyfunction!(cycle::accel_for_constant_jerk, m)?)?;
+    m.add_function(wrap_pyfunction!(cycle::speed_for_constant_jerk, m)?)?;
+    m.add_function(wrap_pyfunction!(cycle::dist_for_constant_jerk, m)?)?;
 
     // Features
     #[cfg(feature = "default")]
@@ -45,7 +48,6 @@ fn fastsimrust(py: Python, m: &PyModule) -> PyResult<()> {
         m.add_function(wrap_pyfunction!(make_accel_trace_py, m)?)?;
         m.add_function(wrap_pyfunction!(get_net_accel_py, m)?)?;
         m.add_function(wrap_pyfunction!(get_label_fe_py, m)?)?;
-        m.add_function(wrap_pyfunction!(get_label_fe_phev_py, m)?)?;
     }
     #[cfg(feature = "vehicle-import")]
     {

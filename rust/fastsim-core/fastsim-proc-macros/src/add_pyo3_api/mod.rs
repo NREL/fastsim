@@ -205,7 +205,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     py_impl_block.extend::<TokenStream2>(quote! {
         pub fn copy(&self) -> Self {self.clone()}
         pub fn __copy__(&self) -> Self {self.clone()}
-        pub fn __deepcopy__(&self, _memo: &PyDict) -> Self {self.clone()}
+        pub fn __deepcopy__(&self, _memo: &Bound<PyDict>) -> Self {self.clone()}
 
         /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
         ///
@@ -216,8 +216,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[cfg(feature = "resources")]
         #[staticmethod]
         #[pyo3(name = "from_resource")]
-        pub fn from_resource_py(filepath: &PyAny, skip_init: Option<bool>) -> PyResult<Self> {
-            Self::from_resource(PathBuf::extract(filepath)?, skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+        pub fn from_resource_py(filepath: &Bound<PyAny>, skip_init: Option<bool>) -> PyResult<Self> {
+            Self::from_resource(PathBuf::extract_bound(filepath)?, skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
         /// Write (serialize) an object to a file.
@@ -229,8 +229,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         /// * `filepath`: `str | pathlib.Path` - The filepath at which to write the object
         ///
         #[pyo3(name = "to_file")]
-        pub fn to_file_py(&self, filepath: &PyAny) -> PyResult<()> {
-           self.to_file(PathBuf::extract(filepath)?).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+        pub fn to_file_py(&self, filepath: &Bound<PyAny>) -> PyResult<()> {
+           self.to_file(PathBuf::extract_bound(filepath)?).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
         /// Read (deserialize) an object from a file.
@@ -242,8 +242,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///
         #[staticmethod]
         #[pyo3(name = "from_file")]
-        pub fn from_file_py(filepath: &PyAny, skip_init: Option<bool>) -> PyResult<Self> {
-            Self::from_file(PathBuf::extract(filepath)?, skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+        pub fn from_file_py(filepath: &Bound<PyAny>, skip_init: Option<bool>) -> PyResult<Self> {
+            Self::from_file(PathBuf::extract_bound(filepath)?, skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
         /// Write (serialize) an object into a string
@@ -309,8 +309,8 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         /// Write (serialize) an object to bincode-encoded `bytes`
         #[cfg(feature = "bincode")]
         #[pyo3(name = "to_bincode")]
-        pub fn to_bincode_py<'py>(&self, py: Python<'py>) -> PyResult<&'py PyBytes> {
-            PyResult::Ok(PyBytes::new(py, &self.to_bincode()?)).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
+        pub fn to_bincode_py<'py>(&self, py: Python<'py>) -> PyResult<Bound<PyBytes>> {
+            Ok(PyBytes::new_bound(py, &self.to_bincode()?)).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
 
         /// Read (deserialize) an object from bincode-encoded `bytes`
@@ -322,7 +322,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[cfg(feature = "bincode")]
         #[staticmethod]
         #[pyo3(name = "from_bincode")]
-        pub fn from_bincode_py(encoded: &PyBytes, skip_init: Option<bool>) -> PyResult<Self> {
+        pub fn from_bincode_py(encoded: &Bound<PyBytes>, skip_init: Option<bool>) -> PyResult<Self> {
             Self::from_bincode(encoded.as_bytes(), skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
     });
