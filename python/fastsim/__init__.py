@@ -10,6 +10,8 @@ def package_root() -> Path:
     """Returns the package root directory."""
     return Path(__file__).parent
 
+from pkg_resources import get_distribution
+__version__ = get_distribution("fastsim").version
 
 def set_param_from_path(
     model: Any,

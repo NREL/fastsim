@@ -64,8 +64,12 @@ this, you'll need to have the [Rust toolchain](https://www.rust-lang.org/tools/i
     1. Run `pytest -v python/fastsim/tests/`
 
 # Usage
-To see and run examples, navigate to `./python/fastsim/demos` and run the various *demo.py files 
-to see fastsim use cases. There are other examples in fastsim/tests.  
+To see and run examples, download the `fastsim-3` demo files using the following code (with your Python environment activated and `fastsim-3` installed):
+```python
+from fastsim import utils  
+utils.copy_demo_files()
+```
+This code downloads demo files into a specified local directory (if no directory is specified, it will create a `\demos` folder in the current working directory). WARNING: If you download the demo files to a location where files of the same name already exist, the original files will be overwritten. 
 
 
 # Contributors  
@@ -80,5 +84,5 @@ Sean Lopp -- sean@rstudio.com
 Matthew Moniot -- Matthew.Moniot@nrel.gov  
 Grant Payne -- Grant.Payne@nrel.gov  
 Laurie Ramroth -- lramroth@ford.com  
-Eric Wood -- Eric.Wood@nrel.gov  
+Eric Wood -- Eric.Wood@nrel.gov
 Robin Steuteville -- Robin.Steuteville@nrel.gov
