@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Any
+from typing import Any, List
 import numpy as np
 import re
 
@@ -95,7 +95,7 @@ ACCEPTED_RUST_STRUCTS = ['FuelConverter',
                          'Pyo3Vec3Wrapper',
                          'Pyo3VecBoolWrapper']
 
-def param_path_list(self, path = "", param_path_list = []) -> list[str]:
+def param_path_list(self, path = "", param_path_list = []) -> List[str]:
     """Returns list of relative paths to all variables and sub-variables within
     class (relative to the class the method was called on) 
     See example usage in demo_param_paths.py.
@@ -132,7 +132,7 @@ def param_path_list(self, path = "", param_path_list = []) -> list[str]:
             param_path_list = getattr(self,variable).param_path_list(path = variable_path, param_path_list = param_path_list)
     return param_path_list
 
-def history_path_list(self) -> list[str]:
+def history_path_list(self) -> List[str]:
     """Returns a list of relative paths to all history variables (all variables
     that contain history as a subpath). 
     See example usage in demo_param_paths.py."""

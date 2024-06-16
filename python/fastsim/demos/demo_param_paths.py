@@ -1,13 +1,4 @@
 # %%
-
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import rc_params
-from cycler import cycler
-import seaborn as sns
-import time
-import json
-import os
 import fastsim as fsim
 
 # %% [markdown]
