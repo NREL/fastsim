@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Union, Any
 import numpy as np
 import re
-import inspect
 
 from .fastsim import *
 

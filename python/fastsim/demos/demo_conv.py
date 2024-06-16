@@ -13,7 +13,6 @@ import fastsim as fsim
 sns.set_theme()
 
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true" 
-SHOW_PLOTS = False
 
 # %% [markdown]
 
