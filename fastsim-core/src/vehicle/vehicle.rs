@@ -88,6 +88,11 @@ impl Init for AuxSource {}
     // fn get_mass_kg(&self) -> PyResult<Option<f64>> {
     //     Ok(self.mass()?.map(|m| m))
     // }
+
+    #[getter("pt_type_json")]
+    fn get_pt_type_json_py(&self) -> anyhow::Result<String >{
+        self.pt_type.to_str("json")
+    }
 )]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 /// Struct for simulating vehicle

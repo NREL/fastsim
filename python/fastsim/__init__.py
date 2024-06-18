@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Union, Any
 import numpy as np
 import re
+from typing import Dict
 
 from .fastsim import *
 
@@ -74,3 +75,8 @@ def __array__(self):
     return np.array(self.tolist())
 
 setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
+def get_pt_type_dict(self) -> Dict:
+    import json
+    return json.loads(self.pt_type_json)
+setattr(Vehicle, "get_pt_type_dict", get_pt_type_dict)
+
