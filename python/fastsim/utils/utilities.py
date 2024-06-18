@@ -117,8 +117,28 @@ def set_log_level(level: str | int) -> int:
         Previous log level
     """
     # Map string name to logging level
+
+    allowed_args = [
+        ("CRITICAL", 50),
+        ("ERROR", 40),
+        ("WARNING", 30),
+        ("INFO", 20),
+        ("DEBUG", 10),
+        ("NOTSET", 0),
+        # no logging of anything ever!
+        ("NONE", logging.CRITICAL + 1),
+    ]
+    allowed_str_args = [a[0] for a in allowed_args]
+    allowed_int_args = [a[1] for a in allowed_args]
+
+    err_str = f"Invalid arg: '{level}'.  See doc string:\n{set_log_level.__doc__}"
+
     if isinstance(level, str):
-        level = logging._nameToLevel[level]
+        assert level.upper() in allowed_str_args, err_str
+        level = logging._nameToLevel[level.upper()]
+    else:
+        assert level in allowed_int_args, err_str
+
     # Extract previous log level and set new log level
     fastsim_logger = logging.getLogger("fastsim")
     previous_level = fastsim_logger.level
