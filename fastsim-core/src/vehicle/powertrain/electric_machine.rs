@@ -203,7 +203,23 @@ impl ElectricMachine {
 
         self.state.eff = uc::R
             * interp1d(
-                &(pwr_out_req / self.pwr_out_max).get::<si::ratio>(),
+                {
+                    let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                        Ok({
+                            if self
+                                .pwr_out_frac_interp
+                                .first()
+                                .with_context(|| anyhow!(format_dbg!()))?
+                                >= &0.
+                            {
+                                pwr_uncorrected.max(0.)
+                            } else {
+                                pwr_uncorrected
+                            }
+                        })
+                    };
+                    &pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
+                },
                 &self.pwr_out_frac_interp,
                 &self.eff_interp,
                 Extrapolate::Error,
