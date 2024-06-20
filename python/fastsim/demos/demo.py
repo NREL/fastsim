@@ -373,48 +373,49 @@ print(f'Time to load cycles: {time.perf_counter() - t0:.2e} s')
 # ### Load Model, Run FASTSim
 # Includes example of how to load cycle from dict
 
-veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()  # load vehicle model
-output = {}
+# %%
+with fsim.utils.suppress_logging():
+    veh = fsim.vehicle.Vehicle.from_vehdb(1).to_rust()  # load vehicle model
+    output = {}
+    results_df = pd.DataFrame()
+    t_start = time.perf_counter()
+    for trp in list(drive_cycs_df.nrel_trip_id.unique()):
+        pnts = drive_cycs_df[drive_cycs_df['nrel_trip_id'] == trp].copy()
+        pnts['time_local'] = pd.to_datetime(pnts['timestamp'])
 
-rust_results_df = pd.DataFrame()
-t_start = time.perf_counter()
-for trp in list(drive_cycs_df.nrel_trip_id.unique()):
-    pnts = drive_cycs_df[drive_cycs_df['nrel_trip_id'] == trp].copy()
-    pnts['time_local'] = pd.to_datetime(pnts['timestamp'])
-
-    cyc = {}
-    cyc['cycGrade'] = np.zeros(len(pnts))
-    cyc['mps'] = np.array(
-        pnts['speed_mph'] / fsim.params.MPH_PER_MPS)  # MPH to MPS conversion
-    cyc['time_s'] = np.array(
-        np.cumsum(
-            (pnts['time_local'] -
-             pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')
+        cyc = {}
+        cyc['cycGrade'] = np.zeros(len(pnts))
+        cyc['mps'] = np.array(
+            pnts['speed_mph'] / fsim.params.MPH_PER_MPS)  # MPH to MPS conversion
+        cyc['time_s'] = np.array(
+            np.cumsum(
+                (pnts['time_local'] -
+                pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')
+            )
         )
-    )
-    cyc['road_type'] = np.zeros(len(pnts))
-    # example of loading cycle from dict
-    cyc = fsim.cycle.Cycle.from_dict(cyc).to_rust()
-    
-    sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
-    sim_drive.sim_drive()
+        cyc['road_type'] = np.zeros(len(pnts))
+        # example of loading cycle from dict
+        cyc = fsim.cycle.Cycle.from_dict(cyc).to_rust()
+        
+        sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
+        sim_drive.sim_drive()
 
-    output['nrel_trip_id'] = trp
-    output['distance_mi'] = sum(sim_drive.dist_mi)
-    duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
-    output['avg_speed_mph'] = sum(
-        sim_drive.dist_mi) / (duration_sec / 3600.0)
-    rust_results_df = pd.concat([rust_results_df, pd.DataFrame(output,index=[0])],  ignore_index=True)
-    #rust_results_df = results_df.append(output, ignore_index=True)
-    output['mpgge'] = sim_drive.mpgge
-    
-t_end = time.perf_counter()
+        output['nrel_trip_id'] = trp
+        output['distance_mi'] = sum(sim_drive.dist_mi)
+        duration_sec = sim_drive.cyc.time_s[-1] - sim_drive.cyc.time_s[0]
+        output['avg_speed_mph'] = sum(
+            sim_drive.dist_mi) / (duration_sec / 3600.0)
+        results_df = pd.concat([results_df, pd.DataFrame(output,index=[0])],  ignore_index=True)
+        #rust_results_df = results_df.append(output, ignore_index=True)
+        output['mpgge'] = sim_drive.mpgge
+        
+    t_end = time.perf_counter()
 
-# results_df = results_df.astype(float)
+    # results_df = results_df.astype(float)
 
-print(f'Simulations Complete. Total runtime = {t_end - t_start:.2f} s')
-print('     Average time per cycle = {:.2f} s'.format((
-    t_end - t_start) / len(drive_cycs_df.nrel_trip_id.unique())))
+    print(f'Simulations Complete. Total runtime = {t_end - t_start:.2f} s')
+    print('     Average time per cycle = {:.2f} s'.format((
+        t_end - t_start) / len(drive_cycs_df.nrel_trip_id.unique())))
 
 # %% [markdown]
 # ### Results
@@ -429,9 +430,9 @@ print('     Average time per cycle = {:.2f} s'.format((
 # that led to an unrealistically high cycle average speed.
 
 # %%
-df_fltr = rust_results_df[(rust_results_df['distance_mi'] < 1000)
-                     & (rust_results_df['distance_mi'] > 0) &
-                     (rust_results_df['avg_speed_mph'] < 100)]
+df_fltr = results_df[(results_df['distance_mi'] < 1000)
+                     & (results_df['distance_mi'] > 0) &
+                     (results_df['avg_speed_mph'] < 100)]
 
 
 # %%
@@ -735,12 +736,13 @@ if SHOW_PLOTS:
 # values.
 
 # %%
-if "default" in fsim.fastsimrust.enabled_features():
-    from fastsim.fastsimrust import abc_to_drag_coeffs
-    test_veh = fsim.vehicle.Vehicle.from_vehdb(5, to_rust=True).to_rust()
-    (drag_coef, wheel_rr_coef) = abc_to_drag_coeffs(test_veh, 25.91, 0.1943, 0.01796, simdrive_optimize=True)
+with fsim.utils.suppress_logging():
+    if "default" in fsim.fastsimrust.enabled_features():
+        from fastsim.fastsimrust import abc_to_drag_coeffs
+        test_veh = fsim.vehicle.Vehicle.from_vehdb(5, to_rust=True).to_rust()
+        (drag_coef, wheel_rr_coef) = abc_to_drag_coeffs(test_veh, 25.91, 0.1943, 0.01796, simdrive_optimize=True)
 
-    print(f'Drag Coefficient: {drag_coef:.3g}')
-    print(f'Wheel Rolling Resistance Coefficient: {wheel_rr_coef:.3g}')
+        print(f'Drag Coefficient: {drag_coef:.3g}')
+        print(f'Wheel Rolling Resistance Coefficient: {wheel_rr_coef:.3g}')
 
 # %%
