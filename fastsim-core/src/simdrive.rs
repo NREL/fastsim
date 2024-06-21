@@ -98,9 +98,6 @@ impl SimDrive {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        if i > 32 {
-            println!("yikes!");
-        }
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
