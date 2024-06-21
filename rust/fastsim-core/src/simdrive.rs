@@ -25,8 +25,14 @@ pub struct RustSimDriveParams {
     pub min_time_dilation: f64,
     pub time_dilation_tol: f64,
     pub max_trace_miss_iters: u32,
+    /// threshold for triggering warning log message if vehicle speed deficit
+    /// relative to prescribed speed exceeds this amount
     pub trace_miss_speed_mps_tol: f64,
+    /// threshold for triggering warning log message if achieved elapsed time
+    /// relative to prescribed elapsed time exceeds this fractional amount
     pub trace_miss_time_tol: f64,
+    /// threshold for triggering warning log message if achieved distance
+    /// relative to prescribed distance exceeds this fractional amount
     pub trace_miss_dist_tol: f64,
     pub sim_count_max: usize,
     pub newton_gain: f64,
@@ -80,7 +86,7 @@ impl Default for RustSimDriveParams {
         let newton_max_iter = 100; // newton solver max iterations
         let newton_xtol = 1e-9; // newton solver tolerance
         let energy_audit_error_tol = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
-                                                 // Coasting
+                                            // Coasting
         let coast_allow = false;
         let coast_allow_passing = false;
         let coast_max_speed_m_per_s = 40.0;
@@ -533,9 +539,16 @@ pub struct RustSimDrive {
     pub fc_kj: f64,
     pub net_kj: f64,
     pub ke_kj: f64,
+    /// `true` when the vehicle misses the prescribed speed trace
     pub trace_miss: bool,
+    /// fractional difference between achieved cumulative distance
+    /// and prescribed cumulative distance
     pub trace_miss_dist_frac: f64,
+    /// fractional difference between achieved time when trace miss is
+    /// and prescribed cumulative distance
     pub trace_miss_time_frac: f64,
+    /// Maximum speed by which vehicle's speed falls behind prescribed
+    /// speed trace
     pub trace_miss_speed_mps: f64,
     #[serde(skip)]
     pub orphaned: bool,
