@@ -2,8 +2,10 @@ from pathlib import Path
 from typing import Any, List
 import numpy as np
 import re
+import inspect
 
 from .fastsim import *
+import fastsim as fsim
 
 def package_root() -> Path:
     """Returns the package root directory."""
@@ -74,41 +76,26 @@ def __array__(self):
     return np.array(self.tolist())
 
 
-# for param_path_list() method to identify something as a struct so that it
-# checks for sub-variables and sub-structs, it must be added to this list:
-ACCEPTED_RUST_STRUCTS = ['FuelConverter', 
-                         'FuelConverterState', 
-                         'FuelConverterStateHistoryVec',
-                         'ReversibleEnergyStorage',
-                         'ReversibleEnergyStorageState',
-                         'ReversibleEnergyStorageStateHistoryVec',
-                         'ElectricMachine',
-                         'ElectricMachineState',
-                         'ElectricMachineStateHistoryVec',
-                         'Cycle',
-                         'CycleElement',
-                         'Vehicle',
-                         'SimDrive',
-                         'RustSimDrive',
-                         'Pyo3VecWrapper',
-                         'Pyo3Vec2Wrapper',
-                         'Pyo3Vec3Wrapper',
-                         'Pyo3VecBoolWrapper']
+# creates a list of all python classes from rust structs that need variable_path_list() and
+# history_path_list() added as methods
+ACCEPTED_RUST_STRUCTS = [attr for attr in fsim.__dir__() if not\
+                         attr.startswith("__") and\
+                            isinstance(getattr(fsim,attr), type) and\
+                                attr[0].isupper() and\
+                                    ("fastsim" in str(inspect.getmodule(getattr(fsim,attr))))]
 
-def param_path_list(self, path = "", param_path_list = []) -> List[str]:
+def variable_path_list(self, path = "", variable_path_list = []) -> List[str]:
     """Returns list of relative paths to all variables and sub-variables within
-    class (relative to the class the method was called on) 
-    See example usage in demo_param_paths.py.
-    Arguments:
-    ----------
-    path : Defaults to empty string. This is mainly used within the method in
-    order to call the method recursively and does not need to be specified by
-    user. Specifies a path to be added in front of all paths returned by the
-    method.
-    param_path_list : Defaults to empty list.  This is mainly used within the
-    method in order to call the method recursively and does not need to be
-    specified by user. Specifies a list of paths to be appended to the list
-    returned by the method.
+    class (relative to the class the method was called on) See example usage in
+    demo_param_paths.py.  
+    Arguments: ----------  
+    path : Defaults to empty string. This is mainly used within the method in 
+    order to call the method recursively and should not be specified by user. 
+    Specifies a path to be added in front of all paths returned by the method.  
+    variable_path_list : Defaults to empty list. This is mainly used within the 
+    method in order to call the method recursively and should not be specified 
+    by user. Specifies a list of paths to be appended to the list returned by 
+    the method.  
     """
     variable_list = [attr for attr in self.__dir__() if not attr.startswith("__") and not callable(getattr(self,attr))]
     for variable in variable_list:
@@ -117,68 +104,38 @@ def param_path_list(self, path = "", param_path_list = []) -> List[str]:
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
-            param_path_list.append(variable_path)
-        elif len([attr for attr in getattr(self,variable).__dir__() if not attr.startswith("__") and not callable(getattr(getattr(self,variable),attr))]) == 0:
+            variable_path_list.append(variable_path)
+        elif len([attr for attr in getattr(self,variable).__dir__() if not attr.startswith("__")\
+                  and not callable(getattr(getattr(self,variable),attr))]) == 0:
             if path == "":
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
-            param_path_list.append(variable_path)    
+            variable_path_list.append(variable_path)    
         else:
             if path == "":
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
-            param_path_list = getattr(self,variable).param_path_list(path = variable_path, param_path_list = param_path_list)
-    return param_path_list
+            variable_path_list = getattr(self,variable).variable_path_list(path = variable_path,\
+                                                                           variable_path_list = variable_path_list)
+    return variable_path_list
 
 def history_path_list(self) -> List[str]:
     """Returns a list of relative paths to all history variables (all variables
     that contain history as a subpath). 
     See example usage in demo_param_paths.py."""
-    return [item for item in self.param_path_list() if "history" in item]
+    return [item for item in self.variable_path_list() if "history" in item]
             
 
 
 
 setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
 
-# add param_path_list as an attribute for all Rust structs
-setattr(FuelConverter, "param_path_list", param_path_list)
-setattr(FuelConverterState, "param_path_list", param_path_list)
-setattr(FuelConverterStateHistoryVec, "param_path_list", param_path_list)
-setattr(ReversibleEnergyStorage, "param_path_list", param_path_list)
-setattr(ReversibleEnergyStorageState, "param_path_list", param_path_list)
-setattr(ReversibleEnergyStorageStateHistoryVec, "param_path_list", param_path_list)
-setattr(ElectricMachine, "param_path_list", param_path_list)
-setattr(ElectricMachineState, "param_path_list", param_path_list)
-setattr(ElectricMachineStateHistoryVec, "param_path_list", param_path_list)
-setattr(Cycle, "param_path_list", param_path_list)
-setattr(CycleElement, "param_path_list", param_path_list)
-setattr(Vehicle, "param_path_list", param_path_list)
-setattr(SimDrive, "param_path_list", param_path_list)
-setattr(RustSimDrive, "param_path_list", param_path_list)
-setattr(Pyo3VecWrapper, "param_path_list", param_path_list)
-setattr(Pyo3Vec2Wrapper, "param_path_list", param_path_list)
-setattr(Pyo3Vec3Wrapper, "param_path_list", param_path_list)
-setattr(Pyo3VecBoolWrapper, "param_path_list", param_path_list)
-
-# add history_path_list as an attribute for all Rust structs
-setattr(FuelConverter, "history_path_list", history_path_list)
-setattr(FuelConverterState, "history_path_list", history_path_list)
-setattr(FuelConverterStateHistoryVec, "history_path_list", history_path_list)
-setattr(ReversibleEnergyStorage, "history_path_list", history_path_list)
-setattr(ReversibleEnergyStorageState, "history_path_list", history_path_list)
-setattr(ReversibleEnergyStorageStateHistoryVec, "history_path_list", history_path_list)
-setattr(ElectricMachine, "history_path_list", history_path_list)
-setattr(ElectricMachineState, "history_path_list", history_path_list)
-setattr(ElectricMachineStateHistoryVec, "history_path_list", history_path_list)
-setattr(Cycle, "history_path_list", history_path_list)
-setattr(CycleElement, "history_path_list", history_path_list)
-setattr(Vehicle, "history_path_list", history_path_list)
-setattr(SimDrive, "history_path_list", history_path_list)
-setattr(RustSimDrive, "history_path_list", history_path_list)
-setattr(Pyo3VecWrapper, "history_path_list", history_path_list)
-setattr(Pyo3Vec2Wrapper, "history_path_list", history_path_list)
-setattr(Pyo3Vec3Wrapper, "history_path_list", history_path_list)
-setattr(Pyo3VecBoolWrapper, "history_path_list", history_path_list)
+# adds variable_path_list() and history_path_list() as methods to all classes in
+# ACCEPTED_RUST_STRUCTS
+for item in ACCEPTED_RUST_STRUCTS:
+    print("starting", item)
+    setattr(getattr(fsim, item), "variable_path_list", variable_path_list)
+    setattr(getattr(fsim, item), "history_path_list", history_path_list)
+    print(item, "finished!")

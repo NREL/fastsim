@@ -20,7 +20,7 @@ class TestParamPath(unittest.TestCase):
                                            'fc.history.pwr_loss_watts', 'fc.history.eff', 'history', 'fc.history.i', 'fc.history.pwr_prop_max_watts', 'fc.history.pwr_tractive_watts', 
                                            'fc.history.energy_aux_joules', 'fc.history.pwr_fuel_watts', 'fc.history.energy_loss_joules', 'fc.history.fc_on', 'fc.history.pwr_aux_watts', 
                                            'fc.history.energy_tractive_joules', 'fc.history.energy_fuel_joules', 'fc.history.pwr_loss_watts', 'fc.history.eff', 'history']
-        assert(baseline_variable_paths.sort()==veh.param_path_list().sort())
+        assert(baseline_variable_paths.sort()==veh.variable_path_list().sort())
         assert(baseline_history_variable_paths.sort()==veh.history_path_list().sort())
 
 
