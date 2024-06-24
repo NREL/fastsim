@@ -11,6 +11,14 @@ def package_root() -> Path:
     """Returns the package root directory."""
     return Path(__file__).parent
 
+def resources_root() -> Path:
+    """
+    Returns the resources root directory.
+    """
+    path = package_root() / "resources"
+    return path
+
+
 from pkg_resources import get_distribution
 __version__ = get_distribution("fastsim").version
 
@@ -97,7 +105,8 @@ def variable_path_list(self, path = "", variable_path_list = []) -> List[str]:
     by user. Specifies a list of paths to be appended to the list returned by 
     the method.  
     """
-    variable_list = [attr for attr in self.__dir__() if not attr.startswith("__") and not callable(getattr(self,attr))]
+    variable_list = [attr for attr in self.__dir__() if not attr.startswith("__")\
+                     and not callable(getattr(self,attr))]
     for variable in variable_list:
         if not type(getattr(self,variable)).__name__ in ACCEPTED_RUST_STRUCTS:
             if path == "":
@@ -117,8 +126,10 @@ def variable_path_list(self, path = "", variable_path_list = []) -> List[str]:
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
-            variable_path_list = getattr(self,variable).variable_path_list(path = variable_path,\
-                                                                           variable_path_list = variable_path_list)
+            variable_path_list = getattr(self,variable).variable_path_list(
+                path = variable_path,
+                variable_path_list = variable_path_list,
+                )
     return variable_path_list
 
 def history_path_list(self) -> List[str]:
@@ -135,7 +146,5 @@ setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
-    print("starting", item)
     setattr(getattr(fsim, item), "variable_path_list", variable_path_list)
     setattr(getattr(fsim, item), "history_path_list", history_path_list)
-    print(item, "finished!")
