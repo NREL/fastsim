@@ -92,45 +92,39 @@ ACCEPTED_RUST_STRUCTS = [attr for attr in fsim.__dir__() if not\
                                 attr[0].isupper() and\
                                     ("fastsim" in str(inspect.getmodule(getattr(fsim,attr))))]
 
-def variable_path_list(self, path = "", variable_path_list = []) -> List[str]:
+def variable_path_list(self, path = "") -> List[str]:
     """Returns list of relative paths to all variables and sub-variables within
-    class (relative to the class the method was called on) See example usage in
-    demo_param_paths.py.  
+    class (relative to the class the method was called on).  
+    See example usage in demo_param_paths.py.  
     Arguments: ----------  
     path : Defaults to empty string. This is mainly used within the method in 
     order to call the method recursively and should not be specified by user. 
-    Specifies a path to be added in front of all paths returned by the method.  
-    variable_path_list : Defaults to empty list. This is mainly used within the 
-    method in order to call the method recursively and should not be specified 
-    by user. Specifies a list of paths to be appended to the list returned by 
-    the method.  
+    Specifies a path to be added in front of all paths returned by the method.    
     """
     variable_list = [attr for attr in self.__dir__() if not attr.startswith("__")\
                      and not callable(getattr(self,attr))]
+    variable_paths = []
     for variable in variable_list:
         if not type(getattr(self,variable)).__name__ in ACCEPTED_RUST_STRUCTS:
             if path == "":
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
-            variable_path_list.append(variable_path)
+            variable_paths.append(variable_path)
         elif len([attr for attr in getattr(self,variable).__dir__() if not attr.startswith("__")\
                   and not callable(getattr(getattr(self,variable),attr))]) == 0:
             if path == "":
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
-            variable_path_list.append(variable_path)    
+            variable_paths.append(variable_path)    
         else:
             if path == "":
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
-            variable_path_list = getattr(self,variable).variable_path_list(
-                path = variable_path,
-                variable_path_list = variable_path_list,
-                )
-    return variable_path_list
+            variable_paths.extend(getattr(self,variable).variable_path_list(path = variable_path))
+    return variable_paths
 
 def history_path_list(self) -> List[str]:
     """Returns a list of relative paths to all history variables (all variables

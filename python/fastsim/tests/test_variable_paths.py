@@ -8,12 +8,13 @@ class TestParamPath(unittest.TestCase):
             str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
         )
         with open(fsim.resources_root() / "benchmark_variable_paths/vehicle_variable_paths.txt") as file:
-            baseline_variable_paths = file.readlines()
+            baseline_variable_paths = [line.strip() for line in file.readlines()]
+
         with open(fsim.resources_root() / "benchmark_variable_paths/vehicle_history_paths.txt") as file:
-            baseline_history_variable_paths = file.readlines()
+            baseline_history_variable_paths = [line.strip() for line in file.readlines()]
         
-        assert(baseline_variable_paths.sort()==veh.variable_path_list().sort())
-        assert(baseline_history_variable_paths.sort()==veh.history_path_list().sort())
+        assert(sorted(baseline_variable_paths)==sorted(veh.variable_path_list()))
+        assert(sorted(baseline_history_variable_paths)==sorted(veh.history_path_list()))
 
 
 if __name__ == '__main__':
