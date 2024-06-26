@@ -20,7 +20,7 @@ cyc = fsim.Cycle.from_resource("cycles/udds.csv")
 sd = fsim.SimDrive(veh, cyc)
 
 # print out all subpaths for variables in SimDrive
-print("List of variable paths for SimDrive: ", sd.variable_path_list())
+print("List of variable paths for SimDrive:\n", "\n".join(sd.variable_path_list()))
 
 # print out all subpaths for history variables in SimDrive
-print("List of history variable paths for SimDrive: ", sd.history_path_list())
+print("List of history variable paths for SimDrive:\n", "\n".join(sd.history_path_list()))
