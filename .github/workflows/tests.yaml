@@ -19,10 +19,6 @@ jobs:
       env:
         PYTHON: ${{ matrix.python-version }}
       steps:
-      - name: Set Swap Space to a Large Value
-        uses: pierotofy/set-swap-space@master
-        with:
-          swap-size-gb: 10
       - uses: actions/checkout@v3
 
       - name: set up python ${{ matrix.python-version }}
