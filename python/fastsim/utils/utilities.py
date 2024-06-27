@@ -406,6 +406,12 @@ def show_plots() -> bool:
     """
     return os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
 
+def do_tests() -> bool:
+    """
+    Returns true if plots should be displayed
+    """
+    return os.environ.get("SHOW_PLOTS", "false").lower() == "true"     
+
 def copy_demo_files(path_for_copies: Path=Path("demos")):
     """
     Copies demo files from demos folder into specified local directory

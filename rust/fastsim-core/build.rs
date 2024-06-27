@@ -11,7 +11,7 @@ fn main() {
     // path when building using build_and_test.sh
     let build_path = "../../python/fastsim/resources".to_string();
 
-    let prepath: String = match PathBuf::from(&publish_path).exists() {
+    let prepath = match PathBuf::from(&publish_path).exists() {
         true => publish_path,
         false => build_path,
     };

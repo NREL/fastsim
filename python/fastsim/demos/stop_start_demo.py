@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import importlib
 import seaborn as sns
 import fastsim as fsim
-import fastsim.utilities as utils
 
 sns.set()
 

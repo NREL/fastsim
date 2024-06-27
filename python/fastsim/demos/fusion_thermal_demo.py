@@ -11,7 +11,6 @@ import numpy as np
 from pathlib import Path
 import os
 import sys
-import fastsim.utilities as utils
 
 #for testing demo files, false when running automatic tests
 SHOW_PLOTS = fsim.utils.show_plots()
