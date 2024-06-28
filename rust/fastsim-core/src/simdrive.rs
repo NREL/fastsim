@@ -24,13 +24,15 @@ pub struct RustSimDriveParams {
     /// looked up at step start distance. For accuracy, the actual elevations will be
     /// used. This distinciton only makes a difference for CAV maneuvers.
     pub favor_grade_accuracy: bool,
-    /// if true, missed trace correction is active, default = False
+    /// if true, missed trace correction is active, default = False.  If missed
+    /// trace correction is active, time step will be "dilated" to be long enough for
+    /// vehicle to "catch up" with trace.
     pub missed_trace_correction: bool,
     /// maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
     pub max_time_dilation: f64,
     /// minimum time dilation margin to let trace "catch up" -- e.g. -0.5 means 50% reduction in step size
     pub min_time_dilation: f64,
-    /// convergence criteria for time dilation
+    /// convergence criteria for time dilation in iterating on time step size to achieve distance parity
     pub time_dilation_tol: f64,
     /// number of iterations to achieve time dilation correction
     pub max_trace_miss_iters: u32,
