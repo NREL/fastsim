@@ -19,37 +19,73 @@ pub mod simdrive_iter;
 )]
 /// Struct containing time trace data
 pub struct RustSimDriveParams {
+    /// if true, accuracy will be favored over performance for grade per step estimates
+    /// Specifically, for performance, grade for a step will be assumed to be the grade
+    /// looked up at step start distance. For accuracy, the actual elevations will be
+    /// used. This distinciton only makes a difference for CAV maneuvers.
     pub favor_grade_accuracy: bool,
-    pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
+    /// if true, missed trace correction is active, default = False
+    pub missed_trace_correction: bool,
+    /// maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
     pub max_time_dilation: f64,
+    /// minimum time dilation margin to let trace "catch up" -- e.g. -0.5 means 50% reduction in step size
     pub min_time_dilation: f64,
+    /// convergence criteria for time dilation
     pub time_dilation_tol: f64,
+    /// number of iterations to achieve time dilation correction
     pub max_trace_miss_iters: u32,
+    /// threshold of error in speed [m/s] that triggers warning
     pub trace_miss_speed_mps_tol: f64,
+    /// threshold for printing warning when time dilation is active
     pub trace_miss_time_tol: f64,
+    /// threshold of fractional eror in distance that triggers warning
     pub trace_miss_dist_tol: f64,
+    /// max allowable number of HEV SOC iterations
     pub sim_count_max: usize,
+    /// newton solver gain
     pub newton_gain: f64,
+    /// newton solver max iterations
     pub newton_max_iter: u32,
+    /// newton solver tolerance
     pub newton_xtol: f64,
+    /// tolerance for energy audit error warning, i.e. 0.1%
     pub energy_audit_error_tol: f64,
+    // Eco-Coasting Maneuver Parameters
+    /// if true, coasting to stops are allowed
     pub coast_allow: bool,
+    /// if true, coasting vehicle can eclipse the shadow trace (i.e., reference vehicle in front)
     pub coast_allow_passing: bool,
+    /// maximum allowable speed under coast (m/s)
     pub coast_max_speed_m_per_s: f64,
+    /// acceleration assumed during braking for coast maneuvers (m/s2). note: should be negative
     pub coast_brake_accel_m_per_s2: f64,
+    /// speed when friction braking will initiate during coasting maneuvers (m/s)
     pub coast_brake_start_speed_m_per_s: f64,
+    /// initiates coast when vehicle hits this speed if > 0; this is mainly for forceing coasting to initiate for testing. (m/s)
     pub coast_start_speed_m_per_s: f64,
+    /// "look-ahead" time for speed changes to be considered to feature coasting to hit a given stopping distance mark (s)
     pub coast_time_horizon_for_adjustment_s: f64,
-    pub idm_allow: bool,
     // IDM - Intelligent Driver Model, Adaptive Cruise Control version
+    /// if true, initiates the IDM - Intelligent Driver Model, Adaptive Cruise Control version
+    pub idm_allow: bool,
+    /// IDM algorithm: desired speed (m/s)
     pub idm_v_desired_m_per_s: f64,
+    /// IDM algorithm: headway time desired to vehicle in front (s)
     pub idm_dt_headway_s: f64,
+    /// IDM algorithm: minimum desired gap between vehicle and lead vehicle (m)
     pub idm_minimum_gap_m: f64,
+    /// IDM algorithm: delta parameter
     pub idm_delta: f64,
+    /// IDM algorithm: acceleration parameter
     pub idm_accel_m_per_s2: f64,
+    /// IDM algorithm: deceleration parameter
     pub idm_decel_m_per_s2: f64,
+    /// IDM algorithm: a way to specify desired speed by course distance
+    /// traveled. Can simulate changing speed limits over a driving cycle
+    /// optional list of (distance (m), desired speed (m/s))
     pub idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
     // Other, Misc.
+    /// EPA fuel economy adjustment parameters; maximum EPA adjustment factor
     pub max_epa_adj: f64,
     #[serde(skip)]
     pub orphaned: bool,
@@ -80,7 +116,7 @@ impl Default for RustSimDriveParams {
         let newton_max_iter = 100; // newton solver max iterations
         let newton_xtol = 1e-9; // newton solver tolerance
         let energy_audit_error_tol = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
-                                                 // Coasting
+                                            // Coasting
         let coast_allow = false;
         let coast_allow_passing = false;
         let coast_max_speed_m_per_s = 40.0;
