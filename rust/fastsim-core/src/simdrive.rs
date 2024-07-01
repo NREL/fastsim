@@ -36,11 +36,14 @@ pub struct RustSimDriveParams {
     pub time_dilation_tol: f64,
     /// number of iterations to achieve time dilation correction
     pub max_trace_miss_iters: u32,
-    /// threshold of error in speed [m/s] that triggers warning
+    /// threshold for triggering warning log message if vehicle speed deficit [m/s]
+    /// relative to prescribed speed exceeds this amount
     pub trace_miss_speed_mps_tol: f64,
-    /// threshold for printing warning when time dilation is active
+    /// threshold for triggering warning log message if achieved elapsed time
+    /// relative to prescribed elapsed time exceeds this fractional amount
     pub trace_miss_time_tol: f64,
-    /// threshold of fractional eror in distance that triggers warning
+    /// threshold for triggering warning log message if achieved distance
+    /// relative to prescribed distance exceeds this fractional amount
     pub trace_miss_dist_tol: f64,
     /// max allowable number of HEV SOC iterations
     pub sim_count_max: usize,
@@ -571,9 +574,16 @@ pub struct RustSimDrive {
     pub fc_kj: f64,
     pub net_kj: f64,
     pub ke_kj: f64,
+    /// `true` when the vehicle misses the prescribed speed trace
     pub trace_miss: bool,
+    /// fractional difference between achieved cumulative distance
+    /// and prescribed cumulative distance
     pub trace_miss_dist_frac: f64,
+    /// fractional difference between achieved time when trace miss is
+    /// and prescribed cumulative distance
     pub trace_miss_time_frac: f64,
+    /// Maximum speed by which vehicle's speed falls behind prescribed
+    /// speed trace
     pub trace_miss_speed_mps: f64,
     #[serde(skip)]
     pub orphaned: bool,
