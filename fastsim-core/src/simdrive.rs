@@ -361,10 +361,12 @@ impl Default for TraceMissTolerance {
 mod tests {
     use super::*;
     use crate::vehicle::vehicle::tests::*;
+
     #[test]
+    #[cfg(feature = "resources")]
     fn test_sim_drive_conv() {
         let _veh = mock_f2_conv_veh();
-        let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
+        let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive {
             veh: _veh,
             cyc: _cyc,
@@ -374,10 +376,12 @@ mod tests {
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
     }
+
     #[test]
+    #[cfg(feature = "resources")]
     fn test_sim_drive_hev() {
         let _veh = mock_f2_hev();
-        let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
+        let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive {
             veh: _veh,
             cyc: _cyc,
