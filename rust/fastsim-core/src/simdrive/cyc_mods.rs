@@ -5,7 +5,7 @@ use super::*;
 use crate::cycle::{
     accel_array_for_constant_jerk, accel_for_constant_jerk, calc_constant_jerk_trajectory,
     create_dist_and_target_speeds_by_microtrip, detect_passing, extend_cycle,
-    trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance, PassingInfo,
+    trapz_distance_for_step, trapz_step_distances, trapz_step_start_distance,
 };
 use crate::simdrive::RustSimDrive;
 use crate::utils::{add_from, max, min, ndarrcumsum, ndarrunique};
@@ -119,7 +119,7 @@ impl RustSimDrive {
         let v0_m_per_s = self.mps_ach[i - 1];
         let v0_lead_m_per_s = self.cyc0.mps[i - 1];
         let dv0_m_per_s = v0_m_per_s - v0_lead_m_per_s;
-        let d0_lead_m: f64 = self.cyc0_cache.trapz_distances_m[(i - 1).max(0)] + s0_m;
+        let d0_lead_m = self.cyc0_cache.trapz_distances_m[(i - 1).max(0)] + s0_m;
         let d0_m = trapz_step_start_distance(&self.cyc, i);
         let s_m = max(d0_lead_m - d0_m, 0.01);
         // IDM EQUATIONS
@@ -237,8 +237,8 @@ impl RustSimDrive {
             < self.sim_params.time_dilation_tol
             || self.cyc.mps[i] == 0.0;
 
-        let mut d_short: Vec<f64> = vec![];
-        let mut t_dilation: Vec<f64> = vec![0.0]; // no time dilation initially
+        let mut d_short = vec![];
+        let mut t_dilation = vec![0.0]; // no time dilation initially
         if !trace_met {
             self.trace_miss_iters[i] += 1;
 
@@ -375,8 +375,8 @@ impl RustSimDrive {
         assert![a_brake <= 0.0];
         let ds = &self.cyc0_cache.trapz_distances_m;
         let d0 = trapz_step_start_distance(&self.cyc, i);
-        let mut distances_m: Vec<f64> = Vec::with_capacity(ds.len());
-        let mut grade_by_distance: Vec<f64> = Vec::with_capacity(ds.len());
+        let mut distances_m = Vec::with_capacity(ds.len());
+        let mut grade_by_distance = Vec::with_capacity(ds.len());
         for idx in 0..ds.len() {
             if ds[idx] >= d0 {
                 distances_m.push(ds[idx] - d0);
@@ -408,19 +408,19 @@ impl RustSimDrive {
         let mut d = 0.0;
         let d_max = distances_m.last().unwrap() - dtb;
         let unique_grades = ndarrunique(&grade_by_distance);
-        let unique_grade: Option<f64> = if unique_grades.len() == 1 {
+        let unique_grade = if unique_grades.len() == 1 {
             Some(unique_grades[0])
         } else {
             None
         };
-        let has_unique_grade: bool = unique_grade.is_some();
+        let has_unique_grade = unique_grade.is_some();
         let max_iter = 180;
         let iters_per_step = if self.sim_params.favor_grade_accuracy {
             2
         } else {
             1
         };
-        let mut new_speeds_m_per_s: Vec<f64> = Vec::with_capacity(max_iter as usize);
+        let mut new_speeds_m_per_s = Vec::with_capacity(max_iter as usize);
         let mut v = v0;
         let mut iter = 0;
         let mut idx = i;
@@ -521,7 +521,7 @@ impl RustSimDrive {
             gs.len()
         );
         let d0 = trapz_step_start_distance(&self.cyc, i);
-        let mut grade_by_distance: Vec<f64> = Vec::with_capacity(ds.len());
+        let mut grade_by_distance = Vec::with_capacity(ds.len());
         for idx in 0..ds.len() {
             if ds[idx] >= d0 {
                 grade_by_distance.push(gs[idx]);
@@ -624,10 +624,10 @@ impl RustSimDrive {
         let brake_accel_m_per_s2 = self.sim_params.coast_brake_accel_m_per_s2;
         let time_horizon_s = max(self.sim_params.coast_time_horizon_for_adjustment_s, 1.0);
         // distance_horizon_m = 1000.0
-        let not_found_n: usize = 0;
-        let not_found_jerk_m_per_s3: f64 = 0.0;
-        let not_found_accel_m_per_s2: f64 = 0.0;
-        let not_found: (bool, usize, f64, f64) = (
+        let not_found_n = 0;
+        let not_found_jerk_m_per_s3 = 0.0;
+        let not_found_accel_m_per_s2 = 0.0;
+        let not_found = (
             false,
             not_found_n,
             not_found_jerk_m_per_s3,
@@ -707,9 +707,9 @@ impl RustSimDrive {
                             r_bi_jerk_m_per_s3,
                             dt,
                         );
-                        let as_bi_min: f64 =
+                        let as_bi_min =
                             as_bi.to_vec().into_iter().reduce(f64::min).unwrap_or(0.0);
-                        let as_bi_max: f64 =
+                        let as_bi_max =
                             as_bi.to_vec().into_iter().reduce(f64::max).unwrap_or(0.0);
                         let accel_spread = (as_bi_max - as_bi_min).abs();
                         let flag = (as_bi_max < (max_accel_m_per_s2 + 1e-6)
@@ -756,14 +756,14 @@ impl RustSimDrive {
         for idx in i..self.cyc.len() {
             self.coast_delay_index[idx] = 0; // clear all future coast-delays
         }
-        let mut coast_delay: Option<i32> = None;
+        let mut coast_delay = None;
         if !self.sim_params.idm_allow && self.cyc.mps[i] < speed_tol {
             let d0 = trapz_step_start_distance(&self.cyc, i);
             let d0_lv = self.cyc0_cache.trapz_distances_m[i - 1];
             let dtlv0 = d0_lv - d0;
             if dtlv0.abs() > dist_tol {
                 let mut d_lv = 0.0;
-                let mut min_dtlv: Option<f64> = None;
+                let mut min_dtlv = None;
                 for (idx, (&dd, &v)) in trapz_step_distances(&self.cyc0)
                     .iter()
                     .zip(self.cyc0.mps.iter())
@@ -814,11 +814,11 @@ impl RustSimDrive {
     /// RETURN: Bool, True if cyc was modified
     fn prevent_collisions(&mut self, i: usize, passing_tol_m: Option<f64>) -> anyhow::Result<bool> {
         let passing_tol_m = passing_tol_m.unwrap_or(1.0);
-        let collision: PassingInfo = detect_passing(&self.cyc, &self.cyc0, i, Some(passing_tol_m));
+        let collision = detect_passing(&self.cyc, &self.cyc0, i, Some(passing_tol_m));
         if !collision.has_collision {
             return Ok(false);
         }
-        let mut best: RendezvousTrajectory = RendezvousTrajectory {
+        let mut best = RendezvousTrajectory {
             found_trajectory: false,
             idx: 0,
             n: 0,
@@ -869,8 +869,8 @@ impl RustSimDrive {
                     collision.speed_m_per_s,
                     dt,
                 )?;
-                let mut accels_m_per_s2: Vec<f64> = vec![];
-                let mut trace_accels_m_per_s2: Vec<f64> = vec![];
+                let mut accels_m_per_s2 = vec![];
+                let mut trace_accels_m_per_s2 = vec![];
                 for ni in 0..n {
                     if (ni + idx + full_brake_steps) >= self.cyc.len() {
                         break;
@@ -887,7 +887,7 @@ impl RustSimDrive {
                             / self.cyc.dt_s()[ni + idx + full_brake_steps],
                     );
                 }
-                let all_sub_coast: bool = trace_accels_m_per_s2
+                let all_sub_coast = trace_accels_m_per_s2
                     .iter()
                     .copied()
                     .zip(accels_m_per_s2.iter().copied())
@@ -1073,6 +1073,7 @@ impl RustSimDrive {
                         }
                         adjusted_current_speed = true;
                     } else {
+                        #[cfg(feature = "logging")]
                         log::warn!(
                             "final_speed_m_per_s={} not close to coast_brake_start_speed={} for i={}; i_for_brake={}, traj_n={}",
                             final_speed_m_per_s,

@@ -19,37 +19,78 @@ pub mod simdrive_iter;
 )]
 /// Struct containing time trace data
 pub struct RustSimDriveParams {
+    /// if true, accuracy will be favored over performance for grade per step estimates
+    /// Specifically, for performance, grade for a step will be assumed to be the grade
+    /// looked up at step start distance. For accuracy, the actual elevations will be
+    /// used. This distinciton only makes a difference for CAV maneuvers.
     pub favor_grade_accuracy: bool,
-    pub missed_trace_correction: bool, // if true, missed trace correction is active, default = false
+    /// if true, missed trace correction is active, default = False.  If missed
+    /// trace correction is active, time step will be "dilated" to be long enough for
+    /// vehicle to "catch up" with trace.
+    pub missed_trace_correction: bool,
+    /// maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
     pub max_time_dilation: f64,
+    /// minimum time dilation margin to let trace "catch up" -- e.g. -0.5 means 50% reduction in step size
     pub min_time_dilation: f64,
+    /// convergence criteria for time dilation in iterating on time step size to achieve distance parity
     pub time_dilation_tol: f64,
+    /// number of iterations to achieve time dilation correction
     pub max_trace_miss_iters: u32,
+    /// threshold for triggering warning log message if vehicle speed deficit [m/s]
+    /// relative to prescribed speed exceeds this amount
     pub trace_miss_speed_mps_tol: f64,
+    /// threshold for triggering warning log message if achieved elapsed time
+    /// relative to prescribed elapsed time exceeds this fractional amount
     pub trace_miss_time_tol: f64,
+    /// threshold for triggering warning log message if achieved distance
+    /// relative to prescribed distance exceeds this fractional amount
     pub trace_miss_dist_tol: f64,
+    /// max allowable number of HEV SOC iterations
     pub sim_count_max: usize,
+    /// newton solver gain
     pub newton_gain: f64,
+    /// newton solver max iterations
     pub newton_max_iter: u32,
+    /// newton solver tolerance
     pub newton_xtol: f64,
+    /// tolerance for energy audit error warning, i.e. 0.1%
     pub energy_audit_error_tol: f64,
+    // Eco-Coasting Maneuver Parameters
+    /// if true, coasting to stops are allowed
     pub coast_allow: bool,
+    /// if true, coasting vehicle can eclipse the shadow trace (i.e., reference vehicle in front)
     pub coast_allow_passing: bool,
+    /// maximum allowable speed under coast (m/s)
     pub coast_max_speed_m_per_s: f64,
+    /// acceleration assumed during braking for coast maneuvers (m/s2). note: should be negative
     pub coast_brake_accel_m_per_s2: f64,
+    /// speed when friction braking will initiate during coasting maneuvers (m/s)
     pub coast_brake_start_speed_m_per_s: f64,
+    /// initiates coast when vehicle hits this speed if > 0; this is mainly for forceing coasting to initiate for testing. (m/s)
     pub coast_start_speed_m_per_s: f64,
+    /// "look-ahead" time for speed changes to be considered to feature coasting to hit a given stopping distance mark (s)
     pub coast_time_horizon_for_adjustment_s: f64,
-    pub idm_allow: bool,
     // IDM - Intelligent Driver Model, Adaptive Cruise Control version
+    /// if true, initiates the IDM - Intelligent Driver Model, Adaptive Cruise Control version
+    pub idm_allow: bool,
+    /// IDM algorithm: desired speed (m/s)
     pub idm_v_desired_m_per_s: f64,
+    /// IDM algorithm: headway time desired to vehicle in front (s)
     pub idm_dt_headway_s: f64,
+    /// IDM algorithm: minimum desired gap between vehicle and lead vehicle (m)
     pub idm_minimum_gap_m: f64,
+    /// IDM algorithm: delta parameter
     pub idm_delta: f64,
+    /// IDM algorithm: acceleration parameter
     pub idm_accel_m_per_s2: f64,
+    /// IDM algorithm: deceleration parameter
     pub idm_decel_m_per_s2: f64,
+    /// IDM algorithm: a way to specify desired speed by course distance
+    /// traveled. Can simulate changing speed limits over a driving cycle
+    /// optional list of (distance (m), desired speed (m/s))
     pub idm_v_desired_in_m_per_s_by_distance_m: Option<Vec<(f64, f64)>>,
     // Other, Misc.
+    /// EPA fuel economy adjustment parameters; maximum EPA adjustment factor
     pub max_epa_adj: f64,
     #[serde(skip)]
     pub orphaned: bool,
@@ -67,20 +108,20 @@ impl Default for RustSimDriveParams {
         // if true, missed trace correction is active, default = false
         let missed_trace_correction = false;
         // maximum time dilation factor to "catch up" with trace -- e.g. 1.0 means 100% increase in step size
-        let max_time_dilation: f64 = 1.0;
+        let max_time_dilation = 1.0;
         // minimum time dilation margin to let trace "catch up" -- e.g. -0.5 means 50% reduction in step size
-        let min_time_dilation: f64 = -0.5;
-        let time_dilation_tol: f64 = 5e-4; // convergence criteria for time dilation
-        let max_trace_miss_iters: u32 = 5; // number of iterations to achieve time dilation correction
-        let trace_miss_speed_mps_tol: f64 = 1.0; // # threshold of error in speed [m/s] that triggers warning
-        let trace_miss_time_tol: f64 = 1e-3; // threshold for printing warning when time dilation is active
-        let trace_miss_dist_tol: f64 = 1e-3; // threshold of fractional eror in distance that triggers warning
-        let sim_count_max: usize = 30; // max allowable number of HEV SOC iterations
-        let newton_gain: f64 = 0.9; // newton solver gain
-        let newton_max_iter: u32 = 100; // newton solver max iterations
-        let newton_xtol: f64 = 1e-9; // newton solver tolerance
-        let energy_audit_error_tol: f64 = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
-                                                 // Coasting
+        let min_time_dilation = -0.5;
+        let time_dilation_tol = 5e-4; // convergence criteria for time dilation
+        let max_trace_miss_iters = 5; // number of iterations to achieve time dilation correction
+        let trace_miss_speed_mps_tol = 1.0; // # threshold of error in speed [m/s] that triggers warning
+        let trace_miss_time_tol = 1e-3; // threshold for printing warning when time dilation is active
+        let trace_miss_dist_tol = 1e-3; // threshold of fractional eror in distance that triggers warning
+        let sim_count_max = 30; // max allowable number of HEV SOC iterations
+        let newton_gain = 0.9; // newton solver gain
+        let newton_max_iter = 100; // newton solver max iterations
+        let newton_xtol = 1e-9; // newton solver tolerance
+        let energy_audit_error_tol = 0.002; // tolerance for energy audit error warning, i.e. 0.1%
+                                            // Coasting
         let coast_allow = false;
         let coast_allow_passing = false;
         let coast_max_speed_m_per_s = 40.0;
@@ -99,7 +140,7 @@ impl Default for RustSimDriveParams {
         let idm_decel_m_per_s2 = 1.5;
         let idm_v_desired_in_m_per_s_by_distance_m = None;
         // EPA fuel economy adjustment parameters
-        let max_epa_adj: f64 = 0.3; // maximum EPA adjustment factor
+        let max_epa_adj = 0.3; // maximum EPA adjustment factor
         Self {
             favor_grade_accuracy,
             missed_trace_correction,
@@ -207,9 +248,9 @@ impl Default for RustSimDriveParams {
         blend_factor: Option<f64>,
         min_target_speed_m_per_s: Option<f64>,
     ) -> anyhow::Result<()> {
-        let by_microtrip: bool = by_microtrip.unwrap_or(false);
-        let extend_fraction: f64 = extend_fraction.unwrap_or(0.1);
-        let blend_factor: f64 = blend_factor.unwrap_or(0.0);
+        let by_microtrip = by_microtrip.unwrap_or(false);
+        let extend_fraction = extend_fraction.unwrap_or(0.1);
+        let blend_factor = blend_factor.unwrap_or(0.0);
         let min_target_speed_m_per_s = min_target_speed_m_per_s.unwrap_or(8.0);
             self.activate_eco_cruise_rust(
                 by_microtrip, extend_fraction, blend_factor, min_target_speed_m_per_s)
@@ -533,9 +574,16 @@ pub struct RustSimDrive {
     pub fc_kj: f64,
     pub net_kj: f64,
     pub ke_kj: f64,
+    /// `true` when the vehicle misses the prescribed speed trace
     pub trace_miss: bool,
+    /// fractional difference between achieved cumulative distance
+    /// and prescribed cumulative distance
     pub trace_miss_dist_frac: f64,
+    /// fractional difference between achieved time when trace miss is
+    /// and prescribed cumulative distance
     pub trace_miss_time_frac: f64,
+    /// Maximum speed by which vehicle's speed falls behind prescribed
+    /// speed trace
     pub trace_miss_speed_mps: f64,
     #[serde(skip)]
     pub orphaned: bool,
@@ -548,7 +596,12 @@ pub struct RustSimDrive {
     aux_in_kw_override: Option<Vec<f64>>,
 }
 
-impl SerdeAPI for RustSimDrive {}
+impl SerdeAPI for RustSimDrive {
+    fn init(&mut self) -> anyhow::Result<()> {
+        self.veh.init()?;
+        Ok(())
+    }
+}
 
 // #[cfg(test)]
 // mod tests {
@@ -566,10 +619,10 @@ impl SerdeAPI for RustSimDrive {}
 
 //         // SIM DRIVE
 //         let mut sd = RustSimDrive::__new__(cyc, veh);
-//         let init_soc: f64 = 0.5;
+//         let init_soc = 0.5;
 //         sd.walk(init_soc);
 
-//         let expected_final_i: usize = cycle_length;
+//         let expected_final_i = cycle_length;
 //         assert_eq!(sd.i, expected_final_i);
 //     }
 // }

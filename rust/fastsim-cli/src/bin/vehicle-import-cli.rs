@@ -1,7 +1,7 @@
 use anyhow::{self, Context};
 use clap::Parser;
 use fastsim_core::utils::create_project_subdir;
-use fastsim_core::vehicle_utils::{get_default_cache_url, import_and_save_all_vehicles_from_file};
+use fastsim_core::vehicle_import::{get_default_cache_url, import_and_save_all_vehicles_from_file};
 use std::fs;
 use std::path::{Path, PathBuf};
 

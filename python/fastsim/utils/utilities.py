@@ -117,8 +117,28 @@ def set_log_level(level: str | int) -> int:
         Previous log level
     """
     # Map string name to logging level
+
+    allowed_args = [
+        ("CRITICAL", 50),
+        ("ERROR", 40),
+        ("WARNING", 30),
+        ("INFO", 20),
+        ("DEBUG", 10),
+        ("NOTSET", 0),
+        # no logging of anything ever!
+        ("NONE", logging.CRITICAL + 1),
+    ]
+    allowed_str_args = [a[0] for a in allowed_args]
+    allowed_int_args = [a[1] for a in allowed_args]
+
+    err_str = f"Invalid arg: '{level}'.  See doc string:\n{set_log_level.__doc__}"
+
     if isinstance(level, str):
-        level = logging._nameToLevel[level]
+        assert level.upper() in allowed_str_args, err_str
+        level = logging._nameToLevel[level.upper()]
+    else:
+        assert level in allowed_int_args, err_str
+
     # Extract previous log level and set new log level
     fastsim_logger = logging.getLogger("fastsim")
     previous_level = fastsim_logger.level
@@ -406,6 +426,12 @@ def show_plots() -> bool:
     """
     return os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
 
+def do_tests() -> bool:
+    """
+    Returns true if plots should be displayed
+    """
+    return os.environ.get("SHOW_PLOTS", "false").lower() == "true"     
+
 def copy_demo_files(path_for_copies: Path=Path("demos")):
     """
     Copies demo files from demos folder into specified local directory
@@ -419,14 +445,14 @@ def copy_demo_files(path_for_copies: Path=Path("demos")):
     """
     v = f"v{fsim.__version__}"
     current_demo_path = fsim.package_root() / "demos"
-    assert path_for_copies.resolve() != Path(current_demo_path), "Can't copy demos inside site-packages"
+    assert Path(path_for_copies).resolve() != Path(current_demo_path), "Can't copy demos inside site-packages"
     demo_files = list(current_demo_path.glob('*demo*.py'))
     test_demo_files = list(current_demo_path.glob('*test*.py'))
     for file in test_demo_files:
         demo_files.remove(file)
     for file in demo_files:
         if os.path.exists(path_for_copies):
-            dest_file = path_for_copies / file.name
+            dest_file = Path(path_for_copies) / file.name
             shutil.copy(file, path_for_copies)
             with open(dest_file, "r+") as file:
                 file_content = file.readlines()
@@ -438,7 +464,7 @@ def copy_demo_files(path_for_copies: Path=Path("demos")):
             print(f"Saved {dest_file.name} to {dest_file}")
         else:
             os.makedirs(path_for_copies)
-            dest_file = path_for_copies / file.name
+            dest_file = Path(path_for_copies) / file.name
             shutil.copy(file, path_for_copies)
             with open(dest_file, "r+") as file:
                 file_content = file.readlines()

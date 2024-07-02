@@ -10,6 +10,7 @@ jobs:
   test:
       runs-on: ubuntu-latest
 
+     
       strategy:
         fail-fast: true
         matrix:
@@ -36,6 +37,9 @@ jobs:
         run: |
           cd rust/ && cargo test
 
+      # TODO: For some reason, `-e` is required in the pip install command
+      # This slows down installation, so should be fixed
+      # https://github.nrel.gov/MBAP/fastsim/issues/310
       - name: Python unit tests 
         run: |
           pip install -e ".[dev]" && pytest -v python/fastsim/tests/ 

@@ -47,22 +47,11 @@ veh = fastsim.vehicle.Vehicle.from_file("2022_TOYOTA_Yaris_Hybrid_Mid.csv")
 
 # %%
 # Load WLTC cycle phases
-cyc_low = fastsim.cycle.Cycle.from_file("wltc_class3_low3.csv")
-cyc_med = fastsim.cycle.Cycle.from_file("wltc_class3_med3b.csv")
-cyc_high = fastsim.cycle.Cycle.from_file("wltc_class3_high3b.csv")
-cyc_extrahigh = fastsim.cycle.Cycle.from_file("wltc_class3_extra_high3.csv")
-
-# %%
-# Generate combined cycle
-cyc_combined_dict = fastsim.cycle.concat(
-    [
-        cyc_low.to_dict(),
-        cyc_med.to_dict(),
-        cyc_high.to_dict(),
-        cyc_extrahigh.to_dict(),
-    ]
-)
-cyc = fastsim.cycle.Cycle.from_dict(cyc_combined_dict)
+cyc_low = fastsim.cycle.Cycle.from_file("wltc_low_3.csv")
+cyc_med = fastsim.cycle.Cycle.from_file("wltc_medium_3b.csv")
+cyc_high = fastsim.cycle.Cycle.from_file("wltc_high_3b.csv")
+cyc_extrahigh = fastsim.cycle.Cycle.from_file("wltc_extrahigh_3.csv")
+cyc = fastsim.cycle.Cycle.from_file("wltc_3b.csv")
 
 # %%
 # Simulate combined cycle

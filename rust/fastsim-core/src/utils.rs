@@ -1,12 +1,16 @@
 //! Module containing miscellaneous utility functions.
 
+#[cfg(feature = "default")]
 use directories::ProjectDirs;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use ndarray::*;
-use ndarray_stats::QuantileExt;
 use regex::Regex;
 use std::collections::HashSet;
+#[cfg(feature = "default")]
+use std::io::Write;
+#[cfg(feature = "default")]
+use curl::easy::Easy;
 
 use crate::imports::*;
 #[cfg(feature = "pyo3")]
@@ -21,7 +25,7 @@ pub fn resources_path() -> PathBuf {
 
 /// Error message for when user attempts to set value in a nested struct.
 pub const NESTED_STRUCT_ERR: &str = "Setting field value on nested struct not allowed.
-Assign nested struct to own variable, run the `reset_orphaned` method, and then 
+Assign nested struct to own variable, run the `reset_orphaned` method, and then
 modify field value. Then set the nested struct back inside containing struct.";
 
 pub fn diff(x: &Array1<f64>) -> Array1<f64> {
@@ -103,8 +107,8 @@ pub fn ndarrcumsum(arr: &Array1<f64>) -> Array1<f64> {
 
 /// return the unique values of the array
 pub fn ndarrunique(arr: &Array1<f64>) -> Array1<f64> {
-    let mut set: HashSet<usize> = HashSet::new();
-    let mut new_arr: Vec<f64> = Vec::new();
+    let mut set = HashSet::new();
+    let mut new_arr = Vec::new();
     let x_min = arr.min().unwrap();
     let x_max = arr.max().unwrap();
     let dx = if x_max == x_min { 1.0 } else { x_max - x_min };
@@ -128,8 +132,8 @@ pub fn interpolate(
     extrapolate: bool,
 ) -> f64 {
     assert!(x_data_in.len() == y_data_in.len());
-    let mut new_x_data: Vec<f64> = Vec::new();
-    let mut new_y_data: Vec<f64> = Vec::new();
+    let mut new_x_data = Vec::new();
+    let mut new_y_data = Vec::new();
     let mut last_x = x_data_in[0];
     for idx in 0..x_data_in.len() {
         if idx == 0 || (idx > 0 && x_data_in[idx] > last_x) {
@@ -176,8 +180,8 @@ pub fn interpolate_vectors(
     extrapolate: bool,
 ) -> f64 {
     assert!(x_data_in.len() == y_data_in.len());
-    let mut new_x_data: Vec<f64> = Vec::new();
-    let mut new_y_data: Vec<f64> = Vec::new();
+    let mut new_x_data = Vec::new();
+    let mut new_y_data = Vec::new();
     let mut last_x = x_data_in[0];
     for idx in 0..x_data_in.len() {
         if idx == 0 || (idx > 0 && x_data_in[idx] > last_x) {
@@ -298,6 +302,33 @@ pub fn get_index_permutations(shape: &[usize]) -> Vec<Vec<usize>> {
 ///     [0.0, 2.0, 1.9], // (x0, y0), (x0, y1), (x0, y2)
 ///     [2.0, 4.0, 3.1], // (x1, y0), (x1, y1), (x1, y2)
 ///     [5.0, 0.0, 1.4], // (x2, y0), (x2, y1), (x2, y2)
+/// ]
+/// .into_dyn();
+///
+/// let point_a = [0.5, 0.5];
+/// assert_eq!(multilinear(&point_a, &grid, &values).unwrap(), 2.0);
+/// let point_b = [1.52, 0.36];
+/// assert_eq!(multilinear(&point_b, &grid, &values).unwrap(), 2.9696);
+/// let point_c = [grid[0][2], grid[1][1]]; // returns value at (x2, y1)
+/// assert_eq!(
+///     multilinear(&point_c, &grid, &values).unwrap(),
+///     values[[2, 1]]
+/// );
+/// ```
+///
+/// ## 2D Example with non-uniform dimension sizes
+/// ```rust
+/// use ndarray::prelude::*;
+/// use fastsim_core::utils::multilinear;
+///
+/// let grid = [
+///     vec![0.0, 1.0, 2.0], // x0, x1, x2
+///     vec![0.0, 1.0], // y0, y1
+/// ];
+/// let values = array![
+///     [0.0, 2.0], // f(x0, y0), f(x0, y1)
+///     [2.0, 4.0], // f(x1, y0), f(x1, y1)
+///     [5.0, 0.0], // f(x2, y0), f(x2, y1)
 /// ]
 /// .into_dyn();
 ///
@@ -515,7 +546,46 @@ pub fn tire_code_to_radius<S: AsRef<str>>(tire_code: S) -> anyhow::Result<f64> {
     Ok(radius_mm / 1000.0)
 }
 
+/// Assumes the parent directory exists. Assumes file doesn't exist (i.e., newly created) or that it will be truncated if it does.
+#[cfg(feature = "default")]
+pub fn download_file_from_url(url: &str, file_path: &Path) -> anyhow::Result<()> {
+    let mut handle = Easy::new();
+    handle.follow_location(true)?;
+    handle.url(url)?;
+    let mut buffer = Vec::new();
+    {
+        let mut transfer = handle.transfer();
+        transfer.write_function(|data| {
+            buffer.extend_from_slice(data);
+            Ok(data.len())
+        })?;
+        let result = transfer.perform();
+        if result.is_err() {
+            return Err(anyhow!("Could not download from {}", url));
+        }
+    }
+    println!("Downloaded data from {}; bytes: {}", url, buffer.len());
+    if buffer.is_empty() {
+        return Err(anyhow!("No data available from {url}"));
+    }
+    {
+        let mut file = match File::create(file_path) {
+            Err(why) => {
+                return Err(anyhow!(
+                    "couldn't open {}: {}",
+                    file_path.to_str().unwrap(),
+                    why
+                ))
+            }
+            Ok(file) => file,
+        };
+        file.write_all(buffer.as_slice())?;
+    }
+    Ok(())
+}
+
 /// Creates/gets an OS-specific data directory and returns the path.
+#[cfg(feature = "default")]
 pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathBuf> {
     let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
         anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
@@ -525,36 +595,92 @@ pub fn create_project_subdir<P: AsRef<Path>>(subpath: P) -> anyhow::Result<PathB
     Ok(path)
 }
 
+/// Returns the path to the OS-specific data directory, if it exists.
+#[cfg(feature = "default")]
+pub fn path_to_cache() -> anyhow::Result<PathBuf> {
+    let proj_dirs = ProjectDirs::from("gov", "NREL", "fastsim").ok_or_else(|| {
+        anyhow!("Could not build path to project directory: \"gov.NREL.fastsim\"")
+    })?;
+    Ok(PathBuf::from(proj_dirs.config_dir()))
+}
+
+/// Deletes FASTSim data directory, clearing its contents. If subpath is
+/// provided, will only delete the subdirectory pointed to by the subpath,
+/// rather than deleting the whole data directory. If the subpath is an empty
+/// string, deletes the entire FASTSim directory.
+/// USE WITH CAUTION, as this function deletes ALL objects stored in the FASTSim
+/// data directory or provided subdirectory.
+/// # Arguments
+/// - subpath: Subpath to a subdirectory within the FASTSim data directory. If
+///   an empty string, the function will delete the whole FASTSim data
+///   directory, clearing all its contents.
+/// Note: it is not possible to delete single files using this function, only
+/// directories. If a single file needs deleting, the path_to_cache() function
+/// can be used to find the FASTSim data directory location. The file can then
+/// be found and manually deleted.
+#[cfg(feature = "default")]
+pub fn clear_cache<P: AsRef<Path>>(subpath: P) -> anyhow::Result<()> {
+    let path = path_to_cache()?.join(subpath);
+    Ok(std::fs::remove_dir_all(path)?)
+}
+
+/// takes an object from a url and saves it in the FASTSim data directory in a
+/// rust_objects folder
+/// WARNING: if there is a file already in the data subdirectory with the same
+/// name, it will be replaced by the new file
+/// to save to a folder other than rust_objects, define constant CACHE_FOLDER to
+/// be the desired folder name
+/// # Arguments
+/// - url: url (either as a string or url type) to object
+/// - subpath: path to subdirectory within FASTSim data directory. Suggested
+/// paths are "vehicles" for a RustVehicle, "cycles" for a RustCycle, and
+/// "rust_objects" for other Rust objects.
+/// Note: In order for the file to be save in the proper format, the URL needs
+/// to be a URL pointing directly to a file, for example a raw github URL.
+#[cfg(feature = "default")]
+pub fn url_to_cache<S: AsRef<str>, P: AsRef<Path>>(url: S, subpath: P) -> anyhow::Result<()> {
+    let url = url::Url::parse(url.as_ref())?;
+    let file_name = url
+        .path_segments()
+        .and_then(|segments| segments.last())
+        .with_context(|| "Could not parse filename from URL: {url:?}")?;
+    let data_subdirectory = create_project_subdir(subpath)
+        .with_context(|| "Could not find or build Fastsim data subdirectory.")?;
+    let file_path = data_subdirectory.join(file_name);
+    download_file_from_url(url.as_ref(), &file_path)?;
+    Ok(())
+}
+
 #[cfg(feature = "pyo3")]
 pub mod array_wrappers {
     use crate::proc_macros::add_pyo3_api;
 
     use super::*;
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayU32(Array1<u32>);
     impl SerdeAPI for Pyo3ArrayU32 {}
 
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayI32(Array1<i32>);
     impl SerdeAPI for Pyo3ArrayI32 {}
 
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3ArrayF64(Array1<f64>);
     impl SerdeAPI for Pyo3ArrayF64 {}
 
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
     pub struct Pyo3ArrayBool(Array1<bool>);
     impl SerdeAPI for Pyo3ArrayBool {}
 
-    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.  
+    /// Helper struct to allow Rust to return a Python class that will indicate to the user that it's a clone.
     #[add_pyo3_api]
     #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
     pub struct Pyo3VecF64(Vec<f64>);
@@ -576,33 +702,33 @@ mod tests {
 
     #[test]
     fn test_that_first_eq_finds_the_right_index_when_one_exists() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_eq(&xs, 3.3).unwrap();
-        let expected_idx: usize = 2;
+        let expected_idx = 2;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_eq_yields_last_index_when_nothing_found() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_eq(&xs, 7.0).unwrap();
-        let expected_idx: usize = xs.len() - 1;
+        let expected_idx = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_grtr_finds_the_right_index_when_one_exists() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_grtr(&xs, 3.0).unwrap();
-        let expected_idx: usize = 2;
+        let expected_idx = 2;
         assert_eq!(idx, expected_idx)
     }
 
     #[test]
     fn test_that_first_grtr_yields_last_index_when_nothing_found() {
-        let xs: [f64; 5] = [0.0, 1.2, 3.3, 4.4, 6.6];
+        let xs = [0.0, 1.2, 3.3, 4.4, 6.6];
         let idx = first_grtr(&xs, 7.0).unwrap();
-        let expected_idx: usize = xs.len() - 1;
+        let expected_idx = xs.len() - 1;
         assert_eq!(idx, expected_idx)
     }
 
@@ -641,7 +767,7 @@ mod tests {
     }
     // #[test]
     // fn test_that_argmax_does_the_right_thing_on_an_empty_array(){
-    //     let xs: Array1<bool> = Array::from_vec(vec![]);
+    //     let xs = Array::from_vec(vec![]);
     //     let idx = first_grtr(&xs);
     //     // unclear what should happen here; np.argmax throws a ValueError in the case of an empty vector
     //     // ... possibly we should return an Option type?
@@ -731,5 +857,29 @@ mod tests {
         assert_eq!(expected_y_lookup, y_lookup);
         let y_lookup = interpolate_vectors(&x, &xs.to_vec(), &ys.to_vec(), false);
         assert_eq!(expected_y_lookup, y_lookup);
+    }
+
+    #[test]
+    fn test_path_to_cache() {
+        let path = path_to_cache().unwrap();
+        println!("{:?}", path);
+    }
+
+    #[test]
+    fn test_clear_cache() {
+        let temp_sub_dir = tempfile::TempDir::new_in(create_project_subdir("").unwrap()).unwrap();
+        let sub_dir_path = temp_sub_dir.path().to_str().unwrap();
+        let still_exists_before = std::fs::metadata(sub_dir_path).is_ok();
+        assert_eq!(still_exists_before, true);
+        url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", "").unwrap();
+        clear_cache(sub_dir_path).unwrap();
+        let still_exists = std::fs::metadata(sub_dir_path).is_ok();
+        assert_eq!(still_exists, false);
+        let path_to_vehicle = path_to_cache()
+            .unwrap()
+            .join("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
+        let vehicle_still_exists = std::fs::metadata(&path_to_vehicle).is_ok();
+        assert_eq!(vehicle_still_exists, true);
+        std::fs::remove_file(path_to_vehicle).unwrap();
     }
 }
