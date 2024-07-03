@@ -2679,12 +2679,10 @@ class SimulationDrive:
    'Transmission Output Power Achieved': 'trans_kw_out_ach'
     }
 
-    def __init__(self, cyc, mph_ach, dist_m, signal_data):
-        self.cyc = cyc  # e.g., cyc.time_s contains time series data
-        self.mph_ach = mph_ach  # Achieved speed data
-        self.dist_m = dist_m  # Distance data
+    def __init__(self, sde):
+        self.sde = sde  # Set SimDrive attribute
         # Populate signal data attributes
-        for key, value in signal_data.items():
+        for key, value in self.available_signals.items():
             setattr(self, key, value)
 
     def fuzzy_match(self, signal_name, feeling_lucky=False):
@@ -2726,19 +2724,19 @@ class SimulationDrive:
                 matched_signals.append(sig)
 
         # Check if required attributes exist in self
-        if not hasattr(self.cyc, 'time_s'):
+        if not hasattr(self.sde.cyc, 'time_s'):
             raise AttributeError("Attribute 'self.cyc.time_s' is required but not found.")
-        if speed_trace and not hasattr(self, 'mph_ach'):
+        if speed_trace and not hasattr(self.sde, 'mph_ach'):
             raise AttributeError("Attribute 'self.mph_ach' is required for speed trace but not found.")
         
         # Prepare data for plotting
         plot_data = []
         for sig in matched_signals:
             signal_key = self.available_signals[sig]
-            if not hasattr(self, signal_key):
+            if not hasattr(self.sde, signal_key):
                 print(f"Data for signal '{sig}' not found.")
                 return None
-            plot_data.append((getattr(self, signal_key), sig))
+            plot_data.append((getattr(self.sde, signal_key), sig))
         
         # Default line styles, colors, and markers
         if line_styles is None:
@@ -2752,10 +2750,10 @@ class SimulationDrive:
         if type == 'temporal':
             fig, axs = plt.subplots(len(plot_data) + (1 if speed_trace else 0), 1, figsize=(12, 8), sharex=True)
             for idx, (data, label) in enumerate(plot_data):
-                axs[idx].plot(self.cyc.time_s, data, label=label, linestyle=line_styles[idx], color=colors[idx], marker=markers[idx])
+                axs[idx].plot(self.sde.cyc.time_s, data, label=label, linestyle=line_styles[idx], color=colors[idx], marker=markers[idx])
                 axs[idx].set_ylabel(label)
             if speed_trace:
-                axs[-1].plot(self.cyc.time_s, self.mph_ach, label='Achieved Speed (MPH)', linestyle='-', color='black', marker='')
+                axs[-1].plot(self.sde.cyc.time_s, self.sde.mph_ach, label='Achieved Speed (MPH)', linestyle='-', color='black', marker='')
                 axs[-1].set_ylabel('Achieved Speed (MPH)')
             fig.suptitle('Temporal Performance Comparison')
             plt.xlabel('Time (s)')
@@ -2765,7 +2763,7 @@ class SimulationDrive:
         elif type == 'spatial':
             fig, ax = plt.subplots(figsize=(12, 8))
             for idx, (data, label) in enumerate(plot_data):
-                ax.plot(self.dist_m, data, label=label, linestyle=line_styles[idx], color=colors[idx], marker=markers[idx])
+                ax.plot(self.sde.dist_m, data, label=label, linestyle=line_styles[idx], color=colors[idx], marker=markers[idx])
             ax.set_xlabel('Distance (m)')
             ax.set_ylabel('Signal Value')
             ax.set_title('Spatial Performance Comparison')
