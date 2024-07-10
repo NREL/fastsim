@@ -98,6 +98,10 @@ impl SimDrive {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
+        if i == 36 {
+            // TODO: be sure to delete this whole block before commiting
+            println!("hold on to your butts");
+        }
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -370,7 +374,8 @@ impl Default for TraceMissTolerance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vehicle::vehicle::tests::*;
+    use crate::vehicle::vehicle_model::tests::*;
+
     #[test]
     fn test_sim_drive_conv() {
         let _veh = mock_f2_conv_veh();
@@ -384,6 +389,7 @@ mod tests {
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
     }
+
     #[test]
     fn test_sim_drive_hev() {
         let _veh = mock_f2_hev();

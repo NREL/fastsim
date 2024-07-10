@@ -1,6 +1,6 @@
 use crate::prelude::{ElectricMachineState, FuelConverterState};
 
-use super::{vehicle::VehicleState, *};
+use super::{vehicle_model::VehicleState, *};
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, HistoryMethods)]
 /// Hybrid vehicle with both engine and reversible energy storage (aka battery)
@@ -69,7 +69,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
-        veh_state: &VehicleState,
+        _veh_state: &VehicleState,
         _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {

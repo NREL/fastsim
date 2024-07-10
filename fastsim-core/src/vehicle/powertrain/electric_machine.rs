@@ -272,10 +272,6 @@ impl ElectricMachine {
     impl_get_set_eff_range!();
 }
 
-use fastsim_2::params::{
-    LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF, SMALL_MOTOR_POWER_KW,
-};
-
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
