@@ -93,90 +93,166 @@ impl Init for Cycle {
 }
 
 impl SerdeAPI for Cycle {
-    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "bin", "csv"];
-    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &["yaml", "json", "csv"];
+    const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &[
+        #[cfg(feature = "bincode")]
+        "bin",
+        #[cfg(feature = "csv")]
+        "csv",
+        #[cfg(feature = "json")]
+        "json",
+        #[cfg(feature = "toml")]
+        "toml",
+        #[cfg(feature = "yaml")]
+        "yaml",
+    ];
+    const ACCEPTED_STR_FORMATS: &'static [&'static str] = &[
+        #[cfg(feature = "csv")]
+        "csv",
+        #[cfg(feature = "json")]
+        "json",
+        #[cfg(feature = "toml")]
+        "toml",
+        #[cfg(feature = "yaml")]
+        "yaml",
+    ];
+    const RESOURCE_PREFIX: &'static str = "cycles";
+    #[cfg(feature = "cache")]
+    const CACHE_FOLDER: &'static str = "cycles";
 
-    fn to_file<P: AsRef<Path>>(&self, filepath: P) -> anyhow::Result<()> {
-        let filepath = filepath.as_ref();
-        let extension = filepath
-            .extension()
-            .and_then(OsStr::to_str)
-            .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        match extension.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => serde_yaml::to_writer(&File::create(filepath)?, self)?,
-            "json" => serde_json::to_writer(&File::create(filepath)?, self)?,
-            "bin" => bincode::serialize_into(&File::create(filepath)?, self)?,
-            "csv" => self.write_csv(&mut csv::Writer::from_path(filepath)?)?,
+    /// Write (serialize) an object into anything that implements [`std::io::Write`]
+    ///
+    /// # Arguments:
+    ///
+    /// * `wtr` - The writer into which to write object data
+    /// * `format` - The target format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
+    ///
+    fn to_writer<W: std::io::Write>(&self, mut wtr: W, format: &str) -> anyhow::Result<()> {
+        match format.trim_start_matches('.').to_lowercase().as_str() {
+            #[cfg(feature = "bincode")]
+            "bin" | "bincode" => bincode::serialize_into(wtr, self)?,
+            #[cfg(feature = "csv")]
+            "csv" => {
+                let mut wtr = csv::Writer::from_writer(wtr);
+                for i in 0..self.len() {
+                    wtr.serialize(CycleElement {
+                        time: self.time[i],
+                        speed: self.speed[i],
+                        grade: Some(self.grade[i]),
+                        pwr_max_charge: Some(self.pwr_max_chrg[i]),
+                    })?;
+                }
+                wtr.flush()?
+            }
+            #[cfg(feature = "json")]
+            "json" => serde_json::to_writer(wtr, self)?,
+            #[cfg(feature = "toml")]
+            "toml" => {
+                let toml_string = self.to_toml()?;
+                wtr.write_all(toml_string.as_bytes())?;
+            }
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
             _ => bail!(
-                "Unsupported format {extension:?}, must be one of {:?}",
+                "Unsupported format {format:?}, must be one of {:?}",
                 Self::ACCEPTED_BYTE_FORMATS
             ),
         }
         Ok(())
     }
 
-    fn to_str(&self, format: &str) -> anyhow::Result<String> {
-        Ok(
-            match format.trim_start_matches('.').to_lowercase().as_str() {
-                "yaml" | "yml" => self.to_yaml()?,
-                "json" => self.to_json()?,
-                "csv" => {
-                    let mut wtr = csv::Writer::from_writer(Vec::with_capacity(self.len()));
-                    self.write_csv(&mut wtr)
-                        .with_context(|| anyhow!(format_dbg!()))?;
-                    String::from_utf8(wtr.into_inner()?)?
-                }
-                _ => {
-                    bail!(
-                        "Unsupported format {format:?}, must be one of {:?}",
-                        Self::ACCEPTED_STR_FORMATS
-                    )
-                }
-            },
-        )
-    }
-
-    fn from_str(contents: &str, format: &str) -> anyhow::Result<Self> {
-        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => Self::from_yaml(contents),
-            "json" => Self::from_json(contents),
-            "csv" => Self::from_reader(contents.as_bytes(), "csv"),
-            _ => bail!(
-                "Unsupported format {format:?}, must be one of {:?}",
-                Self::ACCEPTED_STR_FORMATS
-            ),
-        }?;
-        deserialized
-            .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
-        Ok(deserialized)
-    }
-
-    fn from_reader<R: std::io::Read>(rdr: R, format: &str) -> anyhow::Result<Self> {
-        let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
-            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
-            "json" => serde_json::from_reader(rdr)?,
-            "bin" => bincode::deserialize_from(rdr)?,
+    /// Deserialize an object from anything that implements [`std::io::Read`]
+    ///
+    /// # Arguments:
+    ///
+    /// * `rdr` - The reader from which to read object data
+    /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
+    ///
+    fn from_reader<R: std::io::Read>(
+        mut rdr: R,
+        format: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
+        let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
+            #[cfg(feature = "bincode")]
+            "bin" | "bincode" => bincode::deserialize_from(rdr)?,
+            #[cfg(feature = "csv")]
             "csv" => {
                 // Create empty cycle to be populated
                 let mut cyc = Self::default();
                 let mut rdr = csv::Reader::from_reader(rdr);
                 for result in rdr.deserialize() {
-                    cyc.push(result?).with_context(|| anyhow!(format_dbg!()))?;
+                    cyc.push(result?)?;
                 }
                 cyc
             }
-            _ => {
-                bail!(
-                    "Unsupported format {format:?}, must be one of {:?}",
-                    Self::ACCEPTED_BYTE_FORMATS
-                )
+            #[cfg(feature = "json")]
+            "json" => serde_json::from_reader(rdr)?,
+            #[cfg(feature = "tonl")]
+            "toml" => {
+                let mut buf = String::new();
+                rdr.read_to_string(&mut buf)?;
+                Self::from_toml(buf, skip_init)?
             }
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
+            _ => bail!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_BYTE_FORMATS
+            ),
         };
-        deserialized
-            .init()
-            .with_context(|| anyhow!(format_dbg!()))?;
+        if !skip_init {
+            deserialized.init()?;
+        }
         Ok(deserialized)
+    }
+
+    /// Write (serialize) an object into a string
+    ///
+    /// # Arguments:
+    ///
+    /// * `format` - The target format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
+    ///
+    fn to_str(&self, format: &str) -> anyhow::Result<String> {
+        match format.trim_start_matches('.').to_lowercase().as_str() {
+            #[cfg(feature = "csv")]
+            "csv" => self.to_csv(),
+            #[cfg(feature = "json")]
+            "json" => self.to_json(),
+            #[cfg(feature = "toml")]
+            "toml" => self.to_toml(),
+            #[cfg(feature = "yaml")]
+            "yaml" | "yml" => self.to_yaml(),
+            _ => bail!(
+                "Unsupported format {format:?}, must be one of {:?}",
+                Self::ACCEPTED_STR_FORMATS
+            ),
+        }
+    }
+
+    /// Read (deserialize) an object from a string
+    ///
+    /// # Arguments:
+    ///
+    /// * `contents` - The string containing the object data
+    /// * `format` - The source format, any of those listed in [`ACCEPTED_STR_FORMATS`](`SerdeAPI::ACCEPTED_STR_FORMATS`)
+    ///
+    fn from_str<S: AsRef<str>>(contents: S, format: &str, skip_init: bool) -> anyhow::Result<Self> {
+        Ok(
+            match format.trim_start_matches('.').to_lowercase().as_str() {
+                #[cfg(feature = "csv")]
+                "csv" => Self::from_csv(contents, skip_init)?,
+                #[cfg(feature = "json")]
+                "json" => Self::from_json(contents, skip_init)?,
+                #[cfg(feature = "toml")]
+                "toml" => Self::from_toml(contents, skip_init)?,
+                #[cfg(feature = "yaml")]
+                "yaml" | "yml" => Self::from_yaml(contents, skip_init)?,
+                _ => bail!(
+                    "Unsupported format {format:?}, must be one of {:?}",
+                    Self::ACCEPTED_STR_FORMATS
+                ),
+            },
+        )
     }
 }
 
@@ -250,24 +326,27 @@ impl Cycle {
         Ok(())
     }
 
-    /// Serialize cycle data into a CSV writer
+    /// Write (serialize) cycle to a CSV string
+    #[cfg(feature = "csv")]
+    pub fn to_csv(&self) -> anyhow::Result<String> {
+        let mut buf = Vec::with_capacity(self.len());
+        self.to_writer(&mut buf, "csv")?;
+        Ok(String::from_utf8(buf)?)
+    }
+
+    /// Read (deserialize) an object from a CSV string
     ///
     /// # Arguments
     ///
-    /// * `wtr`: The CSV writer to write into
+    /// * `json_str` - JSON-formatted string to deserialize from
     ///
-    fn write_csv<W: std::io::Write>(&self, wtr: &mut csv::Writer<W>) -> anyhow::Result<()> {
-        for i in 0..self.len() {
-            wtr.serialize(CycleElement {
-                time: self.time[i],
-                speed: self.speed[i],
-                grade: Some(self.grade[i]),
-                pwr_max_charge: Some(self.pwr_max_chrg[i]),
-            })
-            .with_context(|| anyhow!(format_dbg!()))?;
+    #[cfg(feature = "csv")]
+    fn from_csv<S: AsRef<str>>(csv_str: S, skip_init: bool) -> anyhow::Result<Self> {
+        let mut csv_de = Self::from_reader(csv_str.as_ref().as_bytes(), "csv", skip_init)?;
+        if !skip_init {
+            csv_de.init()?;
         }
-        wtr.flush().with_context(|| anyhow!(format_dbg!()))?;
-        Ok(())
+        Ok(csv_de)
     }
 
     pub fn to_fastsim2(&self) -> anyhow::Result<Cycle2> {
