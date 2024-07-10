@@ -221,7 +221,10 @@ impl Mass for Vehicle {
     }
 }
 
-impl SerdeAPI for Vehicle {}
+impl SerdeAPI for Vehicle {
+    #[cfg(feature = "resources")]
+    const RESOURCE_PREFIX: &'static str = "vehicles";
+}
 impl Init for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
         let _mass = self.mass().with_context(|| anyhow!(format_dbg!()))?;
@@ -854,6 +857,8 @@ impl Init for VehicleState {}
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[cfg(feature = "yaml")]
     pub(crate) fn mock_f2_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -875,6 +880,7 @@ pub(crate) mod tests {
         veh
     }
 
+    #[cfg(feature = "yaml")]
     pub(crate) fn mock_f2_hev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -895,8 +901,10 @@ pub(crate) mod tests {
         .unwrap();
         veh
     }
+
     /// tests that vehicle can be initialized and that repeating has no net effect
     #[test]
+    #[cfg(feature = "yaml")]
     pub(crate) fn test_conv_veh_init() {
         let veh = mock_f2_conv_veh();
         let mut veh1 = veh.clone();
@@ -906,9 +914,10 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_conv() {
         let veh = mock_f2_conv_veh();
-        let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
             cyc,
@@ -919,9 +928,10 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_hev() {
         let veh = mock_f2_hev();
-        let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
             cyc,
@@ -932,6 +942,7 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(feature = "yaml")]
     fn test_hev_deserialize() {
         let veh = mock_f2_hev();
 
@@ -939,6 +950,7 @@ pub(crate) mod tests {
             project_root::get_project_root()
                 .unwrap()
                 .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
+            false,
         )
         .unwrap();
         assert!(veh == veh_from_file);

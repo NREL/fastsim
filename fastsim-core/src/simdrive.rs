@@ -377,9 +377,10 @@ mod tests {
     use crate::vehicle::vehicle_model::tests::*;
 
     #[test]
+    #[cfg(feature = "resources")]
     fn test_sim_drive_conv() {
         let _veh = mock_f2_conv_veh();
-        let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
+        let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive {
             veh: _veh,
             cyc: _cyc,
@@ -391,9 +392,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "resources")]
     fn test_sim_drive_hev() {
         let _veh = mock_f2_hev();
-        let _cyc = Cycle::from_resource("cycles/udds.csv").unwrap();
+        let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive {
             veh: _veh,
             cyc: _cyc,

@@ -29,7 +29,7 @@ veh = fsim.Vehicle.from_file(
 veh.save_interval = 1
 
 # load cycle from file
-cyc = fsim.Cycle.from_resource("cycles/udds.csv")
+cyc = fsim.Cycle.from_resource("udds.csv")
 
 # instantiate `SimDrive` simulation object
 sd = fsim.SimDrive(veh, cyc)
