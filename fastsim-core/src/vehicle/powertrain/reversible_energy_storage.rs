@@ -58,30 +58,30 @@ const TOL: f64 = 1e-3;
         Ok(())
     }
 
-    #[getter("eff_max")]
-    fn get_eff_max_py(&self) -> f64 {
-        self.get_eff_max()
-    }
+    // #[getter("eff_max")]
+    // fn get_eff_max_py(&self) -> f64 {
+    //     self.get_eff_max()
+    // }
 
-    #[setter("__eff_max")]
-    fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
-        self.set_eff_max(eff_max).map_err(PyValueError::new_err)
-    }
+    // #[setter("__eff_max")]
+    // fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+    //     self.set_eff_max(eff_max).map_err(PyValueError::new_err)
+    // }
 
-    #[getter("eff_min")]
-    fn get_eff_min_py(&self) -> f64 {
-        self.get_eff_min()
-    }
+    // #[getter("eff_min")]
+    // fn get_eff_min_py(&self) -> f64 {
+    //     self.get_eff_min()
+    // }
 
     #[getter("eff_range")]
     fn get_eff_range_py(&self) -> f64 {
         self.get_eff_range()
     }
 
-    #[setter("__eff_range")]
-    fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        self.set_eff_range(eff_range)
-    }
+    // #[setter("__eff_range")]
+    // fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
+    //     self.set_eff_range(eff_range)
+    // }
 
     // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
     #[pyo3(name = "set_mass")]
