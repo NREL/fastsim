@@ -171,7 +171,7 @@ pub fn interp1d(
         if x >= &x_data[size - 2] {
             i = size - 2;
         } else {
-            while x > &x_data[i + 1] {
+            while i < x_data.len() - 2 && x > &x_data[i + 1] {
                 i += 1;
             }
         }
