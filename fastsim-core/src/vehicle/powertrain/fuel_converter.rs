@@ -53,7 +53,7 @@ const TOL: f64 = 1e-3;
 pub struct FuelConverter {
     #[serde(default)]
     /// struct for tracking current state
-    #[serde(skip_serializing_if = "IsDefault::is_default")]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
     pub state: FuelConverterState,
     /// FuelConverter mass
     #[serde(default)]
@@ -206,7 +206,8 @@ impl FuelConverter {
         self.state.pwr_prop_max = (self.state.pwr_tractive
             + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
             .min(self.pwr_out_max)
-            .max(self.pwr_out_max_init);
+            .max(self.pwr_out_max_init)
+            - pwr_aux;
         Ok(())
     }
 

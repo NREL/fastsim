@@ -21,6 +21,7 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 
 # load 2012 Ford Fusion from file
 veh = fsim.Vehicle.from_file(
+    # TODO: package this in pyproject.toml
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
 )
 
@@ -28,7 +29,7 @@ veh = fsim.Vehicle.from_file(
 veh.save_interval = 1
 
 # load cycle from file
-cyc = fsim.Cycle.from_resource("cycles/udds.csv")
+cyc = fsim.Cycle.from_resource("udds.csv")
 
 # instantiate `SimDrive` simulation object
 sd = fsim.SimDrive(veh, cyc)

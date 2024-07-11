@@ -19,7 +19,6 @@ pub(crate) use eng_fmt::FormatEng;
 pub(crate) use fastsim_proc_macros::{pyo3_api, HistoryMethods, HistoryVec, SetCumulative};
 
 pub(crate) use anyhow::{anyhow, bail, ensure, Context};
-pub(crate) use bincode::{deserialize, serialize};
 pub(crate) use duplicate::duplicate_item;
 pub(crate) use easy_ext::ext;
 pub(crate) use ndarray::prelude::*;

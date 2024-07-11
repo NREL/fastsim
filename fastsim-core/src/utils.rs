@@ -19,6 +19,33 @@ pub fn is_sorted<T: std::cmp::PartialOrd>(data: &[T]) -> bool {
     data.windows(2).all(|w| w[0] <= w[1])
 }
 
+/// Download a file to a specified filepath, assuming all necessary parent directories exist.
+///
+/// If supplied filepath has no file extension,
+/// this function will attempt to parse a filename from the last segment of the URL.
+#[cfg(feature = "web")]
+pub(crate) fn download_file<S: AsRef<str>, P: AsRef<Path>>(
+    url: S,
+    filepath: P,
+) -> anyhow::Result<()> {
+    let url = url::Url::parse(url.as_ref())?;
+    let filepath = filepath.as_ref();
+    let filepath = if filepath.extension().is_none() {
+        // No extension in filepath, parse from URL
+        let filename = url
+            .path_segments()
+            .and_then(|segments| segments.last())
+            .with_context(|| "Could not parse filename from last URL segment: {url:?}")?;
+        filepath.join(filename)
+    } else {
+        filepath.to_path_buf()
+    };
+    let mut rdr = ureq::get(url.as_ref()).call()?.into_reader();
+    let mut wtr = File::create(filepath)?;
+    std::io::copy(&mut rdr, &mut wtr)?;
+    Ok(())
+}
+
 /// helper function to find where a query falls on an axis of discrete values;
 /// NOTE: this assumes the axis array is sorted with values ascending and that there are no repeating values!
 fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usize)> {
@@ -144,7 +171,7 @@ pub fn interp1d(
         if x >= &x_data[size - 2] {
             i = size - 2;
         } else {
-            while x > &x_data[i + 1] {
+            while i < x_data.len() - 2 && x > &x_data[i + 1] {
                 i += 1;
             }
         }

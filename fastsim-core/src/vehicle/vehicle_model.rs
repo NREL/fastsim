@@ -125,7 +125,7 @@ pub struct Vehicle {
     save_interval: Option<usize>,
     /// current state of vehicle
     #[serde(default)]
-    #[serde(skip_serializing_if = "IsDefault::is_default")]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
     pub state: VehicleState,
     /// Vector-like history of [Self::state]
     #[serde(default)]
@@ -221,7 +221,10 @@ impl Mass for Vehicle {
     }
 }
 
-impl SerdeAPI for Vehicle {}
+impl SerdeAPI for Vehicle {
+    #[cfg(feature = "resources")]
+    const RESOURCE_PREFIX: &'static str = "vehicles";
+}
 impl Init for Vehicle {
     fn init(&mut self) -> anyhow::Result<()> {
         let _mass = self.mass().with_context(|| anyhow!(format_dbg!()))?;
@@ -427,6 +430,7 @@ impl SetCumulative for Vehicle {
 }
 
 impl Vehicle {
+    // TODO: run this assumption by Robin: peak power of all components can be produced concurrently.
     /// # Assumptions
     /// - peak power of all components can be produced concurrently.
     pub fn get_pwr_rated(&self) -> si::Power {
@@ -527,7 +531,7 @@ impl Vehicle {
             .set_cur_pwr_prop_out_max(self.pwr_aux, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
 
-        (self.state.pwr_tract_pos_max, self.state.pwr_tract_neg_max) = self
+        (self.state.pwr_prop_pos_max, self.state.pwr_prop_neg_max) = self
             .pt_type
             .get_cur_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -803,10 +807,11 @@ pub struct VehicleState {
 
     // power and fields
     /// maximum positive propulsive power vehicle can produce
-    pub pwr_tract_pos_max: si::Power,
+    pub pwr_prop_pos_max: si::Power,
     /// pwr exerted on wheels by powertrain
     /// maximum negative propulsive power vehicle can produce
-    pub pwr_tract_neg_max: si::Power,
+    pub pwr_prop_neg_max: si::Power,
+    /// Tractive power required for achieved speed
     pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
     pub energy_tractive: si::Energy,
@@ -852,6 +857,8 @@ impl Init for VehicleState {}
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[cfg(feature = "yaml")]
     pub(crate) fn mock_f2_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -873,6 +880,7 @@ pub(crate) mod tests {
         veh
     }
 
+    #[cfg(feature = "yaml")]
     pub(crate) fn mock_f2_hev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
@@ -893,8 +901,10 @@ pub(crate) mod tests {
         .unwrap();
         veh
     }
+
     /// tests that vehicle can be initialized and that repeating has no net effect
     #[test]
+    #[cfg(feature = "yaml")]
     pub(crate) fn test_conv_veh_init() {
         let veh = mock_f2_conv_veh();
         let mut veh1 = veh.clone();
@@ -904,9 +914,10 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_conv() {
         let veh = mock_f2_conv_veh();
-        let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
             cyc,
@@ -917,9 +928,10 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_hev() {
         let veh = mock_f2_hev();
-        let cyc = crate::drive_cycle::Cycle::from_resource("cycles/udds.csv").unwrap();
+        let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
             cyc,
@@ -930,6 +942,7 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(feature = "yaml")]
     fn test_hev_deserialize() {
         let veh = mock_f2_hev();
 
@@ -937,6 +950,7 @@ pub(crate) mod tests {
             project_root::get_project_root()
                 .unwrap()
                 .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
+            false,
         )
         .unwrap();
         assert!(veh == veh_from_file);
