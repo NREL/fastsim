@@ -8,6 +8,7 @@ from matplotlib.axes import Axes
 from typing import Tuple
 from cycler import cycler
 import seaborn as sns
+from pathlib import Path
 import time
 import json
 import os
@@ -16,10 +17,8 @@ import fastsim as fsim
 sns.set_theme()
 
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
+SAVE_FIGS = False
 
-# %% [markdown]
-
-# %%
 # %%
 
 # load 2012 Ford Fusion from file
@@ -46,7 +45,6 @@ sd.walk()
 t1 = time.perf_counter()
 print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t1-t0:.2e} s")
 
-
 # instantiate `SimDrive` simulation object
 sd_no_save = fsim.SimDrive(veh_no_save, cyc)
 
@@ -67,13 +65,13 @@ sd2.sim_drive()
 t1 = time.perf_counter()
 print(f"fastsim-2 `sd.walk()` elapsed time: {t1-t0:.2e} s")
 
-# %% [markdown]
 # # Visualize results
 
 def plot_fc_pwr() -> Tuple[Figure, Axes]:
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Fuel Converter Power")
 
+    ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
@@ -98,6 +96,7 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     ax[0].set_ylabel("FC Power [kW]")
     ax[0].legend()
 
+    ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
@@ -112,9 +111,10 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
         label="fuel",
         linestyle=baselinestyles[1]
     )
-    ax[1].set_ylabel("FC Power\nDelta [kW]")
+    ax[1].set_ylabel("FC Power\nDelta (f3-f2) [kW]")
     ax[1].legend()
-
+    
+    ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         np.array(sd.veh.history.speed_ach_meters_per_second),
@@ -128,6 +128,9 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
     ax[-1].set_ylabel("Ach Speed [m/s]")
+
+    if SAVE_FIGS:
+        plt.savefig(Path("./plots/fc_pwr.svg"))
     plt.show()
 
     return fig, ax
@@ -136,6 +139,7 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Fuel Converter Energy")
 
+    ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         (np.array(sd.veh.fc.history.energy_propulsion_joules) +
@@ -157,33 +161,28 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
         np.array(sd2.fs_cumu_mj_out_ach.tolist()),
         label="f2 fuel",
     )
-    ax[0].text(
-        200, 
-        13, 
-        "Discrepancy mostly due to switch to linear interpolation\n" + 
-        "from left-hand interpolation resulting in more accurate\n" + 
-        "handling of idling conditions.",
-    )
     ax[0].set_ylabel("FC Energy [MJ]")
     ax[0].legend()
 
+    ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
-            np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        (np.array(sd.veh.fc.history.energy_propulsion_joules) +
+            np.array(sd.veh.fc.history.energy_aux_joules)) / 1e6 - np.array(sd2.fc_cumu_mj_out_ach.tolist()),
         label="shaft",
         linestyle=baselinestyles[0]
     )
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
-            np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        (np.array(sd.veh.fc.history.energy_propulsion_joules) +
+            np.array(sd.veh.fc.history.energy_aux_joules)) / 1e6 - np.array(sd2.fc_cumu_mj_out_ach.tolist()),
         label="fuel",
         linestyle=baselinestyles[1]
     )
-    ax[1].set_ylabel("FC Power\nDelta [kW]")
+    ax[1].set_ylabel("FC Energy\nDelta (f3-f2) [MJ]")
     ax[1].legend()
 
+    ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         np.array(sd.veh.history.speed_ach_meters_per_second),
@@ -197,70 +196,9 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
     ax[-1].set_ylabel("Ach Speed [m/s]")
-    plt.show()
 
-    # %% [markdown]
-    # ## Road Loads
-    # 
-
-    # %%
-    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
-    plt.suptitle("Road Loads")
-
-    ax[0].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.history.pwr_drag_watts) / 1e3,
-        label="f3 drag",
-    )
-    ax[0].plot(
-        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
-        np.array(sd2.drag_kw.tolist()),
-        label="f2 drag",
-    )
-    ax[0].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.history.pwr_rr_watts) / 1e3,
-        label="f3 rr",
-    )
-    ax[0].plot(
-        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
-        np.array(sd2.rr_kw.tolist()),
-        label="f2 rr",
-    )
-    ax[0].set_ylabel("Power [kW]")
-    ax[0].legend()
-
-    ax[1].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.history.pwr_drag_watts) /
-        1e3 - np.array(sd2.drag_kw.tolist()),
-        label="drag",
-        linestyle=baselinestyles[0],
-    )
-    ax[1].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.history.pwr_rr_watts) /
-        1e3 - np.array(sd2.rr_kw.tolist()),
-        label="rr",
-        linestyle=baselinestyles[1],
-    )
-    ax[1].text(500, -0.125, "Drag error is due to intentional\nair density model change.")
-    ax[1].set_ylabel("Power\nDelta [kW]")
-    ax[1].legend()
-
-    ax[-1].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.history.speed_ach_meters_per_second),
-        label="f3",
-    )
-    ax[-1].plot(
-        np.array(sd2.cyc.time_s.tolist()),
-        np.array(sd2.mps_ach.tolist()),
-        label="f2",
-    )
-    ax[-1].legend()
-    ax[-1].set_xlabel("Time [s]")
-    ax[-1].set_ylabel("Ach. Speed [m/s]")
+    if SAVE_FIGS:
+        plt.savefig(Path("./plots/fc_energy.svg"))
     plt.show()
 
     return fig, ax
@@ -269,6 +207,7 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Road Loads")
 
+    ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         np.array(sd.veh.history.pwr_drag_watts) / 1e3,
@@ -292,6 +231,7 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
     ax[0].set_ylabel("Power [kW]")
     ax[0].legend()
 
+    ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         np.array(sd.veh.history.pwr_drag_watts) /
@@ -307,10 +247,11 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
         linestyle=baselinestyles[1],
     )
     ax[1].text(
-        500, -0.125, "Drag error is due to intentional\nair density model change.")
-    ax[1].set_ylabel("Power\nDelta [kW]")
+        500, -0.125, "Drag error is due to more\naccurate air density model .")
+    ax[1].set_ylabel("Power\nDelta (f3-f2) [kW]")
     ax[1].legend()
 
+    ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         np.array(sd.veh.history.speed_ach_meters_per_second),
@@ -324,30 +265,45 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
     ax[-1].set_ylabel("Ach. Speed [m/s]")
+
+    if SAVE_FIGS:
+        plt.savefig(Path("./plots/road_loads.svg"))
     plt.show()
 
     return fig, ax
 
-if SHOW_PLOTS:
-    figsize_3_stacked = (10, 9)
+figsize_3_stacked = (10, 9)
 
-    # set up cycling of colors and linestyles
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2',
-              '#7f7f7f', '#bcbd22', '#17becf']
-    baselinestyles = ["--", "-.", ":"]
-    linestyles = [[c, c] for c in baselinestyles]
-    linestyles = [x for sublist in linestyles for x in sublist]
-    default_cycler = (
-        cycler(color=colors[:len(linestyles)]) +
+# set up cycling of colors and linestyles
+base_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2',
+          '#7f7f7f', '#bcbd22', '#17becf']
+baselinestyles = ["--", "-.",]
+
+def get_paired_cycler():
+    colors = [[c, c] for c in base_colors]
+    colors = [x for sublist in colors for x in sublist]
+    linestyles = (baselinestyles * int(np.ceil(len(colors) / len(baselinestyles))))[:len(colors)]
+    paired_cycler = (
+        cycler(color=colors) +
         cycler(linestyle=linestyles)
     )
-    plt.rc('axes', prop_cycle=default_cycler)
+    return paired_cycler
 
+def get_uni_cycler():
+    colors = base_colors
+    baselinestyles = ["--",]
+    linestyles = (baselinestyles * int(np.ceil(len(colors) / len(baselinestyles))))[:len(colors)]
+    uni_cycler = (
+        cycler(color=colors) +
+        cycler(linestyle=linestyles)
+    )
+    return uni_cycler
+
+if SHOW_PLOTS:
     fig, ax = plot_fc_pwr() 
     fig, ax = plot_fc_energy()
     fig, ax = plot_road_loads()
 
-# %% [markdown]
 # # Benchmarking
 # 
 # ## CPU Performance
