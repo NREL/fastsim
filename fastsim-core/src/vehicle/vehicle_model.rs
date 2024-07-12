@@ -42,42 +42,41 @@ impl Init for AuxSource {}
     fn set_fc_py(&mut self, _fc: FuelConverter) -> PyResult<()> {
         Err(PyAttributeError::new_err(DIRECT_SET_ERR))
     }
-
-    #[setter(__fc)]
+    #[setter("__fc")]
     fn set_fc_hidden(&mut self, fc: FuelConverter) -> PyResult<()> {
         self.set_fc(fc).map_err(|e| PyAttributeError::new_err(e.to_string()))
     }
 
-    // #[getter]
-    // fn get_res(&self) -> Option<ReversibleEnergyStorage> {
-    //     self.reversible_energy_storage().cloned()
-    // }
-    // #[setter]
-    // fn set_res(&mut self, _res: ReversibleEnergyStorage) -> PyResult<()> {
-    //     Err(PyAttributeError::new_err(DIRECT_SET_ERR))
-    // }
+    #[getter]
+    fn get_res(&self) -> Option<ReversibleEnergyStorage> {
+        self.res().cloned()
+    }
+    #[setter("res")]
+    fn set_res_py(&mut self, _res: ReversibleEnergyStorage) -> PyResult<()> {
+        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
+    }
+    #[setter("__res")]
+    fn set_res_hidden(&mut self, res: ReversibleEnergyStorage) -> PyResult<()> {
+        self.set_res(res).map_err(|e| PyAttributeError::new_err(e.to_string()))
+    }
 
-    // #[setter(__res)]
-    // fn set_res_hidden(&mut self, res: ReversibleEnergyStorage) -> PyResult<()> {
-    //     self.set_reversible_energy_storage(res).map_err(|e| PyAttributeError::new_err(e.to_string()))
-    // }
-    // #[getter]
-    // fn get_em(&self) -> ElectricMachine {
-    //     self.em().clone()
-    // }
+    #[getter]
+    fn get_em(&self) -> Option<ElectricMachine> {
+        self.em().cloned()
+    }
 
-    // #[setter]
-    // fn set_em_py(&mut self, _em: ElectricMachine) -> PyResult<()> {
-    //     Err(PyAttributeError::new_err(DIRECT_SET_ERR))
-    // }
-    // #[setter(__em)]
-    // fn set_em_hidden(&mut self, em: ElectricMachine) -> PyResult<()> {
-    //     self.set_em(em).map_err(|e| PyAttributeError::new_err(e.to_string()))
-    // }
+    #[setter("em")]
+    fn set_em_py(&mut self, _em: ElectricMachine) -> PyResult<()> {
+        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
+    }
+    #[setter("__em")]
+    fn set_em_hidden(&mut self, em: ElectricMachine) -> PyResult<()> {
+        self.set_em(em).map_err(|e| PyAttributeError::new_err(e.to_string()))
+    }
 
-    // fn veh_type(&self) -> PyResult<String> {
-    //     Ok(self.pt_type.to_string())
-    // }
+    fn veh_type(&self) -> PyResult<String> {
+        Ok(self.pt_type.to_string())
+    }
 
     // #[getter]
     // fn get_pwr_rated_kilowatts(&self) -> f64 {
