@@ -12,7 +12,7 @@
 
 use super::*;
 use numpy::ndarray::{ArrayD, ArrayViewD, ArrayViewMutD};
-use numpy::{IntoPyArray, IxDyn, PyArrayDyn};
+use numpy::{IntoPyArray, IxDyn, PyArray, PyArrayDyn};
 // use numpy::IntoPyArray::into_pyarray;
 use pyo3::types::PyDict;
 use pyo3::{pymodule, types::PyModule, PyResult, Python};
@@ -160,16 +160,18 @@ use pyo3::{pymodule, types::PyModule, PyResult, Python};
         // let py = pyo3::Python::<'unbound>::assume_gil_acquired;
         Ok(self.0.values()?.into_pyarray(py))
     }
-    // /// Function to set values variable from enum variants
-    // /// # Arguments
-    // /// - `new_values`: updated `values` variable to replace the current `values` variable
-    // #[setter("__set_values")]
-    // pub fn set_values_py(
-    //     &mut self,
-    //     new_values: ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>>,
-    // ) -> anyhow::Result<()> {
-    //     self.0.set_values(new_values)
-    // }
+
+    /// Function to set values variable from enum variants
+    /// # Arguments
+    /// - `new_values`: updated `values` variable to replace the current `values` variable
+    #[setter("__set_values")]
+    pub fn set_values_py(
+        &mut self,
+        new_values: &PyArrayDyn<f64>,
+    ) -> anyhow::Result<()> {
+        self.0.set_values(new_values.to_owned_array())
+        // self.0.set_values(PyArray::from_array(py, new_values))
+    }
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct InterpolatorWrapperVec(pub Interpolator);
