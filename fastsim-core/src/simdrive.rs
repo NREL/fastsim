@@ -115,6 +115,7 @@ impl SimDrive {
         speed: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
+        log::debug!("{}", format_dbg!("set_pwr_tract_for_speed"));
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
@@ -176,6 +177,7 @@ impl SimDrive {
         // borrow state as `vs` for shorthand
         let vs = &mut self.veh.state;
         if vs.pwr_tractive <= vs.pwr_prop_pos_max {
+            log::debug!("{}", format_dbg!("early return from `set_ach_speed`"));
             vs.speed_ach = cyc_speed;
             vs.cyc_met = true;
             return Ok(());
