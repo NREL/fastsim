@@ -113,7 +113,9 @@ impl InterpMethods for Interp1D {
         // Check that grid and values are compatible shapes
         ensure!(
             x_grid_len == self.f_x.len(),
-            "Supplied grid and values are not compatible shapes"
+            "Supplied grid and values are not compatible shapes, {} {}",
+            x_grid_len,
+            self.f_x.len()
         );
 
         Ok(())

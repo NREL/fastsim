@@ -333,7 +333,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
                         eff_interp: InterpolatorWrapperVec(Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
-                            f2veh.mc_eff_map.to_vec(),
+                            f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
                             Extrapolate::Error,
                         )?)),

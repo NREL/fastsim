@@ -542,7 +542,7 @@ impl Interpolator {
 
 /// Interpolation strategy.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[pyclass]
+#[cfg_attr(feature = "pyo3", pyclass)]
 pub enum Strategy {
     /// Linear interpolation: https://en.wikipedia.org/wiki/Linear_interpolation
     Linear,
@@ -559,7 +559,7 @@ pub enum Strategy {
 /// Controls what happens if supplied interpolant point
 /// is outside the bounds of the interpolation grid.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[pyclass]
+#[cfg_attr(feature = "pyo3", pyclass)]
 pub enum Extrapolate {
     /// If interpolant point is beyond the limits of the interpolation grid,
     /// find result via extrapolation using slope of nearby points.  

@@ -11,11 +11,6 @@
 //!
 
 use super::*;
-use numpy::ndarray::{ArrayD, ArrayViewD, ArrayViewMutD};
-use numpy::{IntoPyArray, IxDyn, PyArray, PyArrayDyn};
-// use numpy::IntoPyArray::into_pyarray;
-use pyo3::types::PyDict;
-use pyo3::{pymodule, types::PyModule, PyResult, Python};
 
 #[pyo3_api(
 //     #[getter]
