@@ -73,7 +73,7 @@ t_fsim2 = t1 - t0
 print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
 print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
 print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:")
-print(f"{t_fsim2/t_fsim3_si1:.3g}")
+print(f"{t_fsim2/t_fsim3_si1:.3g}x")
 
 # # Visualize results
 
