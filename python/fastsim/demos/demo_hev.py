@@ -37,7 +37,8 @@ veh.save_interval = 1
 cyc = fsim.Cycle.from_resource("udds.csv")
 
 # instantiate `SimDrive` simulation object
-sd = fsim.SimDrive(veh, cyc)
+sd0 = fsim.SimDrive(veh, cyc)
+sd = sd0.copy()
 
 # simulation start time
 t0 = time.perf_counter()
@@ -67,7 +68,7 @@ print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsi
 # `fastsim-2` benchmarking
 # %%
 
-sd2 = sd.to_fastsim2()
+sd2 = sd0.to_fastsim2()
 t0 = time.perf_counter()
 with fsim.utils.without_logging(): # suppresses known warning
     sd2.sim_drive()
