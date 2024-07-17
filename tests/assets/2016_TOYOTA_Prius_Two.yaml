@@ -6,7 +6,7 @@ pt_type:
     res:
       mass: ~
       specific_energy: ~
-      pwr_out_max_watts: 1000000.0
+      pwr_out_max_watts: 100000.0
       energy_capacity_joules: 2700000.0
       min_soc: 0.25
       max_soc: 0.95

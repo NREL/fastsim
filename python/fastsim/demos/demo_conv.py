@@ -21,6 +21,7 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 
 # load 2012 Ford Fusion from file
 veh = fsim.Vehicle.from_file(
+    # TODO: package this in pyproject.toml
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
 )
 
@@ -28,7 +29,7 @@ veh = fsim.Vehicle.from_file(
 veh.save_interval = 1
 
 # load cycle from file
-cyc = fsim.Cycle.from_resource("cycles/udds.csv")
+cyc = fsim.Cycle.from_resource("udds.csv")
 
 # instantiate `SimDrive` simulation object
 sd = fsim.SimDrive(veh, cyc)
@@ -79,7 +80,7 @@ if SHOW_PLOTS:
 
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
+        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3,
         label="f3 shaft",
     )
@@ -103,14 +104,14 @@ if SHOW_PLOTS:
 
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
+        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
         label="shaft",
         linestyle=baselinestyles[0]
     )
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
+        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
         label="fuel",
         linestyle=baselinestyles[1]
@@ -138,7 +139,7 @@ if SHOW_PLOTS:
 
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.energy_tractive_joules) +
+        (np.array(sd.veh.fc.history.energy_propulsion_joules) +
          np.array(sd.veh.fc.history.energy_aux_joules)) / 1e6,
         label="f3 shaft",
     )
@@ -169,14 +170,14 @@ if SHOW_PLOTS:
 
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
+        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
         label="shaft",
         linestyle=baselinestyles[0]
     )
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_tractive_watts) +
+        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
          np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
         label="fuel",
         linestyle=baselinestyles[1]

@@ -1,5 +1,5 @@
 //! Traits defining power flow interfaces for various powertrain components
-use self::vehicle::VehicleState;
+use self::vehicle_model::VehicleState;
 
 use super::*;
 

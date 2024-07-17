@@ -8,6 +8,31 @@
 //! # Features:
 //! - pyo3: enable this feature to expose FASTSim structs, methods, and functions to Python
 
+/// List enabled features
+#[cfg_attr(feature = "pyo3", imports::pyfunction)]
+pub fn enabled_features() -> Vec<String> {
+    vec![
+        #[cfg(feature = "default")]
+        "default".into(),
+        #[cfg(feature = "resources")]
+        "resources".into(),
+        #[cfg(feature = "web")]
+        "web".into(),
+        #[cfg(feature = "serde-default")]
+        "serde-default".into(),
+        #[cfg(feature = "bincode")]
+        "bincode".into(),
+        #[cfg(feature = "csv")]
+        "csv".into(),
+        #[cfg(feature = "json")]
+        "json".into(),
+        #[cfg(feature = "toml")]
+        "toml".into(),
+        #[cfg(feature = "yaml")]
+        "yaml".into(),
+    ]
+}
+
 #[macro_use]
 pub mod macros;
 

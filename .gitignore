@@ -17,3 +17,5 @@ dist
 rust/
 *.dat
 .zed
+activate
+activate.sh

@@ -93,7 +93,8 @@ mc_eff_map:
 mc_sec_to_peak_pwr: 4.8
 mc_pe_kg_per_kw: 0.833
 mc_pe_base_kg: 21.6
-ess_max_kw: 1000.0
+# original value of `ess_max_kw`: 1000.0
+ess_max_kw: 100.0
 ess_max_kwh: 0.75
 ess_kg_per_kwh: 8.9
 ess_base_kg: 75.8
