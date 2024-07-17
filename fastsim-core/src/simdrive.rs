@@ -73,8 +73,6 @@ impl Init for SimDrive {
 
 impl SimDrive {
     pub fn walk(&mut self) -> anyhow::Result<()> {
-        log::debug!("I'm walkin' here");
-        log::info!("running `walk`");
         ensure!(self.cyc.len() >= 2, format_dbg!(self.cyc.len() < 2));
         self.save_state();
         // to increment `i` to 1 everywhere
@@ -91,6 +89,7 @@ impl SimDrive {
     /// Solves current time step
     /// # Arguments
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
+        log::debug!("{}", format_dbg!(self.veh.state.i));
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
         self.veh
