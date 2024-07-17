@@ -16,6 +16,7 @@ import fastsim as fsim
 
 sns.set_theme()
 
+DEBUG_LOG = os.environ.get("DEBUG_LOG", "false").lower() == "true"     
 SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"     
 SAVE_FIGS = False
 
@@ -42,9 +43,12 @@ sd = fsim.SimDrive(veh, cyc)
 t0 = time.perf_counter()
 # run simulation
 # toggle commented code to enable logging
-with fsim.utils.with_logging():
+if DEBUG_LOG:
+    print('Running `sd.walk()` with debug logging')
+    with fsim.utils.with_logging():
+        sd.walk()
+else:
     sd.walk()
-# sd.walk()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
