@@ -38,7 +38,8 @@ sd = fsim.SimDrive(veh, cyc)
 # simulation start time
 t0 = time.perf_counter()
 # run simulation
-sd.walk()
+with fsim.utils.with_logging():
+    sd.walk()
 # simulation end time
 t1 = time.perf_counter()
 print(f"fastsim-3 `sd.walk()` elapsed time: {t1-t0:.2e} s")
@@ -318,7 +319,7 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
 
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.res.history.energy_out_electrical_joules) / 1e3,
+        np.array(sd.veh.res.history.energy_out_electrical_joules) / 1e6,
         label="f3 batt elec",
     )
     ax[0].plot(
@@ -328,7 +329,7 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     )
     ax[0].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.res.history.energy_out_chemical_joules) / 1e3,
+        np.array(sd.veh.res.history.energy_out_chemical_joules) / 1e6,
         label="f3 batt chem",
     )
     ax[0].set_ylabel("RES (battery) Energy [MJ]")
@@ -336,7 +337,7 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
 
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.res.history.energy_out_electrical_joules) / 1e3 - np.array(sd2.ess_kw_out_ach.tolist()),
+        np.array(sd.veh.res.history.energy_out_electrical_joules) / 1e6 - np.array(sd2.ess_kw_out_ach.tolist()),
         label="batt elec",
         linestyle=baselinestyles[0]
     )

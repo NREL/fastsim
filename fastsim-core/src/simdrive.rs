@@ -73,6 +73,8 @@ impl Init for SimDrive {
 
 impl SimDrive {
     pub fn walk(&mut self) -> anyhow::Result<()> {
+        log::debug!("I'm walkin' here");
+        log::info!("running `walk`");
         ensure!(self.cyc.len() >= 2, format_dbg!(self.cyc.len() < 2));
         self.save_state();
         // to increment `i` to 1 everywhere
@@ -290,7 +292,17 @@ impl SimDrive {
         // speed achieved iteration counter
         let mut spd_ach_iter_counter = 1;
         let mut converged = pwr_err <= uc::W * 0.;
+        log::debug!(
+            "{}\n{}",
+            format_dbg!(vs.i),
+            format_dbg!(spd_ach_iter_counter)
+        );
         while spd_ach_iter_counter < max_iter && !converged {
+            log::debug!(
+                "{}\n{}",
+                format_dbg!(vs.i),
+                format_dbg!(spd_ach_iter_counter)
+            );
             let speed_guess = *speed_guesses.iter().last().with_context(|| format_dbg!())?
                 * (1.0 - g)
                 - g * *new_speed_guesses

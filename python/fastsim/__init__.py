@@ -1,9 +1,20 @@
 from pathlib import Path
 from typing import Union, Any
+import logging
 import numpy as np
 import re
 
 from .fastsim import *
+from . import utils
+
+DEFAULT_LOGGING_CONFIG = dict(
+    format = "%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
+    datefmt = "%Y-%m-%d %H:%M:%S",
+) 
+
+# Set up logging
+logging.basicConfig(**DEFAULT_LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
 
 def package_root() -> Path:
     """Returns the package root directory."""
