@@ -7,6 +7,7 @@ from matplotlib.axes import Axes
 from matplotlib import rc_params
 from cycler import cycler
 import seaborn as sns
+from pathlib import Path
 import time
 import json
 import os
@@ -21,10 +22,12 @@ SAVE_FIGS = False
 # `fastsim3` -- load vehicle and cycle, build simulation, and run 
 # %%
 
-# load 2012 Ford Fusion from file
+# load 2016 Toyota Prius Two from file
 veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2016_TOYOTA_Prius_Two.yaml")
 )
+veh_no_save = veh.copy()
+veh_no_save.save_interval = None
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
 veh.save_interval = 1
@@ -44,17 +47,33 @@ t0 = time.perf_counter()
 sd.walk()
 # simulation end time
 t1 = time.perf_counter()
-print(f"fastsim-3 `sd.walk()` elapsed time: {t1-t0:.2e} s")
+t_fsim3_si1 = t1 - t0
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
+
+# instantiate `SimDrive` simulation object
+sd_no_save = fsim.SimDrive(veh_no_save, cyc)
+
+# simulation start time
+t0 = time.perf_counter()
+# run simulation
+sd_no_save.walk()
+# simulation end time
+t1 = time.perf_counter()
+t_fsim3_si_none = t1 - t0
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
 
 # `fastsim-2` benchmarking
-
 # %%
 
 sd2 = sd.to_fastsim2()
 t0 = time.perf_counter()
-sd2.sim_drive()
+with fsim.utils.without_logging(): # suppresses known warning
+    sd2.sim_drive()
 t1 = time.perf_counter()
-print(f"fastsim-2 `sd.walk()` elapsed time: {t1-t0:.2e} s")
+t_fsim2 = t1 - t0
+print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
+print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:")
+print(f"{t_fsim2/t_fsim3_si1:.3g}")
 
 # Visualize results
 
