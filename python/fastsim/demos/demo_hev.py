@@ -38,8 +38,10 @@ sd = fsim.SimDrive(veh, cyc)
 # simulation start time
 t0 = time.perf_counter()
 # run simulation
-with fsim.utils.with_logging():
-    sd.walk()
+# toggle commented code to enable logging
+# with fsim.utils.with_logging():
+#     sd.walk()
+sd.walk()
 # simulation end time
 t1 = time.perf_counter()
 print(f"fastsim-3 `sd.walk()` elapsed time: {t1-t0:.2e} s")
