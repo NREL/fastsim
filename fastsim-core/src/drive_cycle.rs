@@ -72,7 +72,7 @@ impl Init for Cycle {
             .collect();
 
         // calculate elevation from RHS integral of grade and distance
-        self.init_elev = self.init_elev.or(Some(get_elev_def()));
+        self.init_elev = self.init_elev.or_else(|| Some(get_elev_def()));
         self.elev = self
             .grade
             .iter()
@@ -317,7 +317,7 @@ impl Cycle {
 
     pub fn trim(&mut self, start_idx: Option<usize>, end_idx: Option<usize>) -> anyhow::Result<()> {
         let start_idx = start_idx.unwrap_or_default();
-        let end_idx = end_idx.unwrap_or(self.len());
+        let end_idx = end_idx.unwrap_or_else(|| self.len());
         ensure!(end_idx <= self.len(), format_dbg!(end_idx <= self.len()));
 
         self.time = self.time[start_idx..end_idx].to_vec();

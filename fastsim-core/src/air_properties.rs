@@ -15,8 +15,8 @@ pub fn get_density_air(
     te_air: Option<si::ThermodynamicTemperature>,
     h: Option<si::Length>,
 ) -> si::MassDensity {
-    let te_air = te_air.unwrap_or((22. + 273.15) * uc::KELVIN);
-    let h = h.unwrap_or(180. * uc::M);
+    let te_air = te_air.unwrap_or_else(|| (22. + 273.15) * uc::KELVIN);
+    let h = h.unwrap_or_else(|| 180. * uc::M);
     let cur_elevation_std_temp = (15.04 - 0.00649 * h.get::<si::meter>() + 273.15) * uc::KELVIN;
     let cur_pressure = (101.29e3 * uc::PASCAL)
         * ((cur_elevation_std_temp / (288.08 * uc::KELVIN))

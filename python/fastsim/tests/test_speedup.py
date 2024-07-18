@@ -3,7 +3,8 @@ import numpy as np
 import fastsim as fsim
 
 def test_hev_speedup():
-    min_allowed_speed_ratio = 8
+    # minimum allowed f3 / f2 speed ratio
+    min_allowed_speed_ratio = 8.
     
     # load 2016 Toyota Prius Two from file
     veh = fsim.Vehicle.from_file(
@@ -44,11 +45,14 @@ def test_hev_speedup():
     t_fsim2_median = np.median(t_fsim2_list)
     t_fsim3_median = np.median(t_fsim3_list)
 
-    assert t_fsim2_mean > min_allowed_speed_ratio * t_fsim3_mean
-    assert t_fsim2_median > min_allowed_speed_ratio * t_fsim3_median
+    assert t_fsim2_mean / t_fsim3_mean > min_allowed_speed_ratio, \
+        f"`min_allowed_speed_ratio`: {min_allowed_speed_ratio:.3G}, achieved ratio: {(t_fsim2_mean / t_fsim3_mean):.3G}"
+    assert t_fsim2_median / t_fsim3_median > min_allowed_speed_ratio, \
+        f"`min_allowed_speed_ratio`: {min_allowed_speed_ratio:.3G}, achieved ratio: {(t_fsim2_median / t_fsim3_median):.3G}"
 
 def test_conv_speedup():
-    min_allowed_speed_ratio = 5
+    # minimum allowed f3 / f2 speed ratio
+    min_allowed_speed_ratio = 5.
     
     # load 2016 Toyota Prius Two from file
     veh = fsim.Vehicle.from_file(
@@ -89,5 +93,7 @@ def test_conv_speedup():
     t_fsim2_median = np.median(t_fsim2_list)
     t_fsim3_median = np.median(t_fsim3_list)
 
-    assert t_fsim2_mean > min_allowed_speed_ratio * t_fsim3_mean
-    assert t_fsim2_median > min_allowed_speed_ratio * t_fsim3_median
+    assert t_fsim2_mean / t_fsim3_mean > min_allowed_speed_ratio, \
+        f"`min_allowed_speed_ratio`: {min_allowed_speed_ratio:.3G}, achieved ratio: {(t_fsim2_mean / t_fsim3_mean):.3G}"
+    assert t_fsim2_median / t_fsim3_median > min_allowed_speed_ratio, \
+        f"`min_allowed_speed_ratio`: {min_allowed_speed_ratio:.3G}, achieved ratio: {(t_fsim2_median / t_fsim3_median):.3G}"

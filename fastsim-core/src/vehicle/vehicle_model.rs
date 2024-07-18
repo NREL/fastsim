@@ -681,7 +681,7 @@ impl Vehicle {
             max_soc: self
                 .res()
                 .map(|res| res.max_soc.get::<si::ratio>())
-                .unwrap_or(1.0),
+                .unwrap_or_else(|| 1.0),
             max_soc_doc: None,
             max_trac_mps2: Default::default(),
             mc_eff_array: Default::default(),
