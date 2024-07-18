@@ -24,6 +24,7 @@ pub fn is_sorted<T: std::cmp::PartialOrd>(data: &[T]) -> bool {
 /// If supplied filepath has no file extension,
 /// this function will attempt to parse a filename from the last segment of the URL.
 #[cfg(feature = "web")]
+#[allow(dead_code)]
 pub(crate) fn download_file<S: AsRef<str>, P: AsRef<Path>>(
     url: S,
     filepath: P,
