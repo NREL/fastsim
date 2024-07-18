@@ -1,4 +1,4 @@
-/// binary for running the 2012 Ford Fusion in fastsim-3
+/// binary for running the 2012 Ford Fusion in fastsim-3 with `cargo run --bin f3-2012-ford-fusion-udds`
 use fastsim_core::{prelude::*, traits::SerdeAPI};
 
 fn main() {
