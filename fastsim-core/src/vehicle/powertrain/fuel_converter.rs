@@ -2,8 +2,6 @@ use super::*;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
 
-const TOL: f64 = 1e-3;
-
 #[pyo3_api(
     // optional, custom, struct-specific pymethods
     #[getter("eff_max")]

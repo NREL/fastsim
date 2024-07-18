@@ -842,12 +842,23 @@ pub struct VehicleState {
     pub pwr_brake: si::Power,
     /// integral of [Self::pwr_brake]
     pub energy_brake: si::Energy,
-    /// whether powertrain can achieve power demand
-    pub cyc_met: bool,
+    /// whether powertrain can achieve power demand to achieve prescribed speed
+    /// in current time step
+    pub curr_pwr_met: bool,
+    /// whether powertrain can achieve power demand to achieve prescribed speed
+    /// in entire cycle
+    #[serde(default = "return_true")] // because it should be assumed true until it's not
+    pub all_curr_pwr_met: bool,
     /// actual achieved speed
     pub speed_ach: si::Velocity,
     /// cumulative distance traveled, integral of [Self::speed_ach]
     pub dist: si::Length,
+    /// current grade
+    pub grade_curr: si::Ratio,
+}
+
+fn return_true() -> bool {
+    true
 }
 
 impl SerdeAPI for VehicleState {}
