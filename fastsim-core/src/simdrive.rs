@@ -127,24 +127,28 @@ impl SimDrive {
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
-        vs.grade_curr = uc::R
-            * interp1d(
-                &vs.dist.get::<si::meter>(),
-                &self
-                    .cyc
-                    .dist
-                    .iter()
-                    .map(|d| d.get::<si::meter>())
-                    .collect::<Vec<f64>>(),
-                &self
-                    .cyc
-                    .grade
-                    .iter()
-                    .map(|g| g.get::<si::ratio>())
-                    .collect::<Vec<f64>>(),
-                utils::Extrapolate::Error,
-            )
-            .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?;
+        vs.grade_curr = if vs.all_curr_pwr_met {
+            *self.cyc.grade.get(i).with_context(|| format_dbg!())?
+        } else {
+            uc::R
+                * interp1d(
+                    &vs.dist.get::<si::meter>(),
+                    &self
+                        .cyc
+                        .dist
+                        .iter()
+                        .map(|d| d.get::<si::meter>())
+                        .collect::<Vec<f64>>(),
+                    &self
+                        .cyc
+                        .grade
+                        .iter()
+                        .map(|g| g.get::<si::ratio>())
+                        .collect::<Vec<f64>>(),
+                    utils::Extrapolate::Error,
+                )
+                .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?
+        };
 
         let mass = self.veh.mass.with_context(|| {
             format!(
