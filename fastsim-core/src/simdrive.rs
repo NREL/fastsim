@@ -72,6 +72,14 @@ impl Init for SimDrive {
 }
 
 impl SimDrive {
+    pub fn new(veh: Vehicle, cyc: Cycle, sim_params: Option<SimParams>) -> Self {
+        Self {
+            veh,
+            cyc,
+            sim_params: sim_params.unwrap_or_default(),
+        }
+    }
+
     pub fn walk(&mut self) -> anyhow::Result<()> {
         ensure!(self.cyc.len() >= 2, format_dbg!(self.cyc.len() < 2));
         self.save_state();
