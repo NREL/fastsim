@@ -5,8 +5,18 @@
 use fastsim_core::{prelude::*, traits::SerdeAPI};
 
 fn main() {
+    run_sd_2012_ford_fusion_udds();
+}
+
+fn run_sd_2012_ford_fusion_udds() {
     let veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
     let cyc = Cycle::from_resource("udds.csv", false).unwrap();
     let mut sd = SimDrive::new(veh, cyc, None);
     sd.walk().unwrap();
+}
+
+#[cfg(test)]
+#[test]
+fn test_run_sd_2012_ford_fusion_udds() {
+    run_sd_2012_ford_fusion_udds();
 }
