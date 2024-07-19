@@ -328,13 +328,3 @@ pub struct FuelConverterState {
 
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
-
-impl FuelConverterState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            fc_on: true,
-            ..Default::default()
-        }
-    }
-}

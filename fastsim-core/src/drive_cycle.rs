@@ -395,7 +395,7 @@ mod tests {
     use super::*;
     fn mock_cyc_len_2() -> Cycle {
         let mut cyc = Cycle {
-            name: Default::default(),
+            name: String::new(),
             init_elev: None,
             time: (0..=2).map(|x| (x as f64) * uc::S).collect(),
             speed: (0..=2).map(|x| (x as f64) * uc::MPS).collect(),

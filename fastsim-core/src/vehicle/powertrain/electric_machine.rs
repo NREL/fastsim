@@ -412,12 +412,3 @@ pub struct ElectricMachineState {
 
 impl Init for ElectricMachineState {}
 impl SerdeAPI for ElectricMachineState {}
-
-impl ElectricMachineState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            ..Default::default()
-        }
-    }
-}

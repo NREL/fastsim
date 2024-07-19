@@ -441,8 +441,8 @@ impl ReversibleEnergyStorage {
             state: initial_state,
             save_interval,
             history: ReversibleEnergyStorageStateHistoryVec::new(),
-            mass: Default::default(),
-            specific_energy: Default::default(),
+            mass: None,
+            specific_energy: None,
         })
     }
 
@@ -674,27 +674,27 @@ pub struct ReversibleEnergyStorageState {
 impl Default for ReversibleEnergyStorageState {
     fn default() -> Self {
         Self {
-            pwr_cat_max: uc::W * 0.,
-            pwr_prop_max: uc::W * 0.,
-            pwr_regen_max: uc::W * 0.,
-            pwr_disch_max: uc::W * 0.,
-            pwr_charge_max: uc::W * 0.,
-            i: 1,
+            pwr_cat_max: si::Power::ZERO,
+            pwr_prop_max: si::Power::ZERO,
+            pwr_regen_max: si::Power::ZERO,
+            pwr_disch_max: si::Power::ZERO,
+            pwr_charge_max: si::Power::ZERO,
+            i: Default::default(),
             soc: uc::R * 0.5,
-            eff: uc::R * 0.,
+            eff: si::Ratio::ZERO,
             soh: 0.,
-            pwr_out_electrical: uc::W * 0.,
-            pwr_out_propulsion: uc::W * 0.,
-            pwr_aux: uc::W * 0.,
-            pwr_loss: uc::W * 0.,
-            pwr_out_chemical: uc::W * 0.,
-            energy_out_electrical: uc::J * 0.,
-            energy_out_propulsion: uc::J * 0.,
-            energy_aux: uc::J * 0.,
-            energy_loss: uc::J * 0.,
-            energy_out_chemical: uc::J * 0.,
-            max_soc: uc::R * 0.,
-            min_soc: uc::R * 0.,
+            pwr_out_electrical: si::Power::ZERO,
+            pwr_out_propulsion: si::Power::ZERO,
+            pwr_aux: si::Power::ZERO,
+            pwr_loss: si::Power::ZERO,
+            pwr_out_chemical: si::Power::ZERO,
+            energy_out_electrical: si::Energy::ZERO,
+            energy_out_propulsion: si::Energy::ZERO,
+            energy_aux: si::Energy::ZERO,
+            energy_loss: si::Energy::ZERO,
+            energy_out_chemical: si::Energy::ZERO,
+            max_soc: si::Ratio::ZERO,
+            min_soc: si::Ratio::ZERO,
             temperature_celsius: 22.,
         }
     }
@@ -702,21 +702,6 @@ impl Default for ReversibleEnergyStorageState {
 
 impl Init for ReversibleEnergyStorageState {}
 impl SerdeAPI for ReversibleEnergyStorageState {}
-
-impl ReversibleEnergyStorageState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            // slightly less than max soc for default ReversibleEnergyStorage
-            soc: uc::R * 0.95,
-            soh: 1.0,
-            max_soc: uc::R * 1.0,
-            min_soc: si::Ratio::ZERO,
-            temperature_celsius: 45.0,
-            ..Default::default()
-        }
-    }
-}
 
 mod tests {
     // TODO: put tests here
