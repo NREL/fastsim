@@ -158,14 +158,12 @@ pub fn interp1d(
     let y_first = y_data
         .first()
         .with_context(|| anyhow!("Unable to extract first element"))?;
+    // TODO: do this once on init
     if y_data.iter().all(|y| y == y_first) {
         // return first if all data is equal to first
         Ok(*y_first)
     } else {
-        let x_mean = x_data.iter().sum::<f64>() / x_data.len() as f64;
-        if x_data.iter().all(|&x| x == x_mean) {
-            bail!("Cannot interpolate as all values are equal");
-        }
+        // TODO: when `Interpolator` struct is implemented, make sure this sort of check happens on init
         let size = x_data.len();
 
         let mut i = 0;
