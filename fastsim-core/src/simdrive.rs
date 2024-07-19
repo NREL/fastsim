@@ -123,7 +123,7 @@ impl SimDrive {
         speed: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        log::debug!("{}\n{}", format_dbg!(), "set_pwr_tract_for_speed");
+        log::debug!("{}: {}", format_dbg!(), "set_pwr_tract_for_speed");
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
@@ -162,6 +162,7 @@ impl SimDrive {
             * (speed.powi(typenum::P2::new()) - speed_prev.powi(typenum::P2::new()));
         vs.pwr_ascent = uc::ACC_GRAV * vs.grade_curr * mass * (speed_prev + speed) / 2.0;
         vs.pwr_drag = 0.5
+            // TODO: feed in elevation
             * air::get_density_air(None, None)
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
@@ -201,18 +202,19 @@ impl SimDrive {
             log::debug!("{}", format_dbg!("early return from `set_ach_speed`"));
             return Ok(());
         }
-        let density_air = air::get_density_air(None, None);
         let mass = self
             .veh
             .mass
             .with_context(|| format!("{}\nMass should have been set before now", format_dbg!()))?;
         let speed_prev = vs.speed_ach;
 
-        let drag3 =
-            1.0 / 16.0 * density_air * self.veh.chassis.drag_coef * self.veh.chassis.frontal_area;
+        let drag3 = 1.0 / 16.0
+            * vs.air_density
+            * self.veh.chassis.drag_coef
+            * self.veh.chassis.frontal_area;
         let accel2 = 0.5 * mass / dt;
         let drag2 = 3.0 / 16.0
-            * density_air
+            * vs.air_density
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
             * speed_prev;
@@ -225,7 +227,7 @@ impl SimDrive {
                     .unwrap()
                     .powi(typenum::P2::new()));
         let drag1 = 3.0 / 16.0
-            * density_air
+            * vs.air_density
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
             * speed_prev.powi(typenum::P2::new());
@@ -234,7 +236,7 @@ impl SimDrive {
         let ascent1 = 0.5 * uc::ACC_GRAV * vs.grade_curr.atan().sin() * mass;
         let accel0 = -0.5 * mass * speed_prev.powi(typenum::P2::new()) / dt;
         let drag0 = 1.0 / 16.0
-            * density_air
+            * vs.air_density
             * self.veh.chassis.drag_coef
             * self.veh.chassis.frontal_area
             * speed_prev.powi(typenum::P3::new());

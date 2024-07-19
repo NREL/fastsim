@@ -853,6 +853,8 @@ pub struct VehicleState {
     pub dist: si::Length,
     /// current grade
     pub grade_curr: si::Ratio,
+    /// current air density
+    pub air_density: si::MassDensity,
 }
 
 fn return_true() -> bool {
@@ -888,6 +890,7 @@ impl Default for VehicleState {
             speed_ach: si::Velocity::ZERO,
             dist: si::Length::ZERO,
             grade_curr: si::Ratio::ZERO,
+            air_density: crate::air_properties::get_density_air(None, None),
         }
     }
 }
