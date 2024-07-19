@@ -679,7 +679,7 @@ impl Default for ReversibleEnergyStorageState {
             pwr_regen_max: uc::W * 0.,
             pwr_disch_max: uc::W * 0.,
             pwr_charge_max: uc::W * 0.,
-            i: 0,
+            i: 1,
             soc: uc::R * 0.5,
             eff: uc::R * 0.,
             soh: 0.,

@@ -796,9 +796,7 @@ impl Vehicle {
 }
 
 /// Vehicle state for current time step
-#[derive(
-    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default, SetCumulative,
-)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[pyo3_api]
 pub struct VehicleState {
     /// time step index
@@ -844,10 +842,10 @@ pub struct VehicleState {
     pub energy_brake: si::Energy,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in current time step
+    // because it should be assumed true in the first time step
     pub curr_pwr_met: bool,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in entire cycle
-    #[serde(default = "return_true")] // because it should be assumed true until it's not
     pub all_curr_pwr_met: bool,
     /// actual achieved speed
     pub speed_ach: si::Velocity,
@@ -863,6 +861,36 @@ fn return_true() -> bool {
 
 impl SerdeAPI for VehicleState {}
 impl Init for VehicleState {}
+impl Default for VehicleState {
+    fn default() -> Self {
+        Self {
+            i: 1,
+            pwr_prop_pos_max: Default::default(),
+            pwr_prop_neg_max: Default::default(),
+            pwr_tractive: Default::default(),
+            energy_tractive: Default::default(),
+            pwr_aux: Default::default(),
+            energy_aux: Default::default(),
+            pwr_drag: Default::default(),
+            energy_drag: Default::default(),
+            pwr_accel: Default::default(),
+            energy_accel: Default::default(),
+            pwr_ascent: Default::default(),
+            energy_ascent: Default::default(),
+            pwr_rr: Default::default(),
+            energy_rr: Default::default(),
+            pwr_whl_inertia: Default::default(),
+            energy_whl_inertia: Default::default(),
+            pwr_brake: Default::default(),
+            energy_brake: Default::default(),
+            curr_pwr_met: true,
+            all_curr_pwr_met: true,
+            speed_ach: Default::default(),
+            dist: Default::default(),
+            grade_curr: Default::default(),
+        }
+    }
+}
 
 #[cfg(test)]
 pub(crate) mod tests {
