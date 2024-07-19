@@ -29,31 +29,13 @@ pub fn get_density_air(
     match (h, te_air) {
         (None, None) => {
             // 99_346.3 / 287 / 293.15
-            log::debug!("{}\n{}", format_dbg!(), "`get_density_air(None, None)`");
             1.206 * uc::KGPM3
         }
-        (None, Some(te_air)) => {
-            log::debug!(
-                "{}\n{}",
-                format_dbg!(),
-                "`get_density_air(None, Some(...))`"
-            );
-            std_pressure_default() / (287.0 * uc::J_PER_KG_K) / te_air
-        }
+        (None, Some(te_air)) => std_pressure_default() / (287.0 * uc::J_PER_KG_K) / te_air,
         (Some(h_val), None) => {
-            log::debug!(
-                "{}\n{}",
-                format_dbg!(),
-                "`get_density_air(Some(...), None)`"
-            );
             std_pressure_at_elev(h_val) / (287.0 * uc::J_PER_KG_K) / te_air_default()
         }
         (Some(h_val), Some(te_air)) => {
-            log::debug!(
-                "{}\n{}",
-                format_dbg!(),
-                "`get_density_air(Some(...), Some(...))`"
-            );
             std_pressure_at_elev(h_val) / (287.0 * uc::J_PER_KG_K) / te_air
         }
     }
