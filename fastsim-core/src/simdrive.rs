@@ -128,6 +128,7 @@ impl SimDrive {
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
         log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
+        // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
         vs.grade_curr = if vs.all_curr_pwr_met {
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {
