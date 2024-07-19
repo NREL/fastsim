@@ -317,6 +317,7 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     });
 
     let py_impl_block = quote! {
+        #[allow(non_snake_case)]
         #[pymethods]
         #[cfg(feature="pyo3")]
         /// Implement methods exposed and used in Python via PyO3

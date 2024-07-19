@@ -223,29 +223,29 @@ pub fn abs_checked_x_val(x_val: f64, x_data: &[f64]) -> anyhow::Result<f64> {
 /// Returns true if `val1` and `val2` are within a relative/absolute `epsilon` of each other,
 /// depending on magnitude.
 pub fn almost_eq(val1: f64, val2: f64, epsilon: Option<f64>) -> bool {
-    let epsilon = epsilon.unwrap_or_else(|| 1e-8);
+    let epsilon = epsilon.unwrap_or(1e-8);
     ((val2 - val1) / (val1 + val2)).abs() < epsilon || (val2 - val1).abs() < epsilon
 }
 
 pub fn almost_gt(val1: f64, val2: f64, epsilon: Option<f64>) -> bool {
-    let epsilon = epsilon.unwrap_or_else(|| 1e-8);
+    let epsilon = epsilon.unwrap_or(1e-8);
     val1 > val2 * (1.0 + epsilon)
 }
 
 pub fn almost_lt(val1: f64, val2: f64, epsilon: Option<f64>) -> bool {
-    let epsilon = epsilon.unwrap_or_else(|| 1e-8);
+    let epsilon = epsilon.unwrap_or(1e-8);
     val1 < val2 * (1.0 - epsilon)
 }
 
 /// Returns true if `val1` is greater than or equal to `val2` with some error margin, `epsilon`
 pub fn almost_ge(val1: f64, val2: f64, epsilon: Option<f64>) -> bool {
-    let epsilon = epsilon.unwrap_or_else(|| 1e-8);
+    let epsilon = epsilon.unwrap_or(1e-8);
     val1 > val2 * (1.0 - epsilon) || val1 > val2 - epsilon
 }
 
 /// Returns true if `val1` is less than or equal to `val2` with some error margin, `epsilon`
 pub fn almost_le(val1: f64, val2: f64, epsilon: Option<f64>) -> bool {
-    let epsilon = epsilon.unwrap_or_else(|| 1e-8);
+    let epsilon = epsilon.unwrap_or(1e-8);
     val1 < val2 * (1.0 + epsilon) || val1 < val2 + epsilon
 }
 
@@ -316,6 +316,7 @@ pub struct Pyo3VecWrapper(pub Vec<f64>);
 impl SerdeAPI for Pyo3VecWrapper {}
 impl Init for Pyo3VecWrapper {}
 
+#[allow(non_snake_case)]
 #[pyo3_api]
 #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3Vec2Wrapper(pub Vec<Vec<f64>>);

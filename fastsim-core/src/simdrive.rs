@@ -123,10 +123,11 @@ impl SimDrive {
         speed: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
-        log::debug!("{}", format_dbg!("set_pwr_tract_for_speed"));
+        log::debug!("{}\n{}", format_dbg!(), "set_pwr_tract_for_speed");
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
+        log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
         vs.grade_curr = if vs.all_curr_pwr_met {
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {

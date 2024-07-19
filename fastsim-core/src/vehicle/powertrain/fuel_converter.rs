@@ -153,7 +153,7 @@ impl Mass for FuelConverter {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
             self.specific_pwr = None;
         }
