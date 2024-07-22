@@ -338,6 +338,8 @@ impl SimDrive {
                 .with_context(|| format_dbg!("should have had at least one element"))?
                 .max(0.0 * uc::MPS);
         }
+        self.set_pwr_tract_for_speed(self.veh.state.speed_ach, dt)
+            .with_context(|| format_dbg!())?;
 
         Ok(())
     }
