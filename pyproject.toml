@@ -54,12 +54,12 @@ profile = "release"
 python-source = "python"
 features = ["pyo3/extension-module"]
 module-name = "fastsim.fastsim"
-manifest-path = "fastsim-py/Cargo.toml"
+manifest-path = "rust/fastsim-py/Cargo.toml"
 include = [
-    { format = "sdist", path = "fastsim-core/Cargo.toml" },
-    { format = "sdist", path = "fastsim-core/src/*" },
-    { format = "sdist", path = "fastsim-py/Cargo.toml" },
-    { format = "sdist", path = "fastsim-py/src/*" },
-    { format = "sdist", path = "fastsim-core/proc-macros/Cargo.toml" },
-    { format = "sdist", path = "fastsim-core/proc-macros/src/*" },
+    { format = "sdist", path = "rust/fastsim-core/Cargo.toml" },
+    { format = "sdist", path = "rust/fastsim-core/src/*" },
+    { format = "sdist", path = "rust/fastsim-py/Cargo.toml" },
+    { format = "sdist", path = "rust/fastsim-py/src/*" },
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml" },
+    { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*" },
 ]
