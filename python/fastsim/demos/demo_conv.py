@@ -28,10 +28,10 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.save_interval = None
+veh_no_save.__save_interval = None
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-veh.save_interval = 1
+veh.__save_interval = 1
 
 # load cycle from file
 cyc = fsim.Cycle.from_resource("udds.csv")
