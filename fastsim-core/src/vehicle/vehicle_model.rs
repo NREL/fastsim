@@ -22,9 +22,14 @@ impl Init for AuxSource {}
 
     // despite having `setter` here, this seems to work as a function
     #[setter("save_interval")]
+    fn set_save_interval_py(&mut self, _save_interval: Option<usize>) -> PyResult<()> {
+        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
+    }
+
+    #[setter("__save_interval")]
     /// Set save interval and cascade to nested components.
-    fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.set_save_interval(save_interval)
+    fn set_save_interval_hidden(&mut self, save_interval: Option<usize>) -> PyResult<()> {
+        self.set_save_interval(save_interval).map_err(|e| PyAttributeError::new_err(e.to_string()))
     }
 
     // despite having `getter` here, this seems to work as a function
