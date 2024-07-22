@@ -127,11 +127,12 @@ impl SimDrive {
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
-        log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
         vs.grade_curr = if vs.all_curr_pwr_met {
+            log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {
+            log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
             uc::R
                 * interp1d(
                     &vs.dist.get::<si::meter>(),
@@ -201,6 +202,8 @@ impl SimDrive {
             vs.speed_ach = cyc_speed;
             log::debug!("{}", format_dbg!("early return from `set_ach_speed`"));
             return Ok(());
+        } else {
+            log::debug!("{}", format_dbg!("proceeding through `set_ach_speed`"));
         }
         let mass = self
             .veh
