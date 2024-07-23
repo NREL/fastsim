@@ -22,6 +22,14 @@ print('strategy: ', veh.fc.eff_interp.strategy)
 
 print('extrapolate: ', veh.fc.eff_interp.extrapolate)
 
+# # how to set extrapolation fields
+# eff_interp_updated = veh.fc.eff_interp
+# eff_interp_updated.reset_orphaned()
+# eff_interp_updated.x = [0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.85, 1.0]
+# veh.fc.eff_interp = eff_interp_updated
+
+# print('updated x: ', veh.fc.eff_interp.x)
+
 # load 2D test vehicle from file
 veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion_2D_test.yaml")
