@@ -85,7 +85,7 @@ impl Mass for FuelStorage {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
             log::debug!("Provided mass is None, setting `self.specific_energy` to None");
             self.specific_energy = None;
         }

@@ -8,6 +8,23 @@
 //! # Features:
 //! - pyo3: enable this feature to expose FASTSim structs, methods, and functions to Python
 
+#[macro_use]
+pub mod macros;
+
+pub mod air_properties;
+pub mod drive_cycle;
+pub mod imports;
+pub mod prelude;
+#[cfg(feature = "pyo3")]
+pub mod pyo3;
+pub mod resources;
+pub mod si;
+pub mod simdrive;
+pub mod traits;
+pub mod uc;
+pub mod utils;
+pub mod vehicle;
+
 /// List enabled features
 #[cfg_attr(feature = "pyo3", imports::pyfunction)]
 pub fn enabled_features() -> Vec<String> {
@@ -32,21 +49,3 @@ pub fn enabled_features() -> Vec<String> {
         "yaml".into(),
     ]
 }
-
-#[macro_use]
-pub mod macros;
-
-pub mod air_properties;
-pub mod drive_cycle;
-pub mod imports;
-pub mod prelude;
-pub mod resources;
-pub mod si;
-pub mod simdrive;
-pub mod traits;
-pub mod uc;
-pub mod utils;
-pub mod vehicle;
-
-#[cfg(feature = "pyo3")]
-pub mod pyo3;

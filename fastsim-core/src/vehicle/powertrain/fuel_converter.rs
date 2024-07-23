@@ -2,8 +2,6 @@ use super::*;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
 
-const TOL: f64 = 1e-3;
-
 #[pyo3_api(
     // // optional, custom, struct-specific pymethods
     // #[getter("eff_max")]
@@ -150,7 +148,7 @@ impl Mass for FuelConverter {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
             self.specific_pwr = None;
         }
@@ -322,13 +320,3 @@ pub struct FuelConverterState {
 
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
-
-impl FuelConverterState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            fc_on: true,
-            ..Default::default()
-        }
-    }
-}

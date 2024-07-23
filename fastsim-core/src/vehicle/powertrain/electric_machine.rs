@@ -277,8 +277,8 @@ impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         let _ = check_interp_frac_data(&self.pwr_out_frac_interp, InterpRange::Either)
-            .with_context(|| format!(
-                "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1]."))?;
+            .with_context(|| 
+                "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].")?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
         // TODO: make use of `use fastsim_2::params::{LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF,SMALL_MOTOR_POWER_KW};`
         // to set
@@ -344,7 +344,7 @@ impl Mass for ElectricMachine {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
             self.specific_pwr = None;
         }
@@ -412,12 +412,3 @@ pub struct ElectricMachineState {
 
 impl Init for ElectricMachineState {}
 impl SerdeAPI for ElectricMachineState {}
-
-impl ElectricMachineState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            ..Default::default()
-        }
-    }
-}

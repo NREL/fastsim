@@ -24,9 +24,14 @@ impl Init for AuxSource {}
 
     // despite having `setter` here, this seems to work as a function
     #[setter("save_interval")]
+    fn set_save_interval_py(&mut self, _save_interval: Option<usize>) -> PyResult<()> {
+        Err(PyAttributeError::new_err(DIRECT_SET_ERR))
+    }
+
+    #[setter("__save_interval")]
     /// Set save interval and cascade to nested components.
-    fn set_save_interval_py(&mut self, save_interval: Option<usize>) -> anyhow::Result<()> {
-        self.set_save_interval(save_interval)
+    fn set_save_interval_hidden(&mut self, save_interval: Option<usize>) -> PyResult<()> {
+        self.set_save_interval(save_interval).map_err(|e| PyAttributeError::new_err(e.to_string()))
     }
 
     // despite having `getter` here, this seems to work as a function
@@ -699,7 +704,7 @@ impl Vehicle {
             max_soc: self
                 .res()
                 .map(|res| res.max_soc.get::<si::ratio>())
-                .unwrap_or(1.0),
+                .unwrap_or_else(|| 1.0),
             max_soc_doc: None,
             max_trac_mps2: Default::default(),
             mc_eff_array: Default::default(),
@@ -814,9 +819,7 @@ impl Vehicle {
 }
 
 /// Vehicle state for current time step
-#[derive(
-    Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, Default, SetCumulative,
-)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[pyo3_api]
 pub struct VehicleState {
     /// time step index
@@ -860,16 +863,60 @@ pub struct VehicleState {
     pub pwr_brake: si::Power,
     /// integral of [Self::pwr_brake]
     pub energy_brake: si::Energy,
-    /// whether powertrain can achieve power demand
-    pub cyc_met: bool,
+    /// whether powertrain can achieve power demand to achieve prescribed speed
+    /// in current time step
+    // because it should be assumed true in the first time step
+    pub curr_pwr_met: bool,
+    /// whether powertrain can achieve power demand to achieve prescribed speed
+    /// in entire cycle
+    pub all_curr_pwr_met: bool,
     /// actual achieved speed
     pub speed_ach: si::Velocity,
     /// cumulative distance traveled, integral of [Self::speed_ach]
     pub dist: si::Length,
+    /// current grade
+    pub grade_curr: si::Ratio,
+    /// current air density
+    pub air_density: si::MassDensity,
+}
+
+fn return_true() -> bool {
+    true
 }
 
 impl SerdeAPI for VehicleState {}
 impl Init for VehicleState {}
+impl Default for VehicleState {
+    fn default() -> Self {
+        Self {
+            i: Default::default(),
+            pwr_prop_pos_max: si::Power::ZERO,
+            pwr_prop_neg_max: si::Power::ZERO,
+            pwr_tractive: si::Power::ZERO,
+            energy_tractive: si::Energy::ZERO,
+            pwr_aux: si::Power::ZERO,
+            energy_aux: si::Energy::ZERO,
+            pwr_drag: si::Power::ZERO,
+            energy_drag: si::Energy::ZERO,
+            pwr_accel: si::Power::ZERO,
+            energy_accel: si::Energy::ZERO,
+            pwr_ascent: si::Power::ZERO,
+            energy_ascent: si::Energy::ZERO,
+            pwr_rr: si::Power::ZERO,
+            energy_rr: si::Energy::ZERO,
+            pwr_whl_inertia: si::Power::ZERO,
+            energy_whl_inertia: si::Energy::ZERO,
+            pwr_brake: si::Power::ZERO,
+            energy_brake: si::Energy::ZERO,
+            curr_pwr_met: true,
+            all_curr_pwr_met: true,
+            speed_ach: si::Velocity::ZERO,
+            dist: si::Length::ZERO,
+            grade_curr: si::Ratio::ZERO,
+            air_density: crate::air_properties::get_density_air(None, None),
+        }
+    }
+}
 
 #[cfg(test)]
 pub(crate) mod tests {
