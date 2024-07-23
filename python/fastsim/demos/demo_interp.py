@@ -1,3 +1,4 @@
+from fastsim import set_param_from_path
 import fastsim as fsim
 
 # %% [markdown]
@@ -28,6 +29,10 @@ print('extrapolate: ', veh.fc.eff_interp.extrapolate)
 # eff_interp_updated.x = [0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.85, 1.0]
 # veh.fc.eff_interp = eff_interp_updated
 
+# print('updated x: ', veh.fc.eff_interp.x)
+
+# # how to set extrapolated fields
+# set_param_from_path(veh, veh.fc.eff_interp.x, [0.0, 0.005, 0.015, 0.04, 0.06, 0.1, 0.14, 0.2, 0.4, 0.6, 0.85, 1.0])
 # print('updated x: ', veh.fc.eff_interp.x)
 
 # load 2D test vehicle from file
