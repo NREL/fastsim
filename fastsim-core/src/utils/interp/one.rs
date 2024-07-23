@@ -8,6 +8,7 @@ pub struct Interp1D {
     pub f_x: Vec<f64>,
     pub strategy: Strategy,
     pub extrapolate: Extrapolate,
+    #[serde(skip)]
     _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
 }
 

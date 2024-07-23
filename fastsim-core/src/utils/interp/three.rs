@@ -10,6 +10,7 @@ pub struct Interp3D {
     pub f_xyz: Vec<Vec<Vec<f64>>>,
     pub strategy: Strategy,
     pub extrapolate: Extrapolate,
+    #[serde(skip)]
     _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
 }
 

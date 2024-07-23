@@ -10,6 +10,7 @@ pub struct InterpND {
     pub values: ArrayD<f64>,
     pub extrapolate: Extrapolate,
     pub strategy: Strategy,
+    #[serde(skip)]
     _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
 }
 
