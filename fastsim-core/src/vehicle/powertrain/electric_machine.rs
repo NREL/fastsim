@@ -277,8 +277,8 @@ impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         let _ = check_interp_frac_data(&self.pwr_out_frac_interp, InterpRange::Either)
-            .with_context(|| format!(
-                "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1]."))?;
+            .with_context(||
+                "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].")?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
         // TODO: make use of `use fastsim_2::params::{LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF,SMALL_MOTOR_POWER_KW};`
         // to set

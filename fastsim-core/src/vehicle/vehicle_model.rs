@@ -285,7 +285,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp: InterpolatorWrapperVec(Interpolator::Interp1D(Interp1D::new(
+                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
@@ -333,7 +333,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp: InterpolatorWrapperVec(Interpolator::Interp1D(Interp1D::new(
+                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
