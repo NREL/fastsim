@@ -51,7 +51,6 @@ pt_type:
             - 0.32
           strategy: LeftNearest
           extrapolate: Error
-          _phantom: ~
       pwr_idle_fuel_watts: 13125.0
       save_interval: 1
     em:

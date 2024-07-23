@@ -35,7 +35,6 @@ pt_type:
               - 8.0
           strategy: Linear
           extrapolate: Error
-          _phantom: ~
       pwr_idle_fuel_watts: 6999.999999999999
       save_interval: 1
     mass: ~

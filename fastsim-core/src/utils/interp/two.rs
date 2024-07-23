@@ -9,6 +9,7 @@ pub struct Interp2D {
     pub f_xy: Vec<Vec<f64>>,
     pub strategy: Strategy,
     pub extrapolate: Extrapolate,
+    #[serde(skip)]
     _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
 }
 
