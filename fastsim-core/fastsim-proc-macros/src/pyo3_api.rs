@@ -71,21 +71,20 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     } else if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast.fields {
         // tuple struct
-        if ast.ident.to_string().contains("Vec") {
-            assert!(unnamed.len() == 1);
-            for field in unnamed.iter() {
-                let ftype = field.ty.clone();
-                if let syn::Type::Path(type_path) = ftype.clone() {
-                    let type_str = type_path.clone().into_token_stream().to_string();
-                    if type_str.contains("Vec") {
-                        let re = Regex::new(r"Vec < (.+) >").unwrap();
-                        // println!("{}", type_str);
-                        // println!("{}", &re.captures(&type_str).unwrap()[1]);
-                        let contained_dtype: TokenStream2 = re.captures(&type_str).unwrap()[1]
-                            .to_string()
-                            .parse()
-                            .unwrap();
-                        py_impl_block.extend::<TokenStream2>(
+        assert!(unnamed.len() == 1);
+        for field in unnamed.iter() {
+            let ftype = field.ty.clone();
+            if let syn::Type::Path(type_path) = ftype.clone() {
+                let type_str = type_path.clone().into_token_stream().to_string();
+                if type_str.contains("Vec") {
+                    let re = Regex::new(r"Vec < (.+) >").unwrap();
+                    // println!("{}", type_str);
+                    // println!("{}", &re.captures(&type_str).unwrap()[1]);
+                    let contained_dtype: TokenStream2 = re.captures(&type_str).unwrap()[1]
+                        .to_string()
+                        .parse()
+                        .unwrap();
+                    py_impl_block.extend::<TokenStream2>(
                             quote! {
                                 #[new]
                                 /// Rust-defined `__new__` magic method for Python used exposed via PyO3.
@@ -132,21 +131,16 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                                 }
                             }
                         );
-                        impl_block.extend::<TokenStream2>(quote! {
-                            impl #ident{
-                                /// Implement the non-Python `new` method.
-                                pub fn new(value: Vec<#contained_dtype>) -> Self {
-                                    Self(value)
-                                }
+                    impl_block.extend::<TokenStream2>(quote! {
+                        impl #ident{
+                            /// Implement the non-Python `new` method.
+                            pub fn new(value: Vec<#contained_dtype>) -> Self {
+                                Self(value)
                             }
-                        });
-                    }
+                        }
+                    });
                 }
             }
-        } else {
-            abort_call_site!(
-                "Invalid use of `fastsim_api` macro.  Expected tuple struct with Vec in name."
-            );
         }
     } else {
         abort_call_site!(
@@ -254,7 +248,7 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn from_bincode_py(encoded: &PyBytes, skip_init: Option<bool>) -> PyResult<Self> {
             Self::from_bincode(encoded.as_bytes(), skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
-        
+
         /// Write (serialize) an object to a JSON string
         #[cfg(feature = "json")]
         #[pyo3(name = "to_json")]
@@ -294,7 +288,7 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub fn from_toml_py(toml_str: &str, skip_init: Option<bool>) -> PyResult<Self> {
             Self::from_toml(toml_str, skip_init.unwrap_or_default()).map_err(|e| PyIOError::new_err(format!("{:?}", e)))
         }
-        
+
         /// Write (serialize) an object to a YAML string
         #[cfg(feature = "yaml")]
         #[pyo3(name = "to_yaml")]
