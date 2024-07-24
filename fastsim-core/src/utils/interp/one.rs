@@ -38,10 +38,12 @@ impl Interp1D {
         // Extrapolate, if applicable
         if matches!(self.extrapolate, Extrapolate::Extrapolate) {
             if point < self.x[0] {
+                #[cfg(feature = "logging")]
                 log::info!("Extrapolating: point = {}, x_min = {}", point, self.x[0]);
                 let slope = (self.f_x[1] - self.f_x[0]) / (self.x[1] - self.x[0]);
                 return Ok(slope * (point - self.x[0]) + self.f_x[0]);
             } else if &point > self.x.last().unwrap() {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Extrapolating: point = {}, x_max = {}",
                     point,

@@ -9,9 +9,12 @@ edition = { workspace = true }
 fastsim-2 = { workspace = true }
 fastsim-core = { workspace = true, features = ["pyo3"] }
 pyo3 = { workspace = true, features = ["extension-module", "anyhow"] }
-pyo3-log = { workspace = true }
+pyo3-log = { workspace = true, optional = true }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "fastsim"
 crate-type = ["cdylib"]
+
+[features]
+logging = ["fastsim-core/logging", "dep:pyo3-log"]

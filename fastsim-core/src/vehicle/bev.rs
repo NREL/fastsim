@@ -59,6 +59,7 @@ impl Mass for BatteryElectricVehicle {
             Some(new_mass) => {
                 if let Some(dm) = derived_mass {
                     if dm != new_mass {
+                        #[cfg(feature = "logging")]
                         log::warn!(
                             "Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`",
                             stringify!(BatteryElectricVehicle));

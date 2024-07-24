@@ -529,6 +529,7 @@ impl Mass for ReversibleEnergyStorage {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
                     "provided mass. Updating based on `side_effect`"
@@ -551,6 +552,7 @@ impl Mass for ReversibleEnergyStorage {
                 }
             }
         } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!("Provided mass is None, setting `self.specific_energy` to None");
             self.specific_energy = None;
         }

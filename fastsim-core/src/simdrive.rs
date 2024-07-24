@@ -97,6 +97,7 @@ impl SimDrive {
     /// Solves current time step
     /// # Arguments
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
+        #[cfg(feature = "logging")]
         log::debug!("{}", format_dbg!(self.veh.state.i));
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
@@ -123,15 +124,18 @@ impl SimDrive {
         speed: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
+        #[cfg(feature = "logging")]
         log::debug!("{}: {}", format_dbg!(), "set_pwr_tract_for_speed");
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
         vs.grade_curr = if vs.all_curr_pwr_met {
+            #[cfg(feature = "logging")]
             log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {
+            #[cfg(feature = "logging")]
             log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
             uc::R
                 * interp1d(
@@ -200,9 +204,11 @@ impl SimDrive {
         let vs = &mut self.veh.state;
         if vs.curr_pwr_met {
             vs.speed_ach = cyc_speed;
+            #[cfg(feature = "logging")]
             log::debug!("{}", format_dbg!("early return from `set_ach_speed`"));
             return Ok(());
         } else {
+            #[cfg(feature = "logging")]
             log::debug!("{}", format_dbg!("proceeding through `set_ach_speed`"));
         }
         let mass = self
@@ -299,12 +305,14 @@ impl SimDrive {
         // speed achieved iteration counter
         let mut spd_ach_iter_counter = 1;
         let mut converged = pwr_err <= uc::W * 0.;
+        #[cfg(feature = "logging")]
         log::debug!(
             "{}\n{}",
             format_dbg!(vs.i),
             format_dbg!(spd_ach_iter_counter)
         );
         while spd_ach_iter_counter < max_iter && !converged {
+            #[cfg(feature = "logging")]
             log::debug!(
                 "{}\n{}",
                 format_dbg!(vs.i),
