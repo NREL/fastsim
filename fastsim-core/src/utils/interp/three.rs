@@ -146,11 +146,11 @@ mod tests {
             .unwrap(),
         );
         // Check that interpolating at grid points just retrieves the value
-        for i in 0..x.len() {
-            for j in 0..y.len() {
-                for k in 0..z.len() {
+        for (i, x_i) in x.iter().enumerate() {
+            for (j, y_j) in y.iter().enumerate() {
+                for (k, z_k) in z.iter().enumerate() {
                     assert_eq!(
-                        interp.interpolate(&[x[i], y[j], z[k]]).unwrap(),
+                        interp.interpolate(&[*x_i, *y_j, *z_k]).unwrap(),
                         f_xyz[i][j][k]
                     );
                 }
