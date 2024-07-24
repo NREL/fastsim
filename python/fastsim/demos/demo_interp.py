@@ -1,4 +1,3 @@
-from fastsim import set_param_from_path
 import fastsim as fsim
 
 # %% [markdown]
@@ -11,7 +10,7 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.save_interval = None
+veh_no_save.__save_interval = None
 
 print("1D extrapolation fields:")
 
@@ -28,7 +27,7 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion_2D_test.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.save_interval = None
+veh_no_save.__save_interval = None
 
 print("2D extrapolation fields:")
 
@@ -47,7 +46,7 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion_3D_test.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.save_interval = None
+veh_no_save.__save_interval = None
 
 print("3D extrapolation fields:")
 
@@ -68,7 +67,7 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion_ND_test.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.save_interval = None
+veh_no_save.__save_interval = None
 
 print("ND extrapolation fields:")
 
