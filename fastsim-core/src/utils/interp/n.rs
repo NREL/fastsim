@@ -156,7 +156,7 @@ impl InterpMethods for InterpND {
         for i in 0..n {
             // Indexing `grid` directly is okay because `grid == vec![]` is caught at compilation
             ensure!(
-                self.grid[i].len() != 0,
+                !self.grid[i].is_empty(),
                 "Supplied `grid` coordinates cannot be empty: dimension {i}, {:?}",
                 self.grid[i]
             );
