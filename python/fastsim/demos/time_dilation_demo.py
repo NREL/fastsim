@@ -42,10 +42,11 @@ t0 = time.time()
 
 sd_fixed = simdrive.SimDrive(cyc, veh)
 sim_params = sd_fixed.sim_params
+# activate time dilation (aka missed trace correction)
 sim_params.missed_trace_correction=True
-# sim_params.min_time_dilation = 1
+# by setting `sim_params.max_time_dilation = 0.1`, we're ensuring that a simulation with 1 s
+# time steps will never exceed a 1.1 s time step to achieve trace matching
 sim_params.max_time_dilation = 0.1
-# sim_params.time_dilation_tol = 1e-1
 
 sd_base = simdrive.SimDrive(cyc, veh)
 
