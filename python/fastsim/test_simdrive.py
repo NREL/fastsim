@@ -5,7 +5,7 @@ from fastsim.simdrive import SimulationDrive
 
 # Load cycle and initialize vehicle
 cyc = fsim.cycle.Cycle.from_file("udds")
-veh = fsim.vehicle.Vehicle.from_vehdb(11)  
+veh = fsim.vehicle.Vehicle.from_vehdb(6)  
 
 
 # Run simulation
@@ -15,7 +15,7 @@ sim_drive.sim_drive()
 
 # Call the plot function directly with specified parameters
 fig, axes = SimulationDrive(sim_drive).plot(
-    signal=['Fuel Cell Output Power Achieved', 'Fuel Cell Input Power Achieved',],  # Example signals
+    signal=['fuel converter output power acheived'],  # Example signals
     fuzzy_search=True,
     feeling_lucky=True,
     speed_trace=True,
