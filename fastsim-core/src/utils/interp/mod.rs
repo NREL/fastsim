@@ -285,7 +285,7 @@ impl Interpolator {
                     ),
                     _ => {}
                 };
-                interp.interpolate(&point)
+                interp.interpolate(point)
             }
         }
     }

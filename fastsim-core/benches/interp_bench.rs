@@ -207,14 +207,14 @@ fn benchmark_3D_multi() {
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("0-D hardcoded", |b| b.iter(|| benchmark_0D()));
-    c.bench_function("0-D multilinear", |b| b.iter(|| benchmark_0D_multi()));
-    c.bench_function("1-D hardcoded", |b| b.iter(|| benchmark_1D()));
-    c.bench_function("1-D multilinear", |b| b.iter(|| benchmark_1D_multi()));
-    c.bench_function("2-D hardcoded", |b| b.iter(|| benchmark_2D()));
-    c.bench_function("2-D multilinear", |b| b.iter(|| benchmark_2D_multi()));
-    c.bench_function("3-D hardcoded", |b| b.iter(|| benchmark_3D()));
-    c.bench_function("3-D multilinear", |b| b.iter(|| benchmark_3D_multi()));
+    c.bench_function("0-D hardcoded", |b| b.iter(benchmark_0D));
+    c.bench_function("0-D multilinear", |b| b.iter(benchmark_0D_multi));
+    c.bench_function("1-D hardcoded", |b| b.iter(benchmark_1D));
+    c.bench_function("1-D multilinear", |b| b.iter(benchmark_1D_multi));
+    c.bench_function("2-D hardcoded", |b| b.iter(benchmark_2D));
+    c.bench_function("2-D multilinear", |b| b.iter(benchmark_2D_multi));
+    c.bench_function("3-D hardcoded", |b| b.iter(benchmark_3D));
+    c.bench_function("3-D multilinear", |b| b.iter(benchmark_3D_multi));
 }
 
 criterion_group!(benches, criterion_benchmark);

@@ -286,7 +286,7 @@ impl ReversibleEnergyStorage {
             - discharge_buffer.unwrap_or_default() / self.energy_capacity)
             .max(self.min_soc);
 
-        state.pwr_disch_max = 
+        state.pwr_disch_max =
             // current SOC is greater than or equal to current min and ramp down threshold
             if state.soc >= state.min_soc
             && state.soc >= self.soc_lo_ramp_start.with_context(|| format_dbg!())?
@@ -315,13 +315,13 @@ impl ReversibleEnergyStorage {
                         stringify!(state.pwr_disch_max)
                     )
                 })?
-        } 
+        }
         // current SOC is greater than ramp down threshold but less than current min or current SOC is less than both
         else {
             uc::W * 0.
         };
 
-        state.pwr_charge_max = 
+        state.pwr_charge_max =
             // current SOC is less than or equal to current max and ramp down threshold
             if state.soc <= state.max_soc
             && state.soc <= self.soc_hi_ramp_start.with_context(|| format_dbg!())?
@@ -350,7 +350,7 @@ impl ReversibleEnergyStorage {
                         stringify!(state.pwr_disch_max)
                     )
                 })?
-        } 
+        }
         // current SOC is less than ramp down threshold but greater than current
         // max or current SOC is greater than both
         else {

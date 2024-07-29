@@ -157,18 +157,18 @@ use super::*;
     }
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct InterpolatorWrapperVec(pub Interpolator);
-// pub struct InterpolatorWrapperVec {
+pub struct InterpolatorWrapper(pub Interpolator);
+// pub struct InterpolatorWrapper {
 //     pub interpolator: Interpolator,
 // }
 
-impl InterpolatorWrapperVec {
+impl InterpolatorWrapper {
     pub fn interpolate(&self, point: &[f64]) -> anyhow::Result<f64> {
         // self.interpolator.interpolate(point)
         self.0.interpolate(point)
     }
 }
 
-impl Init for InterpolatorWrapperVec {}
+impl Init for InterpolatorWrapper {}
 
-impl SerdeAPI for InterpolatorWrapperVec {}
+impl SerdeAPI for InterpolatorWrapper {}
