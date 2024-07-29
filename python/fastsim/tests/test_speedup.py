@@ -12,7 +12,7 @@ def test_hev_speedup():
     )
 
     # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-    veh.__save_interval = 1
+    fsim.set_param_from_path(veh, "save_interval", 1)
 
     # load cycle from file
     cyc = fsim.Cycle.from_resource("udds.csv")
@@ -63,7 +63,7 @@ def test_conv_speedup():
     )
 
     # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-    veh.__save_interval = 1
+    fsim.set_param_from_path(veh, "save_interval", 1)
 
     # load cycle from file
     cyc = fsim.Cycle.from_resource("udds.csv")

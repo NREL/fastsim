@@ -10,7 +10,7 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.__save_interval = None
+fsim.set_param_from_path(veh_no_save, "save_interval", None)
 
 print("1D extrapolation fields:")
 print('x: ', veh.fc.eff_interp.x)
@@ -22,7 +22,7 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion_2D_test.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.__save_interval = None
+fsim.set_param_from_path(veh_no_save, "save_interval", None)
 
 print("2D extrapolation fields:")
 print('x: ', veh.fc.eff_interp.x)
@@ -35,7 +35,7 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion_3D_test.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.__save_interval = None
+fsim.set_param_from_path(veh_no_save, "save_interval", None)
 
 print("3D extrapolation fields:")
 print('x: ', veh.fc.eff_interp.x)
@@ -49,7 +49,7 @@ veh = fsim.Vehicle.from_file(
     str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion_ND_test.yaml")
 )
 veh_no_save = veh.copy()
-veh_no_save.__save_interval = None
+fsim.set_param_from_path(veh_no_save, "save_interval", None)
 
 print("ND extrapolation fields:")
 print('grid: ', veh.fc.eff_interp.grid)
