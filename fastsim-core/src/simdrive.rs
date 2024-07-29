@@ -98,10 +98,6 @@ impl SimDrive {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        if i == 36 {
-            // TODO: be sure to delete this whole block before commiting
-            println!("hold on to your butts");
-        }
         self.veh
             .solve_powertrain(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
