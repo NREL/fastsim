@@ -1,11 +1,21 @@
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Union
+import logging
 import numpy as np
 import re
 import inspect
 
 from .fastsim import *
-import fastsim as fsim
+from . import utils
+
+DEFAULT_LOGGING_CONFIG = dict(
+    format = "%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
+    datefmt = "%Y-%m-%d %H:%M:%S",
+) 
+
+# Set up logging
+logging.basicConfig(**DEFAULT_LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
 
 def package_root() -> Path:
     """Returns the package root directory."""
@@ -86,11 +96,11 @@ def __array__(self):
 
 # creates a list of all python classes from rust structs that need variable_path_list() and
 # history_path_list() added as methods
-ACCEPTED_RUST_STRUCTS = [attr for attr in fsim.__dir__() if not\
+ACCEPTED_RUST_STRUCTS = [attr for attr in fastsim.__dir__() if not\
                          attr.startswith("__") and\
-                            isinstance(getattr(fsim,attr), type) and\
+                            isinstance(getattr(fastsim, attr), type) and\
                                 attr[0].isupper() and\
-                                    ("fastsim" in str(inspect.getmodule(getattr(fsim,attr))))]
+                                    ("fastsim" in str(inspect.getmodule(getattr(fastsim, attr))))]
 
 def variable_path_list(self, path = "") -> List[str]:
     """Returns list of relative paths to all variables and sub-variables within
@@ -140,5 +150,5 @@ setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
-    setattr(getattr(fsim, item), "variable_path_list", variable_path_list)
-    setattr(getattr(fsim, item), "history_path_list", history_path_list)
+    setattr(getattr(fastsim, item), "variable_path_list", variable_path_list)
+    setattr(getattr(fastsim, item), "history_path_list", history_path_list)

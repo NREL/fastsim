@@ -8,7 +8,7 @@ def build_and_run_sim_drive():
         # TODO: figure out why `str` is needed here
         str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
     )
-    veh.save_interval = 1
+    veh.__save_interval = 1
     cyc = fsim.Cycle.from_resource("udds.csv")
     sd = fsim.SimDrive(veh, cyc)
     sd.walk()
