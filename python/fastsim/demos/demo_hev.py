@@ -148,6 +148,7 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
     ax[-1].set_xlabel("Time [s]")
     ax[-1].set_ylabel("Ach. Speed [m/s]")
 
+    plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/road_loads.svg"))
     plt.show()
@@ -216,6 +217,7 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     ax[-1].set_xlabel("Time [s]")
     ax[-1].set_ylabel("Ach Speed [m/s]")
 
+    plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/fc_pwr.svg"))
     plt.show()
@@ -284,6 +286,7 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     ax[-1].set_xlabel("Time [s]")
     ax[-1].set_ylabel("Ach Speed [m/s]")
 
+    plt.tight_layout()
     if SAVE_FIGS:
         plt.savefig(Path("./plots/fc_energy.svg"))
     plt.show()
@@ -337,6 +340,10 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
     ax[-1].set_ylabel("Ach Speed [m/s]")
+
+    plt.tight_layout()
+    if SAVE_FIGS:
+        plt.savefig(Path("./plots/battery_pwr.svg"))
     plt.show()
 
     return fig, ax
@@ -385,6 +392,10 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     ax[-1].legend()
     ax[-1].set_xlabel("Time [s]")
     ax[-1].set_ylabel("Ach Speed [m/s]")
+
+    plt.tight_layout()
+    if SAVE_FIGS:
+        plt.savefig(Path("./plots/battery_energy.svg"))
     plt.show()
 
     return fig, ax
