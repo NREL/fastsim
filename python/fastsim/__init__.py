@@ -112,17 +112,19 @@ def variable_path_list(self, path = "") -> List[str]:
     Specifies a path to be added in front of all paths returned by the method.    
     """
     variable_list = [attr for attr in self.__dir__() if not attr.startswith("__")\
-                     and not callable(getattr(self,attr))]
+                     and not callable(getattr(self, attr))]
     variable_paths = []
     for variable in variable_list:
-        if not type(getattr(self,variable)).__name__ in ACCEPTED_RUST_STRUCTS:
+        if not type(getattr(self, variable)).__name__ in ACCEPTED_RUST_STRUCTS:
             if path == "":
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
             variable_paths.append(variable_path)
-        elif len([attr for attr in getattr(self,variable).__dir__() if not attr.startswith("__")\
-                  and not callable(getattr(getattr(self,variable),attr))]) == 0:
+        elif len([
+             attr for attr in getattr(self, variable).__dir__() if not attr.startswith("__")
+                  and not callable(getattr(getattr(self, variable),attr))
+              ]) == 0:
             if path == "":
                 variable_path = variable
             else:
@@ -133,7 +135,7 @@ def variable_path_list(self, path = "") -> List[str]:
                 variable_path = variable
             else:
                 variable_path = path + "." + variable
-            variable_paths.extend(getattr(self,variable).variable_path_list(path = variable_path))
+            variable_paths.extend(getattr(self, variable).variable_path_list(path = variable_path))
     return variable_paths
 
 def history_path_list(self) -> List[str]:
