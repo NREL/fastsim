@@ -15,7 +15,7 @@ pub mod air_properties;
 pub mod drive_cycle;
 pub mod imports;
 pub mod prelude;
-#[cfg(feature = "pyo3")]
+// #[cfg(feature = "pyo3")] -- feature gate provided inside module
 pub mod pyo3;
 pub mod resources;
 pub mod si;
