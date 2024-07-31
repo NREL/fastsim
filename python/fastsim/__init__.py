@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, List, Union, Dict
+from typing_extensions import Self
 import logging
 import numpy as np
 import re
@@ -144,13 +145,27 @@ def history_path_list(self) -> List[str]:
     See example usage in `fastsim/demos/demo_variable_paths.py`."""
     return [item for item in self.variable_path_list() if "history" in item]
             
-
-
-
 setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
+
+def to_pydict(self) -> Dict:
+    """
+    Returns self converted to pure python dictionary with no nested Rust objects
+    """
+    import json
+    return json.loads(self.to_json())
+
+@classmethod
+def from_pydict(cls, pydict: Dict) -> Self:
+    """
+    Instantiates Self from pure python dictionary 
+    """
+    import json
+    return cls.from_json(json.dumps(pydict))
 
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
     setattr(getattr(fastsim, item), "variable_path_list", variable_path_list)
     setattr(getattr(fastsim, item), "history_path_list", history_path_list)
+    setattr(getattr(fastsim, item), "to_pydict", to_pydict)
+    setattr(getattr(fastsim, item), "from_pydict", from_pydict)
