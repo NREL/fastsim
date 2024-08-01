@@ -14,6 +14,7 @@ uom = { workspace = true }
 paste = "1.0.7"
 easy-ext = "1.0.0"
 rayon = "1.5.3"
+document-features = { workspace = true }
 bincode = { version = "1.3.3", optional = true }
 log = { version = "0.4.17", optional = true }
 anyhow = { workspace = true }
@@ -47,15 +48,27 @@ name = "interp_bench"
 harness = false
 
 [features]
-default = ["resources", "serde-default", "web", "serde-default"]
-pyo3 = ["dep:pyo3", "fastsim-2/pyo3"]
-resources = ["dep:include_dir"]
-web = ["dep:ureq", "dep:url"]                   # internet-querying dependencies
+default = ["resources", "web", "serde-default"]
+## Enables logging messages that can be passed to Python if `pyo3` is also
+## enabled.
 logging = ["dep:log"]
-# serde formats
+## Enables `pyo3` to provide fastsim-3 structs, methods, and functions to Python
+pyo3 = ["dep:pyo3", "fastsim-2/pyo3"]
+## Compiles external resources (e.g. vehicle files or cycle files) to be
+## available in the binary
+resources = ["dep:include_dir"]
+## Enables internet-querying dependencies
+web = ["dep:ureq", "dep:url"]                   
+## Enables several text file formats for serialization and deserialization
 serde-default = ["csv", "json", "toml", "yaml"]
+## Enables binary serialization and deserialization -- somewhat experimental and
+## may eventually be deprecated
 bincode = ["dep:bincode"]
+## Enables csv serialization and deserialization
 csv = ["dep:csv"]
+## Enables json serialization and deserialization
 json = ["dep:serde_json"]
+## Enables toml serialization and deserialization
 toml = ["dep:toml"]
+## Enables yaml serialization and deserialization
 yaml = ["dep:serde_yaml"]
