@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Union, Dict
+from typing import Any, List, Union, Dict, Optional
 from typing_extensions import Self
 import logging
 import numpy as np
@@ -103,47 +103,64 @@ ACCEPTED_RUST_STRUCTS = [attr for attr in fastsim.__dir__() if not\
                                 attr[0].isupper() and\
                                     ("fastsim" in str(inspect.getmodule(getattr(fastsim, attr))))]
 
-def variable_path_list(self, path = "") -> List[str]:
-    """Returns list of relative paths to all variables and sub-variables within
-    class (relative to the class the method was called on).  
-    See example usage in `fastsim/demos/demo_variable_paths.py`.  
-    Arguments: ----------  
-    path : Defaults to empty string. This is mainly used within the method in 
-    order to call the method recursively and should not be specified by user. 
-    Specifies a path to be added in front of all paths returned by the method.    
+def variable_path_list(self) -> List[str]:
+    return variable_path_list_from_py_objs(self.to_pydict())
+                                        
+def variable_path_list_from_py_objs(obj: Union[Dict, List], path:Optional[str]=None) -> List[str]:
     """
-    variable_list = [attr for attr in self.__dir__() if not attr.startswith("__")\
-                     and not callable(getattr(self, attr))]
-    variable_paths = []
-    for variable in variable_list:
-        if not type(getattr(self, variable)).__name__ in ACCEPTED_RUST_STRUCTS:
-            if path == "":
-                variable_path = variable
+    Returns list of key paths to all variables and sub-variables within
+    dict version of class. See example usage in `fastsim/demos/
+    demo_variable_paths.py`.
+
+    # Arguments:  
+    - `obj`: fastsim object in dictionary form from `self.to_pydict()`
+    - `path`: This is used to call the method recursively and should not be
+        specified by user.  Specifies a path to be added in front of all paths
+        returned by the method.
+    """
+    key_paths = []
+    if isinstance(obj, dict):
+        for key, val in obj.items():
+            # check for nested dicts and call recursively
+            if isinstance(val, dict):
+                key_path = f"['{key}']" if path is None else path + f"['{key}']"
+                key_paths.extend(variable_path_list_from_py_objs(val, key_path))
+            # check for lists or other iterables that do not contain numeric data
+            elif "__iter__" in dir(val) and not(isinstance(val[0], float) or isinstance(val[0], int)):
+                key_path = f"['{key}']" if path is None else path + f"['{key}']"
+                key_paths.extend(variable_path_list_from_py_objs(val, key_path))
             else:
-                variable_path = path + "." + variable
-            variable_paths.append(variable_path)
-        elif len([
-             attr for attr in getattr(self, variable).__dir__() if not attr.startswith("__")
-                  and not callable(getattr(getattr(self, variable),attr))
-              ]) == 0:
-            if path == "":
-                variable_path = variable
+                key_path = f"['{key}']" if path is None else path + f"['{key}']"
+                key_paths.append(key_path)
+    elif isinstance(obj, list):
+        for key, val in enumerate(obj):
+            # check for nested dicts and call recursively
+            if isinstance(val, dict):
+                key_path = f"[{key}]" if path is None else path + f"[{key}]"
+                key_paths.extend(variable_path_list_from_py_objs(val, key_path))
+            # check for lists or other iterables that do not contain numeric data
+            elif "__iter__" in dir(val) and not(isinstance(val[0], float) or isinstance(val[0], int)):
+                key_path = f"[{key}]" if path is None else path + f"[{key}]"
+                key_paths.extend(variable_path_list_from_py_objs(val, key_path))
             else:
-                variable_path = path + "." + variable
-            variable_paths.append(variable_path)    
-        else:
-            if path == "":
-                variable_path = variable
-            else:
-                variable_path = path + "." + variable
-            variable_paths.extend(getattr(self, variable).variable_path_list(path = variable_path))
-    return variable_paths
+                key_path = f"[{key}]" if path is None else path + f"[{key}]"
+                key_paths.append(key_path)
+    return key_paths
+
+# pattern to match strings containing "history" but not ending with "history"
+# because the ".+" tells it that there must be at least one character after
+# "history"
+history_pattern = re.compile("history.+")
 
 def history_path_list(self) -> List[str]:
-    """Returns a list of relative paths to all history variables (all variables
+    """
+    Returns a list of relative paths to all history variables (all variables
     that contain history as a subpath). 
-    See example usage in `fastsim/demos/demo_variable_paths.py`."""
-    return [item for item in self.variable_path_list() if "history" in item]
+    See example usage in `fastsim/demos/demo_variable_paths.py`.
+    """
+    return [
+        item for item in variable_path_list_from_py_objs(self.to_pydict()) if history_pattern.search(item)
+    ]
             
 setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
 
