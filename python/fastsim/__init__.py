@@ -97,11 +97,10 @@ def __array__(self):
 
 # creates a list of all python classes from rust structs that need variable_path_list() and
 # history_path_list() added as methods
-ACCEPTED_RUST_STRUCTS = [attr for attr in fastsim.__dir__() if not\
-                         attr.startswith("__") and\
-                            isinstance(getattr(fastsim, attr), type) and\
-                                attr[0].isupper() and\
-                                    ("fastsim" in str(inspect.getmodule(getattr(fastsim, attr))))]
+ACCEPTED_RUST_STRUCTS = [
+    attr for attr in fastsim.__dir__() if not attr.startswith("__") and isinstance(getattr(fastsim, attr), type) and
+    attr[0].isupper() and ("fastsim" in str(inspect.getmodule(getattr(fastsim, attr))))
+]
 
 def variable_path_list(self) -> List[str]:
     return variable_path_list_from_py_objs(self.to_pydict())
