@@ -83,6 +83,11 @@ lazy_static! {
         self.clone()
     }
 
+    #[pyo3(name = "list_resources")]
+    pub fn list_resources_py(&self) -> Vec<String> {
+        RustVehicle::list_resources()
+    }
+
     #[staticmethod]
     #[pyo3(name = "mock_vehicle")]
     fn mock_vehicle_py() -> Self {
@@ -771,7 +776,8 @@ impl RustVehicle {
                 self.modern_max = MODERN_MAX;
             }
             let modern_diff = self.modern_max - arrmax(&LARGE_BASELINE_EFF);
-            let large_baseline_eff_adj: Vec<f64> = LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
+            let large_baseline_eff_adj: Vec<f64> =
+                LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
             let mc_kw_adj_perc = max(
                 0.0,
                 min(
@@ -1068,8 +1074,8 @@ impl RustVehicle {
             }
             None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref(),
         };
-        let mut vehicle =
-            Self::from_url(&url_internal, false).with_context(|| "Could not parse vehicle from url")?;
+        let mut vehicle = Self::from_url(&url_internal, false)
+            .with_context(|| "Could not parse vehicle from url")?;
         let vehicle_origin = "Vehicle from ".to_owned() + url_internal.as_str();
         vehicle.doc = Some(vehicle_origin);
         Ok(vehicle)

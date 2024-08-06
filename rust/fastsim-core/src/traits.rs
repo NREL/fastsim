@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::{imports::*, resources};
 use std::collections::HashMap;
 use ureq;
 
@@ -11,6 +11,14 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// Specialized code to execute upon initialization
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
+    }
+
+    /// List available (compiled) resources (stored in the rust binary)
+    /// RESULT:
+    /// vector of string of resource names that can be loaded
+    #[cfg(feature = "resources")]
+    fn list_resources() -> Vec<String> {
+        resources::list_resources(Self::RESOURCE_PREFIX)
     }
 
     /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
@@ -55,7 +63,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             "toml" => {
                 let toml_string = self.to_toml()?;
                 wtr.write_all(toml_string.as_bytes())?;
-            },
+            }
             #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(wtr, self)?,
             _ => bail!(
@@ -135,7 +143,11 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// * `rdr` - The reader from which to read object data
     /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
     ///
-    fn from_reader<R: std::io::Read>(mut rdr: R, format: &str, skip_init: bool) -> anyhow::Result<Self> {
+    fn from_reader<R: std::io::Read>(
+        mut rdr: R,
+        format: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
         let mut deserialized: Self = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
@@ -143,7 +155,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
                 let mut buf = String::new();
                 rdr.read_to_string(&mut buf)?;
                 Self::from_toml(buf, skip_init)?
-            },
+            }
             #[cfg(feature = "bincode")]
             "bin" => bincode::deserialize_from(rdr)?,
             _ => bail!(
