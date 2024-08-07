@@ -20,8 +20,8 @@ sd = fsim.SimDrive(veh, cyc)
 sd.walk()
 
 # print out all subpaths for variables in SimDrive
-print("List of variable paths for SimDrive:\n", "\n".join(sd.variable_path_list()))
+print("List of variable paths for SimDrive:" + "\n".join(sd.variable_path_list()))
 print("\n")
 
 # print out all subpaths for history variables in SimDrive
-print("List of history variable paths for SimDrive:\n", "\n".join(sd.history_path_list()))
+print("List of history variable paths for SimDrive:" +  "\n".join(sd.history_path_list()))

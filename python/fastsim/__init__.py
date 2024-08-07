@@ -94,7 +94,6 @@ def set_param_from_path(
 def __array__(self):
     return np.array(self.tolist())
 
-
 # creates a list of all python classes from rust structs that need variable_path_list() and
 # history_path_list() added as methods
 ACCEPTED_RUST_STRUCTS = [
@@ -102,48 +101,65 @@ ACCEPTED_RUST_STRUCTS = [
     attr[0].isupper() and ("fastsim" in str(inspect.getmodule(getattr(fastsim, attr))))
 ]
 
-def variable_path_list(self) -> List[str]:
-    return variable_path_list_from_py_objs(self.to_pydict())
+def variable_path_list(self, element_as_list:bool=False) -> List[str]:
+    """
+    Returns list of key paths to all variables and sub-variables within
+    dict version of `self`. See example usage in `fastsim/demos/
+    demo_variable_paths.py`.
+
+    # Arguments:  
+    - `element_as_list`: if True, each element is itself a list of the path elements
+    """
+    return variable_path_list_from_py_objs(self.to_pydict(), element_as_list=element_as_list)
                                         
-def variable_path_list_from_py_objs(obj: Union[Dict, List], path:Optional[str]=None) -> List[str]:
+def variable_path_list_from_py_objs(
+    obj: Union[Dict, List], 
+    pre_path:Optional[str]=None,
+    element_as_list:bool=False,
+) -> List[str]:
     """
     Returns list of key paths to all variables and sub-variables within
     dict version of class. See example usage in `fastsim/demos/
     demo_variable_paths.py`.
 
     # Arguments:  
-    - `obj`: fastsim object in dictionary form from `self.to_pydict()`
-    - `path`: This is used to call the method recursively and should not be
+    - `obj`: fastsim object in dictionary form from `to_pydict()`
+    - `pre_path`: This is used to call the method recursively and should not be
         specified by user.  Specifies a path to be added in front of all paths
         returned by the method.
+    - `element_as_list`: if True, each element is itself a list of the path elements
     """
     key_paths = []
     if isinstance(obj, dict):
         for key, val in obj.items():
             # check for nested dicts and call recursively
             if isinstance(val, dict):
-                key_path = f"['{key}']" if path is None else path + f"['{key}']"
+                key_path = f"['{key}']" if pre_path is None else pre_path + f"['{key}']"
                 key_paths.extend(variable_path_list_from_py_objs(val, key_path))
             # check for lists or other iterables that do not contain numeric data
             elif "__iter__" in dir(val) and not(isinstance(val[0], float) or isinstance(val[0], int)):
-                key_path = f"['{key}']" if path is None else path + f"['{key}']"
+                key_path = f"['{key}']" if pre_path is None else pre_path + f"['{key}']"
                 key_paths.extend(variable_path_list_from_py_objs(val, key_path))
             else:
-                key_path = f"['{key}']" if path is None else path + f"['{key}']"
+                key_path = f"['{key}']" if pre_path is None else pre_path + f"['{key}']"
                 key_paths.append(key_path)
+                
     elif isinstance(obj, list):
         for key, val in enumerate(obj):
             # check for nested dicts and call recursively
             if isinstance(val, dict):
-                key_path = f"[{key}]" if path is None else path + f"[{key}]"
+                key_path = f"[{key}]" if pre_path is None else pre_path + f"[{key}]"
                 key_paths.extend(variable_path_list_from_py_objs(val, key_path))
             # check for lists or other iterables that do not contain numeric data
             elif "__iter__" in dir(val) and not(isinstance(val[0], float) or isinstance(val[0], int)):
-                key_path = f"[{key}]" if path is None else path + f"[{key}]"
+                key_path = f"[{key}]" if pre_path is None else pre_path + f"[{key}]"
                 key_paths.extend(variable_path_list_from_py_objs(val, key_path))
             else:
-                key_path = f"[{key}]" if path is None else path + f"[{key}]"
+                key_path = f"[{key}]" if pre_path is None else pre_path + f"[{key}]"
                 key_paths.append(key_path)
+    if element_as_list:
+        return
+    
     return key_paths
 
 # pattern to match strings containing "history" but not ending with "history"
