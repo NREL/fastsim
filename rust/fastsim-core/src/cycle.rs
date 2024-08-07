@@ -655,10 +655,7 @@ impl SerdeAPI for RustCycle {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
             "json" => serde_json::to_writer(wtr, self)?,
-            "toml" => {
-                let toml_string = self.to_toml()?;
-                wtr.write_all(toml_string.as_bytes())?;
-            }
+            "toml" => wtr.write_all(self.to_toml()?.as_bytes())?,
             #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(wtr, self)?,
             "csv" => {
