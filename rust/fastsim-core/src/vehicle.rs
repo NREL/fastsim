@@ -83,11 +83,6 @@ lazy_static! {
         self.clone()
     }
 
-    #[pyo3(name = "list_resources")]
-    pub fn list_resources_py(&self) -> Vec<String> {
-        RustVehicle::list_resources()
-    }
-
     #[staticmethod]
     #[pyo3(name = "mock_vehicle")]
     fn mock_vehicle_py() -> Self {
