@@ -1,8 +1,8 @@
 import unittest
 import fastsim as fsim
 
-class TestParamPath(unittest.TestCase):
-    def test_param_path_list(self):
+class TestVariablePathList(unittest.TestCase):
+    def test_variable_path_list(self):
         # load 2012 Ford Fusion from file
         veh = fsim.Vehicle.from_file(
             str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
