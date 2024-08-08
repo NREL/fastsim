@@ -1,5 +1,7 @@
 //! Module for electric machine (i.e. bidirectional electromechanical device), generator, or motor
 
+use utils::interp::InterpolatorWrapper;
+
 use super::*;
 
 #[allow(unused_imports)]
@@ -65,15 +67,23 @@ pub struct ElectricMachine {
     /// Shaft output power fraction array at which efficiencies are evaluated.
     /// This can range from 0 to 1 or -1 to 1, dependending on whether the efficiency is
     /// directionally symmetrical.
-    pub pwr_out_frac_interp: Vec<f64>,
+    // /// this is x-data that will how be in eff_interp_fwd
+    // pub pwr_out_frac_interp: Vec<f64>,
     #[api(skip_set)]
     /// Efficiency array corresponding to [Self::pwr_out_frac_interp] and [Self::pwr_in_frac_interp]
-    pub eff_interp: Vec<f64>,
+    /// eff_interp_fwd and eff_interp_bwd have the same f_x but different x
+    pub eff_interp_fwd: utils::interp::InterpolatorWrapper,
+    #[serde(skip)]
+    #[api(skip_set)]
+    // if it is not provided, needs to be set during init, can figure out what to do
+    // for that by looking at how pwr_in_frac_interp is initialized
+    pub eff_interp_bwd: Option<utils::interp::InterpolatorWrapper>,
     /// Electrical input power fraction array at which efficiencies are evaluated.
     /// Calculated during runtime if not provided.
     #[serde(skip)]
     #[api(skip_set)]
-    pub pwr_in_frac_interp: Vec<f64>,
+    // /// this will disappear and instead be in eff_interp_bwd
+    // pub pwr_in_frac_interp: Vec<f64>,
     /// ElectricMachine maximum output power \[W\]
     #[serde(rename = "pwr_out_max_watts")]
     pub pwr_out_max: si::Power,
@@ -128,47 +138,73 @@ impl ElectricMachine {
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
 
-        if self.pwr_in_frac_interp.is_empty() {
-            self.set_pwr_in_frac_interp()
-                .with_context(|| format_dbg!())?;
+        // is this necessary since this same code is also in init()?
+        if let None = self.eff_interp_bwd {
+            // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
+            // TODO: do the extrapolate and strategy fields also need to be changed?
+            let mut eff_interp_bwd = self.eff_interp_fwd.0;
+            eff_interp_bwd.set_x(
+                self.eff_interp_fwd
+                    .0
+                    .x()?
+                    .iter()
+                    .zip(self.eff_interp_fwd.0.f_x()?.iter())
+                    .map(|(x, y)| x / y)
+                    .collect(),
+            );
+            self.eff_interp_bwd = Some(InterpolatorWrapper(eff_interp_bwd));
+            // self.set_pwr_in_frac_interp()
+            //     .with_context(|| format_dbg!())?;
         }
+        // should this use the forward or backwards intepolator? If it uses the forward interpolator,
+        // the x-value will be wrong, but it uses 'pwr_in_fwd_max'
         let eff_pos = uc::R
-            * interp1d(
-                &abs_checked_x_val(
+            * self
+                .eff_interp_bwd
+                .ok_or(anyhow!(
+                    "eff_interp_bwd is None, which should never be the case at this point."
+                ))?
+                .interpolate(&[abs_checked_x_val(
                     (pwr_in_fwd_max / self.pwr_out_max).get::<si::ratio>(),
-                    &self.pwr_in_frac_interp,
-                )?,
-                &self.pwr_in_frac_interp,
-                &self.eff_interp,
-                // Extrapolation does not trigger error because `self.pwr_out_max` is limiting regardless
-                Extrapolate::No,
-            )
-            .with_context(|| {
-                anyhow!(
-                    "{}\n failed to calculate {}",
-                    format_dbg!(),
-                    stringify!(eff_pos)
-                )
-            })?;
+                    &self
+                        .eff_interp_bwd
+                        .ok_or(anyhow!(
+                            "eff_interp_bwd is None, which should never be the case at this point."
+                        ))?
+                        .0
+                        .x()?,
+                )?])
+                .with_context(|| {
+                    anyhow!(
+                        "{}\n failed to calculate {}",
+                        format_dbg!(),
+                        stringify!(eff_pos)
+                    )
+                })?;
         // TODO: scrutinize this variable assignment
         let eff_neg = uc::R
-            * interp1d(
-                &abs_checked_x_val(
+            * self
+                .eff_interp_bwd
+                .ok_or(anyhow!(
+                    "eff_interp_bwd is None, which should never be the case at this point."
+                ))?
+                .interpolate(&[abs_checked_x_val(
                     (pwr_in_bwd_max / self.pwr_out_max).get::<si::ratio>(),
-                    &self.pwr_in_frac_interp,
-                )?,
-                &self.pwr_in_frac_interp,
-                &self.eff_interp,
-                // Extrapolation does not trigger error because `self.pwr_out_max` is limiting regardless
-                Extrapolate::No,
-            )
-            .with_context(|| {
-                anyhow!(
-                    "{}\n failed to calculate {}",
-                    format_dbg!(),
-                    stringify!(eff_neg)
-                )
-            })?;
+                    &self
+                        .eff_interp_bwd
+                        .ok_or(anyhow!(
+                            "eff_interp_bwd is None, which should never be the case at this point."
+                        ))?
+                        .0
+                        .x()?,
+                )?])
+                .with_context(|| {
+                    anyhow!(
+                        "{}\n failed to calculate {}",
+                        format_dbg!(),
+                        stringify!(eff_neg)
+                    )
+                })?;
 
         // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power based on what the ReversibleEnergyStorage can provide
@@ -202,35 +238,38 @@ impl ElectricMachine {
         self.state.pwr_out_req = pwr_out_req;
 
         self.state.eff = uc::R
-            * interp1d(
-                {
-                    let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
-                        Ok({
-                            if self
-                                .pwr_out_frac_interp
-                                .first()
-                                .with_context(|| anyhow!(format_dbg!()))?
-                                >= &0.
-                            {
-                                pwr_uncorrected.max(0.)
-                            } else {
-                                pwr_uncorrected
-                            }
-                        })
-                    };
-                    &pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
-                },
-                &self.pwr_out_frac_interp,
-                &self.eff_interp,
-                Extrapolate::Error,
-            )
-            .with_context(|| {
-                anyhow!(
-                    "{}\n failed to calculate {}",
-                    format_dbg!(),
-                    stringify!(self.state.eff)
+            * self
+                .eff_interp_fwd
+                .interpolate(
+                    &[{
+                        let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                            Ok({
+                                if self
+                                    .eff_interp_fwd
+                                    .0
+                                    .x()?
+                                    .first()
+                                    .with_context(|| anyhow!(format_dbg!()))?
+                                    >= &0.
+                                {
+                                    pwr_uncorrected.max(0.)
+                                } else {
+                                    pwr_uncorrected
+                                }
+                            })
+                        };
+                        pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
+                    }], // &self.eff_interp_fwd.0.x()?,
+                        // &self.eff_interp_fwd,
+                        // Extrapolate::Error,
                 )
-            })?;
+                .with_context(|| {
+                    anyhow!(
+                        "{}\n failed to calculate {}",
+                        format_dbg!(),
+                        stringify!(self.state.eff)
+                    )
+                })?;
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
@@ -257,16 +296,19 @@ impl ElectricMachine {
         Ok(self.state.pwr_elec_prop_in)
     }
 
-    pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
-        // make sure vector has been created
-        self.pwr_in_frac_interp = self
-            .pwr_out_frac_interp
-            .iter()
-            .zip(self.eff_interp.iter())
-            .map(|(x, y)| x / y)
-            .collect();
-        Ok(())
-    }
+    // pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
+    //     // make sure vector has been created
+    //     self.eff_interp_bwd.0.set_x(
+    //         self.eff_interp_fwd
+    //             .0
+    //             .x()?
+    //             .iter()
+    //             .zip(self.eff_interp_fwd.0.f_x()?.iter())
+    //             .map(|(x, y)| x / y)
+    //             .collect(),
+    //     );
+    //     Ok(())
+    // }
 
     impl_get_set_eff_max_min!();
     impl_get_set_eff_range!();
@@ -276,7 +318,7 @@ impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
-        let _ = check_interp_frac_data(&self.pwr_out_frac_interp, InterpRange::Either)
+        let _ = check_interp_frac_data(&self.eff_interp_fwd.0.x()?, InterpRange::Either)
             .with_context(||
                 "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].")?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
@@ -286,6 +328,23 @@ impl Init for ElectricMachine {
         //     self.pwr_out_frac_interp =
         // }
         // TODO: verify that `pwr_in_frac_interp` is set somewhere and if it is, maybe move it to here???
+        if let None = self.eff_interp_bwd {
+            // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
+            // TODO: do the extrapolate and strategy fields also need to be changed?
+            let mut eff_interp_bwd = self.eff_interp_fwd.0;
+            eff_interp_bwd.set_x(
+                self.eff_interp_fwd
+                    .0
+                    .x()?
+                    .iter()
+                    .zip(self.eff_interp_fwd.0.f_x()?.iter())
+                    .map(|(x, y)| x / y)
+                    .collect(),
+            );
+            self.eff_interp_bwd = Some(InterpolatorWrapper(eff_interp_bwd));
+            // self.set_pwr_in_frac_interp()
+            //     .with_context(|| format_dbg!())?;
+        }
         Ok(())
     }
 }

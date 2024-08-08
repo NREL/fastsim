@@ -72,7 +72,8 @@ pub struct FuelConverter {
     #[serde(rename = "pwr_ramp_lag_seconds")]
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
-    pub eff_interp: utils::interp::InterpolatorWrapper,
+    /// forward efficiency interpolation
+    pub eff_interp_fwd: utils::interp::InterpolatorWrapper,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     #[serde(rename = "pwr_idle_fuel_watts")]
     pub pwr_idle_fuel: si::Power,
@@ -237,7 +238,7 @@ impl FuelConverter {
         self.state.pwr_aux = pwr_aux;
         self.state.eff = uc::R
             * self
-                .eff_interp
+                .eff_interp_fwd
                 .interpolate(&[((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>()])
                 .with_context(|| {
                     anyhow!(

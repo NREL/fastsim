@@ -285,7 +285,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
+                        eff_interp_fwd: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
@@ -333,7 +333,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
+                        eff_interp_fwd: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
@@ -369,9 +369,29 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                 },
                 em: ElectricMachine {
                     state: Default::default(),
-                    pwr_out_frac_interp: f2veh.mc_pwr_out_perc.to_vec(),
-                    eff_interp: f2veh.mc_eff_array.to_vec(),
-                    pwr_in_frac_interp: Default::default(),
+                    eff_interp_fwd: InterpolatorWrapper(Interpolator::Interp1D(
+                        Interp1D::new(
+                            f2veh.mc_pwr_out_perc.to_vec(),
+                            f2veh.mc_eff_array.to_vec(),
+                            // TODO: figure out what the default should be for these!
+                            Strategy::Linear,
+                            Extrapolate::Error,
+                        )
+                        .unwrap(),
+                    )),
+                    eff_interp_bwd: Some(InterpolatorWrapper(Interpolator::Interp1D(
+                        Interp1D::new(
+                            // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
+                            // be transferred over as done here, or does a new defualt need to be defined?
+                            Default::default(),
+                            f2veh.mc_eff_array.to_vec(),
+                            // TODO: figure out what the default should be for these!
+                            Strategy::Linear,
+                            Extrapolate::Error,
+                        )
+                        .unwrap(),
+                    ))),
+                    // pwr_in_frac_interp: Default::default(),
                     pwr_out_max: f2veh.mc_max_kw * uc::KW,
                     specific_pwr: None,
                     mass: None,
@@ -611,7 +631,7 @@ impl Vehicle {
             fc_eff_array: Default::default(),
             fc_eff_map: self
                 .fc()
-                .map(|fc| match &fc.eff_interp.0 {
+                .map(|fc| match &fc.eff_interp_fwd.0 {
                     utils::interp::Interpolator::Interp1D(interp) => Ok(interp.f_x.clone().into()),
                     _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
                 })
@@ -636,7 +656,7 @@ impl Vehicle {
             fc_perc_out_array: Default::default(),
             fc_pwr_out_perc: self
                 .fc()
-                .map(|fc| match &fc.eff_interp.0 {
+                .map(|fc| match &fc.eff_interp_fwd.0 {
                     utils::interp::Interpolator::Interp1D(interp) => Ok(interp.x.clone().into()),
                     _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
                 })

@@ -10,7 +10,7 @@ pub(crate) use crate::traits::*;
 pub(crate) use crate::uc;
 pub(crate) use crate::utils;
 pub(crate) use crate::utils::{
-    almost_eq, check_interp_frac_data, check_monotonicity, interp1d, interp3d, is_sorted,
+    almost_eq, check_interp_frac_data, check_monotonicity, interp3d, is_sorted,
     Extrapolate, InterpRange, DIRECT_SET_ERR,
 };
 pub(crate) use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecWrapper};
