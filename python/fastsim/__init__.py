@@ -5,6 +5,8 @@ import logging
 import numpy as np
 import re
 import inspect
+import pandas as pd
+import polars as pl
 
 from .fastsim import *
 from . import utils
@@ -158,24 +160,30 @@ def variable_path_list_from_py_objs(
                 key_path = f"[{key}]" if pre_path is None else pre_path + f"[{key}]"
                 key_paths.append(key_path)
     if element_as_list:
-        return
+        re_for_elems = re.compile("\[('(\w+)'|(\w+))\]")
+        for i, kp in enumerate(key_paths):
+            kp: str
+            groups = re_for_elems.findall(kp)
+            selected = [g[1] if len(g[1]) > 0 else g[2] for g in groups]
+            key_paths[i] = selected
     
     return key_paths
 
-# pattern to match strings containing "history" but not ending with "history"
-# because the ".+" tells it that there must be at least one character after
-# "history"
-history_pattern = re.compile("history.+")
-
-def history_path_list(self) -> List[str]:
+def history_path_list(self, element_as_list:bool=False) -> List[str]:
     """
     Returns a list of relative paths to all history variables (all variables
     that contain history as a subpath). 
     See example usage in `fastsim/demos/demo_variable_paths.py`.
+
+    # Arguments
+    - `element_as_list`: if True, each element is itself a list of the path elements
     """
-    return [
-        item for item in variable_path_list_from_py_objs(self.to_pydict()) if history_pattern.search(item)
+    item_str = lambda item: item if not element_as_list else ".".join(item)
+    history_path_list = [
+        item for item in self.variable_path_list(
+            element_as_list=element_as_list) if "history" in item_str(item)
     ]
+    return history_path_list
             
 setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
 
@@ -194,6 +202,28 @@ def from_pydict(cls, pydict: Dict) -> Self:
     import json
     return cls.from_json(json.dumps(pydict))
 
+def to_dataframe(self, pandas:bool=False) -> [pd.DataFrame, pl.DataFrame, pl.LazyFrame]:
+    """
+    Returns time series results from fastsim object as a Polars or Pandas dataframe.
+
+    # Arguments
+    - `pandas`: returns pandas dataframe if True; otherwise, returns polars dataframe by default
+    """
+    obj_dict = self.to_pydict()
+    history_paths = self.history_path_list(element_as_list=True)   
+    cols = [".".join(hp) for hp in history_paths]
+    vals = []
+    for hp in history_paths:
+        obj:Union[dict|list] = obj_dict
+        for elem in hp:
+            obj = obj[elem]
+        vals.append(obj)
+    if not pandas:
+        df = pl.DataFrame({col: val for col, val in zip(cols, vals)})
+    else:
+        df = pd.DataFrame({col: val for col, val in zip(cols, vals)})
+    return df
+
 # adds variable_path_list() and history_path_list() as methods to all classes in
 # ACCEPTED_RUST_STRUCTS
 for item in ACCEPTED_RUST_STRUCTS:
@@ -201,3 +231,4 @@ for item in ACCEPTED_RUST_STRUCTS:
     setattr(getattr(fastsim, item), "history_path_list", history_path_list)
     setattr(getattr(fastsim, item), "to_pydict", to_pydict)
     setattr(getattr(fastsim, item), "from_pydict", from_pydict)
+    setattr(getattr(fastsim, item), "to_dataframe", to_dataframe)

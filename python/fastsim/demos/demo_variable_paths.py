@@ -25,3 +25,7 @@ print("\n")
 
 # print out all subpaths for history variables in SimDrive
 print("List of history variable paths for SimDrive:" +  "\n".join(sd.history_path_list()))
+print("\n")
+
+# print results as dataframe
+print("Results as dataframe:\n", sd.to_dataframe(), sep="")
