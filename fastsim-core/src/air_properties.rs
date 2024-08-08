@@ -1,3 +1,5 @@
+use std::cell::LazyCell;
+
 use super::imports::*;
 use super::*;
 
@@ -23,21 +25,16 @@ pub fn get_density_air(
                 .get::<si::ratio>()
                 .powf(5.256))
     };
-    let te_air_default = || (22. + 273.15) * uc::KELVIN;
-    // 99_346.3 = 101.29e3 * (287.02 / 288.08) ** 5.256
-    let std_pressure_default = || 99_346.3 * uc::PASCAL;
+    let te_air_default = LazyCell::new(|| (22. + 273.15) * uc::KELVIN);
+    let std_pressure_default = LazyCell::new(|| 99_346.3 * uc::PASCAL);
+    // 1.2 kg/m^3 matches fastsim-2
+    let std_density_default = LazyCell::new(|| 1.2 * uc::KGPM3);
+    let gas_constant = LazyCell::new(|| 287.0 * uc::J_PER_KG_K);
     match (h, te_air) {
-        (None, None) => {
-            // 99_346.3 / 287 / 293.15
-            1.206 * uc::KGPM3
-        }
-        (None, Some(te_air)) => std_pressure_default() / (287.0 * uc::J_PER_KG_K) / te_air,
-        (Some(h_val), None) => {
-            std_pressure_at_elev(h_val) / (287.0 * uc::J_PER_KG_K) / te_air_default()
-        }
-        (Some(h_val), Some(te_air)) => {
-            std_pressure_at_elev(h_val) / (287.0 * uc::J_PER_KG_K) / te_air
-        }
+        (None, None) => *std_density_default,
+        (None, Some(te_air)) => *std_pressure_default / *gas_constant / te_air,
+        (Some(h_val), None) => std_pressure_at_elev(h_val) / *gas_constant / *te_air_default,
+        (Some(h_val), Some(te_air)) => std_pressure_at_elev(h_val) / *gas_constant / te_air,
     }
 }
 
