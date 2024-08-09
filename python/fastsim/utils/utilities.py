@@ -135,7 +135,7 @@ def without_logging():
     finally:
         enable_logging(previous_level)
 
-def set_log_filename(filename: str | Path):
+def set_log_filename(filename: Union[str, Path]):
     handler = logging.FileHandler(filename)
     handler.setFormatter(logging.root.handlers[0].formatter)
     logging.getLogger("fastsim").addHandler(handler)
