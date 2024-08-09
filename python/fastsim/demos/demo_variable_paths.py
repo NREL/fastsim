@@ -51,8 +51,10 @@ print("Results as dataframe:\n", sd.to_dataframe(), sep="")
 if ENABLE_ASSERTS:
     print("Checking output of `to_dataframe`")
     to_dataframe_expected = pl.scan_csv(ref_dir / "to_dataframe_expected.csv").collect()
-    assert to_dataframe_expected == sd.to_dataframe()
+    assert to_dataframe_expected.equals(sd.to_dataframe())
+    print("Success!")
 if ENABLE_REF_OVERRIDE:
     df:pl.DataFrame = sd.to_dataframe().lazy().collect()
     df.write_csv(ref_dir / "to_dataframe_expected.csv")
+    print("Success!")
 
