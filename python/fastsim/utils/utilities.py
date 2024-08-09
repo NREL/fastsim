@@ -75,7 +75,7 @@ def disable_logging() -> int:
     """
     return set_log_level(logging.CRITICAL + 1)
 
-def enable_logging(level: Optional[int | str] = None) -> int:
+def enable_logging(level: Optional[int, str] = None) -> int:
     """
     Re-enable FASTSim logging, optionally to a specified log level,
     otherwise to the default WARNING (30) level.
