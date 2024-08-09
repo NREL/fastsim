@@ -160,7 +160,7 @@ def variable_path_list_from_py_objs(
                 key_path = f"[{key}]" if pre_path is None else pre_path + f"[{key}]"
                 key_paths.append(key_path)
     if element_as_list:
-        re_for_elems = re.compile("\[('(\w+)'|(\w+))\]")
+        re_for_elems = re.compile("\\[('(\w+)'|(\w+))\\]")
         for i, kp in enumerate(key_paths):
             kp: str
             groups = re_for_elems.findall(kp)
