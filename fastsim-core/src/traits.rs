@@ -116,6 +116,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// Instantiates an object from a url.  Accepts yaml and json file types  
     /// # Arguments  
     /// - url: URL (either as a string or url type) to object  
+    ///
     /// Note: The URL needs to be a URL pointing directly to a file, for example
     /// a raw github URL.
     #[cfg(feature = "web")]
@@ -216,7 +217,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             #[cfg(feature = "json")]
             "json" => serde_json::from_reader(rdr)?,
-            #[cfg(feature = "tonl")]
+            #[cfg(feature = "toml")]
             "toml" => {
                 let mut buf = String::new();
                 rdr.read_to_string(&mut buf)?;

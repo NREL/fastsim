@@ -58,30 +58,30 @@ const TOL: f64 = 1e-3;
         Ok(())
     }
 
-    #[getter("eff_max")]
-    fn get_eff_max_py(&self) -> f64 {
-        self.get_eff_max()
-    }
+    // #[getter("eff_max")]
+    // fn get_eff_max_py(&self) -> f64 {
+    //     self.get_eff_max()
+    // }
 
-    #[setter("__eff_max")]
-    fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
-        self.set_eff_max(eff_max).map_err(PyValueError::new_err)
-    }
+    // #[setter("__eff_max")]
+    // fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+    //     self.set_eff_max(eff_max).map_err(PyValueError::new_err)
+    // }
 
-    #[getter("eff_min")]
-    fn get_eff_min_py(&self) -> f64 {
-        self.get_eff_min()
-    }
+    // #[getter("eff_min")]
+    // fn get_eff_min_py(&self) -> f64 {
+    //     self.get_eff_min()
+    // }
 
     #[getter("eff_range")]
     fn get_eff_range_py(&self) -> f64 {
         self.get_eff_range()
     }
 
-    #[setter("__eff_range")]
-    fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        self.set_eff_range(eff_range)
-    }
+    // #[setter("__eff_range")]
+    // fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
+    //     self.set_eff_range(eff_range)
+    // }
 
     // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
     #[pyo3(name = "set_mass")]
@@ -286,7 +286,7 @@ impl ReversibleEnergyStorage {
             - discharge_buffer.unwrap_or_default() / self.energy_capacity)
             .max(self.min_soc);
 
-        state.pwr_disch_max = 
+        state.pwr_disch_max =
             // current SOC is greater than or equal to current min and ramp down threshold
             if state.soc >= state.min_soc
             && state.soc >= self.soc_lo_ramp_start.with_context(|| format_dbg!())?
@@ -315,13 +315,13 @@ impl ReversibleEnergyStorage {
                         stringify!(state.pwr_disch_max)
                     )
                 })?
-        } 
+        }
         // current SOC is greater than ramp down threshold but less than current min or current SOC is less than both
         else {
             uc::W * 0.
         };
 
-        state.pwr_charge_max = 
+        state.pwr_charge_max =
             // current SOC is less than or equal to current max and ramp down threshold
             if state.soc <= state.max_soc
             && state.soc <= self.soc_hi_ramp_start.with_context(|| format_dbg!())?
@@ -350,7 +350,7 @@ impl ReversibleEnergyStorage {
                         stringify!(state.pwr_disch_max)
                     )
                 })?
-        } 
+        }
         // current SOC is less than ramp down threshold but greater than current
         // max or current SOC is greater than both
         else {
@@ -441,8 +441,8 @@ impl ReversibleEnergyStorage {
             state: initial_state,
             save_interval,
             history: ReversibleEnergyStorageStateHistoryVec::new(),
-            mass: Default::default(),
-            specific_energy: Default::default(),
+            mass: None,
+            specific_energy: None,
         })
     }
 
@@ -529,6 +529,7 @@ impl Mass for ReversibleEnergyStorage {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
                     "provided mass. Updating based on `side_effect`"
@@ -551,6 +552,7 @@ impl Mass for ReversibleEnergyStorage {
                 }
             }
         } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!("Provided mass is None, setting `self.specific_energy` to None");
             self.specific_energy = None;
         }
@@ -674,27 +676,27 @@ pub struct ReversibleEnergyStorageState {
 impl Default for ReversibleEnergyStorageState {
     fn default() -> Self {
         Self {
-            pwr_cat_max: uc::W * 0.,
-            pwr_prop_max: uc::W * 0.,
-            pwr_regen_max: uc::W * 0.,
-            pwr_disch_max: uc::W * 0.,
-            pwr_charge_max: uc::W * 0.,
-            i: 0,
+            pwr_cat_max: si::Power::ZERO,
+            pwr_prop_max: si::Power::ZERO,
+            pwr_regen_max: si::Power::ZERO,
+            pwr_disch_max: si::Power::ZERO,
+            pwr_charge_max: si::Power::ZERO,
+            i: Default::default(),
             soc: uc::R * 0.5,
-            eff: uc::R * 0.,
+            eff: si::Ratio::ZERO,
             soh: 0.,
-            pwr_out_electrical: uc::W * 0.,
-            pwr_out_propulsion: uc::W * 0.,
-            pwr_aux: uc::W * 0.,
-            pwr_loss: uc::W * 0.,
-            pwr_out_chemical: uc::W * 0.,
-            energy_out_electrical: uc::J * 0.,
-            energy_out_propulsion: uc::J * 0.,
-            energy_aux: uc::J * 0.,
-            energy_loss: uc::J * 0.,
-            energy_out_chemical: uc::J * 0.,
-            max_soc: uc::R * 0.,
-            min_soc: uc::R * 0.,
+            pwr_out_electrical: si::Power::ZERO,
+            pwr_out_propulsion: si::Power::ZERO,
+            pwr_aux: si::Power::ZERO,
+            pwr_loss: si::Power::ZERO,
+            pwr_out_chemical: si::Power::ZERO,
+            energy_out_electrical: si::Energy::ZERO,
+            energy_out_propulsion: si::Energy::ZERO,
+            energy_aux: si::Energy::ZERO,
+            energy_loss: si::Energy::ZERO,
+            energy_out_chemical: si::Energy::ZERO,
+            max_soc: si::Ratio::ZERO,
+            min_soc: si::Ratio::ZERO,
             temperature_celsius: 22.,
         }
     }
@@ -702,21 +704,6 @@ impl Default for ReversibleEnergyStorageState {
 
 impl Init for ReversibleEnergyStorageState {}
 impl SerdeAPI for ReversibleEnergyStorageState {}
-
-impl ReversibleEnergyStorageState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            // slightly less than max soc for default ReversibleEnergyStorage
-            soc: uc::R * 0.95,
-            soh: 1.0,
-            max_soc: uc::R * 1.0,
-            min_soc: si::Ratio::ZERO,
-            temperature_celsius: 45.0,
-            ..Default::default()
-        }
-    }
-}
 
 mod tests {
     // TODO: put tests here

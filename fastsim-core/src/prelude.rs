@@ -4,9 +4,7 @@
 pub use crate::air_properties::get_density_air;
 pub use crate::drive_cycle::{Cycle, CycleElement};
 pub use crate::simdrive::{SimDrive, SimParams};
-pub use crate::utils::{
-    multilinear, Efficiency, Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecBoolWrapper, Pyo3VecWrapper,
-};
+pub use crate::utils::{Pyo3Vec2Wrapper, Pyo3Vec3Wrapper, Pyo3VecBoolWrapper, Pyo3VecWrapper};
 pub use crate::vehicle::powertrain::electric_machine::{
     ElectricMachine, ElectricMachineState, ElectricMachineStateHistoryVec,
 };
