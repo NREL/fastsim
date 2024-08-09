@@ -202,7 +202,7 @@ def from_pydict(cls, pydict: Dict) -> Self:
     import json
     return cls.from_json(json.dumps(pydict))
 
-def to_dataframe(self, pandas:bool=False) -> [pd.DataFrame, pl.DataFrame, pl.LazyFrame]:
+def to_dataframe(self, pandas:bool=False) -> Union[pd.DataFrame, pl.DataFrame]:
     """
     Returns time series results from fastsim object as a Polars or Pandas dataframe.
 
