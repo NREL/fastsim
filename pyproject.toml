@@ -19,6 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "pandas>=1",
+    "polars==1.4.1",
     "matplotlib>=3.3",
     "numpy>=1.18",
     "seaborn>=0.10",

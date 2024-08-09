@@ -2,11 +2,11 @@ import os
 import logging
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 import shutil
 import fastsim as fsim
 
-def set_log_level(level: str | int) -> int:
+def set_log_level(level: Union[str, int]) -> int:
     """
     Sets logging level for both Python and Rust FASTSim.
     The default logging level is WARNING (30).
