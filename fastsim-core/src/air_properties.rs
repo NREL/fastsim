@@ -25,6 +25,7 @@ pub fn get_density_air(
                 .get::<si::ratio>()
                 .powf(5.256))
     };
+    // TODO: this use of LazyCell and others below it is probably not providing any benefit.
     let te_air_default = LazyCell::new(|| (22. + 273.15) * uc::KELVIN);
     let std_pressure_default = LazyCell::new(|| 99_346.3 * uc::PASCAL);
     // 1.2 kg/m^3 matches fastsim-2
