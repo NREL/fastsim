@@ -5,7 +5,9 @@ macro_rules! impl_get_set_eff_max_min {
         /// Returns max value of `eff_interp`
         pub fn get_eff_max(&self) -> f64 {
             // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-            self.eff_interp
+            self.eff_interp_fwd
+                .0
+                .f_x()?
                 .iter()
                 .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr))
         }
@@ -15,7 +17,10 @@ macro_rules! impl_get_set_eff_max_min {
             if (0.0..=1.0).contains(&eff_max) {
                 let old_max = self.get_eff_max();
                 self.eff_interp = self
-                    .eff_interp
+                    .eff_interp_fwd
+                    .0
+                    .f_x()
+                    .with_context(|| "eff_interp_fwd does not have f_x field")?
                     .iter()
                     .map(|x| x * eff_max / old_max)
                     .collect();
