@@ -230,7 +230,7 @@ impl ReversibleEnergyStorage {
         // This should trip the `ensure` below
         state.eff = uc::R * 666.;
         ensure!(
-            state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R,
+            state.eff >= 0.0 * uc::R && state.eff <= 1.0 * uc::R,
             format!(
                 "{}\nres efficiency ({}) must be between 0 and 1",
                 format_dbg!(state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R),
