@@ -169,6 +169,15 @@ def variable_path_list_from_py_objs(
     
     return key_paths
 
+CYC_KEYS = [
+    "time_seconds",
+    "speed_mps",
+    "dist",
+    "grade",
+    "elev",
+    "pwr_max_chrg",
+]
+
 def history_path_list(self, element_as_list:bool=False) -> List[str]:
     """
     Returns a list of relative paths to all history variables (all variables
@@ -178,10 +187,11 @@ def history_path_list(self, element_as_list:bool=False) -> List[str]:
     # Arguments
     - `element_as_list`: if True, each element is itself a list of the path elements
     """
-    item_str = lambda item: item if not element_as_list else ".".join(item)
+    key_as_str = lambda key: key if not element_as_list else ".".join(key)
+    key_in_cyc = lambda key: any(cyc_key for cyc_key in CYC_KEYS if cyc_key in key)
     history_path_list = [
-        item for item in self.variable_path_list(
-            element_as_list=element_as_list) if "history" in item_str(item)
+        key for key in self.variable_path_list(element_as_list=element_as_list) 
+            if (("history" in key_as_str(key)) or (key_in_cyc(key_as_str(key))))
     ]
     return history_path_list
             
