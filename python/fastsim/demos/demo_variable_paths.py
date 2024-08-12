@@ -31,15 +31,15 @@ ref_dir = fsim.resources_root() / "demos/demo_variable_paths/"
 
 # print out all subpaths for variables in SimDrive
 print("List of variable paths for SimDrive:" + "\n".join(sd.variable_path_list()))
+if ENABLE_REF_OVERRIDE:
+    with open(ref_dir / "variable_path_list_expected.txt", 'w') as f:
+        for line in sd.variable_path_list():
+            f.write(line + "\n")
 if ENABLE_ASSERTS:
     print("Checking output of `variable_path_list()`")
     with open(ref_dir / "variable_path_list_expected.txt", 'r') as f:
         variable_path_list_expected = [line.strip() for line in f.readlines()]
     assert variable_path_list_expected == sd.variable_path_list()
-if ENABLE_REF_OVERRIDE:
-    with open(ref_dir / "variable_path_list_expected.txt", 'w') as f:
-        for line in sd.variable_path_list():
-            f.write(line + "\n")
 print("\n")
 
 # print out all subpaths for history variables in SimDrive
@@ -48,13 +48,13 @@ print("\n")
 
 # print results as dataframe
 print("Results as dataframe:\n", sd.to_dataframe(), sep="")
+if ENABLE_REF_OVERRIDE:
+    df:pl.DataFrame = sd.to_dataframe().lazy().collect()
+    df.write_csv(ref_dir / "to_dataframe_expected.csv")
+    print("Success!")
 if ENABLE_ASSERTS:
     print("Checking output of `to_dataframe`")
     to_dataframe_expected = pl.scan_csv(ref_dir / "to_dataframe_expected.csv").collect()
     assert to_dataframe_expected.equals(sd.to_dataframe())
-    print("Success!")
-if ENABLE_REF_OVERRIDE:
-    df:pl.DataFrame = sd.to_dataframe().lazy().collect()
-    df.write_csv(ref_dir / "to_dataframe_expected.csv")
     print("Success!")
 

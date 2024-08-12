@@ -187,7 +187,7 @@ impl SimDrive {
 
         vs.pwr_tractive =
             vs.pwr_rr + vs.pwr_whl_inertia + vs.pwr_accel + vs.pwr_ascent + vs.pwr_drag;
-        vs.curr_pwr_met = vs.pwr_tractive <= vs.pwr_prop_pos_max;
+        vs.curr_pwr_met = vs.pwr_tractive <= vs.pwr_prop_fwd_max;
         if !vs.curr_pwr_met {
             // if current power demand is not met, then this becomes false for
             // the rest of the cycle and should not be manipulated anywhere else
@@ -272,7 +272,7 @@ impl SimDrive {
         let t2 = accel2 + drag2 + wheel2;
         let t1 = drag1 + roll1 + ascent1;
         // TODO: verify final term being subtracted.  Needs to be same as `self.cur_max_trans_kw_out[i]`
-        let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - vs.pwr_prop_pos_max;
+        let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - vs.pwr_prop_fwd_max;
 
         // initial guess
         let speed_guess = (1e-3 * uc::MPS).max(cyc_speed);

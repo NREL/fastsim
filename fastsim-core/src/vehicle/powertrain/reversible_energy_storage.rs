@@ -639,7 +639,7 @@ pub struct ReversibleEnergyStorageState {
     pub soh: f64,
 
     // TODO: add `pwr_out_neg_electrical` and `pwr_out_pos_electrical` and corresponding energies
-    // powers
+    // powers to separately pin negative- and positive-power operation
     /// total electrical power; positive is discharging
     pub pwr_out_electrical: si::Power,
     /// electrical power going to propulsion

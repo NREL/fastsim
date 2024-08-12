@@ -546,7 +546,7 @@ impl Vehicle {
             .set_cur_pwr_prop_out_max(self.pwr_aux, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
 
-        (self.state.pwr_prop_pos_max, self.state.pwr_prop_neg_max) = self
+        (self.state.pwr_prop_fwd_max, self.state.pwr_prop_bwd_max) = self
             .pt_type
             .get_cur_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -826,12 +826,12 @@ pub struct VehicleState {
     /// time step index
     pub i: usize,
 
-    // power and fields
-    /// maximum positive propulsive power vehicle can produce
-    pub pwr_prop_pos_max: si::Power,
+    // power and energy fields
+    /// maximum forward propulsive power vehicle can produce
+    pub pwr_prop_fwd_max: si::Power,
     /// pwr exerted on wheels by powertrain
-    /// maximum negative propulsive power vehicle can produce
-    pub pwr_prop_neg_max: si::Power,
+    /// maximum backward propulsive power (e.g. regenerative braking) vehicle can produce
+    pub pwr_prop_bwd_max: si::Power,
     /// Tractive power required for achieved speed
     pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
@@ -887,8 +887,8 @@ impl Default for VehicleState {
     fn default() -> Self {
         Self {
             i: Default::default(),
-            pwr_prop_pos_max: si::Power::ZERO,
-            pwr_prop_neg_max: si::Power::ZERO,
+            pwr_prop_fwd_max: si::Power::ZERO,
+            pwr_prop_bwd_max: si::Power::ZERO,
             pwr_tractive: si::Power::ZERO,
             energy_tractive: si::Energy::ZERO,
             pwr_aux: si::Power::ZERO,
