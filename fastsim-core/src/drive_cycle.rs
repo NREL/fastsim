@@ -172,7 +172,7 @@ impl SerdeAPI for Cycle {
     /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
     ///
     fn from_reader<R: std::io::Read>(
-        mut rdr: R,
+        rdr: &mut R,
         format: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
@@ -346,7 +346,7 @@ impl Cycle {
     ///
     #[cfg(feature = "csv")]
     fn from_csv<S: AsRef<str>>(csv_str: S, skip_init: bool) -> anyhow::Result<Self> {
-        let mut csv_de = Self::from_reader(csv_str.as_ref().as_bytes(), "csv", skip_init)?;
+        let mut csv_de = Self::from_reader(&mut csv_str.as_ref().as_bytes(), "csv", skip_init)?;
         if !skip_init {
             csv_de.init()?;
         }
