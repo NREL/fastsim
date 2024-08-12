@@ -250,8 +250,8 @@ impl ReversibleEnergyStorage {
 
         state.pwr_loss = (state.pwr_out_chemical - state.pwr_out_electrical).abs();
 
-        let new_soc = state.soc - state.pwr_out_chemical * dt / self.energy_capacity;
-        state.soc = new_soc;
+        state.soc -= state.pwr_out_chemical * dt / self.energy_capacity;
+
         Ok(())
     }
 
