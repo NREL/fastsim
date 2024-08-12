@@ -59,7 +59,7 @@ use crate::utils::abs_checked_x_val;
 /// electronics.
 pub struct ElectricMachine {
     #[serde(default)]
-    #[serde(skip_serializing_if = "IsDefault::is_default")]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
     /// struct for tracking current state
     pub state: ElectricMachineState,
     /// Shaft output power fraction array at which efficiencies are evaluated.
@@ -170,8 +170,12 @@ impl ElectricMachine {
                 )
             })?;
 
+        // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
+        // power based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
-        self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max * eff_neg);
+        // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
+        // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
+        self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max / eff_neg);
         Ok(())
     }
 
@@ -199,7 +203,23 @@ impl ElectricMachine {
 
         self.state.eff = uc::R
             * interp1d(
-                &(pwr_out_req / self.pwr_out_max).get::<si::ratio>(),
+                {
+                    let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                        Ok({
+                            if self
+                                .pwr_out_frac_interp
+                                .first()
+                                .with_context(|| anyhow!(format_dbg!()))?
+                                >= &0.
+                            {
+                                pwr_uncorrected.max(0.)
+                            } else {
+                                pwr_uncorrected
+                            }
+                        })
+                    };
+                    &pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
+                },
                 &self.pwr_out_frac_interp,
                 &self.eff_interp,
                 Extrapolate::Error,
@@ -252,17 +272,13 @@ impl ElectricMachine {
     impl_get_set_eff_range!();
 }
 
-use fastsim_2::params::{
-    LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF, SMALL_MOTOR_POWER_KW,
-};
-
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         let _ = check_interp_frac_data(&self.pwr_out_frac_interp, InterpRange::Either)
-            .with_context(|| format!(
-                "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1]."))?;
+            .with_context(||
+                "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].")?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
         // TODO: make use of `use fastsim_2::params::{LARGE_BASELINE_EFF, LARGE_MOTOR_POWER_KW, SMALL_BASELINE_EFF,SMALL_MOTOR_POWER_KW};`
         // to set
@@ -307,6 +323,7 @@ impl Mass for ElectricMachine {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
                     "provided mass. Updating based on `side_effect`"
@@ -328,7 +345,8 @@ impl Mass for ElectricMachine {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
             self.specific_pwr = None;
         }
@@ -396,12 +414,3 @@ pub struct ElectricMachineState {
 
 impl Init for ElectricMachineState {}
 impl SerdeAPI for ElectricMachineState {}
-
-impl ElectricMachineState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            ..Default::default()
-        }
-    }
-}

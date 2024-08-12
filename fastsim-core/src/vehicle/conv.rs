@@ -48,7 +48,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
         _veh_state: &VehicleState,
-        enabled: bool,
+        _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // only positive power can come from powertrain.  Revisit this if engine braking model is needed.
@@ -102,6 +102,7 @@ impl Mass for ConventionalVehicle {
             Some(new_mass) => {
                 if let Some(dm) = derived_mass {
                     if dm != new_mass {
+                        #[cfg(feature = "logging")]
                         log::warn!(
                             "Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`",
                             stringify!(ConventionalVehicle));

@@ -12,7 +12,7 @@ def build_and_run_sim_drive():
     veh = fsr.RustVehicle.from_file(
         str(fsim.package_root() / "resources/vehdb/2012_Ford_Fusion.yaml")
     )
-    cyc = fsr.RustCycle.from_resource("cycles/udds.csv")
+    cyc = fsr.RustCycle.from_resource("udds.csv")
     sd = fsr.RustSimDrive(cyc, veh)
     sd.sim_drive()
 
@@ -28,6 +28,6 @@ if __name__ == "__main__":
     # 12  164.234 MiB    0.797 MiB           2       veh = fsr.RustVehicle.from_file(
     # 13  163.438 MiB    0.000 MiB           1           str(fsim.package_root() / "resources/vehdb/2012_Ford_Fusion.yaml")
     # 14                                             )
-    # 15  164.375 MiB    0.141 MiB           1       cyc = fsr.RustCycle.from_resource("cycles/udds.csv")
+    # 15  164.375 MiB    0.141 MiB           1       cyc = fsr.RustCycle.from_resource("udds.csv")
     # 16  165.453 MiB    1.078 MiB           1       sd = fsr.RustSimDrive(cyc, veh)
     # 17  165.656 MiB    0.203 MiB           1       sd.sim_drive()

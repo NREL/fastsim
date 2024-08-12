@@ -1,4 +1,4 @@
-use self::vehicle::VehicleState;
+use self::vehicle_model::VehicleState;
 
 use super::*;
 // use crate::imports::*;
@@ -59,6 +59,7 @@ impl Mass for BatteryElectricVehicle {
             Some(new_mass) => {
                 if let Some(dm) = derived_mass {
                     if dm != new_mass {
+                        #[cfg(feature = "logging")]
                         log::warn!(
                             "Derived mass does not match provided mass, setting `{}` consituent mass fields to `None`",
                             stringify!(BatteryElectricVehicle));
@@ -110,16 +111,12 @@ impl SaveInterval for BatteryElectricVehicle {
 }
 
 impl Powertrain for BatteryElectricVehicle {
-    /// Solve energy consumption for the current power output required
-    /// # Arguments:
-    /// - pwr_out_req: tractive power required
-    /// - dt: time step size
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
         pwr_aux: si::Power,
-        veh_state: &VehicleState,
-        enabled: bool,
+        _veh_state: &VehicleState,
+        _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         let pwr_out_req_from_res = self
@@ -155,7 +152,11 @@ impl Powertrain for BatteryElectricVehicle {
         ))
     }
 
-    fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+    fn set_cur_pwr_prop_out_max(
+        &mut self,
+        _pwr_aux: si::Power,
+        _dt: si::Time,
+    ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
         todo!();
         // self.res.set_cur_pwr_out_max(pwr_aux.unwrap(), None, None)?;

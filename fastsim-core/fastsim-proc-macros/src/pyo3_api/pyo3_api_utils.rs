@@ -322,7 +322,11 @@ pub(crate) fn impl_getters_and_setters(
                 uom::si::velocity::mile_per_hour
             ),
             "Volume" => extract_units!(uom::si::volume::cubic_meter, uom::si::volume::liter),
-            _ => abort!(inner_path.span(), "Unknown si quantity!"),
+            "MassDensity" => extract_units!(uom::si::mass_density::kilogram_per_cubic_meter),
+            _ => abort!(
+                inner_path.span(),
+                "Unknown si quantity! Make sure it's implemented in `impl_getters_and_setters`"
+            ),
         };
         for (field_units, unit_name) in &unit_impls {
             impl_get_set_si(

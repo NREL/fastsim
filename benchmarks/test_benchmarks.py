@@ -17,11 +17,4 @@ def script_paths():
     "script_path", script_paths(), ids=[sp.name for sp in script_paths()])
 def test_demo(script_path: Path):
     os.environ['SHOW_PLOTS'] = "false"
-    rslt = subprocess.run(
-        [str(PYTHON_EXE), script_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-
-    assert rslt.returncode == 0, rslt.stderr
+    exec(open(script_path).read())

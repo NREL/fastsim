@@ -2,34 +2,32 @@ use super::*;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
 
-const TOL: f64 = 1e-3;
-
 #[pyo3_api(
-    // optional, custom, struct-specific pymethods
-    #[getter("eff_max")]
-    fn get_eff_max_py(&self) -> f64 {
-        self.get_eff_max()
-    }
+    // // optional, custom, struct-specific pymethods
+    // #[getter("eff_max")]
+    // fn get_eff_max_py(&self) -> f64 {
+    //     self.get_eff_max()
+    // }
 
-    #[setter("__eff_max")]
-    fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
-        self.set_eff_max(eff_max).map_err(PyValueError::new_err)
-    }
+    // #[setter("__eff_max")]
+    // fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+    //     self.set_eff_max(eff_max).map_err(PyValueError::new_err)
+    // }
 
-    #[getter("eff_min")]
-    fn get_eff_min_py(&self) -> f64 {
-        self.get_eff_min()
-    }
+    // #[getter("eff_min")]
+    // fn get_eff_min_py(&self) -> f64 {
+    //     self.get_eff_min()
+    // }
 
-    #[getter("eff_range")]
-    fn get_eff_range_py(&self) -> f64 {
-        self.get_eff_range()
-    }
+    // #[getter("eff_range")]
+    // fn get_eff_range_py(&self) -> f64 {
+    //     self.get_eff_range()
+    // }
 
-    #[setter("__eff_range")]
-    fn set_eff_range_py(&mut self, eff_range: f64) -> PyResult<()> {
-        self.set_eff_range(eff_range).map_err(PyValueError::new_err)
-    }
+    // #[setter("__eff_range")]
+    // fn set_eff_range_py(&mut self, eff_range: f64) -> PyResult<()> {
+    //     self.set_eff_range(eff_range).map_err(PyValueError::new_err)
+    // }
 
     // TODO: handle `side_effects` and uncomment
     // #[setter("__mass_kg")]
@@ -53,7 +51,7 @@ const TOL: f64 = 1e-3;
 pub struct FuelConverter {
     #[serde(default)]
     /// struct for tracking current state
-    #[serde(skip_serializing_if = "IsDefault::is_default")]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
     pub state: FuelConverterState,
     /// FuelConverter mass
     #[serde(default)]
@@ -72,12 +70,7 @@ pub struct FuelConverter {
     #[serde(rename = "pwr_ramp_lag_seconds")]
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
-    /// Fuel converter brake power fraction array at which efficiencies are evaluated.
-    /// This fuel converter efficiency model assumes that speed and load (or voltage and current) will
-    /// always be controlled for operating at max possible efficiency for the power demand
-    pub pwr_out_frac_interp: Vec<f64>,
-    /// fuel converter efficiency array
-    pub eff_interp: Vec<f64>,
+    pub eff_interp: utils::interp::InterpolatorWrapper,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     #[serde(rename = "pwr_idle_fuel_watts")]
     pub pwr_idle_fuel: si::Power,
@@ -134,6 +127,7 @@ impl Mass for FuelConverter {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
                     "provided mass. Updating based on `side_effect`"
@@ -155,7 +149,8 @@ impl Mass for FuelConverter {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
             self.specific_pwr = None;
         }
@@ -203,10 +198,11 @@ impl FuelConverter {
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
         self.state.pwr_aux = pwr_aux;
-        self.state.pwr_prop_max = (self.state.pwr_tractive
+        self.state.pwr_prop_max = (self.state.pwr_propulsion
             + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
             .min(self.pwr_out_max)
-            .max(self.pwr_out_max_init);
+            .max(self.pwr_out_max_init)
+            - pwr_aux;
         Ok(())
     }
 
@@ -237,22 +233,19 @@ impl FuelConverter {
                 format_dbg!(pwr_aux >= si::Power::ZERO),
             )
         );
-        self.state.pwr_tractive = pwr_out_req;
+        self.state.pwr_propulsion = pwr_out_req;
         self.state.pwr_aux = pwr_aux;
         self.state.eff = uc::R
-            * interp1d(
-                &((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>(),
-                &self.pwr_out_frac_interp,
-                &self.eff_interp,
-                Extrapolate::Error,
-            )
-            .with_context(|| {
-                anyhow!(
-                    "{}\n failed to calculate {}",
-                    format_dbg!(),
-                    stringify!(self.state.eff)
-                )
-            })?;
+            * self
+                .eff_interp
+                .interpolate(&[((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>()])
+                .with_context(|| {
+                    anyhow!(
+                        "{}\n failed to calculate {}",
+                        format_dbg!(),
+                        stringify!(self.state.eff)
+                    )
+                })?;
         ensure!(
             self.state.eff >= 0.0 * uc::R || self.state.eff <= 1.0 * uc::R,
             format!(
@@ -277,7 +270,7 @@ impl FuelConverter {
         // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
         // zero, there will be fuel consumption to overcome internal dissipation.
         self.state.pwr_fuel = ((pwr_out_req + pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
-        self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_tractive;
+        self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_propulsion;
 
         // TODO: put this in `SetCumulative::set_custom_cumulative`
         // ensure!(
@@ -291,10 +284,10 @@ impl FuelConverter {
     }
 }
 
-impl FuelConverter {
-    impl_get_set_eff_max_min!();
-    impl_get_set_eff_range!();
-}
+// impl FuelConverter {
+//     impl_get_set_eff_max_min!();
+//     impl_get_set_eff_range!();
+// }
 
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
@@ -308,9 +301,9 @@ pub struct FuelConverterState {
     /// efficiency evaluated at current demand
     pub eff: si::Ratio,
     /// instantaneous power going to drivetrain, not including aux
-    pub pwr_tractive: si::Power,
-    /// integral of [Self::pwr_tractive]
-    pub energy_tractive: si::Energy,
+    pub pwr_propulsion: si::Power,
+    /// integral of [Self::pwr_propulsion]
+    pub energy_propulsion: si::Energy,
     /// power going to auxiliaries
     pub pwr_aux: si::Power,
     /// Integral of [Self::pwr_aux]
@@ -329,13 +322,3 @@ pub struct FuelConverterState {
 
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
-
-impl FuelConverterState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            fc_on: true,
-            ..Default::default()
-        }
-    }
-}

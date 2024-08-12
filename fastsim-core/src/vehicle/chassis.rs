@@ -126,10 +126,12 @@ impl Mass for Chassis {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::warn!("Derived mass does not match provided mass, setting `{}` constituent mass fields to `None`", stringify!(Chassis));
                 self.expunge_mass_fields();
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!(
                 "Provided mass is None, setting `{}` constituent mass fields to `None`",
                 stringify!(Chassis)

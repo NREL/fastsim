@@ -82,5 +82,5 @@ unit_const!(
 
 unit_const!(KELVIN, ThermodynamicTemperature, 1.0);
 unit_const!(KELVIN_INT, TemperatureInterval, 1.0);
-unit_const!(M2PS2K, SpecificHeatCapacity, 1.0);
+unit_const!(J_PER_KG_K, SpecificHeatCapacity, 1.0);
 unit_const!(PASCAL, Pressure, 1.0);

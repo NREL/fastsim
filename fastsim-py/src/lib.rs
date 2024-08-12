@@ -1,8 +1,9 @@
 //! Crate that wraps `fastsim-core` and enables the `pyo3` feature to
 //! expose most structs, methods, and functions to Python.
 
-use fastsim_core::air_properties::get_rho_air_py;
+use fastsim_core::air_properties::get_density_air_py;
 use fastsim_core::prelude::*;
+use fastsim_core::utils::interp::{Extrapolate, InterpolatorWrapper, Strategy};
 pub use pyo3::exceptions::{
     PyAttributeError, PyFileNotFoundError, PyIndexError, PyNotImplementedError, PyRuntimeError,
 };
@@ -11,6 +12,7 @@ pub use pyo3::types::PyType;
 
 #[pymodule]
 fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
+    #[cfg(feature = "logging")]
     pyo3_log::init();
     m.add_class::<FuelConverter>()?;
     m.add_class::<FuelConverterState>()?;
@@ -30,7 +32,16 @@ fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Pyo3Vec2Wrapper>()?;
     m.add_class::<Pyo3Vec3Wrapper>()?;
     m.add_class::<Pyo3VecBoolWrapper>()?;
-    m.add_function(wrap_pyfunction!(get_rho_air_py, m)?)?;
+    m.add_class::<InterpolatorWrapper>()?;
+    m.add_class::<Strategy>()?;
+    m.add_class::<Extrapolate>()?;
+    m.add_function(wrap_pyfunction!(get_density_air_py, m)?)?;
+
+    // List enabled features
+    m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;
+
+    // List enabled features
+    m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;
 
     Ok(())
 }
