@@ -5,7 +5,7 @@ use super::vehicle::Vehicle;
 use crate::air_properties as air;
 use crate::imports::*;
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 /// Solver parameters
 pub struct SimParams {
@@ -30,7 +30,7 @@ impl Default for SimParams {
     }
 }
 
-#[pyo3_api(
+#[fastsim_api(
     #[new]
     fn __new__(veh: Vehicle, cyc: Cycle, sim_params: Option<SimParams>) -> anyhow::Result<Self> {
         Ok(SimDrive{

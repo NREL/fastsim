@@ -2,7 +2,7 @@ use super::*;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
 
-#[pyo3_api(
+#[fastsim_api(
     // // optional, custom, struct-specific pymethods
     // #[getter("eff_max")]
     // fn get_eff_max_py(&self) -> f64 {
@@ -70,7 +70,9 @@ pub struct FuelConverter {
     #[serde(rename = "pwr_ramp_lag_seconds")]
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
-    pub eff_interp: utils::interp::InterpolatorWrapper,
+    #[api(skip_get, skip_set)]
+    /// interpolator for calculating [Self] efficiency as a function of output power
+    pub eff_interp: utils::interp::Interpolator,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     #[serde(rename = "pwr_idle_fuel_watts")]
     pub pwr_idle_fuel: si::Power,
@@ -292,7 +294,7 @@ impl FuelConverter {
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
-#[pyo3_api]
+#[fastsim_api]
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,

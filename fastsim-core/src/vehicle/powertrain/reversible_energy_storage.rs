@@ -6,7 +6,7 @@ use crate::pyo3::*;
 
 const TOL: f64 = 1e-3;
 
-#[pyo3_api(
+#[fastsim_api(
    #[allow(clippy::too_many_arguments)]
     #[new]
     fn __new__(
@@ -611,7 +611,7 @@ pub enum SpecificEnergySideEffect {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[pyo3_api]
+#[fastsim_api]
 // component limits
 /// ReversibleEnergyStorage state variables
 pub struct ReversibleEnergyStorageState {

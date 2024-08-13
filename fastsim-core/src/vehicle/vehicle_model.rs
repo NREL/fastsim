@@ -16,7 +16,7 @@ pub enum AuxSource {
 impl SerdeAPI for AuxSource {}
 impl Init for AuxSource {}
 
-#[pyo3_api(
+#[fastsim_api(
     #[staticmethod]
     fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
         Ok(Self::try_from(veh.clone())?)
@@ -291,12 +291,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
+                        eff_interp: Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
                             Extrapolate::Error,
-                        )?)),
+                        )?),
                         // TODO: verify this
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
@@ -339,12 +339,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
+                        eff_interp: Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
                             Extrapolate::Error,
-                        )?)),
+                        )?),
                         // TODO: verify this
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
@@ -617,7 +617,7 @@ impl Vehicle {
             fc_eff_array: Default::default(),
             fc_eff_map: self
                 .fc()
-                .map(|fc| match &fc.eff_interp.0 {
+                .map(|fc| match &fc.eff_interp {
                     utils::interp::Interpolator::Interp1D(interp) => Ok(interp.f_x.clone().into()),
                     _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
                 })
@@ -642,7 +642,7 @@ impl Vehicle {
             fc_perc_out_array: Default::default(),
             fc_pwr_out_perc: self
                 .fc()
-                .map(|fc| match &fc.eff_interp.0 {
+                .map(|fc| match &fc.eff_interp {
                     utils::interp::Interpolator::Interp1D(interp) => Ok(interp.x.clone().into()),
                     _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
                 })
@@ -821,7 +821,7 @@ impl Vehicle {
 
 /// Vehicle state for current time step
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[pyo3_api]
+#[fastsim_api]
 pub struct VehicleState {
     /// time step index
     pub i: usize,

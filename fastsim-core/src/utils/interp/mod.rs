@@ -17,14 +17,12 @@ pub mod n;
 pub mod one;
 pub mod three;
 pub mod two;
-pub mod wrapper;
 
 pub use n::*;
 use ndarray::{IxDynImpl, OwnedRepr};
 pub use one::*;
 pub use three::*;
 pub use two::*;
-pub use wrapper::*;
 
 use crate::imports::*;
 

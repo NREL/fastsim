@@ -1,6 +1,6 @@
 use super::*;
 
-#[pyo3_api(
+#[fastsim_api(
     // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
     // #[setter("__mass_kg")]
     // fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {

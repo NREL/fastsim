@@ -1,7 +1,7 @@
 use crate::imports::*;
 use fastsim_2::cycle::RustCycle as Cycle2;
 
-#[pyo3_api(
+#[fastsim_api(
     fn __len__(&self) -> usize {
         self.len()
     }
@@ -371,7 +371,7 @@ impl Cycle {
     }
 }
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 /// Element of `Cycle`.  Used for vec-like operations.
 pub struct CycleElement {
