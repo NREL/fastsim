@@ -1,6 +1,6 @@
 use super::*;
 
-#[pyo3_api(
+#[fastsim_api(
     // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
     // #[setter("__mass_kg")]
     // fn set_mass_py(&mut self, mass_kg: Option<f64>) -> anyhow::Result<()> {
@@ -64,6 +64,7 @@ impl Mass for FuelStorage {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
                     "provided mass. Updating based on `side_effect`"
@@ -85,7 +86,8 @@ impl Mass for FuelStorage {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!("Provided mass is None, setting `self.specific_energy` to None");
             self.specific_energy = None;
         }

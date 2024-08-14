@@ -2,9 +2,7 @@ use super::*;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
 
-const TOL: f64 = 1e-3;
-
-#[pyo3_api(
+#[fastsim_api(
     // // optional, custom, struct-specific pymethods
     // #[getter("eff_max")]
     // fn get_eff_max_py(&self) -> f64 {
@@ -51,10 +49,6 @@ const TOL: f64 = 1e-3;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling Fuel Converter (e.g. engine, fuel cell.)
 pub struct FuelConverter {
-    #[serde(default)]
-    /// struct for tracking current state
-    #[serde(skip_serializing_if = "EqDefault::eq_default")]
-    pub state: FuelConverterState,
     /// FuelConverter mass
     #[serde(default)]
     #[api(skip_get, skip_set)]
@@ -72,18 +66,26 @@ pub struct FuelConverter {
     #[serde(rename = "pwr_ramp_lag_seconds")]
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
-    /// forward efficiency interpolation
-    pub eff_interp_fwd: utils::interp::InterpolatorWrapper,
+    /// interpolator for calculating [Self] efficiency as a function of output power
+    #[api(skip_get, skip_set)]
+    pub eff_interp_from_pwr_out: utils::interp::InterpolatorWrapper,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     #[serde(rename = "pwr_idle_fuel_watts")]
     pub pwr_idle_fuel: si::Power,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
+    pub state: FuelConverterState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     #[serde(skip_serializing_if = "FuelConverterStateHistoryVec::is_empty")]
     pub history: FuelConverterStateHistoryVec, // TODO: spec out fuel tank size and track kg of fuel
+    #[serde(skip)]
+    // phantom private field to prevent direct instantiation in other modules
+    pub(in super::super) _phantom: PhantomData<()>,
 }
 
 impl SetCumulative for FuelConverter {
@@ -97,8 +99,6 @@ impl Init for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
-        // TODO: set the engine map here based on efficiency type, which should allow for
-        // `None` and `Other<String>` variants
         Ok(())
     }
 }
@@ -130,6 +130,7 @@ impl Mass for FuelConverter {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
                     "provided mass. Updating based on `side_effect`"
@@ -151,7 +152,8 @@ impl Mass for FuelConverter {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
             self.specific_pwr = None;
         }
@@ -238,7 +240,7 @@ impl FuelConverter {
         self.state.pwr_aux = pwr_aux;
         self.state.eff = uc::R
             * self
-                .eff_interp_fwd
+                .eff_interp_from_pwr_out
                 .interpolate(&[((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>()])
                 .with_context(|| {
                     anyhow!(
@@ -293,7 +295,7 @@ impl FuelConverter {
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
-#[pyo3_api]
+#[fastsim_api]
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,
@@ -323,13 +325,3 @@ pub struct FuelConverterState {
 
 impl SerdeAPI for FuelConverterState {}
 impl Init for FuelConverterState {}
-
-impl FuelConverterState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            fc_on: true,
-            ..Default::default()
-        }
-    }
-}

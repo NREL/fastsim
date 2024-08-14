@@ -56,6 +56,7 @@ pub(crate) fn history_methods_derive(input: TokenStream) -> TokenStream {
     if struct_has_save_interval {
         impl_block.extend::<TokenStream2>(quote! {
             impl SaveState for #ident {
+                /// Implementation for structs with `save_interval`
                 fn save_state(&mut self) {
                     if let Some(interval) = self.save_interval {
                         if self.state.i % interval == 0 || self.state.i == 1 {
@@ -69,6 +70,7 @@ pub(crate) fn history_methods_derive(input: TokenStream) -> TokenStream {
     } else {
         impl_block.extend::<TokenStream2>(quote! {
             impl SaveState for #ident {
+                /// Implementation for objects without `save_interval`
                 fn save_state(&mut self) {
                     #self_save_state
                     #(self.#fields_with_state.save_state();)*

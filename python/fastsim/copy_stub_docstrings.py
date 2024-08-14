@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     # Check Python version
-    assert sys.version_info >= (3,9,0), "Python version must be 3.9 or newer to use ast.unparse()"
+    assert sys.version_info >= (3, 9, 0), "Python version must be 3.9 or newer to use ast.unparse()"
 
     # Parse arguments
     args = parse_args()

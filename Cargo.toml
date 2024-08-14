@@ -21,6 +21,7 @@ opt-level = 3
 
 [workspace.dependencies]
 # TODO: uncomment and correct version `version = "~0.0.1"`
+document-features = "0.2.10"
 fastsim-core = { path = "fastsim-core" }
 anyhow = "1.0.71"
 pyo3 = "0.19"

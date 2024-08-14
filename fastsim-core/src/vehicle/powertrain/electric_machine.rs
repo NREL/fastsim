@@ -9,7 +9,7 @@ use super::*;
 use crate::pyo3::*;
 use crate::utils::abs_checked_x_val;
 
-#[pyo3_api(
+#[fastsim_api(
     // #[new]
     // fn __new__(
     //     pwr_out_frac_interp: Vec<f64>,
@@ -60,10 +60,6 @@ use crate::utils::abs_checked_x_val;
 /// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
 /// electronics.
 pub struct ElectricMachine {
-    #[serde(default)]
-    #[serde(skip_serializing_if = "EqDefault::eq_default")]
-    /// struct for tracking current state
-    pub state: ElectricMachineState,
     /// Shaft output power fraction array at which efficiencies are evaluated.
     /// This can range from 0 to 1 or -1 to 1, dependending on whether the efficiency is
     /// directionally symmetrical.
@@ -98,6 +94,10 @@ pub struct ElectricMachine {
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
+    pub state: ElectricMachineState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     #[serde(skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty")]
@@ -110,11 +110,11 @@ impl ElectricMachine {
     /// required.
     /// # Arguments
     /// - `pwr_in_fwd_max`: positive-propulsion-related power available to this
-    /// component. Positive values indicate that the upstream component can supply
-    /// positive tractive power.
+    ///    component. Positive values indicate that the upstream component can supply
+    ///    positive tractive power.
     /// - `pwr_in_bwd_max`: negative-propulsion-related power available to this
-    /// component. Zero means no power can be sent to upstream compnents and positive
-    /// values indicate upstream components can absorb energy.
+    ///     component. Zero means no power can be sent to upstream compnents and positive
+    ///     values indicate upstream components can absorb energy.
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: time step size
     pub fn set_cur_pwr_prop_out_max(
@@ -158,6 +158,7 @@ impl ElectricMachine {
         }
         // should this use the forward or backwards intepolator? If it uses the forward interpolator,
         // the x-value will be wrong, but it uses 'pwr_in_fwd_max'
+        // TODO: make sure `fwd` and `bwd` are clearly documented somewhere
         let eff_pos = uc::R
             * self
                 .eff_interp_bwd
@@ -208,7 +209,7 @@ impl ElectricMachine {
 
         // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power based on what the ReversibleEnergyStorage can provide
-        self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
+        self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_fwd);
         // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max / eff_neg);
@@ -382,6 +383,7 @@ impl Mass for ElectricMachine {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Derived mass from `self.specific_pwr` and `self.pwr_out_max` does not match {}",
                     "provided mass. Updating based on `side_effect`"
@@ -403,7 +405,8 @@ impl Mass for ElectricMachine {
                     }
                 }
             }
-        } else if let None = new_mass {
+        } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!("Provided mass is None, setting `self.specific_pwr` to None");
             self.specific_pwr = None;
         }
@@ -426,7 +429,7 @@ impl Mass for ElectricMachine {
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
-#[pyo3_api]
+#[fastsim_api]
 pub struct ElectricMachineState {
     /// time step index
     pub i: usize,
@@ -471,12 +474,3 @@ pub struct ElectricMachineState {
 
 impl Init for ElectricMachineState {}
 impl SerdeAPI for ElectricMachineState {}
-
-impl ElectricMachineState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            ..Default::default()
-        }
-    }
-}

@@ -322,7 +322,11 @@ pub(crate) fn impl_getters_and_setters(
                 uom::si::velocity::mile_per_hour
             ),
             "Volume" => extract_units!(uom::si::volume::cubic_meter, uom::si::volume::liter),
-            _ => abort!(inner_path.span(), "Unknown si quantity!"),
+            "MassDensity" => extract_units!(uom::si::mass_density::kilogram_per_cubic_meter),
+            _ => abort!(
+                inner_path.span(),
+                "Unknown si quantity! Make sure it's implemented in `impl_getters_and_setters`"
+            ),
         };
         for (field_units, unit_name) in &unit_impls {
             impl_get_set_si(
@@ -354,4 +358,8 @@ pub(crate) struct FieldOptions {
     pub skip_get: bool,
     /// if true, setters are not generated for a field
     pub skip_set: bool,
+    // TODO: uncomment and clean up, and then create equivalent `set_<fieldname>_from_pydict`
+    // and `<fieldname>_to_pydict` methods via `setattr`
+    // /// if true, writes methods to get and set enum via json
+    // pub enum_as_json: bool,
 }

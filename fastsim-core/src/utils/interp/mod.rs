@@ -17,18 +17,14 @@ pub mod n;
 pub mod one;
 pub mod three;
 pub mod two;
-pub mod wrapper;
 
 pub use n::*;
 use ndarray::{IxDynImpl, OwnedRepr};
 pub use one::*;
 pub use three::*;
 pub use two::*;
-pub use wrapper::*;
 
 use crate::imports::*;
-
-use std::marker::PhantomData; // used as a private field to disallow direct instantiation
 
 // This method contains code from RouteE Compass, another NREL-developed tool
 // https://www.nrel.gov/transportation/route-energy-prediction-model.html
@@ -169,7 +165,6 @@ fn find_nearest_index(arr: &[f64], target: f64) -> anyhow::Result<usize> {
 /// assert!(interp.interpolate(&[2.5, 2.5, 2.5]).is_err()); // out of bounds point with `Extrapolate::Error` fails
 /// ```
 ///
-
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Interpolator {
     /// 0-dimensional (constant value) interpolation
@@ -572,6 +567,9 @@ pub enum Extrapolate {
 }
 
 pub trait InterpMethods {
+    // TODO: maybe add `new` to `InterpMethods`
+    /// Validate data stored in [Self].  By design, [Self] can be instantiatated
+    /// only via [Self::new], which calls this method.
     fn validate(&self) -> anyhow::Result<()>;
     fn interpolate(&self, point: &[f64]) -> anyhow::Result<f64>;
 }

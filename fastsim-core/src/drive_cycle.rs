@@ -1,14 +1,19 @@
 use crate::imports::*;
 use fastsim_2::cycle::RustCycle as Cycle2;
 
-#[pyo3_api(
+#[fastsim_api(
     fn __len__(&self) -> usize {
         self.len()
     }
 
-    #[setter]
-    fn set_grade(&mut self, grade: Vec<f64>) {
+    #[setter("__grade")]
+    fn set_grade_py(&mut self, grade: Vec<f64>) {
         self.grade = grade.iter().map(|x| *x * uc::R).collect();
+    }
+
+    #[getter]
+    fn get_grade_py(&self) -> Vec<f64> {
+        self.grade.iter().map(|x| x.get::<si::ratio>()).collect()
     }
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default)]
@@ -72,7 +77,7 @@ impl Init for Cycle {
             .collect();
 
         // calculate elevation from RHS integral of grade and distance
-        self.init_elev = self.init_elev.or(Some(get_elev_def()));
+        self.init_elev = self.init_elev.or_else(|| Some(get_elev_def()));
         self.elev = self
             .grade
             .iter()
@@ -167,7 +172,7 @@ impl SerdeAPI for Cycle {
     /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
     ///
     fn from_reader<R: std::io::Read>(
-        mut rdr: R,
+        rdr: &mut R,
         format: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
@@ -317,7 +322,7 @@ impl Cycle {
 
     pub fn trim(&mut self, start_idx: Option<usize>, end_idx: Option<usize>) -> anyhow::Result<()> {
         let start_idx = start_idx.unwrap_or_default();
-        let end_idx = end_idx.unwrap_or(self.len());
+        let end_idx = end_idx.unwrap_or_else(|| self.len());
         ensure!(end_idx <= self.len(), format_dbg!(end_idx <= self.len()));
 
         self.time = self.time[start_idx..end_idx].to_vec();
@@ -341,7 +346,7 @@ impl Cycle {
     ///
     #[cfg(feature = "csv")]
     fn from_csv<S: AsRef<str>>(csv_str: S, skip_init: bool) -> anyhow::Result<Self> {
-        let mut csv_de = Self::from_reader(csv_str.as_ref().as_bytes(), "csv", skip_init)?;
+        let mut csv_de = Self::from_reader(&mut csv_str.as_ref().as_bytes(), "csv", skip_init)?;
         if !skip_init {
             csv_de.init()?;
         }
@@ -366,7 +371,7 @@ impl Cycle {
     }
 }
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 /// Element of `Cycle`.  Used for vec-like operations.
 pub struct CycleElement {
@@ -376,12 +381,12 @@ pub struct CycleElement {
     /// simulation power \[W\]
     #[serde(rename = "speed_mps", alias = "cycMps")]
     speed: si::Velocity,
-    // TODO: make `pyo3_api` handle Option or write custom getter/setter
+    // TODO: make `fastsim_api` handle Option or write custom getter/setter
     #[api(skip_get, skip_set)]
     /// road grade
     #[serde(skip_serializing_if = "Option::is_none", alias = "cycGrade")]
     pub grade: Option<si::Ratio>,
-    // TODO: make `pyo3_api` handle Option or write custom getter/setter
+    // TODO: make `fastsim_api` handle Option or write custom getter/setter
     #[api(skip_get, skip_set)]
     /// road charging/discharing capacity
     pub pwr_max_charge: Option<si::Power>,
@@ -395,7 +400,7 @@ mod tests {
     use super::*;
     fn mock_cyc_len_2() -> Cycle {
         let mut cyc = Cycle {
-            name: Default::default(),
+            name: String::new(),
             init_elev: None,
             time: (0..=2).map(|x| (x as f64) * uc::S).collect(),
             speed: (0..=2).map(|x| (x as f64) * uc::MPS).collect(),

@@ -67,7 +67,7 @@ impl Max for Vec<&f64> {
 
 pub trait Init {
     /// Specialized code to execute upon initialization.  For any struct with fields
-    /// implement `Init`, this should propagate down the hierarchy.
+    /// that implement `Init`, this should propagate down the hierarchy.
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
@@ -110,12 +110,13 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
         let file = crate::resources::RESOURCES_DIR
             .get_file(&filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
-        Self::from_reader(file.contents(), extension, skip_init)
+        Self::from_reader(&mut file.contents(), extension, skip_init)
     }
 
     /// Instantiates an object from a url.  Accepts yaml and json file types  
     /// # Arguments  
     /// - url: URL (either as a string or url type) to object  
+    ///
     /// Note: The URL needs to be a URL pointing directly to a file, for example
     /// a raw github URL.
     #[cfg(feature = "web")]
@@ -127,8 +128,8 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
             .and_then(|filename| Path::new(filename).extension())
             .and_then(OsStr::to_str)
             .with_context(|| "Could not parse file format from URL: {url:?}")?;
-        let response = ureq::get(url.as_ref()).call()?.into_reader();
-        Self::from_reader(response, format, skip_init)
+        let mut response = ureq::get(url.as_ref()).call()?.into_reader();
+        Self::from_reader(&mut response, format, skip_init)
     }
 
     /// Write (serialize) an object to a file.
@@ -161,14 +162,14 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
             .extension()
             .and_then(OsStr::to_str)
             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        let file = File::open(filepath).with_context(|| {
+        let mut file = File::open(filepath).with_context(|| {
             if !filepath.exists() {
                 format!("File not found: {filepath:?}")
             } else {
                 format!("Could not open file: {filepath:?}")
             }
         })?;
-        Self::from_reader(file, extension, skip_init)
+        Self::from_reader(&mut file, extension, skip_init)
     }
 
     /// Write (serialize) an object into anything that implements [`std::io::Write`]
@@ -207,7 +208,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
     /// * `format` - The source format, any of those listed in [`ACCEPTED_BYTE_FORMATS`](`SerdeAPI::ACCEPTED_BYTE_FORMATS`)
     ///
     fn from_reader<R: std::io::Read>(
-        mut rdr: R,
+        rdr: &mut R,
         format: &str,
         skip_init: bool,
     ) -> anyhow::Result<Self> {
@@ -216,7 +217,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> + Init {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             #[cfg(feature = "json")]
             "json" => serde_json::from_reader(rdr)?,
-            #[cfg(feature = "tonl")]
+            #[cfg(feature = "toml")]
             "toml" => {
                 let mut buf = String::new();
                 rdr.read_to_string(&mut buf)?;

@@ -6,7 +6,7 @@ use crate::pyo3::*;
 
 const TOL: f64 = 1e-3;
 
-#[pyo3_api(
+#[fastsim_api(
    #[allow(clippy::too_many_arguments)]
     #[new]
     fn __new__(
@@ -39,8 +39,7 @@ const TOL: f64 = 1e-3;
         Ok(self.soc_lo_ramp_start.unwrap().get::<si::ratio>())
     }
     /// pyo3 setter for soc_lo_ramp_start
-    // TODO: add `__`
-    #[setter]
+    #[setter("__soc_lo_ramp_start")]
     pub fn set_soc_lo_ramp_start(&mut self, new_value: f64) -> PyResult<()> {
         self.soc_lo_ramp_start = Some(new_value * uc::R);
         Ok(())
@@ -51,37 +50,36 @@ const TOL: f64 = 1e-3;
         Ok(self.soc_hi_ramp_start.unwrap().get::<si::ratio>())
     }
     /// pyo3 setter for soc_hi_ramp_start
-    #[setter]
-    // TODO: add `__`
+    #[setter("__soc_hi_ramp_start")]
     pub fn set_soc_hi_ramp_start(&mut self, new_value: f64) -> PyResult<()> {
         self.soc_hi_ramp_start = Some(new_value * uc::R);
         Ok(())
     }
 
-    #[getter("eff_max")]
-    fn get_eff_max_py(&self) -> f64 {
-        self.get_eff_max()
-    }
+    // #[getter("eff_max")]
+    // fn get_eff_max_py(&self) -> f64 {
+    //     self.get_eff_max()
+    // }
 
-    #[setter("__eff_max")]
-    fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
-        self.set_eff_max(eff_max).map_err(PyValueError::new_err)
-    }
+    // #[setter("__eff_max")]
+    // fn set_eff_max_py(&mut self, eff_max: f64) -> PyResult<()> {
+    //     self.set_eff_max(eff_max).map_err(PyValueError::new_err)
+    // }
 
-    #[getter("eff_min")]
-    fn get_eff_min_py(&self) -> f64 {
-        self.get_eff_min()
-    }
+    // #[getter("eff_min")]
+    // fn get_eff_min_py(&self) -> f64 {
+    //     self.get_eff_min()
+    // }
 
     #[getter("eff_range")]
     fn get_eff_range_py(&self) -> f64 {
         self.get_eff_range()
     }
 
-    #[setter("__eff_range")]
-    fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
-        self.set_eff_range(eff_range)
-    }
+    // #[setter("__eff_range")]
+    // fn set_eff_range_py(&mut self, eff_range: f64) -> anyhow::Result<()> {
+    //     self.set_eff_range(eff_range)
+    // }
 
     // TODO: decide on way to deal with `side_effect` coming after optional arg and uncomment
     #[pyo3(name = "set_mass")]
@@ -107,10 +105,6 @@ const TOL: f64 = 1e-3;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
 pub struct ReversibleEnergyStorage {
-    /// struct for tracking current state
-    #[serde(default)]
-    #[serde(skip_serializing_if = "EqDefault::eq_default")]
-    pub state: ReversibleEnergyStorageState,
     /// ReversibleEnergyStorage mass
     #[serde(default)]
     #[api(skip_get, skip_set)]
@@ -125,6 +119,14 @@ pub struct ReversibleEnergyStorage {
     /// Total energy capacity of battery of full discharge SOC of 0.0 and 1.0
     #[serde(rename = "energy_capacity_joules")]
     pub energy_capacity: si::Energy,
+
+    /// interpolator for calculating [Self] efficiency as a function of the following variants:  
+    /// - 0d -- constant
+    /// - 1d -- linear w.r.t. power
+    /// - 2d -- linear w.r.t. power and SOC
+    /// - 3d -- linear w.r.t. power, SOC, and temperature
+    #[api(skip_get, skip_set)]
+    pub eff_interp: Interpolator,
 
     /// Hard limit on minimum SOC, e.g. 0.05
     pub min_soc: si::Ratio,
@@ -143,9 +145,13 @@ pub struct ReversibleEnergyStorage {
     /// Time step interval at which history is saved
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
+    pub state: ReversibleEnergyStorageState,
+    /// Custom vector of [Self::state]
     #[serde(default)]
     #[serde(skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty")]
-    /// Custom vector of [Self::state]
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
@@ -228,9 +234,12 @@ impl ReversibleEnergyStorage {
 
         // TODO: replace this with something correct.
         // This should trip the `ensure` below
-        state.eff = uc::R * 666.;
+        state.eff = match self.eff_interp {
+            Interpolator::Interp0D(eff) => eff * uc::R,
+            Interpolator::Interp1D(interp1d) => interp1d.interpolate() * uc::R,
+        };
         ensure!(
-            state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R,
+            state.eff >= 0.0 * uc::R && state.eff <= 1.0 * uc::R,
             format!(
                 "{}\nres efficiency ({}) must be between 0 and 1",
                 format_dbg!(state.eff >= 0.0 * uc::R || state.eff <= 1.0 * uc::R),
@@ -250,8 +259,8 @@ impl ReversibleEnergyStorage {
 
         state.pwr_loss = (state.pwr_out_chemical - state.pwr_out_electrical).abs();
 
-        let new_soc = state.soc - state.pwr_out_chemical * dt / self.energy_capacity;
-        state.soc = new_soc;
+        state.soc -= state.pwr_out_chemical * dt / self.energy_capacity;
+
         Ok(())
     }
 
@@ -259,9 +268,9 @@ impl ReversibleEnergyStorage {
     /// #  Arguments:
     /// - `pwr_aux`: aux power demand on `ReversibleEnergyStorage`
     /// - `charge_buffer`: buffer below max SOC to allow for anticipated future
-    /// charging (i.e. decelerating while exiting a highway)
+    ///    charging (i.e. decelerating while exiting a highway)
     /// - `discharge_buffer`: buffer above min SOC to allow for anticipated
-    /// future discharging (i.e. accelerating to enter a highway)
+    ///    future discharging (i.e. accelerating to enter a highway)
     pub fn set_cur_pwr_out_max(
         &mut self,
         pwr_aux: si::Power,
@@ -441,8 +450,8 @@ impl ReversibleEnergyStorage {
             state: initial_state,
             save_interval,
             history: ReversibleEnergyStorageStateHistoryVec::new(),
-            mass: Default::default(),
-            specific_energy: Default::default(),
+            mass: None,
+            specific_energy: None,
         })
     }
 
@@ -529,6 +538,7 @@ impl Mass for ReversibleEnergyStorage {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::info!(
                     "Derived mass from `self.specific_energy` and `self.energy_capacity` does not match {}",
                     "provided mass. Updating based on `side_effect`"
@@ -551,6 +561,7 @@ impl Mass for ReversibleEnergyStorage {
                 }
             }
         } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!("Provided mass is None, setting `self.specific_energy` to None");
             self.specific_energy = None;
         }
@@ -609,7 +620,7 @@ pub enum SpecificEnergySideEffect {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[pyo3_api]
+#[fastsim_api]
 // component limits
 /// ReversibleEnergyStorage state variables
 pub struct ReversibleEnergyStorageState {
@@ -637,7 +648,7 @@ pub struct ReversibleEnergyStorageState {
     pub soh: f64,
 
     // TODO: add `pwr_out_neg_electrical` and `pwr_out_pos_electrical` and corresponding energies
-    // powers
+    // powers to separately pin negative- and positive-power operation
     /// total electrical power; positive is discharging
     pub pwr_out_electrical: si::Power,
     /// electrical power going to propulsion
@@ -674,27 +685,27 @@ pub struct ReversibleEnergyStorageState {
 impl Default for ReversibleEnergyStorageState {
     fn default() -> Self {
         Self {
-            pwr_cat_max: uc::W * 0.,
-            pwr_prop_max: uc::W * 0.,
-            pwr_regen_max: uc::W * 0.,
-            pwr_disch_max: uc::W * 0.,
-            pwr_charge_max: uc::W * 0.,
-            i: 0,
+            pwr_cat_max: si::Power::ZERO,
+            pwr_prop_max: si::Power::ZERO,
+            pwr_regen_max: si::Power::ZERO,
+            pwr_disch_max: si::Power::ZERO,
+            pwr_charge_max: si::Power::ZERO,
+            i: Default::default(),
             soc: uc::R * 0.5,
-            eff: uc::R * 0.,
+            eff: si::Ratio::ZERO,
             soh: 0.,
-            pwr_out_electrical: uc::W * 0.,
-            pwr_out_propulsion: uc::W * 0.,
-            pwr_aux: uc::W * 0.,
-            pwr_loss: uc::W * 0.,
-            pwr_out_chemical: uc::W * 0.,
-            energy_out_electrical: uc::J * 0.,
-            energy_out_propulsion: uc::J * 0.,
-            energy_aux: uc::J * 0.,
-            energy_loss: uc::J * 0.,
-            energy_out_chemical: uc::J * 0.,
-            max_soc: uc::R * 0.,
-            min_soc: uc::R * 0.,
+            pwr_out_electrical: si::Power::ZERO,
+            pwr_out_propulsion: si::Power::ZERO,
+            pwr_aux: si::Power::ZERO,
+            pwr_loss: si::Power::ZERO,
+            pwr_out_chemical: si::Power::ZERO,
+            energy_out_electrical: si::Energy::ZERO,
+            energy_out_propulsion: si::Energy::ZERO,
+            energy_aux: si::Energy::ZERO,
+            energy_loss: si::Energy::ZERO,
+            energy_out_chemical: si::Energy::ZERO,
+            max_soc: si::Ratio::ZERO,
+            min_soc: si::Ratio::ZERO,
             temperature_celsius: 22.,
         }
     }
@@ -702,22 +713,3 @@ impl Default for ReversibleEnergyStorageState {
 
 impl Init for ReversibleEnergyStorageState {}
 impl SerdeAPI for ReversibleEnergyStorageState {}
-
-impl ReversibleEnergyStorageState {
-    pub fn new() -> Self {
-        Self {
-            i: 1,
-            // slightly less than max soc for default ReversibleEnergyStorage
-            soc: uc::R * 0.95,
-            soh: 1.0,
-            max_soc: uc::R * 1.0,
-            min_soc: si::Ratio::ZERO,
-            temperature_celsius: 45.0,
-            ..Default::default()
-        }
-    }
-}
-
-mod tests {
-    // TODO: put tests here
-}

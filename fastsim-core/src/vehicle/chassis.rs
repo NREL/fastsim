@@ -16,7 +16,7 @@ pub enum DriveTypes {
 impl SerdeAPI for DriveTypes {}
 impl Init for DriveTypes {}
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 /// Struct for simulating vehicle
 pub struct Chassis {
@@ -126,10 +126,12 @@ impl Mass for Chassis {
             .with_context(|| anyhow!(format_dbg!()))?;
         if let (Some(derived_mass), Some(new_mass)) = (derived_mass, new_mass) {
             if derived_mass != new_mass {
+                #[cfg(feature = "logging")]
                 log::warn!("Derived mass does not match provided mass, setting `{}` constituent mass fields to `None`", stringify!(Chassis));
                 self.expunge_mass_fields();
             }
         } else if new_mass.is_none() {
+            #[cfg(feature = "logging")]
             log::debug!(
                 "Provided mass is None, setting `{}` constituent mass fields to `None`",
                 stringify!(Chassis)

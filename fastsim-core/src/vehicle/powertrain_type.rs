@@ -225,6 +225,7 @@ impl Step for PowertrainType {
     }
 }
 
+#[allow(clippy::to_string_trait_impl)]
 impl std::string::ToString for PowertrainType {
     fn to_string(&self) -> String {
         match self {

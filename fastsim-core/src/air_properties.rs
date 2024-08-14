@@ -1,8 +1,18 @@
 use super::imports::*;
 use super::*;
+use lazy_static::lazy_static;
 
-/// Returns density of air  
+lazy_static! {
+    static ref TE_AIR_DEFAULT: si::ThermodynamicTemperature = (22. + 273.15) * uc::KELVIN;
+    static ref STD_PRESSURE_DEFAULT: si::Pressure = 99_346.3 * uc::PASCAL;
+    // 1.2 kg/m^3 matches fastsim-2
+    static ref STD_DENSITY: si::MassDensity = 1.2 * uc::KGPM3;
+    static ref GAS_CONSTANT: si::SpecificHeatCapacity  = 287.0 * uc::J_PER_KG_K;
+}
+
+/// Returns density of air
 /// Source: <https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html>  
+/// Note that if `None` is passed for either argument, function evaluation should be faster
 ///
 /// # Equations used
 /// T = 15.04 - .00649 * h  
@@ -15,14 +25,19 @@ pub fn get_density_air(
     te_air: Option<si::ThermodynamicTemperature>,
     h: Option<si::Length>,
 ) -> si::MassDensity {
-    let te_air = te_air.unwrap_or((22. + 273.15) * uc::KELVIN);
-    let h = h.unwrap_or(180. * uc::M);
-    let cur_elevation_std_temp = (15.04 - 0.00649 * h.get::<si::meter>() + 273.15) * uc::KELVIN;
-    let cur_pressure = (101.29e3 * uc::PASCAL)
-        * ((cur_elevation_std_temp / (288.08 * uc::KELVIN))
-            .get::<si::ratio>()
-            .powf(5.256));
-    cur_pressure / (287.0 * uc::M2PS2K) / te_air
+    let std_pressure_at_elev = |h: si::Length| -> si::Pressure {
+        let std_temp_at_elev = (15.04 - 0.00649 * h.get::<si::meter>() + 273.15) * uc::KELVIN;
+        (101.29e3 * uc::PASCAL)
+            * ((std_temp_at_elev / (288.08 * uc::KELVIN))
+                .get::<si::ratio>()
+                .powf(5.256))
+    };
+    match (h, te_air) {
+        (None, None) => *STD_DENSITY,
+        (None, Some(te_air)) => *STD_PRESSURE_DEFAULT / *GAS_CONSTANT / te_air,
+        (Some(h_val), None) => std_pressure_at_elev(h_val) / *GAS_CONSTANT / *TE_AIR_DEFAULT,
+        (Some(h_val), Some(te_air)) => std_pressure_at_elev(h_val) / *GAS_CONSTANT / te_air,
+    }
 }
 
 #[cfg(feature = "pyo3")]

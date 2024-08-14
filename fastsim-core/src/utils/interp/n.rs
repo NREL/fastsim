@@ -147,6 +147,7 @@ impl InterpMethods for InterpND {
         let n = self.ndim();
 
         if n <= 3 {
+            #[cfg(feature = "logging")]
             log::warn!("Using N-D interpolator for {n}-D interpolation, use hardcoded {n}-D interpolator for better performance");
         }
 
