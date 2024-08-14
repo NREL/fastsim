@@ -11,7 +11,8 @@ pub struct Interp3D {
     pub strategy: Strategy,
     pub extrapolate: Extrapolate,
     #[serde(skip)]
-    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
+    // phantom private field to prevent direct instantiation in other modules
+    _phantom: PhantomData<()>,
 }
 
 impl Interp3D {

@@ -358,7 +358,8 @@ pub(crate) struct FieldOptions {
     pub skip_get: bool,
     /// if true, setters are not generated for a field
     pub skip_set: bool,
-    // TODO: uncomment and clean up
+    // TODO: uncomment and clean up, and then create equivalent `set_<fieldname>_from_pydict`
+    // and `<fieldname>_to_pydict` methods via `setattr`
     // /// if true, writes methods to get and set enum via json
     // pub enum_as_json: bool,
 }

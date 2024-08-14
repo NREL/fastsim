@@ -83,6 +83,9 @@ pub struct FuelConverter {
     #[serde(default)]
     #[serde(skip_serializing_if = "FuelConverterStateHistoryVec::is_empty")]
     pub history: FuelConverterStateHistoryVec, // TODO: spec out fuel tank size and track kg of fuel
+    #[serde(skip)]
+    // phantom private field to prevent direct instantiation in other modules
+    pub(in super::super) _phantom: PhantomData<()>,
 }
 
 impl SetCumulative for FuelConverter {
@@ -96,8 +99,6 @@ impl Init for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
-        // TODO: set the engine map here based on efficiency type, which should allow for
-        // `None` and `Other<String>` variants
         Ok(())
     }
 }

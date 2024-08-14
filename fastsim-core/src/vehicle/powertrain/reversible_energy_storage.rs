@@ -120,6 +120,14 @@ pub struct ReversibleEnergyStorage {
     #[serde(rename = "energy_capacity_joules")]
     pub energy_capacity: si::Energy,
 
+    /// interpolator for calculating [Self] efficiency as a function of the following variants:  
+    /// - 0d -- constant
+    /// - 1d -- linear w.r.t. power
+    /// - 2d -- linear w.r.t. power and SOC
+    /// - 3d -- linear w.r.t. power, SOC, and temperature
+    #[api(skip_get, skip_set)]
+    pub eff_interp: Interpolator,
+
     /// Hard limit on minimum SOC, e.g. 0.05
     pub min_soc: si::Ratio,
     /// Hard limit on maximum SOC, e.g. 0.95
@@ -226,7 +234,10 @@ impl ReversibleEnergyStorage {
 
         // TODO: replace this with something correct.
         // This should trip the `ensure` below
-        state.eff = uc::R * 666.;
+        state.eff = match self.eff_interp {
+            Interpolator::Interp0D(eff) => eff * uc::R,
+            Interpolator::Interp1D(interp1d) => interp1d.interpolate() * uc::R,
+        };
         ensure!(
             state.eff >= 0.0 * uc::R && state.eff <= 1.0 * uc::R,
             format!(
@@ -702,7 +713,3 @@ impl Default for ReversibleEnergyStorageState {
 
 impl Init for ReversibleEnergyStorageState {}
 impl SerdeAPI for ReversibleEnergyStorageState {}
-
-mod tests {
-    // TODO: put tests here
-}

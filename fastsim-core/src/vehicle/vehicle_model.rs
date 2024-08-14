@@ -1,5 +1,3 @@
-use utils::interp::{Extrapolate, *};
-
 use super::{hev::HEVControls, *};
 
 /// Possible aux load power sources
@@ -306,7 +304,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             * uc::KW,
                         save_interval: Some(1),
                         history: Default::default(),
+                        _phantom: PhantomData,
                     };
+                    fc.init()?;
                     fc.set_mass(None, MassSideEffect::None)
                         .with_context(|| anyhow!(format_dbg!()))?;
                     fc
@@ -344,7 +344,6 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             Strategy::LeftNearest,
                             Extrapolate::Error,
                         )?),
-                        // TODO: verify this
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
                                 .fc_eff_map
@@ -355,6 +354,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         save_interval: Some(1),
                         history: Default::default(),
                     };
+                    fc.init()?;
                     fc.set_mass(None, MassSideEffect::None)
                         .with_context(|| anyhow!(format_dbg!()))?;
                     fc

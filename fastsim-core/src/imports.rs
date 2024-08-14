@@ -30,6 +30,7 @@ pub(crate) use std::error::Error;
 pub(crate) use std::ffi::OsStr;
 pub(crate) use std::fmt;
 pub(crate) use std::fs::File;
+pub(crate) use std::marker::PhantomData;
 pub(crate) use std::num::{NonZeroU16, NonZeroUsize};
 pub(crate) use std::ops::{Deref, DerefMut, IndexMut, Sub};
 pub(crate) use std::path::{Path, PathBuf};

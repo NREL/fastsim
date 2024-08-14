@@ -26,8 +26,6 @@ pub use two::*;
 
 use crate::imports::*;
 
-use std::marker::PhantomData; // used as a private field to disallow direct instantiation
-
 // This method contains code from RouteE Compass, another NREL-developed tool
 // https://www.nrel.gov/transportation/route-energy-prediction-model.html
 // https://github.com/NREL/routee-compass/
@@ -167,7 +165,6 @@ fn find_nearest_index(arr: &[f64], target: f64) -> anyhow::Result<usize> {
 /// assert!(interp.interpolate(&[2.5, 2.5, 2.5]).is_err()); // out of bounds point with `Extrapolate::Error` fails
 /// ```
 ///
-
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Interpolator {
     /// 0-dimensional (constant value) interpolation
