@@ -3,17 +3,18 @@
 macro_rules! impl_get_set_eff_max_min {
     () => {
         /// Returns max value of `eff_interp`
-        pub fn get_eff_max(&self) -> f64 {
+        pub fn get_eff_max(&self) -> anyhow::Result<f64> {
             // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-            self.eff_interp_fwd
+            Ok(self
+                .eff_interp_fwd
                 .0
                 .f_x()?
                 .iter()
-                .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr))
+                .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
         }
 
         /// Scales eff_interp by ratio of new `eff_max` per current calculated max
-        pub fn set_eff_max(&mut self, eff_max: f64) -> Result<(), String> {
+        pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<(), String> {
             if (0.0..=1.0).contains(&eff_max) {
                 let old_max = self.get_eff_max();
                 self.eff_interp = self
@@ -34,11 +35,15 @@ macro_rules! impl_get_set_eff_max_min {
         }
 
         /// Returns min value of `eff_interp`
-        pub fn get_eff_min(&self) -> f64 {
+        pub fn get_eff_min(&self) -> anyhow::Result<f64> {
             // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-            self.eff_interp
+            Ok(self
+                .eff_interp_fwd
+                .0
+                .f_x()
+                .with_context(|| "eff_interp_fwd does not have f_x field")?
                 .iter()
-                .fold(f64::INFINITY, |acc, curr| acc.min(*curr))
+                .fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
         }
     };
 }
@@ -47,44 +52,64 @@ macro_rules! impl_get_set_eff_max_min {
 macro_rules! impl_get_set_eff_range {
     () => {
         /// Max value of `eff_interp` minus min value of `eff_interp`.
-        pub fn get_eff_range(&self) -> f64 {
-            self.get_eff_max() - self.get_eff_min()
+        pub fn get_eff_range(&self) -> anyhow::Result<f64> {
+            Ok(self.get_eff_max() - self.get_eff_min())
         }
 
         /// Scales values of `eff_interp` without changing max such that max - min
         /// is equal to new range.  Will change max if needed to ensure no values are
         /// less than zero.
-        pub fn set_eff_range(&mut self, eff_range: f64) -> Result<(), String> {
-            let eff_max = self.get_eff_max();
+        pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
+            let eff_max = self.get_eff_max()?;
             if eff_range == 0.0 {
-                self.eff_interp = vec![eff_max; self.eff_interp.len()];
+                let f_x = vec![
+                    eff_max;
+                    self.eff_interp_fwd
+                        .0
+                        .f_x()
+                        .with_context(|| "eff_interp_fwd does not have f_x field")?
+                        .len()
+                ];
+                let eff_interp_fwd = self.eff_interp_fwd.0;
+                eff_interp_fwd.set_f_x(f_x)?;
+                self.eff_interp_fwd = InterpolatorWrapper(eff_interp_fwd);
                 Ok(())
             } else if (0.0..=1.0).contains(&eff_range) {
                 let old_min = self.get_eff_min();
                 let old_range = self.get_eff_max() - old_min;
                 if old_range == 0.0 {
-                    return Err(format!(
+                    return anyhow!(format!(
                         "`eff_range` is already zero so it cannot be modified."
                     ));
                 }
                 self.eff_interp = self
-                    .eff_interp
+                    .eff_interp_fwd
+                    .0
+                    .f_x()
+                    .with_context(|| "eff_interp_fwd does not have f_x field")?
                     .iter()
                     .map(|x| eff_max + (x - eff_max) * eff_range / old_range)
                     .collect();
                 if self.get_eff_min() < 0.0 {
                     let x_neg = self.get_eff_min();
-                    self.eff_interp = self.eff_interp.iter().map(|x| x - x_neg).collect();
+                    self.eff_interp = self
+                        .eff_interp_fwd
+                        .0
+                        .f_x()
+                        .with_context(|| "eff_interp_fwd does not have f_x field")?
+                        .iter()
+                        .map(|x| x - x_neg)
+                        .collect();
                 }
                 if self.get_eff_max() > 1.0 {
-                    return Err(format!(
+                    return anyhow!(format!(
                         "`eff_max` ({:.3}) must be no greater than 1.0",
                         self.get_eff_max()
                     ));
                 }
                 Ok(())
             } else {
-                Err(format!(
+                anyhow!(format!(
                     "`eff_range` ({:.3}) must be between 0.0 and 1.0",
                     eff_range,
                 ))
