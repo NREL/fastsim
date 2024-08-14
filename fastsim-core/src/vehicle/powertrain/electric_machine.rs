@@ -58,10 +58,6 @@ use crate::utils::abs_checked_x_val;
 /// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
 /// electronics.
 pub struct ElectricMachine {
-    #[serde(default)]
-    #[serde(skip_serializing_if = "EqDefault::eq_default")]
-    /// struct for tracking current state
-    pub state: ElectricMachineState,
     /// Shaft output power fraction array at which efficiencies are evaluated.
     /// This can range from 0 to 1 or -1 to 1, dependending on whether the efficiency is
     /// directionally symmetrical.
@@ -88,6 +84,10 @@ pub struct ElectricMachine {
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
+    pub state: ElectricMachineState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     #[serde(skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty")]
@@ -100,11 +100,11 @@ impl ElectricMachine {
     /// required.
     /// # Arguments
     /// - `pwr_in_fwd_max`: positive-propulsion-related power available to this
-    /// component. Positive values indicate that the upstream component can supply
-    /// positive tractive power.
+    ///    component. Positive values indicate that the upstream component can supply
+    ///    positive tractive power.
     /// - `pwr_in_bwd_max`: negative-propulsion-related power available to this
-    /// component. Zero means no power can be sent to upstream compnents and positive
-    /// values indicate upstream components can absorb energy.
+    ///     component. Zero means no power can be sent to upstream compnents and positive
+    ///     values indicate upstream components can absorb energy.
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: time step size
     pub fn set_cur_pwr_prop_out_max(

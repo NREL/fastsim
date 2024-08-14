@@ -76,9 +76,10 @@ impl Powertrain for Box<HybridElectricVehicle> {
         let (fc_pwr_out_req, em_pwr_out_req) =
             self.hev_controls
                 .get_pwr_fc_and_em(pwr_out_req, &self.fc.state, &self.em.state)?;
+        // TODO: replace with a stop/start model
+        // TODO: figure out fancier way to handle apportionment of `pwr_aux` between `fc` and `res`
+        let enabled = true;
 
-        let enabled = true; // TODO: replace with a stop/start model
-                            // TODO: figure out fancier way to handle apportionment of `pwr_aux` between `fc` and `res`
         self.fc
             .solve(fc_pwr_out_req, pwr_aux, enabled, dt)
             .with_context(|| anyhow!(format_dbg!()))?;

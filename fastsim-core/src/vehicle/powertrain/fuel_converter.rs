@@ -49,10 +49,6 @@ use super::*;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling Fuel Converter (e.g. engine, fuel cell.)
 pub struct FuelConverter {
-    #[serde(default)]
-    /// struct for tracking current state
-    #[serde(skip_serializing_if = "EqDefault::eq_default")]
-    pub state: FuelConverterState,
     /// FuelConverter mass
     #[serde(default)]
     #[api(skip_get, skip_set)]
@@ -79,6 +75,10 @@ pub struct FuelConverter {
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
+    pub state: FuelConverterState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     #[serde(skip_serializing_if = "FuelConverterStateHistoryVec::is_empty")]

@@ -39,8 +39,7 @@ const TOL: f64 = 1e-3;
         Ok(self.soc_lo_ramp_start.unwrap().get::<si::ratio>())
     }
     /// pyo3 setter for soc_lo_ramp_start
-    // TODO: add `__`
-    #[setter]
+    #[setter("__soc_lo_ramp_start")]
     pub fn set_soc_lo_ramp_start(&mut self, new_value: f64) -> PyResult<()> {
         self.soc_lo_ramp_start = Some(new_value * uc::R);
         Ok(())
@@ -51,8 +50,7 @@ const TOL: f64 = 1e-3;
         Ok(self.soc_hi_ramp_start.unwrap().get::<si::ratio>())
     }
     /// pyo3 setter for soc_hi_ramp_start
-    #[setter]
-    // TODO: add `__`
+    #[setter("__soc_hi_ramp_start")]
     pub fn set_soc_hi_ramp_start(&mut self, new_value: f64) -> PyResult<()> {
         self.soc_hi_ramp_start = Some(new_value * uc::R);
         Ok(())
@@ -107,10 +105,6 @@ const TOL: f64 = 1e-3;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, HistoryMethods)]
 /// Struct for modeling technology-naive Reversible Energy Storage (e.g. battery, flywheel).
 pub struct ReversibleEnergyStorage {
-    /// struct for tracking current state
-    #[serde(default)]
-    #[serde(skip_serializing_if = "EqDefault::eq_default")]
-    pub state: ReversibleEnergyStorageState,
     /// ReversibleEnergyStorage mass
     #[serde(default)]
     #[api(skip_get, skip_set)]
@@ -143,9 +137,13 @@ pub struct ReversibleEnergyStorage {
     /// Time step interval at which history is saved
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
+    pub state: ReversibleEnergyStorageState,
+    /// Custom vector of [Self::state]
     #[serde(default)]
     #[serde(skip_serializing_if = "ReversibleEnergyStorageStateHistoryVec::is_empty")]
-    /// Custom vector of [Self::state]
     pub history: ReversibleEnergyStorageStateHistoryVec,
 }
 
@@ -259,9 +257,9 @@ impl ReversibleEnergyStorage {
     /// #  Arguments:
     /// - `pwr_aux`: aux power demand on `ReversibleEnergyStorage`
     /// - `charge_buffer`: buffer below max SOC to allow for anticipated future
-    /// charging (i.e. decelerating while exiting a highway)
+    ///    charging (i.e. decelerating while exiting a highway)
     /// - `discharge_buffer`: buffer above min SOC to allow for anticipated
-    /// future discharging (i.e. accelerating to enter a highway)
+    ///    future discharging (i.e. accelerating to enter a highway)
     pub fn set_cur_pwr_out_max(
         &mut self,
         pwr_aux: si::Power,

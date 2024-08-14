@@ -297,7 +297,6 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             Strategy::LeftNearest,
                             Extrapolate::Error,
                         )?),
-                        // TODO: verify this
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
                                 .fc_eff_map
@@ -619,7 +618,10 @@ impl Vehicle {
                 .fc()
                 .map(|fc| match &fc.eff_interp {
                     utils::interp::Interpolator::Interp1D(interp) => Ok(interp.f_x.clone().into()),
-                    _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
+                    _ => bail!(
+                        "{}\nOnly 1-D interpolators can be converted to FASTSim 2",
+                        format_dbg!()
+                    ),
                 })
                 .transpose()?
                 .unwrap_or_default(),
@@ -644,7 +646,10 @@ impl Vehicle {
                 .fc()
                 .map(|fc| match &fc.eff_interp {
                     utils::interp::Interpolator::Interp1D(interp) => Ok(interp.x.clone().into()),
-                    _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
+                    _ => bail!(
+                        "{}\nOnly 1-D interpolators can be converted to FASTSim 2",
+                        format_dbg!()
+                    ),
                 })
                 .transpose()?
                 .unwrap_or_default(),

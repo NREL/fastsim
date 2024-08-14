@@ -358,4 +358,7 @@ pub(crate) struct FieldOptions {
     pub skip_get: bool,
     /// if true, setters are not generated for a field
     pub skip_set: bool,
+    // TODO: uncomment and clean up
+    // /// if true, writes methods to get and set enum via json
+    // pub enum_as_json: bool,
 }

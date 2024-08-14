@@ -570,6 +570,9 @@ pub enum Extrapolate {
 }
 
 pub trait InterpMethods {
+    // TODO: maybe add `new` to `InterpMethods`
+    /// Validate data stored in [Self].  By design, [Self] can be instantiatated
+    /// only via [Self::new], which calls this method.
     fn validate(&self) -> anyhow::Result<()>;
     fn interpolate(&self, point: &[f64]) -> anyhow::Result<f64>;
 }

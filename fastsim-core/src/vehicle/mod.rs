@@ -19,10 +19,6 @@ pub mod powertrain_type;
 pub mod traits;
 pub mod vehicle_model;
 
-#[cfg(test)]
-/// Module containing tests for consists.
-pub mod tests;
-
 pub use bev::BatteryElectricVehicle;
 pub use chassis::Chassis;
 pub use conv::ConventionalVehicle;

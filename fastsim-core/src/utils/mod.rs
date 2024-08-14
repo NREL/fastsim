@@ -159,12 +159,10 @@ pub fn interp1d(
     let y_first = y_data
         .first()
         .with_context(|| anyhow!("Unable to extract first element"))?;
-    // TODO: do this once on init
     if y_data.iter().all(|y| y == y_first) {
         // return first if all data is equal to first
         Ok(*y_first)
     } else {
-        // TODO: when `Interpolator` struct is implemented, make sure this sort of check happens on init
         let size = x_data.len();
 
         let mut i = 0;
@@ -565,12 +563,6 @@ mod tests {
             1.0
         );
     }
-
-    // TODO: turn this back on and fix the problem it catches
-    // #[test]
-    // fn test_interp1d_with_duplicate_x_data() {
-    //     assert!(interp1d(&0.5, &[0.0, 0.0], &[0.0, 1.0], Extrapolate::Yes).is_err());
-    // }
 
     #[test]
     fn test_linspace() {

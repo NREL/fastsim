@@ -271,7 +271,6 @@ impl SimDrive {
         let t3 = drag3;
         let t2 = accel2 + drag2 + wheel2;
         let t1 = drag1 + roll1 + ascent1;
-        // TODO: verify final term being subtracted.  Needs to be same as `self.cur_max_trans_kw_out[i]`
         let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - vs.pwr_prop_fwd_max;
 
         // initial guess
@@ -281,7 +280,6 @@ impl SimDrive {
         let xtol = self.sim_params.ach_speed_tol;
         // solver gain
         let g = self.sim_params.ach_speed_solver_gain;
-        // TODO: figure out if `pwr_err_fn` should be applied as the early return criterion
         let pwr_err_fn = |speed_guess: si::Velocity| -> si::Power {
             t3 * speed_guess.powi(typenum::P3::new())
                 + t2 * speed_guess.powi(typenum::P2::new())

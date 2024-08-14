@@ -53,7 +53,7 @@ pub(crate) fn cycle_derive(input: TokenStream) -> TokenStream {
         .unwrap();
     generated.append_all(quote! {
         #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-        #[pyo3_api(
+        #[fastsim_api(
             #[pyo3(name = "len")]
             fn len_py(&self) -> usize {
                 self.len()

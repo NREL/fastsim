@@ -3,7 +3,7 @@
 
 use fastsim_core::air_properties::get_density_air_py;
 use fastsim_core::prelude::*;
-use fastsim_core::utils::interp::{Extrapolate, InterpolatorWrapper, Strategy};
+use fastsim_core::utils::interp::{Extrapolate, Strategy};
 pub use pyo3::exceptions::{
     PyAttributeError, PyFileNotFoundError, PyIndexError, PyNotImplementedError, PyRuntimeError,
 };
@@ -32,7 +32,6 @@ fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Pyo3Vec2Wrapper>()?;
     m.add_class::<Pyo3Vec3Wrapper>()?;
     m.add_class::<Pyo3VecBoolWrapper>()?;
-    m.add_class::<InterpolatorWrapper>()?;
     m.add_class::<Strategy>()?;
     m.add_class::<Extrapolate>()?;
     m.add_function(wrap_pyfunction!(get_density_air_py, m)?)?;
