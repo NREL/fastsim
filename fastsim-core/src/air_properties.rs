@@ -1,6 +1,5 @@
 use super::imports::*;
 use super::*;
-use lazy_static::lazy_static;
 
 lazy_static! {
     static ref TE_AIR_DEFAULT: si::ThermodynamicTemperature = (22. + 273.15) * uc::KELVIN;

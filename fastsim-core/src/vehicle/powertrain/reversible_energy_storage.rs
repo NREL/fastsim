@@ -121,7 +121,7 @@ pub struct ReversibleEnergyStorage {
     pub energy_capacity: si::Energy,
 
     /// interpolator for calculating [Self] efficiency as a function of the following variants:  
-    /// - 0d -- constant
+    /// - 0d -- constant -- handled on a round trip basis
     /// - 1d -- linear w.r.t. power
     /// - 2d -- linear w.r.t. power and SOC
     /// - 3d -- linear w.r.t. power, SOC, and temperature
@@ -235,8 +235,24 @@ impl ReversibleEnergyStorage {
         // TODO: replace this with something correct.
         // This should trip the `ensure` below
         state.eff = match self.eff_interp {
-            Interpolator::Interp0D(eff) => eff * uc::R,
-            Interpolator::Interp1D(interp1d) => interp1d.interpolate() * uc::R,
+            Interpolator::Interp0D(round_trip_eff) => round_trip_eff * uc::R,
+            Interpolator::Interp1D(interp1d) => {
+                interp1d.interpolate(&[state.pwr_out_electrical.get::<si::watt>()]) * uc::R
+            }
+            Interpolator::Interp2D(interp2d) => {
+                interp2d.interpolate(&[
+                    state.pwr_out_electrical.get::<si::watt>(),
+                    state.soc.get::<si::ratio>(),
+                ]) * uc::R
+            }
+            Interpolator::Interp3D(interp3d) => {
+                interp3d.interpolate(&[
+                    state.pwr_out_electrical.get::<si::watt>(),
+                    state.soc.get::<si::ratio>(),
+                    state.temperature_celsius.get::<si::degree_celsius>(),
+                ]) * uc::R
+            }
+            _ => bail!("Invalid interpolator.  See docs for `ReversibleEnergyStorage::eff_interp`"),
         };
         ensure!(
             state.eff >= 0.0 * uc::R && state.eff <= 1.0 * uc::R,
@@ -247,6 +263,7 @@ impl ReversibleEnergyStorage {
             )
         );
 
+        // TODO: figure out how to handle round trip efficiency calculation in fastsim-3 style
         if state.pwr_out_electrical > si::Power::ZERO {
             // if positive, chemical power must be greater than electrical power
             // i.e. not all chemical power can be converted to electrical power

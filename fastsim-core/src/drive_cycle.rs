@@ -46,12 +46,13 @@ pub struct Cycle {
     /// road charging/discharing capacity
     #[api(skip_get, skip_set)]
     pub pwr_max_chrg: Vec<si::Power>,
+    /// grade interpolator
+    #[api(skip_get, skip_set)]
+    pub grade_interp: Option<Interpolator>,
 }
 
-const ELEV_DEF_FT: f64 = 400.;
-/// Returns default elevation
-pub fn get_elev_def() -> si::Length {
-    ELEV_DEF_FT * uc::FT
+lazy_static! {
+    static ref ELEV_DEFAULT: si::Length = 400. * uc::M;
 }
 
 impl Init for Cycle {
@@ -77,7 +78,7 @@ impl Init for Cycle {
             .collect();
 
         // calculate elevation from RHS integral of grade and distance
-        self.init_elev = self.init_elev.or_else(|| Some(get_elev_def()));
+        self.init_elev = self.init_elev.or_else(|| Some(*ELEV_DEFAULT));
         self.elev = self
             .grade
             .iter()
@@ -92,6 +93,12 @@ impl Init for Cycle {
                 },
             )
             .collect();
+        self.grade_interp = Some(Interpolator::Interp1D(Interp1D::new(
+            self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
+            self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),
+            Strategy::Linear,
+            Extrapolate::Error,
+        )?));
 
         Ok(())
     }
@@ -408,6 +415,7 @@ mod tests {
             grade: (0..=2).map(|x| (x as f64 * uc::R) / 100.).collect(),
             elev: vec![],
             pwr_max_chrg: vec![],
+            grade_interp: Default::default(),
         };
         cyc.init().unwrap();
         cyc

@@ -140,13 +140,12 @@ impl ElectricMachine {
         if let None = self.eff_interp_bwd {
             // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
             // TODO: do the extrapolate and strategy fields also need to be changed?
-            let mut eff_interp_bwd = self.eff_interp_fwd.0;
+            let mut eff_interp_bwd = self.eff_interp_fwd;
             eff_interp_bwd.set_x(
                 self.eff_interp_fwd
-                    .0
                     .x()?
                     .iter()
-                    .zip(self.eff_interp_fwd.0.f_x()?.iter())
+                    .zip(self.eff_interp_fwd.f_x()?.iter())
                     .map(|(x, y)| x / y)
                     .collect(),
             );
@@ -170,7 +169,6 @@ impl ElectricMachine {
                         .ok_or(anyhow!(
                             "eff_interp_bwd is None, which should never be the case at this point."
                         ))?
-                        .0
                         .x()?,
                 )?])
                 .with_context(|| {
@@ -194,7 +192,6 @@ impl ElectricMachine {
                         .ok_or(anyhow!(
                             "eff_interp_bwd is None, which should never be the case at this point."
                         ))?
-                        .0
                         .x()?,
                 )?])
                 .with_context(|| {
@@ -245,7 +242,6 @@ impl ElectricMachine {
                             Ok({
                                 if self
                                     .eff_interp_fwd
-                                    .0
                                     .x()?
                                     .first()
                                     .with_context(|| anyhow!(format_dbg!()))?
@@ -258,7 +254,7 @@ impl ElectricMachine {
                             })
                         };
                         pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
-                    }], // &self.eff_interp_fwd.0.x()?,
+                    }], // &self.eff_interp_fwd.x()?,
                         // &self.eff_interp_fwd,
                         // Extrapolate::Error,
                 )
@@ -297,9 +293,9 @@ impl ElectricMachine {
 
     // pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
     //     // make sure vector has been created
-    //     self.eff_interp_bwd.0.set_x(
+    //     self.eff_interp_bwd.set_x(
     //         self.eff_interp_fwd
-    //             .0
+    //
     //             .x()?
     //             .iter()
     //             .zip(self.eff_interp_fwd.0.f_x()?.iter())
@@ -309,15 +305,16 @@ impl ElectricMachine {
     //     Ok(())
     // }
 
-    impl_get_set_eff_max_min!();
-    impl_get_set_eff_range!();
+    // TODO: figure out why these macro invocations are ornery if uncommented
+    // impl_get_set_eff_max_min!();
+    // impl_get_set_eff_range!();
 }
 
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
-        let _ = check_interp_frac_data(&self.eff_interp_fwd.0.x()?, InterpRange::Either)
+        let _ = check_interp_frac_data(&self.eff_interp_fwd.x()?, InterpRange::Either)
             .with_context(||
                 "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].")?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
@@ -330,13 +327,12 @@ impl Init for ElectricMachine {
         if let None = self.eff_interp_bwd {
             // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
             // TODO: do the extrapolate and strategy fields also need to be changed?
-            let mut eff_interp_bwd = self.eff_interp_fwd.0;
+            let mut eff_interp_bwd = self.eff_interp_fwd;
             eff_interp_bwd.set_x(
                 self.eff_interp_fwd
-                    .0
                     .x()?
                     .iter()
-                    .zip(self.eff_interp_fwd.0.f_x()?.iter())
+                    .zip(self.eff_interp_fwd.f_x()?.iter())
                     .map(|(x, y)| x / y)
                     .collect(),
             );

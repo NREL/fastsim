@@ -135,26 +135,12 @@ impl SimDrive {
             log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {
-            #[cfg(feature = "logging")]
-            log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
-            uc::R
-                * interp1d(
-                    &vs.dist.get::<si::meter>(),
-                    &self
-                        .cyc
-                        .dist
-                        .iter()
-                        .map(|d| d.get::<si::meter>())
-                        .collect::<Vec<f64>>(),
-                    &self
-                        .cyc
-                        .grade
-                        .iter()
-                        .map(|g| g.get::<si::ratio>())
-                        .collect::<Vec<f64>>(),
-                    utils::Extrapolate::Error,
-                )
-                .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?
+            &self
+                .cyc
+                .grade_interp
+                .with_context(|| format_dbg!("You might have somehow bypassed `init()`"))?
+                .interpolate(&[vs.dist.get::<si::meter>()])?
+                * *uc::R
         };
 
         let mass = self.veh.mass.with_context(|| {

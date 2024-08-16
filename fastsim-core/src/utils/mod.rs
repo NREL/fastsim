@@ -1,5 +1,4 @@
 use crate::imports::*;
-use lazy_static::lazy_static;
 use paste::paste;
 use regex::Regex;
 
@@ -84,64 +83,6 @@ fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
     } else {
         (value - lower) / (upper - lower)
     }
-}
-
-/// Trilinear interpolation over a structured grid;
-/// NOTE: this could be generalized to compute a linear interpolation in N dimensions
-/// NOTE: this function assumes the each axis on the grid is sorted and that there
-/// are no repeating values on each axis
-pub fn interp3d(
-    point: &[f64; 3],
-    grid: &[Vec<f64>; 3],
-    values: &[Vec<Vec<f64>>],
-) -> anyhow::Result<f64> {
-    let x = point[0];
-    let y = point[1];
-    let z = point[2];
-
-    let x_points = &grid[0];
-    let y_points = &grid[1];
-    let z_points = &grid[2];
-
-    let (xi0, xi1) = find_interp_indices(&x, x_points).with_context(|| anyhow!(format_dbg!()))?;
-    let (yi0, yi1) = find_interp_indices(&y, y_points).with_context(|| anyhow!(format_dbg!()))?;
-    let (zi0, zi1) = find_interp_indices(&z, z_points).with_context(|| anyhow!(format_dbg!()))?;
-
-    let xd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
-    let yd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
-    let zd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
-
-    let c000 = values[xi0][yi0][zi0];
-    let c100 = values[xi1][yi0][zi0];
-    let c001 = values[xi0][yi0][zi1];
-    let c101 = values[xi1][yi0][zi1];
-    let c010 = values[xi0][yi1][zi0];
-    let c110 = values[xi1][yi1][zi0];
-    let c011 = values[xi0][yi1][zi1];
-    let c111 = values[xi1][yi1][zi1];
-
-    let c00 = c000 * (1.0 - xd) + c100 * xd;
-    let c01 = c001 * (1.0 - xd) + c101 * xd;
-    let c10 = c010 * (1.0 - xd) + c110 * xd;
-    let c11 = c011 * (1.0 - xd) + c111 * xd;
-
-    let c0 = c00 * (1.0 - yd) + c10 * yd;
-    let c1 = c01 * (1.0 - yd) + c11 * yd;
-
-    let c = c0 * (1.0 - yd) + c1 * zd;
-
-    Ok(c)
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
-pub enum Extrapolate {
-    /// allow extrapolation
-    Yes,
-    /// don't allow extrapolation but return result from nearest x-data point
-    #[default]
-    No,
-    /// return an error on attempted extrapolation
-    Error,
 }
 
 impl SerdeAPI for Extrapolate {}

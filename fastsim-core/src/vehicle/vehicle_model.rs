@@ -343,7 +343,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
                             Extrapolate::Error,
-                        )?,
+                        )?),
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
                                 .fc_eff_map
@@ -366,6 +366,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     specific_energy: None,
                     pwr_out_max: f2veh.ess_max_kw * uc::KW,
                     energy_capacity: f2veh.ess_max_kwh * uc::KWH,
+                    eff_interp: Interpolator::Interp0D(f2veh.ess_round_trip_eff.sqrt()),
                     min_soc: f2veh.min_soc * uc::R,
                     max_soc: f2veh.max_soc * uc::R,
                     soc_hi_ramp_start: None,
