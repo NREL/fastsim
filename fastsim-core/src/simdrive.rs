@@ -135,12 +135,13 @@ impl SimDrive {
             log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {
-            &self
-                .cyc
-                .grade_interp
-                .with_context(|| format_dbg!("You might have somehow bypassed `init()`"))?
-                .interpolate(&[vs.dist.get::<si::meter>()])?
-                * *uc::R
+            uc::R
+                * self
+                    .cyc
+                    .grade_interp
+                    .as_ref()
+                    .with_context(|| format_dbg!("You might have somehow bypassed `init()`"))?
+                    .interpolate(&[vs.dist.get::<si::meter>()])?
         };
 
         let mass = self.veh.mass.with_context(|| {

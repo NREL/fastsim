@@ -63,12 +63,12 @@ pub struct ElectricMachine {
     /// directionally symmetrical.
     // /// this is x-data that will how be in eff_interp_fwd
     // pub pwr_out_frac_interp: Vec<f64>,
-    #[api(skip_set)]
+    #[api(skip_set, skip_get)]
     /// Efficiency array corresponding to [Self::pwr_out_frac_interp] and [Self::pwr_in_frac_interp]
     /// eff_interp_fwd and eff_interp_bwd have the same f_x but different x
     pub eff_interp_fwd: utils::interp::Interpolator,
     #[serde(skip)]
-    #[api(skip_set)]
+    #[api(skip_set, skip_get)]
     // if it is not provided, needs to be set during init, can figure out what to do
     // for that by looking at how pwr_in_frac_interp is initialized
     pub eff_interp_bwd: Option<utils::interp::Interpolator>,
@@ -204,7 +204,7 @@ impl ElectricMachine {
 
         // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power based on what the ReversibleEnergyStorage can provide
-        self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_fwd);
+        self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
         // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
         self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max / eff_neg);
