@@ -243,14 +243,14 @@ impl ReversibleEnergyStorage {
                 interp2d.interpolate(&[
                     state.pwr_out_electrical.get::<si::watt>(),
                     state.soc.get::<si::ratio>(),
-                ]) * uc::R
+                ])? * uc::R
             }
             Interpolator::Interp3D(interp3d) => {
                 interp3d.interpolate(&[
                     state.pwr_out_electrical.get::<si::watt>(),
                     state.soc.get::<si::ratio>(),
-                    state.temperature_celsius.get::<si::degree_celsius>(),
-                ]) * uc::R
+                    state.temperature_celsius,
+                ])? * uc::R
             }
             _ => bail!("Invalid interpolator.  See docs for `ReversibleEnergyStorage::eff_interp`"),
         };

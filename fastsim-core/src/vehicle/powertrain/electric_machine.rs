@@ -136,23 +136,6 @@ impl ElectricMachine {
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
 
-        // is this necessary since this same code is also in init()?
-        if let None = self.eff_interp_bwd {
-            // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
-            // TODO: do the extrapolate and strategy fields also need to be changed?
-            let mut eff_interp_bwd = self.eff_interp_fwd;
-            eff_interp_bwd.set_x(
-                self.eff_interp_fwd
-                    .x()?
-                    .iter()
-                    .zip(self.eff_interp_fwd.f_x()?.iter())
-                    .map(|(x, y)| x / y)
-                    .collect(),
-            );
-            self.eff_interp_bwd = Some(eff_interp_bwd);
-            // self.set_pwr_in_frac_interp()
-            //     .with_context(|| format_dbg!())?;
-        }
         // should this use the forward or backwards intepolator? If it uses the forward interpolator,
         // the x-value will be wrong, but it uses 'pwr_in_fwd_max'
         // TODO: make sure `fwd` and `bwd` are clearly documented somewhere

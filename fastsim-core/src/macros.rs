@@ -13,19 +13,18 @@ macro_rules! impl_get_set_eff_max_min {
         }
 
         /// Scales eff_interp by ratio of new `eff_max` per current calculated max
-        pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<(), String> {
+        pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<()> {
             if (0.0..=1.0).contains(&eff_max) {
-                let old_max = self.get_eff_max();
-                self.eff_interp_fwd = self
-                    .eff_interp_fwd
-                    .f_x()
-                    .with_context(|| "eff_interp_fwd does not have f_x field")?
-                    .iter()
-                    .map(|x| x * eff_max / old_max)
-                    .collect();
+                let old_max = self.get_eff_max()?;
+                match &mut self.eff_interp_fwd {
+                    Interpolator::Interp1D(interp1d) => {
+                        interp1d.f_x = ;
+                    },
+                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed.")
+                }
                 Ok(())
             } else {
-                Err(format!(
+                Err(anyhow!(
                     "`eff_max` ({:.3}) must be between 0.0 and 1.0",
                     eff_max,
                 ))
@@ -50,7 +49,7 @@ macro_rules! impl_get_set_eff_range {
     () => {
         /// Max value of `eff_interp` minus min value of `eff_interp`.
         pub fn get_eff_range(&self) -> anyhow::Result<f64> {
-            Ok(self.get_eff_max() - self.get_eff_min())
+            Ok(self.get_eff_max()? - self.get_eff_min()?)
         }
 
         /// Scales values of `eff_interp` without changing max such that max - min
@@ -71,10 +70,10 @@ macro_rules! impl_get_set_eff_range {
                 self.eff_interp_fwd = eff_interp_fwd;
                 Ok(())
             } else if (0.0..=1.0).contains(&eff_range) {
-                let old_min = self.get_eff_min();
-                let old_range = self.get_eff_max() - old_min;
+                let old_min = self.get_eff_min()?;
+                let old_range = self.get_eff_max()? - old_min;
                 if old_range == 0.0 {
-                    return anyhow!(format!(
+                    return Err(anyhow!(
                         "`eff_range` is already zero so it cannot be modified."
                     ));
                 }
