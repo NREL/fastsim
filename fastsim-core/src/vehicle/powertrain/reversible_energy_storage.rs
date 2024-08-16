@@ -432,46 +432,6 @@ impl ReversibleEnergyStorage {
         self.min_soc + 0.05 * uc::R
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        pwr_out_max_watts: f64,
-        energy_capacity_joules: f64,
-        min_soc: f64,
-        max_soc: f64,
-        initial_soc: f64,
-        initial_temperature_celcius: f64,
-        soc_hi_ramp_start: Option<f64>,
-        soc_lo_ramp_start: Option<f64>,
-        save_interval: Option<usize>,
-    ) -> anyhow::Result<Self> {
-        ensure!(
-            min_soc <= initial_soc || initial_soc <= max_soc,
-            format!(
-                "{}\ninitial soc must be between min and max soc, inclusive",
-                format_dbg!(min_soc <= initial_soc || initial_soc <= max_soc)
-            )
-        );
-
-        let initial_state = ReversibleEnergyStorageState {
-            soc: uc::R * initial_soc,
-            temperature_celsius: initial_temperature_celcius,
-            ..Default::default()
-        };
-        Ok(ReversibleEnergyStorage {
-            pwr_out_max: uc::W * pwr_out_max_watts,
-            energy_capacity: uc::J * energy_capacity_joules,
-            min_soc: uc::R * min_soc,
-            max_soc: uc::R * max_soc,
-            soc_hi_ramp_start: soc_hi_ramp_start.map(|val| val * uc::R),
-            soc_lo_ramp_start: soc_lo_ramp_start.map(|val| val * uc::R),
-            state: initial_state,
-            save_interval,
-            history: ReversibleEnergyStorageStateHistoryVec::new(),
-            mass: None,
-            specific_energy: None,
-        })
-    }
-
     /// Sets specific energy and either mass or energy capacity of battery
     /// # Arguments
     /// - `specific_energy`: specific energy of battery

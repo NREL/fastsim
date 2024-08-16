@@ -306,8 +306,8 @@ impl ElectricMachine {
     // }
 
     // TODO: figure out why these macro invocations are ornery if uncommented
-    // impl_get_set_eff_max_min!();
-    // impl_get_set_eff_range!();
+    impl_get_set_eff_max_min!();
+    impl_get_set_eff_range!();
 }
 
 impl SerdeAPI for ElectricMachine {}

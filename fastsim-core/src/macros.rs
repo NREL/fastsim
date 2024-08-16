@@ -16,7 +16,7 @@ macro_rules! impl_get_set_eff_max_min {
         pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<(), String> {
             if (0.0..=1.0).contains(&eff_max) {
                 let old_max = self.get_eff_max();
-                self.eff_interp = self
+                self.eff_interp_fwd = self
                     .eff_interp_fwd
                     .f_x()
                     .with_context(|| "eff_interp_fwd does not have f_x field")?
@@ -62,12 +62,11 @@ macro_rules! impl_get_set_eff_range {
                 let f_x = vec![
                     eff_max;
                     self.eff_interp_fwd
-                        .0
                         .f_x()
                         .with_context(|| "eff_interp_fwd does not have f_x field")?
                         .len()
                 ];
-                let eff_interp_fwd = self.eff_interp_fwd.0;
+                let eff_interp_fwd = self.eff_interp_fwd;
                 eff_interp_fwd.set_f_x(f_x)?;
                 self.eff_interp_fwd = eff_interp_fwd;
                 Ok(())
@@ -81,7 +80,6 @@ macro_rules! impl_get_set_eff_range {
                 }
                 self.eff_interp = self
                     .eff_interp_fwd
-                    .0
                     .f_x()
                     .with_context(|| "eff_interp_fwd does not have f_x field")?
                     .iter()
@@ -91,7 +89,6 @@ macro_rules! impl_get_set_eff_range {
                     let x_neg = self.get_eff_min();
                     self.eff_interp = self
                         .eff_interp_fwd
-                        .0
                         .f_x()
                         .with_context(|| "eff_interp_fwd does not have f_x field")?
                         .iter()
