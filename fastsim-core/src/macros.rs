@@ -18,9 +18,9 @@ macro_rules! impl_get_set_eff_max_min {
                 let old_max = self.get_eff_max()?;
                 match &mut self.eff_interp_fwd {
                     Interpolator::Interp1D(interp1d) => {
-                        interp1d.f_x = ;
-                    },
-                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed.")
+                        interp1d.f_x = interp1d.f_x.iter().map(|x| x * eff_max / old_max).collect();
+                    }
+                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
                 }
                 Ok(())
             } else {
@@ -45,6 +45,7 @@ macro_rules! impl_get_set_eff_max_min {
 }
 
 #[macro_export]
+// TODO: does this need to set this for both eff_interp_fwd and eff_interp_bwd?
 macro_rules! impl_get_set_eff_range {
     () => {
         /// Max value of `eff_interp` minus min value of `eff_interp`.
@@ -77,35 +78,37 @@ macro_rules! impl_get_set_eff_range {
                         "`eff_range` is already zero so it cannot be modified."
                     ));
                 }
-                self.eff_interp = self
-                    .eff_interp_fwd
-                    .f_x()
-                    .with_context(|| "eff_interp_fwd does not have f_x field")?
-                    .iter()
-                    .map(|x| eff_max + (x - eff_max) * eff_range / old_range)
-                    .collect();
-                if self.get_eff_min() < 0.0 {
-                    let x_neg = self.get_eff_min();
-                    self.eff_interp = self
-                        .eff_interp_fwd
-                        .f_x()
-                        .with_context(|| "eff_interp_fwd does not have f_x field")?
-                        .iter()
-                        .map(|x| x - x_neg)
-                        .collect();
+                match &mut self.eff_interp_fwd {
+                    Interpolator::Interp1D(interp1d) => {
+                        interp1d.f_x = interp1d
+                            .f_x
+                            .iter()
+                            .map(|x| eff_max + (x - eff_max) * eff_range / old_range)
+                            .collect();
+                    }
+                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
                 }
-                if self.get_eff_max() > 1.0 {
-                    return anyhow!(format!(
+                if self.get_eff_min()? < 0.0 {
+                    let x_neg = self.get_eff_min()?;
+                    match &mut self.eff_interp_fwd {
+                        Interpolator::Interp1D(interp1d) => {
+                            interp1d.f_x = interp1d.f_x.iter().map(|x| x - x_neg).collect();
+                        }
+                        _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+                    }
+                }
+                if self.get_eff_max()? > 1.0 {
+                    return Err(anyhow!(format!(
                         "`eff_max` ({:.3}) must be no greater than 1.0",
-                        self.get_eff_max()
-                    ));
+                        self.get_eff_max()?
+                    )));
                 }
                 Ok(())
             } else {
-                anyhow!(format!(
+                Err(anyhow!(format!(
                     "`eff_range` ({:.3}) must be between 0.0 and 1.0",
                     eff_range,
-                ))
+                )))
             }
         }
     };
