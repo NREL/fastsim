@@ -72,7 +72,7 @@ macro_rules! impl_get_set_eff_range {
                 ];
                 let eff_interp_fwd = self.eff_interp_fwd.0;
                 eff_interp_fwd.set_f_x(f_x)?;
-                self.eff_interp_fwd = InterpolatorWrapper(eff_interp_fwd);
+                self.eff_interp_fwd = eff_interp_fwd;
                 Ok(())
             } else if (0.0..=1.0).contains(&eff_range) {
                 let old_min = self.get_eff_min();

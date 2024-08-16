@@ -1,7 +1,5 @@
 //! Module for electric machine (i.e. bidirectional electromechanical device), generator, or motor
 
-use utils::interp::InterpolatorWrapper;
-
 use super::*;
 
 #[allow(unused_imports)]
@@ -68,12 +66,12 @@ pub struct ElectricMachine {
     #[api(skip_set)]
     /// Efficiency array corresponding to [Self::pwr_out_frac_interp] and [Self::pwr_in_frac_interp]
     /// eff_interp_fwd and eff_interp_bwd have the same f_x but different x
-    pub eff_interp_fwd: utils::interp::InterpolatorWrapper,
+    pub eff_interp_fwd: utils::interp::Interpolator,
     #[serde(skip)]
     #[api(skip_set)]
     // if it is not provided, needs to be set during init, can figure out what to do
     // for that by looking at how pwr_in_frac_interp is initialized
-    pub eff_interp_bwd: Option<utils::interp::InterpolatorWrapper>,
+    pub eff_interp_bwd: Option<utils::interp::Interpolator>,
     /// Electrical input power fraction array at which efficiencies are evaluated.
     /// Calculated during runtime if not provided.
     #[serde(skip)]
@@ -152,7 +150,7 @@ impl ElectricMachine {
                     .map(|(x, y)| x / y)
                     .collect(),
             );
-            self.eff_interp_bwd = Some(InterpolatorWrapper(eff_interp_bwd));
+            self.eff_interp_bwd = Some(eff_interp_bwd);
             // self.set_pwr_in_frac_interp()
             //     .with_context(|| format_dbg!())?;
         }
@@ -342,7 +340,7 @@ impl Init for ElectricMachine {
                     .map(|(x, y)| x / y)
                     .collect(),
             );
-            self.eff_interp_bwd = Some(InterpolatorWrapper(eff_interp_bwd));
+            self.eff_interp_bwd = Some(eff_interp_bwd);
             // self.set_pwr_in_frac_interp()
             //     .with_context(|| format_dbg!())?;
         }
