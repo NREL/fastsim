@@ -7,31 +7,6 @@ use crate::pyo3::*;
 const TOL: f64 = 1e-3;
 
 #[fastsim_api(
-   #[allow(clippy::too_many_arguments)]
-    #[new]
-    fn __new__(
-        pwr_out_max_watts: f64,
-        energy_capacity_joules: f64,
-        min_soc: f64,
-        max_soc: f64,
-        initial_soc: f64,
-        initial_temperature_celcius: f64,
-        soc_hi_ramp_start: Option<f64>,
-        soc_lo_ramp_start: Option<f64>,
-        save_interval: Option<usize>,
-    ) -> anyhow::Result<Self> {
-        Self::new(
-            pwr_out_max_watts,
-            energy_capacity_joules,
-            min_soc,
-            max_soc,
-            initial_soc,
-            initial_temperature_celcius,
-            soc_hi_ramp_start,
-            soc_lo_ramp_start,
-            save_interval,
-        )
-    }
 
     /// pyo3 getter for soc_lo_ramp_start
     #[getter]
@@ -237,7 +212,7 @@ impl ReversibleEnergyStorage {
         state.eff = match self.eff_interp {
             Interpolator::Interp0D(round_trip_eff) => round_trip_eff * uc::R,
             Interpolator::Interp1D(interp1d) => {
-                interp1d.interpolate(&[state.pwr_out_electrical.get::<si::watt>()]) * uc::R
+                interp1d.interpolate(&[state.pwr_out_electrical.get::<si::watt>()])? * uc::R
             }
             Interpolator::Interp2D(interp2d) => {
                 interp2d.interpolate(&[
@@ -323,24 +298,19 @@ impl ReversibleEnergyStorage {
             && self.soc_lo_ramp_start.unwrap() > state.min_soc
         {
             uc::W
-                * interp1d(
-                    &state.soc.get::<si::ratio>(),
-                    &[
-                        state.min_soc.get::<si::ratio>(),
-                        self.soc_lo_ramp_start
-                            .with_context(|| format_dbg!())?
-                            .get::<si::ratio>(),
-                    ],
-                    &[0.0, self.pwr_out_max.get::<si::watt>()],
-                    Extrapolate::No, // don't extrapolate
-                )
-                .with_context(|| {
-                    anyhow!(
-                        "{}\n failed to calculate {}",
-                        format_dbg!(),
-                        stringify!(state.pwr_disch_max)
-                    )
-                })?
+                * Interpolator::Interp1D(Interp1D::new(
+                    vec![
+                         state.min_soc.get::<si::ratio>(),
+                         self.soc_lo_ramp_start
+                             .with_context(|| format_dbg!())?
+                             .get::<si::ratio>(),
+                     ],
+                vec![0.0, self.pwr_out_max.get::<si::watt>()],
+                // TODO: figure out what the strategy and extrapolate should be in this case
+                // in original, Extrapolate was Extrapolate::No
+                    Strategy::LeftNearest,
+                    Extrapolate::Error,
+                )?).interpolate(&[state.soc.get::<si::ratio>()])?
         }
         // current SOC is greater than ramp down threshold but less than current min or current SOC is less than both
         else {
@@ -358,24 +328,19 @@ impl ReversibleEnergyStorage {
             && self.soc_hi_ramp_start.unwrap() < state.max_soc
         {
             uc::W
-                * interp1d(
-                    &state.soc.get::<si::ratio>(),
-                    &[
-                        state.max_soc.get::<si::ratio>(),
-                        self.soc_hi_ramp_start
-                            .with_context(|| format_dbg!())?
-                            .get::<si::ratio>(),
-                    ],
-                    &[0.0, self.pwr_out_max.get::<si::watt>()],
-                    Extrapolate::No, // don't extrapolate
-                )
-                .with_context(|| {
-                    anyhow!(
-                        "{}\n failed to calculate {}",
-                        format_dbg!(),
-                        stringify!(state.pwr_disch_max)
-                    )
-                })?
+            * Interpolator::Interp1D(Interp1D::new(
+                vec![
+                    state.max_soc.get::<si::ratio>(),
+                    self.soc_hi_ramp_start
+                        .with_context(|| format_dbg!())?
+                        .get::<si::ratio>(),
+                 ],
+            vec![0.0, self.pwr_out_max.get::<si::watt>()],
+            // TODO: figure out what the strategy and extrapolate should be in this case
+            // in original, Extrapolate was Extrapolate::No
+                Strategy::LeftNearest,
+                Extrapolate::Error,
+            )?).interpolate(&[state.soc.get::<si::ratio>()])?
         }
         // current SOC is less than ramp down threshold but greater than current
         // max or current SOC is greater than both

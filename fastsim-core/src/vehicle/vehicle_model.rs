@@ -289,12 +289,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp_from_pwr_out: Interp1D::new(
+                        eff_interp_from_pwr_out: Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
                             Extrapolate::Error,
-                        )?,
+                        )?),
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
                                 .fc_eff_map
@@ -638,7 +638,7 @@ impl Vehicle {
             fc_eff_array: Default::default(),
             fc_eff_map: self
                 .fc()
-                .map(|fc| match &fc.eff_interp_fwd {
+                .map(|fc| match &fc.eff_interp_from_pwr_out {
                     utils::interp::Interpolator::Interp1D(interp) => Ok(interp.f_x.clone().into()),
                     _ => bail!(
                         "{}\nOnly 1-D interpolators can be converted to FASTSim 2",
@@ -666,7 +666,7 @@ impl Vehicle {
             fc_perc_out_array: Default::default(),
             fc_pwr_out_perc: self
                 .fc()
-                .map(|fc| match &fc.eff_interp_fwd {
+                .map(|fc| match &fc.eff_interp_from_pwr_out {
                     utils::interp::Interpolator::Interp1D(interp) => Ok(interp.x.clone().into()),
                     _ => bail!(
                         "{}\nOnly 1-D interpolators can be converted to FASTSim 2",
