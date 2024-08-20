@@ -6,8 +6,8 @@ use itertools::Itertools;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct InterpND {
-    grid: Vec<Vec<f64>>,
-    values: ArrayD<f64>,
+    pub(super) grid: Vec<Vec<f64>>,
+    pub(super) values: ArrayD<f64>,
     pub extrapolate: Extrapolate,
     pub strategy: Strategy,
     #[serde(skip)]
@@ -141,11 +141,6 @@ impl InterpND {
             .collect()
     }
 
-    /// Function to get grid variable from InterpND
-    pub fn grid(&self) -> Vec<Vec<f64>> {
-        self.grid
-    }
-
     /// Function to set grid variable from InterpND
     /// # Arguments
     /// - `new_grid`: updated `grid` variable to replace the current `grid` variable
@@ -176,11 +171,6 @@ impl InterpND {
     pub fn set_grid_z(&mut self, new_grid_z: Vec<f64>) -> anyhow::Result<()> {
         self.grid[2] = new_grid_z;
         self.validate()
-    }
-
-    /// Function to get values variable from InterpND
-    pub fn values(&self) -> ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>> {
-        self.values
     }
 
     /// Function to set values variable from InterpND

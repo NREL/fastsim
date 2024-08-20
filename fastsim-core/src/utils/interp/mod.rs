@@ -193,16 +193,16 @@ impl Interpolator {
                 match interp.extrapolate {
                     Extrapolate::Clamp => {
                         let clamped_point =
-                            &[point[0].clamp(interp.x()[0], *interp.x().last().unwrap())];
+                            &[point[0].clamp(interp.x[0], *interp.x.last().unwrap())];
                         return interp.interpolate(clamped_point);
                     }
                     Extrapolate::Error => {
                         let x_dim_ok =
-                            interp.x()[0] <= point[0] && &point[0] <= interp.x().last().unwrap();
+                            interp.x[0] <= point[0] && &point[0] <= interp.x.last().unwrap();
                         ensure!(
                             x_dim_ok,
                             "Attempted to interpolate at point beyond grid data: point = {point:?}, grid = {:?}",
-                            interp.x(),
+                            interp.x,
                         );
                     }
                     _ => {}
@@ -213,21 +213,21 @@ impl Interpolator {
                 match interp.extrapolate {
                     Extrapolate::Clamp => {
                         let clamped_point = &[
-                            point[0].clamp(interp.x()[0], *interp.x().last().unwrap()),
-                            point[1].clamp(interp.y()[0], *interp.y().last().unwrap()),
+                            point[0].clamp(interp.x[0], *interp.x.last().unwrap()),
+                            point[1].clamp(interp.y[0], *interp.y.last().unwrap()),
                         ];
                         return interp.interpolate(clamped_point);
                     }
                     Extrapolate::Error => {
                         let x_dim_ok =
-                            interp.x()[0] <= point[0] && &point[0] <= interp.x().last().unwrap();
+                            interp.x[0] <= point[0] && &point[0] <= interp.x.last().unwrap();
                         let y_dim_ok =
-                            interp.y()[0] <= point[1] && &point[1] <= interp.y().last().unwrap();
+                            interp.y[0] <= point[1] && &point[1] <= interp.y.last().unwrap();
                         ensure!(
                             x_dim_ok && y_dim_ok,
                             "Attempted to interpolate at point beyond grid data: point = {point:?}, x grid = {:?}, y grid = {:?}",
-                            interp.x(),
-                            interp.y(),
+                            interp.x,
+                            interp.y,
                         );
                     }
                     _ => {}
@@ -238,24 +238,24 @@ impl Interpolator {
                 match interp.extrapolate {
                     Extrapolate::Clamp => {
                         let clamped_point = &[
-                            point[0].clamp(interp.x()[0], *interp.x().last().unwrap()),
-                            point[1].clamp(interp.y()[0], *interp.y().last().unwrap()),
-                            point[2].clamp(interp.z()[0], *interp.z().last().unwrap()),
+                            point[0].clamp(interp.x[0], *interp.x.last().unwrap()),
+                            point[1].clamp(interp.y[0], *interp.y.last().unwrap()),
+                            point[2].clamp(interp.z[0], *interp.z.last().unwrap()),
                         ];
                         return interp.interpolate(clamped_point);
                     }
                     Extrapolate::Error => {
                         let x_dim_ok =
-                            interp.x()[0] <= point[0] && &point[0] <= interp.x().last().unwrap();
+                            interp.x[0] <= point[0] && &point[0] <= interp.x.last().unwrap();
                         let y_dim_ok =
-                            interp.y()[0] <= point[1] && &point[1] <= interp.y().last().unwrap();
+                            interp.y[0] <= point[1] && &point[1] <= interp.y.last().unwrap();
                         let z_dim_ok =
-                            interp.z()[0] <= point[2] && &point[2] <= interp.z().last().unwrap();
+                            interp.z[0] <= point[2] && &point[2] <= interp.z.last().unwrap();
                         ensure!(x_dim_ok && y_dim_ok && z_dim_ok,
                             "Attempted to interpolate at point beyond grid data: point = {point:?}, x grid = {:?}, y grid = {:?}, z grid = {:?}",
-                            interp.x(),
-                            interp.y(),
-                            interp.z(),
+                            interp.x,
+                            interp.y,
+                            interp.z,
                         );
                     }
                     _ => {}
@@ -269,14 +269,14 @@ impl Interpolator {
                             .iter()
                             .enumerate()
                             .map(|(dim, pt)|
-                                pt.clamp(interp.grid()[dim][0], *interp.grid()[dim].last().unwrap())
+                                pt.clamp(interp.grid[dim][0], *interp.grid[dim].last().unwrap())
                             ).collect();
                         return interp.interpolate(&clamped_point);
                     }
                     Extrapolate::Error => ensure!(
-                        point.iter().enumerate().all(|(dim, pt_dim)| &interp.grid()[dim][0] <= pt_dim && pt_dim <= interp.grid()[dim].last().unwrap()),
+                        point.iter().enumerate().all(|(dim, pt_dim)| &interp.grid[dim][0] <= pt_dim && pt_dim <= interp.grid[dim].last().unwrap()),
                         "Attempted to interpolate at point beyond grid data: point = {point:?}, grid: {:?}",
-                        interp.grid(),
+                        interp.grid,
                     ),
                     _ => {}
                 };
@@ -317,9 +317,9 @@ impl Interpolator {
     /// Function to get x variable from enum variants
     pub fn x(&self) -> anyhow::Result<Vec<f64>> {
         match self {
-            Interpolator::Interp1D(interp) => Ok(interp.x().to_owned()),
-            Interpolator::Interp2D(interp) => Ok(interp.x().to_owned()),
-            Interpolator::Interp3D(interp) => Ok(interp.x().to_owned()),
+            Interpolator::Interp1D(interp) => Ok(interp.x.to_owned()),
+            Interpolator::Interp2D(interp) => Ok(interp.x.to_owned()),
+            Interpolator::Interp3D(interp) => Ok(interp.x.to_owned()),
             _ => bail!("Variant does not have `x` field."),
         }
     }
@@ -343,7 +343,7 @@ impl Interpolator {
     /// Function to get f_x variable from enum variants
     pub fn f_x(&self) -> anyhow::Result<Vec<f64>> {
         match self {
-            Interpolator::Interp1D(interp) => Ok(interp.f_x().to_owned()),
+            Interpolator::Interp1D(interp) => Ok(interp.f_x.to_owned()),
             _ => bail!("Variant does not have `f_x` field."),
         }
     }
@@ -412,8 +412,8 @@ impl Interpolator {
     /// Function to get y variable from enum variants
     pub fn y(&self) -> anyhow::Result<Vec<f64>> {
         match self {
-            Interpolator::Interp2D(interp) => Ok(interp.y().to_owned()),
-            Interpolator::Interp3D(interp) => Ok(interp.y().to_owned()),
+            Interpolator::Interp2D(interp) => Ok(interp.y.to_owned()),
+            Interpolator::Interp3D(interp) => Ok(interp.y.to_owned()),
             _ => bail!("Variant does not have `y` field."),
         }
     }
@@ -436,7 +436,7 @@ impl Interpolator {
     /// Function to get f_xy variable from enum variants
     pub fn f_xy(&self) -> anyhow::Result<Vec<Vec<f64>>> {
         match self {
-            Interpolator::Interp2D(interp) => Ok(interp.f_xy().to_owned()),
+            Interpolator::Interp2D(interp) => Ok(interp.f_xy.to_owned()),
             _ => bail!("Variant does not have `f_xy` field."),
         }
     }
@@ -455,7 +455,7 @@ impl Interpolator {
     /// Function to get z variable from enum variants
     pub fn z(&self) -> anyhow::Result<Vec<f64>> {
         match self {
-            Interpolator::Interp3D(interp) => Ok(interp.z().to_owned()),
+            Interpolator::Interp3D(interp) => Ok(interp.z.to_owned()),
             _ => bail!("Variant does not have `z` field."),
         }
     }
@@ -477,7 +477,7 @@ impl Interpolator {
     /// Function to get f_xyz variable from enum variants
     pub fn f_xyz(&self) -> anyhow::Result<Vec<Vec<Vec<f64>>>> {
         match self {
-            Interpolator::Interp3D(interp) => Ok(interp.f_xyz().to_owned()),
+            Interpolator::Interp3D(interp) => Ok(interp.f_xyz.to_owned()),
             _ => bail!("Variant does not have `f_xyz` field."),
         }
     }
@@ -496,7 +496,7 @@ impl Interpolator {
     /// Function to get grid variable from enum variants
     pub fn grid(&self) -> anyhow::Result<Vec<Vec<f64>>> {
         match self {
-            Interpolator::InterpND(interp) => Ok(interp.grid().to_owned()),
+            Interpolator::InterpND(interp) => Ok(interp.grid.to_owned()),
             _ => bail!("Variant does not have `grid` field."),
         }
     }
@@ -515,7 +515,7 @@ impl Interpolator {
     /// Function to get values variable from enum variants
     pub fn values(&self) -> anyhow::Result<ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>>> {
         match self {
-            Interpolator::InterpND(interp) => Ok(interp.values().to_owned()),
+            Interpolator::InterpND(interp) => Ok(interp.values.to_owned()),
             _ => bail!("Variant does not have `values` field."),
         }
     }

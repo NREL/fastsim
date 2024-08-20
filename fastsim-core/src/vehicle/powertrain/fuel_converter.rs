@@ -85,6 +85,7 @@ pub struct FuelConverter {
     pub history: FuelConverterStateHistoryVec, // TODO: spec out fuel tank size and track kg of fuel
     #[serde(skip)]
     // phantom private field to prevent direct instantiation in other modules
+    #[api(skip_get, skip_set)]
     pub(in super::super) _phantom: PhantomData<()>,
 }
 

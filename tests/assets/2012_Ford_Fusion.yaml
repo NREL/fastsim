@@ -13,7 +13,7 @@ pt_type:
       pwr_out_max_watts: 130500.0
       pwr_out_max_init: 21750.0
       pwr_ramp_lag_seconds: 6.0
-      eff_interp:
+      eff_interp_from_pwr_out:
         Interp1D:
           x:
             - 0.0

@@ -209,7 +209,7 @@ impl ReversibleEnergyStorage {
 
         // TODO: replace this with something correct.
         // This should trip the `ensure` below
-        state.eff = match self.eff_interp {
+        state.eff = match self.eff_interp.to_owned() {
             Interpolator::Interp0D(round_trip_eff) => round_trip_eff * uc::R,
             Interpolator::Interp1D(interp1d) => {
                 interp1d.interpolate(&[state.pwr_out_electrical.get::<si::watt>()])? * uc::R

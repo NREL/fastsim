@@ -141,6 +141,7 @@ impl ElectricMachine {
         // TODO: make sure `fwd` and `bwd` are clearly documented somewhere
         let eff_pos = uc::R
             * self
+                .to_owned()
                 .eff_interp_bwd
                 .ok_or(anyhow!(
                     "eff_interp_bwd is None, which should never be the case at this point."
@@ -148,6 +149,7 @@ impl ElectricMachine {
                 .interpolate(&[abs_checked_x_val(
                     (pwr_in_fwd_max / self.pwr_out_max).get::<si::ratio>(),
                     &self
+                        .to_owned()
                         .eff_interp_bwd
                         .ok_or(anyhow!(
                             "eff_interp_bwd is None, which should never be the case at this point."
@@ -164,6 +166,7 @@ impl ElectricMachine {
         // TODO: scrutinize this variable assignment
         let eff_neg = uc::R
             * self
+                .to_owned()
                 .eff_interp_bwd
                 .ok_or(anyhow!(
                     "eff_interp_bwd is None, which should never be the case at this point."
@@ -171,6 +174,7 @@ impl ElectricMachine {
                 .interpolate(&[abs_checked_x_val(
                     (pwr_in_bwd_max / self.pwr_out_max).get::<si::ratio>(),
                     &self
+                        .to_owned()
                         .eff_interp_bwd
                         .ok_or(anyhow!(
                             "eff_interp_bwd is None, which should never be the case at this point."
@@ -306,7 +310,7 @@ impl Init for ElectricMachine {
         if let None = self.eff_interp_bwd {
             // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
             // TODO: do the extrapolate and strategy fields also need to be changed?
-            let mut eff_interp_bwd = self.eff_interp_fwd;
+            let mut eff_interp_bwd = self.to_owned().eff_interp_fwd;
             eff_interp_bwd.set_x(
                 self.eff_interp_fwd
                     .x()?
@@ -314,7 +318,7 @@ impl Init for ElectricMachine {
                     .zip(self.eff_interp_fwd.f_x()?.iter())
                     .map(|(x, y)| x / y)
                     .collect(),
-            );
+            )?;
             self.eff_interp_bwd = Some(eff_interp_bwd);
             // self.set_pwr_in_frac_interp()
             //     .with_context(|| format_dbg!())?;
@@ -413,7 +417,7 @@ impl ElectricMachine {
     /// Returns max value of `eff_interp_bwd`
     pub fn get_eff_max_bwd(&self) -> anyhow::Result<f64> {
         // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-        Ok(match self.eff_interp_bwd {
+        Ok(match self.to_owned().eff_interp_bwd {
             Some(interp) => interp
                 .f_x()?
                 .iter()
@@ -427,23 +431,26 @@ impl ElectricMachine {
         if (0.0..=1.0).contains(&eff_max) {
             let old_max_fwd = self.get_eff_max_fwd()?;
             let old_max_bwd = self.get_eff_max_bwd()?;
+            let f_x_fwd = self.eff_interp_fwd.f_x()?;
             match &mut self.eff_interp_fwd {
                 Interpolator::Interp1D(interp1d) => {
-                    interp1d.set_f_x(
-                        interp1d
-                            .f_x()
-                            .iter()
-                            .map(|x| x * eff_max / old_max_fwd)
-                            .collect(),
-                    )?;
+                    interp1d
+                        .set_f_x(f_x_fwd.iter().map(|x| x * eff_max / old_max_fwd).collect())?;
                 }
                 _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
             }
+            let f_x_bwd = self
+                .to_owned()
+                .eff_interp_bwd
+                .ok_or(anyhow!(
+                    "eff_interp_bwd is None, which should never be the case at this point."
+                ))?
+                .f_x()?;
             match &mut self.eff_interp_bwd {
                 Some(Interpolator::Interp1D(interp1d)) => {
+                    // let old_interp = interp1d;
                     interp1d.set_f_x(
-                        interp1d
-                            .f_x()
+                        f_x_bwd
                             .iter()
                             .map(|x| x * eff_max / old_max_bwd)
                             .collect(),
@@ -474,14 +481,14 @@ impl ElectricMachine {
     /// Returns min value of `eff_interp_bwd`
     pub fn get_eff_min_bwd(&self) -> anyhow::Result<f64> {
         // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
-        Ok(match self.eff_interp_bwd {
-            Some(interp) => interp
-                .f_x()
-                .with_context(|| "eff_interp_bwd does not have f_x field")?
-                .iter()
-                .fold(f64::INFINITY, |acc, curr| acc.min(*curr)),
-            None => bail!("eff_interp_bwd should be Some by this point."),
-        })
+        Ok(self
+            .to_owned()
+            .eff_interp_bwd
+            .ok_or(anyhow!("eff_interp_bwd should be Some by this point."))?
+            .f_x()
+            .with_context(|| "eff_interp_bwd does not have f_x field")?
+            .iter()
+            .fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
     }
 
     /// Max value of `eff_interp_fwd` minus min value of `eff_interp_fwd`.
@@ -511,7 +518,7 @@ impl ElectricMachine {
             self.eff_interp_fwd.set_f_x(f_x_fwd)?;
             let f_x_bwd = vec![
                 eff_max_bwd;
-                match self.eff_interp_bwd {
+                match &self.eff_interp_bwd {
                     Some(interp) => {
                         interp
                             .f_x()
@@ -521,10 +528,11 @@ impl ElectricMachine {
                     None => bail!("eff_interp_bwd should be Some by this point."),
                 }
             ];
-            let mut eff_interp_bwd = match self.eff_interp_bwd {
+            let mut eff_interp_bwd = match &self.eff_interp_bwd {
                 Some(interp) => interp,
                 None => bail!("eff_interp_bwd should be Some by this point."),
-            };
+            }
+            .to_owned();
             eff_interp_bwd.set_f_x(f_x_bwd)?;
             self.eff_interp_bwd = Some(eff_interp_bwd);
             Ok(())
@@ -536,11 +544,11 @@ impl ElectricMachine {
                     "`eff_range` is already zero so it cannot be modified."
                 ));
             }
+            let f_x_fwd = self.eff_interp_fwd.f_x()?;
             match &mut self.eff_interp_fwd {
                 Interpolator::Interp1D(interp1d) => {
                     interp1d.set_f_x(
-                        interp1d
-                            .f_x()
+                        f_x_fwd
                             .iter()
                             .map(|x| eff_max_fwd + (x - eff_max_fwd) * eff_range / old_range)
                             .collect(),
@@ -550,9 +558,10 @@ impl ElectricMachine {
             }
             if self.get_eff_min_fwd()? < 0.0 {
                 let x_neg = self.get_eff_min_fwd()?;
+                let f_x_fwd = self.eff_interp_fwd.f_x()?;
                 match &mut self.eff_interp_fwd {
                     Interpolator::Interp1D(interp1d) => {
-                        interp1d.set_f_x(interp1d.f_x().iter().map(|x| x - x_neg).collect())?;
+                        interp1d.set_f_x(f_x_fwd.iter().map(|x| x - x_neg).collect())?;
                     }
                     _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
                 }
@@ -570,8 +579,8 @@ impl ElectricMachine {
                     "`eff_range` is already zero so it cannot be modified."
                 ));
             }
-            let mut eff_interp_bwd = match self.eff_interp_bwd {
-                Some(Interpolator::Interp1D(interp1d)) => Interpolator::Interp1D(interp1d),
+            let mut eff_interp_bwd = match &self.eff_interp_bwd {
+                Some(Interpolator::Interp1D(interp1d)) => Interpolator::Interp1D(interp1d.to_owned()),
                 _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed. eff_interp_bwd should be Some by this point."),
             };
             eff_interp_bwd.set_f_x(
@@ -584,8 +593,8 @@ impl ElectricMachine {
             self.eff_interp_bwd = Some(eff_interp_bwd);
             if self.get_eff_min_bwd()? < 0.0 {
                 let x_neg = self.get_eff_min_bwd()?;
-                let mut eff_interp_bwd = match self.eff_interp_bwd {
-                    Some(Interpolator::Interp1D(interp1d)) => Interpolator::Interp1D(interp1d),
+                let mut eff_interp_bwd = match &self.eff_interp_bwd {
+                    Some(Interpolator::Interp1D(interp1d)) => Interpolator::Interp1D(interp1d.to_owned()),
                     _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed. eff_interp_bwd should be Some by this point."),
                 };
                 eff_interp_bwd
