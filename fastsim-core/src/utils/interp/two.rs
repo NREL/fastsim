@@ -4,9 +4,9 @@ use super::*;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Interp2D {
-    pub x: Vec<f64>,
-    pub y: Vec<f64>,
-    pub f_xy: Vec<Vec<f64>>,
+    x: Vec<f64>,
+    y: Vec<f64>,
+    f_xy: Vec<Vec<f64>>,
     pub strategy: Strategy,
     pub extrapolate: Extrapolate,
     #[serde(skip)]
@@ -49,6 +49,45 @@ impl Interp2D {
 
         // interpolate in the y-direction
         Ok(c0 * (1.0 - y_diff) + c1 * y_diff)
+    }
+
+    /// Function to get x variable from Interp2D
+    pub fn x(&self) -> Vec<f64> {
+        self.x
+    }
+
+    /// Function to set x variable from Interp2D
+    /// # Arguments
+    /// - `new_x`: updated `x` variable to replace the current `x` variable
+    pub fn set_x(&mut self, new_x: Vec<f64>) -> anyhow::Result<()> {
+        self.x = new_x;
+        self.validate()
+    }
+
+    /// Function to get x variable from Interp2D
+    pub fn y(&self) -> Vec<f64> {
+        self.y
+    }
+
+    /// Function to set y variable from Interp2D
+    /// # Arguments
+    /// - `new_y`: updated `y` variable to replace the current `y` variable
+    pub fn set_y(&mut self, new_y: Vec<f64>) -> anyhow::Result<()> {
+        self.y = new_y;
+        self.validate()
+    }
+
+    /// Function to get f_xy variable from Interp2D
+    pub fn f_xy(&self) -> Vec<Vec<f64>> {
+        self.f_xy
+    }
+
+    /// Function to set f_xy variable from Interp2D
+    /// # Arguments
+    /// - `new_f_xy`: updated `f_xy` variable to replace the current `f_xy` variable
+    pub fn set_f_xy(&mut self, new_f_xy: Vec<Vec<f64>>) -> anyhow::Result<()> {
+        self.f_xy = new_f_xy;
+        self.validate()
     }
 }
 

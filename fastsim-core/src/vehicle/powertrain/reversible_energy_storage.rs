@@ -306,9 +306,7 @@ impl ReversibleEnergyStorage {
                              .get::<si::ratio>(),
                      ],
                 vec![0.0, self.pwr_out_max.get::<si::watt>()],
-                // TODO: figure out what the strategy and extrapolate should be in this case
-                // in original, Extrapolate was Extrapolate::No
-                    Strategy::LeftNearest,
+                    Strategy::Linear,
                     Extrapolate::Error,
                 )?).interpolate(&[state.soc.get::<si::ratio>()])?
         }
@@ -336,9 +334,7 @@ impl ReversibleEnergyStorage {
                         .get::<si::ratio>(),
                  ],
             vec![0.0, self.pwr_out_max.get::<si::watt>()],
-            // TODO: figure out what the strategy and extrapolate should be in this case
-            // in original, Extrapolate was Extrapolate::No
-                Strategy::LeftNearest,
+                Strategy::Linear,
                 Extrapolate::Error,
             )?).interpolate(&[state.soc.get::<si::ratio>()])?
         }

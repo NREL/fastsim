@@ -4,8 +4,8 @@ use super::*;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Interp1D {
-    pub x: Vec<f64>,
-    pub f_x: Vec<f64>,
+    x: Vec<f64>,
+    f_x: Vec<f64>,
     pub strategy: Strategy,
     pub extrapolate: Extrapolate,
     #[serde(skip)]
@@ -86,6 +86,32 @@ impl Interp1D {
         } else {
             self.f_x[lower_index + 1]
         })
+    }
+
+    /// Function to get x variable from Interp1D
+    pub fn x(&self) -> Vec<f64> {
+        self.x
+    }
+
+    /// Function to set x variable from Interp1D
+    /// # Arguments
+    /// - `new_x`: updated `x` variable to replace the current `x` variable
+    pub fn set_x(&mut self, new_x: Vec<f64>) -> anyhow::Result<()> {
+        self.x = new_x;
+        self.validate()
+    }
+
+    /// Function to get f_x variable from Interp1D
+    pub fn f_x(&self) -> Vec<f64> {
+        self.f_x
+    }
+
+    /// Function to set f_x variable from Interp1D
+    /// # Arguments
+    /// - `new_f_x`: updated `f_x` variable to replace the current `f_x` variable
+    pub fn set_f_x(&mut self, new_f_x: Vec<f64>) -> anyhow::Result<()> {
+        self.f_x = new_f_x;
+        self.validate()
     }
 }
 

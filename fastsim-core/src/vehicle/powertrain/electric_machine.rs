@@ -287,10 +287,6 @@ impl ElectricMachine {
     //     );
     //     Ok(())
     // }
-
-    // TODO: figure out why these macro invocations are ornery if uncommented
-    impl_get_set_eff_max_min!();
-    impl_get_set_eff_range!();
 }
 
 impl SerdeAPI for ElectricMachine {}
@@ -400,6 +396,215 @@ impl Mass for ElectricMachine {
     fn expunge_mass_fields(&mut self) {
         self.specific_pwr = None;
         self.mass = None;
+    }
+}
+
+impl ElectricMachine {
+    /// Returns max value of `eff_interp_fwd`
+    pub fn get_eff_max_fwd(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(self
+            .eff_interp_fwd
+            .f_x()?
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
+    }
+
+    /// Returns max value of `eff_interp_bwd`
+    pub fn get_eff_max_bwd(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(match self.eff_interp_bwd {
+            Some(interp) => interp
+                .f_x()?
+                .iter()
+                .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)),
+            None => bail!("eff_interp_bwd should be Some by this point."),
+        })
+    }
+
+    /// Scales eff_interp_fwd and eff_interp_bwd by ratio of new `eff_max` per current calculated max
+    pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<()> {
+        if (0.0..=1.0).contains(&eff_max) {
+            let old_max_fwd = self.get_eff_max_fwd()?;
+            let old_max_bwd = self.get_eff_max_bwd()?;
+            match &mut self.eff_interp_fwd {
+                Interpolator::Interp1D(interp1d) => {
+                    interp1d.set_f_x(
+                        interp1d
+                            .f_x()
+                            .iter()
+                            .map(|x| x * eff_max / old_max_fwd)
+                            .collect(),
+                    )?;
+                }
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+            }
+            match &mut self.eff_interp_bwd {
+                Some(Interpolator::Interp1D(interp1d)) => {
+                    interp1d.set_f_x(
+                        interp1d
+                            .f_x()
+                            .iter()
+                            .map(|x| x * eff_max / old_max_bwd)
+                            .collect(),
+                    )?;
+                }
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed. eff_interp_bwd should be Some by this point."),
+            }
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "`eff_max` ({:.3}) must be between 0.0 and 1.0",
+                eff_max,
+            ))
+        }
+    }
+
+    /// Returns min value of `eff_interp_fwd`
+    pub fn get_eff_min_fwd(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(self
+            .eff_interp_fwd
+            .f_x()
+            .with_context(|| "eff_interp_fwd does not have f_x field")?
+            .iter()
+            .fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
+    }
+
+    /// Returns min value of `eff_interp_bwd`
+    pub fn get_eff_min_bwd(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(match self.eff_interp_bwd {
+            Some(interp) => interp
+                .f_x()
+                .with_context(|| "eff_interp_bwd does not have f_x field")?
+                .iter()
+                .fold(f64::INFINITY, |acc, curr| acc.min(*curr)),
+            None => bail!("eff_interp_bwd should be Some by this point."),
+        })
+    }
+
+    /// Max value of `eff_interp_fwd` minus min value of `eff_interp_fwd`.
+    pub fn get_eff_range_fwd(&self) -> anyhow::Result<f64> {
+        Ok(self.get_eff_max_fwd()? - self.get_eff_min_fwd()?)
+    }
+
+    /// Max value of `eff_interp_bwd` minus min value of `eff_interp_bwd`.
+    pub fn get_eff_range_bwd(&self) -> anyhow::Result<f64> {
+        Ok(self.get_eff_max_bwd()? - self.get_eff_min_bwd()?)
+    }
+
+    /// Scales values of `eff_interp_fwd.f_x` and `eff_interp_bwd.f_x` without changing max such that max - min
+    /// is equal to new range.  Will change max if needed to ensure no values are
+    /// less than zero.
+    pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
+        let eff_max_fwd = self.get_eff_max_fwd()?;
+        let eff_max_bwd = self.get_eff_max_bwd()?;
+        if eff_range == 0.0 {
+            let f_x_fwd = vec![
+                eff_max_fwd;
+                self.eff_interp_fwd
+                    .f_x()
+                    .with_context(|| "eff_interp_fwd does not have f_x field")?
+                    .len()
+            ];
+            self.eff_interp_fwd.set_f_x(f_x_fwd)?;
+            let f_x_bwd = vec![
+                eff_max_bwd;
+                match self.eff_interp_bwd {
+                    Some(interp) => {
+                        interp
+                            .f_x()
+                            .with_context(|| "eff_interp_bwd does not have f_x field")?
+                            .len()
+                    }
+                    None => bail!("eff_interp_bwd should be Some by this point."),
+                }
+            ];
+            let mut eff_interp_bwd = match self.eff_interp_bwd {
+                Some(interp) => interp,
+                None => bail!("eff_interp_bwd should be Some by this point."),
+            };
+            eff_interp_bwd.set_f_x(f_x_bwd)?;
+            self.eff_interp_bwd = Some(eff_interp_bwd);
+            Ok(())
+        } else if (0.0..=1.0).contains(&eff_range) {
+            let old_min = self.get_eff_min_fwd()?;
+            let old_range = self.get_eff_max_fwd()? - old_min;
+            if old_range == 0.0 {
+                return Err(anyhow!(
+                    "`eff_range` is already zero so it cannot be modified."
+                ));
+            }
+            match &mut self.eff_interp_fwd {
+                Interpolator::Interp1D(interp1d) => {
+                    interp1d.set_f_x(
+                        interp1d
+                            .f_x()
+                            .iter()
+                            .map(|x| eff_max_fwd + (x - eff_max_fwd) * eff_range / old_range)
+                            .collect(),
+                    )?;
+                }
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+            }
+            if self.get_eff_min_fwd()? < 0.0 {
+                let x_neg = self.get_eff_min_fwd()?;
+                match &mut self.eff_interp_fwd {
+                    Interpolator::Interp1D(interp1d) => {
+                        interp1d.set_f_x(interp1d.f_x().iter().map(|x| x - x_neg).collect())?;
+                    }
+                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+                }
+            }
+            if self.get_eff_max_fwd()? > 1.0 {
+                return Err(anyhow!(format!(
+                    "`eff_max` ({:.3}) must be no greater than 1.0",
+                    self.get_eff_max_fwd()?
+                )));
+            }
+            let old_min = self.get_eff_min_bwd()?;
+            let old_range = self.get_eff_max_bwd()? - old_min;
+            if old_range == 0.0 {
+                return Err(anyhow!(
+                    "`eff_range` is already zero so it cannot be modified."
+                ));
+            }
+            let mut eff_interp_bwd = match self.eff_interp_bwd {
+                Some(Interpolator::Interp1D(interp1d)) => Interpolator::Interp1D(interp1d),
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed. eff_interp_bwd should be Some by this point."),
+            };
+            eff_interp_bwd.set_f_x(
+                eff_interp_bwd
+                    .f_x()?
+                    .iter()
+                    .map(|x| eff_max_bwd + (x - eff_max_bwd) * eff_range / old_range)
+                    .collect(),
+            )?;
+            self.eff_interp_bwd = Some(eff_interp_bwd);
+            if self.get_eff_min_bwd()? < 0.0 {
+                let x_neg = self.get_eff_min_bwd()?;
+                let mut eff_interp_bwd = match self.eff_interp_bwd {
+                    Some(Interpolator::Interp1D(interp1d)) => Interpolator::Interp1D(interp1d),
+                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed. eff_interp_bwd should be Some by this point."),
+                };
+                eff_interp_bwd
+                    .set_f_x(eff_interp_bwd.f_x()?.iter().map(|x| x - x_neg).collect())?;
+                self.eff_interp_bwd = Some(eff_interp_bwd);
+            }
+            if self.get_eff_max_bwd()? > 1.0 {
+                return Err(anyhow!(format!(
+                    "`eff_max` ({:.3}) must be no greater than 1.0",
+                    self.get_eff_max_bwd()?
+                )));
+            }
+            Ok(())
+        } else {
+            Err(anyhow!(format!(
+                "`eff_range` ({:.3}) must be between 0.0 and 1.0",
+                eff_range,
+            )))
+        }
     }
 }
 

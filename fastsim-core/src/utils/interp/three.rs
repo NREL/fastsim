@@ -4,10 +4,10 @@ use super::*;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Interp3D {
-    pub x: Vec<f64>,
-    pub y: Vec<f64>,
-    pub z: Vec<f64>,
-    pub f_xyz: Vec<Vec<Vec<f64>>>,
+    x: Vec<f64>,
+    y: Vec<f64>,
+    z: Vec<f64>,
+    f_xyz: Vec<Vec<Vec<f64>>>,
     pub strategy: Strategy,
     pub extrapolate: Extrapolate,
     #[serde(skip)]
@@ -63,6 +63,58 @@ impl Interp3D {
 
         // interpolate in the z-direction
         Ok(c0 * (1.0 - z_diff) + c1 * z_diff)
+    }
+
+    /// Function to get x variable from Interp3D
+    pub fn x(&self) -> Vec<f64> {
+        self.x
+    }
+
+    /// Function to set x variable from Interp3D
+    /// # Arguments
+    /// - `new_x`: updated `x` variable to replace the current `x` variable
+    pub fn set_x(&mut self, new_x: Vec<f64>) -> anyhow::Result<()> {
+        self.x = new_x;
+        self.validate()
+    }
+
+    /// Function to get x variable from Interp3D
+    pub fn y(&self) -> Vec<f64> {
+        self.y
+    }
+
+    /// Function to set y variable from Interp3D
+    /// # Arguments
+    /// - `new_y`: updated `y` variable to replace the current `y` variable
+    pub fn set_y(&mut self, new_y: Vec<f64>) -> anyhow::Result<()> {
+        self.y = new_y;
+        self.validate()
+    }
+
+    /// Function to get z variable from Interp3D
+    pub fn z(&self) -> Vec<f64> {
+        self.z
+    }
+
+    /// Function to set z variable from Interp3D
+    /// # Arguments
+    /// - `new_z`: updated `z` variable to replace the current `z` variable
+    pub fn set_z(&mut self, new_z: Vec<f64>) -> anyhow::Result<()> {
+        self.z = new_z;
+        self.validate()
+    }
+
+    /// Function to get f_xyz variable from Interp3D
+    pub fn f_xyz(&self) -> Vec<Vec<Vec<f64>>> {
+        self.f_xyz
+    }
+
+    /// Function to set f_xyz variable from Interp3D
+    /// # Arguments
+    /// - `new_f_xyz`: updated `f_xyz` variable to replace the current `f_xyz` variable
+    pub fn set_f_xyz(&mut self, new_f_xyz: Vec<Vec<Vec<f64>>>) -> anyhow::Result<()> {
+        self.f_xyz = new_f_xyz;
+        self.validate()
     }
 }
 

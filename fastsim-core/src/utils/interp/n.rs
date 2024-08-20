@@ -6,8 +6,8 @@ use itertools::Itertools;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct InterpND {
-    pub grid: Vec<Vec<f64>>,
-    pub values: ArrayD<f64>,
+    grid: Vec<Vec<f64>>,
+    values: ArrayD<f64>,
     pub extrapolate: Extrapolate,
     pub strategy: Strategy,
     #[serde(skip)]
@@ -139,6 +139,59 @@ impl InterpND {
             .map(|&len| 0..len)
             .multi_cartesian_product()
             .collect()
+    }
+
+    /// Function to get grid variable from InterpND
+    pub fn grid(&self) -> Vec<Vec<f64>> {
+        self.grid
+    }
+
+    /// Function to set grid variable from InterpND
+    /// # Arguments
+    /// - `new_grid`: updated `grid` variable to replace the current `grid` variable
+    pub fn set_grid(&mut self, new_grid: Vec<Vec<f64>>) -> anyhow::Result<()> {
+        self.grid = new_grid;
+        self.validate()
+    }
+
+    /// Function to set grid x variable from InterpND
+    /// # Arguments
+    /// - `new_x`: updated `grid[0]` to replace the current `grid[0]`
+    pub fn set_grid_x(&mut self, new_grid_x: Vec<f64>) -> anyhow::Result<()> {
+        self.grid[0] = new_grid_x;
+        self.validate()
+    }
+
+    /// Function to set grid y variable from InterpND
+    /// # Arguments
+    /// - `new_y`: updated `grid[1]` to replace the current `grid[1]`
+    pub fn set_grid_y(&mut self, new_grid_y: Vec<f64>) -> anyhow::Result<()> {
+        self.grid[1] = new_grid_y;
+        self.validate()
+    }
+
+    /// Function to set grid z variable from InterpND
+    /// # Arguments
+    /// - `new_z`: updated `grid[2]` to replace the current `grid[2]`
+    pub fn set_grid_z(&mut self, new_grid_z: Vec<f64>) -> anyhow::Result<()> {
+        self.grid[2] = new_grid_z;
+        self.validate()
+    }
+
+    /// Function to get values variable from InterpND
+    pub fn values(&self) -> ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>> {
+        self.values
+    }
+
+    /// Function to set values variable from InterpND
+    /// # Arguments
+    /// - `new_values`: updated `values` variable to replace the current `values` variable
+    pub fn set_values(
+        &mut self,
+        new_values: ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>>,
+    ) -> anyhow::Result<()> {
+        self.values = new_values;
+        self.validate()
     }
 }
 
