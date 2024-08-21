@@ -63,6 +63,7 @@ impl Init for Cycle {
         // calculate distance from RHS integral of speed and time
         self.dist = self
             .time
+            .diff()
             .iter()
             .zip(&self.speed)
             .scan(0. * uc::M, |dist, (time, speed)| {

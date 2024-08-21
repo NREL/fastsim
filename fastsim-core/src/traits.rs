@@ -375,18 +375,18 @@ impl<T: Init> Init for Vec<T> {
     }
 }
 
-pub trait Diff {
+pub trait Diff<T> {
     /// Returns vec of length `self.len() - 1` where each element in the returned vec at index i is
     /// `self[i + 1] - self[i]`
-    fn diff(&self) -> Vec<f64>;
+    fn diff(&self) -> Vec<T>;
 }
 
-impl Diff for Vec<f64> {
-    fn diff(&self) -> Vec<f64> {
+impl<T: Copy + Sub<T, Output = T>> Diff<T> for Vec<T> {
+    fn diff(&self) -> Vec<T> {
         self.windows(2)
             .map(|vs| {
                 let [x, y] = vs else { unreachable!() };
-                y - x
+                *y - *x
             })
             .collect()
     }
