@@ -8,6 +8,7 @@ pub struct Interp2D {
     pub(super) y: Vec<f64>,
     pub(super) f_xy: Vec<Vec<f64>>,
     pub strategy: Strategy,
+    #[serde(skip)]
     pub extrapolate: Extrapolate,
     #[serde(skip)]
     _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
@@ -90,7 +91,7 @@ impl InterpMethods for Interp2D {
         );
         // Check that grid points are monotonically increasing
         ensure!(
-            self.x.windows(2).all(|w| w[0] < w[1]) && self.y.windows(2).all(|w| w[0] < w[1]),
+            self.x.windows(2).all(|w| w[0] <= w[1]) && self.y.windows(2).all(|w| w[0] <= w[1]),
             "Supplied coordinates must be sorted and non-repeating"
         );
         // Check that grid and values are compatible shapes

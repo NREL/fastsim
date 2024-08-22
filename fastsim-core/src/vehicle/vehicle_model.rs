@@ -380,8 +380,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         Interp1D::new(
                             f2veh.mc_pwr_out_perc.to_vec(),
                             f2veh.mc_eff_array.to_vec(),
-                            // TODO: figure out what the default should be for these!
-                            Strategy::Linear,
+                            Strategy::LeftNearest,
                             Extrapolate::Error,
                         )
                         .unwrap(),
@@ -390,10 +389,15 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         Interp1D::new(
                             // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
                             // be transferred over as done here, or does a new defualt need to be defined?
-                            Default::default(),
+                            f2veh
+                                .mc_pwr_out_perc
+                                .to_vec()
+                                .iter()
+                                .zip(f2veh.mc_eff_array.to_vec().iter())
+                                .map(|(x, y)| x / y)
+                                .collect(),
                             f2veh.mc_eff_array.to_vec(),
-                            // TODO: figure out what the default should be for these!
-                            Strategy::Linear,
+                            Strategy::LeftNearest,
                             Extrapolate::Error,
                         )
                         .unwrap(),
@@ -1038,6 +1042,13 @@ pub(crate) mod tests {
     fn test_hev_deserialize() {
         let veh = mock_f2_hev();
 
+        veh.to_file(
+            project_root::get_project_root()
+                .unwrap()
+                .join("tests/assets/test_1_2016_TOYOTA_Prius_Two.yaml"),
+        )
+        .unwrap();
+
         let veh_from_file = Vehicle::from_file(
             project_root::get_project_root()
                 .unwrap()
@@ -1045,6 +1056,13 @@ pub(crate) mod tests {
             false,
         )
         .unwrap();
-        assert!(veh == veh_from_file);
+        veh_from_file
+            .to_file(
+                project_root::get_project_root()
+                    .unwrap()
+                    .join("tests/assets/test_2_2016_TOYOTA_Prius_Two.yaml"),
+            )
+            .unwrap();
+        assert_eq!(veh, veh_from_file);
     }
 }

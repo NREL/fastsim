@@ -7,6 +7,7 @@ pub struct Interp1D {
     pub(super) x: Vec<f64>,
     pub(super) f_x: Vec<f64>,
     pub strategy: Strategy,
+    #[serde(skip)]
     pub extrapolate: Extrapolate,
     #[serde(skip)]
     _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
@@ -126,7 +127,7 @@ impl InterpMethods for Interp1D {
         ensure!(x_grid_len != 0, "Supplied x-coordinates cannot be empty");
         // Check that grid points are monotonically increasing
         ensure!(
-            self.x.windows(2).all(|w| w[0] < w[1]),
+            self.x.windows(2).all(|w| w[0] <= w[1]),
             "Supplied x-coordinates must be sorted and non-repeating"
         );
         // Check that grid and values are compatible shapes

@@ -52,7 +52,7 @@ pub struct Cycle {
 }
 
 lazy_static! {
-    static ref ELEV_DEFAULT: si::Length = 400. * uc::M;
+    static ref ELEV_DEFAULT: si::Length = 400. * uc::FT;
 }
 
 impl Init for Cycle {
@@ -93,6 +93,7 @@ impl Init for Cycle {
                 },
             )
             .collect();
+        // println!("{:?}", self.dist);
         self.grade_interp = Some(Interpolator::Interp1D(Interp1D::new(
             self.dist.iter().map(|x| x.get::<si::meter>()).collect(),
             self.grade.iter().map(|y| y.get::<si::ratio>()).collect(),

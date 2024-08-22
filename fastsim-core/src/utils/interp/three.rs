@@ -9,6 +9,7 @@ pub struct Interp3D {
     pub(super) z: Vec<f64>,
     pub(super) f_xyz: Vec<Vec<Vec<f64>>>,
     pub strategy: Strategy,
+    #[serde(skip)]
     pub extrapolate: Extrapolate,
     #[serde(skip)]
     // phantom private field to prevent direct instantiation in other modules
@@ -113,9 +114,9 @@ impl InterpMethods for Interp3D {
         );
         // Check that grid points are monotonically increasing
         ensure!(
-            self.x.windows(2).all(|w| w[0] < w[1])
-                && self.y.windows(2).all(|w| w[0] < w[1])
-                && self.z.windows(2).all(|w| w[0] < w[1]),
+            self.x.windows(2).all(|w| w[0] <= w[1])
+                && self.y.windows(2).all(|w| w[0] <= w[1])
+                && self.z.windows(2).all(|w| w[0] <= w[1]),
             "Supplied coordinates must be sorted and non-repeating"
         );
         // Check that grid and values are compatible shapes

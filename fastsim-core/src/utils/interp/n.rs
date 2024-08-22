@@ -8,6 +8,7 @@ use itertools::Itertools;
 pub struct InterpND {
     pub(super) grid: Vec<Vec<f64>>,
     pub(super) values: ArrayD<f64>,
+    #[serde(skip)]
     pub extrapolate: Extrapolate,
     pub strategy: Strategy,
     #[serde(skip)]
@@ -208,7 +209,7 @@ impl InterpMethods for InterpND {
         // Check that grid points are monotonically increasing
         for i in 0..n {
             ensure!(
-                self.grid[i].windows(2).all(|w| w[0] < w[1]),
+                self.grid[i].windows(2).all(|w| w[0] <= w[1]),
                 "Supplied `grid` coordinates must be sorted and non-repeating: dimension {i}, {:?}",
                 self.grid[i]
             );

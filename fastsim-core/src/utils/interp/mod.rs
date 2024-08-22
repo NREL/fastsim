@@ -317,9 +317,9 @@ impl Interpolator {
     /// Function to get x variable from enum variants
     pub fn x(&self) -> anyhow::Result<Vec<f64>> {
         match self {
-            Interpolator::Interp1D(interp) => Ok(interp.x.to_owned()),
-            Interpolator::Interp2D(interp) => Ok(interp.x.to_owned()),
-            Interpolator::Interp3D(interp) => Ok(interp.x.to_owned()),
+            Interpolator::Interp1D(interp) => Ok(interp.x.to_vec()),
+            Interpolator::Interp2D(interp) => Ok(interp.x.to_vec()),
+            Interpolator::Interp3D(interp) => Ok(interp.x.to_vec()),
             _ => bail!("Variant does not have `x` field."),
         }
     }
@@ -343,7 +343,7 @@ impl Interpolator {
     /// Function to get f_x variable from enum variants
     pub fn f_x(&self) -> anyhow::Result<Vec<f64>> {
         match self {
-            Interpolator::Interp1D(interp) => Ok(interp.f_x.to_owned()),
+            Interpolator::Interp1D(interp) => Ok(interp.f_x.to_vec()),
             _ => bail!("Variant does not have `f_x` field."),
         }
     }
@@ -412,8 +412,8 @@ impl Interpolator {
     /// Function to get y variable from enum variants
     pub fn y(&self) -> anyhow::Result<Vec<f64>> {
         match self {
-            Interpolator::Interp2D(interp) => Ok(interp.y.to_owned()),
-            Interpolator::Interp3D(interp) => Ok(interp.y.to_owned()),
+            Interpolator::Interp2D(interp) => Ok(interp.y.to_vec()),
+            Interpolator::Interp3D(interp) => Ok(interp.y.to_vec()),
             _ => bail!("Variant does not have `y` field."),
         }
     }
@@ -436,7 +436,7 @@ impl Interpolator {
     /// Function to get f_xy variable from enum variants
     pub fn f_xy(&self) -> anyhow::Result<Vec<Vec<f64>>> {
         match self {
-            Interpolator::Interp2D(interp) => Ok(interp.f_xy.to_owned()),
+            Interpolator::Interp2D(interp) => Ok(interp.f_xy.to_vec()),
             _ => bail!("Variant does not have `f_xy` field."),
         }
     }
@@ -455,7 +455,7 @@ impl Interpolator {
     /// Function to get z variable from enum variants
     pub fn z(&self) -> anyhow::Result<Vec<f64>> {
         match self {
-            Interpolator::Interp3D(interp) => Ok(interp.z.to_owned()),
+            Interpolator::Interp3D(interp) => Ok(interp.z.to_vec()),
             _ => bail!("Variant does not have `z` field."),
         }
     }
@@ -477,7 +477,7 @@ impl Interpolator {
     /// Function to get f_xyz variable from enum variants
     pub fn f_xyz(&self) -> anyhow::Result<Vec<Vec<Vec<f64>>>> {
         match self {
-            Interpolator::Interp3D(interp) => Ok(interp.f_xyz.to_owned()),
+            Interpolator::Interp3D(interp) => Ok(interp.f_xyz.to_vec()),
             _ => bail!("Variant does not have `f_xyz` field."),
         }
     }
@@ -496,7 +496,7 @@ impl Interpolator {
     /// Function to get grid variable from enum variants
     pub fn grid(&self) -> anyhow::Result<Vec<Vec<f64>>> {
         match self {
-            Interpolator::InterpND(interp) => Ok(interp.grid.to_owned()),
+            Interpolator::InterpND(interp) => Ok(interp.grid.to_vec()),
             _ => bail!("Variant does not have `grid` field."),
         }
     }
@@ -553,7 +553,7 @@ pub enum Strategy {
 ///
 /// Controls what happens if supplied interpolant point
 /// is outside the bounds of the interpolation grid.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, Default)]
 #[cfg_attr(feature = "pyo3", pyclass)]
 pub enum Extrapolate {
     /// If interpolant point is beyond the limits of the interpolation grid,
@@ -563,6 +563,7 @@ pub enum Extrapolate {
     /// Restrict interpolant point to the limits of the interpolation grid, using [`f64::clamp`].
     Clamp,
     /// Return an error when interpolant point is beyond the limits of the interpolation grid.
+    #[default]
     Error,
 }
 

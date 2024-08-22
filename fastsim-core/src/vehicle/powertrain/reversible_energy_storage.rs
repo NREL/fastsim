@@ -307,7 +307,8 @@ impl ReversibleEnergyStorage {
                      ],
                 vec![0.0, self.pwr_out_max.get::<si::watt>()],
                     Strategy::Linear,
-                    Extrapolate::Error,
+                    // TODO: figure out if it is ok to have Extrapolate::Clamp here
+                    Extrapolate::Clamp,
                 )?).interpolate(&[state.soc.get::<si::ratio>()])?
         }
         // current SOC is greater than ramp down threshold but less than current min or current SOC is less than both
@@ -335,7 +336,8 @@ impl ReversibleEnergyStorage {
                  ],
             vec![0.0, self.pwr_out_max.get::<si::watt>()],
                 Strategy::Linear,
-                Extrapolate::Error,
+                // TODO: figure out if it is ok to have Extrapolate::Clamp here
+                Extrapolate::Clamp,
             )?).interpolate(&[state.soc.get::<si::ratio>()])?
         }
         // current SOC is less than ramp down threshold but greater than current
