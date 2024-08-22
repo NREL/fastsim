@@ -66,15 +66,17 @@ impl Init for Cycle {
         // somewhere to fix this ensure!(self.pwr_max_chrg.len() == self.len());
 
         // calculate distance from RHS integral of speed and time
-        self.dist = self
-            .time
-            .iter()
-            .zip(&self.speed)
-            .scan(0. * uc::M, |dist, (time, speed)| {
-                *dist += *time * *speed;
-                Some(*dist)
-            })
-            .collect();
+        self.dist = {
+            let mut dt = vec![uc::S * 0.];
+            dt.extend(self.time.diff());
+            dt.iter()
+                .zip(&self.speed)
+                .scan(0. * uc::M, |dist, (dt, speed)| {
+                    *dist += *dt * *speed;
+                    Some(*dist)
+                })
+                .collect()
+        };
 
         // calculate elevation from RHS integral of grade and distance
         self.init_elev = self.init_elev.or_else(|| Some(get_elev_def()));
@@ -418,14 +420,14 @@ mod tests {
         let cyc = mock_cyc_len_2();
         assert_eq!(
             cyc.dist,
-            [0., 1., 5.] // meters
+            [0., 1., 3.] // meters
                 .iter()
                 .map(|x| *x * uc::M)
                 .collect::<Vec<si::Length>>()
         );
         assert_eq!(
             cyc.elev,
-            [121.92, 121.93, 122.03] // meters
+            [121.92, 121.93, 121.99000000000001] // meters
                 .iter()
                 .map(|x| *x * uc::M)
                 .collect::<Vec<si::Length>>()
