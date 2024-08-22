@@ -382,14 +382,18 @@ pub trait Diff<T> {
     fn diff(&self) -> Vec<T>;
 }
 
-impl<T: Copy + Sub<T, Output = T>> Diff<T> for Vec<T> {
+impl<T: Copy + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
     fn diff(&self) -> Vec<T> {
-        self.windows(2)
-            .map(|vs| {
-                let [x, y] = vs else { unreachable!() };
-                *y - *x
-            })
-            .collect()
+        let mut v_diff: Vec<T> = vec![Default::default()];
+        v_diff.extend::<Vec<T>>(
+            self.windows(2)
+                .map(|vs| {
+                    let [x, y] = vs else { unreachable!() };
+                    *y - *x
+                })
+                .collect(),
+        );
+        v_diff
     }
 }
 
@@ -458,7 +462,7 @@ mod tests {
     #[test]
     fn test_diff() {
         let diff = Vec::linspace(0., 2., 3).diff();
-        let ref_diff = vec![1., 1.];
+        let ref_diff = vec![0., 1., 1.];
         assert_eq!(diff, ref_diff);
     }
 }

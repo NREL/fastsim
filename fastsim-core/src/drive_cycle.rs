@@ -67,9 +67,9 @@ impl Init for Cycle {
 
         // calculate distance from RHS integral of speed and time
         self.dist = {
-            let mut dt = vec![uc::S * 0.];
-            dt.extend(self.time.diff());
-            dt.iter()
+            self.time
+                .diff()
+                .iter()
                 .zip(&self.speed)
                 .scan(0. * uc::M, |dist, (dt, speed)| {
                     *dist += *dt * *speed;
