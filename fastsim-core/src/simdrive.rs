@@ -80,6 +80,7 @@ impl SimDrive {
         }
     }
 
+    // #[timer] TODO: fix and uncomment
     pub fn walk(&mut self) -> anyhow::Result<()> {
         ensure!(self.cyc.len() >= 2, format_dbg!(self.cyc.len() < 2));
         self.save_state();

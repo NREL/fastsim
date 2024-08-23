@@ -29,10 +29,9 @@ pub struct Cycle {
     /// inital elevation
     pub init_elev: Option<si::Length>,
     /// simulation time
-    #[serde(rename = "time_seconds")]
     pub time: Vec<si::Time>,
     /// prescribed speed
-    #[serde(rename = "speed_mps")]
+    #[serde(alias = "speed_mps")]
     pub speed: Vec<si::Velocity>,
     // TODO: consider trapezoidal integration scheme
     /// calculated prescribed distance based on RHS integral of time and speed
@@ -378,10 +377,10 @@ impl Cycle {
 /// Element of `Cycle`.  Used for vec-like operations.
 pub struct CycleElement {
     /// simulation time \[s\]
-    #[serde(rename = "time_seconds", alias = "cycSecs")]
+    #[serde(alias = "cycSecs")]
     time: si::Time,
     /// simulation power \[W\]
-    #[serde(rename = "speed_mps", alias = "cycMps")]
+    #[serde(alias = "speed_mps", alias = "cycMps")]
     speed: si::Velocity,
     // TODO: make `pyo3_api` handle Option or write custom getter/setter
     #[api(skip_get, skip_set)]

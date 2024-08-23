@@ -60,19 +60,16 @@ pub struct FuelConverter {
     /// FuelConverter specific power
     #[api(skip_get, skip_set)]
     pub(in super::super) specific_pwr: Option<si::SpecificPower>,
-    #[serde(rename = "pwr_out_max_watts")]
     /// max rated brake output power
     pub pwr_out_max: si::Power,
     /// starting/baseline transient power limit
     #[serde(default)]
     pub pwr_out_max_init: si::Power,
     // TODO: consider a ramp down rate, which may be needed for fuel cells
-    #[serde(rename = "pwr_ramp_lag_seconds")]
     /// lag time for ramp up
     pub pwr_ramp_lag: si::Time,
     pub eff_interp: utils::interp::InterpolatorWrapper,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
-    #[serde(rename = "pwr_idle_fuel_watts")]
     pub pwr_idle_fuel: si::Power,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]

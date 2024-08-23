@@ -12,14 +12,14 @@ pt_type:
       max_soc: 0.95
       save_interval: 1
     fs:
-      pwr_out_max: 2000000.0
-      pwr_ramp_lag: 1.1
-      energy_capacity: 1392840000.0
+      pwr_out_max_watts: 2000000.0
+      pwr_ramp_lag_seconds: 1.1
+      energy_capacity_joules: 1392840000.0
     fc:
       mass: ~
       specific_pwr: ~
       pwr_out_max_watts: 71000.0
-      pwr_out_max_init: 11639.344262295082
+      pwr_out_max_init_watts: 11639.344262295082
       pwr_ramp_lag_seconds: 6.1
       eff_interp:
         Interp1D:
@@ -86,17 +86,17 @@ pt_type:
     mass: ~
 chassis:
   drag_coef: 0.306
-  frontal_area: 2.22
+  frontal_area_square_meters: 2.22
   wheel_rr_coef: 0.0064
-  wheel_inertia: 0.815
+  wheel_inertia_kilogram_square_meters: 0.815
   num_wheels: 4
   wheel_radius: 0.3175
-  cg_height: 0.53
+  cg_height_meters: 0.53
   wheel_fric_coef: 0.7
   drive_type: FWD
   drive_axle_weight_frac: 0.59
-  wheel_base: 2.7
+  wheel_base_meters: 2.7
 mass: 1635.0
-pwr_aux: 1050.0
+pwr_aux_watts: 1050.0
 trans_eff: 0.98
 save_interval: 1

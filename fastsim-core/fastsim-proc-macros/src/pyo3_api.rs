@@ -17,9 +17,6 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     if let syn::Fields::Named(syn::FieldsNamed { named, .. }) = &mut ast.fields {
         // struct with named fields
         for field in named.iter_mut() {
-            let ident = field.ident.as_ref().unwrap();
-            let ftype = field.ty.clone();
-
             // if attr.tokens.to_string().contains("skip_get"){
             // for (i, idx_del) in idxs_del.into_iter().enumerate() {
             //     attr_vec.remove(*idx_del - i);
@@ -32,7 +29,9 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             let keep: Vec<bool> = field
                 .attrs
                 .iter()
-                .map(|x| match x.path.segments[0].ident.to_string().as_str() { // todo: check length of segments for robustness
+                .map(
+                    // This closure might be clunky
+                    |x| match x.path.segments[0].ident.to_string().as_str() { // todo: check length of segments for robustness
                     "api" => {
                         let meta = x.parse_meta().unwrap();
                         if let Meta::List(list) = meta {
@@ -67,7 +66,7 @@ pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             // this drops attrs with api, removing the field attribute from the struct def
             field.attrs.retain(|_| *iter.next().unwrap());
 
-            impl_getters_and_setters(&mut py_impl_block, ident, &opts, &ftype);
+            impl_getters_and_setters(&mut py_impl_block, field, &opts);
         }
     } else if let syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }) = &mut ast.fields {
         // tuple struct

@@ -118,12 +118,10 @@ pub struct ReversibleEnergyStorage {
     /// ReversibleEnergyStorage specific energy
     #[api(skip_get, skip_set)]
     pub(in super::super) specific_energy: Option<si::SpecificEnergy>,
-    #[serde(rename = "pwr_out_max_watts")]
     /// Max output (and input) power battery can produce (accept)
     pub pwr_out_max: si::Power,
 
     /// Total energy capacity of battery of full discharge SOC of 0.0 and 1.0
-    #[serde(rename = "energy_capacity_joules")]
     pub energy_capacity: si::Energy,
 
     /// Hard limit on minimum SOC, e.g. 0.05
