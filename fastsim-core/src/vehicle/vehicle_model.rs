@@ -936,13 +936,14 @@ pub(crate) mod tests {
 
         assert!(veh.pt_type.is_conventional_vehicle());
 
+        // TODO: come up with a fancier solution
         // uncomment this if the fastsim-3 version needs to be rewritten
-        veh.to_file(
-            project_root::get_project_root()
-                .unwrap()
-                .join("tests/assets/2012_Ford_Fusion.yaml"),
-        )
-        .unwrap();
+        // veh.to_file(
+        //     project_root::get_project_root()
+        //         .unwrap()
+        //         .join("tests/assets/2012_Ford_Fusion.yaml"),
+        // )
+        // .unwrap();
         veh
     }
 
@@ -958,13 +959,14 @@ pub(crate) mod tests {
 
         assert!(veh.pt_type.is_hybrid_electric_vehicle());
 
+        // TODO: come up with a fancier solution
         // uncomment this if the fastsim-3 version needs to be rewritten
-        veh.to_file(
-            project_root::get_project_root()
-                .unwrap()
-                .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
-        )
-        .unwrap();
+        // veh.to_file(
+        //     project_root::get_project_root()
+        //         .unwrap()
+        //         .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
+        // )
+        // .unwrap();
         veh
     }
 

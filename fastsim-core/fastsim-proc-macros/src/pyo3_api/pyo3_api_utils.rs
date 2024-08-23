@@ -37,16 +37,26 @@ fn vec_layer_type(vec_layers: u8) -> TokenStream2 {
 /// - vec_layers: number of nested vector layers
 fn impl_get_set_si(
     impl_block: &mut TokenStream2,
-    field: &proc_macro2::Ident,
+    field: &mut syn::Field,
     field_type: &TokenStream2,
     field_units: &TokenStream2,
     unit_name: &str,
     opts: &FieldOptions,
     vec_layers: u8,
 ) {
+    let ident = field.ident.clone().unwrap();
     let field_name: TokenStream2 = match unit_name {
-        "" => format!("{field}").parse().unwrap(),
-        _ => format!("{field}_{unit_name}").parse().unwrap(),
+        "" => format!("{ident}").parse().unwrap(),
+        _ => {
+            if field_has_serde_rename(field) {
+                // add the rename attribute for any fields that don't already have it
+                let field_name_lit_str = format!("{ident}_{unit_name}");
+                field.attrs.push(syn::parse_quote! {
+                    #[serde(rename = #field_name_lit_str)]
+                })
+            }
+            format!("{ident}_{unit_name}").parse().unwrap()
+        }
     };
 
     if !opts.skip_get {
@@ -63,8 +73,8 @@ fn impl_get_set_si(
         }
 
         let field_val = match vec_layers {
-            0 => quote!(self.#field.#extract_val),
-            _ => quote!(#get_type::new(self.#field.#extract_val)),
+            0 => quote!(self.#ident.#extract_val),
+            _ => quote!(#get_type::new(self.#ident.#extract_val)),
         };
 
         impl_block.extend::<TokenStream2>(quote! {
@@ -83,7 +93,7 @@ fn impl_get_set_si(
         impl_block.extend::<TokenStream2>(quote! {
             #[setter(#setter_rename)]
             fn #set_err(&mut self, new_val: f64) -> PyResult<()> {
-                self.#field = #field_type::new::<#field_units>(new_val);
+                self.#ident = #field_type::new::<#field_units>(new_val);
                 Ok(())
             }
         });
@@ -96,6 +106,28 @@ fn impl_get_set_si(
             }
         });
     }
+}
+
+fn field_has_serde_rename(field: &syn::Field) -> bool {
+    !field.attrs.iter().any(|attr| {
+        let attr_meta = attr.parse_meta().unwrap();
+        if let Meta::List(meta_list) = attr_meta {
+            // catch the `serde` in `#[serde(rename = "...")]`
+            meta_list.path.is_ident("serde")
+                &&
+            // catch the `rename` in `#[serde(rename = "...")]`
+            meta_list.nested.iter().any(|nm| {
+                match nm {
+                    NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, ..})) => {
+                        path.is_ident("rename")
+                    }
+                    _ => false
+                }
+            })
+        } else {
+            false
+        }
+    })
 }
 
 /// Generates pyo3 getter methods
@@ -270,12 +302,13 @@ fn extract_si_quantity(path: &syn::Path) -> Option<String> {
 
 pub(crate) fn impl_getters_and_setters(
     impl_block: &mut TokenStream2,
-    field: &proc_macro2::Ident,
+    field: &mut syn::Field,
     opts: &FieldOptions,
-    ftype: &syn::Type,
 ) -> Option<()> {
+    let ident = field.ident.as_ref().unwrap();
+    let ftype = field.ty.clone();
     let mut vec_layers: u8 = 0;
-    let mut inner_type = ftype;
+    let mut inner_type = &ftype;
 
     // TODO: figure this out and uncomment.  Then check that all `Option` fields are handled appropriately.
     // pull out `inner_type` from `Option<inner_type>`
@@ -294,7 +327,7 @@ pub(crate) fn impl_getters_and_setters(
 
     let inner_path = extract_type_path(inner_type)?;
     let inner_type = &inner_path.to_token_stream();
-    let field_type = extract_type_path(ftype)?.to_token_stream();
+    let field_type = extract_type_path(&ftype)?.to_token_stream();
     if let Some(quantity) = extract_si_quantity(inner_path) {
         // Make sure to use absolute paths here to avoid issues with si.rs in the main fastsim-core!
         let unit_impls = match quantity.as_str() {
@@ -340,12 +373,12 @@ pub(crate) fn impl_getters_and_setters(
             );
         }
     } else if inner_type.to_string().as_str() == "f64" {
-        impl_get_body(impl_block, field, inner_type, opts, vec_layers);
-        impl_set_body(impl_block, field, &field_type, opts);
+        impl_get_body(impl_block, ident, inner_type, opts, vec_layers);
+        impl_set_body(impl_block, ident, &field_type, opts);
     } else {
-        impl_get_body(impl_block, field, &field_type, opts, 0);
-        if field != "history" {
-            impl_set_body(impl_block, field, &field_type, opts);
+        impl_get_body(impl_block, ident, &field_type, opts, 0);
+        if ident != "history" {
+            impl_set_body(impl_block, ident, &field_type, opts);
         }
     }
 

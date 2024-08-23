@@ -75,7 +75,6 @@ pub struct ElectricMachine {
     #[api(skip_set)]
     pub pwr_in_frac_interp: Vec<f64>,
     /// ElectricMachine maximum output power \[W\]
-    #[serde(rename = "pwr_out_max_watts")]
     pub pwr_out_max: si::Power,
     /// ElectricMachine specific power
     // TODO: fix `extract_type_from_option` to allow for not having this line
@@ -105,8 +104,7 @@ impl ElectricMachine {
     /// - `pwr_in_bwd_max`: negative-propulsion-related power available to this
     /// component. Zero means no power can be sent to upstream compnents and positive
     /// values indicate upstream components can absorb energy.
-    /// - `pwr_aux`: aux-related power required from this component
-    /// - `dt`: time step size
+    /// - `_dt`: time step size
     pub fn set_cur_pwr_prop_out_max(
         &mut self,
         pwr_in_fwd_max: si::Power,
