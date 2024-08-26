@@ -382,14 +382,15 @@ pub trait Diff<T> {
     fn diff(&self) -> Vec<T>;
 }
 
-impl<T: Copy + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
+impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
     fn diff(&self) -> Vec<T> {
         let mut v_diff: Vec<T> = vec![Default::default()];
         v_diff.extend::<Vec<T>>(
             self.windows(2)
                 .map(|vs| {
-                    let [x, y] = vs else { unreachable!() };
-                    *y - *x
+                    let x = &vs[0];
+                    let y = &vs[1];
+                    y.clone() - x.clone()
                 })
                 .collect(),
         );
