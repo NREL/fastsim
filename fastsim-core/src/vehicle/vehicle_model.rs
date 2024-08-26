@@ -16,7 +16,7 @@ pub enum AuxSource {
 impl SerdeAPI for AuxSource {}
 impl Init for AuxSource {}
 
-#[pyo3_api(
+#[fastsim_api(
     #[staticmethod]
     fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
         Ok(Self::try_from(veh.clone())?)
@@ -826,7 +826,7 @@ impl Vehicle {
 
 /// Vehicle state for current time step
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[pyo3_api]
+#[fastsim_api]
 pub struct VehicleState {
     /// time step index
     pub i: usize,

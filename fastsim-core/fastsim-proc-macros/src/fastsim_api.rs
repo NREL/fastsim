@@ -1,9 +1,9 @@
 use crate::imports::*;
-mod pyo3_api_utils;
+mod fastsim_api_utils;
 use crate::utilities::parse_ts_as_fn_defs;
-use pyo3_api_utils::*;
+use fastsim_api_utils::*;
 
-pub(crate) fn pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub(crate) fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
     let ident = &ast.ident;
     // println!("{}", String::from("*").repeat(30));

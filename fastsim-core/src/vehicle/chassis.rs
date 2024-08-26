@@ -16,7 +16,7 @@ pub enum DriveTypes {
 impl SerdeAPI for DriveTypes {}
 impl Init for DriveTypes {}
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 /// Struct for simulating vehicle
 pub struct Chassis {

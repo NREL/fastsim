@@ -2,7 +2,7 @@ use super::*;
 
 // TODO: think about how to incorporate life modeling for Fuel Cells and other tech
 
-#[pyo3_api(
+#[fastsim_api(
     // // optional, custom, struct-specific pymethods
     // #[getter("eff_max")]
     // fn get_eff_max_py(&self) -> f64 {
@@ -289,7 +289,7 @@ impl FuelConverter {
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
-#[pyo3_api]
+#[fastsim_api]
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,
