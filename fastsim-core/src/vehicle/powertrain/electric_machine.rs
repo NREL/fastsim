@@ -78,7 +78,6 @@ pub struct ElectricMachine {
     // /// this will disappear and instead be in eff_interp_bwd
     // pub pwr_in_frac_interp: Vec<f64>,
     /// ElectricMachine maximum output power \[W\]
-    #[serde(rename = "pwr_out_max_watts")]
     pub pwr_out_max: si::Power,
     /// ElectricMachine specific power
     // TODO: fix `extract_type_from_option` to allow for not having this line

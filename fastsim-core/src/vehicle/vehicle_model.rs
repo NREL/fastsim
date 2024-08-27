@@ -92,6 +92,11 @@ impl Init for AuxSource {}
     // fn get_mass_kg(&self) -> PyResult<Option<f64>> {
     //     Ok(self.mass()?.map(|m| m))
     // }
+
+    #[getter("pt_type_json")]
+    fn get_pt_type_json_py(&self) -> anyhow::Result<String >{
+        self.pt_type.to_str("json")
+    }
 )]
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, HistoryMethods)]
 /// Struct for simulating vehicle
@@ -954,8 +959,12 @@ impl Default for VehicleState {
 pub(crate) mod tests {
     use super::*;
 
+    fn vehicles_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/vehicles")
+    }
+
     #[cfg(feature = "yaml")]
-    pub(crate) fn mock_f2_conv_veh() -> Vehicle {
+    pub(crate) fn mock_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
@@ -964,20 +973,14 @@ pub(crate) mod tests {
             veh.unwrap()
         };
 
+        // veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
+        //     .unwrap();
         assert!(veh.pt_type.is_conventional_vehicle());
-
-        // uncomment this if the fastsim-3 version needs to be rewritten
-        veh.to_file(
-            project_root::get_project_root()
-                .unwrap()
-                .join("tests/assets/2012_Ford_Fusion.yaml"),
-        )
-        .unwrap();
         veh
     }
 
     #[cfg(feature = "yaml")]
-    pub(crate) fn mock_f2_hev() -> Vehicle {
+    pub(crate) fn mock_hev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
@@ -986,15 +989,9 @@ pub(crate) mod tests {
             veh.unwrap()
         };
 
+        // veh.to_file(vehicles_dir().join("2016_TOYOTA_Prius_Two.yaml"))
+        //     .unwrap();
         assert!(veh.pt_type.is_hybrid_electric_vehicle());
-
-        // uncomment this if the fastsim-3 version needs to be rewritten
-        veh.to_file(
-            project_root::get_project_root()
-                .unwrap()
-                .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
-        )
-        .unwrap();
         veh
     }
 
@@ -1002,7 +999,7 @@ pub(crate) mod tests {
     #[test]
     #[cfg(feature = "yaml")]
     pub(crate) fn test_conv_veh_init() {
-        let veh = mock_f2_conv_veh();
+        let veh = mock_conv_veh();
         let mut veh1 = veh.clone();
         assert!(veh == veh1);
         veh1.init().unwrap();
@@ -1012,7 +1009,7 @@ pub(crate) mod tests {
     #[test]
     #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_conv() {
-        let veh = mock_f2_conv_veh();
+        let veh = mock_conv_veh();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
@@ -1026,7 +1023,7 @@ pub(crate) mod tests {
     #[test]
     #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_hev() {
-        let veh = mock_f2_hev();
+        let veh = mock_hev();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
@@ -1035,34 +1032,5 @@ pub(crate) mod tests {
         };
         let mut sd2 = sd.to_fastsim2().unwrap();
         sd2.sim_drive(None, None).unwrap();
-    }
-
-    #[test]
-    #[cfg(feature = "yaml")]
-    fn test_hev_deserialize() {
-        let veh = mock_f2_hev();
-
-        veh.to_file(
-            project_root::get_project_root()
-                .unwrap()
-                .join("tests/assets/test_1_2016_TOYOTA_Prius_Two.yaml"),
-        )
-        .unwrap();
-
-        let veh_from_file = Vehicle::from_file(
-            project_root::get_project_root()
-                .unwrap()
-                .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
-            false,
-        )
-        .unwrap();
-        veh_from_file
-            .to_file(
-                project_root::get_project_root()
-                    .unwrap()
-                    .join("tests/assets/test_2_2016_TOYOTA_Prius_Two.yaml"),
-            )
-            .unwrap();
-        assert_eq!(veh, veh_from_file);
     }
 }

@@ -1,7 +1,7 @@
 use crate::imports::*;
-mod api_utils;
+mod fastsim_api_utils;
 use crate::utilities::parse_ts_as_fn_defs;
-use api_utils::*;
+use fastsim_api_utils::*;
 
 pub(crate) fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = syn::parse_macro_input!(item as syn::ItemStruct);
@@ -297,9 +297,6 @@ fn process_named_field_struct(
 ) {
     // struct with named fields
     for field in named.iter_mut() {
-        let ident = field.ident.as_ref().unwrap();
-        let ftype = field.ty.clone();
-
         // if attr.tokens.to_string().contains("skip_get"){
         // for (i, idx_del) in idxs_del.into_iter().enumerate() {
         //     attr_vec.remove(*idx_del - i);
@@ -347,6 +344,6 @@ fn process_named_field_struct(
         // this drops attrs with api, removing the field attribute from the struct def
         field.attrs.retain(|_| *iter.next().unwrap());
 
-        impl_getters_and_setters(py_impl_block, ident, &opts, &ftype);
+        impl_getters_and_setters(py_impl_block, field, &opts);
     }
 }

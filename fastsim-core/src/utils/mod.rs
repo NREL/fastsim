@@ -47,7 +47,8 @@ pub(crate) fn download_file<S: AsRef<str>, P: AsRef<Path>>(
     Ok(())
 }
 
-/// helper function to find where a query falls on an axis of discrete values;
+#[allow(unused)]
+/// Helper function to find where a query falls on an axis of discrete values;
 /// NOTE: this assumes the axis array is sorted with values ascending and that there are no repeating values!
 fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usize)> {
     let axis_size = axis.len();
@@ -76,6 +77,7 @@ fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usiz
     }
 }
 
+#[allow(unused)]
 /// Helper function to compute the difference between a value and a set of bounds
 fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
     if lower == upper {

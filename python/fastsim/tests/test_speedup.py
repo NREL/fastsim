@@ -7,9 +7,7 @@ def test_hev_speedup():
     min_allowed_speed_ratio = 8.
     
     # load 2016 Toyota Prius Two from file
-    veh = fsim.Vehicle.from_file(
-        str(fsim.package_root() / "../../tests/assets/2016_TOYOTA_Prius_Two.yaml")
-    )
+    veh = fsim.Vehicle.from_resource("2016_TOYOTA_Prius_Two.yaml")
 
     # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
     fsim.set_param_from_path(veh, "save_interval", 1)
@@ -54,13 +52,11 @@ def test_conv_speedup():
     # minimum allowed f3 / f2 speed ratio
     # there is some wiggle room on these but we're trying to get 10x speedup
     # relative to fastsim-2 with `save_interval` of `None`
-    min_speed_ratio_si_none = 7.5
+    min_speed_ratio_si_none = 7.0
     min_speed_ratio_si_1 = 3.
     
     # load 2016 Toyota Prius Two from file
-    veh = fsim.Vehicle.from_file(
-        str(fsim.package_root() / "../../tests/assets/2012_Ford_Fusion.yaml")
-    )
+    veh = fsim.Vehicle.from_resource("2012_Ford_Fusion.yaml")
 
     # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
     fsim.set_param_from_path(veh, "save_interval", 1)

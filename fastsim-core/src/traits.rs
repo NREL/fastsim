@@ -376,20 +376,25 @@ impl<T: Init> Init for Vec<T> {
     }
 }
 
-pub trait Diff {
+pub trait Diff<T> {
     /// Returns vec of length `self.len() - 1` where each element in the returned vec at index i is
     /// `self[i + 1] - self[i]`
-    fn diff(&self) -> Vec<f64>;
+    fn diff(&self) -> Vec<T>;
 }
 
-impl Diff for Vec<f64> {
-    fn diff(&self) -> Vec<f64> {
-        self.windows(2)
-            .map(|vs| {
-                let [x, y] = vs else { unreachable!() };
-                y - x
-            })
-            .collect()
+impl<T: Clone + Sub<T, Output = T> + Default> Diff<T> for Vec<T> {
+    fn diff(&self) -> Vec<T> {
+        let mut v_diff: Vec<T> = vec![Default::default()];
+        v_diff.extend::<Vec<T>>(
+            self.windows(2)
+                .map(|vs| {
+                    let x = &vs[0];
+                    let y = &vs[1];
+                    y.clone() - x.clone()
+                })
+                .collect(),
+        );
+        v_diff
     }
 }
 
@@ -458,7 +463,7 @@ mod tests {
     #[test]
     fn test_diff() {
         let diff = Vec::linspace(0., 2., 3).diff();
-        let ref_diff = vec![1., 1.];
+        let ref_diff = vec![0., 1., 1.];
         assert_eq!(diff, ref_diff);
     }
 }
