@@ -207,35 +207,34 @@ fn extract_type_path(ty: &syn::Type) -> Option<&syn::Path> {
     }
 }
 
-#[allow(unused)]
 /// adapted from https://stackoverflow.com/questions/55271857/how-can-i-get-the-t-from-an-optiont-when-using-syn
 fn extract_type_from_option(ty: &syn::Type) -> Option<&syn::Type> {
-    use syn::{GenericArgument, Path, PathArguments, PathSegment};
+    fn extract_option_argument(path: &Path) -> Option<&GenericArgument> {
+        let mut ident_path = String::new();
+        for segment in &path.segments {
+            ident_path.push_str(&segment.ident.to_string());
 
-    // TODO store (with lazy static) the vec of string
-    // TODO maybe optimization, reverse the order of segments
-    fn extract_option_segment(path: &Path) -> Option<&PathSegment> {
-        let idents_of_path = path.segments.iter().fold(String::new(), |mut acc, v| {
-            acc.push_str(&v.ident.to_string());
-            acc.push('|');
-            acc
-        });
-        vec!["Option|", "std|option|Option|", "core|option|Option|"]
-            .into_iter()
-            .find(|s| idents_of_path == *s)
-            .and_then(|_| path.segments.last())
+            // Exit when the inner brackets are found
+            match &segment.arguments {
+                syn::PathArguments::AngleBracketed(params) => {
+                    return match ident_path.as_str() {
+                        "Option" | "std::option::Option" | "core::option::Option" => {
+                            params.args.first()
+                        }
+                        _ => None,
+                    };
+                }
+                syn::PathArguments::None => {}
+                _ => return None,
+            }
+
+            ident_path.push_str("::");
+        }
+        None
     }
 
     extract_type_path(ty)
-        .and_then(extract_option_segment)
-        .and_then(|path_seg| {
-            let type_params = &path_seg.arguments;
-            // It should have only on angle-bracketed param ("<String>"):
-            match *type_params {
-                PathArguments::AngleBracketed(ref params) => params.args.first(),
-                _ => None,
-            }
-        })
+        .and_then(extract_option_argument)
         .and_then(|generic_arg| match *generic_arg {
             GenericArgument::Type(ref ty) => Some(ty),
             _ => None,
@@ -310,11 +309,9 @@ pub(crate) fn impl_getters_and_setters(
     let mut vec_layers: u8 = 0;
     let mut inner_type = &ftype;
 
-    // TODO: figure this out and uncomment.  Then check that all `Option` fields are handled appropriately.
-    // pull out `inner_type` from `Option<inner_type>`
-    // if let Some(opt_inner_type) = extract_type_from_option(inner_type) {
-    //     inner_type = opt_inner_type;
-    // }
+    if let Some(opt_inner_type) = extract_type_from_option(inner_type) {
+        inner_type = opt_inner_type;
+    }
 
     // pull out `inner_type` from `Vec<inner_type>`, recursively if there is any nesting
     while let Some(vec_inner_type) = extract_type_from_vec(inner_type) {
@@ -346,6 +343,7 @@ pub(crate) fn impl_getters_and_setters(
             "Mass" => extract_units!(uom::si::mass::kilogram),
             "MomentOfInertia" => extract_units!(uom::si::moment_of_inertia::kilogram_square_meter),
             "Power" => extract_units!(uom::si::power::watt),
+            "SpecificPower" => extract_units!(uom::si::specific_power::watt_per_kilogram),
             "PowerRate" => extract_units!(uom::si::power_rate::watt_per_second),
             "Pressure" => extract_units!(uom::si::pressure::kilopascal, uom::si::pressure::bar),
             "Ratio" => extract_units!(uom::si::ratio::ratio),

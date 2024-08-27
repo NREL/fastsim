@@ -27,9 +27,8 @@ SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 # %%
 
 # load 2016 Toyota Prius Two from file
-veh = fsim.Vehicle.from_file(
-    str(fsim.package_root() / "../../tests/assets/2016_TOYOTA_Prius_Two.yaml")
-)
+veh = fsim.Vehicle.from_resource("2016_TOYOTA_Prius_Two.yaml")
+
 veh_no_save = veh.copy()
 fsim.set_param_from_path(veh_no_save, "save_interval", None)
 

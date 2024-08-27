@@ -1,7 +1,5 @@
 use crate::imports::*;
 
-// TODO: make sure this macro is propagated and implementd everywhere it's needed
-
 pub(crate) fn cumu_method_derive(input: TokenStream) -> TokenStream {
     let item_struct = syn::parse_macro_input!(input as syn::ItemStruct);
     let ident = &item_struct.ident;
