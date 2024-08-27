@@ -607,6 +607,12 @@ impl RustCycleCache {
     pub fn get_delta_elev_m(&self) -> Vec<f64> {
         self.delta_elev_m().to_vec()
     }
+
+    #[pyo3(name = "list_resources")]
+    /// list available cycle resources
+    pub fn list_resources_py(&self) -> Vec<String> {
+        RustCycle::list_resources()
+    }
 )]
 /// Struct for containing:
 /// * time_s, cycle time, $s$

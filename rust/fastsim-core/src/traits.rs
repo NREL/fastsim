@@ -1,4 +1,4 @@
-use crate::imports::*;
+use crate::{imports::*, resources};
 use std::collections::HashMap;
 use ureq;
 
@@ -11,6 +11,14 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// Specialized code to execute upon initialization
     fn init(&mut self) -> anyhow::Result<()> {
         Ok(())
+    }
+
+    /// List available (compiled) resources (stored in the rust binary)
+    /// RESULT:
+    /// vector of string of resource names that can be loaded
+    #[cfg(feature = "resources")]
+    fn list_resources() -> Vec<String> {
+        resources::list_resources(Self::RESOURCE_PREFIX)
     }
 
     /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
