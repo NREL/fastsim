@@ -7,9 +7,7 @@ import fastsim as fsim
 import polars as pl
 
 # load 2012 Ford Fusion from file
-veh = fsim.Vehicle.from_file(
-    str(fsim.package_root() / "../../tests/assets/2016_TOYOTA_Prius_Two.yaml")
-)
+veh = fsim.Vehicle.from_resource("2016_TOYOTA_Prius_Two.yaml")
 
 # Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
 fsim.set_param_from_path(veh, "save_interval", 1)
@@ -27,7 +25,6 @@ ENABLE_ASSERTS = os.environ.get("ENABLE_ASSERTS", "true").lower() == "true"
 ENABLE_REF_OVERRIDE = os.environ.get("ENABLE_REF_OVERRIDE", "false").lower() == "true"
 # directory for reference files for checking sim results against expected results
 ref_dir = fsim.resources_root() / "demos/demo_variable_paths/"
-
 
 # print out all subpaths for variables in SimDrive
 print("List of variable paths for SimDrive:" + "\n".join(sd.variable_path_list()))

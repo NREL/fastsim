@@ -12,7 +12,7 @@
 
 use super::*;
 
-#[pyo3_api(
+#[fastsim_api(
     /// Function to get x variable from enum variants
     #[getter("x")]
     pub fn x_py(&self) -> anyhow::Result<Vec<f64>> {

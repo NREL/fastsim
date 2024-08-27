@@ -1,4 +1,4 @@
-/// Binary for running the 2012 Ford Fusion in fastsim-3 with `cargo build
+/// Binary for profiling the 2012 Ford Fusion in fastsim-3 with `cargo build
 /// --profile profiling  --bin f3-2012-ford-fusion-udds`.  To run this for
 /// profiling, install [samply] (https://github.com/mstange/samply) and then run
 /// `samply record ./target/profiling/f3-2012-ford-fusion-udds`

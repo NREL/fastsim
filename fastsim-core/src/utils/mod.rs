@@ -159,12 +159,10 @@ pub fn interp1d(
     let y_first = y_data
         .first()
         .with_context(|| anyhow!("Unable to extract first element"))?;
-    // TODO: do this once on init
     if y_data.iter().all(|y| y == y_first) {
         // return first if all data is equal to first
         Ok(*y_first)
     } else {
-        // TODO: when `Interpolator` struct is implemented, make sure this sort of check happens on init
         let size = x_data.len();
 
         let mut i = 0;
@@ -303,20 +301,20 @@ make_uom_cmp_fn!(almost_lt);
 make_uom_cmp_fn!(almost_ge);
 make_uom_cmp_fn!(almost_le);
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Pyo3VecBoolWrapper(pub Vec<bool>);
 impl SerdeAPI for Pyo3VecBoolWrapper {}
 impl Init for Pyo3VecBoolWrapper {}
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3VecWrapper(pub Vec<f64>);
 impl SerdeAPI for Pyo3VecWrapper {}
 impl Init for Pyo3VecWrapper {}
 
 #[allow(non_snake_case)]
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3Vec2Wrapper(pub Vec<Vec<f64>>);
 impl From<Vec<Vec<f64>>> for Pyo3Vec2Wrapper {
@@ -327,7 +325,7 @@ impl From<Vec<Vec<f64>>> for Pyo3Vec2Wrapper {
 impl SerdeAPI for Pyo3Vec2Wrapper {}
 impl Init for Pyo3Vec2Wrapper {}
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Default, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Pyo3Vec3Wrapper(pub Vec<Vec<Vec<f64>>>);
 impl From<Vec<Vec<Vec<f64>>>> for Pyo3Vec3Wrapper {
@@ -565,12 +563,6 @@ mod tests {
             1.0
         );
     }
-
-    // TODO: turn this back on and fix the problem it catches
-    // #[test]
-    // fn test_interp1d_with_duplicate_x_data() {
-    //     assert!(interp1d(&0.5, &[0.0, 0.0], &[0.0, 1.0], Extrapolate::Yes).is_err());
-    // }
 
     #[test]
     fn test_linspace() {

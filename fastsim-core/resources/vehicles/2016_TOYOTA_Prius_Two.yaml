@@ -4,8 +4,8 @@ year: 2016
 pt_type:
   HybridElectricVehicle:
     res:
-      mass: ~
-      specific_energy: ~
+      mass_kilograms: ~
+      specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 100000.0
       energy_capacity_joules: 2700000.0
       min_soc: 0.25
@@ -16,8 +16,8 @@ pt_type:
       pwr_ramp_lag_seconds: 1.1
       energy_capacity_joules: 1392840000.0
     fc:
-      mass: ~
-      specific_pwr: ~
+      mass_kilograms: ~
+      specific_pwr_watts_per_kilogram: ~
       pwr_out_max_watts: 71000.0
       pwr_out_max_init_watts: 11639.344262295082
       pwr_ramp_lag_seconds: 6.1
@@ -79,8 +79,8 @@ pt_type:
         - 0.93
         - 0.92
       pwr_out_max_watts: 53000.0
-      specific_pwr: ~
-      mass: ~
+      specific_pwr_watts_per_kilogram: ~
+      mass_kilograms: ~
       save_interval: 1
     hev_controls: RESGreedy
     mass: ~
@@ -90,13 +90,13 @@ chassis:
   wheel_rr_coef: 0.0064
   wheel_inertia_kilogram_square_meters: 0.815
   num_wheels: 4
-  wheel_radius: 0.3175
+  wheel_radius_meters: 0.3175
   cg_height_meters: 0.53
   wheel_fric_coef: 0.7
   drive_type: FWD
   drive_axle_weight_frac: 0.59
   wheel_base_meters: 2.7
-mass: 1635.0
+mass_kilograms: 1635.0
 pwr_aux_watts: 1050.0
 trans_eff: 0.98
 save_interval: 1

@@ -1,7 +1,7 @@
 use crate::imports::*;
 use fastsim_2::cycle::RustCycle as Cycle2;
 
-#[pyo3_api(
+#[fastsim_api(
     fn __len__(&self) -> usize {
         self.len()
     }
@@ -372,7 +372,7 @@ impl Cycle {
     }
 }
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 /// Element of `Cycle`.  Used for vec-like operations.
 pub struct CycleElement {
@@ -382,12 +382,12 @@ pub struct CycleElement {
     /// simulation power \[W\]
     #[serde(alias = "speed_mps", alias = "cycMps")]
     speed: si::Velocity,
-    // TODO: make `pyo3_api` handle Option or write custom getter/setter
+    // TODO: make `fastsim_api` handle Option or write custom getter/setter
     #[api(skip_get, skip_set)]
     /// road grade
     #[serde(skip_serializing_if = "Option::is_none", alias = "cycGrade")]
     pub grade: Option<si::Ratio>,
-    // TODO: make `pyo3_api` handle Option or write custom getter/setter
+    // TODO: make `fastsim_api` handle Option or write custom getter/setter
     #[api(skip_get, skip_set)]
     /// road charging/discharing capacity
     pub pwr_max_charge: Option<si::Power>,

@@ -5,14 +5,14 @@ use super::vehicle::Vehicle;
 use crate::air_properties as air;
 use crate::imports::*;
 
-#[pyo3_api]
+#[fastsim_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
 /// Solver parameters
 pub struct SimParams {
     pub ach_speed_max_iter: u32,
     pub ach_speed_tol: si::Ratio,
     pub ach_speed_solver_gain: f64,
-    #[api(skip_get, skip_set)] // TODO: manually write out getter and setter
+    #[api(skip_get, skip_set)]
     pub trace_miss_tol: TraceMissTolerance,
 }
 
@@ -30,7 +30,7 @@ impl Default for SimParams {
     }
 }
 
-#[pyo3_api(
+#[fastsim_api(
     #[new]
     fn __new__(veh: Vehicle, cyc: Cycle, sim_params: Option<SimParams>) -> anyhow::Result<Self> {
         Ok(SimDrive{
@@ -80,7 +80,6 @@ impl SimDrive {
         }
     }
 
-    // #[timer] TODO: fix and uncomment
     pub fn walk(&mut self) -> anyhow::Result<()> {
         ensure!(self.cyc.len() >= 2, format_dbg!(self.cyc.len() < 2));
         self.save_state();
@@ -398,7 +397,7 @@ mod tests {
     #[test]
     #[cfg(feature = "resources")]
     fn test_sim_drive_conv() {
-        let _veh = mock_f2_conv_veh();
+        let _veh = mock_conv_veh();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive {
             veh: _veh,
@@ -413,7 +412,7 @@ mod tests {
     #[test]
     #[cfg(feature = "resources")]
     fn test_sim_drive_hev() {
-        let _veh = mock_f2_hev();
+        let _veh = mock_hev();
         let _cyc = Cycle::from_resource("udds.csv", false).unwrap();
         let mut sd = SimDrive {
             veh: _veh,

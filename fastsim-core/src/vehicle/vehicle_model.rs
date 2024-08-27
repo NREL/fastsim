@@ -16,7 +16,7 @@ pub enum AuxSource {
 impl SerdeAPI for AuxSource {}
 impl Init for AuxSource {}
 
-#[pyo3_api(
+#[fastsim_api(
     #[staticmethod]
     fn try_from_fastsim2(veh: fastsim_2::vehicle::RustVehicle) -> PyResult<Vehicle> {
         Ok(Self::try_from(veh.clone())?)
@@ -826,7 +826,7 @@ impl Vehicle {
 
 /// Vehicle state for current time step
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
-#[pyo3_api]
+#[fastsim_api]
 pub struct VehicleState {
     /// time step index
     pub i: usize,
@@ -924,8 +924,12 @@ impl Default for VehicleState {
 pub(crate) mod tests {
     use super::*;
 
+    fn vehicles_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/vehicles")
+    }
+
     #[cfg(feature = "yaml")]
-    pub(crate) fn mock_f2_conv_veh() -> Vehicle {
+    pub(crate) fn mock_conv_veh() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2012_Ford_Fusion.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
@@ -934,21 +938,14 @@ pub(crate) mod tests {
             veh.unwrap()
         };
 
+        veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
+            .unwrap();
         assert!(veh.pt_type.is_conventional_vehicle());
-
-        // TODO: come up with a fancier solution
-        // uncomment this if the fastsim-3 version needs to be rewritten
-        // veh.to_file(
-        //     project_root::get_project_root()
-        //         .unwrap()
-        //         .join("tests/assets/2012_Ford_Fusion.yaml"),
-        // )
-        // .unwrap();
         veh
     }
 
     #[cfg(feature = "yaml")]
-    pub(crate) fn mock_f2_hev() -> Vehicle {
+    pub(crate) fn mock_hev() -> Vehicle {
         let file_contents = include_str!("fastsim-2_2016_TOYOTA_Prius_Two.yaml");
         use fastsim_2::traits::SerdeAPI;
         let veh = {
@@ -957,16 +954,9 @@ pub(crate) mod tests {
             veh.unwrap()
         };
 
+        veh.to_file(vehicles_dir().join("2016_TOYOTA_Prius_Two.yaml"))
+            .unwrap();
         assert!(veh.pt_type.is_hybrid_electric_vehicle());
-
-        // TODO: come up with a fancier solution
-        // uncomment this if the fastsim-3 version needs to be rewritten
-        // veh.to_file(
-        //     project_root::get_project_root()
-        //         .unwrap()
-        //         .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
-        // )
-        // .unwrap();
         veh
     }
 
@@ -974,7 +964,7 @@ pub(crate) mod tests {
     #[test]
     #[cfg(feature = "yaml")]
     pub(crate) fn test_conv_veh_init() {
-        let veh = mock_f2_conv_veh();
+        let veh = mock_conv_veh();
         let mut veh1 = veh.clone();
         assert!(veh == veh1);
         veh1.init().unwrap();
@@ -984,7 +974,7 @@ pub(crate) mod tests {
     #[test]
     #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_conv() {
-        let veh = mock_f2_conv_veh();
+        let veh = mock_conv_veh();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
@@ -998,7 +988,7 @@ pub(crate) mod tests {
     #[test]
     #[cfg(all(feature = "csv", feature = "resources"))]
     fn test_to_fastsim2_hev() {
-        let veh = mock_f2_hev();
+        let veh = mock_hev();
         let cyc = crate::drive_cycle::Cycle::from_resource("udds.csv", false).unwrap();
         let sd = crate::simdrive::SimDrive {
             veh,
@@ -1007,20 +997,5 @@ pub(crate) mod tests {
         };
         let mut sd2 = sd.to_fastsim2().unwrap();
         sd2.sim_drive(None, None).unwrap();
-    }
-
-    #[test]
-    #[cfg(feature = "yaml")]
-    fn test_hev_deserialize() {
-        let veh = mock_f2_hev();
-
-        let veh_from_file = Vehicle::from_file(
-            project_root::get_project_root()
-                .unwrap()
-                .join("tests/assets/2016_TOYOTA_Prius_Two.yaml"),
-            false,
-        )
-        .unwrap();
-        assert!(veh == veh_from_file);
     }
 }

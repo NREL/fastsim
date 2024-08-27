@@ -7,7 +7,7 @@ use super::*;
 use crate::pyo3::*;
 use crate::utils::abs_checked_x_val;
 
-#[pyo3_api(
+#[fastsim_api(
     // #[new]
     // fn __new__(
     //     pwr_out_frac_interp: Vec<f64>,
@@ -367,7 +367,7 @@ impl Mass for ElectricMachine {
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
-#[pyo3_api]
+#[fastsim_api]
 pub struct ElectricMachineState {
     /// time step index
     pub i: usize,
