@@ -31,9 +31,9 @@ pub(crate) fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                 .iter()
                 .map(
                     // This closure might be clunky
-                    |x| match x.path.segments[0].ident.to_string().as_str() { // todo: check length of segments for robustness
+                    |attr| match attr.path.segments[0].ident.to_string().as_str() { // todo: check length of segments for robustness
                     "api" => {
-                        let meta = x.parse_meta().unwrap();
+                        let meta = attr.parse_meta().unwrap();
                         if let Meta::List(list) = meta {
                             for nested in list.nested {
                                 if let syn::NestedMeta::Meta(opt) = nested {
@@ -46,7 +46,7 @@ pub(crate) fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         // where this gets messed up
                                         _ => {
                                             abort!(
-                                                x.span(),
+                                                attr.span(),
                                                 format!(
                                                     "Invalid api option: {opt_name}.\nValid options are: `skip_get`, `skip_set`."
                                                 )
