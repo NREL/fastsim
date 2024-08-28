@@ -26,42 +26,56 @@ pub(crate) fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
             // https://github.com/PyO3/pyo3/blob/48690525e19b87818b59f99be83f1e0eb203c7d4/pyo3-macros-backend/src/pyclass.rs#L220
 
             let mut opts = FieldOptions::default();
+            // find attributes that need to be retained for other macros
+            // and handle the `api` attributes
             let keep: Vec<bool> = field
                 .attrs
                 .iter()
-                .map(
-                    // This closure might be clunky
-                    |attr| match attr.path.segments[0].ident.to_string().as_str() { // todo: check length of segments for robustness
-                    "api" => {
-                        let meta = attr.parse_meta().unwrap();
-                        if let Meta::List(list) = meta {
-                            for nested in list.nested {
-                                if let syn::NestedMeta::Meta(opt) = nested {
-                                    // println!("opt_path{:?}", opt.path().segments[0].ident.to_string().as_str());;
-                                    let opt_name = opt.path().segments[0].ident.to_string();
-                                    match opt_name.as_str() {
-                                        "skip_get" => opts.skip_get = true,
-                                        "skip_set" => opts.skip_set = true,
-                                        // todo: figure out how to use span to have rust-analyzer highlight the exact code
-                                        // where this gets messed up
-                                        _ => {
-                                            abort!(
-                                                attr.span(),
-                                                format!(
-                                                    "Invalid api option: {opt_name}.\nValid options are: `skip_get`, `skip_set`."
-                                                )
-                                            )
-                                        }
-                                    }
+                .map(|attr| {
+                    if let Meta::List(ml) = &attr.meta {
+                        // catch the `api` in `#[api(skip_get)]`
+                        if ml.path.is_ident("api") {
+                            let opt_str = ml.tokens.to_string();
+                            let opt_split = opt_str.as_str().split(",");
+                            let mut opt_vec =
+                                opt_split.map(|opt| opt.trim()).collect::<Vec<&str>>();
+
+                            // find the `skip_get` option
+                            let mut idx_skip_get: Option<usize> = None;
+                            opt_vec.iter().enumerate().for_each(|(i, opt)| {
+                                if *opt == "skip_get" {
+                                    idx_skip_get = Some(i);
+                                    opts.skip_get = true;
                                 }
+                            });
+                            if let Some(idx_skip_get) = idx_skip_get {
+                                let _ = opt_vec.remove(idx_skip_get);
                             }
+
+                            // find the `skip_set` option
+                            let mut idx_skip_set: Option<usize> = None;
+                            opt_vec.iter().enumerate().for_each(|(i, opt)| {
+                                if *opt == "skip_set" {
+                                    idx_skip_set = Some(i);
+                                    opts.skip_set = true;
+                                }
+                            });
+                            if let Some(idx_skip_set) = idx_skip_set {
+                                let _ = opt_vec.remove(idx_skip_set);
+                            }
+                            if !opt_vec.is_empty() {
+                                emit_error!(ml.span(), "Invalid option(s): {:?}", opt_vec);
+                            }
+                            false // this attribute should not be retained because it is handled solely by this proc macro
+                        } else {
+                            true
                         }
-                        false
+                    } else {
+                        true
                     }
-                    _ => true,
                 })
                 .collect();
-            // println!("options {:?}", opts);
+            // println!("options in {}: {:?}", field.ident.to_token_stream(), opts);
             let mut iter = keep.iter();
             // this drops attrs with api, removing the field attribute from the struct def
             field.attrs.retain(|_| *iter.next().unwrap());

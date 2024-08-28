@@ -7,7 +7,7 @@ macro_rules! extract_units {
     ($($field_units: ty),+) => {{
         let mut unit_impls = vec![];
         $(
-            let field_units: TokenStream2 = stringify!($field_units).parse().unwrap();
+            let field_units: TokenStream2 = stringify!($field_units).parse().expect("failed to parse `field_units`");
             let unit_name = <$field_units as uom::si::Unit>::plural().replace(' ', "_");
             unit_impls.push((field_units, unit_name));
         )+
@@ -110,20 +110,12 @@ fn impl_get_set_si(
 
 fn field_has_serde_rename(field: &syn::Field) -> bool {
     !field.attrs.iter().any(|attr| {
-        let attr_meta = attr.parse_meta().unwrap();
-        if let Meta::List(meta_list) = attr_meta {
+        if let Meta::List(ml) = &attr.meta {
             // catch the `serde` in `#[serde(rename = "...")]`
-            meta_list.path.is_ident("serde")
+            ml.path.is_ident("serde")
                 &&
             // catch the `rename` in `#[serde(rename = "...")]`
-            meta_list.nested.iter().any(|nm| {
-                match nm {
-                    NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, ..})) => {
-                        path.is_ident("rename")
-                    }
-                    _ => false
-                }
-            })
+            ml.tokens.to_string().contains("rename")
         } else {
             false
         }

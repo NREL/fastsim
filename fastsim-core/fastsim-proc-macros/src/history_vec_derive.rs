@@ -24,7 +24,7 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
             let doc_attrs = &f
                 .attrs
                 .iter()
-                .filter(|attr| attr.path.is_ident("doc"))
+                .filter(|attr| attr.path().is_ident("doc"))
                 .collect::<Vec<&syn::Attribute>>();
             quote! {
                 #(#doc_attrs)*
