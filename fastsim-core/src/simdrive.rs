@@ -12,7 +12,7 @@ pub struct SimParams {
     pub ach_speed_max_iter: u32,
     pub ach_speed_tol: si::Ratio,
     pub ach_speed_solver_gain: f64,
-    #[api(skip_get, skip_set, bad_arg)]
+    #[api(skip_get, skip_set)]
     pub trace_miss_tol: TraceMissTolerance,
 }
 
