@@ -7,7 +7,7 @@ macro_rules! extract_units {
     ($($field_units: ty),+) => {{
         let mut unit_impls = vec![];
         $(
-            let field_units: TokenStream2 = stringify!($field_units).parse().unwrap();
+            let field_units: TokenStream2 = stringify!($field_units).parse().expect("failed to parse `field_units`");
             let unit_name = <$field_units as uom::si::Unit>::plural().replace(' ', "_");
             unit_impls.push((field_units, unit_name));
         )+
@@ -16,13 +16,13 @@ macro_rules! extract_units {
 }
 
 /// Determine the wrapper type for a specified vector nesting layer
-fn vec_layer_type(vec_layers: u8) -> TokenStream2 {
+fn vec_layer_type(vec_layers: u8, span: Span) -> TokenStream2 {
     match vec_layers {
         0 => quote!(f64),
         1 => quote!(Pyo3VecWrapper),
         2 => quote!(Pyo3Vec2Wrapper),
         3 => quote!(Pyo3Vec3Wrapper),
-        _ => abort_call_site!("Invalid vector layer {vec_layers}!"),
+        _ => abort!(span, "Invalid vector layer {vec_layers}!"),
     }
 }
 
@@ -61,7 +61,7 @@ fn impl_get_set_si(
 
     if !opts.skip_get {
         let get_name: TokenStream2 = format!("get_{field_name}").parse().unwrap();
-        let get_type = vec_layer_type(vec_layers);
+        let get_type = vec_layer_type(vec_layers, ident.span());
         let unit_func = quote!(get::<#field_units>());
         fn iter_map_collect_vec(inner_func: TokenStream2) -> TokenStream2 {
             quote!(iter().map(|x| x.#inner_func).collect::<Vec<_>>())
@@ -110,20 +110,12 @@ fn impl_get_set_si(
 
 fn field_has_serde_rename(field: &syn::Field) -> bool {
     !field.attrs.iter().any(|attr| {
-        let attr_meta = attr.parse_meta().unwrap();
-        if let Meta::List(meta_list) = attr_meta {
+        if let Meta::List(ml) = &attr.meta {
             // catch the `serde` in `#[serde(rename = "...")]`
-            meta_list.path.is_ident("serde")
+            ml.path.is_ident("serde")
                 &&
             // catch the `rename` in `#[serde(rename = "...")]`
-            meta_list.nested.iter().any(|nm| {
-                match nm {
-                    NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, ..})) => {
-                        path.is_ident("rename")
-                    }
-                    _ => false
-                }
-            })
+            ml.tokens.to_string().contains("rename")
         } else {
             false
         }
@@ -148,7 +140,7 @@ fn impl_get_body(
         let get_name: TokenStream2 = format!("get_{field}").parse().unwrap();
         let field_type = match vec_layers {
             0 => field_type.clone(),
-            _ => vec_layer_type(vec_layers),
+            _ => vec_layer_type(vec_layers, field.span()),
         };
 
         let field_val = match vec_layers {
