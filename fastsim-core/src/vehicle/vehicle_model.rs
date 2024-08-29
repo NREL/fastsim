@@ -860,8 +860,8 @@ impl Vehicle {
 }
 
 /// Vehicle state for current time step
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[fastsim_api]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 pub struct VehicleState {
     /// time step index
     pub i: usize,

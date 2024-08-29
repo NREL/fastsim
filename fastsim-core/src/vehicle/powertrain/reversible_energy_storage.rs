@@ -556,8 +556,8 @@ pub enum SpecificEnergySideEffect {
     Energy,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[fastsim_api]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 // component limits
 /// ReversibleEnergyStorage state variables
 pub struct ReversibleEnergyStorageState {

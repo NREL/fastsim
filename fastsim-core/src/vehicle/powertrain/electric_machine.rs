@@ -627,10 +627,10 @@ impl ElectricMachine {
     }
 }
 
+#[fastsim_api]
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
-#[fastsim_api]
 pub struct ElectricMachineState {
     /// time step index
     pub i: usize,

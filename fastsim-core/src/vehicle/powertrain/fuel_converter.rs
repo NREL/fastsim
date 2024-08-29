@@ -290,10 +290,10 @@ impl FuelConverter {
 //     impl_get_set_eff_range!();
 // }
 
+#[fastsim_api]
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
-#[fastsim_api]
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,
