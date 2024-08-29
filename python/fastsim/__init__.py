@@ -169,15 +169,6 @@ def variable_path_list_from_py_objs(
     
     return key_paths
 
-CYC_KEYS = [
-    "time_seconds",
-    "speed_mps",
-    "dist",
-    "grade",
-    "elev",
-    "pwr_max_chrg",
-]
-
 def history_path_list(self, element_as_list:bool=False) -> List[str]:
     """
     Returns a list of relative paths to all history variables (all variables
@@ -188,11 +179,12 @@ def history_path_list(self, element_as_list:bool=False) -> List[str]:
     - `element_as_list`: if True, each element is itself a list of the path elements
     """
     key_as_str = lambda key: key if not element_as_list else ".".join(key)
-    key_in_cyc = lambda key: any(cyc_key for cyc_key in CYC_KEYS if cyc_key in key)
-    history_path_list = [
-        key for key in self.variable_path_list(element_as_list=element_as_list) 
-            if (("history" in key_as_str(key)) or (key_in_cyc(key_as_str(key))))
-    ]
+    key_in_cyc = lambda key: any(cyc_key for cyc_key in CYC_KEYS if cyc_key == key) 
+    history_path_list = []
+    for key in self.variable_path_list(element_as_list=element_as_list):
+        if (("history" in key_as_str(key)) or (key_in_cyc(key_as_str(key)))):
+            history_path_list.append(key)
+
     return history_path_list
             
 setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
@@ -212,12 +204,13 @@ def from_pydict(cls, pydict: Dict) -> Self:
     import json
     return cls.from_json(json.dumps(pydict))
 
-def to_dataframe(self, pandas:bool=False) -> Union[pd.DataFrame, pl.DataFrame]:
+def to_dataframe(self, pandas:bool=False, allow_partial:bool=False) -> Union[pd.DataFrame, pl.DataFrame]:
     """
     Returns time series results from fastsim object as a Polars or Pandas dataframe.
 
     # Arguments
     - `pandas`: returns pandas dataframe if True; otherwise, returns polars dataframe by default
+    - `allow_partial`: returns dataframe of length equal to solved time steps if simulation fails early
     """
     obj_dict = self.to_pydict()
     history_paths = self.history_path_list(element_as_list=True)   
@@ -228,10 +221,17 @@ def to_dataframe(self, pandas:bool=False) -> Union[pd.DataFrame, pl.DataFrame]:
         for elem in hp:
             obj = obj[elem]
         vals.append(obj)
-    if not pandas:
-        df = pl.DataFrame({col: val for col, val in zip(cols, vals)})
+    if allow_partial:
+        cutoff = min([len(val) for val in vals])
+        if not pandas:
+            df = pl.DataFrame({col: val[:cutoff] for col, val in zip(cols, vals)})
+        else:
+            df = pd.DataFrame({col: val[:cutoff] for col, val in zip(cols, vals)})
     else:
-        df = pd.DataFrame({col: val for col, val in zip(cols, vals)})
+        if not pandas:
+            df = pl.DataFrame({col: val for col, val in zip(cols, vals)})
+        else:
+            df = pd.DataFrame({col: val for col, val in zip(cols, vals)})
     return df
 
 # adds variable_path_list() and history_path_list() as methods to all classes in
