@@ -63,6 +63,8 @@ pub(crate) fn fastsim_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             if let Some(idx_skip_set) = idx_skip_set {
                                 let _ = opt_vec.remove(idx_skip_set);
                             }
+
+                            // make sure there were no invalid options passed and raise warning
                             if !opt_vec.is_empty() {
                                 emit_error!(ml.span(), "Invalid option(s): {:?}", opt_vec);
                             }
