@@ -1,5 +1,6 @@
 //! Module containing vehicle struct and related functions.
 
+use crate::calibration::skewness_shift;
 // local
 use crate::imports::*;
 use crate::params::*;
@@ -77,6 +78,21 @@ lazy_static! {
         self.set_derived().unwrap()
     }
 
+    #[setter("__set_mc_pwr_out_perc")]
+    pub fn set_mc_pwr_out_perc_py(&mut self, new_mc_pwr_out_perc: &PyArrayDyn<f64>) -> anyhow::Result<()> {
+        self.set_mc_pwr_out_perc(new_mc_pwr_out_perc.to_owned_array().into_raw_vec())
+    }
+
+    #[setter("__set_mc_eff_array")]
+    pub fn set_mc_eff_array_py(&mut self, new_mc_eff_array: &PyArrayDyn<f64>) -> anyhow::Result<()> {
+        self.set_mc_eff_array(new_mc_eff_array.to_owned_array().into_raw_vec())
+    }
+
+    #[setter("__set_mc_full_eff_array")]
+    pub fn set_mc_full_eff_array_py(&mut self, new_mc_full_eff_array: &PyArrayDyn<f64>) -> anyhow::Result<()> {
+        self.set_mc_full_eff_array(new_mc_full_eff_array.to_owned_array().into_raw_vec())
+    }
+
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
     /// Returns a clone of the current object
     pub fn to_rust(&self) -> Self {
@@ -87,6 +103,20 @@ lazy_static! {
     #[pyo3(name = "mock_vehicle")]
     fn mock_vehicle_py() -> Self {
         Self::mock_vehicle()
+    }
+
+    #[pyo3(name = "update_mc_motor_eff_skewness")]
+    pub fn update_mc_motor_eff_skewness_py<'py>(
+        &self,
+        new_peak_x: f64,
+        py: Python<'py>,
+    ) -> anyhow::Result<(&'py PyArrayDyn<f64>, &'py PyArrayDyn<f64>, &'py PyArrayDyn<f64>)> {
+    // ) -> anyhow::Result<(&'py PyArray<f64, Dim<[usize; 1]>, &'py PyArray<f64, Dim<[usize; 1]>, &'py PyArray<f64, Dim<[usize; 1]>)> {
+        let arrays = self.update_mc_motor_eff_skewness(new_peak_x)?;
+        let array_1 = Array1::from_vec(arrays.0.to_vec()).into_dyn().into_pyarray(py);
+        let array_2 = Array1::from_vec(arrays.1.to_vec()).into_dyn().into_pyarray(py);
+        let array_3= Array1::from_vec(arrays.2.to_vec()).into_dyn().into_pyarray(py);
+        Ok((array_1, array_2, array_3))
     }
 )]
 #[cfg_attr(feature = "validation", derive(Validate))]
@@ -771,7 +801,8 @@ impl RustVehicle {
                 self.modern_max = MODERN_MAX;
             }
             let modern_diff = self.modern_max - arrmax(&LARGE_BASELINE_EFF);
-            let large_baseline_eff_adj: Vec<f64> = LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
+            let large_baseline_eff_adj: Vec<f64> =
+                LARGE_BASELINE_EFF.iter().map(|x| x + modern_diff).collect();
             let mc_kw_adj_perc = max(
                 0.0,
                 min(
@@ -1068,11 +1099,42 @@ impl RustVehicle {
             }
             None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref(),
         };
-        let mut vehicle =
-            Self::from_url(&url_internal, false).with_context(|| "Could not parse vehicle from url")?;
+        let mut vehicle = Self::from_url(&url_internal, false)
+            .with_context(|| "Could not parse vehicle from url")?;
         let vehicle_origin = "Vehicle from ".to_owned() + url_internal.as_str();
         vehicle.doc = Some(vehicle_origin);
         Ok(vehicle)
+    }
+
+    /// Skews the peak of motor efficiency curve to new x-value, redistributing other
+    /// x-values linearly, preserving relative distances between peak and endpoints.  
+    /// Arguments:  
+    /// ----------  
+    /// new_peak_x: new x-value at which to relocate peak  
+    ///  
+    /// Note: returns, in the following order, updated mc_pwr_out_perc, updated
+    /// mc_eff_map and updated mc_full_eff_array  
+
+    pub fn update_mc_motor_eff_skewness(
+        &self,
+        new_peak_x: f64,
+    ) -> anyhow::Result<(Array1<f64>, Array1<f64>, Array1<f64>)> {
+        let short_arrays = skewness_shift(&self.mc_pwr_out_perc, &self.mc_eff_map, new_peak_x)?;
+        let long_y_array = self
+            .mc_perc_out_array
+            .iter()
+            .enumerate()
+            .map(|(idx, &x): (usize, &f64)| -> f64 {
+                if idx == 0 {
+                    0.0
+                } else {
+                    interpolate(&x, &self.mc_pwr_out_perc, &self.mc_eff_array, false)
+                }
+            })
+            .collect();
+        let x_array = short_arrays.0;
+        let short_y_array = short_arrays.1;
+        Ok((x_array, short_y_array, long_y_array))
     }
 }
 

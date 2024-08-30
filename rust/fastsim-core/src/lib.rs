@@ -42,6 +42,7 @@ pub mod imports;
 pub mod params;
 pub mod pyo3imports;
 pub mod simdrive;
+mod calibration;
 pub use simdrive::simdrive_impl;
 pub mod resources;
 pub mod simdrivelabel;
