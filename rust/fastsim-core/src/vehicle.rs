@@ -79,18 +79,18 @@ lazy_static! {
     }
 
     #[setter("__set_mc_pwr_out_perc")]
-    pub fn set_mc_pwr_out_perc_py(&mut self, new_mc_pwr_out_perc: &PyArrayDyn<f64>) -> anyhow::Result<()> {
-        self.set_mc_pwr_out_perc(new_mc_pwr_out_perc.to_owned_array().into_raw_vec())
+    pub fn set_mc_pwr_out_perc_py(&mut self, new_mc_pwr_out_perc: &PyArray<f64, Dim<[usize; 1]>>) -> anyhow::Result<()> {
+        self.set_mc_pwr_out_perc(new_mc_pwr_out_perc.to_vec()?)
     }
 
     #[setter("__set_mc_eff_array")]
-    pub fn set_mc_eff_array_py(&mut self, new_mc_eff_array: &PyArrayDyn<f64>) -> anyhow::Result<()> {
-        self.set_mc_eff_array(new_mc_eff_array.to_owned_array().into_raw_vec())
+    pub fn set_mc_eff_array_py(&mut self, new_mc_eff_array: &PyArray<f64, Dim<[usize; 1]>>) -> anyhow::Result<()> {
+        self.set_mc_eff_array(new_mc_eff_array.to_vec()?)
     }
 
     #[setter("__set_mc_full_eff_array")]
-    pub fn set_mc_full_eff_array_py(&mut self, new_mc_full_eff_array: &PyArrayDyn<f64>) -> anyhow::Result<()> {
-        self.set_mc_full_eff_array(new_mc_full_eff_array.to_owned_array().into_raw_vec())
+    pub fn set_mc_full_eff_array_py(&mut self, new_mc_full_eff_array: &PyArray<f64, Dim<[usize; 1]>>) -> anyhow::Result<()> {
+        self.set_mc_full_eff_array(new_mc_full_eff_array.to_vec()?)
     }
 
     /// An identify function to allow RustVehicle to be used as a python vehicle and respond to this method
@@ -110,12 +110,12 @@ lazy_static! {
         &self,
         new_peak_x: f64,
         py: Python<'py>,
-    ) -> anyhow::Result<(&'py PyArrayDyn<f64>, &'py PyArrayDyn<f64>, &'py PyArrayDyn<f64>)> {
-    // ) -> anyhow::Result<(&'py PyArray<f64, Dim<[usize; 1]>, &'py PyArray<f64, Dim<[usize; 1]>, &'py PyArray<f64, Dim<[usize; 1]>)> {
+    // ) -> anyhow::Result<(&'py PyArrayDyn<f64>, &'py PyArrayDyn<f64>, &'py PyArrayDyn<f64>)> {
+    ) -> anyhow::Result<(&'py PyArray<f64, Dim<[usize; 1]>>, &'py PyArray<f64, Dim<[usize; 1]>>, &'py PyArray<f64, Dim<[usize; 1]>>)> {
         let arrays = self.update_mc_motor_eff_skewness(new_peak_x)?;
-        let array_1 = Array1::from_vec(arrays.0.to_vec()).into_dyn().into_pyarray(py);
-        let array_2 = Array1::from_vec(arrays.1.to_vec()).into_dyn().into_pyarray(py);
-        let array_3= Array1::from_vec(arrays.2.to_vec()).into_dyn().into_pyarray(py);
+        let array_1 = Array1::from_vec(arrays.0.to_vec()).into_pyarray(py);
+        let array_2 = Array1::from_vec(arrays.1.to_vec()).into_pyarray(py);
+        let array_3= Array1::from_vec(arrays.2.to_vec()).into_pyarray(py);
         Ok((array_1, array_2, array_3))
     }
 )]
