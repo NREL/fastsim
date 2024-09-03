@@ -310,7 +310,7 @@ impl ReversibleEnergyStorage {
         }
         // current SOC is greater than ramp down threshold but less than current min or current SOC is less than both
         else {
-            uc::W * 0.
+            si::Power::ZERO
         };
 
         state.pwr_charge_max =
@@ -340,17 +340,17 @@ impl ReversibleEnergyStorage {
         // current SOC is less than ramp down threshold but greater than current
         // max or current SOC is greater than both
         else {
-            uc::W * 0.
+            si::Power::ZERO
         };
 
         ensure!(
-            state.pwr_disch_max >= uc::W * 0.,
+            state.pwr_disch_max >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero",
             stringify!(state.pwr_disch_max),
             state.pwr_disch_max.get::<si::watt>().format_eng(None)
         );
         ensure!(
-            state.pwr_charge_max >= uc::W * 0.,
+            state.pwr_charge_max >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero",
             stringify!(state.pwr_charge_max),
             state.pwr_charge_max.get::<si::watt>().format_eng(None)
@@ -369,13 +369,13 @@ impl ReversibleEnergyStorage {
             state.soc.get::<si::ratio>()
         );
         ensure!(
-            state.pwr_prop_max >= uc::W * 0.,
+            state.pwr_prop_max >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero",
             stringify!(state.pwr_prop_max),
             state.pwr_prop_max.get::<si::watt>().format_eng(None)
         );
         ensure!(
-            state.pwr_regen_max >= uc::W * 0.,
+            state.pwr_regen_max >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero",
             stringify!(state.pwr_regen_max),
             state.pwr_regen_max.get::<si::watt>().format_eng(None)

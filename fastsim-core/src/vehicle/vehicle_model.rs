@@ -562,8 +562,8 @@ impl Vehicle {
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
-        // TODO: this is wrong for anything with regen capability
-        self.state.pwr_brake = -self.state.pwr_tractive.max(uc::W * 0.) - self.pt_type.pwr_regen();
+        self.state.pwr_brake =
+            -self.state.pwr_tractive.max(si::Power::ZERO) - self.pt_type.pwr_regen();
         Ok(())
     }
 

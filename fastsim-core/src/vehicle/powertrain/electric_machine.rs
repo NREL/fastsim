@@ -120,14 +120,14 @@ impl ElectricMachine {
         _dt: si::Time,
     ) -> anyhow::Result<()> {
         ensure!(
-            pwr_in_fwd_lim >= uc::W * 0.,
+            pwr_in_fwd_lim >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
             stringify!(pwr_in_fwd_lim),
             pwr_in_fwd_lim.get::<si::watt>().format_eng(None),
             stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
         );
         ensure!(
-            pwr_in_bwd_lim >= uc::W * 0.,
+            pwr_in_bwd_lim >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
             stringify!(pwr_in_bwd_lim),
             pwr_in_bwd_lim.get::<si::watt>().format_eng(None),

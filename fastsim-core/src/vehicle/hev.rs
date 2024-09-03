@@ -45,12 +45,15 @@ impl Init for HybridElectricVehicle {
 impl Powertrain for Box<HybridElectricVehicle> {
     fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
+        self.fc
+            .set_cur_pwr_tract_out_max(si::Power::ZERO, dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
         self.res
             .set_cur_pwr_out_max(pwr_aux, None, None)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.em
             .set_cur_pwr_prop_out_max(
-                self.res.state.pwr_prop_max,
+                self.res.state.pwr_prop_max + self.fc.state.pwr_prop_max,
                 self.res.state.pwr_regen_max,
                 dt,
             )
@@ -198,7 +201,7 @@ impl HEVControls {
         fc_state: &FuelConverterState,
         em_state: &ElectricMachineState,
     ) -> anyhow::Result<(si::Power, si::Power)> {
-        if pwr_out_req >= uc::W * 0. {
+        if pwr_out_req >= si::Power::ZERO {
             // positive net power out of the powertrain
             match self {
                 Self::Fastsim2 => {
@@ -221,12 +224,16 @@ impl HEVControls {
                         .min(em_state.pwr_mech_fwd_out_max);
                     let fc_pwr = pwr_out_req - em_pwr;
 
-                    ensure!(fc_pwr >= uc::W * 0., format_dbg!(fc_pwr >= uc::W * 0.));
                     ensure!(
-                        pwr_out_req <= fc_state.pwr_prop_max + em_state.pwr_mech_fwd_out_max,
-                        format_dbg!(
-                            pwr_out_req <= fc_state.pwr_prop_max + em_state.pwr_mech_fwd_out_max
-                        )
+                        fc_pwr >= si::Power::ZERO,
+                        format_dbg!(fc_pwr >= si::Power::ZERO)
+                    );
+                    ensure!(
+                        pwr_out_req <= em_state.pwr_mech_fwd_out_max,
+                        "{}\n`pwr_out_req`: {} kW\n`em_state.pwr_mech_fwd_out_max`: {} kW",
+                        format_dbg!(pwr_out_req <= em_state.pwr_mech_fwd_out_max),
+                        pwr_out_req.get::<si::kilowatt>(),
+                        em_state.pwr_mech_fwd_out_max.get::<si::kilowatt>()
                     );
 
                     Ok((fc_pwr, em_pwr))

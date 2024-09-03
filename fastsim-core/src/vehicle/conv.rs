@@ -52,7 +52,7 @@ impl Powertrain for Box<ConventionalVehicle> {
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // only positive power can come from powertrain.  Revisit this if engine braking model is needed.
-        let pwr_out_req = pwr_out_req.max(uc::W * 0.0);
+        let pwr_out_req = pwr_out_req.max(si::Power::ZERO);
         let enabled = true; // TODO: replace with a stop/start model
         self.fc
             .solve(pwr_out_req, pwr_aux, enabled, dt)
@@ -61,7 +61,7 @@ impl Powertrain for Box<ConventionalVehicle> {
     }
 
     fn pwr_regen(&self) -> si::Power {
-        uc::W * 0.
+        si::Power::ZERO
     }
 }
 

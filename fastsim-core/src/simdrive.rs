@@ -289,7 +289,7 @@ impl SimDrive {
         let mut new_speed_guesses = vec![new_speed_guess];
         // speed achieved iteration counter
         let mut spd_ach_iter_counter = 1;
-        let mut converged = pwr_err <= uc::W * 0.;
+        let mut converged = pwr_err <= si::Power::ZERO;
         #[cfg(feature = "logging")]
         log::debug!(
             "{}\n{}",
@@ -391,7 +391,7 @@ mod tests {
         };
         sd.walk().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
-        assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
+        assert!(sd.veh.fc().unwrap().state.energy_fuel > si::Energy::ZERO);
     }
 
     #[test]
@@ -406,7 +406,7 @@ mod tests {
         };
         sd.walk().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
-        assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
-        assert!(sd.veh.res().unwrap().state.energy_out_chemical != uc::J * 0.);
+        assert!(sd.veh.fc().unwrap().state.energy_fuel > si::Energy::ZERO);
+        assert!(sd.veh.res().unwrap().state.energy_out_chemical != si::Energy::ZERO);
     }
 }
