@@ -11,8 +11,6 @@ pub use pyo3::types::PyType;
 
 #[pymodule]
 fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
-    #[cfg(feature = "logging")]
-    pyo3_log::init();
     m.add_class::<FuelConverter>()?;
     m.add_class::<FuelConverterState>()?;
     m.add_class::<FuelConverterStateHistoryVec>()?;
@@ -39,5 +37,15 @@ fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
     // List enabled features
     m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;
 
+    // initialize logging
+
+    #[cfg(feature = "logging")]
+    m.add_function(wrap_pyfunction!(pyo3_log_init, m)?)?;
+
     Ok(())
+}
+
+fn pyo3_log_init() {
+    #[cfg(feature = "logging")]
+    pyo3_log::init();
 }

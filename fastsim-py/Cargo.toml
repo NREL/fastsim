@@ -17,4 +17,5 @@ name = "fastsim"
 crate-type = ["cdylib"]
 
 [features]
+default = ["logging"]
 logging = ["fastsim-core/logging", "dep:pyo3-log"]
