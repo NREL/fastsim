@@ -169,6 +169,16 @@ def variable_path_list_from_py_objs(
     
     return key_paths
 
+def cyc_keys() -> List[str]:
+    import json
+    cyc = Cycle.from_resource("udds.csv")
+    cyc_dict = json.loads(cyc.to_json())
+    cyc_keys = [key for key, val in cyc_dict.items() if isinstance(val, list)]
+
+    return cyc_keys
+    
+CYC_KEYS = cyc_keys()
+
 def history_path_list(self, element_as_list:bool=False) -> List[str]:
     """
     Returns a list of relative paths to all history variables (all variables
@@ -178,14 +188,15 @@ def history_path_list(self, element_as_list:bool=False) -> List[str]:
     # Arguments
     - `element_as_list`: if True, each element is itself a list of the path elements
     """
-    key_as_str = lambda key: key if not element_as_list else ".".join(key)
-    key_in_cyc = lambda key: any(cyc_key for cyc_key in CYC_KEYS if cyc_key == key) 
-    history_path_list = []
-    for key in self.variable_path_list(element_as_list=element_as_list):
-        if (("history" in key_as_str(key)) or (key_in_cyc(key_as_str(key)))):
-            history_path_list.append(key)
+    key_as_str = lambda key: key if isinstance(key, str) else ".".join(key)
+    is_cyc_key = lambda key: any(cyc_key for cyc_key in CYC_KEYS if cyc_key == key[-1]) and "cyc" in key
+    var_paths = self.variable_path_list(element_as_list=element_as_list)
+    history_paths = []
+    for key in var_paths:
+        if (("history" in key_as_str(key)) or is_cyc_key(key)):
+            history_paths.append(key)
 
-    return history_path_list
+    return history_paths
             
 setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
 
