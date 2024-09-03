@@ -45,6 +45,7 @@ fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
+#[cfg_attr(feature = "logging", pyfunction)]
 fn pyo3_log_init() {
     #[cfg(feature = "logging")]
     pyo3_log::init();
