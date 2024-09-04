@@ -90,7 +90,7 @@ lazy_static! {
         Self::mock_vehicle()
     }
 
-    #[setter("__set_mc_eff_peak_pwr")]
+    #[setter("mc_eff_peak_pwr")]
     pub fn set_mc_eff_peak_pwr_py<'py>(
         &mut self,
         new_peak_x: f64,
