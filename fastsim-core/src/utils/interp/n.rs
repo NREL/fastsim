@@ -183,6 +183,9 @@ impl InterpND {
     }
 }
 
+impl SerdeAPI for InterpND {}
+impl Init for InterpND {}
+
 impl InterpMethods for InterpND {
     fn validate(&self) -> anyhow::Result<()> {
         let n = self.ndim();

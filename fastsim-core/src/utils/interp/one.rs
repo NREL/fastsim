@@ -106,6 +106,9 @@ impl Interp1D {
     }
 }
 
+impl SerdeAPI for Interp1D {}
+impl Init for Interp1D {}
+
 impl InterpMethods for Interp1D {
     fn validate(&self) -> anyhow::Result<()> {
         let x_grid_len = self.x.len();

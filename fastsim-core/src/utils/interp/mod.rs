@@ -178,15 +178,6 @@ pub enum Interpolator {
     InterpND(InterpND),
 }
 
-impl SerdeAPI for Interpolator {}
-impl Init for Interpolator {}
-impl SerdeAPI for Interp1D {}
-impl Init for Interp1D {}
-impl SerdeAPI for Interp2D {}
-impl Init for Interp2D {}
-impl SerdeAPI for Interp3D {}
-impl Init for Interp3D {}
-
 impl Interpolator {
     /// Interpolate at supplied point, after checking point validity.
     /// Length of supplied point must match interpolator dimensionality.
@@ -536,6 +527,9 @@ impl Interpolator {
         Ok(())
     }
 }
+
+impl SerdeAPI for Interpolator {}
+impl Init for Interpolator {}
 
 /// Interpolation strategy.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

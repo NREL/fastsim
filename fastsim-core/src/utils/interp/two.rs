@@ -77,6 +77,9 @@ impl Interp2D {
     }
 }
 
+impl SerdeAPI for Interp2D {}
+impl Init for Interp2D {}
+
 impl InterpMethods for Interp2D {
     fn validate(&self) -> anyhow::Result<()> {
         let x_grid_len = self.x.len();

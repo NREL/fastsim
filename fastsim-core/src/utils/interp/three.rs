@@ -99,6 +99,9 @@ impl Interp3D {
     }
 }
 
+impl SerdeAPI for Interp3D {}
+impl Init for Interp3D {}
+
 impl InterpMethods for Interp3D {
     fn validate(&self) -> anyhow::Result<()> {
         let x_grid_len = self.x.len();
