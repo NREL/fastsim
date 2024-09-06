@@ -19,7 +19,6 @@ pub mod three;
 pub mod two;
 
 pub use n::*;
-use ndarray::{IxDynImpl, OwnedRepr};
 pub use one::*;
 pub use three::*;
 pub use two::*;
@@ -519,7 +518,7 @@ impl Interpolator {
     }
 
     /// Function to get values variable from enum variants
-    pub fn values(&self) -> anyhow::Result<ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>>> {
+    pub fn values(&self) -> anyhow::Result<ArrayD<f64>> {
         match self {
             Interpolator::InterpND(interp) => Ok(interp.values.to_owned()),
             _ => bail!("Variant does not have `values` field."),
@@ -529,10 +528,7 @@ impl Interpolator {
     /// Function to set values variable from enum variants
     /// # Arguments
     /// - `new_values`: updated `values` variable to replace the current `values` variable
-    pub fn set_values(
-        &mut self,
-        new_values: ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>>,
-    ) -> anyhow::Result<()> {
+    pub fn set_values(&mut self, new_values: ArrayD<f64>) -> anyhow::Result<()> {
         match self {
             Interpolator::InterpND(interp) => interp.set_values(new_values)?,
             _ => bail!("Variant does not have `values` field."),
