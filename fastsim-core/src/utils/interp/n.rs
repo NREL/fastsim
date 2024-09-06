@@ -8,11 +8,12 @@ use itertools::Itertools;
 pub struct InterpND {
     pub(super) grid: Vec<Vec<f64>>,
     pub(super) values: ArrayD<f64>,
-    #[serde(skip)]
-    pub extrapolate: Extrapolate,
     pub strategy: Strategy,
+    #[serde(default)]
+    pub extrapolate: Extrapolate,
+    /// Phantom private field to prevent direct instantiation in other modules
     #[serde(skip)]
-    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
+    _phantom: PhantomData<()>,
 }
 
 impl InterpND {
@@ -177,14 +178,14 @@ impl InterpND {
     /// Function to set values variable from InterpND
     /// # Arguments
     /// - `new_values`: updated `values` variable to replace the current `values` variable
-    pub fn set_values(
-        &mut self,
-        new_values: ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>>,
-    ) -> anyhow::Result<()> {
+    pub fn set_values(&mut self, new_values: ArrayD<f64>) -> anyhow::Result<()> {
         self.values = new_values;
         self.validate()
     }
 }
+
+impl SerdeAPI for InterpND {}
+impl Init for InterpND {}
 
 impl InterpMethods for InterpND {
     fn validate(&self) -> anyhow::Result<()> {

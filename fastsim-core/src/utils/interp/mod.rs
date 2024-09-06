@@ -19,7 +19,6 @@ pub mod three;
 pub mod two;
 
 pub use n::*;
-use ndarray::{IxDynImpl, OwnedRepr};
 pub use one::*;
 pub use three::*;
 pub use two::*;
@@ -178,15 +177,6 @@ pub enum Interpolator {
     /// N-dimensional interpolation
     InterpND(InterpND),
 }
-
-impl SerdeAPI for Interpolator {}
-impl Init for Interpolator {}
-impl SerdeAPI for Interp1D {}
-impl Init for Interp1D {}
-impl SerdeAPI for Interp2D {}
-impl Init for Interp2D {}
-impl SerdeAPI for Interp3D {}
-impl Init for Interp3D {}
 
 impl Interpolator {
     /// Interpolate at supplied point, after checking point validity.
@@ -519,7 +509,7 @@ impl Interpolator {
     }
 
     /// Function to get values variable from enum variants
-    pub fn values(&self) -> anyhow::Result<ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>>> {
+    pub fn values(&self) -> anyhow::Result<ArrayD<f64>> {
         match self {
             Interpolator::InterpND(interp) => Ok(interp.values.to_owned()),
             _ => bail!("Variant does not have `values` field."),
@@ -529,10 +519,7 @@ impl Interpolator {
     /// Function to set values variable from enum variants
     /// # Arguments
     /// - `new_values`: updated `values` variable to replace the current `values` variable
-    pub fn set_values(
-        &mut self,
-        new_values: ArrayBase<OwnedRepr<f64>, Dim<IxDynImpl>>,
-    ) -> anyhow::Result<()> {
+    pub fn set_values(&mut self, new_values: ArrayD<f64>) -> anyhow::Result<()> {
         match self {
             Interpolator::InterpND(interp) => interp.set_values(new_values)?,
             _ => bail!("Variant does not have `values` field."),
@@ -540,6 +527,9 @@ impl Interpolator {
         Ok(())
     }
 }
+
+impl SerdeAPI for Interpolator {}
+impl Init for Interpolator {}
 
 /// Interpolation strategy.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

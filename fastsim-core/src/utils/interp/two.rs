@@ -8,10 +8,11 @@ pub struct Interp2D {
     pub(super) y: Vec<f64>,
     pub(super) f_xy: Vec<Vec<f64>>,
     pub strategy: Strategy,
-    #[serde(skip)]
+    #[serde(default)]
     pub extrapolate: Extrapolate,
+    /// Phantom private field to prevent direct instantiation in other modules
     #[serde(skip)]
-    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
+    _phantom: PhantomData<()>,
 }
 
 impl Interp2D {
@@ -76,6 +77,9 @@ impl Interp2D {
         self.validate()
     }
 }
+
+impl SerdeAPI for Interp2D {}
+impl Init for Interp2D {}
 
 impl InterpMethods for Interp2D {
     fn validate(&self) -> anyhow::Result<()> {
