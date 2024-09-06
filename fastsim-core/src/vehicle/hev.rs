@@ -198,27 +198,16 @@ impl HEVControls {
     fn get_pwr_fc_and_em(
         &self,
         pwr_out_req: si::Power,
-        fc_state: &FuelConverterState,
+        _fc_state: &FuelConverterState,
         em_state: &ElectricMachineState,
     ) -> anyhow::Result<(si::Power, si::Power)> {
         if pwr_out_req >= si::Power::ZERO {
             // positive net power out of the powertrain
             match self {
                 Self::Fastsim2 => {
-                    todo!()
+                    bail!("{}\nnot yet implemented!", format_dbg!())
                 }
                 Self::RESGreedy => {
-                    // Use ElectricMachine greedily until its max then draw
-                    // remaining power from FuelConverter
-                    // Ok(if pwr_out_req <= em_state.pwr_prop_max {
-                    //     let fc_pwr = 0.;
-                    //     let em_pwr = pwr_out_req
-                    //     (fc_pwr, em_pwr)
-                    // } else {
-                    //     let fc_pwr = pwr_out_req - fc_state.pwr_prop_max.max(pwr_out_req);
-                    //     let em_pwr = em_state.pwr_prop_max;
-                    //     (fc_pwr, em_pwr)
-                    // })
                     let em_pwr = pwr_out_req
                         // cannot exceed ElectricMachine max output power
                         .min(em_state.pwr_mech_fwd_out_max);
@@ -243,7 +232,7 @@ impl HEVControls {
             // negative net power out of the powertrain -- i.e. positive net power _into_ powertrain
             match self {
                 Self::Fastsim2 => {
-                    todo!()
+                    bail!("{}\nnot yet implemented!", format_dbg!())
                 }
                 Self::RESGreedy => {
                     // if `em_pwr` is less than magnitude of `pwr_out_req`, friction brakes can handle excess

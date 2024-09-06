@@ -380,6 +380,7 @@ fsim.set_param_from_path(veh_no_save, "save_interval", None)
 fsim.set_param_from_path(veh, "save_interval", 1)
 
 # load cycle from file
+# TODO make it so that the cycles in resources have `name` populated
 cyc = fsim.Cycle.from_resource("udds.csv")
 
 # instantiate `SimDrive` simulation object

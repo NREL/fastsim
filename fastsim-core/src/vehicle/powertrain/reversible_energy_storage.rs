@@ -150,51 +150,53 @@ impl ReversibleEnergyStorage {
         );
 
         if pwr_out_req + pwr_aux >= si::Power::ZERO {
+            // discharging
             ensure!(
                 utils::almost_le_uom(&(pwr_out_req + pwr_aux), &self.pwr_out_max, Some(TOL)),
-                "{}\nres required power ({:.6} MW) exceeds static max discharge power ({:.6} MW)\nstate.soc = {}",
+                "{}\nres required power ({:.6} kW) exceeds static max discharge power ({:.6} kW)\nstate.soc = {}",
                 format_dbg!(utils::almost_le_uom(
                     &(pwr_out_req + pwr_aux),
                     &self.pwr_out_max,
                     Some(TOL)
                 )),
-                (pwr_out_req + pwr_aux).get::<si::megawatt>(),
-                state.pwr_disch_max.get::<si::megawatt>(),
+                (pwr_out_req + pwr_aux).get::<si::kilowatt>(),
+                state.pwr_disch_max.get::<si::kilowatt>(),
                 state.soc.get::<si::ratio>()
             );
             ensure!(
                 utils::almost_le_uom(&(pwr_out_req + pwr_aux), &state.pwr_disch_max, Some(TOL)),
-                "{}\nres required power ({:.6} MW) exceeds transient max discharge power ({:.6} MW)\nstate.soc = {}",
+                "{}\nres required power ({:.6} kW) exceeds current max discharge power ({:.6} kW)\nstate.soc = {}",
                 format_dbg!(utils::almost_le_uom(&(pwr_out_req + pwr_aux), &state.pwr_disch_max, Some(TOL))),
-                (pwr_out_req + pwr_aux).get::<si::megawatt>(),
-                state.pwr_disch_max.get::<si::megawatt>(),
+                (pwr_out_req + pwr_aux).get::<si::kilowatt>(),
+                state.pwr_disch_max.get::<si::kilowatt>(),
                 state.soc.get::<si::ratio>()
             );
         } else {
+            // charging
             ensure!(
                 utils::almost_ge_uom(&(pwr_out_req + pwr_aux), &-self.pwr_out_max, Some(TOL)),
                 format!(
-                    "{}\nres required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                    "{}\nres required power ({:.6} kW) exceeds static max power ({:.6} kW)",
                     format_dbg!(utils::almost_ge_uom(
                         &(pwr_out_req + pwr_aux),
                         &-self.pwr_out_max,
                         Some(TOL)
                     )),
-                    (pwr_out_req + pwr_aux).get::<si::megawatt>(),
-                    state.pwr_charge_max.get::<si::megawatt>()
+                    (pwr_out_req + pwr_aux).get::<si::kilowatt>(),
+                    state.pwr_charge_max.get::<si::kilowatt>()
                 )
             );
             ensure!(
                 utils::almost_ge_uom(&(pwr_out_req + pwr_aux), &-state.pwr_charge_max, Some(TOL)),
                 format!(
-                    "{}\nres required power ({:.6} MW) exceeds transient max power ({:.6} MW)",
+                    "{}\nres required power ({:.6} kW) exceeds current max power ({:.6} kW)",
                     format_dbg!(utils::almost_ge_uom(
                         &(pwr_out_req + pwr_aux),
                         &-state.pwr_charge_max,
                         Some(TOL)
                     )),
-                    (pwr_out_req + pwr_aux).get::<si::megawatt>(),
-                    state.pwr_charge_max.get::<si::megawatt>()
+                    (pwr_out_req + pwr_aux).get::<si::kilowatt>(),
+                    state.pwr_charge_max.get::<si::kilowatt>()
                 )
             );
         }

@@ -208,12 +208,30 @@ impl ElectricMachine {
     ) -> anyhow::Result<si::Power> {
         //TODO: update this function to use `pwr_mech_regen_out_max`
         ensure!(
-            pwr_out_req <= self.pwr_out_max,
+            pwr_out_req.abs() <= self.pwr_out_max,
             format!(
-                "{}\nedrv required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                "{}\nedrv required power ({:.6} kW) exceeds static max power ({:.6} kW)",
                 format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
-                pwr_out_req.get::<si::megawatt>(),
-                self.pwr_out_max.get::<si::megawatt>()
+                pwr_out_req.get::<si::kilowatt>(),
+                self.pwr_out_max.get::<si::kilowatt>()
+            ),
+        );
+        ensure!(
+            pwr_out_req <= self.state.pwr_mech_fwd_out_max,
+            format!(
+                "{}\nedrv required discharge power ({:.6} kW) exceeds current max discharge power ({:.6} kW)",
+                format_dbg!(pwr_out_req <= self.state.pwr_mech_fwd_out_max),
+                pwr_out_req.get::<si::kilowatt>(),
+                self.state.pwr_mech_fwd_out_max.get::<si::kilowatt>()
+            ),
+        );
+        ensure!(
+            -pwr_out_req <= self.state.pwr_mech_bwd_out_max,
+            format!(
+                "{}\nedrv required charge power ({:.6} kW) exceeds current max charge power ({:.6} kW)",
+                format_dbg!(pwr_out_req <= self.state.pwr_mech_bwd_out_max),
+                pwr_out_req.get::<si::kilowatt>(),
+                self.state.pwr_mech_bwd_out_max.get::<si::kilowatt>()
             ),
         );
 
