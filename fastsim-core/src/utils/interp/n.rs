@@ -8,11 +8,12 @@ use itertools::Itertools;
 pub struct InterpND {
     pub(super) grid: Vec<Vec<f64>>,
     pub(super) values: ArrayD<f64>,
-    #[serde(skip)]
-    pub extrapolate: Extrapolate,
     pub strategy: Strategy,
+    #[serde(default)]
+    pub extrapolate: Extrapolate,
+    /// Phantom private field to prevent direct instantiation in other modules
     #[serde(skip)]
-    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
+    _phantom: PhantomData<()>,
 }
 
 impl InterpND {

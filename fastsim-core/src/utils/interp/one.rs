@@ -7,10 +7,11 @@ pub struct Interp1D {
     pub(super) x: Vec<f64>,
     pub(super) f_x: Vec<f64>,
     pub strategy: Strategy,
-    #[serde(skip)]
+    #[serde(default)]
     pub extrapolate: Extrapolate,
+    /// Phantom private field to prevent direct instantiation in other modules
     #[serde(skip)]
-    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
+    _phantom: PhantomData<()>,
 }
 
 impl Interp1D {
