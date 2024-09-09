@@ -390,7 +390,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         )
                         .unwrap(),
                     )),
-                    eff_interp_bwd: Some(Interpolator::Interp1D(
+                    eff_interp_at_max_input: Some(Interpolator::Interp1D(
                         Interp1D::new(
                             // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
                             // be transferred over as done here, or does a new defualt need to be defined?

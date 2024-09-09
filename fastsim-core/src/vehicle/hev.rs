@@ -53,7 +53,8 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .with_context(|| anyhow!(format_dbg!()))?;
         self.em
             .set_cur_pwr_prop_out_max(
-                self.res.state.pwr_prop_max + self.fc.state.pwr_prop_max,
+                // TODO: add means of controlling whether fc can provide power to em and also how much
+                self.res.state.pwr_prop_max,
                 self.res.state.pwr_regen_max,
                 dt,
             )
@@ -85,9 +86,14 @@ impl Powertrain for Box<HybridElectricVehicle> {
 
         self.fc
             .solve(fc_pwr_out_req, pwr_aux, enabled, dt)
-            .with_context(|| anyhow!(format_dbg!()))?;
-        let res_pwr_out_req = self.em.get_pwr_in_req(em_pwr_out_req, dt)?;
-        self.res.solve(res_pwr_out_req, pwr_aux, dt)?;
+            .with_context(|| format_dbg!())?;
+        let res_pwr_out_req = self
+            .em
+            .get_pwr_in_req(em_pwr_out_req, dt)
+            .with_context(|| format_dbg!())?;
+        self.res
+            .solve(res_pwr_out_req, pwr_aux, dt)
+            .with_context(|| format_dbg!())?;
         Ok(())
     }
 
@@ -198,7 +204,7 @@ impl HEVControls {
     fn get_pwr_fc_and_em(
         &self,
         pwr_out_req: si::Power,
-        _fc_state: &FuelConverterState,
+        fc_state: &FuelConverterState,
         em_state: &ElectricMachineState,
     ) -> anyhow::Result<(si::Power, si::Power)> {
         if pwr_out_req >= si::Power::ZERO {
@@ -217,7 +223,7 @@ impl HEVControls {
                         format_dbg!(fc_pwr >= si::Power::ZERO)
                     );
                     ensure!(
-                        pwr_out_req <= em_state.pwr_mech_fwd_out_max,
+                        pwr_out_req <= em_state.pwr_mech_fwd_out_max + fc_state.pwr_prop_max,
                         "{}\n`pwr_out_req`: {} kW\n`em_state.pwr_mech_fwd_out_max`: {} kW",
                         format_dbg!(pwr_out_req <= em_state.pwr_mech_fwd_out_max),
                         pwr_out_req.get::<si::kilowatt>(),

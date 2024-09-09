@@ -34,11 +34,7 @@ fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
     // List enabled features
     m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;
 
-    // List enabled features
-    m.add_function(wrap_pyfunction!(fastsim_core::enabled_features, m)?)?;
-
     // initialize logging
-
     #[cfg(feature = "logging")]
     m.add_function(wrap_pyfunction!(pyo3_log_init, m)?)?;
 

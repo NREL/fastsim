@@ -149,6 +149,11 @@ impl ReversibleEnergyStorage {
             state.soc.get::<si::ratio>()
         );
 
+        state.pwr_out_propulsion = pwr_out_req;
+        state.pwr_aux = pwr_aux;
+
+        state.pwr_out_electrical = state.pwr_out_propulsion + state.pwr_aux;
+
         if pwr_out_req + pwr_aux >= si::Power::ZERO {
             // discharging
             ensure!(
@@ -200,11 +205,6 @@ impl ReversibleEnergyStorage {
                 )
             );
         }
-
-        state.pwr_out_propulsion = pwr_out_req;
-        state.pwr_aux = pwr_aux;
-
-        state.pwr_out_electrical = state.pwr_out_propulsion + state.pwr_aux;
 
         // TODO: replace this with something correct.
         // This should trip the `ensure` below
@@ -267,7 +267,7 @@ impl ReversibleEnergyStorage {
         pwr_aux: si::Power,
         charge_buffer: Option<si::Energy>,
         discharge_buffer: Option<si::Energy>,
-    ) -> anyhow::Result<(si::Power, si::Power)> {
+    ) -> anyhow::Result<()> {
         if self.soc_hi_ramp_start.is_none() {
             self.soc_hi_ramp_start = Some(self.soc_hi_ramp_start_default());
         }
@@ -306,7 +306,6 @@ impl ReversibleEnergyStorage {
                      ],
                 vec![0.0, self.pwr_out_max.get::<si::watt>()],
                     Strategy::Linear,
-                    // TODO: figure out if it is ok to have Extrapolate::Clamp here
                     Extrapolate::Clamp,
                 )?).interpolate(&[state.soc.get::<si::ratio>()])?
         }
@@ -383,7 +382,7 @@ impl ReversibleEnergyStorage {
             state.pwr_regen_max.get::<si::watt>().format_eng(None)
         );
 
-        Ok((state.pwr_prop_max, state.pwr_regen_max))
+        Ok(())
     }
 
     fn soc_hi_ramp_start_default(&self) -> si::Ratio {
