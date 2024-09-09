@@ -48,7 +48,7 @@ name = "interp_bench"
 harness = false
 
 [features]
-default = ["resources", "web", "serde-default"]
+default = ["resources", "web", "serde-default" ]
 ## Enables logging messages that can be passed to Python if `pyo3` is also
 ## enabled.
 logging = ["dep:log"]

@@ -208,9 +208,8 @@ impl HEVControls {
                     bail!("{}\nnot yet implemented!", format_dbg!())
                 }
                 Self::RESGreedy => {
-                    let em_pwr = pwr_out_req
-                        // cannot exceed ElectricMachine max output power
-                        .min(em_state.pwr_mech_fwd_out_max);
+                    // cannot exceed ElectricMachine max output power
+                    let em_pwr = pwr_out_req.min(em_state.pwr_mech_fwd_out_max);
                     let fc_pwr = pwr_out_req - em_pwr;
 
                     ensure!(

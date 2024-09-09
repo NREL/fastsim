@@ -959,6 +959,7 @@ impl Default for VehicleState {
 pub(crate) mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     fn vehicles_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/vehicles")
     }

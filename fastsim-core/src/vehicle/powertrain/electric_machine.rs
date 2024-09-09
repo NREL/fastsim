@@ -149,7 +149,7 @@ impl ElectricMachine {
         let eff_pos = uc::R
             * self
                 .eff_interp_bwd
-                .as_mut()
+                .as_ref()
                 .map(|interpolator| {
                     interpolator.interpolate(&[abs_checked_x_val(
                         (pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
@@ -170,7 +170,7 @@ impl ElectricMachine {
         let eff_neg = uc::R
             * self
                 .eff_interp_bwd
-                .as_mut()
+                .as_ref()
                 .map(|interpolator| {
                     interpolator.interpolate(&[abs_checked_x_val(
                         (pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
@@ -464,7 +464,7 @@ impl ElectricMachine {
             }
             let f_x_bwd = self
                 .eff_interp_bwd
-                .as_mut()
+                .as_ref()
                 .ok_or(anyhow!(
                     "eff_interp_bwd is None, which should never be the case at this point."
                 ))?
@@ -602,7 +602,7 @@ impl ElectricMachine {
 
             let new_f_x: Vec<f64> = self
                 .eff_interp_bwd
-                .as_mut()
+                .as_ref()
                 .ok_or(anyhow!("eff_interp_bwd should be Some by this point."))?
                 .f_x()?
                 .iter()
@@ -618,7 +618,7 @@ impl ElectricMachine {
                 let x_neg = self.get_eff_min_bwd()?;
                 let new_f_x: Vec<f64> = self
                     .eff_interp_bwd
-                    .as_mut()
+                    .as_ref()
                     .ok_or(anyhow!("eff_interp_bwd should be Some by this point."))?
                     .f_x()?
                     .iter()
