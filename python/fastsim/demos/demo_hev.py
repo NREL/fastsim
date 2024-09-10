@@ -4,8 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from matplotlib import rc_params
-from cycler import cycler
 import seaborn as sns
 from pathlib import Path
 import time
@@ -16,6 +14,8 @@ import fastsim as fsim
 
 sns.set_theme()
 
+from plot_utils import *
+
 # if enivronment var `DEBUG_LOG=true` is set, turns on debug logging
 DEBUG_LOG = os.environ.get("DEBUG_LOG", "false").lower() == "true"     
 # if environment var `SHOW_PLOTS=false` is set, no plots are shown
@@ -23,6 +23,71 @@ SHOW_PLOTS = os.environ.get("SHOW_PLOTS", "true").lower() == "true"
 # if environment var `SAVE_FIGS=true` is set, save plots
 SAVE_FIGS = os.environ.get("SAVE_FIGS", "false").lower() == "true"
 
+# `fastsim3` -- load vehicle and cycle, build simulation, and run 
+# %%
+
+# load 2016 Toyota Prius Two from file
+veh = fsim.Vehicle.from_resource("2016_TOYOTA_Prius_Two.yaml")
+
+veh_no_save = veh.copy()
+fsim.set_param_from_path(veh_no_save, "save_interval", None)
+
+# Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
+fsim.set_param_from_path(veh, "save_interval", 1)
+
+# load cycle from file
+# TODO make it so that the cycles in resources have `name` populated
+cyc = fsim.Cycle.from_resource("udds.csv")
+
+# instantiate `SimDrive` simulation object
+sd0 = fsim.SimDrive(veh, cyc)
+sd = sd0.copy()
+
+# simulation start time
+t0 = time.perf_counter()
+# run simulation
+if DEBUG_LOG:
+    with fsim.utils.with_logging():
+        sd.walk()
+else:
+    sd.walk()
+# simulation end time
+t1 = time.perf_counter()
+t_fsim3_si1 = t1 - t0
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
+
+# TODO: change arg to default
+df = sd.to_dataframe(allow_partial=True)
+
+# instantiate `SimDrive` simulation object
+sd_no_save = fsim.SimDrive(veh_no_save, cyc)
+
+# simulation start time
+t0 = time.perf_counter()
+# run simulation
+sd_no_save.walk()
+# simulation end time
+t1 = time.perf_counter()
+t_fsim3_si_none = t1 - t0
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
+
+# `fastsim-2` benchmarking
+# %%
+
+sd2 = sd0.to_fastsim2()
+t0 = time.perf_counter()
+with fsim.utils.without_logging(): # suppresses known warning
+    sd2.sim_drive()
+t1 = time.perf_counter()
+t_fsim2 = t1 - t0
+print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
+print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:")
+print(f"{t_fsim2/t_fsim3_si1:.3g}x")
+print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:")
+print(f"{t_fsim2/t_fsim3_si_none:.3g}x")
+# Visualize results
+
+# %%
 def plot_road_loads() -> Tuple[Figure, Axes]: 
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Road Loads")
@@ -367,71 +432,6 @@ def get_uni_cycler():
     )
     return uni_cycler
 
-# `fastsim3` -- load vehicle and cycle, build simulation, and run 
-# %%
-
-# load 2016 Toyota Prius Two from file
-veh = fsim.Vehicle.from_resource("2016_TOYOTA_Prius_Two.yaml")
-
-veh_no_save = veh.copy()
-fsim.set_param_from_path(veh_no_save, "save_interval", None)
-
-# Set `save_interval` at vehicle level -- cascades to all sub-components with time-varying states
-fsim.set_param_from_path(veh, "save_interval", 1)
-
-# load cycle from file
-# TODO make it so that the cycles in resources have `name` populated
-cyc = fsim.Cycle.from_resource("udds.csv")
-
-# instantiate `SimDrive` simulation object
-sd0 = fsim.SimDrive(veh, cyc)
-sd = sd0.copy()
-
-# simulation start time
-t0 = time.perf_counter()
-# run simulation
-if DEBUG_LOG:
-    with fsim.utils.with_logging():
-        sd.walk()
-else:
-    sd.walk()
-# simulation end time
-t1 = time.perf_counter()
-t_fsim3_si1 = t1 - t0
-print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
-
-# TODO: change arg to default
-df = sd.to_dataframe(allow_partial=True)
-
-# instantiate `SimDrive` simulation object
-sd_no_save = fsim.SimDrive(veh_no_save, cyc)
-
-# simulation start time
-t0 = time.perf_counter()
-# run simulation
-sd_no_save.walk()
-# simulation end time
-t1 = time.perf_counter()
-t_fsim3_si_none = t1 - t0
-print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
-
-# `fastsim-2` benchmarking
-# %%
-
-sd2 = sd0.to_fastsim2()
-t0 = time.perf_counter()
-with fsim.utils.without_logging(): # suppresses known warning
-    sd2.sim_drive()
-t1 = time.perf_counter()
-t_fsim2 = t1 - t0
-print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
-print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:")
-print(f"{t_fsim2/t_fsim3_si1:.3g}x")
-print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:")
-print(f"{t_fsim2/t_fsim3_si_none:.3g}x")
-# Visualize results
-
-# %%
 if SHOW_PLOTS:
     fig, ax = plot_road_loads()
     fig, ax = plot_fc_pwr()
