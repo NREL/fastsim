@@ -8,6 +8,8 @@ pt_type:
       specific_energy_joules_per_kilogram: ~
       pwr_out_max_watts: 100000.0
       energy_capacity_joules: 2700000.0
+      eff_interp:
+        Interp0D: 0.9848857801796105
       min_soc: 0.25
       max_soc: 0.95
       save_interval: 1
@@ -21,7 +23,7 @@ pt_type:
       pwr_out_max_watts: 71000.0
       pwr_out_max_init_watts: 11639.344262295082
       pwr_ramp_lag_seconds: 6.1
-      eff_interp:
+      eff_interp_from_pwr_out:
         Interp1D:
           x:
             - 0.0
@@ -50,34 +52,36 @@ pt_type:
             - 0.33
             - 0.32
           strategy: LeftNearest
-          extrapolate: Error
       pwr_idle_fuel_watts: 13125.0
       save_interval: 1
     em:
-      pwr_out_frac_interp:
-        - 0.0
-        - 0.02
-        - 0.04
-        - 0.06
-        - 0.08
-        - 0.1
-        - 0.2
-        - 0.4
-        - 0.6
-        - 0.8
-        - 1.0
-      eff_interp:
-        - 0.83
-        - 0.85
-        - 0.87
-        - 0.89
-        - 0.9
-        - 0.91
-        - 0.93
-        - 0.94
-        - 0.94
-        - 0.93
-        - 0.92
+      eff_interp_fwd:
+        Interp1D:
+          x:
+            - 0.0
+            - 0.02
+            - 0.04
+            - 0.06
+            - 0.08
+            - 0.1
+            - 0.2
+            - 0.4
+            - 0.6
+            - 0.8
+            - 1.0
+          f_x:
+            - 0.83
+            - 0.85
+            - 0.87
+            - 0.89
+            - 0.9
+            - 0.91
+            - 0.93
+            - 0.94
+            - 0.94
+            - 0.93
+            - 0.92
+          strategy: LeftNearest
       pwr_out_max_watts: 53000.0
       specific_pwr_watts_per_kilogram: ~
       mass_kilograms: ~

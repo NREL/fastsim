@@ -114,7 +114,6 @@ impl Powertrain for BatteryElectricVehicle {
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        pwr_aux: si::Power,
         _veh_state: &VehicleState,
         _enabled: bool,
         dt: si::Time,
@@ -127,17 +126,18 @@ impl Powertrain for BatteryElectricVehicle {
         if self.em.state.pwr_elec_prop_in > si::Power::ZERO {
             // positive traction
             self.res
-                .solve(pwr_out_req_from_res, pwr_aux, dt)
+                .solve(pwr_out_req_from_res, dt)
                 .with_context(|| anyhow!(format_dbg!()))?;
         } else {
             // negative traction (should this be different from positive traction here?)
             self.res
                 .solve(
                     self.em.state.pwr_elec_prop_in,
-                    pwr_aux
-                        // whatever power is available from regen plus normal
-                        .min(self.res.state.pwr_prop_max - self.em.state.pwr_elec_prop_in)
-                        .max(si::Power::ZERO),
+                    // TODO: try to figure out what this was doing and put it in the right place
+                    // pwr_aux
+                    //     // whatever power is available from regen plus normal
+                    //     .min(self.res.state.pwr_prop_max - self.em.state.pwr_elec_prop_in)
+                    //     .max(si::Power::ZERO),
                     dt,
                 )
                 .with_context(|| anyhow!(format_dbg!()))?;
@@ -145,14 +145,14 @@ impl Powertrain for BatteryElectricVehicle {
         Ok(())
     }
 
-    fn get_cur_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+    fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         Ok((
             self.em.state.pwr_mech_fwd_out_max,
             self.em.state.pwr_mech_bwd_out_max,
         ))
     }
 
-    fn set_cur_pwr_prop_out_max(
+    fn set_curr_pwr_prop_out_max(
         &mut self,
         _pwr_aux: si::Power,
         _dt: si::Time,

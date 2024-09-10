@@ -4,13 +4,15 @@ use super::*;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Interp2D {
-    pub x: Vec<f64>,
-    pub y: Vec<f64>,
-    pub f_xy: Vec<Vec<f64>>,
+    pub(super) x: Vec<f64>,
+    pub(super) y: Vec<f64>,
+    pub(super) f_xy: Vec<Vec<f64>>,
     pub strategy: Strategy,
+    #[serde(default)]
     pub extrapolate: Extrapolate,
+    /// Phantom private field to prevent direct instantiation in other modules
     #[serde(skip)]
-    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
+    _phantom: PhantomData<()>,
 }
 
 impl Interp2D {
@@ -50,7 +52,34 @@ impl Interp2D {
         // interpolate in the y-direction
         Ok(c0 * (1.0 - y_diff) + c1 * y_diff)
     }
+
+    /// Function to set x variable from Interp2D
+    /// # Arguments
+    /// - `new_x`: updated `x` variable to replace the current `x` variable
+    pub fn set_x(&mut self, new_x: Vec<f64>) -> anyhow::Result<()> {
+        self.x = new_x;
+        self.validate()
+    }
+
+    /// Function to set y variable from Interp2D
+    /// # Arguments
+    /// - `new_y`: updated `y` variable to replace the current `y` variable
+    pub fn set_y(&mut self, new_y: Vec<f64>) -> anyhow::Result<()> {
+        self.y = new_y;
+        self.validate()
+    }
+
+    /// Function to set f_xy variable from Interp2D
+    /// # Arguments
+    /// - `new_f_xy`: updated `f_xy` variable to replace the current `f_xy` variable
+    pub fn set_f_xy(&mut self, new_f_xy: Vec<Vec<f64>>) -> anyhow::Result<()> {
+        self.f_xy = new_f_xy;
+        self.validate()
+    }
 }
+
+impl SerdeAPI for Interp2D {}
+impl Init for Interp2D {}
 
 impl InterpMethods for Interp2D {
     fn validate(&self) -> anyhow::Result<()> {
@@ -66,7 +95,7 @@ impl InterpMethods for Interp2D {
         );
         // Check that grid points are monotonically increasing
         ensure!(
-            self.x.windows(2).all(|w| w[0] < w[1]) && self.y.windows(2).all(|w| w[0] < w[1]),
+            self.x.windows(2).all(|w| w[0] <= w[1]) && self.y.windows(2).all(|w| w[0] <= w[1]),
             "Supplied coordinates must be sorted and non-repeating"
         );
         // Check that grid and values are compatible shapes

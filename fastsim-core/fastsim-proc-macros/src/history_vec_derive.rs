@@ -57,7 +57,6 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
         .parse()
         .unwrap();
     generated.append_all(quote! {
-        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
         #[fastsim_api(
             #[pyo3(name = "len")]
             fn len_py(&self) -> usize {
@@ -68,6 +67,7 @@ pub(crate) fn history_vec_derive(input: TokenStream) -> TokenStream {
                 self.len()
             }
         )]
+        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
         #struct_doc
         pub struct #new_name {
             #vec_fields

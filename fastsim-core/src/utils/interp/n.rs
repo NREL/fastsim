@@ -6,12 +6,14 @@ use itertools::Itertools;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct InterpND {
-    pub grid: Vec<Vec<f64>>,
-    pub values: ArrayD<f64>,
-    pub extrapolate: Extrapolate,
+    pub(super) grid: Vec<Vec<f64>>,
+    pub(super) values: ArrayD<f64>,
     pub strategy: Strategy,
+    #[serde(default)]
+    pub extrapolate: Extrapolate,
+    /// Phantom private field to prevent direct instantiation in other modules
     #[serde(skip)]
-    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
+    _phantom: PhantomData<()>,
 }
 
 impl InterpND {
@@ -140,7 +142,50 @@ impl InterpND {
             .multi_cartesian_product()
             .collect()
     }
+
+    /// Function to set grid variable from InterpND
+    /// # Arguments
+    /// - `new_grid`: updated `grid` variable to replace the current `grid` variable
+    pub fn set_grid(&mut self, new_grid: Vec<Vec<f64>>) -> anyhow::Result<()> {
+        self.grid = new_grid;
+        self.validate()
+    }
+
+    /// Function to set grid x variable from InterpND
+    /// # Arguments
+    /// - `new_x`: updated `grid[0]` to replace the current `grid[0]`
+    pub fn set_grid_x(&mut self, new_grid_x: Vec<f64>) -> anyhow::Result<()> {
+        self.grid[0] = new_grid_x;
+        self.validate()
+    }
+
+    /// Function to set grid y variable from InterpND
+    /// # Arguments
+    /// - `new_y`: updated `grid[1]` to replace the current `grid[1]`
+    pub fn set_grid_y(&mut self, new_grid_y: Vec<f64>) -> anyhow::Result<()> {
+        self.grid[1] = new_grid_y;
+        self.validate()
+    }
+
+    /// Function to set grid z variable from InterpND
+    /// # Arguments
+    /// - `new_z`: updated `grid[2]` to replace the current `grid[2]`
+    pub fn set_grid_z(&mut self, new_grid_z: Vec<f64>) -> anyhow::Result<()> {
+        self.grid[2] = new_grid_z;
+        self.validate()
+    }
+
+    /// Function to set values variable from InterpND
+    /// # Arguments
+    /// - `new_values`: updated `values` variable to replace the current `values` variable
+    pub fn set_values(&mut self, new_values: ArrayD<f64>) -> anyhow::Result<()> {
+        self.values = new_values;
+        self.validate()
+    }
 }
+
+impl SerdeAPI for InterpND {}
+impl Init for InterpND {}
 
 impl InterpMethods for InterpND {
     fn validate(&self) -> anyhow::Result<()> {
@@ -165,7 +210,7 @@ impl InterpMethods for InterpND {
         // Check that grid points are monotonically increasing
         for i in 0..n {
             ensure!(
-                self.grid[i].windows(2).all(|w| w[0] < w[1]),
+                self.grid[i].windows(2).all(|w| w[0] <= w[1]),
                 "Supplied `grid` coordinates must be sorted and non-repeating: dimension {i}, {:?}",
                 self.grid[i]
             );

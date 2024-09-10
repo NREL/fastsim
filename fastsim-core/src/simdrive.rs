@@ -102,9 +102,9 @@ impl SimDrive {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
         self.veh
-            .set_cur_pwr_out_max(dt)
+            .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_pwr_tract_for_speed(self.cyc.speed[i], dt)
+        self.set_pwr_prop_for_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -119,13 +119,13 @@ impl SimDrive {
     /// # Arguments
     /// - `speed`: prescribed or achieved speed
     /// - `dt`: time step size
-    pub fn set_pwr_tract_for_speed(
+    pub fn set_pwr_prop_for_speed(
         &mut self,
         speed: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         #[cfg(feature = "logging")]
-        log::debug!("{}: {}", format_dbg!(), "set_pwr_tract_for_speed");
+        log::debug!("{}: {}", format_dbg!(), "set_pwr_prop_for_speed");
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
@@ -135,26 +135,13 @@ impl SimDrive {
             log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {
-            #[cfg(feature = "logging")]
-            log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
             uc::R
-                * interp1d(
-                    &vs.dist.get::<si::meter>(),
-                    &self
-                        .cyc
-                        .dist
-                        .iter()
-                        .map(|d| d.get::<si::meter>())
-                        .collect::<Vec<f64>>(),
-                    &self
-                        .cyc
-                        .grade
-                        .iter()
-                        .map(|g| g.get::<si::ratio>())
-                        .collect::<Vec<f64>>(),
-                    utils::Extrapolate::Error,
-                )
-                .with_context(|| anyhow!("{}\n failed to calculate grade", format_dbg!()))?
+                * self
+                    .cyc
+                    .grade_interp
+                    .as_ref()
+                    .with_context(|| format_dbg!("You might have somehow bypassed `init()`"))?
+                    .interpolate(&[vs.dist.get::<si::meter>()])?
         };
 
         let mass = self.veh.mass.with_context(|| {
@@ -187,7 +174,7 @@ impl SimDrive {
 
         vs.pwr_tractive =
             vs.pwr_rr + vs.pwr_whl_inertia + vs.pwr_accel + vs.pwr_ascent + vs.pwr_drag;
-        vs.curr_pwr_met = vs.pwr_tractive <= vs.pwr_prop_pos_max;
+        vs.curr_pwr_met = vs.pwr_tractive <= vs.pwr_prop_fwd_max;
         if !vs.curr_pwr_met {
             // if current power demand is not met, then this becomes false for
             // the rest of the cycle and should not be manipulated anywhere else
@@ -271,8 +258,7 @@ impl SimDrive {
         let t3 = drag3;
         let t2 = accel2 + drag2 + wheel2;
         let t1 = drag1 + roll1 + ascent1;
-        // TODO: verify final term being subtracted.  Needs to be same as `self.cur_max_trans_kw_out[i]`
-        let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - vs.pwr_prop_pos_max;
+        let t0 = (accel0 + drag0 + roll0 + ascent0 + wheel0) - vs.pwr_prop_fwd_max;
 
         // initial guess
         let speed_guess = (1e-3 * uc::MPS).max(cyc_speed);
@@ -281,7 +267,6 @@ impl SimDrive {
         let xtol = self.sim_params.ach_speed_tol;
         // solver gain
         let g = self.sim_params.ach_speed_solver_gain;
-        // TODO: figure out if `pwr_err_fn` should be applied as the early return criterion
         let pwr_err_fn = |speed_guess: si::Velocity| -> si::Power {
             t3 * speed_guess.powi(typenum::P3::new())
                 + t2 * speed_guess.powi(typenum::P2::new())
@@ -304,7 +289,7 @@ impl SimDrive {
         let mut new_speed_guesses = vec![new_speed_guess];
         // speed achieved iteration counter
         let mut spd_ach_iter_counter = 1;
-        let mut converged = pwr_err <= uc::W * 0.;
+        let mut converged = pwr_err <= si::Power::ZERO;
         #[cfg(feature = "logging")]
         log::debug!(
             "{}\n{}",
@@ -346,7 +331,7 @@ impl SimDrive {
                 .with_context(|| format_dbg!("should have had at least one element"))?
                 .max(0.0 * uc::MPS);
         }
-        self.set_pwr_tract_for_speed(self.veh.state.speed_ach, dt)
+        self.set_pwr_prop_for_speed(self.veh.state.speed_ach, dt)
             .with_context(|| format_dbg!())?;
 
         Ok(())
@@ -406,7 +391,7 @@ mod tests {
         };
         sd.walk().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
-        assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
+        assert!(sd.veh.fc().unwrap().state.energy_fuel > si::Energy::ZERO);
     }
 
     #[test]
@@ -421,7 +406,7 @@ mod tests {
         };
         sd.walk().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
-        assert!(sd.veh.fc().unwrap().state.energy_fuel > uc::J * 0.);
-        assert!(sd.veh.res().unwrap().state.energy_out_chemical != uc::J * 0.);
+        assert!(sd.veh.fc().unwrap().state.energy_fuel > si::Energy::ZERO);
+        assert!(sd.veh.res().unwrap().state.energy_out_chemical != si::Energy::ZERO);
     }
 }

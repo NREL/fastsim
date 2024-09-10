@@ -1,6 +1,14 @@
 use super::imports::*;
 use super::*;
 
+lazy_static! {
+    static ref TE_AIR_DEFAULT: si::ThermodynamicTemperature = (22. + 273.15) * uc::KELVIN;
+    static ref STD_PRESSURE_DEFAULT: si::Pressure = 99_346.3 * uc::PASCAL;
+    // 1.2 kg/m^3 matches fastsim-2
+    static ref STD_DENSITY: si::MassDensity = 1.2 * uc::KGPM3;
+    static ref GAS_CONSTANT: si::SpecificHeatCapacity  = 287.0 * uc::J_PER_KG_K;
+}
+
 /// Returns density of air
 /// Source: <https://www.grc.nasa.gov/WWW/K-12/rocket/atmosmet.html>  
 /// Note that if `None` is passed for either argument, function evaluation should be faster
@@ -23,21 +31,11 @@ pub fn get_density_air(
                 .get::<si::ratio>()
                 .powf(5.256))
     };
-    let te_air_default = || (22. + 273.15) * uc::KELVIN;
-    // 99_346.3 = 101.29e3 * (287.02 / 288.08) ** 5.256
-    let std_pressure_default = || 99_346.3 * uc::PASCAL;
     match (h, te_air) {
-        (None, None) => {
-            // 99_346.3 / 287 / 293.15
-            1.206 * uc::KGPM3
-        }
-        (None, Some(te_air)) => std_pressure_default() / (287.0 * uc::J_PER_KG_K) / te_air,
-        (Some(h_val), None) => {
-            std_pressure_at_elev(h_val) / (287.0 * uc::J_PER_KG_K) / te_air_default()
-        }
-        (Some(h_val), Some(te_air)) => {
-            std_pressure_at_elev(h_val) / (287.0 * uc::J_PER_KG_K) / te_air
-        }
+        (None, None) => *STD_DENSITY,
+        (None, Some(te_air)) => *STD_PRESSURE_DEFAULT / *GAS_CONSTANT / te_air,
+        (Some(h_val), None) => std_pressure_at_elev(h_val) / *GAS_CONSTANT / *TE_AIR_DEFAULT,
+        (Some(h_val), Some(te_air)) => std_pressure_at_elev(h_val) / *GAS_CONSTANT / te_air,
     }
 }
 

@@ -31,37 +31,43 @@ impl SaveInterval for ConventionalVehicle {
 }
 
 impl Powertrain for Box<ConventionalVehicle> {
-    fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+    fn set_curr_pwr_prop_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
         self.fc
-            .set_cur_pwr_tract_out_max(pwr_aux / self.alt_eff, dt)
+            .set_curr_pwr_out_max(dt)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.fc
+            .set_curr_pwr_prop_max(pwr_aux / self.alt_eff)
             .with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 
-    fn get_cur_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+    fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         Ok((self.fc.state.pwr_prop_max, 0. * uc::W))
     }
 
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        pwr_aux: si::Power,
         _veh_state: &VehicleState,
         _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         // only positive power can come from powertrain.  Revisit this if engine braking model is needed.
-        let pwr_out_req = pwr_out_req.max(uc::W * 0.0);
+        let pwr_out_req = pwr_out_req.max(si::Power::ZERO);
         let enabled = true; // TODO: replace with a stop/start model
         self.fc
-            .solve(pwr_out_req, pwr_aux, enabled, dt)
+            .solve(pwr_out_req, enabled, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         Ok(())
     }
 
     fn pwr_regen(&self) -> si::Power {
-        uc::W * 0.
+        si::Power::ZERO
     }
 }
 

@@ -20,36 +20,37 @@ impl Init for PowertrainType {
 }
 
 impl Powertrain for PowertrainType {
-    fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+    fn set_curr_pwr_prop_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => v.set_cur_pwr_prop_out_max(pwr_aux, dt),
-            Self::HybridElectricVehicle(v) => v.set_cur_pwr_prop_out_max(pwr_aux, dt),
-            Self::BatteryElectricVehicle(v) => v.set_cur_pwr_prop_out_max(pwr_aux, dt),
+            Self::ConventionalVehicle(v) => v.set_curr_pwr_prop_out_max(pwr_aux, dt),
+            Self::HybridElectricVehicle(v) => v.set_curr_pwr_prop_out_max(pwr_aux, dt),
+            Self::BatteryElectricVehicle(v) => v.set_curr_pwr_prop_out_max(pwr_aux, dt),
         }
     }
 
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        pwr_aux: si::Power,
         veh_state: &VehicleState,
         enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         match self {
-            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, pwr_aux, veh_state, enabled, dt),
-            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, pwr_aux, veh_state, enabled, dt),
-            Self::BatteryElectricVehicle(v) => {
-                v.solve(pwr_out_req, pwr_aux, veh_state, enabled, dt)
-            }
+            Self::ConventionalVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
+            Self::HybridElectricVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
+            Self::BatteryElectricVehicle(v) => v.solve(pwr_out_req, veh_state, enabled, dt),
         }
     }
 
-    fn get_cur_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+    fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         match self {
-            Self::ConventionalVehicle(v) => v.get_cur_pwr_prop_out_max(),
-            Self::HybridElectricVehicle(v) => v.get_cur_pwr_prop_out_max(),
-            Self::BatteryElectricVehicle(v) => v.get_cur_pwr_prop_out_max(),
+            Self::ConventionalVehicle(v) => v.get_curr_pwr_prop_out_max(),
+            Self::HybridElectricVehicle(v) => v.get_curr_pwr_prop_out_max(),
+            Self::BatteryElectricVehicle(v) => v.get_curr_pwr_prop_out_max(),
         }
     }
 

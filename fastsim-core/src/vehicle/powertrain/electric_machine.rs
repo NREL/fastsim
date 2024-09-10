@@ -58,22 +58,25 @@ use crate::utils::abs_checked_x_val;
 /// Struct for modeling electric machines.  This lumps performance and efficiency of motor and power
 /// electronics.
 pub struct ElectricMachine {
-    #[serde(default)]
-    #[serde(skip_serializing_if = "EqDefault::eq_default")]
-    /// struct for tracking current state
-    pub state: ElectricMachineState,
     /// Shaft output power fraction array at which efficiencies are evaluated.
     /// This can range from 0 to 1 or -1 to 1, dependending on whether the efficiency is
     /// directionally symmetrical.
-    pub pwr_out_frac_interp: Vec<f64>,
-    #[api(skip_set)]
+    // /// this is x-data that will how be in eff_interp_fwd
+    // pub pwr_out_frac_interp: Vec<f64>,
+    #[api(skip_set, skip_get)]
     /// Efficiency array corresponding to [Self::pwr_out_frac_interp] and [Self::pwr_in_frac_interp]
-    pub eff_interp: Vec<f64>,
+    /// eff_interp_fwd and eff_interp_bwd have the same f_x but different x
+    /// note that the Extrapolate field of this variable is changed in get_pwr_in_req()
+    pub eff_interp_fwd: utils::interp::Interpolator,
+    #[serde(skip)]
+    #[api(skip_set, skip_get)]
+    /// if it is not provided, will be set during init
+    /// note that the Extrapolate field of this variable is changed in set_cur_pwr_prop_out_max()
+    pub eff_interp_at_max_input: Option<utils::interp::Interpolator>,
     /// Electrical input power fraction array at which efficiencies are evaluated.
     /// Calculated during runtime if not provided.
-    #[serde(skip)]
-    #[api(skip_set)]
-    pub pwr_in_frac_interp: Vec<f64>,
+    // /// this will disappear and instead be in eff_interp_bwd
+    // pub pwr_in_frac_interp: Vec<f64>,
     /// ElectricMachine maximum output power \[W\]
     pub pwr_out_max: si::Power,
     /// ElectricMachine specific power
@@ -87,6 +90,10 @@ pub struct ElectricMachine {
     /// Time step interval between saves. 1 is a good option. If None, no saving occurs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub save_interval: Option<usize>,
+    /// struct for tracking current state
+    #[serde(default)]
+    #[serde(skip_serializing_if = "EqDefault::eq_default")]
+    pub state: ElectricMachineState,
     /// Custom vector of [Self::state]
     #[serde(default)]
     #[serde(skip_serializing_if = "ElectricMachineStateHistoryVec::is_empty")]
@@ -98,82 +105,96 @@ impl ElectricMachine {
     /// this component/system can produce, accounting for any aux-related power
     /// required.
     /// # Arguments
-    /// - `pwr_in_fwd_max`: positive-propulsion-related power available to this
-    /// component. Positive values indicate that the upstream component can supply
-    /// positive tractive power.
-    /// - `pwr_in_bwd_max`: negative-propulsion-related power available to this
-    /// component. Zero means no power can be sent to upstream compnents and positive
-    /// values indicate upstream components can absorb energy.
-    /// - `_dt`: time step size
-    pub fn set_cur_pwr_prop_out_max(
+    /// - `pwr_in_fwd_lim`: positive-propulsion-related power available to this
+    ///    component. Positive values indicate that the upstream component can supply
+    ///    positive tractive power.
+    /// - `pwr_in_bwd_lim`: negative-propulsion-related power available to this
+    ///     component. Zero means no power can be sent to upstream compnents and positive
+    ///     values indicate upstream components can absorb energy.
+    /// - `pwr_aux`: aux-related power required from this component
+    /// - `dt`: time step size
+    pub fn set_curr_pwr_prop_out_max(
         &mut self,
-        pwr_in_fwd_max: si::Power,
-        pwr_in_bwd_max: si::Power,
+        pwr_in_fwd_lim: si::Power,
+        pwr_in_bwd_lim: si::Power,
         _dt: si::Time,
     ) -> anyhow::Result<()> {
         ensure!(
-            pwr_in_fwd_max >= uc::W * 0.,
+            pwr_in_fwd_lim >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
-            stringify!(pwr_in_fwd_max),
-            pwr_in_fwd_max.get::<si::watt>().format_eng(None),
-            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
+            stringify!(pwr_in_fwd_lim),
+            pwr_in_fwd_lim.get::<si::watt>().format_eng(None),
+            stringify!(ElectricMachine::get_curr_pwr_prop_out_max)
         );
         ensure!(
-            pwr_in_bwd_max >= uc::W * 0.,
+            pwr_in_bwd_lim >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
-            stringify!(pwr_in_bwd_max),
-            pwr_in_bwd_max.get::<si::watt>().format_eng(None),
-            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
+            stringify!(pwr_in_bwd_lim),
+            pwr_in_bwd_lim.get::<si::watt>().format_eng(None),
+            stringify!(ElectricMachine::get_curr_pwr_prop_out_max)
         );
 
-        if self.pwr_in_frac_interp.is_empty() {
-            self.set_pwr_in_frac_interp()
-                .with_context(|| format_dbg!())?;
-        }
-        let eff_pos = uc::R
-            * interp1d(
-                &abs_checked_x_val(
-                    (pwr_in_fwd_max / self.pwr_out_max).get::<si::ratio>(),
-                    &self.pwr_in_frac_interp,
-                )?,
-                &self.pwr_in_frac_interp,
-                &self.eff_interp,
-                // Extrapolation does not trigger error because `self.pwr_out_max` is limiting regardless
-                Extrapolate::No,
-            )
+        // ensuring Extrapolate is Clamp in preparation for calculating eff_pos
+
+        self.eff_interp_at_max_input
+            .as_mut()
             .with_context(|| {
-                anyhow!(
-                    "{}\n failed to calculate {}",
-                    format_dbg!(),
-                    stringify!(eff_pos)
-                )
-            })?;
-        // TODO: scrutinize this variable assignment
-        let eff_neg = uc::R
-            * interp1d(
-                &abs_checked_x_val(
-                    (pwr_in_bwd_max / self.pwr_out_max).get::<si::ratio>(),
-                    &self.pwr_in_frac_interp,
-                )?,
-                &self.pwr_in_frac_interp,
-                &self.eff_interp,
-                // Extrapolation does not trigger error because `self.pwr_out_max` is limiting regardless
-                Extrapolate::No,
-            )
-            .with_context(|| {
-                anyhow!(
-                    "{}\n failed to calculate {}",
-                    format_dbg!(),
-                    stringify!(eff_neg)
-                )
-            })?;
+                "eff_interp_bwd is None, which should never be the case at this point."
+            })?
+            .set_extrapolate(Extrapolate::Clamp)?;
+
+        // TODO: make sure `fwd` and `bwd` are clearly documented somewhere
+        self.state.eff_fwd_at_max_input = uc::R
+            * self
+                .eff_interp_at_max_input
+                .as_ref()
+                .map(|interpolator| {
+                    interpolator.interpolate(&[abs_checked_x_val(
+                        (pwr_in_fwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                        &interpolator.x()?,
+                    )?])
+                })
+                .ok_or(anyhow!(
+                    "eff_interp_bwd is None, which should never be the case at this point."
+                ))?
+                .with_context(|| {
+                    anyhow!(
+                        "{}\n failed to calculate {}",
+                        format_dbg!(),
+                        stringify!(eff_pos)
+                    )
+                })?;
+        self.state.eff_bwd_at_max_input = uc::R
+            * self
+                .eff_interp_at_max_input
+                .as_ref()
+                .map(|interpolator| {
+                    interpolator.interpolate(&[abs_checked_x_val(
+                        (pwr_in_bwd_lim / self.pwr_out_max).get::<si::ratio>(),
+                        &interpolator.x()?,
+                    )?])
+                })
+                .ok_or(anyhow!(
+                    "eff_interp_bwd is None, which should never be the case at this point."
+                ))?
+                .with_context(|| {
+                    anyhow!(
+                        "{}\n failed to calculate {}",
+                        format_dbg!(),
+                        stringify!(eff_neg)
+                    )
+                })?;
 
         // maximum power in forward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power based on what the ReversibleEnergyStorage can provide
-        self.state.pwr_mech_fwd_out_max = self.pwr_out_max.min(pwr_in_fwd_max * eff_pos);
+        self.state.pwr_mech_fwd_out_max = self
+            .pwr_out_max
+            .min(pwr_in_fwd_lim * self.state.eff_fwd_at_max_input);
         // maximum power in backward direction is minimum of component `pwr_out_max` parameter or time-varying max
         // power in bacward direction (i.e. regen) based on what the ReversibleEnergyStorage can provide
-        self.state.pwr_mech_bwd_out_max = self.pwr_out_max.min(pwr_in_bwd_max / eff_neg);
+        self.state.pwr_mech_bwd_out_max = self
+            .pwr_out_max
+            .min(pwr_in_bwd_lim / self.state.eff_bwd_at_max_input);
         Ok(())
     }
 
@@ -188,47 +209,70 @@ impl ElectricMachine {
     ) -> anyhow::Result<si::Power> {
         //TODO: update this function to use `pwr_mech_regen_out_max`
         ensure!(
-            pwr_out_req <= self.pwr_out_max,
+            pwr_out_req.abs() <= self.pwr_out_max,
             format!(
-                "{}\nedrv required power ({:.6} MW) exceeds static max power ({:.6} MW)",
+                "{}\nedrv required power ({:.6} kW) exceeds static max power ({:.6} kW)",
                 format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
-                pwr_out_req.get::<si::megawatt>(),
-                self.pwr_out_max.get::<si::megawatt>()
+                pwr_out_req.get::<si::kilowatt>(),
+                self.pwr_out_max.get::<si::kilowatt>()
+            ),
+        );
+        ensure!(
+            pwr_out_req <= self.state.pwr_mech_fwd_out_max,
+            format!(
+                "{}\nedrv required discharge power ({:.6} kW) exceeds current max discharge power ({:.6} kW)",
+                format_dbg!(pwr_out_req <= self.state.pwr_mech_fwd_out_max),
+                pwr_out_req.get::<si::kilowatt>(),
+                self.state.pwr_mech_fwd_out_max.get::<si::kilowatt>()
+            ),
+        );
+        ensure!(
+            -pwr_out_req <= self.state.pwr_mech_bwd_out_max,
+            format!(
+                "{}\nedrv required charge power ({:.6} kW) exceeds current max charge power ({:.6} kW)",
+                format_dbg!(pwr_out_req <= self.state.pwr_mech_bwd_out_max),
+                pwr_out_req.get::<si::kilowatt>(),
+                self.state.pwr_mech_bwd_out_max.get::<si::kilowatt>()
             ),
         );
 
         self.state.pwr_out_req = pwr_out_req;
 
+        // ensuring eff_interp_fwd has Extrapolate set to Error before calculating self.state.eff
+        self.eff_interp_fwd.set_extrapolate(Extrapolate::Error)?;
+
         self.state.eff = uc::R
-            * interp1d(
-                {
-                    let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
-                        Ok({
-                            if self
-                                .pwr_out_frac_interp
-                                .first()
-                                .with_context(|| anyhow!(format_dbg!()))?
-                                >= &0.
-                            {
-                                pwr_uncorrected.max(0.)
-                            } else {
-                                pwr_uncorrected
-                            }
-                        })
-                    };
-                    &pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
-                },
-                &self.pwr_out_frac_interp,
-                &self.eff_interp,
-                Extrapolate::Error,
-            )
-            .with_context(|| {
-                anyhow!(
-                    "{}\n failed to calculate {}",
-                    format_dbg!(),
-                    stringify!(self.state.eff)
+            * self
+                .eff_interp_fwd
+                .interpolate(
+                    &[{
+                        let pwr = |pwr_uncorrected: f64| -> anyhow::Result<f64> {
+                            Ok({
+                                if self
+                                    .eff_interp_fwd
+                                    .x()?
+                                    .first()
+                                    .with_context(|| anyhow!(format_dbg!()))?
+                                    >= &0.
+                                {
+                                    pwr_uncorrected.max(0.)
+                                } else {
+                                    pwr_uncorrected
+                                }
+                            })
+                        };
+                        pwr((pwr_out_req / self.pwr_out_max).get::<si::ratio>())?
+                    }], // &self.eff_interp_fwd.x()?,
+                        // &self.eff_interp_fwd,
+                        // Extrapolate::Error,
                 )
-            })?;
+                .with_context(|| {
+                    anyhow!(
+                        "{}\n failed to calculate {}",
+                        format_dbg!(),
+                        stringify!(self.state.eff)
+                    )
+                })?;
 
         // `pwr_mech_prop_out` is `pwr_out_req` unless `pwr_out_req` is more negative than `pwr_mech_regen_max`,
         // in which case, excess is handled by `pwr_mech_dyn_brake`
@@ -255,26 +299,26 @@ impl ElectricMachine {
         Ok(self.state.pwr_elec_prop_in)
     }
 
-    pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
-        // make sure vector has been created
-        self.pwr_in_frac_interp = self
-            .pwr_out_frac_interp
-            .iter()
-            .zip(self.eff_interp.iter())
-            .map(|(x, y)| x / y)
-            .collect();
-        Ok(())
-    }
-
-    impl_get_set_eff_max_min!();
-    impl_get_set_eff_range!();
+    // pub fn set_pwr_in_frac_interp(&mut self) -> anyhow::Result<()> {
+    //     // make sure vector has been created
+    //     self.eff_interp_bwd.set_x(
+    //         self.eff_interp_fwd
+    //
+    //             .x()?
+    //             .iter()
+    //             .zip(self.eff_interp_fwd.0.f_x()?.iter())
+    //             .map(|(x, y)| x / y)
+    //             .collect(),
+    //     );
+    //     Ok(())
+    // }
 }
 
 impl SerdeAPI for ElectricMachine {}
 impl Init for ElectricMachine {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
-        let _ = check_interp_frac_data(&self.pwr_out_frac_interp, InterpRange::Either)
+        let _ = check_interp_frac_data(&self.eff_interp_fwd.x()?, InterpRange::Either)
             .with_context(||
                 "Invalid values for `ElectricMachine::pwr_out_frac_interp`; must range from [-1..1] or [0..1].")?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
@@ -284,6 +328,26 @@ impl Init for ElectricMachine {
         //     self.pwr_out_frac_interp =
         // }
         // TODO: verify that `pwr_in_frac_interp` is set somewhere and if it is, maybe move it to here???
+        if self.eff_interp_at_max_input.is_none() {
+            // sets eff_interp_bwd to eff_interp_fwd, but changes the x-value.
+            // TODO: what should the default strategy be for eff_interp_bwd?
+            let eff_interp_bwd_new = Interp1D::new(
+                self.eff_interp_fwd
+                    .x()?
+                    .iter()
+                    .zip(self.eff_interp_fwd.f_x()?.iter())
+                    .map(|(x, y)| x / y)
+                    .collect(),
+                self.eff_interp_fwd.f_x()?,
+                // TODO: should these be set to be the same as eff_interp_fwd,
+                // as currently is done, or should they be set to be specific
+                // Extrapolate and Strategy types?
+                self.eff_interp_fwd.strategy()?,
+                self.eff_interp_fwd.extrapolate()?,
+            )?;
+            self.eff_interp_at_max_input =
+                Some(utils::interp::Interpolator::Interp1D(eff_interp_bwd_new));
+        }
         Ok(())
     }
 }
@@ -364,10 +428,229 @@ impl Mass for ElectricMachine {
     }
 }
 
+impl ElectricMachine {
+    /// Returns max value of `eff_interp_fwd`
+    pub fn get_eff_max_fwd(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(self
+            .eff_interp_fwd
+            .f_x()?
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)))
+    }
+
+    /// Returns max value of `eff_interp_bwd`
+    pub fn get_eff_max_bwd(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(match self.eff_interp_at_max_input.as_ref() {
+            Some(interp) => interp
+                .f_x()?
+                .iter()
+                .fold(f64::NEG_INFINITY, |acc, curr| acc.max(*curr)),
+            None => bail!("eff_interp_bwd should be Some by this point."),
+        })
+    }
+
+    /// Scales eff_interp_fwd and eff_interp_bwd by ratio of new `eff_max` per current calculated max
+    pub fn set_eff_max(&mut self, eff_max: f64) -> anyhow::Result<()> {
+        if (0.0..=1.0).contains(&eff_max) {
+            let old_max_fwd = self.get_eff_max_fwd()?;
+            let old_max_bwd = self.get_eff_max_bwd()?;
+            let f_x_fwd = self.eff_interp_fwd.f_x()?;
+            match &mut self.eff_interp_fwd {
+                Interpolator::Interp1D(interp1d) => {
+                    interp1d
+                        .set_f_x(f_x_fwd.iter().map(|x| x * eff_max / old_max_fwd).collect())?;
+                }
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+            }
+            let f_x_bwd = self
+                .eff_interp_at_max_input
+                .as_ref()
+                .ok_or(anyhow!(
+                    "eff_interp_bwd is None, which should never be the case at this point."
+                ))?
+                .f_x()?;
+            match &mut self.eff_interp_at_max_input {
+                Some(Interpolator::Interp1D(interp1d)) => {
+                    // let old_interp = interp1d;
+                    interp1d.set_f_x(
+                        f_x_bwd
+                            .iter()
+                            .map(|x| x * eff_max / old_max_bwd)
+                            .collect(),
+                    )?;
+                }
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed. eff_interp_bwd should be Some by this point."),
+            }
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "`eff_max` ({:.3}) must be between 0.0 and 1.0",
+                eff_max,
+            ))
+        }
+    }
+
+    /// Returns min value of `eff_interp_fwd`
+    pub fn get_eff_min_fwd(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(self
+            .eff_interp_fwd
+            .f_x()
+            .with_context(|| "eff_interp_fwd does not have f_x field")?
+            .iter()
+            .fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
+    }
+
+    /// Returns min value of `eff_interp_bwd`
+    pub fn get_eff_min_bwd(&self) -> anyhow::Result<f64> {
+        // since efficiency is all f64 between 0 and 1, NEG_INFINITY is safe
+        Ok(self
+            .eff_interp_at_max_input
+            .as_ref()
+            .ok_or(anyhow!("eff_interp_bwd should be Some by this point."))?
+            .f_x()
+            .with_context(|| "eff_interp_bwd does not have f_x field")?
+            .iter()
+            .fold(f64::INFINITY, |acc, curr| acc.min(*curr)))
+    }
+
+    /// Max value of `eff_interp_fwd` minus min value of `eff_interp_fwd`.
+    pub fn get_eff_range_fwd(&self) -> anyhow::Result<f64> {
+        Ok(self.get_eff_max_fwd()? - self.get_eff_min_fwd()?)
+    }
+
+    /// Max value of `eff_interp_bwd` minus min value of `eff_interp_bwd`.
+    pub fn get_eff_range_bwd(&self) -> anyhow::Result<f64> {
+        Ok(self.get_eff_max_bwd()? - self.get_eff_min_bwd()?)
+    }
+
+    /// Scales values of `eff_interp_fwd.f_x` and `eff_interp_bwd.f_x` without changing max such that max - min
+    /// is equal to new range.  Will change max if needed to ensure no values are
+    /// less than zero.
+    pub fn set_eff_range(&mut self, eff_range: f64) -> anyhow::Result<()> {
+        let eff_max_fwd = self.get_eff_max_fwd()?;
+        let eff_max_bwd = self.get_eff_max_bwd()?;
+        if eff_range == 0.0 {
+            let f_x_fwd = vec![
+                eff_max_fwd;
+                self.eff_interp_fwd
+                    .f_x()
+                    .with_context(|| "eff_interp_fwd does not have f_x field")?
+                    .len()
+            ];
+            self.eff_interp_fwd.set_f_x(f_x_fwd)?;
+            let f_x_bwd = vec![
+                eff_max_bwd;
+                match &self.eff_interp_at_max_input {
+                    Some(interp) => {
+                        interp
+                            .f_x()
+                            .with_context(|| "eff_interp_bwd does not have f_x field")?
+                            .len()
+                    }
+                    None => bail!("eff_interp_bwd should be Some by this point."),
+                }
+            ];
+            self.eff_interp_at_max_input
+                .as_mut()
+                .map(|interpolator| interpolator.set_f_x(f_x_bwd))
+                .transpose()?;
+            Ok(())
+        } else if (0.0..=1.0).contains(&eff_range) {
+            let old_min = self.get_eff_min_fwd()?;
+            let old_range = self.get_eff_max_fwd()? - old_min;
+            if old_range == 0.0 {
+                return Err(anyhow!(
+                    "`eff_range` is already zero so it cannot be modified."
+                ));
+            }
+            let f_x_fwd = self.eff_interp_fwd.f_x()?;
+            match &mut self.eff_interp_fwd {
+                Interpolator::Interp1D(interp1d) => {
+                    interp1d.set_f_x(
+                        f_x_fwd
+                            .iter()
+                            .map(|x| eff_max_fwd + (x - eff_max_fwd) * eff_range / old_range)
+                            .collect(),
+                    )?;
+                }
+                _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+            }
+            if self.get_eff_min_fwd()? < 0.0 {
+                let x_neg = self.get_eff_min_fwd()?;
+                let f_x_fwd = self.eff_interp_fwd.f_x()?;
+                match &mut self.eff_interp_fwd {
+                    Interpolator::Interp1D(interp1d) => {
+                        interp1d.set_f_x(f_x_fwd.iter().map(|x| x - x_neg).collect())?;
+                    }
+                    _ => bail!("{}\n", "Only `Interpolator::Interp1D` is allowed."),
+                }
+            }
+            if self.get_eff_max_fwd()? > 1.0 {
+                return Err(anyhow!(format!(
+                    "`eff_max` ({:.3}) must be no greater than 1.0",
+                    self.get_eff_max_fwd()?
+                )));
+            }
+            let old_min = self.get_eff_min_bwd()?;
+            let old_range = self.get_eff_max_bwd()? - old_min;
+            if old_range == 0.0 {
+                return Err(anyhow!(
+                    "`eff_range` is already zero so it cannot be modified."
+                ));
+            }
+
+            let new_f_x: Vec<f64> = self
+                .eff_interp_at_max_input
+                .as_ref()
+                .ok_or(anyhow!("eff_interp_bwd should be Some by this point."))?
+                .f_x()?
+                .iter()
+                .map(|x| eff_max_bwd + (x - eff_max_bwd) * eff_range / old_range)
+                .collect();
+
+            self.eff_interp_at_max_input
+                .as_mut()
+                .map(|interpolator| interpolator.set_f_x(new_f_x))
+                .transpose()?;
+
+            if self.get_eff_min_bwd()? < 0.0 {
+                let x_neg = self.get_eff_min_bwd()?;
+                let new_f_x: Vec<f64> = self
+                    .eff_interp_at_max_input
+                    .as_ref()
+                    .ok_or(anyhow!("eff_interp_bwd should be Some by this point."))?
+                    .f_x()?
+                    .iter()
+                    .map(|x| x - x_neg)
+                    .collect();
+                self.eff_interp_at_max_input
+                    .as_mut()
+                    .map(|interpolator| interpolator.set_f_x(new_f_x))
+                    .transpose()?;
+            }
+            if self.get_eff_max_bwd()? > 1.0 {
+                return Err(anyhow!(format!(
+                    "`eff_max` ({:.3}) must be no greater than 1.0",
+                    self.get_eff_max_bwd()?
+                )));
+            }
+            Ok(())
+        } else {
+            Err(anyhow!(format!(
+                "`eff_range` ({:.3}) must be between 0.0 and 1.0",
+                eff_range,
+            )))
+        }
+    }
+}
+
+#[fastsim_api]
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative,
 )]
-#[fastsim_api]
 pub struct ElectricMachineState {
     /// time step index
     pub i: usize,
@@ -376,8 +659,12 @@ pub struct ElectricMachineState {
     // Component limits
     /// Maximum possible positive traction power.
     pub pwr_mech_fwd_out_max: si::Power,
+    /// efficiency in forward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
+    pub eff_fwd_at_max_input: si::Ratio,
     /// Maximum possible regeneration power going to ReversibleEnergyStorage.
     pub pwr_mech_bwd_out_max: si::Power,
+    /// efficiency in backward direction at max possible input power from `FuelConverter` and `ReversibleEnergyStorage`
+    pub eff_bwd_at_max_input: si::Ratio,
     /// max ramp-up rate
     pub pwr_rate_out_max: si::PowerRate,
 

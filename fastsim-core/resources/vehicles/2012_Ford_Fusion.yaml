@@ -13,7 +13,7 @@ pt_type:
       pwr_out_max_watts: 130500.0
       pwr_out_max_init_watts: 21750.0
       pwr_ramp_lag_seconds: 6.0
-      eff_interp:
+      eff_interp_from_pwr_out:
         Interp1D:
           x:
             - 0.0
@@ -42,7 +42,6 @@ pt_type:
             - 0.32
             - 0.3
           strategy: LeftNearest
-          extrapolate: Error
       pwr_idle_fuel_watts: 6999.999999999999
       save_interval: 1
     mass: ~

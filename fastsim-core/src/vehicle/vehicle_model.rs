@@ -1,6 +1,4 @@
-use utils::interp::{Extrapolate, *};
-
-use super::{hev::HEVControls, *};
+use super::{hev::HEVPowertrainControls, *};
 
 /// Possible aux load power sources
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -296,13 +294,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
+                        eff_interp_from_pwr_out: Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
                             Extrapolate::Error,
-                        )?)),
-                        // TODO: verify this
+                        )?),
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
                                 .fc_eff_map
@@ -312,7 +309,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             * uc::KW,
                         save_interval: Some(1),
                         history: Default::default(),
+                        _phantom: PhantomData,
                     };
+                    fc.init()?;
                     fc.set_mass(None, MassSideEffect::None)
                         .with_context(|| anyhow!(format_dbg!()))?;
                     fc
@@ -344,13 +343,12 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                         // assumes 1 s time step
                         pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                         pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
-                        eff_interp: InterpolatorWrapper(Interpolator::Interp1D(Interp1D::new(
+                        eff_interp_from_pwr_out: Interpolator::Interp1D(Interp1D::new(
                             f2veh.fc_pwr_out_perc.to_vec(),
                             f2veh.fc_eff_map.to_vec(),
                             Strategy::LeftNearest,
                             Extrapolate::Error,
-                        )?)),
-                        // TODO: verify this
+                        )?),
                         pwr_idle_fuel: f2veh.aux_kw
                             / f2veh
                                 .fc_eff_map
@@ -360,7 +358,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             * uc::KW,
                         save_interval: Some(1),
                         history: Default::default(),
+                        _phantom: PhantomData,
                     };
+                    fc.init()?;
                     fc.set_mass(None, MassSideEffect::None)
                         .with_context(|| anyhow!(format_dbg!()))?;
                     fc
@@ -371,6 +371,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     specific_energy: None,
                     pwr_out_max: f2veh.ess_max_kw * uc::KW,
                     energy_capacity: f2veh.ess_max_kwh * uc::KWH,
+                    eff_interp: Interpolator::Interp0D(f2veh.ess_round_trip_eff.sqrt()),
                     min_soc: f2veh.min_soc * uc::R,
                     max_soc: f2veh.max_soc * uc::R,
                     soc_hi_ramp_start: None,
@@ -380,17 +381,42 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                 },
                 em: ElectricMachine {
                     state: Default::default(),
-                    pwr_out_frac_interp: f2veh.mc_pwr_out_perc.to_vec(),
-                    eff_interp: f2veh.mc_eff_array.to_vec(),
-                    pwr_in_frac_interp: Default::default(),
+                    eff_interp_fwd: (Interpolator::Interp1D(
+                        Interp1D::new(
+                            f2veh.mc_pwr_out_perc.to_vec(),
+                            f2veh.mc_eff_array.to_vec(),
+                            Strategy::LeftNearest,
+                            Extrapolate::Error,
+                        )
+                        .unwrap(),
+                    )),
+                    eff_interp_at_max_input: Some(Interpolator::Interp1D(
+                        Interp1D::new(
+                            // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
+                            // be transferred over as done here, or does a new defualt need to be defined?
+                            f2veh
+                                .mc_pwr_out_perc
+                                .to_vec()
+                                .iter()
+                                .zip(f2veh.mc_eff_array.to_vec().iter())
+                                .map(|(x, y)| x / y)
+                                .collect(),
+                            f2veh.mc_eff_array.to_vec(),
+                            Strategy::LeftNearest,
+                            Extrapolate::Error,
+                        )
+                        .unwrap(),
+                    )),
+                    // pwr_in_frac_interp: Default::default(),
                     pwr_out_max: f2veh.mc_max_kw * uc::KW,
                     specific_pwr: None,
                     mass: None,
                     save_interval: Some(1),
                     history: Default::default(),
                 },
-                hev_controls: HEVControls::RESGreedy,
+                pt_cntrl: HEVPowertrainControls::RESGreedy,
                 mass: None,
+                aux_cntrl: Default::default(),
             };
             Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
         } else {
@@ -531,29 +557,28 @@ impl Vehicle {
         self.pt_type
             .solve(
                 self.state.pwr_tractive,
-                self.pwr_aux,
                 &self.state,
                 true, // `enabled` should always be true at the powertrain level
                 dt,
             )
             .with_context(|| anyhow!(format_dbg!()))?;
-        // TODO: this is wrong for anything with regen capability
-        self.state.pwr_brake = -self.state.pwr_tractive.max(uc::W * 0.) - self.pt_type.pwr_regen();
+        self.state.pwr_brake =
+            -self.state.pwr_tractive.max(si::Power::ZERO) - self.pt_type.pwr_regen();
         Ok(())
     }
 
-    pub fn set_cur_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: when a fancier model for `pwr_aux` is implemented, put it here
         // TODO: make transmission field in vehicle and make it be able to produce an efficiency
         // TODO: account for traction limits here
 
         self.pt_type
-            .set_cur_pwr_prop_out_max(self.pwr_aux, dt)
+            .set_curr_pwr_prop_out_max(self.pwr_aux, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
 
-        (self.state.pwr_prop_pos_max, self.state.pwr_prop_neg_max) = self
+        (self.state.pwr_prop_fwd_max, self.state.pwr_prop_bwd_max) = self
             .pt_type
-            .get_cur_pwr_prop_out_max()
+            .get_curr_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
 
         Ok(())
@@ -622,9 +647,14 @@ impl Vehicle {
             fc_eff_array: Default::default(),
             fc_eff_map: self
                 .fc()
-                .map(|fc| match &fc.eff_interp.0 {
-                    utils::interp::Interpolator::Interp1D(interp) => Ok(interp.f_x.clone().into()),
-                    _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
+                .map(|fc| match &fc.eff_interp_from_pwr_out {
+                    utils::interp::Interpolator::Interp1D(_interp1d) => {
+                        Ok(fc.eff_interp_from_pwr_out.f_x()?.clone().into())
+                    }
+                    _ => bail!(
+                        "{}\nOnly 1-D interpolators can be converted to FASTSim 2",
+                        format_dbg!()
+                    ),
                 })
                 .transpose()?
                 .unwrap_or_default(),
@@ -647,9 +677,14 @@ impl Vehicle {
             fc_perc_out_array: Default::default(),
             fc_pwr_out_perc: self
                 .fc()
-                .map(|fc| match &fc.eff_interp.0 {
-                    utils::interp::Interpolator::Interp1D(interp) => Ok(interp.x.clone().into()),
-                    _ => bail!("Only 1-D interpolators can be converted to FASTSim 2"),
+                .map(|fc| match &fc.eff_interp_from_pwr_out {
+                    utils::interp::Interpolator::Interp1D(_interp) => {
+                        Ok(fc.eff_interp_from_pwr_out.x()?.clone().into())
+                    }
+                    _ => bail!(
+                        "{}\nOnly 1-D interpolators can be converted to FASTSim 2",
+                        format_dbg!()
+                    ),
                 })
                 .transpose()?
                 .unwrap_or_default(),
@@ -825,18 +860,18 @@ impl Vehicle {
 }
 
 /// Vehicle state for current time step
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 #[fastsim_api]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 pub struct VehicleState {
     /// time step index
     pub i: usize,
 
-    // power and fields
-    /// maximum positive propulsive power vehicle can produce
-    pub pwr_prop_pos_max: si::Power,
+    // power and energy fields
+    /// maximum forward propulsive power vehicle can produce
+    pub pwr_prop_fwd_max: si::Power,
     /// pwr exerted on wheels by powertrain
-    /// maximum negative propulsive power vehicle can produce
-    pub pwr_prop_neg_max: si::Power,
+    /// maximum backward propulsive power (e.g. regenerative braking) vehicle can produce
+    pub pwr_prop_bwd_max: si::Power,
     /// Tractive power required for achieved speed
     pub pwr_tractive: si::Power,
     /// integral of [Self::pwr_out]
@@ -892,8 +927,8 @@ impl Default for VehicleState {
     fn default() -> Self {
         Self {
             i: Default::default(),
-            pwr_prop_pos_max: si::Power::ZERO,
-            pwr_prop_neg_max: si::Power::ZERO,
+            pwr_prop_fwd_max: si::Power::ZERO,
+            pwr_prop_bwd_max: si::Power::ZERO,
             pwr_tractive: si::Power::ZERO,
             energy_tractive: si::Energy::ZERO,
             pwr_aux: si::Power::ZERO,
@@ -924,6 +959,7 @@ impl Default for VehicleState {
 pub(crate) mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     fn vehicles_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/vehicles")
     }
@@ -938,8 +974,8 @@ pub(crate) mod tests {
             veh.unwrap()
         };
 
-        veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
-            .unwrap();
+        // veh.to_file(vehicles_dir().join("2012_Ford_Fusion.yaml"))
+        //     .unwrap();
         assert!(veh.pt_type.is_conventional_vehicle());
         veh
     }
@@ -954,8 +990,8 @@ pub(crate) mod tests {
             veh.unwrap()
         };
 
-        veh.to_file(vehicles_dir().join("2016_TOYOTA_Prius_Two.yaml"))
-            .unwrap();
+        // veh.to_file(vehicles_dir().join("2016_TOYOTA_Prius_Two.yaml"))
+        //     .unwrap();
         assert!(veh.pt_type.is_hybrid_electric_vehicle());
         veh
     }

@@ -1,5 +1,4 @@
 use crate::imports::*;
-use lazy_static::lazy_static;
 use paste::paste;
 use regex::Regex;
 
@@ -48,7 +47,8 @@ pub(crate) fn download_file<S: AsRef<str>, P: AsRef<Path>>(
     Ok(())
 }
 
-/// helper function to find where a query falls on an axis of discrete values;
+#[allow(unused)]
+/// Helper function to find where a query falls on an axis of discrete values;
 /// NOTE: this assumes the axis array is sorted with values ascending and that there are no repeating values!
 fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usize)> {
     let axis_size = axis.len();
@@ -77,6 +77,7 @@ fn find_interp_indices(query: &f64, axis: &[f64]) -> anyhow::Result<(usize, usiz
     }
 }
 
+#[allow(unused)]
 /// Helper function to compute the difference between a value and a set of bounds
 fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
     if lower == upper {
@@ -86,123 +87,8 @@ fn compute_interp_diff(value: &f64, lower: &f64, upper: &f64) -> f64 {
     }
 }
 
-/// Trilinear interpolation over a structured grid;
-/// NOTE: this could be generalized to compute a linear interpolation in N dimensions
-/// NOTE: this function assumes the each axis on the grid is sorted and that there
-/// are no repeating values on each axis
-pub fn interp3d(
-    point: &[f64; 3],
-    grid: &[Vec<f64>; 3],
-    values: &[Vec<Vec<f64>>],
-) -> anyhow::Result<f64> {
-    let x = point[0];
-    let y = point[1];
-    let z = point[2];
-
-    let x_points = &grid[0];
-    let y_points = &grid[1];
-    let z_points = &grid[2];
-
-    let (xi0, xi1) = find_interp_indices(&x, x_points).with_context(|| anyhow!(format_dbg!()))?;
-    let (yi0, yi1) = find_interp_indices(&y, y_points).with_context(|| anyhow!(format_dbg!()))?;
-    let (zi0, zi1) = find_interp_indices(&z, z_points).with_context(|| anyhow!(format_dbg!()))?;
-
-    let xd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
-    let yd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
-    let zd = compute_interp_diff(&x, &x_points[xi0], &x_points[xi1]);
-
-    let c000 = values[xi0][yi0][zi0];
-    let c100 = values[xi1][yi0][zi0];
-    let c001 = values[xi0][yi0][zi1];
-    let c101 = values[xi1][yi0][zi1];
-    let c010 = values[xi0][yi1][zi0];
-    let c110 = values[xi1][yi1][zi0];
-    let c011 = values[xi0][yi1][zi1];
-    let c111 = values[xi1][yi1][zi1];
-
-    let c00 = c000 * (1.0 - xd) + c100 * xd;
-    let c01 = c001 * (1.0 - xd) + c101 * xd;
-    let c10 = c010 * (1.0 - xd) + c110 * xd;
-    let c11 = c011 * (1.0 - xd) + c111 * xd;
-
-    let c0 = c00 * (1.0 - yd) + c10 * yd;
-    let c1 = c01 * (1.0 - yd) + c11 * yd;
-
-    let c = c0 * (1.0 - yd) + c1 * zd;
-
-    Ok(c)
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
-pub enum Extrapolate {
-    /// allow extrapolation
-    Yes,
-    /// don't allow extrapolation but return result from nearest x-data point
-    #[default]
-    No,
-    /// return an error on attempted extrapolation
-    Error,
-}
-
 impl SerdeAPI for Extrapolate {}
 impl Init for Extrapolate {}
-
-/// interpolation algorithm from <http://www.cplusplus.com/forum/general/216928/>
-/// # Arguments:
-/// x : value at which to interpolate
-pub fn interp1d(
-    x: &f64,
-    x_data: &[f64],
-    y_data: &[f64],
-    extrapolate: Extrapolate,
-) -> anyhow::Result<f64> {
-    let y_first = y_data
-        .first()
-        .with_context(|| anyhow!("Unable to extract first element"))?;
-    if y_data.iter().all(|y| y == y_first) {
-        // return first if all data is equal to first
-        Ok(*y_first)
-    } else {
-        let size = x_data.len();
-
-        let mut i = 0;
-        if x >= &x_data[size - 2] {
-            i = size - 2;
-        } else {
-            while i < x_data.len() - 2 && x > &x_data[i + 1] {
-                i += 1;
-            }
-        }
-        let xl = &x_data[i];
-        let mut yl = &y_data[i];
-        let xr = &x_data[i + 1];
-        let mut yr = &y_data[i + 1];
-        match extrapolate {
-            Extrapolate::No => {
-                if x < xl {
-                    yr = yl;
-                }
-                if x > xr {
-                    yl = yr;
-                }
-            }
-            Extrapolate::Error => {
-                if x < xl || x > xr {
-                    bail!(
-                        "{}\nAttempted extrapolation\n`x_data` first and last: ({}, {})\n`x` input: {}",
-                        format_dbg!(),
-                        xl,
-                        xr,
-                        x
-                    );
-                }
-            }
-            _ => {}
-        }
-        let dydx = (yr - yl) / (xr - xl);
-        Ok(yl + dydx * (x - xl))
-    }
-}
 
 /// Returns absolute value of `x_val`
 pub fn abs_checked_x_val(x_val: f64, x_data: &[f64]) -> anyhow::Result<f64> {
@@ -408,162 +294,6 @@ pub fn check_monotonicity(data: &[f64]) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_interp3d() {
-        let point = [0.5, 0.5, 0.5];
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0], vec![0.0, 1.0]];
-        let values = vec![
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-        ];
-        match interp3d(&point, &grid, &values) {
-            Ok(i) => assert!(i == 0.5),
-            Err(e) => panic!("test failed with: {e}"),
-        };
-    }
-
-    #[test]
-    fn test_interp3d_offset() {
-        let point = [0.75, 0.25, 0.5];
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0], vec![0.0, 1.0]];
-        let values = vec![
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-        ];
-        match interp3d(&point, &grid, &values) {
-            Ok(i) => assert!(i == 0.75),
-            Err(e) => panic!("test failed with: {e}"),
-        };
-    }
-
-    #[test]
-    fn test_interp3d_exact_value_lower() {
-        let point = [0.0, 0.0, 0.0];
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0], vec![0.0, 1.0]];
-        let values = vec![
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-        ];
-        match interp3d(&point, &grid, &values) {
-            Ok(i) => assert!(i == 0.0),
-            Err(e) => panic!("test failed with: {e}"),
-        };
-    }
-
-    #[test]
-    fn test_interp3d_below_value_lower() {
-        let point = [-1.0, -1.0, -1.0];
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0], vec![0.0, 1.0]];
-        let values = vec![
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-        ];
-        match interp3d(&point, &grid, &values) {
-            Ok(i) => assert!(i == 0.0),
-            Err(e) => panic!("test failed with: {e}"),
-        };
-    }
-
-    #[test]
-    fn test_interp3d_above_value_upper() {
-        let point = [2.0, 2.0, 2.0];
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0], vec![0.0, 1.0]];
-        let values = vec![
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-        ];
-        match interp3d(&point, &grid, &values) {
-            Ok(i) => assert!(i == 1.0),
-            Err(e) => panic!("test failed with: {e}"),
-        };
-    }
-
-    #[test]
-    fn test_interp3d_exact_value_upper() {
-        let point = [1.0, 1.0, 1.0];
-        let grid = [vec![0.0, 1.0], vec![0.0, 1.0], vec![0.0, 1.0]];
-        let values = vec![
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-            vec![vec![0.0, 0.0], vec![1.0, 1.0]],
-        ];
-        match interp3d(&point, &grid, &values) {
-            Ok(i) => assert!(i == 1.0),
-            Err(e) => panic!("test failed with: {e}"),
-        };
-    }
-
-    // interp1d
-    #[test]
-    fn test_interp1d_above_value_upper() {
-        assert_eq!(
-            interp1d(&2.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
-            2.0
-        );
-        assert_eq!(
-            interp1d(&2.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
-            1.0
-        );
-    }
-
-    #[test]
-    fn test_interp1d_exact_value_upper() {
-        assert_eq!(
-            interp1d(&1.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
-            1.0
-        );
-        assert_eq!(
-            interp1d(&1.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
-            1.0
-        );
-    }
-
-    #[test]
-    fn test_interp1d_exact_value_lower() {
-        assert_eq!(
-            interp1d(&0.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
-            0.0
-        );
-        assert_eq!(
-            interp1d(&0.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
-            0.0
-        );
-    }
-    #[test]
-    fn test_interp1d_below_value_lower() {
-        assert_eq!(
-            interp1d(&-1.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
-            -1.0
-        );
-        assert_eq!(
-            interp1d(&-1.0, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
-            0.0
-        );
-    }
-    #[test]
-    fn test_interp1d_inside_range() {
-        assert_eq!(
-            interp1d(&0.5, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::Yes).unwrap(),
-            0.5
-        );
-        assert_eq!(
-            interp1d(&0.5, &[0.0, 1.0], &[0.0, 1.0], Extrapolate::No).unwrap(),
-            0.5
-        );
-    }
-
-    #[test]
-    fn test_interp1d_with_duplicate_y_data() {
-        assert_eq!(
-            interp1d(&0.5, &[0.0, 1.0], &[1.0, 1.0], Extrapolate::Yes).unwrap(),
-            1.0
-        );
-        assert_eq!(
-            interp1d(&0.5, &[0.0, 1.0], &[1.0, 1.0], Extrapolate::No).unwrap(),
-            1.0
-        );
-    }
-
     #[test]
     fn test_linspace() {
         assert_eq!(Vec::linspace(0.0, 1.0, 3), vec![0.0, 0.5, 1.0]);

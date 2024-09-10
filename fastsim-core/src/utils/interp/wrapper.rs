@@ -169,6 +169,5 @@ impl InterpolatorWrapper {
     }
 }
 
-impl Init for InterpolatorWrapper {}
-
 impl SerdeAPI for InterpolatorWrapper {}
+impl Init for InterpolatorWrapper {}

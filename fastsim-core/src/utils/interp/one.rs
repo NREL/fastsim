@@ -4,12 +4,14 @@ use super::*;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Interp1D {
-    pub x: Vec<f64>,
-    pub f_x: Vec<f64>,
+    pub(super) x: Vec<f64>,
+    pub(super) f_x: Vec<f64>,
     pub strategy: Strategy,
+    #[serde(default)]
     pub extrapolate: Extrapolate,
+    /// Phantom private field to prevent direct instantiation in other modules
     #[serde(skip)]
-    _phantom: PhantomData<()>, // phantom private field to prevent direct instantiation in other modules
+    _phantom: PhantomData<()>,
 }
 
 impl Interp1D {
@@ -87,7 +89,26 @@ impl Interp1D {
             self.f_x[lower_index + 1]
         })
     }
+
+    /// Function to set x variable from Interp1D
+    /// # Arguments
+    /// - `new_x`: updated `x` variable to replace the current `x` variable
+    pub fn set_x(&mut self, new_x: Vec<f64>) -> anyhow::Result<()> {
+        self.x = new_x;
+        self.validate()
+    }
+
+    /// Function to set f_x variable from Interp1D
+    /// # Arguments
+    /// - `new_f_x`: updated `f_x` variable to replace the current `f_x` variable
+    pub fn set_f_x(&mut self, new_f_x: Vec<f64>) -> anyhow::Result<()> {
+        self.f_x = new_f_x;
+        self.validate()
+    }
 }
+
+impl SerdeAPI for Interp1D {}
+impl Init for Interp1D {}
 
 impl InterpMethods for Interp1D {
     fn validate(&self) -> anyhow::Result<()> {
@@ -110,7 +131,7 @@ impl InterpMethods for Interp1D {
         ensure!(x_grid_len != 0, "Supplied x-coordinates cannot be empty");
         // Check that grid points are monotonically increasing
         ensure!(
-            self.x.windows(2).all(|w| w[0] < w[1]),
+            self.x.windows(2).all(|w| w[0] <= w[1]),
             "Supplied x-coordinates must be sorted and non-repeating"
         );
         // Check that grid and values are compatible shapes

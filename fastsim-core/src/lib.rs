@@ -47,5 +47,7 @@ pub fn enabled_features() -> Vec<String> {
         "toml".into(),
         #[cfg(feature = "yaml")]
         "yaml".into(),
+        #[cfg(feature = "logging")]
+        "logging".into(),
     ]
 }
