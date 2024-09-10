@@ -113,7 +113,7 @@ impl ElectricMachine {
     ///     values indicate upstream components can absorb energy.
     /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: time step size
-    pub fn set_cur_pwr_prop_out_max(
+    pub fn set_curr_pwr_prop_out_max(
         &mut self,
         pwr_in_fwd_lim: si::Power,
         pwr_in_bwd_lim: si::Power,
@@ -124,14 +124,14 @@ impl ElectricMachine {
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
             stringify!(pwr_in_fwd_lim),
             pwr_in_fwd_lim.get::<si::watt>().format_eng(None),
-            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
+            stringify!(ElectricMachine::get_curr_pwr_prop_out_max)
         );
         ensure!(
             pwr_in_bwd_lim >= si::Power::ZERO,
             "`{}` ({} W) must be greater than or equal to zero for `{}`",
             stringify!(pwr_in_bwd_lim),
             pwr_in_bwd_lim.get::<si::watt>().format_eng(None),
-            stringify!(ElectricMachine::get_cur_pwr_tract_out_max)
+            stringify!(ElectricMachine::get_curr_pwr_prop_out_max)
         );
 
         // ensuring Extrapolate is Clamp in preparation for calculating eff_pos

@@ -102,9 +102,9 @@ impl SimDrive {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
         self.veh
-            .set_cur_pwr_out_max(dt)
+            .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_pwr_tract_for_speed(self.cyc.speed[i], dt)
+        self.set_pwr_prop_for_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.set_ach_speed(self.cyc.speed[i], dt)
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -119,13 +119,13 @@ impl SimDrive {
     /// # Arguments
     /// - `speed`: prescribed or achieved speed
     /// - `dt`: time step size
-    pub fn set_pwr_tract_for_speed(
+    pub fn set_pwr_prop_for_speed(
         &mut self,
         speed: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         #[cfg(feature = "logging")]
-        log::debug!("{}: {}", format_dbg!(), "set_pwr_tract_for_speed");
+        log::debug!("{}: {}", format_dbg!(), "set_pwr_prop_for_speed");
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
@@ -331,7 +331,7 @@ impl SimDrive {
                 .with_context(|| format_dbg!("should have had at least one element"))?
                 .max(0.0 * uc::MPS);
         }
-        self.set_pwr_tract_for_speed(self.veh.state.speed_ach, dt)
+        self.set_pwr_prop_for_speed(self.veh.state.speed_ach, dt)
             .with_context(|| format_dbg!())?;
 
         Ok(())

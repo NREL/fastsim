@@ -14,10 +14,11 @@ pub struct HybridElectricVehicle {
     #[has_state]
     pub em: ElectricMachine,
     /// control strategy for distributing power demand between `fc` and `res`
+    pub pt_cntrl: HEVPowertrainControls,
+    /// control strategy for distributing aux power demand between `fc` and `res`
+    pub aux_cntrl: HEVAuxControls,
     /// hybrid powertrain mass
-    pub hev_controls: HEVControls,
     pub(crate) mass: Option<si::Mass>,
-    // TODO: add enum for controling fraction of aux pwr handled by battery vs engine
     // TODO: add enum for controling fraction of tractive pwr handled by battery vs engine -- there
     // might be many ways we'd want to do this, especially since there will be thermal models involved
 }
@@ -43,16 +44,38 @@ impl Init for HybridElectricVehicle {
 }
 
 impl Powertrain for Box<HybridElectricVehicle> {
-    fn set_cur_pwr_prop_out_max(&mut self, pwr_aux: si::Power, dt: si::Time) -> anyhow::Result<()> {
+    fn set_curr_pwr_prop_out_max(
+        &mut self,
+        pwr_aux: si::Power,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
         // TODO: account for transmission efficiency in here
         self.fc
-            .set_cur_pwr_tract_out_max(si::Power::ZERO, dt)
+            .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.res
-            .set_cur_pwr_out_max(pwr_aux, None, None)
+            .set_curr_pwr_out_max(None, None)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        let (pwr_aux_res, pwr_aux_fc) = {
+            match self.aux_cntrl {
+                HEVAuxControls::AuxOnResPriority => {
+                    if pwr_aux <= self.res.state.pwr_disch_max {
+                        (pwr_aux, si::Power::ZERO)
+                    } else {
+                        (si::Power::ZERO, pwr_aux)
+                    }
+                }
+                HEVAuxControls::AuxOnFcPriority => (si::Power::ZERO, pwr_aux),
+            }
+        };
+        self.fc
+            .set_curr_pwr_prop_max(pwr_aux_fc)
+            .with_context(|| anyhow!(format_dbg!()))?;
+        self.res
+            .set_curr_pwr_prop_max(pwr_aux_res)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.em
-            .set_cur_pwr_prop_out_max(
+            .set_curr_pwr_prop_out_max(
                 // TODO: add means of controlling whether fc can provide power to em and also how much
                 self.res.state.pwr_prop_max,
                 self.res.state.pwr_regen_max,
@@ -62,7 +85,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         Ok(())
     }
 
-    fn get_cur_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
+    fn get_curr_pwr_prop_out_max(&self) -> anyhow::Result<(si::Power, si::Power)> {
         Ok((
             self.em.state.pwr_mech_fwd_out_max + self.fc.state.pwr_prop_max,
             self.em.state.pwr_mech_bwd_out_max,
@@ -72,27 +95,26 @@ impl Powertrain for Box<HybridElectricVehicle> {
     fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        pwr_aux: si::Power,
         _veh_state: &VehicleState,
         _enabled: bool,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         let (fc_pwr_out_req, em_pwr_out_req) =
-            self.hev_controls
+            self.pt_cntrl
                 .get_pwr_fc_and_em(pwr_out_req, &self.fc.state, &self.em.state)?;
         // TODO: replace with a stop/start model
         // TODO: figure out fancier way to handle apportionment of `pwr_aux` between `fc` and `res`
         let enabled = true;
 
         self.fc
-            .solve(fc_pwr_out_req, pwr_aux, enabled, dt)
+            .solve(fc_pwr_out_req, enabled, dt)
             .with_context(|| format_dbg!())?;
         let res_pwr_out_req = self
             .em
             .get_pwr_in_req(em_pwr_out_req, dt)
             .with_context(|| format_dbg!())?;
         self.res
-            .solve(res_pwr_out_req, pwr_aux, dt)
+            .solve(res_pwr_out_req, dt)
             .with_context(|| format_dbg!())?;
         Ok(())
     }
@@ -188,19 +210,29 @@ impl Mass for HybridElectricVehicle {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-pub enum HEVControls {
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
+pub enum HEVAuxControls {
+    /// If feasible, use [ReversibleEnergyStorage] to handle aux power demand
+    #[default]
+    AuxOnResPriority,
+    /// If feasible, use [FuelConverter] to handle aux power demand
+    AuxOnFcPriority,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
+pub enum HEVPowertrainControls {
     /// Controls that attempt to exactly match fastsim-2
     Fastsim2,
     /// Purely greedy controls that favor charging or discharging the
     /// battery as much as possible.
+    #[default]
     RESGreedy,
     // TODO: add `SpeedAware` to enable buffers similar to fastsim-2 but without
     // the feature from fastsim-2 that forces the fc to be greedily meet power demand
     // when it's on
 }
 
-impl HEVControls {
+impl HEVPowertrainControls {
     fn get_pwr_fc_and_em(
         &self,
         pwr_out_req: si::Power,

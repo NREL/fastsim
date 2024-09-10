@@ -1,4 +1,4 @@
-use super::{hev::HEVControls, *};
+use super::{hev::HEVPowertrainControls, *};
 
 /// Possible aux load power sources
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -414,8 +414,9 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     save_interval: Some(1),
                     history: Default::default(),
                 },
-                hev_controls: HEVControls::RESGreedy,
+                pt_cntrl: HEVPowertrainControls::RESGreedy,
                 mass: None,
+                aux_cntrl: Default::default(),
             };
             Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
         } else {
@@ -556,7 +557,6 @@ impl Vehicle {
         self.pt_type
             .solve(
                 self.state.pwr_tractive,
-                self.pwr_aux,
                 &self.state,
                 true, // `enabled` should always be true at the powertrain level
                 dt,
@@ -567,18 +567,18 @@ impl Vehicle {
         Ok(())
     }
 
-    pub fn set_cur_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
+    pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         // TODO: when a fancier model for `pwr_aux` is implemented, put it here
         // TODO: make transmission field in vehicle and make it be able to produce an efficiency
         // TODO: account for traction limits here
 
         self.pt_type
-            .set_cur_pwr_prop_out_max(self.pwr_aux, dt)
+            .set_curr_pwr_prop_out_max(self.pwr_aux, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
 
         (self.state.pwr_prop_fwd_max, self.state.pwr_prop_bwd_max) = self
             .pt_type
-            .get_cur_pwr_prop_out_max()
+            .get_curr_pwr_prop_out_max()
             .with_context(|| anyhow!(format_dbg!()))?;
 
         Ok(())

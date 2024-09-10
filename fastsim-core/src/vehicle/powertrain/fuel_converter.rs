@@ -184,39 +184,47 @@ impl SaveInterval for FuelConverter {
 // non-py methods
 
 impl FuelConverter {
-    /// Sets maximum possible traction-related power [FuelConverter]
-    /// can produce, accounting for any aux-related power required.
+    /// Sets maximum possible total power [FuelConverter]
+    /// can produce.
     /// # Arguments
-    /// - `pwr_aux`: aux-related power required from this component
     /// - `dt`: time step size
-    pub fn set_cur_pwr_tract_out_max(
-        &mut self,
-        pwr_aux: si::Power,
-        dt: si::Time,
-    ) -> anyhow::Result<()> {
+    pub fn set_curr_pwr_out_max(&mut self, dt: si::Time) -> anyhow::Result<()> {
         if self.pwr_out_max_init == si::Power::ZERO {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
-        self.state.pwr_aux = pwr_aux;
-        self.state.pwr_prop_max = (self.state.pwr_propulsion
+        self.state.pwr_out_max = ((self.state.pwr_propulsion + self.state.pwr_aux)
             + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
             .min(self.pwr_out_max)
-            .max(self.pwr_out_max_init)
-            - pwr_aux;
+            .max(self.pwr_out_max_init);
+        Ok(())
+    }
+
+    /// Sets maximum possible propulsion-related power [FuelConverter]
+    /// can produce, accounting for any aux-related power required.
+    /// # Arguments
+    /// - `pwr_aux`: aux-related power required from this component
+    pub fn set_curr_pwr_prop_max(&mut self, pwr_aux: si::Power) -> anyhow::Result<()> {
+        ensure!(
+            pwr_aux >= si::Power::ZERO,
+            format!(
+                "{}\n`pwr_aux` must be >= 0",
+                format_dbg!(pwr_aux >= si::Power::ZERO),
+            )
+        );
+        self.state.pwr_aux = pwr_aux;
+        self.state.pwr_prop_max = self.state.pwr_out_max - pwr_aux;
         Ok(())
     }
 
     /// Solves for this powertrain system/component efficiency and sets/returns power output values.
     /// # Arguments
     /// - `pwr_out_req`: tractive power output required to achieve presribed speed
-    /// - `pwr_aux`: component-specific aux power demand (e.g. mechanical power if from engine/FC)
     /// - `enabled`: whether component is actively running
     /// - `dt`: time step size
     pub fn solve(
         &mut self,
         pwr_out_req: si::Power,
-        pwr_aux: si::Power,
         enabled: bool,
         _dt: si::Time,
     ) -> anyhow::Result<()> {
@@ -227,19 +235,13 @@ impl FuelConverter {
                 format_dbg!(pwr_out_req >= si::Power::ZERO),
             )
         );
-        ensure!(
-            pwr_aux >= si::Power::ZERO,
-            format!(
-                "{}\n`pwr_aux` must be >= 0",
-                format_dbg!(pwr_aux >= si::Power::ZERO),
-            )
-        );
         self.state.pwr_propulsion = pwr_out_req;
-        self.state.pwr_aux = pwr_aux;
         self.state.eff = uc::R
             * self
                 .eff_interp_from_pwr_out
-                .interpolate(&[((pwr_out_req + pwr_aux) / self.pwr_out_max).get::<si::ratio>()])
+                .interpolate(&[
+                    ((pwr_out_req + self.state.pwr_aux) / self.pwr_out_max).get::<si::ratio>()
+                ])
                 .with_context(|| {
                     anyhow!(
                         "{}\n failed to calculate {}",
@@ -259,18 +261,21 @@ impl FuelConverter {
         self.state.fc_on = enabled;
         // if the engine is not on, `pwr_out_req` should be 0.0
         ensure!(
-            self.state.fc_on || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO),
+            self.state.fc_on
+                || (pwr_out_req == si::Power::ZERO && self.state.pwr_aux == si::Power::ZERO),
             format!(
                 "{}\nEngine is off but pwr_out_req + pwr_aux is non-zero",
                 format_dbg!(
                     self.state.fc_on
-                        || (pwr_out_req == si::Power::ZERO && pwr_aux == si::Power::ZERO)
+                        || (pwr_out_req == si::Power::ZERO
+                            && self.state.pwr_aux == si::Power::ZERO)
                 )
             )
         );
-        // TODO: consider how idle is handled.  The goal is to make it so that even if `pwr_aux` is
+        // TODO: consider how idle is handled.  The goal is to make it so that even if `self.state.pwr_aux` is
         // zero, there will be fuel consumption to overcome internal dissipation.
-        self.state.pwr_fuel = ((pwr_out_req + pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
+        self.state.pwr_fuel =
+            ((pwr_out_req + self.state.pwr_aux) / self.state.eff).max(self.pwr_idle_fuel);
         self.state.pwr_loss = self.state.pwr_fuel - self.state.pwr_propulsion;
 
         // TODO: put this in `SetCumulative::set_custom_cumulative`
@@ -297,6 +302,8 @@ impl FuelConverter {
 pub struct FuelConverterState {
     /// time step index
     pub i: usize,
+    /// max total output power fc can produce at current time
+    pub pwr_out_max: si::Power,
     /// max propulsion power fc can produce at current time
     pub pwr_prop_max: si::Power,
     /// efficiency evaluated at current demand
