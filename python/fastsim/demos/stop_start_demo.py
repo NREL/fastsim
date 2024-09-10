@@ -53,9 +53,9 @@ print(f"Elapsed time: {time.time() - t0:.3e} s")
 
 # %%
 t0 = time.time()
-sim_drive0 = simdrive.SimDrive(cyc, veh0)
+sim_drive0 = simdrive.RustSimDrive(cyc.to_rust(), veh0.to_rust())
 sim_drive0.sim_drive()
-sim_drive1 = simdrive.SimDrive(cyc, veh1)
+sim_drive1 = simdrive.RustSimDrive(cyc.to_rust(), veh1.to_rust())
 sim_drive1.sim_drive()
 print(f"Elapsed time: {time.time() - t0:.3e} s")
 

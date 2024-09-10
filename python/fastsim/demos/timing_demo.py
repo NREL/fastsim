@@ -56,7 +56,7 @@ print(f'Time to load cycle with `fastsimrust.RustCycle.from_file`: {t1 - t0:.2e}
 
 veh_csv_path = fsim.package_root() / "resources/vehdb/2012_Ford_Fusion.csv"
 t0 = time.perf_counter()
-veh_python = fsim.vehicle.Vehicle.from_file(str(veh_csv_path), to_rust=True)
+veh_python = fsim.vehicle.Vehicle.from_file(str(veh_csv_path), to_rust=True).to_rust()
 print(
     'Time to load vehicle with\n' + 
     f'`vehicle.Vehicle.from_file(veh_csv_path)`: {time.perf_counter() - t0:.2e} s'
