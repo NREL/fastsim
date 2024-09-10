@@ -14,8 +14,10 @@ pub struct HybridElectricVehicle {
     #[has_state]
     pub em: ElectricMachine,
     /// control strategy for distributing power demand between `fc` and `res`
+    #[serde(default)]
     pub pt_cntrl: HEVPowertrainControls,
     /// control strategy for distributing aux power demand between `fc` and `res`
+    #[serde(default)]
     pub aux_cntrl: HEVAuxControls,
     /// hybrid powertrain mass
     pub(crate) mass: Option<si::Mass>,
