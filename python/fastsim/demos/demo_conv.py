@@ -55,6 +55,7 @@ else:
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
 print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
+df = sd.to_dataframe()
 
 # instantiate `SimDrive` simulation object
 sd_no_save = fsim.SimDrive(veh_no_save, cyc)
@@ -90,9 +91,9 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
 
     ax[0].set_prop_cycle(get_paired_cycler())
     ax[0].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
-            np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3,
+        df['cyc.time_seconds'],
+        (df["veh.pt_type.ConventionalVehicle.fc.history.pwr_propulsion_watts"] +
+            df["veh.pt_type.ConventionalVehicle.fc.history.pwr_aux_watts"]) / 1e3,
         label="f3 shaft",
     )
     ax[0].plot(
@@ -101,8 +102,8 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
         label="f2 shaft",
     )
     ax[0].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.fc.history.pwr_fuel_watts) / 1e3,
+        df['cyc.time_seconds'],
+        df["veh.pt_type.ConventionalVehicle.fc.history.pwr_fuel_watts"] / 1e3,
         label="f3 fuel",
     )
     ax[0].plot(
@@ -115,14 +116,14 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
 
     ax[1].set_prop_cycle(get_uni_cycler())
     ax[1].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
-            np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        df['cyc.time_seconds'],
+        (df["veh.pt_type.ConventionalVehicle.fc.history.pwr_propulsion_watts"] +
+            df["veh.pt_type.ConventionalVehicle.fc.history.pwr_aux_watts"]) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
         label="shaft",
     )
     ax[1].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.fc.history.pwr_fuel_watts) / 1e3 - np.array(sd2.fs_kw_out_ach.tolist()),
+        df['cyc.time_seconds'],
+        df["veh.pt_type.ConventionalVehicle.fc.history.pwr_fuel_watts"] / 1e3 - np.array(sd2.fs_kw_out_ach.tolist()),
         label="fuel",
     )
     ax[1].set_ylabel("FC Power\nDelta (f3-f2) [kW]")
@@ -130,8 +131,8 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     
     ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
-        np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.history.speed_ach_meters_per_second),
+        df['cyc.time_seconds'],
+        df["veh.history.speed_ach_meters_per_second"],
         label="f3",
     )
     ax[-1].plot(
