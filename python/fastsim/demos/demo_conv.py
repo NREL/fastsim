@@ -119,14 +119,11 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
         (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
             np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
         label="shaft",
-        linestyle=base_line_styles[0]
     )
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.pwr_propulsion_watts) +
-            np.array(sd.veh.fc.history.pwr_aux_watts)) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist()),
+        np.array(sd.veh.fc.history.pwr_fuel_watts) / 1e3 - np.array(sd2.fs_kw_out_ach.tolist()),
         label="fuel",
-        linestyle=base_line_styles[1]
     )
     ax[1].set_ylabel("FC Power\nDelta (f3-f2) [kW]")
     ax[1].legend()
@@ -188,14 +185,11 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
         (np.array(sd.veh.fc.history.energy_propulsion_joules) +
             np.array(sd.veh.fc.history.energy_aux_joules)) / 1e6 - np.array(sd2.fc_cumu_mj_out_ach.tolist()),
         label="shaft",
-        linestyle=base_line_styles[0]
     )
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        (np.array(sd.veh.fc.history.energy_propulsion_joules) +
-            np.array(sd.veh.fc.history.energy_aux_joules)) / 1e6 - np.array(sd2.fc_cumu_mj_out_ach.tolist()),
+        np.array(sd.veh.fc.history.pwr_fuel_watts) / 1e3 - np.array(sd2.fs_kw_out_ach.tolist()),
         label="fuel",
-        linestyle=base_line_styles[1]
     )
     ax[1].set_ylabel("FC Energy\nDelta (f3-f2) [MJ]")
     ax[1].legend()
@@ -256,14 +250,14 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
         np.array(sd.veh.history.pwr_drag_watts) /
         1e3 - np.array(sd2.drag_kw.tolist()),
         label="drag",
-        linestyle=base_line_styles[0],
+        linestyle=BASE_LINE_STYLES[0],
     )
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
         np.array(sd.veh.history.pwr_rr_watts) /
         1e3 - np.array(sd2.rr_kw.tolist()),
         label="rr",
-        linestyle=base_line_styles[1],
+        linestyle=BASE_LINE_STYLES[1],
     )
     ax[1].text(
         500, -0.125, "Drag error is due to more\naccurate air density model .")
