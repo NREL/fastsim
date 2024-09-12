@@ -28,7 +28,7 @@ fusion = fsr.RustVehicle.from_file(
     str(fsim.vehicle.VEHICLE_DIR / "2012_Ford_Fusion.yaml")) 
 fusion_thermal_base = fsr.VehicleThermal.from_file(
     str(fsim.vehicle.VEHICLE_DIR / "thermal/2012_Ford_Fusion_thrml.yaml")) 
-cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+cyc = fsr.RustCycle.from_file(fsim.cycle.CYCLES_DIR / "udds.csv")
 
 # no arguments use default of 22°C
 init_thermal_state = fsr.ThermalState()
@@ -62,7 +62,7 @@ if SHOW_PLOTS:
 hvac_model = fsr.HVACModel.default()
 fusion_thermal_htng = fusion_thermal_base.copy()
 fusion_thermal_htng.set_cabin_hvac_model_internal(hvac_model)
-cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+cyc = fsr.RustCycle.from_file(fsim.cycle.CYCLES_DIR / "udds.csv")
 
 init_thermal_state = fsr.ThermalState(amb_te_deg_c=-5.0)
 
@@ -110,7 +110,7 @@ if SHOW_PLOTS:
 hvac_model = fsr.HVACModel.default()
 fusion_thermal_clng = fusion_thermal_base.copy()
 fusion_thermal_clng.set_cabin_hvac_model_internal(hvac_model)
-cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+cyc = fsr.RustCycle.from_file(fsim.cycle.CYCLES_DIR / "udds.csv")
 
 init_thermal_state = fsr.ThermalState(amb_te_deg_c=40.0)
 
@@ -160,7 +160,7 @@ if SHOW_PLOTS:
 hvac_model = fsr.HVACModel.default()
 fusion_thermal_hvac = fusion_thermal_base.copy()
 fusion_thermal_hvac.set_cabin_hvac_model_internal(hvac_model)
-cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+cyc = fsr.RustCycle.from_file(fsim.cycle.CYCLES_DIR / "udds.csv")
 
 mpg = []
 mpg_no_hvac = []
