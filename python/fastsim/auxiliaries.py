@@ -89,13 +89,13 @@ def abc_to_drag_coeffs(
         sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
         sd_coast.sim_drive()
 
-        cutoff = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
+        cutoff = np.where(sd_coast.mps_ach < 0.1)[0][0]
 
         err = fsim.cal.get_error_val(
-            (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) /
-                np.array(sd_coast.mps_ach))[:cutoff],
+            (1000 * (sd_coast.drag_kw + sd_coast.rr_kw) /
+                sd_coast.mps_ach)[:cutoff],
             (dyno_func_lb(sd_coast.mph_ach) * fsim.params.N_PER_LBF)[:cutoff],
-            np.array(cyc.time_s)[:cutoff],
+            cyc.time_s[:cutoff],
         )
 
         return err
@@ -118,16 +118,16 @@ def abc_to_drag_coeffs(
     sd_coast.impose_coast = [True] * len(sd_coast.impose_coast)
     sd_coast.sim_drive()
 
-    cutoff_val = np.where(np.array(sd_coast.mps_ach) < 0.1)[0][0]
+    cutoff_val = np.where(sd_coast.mps_ach < 0.1)[0][0]
 
     if show_plots:
         plt.figure()
         plt.plot(
-            np.array(sd_coast.mph_ach)[:cutoff_val],
-            (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)) /
-             np.array(sd_coast.mps_ach) / fsim.params.N_PER_LBF)[:cutoff_val],
+            sd_coast.mph_ach[:cutoff_val],
+            (1000 * (sd_coast.drag_kw + sd_coast.rr_kw) /
+             sd_coast.mps_ach / fsim.params.N_PER_LBF)[:cutoff_val],
             label='sim_drive simulated road load')
-        plt.plot(np.array(sd_coast.mph_ach)[:cutoff_val], (dyno_func_lb(
+        plt.plot(sd_coast.mph_ach[:cutoff_val], (dyno_func_lb(
             sd_coast.mph_ach))[:cutoff_val], label='ABCs calculated road load')
         plt.legend()
         plt.xlabel('Speed [mph]')
@@ -136,14 +136,14 @@ def abc_to_drag_coeffs(
         plt.show()
 
         fig, ax = plt.subplots(2, 1, sharex=True)
-        ax[0].plot(np.array(cyc.time_s)[:cutoff_val],
-                   (1000 * (np.array(sd_coast.drag_kw) + np.array(sd_coast.rr_kw)
-                            ) / np.array(sd_coast.mps_ach))[:cutoff_val]
+        ax[0].plot(cyc.time_s[:cutoff_val],
+                   (1000 * (sd_coast.drag_kw + sd_coast.rr_kw
+                            ) / sd_coast.mps_ach)[:cutoff_val]
                    )
         ax[0].set_ylabel("Road Load [N]")
 
-        ax[-1].plot(np.array(cyc.time_s)[:cutoff_val],
-                    np.array(sd_coast.mph_ach)[:cutoff_val])
+        ax[-1].plot(cyc.time_s[:cutoff_val],
+                    sd_coast.mph_ach[:cutoff_val])
         ax[-1].set_ylabel("mph")
         ax[-1].set_xlabel('Time [s]')
         plt.show()

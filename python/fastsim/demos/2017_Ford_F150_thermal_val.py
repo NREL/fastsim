@@ -145,13 +145,13 @@ for key, df in dfs.items():
         df.iloc[-1]['Fuel Cumu. [Gal.]']
 
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 6))
-    ax[0].plot(sdh.sd.cyc.time_s, np.array(sdh.sd.fs_cumu_mj_out_ach) *
+    ax[0].plot(sdh.sd.cyc.time_s, sdh.sd.fs_cumu_mj_out_ach *
                1e3 / lhv_fuel_kj_per_kg / rho_fuel_kg_per_ml / cc_per_liter / liter_per_gal)
     ax[0].plot(df['Time[s]'], df["Fuel Cumu. [Gal.]"])
     ax[0].set_ylabel("Cumu. Fuel\nEnergy [MJ]")
 
     mod_enrgy_tract_cumu_mj = (
-        np.array(sdh.sd.cyc_trans_kw_out_req) / 1e3 * np.diff(
+        sdh.sd.cyc_trans_kw_out_req / 1e3 * np.diff(
             sdh.sd.cyc.time_s, prepend=0.0)).cumsum()
     exp_enrgy_tract_cumu_mj = (
         df["Tractive Power [kW]"] * df['Time[s]'].diff().fillna(0.0) / 1e3).cumsum()

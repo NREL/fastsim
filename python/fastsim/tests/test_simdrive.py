@@ -125,9 +125,8 @@ class TestSimDriveClassic(unittest.TestCase):
             # there is a limitation in Rust where we can't set an array at
             # index; we have to pull the entire array, mutate it, and set the
             # entire array.
-            mps_ach = np.array(cyc2.mps)
-            mps_ach[0] = cyc2.mph[0]
-            sd2.mph_ach = mps_ach
+            cyc2.mps[0] = cyc2.mph[0]
+            sd2.mph_ach = cyc2.mps
             sd2.sim_drive()
 
             cyc = cycle.Cycle.from_file('udds').to_rust()
@@ -135,9 +134,9 @@ class TestSimDriveClassic(unittest.TestCase):
             sdtot.sim_drive()
 
             self.assertAlmostEqual(
-                np.array(sd1.fs_kw_out_ach).sum() +
-                np.array(sd2.fs_kw_out_ach).sum(),
-                np.array(sdtot.fs_kw_out_ach).sum(),
+                sd1.fs_kw_out_ach.sum() +
+                sd2.fs_kw_out_ach.sum(),
+                sdtot.fs_kw_out_ach.sum(),
                 places=5)
 
     def test_time_dilation(self):
@@ -170,7 +169,7 @@ class TestSimDriveClassic(unittest.TestCase):
                                               )
             sd.sim_drive()
 
-            dist_err = np.abs(np.array(sd.dist_m).sum(
+            dist_err = np.abs(sd.dist_m.sum(
             ) - np.array(sd.cyc0.dist_m).sum()) / np.array(sd.cyc0.dist_m).sum()
             trace_miss_corrected = dist_err < sd.sim_params.time_dilation_tol
 
@@ -243,11 +242,11 @@ class TestSimDriveClassic(unittest.TestCase):
                 sd = simdrive.RustSimDrive(cyc, veh)
                 sd.sim_drive()
                 self.assertFalse(
-                    (np.array(sd.mps_ach) < 0.0).any(),
+                    (sd.mps_ach < 0.0).any(),
                     msg=f'Achieved speed contains negative values for vehicle {vehid}'
                 )
                 self.assertFalse(
-                    (np.array(sd.mps_ach) > np.array(sd.cyc0.mps)).any(),
+                    (sd.mps_ach > np.array(sd.cyc0.mps)).any(),
                     msg=f'Achieved speed is greater than requested speed for {vehid}'
                 )
 

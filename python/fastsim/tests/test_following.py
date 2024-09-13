@@ -739,7 +739,7 @@ class TestFollowing(unittest.TestCase):
                     'BEV': 19,
                 }
                 mask = fastsim.cycle.trapz_step_distances(udds) > 0
-                avg_speed_when_moving_m__s = fastsim.cycle.trapz_step_distances(udds)[mask].sum() / np.array(udds.dt_s)[mask].sum()
+                avg_speed_when_moving_m__s = fastsim.cycle.trapz_step_distances(udds)[mask].sum() / udds.dt_s[mask].sum()
                 # DESIGN VARIABLES
                 veh_pt_types = ['CONV', 'HEV', 'BEV']
                 dt_headways = [0.5, 1.0, 4.0, 5.0, 10.0]
@@ -1187,8 +1187,8 @@ class TestFollowing(unittest.TestCase):
                 ax.set_ylabel('Distance Traveled (m)')
                 fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-distance-by-time.png'), dpi=600)
                 plt.close()
-                self.assertTrue((np.array(sd.cyc.dist_m) == np.array(sd.dist_m)).all())
-                self.assertTrue((np.array(sd.mps_ach) == np.array(sd.cyc.mps)).all())
+                self.assertTrue((np.array(sd.cyc.dist_m) == sd.dist_m).all())
+                self.assertTrue((sd.mps_ach == sd.cyc.mps).all())
                 OUTPUT_DIR.cleanup()
 
 if __name__ == '__main__':

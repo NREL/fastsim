@@ -66,9 +66,9 @@ gal_per_ml = gal_per_l / 1_000
 
 def get_mgp_from_sdh(sdh: fsr.SimDriveHot) -> float:
     fuel_gal_mod = (
-        (np.array(sdh.sd.fs_kw_out_ach) * np.diff(np.array(sdh.sd.cyc.time_s), prepend=0)
+        (sdh.sd.fs_kw_out_ach * np.diff(sdh.sd.cyc.time_s, prepend=0)
          ).sum() / ftc.lhv_fuel_kj_per_kg / ftc.rho_fuel_kg_per_ml * gal_per_ml)
-    dist_mi_mod = np.array(sdh.sd.dist_mi).sum()
+    dist_mi_mod = sdh.sd.dist_mi.sum()
     return dist_mi_mod / fuel_gal_mod
 
 
@@ -78,7 +78,7 @@ cal_te_amb_degc = []
 
 for key in cal_mods.keys():
     sdh = cal_mods[key]
-    cal_te_amb_degc.append(np.array(sdh.state.amb_te_deg_c).mean())
+    cal_te_amb_degc.append(sdh.state.amb_te_deg_c.mean())
     mpg = get_mgp_from_sdh(sdh)
     cal_mod_mpg.append(mpg)
     df = cal_objectives.dfs[key]
@@ -94,7 +94,7 @@ val_te_amb_degc = []
 
 for key in val_objectives.models.keys():
     sdh = val_mods[key]
-    val_te_amb_degc.append(np.array(sdh.state.amb_te_deg_c).mean())
+    val_te_amb_degc.append(sdh.state.amb_te_deg_c.mean())
     mpg = get_mgp_from_sdh(sdh)
     val_mod_mpg.append(mpg)
     df = val_objectives.dfs[key]

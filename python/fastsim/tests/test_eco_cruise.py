@@ -57,7 +57,7 @@ class TestEcoCruise(unittest.TestCase):
             sd.activate_eco_cruise()
             sd.sim_drive()
             self.do_standard_checks(sd, msg=msg)
-            idm_target_speed_m_per_s = np.array(sd.idm_target_speed_m_per_s)[1:].mean()
+            idm_target_speed_m_per_s = sd.idm_target_speed_m_per_s[1:].mean()
             self.assertAlmostEqual(expected_idm_target_speed_m_per_s, sd.sim_params.idm_v_desired_m_per_s, msg=msg)
             self.assertAlmostEqual(expected_idm_target_speed_m_per_s, idm_target_speed_m_per_s, msg=msg)
 

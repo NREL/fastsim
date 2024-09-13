@@ -75,7 +75,7 @@ sd.sim_params = fsim.auxiliaries.set_nested_values(
     idm_decel_m_per_s2=-2.5,
     idm_dt_headway_s=2.0,
     idm_minimum_gap_m=0.0,
-    idm_v_desired_m_per_s=np.average(np.array(cyc.mps)),
+    idm_v_desired_m_per_s=np.average(cyc.mps),
 )
 sd.sim_drive()
 
