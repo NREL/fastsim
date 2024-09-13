@@ -753,7 +753,7 @@ impl Vehicle {
                 .em()
                 .map(|em| em.eff_interp_fwd.f_x())
                 .transpose()?
-                .unwrap_or_default()
+                .unwrap_or_else(|| vec![0., 1.])
                 .into(),
             mc_eff_map_doc: None,
             mc_full_eff_array: Default::default(), // calculated in `set_derived`
@@ -780,7 +780,7 @@ impl Vehicle {
                 .em()
                 .map(|em| em.eff_interp_fwd.x())
                 .transpose()?
-                .unwrap_or_default()
+                .unwrap_or_else(|| vec![0., 1.])
                 .into(),
             mc_pwr_out_perc_doc: None,
             mc_sec_to_peak_pwr: Default::default(), // placeholder, TODO: revisit when implementing xEVs
