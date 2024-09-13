@@ -60,7 +60,7 @@ t_delta = time.time() - t0
 print('Time to run sim_drive: {:.3f} s'.format(t_delta))
 print('Mean number of trace miss iterations: {:.3f}'.format(sd_fixed.trace_miss_iters.mean()))
 print('Distance percent error w.r.t. base cycle: {:.3%}'.format(
-    (sd_fixed.dist_m.sum() - np.array(cyc.dist_m).sum()) / np.array(cyc.dist_m).sum()))
+    (sd_fixed.dist_m.sum() - cyc.dist_m.sum()) / cyc.dist_m.sum()))
 
 # elevation delta based on dilated cycle secs
 delta_elev_dilated = (sd_fixed.cyc.grade * sd_fixed.cyc.dt_s * sd_fixed.cyc.mps).sum()
@@ -129,7 +129,7 @@ plt.plot(sd_fixed.cyc.time_s,
     (np.interp(
     sd_fixed.cyc.time_s, 
     cyc.time_s, 
-    np.array(cyc.dist_m).cumsum()) - sd_fixed.dist_m.cumsum())
+    cyc.dist_m.cumsum()) - sd_fixed.dist_m.cumsum())
          / 1e3)
 # plt.grid()
 plt.xlabel('Time [s]')
@@ -140,7 +140,7 @@ if SHOW_PLOTS:
     plt.show()
 
 plt.figure()
-plt.plot((np.array(cyc.dist_m).cumsum() -
+plt.plot((cyc.dist_m.cumsum() -
          sd_fixed.dist_m.cumsum()))
 # plt.grid()
 plt.xlabel('Index')

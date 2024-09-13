@@ -13,8 +13,8 @@ class TestEcoCruise(unittest.TestCase):
         fs.utils.disable_logging()
     
     def percent_distance_error(self, sd: fs.simdrive.SimDrive) -> float:
-        d0 = np.array(sd.cyc0.dist_m).sum()
-        d = np.array(sd.cyc.dist_m).sum()
+        d0 = sd.cyc0.dist_m.sum()
+        d = sd.cyc.dist_m.sum()
         return 100.0 * (d - d0) / d0
     
     def cycles_differ(self, sd: fs.simdrive.SimDrive) -> bool:

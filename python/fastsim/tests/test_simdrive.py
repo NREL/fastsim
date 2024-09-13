@@ -170,7 +170,7 @@ class TestSimDriveClassic(unittest.TestCase):
             sd.sim_drive()
 
             dist_err = np.abs(sd.dist_m.sum(
-            ) - np.array(sd.cyc0.dist_m).sum()) / np.array(sd.cyc0.dist_m).sum()
+            ) - sd.cyc0.dist_m.sum()) / sd.cyc0.dist_m.sum()
             trace_miss_corrected = dist_err < sd.sim_params.time_dilation_tol
 
             self.assertTrue(sd.sim_params.missed_trace_correction)
@@ -246,7 +246,7 @@ class TestSimDriveClassic(unittest.TestCase):
                     msg=f'Achieved speed contains negative values for vehicle {vehid}'
                 )
                 self.assertFalse(
-                    (sd.mps_ach > np.array(sd.cyc0.mps)).any(),
+                    (sd.mps_ach > sd.cyc0.mps).any(),
                     msg=f'Achieved speed is greater than requested speed for {vehid}'
                 )
 

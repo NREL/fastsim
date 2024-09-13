@@ -595,17 +595,17 @@ impl RustCycleCache {
     }
     #[getter]
     /// array of time steps
-    pub fn get_dt_s(&self) -> Vec<f64> {
-        self.dt_s().to_vec()
+    pub fn get_dt_s<'py>(&self, py: Python<'py>) -> &'py PyArray1<f64> {
+        self.dt_s().into_pyarray(py)
     }
     #[getter]
     /// distance for each time step based on final speed
-    pub fn get_dist_m(&self) -> Vec<f64> {
-        self.dist_m().to_vec()
+    pub fn get_dist_m<'py>(&self, py: Python<'py>) -> &'py PyArray1<f64> {
+        self.dist_m().into_pyarray(py)
     }
     #[getter]
-    pub fn get_delta_elev_m(&self) -> Vec<f64> {
-        self.delta_elev_m().to_vec()
+    pub fn get_delta_elev_m<'py>(&self, py: Python<'py>) -> &'py PyArray1<f64> {
+        self.delta_elev_m().into_pyarray(py)
     }
 
     #[pyo3(name = "list_resources")]

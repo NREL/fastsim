@@ -62,14 +62,14 @@ class TestFollowing(unittest.TestCase):
             if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
-                ax.plot(self.sd.cyc0.time_s, gaps_m, 'k.')
+                ax.plot(self.sd.cyc0.time_s, self.sd.gap_to_lead_vehicle_m, 'k.')
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Gap (m)')
                 fig.tight_layout()
                 save_file=os.path.join(OUTPUT_DIR.name, "test_that_we_have_a_gap_between_us_and_the_lead_vehicle__0.png")
                 fig.savefig(save_file, dpi=300)
                 plt.close()
-            self.assertTrue((gaps_m > 0.0).any())
+            self.assertTrue((self.sd.gap_to_lead_vehicle_m > 0.0).any())
             self.assertAlmostEqual(
                 fastsim.cycle.trapz_step_distances(self.sd.cyc0).sum(),
                 fastsim.cycle.trapz_step_distances(self.sd.cyc).sum(),
@@ -78,7 +78,7 @@ class TestFollowing(unittest.TestCase):
             self.assertTrue(self.ru_sd.sim_params.idm_allow)
             self.ru_sd.sim_drive()
             self.assertTrue(self.ru_sd.sim_params.idm_allow)
-            gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
+            gaps_m = self.ru_sd.gap_to_lead_vehicle_m()
             if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
@@ -138,7 +138,7 @@ class TestFollowing(unittest.TestCase):
                 msg='We cannot get closer than the initial gap distance')
         if USE_RUST:
             self.ru_sd.sim_drive()
-            gaps_m = np.array(self.ru_sd.gap_to_lead_vehicle_m())
+            gaps_m = self.ru_sd.gap_to_lead_vehicle_m()
             if DO_TESTS:
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
@@ -1164,30 +1164,30 @@ class TestFollowing(unittest.TestCase):
                 fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-mps.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
-                ax.plot(np.array(sd.cyc0.dist_m).cumsum(), sd.cyc0.delta_elev_m, 'r-', label='cyc0')
-                ax.plot(np.array(sd.cyc.dist_m).cumsum(), sd.cyc.delta_elev_m, 'k.', label='cyc')
+                ax.plot(sd.cyc0.dist_m.cumsum(), sd.cyc0.delta_elev_m, 'r-', label='cyc0')
+                ax.plot(sd.cyc.dist_m.cumsum(), sd.cyc.delta_elev_m, 'k.', label='cyc')
                 ax.legend()
                 ax.set_xlabel('Distance Traveled (s)')
                 ax.set_ylabel('Elevation (m)')
                 fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-elev-by-dist.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
-                ax.plot(np.array(sd.cyc0.dist_m).cumsum(), sd.cyc0.mps, 'r-', label='cyc0')
-                ax.plot(np.array(sd.cyc.dist_m).cumsum(), sd.cyc.mps, 'k.', label='cyc')
+                ax.plot(sd.cyc0.dist_m.cumsum(), sd.cyc0.mps, 'r-', label='cyc0')
+                ax.plot(sd.cyc.dist_m.cumsum(), sd.cyc.mps, 'k.', label='cyc')
                 ax.legend()
                 ax.set_xlabel('Distance Traveled (m)')
                 ax.set_ylabel('Speed (m/s)')
                 fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-mps-by-dist.png'), dpi=600)
                 plt.close()
                 fig, ax = plt.subplots()
-                ax.plot(sd.cyc0.time_s, np.array(sd.cyc0.dist_m).cumsum(), 'r-', label='cyc0')
-                ax.plot(sd.cyc.time_s, np.array(sd.cyc.dist_m).cumsum(), 'k.', label='cyc')
+                ax.plot(sd.cyc0.time_s, sd.cyc0.dist_m.cumsum(), 'r-', label='cyc0')
+                ax.plot(sd.cyc.time_s, sd.cyc.dist_m.cumsum(), 'k.', label='cyc')
                 ax.legend()
                 ax.set_xlabel('Elapsed Time (s)')
                 ax.set_ylabel('Distance Traveled (m)')
                 fig.savefig(os.path.join(OUTPUT_DIR.path, 'junk-rust-distance-by-time.png'), dpi=600)
                 plt.close()
-                self.assertTrue((np.array(sd.cyc.dist_m) == sd.dist_m).all())
+                self.assertTrue((sd.cyc.dist_m == sd.dist_m).all())
                 self.assertTrue((sd.mps_ach == sd.cyc.mps).all())
                 OUTPUT_DIR.cleanup()
 
