@@ -296,7 +296,7 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     return fig, ax
 
 def plot_res_pwr() -> Tuple[Figure, Axes]: 
-    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
+    fig, ax = plt.subplots(4, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Battery Power")
 
     ax[0].set_prop_cycle(get_paired_cycler())
@@ -329,6 +329,20 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     ax[1].set_ylabel("FC Power\nDelta (f3-f2) [kW]")
     ax[1].legend()
 
+    ax[2].set_prop_cycle(get_paired_cycler())
+    ax[2].plot(
+        df["cyc.time_seconds"],
+        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        label="f2",
+    )
+    ax[2].plot(
+        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.soc.tolist()),
+        label="f3",
+    )
+    ax[2].set_ylabel("RES (battery) SOC")
+    ax[2].legend()
+
     ax[-1].set_prop_cycle(get_paired_cycler())
     ax[-1].plot(
         df["cyc.time_seconds"],
@@ -352,7 +366,7 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     return fig, ax
 
 def plot_res_energy() -> Tuple[Figure, Axes]: 
-    fig, ax = plt.subplots(3, 1, sharex=True, figsize=figsize_3_stacked)
+    fig, ax = plt.subplots(4, 1, sharex=True, figsize=figsize_3_stacked)
     plt.suptitle("Battery Energy")
 
     ax[0].plot(
@@ -381,6 +395,20 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     )
     ax[1].set_ylabel("FC Energy\nDelta [MJ]")
     ax[1].legend()
+
+    ax[2].set_prop_cycle(get_paired_cycler())
+    ax[2].plot(
+        df["cyc.time_seconds"],
+        df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
+        label="f2",
+    )
+    ax[2].plot(
+        np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
+        np.array(sd2.soc.tolist()),
+        label="f3",
+    )
+    ax[2].set_ylabel("RES (battery) SOC")
+    ax[2].legend()
 
     ax[-1].plot(
         df["cyc.time_seconds"],
