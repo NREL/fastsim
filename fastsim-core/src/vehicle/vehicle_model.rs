@@ -748,17 +748,25 @@ impl Vehicle {
                 .unwrap_or_else(|| 1.0),
             max_soc_doc: None,
             max_trac_mps2: Default::default(),
-            mc_eff_array: Default::default(),
-            mc_eff_map: vec![0.; 11].into(), // TODO: revisit when implementing xEVs
+            mc_eff_array: Default::default(), // calculated in `set_derived`
+            mc_eff_map: self
+                .em()
+                .map(|em| em.eff_interp_fwd.f_x())
+                .transpose()?
+                .unwrap_or_default()
+                .into(),
             mc_eff_map_doc: None,
-            mc_full_eff_array: Default::default(), // TODO: revisit when implementing xEVs
+            mc_full_eff_array: Default::default(), // calculated in `set_derived`
             mc_kw_in_array: Default::default(),    // calculated in `set_derived`
             mc_kw_out_array: Default::default(),   // calculated in `set_derived`
             mc_mass_kg: self.em().map_or(anyhow::Ok(0.), |em| {
                 Ok(em.mass()?.unwrap_or_default().get::<si::kilogram>())
             })?,
             mc_max_elec_in_kw: Default::default(), // calculated in `set_derived`
-            mc_max_kw: Default::default(), // placeholder, TODO: review when implementing xEVs
+            mc_max_kw: self
+                .em()
+                .map(|em| em.pwr_out_max.get::<si::kilowatt>())
+                .unwrap_or_default(),
             mc_max_kw_doc: None,
             mc_pe_base_kg: 0.0, // placeholder, TODO: review when implementing xEVs
             mc_pe_base_kg_doc: None,
@@ -768,7 +776,12 @@ impl Vehicle {
             mc_peak_eff_override_doc: None,
             mc_perc_out_array: Default::default(),
             // short array that can use xEV when implented.  TODO: fix this when implementing xEV
-            mc_pwr_out_perc: vec![0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0].into(),
+            mc_pwr_out_perc: self
+                .em()
+                .map(|em| em.eff_interp_fwd.x())
+                .transpose()?
+                .unwrap_or_default()
+                .into(),
             mc_pwr_out_perc_doc: None,
             mc_sec_to_peak_pwr: Default::default(), // placeholder, TODO: revisit when implementing xEVs
             mc_sec_to_peak_pwr_doc: None,
