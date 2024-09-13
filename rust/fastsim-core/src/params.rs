@@ -114,10 +114,6 @@ pub const SMALL_MOTOR_POWER_KW: f64 = 7.5;
 pub const LARGE_MOTOR_POWER_KW: f64 = 75.0;
 
 pub const LARGE_BASELINE_EFF: [f64; 11] = [
-    0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.93, 0.92,
-];
-
-pub const NEW_LARGE_BASELINE_EFF: [f64; 11] = [
     0.83, 0.85, 0.87, 0.89, 0.90, 0.91, 0.93, 0.94, 0.94, 0.94, 0.94,
 ];
 

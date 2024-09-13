@@ -985,7 +985,7 @@ fn try_make_single_vehicle(
             / (IN_PER_M * IN_PER_M),
         fs_kwh,
         idle_fc_kw: 0.0,
-        mc_eff_map: Array1::zeros(NEW_LARGE_BASELINE_EFF.len()),
+        mc_eff_map: Array1::zeros(LARGE_BASELINE_EFF.len()),
         wheel_rr_coef: 0.0, // overridden
         stop_start: false,
         force_aux_on_fc: false,
