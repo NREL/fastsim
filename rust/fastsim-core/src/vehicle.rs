@@ -57,6 +57,16 @@ lazy_static! {
     pub fn set_mc_peak_eff_py(&mut self, new_peak: f64) {
         self.set_mc_peak_eff(new_peak);
     }
+    
+    #[getter]
+    pub fn get_mc_eff_range_py(&self) -> anyhow::Result<f64> {
+        self.get_mc_eff_range()
+    }   
+
+    #[setter("mc_eff_range")]
+    pub fn set_mc_eff_range_py(&mut self, new_range: f64) {
+        self.set_mc_eff_range(new_range);
+    }    
 
     #[getter]
     pub fn get_max_fc_eff_kw(&self) -> f64 {
@@ -656,6 +666,45 @@ impl RustVehicle {
             .collect();
     }
 
+    pub fn get_mc_eff_min(&self) -> anyhow::Result<&f64> {
+        self.mc_eff_array.min()
+    }
+
+    pub fn get_mc_eff_max(&self) -> anyhow::Result<&f64> {
+        self.mc_eff_array.max()
+    }
+
+    pub fn get_mc_eff_range(&self) -> anyhow::Result<f64> {
+        Ok(self.get_mc_eff_max()? - self.get_mc_eff_min()?)
+    }
+
+    pub fn set_mc_eff_range(&mut self, new_range: f64) -> anyhow::Result<()> {
+        let mc_eff_max = *self.get_mc_eff_max()?;
+        if new_range == 0.0 {
+            self.mc_eff_map = Array::zeros(self.mc_eff_map.len()) + mc_eff_max;
+            self.mc_eff_array = Array::zeros(self.mc_eff_array.len()) + mc_eff_max;
+            Ok(())
+        } else if (0.0..=1.0).contains(&new_range) {
+            let old_range = self.get_mc_eff_range()?;
+            self.mc_eff_map = mc_eff_max + (&self.mc_eff_map - mc_eff_max) * new_range / old_range;
+            if self.get_mc_eff_min()? < &0.0 {
+                bail!("`mc_eff_min` ({:.3}) must not be negative", self.get_mc_eff_min()?)
+            }
+            ensure!(
+                self.get_mc_eff_max()? <= &1.0,
+                format!(
+                    "{}\n`mc_eff_max` ({:.3}) must be no greater than 1.0",
+                    format_dbg!(self.get_mc_eff_max()? <= &1.0),
+                    self.get_mc_eff_max()?
+                )
+            );
+            self.mc_eff_array = self.mc_eff_map.clone();
+            Ok(())
+        } else {
+            bail!("`new_range` ({:.3}) must be between 0.0 and 1.0", new_range)
+        }
+    }
+
     pub fn set_fc_peak_eff(&mut self, new_peak: f64) {
         let old_fc_peak_eff = self.fc_peak_eff();
         let multiplier = new_peak / old_fc_peak_eff;
@@ -1179,6 +1228,17 @@ mod tests {
     fn test_set_derived_via_new() {
         let veh = RustVehicle::mock_vehicle();
         assert!(veh.veh_kg > 0.0);
+    }
+
+    #[test]
+    fn test_set_mc_eff_range() {
+        let mut veh = RustVehicle::mock_vehicle();
+        veh.set_mc_eff_range(0.7).unwrap();
+        assert!(0.699 < veh.get_mc_eff_range().unwrap() && veh.get_mc_eff_range().unwrap() <= 0.701);
+        veh.set_mc_eff_range(0.5).unwrap();
+        assert!(0.499 < veh.get_mc_eff_range().unwrap() && veh.get_mc_eff_range().unwrap() <= 0.501);
+        veh.set_mc_eff_range(0.).unwrap();
+        assert!(veh.get_mc_eff_range().unwrap() == 0.);
     }
 
     #[test]
