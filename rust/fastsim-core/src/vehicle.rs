@@ -645,8 +645,9 @@ impl RustVehicle {
     }
 
     pub fn set_mc_peak_eff(&mut self, new_peak: f64) {
-        let mc_max_eff = self.mc_eff_array.max().unwrap();
+        let mc_max_eff = self.mc_eff_array.max().unwrap().clone();
         self.mc_eff_array *= new_peak / mc_max_eff;
+        self.mc_eff_map *= new_peak / mc_max_eff;
         let mc_max_full_eff = arrmax(&self.mc_full_eff_array);
         self.mc_full_eff_array = self
             .mc_full_eff_array
@@ -1094,7 +1095,8 @@ impl RustVehicle {
     pub fn set_mc_eff_peak_pwr(&mut self, new_peak_x: f64) -> anyhow::Result<()> {
         let short_arrays = skewness_shift(&self.mc_pwr_out_perc, &self.mc_eff_map, new_peak_x)?;
         self.mc_pwr_out_perc = short_arrays.0;
-        self.mc_eff_map = short_arrays.1;
+        self.mc_eff_map = short_arrays.1.clone();
+        self.mc_eff_array = short_arrays.1;
         self.mc_full_eff_array = self
             .mc_perc_out_array
             .iter()
