@@ -88,7 +88,7 @@ pub fn skewness_shift(
     }
     if x_new[x_new.len() - 1] != x[x.len() - 1] {
         return Err(anyhow!(
-            "The last value of the new x array does not equal the last value of the old x array."
+            "The last value of the new x array {} does not equal the last value of the old x array. {}", x_new[x_new.len() - 1], x[x.len() - 1]
         ));
     }
 
