@@ -23,6 +23,26 @@ fn main() {
         return;
     }
 
+    check_files_consistent(&prepath);
+
+    // make sure at least one vehicle is available in the `from_resources`
+    let veh_path_in_python = PathBuf::from(format!(
+        // "{}/{}/vehdb/2017_Toyota_Highlander_3.5_L.yaml",
+        "{}/{}/vehdb/2017_Toyota_Highlander_3.5_L.yaml",
+        env::current_dir().unwrap().as_os_str().to_str().unwrap(),
+        prepath
+    ));
+    assert!(veh_path_in_python.exists());
+    let veh_path_in_rust = PathBuf::from(format!(
+        "{}/resources/vehicles/2017_Toyota_Highlander_3.5_L.yaml",
+        env::current_dir().unwrap().as_os_str().to_str().unwrap()
+    ));
+    println!("{:?}", &veh_path_in_rust);
+    std::fs::copy(veh_path_in_python, veh_path_in_rust).unwrap();
+}
+
+/// Checks if rust and python resource files are consistent
+fn check_files_consistent(prepath: &String) {
     let truth_files = [
         format!(
             "{}/{}/longparams.json",

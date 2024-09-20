@@ -21,6 +21,10 @@ def package_root() -> Path:
     """Returns the package root directory."""
     return Path(__file__).parent
 
+def resources_root() -> Path:
+    """Returns the resources root directory."""
+    return Path(__file__).parent / "resources"
+
 
 DEFAULT_LOGGING_CONFIG = dict(
     format = "%(asctime)s.%(msecs)03d | %(filename)s:%(lineno)s | %(levelname)s: %(message)s",
