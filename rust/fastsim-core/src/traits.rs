@@ -459,6 +459,7 @@ mod tests {
     use crate::imports::SerdeAPI;
 
     #[test]
+    #[cfg(feature = "resources")]
     fn test_list_resources() {
         let cyc_resource_list = crate::cycle::RustCycle::list_resources();
         assert!(cyc_resource_list.len() == 3);
