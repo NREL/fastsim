@@ -91,8 +91,7 @@ pub fn abc_to_drag_coeffs(
             vehicle: veh,
             dyno_func_lb: &dyno_func_lb,
         };
-        let solver =
-            NelderMead::new(vec![array![0.0, 0.0], array![0.5, 0.0], array![0.5, 0.1]]);
+        let solver = NelderMead::new(vec![array![0.0, 0.0], array![0.5, 0.0], array![0.5, 0.1]]);
         let res = Executor::new(cost, solver)
             .configure(|state| state.max_iters(100))
             .run()
@@ -239,8 +238,8 @@ pub struct GitObjectInfo {
     pub links: Option<ObjectLinks>,
 }
 
-const VEHICLE_REPO_LIST_URL: &'static str =
-    &"https://api.github.com/repos/NREL/fastsim-vehicles/contents/public";
+const VEHICLE_REPO_LIST_URL: &str =
+    "https://api.github.com/repos/NREL/fastsim-vehicles/contents/public";
 
 /// Function that takes a url and calls the url. If a 503 or 429 error is
 /// thrown, it tries again after a pause, up to four times. It returns either a

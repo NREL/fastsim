@@ -240,6 +240,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     /// Instantiates an object from a url.  Accepts yaml and json file types  
     /// # Arguments  
     /// - url: URL (either as a string or url type) to object  
+    ///
     /// Note: The URL needs to be a URL pointing directly to a file, for example
     /// a raw github URL.
     fn from_url<S: AsRef<str>>(url: S, skip_init: bool) -> anyhow::Result<Self> {

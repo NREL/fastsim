@@ -146,13 +146,3 @@ macro_rules! impl_set_body {
         }
     };
 }
-
-#[derive(Debug, Default, Clone)]
-pub struct FieldOptions {
-    /// if true, getters are not generated for a field
-    pub skip_get: bool,
-    /// if true, setters are not generated for a field
-    pub skip_set: bool,
-    /// if true, current field is itself a struct with `orphaned` field
-    pub field_has_orphaned: bool,
-}
