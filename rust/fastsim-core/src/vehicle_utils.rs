@@ -246,6 +246,7 @@ const VEHICLE_REPO_LIST_URL: &str =
 /// result or an error.  
 /// # Arguments  
 /// - url: url to be called
+///
 /// Source: https://docs.rs/ureq/latest/ureq/enum.Error.html
 fn get_response<S: AsRef<str>>(url: S) -> Result<Response, OtherError> {
     for _ in 1..4 {
