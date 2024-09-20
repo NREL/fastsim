@@ -1,6 +1,11 @@
-use crate::{imports::*, resources};
+use crate::imports::*;
+use include_dir::{include_dir, Dir};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use ureq;
+
+#[cfg(feature = "resources")]
+pub const RESOURCES_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/resources");
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     const ACCEPTED_BYTE_FORMATS: &'static [&'static str] = &["yaml", "json", "toml", "bin"];
@@ -14,11 +19,25 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
     }
 
     /// List available (compiled) resources (stored in the rust binary)
-    /// RESULT:
+    /// # RESULT
     /// vector of string of resource names that can be loaded
     #[cfg(feature = "resources")]
     fn list_resources() -> Vec<String> {
-        resources::list_resources(Self::RESOURCE_PREFIX)
+        if Self::RESOURCE_PREFIX.is_empty() {
+            Vec::<String>::new()
+        } else if let Some(resources_path) = RESOURCES_DIR.get_dir(Self::RESOURCE_PREFIX) {
+            let mut file_names: Vec<String> = resources_path
+                .files()
+                .filter_map(|entry| entry.path().file_name()?.to_str().map(String::from))
+                .collect();
+            file_names.retain(|f| {
+                Self::ACCEPTED_STR_FORMATS.contains(&f.split(".").last().unwrap_or_default())
+            });
+            file_names.sort();
+            file_names
+        } else {
+            Vec::<String>::new()
+        }
     }
 
     /// Read (deserialize) an object from a resource file packaged with the `fastsim-core` crate
@@ -33,7 +52,7 @@ pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
             .extension()
             .and_then(OsStr::to_str)
             .with_context(|| format!("File extension could not be parsed: {filepath:?}"))?;
-        let file = crate::resources::RESOURCES_DIR
+        let file = RESOURCES_DIR
             .get_file(&filepath)
             .with_context(|| format!("File not found in resources: {filepath:?}"))?;
         Self::from_reader(file.contents(), extension, skip_init)
@@ -432,5 +451,26 @@ impl IterMaxMin<f64> for Array1<f64> {
                 _ => Ok(acc),
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::imports::SerdeAPI;
+
+    #[test]
+    #[cfg(feature = "resources")]
+    fn test_list_resources() {
+        let cyc_resource_list = crate::cycle::RustCycle::list_resources();
+        assert!(cyc_resource_list.len() == 3);
+        assert!(cyc_resource_list[0] == "HHDDTCruiseSmooth.csv");
+        // NOTE: at the time of writing this test, there is no
+        // vehicles subdirectory. The agreed-upon behavior in
+        // that case is that list_resources should return an
+        // empty vector of string.
+        let veh_resource_list = crate::vehicle::RustVehicle::list_resources();
+        println!("{:?}", veh_resource_list);
+        assert!(veh_resource_list.len() == 1);
+        assert!(veh_resource_list[0] == "2017_Toyota_Highlander_3.5_L.yaml")
     }
 }
