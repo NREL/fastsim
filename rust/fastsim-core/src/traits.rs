@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use ureq;
 
+#[cfg(feature = "resources")]
 pub const RESOURCES_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/resources");
 
 pub trait SerdeAPI: Serialize + for<'a> Deserialize<'a> {
