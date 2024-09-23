@@ -79,6 +79,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
         self.em
             .set_curr_pwr_prop_out_max(
                 // TODO: add means of controlling whether fc can provide power to em and also how much
+                // Try out a 'power out type' enum field on the fuel converter with variants for mechanical and electrical
                 self.res.state.pwr_prop_max,
                 self.res.state.pwr_regen_max,
                 dt,
