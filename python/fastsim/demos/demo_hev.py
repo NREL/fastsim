@@ -48,13 +48,13 @@ t0 = time.perf_counter()
 # run simulation
 if DEBUG_LOG:
     with fsim.utils.with_logging():
-        sd.walk()
+        sd.walk_hev()
 else:
-    sd.walk()
+    sd.walk_hev()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
-print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
+print(f"fastsim-3 `sd.walk_hev()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 
 # TODO: change arg to default
 df = sd.to_dataframe(allow_partial=True)
@@ -65,11 +65,11 @@ sd_no_save = fsim.SimDrive(veh_no_save, cyc)
 # simulation start time
 t0 = time.perf_counter()
 # run simulation
-sd_no_save.walk()
+sd_no_save.walk_hev()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si_none = t1 - t0
-print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
+print(f"fastsim-3 `sd.walk_hev()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
 
 # `fastsim-2` benchmarking
 # %%
@@ -80,7 +80,7 @@ with fsim.utils.without_logging(): # suppresses known warning
     sd2.sim_drive()
 t1 = time.perf_counter()
 t_fsim2 = t1 - t0
-print(f"fastsim-2 `sd.walk()` elapsed time: {t_fsim2:.2e} s")
+print(f"fastsim-2 `sim_drive()` elapsed time: {t_fsim2:.2e} s")
 print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of 1:")
 print(f"{t_fsim2/t_fsim3_si1:.3g}x")
 print("`fastsim-3` speedup relative to `fastsim-2` (should be greater than 1) for `save_interval` of `None`:")

@@ -23,6 +23,13 @@ pub struct HybridElectricVehicle {
     pub(crate) mass: Option<si::Mass>,
     // TODO: add enum for controling fraction of tractive pwr handled by battery vs engine -- there
     // might be many ways we'd want to do this, especially since there will be thermal models involved
+    /// Simulation options
+    #[serde(default)]
+    pub sim_opts: HEVSimulationOptions,
+    /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
+    /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
+    #[serde(default)]
+    pub soc_bal_iters: u32,
 }
 
 impl SaveInterval for HybridElectricVehicle {
@@ -210,6 +217,21 @@ impl Mass for HybridElectricVehicle {
         self.res.expunge_mass_fields();
         self.em.expunge_mass_fields();
         self.mass = None;
+    }
+}
+
+/// Options for controlling simulation behavior
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct HEVSimulationOptions {
+    /// [ReversibleEnergyStorage] per [FuelConverter]
+    pub res_per_fuel_lim: si::Ratio,
+}
+
+impl Default for HEVSimulationOptions {
+    fn default() -> Self {
+        Self {
+            res_per_fuel_lim: uc::R * 0.005,
+        }
     }
 }
 

@@ -4,6 +4,7 @@ use super::drive_cycle::Cycle;
 use super::vehicle::Vehicle;
 use crate::air_properties as air;
 use crate::imports::*;
+use crate::prelude::*;
 
 #[fastsim_api]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
@@ -78,6 +79,44 @@ impl SimDrive {
             cyc,
             sim_params: sim_params.unwrap_or_default(),
         }
+    }
+
+    /// Iterate `walk` until SOC balance is achieved.  This is only applicable
+    /// to `PowertrainType::HybridElectricVehicle`.
+    pub fn walk_hev(&mut self) -> anyhow::Result<()> {
+        match self.veh.pt_type {
+            PowertrainType::HybridElectricVehicle(_) => {}
+            _ => {
+                bail!("Expected `PowertrainType::HybridElectricVehicle`")
+            }
+        }
+        let res = &mut self.veh.res_mut().unwrap();
+        res.state.soc = 0.5 * (res.min_soc + res.max_soc);
+
+        // Net battery energy used per amount of fuel used
+        // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
+        let veh_init = self.veh.clone();
+        loop {
+            self.walk()?;
+            let soc_final = self
+                .veh
+                .res()
+                // `unwrap` is ok because it's already been checked
+                .unwrap()
+                .state
+                .soc;
+            let res_per_fuel = self.veh.res().unwrap().state.energy_out_chemical
+                / self.veh.fc().unwrap().state.energy_fuel;
+            if res_per_fuel < self.veh.hev().unwrap().sim_opts.res_per_fuel_lim {
+                break;
+            } else {
+                // reset vehicle to initial state
+                self.veh = veh_init.clone();
+                // start SOC at previous final value
+                self.veh.res_mut().unwrap().state.soc = soc_final;
+            }
+        }
+        Ok(())
     }
 
     pub fn walk(&mut self) -> anyhow::Result<()> {

@@ -416,6 +416,8 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                 },
                 pt_cntrl: HEVPowertrainControls::RESGreedy,
                 mass: None,
+                sim_opts: Default::default(),
+                soc_bal_iters: Default::default(),
                 aux_cntrl: Default::default(),
             };
             Ok(PowertrainType::HybridElectricVehicle(Box::new(hev)))
@@ -487,6 +489,22 @@ impl Vehicle {
         } else {
             self.res().unwrap().pwr_out_max
         }
+    }
+
+    pub fn conv(&self) -> Option<&ConventionalVehicle> {
+        self.pt_type.conv()
+    }
+
+    pub fn hev(&self) -> Option<&HybridElectricVehicle> {
+        self.pt_type.hev()
+    }
+
+    // pub fn phev(&self) -> Option<&HybridElectricVehicle> {
+    //     self.pt_type.phev()
+    // }
+
+    pub fn bev(&self) -> Option<&BatteryElectricVehicle> {
+        self.pt_type.bev()
     }
 
     pub fn fc(&self) -> Option<&FuelConverter> {

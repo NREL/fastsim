@@ -14,4 +14,5 @@ pub use crate::vehicle::powertrain::fuel_converter::{
 pub use crate::vehicle::powertrain::reversible_energy_storage::{
     ReversibleEnergyStorage, ReversibleEnergyStorageState, ReversibleEnergyStorageStateHistoryVec,
 };
+pub use crate::vehicle::PowertrainType;
 pub use crate::vehicle::Vehicle;
