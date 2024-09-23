@@ -36,7 +36,7 @@ pub struct Cycle {
     // TODO: consider trapezoidal integration scheme
     /// calculated prescribed distance based on RHS integral of time and speed
     pub dist: Vec<si::Length>,
-    /// road grade
+    /// road grade (expressed as a decimal, not percent)
     #[api(skip_get, skip_set)]
     pub grade: Vec<si::Ratio>,
     // TODO: consider trapezoidal integration scheme
