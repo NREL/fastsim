@@ -2567,3 +2567,229 @@ def estimate_soc_corrected_fuel_kJ(sd: SimDrive) -> float:
         k = (sd.veh.ess_max_kwh * kJ__kWh) / (ess_eff * mc_chg_eff * fc_eff)
         equivalent_fuel_kJ = -1.0 * delta_soc * k
     return sd.fuel_kj + equivalent_fuel_kJ
+
+import matplotlib.pyplot as plt
+import numpy as np
+from fuzzywuzzy import fuzz, process
+
+class SimulationDrive:
+    
+    available_signals = {
+    'Fuel Converter Output Power Achieved': 'fc_kw_out_ach',
+    'ESS Output Power Achieved': 'ess_kw_out_ach',
+    'Fuel Converter Input Power Achieved': 'fc_kw_in_ach',
+    'Acceleration Buffer SOC': 'accel_buff_soc',
+    'Acceleration Power': 'accel_kw',
+    'Ascent Energy (KJ)': 'ascent_kj',
+    'Ascent Power': 'ascent_kw',
+    'Auxiliary Power Input': 'aux_in_kw',
+    'Auxiliary Energy (KJ)': 'aux_kj',
+    'Battery Energy Consumption per Mile': 'battery_kwh_per_mi',
+    'Brake Energy (KJ)': 'brake_kj',
+    'Current ESS Max Output Power': 'cur_ess_max_kw_out',
+    'Current Max Available Electric Power': 'cur_max_avail_elec_kw',
+    'Current Max Electric Power': 'cur_max_elec_kw',
+    'Current Max ESS Charge Power': 'cur_max_ess_chg_kw',
+    'Current Max Fuel Converter Output Power': 'cur_max_fc_kw_out',
+    'Current Max Fuel System Output Power': 'cur_max_fs_kw_out',
+    'Current Max Motor Controller Input Power': 'cur_max_mc_elec_kw_in',
+    'Current Max Motor Controller Output Power': 'cur_max_mc_kw_out',
+    'Current Max Mechanical Motor Controller Input Power': 'cur_max_mech_mc_kw_in',
+    'Current Max Roadway Charge Power': 'cur_max_roadway_chg_kw',
+    'Current Max Traction Power': 'cur_max_trac_kw',
+    'Current Max Transmission Output Power': 'cur_max_trans_kw_out',
+    'Current SOC Target': 'cur_soc_target',
+    'Cycle Friction Brake Power': 'cyc_fric_brake_kw',
+    'Cycle Met': 'cyc_met',
+    'Cycle Regen Brake Power': 'cyc_regen_brake_kw',
+    'Cycle Tire Inertia Power': 'cyc_tire_inertia_kw',
+    'Cycle Traction Power Required': 'cyc_trac_kw_req',
+    'Cycle Transmission Output Power Required': 'cyc_trans_kw_out_req',
+    'Cycle Wheel Power Required': 'cyc_whl_kw_req',
+    'Cycle Wheel Rad Per Sec': 'cyc_whl_rad_per_sec',
+    'Desired ESS Output Power for AE': 'desired_ess_kw_out_for_ae',
+    'Distance (m)': 'dist_m',
+    'Distance (mi)': 'dist_mi',
+    'DOD Cycles': 'dod_cycs',
+    'Drag Energy (KJ)': 'drag_kj',
+    'Drag Power': 'drag_kw',
+    'Electric Power Required for AE': 'elec_kw_req_4ae',
+    'Electric Energy Consumption per Mile': 'electric_kwh_per_mi',
+    'Energy Audit Error': 'energy_audit_error',
+    'ER AE Output Power': 'er_ae_kw_out',
+    'ER Power If Fuel Cell Required': 'er_kw_if_fc_req',
+    'ESS to Fuel Energy (KWH)': 'ess2fuel_kwh',
+    'ESS Acceleration Buffer Charge Power': 'ess_accel_buff_chg_kw',
+    'ESS Acceleration Regen Discharge Power': 'ess_accel_regen_dischg_kw',
+    'ESS AE Output Power': 'ess_ae_kw_out',
+    'ESS Capacity Limit Charge Power': 'ess_cap_lim_chg_kw',
+    'ESS Capacity Limit Discharge Power': 'ess_cap_lim_dischg_kw',
+    'ESS Current Energy (KWH)': 'ess_cur_kwh',
+    'ESS Desired Power for FC Efficiency': 'ess_desired_kw_4fc_eff',
+    'ESS Discharge Energy (KJ)': 'ess_dischg_kj',
+    'ESS Efficiency Energy (KJ)': 'ess_eff_kj',
+    'ESS Power If Fuel Cell Required': 'ess_kw_if_fc_req',
+    'ESS Lim Motor Controller Regen Percent Power': 'ess_lim_mc_regen_perc_kw',
+    'ESS Loss Power': 'ess_loss_kw',
+    'ESS Percentage Dead': 'ess_perc_dead',
+    'ESS Regen Buffer Discharge Power': 'ess_regen_buff_dischg_kw',
+    'Fuel Converter Energy (KJ)': 'fc_kj',
+    'Fuel Converter Power Gap from Efficiency': 'fc_kw_gap_fr_eff',
+    'Fuel Converter Output Power Achieved Percentage': 'fc_kw_out_ach_pct',
+    'Fuel Converter Time On': 'fc_time_on',
+    'Fuel Converter Transmission Limit Power': 'fc_trans_lim_kw',
+    'Fuel System Cumulative MJ Output Achieved': 'fs_cumu_mj_out_ach',
+    'Fuel System Output Power Achieved': 'fs_kw_out_ach',
+    'Fuel System Output Energy (KWH) Achieved': 'fs_kwh_out_ach',
+    'Fuel Energy (KJ)': 'fuel_kj',
+    'Gap to Lead Vehicle (m)': 'gap_to_lead_vehicle_m',
+    'IDM Target Speed (m/s)': 'idm_target_speed_m_per_s',
+    'Kinetic Energy (KJ)': 'ke_kj',
+    'Max ESS Acceleration Buffer Discharge Power': 'max_ess_accell_buff_dischg_kw',
+    'Max ESS Regen Buffer Charge Power': 'max_ess_regen_buff_chg_kw',
+    'Max Traction Speed (m/s)': 'max_trac_mps',
+    'Motor Controller Input Power for Max FC Efficiency': 'mc_elec_in_kw_for_max_fc_eff',
+    'Motor Controller Input Power Limit': 'mc_elec_in_lim_kw',
+    'Motor Controller Input Power Achieved': 'mc_elec_kw_in_ach',
+    'Motor Controller Input Power If Fuel Cell Required': 'mc_elec_kw_in_if_fc_req',
+    'Motor Controller Energy (KJ)': 'mc_kj',
+    'Motor Controller Power If Fuel Cell Required': 'mc_kw_if_fc_req',
+    'Motor Controller Mechanical Power Output Achieved': 'mc_mech_kw_out_ach',
+    'Motor Controller Transition Limit Power': 'mc_transi_lim_kw',
+    'Min ESS Power to Help FC': 'min_ess_kw_2help_fc',
+    'Min Motor Controller Power to Help FC': 'min_mc_kw_2help_fc',
+    'MPGGE': 'mpgge',
+    'Achieved Speed (MPH)': 'mph_ach',
+    'Achieved Speed (m/s)': 'mps_ach',
+    'Net Energy (KJ)': 'net_kj',
+    'Regen Buffer SOC': 'regen_buff_soc',
+    'Regen Control Limit KW Percentage': 'regen_contrl_lim_kw_perc',
+    'Roadway Charge Energy (KJ)': 'roadway_chg_kj',
+    'Roadway Charge Output Power Achieved': 'roadway_chg_kw_out_ach',
+    'Rolling Resistance Energy (KJ)': 'rr_kj',
+    'Rolling Resistance Power': 'rr_kw',
+    'State of Charge (SOC)': 'soc',
+    'Trace Miss': 'trace_miss',
+    'Trace Miss Distance Fraction': 'trace_miss_dist_frac',
+    'Trace Miss Iterations': 'trace_miss_iters',
+    'Trace Miss Speed (m/s)': 'trace_miss_speed_mps',
+    'Trace Miss Time Fraction': 'trace_miss_time_frac',
+    'Transmission Energy (KJ)': 'trans_kj',
+    'Transmission Input Power Achieved': 'trans_kw_in_ach',
+    'Transmission Output Power Achieved': 'trans_kw_out_ach'
+    }
+
+    def __init__(self, sde):
+        self.sde = sde  # Set SimDrive attribute
+        # Populate signal data attributes
+        for key, value in self.available_signals.items():
+            setattr(self, key, value)
+
+    def fuzzy_match(self, signal_name, feeling_lucky=False):
+        matches = process.extractOne(signal_name, self.available_signals.keys(), scorer=fuzz.token_sort_ratio)
+        best_match, score = matches
+        if score >= 70:
+            if feeling_lucky:
+                return best_match
+            else:
+                print(f"Did you mean '{best_match}'? (y/n)")
+                choice = input().strip().lower()
+                if choice == 'y':
+                    return best_match
+        return None
+
+    def plot(self, signal, fuzzy_search=True, feeling_lucky=False, speed_trace=True, 
+             difference=None, type='temporal', line_styles=None, colors=None, markers=None):
+        # Ensure signal is a list
+        if isinstance(signal, str):
+            signal = [signal]
+        
+        # Validate plot type
+        if type not in ['temporal', 'spatial']:
+            raise ValueError("Invalid type selected. Please choose 'temporal' or 'spatial'.")
+        
+        # Handle fuzzy search
+        matched_signals = []
+        for sig in signal:
+            if fuzzy_search:
+                matched_signal = self.fuzzy_match(sig, feeling_lucky)
+                if not matched_signal:
+                    print(f"No close match found for '{sig}'. Please enter a valid signal name.")
+                    return None
+                matched_signals.append(matched_signal)
+            else:
+                if sig not in self.available_signals:
+                    print(f"Invalid signal name: '{sig}'")
+                    return None
+                matched_signals.append(sig)
+
+        # Check if required attributes exist in self
+        if not hasattr(self.sde.cyc, 'time_s'):
+            raise AttributeError("Attribute 'self.cyc.time_s' is required but not found.")
+        if speed_trace and not hasattr(self.sde, 'mph_ach'):
+            raise AttributeError("Attribute 'self.mph_ach' is required for speed trace but not found.")
+        
+        # Prepare data for plotting
+        plot_data = []
+        for sig in matched_signals:
+            signal_key = self.available_signals[sig]
+            if not hasattr(self.sde, signal_key):
+                print(f"Data for signal '{sig}' not found.")
+                return None
+            plot_data.append((getattr(self.sde, signal_key), sig))
+        
+        # Default line styles, colors, and markers
+        if line_styles is None:
+            line_styles = ['-'] * len(plot_data)
+        if colors is None:
+            colors = [None] * len(plot_data)
+        if markers is None:
+            markers = [''] * len(plot_data)
+
+        # Plotting
+        if type == 'temporal':
+            fig, axs = plt.subplots(len(plot_data) + (1 if speed_trace else 0), 1, figsize=(12, 8), sharex=True)
+            for idx, (data, label) in enumerate(plot_data):
+                axs[idx].plot(self.sde.cyc.time_s, data, label=label, linestyle=line_styles[idx], color=colors[idx], marker=markers[idx])
+                axs[idx].set_ylabel(label)
+            if speed_trace:
+                axs[-1].plot(self.sde.cyc.time_s, self.sde.mph_ach, label='Achieved Speed (MPH)', linestyle='-', color='black', marker='')
+                axs[-1].set_ylabel('Achieved Speed (MPH)')
+            fig.suptitle('Temporal Performance Comparison')
+            plt.xlabel('Time (s)')
+            plt.legend()
+            plt.tight_layout()
+            plt.show()
+        elif type == 'spatial':
+            fig, ax = plt.subplots(figsize=(12, 8))
+            for idx, (data, label) in enumerate(plot_data):
+                ax.plot(self.sde.dist_m, data, label=label, linestyle=line_styles[idx], color=colors[idx], marker=markers[idx])
+            ax.set_xlabel('Distance (m)')
+            ax.set_ylabel('Signal Value')
+            ax.set_title('Spatial Performance Comparison')
+            ax.legend()
+            plt.tight_layout()
+            plt.show()
+
+        # Difference Plotting
+        if difference:
+            if len(plot_data) != 2:
+                raise ValueError("Difference calculation requires exactly two signals.")
+            data1, label1 = plot_data[0]
+            data2, label2 = plot_data[1]
+            fig, ax = plt.subplots(figsize=(12, 8))
+            if difference == 'absolute':
+                diff_data = np.abs(data1 - data2)
+                diff_label = f'Absolute Difference between {label1} and {label2}'
+            elif difference == 'relative':
+                diff_data = np.abs((data1 - data2) / data1) * 100
+                diff_label = f'Relative Difference between {label1} and {label2} (%)'
+            else:
+                raise ValueError("Invalid difference type. Choose 'absolute' or 'relative'.")
+            ax.plot(self.cyc.time_s, diff_data, label=diff_label, linestyle='-', color='red', marker='')
+            ax.set_xlabel('Time (s)')
+            ax.set_ylabel('Difference Value')
+            ax.set_title('Difference Plot')
+            ax.legend()
+            plt.tight_layout()
+            plt.show()
