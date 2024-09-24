@@ -12,7 +12,7 @@ fn run_sd_2012_ford_fusion_udds() {
     let veh = Vehicle::from_resource("2012_Ford_Fusion.yaml", false).unwrap();
     let cyc = Cycle::from_resource("udds.csv", false).unwrap();
     let mut sd = SimDrive::new(veh, cyc, None);
-    sd.walk().unwrap();
+    sd.walk_once().unwrap();
 }
 
 #[cfg(test)]

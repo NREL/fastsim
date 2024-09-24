@@ -81,6 +81,31 @@ impl SaveInterval for PowertrainType {
 }
 
 impl PowertrainType {
+    pub fn conv_mut(&mut self) -> Option<&mut ConventionalVehicle> {
+        match self {
+            Self::ConventionalVehicle(conv) => Some(conv),
+            _ => None,
+        }
+    }
+
+    pub fn hev_mut(&mut self) -> Option<&mut HybridElectricVehicle> {
+        match self {
+            Self::HybridElectricVehicle(hev) => Some(hev),
+            _ => None,
+        }
+    }
+
+    // pub fn phev_mut(&mut self) -> Option<&mut> {
+    //     self.pt_type.phev()
+    // }
+
+    pub fn bev_mut(&mut self) -> Option<&mut BatteryElectricVehicle> {
+        match self {
+            Self::BatteryElectricVehicle(bev) => Some(bev),
+            _ => None,
+        }
+    }
+
     pub fn conv(&self) -> Option<&ConventionalVehicle> {
         match self {
             Self::ConventionalVehicle(conv) => Some(conv),

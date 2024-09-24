@@ -507,6 +507,22 @@ impl Vehicle {
         self.pt_type.bev()
     }
 
+    pub fn conv_mut(&mut self) -> Option<&mut ConventionalVehicle> {
+        self.pt_type.conv_mut()
+    }
+
+    pub fn hev_mut(&mut self) -> Option<&mut HybridElectricVehicle> {
+        self.pt_type.hev_mut()
+    }
+
+    // pub fn phev_mut(&mut self) -> Option<&mut HybridElectricVehicle> {
+    //     self.pt_type.phev_mut()
+    // }
+
+    pub fn bev_mut(&mut self) -> Option<&mut BatteryElectricVehicle> {
+        self.pt_type.bev_mut()
+    }
+
     pub fn fc(&self) -> Option<&FuelConverter> {
         self.pt_type.fc()
     }

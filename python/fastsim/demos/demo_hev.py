@@ -48,13 +48,13 @@ t0 = time.perf_counter()
 # run simulation
 if DEBUG_LOG:
     with fsim.utils.with_logging():
-        sd.walk_hev()
+        sd.walk()
 else:
-    sd.walk_hev()
+    sd.walk()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
-print(f"fastsim-3 `sd.walk_hev()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 
 # TODO: change arg to default
 df = sd.to_dataframe(allow_partial=True)
@@ -65,11 +65,11 @@ sd_no_save = fsim.SimDrive(veh_no_save, cyc)
 # simulation start time
 t0 = time.perf_counter()
 # run simulation
-sd_no_save.walk_hev()
+sd_no_save.walk()
 # simulation end time
 t1 = time.perf_counter()
 t_fsim3_si_none = t1 - t0
-print(f"fastsim-3 `sd.walk_hev()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
+print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of None:\n{t_fsim3_si_none:.2e} s")
 
 # `fastsim-2` benchmarking
 # %%
@@ -196,8 +196,7 @@ def plot_fc_pwr() -> Tuple[Figure, Axes]:
     )
     ax[1].plot(
         df["cyc.time_seconds"],
-        (df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_propulsion_watts"] +
-            df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_aux_watts"]) / 1e3 - np.array(sd2.fc_kw_out_ach.tolist())[:len(df)],
+        df["veh.pt_type.HybridElectricVehicle.fc.history.pwr_fuel_watts"] / 1e3 - np.array(sd2.fs_kw_out_ach.tolist())[:len(df)],
         label="fuel",
         linestyle=baselinestyles[1]
     )
@@ -265,8 +264,7 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     )
     ax[1].plot(
         df["cyc.time_seconds"],
-        (df["veh.pt_type.HybridElectricVehicle.fc.history.energy_propulsion_joules"] +
-            df["veh.pt_type.HybridElectricVehicle.fc.history.energy_aux_joules"]) / 1e6 - np.array(sd2.fc_cumu_mj_out_ach.tolist())[:len(df)],
+        df["veh.pt_type.HybridElectricVehicle.fc.history.energy_fuel_joules"] / 1e6 - np.array(sd2.fs_cumu_mj_out_ach.tolist())[:len(df)],
         label="fuel",
         linestyle=baselinestyles[1]
     )
@@ -333,12 +331,12 @@ def plot_res_pwr() -> Tuple[Figure, Axes]:
     ax[2].plot(
         df["cyc.time_seconds"],
         df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
-        label="f2",
+        label="f3",
     )
     ax[2].plot(
         np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
         np.array(sd2.soc.tolist()),
-        label="f3",
+        label="f2",
     )
     ax[2].set_ylabel("RES (battery) SOC")
     ax[2].legend()
@@ -400,12 +398,12 @@ def plot_res_energy() -> Tuple[Figure, Axes]:
     ax[2].plot(
         df["cyc.time_seconds"],
         df["veh.pt_type.HybridElectricVehicle.res.history.soc"],
-        label="f2",
+        label="f3",
     )
     ax[2].plot(
         np.array(sd2.cyc.time_s.tolist())[::veh.save_interval],
         np.array(sd2.soc.tolist()),
-        label="f3",
+        label="f2",
     )
     ax[2].set_ylabel("RES (battery) SOC")
     ax[2].legend()

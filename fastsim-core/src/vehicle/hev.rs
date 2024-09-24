@@ -225,12 +225,21 @@ impl Mass for HybridElectricVehicle {
 pub struct HEVSimulationOptions {
     /// [ReversibleEnergyStorage] per [FuelConverter]
     pub res_per_fuel_lim: si::Ratio,
+    /// Threshold of SOC balancing iterations for triggering warning
+    pub soc_balance_iter_warn: u32,
+    /// Threshold of SOC balancing iteration for triggering error
+    pub soc_balance_iter_err: u32,
+    /// Whether to allow iteration to achieve SOC balance
+    pub balance_soc: bool,
 }
 
 impl Default for HEVSimulationOptions {
     fn default() -> Self {
         Self {
             res_per_fuel_lim: uc::R * 0.005,
+            soc_balance_iter_warn: 3,
+            soc_balance_iter_err: 5,
+            balance_soc: true,
         }
     }
 }

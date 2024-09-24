@@ -41,6 +41,15 @@ impl Default for SimParams {
         })
     }
 
+    /// Run vehicle simulation once
+    #[pyo3(name = "walk_once")]
+    fn walk_once_py(&mut self) -> anyhow::Result<()> {
+        self.walk_once()
+    }
+
+    /// Run vehicle simulation, and, if applicable, apply powertrain-specific
+    /// corrections (e.g. iterate `walk` until SOC balance is achieved -- i.e. initial
+    /// and final SOC are nearly identical)
     #[pyo3(name = "walk")]
     fn walk_py(&mut self) -> anyhow::Result<()> {
         self.walk()
@@ -81,45 +90,84 @@ impl SimDrive {
         }
     }
 
-    /// Iterate `walk` until SOC balance is achieved.  This is only applicable
-    /// to `PowertrainType::HybridElectricVehicle`.
-    pub fn walk_hev(&mut self) -> anyhow::Result<()> {
-        match self.veh.pt_type {
-            PowertrainType::HybridElectricVehicle(_) => {}
-            _ => {
-                bail!("Expected `PowertrainType::HybridElectricVehicle`")
-            }
-        }
-        let res = &mut self.veh.res_mut().unwrap();
-        res.state.soc = 0.5 * (res.min_soc + res.max_soc);
+    // # TODO:
+    // - [ ] remove separate `walk_hev`
+    // - [ ] come up with a mechanism of enabling or disabling SOC balance iteration
+    // - [ ] warn after ~2 (make configurable) iterations and error after ~10 iterations
+    // ## Features
+    // - [ ] speed buffer
+    // - [ ] regen curve
+    // - [ ] other buffers??
+    // - [ ] engine min time on
 
-        // Net battery energy used per amount of fuel used
-        // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
-        let veh_init = self.veh.clone();
-        loop {
-            self.walk()?;
-            let soc_final = self
-                .veh
-                .res()
-                // `unwrap` is ok because it's already been checked
-                .unwrap()
-                .state
-                .soc;
-            let res_per_fuel = self.veh.res().unwrap().state.energy_out_chemical
-                / self.veh.fc().unwrap().state.energy_fuel;
-            if res_per_fuel < self.veh.hev().unwrap().sim_opts.res_per_fuel_lim {
-                break;
-            } else {
-                // reset vehicle to initial state
-                self.veh = veh_init.clone();
-                // start SOC at previous final value
-                self.veh.res_mut().unwrap().state.soc = soc_final;
+    /// Run vehicle simulation, and, if applicable, apply powertrain-specific
+    /// corrections (e.g. iterate `walk` until SOC balance is achieved -- i.e. initial
+    /// and final SOC are nearly identical)
+    pub fn walk(&mut self) -> anyhow::Result<()> {
+        match self.veh.pt_type {
+            PowertrainType::HybridElectricVehicle(_) => {
+                let res = &mut self.veh.res_mut().unwrap();
+                res.state.soc = 0.5 * (res.min_soc + res.max_soc);
+                log::debug!("{}", format_dbg!(res.state.soc));
+                log::debug!("{}", format_dbg!(self.veh.res().unwrap().state.soc));
+
+                // Net battery energy used per amount of fuel used
+                // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
+                let veh_init = self.veh.clone();
+                log::debug!("{}", format_dbg!(self.veh.hev().unwrap().soc_bal_iters));
+                let mut soc_bal_iters: u32 = 0;
+                loop {
+                    log::debug!("{}", format_dbg!(self.veh.res().unwrap().state.soc));
+                    soc_bal_iters += 1;
+                    self.veh.hev_mut().unwrap().soc_bal_iters = soc_bal_iters;
+                    log::debug!("{}", format_dbg!(self.veh.hev().unwrap().soc_bal_iters));
+                    self.walk_once()?;
+                    let soc_final = self
+                        .veh
+                        .res()
+                        // `unwrap` is ok because it's already been checked
+                        .unwrap()
+                        .state
+                        .soc;
+                    let res_per_fuel = self.veh.res().unwrap().state.energy_out_chemical
+                        / self.veh.fc().unwrap().state.energy_fuel;
+                    if soc_bal_iters > self.veh.hev().unwrap().sim_opts.soc_balance_iter_warn {
+                        log::warn!(
+                            "{}",
+                            format_dbg!((
+                                soc_bal_iters,
+                                self.veh.hev().unwrap().sim_opts.soc_balance_iter_warn
+                            ))
+                        );
+                    }
+                    if soc_bal_iters > self.veh.hev().unwrap().sim_opts.soc_balance_iter_err {
+                        bail!(
+                            "{}",
+                            format_dbg!((
+                                soc_bal_iters,
+                                self.veh.hev().unwrap().sim_opts.soc_balance_iter_err
+                            ))
+                        );
+                    }
+                    if res_per_fuel < self.veh.hev().unwrap().sim_opts.res_per_fuel_lim
+                        || !self.veh.hev().unwrap().sim_opts.balance_soc
+                    {
+                        break;
+                    } else {
+                        // reset vehicle to initial state
+                        self.veh = veh_init.clone();
+                        // start SOC at previous final value
+                        self.veh.res_mut().unwrap().state.soc = soc_final;
+                    }
+                }
             }
+            _ => self.walk_once()?,
         }
         Ok(())
     }
 
-    pub fn walk(&mut self) -> anyhow::Result<()> {
+    /// Run vehicle simulation once
+    pub fn walk_once(&mut self) -> anyhow::Result<()> {
         ensure!(self.cyc.len() >= 2, format_dbg!(self.cyc.len() < 2));
         self.save_state();
         // to increment `i` to 1 everywhere
@@ -428,7 +476,7 @@ mod tests {
             cyc: _cyc,
             sim_params: Default::default(),
         };
-        sd.walk().unwrap();
+        sd.walk_once().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > si::Energy::ZERO);
     }
@@ -443,7 +491,7 @@ mod tests {
             cyc: _cyc,
             sim_params: Default::default(),
         };
-        sd.walk().unwrap();
+        sd.walk_once().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > si::Energy::ZERO);
         assert!(sd.veh.res().unwrap().state.energy_out_chemical != si::Energy::ZERO);
