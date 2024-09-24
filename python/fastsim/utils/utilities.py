@@ -49,6 +49,8 @@ def set_log_level(level: Union[str, int]) -> int:
 
     err_str = f"Invalid arg: '{level}'.  See doc string:\n{set_log_level.__doc__}"
 
+    fsim.fsr.pyo3_log_init()
+
     if isinstance(level, str):
         assert level.upper() in allowed_str_args, err_str
         level = logging._nameToLevel[level.upper()]
@@ -111,6 +113,7 @@ def with_logging(log_level="DEBUG"):
     ```
     """
     previous_level = enable_logging(log_level)
+
     try:
         yield
     finally:
