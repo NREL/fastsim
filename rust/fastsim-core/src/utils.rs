@@ -1,6 +1,8 @@
 //! Module containing miscellaneous utility functions.
 
 #[cfg(feature = "default")]
+use curl::easy::Easy;
+#[cfg(feature = "default")]
 use directories::ProjectDirs;
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -9,8 +11,6 @@ use regex::Regex;
 use std::collections::HashSet;
 #[cfg(feature = "default")]
 use std::io::Write;
-#[cfg(feature = "default")]
-use curl::easy::Easy;
 
 use crate::imports::*;
 #[cfg(feature = "pyo3")]
@@ -871,13 +871,13 @@ mod tests {
         let sub_dir_path = temp_sub_dir.path().to_str().unwrap();
         let still_exists_before = std::fs::metadata(sub_dir_path).is_ok();
         assert_eq!(still_exists_before, true);
-        url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/public/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml", "").unwrap();
+        url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/assets/2022_Tesla_Model_Y_RWD_example.yaml", "").unwrap();
         clear_cache(sub_dir_path).unwrap();
         let still_exists = std::fs::metadata(sub_dir_path).is_ok();
         assert_eq!(still_exists, false);
         let path_to_vehicle = path_to_cache()
             .unwrap()
-            .join("1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
+            .join("2022_Tesla_Model_Y_RWD_example.yaml");
         let vehicle_still_exists = std::fs::metadata(&path_to_vehicle).is_ok();
         assert_eq!(vehicle_still_exists, true);
         std::fs::remove_file(path_to_vehicle).unwrap();
