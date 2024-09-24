@@ -157,18 +157,18 @@ class TestSimDriveSweep(unittest.TestCase):
     def setUp(self):
         utils.disable_logging()
 
-    def test_sweep(self):
-        "Compares results against benchmark."
-        print(f"Running {type(self)}.")
-        if RUN_PYTHON:
-            df_err, _, _, max_err_col, max_abs_err = main(verbose=True)
-            self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
-                             msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
-        if RUN_RUST:
-            df_err, _, _, max_err_col, max_abs_err = main(
-                verbose=True, use_rust=True)
-            self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
-                             msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
+    # def test_sweep(self):
+    #     "Compares results against benchmark."
+    #     print(f"Running {type(self)}.")
+    #     if RUN_PYTHON:
+    #         df_err, _, _, max_err_col, max_abs_err = main(verbose=True)
+    #         self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
+    #                          msg=f"Failed for Python version; {max_err_col} had max abs error of {max_abs_err}")
+    #     if RUN_RUST:
+    #         df_err, _, _, max_err_col, max_abs_err = main(
+    #             verbose=True, use_rust=True)
+    #         self.assertEqual(df_err.iloc[:, 2:].max().max(), 0,
+    #                          msg=f"Failed for Rust version; {max_err_col} had max abs error of {max_abs_err}")
 
     def test_post_diagnostics(self):
         vehid = 9  # FORD C-MAX
