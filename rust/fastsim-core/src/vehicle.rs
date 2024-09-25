@@ -64,9 +64,19 @@ lazy_static! {
     }   
 
     #[setter("mc_eff_range")]
-    pub fn set_mc_eff_range_py(&mut self, new_range: f64) {
-        self.set_mc_eff_range(new_range);
+    pub fn set_mc_eff_range_py(&mut self, new_range: f64) -> anyhow::Result<()> {
+        self.set_mc_eff_range(new_range)
     }    
+
+    #[getter]
+    pub fn get_fc_eff_range_py(&self) -> anyhow::Result<f64> {
+        self.get_fc_eff_range()
+    }   
+
+    #[setter("fc_eff_range")]
+    pub fn set_fc_eff_range_py(&mut self, new_range: f64) -> anyhow::Result<()> {
+        self.set_fc_eff_range(new_range)
+    }   
 
     #[getter]
     pub fn get_max_fc_eff_kw(&self) -> f64 {
@@ -112,6 +122,14 @@ lazy_static! {
         new_peak_x: f64,
     ) -> anyhow::Result<()> {
         self.set_mc_eff_peak_pwr(new_peak_x)
+    }
+
+    #[setter("fc_eff_peak_pwr")]
+    pub fn set_fc_eff_peak_pwr_py<'py>(
+        &mut self,
+        new_peak_x: f64,
+    ) -> anyhow::Result<()> {
+        self.set_fc_eff_peak_pwr(new_peak_x)
     }
 )]
 #[cfg_attr(feature = "validation", derive(Validate))]
@@ -672,18 +690,24 @@ impl RustVehicle {
             .collect();
     }
 
+    /// Gets the minimum value of mc_eff_array
     pub fn get_mc_eff_min(&self) -> anyhow::Result<&f64> {
         self.mc_eff_array.min()
     }
 
+    /// Gets the max value of mc_eff_array
     pub fn get_mc_eff_max(&self) -> anyhow::Result<&f64> {
         self.mc_eff_array.max()
     }
 
+    /// Gets the range of mc_eff_array
     pub fn get_mc_eff_range(&self) -> anyhow::Result<f64> {
         Ok(self.get_mc_eff_max()? - self.get_mc_eff_min()?)
     }
 
+    /// Changes the range (max value - min value) of mc_eff_map and mc_eff_array
+    /// # Arguments  
+    /// - new_range: new range for the mc_eff_map and mc_eff_array
     pub fn set_mc_eff_range(&mut self, new_range: f64) -> anyhow::Result<()> {
         let mc_eff_max = *self.get_mc_eff_max()?;
         if new_range == 0.0 {
@@ -705,6 +729,51 @@ impl RustVehicle {
                 )
             );
             self.mc_eff_array = self.mc_eff_map.clone();
+            Ok(())
+        } else {
+            bail!("`new_range` ({:.3}) must be between 0.0 and 1.0", new_range)
+        }
+    }
+
+    /// Gets the minimum value of fc_eff_array
+    pub fn get_fc_eff_min(&self) -> anyhow::Result<f64> {
+        Ok(self.fc_eff_array.iter().copied().fold(f64::NAN, f64::min))
+    }
+
+    /// Gets the max value of fc_eff_array
+    pub fn get_fc_eff_max(&self) -> anyhow::Result<f64> {
+        Ok(self.fc_eff_array.iter().copied().fold(f64::NAN, f64::max))
+    }
+
+    /// Gets the range of fc_eff_array
+    pub fn get_fc_eff_range(&self) -> anyhow::Result<f64> {
+        Ok(self.get_fc_eff_max()? - self.get_fc_eff_min()?)
+    }
+
+    /// Changes the range (max value - min value) of fc_eff_map and fc_eff_array
+    /// # Arguments  
+    /// - new_range: new range for the fc_eff_map and fc_eff_array
+    pub fn set_fc_eff_range(&mut self, new_range: f64) -> anyhow::Result<()> {
+        let fc_eff_max = self.get_fc_eff_max()?;
+        if new_range == 0.0 {
+            self.fc_eff_map = Array::zeros(self.fc_eff_map.len()) + fc_eff_max;
+            self.fc_eff_array = (Array::zeros(self.fc_eff_array.len()) + fc_eff_max).to_vec();
+            Ok(())
+        } else if (0.0..=1.0).contains(&new_range) {
+            let old_range = self.get_fc_eff_range()?;
+            self.fc_eff_map = fc_eff_max + (&self.fc_eff_map - fc_eff_max) * new_range / old_range;
+            if self.get_fc_eff_min()? < 0.0 {
+                bail!("`fc_eff_min` ({:.3}) must not be negative", self.get_fc_eff_min()?)
+            }
+            ensure!(
+                self.get_fc_eff_max()? <= 1.0,
+                format!(
+                    "{}\n`fc_eff_max` ({:.3}) must be no greater than 1.0",
+                    format_dbg!(self.get_fc_eff_max()? <= 1.0),
+                    self.get_fc_eff_max()?
+                )
+            );
+            self.fc_eff_array = self.fc_eff_map.to_vec();
             Ok(())
         } else {
             bail!("`new_range` ({:.3}) must be between 0.0 and 1.0", new_range)
@@ -1165,6 +1234,20 @@ impl RustVehicle {
                 }
             })
             .collect();
+        Ok(())
+    }
+
+    /// Skews the peak of fc efficiency curve to new x-value, redistributing other
+    /// x-values linearly, preserving relative distances between peak and endpoints.  
+    /// Arguments:  
+    /// ----------  
+    /// new_peak_x: new x-value at which to relocate peak  
+
+    pub fn set_fc_eff_peak_pwr(&mut self, new_peak_x: f64) -> anyhow::Result<()> {
+        let short_arrays = skewness_shift(&self.fc_pwr_out_perc, &self.fc_eff_map, new_peak_x)?;
+        self.fc_pwr_out_perc = short_arrays.0;
+        self.fc_eff_array = short_arrays.1.to_vec();
+        self.fc_eff_map = short_arrays.1;
         Ok(())
     }
 }
