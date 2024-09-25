@@ -47,6 +47,8 @@ sd = sd0.copy()
 t0 = time.perf_counter()
 # run simulation
 if DEBUG_LOG:
+    print("Running `sd.walk()` with logging enabled.")
+    fsim.pyo3_log_init()
     with fsim.utils.with_logging():
         sd.walk()
 else:

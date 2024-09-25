@@ -6,8 +6,6 @@ from typing import Optional, Union
 import shutil
 import fastsim as fsim
 
-pyo3_log_initialized = False
-
 def set_log_level(level: Union[str, int]) -> int:
     """
     Sets logging level for both Python and Rust FASTSim.
@@ -36,8 +34,6 @@ def set_log_level(level: Union[str, int]) -> int:
     """
     # Map string name to logging level
 
-    global pyo3_log_initialized
-
     allowed_args = [
         ("CRITICAL", 50),
         ("ERROR", 40),
@@ -52,10 +48,6 @@ def set_log_level(level: Union[str, int]) -> int:
     allowed_int_args = [a[1] for a in allowed_args]
 
     err_str = f"Invalid arg: '{level}'.  See doc string:\n{set_log_level.__doc__}"
-
-    if not pyo3_log_initialized:
-        fsim.pyo3_log_init()
-        pyo3_log_initialized = True
 
     if isinstance(level, str):
         assert level.upper() in allowed_str_args, err_str

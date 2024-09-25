@@ -8,6 +8,7 @@ edition = { workspace = true }
 [dependencies]
 fastsim-2 = { workspace = true }
 fastsim-core = { workspace = true, features = ["pyo3"] }
+log = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = ["extension-module", "anyhow"] }
 pyo3-log = { workspace = true, optional = true }
 
@@ -18,4 +19,4 @@ crate-type = ["cdylib"]
 
 [features]
 default = ["logging"]
-logging = ["fastsim-core/logging", "dep:pyo3-log"]
+logging = ["fastsim-core/logging", "dep:pyo3-log", "dep:log"]

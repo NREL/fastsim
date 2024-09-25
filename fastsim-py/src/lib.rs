@@ -45,4 +45,8 @@ fn fastsim(_py: Python, m: &PyModule) -> PyResult<()> {
 fn pyo3_log_init() {
     #[cfg(feature = "logging")]
     pyo3_log::init();
+    log::warn!(
+        "{}\n Logging has been initialized, and this comes with a significant performance penalty.",
+        fastsim_core::format_dbg!()
+    )
 }
