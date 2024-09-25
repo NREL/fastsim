@@ -607,6 +607,12 @@ impl RustCycleCache {
     pub fn get_delta_elev_m(&self) -> Vec<f64> {
         self.delta_elev_m().to_vec()
     }
+
+    #[pyo3(name = "list_resources")]
+    /// list available cycle resources
+    pub fn list_resources_py(&self) -> Vec<String> {
+        RustCycle::list_resources()
+    }
 )]
 /// Struct for containing:
 /// * time_s, cycle time, $s$
@@ -649,10 +655,7 @@ impl SerdeAPI for RustCycle {
         match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::to_writer(wtr, self)?,
             "json" => serde_json::to_writer(wtr, self)?,
-            "toml" => {
-                let toml_string = self.to_toml()?;
-                wtr.write_all(toml_string.as_bytes())?;
-            },
+            "toml" => wtr.write_all(self.to_toml()?.as_bytes())?,
             #[cfg(feature = "bincode")]
             "bin" => bincode::serialize_into(wtr, self)?,
             "csv" => {
@@ -709,7 +712,11 @@ impl SerdeAPI for RustCycle {
         )
     }
 
-    fn from_reader<R: std::io::Read>(mut rdr: R, format: &str, skip_init: bool) -> anyhow::Result<Self> {
+    fn from_reader<R: std::io::Read>(
+        mut rdr: R,
+        format: &str,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
         let mut deserialized = match format.trim_start_matches('.').to_lowercase().as_str() {
             "yaml" | "yml" => serde_yaml::from_reader(rdr)?,
             "json" => serde_json::from_reader(rdr)?,
@@ -717,7 +724,7 @@ impl SerdeAPI for RustCycle {
                 let mut buf = String::new();
                 rdr.read_to_string(&mut buf)?;
                 Self::from_toml(buf, skip_init)?
-            },
+            }
             #[cfg(feature = "bincode")]
             "bin" => bincode::deserialize_from(rdr)?,
             "csv" => {
@@ -823,7 +830,11 @@ impl RustCycle {
     }
 
     /// Load cycle from CSV string
-    pub fn from_csv_str<S: AsRef<str>>(csv_str: S, name: String, skip_init: bool) -> anyhow::Result<Self> {
+    pub fn from_csv_str<S: AsRef<str>>(
+        csv_str: S,
+        name: String,
+        skip_init: bool,
+    ) -> anyhow::Result<Self> {
         let mut cyc = Self::from_str(csv_str, "csv", skip_init)?;
         cyc.name = name;
         Ok(cyc)

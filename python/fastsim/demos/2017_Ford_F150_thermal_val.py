@@ -194,7 +194,7 @@ plt.savefig("plots/f-150 fe v amb temp.svg")
 # %% Temperature sweep to see FE impact
 
 
-cyc = fsr.RustCycle.from_file(str(fsim.cycle.CYCLES_DIR / "udds.csv"))
+cyc = fsr.RustCycle.from_file(fsim.cycle.CYCLES_DIR / "udds.csv")
 
 mpg = []
 mpg_no_hvac = []

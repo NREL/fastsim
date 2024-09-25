@@ -40,6 +40,7 @@ def mpgge_to_litersPer100km(mpgge):
 # %%
 import fastsim
 from matplotlib import pyplot as plt
+import numpy as np
 
 # %%
 # Load vehicle
@@ -55,13 +56,13 @@ cyc = fastsim.cycle.Cycle.from_file("wltc_3b.csv")
 
 # %%
 # Simulate combined cycle
-sim = fastsim.simdrive.SimDrive(cyc, veh)
+sim = fastsim.simdrive.SimDrive(cyc, veh).to_rust()
 sim.sim_drive()
 
 # %%
 # Calculate FE
-dist_miles_combined = sim.dist_mi.sum()
-energy_combined = sim.fs_kwh_out_ach.sum()
+dist_miles_combined = np.sum(sim.dist_mi)
+energy_combined = np.sum(sim.fs_kwh_out_ach)
 fe_mpgge_combined = dist_miles_combined / (energy_combined/sim.props.kwh_per_gge)
 fe_litersPer100km_combined = mpgge_to_litersPer100km(fe_mpgge_combined)
 print(f"{fe_litersPer100km_combined:.2f} L/100km")
@@ -82,8 +83,8 @@ extrahigh = slice(i2-1, None)
 
 # %%
 # Calculate FE
-dist_miles_low = sim.dist_mi[low].sum()
-energy_low = sim.fs_kwh_out_ach[low].sum()
+dist_miles_low = np.array(sim.dist_mi)[low].sum()
+energy_low = np.array(sim.fs_kwh_out_ach)[low].sum()
 fe_mpgge_low = dist_miles_low / (energy_low/sim.props.kwh_per_gge)
 fe_litersPer100km_low = mpgge_to_litersPer100km(fe_mpgge_low)
 print(f"{fe_litersPer100km_low:.2f} L/100km")
@@ -91,7 +92,8 @@ print(f"{abs(fe_litersPer100km_low - meas_fe_low)/meas_fe_low * 100:.2f}%")
 
 # %%
 # Calculate ΔSOC (negative is decrease)
-dSOC_low = sim.soc[i0-1] - sim.soc[0]
+soc = np.array(sim.soc)
+dSOC_low = soc[i0-1] - soc[0]
 print(f"{dSOC_low:+.5f}")
 
 # %%
@@ -124,8 +126,8 @@ print(f"{abs(fe_litersPer100km_low_adj - meas_fe_low)/meas_fe_low * 100:.2f}%")
 
 # %%
 # Calculate FE
-dist_miles_med = sim.dist_mi[medium].sum()
-energy_med = sim.fs_kwh_out_ach[medium].sum()
+dist_miles_med = np.array(sim.dist_mi)[medium].sum()
+energy_med = np.array(sim.fs_kwh_out_ach)[medium].sum()
 fe_mpgge_med = dist_miles_med / (energy_med/sim.props.kwh_per_gge)
 fe_litersPer100km_med = mpgge_to_litersPer100km(fe_mpgge_med)
 print(f"{fe_litersPer100km_med:.2f} L/100km")
@@ -133,7 +135,7 @@ print(f"{abs(fe_litersPer100km_med - meas_fe_med)/meas_fe_med * 100:.2f}%")
 
 # %%
 # Calculate ΔSOC (negative is decrease)
-dSOC_med = sim.soc[i1-1] - sim.soc[i0-1]
+dSOC_med = soc[i1-1] - soc[i0-1]
 print(f"{dSOC_med:+.5f}")
 
 # %%
@@ -166,8 +168,8 @@ print(f"{abs(fe_litersPer100km_med_adj - meas_fe_med)/meas_fe_med * 100:.2f}%")
 
 # %%
 # Calculate FE
-dist_miles_high = sim.dist_mi[high].sum()
-energy_high = sim.fs_kwh_out_ach[high].sum()
+dist_miles_high = np.array(sim.dist_mi)[high].sum()
+energy_high = np.array(sim.fs_kwh_out_ach)[high].sum()
 fe_mpgge_high = dist_miles_high / (energy_high/sim.props.kwh_per_gge)
 fe_litersPer100km_high = mpgge_to_litersPer100km(fe_mpgge_high)
 print(f"{fe_litersPer100km_high:.2f} L/100km")
@@ -175,7 +177,7 @@ print(f"{abs(fe_litersPer100km_high - meas_fe_high)/meas_fe_high * 100:.2f}%")
 
 # %%
 # Calculate ΔSOC (negative is decrease)
-dSOC_high = sim.soc[i2-1] - sim.soc[i1-1]
+dSOC_high = soc[i2-1] - soc[i1-1]
 print(f"{dSOC_high:+.5f}")
 
 # %%
@@ -208,8 +210,8 @@ print(f"{abs(fe_litersPer100km_high_adj - meas_fe_high)/meas_fe_high * 100:.2f}%
 
 # %%
 # Calculate FE
-dist_miles_extrahigh = sim.dist_mi[extrahigh].sum()
-energy_extrahigh = sim.fs_kwh_out_ach[extrahigh].sum()
+dist_miles_extrahigh = np.array(sim.dist_mi)[extrahigh].sum()
+energy_extrahigh = np.array(sim.fs_kwh_out_ach)[extrahigh].sum()
 fe_mpgge_extrahigh = dist_miles_extrahigh / (energy_extrahigh/sim.props.kwh_per_gge)
 fe_litersPer100km_extrahigh = mpgge_to_litersPer100km(fe_mpgge_extrahigh)
 print(f"{fe_litersPer100km_extrahigh:.2f} L/100km")
@@ -217,7 +219,7 @@ print(f"{abs(fe_litersPer100km_extrahigh - meas_fe_extrahigh)/meas_fe_extrahigh 
 
 # %%
 # Calculate ΔSOC (negative is decrease)
-dSOC_extrahigh = sim.soc[-1] - sim.soc[i2-1]
+dSOC_extrahigh = soc[-1] - soc[i2-1]
 print(f"{dSOC_extrahigh:+.5f}")
 
 # %%
@@ -277,14 +279,14 @@ x = cyc.time_s[low]
 
 fig1.suptitle("WLTC Low, Toyota Yaris Hybrid Mid", fontweight="bold", size="x-large")
 
-y1 = sim.fs_kw_out_ach[low]
+y1 = np.array(sim.fs_kw_out_ach)[low]
 ax1 = fig1.add_subplot(311)
 ax1.plot(x, y1, color="C0")
 ax1.set_xlabel("Time (sec)")
 ax1.set_ylabel("Power (kW)")
 ax1.set_title("sim.fs_kw_out_ach", fontweight="bold")
 
-y2 = sim.soc[low] * 100
+y2 = soc[low] * 100
 ax2 = fig1.add_subplot(312, sharex=ax1)
 ax2.plot(x, y2, color="C1")
 ax2.set_xlabel("Time (sec)")
@@ -308,14 +310,14 @@ x = cyc.time_s[medium]
 
 fig2.suptitle("WLTC Medium, Toyota Yaris Hybrid Mid", fontweight="bold", size="x-large")
 
-y1 = sim.fs_kw_out_ach[medium]
+y1 = np.array(sim.fs_kw_out_ach)[medium]
 ax1 = fig2.add_subplot(311)
 ax1.plot(x, y1, color="C0")
 ax1.set_xlabel("Time (sec)")
 ax1.set_ylabel("Power (kW)")
 ax1.set_title("sim.fs_kw_out_ach", fontweight="bold")
 
-y2 = sim.soc[medium] * 100
+y2 = soc[medium] * 100
 ax2 = fig2.add_subplot(312, sharex=ax1)
 ax2.plot(x, y2, color="C1")
 ax2.set_xlabel("Time (sec)")
@@ -339,14 +341,14 @@ x = cyc.time_s[high]
 
 fig3.suptitle("WLTC High, Toyota Yaris Hybrid Mid", fontweight="bold", size="x-large")
 
-y1 = sim.fs_kw_out_ach[high]
+y1 = np.array(sim.fs_kw_out_ach)[high]
 ax1 = fig3.add_subplot(311)
 ax1.plot(x, y1, color="C0")
 ax1.set_xlabel("Time (sec)")
 ax1.set_ylabel("Power (kW)")
 ax1.set_title("sim.fs_kw_out_ach", fontweight="bold")
 
-y2 = sim.soc[high] * 100
+y2 = soc[high] * 100
 ax2 = fig3.add_subplot(312, sharex=ax1)
 ax2.plot(x, y2, color="C1")
 ax2.set_xlabel("Time (sec)")
@@ -370,14 +372,14 @@ x = cyc.time_s[extrahigh]
 
 fig4.suptitle("WLTC Extra-High, Toyota Yaris Hybrid Mid", fontweight="bold", size="x-large")
 
-y1 = sim.fs_kw_out_ach[extrahigh]
+y1 = np.array(sim.fs_kw_out_ach)[extrahigh]
 ax1 = fig4.add_subplot(311)
 ax1.plot(x, y1, color="C0")
 ax1.set_xlabel("Time (sec)")
 ax1.set_ylabel("Power (kW)")
 ax1.set_title("sim.fs_kw_out_ach", fontweight="bold")
 
-y2 = sim.soc[extrahigh] * 100
+y2 = soc[extrahigh] * 100
 ax2 = fig4.add_subplot(312, sharex=ax1)
 ax2.plot(x, y2, color="C1")
 ax2.set_xlabel("Time (sec)")
@@ -412,7 +414,7 @@ ax1.axvspan(i0-1, i1, color="yellow", alpha=0.1)
 ax1.axvspan(i1-1, i2, color="salmon", alpha=0.1)
 ax1.axvspan(i2-1, max(x), color="red", alpha=0.1)
 
-y2 = sim.soc * 100
+y2 = soc * 100
 ax2 = fig5.add_subplot(312, sharex=ax1)
 ax2.plot(x, y2, color="C1")
 ax2.set_xlabel("Time (sec)")
