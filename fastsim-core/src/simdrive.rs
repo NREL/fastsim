@@ -91,14 +91,20 @@ impl SimDrive {
     }
 
     // # TODO:
-    // - [ ] remove separate `walk_hev`
-    // - [ ] come up with a mechanism of enabling or disabling SOC balance iteration
-    // - [ ] warn after ~2 (make configurable) iterations and error after ~10 iterations
+    // - [x] remove separate `walk_hev`
+    // - [x] come up with a mechanism of enabling or disabling SOC balance iteration
+    // - [x] warn after ~2 (make configurable) iterations and error after ~10 iterations
+    // - [ ] figure out speed trace miss
     // ## Features
-    // - [ ] speed buffer
-    // - [ ] regen curve
-    // - [ ] other buffers??
-    // - [ ] engine min time on
+    // - [ ] speed buffer per f2
+    // - [ ] regen curve per f2
+    // - [ ] other buffers?? per f2
+    // - [ ] engine min time on per f2
+    // - [ ] ability to manipulate friction/regen brake split based on required braking
+    //       power -- new feature
+    // - [ ] make enum `EngineOnCause::{AlreadyOn, TooCold,
+    //       PowerDemand}` and save it in a vec or some such for when there are
+    //       multiple causes -- new feature
 
     /// Run vehicle simulation, and, if applicable, apply powertrain-specific
     /// corrections (e.g. iterate `walk` until SOC balance is achieved -- i.e. initial

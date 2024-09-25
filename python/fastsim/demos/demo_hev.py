@@ -56,7 +56,6 @@ t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
 print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 
-# TODO: change arg to default
 df = sd.to_dataframe(allow_partial=True)
 
 # instantiate `SimDrive` simulation object
