@@ -49,14 +49,14 @@ class CycleCache:
 
     def __init__(self, cyc: Cycle):
         tol = 1e-6
-        self.grade_all_zero = (np.array(cyc.grade) == 0.0).all()
+        self.grade_all_zero = (cyc.grade == 0.0).all()
         self.trapz_step_distances_m = trapz_step_distances(cyc)
         self.trapz_distances_m = self.trapz_step_distances_m.cumsum()
         if (self.grade_all_zero):
             self.trapz_elevations_m = np.zeros(len(cyc))
         else:
-            self.trapz_elevations_m = np.cumsum(np.cos(np.arctan(cyc.grade)) * self.trapz_step_distances_m * np.array(cyc.grade))
-        self.stops = np.array(cyc.mps) <= tol
+            self.trapz_elevations_m = np.cumsum(np.cos(np.arctan(cyc.grade)) * self.trapz_step_distances_m * cyc.grade)
+        self.stops = cyc.mps <= tol
         interp_ds = []
         interp_is = []
         interp_hs = []
@@ -882,9 +882,7 @@ def trapz_step_start_distance(cyc: Cycle, i: int) -> float:
     (i.e., distance traveled up to sample point i-1)
     Distance is in meters.
     """
-    time_s = np.array(cyc.time_s)
-    mps = np.array(cyc.mps)
-    return (np.diff(time_s[:i]) * (0.5 * (mps[:max(i-1,0)] + mps[1:i]))).sum()
+    return (np.diff(cyc.time_s[:i]) * (0.5 * (cyc.mps[:max(i-1,0)] + cyc.mps[1:i]))).sum()
 
 def trapz_distance_for_step(cyc: Cycle, i: int) -> float:
     """

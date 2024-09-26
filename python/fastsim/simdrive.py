@@ -2547,17 +2547,17 @@ def estimate_soc_corrected_fuel_kJ(sd: SimDrive) -> float:
     kJ__kWh = 3600.0
     delta_soc = sd.soc[-1] - sd.soc[0]
     ess_eff = np.sqrt(sd.veh.ess_round_trip_eff)
-    mc_chg_eff = f(np.array(sd.mc_mech_kw_out_ach) < 0.0,
-                   np.array(sd.mc_elec_kw_in_ach), np.array(sd.mc_mech_kw_out_ach), sd.veh.mc_peak_eff)
-    mc_dis_eff = f(np.array(sd.mc_mech_kw_out_ach)> 0.0,
-                   np.array(sd.mc_mech_kw_out_ach), np.array(sd.mc_elec_kw_in_ach), mc_chg_eff)
-    ess_traction_frac = f(np.array(sd.mc_elec_kw_in_ach)
-                          > 0.0, np.array(sd.mc_elec_kw_in_ach), np.array(sd.ess_kw_out_ach), 1.0)
+    mc_chg_eff = f(sd.mc_mech_kw_out_ach < 0.0,
+                   sd.mc_elec_kw_in_ach, sd.mc_mech_kw_out_ach, sd.veh.mc_peak_eff)
+    mc_dis_eff = f(sd.mc_mech_kw_out_ach > 0.0,
+                   sd.mc_mech_kw_out_ach, sd.mc_elec_kw_in_ach, mc_chg_eff)
+    ess_traction_frac = f(sd.mc_elec_kw_in_ach
+                          > 0.0, sd.mc_elec_kw_in_ach, sd.ess_kw_out_ach, 1.0)
     fc_eff = f(
-        np.array(sd.trans_kw_in_ach) > 0.0,
-        np.array(sd.fc_kw_out_ach),
-        np.array(sd.fc_kw_in_ach),
-        np.array(sd.fc_kw_out_ach).sum() / np.array(sd.fc_kw_in_ach).sum()
+        sd.trans_kw_in_ach > 0.0,
+        sd.fc_kw_out_ach,
+        sd.fc_kw_in_ach,
+        sd.fc_kw_out_ach.sum() / sd.fc_kw_in_ach.sum()
     )
     if delta_soc >= 0.0:
         k = (sd.veh.ess_max_kwh * kJ__kWh * ess_eff *

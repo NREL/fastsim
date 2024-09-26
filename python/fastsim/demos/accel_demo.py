@@ -39,7 +39,7 @@ def main():
         sd_accel = simdrive.RustSimDrive(accel_cyc, veh)
         
         simdrive.run_simdrive_for_accel_test(sd_accel)
-        if (np.array(sd_accel.mph_ach) >= 60).any():
+        if (sd_accel.mph_ach >= 60).any():
                 net_accel = np.interp(
                     x=60, xp=sd_accel.mph_ach, fp=sd_accel.cyc.time_s)
         else:

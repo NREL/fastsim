@@ -165,15 +165,12 @@ class TestRust(unittest.TestCase):
         # Check for discrepancies after simulation
         py = {}
         ru = {}
-        ru_cyc_mps = np.array(sim_rust.cyc.mps)
-        ru_cyc_dt_s = np.array(sim_rust.cyc.dt_s)
-        self.assertTrue((np.abs(sim_python.cyc.mps - ru_cyc_mps) < tol).all())
+        self.assertTrue((np.abs(sim_python.cyc.mps - sim_rust.cyc.mps) < tol).all())
         self.assertTrue(
-            (np.abs(sim_python.cyc.dt_s - ru_cyc_dt_s) < tol).all())
-        ru_sd_mps_ach = np.array(sim_rust.mps_ach)
+            (np.abs(sim_python.cyc.dt_s - sim_rust.cyc.dt_s) < tol).all())
         self.assertTrue((sim_python.mps_ach >= 0.0).all(),
                         msg=f'PYTHON: Detected negative speed for {veh_name}')
-        self.assertTrue((ru_sd_mps_ach >= 0.0).all(),
+        self.assertTrue((sim_rust.mps_ach >= 0.0).all(),
                         msg=f'RUST  : Detected negative speed for {veh_name}')
         for v in TEST_VARS:
             py[v] = sim_python.__getattribute__(v)
@@ -246,16 +243,13 @@ class TestRust(unittest.TestCase):
             ru_sd.sim_drive()
             py = {}
             ru = {}
-            ru_cyc_mps = np.array(ru_sd.cyc.mps)
-            ru_cyc_dt_s = np.array(ru_sd.cyc.dt_s)
-            self.assertTrue((np.abs(py_sd.cyc.mps - ru_cyc_mps) < tol).all())
-            self.assertTrue((np.abs(py_sd.cyc.dt_s - ru_cyc_dt_s) < tol).all())
-            ru_sd_mps_ach = np.array(ru_sd.mps_ach)
+            self.assertTrue((np.abs(py_sd.cyc.mps - ru_sd.cyc.mps) < tol).all())
+            self.assertTrue((np.abs(py_sd.cyc.dt_s - ru_sd.cyc.dt_s) < tol).all())
             self.assertTrue(
                 (py_sd.mps_ach >= 0.0).all(),
                 msg=f'PYTHON: Detected negative speed for {vehid}')
             self.assertTrue(
-                (ru_sd_mps_ach >= 0.0).all(),
+                (ru_sd.mps_ach >= 0.0).all(),
                 msg=f'RUST  : Detected negative speed for {vehid}')
             for v in TEST_VARS:
                 py[v] = py_sd.__getattribute__(v)
@@ -311,14 +305,12 @@ class TestRust(unittest.TestCase):
             cyc = cycle.Cycle.from_file('udds').to_rust()
             sd = fsr.RustSimDrive(cyc, veh)
             sd.sim_drive()
-            sd_mps_ach = np.array(sd.mps_ach)
-            sd_cyc0_mps = np.array(sd.cyc0.mps)
             self.assertFalse(
-                (sd_mps_ach < 0.0).any(),
+                (sd.mps_ach < 0.0).any(),
                 msg=f'Achieved speed contains negative values for vehicle {vehid}'
             )
             self.assertFalse(
-                (sd_mps_ach > sd_cyc0_mps).any(),
+                (sd.mps_ach > sd.cyc0.mps).any(),
                 msg=f'Achieved speed is greater than requested speed for {vehid}'
             )
 

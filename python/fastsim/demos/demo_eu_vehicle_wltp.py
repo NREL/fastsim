@@ -60,9 +60,9 @@ def hybrid_eu_veh_wltp_fe_test():
     sim = fsim.simdrive.RustSimDrive(cyc_wltp_combined, veh_2022_yaris)
     sim.sim_drive()
     
-    dist_miles_combined = np.array(sim.dist_mi).sum()
+    dist_miles_combined = sim.dist_mi.sum()
     print(f"Distance modelled in miles:\t{dist_miles_combined:.2f}")
-    energy_combined = np.array(sim.fs_kwh_out_ach).sum()
+    energy_combined = sim.fs_kwh_out_ach.sum()
     print(f"Fuel Supply achieved in kilowatts-hours:\t{energy_combined:.2f}")
     fe_mpgge_combined = sim.mpgge
     fe_l__100km_combined = utils.mpg_to_l__100km(fe_mpgge_combined)
@@ -85,12 +85,12 @@ def hybrid_eu_veh_wltp_fe_test():
         '''
         fe_liter__100km_list = []
         for cur_phase_slice in phase_slice_list:
-            cur_dist_miles = sum(np.array(raw_simdrive.dist_mi)[cur_phase_slice])
+            cur_dist_miles = raw_simdrive.dist_mi[cur_phase_slice].sum()
             cur_dist_km = cur_dist_miles * params.M_PER_MI / 1000 
-            cur_energy_consumption_kwh = sum(np.array(sim.fs_kwh_out_ach)[cur_phase_slice])
+            cur_energy_consumption_kwh = sim.fs_kwh_out_ach[cur_phase_slice].sum()
             cur_fe_mpgge = cur_dist_miles / (cur_energy_consumption_kwh/sim.props.kwh_per_gge)
             cur_fe_liter__100km = utils.mpg_to_l__100km(cur_fe_mpgge)
-            cur_dSOC = np.array(sim.soc)[cur_phase_slice][-1] - np.array(sim.soc)[cur_phase_slice][0]
+            cur_dSOC = sim.soc[cur_phase_slice][-1] - sim.soc[cur_phase_slice][0]
             cur_dE_wh = -cur_dSOC * cur_veh.ess_max_kwh * 1000
             cur_dM_CO2_gram__100km  = 0.0036 * cur_dE_wh * 1/cur_veh.alt_eff * WILLANS_FACTOR_gram_CO2__MJ * 1/cur_dist_km
             cur_dfe_liter__100km = cur_dE_wh/1000 * 1/cur_veh.alt_eff * 1/E10_HEAT_VALUE_kWh__liter * 100/cur_dist_km

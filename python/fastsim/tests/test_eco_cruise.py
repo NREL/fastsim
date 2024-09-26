@@ -13,8 +13,8 @@ class TestEcoCruise(unittest.TestCase):
         fs.utils.disable_logging()
     
     def percent_distance_error(self, sd: fs.simdrive.SimDrive) -> float:
-        d0 = np.array(sd.cyc0.dist_m).sum()
-        d = np.array(sd.cyc.dist_m).sum()
+        d0 = sd.cyc0.dist_m.sum()
+        d = sd.cyc.dist_m.sum()
         return 100.0 * (d - d0) / d0
     
     def cycles_differ(self, sd: fs.simdrive.SimDrive) -> bool:
@@ -57,7 +57,7 @@ class TestEcoCruise(unittest.TestCase):
             sd.activate_eco_cruise()
             sd.sim_drive()
             self.do_standard_checks(sd, msg=msg)
-            idm_target_speed_m_per_s = np.array(sd.idm_target_speed_m_per_s)[1:].mean()
+            idm_target_speed_m_per_s = sd.idm_target_speed_m_per_s[1:].mean()
             self.assertAlmostEqual(expected_idm_target_speed_m_per_s, sd.sim_params.idm_v_desired_m_per_s, msg=msg)
             self.assertAlmostEqual(expected_idm_target_speed_m_per_s, idm_target_speed_m_per_s, msg=msg)
 

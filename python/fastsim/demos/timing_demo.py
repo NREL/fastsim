@@ -105,7 +105,7 @@ print(
 
 t0 = time.perf_counter()
 sdr = fsim.simdrive.RustSimDrive(cyc, veh)
-aux_in_kw_override = np.array(cyc.time_s) / cyc.time_s[-1] * 10
+aux_in_kw_override = cyc.time_s / cyc.time_s[-1] * 10
 sdr.sim_drive(None, aux_in_kw_override) 
 t_rust = time.perf_counter() - t0
 print(

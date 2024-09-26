@@ -171,10 +171,10 @@ class ModelObjectives(object):
             ax_multiplier = 2 if plot_perc_err else 1
             # extract speed trace for plotting
             if not self.use_simdrivehot:
-                time_hr = np.array(sim_drive.cyc.time_s) / 3_600 # type: ignore
+                time_hr = sim_drive.cyc.time_s / 3_600 # type: ignore
                 mph_ach = sim_drive.mph_ach # type: ignore
             else:
-                time_hr = np.array(sim_drive.sd.cyc.time_s) / 3_600 # type: ignore
+                time_hr = sim_drive.sd.cyc.time_s / 3_600 # type: ignore
                 mph_ach = sim_drive.sd.mph_ach # type: ignore
             fig, ax, pltly_fig = self.setup_plots(
                 plot or show,
@@ -523,12 +523,12 @@ if PYMOO_AVAILABLE:
             for obj in problem.mod_obj.obj_names
         ]
         f_df = pd.DataFrame(
-            data=[f for f in res.F.tolist()],
+            data=[f for f in res.F],
             columns=f_columns,
         )
 
         x_df = pd.DataFrame(
-            data=[x for x in res.X.tolist()],
+            data=[x for x in res.X],
             columns=[param for param in problem.mod_obj.params],
         )
 

@@ -96,7 +96,7 @@ def make_debug_plot(
     ax2.grid(False)
     color = "tab:blue"
     axs[1].plot(
-        sd.cyc.time_s, sd.coast_delay_index.tolist(), "b.", lw=2, label="coast delay"
+        sd.cyc.time_s, sd.coast_delay_index, "b.", lw=2, label="coast delay"
     )
     axs[1].set_ylabel("Coast Delay", color=color)
     axs[1].tick_params(axis="y", labelcolor=color)

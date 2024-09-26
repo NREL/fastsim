@@ -4,8 +4,8 @@ macro_rules! impl_vec_get_set {
             let get_name: TokenStream2 = format!("get_{}", $fident).parse().unwrap();
             $impl_block.extend::<TokenStream2>(quote! {
                 #[getter]
-                pub fn #get_name(&self) -> $wrapper_type {
-                    $wrapper_type::new(self.#$fident.clone())
+                pub fn #get_name<'py>(&self, py: Python<'py>) -> &'py PyArray1<$contained_type> {
+                    self.#$fident.clone().into_pyarray(py)
                 }
             });
         }

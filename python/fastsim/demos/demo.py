@@ -170,7 +170,7 @@ while sim_drive.i < len(cyc.time_s):
     # NOTE: we need to copy out and in the entire array to work with the
     # Rust version that is, we can't set just a specific element of an
     # array in rust via python bindings at this time
-    aux_in_kw = sim_drive.aux_in_kw.tolist()
+    aux_in_kw = sim_drive.aux_in_kw
     aux_in_kw[sim_drive.i] = sim_drive.i / cyc.time_s[-1] * 10 
     sim_drive.aux_in_kw = aux_in_kw
     # above could be a function of some internal sim_drive state
@@ -229,7 +229,7 @@ sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
 # args)
 sim_drive.init_for_step(
     0.5,
-    aux_in_kw_override=np.array(cyc.time_s) / cyc.time_s[-1] * 10
+    aux_in_kw_override=cyc.time_s / cyc.time_s[-1] * 10
 )
 while sim_drive.i < len(sim_drive.cyc.time_s):
     sim_drive.sim_drive_step()
@@ -256,7 +256,7 @@ cyc = fsim.cycle.Cycle.from_file('udds').to_rust()
 t0 = time.perf_counter()
 
 sim_drive = fsim.simdrive.RustSimDrive(cyc, veh)
-aux_in_kw_override = np.array(cyc.time_s) / cyc.time_s[-1] * 10
+aux_in_kw_override = cyc.time_s / cyc.time_s[-1] * 10
 sim_drive.sim_drive(None)
 
 plt.figure()
@@ -387,11 +387,9 @@ with fsim.utils.suppress_logging():
         cyc['cycGrade'] = np.zeros(len(pnts))
         cyc['mps'] = np.array(
             pnts['speed_mph'] / fsim.params.MPH_PER_MPS)  # MPH to MPS conversion
-        cyc['time_s'] = np.array(
-            np.cumsum(
-                (pnts['time_local'] -
-                pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')
-            )
+        cyc['time_s'] = np.cumsum(
+            (pnts['time_local'] -
+            pnts['time_local'].shift()).fillna(pd.Timedelta(seconds=0)).astype('timedelta64[s]')
         )
         cyc['road_type'] = np.zeros(len(pnts))
         # example of loading cycle from dict

@@ -193,8 +193,8 @@ impl Default for RustSimDriveParams {
 
     #[pyo3(name = "gap_to_lead_vehicle_m")]
     /// Provides the gap-with lead vehicle from start to finish
-    pub fn gap_to_lead_vehicle_m_py(&self) -> anyhow::Result<Vec<f64>> {
-        Ok(self.gap_to_lead_vehicle_m().to_vec())
+    pub fn gap_to_lead_vehicle_m_py<'py>(&self, py: Python<'py>) -> &'py PyArray1<f64> {
+        self.gap_to_lead_vehicle_m().into_pyarray(py)
     }
 
     #[pyo3(name = "sim_drive")]
@@ -385,12 +385,12 @@ impl Default for RustSimDriveParams {
     }
 
     #[getter]
-    pub fn get_fs_cumu_mj_out_ach(&self) -> Pyo3ArrayF64 {
-        Pyo3ArrayF64::new(ndarrcumsum(&(&self.fs_kw_out_ach * self.cyc.dt_s() * 1e-3)))
+    pub fn get_fs_cumu_mj_out_ach<'py>(&self, py: Python<'py>) -> &'py PyArray1<f64> {
+        ndarrcumsum(&(&self.fs_kw_out_ach * self.cyc.dt_s() * 1e-3)).into_pyarray(py)
     }
     #[getter]
-    pub fn get_fc_cumu_mj_out_ach(&self) -> Pyo3ArrayF64 {
-        Pyo3ArrayF64::new(ndarrcumsum(&(&self.fc_kw_out_ach * self.cyc.dt_s() * 1e-3)))
+    pub fn get_fc_cumu_mj_out_ach<'py>(&self, py: Python<'py>) -> &'py PyArray1<f64> {
+        ndarrcumsum(&(&self.fc_kw_out_ach * self.cyc.dt_s() * 1e-3)).into_pyarray(py)
     }
 )]
 pub struct RustSimDrive {
