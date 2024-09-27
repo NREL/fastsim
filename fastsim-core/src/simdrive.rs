@@ -15,6 +15,8 @@ pub struct SimParams {
     pub ach_speed_solver_gain: f64,
     #[api(skip_get, skip_set)]
     pub trace_miss_tol: TraceMissTolerance,
+    #[api(skip_get, skip_set)]
+    pub trace_miss_opts: TraceMissOptions,
 }
 
 impl SerdeAPI for SimParams {}
@@ -27,6 +29,7 @@ impl Default for SimParams {
             ach_speed_tol: 1e-9 * uc::R,
             ach_speed_solver_gain: 0.9,
             trace_miss_tol: Default::default(),
+            trace_miss_opts: Default::default(),
         }
     }
 }
@@ -114,19 +117,14 @@ impl SimDrive {
             PowertrainType::HybridElectricVehicle(_) => {
                 let res = &mut self.veh.res_mut().unwrap();
                 res.state.soc = 0.5 * (res.min_soc + res.max_soc);
-                log::debug!("{}", format_dbg!(res.state.soc));
-                log::debug!("{}", format_dbg!(self.veh.res().unwrap().state.soc));
 
                 // Net battery energy used per amount of fuel used
                 // clone initial vehicle to preserve starting state (TODO: figure out if this is a huge CPU burden)
                 let veh_init = self.veh.clone();
-                log::debug!("{}", format_dbg!(self.veh.hev().unwrap().soc_bal_iters));
                 let mut soc_bal_iters: u32 = 0;
                 loop {
-                    log::debug!("{}", format_dbg!(self.veh.res().unwrap().state.soc));
                     soc_bal_iters += 1;
                     self.veh.hev_mut().unwrap().soc_bal_iters = soc_bal_iters;
-                    log::debug!("{}", format_dbg!(self.veh.hev().unwrap().soc_bal_iters));
                     self.walk_once()?;
                     let soc_final = self
                         .veh
@@ -137,26 +135,26 @@ impl SimDrive {
                         .soc;
                     let res_per_fuel = self.veh.res().unwrap().state.energy_out_chemical
                         / self.veh.fc().unwrap().state.energy_fuel;
-                    if soc_bal_iters > self.veh.hev().unwrap().sim_opts.soc_balance_iter_warn {
+                    if soc_bal_iters > self.veh.hev().unwrap().sim_params.soc_balance_iter_warn {
                         log::warn!(
                             "{}",
                             format_dbg!((
                                 soc_bal_iters,
-                                self.veh.hev().unwrap().sim_opts.soc_balance_iter_warn
+                                self.veh.hev().unwrap().sim_params.soc_balance_iter_warn
                             ))
                         );
                     }
-                    if soc_bal_iters > self.veh.hev().unwrap().sim_opts.soc_balance_iter_err {
+                    if soc_bal_iters > self.veh.hev().unwrap().sim_params.soc_balance_iter_err {
                         bail!(
                             "{}",
                             format_dbg!((
                                 soc_bal_iters,
-                                self.veh.hev().unwrap().sim_opts.soc_balance_iter_err
+                                self.veh.hev().unwrap().sim_params.soc_balance_iter_err
                             ))
                         );
                     }
-                    if res_per_fuel < self.veh.hev().unwrap().sim_opts.res_per_fuel_lim
-                        || !self.veh.hev().unwrap().sim_opts.balance_soc
+                    if res_per_fuel < self.veh.hev().unwrap().sim_params.res_per_fuel_lim
+                        || !self.veh.hev().unwrap().sim_params.balance_soc
                     {
                         break;
                     } else {
@@ -290,6 +288,13 @@ impl SimDrive {
         } else {
             #[cfg(feature = "logging")]
             log::debug!("{}", format_dbg!("proceeding through `set_ach_speed`"));
+            match self.sim_params.trace_miss_opts {
+                TraceMissOptions::Allow => {
+                    // do nothing because `set_ach_speed` should be allowed to proceed to handle this
+                }
+                TraceMissOptions::Error => bail!("{}\nFailed to meet speed trace.", format_dbg!()),
+                TraceMissOptions::Correct => todo!(),
+            }
         }
         let mass = self
             .veh
@@ -444,7 +449,6 @@ impl SimDrive {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, HistoryMethods)]
-
 pub struct TraceMissTolerance {
     tol_dist: si::Length,
     tol_dist_frac: si::Ratio,
@@ -466,6 +470,20 @@ impl Default for TraceMissTolerance {
         }
     }
 }
+
+#[derive(Clone, Default, Debug, Deserialize, Serialize, PartialEq)]
+pub enum TraceMissOptions {
+    #[default]
+    /// Allow trace miss without any fanfare
+    Allow,
+    /// Error out when trace miss happens
+    Error,
+    /// Correct trace miss with driver model that catches up
+    Correct,
+}
+
+impl SerdeAPI for TraceMissOptions {}
+impl Init for TraceMissOptions {}
 
 #[cfg(test)]
 mod tests {

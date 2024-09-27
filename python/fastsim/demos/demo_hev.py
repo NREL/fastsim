@@ -42,6 +42,9 @@ cyc = fsim.Cycle.from_resource("udds.csv")
 # instantiate `SimDrive` simulation object
 sd0 = fsim.SimDrive(veh, cyc)
 sd = sd0.copy()
+sd_dict = sd.to_pydict()
+sd_dict['sim_params']['trace_miss_opts'] = 'Error'
+sd = fsim.SimDrive.from_pydict(sd_dict)
 
 # simulation start time
 t0 = time.perf_counter()
@@ -465,3 +468,5 @@ if SHOW_PLOTS:
     fig, ax = plot_fc_energy()
     fig, ax = plot_res_pwr()
     fig, ax = plot_res_energy()
+
+# %%

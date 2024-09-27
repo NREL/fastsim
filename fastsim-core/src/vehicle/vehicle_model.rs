@@ -416,7 +416,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                 },
                 pt_cntrl: HEVPowertrainControls::RESGreedy,
                 mass: None,
-                sim_opts: Default::default(),
+                sim_params: Default::default(),
                 soc_bal_iters: Default::default(),
                 aux_cntrl: Default::default(),
             };
@@ -424,7 +424,7 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
         } else {
             bail!(
                 "Invalid powertrain type: {}.
-                    Expected one of {}",
+Expected one of {}",
                 f2veh.veh_pt_type,
                 [CONV, HEV, PHEV, BEV].join(", "),
             )

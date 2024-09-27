@@ -25,7 +25,7 @@ pub struct HybridElectricVehicle {
     // might be many ways we'd want to do this, especially since there will be thermal models involved
     /// Simulation options
     #[serde(default)]
-    pub sim_opts: HEVSimulationOptions,
+    pub sim_params: HEVSimulationParams,
     /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
     /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
     #[serde(default)]
@@ -222,7 +222,7 @@ impl Mass for HybridElectricVehicle {
 
 /// Options for controlling simulation behavior
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-pub struct HEVSimulationOptions {
+pub struct HEVSimulationParams {
     /// [ReversibleEnergyStorage] per [FuelConverter]
     pub res_per_fuel_lim: si::Ratio,
     /// Threshold of SOC balancing iterations for triggering warning
@@ -233,7 +233,7 @@ pub struct HEVSimulationOptions {
     pub balance_soc: bool,
 }
 
-impl Default for HEVSimulationOptions {
+impl Default for HEVSimulationParams {
     fn default() -> Self {
         Self {
             res_per_fuel_lim: uc::R * 0.005,

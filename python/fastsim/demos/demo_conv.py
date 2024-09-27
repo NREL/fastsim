@@ -14,7 +14,7 @@ import fastsim as fsim
 
 sns.set_theme()
 
-from plot_utils import *
+from pyplot_utils  import *
 
 # if enivronment var `DEBUG_LOG=true` is set, turns on debug logging
 DEBUG_LOG = os.environ.get("DEBUG_LOG", "false").lower() == "true"     

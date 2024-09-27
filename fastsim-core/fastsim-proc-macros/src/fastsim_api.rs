@@ -343,7 +343,13 @@ fn process_named_field_struct(
 
                         // make sure there were no invalid options passed and raise warning
                         if !opt_vec.is_empty() {
-                            emit_error!(ml.span(), "Invalid option(s): {:?}", opt_vec);
+                            emit_error!(
+                                ml.span(),
+                                "Invalid option(s): {:?}. 
+Expected options matching field names in: `{:?}`.",
+                                opt_vec,
+                                FieldOptions::default()
+                            );
                         }
                         false // this attribute should not be retained because it is handled solely by this proc macro
                     } else {
