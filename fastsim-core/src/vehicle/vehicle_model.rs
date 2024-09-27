@@ -957,7 +957,7 @@ pub struct VehicleState {
     pub curr_pwr_met: bool,
     /// whether powertrain can achieve power demand to achieve prescribed speed
     /// in entire cycle
-    pub all_curr_pwr_met: bool,
+    pub any_pwr_not_met: bool,
     /// actual achieved speed
     pub speed_ach: si::Velocity,
     /// cumulative distance traveled, integral of [Self::speed_ach]
@@ -993,7 +993,7 @@ impl Default for VehicleState {
             pwr_brake: si::Power::ZERO,
             energy_brake: si::Energy::ZERO,
             curr_pwr_met: true,
-            all_curr_pwr_met: true,
+            any_pwr_not_met: false,
             speed_ach: si::Velocity::ZERO,
             dist: si::Length::ZERO,
             grade_curr: si::Ratio::ZERO,

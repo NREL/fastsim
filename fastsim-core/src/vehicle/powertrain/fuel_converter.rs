@@ -193,8 +193,9 @@ impl FuelConverter {
             // TODO: think about how to initialize power
             self.pwr_out_max_init = self.pwr_out_max / 10.
         };
-        self.state.pwr_out_max = ((self.state.pwr_propulsion + self.state.pwr_aux)
-            + (self.pwr_out_max / self.pwr_ramp_lag) * dt)
+        self.state.pwr_out_max = (self.state.pwr_propulsion
+            + self.state.pwr_aux
+            + self.pwr_out_max / self.pwr_ramp_lag * dt)
             .min(self.pwr_out_max)
             .max(self.pwr_out_max_init);
         Ok(())

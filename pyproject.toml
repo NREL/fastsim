@@ -40,6 +40,7 @@ dev = [
     "pymoo==0.6.0.1",
     "memory_profiler==0.61.0",
     "nbformat~=5.0",
+    "pyarrow~=17.0",
 ]
 
 [tool.setuptools]

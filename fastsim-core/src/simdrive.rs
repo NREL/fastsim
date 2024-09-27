@@ -97,11 +97,16 @@ impl SimDrive {
     // - [x] remove separate `walk_hev`
     // - [x] come up with a mechanism of enabling or disabling SOC balance iteration
     // - [x] warn after ~2 (make configurable) iterations and error after ~10 iterations
-    // - [ ] figure out speed trace miss
+    // - [x] figure out speed trace miss -- resulted from not having enough SOC buffer
+    // - [ ] make sure that when doing lefthand interpolation we have same array length as f2
     // ## Features
-    // - [ ] speed buffer per f2
+    // - [ ] accel buffer per f2
+    // - [ ] regen buffer per f2
     // - [ ] regen curve per f2
-    // - [ ] other buffers?? per f2
+    // - [ ] controls to make the engine recharge the battery if below buffers
+    // - [ ] controls to make engine run efficiency when on. In f2, this just maxes out
+    //       the engine.  We should be able to actually get near peak efficiency in a
+    //       smarter way in f3 because the performance penalty is less problematic.
     // - [ ] engine min time on per f2
     // - [ ] ability to manipulate friction/regen brake split based on required braking
     //       power -- new feature
@@ -221,9 +226,9 @@ impl SimDrive {
         let vs = &mut self.veh.state;
         let speed_prev = vs.speed_ach;
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
-        vs.grade_curr = if vs.all_curr_pwr_met {
+        vs.grade_curr = if !vs.any_pwr_not_met {
             #[cfg(feature = "logging")]
-            log::debug!("{}", format_dbg!(vs.all_curr_pwr_met));
+            log::debug!("{}", format_dbg!(vs.any_pwr_not_met));
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {
             uc::R
@@ -269,7 +274,7 @@ impl SimDrive {
         if !vs.curr_pwr_met {
             // if current power demand is not met, then this becomes false for
             // the rest of the cycle and should not be manipulated anywhere else
-            vs.all_curr_pwr_met = false;
+            vs.any_pwr_not_met = true;
         }
         Ok(())
     }
