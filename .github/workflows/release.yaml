@@ -87,7 +87,8 @@ jobs:
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
-
+          CIBW_BEFORE_BUILD_MACOS: >
+            rustup target add x86_64-apple-darwin
       # - name: build windows 32bit binaries
       #   if: matrix.os == 'windows'
       #   run: cibuildwheel --output-dir dist
