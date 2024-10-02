@@ -128,7 +128,13 @@ jobs:
 
       - run: twine check ./artifact/*
 
-      - name: upload files
+      - name: Publish distribution to Test PyPI
+        run: twine upload -r testpypi ./artifact/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.test_pypi_password}}
+
+      - name: Upload files to PyPI
         run: twine upload ./artifact/*
         env:
           TWINE_USERNAME: __token__
