@@ -694,6 +694,8 @@ pub use array_wrappers::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vehicle_utils::NETWORK_TEST_DISABLE_ENV_VAR_NAME;
+    use std::env;
 
     #[test]
     fn test_diff() {
@@ -867,6 +869,10 @@ mod tests {
 
     #[test]
     fn test_clear_cache() {
+        if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+            println!("SKIPPING: test_clear_cache");
+            return;
+        }
         let temp_sub_dir = tempfile::TempDir::new_in(create_project_subdir("").unwrap()).unwrap();
         let sub_dir_path = temp_sub_dir.path().to_str().unwrap();
         let still_exists_before = std::fs::metadata(sub_dir_path).is_ok();

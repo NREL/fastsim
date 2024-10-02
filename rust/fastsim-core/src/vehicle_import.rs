@@ -337,7 +337,7 @@ pub fn get_options_for_year_make_model(
 #[cfg_attr(feature = "pyo3", pyfunction)]
 pub fn get_vehicle_data_for_id(
     id: i32,
-    year: &str, 
+    year: &str,
     cache_url: Option<String>,
     data_dir: Option<String>,
 ) -> anyhow::Result<VehicleDataFE> {
@@ -348,16 +348,21 @@ pub fn get_vehicle_data_for_id(
         h.insert(y);
         h
     };
-    let ddpath = data_dir.and_then(|dd| Some(PathBuf::from(dd))).unwrap_or(create_project_subdir("fe_label_data")?);
+    let ddpath = data_dir
+        .and_then(|dd| Some(PathBuf::from(dd)))
+        .unwrap_or(create_project_subdir("fe_label_data")?);
     let cache_url = cache_url.unwrap_or_else(get_default_cache_url);
-    populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url).with_context(|| format!("Unable to load or download cache data from {cache_url}"))?;
+    populate_cache_for_given_years_if_needed(ddpath.as_path(), &ys, &cache_url)
+        .with_context(|| format!("Unable to load or download cache data from {cache_url}"))?;
     let emissions_data = load_emissions_data_for_given_years(ddpath.as_path(), &ys)?;
     let fegov_data_by_year =
         load_fegov_data_for_given_years(ddpath.as_path(), &emissions_data, &ys)?;
-    let fegov_db = fegov_data_by_year.get(&y).context(format!("Could not get fueleconomy.gov data from year {y}"))?;
+    let fegov_db = fegov_data_by_year
+        .get(&y)
+        .context(format!("Could not get fueleconomy.gov data from year {y}"))?;
     for item in fegov_db.iter() {
         if item.id == id {
-            return Ok(item.clone())
+            return Ok(item.clone());
         }
     }
     bail!("Could not find ID in data {id}");
@@ -1498,6 +1503,8 @@ fn extract_file_from_zip(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vehicle_utils::NETWORK_TEST_DISABLE_ENV_VAR_NAME;
+    use std::env;
 
     #[test]
     fn test_create_new_vehicle_from_input_data() {
@@ -1612,6 +1619,10 @@ mod tests {
 
     #[test]
     fn test_get_options_for_year_make_model() {
+        if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+            println!("SKIPPING: test_get_options_for_year_make_model");
+            return;
+        }
         let year = String::from("2020");
         let make = String::from("Toyota");
         let model = String::from("Corolla");
@@ -1621,6 +1632,10 @@ mod tests {
 
     #[test]
     fn test_import_robustness() {
+        if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+            println!("SKIPPING: test_import_robustness");
+            return;
+        }
         // Ensure 2019 data is cached
         let ddpath = create_project_subdir("fe_label_data").unwrap();
         let model_year = 2019;
@@ -1691,6 +1706,10 @@ mod tests {
 
     #[test]
     fn test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir() {
+        if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+            println!("SKIPPING: test_get_options_for_year_make_model_for_specified_cacheurl_and_data_dir");
+            return;
+        }
         let year = String::from("2020");
         let make = String::from("Toyota");
         let model = String::from("Corolla");
