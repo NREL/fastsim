@@ -1,6 +1,8 @@
+use std::env;
 use std::path::Path;
 
 use fastsim_core::traits::*;
+use fastsim_core::vehicle_utils::NETWORK_TEST_DISABLE_ENV_VAR_NAME;
 use fastsim_core::*;
 
 const REFERENCE_VEHICLE: &str = include_str!("assets/1110_2022_Tesla_Model_Y_RWD_opt45017.yaml");
@@ -38,6 +40,10 @@ fn test_to_cache() {
 
 #[test]
 fn test_url_to_cache() {
+    if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+        println!("SKIPPING: test_url_to_cache()");
+        return;
+    }
     utils::url_to_cache("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/assets/2022_Tesla_Model_Y_RWD_example.yaml", "vehicles").unwrap();
     let data_subdirectory = utils::create_project_subdir("vehicles").unwrap();
     let file_path = data_subdirectory.join("2022_Tesla_Model_Y_RWD_example.yaml");
@@ -51,6 +57,10 @@ fn test_url_to_cache() {
 
 #[test]
 fn test_from_github_or_url() {
+    if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+        println!("SKIPPING: test_from_github_or_url()");
+        return;
+    }
     let mut comparison_vehicle = vehicle::RustVehicle::from_yaml(REFERENCE_VEHICLE, false).unwrap();
     comparison_vehicle.doc = Some("Vehicle from https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/assets/2022_Tesla_Model_Y_RWD_example.yaml".to_owned());
     // test no url provided
@@ -77,6 +87,10 @@ fn test_from_github_or_url() {
 
 #[test]
 fn test_from_url() {
+    if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+        println!("SKIPPING: test_from_url()");
+        return;
+    }
     let vehicle = vehicle::RustVehicle::from_url("https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/assets/2022_Tesla_Model_Y_RWD_example.yaml", false).unwrap();
     let mut comparison_vehicle = vehicle::RustVehicle::from_yaml(REFERENCE_VEHICLE, false).unwrap();
     comparison_vehicle.doc = Some("Vehicle from https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/assets/2022_Tesla_Model_Y_RWD_example.yaml".to_owned());

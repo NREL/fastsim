@@ -21,6 +21,8 @@ use crate::simdrive::RustSimDrive;
 #[cfg(feature = "default")]
 use crate::vehicle::RustVehicle;
 
+pub const NETWORK_TEST_DISABLE_ENV_VAR_NAME: &str = "FASTSIM_DISABLE_NETWORK_TESTS";
+
 #[allow(non_snake_case)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 #[allow(clippy::too_many_arguments)]
@@ -311,6 +313,7 @@ pub fn fetch_github_list(repo_url: Option<String>) -> anyhow::Result<Vec<String>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     #[test]
     fn test_get_error_val() {
@@ -357,6 +360,10 @@ mod tests {
     // there's any way to ensure the function succeeds 100% of the time.
     #[test]
     fn test_fetch_github_list() {
+        if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+            println!("SKIPPING: test_fetch_github_list");
+            return;
+        }
         let list = fetch_github_list(Some(
             "https://api.github.com/repos/NREL/fastsim-vehicles/contents".to_owned(),
         ))
