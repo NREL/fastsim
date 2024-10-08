@@ -265,7 +265,7 @@ fn get_response<S: AsRef<str>>(url: S) -> Result<Response, OtherError> {
 }
 
 /// Returns a list of vehicle file names in the Fastsim Vehicle Repo, or,
-/// optionally, a different GitHub repo, in which case the url provided needs to
+/// optionally, a different GitHub repo, ~in which case the url provided needs to
 /// be the url for the file tree within GitHub for the root folder the Rust
 /// objects, for example
 /// "https://api.github.com/repos/NREL/fastsim-vehicles/contents/public"  
