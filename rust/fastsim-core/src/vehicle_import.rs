@@ -230,6 +230,8 @@ impl SerdeAPI for EmissionsInfoFE {}
 #[add_pyo3_api]
 /// Struct containing vehicle data from EPA database
 pub struct VehicleDataEPA {
+    /// Index
+    pub index: u32,
     /// Model year
     #[serde(rename = "Model Year")]
     pub year: u32,
@@ -966,6 +968,7 @@ fn try_make_single_vehicle(
     //             + (ref_veh.mc_pe_base_kg + mc_max_kw * ref_veh.mc_pe_kg_per_kw)
     //             + (ref_veh.ess_base_kg + ess_max_kwh * ref_veh.ess_kg_per_kwh));
     let mut veh = RustVehicle {
+        doc: Some(format!("EPA ({}) index {}", epa_data.year, epa_data.index)),
         veh_override_kg: Some(epa_data.test_weight_lbs / LBS_PER_KG),
         veh_cg_m: match fe_gov_data.drive.as_str() {
             "Front-Wheel Drive" => 0.53,
@@ -1591,6 +1594,7 @@ mod tests {
             emissions_list: emiss_list,
         };
         let epatest_data = VehicleDataEPA {
+            index: 0,
             year: 2020,
             make: String::from("TOYOTA"),
             model: String::from("CAMRY"),
