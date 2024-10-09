@@ -132,7 +132,7 @@ jobs:
         run: twine upload -r testpypi ./artifact/*
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.test_pypi_password}}
+          TWINE_PASSWORD: ${{ secrets.FASTSIM_TEST_PYPI_TOKEN }}
 
       - name: Upload files to PyPI
         run: twine upload ./artifact/*
