@@ -21,9 +21,6 @@ pub struct HybridElectricVehicle {
     pub aux_cntrl: HEVAuxControls,
     /// hybrid powertrain mass
     pub(crate) mass: Option<si::Mass>,
-    // TODO: add enum for controling fraction of tractive pwr handled by battery vs engine -- there
-    // might be many ways we'd want to do this, especially since there will be thermal models involved
-    /// Simulation options
     #[serde(default)]
     pub sim_params: HEVSimulationParams,
     /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC

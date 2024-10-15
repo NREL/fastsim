@@ -80,7 +80,6 @@ pub struct ElectricMachine {
     /// ElectricMachine maximum output power \[W\]
     pub pwr_out_max: si::Power,
     /// ElectricMachine specific power
-    // TODO: fix `extract_type_from_option` to allow for not having this line
     #[api(skip_get, skip_set)]
     pub specific_pwr: Option<si::SpecificPower>,
     /// ElectricMachine mass
