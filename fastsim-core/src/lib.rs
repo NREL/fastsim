@@ -1,5 +1,5 @@
 #![allow(clippy::field_reassign_with_default)]
-// TODO: uncomment when docs are somewhat mature to check for missing docs
+// INFO: uncomment when docs are somewhat mature to check for missing docs
 // #![warn(missing_docs)]
 // #![warn(missing_docs_in_private_items)]
 
