@@ -1,62 +1,68 @@
 [build-system]
-requires = ["maturin>=0.15,<0.16"]
+requires = ["maturin>=1.0"]
 build-backend = "maturin"
 
 [project]
 name = "fastsim"
-version = "2.1.2"
+version = "3.0.0"
 authors = [{ name = "NREL/MTES/CIMS/MBAP Group", email = "fastsim@nrel.gov" }]
 description = "Tool for modeling vehicle powertrains"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = { file = "LICENSE.md" }
 requires-python = ">=3.8,<3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: Other/Proprietary License",
     "Operating System :: POSIX",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Microsoft :: Windows",
 ]
 dependencies = [
     "pandas>=1",
+    "polars==1.4.1",
     "matplotlib>=3.3",
-    "numpy==1.24",
-    "scipy",
+    "numpy>=1.18",
     "seaborn>=0.10",
     "typing_extensions",
-    "pyyaml",
-    "pytest",
-    "setuptools<=65.6.3", # suppresses pkg_resources deprecation warning
-    "openpyxl>=3.1.2",
-    "plotly==5.18",
+    "pypi-multi-versions",
 ]
 
 [project.urls]
 Homepage = "https://www.nrel.gov/transportation/fastsim.html"
 
 [project.optional-dependencies]
-dev = ["black", "maturin", "plotly", "ipykernel", "pymoo==0.6.0.1"]
+dev = [
+    "black",
+    "pytest",
+    "maturin",
+    "plotly",
+    "ipykernel",
+    "pymoo==0.6.0.1",
+    "memory_profiler==0.61.0",
+    "nbformat~=5.0",
+    "pyarrow~=17.0",
+]
 
 [tool.setuptools]
 zip-safe = false
 
 [tool.setuptools.packages.find]
-where = ["."] # list of folders that contain the packages (["."] by default)
 include = [
     "fastsim*",
 ] # package names should match these glob patterns (["*"] by default)
 namespaces = false # to disable scanning PEP 420 namespaces (true by default)
 
 [tool.maturin]
+profile = "release"
 python-source = "python"
 features = ["pyo3/extension-module"]
-module-name = "fastsim.fastsimrust"
-manifest-path = "rust/fastsim-py/Cargo.toml"
+module-name = "fastsim.fastsim"
+manifest-path = "fastsim-py/Cargo.toml"
 include = [
-    { format = "sdist", path = "rust/fastsim-core/Cargo.toml" },
-    { format = "sdist", path = "rust/fastsim-core/src/*" },
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/Cargo.toml" },
-    { format = "sdist", path = "rust/fastsim-core/proc-macros/src/*" },
-    { format = "sdist", path = "rust/fastsim-py/Cargo.toml" },
-    { format = "sdist", path = "rust/fastsim-py/src/*" },
+    { format = "sdist", path = "fastsim-core/Cargo.toml" },
+    { format = "sdist", path = "fastsim-core/src/*" },
+    { format = "sdist", path = "fastsim-py/Cargo.toml" },
+    { format = "sdist", path = "fastsim-py/src/*" },
+    { format = "sdist", path = "fastsim-core/proc-macros/Cargo.toml" },
+    { format = "sdist", path = "fastsim-core/proc-macros/src/*" },
 ]

@@ -1,0 +1,30 @@
+[workspace]
+
+members = [
+    "fastsim-core",                     # pure rust core with optional pyo3 feature
+    "fastsim-py",                       # python module exposing fastsim-core
+    "fastsim-cli",                      # CLI apps
+    "fastsim-core/fastsim-proc-macros",
+    "fastsim-cli",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+
+[workspace.dependencies]
+document-features = "0.2.10"
+fastsim-core = { path = "fastsim-core" }
+anyhow = "1.0.71"
+log = { version = "0.4.17" }
+pyo3 = "0.19"
+pyo3-log = "*"
+uom = { version = "0.35.0", features = ["use_serde"] }
+fastsim-2 = { package = "fastsim-core", version = "~0" }

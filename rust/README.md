@@ -1,7 +1,0 @@
-# Crate Architecture
-[![Tests](https://github.com/NREL/fastsim/actions/workflows/tests.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/tests.yaml) [![wheels](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml/badge.svg)](https://github.com/NREL/fastsim/actions/workflows/wheels.yaml?event=release) ![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10-blue) [![Documentation](https://img.shields.io/badge/documentation-custom-blue.svg)](https://nrel.github.io/fastsim/) [![GitHub](https://img.shields.io/badge/GitHub-fastsim-blue.svg)](https://github.com/NREL/fastsim)
-
-FASTSim Rust crates are organized as a cargo [workspace](Cargo.toml) as follows:
-1. `fastsim-core`: a pure rust lib crate with optional `pyo3` feature.  This crate is intended to be used by other crates and is not in itself an app.
-1. `fastsim-cli`: a wrapper around `fastsim-core` to enable a standalone CLI app for running fastsim and getting results out.  
-1. `fastsim-py`: a wrapper around `fastsim-core` to expose structs, methods, and functions to python via the enabled `pyo3` feature.  This is set up to install `fastsim-py` as `fastsimrust` in [fastsim-py/python/fastsimrust](./fastsim-py/python/fastsimrust/) when `maturin develop --release` is run, per [these instructions](https://github.com/PyO3/maturin/blob/084cfaced651b28616aeea1f818bdc933a536bfe/guide/src/project_layout.md#mixed-rustpython-project).  
