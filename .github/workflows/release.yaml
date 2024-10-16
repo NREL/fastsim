@@ -134,8 +134,9 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.FASTSIM_TEST_PYPI_TOKEN }}
 
-      - name: Upload files to PyPI
-        run: twine upload ./artifact/*
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.fastsim_pypi_token }}
+      # NOTE: temporarily disabling production PyPI to test Test PyPI
+      #- name: Upload files to PyPI
+      #  run: twine upload ./artifact/*
+      #  env:
+      #    TWINE_USERNAME: __token__
+      #    TWINE_PASSWORD: ${{ secrets.fastsim_pypi_token }}
