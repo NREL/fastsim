@@ -87,7 +87,8 @@ jobs:
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
-
+          CIBW_BEFORE_BUILD_MACOS: >
+            rustup target add x86_64-apple-darwin
       # - name: build windows 32bit binaries
       #   if: matrix.os == 'windows'
       #   run: cibuildwheel --output-dir dist
@@ -107,7 +108,7 @@ jobs:
       - name: list dist files
         run: ${{ matrix.ls || 'ls -lh' }} dist/
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: ./dist/*
 
@@ -117,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: download files
-        uses: actions/download-artifact@v2.1.1
+        uses: actions/download-artifact@v4
 
       - name: set up Python 3.10
         uses: actions/setup-python@v4
@@ -128,8 +129,15 @@ jobs:
 
       - run: twine check ./artifact/*
 
-      - name: upload files
-        run: twine upload ./artifact/*
+      - name: Publish distribution to Test PyPI
+        run: twine upload -r testpypi ./artifact/*
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.fastsim_pypi_token }}
+          TWINE_PASSWORD: ${{ secrets.FASTSIM_TEST_PYPI_TOKEN }}
+
+      # NOTE: temporarily disabling production PyPI to test Test PyPI
+      #- name: Upload files to PyPI
+      #  run: twine upload ./artifact/*
+      #  env:
+      #    TWINE_USERNAME: __token__
+      #    TWINE_PASSWORD: ${{ secrets.fastsim_pypi_token }}
