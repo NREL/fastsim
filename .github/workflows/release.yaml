@@ -108,7 +108,7 @@ jobs:
       - name: list dist files
         run: ${{ matrix.ls || 'ls -lh' }} dist/
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: ./dist/*
 
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: download files
-        uses: actions/download-artifact@v2.1.1
+        uses: actions/download-artifact@4
 
       - name: set up Python 3.10
         uses: actions/setup-python@v4
