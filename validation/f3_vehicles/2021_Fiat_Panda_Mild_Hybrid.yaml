@@ -1,0 +1,65 @@
+---
+name: 2021 Fiat Panda Mild Hybrid
+year: 2021
+pt_type:
+  ConventionalVehicle:
+    fs:
+      pwr_out_max_watts: 2000000.0
+      pwr_ramp_lag_seconds: 1.0
+      energy_capacity_joules: 1623600000.0000002
+    fc:
+      mass_kilograms: ~
+      specific_pwr_watts_per_kilogram: ~
+      pwr_out_max_watts: 51000.0
+      pwr_out_max_init_watts: 8500.0
+      pwr_ramp_lag_seconds: 6.0
+      eff_interp_from_pwr_out:
+        Interp1D:
+          x:
+            - 0.0
+            - 0.005
+            - 0.015
+            - 0.04
+            - 0.06
+            - 0.1
+            - 0.14
+            - 0.2
+            - 0.4
+            - 0.6
+            - 0.8
+            - 1.0
+          f_x:
+            - 0.08
+            - 0.1
+            - 0.26
+            - 0.33
+            - 0.355
+            - 0.33
+            - 0.33
+            - 0.33
+            - 0.35
+            - 0.34
+            - 0.32
+            - 0.3
+          strategy: LeftNearest
+          extrapolate: Error
+      pwr_idle_fuel_watts: 6250.0
+      save_interval: 1
+    mass: ~
+    alt_eff: 1.0
+chassis:
+  drag_coef: 0.4
+  frontal_area_square_meters: 2.1
+  wheel_rr_coef: 0.007
+  wheel_inertia_kilogram_square_meters: 0.815
+  num_wheels: 4
+  wheel_radius_meters: 0.3175
+  cg_height_meters: 0.53
+  wheel_fric_coef: 0.7
+  drive_type: FWD
+  drive_axle_weight_frac: 0.59
+  wheel_base_meters: 2.3
+mass_kilograms: 1200.0
+pwr_aux_watts: 500.0
+trans_eff: 0.95
+save_interval: 1

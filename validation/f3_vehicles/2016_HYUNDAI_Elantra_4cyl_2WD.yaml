@@ -1,0 +1,65 @@
+---
+name: 2016 HYUNDAI Elantra 4cyl 2WD
+year: 2016
+pt_type:
+  ConventionalVehicle:
+    fs:
+      pwr_out_max_watts: 2000000.0
+      pwr_ramp_lag_seconds: 1.0
+      energy_capacity_joules: 1684800000.0
+    fc:
+      mass_kilograms: ~
+      specific_pwr_watts_per_kilogram: ~
+      pwr_out_max_watts: 110000.0
+      pwr_out_max_init_watts: 18333.333333333332
+      pwr_ramp_lag_seconds: 6.0
+      eff_interp_from_pwr_out:
+        Interp1D:
+          x:
+            - 0.0
+            - 0.005
+            - 0.015
+            - 0.04
+            - 0.06
+            - 0.1
+            - 0.14
+            - 0.2
+            - 0.4
+            - 0.6
+            - 0.8
+            - 1.0
+          f_x:
+            - 0.1
+            - 0.12
+            - 0.16
+            - 0.22
+            - 0.28
+            - 0.33
+            - 0.35
+            - 0.36
+            - 0.35
+            - 0.34
+            - 0.32
+            - 0.3
+          strategy: LeftNearest
+          extrapolate: Error
+      pwr_idle_fuel_watts: 6999.999999999999
+      save_interval: 1
+    mass: ~
+    alt_eff: 1.0
+chassis:
+  drag_coef: 0.3
+  frontal_area_square_meters: 2.611
+  wheel_rr_coef: 0.012
+  wheel_inertia_kilogram_square_meters: 0.815
+  num_wheels: 4
+  wheel_radius_meters: 0.336
+  cg_height_meters: 0.53
+  wheel_fric_coef: 0.7
+  drive_type: FWD
+  drive_axle_weight_frac: 0.59
+  wheel_base_meters: 2.6
+mass_kilograms: 1610.1752055806355
+pwr_aux_watts: 700.0
+trans_eff: 0.92
+save_interval: 1

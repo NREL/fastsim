@@ -1,0 +1,65 @@
+---
+name: 2020 Hero Splendor+ 100cc
+year: 2020
+pt_type:
+  ConventionalVehicle:
+    fs:
+      pwr_out_max_watts: 1000000.0
+      pwr_ramp_lag_seconds: 1.0
+      energy_capacity_joules: 317520000.00000006
+    fc:
+      mass_kilograms: ~
+      specific_pwr_watts_per_kilogram: ~
+      pwr_out_max_watts: 5898.7
+      pwr_out_max_init_watts: 983.1166666666667
+      pwr_ramp_lag_seconds: 6.0
+      eff_interp_from_pwr_out:
+        Interp1D:
+          x:
+            - 0.0
+            - 0.005
+            - 0.015
+            - 0.04
+            - 0.06
+            - 0.1
+            - 0.14
+            - 0.2
+            - 0.4
+            - 0.6
+            - 0.8
+            - 1.0
+          f_x:
+            - 0.05422978
+            - 0.05766632
+            - 0.06445793
+            - 0.08096171
+            - 0.09367591
+            - 0.11780081
+            - 0.14018769
+            - 0.17050922
+            - 0.24333819
+            - 0.27271668
+            - 0.25864471
+            - 0.20112227
+          strategy: LeftNearest
+          extrapolate: Error
+      pwr_idle_fuel_watts: 0.0
+      save_interval: 1
+    mass: ~
+    alt_eff: 1.0
+chassis:
+  drag_coef: 0.78
+  frontal_area_square_meters: 0.68
+  wheel_rr_coef: 0.01
+  wheel_inertia_kilogram_square_meters: 0.6
+  num_wheels: 2
+  wheel_radius_meters: 0.3086
+  cg_height_meters: 0.53
+  wheel_fric_coef: 0.8
+  drive_type: FWD
+  drive_axle_weight_frac: 0.61
+  wheel_base_meters: 1.236
+mass_kilograms: 172.0
+pwr_aux_watts: 0.0
+trans_eff: 0.92
+save_interval: 1
