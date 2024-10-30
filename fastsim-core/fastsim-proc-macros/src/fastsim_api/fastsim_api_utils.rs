@@ -301,6 +301,7 @@ pub(crate) fn impl_getters_and_setters(
     let mut vec_layers: u8 = 0;
     let mut inner_type = &ftype;
 
+    // TODO: make sure this is being used with `SerdeAPI` also
     if let Some(opt_inner_type) = extract_type_from_option(inner_type) {
         inner_type = opt_inner_type;
     }

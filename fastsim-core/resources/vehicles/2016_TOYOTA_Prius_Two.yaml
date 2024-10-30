@@ -52,6 +52,7 @@ pt_type:
             - 0.33
             - 0.32
           strategy: LeftNearest
+          extrapolate: Error
       pwr_idle_fuel_watts: 13125.0
       save_interval: 1
     em:
@@ -82,12 +83,29 @@ pt_type:
             - 0.93
             - 0.92
           strategy: LeftNearest
+          extrapolate: Error
       pwr_out_max_watts: 53000.0
       specific_pwr_watts_per_kilogram: ~
       mass_kilograms: ~
       save_interval: 1
-    hev_controls: RESGreedy
+    pt_cntrl:
+      Fastsim2:
+        speed_min_soc_buffer_for_accel: 26.8224
+        speed_max_soc_buffer_for_decel: 26.8224
+        fc_min_time_on: 60.0
+        speed_fc_forced_on: 37.9984
+        frac_pwr_demand_fc_forced_on: 0.5645161290322581
+        frac_res_chrg_for_fc: 0.0
+        frac_res_dschrg_for_fc: 1.0
+        frac_of_most_eff_pwr_to_run_fc: 1.0
+    aux_cntrl: AuxOnResPriority
     mass: ~
+    sim_params:
+      res_per_fuel_lim: 0.005
+      soc_balance_iter_warn: 3
+      soc_balance_iter_err: 5
+      balance_soc: true
+    soc_bal_iters: 0
 chassis:
   drag_coef: 0.306
   frontal_area_square_meters: 2.22
@@ -104,3 +122,31 @@ mass_kilograms: 1635.0
 pwr_aux_watts: 1050.0
 trans_eff: 0.98
 save_interval: 1
+state:
+  i: 0
+  pwr_prop_fwd_max_watts: 0.0
+  pwr_prop_bwd_max_watts: 0.0
+  pwr_tractive_watts: 0.0
+  pwr_tractive_for_cyc_watts: 0.0
+  energy_tractive_joules: 0.0
+  pwr_aux_watts: 0.0
+  energy_aux_joules: 0.0
+  pwr_drag_watts: 0.0
+  energy_drag_joules: 0.0
+  pwr_accel_watts: 0.0
+  energy_accel_joules: 0.0
+  pwr_ascent_watts: 0.0
+  energy_ascent_joules: 0.0
+  pwr_rr_watts: 0.0
+  energy_rr_joules: 0.0
+  pwr_whl_inertia_watts: 0.0
+  energy_whl_inertia_joules: 0.0
+  pwr_brake_watts: 0.0
+  energy_brake_joules: 0.0
+  cyc_met: true
+  cyc_met_overall: true
+  speed_ach_meters_per_second: 0.0
+  dist_meters: 0.0
+  grade_curr: 0.0
+  air_density_kilograms_per_cubic_meter: 1.2
+  mass_kilograms: .nan

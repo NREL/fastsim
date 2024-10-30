@@ -67,6 +67,9 @@ pub struct FuelConverter {
     /// interpolator for calculating [Self] efficiency as a function of output power
     #[api(skip_get, skip_set)]
     pub eff_interp_from_pwr_out: utils::interp::Interpolator,
+    /// power at which peak efficiency occurs
+    #[serde(skip)]
+    pub pwr_for_peak_eff: si::Power,
     /// idle fuel power to overcome internal friction (not including aux load) \[W\]
     pub pwr_idle_fuel: si::Power,
     /// time step interval between saves. 1 is a good option. If None, no saving occurs.
@@ -97,6 +100,21 @@ impl Init for FuelConverter {
     fn init(&mut self) -> anyhow::Result<()> {
         let _ = self.mass().with_context(|| anyhow!(format_dbg!()))?;
         self.state.init().with_context(|| anyhow!(format_dbg!()))?;
+        let eff_max = self.eff_max()?;
+        self.pwr_for_peak_eff = *self
+            .eff_interp_from_pwr_out
+            .x()
+            .with_context(|| format_dbg!())?
+            .get(
+                self.eff_interp_from_pwr_out
+                    .f_x()
+                    .unwrap()
+                    .iter()
+                    .position(|&eff| eff * uc::R == eff_max)
+                    .with_context(|| format_dbg!())?,
+            )
+            .with_context(|| format_dbg!())?
+            * self.pwr_out_max;
         Ok(())
     }
 }
@@ -245,9 +263,9 @@ impl FuelConverter {
                     fc_on
                         || (pwr_out_req == si::Power::ZERO
                             && self.state.pwr_aux == si::Power::ZERO)
-                ), 
+                ),
                pwr_out_req.get::<si::kilowatt>(),
-               self.state.pwr_aux.get::<si::kilowatt>() 
+               self.state.pwr_aux.get::<si::kilowatt>()
             )
         );
         self.state.pwr_propulsion = pwr_out_req;
@@ -295,6 +313,16 @@ impl FuelConverter {
         //     )
         // );
         Ok(())
+    }
+
+    pub fn eff_max(&self) -> anyhow::Result<si::Ratio> {
+        Ok(self
+            .eff_interp_from_pwr_out
+            .f_x()
+            .with_context(|| format_dbg!())?
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, &curr| acc.max(curr))
+            * uc::R)
     }
 }
 

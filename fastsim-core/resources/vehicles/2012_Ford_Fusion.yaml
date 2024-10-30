@@ -42,6 +42,7 @@ pt_type:
             - 0.32
             - 0.3
           strategy: LeftNearest
+          extrapolate: Error
       pwr_idle_fuel_watts: 6999.999999999999
       save_interval: 1
     mass: ~
@@ -62,3 +63,31 @@ mass_kilograms: 1644.2724500334996
 pwr_aux_watts: 700.0
 trans_eff: 0.875
 save_interval: 1
+state:
+  i: 0
+  pwr_prop_fwd_max_watts: 0.0
+  pwr_prop_bwd_max_watts: 0.0
+  pwr_tractive_watts: 0.0
+  pwr_tractive_for_cyc_watts: 0.0
+  energy_tractive_joules: 0.0
+  pwr_aux_watts: 0.0
+  energy_aux_joules: 0.0
+  pwr_drag_watts: 0.0
+  energy_drag_joules: 0.0
+  pwr_accel_watts: 0.0
+  energy_accel_joules: 0.0
+  pwr_ascent_watts: 0.0
+  energy_ascent_joules: 0.0
+  pwr_rr_watts: 0.0
+  energy_rr_joules: 0.0
+  pwr_whl_inertia_watts: 0.0
+  energy_whl_inertia_joules: 0.0
+  pwr_brake_watts: 0.0
+  energy_brake_joules: 0.0
+  cyc_met: true
+  cyc_met_overall: true
+  speed_ach_meters_per_second: 0.0
+  dist_meters: 0.0
+  grade_curr: 0.0
+  air_density_kilograms_per_cubic_meter: 1.2
+  mass_kilograms: .nan

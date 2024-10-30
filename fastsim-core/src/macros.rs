@@ -34,6 +34,10 @@ macro_rules! eff_test_body {
 macro_rules! make_uom_cmp_fn {
     ($name:ident) => {
         paste! {
+            /// # Arguments
+            /// - `val1`: LHS
+            /// - `val2`: RHS
+            /// - `epsilon`: error threshold, defaults to [crate::utils::COMP_EPSILON]
             pub fn [<$name _uom>]<D, U>(
                 val1: &uom::si::Quantity<D, U, f64>,
                 val2: &uom::si::Quantity<D, U, f64>,

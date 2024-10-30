@@ -100,7 +100,7 @@ impl SimDrive {
     // - [x] figure out speed trace miss -- resulted from not having enough SOC buffer
     // - [ ] probably done already -- make sure that when doing lefthand interpolation we have same array length as f2
     // ## Features
-    // - [ ] engine min time on per f2
+    // - [x] engine min time on per f2
     // - [ ] accel buffer per f2
     // - [ ] regen buffer per f2
     // - [ ] regen limiting curve during speeds approaching zero per f2 -- less urgent
@@ -109,8 +109,8 @@ impl SimDrive {
     //       the engine.  We should be able to actually get near peak efficiency in a
     //       smarter way in f3 because the performance penalty is less problematic.
     // - [ ] ability to manipulate friction/regen brake split based on required braking
-    //       power -- new feature
-    // - [ ] make enum `EngineOnCause::{AlreadyOn, TooCold,
+    //       power -- new feature -- move this to enum
+    // - [x] make enum `EngineOnCause::{AlreadyOn, TooCold,
     //       PowerDemand}` and save it in a vec or some such for when there are
     //       multiple causes -- new feature
 
@@ -118,6 +118,11 @@ impl SimDrive {
     /// corrections (e.g. iterate `walk` until SOC balance is achieved -- i.e. initial
     /// and final SOC are nearly identical)
     pub fn walk(&mut self) -> anyhow::Result<()> {
+        self.veh.state.mass = self
+            .veh
+            .mass()
+            .with_context(|| format_dbg!())?
+            .with_context(|| format_dbg!("Expected mass to have been set."))?;
         match self.veh.pt_type {
             PowertrainType::HybridElectricVehicle(_) => {
                 let res = &mut self.veh.res_mut().unwrap();
@@ -186,12 +191,14 @@ impl SimDrive {
     pub fn solve_step(&mut self) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let dt = self.cyc.dt_at_i(i)?;
+        let speed_prev = self.veh.state.speed_ach;
         self.veh
             .set_curr_pwr_out_max(dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_pwr_prop_for_speed(self.cyc.speed[i], dt)
+        self.set_pwr_prop_for_speed(self.cyc.speed[i], speed_prev, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
-        self.set_ach_speed(self.cyc.speed[i], dt)
+        self.veh.state.pwr_tractive_for_cyc = self.veh.state.pwr_tractive;
+        self.set_ach_speed(self.cyc.speed[i], speed_prev, dt)
             .with_context(|| anyhow!(format_dbg!()))?;
         self.veh
             .solve_powertrain(dt)
@@ -203,17 +210,18 @@ impl SimDrive {
     /// Sets power required for given prescribed speed
     /// # Arguments
     /// - `speed`: prescribed or achieved speed
+    /// - `speed_prev`: previously achieved speed
     /// - `dt`: time step size
     pub fn set_pwr_prop_for_speed(
         &mut self,
         speed: si::Velocity,
+        speed_prev: si::Velocity,
         dt: si::Time,
     ) -> anyhow::Result<()> {
         let i = self.veh.state.i;
         let vs = &mut self.veh.state;
-        let speed_prev = vs.speed_ach;
         // TODO: get @mokeefe to give this a serious look and think about grade alignment issues that may arise
-        vs.grade_curr = if !vs.any_pwr_not_met {
+        vs.grade_curr = if vs.cyc_met_overall {
             *self.cyc.grade.get(i).with_context(|| format_dbg!())?
         } else {
             uc::R
@@ -255,22 +263,29 @@ impl SimDrive {
 
         vs.pwr_tractive =
             vs.pwr_rr + vs.pwr_whl_inertia + vs.pwr_accel + vs.pwr_ascent + vs.pwr_drag;
-        vs.curr_pwr_met = vs.pwr_tractive <= vs.pwr_prop_fwd_max;
-        if !vs.curr_pwr_met {
+        vs.cyc_met = vs.pwr_tractive <= vs.pwr_prop_fwd_max;
+        if !vs.cyc_met {
             // if current power demand is not met, then this becomes false for
             // the rest of the cycle and should not be manipulated anywhere else
-            vs.any_pwr_not_met = true;
+            vs.cyc_met_overall = false;
         }
         Ok(())
     }
 
     /// Sets achieved speed based on known current max power
     /// # Arguments
+    /// - `cyc_speed`: prescribed speed
     /// - `dt`: time step size
-    pub fn set_ach_speed(&mut self, cyc_speed: si::Velocity, dt: si::Time) -> anyhow::Result<()> {
+    /// - `speed_prev`: previously achieved speed
+    pub fn set_ach_speed(
+        &mut self,
+        cyc_speed: si::Velocity,
+        speed_prev: si::Velocity,
+        dt: si::Time,
+    ) -> anyhow::Result<()> {
         // borrow state as `vs` for shorthand
         let vs = &mut self.veh.state;
-        if vs.curr_pwr_met {
+        if vs.cyc_met {
             vs.speed_ach = cyc_speed;
             return Ok(());
         } else {
@@ -281,10 +296,21 @@ impl SimDrive {
                 TraceMissOptions::Error => bail!(
                     "{}\nFailed to meet speed trace.
 prescribed speed: {} mph
-achieved speed: {} mph",
+achieved speed: {} mph
+pwr for prescribed speed: {} kW
+pwr for achieved speed: {} kW
+pwr available: {} kW,
+pwr deficit: {} kW
+",
                     format_dbg!(),
                     cyc_speed.get::<si::mile_per_hour>(),
-                    vs.speed_ach.get::<si::mile_per_hour>()
+                    vs.speed_ach.get::<si::mile_per_hour>(),
+                    vs.pwr_tractive_for_cyc.get::<si::kilowatt>(),
+                    vs.pwr_tractive.get::<si::kilowatt>(),
+                    vs.pwr_prop_fwd_max.get::<si::kilowatt>(),
+                    (vs.pwr_tractive - vs.pwr_prop_fwd_max)
+                        .get::<si::kilowatt>()
+                        .format_eng(None)
                 ),
                 TraceMissOptions::Correct => todo!(),
             }
@@ -293,7 +319,6 @@ achieved speed: {} mph",
             .veh
             .mass
             .with_context(|| format!("{}\nMass should have been set before now", format_dbg!()))?;
-        let speed_prev = vs.speed_ach;
 
         let drag3 = 1.0 / 16.0
             * vs.air_density
@@ -410,7 +435,9 @@ achieved speed: {} mph",
                 .with_context(|| format_dbg!("should have had at least one element"))?
                 .max(0.0 * uc::MPS);
         }
-        self.set_pwr_prop_for_speed(self.veh.state.speed_ach, dt)
+
+        // Run it again to make sure it has been updated for achieved speed
+        self.set_pwr_prop_for_speed(self.veh.state.speed_ach, speed_prev, dt)
             .with_context(|| format_dbg!())?;
 
         Ok(())
@@ -454,9 +481,9 @@ impl Default for TraceMissTolerance {
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize, PartialEq)]
 pub enum TraceMissOptions {
-    #[default]
     /// Allow trace miss without any fanfare
     Allow,
+    #[default]
     /// Error out when trace miss happens
     Error,
     /// Correct trace miss with driver model that catches up
@@ -496,7 +523,8 @@ mod tests {
             cyc: _cyc,
             sim_params: Default::default(),
         };
-        sd.walk_once().unwrap();
+        // TODO: fix this: sd.walk_once().unwrap();
+        sd.walk().unwrap();
         assert!(sd.veh.state.i == sd.cyc.len());
         assert!(sd.veh.fc().unwrap().state.energy_fuel > si::Energy::ZERO);
         assert!(sd.veh.res().unwrap().state.energy_out_chemical != si::Energy::ZERO);

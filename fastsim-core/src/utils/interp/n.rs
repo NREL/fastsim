@@ -191,7 +191,7 @@ impl InterpMethods for InterpND {
     fn validate(&self) -> anyhow::Result<()> {
         let n = self.ndim();
         ensure!(
-            !matches!(self.extrapolate, Extrapolate::Extrapolate), 
+            !matches!(self.extrapolate, Extrapolate::Extrapolate),
             "`Extrapolate` is not implemented for N-D, use `Clamp` or `Error` extrapolation strategy instead"
         );
 

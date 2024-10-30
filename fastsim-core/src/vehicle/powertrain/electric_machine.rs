@@ -5,7 +5,6 @@ use super::*;
 #[allow(unused_imports)]
 #[cfg(feature = "pyo3")]
 use crate::pyo3::*;
-use crate::utils::abs_checked_x_val;
 
 #[fastsim_api(
     // #[new]
@@ -211,19 +210,23 @@ impl ElectricMachine {
         ensure!(
             pwr_out_req.abs() <= self.pwr_out_max,
             format!(
-                "{}\nedrv required power ({:.6} kW) exceeds static max power ({:.6} kW)",
+                "{}\nedrv required power ({} kW) exceeds static max power ({} kW)",
                 format_dbg!(pwr_out_req.abs() <= self.pwr_out_max),
-                pwr_out_req.get::<si::kilowatt>(),
-                self.pwr_out_max.get::<si::kilowatt>()
+                pwr_out_req.get::<si::kilowatt>().format_eng(Some(9)),
+                self.pwr_out_max.get::<si::kilowatt>().format_eng(Some(9))
             ),
         );
         ensure!(
-            pwr_out_req <= self.state.pwr_mech_fwd_out_max,
+            almost_le_uom(&pwr_out_req , &self.state.pwr_mech_fwd_out_max, None),
             format!(
-                "{}\nedrv required discharge power ({:.6} kW) exceeds current max discharge power ({:.6} kW)",
+                "{}\nedrv required propulsion power ({} kW) exceeds current max propulsion power ({} kW) by {} kW",
                 format_dbg!(pwr_out_req <= self.state.pwr_mech_fwd_out_max),
-                pwr_out_req.get::<si::kilowatt>(),
-                self.state.pwr_mech_fwd_out_max.get::<si::kilowatt>()
+                pwr_out_req.get::<si::kilowatt>().format_eng(Some(6)),
+                self.state
+                    .pwr_mech_fwd_out_max
+                    .get::<si::kilowatt>()
+                    .format_eng(Some(6)),
+                    (pwr_out_req - self.state.pwr_mech_fwd_out_max).get::<si::kilowatt>().format_eng(Some(6))
             ),
         );
         ensure!(
