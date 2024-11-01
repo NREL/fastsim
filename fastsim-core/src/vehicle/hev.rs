@@ -25,10 +25,6 @@ pub struct HybridElectricVehicle {
     pub(crate) mass: Option<si::Mass>,
     #[serde(default)]
     pub sim_params: HEVSimulationParams,
-    /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
-    /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
-    #[serde(default)]
-    pub soc_bal_iters: u32,
     /// field for tracking current state
     #[serde(default)]
     #[serde(skip_serializing_if = "EqDefault::eq_default")]
@@ -37,6 +33,10 @@ pub struct HybridElectricVehicle {
     #[serde(default)]
     #[serde(skip_serializing_if = "HEVStateHistoryVec::is_empty")]
     pub history: HEVStateHistoryVec,
+    /// vector of SOC balance iterations
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub soc_bal_iter_history: Vec<Self>,
 }
 
 impl SaveInterval for HybridElectricVehicle {
@@ -94,31 +94,33 @@ impl Powertrain for Box<HybridElectricVehicle> {
         let disch_buffer: si::Energy = match &self.pt_cntrl {
             HEVPowertrainControls::Fastsim2(rgwb) => {
                 0.5 * veh_state.mass
-                    * (rgwb
-                        .speed_min_soc_buffer_for_accel
-                        .with_context(|| format_dbg!())?
+                    * ((rgwb.speed_soc_accel_buffer.with_context(|| format_dbg!())?
                         - veh_state.speed_ach)
-                        .powi(typenum::P2::new())
+                        .max(si::Velocity::ZERO)
+                        .powi(typenum::P2::new()))
+                    * rgwb
+                        .speed_soc_accel_buffer_coeff
+                        .with_context(|| format_dbg!())?
             }
             HEVPowertrainControls::RESGreedyWithDynamicBuffers => {
                 todo!()
             }
-        }
-        .max(si::Energy::ZERO);
+        };
         let chrg_buffer: si::Energy = match &self.pt_cntrl {
             HEVPowertrainControls::Fastsim2(rgwb) => {
                 0.5 * veh_state.mass
-                    * (veh_state.speed_ach
-                        - rgwb
-                            .speed_max_soc_buffer_for_decel
-                            .with_context(|| format_dbg!())?)
-                    .powi(typenum::P2::new())
+                    * ((veh_state.speed_ach
+                        - rgwb.speed_soc_regen_buffer.with_context(|| format_dbg!())?)
+                    .max(si::Velocity::ZERO)
+                    .powi(typenum::P2::new()))
+                    * rgwb
+                        .speed_soc_regen_buffer_coeff
+                        .with_context(|| format_dbg!())?
             }
             HEVPowertrainControls::RESGreedyWithDynamicBuffers => {
                 todo!()
             }
-        }
-        .max(si::Energy::ZERO);
+        };
         self.res
             .set_curr_pwr_out_max(dt, disch_buffer, chrg_buffer)
             .with_context(|| anyhow!(format_dbg!()))?;
@@ -311,8 +313,11 @@ pub struct HEVState {
     /// Vector of posssible reasons the fc is forced on
     #[api(skip_get, skip_set)]
     pub fc_on_causes: FCOnCauses,
-    // TODO: store the soc buffer here or somewhere
+    /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
+    /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
+    pub soc_bal_iters: u32,
 }
+
 impl Init for HEVState {}
 impl SerdeAPI for HEVState {}
 
@@ -375,21 +380,21 @@ impl fmt::Display for FCOnCause {
 pub struct HEVSimulationParams {
     /// [ReversibleEnergyStorage] per [FuelConverter]
     pub res_per_fuel_lim: si::Ratio,
-    /// Threshold of SOC balancing iterations for triggering warning
-    pub soc_balance_iter_warn: u32,
     /// Threshold of SOC balancing iteration for triggering error
     pub soc_balance_iter_err: u32,
     /// Whether to allow iteration to achieve SOC balance
     pub balance_soc: bool,
+    /// Whether to save each SOC balance iteration    
+    pub save_soc_bal_iters: bool,
 }
 
 impl Default for HEVSimulationParams {
     fn default() -> Self {
         Self {
             res_per_fuel_lim: uc::R * 0.005,
-            soc_balance_iter_warn: 3,
             soc_balance_iter_err: 5,
             balance_soc: true,
+            save_soc_bal_iters: false,
         }
     }
 }
@@ -487,7 +492,7 @@ impl HEVPowertrainControls {
                         hev_state.fc_on_causes.push(FCOnCause::VehicleSpeedTooHigh);
                     }
 
-                    if res_state.soc < res_state.min_soc_buffer {
+                    if res_state.soc < res_state.soc_accel_buffer {
                         hev_state.fc_on_causes.push(FCOnCause::ChargingForLowSOC)
                     }
                     if pwr_out_req - em_state.pwr_mech_fwd_out_max >= si::Power::ZERO {
@@ -560,12 +565,16 @@ pub struct RESGreedyWithBuffers {
     /// up to this speed.  Defaults to ?? mph.
     // TODO: in future control strategy, have a coeff to control how big the
     // buffer is relative to this speed
-    pub speed_min_soc_buffer_for_accel: Option<si::Velocity>,
+    pub speed_soc_accel_buffer: Option<si::Velocity>,
+    /// Coefficient for modifying amount of accel buffer
+    pub speed_soc_accel_buffer_coeff: Option<si::Ratio>,
     /// Speed at which decel buffer maxes out.  Buffer linearly increases
     /// up to this speed.  Defaults to ?? mph.
     // TODO: in future control strategy, have a coeff to control how big the
     // buffer is relative to this speed
-    pub speed_max_soc_buffer_for_decel: Option<si::Velocity>,
+    pub speed_soc_regen_buffer: Option<si::Velocity>,
+    /// Coefficient for modifying amount of regen buffer
+    pub speed_soc_regen_buffer_coeff: Option<si::Ratio>,
     /// Minimum time engine must remain on if it was on during the previous
     /// simulation time step.  defaults to 30 s.
     pub fc_min_time_on: Option<si::Time>,
@@ -574,26 +583,26 @@ pub struct RESGreedyWithBuffers {
     /// Fraction of total aux and powertrain power demand at which
     /// [FuelConverter] is forced on.  Defaults to ???.
     pub frac_pwr_demand_fc_forced_on: Option<si::Ratio>,
+    /// Force engine, if on, to run at this fraction of power at which peak
+    /// efficiency occurs or the required power, whichever is greater. If SOC
+    /// is below min buffer, engine will run at this level and charge.  Defaults
+    /// to 1.
+    pub frac_of_most_eff_pwr_to_run_fc: Option<si::Ratio>,
     /// Fraction of available charging capacity to use toward running the engine efficiently. Defaults to 0.
     // TODO: make sure this is plumbed up
     pub frac_res_chrg_for_fc: si::Ratio,
     // TODO: make sure this is plumbed up
     /// Fraction of available discharging capacity to use toward running the engine efficiently. Defaults to 0.
     pub frac_res_dschrg_for_fc: si::Ratio,
-    /// Force engine, if on, to run at this fraction of power at which peak
-    /// efficiency occurs or the required power, whichever is greater. If SOC
-    /// is below min buffer, engine will run at this level and charge.  Defaults
-    /// to 1.
-    pub frac_of_most_eff_pwr_to_run_fc: Option<si::Ratio>,
 }
 
 impl Init for RESGreedyWithBuffers {
     fn init(&mut self) -> anyhow::Result<()> {
         // TODO: make sure these values propagate to the documented defaults above
-        self.speed_min_soc_buffer_for_accel =
-            self.speed_min_soc_buffer_for_accel.or(Some(60. * uc::MPH));
-        self.speed_max_soc_buffer_for_decel =
-            self.speed_max_soc_buffer_for_decel.or(Some(60. * uc::MPH));
+        self.speed_soc_accel_buffer = self.speed_soc_accel_buffer.or(Some(70. * uc::MPH));
+        self.speed_soc_accel_buffer_coeff = self.speed_soc_accel_buffer_coeff.or(Some(0.5 * uc::R));
+        self.speed_soc_regen_buffer = self.speed_soc_regen_buffer.or(Some(30. * uc::MPH));
+        self.speed_soc_regen_buffer_coeff = self.speed_soc_regen_buffer_coeff.or(Some(1. * uc::R));
         self.fc_min_time_on = self.fc_min_time_on.or(Some(uc::S * 30.));
         self.speed_fc_forced_on = self.speed_fc_forced_on.or(Some(uc::MPH * 75.));
         self.frac_pwr_demand_fc_forced_on =

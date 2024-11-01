@@ -179,9 +179,6 @@ impl ReversibleEnergyStorage {
                 )
             );
         }
-
-        // TODO: replace this with something correct.
-        // This should trip the `ensure` below
         state.eff = match self.eff_interp.to_owned() {
             Interpolator::Interp0D(eff) => eff * uc::R,
             Interpolator::Interp1D(interp1d) => {
@@ -249,12 +246,16 @@ impl ReversibleEnergyStorage {
     /// # Arguments
     /// - `dt`: time step size
     /// - `buffer`: buffer below static maximum SOC above which charging is disabled
-    pub fn set_pwr_charge_max(&mut self, dt: si::Time, buffer: si::Energy) -> anyhow::Result<()> {
+    pub fn set_pwr_charge_max(
+        &mut self,
+        dt: si::Time,
+        chrg_buffer: si::Energy,
+    ) -> anyhow::Result<()> {
         // to protect against excessive topping off of the battery
-        let soc_buffer =
-            (buffer / (self.energy_capacity * (self.max_soc - self.min_soc))).max(si::Ratio::ZERO);
+        let soc_buffer = (chrg_buffer / (self.energy_capacity * (self.max_soc - self.min_soc)))
+            .max(si::Ratio::ZERO);
         ensure!(soc_buffer >= si::Ratio::ZERO, "{}", format_dbg!());
-        self.state.max_soc_buffer = self.max_soc - soc_buffer;
+        self.state.soc_regen_buffer = self.max_soc - soc_buffer;
         let pwr_max_for_dt =
             ((self.max_soc - self.state.soc) * self.energy_capacity / dt).max(si::Power::ZERO);
         self.state.pwr_charge_max = if self.state.soc <= self.max_soc - soc_buffer {
@@ -282,12 +283,15 @@ impl ReversibleEnergyStorage {
     /// # Arguments
     /// - `dt`: time step size
     /// - `buffer`: buffer above static minimum SOC above which charging is disabled
-    pub fn set_pwr_disch_max(&mut self, dt: si::Time, buffer: si::Energy) -> anyhow::Result<()> {
+    pub fn set_pwr_disch_max(
+        &mut self,
+        dt: si::Time,
+        disch_buffer: si::Energy,
+    ) -> anyhow::Result<()> {
         // to protect against excessive bottoming out of the battery
-        let soc_buffer =
-            (buffer / (self.energy_capacity * (self.max_soc - self.min_soc))).max(si::Ratio::ZERO);
+        let soc_buffer = (disch_buffer / self.energy_capacity_usable()).max(si::Ratio::ZERO);
         ensure!(soc_buffer >= si::Ratio::ZERO, "{}", format_dbg!());
-        self.state.min_soc_buffer = self.min_soc + soc_buffer;
+        self.state.soc_accel_buffer = self.min_soc + soc_buffer;
         let pwr_max_for_dt =
             ((self.state.soc - self.min_soc) * self.energy_capacity / dt).max(si::Power::ZERO);
         self.state.pwr_disch_max = if self.state.soc > self.min_soc + soc_buffer {
@@ -519,10 +523,10 @@ pub struct ReversibleEnergyStorageState {
 
     /// state of charge (SOC)
     pub soc: si::Ratio,
-    /// max state of charge (SOC) buffer
-    pub max_soc_buffer: si::Ratio,
-    /// min state of charge (SOC) buffer
-    pub min_soc_buffer: si::Ratio,
+    /// max state of charge (SOC) buffer for regen
+    pub soc_regen_buffer: si::Ratio,
+    /// min state of charge (SOC) buffer for acceleration
+    pub soc_accel_buffer: si::Ratio,
     /// Chemical <-> Electrical conversion efficiency based on current power demand
     pub eff: si::Ratio,
     /// State of Health (SOH)
@@ -567,8 +571,8 @@ impl Default for ReversibleEnergyStorageState {
             pwr_charge_max: si::Power::ZERO,
             i: Default::default(),
             soc: uc::R * 0.5,
-            max_soc_buffer: uc::R * 1.,
-            min_soc_buffer: si::Ratio::ZERO,
+            soc_regen_buffer: uc::R * 1.,
+            soc_accel_buffer: si::Ratio::ZERO,
             eff: si::Ratio::ZERO,
             soh: 0.,
             pwr_out_electrical: si::Power::ZERO,

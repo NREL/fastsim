@@ -90,22 +90,23 @@ pt_type:
       save_interval: 1
     pt_cntrl:
       Fastsim2:
-        speed_min_soc_buffer_for_accel: 26.8224
-        speed_max_soc_buffer_for_decel: 26.8224
+        speed_soc_accel_buffer: 31.2928
+        speed_soc_accel_buffer_coeff: 0.5
+        speed_soc_regen_buffer: 13.4112
+        speed_soc_regen_buffer_coeff: 1.0
         fc_min_time_on: 60.0
         speed_fc_forced_on: 37.9984
         frac_pwr_demand_fc_forced_on: 0.5645161290322581
+        frac_of_most_eff_pwr_to_run_fc: 1.0
         frac_res_chrg_for_fc: 0.0
         frac_res_dschrg_for_fc: 1.0
-        frac_of_most_eff_pwr_to_run_fc: 1.0
     aux_cntrl: AuxOnResPriority
     mass: ~
     sim_params:
       res_per_fuel_lim: 0.005
-      soc_balance_iter_warn: 3
       soc_balance_iter_err: 5
       balance_soc: true
-    soc_bal_iters: 0
+      save_soc_bal_iters: false
 chassis:
   drag_coef: 0.306
   frontal_area_square_meters: 2.22
