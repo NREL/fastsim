@@ -84,6 +84,12 @@ impl Mass for Transmission {
     }
 }
 
+impl SetCumulative for Transmission {
+    fn set_cumulative(&mut self, dt: si::Time) {
+        self.state.set_cumulative(dt);
+    }
+}
+
 #[fastsim_api]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, HistoryVec, SetCumulative)]
 pub struct TransmissionState {
