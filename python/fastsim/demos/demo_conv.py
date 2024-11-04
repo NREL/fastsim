@@ -56,6 +56,7 @@ t1 = time.perf_counter()
 t_fsim3_si1 = t1 - t0
 print(f"fastsim-3 `sd.walk()` elapsed time with `save_interval` of 1:\n{t_fsim3_si1:.2e} s")
 df = sd.to_dataframe()
+sd_dict = sd.to_pydict()
 
 # instantiate `SimDrive` simulation object
 sd_no_save = fsim.SimDrive(veh_no_save, cyc)
@@ -189,7 +190,7 @@ def plot_fc_energy() -> Tuple[Figure, Axes]:
     )
     ax[1].plot(
         np.array(sd.cyc.time_seconds)[::veh.save_interval],
-        np.array(sd.veh.fc.history.pwr_fuel_watts) / 1e3 - np.array(sd2.fs_kw_out_ach.tolist()),
+        np.array(sd.veh.fc.history.energy_fuel_joules) / 1e6 - np.array(sd2.fs_cumu_mj_out_ach.tolist()),
         label="fuel",
     )
     ax[1].set_ylabel("FC Energy\nDelta (f3-f2) [MJ]")
@@ -260,8 +261,6 @@ def plot_road_loads() -> Tuple[Figure, Axes]:
         label="rr",
         linestyle=BASE_LINE_STYLES[1],
     )
-    ax[1].text(
-        500, -0.125, "Drag error is due to more\naccurate air density model .")
     ax[1].set_ylabel("Power\nDelta (f3-f2) [kW]")
     ax[1].legend()
 

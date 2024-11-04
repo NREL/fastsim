@@ -294,19 +294,14 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                             pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
                             eff_interp_from_pwr_out: Interpolator::Interp1D(Interp1D::new(
-                                f2veh.fc_pwr_out_perc.to_vec(),
-                                f2veh.fc_eff_map.to_vec(),
+                                f2veh.fc_perc_out_array.to_vec(),
+                                f2veh.fc_eff_array.to_vec(),
                                 Strategy::LeftNearest,
                                 Extrapolate::Error,
                             )?),
                             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
-                            pwr_idle_fuel: f2veh.aux_kw
-                                / f2veh
-                                    .fc_eff_map
-                                    .to_vec()
-                                    .first()
-                                    .with_context(|| format_dbg!(f2veh.fc_eff_map))?
-                                * uc::KW,
+                            // this means that aux power must include idle fuel
+                            pwr_idle_fuel: si::Power::ZERO,
                             save_interval: Some(1),
                             history: Default::default(),
                             _phantom: PhantomData,
@@ -316,18 +311,27 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             .with_context(|| anyhow!(format_dbg!()))?;
                         fc
                     },
+                    transmission: Transmission {
+                        mass: None,
+                        eff_interp: Interpolator::Interp0D(f2veh.trans_eff),
+                        save_interval: Some(1),
+                        state: Default::default(),
+                        history: Default::default(),
+                    },
                     mass: None,
                     alt_eff: f2veh.alt_eff * uc::R,
                 };
                 Ok(PowertrainType::ConventionalVehicle(Box::new(conv)))
             }
             HEV => {
-                let pt_cntrl = HEVPowertrainControls::Fastsim2(hev::RESGreedyWithBuffers {
+                let pt_cntrl = HEVPowertrainControls::Fastsim2(hev::RESGreedyWithDynamicBuffers {
+                    speed_soc_fc_on_buffer: None,
                     speed_soc_accel_buffer: None,
                     speed_soc_accel_buffer_coeff: None,
                     speed_soc_regen_buffer: None,
                     speed_soc_regen_buffer_coeff: None,
-                    fc_min_time_on: Some(f2veh.min_fc_time_on * uc::S),
+                    // note that this exists in `fastsim-2` but has no apparent effect!
+                    fc_min_time_on: None,
                     speed_fc_forced_on: Some(f2veh.mph_fc_on * uc::MPH),
                     frac_pwr_demand_fc_forced_on: Some(
                         f2veh.kw_demand_fc_on
@@ -362,19 +366,14 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                             pwr_out_max_init: f2veh.fc_max_kw * uc::KW / f2veh.fc_sec_to_peak_pwr,
                             pwr_ramp_lag: f2veh.fc_sec_to_peak_pwr * uc::S,
                             eff_interp_from_pwr_out: Interpolator::Interp1D(Interp1D::new(
-                                f2veh.fc_pwr_out_perc.to_vec(),
-                                f2veh.fc_eff_map.to_vec(),
+                                f2veh.fc_perc_out_array.to_vec(),
+                                f2veh.fc_eff_array.to_vec(),
                                 Strategy::LeftNearest,
                                 Extrapolate::Error,
                             )?),
                             pwr_for_peak_eff: uc::KW * f64::NAN, // this gets updated in `init`
-                            pwr_idle_fuel: f2veh.aux_kw
-                                / f2veh
-                                    .fc_eff_map
-                                    .to_vec()
-                                    .first()
-                                    .with_context(|| format_dbg!(f2veh.fc_eff_map))?
-                                * uc::KW,
+                            // this means that aux power must include idle fuel
+                            pwr_idle_fuel: si::Power::ZERO,
                             save_interval: Some(1),
                             history: Default::default(),
                             _phantom: PhantomData,
@@ -398,26 +397,21 @@ impl TryFrom<&fastsim_2::vehicle::RustVehicle> for PowertrainType {
                     },
                     em: ElectricMachine {
                         state: Default::default(),
-                        eff_interp_fwd: (Interpolator::Interp1D(Interp1D::new(
-                            f2veh.mc_pwr_out_perc.to_vec(),
-                            f2veh.mc_eff_array.to_vec(),
-                            Strategy::LeftNearest,
-                            Extrapolate::Error,
-                        )?)),
-                        eff_interp_at_max_input: Some(Interpolator::Interp1D(Interp1D::new(
-                            // before adding the interpolator, pwr_in_frac_interp was set as Default::default(), can this
-                            // be transferred over as done here, or does a new defualt need to be defined?
-                            f2veh
-                                .mc_pwr_out_perc
-                                .to_vec()
-                                .iter()
-                                .zip(f2veh.mc_eff_array.to_vec().iter())
-                                .map(|(x, y)| x / y)
-                                .collect(),
-                            f2veh.mc_eff_array.to_vec(),
-                            Strategy::LeftNearest,
-                            Extrapolate::Error,
-                        )?)),
+                        eff_interp_fwd: (Interpolator::Interp1D(
+                            Interp1D::new(
+                                f2veh.mc_perc_out_array.to_vec(),
+                                {
+                                    let mut mc_full_eff_vec = f2veh.mc_full_eff_array.to_vec();
+                                    ensure!(mc_full_eff_vec.len() > 1);
+                                    mc_full_eff_vec[0] = mc_full_eff_vec[1];
+                                    mc_full_eff_vec
+                                },
+                                Strategy::LeftNearest,
+                                Extrapolate::Error,
+                            )
+                            .unwrap(),
+                        )),
+                        eff_interp_at_max_input: None,
                         // pwr_in_frac_interp: Default::default(),
                         pwr_out_max: f2veh.mc_max_kw * uc::KW,
                         specific_pwr: None,

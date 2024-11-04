@@ -124,7 +124,8 @@ impl InterpMethods for Interp1D {
         // Check that grid points are monotonically increasing
         ensure!(
             self.x.windows(2).all(|w| w[0] <= w[1]),
-            "Supplied x-coordinates must be sorted and non-repeating"
+            "Supplied x-coordinates must be sorted and non-repeating\n{:?}",
+            self.x
         );
         // Check that grid and values are compatible shapes
         ensure!(

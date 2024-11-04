@@ -229,7 +229,7 @@ pt_type:
             - 0.32
           strategy: LeftNearest
           extrapolate: Error
-      pwr_idle_fuel_watts: 0.0
+      pwr_idle_fuel_watts: 13125.0
       save_interval: 1
     em:
       eff_interp_fwd:
@@ -337,7 +337,7 @@ pt_type:
             - 0.99
             - 1.0
           f_x:
-            - 0.84
+            - 0.0
             - 0.84
             - 0.85
             - 0.86
@@ -545,7 +545,7 @@ pt_type:
             - 1.0755024443237369
             - 1.0869565217391304
           f_x:
-            - 0.84
+            - 0.0
             - 0.84
             - 0.85
             - 0.86
@@ -654,12 +654,11 @@ pt_type:
       save_interval: 1
     pt_cntrl:
       Fastsim2:
-        speed_soc_accel_buffer: 17.8816
+        speed_soc_accel_buffer: 26.8224
         speed_soc_accel_buffer_coeff: 1.0
-        speed_soc_fc_on_buffer: 18.77568
         speed_soc_regen_buffer: 13.4112
         speed_soc_regen_buffer_coeff: 1.0
-        fc_min_time_on: 5.0
+        fc_min_time_on: 60.0
         speed_fc_forced_on: 37.9984
         frac_pwr_demand_fc_forced_on: 0.5645161290322581
         frac_of_most_eff_pwr_to_run_fc: 1.0

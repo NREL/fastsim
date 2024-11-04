@@ -119,7 +119,7 @@ def variable_path_list(self, element_as_list: bool = False) -> List[str]:
     # Arguments:  
     - `element_as_list`: if True, each element is itself a list of the path elements
     """
-    return variable_path_list_from_py_objs(self.to_pydict(), element_as_list=element_as_list)
+    return variable_path_list_from_py_objs(self.to_pydict(flatten=False), element_as_list=element_as_list)
 
 
 def variable_path_list_from_py_objs(
@@ -223,12 +223,18 @@ def history_path_list(self, element_as_list: bool = False) -> List[str]:
 setattr(Pyo3VecWrapper, "__array__", __array__)  # noqa: F405
 
 
-def to_pydict(self) -> Dict:
+def to_pydict(self, flatten: bool=True) -> Dict:
     """
     Returns self converted to pure python dictionary with no nested Rust objects
+    # Arguments
+    - `flatten`: if True, returns dict without any hierarchy
     """
     import json
-    return json.loads(self.to_json())
+    pydict = json.loads(self.to_json())
+    if not flatten:
+        return pydict
+    else:
+        return next(iter(pd.json_normalize(pydict, sep=".").to_dict(orient='records')))
 
 
 @classmethod
@@ -248,7 +254,7 @@ def to_dataframe(self, pandas: bool = False, allow_partial: bool = False) -> Uni
     - `pandas`: returns pandas dataframe if True; otherwise, returns polars dataframe by default
     - `allow_partial`: returns dataframe of length equal to solved time steps if simulation fails early
     """
-    obj_dict = self.to_pydict()
+    obj_dict = self.to_pydict(flatten=False)
     history_paths = self.history_path_list(element_as_list=True)
     cols = [".".join(hp) for hp in history_paths]
     vals = []

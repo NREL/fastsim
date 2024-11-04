@@ -1,5 +1,3 @@
-use powertrain::reversible_energy_storage::ReversibleEnergyStorageState;
-
 use crate::prelude::ElectricMachineState;
 
 use super::{vehicle_model::VehicleState, *};
@@ -84,7 +82,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                     self.state.fc_on_causes.push(FCOnCause::OnTimeTooShort)
                 }
             },
-            HEVPowertrainControls::RESGreedyWithDynamicBuffers => {
+            HEVPowertrainControls::Placeholder => {
                 todo!()
             }
         };
@@ -93,31 +91,35 @@ impl Powertrain for Box<HybridElectricVehicle> {
             .with_context(|| anyhow!(format_dbg!()))?;
         let disch_buffer: si::Energy = match &self.pt_cntrl {
             HEVPowertrainControls::Fastsim2(rgwb) => {
-                0.5 * veh_state.mass
-                    * ((rgwb.speed_soc_accel_buffer.with_context(|| format_dbg!())?
-                        - veh_state.speed_ach)
-                        .max(si::Velocity::ZERO)
-                        .powi(typenum::P2::new()))
+                (0.5 * veh_state.mass
+                    * (rgwb
+                        .speed_soc_accel_buffer
+                        .with_context(|| format_dbg!())?
+                        .powi(typenum::P2::new())
+                        - veh_state.speed_ach.powi(typenum::P2::new())))
+                .max(si::Energy::ZERO)
                     * rgwb
                         .speed_soc_accel_buffer_coeff
                         .with_context(|| format_dbg!())?
             }
-            HEVPowertrainControls::RESGreedyWithDynamicBuffers => {
+            HEVPowertrainControls::Placeholder => {
                 todo!()
             }
         };
         let chrg_buffer: si::Energy = match &self.pt_cntrl {
             HEVPowertrainControls::Fastsim2(rgwb) => {
-                0.5 * veh_state.mass
-                    * ((veh_state.speed_ach
-                        - rgwb.speed_soc_regen_buffer.with_context(|| format_dbg!())?)
-                    .max(si::Velocity::ZERO)
-                    .powi(typenum::P2::new()))
+                (0.5 * veh_state.mass
+                    * (veh_state.speed_ach.powi(typenum::P2::new())
+                        - rgwb
+                            .speed_soc_regen_buffer
+                            .with_context(|| format_dbg!())?
+                            .powi(typenum::P2::new())))
+                .max(si::Energy::ZERO)
                     * rgwb
                         .speed_soc_regen_buffer_coeff
                         .with_context(|| format_dbg!())?
             }
-            HEVPowertrainControls::RESGreedyWithDynamicBuffers => {
+            HEVPowertrainControls::Placeholder => {
                 todo!()
             }
         };
@@ -179,7 +181,7 @@ impl Powertrain for Box<HybridElectricVehicle> {
                 &mut self.state,
                 &self.fc,
                 &self.em.state,
-                &self.res.state,
+                &self.res,
             )
             .with_context(|| format_dbg!())?;
         let fc_on: bool = !self.state.fc_on_causes.is_empty();
@@ -316,6 +318,8 @@ pub struct HEVState {
     /// Number of `walk` iterations required to achieve SOC balance (i.e. SOC
     /// ends at same starting value, ensuring no net [ReversibleEnergyStorage] usage)
     pub soc_bal_iters: u32,
+    /// buffer at which FC is forced on
+    pub soc_fc_on_buffer: si::Ratio,
 }
 
 impl Init for HEVState {}
@@ -411,9 +415,9 @@ pub enum HEVAuxControls {
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum HEVPowertrainControls {
     /// Controls that attempt to match fastsim-2
-    Fastsim2(RESGreedyWithBuffers),
+    Fastsim2(RESGreedyWithDynamicBuffers),
     /// Controls that have a dynamically updated discharge buffer but are otherwise similar to [Self::Fastsim2]
-    RESGreedyWithDynamicBuffers,
+    Placeholder,
 }
 
 impl Default for HEVPowertrainControls {
@@ -426,7 +430,7 @@ impl Init for HEVPowertrainControls {
     fn init(&mut self) -> anyhow::Result<()> {
         match self {
             Self::Fastsim2(rgwb) => rgwb.init()?,
-            Self::RESGreedyWithDynamicBuffers => {
+            Self::Placeholder => {
                 todo!()
             }
         }
@@ -442,7 +446,7 @@ impl HEVPowertrainControls {
         hev_state: &mut HEVState,
         fc: &FuelConverter,
         em_state: &ElectricMachineState,
-        res_state: &ReversibleEnergyStorageState,
+        res: &ReversibleEnergyStorage,
     ) -> anyhow::Result<(si::Power, si::Power)> {
         // TODO:
         // - [ ] make buffers soft limits that aren't enforced, just suggested
@@ -492,7 +496,21 @@ impl HEVPowertrainControls {
                         hev_state.fc_on_causes.push(FCOnCause::VehicleSpeedTooHigh);
                     }
 
-                    if res_state.soc < res_state.soc_accel_buffer {
+                    hev_state.soc_fc_on_buffer = {
+                        (0.5 * veh_state.mass
+                            * (rgwb
+                                .speed_soc_fc_on_buffer
+                                .with_context(|| format_dbg!())?
+                                .powi(typenum::P2::new())
+                                - veh_state.speed_ach.powi(typenum::P2::new())))
+                        .max(si::Energy::ZERO)
+                            * rgwb
+                                .speed_soc_accel_buffer_coeff
+                                .with_context(|| format_dbg!())?
+                    } / res.energy_capacity_usable()
+                        + res.min_soc;
+
+                    if res.state.soc < hev_state.soc_fc_on_buffer {
                         hev_state.fc_on_causes.push(FCOnCause::ChargingForLowSOC)
                     }
                     if pwr_out_req - em_state.pwr_mech_fwd_out_max >= si::Power::ZERO {
@@ -520,9 +538,7 @@ impl HEVPowertrainControls {
                     );
                     (fc_pwr, em_pwr)
                 }
-                HEVPowertrainControls::RESGreedyWithDynamicBuffers => {
-                    (uc::W * f64::NAN, uc::W * f64::NAN)
-                }
+                HEVPowertrainControls::Placeholder => todo!(),
             };
 
             Ok((fc_pwr, em_pwr))
@@ -560,18 +576,18 @@ impl HEVPowertrainControls {
 
 /// Container for static controls parameters
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
-pub struct RESGreedyWithBuffers {
-    /// Speed at which accel buffer becomes inactive.  Buffer linearly decreases
-    /// up to this speed.  Defaults to ?? mph.
-    // TODO: in future control strategy, have a coeff to control how big the
-    // buffer is relative to this speed
+pub struct RESGreedyWithDynamicBuffers {
+    /// RES energy delta from minimum SOC corresponding to kinetic energy of
+    /// vehicle at this speed that triggers ramp down in RES discharge
     pub speed_soc_accel_buffer: Option<si::Velocity>,
     /// Coefficient for modifying amount of accel buffer
     pub speed_soc_accel_buffer_coeff: Option<si::Ratio>,
-    /// Speed at which decel buffer maxes out.  Buffer linearly increases
-    /// up to this speed.  Defaults to ?? mph.
-    // TODO: in future control strategy, have a coeff to control how big the
-    // buffer is relative to this speed
+    /// RES energy delta from minimum SOC corresponding to kinetic energy of
+    /// vehicle at this speed that triggers FC to be forced on.
+    pub speed_soc_fc_on_buffer: Option<si::Velocity>,
+    /// RES energy delta from maximum SOC corresponding to kinetic energy of
+    /// vehicle at current speed minus kinetic energy of vehicle at this speed
+    /// triggers ramp down in RES discharge
     pub speed_soc_regen_buffer: Option<si::Velocity>,
     /// Coefficient for modifying amount of regen buffer
     pub speed_soc_regen_buffer_coeff: Option<si::Ratio>,
@@ -596,20 +612,23 @@ pub struct RESGreedyWithBuffers {
     pub frac_res_dschrg_for_fc: si::Ratio,
 }
 
-impl Init for RESGreedyWithBuffers {
+impl Init for RESGreedyWithDynamicBuffers {
     fn init(&mut self) -> anyhow::Result<()> {
         // TODO: make sure these values propagate to the documented defaults above
-        self.speed_soc_accel_buffer = self.speed_soc_accel_buffer.or(Some(70. * uc::MPH));
-        self.speed_soc_accel_buffer_coeff = self.speed_soc_accel_buffer_coeff.or(Some(0.5 * uc::R));
+        self.speed_soc_accel_buffer = self.speed_soc_accel_buffer.or(Some(40.0 * uc::MPH));
+        self.speed_soc_accel_buffer_coeff = self.speed_soc_accel_buffer_coeff.or(Some(1.0 * uc::R));
+        self.speed_soc_fc_on_buffer = self
+            .speed_soc_fc_on_buffer
+            .or(Some(self.speed_soc_accel_buffer.unwrap() * 1.05));
         self.speed_soc_regen_buffer = self.speed_soc_regen_buffer.or(Some(30. * uc::MPH));
-        self.speed_soc_regen_buffer_coeff = self.speed_soc_regen_buffer_coeff.or(Some(1. * uc::R));
-        self.fc_min_time_on = self.fc_min_time_on.or(Some(uc::S * 30.));
+        self.speed_soc_regen_buffer_coeff = self.speed_soc_regen_buffer_coeff.or(Some(1.0 * uc::R));
+        self.fc_min_time_on = self.fc_min_time_on.or(Some(uc::S * 5.0));
         self.speed_fc_forced_on = self.speed_fc_forced_on.or(Some(uc::MPH * 75.));
         self.frac_pwr_demand_fc_forced_on =
-            self.frac_pwr_demand_fc_forced_on.or(Some(uc::R * 0.25));
+            self.frac_pwr_demand_fc_forced_on.or(Some(uc::R * 0.75));
         // TODO: consider changing this default
         self.frac_of_most_eff_pwr_to_run_fc =
-            self.frac_of_most_eff_pwr_to_run_fc.or(Some(1. * uc::R));
+            self.frac_of_most_eff_pwr_to_run_fc.or(Some(1.0 * uc::R));
         Ok(())
     }
 }
