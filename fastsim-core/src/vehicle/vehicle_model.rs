@@ -553,6 +553,8 @@ pub(crate) mod tests {
         use fastsim_2::traits::SerdeAPI;
         let veh = {
             let f2veh = fastsim_2::vehicle::RustVehicle::from_yaml(file_contents).unwrap();
+            let mc_full_eff_array_head = f2veh.mc_full_eff_array.to_vec()[..=5].to_vec();
+            dbg!(mc_full_eff_array_head);
             let veh = Vehicle::try_from(f2veh);
             veh.unwrap()
         };
