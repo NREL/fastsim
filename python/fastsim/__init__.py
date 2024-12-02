@@ -72,11 +72,7 @@ def to_pydict(self) -> Dict:
     Returns self converted to pure python dictionary with no nested Rust objects
     """
     import json
-    try:
-        return json.loads(self.to_json())
-    except:
-        import yaml
-        return yaml.loads(self.to_yaml())
+    return json.loads(self.to_json())
 
 @classmethod
 def from_pydict(cls, pydict: Dict) -> Self:
@@ -84,11 +80,7 @@ def from_pydict(cls, pydict: Dict) -> Self:
     Instantiates Self from pure python dictionary 
     """
     import json
-    try:
-        return cls.from_json(json.dumps(pydict))
-    except:
-        import yaml
-        return cls.from_yaml(yaml.dumps(pydict))
+    return cls.from_json(json.dumps(pydict))
 
 for item in ACCEPTED_RUST_STRUCTS:
     setattr(getattr(fastsim, item), "to_pydict", to_pydict)
