@@ -54,7 +54,8 @@ jobs:
       - name: set up python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          # NOTE: future versions of cibuildwheel need python 3.11+
+          python-version: "3.11"
 
       - name: install Python dependencies
         run: pip install -U setuptools wheel twine cibuildwheel pytest
