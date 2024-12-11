@@ -72,6 +72,10 @@ jobs:
           pip install -U setuptools-rust
           python -c "import setuptools; setuptools.setup()" sdist
 
+      - name: Update minimum supported MacOS for Wheels for MacOS 13 (Intel Mac)
+        run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
+        if: matrix.os == 'macos-13'
+
       - name: build ${{ matrix.platform || matrix.os }} binaries
         uses: pypa/cibuildwheel@v2.22.0
         env:
