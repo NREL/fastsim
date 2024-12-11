@@ -16,7 +16,7 @@ jobs:
         os:
           - ubuntu-latest
           - macos-13 # Intel runner
-          - macos-14 # Apple Silicon runner
+          - macos-latest # Apple Silicon runner
           - windows-latest
         python-version:
           - "8"
@@ -44,7 +44,7 @@ jobs:
           override: true
 
       - run: rustup target add aarch64-apple-darwin
-        if: matrix.os == 'macos-14'
+        if: matrix.os == 'macos-latest'
 
       - name: run cargo tests
         uses: actions-rs/toolchain@v1
