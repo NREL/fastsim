@@ -73,7 +73,7 @@ jobs:
           python -c "import setuptools; setuptools.setup()" sdist
 
       - name: build ${{ matrix.platform || matrix.os }} binaries
-        uses: pypa/cibuildwheel@2.22.0
+        uses: pypa/cibuildwheel@v2.22.0
         env:
           CIBW_BUILD: "cp3${{ matrix.python-version }}-*"
           CIBW_SKIP: "*-win32 *-musllinux* *i686 *ppc64le *s390x *aarch64"
