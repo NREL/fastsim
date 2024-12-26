@@ -23,7 +23,17 @@ fn main() {
         return;
     }
 
+    check_files_consistent(&prepath);
+}
+
+/// Checks if rust and python resource files are consistent
+fn check_files_consistent(prepath: &String) {
     let truth_files = [
+        format!(
+            "{}/{}/vehdb/2017_Toyota_Highlander_3.5_L.yaml",
+            env::current_dir().unwrap().as_os_str().to_str().unwrap(),
+            prepath
+        ),
         format!(
             "{}/{}/longparams.json",
             env::current_dir().unwrap().as_os_str().to_str().unwrap(),
@@ -42,6 +52,10 @@ fn main() {
     ];
 
     let compare_files = [
+        format!(
+            "{}/resources/vehicles/2017_Toyota_Highlander_3.5_L.yaml",
+            env::current_dir().unwrap().as_os_str().to_str().unwrap()
+        ),
         format!(
             "{}/resources/longparams.json",
             env::current_dir().unwrap().as_os_str().to_str().unwrap()

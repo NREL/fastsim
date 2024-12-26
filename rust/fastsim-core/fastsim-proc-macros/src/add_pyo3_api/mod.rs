@@ -165,8 +165,7 @@ pub fn add_pyo3_api(attr: TokenStream, item: TokenStream) -> TokenStream {
                             ) -> anyhow::Result<()> {
                             bail!(PyNotImplementedError::new_err(
                                 "Setting value at index is not implemented.
-                                Run `tolist` method, modify value at index, and
-                                then set entire vector.",
+                    Run `tolist` method, modify value at index, and then set entire vector.",
                             ))
                         }
                         pub fn tolist(&self) -> anyhow::Result<Vec<#contained_dtype>> {

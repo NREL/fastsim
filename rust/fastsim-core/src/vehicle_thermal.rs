@@ -120,7 +120,7 @@ pub struct HVACModel {
     /// coefficient between 0 and 1 to calculate HVAC efficiency by multiplying by
     /// coefficient of performance (COP)
     pub frac_of_ideal_cop: f64,
-    /// whether heat comes from fuel converter
+    /// whether heat comes from [FuelConverter]
     pub use_fc_waste_heat: bool,
     /// max cooling aux load
     pub pwr_max_aux_load_for_cooling_kw: f64,
@@ -481,7 +481,7 @@ impl VehicleThermal {
 
     /// parameter for engine surface area \[m**2\] for heat transfer calcs
     pub fn fc_area_ext(&self) -> f64 {
-        PI * self.fc_l.powf(2.0 / 4.0)
+        PI * self.fc_l.powf(2.0) / 4.0
     }
 
     /// parameter for catalyst surface area \[m**2\] for heat transfer calcs

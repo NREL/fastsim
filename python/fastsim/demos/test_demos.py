@@ -1,3 +1,4 @@
+import sys
 import subprocess
 import os
 from pathlib import Path
@@ -22,8 +23,14 @@ def test_demo(demo_path: Path):
     os.environ["SHOW_PLOTS"] = "false"
     os.environ["TESTING"] = "true"
 
+    # NOTE: Try to set the python executable based on the current running python which
+    # MAY be running from a virtual environment.
+    python_exe = sys.executable
+    if python_exe == "" or python_exe is None:
+        python_exe = "python"
+
     rslt = subprocess.run(
-        ["python", demo_path],
+        [python_exe, demo_path],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,

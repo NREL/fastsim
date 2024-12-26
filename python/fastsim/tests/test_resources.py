@@ -16,12 +16,6 @@ class TestListResources(unittest.TestCase):
 
     def test_list_resources_for_vehicles(self):
         "check if list_resources works for RustVehicle"
-        # NOTE: at the time of writing this test,
-        #       there are no vehicle assets in resources.
-        #       Therefore, we expect to get an empty vector.
-        #       If resources are committed, this test should
-        #       fail and we should use the following assert:
-        #   self.assertTrue(len(resources) > 0)
         rv = vehicle.Vehicle.from_vehdb(1).to_rust()
         resources = rv.list_resources()
-        self.assertTrue(len(resources) == 0)
+        self.assertTrue(len(resources) == 1)

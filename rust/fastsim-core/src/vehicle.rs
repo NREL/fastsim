@@ -564,7 +564,7 @@ pub struct RustVehicle {
 /// RustVehicle rust methods
 impl RustVehicle {
     const VEHICLE_DIRECTORY_URL: &'static str =
-        &"https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/";
+        "https://raw.githubusercontent.com/NREL/fastsim-vehicles/main/";
     /// Sets the following parameters:
     /// - `ess_mass_kg`
     /// - `mc_mass_kg`
@@ -1053,6 +1053,7 @@ impl RustVehicle {
     ///   path from url directory or FASTSim repository (if applicable)  
     /// - url: url for vehicle repository where vehicle will be downloaded from,
     ///   if None, assumed to be downloaded from vehicle FASTSim repo  
+    ///
     /// Note: The URL needs to be a URL pointing directly to a file, for example
     /// a raw github URL, split up so that the "url" argument is the path to the
     /// directory, and the "vehicle_file_name" is the path within the directory
@@ -1071,7 +1072,7 @@ impl RustVehicle {
             Some(s) => {
                 s.as_ref().trim_end_matches('/').to_owned()
                     + "/"
-                    + &vehicle_file_name.as_ref().trim_start_matches('/')
+                    + vehicle_file_name.as_ref().trim_start_matches('/')
             }
             None => Self::VEHICLE_DIRECTORY_URL.to_string() + vehicle_file_name.as_ref(),
         };
@@ -1121,6 +1122,7 @@ impl SerdeAPI for RustVehicle {
     /// accepts yaml and json file types  
     /// # Arguments  
     /// - url: URL (either as a string or url type) to object  
+    ///
     /// Note: The URL needs to be a URL pointing directly to a file, for example
     /// a raw github URL.
     fn from_url<S: AsRef<str>>(url: S, skip_init: bool) -> anyhow::Result<Self> {

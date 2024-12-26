@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 // This needs to be a square logo to avoid stretching, and can have transparency
 #![doc(html_logo_url = "https://www.nrel.gov/transportation/assets/images/icon-fastsim.jpg")]
 //! Documentation for the Rust backend of the Future Automotive Systems Technology Simulator (FASTSim).
@@ -43,7 +44,6 @@ pub mod params;
 pub mod pyo3imports;
 pub mod simdrive;
 pub use simdrive::simdrive_impl;
-pub mod resources;
 pub mod simdrivelabel;
 pub mod thermal;
 pub mod traits;

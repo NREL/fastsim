@@ -117,8 +117,8 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
     dist_mi: f64,
     max_fc_power_kw: f64,
     kwh_per_gge: f64,
-    fc_kw_out_ach: &Vec<f64>,
-    fs_kwh_out_ach: &Vec<f64>,
+    fc_kw_out_ach: &[f64],
+    fs_kwh_out_ach: &[f64],
     fc_pwr_out_perc: &Vec<f64>,
     h2share: &Vec<f64>,
 ) -> anyhow::Result<H2AndDieselResults> {
@@ -168,7 +168,7 @@ pub fn calculate_mpgge_for_h2_diesel_ice(
     })
 }
 
-pub fn integrate_power_to_kwh(dts_s: &Vec<f64>, ps_kw: &Vec<f64>) -> anyhow::Result<Vec<f64>> {
+pub fn integrate_power_to_kwh(dts_s: &[f64], ps_kw: &[f64]) -> anyhow::Result<Vec<f64>> {
     anyhow::ensure!(dts_s.len() == ps_kw.len());
     let mut energy_kwh = Vec::<f64>::with_capacity(dts_s.len());
     for idx in 0..dts_s.len() {

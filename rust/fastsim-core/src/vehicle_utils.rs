@@ -21,6 +21,8 @@ use crate::simdrive::RustSimDrive;
 #[cfg(feature = "default")]
 use crate::vehicle::RustVehicle;
 
+pub const NETWORK_TEST_DISABLE_ENV_VAR_NAME: &str = "FASTSIM_DISABLE_NETWORK_TESTS";
+
 #[allow(non_snake_case)]
 #[cfg_attr(feature = "pyo3", pyfunction)]
 #[allow(clippy::too_many_arguments)]
@@ -91,8 +93,7 @@ pub fn abc_to_drag_coeffs(
             vehicle: veh,
             dyno_func_lb: &dyno_func_lb,
         };
-        let solver =
-            NelderMead::new(vec![array![0.0, 0.0], array![0.5, 0.0], array![0.5, 0.1]]);
+        let solver = NelderMead::new(vec![array![0.0, 0.0], array![0.5, 0.0], array![0.5, 0.1]]);
         let res = Executor::new(cost, solver)
             .configure(|state| state.max_iters(100))
             .run()
@@ -239,14 +240,15 @@ pub struct GitObjectInfo {
     pub links: Option<ObjectLinks>,
 }
 
-const VEHICLE_REPO_LIST_URL: &'static str =
-    &"https://api.github.com/repos/NREL/fastsim-vehicles/contents/public";
+const VEHICLE_REPO_LIST_URL: &str =
+    "https://api.github.com/repos/NREL/fastsim-vehicles/contents/public";
 
 /// Function that takes a url and calls the url. If a 503 or 429 error is
 /// thrown, it tries again after a pause, up to four times. It returns either a
 /// result or an error.  
 /// # Arguments  
 /// - url: url to be called
+///
 /// Source: https://docs.rs/ureq/latest/ureq/enum.Error.html
 fn get_response<S: AsRef<str>>(url: S) -> Result<Response, OtherError> {
     for _ in 1..4 {
@@ -311,6 +313,7 @@ pub fn fetch_github_list(repo_url: Option<String>) -> anyhow::Result<Vec<String>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     #[test]
     fn test_get_error_val() {
@@ -357,6 +360,10 @@ mod tests {
     // there's any way to ensure the function succeeds 100% of the time.
     #[test]
     fn test_fetch_github_list() {
+        if env::var(NETWORK_TEST_DISABLE_ENV_VAR_NAME).is_ok() {
+            println!("SKIPPING: test_fetch_github_list");
+            return;
+        }
         let list = fetch_github_list(Some(
             "https://api.github.com/repos/NREL/fastsim-vehicles/contents".to_owned(),
         ))

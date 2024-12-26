@@ -234,10 +234,7 @@ impl SimDriveHot {
             },
             None => (
                 None, // 1st return element
-                match init_state {
-                    Some(state) => state, // 2nd return element
-                    None => ThermalState::default(),
-                },
+                init_state.unwrap_or_default(),
             ),
         };
 
@@ -416,8 +413,7 @@ impl SimDriveHot {
         // limited between 0 and 1, but should really not get near 1
         self.state.fc_qdot_per_net_heat = (self.vehthrm.fc_coeff_from_comb
             * (self.state.fc_te_adiabatic_deg_c - self.state.fc_te_deg_c))
-            .min(1.0)
-            .max(0.0);
+            .clamp(0.0, 1.0);
 
         // heat generation
         self.state.fc_qdot_kw = self.state.fc_qdot_per_net_heat
@@ -481,8 +477,7 @@ impl SimDriveHot {
         if let CabinHvacModelTypes::Internal(hvac_model) = &mut self.vehthrm.cabin_hvac_model {
             // flat plate model for isothermal, mixed-flow from Incropera and deWitt, Fundamentals of Heat and Mass
             // Transfer, 7th Edition
-            let cab_te_film_ext_deg_c =
-                0.5 * (self.state.cab_te_deg_c + self.state.amb_te_deg_c);
+            let cab_te_film_ext_deg_c = 0.5 * (self.state.cab_te_deg_c + self.state.amb_te_deg_c);
             let re_l = self.air.get_rho(cab_te_film_ext_deg_c, None)
                 * self.sd.mps_ach[i - 1]
                 * self.vehthrm.cab_l_length
@@ -498,20 +493,18 @@ impl SimDriveHot {
                 (0.037 * re_l.powf(0.8) - a) * self.air.get_pr(cab_te_film_ext_deg_c)
             };
 
-            if self.sd.mph_ach[i - 1] > 2.0 {
-                self.state.cab_qdot_to_amb_kw = 1e-3
-                    * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
+            self.state.cab_qdot_to_amb_kw = if self.sd.mph_ach[i - 1] > 2.0 {
+                1e-3 * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
                     / (1.0
                         / (nu_l_bar * self.air.get_k(cab_te_film_ext_deg_c)
                             / self.vehthrm.cab_l_length)
                         + self.vehthrm.cab_r_to_amb)
-                    * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
+                    * (self.state.cab_te_deg_c - self.state.amb_te_deg_c)
             } else {
-                self.state.cab_qdot_to_amb_kw = 1e-3
-                    * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
+                1e-3 * (self.vehthrm.cab_l_length * self.vehthrm.cab_l_width)
                     / (1.0 / self.vehthrm.cab_htc_to_amb_stop + self.vehthrm.cab_r_to_amb)
-                    * (self.state.cab_te_deg_c - self.state.amb_te_deg_c);
-            }
+                    * (self.state.cab_te_deg_c - self.state.amb_te_deg_c)
+            };
 
             let te_delta_vs_set_deg_c = self.state.cab_te_deg_c - hvac_model.te_set_deg_c;
             let te_delta_vs_amb_deg_c = self.state.cab_te_deg_c - self.state.amb_te_deg_c;
@@ -917,41 +910,35 @@ impl SimDriveHot {
             if let FcModelTypes::Internal(fc_temp_eff_model, fc_temp_eff_comp) =
                 &self.vehthrm.fc_model
             {
-                if let FcTempEffModel::Linear(FcTempEffModelLinear {
-                    offset,
-                    slope,
-                    minimum,
-                }) = fc_temp_eff_model
-                {
-                    self.state.fc_eta_temp_coeff =
-                        max(*minimum, min(1.0, offset + slope * self.state.fc_te_deg_c));
-                }
-
-                if let FcTempEffModel::Exponential(FcTempEffModelExponential {
-                    offset,
-                    lag,
-                    minimum,
-                }) = fc_temp_eff_model
-                {
-                    match fc_temp_eff_comp {
-                        FcTempEffComponent::FuelConverter => {
-                            self.state.fc_eta_temp_coeff = (1.0
+                self.state.fc_eta_temp_coeff = match fc_temp_eff_model {
+                    FcTempEffModel::Linear(FcTempEffModelLinear {
+                        offset,
+                        slope,
+                        minimum,
+                    }) => max(*minimum, min(1.0, offset + slope * self.state.fc_te_deg_c)),
+                    FcTempEffModel::Exponential(FcTempEffModelExponential {
+                        offset,
+                        lag,
+                        minimum,
+                    }) => {
+                        match fc_temp_eff_comp {
+                            FcTempEffComponent::FuelConverter => (1.0
                                 - f64::exp(-1.0 / lag * (self.state.fc_te_deg_c - offset)))
-                            .max(*minimum);
-                        }
-                        FcTempEffComponent::CatAndFC => {
-                            if self.state.cat_te_deg_c < self.vehthrm.cat_te_lightoff_deg_c {
-                                self.state.fc_eta_temp_coeff = (1.0
-                                    - f64::exp(-1.0 / lag * (self.state.fc_te_deg_c - offset)))
-                                .max(*minimum);
-                                // reduce efficiency to account for catalyst not being lit off
-                                self.state.fc_eta_temp_coeff *= self.vehthrm.cat_fc_eta_coeff;
+                            .max(*minimum),
+                            FcTempEffComponent::CatAndFC => {
+                                if self.state.cat_te_deg_c < self.vehthrm.cat_te_lightoff_deg_c {
+                                    let fc_eta_temp_coeff = (1.0
+                                        - f64::exp(-1.0 / lag * (self.state.fc_te_deg_c - offset)))
+                                    .max(*minimum);
+                                    // reduce efficiency to account for catalyst not being lit off
+                                    fc_eta_temp_coeff * self.vehthrm.cat_fc_eta_coeff
+                                } else {
+                                    1.0
+                                }
                             }
-                        }
-                        FcTempEffComponent::Catalyst => {
-                            self.state.fc_eta_temp_coeff = (1.0
+                            FcTempEffComponent::Catalyst => (1.0
                                 - f64::exp(-1.0 / lag * (self.state.cat_te_deg_c - offset)))
-                            .max(*minimum);
+                            .max(*minimum),
                         }
                     }
                 }
